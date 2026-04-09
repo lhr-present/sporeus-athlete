@@ -39,5 +39,4 @@ Manual: `npm run deploy`
 
 ## Based on
 
-**EŞİK / THRESHOLD** — Hüseyin Akbulut (sporeus.com, 2026)  
-Turkey's first comprehensive endurance science book, 540 pages.
+**EŞİK / THRESHOLD** — Hüseyin Akbulut (sporeus.com, 2026) 
