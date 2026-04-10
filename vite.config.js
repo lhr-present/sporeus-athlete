@@ -29,7 +29,12 @@ export default defineConfig({
         clientsClaim: true,          // takes control of all open tabs at once
         cleanupOutdatedCaches: true, // removes stale caches from old versions
         // No Google Fonts runtime caching — fonts are now self-hosted
+        navigateFallbackDenylist: [/^\/auth/],
         runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
+            handler: 'NetworkOnly',
+          },
           {
             urlPattern: /^https:\/\/sporeus\.com\/wp-json\/.*/i,
             handler: 'NetworkFirst',

@@ -8,7 +8,7 @@ const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 if (!SUPABASE_URL || !SUPABASE_ANON) {
-  console.warn('[Supabase] VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY not set. Running in localStorage-only mode.')
+  console.error('[Supabase] ENV MISSING:', { url: SUPABASE_URL, key: SUPABASE_ANON ? '***set***' : 'MISSING' })
 }
 
 export const supabase = (SUPABASE_URL && SUPABASE_ANON)

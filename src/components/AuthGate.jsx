@@ -82,50 +82,48 @@ export default function AuthGate({ lang }) {
   const clearMsg = () => setMsg(null)
 
   const handleGoogle = useCallback(async () => {
-    if (!supabase) return
+    if (!supabase) { setMsg({ type: 'error', text: 'Supabase not configured' }); return }
     setBusy(true); clearMsg()
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: window.location.origin + window.location.pathname,
-        queryParams: { access_type: 'offline', prompt: 'consent' },
-      },
-    })
-    if (error) { setMsg({ type: 'error', text: error.message }); setBusy(false) }
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/sporeus-athlete/',
+          queryParams: { access_type: 'offline', prompt: 'consent' },
+        },
+      })
+      if (error) { setMsg({ type: 'error', text: error.message }); setBusy(false) }
+    } catch (e) {
+      setMsg({ type: 'error', text: e.message }); setBusy(false)
+    }
   }, [])
 
   const handleEmail = useCallback(async (e) => {
     e.preventDefault()
     if (!supabase || !email) return
     setBusy(true); clearMsg()
-    let error
-    if (mode === 'login') {
-      ({ error } = await supabase.auth.signInWithPassword({ email, password: pass }))
-    } else if (mode === 'signup') {
-      ({ error } = await supabase.auth.signUp({
-        email, password: pass,
-        options: { emailRedirectTo: window.location.origin + window.location.pathname }
-      }))
-      if (!error) {
-        setMsg({ type: 'success', text: lang === 'tr'
-          ? 'Kayıt e-postası gönderildi — gelen kutunu kontrol et.'
-          : 'Confirmation email sent — check your inbox.' })
-        setBusy(false); return
+    try {
+      let error
+      const redirectTo = window.location.origin + '/sporeus-athlete/'
+      if (mode === 'login') {
+        ({ error } = await supabase.auth.signInWithPassword({ email, password: pass }))
+      } else if (mode === 'signup') {
+        ({ error } = await supabase.auth.signUp({ email, password: pass, options: { emailRedirectTo: redirectTo } }))
+        if (!error) {
+          setMsg({ type: 'success', text: lang === 'tr' ? 'Kayıt e-postası gönderildi — gelen kutunu kontrol et.' : 'Confirmation email sent — check your inbox.' })
+          setBusy(false); return
+        }
+      } else {
+        ({ error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } }))
+        if (!error) {
+          setMsg({ type: 'success', text: lang === 'tr' ? 'Sihirli bağlantı gönderildi — gelen kutunu kontrol et.' : 'Magic link sent — check your inbox.' })
+          setBusy(false); return
+        }
       }
-    } else {
-      // magic link
-      ({ error } = await supabase.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: window.location.origin + window.location.pathname }
-      }))
-      if (!error) {
-        setMsg({ type: 'success', text: lang === 'tr'
-          ? 'Sihirli bağlantı gönderildi — gelen kutunu kontrol et.'
-          : 'Magic link sent — check your inbox.' })
-        setBusy(false); return
-      }
+      if (error) setMsg({ type: 'error', text: error.message })
+    } catch (e) {
+      setMsg({ type: 'error', text: e.message })
     }
-    if (error) setMsg({ type: 'error', text: error.message })
     setBusy(false)
   }, [email, pass, mode, lang])
 
