@@ -183,18 +183,19 @@ export default function PlanGenerator({ onLogSession }) {
 
   const printPlan = () => {
     if (!plan) return
+    const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
     const phaseColors = { Base:'#4a90d9', Build:'#f5c542', Peak:'#e03030', Peak2:'#e03030', Taper:'#888', Recovery:'#5bc25b', 'Race Week':'#ff6600' }
     const rows = plan.weeks.map(w => {
       const activeSessions = w.sessions.filter(s => s.type !== 'Rest' && s.duration > 0)
       return `<tr>
-        <td style="font-weight:600;color:${phaseColors[w.phase]||'#888'}">${w.week}</td>
-        <td style="font-weight:600;color:${phaseColors[w.phase]||'#888'}">${w.phase}</td>
-        <td>${w.totalHours}h</td>
-        <td>${w.tss}</td>
-        <td style="font-size:10px">${activeSessions.map(s=>`${s.day}: ${s.type} ${s.duration}min`).join('<br>')}</td>
+        <td style="font-weight:600;color:${phaseColors[esc(w.phase)]||'#888'}">${esc(w.week)}</td>
+        <td style="font-weight:600;color:${phaseColors[esc(w.phase)]||'#888'}">${esc(w.phase)}</td>
+        <td>${esc(w.totalHours)}h</td>
+        <td>${esc(w.tss)}</td>
+        <td style="font-size:10px">${activeSessions.map(s=>`${esc(s.day)}: ${esc(s.type)} ${esc(s.duration)}min`).join('<br>')}</td>
       </tr>`
     }).join('')
-    const html = `<!DOCTYPE html><html><head><title>${plan.goal} Training Plan</title>
+    const html = `<!DOCTYPE html><html><head><title>${esc(plan.goal)} Training Plan</title>
     <style>
       body{font-family:'Courier New',monospace;font-size:11px;color:#1a1a1a;margin:24px;background:#fff}
       h1{font-size:16px;border-bottom:2px solid #ff6600;padding-bottom:8px;margin-bottom:16px}
@@ -206,10 +207,10 @@ export default function PlanGenerator({ onLogSession }) {
       .footer{margin-top:24px;font-size:10px;color:#888;border-top:1px solid #e0e0e0;padding-top:8px}
       @media print{body{margin:12px}}
     </style></head><body>
-    <h1>SPOREUS ATHLETE — ${plan.goal.toUpperCase()} TRAINING PLAN</h1>
+    <h1>SPOREUS ATHLETE — ${esc(plan.goal).toUpperCase()} TRAINING PLAN</h1>
     <div class="meta">
-      Level: ${plan.level} &nbsp;|&nbsp; Duration: ${plan.weeks.length} weeks &nbsp;|&nbsp;
-      Volume: ~${plan.hoursPerWeek}h/week &nbsp;|&nbsp; Generated: ${plan.generatedAt}
+      Level: ${esc(plan.level)} &nbsp;|&nbsp; Duration: ${esc(plan.weeks.length)} weeks &nbsp;|&nbsp;
+      Volume: ~${esc(plan.hoursPerWeek)}h/week &nbsp;|&nbsp; Generated: ${esc(plan.generatedAt)}
     </div>
     <table><thead><tr><th>WK</th><th>PHASE</th><th>VOL</th><th>TSS</th><th>SESSIONS</th></tr></thead>
     <tbody>${rows}</tbody></table>

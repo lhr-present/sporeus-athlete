@@ -58,7 +58,7 @@ function WeightHydration({ profile }) {
       {/* Daily weight */}
       <div style={{ display:'flex', gap:'8px', alignItems:'flex-end', marginBottom:'14px' }}>
         <div style={{ flex:'1 1 140px' }}>
-          <label style={S.label}>{t('weightL')}</label>
+          <label style={S.label}>{t('morningWtL')}</label>
           <input style={S.input} type="number" step="0.1" placeholder="70.5" value={wInput}
             onChange={e=>setWInput(e.target.value)}/>
         </div>

@@ -505,19 +505,52 @@ export default function CoachDashboard() {
   function handleFileSelect(e) {
     const file = e.target.files[0]
     if (!file) return
+    // Reject files over 10MB before reading
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File too large (max 10MB). Make sure this is a valid Sporeus export.')
+      e.target.value = ''; return
+    }
     const reader = new FileReader()
     reader.onload = ev => {
       try {
-        const data = JSON.parse(ev.target.result)
-        const profile   = data.profile   || {}
-        const log       = data.log       || data.trainingLog || []
-        const recovery  = data.recovery  || data.recoveryLog || []
-        const testLog   = data.testLog   || []
-        const injuryLog = data.injuryLog || data.injuries || []
+        const text = ev.target.result
+        if (text.length > 10e6) throw new Error('oversized')
+        const raw = JSON.parse(text)
+        // Reject prototype-polluting or non-object payloads
+        if (typeof raw !== 'object' || Array.isArray(raw) || raw === null) throw new Error('invalid shape')
+        // Extract from versioned export wrapper if present
+        const data = raw._export ? (raw.data || {}) : raw
+        // Whitelist-extract and cap array lengths to prevent memory exhaustion
+        const sanitizeStr = v => typeof v === 'string' ? v.slice(0, 200) : ''
+        const sanitizeNum = v => typeof v === 'number' && isFinite(v) ? v : 0
+        const rawProfile = (data['sporeus-profile']?.data) || data.profile || {}
+        const profile = {
+          name:      sanitizeStr(rawProfile.name),
+          sport:     sanitizeStr(rawProfile.sport),
+          age:       sanitizeStr(rawProfile.age),
+          weight:    sanitizeStr(rawProfile.weight),
+          ftp:       sanitizeStr(rawProfile.ftp),
+          vo2max:    sanitizeStr(rawProfile.vo2max),
+          threshold: sanitizeStr(rawProfile.threshold),
+          goal:      sanitizeStr(rawProfile.goal),
+        }
+        const toLogArray = v => Array.isArray(v) ? v.slice(0, 5000).map(e => ({
+          id: sanitizeNum(e.id), date: sanitizeStr(e.date), type: sanitizeStr(e.type),
+          duration: sanitizeNum(e.duration), rpe: sanitizeNum(e.rpe), tss: sanitizeNum(e.tss),
+          notes: sanitizeStr(e.notes),
+        })) : []
+        const toRecovery = v => Array.isArray(v) ? v.slice(0, 2000).map(e => ({
+          date: sanitizeStr(e.date), score: sanitizeNum(e.score),
+          sleep: sanitizeNum(e.sleep), sleepHrs: sanitizeStr(e.sleepHrs),
+        })) : []
+        const log       = toLogArray(data['sporeus_log']?.data || data.log || data.trainingLog)
+        const recovery  = toRecovery(data['sporeus-recovery']?.data || data.recovery || data.recoveryLog)
+        const testLog   = Array.isArray(data['sporeus-test-results']?.data || data.testLog) ? (data['sporeus-test-results']?.data || data.testLog || []).slice(0, 500) : []
+        const injuryLog = Array.isArray(data['sporeus-injuries']?.data || data.injuryLog) ? (data['sporeus-injuries']?.data || data.injuryLog || []).slice(0, 1000) : []
         const entry = {
           id:         Date.now(),
-          name:       profile.name  || data.name  || 'Athlete',
-          sport:      profile.sport || data.sport || '—',
+          name:       profile.name || 'Athlete',
+          sport:      profile.sport || '—',
           importedAt: TODAY,
           profile,
           log,

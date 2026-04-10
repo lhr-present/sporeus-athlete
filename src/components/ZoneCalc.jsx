@@ -244,11 +244,13 @@ export default function ZoneCalc() {
 
   const printPacePlan = () => {
     if (!pacePlan) return
+    const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
     const w=window.open('','_blank')
+    if (!w) return
     w.document.write(`<html><head><title>Race Pacing Plan</title><style>body{font-family:'Courier New',monospace;padding:20px;font-size:12px}table{border-collapse:collapse;width:100%}td,th{padding:4px 10px;border:1px solid #ccc;text-align:left}th{background:#f5f5f5}</style></head><body>
-    <h2>Race Pacing Plan</h2><p>Strategy: ${pacePlan.strat} | Distance: ${pacePlan.dist}m | Target: ${fmtSec(pacePlan.totalSec)}</p>
+    <h2>Race Pacing Plan</h2><p>Strategy: ${esc(pacePlan.strat)} | Distance: ${esc(pacePlan.dist)}m | Target: ${esc(fmtSec(pacePlan.totalSec))}</p>
     <table><tr><th>KM</th><th>SPLIT</th><th>CUMUL.</th><th>FUELING</th></tr>
-    ${pacePlan.rows.map(r=>`<tr><td>${r.km}</td><td>${r.split}</td><td>${r.cumul}</td><td style="color:${r.fuel?'#cc5500':''}">${r.fuel||'—'}</td></tr>`).join('')}
+    ${pacePlan.rows.map(r=>`<tr><td>${esc(r.km)}</td><td>${esc(r.split)}</td><td>${esc(r.cumul)}</td><td style="color:${r.fuel?'#cc5500':''}">${esc(r.fuel||'—')}</td></tr>`).join('')}
     </table><p style="font-size:10px;color:#888">sporeus.com — Race Pacing Calculator</p>
     </body></html>`)
     w.document.close(); w.onload=()=>w.print()

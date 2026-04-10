@@ -25,16 +25,19 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        skipWaiting: true,           // new SW activates immediately on deploy
+        clientsClaim: true,          // takes control of all open tabs at once
+        cleanupOutdatedCaches: true, // removes stale caches from old versions
+        // No Google Fonts runtime caching — fonts are now self-hosted
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: { cacheName: 'google-fonts-cache', expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 } }
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: { cacheName: 'gstatic-fonts-cache', expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 } }
+            urlPattern: /^https:\/\/sporeus\.com\/wp-json\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'sporeus-api-cache',
+              expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 48 }, // 48h
+              networkTimeoutSeconds: 5,
+            }
           }
         ]
       }
