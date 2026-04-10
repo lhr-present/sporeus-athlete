@@ -14,8 +14,10 @@ import OnboardingWizard from './components/Onboarding.jsx'
 import SearchPalette from './components/SearchPalette.jsx'
 import AuthGate from './components/AuthGate.jsx'
 import RoleSelector from './components/RoleSelector.jsx'
+import MigrationModal from './components/MigrationModal.jsx'
 import { useAuth } from './hooks/useAuth.js'
 import { isSupabaseReady } from './lib/supabase.js'
+import { detectLocalData } from './lib/dataMigration.js'
 const CoachDashboard = lazy(() => import('./components/CoachDashboard.jsx'))
 const PlanGenerator   = lazy(() => import('./components/PlanGenerator.jsx'))
 const Glossary        = lazy(() => import('./components/Glossary.jsx'))
@@ -53,6 +55,17 @@ function AuthShell({ lang, children }) {
     <div style={{ minHeight:'100vh', background:'#0a0a0a', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'#444', letterSpacing:'0.12em' }}>
       LOADING PROFILE...
     </div>
+  )
+
+  // Migration check — show once if local data exists and not yet migrated
+  const localData = detectLocalData()
+  if (localData) return (
+    <MigrationModal
+      userId={user.id}
+      localData={localData}
+      lang={lang}
+      onComplete={refreshProfile}
+    />
   )
 
   // Pass signOut + auth user down as context values
