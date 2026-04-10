@@ -1,4 +1,4 @@
-import { useState, useContext } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { RACE_DISTANCES, ZONE_COLORS, ZONE_NAMES } from '../lib/constants.js'
@@ -9,6 +9,7 @@ function HeatModule() {
   const [temp, setTemp] = useState('25')
   const [humid, setHumid] = useState('50')
   const [days, setDays] = useState('0')
+  useEffect(() => { try { localStorage.setItem('sporeus-heat-used','1') } catch {} }, [])
 
   const T = parseFloat(temp)||25, H = parseFloat(humid)||50
   const D = parseInt(days)||0
