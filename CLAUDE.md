@@ -82,3 +82,32 @@ Render at the bottom of the tab's return JSX. No new file needed for a calculato
 - CoachDashboard, PlanGenerator, Glossary are React.lazy() chunks in App.jsx
 - Wrapped in <Suspense fallback={<LazyFallback/>}> with ErrorBoundary
 - Main bundle reduced; heavy tabs only load on first open
+
+## Intelligence Engine (v4.3+v4.4)
+- src/lib/intelligence.js — pure functions, no React imports
+- analyzeLoadTrend, analyzeRecoveryCorrelation, analyzeZoneBalance, predictInjuryRisk, predictFitness, scoreSession
+- generateWeeklyNarrative, detectMilestones (v4.4)
+- src/lib/scienceNotes.js — 40+ triggered science facts, bilingual, getTriggeredNotes(log, recovery, profile, shownIds)
+- Dashboard cards: TRAINING INSIGHTS, THIS WEEK'S STORY, DID YOU KNOW?, milestone overlays (3.5s auto-dismiss)
+- Profile: training age dropdown + CTL fitness scale visual
+
+## Pattern Recognition (v4.5)
+- src/lib/patterns.js — 5 pure personalized pattern functions (no React)
+- correlateTrainingToResults: pairs test results with 4-week preceding training blocks
+- findRecoveryPatterns: optimal readiness/sleep range from athlete's own session history
+- mineInjuryPatterns: 14-day pre-injury window analysis (volume spike, consec hard days, low readiness)
+- findOptimalWeekStructure: scores Mon-Sun weeks, clusters top 25%, extracts day-by-day pattern
+- findSeasonalPatterns: groups by month, requires 3+ months span
+- Dashboard: YOUR PATTERNS card (HIGH/MODERATE/LOW confidence badges), proactive RED injury alert
+- PlanGenerator: "BASED ON YOUR DATA" card with optimal week visual + "Use This Pattern" button
+- CoachDashboard: PATTERNS section with confidence badges + Copy Patterns button
+
+## Race Readiness & Performance Prediction (v4.6)
+- intelligence.js additions: computeRaceReadiness, predictRacePerformance
+- computeRaceReadiness: 10-factor weighted composite 0-100 → A+ through F grade
+  - Factors: FITNESS(20%), FRESHNESS(15%), TAPER(10%), CONSISTENCY(10%), RECOVERY(10%),
+             SLEEP(8%), INJURY(8%), COMPLIANCE(7%), ZONES(7%), LONG_SESSION(5%)
+- predictRacePerformance: CTL-adjusted Riegel (exp=1.06+0.001×max(0,70-CTL)), LT pace, VDOT/Daniels, training pace
+- Dashboard: SVG ring gauge (strokeDasharray/strokeDashoffset), factor breakdown, Race Week Mode (≤7 days: taper checklist), Post-Race Analysis
+- Race results stored in 'sporeus-race-results' localStorage key
+- CoachDashboard: RACE BRIEF section (score, predicted time, top concerns + action items, Copy Brief button)
