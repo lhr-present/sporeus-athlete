@@ -149,6 +149,9 @@ export default function ZoneCalc() {
   const [threshPace, setThreshPace] = useState('')
   const [age, setAge] = useState('')
   const [zones, setZones] = useState([])
+  const [swimT400, setSwimT400] = useState('')
+  const [swimT200, setSwimT200] = useState('')
+  const [rowT2k, setRowT2k] = useState('')
   const [rDist, setRDist] = useState('5000')
   const [rDistCustom, setRDistCustom] = useState('')
   const [rTime, setRTime] = useState('')
@@ -156,11 +159,39 @@ export default function ZoneCalc() {
 
   const estHR = age ? Math.round(208-0.7*parseInt(age)) : null
 
+  // Swimming CSS: (400m_time - 200m_time) / 2 = CSS pace per 100m
+  const cssZones = (t400str, t200str) => {
+    const t4=parseTimeSec(t400str), t2=parseTimeSec(t200str)
+    if(isNaN(t4)||isNaN(t2)) return []
+    const css=(t4-t2)/2 // sec/100m
+    const offsets=[15,8,3,0,-3]
+    return ZONE_NAMES.map((name,i)=>{
+      const pace=css+offsets[i], m=Math.floor(pace/60), s=Math.round(pace%60)
+      return { name, pace:`${m}:${String(s).padStart(2,'0')} /100m`, color:ZONE_COLORS[i] }
+    })
+  }
+  // Rowing: 2K split + 5s = threshold split per 500m
+  const rowZones = (t2kStr) => {
+    const t2k=parseTimeSec(t2kStr)
+    if(isNaN(t2k)) return []
+    const split=t2k/4 // split per 500m
+    const offsets=[25,15,5,0,-5]
+    const rateLabels=['UT2','UT1','AT','TR','Race']
+    return ZONE_NAMES.map((name,i)=>{
+      const s=split+offsets[i]+5, m=Math.floor(s/60), sec=Math.round(s%60)
+      return { name:`${name} (${rateLabels[i]})`, pace:`${m}:${String(sec).padStart(2,'0')} /500m`, color:ZONE_COLORS[i] }
+    })
+  }
+
   const calcZones = () => {
     if (mode==='hr') {
       const hr=parseInt(maxHR)||estHR; if(hr) setZones(hrZones(hr))
     } else if (mode==='power') {
       const f=parseInt(ftp); if(f) setZones(powerZones(f))
+    } else if (mode==='swim') {
+      setZones(cssZones(swimT400, swimT200))
+    } else if (mode==='row') {
+      setZones(rowZones(rowT2k))
     } else {
       const [m,s]=threshPace.split(':').map(Number)
       if (!isNaN(m)) setZones(paceZones(m+(s||0)/60))
@@ -180,8 +211,8 @@ export default function ZoneCalc() {
       <div className="sp-card" style={{ ...S.card, animationDelay:'0ms' }}>
         <div style={S.cardTitle}>{t('zoneCalcTitle')}</div>
         <div style={{ display:'flex', gap:'8px', marginBottom:'16px', flexWrap:'wrap' }}>
-          {[['hr',t('hrMode')],['power',t('pwrMode')],['pace',t('paceMode')]].map(([id,lbl])=>(
-            <button key={id} onClick={()=>{setMode(id);setZones([])}} style={{ ...S.navBtn(mode===id), borderRadius:'4px' }}>{lbl}</button>
+          {[['hr',t('hrMode')],['power',t('pwrMode')],['pace',t('paceMode')],['swim','SWIM (CSS)'],['row','ROWING (2K)']].map(([id,lbl])=>(
+            <button key={id} onClick={()=>{setMode(id);setZones([])}} style={{ ...S.navBtn(mode===id), borderRadius:'4px', fontSize:'10px' }}>{lbl}</button>
           ))}
         </div>
         {mode==='hr' && (
@@ -209,6 +240,24 @@ export default function ZoneCalc() {
             <input style={S.input} type="text" placeholder="4:45" value={threshPace} onChange={e=>setThreshPace(e.target.value)}/>
           </div>
         )}
+        {mode==='swim' && (
+          <div style={S.row}>
+            <div style={{ flex:'1 1 160px' }}>
+              <label style={S.label}>400m TIME (mm:ss)</label>
+              <input style={S.input} type="text" placeholder="6:30" value={swimT400} onChange={e=>setSwimT400(e.target.value)}/>
+            </div>
+            <div style={{ flex:'1 1 160px' }}>
+              <label style={S.label}>200m TIME (mm:ss)</label>
+              <input style={S.input} type="text" placeholder="3:00" value={swimT200} onChange={e=>setSwimT200(e.target.value)}/>
+            </div>
+          </div>
+        )}
+        {mode==='row' && (
+          <div style={{ flex:'1 1 200px' }}>
+            <label style={S.label}>2K ERG TIME (mm:ss)</label>
+            <input style={S.input} type="text" placeholder="6:45" value={rowT2k} onChange={e=>setRowT2k(e.target.value)}/>
+          </div>
+        )}
         <button style={{ ...S.btn, marginTop:'14px' }} onClick={calcZones}>{t('calcZonesBtn')}</button>
       </div>
 
@@ -224,7 +273,9 @@ export default function ZoneCalc() {
               <ZoneBar pct={(i+1)*20} color={z.color}/>
             </div>
           ))}
-          <div style={{ ...S.mono, fontSize:'10px', color:'#aaa', marginTop:'8px' }}>Coggan (power) \u00b7 Tanaka/Karvonen (HR) \u00b7 McMillan (pace)</div>
+          <div style={{ ...S.mono, fontSize:'10px', color:'#aaa', marginTop:'8px' }}>
+            Coggan (power) · Tanaka/Karvonen (HR) · McMillan (pace) · CSS/T-pace (swim) · 2K split model (row)
+          </div>
         </div>
       )}
 

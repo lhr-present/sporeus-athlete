@@ -3,6 +3,7 @@ import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { SESSION_TYPES, ZONE_COLORS, ZONE_NAMES } from '../lib/constants.js'
 import { calcTSS } from '../lib/formulas.js'
+import Calendar from './Calendar.jsx'
 
 export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const { t } = useContext(LangCtx)
@@ -11,6 +12,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const [showZones, setShowZones] = useState(false)
   const [zoneMins, setZoneMins] = useState(['','','','',''])
   const [editingId, setEditingId] = useState(null)
+  const [calView, setCalView] = useState(false)
 
   useEffect(() => {
     if (prefill) {
@@ -123,9 +125,20 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       <div className="sp-card" style={{ ...S.card, animationDelay:'50ms' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', ...S.cardTitle }}>
           <span>{t('sessionHistTitle')} ({log.length})</span>
-          {log.length>0 && <button style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px' }} onClick={exportCSV}>{t('exportCSVBtn')}</button>}
+          <div style={{ display:'flex', gap:'6px', alignItems:'center' }}>
+            <button onClick={()=>setCalView(false)} style={{ ...S.mono, fontSize:'9px', fontWeight:600, padding:'3px 8px', borderRadius:'3px', cursor:'pointer', border:`1px solid ${!calView?'#ff6600':'var(--border)'}`, background:!calView?'#ff660022':'transparent', color:!calView?'#ff6600':'var(--muted)' }}>≡ LIST</button>
+            <button onClick={()=>setCalView(true)}  style={{ ...S.mono, fontSize:'9px', fontWeight:600, padding:'3px 8px', borderRadius:'3px', cursor:'pointer', border:`1px solid ${calView?'#ff6600':'var(--border)'}`, background:calView?'#ff660022':'transparent', color:calView?'#ff6600':'var(--muted)' }}>⊞ CAL</button>
+            {log.length>0 && !calView && <button style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px' }} onClick={exportCSV}>{t('exportCSVBtn')}</button>}
+          </div>
         </div>
-        {log.length===0 ? (
+        {calView ? (
+          <Calendar log={log} setLog={setLog} onEdit={ses=>{
+            setForm({ date:ses.date, type:ses.type, duration:String(ses.duration), rpe:String(ses.rpe), notes:ses.notes||'' })
+            if (ses.zones) { setZoneMins(ses.zones.map(String)); setShowZones(true) }
+            setEditingId(ses.id||null)
+            window.scrollTo({ top:0, behavior:'smooth' })
+          }}/>
+        ) : log.length===0 ? (
           <div style={{ ...S.mono, fontSize:'12px', color:'#aaa', textAlign:'center', padding:'20px' }}>{t('noSessionsYet')}</div>
         ) : (
           <div style={{ overflowX:'auto' }}>

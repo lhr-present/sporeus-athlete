@@ -12,6 +12,12 @@ function highlightMatch(text, q) {
   return <>{text.slice(0,idx)}<mark style={{ background:'#ff660033', color:'inherit', padding:'0 1px', borderRadius:'2px' }}>{text.slice(idx,idx+q.length)}</mark>{text.slice(idx+q.length)}</>
 }
 
+const ARTICLES_KEY = 'sporeus-articles-cache'
+const ARTICLES_TTL = 48 * 3600e3
+
+function getArticlesCache() { try { const c=JSON.parse(localStorage.getItem(ARTICLES_KEY)); if(c&&Date.now()-c.ts<ARTICLES_TTL) return c.data } catch {} return null }
+function setArticlesCache(d) { try { localStorage.setItem(ARTICLES_KEY,JSON.stringify({ts:Date.now(),data:d})) } catch {} }
+
 export default function Glossary() {
   const { t, lang } = useContext(LangCtx)
   const [q, setQ] = useState('')
@@ -19,6 +25,9 @@ export default function Glossary() {
   const [apiTerms, setApiTerms] = useState([])
   const [loading, setLoading] = useState(false)
   const [page, setPage] = useState(1)
+  const [articles, setArticles] = useState([])
+  const [articlesLoading, setArticlesLoading] = useState(false)
+  const [articleFilter, setArticleFilter] = useState('all')
   const PER_PAGE = 20
 
   useEffect(() => {
@@ -38,6 +47,28 @@ export default function Glossary() {
       })
       .catch(()=>{})
       .finally(()=>setLoading(false))
+  }, [])
+
+  // Fetch recent articles from sporeus.com (separate from glossary terms)
+  useEffect(() => {
+    const cached = getArticlesCache()
+    if (cached) { setArticles(cached); return }
+    setArticlesLoading(true)
+    fetch('https://sporeus.com/wp-json/wp/v2/posts?per_page=10&_fields=id,title,excerpt,link,date,categories')
+      .then(r=>r.json())
+      .then(data=>{
+        const arts=data.map(p=>({
+          id:p.id,
+          title:p.title.rendered.replace(/<[^>]+>/g,'').replace(/&amp;/g,'&').replace(/&#8220;/g,'\u201c').replace(/&#8221;/g,'\u201d'),
+          excerpt:(p.excerpt.rendered||'').replace(/<[^>]+>/g,'').trim().slice(0,120),
+          link:p.link,
+          date:p.date?.slice(0,10)||'',
+          categories:p.categories||[],
+        }))
+        setArticlesCache(arts); setArticles(arts)
+      })
+      .catch(()=>{})
+      .finally(()=>setArticlesLoading(false))
   }, [])
 
   const allTerms = [...apiTerms, ...GLOSSARY_TERMS]
@@ -122,6 +153,35 @@ export default function Glossary() {
 
       {filtered.length===0&&!loading&&(
         <div style={{ textAlign:'center', ...S.mono, fontSize:'12px', color:'#aaa', padding:'40px 0' }}>No terms match.</div>
+      )}
+
+      {/* Latest from sporeus.com */}
+      {(articles.length > 0 || articlesLoading) && !q && !selLetter && (
+        <div style={{ marginTop:'8px' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', ...S.card, marginBottom:'8px' }}>
+            <div style={S.cardTitle}>LATEST FROM SPOREUS.COM</div>
+            <div style={{ display:'flex', gap:'4px' }}>
+              {['all','training','science'].map(f=>(
+                <button key={f} onClick={()=>setArticleFilter(f)}
+                  style={{ ...S.mono, fontSize:'9px', fontWeight:600, padding:'3px 7px', borderRadius:'3px', cursor:'pointer', border:`1px solid ${articleFilter===f?'#0064ff':'var(--border)'}`, background:articleFilter===f?'#0064ff22':'transparent', color:articleFilter===f?'#0064ff':'var(--muted)' }}>
+                  {f.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+          {articlesLoading && <div style={{ ...S.mono, fontSize:'11px', color:'#aaa', textAlign:'center', padding:'16px' }}>Loading…</div>}
+          {articles.map((art,i)=>(
+            <div key={art.id} className="sp-card" style={{ ...S.card, marginBottom:'8px', animationDelay:`${i*30}ms` }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'8px' }}>
+                <a href={art.link} target="_blank" rel="noreferrer" style={{ ...S.mono, fontSize:'13px', fontWeight:600, color:'#0064ff', textDecoration:'none', flex:1 }}>{art.title}</a>
+                <span style={{ ...S.mono, fontSize:'9px', color:'#888', whiteSpace:'nowrap' }}>{art.date}</span>
+              </div>
+              {art.excerpt && <div style={{ fontSize:'12px', color:'var(--sub)', lineHeight:1.6, marginTop:'6px' }}>{art.excerpt}…</div>}
+              <a href={art.link} target="_blank" rel="noreferrer" style={{ ...S.mono, fontSize:'10px', color:'#0064ff', textDecoration:'none', display:'block', marginTop:'6px' }}>{t('readMoreLink')}</a>
+            </div>
+          ))}
+          <div style={{ ...S.mono, fontSize:'9px', color:'#888', textAlign:'center', marginBottom:'8px' }}>Cached 48h · sporeus.com</div>
+        </div>
       )}
     </div>
   )
