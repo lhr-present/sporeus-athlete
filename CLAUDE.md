@@ -58,3 +58,27 @@ Render at the bottom of the tab's return JSX. No new file needed for a calculato
 - User data stays in localStorage only — zero server-side storage
 - GitHub repo is PRIVATE, GitHub Pages is PUBLIC (requires GitHub Pro or public repo)
 - The const named API_KEY in formulas.js is a localStorage cache key name — not a real API key
+- SPOREUS_SALT and MASTER_SALT in formulas.js are hardcoded salts for coach invite system — acceptable for v1 (no auth server)
+
+## Coach Gating (v4.1)
+- Coach registration: name + email → SHA-256 → SP-XXXXXXXX via `generateCoachId()` in formulas.js
+- Free limit: 3 connected athletes (FREE_ATHLETE_LIMIT)
+- Unlock: SPUNLOCK-{id}-{limit}-{hash} code verified by `verifyUnlockCode()`
+- Admin generator: visible only when profile.name contains 'Hüseyin'/'Huseyin' or email is huseyinakbulut@marun.edu.tr
+- Coach profile stored in 'sporeus-coach-profile' localStorage key
+- Backward compat: ?coach=huseyin-sporeus still accepted in App.jsx
+
+## Validation (v4.2)
+- src/lib/validate.js: sanitizeString, sanitizeNumber, sanitizeDate, sanitizeLogEntry, sanitizeProfile
+- All user inputs go through validation before localStorage write
+- TrainingLog uses sanitizeLogEntry on every add/edit
+- Profile uses sanitizeProfile on save
+- ErrorBoundary: enhanced with Export Data button, Technical Details collapsible, tab name display
+- Glossary: 5-min rate limit between fetches (RATE_KEY), fetchWithRetry with exponential backoff
+- Dashboard: BackupReminder at 50+ entries, 30-day snooze
+- Profile: storage monitor shows sporeus-* key usage vs 5MB limit
+
+## Lazy Loading (v4.2)
+- CoachDashboard, PlanGenerator, Glossary are React.lazy() chunks in App.jsx
+- Wrapped in <Suspense fallback={<LazyFallback/>}> with ErrorBoundary
+- Main bundle reduced; heavy tabs only load on first open

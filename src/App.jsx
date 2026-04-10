@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import { LangCtx, LABELS, TABS } from './contexts/LangCtx.jsx'
 import { useLocalStorage, STORAGE_WARN_KEY } from './hooks/useLocalStorage.js'
 import { S, ANIM_CSS } from './styles.js'
@@ -8,13 +8,19 @@ import ZoneCalc from './components/ZoneCalc.jsx'
 import TestProtocols from './components/Protocols.jsx'
 import TrainingLog from './components/TrainingLog.jsx'
 import Periodization from './components/Periodization.jsx'
-import PlanGenerator from './components/PlanGenerator.jsx'
-import Glossary from './components/Glossary.jsx'
 import Recovery from './components/Recovery.jsx'
 import Profile from './components/Profile.jsx'
 import OnboardingWizard from './components/Onboarding.jsx'
-import CoachDashboard from './components/CoachDashboard.jsx'
 import SearchPalette from './components/SearchPalette.jsx'
+const CoachDashboard = lazy(() => import('./components/CoachDashboard.jsx'))
+const PlanGenerator   = lazy(() => import('./components/PlanGenerator.jsx'))
+const Glossary        = lazy(() => import('./components/Glossary.jsx'))
+
+const LazyFallback = () => (
+  <div style={{ fontFamily:"'IBM Plex Mono',monospace", padding:'40px 20px', textAlign:'center', color:'#888', letterSpacing:'0.1em', opacity:0.7 }}>
+    LOADING...
+  </div>
+)
 
 export default function App() {
   const [tab, setTab] = useState('dashboard')
@@ -74,12 +80,13 @@ export default function App() {
     const params = new URLSearchParams(window.location.search)
     const coachParam = params.get('coach')
     if (!coachParam) return
-    if (coachParam !== 'huseyin-sporeus') return
+    if (coachParam !== 'huseyin-sporeus' && !coachParam.startsWith('SP-')) return
     try {
       const current = localStorage.getItem('sporeus-my-coach')
       if (current !== coachParam) {
         localStorage.setItem('sporeus-my-coach', coachParam)
-        setCoachToast('◉ Connected to coach Hüseyin Işık — go to Profile to send your data.')
+        const coachLabel = coachParam === 'huseyin-sporeus' ? 'Hüseyin Akbulut' : coachParam
+        setCoachToast(`◉ Connected to coach ${coachLabel} — go to Profile to send your data.`)
         clearTimeout(coachToastTimer.current)
         coachToastTimer.current = setTimeout(() => setCoachToast(''), 6000)
       }
@@ -262,20 +269,20 @@ export default function App() {
         </nav>
 
         <main style={S.content}>
-          {coachMode && <ErrorBoundary><CoachDashboard/></ErrorBoundary>}
-          {!coachMode && tab === 'dashboard'    && <ErrorBoundary><Dashboard log={log} profile={profile}/></ErrorBoundary>}
-          {tab === 'zones'        && <ErrorBoundary><ZoneCalc/></ErrorBoundary>}
-          {tab === 'tests'        && <ErrorBoundary><TestProtocols/></ErrorBoundary>}
-          {tab === 'log'          && <ErrorBoundary><TrainingLog log={log} setLog={setLog} prefill={logPrefill} clearPrefill={() => setLogPrefill(null)}/></ErrorBoundary>}
-          {tab === 'periodization'&& <ErrorBoundary><Periodization/></ErrorBoundary>}
-          {tab === 'plan'         && <ErrorBoundary><PlanGenerator onLogSession={ses => { setLogPrefill(ses); setTab('log') }}/></ErrorBoundary>}
-          {tab === 'glossary'     && <ErrorBoundary><Glossary/></ErrorBoundary>}
-          {tab === 'recovery'     && <ErrorBoundary><Recovery/></ErrorBoundary>}
-          {tab === 'profile'      && <ErrorBoundary><Profile profile={profile} setProfile={setProfile} log={log}/></ErrorBoundary>}
+          {coachMode && <ErrorBoundary tabName="Coach Mode"><Suspense fallback={<LazyFallback/>}><CoachDashboard/></Suspense></ErrorBoundary>}
+          {!coachMode && tab === 'dashboard'    && <ErrorBoundary tabName="Dashboard"><Dashboard log={log} profile={profile}/></ErrorBoundary>}
+          {tab === 'zones'        && <ErrorBoundary tabName="Zone Calc"><ZoneCalc/></ErrorBoundary>}
+          {tab === 'tests'        && <ErrorBoundary tabName="Protocols"><TestProtocols/></ErrorBoundary>}
+          {tab === 'log'          && <ErrorBoundary tabName="Training Log"><TrainingLog log={log} setLog={setLog} prefill={logPrefill} clearPrefill={() => setLogPrefill(null)}/></ErrorBoundary>}
+          {tab === 'periodization'&& <ErrorBoundary tabName="Macro Plan"><Periodization/></ErrorBoundary>}
+          {tab === 'plan'         && <ErrorBoundary tabName="Plan Generator"><Suspense fallback={<LazyFallback/>}><PlanGenerator onLogSession={ses => { setLogPrefill(ses); setTab('log') }}/></Suspense></ErrorBoundary>}
+          {tab === 'glossary'     && <ErrorBoundary tabName="Glossary"><Suspense fallback={<LazyFallback/>}><Glossary/></Suspense></ErrorBoundary>}
+          {tab === 'recovery'     && <ErrorBoundary tabName="Recovery"><Recovery/></ErrorBoundary>}
+          {tab === 'profile'      && <ErrorBoundary tabName="Profile"><Profile profile={profile} setProfile={setProfile} log={log}/></ErrorBoundary>}
         </main>
 
         <footer style={S.footer}>
-          SPOREUS ATHLETE CONSOLE v4.0.0 · SPOREUS.COM · EŞİK / THRESHOLD 2026
+          SPOREUS ATHLETE CONSOLE v4.2.0 · SPOREUS.COM · EŞİK / THRESHOLD 2026
         </footer>
       </div>
     </LangCtx.Provider>

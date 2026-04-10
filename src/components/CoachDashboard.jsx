@@ -2,11 +2,12 @@ import { useRef, useState, useEffect, useContext } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
+import { generateCoachId, generateUnlockCode, verifyUnlockCode, FREE_ATHLETE_LIMIT } from '../lib/formulas.js'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const TODAY = new Date().toISOString().slice(0, 10)
-const MY_COACH_ID = 'huseyin-sporeus'
+// Coach ID is now generated dynamically per-coach via registration
 
 function escHtml(s) {
   return String(s == null ? '' : s)
@@ -567,10 +568,10 @@ function AthleteDetail({ athlete, onUpdate, onClose, templates, setTemplates }) 
 
 // ─── Athlete Status Card ──────────────────────────────────────────────────────
 
-function AthleteCard({ athlete, isOpen, onToggle, onRemove, onUpdate, templates, setTemplates, onQuickNote }) {
+function AthleteCard({ athlete, isOpen, onToggle, onRemove, onUpdate, templates, setTemplates, onQuickNote, myCoachId }) {
   const metrics = computeAthleteMetrics(athlete)
   const load = computeLoad(athlete.log || [])
-  const isConnected = athlete.coachId === MY_COACH_ID
+  const isConnected = !!(myCoachId && athlete.coachId === myCoachId)
   const ago = daysAgo(metrics.lastSession)
 
   function handleQuickReport() {
@@ -698,11 +699,126 @@ function AthleteComparison({ roster }) {
   )
 }
 
+// ─── Coach Registration ────────────────────────────────────────────────────────
+
+function CoachRegistration({ onDone }) {
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [generatedId, setGeneratedId] = useState(null)
+  const [generating, setGenerating] = useState(false)
+
+  async function handleGenerate() {
+    if (!name.trim()) return
+    setGenerating(true)
+    const id = await generateCoachId(name, email)
+    setGeneratedId(id)
+    setGenerating(false)
+  }
+
+  function handleConfirm() {
+    if (!generatedId) return
+    onDone({ name: name.trim(), email: email.trim(), coachId: generatedId, createdAt: new Date().toISOString(), unlockCode: null, athleteLimit: FREE_ATHLETE_LIMIT })
+  }
+
+  return (
+    <div className="sp-fade">
+      <div style={{ ...S.card, borderLeft:'3px solid #0064ff' }}>
+        <div style={{ ...S.cardTitle, color:'#0064ff', borderColor:'#0064ff44' }}>◈ SET UP YOUR COACH PROFILE</div>
+        <div style={{ ...S.mono, fontSize:'12px', color:'var(--sub)', lineHeight:1.8, marginBottom:'20px' }}>
+          Each coach gets a unique invite code. Athletes connect by opening your link.
+          <br/><span style={{ color:'var(--muted)', fontSize:'11px' }}>Your email stays local — used only to generate your unique code.</span>
+        </div>
+        <div style={S.row}>
+          <div style={{ flex:'1 1 200px' }}>
+            <label style={S.label}>YOUR NAME *</label>
+            <input style={S.input} placeholder="Hüseyin Akbulut" value={name} onChange={e => setName(e.target.value)}/>
+          </div>
+          <div style={{ flex:'1 1 200px' }}>
+            <label style={S.label}>EMAIL (optional, makes code unique)</label>
+            <input style={S.input} type="email" placeholder="coach@sporeus.com" value={email} onChange={e => setEmail(e.target.value)}/>
+          </div>
+        </div>
+        <button style={{ ...S.btn, marginTop:'16px' }} onClick={handleGenerate} disabled={!name.trim() || generating}>
+          {generating ? 'Generating...' : '◈ Generate My Invite Code'}
+        </button>
+        {generatedId && (
+          <div style={{ marginTop:'20px', padding:'14px 16px', background:'#0064ff11', border:'1px solid #0064ff44', borderRadius:'6px' }}>
+            <div style={{ ...S.mono, fontSize:'10px', color:'#888', marginBottom:'6px', letterSpacing:'0.1em' }}>YOUR COACH ID</div>
+            <div style={{ ...S.mono, fontSize:'22px', fontWeight:700, color:'#0064ff', letterSpacing:'0.1em', marginBottom:'8px' }}>{generatedId}</div>
+            <div style={{ ...S.mono, fontSize:'11px', color:'var(--sub)', lineHeight:1.7, marginBottom:'16px' }}>
+              This is your unique invite code. Share the link — athletes auto-connect.<br/>
+              <span style={{ color:'var(--muted)', fontSize:'10px' }}>Free tier: {FREE_ATHLETE_LIMIT} connected athletes. Contact sporeus.com to unlock more.</span>
+            </div>
+            <button style={{ ...S.btn, background:'#0064ff', borderColor:'#0064ff' }} onClick={handleConfirm}>
+              ✓ Save &amp; Open Coach Dashboard
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Gating Overlay ────────────────────────────────────────────────────────────
+
+function GatingOverlay({ coachProfile, onUnlock, onCancel }) {
+  const [code, setCode] = useState('')
+  const [error, setError] = useState('')
+  const [verifying, setVerifying] = useState(false)
+  const limit = coachProfile.athleteLimit || FREE_ATHLETE_LIMIT
+
+  async function handleVerify() {
+    if (!code.trim()) return
+    setVerifying(true); setError('')
+    const result = await verifyUnlockCode(code.trim().toUpperCase(), coachProfile.coachId)
+    setVerifying(false)
+    if (!result) { setError('Invalid code. Contact sporeus.com/huseyin-akbulut/ to get your unlock code.'); return }
+    onUnlock(result.limit)
+  }
+
+  return (
+    <>
+      <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', zIndex:10200 }} onClick={onCancel}/>
+      <div style={{ position:'fixed', top:'15vh', left:'50%', transform:'translateX(-50%)', width:'min(480px,92vw)', background:'var(--card-bg)', border:'1px solid #f5c54244', borderRadius:'8px', zIndex:10201, padding:'28px', boxShadow:'0 24px 80px rgba(0,0,0,0.6)' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px' }}>
+          <div style={{ ...S.mono, fontSize:'10px', color:'#f5c542', letterSpacing:'0.1em' }}>◈ FREE LIMIT REACHED</div>
+          <button onClick={onCancel} style={{ background:'none', border:'none', color:'#555', cursor:'pointer', fontSize:'18px' }} aria-label="Close">×</button>
+        </div>
+        <div style={{ ...S.mono, fontSize:'15px', fontWeight:700, color:'var(--text)', marginBottom:'8px' }}>
+          {limit}/{limit} Athlete Slots Used
+        </div>
+        <div style={{ ...S.mono, fontSize:'12px', color:'var(--sub)', lineHeight:1.8, marginBottom:'20px' }}>
+          You've reached the free limit ({limit} connected athletes). To add more, contact Hüseyin for an unlock code.
+        </div>
+        <label style={S.label}>UNLOCK CODE</label>
+        <input
+          style={{ ...S.input, marginBottom:'8px', letterSpacing:'0.06em' }}
+          placeholder="SPUNLOCK-a3f7b2e1-10-c4d8f2"
+          value={code}
+          onChange={e => setCode(e.target.value.toUpperCase())}
+          onKeyDown={e => e.key === 'Enter' && handleVerify()}
+        />
+        {error && <div style={{ ...S.mono, fontSize:'11px', color:'#e03030', marginBottom:'10px' }}>{error}</div>}
+        <div style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>
+          <button style={{ ...S.btn, background:'#0064ff', borderColor:'#0064ff' }} onClick={handleVerify} disabled={verifying}>
+            {verifying ? 'Verifying...' : 'Verify Code'}
+          </button>
+          <a href="https://sporeus.com/huseyin-akbulut/" target="_blank" rel="noreferrer" style={{ ...S.btnSec, textDecoration:'none', color:'#ff6600', borderColor:'#ff6600', display:'inline-flex', alignItems:'center' }}>
+            Contact Hüseyin →
+          </a>
+          <button style={{ ...S.btnSec, color:'var(--muted)', borderColor:'var(--border)' }} onClick={onCancel}>Later</button>
+        </div>
+      </div>
+    </>
+  )
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function CoachDashboard() {
   const [roster, setRoster] = useLocalStorage('sporeus-coach-athletes', [])
   const [coachOnboarded, setCoachOnboarded] = useLocalStorage('sporeus-coach-onboarded', false)
+  const [coachProfile, setCoachProfile] = useLocalStorage('sporeus-coach-profile', null)
   const [templates, setTemplates] = useLocalStorage('sporeus-coach-templates', [])
   const [expanded, setExpanded] = useLocalStorage('sporeus-coach-last-athlete', null)
   const [showMyAthletes, setShowMyAthletes] = useState(false)
@@ -711,9 +827,19 @@ export default function CoachDashboard() {
   const [copyToast, setCopyToast] = useState(false)
   const [quickNoteId, setQuickNoteId] = useState(null)
   const [quickNoteText, setQuickNoteText] = useState('')
+  const [pendingAthlete, setPendingAthlete] = useState(null)
+  const [showGating, setShowGating] = useState(false)
   const fileRef = useRef(null)
 
-  const inviteUrl = `${window.location.origin}${window.location.pathname}?coach=${MY_COACH_ID}`
+  // Derived — all hooks above, safe to conditional-return now
+  const myCoachId    = coachProfile?.coachId || ''
+  const athleteLimit = coachProfile?.athleteLimit ?? FREE_ATHLETE_LIMIT
+
+  if (!coachProfile) {
+    return <CoachRegistration onDone={profile => setCoachProfile(profile)}/>
+  }
+
+  const inviteUrl = `${window.location.origin}${window.location.pathname}?coach=${myCoachId}`
 
   function handleCopyInvite() {
     navigator.clipboard.writeText(inviteUrl).catch(() => {})
@@ -723,7 +849,7 @@ export default function CoachDashboard() {
 
   // Summary stats
   const d14 = daysBefore(14)
-  const connected   = roster.filter(a => a.coachId === MY_COACH_ID).length
+  const connected   = roster.filter(a => a.coachId === myCoachId).length
   const needsAttn   = roster.filter(a => computeAthleteMetrics(a).needsAttention).length
   const injuredCnt  = roster.filter(a => (a.injuryLog || []).some(e => e.date >= d14)).length
 
@@ -783,8 +909,14 @@ export default function CoachDashboard() {
           injuryLog: Array.isArray(data['sporeus-injuries']?.data || data.injuryLog) ? (data['sporeus-injuries']?.data || data.injuryLog || []).slice(0, 1000) : [],
           notes: [],
         }
-        setRoster(prev => [...prev, entry])
-        setExpanded(entry.id)
+        const wouldConnect = myCoachId && entry.coachId === myCoachId
+        if (wouldConnect && connected >= athleteLimit) {
+          setPendingAthlete(entry)
+          setShowGating(true)
+        } else {
+          setRoster(prev => [...prev, entry])
+          setExpanded(entry.id)
+        }
       } catch { alert('Could not parse JSON. Make sure it is a valid Sporeus export.') }
     }
     reader.readAsText(file); e.target.value = ''
@@ -811,6 +943,16 @@ export default function CoachDashboard() {
     if (!athlete) return
     handleUpdateAthlete({ ...athlete, notes: [{ date: TODAY, text: quickNoteText.trim() }, ...(athlete.notes || [])] })
     setQuickNoteId(null); setQuickNoteText('')
+  }
+
+  function handleUnlock(newLimit) {
+    setCoachProfile(prev => ({ ...prev, athleteLimit: newLimit }))
+    if (pendingAthlete) {
+      setRoster(prev => [...prev, pendingAthlete])
+      setExpanded(pendingAthlete.id)
+    }
+    setShowGating(false)
+    setPendingAthlete(null)
   }
 
   function applyTemplate(tmpl) {
@@ -840,7 +982,10 @@ export default function CoachDashboard() {
       {/* Coach Mode Banner */}
       <div style={{ background:'#0064ff11', border:'1px solid #0064ff44', borderRadius:'6px', padding:'10px 16px', marginBottom:'16px', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'6px' }}>
         <div style={{ ...S.mono, fontSize:'14px', fontWeight:700, color:'#0064ff', letterSpacing:'0.1em' }}>
-          ◈ COACH MODE · HÜSEYIN IŞIK
+          ◈ COACH MODE · {(coachProfile.name || 'COACH').toUpperCase()}
+        </div>
+        <div style={{ ...S.mono, fontSize:'9px', color:'#0064ff88', letterSpacing:'0.08em' }}>
+          ID: {myCoachId}
         </div>
         <div style={{ display:'flex', gap:'8px', alignItems:'center' }}>
           <div style={{ ...S.mono, fontSize:'10px', color:'var(--muted)' }}>File-based | Zero server</div>
@@ -854,7 +999,7 @@ export default function CoachDashboard() {
       <div style={{ ...S.row, marginBottom:'16px' }}>
         {[
           { lbl:'TOTAL ATHLETES', val: roster.length, color:'#e0e0e0' },
-          { lbl:'CONNECTED', val: connected, color:'#0064ff' },
+          { lbl:'CONNECTED', val: `${connected}/${athleteLimit}`, color: connected >= athleteLimit ? '#f5c542' : '#0064ff' },
           { lbl:'NEEDS ATTENTION', val: needsAttn, color: needsAttn > 0 ? '#f5c542' : '#5bc25b' },
           { lbl:'INJURY FLAGS', val: injuredCnt, color: injuredCnt > 0 ? '#e03030' : '#5bc25b' },
         ].map(({ lbl, val, color }) => (
@@ -942,6 +1087,7 @@ export default function CoachDashboard() {
               templates={templates}
               setTemplates={setTemplates}
               onQuickNote={() => { setQuickNoteId(id => id === athlete.id ? null : athlete.id); setQuickNoteText('') }}
+              myCoachId={myCoachId}
             />
           </div>
         ))}
@@ -949,6 +1095,15 @@ export default function CoachDashboard() {
 
       {/* Multi-Athlete Comparison */}
       {roster.length >= 2 && <AthleteComparison roster={roster}/>}
+
+      {/* Gating Overlay */}
+      {showGating && (
+        <GatingOverlay
+          coachProfile={coachProfile}
+          onUnlock={handleUnlock}
+          onCancel={() => { setShowGating(false); setPendingAthlete(null) }}
+        />
+      )}
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { SESSION_TYPES_BY_DISCIPLINE, ZONE_COLORS, ZONE_NAMES, SPORT_CONFIG } from '../lib/constants.js'
 import { calcTSS } from '../lib/formulas.js'
+import { sanitizeLogEntry } from '../lib/validate.js'
 import Calendar from './Calendar.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 
@@ -37,11 +38,13 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     if (!form.duration) return
     const tss = calcTSS(parseInt(form.duration), parseInt(form.rpe))
     const zones = showZones ? zoneMins.map(v=>parseInt(v)||0) : null
+    const raw = { id: editingId !== null ? editingId : Date.now(), ...form, duration:parseInt(form.duration), rpe:parseInt(form.rpe), tss, ...(zones ? { zones } : {}) }
+    const entry = sanitizeLogEntry(raw)
     if (editingId !== null) {
-      setLog(log.map(e => e.id===editingId ? { ...e, ...form, duration:parseInt(form.duration), rpe:parseInt(form.rpe), tss, zones } : e))
+      setLog(log.map(e => e.id === editingId ? entry : e))
       setEditingId(null)
     } else {
-      setLog([...log, { id:Date.now(), ...form, duration:parseInt(form.duration), rpe:parseInt(form.rpe), tss, zones }])
+      setLog([...log, entry])
     }
     setForm({ date:today, type:'Easy Run', duration:'', rpe:'5', notes:'' })
     setZoneMins(['','','','','']); setShowZones(false); setTssPreview(null)

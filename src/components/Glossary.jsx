@@ -14,9 +14,26 @@ function highlightMatch(text, q) {
 
 const ARTICLES_KEY = 'sporeus-articles-cache'
 const ARTICLES_TTL = 48 * 3600e3
+const RATE_KEY = 'sporeus-api-last-fetch'
+const MIN_INTERVAL = 5 * 60 * 1000 // 5 minutes between fetches
 
 function getArticlesCache() { try { const c=JSON.parse(localStorage.getItem(ARTICLES_KEY)); if(c&&Date.now()-c.ts<ARTICLES_TTL) return c.data } catch {} return null }
 function setArticlesCache(d) { try { localStorage.setItem(ARTICLES_KEY,JSON.stringify({ts:Date.now(),data:d})) } catch {} }
+function canFetchApi() { try { return Date.now() - parseInt(localStorage.getItem(RATE_KEY)||'0') >= MIN_INTERVAL } catch { return true } }
+function markApiFetched() { try { localStorage.setItem(RATE_KEY, String(Date.now())) } catch {} }
+
+async function fetchJson(url, retries = 2, delay = 1000) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const r = await fetch(url)
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      return await r.json()
+    } catch (e) {
+      if (attempt === retries) throw e
+      await new Promise(res => setTimeout(res, delay * Math.pow(2, attempt)))
+    }
+  }
+}
 
 export default function Glossary() {
   const { t, lang } = useContext(LangCtx)
@@ -33,9 +50,10 @@ export default function Glossary() {
   useEffect(() => {
     const cached = getApiCache()
     if (cached) { setApiTerms(cached); return }
+    if (!canFetchApi()) return
     setLoading(true)
-    fetch('https://sporeus.com/wp-json/wp/v2/posts?per_page=50&_fields=id,title,excerpt,link&categories=737')
-      .then(r=>r.json())
+    markApiFetched()
+    fetchJson('https://sporeus.com/wp-json/wp/v2/posts?per_page=50&_fields=id,title,excerpt,link&categories=737')
       .then(data=>{
         const terms=data.map(p=>({
           id:p.id,
@@ -53,9 +71,10 @@ export default function Glossary() {
   useEffect(() => {
     const cached = getArticlesCache()
     if (cached) { setArticles(cached); return }
+    if (!canFetchApi()) return
     setArticlesLoading(true)
-    fetch('https://sporeus.com/wp-json/wp/v2/posts?per_page=10&_fields=id,title,excerpt,link,date,categories')
-      .then(r=>r.json())
+    markApiFetched()
+    fetchJson('https://sporeus.com/wp-json/wp/v2/posts?per_page=10&_fields=id,title,excerpt,link,date,categories')
       .then(data=>{
         const arts=data.map(p=>({
           id:p.id,

@@ -3,7 +3,8 @@ import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { ACTIVITY_MULTS, SPORT_BRANCHES, TRIATHLON_TYPES, ATHLETE_LEVELS } from '../lib/constants.js'
-import { navyBF, mifflinBMR, calcLoad } from '../lib/formulas.js'
+import { navyBF, mifflinBMR, calcLoad, generateUnlockCode, FREE_ATHLETE_LIMIT } from '../lib/formulas.js'
+import { sanitizeProfile } from '../lib/validate.js'
 import { exportAllData, importAllData } from '../lib/storage.js'
 import { Sparkline } from './ui.jsx'
 
@@ -85,12 +86,13 @@ function SportSelector({ local, setLocal }) {
 function HuseyinCoachCard() {
   const { t } = useContext(LangCtx)
   const [myCoach, setMyCoach] = useLocalStorage('sporeus-my-coach', null)
-  const connected = myCoach === 'huseyin-sporeus'
+  const connected = !!myCoach
+  const isHuseyin = !myCoach || myCoach === 'huseyin-sporeus'
 
   const sendData = () => {
     const raw = exportAllData()
     const parsed = JSON.parse(raw)
-    parsed.coachId = 'huseyin-sporeus'
+    parsed.coachId = myCoach || 'huseyin-sporeus'
     parsed.coachExport = true
     const blob = new Blob([JSON.stringify(parsed,null,2)],{type:'application/json'})
     const url = URL.createObjectURL(blob)
@@ -111,12 +113,10 @@ function HuseyinCoachCard() {
         </div>
         <div>
           <div style={{...S.mono,fontSize:'13px',fontWeight:600,color:'var(--text)',marginBottom:'4px'}}>
-            HÜSEYİN AKBULUT
+            {isHuseyin ? 'HÜSEYİN AKBULUT' : myCoach}
           </div>
           <div style={{...S.mono,fontSize:'10px',color:'#888',lineHeight:1.8}}>
-            MSc Sport Science · Marmara University<br/>
-            EŞİK / THRESHOLD — Yazar / Author<br/>
-            Uzmanlık: Dayanıklılık · Triatlon · Periyodizasyon
+            {isHuseyin ? <>MSc Sport Science · Marmara University<br/>EŞİK / THRESHOLD — Yazar / Author<br/>Uzmanlık: Dayanıklılık · Triatlon · Periyodizasyon</> : 'Connected coach · Sporeus Athlete Console'}
           </div>
         </div>
       </div>
@@ -587,6 +587,76 @@ function NotifReminders() {
   )
 }
 
+// ─── Admin Code Generator (visible only to Hüseyin) ──────────────────────────
+
+function AdminCodeGenerator() {
+  const [adminCoachId, setAdminCoachId] = useState('')
+  const [adminLimit, setAdminLimit] = useState('10')
+  const [adminResult, setAdminResult] = useState('')
+  const [adminLog, setAdminLog] = useLocalStorage('sporeus-admin-codes', [])
+  const [copying, setCopying] = useState(false)
+
+  async function handleGenerate() {
+    if (!adminCoachId.trim() || !adminLimit) return
+    const code = await generateUnlockCode(adminCoachId.trim(), parseInt(adminLimit))
+    setAdminResult(code)
+    const entry = { coachId: adminCoachId.trim(), limit: parseInt(adminLimit), code, generatedAt: new Date().toISOString().slice(0, 10) }
+    setAdminLog(prev => [entry, ...prev].slice(0, 50))
+  }
+
+  function copyCode() {
+    if (!adminResult) return
+    navigator.clipboard.writeText(adminResult).catch(() => {})
+    setCopying(true); setTimeout(() => setCopying(false), 1500)
+  }
+
+  return (
+    <div className="sp-card" style={{ ...S.card, animationDelay:'115ms', borderLeft:'3px solid #ff6600' }}>
+      <div style={{ ...S.cardTitle, color:'#ff6600', borderColor:'#ff660044' }}>◈ ADMIN: UNLOCK CODE GENERATOR</div>
+      <div style={{ ...S.mono, fontSize:'10px', color:'#888', marginBottom:'14px', lineHeight:1.7 }}>
+        Generate SPUNLOCK codes for coaches who need more than {FREE_ATHLETE_LIMIT} athletes.
+      </div>
+      <div style={S.row}>
+        <div style={{ flex:'2 1 200px' }}>
+          <label style={S.label}>COACH ID (SP-XXXXXXXX)</label>
+          <input style={S.input} placeholder="SP-a3f7b2e1" value={adminCoachId} onChange={e => setAdminCoachId(e.target.value.trim())}/>
+        </div>
+        <div style={{ flex:'1 1 100px' }}>
+          <label style={S.label}>NEW LIMIT</label>
+          <input style={S.input} type="number" min="4" max="999" placeholder="10" value={adminLimit} onChange={e => setAdminLimit(e.target.value)}/>
+        </div>
+      </div>
+      <button style={{ ...S.btn, marginTop:'12px' }} onClick={handleGenerate}>Generate Unlock Code</button>
+      {adminResult && (
+        <div style={{ marginTop:'12px', padding:'12px 14px', background:'#ff660011', border:'1px solid #ff660044', borderRadius:'6px' }}>
+          <div style={{ ...S.mono, fontSize:'10px', color:'#888', marginBottom:'6px', letterSpacing:'0.1em' }}>UNLOCK CODE</div>
+          <div style={{ display:'flex', gap:'8px', alignItems:'center' }}>
+            <input readOnly style={{ ...S.input, flex:1, color:'#ff6600', fontSize:'12px', letterSpacing:'0.06em', fontWeight:600 }} value={adminResult} onFocus={e => e.target.select()}/>
+            <button style={{ ...S.btnSec, whiteSpace:'nowrap', borderColor:'#ff6600', color: copying ? '#5bc25b' : '#ff6600' }} onClick={copyCode}>
+              {copying ? '✓ Copied' : 'Copy'}
+            </button>
+          </div>
+        </div>
+      )}
+      {adminLog.length > 0 && (
+        <div style={{ marginTop:'14px' }}>
+          <div style={{ ...S.mono, fontSize:'9px', color:'#888', letterSpacing:'0.08em', marginBottom:'6px' }}>RECENT CODES</div>
+          <div style={{ maxHeight:'180px', overflowY:'auto' }}>
+            {adminLog.map((entry, i) => (
+              <div key={i} style={{ display:'flex', gap:'8px', flexWrap:'wrap', borderBottom:'1px solid var(--border)', padding:'5px 0', ...S.mono, fontSize:'10px', color:'var(--sub)' }}>
+                <span style={{ color:'#888', minWidth:'70px' }}>{entry.generatedAt}</span>
+                <span style={{ color:'#0064ff' }}>{entry.coachId}</span>
+                <span>→ {entry.limit} athletes</span>
+                <span style={{ color:'#ff6600', marginLeft:'auto' }}>{entry.code}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Profile({ profile, setProfile, log }) {
   const { t } = useContext(LangCtx)
   const [local, setLocal] = useState(profile)
@@ -595,7 +665,7 @@ export default function Profile({ profile, setProfile, log }) {
 
   useEffect(()=>{ setLocal(profile) },[profile])
 
-  const save = () => { setProfile(local); setStatus('saved'); setTimeout(()=>setStatus(null),2000) }
+  const save = () => { setProfile(sanitizeProfile(local)); setStatus('saved'); setTimeout(()=>setStatus(null),2000) }
 
   const share = async () => {
     const text=`${local.name||'Athlete'} | ${local.sport||''} | VO\u2082max: ${local.vo2max||'?'} | FTP: ${local.ftp||'?'}W | Goal: ${local.goal||''} — via Sporeus Athlete Console`
@@ -730,6 +800,35 @@ export default function Profile({ profile, setProfile, log }) {
 
       <div className="sp-card" style={{ ...S.card, animationDelay:'110ms' }}>
         <div style={S.cardTitle}>DATA MANAGEMENT</div>
+        {/* Storage monitor */}
+        {(() => {
+          try {
+            const bytes = Object.keys(localStorage)
+              .filter(k => k.startsWith('sporeus'))
+              .reduce((s, k) => s + (localStorage.getItem(k) || '').length * 2, 0)
+            const kb = Math.round(bytes / 1024)
+            const pct = Math.min(100, Math.round(bytes / (5 * 1048576) * 100))
+            const color = pct < 40 ? '#5bc25b' : pct < 75 ? '#f5c542' : '#e03030'
+            const topKeys = Object.keys(localStorage)
+              .filter(k => k.startsWith('sporeus'))
+              .map(k => ({ k, size: (localStorage.getItem(k) || '').length * 2 }))
+              .sort((a, b) => b.size - a.size).slice(0, 3)
+            return (
+              <div style={{ marginBottom:'14px' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', ...S.mono, fontSize:'11px', marginBottom:'4px' }}>
+                  <span style={{ color:'var(--muted)' }}>Storage used</span>
+                  <span style={{ color }}>{kb} KB / ~5 MB ({pct}%)</span>
+                </div>
+                <div style={{ height:'6px', borderRadius:'3px', background:'var(--border)', overflow:'hidden', marginBottom:'6px' }}>
+                  <div style={{ width:`${pct}%`, height:'100%', background:color, transition:'width 400ms' }}/>
+                </div>
+                <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>
+                  {topKeys.map(({ k, size }) => `${k.slice(7)}: ${Math.round(size/1024)}KB`).join(' · ')}
+                </div>
+              </div>
+            )
+          } catch { return null }
+        })()}
         <div style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>
           <button style={S.btn} onClick={handleExport}>↓ Export All Data</button>
           <label style={{ ...S.btnSec, cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
@@ -742,6 +841,11 @@ export default function Profile({ profile, setProfile, log }) {
           Export backs up all training data, plans, and settings as JSON. Import restores a previous backup.
         </div>
       </div>
+
+      {/* Admin code generator — only shown to Hüseyin */}
+      {(local.name?.toLowerCase().includes('hüseyin') || local.name?.toLowerCase().includes('huseyin') || local.email === 'huseyinakbulut@marun.edu.tr') && (
+        <AdminCodeGenerator/>
+      )}
     </div>
   )
 }

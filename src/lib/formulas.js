@@ -155,3 +155,37 @@ export function generatePlan(goal, totalWeeks, weeklyHours, level) {
 // ─── normTR (Turkish normalizer, no JSX) ─────────────────────────────────────
 export const normTR = s => (s||'').toLowerCase()
   .replace(/ş/g,'s').replace(/ğ/g,'g').replace(/ı/g,'i').replace(/ü/g,'u').replace(/ö/g,'o').replace(/ç/g,'c')
+
+// ─── Coach invite system ───────────────────────────────────────────────────────
+const SPOREUS_SALT = 'sporeus-coach-salt-2026'
+const MASTER_SALT  = 'sporeus-master-2026'
+export const FREE_ATHLETE_LIMIT = 3
+
+export async function generateCoachId(name, email) {
+  const raw = (name||'').trim().toLowerCase() + (email||'').trim().toLowerCase() + SPOREUS_SALT
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw))
+  const hex = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('')
+  return 'SP-' + hex.slice(0, 8)
+}
+
+export async function generateUnlockCode(coachId, limit) {
+  const raw = coachId + String(limit) + MASTER_SALT
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw))
+  const hex = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('')
+  return 'SPUNLOCK-' + coachId.replace('SP-','') + '-' + limit + '-' + hex.slice(0, 6)
+}
+
+export async function verifyUnlockCode(code, coachId) {
+  const parts = code.trim().split('-')
+  if (parts.length < 4 || parts[0] !== 'SPUNLOCK') return null
+  const id = parts[1]
+  const limit = parseInt(parts[2])
+  const hash = parts[3]
+  if (isNaN(limit) || limit < 1) return null
+  const raw = 'SP-' + id + String(limit) + MASTER_SALT
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw))
+  const hex = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('')
+  if (hex.slice(0, 6) !== hash) return null
+  if ('SP-' + id !== coachId) return null
+  return { coachId: 'SP-' + id, limit }
+}
