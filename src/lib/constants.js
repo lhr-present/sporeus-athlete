@@ -190,6 +190,58 @@ export const ZONE_BY_TYPE = {
 }
 export const DAYS7 = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
 
+// ─── Search index ──────────────────────────────────────────────────────────────
+export const SEARCH_INDEX = [
+  { id:'zone-hr',      name:'HR Zone Calculator',   desc:'Heart rate zones from max HR',        tab:'zones'          },
+  { id:'zone-power',   name:'Power Zone Calculator', desc:'FTP-based cycling power zones',        tab:'zones'          },
+  { id:'zone-pace',    name:'Pace Zone Calculator',  desc:'Running zones from threshold pace',    tab:'zones'          },
+  { id:'zone-race',    name:'Race Pacing',           desc:'Km-by-km split plan for any distance', tab:'zones'          },
+  { id:'zone-heat',    name:'Heat Calculator',       desc:'Pace penalty and heat index',           tab:'zones'          },
+  { id:'zone-altitude',name:'Altitude Calculator',   desc:'VO2max reduction at altitude',         tab:'zones'          },
+  { id:'log-session',  name:'Log Session',           desc:'Record a training session',            tab:'log'            },
+  { id:'log-export',   name:'Export Training Log',   desc:'Download sessions as CSV',             tab:'log'            },
+  { id:'log-calendar', name:'Calendar View',         desc:'View sessions on a monthly calendar',  tab:'log'            },
+  { id:'tests-cooper', name:'Cooper Test',           desc:'12-min run VO2max estimate',            tab:'tests'          },
+  { id:'tests-ftp',    name:'FTP Test',              desc:'20-min power test for threshold',       tab:'tests'          },
+  { id:'tests-lactate',name:'Lactate Test',          desc:'Blood lactate threshold detection',     tab:'tests'          },
+  { id:'tests-ramp',   name:'Ramp Test',             desc:'VO2max ramp protocol',                  tab:'tests'          },
+  { id:'dash-readiness',name:'Readiness Score',      desc:'7-day TSS-based training readiness',   tab:'dashboard'      },
+  { id:'dash-ctl',     name:'CTL / ATL / TSB',       desc:'Fitness, fatigue and form tracking',   tab:'dashboard'      },
+  { id:'dash-acwr',    name:'ACWR Injury Monitor',   desc:'Acute:Chronic Workload Ratio',         tab:'dashboard'      },
+  { id:'dash-records', name:'Personal Records',      desc:'Best TSS, longest session, top RPE',   tab:'dashboard'      },
+  { id:'dash-predict', name:'Race Predictions',      desc:'Riegel formula race time estimates',   tab:'dashboard'      },
+  { id:'recovery',     name:'Wellness Check-In',     desc:'Daily sleep, soreness, energy, mood',  tab:'recovery'       },
+  { id:'injury',       name:'Injury Tracker',        desc:'Body map pain logging',                tab:'recovery'       },
+  { id:'mental',       name:'Mental Tools',          desc:'Breathing and mindset exercises',       tab:'recovery'       },
+  { id:'plan',         name:'Plan Generator',        desc:'Build a structured training block',    tab:'plan'           },
+  { id:'periodization',name:'Periodization',         desc:'12-week macro cycle planning',         tab:'periodization'  },
+  { id:'glossary',     name:'Glossary',              desc:'Sport science terms explained',        tab:'glossary'       },
+  { id:'profile-sport',name:'Sport & Level',         desc:'Set primary sport and athlete level',  tab:'profile'        },
+  { id:'profile-body', name:'Body Composition',      desc:'Navy BF% and BMR calculator',         tab:'profile'        },
+  { id:'profile-export',name:'Export All Data',      desc:'Download all data as JSON backup',     tab:'profile'        },
+  { id:'profile-coach',name:'Connect to Coach',      desc:'Send your data to Hüseyin Işık',      tab:'profile'        },
+  { id:'achievements', name:'Achievements',          desc:'Training milestones and badges',       tab:'dashboard'      },
+  { id:'dark-mode',    name:'Dark Mode',             desc:'Toggle dark / light theme',            tab:null, action:'dark' },
+  { id:'language',     name:'Language / Dil',        desc:'Switch English ↔ Turkish (TR/EN)',    tab:null, action:'lang' },
+]
+
+// ─── Dashboard card layout ─────────────────────────────────────────────────────
+export const DASH_CARD_DEFS = [
+  { id:'readiness',    label:'Readiness & Load'       },
+  { id:'stats',        label:'7-Day Stats'             },
+  { id:'chart',        label:'TSS/CTL Chart'           },
+  { id:'sessions',     label:'Recent Sessions'         },
+  { id:'weekly',       label:'Weekly Volume'           },
+  { id:'zones',        label:'Zone Distribution'       },
+  { id:'records',      label:'Personal Records'        },
+  { id:'timeline',     label:'Fitness Timeline'        },
+  { id:'body',         label:'Body Composition'        },
+  { id:'predictions',  label:'Race Predictions'        },
+  { id:'achievements', label:'Achievements'            },
+  { id:'goal',         label:'Goal Countdown'          },
+  { id:'acwr',         label:'ACWR'                    },
+]
+
 export const TYPE_COLORS = {
   'Easy Run':'#4ade80','Tempo':'#facc15','Interval':'#ef4444','Long Run':'#22d3ee',
   'Recovery':'#a78bfa','Strength':'#f97316','Swim':'#94a3b8','Bike':'#60a5fa',

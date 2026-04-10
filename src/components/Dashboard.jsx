@@ -1,12 +1,12 @@
 import { useContext, useState } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
-import { TSSChart, WeeklyVolChart, ZoneDonut, ZoneBar, CTLTimeline } from './ui.jsx'
+import { TSSChart, WeeklyVolChart, ZoneDonut, ZoneBar, CTLTimeline, HelpTip } from './ui.jsx'
 import { monotonyStrain, calcPRs, navyBF, mifflinBMR, riegel, fmtSec, fmtPace, calcLoad } from '../lib/formulas.js'
 import { useCountUp } from '../hooks/useCountUp.js'
 import Achievements from './Achievements.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
-import { SPORT_BRANCHES, ATHLETE_LEVELS, LEVEL_CONFIG } from '../lib/constants.js'
+import { SPORT_BRANCHES, ATHLETE_LEVELS, LEVEL_CONFIG, DASH_CARD_DEFS } from '../lib/constants.js'
 
 export default function Dashboard({ log, profile }) {
   const [dark] = useLocalStorage('sporeus-dark', false)
@@ -21,6 +21,11 @@ export default function Dashboard({ log, profile }) {
   const levelLabel = ATHLETE_LEVELS.find(l=>l.id===profile.athleteLevel)?.label || ''
   const lc = LEVEL_CONFIG[profile.athleteLevel] || LEVEL_CONFIG.competitive
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const defaultLayout = Object.fromEntries(DASH_CARD_DEFS.map(c => [c.id, true]))
+  const [dashLayout, setDashLayout] = useLocalStorage('sporeus-dash-layout', defaultLayout)
+  const [showCustomize, setShowCustomize] = useState(false)
+  const dl = { ...defaultLayout, ...dashLayout }
+  const toggleCard = id => setDashLayout(prev => ({ ...defaultLayout, ...prev, [id]: !prev[id] }))
   const last7 = log.slice(-7)
   const totalTSS = last7.reduce((s,e)=>s+(e.tss||0),0)
   const totalMin = last7.reduce((s,e)=>s+(e.duration||0),0)
@@ -152,18 +157,40 @@ export default function Dashboard({ log, profile }) {
             ← SIMPLE VIEW
           </button>
         )}
+        <button style={{ ...S.mono, fontSize:'9px', color:'var(--muted)', background:'transparent', border:'1px solid var(--border)', borderRadius:'3px', padding:'2px 8px', cursor:'pointer', marginTop:'8px', marginLeft:'8px' }} onClick={()=>setShowCustomize(s=>!s)}>
+          ⚙ Customize Dashboard
+        </button>
+        {showCustomize && (
+          <div style={{ marginTop:'10px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'6px', padding:'12px' }}>
+            <div style={{ ...S.mono, fontSize:'10px', color:'var(--muted)', marginBottom:'8px', letterSpacing:'0.06em' }}>SHOW / HIDE CARDS</div>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:'8px' }}>
+              {DASH_CARD_DEFS.map(card => (
+                <label key={card.id} style={{ display:'flex', alignItems:'center', gap:'5px', cursor:'pointer', ...S.mono, fontSize:'11px', color: dl[card.id] ? 'var(--text)' : 'var(--muted)' }}>
+                  <input type="checkbox" checked={!!dl[card.id]} onChange={() => toggleCard(card.id)} style={{ accentColor:'#ff6600' }}/>
+                  {card.label}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="sp-card" style={{ ...S.card, borderLeft:`4px solid ${readiness.color}`, animationDelay:'0ms' }}>
+      {dl.readiness && <div className="sp-card" style={{ ...S.card, borderLeft:`4px solid ${readiness.color}`, animationDelay:'0ms' }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div>
             <div style={S.cardTitle}>{t('readiness')}</div>
             <span style={S.tag(readiness.color)}>{readiness.label}</span>
             {lc.showCTL && (
-              <div style={{ display:'flex', gap:'16px', marginTop:'10px' }}>
-                {[{lbl:t('ctlLabel'),v:ctl,c:'#0064ff'},{lbl:t('atlLabel'),v:atl,c:'#ef4444'},{lbl:t('tsbLabel'),v:(tsb>=0?'+':'')+tsb,c:tsbColor}].map(({lbl,v,c})=>(
+              <div style={{ display:'flex', gap:'16px', marginTop:'10px', flexWrap:'wrap' }}>
+                {[
+                  { lbl:t('ctlLabel'), v:ctl,  c:'#0064ff', tip:'Chronic Training Load — your fitness. Higher = fitter. 42-day average of daily TSS.' },
+                  { lbl:t('atlLabel'), v:atl,  c:'#ef4444', tip:'Acute Training Load — your fatigue. 7-day average. Drops after rest days.' },
+                  { lbl:t('tsbLabel'), v:(tsb>=0?'+':'')+tsb, c:tsbColor, tip:'Training Stress Balance = CTL − ATL. Positive = fresh, ready to race. Negative = fatigued.' },
+                ].map(({lbl,v,c,tip})=>(
                   <div key={lbl}>
-                    <div style={{ ...S.mono, fontSize:'9px', color:'#888', letterSpacing:'0.08em' }}>{lbl}</div>
+                    <div style={{ ...S.mono, fontSize:'9px', color:'#888', letterSpacing:'0.08em', display:'flex', alignItems:'center' }}>
+                      {lbl}<HelpTip text={tip}/>
+                    </div>
                     <div style={{ ...S.mono, fontSize:'16px', fontWeight:600, color:c }}>{v}</div>
                   </div>
                 ))}
@@ -177,31 +204,47 @@ export default function Dashboard({ log, profile }) {
             ◈ {coachingMsg}
           </div>
         )}
-      </div>
+      </div>}
 
-      <div className="sp-card" style={{ ...S.row, marginBottom:'16px', animationDelay:'50ms' }}>
+      {dl.stats && <div className="sp-card" style={{ ...S.row, marginBottom:'16px', animationDelay:'50ms' }}>
         {[
-          { val:countSess,                              lbl:t('sessions') },
+          { val:countSess,                                   lbl:t('sessions') },
           { val:`${Math.floor(totalMin/60)}h ${totalMin%60}m`, lbl:t('volume') },
-          { val:avgRPE,                                 lbl:t('avgRpe') },
-          { val:totalTSS,                               lbl:t('tss7') },
-        ].map(({val,lbl})=>(
+          { val:avgRPE,                                       lbl:t('avgRpe') },
+          { val:totalTSS,                                     lbl:t('tss7'), tip:'Training Stress Score. Combines duration × intensity². Easy day ~50, hard day ~100+.' },
+        ].map(({val,lbl,tip})=>(
           <div key={lbl} style={S.stat}>
             <span style={S.statVal}>{val}</span>
-            <span style={S.statLbl}>{lbl}</span>
+            <span style={S.statLbl}>{lbl}{tip && <HelpTip text={tip}/>}</span>
           </div>
         ))}
-      </div>
+      </div>}
 
-      <div className="sp-card" style={{ ...S.card, animationDelay:'100ms' }}>
+      {dl.chart && <div className="sp-card" style={{ ...S.card, animationDelay:'100ms' }}>
         <div style={S.cardTitle}>{t('tssChartTitle')}</div>
-        <TSSChart daily={daily} t={t} />
-      </div>
+        {daily.length === 0 ? (
+          <div style={{ textAlign:'center', padding:'28px 0' }}>
+            <div style={{ ...S.mono, fontSize:'13px', color:'#555', marginBottom:'6px' }}>No sessions yet</div>
+            <div style={{ ...S.mono, fontSize:'11px', color:'#888', lineHeight:1.7 }}>
+              Log your first session to see your fitness trend here.<br/>
+              Tap the <span style={{ color:'#ff6600' }}>Log</span> tab →
+            </div>
+          </div>
+        ) : (
+          <TSSChart daily={daily} t={t} />
+        )}
+      </div>}
 
-      <div className="sp-card" style={{ ...S.card, animationDelay:'150ms' }}>
+      {dl.sessions && <div className="sp-card" style={{ ...S.card, animationDelay:'150ms' }}>
         <div style={S.cardTitle}>{t('recentSessions')}</div>
         {last7.length===0 ? (
-          <div style={{ ...S.mono, fontSize:'12px', color:'#aaa', textAlign:'center', padding:'20px 0' }}>{t('noSessions')}</div>
+          <div style={{ textAlign:'center', padding:'20px 0' }}>
+            <div style={{ ...S.mono, fontSize:'13px', color:'#555', marginBottom:'6px' }}>No sessions this week</div>
+            <div style={{ ...S.mono, fontSize:'11px', color:'#888', lineHeight:1.7 }}>
+              Log a session to start tracking your progress.<br/>
+              Takes less than 30 seconds →
+            </div>
+          </div>
         ) : (
           <table style={{ width:'100%', borderCollapse:'collapse', ...S.mono, fontSize:'12px' }}>
             <thead>
@@ -224,16 +267,16 @@ export default function Dashboard({ log, profile }) {
             </tbody>
           </table>
         )}
-      </div>
+      </div>}
 
-      {log.length>0 && (
+      {dl.weekly && log.length>0 && (
         <div className="sp-card" style={{ ...S.card, animationDelay:'170ms' }}>
           <div style={S.cardTitle}>WEEKLY VOLUME — LAST 8 WEEKS</div>
           <WeeklyVolChart log={log}/>
         </div>
       )}
 
-      {lc.showZoneDonut && log.length>0 && (() => {
+      {dl.zones && lc.showZoneDonut && log.length>0 && (() => {
         const { mono, strain } = monotonyStrain(log)
         const monoRed = mono>2.0, strainRed = strain>6000
         return (
@@ -260,7 +303,7 @@ export default function Dashboard({ log, profile }) {
         )
       })()}
 
-      {log.length>0 && (
+      {dl.records && log.length>0 && (
         <div className="sp-card" style={{ ...S.card, animationDelay:'190ms' }}>
           <div style={S.cardTitle}>🏆 PERSONAL RECORDS</div>
           <div style={S.row}>
@@ -275,7 +318,7 @@ export default function Dashboard({ log, profile }) {
         </div>
       )}
 
-      {lc.showCTL && log.length>3 && (
+      {dl.timeline && lc.showCTL && log.length>3 && (
         <div className="sp-card" style={{ ...S.card, animationDelay:'195ms' }}>
           <div style={S.cardTitle}>FITNESS TIMELINE — CTL (ALL TIME)</div>
           <CTLTimeline log={log}/>
@@ -289,7 +332,7 @@ export default function Dashboard({ log, profile }) {
         </div>
       )}
 
-      {(() => {
+      {dl.body && (() => {
         const h = parseFloat(profile.height||0), w = parseFloat(profile.weight||0)
         const a = parseFloat(profile.age||0), g = profile.gender||'male'
         const n = parseFloat(profile.neck||0), wa = parseFloat(profile.waist||0), hi_p = parseFloat(profile.hip||0)
@@ -326,7 +369,7 @@ export default function Dashboard({ log, profile }) {
         )
       })()}
 
-      {(() => {
+      {dl.predictions && (() => {
         if (!profile.ftp && !profile.ltPace) return null
         const ftp = parseFloat(profile.ftp||0)
         const ltPaceSec = profile.ltPace ? profile.ltPace.split(':').reduce((a,v,i,arr)=>a+(arr.length===3?[3600,60,1][i]:i===0?60:1)*parseFloat(v),0) : 0
@@ -355,10 +398,10 @@ export default function Dashboard({ log, profile }) {
         )
       })()}
 
-      <Achievements log={log} dark={dark} lang={lang}/>
+      {dl.achievements !== false && <Achievements log={log} dark={dark} lang={lang}/>}
 
       {/* Goal Countdown */}
-      {lc.showTaper && plan && (() => {
+      {dl.goal && lc.showTaper && plan && (() => {
         const startDate = new Date(plan.generatedAt)
         const raceDate = new Date(startDate)
         raceDate.setDate(raceDate.getDate() + plan.weeks.length * 7)
@@ -495,7 +538,7 @@ ${complianceStr?`<div>Plan: <strong>${complianceStr}</strong></div>`:''}
       })()}
 
       {/* ACWR — Acute:Chronic Workload Ratio */}
-      {lc.showACWR && (() => {
+      {dl.acwr && lc.showACWR && (() => {
         if (log.length < 7) return null
         const now = Date.now()
         const ms7  = 7  * 864e5
@@ -528,7 +571,7 @@ ${complianceStr?`<div>Plan: <strong>${complianceStr}</strong></div>`:''}
           <div className="sp-card" style={{ ...S.card, animationDelay:'198ms', borderLeft:`3px solid ${color}` }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'8px', flexWrap:'wrap' }}>
               <div>
-                <div style={S.cardTitle}>{t('acwrTitle')}</div>
+                <div style={{ ...S.cardTitle, display:'flex', alignItems:'center' }}>{t('acwrTitle')}<HelpTip text="Acute:Chronic Workload Ratio. Sweet spot: 0.8–1.3. Above 1.5 = injury risk (Hulin et al. 2016)."/></div>
                 <div style={{ display:'flex', gap:'20px', marginTop:'8px' }}>
                   <div>
                     <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>{t('acwrAcute')}</div>

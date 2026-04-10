@@ -4,6 +4,8 @@ export const ANIM_CSS = `
   @keyframes slideUp { from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)} }
   .sp-fade { animation:fadeIn 200ms ease-out both }
   .sp-card { animation:slideUp 300ms ease-out both }
+  @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 #ff660066} 70%{box-shadow:0 0 0 6px #ff660000} }
+  .sp-tab-pulse { animation:pulse 1.6s ease-out infinite }
   :root {
     --bg:#ffffff; --text:#1a1a1a; --card:#ffffff; --card-bg:#f8f8f8;
     --border:#e0e0e0; --muted:#888; --sub:#555; --surface:#fafafa;
