@@ -19,12 +19,20 @@ const ANIM_CSS = `
 `
 
 // ─── Hooks ─────────────────────────────────────────────────────────────────────
+const STORAGE_WARN_KEY = 'sporeus-quota-warned'
 function useLocalStorage(key, def) {
   const [val, setVal] = useState(() => {
     try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : def } catch { return def }
   })
   const set = useCallback(v => {
-    setVal(v); try { localStorage.setItem(key, JSON.stringify(v)) } catch {}
+    setVal(v)
+    try {
+      localStorage.setItem(key, JSON.stringify(v))
+    } catch (e) {
+      if (e && (e.name==='QuotaExceededError' || e.code===22)) {
+        try { localStorage.setItem(STORAGE_WARN_KEY,'1') } catch {}
+      }
+    }
   }, [key])
   return [val, set]
 }
@@ -438,7 +446,7 @@ const S = {
   card: { background:'var(--card-bg)', border:'1px solid var(--border)', borderRadius:'6px', padding:'16px', marginBottom:'16px' },
   cardTitle: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--muted)', marginBottom:'12px', borderBottom:'1px solid var(--border)', paddingBottom:'8px' },
   row: { display:'flex', gap:'12px', flexWrap:'wrap' },
-  label: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'#666', marginBottom:'4px', display:'block' },
+  label: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'var(--muted)', marginBottom:'4px', display:'block' },
   input: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'14px', padding:'8px 12px', border:'1px solid var(--input-border)', borderRadius:'4px', width:'100%', boxSizing:'border-box', background:'var(--input-bg)', color:'var(--text)' },
   select: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'13px', padding:'8px 12px', border:'1px solid var(--input-border)', borderRadius:'4px', width:'100%', boxSizing:'border-box', background:'var(--input-bg)', color:'var(--text)', cursor:'pointer' },
   btn: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, letterSpacing:'0.06em', padding:'10px 18px', background:'#ff6600', color:'#fff', border:'none', borderRadius:'4px', cursor:'pointer' },
@@ -448,7 +456,7 @@ const S = {
   statLbl: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'9px', color:'#888', letterSpacing:'0.1em', textTransform:'uppercase' },
   tag: c => ({ display:'inline-block', fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', fontWeight:600, padding:'2px 8px', borderRadius:'3px', background:c+'22', color:c, border:`1px solid ${c}44` }),
   mono: { fontFamily:"'IBM Plex Mono',monospace" },
-  footer: { textAlign:'center', padding:'20px', borderTop:'1px solid #e0e0e0', fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', color:'#aaa', letterSpacing:'0.06em' },
+  footer: { textAlign:'center', padding:'20px', borderTop:'1px solid var(--border)', fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', color:'var(--muted)', letterSpacing:'0.06em' },
 }
 
 // ─── ZoneBar ───────────────────────────────────────────────────────────────────
@@ -456,7 +464,7 @@ function ZoneBar({ pct, color }) {
   const [w, setW] = useState(0)
   useEffect(() => { const id=setTimeout(()=>setW(pct),60); return ()=>clearTimeout(id) }, [pct])
   return (
-    <div style={{ background:'#e8e8e8', height:'8px', borderRadius:'2px', overflow:'hidden' }}>
+    <div style={{ background:'var(--border)', height:'8px', borderRadius:'2px', overflow:'hidden' }}>
       <div style={{ height:'100%', width:`${w}%`, background:color, borderRadius:'2px', transition:'width 400ms ease-out' }} />
     </div>
   )
@@ -553,6 +561,7 @@ function WeeklyVolChart({ log }) {
   const W=560, H=120, P={t:8,r:10,b:28,l:38}
   const iW=W-P.l-P.r, iH=H-P.t-P.b
 
+  const todayStr = new Date().toISOString().slice(0,10)
   const weeks = []
   for (let i=7; i>=0; i--) {
     const d = new Date(); d.setDate(d.getDate() - i*7)
@@ -562,7 +571,8 @@ function WeeklyVolChart({ log }) {
     const entries = log.filter(e=>e.date>=s0&&e.date<=e0)
     const byType = {}
     entries.forEach(e=>{ byType[e.type]=(byType[e.type]||0)+(e.duration||0) })
-    weeks.push({ label:`W${8-i}`, byType, total:entries.reduce((s,e)=>s+(e.duration||0),0) })
+    const isPartial = i===0 && e0 > todayStr
+    weeks.push({ label:`W${8-i}`, byType, total:entries.reduce((s,e)=>s+(e.duration||0),0), isPartial })
   }
 
   const maxTotal = Math.max(...weeks.map(w=>w.total), 60)
@@ -594,7 +604,8 @@ function WeeklyVolChart({ log }) {
                 yOff += mins
                 return <rect key={type} x={xS(i)} y={y} width={bW} height={Math.max(bH,1)} fill={typeColor(type)} rx="1"/>
               })}
-              <text x={xS(i)+bW/2} y={H-6} textAnchor="middle" fill="#bbb" fontSize="8" fontFamily="IBM Plex Mono,monospace">{wk.label}</text>
+              <text x={xS(i)+bW/2} y={H-6} textAnchor="middle" fill={wk.isPartial?'#ff6600':'#bbb'} fontSize="8" fontFamily="IBM Plex Mono,monospace">{wk.label}{wk.isPartial?'…':''}</text>
+              {wk.isPartial && <line x1={xS(i)} x2={xS(i)+bW} y1={P.t+iH-hS(wk.total)} y2={P.t+iH-hS(wk.total)} stroke="#ff6600" strokeWidth="1.5" strokeDasharray="3,2"/>}
             </g>
           )
         })}
@@ -666,11 +677,12 @@ function monotonyStrain(log) {
 // ─── Personal Records ─────────────────────────────────────────────────────────
 function calcPRs(log) {
   if (!log.length) return []
-  const highTSS = log.reduce((best,e)=>(!best||e.tss>best.tss)?e:best, null)
-  const longDur  = log.reduce((best,e)=>(!best||e.duration>best.duration)?e:best, null)
-  const highRPE  = log.reduce((best,e)=>(!best||e.rpe>best.rpe)?e:best, null)
-  // streak
-  const dates = [...new Set(log.map(e=>e.date))].sort()
+  const sorted = [...log].sort((a,b) => new Date(a.date) - new Date(b.date))
+  const highTSS = sorted.reduce((best,e)=>(!best||e.tss>best.tss)?e:best, null)
+  const longDur  = sorted.reduce((best,e)=>(!best||e.duration>best.duration)?e:best, null)
+  const highRPE  = sorted.reduce((best,e)=>(!best||e.rpe>best.rpe)?e:best, null)
+  // streak — sorted by date first
+  const dates = [...new Set(sorted.map(e=>e.date))].sort()
   let maxStreak=1, cur=1
   for (let i=1;i<dates.length;i++) {
     const diff=(new Date(dates[i])-new Date(dates[i-1]))/(864e5)
@@ -797,7 +809,7 @@ function Dashboard({ log, profile }) {
         ) : (
           <table style={{ width:'100%', borderCollapse:'collapse', ...S.mono, fontSize:'12px' }}>
             <thead>
-              <tr style={{ borderBottom:'1px solid #e0e0e0', color:'#888', fontSize:'10px', letterSpacing:'0.06em' }}>
+              <tr style={{ borderBottom:'1px solid var(--border)', color:'#888', fontSize:'10px', letterSpacing:'0.06em' }}>
                 {[t('dateL'),'TYPE','MIN','RPE','TSS'].map(h=>(
                   <th key={h} style={{ textAlign:h==='TSS'||h==='MIN'||h==='RPE'?'right':'left', padding:'4px 6px 8px 0', fontWeight:600 }}>{h}</th>
                 ))}
@@ -805,8 +817,8 @@ function Dashboard({ log, profile }) {
             </thead>
             <tbody>
               {[...last7].reverse().map((s,i)=>(
-                <tr key={i} style={{ borderBottom:'1px solid #f0f0f0' }}>
-                  <td style={{ padding:'6px 6px 6px 0', color:'#666' }}>{s.date}</td>
+                <tr key={i} style={{ borderBottom:'1px solid var(--border)' }}>
+                  <td style={{ padding:'6px 6px 6px 0', color:'var(--sub)' }}>{s.date}</td>
                   <td style={{ padding:'6px 6px 6px 0' }}>{s.type}</td>
                   <td style={{ textAlign:'right', padding:'6px 6px 6px 0' }}>{s.duration}</td>
                   <td style={{ textAlign:'right', padding:'6px 6px 6px 0', color:s.rpe>=8?'#e03030':s.rpe>=6?'#f5c542':'#5bc25b' }}>{s.rpe}</td>
@@ -859,7 +871,7 @@ function Dashboard({ log, profile }) {
               <div key={pr.label} style={{ ...S.stat, flex:'1 1 130px', textAlign:'left', padding:'10px 12px' }}>
                 <span style={{ ...S.statVal, fontSize:'15px', textAlign:'left' }}>{pr.value}</span>
                 <span style={S.statLbl}>{pr.label}</span>
-                {pr.date&&<div style={{ ...S.mono, fontSize:'9px', color:'#666', marginTop:'2px' }}>{pr.date} · {pr.unit}</div>}
+                {pr.date&&<div style={{ ...S.mono, fontSize:'9px', color:'var(--sub)', marginTop:'2px' }}>{pr.date} · {pr.unit}</div>}
               </div>
             ))}
           </div>
@@ -1018,7 +1030,7 @@ function ZoneCalc() {
           <div style={S.cardTitle}>{t('predsTitle')}</div>
           <table style={{ width:'100%', borderCollapse:'collapse', ...S.mono, fontSize:'13px' }}>
             <thead>
-              <tr style={{ borderBottom:'2px solid #e0e0e0', color:'#888', fontSize:'10px', letterSpacing:'0.08em' }}>
+              <tr style={{ borderBottom:'2px solid var(--border)', color:'#888', fontSize:'10px', letterSpacing:'0.08em' }}>
                 <th style={{ textAlign:'left', padding:'4px 0 8px', fontWeight:600 }}>{t('distCol')}</th>
                 <th style={{ textAlign:'right', padding:'4px 0 8px', fontWeight:600 }}>{t('timeCol')}</th>
                 <th style={{ textAlign:'right', padding:'4px 0 8px', fontWeight:600 }}>{t('paceCol')}</th>
@@ -1026,10 +1038,10 @@ function ZoneCalc() {
             </thead>
             <tbody>
               {preds.map(p=>(
-                <tr key={p.label} style={{ borderBottom:'1px solid #f0f0f0' }}>
+                <tr key={p.label} style={{ borderBottom:'1px solid var(--border)' }}>
                   <td style={{ padding:'8px 0', fontWeight:600 }}>{p.label}</td>
                   <td style={{ textAlign:'right', padding:'8px 0', color:'#ff6600', fontWeight:600 }}>{p.time}</td>
-                  <td style={{ textAlign:'right', padding:'8px 0', color:'#666' }}>{p.pace}</td>
+                  <td style={{ textAlign:'right', padding:'8px 0', color:'var(--sub)' }}>{p.pace}</td>
                 </tr>
               ))}
             </tbody>
@@ -1068,7 +1080,7 @@ function TestProtocols() {
 
   const saveTestResult = (testId, value, unit) => {
     const today = new Date().toISOString().slice(0,10)
-    setTestLog(prev => [...prev, { date:today, testId, value:String(value), unit }])
+    setTestLog(prev => [...prev, { id:Date.now(), date:today, testId, value:String(value), unit }])
   }
 
   const lastTestDate = testLog.length ? testLog[testLog.length-1].date : null
@@ -1219,7 +1231,7 @@ function TestProtocols() {
           </div>
         )}
         {(active==='conconi'||active==='lactate') && (
-          <div style={{ ...S.mono, fontSize:'11px', color:'#555', marginBottom:'8px' }}>Click below to view the full protocol.</div>
+          <div style={{ ...S.mono, fontSize:'11px', color:'var(--sub)', marginBottom:'8px' }}>Click below to view the full protocol.</div>
         )}
 
         <button style={{ ...S.btn, marginTop:'14px' }} onClick={run}>
@@ -1252,19 +1264,21 @@ function TestProtocols() {
               <label style={S.label}>RESULT A</label>
               <select style={S.select} value={cmpA} onChange={e=>setCmpA(e.target.value)}>
                 <option value="">Select…</option>
-                {testLog.map((r,i)=><option key={i} value={i}>{r.date} — {r.testId} — {r.value} {r.unit}</option>)}
+                {testLog.map((r)=><option key={r.id||r.date} value={r.id||r.date}>{r.date} — {r.testId} — {r.value} {r.unit}</option>)}
               </select>
             </div>
             <div style={{ flex:'1 1 180px' }}>
               <label style={S.label}>RESULT B</label>
               <select style={S.select} value={cmpB} onChange={e=>setCmpB(e.target.value)}>
                 <option value="">Select…</option>
-                {testLog.map((r,i)=><option key={i} value={i}>{r.date} — {r.testId} — {r.value} {r.unit}</option>)}
+                {testLog.map((r)=><option key={r.id||r.date} value={r.id||r.date}>{r.date} — {r.testId} — {r.value} {r.unit}</option>)}
               </select>
             </div>
           </div>
           {cmpA!==''&&cmpB!==''&&cmpA!==cmpB&&(()=>{
-            const a=testLog[cmpA], b=testLog[cmpB]
+            const a=testLog.find(r=>(r.id||r.date)===cmpA||String(r.id||r.date)===String(cmpA))
+            const b=testLog.find(r=>(r.id||r.date)===cmpB||String(r.id||r.date)===String(cmpB))
+            if (!a||!b) return null
             const va=parseFloat(a.value), vb=parseFloat(b.value)
             const delta=Math.round((vb-va)*10)/10
             const pct=Math.round((vb-va)/Math.abs(va)*100)
@@ -1275,7 +1289,7 @@ function TestProtocols() {
                   <div key={label} style={{ flex:'1 1 150px', ...S.stat }}>
                     <span style={{ ...S.statVal, fontSize:'18px' }}>{r.value}</span>
                     <span style={S.statLbl}>{r.unit}</span>
-                    <div style={{ ...S.mono, fontSize:'9px', color:'#666', marginTop:'3px' }}>{r.date}</div>
+                    <div style={{ ...S.mono, fontSize:'9px', color:'var(--sub)', marginTop:'3px' }}>{r.date}</div>
                   </div>
                 ))}
                 <div style={{ flex:'1 1 120px', ...S.stat }}>
@@ -1403,7 +1417,7 @@ function TrainingLog({ log, setLog, prefill, clearPrefill }) {
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse', ...S.mono, fontSize:'12px' }}>
               <thead>
-                <tr style={{ borderBottom:'2px solid #e0e0e0', color:'#888', fontSize:'10px', letterSpacing:'0.06em' }}>
+                <tr style={{ borderBottom:'2px solid var(--border)', color:'#888', fontSize:'10px', letterSpacing:'0.06em' }}>
                   {['DATE','TYPE','MIN','RPE','TSS','NOTES',''].map(h=>(
                     <th key={h} style={{ textAlign:['TSS','MIN','RPE',''].includes(h)?'right':'left', padding:'4px 6px 8px 0', fontWeight:600 }}>{h}</th>
                   ))}
@@ -1411,8 +1425,8 @@ function TrainingLog({ log, setLog, prefill, clearPrefill }) {
               </thead>
               <tbody>
                 {[...log].reverse().map((s,i)=>(
-                  <tr key={i} style={{ borderBottom:'1px solid #f0f0f0' }}>
-                    <td style={{ padding:'6px 6px 6px 0', color:'#666' }}>{s.date}</td>
+                  <tr key={i} style={{ borderBottom:'1px solid var(--border)' }}>
+                    <td style={{ padding:'6px 6px 6px 0', color:'var(--sub)' }}>{s.date}</td>
                     <td style={{ padding:'6px 6px 6px 0' }}>{s.type}</td>
                     <td style={{ textAlign:'right', padding:'6px 6px 6px 0' }}>{s.duration}</td>
                     <td style={{ textAlign:'right', padding:'6px 6px 6px 0', color:s.rpe>=8?'#e03030':s.rpe>=6?'#f5c542':'#5bc25b' }}>{s.rpe}</td>
@@ -1476,7 +1490,7 @@ function Periodization() {
         <div style={{ overflowX:'auto' }}>
           <table style={{ width:'100%', borderCollapse:'collapse', ...S.mono, fontSize:'11px' }}>
             <thead>
-              <tr style={{ borderBottom:'2px solid #e0e0e0', color:'#888', fontSize:'10px', letterSpacing:'0.06em' }}>
+              <tr style={{ borderBottom:'2px solid var(--border)', color:'#888', fontSize:'10px', letterSpacing:'0.06em' }}>
                 {['WK','PHASE','FOCUS','HRS','ZONE DIST','LOAD'].map((h,i)=>(
                   <th key={h} style={{ textAlign:i>=3?'center':'left', padding:'4px 10px 8px 0', fontWeight:600, minWidth:i===4?'120px':undefined }}>{h}</th>
                 ))}
@@ -1486,10 +1500,10 @@ function Periodization() {
               {MACRO_PHASES.map(row=>{
                 const wh=row.load==='Low'?hours*.7:row.load==='Med'?hours:hours*1.25
                 return (
-                  <tr key={row.week} style={{ borderBottom:'1px solid #f0f0f0', background:row.phase==='Recovery'?'#fffbf0':row.phase==='Race'?'#fff8f8':'transparent' }}>
+                  <tr key={row.week} style={{ borderBottom:'1px solid var(--border)', background:row.phase==='Recovery'?'#fffbf0':row.phase==='Race'?'#fff8f8':'transparent' }}>
                     <td style={{ padding:'7px 10px 7px 0', fontWeight:600, color:'#ff6600' }}>{row.week}</td>
                     <td style={{ padding:'7px 10px 7px 0' }}>{row.phase}</td>
-                    <td style={{ padding:'7px 10px 7px 0', color:'#555' }}>{row.focus}</td>
+                    <td style={{ padding:'7px 10px 7px 0', color:'var(--sub)' }}>{row.focus}</td>
                     <td style={{ textAlign:'center', padding:'7px 10px 7px 0', fontWeight:600 }}>{wh.toFixed(1)}</td>
                     <td style={{ padding:'7px 0', minWidth:'120px' }}>
                       <div style={{ display:'flex', height:'10px', gap:'1px', borderRadius:'2px', overflow:'hidden' }}>
@@ -1571,7 +1585,7 @@ function PlanGenerator({ onLogSession }) {
       </div>
 
       {/* Coach note */}
-      <div style={{ ...S.card, background:'#f0f4ff', border:'1px solid #c7d2fe', borderRadius:'6px', padding:'12px 16px', marginBottom:'16px', ...S.mono, fontSize:'11px', color:'#555', lineHeight:1.8 }}>
+      <div style={{ ...S.card, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'6px', padding:'12px 16px', marginBottom:'16px', ...S.mono, fontSize:'11px', color:'var(--sub)', lineHeight:1.8 }}>
         {t('coachNote')}{' '}
         <a href="https://sporeus.com" target="_blank" rel="noreferrer" style={{ color:'#0064ff', fontWeight:600 }}>sporeus.com →</a>
       </div>
@@ -1583,7 +1597,7 @@ function PlanGenerator({ onLogSession }) {
             <div style={S.cardTitle}>{plan.goal} — {plan.weeks.length} {t('weekLabel').toLowerCase()}s · {plan.level}</div>
             <div style={{ display:'flex', gap:'4px', flexWrap:'wrap' }}>
               {plan.weeks.map((w,i) => {
-                const isThis = i === thisWeekIdx
+                const isThis = Boolean(plan) && i === thisWeekIdx
                 const isSel  = i === selWeek
                 const phaseColor = { Base:'#4a90d9', Build:'#f5c542', Peak:'#e03030', Peak2:'#e03030', Taper:'#888', Recovery:'#5bc25b', 'Race Week':'#ff6600' }[w.phase] || '#888'
                 return (
@@ -1641,7 +1655,7 @@ function PlanGenerator({ onLogSession }) {
                     </div>
                     <div style={{ ...S.mono, fontSize:'12px', fontWeight:600, color:ses.type==='Rest'?'#ccc':ses.color, marginBottom:'4px' }}>{ses.type}</div>
                     {ses.zone !== '—' && <span style={{ ...S.tag(ses.color), fontSize:'9px', marginBottom:'6px', display:'inline-block' }}>{ses.zone}</span>}
-                    <div style={{ fontSize:'11px', color:'#666', lineHeight:1.6, marginTop:'4px' }}>{ses.description}</div>
+                    <div style={{ fontSize:'11px', color:'var(--sub)', lineHeight:1.6, marginTop:'4px' }}>{ses.description}</div>
                     {ses.type !== 'Rest' && ses.duration > 0 && (
                       <button onClick={() => onLogSession(ses)}
                         style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px', marginTop:'8px', width:'100%' }}>
@@ -1717,7 +1731,7 @@ function Glossary() {
               <div style={{ ...S.mono, fontSize:'14px', fontWeight:600, color:'#0064ff', marginBottom:'8px' }}>{term.term}</div>
               {isApi && <span style={S.tag('#5bc25b')}>API</span>}
             </div>
-            <div style={{ fontSize:'14px', lineHeight:1.7, color:'#333' }}>{body}</div>
+            <div style={{ fontSize:'14px', lineHeight:1.7, color:'var(--text)' }}>{body}</div>
             {isApi && term.link && (
               <a href={term.link} target="_blank" rel="noreferrer"
                 style={{ ...S.mono, fontSize:'11px', color:'#0064ff', textDecoration:'none', display:'block', marginTop:'8px' }}>
@@ -1814,7 +1828,7 @@ function Recovery() {
           <div style={S.cardTitle}>{t('hist7Title')}</div>
           <table style={{ width:'100%', borderCollapse:'collapse', ...S.mono, fontSize:'12px' }}>
             <thead>
-              <tr style={{ borderBottom:'2px solid #e0e0e0', color:'#888', fontSize:'10px' }}>
+              <tr style={{ borderBottom:'2px solid var(--border)', color:'#888', fontSize:'10px' }}>
                 {['DATE','SLEEP','SORENESS','ENERGY','MOOD','STRESS','SCORE'].map(h=>(
                   <th key={h} style={{ textAlign:h==='SCORE'?'right':'left', padding:'4px 6px 8px 0', fontWeight:600, fontSize:'9px', letterSpacing:'0.06em' }}>{h}</th>
                 ))}
@@ -1825,8 +1839,8 @@ function Recovery() {
                 const sc=e.score||0
                 const sc_c=sc>=75?'#5bc25b':sc>=50?'#f5c542':'#e03030'
                 return (
-                  <tr key={i} style={{ borderBottom:'1px solid #f0f0f0' }}>
-                    <td style={{ padding:'6px 6px 6px 0', color:'#666' }}>{e.date}</td>
+                  <tr key={i} style={{ borderBottom:'1px solid var(--border)' }}>
+                    <td style={{ padding:'6px 6px 6px 0', color:'var(--sub)' }}>{e.date}</td>
                     {['sleep','soreness','energy','mood','stress'].map(k=>(
                       <td key={k} style={{ padding:'6px 6px 6px 0' }}>{WELLNESS_FIELDS.find(f=>f.key===k)?.emoji[(e[k]||3)-1]}</td>
                     ))}
@@ -1851,11 +1865,18 @@ function BodyComp({ profile, setProfile }) {
   const [hip,    setHip]    = useState(profile.hip||'')
   const [result, setResult] = useState(null)
 
+  const [compErr, setCompErr] = useState('')
   const calc = () => {
+    setCompErr('')
     const h=parseFloat(profile.height||0), w=parseFloat(profile.weight||0)
     const n=parseFloat(neck), wa=parseFloat(waist), hi=parseFloat(hip)
-    if (!h||!w||!n||!wa) return
-    if (gender==='female'&&!hi) return
+    const missing = []
+    if (!h) missing.push('height (in profile)')
+    if (!w) missing.push('weight (in profile)')
+    if (!n) missing.push('neck')
+    if (!wa) missing.push('waist')
+    if (gender==='female'&&!hi) missing.push('hip')
+    if (missing.length) { setCompErr(`Missing: ${missing.join(', ')}`); return }
     const bf = navyBF(n, wa, hi, h, gender)
     const fat = Math.round(w * bf / 100 * 10) / 10
     const lean = Math.round((w - fat) * 10) / 10
@@ -1893,6 +1914,7 @@ function BodyComp({ profile, setProfile }) {
         Uses HEIGHT & WEIGHT from profile above.
       </div>
       <button style={S.btn} onClick={calc}>{t('calcCompBtn')}</button>
+      {compErr && <div style={{ ...S.mono, fontSize:'11px', color:'#e03030', marginTop:'8px' }}>⚠ {compErr}</div>}
       {result && (
         <div style={{ marginTop:'16px' }}>
           <div style={S.row}>
@@ -1910,7 +1932,7 @@ function BodyComp({ profile, setProfile }) {
           </div>
           <div style={{ marginTop:'12px' }}>
             <div style={{ ...S.mono, fontSize:'10px', color:'#888', marginBottom:'4px' }}>LEAN vs FAT</div>
-            <div style={{ display:'flex', height:'10px', borderRadius:'3px', overflow:'hidden', background:'#e8e8e8' }}>
+            <div style={{ display:'flex', height:'10px', borderRadius:'3px', overflow:'hidden', background:'var(--border)' }}>
               <div style={{ width:`${result.leanPct}%`, background:'#5bc25b', transition:'width 400ms ease-out' }}/>
               <div style={{ width:`${100-result.leanPct}%`, background:'#f08c00' }}/>
             </div>
@@ -1944,8 +1966,8 @@ function NutritionEstimator({ profile }) {
   return (
     <div>
       {!bmr && (
-        <div style={{ ...S.mono, fontSize:'11px', color:'#aaa', marginBottom:'12px' }}>
-          Enter weight, height, age and gender in your profile above to see estimates.
+        <div style={{ ...S.mono, fontSize:'11px', color:'#e03030', marginBottom:'12px' }}>
+          Missing in profile: {[!w&&'weight',!h&&'height',!a&&'age'].filter(Boolean).join(', ') || 'gender'}. Add them above to see estimates.
         </div>
       )}
       <div style={{ flex:'1 1 220px', marginBottom:'14px' }}>
@@ -1973,12 +1995,12 @@ function NutritionEstimator({ profile }) {
             Protein: 1.6–2.2 g/kg · Carbs: 5–7 g/kg (endurance) · Mifflin-St Jeor BMR
           </div>
           <div style={{ ...S.cardTitle, marginBottom:'8px' }}>{t('raceFuelTitle')}</div>
-          <div style={{ ...S.mono, fontSize:'10px', color:'#555', marginBottom:'8px' }}>
+          <div style={{ ...S.mono, fontSize:'10px', color:'var(--sub)', marginBottom:'8px' }}>
             {t('carbLoadL')}: <strong>8–12 g/kg/day</strong>
           </div>
           <table style={{ width:'100%', borderCollapse:'collapse', ...S.mono, fontSize:'11px' }}>
             <thead>
-              <tr style={{ borderBottom:'1px solid #e0e0e0', color:'#888', fontSize:'9px' }}>
+              <tr style={{ borderBottom:'1px solid var(--border)', color:'#888', fontSize:'9px' }}>
                 <th style={{ textAlign:'left', padding:'4px 0 6px', fontWeight:600 }}>DURATION</th>
                 <th style={{ textAlign:'right', padding:'4px 0 6px', fontWeight:600 }}>CARBS</th>
               </tr>
@@ -1986,7 +2008,7 @@ function NutritionEstimator({ profile }) {
             <tbody>
               {fuelRows.map(([dur,carb])=>(
                 <tr key={dur} style={{ borderBottom:'1px solid #f5f5f5' }}>
-                  <td style={{ padding:'5px 0', color:'#555' }}>{dur}</td>
+                  <td style={{ padding:'5px 0', color:'var(--sub)' }}>{dur}</td>
                   <td style={{ textAlign:'right', padding:'5px 0', color:'#ff6600', fontWeight:600 }}>{carb}</td>
                 </tr>
               ))}
@@ -2049,7 +2071,7 @@ function Profile({ profile, setProfile, log }) {
 
       <div className="sp-card" style={{ ...S.card, animationDelay:'50ms' }}>
         <div style={S.cardTitle}>{t('aboutTitle')}</div>
-        <div style={{ fontSize:'14px', lineHeight:1.8, color:'#444' }}>
+        <div style={{ fontSize:'14px', lineHeight:1.8, color:'var(--text)' }}>
           <p style={{ marginTop:0 }}>A Bloomberg Terminal-inspired training tool for endurance athletes. Built on the science behind <strong>E\u015e\u0130K / THRESHOLD</strong> \u2014 Turkey\u2019s first comprehensive endurance science book.</p>
           <p style={{ marginBottom:0 }}>
             <a href="https://sporeus.com/huseyin-akbulut/" target="_blank" rel="noreferrer"
@@ -2088,7 +2110,7 @@ function Profile({ profile, setProfile, log }) {
           <div>📱 <strong style={{ color:'#fff' }}>iOS:</strong> Safari \u2192 Share \u2192 Add to Home Screen</div>
           <div>🤖 <strong style={{ color:'#fff' }}>Android:</strong> Chrome menu \u2192 Install App</div>
           <div>💻 <strong style={{ color:'#fff' }}>Desktop:</strong> Address bar \u2192 Install icon</div>
-          <div style={{ color:'#666', fontSize:'10px', marginTop:'6px' }}>Works fully offline once installed.</div>
+          <div style={{ color:'var(--sub)', fontSize:'10px', marginTop:'6px' }}>Works fully offline once installed.</div>
         </div>
       </div>
     </div>
@@ -2125,7 +2147,7 @@ function OnboardingWizard({ onFinish, setLang, lang }) {
         {[{l:'Name',k:'name',ph:'Athlete name'},{l:'Age',k:'age',ph:'32',type:'number'}].map(f=>(
           <div key={f.k}>
             <label style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'#888', display:'block', marginBottom:'4px' }}>{f.l.toUpperCase()}</label>
-            <input style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'14px', padding:'8px 12px', border:'1px solid #e0e0e0', borderRadius:'4px', width:'100%', boxSizing:'border-box' }}
+            <input style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'14px', padding:'8px 12px', border:'1px solid var(--border)', borderRadius:'4px', width:'100%', boxSizing:'border-box' }}
               type={f.type||'text'} placeholder={f.ph} value={data[f.k]} onChange={e=>set(f.k,e.target.value)}/>
           </div>
         ))}
@@ -2161,7 +2183,7 @@ function OnboardingWizard({ onFinish, setLang, lang }) {
         <div>
           <label style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'#888', display:'block', marginBottom:'4px' }}>MAX HEART RATE (bpm)</label>
           <div style={{ display:'flex', gap:'8px' }}>
-            <input style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'14px', padding:'8px 12px', border:'1px solid #e0e0e0', borderRadius:'4px', flex:1 }}
+            <input style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'14px', padding:'8px 12px', border:'1px solid var(--border)', borderRadius:'4px', flex:1 }}
               type="number" placeholder="185" value={data.maxhr} onChange={e=>set('maxhr',e.target.value)}/>
             {data.age && <button onClick={()=>set('maxhr',String(Math.round(208-0.7*parseInt(data.age))))}
               style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'8px 12px', borderRadius:'4px', border:'1px solid #ff6600', background:'transparent', color:'#ff6600', cursor:'pointer', whiteSpace:'nowrap' }}>
@@ -2169,16 +2191,16 @@ function OnboardingWizard({ onFinish, setLang, lang }) {
             </button>}
           </div>
         </div>
-        {['Running','Triathlon'].includes(data.sport) ? (
+        {['Running','Triathlon','Rowing'].includes(data.sport) ? (
           <div>
             <label style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'#888', display:'block', marginBottom:'4px' }}>THRESHOLD PACE (MM:SS /km)</label>
-            <input style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'14px', padding:'8px 12px', border:'1px solid #e0e0e0', borderRadius:'4px', width:'100%', boxSizing:'border-box' }}
+            <input style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'14px', padding:'8px 12px', border:'1px solid var(--border)', borderRadius:'4px', width:'100%', boxSizing:'border-box' }}
               type="text" placeholder="4:45" value={data.ltpace} onChange={e=>set('ltpace',e.target.value)}/>
           </div>
         ) : (
           <div>
             <label style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'#888', display:'block', marginBottom:'4px' }}>FTP (watts)</label>
-            <input style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'14px', padding:'8px 12px', border:'1px solid #e0e0e0', borderRadius:'4px', width:'100%', boxSizing:'border-box' }}
+            <input style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'14px', padding:'8px 12px', border:'1px solid var(--border)', borderRadius:'4px', width:'100%', boxSizing:'border-box' }}
               type="number" placeholder="240" value={data.ftp} onChange={e=>set('ftp',e.target.value)}/>
           </div>
         )}
@@ -2212,7 +2234,7 @@ function OnboardingWizard({ onFinish, setLang, lang }) {
 
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
-      <div style={{ background:'#fff', borderRadius:'12px', padding:'32px', width:'100%', maxWidth:'480px', position:'relative' }}>
+      <div style={{ background:'var(--card)', borderRadius:'12px', padding:'32px', width:'100%', maxWidth:'480px', position:'relative' }}>
         <button onClick={()=>onFinish(null)} style={{ position:'absolute', top:'16px', right:'16px', background:'none', border:'none', color:'#ccc', cursor:'pointer', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px' }}>
           Skip all →
         </button>
@@ -2225,7 +2247,7 @@ function OnboardingWizard({ onFinish, setLang, lang }) {
         {steps[step]}
         <div style={{ display:'flex', justifyContent:'space-between', marginTop:'24px' }}>
           {step > 0
-            ? <button onClick={()=>setStep(s=>s-1)} style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', padding:'8px 18px', borderRadius:'4px', border:'1px solid #e0e0e0', background:'transparent', color:'#888', cursor:'pointer' }}>← Back</button>
+            ? <button onClick={()=>setStep(s=>s-1)} style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', padding:'8px 18px', borderRadius:'4px', border:'1px solid var(--border)', background:'transparent', color:'#888', cursor:'pointer' }}>← Back</button>
             : <span/>}
           {step < steps.length - 1
             ? <button onClick={()=>setStep(s=>s+1)} style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, padding:'8px 20px', borderRadius:'4px', background:'#ff6600', border:'none', color:'#fff', cursor:'pointer' }}>Next →</button>
@@ -2246,7 +2268,12 @@ function AthleteCard({ profile, log }) {
   const avgRPE28 = sessions28 ? (last28.reduce((s,e)=>s+(e.rpe||0),0)/sessions28).toFixed(1) : '—'
   const { tsb } = calcLoad(log)
 
-  const downloadCard = () => {
+  const downloadCard = async () => {
+    let fm = 'monospace'
+    try {
+      const f = new FontFace('IBM Plex Mono','url(https://fonts.gstatic.com/s/ibmplexmono/v19/-F63fjptAgt5VM-kVkqdyU8n5iQ.woff2)')
+      await f.load(); document.fonts.add(f); fm = '"IBM Plex Mono"'
+    } catch {}
     const c = document.createElement('canvas')
     c.width=400; c.height=580
     const ctx = c.getContext('2d')
@@ -2255,8 +2282,8 @@ function AthleteCard({ profile, log }) {
     // Accent bar
     ctx.fillStyle='#ff6600'; ctx.fillRect(0,0,400,4)
     // Name
-    ctx.fillStyle='#ff6600'; ctx.font='bold 22px monospace'; ctx.fillText(profile.name||'ATHLETE',24,52)
-    ctx.fillStyle='#888'; ctx.font='12px monospace'; ctx.fillText((profile.sport||'ENDURANCE').toUpperCase(),24,72)
+    ctx.fillStyle='#ff6600'; ctx.font=`bold 22px ${fm}`; ctx.fillText(profile.name||'ATHLETE',24,52)
+    ctx.fillStyle='#888'; ctx.font=`12px ${fm}`; ctx.fillText((profile.sport||'ENDURANCE').toUpperCase(),24,72)
     // Divider
     ctx.strokeStyle='#333'; ctx.beginPath(); ctx.moveTo(24,85); ctx.lineTo(376,85); ctx.stroke()
     // Stats grid
@@ -2268,27 +2295,27 @@ function AthleteCard({ profile, log }) {
     ]
     stats.forEach(([l,v],i)=>{
       const x=24+(i%2)*190, y=130+Math.floor(i/2)*70
-      ctx.fillStyle='#666'; ctx.font='10px monospace'; ctx.fillText(l.toUpperCase(),x,y-14)
-      ctx.fillStyle='#ff6600'; ctx.font='bold 20px monospace'; ctx.fillText(String(v),x,y)
+      ctx.fillStyle='#888'; ctx.font=`10px ${fm}`; ctx.fillText(l.toUpperCase(),x,y-14)
+      ctx.fillStyle='#ff6600'; ctx.font=`bold 20px ${fm}`; ctx.fillText(String(v),x,y)
     })
     // 4-week summary
     ctx.strokeStyle='#333'; ctx.beginPath(); ctx.moveTo(24,290); ctx.lineTo(376,290); ctx.stroke()
-    ctx.fillStyle='#888'; ctx.font='10px monospace'; ctx.fillText('4-WEEK SUMMARY',24,314)
+    ctx.fillStyle='#888'; ctx.font=`10px ${fm}`; ctx.fillText('4-WEEK SUMMARY',24,314)
     const sums=[['HOURS',`${totalH}h`],['SESSIONS',sessions28],['AVG RPE',avgRPE28]]
     sums.forEach(([l,v],i)=>{
       const x=24+i*120
-      ctx.fillStyle='#e5e5e5'; ctx.font='bold 18px monospace'; ctx.fillText(String(v),x,348)
-      ctx.fillStyle='#666'; ctx.font='9px monospace'; ctx.fillText(l,x,366)
+      ctx.fillStyle='#e5e5e5'; ctx.font=`bold 18px ${fm}`; ctx.fillText(String(v),x,348)
+      ctx.fillStyle='#888'; ctx.font=`9px ${fm}`; ctx.fillText(l,x,366)
     })
     // Form badge
     ctx.strokeStyle='#333'; ctx.beginPath(); ctx.moveTo(24,390); ctx.lineTo(376,390); ctx.stroke()
-    ctx.fillStyle='#888'; ctx.font='10px monospace'; ctx.fillText('CURRENT FORM (TSB)',24,414)
+    ctx.fillStyle='#888'; ctx.font=`10px ${fm}`; ctx.fillText('CURRENT FORM (TSB)',24,414)
     const tsbColor = tsb>5?'#5bc25b':tsb<-10?'#e03030':'#f5c542'
-    ctx.fillStyle=tsbColor; ctx.font='bold 28px monospace'; ctx.fillText((tsb>=0?'+':'')+tsb,24,448)
+    ctx.fillStyle=tsbColor; ctx.font=`bold 28px ${fm}`; ctx.fillText((tsb>=0?'+':'')+tsb,24,448)
     // Footer
     ctx.strokeStyle='#333'; ctx.beginPath(); ctx.moveTo(24,490); ctx.lineTo(376,490); ctx.stroke()
-    ctx.fillStyle='#444'; ctx.font='10px monospace'; ctx.fillText('SPOREUS ATHLETE CONSOLE — SPOREUS.COM',24,514)
-    ctx.fillStyle='#333'; ctx.font='9px monospace'; ctx.fillText('Built on EŞİK / THRESHOLD science — Hüseyin Akbulut 2026',24,534)
+    ctx.fillStyle='#555'; ctx.font=`10px ${fm}`; ctx.fillText('SPOREUS ATHLETE CONSOLE — SPOREUS.COM',24,514)
+    ctx.fillStyle='#444'; ctx.font=`9px ${fm}`; ctx.fillText('Built on EŞİK / THRESHOLD science — Hüseyin Akbulut 2026',24,534)
     // Download
     c.toBlob(blob=>{
       const url=URL.createObjectURL(blob)
@@ -2314,7 +2341,7 @@ function AthleteCard({ profile, log }) {
           {status==='copied'?'✓ COPIED':'⬡ Share'}
         </button>
       </div>
-      <div style={{ ...S.mono, fontSize:'10px', color:'#555', marginTop:'10px' }}>
+      <div style={{ ...S.mono, fontSize:'10px', color:'var(--sub)', marginTop:'10px' }}>
         Card includes: name, sport, VO₂max, FTP, max HR, 4-week summary, form badge.
       </div>
     </div>
@@ -2395,8 +2422,15 @@ export default function App() {
   const [profile, setProfile] = useLocalStorage('sporeus_profile', {})
   const [lang, setLang] = useLocalStorage('sporeus-lang', 'en')
   const [logPrefill, setLogPrefill] = useState(null)
+  const [quotaWarn, setQuotaWarn] = useState(() => {
+    try { return localStorage.getItem(STORAGE_WARN_KEY)==='1' } catch { return false }
+  })
   const [dark, setDark] = useLocalStorage('sporeus-dark', false)
   const [onboarded, setOnboarded] = useLocalStorage('sporeus-onboarded', false)
+  // Migration guard: existing users who have a saved profile skip onboarding
+  useEffect(() => {
+    if (!onboarded && profile && profile.name) setOnboarded(true)
+  }, [])
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
   }, [dark])
@@ -2416,6 +2450,12 @@ export default function App() {
     <LangCtx.Provider value={{ t, lang, setLang }}>
       <style>{ANIM_CSS}</style>
       {!onboarded && <OnboardingWizard onFinish={finishOnboarding} setLang={setLang} lang={lang}/>}
+      {quotaWarn && (
+        <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:10000, background:'#e03030', color:'#fff', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'8px 20px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          ⚠ Storage full — some data may not save. Export your training log.
+          <button onClick={()=>{ setQuotaWarn(false); try{localStorage.removeItem(STORAGE_WARN_KEY)}catch{} }} style={{ background:'none', border:'1px solid #fff', color:'#fff', padding:'2px 8px', cursor:'pointer', fontFamily:'inherit', fontSize:'10px' }}>✕</button>
+        </div>
+      )}
       <div style={S.app}>
         <div style={S.topBar}/>
 
@@ -2427,7 +2467,7 @@ export default function App() {
           <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
             <div style={{ textAlign:'right' }}>
               <div style={{ ...S.mono, fontSize:'10px', color:'#888' }}>{timeStr}</div>
-              <div style={{ ...S.mono, fontSize:'10px', color:'#555', letterSpacing:'0.06em' }}>{dateStr}</div>
+              <div style={{ ...S.mono, fontSize:'10px', color:'var(--sub)', letterSpacing:'0.06em' }}>{dateStr}</div>
             </div>
             <button onClick={()=>setDark(!dark)}
               style={{ ...S.mono, fontSize:'13px', padding:'4px 8px', borderRadius:'3px', border:'1px solid #444', background:'transparent', color:'#ccc', cursor:'pointer' }}>
