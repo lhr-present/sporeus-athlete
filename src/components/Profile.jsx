@@ -2,10 +2,150 @@ import { useState, useEffect, useContext } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
-import { ACTIVITY_MULTS } from '../lib/constants.js'
+import { ACTIVITY_MULTS, SPORT_BRANCHES, TRIATHLON_TYPES, ATHLETE_LEVELS } from '../lib/constants.js'
 import { navyBF, mifflinBMR, calcLoad } from '../lib/formulas.js'
 import { exportAllData, importAllData } from '../lib/storage.js'
 import { Sparkline } from './ui.jsx'
+
+function SportSelector({ local, setLocal }) {
+  const { t } = useContext(LangCtx)
+  const primary = local.primarySport || ''
+  const triType = local.triathlonType || 'olympic'
+  const secondary = local.secondarySports || []
+  const level = local.athleteLevel || ''
+
+  const setPrimary = id => {
+    const branch = SPORT_BRANCHES.find(b=>b.id===id)
+    setLocal(prev=>({...prev, primarySport:id, sport:branch?.label||id}))
+  }
+  const setTriType = id => setLocal(prev=>({...prev, triathlonType:id}))
+  const toggleSec = id => {
+    const cur = local.secondarySports||[]
+    setLocal(prev=>({...prev, secondarySports: cur.includes(id)?cur.filter(x=>x!==id):[...cur,id]}))
+  }
+  const setLevel = id => setLocal(prev=>({...prev, athleteLevel:id}))
+
+  const pillStyle = (active, col='#ff6600') => ({
+    ...S.mono, fontSize:'11px', padding:'5px 10px', borderRadius:'3px', cursor:'pointer',
+    border:`1px solid ${active?col:'var(--border)'}`,
+    background:active?col+'22':'transparent',
+    color:active?col:'var(--muted)', fontWeight:active?600:400,
+  })
+
+  return (
+    <div style={{marginTop:'16px'}}>
+      <label style={S.label}>{t('primarySportL')}</label>
+      <div style={{display:'flex',flexWrap:'wrap',gap:'6px',marginBottom:'12px'}}>
+        {SPORT_BRANCHES.map(b=>(
+          <button key={b.id} style={pillStyle(primary===b.id)} onClick={()=>setPrimary(b.id)}>
+            {b.icon} {b.label}
+          </button>
+        ))}
+      </div>
+
+      {primary==='triathlon' && (
+        <div style={{marginBottom:'12px'}}>
+          <label style={S.label}>{t('triathlonTypeL')}</label>
+          <div style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>
+            {TRIATHLON_TYPES.map(tt=>(
+              <button key={tt.id} style={pillStyle(triType===tt.id,'#0064ff')} onClick={()=>setTriType(tt.id)}>
+                {tt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {(primary==='triathlon'||primary==='hybrid') && (
+        <div style={{marginBottom:'12px'}}>
+          <label style={S.label}>{t('secondarySportsL')}</label>
+          <div style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>
+            {SPORT_BRANCHES.filter(b=>b.id!==primary&&b.id!=='hybrid'&&b.id!=='other').map(b=>(
+              <button key={b.id} style={pillStyle(secondary.includes(b.id),'#5bc25b')} onClick={()=>toggleSec(b.id)}>
+                {b.icon} {b.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <label style={S.label}>{t('athleteLevelL')}</label>
+      <div style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>
+        {ATHLETE_LEVELS.map(lv=>(
+          <button key={lv.id} style={pillStyle(level===lv.id,'#4a90d9')} onClick={()=>setLevel(lv.id)}>
+            {lv.label}
+            <span style={{color:'#777',fontSize:'9px',marginLeft:'5px'}}>{lv.sub}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function HuseyinCoachCard() {
+  const { t } = useContext(LangCtx)
+  const [myCoach, setMyCoach] = useLocalStorage('sporeus-my-coach', null)
+  const connected = myCoach === 'huseyin-sporeus'
+
+  const sendData = () => {
+    const raw = exportAllData()
+    const parsed = JSON.parse(raw)
+    parsed.coachId = 'huseyin-sporeus'
+    parsed.coachExport = true
+    const blob = new Blob([JSON.stringify(parsed,null,2)],{type:'application/json'})
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href=url; a.download=`sporeus-for-coach-${new Date().toISOString().slice(0,10)}.json`; a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <div className="sp-card" style={{...S.card, animationDelay:'48ms', borderLeft:`3px solid ${connected?'#5bc25b':'#ff6600'}`}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'12px'}}>
+        <div style={S.cardTitle}>{t('coachCardTitle')}</div>
+        {connected && <span style={{...S.mono,fontSize:'10px',color:'#5bc25b',fontWeight:600}}>◈ CONNECTED</span>}
+      </div>
+      <div style={{display:'flex',gap:'14px',marginBottom:'14px'}}>
+        <div style={{width:'52px',height:'52px',borderRadius:'4px',background:'#0a0a0a',border:'1px solid #333',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,...S.mono,fontSize:'16px',fontWeight:700,color:'#ff6600',letterSpacing:'-1px'}}>
+          HA
+        </div>
+        <div>
+          <div style={{...S.mono,fontSize:'13px',fontWeight:600,color:'var(--text)',marginBottom:'4px'}}>
+            HÜSEYİN AKBULUT
+          </div>
+          <div style={{...S.mono,fontSize:'10px',color:'#888',lineHeight:1.8}}>
+            MSc Sport Science · Marmara University<br/>
+            EŞİK / THRESHOLD — Yazar / Author<br/>
+            Uzmanlık: Dayanıklılık · Triatlon · Periyodizasyon
+          </div>
+        </div>
+      </div>
+      <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+        {!connected ? (
+          <button style={S.btn} onClick={()=>setMyCoach('huseyin-sporeus')}>{t('connectCoachBtn')}</button>
+        ) : (
+          <>
+            <button style={{...S.btn,background:'#5bc25b',borderColor:'#5bc25b'}} onClick={sendData}>
+              ↓ {t('sendDataCoachBtn')}
+            </button>
+            <a href="https://sporeus.com/huseyin-akbulut/" target="_blank" rel="noreferrer"
+              style={{...S.btnSec,textDecoration:'none',display:'inline-flex',alignItems:'center',color:'var(--text)'}}>
+              PROFILE →
+            </a>
+            <button style={{...S.btnSec,color:'#e03030',borderColor:'#e03030'}} onClick={()=>setMyCoach(null)}>
+              {t('disconnectCoachBtn')}
+            </button>
+          </>
+        )}
+      </div>
+      {connected && (
+        <div style={{...S.mono,fontSize:'10px',color:'#888',marginTop:'10px',lineHeight:1.6}}>
+          {t('coachConnectNote')}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function WeightHydration({ profile }) {
   const { t } = useContext(LangCtx)
@@ -471,7 +611,7 @@ export default function Profile({ profile, setProfile, log }) {
 
   const FIELDS = [
     {k:'name',lk:'nameL',ph:'Athlete name'},{k:'age',lk:'ageL',ph:'32',type:'number'},
-    {k:'weight',lk:'weightL',ph:'70',type:'number'},{k:'sport',lk:'sportL',ph:'Running / Triathlon'},
+    {k:'height',lk:'heightCmL',ph:'175',type:'number'},{k:'weight',lk:'weightL',ph:'70',type:'number'},
     {k:'maxhr',lk:'maxHRIn',ph:'185',type:'number'},{k:'ftp',lk:'ftpL',ph:'280',type:'number'},
     {k:'vo2max',lk:'vo2L',ph:'55',type:'number'},{k:'threshold',lk:'threshPaceL',ph:'4:30'},
     {k:'goal',lk:'goalL',ph:'Sub-3h marathon Istanbul 2026'},
@@ -519,11 +659,14 @@ export default function Profile({ profile, setProfile, log }) {
             </div>
           ))}
         </div>
-        <div style={{ display:'flex', gap:'10px', marginTop:'16px' }}>
+        <SportSelector local={local} setLocal={setLocal}/>
+        <div style={{ display:'flex', gap:'10px', marginTop:'20px' }}>
           <button style={S.btn} onClick={save}>{status==='saved'?t('savedMsg'):t('saveProfileBtn')}</button>
           <button style={S.btnSec} onClick={share}>{status==='copied'?t('copiedMsg'):t('shareBtn')}</button>
         </div>
       </div>
+
+      <HuseyinCoachCard/>
 
       <div className="sp-card" style={{ ...S.card, animationDelay:'50ms' }}>
         <div style={S.cardTitle}>{t('aboutTitle')}</div>

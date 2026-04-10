@@ -2,7 +2,44 @@
 
 export const ZONE_COLORS = ['#4a90d9','#5bc25b','#f5c542','#f08c00','#e03030']
 export const ZONE_NAMES  = ['Z1 Recovery','Z2 Aerobic','Z3 Tempo','Z4 Threshold','Z5 VO\u2082max']
-export const SESSION_TYPES = ['Easy Run','Tempo','Interval','Long Run','Recovery','Strength','Swim','Bike','Race','Test']
+
+export const SESSION_TYPES_BY_DISCIPLINE = {
+  'Running':    ['Easy Run','Tempo Run','Interval Run','Long Run','Trail Run','Run Race','Run Test'],
+  'Cycling':    ['Easy Ride','Tempo Ride','Power Intervals','Long Ride','Bike Race','FTP Test'],
+  'Swimming':   ['Easy Swim','Threshold Swim','Interval Swim','Open Water Swim','CSS Test'],
+  'Multi-Sport':['Brick (Bike+Run)','Brick (Swim+Bike)','Triathlon Race','Hyrox','OCR Race'],
+  'General':    ['Strength','Mobility','Yoga','Recovery','Race','Test'],
+}
+export const SESSION_TYPES = Object.values(SESSION_TYPES_BY_DISCIPLINE).flat()
+
+export const SPORT_BRANCHES = [
+  { id:'running',   label:'Running',        icon:'↑' },
+  { id:'cycling',   label:'Cycling',        icon:'○' },
+  { id:'swimming',  label:'Swimming',       icon:'~' },
+  { id:'triathlon', label:'Triathlon',      icon:'⚡' },
+  { id:'trail',     label:'Trail Running',  icon:'△' },
+  { id:'hyrox',     label:'Hyrox',          icon:'⊞' },
+  { id:'ocr',       label:'OCR / Obstacle', icon:'◇' },
+  { id:'rowing',    label:'Rowing',         icon:'≈' },
+  { id:'nordic',    label:'Nordic Skiing',  icon:'☆' },
+  { id:'hybrid',    label:'Hybrid / Multi', icon:'⊕' },
+  { id:'other',     label:'Other',          icon:'◈' },
+]
+
+export const TRIATHLON_TYPES = [
+  { id:'sprint',  label:'Sprint  (750m · 20km · 5km)' },
+  { id:'olympic', label:'Olympic (1.5km · 40km · 10km)' },
+  { id:'half',    label:'70.3  Half Ironman' },
+  { id:'full',    label:'Full  Ironman' },
+]
+
+export const ATHLETE_LEVELS = [
+  { id:'beginner',     label:'Beginner',     sub:'< 1 yr · first steps' },
+  { id:'recreational', label:'Recreational', sub:'1–3 yr · fun races' },
+  { id:'competitive',  label:'Competitive',  sub:'3–7 yr · age group medals' },
+  { id:'advanced',     label:'Advanced',     sub:'7+ yr · top 10% finisher' },
+  { id:'elite',        label:'Elite',        sub:'National/international level' },
+]
 export const LOAD_COLOR = { Low:'#5bc25b', Med:'#f5c542', High:'#e03030' }
 export const RACE_DISTANCES = [
   { label:'1500 m', m:1500 }, { label:'1 mile', m:1609 }, { label:'3 km', m:3000 },

@@ -79,6 +79,12 @@ export const LABELS = {
     sweatResult: 'Your sweat rate', sweatReplace: 'replace 80% during exercise',
     raceWeightTitle: 'RACE WEIGHT TARGET', raceWeightTarget: 'TARGET WEIGHT (kg)', raceWeeksTil: 'WEEKS UNTIL RACE',
     raceWeightSafe: 'Safe weekly loss', raceWeightOk: 'Achievable', raceWeightAggressive: 'Too aggressive — risk muscle loss',
+    primarySportL: 'PRIMARY SPORT', athleteLevelL: 'ATHLETE LEVEL',
+    triathlonTypeL: 'TRIATHLON DISTANCE', secondarySportsL: 'SECONDARY SPORTS',
+    coachCardTitle: 'COACHING — HÜSEYIN AKBULUT', connectCoachBtn: 'BECOME AN ATHLETE',
+    connectedCoachMsg: '◈ CONNECTED TO COACH', sendDataCoachBtn: 'SEND DATA TO COACH',
+    coachConnectNote: 'Download your training data file and send it to your coach for analysis.',
+    disconnectCoachBtn: 'DISCONNECT',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -157,6 +163,12 @@ export const LABELS = {
     sweatResult: 'Ter oranınız', sweatReplace: 'egzersiz sırasında %80 yeterliyor',
     raceWeightTitle: 'YARIŞ KİLO HEDEFİ', raceWeightTarget: 'HEDEF KİLO (kg)', raceWeeksTil: 'YARIŞA HAFTA',
     raceWeightSafe: 'Güvenli haftalık kayıp', raceWeightOk: 'Ulaşılabilir', raceWeightAggressive: 'Çok agresif — kas kaybı riski',
+    primarySportL: 'ANA SPOR', athleteLevelL: 'SPORCU SEVİYESİ',
+    triathlonTypeL: 'TRİATLON MESAFESİ', secondarySportsL: 'İKİNCİL SPORLAR',
+    coachCardTitle: 'ANTRENÖRLÜK — HÜSEYİN AKBULUT', connectCoachBtn: 'SPORCU OL',
+    connectedCoachMsg: '◈ ANTRENÖRE BAĞLANDI', sendDataCoachBtn: 'VERİ GÖNDER',
+    coachConnectNote: 'Antrenman verilerinizi indirin ve antrenörünüze analiz için gönderin.',
+    disconnectCoachBtn: 'BAĞLANTI KES',
   }
 }
 

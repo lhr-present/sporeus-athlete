@@ -6,6 +6,7 @@ import { monotonyStrain, calcPRs, navyBF, mifflinBMR, riegel, fmtSec, fmtPace, c
 import { useCountUp } from '../hooks/useCountUp.js'
 import Achievements from './Achievements.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
+import { SPORT_BRANCHES, ATHLETE_LEVELS } from '../lib/constants.js'
 
 export default function Dashboard({ log, profile }) {
   const [dark] = useLocalStorage('sporeus-dark', false)
@@ -13,8 +14,11 @@ export default function Dashboard({ log, profile }) {
   const [plan] = useLocalStorage('sporeus-plan', null)
   const [planStatus] = useLocalStorage('sporeus-plan-status', {})
   const [recovery] = useLocalStorage('sporeus-recovery', [])
+  const [myCoach] = useLocalStorage('sporeus-my-coach', null)
   const [reportVisible, setReportVisible] = useState(false)
   const { t } = useContext(LangCtx)
+  const sportLabel = SPORT_BRANCHES.find(b=>b.id===profile.primarySport)?.label || profile.sport || ''
+  const levelLabel = ATHLETE_LEVELS.find(l=>l.id===profile.athleteLevel)?.label || ''
   const last7 = log.slice(-7)
   const totalTSS = last7.reduce((s,e)=>s+(e.tss||0),0)
   const totalMin = last7.reduce((s,e)=>s+(e.duration||0),0)
@@ -32,6 +36,24 @@ export default function Dashboard({ log, profile }) {
         <div style={{ ...S.mono, fontSize:'11px', color:'#888', marginBottom:'4px' }}>{today}</div>
         <div style={{ ...S.mono, fontSize:'18px', fontWeight:600 }}>
           {profile.name ? `ATHLETE: ${profile.name.toUpperCase()}` : t('appTitle')}
+        </div>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', marginTop:'6px' }}>
+          {sportLabel && (
+            <span style={{ ...S.mono, fontSize:'10px', color:'#ff6600', border:'1px solid #ff660044', padding:'2px 7px', borderRadius:'2px' }}>
+              {sportLabel.toUpperCase()}
+              {profile.triathlonType && profile.primarySport==='triathlon' ? ` · ${profile.triathlonType.toUpperCase()}` : ''}
+            </span>
+          )}
+          {levelLabel && (
+            <span style={{ ...S.mono, fontSize:'10px', color:'#4a90d9', border:'1px solid #4a90d944', padding:'2px 7px', borderRadius:'2px' }}>
+              {levelLabel.toUpperCase()}
+            </span>
+          )}
+          {myCoach==='huseyin-sporeus' && (
+            <span style={{ ...S.mono, fontSize:'10px', color:'#5bc25b', border:'1px solid #5bc25b44', padding:'2px 7px', borderRadius:'2px' }}>
+              ◈ COACH: HÜSEYİN AKBULUT
+            </span>
+          )}
         </div>
       </div>
 

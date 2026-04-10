@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
-import { SESSION_TYPES, ZONE_COLORS, ZONE_NAMES } from '../lib/constants.js'
+import { SESSION_TYPES_BY_DISCIPLINE, ZONE_COLORS, ZONE_NAMES } from '../lib/constants.js'
 import { calcTSS } from '../lib/formulas.js'
 import Calendar from './Calendar.jsx'
 
@@ -70,7 +70,11 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
           <div style={{ flex:'1 1 150px' }}>
             <label style={S.label}>{t('typeL')}</label>
             <select style={S.select} value={form.type} onChange={e=>setForm({...form,type:e.target.value})}>
-              {SESSION_TYPES.map(x=><option key={x}>{x}</option>)}
+              {Object.entries(SESSION_TYPES_BY_DISCIPLINE).map(([group,types])=>(
+                <optgroup key={group} label={group}>
+                  {types.map(x=><option key={x}>{x}</option>)}
+                </optgroup>
+              ))}
             </select>
           </div>
           <div style={{ flex:'1 1 110px' }}>
