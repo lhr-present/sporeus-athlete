@@ -85,6 +85,18 @@ const LABELS = {
     nameL: 'NAME', ageL: 'AGE', weightL: 'WEIGHT (kg)', sportL: 'PRIMARY SPORT',
     ftpL: 'FTP (watts)', vo2L: 'VO\u2082max (mL/kg/min)', threshPaceL: 'THRESHOLD PACE (/km)',
     goalL: 'SEASON GOAL',
+    t_plan: '⚡ PLAN', planGoalL: 'TRAINING GOAL', planWeeksL: 'WEEKS TO RACE', planHoursL: 'WEEKLY HOURS',
+    planLevelL: 'FITNESS LEVEL', genPlanBtn: 'GENERATE PLAN', logThisBtn: 'LOG SESSION',
+    weekLabel: 'WEEK', phaseLabel: 'PHASE', tssEstLabel: 'EST. TSS', totalHrsLabel: 'TOTAL HRS',
+    planSaved: 'Plan saved to log.', noPlanYet: 'Set your goal and generate a plan.',
+    coachNote: 'Science-based periodization (Seiler, Issurin, Bompa). For personalized coaching:',
+    bodyCompTitle: 'BODY COMPOSITION', navyMethodNote: 'U.S. Navy circumference method',
+    neckL: 'NECK (cm)', waistL: 'WAIST (cm)', hipL: 'HIP (cm, women)', heightCmL: 'HEIGHT (cm)',
+    genderL: 'GENDER', calcCompBtn: 'CALCULATE', bfPctL: 'BODY FAT', leanMassL: 'LEAN MASS',
+    fatMassL: 'FAT MASS', bmiLbl: 'BMI',
+    nutritionTitle: 'NUTRITION ESTIMATOR', activityL: 'ACTIVITY LEVEL',
+    bmrL: 'BMR', tdeeL: 'TDEE', proteinL: 'PROTEIN TARGET', carbL: 'CARB TARGET',
+    raceFuelTitle: 'RACE DAY FUELING', carbLoadL: 'Carb loading (48h before)', duringRaceL: 'During race',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -132,7 +144,19 @@ const LABELS = {
     aboutTitle: 'UYGULAMA HAKKINDA', installTitle: 'UYGULAMA OLARAK Y\u00dcKLE',
     nameL: 'AD SOYAD', ageL: 'YA\u015e', weightL: 'K\u0130LO (kg)', sportL: 'ANA SPOR',
     ftpL: 'FTP (watt)', vo2L: 'VO\u2082maks (mL/kg/dak)', threshPaceL: 'E\u015e\u0130K TEMPOSU (/km)',
-    goalL: 'SEZON HEDEF\u0130',
+    goalL: 'SEZON HEDEFİ',
+    t_plan: '⚡ PLAN', planGoalL: 'ANTRENMAN HEDEFİ', planWeeksL: 'YARIŞA HAFTA', planHoursL: 'HAFTALIK SAAT',
+    planLevelL: 'KONDİSYON DÜZEYİ', genPlanBtn: 'PLAN OLUŞTUR', logThisBtn: 'KAYDET',
+    weekLabel: 'HAFTA', phaseLabel: 'FAZ', tssEstLabel: 'TAHMİNİ TSS', totalHrsLabel: 'TOPLAM SAAT',
+    planSaved: 'Plan kaydedildi.', noPlanYet: 'Hedefinizi seçin ve plan oluşturun.',
+    coachNote: 'Bilim tabanlı periyodizasyon (Seiler, Issurin, Bompa). Kişisel antrenör için:',
+    bodyCompTitle: 'VÜCUT KOMPOZİSYONU', navyMethodNote: 'ABD Donanması çevre ölçüm yöntemi',
+    neckL: 'BOYUN (cm)', waistL: 'BEL (cm)', hipL: 'KALÇA (cm, kadın)', heightCmL: 'BOY (cm)',
+    genderL: 'CİNSİYET', calcCompBtn: 'HESAPLA', bfPctL: 'YAĞ ORANI', leanMassL: 'YAGSIZ KÜTLE',
+    fatMassL: 'YAĞ KÜTLESİ', bmiLbl: 'BKİ',
+    nutritionTitle: 'BESLENME HESAPLAYICI', activityL: 'AKTİVİTE DÜZEYİ',
+    bmrL: 'BMH', tdeeL: 'GTGE', proteinL: 'PROTEİN HEDEFİ', carbL: 'KARBONHİDRAT HEDEFİ',
+    raceFuelTitle: 'YARIŞ GÜNÜ YAKITI', carbLoadL: 'Karbonhidrat yüklemesi (48s önce)', duringRaceL: 'Yarış sırasında',
   }
 }
 
@@ -143,6 +167,7 @@ const TABS = [
   { id: 'tests',         icon: '\u25b2', lk: 't_tests' },
   { id: 'log',           icon: '\u2261', lk: 't_log' },
   { id: 'periodization', icon: '\u229e', lk: 't_macro' },
+  { id: 'plan',          icon: '\u26a1', lk: 't_plan' },
   { id: 'glossary',      icon: '\u25c7', lk: 't_glossary' },
   { id: 'recovery',      icon: '\u2661', lk: 't_recovery' },
   { id: 'profile',       icon: '\u25cb', lk: 't_profile' },
@@ -220,6 +245,116 @@ const MACRO_PHASES = [
   { week:12, phase:'Taper',    focus:'Volume \u221240%',    zDist:[60,25,8,5,2],   load:'Low'  },
   { week:13, phase:'Race',     focus:'Race Week',          zDist:[75,20,3,2,0],   load:'Low'  },
 ]
+
+// ─── Plan Generator constants ─────────────────────────────────────────────────
+const PLAN_GOALS = ['5K','10K','Half Marathon','Marathon','General Fitness','Cycling Event']
+const PLAN_LEVELS = ['Beginner','Intermediate','Advanced']
+const ACTIVITY_MULTS = [
+  { label:'Sedentary (desk job)', mult:1.2 },
+  { label:'Light (1–3 days/wk)',  mult:1.375 },
+  { label:'Moderate (3–5 days/wk)',mult:1.55 },
+  { label:'Active (6–7 days/wk)', mult:1.725 },
+  { label:'Very Active (2×/day)', mult:1.9 },
+]
+const ZLABEL = { easy:'Z1-Z2',tempo:'Z3-Z4',interval:'Z4-Z5',long:'Z1-Z2',recovery:'Z1',strength:'Z2-Z3',cross:'Z1-Z2',rest:'—',race:'Z4-Z5' }
+const ZIDX   = { easy:1,tempo:3,interval:4,long:1,recovery:0,strength:2,cross:1,rest:-1,race:4 }
+const ZCOL   = t => [ZONE_COLORS[1],ZONE_COLORS[3],ZONE_COLORS[4],ZONE_COLORS[1],ZONE_COLORS[0],ZONE_COLORS[2],ZONE_COLORS[1],'#d4d4d4',ZONE_COLORS[4]][['easy','tempo','interval','long','recovery','strength','cross','rest','race'].indexOf(t)] || ZONE_COLORS[1]
+const SESSION_DESCRIPTIONS = {
+  easy:     'Conversational pace. Z1–Z2 throughout. Nasal breathing. Aerobic base.',
+  tempo:    'Comfortably hard. 20–40 min at lactate threshold. Short sentences only.',
+  interval: 'VO₂max stimulus. Hard repeats (3–5 min) with equal recovery. Quality > quantity.',
+  long:     'Cornerstone session. Easy pace. Mitochondrial density development.',
+  recovery: 'Very easy. Active blood flow only. Walk if needed. Z1 strictly.',
+  strength: 'Hip stability, lunges, single-leg work, core. Injury prevention.',
+  cross:    'Low-impact aerobic. Swim, cycle, or elliptical. Easy effort.',
+  rest:     'Complete rest or gentle mobility. 7–9h sleep. Adaptation happens here.',
+  race:     'RACE DAY. Warm up 15 min. Execute your pacing strategy. Enjoy it.',
+}
+const DAY_PATTERNS = {
+  beginner: {
+    Base:      ['easy','rest','easy','cross','easy','long','rest'],
+    Build:     ['easy','easy','cross','recovery','easy','long','rest'],
+    Peak:      ['easy','tempo','easy','recovery','easy','long','rest'],
+    Taper:     ['easy','tempo','rest','easy','rest','easy','rest'],
+    Recovery:  ['recovery','rest','easy','rest','easy','easy','rest'],
+    'Race Week':['easy','rest','easy','rest','rest','race','rest'],
+  },
+  intermediate: {
+    Base:      ['easy','strength','easy','recovery','easy','long','rest'],
+    Build:     ['easy','tempo','easy','recovery','cross','long','rest'],
+    Peak:      ['easy','interval','easy','tempo','recovery','long','rest'],
+    Taper:     ['easy','tempo','rest','easy','recovery','easy','rest'],
+    Recovery:  ['recovery','cross','easy','rest','easy','easy','rest'],
+    'Race Week':['easy','easy','rest','easy','rest','race','rest'],
+  },
+  advanced: {
+    Base:      ['easy','strength','easy','tempo','easy','long','recovery'],
+    Build:     ['easy','tempo','strength','interval','recovery','long','easy'],
+    Peak:      ['easy','interval','tempo','easy','recovery','long','easy'],
+    Taper:     ['easy','interval','easy','tempo','recovery','easy','rest'],
+    Recovery:  ['recovery','cross','easy','strength','easy','easy','rest'],
+    'Race Week':['easy','easy','tempo','easy','rest','race','rest'],
+  },
+}
+const DUR_FRAC = { easy:.14,tempo:.16,interval:.13,long:.28,recovery:.09,strength:.11,cross:.13,rest:0,race:.20 }
+const SES_RPE  = { easy:4,tempo:7,interval:8,long:5,recovery:3,strength:5,cross:4,rest:0,race:9 }
+const ZONE_BY_TYPE = {
+  easy:[5,70,25,0,0],tempo:[0,15,35,40,10],interval:[0,5,10,30,55],long:[10,75,15,0,0],
+  recovery:[100,0,0,0,0],strength:[0,30,50,20,0],cross:[10,65,25,0,0],rest:[0,0,0,0,0],race:[0,5,15,40,40],
+}
+const DAYS7 = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+
+function generatePlan(goal, totalWeeks, weeklyHours, level) {
+  const w = parseInt(totalWeeks), h = parseFloat(weeklyHours)
+  const taperW = w <= 6 ? 1 : 2
+  const peakW  = w <= 8 ? 1 : w <= 14 ? 2 : 3
+  const rem    = w - taperW - peakW
+  const buildW = Math.max(2, Math.round(rem * 0.5))
+  const baseW  = Math.max(0, rem - buildW)
+  const phases = []
+  for (let i=0;i<baseW;i++)  phases.push('Base')
+  for (let i=0;i<buildW;i++) phases.push('Build')
+  for (let i=0;i<peakW;i++)  phases.push('Peak')
+  for (let i=0;i<taperW-1;i++) phases.push('Taper')
+  phases.push('Race Week')
+  const volByPhase = { Base:.85,Build:1.0,Peak:1.1,Taper:.65,'Race Week':.40 }
+  const lk = (level||'intermediate').toLowerCase()
+  return phases.map((phase, idx) => {
+    const weekNum = idx + 1
+    const isRecovery = weekNum % 4 === 0 && (phase==='Build'||phase==='Base') && weekNum < w - 2
+    const effPhase = isRecovery ? 'Recovery' : phase
+    const wHours = h * (isRecovery ? 0.6 : (volByPhase[phase]||1))
+    const totalMins = wHours * 60
+    const pats = DAY_PATTERNS[lk] || DAY_PATTERNS.intermediate
+    const pattern = pats[effPhase] || pats.Base
+    let weekTSS = 0
+    const zoneMins = [0,0,0,0,0]
+    const sessions = pattern.map((type, di) => {
+      const frac = DUR_FRAC[type]||0
+      const duration = Math.round(totalMins * frac)
+      const rpe = SES_RPE[type]||0
+      const tss = duration > 0 ? calcTSS(duration, rpe) : 0
+      weekTSS += tss
+      const zd = ZONE_BY_TYPE[type]||[0,0,0,0,0]
+      if (duration > 0) zd.forEach((p,zi) => { zoneMins[zi] += p * duration / 100 })
+      return { day:DAYS7[di], type, duration, rpe, tss, zone:ZLABEL[type]||'Z2', zoneIdx:ZIDX[type]??1, color:ZCOL(type), description:SESSION_DESCRIPTIONS[type]||'' }
+    })
+    const totalZ = zoneMins.reduce((s,v)=>s+v,0)||1
+    const zonePct = zoneMins.map(v=>Math.round(v/totalZ*100))
+    return { week:weekNum, phase:isRecovery?'Recovery':phase, sessions, totalHours:wHours.toFixed(1), tss:weekTSS, zonePct }
+  })
+}
+
+function navyBF(neck, waist, hip, height, gender) {
+  if (gender==='male') {
+    return Math.max(0, Math.round((495/(1.0324-0.19077*Math.log10(waist-neck)+0.15456*Math.log10(height))-450)*10)/10)
+  }
+  return Math.max(0, Math.round((495/(1.29579-0.35004*Math.log10(waist+hip-neck)+0.22100*Math.log10(height))-450)*10)/10)
+}
+function mifflinBMR(weight, height, age, gender) {
+  const base = 10*weight + 6.25*height - 5*age
+  return Math.round(gender==='male' ? base+5 : base-161)
+}
 
 // ─── Math helpers ──────────────────────────────────────────────────────────────
 const hrZones    = maxHR => [[.50,.60],[.60,.70],[.70,.80],[.80,.90],[.90,1.00]].map(([lo,hi],i) => ({ name:ZONE_NAMES[i], low:Math.round(maxHR*lo), high:Math.round(maxHR*hi), color:ZONE_COLORS[i] }))
@@ -370,6 +505,28 @@ function TSSChart({ daily, t }) {
       <text x={P.l+53} y={P.t+6} fill="#999" fontSize="8" fontFamily="IBM Plex Mono,monospace">CTL</text>
       <line x1={P.l+80} x2={P.l+88} y1={P.t+3} y2={P.t+3} stroke="#ef4444" strokeWidth="1.5" strokeDasharray="2,2"/>
       <text x={P.l+91} y={P.t+6} fill="#999" fontSize="8" fontFamily="IBM Plex Mono,monospace">ATL</text>
+    </svg>
+  )
+}
+
+// ─── MiniDonut (zone pie) ──────────────────────────────────────────────────────
+function MiniDonut({ pcts, colors, size=56 }) {
+  const r=20, cx=size/2, cy=size/2
+  let acc=0
+  const segs = pcts.map((p,i) => {
+    if (p<=0) { acc+=p; return null }
+    const a0 = acc/100*2*Math.PI - Math.PI/2
+    acc += p
+    const a1 = acc/100*2*Math.PI - Math.PI/2
+    const x1=cx+r*Math.cos(a0), y1=cy+r*Math.sin(a0)
+    const x2=cx+r*Math.cos(a1), y2=cy+r*Math.sin(a1)
+    const large = p>50?1:0
+    return <path key={i} d={`M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${large} 1 ${x2.toFixed(2)},${y2.toFixed(2)} Z`} fill={colors[i]}/>
+  }).filter(Boolean)
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size}>
+      {segs}
+      <circle cx={cx} cy={cy} r={r*0.55} fill="white"/>
     </svg>
   )
 }
@@ -810,10 +967,17 @@ function TestProtocols() {
 }
 
 // ─── Training Log ──────────────────────────────────────────────────────────────
-function TrainingLog({ log, setLog }) {
+function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const { t } = useContext(LangCtx)
   const today = new Date().toISOString().slice(0,10)
   const [form, setForm] = useState({ date:today, type:'Easy Run', duration:'', rpe:'5', notes:'' })
+
+  useEffect(() => {
+    if (prefill) {
+      setForm({ date:today, type:prefill.type||'Easy Run', duration:String(prefill.duration||''), rpe:String(prefill.rpe||5), notes:prefill.description||'' })
+      clearPrefill && clearPrefill()
+    }
+  }, [prefill])
   const [tssPreview, setTssPreview] = useState(null)
 
   const add = () => {
@@ -987,6 +1151,160 @@ function Periodization() {
         </div>
         <div style={{ ...S.mono, fontSize:'10px', color:'#aaa', marginTop:'10px' }}>Polarized model \u2014 Seiler & T\u00f8nnessen (2009). ~80% Z1\u2013Z2, ~20% Z4\u2013Z5.</div>
       </div>
+    </div>
+  )
+}
+
+// ─── Plan Generator ────────────────────────────────────────────────────────────
+function PlanGenerator({ onLogSession }) {
+  const { t } = useContext(LangCtx)
+  const [goal,  setGoal]  = useState('Half Marathon')
+  const [weeks, setWeeks] = useState(12)
+  const [hours, setHours] = useState(8)
+  const [level, setLevel] = useState('Intermediate')
+  const [plan,  setPlan]  = useLocalStorage('sporeus-plan', null)
+  const [selWeek, setSelWeek] = useState(0)
+
+  const today = new Date().toISOString().slice(0,10)
+  const thisWeekIdx = plan ? Math.min(
+    Math.floor((new Date(today) - new Date(plan.generatedAt)) / (7*864e5)),
+    plan.weeks.length - 1
+  ) : 0
+
+  const generate = () => {
+    const weeks_arr = generatePlan(goal, weeks, hours, level)
+    setPlan({ goal, weeks: weeks_arr, generatedAt: today, level, hoursPerWeek: hours })
+    setSelWeek(0)
+  }
+
+  const W = plan?.weeks[selWeek]
+
+  return (
+    <div className="sp-fade">
+      {/* Config card */}
+      <div className="sp-card" style={{ ...S.card, animationDelay:'0ms' }}>
+        <div style={S.cardTitle}>{t('planGoalL')}</div>
+        <div style={{ display:'flex', gap:'6px', flexWrap:'wrap', marginBottom:'14px' }}>
+          {PLAN_GOALS.map(g=>(
+            <button key={g} onClick={()=>setGoal(g)}
+              style={{ ...S.navBtn(goal===g), borderRadius:'4px', fontSize:'11px', padding:'6px 12px' }}>{g}</button>
+          ))}
+        </div>
+        <div style={S.row}>
+          <div style={{ flex:'1 1 180px' }}>
+            <label style={S.label}>{t('planWeeksL')}: <strong>{weeks}</strong></label>
+            <input type="range" min="4" max="24" value={weeks} onChange={e=>setWeeks(+e.target.value)}
+              style={{ width:'100%', accentColor:'#ff6600' }}/>
+            <div style={{ display:'flex', justifyContent:'space-between', ...S.mono, fontSize:'9px', color:'#aaa' }}><span>4</span><span>24</span></div>
+          </div>
+          <div style={{ flex:'1 1 180px' }}>
+            <label style={S.label}>{t('planHoursL')}: <strong>{hours}h</strong></label>
+            <input type="range" min="3" max="15" value={hours} onChange={e=>setHours(+e.target.value)}
+              style={{ width:'100%', accentColor:'#ff6600' }}/>
+            <div style={{ display:'flex', justifyContent:'space-between', ...S.mono, fontSize:'9px', color:'#aaa' }}><span>3h</span><span>15h</span></div>
+          </div>
+        </div>
+        <div style={{ marginTop:'12px' }}>
+          <label style={S.label}>{t('planLevelL')}</label>
+          <div style={{ display:'flex', gap:'8px' }}>
+            {PLAN_LEVELS.map(lv=>(
+              <button key={lv} onClick={()=>setLevel(lv)}
+                style={{ ...S.navBtn(level===lv), borderRadius:'4px', fontSize:'11px', padding:'6px 14px' }}>{lv}</button>
+            ))}
+          </div>
+        </div>
+        <button style={{ ...S.btn, marginTop:'16px' }} onClick={generate}>{t('genPlanBtn')}</button>
+      </div>
+
+      {/* Coach note */}
+      <div style={{ ...S.card, background:'#f0f4ff', border:'1px solid #c7d2fe', borderRadius:'6px', padding:'12px 16px', marginBottom:'16px', ...S.mono, fontSize:'11px', color:'#555', lineHeight:1.8 }}>
+        {t('coachNote')}{' '}
+        <a href="https://sporeus.com" target="_blank" rel="noreferrer" style={{ color:'#0064ff', fontWeight:600 }}>sporeus.com →</a>
+      </div>
+
+      {plan && (
+        <>
+          {/* Phase overview */}
+          <div className="sp-card" style={{ ...S.card, animationDelay:'50ms' }}>
+            <div style={S.cardTitle}>{plan.goal} — {plan.weeks.length} {t('weekLabel').toLowerCase()}s · {plan.level}</div>
+            <div style={{ display:'flex', gap:'4px', flexWrap:'wrap' }}>
+              {plan.weeks.map((w,i) => {
+                const isThis = i === thisWeekIdx
+                const isSel  = i === selWeek
+                const phaseColor = { Base:'#4a90d9', Build:'#f5c542', Peak:'#e03030', Peak2:'#e03030', Taper:'#888', Recovery:'#5bc25b', 'Race Week':'#ff6600' }[w.phase] || '#888'
+                return (
+                  <button key={i} onClick={()=>setSelWeek(i)} style={{
+                    ...S.mono, fontSize:'10px', fontWeight:600, padding:'5px 9px', borderRadius:'4px', cursor:'pointer',
+                    background: isSel ? phaseColor : '#f0f0f0',
+                    color: isSel ? '#fff' : '#555',
+                    border: isThis ? `2px solid ${phaseColor}` : '2px solid transparent',
+                    position:'relative',
+                  }}>
+                    W{w.week}
+                    {isThis && <span style={{ position:'absolute', top:'-4px', right:'-4px', width:'7px', height:'7px', background:'#ff6600', borderRadius:'50%' }}/>}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Selected week detail */}
+          {W && (
+            <div className="sp-card" style={{ ...S.card, animationDelay:'100ms' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'12px' }}>
+                <div>
+                  <div style={S.cardTitle}>{t('weekLabel')} {W.week} — {W.phase.toUpperCase()}
+                    {selWeek === thisWeekIdx && <span style={{ marginLeft:'8px', ...S.tag('#ff6600') }}>THIS WEEK</span>}
+                  </div>
+                  <div style={{ display:'flex', gap:'16px' }}>
+                    {[{l:t('totalHrsLabel'),v:`${W.totalHours}h`},{l:t('tssEstLabel'),v:W.tss}].map(({l,v})=>(
+                      <div key={l}>
+                        <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>{l}</div>
+                        <div style={{ ...S.mono, fontSize:'15px', fontWeight:600, color:'#ff6600' }}>{v}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+                  <MiniDonut pcts={W.zonePct} colors={ZONE_COLORS} size={56}/>
+                  <div style={{ ...S.mono, fontSize:'8px', color:'#888', lineHeight:2 }}>
+                    {ZONE_NAMES.map((n,i)=>W.zonePct[i]>0 && <div key={i} style={{ color:ZONE_COLORS[i] }}>Z{i+1}: {W.zonePct[i]}%</div>)}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))', gap:'8px' }}>
+                {W.sessions.map((ses, di) => (
+                  <div key={di} style={{
+                    background: ses.type==='Rest' ? '#fafafa' : `${ses.color}11`,
+                    border: `1px solid ${ses.type==='Rest'?'#e8e8e8':ses.color+'44'}`,
+                    borderLeft: `3px solid ${ses.color}`,
+                    borderRadius:'5px', padding:'10px 12px',
+                  }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'4px' }}>
+                      <span style={{ ...S.mono, fontSize:'10px', fontWeight:600, color:'#888' }}>{ses.day.toUpperCase()}</span>
+                      {ses.duration > 0 && <span style={{ ...S.mono, fontSize:'10px', color:'#aaa' }}>{ses.duration}min</span>}
+                    </div>
+                    <div style={{ ...S.mono, fontSize:'12px', fontWeight:600, color:ses.type==='Rest'?'#ccc':ses.color, marginBottom:'4px' }}>{ses.type}</div>
+                    {ses.zone !== '—' && <span style={{ ...S.tag(ses.color), fontSize:'9px', marginBottom:'6px', display:'inline-block' }}>{ses.zone}</span>}
+                    <div style={{ fontSize:'11px', color:'#666', lineHeight:1.6, marginTop:'4px' }}>{ses.description}</div>
+                    {ses.type !== 'Rest' && ses.duration > 0 && (
+                      <button onClick={() => onLogSession(ses)}
+                        style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px', marginTop:'8px', width:'100%' }}>
+                        {'\u2261'} {t('logThisBtn')}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {!plan && (
+        <div style={{ textAlign:'center', ...S.mono, fontSize:'12px', color:'#aaa', padding:'40px 0' }}>{t('noPlanYet')}</div>
+      )}
     </div>
   )
 }
@@ -1170,6 +1488,162 @@ function Recovery() {
   )
 }
 
+// ─── Body Composition ──────────────────────────────────────────────────────────
+function BodyComp({ profile, setProfile }) {
+  const { t } = useContext(LangCtx)
+  const [gender, setGender] = useState(profile.gender||'male')
+  const [neck,   setNeck]   = useState(profile.neck||'')
+  const [waist,  setWaist]  = useState(profile.waist||'')
+  const [hip,    setHip]    = useState(profile.hip||'')
+  const [result, setResult] = useState(null)
+
+  const calc = () => {
+    const h=parseFloat(profile.height||0), w=parseFloat(profile.weight||0)
+    const n=parseFloat(neck), wa=parseFloat(waist), hi=parseFloat(hip)
+    if (!h||!w||!n||!wa) return
+    if (gender==='female'&&!hi) return
+    const bf = navyBF(n, wa, hi, h, gender)
+    const fat = Math.round(w * bf / 100 * 10) / 10
+    const lean = Math.round((w - fat) * 10) / 10
+    const bmi = Math.round(w / Math.pow(h/100, 2) * 10) / 10
+    setResult({ bf, fat, lean, bmi, leanPct: Math.round(lean/w*100) })
+    setProfile(prev => ({ ...prev, gender, neck:String(n), waist:String(wa), hip:String(hi) }))
+  }
+
+  return (
+    <div>
+      <div style={S.row}>
+        <div style={{ flex:'1 1 120px' }}>
+          <label style={S.label}>{t('genderL')}</label>
+          <select style={S.select} value={gender} onChange={e=>setGender(e.target.value)}>
+            <option value="male">Male / Erkek</option>
+            <option value="female">Female / Kadın</option>
+          </select>
+        </div>
+        <div style={{ flex:'1 1 100px' }}>
+          <label style={S.label}>{t('neckL')}</label>
+          <input style={S.input} type="number" placeholder="37" value={neck} onChange={e=>setNeck(e.target.value)}/>
+        </div>
+        <div style={{ flex:'1 1 100px' }}>
+          <label style={S.label}>{t('waistL')}</label>
+          <input style={S.input} type="number" placeholder="82" value={waist} onChange={e=>setWaist(e.target.value)}/>
+        </div>
+        {gender==='female' && (
+          <div style={{ flex:'1 1 100px' }}>
+            <label style={S.label}>{t('hipL')}</label>
+            <input style={S.input} type="number" placeholder="98" value={hip} onChange={e=>setHip(e.target.value)}/>
+          </div>
+        )}
+      </div>
+      <div style={{ ...S.mono, fontSize:'10px', color:'#aaa', marginTop:'6px', marginBottom:'12px' }}>
+        Uses HEIGHT & WEIGHT from profile above.
+      </div>
+      <button style={S.btn} onClick={calc}>{t('calcCompBtn')}</button>
+      {result && (
+        <div style={{ marginTop:'16px' }}>
+          <div style={S.row}>
+            {[
+              {l:t('bfPctL'), v:`${result.bf}%`, c:'#f08c00'},
+              {l:t('leanMassL'), v:`${result.lean} kg`, c:'#5bc25b'},
+              {l:t('fatMassL'), v:`${result.fat} kg`, c:'#e03030'},
+              {l:t('bmiLbl'), v:result.bmi, c:'#4a90d9'},
+            ].map(({l,v,c})=>(
+              <div key={l} style={{ ...S.stat, flex:'1 1 90px' }}>
+                <span style={{ ...S.statVal, color:c, fontSize:'18px' }}>{v}</span>
+                <span style={S.statLbl}>{l}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop:'12px' }}>
+            <div style={{ ...S.mono, fontSize:'10px', color:'#888', marginBottom:'4px' }}>LEAN vs FAT</div>
+            <div style={{ display:'flex', height:'10px', borderRadius:'3px', overflow:'hidden', background:'#e8e8e8' }}>
+              <div style={{ width:`${result.leanPct}%`, background:'#5bc25b', transition:'width 400ms ease-out' }}/>
+              <div style={{ width:`${100-result.leanPct}%`, background:'#f08c00' }}/>
+            </div>
+            <div style={{ display:'flex', justifyContent:'space-between', ...S.mono, fontSize:'9px', color:'#aaa', marginTop:'3px' }}>
+              <span>Lean {result.leanPct}%</span><span>Fat {100-result.leanPct}%</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Nutrition Estimator ───────────────────────────────────────────────────────
+function NutritionEstimator({ profile }) {
+  const { t } = useContext(LangCtx)
+  const [actIdx, setActIdx] = useState(2)
+  const w = parseFloat(profile.weight||0), h = parseFloat(profile.height||0)
+  const a = parseFloat(profile.age||0), g = profile.gender||'male'
+  const bmr  = w&&h&&a ? mifflinBMR(w,h,a,g) : null
+  const tdee = bmr ? Math.round(bmr * ACTIVITY_MULTS[actIdx].mult) : null
+  const protLow = w ? Math.round(w*1.6) : null, protHi = w ? Math.round(w*2.2) : null
+  const carbLow = w ? Math.round(w*5)   : null, carbHi  = w ? Math.round(w*7)   : null
+
+  const fuelRows = [
+    ['< 60 min', '30 g/hr'],
+    ['60–150 min', '60 g/hr'],
+    ['> 150 min', '90 g/hr (glucose+fructose mix)'],
+  ]
+
+  return (
+    <div>
+      {!bmr && (
+        <div style={{ ...S.mono, fontSize:'11px', color:'#aaa', marginBottom:'12px' }}>
+          Enter weight, height, age and gender in your profile above to see estimates.
+        </div>
+      )}
+      <div style={{ flex:'1 1 220px', marginBottom:'14px' }}>
+        <label style={S.label}>{t('activityL')}</label>
+        <select style={S.select} value={actIdx} onChange={e=>setActIdx(+e.target.value)}>
+          {ACTIVITY_MULTS.map((m,i)=><option key={i} value={i}>{m.label} (×{m.mult})</option>)}
+        </select>
+      </div>
+      {bmr && (
+        <>
+          <div style={S.row}>
+            {[
+              {l:t('bmrL'),v:`${bmr} kcal`,c:'#4a90d9'},
+              {l:t('tdeeL'),v:`${tdee} kcal`,c:'#ff6600'},
+              {l:t('proteinL'),v:`${protLow}–${protHi}g`,c:'#5bc25b'},
+              {l:t('carbL'),v:`${carbLow}–${carbHi}g`,c:'#f5c542'},
+            ].map(({l,v,c})=>(
+              <div key={l} style={{ ...S.stat, flex:'1 1 110px' }}>
+                <span style={{ ...S.statVal, color:c, fontSize:'15px' }}>{v}</span>
+                <span style={S.statLbl}>{l}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ ...S.mono, fontSize:'9px', color:'#aaa', marginTop:'6px', marginBottom:'14px' }}>
+            Protein: 1.6–2.2 g/kg · Carbs: 5–7 g/kg (endurance) · Mifflin-St Jeor BMR
+          </div>
+          <div style={{ ...S.cardTitle, marginBottom:'8px' }}>{t('raceFuelTitle')}</div>
+          <div style={{ ...S.mono, fontSize:'10px', color:'#555', marginBottom:'8px' }}>
+            {t('carbLoadL')}: <strong>8–12 g/kg/day</strong>
+          </div>
+          <table style={{ width:'100%', borderCollapse:'collapse', ...S.mono, fontSize:'11px' }}>
+            <thead>
+              <tr style={{ borderBottom:'1px solid #e0e0e0', color:'#888', fontSize:'9px' }}>
+                <th style={{ textAlign:'left', padding:'4px 0 6px', fontWeight:600 }}>DURATION</th>
+                <th style={{ textAlign:'right', padding:'4px 0 6px', fontWeight:600 }}>CARBS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fuelRows.map(([dur,carb])=>(
+                <tr key={dur} style={{ borderBottom:'1px solid #f5f5f5' }}>
+                  <td style={{ padding:'5px 0', color:'#555' }}>{dur}</td>
+                  <td style={{ textAlign:'right', padding:'5px 0', color:'#ff6600', fontWeight:600 }}>{carb}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+    </div>
+  )
+}
+
 // ─── Profile ───────────────────────────────────────────────────────────────────
 function Profile({ profile, setProfile }) {
   const { t } = useContext(LangCtx)
@@ -1232,6 +1706,19 @@ function Profile({ profile, setProfile }) {
         </div>
       </div>
 
+      {/* Body Composition */}
+      <div className="sp-card" style={{ ...S.card, animationDelay:'75ms' }}>
+        <div style={S.cardTitle}>{t('bodyCompTitle')}</div>
+        <div style={{ ...S.mono, fontSize:'10px', color:'#aaa', marginBottom:'12px' }}>{t('navyMethodNote')}</div>
+        <BodyComp profile={local} setProfile={setLocal}/>
+      </div>
+
+      {/* Nutrition Estimator */}
+      <div className="sp-card" style={{ ...S.card, animationDelay:'85ms' }}>
+        <div style={S.cardTitle}>{t('nutritionTitle')}</div>
+        <NutritionEstimator profile={local}/>
+      </div>
+
       <div className="sp-card" style={{ ...S.card, background:'#0a0a0a', animationDelay:'100ms' }}>
         <div style={{ ...S.cardTitle, color:'#ff6600', borderColor:'#333' }}>{t('installTitle')}</div>
         <div style={{ ...S.mono, fontSize:'12px', lineHeight:1.9, color:'#ccc' }}>
@@ -1251,6 +1738,7 @@ export default function App() {
   const [log, setLog] = useLocalStorage('sporeus_log', [])
   const [profile, setProfile] = useLocalStorage('sporeus_profile', {})
   const [lang, setLang] = useLocalStorage('sporeus-lang', 'en')
+  const [logPrefill, setLogPrefill] = useState(null)
 
   const t = useCallback(key => LABELS[lang]?.[key] ?? LABELS.en?.[key] ?? key, [lang])
 
@@ -1296,15 +1784,16 @@ export default function App() {
           {tab==='dashboard'     && <Dashboard log={log} profile={profile}/>}
           {tab==='zones'         && <ZoneCalc/>}
           {tab==='tests'         && <TestProtocols/>}
-          {tab==='log'           && <TrainingLog log={log} setLog={setLog}/>}
+          {tab==='log'           && <TrainingLog log={log} setLog={setLog} prefill={logPrefill} clearPrefill={()=>setLogPrefill(null)}/>}
           {tab==='periodization' && <Periodization/>}
+          {tab==='plan'          && <PlanGenerator onLogSession={ses=>{ setLogPrefill(ses); setTab('log') }}/>}
           {tab==='glossary'      && <Glossary/>}
           {tab==='recovery'      && <Recovery/>}
           {tab==='profile'       && <Profile profile={profile} setProfile={setProfile}/>}
         </main>
 
         <footer style={S.footer}>
-          SPOREUS ATHLETE CONSOLE v2.0 \u00b7 SPOREUS.COM \u00b7 E\u015e\u0130K / THRESHOLD 2026
+          SPOREUS ATHLETE CONSOLE v2.1 · SPOREUS.COM · EŞİK / THRESHOLD 2026
         </footer>
       </div>
     </LangCtx.Provider>
