@@ -59,3 +59,14 @@ export function importAllData(json) {
     return true
   } catch { return false }
 }
+
+// Import just a plan JSON (exported from coach plan builder)
+export function importPlanData(json) {
+  try {
+    const plan = JSON.parse(json)
+    if (!plan || !plan.weeks) return false
+    saveStorage('sporeus-plan', plan)
+    saveStorage('sporeus-plan-status', {})
+    return true
+  } catch { return false }
+}

@@ -451,6 +451,7 @@ export default function Profile({ profile, setProfile, log }) {
   const { t } = useContext(LangCtx)
   const [local, setLocal] = useState(profile)
   const [status, setStatus] = useState(null)
+  const [coachMode, setCoachMode] = useLocalStorage('sporeus-coach-mode', false)
 
   useEffect(()=>{ setLocal(profile) },[profile])
 
@@ -567,6 +568,20 @@ export default function Profile({ profile, setProfile, log }) {
           <div>🤖 <strong style={{ color:'#fff' }}>Android:</strong> Chrome menu \u2192 Install App</div>
           <div>💻 <strong style={{ color:'#fff' }}>Desktop:</strong> Address bar \u2192 Install icon</div>
           <div style={{ color:'var(--sub)', fontSize:'10px', marginTop:'6px' }}>Works fully offline once installed.</div>
+        </div>
+      </div>
+
+      <div className="sp-card" style={{ ...S.card, animationDelay:'108ms', borderLeft:`3px solid ${coachMode?'#0064ff':'var(--border)'}` }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div style={S.cardTitle}>COACH MODE</div>
+          <label style={{ display:'flex', alignItems:'center', gap:'8px', cursor:'pointer', ...S.mono, fontSize:'11px', color:coachMode?'#0064ff':'var(--muted)' }}>
+            <input type="checkbox" checked={coachMode} onChange={e=>setCoachMode(e.target.checked)} style={{ accentColor:'#0064ff', width:'16px', height:'16px' }}/>
+            {coachMode ? '◈ ACTIVE' : 'OFF'}
+          </label>
+        </div>
+        <div style={{ ...S.mono, fontSize:'10px', color:'#888', marginTop:'6px', lineHeight:1.6 }}>
+          Import athlete JSON exports and view their dashboards, create plans, track compliance.
+          <br/>File-based · No server · No API keys · Zero tracking
         </div>
       </div>
 

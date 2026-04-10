@@ -13,9 +13,11 @@ import Glossary from './components/Glossary.jsx'
 import Recovery from './components/Recovery.jsx'
 import Profile from './components/Profile.jsx'
 import OnboardingWizard from './components/Onboarding.jsx'
+import CoachDashboard from './components/CoachDashboard.jsx'
 
 export default function App() {
   const [tab, setTab] = useState('dashboard')
+  const [coachMode] = useLocalStorage('sporeus-coach-mode', false)
   const [log, setLog] = useLocalStorage('sporeus_log', [])
   const [profile, setProfile] = useLocalStorage('sporeus_profile', {})
   const [lang, setLang] = useLocalStorage('sporeus-lang', 'en')
@@ -115,7 +117,8 @@ export default function App() {
         </nav>
 
         <main style={S.content}>
-          {tab==='dashboard'     && <ErrorBoundary><Dashboard log={log} profile={profile}/></ErrorBoundary>}
+          {coachMode && <ErrorBoundary><CoachDashboard/></ErrorBoundary>}
+          {!coachMode && tab==='dashboard'     && <ErrorBoundary><Dashboard log={log} profile={profile}/></ErrorBoundary>}
           {tab==='zones'         && <ErrorBoundary><ZoneCalc/></ErrorBoundary>}
           {tab==='tests'         && <ErrorBoundary><TestProtocols/></ErrorBoundary>}
           {tab==='log'           && <ErrorBoundary><TrainingLog log={log} setLog={setLog} prefill={logPrefill} clearPrefill={()=>setLogPrefill(null)}/></ErrorBoundary>}
@@ -127,7 +130,7 @@ export default function App() {
         </main>
 
         <footer style={S.footer}>
-          SPOREUS ATHLETE CONSOLE v3.0.0 · SPOREUS.COM · EŞİK / THRESHOLD 2026
+          SPOREUS ATHLETE CONSOLE v3.4.0 · SPOREUS.COM · EŞİK / THRESHOLD 2026
         </footer>
       </div>
     </LangCtx.Provider>
