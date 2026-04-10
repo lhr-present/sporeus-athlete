@@ -10,9 +10,11 @@ import MentalTools from './MentalTools.jsx'
 export default function Recovery() {
   const { t } = useContext(LangCtx)
   const [entries, setEntries] = useLocalStorage('sporeus-recovery', [])
+  const [profileLS] = useLocalStorage('sporeus_profile', {})
+  const isAdvanced = profileLS?.athleteLevel === 'advanced' || profileLS?.athleteLevel === 'elite'
   const today = new Date().toISOString().slice(0,10)
   const todayEntry = entries.find(e=>e.date===today)
-  const defVals = { sleep:3, soreness:3, energy:3, mood:3, stress:3, sleepHrs:'', bedtime:'', wake:'' }
+  const defVals = { sleep:3, soreness:3, energy:3, mood:3, stress:3, sleepHrs:'', bedtime:'', wake:'', lactate:'', restingHR:'' }
   const [form, setForm] = useState(todayEntry ? { ...defVals, ...todayEntry } : { ...defVals })
 
   useEffect(() => {
@@ -104,6 +106,31 @@ export default function Recovery() {
             {t('sleepAutoNote')}: {form.sleepHrs}h
           </div>
         )}
+
+        {/* Advanced/Elite only: blood lactate + resting HR */}
+        {isAdvanced && (
+          <div style={{ marginTop:'14px' }}>
+            <div style={{ ...S.mono, fontSize:'10px', color:'#4a90d9', letterSpacing:'0.06em', marginBottom:'8px' }}>
+              ◈ ADVANCED METRICS
+            </div>
+            <div style={S.row}>
+              <div style={{ flex:'1 1 130px' }}>
+                <label style={S.label}>BLOOD LACTATE (mmol/L)</label>
+                <input style={S.input} type="number" step="0.1" min="0" max="20" placeholder="1.8"
+                  value={form.lactate} onChange={e=>setForm({...form,lactate:e.target.value})}/>
+              </div>
+              <div style={{ flex:'1 1 130px' }}>
+                <label style={S.label}>RESTING HR (bpm)</label>
+                <input style={S.input} type="number" min="30" max="100" placeholder="48"
+                  value={form.restingHR} onChange={e=>setForm({...form,restingHR:e.target.value})}/>
+              </div>
+            </div>
+            <div style={{ ...S.mono, fontSize:'9px', color:'#aaa', marginTop:'4px' }}>
+              Resting lactate &lt;2.0 mmol/L = baseline · HR trend: lower = better recovery
+            </div>
+          </div>
+        )}
+
         <button style={{ ...S.btn, marginTop:'14px' }} onClick={save}>{t('saveEntryBtn')}</button>
       </div>
 
@@ -144,6 +171,22 @@ export default function Recovery() {
           </div>
         </div>
       )}
+
+      {/* Advanced/Elite: resting HR trend */}
+      {isAdvanced && entries.some(e=>e.restingHR) && (() => {
+        const hrData = entries.slice(-14).map(e=>parseFloat(e.restingHR)||0).filter(v=>v>0)
+        const avgHR = hrData.length ? Math.round(hrData.reduce((s,v)=>s+v,0)/hrData.length) : 0
+        return (
+          <div className="sp-card" style={{ ...S.card, animationDelay:'90ms' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div style={{ ...S.cardTitle, color:'#4a90d9' }}>RESTING HR TREND</div>
+              <div style={{ ...S.mono, fontSize:'12px', color:'#4a90d9', fontWeight:600 }}>14-day avg: {avgHR} bpm</div>
+            </div>
+            <Sparkline data={hrData} w={200} h={36}/>
+            <div style={{ ...S.mono, fontSize:'9px', color:'#aaa', marginTop:'4px' }}>Lower = better recovery. Track for overtraining signals.</div>
+          </div>
+        )
+      })()}
 
       {entries.length>0 && (
         <div className="sp-card" style={{ ...S.card, animationDelay:'100ms' }}>

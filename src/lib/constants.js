@@ -40,6 +40,30 @@ export const ATHLETE_LEVELS = [
   { id:'advanced',     label:'Advanced',     sub:'7+ yr · top 10% finisher' },
   { id:'elite',        label:'Elite',        sub:'National/international level' },
 ]
+
+// Adaptive UI visibility by athlete level
+export const LEVEL_CONFIG = {
+  beginner:     { showCTL:false, showTSB:false, showACWR:false, showMonotony:false, showZoneDonut:false, showTaper:false, dashSimple:true  },
+  recreational: { showCTL:false, showTSB:true,  showACWR:false, showMonotony:false, showZoneDonut:true,  showTaper:false, dashSimple:false },
+  competitive:  { showCTL:true,  showTSB:true,  showACWR:true,  showMonotony:false, showZoneDonut:true,  showTaper:true,  dashSimple:false },
+  advanced:     { showCTL:true,  showTSB:true,  showACWR:true,  showMonotony:true,  showZoneDonut:true,  showTaper:true,  dashSimple:false },
+  elite:        { showCTL:true,  showTSB:true,  showACWR:true,  showMonotony:true,  showZoneDonut:true,  showTaper:true,  dashSimple:false },
+}
+
+// Default zone mode and sport behaviour by primary sport
+export const SPORT_CONFIG = {
+  running:    { defaultZoneMode:'pace',  showFTP:false, showCSS:false, sessionGroup:'Running',      unitPrimary:'min/km' },
+  cycling:    { defaultZoneMode:'power', showFTP:true,  showCSS:false, sessionGroup:'Cycling',      unitPrimary:'watts'  },
+  swimming:   { defaultZoneMode:'hr',    showFTP:false, showCSS:true,  sessionGroup:'Swimming',     unitPrimary:'/100m'  },
+  triathlon:  { defaultZoneMode:'pace',  showFTP:true,  showCSS:true,  sessionGroup:'Multi-Sport',  unitPrimary:'mixed'  },
+  trail:      { defaultZoneMode:'hr',    showFTP:false, showCSS:false, sessionGroup:'Running',      unitPrimary:'effort' },
+  hyrox:      { defaultZoneMode:'hr',    showFTP:false, showCSS:false, sessionGroup:'General',      unitPrimary:'effort' },
+  ocr:        { defaultZoneMode:'hr',    showFTP:false, showCSS:false, sessionGroup:'General',      unitPrimary:'effort' },
+  rowing:     { defaultZoneMode:'hr',    showFTP:false, showCSS:false, sessionGroup:'General',      unitPrimary:'/500m'  },
+  nordic:     { defaultZoneMode:'hr',    showFTP:false, showCSS:false, sessionGroup:'General',      unitPrimary:'effort' },
+  hybrid:     { defaultZoneMode:'hr',    showFTP:true,  showCSS:false, sessionGroup:'General',      unitPrimary:'mixed'  },
+  other:      { defaultZoneMode:'hr',    showFTP:false, showCSS:false, sessionGroup:'General',      unitPrimary:'effort' },
+}
 export const LOAD_COLOR = { Low:'#5bc25b', Med:'#f5c542', High:'#e03030' }
 export const RACE_DISTANCES = [
   { label:'1500 m', m:1500 }, { label:'1 mile', m:1609 }, { label:'3 km', m:3000 },

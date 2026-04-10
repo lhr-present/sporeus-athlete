@@ -1,9 +1,10 @@
 import { useState, useEffect, useContext } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
-import { RACE_DISTANCES, ZONE_COLORS, ZONE_NAMES } from '../lib/constants.js'
+import { RACE_DISTANCES, ZONE_COLORS, ZONE_NAMES, SPORT_CONFIG, ATHLETE_LEVELS } from '../lib/constants.js'
 import { hrZones, powerZones, paceZones, parseTimeSec, fmtSec, fmtPace, riegel } from '../lib/formulas.js'
 import { ZoneBar } from './ui.jsx'
+import { useLocalStorage } from '../hooks/useLocalStorage.js'
 
 function HeatModule() {
   const [temp, setTemp] = useState('25')
@@ -144,7 +145,12 @@ function AltitudeModule() {
 
 export default function ZoneCalc() {
   const { t } = useContext(LangCtx)
-  const [mode, setMode] = useState('hr')
+  const [profileLS] = useLocalStorage('sporeus_profile', {})
+  const isElite = profileLS?.athleteLevel === 'elite' || profileLS?.athleteLevel === 'advanced'
+  const [mode, setMode] = useState(() => {
+    const sc = SPORT_CONFIG[profileLS?.primarySport]
+    return sc?.defaultZoneMode === 'power' ? 'power' : sc?.defaultZoneMode === 'pace' ? 'pace' : 'hr'
+  })
   const [maxHR, setMaxHR] = useState('')
   const [ftp, setFtp] = useState('')
   const [threshPace, setThreshPace] = useState('')
@@ -331,6 +337,43 @@ export default function ZoneCalc() {
               <ZoneBar pct={(i+1)*20} color={z.color}/>
             </div>
           ))}
+          {/* Elite: W/kg display */}
+          {isElite && mode==='power' && (() => {
+            const ftpVal = parseFloat(ftp)
+            const wt = parseFloat(profileLS?.weight||0)
+            if (!ftpVal || !wt) return null
+            const wkg = Math.round(ftpVal/wt*100)/100
+            const wkgColor = wkg>=5?'#f5c542':wkg>=4?'#5bc25b':wkg>=3.5?'#4a90d9':'#888'
+            const wkgLabel = wkg>=5?'World class':wkg>=4?'Elite / Cat 1':wkg>=3.5?'Competitive':wkg>=3?'Recreational':'Beginner'
+            return (
+              <div style={{ display:'flex', gap:'12px', marginTop:'12px', padding:'8px 10px', background:'var(--surface)', borderRadius:'4px', border:'1px solid var(--border)' }}>
+                <div>
+                  <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>W/KG</div>
+                  <div style={{ ...S.mono, fontSize:'22px', fontWeight:600, color:wkgColor }}>{wkg}</div>
+                  <div style={{ ...S.mono, fontSize:'9px', color:wkgColor }}>{wkgLabel}</div>
+                </div>
+                <div style={{ borderLeft:'1px solid var(--border)', paddingLeft:'12px' }}>
+                  <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>W/KG BENCHMARKS</div>
+                  {[['5.0+','World class'],['4.0–5.0','Elite / Cat 1'],['3.5–4.0','Competitive'],['3.0–3.5','Recreational']].map(([r,l])=>(
+                    <div key={r} style={{ ...S.mono, fontSize:'10px', color:'var(--sub)' }}>{r} — {l}</div>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
+          {/* Elite: Pace at VO2max */}
+          {isElite && mode==='pace' && (() => {
+            const vo2 = parseFloat(profileLS?.vo2max||0)
+            if (!vo2) return null
+            const paceSecKm = Math.round(12600/vo2)
+            const pm = Math.floor(paceSecKm/60), ps = paceSecKm%60
+            return (
+              <div style={{ ...S.mono, fontSize:'11px', color:'#4a90d9', marginTop:'10px', padding:'7px 10px', background:'#4a90d911', borderRadius:'4px' }}>
+                ◈ Pace at VO2max (vVO2max): <strong>{pm}:{String(ps).padStart(2,'0')} /km</strong>
+                <span style={{ fontSize:'9px', color:'#888', marginLeft:'8px' }}>Formula: 12600 / VO2max</span>
+              </div>
+            )
+          })()}
           <div style={{ ...S.mono, fontSize:'10px', color:'#aaa', marginTop:'8px' }}>
             Coggan (power) · Tanaka/Karvonen (HR) · McMillan (pace) · CSS/T-pace (swim) · 2K split model (row)
           </div>

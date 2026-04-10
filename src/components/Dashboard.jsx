@@ -6,7 +6,7 @@ import { monotonyStrain, calcPRs, navyBF, mifflinBMR, riegel, fmtSec, fmtPace, c
 import { useCountUp } from '../hooks/useCountUp.js'
 import Achievements from './Achievements.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
-import { SPORT_BRANCHES, ATHLETE_LEVELS } from '../lib/constants.js'
+import { SPORT_BRANCHES, ATHLETE_LEVELS, LEVEL_CONFIG } from '../lib/constants.js'
 
 export default function Dashboard({ log, profile }) {
   const [dark] = useLocalStorage('sporeus-dark', false)
@@ -19,6 +19,8 @@ export default function Dashboard({ log, profile }) {
   const { t } = useContext(LangCtx)
   const sportLabel = SPORT_BRANCHES.find(b=>b.id===profile.primarySport)?.label || profile.sport || ''
   const levelLabel = ATHLETE_LEVELS.find(l=>l.id===profile.athleteLevel)?.label || ''
+  const lc = LEVEL_CONFIG[profile.athleteLevel] || LEVEL_CONFIG.competitive
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const last7 = log.slice(-7)
   const totalTSS = last7.reduce((s,e)=>s+(e.tss||0),0)
   const totalMin = last7.reduce((s,e)=>s+(e.duration||0),0)
@@ -30,6 +32,113 @@ export default function Dashboard({ log, profile }) {
   const countTSS  = useCountUp(totalTSS)
   const today = new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).toUpperCase()
 
+  // Coaching message — tone adapts to athlete level
+  const coachingMsg = (() => {
+    const lvl = profile.athleteLevel || 'competitive'
+    const isBusy = totalTSS > 400
+    if (lvl==='beginner') return isBusy
+      ? "Take it easy today — rest is part of training!"
+      : "Keep showing up — consistency beats intensity every time."
+    if (!isBusy) return null
+    if (lvl==='recreational') return "Consider an easy session today — your body needs recovery."
+    if (lvl==='competitive') return `Readiness low — consider swapping tomorrow's tempo for an easy run.`
+    return `TSB ${tsb>=0?'+':''}${tsb} · High load detected — deload recommended. Swap threshold → Z2 45min.`
+  })()
+
+  const headerBadges = (
+    <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', marginTop:'6px' }}>
+      {sportLabel && (
+        <span style={{ ...S.mono, fontSize:'10px', color:'#ff6600', border:'1px solid #ff660044', padding:'2px 7px', borderRadius:'2px' }}>
+          {sportLabel.toUpperCase()}
+          {profile.triathlonType && profile.primarySport==='triathlon' ? ` · ${profile.triathlonType.toUpperCase()}` : ''}
+        </span>
+      )}
+      {levelLabel && (
+        <span style={{ ...S.mono, fontSize:'10px', color:'#4a90d9', border:'1px solid #4a90d944', padding:'2px 7px', borderRadius:'2px' }}>
+          {levelLabel.toUpperCase()}
+        </span>
+      )}
+      {myCoach==='huseyin-sporeus' && (
+        <span style={{ ...S.mono, fontSize:'10px', color:'#5bc25b', border:'1px solid #5bc25b44', padding:'2px 7px', borderRadius:'2px' }}>
+          ◈ COACH: HÜSEYİN AKBULUT
+        </span>
+      )}
+    </div>
+  )
+
+  // ── Beginner simplified dashboard ────────────────────────────────────────────
+  if (lc.dashSimple && !showAdvanced) {
+    return (
+      <div className="sp-fade">
+        <div style={{ marginBottom:'16px' }}>
+          <div style={{ ...S.mono, fontSize:'11px', color:'#888', marginBottom:'4px' }}>{today}</div>
+          <div style={{ ...S.mono, fontSize:'18px', fontWeight:600 }}>
+            {profile.name ? `ATHLETE: ${profile.name.toUpperCase()}` : t('appTitle')}
+          </div>
+          {headerBadges}
+        </div>
+
+        <div className="sp-card" style={{ ...S.row, marginBottom:'16px', animationDelay:'0ms' }}>
+          {[
+            { val:countSess, lbl:t('sessions') },
+            { val:`${Math.floor(totalMin/60)}h ${totalMin%60}m`, lbl:t('volume') },
+            { val:avgRPE, lbl:t('avgRpe') },
+          ].map(({val,lbl})=>(
+            <div key={lbl} style={S.stat}>
+              <span style={S.statVal}>{val}</span>
+              <span style={S.statLbl}>{lbl}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="sp-card" style={{ ...S.card, animationDelay:'50ms', borderLeft:'4px solid #5bc25b' }}>
+          <div style={{ ...S.mono, fontSize:'12px', lineHeight:1.8, color:'var(--text)' }}>{coachingMsg}</div>
+          {avgRPE!=='—' && (
+            <div style={{ ...S.mono, fontSize:'10px', color:'#888', marginTop:'8px' }}>
+              {parseFloat(avgRPE)>=7 ? '⚠ Average RPE is high this week — include easy days.' : parseFloat(avgRPE)<5 ? '✓ Low-RPE week — body recovering well.' : '○ Moderate effort week — on track.'}
+            </div>
+          )}
+        </div>
+
+        <div className="sp-card" style={{ ...S.card, animationDelay:'80ms' }}>
+          <div style={S.cardTitle}>{t('recentSessions')}</div>
+          {last7.length===0 ? (
+            <div style={{ ...S.mono, fontSize:'12px', color:'#aaa', textAlign:'center', padding:'20px 0' }}>{t('noSessions')}</div>
+          ) : (
+            <table style={{ width:'100%', borderCollapse:'collapse', ...S.mono, fontSize:'12px' }}>
+              <thead>
+                <tr style={{ borderBottom:'1px solid var(--border)', color:'#888', fontSize:'10px' }}>
+                  {[t('dateL'),'TYPE','MIN','RPE'].map(h=>(
+                    <th key={h} style={{ textAlign:'left', padding:'4px 0 8px', fontWeight:600 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[...last7].reverse().map((s,i)=>(
+                  <tr key={i} style={{ borderBottom:'1px solid var(--border)' }}>
+                    <td style={{ padding:'6px 0', color:'var(--sub)' }}>{s.date}</td>
+                    <td style={{ padding:'6px 0' }}>{s.type}</td>
+                    <td style={{ padding:'6px 0' }}>{s.duration}</td>
+                    <td style={{ padding:'6px 0', color:s.rpe>=8?'#e03030':s.rpe>=6?'#f5c542':'#5bc25b' }}>{s.rpe}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <Achievements log={log} dark={dark} lang={lang}/>
+
+        <div style={{ textAlign:'center', padding:'20px 0' }}>
+          <button style={{ ...S.btnSec, fontSize:'11px' }} onClick={()=>setShowAdvanced(true)}>
+            SHOW ADVANCED ANALYTICS ↓
+          </button>
+        </div>
+      </div>
+    )
+  }
+  // ── End beginner simplified dashboard ────────────────────────────────────────
+
   return (
     <div className="sp-fade">
       <div style={{ marginBottom:'16px' }}>
@@ -37,24 +146,12 @@ export default function Dashboard({ log, profile }) {
         <div style={{ ...S.mono, fontSize:'18px', fontWeight:600 }}>
           {profile.name ? `ATHLETE: ${profile.name.toUpperCase()}` : t('appTitle')}
         </div>
-        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', marginTop:'6px' }}>
-          {sportLabel && (
-            <span style={{ ...S.mono, fontSize:'10px', color:'#ff6600', border:'1px solid #ff660044', padding:'2px 7px', borderRadius:'2px' }}>
-              {sportLabel.toUpperCase()}
-              {profile.triathlonType && profile.primarySport==='triathlon' ? ` · ${profile.triathlonType.toUpperCase()}` : ''}
-            </span>
-          )}
-          {levelLabel && (
-            <span style={{ ...S.mono, fontSize:'10px', color:'#4a90d9', border:'1px solid #4a90d944', padding:'2px 7px', borderRadius:'2px' }}>
-              {levelLabel.toUpperCase()}
-            </span>
-          )}
-          {myCoach==='huseyin-sporeus' && (
-            <span style={{ ...S.mono, fontSize:'10px', color:'#5bc25b', border:'1px solid #5bc25b44', padding:'2px 7px', borderRadius:'2px' }}>
-              ◈ COACH: HÜSEYİN AKBULUT
-            </span>
-          )}
-        </div>
+        {headerBadges}
+        {showAdvanced && (
+          <button style={{ ...S.btnSec, fontSize:'10px', marginTop:'8px', padding:'3px 8px' }} onClick={()=>setShowAdvanced(false)}>
+            ← SIMPLE VIEW
+          </button>
+        )}
       </div>
 
       <div className="sp-card" style={{ ...S.card, borderLeft:`4px solid ${readiness.color}`, animationDelay:'0ms' }}>
@@ -62,17 +159,24 @@ export default function Dashboard({ log, profile }) {
           <div>
             <div style={S.cardTitle}>{t('readiness')}</div>
             <span style={S.tag(readiness.color)}>{readiness.label}</span>
-            <div style={{ display:'flex', gap:'16px', marginTop:'10px' }}>
-              {[{lbl:t('ctlLabel'),v:ctl,c:'#0064ff'},{lbl:t('atlLabel'),v:atl,c:'#ef4444'},{lbl:t('tsbLabel'),v:(tsb>=0?'+':'')+tsb,c:tsbColor}].map(({lbl,v,c})=>(
-                <div key={lbl}>
-                  <div style={{ ...S.mono, fontSize:'9px', color:'#888', letterSpacing:'0.08em' }}>{lbl}</div>
-                  <div style={{ ...S.mono, fontSize:'16px', fontWeight:600, color:c }}>{v}</div>
-                </div>
-              ))}
-            </div>
+            {lc.showCTL && (
+              <div style={{ display:'flex', gap:'16px', marginTop:'10px' }}>
+                {[{lbl:t('ctlLabel'),v:ctl,c:'#0064ff'},{lbl:t('atlLabel'),v:atl,c:'#ef4444'},{lbl:t('tsbLabel'),v:(tsb>=0?'+':'')+tsb,c:tsbColor}].map(({lbl,v,c})=>(
+                  <div key={lbl}>
+                    <div style={{ ...S.mono, fontSize:'9px', color:'#888', letterSpacing:'0.08em' }}>{lbl}</div>
+                    <div style={{ ...S.mono, fontSize:'16px', fontWeight:600, color:c }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div style={{ ...S.mono, fontSize:'40px', fontWeight:600, color:readiness.color }}>{countTSS}</div>
         </div>
+        {coachingMsg && (
+          <div style={{ ...S.mono, fontSize:'11px', color:'var(--sub)', marginTop:'10px', padding:'7px 10px', background:'var(--card-bg)', borderRadius:'4px', lineHeight:1.7, borderLeft:'3px solid #ff660066' }}>
+            ◈ {coachingMsg}
+          </div>
+        )}
       </div>
 
       <div className="sp-card" style={{ ...S.row, marginBottom:'16px', animationDelay:'50ms' }}>
@@ -129,9 +233,8 @@ export default function Dashboard({ log, profile }) {
         </div>
       )}
 
-      {log.length>0 && (() => {
+      {lc.showZoneDonut && log.length>0 && (() => {
         const { mono, strain } = monotonyStrain(log)
-        const prs = calcPRs(log)
         const monoRed = mono>2.0, strainRed = strain>6000
         return (
           <div className="sp-card" style={{ ...S.row, marginBottom:'16px', animationDelay:'180ms' }}>
@@ -139,18 +242,20 @@ export default function Dashboard({ log, profile }) {
               <div style={S.cardTitle}>ZONE DISTRIBUTION</div>
               <ZoneDonut log={log}/>
             </div>
-            <div style={{ flex:'1 1 200px', display:'flex', flexDirection:'column', gap:'8px' }}>
-              <div style={{ ...S.card, marginBottom:0, borderLeft:`3px solid ${monoRed?'#e03030':'#5bc25b'}` }}>
-                <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>MONOTONY INDEX</div>
-                <div style={{ ...S.mono, fontSize:'22px', fontWeight:600, color:monoRed?'#e03030':'#1a1a1a' }}>{mono}</div>
-                <div style={{ ...S.mono, fontSize:'9px', color:'#aaa' }}>{monoRed?'⚠ INJURY RISK':'Normal'} (alert &gt;2.0)</div>
+            {lc.showMonotony && (
+              <div style={{ flex:'1 1 200px', display:'flex', flexDirection:'column', gap:'8px' }}>
+                <div style={{ ...S.card, marginBottom:0, borderLeft:`3px solid ${monoRed?'#e03030':'#5bc25b'}` }}>
+                  <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>MONOTONY INDEX</div>
+                  <div style={{ ...S.mono, fontSize:'22px', fontWeight:600, color:monoRed?'#e03030':'#1a1a1a' }}>{mono}</div>
+                  <div style={{ ...S.mono, fontSize:'9px', color:'#aaa' }}>{monoRed?'⚠ INJURY RISK':'Normal'} (alert &gt;2.0)</div>
+                </div>
+                <div style={{ ...S.card, marginBottom:0, borderLeft:`3px solid ${strainRed?'#e03030':'#5bc25b'}` }}>
+                  <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>STRAIN INDEX</div>
+                  <div style={{ ...S.mono, fontSize:'22px', fontWeight:600, color:strainRed?'#e03030':'#1a1a1a' }}>{strain}</div>
+                  <div style={{ ...S.mono, fontSize:'9px', color:'#aaa' }}>{strainRed?'⚠ HIGH':'Normal'} (alert &gt;6000)</div>
+                </div>
               </div>
-              <div style={{ ...S.card, marginBottom:0, borderLeft:`3px solid ${strainRed?'#e03030':'#5bc25b'}` }}>
-                <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>STRAIN INDEX</div>
-                <div style={{ ...S.mono, fontSize:'22px', fontWeight:600, color:strainRed?'#e03030':'#1a1a1a' }}>{strain}</div>
-                <div style={{ ...S.mono, fontSize:'9px', color:'#aaa' }}>{strainRed?'⚠ HIGH':'Normal'} (alert &gt;6000)</div>
-              </div>
-            </div>
+            )}
           </div>
         )
       })()}
@@ -170,7 +275,7 @@ export default function Dashboard({ log, profile }) {
         </div>
       )}
 
-      {log.length>3 && (
+      {lc.showCTL && log.length>3 && (
         <div className="sp-card" style={{ ...S.card, animationDelay:'195ms' }}>
           <div style={S.cardTitle}>FITNESS TIMELINE — CTL (ALL TIME)</div>
           <CTLTimeline log={log}/>
@@ -253,7 +358,7 @@ export default function Dashboard({ log, profile }) {
       <Achievements log={log} dark={dark} lang={lang}/>
 
       {/* Goal Countdown */}
-      {plan && (() => {
+      {lc.showTaper && plan && (() => {
         const startDate = new Date(plan.generatedAt)
         const raceDate = new Date(startDate)
         raceDate.setDate(raceDate.getDate() + plan.weeks.length * 7)
@@ -390,7 +495,7 @@ ${complianceStr?`<div>Plan: <strong>${complianceStr}</strong></div>`:''}
       })()}
 
       {/* ACWR — Acute:Chronic Workload Ratio */}
-      {(() => {
+      {lc.showACWR && (() => {
         if (log.length < 7) return null
         const now = Date.now()
         const ms7  = 7  * 864e5

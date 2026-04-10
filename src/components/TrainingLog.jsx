@@ -1,14 +1,22 @@
 import { useState, useEffect, useContext } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
-import { SESSION_TYPES_BY_DISCIPLINE, ZONE_COLORS, ZONE_NAMES } from '../lib/constants.js'
+import { SESSION_TYPES_BY_DISCIPLINE, ZONE_COLORS, ZONE_NAMES, SPORT_CONFIG } from '../lib/constants.js'
 import { calcTSS } from '../lib/formulas.js'
 import Calendar from './Calendar.jsx'
+import { useLocalStorage } from '../hooks/useLocalStorage.js'
 
 export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const { t } = useContext(LangCtx)
+  const [profileLS] = useLocalStorage('sporeus_profile', {})
   const today = new Date().toISOString().slice(0,10)
-  const [form, setForm] = useState({ date:today, type:'Easy Run', duration:'', rpe:'5', notes:'' })
+  const defaultType = (() => {
+    const sc = SPORT_CONFIG[profileLS?.primarySport]
+    if (!sc) return 'Easy Run'
+    const group = SESSION_TYPES_BY_DISCIPLINE[sc.sessionGroup]
+    return group?.[0] || 'Easy Run'
+  })()
+  const [form, setForm] = useState({ date:today, type:defaultType, duration:'', rpe:'5', notes:'' })
   const [showZones, setShowZones] = useState(false)
   const [zoneMins, setZoneMins] = useState(['','','','',''])
   const [editingId, setEditingId] = useState(null)
