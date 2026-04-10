@@ -1,11 +1,21 @@
 import { useState, useEffect, useCallback, useContext, createContext } from 'react'
 
-// ─── Animation CSS (injected) ──────────────────────────────────────────────────
+// ─── Animation + theme CSS ────────────────────────────────────────────────────
 const ANIM_CSS = `
   @keyframes fadeIn  { from{opacity:0}to{opacity:1} }
   @keyframes slideUp { from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)} }
   .sp-fade { animation:fadeIn 200ms ease-out both }
   .sp-card { animation:slideUp 300ms ease-out both }
+  :root {
+    --bg:#ffffff; --text:#1a1a1a; --card:#ffffff; --card-bg:#f8f8f8;
+    --border:#e0e0e0; --muted:#888; --sub:#555; --surface:#fafafa;
+    --input-bg:#ffffff; --input-border:#ccc;
+  }
+  :root[data-theme="dark"] {
+    --bg:#0a0a0a; --text:#e5e5e5; --card:#1a1a1a; --card-bg:#111111;
+    --border:#333333; --muted:#888; --sub:#aaa; --surface:#111111;
+    --input-bg:#1a1a1a; --input-border:#444;
+  }
 `
 
 // ─── Hooks ─────────────────────────────────────────────────────────────────────
@@ -416,7 +426,7 @@ function setApiCache(d) { try { localStorage.setItem(API_KEY,JSON.stringify({ts:
 
 // ─── Styles ────────────────────────────────────────────────────────────────────
 const S = {
-  app: { fontFamily:"'IBM Plex Sans',system-ui,sans-serif", backgroundColor:'#fff', color:'#1a1a1a', minHeight:'100vh', maxWidth:'900px', margin:'0 auto', paddingTop:'3px' },
+  app: { fontFamily:"'IBM Plex Sans',system-ui,sans-serif", backgroundColor:'var(--bg)', color:'var(--text)', minHeight:'100vh', maxWidth:'900px', margin:'0 auto', paddingTop:'3px' },
   topBar: { height:'3px', background:'#ff6600', position:'fixed', top:0, left:0, right:0, zIndex:9999 },
   header: { background:'#0a0a0a', padding:'10px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:'1px solid #ff6600' },
   headerTitle: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'13px', fontWeight:600, letterSpacing:'0.12em', color:'#ff6600' },
@@ -425,12 +435,12 @@ const S = {
   nav: { display:'flex', minWidth:'max-content' },
   navBtn: a => ({ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', fontWeight:600, letterSpacing:'0.08em', padding:'10px 13px', border:'none', cursor:'pointer', background:a?'#ff6600':'transparent', color:a?'#fff':'#888', borderBottom:a?'2px solid #ff6600':'2px solid transparent', transition:'all 0.15s', whiteSpace:'nowrap' }),
   content: { padding:'20px' },
-  card: { background:'#f8f8f8', border:'1px solid #e0e0e0', borderRadius:'6px', padding:'16px', marginBottom:'16px' },
-  cardTitle: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', color:'#888', marginBottom:'12px', borderBottom:'1px solid #e0e0e0', paddingBottom:'8px' },
+  card: { background:'var(--card-bg)', border:'1px solid var(--border)', borderRadius:'6px', padding:'16px', marginBottom:'16px' },
+  cardTitle: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--muted)', marginBottom:'12px', borderBottom:'1px solid var(--border)', paddingBottom:'8px' },
   row: { display:'flex', gap:'12px', flexWrap:'wrap' },
   label: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'#666', marginBottom:'4px', display:'block' },
-  input: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'14px', padding:'8px 12px', border:'1px solid #ccc', borderRadius:'4px', width:'100%', boxSizing:'border-box', background:'#fff', color:'#1a1a1a' },
-  select: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'13px', padding:'8px 12px', border:'1px solid #ccc', borderRadius:'4px', width:'100%', boxSizing:'border-box', background:'#fff', color:'#1a1a1a', cursor:'pointer' },
+  input: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'14px', padding:'8px 12px', border:'1px solid var(--input-border)', borderRadius:'4px', width:'100%', boxSizing:'border-box', background:'var(--input-bg)', color:'var(--text)' },
+  select: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'13px', padding:'8px 12px', border:'1px solid var(--input-border)', borderRadius:'4px', width:'100%', boxSizing:'border-box', background:'var(--input-bg)', color:'var(--text)', cursor:'pointer' },
   btn: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, letterSpacing:'0.06em', padding:'10px 18px', background:'#ff6600', color:'#fff', border:'none', borderRadius:'4px', cursor:'pointer' },
   btnSec: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, padding:'8px 14px', background:'transparent', color:'#ff6600', border:'1px solid #ff6600', borderRadius:'4px', cursor:'pointer' },
   stat: { flex:'1 1 110px', background:'#0a0a0a', borderRadius:'6px', padding:'14px', textAlign:'center' },
@@ -1989,7 +1999,7 @@ function NutritionEstimator({ profile }) {
 }
 
 // ─── Profile ───────────────────────────────────────────────────────────────────
-function Profile({ profile, setProfile }) {
+function Profile({ profile, setProfile, log }) {
   const { t } = useContext(LangCtx)
   const [local, setLocal] = useState(profile)
   const [status, setStatus] = useState(null)
@@ -2050,6 +2060,15 @@ function Profile({ profile, setProfile }) {
         </div>
       </div>
 
+      {/* Athlete Card */}
+      <AthleteCard profile={local} log={log}/>
+
+      {/* Reminders */}
+      <div className="sp-card" style={{ ...S.card, animationDelay:'65ms' }}>
+        <div style={S.cardTitle}>REMINDERS / HATIRLATICLAR</div>
+        <NotifReminders/>
+      </div>
+
       {/* Body Composition */}
       <div className="sp-card" style={{ ...S.card, animationDelay:'75ms' }}>
         <div style={S.cardTitle}>{t('bodyCompTitle')}</div>
@@ -2076,6 +2095,299 @@ function Profile({ profile, setProfile }) {
   )
 }
 
+// ─── Onboarding Wizard ────────────────────────────────────────────────────────
+function OnboardingWizard({ onFinish, setLang, lang }) {
+  const [step, setStep] = useState(0)
+  const [data, setData] = useState({ name:'', sport:'Running', age:'', gender:'male', maxhr:'', ftp:'', ltpace:'', goal:'Half Marathon', weeks:'' })
+  const set = (k,v) => setData(d=>({...d,[k]:v}))
+  const sports = ['Running','Cycling','Triathlon','Swimming','Rowing','Other']
+  const goals  = ['5K','10K','Half Marathon','Marathon','General Fitness','Cycling Event']
+
+  const steps = [
+    // Step 0: Welcome
+    <div style={{ textAlign:'center', padding:'20px 0' }}>
+      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'22px', fontWeight:600, color:'#ff6600', letterSpacing:'0.1em', marginBottom:'8px' }}>◈ SPOREUS</div>
+      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'13px', color:'#888', marginBottom:'24px' }}>Bloomberg Terminal for your body</div>
+      <div style={{ display:'flex', gap:'8px', justifyContent:'center', marginBottom:'24px' }}>
+        {['EN','TR'].map(l=>(
+          <button key={l} onClick={()=>setLang(l.toLowerCase())}
+            style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'13px', fontWeight:600, padding:'8px 20px', borderRadius:'4px', border:`2px solid ${lang===l.toLowerCase()?'#ff6600':'#e0e0e0'}`, background:lang===l.toLowerCase()?'#ff6600':'transparent', color:lang===l.toLowerCase()?'#fff':'#888', cursor:'pointer' }}>
+            {l}
+          </button>
+        ))}
+      </div>
+    </div>,
+
+    // Step 1: Basic info
+    <div>
+      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'16px' }}>01 / BASIC INFO</div>
+      <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
+        {[{l:'Name',k:'name',ph:'Athlete name'},{l:'Age',k:'age',ph:'32',type:'number'}].map(f=>(
+          <div key={f.k}>
+            <label style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'#888', display:'block', marginBottom:'4px' }}>{f.l.toUpperCase()}</label>
+            <input style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'14px', padding:'8px 12px', border:'1px solid #e0e0e0', borderRadius:'4px', width:'100%', boxSizing:'border-box' }}
+              type={f.type||'text'} placeholder={f.ph} value={data[f.k]} onChange={e=>set(f.k,e.target.value)}/>
+          </div>
+        ))}
+        <div>
+          <label style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'#888', display:'block', marginBottom:'4px' }}>GENDER</label>
+          <div style={{ display:'flex', gap:'8px' }}>
+            {['male','female'].map(g=>(
+              <button key={g} onClick={()=>set('gender',g)}
+                style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', padding:'7px 20px', borderRadius:'4px', border:`2px solid ${data.gender===g?'#ff6600':'#e0e0e0'}`, background:data.gender===g?'#ff6600':'transparent', color:data.gender===g?'#fff':'#888', cursor:'pointer' }}>
+                {g.charAt(0).toUpperCase()+g.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'#888', display:'block', marginBottom:'4px' }}>PRIMARY SPORT</label>
+          <div style={{ display:'flex', gap:'6px', flexWrap:'wrap' }}>
+            {sports.map(s=>(
+              <button key={s} onClick={()=>set('sport',s)}
+                style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'5px 12px', borderRadius:'4px', border:`2px solid ${data.sport===s?'#ff6600':'#e0e0e0'}`, background:data.sport===s?'#ff6600':'transparent', color:data.sport===s?'#fff':'#888', cursor:'pointer' }}>
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>,
+
+    // Step 2: Key metrics
+    <div>
+      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'16px' }}>02 / KEY METRICS</div>
+      <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
+        <div>
+          <label style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'#888', display:'block', marginBottom:'4px' }}>MAX HEART RATE (bpm)</label>
+          <div style={{ display:'flex', gap:'8px' }}>
+            <input style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'14px', padding:'8px 12px', border:'1px solid #e0e0e0', borderRadius:'4px', flex:1 }}
+              type="number" placeholder="185" value={data.maxhr} onChange={e=>set('maxhr',e.target.value)}/>
+            {data.age && <button onClick={()=>set('maxhr',String(Math.round(208-0.7*parseInt(data.age))))}
+              style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'8px 12px', borderRadius:'4px', border:'1px solid #ff6600', background:'transparent', color:'#ff6600', cursor:'pointer', whiteSpace:'nowrap' }}>
+              Estimate from age
+            </button>}
+          </div>
+        </div>
+        {['Running','Triathlon'].includes(data.sport) ? (
+          <div>
+            <label style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'#888', display:'block', marginBottom:'4px' }}>THRESHOLD PACE (MM:SS /km)</label>
+            <input style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'14px', padding:'8px 12px', border:'1px solid #e0e0e0', borderRadius:'4px', width:'100%', boxSizing:'border-box' }}
+              type="text" placeholder="4:45" value={data.ltpace} onChange={e=>set('ltpace',e.target.value)}/>
+          </div>
+        ) : (
+          <div>
+            <label style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'#888', display:'block', marginBottom:'4px' }}>FTP (watts)</label>
+            <input style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'14px', padding:'8px 12px', border:'1px solid #e0e0e0', borderRadius:'4px', width:'100%', boxSizing:'border-box' }}
+              type="number" placeholder="240" value={data.ftp} onChange={e=>set('ftp',e.target.value)}/>
+          </div>
+        )}
+      </div>
+    </div>,
+
+    // Step 3: Goal
+    <div>
+      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'16px' }}>03 / YOUR GOAL</div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))', gap:'8px', marginBottom:'16px' }}>
+        {goals.map(g=>(
+          <button key={g} onClick={()=>set('goal',g)}
+            style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', padding:'12px', borderRadius:'6px', border:`2px solid ${data.goal===g?'#ff6600':'#e0e0e0'}`, background:data.goal===g?'#fff3eb':'transparent', color:data.goal===g?'#ff6600':'#888', cursor:'pointer', textAlign:'center', fontWeight:data.goal===g?600:400 }}>
+            {g}
+          </button>
+        ))}
+      </div>
+      <div>
+        <label style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'#888', display:'block', marginBottom:'4px' }}>WEEKS UNTIL EVENT (optional): {data.weeks||'—'}</label>
+        <input type="range" min="4" max="52" value={data.weeks||12} onChange={e=>set('weeks',e.target.value)} style={{ width:'100%', accentColor:'#ff6600' }}/>
+      </div>
+    </div>,
+  ]
+
+  const finish = () => {
+    onFinish({
+      name:data.name, age:data.age, gender:data.gender, sport:data.sport,
+      maxhr:data.maxhr, ftp:data.ftp, threshold:data.ltpace, goal:data.goal,
+    })
+  }
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
+      <div style={{ background:'#fff', borderRadius:'12px', padding:'32px', width:'100%', maxWidth:'480px', position:'relative' }}>
+        <button onClick={()=>onFinish(null)} style={{ position:'absolute', top:'16px', right:'16px', background:'none', border:'none', color:'#ccc', cursor:'pointer', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px' }}>
+          Skip all →
+        </button>
+        {/* Progress dots */}
+        <div style={{ display:'flex', gap:'6px', justifyContent:'center', marginBottom:'24px' }}>
+          {steps.map((_,i)=>(
+            <div key={i} style={{ width:'8px', height:'8px', borderRadius:'50%', background:i===step?'#ff6600':'#e0e0e0', transition:'background 0.2s' }}/>
+          ))}
+        </div>
+        {steps[step]}
+        <div style={{ display:'flex', justifyContent:'space-between', marginTop:'24px' }}>
+          {step > 0
+            ? <button onClick={()=>setStep(s=>s-1)} style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', padding:'8px 18px', borderRadius:'4px', border:'1px solid #e0e0e0', background:'transparent', color:'#888', cursor:'pointer' }}>← Back</button>
+            : <span/>}
+          {step < steps.length - 1
+            ? <button onClick={()=>setStep(s=>s+1)} style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, padding:'8px 20px', borderRadius:'4px', background:'#ff6600', border:'none', color:'#fff', cursor:'pointer' }}>Next →</button>
+            : <button onClick={finish} style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, padding:'8px 20px', borderRadius:'4px', background:'#ff6600', border:'none', color:'#fff', cursor:'pointer' }}>Let's go →</button>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Athlete Card (canvas draw) ────────────────────────────────────────────────
+function AthleteCard({ profile, log }) {
+  const { t } = useContext(LangCtx)
+  const [status, setStatus] = useState(null)
+  const last28 = log.slice(-28)
+  const totalH = Math.round(last28.reduce((s,e)=>s+(e.duration||0),0)/60)
+  const sessions28 = last28.length
+  const avgRPE28 = sessions28 ? (last28.reduce((s,e)=>s+(e.rpe||0),0)/sessions28).toFixed(1) : '—'
+  const { tsb } = calcLoad(log)
+
+  const downloadCard = () => {
+    const c = document.createElement('canvas')
+    c.width=400; c.height=580
+    const ctx = c.getContext('2d')
+    // Background
+    ctx.fillStyle='#0a0a0a'; ctx.fillRect(0,0,400,580)
+    // Accent bar
+    ctx.fillStyle='#ff6600'; ctx.fillRect(0,0,400,4)
+    // Name
+    ctx.fillStyle='#ff6600'; ctx.font='bold 22px monospace'; ctx.fillText(profile.name||'ATHLETE',24,52)
+    ctx.fillStyle='#888'; ctx.font='12px monospace'; ctx.fillText((profile.sport||'ENDURANCE').toUpperCase(),24,72)
+    // Divider
+    ctx.strokeStyle='#333'; ctx.beginPath(); ctx.moveTo(24,85); ctx.lineTo(376,85); ctx.stroke()
+    // Stats grid
+    const stats=[
+      ['VO₂max',profile.vo2max?`${profile.vo2max} mL/kg/min`:'—'],
+      ['FTP',profile.ftp?`${profile.ftp}W`:'—'],
+      ['Max HR',profile.maxhr?`${profile.maxhr} bpm`:'—'],
+      ['Age',profile.age||'—'],
+    ]
+    stats.forEach(([l,v],i)=>{
+      const x=24+(i%2)*190, y=130+Math.floor(i/2)*70
+      ctx.fillStyle='#666'; ctx.font='10px monospace'; ctx.fillText(l.toUpperCase(),x,y-14)
+      ctx.fillStyle='#ff6600'; ctx.font='bold 20px monospace'; ctx.fillText(String(v),x,y)
+    })
+    // 4-week summary
+    ctx.strokeStyle='#333'; ctx.beginPath(); ctx.moveTo(24,290); ctx.lineTo(376,290); ctx.stroke()
+    ctx.fillStyle='#888'; ctx.font='10px monospace'; ctx.fillText('4-WEEK SUMMARY',24,314)
+    const sums=[['HOURS',`${totalH}h`],['SESSIONS',sessions28],['AVG RPE',avgRPE28]]
+    sums.forEach(([l,v],i)=>{
+      const x=24+i*120
+      ctx.fillStyle='#e5e5e5'; ctx.font='bold 18px monospace'; ctx.fillText(String(v),x,348)
+      ctx.fillStyle='#666'; ctx.font='9px monospace'; ctx.fillText(l,x,366)
+    })
+    // Form badge
+    ctx.strokeStyle='#333'; ctx.beginPath(); ctx.moveTo(24,390); ctx.lineTo(376,390); ctx.stroke()
+    ctx.fillStyle='#888'; ctx.font='10px monospace'; ctx.fillText('CURRENT FORM (TSB)',24,414)
+    const tsbColor = tsb>5?'#5bc25b':tsb<-10?'#e03030':'#f5c542'
+    ctx.fillStyle=tsbColor; ctx.font='bold 28px monospace'; ctx.fillText((tsb>=0?'+':'')+tsb,24,448)
+    // Footer
+    ctx.strokeStyle='#333'; ctx.beginPath(); ctx.moveTo(24,490); ctx.lineTo(376,490); ctx.stroke()
+    ctx.fillStyle='#444'; ctx.font='10px monospace'; ctx.fillText('SPOREUS ATHLETE CONSOLE — SPOREUS.COM',24,514)
+    ctx.fillStyle='#333'; ctx.font='9px monospace'; ctx.fillText('Built on EŞİK / THRESHOLD science — Hüseyin Akbulut 2026',24,534)
+    // Download
+    c.toBlob(blob=>{
+      const url=URL.createObjectURL(blob)
+      const a=document.createElement('a'); a.href=url; a.download='sporeus-athlete-card.png'; a.click()
+      URL.revokeObjectURL(url)
+    })
+  }
+
+  const share = async () => {
+    const text=`${profile.name||'Athlete'} | ${profile.sport||'Endurance'} | VO₂max: ${profile.vo2max||'?'} | ${sessions28} sessions / 4 weeks — via Sporeus Athlete Console`
+    try {
+      if (navigator.share) await navigator.share({ title:'Sporeus Athlete Card', text, url:'https://sporeus.com' })
+      else { await navigator.clipboard.writeText(text); setStatus('copied'); setTimeout(()=>setStatus(null),2000) }
+    } catch {}
+  }
+
+  return (
+    <div style={{ ...S.card, background:'#0a0a0a', border:'1px solid #333', borderRadius:'8px', padding:'20px' }}>
+      <div style={{ ...S.cardTitle, color:'#ff6600', borderColor:'#333' }}>SHAREABLE ATHLETE CARD</div>
+      <div style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>
+        <button style={S.btn} onClick={downloadCard}>↓ Download PNG</button>
+        <button style={{ ...S.btnSec, borderColor:'#555', color:'#ccc' }} onClick={share}>
+          {status==='copied'?'✓ COPIED':'⬡ Share'}
+        </button>
+      </div>
+      <div style={{ ...S.mono, fontSize:'10px', color:'#555', marginTop:'10px' }}>
+        Card includes: name, sport, VO₂max, FTP, max HR, 4-week summary, form badge.
+      </div>
+    </div>
+  )
+}
+
+// ─── Notification Reminders ────────────────────────────────────────────────────
+function NotifReminders() {
+  const { t } = useContext(LangCtx)
+  const [reminders, setReminders] = useLocalStorage('sporeus-reminders', { train:false, trainTime:'18:00', recovery:false })
+  const supported = typeof window !== 'undefined' && 'Notification' in window
+
+  const toggleTrain = async () => {
+    if (!reminders.train) {
+      if (supported) await Notification.requestPermission()
+    }
+    setReminders(r=>({...r, train:!r.train}))
+  }
+  const toggleRecovery = async () => {
+    if (!reminders.recovery) {
+      if (supported) await Notification.requestPermission()
+    }
+    setReminders(r=>({...r, recovery:!r.recovery}))
+  }
+
+  // Interval-based fallback
+  useEffect(() => {
+    if (!supported) return
+    const interval = setInterval(() => {
+      if (Notification.permission !== 'granted') return
+      const now = new Date()
+      const hhmm = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`
+      if (reminders.train && hhmm === reminders.trainTime) {
+        new Notification('Sporeus — Time to train!', { body: 'Your training reminder is ready. Check your plan.', icon:'/sporeus-athlete/pwa-192x192.png' })
+      }
+      if (reminders.recovery && hhmm === '08:00') {
+        const today = new Date().toISOString().slice(0,10)
+        try {
+          const rec = JSON.parse(localStorage.getItem('sporeus-recovery')||'[]')
+          if (!rec.find(e=>e.date===today)) {
+            new Notification('Sporeus — Log your recovery', { body: 'How did you sleep? Fill in your daily wellness check.', icon:'/sporeus-athlete/pwa-192x192.png' })
+          }
+        } catch {}
+      }
+    }, 60000)
+    return () => clearInterval(interval)
+  }, [reminders, supported])
+
+  if (!supported) return (
+    <div style={{ ...S.mono, fontSize:'11px', color:'#aaa' }}>Notifications not available in this browser.</div>
+  )
+
+  return (
+    <div>
+      {[
+        { label:'Training reminder', key:'train', toggle:toggleTrain, active:reminders.train },
+        { label:'Recovery check-in at 08:00', key:'recovery', toggle:toggleRecovery, active:reminders.recovery },
+      ].map(({label,key,toggle,active})=>(
+        <div key={key} style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'12px' }}>
+          <button onClick={toggle} style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', fontWeight:600, padding:'4px 12px', borderRadius:'3px', border:`1px solid ${active?'#ff6600':'#e0e0e0'}`, background:active?'#ff6600':'transparent', color:active?'#fff':'#888', cursor:'pointer' }}>
+            {active?'ON':'OFF'}
+          </button>
+          <span style={{ ...S.mono, fontSize:'12px', color:'var(--text)' }}>{label}</span>
+          {key==='train' && active && (
+            <input type="time" value={reminders.trainTime} onChange={e=>setReminders(r=>({...r,trainTime:e.target.value}))}
+              style={{ ...S.input, width:'110px', padding:'4px 8px', fontSize:'12px' }}/>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ─── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
   const [tab, setTab] = useState('dashboard')
@@ -2083,6 +2395,16 @@ export default function App() {
   const [profile, setProfile] = useLocalStorage('sporeus_profile', {})
   const [lang, setLang] = useLocalStorage('sporeus-lang', 'en')
   const [logPrefill, setLogPrefill] = useState(null)
+  const [dark, setDark] = useLocalStorage('sporeus-dark', false)
+  const [onboarded, setOnboarded] = useLocalStorage('sporeus-onboarded', false)
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
+  }, [dark])
+
+  const finishOnboarding = (data) => {
+    if (data) setProfile(prev=>({...prev,...data}))
+    setOnboarded(true)
+  }
 
   const t = useCallback(key => LABELS[lang]?.[key] ?? LABELS.en?.[key] ?? key, [lang])
 
@@ -2093,6 +2415,7 @@ export default function App() {
   return (
     <LangCtx.Provider value={{ t, lang, setLang }}>
       <style>{ANIM_CSS}</style>
+      {!onboarded && <OnboardingWizard onFinish={finishOnboarding} setLang={setLang} lang={lang}/>}
       <div style={S.app}>
         <div style={S.topBar}/>
 
@@ -2106,6 +2429,10 @@ export default function App() {
               <div style={{ ...S.mono, fontSize:'10px', color:'#888' }}>{timeStr}</div>
               <div style={{ ...S.mono, fontSize:'10px', color:'#555', letterSpacing:'0.06em' }}>{dateStr}</div>
             </div>
+            <button onClick={()=>setDark(!dark)}
+              style={{ ...S.mono, fontSize:'13px', padding:'4px 8px', borderRadius:'3px', border:'1px solid #444', background:'transparent', color:'#ccc', cursor:'pointer' }}>
+              {dark ? '☀' : '☾'}
+            </button>
             <button
               onClick={()=>setLang(lang==='en'?'tr':'en')}
               style={{ ...S.mono, fontSize:'11px', fontWeight:600, padding:'5px 10px', borderRadius:'3px', border:'1px solid #444', background:'transparent', color:'#ccc', cursor:'pointer', letterSpacing:'0.08em' }}>
@@ -2133,7 +2460,7 @@ export default function App() {
           {tab==='plan'          && <PlanGenerator onLogSession={ses=>{ setLogPrefill(ses); setTab('log') }}/>}
           {tab==='glossary'      && <Glossary/>}
           {tab==='recovery'      && <Recovery/>}
-          {tab==='profile'       && <Profile profile={profile} setProfile={setProfile}/>}
+          {tab==='profile'       && <Profile profile={profile} setProfile={setProfile} log={log}/>}
         </main>
 
         <footer style={S.footer}>
