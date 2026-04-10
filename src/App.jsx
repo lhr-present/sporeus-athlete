@@ -531,6 +531,195 @@ function MiniDonut({ pcts, colors, size=56 }) {
   )
 }
 
+// ─── Weekly volume stacked bar chart ──────────────────────────────────────────
+const TYPE_COLORS = {
+  'Easy Run':'#4ade80','Tempo':'#facc15','Interval':'#ef4444','Long Run':'#22d3ee',
+  'Recovery':'#a78bfa','Strength':'#f97316','Swim':'#94a3b8','Bike':'#60a5fa',
+  'Cross-Train':'#94a3b8','Race':'#ff6600','Test':'#d946ef','Other':'#d4d4d4',
+}
+function typeColor(t) { return TYPE_COLORS[t] || '#d4d4d4' }
+
+function WeeklyVolChart({ log }) {
+  const W=560, H=120, P={t:8,r:10,b:28,l:38}
+  const iW=W-P.l-P.r, iH=H-P.t-P.b
+
+  const weeks = []
+  for (let i=7; i>=0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i*7)
+    const start = new Date(d); start.setDate(start.getDate() - start.getDay())
+    const end   = new Date(start); end.setDate(end.getDate()+6)
+    const s0 = start.toISOString().slice(0,10), e0 = end.toISOString().slice(0,10)
+    const entries = log.filter(e=>e.date>=s0&&e.date<=e0)
+    const byType = {}
+    entries.forEach(e=>{ byType[e.type]=(byType[e.type]||0)+(e.duration||0) })
+    weeks.push({ label:`W${8-i}`, byType, total:entries.reduce((s,e)=>s+(e.duration||0),0) })
+  }
+
+  const maxTotal = Math.max(...weeks.map(w=>w.total), 60)
+  const yMax = Math.ceil(maxTotal/60)*60
+  const bW = Math.floor(iW/8)-4
+  const xS = i => P.l + i*(iW/8) + (iW/8 - bW)/2
+  const hS = v => (v/yMax)*iH
+
+  const allTypes = [...new Set(log.map(e=>e.type))]
+  const yTicks = [0, Math.round(yMax/2), yMax]
+
+  if (!log.length) return null
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width:'100%', height:'auto' }}>
+        {yTicks.map(v=>(
+          <g key={v}>
+            <line x1={P.l} x2={W-P.r} y1={P.t+iH-hS(v)} y2={P.t+iH-hS(v)} stroke="#ebebeb" strokeWidth="1"/>
+            <text x={P.l-3} y={P.t+iH-hS(v)+3} textAnchor="end" fill="#bbb" fontSize="8" fontFamily="IBM Plex Mono,monospace">{Math.round(v/60)}h</text>
+          </g>
+        ))}
+        {weeks.map((wk,i) => {
+          let yOff = 0
+          return (
+            <g key={i}>
+              {Object.entries(wk.byType).map(([type, mins]) => {
+                const bH = hS(mins)
+                const y = P.t+iH-hS(yOff)-bH
+                yOff += mins
+                return <rect key={type} x={xS(i)} y={y} width={bW} height={Math.max(bH,1)} fill={typeColor(type)} rx="1"/>
+              })}
+              <text x={xS(i)+bW/2} y={H-6} textAnchor="middle" fill="#bbb" fontSize="8" fontFamily="IBM Plex Mono,monospace">{wk.label}</text>
+            </g>
+          )
+        })}
+      </svg>
+      <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', marginTop:'6px' }}>
+        {allTypes.map(t=>(
+          <div key={t} style={{ display:'flex', alignItems:'center', gap:'3px', ...S.mono, fontSize:'9px', color:'#888' }}>
+            <div style={{ width:'8px',height:'8px',background:typeColor(t),borderRadius:'1px' }}/>{t}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── Zone Donut (aggregate) ────────────────────────────────────────────────────
+function ZoneDonut({ log }) {
+  const zoneMins = [0,0,0,0,0]
+  log.forEach(e => {
+    const dur = e.duration || 0
+    if (e.zones && e.zones.some(z=>z>0)) {
+      e.zones.forEach((z,i)=>{ zoneMins[i]+=z })
+    } else {
+      // estimate from RPE
+      const r = e.rpe || 5
+      const zi = r<=3?0:r<=5?1:r<=7?2:r===8?3:4
+      zoneMins[zi] += dur
+    }
+  })
+  const total = zoneMins.reduce((s,v)=>s+v,0)
+  if (!total) return null
+  const pcts = zoneMins.map(v=>Math.round(v/total*100))
+  const domIdx = pcts.indexOf(Math.max(...pcts))
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:'16px' }}>
+      <div style={{ position:'relative' }}>
+        <MiniDonut pcts={pcts} colors={ZONE_COLORS} size={80}/>
+        <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', ...S.mono, fontSize:'9px', fontWeight:600, color:ZONE_COLORS[domIdx], textAlign:'center' }}>Z{domIdx+1}</div>
+      </div>
+      <div>
+        {ZONE_NAMES.map((n,i)=>pcts[i]>0&&(
+          <div key={i} style={{ display:'flex', gap:'6px', alignItems:'center', ...S.mono, fontSize:'10px', marginBottom:'2px' }}>
+            <div style={{ width:'8px',height:'8px',background:ZONE_COLORS[i],borderRadius:'1px' }}/>
+            <span style={{ color:'#888' }}>{n}</span>
+            <span style={{ color:ZONE_COLORS[i], fontWeight:600, marginLeft:'auto' }}>{pcts[i]}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── Monotony & Strain ────────────────────────────────────────────────────────
+function monotonyStrain(log) {
+  const today = new Date()
+  const last7 = []
+  for (let i=6;i>=0;i--) {
+    const d=new Date(today); d.setDate(d.getDate()-i)
+    const ds=d.toISOString().slice(0,10)
+    last7.push(log.filter(e=>e.date===ds).reduce((s,e)=>s+(e.tss||0),0))
+  }
+  const mean = last7.reduce((s,v)=>s+v,0)/7
+  const std  = Math.sqrt(last7.reduce((s,v)=>s+Math.pow(v-mean,2),0)/7)
+  const mono  = std>0 ? Math.round(mean/std*10)/10 : 0
+  const strain = Math.round(mean*7*mono)
+  return { mono, strain, mean:Math.round(mean) }
+}
+
+// ─── Personal Records ─────────────────────────────────────────────────────────
+function calcPRs(log) {
+  if (!log.length) return []
+  const highTSS = log.reduce((best,e)=>(!best||e.tss>best.tss)?e:best, null)
+  const longDur  = log.reduce((best,e)=>(!best||e.duration>best.duration)?e:best, null)
+  const highRPE  = log.reduce((best,e)=>(!best||e.rpe>best.rpe)?e:best, null)
+  // streak
+  const dates = [...new Set(log.map(e=>e.date))].sort()
+  let maxStreak=1, cur=1
+  for (let i=1;i<dates.length;i++) {
+    const diff=(new Date(dates[i])-new Date(dates[i-1]))/(864e5)
+    cur = diff===1 ? cur+1 : 1
+    if (cur>maxStreak) maxStreak=cur
+  }
+  return [
+    highTSS && { label:'Highest TSS', value:highTSS.tss, date:highTSS.date, unit:'TSS' },
+    longDur  && { label:'Longest Session', value:`${longDur.duration}min`, date:longDur.date, unit:longDur.type },
+    highRPE  && { label:'Hardest Session', value:`RPE ${highRPE.rpe}`, date:highRPE.date, unit:highRPE.type },
+    { label:'Best Streak', value:`${maxStreak} days`, date:'', unit:'consecutive sessions' },
+  ].filter(Boolean)
+}
+
+// ─── Full CTL Timeline ────────────────────────────────────────────────────────
+function CTLTimeline({ log }) {
+  if (!log.length) return null
+  const byDate = {}
+  log.forEach(e=>{ byDate[e.date]=(byDate[e.date]||0)+(e.tss||0) })
+  const dates=[], start=new Date(Object.keys(byDate).sort()[0]), today=new Date()
+  today.setHours(0,0,0,0)
+  for (let d=new Date(start);d<=today;d.setDate(d.getDate()+1)) {
+    dates.push(d.toISOString().slice(0,10))
+  }
+  let ctl=0; const kC=2/(42+1)
+  const points = dates.map(dt=>{ const tss=byDate[dt]||0; ctl=tss*kC+ctl*(1-kC); return { dt, ctl:Math.round(ctl) } })
+  if (points.length < 2) return null
+
+  const W=560, H=90, P={t:6,r:10,b:22,l:36}
+  const iW=W-P.l-P.r, iH=H-P.t-P.b
+  const maxCTL=Math.max(...points.map(p=>p.ctl),100)
+  const xS=i=>P.l+(i/(points.length-1))*iW
+  const yS=v=>P.t+iH-(v/maxCTL)*iH
+
+  const bands=[{lo:0,hi:40,c:'#88888822',l:'Untrained'},{lo:40,hi:70,c:'#4a90d922',l:'Moderate'},{lo:70,hi:100,c:'#5bc25b22',l:'Trained'},{lo:100,hi:maxCTL+20,c:'#f5c54222',l:'Elite'}]
+  const line = points.map((p,i)=>`${i===0?'M':'L'}${xS(i).toFixed(1)},${yS(p.ctl).toFixed(1)}`).join(' ')
+
+  const monthLabels=[]
+  points.forEach((p,i)=>{ if(p.dt.slice(8)==='01'||i===0) monthLabels.push({i,label:p.dt.slice(0,7)}) })
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width:'100%', height:'auto' }}>
+      {bands.map(b=>(
+        <rect key={b.l} x={P.l} y={yS(Math.min(b.hi,maxCTL+20))} width={iW} height={Math.abs(yS(b.lo)-yS(Math.min(b.hi,maxCTL+20)))} fill={b.c}/>
+      ))}
+      <path d={line} fill="none" stroke="#0064ff" strokeWidth="1.5" strokeLinejoin="round"/>
+      {monthLabels.slice(0,6).map(({i,label})=>(
+        <text key={label} x={xS(i)} y={H-4} textAnchor="middle" fill="#bbb" fontSize="7" fontFamily="IBM Plex Mono,monospace">{label}</text>
+      ))}
+      {[40,70,100].map(v=>v<=maxCTL&&(
+        <g key={v}>
+          <line x1={P.l} x2={W-P.r} y1={yS(v)} y2={yS(v)} stroke="#e0e0e0" strokeWidth="1" strokeDasharray="2,2"/>
+          <text x={P.l-3} y={yS(v)+3} textAnchor="end" fill="#bbb" fontSize="7" fontFamily="IBM Plex Mono,monospace">{v}</text>
+        </g>
+      ))}
+    </svg>
+  )
+}
+
 // ─── Dashboard ─────────────────────────────────────────────────────────────────
 function Dashboard({ log, profile }) {
   const { t } = useContext(LangCtx)
@@ -618,6 +807,68 @@ function Dashboard({ log, profile }) {
           </table>
         )}
       </div>
+
+      {log.length>0 && (
+        <div className="sp-card" style={{ ...S.card, animationDelay:'170ms' }}>
+          <div style={S.cardTitle}>WEEKLY VOLUME — LAST 8 WEEKS</div>
+          <WeeklyVolChart log={log}/>
+        </div>
+      )}
+
+      {log.length>0 && (() => {
+        const { mono, strain } = monotonyStrain(log)
+        const prs = calcPRs(log)
+        const monoRed = mono>2.0, strainRed = strain>6000
+        return (
+          <div className="sp-card" style={{ ...S.row, marginBottom:'16px', animationDelay:'180ms' }}>
+            <div style={{ ...S.card, flex:'1 1 200px', marginBottom:0 }}>
+              <div style={S.cardTitle}>ZONE DISTRIBUTION</div>
+              <ZoneDonut log={log}/>
+            </div>
+            <div style={{ flex:'1 1 200px', display:'flex', flexDirection:'column', gap:'8px' }}>
+              <div style={{ ...S.card, marginBottom:0, borderLeft:`3px solid ${monoRed?'#e03030':'#5bc25b'}` }}>
+                <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>MONOTONY INDEX</div>
+                <div style={{ ...S.mono, fontSize:'22px', fontWeight:600, color:monoRed?'#e03030':'#1a1a1a' }}>{mono}</div>
+                <div style={{ ...S.mono, fontSize:'9px', color:'#aaa' }}>{monoRed?'⚠ INJURY RISK':'Normal'} (alert &gt;2.0)</div>
+              </div>
+              <div style={{ ...S.card, marginBottom:0, borderLeft:`3px solid ${strainRed?'#e03030':'#5bc25b'}` }}>
+                <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>STRAIN INDEX</div>
+                <div style={{ ...S.mono, fontSize:'22px', fontWeight:600, color:strainRed?'#e03030':'#1a1a1a' }}>{strain}</div>
+                <div style={{ ...S.mono, fontSize:'9px', color:'#aaa' }}>{strainRed?'⚠ HIGH':'Normal'} (alert &gt;6000)</div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {log.length>0 && (
+        <div className="sp-card" style={{ ...S.card, animationDelay:'190ms' }}>
+          <div style={S.cardTitle}>🏆 PERSONAL RECORDS</div>
+          <div style={S.row}>
+            {calcPRs(log).map(pr=>(
+              <div key={pr.label} style={{ ...S.stat, flex:'1 1 130px', textAlign:'left', padding:'10px 12px' }}>
+                <span style={{ ...S.statVal, fontSize:'15px', textAlign:'left' }}>{pr.value}</span>
+                <span style={S.statLbl}>{pr.label}</span>
+                {pr.date&&<div style={{ ...S.mono, fontSize:'9px', color:'#666', marginTop:'2px' }}>{pr.date} · {pr.unit}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {log.length>3 && (
+        <div className="sp-card" style={{ ...S.card, animationDelay:'195ms' }}>
+          <div style={S.cardTitle}>FITNESS TIMELINE — CTL (ALL TIME)</div>
+          <CTLTimeline log={log}/>
+          <div style={{ display:'flex', gap:'12px', marginTop:'6px', flexWrap:'wrap' }}>
+            {[{l:'Untrained',c:'#888'},{l:'Moderate',c:'#4a90d9'},{l:'Trained',c:'#5bc25b'},{l:'Elite',c:'#f5c542'}].map(({l,c})=>(
+              <div key={l} style={{ display:'flex', alignItems:'center', gap:'4px', ...S.mono, fontSize:'9px', color:c }}>
+                <div style={{ width:'10px',height:'4px',background:c+'44',border:`1px solid ${c}`}}/>{l}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="sp-card" style={{ ...S.card, animationDelay:'200ms' }}>
         <div style={S.cardTitle}>{t('quickLinks')}</div>
@@ -799,8 +1050,19 @@ function TestProtocols() {
   const [active, setActive] = useState('cooper')
   const [inputs, setInputs] = useState({})
   const [result, setResult] = useState(null)
+  const [testLog, setTestLog] = useLocalStorage('sporeus-test-results', [])
+  const [cmpA, setCmpA] = useState('')
+  const [cmpB, setCmpB] = useState('')
   const set = (k,v) => setInputs(prev=>({...prev,[k]:v}))
   const v = k => inputs[k]||''
+
+  const saveTestResult = (testId, value, unit) => {
+    const today = new Date().toISOString().slice(0,10)
+    setTestLog(prev => [...prev, { date:today, testId, value:String(value), unit }])
+  }
+
+  const lastTestDate = testLog.length ? testLog[testLog.length-1].date : null
+  const weeksSinceLast = lastTestDate ? Math.floor((new Date() - new Date(lastTestDate)) / (7*864e5)) : null
 
   const run = () => {
     setResult(null)
@@ -809,6 +1071,7 @@ function TestProtocols() {
       const d=parseInt(i.dist||0); if(!d) return
       const vo2=cooperVO2(d)
       setResult(['Cooper Test Result',`Distance: ${d}m`,`Estimated VO\u2082max: ${vo2} mL/kg/min`,`${parseFloat(vo2)>=52?'Excellent':parseFloat(vo2)>=46?'Good':parseFloat(vo2)>=40?'Average':'Below Average'}`,`Run at maximum effort on flat surface.`])
+      saveTestResult('cooper', vo2, 'mL/kg/min VO₂max')
     } else if (active==='ramp') {
       const w=parseInt(i.watts||0); if(!w) return
       const ftp=rampFTP(w)
@@ -962,6 +1225,58 @@ function TestProtocols() {
           ))}
         </div>
       )}
+
+      {/* Retest reminder */}
+      {weeksSinceLast !== null && weeksSinceLast >= 6 && (
+        <div style={{ ...S.card, background:'#fffbeb', border:'1px solid #f5c54266', borderRadius:'6px', padding:'12px 16px', marginBottom:'16px', ...S.mono, fontSize:'11px', color:'#92400e' }}>
+          ⏰ Last test: {lastTestDate} ({weeksSinceLast} weeks ago). Time to retest!
+        </div>
+      )}
+
+      {/* Progress Comparison */}
+      {testLog.length >= 2 && (
+        <div className="sp-card" style={{ ...S.card, animationDelay:'100ms' }}>
+          <div style={S.cardTitle}>PROGRESS COMPARISON</div>
+          <div style={S.row}>
+            <div style={{ flex:'1 1 180px' }}>
+              <label style={S.label}>RESULT A</label>
+              <select style={S.select} value={cmpA} onChange={e=>setCmpA(e.target.value)}>
+                <option value="">Select…</option>
+                {testLog.map((r,i)=><option key={i} value={i}>{r.date} — {r.testId} — {r.value} {r.unit}</option>)}
+              </select>
+            </div>
+            <div style={{ flex:'1 1 180px' }}>
+              <label style={S.label}>RESULT B</label>
+              <select style={S.select} value={cmpB} onChange={e=>setCmpB(e.target.value)}>
+                <option value="">Select…</option>
+                {testLog.map((r,i)=><option key={i} value={i}>{r.date} — {r.testId} — {r.value} {r.unit}</option>)}
+              </select>
+            </div>
+          </div>
+          {cmpA!==''&&cmpB!==''&&cmpA!==cmpB&&(()=>{
+            const a=testLog[cmpA], b=testLog[cmpB]
+            const va=parseFloat(a.value), vb=parseFloat(b.value)
+            const delta=Math.round((vb-va)*10)/10
+            const pct=Math.round((vb-va)/Math.abs(va)*100)
+            const up=delta>=0
+            return (
+              <div style={{ marginTop:'14px', display:'flex', gap:'16px', flexWrap:'wrap' }}>
+                {[{label:'A',r:a},{label:'B',r:b}].map(({label,r})=>(
+                  <div key={label} style={{ flex:'1 1 150px', ...S.stat }}>
+                    <span style={{ ...S.statVal, fontSize:'18px' }}>{r.value}</span>
+                    <span style={S.statLbl}>{r.unit}</span>
+                    <div style={{ ...S.mono, fontSize:'9px', color:'#666', marginTop:'3px' }}>{r.date}</div>
+                  </div>
+                ))}
+                <div style={{ flex:'1 1 120px', ...S.stat }}>
+                  <span style={{ ...S.statVal, fontSize:'22px', color:up?'#5bc25b':'#e03030' }}>{up?'↑':'↓'} {Math.abs(delta)}</span>
+                  <span style={S.statLbl}>{up?'+':''}{pct}% change</span>
+                </div>
+              </div>
+            )
+          })()}
+        </div>
+      )}
     </div>
   )
 }
@@ -971,6 +1286,8 @@ function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const { t } = useContext(LangCtx)
   const today = new Date().toISOString().slice(0,10)
   const [form, setForm] = useState({ date:today, type:'Easy Run', duration:'', rpe:'5', notes:'' })
+  const [showZones, setShowZones] = useState(false)
+  const [zoneMins, setZoneMins] = useState(['','','','',''])
 
   useEffect(() => {
     if (prefill) {
@@ -978,14 +1295,18 @@ function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       clearPrefill && clearPrefill()
     }
   }, [prefill])
+
+  const zoneTotal = zoneMins.reduce((s,v)=>s+(parseInt(v)||0),0)
+  const zoneDiff  = form.duration && showZones ? Math.abs(zoneTotal - parseInt(form.duration)) : 0
   const [tssPreview, setTssPreview] = useState(null)
 
   const add = () => {
     if (!form.duration) return
     const tss = calcTSS(parseInt(form.duration), parseInt(form.rpe))
-    setLog([...log, { ...form, duration:parseInt(form.duration), rpe:parseInt(form.rpe), tss }])
+    const zones = showZones ? zoneMins.map(v=>parseInt(v)||0) : null
+    setLog([...log, { ...form, duration:parseInt(form.duration), rpe:parseInt(form.rpe), tss, zones }])
     setForm({ date:today, type:'Easy Run', duration:'', rpe:'5', notes:'' })
-    setTssPreview(null)
+    setZoneMins(['','','','','']); setShowZones(false); setTssPreview(null)
   }
 
   const exportCSV = () => {
@@ -1030,6 +1351,29 @@ function TrainingLog({ log, setLog, prefill, clearPrefill }) {
           <label style={S.label}>{t('notesL')}</label>
           <input style={S.input} type="text" placeholder="Felt strong at threshold pace\u2026" value={form.notes}
             onChange={e=>setForm({...form,notes:e.target.value})}/>
+        </div>
+        <div style={{ marginTop:'10px' }}>
+          <label style={{ display:'flex', alignItems:'center', gap:'8px', cursor:'pointer', ...S.mono, fontSize:'11px', color:'#888' }}>
+            <input type="checkbox" checked={showZones} onChange={e=>setShowZones(e.target.checked)} style={{ accentColor:'#ff6600' }}/>
+            ADD ZONE BREAKDOWN (optional)
+          </label>
+          {showZones && (
+            <div style={{ marginTop:'10px' }}>
+              <div style={S.row}>
+                {ZONE_NAMES.map((n,i)=>(
+                  <div key={i} style={{ flex:'1 1 70px' }}>
+                    <label style={{ ...S.label, color:ZONE_COLORS[i] }}>{n.split(' ')[0]} (min)</label>
+                    <input style={{ ...S.input, borderColor:ZONE_COLORS[i]+'66' }} type="number" placeholder="0"
+                      value={zoneMins[i]} onChange={e=>{ const z=[...zoneMins]; z[i]=e.target.value; setZoneMins(z) }}/>
+                  </div>
+                ))}
+              </div>
+              <div style={{ ...S.mono, fontSize:'10px', marginTop:'6px', color: zoneDiff>parseInt(form.duration||0)*0.1?'#e03030':'#5bc25b' }}>
+                Zone total: {zoneTotal} min {form.duration && `/ ${form.duration} min session`}
+                {zoneDiff > parseInt(form.duration||0)*0.1 && ' ⚠ >10% mismatch'}
+              </div>
+            </div>
+          )}
         </div>
         <div style={{ display:'flex', gap:'10px', marginTop:'14px', alignItems:'center', flexWrap:'wrap' }}>
           <button style={S.btn} onClick={add}>{t('addBtn')}</button>
