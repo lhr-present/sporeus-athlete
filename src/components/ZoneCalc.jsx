@@ -157,6 +157,12 @@ export default function ZoneCalc() {
   const [rDistCustom, setRDistCustom] = useState('')
   const [rTime, setRTime] = useState('')
   const [preds, setPreds] = useState(null)
+  // Pacing plan state
+  const [paceDist, setPaceDist] = useState('42195')
+  const [paceTime, setPaceTime] = useState('')
+  const [paceStrat, setPaceStrat] = useState('even')
+  const [pacePlan, setPacePlan] = useState(null)
+  const [paceCopied, setPaceCopied] = useState(false)
 
   const estHR = age ? Math.round(208-0.7*parseInt(age)) : null
 
@@ -197,6 +203,55 @@ export default function ZoneCalc() {
       const [m,s]=threshPace.split(':').map(Number)
       if (!isNaN(m)) setZones(paceZones(m+(s||0)/60))
     }
+  }
+
+  const genPacePlan = () => {
+    const distM = parseInt(paceDist)||42195
+    const totalSec = parseTimeSec(paceTime)
+    if (isNaN(totalSec)||totalSec<=0) return
+    const kmCount = Math.ceil(distM/1000)
+    const avgSecPerKm = totalSec / (distM/1000)
+    const rows = []
+    let cumSec = 0
+    for (let k=1; k<=kmCount; k++) {
+      const isLast = k===kmCount
+      const segDist = isLast ? distM-(kmCount-1)*1000 : 1000
+      let factor = 1
+      if (paceStrat==='negative') {
+        factor = k <= Math.floor(kmCount/2) ? 1.03 : 0.97
+      } else if (paceStrat==='positive') {
+        const q = Math.ceil(k / (kmCount/4))
+        factor = q===1 ? 0.98 : q===2 ? 1.0 : q===3 ? 1.01 : 1.02
+      }
+      const splitSec = avgSecPerKm * factor * (segDist/1000)
+      cumSec += splitSec
+      const fuelNote = cumSec >= 45*60 && Math.floor((cumSec-splitSec)/45/60) < Math.floor(cumSec/45/60)
+        ? 'GEL' : cumSec >= 20*60 && Math.floor((cumSec-splitSec)/20/60) < Math.floor(cumSec/20/60)
+        ? 'Water' : ''
+      const mm=m=>Math.floor(m/60), ss=m=>Math.round(m%60)
+      rows.push({ km:k, split:`${mm(splitSec)}:${String(ss(splitSec)).padStart(2,'0')}`, cumul:`${mm(cumSec)}:${String(ss(cumSec)).padStart(2,'0')}`, fuel:fuelNote })
+    }
+    setPacePlan({ rows, strat:paceStrat, dist:distM, totalSec })
+  }
+
+  const copyPacePlan = () => {
+    if (!pacePlan) return
+    const lines = [`Race Pacing Plan — ${paceStrat} split — ${pacePlan.dist}m`, 'KM\tSPLIT\tCUMUL.\tFUEL',
+      ...pacePlan.rows.map(r=>`${r.km}\t${r.split}\t${r.cumul}\t${r.fuel}`)]
+    navigator.clipboard?.writeText(lines.join('\n'))
+    setPaceCopied(true); setTimeout(()=>setPaceCopied(false), 2000)
+  }
+
+  const printPacePlan = () => {
+    if (!pacePlan) return
+    const w=window.open('','_blank')
+    w.document.write(`<html><head><title>Race Pacing Plan</title><style>body{font-family:'Courier New',monospace;padding:20px;font-size:12px}table{border-collapse:collapse;width:100%}td,th{padding:4px 10px;border:1px solid #ccc;text-align:left}th{background:#f5f5f5}</style></head><body>
+    <h2>Race Pacing Plan</h2><p>Strategy: ${pacePlan.strat} | Distance: ${pacePlan.dist}m | Target: ${fmtSec(pacePlan.totalSec)}</p>
+    <table><tr><th>KM</th><th>SPLIT</th><th>CUMUL.</th><th>FUELING</th></tr>
+    ${pacePlan.rows.map(r=>`<tr><td>${r.km}</td><td>${r.split}</td><td>${r.cumul}</td><td style="color:${r.fuel?'#cc5500':''}">${r.fuel||'—'}</td></tr>`).join('')}
+    </table><p style="font-size:10px;color:#888">sporeus.com — Race Pacing Calculator</p>
+    </body></html>`)
+    w.document.close(); w.onload=()=>w.print()
   }
 
   const predict = () => {
@@ -327,6 +382,71 @@ export default function ZoneCalc() {
             </tbody>
           </table>
           <div style={{ ...S.mono, fontSize:'10px', color:'#aaa', marginTop:'8px' }}>Riegel (1977): T2 = T1 \u00d7 (D2/D1)^1.06</div>
+        </div>
+      )}
+
+      {/* Race Pacing Strategy */}
+      <div className="sp-card" style={{ ...S.card, animationDelay:'160ms' }}>
+        <div style={S.cardTitle}>{t('pacingTitle')}</div>
+        <div style={S.row}>
+          <div style={{ flex:'1 1 160px' }}>
+            <label style={S.label}>{t('pacingDistL')}</label>
+            <select style={S.select} value={paceDist} onChange={e=>setPaceDist(e.target.value)}>
+              <option value="5000">5 km</option>
+              <option value="10000">10 km</option>
+              <option value="21097">Half Marathon</option>
+              <option value="42195">Marathon</option>
+            </select>
+          </div>
+          <div style={{ flex:'1 1 160px' }}>
+            <label style={S.label}>{t('pacingTimeL')}</label>
+            <input style={S.input} type="text" placeholder="3:30:00" value={paceTime} onChange={e=>setPaceTime(e.target.value)}/>
+          </div>
+          <div style={{ flex:'1 1 160px' }}>
+            <label style={S.label}>{t('pacingStratL')}</label>
+            <select style={S.select} value={paceStrat} onChange={e=>setPaceStrat(e.target.value)}>
+              <option value="even">{t('pacingEvenSplit')}</option>
+              <option value="negative">{t('pacingNegSplit')}</option>
+              <option value="positive">{t('pacingPosSplit')}</option>
+            </select>
+          </div>
+        </div>
+        <button style={{ ...S.btn, marginTop:'14px' }} onClick={genPacePlan}>{t('pacingGenBtn')}</button>
+      </div>
+
+      {pacePlan && (
+        <div className="sp-card" style={{ ...S.card, animationDelay:'170ms' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px' }}>
+            <div style={S.cardTitle}>{pacePlan.strat.toUpperCase()} SPLIT PLAN — {fmtSec(pacePlan.totalSec)}</div>
+            <div style={{ display:'flex', gap:'6px' }}>
+              {paceCopied && <span style={{ ...S.mono, fontSize:'10px', color:'#5bc25b' }}>✓</span>}
+              <button onClick={copyPacePlan} style={{ ...S.btnSec, fontSize:'10px', padding:'3px 8px' }}>{t('pacingCopyBtn')}</button>
+              <button onClick={printPacePlan} style={{ ...S.btnSec, fontSize:'10px', padding:'3px 8px' }}>{t('pacingPrintBtn')}</button>
+            </div>
+          </div>
+          <div style={{ overflowX:'auto' }}>
+            <table style={{ width:'100%', borderCollapse:'collapse', ...S.mono, fontSize:'11px' }}>
+              <thead>
+                <tr style={{ borderBottom:'2px solid var(--border)', color:'#888', fontSize:'9px', letterSpacing:'0.08em' }}>
+                  <th style={{ textAlign:'left', padding:'3px 6px 6px 0', fontWeight:600 }}>{t('pacingKm')}</th>
+                  <th style={{ textAlign:'right', padding:'3px 6px 6px 0', fontWeight:600 }}>{t('pacingSplit')}</th>
+                  <th style={{ textAlign:'right', padding:'3px 6px 6px 0', fontWeight:600 }}>{t('pacingCumul')}</th>
+                  <th style={{ textAlign:'right', padding:'3px 0 6px 0', fontWeight:600 }}>{t('pacingFuel')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pacePlan.rows.map(r=>(
+                  <tr key={r.km} style={{ borderBottom:'1px solid var(--border)' }}>
+                    <td style={{ padding:'4px 6px 4px 0', color:'var(--sub)' }}>{r.km}</td>
+                    <td style={{ textAlign:'right', padding:'4px 6px 4px 0', color:'#ff6600', fontWeight:600 }}>{r.split}</td>
+                    <td style={{ textAlign:'right', padding:'4px 6px 4px 0' }}>{r.cumul}</td>
+                    <td style={{ textAlign:'right', padding:'4px 0', color:r.fuel?'#f5c542':'#aaa', fontWeight:r.fuel?600:400 }}>{r.fuel||'—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ ...S.mono, fontSize:'9px', color:'#aaa', marginTop:'8px' }}>Gel at 45/90/135min · Water every 20min</div>
         </div>
       )}
 

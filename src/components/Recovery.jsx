@@ -4,19 +4,40 @@ import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { WELLNESS_FIELDS } from '../lib/constants.js'
 import { Sparkline } from './ui.jsx'
+import InjuryTracker from './InjuryTracker.jsx'
+import MentalTools from './MentalTools.jsx'
 
 export default function Recovery() {
   const { t } = useContext(LangCtx)
   const [entries, setEntries] = useLocalStorage('sporeus-recovery', [])
   const today = new Date().toISOString().slice(0,10)
   const todayEntry = entries.find(e=>e.date===today)
-  const defVals = { sleep:3, soreness:3, energy:3, mood:3, stress:3 }
-  const [form, setForm] = useState(todayEntry ? { ...todayEntry } : { ...defVals })
+  const defVals = { sleep:3, soreness:3, energy:3, mood:3, stress:3, sleepHrs:'', bedtime:'', wake:'' }
+  const [form, setForm] = useState(todayEntry ? { ...defVals, ...todayEntry } : { ...defVals })
 
   useEffect(() => {
     const e = entries.find(x=>x.date===today)
-    setForm(e ? {...e} : {...defVals})
+    setForm(e ? { ...defVals, ...e } : { ...defVals })
   }, [today])
+
+  // Auto-calculate sleep hours from bed/wake times
+  const calcSleepHrs = (bed, wk) => {
+    if (!bed || !wk) return ''
+    const [bh,bm] = bed.split(':').map(Number)
+    const [wh,wm] = wk.split(':').map(Number)
+    let mins = (wh*60+wm) - (bh*60+bm)
+    if (mins < 0) mins += 1440
+    return String(Math.round(mins/60*2)/2)
+  }
+
+  const handleBedWake = (field, val) => {
+    const newForm = { ...form, [field]: val }
+    const bed = field==='bedtime' ? val : form.bedtime
+    const wk  = field==='wake'    ? val : form.wake
+    const auto = calcSleepHrs(bed, wk)
+    if (auto) newForm.sleepHrs = auto
+    setForm(newForm)
+  }
 
   const score = Math.round(Object.values({sleep:form.sleep,soreness:form.soreness,energy:form.energy,mood:form.mood,stress:form.stress}).reduce((s,v)=>s+v,0)/5*20)
   const readiness = score>=75?{label:t('goLabel'),color:'#5bc25b'}:score>=50?{label:t('monitorLabel'),color:'#f5c542'}:{label:t('restLabel'),color:'#e03030'}
@@ -28,6 +49,9 @@ export default function Recovery() {
   }
 
   const last7scores = entries.slice(-7).map(e=>e.score)
+  const last7sleep  = entries.slice(-7).map(e=>parseFloat(e.sleepHrs)||0)
+  const avg7sleep   = last7sleep.length ? Math.round(last7sleep.reduce((s,v)=>s+v,0)/last7sleep.length*10)/10 : 0
+  const showSleepWarn = avg7sleep > 0 && avg7sleep < 7 && score < 60
 
   return (
     <div className="sp-fade">
@@ -38,7 +62,7 @@ export default function Recovery() {
       )}
 
       <div className="sp-card" style={{ ...S.card, animationDelay:'0ms' }}>
-        <div style={S.cardTitle}>{t('wellnessTitle')} \u2014 {today}</div>
+        <div style={S.cardTitle}>{t('wellnessTitle')} — {today}</div>
         {WELLNESS_FIELDS.map(field=>(
           <div key={field.key} style={{ marginBottom:'16px' }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px' }}>
@@ -55,12 +79,37 @@ export default function Recovery() {
             </div>
           </div>
         ))}
-        <button style={S.btn} onClick={save}>{t('saveEntryBtn')}</button>
+
+        {/* Sleep details */}
+        <div style={{ ...S.mono, fontSize:'10px', color:'#888', marginBottom:'8px', marginTop:'4px', letterSpacing:'0.06em' }}>SLEEP DETAILS (OPTIONAL)</div>
+        <div style={S.row}>
+          <div style={{ flex:'1 1 110px' }}>
+            <label style={S.label}>{t('sleepHrsL')}</label>
+            <input style={S.input} type="number" step="0.5" min="0" max="12" placeholder="7.5"
+              value={form.sleepHrs} onChange={e=>setForm({...form,sleepHrs:e.target.value})}/>
+          </div>
+          <div style={{ flex:'1 1 110px' }}>
+            <label style={S.label}>{t('bedtimeL')}</label>
+            <input style={S.input} type="time" value={form.bedtime}
+              onChange={e=>handleBedWake('bedtime',e.target.value)}/>
+          </div>
+          <div style={{ flex:'1 1 110px' }}>
+            <label style={S.label}>{t('wakeL')}</label>
+            <input style={S.input} type="time" value={form.wake}
+              onChange={e=>handleBedWake('wake',e.target.value)}/>
+          </div>
+        </div>
+        {form.bedtime && form.wake && (
+          <div style={{ ...S.mono, fontSize:'10px', color:'#5bc25b', marginTop:'4px' }}>
+            {t('sleepAutoNote')}: {form.sleepHrs}h
+          </div>
+        )}
+        <button style={{ ...S.btn, marginTop:'14px' }} onClick={save}>{t('saveEntryBtn')}</button>
       </div>
 
       <div className="sp-card" style={{ ...S.card, animationDelay:'50ms' }}>
         <div style={S.cardTitle}>{t('readScoreTitle')}</div>
-        <div style={{ display:'flex', alignItems:'center', gap:'24px' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:'24px', flexWrap:'wrap' }}>
           <div style={{ textAlign:'center' }}>
             <div style={{ ...S.mono, fontSize:'48px', fontWeight:600, color:readiness.color, lineHeight:1 }}>{score}</div>
             <div style={{ ...S.mono, fontSize:'10px', color:'#888', marginTop:'4px' }}>/100</div>
@@ -68,7 +117,7 @@ export default function Recovery() {
           <div>
             <span style={{ ...S.tag(readiness.color), fontSize:'14px', padding:'6px 16px' }}>{readiness.label}</span>
             <div style={{ ...S.mono, fontSize:'11px', color:'#888', marginTop:'8px' }}>
-              \u226575: {t('goLabel')} \u00b7 50\u201374: {t('monitorLabel')} \u00b7 &lt;50: {t('restLabel')}
+              ≥75: {t('goLabel')} · 50–74: {t('monitorLabel')} · &lt;50: {t('restLabel')}
             </div>
           </div>
           <div style={{ marginLeft:'auto' }}>
@@ -76,7 +125,25 @@ export default function Recovery() {
             <Sparkline data={last7scores}/>
           </div>
         </div>
+        {showSleepWarn && (
+          <div style={{ ...S.mono, fontSize:'10px', color:'#f5c542', marginTop:'10px', padding:'6px 10px', background:'#f5c54211', borderRadius:'4px' }}>
+            ⚠ {t('sleepLowWarning')}
+          </div>
+        )}
       </div>
+
+      {avg7sleep > 0 && (
+        <div className="sp-card" style={{ ...S.card, animationDelay:'80ms' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <div style={S.cardTitle}>{t('sleepTrendTitle')}</div>
+            <div style={{ ...S.mono, fontSize:'12px', color:'#0064ff', fontWeight:600 }}>{t('weight7avg')}: {avg7sleep}h</div>
+          </div>
+          <Sparkline data={last7sleep} w={200} h={36}/>
+          <div style={{ display:'flex', justifyContent:'space-between', ...S.mono, fontSize:'9px', color:'#aaa', marginTop:'4px' }}>
+            {entries.slice(-7).map(e=><span key={e.date}>{e.date.slice(5)}</span>)}
+          </div>
+        </div>
+      )}
 
       {entries.length>0 && (
         <div className="sp-card" style={{ ...S.card, animationDelay:'100ms' }}>
@@ -84,7 +151,7 @@ export default function Recovery() {
           <table style={{ width:'100%', borderCollapse:'collapse', ...S.mono, fontSize:'12px' }}>
             <thead>
               <tr style={{ borderBottom:'2px solid var(--border)', color:'#888', fontSize:'10px' }}>
-                {['DATE','SLEEP','SORENESS','ENERGY','MOOD','STRESS','SCORE'].map(h=>(
+                {['DATE','SLEEP','SORENESS','ENERGY','MOOD','STRESS','Zzz','SCORE'].map(h=>(
                   <th key={h} style={{ textAlign:h==='SCORE'?'right':'left', padding:'4px 6px 8px 0', fontWeight:600, fontSize:'9px', letterSpacing:'0.06em' }}>{h}</th>
                 ))}
               </tr>
@@ -99,6 +166,7 @@ export default function Recovery() {
                     {['sleep','soreness','energy','mood','stress'].map(k=>(
                       <td key={k} style={{ padding:'6px 6px 6px 0' }}>{WELLNESS_FIELDS.find(f=>f.key===k)?.emoji[(e[k]||3)-1]}</td>
                     ))}
+                    <td style={{ padding:'6px 6px 6px 0', color:'#888' }}>{e.sleepHrs ? `${e.sleepHrs}h` : '—'}</td>
                     <td style={{ textAlign:'right', padding:'6px 0', color:sc_c, fontWeight:600 }}>{sc}</td>
                   </tr>
                 )
@@ -107,6 +175,9 @@ export default function Recovery() {
           </table>
         </div>
       )}
+
+      <InjuryTracker />
+      <MentalTools />
     </div>
   )
 }
