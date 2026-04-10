@@ -8,8 +8,9 @@ import { useCountUp } from '../hooks/useCountUp.js'
 import Achievements from './Achievements.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { SPORT_BRANCHES, ATHLETE_LEVELS, LEVEL_CONFIG, DASH_CARD_DEFS } from '../lib/constants.js'
-import { analyzeLoadTrend, analyzeRecoveryCorrelation, analyzeZoneBalance, predictInjuryRisk, predictFitness, generateWeeklyNarrative, detectMilestones } from '../lib/intelligence.js'
+import { analyzeLoadTrend, analyzeRecoveryCorrelation, analyzeZoneBalance, predictInjuryRisk, predictFitness, generateWeeklyNarrative, detectMilestones, computeRaceReadiness, predictRacePerformance } from '../lib/intelligence.js'
 import { getTriggeredNotes } from '../lib/scienceNotes.js'
+import { correlateTrainingToResults, findRecoveryPatterns, mineInjuryPatterns, findOptimalWeekStructure, findSeasonalPatterns } from '../lib/patterns.js'
 
 function BackupReminder({ log }) {
   const [lastBackup, setLastBackup] = useLocalStorage('sporeus-last-backup', null)
@@ -207,12 +208,386 @@ function MilestoneOverlay({ log, profile }) {
   )
 }
 
+// ─── Your Patterns Card (v4.5) ────────────────────────────────────────────────
+function YourPatternsCard({ log, recovery, injuries, profile, lang }) {
+  const { t } = useContext(LangCtx)
+  const [testResults] = useLocalStorage('sporeus-test-results', [])
+  const [open, setOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  if (log.length < 14) return null
+
+  const trainTest  = correlateTrainingToResults(log, testResults)
+  const recPat     = findRecoveryPatterns(log, recovery)
+  const seasonal   = findSeasonalPatterns(log, recovery)
+  const weekStruct = findOptimalWeekStructure(log, recovery)
+
+  const allPatterns = [
+    ...trainTest.patterns.map(p => ({ icon:'🔬', text: p[lang] || p.en, confidence: p.confidence, basis: `${trainTest.dataPoints} test results` })),
+    ...(recPat.optimalReadiness ? [{ icon:'💤', text: recPat.optimalReadiness[lang] || recPat.optimalReadiness.en, confidence:'moderate', basis:`${recPat.sampleSize} sessions` }] : []),
+    ...(recPat.optimalSleep     ? [{ icon:'💤', text: recPat.optimalSleep[lang]     || recPat.optimalSleep.en,     confidence:'moderate', basis:`${recPat.sampleSize} sessions` }] : []),
+    ...(recPat.redFlags.map(rf  => ({ icon:'⚠', text: rf[lang] || rf.en, confidence:'moderate', basis:`${recPat.sampleSize} pairs` }))),
+    ...(recPat.bestDay  ? [{ icon:'📅', text: recPat.bestDay[lang]  || recPat.bestDay.en,  confidence:'low', basis:'' }] : []),
+    ...(recPat.worstDay ? [{ icon:'📅', text: recPat.worstDay[lang] || recPat.worstDay.en, confidence:'low', basis:'' }] : []),
+    ...(seasonal.strongMonths.length ? [{ icon:'🌡️', text: seasonal[lang] || seasonal.en, confidence:'moderate', basis:`${log.length} sessions` }] : []),
+    ...(weekStruct.reliable ? [{ icon:'📋', text: weekStruct[lang] || weekStruct.en, confidence:'moderate', basis:`${weekStruct.sampleSize} weeks` }] : []),
+  ]
+
+  // Data collection incentives (not enough data yet)
+  const hints = [
+    ...(testResults.length < 3 ? [{ icon:'🔬', text: lang==='tr' ? `Antrenman→test desenlerini bulmak için ${Math.max(0,3-testResults.length)} test sonucu daha gir.` : `${Math.max(0,3-testResults.length)} more test results needed to find your training→performance patterns.` }] : []),
+    ...(recovery.length < 7    ? [{ icon:'💤', text: lang==='tr' ? `Optimal koşullarınızı bulmak için ${Math.max(0,7-recovery.length)} gün daha toparlanma kaydet.` : `Log recovery for ${Math.max(0,7-recovery.length)} more days to discover your optimal conditions.` }] : []),
+    ...(!weekStruct.reliable && weekStruct.needMore > 0 ? [{ icon:'📋', text: lang==='tr' ? `Optimal hafta yapınızı bulmak için ${weekStruct.needMore} seans daha gerekiyor.` : `${weekStruct.needMore} more sessions needed to find your optimal week structure.` }] : []),
+  ]
+
+  if (allPatterns.length === 0 && hints.length === 0) return null
+
+  const handleCopy = () => {
+    const text = ['YOUR PERSONAL PATTERNS', '─'.repeat(30), ...allPatterns.map(p => `${p.icon} ${p.text}`)].join('\n')
+    navigator.clipboard.writeText(text).catch(() => {})
+    setCopied(true); setTimeout(() => setCopied(false), 2000)
+  }
+
+  const confColor = c => c === 'high' ? '#5bc25b' : c === 'moderate' ? '#f5c542' : '#888'
+
+  return (
+    <div className="sp-card" style={{ ...S.card, animationDelay:'56ms' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'12px' }}>
+        <div style={S.cardTitle}>{lang==='tr'?'SENİN DESENLERİN':'YOUR PATTERNS'}</div>
+        <div style={{ display:'flex', gap:'6px' }}>
+          {copied && <span style={{ ...S.mono, fontSize:'10px', color:'#5bc25b' }}>✓</span>}
+          {allPatterns.length > 0 && <button style={{ ...S.btnSec, fontSize:'10px', padding:'3px 8px' }} onClick={handleCopy}>⎘ Copy</button>}
+          <button style={{ ...S.btnSec, fontSize:'10px', padding:'3px 8px' }} onClick={() => setOpen(o => !o)}>{open ? '▲' : '▼'}</button>
+        </div>
+      </div>
+
+      {allPatterns.length === 0 && hints.length > 0 && (
+        <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+          {hints.map((h, i) => (
+            <div key={i} style={{ ...S.mono, fontSize:'11px', color:'#888', lineHeight:1.6 }}>{h.icon} {h.text}</div>
+          ))}
+        </div>
+      )}
+
+      {allPatterns.length > 0 && (
+        <div style={{ display:'flex', flexDirection:'column', gap:'7px' }}>
+          {allPatterns.slice(0, open ? undefined : 3).map((p, i) => (
+            <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:'10px', padding:'8px 10px', background:'var(--card-bg)', borderRadius:'4px' }}>
+              <span style={{ fontSize:'16px', flexShrink:0 }}>{p.icon}</span>
+              <div style={{ flex:1 }}>
+                <div style={{ ...S.mono, fontSize:'11px', color:'var(--text)', lineHeight:1.7 }}>{p.text}</div>
+                {p.basis && <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginTop:'2px' }}>based on {p.basis}</div>}
+              </div>
+              <span style={{ ...S.mono, fontSize:'9px', fontWeight:600, color:confColor(p.confidence), flexShrink:0, border:`1px solid ${confColor(p.confidence)}44`, padding:'1px 5px', borderRadius:'2px' }}>{p.confidence.toUpperCase()}</span>
+            </div>
+          ))}
+          {!open && allPatterns.length > 3 && (
+            <button style={{ ...S.mono, fontSize:'10px', color:'#888', background:'transparent', border:'none', cursor:'pointer', padding:'4px 0' }} onClick={() => setOpen(true)}>
+              +{allPatterns.length - 3} more patterns →
+            </button>
+          )}
+          {open && hints.length > 0 && (
+            <div style={{ marginTop:'4px', padding:'8px 10px', background:'var(--card-bg)', borderRadius:'4px' }}>
+              {hints.map((h, i) => <div key={i} style={{ ...S.mono, fontSize:'10px', color:'#888', marginBottom:'4px' }}>{h.icon} {h.text}</div>)}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Proactive Injury Alert (v4.5) ────────────────────────────────────────────
+function ProactiveInjuryAlert({ log, injuries, lang }) {
+  const injPatterns = mineInjuryPatterns(log, injuries, [])
+  const highConf    = injPatterns.patterns.filter(p => p.confidence === 'high')
+  if (!highConf.length) return null
+
+  // Check if current week matches any trigger pattern
+  const now  = new Date().toISOString().slice(0, 10)
+  const w1   = (() => { const d = new Date(); d.setDate(d.getDate()-7);  return d.toISOString().slice(0,10) })()
+  const w2   = (() => { const d = new Date(); d.setDate(d.getDate()-14); return d.toISOString().slice(0,10) })()
+  const recent7  = log.filter(e => e.date >= w1)
+  const recent14 = log.filter(e => e.date >= w2)
+
+  const tss7  = recent7.reduce((s, e) => s + (e.tss || 0), 0)
+  const tss14 = recent14.reduce((s, e) => s + (e.tss || 0), 0) / 2
+  const prevTSS = log.filter(e => e.date >= w2 && e.date < w1).reduce((s, e) => s + (e.tss || 0), 0)
+  const spikeP  = prevTSS > 0 ? (tss7 - prevTSS) / prevTSS * 100 : 0
+  const longRun = Math.max(...recent7.map(e => e.duration || 0), 0)
+  const consec  = (() => { let c = 0; for (const e of [...recent7].sort((a,b) => b.date>a.date?1:-1)) { if((e.rpe||0)>=7)c++;else break }; return c })()
+
+  const active = highConf.filter(p => {
+    if (p.triggers.includes('volume_spike') && spikeP > 20) return true
+    if (p.triggers.includes('long_run_duration') && longRun > 90) return true
+    if (p.triggers.includes('consecutive_hard_days') && consec >= 3) return true
+    return false
+  })
+
+  if (!active.length) return null
+
+  const zoneStr = active.map(p => p.zone).join(', ')
+  return (
+    <div className="sp-card" style={{ ...S.card, borderLeft:'4px solid #e03030', animationDelay:'0ms', background:'#e0303011' }}>
+      <div style={{ ...S.mono, fontSize:'10px', color:'#e03030', letterSpacing:'0.08em', fontWeight:600, marginBottom:'6px' }}>
+        ⚠ {lang==='tr'?'PROAKTİF YARALANMA UYARISI':'PROACTIVE INJURY RISK'}
+      </div>
+      <div style={{ ...S.mono, fontSize:'12px', color:'var(--text)', lineHeight:1.7, marginBottom:'8px' }}>
+        {lang==='tr'
+          ? `Bu haftaki antrenman deseni önceki ${zoneStr} sorunlarından önce gelen koşullarla eşleşiyor.`
+          : `Current week matches conditions that preceded your previous ${zoneStr} injury issues.`}
+      </div>
+      {spikeP > 20 && <div style={{ ...S.mono, fontSize:'10px', color:'#e03030' }}>→ Volume spike: +{Math.round(spikeP)}% this week</div>}
+      {longRun > 90 && <div style={{ ...S.mono, fontSize:'10px', color:'#e03030' }}>→ Long session: {longRun} min</div>}
+      {consec >= 3  && <div style={{ ...S.mono, fontSize:'10px', color:'#e03030' }}>→ {consec} consecutive hard days</div>}
+      <div style={{ ...S.mono, fontSize:'10px', color:'#f5c542', marginTop:'8px', lineHeight:1.6 }}>
+        Suggestion: {lang==='tr'?'Yarınki seansı kolay çalışma ile değiştirin veya dinlenme günü ekleyin.':'Replace tomorrow\'s session with easy work or add a rest day.'}
+      </div>
+    </div>
+  )
+}
+
+// ─── Race Readiness Gauge (v4.6) ──────────────────────────────────────────────
+function RaceReadinessCard({ log, recovery, injuries, profile, plan, planStatus, lang }) {
+  const { t } = useContext(LangCtx)
+  const [testResults] = useLocalStorage('sporeus-test-results', [])
+  const [expanded, setExpanded] = useState(false)
+  const [showPostRace, setShowPostRace] = useState(false)
+  const [raceResult, setRaceResult] = useLocalStorage('sporeus-race-results', [])
+  const [resultForm, setResultForm] = useState({ time:'', conditions:'normal', feeling:'3', notes:'' })
+
+  const raceDate = profile?.raceDate
+  if (!raceDate && !profile?.goal) return null
+  if (log.length < 7) return null
+
+  const rr = computeRaceReadiness(log, recovery, injuries, profile, plan, planStatus)
+  const perf = predictRacePerformance(log, testResults, profile)
+
+  const gradeColor = { 'A+':'#f5c542', A:'#5bc25b', B:'#0064ff', C:'#f5c542', D:'#e03030', F:'#e03030' }[rr.grade] || '#888'
+
+  // SVG ring gauge
+  const R = 48, CX = 60, CY = 60, STROKE = 8
+  const circumference = 2 * Math.PI * R
+  const filled = circumference * rr.score / 100
+  const dash   = `${filled} ${circumference - filled}`
+
+  // Days to race display
+  const daysDisp = rr.daysToRace !== null
+    ? (rr.daysToRace <= 0 ? (lang==='tr'?'YARIŞ GÜNÜ!':'RACE DAY!') : `${lang==='tr'?'YARIŞA':'RACE IN'} ${rr.daysToRace} ${lang==='tr'?'GÜN':'DAYS'}`)
+    : null
+
+  // Race Week Mode: special header when ≤7 days
+  const isRaceWeek = rr.daysToRace !== null && rr.daysToRace >= 0 && rr.daysToRace <= 7
+
+  // Sorted factors: worst first
+  const sortedFactors = [...rr.factors].sort((a, b) => (a.score * a.weight) - (b.score * b.weight))
+
+  // Post-race: if raceDate passed
+  const raceIsPast = raceDate && new Date(raceDate) < new Date()
+  const hasResult  = raceResult.some(r => r.raceDate === raceDate)
+
+  const saveResult = () => {
+    const entry = { raceDate, ...resultForm, savedAt: new Date().toISOString() }
+    const predicted = perf.predictions.find(p => (profile?.goal || '').toLowerCase().includes(p.label.toLowerCase()))
+    if (predicted && resultForm.time) {
+      const parts = resultForm.time.split(':').map(Number)
+      const actualSec = parts.length === 3 ? parts[0]*3600+parts[1]*60+parts[2] : parts.length === 2 ? parts[0]*60+parts[1] : 0
+      const predParts = predicted.predicted.split(':').map(Number)
+      const predSec   = predParts.length === 3 ? predParts[0]*3600+predParts[1]*60+predParts[2] : predParts[0]*60+predParts[1]
+      if (actualSec && predSec) {
+        const delta = Math.round((predSec - actualSec) / predSec * 100)
+        entry.accuracyDelta = delta
+        entry.predictedTime = predicted.predicted
+      }
+    }
+    setRaceResult(prev => [...prev, entry])
+    setShowPostRace(false)
+  }
+
+  return (
+    <div className="sp-card" style={{ ...S.card, animationDelay:'0ms', borderLeft:`4px solid ${gradeColor}`, ...(isRaceWeek ? { background: '#ff660008', border:`1px solid #ff660044` } : {}) }}>
+      {isRaceWeek && (
+        <div style={{ background:'#ff6600', margin:'-12px -16px 12px', padding:'10px 16px', borderRadius:'6px 6px 0 0' }}>
+          <div style={{ ...S.mono, fontSize:'14px', fontWeight:700, color:'#fff', letterSpacing:'0.12em' }}>⚡ RACE WEEK</div>
+        </div>
+      )}
+
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'12px', flexWrap:'wrap' }}>
+        {/* SVG gauge */}
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'4px' }}>
+          <svg width="120" height="120" viewBox="0 0 120 120">
+            <circle cx={CX} cy={CY} r={R} fill="none" stroke="var(--border)" strokeWidth={STROKE}/>
+            <circle cx={CX} cy={CY} r={R} fill="none" stroke={gradeColor} strokeWidth={STROKE}
+              strokeDasharray={dash} strokeDashoffset={circumference * 0.25}
+              strokeLinecap="round" style={{ transition:'stroke-dasharray 0.5s ease' }}/>
+            <text x={CX} y={CY - 6} textAnchor="middle" style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'22px', fontWeight:700, fill:gradeColor }}>{rr.grade}</text>
+            <text x={CX} y={CY + 14} textAnchor="middle" style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'13px', fill:'var(--sub)' }}>{rr.score}/100</text>
+          </svg>
+          <div style={{ ...S.mono, fontSize:'8px', color:'#888' }}>{rr.confidence.toUpperCase()} CONFIDENCE</div>
+        </div>
+
+        {/* Verdict + details */}
+        <div style={{ flex:1, minWidth:'160px' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'6px' }}>
+            <div style={S.cardTitle}>{lang==='tr'?'YARIŞ HAZIRLIĞI':'RACE READINESS'}</div>
+            <button style={{ ...S.btnSec, fontSize:'10px', padding:'3px 8px' }} onClick={() => setExpanded(e => !e)}>
+              {expanded ? '▲' : '▼ DETAILS'}
+            </button>
+          </div>
+          <div style={{ ...S.mono, fontSize:'11px', color:'var(--text)', lineHeight:1.7, marginBottom:'8px' }}>
+            {rr.verdict[lang] || rr.verdict.en}
+          </div>
+          {daysDisp && (
+            <div style={{ ...S.mono, fontSize:'10px', fontWeight:600, color:rr.daysToRace <= 7 ? '#ff6600' : '#888', marginBottom:'6px' }}>
+              {daysDisp}
+            </div>
+          )}
+          {perf.reliable && perf.predictions.length > 0 && (() => {
+            const goalDist = profile?.goal?.toLowerCase() || ''
+            const match = perf.predictions.find(p => goalDist.includes(p.label.toLowerCase())) || perf.predictions[1]
+            if (!match) return null
+            return (
+              <div style={{ ...S.mono, fontSize:'10px', color:'#888', lineHeight:1.6 }}>
+                Predicted: <strong style={{ color:'#ff6600' }}>{match.predicted}</strong> (best {match.best} — worst {match.worst})<br/>
+                <span style={{ fontSize:'9px' }}>via {perf.method}</span>
+              </div>
+            )
+          })()}
+        </div>
+      </div>
+
+      {/* Factor breakdown */}
+      {expanded && (
+        <div style={{ marginTop:'12px', borderTop:'1px solid var(--border)', paddingTop:'12px' }}>
+          <div style={{ ...S.mono, fontSize:'9px', color:'#888', letterSpacing:'0.06em', marginBottom:'8px' }}>FACTOR BREAKDOWN (worst first)</div>
+          {sortedFactors.map(f => (
+            <div key={f.name} style={{ marginBottom:'7px' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'2px' }}>
+                <span style={{ ...S.mono, fontSize:'9px', color: f.score < 50 ? '#e03030' : f.score < 70 ? '#f5c542' : '#888', letterSpacing:'0.04em' }}>{f.name}</span>
+                <span style={{ ...S.mono, fontSize:'10px', fontWeight:600, color: f.score < 50 ? '#e03030' : f.score < 70 ? '#f5c542' : '#5bc25b' }}>{f.score}/100</span>
+              </div>
+              <div style={{ width:'100%', height:'4px', background:'var(--border)', borderRadius:'2px', overflow:'hidden' }}>
+                <div style={{ width:`${f.score}%`, height:'100%', background: f.score < 50 ? '#e03030' : f.score < 70 ? '#f5c542' : '#5bc25b', borderRadius:'2px' }}/>
+              </div>
+              <div style={{ ...S.mono, fontSize:'9px', color:'var(--sub)', marginTop:'2px' }}>{f[lang] || f.en} (weight {Math.round(f.weight*100)}%)</div>
+            </div>
+          ))}
+
+          {/* Race pacing predictions table */}
+          {perf.reliable && perf.predictions.length > 0 && (
+            <div style={{ marginTop:'10px', padding:'8px 10px', background:'var(--card-bg)', borderRadius:'4px' }}>
+              <div style={{ ...S.mono, fontSize:'9px', color:'#0064ff', letterSpacing:'0.06em', marginBottom:'6px' }}>RACE PREDICTIONS</div>
+              <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
+                {perf.predictions.map(p => (
+                  <div key={p.label} style={{ flex:'1 1 70px', textAlign:'center' }}>
+                    <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>{p.label}</div>
+                    <div style={{ ...S.mono, fontSize:'13px', fontWeight:600, color:'#ff6600' }}>{p.predicted}</div>
+                    <div style={{ ...S.mono, fontSize:'8px', color:'#888' }}>{p.best}–{p.worst}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ ...S.mono, fontSize:'8px', color:'#888', marginTop:'4px' }}>{perf.method}</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Race Week taper checklist */}
+      {isRaceWeek && rr.daysToRace >= 0 && (
+        <div style={{ marginTop:'12px', borderTop:'1px solid #ff660033', paddingTop:'12px' }}>
+          <div style={{ ...S.mono, fontSize:'9px', color:'#ff6600', letterSpacing:'0.06em', marginBottom:'8px' }}>TAPER CHECKLIST</div>
+          {[
+            { day: 6, en:"Last hard session — threshold or race-pace intervals", tr:"Son zorlu seans — eşik veya yarış temposu aralıklar" },
+            { day: 5, en:"Easy run only — shakeout pace", tr:"Sadece kolay koşu — hafif tempo" },
+            { day: 4, en:"Easy or rest — begin carb loading (8g/kg)", tr:"Kolay ya da dinlenme — karbonhidrat yüklemesi başlat (8g/kg)" },
+            { day: 3, en:"Easy 30min — hydration focus — lay out race kit", tr:"30 dak kolay — sıvı alımına odaklan — yarış ekipmanını hazırla" },
+            { day: 2, en:"Complete rest or light walk", tr:"Tam dinlenme veya hafif yürüyüş" },
+            { day: 1, en:"Rest — pasta dinner — visualize the course — sleep early", tr:"Dinlenme — makarna — güzergahı zihinsel prova et — erken uyu" },
+            { day: 0, en:"RACE DAY — trust the training", tr:"YARIŞ GÜNÜ — antrenmanına güven" },
+          ].filter(c => c.day >= rr.daysToRace).map(c => {
+            const isToday = c.day === rr.daysToRace
+            return (
+              <div key={c.day} style={{ display:'flex', alignItems:'flex-start', gap:'8px', padding:'5px 0', borderBottom:'1px solid var(--border)', opacity: isToday ? 1 : 0.6 }}>
+                <span style={{ ...S.mono, fontSize:'10px', color: isToday ? '#ff6600' : '#888', minWidth:'50px' }}>
+                  {c.day === 0 ? '🏁 TODAY' : `D-${c.day}`}
+                </span>
+                <span style={{ ...S.mono, fontSize:'10px', color: isToday ? 'var(--text)' : 'var(--sub)', lineHeight:1.6 }}>
+                  {c[lang] || c.en}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Post-race analysis */}
+      {raceIsPast && !hasResult && (
+        <div style={{ marginTop:'12px', borderTop:'1px solid var(--border)', paddingTop:'10px' }}>
+          <div style={{ ...S.mono, fontSize:'10px', color:'#f5c542', marginBottom:'8px' }}>📝 How did it go? Log your result.</div>
+          {!showPostRace ? (
+            <button style={{ ...S.btn, fontSize:'11px', padding:'6px 14px' }} onClick={() => setShowPostRace(true)}>
+              {lang==='tr'?'Yarış Sonucunu Kaydet':'Log Race Result'}
+            </button>
+          ) : (
+            <div>
+              <div style={S.row}>
+                <div style={{ flex:'1 1 130px' }}>
+                  <label style={S.label}>FINISH TIME (hh:mm:ss)</label>
+                  <input style={S.input} placeholder="3:28:45" value={resultForm.time} onChange={e=>setResultForm(f=>({...f,time:e.target.value}))}/>
+                </div>
+                <div style={{ flex:'1 1 130px' }}>
+                  <label style={S.label}>CONDITIONS</label>
+                  <select style={S.input} value={resultForm.conditions} onChange={e=>setResultForm(f=>({...f,conditions:e.target.value}))}>
+                    {['normal','hot','cold','windy','hilly','wet'].map(c=><option key={c}>{c}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div style={{ marginBottom:'8px' }}>
+                <label style={S.label}>OVERALL FEELING</label>
+                <div style={{ display:'flex', gap:'8px' }}>
+                  {['😞','😕','😐','🙂','😄'].map((em,i)=>(
+                    <button key={i} onClick={()=>setResultForm(f=>({...f,feeling:String(i+1)}))}
+                      style={{ fontSize:'20px', padding:'4px 8px', borderRadius:'4px', border:`2px solid ${resultForm.feeling===String(i+1)?'#ff6600':'var(--border)'}`, background:resultForm.feeling===String(i+1)?'#ff660022':'transparent', cursor:'pointer' }}>
+                      {em}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ display:'flex', gap:'8px' }}>
+                <button style={S.btn} onClick={saveResult}>{lang==='tr'?'Kaydet':'Save'}</button>
+                <button style={S.btnSec} onClick={()=>setShowPostRace(false)}>{lang==='tr'?'Vazgeç':'Cancel'}</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Show last result accuracy */}
+      {hasResult && (() => {
+        const r = raceResult.find(x => x.raceDate === raceDate)
+        if (!r || r.accuracyDelta === undefined) return null
+        const delta = r.accuracyDelta
+        const color = Math.abs(delta) <= 3 ? '#5bc25b' : '#f5c542'
+        return (
+          <div style={{ marginTop:'10px', padding:'8px 10px', background:'var(--card-bg)', borderRadius:'4px' }}>
+            <div style={{ ...S.mono, fontSize:'10px', color:color, fontWeight:600 }}>
+              {delta > 0 ? `🏆 ${delta}% faster than predicted!` : delta < 0 ? `${Math.abs(delta)}% slower than predicted` : '✓ Prediction was spot-on!'}
+            </div>
+            <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginTop:'2px' }}>Predicted: {r.predictedTime} · Actual: {r.time}</div>
+          </div>
+        )
+      })()}
+    </div>
+  )
+}
+
 export default function Dashboard({ log, profile }) {
   const [dark] = useLocalStorage('sporeus-dark', false)
   const [lang] = useLocalStorage('sporeus-lang', 'en')
   const [plan] = useLocalStorage('sporeus-plan', null)
   const [planStatus] = useLocalStorage('sporeus-plan-status', {})
   const [recovery] = useLocalStorage('sporeus-recovery', [])
+  const [injuries] = useLocalStorage('sporeus-injuries', [])
   const [myCoach] = useLocalStorage('sporeus-my-coach', null)
   const [reportVisible, setReportVisible] = useState(false)
   const { t } = useContext(LangCtx)
@@ -407,7 +782,10 @@ export default function Dashboard({ log, profile }) {
         )}
       </div>}
 
+      <RaceReadinessCard log={log} recovery={recovery} injuries={injuries} profile={profile} plan={plan} planStatus={planStatus} lang={lang}/>
+      <ProactiveInjuryAlert log={log} injuries={injuries} lang={lang}/>
       <InsightsCard log={log} recovery={recovery} profile={profile} lang={lang}/>
+      <YourPatternsCard log={log} recovery={recovery} injuries={injuries} profile={profile} lang={lang}/>
       <WeekStoryCard log={log} recovery={recovery} profile={profile} lang={lang}/>
       <DidYouKnowCard log={log} recovery={recovery} profile={profile} lang={lang}/>
 

@@ -2,6 +2,7 @@
 // v4.3: analyzeLoadTrend, analyzeRecoveryCorrelation, analyzeZoneBalance,
 //        predictInjuryRisk, predictFitness, scoreSession
 // v4.4: generateWeeklyNarrative, detectMilestones
+// v4.6: computeRaceReadiness, predictRacePerformance
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function daysAgoDate(n) {
@@ -453,4 +454,231 @@ export function detectMilestones(log, profile, prevMilestones) {
   check('streak_5',         last7 >= 5,   '5 sessions this week — outstanding!',   'Bu hafta 5 antrenman — mükemmel!',            '🔥')
 
   return newOnes
+}
+
+// ─── v4.6: computeRaceReadiness ───────────────────────────────────────────────
+// 10-factor weighted composite (0–100, A+ through F).
+export function computeRaceReadiness(log, recovery, injuries, profile, plan, planStatus) {
+  const ctl = computeCTL(log)
+  const atl = computeATL(log)
+  const tsb = ctl - atl
+
+  const goal = (profile?.goal || '').toLowerCase()
+  const raceDate = profile?.raceDate || null
+  const daysToRace = raceDate ? Math.ceil((new Date(raceDate) - new Date()) / 864e5) : null
+
+  // ── Factor helpers ──────────────────────────────────────────────────────────
+  // 1. FITNESS
+  const targetCTL = goal.includes('5k') ? 40 : goal.includes('10k') ? 50 : goal.includes('half') ? 60 : goal.includes('marathon') ? 70 : goal.includes('ironman') || goal.includes('triathlon') ? 90 : 55
+  const fitnessScore = Math.min(100, Math.round(ctl / targetCTL * 100))
+
+  // 2. FRESHNESS (TSB)
+  const freshnessScore = tsb >= 5 && tsb <= 20 ? 100 : tsb >= 0 && tsb < 5 ? 80 : tsb >= -5 && tsb < 0 ? 60 : tsb < -5 ? 30 : tsb > 20 ? 50 : 50
+
+  // 3. TAPER QUALITY
+  let taperScore = 50
+  if (daysToRace !== null && daysToRace <= 21 && log.length >= 4) {
+    const peakWeek = daysAgoDate(28)
+    const peakTSS = tssInWindow(log, peakWeek, daysAgoDate(21))
+    const lastWeekTSS = tssInWindow(log, daysAgoDate(7), daysAgoDate(0))
+    const reduction = peakTSS > 0 ? (1 - lastWeekTSS / peakTSS) * 100 : 0
+    taperScore = reduction >= 40 && reduction <= 65 ? 100 : reduction >= 25 && reduction < 40 ? 75 : reduction > 65 ? 60 : daysToRace <= 14 ? 20 : 50
+  }
+
+  // 4. TRAINING CONSISTENCY (8-week avg sessions/week)
+  const w8log = log.filter(e => e.date >= daysAgoDate(56))
+  const avgWeeklySess = w8log.length / 8
+  const consistencyScore = avgWeeklySess >= 5 ? 100 : avgWeeklySess >= 4 ? 80 : avgWeeklySess >= 3 ? 60 : 30
+
+  // 5. RECOVERY STATE
+  const rec7 = recovery?.filter(e => e.date >= daysAgoDate(7)) || []
+  const avgRec = rec7.length ? rec7.reduce((s, e) => s + (e.score || 0), 0) / rec7.length : null
+  const recoveryScore = avgRec === null ? 50 : avgRec >= 75 ? 100 : avgRec >= 60 ? 80 : avgRec >= 50 ? 60 : 30
+
+  // 6. SLEEP QUALITY (average sleepHrs last 7 days)
+  const sleepEntries = rec7.filter(e => parseFloat(e.sleepHrs) > 0)
+  const avgSleep = sleepEntries.length ? sleepEntries.reduce((s, e) => s + parseFloat(e.sleepHrs), 0) / sleepEntries.length : null
+  const sleepScore = avgSleep === null ? 50 : avgSleep >= 7.5 ? 100 : avgSleep >= 7 ? 80 : avgSleep >= 6.5 ? 60 : 30
+
+  // 7. INJURY STATUS
+  const recentInj = injuries?.filter(i => i.date >= daysAgoDate(14)) || []
+  const maxPain   = recentInj.reduce((m, i) => Math.max(m, i.level || 0), 0)
+  const injuryScore = maxPain === 0 ? 100 : maxPain <= 2 ? 70 : maxPain <= 4 ? 40 : 10
+
+  // 8. PLAN COMPLIANCE
+  let complianceScore = 50
+  if (plan && planStatus) {
+    let total = 0, done = 0
+    plan.weeks?.forEach((w, wi) => {
+      w.sessions?.forEach((s, di) => {
+        if (s.type !== 'Rest' && s.duration > 0) {
+          total++
+          const st = planStatus[`${wi}-${di}`]
+          if (st === 'done' || st === 'modified') done++
+        }
+      })
+    })
+    if (total > 0) {
+      const pct = done / total * 100
+      complianceScore = pct >= 85 ? 100 : pct >= 70 ? 80 : pct >= 50 ? 60 : 30
+    }
+  }
+
+  // 9. ZONE DISTRIBUTION
+  const { z1z2Pct } = analyzeZoneBalance(log)
+  const zoneScore = z1z2Pct >= 70 ? 100 : z1z2Pct >= 55 ? 70 : 40
+
+  // 10. LONG RUN / KEY WORKOUT READINESS
+  const longRuns = log.filter(e => e.date >= daysAgoDate(28) && (e.duration || 0) > 60)
+  const longestMin = longRuns.length ? Math.max(...longRuns.map(e => e.duration || 0)) : 0
+  let longRunScore = 50
+  if (goal.includes('marathon')) {
+    longRunScore = longestMin >= 200 ? 100 : longestMin >= 180 ? 80 : longestMin >= 150 ? 60 : 40
+  } else if (goal.includes('half')) {
+    longRunScore = longestMin >= 110 ? 100 : longestMin >= 90 ? 80 : longestMin >= 70 ? 60 : 40
+  } else if (goal.includes('10k')) {
+    longRunScore = longestMin >= 70 ? 100 : longestMin >= 50 ? 80 : 60
+  } else if (goal.includes('5k')) {
+    longRunScore = 60 + Math.min(40, longestMin / 2)
+  }
+
+  // ── Weighted composite ──────────────────────────────────────────────────────
+  const factors = [
+    { name: 'FITNESS',      score: fitnessScore,     weight: 0.20, en: `CTL ${ctl} vs target ${targetCTL} for ${goal || 'your goal'}.`,     tr: `KTY ${ctl}, hedef ${targetCTL}.` },
+    { name: 'FRESHNESS',    score: freshnessScore,   weight: 0.15, en: `TSB ${tsb >= 0 ? '+' : ''}${tsb} — ${tsb >= 5 && tsb <= 20 ? 'optimal taper range.' : tsb < -5 ? 'fatigued.' : tsb > 20 ? 'too much rest.' : 'slightly low.'}`, tr: `TSB ${tsb >= 0 ? '+' : ''}${tsb}.` },
+    { name: 'TAPER',        score: taperScore,       weight: 0.10, en: daysToRace ? `${daysToRace} days to race — ${taperScore >= 90 ? 'taper on track.' : taperScore < 40 ? 'taper not initiated.' : 'partial taper.'}` : 'No race date set.', tr: daysToRace ? `Yarışa ${daysToRace} gün.` : 'Yarış tarihi yok.' },
+    { name: 'CONSISTENCY',  score: consistencyScore, weight: 0.10, en: `${avgWeeklySess.toFixed(1)} sessions/week avg (8 weeks).`,          tr: `Haftalık ort. ${avgWeeklySess.toFixed(1)} seans (8 hafta).` },
+    { name: 'RECOVERY',     score: recoveryScore,    weight: 0.10, en: avgRec ? `7-day avg readiness: ${Math.round(avgRec)}/100.` : 'No recovery data.', tr: avgRec ? `7 günlük ort. hazırlık: ${Math.round(avgRec)}/100.` : 'Toparlanma verisi yok.' },
+    { name: 'SLEEP',        score: sleepScore,       weight: 0.08, en: avgSleep ? `7-day avg sleep: ${avgSleep.toFixed(1)}h.` : 'No sleep data logged.', tr: avgSleep ? `7 günlük ort. uyku: ${avgSleep.toFixed(1)} saat.` : 'Uyku verisi yok.' },
+    { name: 'INJURY',       score: injuryScore,      weight: 0.08, en: maxPain === 0 ? 'No injuries in 14 days.' : `Recent injury (pain ${maxPain}/5).`, tr: maxPain === 0 ? 'Son 14 günde yaralanma yok.' : `Son yaralanma (ağrı ${maxPain}/5).` },
+    { name: 'COMPLIANCE',   score: complianceScore,  weight: 0.07, en: plan ? `Plan compliance score.` : 'No training plan set.', tr: plan ? 'Plan uyumu skoru.' : 'Antrenman planı yok.' },
+    { name: 'ZONE BALANCE', score: zoneScore,        weight: 0.07, en: `${z1z2Pct}% easy volume (target ≥70%).`,                           tr: `%${z1z2Pct} kolay hacim (hedef ≥%70).` },
+    { name: 'LONG SESSION', score: longRunScore,     weight: 0.05, en: longestMin > 0 ? `Longest session in 4 weeks: ${longestMin}min.` : 'No long sessions in 4 weeks.', tr: longestMin > 0 ? `4 haftada en uzun seans: ${longestMin} dak.` : '4 haftada uzun seans yok.' },
+  ]
+
+  const composite = Math.round(factors.reduce((s, f) => s + f.score * f.weight, 0))
+  const grade = composite >= 95 ? 'A+' : composite >= 85 ? 'A' : composite >= 70 ? 'B' : composite >= 55 ? 'C' : composite >= 40 ? 'D' : 'F'
+
+  const verdicts = {
+    'A+': { en: "You're in the best shape of this training block. Trust the work — go race.", tr: "Bu antrenman bloğunun en iyi formundasınız. Yapılan işe güvenin — yarışın." },
+    'A':  { en: "Race-ready. Minor areas to optimize but you're well-prepared.", tr: "Yarışa hazır. Küçük optimizasyon alanları var ama iyi hazırlanmışsınız." },
+    'B':  { en: `Solid preparation. Focus on improving ${factors.sort((a, b) => a.score - b.score)[0].name.toLowerCase()}.`, tr: `Sağlam hazırlık. ${factors.sort((a, b) => a.score - b.score)[0].name.toLowerCase()} geliştirmeye odaklan.` },
+    'C':  { en: `Partially prepared. Consider adjusting race target. Gaps: ${factors.sort((a, b) => a.score - b.score).slice(0,2).map(f=>f.name.toLowerCase()).join(', ')}.`, tr: `Kısmen hazır. Yarış hedefini ayarlamayı düşün.` },
+    'D':  { en: "Not recommended to race at full intensity. Consider a B-goal or training race.", tr: "Tam yoğunlukta yarış önerilmiyor. B-hedefi veya antrenman yarışı düşünün." },
+    'F':  { en: "Significant preparation gaps. Recommend postponing peak effort.", tr: "Önemli hazırlık eksiklikleri. Zirve efor ertelemesi öneriliyor." },
+  }
+
+  const confidence = log.length >= 28 && recovery?.length >= 14 ? 'high' : log.length >= 14 ? 'moderate' : 'low'
+
+  return { score: composite, grade, factors, verdict: verdicts[grade], confidence, daysToRace }
+}
+
+// ─── v4.6: predictRacePerformance ─────────────────────────────────────────────
+// Multi-method prediction. Returns times for multiple distances.
+export function predictRacePerformance(log, testResults, profile) {
+  const ctl = computeCTL(log)
+  const ftp  = parseFloat(profile?.ftp  || 0)
+  const vo2  = parseFloat(profile?.vo2max || 0)
+  const ltPace = profile?.ltPace ? (() => {
+    const p = profile.ltPace.split(':').map(Number)
+    return p.length === 2 ? p[0] * 60 + p[1] : 0
+  })() : 0
+
+  // Method A: VO2max → VDOT (Daniels) — simplified running prediction
+  const vdotFromVO2 = vo2 > 0 ? (() => {
+    // VDOT ≈ VO2max * 0.995 (simplified — full Daniels requires velocity input)
+    const vdot = vo2 * 0.995
+    // T-pace (threshold) = VDOT-based running economy
+    const tPaceSecPerKm = vo2 > 0 ? Math.round(3600 / (vo2 * 0.85 / 3.5) * 10) / 10 : 0
+    return { vdot, tPaceSecPerKm }
+  })() : null
+
+  // Method B: Recent test result
+  const recentTests = (testResults || []).filter(tr => {
+    const age = (Date.now() - new Date(tr.date).getTime()) / (7 * 864e5)
+    return age <= 8
+  }).sort((a, b) => b.date > a.date ? 1 : -1)
+
+  const recentFTP   = recentTests.find(t => ['ramp','ftp20'].includes(t.testId))
+  const recentVO2   = recentTests.find(t => ['cooper','yyir1','astrand'].includes(t.testId))
+  const recentRace  = recentTests.find(t => t.testId === 'race')
+
+  // Method C: Riegel from best known result with CTL-adjusted exponent
+  const riegelPredict = (t1, d1, d2) => {
+    const exp = 1.06 + 0.001 * Math.max(0, 70 - ctl)
+    return t1 * Math.pow(d2 / d1, exp)
+  }
+
+  const targets = [
+    { label: '5K',       dist: 5000 },
+    { label: '10K',      dist: 10000 },
+    { label: 'Half',     dist: 21097 },
+    { label: 'Marathon', dist: 42195 },
+  ]
+
+  let baseTimeSec = 0, baseDist = 0, method = 'training_pace'
+
+  if (recentRace) {
+    const parts = String(recentRace.value).split(':').map(Number)
+    baseTimeSec = parts.length === 3 ? parts[0]*3600+parts[1]*60+parts[2] : parts.length === 2 ? parts[0]*60+parts[1] : 0
+    baseDist = parseFloat(recentRace.unit) || 10000
+    method = 'riegel_ctladjusted'
+  } else if (ltPace > 0) {
+    baseTimeSec = ltPace    // per km
+    baseDist = 1000
+    method = 'ltpace_riegel'
+  } else if (vo2 > 0) {
+    // Rough VO2max→10K time via Daniels' tables (simplified linear interpolation)
+    // VO2 30→90 maps to roughly 10K 72:00→27:00
+    baseTimeSec = Math.max(1600, Math.round(7200 - (vo2 - 30) * 75))
+    baseDist = 10000
+    method = 'vo2max_daniels'
+  } else if (recentVO2) {
+    const v = parseFloat(recentVO2.value)
+    baseTimeSec = Math.max(1600, Math.round(7200 - (v - 30) * 75))
+    baseDist = 10000
+    method = 'vo2max_daniels'
+  }
+
+  if (!baseTimeSec || !baseDist) {
+    // Fallback: estimate from training log paces
+    const runs = log.filter(e => (e.type || '').toLowerCase().includes('run') || (e.type || '').toLowerCase().includes('tempo'))
+    if (runs.length >= 3) {
+      const avgPace = runs.slice(-5).reduce((s, e) => {
+        const spd = e.duration ? e.duration / 60 : 0
+        return s + (spd > 0 ? 60 / spd : 0)
+      }, 0) / Math.min(5, runs.length) * 1.08  // +8% from easy→race pace
+      if (avgPace > 0) {
+        baseTimeSec = Math.round(avgPace * 600)  // 10K equiv
+        baseDist = 10000
+        method = 'training_pace'
+      }
+    }
+  }
+
+  if (!baseTimeSec) {
+    return { predictions: [], reliable: false, method: 'insufficient_data' }
+  }
+
+  const predictions = targets.map(({ label, dist }) => {
+    const predicted = Math.round(riegelPredict(baseTimeSec, baseDist, dist))
+    const best  = Math.round(predicted * 0.97)
+    const worst = Math.round(predicted * 1.08)
+    const fmt = s => { s=Math.round(s); const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60; return h>0?`${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`:`${m}:${String(sec).padStart(2,'0')}` }
+    return { label, predicted: fmt(predicted), best: fmt(best), worst: fmt(worst), dist }
+  })
+
+  const methodLabel = {
+    riegel_ctladjusted: `CTL-adjusted Riegel from recent result`,
+    ltpace_riegel:      `Riegel projection from LT pace`,
+    vo2max_daniels:     `Daniels VDOT from VO₂max ${vo2 || parseFloat(recentVO2?.value||0).toFixed(0)}`,
+    training_pace:      `Estimated from recent training paces`,
+  }[method]
+
+  return {
+    predictions,
+    reliable: baseTimeSec > 0 && (method !== 'training_pace' || log.length >= 10),
+    method: methodLabel,
+    ctl,
+  }
 }

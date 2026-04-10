@@ -5,6 +5,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { PLAN_GOALS, PLAN_LEVELS, ZONE_COLORS, ZONE_NAMES } from '../lib/constants.js'
 import { generatePlan } from '../lib/formulas.js'
 import { MiniDonut } from './ui.jsx'
+import { findOptimalWeekStructure } from '../lib/patterns.js'
 
 function TaperCalculator() {
   const [peakTSS, setPeakTSS] = useState('500')
@@ -104,6 +105,9 @@ export default function PlanGenerator({ onLogSession }) {
   const [level, setLevel] = useState('Intermediate')
   const [plan,  setPlan]  = useLocalStorage('sporeus-plan', null)
   const [planStatus, setPlanStatus] = useLocalStorage('sporeus-plan-status', {})
+  const [log] = useLocalStorage('sporeus_log', [])
+  const [recovery] = useLocalStorage('sporeus-recovery', [])
+  const [lang] = useLocalStorage('sporeus-lang', 'en')
   const [selWeek, setSelWeek] = useState(0)
 
   const toggleStatus = (wi, di, val) => {
@@ -223,8 +227,43 @@ export default function PlanGenerator({ onLogSession }) {
 
   const W = plan?.weeks[selWeek]
 
+  // Optimal week from athlete's own data
+  const optWeek = findOptimalWeekStructure(log, recovery)
+
   return (
     <div className="sp-fade">
+      {optWeek.reliable && (
+        <div className="sp-card" style={{ ...S.card, animationDelay:'0ms', borderLeft:'4px solid #0064ff', marginBottom:'16px' }}>
+          <div style={{ ...S.mono, fontSize:'10px', color:'#0064ff', letterSpacing:'0.08em', fontWeight:600, marginBottom:'8px' }}>
+            ◈ {lang==='tr'?'VERİLERİNE GÖRE':'BASED ON YOUR DATA'}
+          </div>
+          <div style={{ ...S.mono, fontSize:'12px', color:'var(--text)', lineHeight:1.7, marginBottom:'10px' }}>
+            {optWeek[lang] || optWeek.en}
+          </div>
+          {optWeek.bestPattern && optWeek.bestPattern.length > 0 && (
+            <div style={{ display:'flex', gap:'4px', flexWrap:'wrap', marginBottom:'10px' }}>
+              {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((d, i) => {
+                const dayFull = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][i]
+                const sess = optWeek.bestPattern.find(p => p.day === dayFull)
+                const isRest = !sess
+                return (
+                  <div key={d} style={{ flex:'1 1 36px', textAlign:'center', padding:'5px 4px', borderRadius:'4px', background: isRest ? 'var(--card-bg)' : '#0064ff22', border:`1px solid ${isRest?'var(--border)':'#0064ff44'}` }}>
+                    <div style={{ ...S.mono, fontSize:'8px', color:'#888' }}>{d}</div>
+                    <div style={{ ...S.mono, fontSize:'9px', color: isRest ? '#888' : '#0064ff', fontWeight: isRest ? 400 : 600, lineHeight:1.3, marginTop:'2px' }}>
+                      {isRest ? 'REST' : (sess.type.split(' ').map(w=>w[0]).join('').slice(0,3).toUpperCase())}
+                    </div>
+                    {!isRest && <div style={{ ...S.mono, fontSize:'8px', color:'#888' }}>{sess.avgDuration}m</div>}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+          <button style={{ ...S.btn, fontSize:'11px', padding:'5px 12px', background:'#0064ff' }}
+            onClick={() => setHours(optWeek.bestWeeklyHours?.min || hours)}>
+            {lang==='tr'?'Bu Deseni Kullan':'Use This Pattern'}
+          </button>
+        </div>
+      )}
       <div className="sp-card" style={{ ...S.card, animationDelay:'0ms' }}>
         <div style={S.cardTitle}>{t('planGoalL')}</div>
         <div style={{ display:'flex', gap:'6px', flexWrap:'wrap', marginBottom:'14px' }}>
