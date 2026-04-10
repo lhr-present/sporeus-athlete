@@ -275,7 +275,7 @@ export default function App() {
         </main>
 
         <footer style={S.footer}>
-          SPOREUS ATHLETE CONSOLE v3.9.0 · SPOREUS.COM · EŞİK / THRESHOLD 2026
+          SPOREUS ATHLETE CONSOLE v4.0.0 · SPOREUS.COM · EŞİK / THRESHOLD 2026
         </footer>
       </div>
     </LangCtx.Provider>
