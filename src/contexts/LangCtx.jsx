@@ -85,6 +85,17 @@ export const LABELS = {
     connectedCoachMsg: '◈ CONNECTED TO COACH', sendDataCoachBtn: 'SEND DATA TO COACH',
     coachConnectNote: 'Download your training data file and send it to your coach for analysis.',
     disconnectCoachBtn: 'DISCONNECT',
+    // v4.3 intelligence
+    insightsTitle: 'TRAINING INSIGHTS', injuryRiskTitle: 'INJURY RISK ASSESSMENT',
+    sessionQualityTitle: 'SESSION QUALITY', smartAdjTitle: 'SMART ADJUSTMENTS',
+    athleteIntelTitle: 'ATHLETE INTELLIGENCE', copyAnalysisBtn: 'Copy Full Analysis',
+    loadTrendLabel: 'LOAD TREND', zoneBalanceLabel: 'ZONE BALANCE',
+    fitnessLabel: 'FITNESS PROJECTION', recovCorrLabel: 'LOAD↔RECOVERY',
+    // v4.4 storytelling
+    weekStoryTitle: 'THIS WEEK\'S STORY', didYouKnowTitle: 'DID YOU KNOW?',
+    milestoneTitle: 'MILESTONE UNLOCKED!', trainingAgeTitle: 'TRAINING AGE',
+    nextNoteBtn: 'Next fact →', shareStoryBtn: '⤴ Share', copyStoryBtn: '⎘ Copy',
+    trainingAgeLabel: 'Training age', ctlScaleLabel: 'FITNESS SCALE',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -169,6 +180,17 @@ export const LABELS = {
     connectedCoachMsg: '◈ ANTRENÖRE BAĞLANDI', sendDataCoachBtn: 'VERİ GÖNDER',
     coachConnectNote: 'Antrenman verilerinizi indirin ve antrenörünüze analiz için gönderin.',
     disconnectCoachBtn: 'BAĞLANTI KES',
+    // v4.3 intelligence
+    insightsTitle: 'ANTRENMAN ANALİZİ', injuryRiskTitle: 'YARALANMA RİSK DEĞERLENDİRMESİ',
+    sessionQualityTitle: 'SEANS KALİTESİ', smartAdjTitle: 'AKILLI AYARLAMALAR',
+    athleteIntelTitle: 'SPORCU ANALİZİ', copyAnalysisBtn: 'Tam Analizi Kopyala',
+    loadTrendLabel: 'YÜK TRENDİ', zoneBalanceLabel: 'ZON DENGESİ',
+    fitnessLabel: 'KONDİSYON TAHMİNİ', recovCorrLabel: 'YÜK↔TOPARLANMA',
+    // v4.4 storytelling
+    weekStoryTitle: 'BU HAFTA\'NIN HİKAYESİ', didYouKnowTitle: 'BİLİYOR MUYDUN?',
+    milestoneTitle: 'KİLOMETRE TAŞI!', trainingAgeTitle: 'ANTRENMAN YAŞI',
+    nextNoteBtn: 'Sonraki →', shareStoryBtn: '⤴ Paylaş', copyStoryBtn: '⎘ Kopyala',
+    trainingAgeLabel: 'Antrenman yaşı', ctlScaleLabel: 'KONDİSYON SKALASI',
   }
 }
 

@@ -3,6 +3,7 @@ import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { generateCoachId, generateUnlockCode, verifyUnlockCode, FREE_ATHLETE_LIMIT } from '../lib/formulas.js'
+import { analyzeLoadTrend, analyzeZoneBalance, predictInjuryRisk, predictFitness, analyzeRecoveryCorrelation } from '../lib/intelligence.js'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -562,6 +563,62 @@ function AthleteDetail({ athlete, onUpdate, onClose, templates, setTemplates }) 
         ))}
         {!(athlete.notes && athlete.notes.length) && <div style={{ ...S.mono, fontSize:'12px', color:'var(--muted)' }}>No notes yet.</div>}
       </div>
+
+      {/* ATHLETE INTELLIGENCE (v4.3) */}
+      {log.length >= 4 && (() => {
+        const loadTrend   = analyzeLoadTrend(log)
+        const zoneBalance = analyzeZoneBalance(log)
+        const injRisk     = predictInjuryRisk(log, recovery)
+        const fitness     = predictFitness(log)
+        const recovCorr   = analyzeRecoveryCorrelation(log, recovery)
+
+        const fullAnalysis = [
+          `ATHLETE INTELLIGENCE — ${athlete.name}`,
+          `Generated: ${TODAY}`,
+          '',
+          `LOAD TREND: ${loadTrend.trend.toUpperCase()} (${loadTrend.change > 0 ? '+' : ''}${loadTrend.change}%)`,
+          loadTrend.advice.en,
+          '',
+          `ZONE BALANCE: ${zoneBalance.status.replace('_',' ').toUpperCase()} (${zoneBalance.z1z2Pct}% easy / ${zoneBalance.z4z5Pct}% hard)`,
+          zoneBalance.recommendation.en,
+          '',
+          `INJURY RISK: ${injRisk.level.toUpperCase()} (score ${injRisk.score}/100)`,
+          injRisk.factors.map(f => `  · ${f.label}: ${f.detail.en}`).join('\n'),
+          injRisk.advice.en,
+          '',
+          `FITNESS: CTL ${fitness.current} → 4wk ${fitness.in4w} → 8wk ${fitness.in8w} (${fitness.trajectory.toUpperCase()})`,
+          fitness.label.en,
+          '',
+          recovCorr.correlation !== null ? `LOAD↔RECOVERY: ${recovCorr.insight.en}` : '',
+        ].filter(l => l !== '').join('\n')
+
+        return (
+          <div style={{ marginTop:'16px' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px' }}>
+              <div style={{ ...S.mono, fontSize:'10px', color:'#ff6600', letterSpacing:'0.08em', fontWeight:600 }}>◈ ATHLETE INTELLIGENCE</div>
+              <button style={{ ...S.btnSec, fontSize:'10px', padding:'3px 10px' }} onClick={() => navigator.clipboard.writeText(fullAnalysis).catch(() => {})}>
+                Copy Full Analysis
+              </button>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:'7px' }}>
+              {[
+                { lbl:'LOAD TREND',   val: loadTrend.trend.toUpperCase(),                c: loadTrend.trend==='building'?'#5bc25b':loadTrend.trend==='recovering'?'#4a90d9':'#f5c542',  txt: loadTrend.advice.en },
+                { lbl:'ZONE BALANCE', val: zoneBalance.status.replace('_',' ').toUpperCase(), c: zoneBalance.status==='polarized'?'#5bc25b':zoneBalance.status==='too_hard'?'#e03030':'#f5c542', txt: zoneBalance.recommendation.en },
+                { lbl:'INJURY RISK',  val: injRisk.level.toUpperCase(),                  c: { low:'#5bc25b', moderate:'#f5c542', high:'#e03030', unknown:'#888' }[injRisk.level],        txt: injRisk.advice.en },
+                { lbl:'FITNESS',      val: `CTL ${fitness.current}→${fitness.in4w}`,     c: fitness.trajectory==='improving'?'#5bc25b':fitness.trajectory==='declining'?'#e03030':'#f5c542', txt: fitness.label.en },
+              ].map(row => (
+                <div key={row.lbl} style={{ display:'flex', alignItems:'flex-start', gap:'8px', padding:'8px 10px', background:'var(--surface)', borderRadius:'4px', borderLeft:`3px solid ${row.c}` }}>
+                  <div style={{ minWidth:'110px' }}>
+                    <div style={{ ...S.mono, fontSize:'8px', color:'#888', letterSpacing:'0.06em' }}>{row.lbl}</div>
+                    <div style={{ ...S.mono, fontSize:'12px', fontWeight:600, color:row.c }}>{row.val}</div>
+                  </div>
+                  <div style={{ ...S.mono, fontSize:'10px', color:'var(--sub)', lineHeight:1.6 }}>{row.txt}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

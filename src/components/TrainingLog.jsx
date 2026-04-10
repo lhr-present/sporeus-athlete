@@ -6,6 +6,7 @@ import { calcTSS } from '../lib/formulas.js'
 import { sanitizeLogEntry } from '../lib/validate.js'
 import Calendar from './Calendar.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
+import { scoreSession } from '../lib/intelligence.js'
 
 export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const { t } = useContext(LangCtx)
@@ -22,6 +23,8 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const [zoneMins, setZoneMins] = useState(['','','','',''])
   const [editingId, setEditingId] = useState(null)
   const [calView, setCalView] = useState(false)
+  const [lang] = useLocalStorage('sporeus-lang', 'en')
+  const [sessionScore, setSessionScore] = useState(null)
 
   useEffect(() => {
     if (prefill) {
@@ -44,6 +47,9 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       setLog(log.map(e => e.id === editingId ? entry : e))
       setEditingId(null)
     } else {
+      const scored = scoreSession(entry, log, profileLS)
+      setSessionScore(scored)
+      setTimeout(() => setSessionScore(null), 8000)
       setLog([...log, entry])
     }
     setForm({ date:today, type:'Easy Run', duration:'', rpe:'5', notes:'' })
@@ -136,6 +142,22 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
           {tssPreview!==null && <span style={{ ...S.mono, fontSize:'13px', color:'#ff6600', fontWeight:600 }}>TSS: {tssPreview}</span>}
         </div>
       </div>
+
+      {/* Session Quality Card (v4.3) — auto-dismisses 8s */}
+      {sessionScore && (
+        <div className="sp-card" style={{ ...S.card, borderLeft:`4px solid ${sessionScore.grade==='A'?'#5bc25b':sessionScore.grade==='B'?'#0064ff':sessionScore.grade==='C'?'#f5c542':'#e03030'}`, animationDelay:'0ms' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <div style={S.cardTitle}>{t('sessionQualityTitle')}</div>
+            <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+              <span style={{ ...S.mono, fontSize:'28px', fontWeight:600, color:sessionScore.grade==='A'?'#5bc25b':sessionScore.grade==='B'?'#0064ff':sessionScore.grade==='C'?'#f5c542':'#e03030' }}>{sessionScore.grade}</span>
+              <span style={{ ...S.mono, fontSize:'13px', color:'#888' }}>{sessionScore.score}/100</span>
+            </div>
+          </div>
+          <div style={{ ...S.mono, fontSize:'11px', color:'var(--sub)', marginTop:'6px', lineHeight:1.6 }}>
+            {sessionScore.feedback[lang] || sessionScore.feedback.en}
+          </div>
+        </div>
+      )}
 
       <div className="sp-card" style={{ ...S.card, animationDelay:'50ms' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', ...S.cardTitle }}>

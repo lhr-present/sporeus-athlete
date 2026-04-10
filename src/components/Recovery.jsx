@@ -6,11 +6,14 @@ import { WELLNESS_FIELDS } from '../lib/constants.js'
 import { Sparkline } from './ui.jsx'
 import InjuryTracker from './InjuryTracker.jsx'
 import MentalTools from './MentalTools.jsx'
+import { predictInjuryRisk } from '../lib/intelligence.js'
 
 export default function Recovery() {
   const { t } = useContext(LangCtx)
   const [entries, setEntries] = useLocalStorage('sporeus-recovery', [])
   const [profileLS] = useLocalStorage('sporeus_profile', {})
+  const [log] = useLocalStorage('sporeus_log', [])
+  const [lang] = useLocalStorage('sporeus-lang', 'en')
   const isAdvanced = profileLS?.athleteLevel === 'advanced' || profileLS?.athleteLevel === 'elite'
   const today = new Date().toISOString().slice(0,10)
   const todayEntry = entries.find(e=>e.date===today)
@@ -218,6 +221,40 @@ export default function Recovery() {
           </table>
         </div>
       )}
+
+      {/* Injury Risk Widget (v4.3) */}
+      {(() => {
+        if (!log.length) return null
+        const risk = predictInjuryRisk(log, entries)
+        const levelColor = { low:'#5bc25b', moderate:'#f5c542', high:'#e03030', unknown:'#888' }[risk.level]
+        const levelLabel = { low:'LOW RISK', moderate:'MODERATE RISK', high:'HIGH RISK', unknown:'UNKNOWN' }[risk.level]
+        return (
+          <div className="sp-card" style={{ ...S.card, animationDelay:'90ms', borderLeft:`4px solid ${levelColor}` }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px' }}>
+              <div style={S.cardTitle}>{t('injuryRiskTitle')}</div>
+              <span style={{ ...S.mono, fontSize:'11px', fontWeight:600, color:levelColor }}>{levelLabel}</span>
+            </div>
+            {risk.factors.length > 0 && (
+              <div style={{ display:'flex', flexDirection:'column', gap:'5px', marginBottom:'8px' }}>
+                {risk.factors.map((f, i) => {
+                  const fc = { high:'#e03030', moderate:'#f5c542', low:'#888' }[f.severity]
+                  return (
+                    <div key={i} style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+                      <div style={{ width:'70px', height:'5px', background:'var(--border)', borderRadius:'3px', overflow:'hidden' }}>
+                        <div style={{ width:f.severity==='high'?'100%':f.severity==='moderate'?'60%':'30%', height:'100%', background:fc, borderRadius:'3px' }}/>
+                      </div>
+                      <span style={{ ...S.mono, fontSize:'10px', color:fc }}>{f.label}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            <div style={{ ...S.mono, fontSize:'11px', color:'var(--sub)', lineHeight:1.6 }}>
+              {risk.advice[lang] || risk.advice.en}
+            </div>
+          </div>
+        )
+      })()}
 
       <InjuryTracker />
       <MentalTools />
