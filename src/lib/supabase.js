@@ -14,10 +14,10 @@ if (!SUPABASE_URL || !SUPABASE_ANON) {
 export const supabase = (SUPABASE_URL && SUPABASE_ANON)
   ? createClient(SUPABASE_URL, SUPABASE_ANON, {
       auth: {
+        flowType: 'implicit',
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
-        flowType: 'pkce',
       },
     })
   : null
