@@ -2,6 +2,7 @@ import { useState, useContext } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
+import { useData } from '../contexts/DataContext.jsx'
 
 const TYPE_COLORS = {
   'Easy Run':'#4ade80','Tempo':'#facc15','Interval':'#ef4444','Long Run':'#22d3ee',
@@ -14,7 +15,7 @@ export default function Calendar({ log, setLog, onEdit }) {
   const [cur, setCur] = useState(new Date())
   const [sel, setSel] = useState(null)
   const [plan] = useLocalStorage('sporeus-plan', null)
-  const [recovery] = useLocalStorage('sporeus-recovery', [])
+  const { recovery } = useData()
 
   const today = new Date().toISOString().slice(0,10)
   const yr = cur.getFullYear(), mo = cur.getMonth()

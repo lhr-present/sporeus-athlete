@@ -2,6 +2,7 @@ import { useState, useEffect, useContext } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
+import { useData } from '../contexts/DataContext.jsx'
 import { PLAN_GOALS, PLAN_LEVELS, ZONE_COLORS, ZONE_NAMES } from '../lib/constants.js'
 import { generatePlan } from '../lib/formulas.js'
 import { MiniDonut } from './ui.jsx'
@@ -105,8 +106,7 @@ export default function PlanGenerator({ onLogSession }) {
   const [level, setLevel] = useState('Intermediate')
   const [plan,  setPlan]  = useLocalStorage('sporeus-plan', null)
   const [planStatus, setPlanStatus] = useLocalStorage('sporeus-plan-status', {})
-  const [log] = useLocalStorage('sporeus_log', [])
-  const [recovery] = useLocalStorage('sporeus-recovery', [])
+  const { log, recovery } = useData()
   const [lang] = useLocalStorage('sporeus-lang', 'en')
   const [selWeek, setSelWeek] = useState(0)
 

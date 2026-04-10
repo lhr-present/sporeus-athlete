@@ -2,6 +2,7 @@ import { useState, useEffect, useContext } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
+import { useData } from '../contexts/DataContext.jsx'
 
 const BADGE_DEFS = [
   { id:'first_step',      icon:'👣', name:'First Step',       desc:'Log your first session' },
@@ -89,8 +90,7 @@ export default function Achievements({ log, dark, lang }) {
   const { t } = useContext(LangCtx)
   const [achievements, setAchievements] = useLocalStorage('sporeus-achievements', {})
   const [toast, setToast] = useState(null)
-  const [recovery] = useLocalStorage('sporeus-recovery', [])
-  const [testLog] = useLocalStorage('sporeus-test-results', [])
+  const { recovery, testResults: testLog } = useData()
   const [plan] = useLocalStorage('sporeus-plan', null)
   const [planStatus] = useLocalStorage('sporeus-plan-status', {})
   const [expanded, setExpanded] = useState(false)

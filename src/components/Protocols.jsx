@@ -1,7 +1,7 @@
 import { useState, useContext } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
-import { useLocalStorage } from '../hooks/useLocalStorage.js'
+import { useData } from '../contexts/DataContext.jsx'
 import { cooperVO2, rampFTP, ftpFrom20, epley1RM, astrandVO2, yyir1VO2, wingateStats } from '../lib/formulas.js'
 
 const TESTS = [
@@ -22,7 +22,7 @@ export default function TestProtocols() {
   const [active, setActive] = useState('cooper')
   const [inputs, setInputs] = useState({})
   const [result, setResult] = useState(null)
-  const [testLog, setTestLog] = useLocalStorage('sporeus-test-results', [])
+  const { testResults: testLog, setTestResults: setTestLog } = useData()
   const [cmpA, setCmpA] = useState('')
   const [cmpB, setCmpB] = useState('')
   const set = (k,v) => setInputs(prev=>({...prev,[k]:v}))

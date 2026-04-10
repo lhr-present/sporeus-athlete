@@ -2,6 +2,7 @@ import { useState, useEffect, useContext } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
+import { useData } from '../contexts/DataContext.jsx'
 import { WELLNESS_FIELDS } from '../lib/constants.js'
 import { Sparkline } from './ui.jsx'
 import InjuryTracker from './InjuryTracker.jsx'
@@ -10,9 +11,8 @@ import { predictInjuryRisk } from '../lib/intelligence.js'
 
 export default function Recovery() {
   const { t } = useContext(LangCtx)
-  const [entries, setEntries] = useLocalStorage('sporeus-recovery', [])
+  const { recovery: entries, setRecovery: setEntries, log } = useData()
   const [profileLS] = useLocalStorage('sporeus_profile', {})
-  const [log] = useLocalStorage('sporeus_log', [])
   const [lang] = useLocalStorage('sporeus-lang', 'en')
   const isAdvanced = profileLS?.athleteLevel === 'advanced' || profileLS?.athleteLevel === 'elite'
   const today = new Date().toISOString().slice(0,10)

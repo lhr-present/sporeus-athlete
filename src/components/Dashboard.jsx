@@ -11,6 +11,7 @@ import { SPORT_BRANCHES, ATHLETE_LEVELS, LEVEL_CONFIG, DASH_CARD_DEFS } from '..
 import { analyzeLoadTrend, analyzeRecoveryCorrelation, analyzeZoneBalance, predictInjuryRisk, predictFitness, generateWeeklyNarrative, detectMilestones, computeRaceReadiness, predictRacePerformance } from '../lib/intelligence.js'
 import { getTriggeredNotes } from '../lib/scienceNotes.js'
 import { correlateTrainingToResults, findRecoveryPatterns, mineInjuryPatterns, findOptimalWeekStructure, findSeasonalPatterns } from '../lib/patterns.js'
+import { useData } from '../contexts/DataContext.jsx'
 
 function BackupReminder({ log }) {
   const [lastBackup, setLastBackup] = useLocalStorage('sporeus-last-backup', null)
@@ -211,7 +212,7 @@ function MilestoneOverlay({ log, profile }) {
 // ─── Your Patterns Card (v4.5) ────────────────────────────────────────────────
 function YourPatternsCard({ log, recovery, injuries, profile, lang }) {
   const { t } = useContext(LangCtx)
-  const [testResults] = useLocalStorage('sporeus-test-results', [])
+  const { testResults } = useData()
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -350,10 +351,9 @@ function ProactiveInjuryAlert({ log, injuries, lang }) {
 // ─── Race Readiness Gauge (v4.6) ──────────────────────────────────────────────
 function RaceReadinessCard({ log, recovery, injuries, profile, plan, planStatus, lang }) {
   const { t } = useContext(LangCtx)
-  const [testResults] = useLocalStorage('sporeus-test-results', [])
+  const { testResults, raceResults: raceResult, setRaceResults: setRaceResult } = useData()
   const [expanded, setExpanded] = useState(false)
   const [showPostRace, setShowPostRace] = useState(false)
-  const [raceResult, setRaceResult] = useLocalStorage('sporeus-race-results', [])
   const [resultForm, setResultForm] = useState({ time:'', conditions:'normal', feeling:'3', notes:'' })
 
   const raceDate = profile?.raceDate
@@ -586,8 +586,7 @@ export default function Dashboard({ log, profile }) {
   const [lang] = useLocalStorage('sporeus-lang', 'en')
   const [plan] = useLocalStorage('sporeus-plan', null)
   const [planStatus] = useLocalStorage('sporeus-plan-status', {})
-  const [recovery] = useLocalStorage('sporeus-recovery', [])
-  const [injuries] = useLocalStorage('sporeus-injuries', [])
+  const { recovery, injuries } = useData()
   const [myCoach] = useLocalStorage('sporeus-my-coach', null)
   const [reportVisible, setReportVisible] = useState(false)
   const { t } = useContext(LangCtx)

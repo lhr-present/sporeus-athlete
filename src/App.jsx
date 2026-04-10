@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import { LangCtx, LABELS, TABS } from './contexts/LangCtx.jsx'
 import { useLocalStorage, STORAGE_WARN_KEY } from './hooks/useLocalStorage.js'
+import { DataProvider, useData } from './contexts/DataContext.jsx'
 import { S, ANIM_CSS } from './styles.js'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import Dashboard from './components/Dashboard.jsx'
@@ -28,61 +29,23 @@ const LazyFallback = () => (
   </div>
 )
 
-// ─── Auth-gated wrapper ───────────────────────────────────────────────────────
-function AuthShell({ lang, children }) {
-  const { user, profile, loading, signOut, refreshProfile } = useAuth()
+const Splash = () => (
+  <div style={{ minHeight:'100vh', background:'#0a0a0a', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'#444', letterSpacing:'0.12em' }}>
+    LOADING...
+  </div>
+)
 
-  // Supabase not configured — skip auth entirely
-  if (!isSupabaseReady()) return children
+// ─── AppInner — inside DataProvider, can call useData() ──────────────────────
+function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut }) {
+  const { log, setLog, recovery } = useData()
 
-  // Loading
-  if (loading) return (
-    <div style={{ minHeight:'100vh', background:'#0a0a0a', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'#444', letterSpacing:'0.12em' }}>
-      LOADING...
-    </div>
-  )
-
-  // Not signed in
-  if (!user) return <AuthGate lang={lang} />
-
-  // Signed in but no role yet
-  if (profile && !profile.role) {
-    return <RoleSelector userId={user.id} onComplete={refreshProfile} lang={lang} />
-  }
-
-  // Profile not yet fetched (fresh SIGNED_IN, brief moment)
-  if (!profile) return (
-    <div style={{ minHeight:'100vh', background:'#0a0a0a', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'#444', letterSpacing:'0.12em' }}>
-      LOADING PROFILE...
-    </div>
-  )
-
-  // Migration check — show once if local data exists and not yet migrated
-  const localData = detectLocalData()
-  if (localData) return (
-    <MigrationModal
-      userId={user.id}
-      localData={localData}
-      lang={lang}
-      onComplete={refreshProfile}
-    />
-  )
-
-  // Pass signOut + auth user down as context values
-  return children(user, profile, signOut)
-}
-
-export default function App() {
   const [tab, setTab] = useState('dashboard')
   const [coachMode] = useLocalStorage('sporeus-coach-mode', false)
-  const [log, setLog] = useLocalStorage('sporeus_log', [])
   const [profile, setProfile] = useLocalStorage('sporeus_profile', {})
-  const [lang, setLang] = useLocalStorage('sporeus-lang', 'en')
   const [logPrefill, setLogPrefill] = useState(null)
   const [quotaWarn, setQuotaWarn] = useState(() => {
     try { return localStorage.getItem(STORAGE_WARN_KEY)==='1' } catch { return false }
   })
-  const [dark, setDark] = useLocalStorage('sporeus-dark', false)
   const [onboarded, setOnboarded] = useLocalStorage('sporeus-onboarded', false)
   const [swUpdateReady, setSwUpdateReady] = useState(false)
   const [coachToast, setCoachToast] = useState('')
@@ -92,15 +55,12 @@ export default function App() {
   const firstSessionTimer = useRef(null)
   const prevLogLen = useRef(log.length)
 
-  // Badge state: track which tabs have been visited to clear dots
   const [visitedTabs, setVisitedTabs] = useLocalStorage('sporeus-visited-tabs', {})
-  const [recovery] = useLocalStorage('sporeus-recovery', [])
   const today = new Date().toISOString().slice(0, 10)
   const hasRecoveryToday = recovery.some(e => e.date === today)
   const isProfileIncomplete = onboarded && (!profile.name || !profile.primarySport)
   const isFirstSession = onboarded && log.length === 0
 
-  // Tab badge dots (only show after onboarding and using app for a day or more)
   const appAge = (() => {
     const first = visitedTabs._firstVisit
     if (!first) return 0
@@ -113,19 +73,16 @@ export default function App() {
     log:      false,
   }
 
-  // Migration guard: existing users who have a saved profile skip onboarding
   useEffect(() => {
     if (!onboarded && profile && profile.name) setOnboarded(true)
   }, [])
 
-  // Record first visit for badge age calculation
   useEffect(() => {
     if (!visitedTabs._firstVisit) {
       setVisitedTabs(v => ({ ...v, _firstVisit: new Date().toISOString() }))
     }
   }, [])
 
-  // Handle ?coach= URL param — auto-connect athlete to coach
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const coachParam = params.get('coach')
@@ -163,7 +120,6 @@ export default function App() {
     }).catch(() => {})
   }, [])
 
-  // First session detection
   useEffect(() => {
     if (prevLogLen.current === 0 && log.length >= 1) {
       setFirstSessionToast(true)
@@ -173,7 +129,6 @@ export default function App() {
     prevLogLen.current = log.length
   }, [log.length])
 
-  // Ctrl+K / Cmd+K — open search palette
   useEffect(() => {
     const handler = e => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -186,7 +141,6 @@ export default function App() {
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
-  // Track tab visits for badge clearing
   function handleTabClick(tabId) {
     setTab(tabId)
     if (tabId === 'recovery') {
@@ -208,10 +162,7 @@ export default function App() {
   return (
     <LangCtx.Provider value={{ t, lang, setLang }}>
       <style>{ANIM_CSS}</style>
-      <AuthShell lang={lang}>
-        {(authUser, authProfile, signOut) => (<>
 
-      {/* Search Palette */}
       {showSearch && (
         <SearchPalette
           onNavigate={tabId => { setTab(tabId); setShowSearch(false) }}
@@ -233,7 +184,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Coach connection toast */}
       {coachToast && (
         <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:10002, background:'#0064ff', color:'#fff', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'10px 20px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           {coachToast}
@@ -241,7 +191,6 @@ export default function App() {
         </div>
       )}
 
-      {/* First session achievement toast */}
       {firstSessionToast && (
         <div style={{ position:'fixed', bottom:'24px', left:'50%', transform:'translateX(-50%)', zIndex:10003, background:'#1a1a1a', border:'2px solid #5bc25b', color:'#5bc25b', fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', padding:'12px 24px', borderRadius:'8px', boxShadow:'0 8px 32px rgba(0,0,0,0.6)', display:'flex', alignItems:'center', gap:'12px', whiteSpace:'nowrap' }}>
           <span style={{ fontSize:'18px' }}>🏆</span>
@@ -273,7 +222,6 @@ export default function App() {
               <div style={{ ...S.mono, fontSize:'10px', color:'#888' }}>{timeStr}</div>
               <div style={{ ...S.mono, fontSize:'10px', color:'var(--sub)', letterSpacing:'0.06em' }}>{dateStr}</div>
             </div>
-            {/* Search button */}
             <button
               onClick={() => setShowSearch(true)}
               title="Search features (Ctrl+K)"
@@ -345,8 +293,35 @@ export default function App() {
           SPOREUS ATHLETE CONSOLE v4.6.0 · SPOREUS.COM · EŞİK / THRESHOLD 2026
         </footer>
       </div>
-        </>)}
-      </AuthShell>
     </LangCtx.Provider>
+  )
+}
+
+// ─── App — thin shell: auth + providers ──────────────────────────────────────
+export default function App() {
+  const [lang, setLang] = useLocalStorage('sporeus-lang', 'en')
+  const [dark, setDark] = useLocalStorage('sporeus-dark', false)
+  const { user, profile: authProfile, loading, signOut, refreshProfile } = useAuth()
+
+  const userId = isSupabaseReady() ? (user?.id ?? null) : null
+
+  // Auth gates (only when Supabase is configured)
+  if (isSupabaseReady()) {
+    if (loading) return <Splash />
+    if (!user)   return <AuthGate lang={lang} />
+    if (authProfile && !authProfile.role) return <RoleSelector userId={user.id} onComplete={refreshProfile} lang={lang} />
+    if (!authProfile) return <Splash />
+    const localData = detectLocalData()
+    if (localData) return <MigrationModal userId={user.id} localData={localData} lang={lang} onComplete={refreshProfile} />
+  }
+
+  return (
+    <DataProvider userId={userId}>
+      <AppInner
+        lang={lang} setLang={setLang}
+        dark={dark} setDark={setDark}
+        authUser={user} authProfile={authProfile} signOut={signOut}
+      />
+    </DataProvider>
   )
 }

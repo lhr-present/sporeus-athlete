@@ -1,6 +1,6 @@
 import { useState, useContext } from 'react'
 import { S } from '../styles.js'
-import { useLocalStorage } from '../hooks/useLocalStorage.js'
+import { useData } from '../contexts/DataContext.jsx'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 
 const ZONES = [
@@ -47,7 +47,7 @@ export default function InjuryTracker() {
   const [showHistory, setShowHistory] = useState(false)
   const [selectedZone, setSelectedZone] = useState(null)
   const [form, setForm] = useState({ level: 3, type: 'Sharp', notes: '' })
-  const [injuries, setInjuries] = useLocalStorage('sporeus-injuries', [])
+  const { injuries, setInjuries } = useData()
 
   const today = new Date().toISOString().slice(0, 10)
 
