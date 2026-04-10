@@ -12,6 +12,10 @@ import Recovery from './components/Recovery.jsx'
 import Profile from './components/Profile.jsx'
 import OnboardingWizard from './components/Onboarding.jsx'
 import SearchPalette from './components/SearchPalette.jsx'
+import AuthGate from './components/AuthGate.jsx'
+import RoleSelector from './components/RoleSelector.jsx'
+import { useAuth } from './hooks/useAuth.js'
+import { isSupabaseReady } from './lib/supabase.js'
 const CoachDashboard = lazy(() => import('./components/CoachDashboard.jsx'))
 const PlanGenerator   = lazy(() => import('./components/PlanGenerator.jsx'))
 const Glossary        = lazy(() => import('./components/Glossary.jsx'))
@@ -21,6 +25,39 @@ const LazyFallback = () => (
     LOADING...
   </div>
 )
+
+// ─── Auth-gated wrapper ───────────────────────────────────────────────────────
+function AuthShell({ lang, children }) {
+  const { user, profile, loading, signOut, refreshProfile } = useAuth()
+
+  // Supabase not configured — skip auth entirely
+  if (!isSupabaseReady()) return children
+
+  // Loading
+  if (loading) return (
+    <div style={{ minHeight:'100vh', background:'#0a0a0a', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'#444', letterSpacing:'0.12em' }}>
+      LOADING...
+    </div>
+  )
+
+  // Not signed in
+  if (!user) return <AuthGate lang={lang} />
+
+  // Signed in but no role yet
+  if (profile && !profile.role) {
+    return <RoleSelector userId={user.id} onComplete={refreshProfile} lang={lang} />
+  }
+
+  // Profile not yet fetched (fresh SIGNED_IN, brief moment)
+  if (!profile) return (
+    <div style={{ minHeight:'100vh', background:'#0a0a0a', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'#444', letterSpacing:'0.12em' }}>
+      LOADING PROFILE...
+    </div>
+  )
+
+  // Pass signOut + auth user down as context values
+  return children(user, profile, signOut)
+}
 
 export default function App() {
   const [tab, setTab] = useState('dashboard')
@@ -158,6 +195,8 @@ export default function App() {
   return (
     <LangCtx.Provider value={{ t, lang, setLang }}>
       <style>{ANIM_CSS}</style>
+      <AuthShell lang={lang}>
+        {(authUser, authProfile, signOut) => (<>
 
       {/* Search Palette */}
       {showSearch && (
@@ -238,6 +277,14 @@ export default function App() {
               style={{ ...S.mono, fontSize:'11px', fontWeight:600, padding:'5px 10px', borderRadius:'3px', border:'1px solid #444', background:'transparent', color:'#ccc', cursor:'pointer', letterSpacing:'0.08em' }}>
               {lang === 'en' ? 'TR' : 'EN'}
             </button>
+            {isSupabaseReady() && authUser && (
+              <button
+                onClick={signOut}
+                title={authProfile?.display_name || authUser.email}
+                style={{ ...S.mono, fontSize:'10px', padding:'5px 10px', borderRadius:'3px', border:'1px solid #333', background:'transparent', color:'#555', cursor:'pointer', letterSpacing:'0.06em' }}>
+                ⊗ {lang === 'en' ? 'Sign out' : 'Çıkış'}
+              </button>
+            )}
           </div>
         </header>
 
@@ -285,6 +332,8 @@ export default function App() {
           SPOREUS ATHLETE CONSOLE v4.6.0 · SPOREUS.COM · EŞİK / THRESHOLD 2026
         </footer>
       </div>
+        </>)}
+      </AuthShell>
     </LangCtx.Provider>
   )
 }
