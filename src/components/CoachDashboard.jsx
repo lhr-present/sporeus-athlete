@@ -6,6 +6,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage.js'
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const TODAY = new Date().toISOString().slice(0, 10)
+const MY_COACH_ID = 'huseyin-sporeus'
 
 function isoDate(d) {
   try { return new Date(d).toISOString().slice(0, 10) } catch { return '' }
@@ -19,6 +20,14 @@ function daysBefore(n) {
 
 function isWithinDays(dateStr, days) {
   return dateStr >= daysBefore(days)
+}
+
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
 }
 
 function computeLoad(log) {
@@ -40,9 +49,9 @@ function computeLoad(log) {
 function computeAthleteMetrics(athlete) {
   const log = athlete.log || []
   const recovery = athlete.recovery || []
-  const today = TODAY
   const d7 = daysBefore(7)
   const d28 = daysBefore(28)
+  const d14 = daysBefore(14)
 
   const lastSession = log.length
     ? [...log].sort((a, b) => (a.date > b.date ? -1 : 1))[0]?.date || '—'
@@ -57,7 +66,6 @@ function computeAthleteMetrics(athlete) {
     : null
   const readiness = lastRec ? lastRec.score || null : null
 
-  // ACWR: acute (7d) / chronic avg weekly (28d)
   const log28 = log.filter(e => e.date >= d28)
   const chronic28Total = log28.reduce((s, e) => s + (e.tss || 0), 0)
   const chronicWeeklyAvg = chronic28Total / 4
@@ -71,7 +79,12 @@ function computeAthleteMetrics(athlete) {
     else acwrColor = '#e03030'
   }
 
-  return { lastSession, tss7, sessions7, readiness, acwr, acwrColor }
+  const injuryLog = athlete.injuryLog || []
+  const hasRecentInjury = injuryLog.some(e => e.date >= d14)
+
+  const needsAttention = (readiness !== null && readiness < 50) || (acwr !== null && acwr > 1.5) || hasRecentInjury
+
+  return { lastSession, tss7, sessions7, readiness, acwr, acwrColor, hasRecentInjury, needsAttention }
 }
 
 function getReadinessColor(score) {
@@ -81,14 +94,60 @@ function getReadinessColor(score) {
   return '#e03030'
 }
 
-// ─── Plan Generator (inline) ──────────────────────────────────────────────────
+// ─── Plan Generator (sport-aware) ────────────────────────────────────────────
 
-function generateCoachPlan({ goal, weeks, hoursPerWeek, level, athleteName }) {
+function generateCoachPlan({ goal, weeks, hoursPerWeek, level, athleteName, sport }) {
   const w = parseInt(weeks) || 8
   const h = parseInt(hoursPerWeek) || 8
+  const sp = (sport || 'running').toLowerCase()
+
+  const SPORT_SESSIONS = {
+    running: [
+      { day: 'Monday',    type: 'Easy Run',      rpeBase: 4 },
+      { day: 'Wednesday', type: 'Threshold Run',  rpeBase: 7 },
+      { day: 'Friday',    type: 'Easy Run',       rpeBase: 4 },
+      { day: 'Saturday',  type: 'Long Run',       rpeBase: 6 },
+      { day: 'Sunday',    type: 'Rest / Stretch', rpeBase: 1 },
+    ],
+    cycling: [
+      { day: 'Monday',    type: 'Easy Ride',      rpeBase: 4 },
+      { day: 'Wednesday', type: 'Sweet Spot',     rpeBase: 7 },
+      { day: 'Friday',    type: 'Recovery Ride',  rpeBase: 3 },
+      { day: 'Saturday',  type: 'Long Ride',      rpeBase: 6 },
+      { day: 'Sunday',    type: 'Rest / Stretch', rpeBase: 1 },
+    ],
+    swimming: [
+      { day: 'Monday',    type: 'Easy Swim',      rpeBase: 4 },
+      { day: 'Wednesday', type: 'CSS Intervals',  rpeBase: 7 },
+      { day: 'Friday',    type: 'Drills',         rpeBase: 4 },
+      { day: 'Saturday',  type: 'Long Swim',      rpeBase: 6 },
+      { day: 'Sunday',    type: 'Rest / Stretch', rpeBase: 1 },
+    ],
+    triathlon: [
+      { day: 'Monday',    type: 'Easy Swim',      rpeBase: 4 },
+      { day: 'Tuesday',   type: 'Easy Run',       rpeBase: 4 },
+      { day: 'Wednesday', type: 'Threshold Ride', rpeBase: 7 },
+      { day: 'Friday',    type: 'Brick (Bike+Run)',rpeBase: 7 },
+      { day: 'Saturday',  type: 'Long Ride',      rpeBase: 6 },
+      { day: 'Sunday',    type: 'Long Run',       rpeBase: 6 },
+    ],
+    rowing: [
+      { day: 'Monday',    type: 'Easy Erg',       rpeBase: 4 },
+      { day: 'Wednesday', type: 'Intervals',      rpeBase: 7 },
+      { day: 'Friday',    type: 'Technique Erg',  rpeBase: 4 },
+      { day: 'Saturday',  type: 'Long Piece',     rpeBase: 6 },
+      { day: 'Sunday',    type: 'Rest / Stretch', rpeBase: 1 },
+    ],
+  }
+
+  const sessions = SPORT_SESSIONS[sp] || SPORT_SESSIONS.running
+  const sessionCount = sessions.length
+  const durWeights = [0.20, 0.20, 0.15, 0.35, 0.10]
+
   return {
     generated: TODAY,
     goal,
+    sport: sp,
     weeks: w,
     hoursPerWeek: h,
     level,
@@ -100,13 +159,12 @@ function generateCoachPlan({ goal, weeks, hoursPerWeek, level, athleteName }) {
         : wi < w * 0.6 ? 'Build'
         : wi < w * 0.85 ? 'Peak'
         : 'Taper',
-      sessions: [
-        { day: 'Monday',    type: 'Easy Run',   duration: Math.round(h * 60 * 0.20), rpe: 4 },
-        { day: 'Wednesday', type: 'Threshold',  duration: Math.round(h * 60 * 0.20), rpe: 7 },
-        { day: 'Friday',    type: 'Easy Run',   duration: Math.round(h * 60 * 0.15), rpe: 4 },
-        { day: 'Saturday',  type: 'Long Run',   duration: Math.round(h * 60 * 0.35), rpe: 6 },
-        { day: 'Sunday',    type: 'Rest',       duration: 0,                          rpe: 0 },
-      ],
+      sessions: sessions.map((s, si) => ({
+        day: s.day,
+        type: s.type,
+        duration: Math.round(h * 60 * (durWeights[si] || 0.15)),
+        rpe: s.rpeBase,
+      })),
     })),
   }
 }
@@ -148,24 +206,20 @@ function AthleteDetail({ athlete, onUpdate, onClose }) {
   const { ctl, atl, tsb } = computeLoad(log)
   const tsbColor = tsb > 5 ? '#5bc25b' : tsb < -10 ? '#e03030' : '#f5c542'
 
-  // Last 5 sessions
   const last5 = [...log].sort((a, b) => (a.date > b.date ? -1 : 1)).slice(0, 5)
 
-  // Recovery trend: last 7 readiness scores
   const recTrend = [...recovery]
     .sort((a, b) => (a.date > b.date ? -1 : 1))
     .slice(0, 7)
     .map(r => r.score || '?')
     .join(', ')
 
-  // Injury flags: injuryLog field in imported data
   const injuryLog = athlete.injuryLog || []
   const d14 = daysBefore(14)
   const recentInjuryZones = [...new Set(
     injuryLog.filter(e => e.date >= d14).map(e => e.zone).filter(Boolean)
   )]
 
-  // 4-week compliance: expected 4 sessions/week
   const complianceWeeks = []
   for (let w = 0; w < 4; w++) {
     const wStart = daysBefore(28 - w * 7)
@@ -175,14 +229,14 @@ function AthleteDetail({ athlete, onUpdate, onClose }) {
     complianceWeeks.push({ week: 4 - w, actual, expected: 4, pct })
   }
 
-  // Plan state
-  const [planGoal, setPlanGoal] = useState('5K')
+  const [planGoal, setPlanGoal] = useState('Goal Race')
   const [planWeeks, setPlanWeeks] = useState('8')
   const [planHours, setPlanHours] = useState('8')
   const [planLevel, setPlanLevel] = useState('Intermediate')
 
-  // Notes state
   const [noteText, setNoteText] = useState('')
+  const [editingNoteIdx, setEditingNoteIdx] = useState(null)
+  const [editNoteText, setEditNoteText] = useState('')
 
   function handleGeneratePlan() {
     const plan = generateCoachPlan({
@@ -191,6 +245,7 @@ function AthleteDetail({ athlete, onUpdate, onClose }) {
       hoursPerWeek: planHours,
       level: planLevel,
       athleteName: athlete.name,
+      sport: athlete.sport || athlete.profile?.sport || 'running',
     })
     const blob = new Blob([JSON.stringify(plan, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -204,8 +259,7 @@ function AthleteDetail({ athlete, onUpdate, onClose }) {
   function handleAddNote() {
     if (!noteText.trim()) return
     const newNote = { date: TODAY, text: noteText.trim() }
-    const updated = { ...athlete, notes: [newNote, ...(athlete.notes || [])] }
-    onUpdate(updated)
+    onUpdate({ ...athlete, notes: [newNote, ...(athlete.notes || [])] })
     setNoteText('')
   }
 
@@ -213,6 +267,24 @@ function AthleteDetail({ athlete, onUpdate, onClose }) {
     const notes = [...(athlete.notes || [])]
     notes.splice(idx, 1)
     onUpdate({ ...athlete, notes })
+  }
+
+  function handleStartEditNote(idx) {
+    setEditingNoteIdx(idx)
+    setEditNoteText((athlete.notes || [])[idx]?.text || '')
+  }
+
+  function handleSaveEditNote() {
+    const notes = [...(athlete.notes || [])]
+    notes[editingNoteIdx] = { ...notes[editingNoteIdx], text: editNoteText.trim() }
+    onUpdate({ ...athlete, notes })
+    setEditingNoteIdx(null)
+    setEditNoteText('')
+  }
+
+  function handleCancelEditNote() {
+    setEditingNoteIdx(null)
+    setEditNoteText('')
   }
 
   function handleCopyReport() {
@@ -227,8 +299,170 @@ function AthleteDetail({ athlete, onUpdate, onClose }) {
     navigator.clipboard.writeText(lines.join('\n')).catch(() => {})
   }
 
+  function handlePrintReport() {
+    const p = athlete.profile || {}
+    const load = computeLoad(log)
+    const totalActual = complianceWeeks.reduce((s, cw) => s + cw.actual, 0)
+    const totalPct = Math.round((totalActual / 16) * 100)
+    const avgReadiness = recovery.length
+      ? Math.round(recovery.slice(-7).reduce((s, r) => s + (r.score || 0), 0) / Math.min(7, recovery.length))
+      : null
+    const recentNotes = (athlete.notes || []).slice(0, 5)
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Sporeus Report — ${escHtml(athlete.name)}</title>
+<style>
+  body { font-family: 'IBM Plex Mono', 'Courier New', monospace; background: #0a0a0a; color: #e0e0e0; margin: 0; padding: 24px; font-size: 12px; }
+  .header { border-bottom: 2px solid #ff6600; padding-bottom: 12px; margin-bottom: 20px; }
+  .title { font-size: 20px; font-weight: 700; color: #ff6600; letter-spacing: 0.1em; }
+  .sub { font-size: 10px; color: #888; letter-spacing: 0.08em; margin-top: 4px; }
+  .section { margin-bottom: 20px; border: 1px solid #222; border-radius: 4px; padding: 14px; }
+  .section-title { font-size: 10px; font-weight: 700; color: #0064ff; letter-spacing: 0.1em; margin-bottom: 10px; }
+  .row { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 8px; }
+  .stat { text-align: center; }
+  .stat-val { font-size: 24px; font-weight: 700; }
+  .stat-lbl { font-size: 9px; color: #888; letter-spacing: 0.06em; margin-top: 3px; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th { text-align: left; padding: 4px 8px; color: #888; font-size: 9px; letter-spacing: 0.06em; border-bottom: 1px solid #333; }
+  td { padding: 5px 8px; border-bottom: 1px solid #1a1a1a; }
+  .orange { color: #ff6600; } .blue { color: #0064ff; } .green { color: #5bc25b; } .red { color: #e03030; } .yellow { color: #f5c542; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 700; }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style></head><body>
+
+<div class="header">
+  <div class="title">◈ SPOREUS ATHLETE REPORT</div>
+  <div class="sub">COACH: HÜSEYIN IŞIK · SPOREUS.COM · ${escHtml(TODAY)}</div>
+</div>
+
+<!-- 1. Athlete Profile -->
+<div class="section">
+  <div class="section-title">01 / ATHLETE PROFILE</div>
+  <div class="row">
+    <div><span style="color:#888;font-size:9px">NAME</span><br/><strong style="font-size:14px">${escHtml(athlete.name)}</strong></div>
+    <div><span style="color:#888;font-size:9px">SPORT</span><br/>${escHtml(athlete.sport || '—')}</div>
+    <div><span style="color:#888;font-size:9px">AGE</span><br/>${escHtml(p.age || '—')}</div>
+    <div><span style="color:#888;font-size:9px">WEIGHT</span><br/>${escHtml(p.weight ? p.weight + ' kg' : '—')}</div>
+    <div><span style="color:#888;font-size:9px">FTP</span><br/>${escHtml(p.ftp ? p.ftp + ' W' : '—')}</div>
+    <div><span style="color:#888;font-size:9px">VO2MAX</span><br/>${escHtml(p.vo2max ? p.vo2max + ' ml/kg/min' : '—')}</div>
+    <div><span style="color:#888;font-size:9px">THRESHOLD PACE</span><br/>${escHtml(p.threshold || '—')}</div>
+    <div><span style="color:#888;font-size:9px">GOAL</span><br/>${escHtml(p.goal || '—')}</div>
+  </div>
+  <div><span style="color:#888;font-size:9px">IMPORTED</span> ${escHtml(athlete.importedAt || '—')}</div>
+</div>
+
+<!-- 2. Training Load -->
+<div class="section">
+  <div class="section-title">02 / TRAINING LOAD (CTL / ATL / TSB)</div>
+  <div class="row">
+    <div class="stat"><div class="stat-val blue">${load.ctl}</div><div class="stat-lbl">CTL (FITNESS)</div></div>
+    <div class="stat"><div class="stat-val red">${load.atl}</div><div class="stat-lbl">ATL (FATIGUE)</div></div>
+    <div class="stat"><div class="stat-val ${load.tsb > 5 ? 'green' : load.tsb < -10 ? 'red' : 'yellow'}">${load.tsb >= 0 ? '+' : ''}${load.tsb}</div><div class="stat-lbl">TSB (FORM)</div></div>
+    <div class="stat"><div class="stat-val orange">${log.reduce((s,e)=>s+(e.tss||0),0)}</div><div class="stat-lbl">TOTAL TSS</div></div>
+    <div class="stat"><div class="stat-val" style="color:#e0e0e0">${log.length}</div><div class="stat-lbl">SESSIONS</div></div>
+  </div>
+</div>
+
+<!-- 3. Last 5 Sessions -->
+<div class="section">
+  <div class="section-title">03 / LAST 5 SESSIONS</div>
+  ${last5.length === 0 ? '<div style="color:#888">No sessions logged.</div>' : `
+  <table>
+    <thead><tr><th>DATE</th><th>TYPE</th><th>DURATION</th><th>RPE</th><th>TSS</th><th>NOTES</th></tr></thead>
+    <tbody>
+      ${last5.map(s => `<tr>
+        <td style="color:#888">${escHtml(s.date || '—')}</td>
+        <td>${escHtml(s.type || '—')}</td>
+        <td class="orange">${s.duration ? s.duration + 'm' : '—'}</td>
+        <td>${escHtml(s.rpe || '—')}</td>
+        <td class="blue">${escHtml(s.tss || '—')}</td>
+        <td style="color:#888;max-width:180px">${escHtml(s.notes || '')}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`}
+</div>
+
+<!-- 4. Recovery & Readiness -->
+<div class="section">
+  <div class="section-title">04 / RECOVERY &amp; READINESS</div>
+  <div class="row">
+    ${avgReadiness !== null ? `<div class="stat"><div class="stat-val ${avgReadiness>=75?'green':avgReadiness>=50?'yellow':'red'}">${avgReadiness}</div><div class="stat-lbl">7-DAY AVG READINESS</div></div>` : ''}
+    <div style="flex:1"><span style="color:#888;font-size:9px">READINESS TREND (last 7 scores)</span><br/><span style="font-size:13px;color:#5bc25b">${escHtml(recTrend || '—')}</span></div>
+  </div>
+</div>
+
+<!-- 5. Injury Flags -->
+<div class="section">
+  <div class="section-title">05 / INJURY FLAGS (LAST 14 DAYS)</div>
+  ${recentInjuryZones.length === 0
+    ? '<span class="tag green">✓ None reported</span>'
+    : recentInjuryZones.map(z => `<span class="tag red">⚠ ${escHtml(z)}</span> `).join('')
+  }
+</div>
+
+<!-- 6. 4-Week Compliance -->
+<div class="section">
+  <div class="section-title">06 / 4-WEEK COMPLIANCE (Expected: 4 sessions/week)</div>
+  <table>
+    <thead><tr><th>WEEK</th><th>SESSIONS</th><th>COMPLIANCE</th></tr></thead>
+    <tbody>
+      ${complianceWeeks.map(cw => `<tr>
+        <td style="color:#888">Week ${cw.week}</td>
+        <td>${cw.actual}/${cw.expected}</td>
+        <td class="${cw.pct>=75?'green':cw.pct>=50?'yellow':'red'}">${cw.pct}%</td>
+      </tr>`).join('')}
+      <tr style="border-top:2px solid #333;font-weight:700">
+        <td>TOTAL</td>
+        <td>${complianceWeeks.reduce((s,c)=>s+c.actual,0)}/16</td>
+        <td class="${totalPct>=75?'green':totalPct>=50?'yellow':'red'}">${totalPct}%</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 7. Coach Notes -->
+<div class="section">
+  <div class="section-title">07 / COACH NOTES</div>
+  ${recentNotes.length === 0
+    ? '<div style="color:#888">No notes recorded.</div>'
+    : recentNotes.map(n => `<div style="border-bottom:1px solid #222;padding:6px 0">
+        <span style="color:#888;font-size:9px">${escHtml(n.date)}</span>
+        <span style="margin-left:12px">${escHtml(n.text)}</span>
+      </div>`).join('')
+  }
+</div>
+
+<div style="text-align:center;color:#444;font-size:9px;margin-top:24px;letter-spacing:0.08em">
+  SPOREUS ATHLETE CONSOLE · GENERATED ${escHtml(TODAY)} · SPOREUS.COM
+</div>
+</body></html>`
+
+    const w = window.open('', '_blank', 'width=820,height=940')
+    if (!w) { alert('Pop-up blocked — allow pop-ups to print the report.'); return }
+    w.document.write(html)
+    w.document.close()
+    setTimeout(() => w.print(), 600)
+  }
+
+  const SPORT_GOALS = {
+    running:   ['5K', '10K', 'Half Marathon', 'Full Marathon', 'General Fitness'],
+    cycling:   ['Gran Fondo', 'Stage Race', 'Criterium', 'Time Trial', 'General Fitness'],
+    swimming:  ['Open Water', '1500m', '5K Open', 'Triathlon Swim', 'General Fitness'],
+    triathlon: ['Sprint', 'Olympic', '70.3', 'Full Ironman', 'General Fitness'],
+    rowing:    ['2K Erg', '6K Erg', 'Head Race', 'General Fitness'],
+  }
+  const athleteSport = (athlete.sport || athlete.profile?.sport || 'running').toLowerCase()
+  const goalOptions = SPORT_GOALS[athleteSport] || SPORT_GOALS.running
+
   return (
     <div style={{ marginTop: '12px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+      {/* Print Report button */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
+        <button style={{ ...S.btn, background: '#0064ff', fontSize: '11px', padding: '6px 14px' }} onClick={handlePrintReport}>
+          ⊞ Print PDF Report
+        </button>
+      </div>
+
       {/* CTL / ATL / TSB */}
       <div style={{ ...S.row, marginBottom: '12px' }}>
         {[
@@ -312,36 +546,31 @@ function AthleteDetail({ athlete, onUpdate, onClose }) {
 
       {/* Plan Export */}
       <div style={{ ...S.card, background: 'var(--surface)', marginBottom: '12px' }}>
-        <div style={S.cardTitle}>CREATE PLAN EXPORT FOR {athlete.name.toUpperCase()}</div>
+        <div style={S.cardTitle}>CREATE PLAN FOR {athlete.name.toUpperCase()}</div>
+        <div style={{ ...S.mono, fontSize: '9px', color: '#0064ff', marginBottom: '8px', letterSpacing: '0.06em' }}>
+          SPORT: {athleteSport.toUpperCase()}
+        </div>
         <div style={{ ...S.row, marginBottom: '10px' }}>
           <div style={{ flex: '1 1 140px' }}>
             <label style={S.label}>GOAL</label>
             <select style={S.select} value={planGoal} onChange={e => setPlanGoal(e.target.value)}>
-              {['5K', '10K', 'Half Marathon', 'Full Marathon', 'General Fitness'].map(g => (
-                <option key={g} value={g}>{g}</option>
-              ))}
+              {goalOptions.map(g => <option key={g} value={g}>{g}</option>)}
             </select>
           </div>
           <div style={{ flex: '1 1 80px' }}>
             <label style={S.label}>WEEKS (4–20)</label>
-            <input
-              type="number" min="4" max="20" style={S.input} value={planWeeks}
-              onChange={e => setPlanWeeks(e.target.value)}
-            />
+            <input type="number" min="4" max="20" style={S.input} value={planWeeks}
+              onChange={e => setPlanWeeks(e.target.value)} />
           </div>
           <div style={{ flex: '1 1 80px' }}>
-            <label style={S.label}>HRS/WEEK (4–20)</label>
-            <input
-              type="number" min="4" max="20" style={S.input} value={planHours}
-              onChange={e => setPlanHours(e.target.value)}
-            />
+            <label style={S.label}>HRS/WEEK</label>
+            <input type="number" min="4" max="20" style={S.input} value={planHours}
+              onChange={e => setPlanHours(e.target.value)} />
           </div>
           <div style={{ flex: '1 1 120px' }}>
             <label style={S.label}>LEVEL</label>
             <select style={S.select} value={planLevel} onChange={e => setPlanLevel(e.target.value)}>
-              {['Beginner', 'Intermediate', 'Advanced'].map(l => (
-                <option key={l} value={l}>{l}</option>
-              ))}
+              {['Beginner', 'Intermediate', 'Advanced'].map(l => <option key={l} value={l}>{l}</option>)}
             </select>
           </div>
         </div>
@@ -365,18 +594,38 @@ function AthleteDetail({ athlete, onUpdate, onClose }) {
           </button>
         </div>
         {(athlete.notes || []).slice(0, 5).map((note, i) => (
-          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border)', padding: '6px 0' }}>
-            <div>
-              <span style={{ ...S.mono, fontSize: '10px', color: 'var(--muted)', marginRight: '8px' }}>{note.date}</span>
-              <span style={{ ...S.mono, fontSize: '12px' }}>{note.text}</span>
-            </div>
-            <button
-              onClick={() => handleDeleteNote(i)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e03030', ...S.mono, fontSize: '13px', padding: '0 4px', lineHeight: 1 }}
-              title="Delete note"
-            >
-              ×
-            </button>
+          <div key={i} style={{ borderBottom: '1px solid var(--border)', padding: '6px 0' }}>
+            {editingNoteIdx === i ? (
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                <textarea
+                  style={{ ...S.input, height: '48px', resize: 'vertical', flex: 1, fontSize: '12px' }}
+                  value={editNoteText}
+                  onChange={e => setEditNoteText(e.target.value)}
+                  autoFocus
+                />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <button onClick={handleSaveEditNote}
+                    style={{ ...S.btn, fontSize: '10px', padding: '4px 10px' }}>✓ Save</button>
+                  <button onClick={handleCancelEditNote}
+                    style={{ ...S.btnSec, fontSize: '10px', padding: '4px 10px' }}>✕</button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <span style={{ ...S.mono, fontSize: '10px', color: 'var(--muted)', marginRight: '8px' }}>{note.date}</span>
+                  <span style={{ ...S.mono, fontSize: '12px' }}>{note.text}</span>
+                </div>
+                <div style={{ display: 'flex', gap: '4px', flex: '0 0 auto' }}>
+                  <button onClick={() => handleStartEditNote(i)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', ...S.mono, fontSize: '13px', padding: '0 4px', lineHeight: 1 }}
+                    title="Edit note">✎</button>
+                  <button onClick={() => handleDeleteNote(i)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e03030', ...S.mono, fontSize: '13px', padding: '0 4px', lineHeight: 1 }}
+                    title="Delete note">×</button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
         {!(athlete.notes && athlete.notes.length) && (
@@ -500,12 +749,33 @@ function AthleteComparison({ roster }) {
 export default function CoachDashboard() {
   const [roster, setRoster] = useLocalStorage('sporeus-coach-athletes', [])
   const [expanded, setExpanded] = useState(null)
+  const [showMyAthletes, setShowMyAthletes] = useState(false)
+  const [copyToast, setCopyToast] = useState(false)
   const fileRef = useRef(null)
+
+  const inviteUrl = `${window.location.origin}${window.location.pathname}?coach=${MY_COACH_ID}`
+
+  function handleCopyInvite() {
+    navigator.clipboard.writeText(inviteUrl).catch(() => {})
+    setCopyToast(true)
+    setTimeout(() => setCopyToast(false), 2000)
+  }
+
+  // Summary stats
+  const connected   = roster.filter(a => a.coachId === MY_COACH_ID).length
+  const needsAttn   = roster.filter(a => computeAthleteMetrics(a).needsAttention).length
+  const injuredCnt  = roster.filter(a => {
+    const d14 = daysBefore(14)
+    return (a.injuryLog || []).some(e => e.date >= d14)
+  }).length
+
+  const filteredRoster = showMyAthletes
+    ? roster.filter(a => a.coachId === MY_COACH_ID)
+    : roster
 
   function handleFileSelect(e) {
     const file = e.target.files[0]
     if (!file) return
-    // Reject files over 10MB before reading
     if (file.size > 10 * 1024 * 1024) {
       alert('File too large (max 10MB). Make sure this is a valid Sporeus export.')
       e.target.value = ''; return
@@ -516,17 +786,14 @@ export default function CoachDashboard() {
         const text = ev.target.result
         if (text.length > 10e6) throw new Error('oversized')
         const raw = JSON.parse(text)
-        // Reject prototype-polluting or non-object payloads
         if (typeof raw !== 'object' || Array.isArray(raw) || raw === null) throw new Error('invalid shape')
-        // Extract from versioned export wrapper if present
         const data = raw._export ? (raw.data || {}) : raw
-        // Whitelist-extract and cap array lengths to prevent memory exhaustion
         const sanitizeStr = v => typeof v === 'string' ? v.slice(0, 200) : ''
         const sanitizeNum = v => typeof v === 'number' && isFinite(v) ? v : 0
         const rawProfile = (data['sporeus-profile']?.data) || data.profile || {}
         const profile = {
           name:      sanitizeStr(rawProfile.name),
-          sport:     sanitizeStr(rawProfile.sport),
+          sport:     sanitizeStr(rawProfile.sport || rawProfile.primarySport),
           age:       sanitizeStr(rawProfile.age),
           weight:    sanitizeStr(rawProfile.weight),
           ftp:       sanitizeStr(rawProfile.ftp),
@@ -534,6 +801,7 @@ export default function CoachDashboard() {
           threshold: sanitizeStr(rawProfile.threshold),
           goal:      sanitizeStr(rawProfile.goal),
         }
+        const coachId = sanitizeStr(raw.coachId || data.coachId || '')
         const toLogArray = v => Array.isArray(v) ? v.slice(0, 5000).map(e => ({
           id: sanitizeNum(e.id), date: sanitizeStr(e.date), type: sanitizeStr(e.type),
           duration: sanitizeNum(e.duration), rpe: sanitizeNum(e.rpe), tss: sanitizeNum(e.tss),
@@ -551,6 +819,7 @@ export default function CoachDashboard() {
           id:         Date.now(),
           name:       profile.name || 'Athlete',
           sport:      profile.sport || '—',
+          coachId,
           importedAt: TODAY,
           profile,
           log,
@@ -598,42 +867,89 @@ export default function CoachDashboard() {
         gap: '6px',
       }}>
         <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: '14px', fontWeight: 700, color: '#0064ff', letterSpacing: '0.1em' }}>
-          ◈ COACH MODE
+          ◈ COACH MODE · HÜSEYIN IŞIK
         </div>
         <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: '10px', color: 'var(--muted)', letterSpacing: '0.06em' }}>
           File-based | No server | No API keys
         </div>
       </div>
 
-      {/* Athlete Roster */}
-      <div style={S.card}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <div style={S.cardTitle}>ATHLETE ROSTER ({roster.length})</div>
-          <button style={S.btn} onClick={() => fileRef.current?.click()}>
-            + Import Athlete
+      {/* Summary Stats */}
+      <div style={{ ...S.row, marginBottom: '16px' }}>
+        {[
+          { lbl: 'TOTAL ATHLETES', val: roster.length, color: '#e0e0e0' },
+          { lbl: 'CONNECTED', val: connected, color: '#0064ff' },
+          { lbl: 'NEEDS ATTENTION', val: needsAttn, color: needsAttn > 0 ? '#f5c542' : '#5bc25b' },
+          { lbl: 'INJURY FLAGS', val: injuredCnt, color: injuredCnt > 0 ? '#e03030' : '#5bc25b' },
+        ].map(({ lbl, val, color }) => (
+          <div key={lbl} style={{ flex: '1 1 90px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '6px', padding: '10px', textAlign: 'center' }}>
+            <div style={{ ...S.mono, fontSize: '22px', fontWeight: 700, color }}>{val}</div>
+            <div style={{ ...S.mono, fontSize: '8px', color: 'var(--muted)', letterSpacing: '0.08em', marginTop: '4px' }}>{lbl}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Invite Link */}
+      <div style={{ ...S.card, marginBottom: '16px', animationDelay: '30ms' }}>
+        <div style={S.cardTitle}>INVITE ATHLETES</div>
+        <div style={{ ...S.mono, fontSize: '10px', color: 'var(--muted)', marginBottom: '8px' }}>
+          Share this link — athletes auto-connect to your roster on first open:
+        </div>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <input
+            style={{ ...S.input, flex: '1 1 200px', color: '#0064ff', fontSize: '11px' }}
+            readOnly
+            value={inviteUrl}
+            onFocus={e => e.target.select()}
+          />
+          <button style={{ ...S.btnSec, whiteSpace: 'nowrap', borderColor: '#0064ff', color: copyToast ? '#5bc25b' : '#0064ff' }}
+            onClick={handleCopyInvite}>
+            {copyToast ? '✓ Copied!' : 'Copy Link'}
           </button>
         </div>
+        <div style={{ ...S.mono, fontSize: '9px', color: '#888', marginTop: '6px' }}>
+          Athlete receives: ?coach=huseyin-sporeus → auto-connects in their Profile tab
+        </div>
+      </div>
 
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".json"
-          style={{ display: 'none' }}
-          onChange={handleFileSelect}
-        />
+      {/* Athlete Roster */}
+      <div style={S.card}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={S.cardTitle}>
+            ATHLETE ROSTER ({filteredRoster.length}{showMyAthletes ? ' connected' : ` of ${roster.length}`})
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button
+              onClick={() => setShowMyAthletes(false)}
+              style={{ ...S.mono, fontSize: '9px', fontWeight: 600, padding: '3px 8px', borderRadius: '3px', cursor: 'pointer', border: `1px solid ${!showMyAthletes ? '#0064ff' : 'var(--border)'}`, background: !showMyAthletes ? '#0064ff22' : 'transparent', color: !showMyAthletes ? '#0064ff' : 'var(--muted)' }}>
+              ALL
+            </button>
+            <button
+              onClick={() => setShowMyAthletes(true)}
+              style={{ ...S.mono, fontSize: '9px', fontWeight: 600, padding: '3px 8px', borderRadius: '3px', cursor: 'pointer', border: `1px solid ${showMyAthletes ? '#0064ff' : 'var(--border)'}`, background: showMyAthletes ? '#0064ff22' : 'transparent', color: showMyAthletes ? '#0064ff' : 'var(--muted)' }}>
+              ◉ CONNECTED
+            </button>
+            <button style={S.btn} onClick={() => fileRef.current?.click()}>+ Import Athlete</button>
+          </div>
+        </div>
 
-        {roster.length === 0 && (
+        <input ref={fileRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleFileSelect} />
+
+        {filteredRoster.length === 0 && (
           <div style={{ ...S.mono, fontSize: '12px', color: 'var(--muted)', textAlign: 'center', padding: '24px 0' }}>
-            No athletes imported yet. Export athlete data as JSON from the Sporeus app, then import here.
+            {showMyAthletes
+              ? 'No connected athletes yet. Share your invite link above.'
+              : 'No athletes imported yet. Export athlete data as JSON from the Sporeus app, then import here.'}
           </div>
         )}
 
-        {roster.map(athlete => {
+        {filteredRoster.map(athlete => {
           const metrics = computeAthleteMetrics(athlete)
           const isOpen  = expanded === athlete.id
+          const isConnected = athlete.coachId === MY_COACH_ID
           return (
             <div key={athlete.id} style={{
-              border: '1px solid var(--border)',
+              border: `1px solid ${metrics.needsAttention ? '#f5c54244' : 'var(--border)'}`,
               borderRadius: '6px',
               marginBottom: '10px',
               overflow: 'hidden',
@@ -647,10 +963,18 @@ export default function CoachDashboard() {
                 background: isOpen ? 'var(--surface)' : 'transparent',
                 flexWrap: 'wrap',
               }}>
-                {/* Name + sport */}
+                {/* Name + sport + connected dot */}
                 <div style={{ flex: '1 1 120px', minWidth: 0 }}>
-                  <div style={{ ...S.mono, fontSize: '13px', fontWeight: 700, color: '#0064ff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {athlete.name}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {isConnected && (
+                      <span title="Connected athlete" style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#0064ff', display: 'inline-block', flexShrink: 0 }} />
+                    )}
+                    <div style={{ ...S.mono, fontSize: '13px', fontWeight: 700, color: '#0064ff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {athlete.name}
+                    </div>
+                    {metrics.needsAttention && (
+                      <span style={{ ...S.mono, fontSize: '9px', color: '#f5c542' }}>⚠</span>
+                    )}
                   </div>
                   <div style={{ ...S.mono, fontSize: '10px', color: 'var(--muted)' }}>{athlete.sport}</div>
                 </div>
@@ -698,7 +1022,7 @@ export default function CoachDashboard() {
                     style={{ ...S.btnSec, fontSize: '11px', padding: '5px 10px', color: '#e03030', borderColor: '#e03030' }}
                     onClick={() => handleRemove(athlete.id)}
                   >
-                    ✕ Remove
+                    ✕
                   </button>
                 </div>
               </div>

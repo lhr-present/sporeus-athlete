@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { LangCtx, LABELS, TABS } from './contexts/LangCtx.jsx'
 import { useLocalStorage, STORAGE_WARN_KEY } from './hooks/useLocalStorage.js'
 import { S, ANIM_CSS } from './styles.js'
@@ -28,10 +28,34 @@ export default function App() {
   const [dark, setDark] = useLocalStorage('sporeus-dark', false)
   const [onboarded, setOnboarded] = useLocalStorage('sporeus-onboarded', false)
   const [swUpdateReady, setSwUpdateReady] = useState(false)
+  const [coachToast, setCoachToast] = useState('')
+  const coachToastTimer = useRef(null)
 
   // Migration guard: existing users who have a saved profile skip onboarding
   useEffect(() => {
     if (!onboarded && profile && profile.name) setOnboarded(true)
+  }, [])
+
+  // Handle ?coach= URL param — auto-connect athlete to coach
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const coachParam = params.get('coach')
+    if (!coachParam) return
+    // Allowlist: only accept our known coach ID (prevent arbitrary injection)
+    if (coachParam !== 'huseyin-sporeus') return
+    try {
+      const current = localStorage.getItem('sporeus-my-coach')
+      if (current !== coachParam) {
+        localStorage.setItem('sporeus-my-coach', coachParam)
+        setCoachToast('◉ Connected to coach Hüseyin Işık — go to Profile to send your data.')
+        clearTimeout(coachToastTimer.current)
+        coachToastTimer.current = setTimeout(() => setCoachToast(''), 6000)
+      }
+      // Clean param from URL without reload
+      const url = new URL(window.location.href)
+      url.searchParams.delete('coach')
+      window.history.replaceState({}, '', url.toString())
+    } catch {}
   }, [])
 
   useEffect(() => {
@@ -73,6 +97,12 @@ export default function App() {
             <button onClick={()=>{ setSwUpdateReady(false); window.location.reload() }} style={{ background:'#fff', border:'none', color:'#0064ff', padding:'4px 12px', cursor:'pointer', fontFamily:'inherit', fontSize:'10px', fontWeight:600, borderRadius:'3px' }}>RELOAD</button>
             <button onClick={()=>setSwUpdateReady(false)} style={{ background:'none', border:'1px solid #fff', color:'#fff', padding:'4px 8px', cursor:'pointer', fontFamily:'inherit', fontSize:'10px' }}>✕</button>
           </div>
+        </div>
+      )}
+      {coachToast && (
+        <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:10002, background:'#0064ff', color:'#fff', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'10px 20px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          {coachToast}
+          <button onClick={()=>setCoachToast('')} style={{ background:'none', border:'1px solid #fff', color:'#fff', padding:'2px 8px', cursor:'pointer', fontFamily:'inherit', fontSize:'10px' }}>✕</button>
         </div>
       )}
       {quotaWarn && (
@@ -130,7 +160,7 @@ export default function App() {
         </main>
 
         <footer style={S.footer}>
-          SPOREUS ATHLETE CONSOLE v3.6.0 · SPOREUS.COM · EŞİK / THRESHOLD 2026
+          SPOREUS ATHLETE CONSOLE v3.8.0 · SPOREUS.COM · EŞİK / THRESHOLD 2026
         </footer>
       </div>
     </LangCtx.Provider>
