@@ -310,7 +310,7 @@ export default function App() {
     if (loading) return <Splash />
     if (!user)   return <AuthGate lang={lang} />
     if (authProfile && !authProfile.role) return <RoleSelector userId={user.id} onComplete={refreshProfile} lang={lang} />
-    if (!authProfile) return <Splash />
+    if (!authProfile) return <RoleSelector userId={user.id} onComplete={refreshProfile} lang={lang} />
     const localData = detectLocalData()
     if (localData) return <MigrationModal userId={user.id} localData={localData} lang={lang} onComplete={refreshProfile} />
   }
