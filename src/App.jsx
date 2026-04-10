@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useContext, createContext } from 'react'
+import { useState, useEffect, useCallback, useContext, createContext, useMemo } from 'react'
 
 // ─── Animation + theme CSS ────────────────────────────────────────────────────
 const ANIM_CSS = `
@@ -1115,6 +1115,152 @@ function ZoneCalc() {
           <div style={{ ...S.mono, fontSize:'10px', color:'#aaa', marginTop:'8px' }}>Riegel (1977): T2 = T1 \u00d7 (D2/D1)^1.06</div>
         </div>
       )}
+
+      <HeatModule />
+      <AltitudeModule />
+    </div>
+  )
+}
+
+// ─── Heat Acclimatization Module ────────────────────────────────────────────────
+function HeatModule() {
+  const [temp, setTemp] = useState('25')
+  const [humid, setHumid] = useState('50')
+  const [days, setDays] = useState('0')
+
+  const T = parseFloat(temp)||25, H = parseFloat(humid)||50
+  const D = parseInt(days)||0
+  // Steadman heat index approximation (°C)
+  const hi = T < 27 ? T : Math.round((-8.78469475556 + 1.61139411*T + 2.3385248*H - 0.14611605*T*H - 0.012308094*T*T - 0.016424828*H*H + 0.002211732*T*T*H + 0.00072546*T*H*H - 0.000003582*T*T*H*H)*10)/10
+  // Pacing adj: ~0.3% per °C above 15°C (ACSM guideline proxy), reduced by acclimatization
+  const accFactor = Math.min(1, D / 14) // full acclimatization ~14 days
+  const rawAdj = Math.max(0, (hi - 15) * 0.3)
+  const adj = Math.round(rawAdj * (1 - accFactor * 0.6) * 10) / 10
+  const risk = hi >= 40 ? { label:'DANGER — Cancel/Shorten', color:'#e03030' } : hi >= 33 ? { label:'HIGH RISK — Major slow-down', color:'#e05030' } : hi >= 28 ? { label:'MODERATE — Reduce pace', color:'#f5c542' } : { label:'LOW — Normal training', color:'#5bc25b' }
+  const accPct = Math.round(accFactor * 100)
+  const phases = [
+    { d:'Day 1–3',   desc:'Plasma volume ↑, sweat onset earlier' },
+    { d:'Day 4–7',   desc:'Sweat rate ↑, salt conservation improves' },
+    { d:'Day 8–12',  desc:'Cardiac output stabilises, HR lowers at pace' },
+    { d:'Day 12–14', desc:'Full acclimatization (~60% benefit maintained)' },
+  ]
+
+  return (
+    <div className="sp-card" style={{ ...S.card, animationDelay:'200ms' }}>
+      <div style={S.cardTitle}>HEAT ACCLIMATIZATION CALCULATOR</div>
+      <div style={S.row}>
+        <div style={{ flex:'1 1 140px' }}>
+          <label style={S.label}>TEMPERATURE (°C): <strong>{temp}</strong></label>
+          <input type="range" min="10" max="45" value={temp} onChange={e=>setTemp(e.target.value)} style={{ width:'100%', accentColor:'#ff6600' }}/>
+          <div style={{ display:'flex', justifyContent:'space-between', ...S.mono, fontSize:'9px', color:'#aaa' }}><span>10°C</span><span>45°C</span></div>
+        </div>
+        <div style={{ flex:'1 1 140px' }}>
+          <label style={S.label}>HUMIDITY (%): <strong>{humid}</strong></label>
+          <input type="range" min="10" max="100" value={humid} onChange={e=>setHumid(e.target.value)} style={{ width:'100%', accentColor:'#ff6600' }}/>
+          <div style={{ display:'flex', justifyContent:'space-between', ...S.mono, fontSize:'9px', color:'#aaa' }}><span>10%</span><span>100%</span></div>
+        </div>
+        <div style={{ flex:'1 1 140px' }}>
+          <label style={S.label}>ACCLIMATIZATION DAYS: <strong>{days}</strong></label>
+          <input type="range" min="0" max="14" value={days} onChange={e=>setDays(e.target.value)} style={{ width:'100%', accentColor:'#5bc25b' }}/>
+          <div style={{ display:'flex', justifyContent:'space-between', ...S.mono, fontSize:'9px', color:'#aaa' }}><span>0</span><span>14d</span></div>
+        </div>
+      </div>
+      <div style={{ display:'flex', gap:'12px', marginTop:'14px', flexWrap:'wrap' }}>
+        <div style={{ flex:'1 1 100px', background:'var(--card-bg)', border:`1px solid ${risk.color}44`, borderLeft:`3px solid ${risk.color}`, borderRadius:'5px', padding:'10px 12px' }}>
+          <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>HEAT INDEX</div>
+          <div style={{ ...S.mono, fontSize:'22px', fontWeight:600, color:risk.color }}>{hi}°C</div>
+          <div style={{ ...S.mono, fontSize:'10px', color:risk.color, fontWeight:600 }}>{risk.label}</div>
+        </div>
+        <div style={{ flex:'1 1 100px', background:'var(--card-bg)', border:'1px solid var(--border)', borderLeft:'3px solid #f5c542', borderRadius:'5px', padding:'10px 12px' }}>
+          <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>PACE PENALTY</div>
+          <div style={{ ...S.mono, fontSize:'22px', fontWeight:600, color:'#f5c542' }}>+{adj}%</div>
+          <div style={{ ...S.mono, fontSize:'9px', color:'#aaa' }}>{D>0?`Acclim. ${accPct}% ↓ penalty`:'No acclimatization'}</div>
+        </div>
+        <div style={{ flex:'1 1 100px', background:'var(--card-bg)', border:'1px solid var(--border)', borderLeft:'3px solid #5bc25b', borderRadius:'5px', padding:'10px 12px' }}>
+          <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>ACCLIMATIZATION</div>
+          <div style={{ ...S.mono, fontSize:'22px', fontWeight:600, color:'#5bc25b' }}>{accPct}%</div>
+          <div style={{ ...S.mono, fontSize:'9px', color:'#aaa' }}>of max adaptation</div>
+        </div>
+      </div>
+      <div style={{ marginTop:'12px' }}>
+        {phases.map((p,i)=>(
+          <div key={i} style={{ display:'flex', gap:'8px', padding:'4px 0', borderBottom:'1px solid var(--border)', ...S.mono, fontSize:'11px' }}>
+            <span style={{ color:D>=[0,3,7,12][i]?'#5bc25b':'var(--muted)', width:'72px', fontWeight:600 }}>{p.d}</span>
+            <span style={{ color:'var(--sub)' }}>{p.desc}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{ ...S.mono, fontSize:'9px', color:'#aaa', marginTop:'8px' }}>Steadman heat index · ACSM pace guidelines · Armstrong & Maresh acclimatization model</div>
+    </div>
+  )
+}
+
+// ─── Altitude Training Module ───────────────────────────────────────────────────
+function AltitudeModule() {
+  const [alt, setAlt] = useState('2000')
+  const [days, setDays] = useState('0')
+  const [vo2max, setVo2max] = useState('55')
+
+  const A = parseInt(alt)||2000, D = parseInt(days)||0, V = parseFloat(vo2max)||55
+  // VO2max decrement: ~3% per 300m above 1500m (Chapman et al.)
+  const baseline = 1500
+  const decPct = A > baseline ? Math.round((A - baseline) / 300 * 3 * 10) / 10 : 0
+  // Acclimatization recovery: ~50% of decrement recovered after 3wk (Woorons et al.)
+  const accFactor = Math.min(1, D / 21)
+  const netDecPct = Math.round(decPct * (1 - accFactor * 0.5) * 10) / 10
+  const adjVO2 = Math.round((V * (1 - netDecPct / 100)) * 10) / 10
+  // Pace adj: ~1% per 1% VO2max decrease
+  const paceAdj = netDecPct
+  const seaReturn = D > 21 ? 'Up to +3% VO2max benefit above baseline (polycythemia)' : D > 7 ? 'EPO response begun — partial benefit on return' : 'Minimal EPO adaptation yet'
+  const alts = [
+    { label:'Low (<1500m)',    color:'#5bc25b', desc:'No significant effect' },
+    { label:'Moderate (1500–2500m)', color:'#f5c542', desc:'Ideal LHTL zone' },
+    { label:'High (2500–4000m)',     color:'#e05030', desc:'Training quality ↓, acclimatize first' },
+    { label:'Extreme (>4000m)',      color:'#e03030', desc:'O2 availability critical' },
+  ]
+  const zone = A < 1500 ? alts[0] : A < 2500 ? alts[1] : A < 4000 ? alts[2] : alts[3]
+
+  return (
+    <div className="sp-card" style={{ ...S.card, animationDelay:'220ms' }}>
+      <div style={S.cardTitle}>ALTITUDE TRAINING CALCULATOR</div>
+      <div style={S.row}>
+        <div style={{ flex:'1 1 140px' }}>
+          <label style={S.label}>ALTITUDE (m): <strong>{alt}</strong></label>
+          <input type="range" min="0" max="5000" step="100" value={alt} onChange={e=>setAlt(e.target.value)} style={{ width:'100%', accentColor:'#ff6600' }}/>
+          <div style={{ display:'flex', justifyContent:'space-between', ...S.mono, fontSize:'9px', color:'#aaa' }}><span>0m</span><span>5000m</span></div>
+        </div>
+        <div style={{ flex:'1 1 140px' }}>
+          <label style={S.label}>DAYS AT ALTITUDE: <strong>{days}</strong></label>
+          <input type="range" min="0" max="28" value={days} onChange={e=>setDays(e.target.value)} style={{ width:'100%', accentColor:'#5bc25b' }}/>
+          <div style={{ display:'flex', justifyContent:'space-between', ...S.mono, fontSize:'9px', color:'#aaa' }}><span>0</span><span>28d</span></div>
+        </div>
+        <div style={{ flex:'1 1 140px' }}>
+          <label style={S.label}>YOUR VO2MAX: <strong>{vo2max}</strong></label>
+          <input type="range" min="30" max="90" value={vo2max} onChange={e=>setVo2max(e.target.value)} style={{ width:'100%', accentColor:'#4a90d9' }}/>
+          <div style={{ display:'flex', justifyContent:'space-between', ...S.mono, fontSize:'9px', color:'#aaa' }}><span>30</span><span>90</span></div>
+        </div>
+      </div>
+      <div style={{ display:'flex', gap:'12px', marginTop:'14px', flexWrap:'wrap' }}>
+        <div style={{ flex:'1 1 100px', background:'var(--card-bg)', border:`1px solid ${zone.color}44`, borderLeft:`3px solid ${zone.color}`, borderRadius:'5px', padding:'10px 12px' }}>
+          <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>ALTITUDE ZONE</div>
+          <div style={{ ...S.mono, fontSize:'13px', fontWeight:600, color:zone.color }}>{zone.label}</div>
+          <div style={{ ...S.mono, fontSize:'9px', color:'#aaa' }}>{zone.desc}</div>
+        </div>
+        <div style={{ flex:'1 1 100px', background:'var(--card-bg)', border:'1px solid var(--border)', borderLeft:'3px solid #e03030', borderRadius:'5px', padding:'10px 12px' }}>
+          <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>VO2MAX IMPACT</div>
+          <div style={{ ...S.mono, fontSize:'22px', fontWeight:600, color:'#e03030' }}>-{netDecPct}%</div>
+          <div style={{ ...S.mono, fontSize:'9px', color:'#aaa' }}>Adj VO2max: {adjVO2} ml/kg/min</div>
+        </div>
+        <div style={{ flex:'1 1 100px', background:'var(--card-bg)', border:'1px solid var(--border)', borderLeft:'3px solid #f5c542', borderRadius:'5px', padding:'10px 12px' }}>
+          <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>PACE PENALTY</div>
+          <div style={{ ...S.mono, fontSize:'22px', fontWeight:600, color:'#f5c542' }}>+{paceAdj}%</div>
+          <div style={{ ...S.mono, fontSize:'9px', color:'#aaa' }}>Slow down at altitude</div>
+        </div>
+      </div>
+      <div style={{ ...S.mono, fontSize:'11px', color:'#5bc25b', marginTop:'12px', padding:'8px 10px', background:'#5bc25b11', borderRadius:'4px', lineHeight:1.6 }}>
+        ↑ Sea-level return benefit: {seaReturn}
+      </div>
+      <div style={{ ...S.mono, fontSize:'9px', color:'#aaa', marginTop:'8px' }}>Chapman (1998) VO2max model · LHTL protocol (Levine &amp; Stray-Gundersen, 1997) · Woorons acclimatization</div>
     </div>
   )
 }
@@ -1909,22 +2055,131 @@ function PlanGenerator({ onLogSession }) {
       {!plan && (
         <div style={{ textAlign:'center', ...S.mono, fontSize:'12px', color:'#aaa', padding:'40px 0' }}>{t('noPlanYet')}</div>
       )}
+
+      <TaperCalculator />
     </div>
   )
 }
 
-// ─── Glossary (with API) ───────────────────────────────────────────────────────
+// ─── Taper Calculator ──────────────────────────────────────────────────────────
+function TaperCalculator() {
+  const [peakTSS, setPeakTSS] = useState('500')
+  const [peakVol, setPeakVol] = useState('10')
+  const [taperWeeks, setTaperWeeks] = useState('2')
+  const [model, setModel] = useState('exp')
+
+  const PT = parseFloat(peakTSS)||500, PV = parseFloat(peakVol)||10, TW = parseInt(taperWeeks)||2
+
+  const genTaper = () => {
+    const weeks = []
+    for (let i = 0; i <= TW; i++) {
+      let volPct, tssPct
+      if (model === 'exp') {
+        // Exponential taper: ~40% reduction over taper weeks
+        const ratio = i === TW ? 0.40 : 1 - (1 - 0.40) * (i / TW) * (2 - i / TW) * 0.5
+        volPct = Math.round((i === 0 ? 1 : Math.pow(0.40, i / TW)) * 100)
+        tssPct = Math.round((i === 0 ? 1 : Math.pow(0.40, i / TW)) * 100)
+      } else {
+        // Linear taper
+        volPct = Math.round((1 - i / TW * 0.6) * 100)
+        tssPct = Math.round((1 - i / TW * 0.6) * 100)
+      }
+      if (i === TW) { volPct = 40; tssPct = 40 }
+      weeks.push({
+        label: i === 0 ? 'PEAK' : i === TW ? 'RACE WK' : `TAPER ${i}`,
+        vol: Math.round(PV * volPct / 100 * 10) / 10,
+        tss: Math.round(PT * tssPct / 100),
+        volPct, tssPct,
+        isRace: i === TW,
+      })
+    }
+    return weeks
+  }
+
+  const taperData = genTaper()
+  const tips = [
+    'Maintain intensity — only reduce volume',
+    'Keep ≥1 quality session/week during taper',
+    'Sleep 8–9h, prioritize nutrition carb-loading in final 3 days',
+    '2-week taper: −40% week 1 → −60% race week',
+    '3-week taper: −20% → −40% → −60%',
+  ]
+
+  return (
+    <div className="sp-card" style={{ ...S.card, animationDelay:'250ms' }}>
+      <div style={S.cardTitle}>TAPER CALCULATOR</div>
+      <div style={S.row}>
+        <div style={{ flex:'1 1 140px' }}>
+          <label style={S.label}>PEAK WEEKLY TSS: <strong>{peakTSS}</strong></label>
+          <input type="range" min="200" max="1200" step="10" value={peakTSS} onChange={e=>setPeakTSS(e.target.value)} style={{ width:'100%', accentColor:'#ff6600' }}/>
+          <div style={{ display:'flex', justifyContent:'space-between', ...S.mono, fontSize:'9px', color:'#aaa' }}><span>200</span><span>1200</span></div>
+        </div>
+        <div style={{ flex:'1 1 140px' }}>
+          <label style={S.label}>PEAK VOLUME (h/wk): <strong>{peakVol}</strong></label>
+          <input type="range" min="3" max="20" value={peakVol} onChange={e=>setPeakVol(e.target.value)} style={{ width:'100%', accentColor:'#ff6600' }}/>
+          <div style={{ display:'flex', justifyContent:'space-between', ...S.mono, fontSize:'9px', color:'#aaa' }}><span>3h</span><span>20h</span></div>
+        </div>
+        <div style={{ flex:'1 1 140px' }}>
+          <label style={S.label}>TAPER WEEKS: <strong>{taperWeeks}</strong></label>
+          <input type="range" min="1" max="4" value={taperWeeks} onChange={e=>setTaperWeeks(e.target.value)} style={{ width:'100%', accentColor:'#4a90d9' }}/>
+          <div style={{ display:'flex', justifyContent:'space-between', ...S.mono, fontSize:'9px', color:'#aaa' }}><span>1</span><span>4</span></div>
+        </div>
+      </div>
+      <div style={{ display:'flex', gap:'6px', margin:'10px 0' }}>
+        {['exp','linear'].map(m=>(
+          <button key={m} onClick={()=>setModel(m)} style={{ ...S.navBtn(model===m), borderRadius:'4px', fontSize:'10px', padding:'4px 10px' }}>
+            {m==='exp'?'Exponential':'Linear'}
+          </button>
+        ))}
+      </div>
+      <div style={{ display:'flex', gap:'6px', flexWrap:'nowrap', overflowX:'auto', padding:'4px 0' }}>
+        {taperData.map((w,i)=>(
+          <div key={i} style={{ flex:'1 1 80px', minWidth:'75px', background: w.isRace?'#ff660022':'var(--card-bg)', border:`1px solid ${w.isRace?'#ff6600':'var(--border)'}`, borderTop:`3px solid ${w.isRace?'#ff6600':'#4a90d9'}`, borderRadius:'5px', padding:'8px 10px', textAlign:'center' }}>
+            <div style={{ ...S.mono, fontSize:'9px', fontWeight:600, color: w.isRace?'#ff6600':'#888', marginBottom:'4px' }}>{w.label}</div>
+            <div style={{ ...S.mono, fontSize:'14px', fontWeight:600, color:'var(--text)' }}>{w.vol}h</div>
+            <div style={{ ...S.mono, fontSize:'10px', color:'#ff6600' }}>{w.tss} TSS</div>
+            <div style={{ ...S.mono, fontSize:'9px', color:'var(--muted)', marginTop:'2px' }}>{w.volPct}%</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ marginTop:'12px' }}>
+        {tips.map((tip,i)=>(
+          <div key={i} style={{ ...S.mono, fontSize:'10px', color:'var(--sub)', padding:'2px 0', display:'flex', gap:'6px' }}>
+            <span style={{ color:'#ff6600' }}>◈</span>{tip}
+          </div>
+        ))}
+      </div>
+      <div style={{ ...S.mono, fontSize:'9px', color:'#aaa', marginTop:'8px' }}>Mujika &amp; Padilla (2003) · Bosquet et al. (2007) meta-analysis</div>
+    </div>
+  )
+}
+
+// ─── Glossary (with API, fuzzy search, alphabet jump) ─────────────────────────
+const normTR = s => (s||'').toLowerCase()
+  .replace(/ş/g,'s').replace(/ğ/g,'g').replace(/ı/g,'i').replace(/ü/g,'u').replace(/ö/g,'o').replace(/ç/g,'c')
+
+function highlightMatch(text, q) {
+  if (!q || !text) return text
+  const norm = normTR(text), nq = normTR(q)
+  const idx = norm.indexOf(nq)
+  if (idx < 0) return text
+  return <>{text.slice(0,idx)}<mark style={{ background:'#ff660033', color:'inherit', padding:'0 1px', borderRadius:'2px' }}>{text.slice(idx,idx+q.length)}</mark>{text.slice(idx+q.length)}</>
+}
+
 function Glossary() {
   const { t, lang } = useContext(LangCtx)
   const [q, setQ] = useState('')
+  const [selLetter, setSelLetter] = useState('')
   const [apiTerms, setApiTerms] = useState([])
   const [loading, setLoading] = useState(false)
+  const [page, setPage] = useState(1)
+  const PER_PAGE = 20
 
   useEffect(() => {
     const cached = getApiCache()
     if (cached) { setApiTerms(cached); return }
     setLoading(true)
-    fetch('https://sporeus.com/wp-json/wp/v2/posts?per_page=30&_fields=id,title,excerpt,link&categories=737')
+    fetch('https://sporeus.com/wp-json/wp/v2/posts?per_page=50&_fields=id,title,excerpt,link&categories=737')
       .then(r=>r.json())
       .then(data=>{
         const terms=data.map(p=>({
@@ -1940,31 +2195,68 @@ function Glossary() {
   }, [])
 
   const allTerms = [...apiTerms, ...GLOSSARY_TERMS]
-  const filtered = allTerms.filter(t2=>
-    t2.term.toLowerCase().includes(q.toLowerCase()) ||
-    (t2.en||t2.excerpt||'').toLowerCase().includes(q.toLowerCase()) ||
-    (t2.tr||'').toLowerCase().includes(q.toLowerCase())
-  )
+
+  // Fuzzy Turkish-aware filter + scoring
+  const filtered = useMemo(() => {
+    let list = allTerms
+    if (selLetter) list = list.filter(t2 => normTR(t2.term)[0] === selLetter.toLowerCase())
+    if (!q) return list.sort((a,b)=>normTR(a.term).localeCompare(normTR(b.term)))
+    const nq = normTR(q)
+    return list
+      .map(t2 => {
+        const nt = normTR(t2.term), nb = normTR(t2.en||t2.excerpt||''), ntr = normTR(t2.tr||'')
+        const score = nt.startsWith(nq) ? 3 : nt.includes(nq) ? 2 : (nb.includes(nq)||ntr.includes(nq)) ? 1 : 0
+        return { ...t2, _score:score }
+      })
+      .filter(t2=>t2._score>0)
+      .sort((a,b)=>b._score-a._score)
+  }, [q, selLetter, allTerms.length])
+
+  // Alphabet letters present in all terms
+  const letters = useMemo(() => {
+    const s = new Set(allTerms.map(t2=>normTR(t2.term)[0]).filter(Boolean))
+    return 'abcçdefghiıjklmnoöpqrsştuvüwxyz'.split('').filter(l=>s.has(l))
+  }, [allTerms.length])
+
+  const paginated = filtered.slice(0, page * PER_PAGE)
+  const hasMore = filtered.length > paginated.length
+
+  const resetFilters = () => { setQ(''); setSelLetter(''); setPage(1) }
 
   return (
     <div className="sp-fade">
       <div className="sp-card" style={{ ...S.card, animationDelay:'0ms' }}>
         <div style={S.cardTitle}>{t('glossTitle')}</div>
-        <input style={S.input} type="text" placeholder={t('searchPlaceholder')} value={q} onChange={e=>setQ(e.target.value)}/>
+        <input style={S.input} type="text" placeholder={t('searchPlaceholder')} value={q}
+          onChange={e=>{ setQ(e.target.value); setSelLetter(''); setPage(1) }}/>
+        {/* Alphabet jump */}
+        <div style={{ display:'flex', flexWrap:'wrap', gap:'3px', marginTop:'10px' }}>
+          {letters.map(l=>(
+            <button key={l} onClick={()=>{ setSelLetter(selLetter===l?'':l); setQ(''); setPage(1) }}
+              style={{ ...S.mono, fontSize:'10px', fontWeight:600, width:'22px', height:'22px', borderRadius:'3px', cursor:'pointer', border:'1px solid var(--border)', background:selLetter===l?'#0064ff':'transparent', color:selLetter===l?'#fff':'var(--sub)', padding:0, textAlign:'center' }}>
+              {l.toUpperCase()}
+            </button>
+          ))}
+          {(selLetter||q) && (
+            <button onClick={resetFilters} style={{ ...S.mono, fontSize:'9px', padding:'0 6px', height:'22px', borderRadius:'3px', cursor:'pointer', border:'1px solid #e03030', background:'transparent', color:'#e03030' }}>✕ Clear</button>
+          )}
+        </div>
         <div style={{ ...S.mono, fontSize:'10px', color:'#aaa', marginTop:'8px' }}>
           {loading ? t('loadingTerms') : `${filtered.length} / ${allTerms.length} terms`}
-          {apiTerms.length>0 && !loading && <span style={{ color:'#5bc25b', marginLeft:'8px' }}>\u2022 {t('apiTermsLabel')}</span>}
+          {apiTerms.length>0 && !loading && <span style={{ color:'#5bc25b', marginLeft:'8px' }}>• {t('apiTermsLabel')}</span>}
         </div>
       </div>
 
-      {filtered.map((term,i)=>{
+      {paginated.map((term,i)=>{
         const isApi = !!term.id
         const body = isApi ? term.excerpt : (lang==='tr'&&term.tr ? term.tr : term.en)
         return (
           <div key={term.id||term.term} className="sp-card"
-            style={{ ...S.card, marginBottom:'10px', animationDelay:`${Math.min(i*30,300)}ms` }}>
+            style={{ ...S.card, marginBottom:'10px', animationDelay:`${Math.min(i*20,200)}ms` }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'8px' }}>
-              <div style={{ ...S.mono, fontSize:'14px', fontWeight:600, color:'#0064ff', marginBottom:'8px' }}>{term.term}</div>
+              <div style={{ ...S.mono, fontSize:'14px', fontWeight:600, color:'#0064ff', marginBottom:'8px' }}>
+                {highlightMatch(term.term, q)}
+              </div>
               {isApi && <span style={S.tag('#5bc25b')}>API</span>}
             </div>
             <div style={{ fontSize:'14px', lineHeight:1.7, color:'var(--text)' }}>{body}</div>
@@ -1977,6 +2269,13 @@ function Glossary() {
           </div>
         )
       })}
+
+      {hasMore && (
+        <button onClick={()=>setPage(p=>p+1)}
+          style={{ ...S.btnSec, width:'100%', marginBottom:'16px' }}>
+          Show more ({filtered.length - paginated.length} remaining)
+        </button>
+      )}
 
       {filtered.length===0&&!loading&&(
         <div style={{ textAlign:'center', ...S.mono, fontSize:'12px', color:'#aaa', padding:'40px 0' }}>No terms match.</div>
