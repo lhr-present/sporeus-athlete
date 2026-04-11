@@ -33,6 +33,9 @@ export function sanitizeLogEntry(e) {
   if (Array.isArray(e.zones)) {
     result.zones = e.zones.slice(0, 5).map(v => clamp(v, 0, 1440))
   }
+  if (e.wPrimeExhausted === true) result.wPrimeExhausted = true
+  if (typeof e.source === 'string' && e.source) result.source = e.source.slice(0, 20)
+  if (e.hasPower === true) result.hasPower = true
   return result
 }
 

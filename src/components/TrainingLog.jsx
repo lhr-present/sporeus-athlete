@@ -113,8 +113,9 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       wPrimeExhausted = wbal.some(v => v <= 0)
     }
 
+    const entryId = Date.now()
     const raw = {
-      id: Date.now(),
+      id: entryId,
       date: importPreview.date,
       type: importPreview.type,
       duration: importPreview.durationMin,
@@ -123,8 +124,13 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       notes: importPreview.notes || `Imported ${importPreview.source?.toUpperCase()} · ${importPreview.distanceM ? (importPreview.distanceM/1000).toFixed(2)+'km' : ''}${npStr}`,
       source: importPreview.source,
       ...(wPrimeExhausted ? { wPrimeExhausted: true } : {}),
+      ...(powers.length >= 30 ? { hasPower: true } : {}),
     }
     setLog([...log, sanitizeLogEntry(raw)])
+    // Store power stream keyed by entry ID for Power Curve analysis
+    if (powers.length >= 30) {
+      try { localStorage.setItem('sporeus-power-' + entryId, JSON.stringify(powers.slice(0, 10800))) } catch {}
+    }
     setImportPreview(null)
   }
 

@@ -2,6 +2,17 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v5.7.0 (2026-04-12)
+- Power Curve Engine: src/lib/powerAnalysis.js — calculateMMP (O(n) sliding window, KEY_DURATIONS), fitCriticalPower (OLS linear regression P=W′/t+CP), detectIntervals (≥0.85×CP for ≥20s, merge gaps <5s), estimateFTP (60m→20m×0.95→8m×0.90)
+- calculateWPrimeBalance re-exports computeWPrime from formulas.js (Skiba model already exists)
+- PowerCurve.jsx: log-scale X-axis ComposedChart, season-best MMP (orange), activity MMP (blue), CP model overlay (dashed), FTP estimate badge, CP reference line
+- IntervalBreakdown.jsx: zone-colored interval cards sorted by avg power, Z1–Z6 with duration/NP/%CP
+- PowerCurve mounted in Protocols tab (Tests) above progress comparison
+- sanitizeLogEntry extended: wPrimeExhausted, source, hasPower passthrough (fixes existing stripping bug)
+- TrainingLog.confirmImport: stores power stream to sporeus-power-{id} in localStorage (cap 10800s)
+- 20 new tests (147 total)
+- DEPENDS ON: recharts ComposedChart, existing computeWPrime+normalizedPower in formulas.js
+
 ## v5.6.0 (2026-04-12)
 - HRV Engine: src/lib/hrv.js — cleanRRIntervals (±4-beat ectopic detection + linear interpolation), calculateRMSSD, calculateLnRMSSD, scoreReadiness (3-zone 1-10 scale), calculateDFAAlpha1 (Gronwald 2019, scale n=4–16), parsePolarHRM
 - HRVDashboard.jsx: readiness score circle, 30-day lnRMSSD trend (Recharts + 7d baseline band), DFA-α1 badge with LT1 interpretation, .hrm file upload, manual RMSSD entry, ectopic% warning
