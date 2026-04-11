@@ -24,13 +24,14 @@ export default defineConfig({
         ]
       },
       workbox: {
+        cacheId: 'sporeus-v5',       // bumped — invalidates all caches from v4 and earlier
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         skipWaiting: true,           // new SW activates immediately on deploy
         clientsClaim: true,          // takes control of all open tabs at once
         cleanupOutdatedCaches: true, // removes stale caches from old versions
         // No Google Fonts runtime caching — fonts are now self-hosted
         navigateFallback: '/sporeus-athlete/index.html',
-        navigateFallbackDenylist: [/^\/auth/, /\?code=/, /\?error=/],
+        navigateFallbackDenylist: [/^\/auth/, /\?code=/, /\?error=/, /#access_token=/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
