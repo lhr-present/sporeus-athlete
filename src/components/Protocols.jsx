@@ -4,6 +4,7 @@ import { S } from '../styles.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { cooperVO2, rampFTP, ftpFrom20, epley1RM, astrandVO2, yyir1VO2, wingateStats, normalizedPower, computeWPrime } from '../lib/formulas.js'
 import PowerCurve from './PowerCurve.jsx'
+import VO2maxCard from './VO2maxCard.jsx'
 
 const TESTS = [
   { id:'cooper',  label:'COOPER 12-MIN',   sport:'Run',       needsCalc:true },
@@ -550,6 +551,8 @@ export default function TestProtocols() {
       )}
 
       <PowerCurve />
+
+      <VO2maxCard />
 
       {weeksSinceLast !== null && weeksSinceLast >= 6 && (
         <div style={{ ...S.card, background:'#fffbeb', border:'1px solid #f5c54266', borderRadius:'6px', padding:'12px 16px', marginBottom:'16px', ...S.mono, fontSize:'11px', color:'#92400e' }}>

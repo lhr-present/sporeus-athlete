@@ -2,6 +2,13 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v5.9.0 (2026-04-12)
+- VO₂max + VDOT Engine: src/lib/vo2max.js — vdotFromRace (Daniels 1998 polynomial, 3.5–240 min), vdotFromPaceHR (Firstbeat-style), zonesFromVDOT (Newton iteration + 5 Daniels zones), raceEquivalents (binary search, 7 distances), estimateVO2maxTrend (ISO-week grouping, ≤52 entries), fmtPaceSec
+- VO2maxCard.jsx: VDOT badge + Cooper comparison, 52-week Recharts trend (confidence-coded dots), race equivalents grid, collapsible Daniels training zones, manual race input (dist + HH:MM:SS → recalculate)
+- VO2maxCard mounted in Protocols.jsx after PowerCurve
+- 35 new tests (205 total) — vdotFromRace, vdotFromPaceHR, zonesFromVDOT, raceEquivalents, fmtPaceSec, estimateVO2maxTrend
+- DEPENDS ON: recharts LineChart, cooperVO2 from formulas.js, useData() log from DataContext
+
 ## v5.8.0 (2026-04-12)
 - SQL migration: supabase/migrations/20260413_squad_overview.sql — ALTER coach_notes ADD category, get_squad_overview() plpgsql function (EWMA CTL/ATL per athlete via date series CTE, ACWR, training_status, HRV, adherence)
 - Edge function: supabase/functions/squad-sync/index.ts — JWT-verified, calls get_squad_overview(coach_id), empty array on no athletes
