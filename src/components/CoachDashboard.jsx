@@ -3,7 +3,7 @@ import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
-import { generateCoachId, generateUnlockCode, verifyUnlockCode, FREE_ATHLETE_LIMIT } from '../lib/formulas.js'
+import { generateCoachId, generateUnlockCode, verifyUnlockCode, FREE_ATHLETE_LIMIT, generatePlan } from '../lib/formulas.js'
 import { analyzeLoadTrend, analyzeZoneBalance, predictInjuryRisk, predictFitness, analyzeRecoveryCorrelation, computeRaceReadiness, predictRacePerformance } from '../lib/intelligence.js'
 import { openAthleteReport } from '../lib/reportGenerator.js'
 import { correlateTrainingToResults, findRecoveryPatterns, mineInjuryPatterns, findOptimalWeekStructure } from '../lib/patterns.js'
@@ -973,6 +973,136 @@ function GatingOverlay({ coachProfile, onUnlock, onCancel }) {
   )
 }
 
+// ─── SbAthletePanel — expanded detail for a live (Supabase) athlete ──────────
+const PLAN_GOALS_COACH = ['5K','10K','Half Marathon','Marathon','Cycling Event','General Fitness','Triathlon']
+const PLAN_LEVELS_COACH = ['Beginner','Intermediate','Advanced']
+
+function SbAthletePanel({ athleteId, athleteName, data, metrics, injRisk, loading, coachId, coachName }) {
+  const [planName,   setPlanName]   = useState(`${athleteName} — Training Plan`)
+  const [planGoal,   setPlanGoal]   = useState('Half Marathon')
+  const [planWeeks,  setPlanWeeks]  = useState('12')
+  const [planHours,  setPlanHours]  = useState('8')
+  const [planLevel,  setPlanLevel]  = useState('Intermediate')
+  const [startDate,  setStartDate]  = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() + 7)
+    return d.toISOString().slice(0, 10)
+  })
+  const [sending,  setSending]  = useState(false)
+  const [sendMsg,  setSendMsg]  = useState('')
+  const [showForm, setShowForm] = useState(false)
+
+  const handleSendPlan = async () => {
+    if (!isSupabaseReady() || !coachId || !athleteId) return
+    setSending(true)
+    const weeks = generatePlan(planGoal, planWeeks, planHours, planLevel.toLowerCase())
+    const { error } = await supabase.from('coach_plans').insert({
+      coach_id:   coachId,
+      athlete_id: athleteId,
+      name:       planName.trim() || `${athleteName} Plan`,
+      goal:       planGoal,
+      start_date: startDate,
+      weeks:      weeks,
+      status:     'active',
+    })
+    setSending(false)
+    if (error) setSendMsg(`⚠ ${error.message}`)
+    else { setSendMsg(`✓ Plan sent to ${athleteName}`); setShowForm(false) }
+    setTimeout(() => setSendMsg(''), 4000)
+  }
+
+  return (
+    <div style={{ background:'#0a0a0a', border:'1px solid #0064ff33', borderTop:'none', borderRadius:'0 0 5px 5px', padding:'12px 14px' }}>
+      {loading ? (
+        <div style={{ ...S.mono, fontSize:'10px', color:'#555' }}>Loading…</div>
+      ) : (
+        <>
+          {/* Metrics row */}
+          <div style={{ display:'flex', gap:'16px', flexWrap:'wrap', marginBottom:'12px' }}>
+            {[
+              { lbl:'SESSIONS', val: data?.log?.length ?? 0 },
+              { lbl:'CTL',      val: metrics?.ctl ?? '—', color:'#ff6600' },
+              { lbl:'ATL',      val: metrics?.atl ?? '—', color:'#0064ff' },
+              { lbl:'TSB',      val: metrics?.tsb ?? '—', color: (metrics?.tsb ?? 0) >= 0 ? '#5bc25b' : '#f5c542' },
+              { lbl:'INJURY RISK', val: injRisk?.level ?? '—', color: injRisk?.level === 'HIGH' ? '#e03030' : injRisk?.level === 'MODERATE' ? '#f5c542' : '#5bc25b' },
+            ].map(({ lbl, val, color }) => (
+              <div key={lbl} style={{ textAlign:'center' }}>
+                <div style={{ ...S.mono, fontSize:'16px', fontWeight:700, color: color || '#e0e0e0' }}>{val}</div>
+                <div style={{ ...S.mono, fontSize:'8px', color:'#555', letterSpacing:'0.08em', marginTop:'2px' }}>{lbl}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Action buttons */}
+          <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', marginBottom: showForm ? '12px' : 0 }}>
+            <button
+              onClick={() => data && openAthleteReport({ name: athleteName, log: data.log, recovery: data.recovery, coachNotes: [], coachName })}
+              style={{ ...S.mono, fontSize:'10px', fontWeight:600, padding:'5px 12px', background:'#ff6600', border:'none', color:'#fff', borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em' }}>
+              ↓ PDF REPORT
+            </button>
+            <button
+              onClick={() => setShowForm(f => !f)}
+              style={{ ...S.mono, fontSize:'10px', fontWeight:600, padding:'5px 12px', background: showForm ? '#0064ff22' : 'transparent', border:'1px solid #0064ff44', color:'#0064ff', borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em' }}>
+              {showForm ? '✕ CANCEL' : '↑ SEND PLAN'}
+            </button>
+          </div>
+
+          {/* Send plan form */}
+          {showForm && (
+            <div style={{ marginTop:'12px', padding:'12px', background:'#0a1520', border:'1px solid #0064ff22', borderRadius:'5px' }}>
+              <div style={{ ...S.mono, fontSize:'10px', color:'#0064ff', fontWeight:600, letterSpacing:'0.1em', marginBottom:'10px' }}>
+                SEND TRAINING PLAN TO {athleteName.toUpperCase()}
+              </div>
+              <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', marginBottom:'8px' }}>
+                <div style={{ flex:'2 1 200px' }}>
+                  <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginBottom:'3px' }}>PLAN NAME</div>
+                  <input style={{ ...S.input, fontSize:'11px', padding:'6px 8px' }} value={planName} onChange={e => setPlanName(e.target.value)}/>
+                </div>
+                <div style={{ flex:'1 1 120px' }}>
+                  <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginBottom:'3px' }}>START DATE</div>
+                  <input style={{ ...S.input, fontSize:'11px', padding:'6px 8px' }} type="date" value={startDate} onChange={e => setStartDate(e.target.value)}/>
+                </div>
+              </div>
+              <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', marginBottom:'10px' }}>
+                <div style={{ flex:'1 1 120px' }}>
+                  <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginBottom:'3px' }}>GOAL</div>
+                  <select style={{ ...S.select, fontSize:'11px', padding:'6px 8px' }} value={planGoal} onChange={e => setPlanGoal(e.target.value)}>
+                    {PLAN_GOALS_COACH.map(g => <option key={g}>{g}</option>)}
+                  </select>
+                </div>
+                <div style={{ flex:'1 1 80px' }}>
+                  <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginBottom:'3px' }}>WEEKS</div>
+                  <input style={{ ...S.input, fontSize:'11px', padding:'6px 8px' }} type="number" min="4" max="24" value={planWeeks} onChange={e => setPlanWeeks(e.target.value)}/>
+                </div>
+                <div style={{ flex:'1 1 80px' }}>
+                  <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginBottom:'3px' }}>HRS/WK</div>
+                  <input style={{ ...S.input, fontSize:'11px', padding:'6px 8px' }} type="number" min="3" max="30" step="0.5" value={planHours} onChange={e => setPlanHours(e.target.value)}/>
+                </div>
+                <div style={{ flex:'1 1 100px' }}>
+                  <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginBottom:'3px' }}>LEVEL</div>
+                  <select style={{ ...S.select, fontSize:'11px', padding:'6px 8px' }} value={planLevel} onChange={e => setPlanLevel(e.target.value)}>
+                    {PLAN_LEVELS_COACH.map(l => <option key={l}>{l}</option>)}
+                  </select>
+                </div>
+              </div>
+              <button
+                onClick={handleSendPlan}
+                disabled={sending}
+                style={{ ...S.mono, fontSize:'11px', fontWeight:700, padding:'7px 18px', background:'#0064ff', border:'none', color:'#fff', borderRadius:'4px', cursor:'pointer', letterSpacing:'0.08em', opacity: sending ? 0.6 : 1 }}>
+                {sending ? 'SENDING...' : `↑ SEND PLAN (${planWeeks}wk ${planGoal})`}
+              </button>
+              {sendMsg && (
+                <div style={{ ...S.mono, fontSize:'10px', marginTop:'8px', color: sendMsg.startsWith('⚠') ? '#e03030' : '#5bc25b' }}>
+                  {sendMsg}
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function CoachDashboard({ authUser }) {
@@ -1286,40 +1416,17 @@ export default function CoachDashboard({ authUser }) {
                     </button>
 
                     {/* Expanded athlete detail */}
-                    {isSelected && data && (
-                      <div style={{ background:'#0a0a0a', border:'1px solid #0064ff33', borderTop:'none', borderRadius:'0 0 5px 5px', padding:'12px 14px' }}>
-                        {sbLoadingData ? (
-                          <div style={{ ...S.mono, fontSize:'10px', color:'#555' }}>Loading…</div>
-                        ) : (
-                          <>
-                            <div style={{ display:'flex', gap:'16px', flexWrap:'wrap', marginBottom:'12px' }}>
-                              {[
-                                { lbl:'SESSIONS', val: data.log.length },
-                                { lbl:'CTL', val: metrics?.ctl ?? '—', color:'#ff6600' },
-                                { lbl:'ATL', val: metrics?.atl ?? '—', color:'#0064ff' },
-                                { lbl:'TSB', val: metrics?.tsb ?? '—', color: (metrics?.tsb ?? 0) >= 0 ? '#5bc25b' : '#f5c542' },
-                                { lbl:'INJURY RISK', val: injRisk?.level ?? '—', color: injRisk?.level === 'HIGH' ? '#e03030' : injRisk?.level === 'MODERATE' ? '#f5c542' : '#5bc25b' },
-                              ].map(({ lbl, val, color }) => (
-                                <div key={lbl} style={{ textAlign:'center' }}>
-                                  <div style={{ ...S.mono, fontSize:'16px', fontWeight:700, color: color || '#e0e0e0' }}>{val}</div>
-                                  <div style={{ ...S.mono, fontSize:'8px', color:'#555', letterSpacing:'0.08em', marginTop:'2px' }}>{lbl}</div>
-                                </div>
-                              ))}
-                            </div>
-                            <button
-                              onClick={() => openAthleteReport({
-                                name: profile?.display_name || 'Athlete',
-                                log: data.log,
-                                recovery: data.recovery,
-                                coachNotes: [],
-                                coachName: coachProfile?.name || '',
-                              })}
-                              style={{ ...S.mono, fontSize:'10px', fontWeight:600, padding:'5px 12px', background:'#ff6600', border:'none', color:'#fff', borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em' }}>
-                              ↓ PDF REPORT
-                            </button>
-                          </>
-                        )}
-                      </div>
+                    {isSelected && (
+                      <SbAthletePanel
+                        athleteId={row.athlete_id}
+                        athleteName={profile?.display_name || 'Athlete'}
+                        data={data}
+                        metrics={metrics}
+                        injRisk={injRisk}
+                        loading={sbLoadingData}
+                        coachId={sbCoachId}
+                        coachName={coachProfile?.name || ''}
+                      />
                     )}
                   </div>
                 )

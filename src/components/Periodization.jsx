@@ -1,8 +1,9 @@
-import { useState, useContext, useMemo } from 'react'
+import { useState, useContext, useMemo, useEffect } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { MACRO_PHASES, ZONE_COLORS, ZONE_NAMES, LOAD_COLOR } from '../lib/constants.js'
 import { useData } from '../contexts/DataContext.jsx'
+import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid,
   ReferenceLine, ResponsiveContainer, Legend,
@@ -190,8 +191,111 @@ function PeakBanner({ projection, startCTL }) {
   )
 }
 
+// ─── Coach Plans Card ─────────────────────────────────────────────────────────
+function CoachPlansCard({ authUser }) {
+  const [plans, setPlans]     = useState(null)  // null = loading
+  const [expanded, setExpanded] = useState({})
+
+  useEffect(() => {
+    if (!isSupabaseReady() || !authUser) { setPlans([]); return }
+    supabase
+      .from('coach_plans')
+      .select('id, name, goal, start_date, weeks, status, created_at, coach_id')
+      .eq('athlete_id', authUser.id)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(5)
+      .then(({ data, error }) => {
+        if (error) { setPlans([]); return }
+        setPlans(data || [])
+      })
+  }, [authUser?.id])
+
+  if (!isSupabaseReady() || !authUser) return null
+  if (plans === null) return (
+    <div className="sp-card" style={{ ...S.card, animationDelay:'160ms' }}>
+      <div style={S.cardTitle}>PLANS FROM YOUR COACH</div>
+      <div style={{ ...S.mono, fontSize:'11px', color:'#555' }}>Loading…</div>
+    </div>
+  )
+  if (plans.length === 0) return null
+
+  return (
+    <div className="sp-card" style={{ ...S.card, animationDelay:'160ms', borderLeft:'3px solid #0064ff' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'14px' }}>
+        <div style={S.cardTitle}>PLANS FROM YOUR COACH</div>
+        <span style={{ ...S.mono, fontSize:'9px', color:'#0064ff', border:'1px solid #0064ff44', borderRadius:'3px', padding:'2px 6px' }}>
+          PHASE 3
+        </span>
+      </div>
+
+      {plans.map(plan => {
+        const weeks = Array.isArray(plan.weeks) ? plan.weeks : []
+        const isOpen = !!expanded[plan.id]
+        const startDt = plan.start_date
+          ? new Date(plan.start_date).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+          : '—'
+
+        return (
+          <div key={plan.id} style={{ marginBottom:'10px', border:'1px solid var(--border)', borderRadius:'5px', overflow:'hidden' }}>
+            {/* Plan header row */}
+            <div
+              onClick={() => setExpanded(e => ({ ...e, [plan.id]: !e[plan.id] }))}
+              style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 12px', cursor:'pointer', background:'var(--surface)', userSelect:'none' }}>
+              <div>
+                <span style={{ ...S.mono, fontSize:'12px', fontWeight:700, color:'#e0e0e0' }}>{plan.name}</span>
+                {plan.goal && (
+                  <span style={{ ...S.mono, fontSize:'10px', color:'#ff6600', marginLeft:'10px' }}>{plan.goal}</span>
+                )}
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
+                <span style={{ ...S.mono, fontSize:'10px', color:'#888' }}>
+                  {startDt} · {weeks.length}wk
+                </span>
+                <span style={{ ...S.mono, fontSize:'11px', color:'#555' }}>{isOpen ? '▲' : '▼'}</span>
+              </div>
+            </div>
+
+            {/* Expanded week table */}
+            {isOpen && weeks.length > 0 && (
+              <div style={{ overflowX:'auto', padding:'10px 12px 12px', background:'#0a0a0a' }}>
+                <table style={{ width:'100%', borderCollapse:'collapse', fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', minWidth:'400px' }}>
+                  <thead>
+                    <tr style={{ borderBottom:'1px solid #222', color:'#555', letterSpacing:'0.06em' }}>
+                      {['WK','PHASE','SESSIONS','FOCUS'].map(h => (
+                        <th key={h} style={{ textAlign:'left', padding:'3px 8px 6px 0', fontWeight:600 }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {weeks.map((wk, i) => (
+                      <tr key={i} style={{ borderBottom:'1px solid #1a1a1a' }}>
+                        <td style={{ padding:'5px 8px 5px 0', color:'#ff6600', fontWeight:700 }}>{wk.week ?? i + 1}</td>
+                        <td style={{ padding:'5px 8px 5px 0', color:'#e0e0e0' }}>{wk.phase || '—'}</td>
+                        <td style={{ padding:'5px 8px 5px 0', color:'#888' }}>
+                          {Array.isArray(wk.sessions) ? wk.sessions.length : (wk.sessions ?? '—')}
+                        </td>
+                        <td style={{ padding:'5px 0 5px 0', color:'#666', fontSize:'9px' }}>
+                          {wk.focus || wk.goal || '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {isOpen && weeks.length === 0 && (
+              <div style={{ ...S.mono, fontSize:'10px', color:'#555', padding:'10px 12px' }}>No week data.</div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function Periodization() {
+export default function Periodization({ authUser }) {
   const { t } = useContext(LangCtx)
   const { log } = useData()
 
@@ -343,6 +447,9 @@ export default function Periodization() {
           Form (TSB) peaks in race week — target +5 to +15 for optimal performance.
         </div>
       </div>
+
+      {/* ─── Coach-pushed plans ─── */}
+      <CoachPlansCard authUser={authUser}/>
     </div>
   )
 }

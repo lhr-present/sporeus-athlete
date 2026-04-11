@@ -379,7 +379,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
           {tab === 'zones'        && <ErrorBoundary tabName="Zone Calc"><ZoneCalc/></ErrorBoundary>}
           {tab === 'tests'        && <ErrorBoundary tabName="Protocols"><TestProtocols/></ErrorBoundary>}
           {tab === 'log'          && <ErrorBoundary tabName="Training Log"><TrainingLog log={log} setLog={setLog} prefill={logPrefill} clearPrefill={() => setLogPrefill(null)}/></ErrorBoundary>}
-          {tab === 'periodization'&& <ErrorBoundary tabName="Macro Plan"><Periodization/></ErrorBoundary>}
+          {tab === 'periodization'&& <ErrorBoundary tabName="Macro Plan"><Periodization authUser={authUser}/></ErrorBoundary>}
           {tab === 'plan'         && <ErrorBoundary tabName="Plan Generator"><Suspense fallback={<LazyFallback/>}><PlanGenerator onLogSession={ses => { setLogPrefill(ses); setTab('log') }}/></Suspense></ErrorBoundary>}
           {tab === 'glossary'     && <ErrorBoundary tabName="Glossary"><Suspense fallback={<LazyFallback/>}><Glossary/></Suspense></ErrorBoundary>}
           {tab === 'recovery'     && <ErrorBoundary tabName="Recovery"><Recovery/></ErrorBoundary>}
@@ -387,7 +387,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
         </main>
 
         <footer style={S.footer}>
-          SPOREUS ATHLETE CONSOLE v4.6.0 · SPOREUS.COM · EŞİK / THRESHOLD 2026
+          SPOREUS ATHLETE CONSOLE v5.0.0 · SPOREUS.COM · EŞİK / THRESHOLD 2026
         </footer>
       </div>
     </LangCtx.Provider>
