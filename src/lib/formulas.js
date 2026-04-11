@@ -28,6 +28,14 @@ export const yyir1VO2   = (lv, sh) => (35.4 + ((lv-1)+(sh/8))*(62.8-35.4)/22).to
 export const wingateStats = (peak, mean, low, bw) => ({ relPeak:(peak/bw).toFixed(1), relMean:(mean/bw).toFixed(1), fatigue:(((peak-low)/peak)*100).toFixed(1) })
 export const riegel     = (t1, d1, d2) => t1 * Math.pow(d2/d1, 1.06)
 
+// ─── Power-based TSS (Coggan) ─────────────────────────────────────────────────
+// TSS = (durationSec × NP × IF) / (FTP × 3600) × 100   where IF = NP / FTP
+export function computePowerTSS(np, durationSeconds, ftp) {
+  if (!np || !ftp || !durationSeconds) return null
+  const IF = np / ftp
+  return Math.round((durationSeconds * np * IF) / (ftp * 3600) * 100)
+}
+
 // ─── W' (W-prime) Balance — Skiba 2012 differential model ────────────────────
 // Normalized Power: 30s rolling mean → 4th-power mean → 0.25 root
 export function normalizedPower(powers) {

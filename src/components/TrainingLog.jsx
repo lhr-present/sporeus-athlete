@@ -2,7 +2,7 @@ import { useState, useEffect, useContext, useRef } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { SESSION_TYPES_BY_DISCIPLINE, ZONE_COLORS, ZONE_NAMES, SPORT_CONFIG } from '../lib/constants.js'
-import { calcTSS } from '../lib/formulas.js'
+import { calcTSS, normalizedPower, computePowerTSS } from '../lib/formulas.js'
 import { sanitizeLogEntry } from '../lib/validate.js'
 import Calendar from './Calendar.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
@@ -96,7 +96,14 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
 
   const confirmImport = () => {
     if (!importPreview) return
-    const tss = importPreview.tssEstimate || calcTSS(importPreview.durationMin, importPreview.rpe || 5)
+    const ftp = parseInt(profileLS?.ftp) || 0
+    const powers = importPreview.powerSeries || []
+    const np = powers.length >= 30 ? normalizedPower(powers) : 0
+    const durationSec = (importPreview.durationMin || 0) * 60
+    const powerTSS = (np && ftp) ? computePowerTSS(np, durationSec, ftp) : null
+    const tss = powerTSS ?? importPreview.tssEstimate ?? calcTSS(importPreview.durationMin, importPreview.rpe || 5)
+    const tssMethod = powerTSS ? 'power-based' : importPreview.tssEstimate ? 'HR-based' : 'RPE-based'
+    const npStr = np ? ` · NP: ${np}W · IF: ${(np/ftp).toFixed(2)} · TSS: ${tss} (${tssMethod})` : ` · TSS: ${tss} (${tssMethod})`
     const raw = {
       id: Date.now(),
       date: importPreview.date,
@@ -104,7 +111,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       duration: importPreview.durationMin,
       rpe: importPreview.rpe || 5,
       tss,
-      notes: importPreview.notes || `Imported ${importPreview.source?.toUpperCase()} · ${importPreview.distanceM ? (importPreview.distanceM/1000).toFixed(2)+'km' : ''}`,
+      notes: importPreview.notes || `Imported ${importPreview.source?.toUpperCase()} · ${importPreview.distanceM ? (importPreview.distanceM/1000).toFixed(2)+'km' : ''}${npStr}`,
       source: importPreview.source,
     }
     setLog([...log, sanitizeLogEntry(raw)])
@@ -272,21 +279,38 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
             <div style={{ fontSize:'13px', fontWeight:700, color:'#ff6600', letterSpacing:'0.1em', marginBottom:'20px' }}>
               ↑ IMPORT PREVIEW · {importPreview.source?.toUpperCase()}
             </div>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px', marginBottom:'20px' }}>
-              {[
+            {(() => {
+              const ftp = parseInt(profileLS?.ftp) || 0
+              const powers = importPreview.powerSeries || []
+              const np = powers.length >= 30 ? normalizedPower(powers) : 0
+              const durationSec = (importPreview.durationMin || 0) * 60
+              const powerTSS = (np && ftp) ? computePowerTSS(np, durationSec, ftp) : null
+              const IF = (np && ftp) ? (np / ftp).toFixed(2) : null
+              const tssDisplay = powerTSS ?? importPreview.tssEstimate
+              const tssLabel = powerTSS ? `TSS (power)` : importPreview.tssEstimate ? 'TSS (HR est.)' : 'TSS (RPE est.)'
+              const previewStats = [
                 { lbl:'DATE', val: importPreview.date },
                 { lbl:'DURATION', val: `${importPreview.durationMin} min` },
                 { lbl:'DISTANCE', val: importPreview.distanceM ? `${(importPreview.distanceM/1000).toFixed(2)} km` : '—' },
                 { lbl:'AVG HR', val: importPreview.avgHR ? `${importPreview.avgHR} bpm` : '—' },
-                { lbl:'TSS EST.', val: importPreview.tssEstimate, color:'#ff6600' },
+                ...(np ? [
+                  { lbl:'NORM POWER', val: `${np}W`, color:'#ff6600' },
+                  { lbl:'INT FACTOR', val: IF, color: IF >= 1.05 ? '#e03030' : IF >= 0.88 ? '#f5c542' : '#5bc25b' },
+                ] : []),
+                { lbl: tssLabel, val: tssDisplay, color:'#ff6600' },
                 { lbl:'ELEV GAIN', val: importPreview.elevationGainM != null ? `${importPreview.elevationGainM} m` : '—' },
-              ].map(({ lbl, val, color }) => (
-                <div key={lbl} style={{ background:'#0a0a0a', borderRadius:'4px', padding:'10px 12px' }}>
-                  <div style={{ fontSize:'8px', color:'#555', letterSpacing:'0.1em', marginBottom:'4px' }}>{lbl}</div>
-                  <div style={{ fontSize:'14px', fontWeight:700, color: color || '#e0e0e0' }}>{val}</div>
+              ]
+              return (
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px', marginBottom:'20px' }}>
+                  {previewStats.map(({ lbl, val, color }) => (
+                    <div key={lbl} style={{ background:'#0a0a0a', borderRadius:'4px', padding:'10px 12px' }}>
+                      <div style={{ fontSize:'8px', color:'#555', letterSpacing:'0.1em', marginBottom:'4px' }}>{lbl}</div>
+                      <div style={{ fontSize:'14px', fontWeight:700, color: color || '#e0e0e0' }}>{val}</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )
+            })()}
             <div style={{ marginBottom:'16px' }}>
               <label style={{ fontSize:'9px', color:'#666', letterSpacing:'0.1em', display:'block', marginBottom:'4px' }}>SESSION TYPE</label>
               <select value={importPreview.type} onChange={e => setImportPreview(p => ({...p, type: e.target.value}))}

@@ -719,3 +719,83 @@ export function predictRacePerformance(log, testResults, profile) {
     vdot: derivedVdot,
   }
 }
+
+// ─── Data Quality Indicator (v5.1) ────────────────────────────────────────────
+// 6-factor weighted score 0-100 → grade A-F
+// assessDataQuality(log, recovery, testResults, profile)
+export function assessDataQuality(log, recovery, testResults, profile) {
+  const d28 = daysAgoDate(28)
+  const log28 = log.filter(e => e.date >= d28)
+  const rec28 = (recovery || []).filter(e => e.date >= d28)
+
+  // Factor 1 — Logging consistency (25%)
+  const uniqueDays = new Set(log28.map(e => e.date)).size
+  const consistencyScore = Math.min(100, Math.round(uniqueDays / 28 * 100 * (7 / 5)))  // 5 sessions/wk = 100
+
+  // Factor 2 — RPE quality (15%): variance > 1.5 across session types = good
+  const rpeValues = log28.map(e => e.rpe).filter(Boolean)
+  let rpeScore = 50
+  if (rpeValues.length >= 3) {
+    const allSame = rpeValues.every(v => v === rpeValues[0])
+    const allFive = rpeValues.every(v => v === 5)
+    if (allFive) rpeScore = 20
+    else if (allSame) rpeScore = 40
+    else {
+      const mean = rpeValues.reduce((s,v)=>s+v,0)/rpeValues.length
+      const variance = rpeValues.reduce((s,v)=>s+(v-mean)**2,0)/rpeValues.length
+      rpeScore = Math.min(100, Math.round(variance * 25))
+    }
+  }
+
+  // Factor 3 — Zone data (20%): sessions with zones or FIT import
+  const withZones = log28.filter(e => e.zones || e.source === 'fit' || e.source === 'gpx').length
+  const zoneScore = log28.length ? Math.round(withZones / log28.length * 100) : 30
+
+  // Factor 4 — Recovery logging (20%): days with recovery entry
+  const recoveryScore = Math.min(100, Math.round(rec28.length / 28 * 100 * 1.5))  // 18/28 = 100
+
+  // Factor 5 — Test recency (10%)
+  const lastTest = testResults?.length ? testResults[testResults.length-1]?.date : null
+  const weeksSinceTest = lastTest ? Math.floor((Date.now() - new Date(lastTest)) / (7*864e5)) : 99
+  const testScore = weeksSinceTest <= 8 ? 100 : weeksSinceTest <= 16 ? 60 : weeksSinceTest <= 24 ? 30 : 10
+
+  // Factor 6 — Profile completeness (10%)
+  const fields = ['name','primarySport','age','weight','ftp','athleteLevel','goal']
+  const filled = fields.filter(f => profile?.[f]).length
+  const profileScore = Math.round(filled / fields.length * 100)
+
+  const score = Math.round(
+    consistencyScore * 0.25 +
+    rpeScore         * 0.15 +
+    zoneScore        * 0.20 +
+    recoveryScore    * 0.20 +
+    testScore        * 0.10 +
+    profileScore     * 0.10
+  )
+
+  const grade = score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 65 ? 'C' : score >= 50 ? 'D' : 'F'
+  const gradeColor = score >= 80 ? '#5bc25b' : score >= 65 ? '#0064ff' : score >= 50 ? '#f5c542' : '#e03030'
+
+  const tips = []
+  if (consistencyScore < 60)  tips.push({ en:'Log sessions more consistently — aim for 5 per week.', tr:'Antrenmanları daha düzenli kaydet — haftada 5 hedefle.' })
+  if (rpeScore < 50)          tips.push({ en:'Vary your RPE honestly (3=easy, 9=hard). Constant 5 weakens all analysis.', tr:'RPE\'yi dürüstçe çeşitlendir (3=kolay, 9=zor). Sabit 5 tüm analizleri zayıflatır.' })
+  if (zoneScore < 40)         tips.push({ en:'Import .fit files or add zone breakdown — powers accurate polarization analysis.', tr:'.fit dosyası yükle veya zon dağılımı ekle — polarizasyon analizini iyileştirir.' })
+  if (recoveryScore < 40)     tips.push({ en:'Check in on the Recovery tab daily — 15 seconds, improves all predictions.', tr:'Recovery sekmesini her gün doldur — 15 saniye, tüm tahminleri iyileştirir.' })
+  if (testScore < 60)         tips.push({ en:'Retest your fitness (Cooper, Ramp, or FTP) — data is over 8 weeks old.', tr:'Kondisyon testini yenile (Cooper, Ramp veya FTP) — veriler 8 haftadan eski.' })
+  if (profileScore < 70)      tips.push({ en:'Complete your profile (FTP, age, weight, goal) for better recommendations.', tr:'Profili tamamla (FTP, yaş, kilo, hedef) daha iyi öneriler için.' })
+
+  return {
+    score,
+    grade,
+    gradeColor,
+    factors: [
+      { name:'LOGGING',   score: consistencyScore },
+      { name:'RPE',       score: rpeScore },
+      { name:'ZONES',     score: zoneScore },
+      { name:'RECOVERY',  score: recoveryScore },
+      { name:'TESTS',     score: testScore },
+      { name:'PROFILE',   score: profileScore },
+    ],
+    tips,
+  }
+}
