@@ -2,6 +2,16 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v5.8.0 (2026-04-12)
+- SQL migration: supabase/migrations/20260413_squad_overview.sql — ALTER coach_notes ADD category, get_squad_overview() plpgsql function (EWMA CTL/ATL per athlete via date series CTE, ACWR, training_status, HRV, adherence)
+- Edge function: supabase/functions/squad-sync/index.ts — JWT-verified, calls get_squad_overview(coach_id), empty array on no athletes
+- src/lib/squadUtils.js — makeLCG (seeded RNG), generateDemoSquad (6 cycling legends, deterministic), deriveTrainingStatus, mapAcwrStatus
+- src/components/CoachSquadView.jsx — squad table (desktop) / card stack (mobile), sortable columns, flagged rows (localStorage), row expand with CTLChart+sessions, note panel (slide-in, Supabase + demo fallback)
+- CoachSquadView lazy-loaded first in coach section, above CoachOverview
+- Demo mode amber banner + empty state invite code display
+- 23 new tests (170 total)
+- DEPENDS ON: calculatePMC+calculateACWR in trainingLoad.js, CTLChart, supabase.js, coach_athletes table (status=active), coach_notes table
+
 ## v5.7.0 (2026-04-12)
 - Power Curve Engine: src/lib/powerAnalysis.js — calculateMMP (O(n) sliding window, KEY_DURATIONS), fitCriticalPower (OLS linear regression P=W′/t+CP), detectIntervals (≥0.85×CP for ≥20s, merge gaps <5s), estimateFTP (60m→20m×0.95→8m×0.90)
 - calculateWPrimeBalance re-exports computeWPrime from formulas.js (Skiba model already exists)

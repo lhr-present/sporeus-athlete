@@ -22,8 +22,9 @@ import { InviteModal } from './components/MyCoach.jsx'
 import { useAuth } from './hooks/useAuth.js'
 import { isSupabaseReady } from './lib/supabase.js'
 import { detectLocalData } from './lib/dataMigration.js'
-const CoachDashboard = lazy(() => import('./components/CoachDashboard.jsx'))
-const CoachOverview  = lazy(() => import('./components/CoachOverview.jsx'))
+const CoachDashboard  = lazy(() => import('./components/CoachDashboard.jsx'))
+const CoachOverview   = lazy(() => import('./components/CoachOverview.jsx'))
+const CoachSquadView  = lazy(() => import('./components/CoachSquadView.jsx'))
 const PlanGenerator  = lazy(() => import('./components/PlanGenerator.jsx'))
 const Glossary       = lazy(() => import('./components/Glossary.jsx'))
 
@@ -394,6 +395,12 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
         <main style={S.content}>
           {coachMode && authProfile?.role === 'coach' && (
             <>
+              <ErrorBoundary tabName="Squad View">
+                <Suspense fallback={<LazyFallback/>}>
+                  <CoachSquadView authUser={authUser} />
+                </Suspense>
+              </ErrorBoundary>
+              <div style={{ height: '16px' }}/>
               <ErrorBoundary tabName="Coach Overview">
                 <Suspense fallback={<LazyFallback/>}>
                   <CoachOverview
