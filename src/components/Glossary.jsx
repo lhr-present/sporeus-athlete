@@ -3,6 +3,7 @@ import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { GLOSSARY_TERMS } from '../lib/constants.js'
 import { getApiCache, setApiCache, normTR } from '../lib/formulas.js'
+import { safeFetch } from '../lib/fetch.js'
 
 function highlightMatch(text, q) {
   if (!q || !text) return text
@@ -22,17 +23,9 @@ function setArticlesCache(d) { try { localStorage.setItem(ARTICLES_KEY,JSON.stri
 function canFetchApi() { try { return Date.now() - parseInt(localStorage.getItem(RATE_KEY)||'0') >= MIN_INTERVAL } catch { return true } }
 function markApiFetched() { try { localStorage.setItem(RATE_KEY, String(Date.now())) } catch {} }
 
-async function fetchJson(url, retries = 2, delay = 1000) {
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const r = await fetch(url)
-      if (!r.ok) throw new Error(`HTTP ${r.status}`)
-      return await r.json()
-    } catch (e) {
-      if (attempt === retries) throw e
-      await new Promise(res => setTimeout(res, delay * Math.pow(2, attempt)))
-    }
-  }
+async function fetchJson(url) {
+  const res = await safeFetch(url)
+  return res.json()
 }
 
 export default function Glossary() {

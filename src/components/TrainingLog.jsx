@@ -2,7 +2,7 @@ import { useState, useEffect, useContext, useRef } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { SESSION_TYPES_BY_DISCIPLINE, ZONE_COLORS, ZONE_NAMES, SPORT_CONFIG } from '../lib/constants.js'
-import { calcTSS, normalizedPower, computePowerTSS } from '../lib/formulas.js'
+import { calcTSS, normalizedPower, computePowerTSS, computeWPrime } from '../lib/formulas.js'
 import { sanitizeLogEntry } from '../lib/validate.js'
 import Calendar from './Calendar.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
@@ -104,6 +104,15 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     const tss = powerTSS ?? importPreview.tssEstimate ?? calcTSS(importPreview.durationMin, importPreview.rpe || 5)
     const tssMethod = powerTSS ? 'power-based' : importPreview.tssEstimate ? 'HR-based' : 'RPE-based'
     const npStr = np ? ` · NP: ${np}W · IF: ${(np/ftp).toFixed(2)} · TSS: ${tss} (${tssMethod})` : ` · TSS: ${tss} (${tssMethod})`
+    // W' exhaustion check — requires CP + W' in profile
+    const cp       = parseInt(profileLS?.cp) || 0
+    const wPrimeCap = parseInt(profileLS?.wPrime) || 0
+    let wPrimeExhausted = false
+    if (powers.length >= 30 && cp && wPrimeCap) {
+      const wbal = computeWPrime(powers, cp, wPrimeCap)
+      wPrimeExhausted = wbal.some(v => v <= 0)
+    }
+
     const raw = {
       id: Date.now(),
       date: importPreview.date,
@@ -113,6 +122,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       tss,
       notes: importPreview.notes || `Imported ${importPreview.source?.toUpperCase()} · ${importPreview.distanceM ? (importPreview.distanceM/1000).toFixed(2)+'km' : ''}${npStr}`,
       source: importPreview.source,
+      ...(wPrimeExhausted ? { wPrimeExhausted: true } : {}),
     }
     setLog([...log, sanitizeLogEntry(raw)])
     setImportPreview(null)
@@ -257,7 +267,10 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                     <td style={{ textAlign:'right', padding:'6px 6px 6px 0' }}>{s.duration}</td>
                     <td style={{ textAlign:'right', padding:'6px 6px 6px 0', color:s.rpe>=8?'#e03030':s.rpe>=6?'#f5c542':'#5bc25b' }}>{s.rpe}</td>
                     <td style={{ textAlign:'right', padding:'6px 6px 6px 0', color:'#ff6600', fontWeight:600 }}>{s.tss}</td>
-                    <td style={{ padding:'6px 6px 6px 0', color:'#888', maxWidth:'160px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.notes}</td>
+                    <td style={{ padding:'6px 6px 6px 0', color:'#888', maxWidth:'160px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                      {s.wPrimeExhausted && <span title="W' reached zero — complete anaerobic depletion (Skiba 2012)" style={{ display:'inline-block', background:'#e03030', color:'#fff', fontSize:'8px', fontWeight:700, borderRadius:'3px', padding:'1px 4px', marginRight:'4px', letterSpacing:'0.05em' }}>⚡W'0</span>}
+                      {s.notes}
+                    </td>
                     <td style={{ textAlign:'right', whiteSpace:'nowrap' }}>
                       <button onClick={()=>startEdit(s,i)}
                         style={{ background:'none', border:'none', color:'#aaa', cursor:'pointer', ...S.mono, fontSize:'12px', marginRight:'4px' }}>✎</button>
@@ -288,6 +301,11 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
               const IF = (np && ftp) ? (np / ftp).toFixed(2) : null
               const tssDisplay = powerTSS ?? importPreview.tssEstimate
               const tssLabel = powerTSS ? `TSS (power)` : importPreview.tssEstimate ? 'TSS (HR est.)' : 'TSS (RPE est.)'
+              const cpPrev    = parseInt(profileLS?.cp) || 0
+              const wCapPrev  = parseInt(profileLS?.wPrime) || 0
+              const wbalPrev  = (powers.length >= 30 && cpPrev && wCapPrev) ? computeWPrime(powers, cpPrev, wCapPrev) : null
+              const wExhausted = wbalPrev ? wbalPrev.some(v => v <= 0) : false
+              const wExhaustSec = wExhausted ? wbalPrev.findIndex(v => v <= 0) : -1
               const previewStats = [
                 { lbl:'DATE', val: importPreview.date },
                 { lbl:'DURATION', val: `${importPreview.durationMin} min` },
@@ -311,6 +329,12 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                 </div>
               )
             })()}
+            {wExhausted && (
+              <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', background:'rgba(224,48,48,0.1)', border:'1px solid #e0303066', borderRadius:'4px', padding:'8px 12px', marginBottom:'16px', color:'#e03030' }}>
+                ⚡ W' reached zero at {Math.floor(wExhaustSec/60)}:{String(wExhaustSec%60).padStart(2,'0')} — complete anaerobic reserve depletion.
+                Session will be flagged in your log. (Skiba 2012)
+              </div>
+            )}
             <div style={{ marginBottom:'16px' }}>
               <label style={{ fontSize:'9px', color:'#666', letterSpacing:'0.1em', display:'block', marginBottom:'4px' }}>SESSION TYPE</label>
               <select value={importPreview.type} onChange={e => setImportPreview(p => ({...p, type: e.target.value}))}

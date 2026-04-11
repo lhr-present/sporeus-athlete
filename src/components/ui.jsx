@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, memo } from 'react'
 import { S } from '../styles.js'
 import { ZONE_COLORS, ZONE_NAMES, typeColor } from '../lib/constants.js'
 
@@ -221,7 +221,7 @@ export function HelpTip({ text }) {
 }
 
 // ─── Full CTL Timeline ────────────────────────────────────────────────────────
-export function CTLTimeline({ log }) {
+export const CTLTimeline = memo(function CTLTimeline({ log }) {
   if (!log.length) return null
   const byDate = {}
   log.forEach(e=>{ byDate[e.date]=(byDate[e.date]||0)+(e.tss||0) })
@@ -263,4 +263,7 @@ export function CTLTimeline({ log }) {
       ))}
     </svg>
   )
-}
+})
+
+export const WeeklyVolChartMemo = memo(WeeklyVolChart)
+export const ZoneDonutMemo      = memo(ZoneDonut)

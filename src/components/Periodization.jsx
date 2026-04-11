@@ -1,7 +1,7 @@
 import React, { useState, useContext, useMemo, useEffect, Fragment } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
-import { MACRO_PHASES, ZONE_COLORS, ZONE_NAMES, LOAD_COLOR } from '../lib/constants.js'
+import { MACRO_PHASES, ZONE_COLORS, ZONE_NAMES } from '../lib/constants.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import {

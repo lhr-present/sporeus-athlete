@@ -718,10 +718,11 @@ function NotifReminders({ authUser }) {
 
 // ─── Strava Connect (Phase 3.1) ───────────────────────────────────────────────
 function StravaConnect({ userId }) {
-  const [conn, setConn]   = useState(null)
-  const [busy, setBusy]   = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [msg, setMsg]     = useState('')
+  const [conn, setConn]         = useState(null)
+  const [busy, setBusy]         = useState(false)
+  const [loading, setLoading]   = useState(true)
+  const [msg, setMsg]           = useState('')
+  const [syncResult, setSyncResult] = useState(null) // { synced, total, recent }
 
   useEffect(() => {
     if (!userId || !isSupabaseReady()) { setLoading(false); return }
@@ -731,6 +732,17 @@ function StravaConnect({ userId }) {
     })
   }, [userId])
 
+  // Read recent Strava activities from local training log
+  const getRecentStravaLocal = () => {
+    try {
+      const log = JSON.parse(localStorage.getItem('sporeus_log') || '[]')
+      return log
+        .filter(e => e.source === 'strava')
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .slice(0, 3)
+    } catch { return [] }
+  }
+
   const flash = (text, ms = 4000) => {
     setMsg(text)
     setTimeout(() => setMsg(''), ms)
@@ -738,12 +750,15 @@ function StravaConnect({ userId }) {
 
   const handleSync = async () => {
     setBusy(true)
+    setSyncResult(null)
     const { data, error } = await triggerStravaSync()
     setBusy(false)
-    if (error) flash(`⚠ Sync failed: ${error.message}`)
-    else {
-      flash(`✓ Synced ${data?.synced ?? 0} of ${data?.total ?? 0} activities`)
-      // Refresh connection info to update last_sync_at
+    if (error) {
+      flash(`⚠ Sync failed: ${(error.message || 'Unknown error').slice(0, 200)}`)
+    } else {
+      const recent = getRecentStravaLocal()
+      setSyncResult({ synced: data?.synced ?? 0, total: data?.total ?? 0, recent })
+      flash(`✓ Synced ${data?.synced ?? 0} of ${data?.total ?? 0} activities`, 6000)
       getStravaConnection(userId).then(({ data: d }) => setConn(d || null))
     }
   }
@@ -753,6 +768,7 @@ function StravaConnect({ userId }) {
     setBusy(true)
     await disconnectStrava()
     setConn(null)
+    setSyncResult(null)
     setBusy(false)
     flash('Strava disconnected')
   }
@@ -769,21 +785,31 @@ function StravaConnect({ userId }) {
     <div>
       {conn?.strava_athlete_id ? (
         <>
-          <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'12px', flexWrap:'wrap' }}>
-            <span style={{ ...S.mono, fontSize:'11px', color:'#5bc25b', fontWeight:600 }}>
-              ✓ CONNECTED · ID {conn.strava_athlete_id}
-            </span>
-            {conn.last_sync_at && (
-              <span style={{ ...S.mono, fontSize:'10px', color:'#888' }}>
-                Last sync: {new Date(conn.last_sync_at).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })}
-              </span>
-            )}
+          {/* Status header */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', marginBottom:'14px' }}>
+            {[
+              { lbl:'STATUS',      val:'CONNECTED', color:'#5bc25b' },
+              { lbl:'ATHLETE ID',  val: conn.strava_athlete_id, color:'#ff6600' },
+              { lbl:'LAST SYNC',   val: conn.last_sync_at
+                ? new Date(conn.last_sync_at).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+                : 'Never', color:'#e0e0e0' },
+              { lbl:'LOCAL ACTIVITIES', val: (() => {
+                  try { return JSON.parse(localStorage.getItem('sporeus_log') || '[]').filter(e => e.source === 'strava').length }
+                  catch { return 0 }
+                })(), color:'#e0e0e0' },
+            ].map(({ lbl, val, color }) => (
+              <div key={lbl} style={{ background:'#0a0a0a', borderRadius:'4px', padding:'8px 10px' }}>
+                <div style={{ ...S.mono, fontSize:'8px', color:'#555', letterSpacing:'0.08em', marginBottom:'3px' }}>{lbl}</div>
+                <div style={{ ...S.mono, fontSize:'12px', fontWeight:700, color }}>{val}</div>
+              </div>
+            ))}
           </div>
-          <div style={{ ...S.mono, fontSize:'10px', color:'#888', marginBottom:'12px', lineHeight:1.6 }}>
-            Syncs last 30 days of activities (runs, rides, swims). Distance + HR stored in notes.
-            <br/>Activities already in your log are deduplicated automatically.
+
+          <div style={{ ...S.mono, fontSize:'10px', color:'#666', marginBottom:'12px', lineHeight:1.6 }}>
+            Syncs last 30 days · runs, rides, swims · distance + HR in notes · auto-deduplicates
           </div>
-          <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
+
+          <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', marginBottom: syncResult ? '12px' : '0' }}>
             <button style={S.btn} onClick={handleSync} disabled={busy}>
               {busy ? 'SYNCING...' : '↻ SYNC NOW'}
             </button>
@@ -792,6 +818,30 @@ function StravaConnect({ userId }) {
               DISCONNECT
             </button>
           </div>
+
+          {/* Post-sync activity preview */}
+          {syncResult && syncResult.recent.length > 0 && (
+            <div style={{ marginTop:'12px' }}>
+              <div style={{ ...S.mono, fontSize:'9px', color:'#555', letterSpacing:'0.08em', marginBottom:'6px' }}>
+                LAST {syncResult.recent.length} STRAVA ACTIVITIES IN LOG
+              </div>
+              {syncResult.recent.map((a, i) => (
+                <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
+                  padding:'5px 8px', background:'#0a0a0a', borderRadius:'3px', marginBottom:'4px',
+                  ...S.mono, fontSize:'10px' }}>
+                  <span style={{ color:'#888' }}>{a.date}</span>
+                  <span style={{ color:'#e0e0e0' }}>{a.type}</span>
+                  <span style={{ color:'#ff6600' }}>{a.duration} min</span>
+                  <span style={{ color:'#888' }}>TSS {a.tss}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {syncResult && syncResult.recent.length === 0 && (
+            <div style={{ ...S.mono, fontSize:'10px', color:'#888', marginTop:'8px' }}>
+              No Strava activities found in last 30 days.
+            </div>
+          )}
         </>
       ) : (
         <>
