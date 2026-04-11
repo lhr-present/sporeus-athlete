@@ -34,8 +34,11 @@ export function useAuth() {
   useEffect(() => {
     if (!supabase) { setLoading(false); return }
 
-    // Implicit flow: Supabase JS auto-detects #access_token in URL hash.
-    // onAuthStateChange fires SIGNED_IN immediately on the redirect page.
+    // Single source of truth for auth state.
+    // Fires INITIAL_SESSION on mount (handles persisted sessions),
+    // SIGNED_IN after OAuth redirect (handles hash fragment in implicit flow),
+    // SIGNED_OUT on signOut().
+    // Do NOT call getSession() in parallel — it races for the same lock.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('[AUTH] event:', event, session?.user?.email ?? '')
@@ -50,18 +53,6 @@ export function useAuth() {
         setLoading(false)
       }
     )
-
-    // Hydrate from persisted session on mount
-    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
-      if (error) console.error('[AUTH] getSession error:', error.message)
-      const u = session?.user ?? null
-      setUser(u)
-      if (u) setProfile(await fetchProfile(u.id))
-      setLoading(false)
-    }).catch(e => {
-      console.error('[AUTH] getSession threw:', e.message)
-      setLoading(false)
-    })
 
     return () => subscription.unsubscribe()
   }, [fetchProfile, upsertProfile])
