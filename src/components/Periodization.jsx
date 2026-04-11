@@ -1,4 +1,4 @@
-import { useState, useContext, useMemo, useEffect } from 'react'
+import React, { useState, useContext, useMemo, useEffect, Fragment } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { MACRO_PHASES, ZONE_COLORS, ZONE_NAMES, LOAD_COLOR } from '../lib/constants.js'
@@ -192,9 +192,15 @@ function PeakBanner({ projection, startCTL }) {
 }
 
 // ─── Coach Plans Card ─────────────────────────────────────────────────────────
+const PLAN_RESPONSES_KEY = 'sporeus-plan-responses'
+function readPlanResponses() { try { return JSON.parse(localStorage.getItem(PLAN_RESPONSES_KEY)) || {} } catch { return {} } }
+function savePlanResponses(obj) { try { localStorage.setItem(PLAN_RESPONSES_KEY, JSON.stringify(obj)) } catch {} }
+function planViewedKey(planId) { return `sporeus-plan-viewed-${planId}` }
+
 function CoachPlansCard({ authUser }) {
   const [plans, setPlans]     = useState(null)  // null = loading
   const [expanded, setExpanded] = useState({})
+  const [responses, setResponses] = useState(() => readPlanResponses())
 
   useEffect(() => {
     if (!isSupabaseReady() || !authUser) { setPlans([]); return }
@@ -210,6 +216,22 @@ function CoachPlansCard({ authUser }) {
         setPlans(data || [])
       })
   }, [authUser?.id])
+
+  const toggleResponse = (planId, weekNum, icon) => {
+    const key = `${planId}-w${weekNum}`
+    const current = responses[key]
+    const updated = { ...responses }
+    if (current?.response === icon) {
+      delete updated[key]
+    } else {
+      updated[key] = { response: icon, ts: new Date().toISOString() }
+    }
+    setResponses(updated); savePlanResponses(updated)
+  }
+
+  const markPlanViewed = (planId) => {
+    try { localStorage.setItem(planViewedKey(planId), new Date().toISOString()) } catch {}
+  }
 
   if (!isSupabaseReady() || !authUser) return null
   if (plans === null) return (
@@ -236,16 +258,26 @@ function CoachPlansCard({ authUser }) {
           ? new Date(plan.start_date).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
           : '—'
 
+        const hasNotes = weeks.some(wk => wk.coachNote)
+        const lastViewed = (() => { try { return localStorage.getItem(planViewedKey(plan.id)) } catch { return null } })()
+        const latestNoteTs = weeks.reduce((best, wk) => wk.noteTs && wk.noteTs > best ? wk.noteTs : best, '')
+        const isUpdated = hasNotes && latestNoteTs && (!lastViewed || latestNoteTs > lastViewed)
+
         return (
-          <div key={plan.id} style={{ marginBottom:'10px', border:'1px solid var(--border)', borderRadius:'5px', overflow:'hidden' }}>
+          <div key={plan.id} style={{ marginBottom:'10px', border:`1px solid ${isUpdated ? '#0064ff55' : 'var(--border)'}`, borderRadius:'5px', overflow:'hidden' }}>
             {/* Plan header row */}
             <div
-              onClick={() => setExpanded(e => ({ ...e, [plan.id]: !e[plan.id] }))}
+              onClick={() => { setExpanded(e => ({ ...e, [plan.id]: !e[plan.id] })); if (!isOpen) markPlanViewed(plan.id) }}
               style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 12px', cursor:'pointer', background:'var(--surface)', userSelect:'none' }}>
-              <div>
+              <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap' }}>
                 <span style={{ ...S.mono, fontSize:'12px', fontWeight:700, color:'#e0e0e0' }}>{plan.name}</span>
                 {plan.goal && (
-                  <span style={{ ...S.mono, fontSize:'10px', color:'#ff6600', marginLeft:'10px' }}>{plan.goal}</span>
+                  <span style={{ ...S.mono, fontSize:'10px', color:'#ff6600' }}>{plan.goal}</span>
+                )}
+                {isUpdated && (
+                  <span style={{ ...S.mono, fontSize:'9px', color:'#0064ff', background:'#0064ff22', border:'1px solid #0064ff44', borderRadius:'3px', padding:'1px 6px', animation:'pulse 1.5s infinite' }}>
+                    ● COACH UPDATED
+                  </span>
                 )}
               </div>
               <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
@@ -268,18 +300,42 @@ function CoachPlansCard({ authUser }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {weeks.map((wk, i) => (
-                      <tr key={i} style={{ borderBottom:'1px solid #1a1a1a' }}>
-                        <td style={{ padding:'5px 8px 5px 0', color:'#ff6600', fontWeight:700 }}>{wk.week ?? i + 1}</td>
-                        <td style={{ padding:'5px 8px 5px 0', color:'#e0e0e0' }}>{wk.phase || '—'}</td>
-                        <td style={{ padding:'5px 8px 5px 0', color:'#888' }}>
-                          {Array.isArray(wk.sessions) ? wk.sessions.length : (wk.sessions ?? '—')}
-                        </td>
-                        <td style={{ padding:'5px 0 5px 0', color:'#666', fontSize:'9px' }}>
-                          {wk.focus || wk.goal || '—'}
-                        </td>
-                      </tr>
-                    ))}
+                    {weeks.map((wk, i) => {
+                      const wNum = wk.week ?? i + 1
+                      const rKey = `${plan.id}-w${wNum}`
+                      const resp = responses[rKey]?.response
+                      return (
+                        <Fragment key={i}>
+                          <tr style={{ borderBottom: wk.coachNote ? 'none' : '1px solid #1a1a1a' }}>
+                            <td style={{ padding:'5px 8px 5px 0', color:'#ff6600', fontWeight:700 }}>{wNum}</td>
+                            <td style={{ padding:'5px 8px 5px 0', color:'#e0e0e0' }}>{wk.phase || '—'}</td>
+                            <td style={{ padding:'5px 8px 5px 0', color:'#888' }}>
+                              {Array.isArray(wk.sessions) ? wk.sessions.length : (wk.sessions ?? '—')}
+                            </td>
+                            <td style={{ padding:'5px 0 5px 0', color:'#666', fontSize:'9px' }}>
+                              {wk.coachNote ? <span style={{ color:'#0064ff' }}>✎ note</span> : (wk.focus || wk.goal || '—')}
+                            </td>
+                            <td style={{ padding:'5px 0 5px 4px', whiteSpace:'nowrap' }}>
+                              {['✓','⚠','?'].map(icon => (
+                                <button key={icon} onClick={() => toggleResponse(plan.id, wNum, icon)}
+                                  style={{ ...S.mono, fontSize:'10px', padding:'1px 5px', marginLeft:'2px', background: resp === icon ? (icon==='✓'?'#5bc25b22':icon==='⚠'?'#f5c54222':'#0064ff22') : 'transparent', border:`1px solid ${resp === icon ? (icon==='✓'?'#5bc25b':icon==='⚠'?'#f5c542':'#0064ff') : '#333'}`, borderRadius:'3px', cursor:'pointer', color: resp === icon ? '#fff' : '#555' }}>
+                                  {icon}
+                                </button>
+                              ))}
+                            </td>
+                          </tr>
+                          {wk.coachNote && (
+                            <tr style={{ borderBottom:'1px solid #1a1a1a' }}>
+                              <td colSpan={5} style={{ padding:'4px 0 6px 32px' }}>
+                                <span style={{ ...S.mono, fontSize:'10px', color:'#6699ff', background:'#0064ff0d', borderRadius:'3px', padding:'3px 8px', display:'inline-block', lineHeight:1.5 }}>
+                                  ✎ {wk.coachNote}
+                                </span>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>

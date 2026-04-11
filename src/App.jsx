@@ -12,7 +12,7 @@ import TestProtocols from './components/Protocols.jsx'
 import TrainingLog from './components/TrainingLog.jsx'
 import Periodization from './components/Periodization.jsx'
 import Recovery from './components/Recovery.jsx'
-import Profile from './components/Profile.jsx'
+import Profile, { countUnreadCoachMessages } from './components/Profile.jsx'
 import OnboardingWizard from './components/Onboarding.jsx'
 import SearchPalette from './components/SearchPalette.jsx'
 import AuthGate from './components/AuthGate.jsx'
@@ -114,7 +114,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
   const showBadges = appAge >= 1 || Object.keys(visitedTabs).length > 3
   const badges = {
     recovery: showBadges && !hasRecoveryToday && !visitedTabs.recovery_today,
-    profile:  onboarded && isProfileIncomplete,
+    profile:  (onboarded && isProfileIncomplete) || countUnreadCoachMessages() > 0,
     log:      false,
   }
 
@@ -244,6 +244,38 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
           onDone={() => setInviteCode(null)}
         />
       )}
+
+      {/* Guest mode upgrade nudge — after 30 days or 50 sessions */}
+      {isGuest && (() => {
+        const sessCount = log?.length || 0
+        const firstDate = log?.length ? [...log].sort((a,b) => a.date > b.date ? 1 : -1)[0]?.date : null
+        const daysSince = firstDate ? Math.floor((Date.now() - new Date(firstDate).getTime()) / 86400000) : 0
+        if (sessCount < 50 && daysSince < 30) return null
+        const NUDGE_KEY = 'sporeus-guest-nudge-dismissed'
+        if (localStorage.getItem(NUDGE_KEY) === '1') return null
+        return (
+          <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:10003, background:'linear-gradient(90deg,#0a0a20,#0a1530)', borderBottom:'2px solid #0064ff', color:'#e0e0e0', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'10px 20px', display:'flex', justifyContent:'space-between', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
+            <span>
+              <span style={{ color:'#0064ff', fontWeight:700 }}>
+                {sessCount >= 50 ? `${sessCount} sessions logged` : `${daysSince} days of training`}
+              </span>
+              {lang === 'en' ? ' — sync to cloud so you never lose your data.' : ' — verilerinizi buluta senkronize edin, hiç kaybetmeyin.'}
+            </span>
+            <div style={{ display:'flex', gap:'8px' }}>
+              <button
+                onClick={() => { localStorage.removeItem('sporeus-guest-mode'); window.location.reload() }}
+                style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', fontWeight:700, padding:'5px 14px', background:'#0064ff', border:'none', color:'#fff', borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em' }}>
+                {lang === 'en' ? 'Create Account →' : 'Hesap Oluştur →'}
+              </button>
+              <button
+                onClick={() => { try { localStorage.setItem(NUDGE_KEY,'1') } catch {}; window.location.reload() }}
+                style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', padding:'4px 10px', background:'transparent', border:'1px solid #333', color:'#555', borderRadius:'3px', cursor:'pointer' }}>
+                ✕
+              </button>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Guest mode banner */}
       {isGuest && (
@@ -387,7 +419,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
         </main>
 
         <footer style={S.footer}>
-          SPOREUS ATHLETE CONSOLE v5.0.0 · SPOREUS.COM · EŞİK / THRESHOLD 2026
+          SPOREUS ATHLETE CONSOLE v5.2.0 · SPOREUS.COM · EŞİK / THRESHOLD 2026
         </footer>
       </div>
     </LangCtx.Provider>

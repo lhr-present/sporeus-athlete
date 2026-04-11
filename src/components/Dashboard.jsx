@@ -12,7 +12,7 @@ import { useCountUp } from '../hooks/useCountUp.js'
 import Achievements from './Achievements.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { SPORT_BRANCHES, ATHLETE_LEVELS, LEVEL_CONFIG, DASH_CARD_DEFS } from '../lib/constants.js'
-import { analyzeLoadTrend, analyzeRecoveryCorrelation, analyzeZoneBalance, predictInjuryRisk, predictFitness, generateWeeklyNarrative, detectMilestones, computeRaceReadiness, predictRacePerformance } from '../lib/intelligence.js'
+import { analyzeLoadTrend, analyzeRecoveryCorrelation, analyzeZoneBalance, predictInjuryRisk, predictFitness, generateWeeklyNarrative, detectMilestones, computeRaceReadiness, predictRacePerformance, assessDataQuality } from '../lib/intelligence.js'
 import { getTriggeredNotes } from '../lib/scienceNotes.js'
 import { correlateTrainingToResults, findRecoveryPatterns, mineInjuryPatterns, findOptimalWeekStructure, findSeasonalPatterns } from '../lib/patterns.js'
 import { useData } from '../contexts/DataContext.jsx'
@@ -614,7 +614,7 @@ export default function Dashboard({ log, profile }) {
   const [lang] = useLocalStorage('sporeus-lang', 'en')
   const [plan] = useLocalStorage('sporeus-plan', null)
   const [planStatus] = useLocalStorage('sporeus-plan-status', {})
-  const { recovery, injuries } = useData()
+  const { recovery, injuries, testResults } = useData()
   const [myCoach] = useLocalStorage('sporeus-my-coach', null)
   const [reportVisible, setReportVisible] = useState(false)
   const { t } = useContext(LangCtx)
@@ -651,8 +651,11 @@ export default function Dashboard({ log, profile }) {
     return `TSB ${tsb>=0?'+':''}${tsb} · High load detected — deload recommended. Swap threshold → Z2 45min.`
   })()
 
+  const dqResult = assessDataQuality(log, recovery, testResults, profile)
+  const [showDQ, setShowDQ] = useState(false)
+
   const headerBadges = (
-    <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', marginTop:'6px' }}>
+    <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', marginTop:'6px', alignItems:'center' }}>
       {sportLabel && (
         <span style={{ ...S.mono, fontSize:'10px', color:'#ff6600', border:'1px solid #ff660044', padding:'2px 7px', borderRadius:'2px' }}>
           {sportLabel.toUpperCase()}
@@ -668,6 +671,29 @@ export default function Dashboard({ log, profile }) {
         <span style={{ ...S.mono, fontSize:'10px', color:'#5bc25b', border:'1px solid #5bc25b44', padding:'2px 7px', borderRadius:'2px' }}>
           ◈ COACH: HÜSEYİN AKBULUT
         </span>
+      )}
+      <button
+        onClick={() => setShowDQ(s => !s)}
+        title="Data quality — click for tips"
+        style={{ ...S.mono, fontSize:'10px', color: dqResult.gradeColor, border:`1px solid ${dqResult.gradeColor}44`, padding:'2px 7px', borderRadius:'2px', background:'transparent', cursor:'pointer', letterSpacing:'0.06em' }}>
+        DATA: {dqResult.grade} {dqResult.score}/100
+      </button>
+      {showDQ && (
+        <div style={{ width:'100%', background:'var(--card-bg)', border:`1px solid ${dqResult.gradeColor}44`, borderRadius:'5px', padding:'10px 12px', marginTop:'4px' }}>
+          <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', marginBottom:'8px' }}>
+            {dqResult.factors.map(f => (
+              <div key={f.name} style={{ textAlign:'center', minWidth:'56px' }}>
+                <div style={{ ...S.mono, fontSize:'14px', fontWeight:700, color: f.score>=80?'#5bc25b':f.score>=60?'#0064ff':f.score>=40?'#f5c542':'#e03030' }}>{f.score}</div>
+                <div style={{ ...S.mono, fontSize:'8px', color:'#555', letterSpacing:'0.06em' }}>{f.name}</div>
+              </div>
+            ))}
+          </div>
+          {dqResult.tips.length > 0 && (
+            <div style={{ ...S.mono, fontSize:'10px', color:'#888', lineHeight:1.7, borderTop:'1px solid var(--border)', paddingTop:'6px' }}>
+              {dqResult.tips.map((tip,i) => <div key={i}>→ {lang==='tr'?tip.tr:tip.en}</div>)}
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
@@ -1214,6 +1240,30 @@ ${complianceStr?`<div>Plan: <strong>${complianceStr}</strong></div>`:''}
               </svg>
             </div>
             <div style={{ ...S.mono, fontSize:'9px', color:'#aaa', marginTop:'6px' }}>{t('acwrNote')}</div>
+
+            {/* Next-week load forecast */}
+            <div style={{ marginTop:'12px' }}>
+              <div style={{ ...S.mono, fontSize:'9px', color:'#555', letterSpacing:'0.08em', marginBottom:'6px' }}>NEXT WEEK FORECAST (TSS targets)</div>
+              <div style={{ display:'flex', gap:'5px', flexWrap:'wrap' }}>
+                {[
+                  { label:'CONSERV', mult:0.8,  clr:'#0064ff' },
+                  { label:'MAINTAIN', mult:1.0, clr:'#5bc25b' },
+                  { label:'BUILD',    mult:1.2, clr:'#ff6600' },
+                  { label:'LIMIT',    mult:1.5, clr:'#e03030' },
+                ].map(({ label, mult, clr }) => {
+                  const tss = Math.round(chronic28 * mult)
+                  const proj = (tss / chronic28).toFixed(2)
+                  const isCurrent = acwr >= mult * 0.9 && acwr < mult * 1.1
+                  return (
+                    <div key={label} style={{ flex:'1 1 60px', textAlign:'center', padding:'5px 4px', background: isCurrent ? `${clr}18` : 'var(--surface)', borderRadius:'4px', border:`1px solid ${clr}33` }}>
+                      <div style={{ ...S.mono, fontSize:'13px', fontWeight:700, color:clr }}>{tss}</div>
+                      <div style={{ ...S.mono, fontSize:'7px', color:'#555', marginTop:'1px' }}>{label}</div>
+                      <div style={{ ...S.mono, fontSize:'8px', color:'#444' }}>ACWR {proj}</div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           </div>
         )
       })()}

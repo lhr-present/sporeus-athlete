@@ -16,6 +16,7 @@ const TESTS = [
   { id:'conconi', label:'CONCONI',         sport:'Run/Bike',  needsCalc:false },
   { id:'lactate', label:'BLOOD LACTATE',   sport:'Lab',       needsCalc:false },
   { id:'wprime',  label:"W' BALANCE",      sport:'Bike',      needsCalc:true },
+  { id:'cp_test', label:'CP TEST',         sport:'Bike',      needsCalc:true },
 ]
 
 // ─── W' Balance pure-SVG chart ────────────────────────────────────────────────
@@ -152,6 +153,9 @@ export default function TestProtocols() {
   const set = (k,v) => setInputs(prev=>({...prev,[k]:v}))
   const v = k => inputs[k]||''
 
+  // CP test save state
+  const [cpSaved, setCpSaved] = useState(false)
+
   // W' balance state
   const [wPrimeSeries, setWPrimeSeries]     = useState(null)  // computed balance array
   const [wPrimeStats,  setWPrimeStats]      = useState(null)  // { np, minW, exhausted, tAbove, tBelow }
@@ -219,6 +223,29 @@ export default function TestProtocols() {
       setResult(['Conconi Protocol','1. Run on 400m track. Start at 8 km/h.','2. Increase 0.5 km/h every 200m.','3. Record HR at each stage.','4. Plot HR vs speed \u2014 deflection point = anaerobic threshold.','5. Threshold HR \u2248 HR at deflection; threshold speed = deflection speed.'])
     } else if (active==='lactate') {
       setResult(['Blood Lactate Protocol','Equipment: lactate analyzer, finger-prick lancets.','Stages: 5 min each, +0.5 km/h. Sample from earlobe or fingertip.','LT1 (aerobic): ~2 mmol/L \u2014 first rise above baseline \u2192 top of Z2.','LT2 (MLSS): ~4 mmol/L \u2014 last sustainable steady state \u2192 Z4.','Ref: E\u015e\u0130K / THRESHOLD, Chapter 4 \u2014 Laktat Fizyolojisi.'])
+    } else if (active==='cp_test') {
+      const p3 = parseInt(i.cp3min || 0), p12 = parseInt(i.cp12min || 0)
+      if (!p3 || !p12) return
+      // 2-point model: CP = (T2×P2 − T1×P1) / (T2 − T1) where T1=180s, T2=720s
+      const cp = Math.round((720 * p12 - 180 * p3) / (720 - 180))
+      const wPrime = Math.round(180 * (p3 - cp))     // joules
+      const wPrimeKj = (wPrime / 1000).toFixed(1)
+      const ftpPct = (() => {
+        try { const ftp = parseInt(JSON.parse(localStorage.getItem('sporeus_profile') || '{}').ftp || 0); return ftp ? Math.round(cp / ftp * 100) : null } catch { return null }
+      })()
+      setCpSaved(false)
+      saveTestResult('cp_test', cp, 'W CP')
+      setResult([
+        'Critical Power Test Result',
+        `3-min avg: ${p3}W · 12-min avg: ${p12}W`,
+        `CP (Critical Power): ${cp}W${ftpPct ? ` — ${ftpPct}% of FTP` : ''}`,
+        `W' (Anaerobic Capacity): ${wPrimeKj} kJ (${wPrime.toLocaleString()} J)`,
+        wPrime < 8000 ? 'W\' low (<8 kJ) — anaerobic reserve is limited; prioritise base aerobic work.'
+          : wPrime > 30000 ? 'W\' high (>30 kJ) — strong sprint/anaerobic capacity.'
+          : 'W\' within typical range (8–30 kJ) for trained cyclists.',
+        `CP is the mathematical power ceiling above which W' depletes. W' reconstitutes below CP. (Skiba 2012 · Morton 1996)`,
+        `__SAVE__${cp}__${wPrime}`,   // sentinel for save buttons below
+      ])
     } else if (active==='wprime') {
       const cp = parseInt(i.cp || 0)
       const wCap = parseInt(i.wCap || wPrimeCapacity)
@@ -249,7 +276,7 @@ export default function TestProtocols() {
         <div style={S.cardTitle}>{t('selectProto')}</div>
         <div style={{ display:'flex', gap:'6px', flexWrap:'wrap', marginBottom:'16px' }}>
           {TESTS.map(test=>(
-            <button key={test.id} onClick={()=>{setActive(test.id);setResult(null);setWPrimeSeries(null);setWPrimeStats(null);setWPrimeError('')}}
+            <button key={test.id} onClick={()=>{setActive(test.id);setResult(null);setWPrimeSeries(null);setWPrimeStats(null);setWPrimeError('');setCpSaved(false)}}
               style={{ ...S.navBtn(active===test.id), borderRadius:'4px', display:'flex', flexDirection:'column', gap:'1px', fontSize:'10px' }}>
               {test.label}
               <span style={{ fontSize:'9px', opacity:0.7 }}>{test.sport}</span>
@@ -346,6 +373,24 @@ export default function TestProtocols() {
 
         {active==='wprime' && (
           <div>
+            {(() => {
+              try {
+                const pr = JSON.parse(localStorage.getItem('sporeus_profile') || '{}')
+                const hasCPorFTP = pr.cp || pr.ftp
+                if (!hasCPorFTP) return (
+                  <div style={{ ...S.card, borderLeft:'3px solid #ff6600', marginBottom:'14px', padding:'12px 14px' }}>
+                    <div style={{ ...S.mono, fontSize:'10px', color:'#ff6600', fontWeight:700, marginBottom:'6px' }}>⚠ COMPLETE CP TEST FIRST</div>
+                    <div style={{ ...S.mono, fontSize:'10px', color:'#888', lineHeight:1.6, marginBottom:'10px' }}>
+                      W' Balance requires your Critical Power (CP). Run the CP Test to establish your threshold baseline, then return here.
+                    </div>
+                    <button onClick={() => setActive('cp_test')} style={{ ...S.mono, fontSize:'10px', fontWeight:700, padding:'6px 14px', background:'#ff6600', border:'none', color:'#fff', borderRadius:'4px', cursor:'pointer', letterSpacing:'0.06em' }}>
+                      → GO TO CP TEST
+                    </button>
+                  </div>
+                )
+              } catch {}
+              return null
+            })()}
             <div style={{ ...S.mono, fontSize:'10px', color:'#888', lineHeight:1.7, marginBottom:'12px' }}>
               Skiba (2012) differential W' balance model. W' depletes above CP and reconstitutes below CP
               with a time constant τ derived from mean sub-threshold power.
@@ -382,6 +427,31 @@ export default function TestProtocols() {
           </div>
         )}
 
+        {active==='cp_test' && (
+          <div>
+            <div style={{ ...S.mono, fontSize:'10px', color:'#888', lineHeight:1.7, marginBottom:'12px' }}>
+              2-point Critical Power model (Morton 1996). Perform two maximal efforts — the math derives
+              your sustainable power limit (CP) and anaerobic work capacity (W').
+              Results feed directly into the W' Balance analyser.
+            </div>
+            <div style={{ ...S.mono, fontSize:'10px', color:'#555', lineHeight:1.7, marginBottom:'12px', borderLeft:'2px solid #333', paddingLeft:'10px' }}>
+              Step 1 — 3-min all-out effort on bike/erg. Record average power.<br/>
+              Step 2 — Rest 30 min completely.<br/>
+              Step 3 — 12-min all-out effort. Record average power.
+            </div>
+            <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
+              <div style={{ flex:'1 1 160px' }}>
+                <label style={S.label}>3-MIN AVG POWER (watts)</label>
+                <input style={S.input} type="number" placeholder="420" value={v('cp3min')} onChange={e=>set('cp3min',e.target.value)}/>
+              </div>
+              <div style={{ flex:'1 1 160px' }}>
+                <label style={S.label}>12-MIN AVG POWER (watts)</label>
+                <input style={S.input} type="number" placeholder="330" value={v('cp12min')} onChange={e=>set('cp12min',e.target.value)}/>
+              </div>
+            </div>
+          </div>
+        )}
+
         <button style={{ ...S.btn, marginTop:'14px' }} onClick={run}>
           {activeTest?.needsCalc ? t('calcBtn') : t('viewBtn')}
         </button>
@@ -390,9 +460,44 @@ export default function TestProtocols() {
       {result && (
         <div className="sp-card" style={{ ...S.card, borderLeft:'4px solid #ff6600', animationDelay:'50ms' }}>
           <div style={S.cardTitle}>{result[0]}</div>
-          {result.slice(1).map((line,i)=>(
-            <div key={i} style={{ ...S.mono, fontSize:'13px', lineHeight:1.9, color:i===0?'#1a1a1a':'#555', borderBottom:i<result.length-2?'1px solid #f0f0f0':'none', padding:'4px 0' }}>{line}</div>
-          ))}
+          {result.slice(1).map((line,i)=> {
+            if (line.startsWith('__SAVE__')) {
+              const [,cp,wPrime] = line.split('__')
+              const saveBoth = () => {
+                try {
+                  const profile = JSON.parse(localStorage.getItem('sporeus_profile') || '{}')
+                  profile.cp = parseInt(cp)
+                  profile.wPrime = parseInt(wPrime)
+                  localStorage.setItem('sporeus_profile', JSON.stringify(profile))
+                  setCpSaved(true)
+                } catch {}
+              }
+              const useFTP = () => {
+                if (!window.confirm(`Set FTP = ${cp}W (CP)? This replaces your current FTP.`)) return
+                try {
+                  const profile = JSON.parse(localStorage.getItem('sporeus_profile') || '{}')
+                  profile.ftp = parseInt(cp)
+                  profile.cp = parseInt(cp)
+                  profile.wPrime = parseInt(wPrime)
+                  localStorage.setItem('sporeus_profile', JSON.stringify(profile))
+                  setCpSaved(true)
+                } catch {}
+              }
+              return (
+                <div key={i} style={{ display:'flex', gap:'8px', marginTop:'12px', flexWrap:'wrap' }}>
+                  <button onClick={saveBoth} style={{ ...S.mono, fontSize:'10px', fontWeight:700, padding:'6px 14px', background:'#0064ff', border:'none', color:'#fff', borderRadius:'3px', cursor:'pointer' }}>
+                    {cpSaved ? '✓ SAVED TO PROFILE' : '↓ SAVE CP + W\' TO PROFILE'}
+                  </button>
+                  <button onClick={useFTP} style={{ ...S.mono, fontSize:'10px', padding:'6px 14px', background:'transparent', border:'1px solid #ff660066', color:'#ff6600', borderRadius:'3px', cursor:'pointer' }}>
+                    USE CP AS FTP
+                  </button>
+                </div>
+              )
+            }
+            return (
+              <div key={i} style={{ ...S.mono, fontSize:'12px', lineHeight:1.9, color:'var(--sub)', borderBottom: i < result.length-2 ? '1px solid var(--border)' : 'none', padding:'4px 0' }}>{line}</div>
+            )
+          })}
         </div>
       )}
 

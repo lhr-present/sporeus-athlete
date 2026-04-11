@@ -1,6 +1,7 @@
 // ─── MigrationModal.jsx — localStorage → Supabase import prompt ──────────────
 import { useState, useCallback } from 'react'
 import { migrateToSupabase } from '../lib/dataMigration.js'
+import { exportAllData } from '../lib/storage.js'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -15,6 +16,17 @@ export default function MigrationModal({ userId, localData, onComplete, lang }) 
   const isTR = lang === 'tr'
 
   const handleImport = useCallback(async () => {
+    // Auto-backup before migration
+    try {
+      const json = exportAllData()
+      const blob = new Blob([json], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `sporeus-premigration-${new Date().toISOString().slice(0, 10)}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {}
     setPhase('running')
     setTotal(Object.values(localData).filter(v => typeof v === 'number' && v > 0).length || 1)
     try {
@@ -97,8 +109,8 @@ export default function MigrationModal({ userId, localData, onComplete, lang }) 
 
           <p style={{ fontSize: '9px', color: '#333', marginTop: '14px', lineHeight: 1.6, textAlign: 'center' }}>
             {isTR
-              ? 'Yerel veri silinmez. Aktarım sonrası her iki yerde de mevcut olacak.'
-              : 'Local data is not deleted. After import it exists in both places.'}
+              ? 'Aktarım başlamadan önce otomatik yedek alınacak. Yerel veri silinmez.'
+              : 'A backup JSON will be auto-downloaded before migration. Local data is not deleted.'}
           </p>
         </>)}
 
