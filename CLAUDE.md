@@ -112,28 +112,29 @@ Render at the bottom of the tab's return JSX. No new file needed for a calculato
 - Race results stored in 'sporeus-race-results' localStorage key
 - CoachDashboard: RACE BRIEF section (score, predicted time, top concerns + action items, Copy Brief button)
 
-## Supabase Backend (Phase 0 — COMPLETE ✓)
-- @supabase/supabase-js v2 installed, project: pvicqwapvvfempjdgwbm.supabase.co
-- src/lib/supabase.js — createClient with VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY env vars
-  - flowType: 'implicit' — required for static hosting (no server for PKCE code exchange)
-  - Returns null client if env vars missing → app falls back to localStorage mode gracefully
-  - isSupabaseReady() helper for conditional feature gates
-- src/hooks/useAuth.js — SINGLE onAuthStateChange listener only (no getSession() call)
-  - INITIAL_SESSION event handles persisted sessions on mount
-  - SIGNED_IN event handles OAuth redirect (hash fragment with implicit flow)
-  - Calling getSession() simultaneously causes Web Locks API contention — do NOT add it back
-- src/contexts/DataContext.jsx — DataProvider wraps app, useSyncedTable factory for all tables
-- .env.local — VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY (git-ignored)
-- .mcp.json — Supabase MCP server config for this project
-- supabase/migrations/001_initial_schema.sql — full Postgres schema:
-  - Tables: profiles, training_log, recovery, injuries, test_results, race_results,
-            coach_athletes, coach_notes, strava_tokens, push_subscriptions
-  - ENUMs: user_role (athlete/coach/admin), link_status (pending/active/revoked), log_source (manual/fit/strava/gpx)
-  - RLS: users own their rows; coaches SELECT athlete rows via coach_athletes join
-  - coach_athletes: invite_token column for ?coach=TOKEN invite links
-  - race_results: distance_m (meters), goal_time_s + predicted_s + actual_s (seconds)
-  - recovery: hrv column (rMSSD in ms) ready for Phase 2.3
-- Google OAuth working end-to-end (confirmed in production)
-- NEXT: Phase 1 — coach-athlete invite linking (coach_invites table, invite link, athlete accept flow)
-  - Then Phase 2: FIT/GPX, VDOT, HRV, Recharts
-  - Then Phase 3: Strava OAuth, periodization, PDF reports, push notifications
+## Supabase Backend (Phases 0–3 — ALL COMPLETE ✓)
+
+### Phase 0 ✓
+- @supabase/supabase-js v2, project: pvicqwapvvfempjdgwbm.supabase.co
+- src/lib/supabase.js — flowType: 'implicit' (static hosting, no PKCE)
+- src/hooks/useAuth.js — onAuthStateChange ONLY (no getSession() — Web Locks contention)
+- src/contexts/DataContext.jsx — DataProvider, useSyncedTable factory
+- supabase/migrations/001_initial_schema.sql — full schema (profiles, training_log, recovery, injuries, test_results, race_results, coach_athletes, coach_notes, strava_tokens, push_subscriptions)
+
+### Phase 3 ✓ (v5.0.0)
+- 3.1 Strava OAuth: supabase/functions/strava-oauth/index.ts (connect/sync/disconnect), src/lib/strava.js, StravaConnect in Profile.jsx
+  - Secrets needed (manual): STRAVA_CLIENT_ID + STRAVA_CLIENT_SECRET in supabase secrets
+- 3.2 Periodization: Periodization.jsx rewrite — CTL/ATL/TSB EWA projection, Recharts, Friel phases, race date anchor
+- 3.3 PDF report: src/lib/reportGenerator.js → openAthleteReport() → Blob HTML + print to PDF
+- 3.4 Push: src/sw.js (injectManifest), src/lib/pushNotify.js, supabase/functions/send-push/index.ts
+  - Secrets needed (manual): VAPID_PUBLIC_KEY + VAPID_PRIVATE_KEY in supabase secrets
+- Guest mode: sporeus-guest-mode localStorage flag, guest banner in App.jsx, Try without account in AuthGate
+- Coach→athlete plan push: supabase/migrations/003_coach_plans.sql (coach_plans table + RLS)
+  - CoachDashboard: SbAthletePanel with SEND PLAN form
+  - Periodization: CoachPlansCard reads coach_plans for logged-in athlete (expandable)
+  - Migration 003 must be run manually on production Supabase
+
+### Manual steps still needed (see memory/project_sporeus_manual_todo.md)
+- Strava API app + secrets + deploy strava-oauth function
+- VAPID keygen + secrets + deploy send-push function
+- Run supabase/migrations/003_coach_plans.sql in production SQL editor
