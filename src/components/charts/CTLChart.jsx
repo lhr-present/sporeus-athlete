@@ -1,40 +1,15 @@
-// ─── CTLChart.jsx — CTL / ATL / TSB timeline with Recharts ──────────────────
+// ─── CTLChart.jsx — Full Performance Management Chart (PMC) ─────────────────
+// CTL (fitness) · ATL (fatigue) · TSB (form) · TSS bars
+// Sweet-spot zones · Race-day markers
 import { useMemo } from 'react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, ReferenceLine, ResponsiveContainer } from 'recharts'
+import {
+  ComposedChart, Line, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ReferenceArea, ReferenceLine, ResponsiveContainer,
+} from 'recharts'
+import { calculatePMC } from '../../lib/trainingLoad.js'
 
 const MONO = "'IBM Plex Mono', monospace"
-
-function buildTimeSeries(log, days = 90) {
-  const sorted = [...(log || [])].sort((a, b) => a.date > b.date ? 1 : -1)
-  if (!sorted.length) return []
-
-  const end   = new Date()
-  const start = new Date(end); start.setDate(start.getDate() - days)
-
-  let ctl = 0, atl = 0
-  // Prime CTL/ATL from data before window
-  for (const e of sorted) {
-    if (new Date(e.date) >= start) break
-    const tss = e.tss || 0
-    ctl = ctl + (tss - ctl) / 42
-    atl = atl + (tss - atl) / 7
-  }
-
-  const points = []
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    const dateStr = d.toISOString().slice(0, 10)
-    const dayTss  = sorted.filter(e => e.date === dateStr).reduce((s, e) => s + (e.tss || 0), 0)
-    ctl = ctl + (dayTss - ctl) / 42
-    atl = atl + (dayTss - atl) / 7
-    points.push({
-      date: dateStr.slice(5),   // MM-DD
-      CTL:  Math.round(ctl),
-      ATL:  Math.round(atl),
-      TSB:  Math.round(ctl - atl),
-    })
-  }
-  return points
-}
 
 const darkTooltip = {
   contentStyle: { background: '#1a1a1a', border: '1px solid #333', fontFamily: MONO, fontSize: 10 },
@@ -42,25 +17,130 @@ const darkTooltip = {
   itemStyle:    { color: '#ccc' },
 }
 
-export default function CTLChart({ log, days = 90 }) {
-  const data = useMemo(() => buildTimeSeries(log, days), [log, days])
+// Format YYYY-MM-DD → MM-DD for axis labels
+const mmdd = str => str ? str.slice(5) : ''
+
+export default function CTLChart({ log, days = 90, raceResults = [] }) {
+  const data = useMemo(() => {
+    const series = calculatePMC(log || [], days, 0)
+    return series.map(p => ({
+      date:        mmdd(p.date),
+      fullDate:    p.date,
+      tss:         p.tss,
+      CTL:         p.ctl,
+      ATL:         p.atl,
+      // Split TSB into positive / negative for two-color rendering
+      tsbPos:      p.tsb >= 0 ? p.tsb : null,
+      tsbNeg:      p.tsb <  0 ? p.tsb : null,
+      isFuture:    p.isFuture,
+    }))
+  }, [log, days])
+
   if (!data.length) return null
 
+  // Race markers that fall within the display window
+  const raceMarkers = useMemo(() => {
+    if (!raceResults?.length) return []
+    const dates = new Set(data.map(p => p.fullDate))
+    return raceResults
+      .map(r => r.raceDate || r.date)
+      .filter(d => d && dates.has(d))
+      .map(d => mmdd(d))
+  }, [raceResults, data])
+
+  const interval = Math.max(1, Math.floor(data.length / 6))
+
   return (
-    <ResponsiveContainer width="100%" height={200}>
-      <LineChart data={data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+    <ResponsiveContainer width="100%" height={220}>
+      <ComposedChart data={data} margin={{ top: 4, right: 32, left: -20, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#222" />
-        <XAxis dataKey="date" tick={{ fontFamily: MONO, fontSize: 9, fill: '#555' }} interval={Math.floor(data.length / 6)} />
-        <YAxis tick={{ fontFamily: MONO, fontSize: 9, fill: '#555' }} />
-        <Tooltip {...darkTooltip} />
-        <Legend wrapperStyle={{ fontFamily: MONO, fontSize: 9, color: '#888' }} />
-        <ReferenceLine y={0} stroke="#333" />
-        <Line type="monotone" dataKey="CTL" stroke="#ff6600" strokeWidth={2} dot={false} />
-        <Line type="monotone" dataKey="ATL" stroke="#0064ff" strokeWidth={2} dot={false} />
-        <Line type="monotone" dataKey="TSB" stroke="#5bc25b" strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
-        <Brush dataKey="date" height={16} stroke="#333" fill="#0a0a0a" travellerWidth={6}
-          style={{ fontFamily: MONO, fontSize: 8 }} />
-      </LineChart>
+
+        {/* Sweet-spot zones on the TSB / CTL scale (left axis) */}
+        <ReferenceArea
+          y1={-30} y2={-10} yAxisId="left"
+          fill="#ff6600" fillOpacity={0.06}
+          label={{ value: 'BUILD', position: 'insideTopLeft', fill: '#ff660055', fontSize: 8, fontFamily: MONO }}
+        />
+        <ReferenceArea
+          y1={10} y2={25} yAxisId="left"
+          fill="#5bc25b" fillOpacity={0.08}
+          label={{ value: 'RACE', position: 'insideBottomLeft', fill: '#5bc25b66', fontSize: 8, fontFamily: MONO }}
+        />
+
+        {/* Race-day vertical markers */}
+        {raceMarkers.map(d => (
+          <ReferenceLine
+            key={d} x={d} yAxisId="left"
+            stroke="#ff6600" strokeWidth={1.5} strokeDasharray="3 2"
+            label={{ value: '🏁', position: 'top', fontSize: 11 }}
+          />
+        ))}
+
+        <XAxis
+          dataKey="date"
+          tick={{ fontFamily: MONO, fontSize: 9, fill: '#555' }}
+          interval={interval}
+        />
+        <YAxis
+          yAxisId="left"
+          tick={{ fontFamily: MONO, fontSize: 9, fill: '#555' }}
+        />
+        <YAxis
+          yAxisId="right"
+          orientation="right"
+          tick={{ fontFamily: MONO, fontSize: 9, fill: '#333' }}
+          tickFormatter={v => v > 0 ? v : ''}
+        />
+
+        <Tooltip
+          {...darkTooltip}
+          formatter={(v, name) => {
+            if (v === null || v === undefined) return [null, name]
+            if (name === 'TSS') return [v, 'TSS']
+            if (name === 'tsbPos') return [`+${v}`, 'TSB']
+            if (name === 'tsbNeg') return [v, 'TSB']
+            return [v, name]
+          }}
+        />
+        <Legend
+          wrapperStyle={{ fontFamily: MONO, fontSize: 9, color: '#888' }}
+          formatter={name => name === 'tsbPos' || name === 'tsbNeg' ? 'TSB' : name}
+        />
+
+        {/* TSS daily bars — right axis, gray */}
+        <Bar
+          dataKey="tss" name="TSS" yAxisId="right"
+          fill="#444" fillOpacity={0.5} barSize={2}
+          isAnimationActive={false}
+        />
+
+        {/* CTL — orange */}
+        <Line
+          type="monotone" dataKey="CTL" yAxisId="left"
+          stroke="#ff6600" strokeWidth={2} dot={false}
+          isAnimationActive={false}
+        />
+        {/* ATL — blue */}
+        <Line
+          type="monotone" dataKey="ATL" yAxisId="left"
+          stroke="#0064ff" strokeWidth={2} dot={false}
+          isAnimationActive={false}
+        />
+        {/* TSB positive (fresh) — green */}
+        <Line
+          type="monotone" dataKey="tsbPos" name="tsbPos" yAxisId="left"
+          stroke="#5bc25b" strokeWidth={1.5} dot={false}
+          strokeDasharray="4 2" connectNulls={false}
+          isAnimationActive={false}
+        />
+        {/* TSB negative (fatigued) — red */}
+        <Line
+          type="monotone" dataKey="tsbNeg" name="tsbNeg" yAxisId="left"
+          stroke="#e03030" strokeWidth={1.5} dot={false}
+          strokeDasharray="4 2" connectNulls={false}
+          isAnimationActive={false}
+        />
+      </ComposedChart>
     </ResponsiveContainer>
   )
 }

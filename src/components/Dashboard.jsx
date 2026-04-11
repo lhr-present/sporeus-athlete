@@ -7,6 +7,7 @@ import ZoneChart from './charts/ZoneChart.jsx'
 import LoadChart from './charts/LoadChart.jsx'
 import HRVChart  from './charts/HRVChart.jsx'
 import { monotonyStrain, calcPRs, navyBF, mifflinBMR, riegel, fmtSec, fmtPace, calcLoad } from '../lib/formulas.js'
+import { calculateACWR } from '../lib/trainingLoad.js'
 import { exportAllData } from '../lib/storage.js'
 import { useCountUp } from '../hooks/useCountUp.js'
 import Achievements from './Achievements.jsx'
@@ -614,7 +615,7 @@ export default function Dashboard({ log, profile }) {
   const [lang] = useLocalStorage('sporeus-lang', 'en')
   const [plan] = useLocalStorage('sporeus-plan', null)
   const [planStatus] = useLocalStorage('sporeus-plan-status', {})
-  const { recovery, injuries, testResults } = useData()
+  const { recovery, injuries, testResults, raceResults } = useData()
   const [myCoach] = useLocalStorage('sporeus-my-coach', null)
   const [reportVisible, setReportVisible] = useState(false)
   const { t } = useContext(LangCtx)
@@ -632,6 +633,7 @@ export default function Dashboard({ log, profile }) {
   const totalMin = last7.reduce((s,e)=>s+(e.duration||0),0)
   const avgRPE   = last7.length ? (last7.reduce((s,e)=>s+(e.rpe||0),0)/last7.length).toFixed(1) : '\u2014'
   const { atl, ctl, tsb, daily } = calcLoad(log)
+  const acwr = calculateACWR(log)
   const readiness = totalTSS>600?{label:t('fatigued'),color:'#e03030'}:totalTSS>400?{label:t('trained'),color:'#f5c542'}:{label:t('fresh'),color:'#5bc25b'}
   const tsbColor = tsb>5?'#5bc25b':tsb<-10?'#e03030':'#f5c542'
   const countSess = useCountUp(last7.length)
@@ -962,8 +964,31 @@ export default function Dashboard({ log, profile }) {
 
       {dl.timeline && lc.showCTL && log.length>3 && (
         <div className="sp-card" style={{ ...S.card, animationDelay:'195ms' }}>
-          <div style={S.cardTitle}>FITNESS TIMELINE — CTL / ATL / TSB (90d)</div>
-          <CTLChart log={log} days={90} />
+          <div style={S.cardTitle}>PERFORMANCE MANAGEMENT CHART (90d)</div>
+          {/* ACWR · Monotony · Strain badges */}
+          {(() => {
+            const { mono, strain } = monotonyStrain(log)
+            const acwrColor = acwr.status === 'danger' ? '#e03030'
+              : acwr.status === 'caution'       ? '#f5c542'
+              : acwr.status === 'optimal'        ? '#5bc25b'
+              : '#888'
+            return (
+              <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', margin:'6px 0 10px' }}>
+                {acwr.ratio !== null && (
+                  <span style={{ ...S.mono, fontSize:'10px', padding:'2px 7px', border:`1px solid ${acwrColor}44`, borderRadius:'2px', color: acwrColor }}>
+                    ACWR {acwr.ratio} · {acwr.status.toUpperCase()}
+                  </span>
+                )}
+                <span style={{ ...S.mono, fontSize:'10px', padding:'2px 7px', border:`1px solid ${mono>2?'#e03030':'#333'}44`, borderRadius:'2px', color: mono>2?'#e03030':'#888' }}>
+                  MONOTONY {mono}{mono>2?' ⚠':''}
+                </span>
+                <span style={{ ...S.mono, fontSize:'10px', padding:'2px 7px', border:'1px solid #33333344', borderRadius:'2px', color:'#888' }}>
+                  STRAIN {strain}
+                </span>
+              </div>
+            )
+          })()}
+          <CTLChart log={log} days={90} raceResults={raceResults} />
           <div style={{ height:'16px' }}/>
           <LoadChart log={log} weeks={10} />
           <div style={{ height:'16px' }}/>

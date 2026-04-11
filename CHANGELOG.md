@@ -2,6 +2,13 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v5.5.0 (2026-04-12)
+- Training Load Engine: src/lib/trainingLoad.js (calculatePMC, calculateACWR, fitBanister, predictBanister)
+- CTLChart upgraded to full PMC: TSS bars, sweet-spot zones, race markers, split TSB (green/red)
+- ACWR · Monotony · Strain badges above PMC chart in Dashboard
+- 17 new tests (101 total) covering PMC, ACWR, Banister model
+- DEPENDS ON: recharts ComposedChart, raceResults from DataContext
+
 ## v5.4.1 (2026-04-12)
 - Stabilization framework: .claude/rules.md (10 binding rules), ARCHITECTURE.md (7 invariants), CHANGELOG.md
 - NO CODE CHANGED — documentation and tooling only
