@@ -112,12 +112,19 @@ Render at the bottom of the tab's return JSX. No new file needed for a calculato
 - Race results stored in 'sporeus-race-results' localStorage key
 - CoachDashboard: RACE BRIEF section (score, predicted time, top concerns + action items, Copy Brief button)
 
-## Supabase Backend (Phase 0 — in progress)
-- @supabase/supabase-js installed (v2)
+## Supabase Backend (Phase 0 — COMPLETE ✓)
+- @supabase/supabase-js v2 installed, project: pvicqwapvvfempjdgwbm.supabase.co
 - src/lib/supabase.js — createClient with VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY env vars
+  - flowType: 'implicit' — required for static hosting (no server for PKCE code exchange)
   - Returns null client if env vars missing → app falls back to localStorage mode gracefully
   - isSupabaseReady() helper for conditional feature gates
-- .env.local.template — copy to .env.local, fill credentials (git-ignored)
+- src/hooks/useAuth.js — SINGLE onAuthStateChange listener only (no getSession() call)
+  - INITIAL_SESSION event handles persisted sessions on mount
+  - SIGNED_IN event handles OAuth redirect (hash fragment with implicit flow)
+  - Calling getSession() simultaneously causes Web Locks API contention — do NOT add it back
+- src/contexts/DataContext.jsx — DataProvider wraps app, useSyncedTable factory for all tables
+- .env.local — VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY (git-ignored)
+- .mcp.json — Supabase MCP server config for this project
 - supabase/migrations/001_initial_schema.sql — full Postgres schema:
   - Tables: profiles, training_log, recovery, injuries, test_results, race_results,
             coach_athletes, coach_notes, strava_tokens, push_subscriptions
@@ -126,7 +133,7 @@ Render at the bottom of the tab's return JSX. No new file needed for a calculato
   - coach_athletes: invite_token column for ?coach=TOKEN invite links
   - race_results: distance_m (meters), goal_time_s + predicted_s + actual_s (seconds)
   - recovery: hrv column (rMSSD in ms) ready for Phase 2.3
-- ROADMAP: localStorage → Supabase migration bridge (Prompt 0.3), data hooks refactor (Prompt 0.4)
-  - Then Phase 1: coach-athlete linking; Phase 2: FIT/GPX, VDOT, HRV, Recharts
-  - Phase 3: Strava OAuth, periodization, PDF reports, push notifications
-- BLOCKED ON: VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY from supabase.com project settings
+- Google OAuth working end-to-end (confirmed in production)
+- NEXT: Phase 1 — coach-athlete invite linking (coach_invites table, invite link, athlete accept flow)
+  - Then Phase 2: FIT/GPX, VDOT, HRV, Recharts
+  - Then Phase 3: Strava OAuth, periodization, PDF reports, push notifications
