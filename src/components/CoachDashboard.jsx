@@ -1,7 +1,8 @@
-import { useRef, useState, useEffect, useContext } from 'react'
+import { useRef, useState, useEffect, useCallback, useContext } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
+import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { generateCoachId, generateUnlockCode, verifyUnlockCode, FREE_ATHLETE_LIMIT } from '../lib/formulas.js'
 import { analyzeLoadTrend, analyzeZoneBalance, predictInjuryRisk, predictFitness, analyzeRecoveryCorrelation, computeRaceReadiness, predictRacePerformance } from '../lib/intelligence.js'
 import { correlateTrainingToResults, findRecoveryPatterns, mineInjuryPatterns, findOptimalWeekStructure } from '../lib/patterns.js'
@@ -973,7 +974,7 @@ function GatingOverlay({ coachProfile, onUnlock, onCancel }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function CoachDashboard() {
+export default function CoachDashboard({ authUser }) {
   const [roster, setRoster] = useLocalStorage('sporeus-coach-athletes', [])
   const [coachOnboarded, setCoachOnboarded] = useLocalStorage('sporeus-coach-onboarded', false)
   const [coachProfile, setCoachProfile] = useLocalStorage('sporeus-coach-profile', null)
@@ -988,6 +989,58 @@ export default function CoachDashboard() {
   const [pendingAthlete, setPendingAthlete] = useState(null)
   const [showGating, setShowGating] = useState(false)
   const fileRef = useRef(null)
+
+  // ── Supabase live-athlete state (only when Supabase is configured) ──────────
+  const [sbAthletes, setSbAthletes]     = useState([])   // [{profile, status, athlete_id}]
+  const [sbInviteCode, setSbInviteCode] = useState(null) // generated code
+  const [sbInviteBusy, setSbInviteBusy] = useState(false)
+  const [sbInviteCopied, setSbInviteCopied] = useState(false)
+  const [sbSelectedId, setSbSelectedId] = useState(null) // selected athlete id
+  const [sbAthleteData, setSbAthleteData] = useState({}) // {[id]: {log, recovery}}
+  const [sbLoadingData, setSbLoadingData] = useState(false)
+
+  const sbCoachId = authUser?.id ?? null
+
+  const loadSbAthletes = useCallback(async () => {
+    if (!isSupabaseReady() || !sbCoachId) return
+    const { data } = await supabase
+      .from('coach_athletes')
+      .select('athlete_id, status, profiles!coach_athletes_athlete_id_fkey(id, display_name, email)')
+      .eq('coach_id', sbCoachId)
+      .in('status', ['active', 'pending'])
+      .order('status')
+    if (data) setSbAthletes(data)
+  }, [sbCoachId])
+
+  useEffect(() => { loadSbAthletes() }, [loadSbAthletes])
+
+  const generateSbInvite = useCallback(async () => {
+    if (!isSupabaseReady() || !sbCoachId || sbInviteBusy) return
+    setSbInviteBusy(true)
+    const code = crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase()
+    const { error } = await supabase.from('coach_invites').insert({ coach_id: sbCoachId, code })
+    if (!error) setSbInviteCode(code)
+    setSbInviteBusy(false)
+  }, [sbCoachId, sbInviteBusy])
+
+  const copySbInvite = useCallback(() => {
+    const url = `${window.location.origin}${window.location.pathname}?invite=${sbInviteCode}`
+    navigator.clipboard.writeText(url).catch(() => {})
+    setSbInviteCopied(true)
+    setTimeout(() => setSbInviteCopied(false), 2000)
+  }, [sbInviteCode])
+
+  const selectSbAthlete = useCallback(async (athleteId) => {
+    setSbSelectedId(prev => prev === athleteId ? null : athleteId)
+    if (sbAthleteData[athleteId] || !isSupabaseReady()) return
+    setSbLoadingData(true)
+    const [{ data: log }, { data: recovery }] = await Promise.all([
+      supabase.from('training_log').select('*').eq('user_id', athleteId).order('date', { ascending: false }).limit(365),
+      supabase.from('recovery').select('*').eq('user_id', athleteId).order('date', { ascending: false }).limit(90),
+    ])
+    setSbAthleteData(prev => ({ ...prev, [athleteId]: { log: log || [], recovery: recovery || [] } }))
+    setSbLoadingData(false)
+  }, [sbAthleteData])
 
   // Derived — all hooks above, safe to conditional-return now
   const myCoachId    = coachProfile?.coachId || ''
@@ -1152,6 +1205,121 @@ export default function CoachDashboard() {
           </button>
         </div>
       </div>
+
+      {/* ── Supabase Live Athletes ──────────────────────────────────────────── */}
+      {isSupabaseReady() && sbCoachId && (
+        <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'6px', padding:'16px', marginBottom:'16px' }}>
+          <div style={{ ...S.mono, fontSize:'11px', fontWeight:700, color:'#0064ff', letterSpacing:'0.1em', marginBottom:'12px' }}>
+            MY ATHLETES (LIVE) · {sbAthletes.filter(a => a.status==='active').length} CONNECTED
+          </div>
+
+          {/* Invite generator */}
+          <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', alignItems:'center', marginBottom:'12px' }}>
+            {!sbInviteCode ? (
+              <button
+                onClick={generateSbInvite}
+                disabled={sbInviteBusy}
+                style={{ ...S.mono, fontSize:'10px', fontWeight:700, padding:'7px 14px', background:'#0064ff', color:'#fff', border:'none', borderRadius:'4px', cursor:'pointer', opacity: sbInviteBusy ? 0.5 : 1 }}
+              >
+                {sbInviteBusy ? '…' : '+ GENERATE INVITE LINK'}
+              </button>
+            ) : (
+              <>
+                <input
+                  readOnly
+                  value={`${window.location.origin}${window.location.pathname}?invite=${sbInviteCode}`}
+                  onFocus={e => e.target.select()}
+                  style={{ ...S.mono, fontSize:'10px', color:'#0064ff', background:'#0064ff11', border:'1px solid #0064ff33', borderRadius:'4px', padding:'6px 10px', flex:'1 1 260px', outline:'none' }}
+                />
+                <button onClick={copySbInvite} style={{ ...S.mono, fontSize:'10px', fontWeight:700, padding:'7px 14px', background: sbInviteCopied ? '#5bc25b' : '#1a1a1a', color: sbInviteCopied ? '#fff' : '#ccc', border:'1px solid #333', borderRadius:'4px', cursor:'pointer', minWidth:'70px' }}>
+                  {sbInviteCopied ? '✓ COPIED' : 'COPY'}
+                </button>
+                <button onClick={generateSbInvite} disabled={sbInviteBusy} style={{ ...S.mono, fontSize:'9px', padding:'7px 10px', background:'transparent', color:'#555', border:'1px solid #333', borderRadius:'4px', cursor:'pointer' }}>
+                  NEW
+                </button>
+              </>
+            )}
+          </div>
+          <div style={{ ...S.mono, fontSize:'9px', color:'#444', marginBottom:sbAthletes.length ? '12px' : 0 }}>
+            Invite expires in 7 days · athlete opens link and accepts
+          </div>
+
+          {/* Athlete list */}
+          {sbAthletes.length > 0 && (
+            <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+              {sbAthletes.map(row => {
+                const profile = row.profiles
+                const isActive = row.status === 'active'
+                const isSelected = sbSelectedId === row.athlete_id
+                const data = sbAthleteData[row.athlete_id]
+                const metrics = data ? computeLoad(data.log) : null
+                const injRisk = data ? predictInjuryRisk(data.log, data.recovery, {}) : null
+                return (
+                  <div key={row.athlete_id}>
+                    <button
+                      onClick={() => isActive && selectSbAthlete(row.athlete_id)}
+                      style={{
+                        width:'100%', textAlign:'left', background: isSelected ? '#0064ff18' : '#0a0a0a',
+                        border:`1px solid ${isSelected ? '#0064ff' : '#222'}`, borderRadius:'5px',
+                        padding:'10px 14px', cursor: isActive ? 'pointer' : 'default',
+                        display:'flex', alignItems:'center', justifyContent:'space-between', gap:'8px',
+                      }}
+                    >
+                      <div style={{ display:'flex', alignItems:'center', gap:'10px', flex:1, minWidth:0 }}>
+                        <div style={{ width:8, height:8, borderRadius:'50%', background: isActive ? '#5bc25b' : '#555', flexShrink:0 }}/>
+                        <div style={{ ...S.mono, fontSize:'12px', color:'#e0e0e0', fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                          {profile?.display_name || 'Athlete'}
+                        </div>
+                        <div style={{ ...S.mono, fontSize:'9px', color:'#555', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                          {profile?.email || ''}
+                        </div>
+                      </div>
+                      <div style={{ display:'flex', gap:'12px', alignItems:'center', flexShrink:0 }}>
+                        {metrics && <div style={{ ...S.mono, fontSize:'10px', color:'#ff6600' }}>CTL {metrics.ctl}</div>}
+                        {injRisk && <div style={{ ...S.mono, fontSize:'10px', color: injRisk.level === 'HIGH' ? '#e03030' : injRisk.level === 'MODERATE' ? '#f5c542' : '#5bc25b' }}>{injRisk.level}</div>}
+                        <div style={{ ...S.mono, fontSize:'9px', color: isActive ? '#5bc25b' : '#555', letterSpacing:'0.08em' }}>
+                          {isActive ? 'ACTIVE' : 'PENDING'}
+                        </div>
+                        {isActive && <div style={{ ...S.mono, fontSize:'10px', color:'#444' }}>{isSelected ? '▲' : '▼'}</div>}
+                      </div>
+                    </button>
+
+                    {/* Expanded athlete detail */}
+                    {isSelected && data && (
+                      <div style={{ background:'#0a0a0a', border:'1px solid #0064ff33', borderTop:'none', borderRadius:'0 0 5px 5px', padding:'12px 14px' }}>
+                        {sbLoadingData ? (
+                          <div style={{ ...S.mono, fontSize:'10px', color:'#555' }}>Loading…</div>
+                        ) : (
+                          <div style={{ display:'flex', gap:'16px', flexWrap:'wrap' }}>
+                            {[
+                              { lbl:'SESSIONS', val: data.log.length },
+                              { lbl:'CTL', val: metrics?.ctl ?? '—', color:'#ff6600' },
+                              { lbl:'ATL', val: metrics?.atl ?? '—', color:'#0064ff' },
+                              { lbl:'TSB', val: metrics?.tsb ?? '—', color: (metrics?.tsb ?? 0) >= 0 ? '#5bc25b' : '#f5c542' },
+                              { lbl:'INJURY RISK', val: injRisk?.level ?? '—', color: injRisk?.level === 'HIGH' ? '#e03030' : injRisk?.level === 'MODERATE' ? '#f5c542' : '#5bc25b' },
+                            ].map(({ lbl, val, color }) => (
+                              <div key={lbl} style={{ textAlign:'center' }}>
+                                <div style={{ ...S.mono, fontSize:'16px', fontWeight:700, color: color || '#e0e0e0' }}>{val}</div>
+                                <div style={{ ...S.mono, fontSize:'8px', color:'#555', letterSpacing:'0.08em', marginTop:'2px' }}>{lbl}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {sbAthletes.length === 0 && (
+            <div style={{ ...S.mono, fontSize:'10px', color:'#444', fontStyle:'italic' }}>
+              No connected athletes yet — generate an invite link above.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Summary Stats */}
       <div style={{ ...S.row, marginBottom:'16px' }}>

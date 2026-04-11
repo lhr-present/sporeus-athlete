@@ -13,6 +13,7 @@
     "@fontsource/ibm-plex-mono": "^5.2.7",
     "@fontsource/ibm-plex-sans": "^5.2.8",
     "@supabase/supabase-js": "^2.103.0",
+    "fit-file-parser": "^2.3.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

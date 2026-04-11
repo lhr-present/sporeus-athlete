@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from 'react'
+import { useState, useEffect, useContext, useRef } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { SESSION_TYPES_BY_DISCIPLINE, ZONE_COLORS, ZONE_NAMES, SPORT_CONFIG } from '../lib/constants.js'
@@ -7,6 +7,7 @@ import { sanitizeLogEntry } from '../lib/validate.js'
 import Calendar from './Calendar.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { scoreSession } from '../lib/intelligence.js'
+import { parseFIT, parseGPX, detectFileType } from '../lib/fileImport.js'
 
 export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const { t } = useContext(LangCtx)
@@ -25,6 +26,10 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const [calView, setCalView] = useState(false)
   const [lang] = useLocalStorage('sporeus-lang', 'en')
   const [sessionScore, setSessionScore] = useState(null)
+  const [importPreview, setImportPreview] = useState(null) // parsed workout before confirm
+  const [importError, setImportError]     = useState(null)
+  const [importBusy, setImportBusy]       = useState(false)
+  const fileInputRef = useRef(null)
 
   useEffect(() => {
     if (prefill) {
@@ -64,6 +69,47 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     window.scrollTo({ top:0, behavior:'smooth' })
   }
   const cancelEdit = () => { setEditingId(null); setForm({ date:today, type:'Easy Run', duration:'', rpe:'5', notes:'' }); setZoneMins(['','','','','']); setShowZones(false) }
+
+  const handleFileImport = async (e) => {
+    const file = e.target.files[0]
+    e.target.value = ''
+    if (!file) return
+    setImportError(null); setImportBusy(true)
+    const kind = detectFileType(file)
+    if (kind === 'unsupported') { setImportError('Unsupported file type. Use .fit or .gpx'); setImportBusy(false); return }
+    try {
+      let parsed
+      const maxHR = profileLS?.maxHR ? parseInt(profileLS.maxHR) : null
+      if (kind === 'fit') {
+        const buf = await file.arrayBuffer()
+        parsed = await parseFIT(buf, maxHR)
+      } else {
+        const text = await file.text()
+        parsed = parseGPX(text, maxHR)
+      }
+      setImportPreview({ ...parsed, source: kind, type: defaultType, rpe: 5 })
+    } catch (err) {
+      setImportError(err.message)
+    }
+    setImportBusy(false)
+  }
+
+  const confirmImport = () => {
+    if (!importPreview) return
+    const tss = importPreview.tssEstimate || calcTSS(importPreview.durationMin, importPreview.rpe || 5)
+    const raw = {
+      id: Date.now(),
+      date: importPreview.date,
+      type: importPreview.type,
+      duration: importPreview.durationMin,
+      rpe: importPreview.rpe || 5,
+      tss,
+      notes: importPreview.notes || `Imported ${importPreview.source?.toUpperCase()} · ${importPreview.distanceM ? (importPreview.distanceM/1000).toFixed(2)+'km' : ''}`,
+      source: importPreview.source,
+    }
+    setLog([...log, sanitizeLogEntry(raw)])
+    setImportPreview(null)
+  }
 
   const exportCSV = () => {
     const header = 'Date,Type,Duration (min),RPE,TSS,Notes'
@@ -166,6 +212,15 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
             <button onClick={()=>setCalView(false)} style={{ ...S.mono, fontSize:'9px', fontWeight:600, padding:'3px 8px', borderRadius:'3px', cursor:'pointer', border:`1px solid ${!calView?'#ff6600':'var(--border)'}`, background:!calView?'#ff660022':'transparent', color:!calView?'#ff6600':'var(--muted)' }}>≡ LIST</button>
             <button onClick={()=>setCalView(true)}  style={{ ...S.mono, fontSize:'9px', fontWeight:600, padding:'3px 8px', borderRadius:'3px', cursor:'pointer', border:`1px solid ${calView?'#ff6600':'var(--border)'}`, background:calView?'#ff660022':'transparent', color:calView?'#ff6600':'var(--muted)' }}>⊞ CAL</button>
             {log.length>0 && !calView && <button style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px' }} onClick={exportCSV}>{t('exportCSVBtn')}</button>}
+            <button
+              style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px', opacity: importBusy ? 0.5 : 1 }}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={importBusy}
+            >
+              {importBusy ? '…' : '↑ IMPORT WORKOUT'}
+            </button>
+            <input ref={fileInputRef} type="file" accept=".fit,.gpx" style={{ display:'none' }} onChange={handleFileImport}/>
+            {importError && <span style={{ ...S.mono, fontSize:'9px', color:'#e03030' }}>{importError}</span>}
           </div>
         </div>
         {calView ? (
@@ -209,6 +264,55 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
           </div>
         )}
       </div>
+
+      {/* Import preview modal */}
+      {importPreview && (
+        <div style={{ position:'fixed', inset:0, zIndex:20000, background:'rgba(0,0,0,0.85)', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px', fontFamily:"'IBM Plex Mono',monospace" }}>
+          <div style={{ background:'#111', border:'1px solid #2a2a2a', borderRadius:'8px', padding:'32px', width:'100%', maxWidth:'420px' }}>
+            <div style={{ fontSize:'13px', fontWeight:700, color:'#ff6600', letterSpacing:'0.1em', marginBottom:'20px' }}>
+              ↑ IMPORT PREVIEW · {importPreview.source?.toUpperCase()}
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px', marginBottom:'20px' }}>
+              {[
+                { lbl:'DATE', val: importPreview.date },
+                { lbl:'DURATION', val: `${importPreview.durationMin} min` },
+                { lbl:'DISTANCE', val: importPreview.distanceM ? `${(importPreview.distanceM/1000).toFixed(2)} km` : '—' },
+                { lbl:'AVG HR', val: importPreview.avgHR ? `${importPreview.avgHR} bpm` : '—' },
+                { lbl:'TSS EST.', val: importPreview.tssEstimate, color:'#ff6600' },
+                { lbl:'ELEV GAIN', val: importPreview.elevationGainM != null ? `${importPreview.elevationGainM} m` : '—' },
+              ].map(({ lbl, val, color }) => (
+                <div key={lbl} style={{ background:'#0a0a0a', borderRadius:'4px', padding:'10px 12px' }}>
+                  <div style={{ fontSize:'8px', color:'#555', letterSpacing:'0.1em', marginBottom:'4px' }}>{lbl}</div>
+                  <div style={{ fontSize:'14px', fontWeight:700, color: color || '#e0e0e0' }}>{val}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ marginBottom:'16px' }}>
+              <label style={{ fontSize:'9px', color:'#666', letterSpacing:'0.1em', display:'block', marginBottom:'4px' }}>SESSION TYPE</label>
+              <select value={importPreview.type} onChange={e => setImportPreview(p => ({...p, type: e.target.value}))}
+                style={{ ...S.input, width:'100%', boxSizing:'border-box' }}>
+                {(SESSION_TYPES_BY_DISCIPLINE[SPORT_CONFIG[profileLS?.primarySport]?.sessionGroup] || SESSION_TYPES_BY_DISCIPLINE.run || []).map(t2 => (
+                  <option key={t2} value={t2}>{t2}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ marginBottom:'20px' }}>
+              <label style={{ fontSize:'9px', color:'#666', letterSpacing:'0.1em', display:'block', marginBottom:'4px' }}>RPE (1-10)</label>
+              <input type="number" min="1" max="10" value={importPreview.rpe}
+                onChange={e => setImportPreview(p => ({...p, rpe: parseInt(e.target.value)||5}))}
+                style={{ ...S.input, width:'60px' }}/>
+            </div>
+            <div style={{ display:'flex', gap:'10px' }}>
+              <button onClick={confirmImport} style={{ flex:1, padding:'11px', background:'#ff6600', color:'#fff', border:'none', borderRadius:'4px', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', fontWeight:700, letterSpacing:'0.1em', cursor:'pointer' }}>
+                ✓ SAVE SESSION
+              </button>
+              <button onClick={() => setImportPreview(null)} style={{ flex:1, padding:'11px', background:'#1a1a1a', color:'#888', border:'1px solid #333', borderRadius:'4px', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', cursor:'pointer' }}>
+                CANCEL
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

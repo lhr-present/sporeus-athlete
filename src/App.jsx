@@ -16,12 +16,14 @@ import SearchPalette from './components/SearchPalette.jsx'
 import AuthGate from './components/AuthGate.jsx'
 import RoleSelector from './components/RoleSelector.jsx'
 import MigrationModal from './components/MigrationModal.jsx'
+import { InviteModal } from './components/MyCoach.jsx'
 import { useAuth } from './hooks/useAuth.js'
 import { isSupabaseReady } from './lib/supabase.js'
 import { detectLocalData } from './lib/dataMigration.js'
 const CoachDashboard = lazy(() => import('./components/CoachDashboard.jsx'))
-const PlanGenerator   = lazy(() => import('./components/PlanGenerator.jsx'))
-const Glossary        = lazy(() => import('./components/Glossary.jsx'))
+const CoachOverview  = lazy(() => import('./components/CoachOverview.jsx'))
+const PlanGenerator  = lazy(() => import('./components/PlanGenerator.jsx'))
+const Glossary       = lazy(() => import('./components/Glossary.jsx'))
 
 const LazyFallback = () => (
   <div style={{ fontFamily:"'IBM Plex Mono',monospace", padding:'40px 20px', textAlign:'center', color:'#888', letterSpacing:'0.1em', opacity:0.7 }}>
@@ -41,6 +43,16 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
 
   const [tab, setTab] = useState('dashboard')
   const [coachMode] = useLocalStorage('sporeus-coach-mode', false)
+  const [inviteCode, setInviteCode] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get('invite')
+    if (code) {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('invite')
+      window.history.replaceState({}, '', url.toString())
+    }
+    return code || null
+  })
   const [profile, setProfile] = useLocalStorage('sporeus_profile', {})
   const [logPrefill, setLogPrefill] = useState(null)
   const [quotaWarn, setQuotaWarn] = useState(() => {
@@ -184,6 +196,15 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
         </div>
       )}
 
+      {/* Coach invite acceptance modal */}
+      {inviteCode && authUser && authProfile?.role === 'athlete' && (
+        <InviteModal
+          inviteCode={inviteCode}
+          userId={authUser.id}
+          onDone={() => setInviteCode(null)}
+        />
+      )}
+
       {coachToast && (
         <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:10002, background:'#0064ff', color:'#fff', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'10px 20px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           {coachToast}
@@ -277,7 +298,21 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
         </nav>
 
         <main style={S.content}>
-          {coachMode && <ErrorBoundary tabName="Coach Mode"><Suspense fallback={<LazyFallback/>}><CoachDashboard/></Suspense></ErrorBoundary>}
+          {coachMode && authProfile?.role === 'coach' && (
+            <>
+              <ErrorBoundary tabName="Coach Overview">
+                <Suspense fallback={<LazyFallback/>}>
+                  <CoachOverview
+                    coachId={authUser?.id}
+                    onSelectAthlete={id => {}}
+                  />
+                </Suspense>
+              </ErrorBoundary>
+              <div style={{ height: '24px' }}/>
+              <ErrorBoundary tabName="Coach Mode"><Suspense fallback={<LazyFallback/>}><CoachDashboard authUser={authUser}/></Suspense></ErrorBoundary>
+            </>
+          )}
+          {coachMode && authProfile?.role !== 'coach' && <ErrorBoundary tabName="Coach Mode"><Suspense fallback={<LazyFallback/>}><CoachDashboard authUser={authUser}/></Suspense></ErrorBoundary>}
           {!coachMode && tab === 'dashboard'    && <ErrorBoundary tabName="Dashboard"><Dashboard log={log} profile={profile}/></ErrorBoundary>}
           {tab === 'zones'        && <ErrorBoundary tabName="Zone Calc"><ZoneCalc/></ErrorBoundary>}
           {tab === 'tests'        && <ErrorBoundary tabName="Protocols"><TestProtocols/></ErrorBoundary>}
