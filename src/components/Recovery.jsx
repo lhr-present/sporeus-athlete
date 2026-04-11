@@ -17,7 +17,7 @@ export default function Recovery() {
   const isAdvanced = profileLS?.athleteLevel === 'advanced' || profileLS?.athleteLevel === 'elite'
   const today = new Date().toISOString().slice(0,10)
   const todayEntry = entries.find(e=>e.date===today)
-  const defVals = { sleep:3, soreness:3, energy:3, mood:3, stress:3, sleepHrs:'', bedtime:'', wake:'', lactate:'', restingHR:'' }
+  const defVals = { sleep:3, soreness:3, energy:3, mood:3, stress:3, sleepHrs:'', bedtime:'', wake:'', lactate:'', restingHR:'', hrv:'' }
   const [form, setForm] = useState(todayEntry ? { ...defVals, ...todayEntry } : { ...defVals })
 
   useEffect(() => {
@@ -110,7 +110,56 @@ export default function Recovery() {
           </div>
         )}
 
-        {/* Advanced/Elite only: blood lactate + resting HR */}
+        {/* HRV (rMSSD) — available to all */}
+        <div style={{ marginTop:'14px' }}>
+          <div style={{ ...S.mono, fontSize:'10px', color:'#888', letterSpacing:'0.06em', marginBottom:'8px' }}>HRV &amp; BIOMETRICS (OPTIONAL)</div>
+          <div style={S.row}>
+            <div style={{ flex:'1 1 130px' }}>
+              <label style={S.label}>HRV rMSSD (ms)</label>
+              <input style={S.input} type="number" min="10" max="200" placeholder="65"
+                value={form.hrv} onChange={e=>setForm({...form,hrv:e.target.value})}/>
+              <div style={{ ...S.mono, fontSize:'9px', color:'#555', marginTop:'2px' }}>
+                {lang==='tr' ? 'Sabah, yatakta ölç. Düşük = yorgunluk.' : 'Measure morning, in bed. Low = fatigue.'}
+              </div>
+            </div>
+            <div style={{ flex:'1 1 130px' }}>
+              <label style={S.label}>RESTING HR (bpm)</label>
+              <input style={S.input} type="number" min="30" max="100" placeholder="48"
+                value={form.restingHR} onChange={e=>setForm({...form,restingHR:e.target.value})}/>
+            </div>
+          </div>
+          {/* 7-day HRV sparkline */}
+          {entries.length >= 2 && (() => {
+            const last7 = [...entries].sort((a,b)=>a.date>b.date?1:-1).slice(-7)
+            const vals   = last7.map(e=>parseFloat(e.hrv)||null).filter(Boolean)
+            if (vals.length < 2) return null
+            const min = Math.min(...vals), max = Math.max(...vals), range = max - min || 1
+            const W = 200, H = 32, pad = 4
+            const pts = vals.map((v,i) => {
+              const x = pad + i * (W - 2*pad) / (vals.length - 1)
+              const y = H - pad - (v - min) / range * (H - 2*pad)
+              return `${x},${y}`
+            }).join(' ')
+            const avg7 = Math.round(vals.reduce((s,v)=>s+v,0)/vals.length)
+            return (
+              <div style={{ marginTop:'8px' }}>
+                <div style={{ ...S.mono, fontSize:'8px', color:'#555', marginBottom:'4px' }}>
+                  7-DAY HRV · AVG {avg7} ms
+                </div>
+                <svg width={W} height={H} style={{ display:'block', overflow:'visible' }}>
+                  <polyline points={pts} fill="none" stroke="#ff6600" strokeWidth="1.5" strokeLinejoin="round"/>
+                  {vals.map((v,i) => {
+                    const x = pad + i * (W - 2*pad) / (vals.length - 1)
+                    const y = H - pad - (v - min) / range * (H - 2*pad)
+                    return <circle key={i} cx={x} cy={y} r="2.5" fill="#ff6600"/>
+                  })}
+                </svg>
+              </div>
+            )
+          })()}
+        </div>
+
+        {/* Advanced/Elite only: blood lactate */}
         {isAdvanced && (
           <div style={{ marginTop:'14px' }}>
             <div style={{ ...S.mono, fontSize:'10px', color:'#4a90d9', letterSpacing:'0.06em', marginBottom:'8px' }}>
@@ -122,14 +171,9 @@ export default function Recovery() {
                 <input style={S.input} type="number" step="0.1" min="0" max="20" placeholder="1.8"
                   value={form.lactate} onChange={e=>setForm({...form,lactate:e.target.value})}/>
               </div>
-              <div style={{ flex:'1 1 130px' }}>
-                <label style={S.label}>RESTING HR (bpm)</label>
-                <input style={S.input} type="number" min="30" max="100" placeholder="48"
-                  value={form.restingHR} onChange={e=>setForm({...form,restingHR:e.target.value})}/>
-              </div>
             </div>
             <div style={{ ...S.mono, fontSize:'9px', color:'#aaa', marginTop:'4px' }}>
-              Resting lactate &lt;2.0 mmol/L = baseline · HR trend: lower = better recovery
+              Resting lactate &lt;2.0 mmol/L = baseline
             </div>
           </div>
         )}

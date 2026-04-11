@@ -2,6 +2,10 @@ import { useContext, useState, useEffect } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { TSSChart, WeeklyVolChart, ZoneDonut, ZoneBar, CTLTimeline, HelpTip } from './ui.jsx'
+import CTLChart  from './charts/CTLChart.jsx'
+import ZoneChart from './charts/ZoneChart.jsx'
+import LoadChart from './charts/LoadChart.jsx'
+import HRVChart  from './charts/HRVChart.jsx'
 import { monotonyStrain, calcPRs, navyBF, mifflinBMR, riegel, fmtSec, fmtPace, calcLoad } from '../lib/formulas.js'
 import { exportAllData } from '../lib/storage.js'
 import { useCountUp } from '../hooks/useCountUp.js'
@@ -489,6 +493,30 @@ function RaceReadinessCard({ log, recovery, injuries, profile, plan, planStatus,
               <div style={{ ...S.mono, fontSize:'8px', color:'#888', marginTop:'4px' }}>{perf.method}</div>
             </div>
           )}
+
+          {/* Training Paces from VDOT Daniels table */}
+          {perf.trainingPaces && (
+            <div style={{ marginTop:'10px', padding:'8px 10px', background:'var(--card-bg)', borderRadius:'4px' }}>
+              <div style={{ ...S.mono, fontSize:'9px', color:'#ff6600', letterSpacing:'0.06em', marginBottom:'6px' }}>
+                YOUR TRAINING PACES · VDOT {perf.trainingPaces.vdot}
+              </div>
+              <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
+                {[
+                  { lbl:'E  EASY',      val: perf.trainingPaces.easy,      color:'#5bc25b' },
+                  { lbl:'M  MARATHON',  val: perf.trainingPaces.marathon,  color:'#0064ff' },
+                  { lbl:'T  THRESHOLD', val: perf.trainingPaces.threshold, color:'#ff6600' },
+                  { lbl:'I  INTERVAL',  val: perf.trainingPaces.interval,  color:'#f5c542' },
+                  { lbl:'R  REPS',      val: perf.trainingPaces.rep,       color:'#e03030' },
+                ].map(({ lbl, val, color }) => (
+                  <div key={lbl} style={{ flex:'1 1 70px', textAlign:'center' }}>
+                    <div style={{ ...S.mono, fontSize:'10px', fontWeight:700, color }}>{val}</div>
+                    <div style={{ ...S.mono, fontSize:'7px', color:'#555', letterSpacing:'0.08em', marginTop:'2px' }}>{lbl}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ ...S.mono, fontSize:'8px', color:'#555', marginTop:'4px' }}>min:sec per km · Daniels 1998</div>
+            </div>
+          )}
         </div>
       )}
 
@@ -783,6 +811,12 @@ export default function Dashboard({ log, profile }) {
 
       <RaceReadinessCard log={log} recovery={recovery} injuries={injuries} profile={profile} plan={plan} planStatus={planStatus} lang={lang}/>
       <ProactiveInjuryAlert log={log} injuries={injuries} lang={lang}/>
+      {recovery.some(e => parseFloat(e.hrv) > 0) && (
+        <div className="sp-card" style={{ ...S.card, animationDelay:'20ms' }}>
+          <div style={S.cardTitle}>HRV TREND</div>
+          <HRVChart recovery={recovery} days={30} />
+        </div>
+      )}
       <InsightsCard log={log} recovery={recovery} profile={profile} lang={lang}/>
       <YourPatternsCard log={log} recovery={recovery} injuries={injuries} profile={profile} lang={lang}/>
       <WeekStoryCard log={log} recovery={recovery} profile={profile} lang={lang}/>
@@ -902,15 +936,12 @@ export default function Dashboard({ log, profile }) {
 
       {dl.timeline && lc.showCTL && log.length>3 && (
         <div className="sp-card" style={{ ...S.card, animationDelay:'195ms' }}>
-          <div style={S.cardTitle}>FITNESS TIMELINE — CTL (ALL TIME)</div>
-          <CTLTimeline log={log}/>
-          <div style={{ display:'flex', gap:'12px', marginTop:'6px', flexWrap:'wrap' }}>
-            {[{l:'Untrained',c:'#888'},{l:'Moderate',c:'#4a90d9'},{l:'Trained',c:'#5bc25b'},{l:'Elite',c:'#f5c542'}].map(({l,c})=>(
-              <div key={l} style={{ display:'flex', alignItems:'center', gap:'4px', ...S.mono, fontSize:'9px', color:c }}>
-                <div style={{ width:'10px',height:'4px',background:c+'44',border:`1px solid ${c}`}}/>{l}
-              </div>
-            ))}
-          </div>
+          <div style={S.cardTitle}>FITNESS TIMELINE — CTL / ATL / TSB (90d)</div>
+          <CTLChart log={log} days={90} />
+          <div style={{ height:'16px' }}/>
+          <LoadChart log={log} weeks={10} />
+          <div style={{ height:'16px' }}/>
+          <ZoneChart log={log} weeks={8} />
         </div>
       )}
 

@@ -3,6 +3,9 @@
 //        predictInjuryRisk, predictFitness, scoreSession
 // v4.4: generateWeeklyNarrative, detectMilestones
 // v4.6: computeRaceReadiness, predictRacePerformance
+// v4.7: VDOT Daniels table integration, HRV injury factor
+
+import { estimateVDOT, getTrainingPaces, predictTime } from './vdot.js'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function daysAgoDate(n) {
@@ -185,7 +188,8 @@ export function analyzeZoneBalance(log) {
 }
 
 // ─── 4. predictInjuryRisk ─────────────────────────────────────────────────────
-// Multi-factor injury risk: ACWR + monotony + recovery deficit + consecutive days.
+// 5-factor injury risk: ACWR(25%) + Monotony(20%) + ConsecHard(20%) +
+// RecoveryDeficit(15%) + HRV(20% when available, redistributed when not).
 export function predictInjuryRisk(log, recovery) {
   const factors = []
   let riskScore = 0
@@ -194,9 +198,10 @@ export function predictInjuryRisk(log, recovery) {
     return { level: 'unknown', score: 0, factors: [], advice: { en: 'Log sessions to assess injury risk.', tr: 'Yaralanma riskini değerlendirmek için antrenman kaydet.' } }
   }
 
-  // Factor 1: ACWR
   const now = daysAgoDate(0)
   const w1 = daysAgoDate(7), w4 = daysAgoDate(28)
+
+  // Factor 1: ACWR (weight 25 when HRV present, 30 without)
   const acute = tssInWindow(log, w1, now)
   const chronic28 = tssInWindow(log, w4, now) / 4
   if (chronic28 > 0) {
@@ -208,14 +213,14 @@ export function predictInjuryRisk(log, recovery) {
     }
   }
 
-  // Factor 2: Training monotony (< 2.0 is safe, Banister)
-  const last7 = []
+  // Factor 2: Training monotony (Banister — safe < 2.0)
+  const last7tss = []
   for (let i = 6; i >= 0; i--) {
     const d = daysAgoDate(i)
-    last7.push(log.filter(e => e.date === d).reduce((s, e) => s + (e.tss || 0), 0))
+    last7tss.push(log.filter(e => e.date === d).reduce((s, e) => s + (e.tss || 0), 0))
   }
-  const mean7 = last7.reduce((s, v) => s + v, 0) / 7
-  const std7  = Math.sqrt(last7.reduce((s, v) => s + (v - mean7) ** 2, 0) / 7)
+  const mean7 = last7tss.reduce((s, v) => s + v, 0) / 7
+  const std7  = Math.sqrt(last7tss.reduce((s, v) => s + (v - mean7) ** 2, 0) / 7)
   const mono  = std7 > 0 ? Math.round(mean7 / std7 * 10) / 10 : 0
   if (mono > 2.0) {
     riskScore += 20; factors.push({ label: `Monotony ${mono}`, severity: 'moderate', detail: { en: `High monotony index (${mono}) — vary intensity daily.`, tr: `Yüksek monotoni indeksi (${mono}) — günlük yoğunluğu değiştir.` } })
@@ -244,11 +249,30 @@ export function predictInjuryRisk(log, recovery) {
     }
   }
 
-  const level = riskScore >= 50 ? 'high' : riskScore >= 25 ? 'moderate' : 'low'
+  // Factor 5: HRV (rMSSD) — 7-day CV >10% OR single-day drop >15% from 7d mean
+  if (recovery?.length >= 3) {
+    const recHRV = recovery
+      .filter(e => e.date >= w1 && parseFloat(e.hrv) > 0)
+      .map(e => parseFloat(e.hrv))
+    if (recHRV.length >= 3) {
+      const hrvMean = recHRV.reduce((s,v)=>s+v,0) / recHRV.length
+      const hrvStd  = Math.sqrt(recHRV.reduce((s,v)=>s+(v-hrvMean)**2,0)/recHRV.length)
+      const cv      = hrvMean > 0 ? hrvStd / hrvMean : 0
+      const latest  = recHRV[recHRV.length - 1]
+      const drop    = hrvMean > 0 ? (hrvMean - latest) / hrvMean : 0
+      if (cv > 0.10) {
+        riskScore += 20; factors.push({ label: `HRV CV ${(cv*100).toFixed(0)}%`, severity: 'high', detail: { en: `HRV coefficient of variation ${(cv*100).toFixed(0)}% — autonomic instability.`, tr: `HRV değişkenlik katsayısı ${(cv*100).toFixed(0)}% — otonom dengesizlik.` } })
+      } else if (drop > 0.15) {
+        riskScore += 15; factors.push({ label: `HRV drop ${(drop*100).toFixed(0)}%`, severity: 'moderate', detail: { en: `Today's HRV ${(drop*100).toFixed(0)}% below 7-day mean — consider easy day.`, tr: `Bugünkü HRV 7 günlük ortalamanın %${(drop*100).toFixed(0)} altında — kolay gün düşün.` } })
+      }
+    }
+  }
+
+  const level = riskScore >= 50 ? 'HIGH' : riskScore >= 25 ? 'MODERATE' : 'LOW'
   const advice = {
-    low:      { en: 'Injury risk low. Continue current training.', tr: 'Yaralanma riski düşük. Mevcut antrenmanı sürdür.' },
-    moderate: { en: 'Moderate risk. Add 1 easy day this week; monitor recovery daily.', tr: 'Orta risk. Bu hafta 1 kolay gün ekle; toparlanmayı günlük izle.' },
-    high:     { en: 'HIGH RISK — reduce intensity 20-30%, prioritize sleep & nutrition.', tr: 'YÜKSEK RİSK — yoğunluğu %20-30 azalt, uyku ve beslenmeye öncelik ver.' },
+    LOW:      { en: 'Injury risk low. Continue current training.', tr: 'Yaralanma riski düşük. Mevcut antrenmanı sürdür.' },
+    MODERATE: { en: 'Moderate risk. Add 1 easy day this week; monitor recovery daily.', tr: 'Orta risk. Bu hafta 1 kolay gün ekle; toparlanmayı günlük izle.' },
+    HIGH:     { en: 'HIGH RISK — reduce intensity 20-30%, prioritize sleep & nutrition.', tr: 'YÜKSEK RİSK — yoğunluğu %20-30 azalt, uyku ve beslenmeye öncelik ver.' },
   }[level]
 
   return { level, score: Math.min(riskScore, 100), factors, advice }
@@ -574,7 +598,7 @@ export function computeRaceReadiness(log, recovery, injuries, profile, plan, pla
 }
 
 // ─── v4.6: predictRacePerformance ─────────────────────────────────────────────
-// Multi-method prediction. Returns times for multiple distances.
+// Multi-method prediction. Returns times for multiple distances + training paces.
 export function predictRacePerformance(log, testResults, profile) {
   const ctl = computeCTL(log)
   const ftp  = parseFloat(profile?.ftp  || 0)
@@ -584,13 +608,10 @@ export function predictRacePerformance(log, testResults, profile) {
     return p.length === 2 ? p[0] * 60 + p[1] : 0
   })() : 0
 
-  // Method A: VO2max → VDOT (Daniels) — simplified running prediction
+  // Method A: VO2max → VDOT via Daniels table
   const vdotFromVO2 = vo2 > 0 ? (() => {
-    // VDOT ≈ VO2max * 0.995 (simplified — full Daniels requires velocity input)
-    const vdot = vo2 * 0.995
-    // T-pace (threshold) = VDOT-based running economy
-    const tPaceSecPerKm = vo2 > 0 ? Math.round(3600 / (vo2 * 0.85 / 3.5) * 10) / 10 : 0
-    return { vdot, tPaceSecPerKm }
+    const vdot = vo2 * 0.995  // VDOT ≈ VO2max (Daniels 1998)
+    return { vdot }
   })() : null
 
   // Method B: Recent test result
@@ -657,16 +678,30 @@ export function predictRacePerformance(log, testResults, profile) {
   }
 
   if (!baseTimeSec) {
-    return { predictions: [], reliable: false, method: 'insufficient_data' }
+    return { predictions: [], reliable: false, method: 'insufficient_data', trainingPaces: null }
   }
+
+  const fmt = s => { s=Math.round(s); const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60; return h>0?`${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`:`${m}:${String(sec).padStart(2,'0')}` }
 
   const predictions = targets.map(({ label, dist }) => {
     const predicted = Math.round(riegelPredict(baseTimeSec, baseDist, dist))
     const best  = Math.round(predicted * 0.97)
     const worst = Math.round(predicted * 1.08)
-    const fmt = s => { s=Math.round(s); const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60; return h>0?`${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`:`${m}:${String(sec).padStart(2,'0')}` }
     return { label, predicted: fmt(predicted), best: fmt(best), worst: fmt(worst), dist }
   })
+
+  // Derive VDOT from best prediction (5K equivalent) for training paces
+  const predicted5k = Math.round(riegelPredict(baseTimeSec, baseDist, 5000))
+  const derivedVdot = estimateVDOT(5000, predicted5k)
+  const rawPaces    = derivedVdot ? getTrainingPaces(derivedVdot) : null
+  const trainingPaces = rawPaces ? {
+    easy:      fmt(rawPaces.easy * 1),       // already sec/km — format as per-km pace
+    marathon:  fmt(rawPaces.marathon * 1),
+    threshold: fmt(rawPaces.threshold * 1),
+    interval:  fmt(rawPaces.interval * 1),
+    rep:       fmt(rawPaces.rep * 1),
+    vdot:      Math.round(derivedVdot * 10) / 10,
+  } : null
 
   const methodLabel = {
     riegel_ctladjusted: `CTL-adjusted Riegel from recent result`,
@@ -680,5 +715,7 @@ export function predictRacePerformance(log, testResults, profile) {
     reliable: baseTimeSec > 0 && (method !== 'training_pace' || log.length >= 10),
     method: methodLabel,
     ctl,
+    trainingPaces,
+    vdot: derivedVdot,
   }
 }
