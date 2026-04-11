@@ -35,11 +35,12 @@ export async function exchangeStravaCode(code) {
     body: { action: 'connect', code, redirectUri: getRedirectUri() },
   })
   if (error) {
-    // Try to extract the actual error body from the edge function response
     try {
-      const body = await error.context?.json?.()
-      if (body?.error) return { data: null, error: { message: body.error } }
-    } catch {}
+      const text = await error.context?.text?.()
+      return { data: null, error: { message: text || error.message } }
+    } catch {
+      return { data: null, error: { message: error.message } }
+    }
   }
   return { data, error }
 }
