@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import { exchangeStravaCode } from './lib/strava.js'
+import { checkRaceCountdowns } from './lib/pushNotify.js'
 import { LangCtx, LABELS, TABS } from './contexts/LangCtx.jsx'
 import { useLocalStorage, STORAGE_WARN_KEY } from './hooks/useLocalStorage.js'
 import { DataProvider, useData } from './contexts/DataContext.jsx'
@@ -149,6 +150,13 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
   }, [dark])
+
+  // Race countdown check on load (only if permission already granted)
+  useEffect(() => {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      checkRaceCountdowns()
+    }
+  }, [])
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return

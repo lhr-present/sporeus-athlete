@@ -9,6 +9,7 @@ import { exportAllData, importAllData } from '../lib/storage.js'
 import { Sparkline } from './ui.jsx'
 import { isSupabaseReady } from '../lib/supabase.js'
 import { getStravaConnection, initiateStravaOAuth, triggerStravaSync, disconnectStrava } from '../lib/strava.js'
+import { getPushState, subscribePush, unsubscribePush, checkRaceCountdowns } from '../lib/pushNotify.js'
 
 function SportSelector({ local, setLocal }) {
   const { t } = useContext(LangCtx)
@@ -595,26 +596,52 @@ function AthleteCard({ profile, log }) {
   )
 }
 
-function NotifReminders() {
-  const [reminders, setReminders] = useLocalStorage('sporeus-reminders', { train:false, trainTime:'18:00', recovery:false })
+function NotifReminders({ authUser }) {
+  const [reminders, setReminders] = useLocalStorage('sporeus-reminders', { train:false, trainTime:'18:00', recovery:false, racecountdown:false })
+  const [pushState, setPushState] = useState('loading') // 'loading'|'unsupported'|'denied'|'default'|'granted'|'subscribed'
+  const [pushBusy, setPushBusy]   = useState(false)
+  const [pushMsg,  setPushMsg]    = useState('')
   const supported = typeof window !== 'undefined' && 'Notification' in window
 
-  const toggleTrain = async () => {
-    if (!reminders.train) {
-      if (supported) await Notification.requestPermission()
+  useEffect(() => {
+    getPushState().then(s => setPushState(s))
+  }, [])
+
+  const handlePushToggle = async () => {
+    setPushBusy(true)
+    try {
+      if (pushState === 'subscribed') {
+        await unsubscribePush(authUser?.id)
+        setPushState('granted')
+        setPushMsg('Push notifications disabled')
+      } else {
+        await subscribePush(authUser?.id)
+        setPushState('subscribed')
+        setPushMsg('Push notifications enabled ✓')
+      }
+    } catch (e) {
+      setPushMsg(`⚠ ${e.message}`)
     }
+    setPushBusy(false)
+    setTimeout(() => setPushMsg(''), 4000)
+  }
+
+  const toggleTrain = async () => {
+    if (!reminders.train && supported) await Notification.requestPermission()
     setReminders(r=>({...r, train:!r.train}))
   }
   const toggleRecovery = async () => {
-    if (!reminders.recovery) {
-      if (supported) await Notification.requestPermission()
-    }
+    if (!reminders.recovery && supported) await Notification.requestPermission()
     setReminders(r=>({...r, recovery:!r.recovery}))
+  }
+  const toggleRaceCountdown = async () => {
+    if (!reminders.racecountdown && supported) await Notification.requestPermission()
+    setReminders(r=>({...r, racecountdown:!r.racecountdown}))
   }
 
   useEffect(() => {
     if (!supported) return
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       if (Notification.permission !== 'granted') return
       const now = new Date()
       const hhmm = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`
@@ -630,6 +657,9 @@ function NotifReminders() {
           }
         } catch {}
       }
+      if (reminders.racecountdown && hhmm === '09:00') {
+        checkRaceCountdowns()
+      }
     }, 60000)
     return () => clearInterval(interval)
   }, [reminders, supported])
@@ -638,11 +668,38 @@ function NotifReminders() {
     <div style={{ ...S.mono, fontSize:'11px', color:'#aaa' }}>Notifications not available in this browser.</div>
   )
 
+  const pushActive  = pushState === 'subscribed'
+  const pushLabel   = { loading:'...', unsupported:'Not supported', denied:'Permission denied', default:'Enable', granted:'Subscribe', subscribed:'Active' }[pushState] || '—'
+
   return (
     <div>
+      {/* Push subscription (requires VAPID setup) */}
+      {pushState !== 'unsupported' && (
+        <div style={{ marginBottom:'16px', padding:'10px 12px', background:'var(--surface)', borderRadius:'4px', borderLeft:`3px solid ${pushActive?'#5bc25b':'#444'}` }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'4px' }}>
+            <button
+              onClick={handlePushToggle}
+              disabled={pushBusy || pushState === 'denied' || pushState === 'loading'}
+              style={{ ...S.mono, fontSize:'11px', fontWeight:600, padding:'4px 12px', borderRadius:'3px', border:`1px solid ${pushActive?'#5bc25b':'#444'}`, background:pushActive?'#5bc25b':'transparent', color:pushActive?'#fff':'#888', cursor:'pointer', opacity: (pushState === 'denied' || pushState === 'loading') ? 0.5 : 1 }}>
+              {pushBusy ? '...' : pushActive ? 'ON' : 'OFF'}
+            </button>
+            <span style={{ ...S.mono, fontSize:'12px', color:'var(--text)' }}>
+              Push notifications <span style={{ ...S.mono, fontSize:'9px', color: pushActive ? '#5bc25b' : '#888', marginLeft:'4px' }}>({pushLabel})</span>
+            </span>
+          </div>
+          <div style={{ ...S.mono, fontSize:'10px', color:'#888', lineHeight:1.6 }}>
+            {pushState === 'denied'
+              ? 'Notifications blocked. Enable in browser settings.'
+              : 'Receive race countdowns, injury alerts, and coach messages even when the app is closed.'}
+          </div>
+          {pushMsg && <div style={{ ...S.mono, fontSize:'10px', marginTop:'6px', color: pushMsg.startsWith('⚠') ? '#e03030' : '#5bc25b' }}>{pushMsg}</div>}
+        </div>
+      )}
+
       {[
         { label:'Training reminder', key:'train', toggle:toggleTrain, active:reminders.train },
         { label:'Recovery check-in at 08:00', key:'recovery', toggle:toggleRecovery, active:reminders.recovery },
+        { label:'Race countdown (7d + 1d before race)', key:'racecountdown', toggle:toggleRaceCountdown, active:reminders.racecountdown },
       ].map(({label,key,toggle,active})=>(
         <div key={key} style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'12px' }}>
           <button onClick={toggle} style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', fontWeight:600, padding:'4px 12px', borderRadius:'3px', border:`1px solid ${active?'#ff6600':'#e0e0e0'}`, background:active?'#ff6600':'transparent', color:active?'#fff':'#888', cursor:'pointer' }}>
@@ -936,8 +993,8 @@ export default function Profile({ profile, setProfile, log, authUser }) {
       )}
 
       <div className="sp-card" style={{ ...S.card, animationDelay:'65ms' }}>
-        <div style={S.cardTitle}>REMINDERS / HATIRLATICLAR</div>
-        <NotifReminders/>
+        <div style={S.cardTitle}>REMINDERS &amp; NOTIFICATIONS</div>
+        <NotifReminders authUser={authUser}/>
       </div>
 
       <div className="sp-card" style={{ ...S.card, animationDelay:'75ms' }}>

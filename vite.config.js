@@ -8,6 +8,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      strategies: 'injectManifest',   // Phase 3.4: custom SW for push notification handling
+      srcDir: 'src',
+      filename: 'sw.js',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
         name: 'Sporeus Athlete Console',
@@ -23,30 +26,8 @@ export default defineConfig({
           { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
         ]
       },
-      workbox: {
-        cacheId: 'sporeus-v5',       // bumped — invalidates all caches from v4 and earlier
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        skipWaiting: true,           // new SW activates immediately on deploy
-        clientsClaim: true,          // takes control of all open tabs at once
-        cleanupOutdatedCaches: true, // removes stale caches from old versions
-        // No Google Fonts runtime caching — fonts are now self-hosted
-        navigateFallback: '/sporeus-athlete/index.html',
-        navigateFallbackDenylist: [/^\/auth/, /\?code=/, /\?error=/, /#access_token=/],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
-            handler: 'NetworkOnly',
-          },
-          {
-            urlPattern: /^https:\/\/sporeus\.com\/wp-json\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'sporeus-api-cache',
-              expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 48 }, // 48h
-              networkTimeoutSeconds: 5,
-            }
-          }
-        ]
       }
     })
   ]

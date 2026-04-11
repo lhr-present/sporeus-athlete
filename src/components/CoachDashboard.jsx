@@ -5,6 +5,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { generateCoachId, generateUnlockCode, verifyUnlockCode, FREE_ATHLETE_LIMIT } from '../lib/formulas.js'
 import { analyzeLoadTrend, analyzeZoneBalance, predictInjuryRisk, predictFitness, analyzeRecoveryCorrelation, computeRaceReadiness, predictRacePerformance } from '../lib/intelligence.js'
+import { openAthleteReport } from '../lib/reportGenerator.js'
 import { correlateTrainingToResults, findRecoveryPatterns, mineInjuryPatterns, findOptimalWeekStructure } from '../lib/patterns.js'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -1290,20 +1291,33 @@ export default function CoachDashboard({ authUser }) {
                         {sbLoadingData ? (
                           <div style={{ ...S.mono, fontSize:'10px', color:'#555' }}>Loading…</div>
                         ) : (
-                          <div style={{ display:'flex', gap:'16px', flexWrap:'wrap' }}>
-                            {[
-                              { lbl:'SESSIONS', val: data.log.length },
-                              { lbl:'CTL', val: metrics?.ctl ?? '—', color:'#ff6600' },
-                              { lbl:'ATL', val: metrics?.atl ?? '—', color:'#0064ff' },
-                              { lbl:'TSB', val: metrics?.tsb ?? '—', color: (metrics?.tsb ?? 0) >= 0 ? '#5bc25b' : '#f5c542' },
-                              { lbl:'INJURY RISK', val: injRisk?.level ?? '—', color: injRisk?.level === 'HIGH' ? '#e03030' : injRisk?.level === 'MODERATE' ? '#f5c542' : '#5bc25b' },
-                            ].map(({ lbl, val, color }) => (
-                              <div key={lbl} style={{ textAlign:'center' }}>
-                                <div style={{ ...S.mono, fontSize:'16px', fontWeight:700, color: color || '#e0e0e0' }}>{val}</div>
-                                <div style={{ ...S.mono, fontSize:'8px', color:'#555', letterSpacing:'0.08em', marginTop:'2px' }}>{lbl}</div>
-                              </div>
-                            ))}
-                          </div>
+                          <>
+                            <div style={{ display:'flex', gap:'16px', flexWrap:'wrap', marginBottom:'12px' }}>
+                              {[
+                                { lbl:'SESSIONS', val: data.log.length },
+                                { lbl:'CTL', val: metrics?.ctl ?? '—', color:'#ff6600' },
+                                { lbl:'ATL', val: metrics?.atl ?? '—', color:'#0064ff' },
+                                { lbl:'TSB', val: metrics?.tsb ?? '—', color: (metrics?.tsb ?? 0) >= 0 ? '#5bc25b' : '#f5c542' },
+                                { lbl:'INJURY RISK', val: injRisk?.level ?? '—', color: injRisk?.level === 'HIGH' ? '#e03030' : injRisk?.level === 'MODERATE' ? '#f5c542' : '#5bc25b' },
+                              ].map(({ lbl, val, color }) => (
+                                <div key={lbl} style={{ textAlign:'center' }}>
+                                  <div style={{ ...S.mono, fontSize:'16px', fontWeight:700, color: color || '#e0e0e0' }}>{val}</div>
+                                  <div style={{ ...S.mono, fontSize:'8px', color:'#555', letterSpacing:'0.08em', marginTop:'2px' }}>{lbl}</div>
+                                </div>
+                              ))}
+                            </div>
+                            <button
+                              onClick={() => openAthleteReport({
+                                name: profile?.display_name || 'Athlete',
+                                log: data.log,
+                                recovery: data.recovery,
+                                coachNotes: [],
+                                coachName: coachProfile?.name || '',
+                              })}
+                              style={{ ...S.mono, fontSize:'10px', fontWeight:600, padding:'5px 12px', background:'#ff6600', border:'none', color:'#fff', borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em' }}>
+                              ↓ PDF REPORT
+                            </button>
+                          </>
                         )}
                       </div>
                     )}
