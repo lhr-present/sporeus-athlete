@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="80" fill="#0a0a0a"/>
+
+  <!-- Grid lines (Bloomberg terminal feel) -->
+  <line x1="0" y1="170" x2="512" y2="170" stroke="#ffffff08" stroke-width="1"/>
+  <line x1="0" y1="340" x2="512" y2="340" stroke="#ffffff08" stroke-width="1"/>
+  <line x1="170" y1="0" x2="170" y2="512" stroke="#ffffff08" stroke-width="1"/>
+  <line x1="340" y1="0" x2="340" y2="512" stroke="#ffffff08" stroke-width="1"/>
+
+  <!-- CTL/ATL pulse waveform (training load curve) -->
+  <polyline
+    points="40,340 90,300 130,260 170,220 210,200 256,185 300,190 340,210 380,240 420,260 472,270"
+    fill="none" stroke="#0064ff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/>
+  <polyline
+    points="40,360 90,330 130,290 170,240 210,210 256,195 300,200 340,230 380,265 420,285 472,295"
+    fill="none" stroke="#ff6600" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+
+  <!-- SP monogram -->
+  <text x="256" y="148" font-family="'Arial Black', Arial, sans-serif" font-size="96" font-weight="900"
+    fill="#ff6600" text-anchor="middle" letter-spacing="-4">SP</text>
+
+  <!-- Underline accent -->
+  <rect x="156" y="158" width="200" height="4" rx="2" fill="#0064ff"/>
+
+  <!-- Bottom label -->
+  <text x="256" y="440" font-family="'Courier New', monospace" font-size="36" font-weight="700"
+    fill="#ffffff" text-anchor="middle" letter-spacing="8" opacity="0.9">SPOREUS</text>
+
+  <!-- Small TSS label -->
+  <text x="256" y="478" font-family="'Courier New', monospace" font-size="20"
+    fill="#555555" text-anchor="middle" letter-spacing="4">ATHLETE CONSOLE</text>
+
+  <!-- Corner dots (terminal aesthetic) -->
+  <circle cx="40" cy="40" r="5" fill="#ff6600" opacity="0.5"/>
+  <circle cx="472" cy="40" r="5" fill="#0064ff" opacity="0.5"/>
+  <circle cx="40" cy="472" r="5" fill="#0064ff" opacity="0.5"/>
+  <circle cx="472" cy="472" r="5" fill="#ff6600" opacity="0.5"/>
+</svg>
