@@ -42,6 +42,7 @@ const Splash = () => (
 // ─── AppInner — inside DataProvider, can call useData() ──────────────────────
 function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut }) {
   const { log, setLog, recovery } = useData()
+  const isGuest = isSupabaseReady() && !authUser && localStorage.getItem('sporeus-guest-mode') === '1'
 
   const [tab, setTab] = useState('dashboard')
   const [coachMode] = useLocalStorage('sporeus-coach-mode', false)
@@ -244,6 +245,21 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
         />
       )}
 
+      {/* Guest mode banner */}
+      {isGuest && (
+        <div style={{ position:'fixed', bottom:0, left:0, right:0, zIndex:10001, background:'#111', borderTop:'1px solid #333', color:'#888', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'8px 20px', display:'flex', justifyContent:'space-between', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
+          <span>
+            <span style={{ color:'#ff6600', fontWeight:600 }}>GUEST MODE</span>
+            {' · '}{lang === 'en' ? 'Data saves to this device only.' : 'Veri yalnızca bu cihaza kaydedilir.'}
+          </span>
+          <button
+            onClick={() => { localStorage.removeItem('sporeus-guest-mode'); window.location.reload() }}
+            style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', fontWeight:600, padding:'5px 14px', background:'#ff6600', border:'none', color:'#fff', borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em', whiteSpace:'nowrap' }}>
+            {lang === 'en' ? 'Sign in & sync →' : 'Giriş yap & senkronize et →'}
+          </button>
+        </div>
+      )}
+
       {stravaToast && (
         <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:10002, background: stravaToast.startsWith('⚠') ? '#e03030' : '#fc4c02', color:'#fff', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'10px 20px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           {stravaToast}
@@ -388,12 +404,17 @@ export default function App() {
 
   // Auth gates (only when Supabase is configured)
   if (isSupabaseReady()) {
-    if (loading) return <Splash />
-    if (!user)   return <AuthGate lang={lang} />
-    if (authProfile && !authProfile.role) return <RoleSelector userId={user.id} onComplete={refreshProfile} lang={lang} />
-    if (!authProfile) return <RoleSelector userId={user.id} onComplete={refreshProfile} lang={lang} />
-    const localData = detectLocalData()
-    if (localData) return <MigrationModal userId={user.id} localData={localData} lang={lang} onComplete={refreshProfile} />
+    const isGuest = localStorage.getItem('sporeus-guest-mode') === '1'
+    if (!isGuest) {
+      if (loading) return <Splash />
+      if (!user)   return <AuthGate lang={lang} />
+      if (authProfile && !authProfile.role) return <RoleSelector userId={user.id} onComplete={refreshProfile} lang={lang} />
+      if (!authProfile) return <RoleSelector userId={user.id} onComplete={refreshProfile} lang={lang} />
+      const localData = detectLocalData()
+      if (localData) return <MigrationModal userId={user.id} localData={localData} lang={lang} onComplete={refreshProfile} />
+    }
+    // If guest and a real user signs in behind the scenes, clear the guest flag
+    if (isGuest && user) localStorage.removeItem('sporeus-guest-mode')
   }
 
   return (

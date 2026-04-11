@@ -265,8 +265,20 @@ export default function AuthGate({ lang }) {
           </button>
         </form>
 
+        {/* Guest mode */}
+        <div style={{ display:'flex', alignItems:'center', gap:'10px', margin:'20px 0 0' }}>
+          <div style={{ flex:1, height:1, background:'#1e1e1e' }}/>
+          <span style={{ fontSize:'9px', color:'#333', letterSpacing:'0.1em' }}>{isTR ? 'VEYA' : 'OR'}</span>
+          <div style={{ flex:1, height:1, background:'#1e1e1e' }}/>
+        </div>
+        <button
+          onClick={() => { localStorage.setItem('sporeus-guest-mode','1'); window.location.reload() }}
+          style={{ ...btnBase, background:'transparent', border:'1px solid #2a2a2a', color:'#555', marginTop:'12px' }}>
+          {isTR ? '→ Hesapsız dene  (cihaza kaydeder)' : '→ Try without account  (saves to this device)'}
+        </button>
+
         {/* Footer */}
-        <p style={{ fontSize: '9px', color: '#333', textAlign: 'center', marginTop: '20px', lineHeight: 1.6 }}>
+        <p style={{ fontSize: '9px', color: '#333', textAlign: 'center', marginTop: '16px', lineHeight: 1.6 }}>
           {isTR
             ? 'Devam ederek Sporeus gizlilik politikasını kabul etmiş olursunuz. Verileriniz yalnızca sizin hesabınızda saklanır.'
             : 'By continuing you accept Sporeus privacy policy. Your data is stored only in your account.'}
