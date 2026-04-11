@@ -6,6 +6,7 @@ export function useAuth() {
   const [user, setUser]       = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [needsUpsert, setNeedsUpsert] = useState(false)
 
   const fetchProfile = useCallback(async (userId) => {
     if (!supabase || !userId) return null
@@ -31,31 +32,51 @@ export function useAuth() {
     }, { onConflict: 'id' })
   }, [])
 
+  // ── Auth state listener ────────────────────────────────────────────────────
+  // Synchronous only — no Supabase calls here.
+  // The auth lock is held while this callback runs; any nested Supabase
+  // request (fetchProfile, upsertProfile) would deadlock against it.
+  // TOKEN_REFRESHED fires periodically — we deliberately ignore it for profile
+  // work to avoid requesting data while the lock is busy refreshing the token.
   useEffect(() => {
     if (!supabase) { setLoading(false); return }
 
-    // Single source of truth for auth state.
-    // Fires INITIAL_SESSION on mount (handles persisted sessions),
-    // SIGNED_IN after OAuth redirect (handles hash fragment in implicit flow),
-    // SIGNED_OUT on signOut().
-    // Do NOT call getSession() in parallel — it races for the same lock.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('[AUTH] event:', event, session?.user?.email ?? '')
-        const u = session?.user ?? null
-        setUser(u)
-        if (u) {
-          if (event === 'SIGNED_IN') await upsertProfile(u.id, u.email, u.user_metadata)
-          setProfile(await fetchProfile(u.id))
-        } else {
-          setProfile(null)
-        }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[AUTH] event:', event, session?.user?.email ?? '')
+      const u = session?.user ?? null
+      setUser(u)
+      if (event === 'SIGNED_IN') setNeedsUpsert(true)
+      if (!u) {
+        setProfile(null)
         setLoading(false)
       }
-    )
+    })
 
     return () => subscription.unsubscribe()
-  }, [fetchProfile, upsertProfile])
+  }, [])  // empty deps — one listener, never recreated
+
+  // ── Profile upsert — only on first sign-in ────────────────────────────────
+  // Runs outside the auth lock, triggered by SIGNED_IN setting needsUpsert.
+  useEffect(() => {
+    if (!user || !needsUpsert) return
+    upsertProfile(user.id, user.email, user.user_metadata)
+      .then(() => setNeedsUpsert(false))
+  }, [user, needsUpsert, upsertProfile])
+
+  // ── Profile fetch — runs when user identity changes ───────────────────────
+  // Keyed on user.id only, so TOKEN_REFRESHED (same user, same id) does NOT
+  // retrigger this — avoids fetching while the refresh lock is still held.
+  useEffect(() => {
+    if (!user?.id) return
+    let cancelled = false
+    fetchProfile(user.id).then(p => {
+      if (!cancelled) {
+        setProfile(p)
+        setLoading(false)
+      }
+    })
+    return () => { cancelled = true }
+  }, [user?.id, fetchProfile])  // eslint-disable-line react-hooks/exhaustive-deps
 
   const signOut = useCallback(async () => {
     if (!supabase) return
