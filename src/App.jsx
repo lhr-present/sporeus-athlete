@@ -419,7 +419,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
         </main>
 
         <footer style={S.footer}>
-          SPOREUS ATHLETE CONSOLE v5.3.0 · SPOREUS.COM · EŞİK / THRESHOLD 2026
+          SPOREUS ATHLETE CONSOLE v5.4.0 · SPOREUS.COM · EŞİK / THRESHOLD 2026
         </footer>
       </div>
     </LangCtx.Provider>

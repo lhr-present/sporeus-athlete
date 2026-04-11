@@ -1,140 +1,114 @@
 # Sporeus Athlete Console — CLAUDE.md
+## Quick Start
+```bash
+cd ~/sporeus-athlete-app
+npm run dev        # local dev server → http://localhost:5173/sporeus-athlete/
+npm test           # run 84 unit tests (vitest)
+npm run build      # production build → dist/
+git push           # triggers GitHub Actions: test → build → deploy to Pages
+```
 
 ## Architecture Overview
-React 18 + Vite 6 + vite-plugin-pwa (Workbox). Single-page PWA deployed to GitHub Pages via GitHub Actions.
+React 18 + Vite 6 + vite-plugin-pwa (Workbox injectManifest).
+Single-page PWA deployed to GitHub Pages via GitHub Actions.
 Bloomberg Terminal aesthetic: IBM Plex Mono, #ff6600 orange, #0064ff blue, #0a0a0a dark header.
 
 ## Key Files
-- `src/App.jsx` — thin router, top-level state (log, profile, lang, dark, onboarded), SW update banner
-- `src/styles.js` — S{} styles object, ANIM_CSS with CSS variables for light/dark themes
-- `src/contexts/LangCtx.jsx` — LABELS (EN/TR), TABS array, t() translation helper
-- `src/hooks/useLocalStorage.js` — localStorage read/write with QuotaExceededError guard
-- `src/lib/constants.js` — all pure data (zones, session types, glossary terms, plan phases)
-- `src/lib/formulas.js` — all pure math (TSS, zones, VO2max, Riegel, generatePlan, normTR, etc.)
-- `src/lib/storage.js` — versioned schema v3, exportAllData, importAllData, importPlanData
-- `src/components/ui.jsx` — shared SVG chart primitives (ZoneBar, TSSChart, CTLTimeline, etc.)
+| File | Purpose |
+|---|---|
+| `src/App.jsx` | Thin router, top-level state (log, profile, lang, dark, onboarded), SW update banner, guest nudge |
+| `src/styles.js` | S{} styles object, ANIM_CSS, CSS variables for light/dark themes |
+| `src/contexts/LangCtx.jsx` | LABELS (EN/TR), TABS array, t() translation helper |
+| `src/contexts/DataContext.jsx` | DataProvider, useSyncedTable Supabase sync factory |
+| `src/hooks/useLocalStorage.js` | localStorage r/w with QuotaExceededError guard |
+| `src/lib/constants.js` | Pure data (zones, session types, glossary terms, plan phases) |
+| `src/lib/formulas.js` | Pure math (TSS, W', zones, VO2max, Riegel, generatePlan, etc.) |
+| `src/lib/storage.js` | Schema v3, exportAllData, importAllData, importPlanData |
+| `src/lib/intelligence.js` | 11 pure analysis functions (CTL, ACWR, race readiness, etc.) |
+| `src/lib/patterns.js` | 5 pure personalized pattern detectors |
+| `src/lib/validate.js` | Input sanitization (sanitizeLogEntry, sanitizeProfile, etc.) |
+| `src/lib/fetch.js` | safeFetch() — 10s timeout + 2-retry exponential backoff |
+| `src/lib/strava.js` | Strava OAuth client helpers (token exchange via edge function) |
+| `src/components/ui.jsx` | Shared SVG chart primitives (ZoneBar, TSSChart, CTLTimeline, etc.) |
 
 ## Conventions
 - All styles inline via S.{} from styles.js — no CSS files
 - Dark mode via CSS variables: --bg, --text, --card-bg, --border, --muted, --surface, --input-bg
 - Bilingual: always use t('key') from LangCtx, add EN+TR strings to LABELS in LangCtx.jsx
 - useLocalStorage(key, default) for all persistent state
-- localStorage keys: all prefixed sporeus- or sporeus_ (log uses underscore)
-- New tabs: add to TABS array in LangCtx.jsx, add route in App.jsx, wrap in <ErrorBoundary>
-- New calculators: add as sub-components inside relevant tab component
+- localStorage keys: all prefixed `sporeus-` or `sporeus_` (log uses underscore)
+- New tabs: add to TABS array in LangCtx.jsx, add route in App.jsx, wrap in `<ErrorBoundary>`
+- External HTTP calls: use `safeFetch` from `src/lib/fetch.js` — never raw `fetch()`
 
 ## Build + Deploy
 ```bash
 cd ~/sporeus-athlete-app
-npm run build          # verify clean build
+npm run build          # verify clean build first
 git add -A && git commit -m "vX.X: description"
-git push               # triggers GitHub Actions deploy
+git push               # triggers GitHub Actions: npm test → npm build → deploy Pages
 ```
 
 ## Adding a New Tab
-1. Create `src/components/MyTab.jsx` — export default function MyTab({ ...props })
+1. Create `src/components/MyTab.jsx` — `export default function MyTab({ ...props })`
 2. Add tab entry to TABS in `src/contexts/LangCtx.jsx`
 3. Add EN+TR label strings to LABELS
 4. Import and render in `src/App.jsx` inside `<ErrorBoundary>`
 5. Pass needed props (log, profile, etc.)
 
-## Adding a Calculator
-Add as a named function component inside the relevant tab file (e.g., ZoneCalc.jsx).
-Render at the bottom of the tab's return JSX. No new file needed for a calculator.
+## Testing
+```bash
+npm test              # run all tests (vitest run)
+npm run test:watch    # interactive watch mode
+```
+Test files: `src/lib/*.test.js` — pure function tests only (no React, no DOM).
+Target: keep all 84+ tests green before every commit.
 
-## Testing Checklist
-- [ ] npm run build passes clean
-- [ ] Dark mode: toggle in Profile, all cards readable
-- [ ] TR/EN: switch in header, all labels translate
-- [ ] Mobile: narrow viewport, no horizontal scroll
-- [ ] New feature: works with empty log (no crashes)
+**Do not mock internal libraries.** Tests run against real formulas — mock only at system boundaries (external APIs, localStorage when unavoidable).
 
 ## Security Rules (MUST READ)
 - NEVER add API keys, tokens, or secrets to any source file
-- sporeus.com REST API is public read-only — no auth needed
-- All future integrations (Strava, Supabase, Claude API) must use env vars only
-- .env is gitignored — never commit it
-- Before every push: `grep -rn "API_KEY\|SECRET\|TOKEN\|sk-\|pk_" src/` — verify only cache key hits, no real credentials
-- User data stays in localStorage only — zero server-side storage
-- GitHub repo is PRIVATE, GitHub Pages is PUBLIC (requires GitHub Pro or public repo)
-- The const named API_KEY in formulas.js is a localStorage cache key name — not a real API key
-- SPOREUS_SALT and MASTER_SALT in formulas.js are hardcoded salts for coach invite system — acceptable for v1 (no auth server)
+- `sporeus.com` REST API is public read-only — no auth needed
+- All integrations (Strava, Supabase) use env vars only; `.env` is gitignored
+- Before every push: `grep -rn "SECRET\|TOKEN\|sk-\|pk_live" src/` — verify no credentials
+- `API_KEY` in formulas.js is a localStorage cache key name — not a real API key
+- `SPOREUS_SALT` and `MASTER_SALT` in formulas.js are hardcoded salts for coach invite — acceptable for v1
 
-## Coach Gating (v4.1)
-- Coach registration: name + email → SHA-256 → SP-XXXXXXXX via `generateCoachId()` in formulas.js
-- Free limit: 3 connected athletes (FREE_ATHLETE_LIMIT)
-- Unlock: SPUNLOCK-{id}-{limit}-{hash} code verified by `verifyUnlockCode()`
-- Admin generator: visible only when profile.name contains 'Hüseyin'/'Huseyin' or email is huseyinakbulut@marun.edu.tr
-- Coach profile stored in 'sporeus-coach-profile' localStorage key
-- Backward compat: ?coach=huseyin-sporeus still accepted in App.jsx
+## Key Patterns
 
-## Validation (v4.2)
-- src/lib/validate.js: sanitizeString, sanitizeNumber, sanitizeDate, sanitizeLogEntry, sanitizeProfile
-- All user inputs go through validation before localStorage write
-- TrainingLog uses sanitizeLogEntry on every add/edit
-- Profile uses sanitizeProfile on save
-- ErrorBoundary: enhanced with Export Data button, Technical Details collapsible, tab name display
-- Glossary: 5-min rate limit between fetches (RATE_KEY), fetchWithRetry with exponential backoff
-- Dashboard: BackupReminder at 50+ entries, 30-day snooze
-- Profile: storage monitor shows sporeus-* key usage vs 5MB limit
+### Auth (Supabase)
+- `flowType: 'implicit'` in supabase.js — required for static/GitHub Pages hosting (no PKCE)
+- Listen with `onAuthStateChange` ONLY — never call `getSession()` (Web Locks contention)
+- See `src/hooks/useAuth.js`
 
-## Lazy Loading (v4.2)
-- CoachDashboard, PlanGenerator, Glossary are React.lazy() chunks in App.jsx
-- Wrapped in <Suspense fallback={<LazyFallback/>}> with ErrorBoundary
-- Main bundle reduced; heavy tabs only load on first open
+### Data Sync
+- `useSyncedTable(tableName, key)` in DataContext.jsx — bidirectional sync localStorage ↔ Supabase
+- Unauthenticated users write to localStorage only; sync activates on sign-in
 
-## Intelligence Engine (v4.3+v4.4)
-- src/lib/intelligence.js — pure functions, no React imports
-- analyzeLoadTrend, analyzeRecoveryCorrelation, analyzeZoneBalance, predictInjuryRisk, predictFitness, scoreSession
-- generateWeeklyNarrative, detectMilestones (v4.4)
-- src/lib/scienceNotes.js — 40+ triggered science facts, bilingual, getTriggeredNotes(log, recovery, profile, shownIds)
-- Dashboard cards: TRAINING INSIGHTS, THIS WEEK'S STORY, DID YOU KNOW?, milestone overlays (3.5s auto-dismiss)
-- Profile: training age dropdown + CTL fitness scale visual
+### Coach Features (v5.2)
+- Coach level override: `sporeus-coach-overrides` localStorage + best-effort `coach_athletes.coachLevelOverride` Supabase
+- Message thread: `sporeus-messages-{athleteId}` (coach), `sporeus-coach-messages` (athlete); transport via JSON export
+- Week notes: `wk.coachNote + wk.noteTs` in `coach_plans.weeks` JSONB; freshness via `wk.noteTs`
+- Plan push: coach saves to `coach_plans` table (RLS); athlete reads via CoachPlansCard in Periodization
 
-## Pattern Recognition (v4.5)
-- src/lib/patterns.js — 5 pure personalized pattern functions (no React)
-- correlateTrainingToResults: pairs test results with 4-week preceding training blocks
-- findRecoveryPatterns: optimal readiness/sleep range from athlete's own session history
-- mineInjuryPatterns: 14-day pre-injury window analysis (volume spike, consec hard days, low readiness)
-- findOptimalWeekStructure: scores Mon-Sun weeks, clusters top 25%, extracts day-by-day pattern
-- findSeasonalPatterns: groups by month, requires 3+ months span
-- Dashboard: YOUR PATTERNS card (HIGH/MODERATE/LOW confidence badges), proactive RED injury alert
-- PlanGenerator: "BASED ON YOUR DATA" card with optimal week visual + "Use This Pattern" button
-- CoachDashboard: PATTERNS section with confidence badges + Copy Patterns button
+### W' Balance (v5.3)
+- `computeWPrime(powers, cp, wPrimeMax)` — Skiba 2012 differential model, second-by-second
+- FIT import: if CP + W' set in profile, checks for exhaustion → saves `wPrimeExhausted: true` on entry
+- Log badge: red `⚡W'0` on any entry where `entry.wPrimeExhausted === true`
 
-## Race Readiness & Performance Prediction (v4.6)
-- intelligence.js additions: computeRaceReadiness, predictRacePerformance
-- computeRaceReadiness: 10-factor weighted composite 0-100 → A+ through F grade
-  - Factors: FITNESS(20%), FRESHNESS(15%), TAPER(10%), CONSISTENCY(10%), RECOVERY(10%),
-             SLEEP(8%), INJURY(8%), COMPLIANCE(7%), ZONES(7%), LONG_SESSION(5%)
-- predictRacePerformance: CTL-adjusted Riegel (exp=1.06+0.001×max(0,70-CTL)), LT pace, VDOT/Daniels, training pace
-- Dashboard: SVG ring gauge (strokeDasharray/strokeDashoffset), factor breakdown, Race Week Mode (≤7 days: taper checklist), Post-Race Analysis
-- Race results stored in 'sporeus-race-results' localStorage key
-- CoachDashboard: RACE BRIEF section (score, predicted time, top concerns + action items, Copy Brief button)
+### Performance
+- Lazy-loaded: CoachDashboard, CoachOverview, PlanGenerator, Glossary (React.lazy + Suspense)
+- `CTLTimeline` wrapped in `memo()`; `WeeklyVolChartMemo` + `ZoneDonutMemo` available from ui.jsx
+- Main bundle ~375 KB gzip (1308 KB raw); PWA precaches 29 assets
 
-## Supabase Backend (Phases 0–3 — ALL COMPLETE ✓)
+## Supabase Backend (All Complete ✓)
+- Project: `pvicqwapvvfempjdgwbm.supabase.co`
+- Edge functions: `strava-oauth` (connect/sync/disconnect), `send-push` (VAPID push)
+- Migrations in `supabase/migrations/`: 001 (initial schema), 002 (Strava tokens), 003 (coach_plans)
+- Manual step done: `coachLevelOverride TEXT` column added to `coach_athletes`
 
-### Phase 0 ✓
-- @supabase/supabase-js v2, project: pvicqwapvvfempjdgwbm.supabase.co
-- src/lib/supabase.js — flowType: 'implicit' (static hosting, no PKCE)
-- src/hooks/useAuth.js — onAuthStateChange ONLY (no getSession() — Web Locks contention)
-- src/contexts/DataContext.jsx — DataProvider, useSyncedTable factory
-- supabase/migrations/001_initial_schema.sql — full schema (profiles, training_log, recovery, injuries, test_results, race_results, coach_athletes, coach_notes, strava_tokens, push_subscriptions)
-
-### Phase 3 ✓ (v5.0.0)
-- 3.1 Strava OAuth: supabase/functions/strava-oauth/index.ts (connect/sync/disconnect), src/lib/strava.js, StravaConnect in Profile.jsx
-  - Secrets needed (manual): STRAVA_CLIENT_ID + STRAVA_CLIENT_SECRET in supabase secrets
-- 3.2 Periodization: Periodization.jsx rewrite — CTL/ATL/TSB EWA projection, Recharts, Friel phases, race date anchor
-- 3.3 PDF report: src/lib/reportGenerator.js → openAthleteReport() → Blob HTML + print to PDF
-- 3.4 Push: src/sw.js (injectManifest), src/lib/pushNotify.js, supabase/functions/send-push/index.ts
-  - Secrets needed (manual): VAPID_PUBLIC_KEY + VAPID_PRIVATE_KEY in supabase secrets
-- Guest mode: sporeus-guest-mode localStorage flag, guest banner in App.jsx, Try without account in AuthGate
-- Coach→athlete plan push: supabase/migrations/003_coach_plans.sql (coach_plans table + RLS)
-  - CoachDashboard: SbAthletePanel with SEND PLAN form
-  - Periodization: CoachPlansCard reads coach_plans for logged-in athlete (expandable)
-  - Migration 003 must be run manually on production Supabase
-
-### Manual steps still needed (see memory/project_sporeus_manual_todo.md)
-- Strava API app + secrets + deploy strava-oauth function
-- VAPID keygen + secrets + deploy send-push function
-- Run supabase/migrations/003_coach_plans.sql in production SQL editor
+## Known Limitations
+- Strava OAuth: code is single-use + 5-min expiry; if edge function crashes, user must retry
+- W' exhaustion check requires CP + W' saved in profile (from Protocols → CP Test)
+- Push notifications: iOS requires iOS 16.4+ and PWA installed to home screen
+- Guest mode: all data in localStorage — lost on browser clear; nudge fires after 30d or 50 sessions
+- Coach messaging is file-based (JSON export/import) — not real-time
