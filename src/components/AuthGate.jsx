@@ -287,7 +287,7 @@ export default function AuthGate({ lang }) {
 
       {/* Version tag */}
       <div style={{ marginTop: '20px', fontSize: '9px', color: '#2a2a2a', letterSpacing: '0.1em' }}>
-        SPOREUS v5.5.0 · EŞİK / THRESHOLD 2026
+        SPOREUS v5.6.0 · EŞİK / THRESHOLD 2026
       </div>
     </div>
   )

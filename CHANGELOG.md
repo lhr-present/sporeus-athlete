@@ -2,6 +2,14 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v5.6.0 (2026-04-12)
+- HRV Engine: src/lib/hrv.js — cleanRRIntervals (±4-beat ectopic detection + linear interpolation), calculateRMSSD, calculateLnRMSSD, scoreReadiness (3-zone 1-10 scale), calculateDFAAlpha1 (Gronwald 2019, scale n=4–16), parsePolarHRM
+- HRVDashboard.jsx: readiness score circle, 30-day lnRMSSD trend (Recharts + 7d baseline band), DFA-α1 badge with LT1 interpretation, .hrm file upload, manual RMSSD entry, ectopic% warning
+- HRVDashboard integrated into Recovery tab above InjuryTracker
+- Recovery entries extended: rmssd, lnRMSSD, dfaAlpha1, ectopicPct, source fields
+- 26 new tests (127 total)
+- DEPENDS ON: existing recovery entries in Supabase + localStorage, recharts
+
 ## v5.5.0 (2026-04-12)
 - Training Load Engine: src/lib/trainingLoad.js (calculatePMC, calculateACWR, fitBanister, predictBanister)
 - CTLChart upgraded to full PMC: TSS bars, sweet-spot zones, race markers, split TSB (green/red)

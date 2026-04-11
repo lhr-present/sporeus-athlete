@@ -6,6 +6,7 @@ import { useData } from '../contexts/DataContext.jsx'
 import { WELLNESS_FIELDS } from '../lib/constants.js'
 import { Sparkline } from './ui.jsx'
 import InjuryTracker from './InjuryTracker.jsx'
+import HRVDashboard from './HRVDashboard.jsx'
 import MentalTools from './MentalTools.jsx'
 import { predictInjuryRisk } from '../lib/intelligence.js'
 
@@ -300,6 +301,7 @@ export default function Recovery() {
         )
       })()}
 
+      <HRVDashboard recovery={entries} setRecovery={setEntries} />
       <InjuryTracker />
       <MentalTools />
     </div>
