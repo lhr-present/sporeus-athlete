@@ -1,8 +1,8 @@
-import { useState, useContext } from 'react'
+import { useState, useContext, useMemo } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { useData } from '../contexts/DataContext.jsx'
-import { cooperVO2, rampFTP, ftpFrom20, epley1RM, astrandVO2, yyir1VO2, wingateStats } from '../lib/formulas.js'
+import { cooperVO2, rampFTP, ftpFrom20, epley1RM, astrandVO2, yyir1VO2, wingateStats, normalizedPower, computeWPrime } from '../lib/formulas.js'
 
 const TESTS = [
   { id:'cooper',  label:'COOPER 12-MIN',   sport:'Run',       needsCalc:true },
@@ -15,7 +15,131 @@ const TESTS = [
   { id:'astrand', label:'ÅSTRAND BIKE',    sport:'Bike/Lab',  needsCalc:true },
   { id:'conconi', label:'CONCONI',         sport:'Run/Bike',  needsCalc:false },
   { id:'lactate', label:'BLOOD LACTATE',   sport:'Lab',       needsCalc:false },
+  { id:'wprime',  label:"W' BALANCE",      sport:'Bike',      needsCalc:true },
 ]
+
+// ─── W' Balance pure-SVG chart ────────────────────────────────────────────────
+function WPrimeChart({ series, wPrimeMax }) {
+  if (!series || series.length === 0) return null
+  const W = 600, H = 180
+  const PAD = { top: 12, right: 16, bottom: 28, left: 48 }
+  const chartW = W - PAD.left - PAD.right
+  const chartH = H - PAD.top - PAD.bottom
+
+  // Downsample to max 600 points for rendering
+  const step = Math.max(1, Math.floor(series.length / 600))
+  const pts = []
+  for (let i = 0; i < series.length; i += step) pts.push({ i, v: series[i] })
+
+  const minVal = Math.min(0, ...pts.map(p => p.v))
+  const maxVal = wPrimeMax
+  const range  = maxVal - minVal || 1
+  const totalSec = series.length
+
+  const scaleX = i => PAD.left + (i / (totalSec - 1)) * chartW
+  const scaleY = v => PAD.top + chartH - ((v - minVal) / range) * chartH
+
+  // Build SVG polyline points
+  const polyline = pts.map(p => `${scaleX(p.i).toFixed(1)},${scaleY(p.v).toFixed(1)}`).join(' ')
+
+  // Find exhaustion point (first time W' = 0)
+  const exhaustIdx = series.findIndex(v => v <= 0)
+  const exhaustX   = exhaustIdx >= 0 ? scaleX(exhaustIdx) : null
+
+  // Min W' point
+  const minW    = Math.min(...series)
+  const minWIdx = series.indexOf(minW)
+  const minWX   = scaleX(minWIdx)
+  const minWY   = scaleY(minW)
+
+  // Y-axis ticks
+  const yTicks = [0, Math.round(wPrimeMax * 0.25), Math.round(wPrimeMax * 0.5), Math.round(wPrimeMax * 0.75), wPrimeMax]
+
+  // X-axis ticks (minutes)
+  const totalMin  = Math.ceil(totalSec / 60)
+  const tickEvery = totalMin <= 30 ? 5 : totalMin <= 60 ? 10 : 20
+  const xTicks    = []
+  for (let m = 0; m <= totalMin; m += tickEvery) xTicks.push(m)
+
+  const fmtTime = sec => {
+    const m = Math.floor(sec / 60), s = sec % 60
+    return s === 0 ? `${m}m` : `${m}:${String(s).padStart(2,'0')}`
+  }
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width:'100%', maxWidth:W, display:'block', overflow:'visible' }}>
+      {/* Grid lines */}
+      {yTicks.map(tick => (
+        <line key={tick}
+          x1={PAD.left} y1={scaleY(tick)}
+          x2={PAD.left + chartW} y2={scaleY(tick)}
+          stroke="#1e1e1e" strokeWidth="1"
+        />
+      ))}
+
+      {/* W' = 0 danger line */}
+      <line
+        x1={PAD.left} y1={scaleY(0)}
+        x2={PAD.left + chartW} y2={scaleY(0)}
+        stroke="#e03030" strokeWidth="1" strokeDasharray="4 3" opacity="0.6"
+      />
+
+      {/* W'max reference line */}
+      <line
+        x1={PAD.left} y1={scaleY(wPrimeMax)}
+        x2={PAD.left + chartW} y2={scaleY(wPrimeMax)}
+        stroke="#5bc25b" strokeWidth="1" strokeDasharray="4 3" opacity="0.4"
+      />
+
+      {/* Shaded area under W' curve */}
+      <polygon
+        points={`${PAD.left},${scaleY(0)} ${polyline} ${scaleX(pts.at(-1).i)},${scaleY(0)}`}
+        fill="#ff6600" fillOpacity="0.07"
+      />
+
+      {/* W' balance line */}
+      <polyline points={polyline} fill="none" stroke="#ff6600" strokeWidth="1.8" strokeLinejoin="round"/>
+
+      {/* Exhaustion marker */}
+      {exhaustX !== null && (
+        <>
+          <line x1={exhaustX} y1={PAD.top} x2={exhaustX} y2={PAD.top + chartH} stroke="#e03030" strokeWidth="1.5" strokeDasharray="3 2"/>
+          <text x={exhaustX + 3} y={PAD.top + 10} fill="#e03030" fontSize="9" fontFamily="'IBM Plex Mono',monospace">EXHAUSTION</text>
+        </>
+      )}
+
+      {/* Min W' dot */}
+      {minW > 0 && (
+        <>
+          <circle cx={minWX} cy={minWY} r="4" fill="#f5c542" stroke="#0a0a0a" strokeWidth="1"/>
+          <text x={minWX + 6} y={minWY - 4} fill="#f5c542" fontSize="9" fontFamily="'IBM Plex Mono',monospace">
+            MIN {(minW / 1000).toFixed(1)}kJ
+          </text>
+        </>
+      )}
+
+      {/* Y-axis labels */}
+      {yTicks.map(tick => (
+        <text key={tick} x={PAD.left - 4} y={scaleY(tick) + 4}
+          fill="#555" fontSize="9" fontFamily="'IBM Plex Mono',monospace" textAnchor="end">
+          {tick >= 1000 ? `${(tick/1000).toFixed(0)}k` : tick}
+        </text>
+      ))}
+
+      {/* X-axis labels */}
+      {xTicks.map(m => (
+        <text key={m} x={scaleX(m * 60)} y={H - 6}
+          fill="#555" fontSize="9" fontFamily="'IBM Plex Mono',monospace" textAnchor="middle">
+          {m}m
+        </text>
+      ))}
+
+      {/* Axis lines */}
+      <line x1={PAD.left} y1={PAD.top} x2={PAD.left} y2={PAD.top + chartH} stroke="#333" strokeWidth="1"/>
+      <line x1={PAD.left} y1={PAD.top + chartH} x2={PAD.left + chartW} y2={PAD.top + chartH} stroke="#333" strokeWidth="1"/>
+    </svg>
+  )
+}
 
 export default function TestProtocols() {
   const { t } = useContext(LangCtx)
@@ -27,6 +151,23 @@ export default function TestProtocols() {
   const [cmpB, setCmpB] = useState('')
   const set = (k,v) => setInputs(prev=>({...prev,[k]:v}))
   const v = k => inputs[k]||''
+
+  // W' balance state
+  const [wPrimeSeries, setWPrimeSeries]     = useState(null)  // computed balance array
+  const [wPrimeStats,  setWPrimeStats]      = useState(null)  // { np, minW, exhausted, tAbove, tBelow }
+  const [wPrimeError,  setWPrimeError]      = useState('')
+  const [wPrimeCapacity, setWPrimeCapacity] = useState(20000) // J — user's W'
+
+  const loadLastFITPower = () => {
+    try {
+      const raw = localStorage.getItem('sporeus-last-fit-power')
+      if (!raw) { setWPrimeError('No FIT power data found. Import a .fit file in Training Log first.'); return }
+      const arr = JSON.parse(raw)
+      if (!Array.isArray(arr) || arr.length === 0) { setWPrimeError('Stored power data is empty.'); return }
+      set('wPowerPaste', arr.join(','))
+      setWPrimeError('')
+    } catch { setWPrimeError('Could not read stored power data.') }
+  }
 
   const saveTestResult = (testId, value, unit) => {
     const today = new Date().toISOString().slice(0,10)
@@ -78,6 +219,25 @@ export default function TestProtocols() {
       setResult(['Conconi Protocol','1. Run on 400m track. Start at 8 km/h.','2. Increase 0.5 km/h every 200m.','3. Record HR at each stage.','4. Plot HR vs speed \u2014 deflection point = anaerobic threshold.','5. Threshold HR \u2248 HR at deflection; threshold speed = deflection speed.'])
     } else if (active==='lactate') {
       setResult(['Blood Lactate Protocol','Equipment: lactate analyzer, finger-prick lancets.','Stages: 5 min each, +0.5 km/h. Sample from earlobe or fingertip.','LT1 (aerobic): ~2 mmol/L \u2014 first rise above baseline \u2192 top of Z2.','LT2 (MLSS): ~4 mmol/L \u2014 last sustainable steady state \u2192 Z4.','Ref: E\u015e\u0130K / THRESHOLD, Chapter 4 \u2014 Laktat Fizyolojisi.'])
+    } else if (active==='wprime') {
+      const cp = parseInt(i.cp || 0)
+      const wCap = parseInt(i.wCap || wPrimeCapacity)
+      if (!cp) return
+      const raw = (i.wPowerPaste || '').trim()
+      if (!raw) { setWPrimeError('Paste power data or load from last FIT file.'); return }
+      const powers = raw.split(/[\s,]+/).map(Number).filter(n => !isNaN(n) && n >= 0)
+      if (powers.length < 30) { setWPrimeError('Need at least 30 seconds of power data.'); return }
+      setWPrimeError('')
+      const series = computeWPrime(powers, cp, wCap)
+      const np = normalizedPower(powers)
+      const minW = Math.min(...series)
+      const exhaustIdx = series.findIndex(v => v <= 0)
+      const tAbove = powers.filter(p => p > cp).length
+      const tBelow = powers.length - tAbove
+      setWPrimeSeries(series)
+      setWPrimeCapacity(wCap)
+      setWPrimeStats({ np, minW, exhausted: exhaustIdx >= 0, exhaustSec: exhaustIdx, tAbove, tBelow, cp, wCap, totalSec: powers.length })
+      setResult(null)
     }
   }
 
@@ -89,7 +249,7 @@ export default function TestProtocols() {
         <div style={S.cardTitle}>{t('selectProto')}</div>
         <div style={{ display:'flex', gap:'6px', flexWrap:'wrap', marginBottom:'16px' }}>
           {TESTS.map(test=>(
-            <button key={test.id} onClick={()=>{setActive(test.id);setResult(null)}}
+            <button key={test.id} onClick={()=>{setActive(test.id);setResult(null);setWPrimeSeries(null);setWPrimeStats(null);setWPrimeError('')}}
               style={{ ...S.navBtn(active===test.id), borderRadius:'4px', display:'flex', flexDirection:'column', gap:'1px', fontSize:'10px' }}>
               {test.label}
               <span style={{ fontSize:'9px', opacity:0.7 }}>{test.sport}</span>
@@ -184,6 +344,44 @@ export default function TestProtocols() {
           <div style={{ ...S.mono, fontSize:'11px', color:'var(--sub)', marginBottom:'8px' }}>Click below to view the full protocol.</div>
         )}
 
+        {active==='wprime' && (
+          <div>
+            <div style={{ ...S.mono, fontSize:'10px', color:'#888', lineHeight:1.7, marginBottom:'12px' }}>
+              Skiba (2012) differential W' balance model. W' depletes above CP and reconstitutes below CP
+              with a time constant τ derived from mean sub-threshold power.
+            </div>
+            <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', marginBottom:'10px' }}>
+              <div style={{ flex:'1 1 140px' }}>
+                <label style={S.label}>CRITICAL POWER (watts)</label>
+                <input style={S.input} type="number" placeholder="260" value={v('cp')} onChange={e=>set('cp',e.target.value)}/>
+              </div>
+              <div style={{ flex:'1 1 160px' }}>
+                <label style={S.label}>W' CAPACITY (joules)</label>
+                <input style={S.input} type="number" placeholder="20000" value={v('wCap') || wPrimeCapacity} onChange={e=>set('wCap',e.target.value)}/>
+              </div>
+            </div>
+            <div style={{ marginBottom:'8px' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'4px' }}>
+                <label style={S.label}>SECOND-BY-SECOND POWER (watts, comma-separated)</label>
+                <button
+                  onClick={loadLastFITPower}
+                  style={{ ...S.mono, fontSize:'9px', padding:'3px 8px', border:'1px solid #0064ff44', background:'transparent', color:'#0064ff', borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em', whiteSpace:'nowrap' }}>
+                  ↓ LOAD LAST FIT
+                </button>
+              </div>
+              <textarea
+                style={{ ...S.input, fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', minHeight:'60px', resize:'vertical', width:'100%', boxSizing:'border-box' }}
+                placeholder="250,255,248,260,270,265,... (one value per second)"
+                value={v('wPowerPaste')}
+                onChange={e=>set('wPowerPaste',e.target.value)}
+              />
+            </div>
+            {wPrimeError && (
+              <div style={{ ...S.mono, fontSize:'10px', color:'#e03030', marginBottom:'8px' }}>{wPrimeError}</div>
+            )}
+          </div>
+        )}
+
         <button style={{ ...S.btn, marginTop:'14px' }} onClick={run}>
           {activeTest?.needsCalc ? t('calcBtn') : t('viewBtn')}
         </button>
@@ -195,6 +393,53 @@ export default function TestProtocols() {
           {result.slice(1).map((line,i)=>(
             <div key={i} style={{ ...S.mono, fontSize:'13px', lineHeight:1.9, color:i===0?'#1a1a1a':'#555', borderBottom:i<result.length-2?'1px solid #f0f0f0':'none', padding:'4px 0' }}>{line}</div>
           ))}
+        </div>
+      )}
+
+      {/* W' Balance result card */}
+      {wPrimeSeries && wPrimeStats && active === 'wprime' && (
+        <div className="sp-card" style={{ ...S.card, borderLeft:'4px solid #ff6600', animationDelay:'50ms' }}>
+          <div style={S.cardTitle}>W' BALANCE ANALYSIS</div>
+
+          {/* Key metrics */}
+          <div style={{ display:'flex', gap:'16px', flexWrap:'wrap', marginBottom:'16px' }}>
+            {[
+              { label:'NORM POWER', value:`${wPrimeStats.np}W`,   color:'#ff6600' },
+              { label:'CRITICAL POWER', value:`${wPrimeStats.cp}W`, color:'#0064ff' },
+              { label:'W\' CAPACITY', value:`${(wPrimeStats.wCap/1000).toFixed(1)}kJ`, color:'#888' },
+              { label:'MIN W\'', value: wPrimeStats.exhausted ? 'EXHAUSTED' : `${(wPrimeStats.minW/1000).toFixed(1)}kJ`,
+                color: wPrimeStats.exhausted ? '#e03030' : wPrimeStats.minW < wPrimeStats.wCap * 0.25 ? '#f5c542' : '#5bc25b' },
+              { label:'TIME >CP', value:`${Math.round(wPrimeStats.tAbove/60)}m ${wPrimeStats.tAbove%60}s`, color:'#e03030' },
+              { label:'TIME <CP', value:`${Math.round(wPrimeStats.tBelow/60)}m`,  color:'#5bc25b' },
+            ].map(({ label, value, color }) => (
+              <div key={label} style={{ textAlign:'center', minWidth:'80px' }}>
+                <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'16px', fontWeight:700, color }}>{value}</div>
+                <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'8px', color:'#555', marginTop:'2px', letterSpacing:'0.08em' }}>{label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Exhaustion alert */}
+          {wPrimeStats.exhausted && (
+            <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', background:'rgba(224,48,48,0.1)', border:'1px solid #e0303044', borderRadius:'4px', padding:'8px 12px', marginBottom:'12px', color:'#e03030' }}>
+              ⚠ W' reached zero at {Math.floor(wPrimeStats.exhaustSec/60)}:{String(wPrimeStats.exhaustSec%60).padStart(2,'0')} — mechanical exhaustion point.
+              Actual fatigue likely began ~30–60s earlier (neuromuscular pre-exhaustion).
+            </div>
+          )}
+
+          {/* SVG Chart */}
+          <div style={{ marginBottom:'10px' }}>
+            <WPrimeChart series={wPrimeSeries} wPrimeMax={wPrimeStats.wCap}/>
+          </div>
+
+          {/* Legend */}
+          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', color:'#555', lineHeight:1.8 }}>
+            <span style={{ color:'#ff6600' }}>━</span> W' balance ·{' '}
+            <span style={{ color:'#5bc25b' }}>- -</span> W' max ·{' '}
+            <span style={{ color:'#e03030' }}>- -</span> exhaustion threshold (W'=0)
+            <br/>
+            Skiba 2012 · τ = 546·e^(−0.01·(CP−P̄)) + 316 · Ref: EŞİK / THRESHOLD ch.5
+          </div>
         </div>
       )}
 

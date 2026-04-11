@@ -71,7 +71,18 @@ export function parseFIT(arrayBuffer, profileMaxHR) {
         const date = startTime ? new Date(startTime).toISOString().slice(0,10)
           : new Date().toISOString().slice(0,10)
 
-        resolve({ date, durationMin, avgHR, maxHR: maxHR_rec, distanceM: Math.round(distanceM), tssEstimate, zones })
+        // Second-by-second power series (for W' balance analysis)
+        const powerSeries = records
+          .map(r => (typeof r.power === 'number' ? r.power : (typeof r.power_watts === 'number' ? r.power_watts : 0)))
+          .filter((_, i, a) => a.length > 0)
+        const hasPower = powerSeries.some(p => p > 0)
+
+        // Persist to localStorage so Protocols tab can load it without re-upload
+        if (hasPower) {
+          try { localStorage.setItem('sporeus-last-fit-power', JSON.stringify(powerSeries.slice(0, 10800))) } catch {}
+        }
+
+        resolve({ date, durationMin, avgHR, maxHR: maxHR_rec, distanceM: Math.round(distanceM), tssEstimate, zones, powerSeries: hasPower ? powerSeries : [] })
       } catch (e) {
         reject(new Error('FIT parse error: ' + e.message))
       }

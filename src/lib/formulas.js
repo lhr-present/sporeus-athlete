@@ -28,6 +28,46 @@ export const yyir1VO2   = (lv, sh) => (35.4 + ((lv-1)+(sh/8))*(62.8-35.4)/22).to
 export const wingateStats = (peak, mean, low, bw) => ({ relPeak:(peak/bw).toFixed(1), relMean:(mean/bw).toFixed(1), fatigue:(((peak-low)/peak)*100).toFixed(1) })
 export const riegel     = (t1, d1, d2) => t1 * Math.pow(d2/d1, 1.06)
 
+// ─── W' (W-prime) Balance — Skiba 2012 differential model ────────────────────
+// Normalized Power: 30s rolling mean → 4th-power mean → 0.25 root
+export function normalizedPower(powers) {
+  if (!powers || powers.length < 30) return 0
+  const W = 30
+  const rolling = []
+  for (let i = W - 1; i < powers.length; i++) {
+    let sum = 0
+    for (let j = i - W + 1; j <= i; j++) sum += powers[j]
+    rolling.push(sum / W)
+  }
+  const mean4 = rolling.reduce((s, v) => s + Math.pow(v, 4), 0) / rolling.length
+  return Math.round(Math.pow(mean4, 0.25))
+}
+
+// Skiba differential equation: each second, deplete or recover W'
+// τ_W = 546 × e^(−0.01×(CP − P̄)) + 316  (Skiba 2012)
+// dW'/dt = (W'max − W'(t)) / τ_W           when P < CP
+// dW'/dt = CP − P(t)                        when P ≥ CP
+export function computeWPrime(powers, cp, wPrimeMax) {
+  if (!powers || !powers.length || !cp || !wPrimeMax) return []
+  let w = wPrimeMax
+  const series = []
+  const avgBelowCP = (() => {
+    const below = powers.filter(p => p < cp)
+    return below.length ? below.reduce((s, v) => s + v, 0) / below.length : cp * 0.6
+  })()
+  const tau = 546 * Math.exp(-0.01 * (cp - avgBelowCP)) + 316
+
+  for (const p of powers) {
+    if (p >= cp) {
+      w = Math.max(0, w - (p - cp))
+    } else {
+      w = wPrimeMax - (wPrimeMax - w) * Math.exp(-1 / tau)
+    }
+    series.push(Math.round(w))
+  }
+  return series
+}
+
 export function parseTimeSec(str) {
   const p = str.split(':').map(Number)
   if (p.length===3) return p[0]*3600+p[1]*60+p[2]
