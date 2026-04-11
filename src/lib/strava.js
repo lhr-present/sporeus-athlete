@@ -32,7 +32,7 @@ export function initiateStravaOAuth() {
 // Exchange authorization code for tokens via Supabase edge function
 export async function exchangeStravaCode(code) {
   const { data, error } = await supabase.functions.invoke('strava-oauth', {
-    body: { action: 'connect', code },
+    body: { action: 'connect', code, redirectUri: getRedirectUri() },
   })
   return { data, error }
 }

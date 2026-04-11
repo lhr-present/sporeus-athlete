@@ -79,7 +79,8 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
     setStravaCallbackCode(null) // prevent re-runs
     exchangeStravaCode(stravaCallbackCode).then(({ data, error }) => {
       if (error) {
-        setStravaToast(`⚠ Strava connection failed: ${error.message || 'Unknown error'}`)
+        const detail = error.context?.body ? JSON.stringify(error.context.body).slice(0,200) : (error.message || 'Unknown error')
+        setStravaToast(`⚠ Strava connection failed: ${detail}`)
       } else {
         setStravaToast(`✓ Strava connected${data?.athlete ? ' — ' + data.athlete : ''}`)
       }

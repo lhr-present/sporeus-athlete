@@ -107,9 +107,9 @@ serve(async (req: Request) => {
 
   const admin = createClient(supabaseUrl, serviceKey)
 
-  let body: { action?: string; code?: string } = {}
+  let body: { action?: string; code?: string; redirectUri?: string } = {}
   try { body = await req.json() } catch { return fail(400, "Invalid JSON") }
-  const { action, code } = body
+  const { action, code, redirectUri } = body
 
   // ── CONNECT: exchange Strava code for tokens ─────────────────────────────────
   if (action === "connect") {
@@ -124,6 +124,7 @@ serve(async (req: Request) => {
         client_secret: stravaSecret,
         code,
         grant_type: "authorization_code",
+        ...(redirectUri ? { redirect_uri: redirectUri } : {}),
       }),
     })
     const tokens = await resp.json()
