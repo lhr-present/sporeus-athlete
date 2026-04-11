@@ -34,6 +34,13 @@ export async function exchangeStravaCode(code) {
   const { data, error } = await supabase.functions.invoke('strava-oauth', {
     body: { action: 'connect', code, redirectUri: getRedirectUri() },
   })
+  if (error) {
+    // Try to extract the actual error body from the edge function response
+    try {
+      const body = await error.context?.json?.()
+      if (body?.error) return { data: null, error: { message: body.error } }
+    } catch {}
+  }
   return { data, error }
 }
 
