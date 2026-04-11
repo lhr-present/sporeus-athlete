@@ -7,6 +7,8 @@ import { navyBF, mifflinBMR, calcLoad, generateUnlockCode, FREE_ATHLETE_LIMIT } 
 import { sanitizeProfile } from '../lib/validate.js'
 import { exportAllData, importAllData } from '../lib/storage.js'
 import { Sparkline } from './ui.jsx'
+import { isSupabaseReady } from '../lib/supabase.js'
+import { getStravaConnection, initiateStravaOAuth, triggerStravaSync, disconnectStrava } from '../lib/strava.js'
 
 function SportSelector({ local, setLocal }) {
   const { t } = useContext(LangCtx)
@@ -657,6 +659,105 @@ function NotifReminders() {
   )
 }
 
+// ─── Strava Connect (Phase 3.1) ───────────────────────────────────────────────
+function StravaConnect({ userId }) {
+  const [conn, setConn]   = useState(null)
+  const [busy, setBusy]   = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [msg, setMsg]     = useState('')
+
+  useEffect(() => {
+    if (!userId || !isSupabaseReady()) { setLoading(false); return }
+    getStravaConnection(userId).then(({ data }) => {
+      setConn(data || null)
+      setLoading(false)
+    })
+  }, [userId])
+
+  const flash = (text, ms = 4000) => {
+    setMsg(text)
+    setTimeout(() => setMsg(''), ms)
+  }
+
+  const handleSync = async () => {
+    setBusy(true)
+    const { data, error } = await triggerStravaSync()
+    setBusy(false)
+    if (error) flash(`⚠ Sync failed: ${error.message}`)
+    else {
+      flash(`✓ Synced ${data?.synced ?? 0} of ${data?.total ?? 0} activities`)
+      // Refresh connection info to update last_sync_at
+      getStravaConnection(userId).then(({ data: d }) => setConn(d || null))
+    }
+  }
+
+  const handleDisconnect = async () => {
+    if (!confirm('Disconnect Strava? Existing synced activities stay in your training log.')) return
+    setBusy(true)
+    await disconnectStrava()
+    setConn(null)
+    setBusy(false)
+    flash('Strava disconnected')
+  }
+
+  if (!isSupabaseReady()) return (
+    <div style={{ ...S.mono, fontSize:'11px', color:'#888' }}>
+      Strava sync requires Supabase. Configure VITE_SUPABASE_URL to enable.
+    </div>
+  )
+
+  if (loading) return <div style={{ ...S.mono, fontSize:'11px', color:'#888' }}>Checking connection...</div>
+
+  return (
+    <div>
+      {conn?.strava_athlete_id ? (
+        <>
+          <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'12px', flexWrap:'wrap' }}>
+            <span style={{ ...S.mono, fontSize:'11px', color:'#5bc25b', fontWeight:600 }}>
+              ✓ CONNECTED · ID {conn.strava_athlete_id}
+            </span>
+            {conn.last_sync_at && (
+              <span style={{ ...S.mono, fontSize:'10px', color:'#888' }}>
+                Last sync: {new Date(conn.last_sync_at).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })}
+              </span>
+            )}
+          </div>
+          <div style={{ ...S.mono, fontSize:'10px', color:'#888', marginBottom:'12px', lineHeight:1.6 }}>
+            Syncs last 30 days of activities (runs, rides, swims). Distance + HR stored in notes.
+            <br/>Activities already in your log are deduplicated automatically.
+          </div>
+          <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
+            <button style={S.btn} onClick={handleSync} disabled={busy}>
+              {busy ? 'SYNCING...' : '↻ SYNC NOW'}
+            </button>
+            <button style={{ ...S.btnSec, borderColor:'#e03030', color:'#e03030' }}
+              onClick={handleDisconnect} disabled={busy}>
+              DISCONNECT
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ ...S.mono, fontSize:'11px', color:'#888', marginBottom:'12px', lineHeight:1.7 }}>
+            Connect your Strava account to automatically import activities.
+            Runs and rides sync with distance, HR data, and estimated TSS.
+            <br/>Only reads your activity data — never posts on your behalf.
+          </div>
+          <button style={{ ...S.btn, background:'#fc4c02', borderColor:'#fc4c02' }} onClick={initiateStravaOAuth}>
+            Connect Strava
+          </button>
+        </>
+      )}
+      {msg && (
+        <div style={{ ...S.mono, fontSize:'11px', marginTop:'10px',
+          color: msg.startsWith('⚠') ? '#e03030' : '#5bc25b' }}>
+          {msg}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Admin Code Generator (visible only to Hüseyin) ──────────────────────────
 
 function AdminCodeGenerator() {
@@ -727,7 +828,7 @@ function AdminCodeGenerator() {
   )
 }
 
-export default function Profile({ profile, setProfile, log }) {
+export default function Profile({ profile, setProfile, log, authUser }) {
   const { t } = useContext(LangCtx)
   const [local, setLocal] = useState(profile)
   const [status, setStatus] = useState(null)
@@ -823,6 +924,16 @@ export default function Profile({ profile, setProfile, log }) {
 
       <TrainingAgeCard log={log} profile={local}/>
       <AthleteCard profile={local} log={log}/>
+
+      {isSupabaseReady() && authUser && (
+        <div className="sp-card" style={{ ...S.card, animationDelay:'63ms', borderLeft:'3px solid #fc4c02' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'12px' }}>
+            <div style={{ ...S.cardTitle, marginBottom:0, borderBottom:'none', paddingBottom:0 }}>STRAVA SYNC</div>
+            <span style={{ ...S.mono, fontSize:'9px', color:'#fc4c02', border:'1px solid #fc4c02', padding:'2px 6px', borderRadius:'2px', letterSpacing:'0.06em' }}>PHASE 3</span>
+          </div>
+          <StravaConnect userId={authUser.id}/>
+        </div>
+      )}
 
       <div className="sp-card" style={{ ...S.card, animationDelay:'65ms' }}>
         <div style={S.cardTitle}>REMINDERS / HATIRLATICLAR</div>

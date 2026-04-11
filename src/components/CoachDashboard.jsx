@@ -606,7 +606,7 @@ function AthleteDetail({ athlete, onUpdate, onClose, templates, setTemplates }) 
               {[
                 { lbl:'LOAD TREND',   val: loadTrend.trend.toUpperCase(),                c: loadTrend.trend==='building'?'#5bc25b':loadTrend.trend==='recovering'?'#4a90d9':'#f5c542',  txt: loadTrend.advice.en },
                 { lbl:'ZONE BALANCE', val: zoneBalance.status.replace('_',' ').toUpperCase(), c: zoneBalance.status==='polarized'?'#5bc25b':zoneBalance.status==='too_hard'?'#e03030':'#f5c542', txt: zoneBalance.recommendation.en },
-                { lbl:'INJURY RISK',  val: injRisk.level.toUpperCase(),                  c: { low:'#5bc25b', moderate:'#f5c542', high:'#e03030', unknown:'#888' }[injRisk.level],        txt: injRisk.advice.en },
+                { lbl:'INJURY RISK',  val: injRisk.level,                                 c: { LOW:'#5bc25b', MODERATE:'#f5c542', HIGH:'#e03030', unknown:'#888' }[injRisk.level] || '#888', txt: injRisk.advice.en },
                 { lbl:'FITNESS',      val: `CTL ${fitness.current}→${fitness.in4w}`,     c: fitness.trajectory==='improving'?'#5bc25b':fitness.trajectory==='declining'?'#e03030':'#f5c542', txt: fitness.label.en },
               ].map(row => (
                 <div key={row.lbl} style={{ display:'flex', alignItems:'flex-start', gap:'8px', padding:'8px 10px', background:'var(--surface)', borderRadius:'4px', borderLeft:`3px solid ${row.c}` }}>

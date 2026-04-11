@@ -1,78 +1,347 @@
-import { useState, useContext } from 'react'
+import { useState, useContext, useMemo } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { MACRO_PHASES, ZONE_COLORS, ZONE_NAMES, LOAD_COLOR } from '../lib/constants.js'
+import { useData } from '../contexts/DataContext.jsx'
+import {
+  LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid,
+  ReferenceLine, ResponsiveContainer, Legend,
+} from 'recharts'
 
+// ─── CTL/ATL/TSB projection math ─────────────────────────────────────────────
+const CTL_TC = 42  // chronic time constant (days)
+const ATL_TC = 7   // acute time constant (days)
+
+// Phase load intensities → IF squared proxy (maps to TSS/hour)
+const PHASE_IF = {
+  'Base 1':   0.55,
+  'Base 2':   0.62,
+  'Build 1':  0.72,
+  'Build 2':  0.78,
+  'Peak 1':   0.82,
+  'Peak 2':   0.78,
+  'Taper':    0.68,
+  'Race':     0.45,
+  'Recovery': 0.42,
+}
+// Weekly hours multiplier from MACRO_PHASES load string
+const LOAD_MULT = { Low: 0.70, Med: 1.00, High: 1.25 }
+
+function projectCTL(phases, startCTL, startATL, weeklyHours) {
+  const points = []
+  let ctl = startCTL
+  let atl = startATL
+  const ctlDecay = 1 - 1 / CTL_TC
+  const atlDecay = 1 - 1 / ATL_TC
+
+  for (const p of phases) {
+    const loadMult = LOAD_MULT[p.load] || 1.0
+    const ifFactor = PHASE_IF[p.phase] || 0.65
+    const wHours   = weeklyHours * loadMult
+    // Weekly TSS ≈ hours × IF² × 100 (standard PMC formula)
+    const weekTSS  = wHours * ifFactor * ifFactor * 100
+    const dailyTSS = weekTSS / 7
+
+    // Simulate 7 days
+    for (let d = 0; d < 7; d++) {
+      ctl = ctlDecay * ctl + dailyTSS / CTL_TC
+      atl = atlDecay * atl + dailyTSS / ATL_TC
+    }
+    points.push({
+      week:  p.week,
+      phase: p.phase,
+      CTL:   Math.round(ctl),
+      ATL:   Math.round(atl),
+      TSB:   Math.round(ctl - atl),
+      TSS:   Math.round(weekTSS),
+    })
+  }
+  return points
+}
+
+// Derive current CTL from actual log data
+function computeCurrentCTL(log) {
+  if (!log.length) return 40 // sensible default
+  const sorted = [...log].sort((a, b) => (a.date > b.date ? 1 : -1))
+  let ctl = 0
+  for (const s of sorted) ctl = ctl + ((s.tss || 0) - ctl) / CTL_TC
+  return Math.max(10, Math.round(ctl))
+}
+function computeCurrentATL(log) {
+  if (!log.length) return 40
+  const sorted = [...log].sort((a, b) => (a.date > b.date ? 1 : -1))
+  let atl = 0
+  for (const s of sorted) atl = atl + ((s.tss || 0) - atl) / ATL_TC
+  return Math.max(10, Math.round(atl))
+}
+
+// ─── Custom tooltip ───────────────────────────────────────────────────────────
+function ProjectionTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null
+  const d = payload[0]?.payload || {}
+  return (
+    <div style={{ background:'#1a1a1a', border:'1px solid #333', padding:'10px 14px', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', lineHeight:1.9, minWidth:'140px' }}>
+      <div style={{ color:'#ff6600', fontWeight:700, marginBottom:'4px' }}>WK{label} · {d.phase}</div>
+      {payload.map(p => (
+        <div key={p.dataKey} style={{ color: p.color }}>
+          {p.dataKey}: {p.value >= 0 ? '+' : ''}{p.value}
+        </div>
+      ))}
+      <div style={{ color:'#888', borderTop:'1px solid #333', marginTop:'6px', paddingTop:'6px' }}>
+        Target TSS: {d.TSS}/wk
+      </div>
+    </div>
+  )
+}
+
+// ─── Periodization plan table ─────────────────────────────────────────────────
+function PlanTable({ phases, weeklyHours, raceDate, projection }) {
+  const weekOffset = raceDate
+    ? (() => {
+        const raceDt   = new Date(raceDate)
+        const startDt  = new Date(raceDt - (MACRO_PHASES.length - 1) * 7 * 86400000)
+        return startDt
+      })()
+    : null
+
+  return (
+    <div style={{ overflowX:'auto' }}>
+      <table style={{ width:'100%', borderCollapse:'collapse', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', minWidth:'580px' }}>
+        <thead>
+          <tr style={{ borderBottom:'2px solid var(--border)', color:'#888', fontSize:'10px', letterSpacing:'0.06em' }}>
+            {['WK','DATE','PHASE','FOCUS','HRS','TSS','CTL','ATL','TSB','ZONES'].map((h, i) => (
+              <th key={h} style={{ textAlign: i >= 4 ? 'center' : 'left', padding:'4px 8px 8px 0', fontWeight:600 }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {phases.map((row, idx) => {
+            const proj    = projection[idx] || {}
+            const loadMult = LOAD_MULT[row.load] || 1.0
+            const wh = (weeklyHours * loadMult).toFixed(1)
+            const isRace = row.phase === 'Race'
+            const isRec  = row.phase === 'Recovery'
+            const tsb    = proj.TSB ?? 0
+            const tsbCol = tsb > 5 ? '#5bc25b' : tsb < -10 ? '#e03030' : '#f5c542'
+            const dateStr = weekOffset
+              ? new Date(weekOffset.getTime() + idx * 7 * 86400000)
+                  .toLocaleDateString('en-GB', { day:'2-digit', month:'short' })
+              : '—'
+
+            return (
+              <tr key={row.week} style={{
+                borderBottom:'1px solid var(--border)',
+                background: isRace ? '#ff000011' : isRec ? '#fffbf011' : 'transparent',
+              }}>
+                <td style={{ padding:'6px 8px 6px 0', fontWeight:700, color:'#ff6600' }}>{row.week}</td>
+                <td style={{ padding:'6px 8px 6px 0', color:'#888', fontSize:'10px' }}>{dateStr}</td>
+                <td style={{ padding:'6px 8px 6px 0' }}>{row.phase}</td>
+                <td style={{ padding:'6px 8px 6px 0', color:'var(--sub)', fontSize:'10px' }}>{row.focus}</td>
+                <td style={{ textAlign:'center', padding:'6px 8px 6px 0', fontWeight:600 }}>{wh}</td>
+                <td style={{ textAlign:'center', padding:'6px 8px 6px 0', color:'#4a90d9' }}>
+                  {proj.TSS ?? '—'}
+                </td>
+                <td style={{ textAlign:'center', padding:'6px 8px 6px 0', color:'#ff6600', fontWeight:600 }}>
+                  {proj.CTL ?? '—'}
+                </td>
+                <td style={{ textAlign:'center', padding:'6px 8px 6px 0', color:'#aaa' }}>
+                  {proj.ATL ?? '—'}
+                </td>
+                <td style={{ textAlign:'center', padding:'6px 4px 6px 0', fontWeight:600, color: tsbCol }}>
+                  {proj.TSB != null ? (proj.TSB >= 0 ? '+' : '') + proj.TSB : '—'}
+                </td>
+                <td style={{ padding:'6px 0', minWidth:'110px' }}>
+                  <div style={{ display:'flex', height:'9px', gap:'1px', borderRadius:'2px', overflow:'hidden' }}>
+                    {row.zDist.map((pct, zi) => pct > 0 && (
+                      <div key={zi} style={{ width:`${pct}%`, background:ZONE_COLORS[zi] }} title={`${ZONE_NAMES[zi]}: ${pct}%`}/>
+                    ))}
+                  </div>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// ─── Peak CTL banner ──────────────────────────────────────────────────────────
+function PeakBanner({ projection, startCTL }) {
+  if (!projection.length) return null
+  const peak = projection.reduce((best, p) => p.CTL > best.CTL ? p : best, projection[0])
+  const gain = peak.CTL - startCTL
+  const raceWk = projection.find(p => p.phase === 'Race')
+  const tsbOnRace = raceWk?.TSB ?? null
+
+  return (
+    <div style={{ display:'flex', gap:'16px', flexWrap:'wrap', marginBottom:'16px' }}>
+      {[
+        { label:'PEAK CTL (WK'+peak.week+')', value: peak.CTL, color:'#ff6600' },
+        { label:'CTL GAIN',                  value: `+${gain}`, color:'#5bc25b' },
+        { label:'RACE DAY TSB',              value: tsbOnRace != null ? (tsbOnRace >= 0 ? '+' : '') + tsbOnRace : '—', color: tsbOnRace != null ? (tsbOnRace > 5 ? '#5bc25b' : tsbOnRace < -10 ? '#e03030' : '#f5c542') : '#888' },
+      ].map(({ label, value, color }) => (
+        <div key={label} style={{ flex:'1 1 100px', padding:'10px 12px', borderRadius:'5px', border:'1px solid var(--border)', background:'var(--card-bg)', textAlign:'center' }}>
+          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'20px', fontWeight:700, color, letterSpacing:'0.02em' }}>{value}</div>
+          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'9px', color:'#888', marginTop:'4px', letterSpacing:'0.08em' }}>{label}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function Periodization() {
   const { t } = useContext(LangCtx)
+  const { log } = useData()
+
+  const autoCtl = useMemo(() => computeCurrentCTL(log), [log])
+  const autoAtl = useMemo(() => computeCurrentATL(log), [log])
+
   const [raceDate, setRaceDate] = useState('')
-  const [hrs, setHrs] = useState('10')
-  const hours = parseFloat(hrs)||10
+  const [hrs,      setHrs]      = useState('10')
+  const [ctlInput, setCtlInput] = useState('')  // '' = auto
+  const [showChart, setShowChart] = useState(true)
+
+  const weeklyHours = parseFloat(hrs) || 10
+  const startCTL    = ctlInput !== '' ? (parseFloat(ctlInput) || autoCtl) : autoCtl
+  const startATL    = autoAtl
+
+  const projection = useMemo(
+    () => projectCTL(MACRO_PHASES, startCTL, startATL, weeklyHours),
+    [startCTL, startATL, weeklyHours]
+  )
+
+  const startDate = raceDate
+    ? new Date(new Date(raceDate).getTime() - (MACRO_PHASES.length - 1) * 7 * 86400000)
+        .toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })
+    : null
 
   return (
     <div className="sp-fade">
+      {/* ─── Inputs ─── */}
       <div className="sp-card" style={{ ...S.card, animationDelay:'0ms' }}>
-        <div style={S.cardTitle}>{t('macroCycleTitle')}</div>
+        <div style={S.cardTitle}>{t('macroCycleTitle')} · FRIEL PERIODIZATION</div>
         <div style={S.row}>
           <div style={{ flex:'1 1 160px' }}>
             <label style={S.label}>{t('raceDateL')}</label>
-            <input style={S.input} type="date" value={raceDate} onChange={e=>setRaceDate(e.target.value)}/>
+            <input style={S.input} type="date" value={raceDate} onChange={e => setRaceDate(e.target.value)}/>
           </div>
-          <div style={{ flex:'1 1 140px' }}>
+          <div style={{ flex:'1 1 120px' }}>
             <label style={S.label}>{t('weekHoursL')}</label>
-            <input style={S.input} type="number" step="0.5" placeholder="10" value={hrs} onChange={e=>setHrs(e.target.value)}/>
+            <input style={S.input} type="number" step="0.5" min="3" max="40" placeholder="10"
+              value={hrs} onChange={e => setHrs(e.target.value)}/>
+          </div>
+          <div style={{ flex:'1 1 120px' }}>
+            <label style={S.label}>STARTING CTL {autoCtl > 10 ? `(auto: ${autoCtl})` : ''}</label>
+            <input style={S.input} type="number" step="1" min="0" max="150"
+              placeholder={String(autoCtl)}
+              value={ctlInput}
+              onChange={e => setCtlInput(e.target.value)}/>
           </div>
         </div>
-        {raceDate && (
+        {startDate && (
           <div style={{ ...S.mono, fontSize:'11px', color:'#888', marginTop:'10px' }}>
-            {t('startDateLbl')} {new Date(new Date(raceDate)-13*7*864e5).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}
+            {t('startDateLbl')} {startDate} · Race: {new Date(raceDate).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}
+          </div>
+        )}
+        {!raceDate && (
+          <div style={{ ...S.mono, fontSize:'11px', color:'#888', marginTop:'10px' }}>
+            Set a race date to anchor the 13-week plan to calendar dates.
           </div>
         )}
       </div>
-      <div className="sp-card" style={{ ...S.card, animationDelay:'50ms' }}>
+
+      {/* ─── CTL projection summary ─── */}
+      <div className="sp-card" style={{ ...S.card, animationDelay:'40ms' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px' }}>
+          <div style={S.cardTitle}>CTL / ATL / TSB PROJECTION</div>
+          <button
+            onClick={() => setShowChart(s => !s)}
+            style={{ ...S.mono, fontSize:'10px', padding:'3px 10px', borderRadius:'3px', border:'1px solid #444', background:'transparent', color:'#888', cursor:'pointer' }}>
+            {showChart ? 'HIDE CHART' : 'SHOW CHART'}
+          </button>
+        </div>
+
+        <PeakBanner projection={projection} startCTL={startCTL}/>
+
+        {showChart && (
+          <div style={{ height: 240, marginBottom:'16px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={projection} margin={{ top:5, right:12, left:0, bottom:5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#222"/>
+                <XAxis
+                  dataKey="week"
+                  tickFormatter={w => `W${w}`}
+                  tick={{ fill:'#888', fontSize:10, fontFamily:"'IBM Plex Mono',monospace" }}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fill:'#888', fontSize:10, fontFamily:"'IBM Plex Mono',monospace" }}
+                  tickLine={false}
+                  axisLine={false}
+                  width={32}
+                />
+                <Tooltip content={<ProjectionTooltip/>}/>
+                <Legend
+                  wrapperStyle={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', paddingTop:'8px' }}
+                />
+                <ReferenceLine y={0} stroke="#444" strokeDasharray="4 2"/>
+                <Line type="monotone" dataKey="CTL" stroke="#ff6600" strokeWidth={2.5}
+                  dot={{ r:3, fill:'#ff6600', strokeWidth:0 }}
+                  activeDot={{ r:5, fill:'#ff6600' }}
+                />
+                <Line type="monotone" dataKey="ATL" stroke="#0064ff" strokeWidth={1.5}
+                  dot={{ r:2, fill:'#0064ff', strokeWidth:0 }}
+                  strokeDasharray="5 3"
+                />
+                <Line type="monotone" dataKey="TSB" stroke="#5bc25b" strokeWidth={1.5}
+                  dot={{ r:2, fill:'#5bc25b', strokeWidth:0 }}
+                  strokeDasharray="3 2"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        <div style={{ ...S.mono, fontSize:'10px', color:'#888', lineHeight:1.7 }}>
+          <span style={{ color:'#ff6600' }}>CTL</span> = fitness (42d avg) ·{' '}
+          <span style={{ color:'#0064ff' }}>ATL</span> = fatigue (7d avg) ·{' '}
+          <span style={{ color:'#5bc25b' }}>TSB</span> = form (CTL−ATL) ·{' '}
+          Positive TSB = fresh · Negative = building fatigue · Target race TSB: +5 to +15
+        </div>
+      </div>
+
+      {/* ─── Weekly plan table ─── */}
+      <div className="sp-card" style={{ ...S.card, animationDelay:'80ms' }}>
+        <div style={S.cardTitle}>{t('weekBreakTitle')}</div>
+        <PlanTable
+          phases={MACRO_PHASES}
+          weeklyHours={weeklyHours}
+          raceDate={raceDate}
+          projection={projection}
+        />
+        <div style={{ ...S.mono, fontSize:'10px', color:'#aaa', marginTop:'10px', lineHeight:1.7 }}>
+          Polarized model — Seiler &amp; Tønnessen (2009) · ~80% Z1–Z2, ~20% Z4–Z5 ·
+          TSS targets based on Friel/Coggan PMC model (CTL time constant: 42d)
+        </div>
+      </div>
+
+      {/* ─── Zone legend ─── */}
+      <div className="sp-card" style={{ ...S.card, animationDelay:'120ms' }}>
         <div style={S.cardTitle}>{t('zoneLegendTitle')}</div>
         <div style={{ display:'flex', gap:'16px', flexWrap:'wrap' }}>
-          {ZONE_NAMES.map((n,i)=>(
-            <div key={i} style={{ display:'flex', alignItems:'center', gap:'6px', ...S.mono, fontSize:'11px' }}>
+          {ZONE_NAMES.map((n, i) => (
+            <div key={i} style={{ display:'flex', alignItems:'center', gap:'6px', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px' }}>
               <div style={{ width:'12px', height:'12px', background:ZONE_COLORS[i], borderRadius:'2px' }}/>
               {n}
             </div>
           ))}
         </div>
-      </div>
-      <div className="sp-card" style={{ ...S.card, animationDelay:'100ms' }}>
-        <div style={S.cardTitle}>{t('weekBreakTitle')}</div>
-        <div style={{ overflowX:'auto' }}>
-          <table style={{ width:'100%', borderCollapse:'collapse', ...S.mono, fontSize:'11px' }}>
-            <thead>
-              <tr style={{ borderBottom:'2px solid var(--border)', color:'#888', fontSize:'10px', letterSpacing:'0.06em' }}>
-                {['WK','PHASE','FOCUS','HRS','ZONE DIST','LOAD'].map((h,i)=>(
-                  <th key={h} style={{ textAlign:i>=3?'center':'left', padding:'4px 10px 8px 0', fontWeight:600, minWidth:i===4?'120px':undefined }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {MACRO_PHASES.map(row=>{
-                const wh=row.load==='Low'?hours*.7:row.load==='Med'?hours:hours*1.25
-                return (
-                  <tr key={row.week} style={{ borderBottom:'1px solid var(--border)', background:row.phase==='Recovery'?'#fffbf0':row.phase==='Race'?'#fff8f8':'transparent' }}>
-                    <td style={{ padding:'7px 10px 7px 0', fontWeight:600, color:'#ff6600' }}>{row.week}</td>
-                    <td style={{ padding:'7px 10px 7px 0' }}>{row.phase}</td>
-                    <td style={{ padding:'7px 10px 7px 0', color:'var(--sub)' }}>{row.focus}</td>
-                    <td style={{ textAlign:'center', padding:'7px 10px 7px 0', fontWeight:600 }}>{wh.toFixed(1)}</td>
-                    <td style={{ padding:'7px 0', minWidth:'120px' }}>
-                      <div style={{ display:'flex', height:'10px', gap:'1px', borderRadius:'2px', overflow:'hidden' }}>
-                        {row.zDist.map((pct,zi)=>pct>0&&<div key={zi} style={{ width:`${pct}%`, background:ZONE_COLORS[zi] }} title={`${ZONE_NAMES[zi]}: ${pct}%`}/>)}
-                      </div>
-                    </td>
-                    <td style={{ textAlign:'center', padding:'7px 0' }}><span style={S.tag(LOAD_COLOR[row.load])}>{row.load}</span></td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+        <div style={{ ...S.mono, fontSize:'10px', color:'#aaa', marginTop:'12px', lineHeight:1.7 }}>
+          Mujika taper decay: TSS drops ~40% over last 2 weeks while intensity is maintained.
+          Form (TSB) peaks in race week — target +5 to +15 for optimal performance.
         </div>
-        <div style={{ ...S.mono, fontSize:'10px', color:'#aaa', marginTop:'10px' }}>Polarized model \u2014 Seiler & T\u00f8nnessen (2009). ~80% Z1\u2013Z2, ~20% Z4\u2013Z5.</div>
       </div>
     </div>
   )

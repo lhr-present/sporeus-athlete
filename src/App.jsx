@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
+import { exchangeStravaCode } from './lib/strava.js'
 import { LangCtx, LABELS, TABS } from './contexts/LangCtx.jsx'
 import { useLocalStorage, STORAGE_WARN_KEY } from './hooks/useLocalStorage.js'
 import { DataProvider, useData } from './contexts/DataContext.jsx'
@@ -53,6 +54,36 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
     }
     return code || null
   })
+
+  // Strava OAuth callback — detect ?state=strava&code=XXX on load
+  const [stravaCallbackCode, setStravaCallbackCode] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('state') === 'strava' && params.get('code')) {
+      const oauthCode = params.get('code')
+      const url = new URL(window.location.href)
+      url.searchParams.delete('state')
+      url.searchParams.delete('code')
+      url.searchParams.delete('scope')
+      window.history.replaceState({}, '', url.toString())
+      return oauthCode
+    }
+    return null
+  })
+  const [stravaToast, setStravaToast] = useState('')
+
+  // Exchange Strava code once we have an authenticated user
+  useEffect(() => {
+    if (!stravaCallbackCode || !authUser || !isSupabaseReady()) return
+    setStravaCallbackCode(null) // prevent re-runs
+    exchangeStravaCode(stravaCallbackCode).then(({ data, error }) => {
+      if (error) {
+        setStravaToast(`⚠ Strava connection failed: ${error.message || 'Unknown error'}`)
+      } else {
+        setStravaToast(`✓ Strava connected${data?.athlete ? ' — ' + data.athlete : ''}`)
+      }
+      setTimeout(() => setStravaToast(''), 6000)
+    })
+  }, [stravaCallbackCode, authUser])
   const [profile, setProfile] = useLocalStorage('sporeus_profile', {})
   const [logPrefill, setLogPrefill] = useState(null)
   const [quotaWarn, setQuotaWarn] = useState(() => {
@@ -205,6 +236,13 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
         />
       )}
 
+      {stravaToast && (
+        <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:10002, background: stravaToast.startsWith('⚠') ? '#e03030' : '#fc4c02', color:'#fff', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'10px 20px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          {stravaToast}
+          <button onClick={() => setStravaToast('')} style={{ background:'none', border:'1px solid #fff', color:'#fff', padding:'2px 8px', cursor:'pointer', fontFamily:'inherit', fontSize:'10px' }}>✕</button>
+        </div>
+      )}
+
       {coachToast && (
         <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:10002, background:'#0064ff', color:'#fff', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'10px 20px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           {coachToast}
@@ -321,7 +359,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
           {tab === 'plan'         && <ErrorBoundary tabName="Plan Generator"><Suspense fallback={<LazyFallback/>}><PlanGenerator onLogSession={ses => { setLogPrefill(ses); setTab('log') }}/></Suspense></ErrorBoundary>}
           {tab === 'glossary'     && <ErrorBoundary tabName="Glossary"><Suspense fallback={<LazyFallback/>}><Glossary/></Suspense></ErrorBoundary>}
           {tab === 'recovery'     && <ErrorBoundary tabName="Recovery"><Recovery/></ErrorBoundary>}
-          {tab === 'profile'      && <ErrorBoundary tabName="Profile"><Profile profile={profile} setProfile={setProfile} log={log}/></ErrorBoundary>}
+          {tab === 'profile'      && <ErrorBoundary tabName="Profile"><Profile profile={profile} setProfile={setProfile} log={log} authUser={authUser}/></ErrorBoundary>}
         </main>
 
         <footer style={S.footer}>

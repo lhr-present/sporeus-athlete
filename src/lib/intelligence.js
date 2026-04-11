@@ -419,9 +419,9 @@ export function generateWeeklyNarrative(log, recovery, profile, lang) {
       : { en: `Readiness averaged ${avgRec}/100 — prioritise sleep and nutrition.`, tr: `Hazırlık ortalaması ${avgRec}/100 — uyku ve beslenmeye öncelik ver.` })
     : { en: '', tr: '' }
 
-  const riskPhrase = riskLevel === 'high'
+  const riskPhrase = riskLevel === 'HIGH'
     ? { en: 'Injury risk is elevated — consider an easy day.', tr: 'Yaralanma riski yüksek — kolay bir gün düşün.' }
-    : riskLevel === 'moderate'
+    : riskLevel === 'MODERATE'
     ? { en: 'Keep monitoring load balance.', tr: 'Yük dengesini izlemeye devam et.' }
     : { en: 'Keep training consistently.', tr: 'Tutarlı antrenmanına devam et.' }
 
