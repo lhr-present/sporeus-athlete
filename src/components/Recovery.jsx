@@ -9,6 +9,9 @@ import InjuryTracker from './InjuryTracker.jsx'
 import HRVDashboard from './HRVDashboard.jsx'
 import MentalTools from './MentalTools.jsx'
 import ErrorBoundary from './ErrorBoundary.jsx'
+import OSTRCQuestionnaire from './OSTRCQuestionnaire.jsx'
+import RTPProtocol from './RTPProtocol.jsx'
+import CycleTracker from './CycleTracker.jsx'
 import { predictInjuryRisk } from '../lib/intelligence.js'
 
 export default function Recovery() {
@@ -302,8 +305,11 @@ export default function Recovery() {
         )
       })()}
 
+      <ErrorBoundary inline name="OSTRC"><OSTRCQuestionnaire /></ErrorBoundary>
+      <ErrorBoundary inline name="RTP Protocol"><RTPProtocol /></ErrorBoundary>
       <ErrorBoundary inline name="HRV Dashboard"><HRVDashboard recovery={entries} setRecovery={setEntries} /></ErrorBoundary>
       <ErrorBoundary inline name="Injury Tracker"><InjuryTracker /></ErrorBoundary>
+      <ErrorBoundary inline name="Cycle Tracker"><CycleTracker /></ErrorBoundary>
       <ErrorBoundary inline name="Mental Tools"><MentalTools /></ErrorBoundary>
     </div>
   )

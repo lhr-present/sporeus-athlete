@@ -2,6 +2,37 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v5.17.0 (2026-04-12)
+Tier 2 recovery tools: OSTRC, RTP, CycleTracker — 401 tests (36 new):
+
+**OSTRC-Q2 Weekly Injury Surveillance (OSTRCQuestionnaire.jsx)**
+- IOC OSTRC-Q2 (Clarsen et al. 2020): 4 questions × 0–25 scale = 0–100 total
+- Weekly gate via ISO week key (isoWeekKey) — prevents double submission
+- Risk tiers: none / minor / moderate / substantial; red coach-flag banner at score > 50
+- 8-week bar chart history; update form shown for corrections
+- `sporeus-ostrc` localStorage key; bilingual EN/TR
+- `src/lib/ostrc.js`: 3 pure functions — `ostrcScore`, `ostrcRisk`, `isoWeekKey`
+- 18 tests in `src/lib/ostrc.test.js`
+
+**Return-to-Play Protocol (RTPProtocol.jsx)**
+- 5-stage ladder (Rest → Light Aerobic → Sport-Specific → Non-Contact → Full Practice)
+- Per-zone protocol tracking: zone selection from 10 body-zone list
+- Manual stage advance/back with date reset; stage progress bar; days-at-stage counter
+- Complete protocol → archived in completed list; delete anytime
+- `sporeus-rtp` localStorage; bilingual EN/TR
+
+**Menstrual Cycle Tracker (CycleTracker.jsx)**
+- localStorage-only (`sporeus_cycle` — already reserved); zero DB exposure
+- 4 phases auto-calculated from last period start + cycle length (21–45 days)
+- Training tips per phase (based on estrogen/progesterone physiology)
+- Days-to-ovulation and days-to-next-period countdown
+- HRV 28-day sparkline with phase colour bands as background overlay
+- `src/lib/cycleUtils.js`: `cycleDay`, `currentCyclePhase`, `daysUntilPhase`, `PHASE_INFO`
+- 18 tests in `src/lib/cycleUtils.test.js`
+
+- All three mounted in Recovery.jsx wrapped in `<ErrorBoundary inline>` (below injury risk widget)
+- DEPENDS ON: useData().recovery for CycleTracker HRV overlay; useLocalStorage hook; S from styles.js
+
 ## v5.16.0 (2026-04-12)
 Coach tools + training intelligence layer — 365 tests (36 new):
 

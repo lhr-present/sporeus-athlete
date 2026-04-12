@@ -1,4 +1,4 @@
-// src/sw.js — Custom service worker for Sporeus Athlete (v5.16.0)
+// src/sw.js — Custom service worker for Sporeus Athlete (v5.17.0)
 // vite-plugin-pwa injects self.__WB_MANIFEST here at build time.
 
 import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from 'workbox-precaching'
@@ -7,7 +7,7 @@ import { NetworkFirst } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
 import { CacheableResponsePlugin } from 'workbox-cacheable-response'
 
-const CACHE_VERSION = 'sporeus-v5.16.0'
+const CACHE_VERSION = 'sporeus-v5.17.0'
 
 // ── Precaching ─────────────────────────────────────────────────────────────────
 precacheAndRoute(self.__WB_MANIFEST)
