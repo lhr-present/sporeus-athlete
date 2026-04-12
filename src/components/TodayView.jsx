@@ -7,6 +7,8 @@ import { getTodayPlannedSession, getSingleSuggestion, generateDailyDigest } from
 import { WELLNESS_FIELDS } from '../lib/constants.js'
 import { LineChart, Line, ResponsiveContainer } from 'recharts'
 import { hasUnread } from './CoachMessage.jsx'
+import { supabase, isSupabaseReady } from '../lib/supabase.js'
+import { enqueuePendingLog, flushQueue, isNetworkError } from '../lib/offlineQueue.js'
 
 // ── Wellness 14-day sparkline ─────────────────────────────────────────────────
 function WellnessSparkline({ recovery }) {
@@ -138,7 +140,7 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
     setAlreadySubmitted(false)
   }, [today])
 
-  const saveReadiness = () => {
+  const saveReadiness = async () => {
     if (isSubmitting) return
     // Check if this idempotency key was already used (double-tap guard)
     const usedKey = 'sporeus-checkin-idem'
@@ -157,8 +159,32 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
       soreness: wellness.soreness, mood: 3, stress: 3, score,
       id: Date.now(), idempotency_key: idempotencyKey.current,
     }
+
+    // 1. Optimistic local update (always succeeds)
     setRecovery(prev => [...(prev || []).filter(e => e.date !== today), entry].slice(-90))
     setWellnessSaved(true)
+
+    // 2. Try Supabase upsert; enqueue if network is down
+    if (isSupabaseReady()) {
+      try {
+        const { error } = await supabase
+          .from('wellness_logs')
+          .upsert({ ...entry, _table: undefined }, { onConflict: 'id' })
+        if (error) {
+          if (isNetworkError(error)) {
+            await enqueuePendingLog({ ...entry, _table: 'wellness_logs' })
+          }
+          // Validation errors: local state still holds the data — don't block UX
+        } else {
+          // Successful sync — flush any prior pending entries
+          flushQueue().catch(() => {})
+        }
+      } catch (e) {
+        if (isNetworkError(e)) {
+          await enqueuePendingLog({ ...entry, _table: 'wellness_logs' })
+        }
+      }
+    }
 
     // Re-enable after 2s (prevents accidental double-tap; localStorage guard prevents true duplicates)
     setTimeout(() => setIsSubmitting(false), 2000)

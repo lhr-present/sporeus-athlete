@@ -24,9 +24,19 @@ const TIER_RANK = { free: 0, coach: 1, club: 2 }
 function tierRank(tier) { return TIER_RANK[tier] ?? 0 }
 
 // ── getTier(authUser) ─────────────────────────────────────────────────────────
-// Reads from profiles.subscription_tier → localStorage fallback → 'free'
+// Authoritative source: Supabase RPC get_my_tier() (server-side function).
+// Falls back to profiles table read, then localStorage cache.
 export async function getTier(authUser) {
   if (authUser && isSupabaseReady()) {
+    // 1. Try server-side RPC (reads from DB with SECURITY DEFINER — not bypassable)
+    try {
+      const { data, error } = await supabase.rpc('get_my_tier')
+      if (!error && data) {
+        try { localStorage.setItem('sporeus-tier', data) } catch {}
+        return data
+      }
+    } catch {}
+    // 2. Fallback: direct table read
     try {
       const { data } = await supabase
         .from('profiles')
@@ -39,6 +49,7 @@ export async function getTier(authUser) {
       }
     } catch {}
   }
+  // 3. Last resort: localStorage cache (stale, but better than nothing offline)
   try { return localStorage.getItem('sporeus-tier') || 'free' } catch { return 'free' }
 }
 

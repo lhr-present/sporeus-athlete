@@ -37,6 +37,8 @@ export async function enqueuePendingLog(entry) {
 }
 
 // ─── Flush queue (retry all pending entries in insertion order) ────────────────
+// Each entry may carry a `_table` field specifying its target table.
+// Defaults to 'wellness_logs' (the primary use case).
 export async function flushQueue() {
   if (!isSupabaseReady()) return
   if (typeof navigator !== 'undefined' && !navigator.onLine) { setStatus('offline'); return }
@@ -48,10 +50,11 @@ export async function flushQueue() {
 
   let allOk = true
   for (const row of pending) {
-    const { id, _queuedAt, ...entry } = row  // strip internal fields
+    const { id, _queuedAt, _table, ...entry } = row  // strip internal queue metadata
+    const table = _table || 'wellness_logs'
     try {
       const { error } = await supabase
-        .from('athlete_training_log')
+        .from(table)
         .upsert(entry, { onConflict: 'id' })
       if (!error) {
         await dequeue(id)
@@ -66,6 +69,17 @@ export async function flushQueue() {
   }
 
   setStatus(allOk ? 'synced' : 'offline')
+}
+
+// ── isNetworkError — distinguish network failures from server/validation errors ─
+export function isNetworkError(error) {
+  if (!error) return false
+  const msg = (error.message || '').toLowerCase()
+  // Network errors: fetch failed, no connection, etc.
+  return msg.includes('failed to fetch') || msg.includes('network') ||
+         msg.includes('offline') || msg.includes('connection') ||
+         (typeof error.code === 'number' && error.code === 0) ||
+         (typeof navigator !== 'undefined' && !navigator.onLine)
 }
 
 // ─── Wire navigator.onLine events (call once on app start) ────────────────────

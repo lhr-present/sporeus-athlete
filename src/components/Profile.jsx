@@ -10,7 +10,7 @@ import { exportAthleteData, deleteAthleteData, triggerDownload } from '../lib/gd
 import { generateSeasonReport } from '../lib/pdfReport.js'
 import { getTierSync, isFeatureGated, getUpgradePrompt } from '../lib/subscription.js'
 import { Sparkline } from './ui.jsx'
-import { isSupabaseReady } from '../lib/supabase.js'
+import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import NotificationSettings from './NotificationSettings.jsx'
 import DeviceSync from './DeviceSync.jsx'
 import AthleteOSCosts from './AthleteOSCosts.jsx'
@@ -20,103 +20,68 @@ import { getPushState, subscribePush, unsubscribePush, checkRaceCountdowns } fro
 import { clearInsightCache } from '../lib/aiPrompts.js'
 
 // ─── AI Settings Panel ────────────────────────────────────────────────────────
+// API key is managed server-side (ai-proxy edge function). This panel shows
+// subscription tier (read from DB) and daily usage, plus cache controls.
 function AISettings({ authUser }) {
-  const [apiKey, setApiKey]   = useState(() => { try { return localStorage.getItem('sporeus-anthropic-key') || '' } catch { return '' } })
-  const [showKey, setShowKey] = useState(false)
-  const [tier, setTier]       = useState(() => { try { return localStorage.getItem('sporeus-ai-tier') || 'haiku' } catch { return 'haiku' } })
-  const [testStatus, setTestStatus] = useState('')   // '', 'testing', 'ok', 'error'
+  const [tier, setTierState] = useState('loading')
+  const [dailyUsed, setDailyUsed] = useState(0)
   const [cleared, setCleared] = useState(false)
+
+  useEffect(() => {
+    if (!isSupabaseReady() || !authUser) return
+    // Read authoritative tier from DB
+    supabase.from('profiles').select('subscription_tier').eq('id', authUser.id).maybeSingle()
+      .then(({ data }) => {
+        const t = data?.subscription_tier || 'free'
+        setTierState(t)
+        try { localStorage.setItem('sporeus-tier', t) } catch {}
+      })
+    // Read today's AI usage count
+    const today = new Date().toISOString().slice(0, 10)
+    supabase.from('ai_insights').select('*', { count: 'exact', head: true })
+      .eq('athlete_id', authUser.id).eq('date', today)
+      .then(({ count }) => setDailyUsed(count || 0))
+  }, [authUser?.id])
 
   if (!isSupabaseReady() || !authUser) return (
     <div style={{ ...S.mono, fontSize:'11px', color:'#555', padding:'12px 0' }}>
-      Sign in to configure AI settings.
+      Sign in to view AI settings.
     </div>
   )
 
-  const saveKey = (k) => {
-    setApiKey(k)
-    try { if (k) localStorage.setItem('sporeus-anthropic-key', k); else localStorage.removeItem('sporeus-anthropic-key') } catch {}
-  }
-
-  const saveTier = (t) => {
-    setTier(t)
-    try { localStorage.setItem('sporeus-ai-tier', t) } catch {}
-  }
-
-  const testConnection = async () => {
-    if (!apiKey) { setTestStatus('error'); return }
-    setTestStatus('testing')
-    try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 8, messages: [{ role: 'user', content: 'Hi' }] }),
-      })
-      setTestStatus(res.ok ? 'ok' : 'error')
-    } catch { setTestStatus('error') }
-  }
-
   const handleClearCache = async () => {
     await clearInsightCache(authUser.id)
-    try { for (const k of Object.keys(localStorage).filter(k => k.startsWith('sp-ai-'))) localStorage.removeItem(k) } catch {}
+    try { Object.keys(localStorage).filter(k => k.startsWith('sporeus-ai-')).forEach(k => localStorage.removeItem(k)) } catch {}
     setCleared(true)
     setTimeout(() => setCleared(false), 3000)
   }
 
-  const TIERS = [
-    { id:'free',   label:'Free',   desc:'Rule-based only (no API cost)' },
-    { id:'haiku',  label:'Haiku',  desc:'Fast, ~$0.001/request' },
-    { id:'sonnet', label:'Sonnet', desc:'Smarter, ~$0.01/request' },
-  ]
-
-  const usageEst = tier === 'free' ? 'No API calls' : tier === 'haiku' ? '~$0.03–0.10/month' : '~$0.30–1.00/month'
-
-  const masked = apiKey ? apiKey.slice(0,8) + '••••••••' + apiKey.slice(-4) : ''
+  const TIER_INFO = {
+    free:  { label: 'Free',  limit: 0,   desc: 'Rule-based insights only' },
+    coach: { label: 'Coach', limit: 50,  desc: '50 AI calls/day' },
+    club:  { label: 'Club',  limit: 500, desc: '500 AI calls/day' },
+  }
+  const info = TIER_INFO[tier] || TIER_INFO.free
 
   return (
     <div style={{ marginTop:'8px' }}>
-      {/* API Key */}
+      {/* Tier display */}
       <div style={{ marginBottom:'14px' }}>
-        <label style={{ ...S.label, marginBottom:'6px' }}>ANTHROPIC API KEY (BYOK)</label>
-        <div style={{ display:'flex', gap:'8px', alignItems:'center' }}>
-          <input
-            type={showKey ? 'text' : 'password'}
-            value={apiKey}
-            onChange={e => saveKey(e.target.value)}
-            placeholder="sk-ant-…"
-            style={{ ...S.input, flex:1, fontSize:'13px' }}
-          />
-          <button onClick={() => setShowKey(s => !s)} style={{ ...S.btnSec, padding:'8px 10px', fontSize:'11px', flexShrink:0 }}>
-            {showKey ? 'hide' : 'show'}
-          </button>
+        <label style={{ ...S.label, marginBottom:'6px' }}>SUBSCRIPTION TIER</label>
+        <div style={{ ...S.mono, fontSize:'12px', color:'#ff6600', fontWeight:600 }}>
+          {tier === 'loading' ? '…' : info.label.toUpperCase()}
         </div>
-        {apiKey && !showKey && (
-          <div style={{ ...S.mono, fontSize:'10px', color:'#555', marginTop:'4px' }}>{masked}</div>
+        <div style={{ ...S.mono, fontSize:'10px', color:'#555', marginTop:'3px' }}>{info.desc}</div>
+        {info.limit > 0 && (
+          <div style={{ ...S.mono, fontSize:'10px', color:'#555', marginTop:'3px' }}>
+            Today: {dailyUsed} / {info.limit} calls used
+          </div>
         )}
-      </div>
-
-      {/* Test connection */}
-      <div style={{ marginBottom:'14px', display:'flex', gap:'8px', alignItems:'center' }}>
-        <button onClick={testConnection} disabled={testStatus === 'testing' || !apiKey} style={{ ...S.btnSec, fontSize:'11px', padding:'6px 14px' }}>
-          {testStatus === 'testing' ? 'Testing…' : 'Test connection'}
-        </button>
-        {testStatus === 'ok'    && <span style={{ ...S.mono, fontSize:'11px', color:'#5bc25b' }}>✓ Connected</span>}
-        {testStatus === 'error' && <span style={{ ...S.mono, fontSize:'11px', color:'#e03030' }}>✗ Failed — check key</span>}
-      </div>
-
-      {/* Tier selector */}
-      <div style={{ marginBottom:'14px' }}>
-        <label style={{ ...S.label, marginBottom:'6px' }}>AI TIER</label>
-        <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
-          {TIERS.map(t => (
-            <button key={t.id} onClick={() => saveTier(t.id)}
-              style={{ flex:'1 1 100px', padding:'8px 12px', borderRadius:'4px', textAlign:'left', cursor:'pointer', border:`1px solid ${tier === t.id ? '#ff6600' : 'var(--border)'}`, background: tier === t.id ? '#ff660011' : 'transparent' }}>
-              <div style={{ ...S.mono, fontSize:'12px', fontWeight:600, color: tier === t.id ? '#ff6600' : 'var(--text)', marginBottom:'2px' }}>{t.label}</div>
-              <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>{t.desc}</div>
-            </button>
-          ))}
-        </div>
-        <div style={{ ...S.mono, fontSize:'10px', color:'#555', marginTop:'6px' }}>Estimated usage: {usageEst}</div>
+        {tier === 'free' && (
+          <div style={{ ...S.mono, fontSize:'10px', color:'#f5c542', marginTop:'6px' }}>
+            Upgrade to Coach or Club at sporeus.com to enable AI insights.
+          </div>
+        )}
       </div>
 
       {/* Clear cache */}

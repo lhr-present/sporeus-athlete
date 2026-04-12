@@ -22,7 +22,7 @@ vi.mock('./supabase.js', () => ({
   isSupabaseReady: () => true,
 }))
 
-import { enqueuePendingLog, flushQueue, getSyncStatus, onSyncStatusChange } from './offlineQueue.js'
+import { enqueuePendingLog, flushQueue, getSyncStatus, onSyncStatusChange, isNetworkError } from './offlineQueue.js'
 import { enqueue, dequeue, getAll } from './db.js'
 
 beforeEach(() => {
@@ -98,4 +98,44 @@ it('onSyncStatusChange unsubscribe stops future notifications', async () => {
 
   // No additional events after unsub
   expect(received.length).toBe(countBefore)
+})
+
+// ─── F3 new tests ─────────────────────────────────────────────────────────────
+
+// Test 6: submit while offline → entry enqueued with correct _table
+it('enqueuePendingLog persists _table metadata for routing', async () => {
+  const entry = { date: '2026-04-13', score: 75, _table: 'wellness_logs' }
+  await enqueuePendingLog(entry)
+  expect(_store[0]._table).toBe('wellness_logs')
+  expect(getSyncStatus()).toBe('offline')
+})
+
+// Test 7: flush routes to the correct table from _table field
+it('flushQueue uses _table field to route to correct Supabase table', async () => {
+  const calledTables = []
+  const { supabase } = await import('./supabase.js')
+  supabase.from = vi.fn(table => {
+    calledTables.push(table)
+    return { upsert: vi.fn(async () => ({ error: null })) }
+  })
+
+  _store.push({ id: 1, _queuedAt: Date.now(), _table: 'wellness_logs', date: '2026-04-13', score: 80 })
+  await flushQueue()
+
+  expect(calledTables).toContain('wellness_logs')
+})
+
+// Test 8: isNetworkError — network vs validation error discrimination
+describe('isNetworkError', () => {
+  it('returns true for fetch failures', () => {
+    expect(isNetworkError(new Error('Failed to fetch'))).toBe(true)
+    expect(isNetworkError(new Error('network request failed'))).toBe(true)
+  })
+
+  it('returns false for server/validation errors', () => {
+    expect(isNetworkError(new Error('duplicate key value violates unique constraint'))).toBe(false)
+    expect(isNetworkError(new Error('invalid input syntax'))).toBe(false)
+    expect(isNetworkError(null)).toBe(false)
+    expect(isNetworkError(undefined)).toBe(false)
+  })
 })

@@ -1,7 +1,6 @@
-// ─── aiPrompts.js — Claude API integration for AthleteOS ──────────────────────
-// Pure module. No external dependencies beyond fetch.
-// API key is stored in localStorage ('sporeus-anthropic-key') — user-provided.
-// NEVER hardcode keys here. See CLAUDE.md security rules.
+// ─── aiPrompts.js — Claude API integration via server-side ai-proxy ───────────
+// All Claude calls go through supabase/functions/ai-proxy. The Anthropic API key
+// never reaches the browser. Tier enforcement is authoritative on the server.
 //
 // Cache strategy (two-tier):
 //   Primary:  Supabase `ai_insights` table (athlete_id, date, data_hash, insight_json, model, created_at)
@@ -10,11 +9,9 @@
 import { supabase, isSupabaseReady } from './supabase.js'
 import { getTierSync, canUseAI } from './subscription.js'
 
-const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
-const ANTHROPIC_VERSION  = '2023-06-01'
-
-const MODEL_HAIKU  = 'claude-haiku-4-5-20251001'  // batched/automated
-const MODEL_SONNET = 'claude-sonnet-4-5'            // interactive/complex
+// Model aliases (resolved to actual IDs in the edge function)
+const MODEL_HAIKU  = 'haiku'   // maps to claude-haiku-4-5-20251001 in proxy
+const MODEL_SONNET = 'sonnet'  // maps to claude-sonnet-4-5 in proxy
 
 const CACHE_PREFIX  = 'sporeus-ai-'
 const CACHE_TTL_MS  = 8 * 3600_000  // 8h for localStorage fallback
@@ -115,11 +112,6 @@ export async function clearInsightCache(athleteId) {
   } catch {}
 }
 
-// ─── Key helper ───────────────────────────────────────────────────────────────
-function getApiKey() {
-  try { return localStorage.getItem('sporeus-anthropic-key') || '' } catch { return '' }
-}
-
 // ─── JSON parser (strips markdown fences) ─────────────────────────────────────
 function parseJSON(text) {
   try {
@@ -151,42 +143,31 @@ function incrementDailyCallCount() {
   } catch {}
 }
 
-// ─── Core fetch ───────────────────────────────────────────────────────────────
+// ─── Core proxy call ──────────────────────────────────────────────────────────
+// Routes through supabase/functions/ai-proxy — key stays server-side.
 async function callClaude(model, system, user, maxTokens = 512) {
-  // Tier gate: check daily call limit
+  // Client-side UX gate (non-authoritative — server re-enforces)
   const tier = getTierSync()
   const dailyCalls = getDailyCallCount()
   if (!canUseAI(dailyCalls, tier)) {
     throw new Error(`AI call limit reached for ${tier} plan. Upgrade at sporeus.com.`)
   }
 
-  const key = getApiKey()
-  if (!key) throw new Error('Anthropic API key not set — add it in Profile → Settings')
+  if (!isSupabaseReady()) throw new Error('Not connected — sign in to use AI features')
 
-  const res = await fetch(ANTHROPIC_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type':      'application/json',
-      'x-api-key':         key,
-      'anthropic-version': ANTHROPIC_VERSION,
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: maxTokens,
-      system,
-      messages: [{ role: 'user', content: user }],
-    }),
+  const modelAlias = model.includes('haiku') ? 'haiku' : 'sonnet'
+
+  // supabase.functions.invoke auto-injects the current session JWT
+  const { data, error } = await supabase.functions.invoke('ai-proxy', {
+    body: { model_alias: modelAlias, system, user_msg: user, max_tokens: maxTokens },
   })
 
-  if (!res.ok) {
-    let msg = `Claude API error ${res.status}`
-    try { const e = await res.json(); msg = e?.error?.message || msg } catch {}
-    throw new Error(msg)
-  }
+  if (error) throw new Error(error.message || 'AI proxy error')
+  if (data?.error) throw new Error(data.error)
+  if (!data?.content) throw new Error('Empty response from AI')
 
-  const data = await res.json()
   incrementDailyCallCount()
-  return data?.content?.[0]?.text || ''
+  return data.content
 }
 
 // ─── 1. generateDailySummary ──────────────────────────────────────────────────
