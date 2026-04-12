@@ -10,6 +10,7 @@ import { Sparkline } from './ui.jsx'
 import { isSupabaseReady } from '../lib/supabase.js'
 import NotificationSettings from './NotificationSettings.jsx'
 import DeviceSync from './DeviceSync.jsx'
+import AthleteOSCosts from './AthleteOSCosts.jsx'
 import ActivityHeatmap from './ActivityHeatmap.jsx'
 import { getStravaConnection, initiateStravaOAuth, triggerStravaSync, disconnectStrava } from '../lib/strava.js'
 import { getPushState, subscribePush, unsubscribePush, checkRaceCountdowns } from '../lib/pushNotify.js'
@@ -1218,6 +1219,11 @@ export default function Profile({ profile, setProfile, log, authUser }) {
       {/* Admin code generator — only shown to Hüseyin */}
       {(local.name?.toLowerCase().includes('hüseyin') || local.name?.toLowerCase().includes('huseyin') || local.email === 'huseyinakbulut@marun.edu.tr') && (
         <AdminCodeGenerator/>
+      )}
+
+      {/* AthleteOS developer reference — Cost Cuts + Prompt Library */}
+      {(local.name?.toLowerCase().includes('hüseyin') || local.name?.toLowerCase().includes('huseyin') || local.email === 'huseyinakbulut@marun.edu.tr') && (
+        <AthleteOSCosts />
       )}
     </div>
   )
