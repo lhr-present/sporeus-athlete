@@ -155,6 +155,7 @@ export default function VO2maxCard() {
                   />
                 )}
                 activeDot={{ r: 4, fill: '#ff6600' }}
+                isAnimationActive={false}
               />
             </LineChart>
           </ResponsiveContainer>

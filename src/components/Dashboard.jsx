@@ -1,4 +1,4 @@
-import { useContext, useState, useEffect } from 'react'
+import { useContext, useState, useEffect, useMemo } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { TSSChart, WeeklyVolChart, ZoneDonut, ZoneBar, CTLTimeline, HelpTip } from './ui.jsx'
@@ -60,10 +60,10 @@ function InsightsCard({ log, recovery, profile, lang }) {
   const [open, setOpen] = useState(false)
   if (log.length < 4) return null
 
-  const loadTrend  = analyzeLoadTrend(log)
-  const zoneBalance = analyzeZoneBalance(log)
-  const fitness    = predictFitness(log)
-  const recovCorr  = analyzeRecoveryCorrelation(log, recovery)
+  const loadTrend   = useMemo(() => analyzeLoadTrend(log),                     [log])
+  const zoneBalance = useMemo(() => analyzeZoneBalance(log),                    [log])
+  const fitness     = useMemo(() => predictFitness(log),                        [log])
+  const recovCorr   = useMemo(() => analyzeRecoveryCorrelation(log, recovery),  [log, recovery])
 
   const insights = [
     { label: t('loadTrendLabel'),  value: loadTrend.trend.toUpperCase(),       color: loadTrend.trend==='building'?'#5bc25b':loadTrend.trend==='recovering'?'#4a90d9':'#f5c542', text: loadTrend.advice[lang] || loadTrend.advice.en },

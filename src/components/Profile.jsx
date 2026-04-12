@@ -8,6 +8,8 @@ import { sanitizeProfile } from '../lib/validate.js'
 import { exportAllData, importAllData } from '../lib/storage.js'
 import { Sparkline } from './ui.jsx'
 import { isSupabaseReady } from '../lib/supabase.js'
+import NotificationSettings from './NotificationSettings.jsx'
+import DeviceSync from './DeviceSync.jsx'
 import { getStravaConnection, initiateStravaOAuth, triggerStravaSync, disconnectStrava } from '../lib/strava.js'
 import { getPushState, subscribePush, unsubscribePush, checkRaceCountdowns } from '../lib/pushNotify.js'
 
@@ -1201,6 +1203,9 @@ export default function Profile({ profile, setProfile, log, authUser }) {
           Export backs up all training data, plans, and settings as JSON. Import restores a previous backup.
         </div>
       </div>
+
+      <NotificationSettings />
+      <DeviceSync userId={authUser?.id} />
 
       {/* Admin code generator — only shown to Hüseyin */}
       {(local.name?.toLowerCase().includes('hüseyin') || local.name?.toLowerCase().includes('huseyin') || local.email === 'huseyinakbulut@marun.edu.tr') && (

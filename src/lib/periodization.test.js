@@ -335,3 +335,56 @@ describe('exportPlanCSV', () => {
     expect(lines).toHaveLength(1)  // only header
   })
 })
+
+
+// ─── Edge cases ───────────────────────────────────────────────────────────────
+describe('buildYearlyPlan — edge cases', () => {
+  it('no races: still generates 52 weeks, all Base or Peak', () => {
+    const { weeks } = buildYearlyPlan({ startDate: TODAY, races: [], currentCTL: 30 })
+    expect(weeks).toHaveLength(52)
+    weeks.forEach(w => expect(['Base', 'Peak']).toContain(w.phase))
+  })
+
+  it('all weeks have positive targetTSS', () => {
+    const { weeks } = defaultPlan()
+    weeks.forEach(w => expect(w.targetTSS).toBeGreaterThan(0))
+  })
+
+  it('polarized model uses 80% Z1 in zoneDistribution regardless of phase', () => {
+    const { weeks } = buildYearlyPlan({
+      startDate: TODAY, races: [], currentCTL: 40, model: 'polarized',
+    })
+    // Every week should have polarized zone distribution
+    weeks.forEach(w => {
+      expect(w.zoneDistribution.Z1).toBe(0.80)
+      expect(w.zoneDistribution.Z2).toBe(0.00)
+    })
+  })
+
+  it('block model still uses standard phase labels (Base/Build/Peak)', () => {
+    const { weeks } = buildYearlyPlan({
+      startDate: TODAY,
+      races: [{ date: addWeeks(TODAY, 24), name: 'Block Race', priority: 'A' }],
+      currentCTL: 40, model: 'block',
+    })
+    const phases = new Set(weeks.map(w => w.phase))
+    // Block model uses standard phase names; zone distribution varies per sub-cycle
+    expect(phases.has('Base') || phases.has('Build')).toBe(true)
+    expect(weeks).toHaveLength(52)
+  })
+})
+
+describe('updateWeekTSS — edge cases', () => {
+  it('negative TSS is clamped to 0', () => {
+    const { weeks } = defaultPlan()
+    const updated = updateWeekTSS(weeks, 0, -50)
+    expect(updated[0].targetTSS).toBe(0)
+  })
+
+  it('does not mutate other weeks', () => {
+    const { weeks } = defaultPlan()
+    const orig = weeks[5].targetTSS
+    const updated = updateWeekTSS(weeks, 3, 999)
+    expect(updated[5].targetTSS).toBe(orig)
+  })
+})

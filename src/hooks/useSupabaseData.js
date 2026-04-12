@@ -147,7 +147,14 @@ function useSyncedTable({ lsKey, lsDefault, table, toEntry, toRow, userId, order
       .eq('user_id', userId)
       .order(orderCol, { ascending: false })
       .then(({ data: rows, error }) => {
-        if (!error && rows) setDataLS(rows.map(toEntry))
+        if (!error && rows) {
+          setDataLS(rows.map(toEntry))
+          try { localStorage.removeItem('sporeus-offline-mode') } catch {}
+        }
+        hydrating.current = false
+      })
+      .catch(() => {
+        try { localStorage.setItem('sporeus-offline-mode', '1') } catch {}
         hydrating.current = false
       })
   }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps

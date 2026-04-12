@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import { exchangeStravaCode } from './lib/strava.js'
 import { checkRaceCountdowns } from './lib/pushNotify.js'
+import { scheduleSessionReminder, getReminderSettings } from './lib/pushNotifications.js'
+import { triggerSync } from './lib/deviceSync.js'
 import { LangCtx, LABELS, TABS } from './contexts/LangCtx.jsx'
 import { useLocalStorage, STORAGE_WARN_KEY } from './hooks/useLocalStorage.js'
 import { DataProvider, useData } from './contexts/DataContext.jsx'
@@ -16,6 +18,8 @@ import Profile, { countUnreadCoachMessages } from './components/Profile.jsx'
 import OnboardingWizard from './components/Onboarding.jsx'
 import SearchPalette from './components/SearchPalette.jsx'
 import AuthGate from './components/AuthGate.jsx'
+import InstallPrompt from './components/InstallPrompt.jsx'
+import OfflineBanner from './components/OfflineBanner.jsx'
 import RoleSelector from './components/RoleSelector.jsx'
 import MigrationModal from './components/MigrationModal.jsx'
 import { InviteModal } from './components/MyCoach.jsx'
@@ -161,6 +165,26 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
     }
   }, [])
 
+  // Session reminders — reschedule on load if enabled
+  useEffect(() => {
+    if (typeof Notification === 'undefined') return
+    if (Notification.permission !== 'granted') return
+    const s = getReminderSettings()
+    if (s.enabled) scheduleSessionReminder({ hour: s.hour })
+  }, [])
+
+  // Device sync — auto-trigger if last sync > 4h ago
+  useEffect(() => {
+    if (!authUser || !isSupabaseReady()) return
+    const SYNC_KEY = 'sporeus-last-device-sync'
+    const lastSync = parseInt(localStorage.getItem(SYNC_KEY) || '0', 10)
+    const fourHours = 4 * 60 * 60 * 1000
+    if (Date.now() - lastSync < fourHours) return
+    triggerSync().then(() => {
+      try { localStorage.setItem(SYNC_KEY, String(Date.now())) } catch {}
+    }).catch(() => {})
+  }, [authUser])
+
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return
     navigator.serviceWorker.ready.then(reg => {
@@ -216,6 +240,9 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
   return (
     <LangCtx.Provider value={{ t, lang, setLang }}>
       <style>{ANIM_CSS}</style>
+
+      <OfflineBanner />
+      <InstallPrompt />
 
       {showSearch && (
         <SearchPalette
@@ -427,7 +454,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
         </main>
 
         <footer style={S.footer}>
-          SPOREUS ATHLETE CONSOLE v5.4.0 · SPOREUS.COM · EŞİK / THRESHOLD 2026
+          SPOREUS ATHLETE CONSOLE v5.12.1 · SPOREUS.COM · EŞİK / THRESHOLD 2026
         </footer>
       </div>
     </LangCtx.Provider>

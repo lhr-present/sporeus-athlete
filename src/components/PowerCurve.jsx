@@ -58,10 +58,10 @@ export default function PowerCurve() {
   const { log } = useData()
   const [selectedId, setSelectedId] = useState('')
 
-  // Profile from localStorage (same pattern as Protocols.jsx)
-  const profile = (() => {
+  // Profile from localStorage — memoized so it only reads once per mount
+  const profile = useMemo(() => {
     try { return JSON.parse(localStorage.getItem('sporeus_profile') || '{}') } catch { return {} }
-  })()
+  }, [])
   const cp        = parseInt(profile?.cp)     || 0
   const wPrimeCap = parseInt(profile?.wPrime) || 0
 

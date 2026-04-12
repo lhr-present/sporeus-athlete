@@ -2,6 +2,48 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v5.12.1 (2026-04-12)
+Audit fixes — 15 issues resolved across 4 priority groups.
+- P1/TrainingLog.jsx: null guard on log.find() before spread in startEdit (crash on edit)
+- P1/DeviceSync.jsx: null guard on results array before .filter() (crash on edge-fn failure)
+- P1/PowerCurve.jsx: moved localStorage.getItem to useMemo (was re-parsing JSON every render)
+- P2/sw.js: CACHE_VERSION updated from sporeus-v5.11.0 → sporeus-v5.12.0 (stale cache buster)
+- P2/sw.js: comment header updated to v5.12.0
+- P3/Dashboard.jsx: useMemo on analyzeLoadTrend, analyzeZoneBalance, predictFitness, analyzeRecoveryCorrelation in InsightsCard
+- P3/charts/HRVChart.jsx: isAnimationActive={false} on both Line elements
+- P3/charts/LoadChart.jsx: isAnimationActive={false} on Bar element
+- P3/Periodization.jsx: isAnimationActive={false} on CTL/ATL/TSB Line elements
+- P3/VO2maxCard.jsx: isAnimationActive={false} on VDOT trend Line
+- P4: 11 new edge case tests in trainingLoad.test.js (null TSS, single entry, empty log, array immutability)
+- P4: 6 new edge case tests in periodization.test.js (no-race plan, polarized zones, block model, negative TSS clamp)
+- 269 tests total (was 258)
+- DEPENDS ON: nothing new
+
+## v5.12.0 (2026-04-12)
+- SQL migration: supabase/migrations/20260415_device_sync.sql — athlete_devices table (provider, label, base_url, token_enc bytea), encrypt_device_token / decrypt_device_token plpgsql functions (pgcrypto), RLS
+- Edge function: supabase/functions/device-sync/index.ts — JWT-verified, fetches devices, decrypts tokens via rpc, proxies open-wearables /api/v1/activities + /api/v1/recovery (8s AbortController timeout each), maps OW schema → training_log + recovery, updates last_sync_at, per-device try/catch (never throws)
+- src/lib/deviceSync.js — mapOWActivity (type normalizer), getDevices (no token_enc col), addDevice (URL validation, server-side token encryption via rpc), removeDevice, triggerSync (invoke 'device-sync', returns {results,error} never throws)
+- DeviceSync.jsx: device list + add form (provider picker, validated URL, optional token) + sync-now button + status banner
+- docker/open-wearables/docker-compose.yml + README.md: self-hosted open-wearables setup for Garmin/Polar/Suunto/COROS/Wahoo/Oura/Whoop
+- Profile.jsx: DeviceSync mounted after NotificationSettings (above AdminCodeGenerator)
+- App.jsx: auto-trigger triggerSync if last sync > 4h ago (sporeus-last-device-sync localStorage)
+- 12 new tests (258 total)
+- DEPENDS ON: pgcrypto extension in Supabase, supabase.functions.invoke, open-wearables /api/v1/activities + /api/v1/recovery endpoints
+
+## v5.11.0 (2026-04-12)
+- PWA Hardening: src/sw.js — CACHE_VERSION constant, activate handler cleans stale sporeus-* caches, Supabase routes upgraded from NetworkOnly → NetworkFirst (3s timeout, 5min TTL, CacheableResponsePlugin), CacheableResponsePlugin import
+- InstallPrompt.jsx: beforeinstallprompt capture, 30s delay, iOS share-sheet instructions fallback, standalone-mode guard, dismiss persisted to localStorage
+- src/lib/pushNotifications.js — requestPermission, scheduleSessionReminder (setTimeout-based daily alarm, SW showNotification + plain fallback), cancelReminder, fmtSessionList, getReminderSettings/saveReminderSettings
+- NotificationSettings.jsx: toggle switch, 24-hour picker, permission badge (ALLOWED/BLOCKED/NOT SET)
+- OfflineBanner.jsx: online/offline event listeners, amber top banner
+- useSupabaseData.js: added .catch() on hydration fetch; sets/clears sporeus-offline-mode localStorage flag
+- scripts/generate-icons.js: generates 8 placeholder PNGs (72,96,128,144,152,192,384,512) in public/icons/
+- vite.config.js manifest: 8 icons, background_color #0a0a0a
+- App.jsx: mounts OfflineBanner + InstallPrompt, scheduleSessionReminder useEffect on load
+- Profile.jsx: NotificationSettings mounted above AdminCodeGenerator
+- 8 new tests (246 total)
+- DEPENDS ON: workbox-cacheable-response (workbox-strategies bundle), existing sw.js precache setup, Notification API (browsers only)
+
 ## v5.10.0 (2026-04-12)
 - Periodization Engine: src/lib/periodization.js — buildYearlyPlan (52-week, 3 models, phase assignment, EWMA CTL projection), validatePlan (4 warning types), updateWeekTSS (pure/immutable), exportPlanCSV
 - YearlyPlan.jsx: 52-week scrollable calendar (phase band + TSS bars), CTL projection SVG overlay, today marker, week detail panel (TSS edit, zone bars, copy-forward), race manager (add/remove/priority), model switcher, Export CSV, Supabase upsert + localStorage

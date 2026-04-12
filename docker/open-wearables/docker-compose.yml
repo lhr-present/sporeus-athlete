@@ -1,0 +1,32 @@
+version: "3.9"
+# ─── open-wearables self-hosted instance (v5.12.0) ───────────────────────────
+# Runs a local open-wearables REST API that normalizes Garmin/Polar/Suunto/
+# COROS/Wahoo/Oura/Whoop data into a single schema.
+# Usage: docker compose up -d
+# Sporeus device-sync edge function proxies this API per registered device.
+services:
+  open-wearables:
+    image: ghcr.io/open-wearables/open-wearables:latest
+    container_name: open-wearables
+    restart: unless-stopped
+    ports:
+      - "3100:3000"      # expose on host port 3100
+    environment:
+      - OW_PORT=3000
+      - OW_LOG_LEVEL=info
+      # Provider OAuth credentials — fill in your own
+      - GARMIN_CONSUMER_KEY=${GARMIN_CONSUMER_KEY:-}
+      - GARMIN_CONSUMER_SECRET=${GARMIN_CONSUMER_SECRET:-}
+      - POLAR_CLIENT_ID=${POLAR_CLIENT_ID:-}
+      - POLAR_CLIENT_SECRET=${POLAR_CLIENT_SECRET:-}
+      - SUUNTO_CLIENT_ID=${SUUNTO_CLIENT_ID:-}
+      - SUUNTO_CLIENT_SECRET=${SUUNTO_CLIENT_SECRET:-}
+      - COROS_CLIENT_ID=${COROS_CLIENT_ID:-}
+      - COROS_CLIENT_SECRET=${COROS_CLIENT_SECRET:-}
+      - WAHOO_CLIENT_ID=${WAHOO_CLIENT_ID:-}
+      - WAHOO_CLIENT_SECRET=${WAHOO_CLIENT_SECRET:-}
+    volumes:
+      - ow_data:/app/data
+
+volumes:
+  ow_data:

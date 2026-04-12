@@ -47,8 +47,8 @@ export default function HRVChart({ recovery, days = 30 }) {
           <Tooltip {...darkTooltip} />
           {band && <ReferenceArea y1={band.low} y2={band.high} fill="#ff660015" />}
           {baseline && <ReferenceLine y={baseline} stroke="#ff660055" strokeDasharray="4 2" />}
-          <Line type="monotone" dataKey="hrv"  stroke="#ff6600" strokeWidth={1.5} dot={{ r: 2, fill: '#ff6600' }} name="HRV" />
-          <Line type="monotone" dataKey="avg7" stroke="#0064ff" strokeWidth={2}   dot={false} name="7d avg" strokeDasharray="3 2" />
+          <Line type="monotone" dataKey="hrv"  stroke="#ff6600" strokeWidth={1.5} dot={{ r: 2, fill: '#ff6600' }} name="HRV" isAnimationActive={false} />
+          <Line type="monotone" dataKey="avg7" stroke="#0064ff" strokeWidth={2}   dot={false} name="7d avg" strokeDasharray="3 2" isAnimationActive={false} />
         </LineChart>
       </ResponsiveContainer>
     </div>

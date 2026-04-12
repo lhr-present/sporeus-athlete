@@ -1,10 +1,13 @@
-// src/sw.js — Custom service worker for Sporeus Athlete (Phase 3.4)
+// src/sw.js — Custom service worker for Sporeus Athlete (v5.12.0)
 // vite-plugin-pwa injects self.__WB_MANIFEST here at build time.
 
 import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from 'workbox-precaching'
 import { registerRoute, NavigationRoute } from 'workbox-routing'
-import { NetworkOnly, NetworkFirst } from 'workbox-strategies'
+import { NetworkFirst } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
+import { CacheableResponsePlugin } from 'workbox-cacheable-response'
+
+const CACHE_VERSION = 'sporeus-v5.12.0'
 
 // ── Precaching ─────────────────────────────────────────────────────────────────
 precacheAndRoute(self.__WB_MANIFEST)
@@ -16,10 +19,17 @@ const DENYLIST = [/^\/auth/, /\?code=/, /\?error=/, /#access_token=/, /\?state=s
 const handler = createHandlerBoundToURL('/sporeus-athlete/index.html')
 registerRoute(new NavigationRoute(handler, { denylist: DENYLIST }))
 
-// ── Supabase — always network only ────────────────────────────────────────────
+// ── Supabase — network first, 5-min cache, 3s timeout ────────────────────────
 registerRoute(
   ({ url }) => url.hostname.includes('supabase.co'),
-  new NetworkOnly()
+  new NetworkFirst({
+    cacheName: `sporeus-supabase-${CACHE_VERSION}`,
+    networkTimeoutSeconds: 3,
+    plugins: [
+      new CacheableResponsePlugin({ statuses: [200] }),
+      new ExpirationPlugin({ maxEntries: 50, maxAgeSeconds: 300 }),
+    ],
+  })
 )
 
 // ── Sporeus API — network first, 48h cache ─────────────────────────────────────
@@ -34,7 +44,18 @@ registerRoute(
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────────
 self.addEventListener('install', () => self.skipWaiting())
-self.addEventListener('activate', event => event.waitUntil(self.clients.claim()))
+self.addEventListener('activate', event => {
+  // Clean up caches from old cache versions
+  event.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(
+        keys
+          .filter(k => k.startsWith('sporeus-') && !k.includes(CACHE_VERSION) && !k.startsWith('workbox-'))
+          .map(k => caches.delete(k))
+      )
+    ).then(() => self.clients.claim())
+  )
+})
 
 self.addEventListener('message', event => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting()

@@ -186,3 +186,41 @@ describe('predictBanister', () => {
     })
   })
 })
+
+// ─── Edge cases ───────────────────────────────────────────────────────────────
+describe('calculatePMC — edge cases', () => {
+  it('handles null tss gracefully (treats as 0)', () => {
+    const log = [{ date: entry(1, 0).date, tss: null }]
+    const series = calculatePMC(log, 5, 0)
+    expect(Array.isArray(series)).toBe(true)
+    series.forEach(p => expect(isFinite(p.ctl)).toBe(true))
+  })
+
+  it('single entry from yesterday: CTL > 0 today', () => {
+    const log = [entry(1, 100)]
+    const series = calculatePMC(log, 3, 0)
+    const last = series[series.length - 1]
+    expect(last.ctl).toBeGreaterThan(0)
+  })
+
+  it('does not mutate the input log array', () => {
+    const log = [entry(2, 80), entry(1, 90)]
+    const copy = JSON.stringify(log)
+    calculatePMC(log, 5, 0)
+    expect(JSON.stringify(log)).toBe(copy)
+  })
+})
+
+describe('calculateACWR — edge cases', () => {
+  it('single high-TSS entry with no chronic base yields danger status', () => {
+    // Chronic base is near 0 with 1 entry; acute/chronic ratio >> 1.5
+    const r = calculateACWR([entry(1, 100)])
+    expect(['danger', 'insufficient']).toContain(r.status)
+  })
+
+  it('all zero TSS returns insufficient or undertraining', () => {
+    const log = Array.from({ length: 28 }, (_, i) => entry(27 - i, 0))
+    const r = calculateACWR(log)
+    expect(['insufficient', 'undertraining']).toContain(r.status)
+  })
+})

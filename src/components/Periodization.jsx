@@ -450,14 +450,17 @@ export default function Periodization({ authUser }) {
                 <Line type="monotone" dataKey="CTL" stroke="#ff6600" strokeWidth={2.5}
                   dot={{ r:3, fill:'#ff6600', strokeWidth:0 }}
                   activeDot={{ r:5, fill:'#ff6600' }}
+                  isAnimationActive={false}
                 />
                 <Line type="monotone" dataKey="ATL" stroke="#0064ff" strokeWidth={1.5}
                   dot={{ r:2, fill:'#0064ff', strokeWidth:0 }}
                   strokeDasharray="5 3"
+                  isAnimationActive={false}
                 />
                 <Line type="monotone" dataKey="TSB" stroke="#5bc25b" strokeWidth={1.5}
                   dot={{ r:2, fill:'#5bc25b', strokeWidth:0 }}
                   strokeDasharray="3 2"
+                  isAnimationActive={false}
                 />
               </LineChart>
             </ResponsiveContainer>

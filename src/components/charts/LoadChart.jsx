@@ -45,7 +45,7 @@ export default function LoadChart({ log, weeks = 10 }) {
           <YAxis tick={{ fontFamily: MONO, fontSize: 9, fill: '#555' }} />
           <Tooltip {...darkTooltip} formatter={v => [v, 'TSS']} />
           <ReferenceLine y={avg} stroke="#444" strokeDasharray="4 2" label={{ value: 'avg', position: 'right', fill: '#555', fontFamily: MONO, fontSize: 8 }} />
-          <Bar dataKey="tss" radius={[2, 2, 0, 0]}>
+          <Bar dataKey="tss" radius={[2, 2, 0, 0]} isAnimationActive={false}>
             {data.map((d, i) => <Cell key={i} fill={d.color} />)}
           </Bar>
         </BarChart>

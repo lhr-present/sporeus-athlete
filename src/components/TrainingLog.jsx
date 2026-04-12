@@ -62,7 +62,9 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   }
 
   const startEdit = (s, idx) => {
-    const entry = { ...log.find((_,i)=>i===log.length-1-idx) }
+    const found = log.find((_,i)=>i===log.length-1-idx)
+    if (!found) return
+    const entry = { ...found }
     setForm({ date:entry.date, type:entry.type, duration:String(entry.duration), rpe:String(entry.rpe), notes:entry.notes||'' })
     if (entry.zones) { setZoneMins(entry.zones.map(String)); setShowZones(true) }
     setEditingId(entry.id||null)
