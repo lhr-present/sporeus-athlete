@@ -2,6 +2,107 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v5.40.0 (2026-04-13)
+Phase 3 scale features — 551 tests (28 files, +36 tests vs v5.30.0):
+
+**Nightly AI batch** (`supabase/functions/nightly-batch/index.ts`)
+- Deno edge function; `withSemaphore<T>` pool (limit=10 concurrent Haiku calls)
+- Queries wellness_logs for today's check-ins; fetches profile+training_log per athlete
+- Computes CTL/ATL/TSB, calls Anthropic Haiku, upserts to `ai_insights`
+- Scheduled via pg_cron (see comment in file); logs processed/errors/ms
+
+**Club tier subscription gates** (`src/lib/subscription.js`)
+- `TIERS` constant; `canAddAthlete`, `canUseAI`, `getRemainingAICalls`, `isFeatureGated`, `getUpgradePrompt`
+- Upgrade banners in CoachSquadView (multi_team gate + athlete limit gate)
+- AI daily call counter via `sporeus-ai-calls` localStorage with date key
+- 10 new tests in subscription.test.js
+
+**Dodo Payments + Stripe webhook** (`supabase/functions/dodo-webhook/index.ts`)
+- HMAC-SHA256 signature verification via Deno `crypto.subtle`
+- Handles `payment.succeeded/failed`, `subscription.cancelled`
+- Routes by `x-dodo-signature` vs `stripe-signature` header
+- Failure emails via Resend API
+
+**Public REST API** (`supabase/functions/public-api/index.ts`)
+- Club-tier API key auth; rate limit 100 req/hr via `request_counts` table
+- Routes: `GET /api/v1/squad`, `/api/v1/athlete/:id/load`, `/api/v1/squad/export` (CSV)
+- CORS for Excel / Google Sheets
+
+**PDF Season Report** (`src/lib/pdfReport.js`)
+- Unicode sparklines (▁▂▃▄▅▆▇█), week-by-week CTL/ATL/TSB table
+- Wellness 14-week avg, top 5 peak sessions, injury timeline
+- Triggered from Profile → Season Report (gated on `export_pdf` club tier)
+- 3 new tests in pdfReport.test.js
+
+**White-label config** (`src/lib/whiteLabel.js`)
+- `applyTheme`, `getTheme`, `isWhiteLabel`, `loadOrgBranding`, `initWhiteLabel`
+- CSS custom properties `--brand-primary` / `--brand-name` applied at App.jsx level
+- `org_branding` table (migration `20260412_org_branding.sql`) with owner RLS
+- 4 new tests in whiteLabel.test.js
+
+**Realtime coach dashboard** (CoachSquadView.jsx)
+- Supabase Realtime channel: `wellness_logs` + `training_log` INSERT events
+- Exponential backoff reconnect via `computeBackoff(attempt)` (1s×2^n, max 30s)
+- `src/lib/realtimeBackoff.js` — pure function, 3 new tests
+- Live status dot (●green/●yellow), `lastUpdated`, rtToast notifications
+
+**Coach-athlete messaging** (`src/components/CoachMessage.jsx`)
+- Sliding panel per athlete (desktop + mobile ✉ button in squad table/card)
+- Supabase Realtime delivery; read receipts (✓ sent, ✓✓ read via `read_at`)
+- Athlete unread badge in TodayView (reads from `sporeus-coach-messages` localStorage)
+- `messages` table (migration `20260413_messages.sql`): RLS for coach insert/select + athlete select/update
+- 4 new tests in coachMessage.test.js (buildChannelId, formatMsgTime, hasUnread, canSendMessage)
+
+**DB migrations**
+- `20260412_subscription.sql` — `subscription_tier` + `subscription_expires_at` on profiles
+- `20260412_api_keys.sql` — `api_keys` + `request_counts` tables, RLS
+- `20260412_org_branding.sql` — `org_branding` with owner RLS, `touch_updated_at` trigger
+- `20260413_messages.sql` — `messages` table (sender_role CHECK, RLS policies for coach+athlete)
+
+- DEPENDS ON: anthropic API key in BYOK localStorage, Supabase Realtime enabled, Resend API for failure emails, pg_cron for nightly batch
+
+## v5.30.0 (2026-04-12)
+Phase 2 growth features — 515 tests (26 files, +61 tests vs v5.20.0):
+
+**Multi-team filtering** (CoachSquadView + squadUtils.js)
+- `filterByTeam(athletes, team)` + `DEMO_TEAMS` + `getTeams()` in squadUtils.js
+- Team selector pill buttons; `sporeus-active-team` localStorage; 5 filterByTeam tests
+
+**Strava client-side import** (`src/lib/strava.js`)
+- `importStravaActivities(accessToken, daysBack=30)` — 3-page pagination, safeFetch
+- `deduplicateByStravaId(existing, incoming)` — Set-based dedup
+- `SPORT_TYPE_MAP` + `stravaToEntry()` normalizer; 6 new tests
+
+**Onboarding v2** (Onboarding.jsx, 5 steps)
+- Steps: Welcome → Basic Info → Fitness Level (NEW) → Key Metrics → Goal+Plan Preview
+- `getPlanPreview(data)` rule-based preview; progress bar replaces dot indicators
+
+**Dashboard performance metrics** (intelligence.js + Dashboard.jsx)
+- `getFormScore(log)` → `{ tsb, color, label }` (TSB-based form state)
+- `getPeakWeekLoad(log)` → highest 7-day rolling TSS
+- `getConsistencyScore(log, days=28)` → % days with sessions
+- 3 new metric boxes before CTLChart; 7 new tests
+
+**Wellness sparkline** (TodayView.jsx)
+- Recharts `LineChart` (80px, no axes, `connectNulls`) for 14-day recovery trend
+- Shown after "✓ saved today" message
+
+**Digest email** (`src/lib/digestEmail.js`)
+- `generateDigestHTML(squadData, weekStart)` → table-only HTML email (print-safe)
+- `esc()` XSS helper; `getRuleBasedWeekSummary()`; 5 new tests
+
+**Search palette v2** (SearchPalette.jsx)
+- `/command` mode (COMMANDS: /export /dark /lang /sync)
+- `#` prefix log-entry search; recent searches (localStorage `sporeus-recent-searches`, last 5)
+- Shortcut hints in footer; badge chips per result type
+
+**AI settings panel** (Profile.jsx)
+- BYOK API key (show/hide, masked); tier selector; usage estimate; clear cache button
+- Season Report button (gated on `export_pdf`)
+- Strava import wired to client-side `importStravaActivities` first (edge-function fallback)
+
+- DEPENDS ON: recharts, Strava access_token in Profile state, sporeus-anthropic-key localStorage
+
 ## v5.20.0 (2026-04-12)
 NL daily digest, CTL phase shading, progress rings — 454 tests (12 new):
 
