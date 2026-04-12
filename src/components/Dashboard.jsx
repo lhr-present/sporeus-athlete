@@ -1,12 +1,13 @@
-import { useContext, useState, useEffect, useMemo } from 'react'
+import { useContext, useState, useEffect, useMemo, lazy, Suspense } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { TSSChart, WeeklyVolChart, ZoneDonut, ZoneBar, CTLTimeline, HelpTip } from './ui.jsx'
-import CTLChart  from './charts/CTLChart.jsx'
 import ErrorBoundary from './ErrorBoundary.jsx'
-import ZoneChart from './charts/ZoneChart.jsx'
-import LoadChart from './charts/LoadChart.jsx'
-import HRVChart  from './charts/HRVChart.jsx'
+
+const CTLChart  = lazy(() => import('./charts/CTLChart.jsx'))
+const ZoneChart = lazy(() => import('./charts/ZoneChart.jsx'))
+const LoadChart = lazy(() => import('./charts/LoadChart.jsx'))
+const HRVChart  = lazy(() => import('./charts/HRVChart.jsx'))
 import { monotonyStrain, calcPRs, navyBF, mifflinBMR, riegel, fmtSec, fmtPace, calcLoad } from '../lib/formulas.js'
 import { calculateACWR, fitBanister, predictBanister } from '../lib/trainingLoad.js'
 import { zoneDistribution, trainingModel, MODEL_META } from '../lib/zoneDistrib.js'
@@ -904,7 +905,7 @@ export default function Dashboard({ log, profile }) {
       {recovery.some(e => parseFloat(e.hrv) > 0) && (
         <div className="sp-card" style={{ ...S.card, animationDelay:'20ms' }}>
           <div style={S.cardTitle}>HRV TREND</div>
-          <HRVChart recovery={recovery} days={30} />
+          <Suspense fallback={null}><HRVChart recovery={recovery} days={30} /></Suspense>
         </div>
       )}
       <InsightsCard log={log} recovery={recovery} profile={profile} lang={lang}/>
@@ -1117,11 +1118,11 @@ export default function Dashboard({ log, profile }) {
               </div>
             )
           })()}
-          <ErrorBoundary inline name="CTL Chart"><CTLChart log={log} days={ctlChartDays} raceResults={raceResults} plan={plan} /></ErrorBoundary>
+          <ErrorBoundary inline name="CTL Chart"><Suspense fallback={null}><CTLChart log={log} days={ctlChartDays} raceResults={raceResults} plan={plan} /></Suspense></ErrorBoundary>
           <div style={{ height:'16px' }}/>
-          <LoadChart log={log} weeks={10} />
+          <Suspense fallback={null}><LoadChart log={log} weeks={10} /></Suspense>
           <div style={{ height:'16px' }}/>
-          <ZoneChart log={log} weeks={8} />
+          <Suspense fallback={null}><ZoneChart log={log} weeks={8} /></Suspense>
         </div>
       )}
 

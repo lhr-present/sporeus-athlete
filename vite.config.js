@@ -18,10 +18,19 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-recharts':  ['recharts'],
-          'vendor-supabase':  ['@supabase/supabase-js'],
-          'vendor-fit':       ['fit-file-parser'],
+        manualChunks(id) {
+          if (id.includes('/node_modules/react/') || id.includes('/node_modules/react-dom/') || id.includes('/node_modules/scheduler/') || id.includes('react/jsx-runtime') || id.includes('react/jsx-dev-runtime')) {
+            return 'vendor-react'
+          }
+          if (id.includes('/node_modules/recharts/') || id.includes('/node_modules/react-smooth/') || id.includes('/node_modules/react-redux/') || id.includes('/node_modules/redux/') || id.includes('/node_modules/use-sync-external-store/') || id.includes('/node_modules/victory-vendor/') || id.includes('/node_modules/decimal.js-light/') || id.includes('/node_modules/eventemitter3/') || id.includes('/node_modules/reselect/') || id.includes('/node_modules/@reduxjs/toolkit/') || id.includes('/node_modules/immer/')) {
+            return 'vendor-recharts'
+          }
+          if (id.includes('/node_modules/@supabase/') || id.includes('/node_modules/supabase')) {
+            return 'vendor-supabase'
+          }
+          if (id.includes('/node_modules/fit-file-parser')) {
+            return 'vendor-fit'
+          }
         },
       },
     },

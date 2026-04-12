@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from 'react'
+import { useState, useEffect, useContext, lazy, Suspense } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
@@ -6,7 +6,7 @@ import { useData } from '../contexts/DataContext.jsx'
 import { WELLNESS_FIELDS } from '../lib/constants.js'
 import { Sparkline } from './ui.jsx'
 import InjuryTracker from './InjuryTracker.jsx'
-import HRVDashboard from './HRVDashboard.jsx'
+const HRVDashboard = lazy(() => import('./HRVDashboard.jsx'))
 import MentalTools from './MentalTools.jsx'
 import ErrorBoundary from './ErrorBoundary.jsx'
 import OSTRCQuestionnaire from './OSTRCQuestionnaire.jsx'
@@ -307,7 +307,7 @@ export default function Recovery() {
 
       <ErrorBoundary inline name="OSTRC"><OSTRCQuestionnaire /></ErrorBoundary>
       <ErrorBoundary inline name="RTP Protocol"><RTPProtocol /></ErrorBoundary>
-      <ErrorBoundary inline name="HRV Dashboard"><HRVDashboard recovery={entries} setRecovery={setEntries} /></ErrorBoundary>
+      <ErrorBoundary inline name="HRV Dashboard"><Suspense fallback={null}><HRVDashboard recovery={entries} setRecovery={setEntries} /></Suspense></ErrorBoundary>
       <ErrorBoundary inline name="Injury Tracker"><InjuryTracker /></ErrorBoundary>
       <ErrorBoundary inline name="Cycle Tracker"><CycleTracker /></ErrorBoundary>
       <ErrorBoundary inline name="Mental Tools"><MentalTools /></ErrorBoundary>
