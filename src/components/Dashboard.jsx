@@ -1092,7 +1092,7 @@ export default function Dashboard({ log, profile }) {
               </div>
             )
           })()}
-          <ErrorBoundary inline name="CTL Chart"><CTLChart log={log} days={ctlChartDays} raceResults={raceResults} /></ErrorBoundary>
+          <ErrorBoundary inline name="CTL Chart"><CTLChart log={log} days={ctlChartDays} raceResults={raceResults} plan={plan} /></ErrorBoundary>
           <div style={{ height:'16px' }}/>
           <LoadChart log={log} weeks={10} />
           <div style={{ height:'16px' }}/>

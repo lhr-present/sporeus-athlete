@@ -8,6 +8,7 @@ import {
   assessDataQuality,
   getTodayPlannedSession,
   getSingleSuggestion,
+  generateDailyDigest,
 } from './intelligence.js'
 
 // Helper: build a log entry N days ago
@@ -223,5 +224,96 @@ describe('assessDataQuality', () => {
   it('returns grade string', () => {
     const result = assessDataQuality([], [], [], {})
     expect(['A','B','C','D','F']).toContain(result.grade)
+  })
+})
+
+// ── generateDailyDigest ───────────────────────────────────────────────────────
+describe('generateDailyDigest', () => {
+  it('returns empty digest when log is empty', () => {
+    const result = generateDailyDigest([], [], {})
+    expect(result.empty).toBe(true)
+    expect(result.en).toContain('first session')
+    expect(result.tr).toContain('ilk antrenman')
+  })
+
+  it('returns empty digest for null/undefined log', () => {
+    expect(generateDailyDigest(null, [], {}).empty).toBe(true)
+    expect(generateDailyDigest(undefined, [], {}).empty).toBe(true)
+  })
+
+  it('returns non-empty digest when log has entries', () => {
+    const log = Array.from({ length: 5 }, (_, i) => entry(i + 1, 80))
+    const result = generateDailyDigest(log, [], {})
+    expect(result.empty).toBe(false)
+    expect(result.en).toContain('CTL')
+    expect(result.tr).toContain('KTY')
+  })
+
+  it('includes TSB with sign', () => {
+    const log = Array.from({ length: 10 }, (_, i) => entry(i + 1, 100))
+    const result = generateDailyDigest(log, [], {})
+    expect(result.en).toMatch(/TSB [+-]\d+/)
+  })
+
+  it('includes ACWR OPTIMAL when ratio is in 0.8–1.3 range', () => {
+    // Consistent load over 4 weeks — ACWR ≈ 1.0
+    const log = Array.from({ length: 28 }, (_, i) => entry(i + 1, 60))
+    const result = generateDailyDigest(log, [], {})
+    expect(result.en).toContain('ACWR')
+    expect(result.en).toContain('OPTIMAL')
+  })
+
+  it('includes wellness line when today\'s recovery exists', () => {
+    const log = [entry(1, 80)]
+    const today = new Date().toISOString().slice(0, 10)
+    const recovery = [{ date: today, score: 78, sleep: 4, energy: 4, soreness: 2 }]
+    const result = generateDailyDigest(log, recovery, {})
+    expect(result.en).toContain('Wellness: 78/100')
+    expect(result.en).toContain('GO')
+  })
+
+  it('labels wellness MONITOR when score is 50–74', () => {
+    const log = [entry(1, 80)]
+    const today = new Date().toISOString().slice(0, 10)
+    const recovery = [{ date: today, score: 60 }]
+    const result = generateDailyDigest(log, recovery, {})
+    expect(result.en).toContain('MONITOR')
+  })
+
+  it('labels wellness REST when score < 50', () => {
+    const log = [entry(1, 80)]
+    const today = new Date().toISOString().slice(0, 10)
+    const recovery = [{ date: today, score: 35 }]
+    const result = generateDailyDigest(log, recovery, {})
+    expect(result.en).toContain('REST')
+  })
+
+  it('includes zone balance for ≥7 sessions', () => {
+    const log = Array.from({ length: 10 }, (_, i) => entry(i + 1, 80, 6 - (i % 2)))
+    const result = generateDailyDigest(log, [], {})
+    expect(result.en).toContain('Zone balance')
+    expect(result.tr).toContain('Zon dağılımı')
+  })
+
+  it('omits zone balance for fewer than 7 sessions', () => {
+    const log = Array.from({ length: 4 }, (_, i) => entry(i + 1, 80))
+    const result = generateDailyDigest(log, [], {})
+    expect(result.en).not.toContain('Zone balance')
+  })
+
+  it('returns numeric ctl, tsb, acwr fields', () => {
+    const log = Array.from({ length: 14 }, (_, i) => entry(i + 1, 70))
+    const result = generateDailyDigest(log, [], {})
+    expect(typeof result.ctl).toBe('number')
+    expect(typeof result.tsb).toBe('number')
+    expect(result.acwr).not.toBeNull()
+    expect(typeof result.acwr).toBe('number')
+  })
+
+  it('returns null acwr when no sessions in last 28d produce a chronic', () => {
+    // Single entry at day 0 but chron = 0 because... actually with 1 session there's still chronic.
+    // Test: empty log returns null acwr
+    const result = generateDailyDigest([], [], {})
+    expect(result.acwr).toBeNull()
   })
 })

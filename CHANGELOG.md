@@ -2,6 +2,32 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v5.20.0 (2026-04-12)
+NL daily digest, CTL phase shading, progress rings — 454 tests (12 new):
+
+**Morning Brief (TodayView)**
+- `generateDailyDigest(log, recovery, profile)` in intelligence.js — template NL summary
+- Outputs CTL / TSB(±) / ACWR(label) · wellness score(label) · zone balance · load trend
+- Returns `{ en, tr, empty, ctl, tsb, acwr }` following generateWeeklyNarrative pattern
+- Renders as a collapsible card above Card 1 (Today's Session); hidden when log is empty
+- 12 new tests in intelligence.test.js covering empty, ACWR OPTIMAL, wellness labels, zone threshold
+
+**Block periodization phase shading (CTLChart)**
+- `getPhaseBands(plan, days)` computes week→phase bands in MM-DD format from YearlyPlan
+- Finds Monday on/after generatedAt; maps weeks to chart window; clamps to display range
+- CTLChart now accepts `plan` prop (default null); ReferenceArea per phase with 10% opacity
+- Phase colors: base=green, build=orange, peak=red, taper=blue, competition=purple, transition=gray
+- Dashboard passes `plan` from localStorage to CTLChart
+
+**Progress Rings (TodayView)**
+- SVG donut rings card appears when log ≥ 3 sessions (between Quick Stats and Suggestion)
+- Ring 1: Week TSS actual vs plan target (falls back to 'no target' if no plan)
+- Ring 2: Sessions this week (7d) vs plan week non-rest count (or 5)
+- Ring 3: Consecutive days with wellness logged vs 7-day target
+- wellStreak + weekTSS computed via useMemo in TodayView
+
+- DEPENDS ON: analyzeZoneBalance + analyzeLoadTrend (intelligence.js); calculatePMC (trainingLoad.js); plan from 'sporeus-plan' localStorage
+
 ## v5.19.0 (2026-04-12)
 Share Card, cloudSync, coverage — 442 tests (16 new):
 

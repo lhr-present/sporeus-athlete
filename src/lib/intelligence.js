@@ -870,3 +870,82 @@ export function assessDataQuality(log, recovery, testResults, profile) {
     tips,
   }
 }
+
+// ─── generateDailyDigest ───────────────────────────────────────────────────────
+// Template-based morning brief: CTL/TSB/ACWR, today's wellness, zone balance,
+// load trend. Returns { en: string, tr: string, empty: boolean, ctl, tsb, acwr }.
+export function generateDailyDigest(log, recovery, profile, lang = 'en') {
+  const today = new Date().toISOString().slice(0, 10)
+
+  if (!(log || []).length) {
+    return {
+      en: 'Log your first session to see your morning brief.',
+      tr: 'Sabah özetini görmek için ilk antrenmanını kaydet.',
+      empty: true, ctl: 0, tsb: 0, acwr: null,
+    }
+  }
+
+  // CTL / ATL / TSB (using existing helpers)
+  const ctl = computeCTL(log)
+  const atl = computeATL(log)
+  const tsb = ctl - atl
+
+  // ACWR (7d acute / (28d chronic / 4))
+  const now   = Date.now()
+  const ms7   = 7  * 864e5
+  const ms28  = 28 * 864e5
+  const acute  = log.filter(e => now - new Date(e.date).getTime() < ms7).reduce((s, e) => s + (e.tss || 0), 0)
+  const chron  = log.filter(e => now - new Date(e.date).getTime() < ms28).reduce((s, e) => s + (e.tss || 0), 0) / 4
+  const acwr   = chron > 0 ? Math.round(acute / chron * 100) / 100 : null
+
+  // Today's wellness
+  const todayRec = (recovery || []).find(e => e.date === today)
+
+  // Zone balance + load trend
+  const zb     = analyzeZoneBalance(log)
+  const { trend } = analyzeLoadTrend(log)
+
+  // ── Build line 1: CTL / TSB / ACWR ─────────────────────────────────────────
+  const tsbStr     = tsb >= 0 ? `+${tsb}` : String(tsb)
+  const tsbLabelEn = tsb > 10 ? 'FRESH' : tsb > -10 ? 'BALANCED' : tsb > -25 ? 'FATIGUED' : 'VERY FATIGUED'
+  const tsbLabelTr = tsb > 10 ? 'TAZE'  : tsb > -10 ? 'DENGEDE'  : tsb > -25 ? 'YORGUN'   : 'ÇOK YORGUN'
+
+  const acwrLabelEn = acwr === null ? '' : acwr < 0.8 ? ' (UNDERTRAINED)' : acwr <= 1.3 ? ' (OPTIMAL)' : acwr <= 1.5 ? ' (CAUTION)' : ' (HIGH RISK)'
+  const acwrLabelTr = acwr === null ? '' : acwr < 0.8 ? ' (DÜŞÜK)'        : acwr <= 1.3 ? ' (OPTİMAL)' : acwr <= 1.5 ? ' (DİKKAT)'  : ' (RİSK)'
+  const acwrPartEn  = acwr !== null ? ` · ACWR ${acwr}${acwrLabelEn}` : ''
+  const acwrPartTr  = acwr !== null ? ` · ACWR ${acwr}${acwrLabelTr}` : ''
+
+  const linesEn = [`CTL ${ctl} · TSB ${tsbStr} (${tsbLabelEn})${acwrPartEn}`]
+  const linesTr = [`KTY ${ctl} · TSB ${tsbStr} (${tsbLabelTr})${acwrPartTr}`]
+
+  // ── Line 2: wellness ────────────────────────────────────────────────────────
+  if (todayRec) {
+    const recLabelEn = todayRec.score >= 75 ? 'GO'    : todayRec.score >= 50 ? 'MONITOR' : 'REST'
+    const recLabelTr = todayRec.score >= 75 ? 'HAZIR' : todayRec.score >= 50 ? 'İZLE'    : 'DİNLEN'
+    linesEn.push(`Wellness: ${todayRec.score}/100 (${recLabelEn})`)
+    linesTr.push(`Hazırlık: ${todayRec.score}/100 (${recLabelTr})`)
+  }
+
+  // ── Line 3: zone balance (needs ≥7 sessions) ────────────────────────────────
+  if (log.length >= 7 && zb.status !== 'no_data') {
+    const statusMapEn = { polarized:'POLARIZED', threshold_heavy:'THRESHOLD-HEAVY', too_hard:'TOO HARD', too_easy:'TOO EASY', balanced:'BALANCED' }
+    const statusMapTr = { polarized:'POLARİZE',  threshold_heavy:'EŞİK AĞIRLIKLI', too_hard:'FAZLA ZOR', too_easy:'FAZLA KOLAY', balanced:'DENGELİ' }
+    linesEn.push(`Zone balance: ${statusMapEn[zb.status] || 'MIXED'} · ${zb.z1z2Pct}% easy`)
+    linesTr.push(`Zon dağılımı: ${statusMapTr[zb.status] || 'KARMA'} · kolay %${zb.z1z2Pct}`)
+  }
+
+  // ── Line 4: load trend ──────────────────────────────────────────────────────
+  if (trend && trend !== 'insufficient') {
+    const trendMapEn = { building:'BUILDING', recovering:'RECOVERY WEEK', peaking:'PEAK LOAD', inconsistent:'INCONSISTENT' }
+    const trendMapTr = { building:'YÜK ARTIŞI', recovering:'TOPARLANMA', peaking:'DORUK YÜK', inconsistent:'TUTARSIZ' }
+    linesEn.push(`Load: ${trendMapEn[trend] || trend.toUpperCase()}`)
+    linesTr.push(`Yük: ${trendMapTr[trend] || trend.toUpperCase()}`)
+  }
+
+  return {
+    en:    linesEn.join('\n'),
+    tr:    linesTr.join('\n'),
+    empty: false,
+    ctl, tsb, acwr,
+  }
+}

@@ -3,7 +3,7 @@ import { useState, useMemo, useContext } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { useData } from '../contexts/DataContext.jsx'
-import { getTodayPlannedSession, getSingleSuggestion } from '../lib/intelligence.js'
+import { getTodayPlannedSession, getSingleSuggestion, generateDailyDigest } from '../lib/intelligence.js'
 import { WELLNESS_FIELDS } from '../lib/constants.js'
 
 const MONO  = "'IBM Plex Mono', monospace"
@@ -43,6 +43,7 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
   const todayStatus    = todayKey ? planStatus[todayKey] : null
 
   const suggestion = useMemo(() => getSingleSuggestion(log, recovery, profile), [log, recovery, profile])
+  const digest     = useMemo(() => generateDailyDigest(log, recovery, profile), [log, recovery, profile])
 
   const yesterdayLogged = (log || []).some(e => e.date === yesterday)
   const sessions7d      = useMemo(() => {
@@ -50,6 +51,24 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
     return (log || []).filter(e => e.date >= cutoff).length
   }, [log])
   const streak = useMemo(() => calcStreak(log, today), [log, today])
+
+  // Consecutive days with wellness logged
+  const wellStreak = useMemo(() => {
+    const recDates = new Set((recovery || []).map(e => e.date))
+    const d = new Date(today)
+    if (!recDates.has(today)) d.setDate(d.getDate() - 1)
+    let s = 0
+    while (recDates.has(d.toISOString().slice(0, 10))) { s++; d.setDate(d.getDate() - 1) }
+    return s
+  }, [recovery, today])
+
+  // Week TSS (Mon–Sun current week)
+  const weekTSS = useMemo(() => {
+    const d = new Date(today)
+    d.setDate(d.getDate() - (d.getDay() + 6) % 7)
+    const ws = d.toISOString().slice(0, 10)
+    return Math.round((log || []).filter(e => e.date >= ws).reduce((s, e) => s + (e.tss || 0), 0))
+  }, [log, today])
 
   // ── Z-score personal baseline (28-day rolling) ──────────────────────────────
   const wellnessBaseline = useMemo(() => {
@@ -106,8 +125,34 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
     color: fg, cursor: 'pointer',
   })
 
+  // Plan week TSS target (sum of plan sessions this week) or fallback 0
+  const weekTSSTarget = (() => {
+    if (!plannedSession || !plan?.weeks) return 0
+    const sessions = plan.weeks[plannedSession.weekIdx]?.sessions || []
+    return Math.round(sessions.reduce((s, ws) => s + (ws.tss || 0), 0))
+  })()
+
+  // Plan week session target (non-rest planned sessions)
+  const sessionTarget = (() => {
+    if (!plannedSession || !plan?.weeks) return 5
+    const sessions = plan.weeks[plannedSession.weekIdx]?.sessions || []
+    return sessions.filter(ws => ws.type && ws.type !== 'Rest' && ws.duration > 0).length || 5
+  })()
+
   return (
     <div className="sp-fade">
+
+      {/* ── Morning Brief ─────────────────────────────────────────────────── */}
+      {!digest.empty && (
+        <div style={{ ...card, borderLeft: `4px solid #333`, padding: '14px 18px' }}>
+          <div style={{ ...cardTitle, marginBottom: '8px' }}>
+            {lang === 'tr' ? '◈ SABAH ÖZETİ' : '◈ MORNING BRIEF'}
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--text)', lineHeight: 1.9, whiteSpace: 'pre-line', fontFamily: MONO }}>
+            {digest[lang] || digest.en}
+          </div>
+        </div>
+      )}
 
       {/* ── Card 1: Today's Session ────────────────────────────────────────── */}
       <div style={{ ...card, borderLeft: `4px solid ${plannedSession && todayStatus === 'done' ? GREEN : ORANGE}` }}>
@@ -249,6 +294,43 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
           </button>
         )}
       </div>
+
+      {/* ── Progress Rings ────────────────────────────────────────────────── */}
+      {(log || []).length >= 3 && (() => {
+        const R = 26, SW = 6, SZ = 74
+        const circ = 2 * Math.PI * R
+        const tssPct     = weekTSSTarget > 0 ? Math.min(1, weekTSS / weekTSSTarget)   : 0
+        const sessPct    = Math.min(1, sessions7d / sessionTarget)
+        const wellPct    = Math.min(1, wellStreak / 7)
+
+        const Ring = ({ pct, color, val, label, sub }) => (
+          <div style={{ textAlign: 'center', flex: '1 1 64px' }}>
+            <svg width={SZ} height={SZ} style={{ display: 'block', margin: '0 auto' }}>
+              <circle cx={SZ/2} cy={SZ/2} r={R} fill="none" stroke="#222" strokeWidth={SW}/>
+              <circle cx={SZ/2} cy={SZ/2} r={R} fill="none" stroke={color} strokeWidth={SW}
+                strokeDasharray={`${pct * circ} ${circ}`} strokeLinecap="round"
+                transform={`rotate(-90 ${SZ/2} ${SZ/2})`}/>
+              <text x={SZ/2} y={SZ/2 + 5} fill={pct >= 1 ? color : 'var(--text)'}
+                fontFamily="monospace" fontSize="14" fontWeight="700" textAnchor="middle">
+                {val}
+              </text>
+            </svg>
+            <div style={{ fontSize: '8px', color: '#666', letterSpacing: '0.08em', marginTop: '3px' }}>{label}</div>
+            <div style={{ fontSize: '8px', color: '#444' }}>{sub}</div>
+          </div>
+        )
+
+        return (
+          <div style={card}>
+            <div style={cardTitle}>{lang === 'tr' ? 'HAFTALIK HALKALAR' : 'WEEKLY RINGS'}</div>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-around', flexWrap: 'wrap' }}>
+              <Ring pct={tssPct}  color={ORANGE} val={weekTSS}   label={lang==='tr' ? 'HAFTALIK TSS' : 'WEEK TSS'}    sub={weekTSSTarget > 0 ? `/ ${weekTSSTarget}` : 'no target'} />
+              <Ring pct={sessPct} color={GREEN}  val={sessions7d} label={lang==='tr' ? 'ANTRENMANLAR' : 'SESSIONS'}    sub={`/ ${sessionTarget}`} />
+              <Ring pct={wellPct} color={BLUE}   val={wellStreak} label={lang==='tr' ? 'SAĞLIK GÜNÜ'  : 'WELLNESS'}    sub="/ 7" />
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── Card 4: Smart Suggestion ───────────────────────────────────────── */}
       <div style={{ ...card, borderLeft: `4px solid ${suggestColor}` }}>
