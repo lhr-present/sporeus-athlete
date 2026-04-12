@@ -456,7 +456,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
         </main>
 
         <footer style={S.footer}>
-          SPOREUS ATHLETE CONSOLE v5.15.0 · SPOREUS.COM
+          SPOREUS ATHLETE CONSOLE v5.19.0 · SPOREUS.COM
         </footer>
       </div>
     </LangCtx.Provider>

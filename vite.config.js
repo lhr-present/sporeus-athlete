@@ -7,6 +7,12 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     include: ['src/**/*.test.js'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json-summary'],
+      include: ['src/lib/**/*.js'],
+      exclude: ['src/lib/**/*.test.js'],
+    },
   },
   base: '/sporeus-athlete/',
   build: {

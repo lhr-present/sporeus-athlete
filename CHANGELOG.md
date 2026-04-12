@@ -2,6 +2,28 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v5.19.0 (2026-04-12)
+Share Card, cloudSync, coverage — 442 tests (16 new):
+
+**Share Card (Dashboard)**
+- `src/components/ShareCard.jsx` — SVG Bloomberg-Terminal training summary card
+- Renders: athlete name + sport, CTL, TSB (+/−), ACWR, week TSS, zone model badge, date
+- Share button: Web Share API (text) → clipboard copy fallback
+- Appears in Dashboard above Quick Links; uses full log for PMC/ACWR, last 28d for zone model
+- DEPENDS ON: calculatePMC (trainingLoad.js), zoneDistribution + trainingModel (zoneDistrib.js)
+
+**cloudSync.js**
+- `src/lib/cloudSync.js`: `pushTable`, `pullTable`, `deleteRow`, `syncLog` — explicit on-demand Supabase helpers
+- Distinct from DataContext.useSyncedTable (reactive); cloudSync is imperative / one-shot
+- 16 new tests in `src/lib/cloudSync.test.js` (vi.mock at Supabase boundary)
+
+**Coverage**
+- Installed `@vitest/coverage-v8`
+- `vite.config.js` test block extended with `coverage: { provider: 'v8', reporter: ['text','json-summary'], include: ['src/lib/**/*.js'] }`
+- Run: `npm test -- --coverage` to generate a line/branch report
+
+- DEPENDS ON: supabase.js (implicit flow, settled); zoneDistrib.js (v5.18.0); trainingLoad.js
+
 ## v5.18.0 (2026-04-12)
 Athlete comparison, Banister chart, Zone Distributor — 426 tests (25 new):
 

@@ -10,6 +10,7 @@ import HRVChart  from './charts/HRVChart.jsx'
 import { monotonyStrain, calcPRs, navyBF, mifflinBMR, riegel, fmtSec, fmtPace, calcLoad } from '../lib/formulas.js'
 import { calculateACWR, fitBanister, predictBanister } from '../lib/trainingLoad.js'
 import { zoneDistribution, trainingModel, MODEL_META } from '../lib/zoneDistrib.js'
+import ShareCard from './ShareCard.jsx'
 import { exportAllData } from '../lib/storage.js'
 import { useCountUp } from '../hooks/useCountUp.js'
 import Achievements from './Achievements.jsx'
@@ -1452,6 +1453,8 @@ ${complianceStr?`<div>Plan: <strong>${complianceStr}</strong></div>`:''}
           </div>
         )
       })()}
+
+      <ShareCard log={log} profile={profile} filteredLog={filteredLog} />
 
       <div className="sp-card" style={{ ...S.card, animationDelay:'200ms' }}>
         <div style={S.cardTitle}>{t('quickLinks')}</div>
