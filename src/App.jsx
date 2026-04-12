@@ -338,12 +338,12 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
       {isGuest && (
         <div style={{ position:'fixed', bottom:0, left:0, right:0, zIndex:10001, background:'#111', borderTop:'1px solid #333', color:'#888', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'8px 20px', display:'flex', justifyContent:'space-between', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
           <span>
-            <span style={{ color:'#ff6600', fontWeight:600 }}>GUEST MODE</span>
+            <span style={{ color:'var(--brand-primary,#ff6600)', fontWeight:600 }}>GUEST MODE</span>
             {' · '}{lang === 'en' ? 'Data saves to this device only.' : 'Veri yalnızca bu cihaza kaydedilir.'}
           </span>
           <button
             onClick={() => { localStorage.removeItem('sporeus-guest-mode'); window.location.reload() }}
-            style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', fontWeight:600, padding:'5px 14px', background:'#ff6600', border:'none', color:'#fff', borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em', whiteSpace:'nowrap' }}>
+            style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', fontWeight:600, padding:'5px 14px', background:'var(--brand-primary,#ff6600)', border:'none', color:'#fff', borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em', whiteSpace:'nowrap' }}>
             {lang === 'en' ? 'Sign in & sync →' : 'Giriş yap & senkronize et →'}
           </button>
         </div>
@@ -447,7 +447,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
                     <span style={{ position:'absolute', top:'6px', right:'4px', width:'6px', height:'6px', borderRadius:'50%', background: tab2.id === 'profile' ? '#e03030' : '#f5c542', display:'inline-block' }}/>
                   )}
                   {isLogPulse && (
-                    <span style={{ position:'absolute', top:'4px', right:'4px', background:'#ff6600', color:'#fff', fontFamily:"'IBM Plex Mono',monospace", fontSize:'8px', padding:'1px 4px', borderRadius:'2px', whiteSpace:'nowrap', pointerEvents:'none' }}>
+                    <span style={{ position:'absolute', top:'4px', right:'4px', background:'var(--brand-primary,#ff6600)', color:'#fff', fontFamily:"'IBM Plex Mono',monospace", fontSize:'8px', padding:'1px 4px', borderRadius:'2px', whiteSpace:'nowrap', pointerEvents:'none' }}>
                       Start here
                     </span>
                   )}

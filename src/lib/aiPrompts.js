@@ -8,6 +8,7 @@
 //   Fallback: localStorage — used when Supabase is offline or unavailable.
 
 import { supabase, isSupabaseReady } from './supabase.js'
+import { getTierSync, canUseAI } from './subscription.js'
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
 const ANTHROPIC_VERSION  = '2023-06-01'
@@ -132,8 +133,33 @@ function validateSchema(obj, required = []) {
   return obj && typeof obj === 'object' && required.every(k => k in obj)
 }
 
+// ── AI call counter (daily, localStorage) ─────────────────────────────────────
+function getDailyCallCount() {
+  try {
+    const raw = localStorage.getItem('sporeus-ai-calls')
+    const { date, count } = JSON.parse(raw || '{}')
+    const today = new Date().toISOString().slice(0, 10)
+    return date === today ? (count || 0) : 0
+  } catch { return 0 }
+}
+
+function incrementDailyCallCount() {
+  try {
+    const today = new Date().toISOString().slice(0, 10)
+    const count = getDailyCallCount() + 1
+    localStorage.setItem('sporeus-ai-calls', JSON.stringify({ date: today, count }))
+  } catch {}
+}
+
 // ─── Core fetch ───────────────────────────────────────────────────────────────
 async function callClaude(model, system, user, maxTokens = 512) {
+  // Tier gate: check daily call limit
+  const tier = getTierSync()
+  const dailyCalls = getDailyCallCount()
+  if (!canUseAI(dailyCalls, tier)) {
+    throw new Error(`AI call limit reached for ${tier} plan. Upgrade at sporeus.com.`)
+  }
+
   const key = getApiKey()
   if (!key) throw new Error('Anthropic API key not set — add it in Profile → Settings')
 
@@ -159,6 +185,7 @@ async function callClaude(model, system, user, maxTokens = 512) {
   }
 
   const data = await res.json()
+  incrementDailyCallCount()
   return data?.content?.[0]?.text || ''
 }
 

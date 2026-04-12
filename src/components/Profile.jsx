@@ -7,6 +7,8 @@ import { navyBF, mifflinBMR, calcLoad, generateUnlockCode, FREE_ATHLETE_LIMIT } 
 import { sanitizeProfile } from '../lib/validate.js'
 import { exportAllData, importAllData } from '../lib/storage.js'
 import { exportAthleteData, deleteAthleteData, triggerDownload } from '../lib/gdprExport.js'
+import { generateSeasonReport } from '../lib/pdfReport.js'
+import { getTierSync, isFeatureGated, getUpgradePrompt } from '../lib/subscription.js'
 import { Sparkline } from './ui.jsx'
 import { isSupabaseReady } from '../lib/supabase.js'
 import NotificationSettings from './NotificationSettings.jsx'
@@ -1376,6 +1378,38 @@ export default function Profile({ profile, setProfile, log, authUser }) {
         <div style={{ ...S.mono, fontSize:'10px', color:'#aaa', marginTop:'10px' }}>
           Export backs up all training data, plans, and settings as JSON. Import restores a previous backup.
         </div>
+
+        {/* Season Report PDF */}
+        {(() => {
+          const tier = getTierSync()
+          const gated = isFeatureGated('export_pdf', tier)
+          return (
+            <div style={{ marginTop:'14px', paddingTop:'12px', borderTop:'1px solid var(--border)' }}>
+              <div style={{ ...S.mono, fontSize:'9px', color:'#555', letterSpacing:'0.1em', marginBottom:'8px' }}>◈ SEASON REPORT</div>
+              {gated ? (
+                <div style={{ ...S.mono, fontSize:'10px', color:'#f5c542' }}>{getUpgradePrompt('export_pdf')}</div>
+              ) : (
+                <button
+                  style={{ ...S.btnSec, fontSize:'9px', padding:'4px 12px' }}
+                  onClick={() => {
+                    try {
+                      const recovery = JSON.parse(localStorage.getItem('sporeus-recovery') || '[]')
+                      const html = generateSeasonReport(
+                        { name: local.name, sport: local.sport || local.primarySport },
+                        log || [],
+                        recovery,
+                      )
+                      const win = window.open('', '_blank')
+                      if (win) { win.document.write(html); win.document.close(); win.print() }
+                    } catch {}
+                  }}
+                >
+                  ↓ Download Season Report
+                </button>
+              )}
+            </div>
+          )
+        })()}
 
         {/* GDPR — Download my data / Delete my account */}
         <div style={{ marginTop:'14px', paddingTop:'12px', borderTop:'1px solid var(--border)' }}>

@@ -6,6 +6,7 @@ import { useData } from '../contexts/DataContext.jsx'
 import { getTodayPlannedSession, getSingleSuggestion, generateDailyDigest } from '../lib/intelligence.js'
 import { WELLNESS_FIELDS } from '../lib/constants.js'
 import { LineChart, Line, ResponsiveContainer } from 'recharts'
+import { hasUnread } from './CoachMessage.jsx'
 
 // ── Wellness 14-day sparkline ─────────────────────────────────────────────────
 function WellnessSparkline({ recovery }) {
@@ -115,6 +116,15 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
   }, [recovery, today])
 
   const todayRec = (recovery || []).find(e => e.date === today)
+
+  // Coach message unread count (athlete reads from localStorage)
+  const [coachUnread, setCoachUnread] = useState(() => {
+    try {
+      const msgs = JSON.parse(localStorage.getItem('sporeus-coach-messages') || '[]')
+      return hasUnread(msgs, 'athlete')
+    } catch { return 0 }
+  })
+
   const [wellness, setWellness]       = useState({ sleep: 3, energy: 3, soreness: 3 })
   const [wellnessSaved, setWellnessSaved] = useState(false)
   const [isSubmitting, setIsSubmitting]   = useState(false)
@@ -212,6 +222,28 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
           <div style={{ fontSize: '11px', color: 'var(--text)', lineHeight: 1.9, whiteSpace: 'pre-line', fontFamily: MONO }}>
             {digest[lang] || digest.en}
           </div>
+        </div>
+      )}
+
+      {/* ── Coach message unread badge ────────────────────────────────────── */}
+      {coachUnread > 0 && (
+        <div style={{
+          ...card, borderLeft: `4px solid #0064ff`,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '10px 18px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 13 }}>✉</span>
+            <span style={{ fontFamily: MONO, fontSize: 11, color: '#0064ff' }}>
+              {coachUnread} unread message{coachUnread > 1 ? 's' : ''} from your coach
+            </span>
+          </div>
+          <button
+            onClick={() => setCoachUnread(0)}
+            style={{ fontFamily: MONO, fontSize: 9, background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}
+          >
+            DISMISS
+          </button>
         </div>
       )}
 

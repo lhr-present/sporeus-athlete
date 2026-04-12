@@ -3,7 +3,9 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { S } from '../styles.js'
 import { generateDemoSquad, filterByTeam, DEMO_TEAMS, getTeams } from '../lib/squadUtils.js'
+import { getTierSync, canAddAthlete, isFeatureGated, getUpgradePrompt } from '../lib/subscription.js'
 import CTLChart from './charts/CTLChart.jsx'
+import CoachMessage from './CoachMessage.jsx'
 import { generateSquadDigest, wellnessAvg } from '../lib/coachDigest.js'
 import { getReadinessLabel, getAthleteInsights } from '../lib/ruleInsights.js'
 
@@ -458,6 +460,7 @@ export default function CoachSquadView({ authUser }) {
   const [sort, setSort]             = useState({ col: 'status', dir: 1 })
   const [expanded, setExpanded]     = useState(null)   // athlete_id
   const [noteFor, setNoteFor]       = useState(null)   // athlete object
+  const [msgFor,  setMsgFor]        = useState(null)   // athlete object
   const [flagged, setFlagged]       = useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem('sporeus-coach-flagged') || '[]')) }
     catch { return new Set() }
@@ -471,6 +474,14 @@ export default function CoachSquadView({ authUser }) {
   const [activeTeamId, setActiveTeamId] = useState(() => {
     try { return localStorage.getItem('sporeus-active-team') || 'all' } catch { return 'all' }
   })
+  // Realtime
+  const [rtStatus, setRtStatus]   = useState('disconnected') // 'live' | 'reconnecting' | 'disconnected'
+  const [lastUpdated, setLastUpdated] = useState(null)
+  const [rtToast, setRtToast]     = useState('')
+  const rtChannelRef              = useRef(null)
+  const rtRetryRef                = useRef(0)
+  const rtTimerRef                = useRef(null)
+
   // Missed check-in: flag athletes who haven't logged by cutoff hour (10am default)
   const [checkInCutoff] = useState(10)  // hour (0-23); persisted externally if needed
   const todayStr     = new Date().toISOString().slice(0, 10)
@@ -514,6 +525,83 @@ export default function CoachSquadView({ authUser }) {
 
   // In demo mode, use DEMO_TEAMS
   useEffect(() => { if (isDemo) setTeams(DEMO_TEAMS) }, [isDemo])
+
+  // ── Realtime subscriptions (coach + coach/club tier only) ─────────────────
+  useEffect(() => {
+    const isCoach = authUser?.role === 'coach' || !!authUser?.id
+    const rtTierOk = !isFeatureGated('realtime_dashboard', tier)
+    if (!isCoach || !rtTierOk || isDemo || !isSupabaseReady()) return
+
+    let active = true
+
+    function connectRealtime() {
+      if (!active) return
+      setRtStatus('reconnecting')
+
+      // Unsubscribe previous channel
+      if (rtChannelRef.current) {
+        supabase.removeChannel(rtChannelRef.current)
+        rtChannelRef.current = null
+      }
+
+      const channel = supabase.channel(`coach-${authUser.id}`)
+        .on('postgres_changes', {
+          event: 'INSERT', schema: 'public', table: 'wellness_logs',
+          filter: `user_id=in.(${athletes.map(a => a.athlete_id).join(',') || 'none'})`,
+        }, (payload) => {
+          const { new: row } = payload
+          // Optimistic update: patch that athlete's last_session_date
+          setAthletes(prev => prev.map(a =>
+            a.athlete_id === row.user_id
+              ? { ...a, last_session_date: row.date }
+              : a
+          ))
+          const ath = athletes.find(a => a.athlete_id === row.user_id)
+          const name = ath?.display_name || 'Athlete'
+          const toast = `${name} just checked in — Fatigue ${row.soreness ?? '—'}/5, ACWR ${ath?.acwr_ratio ?? '—'}`
+          setRtToast(toast)
+          setTimeout(() => setRtToast(''), 6000)
+          if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(40)
+          setLastUpdated(new Date().toLocaleTimeString())
+        })
+        .on('postgres_changes', {
+          event: 'INSERT', schema: 'public', table: 'training_log',
+          filter: `user_id=in.(${athletes.map(a => a.athlete_id).join(',') || 'none'})`,
+        }, () => {
+          setLastUpdated(new Date().toLocaleTimeString())
+        })
+        .subscribe((status) => {
+          if (!active) return
+          if (status === 'SUBSCRIBED') {
+            setRtStatus('live')
+            rtRetryRef.current = 0
+            setLastUpdated(new Date().toLocaleTimeString())
+          } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
+            setRtStatus('reconnecting')
+            // Exponential backoff: 1s, 2s, 4s, 8s, 16s, 30s max
+            const delay = Math.min(1000 * Math.pow(2, rtRetryRef.current), 30000)
+            rtRetryRef.current++
+            clearTimeout(rtTimerRef.current)
+            rtTimerRef.current = setTimeout(() => { if (active) connectRealtime() }, delay)
+          }
+        })
+
+      rtChannelRef.current = channel
+    }
+
+    connectRealtime()
+
+    return () => {
+      active = false
+      clearTimeout(rtTimerRef.current)
+      if (rtChannelRef.current) {
+        supabase.removeChannel(rtChannelRef.current)
+        rtChannelRef.current = null
+      }
+      setRtStatus('disconnected')
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authUser?.id, isDemo, athletes.length])
 
   // Persist flagged set
   const toggleFlag = useCallback((id) => {
@@ -576,6 +664,9 @@ export default function CoachSquadView({ authUser }) {
 
   // Empty state (no athletes connected)
   const inviteCode = coachId ? coachId.slice(0, 8).toUpperCase() : null
+  const tier = getTierSync()
+  const inviteBlocked = !canAddAthlete(athletes.length, tier)
+  const teamGated = isFeatureGated('multi_team', tier)
 
   // ── Column header helper ────────────────────────────────────────────────────
   function ColHdr({ col, children, style }) {
@@ -605,7 +696,24 @@ export default function CoachSquadView({ authUser }) {
 
   return (
     <div className="sp-card" style={{ ...S.card, animationDelay: '0ms' }}>
-      <div style={S.cardTitle}>SQUAD</div>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'8px', flexWrap:'wrap', gap:'6px' }}>
+        <div style={S.cardTitle}>SQUAD</div>
+        {/* Realtime status */}
+        {!isDemo && (
+          <div style={{ display:'flex', alignItems:'center', gap:'6px', fontFamily: MONO, fontSize: 9, color: rtStatus === 'live' ? GREEN : rtStatus === 'reconnecting' ? YELLOW : '#555' }}>
+            <span style={{ width:6, height:6, borderRadius:'50%', background: rtStatus === 'live' ? GREEN : rtStatus === 'reconnecting' ? YELLOW : '#333', display:'inline-block', flexShrink:0 }}/>
+            {rtStatus === 'live' ? 'Live' : rtStatus === 'reconnecting' ? 'Reconnecting…' : '●'}
+            {lastUpdated && rtStatus === 'live' && <span style={{ color:'#444' }}>· {lastUpdated}</span>}
+          </div>
+        )}
+      </div>
+
+      {/* Realtime toast */}
+      {rtToast && (
+        <div style={{ fontFamily: MONO, fontSize: 10, color: GREEN, padding: '5px 10px', borderRadius: 3, border: `1px solid ${GREEN}44`, background: `${GREEN}11`, marginBottom: 8 }}>
+          ◉ {rtToast}
+        </div>
+      )}
 
       {/* Demo banner */}
       {isDemo && (
@@ -617,8 +725,13 @@ export default function CoachSquadView({ authUser }) {
         </div>
       )}
 
-      {/* Team selector — shown when teams exist */}
-      {teams.length > 0 && (
+      {/* Team selector — shown when teams exist and not gated */}
+      {teamGated && teams.length > 0 && (
+        <div style={{ fontFamily: MONO, fontSize: 10, color: YELLOW, marginBottom: 8, padding: '4px 8px', border: `1px solid ${YELLOW}44`, borderRadius: 3 }}>
+          {getUpgradePrompt('multi_team')}
+        </div>
+      )}
+      {!teamGated && teams.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
           <span style={{ fontFamily: MONO, fontSize: 9, color: '#555', letterSpacing: '0.08em' }}>TEAM</span>
           {[{ id: 'all', name: 'All', sport: '', age_group: '' }, ...teams].map(t => (
@@ -643,8 +756,15 @@ export default function CoachSquadView({ authUser }) {
         </div>
       )}
 
+      {/* Athlete limit gate */}
+      {inviteBlocked && !isDemo && (
+        <div style={{ fontFamily: MONO, fontSize: 10, color: YELLOW, marginBottom: 8, padding: '4px 8px', border: `1px solid ${YELLOW}44`, borderRadius: 3 }}>
+          {getUpgradePrompt('multi_team').replace('Multi-team management', 'Adding more athletes')}
+        </div>
+      )}
+
       {/* Empty state */}
-      {!isDemo && athletes.length === 0 && inviteCode && (
+      {!isDemo && athletes.length === 0 && inviteCode && !inviteBlocked && (
         <div style={{ padding: '16px 0' }}>
           <div style={{ fontFamily: MONO, fontSize: 10, color: '#888', marginBottom: 8 }}>
             No athletes connected yet.
@@ -835,6 +955,11 @@ export default function CoachSquadView({ authUser }) {
                         onClick={e => { e.stopPropagation(); toggleFlag(ath.athlete_id) }}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: isFlagged ? ORANGE : '#333' }}
                       >★</button>
+                      <button
+                        onClick={e => { e.stopPropagation(); setMsgFor(ath) }}
+                        title={`Message ${ath.display_name}`}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#444', padding: 0 }}
+                      >✉</button>
                       <input
                         type="checkbox"
                         checked={compareIds.has(ath.athlete_id)}
@@ -866,6 +991,7 @@ export default function CoachSquadView({ authUser }) {
                   <ColHdr col="adherence">ADHERENCE</ColHdr>
                   <ColHdr col="status">STATUS</ColHdr>
                   <th style={{ fontFamily: MONO, fontSize: 9, color: '#333', padding: '6px 8px' }}>FLAG</th>
+                  <th style={{ fontFamily: MONO, fontSize: 9, color: '#333', padding: '6px 8px' }}>MSG</th>
                 </tr>
               </thead>
               <tbody>
@@ -976,10 +1102,24 @@ export default function CoachSquadView({ authUser }) {
                           ★
                         </button>
                       </td>
+                      {/* Message */}
+                      <td style={{ padding: '8px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                        <button
+                          onClick={() => setMsgFor(ath)}
+                          title={`Message ${ath.display_name}`}
+                          style={{
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            fontSize: 13, color: '#2a2a2a',
+                            padding: 0, lineHeight: 1,
+                          }}
+                        >
+                          ✉
+                        </button>
+                      </td>
                     </tr>,
                     isExp && (
                       <tr key={ath.athlete_id + '-exp'}>
-                        <td colSpan={8} style={{ padding: 0 }}>
+                        <td colSpan={9} style={{ padding: 0 }}>
                           <ExpandedRow athlete={ath} coachId={coachId} onNote={setNoteFor} />
                         </td>
                       </tr>
@@ -1004,6 +1144,11 @@ export default function CoachSquadView({ authUser }) {
           />
           <NotePanel athlete={noteFor} coachId={coachId} onClose={() => setNoteFor(null)} />
         </>
+      )}
+
+      {/* Message panel overlay */}
+      {msgFor && (
+        <CoachMessage athlete={msgFor} coachId={coachId} onClose={() => setMsgFor(null)} />
       )}
     </div>
   )
