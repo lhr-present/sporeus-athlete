@@ -2,6 +2,20 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v5.12.2 (2026-04-12)
+- src/lib/integration.test.js: 41 new end-to-end pipeline tests across 5 scenarios
+  - Scenario 1: Endurance runner 6 months (PMC, ACWR, VO₂max trend, VDOT, race equivalents)
+  - Scenario 2: Cyclist with power data (MMP, CP fit, interval detection, FTP estimate)
+  - Scenario 3: HRV morning readiness (clean/detect ectopics, RMSSD, lnRMSSD, scoreReadiness)
+  - Scenario 4: Yearly plan builder (52 weeks, race week phase, deloads, CSV export)
+  - Scenario 5: Demo squad smoke test (6 athletes, determinism, training status, adherence)
+- 310 tests total (was 269)
+- vite.config.js: manualChunks split recharts → vendor-recharts (160 KB gz), supabase → vendor-supabase (51 KB gz), fit-file-parser → vendor-fit (40 KB gz)
+  - Main app bundle: 385 KB gz → 132 KB gz (65% reduction in first-parse cost)
+  - Vendor chunks are long-term cacheable (content-hashed, rarely change)
+- PWA checklist: all 8 icon sizes present, sw.js + registerSW.js + manifest.webmanifest in dist, NetworkFirst Supabase routes, CACHE_VERSION cache buster, stale cache cleanup on activate
+- DEPENDS ON: nothing new
+
 ## v5.12.1 (2026-04-12)
 Audit fixes — 15 issues resolved across 4 priority groups.
 - P1/TrainingLog.jsx: null guard on log.find() before spread in startEdit (crash on edit)

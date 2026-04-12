@@ -9,6 +9,17 @@ export default defineConfig({
     include: ['src/**/*.test.js'],
   },
   base: '/sporeus-athlete/',
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-recharts':  ['recharts'],
+          'vendor-supabase':  ['@supabase/supabase-js'],
+          'vendor-fit':       ['fit-file-parser'],
+        },
+      },
+    },
+  },
   plugins: [
     react(),
     VitePWA({
