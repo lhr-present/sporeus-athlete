@@ -348,7 +348,8 @@ export function scoreSession(entry, log, profile) {
 
   // TSS quality
   if (tss > 0) {
-    const avgTSS = (log || []).slice(-10).filter(e => e.tss > 0).reduce((s, e, _, a) => s + e.tss / a.length, 0)
+    const recent = (log || []).slice(-10).filter(e => e.tss > 0)
+    const avgTSS = recent.length > 0 ? recent.reduce((s, e) => s + e.tss, 0) / recent.length : 0
     if (avgTSS > 0 && tss >= avgTSS * 0.7) score += 10
   }
 

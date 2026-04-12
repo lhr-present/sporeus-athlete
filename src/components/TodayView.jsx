@@ -8,8 +8,7 @@ import { WELLNESS_FIELDS } from '../lib/constants.js'
 import { hasUnread } from './CoachMessage.jsx'
 
 const WellnessSparkline = lazy(() => import('./charts/WellnessSparkline.jsx'))
-import { supabase, isSupabaseReady } from '../lib/supabase.js'
-import { enqueuePendingLog, flushQueue, isNetworkError } from '../lib/offlineQueue.js'
+import { flushQueue } from '../lib/offlineQueue.js'
 
 
 const MONO  = "'IBM Plex Mono', monospace"
@@ -131,31 +130,13 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
       id: Date.now(), idempotency_key: idempotencyKey.current,
     }
 
-    // 1. Optimistic local update (always succeeds)
+    // setRecovery triggers Supabase sync via useRecovery hook (DataContext).
+    // The hook handles both online upsert and localStorage persistence.
     setRecovery(prev => [...(prev || []).filter(e => e.date !== today), entry].slice(-90))
     setWellnessSaved(true)
 
-    // 2. Try Supabase upsert; enqueue if network is down
-    if (isSupabaseReady()) {
-      try {
-        const { error } = await supabase
-          .from('wellness_logs')
-          .upsert({ ...entry, _table: undefined }, { onConflict: 'id' })
-        if (error) {
-          if (isNetworkError(error)) {
-            await enqueuePendingLog({ ...entry, _table: 'wellness_logs' })
-          }
-          // Validation errors: local state still holds the data — don't block UX
-        } else {
-          // Successful sync — flush any prior pending entries
-          flushQueue().catch(() => {})
-        }
-      } catch (e) {
-        if (isNetworkError(e)) {
-          await enqueuePendingLog({ ...entry, _table: 'wellness_logs' })
-        }
-      }
-    }
+    // Flush any previously queued offline entries now that we're submitting
+    flushQueue().catch(() => {})
 
     // Re-enable after 2s (prevents accidental double-tap; localStorage guard prevents true duplicates)
     setTimeout(() => setIsSubmitting(false), 2000)
@@ -340,8 +321,8 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
                   <div style={{ fontSize: '9px', color: '#555', letterSpacing: '0.1em', marginBottom: '6px' }}>{t(field.lk)}</div>
                   <div style={{ display: 'flex', gap: '4px' }}>
                     {field.emoji.map((em, i) => (
-                      <button key={i} onClick={() => setWellness(w => ({ ...w, [field.key]: i + 1 }))}
-                        style={{ fontSize: '18px', padding: '4px 6px', borderRadius: '5px', cursor: 'pointer', border: `2px solid ${wellness[field.key] === i + 1 ? ORANGE : 'var(--border)'}`, background: wellness[field.key] === i + 1 ? '#2a1800' : 'var(--surface)', lineHeight: 1 }}>
+                      <button type="button" key={i} aria-label={`${field.key} level ${i + 1}`} onClick={() => setWellness(w => ({ ...w, [field.key]: i + 1 }))}
+                        style={{ fontSize: '18px', padding: '8px 8px', borderRadius: '5px', cursor: 'pointer', border: `2px solid ${wellness[field.key] === i + 1 ? ORANGE : 'var(--border)'}`, background: wellness[field.key] === i + 1 ? '#2a1800' : 'var(--surface)', lineHeight: 1 }}>
                         {em}
                       </button>
                     ))}

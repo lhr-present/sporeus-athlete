@@ -115,7 +115,7 @@ export default function AthleteRow({
         borderLeft: `3px solid ${isFlagged ? ORANGE : noCheckIn ? YELLOW : '#2a2a2a'}`,
         overflow: 'hidden',
       }}>
-        <div onClick={onExpand} style={{ padding: '10px 12px', cursor: 'pointer', display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div role="button" tabIndex={0} onClick={onExpand} onKeyDown={e => e.key === 'Enter' && onExpand()} style={{ padding: '10px 12px', cursor: 'pointer', display: 'flex', gap: 10, alignItems: 'center' }}>
           <ReadinessCircle score={readiness} />
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -131,8 +131,8 @@ export default function AthleteRow({
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
-            <button onClick={e => { e.stopPropagation(); onFlag() }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: isFlagged ? ORANGE : '#333' }}>★</button>
-            <button onClick={e => { e.stopPropagation(); onMessage() }} title={`Message ${ath.display_name}`} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#444', padding: 0 }}>✉</button>
+            <button aria-label={isFlagged ? 'Unflag athlete' : 'Flag athlete'} onClick={e => { e.stopPropagation(); onFlag() }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: isFlagged ? ORANGE : '#333', padding: '10px 8px' }}>★</button>
+            <button aria-label={`Message ${ath.display_name}`} title={`Message ${ath.display_name}`} onClick={e => { e.stopPropagation(); onMessage() }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#666', padding: '10px 8px' }}>✉</button>
             <input type="checkbox" checked={inCompare} onChange={onCompare} disabled={!inCompare && compareAtMax} onClick={e => e.stopPropagation()} style={{ accentColor: ORANGE, cursor: 'pointer', width: 12, height: 12 }} />
           </div>
         </div>
@@ -187,11 +187,11 @@ export default function AthleteRow({
       </td>
       {/* Flag */}
       <td style={{ padding: '8px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-        <button onClick={onFlag} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: isFlagged ? ORANGE : '#2a2a2a', padding: 0 }}>★</button>
+        <button aria-label={isFlagged ? 'Unflag athlete' : 'Flag athlete'} onClick={onFlag} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: isFlagged ? ORANGE : '#2a2a2a', padding: '6px 8px' }}>★</button>
       </td>
       {/* Message */}
       <td style={{ padding: '8px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-        <button onClick={onMessage} title={`Message ${ath.display_name}`} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#2a2a2a', padding: 0, lineHeight: 1 }}>✉</button>
+        <button aria-label={`Message ${ath.display_name}`} onClick={onMessage} title={`Message ${ath.display_name}`} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#555', padding: '6px 8px', lineHeight: 1 }}>✉</button>
       </td>
     </tr>,
     isExpanded && (

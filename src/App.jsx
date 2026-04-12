@@ -37,10 +37,6 @@ const Profile       = lazy(() => import('./components/Profile.jsx'))
 const TestProtocols = lazy(() => import('./components/Protocols.jsx'))
 const Periodization = lazy(() => import('./components/Periodization.jsx'))
 
-// Inline — too small to warrant a separate module
-function countUnreadCoachMessages() {
-  try { return (JSON.parse(localStorage.getItem('sporeus-coach-messages')) || []).filter(m => m.from === 'coach' && !m.read).length } catch { return 0 }
-}
 
 const LazyFallback = () => (
   <div style={{ fontFamily:"'IBM Plex Mono',monospace", padding:'40px 20px', textAlign:'center', color:'#888', letterSpacing:'0.1em', opacity:0.7 }}>
@@ -112,6 +108,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
   const [showSearch, setShowSearch] = useState(false)
   const [firstSessionToast, setFirstSessionToast] = useState(false)
   const [syncStatus, setSyncStatus] = useState(() => getSyncStatus())
+  const [coachUnreadBadge, setCoachUnreadBadge] = useState(0)
   const coachToastTimer = useRef(null)
   const firstSessionTimer = useRef(null)
   const prevLogLen = useRef(log.length)
@@ -130,13 +127,20 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
   const showBadges = appAge >= 1 || Object.keys(visitedTabs).length > 3
   const badges = {
     recovery: showBadges && !hasRecoveryToday && !visitedTabs.recovery_today,
-    profile:  (onboarded && isProfileIncomplete) || countUnreadCoachMessages() > 0,
+    profile:  (onboarded && isProfileIncomplete) || coachUnreadBadge > 0,
     log:      false,
   }
 
   useEffect(() => {
     if (!onboarded && profile && profile.name) setOnboarded(true)
   }, [])
+
+  useEffect(() => {
+    try {
+      const msgs = JSON.parse(localStorage.getItem('sporeus-coach-messages')) || []
+      setCoachUnreadBadge(msgs.filter(m => m.from === 'coach' && !m.read).length)
+    } catch {}
+  }, [tab])
 
   useEffect(() => {
     if (!visitedTabs._firstVisit) {

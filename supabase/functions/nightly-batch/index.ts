@@ -146,12 +146,12 @@ serve(async (req) => {
 
   // 1. Query athletes who checked in today
   const { data: checkIns, error: ciErr } = await supabase
-    .from("wellness_logs")
-    .select("user_id, sleep, energy, soreness, score")
+    .from("recovery")
+    .select("user_id, sleep_hrs, soreness, mood, stress, score")
     .eq("date", today)
 
   if (ciErr) {
-    console.error("wellness_logs query failed:", ciErr.message)
+    console.error("recovery query failed:", ciErr.message)
     return new Response(JSON.stringify({ error: ciErr.message }), { status: 500 })
   }
 
@@ -184,9 +184,8 @@ serve(async (req) => {
 
     // Get latest squad overview metrics from ai_insights or wellness avg
     const checkinRow = checkIns.find((c: { user_id: string }) => c.user_id === uid)
-    const wellnessAvg = checkinRow
-      ? Math.round(((checkinRow.sleep ?? 3) + (checkinRow.energy ?? 3) + (6 - (checkinRow.soreness ?? 3))) / 3 * 20)
-      : null
+    // score is 0–100; use directly (already computed from sleep/energy/soreness by TodayView)
+    const wellnessAvg = checkinRow?.score ?? null
 
     // Simple CTL/TSB approximation from last 28d training_log
     const { data: longLogs } = await supabase

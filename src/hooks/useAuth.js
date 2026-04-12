@@ -42,7 +42,6 @@ export function useAuth() {
     if (!supabase) { setLoading(false); return }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[AUTH] event:', event, session?.user?.email ?? '')
       const u = session?.user ?? null
       setUser(u)
       if (event === 'SIGNED_IN') setNeedsUpsert(true)
