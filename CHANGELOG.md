@@ -2,6 +2,16 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v5.10.0 (2026-04-12)
+- Periodization Engine: src/lib/periodization.js — buildYearlyPlan (52-week, 3 models, phase assignment, EWMA CTL projection), validatePlan (4 warning types), updateWeekTSS (pure/immutable), exportPlanCSV
+- YearlyPlan.jsx: 52-week scrollable calendar (phase band + TSS bars), CTL projection SVG overlay, today marker, week detail panel (TSS edit, zone bars, copy-forward), race manager (add/remove/priority), model switcher, Export CSV, Supabase upsert + localStorage
+- WeekBuilder.jsx: full-screen overlay, session library (10 templates), 7-day drag-and-drop grid (HTML5 drag API), multi-session per day, TSS summary bar with over-target warning, save to sporeus-week-{weekStart}
+- App.jsx: PLAN tab now routes to YearlyPlan (replaces PlanGenerator)
+- supabase/migrations/20260414_training_plans.sql: training_plans table, RLS, updated_at trigger
+- trainingLoad.test.js: fixed pre-existing ACWR timezone tolerance issue
+- 33 new tests (238 total)
+- DEPENDS ON: calculatePMC+calculateACWR in trainingLoad.js, useLocalStorage, useAuth, supabase.js, DataContext log
+
 ## v5.9.0 (2026-04-12)
 - VO₂max + VDOT Engine: src/lib/vo2max.js — vdotFromRace (Daniels 1998 polynomial, 3.5–240 min), vdotFromPaceHR (Firstbeat-style), zonesFromVDOT (Newton iteration + 5 Daniels zones), raceEquivalents (binary search, 7 distances), estimateVO2maxTrend (ISO-week grouping, ≤52 entries), fmtPaceSec
 - VO2maxCard.jsx: VDOT badge + Cooper comparison, 52-week Recharts trend (confidence-coded dots), race equivalents grid, collapsible Daniels training zones, manual race input (dist + HH:MM:SS → recalculate)

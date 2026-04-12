@@ -26,6 +26,7 @@ const CoachDashboard  = lazy(() => import('./components/CoachDashboard.jsx'))
 const CoachOverview   = lazy(() => import('./components/CoachOverview.jsx'))
 const CoachSquadView  = lazy(() => import('./components/CoachSquadView.jsx'))
 const PlanGenerator  = lazy(() => import('./components/PlanGenerator.jsx'))
+const YearlyPlan     = lazy(() => import('./components/YearlyPlan.jsx'))
 const Glossary       = lazy(() => import('./components/Glossary.jsx'))
 
 const LazyFallback = () => (
@@ -419,7 +420,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
           {tab === 'tests'        && <ErrorBoundary tabName="Protocols"><TestProtocols/></ErrorBoundary>}
           {tab === 'log'          && <ErrorBoundary tabName="Training Log"><TrainingLog log={log} setLog={setLog} prefill={logPrefill} clearPrefill={() => setLogPrefill(null)}/></ErrorBoundary>}
           {tab === 'periodization'&& <ErrorBoundary tabName="Macro Plan"><Periodization authUser={authUser}/></ErrorBoundary>}
-          {tab === 'plan'         && <ErrorBoundary tabName="Plan Generator"><Suspense fallback={<LazyFallback/>}><PlanGenerator onLogSession={ses => { setLogPrefill(ses); setTab('log') }}/></Suspense></ErrorBoundary>}
+          {tab === 'plan'         && <ErrorBoundary tabName="Yearly Plan"><Suspense fallback={<LazyFallback/>}><YearlyPlan /></Suspense></ErrorBoundary>}
           {tab === 'glossary'     && <ErrorBoundary tabName="Glossary"><Suspense fallback={<LazyFallback/>}><Glossary/></Suspense></ErrorBoundary>}
           {tab === 'recovery'     && <ErrorBoundary tabName="Recovery"><Recovery/></ErrorBoundary>}
           {tab === 'profile'      && <ErrorBoundary tabName="Profile"><Profile profile={profile} setProfile={setProfile} log={log} authUser={authUser}/></ErrorBoundary>}
