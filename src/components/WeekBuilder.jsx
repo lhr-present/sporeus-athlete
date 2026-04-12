@@ -251,7 +251,6 @@ export default function WeekBuilder({ week, onClose }) {
                 onDragLeave={handleDragLeave}
                 style={{
                   flex: 1,
-                  borderRight:    dayIdx < 6 ? '1px solid #111' : 'none',
                   padding:        '6px',
                   overflowY:      'auto',
                   background:     dragOverDay === dayIdx ? 'rgba(0,100,255,0.06)' : 'transparent',

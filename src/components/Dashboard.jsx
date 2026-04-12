@@ -636,10 +636,11 @@ export default function Dashboard({ log, profile }) {
   const { atl, ctl, tsb, daily } = calcLoad(log)
   const acwr = calculateACWR(log)
   // Week-over-week load spike (>10% = caution banner)
-  const w7Start  = (() => { const d = new Date(); d.setDate(d.getDate()-7);  return d.toISOString().slice(0,10) })()
-  const w14Start = (() => { const d = new Date(); d.setDate(d.getDate()-14); return d.toISOString().slice(0,10) })()
+  const w7Start     = (() => { const d = new Date(); d.setDate(d.getDate()-7);  return d.toISOString().slice(0,10) })()
+  const w14Start    = (() => { const d = new Date(); d.setDate(d.getDate()-14); return d.toISOString().slice(0,10) })()
+  const thisWeekTSS = log.filter(e => e.date >= w7Start).reduce((s,e) => s+(e.tss||0), 0)
   const prevWeekTSS = log.filter(e => e.date >= w14Start && e.date < w7Start).reduce((s,e) => s+(e.tss||0), 0)
-  const loadSpikeP  = prevWeekTSS > 10 ? Math.round((totalTSS - prevWeekTSS) / prevWeekTSS * 100) : 0
+  const loadSpikeP  = prevWeekTSS > 10 ? Math.round((thisWeekTSS - prevWeekTSS) / prevWeekTSS * 100) : 0
   const readiness = totalTSS>600?{label:t('fatigued'),color:'#e03030'}:totalTSS>400?{label:t('trained'),color:'#f5c542'}:{label:t('fresh'),color:'#5bc25b'}
   const tsbColor = tsb>5?'#5bc25b':tsb<-10?'#e03030':'#f5c542'
   const countSess = useCountUp(last7.length)

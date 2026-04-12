@@ -69,6 +69,19 @@ describe('sanitizeLogEntry', () => {
     expect(out.zones).toHaveLength(5)
     expect(out.zones[0]).toBe(10)
   })
+  it('preserves distanceM, durationSec, avgHR for VO2max estimation', () => {
+    const e = { date:'2025-01-01', type:'run', duration:45, rpe:6, tss:60, distanceM:10000, durationSec:2700, avgHR:155 }
+    const out = sanitizeLogEntry(e)
+    expect(out.distanceM).toBe(10000)
+    expect(out.durationSec).toBe(2700)
+    expect(out.avgHR).toBe(155)
+  })
+  it('drops invalid distanceM / avgHR', () => {
+    const e = { date:'2025-01-01', type:'run', duration:60, rpe:5, tss:50, distanceM:-5, avgHR:0 }
+    const out = sanitizeLogEntry(e)
+    expect(out.distanceM).toBeUndefined()
+    expect(out.avgHR).toBeUndefined()
+  })
 })
 
 describe('sanitizeProfile', () => {

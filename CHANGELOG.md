@@ -2,6 +2,15 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v5.13.1 (2026-04-12)
+Full codebase audit — 4 bugs fixed:
+- CRITICAL/validate.js: sanitizeLogEntry now preserves distanceM, durationSec, avgHR, distance, avgCadence — these were silently stripped, breaking VO2max trend estimation for FIT imports. 2 new tests added (312 total).
+- HIGH/sw.js: CACHE_VERSION bumped sporeus-v5.12.0 → sporeus-v5.13.0; comment header updated. Stale caches from v5.12 now invalidated on next SW install.
+- HIGH/Dashboard.jsx: loadSpikeP now uses date-filtered thisWeekTSS (not log.slice(-7)) for week-over-week comparison — fixes incorrect spike% when athlete logs ≠7 sessions per week.
+- MEDIUM/ActivityHeatmap.jsx: default prop log=[] + Array.isArray guard prevents crash if null/undefined passed.
+- LOW/WeekBuilder.jsx: duplicate borderRight key removed (build warning gone).
+- DEPENDS ON: nothing new
+
 ## v5.13.0 (2026-04-12)
 - ActivityHeatmap.jsx: GitHub-style 52-week training density heatmap (orange intensity scale by TSS), mounted in Profile tab
 - Dashboard: sRPE load (RPE × duration, Foster 2001) added as 5th stat badge in the 7-day summary row

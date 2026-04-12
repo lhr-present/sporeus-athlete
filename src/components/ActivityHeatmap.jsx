@@ -14,12 +14,13 @@ function tssColor(tss) {
   return COLS[5]
 }
 
-export default function ActivityHeatmap({ log }) {
+export default function ActivityHeatmap({ log = [] }) {
   const [hovered, setHovered] = useState(null)
+  const safeLog = Array.isArray(log) ? log : []
 
   const byDate = useMemo(() => {
     const map = {}
-    for (const e of log) {
+    for (const e of safeLog) {
       if (e.date) map[e.date] = (map[e.date] || 0) + (e.tss || 0)
     }
     return map

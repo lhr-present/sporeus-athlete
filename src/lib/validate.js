@@ -36,6 +36,12 @@ export function sanitizeLogEntry(e) {
   if (e.wPrimeExhausted === true) result.wPrimeExhausted = true
   if (typeof e.source === 'string' && e.source) result.source = e.source.slice(0, 20)
   if (e.hasPower === true) result.hasPower = true
+  // Fields required by vo2max.js estimateVO2maxTrend — must survive sanitization
+  const distM = parseFloat(e.distanceM); if (!isNaN(distM) && distM > 0) result.distanceM = distM
+  const dist  = parseFloat(e.distance);  if (!isNaN(dist)  && dist  > 0) result.distance  = dist
+  const durSec = parseFloat(e.durationSec); if (!isNaN(durSec) && durSec > 0) result.durationSec = durSec
+  const avgHR = parseInt(e.avgHR);  if (!isNaN(avgHR) && avgHR > 0) result.avgHR = avgHR
+  const cadence = parseInt(e.avgCadence); if (!isNaN(cadence) && cadence > 0) result.avgCadence = cadence
   return result
 }
 
