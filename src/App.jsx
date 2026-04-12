@@ -38,6 +38,8 @@ const TestProtocols = lazy(() => import('./components/Protocols.jsx'))
 const Periodization = lazy(() => import('./components/Periodization.jsx'))
 
 
+const EMBED_MODE = new URLSearchParams(window.location.search).get('embed') === 'true'
+
 const LazyFallback = () => (
   <div style={{ fontFamily:"'IBM Plex Mono',monospace", padding:'40px 20px', textAlign:'center', color:'#888', letterSpacing:'0.1em', opacity:0.7 }}>
     LOADING...
@@ -257,6 +259,17 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
   const now = new Date()
   const timeStr = now.toLocaleTimeString('tr-TR', { hour:'2-digit', minute:'2-digit' })
   const dateStr = now.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }).toUpperCase()
+
+  if (EMBED_MODE) {
+    return (
+      <LangCtx.Provider value={{ t, lang, setLang }}>
+        <style>{ANIM_CSS}</style>
+        <ErrorBoundary tabName="Today">
+          <TodayView log={log} profile={profile} setTab={() => {}} setLogPrefill={() => {}} />
+        </ErrorBoundary>
+      </LangCtx.Provider>
+    )
+  }
 
   return (
     <LangCtx.Provider value={{ t, lang, setLang }}>
@@ -496,7 +509,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
         </main>
 
         <footer style={S.footer}>
-          SPOREUS ATHLETE CONSOLE v5.20.0 · SPOREUS.COM
+          SPOREUS ATHLETE CONSOLE v6.0.0 · SPOREUS.COM
         </footer>
       </div>
     </LangCtx.Provider>

@@ -3,13 +3,16 @@ import { useState, useMemo, useContext, useRef, useEffect, lazy, Suspense } from
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { useData } from '../contexts/DataContext.jsx'
-import { getTodayPlannedSession, getSingleSuggestion, generateDailyDigest } from '../lib/intelligence.js'
-import { WELLNESS_FIELDS } from '../lib/constants.js'
+import { getTodayPlannedSession, getSingleSuggestion, generateDailyDigest, getFormScore, getConsistencyScore } from '../lib/intelligence.js'
+import { WELLNESS_FIELDS, LAUNCH_DATE, getDaysToLaunch } from '../lib/constants.js'
 import { hasUnread } from './CoachMessage.jsx'
 
 const WellnessSparkline = lazy(() => import('./charts/WellnessSparkline.jsx'))
 import { flushQueue } from '../lib/offlineQueue.js'
+import { calculateACWR } from '../lib/trainingLoad.js'
+import { getUpsellTrigger, isUpsellDismissed, dismissUpsell, trackUpsellImpression } from '../lib/bookUpsell.js'
 
+const EMBED_MODE = new URLSearchParams(window.location.search).get('embed') === 'true'
 
 const MONO  = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -87,6 +90,11 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
     return { mean: Math.round(mean), sd: Math.round(sd * 10) / 10, n }
   }, [recovery, today])
 
+  // ── Upsell trigger data ───────────────────────────────────────────────────
+  const acwrRatio     = useMemo(() => calculateACWR(log).ratio, [log])
+  const formTSB       = useMemo(() => getFormScore(log).tsb, [log])
+  const upsellConsist = useMemo(() => getConsistencyScore(log), [log])
+
   const todayRec = (recovery || []).find(e => e.date === today)
 
   // Coach message unread count (athlete reads from localStorage)
@@ -101,14 +109,116 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
   const [wellnessSaved, setWellnessSaved] = useState(false)
   const [isSubmitting, setIsSubmitting]   = useState(false)
   const [alreadySubmitted, setAlreadySubmitted] = useState(false)
+  const [upsellHidden, setUpsellHidden]         = useState(false)
+  const [shareLoading, setShareLoading]         = useState(false)
+  const [launchDismissed, setLaunchDismissed]   = useState(() => {
+    try { return localStorage.getItem('sporeus-launch-banner-dismissed') === '1' } catch { return false }
+  })
 
   // UUID idempotency key — generated once on mount, reset when today changes
-  const idempotencyKey = useRef(null)
+  const idempotencyKey     = useRef(null)
+  const upsellImpressedRef = useRef(new Set())
   useEffect(() => {
     idempotencyKey.current = `${today}-${Math.random().toString(36).slice(2, 10)}`
     setIsSubmitting(false)
     setAlreadySubmitted(false)
   }, [today])
+
+  const daysToLaunch   = getDaysToLaunch(today)
+  // Show launch banner until dismissed; hide after 30 days post-launch
+  const showLaunchBanner = !launchDismissed && daysToLaunch > -30
+  const launchUrl = lang === 'tr' ? 'https://sporeus.com/esik' : 'https://sporeus.com/threshold'
+
+  const handleShare = async () => {
+    if (shareLoading || (log || []).length < 1) return
+    setShareLoading(true)
+    try {
+      const w = 600, h = 320
+      const canvas = document.createElement('canvas')
+      canvas.width = w; canvas.height = h
+      const ctx = canvas.getContext('2d')
+      // Background
+      ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0, 0, w, h)
+      // Orange accent bar
+      ctx.fillStyle = '#ff6600'; ctx.fillRect(0, 0, 4, h)
+      // Wordmark
+      ctx.fillStyle = '#ff6600'; ctx.font = "bold 13px 'Courier New',monospace"
+      ctx.fillText('\u25C8 SPOREUS ATHLETE', 24, 28)
+      ctx.fillStyle = '#333'; ctx.font = "10px 'Courier New',monospace"
+      ctx.fillText(today, w - 90, 28)
+      // Name
+      const name = profile?.name || 'Athlete'
+      ctx.fillStyle = '#e0e0e0'; ctx.font = "bold 20px 'Courier New',monospace"
+      ctx.fillText(name.slice(0, 28), 24, 65)
+      // Readiness score
+      const rec = (recovery || []).find(e => e.date === today)
+      if (rec) {
+        const col = rec.score >= 75 ? '#5bc25b' : rec.score >= 50 ? '#f5c542' : '#e03030'
+        ctx.fillStyle = col; ctx.font = "bold 52px 'Courier New',monospace"
+        ctx.fillText(String(rec.score), 24, 140)
+        ctx.fillStyle = '#555'; ctx.font = "9px 'Courier New',monospace"
+        ctx.fillText('READINESS /100', 24, 155)
+      }
+      // ACWR
+      if (acwrRatio !== null) {
+        const ac = acwrRatio > 1.3 ? '#e03030' : acwrRatio >= 0.8 ? '#5bc25b' : '#f5c542'
+        ctx.fillStyle = ac; ctx.font = "bold 52px 'Courier New',monospace"
+        ctx.fillText(acwrRatio.toFixed(2), 180, 140)
+        ctx.fillStyle = '#555'; ctx.font = "9px 'Courier New',monospace"
+        ctx.fillText('ACWR', 180, 155)
+      }
+      // 7-day TSS bars
+      const bars = []
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(today); d.setDate(d.getDate() - i)
+        const ds = d.toISOString().slice(0, 10)
+        bars.push((log || []).filter(e => e.date === ds).reduce((s, e) => s + (e.tss || 0), 0))
+      }
+      const maxB = Math.max(...bars, 1)
+      const bw = 52, bg = 6, bx0 = 24, by0 = 260, bmh = 70
+      bars.forEach((tss, i) => {
+        const bh = Math.max(2, Math.round((tss / maxB) * bmh))
+        ctx.fillStyle = i === 6 ? '#ff6600' : '#1e1e1e'
+        ctx.fillRect(bx0 + i * (bw + bg), by0 - bh, bw, bh)
+      })
+      ctx.fillStyle = '#222'; ctx.font = "8px 'Courier New',monospace"
+      ctx.fillText('7-DAY TSS', bx0, by0 + 12)
+      // Footer
+      ctx.fillStyle = '#2a2a2a'; ctx.font = "9px 'Courier New',monospace"
+      ctx.fillText('sporeus.com', w - 88, h - 10)
+      // Share or download
+      await new Promise(res => canvas.toBlob(async (blob) => {
+        const file = new File([blob], `sporeus-${today}.png`, { type: 'image/png' })
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          try { await navigator.share({ files: [file], title: 'My Training Summary', text: `${name} — Readiness ${rec?.score ?? '?'}/100` }) } catch {}
+        } else {
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a'); a.href = url; a.download = `sporeus-${today}.png`; a.click()
+          setTimeout(() => URL.revokeObjectURL(url), 1000)
+        }
+        res()
+      }, 'image/png'))
+    } catch {}
+    setShareLoading(false)
+  }
+
+  const isFirstCheckin = wellnessSaved && (recovery || []).filter(e => e.date < today).length === 0
+  const upsellData = useMemo(
+    () => getUpsellTrigger({ acwr: acwrRatio, tsb: formTSB, consistency: upsellConsist, isFirstCheckin }, lang),
+    [acwrRatio, formTSB, upsellConsist, isFirstCheckin, lang]
+  )
+  const showUpsell = wellnessSaved && upsellData != null && !upsellHidden
+    && !isUpsellDismissed(upsellData.trigger_reason)
+
+  // Track first impression per trigger per session
+  useEffect(() => {
+    const reason = upsellData?.trigger_reason
+    if (!showUpsell || !reason) return
+    if (!upsellImpressedRef.current.has(reason)) {
+      trackUpsellImpression(reason)
+      upsellImpressedRef.current.add(reason)
+    }
+  }, [showUpsell, upsellData?.trigger_reason]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveReadiness = async () => {
     if (isSubmitting) return
@@ -134,6 +244,9 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
     // The hook handles both online upsert and localStorage persistence.
     setRecovery(prev => [...(prev || []).filter(e => e.date !== today), entry].slice(-90))
     setWellnessSaved(true)
+    if (EMBED_MODE) {
+      try { window.parent.postMessage({ type: 'sporeus-checkin-complete', score }, '*') } catch {}
+    }
 
     // Flush any previously queued offline entries now that we're submitting
     flushQueue().catch(() => {})
@@ -190,6 +303,23 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
 
   return (
     <div className="sp-fade">
+
+      {/* ── Launch countdown banner ───────────────────────────────────────── */}
+      {showLaunchBanner && (
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'#110800', borderLeft:`3px solid ${ORANGE}`, borderRadius:4, padding:'8px 14px', marginBottom:10, gap:8 }}>
+          <div style={{ fontFamily:MONO, fontSize:'10px', color:'#ccc', letterSpacing:'0.06em' }}>
+            {daysToLaunch > 0
+              ? <>{lang === 'tr' ? `EŞİK ${daysToLaunch} gün sonra çıkıyor —` : `THRESHOLD launches in ${daysToLaunch} day${daysToLaunch !== 1 ? 's' : ''} —`}{' '}<a href={launchUrl} target="_blank" rel="noopener noreferrer" style={{ color:ORANGE, textDecoration:'none' }}>Apr 15</a></>
+              : <><a href={launchUrl} target="_blank" rel="noopener noreferrer" style={{ color:ORANGE, fontWeight:700, textDecoration:'none' }}>{lang === 'tr' ? 'EŞİK yayında →' : 'Now available →'}</a>{' '}sporeus.com/threshold</>
+            }
+          </div>
+          <button
+            aria-label="Dismiss launch banner"
+            onClick={() => { try { localStorage.setItem('sporeus-launch-banner-dismissed', '1') } catch {}; setLaunchDismissed(true) }}
+            style={{ background:'none', border:'none', cursor:'pointer', fontFamily:MONO, fontSize:9, color:'#444', padding:'2px 4px', flexShrink:0 }}
+          >✕</button>
+        </div>
+      )}
 
       {/* ── Morning Brief ─────────────────────────────────────────────────── */}
       {!digest.empty && (
@@ -375,6 +505,15 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
             {t('todayLogYesterday')}
           </button>
         )}
+        {(log || []).length >= 3 && (
+          <button
+            onClick={handleShare}
+            disabled={shareLoading}
+            style={{ ...btn('transparent', '#555'), border: '1px solid var(--border)', marginTop: '8px', width: '100%', opacity: shareLoading ? 0.6 : 1 }}
+          >
+            {shareLoading ? '…' : lang === 'tr' ? 'İlerlemeyi Paylaş →' : 'Share Progress →'}
+          </button>
+        )}
       </div>
 
       {/* ── Progress Rings ────────────────────────────────────────────────── */}
@@ -413,6 +552,29 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
           </div>
         )
       })()}
+
+      {/* ── Contextual upsell card ──────────────────────────────────────────── */}
+      {showUpsell && (
+        <div style={{ ...card, borderLeft: `4px solid ${ORANGE}`, position: 'relative' }}>
+          <button
+            aria-label="Dismiss"
+            onClick={() => { dismissUpsell(upsellData.trigger_reason); setUpsellHidden(true) }}
+            style={{ position: 'absolute', top: 10, right: 12, background: 'none', border: 'none', cursor: 'pointer', fontFamily: MONO, fontSize: 9, color: '#555', padding: '4px 6px' }}
+          >✕</button>
+          <div style={{ ...cardTitle, color: ORANGE, marginBottom: 8 }}>{upsellData.title}</div>
+          <p style={{ fontFamily: MONO, fontSize: '11px', color: '#aaa', lineHeight: 1.7, margin: '0 0 12px' }}>
+            {upsellData.body}
+          </p>
+          <a
+            href={upsellData.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ ...btn(ORANGE), textDecoration: 'none', display: 'inline-block' }}
+          >
+            {upsellData.cta}
+          </a>
+        </div>
+      )}
 
       {/* ── Card 4: Smart Suggestion ───────────────────────────────────────── */}
       <div style={{ ...card, borderLeft: `4px solid ${suggestColor}` }}>
