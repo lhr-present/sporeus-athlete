@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
+import { encryptMessage, decryptMessage } from '../lib/crypto.js'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -72,10 +73,13 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
       .eq('athlete_id', athleteId)
       .order('sent_at', { ascending: true })
       .limit(100)
-      .then(({ data, error: e }) => {
+      .then(async ({ data, error: e }) => {
         if (!e && data) {
-          setMsgs(data)
-          markRead(data, coachId, athleteId)
+          const decrypted = await Promise.all(
+            data.map(async m => ({ ...m, body: await decryptMessage(m.body, coachId) || m.body }))
+          )
+          setMsgs(decrypted)
+          markRead(decrypted, coachId, athleteId)
         }
       })
   }, [coachId, athleteId])
@@ -91,9 +95,10 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
         schema: 'public',
         table: 'messages',
         filter: `coach_id=eq.${coachId}`,
-      }, payload => {
-        const row = payload.new
-        if (row.athlete_id !== athleteId) return
+      }, async payload => {
+        const rawRow = payload.new
+        if (rawRow.athlete_id !== athleteId) return
+        const row = { ...rawRow, body: await decryptMessage(rawRow.body, coachId) || rawRow.body }
         setMsgs(prev => {
           if (prev.some(m => m.id === row.id)) return prev
           return [...prev, row]
@@ -141,11 +146,12 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
     if (!body || sending || !coachId || !athleteId) return
     setSending(true)
     setError(null)
+    const encryptedBody = await encryptMessage(body, coachId)
     const { error: e } = await supabase.from('messages').insert({
       coach_id: coachId,
       athlete_id: athleteId,
       sender_role: 'coach',
-      body,
+      body: encryptedBody,
     })
     if (e) {
       setError(e.message)

@@ -50,6 +50,28 @@ async function withSemaphore<T>(
   return results
 }
 
+// ── Retry with exponential backoff (for 429/529 rate-limit errors) ───────────
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxAttempts = 3,
+): Promise<T> {
+  let lastErr: unknown
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      return await fn()
+    } catch (err) {
+      lastErr = err
+      const msg = (err instanceof Error ? err.message : String(err)).toLowerCase()
+      const isRateLimit = msg.includes('429') || msg.includes('529') || msg.includes('rate limit') || msg.includes('overloaded')
+      if (!isRateLimit || attempt === maxAttempts - 1) throw err
+      const waitMs = (attempt + 1) * 2000
+      console.warn(`retryWithBackoff: attempt ${attempt + 1} failed (${msg.slice(0, 80)}), retrying in ${waitMs}ms`)
+      await new Promise(r => setTimeout(r, waitMs))
+    }
+  }
+  throw lastErr
+}
+
 // ── Call Anthropic Haiku ──────────────────────────────────────────────────────
 async function callHaiku(system: string, user: string): Promise<string> {
   const key = Deno.env.get("ANTHROPIC_API_KEY") ?? ""
@@ -198,7 +220,7 @@ serve(async (req) => {
   let processed = 0, errors = 0
 
   const tasks = athleteContexts.map((a) => async () => {
-    const text   = await callHaiku(DAILY_SUMMARY_SYSTEM, buildUserPrompt(a))
+    const text   = await retryWithBackoff(() => callHaiku(DAILY_SUMMARY_SYSTEM, buildUserPrompt(a)))
     const result = parseJSON(text)
     if (!result || typeof (result as { summary?: unknown }).summary !== "string") {
       throw new Error(`Bad response for ${a.user_id}`)
@@ -214,9 +236,24 @@ serve(async (req) => {
   })
 
   const settled = await withSemaphore(tasks, CONCURRENCY)
-  for (const r of settled) {
-    if (r.status === "fulfilled") processed++
-    else { errors++; console.error("Batch error:", (r as PromiseRejectedResult).reason?.message) }
+  for (let i = 0; i < settled.length; i++) {
+    const r = settled[i]
+    if (r.status === "fulfilled") {
+      processed++
+    } else {
+      errors++
+      const errMsg = (r as PromiseRejectedResult).reason?.message ?? "unknown"
+      console.error("Batch error:", errMsg)
+      // Log persistent failures to batch_errors table for alerting
+      await supabase.from("batch_errors").insert({
+        athlete_id: athleteContexts[i].user_id,
+        date:       today,
+        error_code: errMsg.slice(0, 200),
+        attempts:   3,
+      }).then(({ error: dbErr }) => {
+        if (dbErr) console.error("batch_errors insert failed:", dbErr.message)
+      })
+    }
   }
 
   const ms = Date.now() - start
