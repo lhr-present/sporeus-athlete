@@ -210,6 +210,34 @@ describe('calcPRs', () => {
   })
 })
 
+// ── MDC (Minimal Detectable Change) arithmetic ────────────────────────────────
+// MDC = |value| × semPct / 100  (component uses this to flag real vs noise)
+describe('MDC interpretation', () => {
+  const mdcFor = (value, semPct) => Math.abs(value) * semPct / 100
+  it('cooper 50 mL/kg/min at 5.5% SEM → MDC ≈ 2.75', () => {
+    expect(mdcFor(50, 5.5)).toBeCloseTo(2.75)
+  })
+  it('ftp20 280W at 3.5% SEM → MDC ≈ 9.8W', () => {
+    expect(mdcFor(280, 3.5)).toBeCloseTo(9.8)
+  })
+  it('Δ3.0 on cooper (base 50, SEM 5.5%) = real improvement', () => {
+    expect(3.0).toBeGreaterThanOrEqual(mdcFor(50, 5.5))
+  })
+  it('Δ2.0 on cooper (base 50, SEM 5.5%) = within measurement error', () => {
+    expect(2.0).toBeLessThan(mdcFor(50, 5.5))
+  })
+  it('MDC scales with base value — larger base → larger absolute MDC', () => {
+    expect(mdcFor(300, 4.0)).toBeGreaterThan(mdcFor(200, 4.0))
+  })
+  it('MDC is symmetric — decline detected same as gain', () => {
+    const mdc = mdcFor(50, 5.5)
+    expect(Math.abs(-4.0)).toBeGreaterThanOrEqual(mdc)
+  })
+  it('cp_test 260W at 4.0% SEM → MDC ≈ 10.4W', () => {
+    expect(mdcFor(260, 4.0)).toBeCloseTo(10.4)
+  })
+})
+
 // ── hrZones / powerZones ──────────────────────────────────────────────────────
 describe('zone builders', () => {
   it('hrZones returns 5 zones', () => {

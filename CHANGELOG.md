@@ -2,6 +2,75 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v5.16.0 (2026-04-12)
+Coach tools + training intelligence layer — 365 tests (36 new):
+
+**Weekly Coach Digest (coachDigest.js + CoachSquadView)**
+- New `src/lib/coachDigest.js`: 6 pure exported functions — `ctlTrend` (7-day log delta, TSB proxy fallback), `wellnessAvg` (HRV 4.5–9 scale + adherence blend), `trendLabel`, `acwrStatusLabel`, `generateAthleteDigestLine`, `generateSquadDigest`
+- CoachSquadView: collapsible "◈ WEEKLY DIGEST ▼" panel above athlete table; generated on open from live sorted array; "COPY ALL" button flashes green "✓ COPIED" for 2s after clipboard write
+- 36 new tests in `src/lib/coachDigest.test.js` (all 6 functions, log/TSB branches, HRV clamping, regex format checks)
+
+**Dashboard — Date Range Filter + Trend Arrows**
+- 4 filter buttons (7D / 28D / 90D / SEASON) in header; persisted to `sporeus-dash-range` localStorage
+- filteredLog drives display stats; full log always used for PMC/ACWR EWMA accuracy
+- CTL/ATL/TSB each show 7-day delta arrow (↑N green / ↓N red) when prev7 snapshot available
+- CTLChart days prop scales with range (30/90/180/730 days)
+
+**Missed Check-in Badge (CoachSquadView)**
+- After 10:00 AM, athletes whose `last_session_date ≠ today` show amber "⚠ NO CHECK-IN" badge
+- Desktop row left-border + mobile card left-border turn yellow on missed check-in
+
+**Protocols — MDC + Test History + Goals**
+- `MDC_PCT` map (9 test types, SEM 3.5–5.5%) applied to every comparison
+- 4th stat box: ✓ REAL GAIN / ⚠ REAL DECLINE / ~ WITHIN NOISE with MDC footnote
+- TestHistoryChart: SVG sparkline with goal line, date/value labels, progress bar Start→Current→Goal
+- Per-test goal state (set/clear) with gap-to-goal % display
+- 7 new MDC formula tests in formulas.test.js
+
+**TodayView — Z-score Wellness Baseline**
+- `wellnessBaseline` useMemo: 28-day rolling mean ± SD from athlete's own recovery history (min 7 records)
+- Z-score badge after readiness: amber (z < −1.0) / red (z < −1.5); bilingual EN/TR
+
+**ErrorBoundary — Inline Mode**
+- `inline` prop: compact 1-line fallback for sub-components (vs full tab-level fallback)
+- Wrapped: RaceReadinessCard + CTLChart (Dashboard), HRVDashboard + InjuryTracker + MentalTools (Recovery)
+
+- DEPENDS ON: calcLoad from formulas.js (CTL EWMA), existing athlete shape from squad-sync/generateDemoSquad, `sporeus-dash-range` localStorage key (new)
+
+## v5.15.0 (2026-04-12)
+Remove all EŞİK/THRESHOLD book marketing — app is a standalone product:
+- App.jsx footer: removed "· EŞİK / THRESHOLD 2026"
+- AuthGate.jsx version tag: removed "· EŞİK / THRESHOLD 2026"
+- Dashboard.jsx quick links: removed "EŞİK Kitabı" and "THRESHOLD Book" link entries
+- PlanGenerator.jsx PDF footer: replaced "· EŞİK / THRESHOLD" with science authors (Seiler, Issurin, Bompa)
+- Profile.jsx coach card: removed "EŞİK / THRESHOLD — Yazar / Author" subtitle line
+- Profile.jsx about section: rewritten as standalone app description; EŞİK book link → sporeus.com
+- Profile.jsx share-card PNG watermark: replaced book attribution with "sporeus.com — Science-based endurance training console"
+- Protocols.jsx lactate protocol: replaced "Ref: EŞİK / THRESHOLD, Chapter 4" with Faude et al. (2009) journal citation
+- Protocols.jsx W' balance note: replaced "Ref: EŞİK / THRESHOLD ch.5" with "J Strength Cond Res 26(8)" journal ref
+- reportGenerator.js report header: removed "· EŞİK / THRESHOLD" from branding line
+- reportGenerator.js report footer: replaced book attribution with "sporeus.com — Science-based endurance training console"
+- PRESERVED: all science citations (Skiba 2012, Faude 2009, Hulin 2016, Seiler, Stöggl), sporeus.com links, threshold pace UI labels (those are running terms)
+- sw.js: CACHE_VERSION bumped to sporeus-v5.15.0
+- 322 tests unchanged and green
+- DEPENDS ON: nothing removed that features depend on
+
+## v5.14.0 (2026-04-12)
+Today View — single-screen daily HQ replacing 4-tab daily workflow:
+- intelligence.js: getTodayPlannedSession(plan, today) — returns today's session from saved plan (or null for rest/no-plan), with weekIdx/dayIdx/weekPhase
+- intelligence.js: getSingleSuggestion(log, recovery, profile) — priority-ordered smart suggestion: fatigue debt → load spike → inactivity → low readiness → positive form → streak → default
+- TodayView.jsx: 4-card layout (Today's Session, Readiness Quick-Check, Quick Stats, Smart Suggestion)
+  - Card 1: planned session type/duration/RPE/phase, MARK DONE + LOG THIS buttons, PLAN tab CTA if no plan
+  - Card 2: inline 3-field wellness (sleep/energy/soreness) saves to recovery; shows score if already logged today
+  - Card 3: yesterday logged badge, 7-day session count, streak counter with 🔥 at 3+
+  - Card 4: color-coded suggestion (red=warning, green=ok, blue=info)
+- LangCtx.jsx: 16 new EN+TR keys (t_today, todaySession, todayRest, todayDone, todayMarkDone, todayLogThis, todayNoPlan, todayReadiness, todaySaveReadiness, todaySaved, todayQuickStats, todayYesterday, todayThisWeek, todayStreak, todaySuggestion, todayLogYesterday)
+- LangCtx.jsx: TABS prepended with today tab (◉ TODAY / BUGÜN)
+- App.jsx: TodayView wired as first/default tab (useState('today'))
+- sw.js: CACHE_VERSION bumped sporeus-v5.13.0 → sporeus-v5.14.0
+- 10 new tests (332 total — getTodayPlannedSession × 5, getSingleSuggestion × 5)
+- DEPENDS ON: sporeus-plan + sporeus-plan-status localStorage, useData() recovery/setRecovery, intelligence.js helpers computeCTL/computeATL/daysAgoDate
+
 ## v5.13.1 (2026-04-12)
 Full codebase audit — 4 bugs fixed:
 - CRITICAL/validate.js: sanitizeLogEntry now preserves distanceM, durationSec, avgHR, distance, avgCadence — these were silently stripped, breaking VO2max trend estimation for FIT imports. 2 new tests added (312 total).

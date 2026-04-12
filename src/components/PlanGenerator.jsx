@@ -218,7 +218,7 @@ export default function PlanGenerator({ onLogSession }) {
     </div>
     <table><thead><tr><th>WK</th><th>PHASE</th><th>VOL</th><th>TSS</th><th>SESSIONS</th></tr></thead>
     <tbody>${rows}</tbody></table>
-    <div class="footer">sporeus.com — Science-based periodization · EŞİK / THRESHOLD</div>
+    <div class="footer">sporeus.com — Science-based periodization (Seiler, Issurin, Bompa)</div>
     <script>window.onload=()=>{window.print();setTimeout(()=>window.close(),1000)}</script>
     </body></html>`
     const w = window.open('', '_blank', 'width=900,height=700')

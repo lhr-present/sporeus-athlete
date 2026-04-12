@@ -183,7 +183,7 @@ export function openAthleteReport({ name, log, recovery, coachNotes, coachName }
     <div style="text-align:right">
       <div style="font-size:10px;color:#888">Generated: ${esc(TODAY)}</div>
       ${coachName ? `<div style="font-size:10px;color:#888">Coach: ${esc(coachName)}</div>` : ''}
-      <div style="font-size:9px;color:#444;margin-top:8px">sporeus.com · EŞİK / THRESHOLD</div>
+      <div style="font-size:9px;color:#444;margin-top:8px">sporeus.com — Athlete Performance Console</div>
     </div>
   </div>
 
@@ -335,7 +335,7 @@ export function openAthleteReport({ name, log, recovery, coachNotes, coachName }
   <!-- FOOTER -->
   <div style="margin-top:40px;padding-top:16px;border-top:1px solid #333;display:flex;justify-content:space-between;align-items:center;font-size:9px;color:#555">
     <span>SPOREUS ATHLETE CONSOLE — sporeus.com</span>
-    <span>Built on EŞİK / THRESHOLD science — Hüseyin Akbulut 2026</span>
+    <span>sporeus.com — Science-based endurance training console</span>
   </div>
 
   <!-- PRINT BUTTON -->

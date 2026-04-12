@@ -597,6 +597,77 @@ export function computeRaceReadiness(log, recovery, injuries, profile, plan, pla
   return { score: composite, grade, factors, verdict: verdicts[grade], confidence, daysToRace }
 }
 
+// ─── v5.14: getTodayPlannedSession ────────────────────────────────────────────
+// Returns today's planned session from a saved plan, or null if rest/no plan.
+export function getTodayPlannedSession(plan, today) {
+  if (!plan || !Array.isArray(plan.weeks) || !plan.generatedAt) return null
+  const todayDate = today || new Date().toISOString().slice(0, 10)
+  const start = new Date(plan.generatedAt)
+  const cur   = new Date(todayDate)
+  const daysDiff = Math.floor((cur - start) / 86400000)
+  if (daysDiff < 0) return null
+  const weekIdx    = Math.floor(daysDiff / 7)
+  if (weekIdx >= plan.weeks.length) return null
+  const planDayIdx = (new Date(todayDate).getDay() + 6) % 7  // Mon=0…Sun=6
+  const week = plan.weeks[weekIdx]
+  if (!week || !Array.isArray(week.sessions)) return null
+  const session = week.sessions[planDayIdx]
+  if (!session || session.type === 'Rest' || (session.duration || 0) <= 0) return null
+  return { ...session, weekIdx, dayIdx: planDayIdx, weekPhase: week.phase || '' }
+}
+
+// ─── v5.14: getSingleSuggestion ───────────────────────────────────────────────
+// Returns the single most actionable suggestion for today.
+// Returns { text: { en, tr }, level: 'info' | 'warning' | 'ok' }
+export function getSingleSuggestion(log, recovery, profile) {
+  const safeLog = Array.isArray(log) ? log : []
+  const safeRec = Array.isArray(recovery) ? recovery : []
+
+  const today     = new Date().toISOString().slice(0, 10)
+  const yesterday = daysAgoDate(1)
+
+  const lastSession = safeLog.length ? [...safeLog].sort((a, b) => b.date.localeCompare(a.date))[0] : null
+  const daysSinceSession = lastSession ? Math.floor((new Date(today) - new Date(lastSession.date)) / 86400000) : null
+
+  const todayRec = safeRec.find(e => e.date === today)
+  const yestRec  = safeRec.find(e => e.date === yesterday)
+  const recentRecScore = todayRec?.score ?? yestRec?.score ?? null
+
+  const ctl = computeCTL(safeLog)
+  const atl = computeATL(safeLog)
+  const tsb = ctl - atl
+
+  const w7Start  = daysAgoDate(7)
+  const w14Start = daysAgoDate(14)
+  const thisWeekTSS = safeLog.filter(e => e.date >= w7Start).reduce((s, e) => s + (e.tss || 0), 0)
+  const prevWeekTSS = safeLog.filter(e => e.date >= w14Start && e.date < w7Start).reduce((s, e) => s + (e.tss || 0), 0)
+  const spikeP = prevWeekTSS > 10 ? Math.round((thisWeekTSS - prevWeekTSS) / prevWeekTSS * 100) : 0
+
+  if (tsb < -20) {
+    return { level: 'warning', text: { en: `Form is ${tsb} — large fatigue debt. Consider a rest or easy day today.`, tr: `Form ${tsb} — yüksek yorgunluk birikimi. Bugün kolay veya dinlenme günü düşün.` } }
+  }
+  if (spikeP >= 20) {
+    return { level: 'warning', text: { en: `Load jumped ${spikeP}% this week vs last. Ease off to avoid overtraining.`, tr: `Bu hafta yük %${spikeP} arttı. Aşırı antrenmanı önlemek için yavaşla.` } }
+  }
+  if (daysSinceSession !== null && daysSinceSession >= 4 && safeLog.length >= 3) {
+    return { level: 'info', text: { en: `${daysSinceSession} days since last session. A light 30–40 min easy effort will restart momentum.`, tr: `Son antrenmandan ${daysSinceSession} gün geçti. 30-40 dk hafif çalışma ivmeyi yeniden başlatır.` } }
+  }
+  if (recentRecScore !== null && recentRecScore < 45) {
+    return { level: 'warning', text: { en: 'Low readiness score. Prioritise sleep, easy movement, or full rest.', tr: 'Düşük hazırlık skoru. Uyku, hafif hareket veya tam dinlenmeye öncelik ver.' } }
+  }
+  if (tsb >= 5 && tsb <= 20) {
+    return { level: 'ok', text: { en: `TSB +${tsb} — form is positive. Good day for a key session or race effort.`, tr: `TSB +${tsb} — form pozitif. Anahtar seans veya yarış eforu için iyi gün.` } }
+  }
+  if (recentRecScore !== null && recentRecScore >= 75) {
+    return { level: 'ok', text: { en: 'Readiness is high — body recovered. Push today if the plan calls for it.', tr: 'Hazırlık yüksek — vücut toparlanmış. Plan gerektiriyorsa bugün zorla.' } }
+  }
+  const n7 = safeLog.filter(e => e.date >= w7Start).length
+  if (n7 >= 4) {
+    return { level: 'ok', text: { en: `${n7} sessions this week — on track. Stick to your planned effort.`, tr: `Bu hafta ${n7} antrenman — yolunda. Planlanan eforu sürdür.` } }
+  }
+  return { level: 'info', text: { en: 'Log today\'s session to keep your training data current.', tr: 'Antrenman verilerini güncel tutmak için bugünkü seansı kaydet.' } }
+}
+
 // ─── v4.6: predictRacePerformance ─────────────────────────────────────────────
 // Multi-method prediction. Returns times for multiple distances + training paces.
 export function predictRacePerformance(log, testResults, profile) {

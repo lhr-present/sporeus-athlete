@@ -8,6 +8,7 @@ import { useLocalStorage, STORAGE_WARN_KEY } from './hooks/useLocalStorage.js'
 import { DataProvider, useData } from './contexts/DataContext.jsx'
 import { S, ANIM_CSS } from './styles.js'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
+import TodayView from './components/TodayView.jsx'
 import Dashboard from './components/Dashboard.jsx'
 import ZoneCalc from './components/ZoneCalc.jsx'
 import TestProtocols from './components/Protocols.jsx'
@@ -50,7 +51,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
   const { log, setLog, recovery } = useData()
   const isGuest = isSupabaseReady() && !authUser && localStorage.getItem('sporeus-guest-mode') === '1'
 
-  const [tab, setTab] = useState('dashboard')
+  const [tab, setTab] = useState('today')
   const [coachMode] = useLocalStorage('sporeus-coach-mode', false)
   const [inviteCode, setInviteCode] = useState(() => {
     const params = new URLSearchParams(window.location.search)
@@ -442,6 +443,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
             </>
           )}
           {coachMode && authProfile?.role !== 'coach' && <ErrorBoundary tabName="Coach Mode"><Suspense fallback={<LazyFallback/>}><CoachDashboard authUser={authUser}/></Suspense></ErrorBoundary>}
+          {!coachMode && tab === 'today'        && <ErrorBoundary tabName="Today"><TodayView log={log} profile={profile} setTab={setTab} setLogPrefill={setLogPrefill}/></ErrorBoundary>}
           {!coachMode && tab === 'dashboard'    && <ErrorBoundary tabName="Dashboard"><Dashboard log={log} profile={profile}/></ErrorBoundary>}
           {tab === 'zones'        && <ErrorBoundary tabName="Zone Calc"><ZoneCalc/></ErrorBoundary>}
           {tab === 'tests'        && <ErrorBoundary tabName="Protocols"><TestProtocols/></ErrorBoundary>}
@@ -454,7 +456,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
         </main>
 
         <footer style={S.footer}>
-          SPOREUS ATHLETE CONSOLE v5.13.1 · SPOREUS.COM · EŞİK / THRESHOLD 2026
+          SPOREUS ATHLETE CONSOLE v5.15.0 · SPOREUS.COM
         </footer>
       </div>
     </LangCtx.Provider>

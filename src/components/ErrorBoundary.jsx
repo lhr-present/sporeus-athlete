@@ -24,8 +24,26 @@ export default class ErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
-      const tabName = this.props.tabName || 'this tab'
+      const name  = this.props.name || this.props.tabName || 'component'
       const M = { fontFamily:"'IBM Plex Mono',monospace" }
+      const retry = () => this.setState({ hasError: false, error: null, showDetails: false })
+
+      // ── Inline / component-level fallback (compact) ──────────────────────
+      if (this.props.inline) {
+        return (
+          <div style={{ ...M, background:'rgba(224,48,48,0.07)', border:'1px solid #e0303033', borderRadius:'5px', padding:'9px 13px', margin:'8px 0', display:'flex', alignItems:'center', gap:'10px', flexWrap:'wrap' }}>
+            <span style={{ fontSize:'10px', color:'#e03030', letterSpacing:'0.06em' }}>◈ {name.toUpperCase()} ERROR</span>
+            <span style={{ fontSize:'10px', color:'#666' }}>{this.state.error?.message?.slice(0,80) || 'Unexpected error'}</span>
+            <button onClick={retry}
+              style={{ ...M, fontSize:'9px', padding:'3px 9px', background:'#e03030', color:'#fff', border:'none', cursor:'pointer', borderRadius:'3px', marginLeft:'auto' }}>
+              ↻ Retry
+            </button>
+          </div>
+        )
+      }
+
+      // ── Tab-level fallback (full) ─────────────────────────────────────────
+      const tabName = this.props.tabName || name
       return (
         <div style={{ ...M, background:'#1a0000', border:'1px solid #e03030', borderRadius:'6px', padding:'20px', margin:'20px', color:'#e5e5e5' }}>
           <div style={{ color:'#e03030', fontWeight:600, marginBottom:'8px', letterSpacing:'0.08em' }}>
@@ -36,7 +54,7 @@ export default class ErrorBoundary extends React.Component {
           </div>
           <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', marginBottom:'12px' }}>
             <button
-              onClick={() => this.setState({ hasError: false, error: null, showDetails: false })}
+              onClick={retry}
               style={{ ...M, fontSize:'11px', padding:'6px 14px', background:'#e03030', color:'#fff', border:'none', cursor:'pointer', borderRadius:'3px' }}>
               ↻ Retry
             </button>

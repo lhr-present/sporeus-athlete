@@ -5,6 +5,7 @@ import { useData } from '../contexts/DataContext.jsx'
 import { cooperVO2, rampFTP, ftpFrom20, epley1RM, astrandVO2, yyir1VO2, wingateStats, normalizedPower, computeWPrime } from '../lib/formulas.js'
 import PowerCurve from './PowerCurve.jsx'
 import VO2maxCard from './VO2maxCard.jsx'
+import ErrorBoundary from './ErrorBoundary.jsx'
 
 const TESTS = [
   { id:'cooper',  label:'COOPER 12-MIN',   sport:'Run',       needsCalc:true },
@@ -20,6 +21,77 @@ const TESTS = [
   { id:'wprime',  label:"W' BALANCE",      sport:'Bike',      needsCalc:true },
   { id:'cp_test', label:'CP TEST',         sport:'Bike',      needsCalc:true },
 ]
+
+// ─── Meaningful change thresholds (MDC%) per test ────────────────────────────
+// MDC = SEM × 1.96 × √2; SEM derived from published reliability studies.
+// Expressed as % of measured value for unit-agnostic comparison.
+const MDC_PCT = {
+  cooper:5.5,  // VO₂max Cooper: CV ~3.5%, ICC 0.96 → MDC ~5.5%
+  ramp:4.0,    // FTP ramp: well-controlled ergometer, CV ~3%
+  ftp20:3.5,   // 20-min FTP: highly reproducible when well-paced
+  beep:5.0,    // Beep/multistage: motivation-dependent, higher variability
+  yyir1:5.5,   // YYIR1: surface/motivation variance ~5%
+  wingate:5.0, // Wingate peak power: day-to-day ~4-5% (Coggan 2003)
+  oneRM:4.5,   // Epley 1RM estimate: formula ±3% + daily readiness ±2%
+  astrand:5.5, // Åstrand submaximal: HR drift sensitive
+  cp_test:4.0, // CP 2-point: ergometer reproducibility ~3-4%
+}
+
+// ─── Test history sparkline chart ─────────────────────────────────────────────
+function TestHistoryChart({ data, goal }) {
+  if (!data || data.length < 2) return null
+  const vals  = data.map(d => parseFloat(d.value))
+  const allV  = goal ? [...vals, parseFloat(goal)] : vals
+  const minV  = Math.min(...allV)
+  const maxV  = Math.max(...allV)
+  const range = maxV - minV || 1
+  const W = 400, H = 90
+  const pad = { l:32, r:14, t:10, b:22 }
+  const cW = W - pad.l - pad.r
+  const cH = H - pad.t - pad.b
+  const px = i => pad.l + (i / Math.max(data.length - 1, 1)) * cW
+  const py = v => pad.t + cH - ((v - minV) / range) * cH
+  const pts = vals.map((v, i) => `${px(i).toFixed(1)},${py(v).toFixed(1)}`).join(' ')
+  const last = vals[vals.length - 1]
+  const first = vals[0]
+  const yTicks = [minV, minV + range * 0.5, maxV].map(v => ({ v, y: py(v) }))
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width:'100%', maxWidth:W, display:'block', overflow:'visible' }}>
+      {/* Y-axis ticks */}
+      {yTicks.map(({ v, y }) => (
+        <text key={v} x={pad.l - 3} y={y + 3} fontSize="8" fill="#444" textAnchor="end">{v.toFixed(1)}</text>
+      ))}
+      {/* Goal line */}
+      {goal && (
+        <>
+          <line x1={pad.l} y1={py(parseFloat(goal))} x2={pad.l + cW} y2={py(parseFloat(goal))}
+            stroke="#f5c542" strokeWidth="1" strokeDasharray="4 3" opacity="0.8" />
+          <text x={pad.l + cW + 2} y={py(parseFloat(goal)) + 4} fontSize="8" fill="#f5c542">GOAL</text>
+        </>
+      )}
+      {/* Trend line */}
+      <polyline fill="none" stroke="#0064ff" strokeWidth="1.5" strokeLinejoin="round" points={pts} />
+      {/* Dots */}
+      {vals.map((v, i) => (
+        <circle key={i} cx={px(i)} cy={py(v)} r={i === vals.length - 1 ? 4 : 3}
+          fill={i === vals.length - 1 ? '#0064ff' : '#0064ff66'}
+          stroke={i === vals.length - 1 ? '#fff' : 'none'} strokeWidth="1" />
+      ))}
+      {/* First value label */}
+      <text x={px(0)} y={py(first) - 6} fontSize="9" fill="#666" textAnchor="middle">{first.toFixed(1)}</text>
+      {/* Last value label */}
+      <text x={px(vals.length-1)} y={py(last) - 6} fontSize="9" fill="#0064ff" fontWeight="bold" textAnchor="middle">{last.toFixed(1)}</text>
+      {/* Date axis */}
+      <text x={px(0)} y={H} fontSize="8" fill="#555" textAnchor="middle">{data[0].date.slice(5)}</text>
+      {data.length > 2 && (
+        <text x={px(Math.floor((data.length-1)/2))} y={H} fontSize="8" fill="#444" textAnchor="middle">
+          {data[Math.floor((data.length-1)/2)].date.slice(5)}
+        </text>
+      )}
+      <text x={px(data.length-1)} y={H} fontSize="8" fill="#555" textAnchor="middle">{data[data.length-1].date.slice(5)}</text>
+    </svg>
+  )
+}
 
 // ─── W' Balance pure-SVG chart ────────────────────────────────────────────────
 function WPrimeChart({ series, wPrimeMax }) {
@@ -158,6 +230,36 @@ export default function TestProtocols() {
   // CP test save state
   const [cpSaved, setCpSaved] = useState(false)
 
+  // Benchmark goals (localStorage-persisted per test type)
+  const [goals, setGoals] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('sporeus-test-goals') || '{}') } catch { return {} }
+  })
+  const [editGoal, setEditGoal]       = useState('')
+  const [showGoalEdit, setShowGoalEdit] = useState(false)
+
+  const saveGoal = () => {
+    const val = parseFloat(editGoal)
+    if (!val) return
+    const next = { ...goals, [active]: val }
+    setGoals(next)
+    localStorage.setItem('sporeus-test-goals', JSON.stringify(next))
+    setEditGoal('')
+    setShowGoalEdit(false)
+  }
+  const clearGoal = () => {
+    const next = { ...goals }
+    delete next[active]
+    setGoals(next)
+    localStorage.setItem('sporeus-test-goals', JSON.stringify(next))
+    setShowGoalEdit(false)
+  }
+
+  // History for the currently active test, sorted chronologically
+  const activeHistory = useMemo(() =>
+    testLog.filter(r => r.testId === active).sort((a, b) => a.date.localeCompare(b.date)),
+    [testLog, active]
+  )
+
   // W' balance state
   const [wPrimeSeries, setWPrimeSeries]     = useState(null)  // computed balance array
   const [wPrimeStats,  setWPrimeStats]      = useState(null)  // { np, minW, exhausted, tAbove, tBelow }
@@ -224,7 +326,7 @@ export default function TestProtocols() {
     } else if (active==='conconi') {
       setResult(['Conconi Protocol','1. Run on 400m track. Start at 8 km/h.','2. Increase 0.5 km/h every 200m.','3. Record HR at each stage.','4. Plot HR vs speed \u2014 deflection point = anaerobic threshold.','5. Threshold HR \u2248 HR at deflection; threshold speed = deflection speed.'])
     } else if (active==='lactate') {
-      setResult(['Blood Lactate Protocol','Equipment: lactate analyzer, finger-prick lancets.','Stages: 5 min each, +0.5 km/h. Sample from earlobe or fingertip.','LT1 (aerobic): ~2 mmol/L \u2014 first rise above baseline \u2192 top of Z2.','LT2 (MLSS): ~4 mmol/L \u2014 last sustainable steady state \u2192 Z4.','Ref: E\u015e\u0130K / THRESHOLD, Chapter 4 \u2014 Laktat Fizyolojisi.'])
+      setResult(['Blood Lactate Protocol','Equipment: lactate analyzer, finger-prick lancets.','Stages: 5 min each, +0.5 km/h. Sample from earlobe or fingertip.','LT1 (aerobic): ~2 mmol/L \u2014 first rise above baseline \u2192 top of Z2.','LT2 (MLSS): ~4 mmol/L \u2014 last sustainable steady state \u2192 Z4.','Ref: Faude et al. (2009) — Lactate threshold concepts. Sports Med 39(6).'])
     } else if (active==='cp_test') {
       const p3 = parseInt(i.cp3min || 0), p12 = parseInt(i.cp12min || 0)
       if (!p3 || !p12) return
@@ -545,14 +647,14 @@ export default function TestProtocols() {
             <span style={{ color:'#5bc25b' }}>- -</span> W' max ·{' '}
             <span style={{ color:'#e03030' }}>- -</span> exhaustion threshold (W'=0)
             <br/>
-            Skiba 2012 · τ = 546·e^(−0.01·(CP−P̄)) + 316 · Ref: EŞİK / THRESHOLD ch.5
+            Skiba 2012 · τ = 546·e^(−0.01·(CP−P̄)) + 316 · J Strength Cond Res 26(8)
           </div>
         </div>
       )}
 
-      <PowerCurve />
+      <ErrorBoundary inline name="Power Curve"><PowerCurve /></ErrorBoundary>
 
-      <VO2maxCard />
+      <ErrorBoundary inline name="VO₂max Card"><VO2maxCard /></ErrorBoundary>
 
       {weeksSinceLast !== null && weeksSinceLast >= 6 && (
         <div style={{ ...S.card, background:'#fffbeb', border:'1px solid #f5c54266', borderRadius:'6px', padding:'12px 16px', marginBottom:'16px', ...S.mono, fontSize:'11px', color:'#92400e' }}>
@@ -560,9 +662,80 @@ export default function TestProtocols() {
         </div>
       )}
 
+      {/* ─ Test history chart + benchmark goal ─────────────────────────── */}
+      {activeHistory.length >= 2 && (
+        <div className="sp-card" style={{ ...S.card, animationDelay:'90ms' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'10px' }}>
+            <div style={S.cardTitle}>TEST HISTORY — {active.toUpperCase().replace('_',' ')}</div>
+            <button
+              onClick={() => { setShowGoalEdit(g => !g); setEditGoal(goals[active] ? String(goals[active]) : '') }}
+              style={{ ...S.mono, fontSize:'9px', padding:'3px 10px', border:'1px solid #0064ff44', background:'transparent', color:'#0064ff', borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em' }}>
+              {goals[active] ? `GOAL: ${goals[active]}` : '+ SET GOAL'}
+            </button>
+          </div>
+
+          {showGoalEdit && (
+            <div style={{ display:'flex', gap:'8px', alignItems:'center', marginBottom:'12px' }}>
+              <input
+                style={{ ...S.input, maxWidth:'120px' }}
+                type="number"
+                placeholder="Target value"
+                value={editGoal}
+                onChange={e => setEditGoal(e.target.value)}
+              />
+              <button onClick={saveGoal}
+                style={{ ...S.mono, fontSize:'9px', padding:'4px 10px', background:'#0064ff', border:'none', color:'#fff', borderRadius:'3px', cursor:'pointer' }}>
+                SAVE
+              </button>
+              {goals[active] && (
+                <button onClick={clearGoal}
+                  style={{ ...S.mono, fontSize:'9px', padding:'4px 10px', background:'transparent', border:'1px solid #e0303044', color:'#e03030', borderRadius:'3px', cursor:'pointer' }}>
+                  CLEAR
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Progress-to-goal bar */}
+          {goals[active] && (() => {
+            const current = parseFloat(activeHistory[activeHistory.length - 1].value)
+            const goal    = parseFloat(goals[active])
+            const first   = parseFloat(activeHistory[0].value)
+            const gap     = ((goal - current) / Math.abs(goal) * 100).toFixed(1)
+            const span    = goal - first
+            const progress = span === 0 ? 100 : Math.min(100, Math.max(0, ((current - first) / span) * 100))
+            const reached = current >= goal
+            return (
+              <div style={{ marginBottom:'12px', padding:'8px 10px', background:'rgba(0,0,0,0.3)', border:'1px solid var(--border)', borderRadius:'4px' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'5px' }}>
+                  <span style={{ ...S.mono, fontSize:'9px', color:'#888' }}>PROGRESS TO GOAL</span>
+                  <span style={{ ...S.mono, fontSize:'9px', color: reached ? '#5bc25b' : '#0064ff' }}>
+                    {reached ? '✓ GOAL REACHED' : `${Math.abs(parseFloat(gap))}% gap`}
+                  </span>
+                </div>
+                <div style={{ height:'5px', background:'#1e1e1e', borderRadius:'3px' }}>
+                  <div style={{ height:'100%', width:`${progress}%`, background: reached ? '#5bc25b' : '#0064ff', borderRadius:'3px', transition:'width 0.4s' }} />
+                </div>
+                <div style={{ display:'flex', justifyContent:'space-between', marginTop:'4px' }}>
+                  <span style={{ ...S.mono, fontSize:'8px', color:'#444' }}>Start {first.toFixed(1)}</span>
+                  <span style={{ ...S.mono, fontSize:'8px', color:'#888' }}>Current {current.toFixed(1)}</span>
+                  <span style={{ ...S.mono, fontSize:'8px', color:'#f5c542' }}>Goal {goal}</span>
+                </div>
+              </div>
+            )
+          })()}
+
+          <TestHistoryChart data={activeHistory} goal={goals[active]} />
+          <div style={{ ...S.mono, fontSize:'8px', color:'#444', marginTop:'5px', textAlign:'right' }}>
+            {activeHistory.length} results · {activeHistory[0].date} → {activeHistory[activeHistory.length-1].date}
+          </div>
+        </div>
+      )}
+
+      {/* ─ Progress comparison + MDC ─────────────────────────────────────── */}
       {testLog.length >= 2 && (
         <div className="sp-card" style={{ ...S.card, animationDelay:'100ms' }}>
-          <div style={S.cardTitle}>PROGRESS COMPARISON</div>
+          <div style={S.cardTitle}>COMPARE ANY TWO RESULTS</div>
           <div style={S.row}>
             <div style={{ flex:'1 1 180px' }}>
               <label style={S.label}>RESULT A</label>
@@ -587,18 +760,36 @@ export default function TestProtocols() {
             const delta=Math.round((vb-va)*10)/10
             const pct=Math.round((vb-va)/Math.abs(va)*100)
             const up=delta>=0
+            // Meaningful change detection (MDC = SEM × 1.96 × √2)
+            const semPct = MDC_PCT[a.testId] || 4.0
+            const mdcAbs = Math.abs(va) * semPct / 100
+            const meaningful = Math.abs(delta) >= mdcAbs
+            const mdcLabel = meaningful
+              ? (delta > 0 ? '✓ REAL GAIN' : '⚠ REAL DECLINE')
+              : '~ WITHIN NOISE'
+            const mdcColor = meaningful ? (delta > 0 ? '#5bc25b' : '#e03030') : '#666'
             return (
-              <div style={{ marginTop:'14px', display:'flex', gap:'16px', flexWrap:'wrap' }}>
-                {[{label:'A',r:a},{label:'B',r:b}].map(({label,r})=>(
-                  <div key={label} style={{ flex:'1 1 150px', ...S.stat }}>
-                    <span style={{ ...S.statVal, fontSize:'18px' }}>{r.value}</span>
-                    <span style={S.statLbl}>{r.unit}</span>
-                    <div style={{ ...S.mono, fontSize:'9px', color:'var(--sub)', marginTop:'3px' }}>{r.date}</div>
+              <div style={{ marginTop:'14px' }}>
+                <div style={{ display:'flex', gap:'16px', flexWrap:'wrap', marginBottom:'10px' }}>
+                  {[{label:'A',r:a},{label:'B',r:b}].map(({label,r})=>(
+                    <div key={label} style={{ flex:'1 1 150px', ...S.stat }}>
+                      <span style={{ ...S.statVal, fontSize:'18px' }}>{r.value}</span>
+                      <span style={S.statLbl}>{r.unit}</span>
+                      <div style={{ ...S.mono, fontSize:'9px', color:'var(--sub)', marginTop:'3px' }}>{r.date}</div>
+                    </div>
+                  ))}
+                  <div style={{ flex:'1 1 120px', ...S.stat }}>
+                    <span style={{ ...S.statVal, fontSize:'22px', color:up?'#5bc25b':'#e03030' }}>{up?'↑':'↓'} {Math.abs(delta)}</span>
+                    <span style={S.statLbl}>{up?'+':''}{pct}% change</span>
                   </div>
-                ))}
-                <div style={{ flex:'1 1 120px', ...S.stat }}>
-                  <span style={{ ...S.statVal, fontSize:'22px', color:up?'#5bc25b':'#e03030' }}>{up?'↑':'↓'} {Math.abs(delta)}</span>
-                  <span style={S.statLbl}>{up?'+':''}{pct}% change</span>
+                  <div style={{ flex:'1 1 120px', ...S.stat }}>
+                    <span style={{ ...S.statVal, fontSize:'13px', color:mdcColor }}>{mdcLabel}</span>
+                    <span style={S.statLbl}>MDC ±{mdcAbs.toFixed(1)} ({semPct}%)</span>
+                  </div>
+                </div>
+                <div style={{ ...S.mono, fontSize:'9px', color:'#444', lineHeight:1.6, borderTop:'1px solid var(--border)', paddingTop:'8px' }}>
+                  MDC (Minimal Detectable Change) = SEM × 1.96 × √2 — the threshold above which change exceeds measurement error with 95% confidence.
+                  {!meaningful && ` Δ${Math.abs(delta)} < MDC${mdcAbs.toFixed(1)} — retest before concluding performance changed.`}
                 </div>
               </div>
             )

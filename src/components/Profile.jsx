@@ -122,7 +122,7 @@ function HuseyinCoachCard() {
             {isHuseyin ? 'HÜSEYİN AKBULUT' : myCoach}
           </div>
           <div style={{...S.mono,fontSize:'10px',color:'#888',lineHeight:1.8}}>
-            {isHuseyin ? <>MSc Sport Science · Marmara University<br/>EŞİK / THRESHOLD — Yazar / Author<br/>Uzmanlık: Dayanıklılık · Triatlon · Periyodizasyon</> : 'Connected coach · Sporeus Athlete Console'}
+            {isHuseyin ? <>MSc Sport Science · Marmara University<br/>Uzmanlık: Dayanıklılık · Triatlon · Periyodizasyon</> : 'Connected coach · Sporeus Athlete Console'}
           </div>
         </div>
       </div>
@@ -567,7 +567,7 @@ function AthleteCard({ profile, log }) {
     ctx.fillStyle=tsbColor; ctx.font=`bold 28px ${fm}`; ctx.fillText((tsb>=0?'+':'')+tsb,24,448)
     ctx.strokeStyle='#333'; ctx.beginPath(); ctx.moveTo(24,490); ctx.lineTo(376,490); ctx.stroke()
     ctx.fillStyle='#555'; ctx.font=`10px ${fm}`; ctx.fillText('SPOREUS ATHLETE CONSOLE — SPOREUS.COM',24,514)
-    ctx.fillStyle='#444'; ctx.font=`9px ${fm}`; ctx.fillText('Built on EŞİK / THRESHOLD science — Hüseyin Akbulut 2026',24,534)
+    ctx.fillStyle='#444'; ctx.font=`9px ${fm}`; ctx.fillText('sporeus.com — Science-based endurance training console',24,534)
     c.toBlob(blob=>{
       const url=URL.createObjectURL(blob)
       const a=document.createElement('a'); a.href=url; a.download='sporeus-athlete-card.png'; a.click()
@@ -1091,12 +1091,12 @@ export default function Profile({ profile, setProfile, log, authUser }) {
       <div className="sp-card" style={{ ...S.card, animationDelay:'50ms' }}>
         <div style={S.cardTitle}>{t('aboutTitle')}</div>
         <div style={{ fontSize:'14px', lineHeight:1.8, color:'var(--text)' }}>
-          <p style={{ marginTop:0 }}>A Bloomberg Terminal-inspired training tool for endurance athletes. Built on the science behind <strong>E\u015e\u0130K / THRESHOLD</strong> \u2014 Turkey\u2019s first comprehensive endurance science book.</p>
+          <p style={{ marginTop:0 }}>A Bloomberg Terminal-inspired training console for endurance athletes. Science-based periodization, power analysis, HRV readiness, and race intelligence — all in one PWA.</p>
           <p style={{ marginBottom:0 }}>
             <a href="https://sporeus.com/huseyin-akbulut/" target="_blank" rel="noreferrer"
               style={{ color:'#0064ff', textDecoration:'none', fontWeight:600 }}>H\u00fcseyin Akbulut</a>
             {' '}\u2014 BSc &amp; MSc Sport Science, Marmara University \u00b7{' '}
-            <a href="https://sporeus.com/esik/" target="_blank" rel="noreferrer" style={{ color:'#ff6600', textDecoration:'none' }}>E\u015e\u0130K Kitab\u0131</a>
+            <a href="https://sporeus.com" target="_blank" rel="noreferrer" style={{ color:'#ff6600', textDecoration:'none' }}>sporeus.com</a>
           </p>
         </div>
       </div>

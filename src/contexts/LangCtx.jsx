@@ -96,6 +96,15 @@ export const LABELS = {
     milestoneTitle: 'MILESTONE UNLOCKED!', trainingAgeTitle: 'TRAINING AGE',
     nextNoteBtn: 'Next fact →', shareStoryBtn: '⤴ Share', copyStoryBtn: '⎘ Copy',
     trainingAgeLabel: 'Training age', ctlScaleLabel: 'FITNESS SCALE',
+    // v5.14 Today View
+    t_today: 'TODAY',
+    todaySession: "TODAY'S SESSION", todayRest: 'REST DAY', todayDone: 'DONE',
+    todayMarkDone: 'MARK DONE', todayLogThis: 'LOG THIS',
+    todayNoPlan: 'No plan active — generate one in the PLAN tab.',
+    todayReadiness: "TODAY'S READINESS", todaySaveReadiness: 'SAVE READINESS',
+    todaySaved: 'SAVED', todayQuickStats: 'QUICK STATS',
+    todayYesterday: 'YESTERDAY', todayThisWeek: 'THIS WEEK', todayStreak: 'STREAK',
+    todaySuggestion: 'SMART SUGGESTION', todayLogYesterday: '+ Log Yesterday',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -191,11 +200,21 @@ export const LABELS = {
     milestoneTitle: 'KİLOMETRE TAŞI!', trainingAgeTitle: 'ANTRENMAN YAŞI',
     nextNoteBtn: 'Sonraki →', shareStoryBtn: '⤴ Paylaş', copyStoryBtn: '⎘ Kopyala',
     trainingAgeLabel: 'Antrenman yaşı', ctlScaleLabel: 'KONDİSYON SKALASI',
+    // v5.14 Today View
+    t_today: 'BUGÜN',
+    todaySession: 'BUGÜNÜN ANTRENMANI', todayRest: 'DİNLENME GÜNÜ', todayDone: 'TAMAMLANDI',
+    todayMarkDone: 'TAMAMLANDI İŞARETLE', todayLogThis: 'KAYDET',
+    todayNoPlan: 'Aktif plan yok — PLAN sekmesinden oluştur.',
+    todayReadiness: 'BUGÜNÜN HAZIRLIĞI', todaySaveReadiness: 'HAZIRLIĞI KAYDET',
+    todaySaved: 'KAYDEDİLDİ', todayQuickStats: 'HIZLI İSTATİSTİKLER',
+    todayYesterday: 'DÜN', todayThisWeek: 'BU HAFTA', todayStreak: 'SERİ',
+    todaySuggestion: 'AKILLI ÖNERİ', todayLogYesterday: '+ Dünü Kaydet',
   }
 }
 
 // ─── Tabs ──────────────────────────────────────────────────────────────────────
 export const TABS = [
+  { id: 'today',         icon: '\u25c9', lk: 't_today' },
   { id: 'dashboard',     icon: '\u25c8', lk: 't_dashboard' },
   { id: 'zones',         icon: '\u25c9', lk: 't_zones' },
   { id: 'tests',         icon: '\u25b2', lk: 't_tests' },

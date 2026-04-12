@@ -4,6 +4,7 @@ import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { S } from '../styles.js'
 import { generateDemoSquad } from '../lib/squadUtils.js'
 import CTLChart from './charts/CTLChart.jsx'
+import { generateSquadDigest } from '../lib/coachDigest.js'
 
 const MONO  = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -296,6 +297,15 @@ export default function CoachSquadView({ authUser }) {
     catch { return new Set() }
   })
   const [isMobile, setIsMobile]     = useState(() => window.innerWidth < 640)
+  const [digestOpen, setDigestOpen] = useState(false)
+  const [digest, setDigest]         = useState(null)
+  const [copied, setCopied]         = useState(false)
+  // Missed check-in: flag athletes who haven't logged by cutoff hour (10am default)
+  const [checkInCutoff] = useState(10)  // hour (0-23); persisted externally if needed
+  const todayStr     = new Date().toISOString().slice(0, 10)
+  const currentHour  = new Date().getHours()
+  const pastCutoff   = currentHour >= checkInCutoff
+  const missedCheckIn = (ath) => pastCutoff && ath.last_session_date !== todayStr
 
   useEffect(() => {
     const h = () => setIsMobile(window.innerWidth < 640)
@@ -356,6 +366,21 @@ export default function CoachSquadView({ authUser }) {
   const sortArrow = col => sort.col === col ? (sort.dir === 1 ? ' ↓' : ' ↑') : ''
 
   const coachId = authUser?.id
+
+  // Digest
+  function toggleDigest() {
+    if (!digestOpen) setDigest(generateSquadDigest(sorted))
+    setDigestOpen(prev => !prev)
+    setCopied(false)
+  }
+
+  function copyDigest() {
+    if (!digest?.text) return
+    navigator.clipboard.writeText(digest.text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }).catch(() => {})
+  }
 
   // Empty state (no athletes connected)
   const inviteCode = coachId ? coachId.slice(0, 8).toUpperCase() : null
@@ -419,6 +444,56 @@ export default function CoachSquadView({ authUser }) {
         </div>
       )}
 
+      {/* Weekly Digest */}
+      {sorted.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <button
+            onClick={toggleDigest}
+            style={{
+              fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em',
+              padding: '5px 12px', background: 'transparent',
+              border: `1px solid ${digestOpen ? ORANGE : '#333'}`,
+              borderRadius: 3, color: digestOpen ? ORANGE : '#555',
+              cursor: 'pointer',
+            }}
+          >
+            ◈ WEEKLY DIGEST {digestOpen ? '▲' : '▼'}
+          </button>
+
+          {digestOpen && digest && (
+            <div style={{
+              marginTop: 8, background: '#0d0d0d',
+              border: '1px solid #2a2a2a', borderRadius: 4, padding: '12px 14px',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <span style={{ fontFamily: MONO, fontSize: 9, color: '#555', letterSpacing: '0.08em' }}>
+                  {digest.date} · {digest.lines.length} ATHLETES
+                </span>
+                <button
+                  onClick={copyDigest}
+                  style={{
+                    fontFamily: MONO, fontSize: 9, letterSpacing: '0.08em',
+                    padding: '3px 10px', cursor: 'pointer',
+                    background: copied ? GREEN : 'transparent',
+                    border: `1px solid ${copied ? GREEN : '#444'}`,
+                    borderRadius: 2, color: copied ? '#0a0a0a' : '#888',
+                    transition: 'background 0.2s, color 0.2s',
+                  }}
+                >
+                  {copied ? '✓ COPIED' : 'COPY ALL'}
+                </button>
+              </div>
+              <pre style={{
+                fontFamily: MONO, fontSize: 10, color: '#aaa', lineHeight: 1.7,
+                margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+              }}>
+                {digest.text}
+              </pre>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Table / card stack */}
       {sorted.length > 0 && (
         isMobile ? (
@@ -427,11 +502,12 @@ export default function CoachSquadView({ authUser }) {
             {sorted.map(ath => {
               const readiness = hrvToReadiness(ath.last_hrv_score)
               const isFlagged = flagged.has(ath.athlete_id)
+              const noCheckIn = missedCheckIn(ath)
               return (
                 <div key={ath.athlete_id} style={{
                   background: 'var(--surface)', borderRadius: 4,
                   border: `1px solid ${isFlagged ? ORANGE : '#2a2a2a'}`,
-                  borderLeft: `3px solid ${isFlagged ? ORANGE : '#2a2a2a'}`,
+                  borderLeft: `3px solid ${isFlagged ? ORANGE : noCheckIn ? YELLOW : '#2a2a2a'}`,
                   overflow: 'hidden',
                 }}>
                   <div
@@ -440,7 +516,14 @@ export default function CoachSquadView({ authUser }) {
                   >
                     <ReadinessCircle score={readiness} />
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontFamily: MONO, fontSize: 11, color: '#eee', fontWeight: 600 }}>{ath.display_name}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span style={{ fontFamily: MONO, fontSize: 11, color: '#eee', fontWeight: 600 }}>{ath.display_name}</span>
+                        {noCheckIn && (
+                          <span style={{ fontFamily: MONO, fontSize: 8, color: YELLOW, border: `1px solid ${YELLOW}55`, borderRadius: 2, padding: '1px 5px' }}>
+                            ⚠ NO CHECK-IN
+                          </span>
+                        )}
+                      </div>
                       <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
                         <span style={{ fontFamily: MONO, fontSize: 9, color: statusColor(ath.training_status),
                           padding: '1px 6px', border: `1px solid ${statusColor(ath.training_status)}44`, borderRadius: 2 }}>
@@ -488,12 +571,13 @@ export default function CoachSquadView({ authUser }) {
                   const isFlagged = flagged.has(ath.athlete_id)
                   const isExp = expanded === ath.athlete_id
                   const sessions7 = Math.round(ath.adherence_pct * 7 / 100)
+                  const noCheckIn = missedCheckIn(ath)
                   return [
                     <tr
                       key={ath.athlete_id}
                       onClick={() => setExpanded(isExp ? null : ath.athlete_id)}
                       style={{
-                        cursor: 'pointer', borderLeft: isFlagged ? `3px solid ${ORANGE}` : '3px solid transparent',
+                        cursor: 'pointer', borderLeft: isFlagged ? `3px solid ${ORANGE}` : noCheckIn ? `3px solid ${YELLOW}` : '3px solid transparent',
                         background: isExp ? 'var(--surface)' : 'transparent',
                         borderBottom: '1px solid #1a1a1a',
                         transition: 'background 0.1s',
@@ -501,10 +585,17 @@ export default function CoachSquadView({ authUser }) {
                     >
                       {/* Athlete name */}
                       <td style={{ padding: '8px 8px 8px 10px' }}>
-                        <span style={{ fontFamily: MONO, fontSize: 11, color: '#eee', fontWeight: 600 }}>
-                          {ath.display_name}
-                        </span>
-                        <span style={{ fontFamily: MONO, fontSize: 9, color: '#444', marginLeft: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span style={{ fontFamily: MONO, fontSize: 11, color: '#eee', fontWeight: 600 }}>
+                            {ath.display_name}
+                          </span>
+                          {noCheckIn && (
+                            <span style={{ fontFamily: MONO, fontSize: 8, color: YELLOW, border: `1px solid ${YELLOW}55`, borderRadius: 2, padding: '1px 5px', letterSpacing: '0.05em' }}>
+                              ⚠ NO CHECK-IN
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ fontFamily: MONO, fontSize: 9, color: '#444' }}>
                           {fmtDate(ath.last_session_date)}
                         </span>
                       </td>

@@ -3,6 +3,7 @@ import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { TSSChart, WeeklyVolChart, ZoneDonut, ZoneBar, CTLTimeline, HelpTip } from './ui.jsx'
 import CTLChart  from './charts/CTLChart.jsx'
+import ErrorBoundary from './ErrorBoundary.jsx'
 import ZoneChart from './charts/ZoneChart.jsx'
 import LoadChart from './charts/LoadChart.jsx'
 import HRVChart  from './charts/HRVChart.jsx'
@@ -628,7 +629,19 @@ export default function Dashboard({ log, profile }) {
   const [showCustomize, setShowCustomize] = useState(false)
   const dl = { ...defaultLayout, ...dashLayout }
   const toggleCard = id => setDashLayout(prev => ({ ...defaultLayout, ...prev, [id]: !prev[id] }))
-  const last7 = log.slice(-7)
+
+  // ── Date range filter ─────────────────────────────────────────────────────────
+  const [dateRange, setDateRange] = useLocalStorage('sporeus-dash-range', '28')
+  const rangeStart = useMemo(() => {
+    if (dateRange === 'season') return '2000-01-01'
+    const d = new Date(); d.setDate(d.getDate() - parseInt(dateRange, 10))
+    return d.toISOString().slice(0, 10)
+  }, [dateRange])
+  const filteredLog = useMemo(() => log.filter(e => e.date >= rangeStart), [log, rangeStart])
+  const ctlChartDays = dateRange === '7' ? 30 : dateRange === '28' ? 90 : dateRange === '90' ? 180 : 730
+  const rangeLabel   = dateRange === 'season' ? 'SEASON' : `LAST ${dateRange}D`
+
+  const last7 = filteredLog   // renamed semantically; full log still used for PMC/ACWR
   const totalTSS = last7.reduce((s,e)=>s+(e.tss||0),0)
   const totalMin = last7.reduce((s,e)=>s+(e.duration||0),0)
   const avgRPE   = last7.length ? (last7.reduce((s,e)=>s+(e.rpe||0),0)/last7.length).toFixed(1) : '\u2014'
@@ -646,6 +659,11 @@ export default function Dashboard({ log, profile }) {
   const countSess = useCountUp(last7.length)
   const countTSS  = useCountUp(totalTSS)
   const today = new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).toUpperCase()
+  // 7-day trend arrows: compare today's CTL/ATL/TSB to 7 sessions ago from daily PMC series
+  const prev7     = daily.length >= 8 ? daily[daily.length - 8] : null
+  const trendCTL  = prev7 ? ctl - prev7.ctl : 0
+  const trendATL  = prev7 ? atl - prev7.atl : 0
+  const trendTSB  = prev7 ? (ctl - atl) - (prev7.ctl - prev7.atl) : 0
 
   // Coaching message — tone adapts to athlete level
   const coachingMsg = (() => {
@@ -790,6 +808,15 @@ export default function Dashboard({ log, profile }) {
           {profile.name ? `ATHLETE: ${profile.name.toUpperCase()}` : t('appTitle')}
         </div>
         {headerBadges}
+        {/* Date range filter */}
+        <div style={{ display:'flex', gap:'5px', marginTop:'10px', flexWrap:'wrap' }}>
+          {[['7','7D'],['28','28D'],['90','90D'],['season','SEASON']].map(([val, lbl]) => (
+            <button key={val} onClick={() => setDateRange(val)}
+              style={{ ...S.mono, fontSize:'9px', padding:'3px 10px', borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em', border:`1px solid ${dateRange===val?'#ff6600':'var(--border)'}`, background: dateRange===val?'rgba(255,102,0,0.12)':'transparent', color: dateRange===val?'#ff6600':'var(--muted)', fontWeight: dateRange===val?700:400 }}>
+              {lbl}
+            </button>
+          ))}
+        </div>
         {showAdvanced && (
           <button style={{ ...S.btnSec, fontSize:'10px', marginTop:'8px', padding:'3px 8px' }} onClick={()=>setShowAdvanced(false)}>
             ← SIMPLE VIEW
@@ -821,15 +848,22 @@ export default function Dashboard({ log, profile }) {
             {lc.showCTL && (
               <div style={{ display:'flex', gap:'16px', marginTop:'10px', flexWrap:'wrap' }}>
                 {[
-                  { lbl:t('ctlLabel'), v:ctl,  c:'#0064ff', tip:'Chronic Training Load — your fitness. Higher = fitter. 42-day average of daily TSS.' },
-                  { lbl:t('atlLabel'), v:atl,  c:'#ef4444', tip:'Acute Training Load — your fatigue. 7-day average. Drops after rest days.' },
-                  { lbl:t('tsbLabel'), v:(tsb>=0?'+':'')+tsb, c:tsbColor, tip:'Training Stress Balance = CTL − ATL. Positive = fresh, ready to race. Negative = fatigued.' },
-                ].map(({lbl,v,c,tip})=>(
+                  { lbl:t('ctlLabel'), v:ctl,  c:'#0064ff', delta:trendCTL, tip:'Chronic Training Load — your fitness. Higher = fitter. 42-day average of daily TSS.' },
+                  { lbl:t('atlLabel'), v:atl,  c:'#ef4444', delta:trendATL, tip:'Acute Training Load — your fatigue. 7-day average. Drops after rest days.' },
+                  { lbl:t('tsbLabel'), v:(tsb>=0?'+':'')+tsb, c:tsbColor, delta:trendTSB, tip:'Training Stress Balance = CTL − ATL. Positive = fresh, ready to race. Negative = fatigued.' },
+                ].map(({lbl,v,c,delta,tip})=>(
                   <div key={lbl}>
                     <div style={{ ...S.mono, fontSize:'9px', color:'#888', letterSpacing:'0.08em', display:'flex', alignItems:'center' }}>
                       {lbl}<HelpTip text={tip}/>
                     </div>
-                    <div style={{ ...S.mono, fontSize:'16px', fontWeight:600, color:c }}>{v}</div>
+                    <div style={{ display:'flex', alignItems:'baseline', gap:'5px' }}>
+                      <div style={{ ...S.mono, fontSize:'16px', fontWeight:600, color:c }}>{v}</div>
+                      {delta !== 0 && prev7 && (
+                        <div style={{ ...S.mono, fontSize:'10px', color: delta > 0 ? '#5bc25b' : '#e03030', letterSpacing:'0.04em' }}>
+                          {delta > 0 ? '↑' : '↓'}{Math.abs(delta)}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -844,7 +878,7 @@ export default function Dashboard({ log, profile }) {
         )}
       </div>}
 
-      <RaceReadinessCard log={log} recovery={recovery} injuries={injuries} profile={profile} plan={plan} planStatus={planStatus} lang={lang}/>
+      <ErrorBoundary inline name="Race Readiness"><RaceReadinessCard log={log} recovery={recovery} injuries={injuries} profile={profile} plan={plan} planStatus={planStatus} lang={lang}/></ErrorBoundary>
       <ProactiveInjuryAlert log={log} injuries={injuries} lang={lang}/>
 
       {loadSpikeP >= 10 && (
@@ -907,10 +941,10 @@ export default function Dashboard({ log, profile }) {
       </div>}
 
       {dl.sessions && <div className="sp-card" style={{ ...S.card, animationDelay:'150ms' }}>
-        <div style={S.cardTitle}>{t('recentSessions')}</div>
+        <div style={S.cardTitle}>{t('recentSessions')} · <span style={{ color:'#ff6600' }}>{rangeLabel}</span></div>
         {last7.length===0 ? (
           <div style={{ textAlign:'center', padding:'20px 0' }}>
-            <div style={{ ...S.mono, fontSize:'13px', color:'#555', marginBottom:'6px' }}>No sessions this week</div>
+            <div style={{ ...S.mono, fontSize:'13px', color:'#555', marginBottom:'6px' }}>No sessions in this period</div>
             <div style={{ ...S.mono, fontSize:'11px', color:'#888', lineHeight:1.7 }}>
               Log a session to start tracking your progress.<br/>
               Takes less than 30 seconds →
@@ -1015,7 +1049,7 @@ export default function Dashboard({ log, profile }) {
               </div>
             )
           })()}
-          <CTLChart log={log} days={90} raceResults={raceResults} />
+          <ErrorBoundary inline name="CTL Chart"><CTLChart log={log} days={ctlChartDays} raceResults={raceResults} /></ErrorBoundary>
           <div style={{ height:'16px' }}/>
           <LoadChart log={log} weeks={10} />
           <div style={{ height:'16px' }}/>
@@ -1212,7 +1246,7 @@ ${complianceStr?`<div>Plan: <strong>${complianceStr}</strong></div>`:''}
             </div>
             <div style={{ display:'flex', gap:'16px', flexWrap:'wrap' }}>
               {[
-                {l:'SESSIONS',v:last7.length},
+                {l:`SESSIONS (${rangeLabel})`,v:last7.length},
                 {l:'VOLUME',v:`${Math.floor(totalMin/60)}h ${totalMin%60}m`},
                 {l:'TSS',v:totalTSS},
                 {l:'AVG RPE',v:avgRPE},
@@ -1325,9 +1359,7 @@ ${complianceStr?`<div>Plan: <strong>${complianceStr}</strong></div>`:''}
         <div style={S.row}>
           {[
             ['sporeus.com','https://sporeus.com'],
-            ['EŞİK Kitabı','https://sporeus.com/esik/'],
             ['Hesaplayıcılar','https://sporeus.com/hesaplayicilar/'],
-            ['THRESHOLD Book','https://sporeus.com/en/threshold/'],
           ].map(([label,href])=>(
             <a key={label} href={href} target="_blank" rel="noreferrer"
               style={{ ...S.mono, fontSize:'12px', color:'#0064ff', textDecoration:'none', padding:'4px 0' }}>
