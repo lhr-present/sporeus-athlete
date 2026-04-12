@@ -8,7 +8,8 @@ import ZoneChart from './charts/ZoneChart.jsx'
 import LoadChart from './charts/LoadChart.jsx'
 import HRVChart  from './charts/HRVChart.jsx'
 import { monotonyStrain, calcPRs, navyBF, mifflinBMR, riegel, fmtSec, fmtPace, calcLoad } from '../lib/formulas.js'
-import { calculateACWR } from '../lib/trainingLoad.js'
+import { calculateACWR, fitBanister, predictBanister } from '../lib/trainingLoad.js'
+import { zoneDistribution, trainingModel, MODEL_META } from '../lib/zoneDistrib.js'
 import { exportAllData } from '../lib/storage.js'
 import { useCountUp } from '../hooks/useCountUp.js'
 import Achievements from './Achievements.jsx'
@@ -1008,6 +1009,47 @@ export default function Dashboard({ log, profile }) {
         )
       })()}
 
+      {/* Zone Distributor — filtered log, RPE-based, polarization model */}
+      {filteredLog.length > 0 && (() => {
+        const dist = zoneDistribution(filteredLog)
+        if (!dist) return null
+        const model  = trainingModel(dist)
+        const meta   = MODEL_META[model] || MODEL_META.mixed
+        const zones  = [1,2,3,4,5]
+        const zColors = ['#5bc25b','#0064ff','#f5c542','#ff6600','#e03030']
+        const zLabels = ['Z1','Z2','Z3','Z4','Z5']
+        return (
+          <div className="sp-card" style={{ ...S.card, animationDelay:'188ms' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10, flexWrap:'wrap', gap:6 }}>
+              <div style={S.cardTitle}>ZONE DISTRIBUTOR · <span style={{ color:'#ff6600' }}>{rangeLabel}</span></div>
+              <span style={{ ...S.mono, fontSize:10, fontWeight:700, color:meta.color, border:`1px solid ${meta.color}44`, borderRadius:2, padding:'2px 8px' }}>
+                {lang==='tr' ? meta.tr : meta.en}
+              </span>
+            </div>
+            {/* Stacked bar */}
+            <div style={{ display:'flex', width:'100%', height:14, borderRadius:3, overflow:'hidden', marginBottom:8 }}>
+              {zones.map((z,i) => dist[z] > 0 && (
+                <div key={z} style={{ width:`${dist[z]}%`, background:zColors[i], transition:'width 0.3s' }} title={`Z${z}: ${dist[z]}%`}/>
+              ))}
+            </div>
+            {/* Labels */}
+            <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:8 }}>
+              {zones.map((z,i) => (
+                <div key={z} style={{ display:'flex', alignItems:'center', gap:4 }}>
+                  <div style={{ width:8, height:8, borderRadius:1, background:zColors[i] }}/>
+                  <span style={{ ...S.mono, fontSize:9, color: dist[z] > 0 ? zColors[i] : '#444' }}>
+                    {zLabels[i]} {dist[z]}%
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div style={{ ...S.mono, fontSize:9, color:'#666', lineHeight:1.5 }}>
+              {lang==='tr' ? meta.tip.replace('Seiler','Seiler').replace('Optimal','Optimal') : meta.tip}
+            </div>
+          </div>
+        )
+      })()}
+
       {dl.records && log.length>0 && (
         <div className="sp-card" style={{ ...S.card, animationDelay:'190ms' }}>
           <div style={S.cardTitle}>🏆 PERSONAL RECORDS</div>
@@ -1056,6 +1098,63 @@ export default function Dashboard({ log, profile }) {
           <ZoneChart log={log} weeks={8} />
         </div>
       )}
+
+      {/* Banister Impulse-Response Model — requires ≥3 performance tests */}
+      {(testResults?.length ?? 0) >= 3 && (() => {
+        const fit = fitBanister(log, testResults)
+        if (!fit) return null
+        const proj  = predictBanister(log, fit, [], 60)  // 60-day forward projection
+        const today = new Date().toISOString().slice(0, 10)
+        // Normalize historical test values to 0-100 using fit scale
+        const range = fit.maxV - fit.minV || 1
+        const normTests = testResults
+          .filter(t => t.date && typeof t.value === 'number')
+          .map(t => ({ date: t.date, norm: Math.round((t.value - fit.minV) / range * 100) }))
+          .sort((a, b) => a.date > b.date ? 1 : -1)
+        // SVG chart: historical dots + 60-day projected curve
+        const allDates = [...normTests.map(t => t.date), ...proj.map(p => p.date)]
+        const minDate = allDates[0], maxDate = allDates[allDates.length - 1]
+        const spanMs  = new Date(maxDate) - new Date(minDate) || 1
+        const W = 280, H = 80, padL = 4, padR = 4, padT = 6, padB = 16
+        const iW = W - padL - padR, iH = H - padT - padB
+        const px = d => padL + (new Date(d) - new Date(minDate)) / spanMs * iW
+        const py = v => padT + (1 - v / 100) * iH
+        const todayX = px(today)
+        const projPath = proj.map((p, i) => `${i === 0 ? 'M' : 'L'}${px(p.date).toFixed(1)},${py(p.predicted).toFixed(1)}`).join(' ')
+        return (
+          <div className="sp-card" style={{ ...S.card, animationDelay:'196ms' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10, flexWrap:'wrap', gap:6 }}>
+              <div style={S.cardTitle}>BANISTER MODEL</div>
+              <div style={{ display:'flex', gap:10 }}>
+                <span style={{ ...S.mono, fontSize:9, color:'#888' }}>R² {fit.r2}</span>
+                <span style={{ ...S.mono, fontSize:9, color:'#5bc25b' }}>k₁ {fit.k1.toFixed(3)}</span>
+                <span style={{ ...S.mono, fontSize:9, color:'#e03030' }}>k₂ {fit.k2.toFixed(3)}</span>
+              </div>
+            </div>
+            <svg width={W} height={H} style={{ display:'block', overflow:'visible', width:'100%', maxWidth:W }}>
+              {/* Today divider */}
+              <line x1={todayX} y1={padT} x2={todayX} y2={padT + iH} stroke="#333" strokeWidth="1" strokeDasharray="3,3"/>
+              <text x={todayX + 3} y={padT + 8} fontFamily="'IBM Plex Mono',monospace" fontSize={7} fill="#555">TODAY</text>
+              {/* 60-day projection */}
+              {proj.length > 1 && <path d={projPath} fill="none" stroke="#ff6600" strokeWidth="2" strokeLinejoin="round"/>}
+              {/* Historical test dots */}
+              {normTests.map((t, i) => (
+                <g key={i}>
+                  <circle cx={px(t.date)} cy={py(t.norm)} r={3.5} fill="#ff6600" stroke="#111" strokeWidth="1"/>
+                </g>
+              ))}
+              {/* X labels */}
+              <text x={padL} y={H} fontFamily="'IBM Plex Mono',monospace" fontSize={7} fill="#555">{minDate?.slice(5)}</text>
+              <text x={W - padR} y={H} fontFamily="'IBM Plex Mono',monospace" fontSize={7} fill="#555" textAnchor="end">{maxDate?.slice(5)}</text>
+            </svg>
+            <div style={{ ...S.mono, fontSize:9, color:'#555', marginTop:6, lineHeight:1.5 }}>
+              {lang==='tr'
+                ? `Banister 1975: performans = k₁·fitness − k₂·yorgunluk. Nokta = gerçek test. Çizgi = 60 günlük projeksiyon.`
+                : `Banister 1975: performance = k₁·fitness − k₂·fatigue. Dots = actual tests. Line = 60-day projection.`}
+            </div>
+          </div>
+        )
+      })()}
 
       {dl.body && (() => {
         const h = parseFloat(profile.height||0), w = parseFloat(profile.weight||0)

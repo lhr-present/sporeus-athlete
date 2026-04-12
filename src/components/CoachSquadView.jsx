@@ -4,7 +4,7 @@ import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { S } from '../styles.js'
 import { generateDemoSquad } from '../lib/squadUtils.js'
 import CTLChart from './charts/CTLChart.jsx'
-import { generateSquadDigest } from '../lib/coachDigest.js'
+import { generateSquadDigest, wellnessAvg } from '../lib/coachDigest.js'
 
 const MONO  = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -300,6 +300,7 @@ export default function CoachSquadView({ authUser }) {
   const [digestOpen, setDigestOpen] = useState(false)
   const [digest, setDigest]         = useState(null)
   const [copied, setCopied]         = useState(false)
+  const [compareIds, setCompareIds] = useState(new Set())
   // Missed check-in: flag athletes who haven't logged by cutoff hour (10am default)
   const [checkInCutoff] = useState(10)  // hour (0-23); persisted externally if needed
   const todayStr     = new Date().toISOString().slice(0, 10)
@@ -366,6 +367,15 @@ export default function CoachSquadView({ authUser }) {
   const sortArrow = col => sort.col === col ? (sort.dir === 1 ? ' ↓' : ' ↑') : ''
 
   const coachId = authUser?.id
+
+  // Athlete comparison
+  function toggleCompare(id) {
+    setCompareIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) { next.delete(id) } else if (next.size < 5) { next.add(id) }
+      return next
+    })
+  }
 
   // Digest
   function toggleDigest() {
@@ -443,6 +453,68 @@ export default function CoachSquadView({ authUser }) {
           </div>
         </div>
       )}
+
+      {/* Athlete Comparison */}
+      {compareIds.size >= 2 && (() => {
+        const selected = sorted.filter(a => compareIds.has(a.athlete_id))
+        const COLORS = ['#ff6600','#0064ff','#5bc25b','#f5c542','#b060ff']
+        const maxCTL  = Math.max(...selected.map(a => a.today_ctl || 0), 1)
+        const maxACWR = Math.max(...selected.map(a => a.acwr_ratio || 0), 0.1)
+        const maxWell = 100
+        const metrics = [
+          { label: 'CTL',       get: a => a.today_ctl || 0,      fmt: v => String(Math.round(v)), max: maxCTL  },
+          { label: 'ACWR',      get: a => a.acwr_ratio || 0,     fmt: v => v.toFixed(2),           max: maxACWR },
+          { label: 'WELLNESS%', get: a => wellnessAvg(a),        fmt: v => `${v}%`,                max: maxWell },
+          { label: 'TSB',       get: a => (a.today_tsb ?? 0) + 50, fmt: (v, a) => `${a.today_tsb > 0 ? '+' : ''}${a.today_tsb}`, max: 100 },
+        ]
+        return (
+          <div style={{ marginBottom: 12, background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: 4, padding: '12px 14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, color: ORANGE, letterSpacing: '0.1em' }}>
+                ◈ COMPARISON — {selected.length} ATHLETES
+              </span>
+              <button
+                onClick={() => setCompareIds(new Set())}
+                style={{ fontFamily: MONO, fontSize: 9, background: 'none', border: 'none', cursor: 'pointer', color: '#555', padding: 0 }}
+              >
+                × CLEAR
+              </button>
+            </div>
+            {/* Legend */}
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+              {selected.map((a, i) => (
+                <div key={a.athlete_id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: COLORS[i] }}/>
+                  <span style={{ fontFamily: MONO, fontSize: 9, color: COLORS[i] }}>{a.display_name}</span>
+                </div>
+              ))}
+            </div>
+            {/* Metric rows */}
+            {metrics.map(m => (
+              <div key={m.label} style={{ marginBottom: 10 }}>
+                <div style={{ fontFamily: MONO, fontSize: 8, color: '#555', letterSpacing: '0.08em', marginBottom: 4 }}>{m.label}</div>
+                {selected.map((a, i) => {
+                  const raw  = m.get(a)
+                  const pct  = Math.min(100, Math.round(raw / m.max * 100))
+                  return (
+                    <div key={a.athlete_id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                      <span style={{ fontFamily: MONO, fontSize: 8, color: '#555', minWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {a.display_name.split(' ')[0]}
+                      </span>
+                      <div style={{ flex: 1, height: 8, background: '#1a1a1a', borderRadius: 2, overflow: 'hidden' }}>
+                        <div style={{ width: `${pct}%`, height: '100%', background: COLORS[i], borderRadius: 2, transition: 'width 0.3s' }}/>
+                      </div>
+                      <span style={{ fontFamily: MONO, fontSize: 9, color: COLORS[i], minWidth: 40, textAlign: 'right' }}>
+                        {m.fmt(raw, a)}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+        )
+      })()}
 
       {/* Weekly Digest */}
       {sorted.length > 0 && (
@@ -535,13 +607,20 @@ export default function CoachSquadView({ authUser }) {
                         <TsbBar value={ath.today_tsb} />
                       </div>
                     </div>
-                    <button
-                      onClick={e => { e.stopPropagation(); toggleFlag(ath.athlete_id) }}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14,
-                        color: isFlagged ? ORANGE : '#333' }}
-                    >
-                      ★
-                    </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
+                      <button
+                        onClick={e => { e.stopPropagation(); toggleFlag(ath.athlete_id) }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: isFlagged ? ORANGE : '#333' }}
+                      >★</button>
+                      <input
+                        type="checkbox"
+                        checked={compareIds.has(ath.athlete_id)}
+                        onChange={() => toggleCompare(ath.athlete_id)}
+                        disabled={!compareIds.has(ath.athlete_id) && compareIds.size >= 5}
+                        onClick={e => e.stopPropagation()}
+                        style={{ accentColor: ORANGE, cursor: 'pointer', width: 12, height: 12 }}
+                      />
+                    </div>
                   </div>
                   {expanded === ath.athlete_id && (
                     <ExpandedRow athlete={ath} coachId={coachId} onNote={setNoteFor} />
@@ -556,6 +635,7 @@ export default function CoachSquadView({ authUser }) {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #222' }}>
+                  <th style={{ fontFamily: MONO, fontSize: 9, color: '#333', padding: '6px 8px' }} title="Select for comparison (max 5)">CMP</th>
                   <ColHdr col="name">ATHLETE</ColHdr>
                   <ColHdr col="readiness" style={{ textAlign: 'center' }}>READINESS</ColHdr>
                   <ColHdr col="tsb">TSB</ColHdr>
@@ -583,6 +663,16 @@ export default function CoachSquadView({ authUser }) {
                         transition: 'background 0.1s',
                       }}
                     >
+                      {/* Compare checkbox */}
+                      <td style={{ padding: '8px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={compareIds.has(ath.athlete_id)}
+                          onChange={() => toggleCompare(ath.athlete_id)}
+                          disabled={!compareIds.has(ath.athlete_id) && compareIds.size >= 5}
+                          style={{ accentColor: ORANGE, cursor: 'pointer', width: 12, height: 12 }}
+                        />
+                      </td>
                       {/* Athlete name */}
                       <td style={{ padding: '8px 8px 8px 10px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -651,7 +741,7 @@ export default function CoachSquadView({ authUser }) {
                     </tr>,
                     isExp && (
                       <tr key={ath.athlete_id + '-exp'}>
-                        <td colSpan={7} style={{ padding: 0 }}>
+                        <td colSpan={8} style={{ padding: 0 }}>
                           <ExpandedRow athlete={ath} coachId={coachId} onNote={setNoteFor} />
                         </td>
                       </tr>

@@ -2,6 +2,30 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v5.18.0 (2026-04-12)
+Athlete comparison, Banister chart, Zone Distributor — 426 tests (25 new):
+
+**Athlete Comparison Overlay (CoachSquadView)**
+- Checkbox column (desktop table + mobile card) to select 2–5 athletes
+- Comparison panel auto-appears when ≥ 2 selected: 4 metric rows (CTL, ACWR, Wellness%, TSB)
+- Horizontal bars normalized to max within each metric; 5 distinct athlete colours
+- "× CLEAR" button resets selection; max 5 enforced (disabled state on extra checkboxes)
+
+**Banister Impulse-Response Chart (Dashboard)**
+- Uses existing `fitBanister(log, testResults)` + `predictBanister(log, fit, [], 60)` from trainingLoad.js
+- Shows when testResults.length ≥ 3 and fit is non-null
+- SVG: historical test dots (orange) + 60-day projected performance curve + today divider line
+- Stats badge: R², k₁ (fitness gain coefficient), k₂ (fatigue cost coefficient)
+
+**Zone Distributor (Dashboard)**
+- `src/lib/zoneDistrib.js`: `rpeToZone` (Borg 1–10 → Z1–5), `zoneDistribution` (duration-weighted from filteredLog), `trainingModel` (polarized/pyramidal/threshold/recovery/mixed)
+- Card uses date-range filtered sessions; stacked colour bar with per-zone % breakdown
+- Model badge: POLARIZED (green) / PYRAMIDAL (blue) / THRESHOLD-HEAVY (yellow) / etc.
+- Training tip per model from MODEL_META; bilingual
+- 25 new tests in `src/lib/zoneDistrib.test.js`
+
+- DEPENDS ON: filteredLog + rangeLabel already in Dashboard; testResults from useData(); compareIds in CoachSquadView
+
 ## v5.17.0 (2026-04-12)
 Tier 2 recovery tools: OSTRC, RTP, CycleTracker — 401 tests (36 new):
 
