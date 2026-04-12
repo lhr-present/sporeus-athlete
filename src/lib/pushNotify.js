@@ -68,10 +68,37 @@ export async function unsubscribePush(userId) {
   }
 }
 
-// Send a test/local notification (no server, uses SW directly)
+// ── Rate limiter — max 2 local pushes per calendar day ────────────────────────
+const PUSH_RATE_KEY = 'sporeus-push-rate'
+const MAX_PUSHES_PER_DAY = 2
+
+export function getPushRateState() {
+  try {
+    const today = new Date().toISOString().slice(0, 10)
+    const raw   = localStorage.getItem(PUSH_RATE_KEY)
+    if (!raw) return { date: today, count: 0 }
+    const parsed = JSON.parse(raw)
+    if (parsed.date !== today) return { date: today, count: 0 }
+    return parsed
+  } catch { return { date: new Date().toISOString().slice(0, 10), count: 0 } }
+}
+
+function incrementPushCount() {
+  try {
+    const state = getPushRateState()
+    localStorage.setItem(PUSH_RATE_KEY, JSON.stringify({ date: state.date, count: state.count + 1 }))
+  } catch {}
+}
+
+// Send a test/local notification (no server, uses SW directly).
+// Rate-limited to MAX_PUSHES_PER_DAY per calendar day.
 export async function sendLocalNotification(title, body, url = '/sporeus-athlete/') {
   if (!isPushSupported()) return
   if (Notification.permission !== 'granted') return
+
+  const { count } = getPushRateState()
+  if (count >= MAX_PUSHES_PER_DAY) return  // silently drop; rate exceeded
+
   const reg = await navigator.serviceWorker.ready
   reg.showNotification(title, {
     body,
@@ -81,6 +108,46 @@ export async function sendLocalNotification(title, body, url = '/sporeus-athlete
     vibrate: [100, 50, 100],
     tag:     'sporeus-local',
   })
+  incrementPushCount()
+}
+
+// ── scheduleCheckinReminder ────────────────────────────────────────────────────
+// Saves the athlete's preferred check-in time to Supabase for server-side
+// scheduling, then fires a local notification at the chosen hour today/tomorrow.
+// preferredTime: 'HH:MM' 24h string (e.g. '07:30')
+export async function scheduleCheckinReminder(userId, preferredTime = '07:00') {
+  if (!userId) return { error: new Error('Not authenticated') }
+
+  // Persist preference to Supabase for server-side scheduling
+  if (isSupabaseReady()) {
+    const [h, m] = preferredTime.split(':').map(Number)
+    const { error } = await supabase
+      .from('push_subscriptions')
+      .update({ checkin_hour: h, checkin_minute: m ?? 0 })
+      .eq('user_id', userId)
+    if (error) console.warn('scheduleCheckinReminder: Supabase update failed:', error.message)
+  }
+
+  // Fire a local notification at preferredTime (setTimeout)
+  const [hStr, mStr] = preferredTime.split(':')
+  const hour   = parseInt(hStr, 10)
+  const minute = parseInt(mStr || '0', 10)
+
+  const now  = new Date()
+  const next = new Date(now)
+  next.setHours(hour, minute, 0, 0)
+  if (next <= now) next.setDate(next.getDate() + 1)
+
+  const delay = next.getTime() - now.getTime()
+  setTimeout(() => {
+    sendLocalNotification(
+      'Sporeus — Daily Check-in',
+      'How are you feeling today? Log your wellness in 30 seconds.',
+      '/sporeus-athlete/'
+    )
+  }, delay)
+
+  return { error: null, scheduledAt: next.toISOString() }
 }
 
 // ── Race countdown checker ─────────────────────────────────────────────────────

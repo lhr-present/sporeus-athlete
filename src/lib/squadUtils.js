@@ -1,7 +1,55 @@
 // ─── squadUtils.js — Demo squad generator + squad helpers ────────────────────
 // generateDemoSquad: seeded LCG → 90-day TSS patterns → PMC metrics
 // Returns same schema as get_squad_overview() Postgres function.
+//
+// ── teams table schema ────────────────────────────────────────────────────────
+// CREATE TABLE teams (
+//   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+//   org_id     UUID NOT NULL,           -- maps to coach user_id
+//   name       TEXT NOT NULL,
+//   sport      TEXT,
+//   age_group  TEXT,
+//   created_at TIMESTAMPTZ DEFAULT now()
+// );
+// RLS: coach sees only teams WHERE org_id = auth.uid()
+// ──────────────────────────────────────────────────────────────────────────────
 import { calculatePMC, calculateACWR } from './trainingLoad.js'
+import { supabase, isSupabaseReady } from './supabase.js'
+
+// ── Teams CRUD ────────────────────────────────────────────────────────────────
+export async function getTeams(orgId) {
+  if (!orgId || !isSupabaseReady()) return { data: [], error: null }
+  const { data, error } = await supabase
+    .from('teams')
+    .select('id, name, sport, age_group, created_at')
+    .eq('org_id', orgId)
+    .order('created_at', { ascending: true })
+  return { data: data || [], error }
+}
+
+export async function createTeam(orgId, name, sport = '', ageGroup = '') {
+  if (!orgId || !name || !isSupabaseReady()) return { data: null, error: new Error('Missing required fields') }
+  const { data, error } = await supabase
+    .from('teams')
+    .insert({ org_id: orgId, name, sport, age_group: ageGroup })
+    .select()
+    .single()
+  return { data, error }
+}
+
+// ── Filter athletes by team athlete_ids array ─────────────────────────────────
+// team.athlete_ids: string[] — if absent or empty, returns all
+export function filterByTeam(athletes, team) {
+  if (!team || !Array.isArray(team.athlete_ids) || team.athlete_ids.length === 0) return athletes
+  return athletes.filter(a => team.athlete_ids.includes(a.athlete_id))
+}
+
+// ── Demo teams (3 mock teams splitting the 6 demo athletes) ──────────────────
+export const DEMO_TEAMS = [
+  { id: 'demo-senior', name: 'Senior',  sport: 'Cycling', age_group: 'Senior', athlete_ids: ['demo-eddy', 'demo-fausto', 'demo-bernard'] },
+  { id: 'demo-u23',    name: 'U23',     sport: 'Cycling', age_group: 'U23',    athlete_ids: ['demo-miguel', 'demo-tadej'] },
+  { id: 'demo-u18',    name: 'U18',     sport: 'Cycling', age_group: 'U18',    athlete_ids: ['demo-wout'] },
+]
 
 // ── Seeded LCG random ─────────────────────────────────────────────────────────
 // Park-Miller variant: reproducible, same seed → same squad every render.

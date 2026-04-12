@@ -3,19 +3,17 @@ import { exchangeStravaCode } from './lib/strava.js'
 import { checkRaceCountdowns } from './lib/pushNotify.js'
 import { scheduleSessionReminder, getReminderSettings } from './lib/pushNotifications.js'
 import { triggerSync } from './lib/deviceSync.js'
+import { initOfflineSync, onSyncStatusChange, getSyncStatus, flushQueue } from './lib/offlineQueue.js'
+import { exportAllData } from './lib/storage.js'
 import { LangCtx, LABELS, TABS } from './contexts/LangCtx.jsx'
 import { useLocalStorage, STORAGE_WARN_KEY } from './hooks/useLocalStorage.js'
 import { DataProvider, useData } from './contexts/DataContext.jsx'
 import { S, ANIM_CSS } from './styles.js'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import TodayView from './components/TodayView.jsx'
-import Dashboard from './components/Dashboard.jsx'
 import ZoneCalc from './components/ZoneCalc.jsx'
-import TestProtocols from './components/Protocols.jsx'
 import TrainingLog from './components/TrainingLog.jsx'
-import Periodization from './components/Periodization.jsx'
 import Recovery from './components/Recovery.jsx'
-import Profile, { countUnreadCoachMessages } from './components/Profile.jsx'
 import OnboardingWizard from './components/Onboarding.jsx'
 import SearchPalette from './components/SearchPalette.jsx'
 import AuthGate from './components/AuthGate.jsx'
@@ -33,6 +31,16 @@ const CoachSquadView  = lazy(() => import('./components/CoachSquadView.jsx'))
 const PlanGenerator  = lazy(() => import('./components/PlanGenerator.jsx'))
 const YearlyPlan     = lazy(() => import('./components/YearlyPlan.jsx'))
 const Glossary       = lazy(() => import('./components/Glossary.jsx'))
+// Heavy tabs: defer until user navigates to them
+const Dashboard     = lazy(() => import('./components/Dashboard.jsx'))
+const Profile       = lazy(() => import('./components/Profile.jsx'))
+const TestProtocols = lazy(() => import('./components/Protocols.jsx'))
+const Periodization = lazy(() => import('./components/Periodization.jsx'))
+
+// Inline — too small to warrant a separate module
+function countUnreadCoachMessages() {
+  try { return (JSON.parse(localStorage.getItem('sporeus-coach-messages')) || []).filter(m => m.from === 'coach' && !m.read).length } catch { return 0 }
+}
 
 const LazyFallback = () => (
   <div style={{ fontFamily:"'IBM Plex Mono',monospace", padding:'40px 20px', textAlign:'center', color:'#888', letterSpacing:'0.1em', opacity:0.7 }}>
@@ -103,6 +111,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
   const [coachToast, setCoachToast] = useState('')
   const [showSearch, setShowSearch] = useState(false)
   const [firstSessionToast, setFirstSessionToast] = useState(false)
+  const [syncStatus, setSyncStatus] = useState(() => getSyncStatus())
   const coachToastTimer = useRef(null)
   const firstSessionTimer = useRef(null)
   const prevLogLen = useRef(log.length)
@@ -158,6 +167,13 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
   }, [dark])
+
+  // Offline sync queue — init once on mount
+  useEffect(() => {
+    initOfflineSync()
+    const unsub = onSyncStatusChange(setSyncStatus)
+    return unsub
+  }, [])
 
   // Race countdown check on load (only if permission already granted)
   useEffect(() => {
@@ -251,6 +267,17 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
           onToggleDark={() => setDark(d => !d)}
           onToggleLang={() => setLang(l => l === 'en' ? 'tr' : 'en')}
           onClose={() => setShowSearch(false)}
+          log={log}
+          onSync={() => flushQueue()}
+          onExport={() => {
+            try {
+              const blob = new Blob([JSON.stringify(exportAllData(), null, 2)], { type: 'application/json' })
+              const url  = URL.createObjectURL(blob)
+              const a    = document.createElement('a')
+              a.href = url; a.download = `sporeus-export-${new Date().toISOString().slice(0,10)}.json`; a.click()
+              URL.revokeObjectURL(url)
+            } catch {}
+          }}
         />
       )}
 
@@ -367,6 +394,15 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
               <div style={{ ...S.mono, fontSize:'10px', color:'#888' }}>{timeStr}</div>
               <div style={{ ...S.mono, fontSize:'10px', color:'var(--sub)', letterSpacing:'0.06em' }}>{dateStr}</div>
             </div>
+            {/* Sync status dot */}
+            <span
+              title={syncStatus === 'offline' ? 'Offline — changes queued' : syncStatus === 'syncing' ? 'Syncing…' : 'Synced'}
+              style={{
+                width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                background: syncStatus === 'offline' ? '#555' : syncStatus === 'syncing' ? '#f5c542' : '#5bc25b',
+                boxShadow: syncStatus === 'syncing' ? '0 0 6px #f5c54299' : 'none',
+              }}
+            />
             <button
               onClick={() => setShowSearch(true)}
               title="Search features (Ctrl+K)"
@@ -444,15 +480,15 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
           )}
           {coachMode && authProfile?.role !== 'coach' && <ErrorBoundary tabName="Coach Mode"><Suspense fallback={<LazyFallback/>}><CoachDashboard authUser={authUser}/></Suspense></ErrorBoundary>}
           {!coachMode && tab === 'today'        && <ErrorBoundary tabName="Today"><TodayView log={log} profile={profile} setTab={setTab} setLogPrefill={setLogPrefill}/></ErrorBoundary>}
-          {!coachMode && tab === 'dashboard'    && <ErrorBoundary tabName="Dashboard"><Dashboard log={log} profile={profile}/></ErrorBoundary>}
+          {!coachMode && tab === 'dashboard'    && <ErrorBoundary tabName="Dashboard"><Suspense fallback={<LazyFallback/>}><Dashboard log={log} profile={profile}/></Suspense></ErrorBoundary>}
           {tab === 'zones'        && <ErrorBoundary tabName="Zone Calc"><ZoneCalc/></ErrorBoundary>}
-          {tab === 'tests'        && <ErrorBoundary tabName="Protocols"><TestProtocols/></ErrorBoundary>}
+          {tab === 'tests'        && <ErrorBoundary tabName="Protocols"><Suspense fallback={<LazyFallback/>}><TestProtocols/></Suspense></ErrorBoundary>}
           {tab === 'log'          && <ErrorBoundary tabName="Training Log"><TrainingLog log={log} setLog={setLog} prefill={logPrefill} clearPrefill={() => setLogPrefill(null)}/></ErrorBoundary>}
-          {tab === 'periodization'&& <ErrorBoundary tabName="Macro Plan"><Periodization authUser={authUser}/></ErrorBoundary>}
+          {tab === 'periodization'&& <ErrorBoundary tabName="Macro Plan"><Suspense fallback={<LazyFallback/>}><Periodization authUser={authUser}/></Suspense></ErrorBoundary>}
           {tab === 'plan'         && <ErrorBoundary tabName="Yearly Plan"><Suspense fallback={<LazyFallback/>}><YearlyPlan /></Suspense></ErrorBoundary>}
           {tab === 'glossary'     && <ErrorBoundary tabName="Glossary"><Suspense fallback={<LazyFallback/>}><Glossary/></Suspense></ErrorBoundary>}
           {tab === 'recovery'     && <ErrorBoundary tabName="Recovery"><Recovery/></ErrorBoundary>}
-          {tab === 'profile'      && <ErrorBoundary tabName="Profile"><Profile profile={profile} setProfile={setProfile} log={log} authUser={authUser}/></ErrorBoundary>}
+          {tab === 'profile'      && <ErrorBoundary tabName="Profile"><Suspense fallback={<LazyFallback/>}><Profile profile={profile} setProfile={setProfile} log={log} authUser={authUser}/></Suspense></ErrorBoundary>}
         </main>
 
         <footer style={S.footer}>

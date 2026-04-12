@@ -1,10 +1,42 @@
 // ─── TodayView.jsx — v5.14.0: Single-screen daily HQ ─────────────────────────
-import { useState, useMemo, useContext } from 'react'
+import { useState, useMemo, useContext, useRef, useEffect } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { getTodayPlannedSession, getSingleSuggestion, generateDailyDigest } from '../lib/intelligence.js'
 import { WELLNESS_FIELDS } from '../lib/constants.js'
+import { LineChart, Line, ResponsiveContainer } from 'recharts'
+
+// ── Wellness 14-day sparkline ─────────────────────────────────────────────────
+function WellnessSparkline({ recovery }) {
+  const today = new Date()
+  const data = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(today)
+    d.setDate(d.getDate() - (13 - i))
+    const date = d.toISOString().slice(0, 10)
+    const e = (recovery || []).find(r => r.date === date)
+    return { date, sleep: e?.sleep ?? null, energy: e?.energy ?? null, soreness: e?.soreness ?? null }
+  })
+  const hasData = data.some(d => d.sleep !== null)
+  if (!hasData) return null
+  return (
+    <div style={{ marginTop: '10px' }}>
+      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize: '9px', color: '#888', letterSpacing: '0.08em', marginBottom: '4px' }}>14-DAY WELLNESS</div>
+      <div style={{ display: 'flex', gap: '6px', fontSize: '9px', fontFamily:"'IBM Plex Mono',monospace", color: '#888', marginBottom: '4px' }}>
+        <span style={{ color: '#0064ff' }}>◉ sleep</span>
+        <span style={{ color: '#5bc25b' }}>◉ energy</span>
+        <span style={{ color: '#ff6600' }}>◉ soreness</span>
+      </div>
+      <ResponsiveContainer width="100%" height={80}>
+        <LineChart data={data} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
+          <Line type="monotone" dataKey="sleep"    stroke="#0064ff" strokeWidth={1.5} dot={false} connectNulls />
+          <Line type="monotone" dataKey="energy"   stroke="#5bc25b" strokeWidth={1.5} dot={false} connectNulls />
+          <Line type="monotone" dataKey="soreness" stroke="#ff6600" strokeWidth={1.5} dot={false} connectNulls />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
 
 const MONO  = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -83,14 +115,43 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
   }, [recovery, today])
 
   const todayRec = (recovery || []).find(e => e.date === today)
-  const [wellness, setWellness] = useState({ sleep: 3, energy: 3, soreness: 3 })
+  const [wellness, setWellness]       = useState({ sleep: 3, energy: 3, soreness: 3 })
   const [wellnessSaved, setWellnessSaved] = useState(false)
+  const [isSubmitting, setIsSubmitting]   = useState(false)
+  const [alreadySubmitted, setAlreadySubmitted] = useState(false)
+
+  // UUID idempotency key — generated once on mount, reset when today changes
+  const idempotencyKey = useRef(null)
+  useEffect(() => {
+    idempotencyKey.current = `${today}-${Math.random().toString(36).slice(2, 10)}`
+    setIsSubmitting(false)
+    setAlreadySubmitted(false)
+  }, [today])
 
   const saveReadiness = () => {
+    if (isSubmitting) return
+    // Check if this idempotency key was already used (double-tap guard)
+    const usedKey = 'sporeus-checkin-idem'
+    const stored = (() => { try { return localStorage.getItem(usedKey) } catch { return null } })()
+    if (stored === idempotencyKey.current) {
+      setAlreadySubmitted(true)
+      setWellnessSaved(true)
+      return
+    }
+    setIsSubmitting(true)
+    try { localStorage.setItem(usedKey, idempotencyKey.current) } catch {}
+
     const score = Math.round((wellness.sleep + wellness.energy + (6 - wellness.soreness)) / 3 * 20)
-    const entry = { date: today, sleep: wellness.sleep, energy: wellness.energy, soreness: wellness.soreness, mood: 3, stress: 3, score, id: Date.now() }
+    const entry = {
+      date: today, sleep: wellness.sleep, energy: wellness.energy,
+      soreness: wellness.soreness, mood: 3, stress: 3, score,
+      id: Date.now(), idempotency_key: idempotencyKey.current,
+    }
     setRecovery(prev => [...(prev || []).filter(e => e.date !== today), entry].slice(-90))
     setWellnessSaved(true)
+
+    // Re-enable after 2s (prevents accidental double-tap; localStorage guard prevents true duplicates)
+    setTimeout(() => setIsSubmitting(false), 2000)
   }
 
   const markDone = () => {
@@ -236,7 +297,12 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
             </div>
           </div>
         ) : wellnessSaved ? (
-          <div style={{ color: GREEN, fontSize: '12px' }}>✓ {t('todaySaved')}</div>
+          <>
+            <div style={{ color: GREEN, fontSize: '12px' }}>
+              {alreadySubmitted ? '✓ Already submitted today' : `✓ ${t('todaySaved')}`}
+            </div>
+            <WellnessSparkline recovery={recovery} />
+          </>
         ) : (
           <>
             <div style={{ display: 'flex', gap: '14px', marginBottom: '14px', flexWrap: 'wrap' }}>
@@ -254,7 +320,13 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
                 </div>
               ))}
             </div>
-            <button onClick={saveReadiness} style={btn(ORANGE)}>{t('todaySaveReadiness')}</button>
+            <button
+              onClick={saveReadiness}
+              disabled={isSubmitting}
+              style={{ ...btn(isSubmitting ? '#555' : ORANGE), opacity: isSubmitting ? 0.6 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}
+            >
+              {isSubmitting ? '…' : t('todaySaveReadiness')}
+            </button>
             <button onClick={() => setTab('recovery')}
               style={{ ...btn('transparent', '#555'), border: '1px solid var(--border)', marginLeft: '8px' }}>
               {t('t_recovery')} →

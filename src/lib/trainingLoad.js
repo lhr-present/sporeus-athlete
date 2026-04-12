@@ -62,29 +62,49 @@ export function calculatePMC(log, daysBack = 90, daysFuture = 30) {
 }
 
 // ─── calculateACWR ───────────────────────────────────────────────────────────
-// Acute:Chronic Workload Ratio — rolling 7-day TSS vs 28-day weekly mean.
+// Acute:Chronic Workload Ratio via EWMA (Hulin et al. 2016).
+// λ_acute  = 0.25  → half-life ≈ 3.5 days (ATL proxy)
+// λ_chronic = 0.067 → half-life ≈ 10 days  (CTL proxy)
+// Zero-load days are inserted for any missing date in the 28-day window.
+// TSS per day is capped at MAX_TSS_PER_SESSION to guard against data errors.
 // status: 'optimal' (0.8–1.3) | 'caution' (1.3–1.5) | 'danger' (>1.5) |
 //         'undertraining' (<0.8) | 'insufficient' (no chronic base)
 //
 // @param {Array} log - training log entries [{ date, tss }]
 // @returns {{ ratio, status, acute, chronicWeekly }}
+
+const MAX_TSS_PER_SESSION = 300
+const λ_ACUTE   = 0.25
+const λ_CHRONIC = 0.067
+
 export function calculateACWR(log) {
   const now = new Date()
   now.setHours(0, 0, 0, 0)
-  let acute = 0, chronic = 0
 
+  // Build daily TSS map (YYYY-MM-DD → capped sum)
+  const tssMap = {}
   for (const e of (log || [])) {
-    const daysAgo = (now - new Date(e.date)) / 864e5
-    if (daysAgo < 7)  acute   += (e.tss || 0)
-    if (daysAgo < 28) chronic += (e.tss || 0)
+    if (!e.date) continue
+    const d = e.date.slice(0, 10)
+    tssMap[d] = Math.min((tssMap[d] || 0) + (e.tss || 0), MAX_TSS_PER_SESSION)
   }
 
-  const chronicWeekly = chronic / 4
-  if (chronicWeekly === 0) {
+  // Iterate 28 days oldest→newest applying EWMA
+  let atl = 0, ctl = 0
+  for (let i = 27; i >= 0; i--) {
+    const d = new Date(now)
+    d.setDate(d.getDate() - i)
+    const key = d.toISOString().slice(0, 10)
+    const tss = tssMap[key] || 0
+    atl = λ_ACUTE   * tss + (1 - λ_ACUTE)   * atl
+    ctl = λ_CHRONIC * tss + (1 - λ_CHRONIC) * ctl
+  }
+
+  if (ctl === 0) {
     return { ratio: null, status: 'insufficient', acute: 0, chronicWeekly: 0 }
   }
 
-  const ratio  = Math.round((acute / chronicWeekly) * 100) / 100
+  const ratio  = Math.round((atl / ctl) * 100) / 100
   const status = ratio > 1.5 ? 'danger'
     : ratio > 1.3 ? 'caution'
     : ratio >= 0.8 ? 'optimal'
@@ -93,8 +113,8 @@ export function calculateACWR(log) {
   return {
     ratio,
     status,
-    acute:         Math.round(acute),
-    chronicWeekly: Math.round(chronicWeekly),
+    acute:         Math.round(atl),
+    chronicWeekly: Math.round(ctl),
   }
 }
 

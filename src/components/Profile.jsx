@@ -6,14 +6,127 @@ import { ACTIVITY_MULTS, SPORT_BRANCHES, TRIATHLON_TYPES, ATHLETE_LEVELS } from 
 import { navyBF, mifflinBMR, calcLoad, generateUnlockCode, FREE_ATHLETE_LIMIT } from '../lib/formulas.js'
 import { sanitizeProfile } from '../lib/validate.js'
 import { exportAllData, importAllData } from '../lib/storage.js'
+import { exportAthleteData, deleteAthleteData, triggerDownload } from '../lib/gdprExport.js'
 import { Sparkline } from './ui.jsx'
 import { isSupabaseReady } from '../lib/supabase.js'
 import NotificationSettings from './NotificationSettings.jsx'
 import DeviceSync from './DeviceSync.jsx'
 import AthleteOSCosts from './AthleteOSCosts.jsx'
 import ActivityHeatmap from './ActivityHeatmap.jsx'
-import { getStravaConnection, initiateStravaOAuth, triggerStravaSync, disconnectStrava } from '../lib/strava.js'
+import { getStravaConnection, initiateStravaOAuth, triggerStravaSync, disconnectStrava, importStravaActivities, deduplicateByStravaId } from '../lib/strava.js'
 import { getPushState, subscribePush, unsubscribePush, checkRaceCountdowns } from '../lib/pushNotify.js'
+import { clearInsightCache } from '../lib/aiPrompts.js'
+
+// ─── AI Settings Panel ────────────────────────────────────────────────────────
+function AISettings({ authUser }) {
+  const [apiKey, setApiKey]   = useState(() => { try { return localStorage.getItem('sporeus-anthropic-key') || '' } catch { return '' } })
+  const [showKey, setShowKey] = useState(false)
+  const [tier, setTier]       = useState(() => { try { return localStorage.getItem('sporeus-ai-tier') || 'haiku' } catch { return 'haiku' } })
+  const [testStatus, setTestStatus] = useState('')   // '', 'testing', 'ok', 'error'
+  const [cleared, setCleared] = useState(false)
+
+  if (!isSupabaseReady() || !authUser) return (
+    <div style={{ ...S.mono, fontSize:'11px', color:'#555', padding:'12px 0' }}>
+      Sign in to configure AI settings.
+    </div>
+  )
+
+  const saveKey = (k) => {
+    setApiKey(k)
+    try { if (k) localStorage.setItem('sporeus-anthropic-key', k); else localStorage.removeItem('sporeus-anthropic-key') } catch {}
+  }
+
+  const saveTier = (t) => {
+    setTier(t)
+    try { localStorage.setItem('sporeus-ai-tier', t) } catch {}
+  }
+
+  const testConnection = async () => {
+    if (!apiKey) { setTestStatus('error'); return }
+    setTestStatus('testing')
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 8, messages: [{ role: 'user', content: 'Hi' }] }),
+      })
+      setTestStatus(res.ok ? 'ok' : 'error')
+    } catch { setTestStatus('error') }
+  }
+
+  const handleClearCache = async () => {
+    await clearInsightCache(authUser.id)
+    try { for (const k of Object.keys(localStorage).filter(k => k.startsWith('sp-ai-'))) localStorage.removeItem(k) } catch {}
+    setCleared(true)
+    setTimeout(() => setCleared(false), 3000)
+  }
+
+  const TIERS = [
+    { id:'free',   label:'Free',   desc:'Rule-based only (no API cost)' },
+    { id:'haiku',  label:'Haiku',  desc:'Fast, ~$0.001/request' },
+    { id:'sonnet', label:'Sonnet', desc:'Smarter, ~$0.01/request' },
+  ]
+
+  const usageEst = tier === 'free' ? 'No API calls' : tier === 'haiku' ? '~$0.03–0.10/month' : '~$0.30–1.00/month'
+
+  const masked = apiKey ? apiKey.slice(0,8) + '••••••••' + apiKey.slice(-4) : ''
+
+  return (
+    <div style={{ marginTop:'8px' }}>
+      {/* API Key */}
+      <div style={{ marginBottom:'14px' }}>
+        <label style={{ ...S.label, marginBottom:'6px' }}>ANTHROPIC API KEY (BYOK)</label>
+        <div style={{ display:'flex', gap:'8px', alignItems:'center' }}>
+          <input
+            type={showKey ? 'text' : 'password'}
+            value={apiKey}
+            onChange={e => saveKey(e.target.value)}
+            placeholder="sk-ant-…"
+            style={{ ...S.input, flex:1, fontSize:'13px' }}
+          />
+          <button onClick={() => setShowKey(s => !s)} style={{ ...S.btnSec, padding:'8px 10px', fontSize:'11px', flexShrink:0 }}>
+            {showKey ? 'hide' : 'show'}
+          </button>
+        </div>
+        {apiKey && !showKey && (
+          <div style={{ ...S.mono, fontSize:'10px', color:'#555', marginTop:'4px' }}>{masked}</div>
+        )}
+      </div>
+
+      {/* Test connection */}
+      <div style={{ marginBottom:'14px', display:'flex', gap:'8px', alignItems:'center' }}>
+        <button onClick={testConnection} disabled={testStatus === 'testing' || !apiKey} style={{ ...S.btnSec, fontSize:'11px', padding:'6px 14px' }}>
+          {testStatus === 'testing' ? 'Testing…' : 'Test connection'}
+        </button>
+        {testStatus === 'ok'    && <span style={{ ...S.mono, fontSize:'11px', color:'#5bc25b' }}>✓ Connected</span>}
+        {testStatus === 'error' && <span style={{ ...S.mono, fontSize:'11px', color:'#e03030' }}>✗ Failed — check key</span>}
+      </div>
+
+      {/* Tier selector */}
+      <div style={{ marginBottom:'14px' }}>
+        <label style={{ ...S.label, marginBottom:'6px' }}>AI TIER</label>
+        <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
+          {TIERS.map(t => (
+            <button key={t.id} onClick={() => saveTier(t.id)}
+              style={{ flex:'1 1 100px', padding:'8px 12px', borderRadius:'4px', textAlign:'left', cursor:'pointer', border:`1px solid ${tier === t.id ? '#ff6600' : 'var(--border)'}`, background: tier === t.id ? '#ff660011' : 'transparent' }}>
+              <div style={{ ...S.mono, fontSize:'12px', fontWeight:600, color: tier === t.id ? '#ff6600' : 'var(--text)', marginBottom:'2px' }}>{t.label}</div>
+              <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>{t.desc}</div>
+            </button>
+          ))}
+        </div>
+        <div style={{ ...S.mono, fontSize:'10px', color:'#555', marginTop:'6px' }}>Estimated usage: {usageEst}</div>
+      </div>
+
+      {/* Clear cache */}
+      <div>
+        <button onClick={handleClearCache} style={{ ...S.btnSec, fontSize:'11px', padding:'6px 14px' }}>
+          {cleared ? '✓ Cache cleared' : 'Clear AI cache'}
+        </button>
+        <div style={{ ...S.mono, fontSize:'9px', color:'#444', marginTop:'4px' }}>Removes cached AI insights — next load will re-fetch.</div>
+      </div>
+    </div>
+  )
+}
 
 function SportSelector({ local, setLocal }) {
   const { t } = useContext(LangCtx)
@@ -755,6 +868,30 @@ function StravaConnect({ userId }) {
   const handleSync = async () => {
     setBusy(true)
     setSyncResult(null)
+    // Try client-side import if access_token stored locally (post-OAuth)
+    const localToken = (() => { try { return localStorage.getItem('sporeus-strava-token') || '' } catch { return '' } })()
+    if (localToken) {
+      const { entries, error } = await importStravaActivities(localToken, 30)
+      if (error) {
+        flash(`⚠ Sync failed: ${error.message.slice(0, 200)}`)
+        setBusy(false)
+        return
+      }
+      try {
+        const existing = JSON.parse(localStorage.getItem('sporeus_log') || '[]')
+        const newEntries = deduplicateByStravaId(existing, entries)
+        const merged = [...existing, ...newEntries].sort((a, b) => a.date.localeCompare(b.date))
+        localStorage.setItem('sporeus_log', JSON.stringify(merged))
+        const recent = newEntries.slice(-3).reverse()
+        setSyncResult({ synced: newEntries.length, total: entries.length, recent })
+        flash(`✓ Imported ${newEntries.length} new activities (${entries.length} fetched)`, 6000)
+      } catch (e) {
+        flash(`⚠ Could not save activities: ${e.message}`)
+      }
+      setBusy(false)
+      return
+    }
+    // Fallback: edge function sync (server-side)
     const { data, error } = await triggerStravaSync()
     setBusy(false)
     if (error) {
@@ -1067,6 +1204,34 @@ export default function Profile({ profile, setProfile, log, authUser }) {
     }
   }
 
+  const [gdprStatus, setGdprStatus] = useState(null)
+
+  const handleGdprDownload = async () => {
+    setGdprStatus('exporting')
+    try {
+      const data = await exportAthleteData(authUser?.id || 'local')
+      triggerDownload(data, `sporeus-my-data-${new Date().toISOString().slice(0,10)}.json`)
+      setGdprStatus('done')
+    } catch (e) {
+      setGdprStatus('error')
+    }
+    setTimeout(() => setGdprStatus(null), 3000)
+  }
+
+  const handleGdprDelete = async () => {
+    if (!confirm('Permanently delete ALL your Sporeus data? This cannot be undone.')) return
+    if (!authUser?.id) { alert('You must be signed in to delete your account data.'); return }
+    setGdprStatus('deleting')
+    try {
+      await deleteAthleteData(authUser.id)
+      Object.keys(localStorage).filter(k=>k.startsWith('sporeus')).forEach(k=>localStorage.removeItem(k))
+      setGdprStatus('deleted')
+      setTimeout(() => window.location.reload(), 1500)
+    } catch (e) {
+      setGdprStatus('error')
+    }
+  }
+
   return (
     <div className="sp-fade">
       <div className="sp-card" style={{ ...S.card, animationDelay:'0ms' }}>
@@ -1211,7 +1376,42 @@ export default function Profile({ profile, setProfile, log, authUser }) {
         <div style={{ ...S.mono, fontSize:'10px', color:'#aaa', marginTop:'10px' }}>
           Export backs up all training data, plans, and settings as JSON. Import restores a previous backup.
         </div>
+
+        {/* GDPR — Download my data / Delete my account */}
+        <div style={{ marginTop:'14px', paddingTop:'12px', borderTop:'1px solid var(--border)' }}>
+          <div style={{ ...S.mono, fontSize:'9px', color:'#555', letterSpacing:'0.1em', marginBottom:'8px' }}>◈ PRIVACY — GDPR RIGHTS</div>
+          <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', alignItems:'center' }}>
+            <button
+              style={{ ...S.btnSec, fontSize:'9px', padding:'4px 12px' }}
+              disabled={gdprStatus === 'exporting'}
+              onClick={handleGdprDownload}
+            >
+              {gdprStatus === 'exporting' ? '…exporting' : gdprStatus === 'done' ? '✓ Downloaded' : '↓ Download my data'}
+            </button>
+            <button
+              style={{ ...S.btnSec, fontSize:'9px', padding:'4px 12px', color:'#e03030', borderColor:'#e03030' }}
+              disabled={!!gdprStatus}
+              onClick={handleGdprDelete}
+            >
+              {gdprStatus === 'deleting' ? '…deleting' : gdprStatus === 'deleted' ? '✓ Deleted' : '✕ Delete my account'}
+            </button>
+            {gdprStatus === 'error' && (
+              <span style={{ ...S.mono, fontSize:'9px', color:'#e03030' }}>Error — try again</span>
+            )}
+          </div>
+          <div style={{ ...S.mono, fontSize:'9px', color:'#444', marginTop:'6px' }}>
+            Download exports all your data as JSON (GDPR Article 20). Delete erases all records from our servers.
+          </div>
+        </div>
       </div>
+
+      {/* AI Settings */}
+      {authUser && (
+        <div style={S.card}>
+          <div style={S.cardTitle}>AI SETTINGS</div>
+          <AISettings authUser={authUser} />
+        </div>
+      )}
 
       <NotificationSettings />
       <DeviceSync userId={authUser?.id} />

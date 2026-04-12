@@ -3,6 +3,87 @@
 // STRAVA_CLIENT_SECRET stays server-side only
 
 import { supabase } from './supabase.js'
+import { safeFetch } from './fetch.js'
+
+// ── Strava sport_type → sporeus activity type ─────────────────────────────────
+const SPORT_TYPE_MAP = {
+  Run: 'Run', VirtualRun: 'Run', TrailRun: 'Run',
+  Ride: 'Ride', VirtualRide: 'Ride', GravelRide: 'Ride', MountainBikeRide: 'Ride',
+  Swim: 'Swim', OpenWaterSwim: 'Swim',
+  Walk: 'Walk', Hike: 'Walk',
+  WeightTraining: 'Strength', Workout: 'Strength', Yoga: 'Other',
+}
+
+// Convert a raw Strava activity object to a sporeus log entry
+function stravaToEntry(act) {
+  const durationSec = act.moving_time || act.elapsed_time || 0
+  const type = SPORT_TYPE_MAP[act.sport_type || act.type] || 'Other'
+  // Rough TSS from duration + HR if available
+  let tss = null
+  if (durationSec > 0) {
+    if (act.average_heartrate && act.max_heartrate) {
+      // HR-based TSS approximation (normalized effort fraction squared)
+      const hrFrac = act.average_heartrate / (act.max_heartrate * 0.9)
+      tss = Math.round(hrFrac * hrFrac * (durationSec / 3600) * 100)
+    } else {
+      // Duration-only default (~60 TSS/h moderate effort)
+      tss = Math.round((durationSec / 3600) * 60)
+    }
+    tss = Math.min(tss, 300)
+  }
+  const rpe = act.average_heartrate
+    ? Math.min(10, Math.max(1, Math.round(act.average_heartrate / 20)))
+    : 5
+
+  return {
+    date:        (act.start_date_local || act.start_date || '').slice(0, 10),
+    type,
+    tss:         tss ?? 60,
+    rpe,
+    durationSec,
+    distanceM:   act.distance || 0,
+    avgHR:       act.average_heartrate || null,
+    avgCadence:  act.average_cadence  || null,
+    notes:       act.name || '',
+    strava_id:   String(act.id),
+    source:      'strava',
+  }
+}
+
+// ── importStravaActivities ────────────────────────────────────────────────────
+// Fetches activities from the Strava API and returns sporeus log entries.
+// Handles up to 3 pages (max 200/page). Does NOT write to storage.
+export async function importStravaActivities(accessToken, daysBack = 30) {
+  if (!accessToken) return { entries: [], error: new Error('No access token') }
+  const after = Math.floor((Date.now() - daysBack * 86400000) / 1000)
+  const entries = []
+
+  for (let page = 1; page <= 3; page++) {
+    const url = `https://www.strava.com/api/v3/athlete/activities?after=${after}&per_page=200&page=${page}`
+    const res = await safeFetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    if (!res.ok) {
+      const msg = await res.text().catch(() => res.statusText)
+      return { entries, error: new Error(`Strava API ${res.status}: ${msg}`) }
+    }
+    const acts = await res.json()
+    if (!Array.isArray(acts) || acts.length === 0) break
+    for (const act of acts) entries.push(stravaToEntry(act))
+    if (acts.length < 200) break
+  }
+
+  return { entries, error: null }
+}
+
+// ── deduplicateByStravaId ─────────────────────────────────────────────────────
+// Returns only incoming entries whose strava_id is not already in existing[].
+export function deduplicateByStravaId(existing, incoming) {
+  const knownIds = new Set(
+    existing.filter(e => e.strava_id).map(e => String(e.strava_id))
+  )
+  return incoming.filter(e => e.strava_id && !knownIds.has(String(e.strava_id)))
+}
 
 const STRAVA_CLIENT_ID = import.meta.env.VITE_STRAVA_CLIENT_ID || ''
 

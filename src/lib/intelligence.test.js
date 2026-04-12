@@ -317,3 +317,47 @@ describe('generateDailyDigest', () => {
     expect(result.acwr).toBeNull()
   })
 })
+
+// ── getFormScore / getPeakWeekLoad / getConsistencyScore ──────────────────────
+import { getFormScore, getPeakWeekLoad, getConsistencyScore } from './intelligence.js'
+
+describe('getFormScore', () => {
+  it('returns Fatigued (red) when ATL >> CTL (high recent load)', () => {
+    // 4-week base then sudden spike: ATL >> CTL → TSB negative
+    const base = Array.from({ length: 28 }, (_, i) => entry(i + 1, 50))
+    const spike = Array.from({ length: 7 }, (_, i) => entry(35 + i, 200))
+    const { label } = getFormScore([...base, ...spike])
+    expect(label).toBe('Fatigued')
+  })
+
+  it('returns Fresh (green) after a taper (low recent load)', () => {
+    // Heavy base (older) then recent taper → ATL drops, CTL stays → TSB > 10
+    const base  = Array.from({ length: 60 }, (_, i) => entry(i + 11, 100)) // 11-70d ago
+    const taper = Array.from({ length: 10 }, (_, i) => entry(i + 1,  10))  // 1-10d ago
+    const { label } = getFormScore([...base, ...taper])
+    expect(label).toBe('Fresh')
+  })
+})
+
+describe('getPeakWeekLoad', () => {
+  it('returns 0 for empty log', () => expect(getPeakWeekLoad([])).toBe(0))
+
+  it('finds the highest 7-day TSS window', () => {
+    const light  = Array.from({ length: 14 }, (_, i) => entry(i + 1, 50))
+    const heavy  = Array.from({ length: 7  }, (_, i) => entry(15 + i, 150)) // 1050 TSS
+    const result = getPeakWeekLoad([...light, ...heavy])
+    expect(result).toBeGreaterThanOrEqual(1000)
+  })
+})
+
+describe('getConsistencyScore', () => {
+  it('returns 0 for empty log', () => expect(getConsistencyScore([])).toBe(0))
+
+  it('returns ~50% when half the days have sessions over 28d', () => {
+    // 14 sessions spread across 28-day window
+    const log = Array.from({ length: 14 }, (_, i) => entry(i + 1, 60))
+    const pct = getConsistencyScore(log, 28)
+    expect(pct).toBeGreaterThanOrEqual(40)
+    expect(pct).toBeLessThanOrEqual(60)
+  })
+})

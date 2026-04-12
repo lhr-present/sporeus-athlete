@@ -1,10 +1,11 @@
 // ─── CoachSquadView.jsx — Coach squad overview with PMC metrics ────────────────
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { S } from '../styles.js'
-import { generateDemoSquad } from '../lib/squadUtils.js'
+import { generateDemoSquad, filterByTeam, DEMO_TEAMS, getTeams } from '../lib/squadUtils.js'
 import CTLChart from './charts/CTLChart.jsx'
 import { generateSquadDigest, wellnessAvg } from '../lib/coachDigest.js'
+import { getReadinessLabel, getAthleteInsights } from '../lib/ruleInsights.js'
 
 const MONO  = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -284,6 +285,171 @@ function ExpandedRow({ athlete, coachId, onNote }) {
   )
 }
 
+// ── ChatPanel — AI coach chatbot (streaming) ──────────────────────────────────
+const MAX_CHAT_MSGS = 10
+const ANTHR_URL     = 'https://api.anthropic.com/v1/messages'
+const ANTHR_VER     = '2023-06-01'
+const CHAT_MODEL    = 'claude-haiku-4-5-20251001'
+
+async function streamCoachReply(squad, question, onChunk, onDone, onError) {
+  const key = (() => { try { return localStorage.getItem('sporeus-anthropic-key') || '' } catch { return '' } })()
+  if (!key) { onError('No API key — set it in Profile → AI Settings'); return }
+
+  const system = `You are an expert endurance coach assistant. Answer questions about the squad data provided. Be concise and practical. Under 150 words unless more detail is clearly needed.`
+  const user   = `Squad (${squad.length} athletes):\n${squad.map(a => `${a.display_name}: CTL=${a.today_ctl}, TSB=${a.today_tsb}, ACWR=${a.acwr_ratio ?? '—'}, Well=${a.adherence_pct}%`).join('\n')}\n\nQuestion: ${question}`
+
+  try {
+    const res = await fetch(ANTHR_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': ANTHR_VER },
+      body: JSON.stringify({ model: CHAT_MODEL, max_tokens: 512, stream: true, system, messages: [{ role: 'user', content: user }] }),
+    })
+    if (!res.ok) { let m = `API error ${res.status}`; try { const e = await res.json(); m = e?.error?.message || m } catch {}; onError(m); return }
+
+    const reader  = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop()
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        const raw = line.slice(6)
+        if (raw === '[DONE]') { onDone(); return }
+        try { const evt = JSON.parse(raw); if (evt.type === 'content_block_delta' && evt.delta?.text) onChunk(evt.delta.text) } catch {}
+      }
+    }
+    onDone()
+  } catch (e) { onError(e.message) }
+}
+
+function ChatPanel({ squad, isDemo }) {
+  const [open, setOpen]         = useState(false)
+  const [msgs, setMsgs]         = useState([])
+  const [input, setInput]       = useState('')
+  const [typing, setTyping]     = useState(false)
+  const threadRef               = useRef(null)
+  const hasKey = (() => { try { return !!localStorage.getItem('sporeus-anthropic-key') } catch { return false } })()
+
+  const scrollDown = () => setTimeout(() => { threadRef.current?.scrollTo({ top: 9999, behavior: 'smooth' }) }, 30)
+
+  const send = () => {
+    const q = input.trim()
+    if (!q || typing) return
+    setInput('')
+    setMsgs(prev => [...prev.slice(-(MAX_CHAT_MSGS - 1)), { role: 'user', text: q }])
+    setTyping(true)
+    scrollDown()
+
+    let reply = ''
+    const appendChunk = chunk => {
+      reply += chunk
+      setMsgs(prev => {
+        const copy = [...prev]
+        if (copy[copy.length - 1]?.role === 'ai') copy[copy.length - 1] = { role: 'ai', text: reply }
+        else copy.push({ role: 'ai', text: reply })
+        return copy
+      })
+      scrollDown()
+    }
+    // seed empty AI bubble immediately
+    setMsgs(prev => [...prev, { role: 'ai', text: '' }])
+
+    streamCoachReply(squad, q, appendChunk,
+      () => { setTyping(false); scrollDown() },
+      err => {
+        setMsgs(prev => {
+          const copy = [...prev]
+          if (copy[copy.length - 1]?.role === 'ai') copy[copy.length - 1] = { role: 'ai', text: `⚠ ${err}`, error: true }
+          return copy
+        })
+        setTyping(false)
+      }
+    )
+  }
+
+  if (!open) {
+    return (
+      <div style={{ marginTop: 12, textAlign: 'right' }}>
+        <button
+          onClick={() => setOpen(true)}
+          style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', padding: '6px 16px', background: ORANGE, border: 'none', borderRadius: 3, color: '#fff', cursor: 'pointer' }}>
+          ◈ ASK AI
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ marginTop: 14, border: `1px solid ${ORANGE}44`, borderRadius: 4, overflow: 'hidden' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#0d0d0d', borderBottom: '1px solid #1e1e1e' }}>
+        <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, color: ORANGE, letterSpacing: '0.1em' }}>◈ AI COACH</span>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {msgs.length > 0 && <button onClick={() => setMsgs([])} style={{ fontFamily: MONO, fontSize: 9, background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}>CLEAR</button>}
+          <button onClick={() => setOpen(false)} style={{ fontFamily: MONO, fontSize: 10, background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}>▼</button>
+        </div>
+      </div>
+
+      {!hasKey && (
+        <div style={{ padding: '12px 14px', fontFamily: MONO, fontSize: 10, color: '#888', background: '#0a0a0a' }}>
+          Set your Claude API key in Profile → AI Settings to enable this.
+        </div>
+      )}
+
+      {hasKey && (
+        <>
+          {/* Thread */}
+          <div ref={threadRef} style={{ maxHeight: 280, overflowY: 'auto', padding: '10px 12px', background: '#070707', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {msgs.length === 0 && (
+              <div style={{ fontFamily: MONO, fontSize: 10, color: '#444', textAlign: 'center', marginTop: 20 }}>
+                Ask about your squad — readiness, load, who to push, who to rest.
+              </div>
+            )}
+            {msgs.map((m, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                <div style={{
+                  fontFamily: MONO, fontSize: 11, lineHeight: 1.7, padding: '6px 10px', borderRadius: 4, maxWidth: '85%',
+                  background:  m.role === 'user' ? ORANGE : '#1a1a1a',
+                  color:       m.error ? '#e03030' : m.role === 'user' ? '#fff' : '#d0d0d0',
+                  whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                }}>
+                  {m.text || (typing && i === msgs.length - 1 ? <span style={{ opacity: 0.5 }}>●●●</span> : '')}
+                </div>
+              </div>
+            ))}
+            {typing && msgs[msgs.length - 1]?.text === '' && (
+              <div style={{ display: 'flex', gap: 4, padding: '4px 2px' }}>
+                {[0, 1, 2].map(j => (
+                  <span key={j} style={{ width: 6, height: 6, borderRadius: '50%', background: '#444', display: 'inline-block', animation: `sp-dot 1.2s ${j * 0.2}s infinite` }} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Input */}
+          <div style={{ display: 'flex', borderTop: '1px solid #1a1a1a', background: '#0a0a0a' }}>
+            <input
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
+              placeholder="Ask about your squad..."
+              disabled={typing}
+              style={{ flex: 1, fontFamily: MONO, fontSize: 11, background: 'transparent', border: 'none', outline: 'none', padding: '10px 12px', color: '#e0e0e0' }}
+            />
+            <button onClick={send} disabled={typing || !input.trim()} style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, padding: '8px 16px', background: typing ? '#222' : ORANGE, border: 'none', color: typing ? '#555' : '#fff', cursor: typing ? 'not-allowed' : 'pointer' }}>
+              {typing ? '…' : '↵'}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function CoachSquadView({ authUser }) {
   const [athletes, setAthletes]     = useState([])
@@ -301,6 +467,10 @@ export default function CoachSquadView({ authUser }) {
   const [digest, setDigest]         = useState(null)
   const [copied, setCopied]         = useState(false)
   const [compareIds, setCompareIds] = useState(new Set())
+  const [teams, setTeams]           = useState([])
+  const [activeTeamId, setActiveTeamId] = useState(() => {
+    try { return localStorage.getItem('sporeus-active-team') || 'all' } catch { return 'all' }
+  })
   // Missed check-in: flag athletes who haven't logged by cutoff hour (10am default)
   const [checkInCutoff] = useState(10)  // hour (0-23); persisted externally if needed
   const todayStr     = new Date().toISOString().slice(0, 10)
@@ -333,7 +503,17 @@ export default function CoachSquadView({ authUser }) {
     setLoading(false)
   }, [authUser?.id])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load().then(() => {
+      // Load teams (real or demo)
+      if (authUser?.id) {
+        getTeams(authUser.id).then(({ data }) => setTeams(data || []))
+      }
+    })
+  }, [load, authUser?.id])
+
+  // In demo mode, use DEMO_TEAMS
+  useEffect(() => { if (isDemo) setTeams(DEMO_TEAMS) }, [isDemo])
 
   // Persist flagged set
   const toggleFlag = useCallback((id) => {
@@ -357,8 +537,10 @@ export default function CoachSquadView({ authUser }) {
 
   const sorted = useMemo(() => {
     const fn = SORT_FNS[sort.col] || defaultSort
-    return [...athletes].sort((a, b) => fn(a, b) * sort.dir)
-  }, [athletes, sort])
+    const activeTeam = activeTeamId === 'all' ? null : teams.find(t => t.id === activeTeamId) || null
+    const filtered = filterByTeam(athletes, activeTeam)
+    return [...filtered].sort((a, b) => fn(a, b) * sort.dir)
+  }, [athletes, sort, activeTeamId, teams])
 
   function handleSort(col) {
     setSort(prev => prev.col === col ? { col, dir: -prev.dir } : { col, dir: 1 })
@@ -432,6 +614,32 @@ export default function CoachSquadView({ authUser }) {
           background: 'rgba(245, 197, 66, 0.08)', border: '1px solid #f5c54244', color: '#f5c542',
         }}>
           DEMO DATA — connect real athletes to see live metrics
+        </div>
+      )}
+
+      {/* Team selector — shown when teams exist */}
+      {teams.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontFamily: MONO, fontSize: 9, color: '#555', letterSpacing: '0.08em' }}>TEAM</span>
+          {[{ id: 'all', name: 'All', sport: '', age_group: '' }, ...teams].map(t => (
+            <button
+              key={t.id}
+              onClick={() => {
+                setActiveTeamId(t.id)
+                try { localStorage.setItem('sporeus-active-team', t.id) } catch {}
+              }}
+              style={{
+                fontFamily: MONO, fontSize: 9, padding: '2px 9px', borderRadius: 2, cursor: 'pointer',
+                background: activeTeamId === t.id ? ORANGE : 'transparent',
+                color:      activeTeamId === t.id ? '#fff' : '#666',
+                border:     `1px solid ${activeTeamId === t.id ? ORANGE : '#333'}`,
+                fontWeight: activeTeamId === t.id ? 700 : 400,
+              }}
+            >
+              {t.name}
+              {t.age_group ? ` (${t.age_group})` : ''}
+            </button>
+          ))}
         </div>
       )}
 
@@ -590,6 +798,21 @@ export default function CoachSquadView({ authUser }) {
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         <span style={{ fontFamily: MONO, fontSize: 11, color: '#eee', fontWeight: 600 }}>{ath.display_name}</span>
+                        {(() => {
+                          const rl = getReadinessLabel(ath.acwr_ratio, wellnessAvg(ath))
+                          const alerts = getAthleteInsights({ acwr: ath.acwr_ratio, wellnessAvg: wellnessAvg(ath) })
+                          const hasAlert = alerts.some(a => a.flag && a.key !== 'readiness')
+                          return (
+                            <>
+                              <span style={{ fontFamily: MONO, fontSize: 8, color: rl.color, border: `1px solid ${rl.color}55`, borderRadius: 2, padding: '1px 5px', letterSpacing: '0.04em', fontWeight: 700 }}>
+                                {rl.level.toUpperCase()}
+                              </span>
+                              {hasAlert && (
+                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: RED, display: 'inline-block', flexShrink: 0 }} title="Active alerts" />
+                              )}
+                            </>
+                          )
+                        })()}
                         {noCheckIn && (
                           <span style={{ fontFamily: MONO, fontSize: 8, color: YELLOW, border: `1px solid ${YELLOW}55`, borderRadius: 2, padding: '1px 5px' }}>
                             ⚠ NO CHECK-IN
@@ -679,6 +902,21 @@ export default function CoachSquadView({ authUser }) {
                           <span style={{ fontFamily: MONO, fontSize: 11, color: '#eee', fontWeight: 600 }}>
                             {ath.display_name}
                           </span>
+                          {(() => {
+                            const rl = getReadinessLabel(ath.acwr_ratio, wellnessAvg(ath))
+                            const alerts = getAthleteInsights({ acwr: ath.acwr_ratio, wellnessAvg: wellnessAvg(ath) })
+                            const hasAlert = alerts.some(a => a.flag && a.key !== 'readiness')
+                            return (
+                              <>
+                                <span style={{ fontFamily: MONO, fontSize: 8, color: rl.color, border: `1px solid ${rl.color}55`, borderRadius: 2, padding: '1px 5px', fontWeight: 700 }}>
+                                  {rl.level.toUpperCase()}
+                                </span>
+                                {hasAlert && (
+                                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: RED, display: 'inline-block', flexShrink: 0 }} title="Active alerts" />
+                                )}
+                              </>
+                            )
+                          })()}
                           {noCheckIn && (
                             <span style={{ fontFamily: MONO, fontSize: 8, color: YELLOW, border: `1px solid ${YELLOW}55`, borderRadius: 2, padding: '1px 5px', letterSpacing: '0.05em' }}>
                               ⚠ NO CHECK-IN
@@ -753,6 +991,9 @@ export default function CoachSquadView({ authUser }) {
           </div>
         )
       )}
+
+      {/* AI Coach chatbot — visible in demo mode or when authenticated as coach */}
+      {(isDemo || authUser) && <ChatPanel squad={sorted} isDemo={isDemo} />}
 
       {/* Note panel overlay */}
       {noteFor && (

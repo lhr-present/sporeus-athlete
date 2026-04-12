@@ -949,3 +949,41 @@ export function generateDailyDigest(log, recovery, profile, lang = 'en') {
     ctl, tsb, acwr,
   }
 }
+
+// ─── getFormScore ──────────────────────────────────────────────────────────────
+// Returns { tsb, color, label } where TSB = CTL – ATL.
+// color: green (fresh) / amber (neutral) / red (fatigued)
+export function getFormScore(log) {
+  const ctl = computeCTL(log)
+  const atl  = computeATL(log)
+  const tsb  = ctl - atl
+  let color, label
+  if (tsb > 10)       { color = '#5bc25b'; label = 'Fresh' }
+  else if (tsb > -5)  { color = '#f0a000'; label = 'Neutral' }
+  else                { color = '#e03030'; label = 'Fatigued' }
+  return { tsb: Math.round(tsb), ctl, atl, color, label }
+}
+
+// ─── getPeakWeekLoad ──────────────────────────────────────────────────────────
+// Returns the highest 7-day rolling TSS total in the entire log.
+export function getPeakWeekLoad(log) {
+  if (!log || log.length === 0) return 0
+  const sorted = [...log].sort((a, b) => a.date > b.date ? 1 : -1)
+  let peak = 0
+  for (let i = 0; i < sorted.length; i++) {
+    const anchor = sorted[i].date
+    const window7End = new Date(new Date(anchor).getTime() + 7 * 86400000).toISOString().slice(0, 10)
+    const wkTss = sorted.filter(e => e.date >= anchor && e.date < window7End).reduce((s, e) => s + (e.tss || 0), 0)
+    if (wkTss > peak) peak = wkTss
+  }
+  return Math.round(peak)
+}
+
+// ─── getConsistencyScore ──────────────────────────────────────────────────────
+// % of days with at least one session over the last `days` days (default 28).
+export function getConsistencyScore(log, days = 28) {
+  if (!log || log.length === 0) return 0
+  const cutoff = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10)
+  const activeDays = new Set(log.filter(e => e.date >= cutoff).map(e => e.date)).size
+  return Math.round((activeDays / days) * 100)
+}

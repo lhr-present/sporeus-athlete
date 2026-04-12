@@ -1,5 +1,10 @@
-import { describe, it, expect } from 'vitest'
-import { makeLCG, generateDemoSquad, deriveTrainingStatus, mapAcwrStatus } from './squadUtils.js'
+import { describe, it, expect, vi } from 'vitest'
+import { makeLCG, generateDemoSquad, deriveTrainingStatus, mapAcwrStatus, filterByTeam, DEMO_TEAMS } from './squadUtils.js'
+
+vi.mock('./supabase.js', () => ({
+  supabase: { from: vi.fn(() => ({ select: vi.fn(), eq: vi.fn(), order: vi.fn(), insert: vi.fn() })) },
+  isSupabaseReady: vi.fn(() => false),
+}))
 
 // ── makeLCG ───────────────────────────────────────────────────────────────────
 describe('makeLCG', () => {
@@ -159,5 +164,42 @@ describe('generateDemoSquad', () => {
         expect(a._log[0]).toHaveProperty('tss')
       }
     }
+  })
+})
+
+// ── filterByTeam ──────────────────────────────────────────────────────────────
+describe('filterByTeam', () => {
+  const squad = generateDemoSquad(42)
+
+  it('returns all athletes when team is null', () => {
+    expect(filterByTeam(squad, null)).toHaveLength(6)
+  })
+
+  it('returns all athletes when team has no athlete_ids', () => {
+    expect(filterByTeam(squad, { id: 'x', name: 'All' })).toHaveLength(6)
+    expect(filterByTeam(squad, { id: 'x', athlete_ids: [] })).toHaveLength(6)
+  })
+
+  it('filters to Senior team — 3 athletes (Eddy, Fausto, Bernard)', () => {
+    const result = filterByTeam(squad, DEMO_TEAMS[0])
+    expect(result).toHaveLength(3)
+    const names = result.map(a => a.display_name)
+    expect(names).toContain('Eddy')
+    expect(names).toContain('Fausto')
+    expect(names).toContain('Bernard')
+  })
+
+  it('filters to U23 team — 2 athletes (Miguel, Tadej)', () => {
+    const result = filterByTeam(squad, DEMO_TEAMS[1])
+    expect(result).toHaveLength(2)
+    const names = result.map(a => a.display_name)
+    expect(names).toContain('Miguel')
+    expect(names).toContain('Tadej')
+  })
+
+  it('filters to U18 team — 1 athlete (Wout)', () => {
+    const result = filterByTeam(squad, DEMO_TEAMS[2])
+    expect(result).toHaveLength(1)
+    expect(result[0].display_name).toBe('Wout')
   })
 })

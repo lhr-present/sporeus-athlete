@@ -16,7 +16,7 @@ import { useCountUp } from '../hooks/useCountUp.js'
 import Achievements from './Achievements.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { SPORT_BRANCHES, ATHLETE_LEVELS, LEVEL_CONFIG, DASH_CARD_DEFS } from '../lib/constants.js'
-import { analyzeLoadTrend, analyzeRecoveryCorrelation, analyzeZoneBalance, predictInjuryRisk, predictFitness, generateWeeklyNarrative, detectMilestones, computeRaceReadiness, predictRacePerformance, assessDataQuality } from '../lib/intelligence.js'
+import { analyzeLoadTrend, analyzeRecoveryCorrelation, analyzeZoneBalance, predictInjuryRisk, predictFitness, generateWeeklyNarrative, detectMilestones, computeRaceReadiness, predictRacePerformance, assessDataQuality, getFormScore, getPeakWeekLoad, getConsistencyScore } from '../lib/intelligence.js'
 import { getTriggeredNotes } from '../lib/scienceNotes.js'
 import { correlateTrainingToResults, findRecoveryPatterns, mineInjuryPatterns, findOptimalWeekStructure, findSeasonalPatterns } from '../lib/patterns.js'
 import { useData } from '../contexts/DataContext.jsx'
@@ -1089,6 +1089,31 @@ export default function Dashboard({ log, profile }) {
                 <span style={{ ...S.mono, fontSize:'10px', padding:'2px 7px', border:'1px solid #33333344', borderRadius:'2px', color:'#888' }}>
                   STRAIN {strain}
                 </span>
+              </div>
+            )
+          })()}
+          {/* ── Performance Metrics ── */}
+          {log.length >= 7 && (() => {
+            const form = getFormScore(log)
+            const peakWk = getPeakWeekLoad(log)
+            const consist = getConsistencyScore(log, 28)
+            return (
+              <div style={{ display:'flex', gap:'10px', flexWrap:'wrap', marginBottom:'14px' }}>
+                <div style={{ flex:'1 1 120px', background:'var(--surface)', border:`1px solid ${form.color}44`, borderRadius:'6px', padding:'12px', textAlign:'center' }}>
+                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'22px', fontWeight:600, color:form.color }}>{form.tsb > 0 ? '+' : ''}{form.tsb}</div>
+                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'9px', color:'#888', letterSpacing:'0.1em', textTransform:'uppercase', marginTop:'4px' }}>Form (TSB)</div>
+                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', color:form.color, marginTop:'2px' }}>{form.label}</div>
+                </div>
+                <div style={{ flex:'1 1 120px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'6px', padding:'12px', textAlign:'center' }}>
+                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'22px', fontWeight:600, color:'#ff6600' }}>{peakWk}</div>
+                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'9px', color:'#888', letterSpacing:'0.1em', textTransform:'uppercase', marginTop:'4px' }}>Peak Week TSS</div>
+                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', color:'#888', marginTop:'2px' }}>all-time</div>
+                </div>
+                <div style={{ flex:'1 1 120px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'6px', padding:'12px', textAlign:'center' }}>
+                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'22px', fontWeight:600, color: consist >= 70 ? '#5bc25b' : consist >= 40 ? '#f0a000' : '#e03030' }}>{consist}%</div>
+                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'9px', color:'#888', letterSpacing:'0.1em', textTransform:'uppercase', marginTop:'4px' }}>Consistency</div>
+                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', color:'#888', marginTop:'2px' }}>last 28d</div>
+                </div>
               </div>
             )
           })()}
