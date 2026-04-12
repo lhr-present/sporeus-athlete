@@ -632,8 +632,14 @@ export default function Dashboard({ log, profile }) {
   const totalTSS = last7.reduce((s,e)=>s+(e.tss||0),0)
   const totalMin = last7.reduce((s,e)=>s+(e.duration||0),0)
   const avgRPE   = last7.length ? (last7.reduce((s,e)=>s+(e.rpe||0),0)/last7.length).toFixed(1) : '\u2014'
+  const srpeLoad = last7.reduce((s,e) => s + ((e.rpe||0) * (e.duration||0)), 0)
   const { atl, ctl, tsb, daily } = calcLoad(log)
   const acwr = calculateACWR(log)
+  // Week-over-week load spike (>10% = caution banner)
+  const w7Start  = (() => { const d = new Date(); d.setDate(d.getDate()-7);  return d.toISOString().slice(0,10) })()
+  const w14Start = (() => { const d = new Date(); d.setDate(d.getDate()-14); return d.toISOString().slice(0,10) })()
+  const prevWeekTSS = log.filter(e => e.date >= w14Start && e.date < w7Start).reduce((s,e) => s+(e.tss||0), 0)
+  const loadSpikeP  = prevWeekTSS > 10 ? Math.round((totalTSS - prevWeekTSS) / prevWeekTSS * 100) : 0
   const readiness = totalTSS>600?{label:t('fatigued'),color:'#e03030'}:totalTSS>400?{label:t('trained'),color:'#f5c542'}:{label:t('fresh'),color:'#5bc25b'}
   const tsbColor = tsb>5?'#5bc25b':tsb<-10?'#e03030':'#f5c542'
   const countSess = useCountUp(last7.length)
@@ -839,6 +845,25 @@ export default function Dashboard({ log, profile }) {
 
       <RaceReadinessCard log={log} recovery={recovery} injuries={injuries} profile={profile} plan={plan} planStatus={planStatus} lang={lang}/>
       <ProactiveInjuryAlert log={log} injuries={injuries} lang={lang}/>
+
+      {loadSpikeP >= 10 && (
+        <div className="sp-card" style={{ ...S.card, borderLeft:'4px solid #f5c542', background:'#f5c54209', animationDelay:'0ms' }}>
+          <div style={{ ...S.mono, fontSize:'10px', color:'#f5c542', fontWeight:600, letterSpacing:'0.08em', marginBottom:'4px' }}>
+            ⚠ LOAD SPIKE DETECTED
+          </div>
+          <div style={{ ...S.mono, fontSize:'12px', color:'var(--text)', lineHeight:1.7 }}>
+            {lang==='tr'
+              ? `Bu haftanın yükü geçen haftaya göre +%${loadSpikeP} arttı.`
+              : `This week's load is +${loadSpikeP}% higher than last week.`}
+          </div>
+          <div style={{ ...S.mono, fontSize:'10px', color:'#888', marginTop:'4px' }}>
+            {loadSpikeP >= 30
+              ? (lang==='tr' ? '→ Yüksek artış — bu haftaki tempo seansını kolay antrenmanla değiştirin.' : '→ Large spike — swap this week\'s intensity session for easy aerobic work.')
+              : (lang==='tr' ? '→ Yükü takip edin; hafif bir seans ekleyebilirsiniz.' : '→ Monitor closely; consider adding one extra easy session.')}
+          </div>
+        </div>
+      )}
+
       {recovery.some(e => parseFloat(e.hrv) > 0) && (
         <div className="sp-card" style={{ ...S.card, animationDelay:'20ms' }}>
           <div style={S.cardTitle}>HRV TREND</div>
@@ -852,10 +877,11 @@ export default function Dashboard({ log, profile }) {
 
       {dl.stats && <div className="sp-card" style={{ ...S.row, marginBottom:'16px', animationDelay:'50ms' }}>
         {[
-          { val:countSess,                                   lbl:t('sessions') },
-          { val:`${Math.floor(totalMin/60)}h ${totalMin%60}m`, lbl:t('volume') },
-          { val:avgRPE,                                       lbl:t('avgRpe') },
-          { val:totalTSS,                                     lbl:t('tss7'), tip:'Training Stress Score. Combines duration × intensity². Easy day ~50, hard day ~100+.' },
+          { val:countSess,                                      lbl:t('sessions') },
+          { val:`${Math.floor(totalMin/60)}h ${totalMin%60}m`,  lbl:t('volume') },
+          { val:avgRPE,                                          lbl:t('avgRpe') },
+          { val:totalTSS,                                        lbl:t('tss7'), tip:'Training Stress Score. Combines duration × intensity². Easy day ~50, hard day ~100+.' },
+          { val:srpeLoad > 0 ? srpeLoad : '—',                   lbl:'sRPE LOAD', tip:'Session-RPE load: RPE × minutes (Foster 2001). Quantifies internal load without heart rate or power data.' },
         ].map(({val,lbl,tip})=>(
           <div key={lbl} style={S.stat}>
             <span style={S.statVal}>{val}</span>

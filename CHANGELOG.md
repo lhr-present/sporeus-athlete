@@ -2,6 +2,14 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v5.13.0 (2026-04-12)
+- ActivityHeatmap.jsx: GitHub-style 52-week training density heatmap (orange intensity scale by TSS), mounted in Profile tab
+- Dashboard: sRPE load (RPE × duration, Foster 2001) added as 5th stat badge in the 7-day summary row
+- Dashboard: standalone load spike alert — shows amber banner for ALL users when this week's TSS is ≥10% above last week (no injury history required)
+- VO2maxCard: ACSM normative percentile badge (Poor/Fair/Good/Excellent/Superior) next to VDOT score, age + gender aware, 6 age bands × 2 genders (ACSM 11th ed.)
+- 310 tests still green; main bundle +6 KB gzip (134 KB)
+- DEPENDS ON: existing log TSS data, profile.age + profile.gender for normative lookup
+
 ## v5.12.2 (2026-04-12)
 - src/lib/integration.test.js: 41 new end-to-end pipeline tests across 5 scenarios
   - Scenario 1: Endurance runner 6 months (PMC, ACWR, VO₂max trend, VDOT, race equivalents)

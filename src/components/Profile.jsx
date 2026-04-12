@@ -10,6 +10,7 @@ import { Sparkline } from './ui.jsx'
 import { isSupabaseReady } from '../lib/supabase.js'
 import NotificationSettings from './NotificationSettings.jsx'
 import DeviceSync from './DeviceSync.jsx'
+import ActivityHeatmap from './ActivityHeatmap.jsx'
 import { getStravaConnection, initiateStravaOAuth, triggerStravaSync, disconnectStrava } from '../lib/strava.js'
 import { getPushState, subscribePush, unsubscribePush, checkRaceCountdowns } from '../lib/pushNotify.js'
 
@@ -1143,6 +1144,13 @@ export default function Profile({ profile, setProfile, log, authUser }) {
           <div style={{ color:'var(--sub)', fontSize:'10px', marginTop:'6px' }}>Works fully offline once installed.</div>
         </div>
       </div>
+
+      {log && log.length > 0 && (
+        <div className="sp-card" style={{ ...S.card, animationDelay:'105ms' }}>
+          <div style={S.cardTitle}>TRAINING HEATMAP</div>
+          <ActivityHeatmap log={log} />
+        </div>
+      )}
 
       <div className="sp-card" style={{ ...S.card, animationDelay:'108ms', borderLeft:`3px solid ${coachMode?'#0064ff':'var(--border)'}` }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>

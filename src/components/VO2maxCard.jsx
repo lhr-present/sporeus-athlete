@@ -8,6 +8,40 @@ import { S } from '../styles.js'
 
 const MONO = "'IBM Plex Mono', monospace"
 
+// ACSM normative VO₂max classification (mL/kg/min) by age group + gender
+// Source: ACSM's Guidelines for Exercise Testing and Prescription, 11th ed.
+const VO2_NORMS = {
+  male: [
+    { age:[20,29], bands:[37,44,51,56] },
+    { age:[30,39], bands:[35,42,49,53] },
+    { age:[40,49], bands:[33,39,46,52] },
+    { age:[50,59], bands:[30,36,43,48] },
+    { age:[60,69], bands:[26,31,38,44] },
+    { age:[70,99], bands:[22,26,32,36] },
+  ],
+  female: [
+    { age:[20,29], bands:[28,33,38,42] },
+    { age:[30,39], bands:[27,31,36,40] },
+    { age:[40,49], bands:[25,29,34,37] },
+    { age:[50,59], bands:[22,26,30,34] },
+    { age:[60,69], bands:[20,23,27,31] },
+    { age:[70,99], bands:[17,20,23,27] },
+  ],
+}
+// Returns { category, pct, color }
+function normativeVO2(vo2, age, gender) {
+  const gKey  = gender === 'female' ? 'female' : 'male'
+  const norms = VO2_NORMS[gKey]
+  const ageN  = parseInt(age) || 35
+  const row   = norms.find(r => ageN >= r.age[0] && ageN <= r.age[1]) || norms[norms.length - 1]
+  const [b1, b2, b3, b4] = row.bands
+  if      (vo2 < b1)  return { category: 'Poor',      pct: '< 20th',       color: '#e03030' }
+  else if (vo2 < b2)  return { category: 'Fair',       pct: '20–40th',      color: '#f57c42' }
+  else if (vo2 < b3)  return { category: 'Good',       pct: '40–60th',      color: '#f5c542' }
+  else if (vo2 < b4)  return { category: 'Excellent',  pct: '60–80th',      color: '#5bc25b' }
+  else                return { category: 'Superior',   pct: 'Top 20%',      color: '#0064ff' }
+}
+
 const RACE_LABELS = {
   1500: '1500m', 1609: 'Mile', 3000: '3 km',
   5000: '5 km', 10000: '10 km', 21097: 'Half Marathon', 42195: 'Marathon',
@@ -52,8 +86,12 @@ export default function VO2maxCard() {
     return best.vo2max
   }, [trend, manualVdot])
 
-  const zones  = useMemo(() => currentVdot ? zonesFromVDOT(currentVdot)   : null, [currentVdot])
-  const equivs = useMemo(() => currentVdot ? raceEquivalents(currentVdot) : null, [currentVdot])
+  const zones    = useMemo(() => currentVdot ? zonesFromVDOT(currentVdot)   : null, [currentVdot])
+  const equivs   = useMemo(() => currentVdot ? raceEquivalents(currentVdot) : null, [currentVdot])
+  const normative = useMemo(() => {
+    if (!currentVdot) return null
+    return normativeVO2(currentVdot, profile.age, profile.gender)
+  }, [currentVdot, profile.age, profile.gender])
 
   const handleRaceCalc = () => {
     setRaceErr('')
@@ -93,6 +131,17 @@ export default function VO2maxCard() {
                   const best = [...trend].reverse().find(e => e.confidence === 'high') || trend[trend.length - 1]
                   return `${best.method} · ${best.date}`
                 })()}
+              </div>
+            )}
+            {normative && (
+              <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontFamily: MONO, fontSize: '11px', fontWeight: 700, color: normative.color, border: `1px solid ${normative.color}55`, padding: '2px 8px', borderRadius: '3px', letterSpacing: '0.06em' }}>
+                  {normative.category.toUpperCase()}
+                </span>
+                <span style={{ fontFamily: MONO, fontSize: '9px', color: '#555' }}>
+                  {normative.pct} percentile · ACSM norms
+                  {profile.age ? ` (age ${profile.age})` : ''}
+                </span>
               </div>
             )}
           </div>
