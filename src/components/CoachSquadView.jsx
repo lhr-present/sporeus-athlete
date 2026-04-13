@@ -3,8 +3,10 @@
 // Sub-components: coach/ChatPanel, coach/TeamSelector, coach/AthleteRow,
 //                 coach/NotePanel, coach/ExpandedRow
 // Custom hook:    hooks/useRealtimeSquad
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { fetchSquad } from '../lib/db/athletes.js'
+import { createInvite, buildInviteUrl, getMyAthletes } from '../lib/inviteUtils.js'
+import { supabase } from '../lib/supabase.js'
 import { S } from '../styles.js'
 import { generateDemoSquad, filterByTeam, DEMO_TEAMS, getTeams } from '../lib/squadUtils.js'
 import { getTierSync, canAddAthlete, isFeatureGated, getUpgradePrompt } from '../lib/subscription.js'
@@ -126,6 +128,33 @@ export default function CoachSquadView({ authUser }) {
   const teamGated     = isFeatureGated('multi_team', tier)
   const inviteCode    = coachId ? coachId.slice(0, 8).toUpperCase() : null
 
+  // ── Invite link generation ────────────────────────────────────────────────────
+  const [inviteBusy,    setInviteBusy]    = useState(false)
+  const [inviteToast,   setInviteToast]   = useState(null)  // { msg, ok }
+  const [connectedCount, setConnectedCount] = useState(null)
+  const inviteToastTimer = useRef(null)
+
+  useEffect(() => {
+    if (!coachId || !supabase) return
+    getMyAthletes(supabase, coachId).then(ids => setConnectedCount(ids.length))
+  }, [coachId])
+
+  const handleGenerateInvite = useCallback(async () => {
+    if (!coachId || inviteBusy || !supabase) return
+    setInviteBusy(true)
+    const result = await createInvite(supabase, coachId)
+    setInviteBusy(false)
+    if (result.error) {
+      setInviteToast({ msg: `✗ Failed to generate link — ${result.error}`, ok: false })
+    } else {
+      try { await navigator.clipboard.writeText(result.inviteUrl) } catch { /* non-fatal */ }
+      setInviteToast({ msg: '✓ Invite link copied — expires in 7 days', ok: true })
+      setConnectedCount(c => c) // refresh count after next load
+    }
+    clearTimeout(inviteToastTimer.current)
+    inviteToastTimer.current = setTimeout(() => setInviteToast(null), 4000)
+  }, [coachId, inviteBusy])
+
   function ColHdr({ col, children, style }) {
     return (
       <th onClick={() => handleSort(col)} style={{ fontFamily: MONO, fontSize: 9, color: sort.col === col ? ORANGE : '#555', letterSpacing: '0.08em', padding: '6px 8px', cursor: 'pointer', whiteSpace: 'nowrap', userSelect: 'none', background: 'transparent', border: 'none', textAlign: 'left', ...style }}>
@@ -145,9 +174,33 @@ export default function CoachSquadView({ authUser }) {
 
   return (
     <div className="sp-card" style={{ ...S.card, animationDelay: '0ms' }}>
+      {/* Invite toast */}
+      {inviteToast && (
+        <div style={{ position:'fixed', top:16, right:16, zIndex:20001, fontFamily:MONO, fontSize:10, padding:'8px 14px', borderRadius:4, border:`1px solid ${inviteToast.ok ? GREEN : '#e03030'}44`, background: inviteToast.ok ? `${GREEN}11` : '#e0303011', color: inviteToast.ok ? GREEN : '#e03030', boxShadow:'0 4px 16px rgba(0,0,0,0.4)', whiteSpace:'nowrap' }}>
+          {inviteToast.msg}
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'8px', flexWrap:'wrap', gap:'6px' }}>
-        <div style={S.cardTitle}>SQUAD</div>
+        <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
+          <div style={S.cardTitle}>SQUAD</div>
+          {connectedCount !== null && (
+            <span style={{ fontFamily:MONO, fontSize:9, color:'#555', letterSpacing:'0.08em' }}>
+              {connectedCount} CONNECTED
+            </span>
+          )}
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+          {!isDemo && !inviteBlocked && coachId && (
+            <button
+              onClick={handleGenerateInvite}
+              disabled={inviteBusy}
+              style={{ fontFamily:MONO, fontSize:9, letterSpacing:'0.08em', padding:'5px 12px', background:'transparent', border:`1px solid ${ORANGE}`, borderRadius:3, color:ORANGE, cursor:inviteBusy ? 'not-allowed' : 'pointer', opacity:inviteBusy ? 0.6 : 1, whiteSpace:'nowrap' }}>
+              {inviteBusy ? '…' : '+ INVITE LINK'}
+            </button>
+          )}
+        </div>
         {!isDemo && (
           <div style={{ display:'flex', alignItems:'center', gap:'6px', fontFamily: MONO, fontSize: 9, color: rtStatus === 'live' ? GREEN : rtStatus === 'reconnecting' ? YELLOW : '#555' }}>
             <span style={{ width:6, height:6, borderRadius:'50%', background: rtStatus === 'live' ? GREEN : rtStatus === 'reconnecting' ? YELLOW : '#333', display:'inline-block' }}/>

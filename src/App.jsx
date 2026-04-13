@@ -62,8 +62,17 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
       url.searchParams.delete('invite')
       window.history.replaceState({}, '', url.toString())
     }
-    return code || null
+    // Prefer URL param; fall back to pending invite stored for unauthenticated users
+    return code || sessionStorage.getItem('sporeus-pending-invite') || null
   })
+
+  // After auth completes, pick up any pending invite stored pre-login
+  useEffect(() => {
+    if (!authUser) return
+    const pending = sessionStorage.getItem('sporeus-pending-invite')
+    if (pending && !inviteCode) setInviteCode(pending)
+    sessionStorage.removeItem('sporeus-pending-invite')
+  }, [authUser])
 
   // Strava OAuth callback — detect ?state=strava&code=XXX on load
   const [stravaCallbackCode, setStravaCallbackCode] = useState(() => {
@@ -517,7 +526,17 @@ export default function App() {
     const isGuest = localStorage.getItem('sporeus-guest-mode') === '1'
     if (!isGuest) {
       if (loading) return <Splash />
-      if (!user)   return <AuthGate lang={lang} />
+      if (!user) {
+        // Persist any pending invite so it survives the auth redirect
+        const pendingInvite = new URLSearchParams(window.location.search).get('invite')
+        if (pendingInvite) {
+          try { sessionStorage.setItem('sporeus-pending-invite', pendingInvite) } catch {}
+          const url = new URL(window.location.href)
+          url.searchParams.delete('invite')
+          window.history.replaceState({}, '', url.toString())
+        }
+        return <AuthGate lang={lang} />
+      }
       if (authProfile && !authProfile.role) return <RoleSelector userId={user.id} onComplete={refreshProfile} lang={lang} />
       if (!authProfile) return <RoleSelector userId={user.id} onComplete={refreshProfile} lang={lang} />
       const localData = detectLocalData()
