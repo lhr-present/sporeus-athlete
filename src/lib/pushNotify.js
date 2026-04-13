@@ -143,11 +143,39 @@ export async function scheduleCheckinReminder(userId, preferredTime = '07:00') {
     sendLocalNotification(
       'Sporeus — Daily Check-in',
       'How are you feeling today? Log your wellness in 30 seconds.',
-      '/sporeus-athlete/'
+      '/sporeus-athlete/?tab=today'
     )
   }, delay)
 
   return { error: null, scheduledAt: next.toISOString() }
+}
+
+// ── checkSubscriptionExpiry ───────────────────────────────────────────────────
+// Called on app load. If the local push subscription is not in Supabase
+// (e.g. VAPID key rotated, endpoint expired), silently re-subscribes.
+export async function checkSubscriptionExpiry(userId) {
+  if (!isPushSupported()) return
+  if (!isSupabaseReady() || !userId) return
+
+  try {
+    const reg = await navigator.serviceWorker.ready
+    const sub = await reg.pushManager.getSubscription()
+    if (!sub) return  // not subscribed — nothing to check
+
+    const { data } = await supabase
+      .from('push_subscriptions')
+      .select('endpoint')
+      .eq('user_id', userId)
+      .eq('endpoint', sub.endpoint)
+      .maybeSingle()
+
+    if (!data) {
+      // Endpoint missing from DB — re-subscribe with fresh VAPID registration
+      await subscribePush(userId)
+    }
+  } catch (e) {
+    console.warn('checkSubscriptionExpiry error:', e.message)
+  }
 }
 
 // ── Race countdown checker ─────────────────────────────────────────────────────

@@ -126,12 +126,17 @@ export async function exchangeStravaCode(code) {
   return { data, error }
 }
 
+// Module-level mutex — prevents concurrent sync calls from hitting the edge function twice.
+let _syncPromise = null
+
 // Trigger activity sync from Strava (last 30 days)
 export async function triggerStravaSync() {
-  const { data, error } = await supabase.functions.invoke('strava-oauth', {
-    body: { action: 'sync' },
-  })
-  return { data, error }
+  if (_syncPromise) return _syncPromise
+  _syncPromise = supabase.functions.invoke('strava-oauth', { body: { action: 'sync' } })
+    .then(({ data, error }) => ({ data, error }))
+    .catch(err => ({ data: null, error: err }))
+    .finally(() => { _syncPromise = null })
+  return _syncPromise
 }
 
 // Disconnect Strava (removes tokens, keeps synced activities)

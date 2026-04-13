@@ -7,7 +7,7 @@ import { NetworkFirst } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
 import { CacheableResponsePlugin } from 'workbox-cacheable-response'
 
-const CACHE_VERSION = 'sporeus-v5.20.0'
+const CACHE_VERSION = 'sporeus-v6.0.0'
 
 // ── Precaching ─────────────────────────────────────────────────────────────────
 precacheAndRoute(self.__WB_MANIFEST)
@@ -98,7 +98,10 @@ self.addEventListener('notificationclick', event => {
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       for (const client of list) {
         if (client.url.includes('sporeus-athlete') && 'focus' in client) {
-          return client.focus()
+          // focus() brings the window to front; navigate() routes to the target tab.
+          // client.navigate is available in modern browsers (Chrome 49+).
+          client.focus()
+          return client.navigate ? client.navigate(url) : Promise.resolve()
         }
       }
       return self.clients.openWindow(url)

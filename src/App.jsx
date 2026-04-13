@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, lazy } from 'react'
 import { exchangeStravaCode } from './lib/strava.js'
-import { checkRaceCountdowns } from './lib/pushNotify.js'
+import { checkRaceCountdowns, checkSubscriptionExpiry } from './lib/pushNotify.js'
 import { scheduleSessionReminder, getReminderSettings } from './lib/pushNotifications.js'
 import { triggerSync } from './lib/deviceSync.js'
 import { initOfflineSync, onSyncStatusChange, getSyncStatus, flushQueue } from './lib/offlineQueue.js'
@@ -25,12 +25,14 @@ import { InviteModal } from './components/MyCoach.jsx'
 import { useAuth } from './hooks/useAuth.js'
 import { isSupabaseReady } from './lib/supabase.js'
 import { detectLocalData } from './lib/dataMigration.js'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
 const CoachDashboard  = lazy(() => import('./components/CoachDashboard.jsx'))
 const CoachOverview   = lazy(() => import('./components/CoachOverview.jsx'))
 const CoachSquadView  = lazy(() => import('./components/CoachSquadView.jsx'))
 const PlanGenerator  = lazy(() => import('./components/PlanGenerator.jsx'))
 const YearlyPlan     = lazy(() => import('./components/YearlyPlan.jsx'))
-const Glossary       = lazy(() => import('./components/Glossary.jsx'))
+const Glossary            = lazy(() => import('./components/Glossary.jsx'))
+const SportProgramBuilder = lazy(() => import('./components/SportProgramBuilder.jsx'))
 // Heavy tabs: defer until user navigates to them
 const Dashboard     = lazy(() => import('./components/Dashboard.jsx'))
 const Profile       = lazy(() => import('./components/Profile.jsx'))
@@ -189,8 +191,9 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
   useEffect(() => {
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       checkRaceCountdowns()
+      checkSubscriptionExpiry(authUser?.id)
     }
-  }, [])
+  }, [authUser?.id])
 
   // Session reminders — reschedule on load if enabled
   useEffect(() => {
@@ -503,10 +506,11 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
           {tab === 'glossary'     && <AsyncBoundary name="Glossary"><Glossary/></AsyncBoundary>}
           {tab === 'recovery'     && <AsyncBoundary name="Recovery"><Recovery/></AsyncBoundary>}
           {tab === 'profile'      && <AsyncBoundary name="Profile"><Profile profile={profile} setProfile={setProfile} log={log} authUser={authUser}/></AsyncBoundary>}
+          {tab === 'sport'        && <AsyncBoundary name="Sport Plan"><SportProgramBuilder profile={profile}/></AsyncBoundary>}
         </main>
 
         <footer style={S.footer}>
-          SPOREUS ATHLETE CONSOLE v6.0.0 · SPOREUS.COM
+          SPOREUS ATHLETE CONSOLE v6.1.0 · SPOREUS.COM
         </footer>
       </div>
     </LangCtx.Provider>
@@ -547,12 +551,14 @@ export default function App() {
   }
 
   return (
-    <DataProvider userId={userId}>
-      <AppInner
-        lang={lang} setLang={setLang}
-        dark={dark} setDark={setDark}
-        authUser={user} authProfile={authProfile} signOut={signOut}
-      />
-    </DataProvider>
+    <ErrorBoundary name="DataProvider">
+      <DataProvider userId={userId}>
+        <AppInner
+          lang={lang} setLang={setLang}
+          dark={dark} setDark={setDark}
+          authUser={user} authProfile={authProfile} signOut={signOut}
+        />
+      </DataProvider>
+    </ErrorBoundary>
   )
 }

@@ -8,7 +8,7 @@ export const LABELS = {
     appSub: 'BLOOMBERG TERMINAL FOR ENDURANCE ATHLETES',
     t_dashboard: 'DASHBOARD', t_zones: 'ZONE CALC', t_tests: 'PROTOCOLS',
     t_log: 'TRAINING LOG', t_macro: 'MACRO PLAN', t_glossary: 'GLOSSARY',
-    t_recovery: 'RECOVERY', t_profile: 'PROFILE',
+    t_recovery: 'RECOVERY', t_profile: 'PROFILE', t_sport: 'SPORT PLAN',
     readiness: 'READINESS STATUS', fresh: 'FRESH', trained: 'TRAINED', fatigued: 'FATIGUED',
     sessions: 'SESSIONS', volume: 'VOLUME', avgRpe: 'AVG RPE', tss7: '7-DAY TSS',
     recentSessions: 'RECENT SESSIONS', noSessions: 'No sessions logged yet. Use the Training Log tab.',
@@ -111,7 +111,7 @@ export const LABELS = {
     appSub: 'DAYANIKLILIK SPORCULARI \u0130\u00c7\u0130N BLOOMBERG TERM\u0130NAL',
     t_dashboard: 'PANO', t_zones: 'ZON HESAP', t_tests: 'PROTOKOLLER',
     t_log: 'ANTRENMAN LOG', t_macro: 'MAKRO PLAN', t_glossary: 'S\u00d6ZL\u00dcK',
-    t_recovery: 'TOPARLANMA', t_profile: 'PROF\u0130L',
+    t_recovery: 'TOPARLANMA', t_profile: 'PROFİL', t_sport: 'SPOR PLAN',
     readiness: 'HAZIRLIK DURUMU', fresh: 'D\u0130NLENM\u0130\u015e', trained: 'ANTRENMANLI', fatigued: 'YORGUN',
     sessions: 'ANTRENMAN', volume: 'HAC\u0130M', avgRpe: 'ORT. ZY', tss7: '7 G\u00dcNL\u00dcK TSS',
     recentSessions: 'SON ANTRENMANLAR',
@@ -224,4 +224,5 @@ export const TABS = [
   { id: 'glossary',      icon: '\u25c7', lk: 't_glossary' },
   { id: 'recovery',      icon: '\u2661', lk: 't_recovery' },
   { id: 'profile',       icon: '\u25cb', lk: 't_profile' },
+  { id: 'sport',         icon: '\u25b6', lk: 't_sport' },
 ]

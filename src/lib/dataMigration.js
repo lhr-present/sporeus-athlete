@@ -65,7 +65,7 @@ export async function migrateToSupabase(userId, onProgress) {
 
   // ── training_log ─────────────────────────────────────────────────────────
   if (log.length > 0) {
-    const rows = log.map(e => ({
+    const rows = log.filter(e => e && typeof e === 'object' && e.date).map(e => ({
       user_id:      userId,
       date:         e.date,
       type:         e.type || 'Training',
