@@ -13,7 +13,14 @@ const GREY   = '#555'
 const NOTE_CATS  = ['general','injury','wellness','technique','motivation']
 const CAT_COLORS = { injury: RED, wellness: GREEN, technique: BLUE, motivation: ORANGE, general: GREY }
 
-export default function NotePanel({ athlete, coachId, onClose }) {
+/**
+ * NotePanel — slide-in coach notes panel for a single athlete.
+ * @param {object}   props
+ * @param {object}   props.athlete  — athlete object ({ athlete_id, display_name })
+ * @param {string}   [props.coachId] — coach's Supabase user id; null = demo/offline mode
+ * @param {function} props.onClose  — () => void, called when panel is dismissed
+ */
+export default function NotePanel({ athlete, coachId = null, onClose }) {
   const [notes,    setNotes]    = useState([])
   const [body,     setBody]     = useState('')
   const [category, setCategory] = useState('general')

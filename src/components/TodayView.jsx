@@ -295,14 +295,14 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 13 }}>✉</span>
             <span style={{ fontFamily: MONO, fontSize: 11, color: '#0064ff' }}>
-              {coachUnread} unread message{coachUnread > 1 ? 's' : ''} from your coach
+              {coachUnread} {coachUnread > 1 ? t('todayCoachMsgs') : t('todayCoachMsg')}
             </span>
           </div>
           <button
             onClick={() => setCoachUnread(0)}
             style={S.ghostBtn}
           >
-            DISMISS
+            {t('todayDismiss')}
           </button>
         </div>
       )}
@@ -463,7 +463,7 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
             disabled={shareLoading}
             style={{ ...btn('transparent', '#555'), border: '1px solid var(--border)', marginTop: '8px', width: '100%', opacity: shareLoading ? 0.6 : 1 }}
           >
-            {shareLoading ? '…' : lang === 'tr' ? 'İlerlemeyi Paylaş →' : 'Share Progress →'}
+            {shareLoading ? '…' : t('shareProgress')}
           </button>
         )}
       </div>
@@ -495,11 +495,11 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
 
         return (
           <div style={card}>
-            <div style={cardTitle}>{lang === 'tr' ? 'HAFTALIK HALKALAR' : 'WEEKLY RINGS'}</div>
+            <div style={cardTitle}>{t('weeklyRings')}</div>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-around', flexWrap: 'wrap' }}>
-              <Ring pct={tssPct}  color={ORANGE} val={weekTSS}   label={lang==='tr' ? 'HAFTALIK TSS' : 'WEEK TSS'}    sub={weekTSSTarget > 0 ? `/ ${weekTSSTarget}` : 'no target'} />
-              <Ring pct={sessPct} color={GREEN}  val={sessions7d} label={lang==='tr' ? 'ANTRENMANLAR' : 'SESSIONS'}    sub={`/ ${sessionTarget}`} />
-              <Ring pct={wellPct} color={BLUE}   val={wellStreak} label={lang==='tr' ? 'SAĞLIK GÜNÜ'  : 'WELLNESS'}    sub="/ 7" />
+              <Ring pct={tssPct}  color={ORANGE} val={weekTSS}   label={t('weekTSS')}   sub={weekTSSTarget > 0 ? `/ ${weekTSSTarget}` : 'no target'} />
+              <Ring pct={sessPct} color={GREEN}  val={sessions7d} label={t('sessions')}  sub={`/ ${sessionTarget}`} />
+              <Ring pct={wellPct} color={BLUE}   val={wellStreak} label={t('wellness')}  sub="/ 7" />
             </div>
           </div>
         )

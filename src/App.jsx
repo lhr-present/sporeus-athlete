@@ -261,7 +261,13 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
     setOnboarded(true)
   }
 
-  const t = useCallback(key => LABELS[lang]?.[key] ?? LABELS.en?.[key] ?? key, [lang])
+  const t = useCallback(key => {
+    const val = LABELS[lang]?.[key] ?? LABELS.en?.[key] ?? key
+    if (import.meta.env.DEV && !LABELS[lang]?.[key] && !LABELS.en?.[key]) {
+      console.warn(`[i18n] Missing translation: ${key} (${lang})`)
+    }
+    return val
+  }, [lang])
 
   const now = new Date()
   const timeStr = now.toLocaleTimeString('tr-TR', { hour:'2-digit', minute:'2-digit' })

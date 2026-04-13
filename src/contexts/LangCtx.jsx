@@ -105,6 +105,24 @@ export const LABELS = {
     todaySaved: 'SAVED', todayQuickStats: 'QUICK STATS',
     todayYesterday: 'YESTERDAY', todayThisWeek: 'THIS WEEK', todayStreak: 'STREAK',
     todaySuggestion: 'SMART SUGGESTION', todayLogYesterday: '+ Log Yesterday',
+    // TodayView — coach badge + rings + share (STRUCTURE-S5)
+    todayCoachMsg: 'unread message from your coach', todayCoachMsgs: 'unread messages from your coach',
+    todayDismiss: 'DISMISS',
+    shareProgress: 'Share Progress →',
+    weeklyRings: 'WEEKLY RINGS', weekTSS: 'WEEK TSS', wellness: 'WELLNESS',
+    // CoachSquadView (STRUCTURE-S5)
+    squadTitle: 'SQUAD', loadingSquad: 'Loading squad…',
+    connected: 'CONNECTED',
+    inviteLink: '+ INVITE LINK',
+    rtLive: 'Live', rtReconnecting: 'Reconnecting…',
+    demoDataWarning: 'DEMO DATA — connect real athletes to see live metrics',
+    noAthletesYet: 'No athletes connected yet. Share this invite code:',
+    weeklyDigest: '◈ WEEKLY DIGEST',
+    copyAll: 'COPY ALL', copied: '✓ COPIED',
+    squadColAthlete: 'ATHLETE', squadColReadiness: 'READINESS',
+    squadColTSB: 'TSB', squadColACWR: 'ACWR',
+    squadColAdherence: 'ADHERENCE', squadColStatus: 'STATUS',
+    squadColFlag: 'FLAG', squadColMsg: 'MSG', squadColCompare: 'CMP',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -209,6 +227,24 @@ export const LABELS = {
     todaySaved: 'KAYDEDİLDİ', todayQuickStats: 'HIZLI İSTATİSTİKLER',
     todayYesterday: 'DÜN', todayThisWeek: 'BU HAFTA', todayStreak: 'SERİ',
     todaySuggestion: 'AKILLI ÖNERİ', todayLogYesterday: '+ Dünü Kaydet',
+    // TodayView — coach badge + rings + share
+    todayCoachMsg: 'coach\' tan okunmamış mesaj', todayCoachMsgs: 'coach\'tan okunmamış mesajlar',
+    todayDismiss: 'KAPAT',
+    shareProgress: 'İlerlemeyi Paylaş →',
+    weeklyRings: 'HAFTALIK HALKALAR', weekTSS: 'HAFTALIK TSS', wellness: 'SAĞLIK',
+    // CoachSquadView
+    squadTitle: 'KADRO', loadingSquad: 'Kadro yükleniyor…',
+    connected: 'BAĞLI',
+    inviteLink: '+ DAVET LİNKİ',
+    rtLive: 'Canlı', rtReconnecting: 'Yeniden bağlanıyor…',
+    demoDataWarning: 'DEMO VERİSİ — canlı metrikler için gerçek sporcu bağla',
+    noAthletesYet: 'Henüz bağlı sporcu yok. Bu davet kodunu paylaş:',
+    weeklyDigest: '◈ HAFTALIK ÖZET',
+    copyAll: 'TÜMÜNÜ KOPYALA', copied: '✓ KOPYALANDI',
+    squadColAthlete: 'SPORCU', squadColReadiness: 'HAZIRLIK',
+    squadColTSB: 'TSB', squadColACWR: 'ABYO',
+    squadColAdherence: 'UYUM', squadColStatus: 'DURUM',
+    squadColFlag: 'İŞARET', squadColMsg: 'MESAJ', squadColCompare: 'KRŞ',
   }
 }
 

@@ -3,6 +3,7 @@
 // deleteAthleteData(userId) — soft-delete + gdpr_erasure_log entry
 
 import { supabase, isSupabaseReady } from './supabase.js'
+import { clearAllAppData } from './storage/local.js'
 
 // Tables that store user data, keyed by user_id
 const USER_TABLES = [
@@ -84,6 +85,9 @@ export async function deleteAthleteData(userId) {
       tables_affected: tablesAffected,
     })
   } catch {}
+
+  // Wipe all app localStorage keys (GDPR client-side erasure)
+  clearAllAppData()
 
   return { tablesAffected, error: null }
 }

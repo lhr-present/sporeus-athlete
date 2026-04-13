@@ -3,7 +3,8 @@
 // Sub-components: coach/ChatPanel, coach/TeamSelector, coach/AthleteRow,
 //                 coach/NotePanel, coach/ExpandedRow
 // Custom hook:    hooks/useRealtimeSquad
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef, useContext } from 'react'
+import { LangCtx } from '../contexts/LangCtx.jsx'
 import { fetchSquad } from '../lib/db/athletes.js'
 import { createInvite, buildInviteUrl, getMyAthletes } from '../lib/inviteUtils.js'
 import { supabase } from '../lib/supabase.js'
@@ -34,6 +35,7 @@ function defaultSort(a, b) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function CoachSquadView({ authUser }) {
+  const { t } = useContext(LangCtx)
   const [athletes,     setAthletes]    = useState([])
   const [isDemo,       setIsDemo]      = useState(false)
   const [loading,      setLoading]     = useState(true)
@@ -165,8 +167,8 @@ export default function CoachSquadView({ authUser }) {
 
   if (loading) return (
     <div className="sp-card" style={{ ...S.card }}>
-      <div style={S.cardTitle}>SQUAD</div>
-      <div style={{ fontFamily: MONO, fontSize: 10, color: '#555', padding: '12px 0' }}>Loading squad…</div>
+      <div style={S.cardTitle}>{t('squadTitle')}</div>
+      <div style={{ fontFamily: MONO, fontSize: 10, color: '#555', padding: '12px 0' }}>{t('loadingSquad')}</div>
     </div>
   )
 
@@ -184,10 +186,10 @@ export default function CoachSquadView({ authUser }) {
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'8px', flexWrap:'wrap', gap:'6px' }}>
         <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
-          <div style={S.cardTitle}>SQUAD</div>
+          <div style={S.cardTitle}>{t('squadTitle')}</div>
           {connectedCount !== null && (
             <span style={{ fontFamily:MONO, fontSize:9, color:'#555', letterSpacing:'0.08em' }}>
-              {connectedCount} CONNECTED
+              {connectedCount} {t('connected')}
             </span>
           )}
         </div>
@@ -197,14 +199,14 @@ export default function CoachSquadView({ authUser }) {
               onClick={handleGenerateInvite}
               disabled={inviteBusy}
               style={{ fontFamily:MONO, fontSize:9, letterSpacing:'0.08em', padding:'5px 12px', background:'transparent', border:`1px solid ${ORANGE}`, borderRadius:3, color:ORANGE, cursor:inviteBusy ? 'not-allowed' : 'pointer', opacity:inviteBusy ? 0.6 : 1, whiteSpace:'nowrap' }}>
-              {inviteBusy ? '…' : '+ INVITE LINK'}
+              {inviteBusy ? '…' : t('inviteLink')}
             </button>
           )}
         </div>
         {!isDemo && (
           <div style={{ display:'flex', alignItems:'center', gap:'6px', fontFamily: MONO, fontSize: 9, color: rtStatus === 'live' ? GREEN : rtStatus === 'reconnecting' ? YELLOW : '#555' }}>
             <span style={{ width:6, height:6, borderRadius:'50%', background: rtStatus === 'live' ? GREEN : rtStatus === 'reconnecting' ? YELLOW : '#333', display:'inline-block' }}/>
-            {rtStatus === 'live' ? 'Live' : rtStatus === 'reconnecting' ? 'Reconnecting…' : '●'}
+            {rtStatus === 'live' ? t('rtLive') : rtStatus === 'reconnecting' ? t('rtReconnecting') : '●'}
             {lastUpdated && rtStatus === 'live' && <span style={{ color:'#444' }}>· {lastUpdated}</span>}
           </div>
         )}
@@ -218,7 +220,7 @@ export default function CoachSquadView({ authUser }) {
       )}
 
       {/* Demo banner */}
-      {isDemo && <EmptyState variant="warn" body="DEMO DATA — connect real athletes to see live metrics" />}
+      {isDemo && <EmptyState variant="warn" body={t('demoDataWarning')} />}
 
       {/* Tier gates */}
       {inviteBlocked && !isDemo && <EmptyState variant="warn" body={getUpgradePrompt('multi_team').replace('Multi-team management', 'Adding more athletes')} />}
@@ -232,7 +234,7 @@ export default function CoachSquadView({ authUser }) {
 
       {/* Empty state */}
       {!isDemo && athletes.length === 0 && inviteCode && !inviteBlocked && (
-        <EmptyState variant="empty" body="No athletes connected yet. Share this invite code:">
+        <EmptyState variant="empty" body={t('noAthletesYet')}>
           <div style={{ fontFamily: MONO, fontSize: 16, fontWeight: 700, color: ORANGE, letterSpacing: '0.2em', padding: '8px 12px', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 4, display: 'inline-block' }}>{inviteCode}</div>
         </EmptyState>
       )}
@@ -288,7 +290,7 @@ export default function CoachSquadView({ authUser }) {
         <div style={{ marginBottom: 12 }}>
           <button onClick={() => { if (!digestOpen) setDigest(generateSquadDigest(sorted)); setDigestOpen(p => !p); setCopied(false) }}
             style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', padding: '5px 12px', background: 'transparent', border: `1px solid ${digestOpen ? ORANGE : '#333'}`, borderRadius: 3, color: digestOpen ? ORANGE : '#555', cursor: 'pointer' }}>
-            ◈ WEEKLY DIGEST {digestOpen ? '▲' : '▼'}
+            {t('weeklyDigest')} {digestOpen ? '▲' : '▼'}
           </button>
           {digestOpen && digest && (
             <div style={{ marginTop: 8, background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: 4, padding: '12px 14px' }}>
@@ -296,7 +298,7 @@ export default function CoachSquadView({ authUser }) {
                 <span style={{ fontFamily: MONO, fontSize: 9, color: '#555' }}>{digest.date} · {digest.lines.length} ATHLETES</span>
                 <button onClick={() => { navigator.clipboard?.writeText(digest.text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000) }).catch(() => {}) }}
                   style={{ fontFamily: MONO, fontSize: 9, padding: '3px 10px', cursor:'pointer', background: copied ? GREEN : 'transparent', border: `1px solid ${copied ? GREEN : '#444'}`, borderRadius:2, color: copied ? '#0a0a0a' : '#888' }}>
-                  {copied ? '✓ COPIED' : 'COPY ALL'}
+                  {copied ? t('copied') : t('copyAll')}
                 </button>
               </div>
               <pre style={{ fontFamily: MONO, fontSize: 10, color: '#aaa', lineHeight: 1.7, margin: 0, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>{digest.text}</pre>
@@ -329,15 +331,15 @@ export default function CoachSquadView({ authUser }) {
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
                 <tr style={{ borderBottom:'1px solid #222' }}>
-                  <th style={{ fontFamily: MONO, fontSize: 9, color:'#333', padding:'6px 8px' }} title="Compare (max 5)">CMP</th>
-                  <ColHdr col="name">ATHLETE</ColHdr>
-                  <ColHdr col="readiness" style={{ textAlign:'center' }}>READINESS</ColHdr>
-                  <ColHdr col="tsb">TSB</ColHdr>
-                  <ColHdr col="acwr">ACWR</ColHdr>
-                  <ColHdr col="adherence">ADHERENCE</ColHdr>
-                  <ColHdr col="status">STATUS</ColHdr>
-                  <th style={{ fontFamily: MONO, fontSize: 9, color:'#333', padding:'6px 8px' }}>FLAG</th>
-                  <th style={{ fontFamily: MONO, fontSize: 9, color:'#333', padding:'6px 8px' }}>MSG</th>
+                  <th style={{ fontFamily: MONO, fontSize: 9, color:'#333', padding:'6px 8px' }} title="Compare (max 5)">{t('squadColCompare')}</th>
+                  <ColHdr col="name">{t('squadColAthlete')}</ColHdr>
+                  <ColHdr col="readiness" style={{ textAlign:'center' }}>{t('squadColReadiness')}</ColHdr>
+                  <ColHdr col="tsb">{t('squadColTSB')}</ColHdr>
+                  <ColHdr col="acwr">{t('squadColACWR')}</ColHdr>
+                  <ColHdr col="adherence">{t('squadColAdherence')}</ColHdr>
+                  <ColHdr col="status">{t('squadColStatus')}</ColHdr>
+                  <th style={{ fontFamily: MONO, fontSize: 9, color:'#333', padding:'6px 8px' }}>{t('squadColFlag')}</th>
+                  <th style={{ fontFamily: MONO, fontSize: 9, color:'#333', padding:'6px 8px' }}>{t('squadColMsg')}</th>
                 </tr>
               </thead>
               <tbody>

@@ -1,12 +1,8 @@
 import { useContext, useState, useEffect, useMemo, lazy, Suspense } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
-import { TSSChart, WeeklyVolChart, ZoneDonut, ZoneBar, CTLTimeline, HelpTip } from './ui.jsx'
+import { TSSChart, WeeklyVolChart, ZoneDonut, HelpTip } from './ui.jsx'
 import ErrorBoundary from './ErrorBoundary.jsx'
-
-const CTLChart  = lazy(() => import('./charts/CTLChart.jsx'))
-const ZoneChart = lazy(() => import('./charts/ZoneChart.jsx'))
-const LoadChart = lazy(() => import('./charts/LoadChart.jsx'))
 const HRVChart  = lazy(() => import('./charts/HRVChart.jsx'))
 import { monotonyStrain, calcPRs, navyBF, mifflinBMR, riegel, fmtSec, fmtPace, calcLoad } from '../lib/formulas.js'
 import { calculateACWR, fitBanister, predictBanister } from '../lib/trainingLoad.js'
@@ -17,10 +13,18 @@ import { useCountUp } from '../hooks/useCountUp.js'
 import Achievements from './Achievements.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { SPORT_BRANCHES, ATHLETE_LEVELS, LEVEL_CONFIG, DASH_CARD_DEFS } from '../lib/constants.js'
-import { analyzeLoadTrend, analyzeRecoveryCorrelation, analyzeZoneBalance, predictInjuryRisk, predictFitness, generateWeeklyNarrative, detectMilestones, computeRaceReadiness, predictRacePerformance, assessDataQuality, getFormScore, getPeakWeekLoad, getConsistencyScore } from '../lib/intelligence.js'
-import { getTriggeredNotes } from '../lib/scienceNotes.js'
-import { correlateTrainingToResults, findRecoveryPatterns, mineInjuryPatterns, findOptimalWeekStructure, findSeasonalPatterns } from '../lib/patterns.js'
+import { assessDataQuality } from '../lib/intelligence.js'
 import { useData } from '../contexts/DataContext.jsx'
+
+// ── Extracted sub-components ─────────────────────────────────────────────────
+import InsightsPanel         from './dashboard/InsightsPanel.jsx'
+import WeekStoryCard         from './dashboard/WeekStoryCard.jsx'
+import DidYouKnowCard        from './dashboard/DidYouKnowCard.jsx'
+import MilestonesList        from './dashboard/MilestonesList.jsx'
+import YourPatternsCard      from './dashboard/YourPatternsCard.jsx'
+import ProactiveInjuryAlert  from './dashboard/ProactiveInjuryAlert.jsx'
+import RaceReadinessCard     from './dashboard/RaceReadinessCard.jsx'
+import LoadTrendChart        from './dashboard/LoadTrendChart.jsx'
 
 function BackupReminder({ log }) {
   const [lastBackup, setLastBackup] = useLocalStorage('sporeus-last-backup', null)
@@ -58,562 +62,6 @@ function BackupReminder({ log }) {
   )
 }
 
-// ─── Training Insights Card (v4.3) ────────────────────────────────────────────
-function InsightsCard({ log, recovery, profile, lang }) {
-  const { t } = useContext(LangCtx)
-  const [open, setOpen] = useState(false)
-  if (log.length < 4) return null
-
-  const loadTrend   = useMemo(() => analyzeLoadTrend(log),                     [log])
-  const zoneBalance = useMemo(() => analyzeZoneBalance(log),                    [log])
-  const fitness     = useMemo(() => predictFitness(log),                        [log])
-  const recovCorr   = useMemo(() => analyzeRecoveryCorrelation(log, recovery),  [log, recovery])
-
-  const insights = [
-    { label: t('loadTrendLabel'),  value: loadTrend.trend.toUpperCase(),       color: loadTrend.trend==='building'?'#5bc25b':loadTrend.trend==='recovering'?'#4a90d9':'#f5c542', text: loadTrend.advice[lang] || loadTrend.advice.en },
-    { label: t('zoneBalanceLabel'),value: zoneBalance.status.replace('_',' ').toUpperCase(), color: zoneBalance.status==='polarized'?'#5bc25b':zoneBalance.status==='too_hard'?'#e03030':'#f5c542', text: zoneBalance.recommendation[lang] || zoneBalance.recommendation.en },
-    { label: t('fitnessLabel'),    value: fitness.trajectory.toUpperCase(),     color: fitness.trajectory==='improving'?'#5bc25b':fitness.trajectory==='declining'?'#e03030':'#f5c542', text: fitness.label[lang] || fitness.label.en },
-    { label: t('recovCorrLabel'),  value: recovCorr.correlation !== null ? (recovCorr.correlation > 5 ? 'LINKED' : 'RESILIENT') : 'PENDING', color: recovCorr.correlation !== null ? (recovCorr.correlation > 5 ? '#f5c542' : '#5bc25b') : '#888', text: recovCorr.insight[lang] || recovCorr.insight.en },
-  ]
-
-  const smartAdj = []
-  if (loadTrend.trend === 'building' && (loadTrend.change || 0) > 20) smartAdj.push({ en: 'Load increasing >20%/week — add a recovery day before next hard session.', tr: 'Yük haftada %20\'den fazla artıyor — bir sonraki zorlu seans öncesine toparlanma günü ekle.' })
-  if (zoneBalance.status === 'threshold_heavy') smartAdj.push({ en: 'Too much Z3 — replace 2 moderate sessions with true easy (Z1/Z2) or hard (Z4+) efforts.', tr: 'Fazla Z3 — 2 orta seansı gerçek kolay (Z1/Z2) veya zorlu (Z4+) efora değiştir.' })
-  if (fitness.trajectory === 'declining') smartAdj.push({ en: 'CTL declining — add 1 base session (60–90 min Z2) per week to halt decay.', tr: 'KTY düşüyor — azalmayı durdurmak için haftada 1 baz seans (60–90 dak Z2) ekle.' })
-  if (fitness.in4w > fitness.current + 8) smartAdj.push({ en: `Fitness projected +${fitness.in4w - fitness.current} CTL in 4 weeks — maintain consistency.`, tr: `Kondisyon 4 haftada +${fitness.in4w - fitness.current} KTY artacak — tutarlılığını sürdür.` })
-
-  return (
-    <div className="sp-card" style={{ ...S.card, animationDelay:'55ms' }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'12px' }}>
-        <div style={S.cardTitle}>{t('insightsTitle')}</div>
-        <button style={{ ...S.btnSec, fontSize:'10px', padding:'3px 8px' }} onClick={() => setOpen(o => !o)}>
-          {open ? '▲ LESS' : '▼ MORE'}
-        </button>
-      </div>
-      <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
-        {insights.map(ins => (
-          <div key={ins.label} style={{ display:'flex', alignItems:'flex-start', gap:'10px', padding:'8px 10px', background:'var(--card-bg)', borderRadius:'4px', borderLeft:`3px solid ${ins.color}` }}>
-            <div style={{ minWidth:'120px' }}>
-              <div style={{ ...S.mono, fontSize:'9px', color:'#888', letterSpacing:'0.06em' }}>{ins.label}</div>
-              <div style={{ ...S.mono, fontSize:'13px', fontWeight:600, color:ins.color }}>{ins.value}</div>
-            </div>
-            {open && <div style={{ ...S.mono, fontSize:'11px', color:'var(--sub)', lineHeight:1.6 }}>{ins.text}</div>}
-          </div>
-        ))}
-      </div>
-      {open && smartAdj.length > 0 && (
-        <div style={{ marginTop:'12px', padding:'10px 12px', background:'#ff660011', borderRadius:'4px', borderLeft:'3px solid #ff6600' }}>
-          <div style={{ ...S.mono, fontSize:'9px', color:'#ff6600', letterSpacing:'0.08em', marginBottom:'6px' }}>◈ {t('smartAdjTitle')}</div>
-          {smartAdj.map((adj, i) => (
-            <div key={i} style={{ ...S.mono, fontSize:'11px', color:'var(--text)', lineHeight:1.7, marginBottom: i < smartAdj.length-1 ? '6px' : 0 }}>
-              → {adj[lang] || adj.en}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ─── This Week's Story Card (v4.4) ────────────────────────────────────────────
-function WeekStoryCard({ log, recovery, profile, lang }) {
-  const { t } = useContext(LangCtx)
-  const [copied, setCopied] = useState(false)
-  if (log.length < 2) return null
-
-  const narrative = generateWeeklyNarrative(log, recovery, profile, lang)
-  const text = narrative[lang] || narrative.en
-
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({ title: 'My Training Week — Sporeus', text })
-    } else if (navigator.clipboard) {
-      navigator.clipboard.writeText(text)
-      setCopied(true); setTimeout(() => setCopied(false), 2000)
-    }
-  }
-
-  return (
-    <div className="sp-card" style={{ ...S.card, animationDelay:'57ms', borderLeft:'4px solid #0064ff' }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px' }}>
-        <div style={S.cardTitle}>{t('weekStoryTitle')}</div>
-        <div style={{ display:'flex', gap:'6px' }}>
-          {copied && <span style={{ ...S.mono, fontSize:'10px', color:'#5bc25b' }}>✓</span>}
-          <button style={{ ...S.btnSec, fontSize:'10px', padding:'3px 8px' }} onClick={handleShare}>
-            {navigator.share ? t('shareStoryBtn') : t('copyStoryBtn')}
-          </button>
-        </div>
-      </div>
-      <div style={{ ...S.mono, fontSize:'12px', color:'var(--text)', lineHeight:1.8 }}>{text}</div>
-    </div>
-  )
-}
-
-// ─── Did You Know Card (v4.4) ─────────────────────────────────────────────────
-function DidYouKnowCard({ log, recovery, profile, lang }) {
-  const { t } = useContext(LangCtx)
-  const [shownIds, setShownIds] = useLocalStorage('sporeus-shown-notes', [])
-  const [noteIdx, setNoteIdx] = useState(0)
-
-  const triggered = getTriggeredNotes(log, recovery, profile, shownIds)
-  if (!triggered.length) return null
-
-  const note = triggered[noteIdx % triggered.length]
-
-  const handleNext = () => {
-    setShownIds(prev => {
-      const updated = [...new Set([...prev, note.id])]
-      // Reset shown list every 7 days worth of notes (to allow repeats)
-      return updated.length > 20 ? updated.slice(-7) : updated
-    })
-    setNoteIdx(i => i + 1)
-  }
-
-  return (
-    <div className="sp-card" style={{ ...S.card, animationDelay:'59ms', borderLeft:'3px solid #f5c542' }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px' }}>
-        <div style={{ ...S.mono, fontSize:'10px', fontWeight:600, color:'#f5c542', letterSpacing:'0.08em' }}>◈ {t('didYouKnowTitle')}</div>
-        <button style={{ ...S.mono, fontSize:'10px', color:'#888', background:'transparent', border:'1px solid var(--border)', borderRadius:'3px', padding:'2px 8px', cursor:'pointer' }} onClick={handleNext}>
-          {t('nextNoteBtn')}
-        </button>
-      </div>
-      <div style={{ ...S.mono, fontSize:'12px', color:'var(--text)', lineHeight:1.8, marginBottom:'6px' }}>
-        {note[lang] || note.en}
-      </div>
-      <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>{note.source}</div>
-    </div>
-  )
-}
-
-// ─── Milestone Overlay (v4.4) ─────────────────────────────────────────────────
-function MilestoneOverlay({ log, profile }) {
-  const { t } = useContext(LangCtx)
-  const [lang] = useLocalStorage('sporeus-lang', 'en')
-  const [seenMilestones, setSeenMilestones] = useLocalStorage('sporeus-milestones', [])
-  const [current, setCurrent] = useState(null)
-
-  useEffect(() => {
-    if (!log.length) return
-    const newOnes = detectMilestones(log, profile, seenMilestones)
-    if (newOnes.length > 0) {
-      setCurrent(newOnes[0])
-      setSeenMilestones(prev => [...new Set([...prev, ...newOnes.map(m => m.id)])])
-      const timer = setTimeout(() => setCurrent(null), 3500)
-      return () => clearTimeout(timer)
-    }
-  }, [log.length])
-
-  if (!current) return null
-
-  return (
-    <div style={{ position:'fixed', top:0, left:0, right:0, bottom:0, background:'#000000cc', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center' }}
-      onClick={() => setCurrent(null)}>
-      <div style={{ background:'var(--card-bg)', border:'2px solid #ff6600', borderRadius:'12px', padding:'32px 40px', textAlign:'center', maxWidth:'320px', animation:'sp-fade-in 0.3s ease' }}>
-        <div style={{ fontSize:'48px', marginBottom:'12px' }}>{current.emoji}</div>
-        <div style={{ ...S.mono, fontSize:'10px', color:'#ff6600', letterSpacing:'0.12em', marginBottom:'8px' }}>{t('milestoneTitle')}</div>
-        <div style={{ ...S.mono, fontSize:'16px', fontWeight:600, color:'var(--text)', lineHeight:1.5 }}>{current[lang] || current.en}</div>
-        <div style={{ ...S.mono, fontSize:'10px', color:'#888', marginTop:'12px' }}>tap to dismiss</div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Your Patterns Card (v4.5) ────────────────────────────────────────────────
-function YourPatternsCard({ log, recovery, injuries, profile, lang }) {
-  const { t } = useContext(LangCtx)
-  const { testResults } = useData()
-  const [open, setOpen] = useState(false)
-  const [copied, setCopied] = useState(false)
-
-  if (log.length < 14) return null
-
-  const trainTest  = correlateTrainingToResults(log, testResults)
-  const recPat     = findRecoveryPatterns(log, recovery)
-  const seasonal   = findSeasonalPatterns(log, recovery)
-  const weekStruct = findOptimalWeekStructure(log, recovery)
-
-  const allPatterns = [
-    ...trainTest.patterns.map(p => ({ icon:'🔬', text: p[lang] || p.en, confidence: p.confidence, basis: `${trainTest.dataPoints} test results` })),
-    ...(recPat.optimalReadiness ? [{ icon:'💤', text: recPat.optimalReadiness[lang] || recPat.optimalReadiness.en, confidence:'moderate', basis:`${recPat.sampleSize} sessions` }] : []),
-    ...(recPat.optimalSleep     ? [{ icon:'💤', text: recPat.optimalSleep[lang]     || recPat.optimalSleep.en,     confidence:'moderate', basis:`${recPat.sampleSize} sessions` }] : []),
-    ...(recPat.redFlags.map(rf  => ({ icon:'⚠', text: rf[lang] || rf.en, confidence:'moderate', basis:`${recPat.sampleSize} pairs` }))),
-    ...(recPat.bestDay  ? [{ icon:'📅', text: recPat.bestDay[lang]  || recPat.bestDay.en,  confidence:'low', basis:'' }] : []),
-    ...(recPat.worstDay ? [{ icon:'📅', text: recPat.worstDay[lang] || recPat.worstDay.en, confidence:'low', basis:'' }] : []),
-    ...(seasonal.strongMonths.length ? [{ icon:'🌡️', text: seasonal[lang] || seasonal.en, confidence:'moderate', basis:`${log.length} sessions` }] : []),
-    ...(weekStruct.reliable ? [{ icon:'📋', text: weekStruct[lang] || weekStruct.en, confidence:'moderate', basis:`${weekStruct.sampleSize} weeks` }] : []),
-  ]
-
-  // Data collection incentives (not enough data yet)
-  const hints = [
-    ...(testResults.length < 3 ? [{ icon:'🔬', text: lang==='tr' ? `Antrenman→test desenlerini bulmak için ${Math.max(0,3-testResults.length)} test sonucu daha gir.` : `${Math.max(0,3-testResults.length)} more test results needed to find your training→performance patterns.` }] : []),
-    ...(recovery.length < 7    ? [{ icon:'💤', text: lang==='tr' ? `Optimal koşullarınızı bulmak için ${Math.max(0,7-recovery.length)} gün daha toparlanma kaydet.` : `Log recovery for ${Math.max(0,7-recovery.length)} more days to discover your optimal conditions.` }] : []),
-    ...(!weekStruct.reliable && weekStruct.needMore > 0 ? [{ icon:'📋', text: lang==='tr' ? `Optimal hafta yapınızı bulmak için ${weekStruct.needMore} seans daha gerekiyor.` : `${weekStruct.needMore} more sessions needed to find your optimal week structure.` }] : []),
-  ]
-
-  if (allPatterns.length === 0 && hints.length === 0) return null
-
-  const handleCopy = () => {
-    const text = ['YOUR PERSONAL PATTERNS', '─'.repeat(30), ...allPatterns.map(p => `${p.icon} ${p.text}`)].join('\n')
-    navigator.clipboard.writeText(text).catch(() => {})
-    setCopied(true); setTimeout(() => setCopied(false), 2000)
-  }
-
-  const confColor = c => c === 'high' ? '#5bc25b' : c === 'moderate' ? '#f5c542' : '#888'
-
-  return (
-    <div className="sp-card" style={{ ...S.card, animationDelay:'56ms' }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'12px' }}>
-        <div style={S.cardTitle}>{lang==='tr'?'SENİN DESENLERİN':'YOUR PATTERNS'}</div>
-        <div style={{ display:'flex', gap:'6px' }}>
-          {copied && <span style={{ ...S.mono, fontSize:'10px', color:'#5bc25b' }}>✓</span>}
-          {allPatterns.length > 0 && <button style={{ ...S.btnSec, fontSize:'10px', padding:'3px 8px' }} onClick={handleCopy}>⎘ Copy</button>}
-          <button style={{ ...S.btnSec, fontSize:'10px', padding:'3px 8px' }} onClick={() => setOpen(o => !o)}>{open ? '▲' : '▼'}</button>
-        </div>
-      </div>
-
-      {allPatterns.length === 0 && hints.length > 0 && (
-        <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
-          {hints.map((h, i) => (
-            <div key={i} style={{ ...S.mono, fontSize:'11px', color:'#888', lineHeight:1.6 }}>{h.icon} {h.text}</div>
-          ))}
-        </div>
-      )}
-
-      {allPatterns.length > 0 && (
-        <div style={{ display:'flex', flexDirection:'column', gap:'7px' }}>
-          {allPatterns.slice(0, open ? undefined : 3).map((p, i) => (
-            <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:'10px', padding:'8px 10px', background:'var(--card-bg)', borderRadius:'4px' }}>
-              <span style={{ fontSize:'16px', flexShrink:0 }}>{p.icon}</span>
-              <div style={{ flex:1 }}>
-                <div style={{ ...S.mono, fontSize:'11px', color:'var(--text)', lineHeight:1.7 }}>{p.text}</div>
-                {p.basis && <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginTop:'2px' }}>based on {p.basis}</div>}
-              </div>
-              <span style={{ ...S.mono, fontSize:'9px', fontWeight:600, color:confColor(p.confidence), flexShrink:0, border:`1px solid ${confColor(p.confidence)}44`, padding:'1px 5px', borderRadius:'2px' }}>{p.confidence.toUpperCase()}</span>
-            </div>
-          ))}
-          {!open && allPatterns.length > 3 && (
-            <button style={{ ...S.mono, fontSize:'10px', color:'#888', background:'transparent', border:'none', cursor:'pointer', padding:'4px 0' }} onClick={() => setOpen(true)}>
-              +{allPatterns.length - 3} more patterns →
-            </button>
-          )}
-          {open && hints.length > 0 && (
-            <div style={{ marginTop:'4px', padding:'8px 10px', background:'var(--card-bg)', borderRadius:'4px' }}>
-              {hints.map((h, i) => <div key={i} style={{ ...S.mono, fontSize:'10px', color:'#888', marginBottom:'4px' }}>{h.icon} {h.text}</div>)}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ─── Proactive Injury Alert (v4.5) ────────────────────────────────────────────
-function ProactiveInjuryAlert({ log, injuries, lang }) {
-  const injPatterns = mineInjuryPatterns(log, injuries, [])
-  const highConf    = injPatterns.patterns.filter(p => p.confidence === 'high')
-  if (!highConf.length) return null
-
-  // Check if current week matches any trigger pattern
-  const now  = new Date().toISOString().slice(0, 10)
-  const w1   = (() => { const d = new Date(); d.setDate(d.getDate()-7);  return d.toISOString().slice(0,10) })()
-  const w2   = (() => { const d = new Date(); d.setDate(d.getDate()-14); return d.toISOString().slice(0,10) })()
-  const recent7  = log.filter(e => e.date >= w1)
-  const recent14 = log.filter(e => e.date >= w2)
-
-  const tss7  = recent7.reduce((s, e) => s + (e.tss || 0), 0)
-  const tss14 = recent14.reduce((s, e) => s + (e.tss || 0), 0) / 2
-  const prevTSS = log.filter(e => e.date >= w2 && e.date < w1).reduce((s, e) => s + (e.tss || 0), 0)
-  const spikeP  = prevTSS > 0 ? (tss7 - prevTSS) / prevTSS * 100 : 0
-  const longRun = Math.max(...recent7.map(e => e.duration || 0), 0)
-  const consec  = (() => { let c = 0; for (const e of [...recent7].sort((a,b) => b.date>a.date?1:-1)) { if((e.rpe||0)>=7)c++;else break }; return c })()
-
-  const active = highConf.filter(p => {
-    if (p.triggers.includes('volume_spike') && spikeP > 20) return true
-    if (p.triggers.includes('long_run_duration') && longRun > 90) return true
-    if (p.triggers.includes('consecutive_hard_days') && consec >= 3) return true
-    return false
-  })
-
-  if (!active.length) return null
-
-  const zoneStr = active.map(p => p.zone).join(', ')
-  return (
-    <div className="sp-card" style={{ ...S.card, borderLeft:'4px solid #e03030', animationDelay:'0ms', background:'#e0303011' }}>
-      <div style={{ ...S.mono, fontSize:'10px', color:'#e03030', letterSpacing:'0.08em', fontWeight:600, marginBottom:'6px' }}>
-        ⚠ {lang==='tr'?'PROAKTİF YARALANMA UYARISI':'PROACTIVE INJURY RISK'}
-      </div>
-      <div style={{ ...S.mono, fontSize:'12px', color:'var(--text)', lineHeight:1.7, marginBottom:'8px' }}>
-        {lang==='tr'
-          ? `Bu haftaki antrenman deseni önceki ${zoneStr} sorunlarından önce gelen koşullarla eşleşiyor.`
-          : `Current week matches conditions that preceded your previous ${zoneStr} injury issues.`}
-      </div>
-      {spikeP > 20 && <div style={{ ...S.mono, fontSize:'10px', color:'#e03030' }}>→ Volume spike: +{Math.round(spikeP)}% this week</div>}
-      {longRun > 90 && <div style={{ ...S.mono, fontSize:'10px', color:'#e03030' }}>→ Long session: {longRun} min</div>}
-      {consec >= 3  && <div style={{ ...S.mono, fontSize:'10px', color:'#e03030' }}>→ {consec} consecutive hard days</div>}
-      <div style={{ ...S.mono, fontSize:'10px', color:'#f5c542', marginTop:'8px', lineHeight:1.6 }}>
-        Suggestion: {lang==='tr'?'Yarınki seansı kolay çalışma ile değiştirin veya dinlenme günü ekleyin.':'Replace tomorrow\'s session with easy work or add a rest day.'}
-      </div>
-    </div>
-  )
-}
-
-// ─── Race Readiness Gauge (v4.6) ──────────────────────────────────────────────
-function RaceReadinessCard({ log, recovery, injuries, profile, plan, planStatus, lang }) {
-  const { t } = useContext(LangCtx)
-  const { testResults, raceResults: raceResult, setRaceResults: setRaceResult } = useData()
-  const [expanded, setExpanded] = useState(false)
-  const [showPostRace, setShowPostRace] = useState(false)
-  const [resultForm, setResultForm] = useState({ time:'', conditions:'normal', feeling:'3', notes:'' })
-
-  const raceDate = profile?.raceDate
-  if (!raceDate && !profile?.goal) return null
-  if (log.length < 7) return null
-
-  const rr = computeRaceReadiness(log, recovery, injuries, profile, plan, planStatus)
-  const perf = predictRacePerformance(log, testResults, profile)
-
-  const gradeColor = { 'A+':'#f5c542', A:'#5bc25b', B:'#0064ff', C:'#f5c542', D:'#e03030', F:'#e03030' }[rr.grade] || '#888'
-
-  // SVG ring gauge
-  const R = 48, CX = 60, CY = 60, STROKE = 8
-  const circumference = 2 * Math.PI * R
-  const filled = circumference * rr.score / 100
-  const dash   = `${filled} ${circumference - filled}`
-
-  // Days to race display
-  const daysDisp = rr.daysToRace !== null
-    ? (rr.daysToRace <= 0 ? (lang==='tr'?'YARIŞ GÜNÜ!':'RACE DAY!') : `${lang==='tr'?'YARIŞA':'RACE IN'} ${rr.daysToRace} ${lang==='tr'?'GÜN':'DAYS'}`)
-    : null
-
-  // Race Week Mode: special header when ≤7 days
-  const isRaceWeek = rr.daysToRace !== null && rr.daysToRace >= 0 && rr.daysToRace <= 7
-
-  // Sorted factors: worst first
-  const sortedFactors = [...rr.factors].sort((a, b) => (a.score * a.weight) - (b.score * b.weight))
-
-  // Post-race: if raceDate passed
-  const raceIsPast = raceDate && new Date(raceDate) < new Date()
-  const hasResult  = raceResult.some(r => r.raceDate === raceDate)
-
-  const saveResult = () => {
-    const entry = { raceDate, ...resultForm, savedAt: new Date().toISOString() }
-    const predicted = perf.predictions.find(p => (profile?.goal || '').toLowerCase().includes(p.label.toLowerCase()))
-    if (predicted && resultForm.time) {
-      const parts = resultForm.time.split(':').map(Number)
-      const actualSec = parts.length === 3 ? parts[0]*3600+parts[1]*60+parts[2] : parts.length === 2 ? parts[0]*60+parts[1] : 0
-      const predParts = predicted.predicted.split(':').map(Number)
-      const predSec   = predParts.length === 3 ? predParts[0]*3600+predParts[1]*60+predParts[2] : predParts[0]*60+predParts[1]
-      if (actualSec && predSec) {
-        const delta = Math.round((predSec - actualSec) / predSec * 100)
-        entry.accuracyDelta = delta
-        entry.predictedTime = predicted.predicted
-      }
-    }
-    setRaceResult(prev => [...prev, entry])
-    setShowPostRace(false)
-  }
-
-  return (
-    <div className="sp-card" style={{ ...S.card, animationDelay:'0ms', borderLeft:`4px solid ${gradeColor}`, ...(isRaceWeek ? { background: '#ff660008', border:`1px solid #ff660044` } : {}) }}>
-      {isRaceWeek && (
-        <div style={{ background:'#ff6600', margin:'-12px -16px 12px', padding:'10px 16px', borderRadius:'6px 6px 0 0' }}>
-          <div style={{ ...S.mono, fontSize:'14px', fontWeight:700, color:'#fff', letterSpacing:'0.12em' }}>⚡ RACE WEEK</div>
-        </div>
-      )}
-
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'12px', flexWrap:'wrap' }}>
-        {/* SVG gauge */}
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'4px' }}>
-          <svg width="120" height="120" viewBox="0 0 120 120">
-            <circle cx={CX} cy={CY} r={R} fill="none" stroke="var(--border)" strokeWidth={STROKE}/>
-            <circle cx={CX} cy={CY} r={R} fill="none" stroke={gradeColor} strokeWidth={STROKE}
-              strokeDasharray={dash} strokeDashoffset={circumference * 0.25}
-              strokeLinecap="round" style={{ transition:'stroke-dasharray 0.5s ease' }}/>
-            <text x={CX} y={CY - 6} textAnchor="middle" style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'22px', fontWeight:700, fill:gradeColor }}>{rr.grade}</text>
-            <text x={CX} y={CY + 14} textAnchor="middle" style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'13px', fill:'var(--sub)' }}>{rr.score}/100</text>
-          </svg>
-          <div style={{ ...S.mono, fontSize:'8px', color:'#888' }}>{rr.confidence.toUpperCase()} CONFIDENCE</div>
-        </div>
-
-        {/* Verdict + details */}
-        <div style={{ flex:1, minWidth:'160px' }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'6px' }}>
-            <div style={S.cardTitle}>{lang==='tr'?'YARIŞ HAZIRLIĞI':'RACE READINESS'}</div>
-            <button style={{ ...S.btnSec, fontSize:'10px', padding:'3px 8px' }} onClick={() => setExpanded(e => !e)}>
-              {expanded ? '▲' : '▼ DETAILS'}
-            </button>
-          </div>
-          <div style={{ ...S.mono, fontSize:'11px', color:'var(--text)', lineHeight:1.7, marginBottom:'8px' }}>
-            {rr.verdict[lang] || rr.verdict.en}
-          </div>
-          {daysDisp && (
-            <div style={{ ...S.mono, fontSize:'10px', fontWeight:600, color:rr.daysToRace <= 7 ? '#ff6600' : '#888', marginBottom:'6px' }}>
-              {daysDisp}
-            </div>
-          )}
-          {perf.reliable && perf.predictions.length > 0 && (() => {
-            const goalDist = profile?.goal?.toLowerCase() || ''
-            const match = perf.predictions.find(p => goalDist.includes(p.label.toLowerCase())) || perf.predictions[1]
-            if (!match) return null
-            return (
-              <div style={{ ...S.mono, fontSize:'10px', color:'#888', lineHeight:1.6 }}>
-                Predicted: <strong style={{ color:'#ff6600' }}>{match.predicted}</strong> (best {match.best} — worst {match.worst})<br/>
-                <span style={{ fontSize:'9px' }}>via {perf.method}</span>
-              </div>
-            )
-          })()}
-        </div>
-      </div>
-
-      {/* Factor breakdown */}
-      {expanded && (
-        <div style={{ marginTop:'12px', borderTop:'1px solid var(--border)', paddingTop:'12px' }}>
-          <div style={{ ...S.mono, fontSize:'9px', color:'#888', letterSpacing:'0.06em', marginBottom:'8px' }}>FACTOR BREAKDOWN (worst first)</div>
-          {sortedFactors.map(f => (
-            <div key={f.name} style={{ marginBottom:'7px' }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'2px' }}>
-                <span style={{ ...S.mono, fontSize:'9px', color: f.score < 50 ? '#e03030' : f.score < 70 ? '#f5c542' : '#888', letterSpacing:'0.04em' }}>{f.name}</span>
-                <span style={{ ...S.mono, fontSize:'10px', fontWeight:600, color: f.score < 50 ? '#e03030' : f.score < 70 ? '#f5c542' : '#5bc25b' }}>{f.score}/100</span>
-              </div>
-              <div style={{ width:'100%', height:'4px', background:'var(--border)', borderRadius:'2px', overflow:'hidden' }}>
-                <div style={{ width:`${f.score}%`, height:'100%', background: f.score < 50 ? '#e03030' : f.score < 70 ? '#f5c542' : '#5bc25b', borderRadius:'2px' }}/>
-              </div>
-              <div style={{ ...S.mono, fontSize:'9px', color:'var(--sub)', marginTop:'2px' }}>{f[lang] || f.en} (weight {Math.round(f.weight*100)}%)</div>
-            </div>
-          ))}
-
-          {/* Race pacing predictions table */}
-          {perf.reliable && perf.predictions.length > 0 && (
-            <div style={{ marginTop:'10px', padding:'8px 10px', background:'var(--card-bg)', borderRadius:'4px' }}>
-              <div style={{ ...S.mono, fontSize:'9px', color:'#0064ff', letterSpacing:'0.06em', marginBottom:'6px' }}>RACE PREDICTIONS</div>
-              <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
-                {perf.predictions.map(p => (
-                  <div key={p.label} style={{ flex:'1 1 70px', textAlign:'center' }}>
-                    <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>{p.label}</div>
-                    <div style={{ ...S.mono, fontSize:'13px', fontWeight:600, color:'#ff6600' }}>{p.predicted}</div>
-                    <div style={{ ...S.mono, fontSize:'8px', color:'#888' }}>{p.best}–{p.worst}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ ...S.mono, fontSize:'8px', color:'#888', marginTop:'4px' }}>{perf.method}</div>
-            </div>
-          )}
-
-          {/* Training Paces from VDOT Daniels table */}
-          {perf.trainingPaces && (
-            <div style={{ marginTop:'10px', padding:'8px 10px', background:'var(--card-bg)', borderRadius:'4px' }}>
-              <div style={{ ...S.mono, fontSize:'9px', color:'#ff6600', letterSpacing:'0.06em', marginBottom:'6px' }}>
-                YOUR TRAINING PACES · VDOT {perf.trainingPaces.vdot}
-              </div>
-              <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
-                {[
-                  { lbl:'E  EASY',      val: perf.trainingPaces.easy,      color:'#5bc25b' },
-                  { lbl:'M  MARATHON',  val: perf.trainingPaces.marathon,  color:'#0064ff' },
-                  { lbl:'T  THRESHOLD', val: perf.trainingPaces.threshold, color:'#ff6600' },
-                  { lbl:'I  INTERVAL',  val: perf.trainingPaces.interval,  color:'#f5c542' },
-                  { lbl:'R  REPS',      val: perf.trainingPaces.rep,       color:'#e03030' },
-                ].map(({ lbl, val, color }) => (
-                  <div key={lbl} style={{ flex:'1 1 70px', textAlign:'center' }}>
-                    <div style={{ ...S.mono, fontSize:'10px', fontWeight:700, color }}>{val}</div>
-                    <div style={{ ...S.mono, fontSize:'7px', color:'#555', letterSpacing:'0.08em', marginTop:'2px' }}>{lbl}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ ...S.mono, fontSize:'8px', color:'#555', marginTop:'4px' }}>min:sec per km · Daniels 1998</div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Race Week taper checklist */}
-      {isRaceWeek && rr.daysToRace >= 0 && (
-        <div style={{ marginTop:'12px', borderTop:'1px solid #ff660033', paddingTop:'12px' }}>
-          <div style={{ ...S.mono, fontSize:'9px', color:'#ff6600', letterSpacing:'0.06em', marginBottom:'8px' }}>TAPER CHECKLIST</div>
-          {[
-            { day: 6, en:"Last hard session — threshold or race-pace intervals", tr:"Son zorlu seans — eşik veya yarış temposu aralıklar" },
-            { day: 5, en:"Easy run only — shakeout pace", tr:"Sadece kolay koşu — hafif tempo" },
-            { day: 4, en:"Easy or rest — begin carb loading (8g/kg)", tr:"Kolay ya da dinlenme — karbonhidrat yüklemesi başlat (8g/kg)" },
-            { day: 3, en:"Easy 30min — hydration focus — lay out race kit", tr:"30 dak kolay — sıvı alımına odaklan — yarış ekipmanını hazırla" },
-            { day: 2, en:"Complete rest or light walk", tr:"Tam dinlenme veya hafif yürüyüş" },
-            { day: 1, en:"Rest — pasta dinner — visualize the course — sleep early", tr:"Dinlenme — makarna — güzergahı zihinsel prova et — erken uyu" },
-            { day: 0, en:"RACE DAY — trust the training", tr:"YARIŞ GÜNÜ — antrenmanına güven" },
-          ].filter(c => c.day >= rr.daysToRace).map(c => {
-            const isToday = c.day === rr.daysToRace
-            return (
-              <div key={c.day} style={{ display:'flex', alignItems:'flex-start', gap:'8px', padding:'5px 0', borderBottom:'1px solid var(--border)', opacity: isToday ? 1 : 0.6 }}>
-                <span style={{ ...S.mono, fontSize:'10px', color: isToday ? '#ff6600' : '#888', minWidth:'50px' }}>
-                  {c.day === 0 ? '🏁 TODAY' : `D-${c.day}`}
-                </span>
-                <span style={{ ...S.mono, fontSize:'10px', color: isToday ? 'var(--text)' : 'var(--sub)', lineHeight:1.6 }}>
-                  {c[lang] || c.en}
-                </span>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Post-race analysis */}
-      {raceIsPast && !hasResult && (
-        <div style={{ marginTop:'12px', borderTop:'1px solid var(--border)', paddingTop:'10px' }}>
-          <div style={{ ...S.mono, fontSize:'10px', color:'#f5c542', marginBottom:'8px' }}>📝 How did it go? Log your result.</div>
-          {!showPostRace ? (
-            <button style={{ ...S.btn, fontSize:'11px', padding:'6px 14px' }} onClick={() => setShowPostRace(true)}>
-              {lang==='tr'?'Yarış Sonucunu Kaydet':'Log Race Result'}
-            </button>
-          ) : (
-            <div>
-              <div style={S.row}>
-                <div style={{ flex:'1 1 130px' }}>
-                  <label style={S.label}>FINISH TIME (hh:mm:ss)</label>
-                  <input style={S.input} placeholder="3:28:45" value={resultForm.time} onChange={e=>setResultForm(f=>({...f,time:e.target.value}))}/>
-                </div>
-                <div style={{ flex:'1 1 130px' }}>
-                  <label style={S.label}>CONDITIONS</label>
-                  <select style={S.input} value={resultForm.conditions} onChange={e=>setResultForm(f=>({...f,conditions:e.target.value}))}>
-                    {['normal','hot','cold','windy','hilly','wet'].map(c=><option key={c}>{c}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div style={{ marginBottom:'8px' }}>
-                <label style={S.label}>OVERALL FEELING</label>
-                <div style={{ display:'flex', gap:'8px' }}>
-                  {['😞','😕','😐','🙂','😄'].map((em,i)=>(
-                    <button key={i} onClick={()=>setResultForm(f=>({...f,feeling:String(i+1)}))}
-                      style={{ fontSize:'20px', padding:'4px 8px', borderRadius:'4px', border:`2px solid ${resultForm.feeling===String(i+1)?'#ff6600':'var(--border)'}`, background:resultForm.feeling===String(i+1)?'#ff660022':'transparent', cursor:'pointer' }}>
-                      {em}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div style={{ display:'flex', gap:'8px' }}>
-                <button style={S.btn} onClick={saveResult}>{lang==='tr'?'Kaydet':'Save'}</button>
-                <button style={S.btnSec} onClick={()=>setShowPostRace(false)}>{lang==='tr'?'Vazgeç':'Cancel'}</button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Show last result accuracy */}
-      {hasResult && (() => {
-        const r = raceResult.find(x => x.raceDate === raceDate)
-        if (!r || r.accuracyDelta === undefined) return null
-        const delta = r.accuracyDelta
-        const color = Math.abs(delta) <= 3 ? '#5bc25b' : '#f5c542'
-        return (
-          <div style={{ marginTop:'10px', padding:'8px 10px', background:'var(--card-bg)', borderRadius:'4px' }}>
-            <div style={{ ...S.mono, fontSize:'10px', color:color, fontWeight:600 }}>
-              {delta > 0 ? `🏆 ${delta}% faster than predicted!` : delta < 0 ? `${Math.abs(delta)}% slower than predicted` : '✓ Prediction was spot-on!'}
-            </div>
-            <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginTop:'2px' }}>Predicted: {r.predictedTime} · Actual: {r.time}</div>
-          </div>
-        )
-      })()}
-    </div>
-  )
-}
-
 export default function Dashboard({ log, profile }) {
   const [dark] = useLocalStorage('sporeus-dark', false)
   const [lang] = useLocalStorage('sporeus-lang', 'en')
@@ -644,14 +92,14 @@ export default function Dashboard({ log, profile }) {
   const ctlChartDays = dateRange === '7' ? 30 : dateRange === '28' ? 90 : dateRange === '90' ? 180 : 730
   const rangeLabel   = dateRange === 'season' ? 'SEASON' : `LAST ${dateRange}D`
 
-  const last7 = filteredLog   // renamed semantically; full log still used for PMC/ACWR
+  const last7 = filteredLog
   const totalTSS = last7.reduce((s,e)=>s+(e.tss||0),0)
   const totalMin = last7.reduce((s,e)=>s+(e.duration||0),0)
   const avgRPE   = last7.length ? (last7.reduce((s,e)=>s+(e.rpe||0),0)/last7.length).toFixed(1) : '\u2014'
   const srpeLoad = last7.reduce((s,e) => s + ((e.rpe||0) * (e.duration||0)), 0)
   const { atl, ctl, tsb, daily } = calcLoad(log)
   const acwr = calculateACWR(log)
-  // Week-over-week load spike (>10% = caution banner)
+
   const w7Start     = (() => { const d = new Date(); d.setDate(d.getDate()-7);  return d.toISOString().slice(0,10) })()
   const w14Start    = (() => { const d = new Date(); d.setDate(d.getDate()-14); return d.toISOString().slice(0,10) })()
   const thisWeekTSS = log.filter(e => e.date >= w7Start).reduce((s,e) => s+(e.tss||0), 0)
@@ -662,13 +110,11 @@ export default function Dashboard({ log, profile }) {
   const countSess = useCountUp(last7.length)
   const countTSS  = useCountUp(totalTSS)
   const today = new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).toUpperCase()
-  // 7-day trend arrows: compare today's CTL/ATL/TSB to 7 sessions ago from daily PMC series
   const prev7     = daily.length >= 8 ? daily[daily.length - 8] : null
   const trendCTL  = prev7 ? ctl - prev7.ctl : 0
   const trendATL  = prev7 ? atl - prev7.atl : 0
   const trendTSB  = prev7 ? (ctl - atl) - (prev7.ctl - prev7.atl) : 0
 
-  // Coaching message — tone adapts to athlete level
   const coachingMsg = (() => {
     const lvl = profile.athleteLevel || 'competitive'
     const isBusy = totalTSS > 400
@@ -799,11 +245,10 @@ export default function Dashboard({ log, profile }) {
       </div>
     )
   }
-  // ── End beginner simplified dashboard ────────────────────────────────────────
 
   return (
     <div className="sp-fade">
-      <MilestoneOverlay log={log} profile={profile}/>
+      <MilestonesList log={log} profile={profile}/>
       <BackupReminder log={log}/>
       <div style={{ marginBottom:'16px' }}>
         <div style={{ ...S.mono, fontSize:'11px', color:'#888', marginBottom:'4px' }}>{today}</div>
@@ -811,7 +256,6 @@ export default function Dashboard({ log, profile }) {
           {profile.name ? `ATHLETE: ${profile.name.toUpperCase()}` : t('appTitle')}
         </div>
         {headerBadges}
-        {/* Date range filter */}
         <div style={{ display:'flex', gap:'5px', marginTop:'10px', flexWrap:'wrap' }}>
           {[['7','7D'],['28','28D'],['90','90D'],['season','SEASON']].map(([val, lbl]) => (
             <button key={val} onClick={() => setDateRange(val)}
@@ -881,7 +325,9 @@ export default function Dashboard({ log, profile }) {
         )}
       </div>}
 
-      <ErrorBoundary inline name="Race Readiness"><RaceReadinessCard log={log} recovery={recovery} injuries={injuries} profile={profile} plan={plan} planStatus={planStatus} lang={lang}/></ErrorBoundary>
+      <ErrorBoundary inline name="Race Readiness">
+        <RaceReadinessCard log={log} recovery={recovery} injuries={injuries} profile={profile} plan={plan} planStatus={planStatus} lang={lang}/>
+      </ErrorBoundary>
       <ProactiveInjuryAlert log={log} injuries={injuries} lang={lang}/>
 
       {loadSpikeP >= 10 && (
@@ -908,7 +354,7 @@ export default function Dashboard({ log, profile }) {
           <Suspense fallback={null}><HRVChart recovery={recovery} days={30} /></Suspense>
         </div>
       )}
-      <InsightsCard log={log} recovery={recovery} profile={profile} lang={lang}/>
+      <InsightsPanel log={log} recovery={recovery} profile={profile} lang={lang}/>
       <YourPatternsCard log={log} recovery={recovery} injuries={injuries} profile={profile} lang={lang}/>
       <WeekStoryCard log={log} recovery={recovery} profile={profile} lang={lang}/>
       <DidYouKnowCard log={log} recovery={recovery} profile={profile} lang={lang}/>
@@ -1011,7 +457,6 @@ export default function Dashboard({ log, profile }) {
         )
       })()}
 
-      {/* Zone Distributor — filtered log, RPE-based, polarization model */}
       {filteredLog.length > 0 && (() => {
         const dist = zoneDistribution(filteredLog)
         if (!dist) return null
@@ -1028,13 +473,11 @@ export default function Dashboard({ log, profile }) {
                 {lang==='tr' ? meta.tr : meta.en}
               </span>
             </div>
-            {/* Stacked bar */}
             <div style={{ display:'flex', width:'100%', height:14, borderRadius:3, overflow:'hidden', marginBottom:8 }}>
               {zones.map((z,i) => dist[z] > 0 && (
                 <div key={z} style={{ width:`${dist[z]}%`, background:zColors[i], transition:'width 0.3s' }} title={`Z${z}: ${dist[z]}%`}/>
               ))}
             </div>
-            {/* Labels */}
             <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:8 }}>
               {zones.map((z,i) => (
                 <div key={z} style={{ display:'flex', alignItems:'center', gap:4 }}>
@@ -1067,78 +510,18 @@ export default function Dashboard({ log, profile }) {
         </div>
       )}
 
-      {dl.timeline && lc.showCTL && log.length>3 && (
-        <div className="sp-card" style={{ ...S.card, animationDelay:'195ms' }}>
-          <div style={S.cardTitle}>PERFORMANCE MANAGEMENT CHART (90d)</div>
-          {/* ACWR · Monotony · Strain badges */}
-          {(() => {
-            const { mono, strain } = monotonyStrain(log)
-            const acwrColor = acwr.status === 'danger' ? '#e03030'
-              : acwr.status === 'caution'       ? '#f5c542'
-              : acwr.status === 'optimal'        ? '#5bc25b'
-              : '#888'
-            return (
-              <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', margin:'6px 0 10px' }}>
-                {acwr.ratio !== null && (
-                  <span style={{ ...S.mono, fontSize:'10px', padding:'2px 7px', border:`1px solid ${acwrColor}44`, borderRadius:'2px', color: acwrColor }}>
-                    ACWR {acwr.ratio} · {acwr.status.toUpperCase()}
-                  </span>
-                )}
-                <span style={{ ...S.mono, fontSize:'10px', padding:'2px 7px', border:`1px solid ${mono>2?'#e03030':'#333'}44`, borderRadius:'2px', color: mono>2?'#e03030':'#888' }}>
-                  MONOTONY {mono}{mono>2?' ⚠':''}
-                </span>
-                <span style={{ ...S.mono, fontSize:'10px', padding:'2px 7px', border:'1px solid #33333344', borderRadius:'2px', color:'#888' }}>
-                  STRAIN {strain}
-                </span>
-              </div>
-            )
-          })()}
-          {/* ── Performance Metrics ── */}
-          {log.length >= 7 && (() => {
-            const form = getFormScore(log)
-            const peakWk = getPeakWeekLoad(log)
-            const consist = getConsistencyScore(log, 28)
-            return (
-              <div style={{ display:'flex', gap:'10px', flexWrap:'wrap', marginBottom:'14px' }}>
-                <div style={{ flex:'1 1 120px', background:'var(--surface)', border:`1px solid ${form.color}44`, borderRadius:'6px', padding:'12px', textAlign:'center' }}>
-                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'22px', fontWeight:600, color:form.color }}>{form.tsb > 0 ? '+' : ''}{form.tsb}</div>
-                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'9px', color:'#888', letterSpacing:'0.1em', textTransform:'uppercase', marginTop:'4px' }}>Form (TSB)</div>
-                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', color:form.color, marginTop:'2px' }}>{form.label}</div>
-                </div>
-                <div style={{ flex:'1 1 120px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'6px', padding:'12px', textAlign:'center' }}>
-                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'22px', fontWeight:600, color:'#ff6600' }}>{peakWk}</div>
-                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'9px', color:'#888', letterSpacing:'0.1em', textTransform:'uppercase', marginTop:'4px' }}>Peak Week TSS</div>
-                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', color:'#888', marginTop:'2px' }}>all-time</div>
-                </div>
-                <div style={{ flex:'1 1 120px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'6px', padding:'12px', textAlign:'center' }}>
-                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'22px', fontWeight:600, color: consist >= 70 ? '#5bc25b' : consist >= 40 ? '#f0a000' : '#e03030' }}>{consist}%</div>
-                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'9px', color:'#888', letterSpacing:'0.1em', textTransform:'uppercase', marginTop:'4px' }}>Consistency</div>
-                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', color:'#888', marginTop:'2px' }}>last 28d</div>
-                </div>
-              </div>
-            )
-          })()}
-          <ErrorBoundary inline name="CTL Chart"><Suspense fallback={null}><CTLChart log={log} days={ctlChartDays} raceResults={raceResults} plan={plan} /></Suspense></ErrorBoundary>
-          <div style={{ height:'16px' }}/>
-          <Suspense fallback={null}><LoadChart log={log} weeks={10} /></Suspense>
-          <div style={{ height:'16px' }}/>
-          <Suspense fallback={null}><ZoneChart log={log} weeks={8} /></Suspense>
-        </div>
-      )}
+      <LoadTrendChart log={log} acwr={acwr} ctlChartDays={ctlChartDays} raceResults={raceResults} plan={plan} dl={dl} lc={lc}/>
 
-      {/* Banister Impulse-Response Model — requires ≥3 performance tests */}
       {(testResults?.length ?? 0) >= 3 && (() => {
         const fit = fitBanister(log, testResults)
         if (!fit) return null
-        const proj  = predictBanister(log, fit, [], 60)  // 60-day forward projection
+        const proj  = predictBanister(log, fit, [], 60)
         const today = new Date().toISOString().slice(0, 10)
-        // Normalize historical test values to 0-100 using fit scale
         const range = fit.maxV - fit.minV || 1
         const normTests = testResults
           .filter(t => t.date && typeof t.value === 'number')
           .map(t => ({ date: t.date, norm: Math.round((t.value - fit.minV) / range * 100) }))
           .sort((a, b) => a.date > b.date ? 1 : -1)
-        // SVG chart: historical dots + 60-day projected curve
         const allDates = [...normTests.map(t => t.date), ...proj.map(p => p.date)]
         const minDate = allDates[0], maxDate = allDates[allDates.length - 1]
         const spanMs  = new Date(maxDate) - new Date(minDate) || 1
@@ -1159,18 +542,14 @@ export default function Dashboard({ log, profile }) {
               </div>
             </div>
             <svg width={W} height={H} style={{ display:'block', overflow:'visible', width:'100%', maxWidth:W }}>
-              {/* Today divider */}
               <line x1={todayX} y1={padT} x2={todayX} y2={padT + iH} stroke="#333" strokeWidth="1" strokeDasharray="3,3"/>
               <text x={todayX + 3} y={padT + 8} fontFamily="'IBM Plex Mono',monospace" fontSize={7} fill="#555">TODAY</text>
-              {/* 60-day projection */}
               {proj.length > 1 && <path d={projPath} fill="none" stroke="#ff6600" strokeWidth="2" strokeLinejoin="round"/>}
-              {/* Historical test dots */}
               {normTests.map((t, i) => (
                 <g key={i}>
                   <circle cx={px(t.date)} cy={py(t.norm)} r={3.5} fill="#ff6600" stroke="#111" strokeWidth="1"/>
                 </g>
               ))}
-              {/* X labels */}
               <text x={padL} y={H} fontFamily="'IBM Plex Mono',monospace" fontSize={7} fill="#555">{minDate?.slice(5)}</text>
               <text x={W - padR} y={H} fontFamily="'IBM Plex Mono',monospace" fontSize={7} fill="#555" textAnchor="end">{maxDate?.slice(5)}</text>
             </svg>
@@ -1251,7 +630,6 @@ export default function Dashboard({ log, profile }) {
 
       {dl.achievements !== false && <Achievements log={log} dark={dark} lang={lang}/>}
 
-      {/* Goal Countdown */}
       {dl.goal && lc.showTaper && plan && (() => {
         const startDate = new Date(plan.generatedAt)
         const raceDate = new Date(startDate)
@@ -1304,14 +682,12 @@ export default function Dashboard({ log, profile }) {
         )
       })()}
 
-      {/* Weekly Report */}
       {(() => {
         const recLast7 = recovery.filter(e=>{
           const d=new Date(e.date),cutoff=new Date(); cutoff.setDate(cutoff.getDate()-7)
           return d>=cutoff
         })
         const avgRec = recLast7.length ? Math.round(recLast7.reduce((s,e)=>s+(e.score||0),0)/recLast7.length) : null
-        const {mono:monoIdx, strain:strainIdx} = last7.length ? (() => { try { return require('../lib/formulas').monotonyStrain(log) } catch { return {mono:0,strain:0} } })() : {mono:0,strain:0}
 
         const generateReport = () => {
           const { mono, strain } = monotonyStrain(log)
@@ -1325,8 +701,6 @@ export default function Dashboard({ log, profile }) {
             const tot=zm.reduce((s,v)=>s+v,0)||1
             return zm.map((v,i)=>({name:['Z1','Z2','Z3','Z4','Z5'][i],pct:Math.round(v/tot*100)})).filter(z=>z.pct>0)
           })()
-
-          // Plan compliance this week
           const thisWeekIdx = plan ? Math.min(Math.floor((new Date()-new Date(plan.generatedAt))/(7*864e5)), plan.weeks.length-1) : -1
           let complianceStr = ''
           if (thisWeekIdx >= 0 && plan) {
@@ -1335,7 +709,6 @@ export default function Dashboard({ log, profile }) {
             w.sessions.forEach((s,di)=>{ if(s.type!=='Rest'&&s.duration>0){tot++;const st=planStatus[`${thisWeekIdx}-${di}`];if(st==='done'||st==='modified')done++} })
             if (tot) complianceStr = `${Math.round(done/tot*100)}% week compliance`
           }
-
           const html = `<div style="font-family:'Courier New',monospace;font-size:12px;color:#1a1a1a;max-width:480px">
 <div style="background:#0a0a0a;color:#ff6600;padding:8px 12px;font-weight:600;font-size:14px">◈ SPOREUS WEEKLY REPORT</div>
 <div style="padding:12px;background:#f8f8f8">
@@ -1351,7 +724,6 @@ ${avgRec!==null?`<div style="margin-top:8px">Recovery score avg: <strong>${avgRe
 ${complianceStr?`<div>Plan: <strong>${complianceStr}</strong></div>`:''}
 <div style="margin-top:8px;font-size:10px;color:#888">sporeus.com — Science-based training</div>
 </div></div>`
-
           if (navigator.share) {
             navigator.share({ title:'Sporeus Weekly Report', text: `${last7.length} sessions | ${totalTSS} TSS | ${Math.floor(totalMin/60)}h ${totalMin%60}m | RPE ${avgRPE}` })
           } else if (navigator.clipboard) {
@@ -1388,7 +760,6 @@ ${complianceStr?`<div>Plan: <strong>${complianceStr}</strong></div>`:''}
         )
       })()}
 
-      {/* ACWR — Acute:Chronic Workload Ratio */}
       {dl.acwr && lc.showACWR && (() => {
         if (log.length < 7) return null
         const now = Date.now()
@@ -1397,16 +768,15 @@ ${complianceStr?`<div>Plan: <strong>${complianceStr}</strong></div>`:''}
         const acute   = log.filter(e=>now-new Date(e.date).getTime()<ms7 ).reduce((s,e)=>s+(e.tss||0),0)
         const chronic28 = log.filter(e=>now-new Date(e.date).getTime()<ms28).reduce((s,e)=>s+(e.tss||0),0) / 4
         if (!chronic28) return null
-        const acwr = Math.round(acute / chronic28 * 100) / 100
-        const { color, label, rec } = acwr < 0.8
+        const acwrVal = Math.round(acute / chronic28 * 100) / 100
+        const { color, label, rec } = acwrVal < 0.8
           ? { color:'#0064ff', label:t('acwrUnder'),   rec:'Consider adding a moderate session tomorrow' }
-          : acwr <= 1.3
+          : acwrVal <= 1.3
           ? { color:'#5bc25b', label:t('acwrSweet'),   rec:'Maintain current load — great zone' }
-          : acwr <= 1.5
+          : acwrVal <= 1.5
           ? { color:'#f5c542', label:t('acwrCaution'), rec:'Easy run or rest day tomorrow' }
           : { color:'#e03030', label:t('acwrDanger'),  rec:'Rest day mandatory tomorrow' }
 
-        // 8-week ACWR trend (weekly)
         const weeklyACWR = Array.from({length:8},(_,wi)=>{
           const wEnd   = now - wi * 7 * 864e5
           const wStart = wEnd - 7 * 864e5
@@ -1435,7 +805,7 @@ ${complianceStr?`<div>Plan: <strong>${complianceStr}</strong></div>`:''}
                 </div>
               </div>
               <div style={{ textAlign:'center' }}>
-                <div style={{ ...S.mono, fontSize:'36px', fontWeight:600, color, lineHeight:1 }}>{acwr.toFixed(2)}</div>
+                <div style={{ ...S.mono, fontSize:'36px', fontWeight:600, color, lineHeight:1 }}>{acwrVal.toFixed(2)}</div>
                 <div style={{ ...S.mono, fontSize:'9px', color, fontWeight:600, marginTop:'4px' }}>{label}</div>
               </div>
             </div>
@@ -1445,15 +815,12 @@ ${complianceStr?`<div>Plan: <strong>${complianceStr}</strong></div>`:''}
             <div style={{ marginTop:'10px' }}>
               <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginBottom:'4px' }}>8-WEEK ACWR TREND</div>
               <svg width={svgW} height={svgH} style={{ display:'block' }}>
-                {/* Danger/caution bands */}
                 <rect x="0" y={Math.round(svgH-(1.5/maxVal)*svgH)} width={svgW} height={Math.round((1.5/maxVal)*svgH-(1.3/maxVal)*svgH)} fill="#f5c54222"/>
                 <rect x="0" y="0" width={svgW} height={Math.round(svgH-(1.5/maxVal)*svgH)} fill="#e0303011"/>
                 <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round"/>
               </svg>
             </div>
             <div style={{ ...S.mono, fontSize:'9px', color:'#aaa', marginTop:'6px' }}>{t('acwrNote')}</div>
-
-            {/* Next-week load forecast */}
             <div style={{ marginTop:'12px' }}>
               <div style={{ ...S.mono, fontSize:'9px', color:'#555', letterSpacing:'0.08em', marginBottom:'6px' }}>NEXT WEEK FORECAST (TSS targets)</div>
               <div style={{ display:'flex', gap:'5px', flexWrap:'wrap' }}>
@@ -1465,7 +832,7 @@ ${complianceStr?`<div>Plan: <strong>${complianceStr}</strong></div>`:''}
                 ].map(({ label, mult, clr }) => {
                   const tss = Math.round(chronic28 * mult)
                   const proj = (tss / chronic28).toFixed(2)
-                  const isCurrent = acwr >= mult * 0.9 && acwr < mult * 1.1
+                  const isCurrent = acwrVal >= mult * 0.9 && acwrVal < mult * 1.1
                   return (
                     <div key={label} style={{ flex:'1 1 60px', textAlign:'center', padding:'5px 4px', background: isCurrent ? `${clr}18` : 'var(--surface)', borderRadius:'4px', border:`1px solid ${clr}33` }}>
                       <div style={{ ...S.mono, fontSize:'13px', fontWeight:700, color:clr }}>{tss}</div>

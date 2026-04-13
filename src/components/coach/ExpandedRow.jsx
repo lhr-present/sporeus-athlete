@@ -8,7 +8,15 @@ const ORANGE = '#ff6600'
 
 function fmtDate(d) { return d ? d.slice(5) : '—' }
 
-export default function ExpandedRow({ athlete, coachId, onNote }) {
+/**
+ * ExpandedRow — inline detail panel shown below an athlete table row.
+ * Fetches last 30 sessions from Supabase (or reads athlete._log for demo data).
+ * @param {object}   props
+ * @param {object}   props.athlete  — athlete row object ({ athlete_id, _log?, today_ctl, today_atl, today_tsb })
+ * @param {string}   [props.coachId] — coach's Supabase user id; null = demo/offline mode
+ * @param {function} props.onNote   — (athlete) => void, opens NotePanel for this athlete
+ */
+export default function ExpandedRow({ athlete, coachId = null, onNote }) {
   const [liveLog, setLiveLog] = useState(null)
   const [loading, setLoading] = useState(false)
 

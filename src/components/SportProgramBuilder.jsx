@@ -1,9 +1,17 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts'
 import { S } from '../styles.js'
+import { useData } from '../contexts/DataContext.jsx'
 import {
   simulateBanister, scoreTrainingPlan, monteCarloOptimizer, peakFormWindow,
 } from '../lib/sport/simulation.js'
+import {
+  deriveCtlAtl, findRecentResult, sessionFrequencyPerWeek, extractProfileSport, fmtTimeInput, parseTimeInput,
+} from '../lib/sport/athleteDataBridge.js'
+import { weeklyTemplatePlan, instantiateTemplate } from '../lib/sport/rowingTemplates.js'
+import { weeklyRunPlan, instantiateRunningTemplate } from '../lib/sport/runningTemplates.js'
+import { vdotFromRace } from '../lib/sport/running.js'
+import { predict2000m, secToSplit } from '../lib/sport/rowing.js'
 
 const FONT_MONO = { fontFamily: 'IBM Plex Mono, monospace' }
 const ORANGE = '#ff6600'
@@ -28,24 +36,20 @@ const GOALS = [
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function daysUntil(dateStr) {
   if (!dateStr) return null
-  const diff = new Date(dateStr) - new Date()
-  return Math.ceil(diff / 86400000)
+  return Math.ceil((new Date(dateStr) - new Date()) / 86400000)
 }
 
 function exportCSV(bestPlan, actualTSS, raceDate) {
   const header = 'Week,Planned TSS,Actual TSS,Variance'
   const rows = bestPlan.map((tss, i) => {
-    const actual = actualTSS[i] != null ? actualTSS[i] : ''
+    const actual   = actualTSS[i] != null ? actualTSS[i] : ''
     const variance = actual !== '' ? actual - tss : ''
     return `${i + 1},${tss},${actual},${variance}`
   })
-  const csv = [header, ...rows].join('\n')
-  const blob = new Blob([csv], { type: 'text/csv' })
+  const blob = new Blob([[header, ...rows].join('\n')], { type: 'text/csv' })
   const url  = URL.createObjectURL(blob)
   const a    = document.createElement('a')
-  a.href     = url
-  a.download = `sporeus-plan-${raceDate || 'export'}.csv`
-  a.click()
+  a.href = url; a.download = `sporeus-plan-${raceDate || 'export'}.csv`; a.click()
   URL.revokeObjectURL(url)
 }
 
@@ -56,8 +60,7 @@ function StepBar({ step, total = 5 }) {
       {Array.from({ length: total }, (_, i) => (
         <div key={i} style={{
           flex: 1, height: '4px', borderRadius: '2px',
-          background: i <= step ? ORANGE : 'var(--border)',
-          transition: 'background 0.3s',
+          background: i <= step ? ORANGE : 'var(--border)', transition: 'background 0.3s',
         }} />
       ))}
     </div>
@@ -65,24 +68,67 @@ function StepBar({ step, total = 5 }) {
 }
 
 // ── Week detail modal ─────────────────────────────────────────────────────────
-function WeekModal({ week, weekIdx, trace, onClose }) {
-  if (!trace) return null
-  const startDay = weekIdx * 7
-  const days = trace.slice(startDay, startDay + 7)
+function WeekModal({ weekIdx, trace, sport, form, split2k, vdot, onClose }) {
   const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const days = trace ? trace.slice(weekIdx * 7, weekIdx * 7 + 7) : []
+
+  // Determine phase for template lookup
+  const totalWeeks = form?.weeks || 8
+  const pct = weekIdx / totalWeeks
+  const phase = pct < 0.25 ? 'base' : pct < 0.55 ? 'build' : pct < 0.80 ? 'peak' : 'taper'
+
+  // Get session descriptions
+  let sessions = []
+  if (sport === 'rowing' && split2k) {
+    const templateIds = weeklyTemplatePlan(phase)
+    sessions = templateIds.map(id => {
+      const inst = instantiateTemplate(id, split2k)
+      return inst ? { name: inst.name, detail: inst.split2000Fmt + ' race split' } : { name: id, detail: '' }
+    })
+  } else if (sport === 'running' && vdot) {
+    const templateIds = weeklyRunPlan(phase)
+    sessions = templateIds.map(id => {
+      const inst = instantiateRunningTemplate(id, vdot)
+      return inst ? { name: inst.name, detail: inst.targetPaceFmt + '/km' } : { name: id, detail: '' }
+    })
+  }
+
+  const printId = `week-modal-print-${weekIdx}`
+
   return (
     <div style={{
       position: 'fixed', inset: 0, background: '#000a', display: 'flex',
       alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px',
     }} onClick={onClose}>
-      <div style={{
-        ...S.card, maxWidth: '480px', width: '100%', background: 'var(--card-bg)',
-        border: `1px solid ${ORANGE}`, padding: '20px',
+      <div id={printId} style={{
+        ...S.card, maxWidth: '520px', width: '100%', background: 'var(--card-bg)',
+        border: `1px solid ${ORANGE}`, padding: '20px', maxHeight: '80vh', overflowY: 'auto',
       }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-          <span style={{ ...FONT_MONO, fontWeight: 600, color: ORANGE }}>WEEK {weekIdx + 1} DETAIL</span>
-          <button style={{ ...S.ghostBtn, color: ORANGE, fontSize: '16px' }} onClick={onClose}>✕</button>
+          <span style={{ ...FONT_MONO, fontWeight: 600, color: ORANGE }}>WEEK {weekIdx + 1} · {phase.toUpperCase()}</span>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button style={{ ...S.btnSec, fontSize: '10px', padding: '3px 8px' }}
+              onClick={() => window.print()}>⎙ PRINT</button>
+            <button style={{ ...S.ghostBtn, color: ORANGE, fontSize: '16px' }} onClick={onClose}>✕</button>
+          </div>
         </div>
+
+        {sessions.length > 0 && (
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ ...DIM, marginBottom: '6px' }}>PLANNED SESSIONS</div>
+            {sessions.map((s, i) => (
+              <div key={i} style={{
+                display: 'flex', justifyContent: 'space-between',
+                padding: '4px 0', borderBottom: '1px solid var(--border)',
+              }}>
+                <span style={{ ...FONT_MONO, fontSize: '12px' }}>{s.name}</span>
+                <span style={{ ...DIM }}>{s.detail}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ ...DIM, marginBottom: '6px' }}>DAILY BANISTER TRACE</div>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ ...DIM, textAlign: 'left' }}>
@@ -100,7 +146,9 @@ function WeekModal({ week, weekIdx, trace, onClose }) {
                 <td style={{ ...FONT_MONO, fontSize: '11px' }}>{d.tss.toFixed(1)}</td>
                 <td style={{ ...FONT_MONO, fontSize: '11px', color: BLUE }}>{d.CTL}</td>
                 <td style={{ ...FONT_MONO, fontSize: '11px', color: ORANGE }}>{d.ATL}</td>
-                <td style={{ ...FONT_MONO, fontSize: '11px', color: d.TSB >= 0 ? '#00c853' : '#ff4444' }}>{d.TSB > 0 ? '+' : ''}{d.TSB}</td>
+                <td style={{ ...FONT_MONO, fontSize: '11px', color: d.TSB >= 0 ? '#00c853' : '#ff4444' }}>
+                  {d.TSB > 0 ? '+' : ''}{d.TSB}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -129,6 +177,9 @@ function Step1({ form, setForm, onNext }) {
             </button>
           ))}
         </div>
+        {form._sportFromProfile && (
+          <div style={{ ...DIM, marginTop: '6px', color: '#00c853' }}>✓ Pre-filled from your profile</div>
+        )}
       </div>
       <div style={{ marginBottom: '16px' }}>
         <div style={DIM}>PRIMARY GOAL</div>
@@ -155,9 +206,7 @@ function Step1({ form, setForm, onNext }) {
           </div>
         )}
       </div>
-      <button style={S.btn} disabled={!form.sport || !form.goal} onClick={onNext}>
-        NEXT →
-      </button>
+      <button style={S.btn} disabled={!form.sport || !form.goal} onClick={onNext}>NEXT →</button>
     </div>
   )
 }
@@ -174,6 +223,9 @@ function Step2({ form, setForm, onNext, onBack }) {
             <label style={S.label}>2000m Time (mm:ss)</label>
             <input style={S.input} placeholder="6:30" value={form.baseline?.time2k || ''}
               onChange={e => setForm(f => ({ ...f, baseline: { ...f.baseline, time2k: e.target.value } }))} />
+            {form.baseline?._time2kFromLog && (
+              <div style={{ ...DIM, marginTop: '4px', color: '#00c853' }}>✓ From your test log</div>
+            )}
           </div>
           <div style={{ flex: '1 1 120px' }}>
             <label style={S.label}>Body Weight (kg)</label>
@@ -199,6 +251,9 @@ function Step2({ form, setForm, onNext, onBack }) {
             <label style={S.label}>Race Time (mm:ss)</label>
             <input style={S.input} placeholder="20:00" value={form.baseline?.raceTime || ''}
               onChange={e => setForm(f => ({ ...f, baseline: { ...f.baseline, raceTime: e.target.value } }))} />
+            {form.baseline?._raceFromLog && (
+              <div style={{ ...DIM, marginTop: '4px', color: '#00c853' }}>✓ From your log</div>
+            )}
           </div>
         </div>
       )}
@@ -286,13 +341,23 @@ function Step3({ form, setForm, onNext, onBack }) {
       <div style={S.row}>
         <div style={{ flex: '1 1 180px' }}>
           <label style={S.label}>Current CTL (fitness)</label>
-          <input style={S.input} type="number" placeholder="45" value={form.startCTL || ''}
+          <input style={S.input} type="number" placeholder="45"
+            value={form.startCTL !== undefined ? form.startCTL : ''}
             onChange={e => setForm(f => ({ ...f, startCTL: +e.target.value }))} />
+          {form._ctlFromLog && <div style={{ ...DIM, marginTop: '4px', color: '#00c853' }}>✓ From your training data</div>}
         </div>
         <div style={{ flex: '1 1 180px' }}>
           <label style={S.label}>Current ATL (fatigue)</label>
-          <input style={S.input} type="number" placeholder="55" value={form.startATL || ''}
+          <input style={S.input} type="number" placeholder="55"
+            value={form.startATL !== undefined ? form.startATL : ''}
             onChange={e => setForm(f => ({ ...f, startATL: +e.target.value }))} />
+          {form._ctlFromLog && <div style={{ ...DIM, marginTop: '4px', color: '#00c853' }}>✓ From your training data</div>}
+        </div>
+        <div style={{ flex: '1 1 140px' }}>
+          <label style={S.label}>Sessions/week (avg)</label>
+          <input style={S.input} type="number" placeholder="5" value={form.sessionsPerWeek || ''}
+            onChange={e => setForm(f => ({ ...f, sessionsPerWeek: +e.target.value }))} />
+          {form._sessionsFromLog && <div style={{ ...DIM, marginTop: '4px', color: '#00c853' }}>✓ From last 4 weeks</div>}
         </div>
       </div>
       <div style={{ ...DIM, marginTop: '8px' }}>Recovery weeks auto-inserted every 4th week.</div>
@@ -317,12 +382,8 @@ function Step4({ form, onResult, onBack }) {
       const weeks = form.weeks || 8
       const recoveryWeeks = Array.from({ length: Math.floor(weeks / 4) }, (_, i) => (i + 1) * 4 - 1)
       const result = monteCarloOptimizer({
-        weeks,
-        minWeeklyTSS:  form.currentTSS || 200,
-        maxWeeklyTSS:  form.peakTSS    || 500,
-        recoveryWeeks,
-        startCTL:      form.startCTL   || 0,
-        startATL:      form.startATL   || 0,
+        weeks, minWeeklyTSS: form.currentTSS || 200, maxWeeklyTSS: form.peakTSS || 500,
+        recoveryWeeks, startCTL: form.startCTL || 0, startATL: form.startATL || 0,
       }, 500)
       setRunning(false)
       onResult(result)
@@ -353,9 +414,10 @@ function Step4({ form, onResult, onBack }) {
 }
 
 // ── Step 5: Plan display ───────────────────────────────────────────────────────
-function Step5({ form, result, onRestart }) {
+function Step5({ form, result, onRestart, log, setLog }) {
   const [selectedWeek, setSelectedWeek] = useState(null)
-  const [actualTSS, setActualTSS] = useState({})
+  const [actualTSS, setActualTSS]       = useState({})
+  const [saved, setSaved]               = useState(false)
 
   const pfWindow = useMemo(() => {
     if (!result?.bestPlan) return null
@@ -366,7 +428,57 @@ function Step5({ form, result, onRestart }) {
   const { bestPlan, bestScore, meanScore, histogram } = result
   const trace = pfWindow?.trace || []
 
-  // CTL/ATL sparkline (SVG)
+  // Derive baseline values for template lookups
+  const split2k = useMemo(() => {
+    if (form.sport !== 'rowing' || !form.baseline?.time2k) return null
+    const sec = parseTimeInput(form.baseline.time2k)
+    return sec ? secToSplit(sec, 2000) : null
+  }, [form.sport, form.baseline?.time2k])
+
+  const vdot = useMemo(() => {
+    if (form.sport !== 'running' || !form.baseline?.raceTime || !form.baseline?.raceDist) return null
+    const sec  = parseTimeInput(form.baseline.raceTime)
+    const dist = parseFloat(form.baseline.raceDist)
+    return sec && dist ? vdotFromRace(dist, sec) : null
+  }, [form.sport, form.baseline?.raceTime, form.baseline?.raceDist])
+
+  // Session labels for weekly table
+  function sessionLabels(weekIdx) {
+    const totalWeeks = form.weeks || 8
+    const pct  = weekIdx / totalWeeks
+    const phase = pct < 0.25 ? 'base' : pct < 0.55 ? 'build' : pct < 0.80 ? 'peak' : 'taper'
+    if (form.sport === 'rowing' && split2k) {
+      return weeklyTemplatePlan(phase).map(id => id.replace(/_/g, ' ').toUpperCase().slice(0, 6)).join(', ')
+    }
+    if (form.sport === 'running' && vdot) {
+      return weeklyRunPlan(phase).map(id => id.split('_')[0].toUpperCase().slice(0, 5)).join(', ')
+    }
+    return null
+  }
+
+  // Save plan to training log
+  const savePlanToLog = useCallback(() => {
+    if (!setLog || !bestPlan) return
+    const today = new Date()
+    const newEntries = bestPlan.map((tss, i) => {
+      const d = new Date(today)
+      d.setDate(d.getDate() + i * 7)
+      return {
+        id:       Date.now() + i,
+        date:     d.toISOString().slice(0, 10),
+        type:     'Planned',
+        tss,
+        duration: 0,
+        rpe:      0,
+        notes:    `Sport plan week ${i + 1} — target TSS ${tss}`,
+        source:   'sport-plan',
+      }
+    })
+    setLog(prev => [...(prev || []), ...newEntries])
+    setSaved(true)
+  }, [bestPlan, setLog])
+
+  // CTL/ATL sparkline
   const maxVal = Math.max(...trace.map(d => Math.max(d.CTL, d.ATL)), 1)
   const W = 400; const H = 80
   const toX = i => (i / Math.max(trace.length - 1, 1)) * W
@@ -375,27 +487,24 @@ function Step5({ form, result, onRestart }) {
     `${i === 0 ? 'M' : 'L'}${toX(i).toFixed(1)},${toY(d[key]).toFixed(1)}`
   ).join(' ')
 
-  // Race countdown
   const daysLeft = form.raceDate ? daysUntil(form.raceDate) : null
-
-  const handleActualChange = (i, val) => {
-    setActualTSS(prev => ({ ...prev, [i]: val === '' ? null : +val }))
-  }
 
   return (
     <div>
       {selectedWeek !== null && (
         <WeekModal
-          week={bestPlan[selectedWeek]}
           weekIdx={selectedWeek}
           trace={trace}
+          sport={form.sport}
+          form={form}
+          split2k={split2k}
+          vdot={vdot}
           onClose={() => setSelectedWeek(null)}
         />
       )}
 
       <div style={S.cardTitle}>YOUR OPTIMIZED PLAN</div>
 
-      {/* Race countdown */}
       {daysLeft != null && (
         <div style={{
           ...S.card, background: '#ff660011', border: `1px solid ${ORANGE}44`,
@@ -409,7 +518,6 @@ function Step5({ form, result, onRestart }) {
         </div>
       )}
 
-      {/* Scores */}
       <div style={{ ...S.row, marginBottom: '16px' }}>
         <div style={S.stat}><span style={S.statVal}>{bestScore}</span><span style={S.statLbl}>PLAN SCORE</span></div>
         <div style={S.stat}><span style={S.statVal}>{meanScore}</span><span style={S.statLbl}>AVG SCORE</span></div>
@@ -422,7 +530,6 @@ function Step5({ form, result, onRestart }) {
         </div>
       </div>
 
-      {/* Score distribution histogram */}
       {histogram && (
         <div style={{ ...S.card }}>
           <div style={S.cardTitle}>SCORE DISTRIBUTION (500 simulations)</div>
@@ -430,11 +537,8 @@ function Step5({ form, result, onRestart }) {
             <BarChart data={histogram} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
               <XAxis dataKey="range" tick={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 9 }} />
               <YAxis tick={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 9 }} />
-              <Tooltip
-                contentStyle={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 11, background: '#111', border: `1px solid ${ORANGE}` }}
-                formatter={(v) => [v, 'Plans']}
-              />
-              <ReferenceLine x={`${Math.floor(bestScore / 10) * 10}–${Math.floor(bestScore / 10) * 10 + 10}`} stroke={ORANGE} />
+              <Tooltip contentStyle={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 11, background: '#111', border: `1px solid ${ORANGE}` }}
+                formatter={v => [v, 'Plans']} />
               <Bar dataKey="count" radius={[3, 3, 0, 0]}>
                 {histogram.map((entry, i) => (
                   <Cell key={i} fill={entry.count === Math.max(...histogram.map(h => h.count)) ? ORANGE : '#0064ff44'} />
@@ -445,14 +549,20 @@ function Step5({ form, result, onRestart }) {
         </div>
       )}
 
-      {/* Weekly plan with plan vs actual */}
       <div style={{ ...S.card }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={S.cardTitle}>WEEKLY TSS — PLAN vs ACTUAL</div>
-          <button style={{ ...S.btnSec, fontSize: '10px', padding: '4px 10px' }}
-            onClick={() => exportCSV(bestPlan, actualTSS, form.raceDate)}>
-            ↓ CSV
-          </button>
+          <div style={S.cardTitle}>WEEKLY PLAN — PLAN vs ACTUAL</div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button style={{ ...S.btnSec, fontSize: '10px', padding: '4px 10px' }}
+              onClick={() => exportCSV(bestPlan, actualTSS, form.raceDate)}>↓ CSV</button>
+            <button style={{
+              ...S.btnSec, fontSize: '10px', padding: '4px 10px',
+              background: saved ? '#00c85333' : 'transparent',
+              color: saved ? '#00c853' : ORANGE,
+            }} onClick={savePlanToLog} disabled={saved}>
+              {saved ? '✓ SAVED' : '+ SAVE TO LOG'}
+            </button>
+          </div>
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', ...FONT_MONO, fontSize: '11px' }}>
@@ -462,6 +572,7 @@ function Step5({ form, result, onRestart }) {
                 <th style={{ padding: '4px 8px', textAlign: 'right' }}>PLANNED</th>
                 <th style={{ padding: '4px 8px', textAlign: 'right' }}>ACTUAL</th>
                 <th style={{ padding: '4px 8px', textAlign: 'right' }}>VARIANCE</th>
+                <th style={{ padding: '4px 8px', textAlign: 'left' }}>SESSIONS</th>
                 <th style={{ padding: '4px 8px', textAlign: 'center' }}>DETAIL</th>
               </tr>
             </thead>
@@ -470,6 +581,7 @@ function Step5({ form, result, onRestart }) {
                 const actual   = actualTSS[i] != null ? actualTSS[i] : null
                 const variance = actual != null ? actual - tss : null
                 const isRec    = tss < (form.currentTSS || 200) * 1.1
+                const labels   = sessionLabels(i)
                 return (
                   <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '4px 8px' }}>
@@ -478,17 +590,12 @@ function Step5({ form, result, onRestart }) {
                     </td>
                     <td style={{ padding: '4px 8px', textAlign: 'right', color: isRec ? BLUE : 'var(--text)' }}>{tss}</td>
                     <td style={{ padding: '4px 8px', textAlign: 'right' }}>
-                      <input
-                        type="number"
-                        placeholder="—"
-                        value={actualTSS[i] ?? ''}
-                        onChange={e => handleActualChange(i, e.target.value)}
+                      <input type="number" placeholder="—" value={actualTSS[i] ?? ''}
+                        onChange={e => setActualTSS(prev => ({ ...prev, [i]: e.target.value === '' ? null : +e.target.value }))}
                         style={{
                           width: '60px', background: 'var(--input-bg)', border: '1px solid var(--border)',
-                          borderRadius: '4px', padding: '2px 4px', color: 'var(--text)', ...FONT_MONO, fontSize: '11px',
-                          textAlign: 'right',
-                        }}
-                      />
+                          borderRadius: '4px', padding: '2px 4px', color: 'var(--text)', ...FONT_MONO, fontSize: '11px', textAlign: 'right',
+                        }} />
                     </td>
                     <td style={{
                       padding: '4px 8px', textAlign: 'right',
@@ -496,11 +603,12 @@ function Step5({ form, result, onRestart }) {
                     }}>
                       {variance != null ? (variance > 0 ? '+' : '') + variance : '—'}
                     </td>
+                    <td style={{ padding: '4px 8px', color: 'var(--muted)', fontSize: '10px', maxWidth: '120px' }}>
+                      {labels || '—'}
+                    </td>
                     <td style={{ padding: '4px 8px', textAlign: 'center' }}>
                       <button style={{ ...S.ghostBtn, color: ORANGE, fontSize: '10px' }}
-                        onClick={() => setSelectedWeek(i)}>
-                        ▶
-                      </button>
+                        onClick={() => setSelectedWeek(i)}>▶</button>
                     </td>
                   </tr>
                 )
@@ -510,7 +618,6 @@ function Step5({ form, result, onRestart }) {
         </div>
       </div>
 
-      {/* CTL/ATL sparkline */}
       {trace.length > 0 && (
         <div style={{ ...S.card }}>
           <div style={S.cardTitle}>FITNESS / FATIGUE TRACE (Banister)</div>
@@ -518,10 +625,9 @@ function Step5({ form, result, onRestart }) {
             <path d={makePath('CTL')} fill="none" stroke={BLUE}   strokeWidth="2" />
             <path d={makePath('ATL')} fill="none" stroke={ORANGE} strokeWidth="2" />
             {pfWindow?.peakDay && (
-              <line
-                x1={toX(pfWindow.peakDay - 1).toFixed(1)} y1="0"
-                x2={toX(pfWindow.peakDay - 1).toFixed(1)} y2={H}
-                stroke="#00c853" strokeWidth="1.5" strokeDasharray="4 2" />
+              <line x1={toX(pfWindow.peakDay - 1).toFixed(1)} y1="0"
+                    x2={toX(pfWindow.peakDay - 1).toFixed(1)} y2={H}
+                    stroke="#00c853" strokeWidth="1.5" strokeDasharray="4 2" />
             )}
           </svg>
           <div style={{ display: 'flex', gap: '16px', marginTop: '8px' }}>
@@ -539,9 +645,60 @@ function Step5({ form, result, onRestart }) {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function SportProgramBuilder({ profile }) {
+  const { log, setLog } = useData()
+
   const [step, setStep]     = useState(0)
   const [form, setForm]     = useState({ weeks: 8 })
   const [result, setResult] = useState(null)
+
+  // Auto-populate on mount: sport from profile, CTL/ATL from log, test results from log
+  useEffect(() => {
+    const profileSport = extractProfileSport(profile)
+    const { ctl, atl } = deriveCtlAtl(log)
+    const freq = sessionFrequencyPerWeek(log, 4)
+
+    setForm(prev => {
+      const updated = { ...prev }
+
+      if (profileSport && !prev.sport) {
+        updated.sport = profileSport
+        updated._sportFromProfile = true
+      }
+
+      if (ctl > 0 || atl > 0) {
+        if (prev.startCTL === undefined) updated.startCTL = ctl
+        if (prev.startATL === undefined) updated.startATL = atl
+        updated._ctlFromLog = true
+      }
+
+      if (freq > 0 && !prev.sessionsPerWeek) {
+        updated.sessionsPerWeek = freq
+        updated._sessionsFromLog = true
+      }
+
+      // Pre-fill baseline from log
+      const rowingTest = findRecentResult(log, 'Test', 2000)
+      if (rowingTest?.timeSec && !prev.baseline?.time2k) {
+        updated.baseline = {
+          ...(prev.baseline || {}),
+          time2k: fmtTimeInput(rowingTest.timeSec),
+          _time2kFromLog: true,
+        }
+      }
+
+      const raceResult = findRecentResult(log, 'Race')
+      if (raceResult?.timeSec && raceResult?.distanceM && !prev.baseline?.raceTime) {
+        updated.baseline = {
+          ...(prev.baseline || updated.baseline || {}),
+          raceTime: fmtTimeInput(raceResult.timeSec),
+          raceDist: String(raceResult.distanceM),
+          _raceFromLog: true,
+        }
+      }
+
+      return updated
+    })
+  }, []) // run once on mount
 
   const handleResult = useCallback((r) => { setResult(r); setStep(4) }, [])
   const restart      = useCallback(() => { setStep(0); setForm({ weeks: 8 }); setResult(null) }, [])
@@ -551,14 +708,16 @@ export default function SportProgramBuilder({ profile }) {
       <style>{`@keyframes fadeIn{from{opacity:0}to{opacity:1}}.spb-step{animation:fadeIn 200ms ease-out both}`}</style>
       <div style={{ ...S.card }}>
         <div style={{ ...S.cardTitle, marginBottom: '6px' }}>SPORT PROGRAM BUILDER</div>
-        <div style={{ ...DIM, marginBottom: '16px' }}>Monte Carlo optimizer · Banister impulse-response · 500 simulations</div>
+        <div style={{ ...DIM, marginBottom: '16px' }}>
+          Monte Carlo optimizer · Banister impulse-response · 500 simulations
+        </div>
         <StepBar step={step} />
         <div className="spb-step" key={step}>
           {step === 0 && <Step1 form={form} setForm={setForm} onNext={() => setStep(1)} />}
           {step === 1 && <Step2 form={form} setForm={setForm} onNext={() => setStep(2)} onBack={() => setStep(0)} />}
           {step === 2 && <Step3 form={form} setForm={setForm} onNext={() => setStep(3)} onBack={() => setStep(1)} />}
           {step === 3 && <Step4 form={form} onResult={handleResult} onBack={() => setStep(2)} />}
-          {step === 4 && <Step5 form={form} result={result} onRestart={restart} />}
+          {step === 4 && <Step5 form={form} result={result} onRestart={restart} log={log} setLog={setLog} />}
         </div>
       </div>
     </div>
