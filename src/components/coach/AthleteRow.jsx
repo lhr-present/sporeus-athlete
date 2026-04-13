@@ -3,6 +3,7 @@
 
 import { wellnessAvg } from '../../lib/coachDigest.js'
 import { getReadinessLabel, getAthleteInsights } from '../../lib/ruleInsights.js'
+import { S } from '../../styles.js'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -70,12 +71,12 @@ function AthleteBadges({ ath, noCheckIn }) {
   const hasAlert = alerts.some(a => a.flag && a.key !== 'readiness')
   return (
     <>
-      <span style={{ fontFamily: MONO, fontSize: 8, color: rl.color, border: `1px solid ${rl.color}55`, borderRadius: 2, padding: '1px 5px', fontWeight: 700 }}>
+      <span style={{ ...S.badgeOutline(rl.color), fontWeight: 700 }}>
         {rl.level.toUpperCase()}
       </span>
       {hasAlert && <span style={{ width: 6, height: 6, borderRadius: '50%', background: RED, display: 'inline-block', flexShrink: 0 }} title="Active alerts" />}
       {noCheckIn && (
-        <span style={{ fontFamily: MONO, fontSize: 8, color: YELLOW, border: `1px solid ${YELLOW}55`, borderRadius: 2, padding: '1px 5px' }}>
+        <span style={S.badgeOutline(YELLOW)}>
           ⚠ NO CHECK-IN
         </span>
       )}
@@ -131,8 +132,8 @@ export default function AthleteRow({
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
-            <button aria-label={isFlagged ? 'Unflag athlete' : 'Flag athlete'} onClick={e => { e.stopPropagation(); onFlag() }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: isFlagged ? ORANGE : '#333', padding: '10px 8px' }}>★</button>
-            <button aria-label={`Message ${ath.display_name}`} title={`Message ${ath.display_name}`} onClick={e => { e.stopPropagation(); onMessage() }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#666', padding: '10px 8px' }}>✉</button>
+            <button aria-label={isFlagged ? 'Unflag athlete' : 'Flag athlete'} onClick={e => { e.stopPropagation(); onFlag() }} style={{ ...S.ghostBtn, fontSize: 14, color: isFlagged ? ORANGE : '#333', padding: '10px 8px' }}>★</button>
+            <button aria-label={`Message ${ath.display_name}`} title={`Message ${ath.display_name}`} onClick={e => { e.stopPropagation(); onMessage() }} style={{ ...S.ghostBtn, fontSize: 13, color: '#666', padding: '10px 8px' }}>✉</button>
             <input type="checkbox" checked={inCompare} onChange={onCompare} disabled={!inCompare && compareAtMax} onClick={e => e.stopPropagation()} style={{ accentColor: ORANGE, cursor: 'pointer', width: 12, height: 12 }} />
           </div>
         </div>
@@ -163,7 +164,7 @@ export default function AthleteRow({
           <span style={{ fontFamily: MONO, fontSize: 11, color: '#eee', fontWeight: 600 }}>{ath.display_name}</span>
           <AthleteBadges ath={ath} noCheckIn={noCheckIn} />
         </div>
-        <span style={{ fontFamily: MONO, fontSize: 9, color: '#444' }}>{fmtDate(ath.last_session_date)}</span>
+        <span style={S.dimText}>{fmtDate(ath.last_session_date)}</span>
       </td>
       {/* Readiness */}
       <td style={{ padding: '8px', textAlign: 'center' }}><ReadinessCircle score={readiness} /></td>

@@ -4,7 +4,7 @@
 //                 coach/NotePanel, coach/ExpandedRow
 // Custom hook:    hooks/useRealtimeSquad
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { supabase, isSupabaseReady } from '../lib/supabase.js'
+import { fetchSquad } from '../lib/db/athletes.js'
 import { S } from '../styles.js'
 import { generateDemoSquad, filterByTeam, DEMO_TEAMS, getTeams } from '../lib/squadUtils.js'
 import { getTierSync, canAddAthlete, isFeatureGated, getUpgradePrompt } from '../lib/subscription.js'
@@ -16,6 +16,7 @@ import NotePanel    from './coach/NotePanel.jsx'
 import ExpandedRow  from './coach/ExpandedRow.jsx'
 import CoachMessage from './CoachMessage.jsx'
 import { useRealtimeSquad } from '../hooks/useRealtimeSquad.js'
+import EmptyState from './ui/EmptyState.jsx'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -64,10 +65,8 @@ export default function CoachSquadView({ authUser }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      if (!isSupabaseReady() || !authUser?.id) throw new Error('no-supabase')
-      const { data, error } = await supabase.functions.invoke('squad-sync', {
-        headers: { Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}` },
-      })
+      if (!authUser?.id) throw new Error('no-supabase')
+      const { data, error } = await fetchSquad()
       if (error || !data?.length) throw new Error('empty')
       setAthletes(data); setIsDemo(false)
     } catch {
@@ -166,10 +165,10 @@ export default function CoachSquadView({ authUser }) {
       )}
 
       {/* Demo banner */}
-      {isDemo && <div style={{ fontFamily: MONO, fontSize: 10, padding: '6px 10px', borderRadius: '3px', marginBottom: '12px', background: 'rgba(245,197,66,0.08)', border: '1px solid #f5c54244', color: '#f5c542' }}>DEMO DATA — connect real athletes to see live metrics</div>}
+      {isDemo && <EmptyState variant="warn" body="DEMO DATA — connect real athletes to see live metrics" />}
 
       {/* Tier gates */}
-      {inviteBlocked && !isDemo && <div style={{ fontFamily: MONO, fontSize: 10, color: YELLOW, marginBottom: 8, padding: '4px 8px', border: `1px solid ${YELLOW}44`, borderRadius: 3 }}>{getUpgradePrompt('multi_team').replace('Multi-team management', 'Adding more athletes')}</div>}
+      {inviteBlocked && !isDemo && <EmptyState variant="warn" body={getUpgradePrompt('multi_team').replace('Multi-team management', 'Adding more athletes')} />}
 
       {/* Team selector */}
       <TeamSelector
@@ -180,10 +179,9 @@ export default function CoachSquadView({ authUser }) {
 
       {/* Empty state */}
       {!isDemo && athletes.length === 0 && inviteCode && !inviteBlocked && (
-        <div style={{ padding: '16px 0' }}>
-          <div style={{ fontFamily: MONO, fontSize: 10, color: '#888', marginBottom: 8 }}>No athletes connected yet. Share this invite code:</div>
+        <EmptyState variant="empty" body="No athletes connected yet. Share this invite code:">
           <div style={{ fontFamily: MONO, fontSize: 16, fontWeight: 700, color: ORANGE, letterSpacing: '0.2em', padding: '8px 12px', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 4, display: 'inline-block' }}>{inviteCode}</div>
-        </div>
+        </EmptyState>
       )}
 
       {/* Athlete Comparison */}

@@ -10,6 +10,7 @@ import { hasUnread } from './CoachMessage.jsx'
 const WellnessSparkline = lazy(() => import('./charts/WellnessSparkline.jsx'))
 import { flushQueue } from '../lib/offlineQueue.js'
 import { calculateACWR } from '../lib/trainingLoad.js'
+import { S } from '../styles.js'
 
 const EMBED_MODE = new URLSearchParams(window.location.search).get('embed') === 'true'
 
@@ -299,7 +300,7 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
           </div>
           <button
             onClick={() => setCoachUnread(0)}
-            style={{ fontFamily: MONO, fontSize: 9, background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}
+            style={S.ghostBtn}
           >
             DISMISS
           </button>
@@ -399,7 +400,7 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
             <div style={{ display: 'flex', gap: '14px', marginBottom: '14px', flexWrap: 'wrap' }}>
               {QUICK_FIELDS.map(field => (
                 <div key={field.key}>
-                  <div style={{ fontSize: '9px', color: '#555', letterSpacing: '0.1em', marginBottom: '6px' }}>{t(field.lk)}</div>
+                  <div style={{ ...S.sectionLabel, marginBottom: '6px' }}>{t(field.lk)}</div>
                   <div style={{ display: 'flex', gap: '4px' }}>
                     {field.emoji.map((em, i) => (
                       <button type="button" key={i} aria-label={`${field.key} level ${i + 1}`} onClick={() => setWellness(w => ({ ...w, [field.key]: i + 1 }))}

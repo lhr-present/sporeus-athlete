@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
+import { useState, useEffect, useCallback, useRef, lazy } from 'react'
 import { exchangeStravaCode } from './lib/strava.js'
 import { checkRaceCountdowns } from './lib/pushNotify.js'
 import { scheduleSessionReminder, getReminderSettings } from './lib/pushNotifications.js'
@@ -9,7 +9,7 @@ import { LangCtx, LABELS, TABS } from './contexts/LangCtx.jsx'
 import { useLocalStorage, STORAGE_WARN_KEY } from './hooks/useLocalStorage.js'
 import { DataProvider, useData } from './contexts/DataContext.jsx'
 import { S, ANIM_CSS } from './styles.js'
-import ErrorBoundary from './components/ErrorBoundary.jsx'
+import AsyncBoundary from './components/ui/AsyncBoundary.jsx'
 import TodayView from './components/TodayView.jsx'
 import ZoneCalc from './components/ZoneCalc.jsx'
 import TrainingLog from './components/TrainingLog.jsx'
@@ -40,11 +40,6 @@ const Periodization = lazy(() => import('./components/Periodization.jsx'))
 
 const EMBED_MODE = new URLSearchParams(window.location.search).get('embed') === 'true'
 
-const LazyFallback = () => (
-  <div style={{ fontFamily:"'IBM Plex Mono',monospace", padding:'40px 20px', textAlign:'center', color:'#888', letterSpacing:'0.1em', opacity:0.7 }}>
-    LOADING...
-  </div>
-)
 
 const Splash = () => (
   <div style={{ minHeight:'100vh', background:'#0a0a0a', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'#444', letterSpacing:'0.12em' }}>
@@ -264,9 +259,9 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
     return (
       <LangCtx.Provider value={{ t, lang, setLang }}>
         <style>{ANIM_CSS}</style>
-        <ErrorBoundary tabName="Today">
+        <AsyncBoundary name="Today">
           <TodayView log={log} profile={profile} setTab={() => {}} setLogPrefill={() => {}} />
-        </ErrorBoundary>
+        </AsyncBoundary>
       </LangCtx.Provider>
     )
   }
@@ -477,35 +472,28 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
         <main style={S.content}>
           {coachMode && authProfile?.role === 'coach' && (
             <>
-              <ErrorBoundary tabName="Squad View">
-                <Suspense fallback={<LazyFallback/>}>
-                  <CoachSquadView authUser={authUser} />
-                </Suspense>
-              </ErrorBoundary>
+              <AsyncBoundary name="Squad View">
+                <CoachSquadView authUser={authUser} />
+              </AsyncBoundary>
               <div style={{ height: '16px' }}/>
-              <ErrorBoundary tabName="Coach Overview">
-                <Suspense fallback={<LazyFallback/>}>
-                  <CoachOverview
-                    coachId={authUser?.id}
-                    onSelectAthlete={id => {}}
-                  />
-                </Suspense>
-              </ErrorBoundary>
+              <AsyncBoundary name="Coach Overview">
+                <CoachOverview coachId={authUser?.id} onSelectAthlete={() => {}} />
+              </AsyncBoundary>
               <div style={{ height: '24px' }}/>
-              <ErrorBoundary tabName="Coach Mode"><Suspense fallback={<LazyFallback/>}><CoachDashboard authUser={authUser}/></Suspense></ErrorBoundary>
+              <AsyncBoundary name="Coach Mode"><CoachDashboard authUser={authUser}/></AsyncBoundary>
             </>
           )}
-          {coachMode && authProfile?.role !== 'coach' && <ErrorBoundary tabName="Coach Mode"><Suspense fallback={<LazyFallback/>}><CoachDashboard authUser={authUser}/></Suspense></ErrorBoundary>}
-          {!coachMode && tab === 'today'        && <ErrorBoundary tabName="Today"><TodayView log={log} profile={profile} setTab={setTab} setLogPrefill={setLogPrefill}/></ErrorBoundary>}
-          {!coachMode && tab === 'dashboard'    && <ErrorBoundary tabName="Dashboard"><Suspense fallback={<LazyFallback/>}><Dashboard log={log} profile={profile}/></Suspense></ErrorBoundary>}
-          {tab === 'zones'        && <ErrorBoundary tabName="Zone Calc"><ZoneCalc/></ErrorBoundary>}
-          {tab === 'tests'        && <ErrorBoundary tabName="Protocols"><Suspense fallback={<LazyFallback/>}><TestProtocols/></Suspense></ErrorBoundary>}
-          {tab === 'log'          && <ErrorBoundary tabName="Training Log"><TrainingLog log={log} setLog={setLog} prefill={logPrefill} clearPrefill={() => setLogPrefill(null)}/></ErrorBoundary>}
-          {tab === 'periodization'&& <ErrorBoundary tabName="Macro Plan"><Suspense fallback={<LazyFallback/>}><Periodization authUser={authUser}/></Suspense></ErrorBoundary>}
-          {tab === 'plan'         && <ErrorBoundary tabName="Yearly Plan"><Suspense fallback={<LazyFallback/>}><YearlyPlan /></Suspense></ErrorBoundary>}
-          {tab === 'glossary'     && <ErrorBoundary tabName="Glossary"><Suspense fallback={<LazyFallback/>}><Glossary/></Suspense></ErrorBoundary>}
-          {tab === 'recovery'     && <ErrorBoundary tabName="Recovery"><Recovery/></ErrorBoundary>}
-          {tab === 'profile'      && <ErrorBoundary tabName="Profile"><Suspense fallback={<LazyFallback/>}><Profile profile={profile} setProfile={setProfile} log={log} authUser={authUser}/></Suspense></ErrorBoundary>}
+          {coachMode && authProfile?.role !== 'coach' && <AsyncBoundary name="Coach Mode"><CoachDashboard authUser={authUser}/></AsyncBoundary>}
+          {!coachMode && tab === 'today'        && <AsyncBoundary name="Today"><TodayView log={log} profile={profile} setTab={setTab} setLogPrefill={setLogPrefill}/></AsyncBoundary>}
+          {!coachMode && tab === 'dashboard'    && <AsyncBoundary name="Dashboard"><Dashboard log={log} profile={profile}/></AsyncBoundary>}
+          {tab === 'zones'        && <AsyncBoundary name="Zone Calc"><ZoneCalc/></AsyncBoundary>}
+          {tab === 'tests'        && <AsyncBoundary name="Protocols"><TestProtocols/></AsyncBoundary>}
+          {tab === 'log'          && <AsyncBoundary name="Training Log"><TrainingLog log={log} setLog={setLog} prefill={logPrefill} clearPrefill={() => setLogPrefill(null)}/></AsyncBoundary>}
+          {tab === 'periodization'&& <AsyncBoundary name="Macro Plan"><Periodization authUser={authUser}/></AsyncBoundary>}
+          {tab === 'plan'         && <AsyncBoundary name="Yearly Plan"><YearlyPlan /></AsyncBoundary>}
+          {tab === 'glossary'     && <AsyncBoundary name="Glossary"><Glossary/></AsyncBoundary>}
+          {tab === 'recovery'     && <AsyncBoundary name="Recovery"><Recovery/></AsyncBoundary>}
+          {tab === 'profile'      && <AsyncBoundary name="Profile"><Profile profile={profile} setProfile={setProfile} log={log} authUser={authUser}/></AsyncBoundary>}
         </main>
 
         <footer style={S.footer}>

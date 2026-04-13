@@ -1,10 +1,12 @@
+import { COLOR, FONT, RADIUS, TRANSITION } from './styles/tokens.js'
+
 // ─── Animation + theme CSS ────────────────────────────────────────────────────
 export const ANIM_CSS = `
   @keyframes fadeIn  { from{opacity:0}to{opacity:1} }
   @keyframes slideUp { from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)} }
   .sp-fade { animation:fadeIn 200ms ease-out both }
   .sp-card { animation:slideUp 300ms ease-out both }
-  @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 #ff660066} 70%{box-shadow:0 0 0 6px #ff660000} }
+  @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 ${COLOR.orange}66} 70%{box-shadow:0 0 0 6px ${COLOR.orange}00} }
   .sp-tab-pulse { animation:pulse 1.6s ease-out infinite }
   @keyframes sp-dot { 0%,80%,100%{opacity:0.2;transform:scale(0.8)} 40%{opacity:1;transform:scale(1.2)} }
   :root {
@@ -21,27 +23,41 @@ export const ANIM_CSS = `
 
 // ─── Styles ────────────────────────────────────────────────────────────────────
 export const S = {
-  app: { fontFamily:"'IBM Plex Sans',system-ui,sans-serif", backgroundColor:'var(--bg)', color:'var(--text)', minHeight:'100vh', maxWidth:'900px', margin:'0 auto', paddingTop:'3px' },
-  topBar: { height:'3px', background:'#ff6600', position:'fixed', top:0, left:0, right:0, zIndex:9999 },
-  header: { background:'#0a0a0a', padding:'10px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:'1px solid #ff6600' },
-  headerTitle: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'13px', fontWeight:600, letterSpacing:'0.12em', color:'#ff6600' },
-  headerSub: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', color:'#888', letterSpacing:'0.06em' },
-  navWrap: { background:'#0a0a0a', overflowX:'auto', WebkitOverflowScrolling:'touch', scrollbarWidth:'none', borderBottom:'2px solid #222' },
-  nav: { display:'flex', minWidth:'max-content' },
-  navBtn: a => ({ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', fontWeight:600, letterSpacing:'0.08em', padding:'10px 13px', border:'none', cursor:'pointer', background:a?'#ff6600':'transparent', color:a?'#fff':'#888', borderBottom:a?'2px solid #ff6600':'2px solid transparent', transition:'all 0.15s', whiteSpace:'nowrap' }),
-  content: { padding:'20px' },
-  card: { background:'var(--card-bg)', border:'1px solid var(--border)', borderRadius:'6px', padding:'16px', marginBottom:'16px' },
-  cardTitle: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--muted)', marginBottom:'12px', borderBottom:'1px solid var(--border)', paddingBottom:'8px' },
-  row: { display:'flex', gap:'12px', flexWrap:'wrap' },
-  label: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'var(--muted)', marginBottom:'4px', display:'block' },
-  input: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'14px', padding:'8px 12px', border:'1px solid var(--input-border)', borderRadius:'4px', width:'100%', boxSizing:'border-box', background:'var(--input-bg)', color:'var(--text)' },
-  select: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'13px', padding:'8px 12px', border:'1px solid var(--input-border)', borderRadius:'4px', width:'100%', boxSizing:'border-box', background:'var(--input-bg)', color:'var(--text)', cursor:'pointer' },
-  btn: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, letterSpacing:'0.06em', padding:'10px 18px', background:'#ff6600', color:'#fff', border:'none', borderRadius:'4px', cursor:'pointer' },
-  btnSec: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, padding:'8px 14px', background:'transparent', color:'#ff6600', border:'1px solid #ff6600', borderRadius:'4px', cursor:'pointer' },
-  stat: { flex:'1 1 110px', background:'#0a0a0a', borderRadius:'6px', padding:'14px', textAlign:'center' },
-  statVal: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'22px', fontWeight:600, color:'#ff6600', display:'block' },
-  statLbl: { fontFamily:"'IBM Plex Mono',monospace", fontSize:'9px', color:'#888', letterSpacing:'0.1em', textTransform:'uppercase' },
-  tag: c => ({ display:'inline-block', fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', fontWeight:600, padding:'2px 8px', borderRadius:'3px', background:c+'22', color:c, border:`1px solid ${c}44` }),
-  mono: { fontFamily:"'IBM Plex Mono',monospace" },
-  footer: { textAlign:'center', padding:'20px', borderTop:'1px solid var(--border)', fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', color:'var(--muted)', letterSpacing:'0.06em' },
+  // ── App shell ───────────────────────────────────────────────────────────────
+  app:        { fontFamily:FONT.sans, backgroundColor:'var(--bg)', color:'var(--text)', minHeight:'100vh', maxWidth:'900px', margin:'0 auto', paddingTop:'3px' },
+  topBar:     { height:'3px', background:COLOR.orange, position:'fixed', top:0, left:0, right:0, zIndex:9999 },
+  header:     { background:COLOR.black, padding:'10px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:`1px solid ${COLOR.orange}` },
+  headerTitle:{ fontFamily:FONT.mono, fontSize:FONT.size.lg, fontWeight:600, letterSpacing:FONT.track.wider, color:COLOR.orange },
+  headerSub:  { fontFamily:FONT.mono, fontSize:FONT.size.sm, color:COLOR.grey, letterSpacing:FONT.track.tight },
+  navWrap:    { background:COLOR.black, overflowX:'auto', WebkitOverflowScrolling:'touch', scrollbarWidth:'none', borderBottom:`2px solid ${COLOR.dark22}` },
+  nav:        { display:'flex', minWidth:'max-content' },
+  navBtn:     a => ({ fontFamily:FONT.mono, fontSize:FONT.size.sm, fontWeight:600, letterSpacing:FONT.track.normal, padding:'10px 13px', border:'none', cursor:'pointer', background:a?COLOR.orange:'transparent', color:a?COLOR.white:COLOR.grey, borderBottom:a?`2px solid ${COLOR.orange}`:'2px solid transparent', transition:TRANSITION.fast, whiteSpace:'nowrap' }),
+  content:    { padding:'20px' },
+  // ── Cards & layout ──────────────────────────────────────────────────────────
+  card:       { background:'var(--card-bg)', border:'1px solid var(--border)', borderRadius:RADIUS.xl, padding:'16px', marginBottom:'16px' },
+  cardTitle:  { fontFamily:FONT.mono, fontSize:FONT.size.md, fontWeight:600, letterSpacing:FONT.track.wide, textTransform:'uppercase', color:'var(--muted)', marginBottom:'12px', borderBottom:'1px solid var(--border)', paddingBottom:'8px' },
+  row:        { display:'flex', gap:'12px', flexWrap:'wrap' },
+  // ── Form controls ────────────────────────────────────────────────────────────
+  label:      { fontFamily:FONT.mono, fontSize:FONT.size.md, color:'var(--muted)', marginBottom:'4px', display:'block' },
+  input:      { fontFamily:FONT.mono, fontSize:FONT.size.xl, padding:'8px 12px', border:'1px solid var(--input-border)', borderRadius:RADIUS.lg, width:'100%', boxSizing:'border-box', background:'var(--input-bg)', color:'var(--text)' },
+  select:     { fontFamily:FONT.mono, fontSize:FONT.size.lg, padding:'8px 12px', border:'1px solid var(--input-border)', borderRadius:RADIUS.lg, width:'100%', boxSizing:'border-box', background:'var(--input-bg)', color:'var(--text)', cursor:'pointer' },
+  // ── Buttons ──────────────────────────────────────────────────────────────────
+  btn:        { fontFamily:FONT.mono, fontSize:FONT.size.base, fontWeight:600, letterSpacing:FONT.track.tight, padding:'10px 18px', background:COLOR.orange, color:COLOR.white, border:'none', borderRadius:RADIUS.lg, cursor:'pointer' },
+  btnSec:     { fontFamily:FONT.mono, fontSize:FONT.size.base, fontWeight:600, padding:'8px 14px', background:'transparent', color:COLOR.orange, border:`1px solid ${COLOR.orange}`, borderRadius:RADIUS.lg, cursor:'pointer' },
+  // ── Stats ────────────────────────────────────────────────────────────────────
+  stat:       { flex:'1 1 110px', background:COLOR.black, borderRadius:RADIUS.xl, padding:'14px', textAlign:'center' },
+  statVal:    { fontFamily:FONT.mono, fontSize:FONT.size.stat, fontWeight:600, color:COLOR.orange, display:'block' },
+  statLbl:    { fontFamily:FONT.mono, fontSize:FONT.size.xs, color:COLOR.grey, letterSpacing:FONT.track.wide, textTransform:'uppercase' },
+  // ── Misc ─────────────────────────────────────────────────────────────────────
+  tag:        c => ({ display:'inline-block', fontFamily:FONT.mono, fontSize:FONT.size.sm, fontWeight:600, padding:'2px 8px', borderRadius:RADIUS.md, background:c+'22', color:c, border:`1px solid ${c}44` }),
+  mono:       { fontFamily:FONT.mono },
+  footer:     { textAlign:'center', padding:'20px', borderTop:'1px solid var(--border)', fontFamily:FONT.mono, fontSize:FONT.size.sm, color:'var(--muted)', letterSpacing:FONT.track.tight },
+
+  // ── Utility tokens (design system layer) ─────────────────────────────────────
+  // Use these to replace repeated inline style objects in components.
+  ghostBtn:     { background:'none', border:'none', cursor:'pointer', fontFamily:FONT.mono, fontSize:FONT.size.xs, color:COLOR.dim },
+  dimText:      { fontFamily:FONT.mono, fontSize:FONT.size.xs, color:COLOR.dark4 },
+  sectionLabel: { fontFamily:FONT.mono, fontSize:FONT.size.xs, letterSpacing:FONT.track.wide, color:COLOR.dim },
+  smBtn:        { fontFamily:FONT.mono, fontSize:FONT.size.sm, fontWeight:700, letterSpacing:FONT.track.wide, padding:'6px 16px', background:COLOR.orange, border:'none', borderRadius:RADIUS.md, color:COLOR.white, cursor:'pointer' },
+  badgeOutline: c => ({ fontFamily:FONT.mono, fontSize:FONT.size.xxs, padding:'1px 5px', borderRadius:RADIUS.sm, border:`1px solid ${c}55`, color:c }),
 }

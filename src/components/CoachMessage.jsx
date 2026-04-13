@@ -3,8 +3,9 @@
 // Uses Supabase Realtime for live delivery + read receipt marking.
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { encryptMessage, decryptMessage } from '../lib/crypto.js'
+import { getMessages, markReadById, markReadMany, insertMessage, subscribeToMessages } from '../lib/db/messages.js'
+export { buildChannelId } from '../lib/db/messages.js'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -13,11 +14,7 @@ const GREEN  = '#5bc25b'
 const GREY   = '#555'
 
 // ── Pure helpers (exported for unit tests) ────────────────────────────────────
-
-/** Deterministic Realtime channel name for a coach↔athlete pair */
-export function buildChannelId(coachId, athleteId) {
-  return `msg-${coachId}-${athleteId}`
-}
+// buildChannelId is re-exported from lib/db/messages.js above
 
 /** HH:MM from ISO timestamp */
 export function formatMsgTime(isoStr) {
@@ -64,57 +61,37 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
 
   // ── Load history ─────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!isSupabaseReady() || !coachId || !athleteId) return
-
-    supabase
-      .from('messages')
-      .select('*')
-      .eq('coach_id', coachId)
-      .eq('athlete_id', athleteId)
-      .order('sent_at', { ascending: true })
-      .limit(100)
-      .then(async ({ data, error: e }) => {
-        if (!e && data) {
-          const decrypted = await Promise.all(
-            data.map(async m => ({ ...m, body: await decryptMessage(m.body, coachId) || m.body }))
-          )
-          setMsgs(decrypted)
-          markRead(decrypted, coachId, athleteId)
-        }
-      })
+    if (!coachId || !athleteId) return
+    getMessages(coachId, athleteId).then(async ({ data, error: e }) => {
+      if (!e && data) {
+        const decrypted = await Promise.all(
+          data.map(async m => ({ ...m, body: await decryptMessage(m.body, coachId) || m.body }))
+        )
+        setMsgs(decrypted)
+        markRead(decrypted)
+      }
+    })
   }, [coachId, athleteId])
 
   // ── Realtime subscription ─────────────────────────────────────────────────────
   useEffect(() => {
-    if (!isSupabaseReady() || !coachId || !athleteId) return
+    if (!coachId || !athleteId) return
 
-    const ch = supabase
-      .channel(buildChannelId(coachId, athleteId))
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-        filter: `coach_id=eq.${coachId}`,
-      }, async payload => {
-        const rawRow = payload.new
-        if (rawRow.athlete_id !== athleteId) return
-        const row = { ...rawRow, body: await decryptMessage(rawRow.body, coachId) || rawRow.body }
-        setMsgs(prev => {
-          if (prev.some(m => m.id === row.id)) return prev
-          return [...prev, row]
-        })
-        // If message is from athlete, mark it read immediately
-        if (row.sender_role === 'athlete') {
-          supabase.from('messages').update({ read_at: new Date().toISOString() })
-            .eq('id', row.id).then(() => {})
-        }
+    const ch = subscribeToMessages(coachId, athleteId, async payload => {
+      const rawRow = payload.new
+      if (rawRow.athlete_id !== athleteId) return
+      const row = { ...rawRow, body: await decryptMessage(rawRow.body, coachId) || rawRow.body }
+      setMsgs(prev => {
+        if (prev.some(m => m.id === row.id)) return prev
+        return [...prev, row]
       })
-      .subscribe()
+      if (row.sender_role === 'athlete') {
+        markReadById(row.id).then(() => {})
+      }
+    })
 
     channelRef.current = ch
-    return () => {
-      ch.unsubscribe()
-    }
+    return () => { ch?.unsubscribe() }
   }, [coachId, athleteId])
 
   // ── Auto-scroll ───────────────────────────────────────────────────────────────
@@ -125,19 +102,16 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
   }, [msgs])
 
   // ── Mark coach's incoming messages as read ────────────────────────────────────
-  function markRead(allMsgs, cId, aId) {
+  function markRead(allMsgs) {
     const unreadIds = allMsgs
       .filter(m => m.sender_role === 'athlete' && !m.read_at)
       .map(m => m.id)
     if (!unreadIds.length) return
-    supabase.from('messages')
-      .update({ read_at: new Date().toISOString() })
-      .in('id', unreadIds)
-      .then(() => {
-        setMsgs(prev => prev.map(m =>
-          unreadIds.includes(m.id) ? { ...m, read_at: new Date().toISOString() } : m
-        ))
-      })
+    markReadMany(unreadIds).then(() => {
+      setMsgs(prev => prev.map(m =>
+        unreadIds.includes(m.id) ? { ...m, read_at: new Date().toISOString() } : m
+      ))
+    })
   }
 
   // ── Send ─────────────────────────────────────────────────────────────────────
@@ -147,12 +121,7 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
     setSending(true)
     setError(null)
     const encryptedBody = await encryptMessage(body, coachId)
-    const { error: e } = await supabase.from('messages').insert({
-      coach_id: coachId,
-      athlete_id: athleteId,
-      sender_role: 'coach',
-      body: encryptedBody,
-    })
+    const { error: e } = await insertMessage({ coachId, athleteId, encryptedBody })
     if (e) {
       setError(e.message)
     } else {

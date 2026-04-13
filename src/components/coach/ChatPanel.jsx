@@ -4,6 +4,7 @@
 
 import { useState, useRef } from 'react'
 import { supabase, isSupabaseReady } from '../../lib/supabase.js'
+import { S } from '../../styles.js'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -75,7 +76,7 @@ export default function ChatPanel({ squad, isDemo }) {
       <div style={{ marginTop: 12, textAlign: 'right' }}>
         <button
           onClick={() => setOpen(true)}
-          style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', padding: '6px 16px', background: ORANGE, border: 'none', borderRadius: 3, color: '#fff', cursor: 'pointer' }}
+          style={S.smBtn}
         >
           ◈ ASK AI
         </button>
@@ -90,16 +91,16 @@ export default function ChatPanel({ squad, isDemo }) {
         <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, color: ORANGE, letterSpacing: '0.1em' }}>◈ AI COACH</span>
         <div style={{ display: 'flex', gap: 6 }}>
           {msgs.length > 0 && (
-            <button onClick={() => setMsgs([])} style={{ fontFamily: MONO, fontSize: 9, background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}>CLEAR</button>
+            <button onClick={() => setMsgs([])} style={S.ghostBtn}>CLEAR</button>
           )}
-          <button onClick={() => setOpen(false)} style={{ fontFamily: MONO, fontSize: 10, background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}>▼</button>
+          <button onClick={() => setOpen(false)} style={{ ...S.ghostBtn, fontSize: 10 }}>▼</button>
         </div>
       </div>
 
       {/* Thread */}
       <div ref={threadRef} style={{ maxHeight: 280, overflowY: 'auto', padding: '10px 12px', background: '#070707', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {msgs.length === 0 && (
-          <div style={{ fontFamily: MONO, fontSize: 10, color: '#444', textAlign: 'center', marginTop: 20 }}>
+          <div style={{ ...S.dimText, fontSize: 10, textAlign: 'center', marginTop: 20 }}>
             Ask about your squad — readiness, load, who to push, who to rest.
           </div>
         )}
