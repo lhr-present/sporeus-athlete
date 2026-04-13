@@ -19,7 +19,6 @@ import { getStravaConnection, initiateStravaOAuth, triggerStravaSync, disconnect
 import { getPushState, subscribePush, unsubscribePush, checkRaceCountdowns } from '../lib/pushNotify.js'
 import { clearInsightCache } from '../lib/aiPrompts.js'
 import { generateReferralCode, getReferralStats } from '../lib/referral.js'
-import PromptPackCTA from './PromptPackCTA.jsx'
 
 // ─── AI Settings Panel ────────────────────────────────────────────────────────
 // API key is managed server-side (ai-proxy edge function). This panel shows
@@ -989,7 +988,7 @@ function ReferralCard({ authUser }) {
   if (tier === 'free' || !authUser) return null
 
   const code     = stats?.code || generateReferralCode(authUser.id)
-  const shareUrl = `https://sporeus.com/?ref=${code}`
+  const shareUrl = `https://sporeus.com/join?ref=${code}`
   const uses     = stats?.uses ?? 0
   const rewards  = stats?.rewards ?? []
 
@@ -1470,9 +1469,6 @@ export default function Profile({ profile, setProfile, log, authUser }) {
 
       {/* Refer a club — coach/club tier only */}
       <ReferralCard authUser={authUser} />
-
-      {/* Prompt pack CTA — shown after 7+ days of use */}
-      <PromptPackCTA />
 
       <NotificationSettings />
       <DeviceSync userId={authUser?.id} />

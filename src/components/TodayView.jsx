@@ -3,14 +3,13 @@ import { useState, useMemo, useContext, useRef, useEffect, lazy, Suspense } from
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { useData } from '../contexts/DataContext.jsx'
-import { getTodayPlannedSession, getSingleSuggestion, generateDailyDigest, getFormScore, getConsistencyScore } from '../lib/intelligence.js'
-import { WELLNESS_FIELDS, LAUNCH_DATE, getDaysToLaunch } from '../lib/constants.js'
+import { getTodayPlannedSession, getSingleSuggestion, generateDailyDigest } from '../lib/intelligence.js'
+import { WELLNESS_FIELDS } from '../lib/constants.js'
 import { hasUnread } from './CoachMessage.jsx'
 
 const WellnessSparkline = lazy(() => import('./charts/WellnessSparkline.jsx'))
 import { flushQueue } from '../lib/offlineQueue.js'
 import { calculateACWR } from '../lib/trainingLoad.js'
-import { getUpsellTrigger, isUpsellDismissed, dismissUpsell, trackUpsellImpression } from '../lib/bookUpsell.js'
 
 const EMBED_MODE = new URLSearchParams(window.location.search).get('embed') === 'true'
 
@@ -90,10 +89,7 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
     return { mean: Math.round(mean), sd: Math.round(sd * 10) / 10, n }
   }, [recovery, today])
 
-  // ── Upsell trigger data ───────────────────────────────────────────────────
-  const acwrRatio     = useMemo(() => calculateACWR(log).ratio, [log])
-  const formTSB       = useMemo(() => getFormScore(log).tsb, [log])
-  const upsellConsist = useMemo(() => getConsistencyScore(log), [log])
+  const acwrRatio = useMemo(() => calculateACWR(log).ratio, [log])
 
   const todayRec = (recovery || []).find(e => e.date === today)
 
@@ -109,25 +105,15 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
   const [wellnessSaved, setWellnessSaved] = useState(false)
   const [isSubmitting, setIsSubmitting]   = useState(false)
   const [alreadySubmitted, setAlreadySubmitted] = useState(false)
-  const [upsellHidden, setUpsellHidden]         = useState(false)
   const [shareLoading, setShareLoading]         = useState(false)
-  const [launchDismissed, setLaunchDismissed]   = useState(() => {
-    try { return localStorage.getItem('sporeus-launch-banner-dismissed') === '1' } catch { return false }
-  })
 
   // UUID idempotency key — generated once on mount, reset when today changes
-  const idempotencyKey     = useRef(null)
-  const upsellImpressedRef = useRef(new Set())
+  const idempotencyKey = useRef(null)
   useEffect(() => {
     idempotencyKey.current = `${today}-${Math.random().toString(36).slice(2, 10)}`
     setIsSubmitting(false)
     setAlreadySubmitted(false)
   }, [today])
-
-  const daysToLaunch   = getDaysToLaunch(today)
-  // Show launch banner until dismissed; hide after 30 days post-launch
-  const showLaunchBanner = !launchDismissed && daysToLaunch > -30
-  const launchUrl = lang === 'tr' ? 'https://sporeus.com/esik' : 'https://sporeus.com/threshold'
 
   const handleShare = async () => {
     if (shareLoading || (log || []).length < 1) return
@@ -201,24 +187,6 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
     } catch {}
     setShareLoading(false)
   }
-
-  const isFirstCheckin = wellnessSaved && (recovery || []).filter(e => e.date < today).length === 0
-  const upsellData = useMemo(
-    () => getUpsellTrigger({ acwr: acwrRatio, tsb: formTSB, consistency: upsellConsist, isFirstCheckin }, lang),
-    [acwrRatio, formTSB, upsellConsist, isFirstCheckin, lang]
-  )
-  const showUpsell = wellnessSaved && upsellData != null && !upsellHidden
-    && !isUpsellDismissed(upsellData.trigger_reason)
-
-  // Track first impression per trigger per session
-  useEffect(() => {
-    const reason = upsellData?.trigger_reason
-    if (!showUpsell || !reason) return
-    if (!upsellImpressedRef.current.has(reason)) {
-      trackUpsellImpression(reason)
-      upsellImpressedRef.current.add(reason)
-    }
-  }, [showUpsell, upsellData?.trigger_reason]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveReadiness = async () => {
     if (isSubmitting) return
@@ -303,23 +271,6 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
 
   return (
     <div className="sp-fade">
-
-      {/* ── Launch countdown banner ───────────────────────────────────────── */}
-      {showLaunchBanner && (
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'#110800', borderLeft:`3px solid ${ORANGE}`, borderRadius:4, padding:'8px 14px', marginBottom:10, gap:8 }}>
-          <div style={{ fontFamily:MONO, fontSize:'10px', color:'#ccc', letterSpacing:'0.06em' }}>
-            {daysToLaunch > 0
-              ? <>{lang === 'tr' ? `EŞİK ${daysToLaunch} gün sonra çıkıyor —` : `THRESHOLD launches in ${daysToLaunch} day${daysToLaunch !== 1 ? 's' : ''} —`}{' '}<a href={launchUrl} target="_blank" rel="noopener noreferrer" style={{ color:ORANGE, textDecoration:'none' }}>Apr 15</a></>
-              : <><a href={launchUrl} target="_blank" rel="noopener noreferrer" style={{ color:ORANGE, fontWeight:700, textDecoration:'none' }}>{lang === 'tr' ? 'EŞİK yayında →' : 'Now available →'}</a>{' '}sporeus.com/threshold</>
-            }
-          </div>
-          <button
-            aria-label="Dismiss launch banner"
-            onClick={() => { try { localStorage.setItem('sporeus-launch-banner-dismissed', '1') } catch {}; setLaunchDismissed(true) }}
-            style={{ background:'none', border:'none', cursor:'pointer', fontFamily:MONO, fontSize:9, color:'#444', padding:'2px 4px', flexShrink:0 }}
-          >✕</button>
-        </div>
-      )}
 
       {/* ── Morning Brief ─────────────────────────────────────────────────── */}
       {!digest.empty && (
@@ -552,29 +503,6 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
           </div>
         )
       })()}
-
-      {/* ── Contextual upsell card ──────────────────────────────────────────── */}
-      {showUpsell && (
-        <div style={{ ...card, borderLeft: `4px solid ${ORANGE}`, position: 'relative' }}>
-          <button
-            aria-label="Dismiss"
-            onClick={() => { dismissUpsell(upsellData.trigger_reason); setUpsellHidden(true) }}
-            style={{ position: 'absolute', top: 10, right: 12, background: 'none', border: 'none', cursor: 'pointer', fontFamily: MONO, fontSize: 9, color: '#555', padding: '4px 6px' }}
-          >✕</button>
-          <div style={{ ...cardTitle, color: ORANGE, marginBottom: 8 }}>{upsellData.title}</div>
-          <p style={{ fontFamily: MONO, fontSize: '11px', color: '#aaa', lineHeight: 1.7, margin: '0 0 12px' }}>
-            {upsellData.body}
-          </p>
-          <a
-            href={upsellData.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ ...btn(ORANGE), textDecoration: 'none', display: 'inline-block' }}
-          >
-            {upsellData.cta}
-          </a>
-        </div>
-      )}
 
       {/* ── Card 4: Smart Suggestion ───────────────────────────────────────── */}
       <div style={{ ...card, borderLeft: `4px solid ${suggestColor}` }}>

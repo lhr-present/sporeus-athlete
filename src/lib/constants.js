@@ -249,13 +249,3 @@ export const TYPE_COLORS = {
 }
 export function typeColor(t) { return TYPE_COLORS[t] || '#d4d4d4' }
 
-// ─── Launch countdown ──────────────────────────────────────────────────────────
-export const LAUNCH_DATE = '2026-04-15'
-
-/**
- * getDaysToLaunch — days until LAUNCH_DATE from a given date string (YYYY-MM-DD).
- * Returns 0 on launch day, negative values after launch.
- */
-export function getDaysToLaunch(today) {
-  return Math.round((new Date(LAUNCH_DATE).getTime() - new Date(today).getTime()) / 86400000)
-}
