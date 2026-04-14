@@ -4,6 +4,7 @@
 
 import { supabase, isSupabaseReady } from './supabase.js'
 import { clearAllAppData } from './storage/local.js'
+import { logAction } from './db/auditLog.js'
 
 // Tables that store user data, keyed by user_id
 const USER_TABLES = [
@@ -88,6 +89,9 @@ export async function deleteAthleteData(userId) {
 
   // Wipe all app localStorage keys (GDPR client-side erasure)
   clearAllAppData()
+
+  // Audit log: erasure event
+  await logAction('erase', 'multiple', userId, tablesAffected)
 
   return { tablesAffected, error: null }
 }

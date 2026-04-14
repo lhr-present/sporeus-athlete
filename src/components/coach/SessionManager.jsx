@@ -1,7 +1,8 @@
 // ─── coach/SessionManager.jsx — Coach session scheduling + RSVP overview ──────
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { S } from '../../styles.js'
 import { createSession, getUpcomingSessions, getSessionAttendance, aggregateAttendance } from '../../lib/db/coachSessions.js'
+import { useAsync } from '../../hooks/useAsync.js'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -21,8 +22,6 @@ function attendanceColor(status) {
  * @param {string} [props.lang='en']
  */
 export default function SessionManager({ coachId, lang = 'en' }) {
-  const [sessions,    setSessions]    = useState([])
-  const [loading,     setLoading]     = useState(true)
   const [creating,    setCreating]    = useState(false)
   const [showForm,    setShowForm]    = useState(false)
   const [expanded,    setExpanded]    = useState(null)   // sessionId with detail open
@@ -32,14 +31,16 @@ export default function SessionManager({ coachId, lang = 'en' }) {
 
   const today = new Date().toISOString().slice(0, 10)
 
-  const loadSessions = useCallback(async () => {
-    setLoading(true)
+  const fetchSessions = useCallback(async (signal) => {
     const { data } = await getUpcomingSessions(coachId, 21)
-    setSessions(data || [])
-    setLoading(false)
+    return data || []
   }, [coachId])
 
-  useEffect(() => { if (coachId) loadSessions() }, [coachId, loadSessions])
+  const { data: sessions = [], loading, execute: loadSessions } = useAsync(
+    fetchSessions,
+    [coachId],
+    { immediate: !!coachId }
+  )
 
   const loadAttendance = async (sessionId) => {
     if (attendance[sessionId]) return  // already loaded

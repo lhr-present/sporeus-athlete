@@ -7,6 +7,7 @@ import { navyBF, mifflinBMR, calcLoad, generateUnlockCode, FREE_ATHLETE_LIMIT } 
 import { sanitizeProfile } from '../lib/validate.js'
 import { exportAllData, importAllData } from '../lib/storage.js'
 import { exportAthleteData, deleteAthleteData, triggerDownload } from '../lib/gdprExport.js'
+import { logAction, getMyAuditLog } from '../lib/db/auditLog.js'
 import { generateSeasonReport } from '../lib/pdfReport.js'
 import { getTierSync, isFeatureGated, getUpgradePrompt } from '../lib/subscription.js'
 import { Sparkline } from './ui.jsx'
@@ -1227,12 +1228,14 @@ export default function Profile({ profile, setProfile, log, authUser }) {
   }
 
   const [gdprStatus, setGdprStatus] = useState(null)
+  const [auditLog, setAuditLog]     = useState(null) // null=not loaded, []|[...]=loaded
 
   const handleGdprDownload = async () => {
     setGdprStatus('exporting')
     try {
       const data = await exportAthleteData(authUser?.id || 'local')
       triggerDownload(data, `sporeus-my-data-${new Date().toISOString().slice(0,10)}.json`)
+      if (authUser?.id) logAction('export', 'all_tables', authUser.id)
       setGdprStatus('done')
     } catch (e) {
       setGdprStatus('error')
@@ -1457,6 +1460,53 @@ export default function Profile({ profile, setProfile, log, authUser }) {
             Download exports all your data as JSON (GDPR Article 20). Delete erases all records from our servers.
           </div>
         </div>
+
+        {/* Activity log (audit_log) */}
+        {authUser && (
+          <div style={{ marginTop:'14px', paddingTop:'12px', borderTop:'1px solid var(--border)' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px' }}>
+              <div style={{ ...S.mono, fontSize:'9px', color:'#555', letterSpacing:'0.1em' }}>◈ ACTIVITY LOG</div>
+              {auditLog === null && (
+                <button
+                  style={{ ...S.btnSec, fontSize:'9px', padding:'3px 10px' }}
+                  onClick={async () => {
+                    const { data } = await getMyAuditLog(authUser.id, 20)
+                    setAuditLog(data || [])
+                  }}
+                >
+                  LOAD
+                </button>
+              )}
+            </div>
+            {auditLog !== null && (
+              auditLog.length === 0 ? (
+                <div style={{ ...S.mono, fontSize:'10px', color:'#555' }}>No audit entries yet.</div>
+              ) : (
+                <div style={{ overflowX:'auto' }}>
+                  <table style={{ width:'100%', borderCollapse:'collapse', ...S.mono, fontSize:'10px' }}>
+                    <thead>
+                      <tr style={{ borderBottom:'1px solid var(--border)', color:'#555', fontSize:'9px', letterSpacing:'0.06em' }}>
+                        {['DATE','ACTION','TABLE','RECORD'].map(h => (
+                          <th key={h} style={{ textAlign:'left', padding:'3px 8px 6px 0', fontWeight:600 }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {auditLog.map(row => (
+                        <tr key={row.id} style={{ borderBottom:'1px solid #1a1a1a' }}>
+                          <td style={{ padding:'4px 8px 4px 0', color:'var(--sub,#aaa)', whiteSpace:'nowrap' }}>{row.created_at?.slice(0,16)}</td>
+                          <td style={{ padding:'4px 8px 4px 0', color: row.action === 'erase' ? '#e03030' : row.action === 'export' ? '#f5c542' : '#888' }}>{row.action.toUpperCase()}</td>
+                          <td style={{ padding:'4px 8px 4px 0' }}>{row.table_name}</td>
+                          <td style={{ padding:'4px 8px 4px 0', color:'#666', maxWidth:'120px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{row.record_id || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            )}
+          </div>
+        )}
       </div>
 
       {/* AI Settings */}

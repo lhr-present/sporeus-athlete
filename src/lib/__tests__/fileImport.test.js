@@ -106,8 +106,11 @@ describe('detectFileType', () => {
     expect(detectFileType({ name: 'route.gpx' })).toBe('gpx')
   })
 
-  it('returns "unsupported" for .csv, .tcx, empty name', () => {
-    expect(detectFileType({ name: 'data.csv' })).toBe('unsupported')
+  it('returns "csv" for a .csv filename', () => {
+    expect(detectFileType({ name: 'data.csv' })).toBe('csv')
+  })
+
+  it('returns "unsupported" for .tcx and files without recognised extension', () => {
     expect(detectFileType({ name: 'activity.tcx' })).toBe('unsupported')
     expect(detectFileType({ name: 'noext' })).toBe('unsupported')
   })

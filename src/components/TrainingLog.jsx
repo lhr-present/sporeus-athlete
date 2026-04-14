@@ -7,7 +7,7 @@ import { sanitizeLogEntry } from '../lib/validate.js'
 import Calendar from './Calendar.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { scoreSession } from '../lib/intelligence.js'
-import { parseFIT, parseGPX, detectFileType } from '../lib/fileImport.js'
+import { parseFIT, parseGPX, detectFileType, parseBulkCSV, deduplicateByDate, downloadCSVTemplate } from '../lib/fileImport.js'
 import ActivityMap from './ActivityMap.jsx'
 
 export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
@@ -31,7 +31,9 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const [importError, setImportError]     = useState(null)
   const [importBusy, setImportBusy]       = useState(false)
   const [routeSession, setRouteSession]   = useState(null) // session with trackpoints to show on map
-  const fileInputRef = useRef(null)
+  const [csvPreview, setCsvPreview]       = useState(null) // { entries, skipped, deduped }
+  const fileInputRef    = useRef(null)
+  const csvInputRef     = useRef(null)
 
   useEffect(() => {
     if (prefill) {
@@ -96,6 +98,28 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       setImportError(err.message)
     }
     setImportBusy(false)
+  }
+
+  const handleCSVImport = async (e) => {
+    const file = e.target.files[0]
+    e.target.value = ''
+    if (!file) return
+    setImportError(null)
+    try {
+      const text    = await file.text()
+      const parsed  = parseBulkCSV(text)
+      const skipped = text.split('\n').length - 1 - parsed.length
+      const deduped = deduplicateByDate(log, parsed)
+      setCsvPreview({ entries: deduped, allParsed: parsed, skipped: Math.max(0, skipped), duplicates: parsed.length - deduped.length })
+    } catch (err) {
+      setImportError('CSV parse error: ' + err.message)
+    }
+  }
+
+  const confirmCSVImport = () => {
+    if (!csvPreview) return
+    setLog(prev => [...prev, ...csvPreview.entries])
+    setCsvPreview(null)
   }
 
   const confirmImport = () => {
@@ -246,7 +270,21 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
             >
               {importBusy ? '…' : '↑ IMPORT WORKOUT'}
             </button>
+            <button
+              style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px' }}
+              onClick={() => csvInputRef.current?.click()}
+            >
+              ↑ IMPORT CSV
+            </button>
+            <button
+              style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px' }}
+              onClick={downloadCSVTemplate}
+              title="Download CSV template"
+            >
+              ↓ TEMPLATE
+            </button>
             <input ref={fileInputRef} type="file" accept=".fit,.gpx" style={{ display:'none' }} onChange={handleFileImport}/>
+            <input ref={csvInputRef}  type="file" accept=".csv"       style={{ display:'none' }} onChange={handleCSVImport}/>
             {importError && <span style={{ ...S.mono, fontSize:'9px', color:'#e03030' }}>{importError}</span>}
           </div>
         </div>
@@ -370,6 +408,79 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                 ✓ SAVE SESSION
               </button>
               <button onClick={() => setImportPreview(null)} style={{ flex:1, padding:'11px', background:'#1a1a1a', color:'#888', border:'1px solid #333', borderRadius:'4px', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', cursor:'pointer' }}>
+                CANCEL
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CSV bulk import preview modal */}
+      {csvPreview && (
+        <div style={{ position:'fixed', inset:0, zIndex:20500, background:'rgba(0,0,0,0.88)', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px', fontFamily:"'IBM Plex Mono',monospace" }}>
+          <div style={{ background:'#111', border:'1px solid #2a2a2a', borderRadius:'8px', padding:'28px', width:'100%', maxWidth:'560px', maxHeight:'90vh', overflowY:'auto' }}>
+            <div style={{ fontSize:'12px', fontWeight:700, color:'#ff6600', letterSpacing:'0.1em', marginBottom:'18px' }}>
+              ↑ BULK IMPORT CSV
+            </div>
+            {/* Summary counts */}
+            <div style={{ display:'flex', gap:'12px', marginBottom:'18px', flexWrap:'wrap' }}>
+              {[
+                { lbl:'READY TO IMPORT', val:csvPreview.entries.length, color:'#5bc25b' },
+                { lbl:'SKIPPED (INVALID)', val:csvPreview.skipped, color: csvPreview.skipped > 0 ? '#f5c542' : '#555' },
+                { lbl:'DUPLICATES SKIPPED', val:csvPreview.duplicates, color: csvPreview.duplicates > 0 ? '#888' : '#555' },
+              ].map(({ lbl, val, color }) => (
+                <div key={lbl} style={{ flex:'1 1 120px', background:'#0a0a0a', borderRadius:'4px', padding:'10px 12px', minWidth:'100px' }}>
+                  <div style={{ fontSize:'8px', color:'#555', letterSpacing:'0.08em', marginBottom:'4px' }}>{lbl}</div>
+                  <div style={{ fontSize:'18px', fontWeight:700, color }}>{val}</div>
+                </div>
+              ))}
+            </div>
+            {/* Preview table — first 5 rows */}
+            {csvPreview.entries.length > 0 ? (
+              <>
+                <div style={{ fontSize:'9px', color:'#555', letterSpacing:'0.08em', marginBottom:'8px' }}>PREVIEW (first 5 rows)</div>
+                <div style={{ overflowX:'auto', marginBottom:'12px' }}>
+                  <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'11px' }}>
+                    <thead>
+                      <tr style={{ borderBottom:'1px solid #2a2a2a', color:'#555', fontSize:'9px', letterSpacing:'0.06em' }}>
+                        {['DATE','TYPE','MIN','TSS','RPE'].map(h => (
+                          <th key={h} style={{ padding:'4px 8px 6px 0', textAlign:'left', fontWeight:600, whiteSpace:'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {csvPreview.entries.slice(0,5).map((e,i) => (
+                        <tr key={i} style={{ borderBottom:'1px solid #1a1a1a' }}>
+                          <td style={{ padding:'5px 8px 5px 0', color:'var(--sub,#aaa)' }}>{e.date}</td>
+                          <td style={{ padding:'5px 8px 5px 0' }}>{e.type}</td>
+                          <td style={{ padding:'5px 8px 5px 0' }}>{e.durationMin || e.duration || '—'}</td>
+                          <td style={{ padding:'5px 8px 5px 0', color:'#ff6600', fontWeight:600 }}>{e.tss ?? '—'}</td>
+                          <td style={{ padding:'5px 8px 5px 0' }}>{e.rpe ?? '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {csvPreview.entries.length > 5 && (
+                  <div style={{ fontSize:'10px', color:'#666', marginBottom:'16px' }}>
+                    …and {csvPreview.entries.length - 5} more {csvPreview.entries.length - 5 === 1 ? 'entry' : 'entries'}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div style={{ fontSize:'11px', color:'#888', marginBottom:'16px', padding:'12px', background:'#0a0a0a', borderRadius:'4px' }}>
+                No new entries to import. All rows were either invalid or already exist in your log.
+              </div>
+            )}
+            <div style={{ display:'flex', gap:'10px' }}>
+              <button
+                onClick={confirmCSVImport}
+                disabled={csvPreview.entries.length === 0}
+                style={{ flex:1, padding:'11px', background: csvPreview.entries.length ? '#ff6600' : '#333', color: csvPreview.entries.length ? '#fff' : '#555', border:'none', borderRadius:'4px', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', fontWeight:700, letterSpacing:'0.1em', cursor: csvPreview.entries.length ? 'pointer' : 'not-allowed' }}
+              >
+                ✓ IMPORT {csvPreview.entries.length} {csvPreview.entries.length === 1 ? 'SESSION' : 'SESSIONS'}
+              </button>
+              <button onClick={() => setCsvPreview(null)} style={{ flex:1, padding:'11px', background:'#1a1a1a', color:'#888', border:'1px solid #333', borderRadius:'4px', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', cursor:'pointer' }}>
                 CANCEL
               </button>
             </div>

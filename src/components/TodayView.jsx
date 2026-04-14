@@ -11,6 +11,7 @@ import { getUpcomingSessions, upsertAttendance } from '../lib/db/coachSessions.j
 import { supabase } from '../lib/supabase.js'
 
 const WellnessSparkline = lazy(() => import('./charts/WellnessSparkline.jsx'))
+import { isRESTQDue } from '../lib/sport/restq.js'
 import { flushQueue } from '../lib/offlineQueue.js'
 import { calculateACWR } from '../lib/trainingLoad.js'
 import { S } from '../styles.js'
@@ -304,6 +305,14 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
     return sessions.filter(ws => ws.type && ws.type !== 'Rest' && ws.duration > 0).length || 5
   })()
 
+  // RESTQ-Sport nudge
+  const restqDue = (() => {
+    try {
+      const history = JSON.parse(localStorage.getItem('sporeus-restq-history') || '[]')
+      return isRESTQDue(history, (log || []).length)
+    } catch { return false }
+  })()
+
   return (
     <div className="sp-fade">
 
@@ -587,6 +596,21 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* ── RESTQ-Sport nudge ─────────────────────────────────────────────── */}
+      {restqDue && (
+        <div style={{ ...card, borderLeft: `4px solid #f5c542`, padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+          <div>
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', fontWeight: 700, color: '#f5c542', letterSpacing: '0.08em', marginBottom: '3px' }}>
+              RESTQ-SPORT {lang === 'tr' ? 'EKRANI BEKLEMEDE' : 'SCREENING DUE'}
+            </div>
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', color: '#888' }}>
+              {lang === 'tr' ? '28 günlük stres/toparlanma anketi — Protokoller sekmesinde.' : '28-day stress/recovery questionnaire — visit the Protocols tab.'}
+            </div>
+          </div>
+          <span style={{ fontSize: '20px', flexShrink: 0 }}>📋</span>
         </div>
       )}
 

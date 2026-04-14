@@ -6,6 +6,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { encryptMessage, decryptMessage } from '../lib/crypto.js'
 import { getMessages, markReadById, markReadMany, insertMessage, subscribeToMessages } from '../lib/db/messages.js'
 export { buildChannelId } from '../lib/db/messages.js'
+import { logAction } from '../lib/db/auditLog.js'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -69,6 +70,7 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
         )
         setMsgs(decrypted)
         markRead(decrypted)
+        logAction('read', 'messages', athleteId, ['body'])
       }
     })
   }, [coachId, athleteId])

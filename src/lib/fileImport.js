@@ -152,5 +152,130 @@ export function detectFileType(file) {
   const ext = file.name.split('.').pop().toLowerCase()
   if (ext === 'fit') return 'fit'
   if (ext === 'gpx') return 'gpx'
+  if (ext === 'csv') return 'csv'
   return 'unsupported'
+}
+
+// ── CSV bulk import ───────────────────────────────────────────────────────────
+// Type normalization map (lowercase key → canonical value)
+const TYPE_MAP = {
+  run: 'Run', running: 'Run', 'easy run': 'Run', 'trail run': 'Run',
+  ride: 'Ride', bike: 'Ride', cycling: 'Ride', 'easy ride': 'Ride',
+  swim: 'Swim', swimming: 'Swim', 'pool swim': 'Swim', 'open water': 'Swim',
+  row: 'Row', rowing: 'Row', erg: 'Row',
+  walk: 'Walk', hike: 'Hike', yoga: 'Yoga', gym: 'Gym', strength: 'Strength',
+  brick: 'Brick', triathlon: 'Triathlon',
+}
+
+function normalizeType(raw) {
+  if (!raw) return 'Training'
+  const key = raw.toLowerCase().trim()
+  return TYPE_MAP[key] || 'Training'
+}
+
+/**
+ * Parse a bulk CSV string into log entries.
+ * Columns (case-insensitive, order-independent):
+ *   date (YYYY-MM-DD), type, duration_min, tss, rpe, notes, distance_m
+ * Invalid rows (missing/invalid date) are skipped with console.warn.
+ * @param {string} text — raw CSV text (may have BOM \uFEFF)
+ * @returns {Array<{date,type,tss,rpe,durationMin,distanceM,notes}>}
+ */
+export function parseBulkCSV(text) {
+  if (!text) return []
+  // Strip BOM (Excel exports add \uFEFF)
+  const cleaned = text.replace(/^\uFEFF/, '').trim()
+  const lines   = cleaned.split(/\r?\n/).filter(l => l.trim())
+  if (lines.length < 2) return []
+
+  // Parse header — map column name → index
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[^a-z_]/g, ''))
+  const col = name => headers.indexOf(name)
+
+  const dateIdx     = col('date')
+  const typeIdx     = col('type')
+  const durIdx      = col('duration_min')
+  const tssIdx      = col('tss')
+  const rpeIdx      = col('rpe')
+  const notesIdx    = col('notes')
+  const distIdx     = col('distance_m')
+
+  const results = []
+  for (let i = 1; i < lines.length; i++) {
+    // Simple CSV split — handles quoted fields with commas
+    const cells = splitCSVLine(lines[i])
+    const get   = idx => (idx >= 0 && idx < cells.length ? cells[idx].trim() : '')
+
+    const date = get(dateIdx)
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      console.warn(`[parseBulkCSV] Row ${i + 1}: invalid or missing date "${date}" — skipped`)
+      continue
+    }
+
+    const durationMin = parseFloat(get(durIdx)) || 0
+    const tss         = parseFloat(get(tssIdx))  || null
+    const rpe         = parseFloat(get(rpeIdx))  || null
+    const distanceM   = parseFloat(get(distIdx)) || 0
+    const notes       = get(notesIdx)
+    const type        = normalizeType(get(typeIdx))
+
+    results.push({
+      date,
+      type,
+      durationMin:  Math.round(durationMin),
+      duration:     Math.round(durationMin),  // TrainingLog uses 'duration'
+      tss:          tss != null ? Math.round(tss * 10) / 10 : null,
+      rpe:          rpe != null ? Math.min(10, Math.max(1, Math.round(rpe))) : null,
+      distanceM:    Math.round(distanceM),
+      notes,
+      source:       'csv_import',
+      id:           `csv-${date}-${type}-${i}`,
+    })
+  }
+  return results
+}
+
+/** Split one CSV line, respecting quoted fields. */
+function splitCSVLine(line) {
+  const cells = []
+  let cur = '', inQ = false
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i]
+    if (c === '"') { inQ = !inQ }
+    else if (c === ',' && !inQ) { cells.push(cur); cur = '' }
+    else { cur += c }
+  }
+  cells.push(cur)
+  return cells
+}
+
+/**
+ * Deduplicate incoming entries against existing log.
+ * Skips incoming entries where existing already has same date AND type.
+ * Entries on same date but different type are kept (two sessions per day).
+ * @param {Array} existing — current log entries
+ * @param {Array} incoming — new entries from CSV
+ * @returns {Array} — filtered incoming entries
+ */
+export function deduplicateByDate(existing, incoming) {
+  const occupied = new Set((existing || []).map(e => `${e.date}|${e.type}`))
+  return (incoming || []).filter(e => !occupied.has(`${e.date}|${e.type}`))
+}
+
+/**
+ * Generate and trigger download of a sample CSV template.
+ */
+export function downloadCSVTemplate() {
+  const header = 'date,type,duration_min,tss,rpe,notes,distance_m'
+  const rows = [
+    '2026-04-01,Run,60,65,6,Easy aerobic run,10000',
+    '2026-04-03,Ride,90,85,7,Tempo intervals,40000',
+    '2026-04-05,Swim,45,50,5,CSS intervals,3000',
+  ]
+  const csv  = [header, ...rows].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href = url; a.download = 'sporeus_training_template.csv'; a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
