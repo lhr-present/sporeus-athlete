@@ -1,5 +1,4 @@
 import { useContext, useState, useEffect, useMemo, lazy, Suspense } from 'react'
-import { getRelatedArticles } from '../lib/content.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { TSSChart, WeeklyVolChart, ZoneDonut, HelpTip } from './ui.jsx'
@@ -110,14 +109,6 @@ export default function Dashboard({ log, profile }) {
   const srpeLoad = last7.reduce((s,e) => s + ((e.rpe||0) * (e.duration||0)), 0)
   const { atl, ctl, tsb, daily } = calcLoad(log)
   const acwr = calculateACWR(log)
-
-  const [relatedArticles, setRelatedArticles] = useState([])
-  useEffect(() => {
-    const ratio = acwr && typeof acwr === 'object' ? acwr.ratio : null
-    if (!ratio || ratio < 1.3 || ratio > 1.5) return
-    const topic = lang === 'tr' ? 'akut kronik yük oranı' : 'acute chronic workload ratio'
-    getRelatedArticles(topic, lang).then(articles => setRelatedArticles(articles.slice(0, 2)))
-  }, [log, lang])
 
   const w7Start     = (() => { const d = new Date(); d.setDate(d.getDate()-7);  return d.toISOString().slice(0,10) })()
   const w14Start    = (() => { const d = new Date(); d.setDate(d.getDate()-14); return d.toISOString().slice(0,10) })()
@@ -769,18 +760,6 @@ export default function Dashboard({ log, profile }) {
       />
 
       <ACWRCard log={log} lc={lc} dl={dl} />
-
-      {relatedArticles.length > 0 && (
-        <div style={{ background:'#0a0a0a', border:'1px solid #1e1e1e', borderRadius:'6px', padding:'12px 16px', marginBottom:'16px' }}>
-          <div style={{ fontSize:'9px', color:'#555', letterSpacing:'0.12em', marginBottom:'8px', fontFamily:"'IBM Plex Mono',monospace" }}>RELATED READING</div>
-          {relatedArticles.map((a, i) => (
-            <a key={i} href={a.url} target="_blank" rel="noopener noreferrer" style={{ display:'block', marginBottom:'6px', textDecoration:'none' }}>
-              <div style={{ fontSize:'10px', color:'#0064ff', fontFamily:"'IBM Plex Mono',monospace" }}>{a.title}</div>
-              <div style={{ fontSize:'9px', color:'#444', marginTop:'2px' }}>{a.excerpt}</div>
-            </a>
-          ))}
-        </div>
-      )}
 
       <VO2maxCard log={log} profile={profile} dl={dl} />
       <PeakWeekCard log={log} dl={dl} />

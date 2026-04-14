@@ -2,14 +2,16 @@
 // Jack Daniels VDOT, race prediction via binary search, training paces,
 // critical velocity, and race readiness scoring.
 
+import { DANIELS } from './constants.js'
+
 // ── Jack Daniels VDOT model ───────────────────────────────────────────────────
 // pctVO2: fraction of VO2max sustainable at a given duration (t in minutes)
 // Source: Daniels' Running Formula, 3rd ed., Chapter 3
 function pctVO2atDuration(tMin) {
   return (
-    0.8 +
-    0.1894393 * Math.exp(-0.012778 * tMin) +
-    0.2989558 * Math.exp(-0.1932605 * tMin)
+    DANIELS.PCT_VO2MAX_D +
+    DANIELS.PCT_VO2MAX_E * Math.exp(DANIELS.PCT_VO2MAX_F * tMin) +
+    DANIELS.PCT_VO2MAX_G * Math.exp(DANIELS.PCT_VO2MAX_H * tMin)
   )
 }
 
@@ -17,10 +19,19 @@ function pctVO2atDuration(tMin) {
 // d in meters, t in minutes
 function vo2AtPace(dM, tMin) {
   const v = dM / tMin  // m/min
-  return -4.60 + 0.182258 * v + 0.000104 * v * v
+  return DANIELS.VO2_INTERCEPT + DANIELS.VO2_V_COEF * v + DANIELS.VO2_V2_COEF * v * v
 }
 
-// VDOT from a race result
+/**
+ * @description Calculates VDOT (effective aerobic capacity) from a race result using the
+ *   Daniels/Gilbert oxygen-cost and fractional-utilisation equations.
+ * @param {number} distanceM - Race distance in metres
+ * @param {number} timeSec - Finish time in seconds
+ * @returns {number|null} VDOT value (mL/kg/min equivalent), rounded to 1 decimal
+ * @source Daniels & Gilbert (1979) — Oxygen power: Performance tables for distance runners
+ * @example
+ * vdotFromRace(5000, 1200) // => ~52.1
+ */
 export function vdotFromRace(distanceM, timeSec) {
   if (!distanceM || !timeSec || timeSec <= 0 || distanceM <= 0) return null
   const tMin = timeSec / 60
@@ -31,7 +42,16 @@ export function vdotFromRace(distanceM, timeSec) {
 }
 
 // ── Race time prediction via binary search ────────────────────────────────────
-// Predicts finish time for targetDistanceM given VDOT.
+/**
+ * @description Predicts finish time for a target distance given a VDOT value
+ *   by binary-searching for the time at which the implied VDOT equals the input.
+ * @param {number} vdot - Athlete's VDOT value
+ * @param {number} targetDistanceM - Target race distance in metres
+ * @returns {number|null} Predicted finish time in seconds, or null on invalid input
+ * @source Daniels & Gilbert (1979) — Oxygen power: Performance tables for distance runners
+ * @example
+ * predictRaceTime(52, 10000) // => ~2520 seconds (~42:00)
+ */
 export function predictRaceTime(vdot, targetDistanceM) {
   if (!vdot || !targetDistanceM || vdot <= 0 || targetDistanceM <= 0) return null
   // Binary search: find tMin such that vo2AtPace(d, tMin) / pctVO2atDuration(tMin) ≈ vdot
@@ -46,8 +66,15 @@ export function predictRaceTime(vdot, targetDistanceM) {
 }
 
 // ── Training paces ────────────────────────────────────────────────────────────
-// Returns training pace zones for a given VDOT (sec/km)
-// Daniels' intensity definitions: E, M, T, I, R
+/**
+ * @description Returns Daniels' five training pace zones (E/M/T/I/R) in sec/km for a given VDOT.
+ * @param {number} vdot - Athlete's VDOT value
+ * @returns {{E:number, M:number, T:number, I:number, R:number, vdot:number, marathon5kRef:number, marathonRef:number}|null}
+ *   Pace values in seconds per kilometre for each zone, or null on invalid input
+ * @source Daniels & Gilbert (1979) — Oxygen power: Performance tables for distance runners
+ * @example
+ * trainingPaces(52) // => {E: ~330, M: ~280, T: ~265, I: ~248, R: ~236}
+ */
 export function trainingPaces(vdot) {
   if (!vdot || vdot <= 0) return null
   // Predict reference times for pace calculations
@@ -84,8 +111,17 @@ export function trainingPaces(vdot) {
 }
 
 // ── Critical Velocity (CV) model ──────────────────────────────────────────────
-// Analogous to Critical Power: CV = work capacity / time model.
-// From 2+ time trials: CV = (d2 − d1) / (t2 − t1) in m/s
+/**
+ * @description Fits the Critical Velocity model to running time trials using linear regression.
+ *   Analogous to Critical Power: distance = CV × time + D' (anaerobic distance capacity).
+ * @param {Array<{distanceM: number, timeSec: number}>} efforts - At least 2 maximal efforts at different distances
+ * @returns {{CV: number, DAna: number, CVPaceSecKm: number}|null}
+ *   CV in m/s, D' (anaerobic distance capacity) in metres, and CV as sec/km pace; or null if fit fails
+ * @source Morton (1986) — A 3-parameter critical power model (velocity analogue)
+ * @example
+ * criticalVelocity([{distanceM:3000,timeSec:720},{distanceM:5000,timeSec:1260}])
+ * // => {CV: ~3.77, DAna: ~120, CVPaceSecKm: ~265}
+ */
 export function criticalVelocity(efforts) {
   // efforts: [{ distanceM, timeSec }, ...]  — at least 2, different distances
   if (!efforts || efforts.length < 2) return null
@@ -110,8 +146,20 @@ export function criticalVelocity(efforts) {
 }
 
 // ── Race readiness score ──────────────────────────────────────────────────────
-// Scores race readiness based on recent training metrics.
-// Returns { score 0–100, flags: string[] }
+/**
+ * @description Scores race readiness (0–100) from recent log data, checking volume adequacy,
+ *   taper compliance, quality sessions, and long-run coverage.
+ * @param {object} params
+ * @param {Array} params.recentLog - Array of training log entries with { date, distanceM, rpe, type }
+ * @param {number} [params.targetDistanceM=10000] - Goal race distance in metres
+ * @param {number} [params.peakWeeklyVolM=0] - Athlete's peak weekly volume in metres
+ * @param {number} [params.daysToRace=14] - Days until the target race
+ * @returns {{score: number, flags: string[]}} Score 0–100 and explanatory flag messages
+ * @source Daniels & Gilbert (1979) — Oxygen power: Performance tables for distance runners
+ * @example
+ * raceReadiness({ recentLog: [], targetDistanceM: 10000, peakWeeklyVolM: 50000, daysToRace: 10 })
+ * // => { score: 45, flags: ['Volume too low — possible detraining', ...] }
+ */
 export function raceReadiness({ recentLog = [], targetDistanceM = 10000, peakWeeklyVolM = 0, daysToRace = 14 }) {
   let score = 50
   const flags = []

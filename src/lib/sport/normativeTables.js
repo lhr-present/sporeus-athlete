@@ -39,12 +39,15 @@ const CATEGORY_ORDER = ['Untrained', 'Recreational', 'Trained', 'Well-trained', 
 const CATEGORY_PCT_ANCHORS = [8, 22, 42, 62, 78, 92]
 
 /**
- * Get FTP norm percentile and category for a given FTP/kg value.
- * Uses p50 values as monotonic anchor points and linearly interpolates between them.
- * @param {string} sport — 'cycling' | 'triathlon'
- * @param {string} gender — 'male' | 'female'
- * @param {number} ftpPerKg — watts per kg
- * @returns {{ percentile: number, category: string }} percentile 0–100
+ * @description Returns FTP norm percentile and athlete category for a given W/kg value
+ *   by linear interpolation between p50 anchor points across six performance categories.
+ * @param {string} sport - 'cycling' | 'triathlon'
+ * @param {string} gender - 'male' | 'female'
+ * @param {number} ftpPerKg - FTP in watts per kg
+ * @returns {{percentile:number, category:string}} Percentile 0–100 and category label
+ * @source Coggan (2010) — Training and Racing with a Power Meter normative data
+ * @example
+ * getFTPNorm('cycling', 'male', 3.2) // => {percentile: ~42, category: 'Trained'}
  */
 export function getFTPNorm(sport, gender, ftpPerKg) {
   const rows = FTP_NORMS.filter(r => r.sport === sport && r.gender === gender)
@@ -135,12 +138,16 @@ export const VO2MAX_NORMS = [
 ]
 
 /**
- * Get VO2max percentile and category label.
- * @param {string} sport
- * @param {number} age
- * @param {string} gender — 'male' | 'female'
- * @param {number} vo2max — mL/kg/min
- * @returns {{ percentile: number, category: string }}
+ * @description Returns VO2max percentile and category label for a given sport, age, and gender
+ *   by comparing against ACSM fitness classification bands.
+ * @param {string} sport - 'running' | 'cycling' | 'rowing' | 'swimming'
+ * @param {number} age - Athlete age in years
+ * @param {string} gender - 'male' | 'female'
+ * @param {number} vo2max - VO2max in mL/kg/min
+ * @returns {{percentile:number, category:string}} Percentile 0–100 and classification label
+ * @source ACSM Guidelines for Exercise Testing and Prescription, 11th edition
+ * @example
+ * getVO2maxNorm('running', 30, 'male', 52) // => {percentile: ~75, category: 'Excellent'}
  */
 export function getVO2maxNorm(sport, age, gender, vo2max) {
   const ageGroup = age < 30 ? '18-29' : age < 40 ? '30-39' : age < 50 ? '40-49' : age < 60 ? '50-59' : '60+'
@@ -197,11 +204,15 @@ export const CTL_NORMS = [
 ]
 
 /**
- * Get CTL status relative to typical and peak ranges for a sport/level.
- * @param {string} sport
- * @param {string} level — 'recreational' | 'amateur' | 'masters' | 'elite'
- * @param {number} currentCTL
- * @returns {{ status: string, typical: [number,number], peak: [number,number], percentileOfTypical: number }}
+ * @description Returns CTL status (Very Low / Building / Typical / High / Very High)
+ *   relative to typical and peak ranges for a given sport and competitive level.
+ * @param {string} sport - 'cycling' | 'running' | 'triathlon' | 'rowing' | 'swimming'
+ * @param {string} level - 'recreational' | 'amateur' | 'masters' | 'elite'
+ * @param {number} currentCTL - Athlete's current CTL value
+ * @returns {{status:string, typical:[number,number], peak:[number,number], percentileOfTypical:number}}
+ * @source Banister & Calvert (1980) — Modeling elite athletic performance; Coggan (2010) normative CTL ranges
+ * @example
+ * getCTLNorm('cycling', 'amateur', 65) // => {status:'Typical', typical:[50,80], peak:[75,100], percentileOfTypical:50}
  */
 export function getCTLNorm(sport, level, currentCTL) {
   const norm = CTL_NORMS.find(r => r.sport === sport && r.level === level)

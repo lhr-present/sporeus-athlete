@@ -103,22 +103,53 @@ export const ROWING_TEMPLATES = [
 ]
 
 // ── Template lookup ────────────────────────────────────────────────────────────
+/**
+ * @description Looks up a rowing session template by ID.
+ * @param {string} id - Template ID (e.g. 'ut2_steady', 'at_threshold')
+ * @returns {object|null} Template definition object, or null if not found
+ * @source Paul (1969) — International rowing performance prediction; British Rowing intensity zones
+ * @example
+ * getRowingTemplate('at_threshold') // => {id:'at_threshold', name:'AT Threshold Pieces', ...}
+ */
 export function getRowingTemplate(id) {
   return ROWING_TEMPLATES.find(t => t.id === id) || null
 }
 
+/**
+ * @description Returns all rowing templates that include a given British Rowing zone.
+ * @param {number} zone - Zone number 1–7
+ * @returns {object[]} Array of matching template definitions
+ * @example
+ * getTemplatesByZone(3) // => [{id:'at_threshold', ...}]
+ */
 export function getTemplatesByZone(zone) {
   return ROWING_TEMPLATES.filter(t => t.zone === zone || t.intervals?.some(i => i.zone === zone))
 }
 
+/**
+ * @description Returns all rowing templates that include a given tag.
+ * @param {string} tag - Tag string (e.g. 'threshold', 'aerobic', 'race-pace')
+ * @returns {object[]} Array of matching template definitions
+ * @example
+ * getTemplatesByTag('anaerobic') // => [{id:'an_power', ...}]
+ */
 export function getTemplatesByTag(tag) {
   return ROWING_TEMPLATES.filter(t => t.tags?.includes(tag))
 }
 
 // ── Instantiate a template for an athlete ────────────────────────────────────
-// Given a template ID and the athlete's 2000m split (sec/500m),
-// returns the template with per-interval target splits populated.
-// split2000Sec: athlete's race split in sec/500m
+/**
+ * @description Instantiates a rowing session template for a specific athlete by computing
+ *   per-interval target splits from the athlete's 2000 m race split and zone boundaries.
+ *   Also estimates session TSS using the template's TSS multiplier.
+ * @param {string} templateId - Template ID from ROWING_TEMPLATES
+ * @param {number} split2000Sec - Athlete's 2000 m race split in sec/500 m
+ * @returns {object|null} Template with populated intervals, splits, and estimated TSS; null on invalid input
+ * @source Paul (1969) — International rowing performance prediction; British Rowing intensity zones
+ * @example
+ * instantiateTemplate('at_threshold', 100)
+ * // => {intervals:[{targetSplitSec:106, targetSplitFmt:'1:46',...}], estimatedTSS:~87, ...}
+ */
 export function instantiateTemplate(templateId, split2000Sec) {
   const tmpl = getRowingTemplate(templateId)
   if (!tmpl || !split2000Sec || split2000Sec <= 0) return null
@@ -168,9 +199,14 @@ export function instantiateTemplate(templateId, split2000Sec) {
 }
 
 // ── Weekly template set ───────────────────────────────────────────────────────
-// Returns a suggested weekly session mix for a given training phase.
-// phase: 'base' | 'build' | 'peak' | 'taper'
-// Returns array of template IDs
+/**
+ * @description Returns a suggested weekly session mix (array of template IDs) for a given training phase.
+ * @param {'base'|'build'|'peak'|'taper'} phase - Training phase name
+ * @returns {string[]} Array of template IDs for the weekly plan
+ * @source Paul (1969) — International rowing performance prediction; British Rowing periodization model
+ * @example
+ * weeklyTemplatePlan('peak') // => ['at_threshold', 'tr_pieces', 'race_pace', 'ut2_steady']
+ */
 export function weeklyTemplatePlan(phase) {
   const plans = {
     base:  ['ut2_steady', 'ut2_steady', 'ut1_steady', 'at_threshold'],

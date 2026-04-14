@@ -117,11 +117,21 @@ export const RECOVERY_PROTOCOLS = [
   },
 ]
 
-// ─── getRecommendedProtocols ──────────────────────────────────────────────────
-// @param {number|null} wellnessScore — 1–5 scale
-// @param {number|null} sessionTSS — Training Stress Score of last session
-// @param {number|null} hoursSinceSession — hours since the last session ended
-// @returns {object[]} 2–3 protocol objects (no duplicates)
+/**
+ * @description Recommends 2–3 evidence-based recovery protocols based on wellness score,
+ *   session intensity (TSS), and time elapsed since the last training session.
+ *   Rules: recent hard session → nutrition window first; low wellness → CWI/contrast;
+ *   late evening → sleep hygiene; default → active recovery + foam rolling.
+ * @param {number|null} wellnessScore - Subjective wellness score on a 1–5 scale
+ * @param {number|null} sessionTSS - Training Stress Score of the most recent session
+ * @param {number|null} hoursSinceSession - Hours elapsed since the last session ended
+ * @returns {object[]} Array of 2–3 protocol objects from RECOVERY_PROTOCOLS (no duplicates)
+ * @source Leeder et al. (2012) — Cold water immersion and recovery from strenuous exercise;
+ *   Bleakley et al. (2012) — Cold water immersion; Fullagar et al. (2015) — Sleep and athlete recovery
+ * @example
+ * getRecommendedProtocols(2, 120, 0.5)
+ * // => [RECOVERY_PROTOCOLS.nutrition_window, RECOVERY_PROTOCOLS.cold_water_immersion, ...]
+ */
 export function getRecommendedProtocols(wellnessScore, sessionTSS, hoursSinceSession) {
   // Null/undefined guard — return nutrition_window (index 0) + active_recovery (index 3)
   if (wellnessScore == null || sessionTSS == null || hoursSinceSession == null) {

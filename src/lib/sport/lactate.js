@@ -92,16 +92,18 @@ function gaussElim(A, b) {
 // ── D-max method ──────────────────────────────────────────────────────────────
 
 /**
- * Estimate lactate threshold from incremental step-test data using the D-max method.
- * @param {Array<{load, lactate}>} steps — steps sorted by load (watts or km/h or km/min)
- * @param {{ loadUnit?: string }} options
- * @returns {{ lt, ltLactate, lt1, lt2, curve, dmax, error? }}
- *   lt  — primary threshold load (D-max)
- *   lt1 — aerobic threshold (first rise: load where lactate first exceeds baseline+0.5 mmol/L)
- *   lt2 — anaerobic threshold (D-max)
- *   ltLactate — blood lactate at lt (mmol/L)
- *   curve — Array<{load, lactate}> with fitted curve values (100 points)
- *   dmax — perpendicular distance at lt
+ * @description Estimates lactate threshold from incremental step-test data using the D-max method.
+ *   Fits a cubic polynomial to the lactate–load curve, then finds the load with maximum
+ *   perpendicular distance from the line joining the first and last test points.
+ * @param {Array<{load:number, lactate:number}>} steps - Steps sorted by load (watts, km/h, etc.)
+ * @param {{loadUnit?: string}} [options] - Optional display unit override
+ * @returns {{lt:number|null, ltLactate:number|null, lt1:number|null, lt2:number|null, curve:Array, dmax:number, error?:string}}
+ *   lt — primary threshold load (D-max); lt1 — aerobic threshold; lt2 — anaerobic (D-max);
+ *   ltLactate — blood lactate at LT2 (mmol/L); curve — 61-point fitted lactate curve
+ * @source Cheng et al. (1992) — A new approach for the determination of ventilatory threshold
+ * @example
+ * estimateLTFromStep([{load:100,lactate:1.1},{load:150,lactate:1.3},{load:200,lactate:2.1},{load:250,lactate:5.0}])
+ * // => {lt: ~210, lt1: ~145, ltLactate: ~2.8, ...}
  */
 export function estimateLTFromStep(steps, options = {}) {
   const v = validateSteps(steps)
@@ -159,10 +161,14 @@ export function estimateLTFromStep(steps, options = {}) {
 }
 
 /**
- * Estimate LT from HR-only step data (Conconi-style deflection).
- * Finds the HR at which the HR/load relationship deflects from linearity.
- * @param {Array<{load, hr}>} hrSteps
- * @returns {{ lt, ltHR, error? }}
+ * @description Estimates lactate threshold from HR-only step data using a Conconi-style deflection method.
+ *   Finds the load at which the HR–load relationship changes slope (bilinear fit).
+ * @param {Array<{load:number, hr:number}>} hrSteps - At least 5 steps with load and HR values
+ * @returns {{lt:number|null, ltHR:number|null, error?:string}}
+ * @source Cheng et al. (1992) — A new approach for the determination of ventilatory threshold
+ * @example
+ * estimateLTFromHR([{load:100,hr:130},{load:150,hr:145},{load:200,hr:162},{load:250,hr:175},{load:300,hr:182}])
+ * // => {lt: ~250, ltHR: 175}
  */
 export function estimateLTFromHR(hrSteps) {
   if (!Array.isArray(hrSteps) || hrSteps.length < 5) {
@@ -201,10 +207,14 @@ function linearSSR(xs, ys) {
 }
 
 /**
- * Estimate LT from RPE step data (simple: load at RPE=12 on Borg 6-20 scale
- * or RPE=5 on CR-10, corresponding to first perceived difficulty).
- * @param {Array<{load, rpe}>} rpeSteps
- * @returns {{ lt, error? }}
+ * @description Estimates lactate threshold from RPE step data by interpolating to the threshold
+ *   RPE value (RPE 12 on Borg 6–20 scale, or RPE 5 on CR-10).
+ * @param {Array<{load:number, rpe:number}>} rpeSteps - At least 3 steps with load and RPE values
+ * @returns {{lt:number|null, error?:string}}
+ * @source Cheng et al. (1992) — A new approach for the determination of ventilatory threshold
+ * @example
+ * estimateLTFromRPE([{load:150,rpe:9},{load:200,rpe:12},{load:250,rpe:15}])
+ * // => {lt: 200}
  */
 export function estimateLTFromRPE(rpeSteps) {
   if (!Array.isArray(rpeSteps) || rpeSteps.length < 3) {
@@ -233,10 +243,14 @@ export function estimateLTFromRPE(rpeSteps) {
 }
 
 /**
- * Format a LT result for display.
- * @param {{ lt, lt1, lt2, ltLactate, loadUnit }} result
- * @param {'run'|'bike'|'swim'|string} sport
- * @returns {{ primary, secondary, zoneNote }}
+ * @description Formats a lactate threshold result object into human-readable display strings.
+ * @param {{lt:number|null, lt1:number|null, lt2:number|null, ltLactate:number|null, loadUnit?:string}} result - LT result from estimateLTFromStep
+ * @param {'run'|'bike'|'swim'|string} sport - Sport context for zone note generation
+ * @returns {{primary:string, secondary:string, zoneNote:string}}
+ * @source Cheng et al. (1992) — A new approach for the determination of ventilatory threshold
+ * @example
+ * formatLTResult({lt:250, lt1:190, ltLactate:3.2, loadUnit:'W'}, 'bike')
+ * // => {primary:'LT2 (D-max): 250 W · lactate @ LT2: 3.2 mmol/L', secondary:'LT1...', zoneNote:'...'}
  */
 export function formatLTResult(result, sport) {
   if (!result || result.lt == null) return { primary: '—', secondary: '', zoneNote: '' }

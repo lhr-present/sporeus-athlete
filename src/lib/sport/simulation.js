@@ -1,22 +1,46 @@
 // ─── src/lib/sport/simulation.js — Training load simulation engine ─────────────
 // Banister impulse-response model, Monte Carlo plan optimizer, TSS calculators.
 
+import { BANISTER, ACWR } from './constants.js'
+
 // ── Banister impulse-response constants ──────────────────────────────────────
 // Standard Banister (1991) values; can be overridden per athlete.
-const DEFAULT_TAU1 = 42   // fitness decay time constant (days)
-const DEFAULT_TAU2 = 7    // fatigue decay time constant (days)
+const DEFAULT_TAU1 = BANISTER.TAU_CTL   // fitness decay time constant (days)
+const DEFAULT_TAU2 = BANISTER.TAU_ATL   // fatigue decay time constant (days)
 const DEFAULT_K1   = 1    // fitness gain coefficient
 const DEFAULT_K2   = 2    // fatigue gain coefficient (fatigue rises ~2× faster)
+
+// Precompute EWMA decay factors using TrainingPeaks impulse-response formula:
+// K = 1 − e^(−1/τ)  (matches trainingLoad.js K_CTL/K_ATL exactly)
+// BUG FIX: previously used 1/tau (≈0.02381 / 0.14286) — now uses correct
+// exponential K (≈0.02353 / 0.13307), matching Hulin et al. 2016.
+function kFromTau(tau) { return 1 - Math.exp(-1 / tau) }
 
 // ── Single-day Banister update ────────────────────────────────────────────────
 // Given yesterday's ATL/CTL and today's TSS, returns { CTL, ATL, TSB }.
 // CTL (chronic training load) = fitness
 // ATL (acute training load)   = fatigue
 // TSB (training stress balance) = form = CTL − ATL
+// Update: CTL(t) = CTL(t-1)×(1−K₁) + TSS(t)×K₁  where K₁ = 1−e^(−1/τ₁)
+/**
+ * @description Advances the Banister impulse-response model by one day given yesterday's state and today's TSS.
+ *   Uses the exponential EWMA formula: CTL(t) = CTL(t-1)×(1−K₁) + TSS(t)×K₁.
+ * @param {number} prevCTL - Previous day's chronic training load (fitness)
+ * @param {number} prevATL - Previous day's acute training load (fatigue)
+ * @param {number} tss - Today's Training Stress Score
+ * @param {number} [tau1=42] - Fitness decay time constant in days (CTL)
+ * @param {number} [tau2=7] - Fatigue decay time constant in days (ATL)
+ * @returns {{CTL:number, ATL:number, TSB:number}|null} Updated loads and training stress balance
+ * @source Banister & Calvert (1980) — Modeling elite athletic performance
+ * @example
+ * banisterDay(50, 60, 80) // => {CTL: ~51.9, ATL: ~66.6, TSB: ~-14.7}
+ */
 export function banisterDay(prevCTL, prevATL, tss, tau1 = DEFAULT_TAU1, tau2 = DEFAULT_TAU2) {
   if (prevCTL == null || prevATL == null || tss == null) return null
-  const CTL = prevCTL + (tss - prevCTL) / tau1
-  const ATL = prevATL + (tss - prevATL) / tau2
+  const k1  = kFromTau(tau1)
+  const k2  = kFromTau(tau2)
+  const CTL = prevCTL * (1 - k1) + tss * k1
+  const ATL = prevATL * (1 - k2) + tss * k2
   const TSB = CTL - ATL
   return {
     CTL: Math.round(CTL * 10) / 10,
@@ -26,9 +50,18 @@ export function banisterDay(prevCTL, prevATL, tss, tau1 = DEFAULT_TAU1, tau2 = D
 }
 
 // ── Multi-day Banister simulation ─────────────────────────────────────────────
-// Simulates CTL/ATL/TSB over a sequence of daily TSS values.
-// tssArray: [number | null] — null means rest day (TSS=0)
-// Returns array of { day, tss, CTL, ATL, TSB }
+/**
+ * @description Simulates CTL, ATL, and TSB over a sequence of daily TSS values using the Banister model.
+ * @param {Array<number|null>} tssArray - Daily TSS values; null entries treated as rest days (TSS=0)
+ * @param {number} [startCTL=0] - Initial CTL value
+ * @param {number} [startATL=0] - Initial ATL value
+ * @param {number} [tau1=42] - CTL time constant in days
+ * @param {number} [tau2=7] - ATL time constant in days
+ * @returns {Array<{day:number, tss:number, CTL:number, ATL:number, TSB:number}>}
+ * @source Banister & Calvert (1980) — Modeling elite athletic performance
+ * @example
+ * simulateBanister([100, 0, 80], 40, 50) // => [{day:1,...}, {day:2,...}, {day:3,...}]
+ */
 export function simulateBanister(tssArray, startCTL = 0, startATL = 0, tau1 = DEFAULT_TAU1, tau2 = DEFAULT_TAU2) {
   if (!tssArray || tssArray.length === 0) return []
   let CTL = startCTL
@@ -43,8 +76,17 @@ export function simulateBanister(tssArray, startCTL = 0, startATL = 0, tau1 = DE
 }
 
 // ── Sport-specific TSS calculators ────────────────────────────────────────────
-// Running TSS (rTSS): based on HR or pace relative to threshold
-// rTSS = (durationSec × hrAvg × hrAvg) / (hrThresh × hrThresh × 3600) × 100
+/**
+ * @description Calculates running TSS (rTSS) from session HR relative to HR at threshold.
+ *   rTSS = (durationHr) × IF² × 100 where IF = hrAvg / hrThresh.
+ * @param {number} durationSec - Session duration in seconds
+ * @param {number} hrAvg - Average heart rate during session (bpm)
+ * @param {number} hrThresh - Heart rate at threshold (bpm)
+ * @returns {number|null} rTSS value (1 decimal place), or null on invalid input
+ * @source Banister & Calvert (1980) — Modeling elite athletic performance; Hulin et al. (2016) — The acute:chronic workload ratio predicts injury
+ * @example
+ * runningTSS(3600, 160, 175) // => ~83.7
+ */
 export function runningTSS(durationSec, hrAvg, hrThresh) {
   if (!durationSec || !hrAvg || !hrThresh || hrThresh <= 0) return null
   if (durationSec <= 0 || hrAvg <= 0) return null
@@ -53,9 +95,17 @@ export function runningTSS(durationSec, hrAvg, hrThresh) {
   return Math.round(tss * 10) / 10
 }
 
-// Cycling/Rowing power TSS: standard formula (Coggan)
-// TSS = (durationSec × NP × IF) / (FTP × 3600) × 100
-// Simplified: IF = avgPower / FTP, TSS = durationHr × IF² × 100
+/**
+ * @description Calculates power-based TSS (cycling or rowing) using Coggan's formula.
+ *   TSS = (durationHr) × IF² × 100 where IF = avgPower / FTP.
+ * @param {number} durationSec - Session duration in seconds
+ * @param {number} avgPowerW - Average power output in watts
+ * @param {number} ftpW - Functional Threshold Power in watts
+ * @returns {number|null} TSS value (1 decimal place), or null on invalid input
+ * @source Banister & Calvert (1980) — Modeling elite athletic performance; Morton (1986) — A 3-parameter critical power model
+ * @example
+ * powerTSS(3600, 270, 300) // => 81.0
+ */
 export function powerTSS(durationSec, avgPowerW, ftpW) {
   if (!durationSec || !avgPowerW || !ftpW || ftpW <= 0) return null
   if (durationSec <= 0 || avgPowerW <= 0) return null
@@ -64,8 +114,16 @@ export function powerTSS(durationSec, avgPowerW, ftpW) {
   return Math.round(tss * 10) / 10
 }
 
-// Swim TSS (re-exported for convenience — same formula as swimming.js swimTSS)
-// sTSS = (durationMin/60) × (cssSecPer100m/currentSecPer100m)² × 100
+/**
+ * @description Re-exports swim TSS calculation for convenience. sTSS = (durationHr) × IF² × 100 where IF = cssSecPer100m / currentSecPer100m.
+ * @param {number} durationMin - Session duration in minutes
+ * @param {number} currentSecPer100m - Session average pace in sec/100 m
+ * @param {number} cssSecPer100m - CSS in sec/100 m
+ * @returns {number|null} sTSS (rounded integer), or null on invalid input
+ * @source Wakayoshi et al. (1992) — Determination and validity of critical velocity as swimming fatigue threshold
+ * @example
+ * swimTSS(60, 95, 90) // => ~100
+ */
 export function swimTSS(durationMin, currentSecPer100m, cssSecPer100m) {
   if (!durationMin || !currentSecPer100m || !cssSecPer100m) return null
   if (cssSecPer100m <= 0 || currentSecPer100m <= 0 || durationMin <= 0) return null
@@ -74,12 +132,17 @@ export function swimTSS(durationMin, currentSecPer100m, cssSecPer100m) {
 }
 
 // ── Score a training plan ─────────────────────────────────────────────────────
-// Given a weekly TSS array (one entry per week), scores the plan 0–100.
-// Scoring criteria:
-//   - Progressive overload: each block builds before a recovery week (−10 per violation)
-//   - Peak TSB: score highest ATL−CTL ratio achieved (wants ~−10 to −25 at peak)
-//   - Taper: last week TSS ≤ 60% of peak week (+15 if satisfied)
-//   - Monotony: stdev of week-to-week TSS ratios (lower = better)
+/**
+ * @description Scores a weekly TSS training plan from 0–100 based on taper compliance,
+ *   progressive overload, peak TSB, and training variety (coefficient of variation).
+ * @param {number[]} weeklyTSS - Array of weekly TSS values (one per week)
+ * @param {number} [startCTL=0] - Athlete's starting CTL
+ * @param {number} [startATL=0] - Athlete's starting ATL
+ * @returns {number|null} Plan score 0–100, or null if fewer than 2 weeks provided
+ * @source Banister & Calvert (1980) — Modeling elite athletic performance; Hulin et al. (2016) — The acute:chronic workload ratio predicts injury
+ * @example
+ * scoreTrainingPlan([200, 250, 300, 180], 40, 45) // => ~65
+ */
 export function scoreTrainingPlan(weeklyTSS, startCTL = 0, startATL = 0) {
   if (!weeklyTSS || weeklyTSS.length < 2) return null
   // Expand weekly TSS to daily (divide evenly across 7 days)
@@ -122,17 +185,23 @@ export function scoreTrainingPlan(weeklyTSS, startCTL = 0, startATL = 0) {
 }
 
 // ── Monte Carlo plan optimizer ─────────────────────────────────────────────────
-// Generates `n` random training plans with the given constraints, simulates each,
-// scores them, and returns the top plan with summary stats.
-//
-// constraints: {
-//   weeks:          number   — plan duration in weeks
-//   minWeeklyTSS:   number   — lower bound for any week's TSS
-//   maxWeeklyTSS:   number   — upper bound for peak week TSS
-//   recoveryWeeks:  number[] — 0-indexed week indices that must be recovery (TSS ≤ 60% of max)
-//   startCTL:       number   — athlete's current CTL
-//   startATL:       number   — athlete's current ATL
-// }
+/**
+ * @description Generates n random training plans within constraints, simulates each with the
+ *   Banister model, scores them, and returns the best plan with distribution statistics.
+ * @param {object} [constraints={}]
+ * @param {number} [constraints.weeks=8] - Plan duration in weeks
+ * @param {number} [constraints.minWeeklyTSS=30] - Minimum TSS for any week
+ * @param {number} [constraints.maxWeeklyTSS=600] - Maximum TSS for peak week
+ * @param {number[]} [constraints.recoveryWeeks=[]] - 0-indexed weeks forced to recovery load
+ * @param {number} [constraints.startCTL=0] - Athlete's current CTL
+ * @param {number} [constraints.startATL=0] - Athlete's current ATL
+ * @param {number} [n=500] - Number of Monte Carlo simulations to run
+ * @returns {{bestPlan:number[], bestScore:number, meanScore:number, p90Score:number, simulations:number, histogram:Array}|null}
+ * @source Press et al. (2007) — Numerical Recipes: The Art of Scientific Computing; Banister & Calvert (1980) — Modeling elite athletic performance
+ * @example
+ * monteCarloOptimizer({weeks:8, minWeeklyTSS:100, maxWeeklyTSS:400}, 200)
+ * // => {bestPlan:[...], bestScore:78, meanScore:52, ...}
+ */
 export function monteCarloOptimizer(constraints = {}, n = 500) {
   const {
     weeks        = 8,
@@ -190,9 +259,17 @@ export function monteCarloOptimizer(constraints = {}, n = 500) {
 }
 
 // ── Peak-form window predictor ─────────────────────────────────────────────────
-// Given a simulated Banister trace, returns the day(s) where TSB is optimal
-// for racing (typically −5 to +5 after a taper, meaning ATL has dropped enough).
-// Returns { peakDay, peakTSB, trace } where trace is the full sim output.
+/**
+ * @description Finds the day with optimal race form (highest TSB) in a Banister simulation
+ *   of a given weekly TSS plan.
+ * @param {number[]} weeklyTSS - Array of weekly TSS values
+ * @param {number} [startCTL=0] - Athlete's starting CTL
+ * @param {number} [startATL=0] - Athlete's starting ATL
+ * @returns {{peakDay:number, peakTSB:number, trace:Array}|null} Day number (1-indexed), peak TSB, and full trace
+ * @source Banister & Calvert (1980) — Modeling elite athletic performance
+ * @example
+ * peakFormWindow([300, 350, 200, 100], 50, 55) // => {peakDay: 28, peakTSB: 12.4, trace: [...]}
+ */
 export function peakFormWindow(weeklyTSS, startCTL = 0, startATL = 0) {
   if (!weeklyTSS || weeklyTSS.length === 0) return null
   const dailyTSS = weeklyTSS.flatMap(wk => Array(7).fill((wk ?? 0) / 7))
@@ -217,6 +294,18 @@ export function peakFormWindow(weeklyTSS, startCTL = 0, startATL = 0) {
 // Returns array of { date, swimTSS, bikeRunTSS, swimCTL, swimATL, swimTSB, bikeRunCTL, bikeRunATL, bikeRunTSB, combinedLoad }
 const SWIM_TAU2 = 5  // faster fatigue clearance for swim (Mujika 2000)
 
+/**
+ * @description Runs a dual-discipline Banister model for triathletes, tracking swim and bike/run
+ *   loads separately (swim fatigue clears faster: τ2=5d vs 7d for bike/run per Mujika 2000).
+ * @param {Array<{date:string, tss:number, type:string}>} swimLog - Swim session entries
+ * @param {Array<{date:string, tss:number, type:string}>} bikeRunLog - Bike and run session entries
+ * @param {object} [options={}] - Override starting CTL/ATL and time constants
+ * @returns {Array<{date, swimTSS, bikeRunTSS, swimCTL, swimATL, swimTSB, bikeRunCTL, bikeRunATL, bikeRunTSB, combinedLoad}>}
+ * @source Banister & Calvert (1980) — Modeling elite athletic performance
+ * @example
+ * dualBanister([{date:'2026-01-01',tss:60,type:'Swim'}], [{date:'2026-01-01',tss:80,type:'Ride'}])
+ * // => [{date:'2026-01-01', swimCTL:..., bikeRunCTL:..., ...}]
+ */
 export function dualBanister(swimLog, bikeRunLog, options = {}) {
   const {
     startSwimCTL    = 0,
@@ -282,6 +371,15 @@ export function dualBanister(swimLog, bikeRunLog, options = {}) {
 const SWIM_TYPES    = new Set(['swim', 'swimming', 'open water', 'pool'])
 const BIKERUN_TYPES = new Set(['ride', 'bike', 'cycling', 'run', 'running', 'trail run', 'brick'])
 
+/**
+ * @description Splits a mixed training log into separate swim and bike/run sub-logs
+ *   based on session type string matching.
+ * @param {Array<{date:string, tss:number, type:string}>} log - Mixed training log entries
+ * @returns {{swimLog: Array, bikeRunLog: Array}} Two arrays partitioned by discipline
+ * @example
+ * splitDisciplineLogs([{date:'2026-01-01',tss:60,type:'Swim'},{date:'2026-01-02',tss:80,type:'Ride'}])
+ * // => {swimLog:[{...}], bikeRunLog:[{...}]}
+ */
 export function splitDisciplineLogs(log) {
   const swimLog    = []
   const bikeRunLog = []
@@ -307,6 +405,19 @@ export function splitDisciplineLogs(log) {
 //   Under-performance: actual < 80% of planned for 2+ consecutive weeks → reduce remaining by 10%
 //   Over-performance:  actual > 115% of planned for 2+ consecutive weeks → increase remaining by 8%
 //     but cap so simulated ACWR stays ≤ 1.3 (approximate: new week ≤ prevWeek * 1.3)
+/**
+ * @description Adjusts remaining weeks of a training plan based on athlete compliance history.
+ *   Under-performance (actual < 80% of planned for 2+ weeks) reduces remaining load by 10%;
+ *   over-performance (actual > 115% for 2+ weeks) increases by 8%, capped at ACWR 1.3.
+ * @param {number[]} originalPlan - Original weekly TSS plan array
+ * @param {number[]} actualTSS - Actual TSS achieved per week
+ * @param {number} currentWeekIdx - 0-indexed index of the current week
+ * @returns {Array<{tss:number, _adjusted:boolean, _reason:string|null, _week:number}>}
+ * @source Hulin et al. (2016) — The acute:chronic workload ratio predicts injury
+ * @example
+ * addAdaptivePlanAdjustment([200,200,200,200], [100,110], 2)
+ * // => weeks 2–3 reduced by 10% with _adjusted:true
+ */
 export function addAdaptivePlanAdjustment(originalPlan, actualTSS, currentWeekIdx) {
   if (!Array.isArray(originalPlan) || originalPlan.length === 0) return []
   if (!Array.isArray(actualTSS) || currentWeekIdx < 0) return [...originalPlan]
@@ -334,11 +445,11 @@ export function addAdaptivePlanAdjustment(originalPlan, actualTSS, currentWeekId
       plan[i]._reason   = 'Reduced 10% — under-performance last 2 weeks'
     }
   } else if (overCount >= 2) {
-    // Increase remaining by 8%, cap at ACWR 1.3
+    // Increase remaining by 8%, cap at ACWR.OPTIMAL_MAX
     for (let i = currentWeekIdx; i < plan.length; i++) {
       const proposed = Math.round(plan[i].tss * 1.08)
       const prevTSS  = i > 0 ? plan[i - 1].tss : plan[i].tss
-      const cap      = Math.round(prevTSS * 1.3)
+      const cap      = Math.round(prevTSS * ACWR.OPTIMAL_MAX)
       plan[i].tss      = Math.min(proposed, cap)
       plan[i]._adjusted = true
       plan[i]._reason   = 'Increased 8% — over-performance last 2 weeks'

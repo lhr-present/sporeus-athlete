@@ -106,13 +106,17 @@ export const TEST_BATTERY = [
   },
 ]
 
-// ─── deriveMetrics ────────────────────────────────────────────────────────────
-// Converts a raw test value into a meaningful derived metric.
-//
-// @param {string} testId  - one of the TEST_BATTERY ids
-// @param {number} rawValue - the primary measured value (unit depends on test)
-// @param {object} [profile] - { weight_kg, height_cm }
-// @returns {{ metric: string, value: number|string, unit: string }}
+/**
+ * @description Converts a raw field test measurement into a meaningful derived metric
+ *   (e.g. VO2max from Cooper distance, power from 2 km erg time, speed from sprint time).
+ * @param {string} testId - One of the TEST_BATTERY ids (e.g. 'cooper_12min', 'erg_2km')
+ * @param {number} rawValue - Primary measured value (unit depends on test)
+ * @param {{weight_kg?:number, height_cm?:number}} [profile] - Athlete profile for weight-relative metrics
+ * @returns {{metric:string, value:number|string, unit:string}}
+ * @source Daniels & Gilbert (1979) — Oxygen power (VO2max formulas for field tests)
+ * @example
+ * deriveMetrics('cooper_12min', 3000) // => {metric:'vo2max', value:55.8, unit:'mL/kg/min'}
+ */
 export function deriveMetrics(testId, rawValue, profile) {
   switch (testId) {
     case 'cooper_12min': {
@@ -155,24 +159,31 @@ export function deriveMetrics(testId, rawValue, profile) {
   }
 }
 
-// ─── getBatteryForDate ────────────────────────────────────────────────────────
-// Returns the battery plan stored for a specific date, or null.
-//
-// @param {Array}  storedBatteries - items from localStorage 'sporeus-test-battery'
-// @param {string} date            - ISO date string e.g. '2026-04-15'
-// @returns {object|null}
+/**
+ * @description Looks up and returns the test battery plan stored for a specific date.
+ * @param {Array} storedBatteries - Items from localStorage key 'sporeus-test-battery'
+ * @param {string} date - ISO date string e.g. '2026-04-15'
+ * @returns {object|null} The matching battery object, or null if not found
+ * @example
+ * getBatteryForDate([{date:'2026-04-15', results:{cooper_12min:2800}}], '2026-04-15')
+ * // => {date:'2026-04-15', results:{...}}
+ */
 export function getBatteryForDate(storedBatteries, date) {
   if (!Array.isArray(storedBatteries) || !date) return null
   const found = storedBatteries.find(b => b && b.date === date)
   return found ?? null
 }
 
-// ─── compareBatteryResults ────────────────────────────────────────────────────
-// Compares two battery result snapshots and returns per-test deltas.
-//
-// @param {{ date: string, results: { [testId]: number } }} resultsA - baseline
-// @param {{ date: string, results: { [testId]: number } }} resultsB - follow-up
-// @returns {Array<{ testId: string, before: number, after: number, delta_pct: number }>}
+/**
+ * @description Compares two test battery result snapshots and returns per-test percentage change.
+ * @param {{date:string, results:{[testId:string]:number}}} resultsA - Baseline snapshot
+ * @param {{date:string, results:{[testId:string]:number}}} resultsB - Follow-up snapshot
+ * @returns {Array<{testId:string, before:number, after:number, delta_pct:number}>}
+ *   Array of changes for all test IDs present in either snapshot
+ * @example
+ * compareBatteryResults({date:'2026-01-01',results:{cooper_12min:2800}}, {date:'2026-04-01',results:{cooper_12min:3000}})
+ * // => [{testId:'cooper_12min', before:2800, after:3000, delta_pct:7.1}]
+ */
 export function compareBatteryResults(resultsA, resultsB) {
   if (!resultsA || !resultsB) return []
   const beforeMap = resultsA.results ?? {}

@@ -1,9 +1,15 @@
 // ─── goalTracker.js — Goal progress tracking and projection utilities ──────────
 
-// ─── getGoalProgress ─────────────────────────────────────────────────────────
-// @param {object} goal — { type, current, target, deadline }
-// @param {number} currentValue — latest measured value
-// @returns {{ pct: number, daysLeft: number, status: 'on_track'|'behind'|'impossible' }}
+/**
+ * @description Calculates goal completion percentage, days remaining, and a simple status label
+ *   based on linear progress from the goal's starting value to its target.
+ * @param {{type:string, current:number, target:number, deadline:string}} goal - Goal definition object
+ * @param {number} currentValue - Latest measured value for the goal metric
+ * @returns {{pct:number, daysLeft:number, status:'on_track'|'behind'|'impossible'}}
+ * @example
+ * getGoalProgress({current:50,target:60,deadline:'2026-05-01'}, 55)
+ * // => {pct:50, daysLeft:~16, status:'on_track'}
+ */
 export function getGoalProgress(goal, currentValue) {
   const range = goal.target - goal.current
   const pct = range === 0
@@ -30,21 +36,31 @@ export function getGoalProgress(goal, currentValue) {
   return { pct, daysLeft, status }
 }
 
-// ─── projectAchievementDate ───────────────────────────────────────────────────
-// @param {number} currentValue
-// @param {number} weeklyRate — improvement per week
-// @param {number} targetValue
-// @returns {string|null} ISO date 'YYYY-MM-DD' or null if rate <= 0
+/**
+ * @description Projects the ISO date on which the athlete will reach a target value
+ *   given a constant weekly improvement rate.
+ * @param {number} currentValue - Current measured value
+ * @param {number} weeklyRate - Expected improvement per week (must be > 0)
+ * @param {number} targetValue - Goal target value
+ * @returns {string|null} ISO date string 'YYYY-MM-DD', or null if weeklyRate ≤ 0
+ * @example
+ * projectAchievementDate(50, 1, 60) // => ~'2026-06-23' (10 weeks from today)
+ */
 export function projectAchievementDate(currentValue, weeklyRate, targetValue) {
   if (weeklyRate <= 0) return null
   const weeks = (targetValue - currentValue) / weeklyRate
   return new Date(Date.now() + weeks * 7 * 86400000).toISOString().slice(0, 10)
 }
 
-// ─── calcWeeklyRate ───────────────────────────────────────────────────────────
-// Simple linear regression: slope per week from dated data points.
-// @param {Array<{date: string, value: number}>} dataPoints — at least 2 points
-// @returns {number} improvement per week (slope), or 0 if fewer than 2 points
+/**
+ * @description Computes the weekly improvement rate from dated performance data points
+ *   using ordinary least squares linear regression.
+ * @param {Array<{date:string, value:number}>} dataPoints - At least 2 dated measurements
+ * @returns {number} Improvement per week (OLS slope), or 0 if fewer than 2 valid points
+ * @example
+ * calcWeeklyRate([{date:'2026-01-01',value:50},{date:'2026-02-01',value:54}])
+ * // => ~1.0 (approx 1 unit/week)
+ */
 export function calcWeeklyRate(dataPoints) {
   if (!dataPoints || dataPoints.length < 2) return 0
 
@@ -67,11 +83,17 @@ export function calcWeeklyRate(dataPoints) {
   return (n * sumXY - sumX * sumY) / denom
 }
 
-// ─── getGoalStatus ────────────────────────────────────────────────────────────
-// @param {object} goal — { type, current, target, deadline }
-// @param {number} currentValue
-// @param {number} weeklyRate
-// @returns {{ status: 'on_track'|'behind'|'impossible', message: string }}
+/**
+ * @description Evaluates whether the athlete is on track, behind, or the goal is impossible
+ *   by comparing the projected achievement date to the deadline.
+ * @param {{type:string, current:number, target:number, deadline:string}} goal - Goal definition object
+ * @param {number} currentValue - Current measured value
+ * @param {number} weeklyRate - Weekly improvement rate (from calcWeeklyRate)
+ * @returns {{status:'on_track'|'behind'|'impossible', message:string}}
+ * @example
+ * getGoalStatus({target:60,deadline:'2026-06-01'}, 52, 1.0)
+ * // => {status:'on_track', message:'On track — projected 2026-05-20'}
+ */
 export function getGoalStatus(goal, currentValue, weeklyRate) {
   const daysLeft = Math.ceil((new Date(goal.deadline) - new Date()) / 86400000)
 

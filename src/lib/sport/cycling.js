@@ -4,10 +4,16 @@
 import { fitCP } from './rowing.js'  // reuse CP OLS regression
 
 // ── FTP calculation ───────────────────────────────────────────────────────────
-// Supports two methods:
-//   CP model  — from 2+ maximal efforts [{ timeSec, powerW }]
-//   20-min TT — FTP = power20min × 0.95 (Coggan standard)
-// Returns { ftpWatts, method: 'CP' | '20min' | null } or null on invalid input.
+/**
+ * @description Calculates Functional Threshold Power (FTP) from maximal power tests.
+ *   Prefers the CP model (≥2 efforts); falls back to 20-min TT × 0.95 (Coggan standard).
+ * @param {Array<{timeSec: number, powerW: number}>} powerTests - One or more maximal efforts
+ * @returns {{ftpWatts: number, wPrime?: number, method: 'CP'|'20min'}|null}
+ *   FTP in watts, optional W' in joules, and method used; or null on invalid input
+ * @source Morton (1986) — A 3-parameter critical power model
+ * @example
+ * calculateFTP([{timeSec:1200,powerW:250},{timeSec:300,powerW:310}]) // => {ftpWatts:~240, method:'CP'}
+ */
 export function calculateFTP(powerTests) {
   if (!powerTests || powerTests.length === 0) return null
 
@@ -40,7 +46,15 @@ const COGGAN_ZONE_DEFS = [
   { id: 7, name: 'Neuromuscular',      pctMin: 1.50, pctMax: Infinity },
 ]
 
-// Returns zone number (1–7) for a given power relative to FTP.
+/**
+ * @description Returns the Coggan zone number (1–7) for a given power output relative to FTP.
+ * @param {number} powerW - Current power output in watts
+ * @param {number} ftpW - Functional Threshold Power in watts
+ * @returns {number|null} Zone 1 (Active Recovery) to 7 (Neuromuscular), or null on invalid input
+ * @source Morton (1986) — A 3-parameter critical power model; Coggan power zone system
+ * @example
+ * getCyclingZone(280, 300) // => 3 (Tempo, 93% FTP)
+ */
 export function getCyclingZone(powerW, ftpW) {
   if (!powerW || !ftpW || ftpW <= 0 || powerW < 0) return null
   const ratio = powerW / ftpW
@@ -50,7 +64,14 @@ export function getCyclingZone(powerW, ftpW) {
   return 7  // > 150% FTP → neuromuscular
 }
 
-// Returns full zone table with watt boundaries for a given FTP.
+/**
+ * @description Returns all 7 Coggan power zones with absolute watt boundaries for a given FTP.
+ * @param {number} ftpWatts - Functional Threshold Power in watts
+ * @returns {Array<{id, name, pctMin, pctMax, minWatts, maxWatts}>} Zone objects with computed watt ranges
+ * @source Morton (1986) — A 3-parameter critical power model; Coggan power zone system
+ * @example
+ * getCyclingZones(300) // => [{id:1, name:'Active Recovery', minWatts:0, maxWatts:165}, ...]
+ */
 export function getCyclingZones(ftpWatts) {
   if (!ftpWatts || ftpWatts <= 0) return []
   return COGGAN_ZONE_DEFS.map(z => ({
@@ -61,9 +82,17 @@ export function getCyclingZones(ftpWatts) {
 }
 
 // ── Cycling TSS ───────────────────────────────────────────────────────────────
-// Standard Coggan TSS using normalized power (NP) as a proxy for average power.
-// TSS = (durationSec × NP × IF) / (FTP × 3600) × 100
-// Simplified: IF = avgNormalizedPower / FTP, TSS = (durationSec/3600) × IF² × 100
+/**
+ * @description Calculates cycling Training Stress Score (TSS) using Coggan's normalized power formula.
+ *   TSS = (durationHr) × IF² × 100, where IF = avgNormalizedPower / FTP.
+ * @param {number} durationMin - Session duration in minutes
+ * @param {number} avgNormalizedPowerW - Average normalized power in watts
+ * @param {number} ftpW - Functional Threshold Power in watts
+ * @returns {number|null} TSS value (1 decimal place), or null on invalid input
+ * @source Morton (1986) — A 3-parameter critical power model; Banister & Calvert (1980) — Modeling elite athletic performance
+ * @example
+ * calculateCyclingTSS(60, 270, 300) // => 81.0 (IF=0.9)
+ */
 export function calculateCyclingTSS(durationMin, avgNormalizedPowerW, ftpW) {
   if (!durationMin || !avgNormalizedPowerW || !ftpW || ftpW <= 0) return null
   if (durationMin <= 0 || avgNormalizedPowerW <= 0) return null
@@ -79,6 +108,18 @@ export function calculateCyclingTSS(durationMin, avgNormalizedPowerW, ftpW) {
 //
 // Physics: P = (mass × g × grade × v) + rolling + aero
 // Simplified for athlete planning: power_target ≈ FTP × adjustmentFactor
+/**
+ * @description Estimates cycling time for a given route using a simplified physics model.
+ *   Adjusts flat-road speed for average gradient; intended for rough planning, not race prediction.
+ * @param {number} ftpWatts - Athlete FTP in watts (used to set baseline speed)
+ * @param {number} distanceKm - Route distance in kilometres
+ * @param {number} elevationM - Total elevation gain in metres
+ * @param {number} [bodyWeightKg=70] - Athlete body mass in kg
+ * @returns {number|null} Estimated time in seconds, or null on invalid input
+ * @source Morton (1986) — A 3-parameter critical power model (simplified physics model)
+ * @example
+ * predictCyclingTime(280, 40, 500) // => ~5143 seconds (~85 min)
+ */
 export function predictCyclingTime(ftpWatts, distanceKm, elevationM, bodyWeightKg = 70) {
   if (!ftpWatts || !distanceKm || ftpWatts <= 0 || distanceKm <= 0) return null
   if (distanceKm <= 0) return null
@@ -96,6 +137,14 @@ export function predictCyclingTime(ftpWatts, distanceKm, elevationM, bodyWeightK
 }
 
 // ── W/kg (watts per kilogram) ─────────────────────────────────────────────────
+/**
+ * @description Calculates power-to-weight ratio (W/kg) from FTP and body mass.
+ * @param {number} ftpWatts - Functional Threshold Power in watts
+ * @param {number} bodyWeightKg - Athlete body mass in kg
+ * @returns {number|null} W/kg ratio (2 decimal places), or null on invalid input
+ * @example
+ * wattsPerKg(300, 75) // => 4.0
+ */
 export function wattsPerKg(ftpWatts, bodyWeightKg) {
   if (!ftpWatts || !bodyWeightKg || bodyWeightKg <= 0) return null
   return Math.round((ftpWatts / bodyWeightKg) * 100) / 100

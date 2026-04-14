@@ -98,21 +98,52 @@ export const RUNNING_TEMPLATES = [
 ]
 
 // ── Template lookup ────────────────────────────────────────────────────────────
+/**
+ * @description Looks up a running session template by ID.
+ * @param {string} id - Template ID (e.g. 'easy_run', 'threshold_cruise')
+ * @returns {object|null} Template definition object, or null if not found
+ * @source Daniels & Gilbert (1979) — Oxygen power: Performance tables for distance runners
+ * @example
+ * getRunningTemplate('threshold_cruise') // => {id:'threshold_cruise', paceKey:'T', ...}
+ */
 export function getRunningTemplate(id) {
   return RUNNING_TEMPLATES.find(t => t.id === id) || null
 }
 
+/**
+ * @description Returns all running templates for a given training phase.
+ * @param {'base'|'build'|'peak'} phase - Training phase name
+ * @returns {object[]} Array of matching template definitions
+ * @example
+ * getTemplatesByPhase('peak') // => [{id:'vo2max_intervals',...}, {id:'repetition_speed',...}]
+ */
 export function getTemplatesByPhase(phase) {
   return RUNNING_TEMPLATES.filter(t => t.phase === phase)
 }
 
+/**
+ * @description Returns all running templates that include a given tag.
+ * @param {string} tag - Tag string (e.g. 'threshold', 'aerobic', 'vo2max')
+ * @returns {object[]} Array of matching template definitions
+ * @example
+ * getTemplatesByTag('vo2max') // => [{id:'vo2max_intervals', ...}]
+ */
 export function getTemplatesByTag(tag) {
   return RUNNING_TEMPLATES.filter(t => t.tags?.includes(tag))
 }
 
 // ── Instantiate a template for an athlete ────────────────────────────────────
-// Given a template ID and VDOT, returns the template with target paces in
-// both sec/km and formatted mm:ss/km.
+/**
+ * @description Instantiates a running session template for a specific athlete by computing
+ *   target pace from VDOT, estimating TSS, and building interval breakdowns where applicable.
+ * @param {string} templateId - Template ID from RUNNING_TEMPLATES
+ * @param {number} vdot - Athlete's VDOT value
+ * @returns {object|null} Template with targetPaceSecKm, targetPaceFmt, estimatedTSS, intervalBreakdown; null on invalid input
+ * @source Daniels & Gilbert (1979) — Oxygen power: Performance tables for distance runners
+ * @example
+ * instantiateRunningTemplate('threshold_cruise', 52)
+ * // => {targetPaceFmt:'4:24', estimatedTSS:~87, intervalBreakdown:{count:5, ...}, ...}
+ */
 export function instantiateRunningTemplate(templateId, vdot) {
   const tmpl = getRunningTemplate(templateId)
   if (!tmpl || !vdot || vdot <= 0) return null
@@ -156,8 +187,15 @@ export function instantiateRunningTemplate(templateId, vdot) {
 }
 
 // ── Race-specific plan ────────────────────────────────────────────────────────
-// Returns ordered weekly template IDs for a race build from `weeksToRace` weeks out.
-// Follows Daniels periodization: base → build → peak → taper
+/**
+ * @description Generates a periodized race build plan (base → build → peak → taper)
+ *   from the given number of weeks to race day, following Daniels' phase structure.
+ * @param {number} weeksToRace - Total weeks until the target race (minimum 4)
+ * @returns {Array<{week:number, phase:string, templates:string[]}>|null} Weekly plan array, or null if < 4 weeks
+ * @source Daniels & Gilbert (1979) — Oxygen power: Performance tables for distance runners
+ * @example
+ * raceSpecificPlan(12) // => [{week:1,phase:'base',templates:[...]}, ..., {week:12,phase:'taper',...}]
+ */
 export function raceSpecificPlan(weeksToRace) {
   if (!weeksToRace || weeksToRace < 4) return null
   const plan = []
@@ -176,6 +214,14 @@ export function raceSpecificPlan(weeksToRace) {
 }
 
 // ── Weekly session mix by phase ───────────────────────────────────────────────
+/**
+ * @description Returns the weekly session template ID mix for a given Daniels training phase.
+ * @param {'base'|'build'|'peak'|'taper'} phase - Training phase name
+ * @returns {string[]} Array of template IDs for the weekly plan
+ * @source Daniels & Gilbert (1979) — Oxygen power: Performance tables for distance runners
+ * @example
+ * weeklyRunPlan('build') // => ['easy_run', 'marathon_tempo', 'threshold_cruise', 'long_run']
+ */
 export function weeklyRunPlan(phase) {
   const plans = {
     base:  ['easy_run', 'easy_run', 'long_run'],
@@ -201,4 +247,5 @@ function fmtSeconds(totalSec) {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
+// secKmToString and fmtSeconds are utility formatters re-exported for consumer use.
 export { secKmToString, fmtSeconds }

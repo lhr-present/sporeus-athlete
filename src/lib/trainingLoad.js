@@ -2,10 +2,12 @@
 // Pure JS — no React, no DOM, no localStorage.
 // PMC uses TrainingPeaks impulse-response decay: K = 1 − e^(−1/τ)
 
-const K_CTL    = 1 - Math.exp(-1 / 42)   // ≈ 0.02353  fitness decay factor
-const K_ATL    = 1 - Math.exp(-1 / 7)    // ≈ 0.13307  fatigue decay factor
-const DECAY_CTL = 1 - K_CTL              // ≈ 0.97647
-const DECAY_ATL = 1 - K_ATL              // ≈ 0.86693
+import { BANISTER, ACWR } from './sport/constants.js'
+
+const K_CTL    = BANISTER.K_CTL          // ≈ 0.02353  fitness decay factor
+const K_ATL    = BANISTER.K_ATL          // ≈ 0.13307  fatigue decay factor
+const DECAY_CTL = 1 - K_CTL             // ≈ 0.97647
+const DECAY_ATL = 1 - K_ATL             // ≈ 0.86693
 
 // ─── calculatePMC ────────────────────────────────────────────────────────────
 // Returns a daily array of { date, tss, ctl, atl, tsb, isFuture }.
@@ -105,9 +107,9 @@ export function calculateACWR(log) {
   }
 
   const ratio  = Math.round((atl / ctl) * 100) / 100
-  const status = ratio > 1.5 ? 'danger'
-    : ratio > 1.3 ? 'caution'
-    : ratio >= 0.8 ? 'optimal'
+  const status = ratio > ACWR.CAUTION_MAX ? 'danger'
+    : ratio > ACWR.OPTIMAL_MAX ? 'caution'
+    : ratio >= ACWR.OPTIMAL_MIN ? 'optimal'
     : 'undertraining'
 
   return {

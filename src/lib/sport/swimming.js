@@ -2,8 +2,19 @@
 // CSS (Critical Swim Speed), T-pace, zone system.
 
 // ── Critical Swim Speed (CSS) ─────────────────────────────────────────────────
-// CSS (m/s) = (d2 − d1) / (t2 − t1)
-// Standard protocol: 400m TT + 200m TT (or 1500m + 400m)
+/**
+ * @description Calculates Critical Swim Speed (CSS) in m/s from two all-out time trials.
+ *   Standard protocol: 400 m + 200 m time trials (or 1500 m + 400 m).
+ *   CSS (m/s) = (d2 − d1) / (t2 − t1)
+ * @param {number} d1M - Shorter trial distance in metres
+ * @param {number} t1Sec - Shorter trial time in seconds
+ * @param {number} d2M - Longer trial distance in metres (must be > d1M)
+ * @param {number} t2Sec - Longer trial time in seconds
+ * @returns {number|null} CSS in m/s (4 decimal places), or null on invalid input
+ * @source Wakayoshi et al. (1992) — Determination and validity of critical velocity as swimming fatigue threshold
+ * @example
+ * criticalSwimSpeed(200, 160, 400, 340) // => ~1.111 m/s
+ */
 export function criticalSwimSpeed(d1M, t1Sec, d2M, t2Sec) {
   if (!d1M || !t1Sec || !d2M || !t2Sec) return null
   if (d2M <= d1M) return null  // need d2 > d1 for standard formula
@@ -15,15 +26,30 @@ export function criticalSwimSpeed(d1M, t1Sec, d2M, t2Sec) {
   return Math.round(cssMs * 10000) / 10000  // 4dp m/s
 }
 
-// CSS expressed as seconds per 100m (T-pace format)
+/**
+ * @description Converts CSS from m/s to seconds per 100 m (T-pace display format).
+ * @param {number} cssMs - CSS in metres per second
+ * @returns {number|null} Pace in seconds per 100 m, or null on invalid input
+ * @source Wakayoshi et al. (1992) — Determination and validity of critical velocity as swimming fatigue threshold
+ * @example
+ * cssToSecPer100m(1.5) // => 66.7 (sec/100m)
+ */
 export function cssToSecPer100m(cssMs) {
   if (!cssMs || cssMs <= 0) return null
   return Math.round((100 / cssMs) * 10) / 10
 }
 
 // ── T-pace ────────────────────────────────────────────────────────────────────
-// T-pace = threshold pace ≈ CSS in most models.
-// Can also be estimated from a single 1000m or 1500m TT.
+/**
+ * @description Estimates T-pace (threshold pace, sec/100 m) from a single time trial.
+ *   T-pace ≈ TT pace for distances of 1000–1500 m (near-threshold effort).
+ * @param {number} distanceM - Time trial distance in metres
+ * @param {number} timeSec - Time trial time in seconds
+ * @returns {number|null} T-pace in seconds per 100 m, or null on invalid input
+ * @source Wakayoshi et al. (1992) — Determination and validity of critical velocity as swimming fatigue threshold
+ * @example
+ * tPaceFromTT(1000, 900) // => 90 (sec/100m)
+ */
 export function tPaceFromTT(distanceM, timeSec) {
   if (!distanceM || !timeSec || timeSec <= 0 || distanceM <= 0) return null
   const paceSecPer100m = (timeSec / distanceM) * 100
@@ -47,7 +73,15 @@ const SWIM_ZONE_DEFS = [
   { id: 6, name: 'Anaerobic',  pctMin: 0,    pctMax: 0.85 },
 ]
 
-// Returns zone number (1–6) for a given pace (sec/100m) vs CSS pace.
+/**
+ * @description Returns the swimming zone number (1–6) for a current pace relative to CSS pace.
+ * @param {number} currentSecPer100m - Current pace in seconds per 100 m
+ * @param {number} cssSecPer100m - CSS in seconds per 100 m
+ * @returns {number|null} Zone 1 (Recovery) to 6 (Anaerobic), or null on invalid input
+ * @source Wakayoshi et al. (1992) — Determination and validity of critical velocity as swimming fatigue threshold
+ * @example
+ * swimmingZone(100, 90) // => 2 (Aerobic, ratio ~1.11)
+ */
 export function swimmingZone(currentSecPer100m, cssSecPer100m) {
   if (!currentSecPer100m || !cssSecPer100m || cssSecPer100m <= 0) return null
   const ratio = currentSecPer100m / cssSecPer100m
@@ -57,7 +91,14 @@ export function swimmingZone(currentSecPer100m, cssSecPer100m) {
   return 1
 }
 
-// Returns full zone table with pace boundaries
+/**
+ * @description Returns all 6 swimming zones with absolute pace boundaries for a given CSS pace.
+ * @param {number} cssSecPer100m - CSS in seconds per 100 m
+ * @returns {Array<{id, name, pctMin, pctMax, paceMin, paceMax}>} Zone objects with computed pace ranges
+ * @source Wakayoshi et al. (1992) — Determination and validity of critical velocity as swimming fatigue threshold
+ * @example
+ * swimmingZones(90) // => [{id:1, name:'Recovery', paceMin:null, paceMax:null}, ...]
+ */
 export function swimmingZones(cssSecPer100m) {
   if (!cssSecPer100m || cssSecPer100m <= 0) return []
   return SWIM_ZONE_DEFS.map(z => ({
@@ -68,8 +109,18 @@ export function swimmingZones(cssSecPer100m) {
 }
 
 // ── Estimated TSS for swimming ────────────────────────────────────────────────
-// Swim-TSS via CSS analogy: sTSS = (duration_min / 60) × (pace / CSS_pace)^2 × 100
-// Lower pace ratio = harder effort = higher sTSS
+/**
+ * @description Estimates swim Training Stress Score (sTSS) using the CSS intensity analogy.
+ *   sTSS = (durationMin / 60) × (CSS_pace / current_pace)² × 100
+ *   A faster current pace relative to CSS yields a higher intensity factor and sTSS.
+ * @param {number} durationMin - Session duration in minutes
+ * @param {number} currentSecPer100m - Session average pace in seconds per 100 m
+ * @param {number} cssSecPer100m - CSS in seconds per 100 m
+ * @returns {number|null} sTSS (rounded integer), or null on invalid input
+ * @source Wakayoshi et al. (1992) — Determination and validity of critical velocity as swimming fatigue threshold
+ * @example
+ * swimTSS(60, 95, 90) // => ~100 (approx; IF close to 0.95)
+ */
 export function swimTSS(durationMin, currentSecPer100m, cssSecPer100m) {
   if (!durationMin || !currentSecPer100m || !cssSecPer100m) return null
   if (cssSecPer100m <= 0 || currentSecPer100m <= 0) return null

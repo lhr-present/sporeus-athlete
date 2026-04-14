@@ -38,10 +38,12 @@ describe('banisterDay', () => {
   })
 
   it('honours custom tau1/tau2 parameters', () => {
-    // With tau1=1 the new CTL should equal TSS entirely (1/1 = 1 weight)
+    // With tau1=1: K = 1−e^(−1) ≈ 0.6321, so CTL = 50*(1−K) + 100*K ≈ 81.6
+    // (old 1/tau formula would give 100; correct exponential formula gives ~81.6)
     const r = banisterDay(50, 50, 100, 1, 1)
-    expect(r.CTL).toBeCloseTo(100, 1)
-    expect(r.ATL).toBeCloseTo(100, 1)
+    const expectedCTL = 50 * Math.exp(-1) + 100 * (1 - Math.exp(-1))
+    expect(r.CTL).toBeCloseTo(expectedCTL, 1)
+    expect(r.ATL).toBeCloseTo(expectedCTL, 1)
   })
 })
 

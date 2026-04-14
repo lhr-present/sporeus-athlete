@@ -38,9 +38,15 @@ export const RESTQ_ITEMS = [
 ]
 
 /**
- * Score a completed RESTQ-Sport Short Form.
- * @param {Object} responses — { itemId: value (0-6), … } for all 19 items
- * @returns {{ overall_stress, overall_recovery, balance, subscales, interpretation, completeness }}
+ * @description Scores a completed RESTQ-Sport Short Form (19 items) into stress/recovery subscale means,
+ *   an overall balance, and a four-category interpretation string.
+ * @param {Object} responses - Map of { itemId: value (0–6) } for all 19 items
+ * @returns {{overall_stress:number|null, overall_recovery:number|null, balance:number|null, subscales:Object, interpretation:string, interpretationLabel:Object, completeness:number}}
+ * @source Kellmann & Kallus (2001) — Recovery-Stress Questionnaire for Athletes
+ * @example
+ * scoreRESTQ({gs1:2, gs2:1, gs3:2, es1:1, es2:1, pc1:2, pc2:2, le1:1, le2:1,
+ *             or1:5, or2:5, or3:5, sq1:5, sq2:4, sr1:4, sr2:5, se1:5, se2:5, sg1:4})
+ * // => {overall_stress: 1.6, overall_recovery: 4.8, balance: 3.2, interpretation: 'well_recovered', ...}
  */
 export function scoreRESTQ(responses) {
   if (!responses || typeof responses !== 'object') {
@@ -101,11 +107,15 @@ export function scoreRESTQ(responses) {
 }
 
 /**
- * Check whether a new RESTQ screening is due.
- * @param {Array} history — stored RESTQ results (each has { date, … })
- * @param {number} logLength — number of log entries (require ≥14 to prompt)
- * @param {number} intervalDays — days between screens (default 28)
- * @returns {boolean}
+ * @description Checks whether a new RESTQ-Sport screening is due based on training log length
+ *   and days elapsed since the last assessment.
+ * @param {Array<{date:string}>} history - Stored RESTQ results (each has a date property)
+ * @param {number} logLength - Number of training log entries (screening requires ≥14)
+ * @param {number} [intervalDays=28] - Minimum days between screenings
+ * @returns {boolean} True if a new screening should be presented
+ * @source Kellmann & Kallus (2001) — Recovery-Stress Questionnaire for Athletes
+ * @example
+ * isRESTQDue([], 20) // => true (no history, enough entries)
  */
 export function isRESTQDue(history, logLength, intervalDays = 28) {
   if (!logLength || logLength < 14) return false
