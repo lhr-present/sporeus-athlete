@@ -3,7 +3,7 @@
 ```bash
 cd ~/sporeus-athlete-app
 npm run dev        # local dev server → http://localhost:5173/sporeus-athlete/
-npm test           # run 84 unit tests (vitest)
+npm test           # run 860 unit tests (vitest)
 npm run build      # production build → dist/
 git push           # triggers GitHub Actions: test → build → deploy to Pages
 ```
@@ -61,7 +61,7 @@ npm test              # run all tests (vitest run)
 npm run test:watch    # interactive watch mode
 ```
 Test files: `src/lib/*.test.js` — pure function tests only (no React, no DOM).
-Target: keep all 84+ tests green before every commit.
+Target: keep all 860 tests green before every commit.
 
 **Do not mock internal libraries.** Tests run against real formulas — mock only at system boundaries (external APIs, localStorage when unavoidable).
 

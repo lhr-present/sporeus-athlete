@@ -3,7 +3,7 @@
 ## Unit Tests (fast, no external deps)
 
 ```bash
-npm test           # run all 558+ unit tests
+npm test           # run all 860 unit tests
 npm run test:watch # interactive watch mode
 ```
 

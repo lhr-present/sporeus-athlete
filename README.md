@@ -41,7 +41,7 @@
 npm install
 cp .env.example .env.local    # fill in Supabase + Strava keys
 npm run dev                   # → http://localhost:5173/sporeus-athlete/
-npm test                      # 84 unit tests (vitest)
+npm test                      # 860 unit tests (vitest)
 npm run build                 # production build → dist/
 bash scripts/healthcheck.sh  # pre-push sanity: tests + build + bundle + security + git
 ```
