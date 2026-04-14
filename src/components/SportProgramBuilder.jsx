@@ -2,6 +2,8 @@ import { useState, useMemo, useCallback, useEffect } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts'
 import { S } from '../styles.js'
 import { useData } from '../contexts/DataContext.jsx'
+import { useLocalStorage } from '../hooks/useLocalStorage.js'
+import { getRelatedArticles } from '../lib/content.js'
 import {
   simulateBanister, scoreTrainingPlan, monteCarloOptimizer, peakFormWindow,
   addAdaptivePlanAdjustment,
@@ -161,6 +163,16 @@ function WeekModal({ weekIdx, trace, sport, form, split2k, vdot, onClose }) {
 
 // ── Step 1: Sport + Goal ──────────────────────────────────────────────────────
 function Step1({ form, setForm, onNext }) {
+  const [lang] = useLocalStorage('sporeus-lang', 'en')
+  const [sportArticle, setSportArticle] = useState(null)
+
+  useEffect(() => {
+    const sport = form.sport
+    if (!sport) return
+    const topic = lang === 'tr' ? `${sport} antrenman` : `${sport} training`
+    getRelatedArticles(topic, lang).then(articles => setSportArticle(articles[0] || null))
+  }, [form.sport, lang])
+
   return (
     <div>
       <div style={S.cardTitle}>SPORT &amp; GOAL</div>
@@ -180,6 +192,14 @@ function Step1({ form, setForm, onNext }) {
         </div>
         {form._sportFromProfile && (
           <div style={{ ...DIM, marginTop: '6px', color: '#00c853' }}>✓ Pre-filled from your profile</div>
+        )}
+        {sportArticle && (
+          <div style={{ marginTop: '10px', padding: '10px', background: '#0a0a0a', border: '1px solid #1e1e1e', borderRadius: '4px' }}>
+            <div style={{ fontSize: '9px', color: '#555', letterSpacing: '0.1em', marginBottom: '4px', fontFamily: "'IBM Plex Mono',monospace" }}>RELATED</div>
+            <a href={sportArticle.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '10px', color: '#0064ff', fontFamily: "'IBM Plex Mono',monospace", textDecoration: 'none' }}>
+              {sportArticle.title}
+            </a>
+          </div>
         )}
       </div>
       <div style={{ marginBottom: '16px' }}>

@@ -112,3 +112,15 @@ Target: keep all 860 tests green before every commit.
 - Push notifications: iOS requires iOS 16.4+ and PWA installed to home screen
 - Guest mode: all data in localStorage — lost on browser clear; nudge fires after 30d or 50 sessions
 - Coach messaging is file-based (JSON export/import) — not real-time
+
+## Environment Variables
+
+| Variable | Purpose |
+|---|---|
+| `VITE_SUPABASE_URL` | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key |
+| `VITE_STRAVA_CLIENT_ID` | Strava OAuth client ID |
+| `VITE_VAPID_PUBLIC_KEY` | Web Push VAPID public key |
+| `VITE_DODO_CHECKOUT_COACH` | Dodo Payments checkout URL for Coach tier (Turkey) |
+| `VITE_DODO_CHECKOUT_CLUB` | Dodo Payments checkout URL for Club tier (Turkey) |
+| `VITE_STRIPE_CHECKOUT_COACH` | Stripe checkout URL for Coach tier (international) |

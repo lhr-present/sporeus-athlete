@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <clipPath id="rounded">
+      <rect width="1024" height="1024" rx="200" ry="200"/>
+    </clipPath>
+  </defs>
+  <rect width="1024" height="1024" rx="200" fill="#0a1628"/>
+  <text x="512" y="560" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="380" font-weight="700" fill="#d4a017">◈</text>
+  <text x="512" y="780" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="110" font-weight="700" letter-spacing="24" fill="#d4a017">SPOREUS</text>
+</svg>

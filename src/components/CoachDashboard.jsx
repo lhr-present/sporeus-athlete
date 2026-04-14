@@ -19,6 +19,8 @@ import SbAthletePanel from './coachDashboard/SbAthletePanel.jsx'
 import SessionManager from './coach/SessionManager.jsx'
 import SquadBenchmarkTable from './coach/SquadBenchmarkTable.jsx'
 import { calcCompliancePct } from '../lib/sport/squadBenchmark.js'
+import { shouldShowUpsell, markUpsellShown, getUpsellMessage } from '../lib/upsell.js'
+import { getTierSync, isFeatureGated } from '../lib/subscription.js'
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -38,6 +40,7 @@ export default function CoachDashboard({ authUser }) {
   const [pendingAthlete, setPendingAthlete] = useState(null)
   const [showGating, setShowGating] = useState(false)
   const fileRef = useRef(null)
+  const [upsellDismissed, setUpsellDismissed] = useState(false)
 
   // ── Supabase live-athlete state (only when Supabase is configured) ──────────
   const [sbAthletes, setSbAthletes]     = useState([])   // [{profile, status, athlete_id}]
@@ -266,6 +269,32 @@ export default function CoachDashboard({ authUser }) {
           </button>
         </div>
       </div>
+
+      {/* Upsell banner — free tier only, once per day */}
+      {(() => {
+        const currentTier = getTierSync()
+        const featureLocked = isFeatureGated('realtime_dashboard', currentTier)
+        if (!featureLocked) return null
+        if (upsellDismissed) return null
+        if (!shouldShowUpsell('ai_insights')) return null
+        const msg = getUpsellMessage('ai_insights', 'en')
+        return (
+          <div style={{ background:'#0a1628', border:'1px solid #d4a017', borderRadius:'6px', padding:'12px 16px', marginBottom:'16px', display:'flex', justifyContent:'space-between', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
+            <div>
+              <div style={{ fontSize:'11px', fontWeight:700, color:'#d4a017', fontFamily:"'IBM Plex Mono',monospace" }}>{msg.title}</div>
+              <div style={{ fontSize:'10px', color:'#aaa', fontFamily:"'IBM Plex Mono',monospace", marginTop:'3px' }}>{msg.description}</div>
+            </div>
+            <div style={{ display:'flex', gap:'8px' }}>
+              <button onClick={() => { markUpsellShown('ai_insights'); setUpsellDismissed(true) }} style={{ fontSize:'10px', padding:'5px 12px', background:'#d4a017', border:'none', color:'#0a1628', fontFamily:"'IBM Plex Mono',monospace", fontWeight:700, borderRadius:'3px', cursor:'pointer' }}>
+                Upgrade →
+              </button>
+              <button onClick={() => { markUpsellShown('ai_insights'); setUpsellDismissed(true) }} style={{ fontSize:'10px', padding:'5px 8px', background:'none', border:'1px solid #333', color:'#555', fontFamily:"'IBM Plex Mono',monospace", cursor:'pointer', borderRadius:'3px' }}>
+                ✕
+              </button>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── Supabase Live Athletes ──────────────────────────────────────────── */}
       {isSupabaseReady() && sbCoachId && (
