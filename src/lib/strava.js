@@ -35,6 +35,10 @@ function stravaToEntry(act) {
     ? Math.min(10, Math.max(1, Math.round(act.average_heartrate / 20)))
     : 5
 
+  // Decode Google encoded polyline from summary_polyline → lightweight trackpoints
+  const polyline = act.map?.summary_polyline
+  const trackpoints = polyline ? decodePolyline(polyline).map(([lat, lon]) => ({ lat, lon, ele: 0 })) : null
+
   return {
     date:        (act.start_date_local || act.start_date || '').slice(0, 10),
     type,
@@ -47,7 +51,37 @@ function stravaToEntry(act) {
     notes:       act.name || '',
     strava_id:   String(act.id),
     source:      'strava',
+    ...(trackpoints ? { trackpoints } : {}),
   }
+}
+
+// ── Google Encoded Polyline decoder ──────────────────────────────────────────
+// Decodes Google's encoded polyline algorithm into [[lat, lon], ...] pairs.
+// Ref: https://developers.google.com/maps/documentation/utilities/polylinealgorithm
+export function decodePolyline(encoded) {
+  if (!encoded) return []
+  const result = []
+  let index = 0, lat = 0, lon = 0
+  while (index < encoded.length) {
+    let shift = 0, b, result_ = 0
+    do {
+      b = encoded.charCodeAt(index++) - 63
+      result_ |= (b & 0x1f) << shift
+      shift += 5
+    } while (b >= 0x20)
+    lat += (result_ & 1 ? ~(result_ >> 1) : result_ >> 1)
+
+    shift = 0; result_ = 0
+    do {
+      b = encoded.charCodeAt(index++) - 63
+      result_ |= (b & 0x1f) << shift
+      shift += 5
+    } while (b >= 0x20)
+    lon += (result_ & 1 ? ~(result_ >> 1) : result_ >> 1)
+
+    result.push([lat * 1e-5, lon * 1e-5])
+  }
+  return result
 }
 
 // ── importStravaActivities ────────────────────────────────────────────────────

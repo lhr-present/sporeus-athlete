@@ -15,6 +15,7 @@ import AthleteComparison from './coachDashboard/AthleteComparison.jsx'
 import CoachRegistration from './coachDashboard/CoachRegistration.jsx'
 import GatingOverlay from './coachDashboard/GatingOverlay.jsx'
 import SbAthletePanel from './coachDashboard/SbAthletePanel.jsx'
+import SessionManager from './coach/SessionManager.jsx'
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -386,6 +387,13 @@ export default function CoachDashboard({ authUser }) {
           </button>
         </div>
       </div>
+
+      {/* Session RSVP — only when Supabase coach is signed in */}
+      {sbCoachId && (
+        <div style={{ ...S.card, marginBottom:'16px' }}>
+          <SessionManager coachId={sbCoachId} />
+        </div>
+      )}
 
       {/* Plan Templates */}
       <PlanDistribution templates={templates} setTemplates={setTemplates} onApply={applyTemplate}/>

@@ -25,6 +25,9 @@ import YourPatternsCard      from './dashboard/YourPatternsCard.jsx'
 import ProactiveInjuryAlert  from './dashboard/ProactiveInjuryAlert.jsx'
 import RaceReadinessCard     from './dashboard/RaceReadinessCard.jsx'
 import LoadTrendChart        from './dashboard/LoadTrendChart.jsx'
+import TriDashboard           from './dashboard/TriDashboard.jsx'
+import NormativeCard          from './NormativeCard.jsx'
+import { getFTPNorm, getCTLNorm } from '../lib/sport/normativeTables.js'
 
 function BackupReminder({ log }) {
   const [lastBackup, setLastBackup] = useLocalStorage('sporeus-last-backup', null)
@@ -510,6 +513,9 @@ export default function Dashboard({ log, profile }) {
         </div>
       )}
 
+      {(profile.sport || '').toLowerCase().includes('tri') && (
+        <TriDashboard log={log} lang={lang} />
+      )}
       <LoadTrendChart log={log} acwr={acwr} ctlChartDays={ctlChartDays} raceResults={raceResults} plan={plan} dl={dl} lc={lc}/>
 
       {(testResults?.length ?? 0) >= 3 && (() => {
@@ -629,6 +635,65 @@ export default function Dashboard({ log, profile }) {
       })()}
 
       {dl.achievements !== false && <Achievements log={log} dark={dark} lang={lang}/>}
+
+      {/* ── Normative comparison (FTP + CTL) ─────────────────────────────── */}
+      {(() => {
+        const ftp    = parseFloat(profile.ftp  || 0)
+        const weight = parseFloat(profile.weight || 0)
+        const sport  = (profile.sport || 'cycling').toLowerCase()
+        const gender = (profile.gender || 'male').toLowerCase()
+        const ctl    = acwr && typeof acwr === 'object' ? null : null  // placeholder
+        const ctlVal = log.length >= 7 ? Math.round(log.slice(-28).reduce((s, e) => s + (e.tss || 0), 0) / 42) : null
+        const normSport = sport.includes('tri') ? 'triathlon' : sport.includes('cycl') || sport.includes('bike') ? 'cycling' : null
+
+        const cards = []
+
+        if (ftp > 0 && weight > 0 && normSport) {
+          const ftpPerKg = Math.round((ftp / weight) * 100) / 100
+          const norm = getFTPNorm(normSport, gender, ftpPerKg)
+          if (norm.category !== 'Unknown') {
+            cards.push(
+              <NormativeCard
+                key="ftp"
+                label="FTP"
+                value={`${ftpPerKg} w/kg`}
+                percentile={norm.percentile}
+                category={norm.category}
+                context={`vs ${normSport} ${gender}s`}
+              />
+            )
+          }
+        }
+
+        if (ctlVal != null && ctlVal > 0) {
+          const level = (profile.level || 'recreational').toLowerCase().replace('-', '')
+          const ctlSport = sport.includes('run') ? 'running' : sport.includes('row') ? 'rowing' : sport.includes('swim') ? 'swimming' : 'cycling'
+          const normLevel = level.includes('elite') ? 'elite' : level.includes('expert') || level.includes('well') ? 'masters' : level.includes('trained') ? 'amateur' : 'recreational'
+          const ctlNorm = getCTLNorm(ctlSport, normLevel, ctlVal)
+          if (ctlNorm.status !== 'Unknown') {
+            cards.push(
+              <NormativeCard
+                key="ctl"
+                label="CTL (Fitness)"
+                value={`${ctlVal} TSS/d`}
+                percentile={Math.max(0, Math.min(100, ctlNorm.percentileOfTypical))}
+                category={ctlNorm.status}
+                context={`${ctlSport} · ${normLevel}`}
+              />
+            )
+          }
+        }
+
+        if (!cards.length) return null
+        return (
+          <div className="sp-card" style={{ ...S.card, animationDelay:'210ms' }}>
+            <div style={S.cardTitle}>NORMATIVE COMPARISON</div>
+            <div style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>
+              {cards}
+            </div>
+          </div>
+        )
+      })()}
 
       {dl.goal && lc.showTaper && plan && (() => {
         const startDate = new Date(plan.generatedAt)

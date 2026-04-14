@@ -6,6 +6,9 @@ import { useData } from '../contexts/DataContext.jsx'
 import { getTodayPlannedSession, getSingleSuggestion, generateDailyDigest } from '../lib/intelligence.js'
 import { WELLNESS_FIELDS } from '../lib/constants.js'
 import { hasUnread } from './CoachMessage.jsx'
+import { getMyCoach } from '../lib/inviteUtils.js'
+import { getUpcomingSessions, upsertAttendance } from '../lib/db/coachSessions.js'
+import { supabase } from '../lib/supabase.js'
 
 const WellnessSparkline = lazy(() => import('./charts/WellnessSparkline.jsx'))
 import { flushQueue } from '../lib/offlineQueue.js'
@@ -95,6 +98,37 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
   const todayRec = (recovery || []).find(e => e.date === today)
 
   // Coach message unread count (athlete reads from localStorage)
+  // Coach sessions RSVP
+  const [coachSessions, setCoachSessions] = useState([])
+  const [rsvpBusy, setRsvpBusy]           = useState({}) // { [sessionId]: true }
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadCoachSessions() {
+      if (!supabase) return
+      const athleteId = supabase.auth?.getUser ? (await supabase.auth.getUser())?.data?.user?.id : null
+      if (!athleteId) return
+      const coachId = await getMyCoach(supabase, athleteId)
+      if (!coachId || cancelled) return
+      const { data } = await getUpcomingSessions(coachId, 14)
+      if (!cancelled && data) setCoachSessions(data)
+    }
+    loadCoachSessions()
+    return () => { cancelled = true }
+  }, [])
+
+  const handleRsvp = async (sessionId, status) => {
+    if (!supabase) return
+    const athleteId = (await supabase.auth.getUser())?.data?.user?.id
+    if (!athleteId) return
+    setRsvpBusy(b => ({ ...b, [sessionId]: true }))
+    await upsertAttendance(sessionId, athleteId, status)
+    setCoachSessions(prev => prev.map(s =>
+      s.id === sessionId ? { ...s, _myStatus: status } : s
+    ))
+    setRsvpBusy(b => ({ ...b, [sessionId]: false }))
+  }
+
   const [coachUnread, setCoachUnread] = useState(() => {
     try {
       const msgs = JSON.parse(localStorage.getItem('sporeus-coach-messages') || '[]')
@@ -504,6 +538,57 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
           </div>
         )
       })()}
+
+      {/* ── Upcoming Coach Sessions (RSVP) ────────────────────────────────── */}
+      {coachSessions.length > 0 && (
+        <div style={card}>
+          <div style={cardTitle}>
+            {lang === 'tr' ? 'YAKLAŞAN ANTRENMANLAR' : 'UPCOMING SESSIONS'}
+          </div>
+          {coachSessions.map(s => {
+            const myStatus = s._myStatus || 'pending'
+            const busy     = rsvpBusy[s.id]
+            const fmtDate  = d => d ? d.slice(5).replace('-', '/') : '—'
+            return (
+              <div key={s.id} style={{ marginBottom: '10px', padding: '10px', background: 'var(--surface)', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', flexWrap: 'wrap' }}>
+                  <div>
+                    <div style={{ fontFamily: MONO, fontSize: '11px', color: 'var(--text)', fontWeight: 600 }}>{s.title}</div>
+                    <div style={{ fontFamily: MONO, fontSize: '9px', color: '#666', marginTop: '2px' }}>
+                      {fmtDate(s.session_date)}{s.session_time ? ' · ' + s.session_time : ''}
+                    </div>
+                    {s.notes && <div style={{ fontFamily: MONO, fontSize: '9px', color: '#555', marginTop: '3px' }}>{s.notes}</div>}
+                  </div>
+                  <div style={{ display: 'flex', gap: '5px', flexShrink: 0 }}>
+                    {myStatus === 'confirmed' ? (
+                      <span style={{ fontFamily: MONO, fontSize: '9px', color: GREEN }}>✓ {lang === 'tr' ? 'Katılıyorum' : 'Confirmed'}</span>
+                    ) : myStatus === 'declined' ? (
+                      <span style={{ fontFamily: MONO, fontSize: '9px', color: '#e03030' }}>✗ {lang === 'tr' ? 'Katılmıyorum' : 'Declined'}</span>
+                    ) : (
+                      <>
+                        <button
+                          disabled={busy}
+                          onClick={() => handleRsvp(s.id, 'confirmed')}
+                          style={{ fontFamily: MONO, fontSize: '9px', fontWeight: 700, padding: '3px 9px', background: GREEN, border: 'none', borderRadius: '2px', color: '#fff', cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1 }}
+                        >
+                          {lang === 'tr' ? 'Katılıyorum' : 'Confirm'}
+                        </button>
+                        <button
+                          disabled={busy}
+                          onClick={() => handleRsvp(s.id, 'declined')}
+                          style={{ fontFamily: MONO, fontSize: '9px', fontWeight: 700, padding: '3px 9px', background: 'transparent', border: '1px solid #e03030', borderRadius: '2px', color: '#e03030', cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1 }}
+                        >
+                          {lang === 'tr' ? 'Katılmıyorum' : 'Decline'}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* ── Card 4: Smart Suggestion ───────────────────────────────────────── */}
       <div style={{ ...card, borderLeft: `4px solid ${suggestColor}` }}>

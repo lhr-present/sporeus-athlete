@@ -8,6 +8,7 @@ import Calendar from './Calendar.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { scoreSession } from '../lib/intelligence.js'
 import { parseFIT, parseGPX, detectFileType } from '../lib/fileImport.js'
+import ActivityMap from './ActivityMap.jsx'
 
 export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const { t } = useContext(LangCtx)
@@ -29,6 +30,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const [importPreview, setImportPreview] = useState(null) // parsed workout before confirm
   const [importError, setImportError]     = useState(null)
   const [importBusy, setImportBusy]       = useState(false)
+  const [routeSession, setRouteSession]   = useState(null) // session with trackpoints to show on map
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -280,6 +282,11 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                       {s.notes}
                     </td>
                     <td style={{ textAlign:'right', whiteSpace:'nowrap' }}>
+                      {s.trackpoints?.length >= 2 && (
+                        <button onClick={() => setRouteSession(s)}
+                          title="View route"
+                          style={{ background:'none', border:'none', color:'#0064ff', cursor:'pointer', ...S.mono, fontSize:'11px', marginRight:'4px' }}>⌖</button>
+                      )}
                       <button onClick={()=>startEdit(s,i)}
                         style={{ background:'none', border:'none', color:'#aaa', cursor:'pointer', ...S.mono, fontSize:'12px', marginRight:'4px' }}>✎</button>
                       <button onClick={()=>setLog(log.filter((_,idx)=>idx!==log.length-1-i))}
@@ -366,6 +373,21 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                 CANCEL
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Route map modal */}
+      {routeSession && (
+        <div style={{ position:'fixed', inset:0, zIndex:21000, background:'rgba(0,0,0,0.9)', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px' }}>
+          <div style={{ background:'#111', border:'1px solid #2a2a2a', borderRadius:'8px', padding:'20px', width:'100%', maxWidth:'520px', fontFamily:"'IBM Plex Mono',monospace" }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'14px' }}>
+              <div style={{ fontSize:'11px', fontWeight:700, color:'#ff6600', letterSpacing:'0.1em' }}>
+                ⌖ ROUTE — {routeSession.date}
+              </div>
+              <button onClick={() => setRouteSession(null)} style={{ background:'none', border:'none', color:'#666', cursor:'pointer', fontSize:'16px' }}>✕</button>
+            </div>
+            <ActivityMap trackpoints={routeSession.trackpoints} onClose={() => setRouteSession(null)} />
           </div>
         </div>
       )}

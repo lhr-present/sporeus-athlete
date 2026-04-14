@@ -135,7 +135,15 @@ export function parseGPX(xmlString, profileMaxHR) {
 
   const date = times[0] ? times[0].toISOString().slice(0,10) : new Date().toISOString().slice(0,10)
 
-  return { date, durationMin, distanceM: Math.round(distanceM), elevationGainM: Math.round(elevGain), avgPaceSecKm, avgHR, maxHR, tssEstimate }
+  // Build lightweight trackpoints array for route visualization
+  const trackpoints = trkpts.map(pt => ({
+    lat: parseFloat(pt.getAttribute('lat')),
+    lon: parseFloat(pt.getAttribute('lon')),
+    ele: parseFloat(pt.querySelector('ele')?.textContent || '0'),
+    time: pt.querySelector('time')?.textContent || null,
+  })).filter(p => !isNaN(p.lat) && !isNaN(p.lon))
+
+  return { date, durationMin, distanceM: Math.round(distanceM), elevationGainM: Math.round(elevGain), avgPaceSecKm, avgHR, maxHR, tssEstimate, trackpoints }
 }
 
 // ── File type detection ───────────────────────────────────────────────────────

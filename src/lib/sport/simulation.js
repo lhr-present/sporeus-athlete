@@ -205,3 +205,97 @@ export function peakFormWindow(weeklyTSS, startCTL = 0, startATL = 0) {
   })
   return { peakDay, peakTSB: Math.round(peakTSB * 10) / 10, trace }
 }
+
+// ── Dual-discipline Banister model (triathletes) ──────────────────────────────
+// Mujika et al. (2000): swim fatigue decays faster than cycling/running.
+// τ2 for swim = 5d; τ2 for bike/run = 7d (DEFAULT_TAU2).
+//
+// swimLog:    Array<{ date: string, tss: number, type: string }>
+// bikeRunLog: Array<{ date: string, tss: number, type: string }>
+// options: { startSwimCTL, startSwimATL, startBikeRunCTL, startBikeRunATL, tau1, tau2Swim, tau2BikeRun }
+//
+// Returns array of { date, swimTSS, bikeRunTSS, swimCTL, swimATL, swimTSB, bikeRunCTL, bikeRunATL, bikeRunTSB, combinedLoad }
+const SWIM_TAU2 = 5  // faster fatigue clearance for swim (Mujika 2000)
+
+export function dualBanister(swimLog, bikeRunLog, options = {}) {
+  const {
+    startSwimCTL    = 0,
+    startSwimATL    = 0,
+    startBikeRunCTL = 0,
+    startBikeRunATL = 0,
+    tau1            = DEFAULT_TAU1,
+    tau2Swim        = SWIM_TAU2,
+    tau2BikeRun     = DEFAULT_TAU2,
+  } = options
+
+  // Build unified date range
+  const allDates = new Set([
+    ...(swimLog    || []).map(e => e.date),
+    ...(bikeRunLog || []).map(e => e.date),
+  ])
+  if (allDates.size === 0) return []
+
+  const dates = [...allDates].sort()
+  const swimByDate    = Object.fromEntries((swimLog    || []).map(e => [e.date, e.tss || 0]))
+  const bikeRunByDate = Object.fromEntries((bikeRunLog || []).map(e => [e.date, e.tss || 0]))
+
+  let swimCTL    = startSwimCTL
+  let swimATL    = startSwimATL
+  let bikeRunCTL = startBikeRunCTL
+  let bikeRunATL = startBikeRunATL
+
+  return dates.map(date => {
+    const swimTSS    = swimByDate[date]    ?? 0
+    const bikeRunTSS = bikeRunByDate[date] ?? 0
+
+    // Swim Banister update (faster fatigue decay)
+    const swimNext = banisterDay(swimCTL, swimATL, swimTSS, tau1, tau2Swim)
+    swimCTL = swimNext.CTL
+    swimATL = swimNext.ATL
+
+    // Bike+Run Banister update (standard fatigue decay)
+    const brNext = banisterDay(bikeRunCTL, bikeRunATL, bikeRunTSS, tau1, tau2BikeRun)
+    bikeRunCTL = brNext.CTL
+    bikeRunATL = brNext.ATL
+
+    return {
+      date,
+      swimTSS,
+      bikeRunTSS,
+      swimCTL:    swimNext.CTL,
+      swimATL:    swimNext.ATL,
+      swimTSB:    swimNext.TSB,
+      bikeRunCTL: brNext.CTL,
+      bikeRunATL: brNext.ATL,
+      bikeRunTSB: brNext.TSB,
+      combinedLoad: Math.round((swimTSS + bikeRunTSS) * 10) / 10,
+    }
+  })
+}
+
+// ── Discipline log splitter ────────────────────────────────────────────────────
+// Given a mixed training log, splits into swim vs bike+run sub-logs.
+// Detects discipline from session type field: 'Swim'→swim, 'Ride'|'Run'→bikeRun.
+// Entries with no matching type are assigned to bikeRun.
+//
+// Returns { swimLog, bikeRunLog } each as Array<{ date, tss, type }>
+const SWIM_TYPES    = new Set(['swim', 'swimming', 'open water', 'pool'])
+const BIKERUN_TYPES = new Set(['ride', 'bike', 'cycling', 'run', 'running', 'trail run', 'brick'])
+
+export function splitDisciplineLogs(log) {
+  const swimLog    = []
+  const bikeRunLog = []
+
+  for (const entry of (log || [])) {
+    const type = (entry.type || '').toLowerCase().trim()
+    const tss  = entry.tss || 0
+    if (tss <= 0) continue
+    if ([...SWIM_TYPES].some(t => type.includes(t))) {
+      swimLog.push({ date: entry.date, tss, type: entry.type })
+    } else {
+      bikeRunLog.push({ date: entry.date, tss, type: entry.type })
+    }
+  }
+
+  return { swimLog, bikeRunLog }
+}
