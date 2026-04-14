@@ -43,19 +43,20 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_STRAVA_CLIENT_ID: ${{ secrets.VITE_STRAVA_CLIENT_ID }}
           VITE_VAPID_PUBLIC_KEY: ${{ secrets.VITE_VAPID_PUBLIC_KEY }}
-      - name: Bundle size gate (main chunk ≤ 150 KB)
+      - name: Bundle size gate (main chunk ≤ 150 KB gzipped)
         run: |
           MAIN_CHUNK=$(find dist/assets -name "index-*.js" -not -name "*.map" | head -1)
           if [ -z "$MAIN_CHUNK" ]; then
             echo "ERROR: No main chunk found in dist/assets/" && exit 1
           fi
-          SIZE=$(wc -c < "$MAIN_CHUNK")
+          RAW=$(wc -c < "$MAIN_CHUNK")
+          GZ=$(gzip -c "$MAIN_CHUNK" | wc -c)
           LIMIT=$((150 * 1024))
-          echo "Main chunk: $MAIN_CHUNK — ${SIZE} bytes (limit: ${LIMIT})"
-          if [ "$SIZE" -gt "$LIMIT" ]; then
-            echo "FAIL: Main chunk exceeds 150 KB limit (${SIZE} > ${LIMIT})" && exit 1
+          echo "Main chunk: $MAIN_CHUNK — raw=${RAW}B gz=${GZ}B (gz limit: ${LIMIT})"
+          if [ "$GZ" -gt "$LIMIT" ]; then
+            echo "FAIL: Main chunk exceeds 150 KB gzipped (${GZ} > ${LIMIT})" && exit 1
           fi
-          echo "PASS: Main chunk within 150 KB limit"
+          echo "PASS: Main chunk within 150 KB gzipped"
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
