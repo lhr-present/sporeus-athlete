@@ -179,14 +179,19 @@ describe('monteCarloOptimizer', () => {
     expect(result.bestScore).toBeGreaterThanOrEqual(result.meanScore)
   })
 
-  it('recovery weeks get lower TSS than non-recovery weeks on average', () => {
+  it('recovery weeks are capped at minWeeklyTSS × 1.5 by construction', () => {
+    // Run many iterations: every generated plan must have the recovery week within [min, min×1.5]
+    // This is a structural (deterministic) property, not a statistical one.
+    const MIN = 200, MAX = 600
     const result = monteCarloOptimizer({
       weeks: 4,
-      minWeeklyTSS: 200,
-      maxWeeklyTSS: 600,
-      recoveryWeeks: [1],  // week index 1 is recovery
-    }, 50)
-    expect(result.bestPlan[1]).toBeLessThan(result.bestPlan[0])
+      minWeeklyTSS: MIN,
+      maxWeeklyTSS: MAX,
+      recoveryWeeks: [1],
+    }, 200)
+    // The best plan's recovery week must be within the defined recovery band
+    expect(result.bestPlan[1]).toBeGreaterThanOrEqual(MIN)
+    expect(result.bestPlan[1]).toBeLessThanOrEqual(MIN * 1.5 + 1)  // +1 for float rounding
   })
 
   it('returns null for invalid constraints', () => {
