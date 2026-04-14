@@ -26,6 +26,8 @@ import ProactiveInjuryAlert  from './dashboard/ProactiveInjuryAlert.jsx'
 import RaceReadinessCard     from './dashboard/RaceReadinessCard.jsx'
 import LoadTrendChart        from './dashboard/LoadTrendChart.jsx'
 import TriDashboard           from './dashboard/TriDashboard.jsx'
+import ACWRCard               from './dashboard/ACWRCard.jsx'
+import WeeklyReportCard       from './dashboard/WeeklyReportCard.jsx'
 import NormativeCard          from './NormativeCard.jsx'
 import { getFTPNorm, getCTLNorm } from '../lib/sport/normativeTables.js'
 
@@ -72,7 +74,6 @@ export default function Dashboard({ log, profile }) {
   const [planStatus] = useLocalStorage('sporeus-plan-status', {})
   const { recovery, injuries, testResults, raceResults } = useData()
   const [myCoach] = useLocalStorage('sporeus-my-coach', null)
-  const [reportVisible, setReportVisible] = useState(false)
   const { t } = useContext(LangCtx)
   const sportLabel = SPORT_BRANCHES.find(b=>b.id===profile.primarySport)?.label || profile.sport || ''
   const levelLabel = ATHLETE_LEVELS.find(l=>l.id===profile.athleteLevel)?.label || ''
@@ -747,170 +748,12 @@ export default function Dashboard({ log, profile }) {
         )
       })()}
 
-      {(() => {
-        const recLast7 = recovery.filter(e=>{
-          const d=new Date(e.date),cutoff=new Date(); cutoff.setDate(cutoff.getDate()-7)
-          return d>=cutoff
-        })
-        const avgRec = recLast7.length ? Math.round(recLast7.reduce((s,e)=>s+(e.score||0),0)/recLast7.length) : null
+      <WeeklyReportCard
+        last7={last7} totalMin={totalMin} totalTSS={totalTSS} avgRPE={avgRPE}
+        recovery={recovery} plan={plan} planStatus={planStatus} rangeLabel={rangeLabel}
+      />
 
-        const generateReport = () => {
-          const { mono, strain } = monotonyStrain(log)
-          const zoneDonutData = (() => {
-            const zm=[0,0,0,0,0]
-            last7.forEach(e=>{
-              const dur=e.duration||0
-              if(e.zones&&e.zones.some(z=>z>0)) e.zones.forEach((z,i)=>{zm[i]+=z})
-              else { const r=e.rpe||5; zm[r<=3?0:r<=5?1:r<=7?2:r===8?3:4]+=dur }
-            })
-            const tot=zm.reduce((s,v)=>s+v,0)||1
-            return zm.map((v,i)=>({name:['Z1','Z2','Z3','Z4','Z5'][i],pct:Math.round(v/tot*100)})).filter(z=>z.pct>0)
-          })()
-          const thisWeekIdx = plan ? Math.min(Math.floor((new Date()-new Date(plan.generatedAt))/(7*864e5)), plan.weeks.length-1) : -1
-          let complianceStr = ''
-          if (thisWeekIdx >= 0 && plan) {
-            const w = plan.weeks[thisWeekIdx]
-            let tot=0,done=0
-            w.sessions.forEach((s,di)=>{ if(s.type!=='Rest'&&s.duration>0){tot++;const st=planStatus[`${thisWeekIdx}-${di}`];if(st==='done'||st==='modified')done++} })
-            if (tot) complianceStr = `${Math.round(done/tot*100)}% week compliance`
-          }
-          const html = `<div style="font-family:'Courier New',monospace;font-size:12px;color:#1a1a1a;max-width:480px">
-<div style="background:#0a0a0a;color:#ff6600;padding:8px 12px;font-weight:600;font-size:14px">◈ SPOREUS WEEKLY REPORT</div>
-<div style="padding:12px;background:#f8f8f8">
-<div style="margin-bottom:8px;font-size:11px;color:#888">${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div>
-<div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:12px">
-<span><strong>${last7.length}</strong> sessions</span>
-<span><strong>${Math.floor(totalMin/60)}h ${totalMin%60}m</strong> volume</span>
-<span><strong>${totalTSS}</strong> TSS</span>
-<span>RPE avg <strong>${avgRPE}</strong></span>
-</div>
-${zoneDonutData.map(z=>`<div>${z.name}: ${z.pct}%</div>`).join('')}
-${avgRec!==null?`<div style="margin-top:8px">Recovery score avg: <strong>${avgRec}/100</strong></div>`:''}
-${complianceStr?`<div>Plan: <strong>${complianceStr}</strong></div>`:''}
-<div style="margin-top:8px;font-size:10px;color:#888">sporeus.com — Science-based training</div>
-</div></div>`
-          if (navigator.share) {
-            navigator.share({ title:'Sporeus Weekly Report', text: `${last7.length} sessions | ${totalTSS} TSS | ${Math.floor(totalMin/60)}h ${totalMin%60}m | RPE ${avgRPE}` })
-          } else if (navigator.clipboard) {
-            navigator.clipboard.writeText(html)
-            setReportVisible(true); setTimeout(()=>setReportVisible(false), 2500)
-          }
-        }
-
-        if (!last7.length) return null
-        return (
-          <div className="sp-card" style={{ ...S.card, animationDelay:'196ms' }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-              <div style={S.cardTitle}>WEEKLY REPORT</div>
-              <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-                {reportVisible && <span style={{ ...S.mono, fontSize:'10px', color:'#5bc25b' }}>✓ Copied!</span>}
-                <button onClick={generateReport} style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px' }}>⤴ Share / Copy</button>
-              </div>
-            </div>
-            <div style={{ display:'flex', gap:'16px', flexWrap:'wrap' }}>
-              {[
-                {l:`SESSIONS (${rangeLabel})`,v:last7.length},
-                {l:'VOLUME',v:`${Math.floor(totalMin/60)}h ${totalMin%60}m`},
-                {l:'TSS',v:totalTSS},
-                {l:'AVG RPE',v:avgRPE},
-                avgRec!==null && {l:'RECOVERY',v:`${avgRec}/100`},
-              ].filter(Boolean).map(({l,v})=>(
-                <div key={l}>
-                  <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>{l}</div>
-                  <div style={{ ...S.mono, fontSize:'16px', fontWeight:600, color:'#ff6600' }}>{v}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-      })()}
-
-      {dl.acwr && lc.showACWR && (() => {
-        if (log.length < 7) return null
-        const now = Date.now()
-        const ms7  = 7  * 864e5
-        const ms28 = 28 * 864e5
-        const acute   = log.filter(e=>now-new Date(e.date).getTime()<ms7 ).reduce((s,e)=>s+(e.tss||0),0)
-        const chronic28 = log.filter(e=>now-new Date(e.date).getTime()<ms28).reduce((s,e)=>s+(e.tss||0),0) / 4
-        if (!chronic28) return null
-        const acwrVal = Math.round(acute / chronic28 * 100) / 100
-        const { color, label, rec } = acwrVal < 0.8
-          ? { color:'#0064ff', label:t('acwrUnder'),   rec:'Consider adding a moderate session tomorrow' }
-          : acwrVal <= 1.3
-          ? { color:'#5bc25b', label:t('acwrSweet'),   rec:'Maintain current load — great zone' }
-          : acwrVal <= 1.5
-          ? { color:'#f5c542', label:t('acwrCaution'), rec:'Easy run or rest day tomorrow' }
-          : { color:'#e03030', label:t('acwrDanger'),  rec:'Rest day mandatory tomorrow' }
-
-        const weeklyACWR = Array.from({length:8},(_,wi)=>{
-          const wEnd   = now - wi * 7 * 864e5
-          const wStart = wEnd - 7 * 864e5
-          const wAcute = log.filter(e=>{ const t=new Date(e.date).getTime(); return t>=wStart&&t<wEnd }).reduce((s,e)=>s+(e.tss||0),0)
-          const wChron = log.filter(e=>new Date(e.date).getTime()<wEnd&&new Date(e.date).getTime()>=wEnd-28*864e5).reduce((s,e)=>s+(e.tss||0),0)/4
-          return wChron ? Math.round(wAcute/wChron*100)/100 : 0
-        }).reverse()
-
-        const maxVal = Math.max(...weeklyACWR, 1.6)
-        const svgW=200, svgH=40, pts=weeklyACWR.map((v,i)=>`${Math.round(i*(svgW-1)/7)},${Math.round(svgH-(v/maxVal)*svgH)}`).join(' ')
-
-        return (
-          <div className="sp-card" style={{ ...S.card, animationDelay:'198ms', borderLeft:`3px solid ${color}` }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'8px', flexWrap:'wrap' }}>
-              <div>
-                <div style={{ ...S.cardTitle, display:'flex', alignItems:'center' }}>{t('acwrTitle')}<HelpTip text="Acute:Chronic Workload Ratio. Sweet spot: 0.8–1.3. Above 1.5 = injury risk (Hulin et al. 2016)."/></div>
-                <div style={{ display:'flex', gap:'20px', marginTop:'8px' }}>
-                  <div>
-                    <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>{t('acwrAcute')}</div>
-                    <div style={{ ...S.mono, fontSize:'16px', fontWeight:600, color:'#ff6600' }}>{Math.round(acute)}</div>
-                  </div>
-                  <div>
-                    <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>{t('acwrChronic')}</div>
-                    <div style={{ ...S.mono, fontSize:'16px', fontWeight:600, color:'#888' }}>{Math.round(chronic28)}</div>
-                  </div>
-                </div>
-              </div>
-              <div style={{ textAlign:'center' }}>
-                <div style={{ ...S.mono, fontSize:'36px', fontWeight:600, color, lineHeight:1 }}>{acwrVal.toFixed(2)}</div>
-                <div style={{ ...S.mono, fontSize:'9px', color, fontWeight:600, marginTop:'4px' }}>{label}</div>
-              </div>
-            </div>
-            <div style={{ ...S.mono, fontSize:'10px', color:'var(--sub)', marginTop:'10px', padding:'6px 8px', background:'var(--card-bg)', borderRadius:'4px' }}>
-              ↗ {t('acwrRec')}: {rec}
-            </div>
-            <div style={{ marginTop:'10px' }}>
-              <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginBottom:'4px' }}>8-WEEK ACWR TREND</div>
-              <svg width={svgW} height={svgH} style={{ display:'block' }}>
-                <rect x="0" y={Math.round(svgH-(1.5/maxVal)*svgH)} width={svgW} height={Math.round((1.5/maxVal)*svgH-(1.3/maxVal)*svgH)} fill="#f5c54222"/>
-                <rect x="0" y="0" width={svgW} height={Math.round(svgH-(1.5/maxVal)*svgH)} fill="#e0303011"/>
-                <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <div style={{ ...S.mono, fontSize:'9px', color:'#aaa', marginTop:'6px' }}>{t('acwrNote')}</div>
-            <div style={{ marginTop:'12px' }}>
-              <div style={{ ...S.mono, fontSize:'9px', color:'#555', letterSpacing:'0.08em', marginBottom:'6px' }}>NEXT WEEK FORECAST (TSS targets)</div>
-              <div style={{ display:'flex', gap:'5px', flexWrap:'wrap' }}>
-                {[
-                  { label:'CONSERV', mult:0.8,  clr:'#0064ff' },
-                  { label:'MAINTAIN', mult:1.0, clr:'#5bc25b' },
-                  { label:'BUILD',    mult:1.2, clr:'#ff6600' },
-                  { label:'LIMIT',    mult:1.5, clr:'#e03030' },
-                ].map(({ label, mult, clr }) => {
-                  const tss = Math.round(chronic28 * mult)
-                  const proj = (tss / chronic28).toFixed(2)
-                  const isCurrent = acwrVal >= mult * 0.9 && acwrVal < mult * 1.1
-                  return (
-                    <div key={label} style={{ flex:'1 1 60px', textAlign:'center', padding:'5px 4px', background: isCurrent ? `${clr}18` : 'var(--surface)', borderRadius:'4px', border:`1px solid ${clr}33` }}>
-                      <div style={{ ...S.mono, fontSize:'13px', fontWeight:700, color:clr }}>{tss}</div>
-                      <div style={{ ...S.mono, fontSize:'7px', color:'#555', marginTop:'1px' }}>{label}</div>
-                      <div style={{ ...S.mono, fontSize:'8px', color:'#444' }}>ACWR {proj}</div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-        )
-      })()}
+      <ACWRCard log={log} lc={lc} dl={dl} />
 
       <ShareCard log={log} profile={profile} filteredLog={filteredLog} />
 

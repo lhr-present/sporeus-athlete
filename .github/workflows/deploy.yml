@@ -25,18 +25,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      - name: E2E smoke tests (skipped if secrets absent)
-        run: npx vitest run --config vitest.e2e.config.js
-        env:
-          SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}
-          SUPABASE_TEST_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY }}
-          SUPABASE_TEST_SERVICE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_KEY }}
-          SUPABASE_TEST_ATHLETE_A: ${{ secrets.SUPABASE_TEST_ATHLETE_A }}
-          SUPABASE_TEST_ATHLETE_A_PW: ${{ secrets.SUPABASE_TEST_ATHLETE_A_PW }}
-          SUPABASE_TEST_ATHLETE_B: ${{ secrets.SUPABASE_TEST_ATHLETE_B }}
-          SUPABASE_TEST_ATHLETE_B_PW: ${{ secrets.SUPABASE_TEST_ATHLETE_B_PW }}
-          SUPABASE_TEST_COACH: ${{ secrets.SUPABASE_TEST_COACH }}
-          SUPABASE_TEST_COACH_PW: ${{ secrets.SUPABASE_TEST_COACH_PW }}
       - run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
@@ -60,6 +48,30 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+
+  e2e:
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ secrets.SUPABASE_TEST_URL != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: E2E smoke tests
+        run: npm run test:e2e
+        env:
+          SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          SUPABASE_TEST_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY }}
+          SUPABASE_TEST_SERVICE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_KEY }}
+          SUPABASE_TEST_ATHLETE_A: ${{ secrets.SUPABASE_TEST_ATHLETE_A }}
+          SUPABASE_TEST_ATHLETE_A_PW: ${{ secrets.SUPABASE_TEST_ATHLETE_A_PW }}
+          SUPABASE_TEST_ATHLETE_B: ${{ secrets.SUPABASE_TEST_ATHLETE_B }}
+          SUPABASE_TEST_ATHLETE_B_PW: ${{ secrets.SUPABASE_TEST_ATHLETE_B_PW }}
+          SUPABASE_TEST_COACH: ${{ secrets.SUPABASE_TEST_COACH }}
+          SUPABASE_TEST_COACH_PW: ${{ secrets.SUPABASE_TEST_COACH_PW }}
 
   deploy:
     needs: build
