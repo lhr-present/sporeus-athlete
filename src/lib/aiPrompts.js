@@ -343,3 +343,27 @@ function getWeekKey() {
   d.setDate(d.getDate() - (day === 0 ? 6 : day - 1))
   return d.toISOString().slice(0, 10)
 }
+
+// ── appendToneModifier ────────────────────────────────────────────────────────
+// Returns additional system prompt text based on athlete's AI tone preference.
+// tone: 'motivating' | 'clinical' | 'concise' (case-insensitive)
+export function appendToneModifier(tone) {
+  const t = (tone || '').toLowerCase().trim()
+  if (t === 'motivating') return 'End with one encouraging sentence that motivates the athlete.'
+  if (t === 'clinical')   return 'Use sport science terminology. Avoid emotional language. Be precise.'
+  if (t === 'concise')    return 'Summary must be under 15 words total. No elaboration.'
+  return ''
+}
+
+// ── getFeedbackStats ──────────────────────────────────────────────────────────
+// Calculates positive/negative feedback ratio from an array of audit log entries.
+// entries = [{ action, resource, details: { rating: 1|-1 } }]
+export function getFeedbackStats(entries) {
+  if (!Array.isArray(entries)) return { positive: 0, negative: 0, ratio: 0 }
+  const fb = entries.filter(e => e?.action === 'feedback' && e?.resource === 'ai_insights')
+  const positive = fb.filter(e => e?.details?.rating === 1).length
+  const negative = fb.filter(e => e?.details?.rating === -1).length
+  const total = positive + negative
+  const ratio = total > 0 ? Math.round((positive / total) * 100) / 100 : 0
+  return { positive, negative, ratio }
+}

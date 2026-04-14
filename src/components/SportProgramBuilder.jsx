@@ -4,6 +4,7 @@ import { S } from '../styles.js'
 import { useData } from '../contexts/DataContext.jsx'
 import {
   simulateBanister, scoreTrainingPlan, monteCarloOptimizer, peakFormWindow,
+  addAdaptivePlanAdjustment,
 } from '../lib/sport/simulation.js'
 import {
   deriveCtlAtl, findRecentResult, sessionFrequencyPerWeek, extractProfileSport, fmtTimeInput, parseTimeInput,
@@ -421,6 +422,24 @@ function Step5({ form, result, onRestart, log, setLog }) {
   const [showCompare, setShowCompare]   = useState(false)
   const [missedWeek, setMissedWeek]     = useState(null)
   const [missedWeekInput, setMissedWeekInput] = useState('')
+  const [adaptedPlan, setAdaptedPlan]   = useState(null)
+  const [complianceStreak, setComplianceStreak] = useState(0)
+
+  // Compliance streak: consecutive weeks within 10% of planned
+  useEffect(() => {
+    if (!result?.bestPlan) return
+    const basePlan = adaptedPlan ? adaptedPlan.map(w => (typeof w === 'object' ? w.tss ?? 0 : w)) : result.bestPlan
+    const filledIdxs = Object.keys(actualTSS).filter(k => actualTSS[k] != null).map(Number).sort((a, b) => a - b)
+    let streak = 0
+    for (let j = filledIdxs.length - 1; j >= 0; j--) {
+      const i = filledIdxs[j]
+      const p = basePlan[i] ?? 0
+      const a = actualTSS[i] ?? 0
+      if (p > 0 && Math.abs(a - p) / p <= 0.10) streak++
+      else break
+    }
+    setComplianceStreak(streak)
+  }, [actualTSS, adaptedPlan, result])
 
   const pfWindow = useMemo(() => {
     if (!result?.bestPlan) return null
@@ -557,7 +576,7 @@ function Step5({ form, result, onRestart, log, setLog }) {
           <div style={S.cardTitle}>WEEKLY PLAN — PLAN vs ACTUAL</div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button style={{ ...S.btnSec, fontSize: '10px', padding: '4px 10px' }}
-              onClick={() => exportCSV(bestPlan, actualTSS, form.raceDate)}>↓ CSV</button>
+              onClick={() => exportCSV(adaptedPlan ? adaptedPlan.map(w => w.tss ?? w) : bestPlan, actualTSS, form.raceDate)}>↓ CSV</button>
             <button style={{
               ...S.btnSec, fontSize: '10px', padding: '4px 10px',
               background: saved ? '#00c85333' : 'transparent',
@@ -567,6 +586,44 @@ function Step5({ form, result, onRestart, log, setLog }) {
             </button>
           </div>
         </div>
+
+        {/* Compliance streak badge */}
+        {complianceStreak >= 2 && (
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            background: '#00c85318', border: '1px solid #00c85355',
+            borderRadius: '4px', padding: '4px 10px', marginBottom: '10px',
+            ...FONT_MONO, fontSize: '10px', color: '#00c853',
+          }}>
+            ◈ {complianceStreak}-week compliance streak
+          </div>
+        )}
+
+        {/* Adapt plan button */}
+        {Object.keys(actualTSS).filter(k => actualTSS[k] != null).length >= 2 && (
+          <div style={{ marginBottom: '10px' }}>
+            <button
+              style={{ ...S.btnSec, fontSize: '10px', padding: '4px 10px' }}
+              onClick={() => {
+                const filledIdxs = Object.keys(actualTSS).filter(k => actualTSS[k] != null).map(Number).sort((a, b) => a - b)
+                const currentWeekIdx = filledIdxs.length > 0 ? filledIdxs[filledIdxs.length - 1] + 1 : 0
+                const actualArray = bestPlan.map((_, i) => actualTSS[i] != null ? actualTSS[i] : 0)
+                setAdaptedPlan(addAdaptivePlanAdjustment(bestPlan, actualArray, currentWeekIdx))
+              }}
+            >
+              ⚡ ADAPT PLAN
+            </button>
+            {adaptedPlan && (
+              <button
+                style={{ ...S.ghostBtn, fontSize: '10px', color: 'var(--muted)', marginLeft: '8px' }}
+                onClick={() => setAdaptedPlan(null)}
+              >
+                ✕ reset
+              </button>
+            )}
+          </div>
+        )}
+
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', ...FONT_MONO, fontSize: '11px' }}>
             <thead>
@@ -580,18 +637,35 @@ function Step5({ form, result, onRestart, log, setLog }) {
               </tr>
             </thead>
             <tbody>
-              {bestPlan.map((tss, i) => {
-                const actual   = actualTSS[i] != null ? actualTSS[i] : null
-                const variance = actual != null ? actual - tss : null
-                const isRec    = tss < (form.currentTSS || 200) * 1.1
-                const labels   = sessionLabels(i)
+              {bestPlan.map((origTss, i) => {
+                const adaptedWeek  = adaptedPlan ? adaptedPlan[i] : null
+                const tss          = adaptedWeek ? (adaptedWeek.tss ?? origTss) : origTss
+                const isAdjusted   = adaptedWeek?._adjusted === true
+                const adjustReason = adaptedWeek?._reason || null
+                const isUpward     = isAdjusted && tss > origTss
+                const actual       = actualTSS[i] != null ? actualTSS[i] : null
+                const variance     = actual != null ? actual - tss : null
+                const isRec        = tss < (form.currentTSS || 200) * 1.1
+                const labels       = sessionLabels(i)
+                const rowBg        = isAdjusted
+                  ? (isUpward ? '#001a33' : '#330000')
+                  : 'transparent'
                 return (
-                  <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <tr key={i} style={{ borderBottom: '1px solid var(--border)', background: rowBg }}>
                     <td style={{ padding: '4px 8px' }}>
                       <span style={{ color: isRec ? BLUE : ORANGE }}>{i + 1}</span>
                       {isRec && <span style={{ color: BLUE, marginLeft: '4px', fontSize: '9px' }}>REC</span>}
+                      {isAdjusted && <span style={{ color: isUpward ? '#00c853' : '#ff4444', marginLeft: '4px', fontSize: '9px' }}>{isUpward ? '▲' : '▼'}</span>}
                     </td>
-                    <td style={{ padding: '4px 8px', textAlign: 'right', color: isRec ? BLUE : 'var(--text)' }}>{tss}</td>
+                    <td
+                      style={{ padding: '4px 8px', textAlign: 'right', color: isRec ? BLUE : 'var(--text)' }}
+                      title={adjustReason || undefined}
+                    >
+                      {tss}
+                      {isAdjusted && origTss !== tss && (
+                        <span style={{ color: 'var(--muted)', fontSize: '9px', marginLeft: '4px' }}>({origTss})</span>
+                      )}
+                    </td>
                     <td style={{ padding: '4px 8px', textAlign: 'right' }}>
                       <input type="number" placeholder="—" value={actualTSS[i] ?? ''}
                         onChange={e => setActualTSS(prev => ({ ...prev, [i]: e.target.value === '' ? null : +e.target.value }))}

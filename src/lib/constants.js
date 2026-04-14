@@ -243,6 +243,9 @@ export const DASH_CARD_DEFS = [
   { id:'vo2max',       label:'VO2max Estimate'         },
   { id:'peakweek',     label:'Peak Form Predictor'     },
   { id:'trainingage',  label:'Training Age'            },
+  { id:'goaltracker',  label:'Goal Tracker'            },
+  { id:'loadheatmap',  label:'Load Heatmap'            },
+  { id:'seasonbests',  label:'Season Bests'            },
 ]
 
 export const TYPE_COLORS = {
@@ -251,4 +254,6 @@ export const TYPE_COLORS = {
   'Cross-Train':'#94a3b8','Race':'#ff6600','Test':'#d946ef','Other':'#d4d4d4',
 }
 export function typeColor(t) { return TYPE_COLORS[t] || '#d4d4d4' }
+
+export const CONSENT_VERSION = '1.1'
 

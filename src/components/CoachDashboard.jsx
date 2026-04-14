@@ -17,6 +17,8 @@ import CoachRegistration from './coachDashboard/CoachRegistration.jsx'
 import GatingOverlay from './coachDashboard/GatingOverlay.jsx'
 import SbAthletePanel from './coachDashboard/SbAthletePanel.jsx'
 import SessionManager from './coach/SessionManager.jsx'
+import SquadBenchmarkTable from './coach/SquadBenchmarkTable.jsx'
+import { calcCompliancePct } from '../lib/sport/squadBenchmark.js'
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -27,6 +29,7 @@ export default function CoachDashboard({ authUser }) {
   const [templates, setTemplates] = useLocalStorage('sporeus-coach-templates', [])
   const [expanded, setExpanded] = useLocalStorage('sporeus-coach-last-athlete', null)
   const [showMyAthletes, setShowMyAthletes] = useState(false)
+  const [squadBenchmarkOpen, setSquadBenchmarkOpen] = useState(false)
   const [sortBy, setSortBy] = useState('attention')
   const [sortDir, setSortDir] = useState('desc')
   const [copyToast, setCopyToast] = useState(false)
@@ -410,6 +413,37 @@ export default function CoachDashboard({ authUser }) {
 
       {/* Plan Templates */}
       <PlanDistribution templates={templates} setTemplates={setTemplates} onApply={applyTemplate}/>
+
+      {/* Squad Benchmark */}
+      <div style={{ ...S.card, marginBottom:'16px' }}>
+        <button
+          onClick={() => setSquadBenchmarkOpen(o => !o)}
+          style={{ ...S.mono, width:'100%', textAlign:'left', background:'transparent', border:'none', cursor:'pointer', padding:0, display:'flex', alignItems:'center', justifyContent:'space-between' }}
+        >
+          <div style={{ ...S.cardTitle, margin:0 }}>SQUAD BENCHMARK</div>
+          <span style={{ ...S.mono, fontSize:'12px', color:'#ff6600' }}>{squadBenchmarkOpen ? '▴' : '▾'}</span>
+        </button>
+        {squadBenchmarkOpen && (() => {
+          const benchmarkAthletes = roster.map(athlete => {
+            const metrics = computeAthleteMetrics(athlete)
+            const recScores = (athlete.recovery || []).map(r => r.score).filter(s => typeof s === 'number')
+            const wellness_avg = recScores.length > 0 ? Math.round(recScores.reduce((s, v) => s + v, 0) / recScores.length * 10) / 10 : null
+            return {
+              id: athlete.id,
+              name: athlete.name || 'Athlete',
+              ctl: computeLoad(athlete.log || []).ctl,
+              acwr: metrics.acwr,
+              compliance_pct: calcCompliancePct([], []),
+              wellness_avg,
+            }
+          })
+          return (
+            <div style={{ marginTop:'12px' }}>
+              <SquadBenchmarkTable athletes={benchmarkAthletes} />
+            </div>
+          )
+        })()}
+      </div>
 
       {/* Athlete Roster */}
       <div style={S.card}>

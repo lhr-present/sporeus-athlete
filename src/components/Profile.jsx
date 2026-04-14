@@ -8,6 +8,8 @@ import { sanitizeProfile } from '../lib/validate.js'
 import { exportAllData, importAllData } from '../lib/storage.js'
 import { exportAthleteData, deleteAthleteData, triggerDownload } from '../lib/gdprExport.js'
 import { logAction, getMyAuditLog } from '../lib/db/auditLog.js'
+import { hasCurrentConsent } from '../lib/db/consentVersion.js'
+import { logConsent } from '../lib/db/consent.js'
 import { generateSeasonReport } from '../lib/pdfReport.js'
 import { getTierSync, isFeatureGated, getUpgradePrompt } from '../lib/subscription.js'
 import { Sparkline } from './ui.jsx'
@@ -1229,6 +1231,10 @@ export default function Profile({ profile, setProfile, log, authUser }) {
 
   const [gdprStatus, setGdprStatus] = useState(null)
   const [auditLog, setAuditLog]     = useState(null) // null=not loaded, []|[...]=loaded
+  const [aiTone, setAiTone] = useState(() => { try { return localStorage.getItem('sporeus-ai-tone') || 'motivating' } catch { return 'motivating' } })
+  const [marketingConsent, setMarketingConsent] = useState(() => { try { return localStorage.getItem('sporeus-marketing-consent') === '1' } catch { return false } })
+  const [showPrivacy, setShowPrivacy] = useState(false)
+  const [showErrorLog, setShowErrorLog] = useState(false)
 
   const handleGdprDownload = async () => {
     setGdprStatus('exporting')
@@ -1461,6 +1467,60 @@ export default function Profile({ profile, setProfile, log, authUser }) {
           </div>
         </div>
 
+        {/* PRIVACY Dashboard */}
+        <div style={{ marginTop:'14px', paddingTop:'12px', borderTop:'1px solid var(--border)' }}>
+          <button
+            onClick={() => setShowPrivacy(s => !s)}
+            style={{ ...S.mono, fontSize:'9px', color:'#555', letterSpacing:'0.1em', marginBottom:'8px', background:'none', border:'none', cursor:'pointer', padding:0, display:'flex', alignItems:'center', gap:'6px' }}
+          >
+            {showPrivacy ? '▴' : '▾'} ◈ PRIVACY DASHBOARD
+          </button>
+          {showPrivacy && (
+            <div style={{ marginTop:'8px' }}>
+              {/* Consent status */}
+              <div style={{ ...S.mono, fontSize:'10px', color:'#aaa', marginBottom:'10px' }}>
+                Data processing consent: {hasCurrentConsent() ? '✓ v1.1 — accepted' : '✗ Not given'}
+              </div>
+
+              {/* Data retention */}
+              <div style={{ ...S.mono, fontSize:'10px', color:'#555', marginBottom:'10px', lineHeight:1.6 }}>
+                Your training data is retained for 3 years from last activity per KVKK Art. 7.
+              </div>
+
+              {/* Marketing consent toggle */}
+              <div style={{ marginBottom:'12px' }}>
+                <label style={{ display:'flex', alignItems:'center', gap:'8px', cursor:'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={marketingConsent}
+                    onChange={async (e) => {
+                      const val = e.target.checked
+                      setMarketingConsent(val)
+                      try { localStorage.setItem('sporeus-marketing-consent', val ? '1' : '0') } catch {}
+                      if (val && authUser?.id) {
+                        await logConsent(authUser.id, 'marketing', '1.0')
+                      }
+                    }}
+                    style={{ accentColor:'#ff6600' }}
+                  />
+                  <span style={{ ...S.mono, fontSize:'10px', color:'#aaa' }}>
+                    Marketing emails: {marketingConsent ? 'opted in' : 'not opted in'}
+                  </span>
+                </label>
+              </div>
+
+              {/* Data categories */}
+              <div style={{ ...S.mono, fontSize:'9px', color:'#555', letterSpacing:'0.08em', marginBottom:'6px' }}>DATA CATEGORIES PROCESSED</div>
+              <ul style={{ ...S.mono, fontSize:'10px', color:'#666', margin:0, paddingLeft:'16px', lineHeight:1.8 }}>
+                <li>Training sessions (date, TSS, duration, RPE, notes)</li>
+                <li>Recovery scores (sleep, mood, soreness, stress)</li>
+                <li>GPS/route data (if GPX imported)</li>
+                <li>Profile data (name, sport, age)</li>
+              </ul>
+            </div>
+          )}
+        </div>
+
         {/* Activity log (audit_log) */}
         {authUser && (
           <div style={{ marginTop:'14px', paddingTop:'12px', borderTop:'1px solid var(--border)' }}>
@@ -1514,6 +1574,28 @@ export default function Profile({ profile, setProfile, log, authUser }) {
         <div style={S.card}>
           <div style={S.cardTitle}>AI SETTINGS</div>
           <AISettings authUser={authUser} />
+
+          {/* AI Tone Preference */}
+          <div style={{ marginTop:'16px', paddingTop:'12px', borderTop:'1px solid #1e1e1e' }}>
+            <div style={{ fontSize:'10px', fontWeight:700, color:'#ccc', marginBottom:'8px', letterSpacing:'0.08em' }}>
+              AI TONE
+            </div>
+            {['Motivating', 'Clinical', 'Concise'].map(tone => (
+              <label key={tone} style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'6px', cursor:'pointer' }}>
+                <input
+                  type="radio"
+                  name="ai-tone"
+                  value={tone.toLowerCase()}
+                  checked={aiTone === tone.toLowerCase()}
+                  onChange={() => {
+                    try { localStorage.setItem('sporeus-ai-tone', tone.toLowerCase()) } catch {}
+                    setAiTone(tone.toLowerCase())
+                  }}
+                />
+                <span style={{ fontSize:'11px', color:'#aaa' }}>{tone}</span>
+              </label>
+            ))}
+          </div>
         </div>
       )}
 
@@ -1522,6 +1604,27 @@ export default function Profile({ profile, setProfile, log, authUser }) {
 
       <NotificationSettings />
       <DeviceSync userId={authUser?.id} />
+
+      {/* Admin error log — only shown to admin */}
+      {(profile?.name === 'Hüseyin' || profile?.isAdmin ||
+        local.name?.toLowerCase().includes('hüseyin') || local.name?.toLowerCase().includes('huseyin')) && (() => {
+        const errors = JSON.parse(localStorage.getItem('sporeus-error-log') || '[]').slice(-10).reverse()
+        const btnStyle = { ...S.mono, fontSize:'10px', padding:'5px 12px', cursor:'pointer', borderRadius:'3px' }
+        return (
+          <div style={{ ...S.card, marginTop:'16px', paddingTop:'16px', borderTop:'1px solid #333' }}>
+            <button onClick={() => setShowErrorLog(s => !s)} style={{ ...btnStyle, background:'none', color:'#555', border:'1px solid #333' }}>
+              {showErrorLog ? '▴' : '▾'} ERROR LOG ({errors.length})
+            </button>
+            {showErrorLog && (errors.length === 0 ? (
+              <div style={{ ...S.mono, fontSize:'10px', color:'#444', marginTop:'8px' }}>No errors logged.</div>
+            ) : errors.map((e, i) => (
+              <div key={i} style={{ marginTop:'6px', fontSize:'9px', color:'#444', borderBottom:'1px solid #111', paddingBottom:'4px', ...S.mono }}>
+                <span style={{ color:'#e03030' }}>{e.ts?.slice(0,19)}</span> · {e.tabName} · {e.error?.slice(0,100)}
+              </div>
+            )))}
+          </div>
+        )
+      })()}
 
       {/* Admin code generator — only shown to Hüseyin */}
       {(local.name?.toLowerCase().includes('hüseyin') || local.name?.toLowerCase().includes('huseyin') || local.email === 'huseyinakbulut@marun.edu.tr') && (

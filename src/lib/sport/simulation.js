@@ -299,3 +299,51 @@ export function splitDisciplineLogs(log) {
 
   return { swimLog, bikeRunLog }
 }
+
+// ── addAdaptivePlanAdjustment ─────────────────────────────────────────────────
+// Takes original weekly TSS plan, actual TSS per week, and current week index.
+// Returns new plan array; each week has optional _adjusted flag + _reason.
+// Rules:
+//   Under-performance: actual < 80% of planned for 2+ consecutive weeks → reduce remaining by 10%
+//   Over-performance:  actual > 115% of planned for 2+ consecutive weeks → increase remaining by 8%
+//     but cap so simulated ACWR stays ≤ 1.3 (approximate: new week ≤ prevWeek * 1.3)
+export function addAdaptivePlanAdjustment(originalPlan, actualTSS, currentWeekIdx) {
+  if (!Array.isArray(originalPlan) || originalPlan.length === 0) return []
+  if (!Array.isArray(actualTSS) || currentWeekIdx < 0) return [...originalPlan]
+
+  const plan = originalPlan.map((tss, i) => ({ tss, _adjusted: false, _reason: null, _week: i }))
+
+  // Check last 2 completed weeks for pattern
+  const checkStart = Math.max(0, currentWeekIdx - 2)
+  const checkEnd   = currentWeekIdx  // exclusive
+  if (checkEnd - checkStart < 2) return plan.map(w => ({ ...w }))
+
+  let underCount = 0, overCount = 0
+  for (let i = checkStart; i < checkEnd; i++) {
+    const planned = originalPlan[i] ?? 0
+    const actual  = actualTSS[i] ?? 0
+    if (planned > 0 && actual < planned * 0.80) underCount++
+    if (planned > 0 && actual > planned * 1.15) overCount++
+  }
+
+  if (underCount >= 2) {
+    // Reduce remaining weeks by 10%
+    for (let i = currentWeekIdx; i < plan.length; i++) {
+      plan[i].tss      = Math.round(plan[i].tss * 0.90)
+      plan[i]._adjusted = true
+      plan[i]._reason   = 'Reduced 10% — under-performance last 2 weeks'
+    }
+  } else if (overCount >= 2) {
+    // Increase remaining by 8%, cap at ACWR 1.3
+    for (let i = currentWeekIdx; i < plan.length; i++) {
+      const proposed = Math.round(plan[i].tss * 1.08)
+      const prevTSS  = i > 0 ? plan[i - 1].tss : plan[i].tss
+      const cap      = Math.round(prevTSS * 1.3)
+      plan[i].tss      = Math.min(proposed, cap)
+      plan[i]._adjusted = true
+      plan[i]._reason   = 'Increased 8% — over-performance last 2 weeks'
+    }
+  }
+
+  return plan
+}

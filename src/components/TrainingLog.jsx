@@ -6,7 +6,7 @@ import { calcTSS, normalizedPower, computePowerTSS, computeWPrime } from '../lib
 import { sanitizeLogEntry } from '../lib/validate.js'
 import Calendar from './Calendar.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
-import { scoreSession, autoTagSession } from '../lib/intelligence.js'
+import { scoreSession, autoTagSession, analyseSession } from '../lib/intelligence.js'
 import { parseFIT, parseGPX, detectFileType, parseBulkCSV, deduplicateByDate, downloadCSVTemplate } from '../lib/fileImport.js'
 import ActivityMap from './ActivityMap.jsx'
 
@@ -34,6 +34,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const [csvPreview, setCsvPreview]       = useState(null) // { entries, skipped, deduped }
   const [bulkMode, setBulkMode]           = useState(false)
   const [selected, setSelected]           = useState(new Set())
+  const [expandedId, setExpandedId]       = useState(null)
   const fileInputRef    = useRef(null)
   const csvInputRef     = useRef(null)
 
@@ -337,10 +338,13 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                 {[...log].reverse().map((s,i)=>{
                   const hasTag = s.tags && s.tags.length > 0
                   const suggestedTag = !hasTag ? autoTagSession(s) : null
+                  const isExpanded = expandedId === s.id
                   return (
-                    <tr key={i} style={{ borderBottom:'1px solid var(--border)', background: bulkMode && selected.has(s.id) ? '#ff660011' : undefined }}>
+                    <>
+                    <tr key={i} style={{ borderBottom: isExpanded ? 'none' : '1px solid var(--border)', background: bulkMode && selected.has(s.id) ? '#ff660011' : isExpanded ? '#0f0f0f' : undefined, cursor: bulkMode ? undefined : 'pointer' }}
+                      onClick={bulkMode ? undefined : () => setExpandedId(isExpanded ? null : s.id)}>
                       {bulkMode && (
-                        <td style={{ padding:'6px 6px 6px 0' }}>
+                        <td style={{ padding:'6px 6px 6px 0' }} onClick={e => e.stopPropagation()}>
                           <input
                             type="checkbox"
                             checked={selected.has(s.id)}
@@ -365,13 +369,13 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                         {s.notes}
                         {suggestedTag && (
                           <span
-                            onClick={() => applyTag(s, suggestedTag)}
+                            onClick={e => { e.stopPropagation(); applyTag(s, suggestedTag) }}
                             style={{ ...S.mono, fontSize:'9px', color:'#ff660088', border:'1px solid #ff660033', borderRadius:2, padding:'1px 5px', cursor:'pointer', marginLeft:4 }}
                             title="Auto-suggested tag — click to apply"
                           >{suggestedTag}</span>
                         )}
                       </td>
-                      <td style={{ textAlign:'right', whiteSpace:'nowrap' }}>
+                      <td style={{ textAlign:'right', whiteSpace:'nowrap' }} onClick={e => e.stopPropagation()}>
                         {s.trackpoints?.length >= 2 && (
                           <button onClick={() => setRouteSession(s)}
                             title="View route"
@@ -383,6 +387,54 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                           style={{ background:'none', border:'none', color:'#ccc', cursor:'pointer', ...S.mono, fontSize:'12px' }}>✕</button>
                       </td>
                     </tr>
+                    {isExpanded && (() => {
+                      const analysis = analyseSession(s, log.slice(-28))
+                      const colCount = bulkMode ? 8 : 7
+                      return (
+                        <tr key={`exp-${i}`} style={{ borderBottom:'1px solid var(--border)', background:'#0a0a0a' }}>
+                          <td colSpan={colCount} style={{ padding:'0 0 10px 0' }}>
+                            <div style={{ margin:'0 6px 0 0', padding:'12px', background:'#0f0f0f', border:'1px solid #1e1e1e', borderRadius:'4px' }}>
+                              <div style={{ fontSize:'9px', color:'#ff6600', letterSpacing:'0.12em', marginBottom:'10px', fontWeight:700, fontFamily:"'IBM Plex Mono',monospace" }}>SESSION ANALYSIS</div>
+                              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'10px', fontFamily:"'IBM Plex Mono',monospace" }}>
+                                <div>
+                                  <div style={{ fontSize:'9px', color:'#555', marginBottom:'3px' }}>COMPARISON</div>
+                                  <div style={{ fontSize:'10px', color:'#aaa' }}>{analysis.comparison}</div>
+                                </div>
+                                <div>
+                                  <div style={{ fontSize:'9px', color:'#555', marginBottom:'3px' }}>ZONE ESTIMATE</div>
+                                  <div style={{ fontSize:'10px', color:'#aaa' }}>{analysis.zone_estimate}</div>
+                                </div>
+                                <div>
+                                  <div style={{ fontSize:'9px', color:'#555', marginBottom:'3px' }}>RECOVERY</div>
+                                  <div style={{ fontSize:'10px', color:'#aaa' }}>{analysis.recovery_time}</div>
+                                </div>
+                                <div>
+                                  <div style={{ fontSize:'9px', color:'#555', marginBottom:'3px' }}>NOTES</div>
+                                  {analysis.notes.map((n,ni) => <div key={ni} style={{ fontSize:'10px', color:'#aaa' }}>· {n}</div>)}
+                                </div>
+                              </div>
+                              {(() => {
+                                const similar = log.filter(e => e !== s && (e.type||'') === (s.type||'') && e.tss && Math.abs(e.tss - (s.tss||0)) / Math.max(s.tss||1, 1) <= 0.15).slice(-3)
+                                if (!similar.length) return null
+                                return (
+                                  <div style={{ fontFamily:"'IBM Plex Mono',monospace" }}>
+                                    <div style={{ fontSize:'9px', color:'#555', marginBottom:'5px' }}>SIMILAR SESSIONS</div>
+                                    {similar.map((sm,si) => (
+                                      <div key={si} style={{ fontSize:'10px', color:'#666', display:'flex', gap:'12px' }}>
+                                        <span>{sm.date}</span>
+                                        <span>{sm.tss} TSS</span>
+                                        <span>{sm.duration}min</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )
+                              })()}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })()}
+                    </>
                   )
                 })}
               </tbody>

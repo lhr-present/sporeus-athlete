@@ -7,7 +7,21 @@ export default class ErrorBoundary extends React.Component {
     this.state = { hasError: false, error: null, showDetails: false }
   }
   static getDerivedStateFromError(error) { return { hasError: true, error } }
-  componentDidCatch(error, info) { console.error('Sporeus tab error:', error, info) }
+  componentDidCatch(error, errorInfo) {
+    console.error('Sporeus tab error:', error, errorInfo)
+    try {
+      const logKey = 'sporeus-error-log'
+      const existing = JSON.parse(localStorage.getItem(logKey) || '[]')
+      const entry = {
+        ts:      new Date().toISOString(),
+        tabName: this.props.tabName || 'unknown',
+        error:   error?.message || String(error),
+        stack:   (errorInfo?.componentStack || '').slice(0, 500),
+      }
+      const updated = [...existing, entry].slice(-20)  // keep latest 20
+      localStorage.setItem(logKey, JSON.stringify(updated))
+    } catch {}
+  }
 
   handleExport() {
     try {

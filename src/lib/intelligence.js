@@ -598,6 +598,77 @@ export function computeRaceReadiness(log, recovery, injuries, profile, plan, pla
   return { score: composite, grade, factors, verdict: verdicts[grade], confidence, daysToRace }
 }
 
+// ── analyseSession ────────────────────────────────────────────────────────────
+// Takes a single session entry and last 28 days of log.
+// Returns { comparison: string, zone_estimate: string, recovery_time: string, notes: string[] }
+export function analyseSession(entry, recentLog = []) {
+  if (!entry || typeof entry !== 'object') {
+    return { comparison: 'No data', zone_estimate: 'Unknown', recovery_time: 'Unknown', notes: [] }
+  }
+
+  const tss   = typeof entry.tss === 'number' ? entry.tss : 0
+  const rpe   = typeof entry.rpe === 'number' ? entry.rpe : null
+  const dur   = typeof entry.duration === 'number' ? entry.duration : 0
+  const type  = (entry.type || '').toLowerCase()
+  const sport = (entry.sport || entry.type || '').toLowerCase()
+
+  // Comparison: average TSS of same type in recent log
+  const sameType = recentLog.filter(e =>
+    e !== entry &&
+    (e.type || '').toLowerCase() === type &&
+    typeof e.tss === 'number'
+  )
+  let comparison = 'First session of this type in recent history'
+  if (sameType.length > 0) {
+    const avg = Math.round(sameType.reduce((s, e) => s + e.tss, 0) / sameType.length)
+    const diff = tss - avg
+    const pct  = avg > 0 ? Math.round(Math.abs(diff) / avg * 100) : 0
+    if (diff > 0) comparison = `${pct}% above your ${type} average (avg ${avg} TSS)`
+    else if (diff < 0) comparison = `${pct}% below your ${type} average (avg ${avg} TSS)`
+    else comparison = `Exactly at your ${type} average (${avg} TSS)`
+  }
+
+  // Zone estimate from RPE + duration
+  let zone_estimate = 'Zone not determinable'
+  if (rpe !== null) {
+    if (rpe <= 3) zone_estimate = 'Zone 1–2 — Easy/Recovery'
+    else if (rpe <= 5) zone_estimate = 'Zone 2–3 — Aerobic/Tempo'
+    else if (rpe <= 7) zone_estimate = `Zone 3–4 — Threshold${dur > 30 ? ' — sustained effort' : ''}`
+    else if (rpe <= 9) zone_estimate = 'Zone 4–5 — VO2max / Hard'
+    else zone_estimate = 'Zone 5 — Maximal effort'
+  }
+
+  // Recovery time based on TSS and sport
+  let recoveryHours = 24
+  if (tss > 150) recoveryHours = 72
+  else if (tss > 100) recoveryHours = 48
+  else if (tss > 60) recoveryHours = 36
+  else if (tss > 30) recoveryHours = 24
+  else recoveryHours = 12
+  // Adjust for sport: running is higher impact
+  if (sport.includes('run') && recoveryHours < 48) recoveryHours += 12
+  const recovery_time = `Allow ${recoveryHours}h before next hard session`
+
+  // Auto-notes
+  const notes = []
+  if (sameType.length > 0) {
+    const max = Math.max(...sameType.map(e => e.tss))
+    if (tss > max) {
+      const dow = new Date(entry.date + 'T12:00:00Z').toLocaleString('en', { weekday: 'long' })
+      notes.push(`Personal best TSS for a ${dow} ${entry.type || 'session'}`)
+    }
+  }
+  if (tss > 0 && sameType.length >= 3) {
+    const recent3 = sameType.slice(-3).map(e => e.tss)
+    const trend = recent3[recent3.length - 1] - recent3[0]
+    if (trend > 0) notes.push('Progressive load trend — good build phase consistency')
+    else if (trend < -20) notes.push('Load decreasing — intentional taper or fatigue management?')
+  }
+  if (notes.length === 0) notes.push('Session logged successfully')
+
+  return { comparison, zone_estimate, recovery_time, notes }
+}
+
 // ─── v5.14: getTodayPlannedSession ────────────────────────────────────────────
 // Returns today's planned session from a saved plan, or null if rest/no plan.
 export function getTodayPlannedSession(plan, today) {

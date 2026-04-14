@@ -24,6 +24,7 @@ import MigrationModal from './components/MigrationModal.jsx'
 import { InviteModal } from './components/MyCoach.jsx'
 import { useAuth } from './hooks/useAuth.js'
 import { isSupabaseReady } from './lib/supabase.js'
+import { hasCurrentConsent, grantConsent } from './lib/db/consentVersion.js'
 import { detectLocalData } from './lib/dataMigration.js'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 const CoachDashboard  = lazy(() => import('./components/CoachDashboard.jsx'))
@@ -315,12 +316,18 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
       {!onboarded && <OnboardingWizard onFinish={finishOnboarding} setLang={setLang} lang={lang}/>}
 
       {/* ── KVKK / GDPR consent gate — must accept before health data is stored ── */}
-      {onboarded && !consentGiven && (
+      {onboarded && !hasCurrentConsent() && (
         <div style={{ position:'fixed', inset:0, zIndex:10010, background:'rgba(0,0,0,0.92)', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px' }}>
           <div style={{ maxWidth:'480px', width:'100%', background:'#0f0f0f', border:'2px solid #ff6600', borderRadius:'8px', padding:'32px', fontFamily:"'IBM Plex Mono',monospace" }}>
             <div style={{ fontSize:'12px', fontWeight:700, color:'#ff6600', letterSpacing:'0.12em', marginBottom:'16px' }}>
               {lang === 'tr' ? 'VERİ GİZLİLİĞİ ONAYI' : 'DATA PRIVACY CONSENT'}
             </div>
+            {/* Show version update notice if they had old boolean consent */}
+            {localStorage.getItem('sporeus-consent-v1') === 'true' && (
+              <div style={{ fontSize:'9px', color:'#888', marginBottom:'12px' }}>
+                {lang === 'tr' ? 'Gizlilik politikamız güncellendi (v1.1). Lütfen tekrar onaylayın.' : 'Privacy policy updated (v1.1). Please re-confirm your consent.'}
+              </div>
+            )}
             <div style={{ fontSize:'11px', color:'#aaa', lineHeight:1.7, marginBottom:'20px' }}>
               {lang === 'tr'
                 ? 'Sporeus, antrenman yükü, iyileşme skorları ve sağlık verilerinizi analiz etmek için işler. Bu veriler yalnızca spor performansınızı değerlendirmek amacıyla kullanılır ve üçüncü taraflarla paylaşılmaz. Türk KVKK (Kanun No. 6698) kapsamında açık rızanız gereklidir.'
@@ -331,7 +338,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
               {lang === 'tr' ? 'Onayı istediğiniz zaman Profil → Gizlilik bölümünden geri çekebilirsiniz.' : 'You may withdraw consent at any time from Profile → Privacy.'}
             </div>
             <button
-              onClick={() => setConsentGiven(true)}
+              onClick={() => { grantConsent(); setConsentGiven(true) }}
               style={{ width:'100%', padding:'12px', background:'#ff6600', border:'none', color:'#fff', fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:700, letterSpacing:'0.08em', borderRadius:'4px', cursor:'pointer' }}
             >
               {lang === 'tr' ? 'KABUL EDİYORUM — DEVAM ET' : 'I CONSENT — CONTINUE'}

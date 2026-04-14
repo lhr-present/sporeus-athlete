@@ -10,6 +10,7 @@ import { hasUnread } from './CoachMessage.jsx'
 import { getMyCoach } from '../lib/inviteUtils.js'
 import { getUpcomingSessions, upsertAttendance } from '../lib/db/coachSessions.js'
 import { supabase } from '../lib/supabase.js'
+import { getRecommendedProtocols } from '../lib/recoveryProtocols.js'
 
 const WellnessSparkline = lazy(() => import('./charts/WellnessSparkline.jsx'))
 import { isRESTQDue } from '../lib/sport/restq.js'
@@ -143,6 +144,8 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
   const [isSubmitting, setIsSubmitting]   = useState(false)
   const [alreadySubmitted, setAlreadySubmitted] = useState(false)
   const [shareLoading, setShareLoading]         = useState(false)
+  const [expandedProtocol, setExpandedProtocol] = useState(null)
+  const [recoveryDone, setRecoveryDone] = useLocalStorage(`sporeus-recovery-done-${today}`, {})
 
   // UUID idempotency key — generated once on mount, reset when today changes
   const idempotencyKey = useRef(null)
@@ -503,6 +506,77 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
           </>
         )}
       </div>
+
+      {/* ── Recovery Protocols Card ───────────────────────────────────────── */}
+      {wellnessSaved && todayRec && (todayRec.soreness < 3 || todayRec.energy < 3) && (() => {
+        const lastTSS = (log || []).length > 0
+          ? [...(log || [])].sort((a, b) => b.date.localeCompare(a.date))[0]?.tss || 0
+          : 0
+        const lastEntry = (log || []).length > 0
+          ? [...(log || [])].sort((a, b) => b.date.localeCompare(a.date))[0]
+          : null
+        const hoursSinceLastSession = lastEntry
+          ? Math.max(0, (Date.now() - new Date(lastEntry.date + 'T12:00:00').getTime()) / 3600000)
+          : 48
+        const protocols = getRecommendedProtocols(todayRec.score, lastTSS, hoursSinceLastSession)
+        const evBadgeColor = lvl => lvl === 'strong' ? '#5bc25b' : lvl === 'moderate' ? '#ff6600' : '#888'
+
+        return (
+          <div style={{ ...card, borderLeft: `4px solid #5bc25b` }}>
+            <div style={cardTitle}>◈ RECOVERY PROTOCOLS</div>
+            {protocols.map(p => {
+              const isExpanded = expandedProtocol === p.id
+              const isDone     = !!recoveryDone[p.id]
+              return (
+                <div key={p.id} style={{
+                  marginBottom: '10px', padding: '10px 12px',
+                  background: 'var(--surface)', borderRadius: '6px',
+                  border: `1px solid ${isDone ? '#5bc25b44' : 'var(--border)'}`,
+                  opacity: isDone ? 0.7 : 1,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontFamily: MONO, fontSize: '12px', fontWeight: 600, color: isDone ? '#5bc25b' : 'var(--text)', marginBottom: '4px' }}>
+                        {isDone ? '✓ ' : ''}{p.name}
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        <span style={{ ...badge('#888'), fontSize: '9px' }}>{p.duration}</span>
+                        <span style={{ ...badge(evBadgeColor(p.evidence_level)), fontSize: '9px' }}>
+                          {p.evidence_level.toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontFamily: MONO, fontSize: '10px', color: '#888' }}>
+                        <input
+                          type="checkbox"
+                          checked={isDone}
+                          onChange={e => setRecoveryDone(prev => ({ ...prev, [p.id]: e.target.checked }))}
+                          style={{ accentColor: '#5bc25b' }}
+                        />
+                        done
+                      </label>
+                      <button
+                        onClick={() => setExpandedProtocol(isExpanded ? null : p.id)}
+                        style={{ ...btn('transparent', '#888'), border: '1px solid var(--border)', padding: '3px 8px', fontSize: '10px' }}
+                      >
+                        {isExpanded ? '▲' : '▼'}
+                      </button>
+                    </div>
+                  </div>
+                  {isExpanded && (
+                    <ol style={{ margin: '10px 0 0 0', padding: '0 0 0 16px', fontFamily: MONO, fontSize: '10px', color: '#aaa', lineHeight: 1.8 }}>
+                      {p.steps.map((step, si) => (
+                        <li key={si} style={{ marginBottom: '2px' }}>{step}</li>
+                      ))}
+                    </ol>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )
+      })()}
 
       {/* ── Card 3: Quick Stats ────────────────────────────────────────────── */}
       <div style={card}>
