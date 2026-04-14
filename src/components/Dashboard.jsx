@@ -107,8 +107,9 @@ export default function Dashboard({ log, profile }) {
   const totalMin = last7.reduce((s,e)=>s+(e.duration||0),0)
   const avgRPE   = last7.length ? (last7.reduce((s,e)=>s+(e.rpe||0),0)/last7.length).toFixed(1) : '\u2014'
   const srpeLoad = last7.reduce((s,e) => s + ((e.rpe||0) * (e.duration||0)), 0)
-  const { atl, ctl, tsb, daily } = calcLoad(log)
-  const acwr = calculateACWR(log)
+  const { atl, ctl, tsb, daily } = useMemo(() => calcLoad(log), [log])
+  const acwr = useMemo(() => calculateACWR(log), [log])
+  const banisterFit = useMemo(() => (testResults?.length ?? 0) >= 3 ? fitBanister(log, testResults) : null, [log, testResults])
 
   const w7Start     = (() => { const d = new Date(); d.setDate(d.getDate()-7);  return d.toISOString().slice(0,10) })()
   const w14Start    = (() => { const d = new Date(); d.setDate(d.getDate()-14); return d.toISOString().slice(0,10) })()
@@ -526,7 +527,7 @@ export default function Dashboard({ log, profile }) {
       <LoadTrendChart log={log} acwr={acwr} ctlChartDays={ctlChartDays} raceResults={raceResults} plan={plan} dl={dl} lc={lc}/>
 
       {(testResults?.length ?? 0) >= 3 && (() => {
-        const fit = fitBanister(log, testResults)
+        const fit = banisterFit
         if (!fit) return null
         const proj  = predictBanister(log, fit, [], 60)
         const today = new Date().toISOString().slice(0, 10)

@@ -91,21 +91,3 @@ export function getErrorLog() {
     return []
   }
 }
-
-// ─── checkPerformanceBudget ───────────────────────────────────────────────────
-// Logs a 'perf/tti' event if performance.now() is available.
-// Returns the TTI value in ms, or null.
-//
-// @returns {number|null}
-export function checkPerformanceBudget() {
-  try {
-    if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
-      const tti = Math.round(performance.now())
-      trackEvent('perf', 'tti', String(tti))
-      return tti
-    }
-    return null
-  } catch (_) {
-    return null
-  }
-}

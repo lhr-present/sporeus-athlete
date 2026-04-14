@@ -558,6 +558,7 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
                       </label>
                       <button
                         onClick={() => setExpandedProtocol(isExpanded ? null : p.id)}
+                        aria-label={isExpanded ? 'Collapse protocol steps' : 'Expand protocol steps'}
                         style={{ ...btn('transparent', '#888'), border: '1px solid var(--border)', padding: '3px 8px', fontSize: '10px' }}
                       >
                         {isExpanded ? '▲' : '▼'}

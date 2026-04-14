@@ -23,9 +23,3 @@ export function getWeekStart(dateStr) {
   monday.setUTCDate(d.getUTCDate() + diffToMonday)
   return monday.toISOString().slice(0, 10)
 }
-
-// ── buildExplanationPrompt ────────────────────────────────────────────────────
-// Returns a prompt string for explaining an AI insight.
-export function buildExplanationPrompt(insightJson) {
-  return `Explain the reasoning behind the following training insight in plain language: ${JSON.stringify(insightJson)}`
-}

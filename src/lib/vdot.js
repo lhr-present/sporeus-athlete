@@ -108,15 +108,3 @@ export function predictTime(vdot, targetDistanceM) {
   const t10k = rowLow.raceTimes['10k'] + frac * (rowHigh.raceTimes['10k'] - rowLow.raceTimes['10k'])
   return Math.round(riegelTime(10000, t10k, targetDistanceM))
 }
-
-// Format paces object as min:sec/km strings (for display).
-export function formatPaces(paces) {
-  if (!paces) return null
-  return {
-    easy:      secToMinSec(paces.easy),
-    marathon:  secToMinSec(paces.marathon),
-    threshold: secToMinSec(paces.threshold),
-    interval:  secToMinSec(paces.interval),
-    rep:       secToMinSec(paces.rep),
-  }
-}

@@ -490,7 +490,7 @@ export default function CoachDashboard({ authUser }) {
                   autoFocus
                 />
                 <button style={{ ...S.btn, padding:'6px 12px', fontSize:'11px' }} onClick={() => handleQuickNoteSubmit(athlete.id)}>Save</button>
-                <button style={{ ...S.btnSec, padding:'6px 10px', fontSize:'11px' }} onClick={() => { setQuickNoteId(null); setQuickNoteText('') }}>✕</button>
+                <button style={{ ...S.btnSec, padding:'6px 10px', fontSize:'11px' }} aria-label="Cancel note" onClick={() => { setQuickNoteId(null); setQuickNoteText('') }}>✕</button>
                 <button style={{ ...S.btnSec, fontSize:'9px', padding:'2px 7px' }} onClick={() => handleReport(athlete)}>Report</button>
               </div>
             )}

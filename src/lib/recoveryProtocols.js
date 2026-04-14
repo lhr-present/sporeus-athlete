@@ -4,6 +4,8 @@ export const RECOVERY_PROTOCOLS = [
   {
     id: 'nutrition_window',
     name: 'Post-Exercise Nutrition Window',
+    text_en: 'Post-Exercise Nutrition Window (carbohydrate + protein within 30 min)',
+    text_tr: 'Beslenme Penceresi (30 dk içinde karbonhidrat+protein)',
     duration: '30–60 min',
     evidence_level: 'strong',
     when_to_use: 'Within 2 hours of a hard session (TSS > 80)',
@@ -18,6 +20,8 @@ export const RECOVERY_PROTOCOLS = [
   {
     id: 'cold_water_immersion',
     name: 'Cold Water Immersion (CWI)',
+    text_en: 'Cold Water Immersion (10–15°C, 10–15 min)',
+    text_tr: 'Soğuk Su Tedavisi (10-15°C, 10-15 dak)',
     duration: '10–15 min',
     evidence_level: 'strong',
     when_to_use: 'After high-intensity or high-volume sessions; avoid before strength training',
@@ -32,6 +36,8 @@ export const RECOVERY_PROTOCOLS = [
   {
     id: 'contrast_bathing',
     name: 'Contrast Water Therapy',
+    text_en: 'Contrast Water Therapy (alternating hot/cold)',
+    text_tr: 'Kontrast Banyo (sıcak/soğuk dönüşümlü)',
     duration: '20–30 min',
     evidence_level: 'moderate',
     when_to_use: 'Low wellness score; soreness without acute injury',
@@ -46,6 +52,8 @@ export const RECOVERY_PROTOCOLS = [
   {
     id: 'active_recovery',
     name: 'Active Recovery Ride/Run',
+    text_en: 'Active Recovery (low-intensity exercise)',
+    text_tr: 'Aktif Toparlanma (düşük yoğunluklu egzersiz)',
     duration: '20–40 min',
     evidence_level: 'strong',
     when_to_use: 'Next-day recovery after hard efforts; keeps aerobic base while aiding clearance',
@@ -60,6 +68,8 @@ export const RECOVERY_PROTOCOLS = [
   {
     id: 'compression',
     name: 'Compression Garments',
+    text_en: 'Compression Garments or Bandaging',
+    text_tr: 'Kompresyon Giysi veya Bandaj',
     duration: '12–24 h',
     evidence_level: 'moderate',
     when_to_use: 'After long endurance events or travel; DOMS management',
@@ -74,6 +84,8 @@ export const RECOVERY_PROTOCOLS = [
   {
     id: 'sleep_hygiene',
     name: 'Sleep Quality Protocol',
+    text_en: 'Sleep Hygiene Protocol (7–9 hours, dark room)',
+    text_tr: 'Uyku Hijyeni (7-9 saat, karanlık ortam)',
     duration: '7–9 h',
     evidence_level: 'strong',
     when_to_use: 'Every night; especially critical after hard training blocks',
@@ -89,6 +101,8 @@ export const RECOVERY_PROTOCOLS = [
   {
     id: 'foam_rolling',
     name: 'Foam Rolling (SMR)',
+    text_en: 'Foam Rolling — Myofascial Release',
+    text_tr: 'Köpük Rulo ile Miyofasyal Gevşeme',
     duration: '10–20 min',
     evidence_level: 'moderate',
     when_to_use: 'Pre-workout mobility or post-workout soreness reduction',
@@ -103,6 +117,8 @@ export const RECOVERY_PROTOCOLS = [
   {
     id: 'breathing_478',
     name: '4-7-8 Breathing (Parasympathetic Reset)',
+    text_en: '4-7-8 Breathing Technique (parasympathetic activation)',
+    text_tr: '4-7-8 Nefes Tekniği (parasempatik aktivasyon)',
     duration: '5–10 min',
     evidence_level: 'limited',
     when_to_use: 'Pre-sleep stress reduction; post-competition anxiety; HRV optimization',

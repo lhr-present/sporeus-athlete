@@ -37,7 +37,7 @@ export function vdotFromRace(distanceM, timeSec) {
   const tMin = timeSec / 60
   const vo2  = vo2AtPace(distanceM, tMin)
   const pct  = pctVO2atDuration(tMin)
-  if (pct <= 0) return null
+  if (pct <= 0 || vo2 <= 0) return null
   return Math.round((vo2 / pct) * 10) / 10
 }
 

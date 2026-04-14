@@ -3,6 +3,8 @@
 // PMC uses TrainingPeaks impulse-response decay: K = 1 − e^(−1/τ)
 
 import { BANISTER, ACWR } from './sport/constants.js'
+// eslint-disable-next-line no-unused-vars
+import './sport/types.js'
 
 const K_CTL    = BANISTER.K_CTL          // ≈ 0.02353  fitness decay factor
 const K_ATL    = BANISTER.K_ATL          // ≈ 0.13307  fatigue decay factor
@@ -72,8 +74,8 @@ export function calculatePMC(log, daysBack = 90, daysFuture = 30) {
 // status: 'optimal' (0.8–1.3) | 'caution' (1.3–1.5) | 'danger' (>1.5) |
 //         'undertraining' (<0.8) | 'insufficient' (no chronic base)
 //
-// @param {Array} log - training log entries [{ date, tss }]
-// @returns {{ ratio, status, acute, chronicWeekly }}
+// @param {TrainingEntry[]} log - training log entries
+// @returns {ACWRResult|null}
 
 const MAX_TSS_PER_SESSION = 300
 const λ_ACUTE   = 0.25
@@ -183,9 +185,9 @@ function gauss3(A, b) {
 // Requires ≥ 3 results with { date, value } — value is any comparable metric
 // (FTP, CP, 5K time as seconds, etc.). Values are normalized to 0–100 internally.
 //
-// @param {Array} log         - training log [{ date, tss }]
-// @param {Array} testResults - performance tests [{ date, value }]
-// @returns {{ k1, k2, p0, r2, minV, maxV }} | null
+// @param {TrainingEntry[]} log         - training log
+// @param {Array<{date:string, value:number}>} testResults - performance tests
+// @returns {{ k1:number, k2:number, p0:number, r2:number, minV:number, maxV:number }|null}
 export function fitBanister(log, testResults) {
   const valid = (testResults || []).filter(t => t.date && typeof t.value === 'number')
   if (valid.length < 3) return null

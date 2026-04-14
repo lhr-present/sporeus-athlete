@@ -17,7 +17,7 @@ import { ROWING } from './constants.js'
  * paulsLaw(360, 1000, 2000) // => ~776 seconds
  */
 export function paulsLaw(t1Sec, d1M, d2M) {
-  if (!t1Sec || !d1M || !d2M || d1M <= 0 || d2M <= 0) return null
+  if (!t1Sec || !d1M || !d2M || t1Sec <= 0 || d1M <= 0 || d2M <= 0) return null
   return t1Sec * Math.pow(d2M / d1M, ROWING.PAULS_LAW_EXPONENT)
 }
 
@@ -195,28 +195,6 @@ export function fitCP(efforts) {
   const WPrime = (sumY - CP * sumX) / n
   if (CP <= 0 || WPrime <= 0) return null
   return { CP: Math.round(CP * 10) / 10, WPrime: Math.round(WPrime) }
-}
-
-/**
- * @description Predicts time for a given distance using the CP model parameters.
- *   This is a consistency check helper; for general predictions prefer paulsLaw.
- * @param {number} distanceM - Target distance in metres
- * @param {number} CP - Critical Power in watts
- * @param {number} WPrime - Anaerobic work capacity in joules
- * @param {number} split2000Sec - Athlete's 2000 m race split (sec/500 m) used to approximate power
- * @returns {number|null} Predicted time in seconds, or null on invalid input
- * @source Morton (1986) — A 3-parameter critical power model
- * @example
- * predictTimeCP(2000, 250, 20000, 100) // => null (power ≈ CP, indeterminate)
- */
-export function predictTimeCP(distanceM, CP, WPrime, split2000Sec) {
-  if (!distanceM || !CP || !WPrime || !split2000Sec || split2000Sec <= 0) return null
-  const velocity = splitToVelocity(split2000Sec)
-  const power    = CP  // approximation: race ~= CP power at 2000m
-  // t = W' / (P - CP) + constant; for general predictions use Paul's Law instead
-  // This is kept for CP model consistency checks.
-  const t = WPrime / (power - CP + 0.01)  // guard division by tiny number
-  return t > 0 ? t : null
 }
 
 // ── Multi-test 2000m prediction with confidence interval ──────────────────────

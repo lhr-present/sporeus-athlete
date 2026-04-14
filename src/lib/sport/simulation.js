@@ -2,6 +2,8 @@
 // Banister impulse-response model, Monte Carlo plan optimizer, TSS calculators.
 
 import { BANISTER, ACWR } from './constants.js'
+// eslint-disable-next-line no-unused-vars
+import './types.js'
 
 // ── Banister impulse-response constants ──────────────────────────────────────
 // Standard Banister (1991) values; can be overridden per athlete.
@@ -52,12 +54,12 @@ export function banisterDay(prevCTL, prevATL, tss, tau1 = DEFAULT_TAU1, tau2 = D
 // ── Multi-day Banister simulation ─────────────────────────────────────────────
 /**
  * @description Simulates CTL, ATL, and TSB over a sequence of daily TSS values using the Banister model.
- * @param {Array<number|null>} tssArray - Daily TSS values; null entries treated as rest days (TSS=0)
+ * @param {number[]} tssArray - Daily TSS values; null entries treated as rest days (TSS=0)
  * @param {number} [startCTL=0] - Initial CTL value
  * @param {number} [startATL=0] - Initial ATL value
  * @param {number} [tau1=42] - CTL time constant in days
  * @param {number} [tau2=7] - ATL time constant in days
- * @returns {Array<{day:number, tss:number, CTL:number, ATL:number, TSB:number}>}
+ * @returns {BanisterState[]} Array of daily BanisterState objects (also includes day and tss fields)
  * @source Banister & Calvert (1980) — Modeling elite athletic performance
  * @example
  * simulateBanister([100, 0, 80], 40, 50) // => [{day:1,...}, {day:2,...}, {day:3,...}]
@@ -135,10 +137,10 @@ export function swimTSS(durationMin, currentSecPer100m, cssSecPer100m) {
 /**
  * @description Scores a weekly TSS training plan from 0–100 based on taper compliance,
  *   progressive overload, peak TSB, and training variety (coefficient of variation).
- * @param {number[]} weeklyTSS - Array of weekly TSS values (one per week)
+ * @param {SimulationPlan['weeklyTSS']} weeklyTSS - Array of weekly TSS values (one per week)
  * @param {number} [startCTL=0] - Athlete's starting CTL
  * @param {number} [startATL=0] - Athlete's starting ATL
- * @returns {number|null} Plan score 0–100, or null if fewer than 2 weeks provided
+ * @returns {SimulationPlan['score']|null} Plan score 0–100 (see SimulationPlan), or null if fewer than 2 weeks provided
  * @source Banister & Calvert (1980) — Modeling elite athletic performance; Hulin et al. (2016) — The acute:chronic workload ratio predicts injury
  * @example
  * scoreTrainingPlan([200, 250, 300, 180], 40, 45) // => ~65

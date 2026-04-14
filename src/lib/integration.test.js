@@ -6,6 +6,19 @@ import { describe, it, expect } from 'vitest'
 // Training load
 import { calculatePMC, calculateACWR } from './trainingLoad.js'
 
+// Banister simulation + Monte Carlo
+import {
+  simulateBanister,
+  dualBanister,
+  splitDisciplineLogs,
+  monteCarloOptimizer,
+  peakFormWindow,
+  scoreTrainingPlan,
+} from './sport/simulation.js'
+
+// Intelligence
+import { predictInjuryRisk } from './intelligence.js'
+
 // VO₂max / VDOT
 import { vdotFromRace, zonesFromVDOT, raceEquivalents, estimateVO2maxTrend } from './vo2max.js'
 
@@ -393,5 +406,261 @@ describe('Scenario 5 — Demo squad smoke test', () => {
     for (const a of generateDemoSquad(42)) {
       expect(a.adherence_pct).toBeGreaterThanOrEqual(0)
     }
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NEW E2E ATHLETE SCENARIOS (added v6.x) — pure pipeline, no mocks
+// These test the full chain: real log data → correct sport-science outputs.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── Date helpers ─────────────────────────────────────────────────────────────
+
+/** YYYY-MM-DD for today + offsetDays */
+function e2eDate(offsetDays) {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  d.setDate(d.getDate() + offsetDays)
+  return d.toISOString().slice(0, 10)
+}
+
+/** YYYY-MM-DD for a base Date + offsetDays */
+function e2eDateFromBase(base, offsetDays) {
+  const d = new Date(base)
+  d.setDate(d.getDate() + offsetDays)
+  return d.toISOString().slice(0, 10)
+}
+
+// ── E2E Scenario A — Stable endurance runner (6 months / 26 weeks) ───────────
+// 5 runs/week × 26 weeks × 60 TSS each.
+// Log ends today so the 28-day ACWR window is fully populated.
+
+describe('E2E Scenario A: Stable endurance runner (26 weeks)', () => {
+  const TOTAL_WEEKS = 26
+  const TSS_PER_SESSION = 60
+  // 5 sessions per week: slots 1–5 within each 7-day block (Mon–Fri)
+  // day offset from today: -(26*7) + (week * 7) + slot (1..5)
+  const START = -(TOTAL_WEEKS * 7)  // 182 days ago
+
+  const log = []
+  for (let w = 0; w < TOTAL_WEEKS; w++) {
+    for (let slot = 1; slot <= 5; slot++) {
+      log.push({ date: e2eDate(START + w * 7 + slot), tss: TSS_PER_SESSION, type: 'Run' })
+    }
+  }
+
+  // 91-day TSS array for simulateBanister (182 days, but 91 captures final 13 weeks adequately)
+  // Use full 182 days for accuracy
+  const tssArray = Array(TOTAL_WEEKS * 7).fill(0)
+  for (let w = 0; w < TOTAL_WEEKS; w++) {
+    for (let slot = 1; slot <= 5; slot++) {
+      const idx = w * 7 + slot
+      if (idx < tssArray.length) tssArray[idx] = TSS_PER_SESSION
+    }
+  }
+
+  it('log has 130 entries (5 × 26 weeks)', () => {
+    expect(log).toHaveLength(130)
+  })
+
+  it('simulateBanister: final CTL is between 35 and 50', () => {
+    // Steady-state CTL ≈ avg_daily_TSS = (60×5)/7 ≈ 42.9; expect 35–50 after 26w
+    const trace = simulateBanister(tssArray)
+    const finalCTL = trace[trace.length - 1].CTL
+    expect(finalCTL).toBeGreaterThanOrEqual(35)
+    expect(finalCTL).toBeLessThanOrEqual(50)
+  })
+
+  it('calculateACWR: ratio between 0.8 and 1.2 for steady training', () => {
+    const result = calculateACWR(log)
+    // Steady non-spiking load → optimal zone
+    expect(result.ratio).not.toBeNull()
+    expect(result.ratio).toBeGreaterThanOrEqual(0.8)
+    expect(result.ratio).toBeLessThanOrEqual(1.2)
+    expect(result.status).toBe('optimal')
+  })
+
+  it('predictInjuryRisk: does NOT flag HIGH risk for steady runner', () => {
+    // Steady training with no spikes → injury risk should be LOW or MODERATE only
+    const risk = predictInjuryRisk(log, [])
+    expect(risk.level).not.toBe('HIGH')
+    // Risk score < 50 means not HIGH
+    expect(risk.score).toBeLessThan(50)
+  })
+})
+
+// ── E2E Scenario B — Overtraining spike then crash (91 days) ─────────────────
+// Phase A: days  1–56 → 60 TSS/day   (8 steady weeks)
+// Phase B: days 57–77 → 130 TSS/day  (3 spike weeks)
+// Phase C: days 78–91 → 20 TSS/day   (2 crash/taper weeks)
+//
+// Anchoring: day 1 = today − 90. Day 90 = today (so calculateACWR sees recent data).
+
+describe('E2E Scenario B: Overtraining spike then crash (91 days)', () => {
+  // Build TSS array for simulateBanister
+  const tssArray = Array.from({ length: 91 }, (_, i) => {
+    const day = i + 1
+    return day <= 56 ? 60 : day <= 77 ? 130 : 20
+  })
+
+  const trace = simulateBanister(tssArray)
+
+  it('trace has 91 entries', () => {
+    expect(trace).toHaveLength(91)
+  })
+
+  it('day 70 ATL/CTL ratio > 1.3 — spike drives fatigue above fitness', () => {
+    // Day 70 = index 69. After 14 days at 130 TSS/day, ATL (τ=7d) far exceeds CTL (τ=42d)
+    const day70 = trace[69]
+    const ratio = day70.ATL / day70.CTL
+    expect(ratio).toBeGreaterThan(1.3)
+  })
+
+  it('day 90 TSB is positive — athlete freshening during crash phase', () => {
+    // Day 90 = index 89. After 2 weeks at 20 TSS/day, ATL drops below CTL → TSB > 0
+    const day90 = trace[89]
+    expect(day90.TSB).toBeGreaterThan(0)
+  })
+
+  it('calculateACWR during spike period shows elevated ratio > 1.0', () => {
+    // Build log anchored so spike ends today (day 77 = today → day 1 = today - 76)
+    const spikeLog = []
+    for (let day = 1; day <= 77; day++) {
+      const tss = day <= 56 ? 60 : 130
+      spikeLog.push({ date: e2eDate(-76 + day - 1), tss })
+    }
+    const result = calculateACWR(spikeLog)
+    // Last 28 days include both base (60) and spike (130) periods → acute > chronic
+    expect(result.ratio).not.toBeNull()
+    expect(result.ratio).toBeGreaterThan(1.0)
+  })
+})
+
+// ── E2E Scenario C — Triathlete dual discipline (12 weeks) ───────────────────
+// Mon/Wed = Swim @ 40 TSS, Tue/Thu/Fri = Run @ 70 TSS
+// Start: 2025-01-01
+
+describe('E2E Scenario C: Triathlete dual discipline (12 weeks)', () => {
+  const WEEKS = 12
+  const SWIM_TSS = 40
+  const RUN_TSS = 70
+  const BASE = new Date('2025-01-01T00:00:00Z')
+
+  // offset 0 = Mon, 1 = Tue, 2 = Wed, 3 = Thu, 4 = Fri (within each 7-day block)
+  const swimSlots = [0, 2]   // Mon, Wed
+  const runSlots  = [1, 3, 4] // Tue, Thu, Fri
+
+  const mixedLog = []
+  for (let w = 0; w < WEEKS; w++) {
+    for (const slot of swimSlots) {
+      mixedLog.push({ date: e2eDateFromBase(BASE, w * 7 + slot), tss: SWIM_TSS, type: 'Swim' })
+    }
+    for (const slot of runSlots) {
+      mixedLog.push({ date: e2eDateFromBase(BASE, w * 7 + slot), tss: RUN_TSS, type: 'Run' })
+    }
+  }
+
+  const { swimLog, bikeRunLog } = splitDisciplineLogs(mixedLog)
+
+  it('mixedLog has 60 sessions (5 × 12 weeks)', () => {
+    expect(mixedLog).toHaveLength(60)
+  })
+
+  it('splitDisciplineLogs: correct partition into swim (24) and run (36)', () => {
+    expect(swimLog).toHaveLength(WEEKS * swimSlots.length)    // 24
+    expect(bikeRunLog).toHaveLength(WEEKS * runSlots.length)  // 36
+  })
+
+  it('swim total TSS < run total TSS', () => {
+    const swimTotal = swimLog.reduce((s, e) => s + e.tss, 0)
+    const runTotal  = bikeRunLog.reduce((s, e) => s + e.tss, 0)
+    // 24 × 40 = 960 vs 36 × 70 = 2520
+    expect(swimTotal).toBe(960)
+    expect(runTotal).toBe(2520)
+    expect(swimTotal).toBeLessThan(runTotal)
+  })
+
+  it('dualBanister: swimCTL < bikeRunCTL after 12 weeks (lower swim volume)', () => {
+    // swimLog and bikeRunLog have different dates; dualBanister builds a unified date range
+    const dualTrace = dualBanister(swimLog, bikeRunLog)
+    expect(dualTrace.length).toBeGreaterThan(0)
+
+    const final = dualTrace[dualTrace.length - 1]
+    // Swim: 2 × 40 = 80 TSS/week; Run: 3 × 70 = 210 TSS/week → swimCTL << bikeRunCTL
+    expect(final.swimCTL).toBeLessThan(final.bikeRunCTL)
+  })
+})
+
+// ── E2E Scenario D — Monte Carlo rowing plan optimizer (12 weeks) ─────────────
+// Inputs: startCTL=45, startATL=40, weeks=12, target ~400 TSS/week
+
+describe('E2E Scenario D: Monte Carlo rowing plan optimizer (12 weeks)', () => {
+  const constraints = {
+    weeks:        12,
+    minWeeklyTSS: 200,
+    maxWeeklyTSS: 600,
+    startCTL:     45,
+    startATL:     40,
+    recoveryWeeks: [3, 7, 11],  // 4-week blocks with built-in recovery
+  }
+
+  // Use 1000 iterations for stable best-score results
+  const result = monteCarloOptimizer(constraints, 1000)
+
+  it('monteCarloOptimizer returns non-null result', () => {
+    expect(result).not.toBeNull()
+  })
+
+  it('bestPlan has exactly 12 weeks', () => {
+    expect(result.bestPlan).toHaveLength(12)
+  })
+
+  it('best plan score is >= 60 out of 100', () => {
+    // scoreTrainingPlan with 1000 trials and recovery weeks should reliably find score ≥ 60
+    expect(result.bestScore).toBeGreaterThanOrEqual(60)
+  })
+
+  it('every week in bestPlan is within [minWeeklyTSS, maxWeeklyTSS]', () => {
+    result.bestPlan.forEach(wk => {
+      expect(wk).toBeGreaterThanOrEqual(constraints.minWeeklyTSS)
+      expect(wk).toBeLessThanOrEqual(constraints.maxWeeklyTSS)
+    })
+  })
+
+  it('scoreTrainingPlan on bestPlan matches reported bestScore', () => {
+    // monteCarloOptimizer uses scoreTrainingPlan internally — verify consistency
+    const score = scoreTrainingPlan(result.bestPlan, constraints.startCTL, constraints.startATL)
+    expect(score).toBe(result.bestScore)
+  })
+
+  it('peakFormWindow: peakDay is a valid day index within [1, 84]', () => {
+    // peakFormWindow(weeklyTSS, startCTL, startATL) → { peakDay, peakTSB, trace }
+    const pfw = peakFormWindow(result.bestPlan, constraints.startCTL, constraints.startATL)
+    expect(pfw).not.toBeNull()
+    expect(pfw.peakDay).toBeGreaterThanOrEqual(1)
+    expect(pfw.peakDay).toBeLessThanOrEqual(result.bestPlan.length * 7)  // ≤ 84
+  })
+
+  it('peakFormWindow: trace has 84 entries (12 weeks × 7 days)', () => {
+    const pfw = peakFormWindow(result.bestPlan, constraints.startCTL, constraints.startATL)
+    expect(pfw.trace).toHaveLength(result.bestPlan.length * 7)
+  })
+
+  it('peakFormWindow: peakTSB matches highest TSB in trace', () => {
+    const pfw = peakFormWindow(result.bestPlan, constraints.startCTL, constraints.startATL)
+    const maxTSB = Math.max(...pfw.trace.map(d => d.TSB))
+    // peakTSB is rounded to 1 decimal; allow for rounding tolerance
+    expect(Math.abs(pfw.peakTSB - maxTSB)).toBeLessThan(0.2)
+  })
+
+  it('peakFormWindow: peakDay falls in final third of plan (taper effect)', () => {
+    // With recoveryWeeks at [3,7,11], the last week is a taper → peak form near end
+    // Final third = days 57–84. Not guaranteed for all random plans, so use a
+    // deterministic high-taper plan to validate the mechanic.
+    const taperPlan = [300, 350, 400, 200, 350, 400, 450, 200, 400, 450, 500, 100]
+    const pfw = peakFormWindow(taperPlan, 45, 40)
+    expect(pfw).not.toBeNull()
+    // With a heavy taper in week 12 (100 TSS), peak form is in the final quarter
+    expect(pfw.peakDay).toBeGreaterThan(70)  // day 70+ out of 84
   })
 })

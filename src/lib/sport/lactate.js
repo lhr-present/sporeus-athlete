@@ -8,6 +8,9 @@
 //   and lactate thresholds. Int J Sports Med, 13(6), 518-522.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// eslint-disable-next-line no-unused-vars
+import './types.js'
+
 /**
  * Validate and normalise step-test input.
  * @param {Array<{load, lactate}>} steps — sorted by load ascending
@@ -95,9 +98,9 @@ function gaussElim(A, b) {
  * @description Estimates lactate threshold from incremental step-test data using the D-max method.
  *   Fits a cubic polynomial to the lactate–load curve, then finds the load with maximum
  *   perpendicular distance from the line joining the first and last test points.
- * @param {Array<{load:number, lactate:number}>} steps - Steps sorted by load (watts, km/h, etc.)
+ * @param {LactateTestPoint[]} steps - Steps sorted by load (watts, km/h, etc.)
  * @param {{loadUnit?: string}} [options] - Optional display unit override
- * @returns {{lt:number|null, ltLactate:number|null, lt1:number|null, lt2:number|null, curve:Array, dmax:number, error?:string}}
+ * @returns {{lt:number|null, ltLactate:number|null, lt1:number|null, lt2:number|null, curve:Array, dmax:number, error?:string}|null}
  *   lt — primary threshold load (D-max); lt1 — aerobic threshold; lt2 — anaerobic (D-max);
  *   ltLactate — blood lactate at LT2 (mmol/L); curve — 61-point fitted lactate curve
  * @source Cheng et al. (1992) — A new approach for the determination of ventilatory threshold
