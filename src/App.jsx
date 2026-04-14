@@ -111,6 +111,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
     try { return localStorage.getItem(STORAGE_WARN_KEY)==='1' } catch { return false }
   })
   const [onboarded, setOnboarded] = useLocalStorage('sporeus-onboarded', false)
+  const [consentGiven, setConsentGiven] = useLocalStorage('sporeus-consent-v1', false)
   const [swUpdateReady, setSwUpdateReady] = useState(false)
   const [coachToast, setCoachToast] = useState('')
   const [showSearch, setShowSearch] = useState(false)
@@ -312,6 +313,32 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
       )}
 
       {!onboarded && <OnboardingWizard onFinish={finishOnboarding} setLang={setLang} lang={lang}/>}
+
+      {/* ── KVKK / GDPR consent gate — must accept before health data is stored ── */}
+      {onboarded && !consentGiven && (
+        <div style={{ position:'fixed', inset:0, zIndex:10010, background:'rgba(0,0,0,0.92)', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px' }}>
+          <div style={{ maxWidth:'480px', width:'100%', background:'#0f0f0f', border:'2px solid #ff6600', borderRadius:'8px', padding:'32px', fontFamily:"'IBM Plex Mono',monospace" }}>
+            <div style={{ fontSize:'12px', fontWeight:700, color:'#ff6600', letterSpacing:'0.12em', marginBottom:'16px' }}>
+              {lang === 'tr' ? 'VERİ GİZLİLİĞİ ONAYI' : 'DATA PRIVACY CONSENT'}
+            </div>
+            <div style={{ fontSize:'11px', color:'#aaa', lineHeight:1.7, marginBottom:'20px' }}>
+              {lang === 'tr'
+                ? 'Sporeus, antrenman yükü, iyileşme skorları ve sağlık verilerinizi analiz etmek için işler. Bu veriler yalnızca spor performansınızı değerlendirmek amacıyla kullanılır ve üçüncü taraflarla paylaşılmaz. Türk KVKK (Kanun No. 6698) kapsamında açık rızanız gereklidir.'
+                : 'Sporeus processes your training load, recovery scores, and health data to analyse athletic performance. Data is used solely to evaluate your training and is not shared with third parties. Explicit consent is required under Turkish KVKK (Law No. 6698) and EU GDPR Art. 9 for health data.'
+              }
+            </div>
+            <div style={{ fontSize:'10px', color:'#555', marginBottom:'24px', lineHeight:1.6 }}>
+              {lang === 'tr' ? 'Onayı istediğiniz zaman Profil → Gizlilik bölümünden geri çekebilirsiniz.' : 'You may withdraw consent at any time from Profile → Privacy.'}
+            </div>
+            <button
+              onClick={() => setConsentGiven(true)}
+              style={{ width:'100%', padding:'12px', background:'#ff6600', border:'none', color:'#fff', fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:700, letterSpacing:'0.08em', borderRadius:'4px', cursor:'pointer' }}
+            >
+              {lang === 'tr' ? 'KABUL EDİYORUM — DEVAM ET' : 'I CONSENT — CONTINUE'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {swUpdateReady && (
         <div style={{ position:'fixed', bottom:0, left:0, right:0, zIndex:10001, background:'#0064ff', color:'#fff', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'10px 20px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>

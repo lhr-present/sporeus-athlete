@@ -30,6 +30,9 @@ import ACWRCard               from './dashboard/ACWRCard.jsx'
 import WeeklyReportCard       from './dashboard/WeeklyReportCard.jsx'
 import NormativeCard          from './NormativeCard.jsx'
 import { getFTPNorm, getCTLNorm } from '../lib/sport/normativeTables.js'
+import VO2maxCard       from './dashboard/VO2maxCard.jsx'
+import PeakWeekCard     from './dashboard/PeakWeekCard.jsx'
+import TrainingAgeCard  from './dashboard/TrainingAgeCard.jsx'
 
 function BackupReminder({ log }) {
   const [lastBackup, setLastBackup] = useLocalStorage('sporeus-last-backup', null)
@@ -754,6 +757,10 @@ export default function Dashboard({ log, profile }) {
       />
 
       <ACWRCard log={log} lc={lc} dl={dl} />
+
+      <VO2maxCard log={log} profile={profile} dl={dl} />
+      <PeakWeekCard log={log} dl={dl} />
+      <TrainingAgeCard log={log} dl={dl} />
 
       <ShareCard log={log} profile={profile} filteredLog={filteredLog} />
 

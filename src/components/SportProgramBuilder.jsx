@@ -418,6 +418,9 @@ function Step5({ form, result, onRestart, log, setLog }) {
   const [selectedWeek, setSelectedWeek] = useState(null)
   const [actualTSS, setActualTSS]       = useState({})
   const [saved, setSaved]               = useState(false)
+  const [showCompare, setShowCompare]   = useState(false)
+  const [missedWeek, setMissedWeek]     = useState(null)
+  const [missedWeekInput, setMissedWeekInput] = useState('')
 
   const pfWindow = useMemo(() => {
     if (!result?.bestPlan) return null
@@ -637,6 +640,159 @@ function Step5({ form, result, onRestart, log, setLog }) {
           </div>
         </div>
       )}
+
+      {/* B1 — Compare top 2 plans */}
+      <div style={{ ...S.card }}>
+        <button style={{ ...S.btnSec, fontSize: '10px', marginTop: 0 }} onClick={() => setShowCompare(s => !s)}>
+          ⇄ Compare top 2 plans
+        </button>
+        {showCompare && (() => {
+          const planA = bestPlan
+          const resultB = monteCarloOptimizer({
+            weeks:       form.weeks || 8,
+            minTSS:      form.currentTSS || 200,
+            maxTSS:      form.peakTSS || 500,
+            startCTL:    form.startCTL || 0,
+            startATL:    form.startATL || 0,
+          }, 100)
+          const planB = resultB.bestPlan
+
+          const pfA = peakFormWindow(planA, form.startCTL || 0, form.startATL || 0)
+          const pfB = peakFormWindow(planB, form.startCTL || 0, form.startATL || 0)
+          const peakDayA = pfA?.peakDay ?? 0
+          const peakDayB = pfB?.peakDay ?? 0
+
+          const traceA = simulateBanister(
+            planA.flatMap(w => [w/7, w/7, w/7, w/7, w/7, w/7, w/7]),
+            form.startCTL || 0, form.startATL || 0
+          )
+          const ctlA = traceA.length ? traceA[traceA.length - 1].CTL : 0
+          const traceB = simulateBanister(
+            planB.flatMap(w => [w/7, w/7, w/7, w/7, w/7, w/7, w/7]),
+            form.startCTL || 0, form.startATL || 0
+          )
+          const ctlB = traceB.length ? traceB[traceB.length - 1].CTL : 0
+
+          let verdict
+          const dayDiff = peakDayA - peakDayB
+          const ctlDiff = Math.round(ctlA - ctlB)
+          if (Math.abs(dayDiff) > 2) {
+            verdict = dayDiff < 0
+              ? `Plan A peaks ${Math.abs(dayDiff)} days earlier — better for a Sunday race.`
+              : `Plan B peaks ${Math.abs(dayDiff)} days earlier — better for a Sunday race.`
+          } else if (Math.abs(ctlDiff) > 1) {
+            verdict = ctlDiff > 0
+              ? `Plan A builds more fitness (+${ctlDiff} CTL).`
+              : `Plan B builds more fitness (+${Math.abs(ctlDiff)} CTL).`
+          } else {
+            verdict = 'Plans are near-identical — choose either.'
+          }
+
+          return (
+            <div style={{ marginTop: '12px' }}>
+              <div style={{ ...FONT_MONO, fontSize: '10px', color: 'var(--muted)', marginBottom: '8px' }}>PLAN A (optimized) vs PLAN B (alternate 100-sim)</div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', ...FONT_MONO, fontSize: '11px' }}>
+                  <thead>
+                    <tr style={{ color: 'var(--muted)', borderBottom: '1px solid var(--border)' }}>
+                      <th style={{ padding: '3px 8px', textAlign: 'left' }}>WK</th>
+                      <th style={{ padding: '3px 8px', textAlign: 'right', color: ORANGE }}>PLAN A</th>
+                      <th style={{ padding: '3px 8px', textAlign: 'right', color: BLUE }}>PLAN B</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {planA.map((tssA, i) => {
+                      const tssB = planB[i] ?? 0
+                      const aBetter = tssA > tssB
+                      const bBetter = tssB > tssA
+                      return (
+                        <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '3px 8px' }}>{i + 1}</td>
+                          <td style={{
+                            padding: '3px 8px', textAlign: 'right',
+                            background: aBetter ? `${ORANGE}22` : 'transparent',
+                            color: aBetter ? ORANGE : 'var(--text)',
+                          }}>{tssA}</td>
+                          <td style={{
+                            padding: '3px 8px', textAlign: 'right',
+                            background: bBetter ? `${BLUE}22` : 'transparent',
+                            color: bBetter ? BLUE : 'var(--text)',
+                          }}>{tssB}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ marginTop: '10px', padding: '8px 12px', background: '#ff660011', border: `1px solid ${ORANGE}44`, borderRadius: '4px', ...FONT_MONO, fontSize: '11px' }}>
+                {verdict}
+              </div>
+            </div>
+          )
+        })()}
+      </div>
+
+      {/* B2 — What-if missed week simulation */}
+      <div style={{ ...S.card }}>
+        <div style={{ ...FONT_MONO, fontSize: '10px', color: 'var(--muted)', marginBottom: '8px' }}>SIMULATE MISSED WEEK</div>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ ...FONT_MONO, fontSize: '11px' }}>Simulate missed week:</span>
+          <select
+            style={{ ...FONT_MONO, fontSize: '11px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '4px', padding: '3px 6px', color: 'var(--text)' }}
+            value={missedWeekInput}
+            onChange={e => setMissedWeekInput(e.target.value)}
+          >
+            <option value="">Select week…</option>
+            {bestPlan.map((_, i) => <option key={i} value={i + 1}>Week {i + 1}</option>)}
+          </select>
+          <button style={{ ...S.btnSec, fontSize: '10px' }} onClick={() => setMissedWeek(missedWeekInput ? parseInt(missedWeekInput) : null)}>
+            Miss this week
+          </button>
+          {missedWeek && (
+            <button style={{ ...S.ghostBtn, fontSize: '10px', color: 'var(--muted)' }} onClick={() => { setMissedWeek(null); setMissedWeekInput('') }}>✕ clear</button>
+          )}
+        </div>
+
+        {missedWeek && (() => {
+          const altPlan = [...bestPlan]
+          altPlan[missedWeek - 1] = 0
+          const origTrace = peakFormWindow(bestPlan, form.startCTL || 0, form.startATL || 0)
+          const altTrace  = peakFormWindow(altPlan,  form.startCTL || 0, form.startATL || 0)
+          const ctlDrop   = Math.round((origTrace?.peakTSB ?? 0) - (altTrace?.peakTSB ?? 0))
+          const dayShift  = (origTrace?.peakDay ?? 0) - (altTrace?.peakDay ?? 0)
+
+          // Build TSB traces for SVG overlay (weekly resolution)
+          const origTSB = (origTrace?.trace || []).filter((_, i) => i % 7 === 0).map(d => d.TSB ?? 0)
+          const altTSB  = (altTrace?.trace  || []).filter((_, i) => i % 7 === 0).map(d => d.TSB ?? 0)
+          const allVals = [...origTSB, ...altTSB]
+          const minTSB  = Math.min(...allVals, -10)
+          const maxTSB  = Math.max(...allVals, 10)
+          const tsbRange = maxTSB - minTSB || 1
+          const OW = 200; const OH = 50
+          const toX2 = i => (i / Math.max(origTSB.length - 1, 1)) * OW
+          const toY2 = v => OH - ((v - minTSB) / tsbRange) * OH
+          const origPts = origTSB.map((v, i) => `${toX2(i).toFixed(1)},${toY2(v).toFixed(1)}`).join(' ')
+          const altPts  = altTSB.map( (v, i) => `${toX2(i).toFixed(1)},${toY2(v).toFixed(1)}`).join(' ')
+
+          return (
+            <div style={{ marginTop: '12px' }}>
+              <div style={{ ...FONT_MONO, fontSize: '11px', marginBottom: '8px' }}>
+                Missing week {missedWeek}: TSB drops{' '}
+                <span style={{ color: '#e03030', fontWeight: 700 }}>{Math.abs(ctlDrop)} pts</span>
+                {dayShift !== 0 && (
+                  <>, peak form shifts <span style={{ color: '#f5c542', fontWeight: 700 }}>{Math.abs(dayShift)} days {dayShift > 0 ? 'later' : 'earlier'}</span></>
+                )}
+              </div>
+              <svg viewBox={`0 0 ${OW} ${OH}`} style={{ width: OW, height: OH, display: 'block', overflow: 'visible' }}>
+                {origTSB.length > 1 && <polyline fill="none" stroke={ORANGE} strokeWidth="1.5" points={origPts} />}
+                {altTSB.length > 1  && <polyline fill="none" stroke={BLUE}   strokeWidth="1.5" strokeDasharray="4 2" points={altPts} />}
+                <text x="2" y="10" fontSize="7" fill={ORANGE} fontFamily="IBM Plex Mono, monospace">ORIGINAL</text>
+                <text x="2" y="20" fontSize="7" fill={BLUE}   fontFamily="IBM Plex Mono, monospace">MISSED</text>
+              </svg>
+            </div>
+          )
+        })()}
+      </div>
 
       <button style={S.btn} onClick={onRestart}>BUILD NEW PLAN</button>
     </div>

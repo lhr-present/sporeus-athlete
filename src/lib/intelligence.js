@@ -988,3 +988,28 @@ export function getConsistencyScore(log, days = 28) {
   const activeDays = new Set(log.filter(e => e.date >= cutoff).map(e => e.date)).size
   return Math.round((activeDays / days) * 100)
 }
+
+// ─── getTimeOfDayAdvice ───────────────────────────────────────────────────────
+export function getTimeOfDayAdvice(hour) {
+  if (typeof hour !== 'number' || hour < 0 || hour > 23) return null
+  if (hour < 9)  return 'Morning training — HR runs 5–10% lower, perceived effort feels higher than it is.'
+  if (hour < 12) return 'Late morning — body temperature rising, good window for quality work.'
+  if (hour < 15) return 'Midday — peak strength and power output window (Drust et al. 2005).'
+  if (hour < 19) return 'Afternoon — reaction time and coordination peak; ideal for technical sessions.'
+  return 'Evening — allow 2h before sleep after hard sessions to avoid elevated cortisol disrupting recovery.'
+}
+
+// ─── autoTagSession ───────────────────────────────────────────────────────────
+export function autoTagSession(entry) {
+  if (!entry || typeof entry !== 'object') return null
+  const type  = (entry.type  || '').toLowerCase()
+  const notes = (entry.notes || '').toLowerCase()
+  const tss   = typeof entry.tss === 'number' ? entry.tss : null
+  const rpe   = typeof entry.rpe === 'number' ? entry.rpe : null
+
+  if (type.includes('race')) return 'Race'
+  if (/test|tt|time[\s-]?trial|cooper|ramp/.test(notes)) return 'Test'
+  if (tss !== null && tss > 120) return 'Key Session'
+  if (rpe !== null && rpe <= 5 && tss !== null && tss < 60) return 'Recovery'
+  return null
+}

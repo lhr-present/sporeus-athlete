@@ -3,7 +3,8 @@ import { useState, useMemo, useContext, useRef, useEffect, lazy, Suspense } from
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { useData } from '../contexts/DataContext.jsx'
-import { getTodayPlannedSession, getSingleSuggestion, generateDailyDigest } from '../lib/intelligence.js'
+import { getTodayPlannedSession, getSingleSuggestion, generateDailyDigest, getTimeOfDayAdvice, autoTagSession } from '../lib/intelligence.js'
+import { calcLoad } from '../lib/formulas.js'
 import { WELLNESS_FIELDS } from '../lib/constants.js'
 import { hasUnread } from './CoachMessage.jsx'
 import { getMyCoach } from '../lib/inviteUtils.js'
@@ -317,16 +318,49 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
     <div className="sp-fade">
 
       {/* ── Morning Brief ─────────────────────────────────────────────────── */}
-      {!digest.empty && (
-        <div style={{ ...card, borderLeft: `4px solid #333`, padding: '14px 18px' }}>
-          <div style={{ ...cardTitle, marginBottom: '8px' }}>
-            {lang === 'tr' ? '◈ SABAH ÖZETİ' : '◈ MORNING BRIEF'}
+      {!digest.empty && (() => {
+        const yesterdayEntry = (log || []).find(e => e.date === yesterday)
+        const timeAdvice     = getTimeOfDayAdvice(new Date().getHours())
+        return (
+          <div style={{ ...card, borderLeft: `4px solid #333`, padding: '14px 18px' }}>
+            <div style={{ ...cardTitle, marginBottom: '8px' }}>
+              {lang === 'tr' ? '◈ SABAH ÖZETİ' : '◈ MORNING BRIEF'}
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--text)', lineHeight: 1.9, whiteSpace: 'pre-line', fontFamily: MONO }}>
+              {digest[lang] || digest.en}
+            </div>
+            {yesterdayEntry && (
+              <div style={{ fontFamily: MONO, fontSize: '10px', color: '#888', marginTop: '6px' }}>
+                Yesterday: {yesterdayEntry.tss} TSS {yesterdayEntry.type} · {yesterdayEntry.duration}min
+              </div>
+            )}
+            {timeAdvice && (
+              <div style={{ fontFamily: MONO, fontSize: '10px', color: '#666', marginTop: '4px', fontStyle: 'italic' }}>
+                {timeAdvice}
+              </div>
+            )}
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--text)', lineHeight: 1.9, whiteSpace: 'pre-line', fontFamily: MONO }}>
-            {digest[lang] || digest.en}
-          </div>
-        </div>
-      )}
+        )
+      })()}
+
+      {/* ── Consecutive rest day warning ──────────────────────────────────── */}
+      {(() => {
+        const { ctl } = calcLoad(log || [])
+        const last3 = [-1, -2, -3].map(n => {
+          const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10)
+        })
+        const hasRestDays = last3.every(d => !(log || []).find(e => e.date === d))
+        if (ctl > 40 && hasRestDays) {
+          return (
+            <div style={{ ...card, borderLeft: '3px solid #f5c542', padding: '12px 18px' }}>
+              <div style={{ fontFamily: MONO, fontSize: '11px', color: '#f5c542', lineHeight: 1.6 }}>
+                3 rest days — CTL decaying at ~2.3% per day. Consider a short activation session.
+              </div>
+            </div>
+          )
+        }
+        return null
+      })()}
 
       {/* ── Coach message unread badge ────────────────────────────────────── */}
       {coachUnread > 0 && (

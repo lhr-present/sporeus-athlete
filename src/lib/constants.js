@@ -240,6 +240,9 @@ export const DASH_CARD_DEFS = [
   { id:'achievements', label:'Achievements'            },
   { id:'goal',         label:'Goal Countdown'          },
   { id:'acwr',         label:'ACWR'                    },
+  { id:'vo2max',       label:'VO2max Estimate'         },
+  { id:'peakweek',     label:'Peak Form Predictor'     },
+  { id:'trainingage',  label:'Training Age'            },
 ]
 
 export const TYPE_COLORS = {

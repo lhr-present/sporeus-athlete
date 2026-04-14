@@ -5,6 +5,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { FREE_ATHLETE_LIMIT } from '../lib/formulas.js'
 import { predictInjuryRisk } from '../lib/intelligence.js'
+import { generateAthleteReportCard } from '../lib/digestEmail.js'
 
 import { TODAY, daysBefore, computeAthleteMetrics, computeLoad } from './coachDashboard/helpers.jsx'
 import CoachOnboarding from './coachDashboard/CoachOnboarding.jsx'
@@ -101,6 +102,18 @@ export default function CoachDashboard({ authUser }) {
     navigator.clipboard.writeText(inviteUrl).catch(() => {})
     setCopyToast(true)
     setTimeout(() => setCopyToast(false), 2000)
+  }
+
+  function handleReport(athlete) {
+    const month = new Date().toISOString().slice(0, 7)
+    const html = generateAthleteReportCard(
+      { display_name: athlete.name || athlete.id, sport: athlete.sport || 'sport' },
+      athlete.log || [],
+      athlete.wellness || [],
+      month
+    )
+    const blob = new Blob([html], { type: 'text/html' })
+    window.open(URL.createObjectURL(blob))
   }
 
   // Summary stats
@@ -444,6 +457,12 @@ export default function CoachDashboard({ authUser }) {
                 />
                 <button style={{ ...S.btn, padding:'6px 12px', fontSize:'11px' }} onClick={() => handleQuickNoteSubmit(athlete.id)}>Save</button>
                 <button style={{ ...S.btnSec, padding:'6px 10px', fontSize:'11px' }} onClick={() => { setQuickNoteId(null); setQuickNoteText('') }}>✕</button>
+                <button style={{ ...S.btnSec, fontSize:'9px', padding:'2px 7px' }} onClick={() => handleReport(athlete)}>Report</button>
+              </div>
+            )}
+            {quickNoteId !== athlete.id && (
+              <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:'4px' }}>
+                <button style={{ ...S.btnSec, fontSize:'9px', padding:'2px 7px' }} onClick={() => handleReport(athlete)}>Report</button>
               </div>
             )}
             <AthleteCard

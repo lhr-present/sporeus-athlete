@@ -132,6 +132,45 @@ function buildUserPrompt(a: AthleteRow): string {
   })}`
 }
 
+// ── Weekly digest prompt ──────────────────────────────────────────────────────
+const WEEKLY_DIGEST_SYSTEM = `You are a sport science assistant. Summarise a coach's squad weekly performance.
+Output ONLY valid JSON: {"headline": string, "highlights": string[], "alerts": string[], "recommendation": string}
+headline: one sentence overall week summary.
+highlights: up to 3 positive individual athlete notes.
+alerts: up to 2 athletes needing attention (high ACWR or low wellness).
+recommendation: one sentence focus for next week.
+Plain language. Under 120 words total.`
+
+// ── Monday of the current ISO week (YYYY-MM-DD) ──────────────────────────────
+function getWeekStart(dateStr: string): string {
+  const d   = new Date(dateStr + "T12:00:00Z")
+  const day = d.getUTCDay()
+  const diffToMonday = day === 0 ? -6 : 1 - day
+  const monday = new Date(d)
+  monday.setUTCDate(d.getUTCDate() + diffToMonday)
+  return monday.toISOString().slice(0, 10)
+}
+
+// ── Send Telegram notification if TELEGRAM_BOT_TOKEN is configured ────────────
+async function sendTelegramDigest(chatId: string, message: string): Promise<void> {
+  const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN")
+  if (!botToken || !chatId) return
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? ""
+  const fnUrl = supabaseUrl.replace(".supabase.co", ".supabase.co") + "/functions/v1/telegram-notify"
+  try {
+    await fetch(fnUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type":  "application/json",
+        "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""}`,
+      },
+      body: JSON.stringify({ chat_id: chatId, message, type: "weekly_digest" }),
+    })
+  } catch (e) {
+    console.warn("sendTelegramDigest error:", e instanceof Error ? e.message : String(e))
+  }
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 serve(async (req) => {
   const start = Date.now()
@@ -258,8 +297,93 @@ serve(async (req) => {
   const ms = Date.now() - start
   console.log(`nightly-batch [${today}]: processed=${processed} errors=${errors} ms=${ms}`)
 
+  // ── Sunday-only: weekly squad digest for coaches ──────────────────────────
+  const isSunday = new Date(today + "T12:00:00Z").getUTCDay() === 0
+  let weeklyDigestResult: { coaches: number; errors: number } | null = null
+
+  if (isSunday) {
+    console.log(`nightly-batch [${today}]: Sunday detected — running weekly digest`)
+    const weekStart = getWeekStart(today)
+    const sevenDaysAgo = weekStart
+
+    // Query all coaches (role = 'coach') from profiles
+    const { data: coaches } = await supabase
+      .from("profiles")
+      .select("id, display_name, telegram_chat_id")
+      .eq("role", "coach")
+
+    let digestOk = 0, digestErr = 0
+
+    for (const coach of coaches ?? []) {
+      try {
+        // Fetch this coach's athletes
+        const { data: coachAthletes } = await supabase
+          .from("coach_athletes")
+          .select("athlete_id")
+          .eq("coach_id", coach.id)
+
+        if (!coachAthletes || coachAthletes.length === 0) continue
+
+        const athleteIds = coachAthletes.map((r: { athlete_id: string }) => r.athlete_id)
+
+        // Get last 7 days load data for the squad
+        const { data: weekLogs } = await supabase
+          .from("training_log")
+          .select("user_id, date, tss")
+          .in("user_id", athleteIds)
+          .gte("date", sevenDaysAgo)
+          .order("date", { ascending: true })
+
+        // Get wellness scores for the week
+        const { data: weekWellness } = await supabase
+          .from("recovery")
+          .select("user_id, date, score")
+          .in("user_id", athleteIds)
+          .gte("date", sevenDaysAgo)
+
+        // Build per-athlete summaries for the prompt
+        const summaries = athleteIds.map((uid: string) => {
+          const logs = (weekLogs ?? []).filter((l: { user_id: string }) => l.user_id === uid)
+          const wl   = (weekWellness ?? []).filter((w: { user_id: string }) => w.user_id === uid)
+          const weekTSS = logs.reduce((s: number, l: { tss: number }) => s + (l.tss ?? 0), 0)
+          const avgWell = wl.length > 0 ? Math.round(wl.reduce((s: number, w: { score: number }) => s + (w.score ?? 0), 0) / wl.length) : null
+          return { uid: uid.slice(0, 8), weekTSS, avgWellness: avgWell, sessions: logs.length }
+        })
+
+        const userPrompt = `Squad weekly data (coach: ${coach.display_name}, week starting ${weekStart}): ${JSON.stringify(summaries)}`
+        const digestText = await retryWithBackoff(() => callHaiku(WEEKLY_DIGEST_SYSTEM, userPrompt))
+        const digestJson = parseJSON(digestText)
+
+        if (!digestJson) throw new Error("Bad digest JSON")
+
+        // Upsert weekly_digests — idempotent on (coach_id, week_start)
+        await supabase.from("weekly_digests").upsert({
+          coach_id:    coach.id,
+          week_start:  weekStart,
+          digest_json: digestJson,
+        }, { onConflict: "coach_id,week_start" })
+
+        // Telegram notification if the coach has a chat_id
+        const tgChatId = (coach as { telegram_chat_id?: string }).telegram_chat_id
+        if (tgChatId && typeof digestJson === "object" && digestJson !== null) {
+          const d = digestJson as { headline?: string; recommendation?: string }
+          const msg = `<b>Sporeus Weekly Digest — ${weekStart}</b>\n\n${d.headline ?? ""}\n\n<i>${d.recommendation ?? ""}</i>`
+          await sendTelegramDigest(tgChatId, msg)
+        }
+
+        digestOk++
+      } catch (e) {
+        digestErr++
+        console.error(`weekly-digest error for coach ${coach.id}:`, e instanceof Error ? e.message : String(e))
+      }
+    }
+
+    weeklyDigestResult = { coaches: digestOk, errors: digestErr }
+    console.log(`weekly-digest [${weekStart}]: coaches=${digestOk} errors=${digestErr}`)
+  }
+
   return new Response(
-    JSON.stringify({ processed, errors, ms, date: today }),
+    JSON.stringify({ processed, errors, ms, date: today, weeklyDigest: weeklyDigestResult }),
     { headers: { "Content-Type": "application/json" }, status: 200 }
   )
 })

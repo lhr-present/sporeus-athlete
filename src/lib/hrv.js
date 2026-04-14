@@ -199,6 +199,56 @@ export function calculateDFAAlpha1(nn) {
   return Math.round((num / den) * 1000) / 1000
 }
 
+// ─── computeHRVReadiness ──────────────────────────────────────────────────────
+// Returns a readiness score and band from today's RMSSD vs 28-day baseline.
+// score = 100 × (recentRMSSD / baselineRMSSD)
+// band thresholds: > 110 → High, 90-110 → Normal, < 90 → Low
+export function computeHRVReadiness(recentRMSSD, baselineRMSSD, baselineSD = 0) {
+  if (recentRMSSD == null || baselineRMSSD == null || baselineRMSSD <= 0) return null
+  const score = Math.round(recentRMSSD / baselineRMSSD * 100)
+  let band, advice
+  if (score > 110) {
+    band   = 'High'
+    advice = 'CNS well recovered — proceed with planned hard session.'
+  } else if (score >= 90) {
+    band   = 'Normal'
+    advice = 'Readiness normal — proceed as planned.'
+  } else {
+    band   = 'Low'
+    advice = 'HRV suppressed — consider replacing hard session with easy aerobic work.'
+  }
+  const sdBand = baselineSD > 0
+    ? { lower: Math.round(baselineRMSSD - baselineSD), upper: Math.round(baselineRMSSD + baselineSD) }
+    : null
+  return { score, band, advice, sdBand }
+}
+
+// ─── getAerobicThresholdFromDFA ───────────────────────────────────────────────
+// Gronwald 2020: DFA-α1 < 0.75 marks aerobic threshold crossing.
+// Expects array of { hr: number, dfa1: number } in ascending HR order.
+// Returns { threshold_hr, confidence: 'high'|'low' } or null.
+export function getAerobicThresholdFromDFA(dfa1Series) {
+  if (!Array.isArray(dfa1Series) || dfa1Series.length < 3) return null
+  const valid = dfa1Series.filter(p => typeof p.hr === 'number' && typeof p.dfa1 === 'number')
+  if (valid.length < 3) return null
+
+  // Find first point where dfa1 drops below 0.75
+  let crossingIdx = -1
+  for (let i = 0; i < valid.length; i++) {
+    if (valid[i].dfa1 < 0.75) { crossingIdx = i; break }
+  }
+  if (crossingIdx < 0) return null
+
+  const threshold_hr = valid[crossingIdx].hr
+
+  // Confidence: 'high' if the value just before crossing is > 0.80 (clean drop)
+  // 'low' if it was already hovering near 0.75 (gradual transition)
+  const prevDFA = crossingIdx > 0 ? valid[crossingIdx - 1].dfa1 : null
+  const confidence = prevDFA !== null && prevDFA > 0.80 ? 'high' : 'low'
+
+  return { threshold_hr, confidence }
+}
+
 // ─── parsePolarHRM ────────────────────────────────────────────────────────────
 // Parse Polar .hrm text file and extract RR intervals (ms) from [HRData].
 // Physiological range filter: 300–2000 ms distinguishes RR from HR bpm.

@@ -96,6 +96,34 @@ export async function deleteAthleteData(userId) {
   return { tablesAffected, error: null }
 }
 
+// ─── purgeExpiredData ─────────────────────────────────────────────────────────
+// Deletes training log and wellness entries older than retentionDays (default 3yr).
+// Called monthly by nightly-batch pg_cron job on the 1st of each month.
+// Returns { cutoff: string, results: { [table]: { deleted: number } | { error: string } } }
+export async function purgeExpiredData(retentionDays = 1095) {
+  if (!isSupabaseReady()) throw new Error('Supabase not configured')
+  const cutoff = new Date(Date.now() - retentionDays * 86400000).toISOString().slice(0, 10)
+  const purgeTables = ['training_log', 'wellness_logs', 'sessions']
+  const results = {}
+  for (const table of purgeTables) {
+    try {
+      const { data, error } = await supabase
+        .from(table)
+        .delete()
+        .lt('date', cutoff)
+        .select('id')
+      results[table] = error ? { error: error.message } : { deleted: (data || []).length }
+    } catch (e) {
+      results[table] = { error: e?.message ?? 'unknown' }
+    }
+  }
+  // Audit log: purge event
+  try {
+    await logAction('purge', 'multiple', null, { cutoff, retentionDays })
+  } catch {}
+  return { cutoff, results }
+}
+
 // ─── triggerDownload ──────────────────────────────────────────────────────────
 // Utility: prompt browser to download a JSON file.
 export function triggerDownload(data, filename = 'sporeus-my-data.json') {

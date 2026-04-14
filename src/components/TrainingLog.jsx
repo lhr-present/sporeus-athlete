@@ -6,7 +6,7 @@ import { calcTSS, normalizedPower, computePowerTSS, computeWPrime } from '../lib
 import { sanitizeLogEntry } from '../lib/validate.js'
 import Calendar from './Calendar.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
-import { scoreSession } from '../lib/intelligence.js'
+import { scoreSession, autoTagSession } from '../lib/intelligence.js'
 import { parseFIT, parseGPX, detectFileType, parseBulkCSV, deduplicateByDate, downloadCSVTemplate } from '../lib/fileImport.js'
 import ActivityMap from './ActivityMap.jsx'
 
@@ -32,6 +32,8 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const [importBusy, setImportBusy]       = useState(false)
   const [routeSession, setRouteSession]   = useState(null) // session with trackpoints to show on map
   const [csvPreview, setCsvPreview]       = useState(null) // { entries, skipped, deduped }
+  const [bulkMode, setBulkMode]           = useState(false)
+  const [selected, setSelected]           = useState(new Set())
   const fileInputRef    = useRef(null)
   const csvInputRef     = useRef(null)
 
@@ -75,6 +77,23 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     window.scrollTo({ top:0, behavior:'smooth' })
   }
   const cancelEdit = () => { setEditingId(null); setForm({ date:today, type:'Easy Run', duration:'', rpe:'5', notes:'' }); setZoneMins(['','','','','']); setShowZones(false) }
+
+  const handleBulkTag = (tag) => {
+    if (!tag) return
+    setLog(log.map(e => selected.has(e.id) ? { ...e, tags: [tag] } : e))
+  }
+
+  const handleBulkDelete = () => {
+    if (!selected.size) return
+    if (!window.confirm(`Delete ${selected.size} selected session${selected.size > 1 ? 's' : ''}?`)) return
+    setLog(log.filter(e => !selected.has(e.id)))
+    setSelected(new Set())
+    setBulkMode(false)
+  }
+
+  const applyTag = (entry, tag) => {
+    setLog(log.map(e => e.id === entry.id ? { ...e, tags: [tag] } : e))
+  }
 
   const handleFileImport = async (e) => {
     const file = e.target.files[0]
@@ -283,6 +302,12 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
             >
               ↓ TEMPLATE
             </button>
+            <button
+              style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px', border: bulkMode ? '1px solid #ff6600' : undefined, color: bulkMode ? '#ff6600' : undefined }}
+              onClick={() => { setBulkMode(m => !m); setSelected(new Set()) }}
+            >
+              {bulkMode ? 'CANCEL SELECT' : 'SELECT'}
+            </button>
             <input ref={fileInputRef} type="file" accept=".fit,.gpx" style={{ display:'none' }} onChange={handleFileImport}/>
             <input ref={csvInputRef}  type="file" accept=".csv"       style={{ display:'none' }} onChange={handleCSVImport}/>
             {importError && <span style={{ ...S.mono, fontSize:'9px', color:'#e03030' }}>{importError}</span>}
@@ -302,36 +327,64 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
             <table style={{ width:'100%', borderCollapse:'collapse', ...S.mono, fontSize:'12px' }}>
               <thead>
                 <tr style={{ borderBottom:'2px solid var(--border)', color:'#888', fontSize:'10px', letterSpacing:'0.06em' }}>
+                  {bulkMode && <th style={{ padding:'4px 6px 8px 0', fontWeight:600, width:'24px' }}></th>}
                   {['DATE','TYPE','MIN','RPE','TSS','NOTES',''].map(h=>(
                     <th key={h} style={{ textAlign:['TSS','MIN','RPE',''].includes(h)?'right':'left', padding:'4px 6px 8px 0', fontWeight:600 }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {[...log].reverse().map((s,i)=>(
-                  <tr key={i} style={{ borderBottom:'1px solid var(--border)' }}>
-                    <td style={{ padding:'6px 6px 6px 0', color:'var(--sub)' }}>{s.date}</td>
-                    <td style={{ padding:'6px 6px 6px 0' }}>{s.type}</td>
-                    <td style={{ textAlign:'right', padding:'6px 6px 6px 0' }}>{s.duration}</td>
-                    <td style={{ textAlign:'right', padding:'6px 6px 6px 0', color:s.rpe>=8?'#e03030':s.rpe>=6?'#f5c542':'#5bc25b' }}>{s.rpe}</td>
-                    <td style={{ textAlign:'right', padding:'6px 6px 6px 0', color:'#ff6600', fontWeight:600 }}>{s.tss}</td>
-                    <td style={{ padding:'6px 6px 6px 0', color:'#888', maxWidth:'160px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                      {s.wPrimeExhausted && <span title="W' reached zero — complete anaerobic depletion (Skiba 2012)" style={{ display:'inline-block', background:'#e03030', color:'#fff', fontSize:'8px', fontWeight:700, borderRadius:'3px', padding:'1px 4px', marginRight:'4px', letterSpacing:'0.05em' }}>⚡W'0</span>}
-                      {s.notes}
-                    </td>
-                    <td style={{ textAlign:'right', whiteSpace:'nowrap' }}>
-                      {s.trackpoints?.length >= 2 && (
-                        <button onClick={() => setRouteSession(s)}
-                          title="View route"
-                          style={{ background:'none', border:'none', color:'#0064ff', cursor:'pointer', ...S.mono, fontSize:'11px', marginRight:'4px' }}>⌖</button>
+                {[...log].reverse().map((s,i)=>{
+                  const hasTag = s.tags && s.tags.length > 0
+                  const suggestedTag = !hasTag ? autoTagSession(s) : null
+                  return (
+                    <tr key={i} style={{ borderBottom:'1px solid var(--border)', background: bulkMode && selected.has(s.id) ? '#ff660011' : undefined }}>
+                      {bulkMode && (
+                        <td style={{ padding:'6px 6px 6px 0' }}>
+                          <input
+                            type="checkbox"
+                            checked={selected.has(s.id)}
+                            onChange={() => {
+                              setSelected(prev => {
+                                const next = new Set(prev)
+                                if (next.has(s.id)) next.delete(s.id); else next.add(s.id)
+                                return next
+                              })
+                            }}
+                            style={{ accentColor:'#ff6600', cursor:'pointer' }}
+                          />
+                        </td>
                       )}
-                      <button onClick={()=>startEdit(s,i)}
-                        style={{ background:'none', border:'none', color:'#aaa', cursor:'pointer', ...S.mono, fontSize:'12px', marginRight:'4px' }}>✎</button>
-                      <button onClick={()=>setLog(log.filter((_,idx)=>idx!==log.length-1-i))}
-                        style={{ background:'none', border:'none', color:'#ccc', cursor:'pointer', ...S.mono, fontSize:'12px' }}>✕</button>
-                    </td>
-                  </tr>
-                ))}
+                      <td style={{ padding:'6px 6px 6px 0', color:'var(--sub)' }}>{s.date}</td>
+                      <td style={{ padding:'6px 6px 6px 0' }}>{s.type}</td>
+                      <td style={{ textAlign:'right', padding:'6px 6px 6px 0' }}>{s.duration}</td>
+                      <td style={{ textAlign:'right', padding:'6px 6px 6px 0', color:s.rpe>=8?'#e03030':s.rpe>=6?'#f5c542':'#5bc25b' }}>{s.rpe}</td>
+                      <td style={{ textAlign:'right', padding:'6px 6px 6px 0', color:'#ff6600', fontWeight:600 }}>{s.tss}</td>
+                      <td style={{ padding:'6px 6px 6px 0', color:'#888', maxWidth:'160px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                        {s.wPrimeExhausted && <span title="W' reached zero — complete anaerobic depletion (Skiba 2012)" style={{ display:'inline-block', background:'#e03030', color:'#fff', fontSize:'8px', fontWeight:700, borderRadius:'3px', padding:'1px 4px', marginRight:'4px', letterSpacing:'0.05em' }}>⚡W'0</span>}
+                        {s.notes}
+                        {suggestedTag && (
+                          <span
+                            onClick={() => applyTag(s, suggestedTag)}
+                            style={{ ...S.mono, fontSize:'9px', color:'#ff660088', border:'1px solid #ff660033', borderRadius:2, padding:'1px 5px', cursor:'pointer', marginLeft:4 }}
+                            title="Auto-suggested tag — click to apply"
+                          >{suggestedTag}</span>
+                        )}
+                      </td>
+                      <td style={{ textAlign:'right', whiteSpace:'nowrap' }}>
+                        {s.trackpoints?.length >= 2 && (
+                          <button onClick={() => setRouteSession(s)}
+                            title="View route"
+                            style={{ background:'none', border:'none', color:'#0064ff', cursor:'pointer', ...S.mono, fontSize:'11px', marginRight:'4px' }}>⌖</button>
+                        )}
+                        <button onClick={()=>startEdit(s,i)}
+                          style={{ background:'none', border:'none', color:'#aaa', cursor:'pointer', ...S.mono, fontSize:'12px', marginRight:'4px' }}>✎</button>
+                        <button onClick={()=>setLog(log.filter((_,idx)=>idx!==log.length-1-i))}
+                          style={{ background:'none', border:'none', color:'#ccc', cursor:'pointer', ...S.mono, fontSize:'12px' }}>✕</button>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -500,6 +553,23 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
             </div>
             <ActivityMap trackpoints={routeSession.trackpoints} onClose={() => setRouteSession(null)} />
           </div>
+        </div>
+      )}
+
+      {/* Bulk action bar */}
+      {selected.size > 0 && (
+        <div style={{ position:'fixed', bottom:0, left:0, right:0, zIndex:500, background:'#111', borderTop:'1px solid #333', padding:'10px 16px', display:'flex', gap:'8px', alignItems:'center' }}>
+          <span style={{ ...S.mono, fontSize:'11px', color:'#888' }}>{selected.size} selected</span>
+          <select
+            onChange={e => { handleBulkTag(e.target.value); e.target.value = '' }}
+            style={{ ...S.mono, fontSize:'11px', background:'#222', color:'#ccc', border:'1px solid #444', borderRadius:3, padding:'4px 8px' }}
+            defaultValue=""
+          >
+            <option value="">Tag selected…</option>
+            {['Race','Key Session','Recovery','Easy','Test'].map(t2 => <option key={t2} value={t2}>{t2}</option>)}
+          </select>
+          <button onClick={handleBulkDelete} style={{ ...S.btn, fontSize:'11px', background:'#e03030', padding:'4px 12px' }}>Delete ({selected.size})</button>
+          <button onClick={() => { setSelected(new Set()); setBulkMode(false) }} style={{ ...S.btnSec, fontSize:'11px', padding:'4px 10px' }}>Cancel</button>
         </div>
       )}
     </div>
