@@ -1,13 +1,8 @@
-import { useState, useEffect, useCallback, useRef, lazy } from 'react'
-import { exchangeStravaCode } from './lib/strava.js'
-import { checkRaceCountdowns, checkSubscriptionExpiry } from './lib/pushNotify.js'
-import { scheduleSessionReminder, getReminderSettings } from './lib/pushNotifications.js'
-import { triggerSync } from './lib/deviceSync.js'
-import { initOfflineSync, onSyncStatusChange, getSyncStatus, flushQueue } from './lib/offlineQueue.js'
-import { exportAllData } from './lib/storage.js'
-import { LangCtx, LABELS, TABS } from './contexts/LangCtx.jsx'
-import { useLocalStorage, STORAGE_WARN_KEY } from './hooks/useLocalStorage.js'
-import { DataProvider, useData } from './contexts/DataContext.jsx'
+import { lazy } from 'react'
+import { LangCtx, TABS } from './contexts/LangCtx.jsx'
+import { useLocalStorage } from './hooks/useLocalStorage.js'
+import { useAppState } from './hooks/useAppState.js'
+import { DataProvider } from './contexts/DataContext.jsx'
 import { S, ANIM_CSS } from './styles.js'
 import AsyncBoundary from './components/ui/AsyncBoundary.jsx'
 import TodayView from './components/TodayView.jsx'
@@ -24,15 +19,12 @@ import MigrationModal from './components/MigrationModal.jsx'
 import { InviteModal } from './components/MyCoach.jsx'
 import { useAuth } from './hooks/useAuth.js'
 import { isSupabaseReady } from './lib/supabase.js'
-import { hasCurrentConsent, grantConsent } from './lib/db/consentVersion.js'
-import { logConsent } from './lib/db/consent.js'
-import { addNotification } from './lib/notificationCenter.js'
+import { hasCurrentConsent } from './lib/db/consentVersion.js'
 import NotificationBell from './components/NotificationBell.jsx'
-import { calculateACWR } from './lib/trainingLoad.js'
 import { detectLocalData } from './lib/dataMigration.js'
 import QuickAddModal from './components/QuickAddModal.jsx'
-import { sanitizeLogEntry } from './lib/validate.js'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
+import { flushQueue } from './lib/offlineQueue.js'
 const CoachDashboard  = lazy(() => import('./components/CoachDashboard.jsx'))
 const CoachOverview   = lazy(() => import('./components/CoachOverview.jsx'))
 const CoachSquadView  = lazy(() => import('./components/CoachSquadView.jsx'))
@@ -40,7 +32,6 @@ const PlanGenerator  = lazy(() => import('./components/PlanGenerator.jsx'))
 const YearlyPlan     = lazy(() => import('./components/YearlyPlan.jsx'))
 const Glossary            = lazy(() => import('./components/Glossary.jsx'))
 const SportProgramBuilder = lazy(() => import('./components/SportProgramBuilder.jsx'))
-// Heavy tabs: defer until user navigates to them
 const Dashboard     = lazy(() => import('./components/Dashboard.jsx'))
 const Profile       = lazy(() => import('./components/Profile.jsx'))
 const TestProtocols = lazy(() => import('./components/Protocols.jsx'))
@@ -56,293 +47,29 @@ const Splash = () => (
   </div>
 )
 
-// ─── AppInner — inside DataProvider, can call useData() ──────────────────────
+// ─── AppInner — inside DataProvider, renders using useAppState hook ───────────
 function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut }) {
-  const { log, setLog, recovery } = useData()
-  const isGuest = isSupabaseReady() && !authUser && localStorage.getItem('sporeus-guest-mode') === '1'
-
-  const [tab, setTab] = useState('today')
-  const [coachMode] = useLocalStorage('sporeus-coach-mode', false)
-  const [inviteCode, setInviteCode] = useState(() => {
-    const params = new URLSearchParams(window.location.search)
-    const code = params.get('invite')
-    if (code) {
-      const url = new URL(window.location.href)
-      url.searchParams.delete('invite')
-      window.history.replaceState({}, '', url.toString())
-    }
-    // Prefer URL param; fall back to pending invite stored for unauthenticated users
-    return code || sessionStorage.getItem('sporeus-pending-invite') || null
-  })
-
-  // After auth completes, pick up any pending invite stored pre-login
-  useEffect(() => {
-    if (!authUser) return
-    const pending = sessionStorage.getItem('sporeus-pending-invite')
-    if (pending && !inviteCode) setInviteCode(pending)
-    sessionStorage.removeItem('sporeus-pending-invite')
-  }, [authUser])
-
-  // Strava OAuth callback — detect ?state=strava&code=XXX on load
-  const [stravaCallbackCode, setStravaCallbackCode] = useState(() => {
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('state') === 'strava' && params.get('code')) {
-      const oauthCode = params.get('code')
-      const url = new URL(window.location.href)
-      url.searchParams.delete('state')
-      url.searchParams.delete('code')
-      url.searchParams.delete('scope')
-      window.history.replaceState({}, '', url.toString())
-      return oauthCode
-    }
-    return null
-  })
-  const [stravaToast, setStravaToast] = useState('')
-
-  // Exchange Strava code once we have an authenticated user
-  useEffect(() => {
-    if (!stravaCallbackCode || !authUser || !isSupabaseReady()) return
-    setStravaCallbackCode(null) // prevent re-runs
-    exchangeStravaCode(stravaCallbackCode).then(({ data, error }) => {
-      if (error) {
-        setStravaToast(`⚠ Strava connection failed: ${(error.message || 'Unknown error').slice(0, 200)}`)
-      } else {
-        setStravaToast(`✓ Strava connected${data?.athlete ? ' — ' + data.athlete : ''}`)
-      }
-      setTimeout(() => setStravaToast(''), 6000)
-    })
-  }, [stravaCallbackCode, authUser])
-  const [profile, setProfile] = useLocalStorage('sporeus_profile', {})
-  const [logPrefill, setLogPrefill] = useState(null)
-  const [quotaWarn, setQuotaWarn] = useState(() => {
-    try { return localStorage.getItem(STORAGE_WARN_KEY)==='1' } catch { return false }
-  })
-  const [onboarded, setOnboarded] = useLocalStorage('sporeus-onboarded', false)
-  const [consentGiven, setConsentGiven] = useState(hasCurrentConsent)
-  const [swUpdateReady, setSwUpdateReady] = useState(false)
-  const [coachToast, setCoachToast] = useState('')
-  const [showSearch, setShowSearch] = useState(false)
-  const [showQuickAdd, setShowQuickAdd] = useState(false)
-  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
-  const [firstSessionToast, setFirstSessionToast] = useState(false)
-  const [syncStatus, setSyncStatus] = useState(() => getSyncStatus())
-  const [coachUnreadBadge, setCoachUnreadBadge] = useState(0)
-  const coachToastTimer = useRef(null)
-  const firstSessionTimer = useRef(null)
-  const prevLogLen = useRef(log.length)
-
-  const [visitedTabs, setVisitedTabs] = useLocalStorage('sporeus-visited-tabs', {})
-  const today = new Date().toISOString().slice(0, 10)
-  const hasRecoveryToday = recovery.some(e => e.date === today)
-  const isProfileIncomplete = onboarded && (!profile.name || !profile.primarySport)
-  const isFirstSession = onboarded && log.length === 0
-
-  const appAge = (() => {
-    const first = visitedTabs._firstVisit
-    if (!first) return 0
-    return Math.floor((Date.now() - new Date(first).getTime()) / 86400000)
-  })()
-  const showBadges = appAge >= 1 || Object.keys(visitedTabs).length > 3
-  const badges = {
-    recovery: showBadges && !hasRecoveryToday && !visitedTabs.recovery_today,
-    profile:  (onboarded && isProfileIncomplete) || coachUnreadBadge > 0,
-    log:      false,
-  }
-
-  useEffect(() => {
-    if (!onboarded && profile && profile.name) setOnboarded(true)
-  }, [])
-
-  useEffect(() => {
-    try {
-      const msgs = JSON.parse(localStorage.getItem('sporeus-coach-messages')) || []
-      setCoachUnreadBadge(msgs.filter(m => m.from === 'coach' && !m.read).length)
-    } catch {}
-  }, [tab])
-
-  useEffect(() => {
-    if (!visitedTabs._firstVisit) {
-      setVisitedTabs(v => ({ ...v, _firstVisit: new Date().toISOString() }))
-    }
-  }, [])
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const coachParam = params.get('coach')
-    if (!coachParam) return
-    if (coachParam !== 'huseyin-sporeus' && !coachParam.startsWith('SP-')) return
-    try {
-      const current = localStorage.getItem('sporeus-my-coach')
-      if (current !== coachParam) {
-        localStorage.setItem('sporeus-my-coach', coachParam)
-        const coachLabel = coachParam === 'huseyin-sporeus' ? 'Hüseyin Akbulut' : coachParam
-        setCoachToast(`◉ Connected to coach ${coachLabel} — go to Profile to send your data.`)
-        clearTimeout(coachToastTimer.current)
-        coachToastTimer.current = setTimeout(() => setCoachToast(''), 6000)
-      }
-      const url = new URL(window.location.href)
-      url.searchParams.delete('coach')
-      window.history.replaceState({}, '', url.toString())
-    } catch {}
-  }, [])
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
-  }, [dark])
-
-  // Offline sync queue — init once on mount
-  useEffect(() => {
-    initOfflineSync()
-    const unsub = onSyncStatusChange(setSyncStatus)
-    return unsub
-  }, [])
-
-  // Race countdown check on load (only if permission already granted)
-  useEffect(() => {
-    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-      checkRaceCountdowns()
-      checkSubscriptionExpiry(authUser?.id)
-    }
-  }, [authUser?.id])
-
-  // Session reminders — reschedule on load if enabled
-  useEffect(() => {
-    if (typeof Notification === 'undefined') return
-    if (Notification.permission !== 'granted') return
-    const s = getReminderSettings()
-    if (s.enabled) scheduleSessionReminder({ hour: s.hour })
-  }, [])
-
-  // Device sync — auto-trigger if last sync > 4h ago
-  useEffect(() => {
-    if (!authUser || !isSupabaseReady()) return
-    const SYNC_KEY = 'sporeus-last-device-sync'
-    const lastSync = parseInt(localStorage.getItem(SYNC_KEY) || '0', 10)
-    const fourHours = 4 * 60 * 60 * 1000
-    if (Date.now() - lastSync < fourHours) return
-    triggerSync().then(() => {
-      try { localStorage.setItem(SYNC_KEY, String(Date.now())) } catch {}
-    }).catch(() => {})
-  }, [authUser])
-
-  // ACWR spike notification — fires when log changes and ratio exceeds 1.3
-  useEffect(() => {
-    const { ratio } = calculateACWR(log)
-    if (ratio === null || ratio <= 1.3) return
-    const FLAG_KEY = 'sporeus-acwr-notif-date'
-    const today2 = new Date().toISOString().slice(0, 10)
-    try {
-      if (localStorage.getItem(FLAG_KEY) === today2) return
-      localStorage.setItem(FLAG_KEY, today2)
-    } catch {}
-    addNotification(
-      'warning',
-      'High Load Warning',
-      `ACWR is ${ratio.toFixed(2)} — above 1.3. Consider an easy day to reduce injury risk.`,
-      { tab: 'today' }
-    )
-  }, [log])
-
-  useEffect(() => {
-    if (!('serviceWorker' in navigator)) return
-    navigator.serviceWorker.ready.then(reg => {
-      reg.addEventListener('updatefound', () => {
-        const nw = reg.installing
-        if (!nw) return
-        nw.addEventListener('statechange', () => {
-          if (nw.state === 'installed' && navigator.serviceWorker.controller) setSwUpdateReady(true)
-        })
-      })
-    }).catch(() => {})
-  }, [])
-
-  useEffect(() => {
-    if (prevLogLen.current === 0 && log.length >= 1) {
-      setFirstSessionToast(true)
-      clearTimeout(firstSessionTimer.current)
-      firstSessionTimer.current = setTimeout(() => setFirstSessionToast(false), 6000)
-    }
-    prevLogLen.current = log.length
-  }, [log.length])
-
-  // ── Sunday weekly digest notification ──────────────────────────────────────
-  useEffect(() => {
-    if (!log || log.length < 5) return
-    const now = new Date()
-    if (now.getDay() !== 0) return // 0 = Sunday
-    const todayStr = now.toISOString().slice(0, 10)
-    const FLAG_KEY = `sporeus-weekly-digest-notif-${todayStr}`
-    try {
-      if (localStorage.getItem(FLAG_KEY)) return
-      localStorage.setItem(FLAG_KEY, '1')
-    } catch {}
-    const sevenAgo = new Date(now); sevenAgo.setDate(sevenAgo.getDate() - 7)
-    const weekStr = sevenAgo.toISOString().slice(0, 10)
-    const weekSessions = log.filter(e => e.date >= weekStr && e.date <= todayStr)
-    if (weekSessions.length === 0) return
-    const totalTSS = weekSessions.reduce((s, e) => s + (e.tss || 0), 0)
-    const { ratio: acwr } = calculateACWR(log)
-    addNotification(
-      'analytics',
-      lang === 'tr' ? 'Haftalık Özet' : 'Weekly Summary',
-      `${weekSessions.length} session${weekSessions.length !== 1 ? 's' : ''} · ${Math.round(totalTSS)} TSS · ACWR ${acwr ? acwr.toFixed(2) : '—'}`,
-      { tab: 'dashboard' }
-    )
-  }, [])  // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Global keyboard shortcuts ───────────────────────────────────────────────
-  useEffect(() => {
-    const TAB_KEYS = { '1':'today','2':'dashboard','3':'log','4':'recovery','5':'profile','6':'zones','7':'tests' }
-    const isInputFocused = () => {
-      const el = document.activeElement
-      return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)
-    }
-    const handler = e => {
-      // Ctrl/Cmd+K = search palette
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault()
-        setShowSearch(s => !s)
-        return
-      }
-      // Escape closes any overlay
-      if (e.key === 'Escape') {
-        setShowSearch(false)
-        setShowQuickAdd(false)
-        setShowShortcutsHelp(false)
-        return
-      }
-      // Skip if typing in an input
-      if (isInputFocused()) return
-      // ? = shortcuts help
-      if (e.key === '?') { e.preventDefault(); setShowShortcutsHelp(s => !s); return }
-      // + = quick-add session
-      if (e.key === '+' || e.key === 'a') { e.preventDefault(); setShowQuickAdd(true); return }
-      // 1-7 = tab navigation
-      if (TAB_KEYS[e.key]) { e.preventDefault(); handleTabClick(TAB_KEYS[e.key]); return }
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [])  // eslint-disable-line react-hooks/exhaustive-deps
-
-  function handleTabClick(tabId) {
-    setTab(tabId)
-    if (tabId === 'recovery') {
-      setVisitedTabs(v => ({ ...v, recovery_today: today }))
-    }
-  }
-
-  const finishOnboarding = (data) => {
-    if (data) setProfile(prev => ({ ...prev, ...data }))
-    setOnboarded(true)
-  }
-
-  const t = useCallback(key => {
-    const val = LABELS[lang]?.[key] ?? LABELS.en?.[key] ?? key
-    if (import.meta.env.DEV && !LABELS[lang]?.[key] && !LABELS.en?.[key]) {
-      console.warn(`[i18n] Missing translation: ${key} (${lang})`)
-    }
-    return val
-  }, [lang])
+  const {
+    log, setLog,
+    profile, setProfile,
+    tab, handleTabClick,
+    showSearch, setShowSearch,
+    showQuickAdd, setShowQuickAdd,
+    showShortcutsHelp, setShowShortcutsHelp,
+    inviteCode, setInviteCode,
+    handleConsentGrant,
+    coachMode,
+    logPrefill, setLogPrefill,
+    quotaWarn, dismissQuotaWarn,
+    onboarded,
+    swUpdateReady, setSwUpdateReady,
+    coachToast, setCoachToast,
+    stravaToast, setStravaToast,
+    firstSessionToast, setFirstSessionToast,
+    syncStatus,
+    badges, isGuest, isFirstSession,
+    finishOnboarding, t, handleExport, handleAddSession,
+  } = useAppState({ lang, setLang, dark, setDark, authUser, authProfile, signOut })
 
   const now = new Date()
   const timeStr = now.toLocaleTimeString('tr-TR', { hour:'2-digit', minute:'2-digit' })
@@ -368,21 +95,13 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
 
       {showSearch && (
         <SearchPalette
-          onNavigate={tabId => { setTab(tabId); setShowSearch(false) }}
+          onNavigate={tabId => { handleTabClick(tabId); setShowSearch(false) }}
           onToggleDark={() => setDark(d => !d)}
           onToggleLang={() => setLang(l => l === 'en' ? 'tr' : 'en')}
           onClose={() => setShowSearch(false)}
           log={log}
           onSync={() => flushQueue()}
-          onExport={() => {
-            try {
-              const blob = new Blob([JSON.stringify(exportAllData(), null, 2)], { type: 'application/json' })
-              const url  = URL.createObjectURL(blob)
-              const a    = document.createElement('a')
-              a.href = url; a.download = `sporeus-export-${new Date().toISOString().slice(0,10)}.json`; a.click()
-              URL.revokeObjectURL(url)
-            } catch {}
-          }}
+          onExport={handleExport}
         />
       )}
 
@@ -411,7 +130,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
               {lang === 'tr' ? 'Onayı istediğiniz zaman Profil → Gizlilik bölümünden geri çekebilirsiniz.' : 'You may withdraw consent at any time from Profile → Privacy.'}
             </div>
             <button
-              onClick={() => { grantConsent(); setConsentGiven(true); if (authUser?.id) logConsent(authUser.id, 'data_processing', '1.1') }}
+              onClick={handleConsentGrant}
               style={{ width:'100%', padding:'12px', background:'#ff6600', border:'none', color:'#fff', fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:700, letterSpacing:'0.08em', borderRadius:'4px', cursor:'pointer' }}
             >
               {lang === 'tr' ? 'KABUL EDİYORUM — DEVAM ET' : 'I CONSENT — CONTINUE'}
@@ -514,7 +233,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
       {quotaWarn && (
         <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:10000, background:'#e03030', color:'#fff', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'8px 20px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           ⚠ Storage full — some data may not save. Export your training log.
-          <button onClick={() => { setQuotaWarn(false); try{localStorage.removeItem(STORAGE_WARN_KEY)}catch{} }} style={{ background:'none', border:'1px solid #fff', color:'#fff', padding:'2px 8px', cursor:'pointer', fontFamily:'inherit', fontSize:'10px' }}>✕</button>
+          <button onClick={dismissQuotaWarn} style={{ background:'none', border:'1px solid #fff', color:'#fff', padding:'2px 8px', cursor:'pointer', fontFamily:'inherit', fontSize:'10px' }}>✕</button>
         </div>
       )}
 
@@ -540,7 +259,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
                 boxShadow: syncStatus === 'syncing' ? '0 0 6px #f5c54299' : 'none',
               }}
             />
-            <NotificationBell onNavigate={setTab} />
+            <NotificationBell onNavigate={handleTabClick} />
             <button
               onClick={() => setShowQuickAdd(true)}
               title={`${lang === 'tr' ? 'Hızlı Antrenman Kaydet' : 'Quick Log Session'} (+)`}
@@ -616,7 +335,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
             </>
           )}
           {coachMode && authProfile?.role !== 'coach' && <AsyncBoundary name="Coach Mode"><CoachDashboard authUser={authUser}/></AsyncBoundary>}
-          {!coachMode && tab === 'today'        && <AsyncBoundary name="Today"><TodayView log={log} profile={profile} setTab={setTab} setLogPrefill={setLogPrefill}/></AsyncBoundary>}
+          {!coachMode && tab === 'today'        && <AsyncBoundary name="Today"><TodayView log={log} profile={profile} setTab={handleTabClick} setLogPrefill={setLogPrefill}/></AsyncBoundary>}
           {!coachMode && tab === 'dashboard'    && <AsyncBoundary name="Dashboard"><Dashboard log={log} profile={profile}/></AsyncBoundary>}
           {tab === 'zones'        && <AsyncBoundary name="Zone Calc"><ZoneCalc/></AsyncBoundary>}
           {tab === 'tests'        && <AsyncBoundary name="Protocols"><TestProtocols/></AsyncBoundary>}
@@ -640,7 +359,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
       {/* ── Quick-Add Session modal ───────────────────────────────────────── */}
       {showQuickAdd && (
         <QuickAddModal
-          onAdd={entry => setLog(prev => [...prev, sanitizeLogEntry(entry)])}
+          onAdd={handleAddSession}
           onClose={() => setShowQuickAdd(false)}
         />
       )}
@@ -687,7 +406,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
 // ─── App — thin shell: auth + providers ──────────────────────────────────────
 export default function App() {
   const [lang, setLang] = useLocalStorage('sporeus-lang', 'en')
-  const [dark, setDark] = useLocalStorage('sporeus-dark', false)
+  const [dark, setDark] = useLocalStorage('sporeus-dark', true)
   const { user, profile: authProfile, loading, signOut, refreshProfile } = useAuth()
 
   const userId = isSupabaseReady() ? (user?.id ?? null) : null

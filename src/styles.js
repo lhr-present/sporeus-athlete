@@ -9,6 +9,11 @@ export const ANIM_CSS = `
   @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 ${COLOR.orange}66} 70%{box-shadow:0 0 0 6px ${COLOR.orange}00} }
   .sp-tab-pulse { animation:pulse 1.6s ease-out infinite }
   @keyframes sp-dot { 0%,80%,100%{opacity:0.2;transform:scale(0.8)} 40%{opacity:1;transform:scale(1.2)} }
+  @media (prefers-reduced-motion: reduce) {
+    .sp-fade, .sp-card { animation-duration:0.01ms !important }
+    .sp-tab-pulse { animation:none !important }
+    * { transition-duration:0.01ms !important }
+  }
   :root {
     --bg:#ffffff; --text:#1a1a1a; --card:#ffffff; --card-bg:#f8f8f8;
     --border:#e0e0e0; --muted:#888; --sub:#555; --surface:#fafafa;
