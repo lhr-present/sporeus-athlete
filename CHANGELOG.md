@@ -2,6 +2,37 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v7.0.0 (2026-04-16)
+System enhancement sprint — Team Announcements, Quick-Add session, keyboard shortcuts, Sunday digest notification.
+
+**Team Announcements** (Tier 4 complete)
+- Migration `20260417_team_announcements.sql` already applied (BIGSERIAL id, message≤280, read_by UUID[])
+- `src/lib/db/teamAnnouncements.js` — getAnnouncements, postAnnouncement, deleteAnnouncement, filterUnread, markLocalRead, markAllLocalRead
+- `src/components/TeamAnnouncements.jsx` — coach compose/manage view + athlete read view with unread badges
+- Wired into CoachDashboard (below SessionManager, only when sbCoachId set)
+- Wired into TodayView (below upcoming sessions, only when athlete has connected coach)
+- 8 new tests in `teamAnnouncements.test.js`
+
+**Quick-Add Session** (`src/components/QuickAddModal.jsx`)
+- Orange `+` button in header, or press `+` / `a` keyboard shortcut
+- Session type dropdown (all SESSION_TYPES_BY_DISCIPLINE), duration input, RPE 1–10 slider
+- Auto-shows estimated TSS via calcTSS(dur, rpe); adds sanitized entry to log on submit
+- Fires a 'training' notification on save; Escape or click-outside to dismiss
+- Bilingual (EN/TR via LangCtx)
+
+**Sunday Weekly Digest Notification** (`src/App.jsx`)
+- Every Sunday on first app load, computes 7-day session count + total TSS + ACWR
+- Pushes `addNotification('analytics', 'Weekly Summary', ...)` once per Sunday (flag: `sporeus-weekly-digest-notif-{date}`)
+- Requires ≥5 sessions in log to fire
+
+**Keyboard Shortcuts** (`src/App.jsx`)
+- `1`–`7` navigates to tabs (Today/Dashboard/Log/Recovery/Profile/Zones/Tests)
+- `+` / `a` opens Quick-Add modal
+- `?` opens shortcuts help overlay (table listing all shortcuts)
+- `Ctrl+K` opens search palette (existing, now documented)
+- `Escape` closes any overlay
+- Hint in footer: `? = shortcuts · + = quick log · Ctrl+K = search`
+
 ## v6.9.3 (2026-04-16)
 Remove Telegram dependency, replace with in-app notification center.
 

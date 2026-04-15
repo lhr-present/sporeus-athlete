@@ -125,6 +125,19 @@ export const LABELS = {
     squadColAdherence: 'ADHERENCE', squadColStatus: 'STATUS',
     squadColFlag: 'FLAG', squadColMsg: 'MSG', squadColCompare: 'CMP',
     weeklyRecapDismiss: '[dismiss]', weeklyRecapLabel: 'WK',
+    // Team Announcements
+    teamAnnTitle: 'TEAM ANNOUNCEMENTS', teamAnnPost: 'Post', teamAnnPlaceholder: 'Write an announcement to your squad… (max 280 chars)',
+    teamAnnMarkAllRead: 'Mark all read', teamAnnUnread: 'unread', teamAnnNone: 'No announcements yet.',
+    teamAnnNoneAthlete: 'No announcements from your coach yet.',
+    // Quick-Add Session
+    quickAddTitle: 'QUICK LOG SESSION', quickAddSport: 'SPORT', quickAddDuration: 'DURATION (min)',
+    quickAddRpe: 'RPE (1–10)', quickAddNotes: 'NOTES (optional)', quickAddSave: '+ LOG',
+    quickAddCancel: 'Cancel', quickAddEstTss: 'Est. TSS',
+    // Keyboard shortcuts
+    shortcutsTitle: 'KEYBOARD SHORTCUTS', shortcutsClose: 'Close',
+    shortcutsNav: 'Navigation', shortcutsActions: 'Actions',
+    // Weekly digest notification
+    weeklyDigestNotifTitle: 'Weekly Summary',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -249,6 +262,19 @@ export const LABELS = {
     squadColAdherence: 'UYUM', squadColStatus: 'DURUM',
     squadColFlag: 'İŞARET', squadColMsg: 'MESAJ', squadColCompare: 'KRŞ',
     weeklyRecapDismiss: '[kapat]', weeklyRecapLabel: 'HF',
+    // Team Announcements
+    teamAnnTitle: 'TAKIM DUYURULARI', teamAnnPost: 'Yayınla', teamAnnPlaceholder: 'Takıma duyuru yaz… (maks. 280 karakter)',
+    teamAnnMarkAllRead: 'Tümünü oku', teamAnnUnread: 'okunmamış', teamAnnNone: 'Henüz duyuru yok.',
+    teamAnnNoneAthlete: 'Antrenörünüzden henüz duyuru yok.',
+    // Quick-Add Session
+    quickAddTitle: 'HIZLI ANTRENMAN KAYDET', quickAddSport: 'SPOR', quickAddDuration: 'SÜRE (dak)',
+    quickAddRpe: 'ZY (1–10)', quickAddNotes: 'NOT (opsiyonel)', quickAddSave: '+ KAYDET',
+    quickAddCancel: 'İptal', quickAddEstTss: 'Tahmini TSS',
+    // Keyboard shortcuts
+    shortcutsTitle: 'KLAVYE KISAYOLLARI', shortcutsClose: 'Kapat',
+    shortcutsNav: 'Gezinme', shortcutsActions: 'Eylemler',
+    // Weekly digest notification
+    weeklyDigestNotifTitle: 'Haftalık Özet',
   }
 }
 

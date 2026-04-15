@@ -20,6 +20,7 @@ import SessionManager from './coach/SessionManager.jsx'
 import SquadBenchmarkTable from './coach/SquadBenchmarkTable.jsx'
 import { calcCompliancePct } from '../lib/sport/squadBenchmark.js'
 import { getTierSync, isFeatureGated } from '../lib/subscription.js'
+import TeamAnnouncements from './TeamAnnouncements.jsx'
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -410,6 +411,9 @@ export default function CoachDashboard({ authUser }) {
           <SessionManager coachId={sbCoachId} />
         </div>
       )}
+
+      {/* Team Announcements — coach broadcast */}
+      {sbCoachId && <TeamAnnouncements coachId={sbCoachId} isCoach={true} />}
 
       {/* Plan Templates */}
       <PlanDistribution templates={templates} setTemplates={setTemplates} onApply={applyTemplate}/>

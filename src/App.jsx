@@ -30,6 +30,8 @@ import { addNotification } from './lib/notificationCenter.js'
 import NotificationBell from './components/NotificationBell.jsx'
 import { calculateACWR } from './lib/trainingLoad.js'
 import { detectLocalData } from './lib/dataMigration.js'
+import QuickAddModal from './components/QuickAddModal.jsx'
+import { sanitizeLogEntry } from './lib/validate.js'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 const CoachDashboard  = lazy(() => import('./components/CoachDashboard.jsx'))
 const CoachOverview   = lazy(() => import('./components/CoachOverview.jsx'))
@@ -120,6 +122,8 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
   const [swUpdateReady, setSwUpdateReady] = useState(false)
   const [coachToast, setCoachToast] = useState('')
   const [showSearch, setShowSearch] = useState(false)
+  const [showQuickAdd, setShowQuickAdd] = useState(false)
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
   const [firstSessionToast, setFirstSessionToast] = useState(false)
   const [syncStatus, setSyncStatus] = useState(() => getSyncStatus())
   const [coachUnreadBadge, setCoachUnreadBadge] = useState(0)
@@ -261,17 +265,64 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
     prevLogLen.current = log.length
   }, [log.length])
 
+  // ── Sunday weekly digest notification ──────────────────────────────────────
   useEffect(() => {
+    if (!log || log.length < 5) return
+    const now = new Date()
+    if (now.getDay() !== 0) return // 0 = Sunday
+    const todayStr = now.toISOString().slice(0, 10)
+    const FLAG_KEY = `sporeus-weekly-digest-notif-${todayStr}`
+    try {
+      if (localStorage.getItem(FLAG_KEY)) return
+      localStorage.setItem(FLAG_KEY, '1')
+    } catch {}
+    const sevenAgo = new Date(now); sevenAgo.setDate(sevenAgo.getDate() - 7)
+    const weekStr = sevenAgo.toISOString().slice(0, 10)
+    const weekSessions = log.filter(e => e.date >= weekStr && e.date <= todayStr)
+    if (weekSessions.length === 0) return
+    const totalTSS = weekSessions.reduce((s, e) => s + (e.tss || 0), 0)
+    const { ratio: acwr } = calculateACWR(log)
+    addNotification(
+      'analytics',
+      lang === 'tr' ? 'Haftalık Özet' : 'Weekly Summary',
+      `${weekSessions.length} session${weekSessions.length !== 1 ? 's' : ''} · ${Math.round(totalTSS)} TSS · ACWR ${acwr ? acwr.toFixed(2) : '—'}`,
+      { tab: 'dashboard' }
+    )
+  }, [])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Global keyboard shortcuts ───────────────────────────────────────────────
+  useEffect(() => {
+    const TAB_KEYS = { '1':'today','2':'dashboard','3':'log','4':'recovery','5':'profile','6':'zones','7':'tests' }
+    const isInputFocused = () => {
+      const el = document.activeElement
+      return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)
+    }
     const handler = e => {
+      // Ctrl/Cmd+K = search palette
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault()
         setShowSearch(s => !s)
+        return
       }
-      if (e.key === 'Escape') setShowSearch(false)
+      // Escape closes any overlay
+      if (e.key === 'Escape') {
+        setShowSearch(false)
+        setShowQuickAdd(false)
+        setShowShortcutsHelp(false)
+        return
+      }
+      // Skip if typing in an input
+      if (isInputFocused()) return
+      // ? = shortcuts help
+      if (e.key === '?') { e.preventDefault(); setShowShortcutsHelp(s => !s); return }
+      // + = quick-add session
+      if (e.key === '+' || e.key === 'a') { e.preventDefault(); setShowQuickAdd(true); return }
+      // 1-7 = tab navigation
+      if (TAB_KEYS[e.key]) { e.preventDefault(); handleTabClick(TAB_KEYS[e.key]); return }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [])
+  }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleTabClick(tabId) {
     setTab(tabId)
@@ -491,6 +542,12 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
             />
             <NotificationBell onNavigate={setTab} />
             <button
+              onClick={() => setShowQuickAdd(true)}
+              title={`${lang === 'tr' ? 'Hızlı Antrenman Kaydet' : 'Quick Log Session'} (+)`}
+              style={{ ...S.mono, fontSize:'14px', fontWeight:700, padding:'3px 10px', borderRadius:'3px', border:'1px solid #ff6600', background:'transparent', color:'#ff6600', cursor:'pointer', lineHeight:1 }}>
+              +
+            </button>
+            <button
               onClick={() => setShowSearch(true)}
               title="Search features (Ctrl+K)"
               style={{ ...S.mono, fontSize:'12px', padding:'4px 8px', borderRadius:'3px', border:'1px solid #444', background:'transparent', color:'#888', cursor:'pointer', letterSpacing:'0.06em' }}>
@@ -573,9 +630,56 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
         </main>
 
         <footer style={S.footer}>
-          SPOREUS ATHLETE CONSOLE v6.1.0 · SPOREUS.COM
+          SPOREUS ATHLETE CONSOLE v7.0.0 · SPOREUS.COM
+          <span style={{ marginLeft:'12px', color:'#333', fontSize:'9px', letterSpacing:'0.06em' }}>
+            ? = shortcuts · + = quick log · Ctrl+K = search
+          </span>
         </footer>
       </div>
+
+      {/* ── Quick-Add Session modal ───────────────────────────────────────── */}
+      {showQuickAdd && (
+        <QuickAddModal
+          onAdd={entry => setLog(prev => [...prev, sanitizeLogEntry(entry)])}
+          onClose={() => setShowQuickAdd(false)}
+        />
+      )}
+
+      {/* ── Keyboard Shortcuts Help ───────────────────────────────────────── */}
+      {showShortcutsHelp && (
+        <div
+          onClick={() => setShowShortcutsHelp(false)}
+          style={{ position:'fixed', inset:0, zIndex:9600, background:'rgba(0,0,0,0.65)', display:'flex', alignItems:'center', justifyContent:'center', padding:'16px' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background:'var(--card-bg,#111)', border:'1px solid var(--border)', borderRadius:'4px', padding:'20px 24px', maxWidth:'380px', width:'100%', fontFamily:"'IBM Plex Mono',monospace" }}
+          >
+            <div style={{ fontSize:'11px', fontWeight:700, color:'#ff6600', letterSpacing:'0.1em', marginBottom:'16px' }}>
+              ⌨ {lang === 'tr' ? 'KLAVYE KISAYOLLARI' : 'KEYBOARD SHORTCUTS'}
+            </div>
+            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'11px' }}>
+              <tbody>
+                {[
+                  ['1–7', lang === 'tr' ? 'Sekmelere git (1=Bugün…7=Test)' : 'Navigate tabs (1=Today…7=Tests)'],
+                  ['+  /  a', lang === 'tr' ? 'Hızlı antrenman kaydet' : 'Quick log session'],
+                  ['Ctrl+K', lang === 'tr' ? 'Arama paletini aç' : 'Open search palette'],
+                  ['?', lang === 'tr' ? 'Bu yardımı göster' : 'Show this help'],
+                  ['Esc', lang === 'tr' ? 'Tüm panelleri kapat' : 'Close any panel'],
+                ].map(([key, desc]) => (
+                  <tr key={key} style={{ borderBottom:'1px solid var(--border)' }}>
+                    <td style={{ padding:'6px 0', paddingRight:'16px', color:'#ff6600', fontWeight:700, whiteSpace:'nowrap' }}>{key}</td>
+                    <td style={{ padding:'6px 0', color:'var(--text)' }}>{desc}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <button onClick={() => setShowShortcutsHelp(false)} style={{ marginTop:'14px', ...S.btnSec, fontSize:'11px', padding:'6px 14px' }}>
+              {lang === 'tr' ? 'Kapat' : 'Close'}
+            </button>
+          </div>
+        </div>
+      )}
     </LangCtx.Provider>
   )
 }

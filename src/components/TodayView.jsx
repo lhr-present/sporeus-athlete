@@ -9,6 +9,7 @@ import { WELLNESS_FIELDS } from '../lib/constants.js'
 import { hasUnread } from './CoachMessage.jsx'
 import { getMyCoach } from '../lib/inviteUtils.js'
 import { getUpcomingSessions, upsertAttendance } from '../lib/db/coachSessions.js'
+import TeamAnnouncements from './TeamAnnouncements.jsx'
 import { supabase } from '../lib/supabase.js'
 import { getRecommendedProtocols } from '../lib/recoveryProtocols.js'
 
@@ -106,9 +107,10 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
   const todayRec = (recovery || []).find(e => e.date === today)
 
   // Coach message unread count (athlete reads from localStorage)
-  // Coach sessions RSVP
+  // Coach sessions RSVP + announcements
   const [coachSessions, setCoachSessions] = useState([])
   const [rsvpBusy, setRsvpBusy]           = useState({}) // { [sessionId]: true }
+  const [myCoachId, setMyCoachId]          = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -118,6 +120,7 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
       if (!athleteId) return
       const coachId = await getMyCoach(supabase, athleteId)
       if (!coachId || cancelled) return
+      if (!cancelled) setMyCoachId(coachId)
       const { data } = await getUpcomingSessions(coachId, 14)
       if (!cancelled && data) setCoachSessions(data)
     }
@@ -792,6 +795,9 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
           })}
         </div>
       )}
+
+      {/* ── Team Announcements (athlete view, only when connected to coach) ── */}
+      {myCoachId && <TeamAnnouncements coachId={myCoachId} isCoach={false} />}
 
       {/* ── RESTQ-Sport nudge ─────────────────────────────────────────────── */}
       {restqDue && (
