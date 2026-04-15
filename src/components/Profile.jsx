@@ -4,7 +4,7 @@ import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { ACTIVITY_MULTS, SPORT_BRANCHES, TRIATHLON_TYPES, ATHLETE_LEVELS } from '../lib/constants.js'
-import { navyBF, mifflinBMR, calcLoad, generateUnlockCode, FREE_ATHLETE_LIMIT } from '../lib/formulas.js'
+import { mifflinBMR, generateUnlockCode, FREE_ATHLETE_LIMIT } from '../lib/formulas.js'
 import { sanitizeProfile } from '../lib/validate.js'
 import { exportAllData, importAllData } from '../lib/storage.js'
 import { exportAthleteData, deleteAthleteData, triggerDownload } from '../lib/gdprExport.js'
@@ -21,6 +21,9 @@ import ActivityHeatmap from './ActivityHeatmap.jsx'
 import StravaConnect from './profile/StravaConnect.jsx'
 import NotifReminders from './profile/NotifReminders.jsx'
 import WeightHydration from './profile/WeightHydration.jsx'
+import BodyComp from './profile/BodyComp.jsx'
+import AthleteCard from './profile/AthleteCard.jsx'
+import CoachMessagesCard, { countUnreadCoachMessages } from './profile/CoachMessagesCard.jsx'
 import { clearInsightCache } from '../lib/aiPrompts.js'
 import { generateReferralCode, getReferralStats } from '../lib/referral.js'
 import Achievements from './Achievements.jsx'
@@ -240,95 +243,6 @@ function HuseyinCoachCard() {
   )
 }
 
-function BodyComp({ profile, setProfile }) {
-  const { t } = useContext(LangCtx)
-  const [gender, setGender] = useState(profile.gender||'male')
-  const [neck,   setNeck]   = useState(profile.neck||'')
-  const [waist,  setWaist]  = useState(profile.waist||'')
-  const [hip,    setHip]    = useState(profile.hip||'')
-  const [result, setResult] = useState(null)
-  const [compErr, setCompErr] = useState('')
-
-  const calc = () => {
-    setCompErr('')
-    const h=parseFloat(profile.height||0), w=parseFloat(profile.weight||0)
-    const n=parseFloat(neck), wa=parseFloat(waist), hi=parseFloat(hip)
-    const missing = []
-    if (!h) missing.push('height (in profile)')
-    if (!w) missing.push('weight (in profile)')
-    if (!n) missing.push('neck')
-    if (!wa) missing.push('waist')
-    if (gender==='female'&&!hi) missing.push('hip')
-    if (missing.length) { setCompErr(`Missing: ${missing.join(', ')}`); return }
-    const bf = navyBF(n, wa, hi, h, gender)
-    const fat = Math.round(w * bf / 100 * 10) / 10
-    const lean = Math.round((w - fat) * 10) / 10
-    const bmi = Math.round(w / Math.pow(h/100, 2) * 10) / 10
-    setResult({ bf, fat, lean, bmi, leanPct: Math.round(lean/w*100) })
-    setProfile(prev => ({ ...prev, gender, neck:String(n), waist:String(wa), hip:String(hi) }))
-  }
-
-  return (
-    <div>
-      <div style={S.row}>
-        <div style={{ flex:'1 1 120px' }}>
-          <label style={S.label}>{t('genderL')}</label>
-          <select style={S.select} value={gender} onChange={e=>setGender(e.target.value)}>
-            <option value="male">Male / Erkek</option>
-            <option value="female">Female / Kadın</option>
-          </select>
-        </div>
-        <div style={{ flex:'1 1 100px' }}>
-          <label style={S.label}>{t('neckL')}</label>
-          <input style={S.input} type="number" placeholder="37" value={neck} onChange={e=>setNeck(e.target.value)}/>
-        </div>
-        <div style={{ flex:'1 1 100px' }}>
-          <label style={S.label}>{t('waistL')}</label>
-          <input style={S.input} type="number" placeholder="82" value={waist} onChange={e=>setWaist(e.target.value)}/>
-        </div>
-        {gender==='female' && (
-          <div style={{ flex:'1 1 100px' }}>
-            <label style={S.label}>{t('hipL')}</label>
-            <input style={S.input} type="number" placeholder="98" value={hip} onChange={e=>setHip(e.target.value)}/>
-          </div>
-        )}
-      </div>
-      <div style={{ ...S.mono, fontSize:'10px', color:'#aaa', marginTop:'6px', marginBottom:'12px' }}>
-        Uses HEIGHT & WEIGHT from profile above.
-      </div>
-      <button style={S.btn} onClick={calc}>{t('calcCompBtn')}</button>
-      {compErr && <div style={{ ...S.mono, fontSize:'11px', color:'#e03030', marginTop:'8px' }}>⚠ {compErr}</div>}
-      {result && (
-        <div style={{ marginTop:'16px' }}>
-          <div style={S.row}>
-            {[
-              {l:t('bfPctL'), v:`${result.bf}%`, c:'#f08c00'},
-              {l:t('leanMassL'), v:`${result.lean} kg`, c:'#5bc25b'},
-              {l:t('fatMassL'), v:`${result.fat} kg`, c:'#e03030'},
-              {l:t('bmiLbl'), v:result.bmi, c:'#4a90d9'},
-            ].map(({l,v,c})=>(
-              <div key={l} style={{ ...S.stat, flex:'1 1 90px' }}>
-                <span style={{ ...S.statVal, color:c, fontSize:'18px' }}>{v}</span>
-                <span style={S.statLbl}>{l}</span>
-              </div>
-            ))}
-          </div>
-          <div style={{ marginTop:'12px' }}>
-            <div style={{ ...S.mono, fontSize:'10px', color:'#888', marginBottom:'4px' }}>LEAN vs FAT</div>
-            <div style={{ display:'flex', height:'10px', borderRadius:'3px', overflow:'hidden', background:'var(--border)' }}>
-              <div style={{ width:`${result.leanPct}%`, background:'#5bc25b', transition:'width 400ms ease-out' }}/>
-              <div style={{ width:`${100-result.leanPct}%`, background:'#f08c00' }}/>
-            </div>
-            <div style={{ display:'flex', justifyContent:'space-between', ...S.mono, fontSize:'9px', color:'#aaa', marginTop:'3px' }}>
-              <span>Lean {result.leanPct}%</span><span>Fat {100-result.leanPct}%</span>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
 function NutritionEstimator({ profile }) {
   const { t } = useContext(LangCtx)
   const [actIdx, setActIdx] = useState(2)
@@ -472,86 +386,6 @@ function TrainingAgeCard({ log, profile }) {
   )
 }
 
-function AthleteCard({ profile, log }) {
-  const { t } = useContext(LangCtx)
-  const [status, setStatus] = useState(null)
-  const last28 = log.slice(-28)
-  const totalH = Math.round(last28.reduce((s,e)=>s+(e.duration||0),0)/60)
-  const sessions28 = last28.length
-  const avgRPE28 = sessions28 ? (last28.reduce((s,e)=>s+(e.rpe||0),0)/sessions28).toFixed(1) : '—'
-  const { tsb } = calcLoad(log)
-
-  const downloadCard = async () => {
-    let fm = 'monospace'
-    try {
-      const f = new FontFace('IBM Plex Mono','url(https://fonts.gstatic.com/s/ibmplexmono/v19/-F63fjptAgt5VM-kVkqdyU8n5iQ.woff2)')
-      await f.load(); document.fonts.add(f); fm = '"IBM Plex Mono"'
-    } catch {}
-    const c = document.createElement('canvas')
-    c.width=400; c.height=580
-    const ctx = c.getContext('2d')
-    ctx.fillStyle='#0a0a0a'; ctx.fillRect(0,0,400,580)
-    ctx.fillStyle='#ff6600'; ctx.fillRect(0,0,400,4)
-    ctx.fillStyle='#ff6600'; ctx.font=`bold 22px ${fm}`; ctx.fillText(profile.name||'ATHLETE',24,52)
-    ctx.fillStyle='#888'; ctx.font=`12px ${fm}`; ctx.fillText((profile.sport||'ENDURANCE').toUpperCase(),24,72)
-    ctx.strokeStyle='#333'; ctx.beginPath(); ctx.moveTo(24,85); ctx.lineTo(376,85); ctx.stroke()
-    const stats=[
-      ['VO₂max',profile.vo2max?`${profile.vo2max} mL/kg/min`:'—'],
-      ['FTP',profile.ftp?`${profile.ftp}W`:'—'],
-      ['Max HR',profile.maxhr?`${profile.maxhr} bpm`:'—'],
-      ['Age',profile.age||'—'],
-    ]
-    stats.forEach(([l,v],i)=>{
-      const x=24+(i%2)*190, y=130+Math.floor(i/2)*70
-      ctx.fillStyle='#888'; ctx.font=`10px ${fm}`; ctx.fillText(l.toUpperCase(),x,y-14)
-      ctx.fillStyle='#ff6600'; ctx.font=`bold 20px ${fm}`; ctx.fillText(String(v),x,y)
-    })
-    ctx.strokeStyle='#333'; ctx.beginPath(); ctx.moveTo(24,290); ctx.lineTo(376,290); ctx.stroke()
-    ctx.fillStyle='#888'; ctx.font=`10px ${fm}`; ctx.fillText('4-WEEK SUMMARY',24,314)
-    const sums=[['HOURS',`${totalH}h`],['SESSIONS',sessions28],['AVG RPE',avgRPE28]]
-    sums.forEach(([l,v],i)=>{
-      const x=24+i*120
-      ctx.fillStyle='#e5e5e5'; ctx.font=`bold 18px ${fm}`; ctx.fillText(String(v),x,348)
-      ctx.fillStyle='#888'; ctx.font=`9px ${fm}`; ctx.fillText(l,x,366)
-    })
-    ctx.strokeStyle='#333'; ctx.beginPath(); ctx.moveTo(24,390); ctx.lineTo(376,390); ctx.stroke()
-    ctx.fillStyle='#888'; ctx.font=`10px ${fm}`; ctx.fillText('CURRENT FORM (TSB)',24,414)
-    const tsbColor = tsb>5?'#5bc25b':tsb<-10?'#e03030':'#f5c542'
-    ctx.fillStyle=tsbColor; ctx.font=`bold 28px ${fm}`; ctx.fillText((tsb>=0?'+':'')+tsb,24,448)
-    ctx.strokeStyle='#333'; ctx.beginPath(); ctx.moveTo(24,490); ctx.lineTo(376,490); ctx.stroke()
-    ctx.fillStyle='#555'; ctx.font=`10px ${fm}`; ctx.fillText('SPOREUS ATHLETE CONSOLE — SPOREUS.COM',24,514)
-    ctx.fillStyle='#444'; ctx.font=`9px ${fm}`; ctx.fillText('sporeus.com — Science-based endurance training console',24,534)
-    c.toBlob(blob=>{
-      const url=URL.createObjectURL(blob)
-      const a=document.createElement('a'); a.href=url; a.download='sporeus-athlete-card.png'; a.click()
-      URL.revokeObjectURL(url)
-    })
-  }
-
-  const share = async () => {
-    const text=`${profile.name||'Athlete'} | ${profile.sport||'Endurance'} | VO₂max: ${profile.vo2max||'?'} | ${sessions28} sessions / 4 weeks — via Sporeus Athlete Console`
-    try {
-      if (navigator.share) await navigator.share({ title:'Sporeus Athlete Card', text, url:'https://sporeus.com' })
-      else { await navigator.clipboard.writeText(text); setStatus('copied'); setTimeout(()=>setStatus(null),2000) }
-    } catch {}
-  }
-
-  return (
-    <div style={{ ...S.card, background:'#0a0a0a', border:'1px solid #333', borderRadius:'8px', padding:'20px' }}>
-      <div style={{ ...S.cardTitle, color:'#ff6600', borderColor:'#333' }}>SHAREABLE ATHLETE CARD</div>
-      <div style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>
-        <button style={S.btn} onClick={downloadCard}>↓ Download PNG</button>
-        <button style={{ ...S.btnSec, borderColor:'#555', color:'#ccc' }} onClick={share}>
-          {status==='copied'?'✓ COPIED':'⬡ Share'}
-        </button>
-      </div>
-      <div style={{ ...S.mono, fontSize:'10px', color:'var(--sub)', marginTop:'10px' }}>
-        Card includes: name, sport, VO₂max, FTP, max HR, 4-week summary, form badge.
-      </div>
-    </div>
-  )
-}
-
 // ─── Strava Connect (Phase 3.1) ───────────────────────────────────────────────
 // ─── Referral Card (coach/club tier only) ────────────────────────────────────
 function ReferralCard({ authUser }) {
@@ -675,75 +509,6 @@ function AdminCodeGenerator() {
       )}
     </div>
   )
-}
-
-// ─── Coach message thread (athlete side) ─────────────────────────────────────
-const COACH_MSG_KEY = 'sporeus-coach-messages'
-function readCoachMsgs()   { try { return JSON.parse(localStorage.getItem(COACH_MSG_KEY)) || [] } catch { return [] } }
-function saveCoachMsgs(a)  { try { localStorage.setItem(COACH_MSG_KEY, JSON.stringify(a)) } catch {} }
-
-function CoachMessagesCard() {
-  const [messages, setMessages] = useState(() => readCoachMsgs())
-  const [reply,    setReply]    = useState('')
-
-  // Mark coach messages as read on mount
-  useEffect(() => {
-    const updated = messages.map(m => m.from === 'coach' ? { ...m, read: true } : m)
-    if (updated.some((m, i) => m.read !== messages[i].read)) {
-      setMessages(updated); saveCoachMsgs(updated)
-    }
-  }, [])
-
-  const sendReply = () => {
-    const text = reply.trim()
-    if (!text) return
-    const msg = { id: Date.now() + Math.random().toString(36).slice(2, 5), from: 'athlete', text, ts: new Date().toISOString(), read: true }
-    const updated = [...messages, msg]
-    setMessages(updated); saveCoachMsgs(updated); setReply('')
-  }
-
-  if (!messages.length) return null
-
-  return (
-    <div style={{ ...S.card, marginBottom:'16px' }}>
-      <div style={{ ...S.label, color:'#0064ff', marginBottom:'10px' }}>✉ COACH MESSAGES</div>
-      <div style={{ maxHeight:'250px', overflowY:'auto', display:'flex', flexDirection:'column', gap:'8px', marginBottom:'10px' }}>
-        {messages.map(m => (
-          <div key={m.id} style={{ display:'flex', flexDirection:'column', alignItems: m.from === 'coach' ? 'flex-start' : 'flex-end' }}>
-            <div style={{ maxWidth:'85%', padding:'7px 11px', borderRadius:'8px', background: m.from === 'coach' ? '#ff660015' : '#0064ff15', border:`1px solid ${m.from === 'coach' ? '#ff660033' : '#0064ff33'}` }}>
-              <div style={{ ...S.mono, fontSize:'9px', color: m.from === 'coach' ? '#ff9944' : '#6699ff', letterSpacing:'0.06em', marginBottom:'3px' }}>
-                {m.from === 'coach' ? 'COACH' : 'YOU'} · {new Date(m.ts).toLocaleDateString()}
-              </div>
-              <div style={{ ...S.mono, fontSize:'12px', color:'var(--text)', lineHeight:1.6, wordBreak:'break-word' }}>{m.text}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div style={{ display:'flex', gap:'8px' }}>
-        <textarea
-          value={reply}
-          onChange={e => setReply(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply() } }}
-          placeholder="Reply to coach… (Enter to send)"
-          rows={2}
-          style={{ ...S.input, flex:1, fontSize:'11px', padding:'7px 9px', resize:'none', lineHeight:1.5 }}
-        />
-        <button
-          onClick={sendReply}
-          disabled={!reply.trim()}
-          style={{ ...S.mono, fontSize:'10px', fontWeight:700, padding:'6px 14px', background:'#0064ff', border:'none', color:'#fff', borderRadius:'4px', cursor:'pointer', opacity: reply.trim() ? 1 : 0.4, alignSelf:'flex-end' }}>
-          SEND
-        </button>
-      </div>
-      <div style={{ ...S.mono, fontSize:'9px', color:'#555', marginTop:'6px' }}>
-        Replies are saved locally and included in your data export.
-      </div>
-    </div>
-  )
-}
-
-export function countUnreadCoachMessages() {
-  try { return (JSON.parse(localStorage.getItem(COACH_MSG_KEY)) || []).filter(m => m.from === 'coach' && !m.read).length } catch { return 0 }
 }
 
 export default function Profile({ log, authUser }) {
