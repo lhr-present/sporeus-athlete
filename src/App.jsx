@@ -25,6 +25,7 @@ import { detectLocalData } from './lib/dataMigration.js'
 import QuickAddModal from './components/QuickAddModal.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { flushQueue } from './lib/offlineQueue.js'
+import ToastStack from './components/ToastStack.jsx'
 const CoachDashboard  = lazy(() => import('./components/CoachDashboard.jsx'))
 const CoachOverview   = lazy(() => import('./components/CoachOverview.jsx'))
 const CoachSquadView  = lazy(() => import('./components/CoachSquadView.jsx'))
@@ -60,12 +61,8 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
     handleConsentGrant,
     coachMode,
     logPrefill, setLogPrefill,
-    quotaWarn, dismissQuotaWarn,
     onboarded,
-    swUpdateReady, setSwUpdateReady,
-    coachToast, setCoachToast,
-    stravaToast, setStravaToast,
-    firstSessionToast, setFirstSessionToast,
+    toasts, dismissToast,
     syncStatus,
     badges, isGuest, isFirstSession,
     finishOnboarding, t, handleExport, handleAddSession,
@@ -92,6 +89,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
 
       <OfflineBanner />
       <InstallPrompt />
+      <ToastStack toasts={toasts} dismissToast={dismissToast} />
 
       {showSearch && (
         <SearchPalette
@@ -135,16 +133,6 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
             >
               {lang === 'tr' ? 'KABUL EDİYORUM — DEVAM ET' : 'I CONSENT — CONTINUE'}
             </button>
-          </div>
-        </div>
-      )}
-
-      {swUpdateReady && (
-        <div style={{ position:'fixed', bottom:0, left:0, right:0, zIndex:10001, background:'#0064ff', color:'#fff', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'10px 20px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          ◈ New version available — reload to update
-          <div style={{ display:'flex', gap:'8px' }}>
-            <button onClick={() => { setSwUpdateReady(false); window.location.reload() }} style={{ background:'#fff', border:'none', color:'#0064ff', padding:'4px 12px', cursor:'pointer', fontFamily:'inherit', fontSize:'10px', fontWeight:600, borderRadius:'3px' }}>RELOAD</button>
-            <button onClick={() => setSwUpdateReady(false)} style={{ background:'none', border:'1px solid #fff', color:'#fff', padding:'4px 8px', cursor:'pointer', fontFamily:'inherit', fontSize:'10px' }}>✕</button>
           </div>
         </div>
       )}
@@ -202,38 +190,6 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
             style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', fontWeight:600, padding:'5px 14px', background:'var(--brand-primary,#ff6600)', border:'none', color:'#fff', borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em', whiteSpace:'nowrap' }}>
             {lang === 'en' ? 'Sign in & sync →' : 'Giriş yap & senkronize et →'}
           </button>
-        </div>
-      )}
-
-      {stravaToast && (
-        <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:10002, background: stravaToast.startsWith('⚠') ? '#e03030' : '#fc4c02', color:'#fff', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'10px 20px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          {stravaToast}
-          <button onClick={() => setStravaToast('')} style={{ background:'none', border:'1px solid #fff', color:'#fff', padding:'2px 8px', cursor:'pointer', fontFamily:'inherit', fontSize:'10px' }}>✕</button>
-        </div>
-      )}
-
-      {coachToast && (
-        <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:10002, background:'#0064ff', color:'#fff', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'10px 20px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          {coachToast}
-          <button onClick={() => setCoachToast('')} style={{ background:'none', border:'1px solid #fff', color:'#fff', padding:'2px 8px', cursor:'pointer', fontFamily:'inherit', fontSize:'10px' }}>✕</button>
-        </div>
-      )}
-
-      {firstSessionToast && (
-        <div style={{ position:'fixed', bottom:'24px', left:'50%', transform:'translateX(-50%)', zIndex:10003, background:'#1a1a1a', border:'2px solid #5bc25b', color:'#5bc25b', fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', padding:'12px 24px', borderRadius:'8px', boxShadow:'0 8px 32px rgba(0,0,0,0.6)', display:'flex', alignItems:'center', gap:'12px', whiteSpace:'nowrap' }}>
-          <span style={{ fontSize:'18px' }}>🏆</span>
-          <div>
-            <div style={{ fontWeight:700, letterSpacing:'0.06em' }}>FIRST STEP UNLOCKED</div>
-            <div style={{ fontSize:'10px', color:'#888', marginTop:'2px' }}>You logged your first session. Consistency starts here.</div>
-          </div>
-          <button onClick={() => setFirstSessionToast(false)} style={{ background:'none', border:'none', color:'#555', cursor:'pointer', fontSize:'16px', marginLeft:'8px' }}>×</button>
-        </div>
-      )}
-
-      {quotaWarn && (
-        <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:10000, background:'#e03030', color:'#fff', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'8px 20px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          ⚠ Storage full — some data may not save. Export your training log.
-          <button onClick={dismissQuotaWarn} style={{ background:'none', border:'1px solid #fff', color:'#fff', padding:'2px 8px', cursor:'pointer', fontFamily:'inherit', fontSize:'10px' }}>✕</button>
         </div>
       )}
 

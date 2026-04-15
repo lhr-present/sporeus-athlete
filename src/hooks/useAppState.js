@@ -1,5 +1,6 @@
 // ─── useAppState — all AppInner state + effects in one hook ──────────────────
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useToasts } from './useToasts.js'
 import { logger } from '../lib/logger.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { useLocalStorage, STORAGE_WARN_KEY } from './useLocalStorage.js'
@@ -24,6 +25,7 @@ import { logConsent } from '../lib/db/consent.js'
 export function useAppState({ lang, setLang, dark, setDark, authUser, authProfile, signOut }) {
   const { log, setLog, recovery } = useData()
   const isGuest = isSupabaseReady() && !authUser && localStorage.getItem('sporeus-guest-mode') === '1'
+  const { toasts, addToast, dismissToast } = useToasts()
 
   // ── Tab — persisted to sessionStorage so refresh restores position ───────────
   const [tab, setTabRaw] = useState(() => {
@@ -66,40 +68,30 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
     }
     return null
   })
-  const [stravaToast, setStravaToast] = useState('')
 
   useEffect(() => {
     if (!stravaCallbackCode || !authUser || !isSupabaseReady()) return
     setStravaCallbackCode(null)
     exchangeStravaCode(stravaCallbackCode).then(({ data, error }) => {
       if (error) {
-        setStravaToast(`⚠ Strava connection failed: ${(error.message || 'Unknown error').slice(0, 200)}`)
+        addToast({ id: 'strava', message: `⚠ Strava connection failed: ${(error.message || 'Unknown error').slice(0, 200)}`, type: 'error', duration: 6000 })
       } else {
-        setStravaToast(`✓ Strava connected${data?.athlete ? ' — ' + data.athlete : ''}`)
+        addToast({ id: 'strava', message: `✓ Strava connected${data?.athlete ? ' — ' + data.athlete : ''}`, type: 'success', duration: 6000 })
       }
-      setTimeout(() => setStravaToast(''), 6000)
     })
   }, [stravaCallbackCode, authUser]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Core state ────────────────────────────────────────────────────────────────
   const [profile, setProfile] = useLocalStorage('sporeus_profile', {})
   const [logPrefill, setLogPrefill] = useState(null)
-  const [quotaWarn, setQuotaWarn] = useState(() => {
-    try { return localStorage.getItem(STORAGE_WARN_KEY) === '1' } catch { return false }
-  })
   const [onboarded, setOnboarded] = useLocalStorage('sporeus-onboarded', false)
   const [consentGiven, setConsentGiven] = useState(hasCurrentConsent)
-  const [swUpdateReady, setSwUpdateReady] = useState(false)
-  const [coachToast, setCoachToast] = useState('')
   const [showSearch, setShowSearch] = useState(false)
   const [showQuickAdd, setShowQuickAdd] = useState(false)
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
-  const [firstSessionToast, setFirstSessionToast] = useState(false)
   const [syncStatus, setSyncStatus] = useState(() => getSyncStatus())
   const [coachUnreadBadge, setCoachUnreadBadge] = useState(0)
 
-  const coachToastTimer = useRef(null)
-  const firstSessionTimer = useRef(null)
   const prevLogLen = useRef(log.length)
 
   const [visitedTabs, setVisitedTabs] = useLocalStorage('sporeus-visited-tabs', {})
@@ -151,9 +143,7 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
       if (current !== coachParam) {
         localStorage.setItem('sporeus-my-coach', coachParam)
         const coachLabel = coachParam === 'huseyin-sporeus' ? 'Hüseyin Akbulut' : coachParam
-        setCoachToast(`◉ Connected to coach ${coachLabel} — go to Profile to send your data.`)
-        clearTimeout(coachToastTimer.current)
-        coachToastTimer.current = setTimeout(() => setCoachToast(''), 6000)
+        addToast({ id: 'coach', message: `◉ Connected to coach ${coachLabel} — go to Profile to send your data.`, type: 'info', duration: 6000 })
       }
       const url = new URL(window.location.href)
       url.searchParams.delete('coach')
@@ -222,7 +212,9 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
         const nw = reg.installing
         if (!nw) return
         nw.addEventListener('statechange', () => {
-          if (nw.state === 'installed' && navigator.serviceWorker.controller) setSwUpdateReady(true)
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+            addToast({ id: 'sw-update', message: '◈ New version available — reload to update', type: 'update', duration: 0, action: { label: 'RELOAD', onClick: () => window.location.reload() } })
+          }
         })
       })
     }).catch(() => {})
@@ -231,12 +223,25 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   // First session toast
   useEffect(() => {
     if (prevLogLen.current === 0 && log.length >= 1) {
-      setFirstSessionToast(true)
-      clearTimeout(firstSessionTimer.current)
-      firstSessionTimer.current = setTimeout(() => setFirstSessionToast(false), 6000)
+      addToast({ id: 'first-session', message: '🏆 FIRST STEP UNLOCKED — You logged your first session. Consistency starts here.', type: 'success', duration: 6000 })
     }
     prevLogLen.current = log.length
-  }, [log.length])
+  }, [log.length]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Quota warn toast — fires once on mount if flag was set by useLocalStorage
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(STORAGE_WARN_KEY) === '1') {
+        addToast({
+          id: 'quota',
+          message: '⚠ Storage full — some data may not save. Export your training log.',
+          type: 'error',
+          duration: 0,
+          onDismiss: () => { try { localStorage.removeItem(STORAGE_WARN_KEY) } catch {} },
+        })
+      }
+    } catch {}
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sunday weekly digest notification
   useEffect(() => {
@@ -337,11 +342,6 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
     if (authUser?.id) logConsent(authUser.id, 'data_processing', '1.1')
   }
 
-  const dismissQuotaWarn = () => {
-    setQuotaWarn(false)
-    try { localStorage.removeItem(STORAGE_WARN_KEY) } catch {}
-  }
-
   return {
     // Data from DataProvider
     log, setLog, recovery,
@@ -359,12 +359,8 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
     coachMode,
     // Log prefill
     logPrefill, setLogPrefill,
-    // Warnings + toasts
-    quotaWarn, dismissQuotaWarn,
-    swUpdateReady, setSwUpdateReady,
-    coachToast, setCoachToast,
-    stravaToast, setStravaToast,
-    firstSessionToast, setFirstSessionToast,
+    // Toast manager
+    toasts, dismissToast,
     // Sync
     syncStatus,
     flushQueue,
