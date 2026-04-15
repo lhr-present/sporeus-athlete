@@ -5,6 +5,7 @@
 import { supabase, isSupabaseReady } from './supabase.js'
 import { clearAllAppData } from './storage/local.js'
 import { logAction } from './db/auditLog.js'
+import { logger } from './logger.js'
 
 // Tables that store user data, keyed by user_id
 const USER_TABLES = [
@@ -31,7 +32,8 @@ export async function exportAthleteData(userId) {
           .select('*')
           .eq('user_id', userId)
         tables[table] = error ? [] : (data || [])
-      } catch {
+      } catch (e) {
+        logger.error('db:', e.message)
         tables[table] = []
       }
     }
@@ -43,7 +45,8 @@ export async function exportAthleteData(userId) {
     const lsProfile = JSON.parse(localStorage.getItem('sporeus_profile') || '{}')
     const lsRecovery = JSON.parse(localStorage.getItem('sporeus-recovery') || '[]')
     tables._localStorage = { training_log: lsLog, profile: lsProfile, recovery: lsRecovery }
-  } catch {
+  } catch (e) {
+    logger.warn('localStorage:', e.message)
     tables._localStorage = {}
   }
 
@@ -72,8 +75,8 @@ export async function deleteAthleteData(userId) {
         .eq('user_id', userId)
         .is('deleted_at', null)  // only touch rows not already deleted
       if (!error) tablesAffected.push(table)
-    } catch {
-      // Non-fatal — continue with remaining tables
+    } catch (e) {
+      logger.error('db:', e.message)
     }
   }
 
@@ -85,7 +88,7 @@ export async function deleteAthleteData(userId) {
       completed_at:    new Date().toISOString(),
       tables_affected: tablesAffected,
     })
-  } catch {}
+  } catch (e) { logger.error('db:', e.message) }
 
   // Wipe all app localStorage keys (GDPR client-side erasure)
   clearAllAppData()
@@ -120,7 +123,7 @@ export async function purgeExpiredData(retentionDays = 1095) {
   // Audit log: purge event
   try {
     await logAction('purge', 'multiple', null, { cutoff, retentionDays })
-  } catch {}
+  } catch (e) { logger.error('db:', e.message) }
   return { cutoff, results }
 }
 

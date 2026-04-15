@@ -1,4 +1,5 @@
 import { lazy, useEffect } from 'react'
+import { logger } from './lib/logger.js'
 import { LangCtx, TABS } from './contexts/LangCtx.jsx'
 import { useLocalStorage } from './hooks/useLocalStorage.js'
 import { useAppState } from './hooks/useAppState.js'
@@ -168,7 +169,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
                 {lang === 'en' ? 'Create Account →' : 'Hesap Oluştur →'}
               </button>
               <button
-                onClick={() => { try { localStorage.setItem(NUDGE_KEY,'1') } catch {}; window.location.reload() }}
+                onClick={() => { try { localStorage.setItem(NUDGE_KEY,'1') } catch (e) { logger.warn('localStorage:', e.message) }; window.location.reload() }}
                 style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', padding:'4px 10px', background:'transparent', border:'1px solid #333', color:'#555', borderRadius:'3px', cursor:'pointer' }}>
                 ✕
               </button>
@@ -385,7 +386,7 @@ export default function App() {
         // Persist any pending invite so it survives the auth redirect
         const pendingInvite = new URLSearchParams(window.location.search).get('invite')
         if (pendingInvite) {
-          try { sessionStorage.setItem('sporeus-pending-invite', pendingInvite) } catch {}
+          try { sessionStorage.setItem('sporeus-pending-invite', pendingInvite) } catch (e) { logger.warn('sessionStorage:', e.message) }
           const url = new URL(window.location.href)
           url.searchParams.delete('invite')
           window.history.replaceState({}, '', url.toString())

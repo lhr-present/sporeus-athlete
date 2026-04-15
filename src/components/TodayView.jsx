@@ -1,5 +1,6 @@
 // ─── TodayView.jsx — v5.14.0: Single-screen daily HQ ─────────────────────────
 import { useState, useMemo, useContext, useRef, useEffect, lazy, Suspense } from 'react'
+import { logger } from '../lib/logger.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { useData } from '../contexts/DataContext.jsx'
@@ -144,7 +145,7 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
     try {
       const msgs = JSON.parse(localStorage.getItem('sporeus-coach-messages') || '[]')
       return hasUnread(msgs, 'athlete')
-    } catch { return 0 }
+    } catch (e) { logger.warn('localStorage:', e.message); return 0 }
   })
 
   const [wellness, setWellness]       = useState({ sleep: 3, energy: 3, soreness: 3 })
@@ -230,7 +231,7 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
       await new Promise(res => canvas.toBlob(async (blob) => {
         const file = new File([blob], `sporeus-${today}.png`, { type: 'image/png' })
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          try { await navigator.share({ files: [file], title: 'My Training Summary', text: `${name} — Readiness ${rec?.score ?? '?'}/100` }) } catch {}
+          try { await navigator.share({ files: [file], title: 'My Training Summary', text: `${name} — Readiness ${rec?.score ?? '?'}/100` }) } catch (e) { logger.warn('share:', e.message) }
         } else {
           const url = URL.createObjectURL(blob)
           const a = document.createElement('a'); a.href = url; a.download = `sporeus-${today}.png`; a.click()
@@ -238,7 +239,7 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
         }
         res()
       }, 'image/png'))
-    } catch {}
+    } catch (e) { logger.warn('caught:', e.message) }
     setShareLoading(false)
   }
 
@@ -253,7 +254,7 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
       return
     }
     setIsSubmitting(true)
-    try { localStorage.setItem(usedKey, idempotencyKey.current) } catch {}
+    try { localStorage.setItem(usedKey, idempotencyKey.current) } catch (e) { logger.warn('localStorage:', e.message) }
 
     const score = Math.round((wellness.sleep + wellness.energy + (6 - wellness.soreness)) / 3 * 20)
     const entry = {
@@ -278,7 +279,7 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
     }
     requestAnimationFrame(tick)
     if (EMBED_MODE) {
-      try { window.parent.postMessage({ type: 'sporeus-checkin-complete', score }, '*') } catch {}
+      try { window.parent.postMessage({ type: 'sporeus-checkin-complete', score }, '*') } catch (e) { logger.warn('postMessage:', e.message) }
     }
 
     // Flush any previously queued offline entries now that we're submitting
@@ -380,7 +381,7 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
           {' '}
           <span
             onClick={() => {
-              try { localStorage.setItem(`sporeus-oriented-${orientationStep}`, '1') } catch {}
+              try { localStorage.setItem(`sporeus-oriented-${orientationStep}`, '1') } catch (e) { logger.warn('localStorage:', e.message) }
               setOrientationStep(getOrientationStep(log, profile, recovery))
             }}
             style={{ cursor: 'pointer', color: '#444', fontSize: '9px' }}

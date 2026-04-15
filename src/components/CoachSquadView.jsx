@@ -4,6 +4,7 @@
 //                 coach/NotePanel, coach/ExpandedRow
 // Custom hook:    hooks/useRealtimeSquad
 import { useState, useEffect, useMemo, useCallback, useRef, useContext } from 'react'
+import { logger } from '../lib/logger.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { fetchSquad } from '../lib/db/athletes.js'
 import { createInvite, buildInviteUrl, getMyAthletes } from '../lib/inviteUtils.js'
@@ -44,7 +45,7 @@ export default function CoachSquadView({ authUser }) {
   const [noteFor,      setNoteFor]     = useState(null)
   const [msgFor,       setMsgFor]      = useState(null)
   const [flagged,      setFlagged]     = useState(() => {
-    try { return new Set(JSON.parse(localStorage.getItem('sporeus-coach-flagged') || '[]')) } catch { return new Set() }
+    try { return new Set(JSON.parse(localStorage.getItem('sporeus-coach-flagged') || '[]')) } catch (e) { logger.warn('localStorage:', e.message); return new Set() }
   })
   const [isMobile,     setIsMobile]    = useState(() => window.innerWidth < 640)
   const [digestOpen,   setDigestOpen]  = useState(false)
@@ -53,7 +54,7 @@ export default function CoachSquadView({ authUser }) {
   const [compareIds,   setCompareIds]  = useState(new Set())
   const [teams,        setTeams]       = useState([])
   const [activeTeamId, setActiveTeamId] = useState(() => {
-    try { return localStorage.getItem('sporeus-active-team') || 'all' } catch { return 'all' }
+    try { return localStorage.getItem('sporeus-active-team') || 'all' } catch (e) { logger.warn('localStorage:', e.message); return 'all' }
   })
 
   const todayStr    = new Date().toISOString().slice(0, 10)
@@ -73,7 +74,8 @@ export default function CoachSquadView({ authUser }) {
       const { data, error } = await fetchSquad()
       if (error || !data?.length) throw new Error('empty')
       setAthletes(data); setIsDemo(false)
-    } catch {
+    } catch (e) {
+      logger.warn('db:', e.message)
       setAthletes(generateDemoSquad()); setIsDemo(true)
     }
     setLoading(false)
@@ -115,7 +117,7 @@ export default function CoachSquadView({ authUser }) {
   const toggleFlag    = id => setFlagged(prev => {
     const next = new Set(prev)
     if (next.has(id)) next.delete(id); else next.add(id)
-    try { localStorage.setItem('sporeus-coach-flagged', JSON.stringify([...next])) } catch {}
+    try { localStorage.setItem('sporeus-coach-flagged', JSON.stringify([...next])) } catch (e) { logger.warn('localStorage:', e.message) }
     return next
   })
   const toggleCompare = id => setCompareIds(prev => {
@@ -149,7 +151,7 @@ export default function CoachSquadView({ authUser }) {
     if (result.error) {
       setInviteToast({ msg: `✗ Failed to generate link — ${result.error}`, ok: false })
     } else {
-      try { await navigator.clipboard.writeText(result.inviteUrl) } catch { /* non-fatal */ }
+      try { await navigator.clipboard.writeText(result.inviteUrl) } catch (e) { logger.warn('share:', e.message) }
       setInviteToast({ msg: '✓ Invite link copied — expires in 7 days', ok: true })
       setConnectedCount(c => c) // refresh count after next load
     }
@@ -228,7 +230,7 @@ export default function CoachSquadView({ authUser }) {
       {/* Team selector */}
       <TeamSelector
         teams={teams} activeTeamId={activeTeamId}
-        onSelect={id => { setActiveTeamId(id); try { localStorage.setItem('sporeus-active-team', id) } catch {} }}
+        onSelect={id => { setActiveTeamId(id); try { localStorage.setItem('sporeus-active-team', id) } catch (e) { logger.warn('localStorage:', e.message) } }}
         gated={teamGated && teams.length > 0} upgradeMsg={getUpgradePrompt('multi_team')}
       />
 

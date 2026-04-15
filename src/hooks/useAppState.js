@@ -181,7 +181,7 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
     const fourHours = 4 * 60 * 60 * 1000
     if (Date.now() - lastSync < fourHours) return
     triggerSync().then(() => {
-      try { localStorage.setItem(SYNC_KEY, String(Date.now())) } catch {}
+      try { localStorage.setItem(SYNC_KEY, String(Date.now())) } catch (e) { logger.warn('localStorage:', e.message) }
     }).catch(() => {})
   }, [authUser]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -194,7 +194,7 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
     try {
       if (localStorage.getItem(FLAG_KEY) === today2) return
       localStorage.setItem(FLAG_KEY, today2)
-    } catch {}
+    } catch (e) { logger.warn('localStorage:', e.message) }
     addNotification(
       'warning',
       'High Load Warning',
@@ -236,10 +236,10 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
           message: '⚠ Storage full — some data may not save. Export your training log.',
           type: 'error',
           duration: 0,
-          onDismiss: () => { try { localStorage.removeItem(STORAGE_WARN_KEY) } catch {} },
+          onDismiss: () => { try { localStorage.removeItem(STORAGE_WARN_KEY) } catch (e) { logger.warn('localStorage:', e.message) } },
         })
       }
-    } catch {}
+    } catch (e) { logger.warn('localStorage:', e.message) }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sunday weekly digest notification
@@ -252,7 +252,7 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
     try {
       if (localStorage.getItem(FLAG_KEY)) return
       localStorage.setItem(FLAG_KEY, '1')
-    } catch {}
+    } catch (e) { logger.warn('localStorage:', e.message) }
     const sevenAgo = new Date(now)
     sevenAgo.setDate(sevenAgo.getDate() - 7)
     const weekStr = sevenAgo.toISOString().slice(0, 10)
@@ -300,7 +300,7 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
 
   function handleTabClick(tabId) {
     setTabRaw(tabId)
-    try { sessionStorage.setItem('sporeus-active-tab', tabId) } catch {}
+    try { sessionStorage.setItem('sporeus-active-tab', tabId) } catch (e) { logger.warn('sessionStorage:', e.message) }
     if (tabId === 'recovery') {
       setVisitedTabs(v => ({ ...v, recovery_today: today }))
     }

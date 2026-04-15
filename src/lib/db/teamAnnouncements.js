@@ -6,6 +6,7 @@
 // (athletes lack an UPDATE policy without a dedicated column-level override).
 
 import { supabase, isSupabaseReady } from '../supabase.js'
+import { logger } from '../logger.js'
 
 const ready = () => isSupabaseReady() && !!supabase
 const NOT_CONFIGURED = { data: null, error: new Error('Supabase not configured') }
@@ -22,14 +23,14 @@ export function markLocalRead(id) {
   try {
     const s = loadLocalRead(); s.add(String(id))
     localStorage.setItem(LOCAL_KEY, JSON.stringify([...s]))
-  } catch {}
+  } catch (e) { logger.warn('localStorage:', e.message) }
 }
 /** Mark all given IDs as read locally. */
 export function markAllLocalRead(ids) {
   try {
     const s = loadLocalRead(); ids.forEach(id => s.add(String(id)))
     localStorage.setItem(LOCAL_KEY, JSON.stringify([...s]))
-  } catch {}
+  } catch (e) { logger.warn('localStorage:', e.message) }
 }
 /** Return array of unread announcement objects (filtering by local dismissed set). */
 export function filterUnread(announcements) {

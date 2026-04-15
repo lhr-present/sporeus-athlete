@@ -1,6 +1,7 @@
 // ─── WeekBuilder.jsx — 7-day drag-and-drop micro-cycle planner ───────────────
 // Full-screen overlay. HTML5 drag API only — no external DnD packages.
 import { useState, useCallback } from 'react'
+import { logger } from '../lib/logger.js'
 
 const MONO = "'IBM Plex Mono', monospace"
 
@@ -79,7 +80,7 @@ export default function WeekBuilder({ week, onClose }) {
         const parsed = JSON.parse(stored)
         if (Array.isArray(parsed) && parsed.length === 7) return parsed
       }
-    } catch {}
+    } catch (e) { logger.warn('localStorage:', e.message) }
     return Array.from({ length: 7 }, () => [])
   })
 
@@ -117,7 +118,6 @@ export default function WeekBuilder({ week, onClose }) {
       if (!raw) return
       const session = JSON.parse(raw)
       const { _fromDay, _fromIdx, _id, ...clean } = session
-
       setDays(prev => {
         const next = prev.map(d => [...d])
         // Remove from source day if dragging between days
@@ -130,7 +130,7 @@ export default function WeekBuilder({ week, onClose }) {
         return next
       })
       setSaved(false)
-    } catch {}
+    } catch (e) { logger.warn('JSON parse:', e.message) }
   }, [])
 
   const handleDragOver = useCallback((e, dayIdx) => {
@@ -155,7 +155,7 @@ export default function WeekBuilder({ week, onClose }) {
     try {
       localStorage.setItem(`sporeus-week-${week.weekStart}`, JSON.stringify(days))
       setSaved(true)
-    } catch {}
+    } catch (e) { logger.warn('localStorage:', e.message) }
   }
 
   return (

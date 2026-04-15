@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { S } from '../../styles.js'
+import { logger } from '../../lib/logger.js'
 
 const COACH_MSG_KEY = 'sporeus-coach-messages'
 function readCoachMsgs()   { try { return JSON.parse(localStorage.getItem(COACH_MSG_KEY)) || [] } catch { return [] } }
-function saveCoachMsgs(a)  { try { localStorage.setItem(COACH_MSG_KEY, JSON.stringify(a)) } catch {} }
+function saveCoachMsgs(a)  { try { localStorage.setItem(COACH_MSG_KEY, JSON.stringify(a)) } catch (e) { logger.warn('localStorage:', e.message) } }
 
 export default function CoachMessagesCard() {
   const [messages, setMessages] = useState(() => readCoachMsgs())
@@ -66,5 +67,5 @@ export default function CoachMessagesCard() {
 }
 
 export function countUnreadCoachMessages() {
-  try { return (JSON.parse(localStorage.getItem(COACH_MSG_KEY)) || []).filter(m => m.from === 'coach' && !m.read).length } catch { return 0 }
+  try { return (JSON.parse(localStorage.getItem(COACH_MSG_KEY)) || []).filter(m => m.from === 'coach' && !m.read).length } catch (e) { logger.warn('localStorage:', e.message); return 0 }
 }

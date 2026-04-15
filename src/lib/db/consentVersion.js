@@ -4,6 +4,7 @@
 // New format: stored as version string '1.1'
 
 import { CONSENT_VERSION } from '../constants.js'
+import { logger } from '../logger.js'
 
 const CONSENT_KEY = 'sporeus-consent-v1'
 
@@ -15,14 +16,14 @@ export function hasCurrentConsent() {
     // Old boolean format — re-consent required for version upgrade
     if (stored === 'true' || stored === 'false') return false
     return stored === CONSENT_VERSION
-  } catch { return false }
+  } catch (e) { logger.warn('localStorage:', e.message); return false }
 }
 
 // Stores consent for the current version.
 export function grantConsent() {
   try {
     localStorage.setItem(CONSENT_KEY, CONSENT_VERSION)
-  } catch {}
+  } catch (e) { logger.warn('localStorage:', e.message) }
 }
 
 // Clears consent (withdraw).
@@ -30,7 +31,7 @@ export function withdrawConsent() {
   try {
     localStorage.removeItem(CONSENT_KEY)
     localStorage.removeItem('sporeus-marketing-consent')
-  } catch {}
+  } catch (e) { logger.warn('localStorage:', e.message) }
 }
 
 // Returns the stored consent value (raw string or null).

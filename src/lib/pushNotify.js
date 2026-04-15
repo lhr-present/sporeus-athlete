@@ -3,6 +3,7 @@
 // Server sends pushes via supabase/functions/send-push edge function.
 
 import { supabase, isSupabaseReady } from './supabase.js'
+import { logger } from './logger.js'
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || ''
 
@@ -80,14 +81,14 @@ export function getPushRateState() {
     const parsed = JSON.parse(raw)
     if (parsed.date !== today) return { date: today, count: 0 }
     return parsed
-  } catch { return { date: new Date().toISOString().slice(0, 10), count: 0 } }
+  } catch (e) { logger.warn('JSON parse:', e.message); return { date: new Date().toISOString().slice(0, 10), count: 0 } }
 }
 
 function incrementPushCount() {
   try {
     const state = getPushRateState()
     localStorage.setItem(PUSH_RATE_KEY, JSON.stringify({ date: state.date, count: state.count + 1 }))
-  } catch {}
+  } catch (e) { logger.warn('localStorage:', e.message) }
 }
 
 // Send a test/local notification (no server, uses SW directly).
@@ -207,5 +208,5 @@ export async function checkRaceCountdowns() {
         localStorage.setItem(notifiedKey, JSON.stringify(notified))
       }
     }
-  } catch {}
+  } catch (e) { logger.warn('localStorage:', e.message) }
 }

@@ -1,4 +1,5 @@
 import { useState, useContext, useMemo } from 'react'
+import { logger } from '../lib/logger.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { useData } from '../contexts/DataContext.jsx'
@@ -260,7 +261,7 @@ function LactateEstimator({ lang = 'en' }) {
       const history = JSON.parse(localStorage.getItem('sporeus-lt-history') || '[]')
       history.push(record)
       localStorage.setItem('sporeus-lt-history', JSON.stringify(history))
-    } catch {}
+    } catch (e) { logger.warn('localStorage:', e.message) }
     setSaved(true)
     setTimeout(() => setSaved(false), 3000)
   }
@@ -703,7 +704,7 @@ export default function TestProtocols() {
                     </button>
                   </div>
                 )
-              } catch {}
+              } catch (e) { logger.warn('localStorage:', e.message) }
               return null
             })()}
             <div style={{ ...S.mono, fontSize:'10px', color:'#888', lineHeight:1.7, marginBottom:'12px' }}>
@@ -785,7 +786,7 @@ export default function TestProtocols() {
                   profile.wPrime = parseInt(wPrime)
                   localStorage.setItem('sporeus_profile', JSON.stringify(profile))
                   setCpSaved(true)
-                } catch {}
+                } catch (e) { logger.warn('localStorage:', e.message) }
               }
               const useFTP = () => {
                 if (!window.confirm(`Set FTP = ${cp}W (CP)? This replaces your current FTP.`)) return
@@ -796,7 +797,7 @@ export default function TestProtocols() {
                   profile.wPrime = parseInt(wPrime)
                   localStorage.setItem('sporeus_profile', JSON.stringify(profile))
                   setCpSaved(true)
-                } catch {}
+                } catch (e) { logger.warn('localStorage:', e.message) }
               }
               return (
                 <div key={i} style={{ display:'flex', gap:'8px', marginTop:'12px', flexWrap:'wrap' }}>
@@ -1003,7 +1004,7 @@ export default function TestProtocols() {
               localStorage.setItem('sporeus-test-battery', JSON.stringify(existing))
               setBatterySaved(true)
               setTimeout(() => setBatterySaved(false), 3000)
-            } catch {}
+            } catch (e) { logger.warn('localStorage:', e.message) }
           }
           const calculateMetrics = () => {
             const derived = {}

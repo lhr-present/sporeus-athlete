@@ -1,4 +1,5 @@
 import { useState, useContext } from 'react'
+import { logger } from '../../lib/logger.js'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { calcLoad } from '../../lib/formulas.js'
@@ -17,7 +18,7 @@ export default function AthleteCard({ profile, log }) {
     try {
       const f = new FontFace('IBM Plex Mono','url(https://fonts.gstatic.com/s/ibmplexmono/v19/-F63fjptAgt5VM-kVkqdyU8n5iQ.woff2)')
       await f.load(); document.fonts.add(f); fm = '"IBM Plex Mono"'
-    } catch {}
+    } catch (e) { logger.warn('caught:', e.message) }
     const c = document.createElement('canvas')
     c.width=400; c.height=580
     const ctx = c.getContext('2d')
@@ -64,7 +65,7 @@ export default function AthleteCard({ profile, log }) {
     try {
       if (navigator.share) await navigator.share({ title:'Sporeus Athlete Card', text, url:'https://sporeus.com' })
       else { await navigator.clipboard.writeText(text); setStatus('copied'); setTimeout(()=>setStatus(null),2000) }
-    } catch {}
+    } catch (e) { logger.warn('share:', e.message) }
   }
 
   return (

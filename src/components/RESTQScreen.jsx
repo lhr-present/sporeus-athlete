@@ -1,5 +1,6 @@
 // ─── RESTQScreen.jsx — RESTQ-Sport Short Form (19 items) ─────────────────────
 import { useState, useCallback } from 'react'
+import { logger } from '../lib/logger.js'
 import { S } from '../styles.js'
 import { RESTQ_ITEMS, scoreRESTQ } from '../lib/sport/restq.js'
 
@@ -82,7 +83,7 @@ export default function RESTQScreen({ lang = 'en', onSave }) {
       const history = JSON.parse(localStorage.getItem('sporeus-restq-history') || '[]')
       history.push(record)
       localStorage.setItem('sporeus-restq-history', JSON.stringify(history))
-    } catch {}
+    } catch (e) { logger.warn('localStorage:', e.message) }
     setSaved(true)
     onSave?.(record)
     setTimeout(() => setSaved(false), 3000)

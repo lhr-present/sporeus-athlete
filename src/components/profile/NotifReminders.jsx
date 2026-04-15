@@ -1,5 +1,6 @@
 // ─── NotifReminders — training reminders + push notification controls ────────
 import { useState, useEffect } from 'react'
+import { logger } from '../../lib/logger.js'
 import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { getPushState, subscribePush, unsubscribePush, checkRaceCountdowns } from '../../lib/pushNotify.js'
@@ -63,7 +64,7 @@ export default function NotifReminders({ authUser }) {
           if (!rec.find(e => e.date === today)) {
             new Notification('Sporeus — Log your recovery', { body: 'How did you sleep? Fill in your daily wellness check.', icon: '/sporeus-athlete/pwa-192x192.png' })
           }
-        } catch {}
+        } catch (e) { logger.warn('localStorage:', e.message) }
       }
       if (reminders.racecountdown && hhmm === '09:00') {
         checkRaceCountdowns()

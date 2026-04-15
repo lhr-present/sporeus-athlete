@@ -1,5 +1,6 @@
 // ─── fileImport.js — FIT and GPX workout file parsing ────────────────────────
 import FitParser from 'fit-file-parser'
+import { logger } from './logger.js'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -79,7 +80,7 @@ export function parseFIT(arrayBuffer, profileMaxHR) {
 
         // Persist to localStorage so Protocols tab can load it without re-upload
         if (hasPower) {
-          try { localStorage.setItem('sporeus-last-fit-power', JSON.stringify(powerSeries.slice(0, 10800))) } catch {}
+          try { localStorage.setItem('sporeus-last-fit-power', JSON.stringify(powerSeries.slice(0, 10800))) } catch (e) { logger.warn('localStorage:', e.message) }
         }
 
         resolve({ date, durationMin, avgHR, maxHR: maxHR_rec, distanceM: Math.round(distanceM), tssEstimate, zones, powerSeries: hasPower ? powerSeries : [] })

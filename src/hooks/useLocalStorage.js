@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { logger } from '../lib/logger.js'
 
 export const STORAGE_WARN_KEY = 'sporeus-quota-warned'
 
@@ -12,7 +13,7 @@ export function useLocalStorage(key, def) {
       localStorage.setItem(key, JSON.stringify(v))
     } catch (e) {
       if (e && (e.name==='QuotaExceededError' || e.code===22)) {
-        try { localStorage.setItem(STORAGE_WARN_KEY,'1') } catch {}
+        try { localStorage.setItem(STORAGE_WARN_KEY,'1') } catch (e) { logger.warn('localStorage:', e.message) }
       }
     }
   }, [key])

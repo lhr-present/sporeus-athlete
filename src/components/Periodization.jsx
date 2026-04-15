@@ -1,4 +1,5 @@
 import React, { useState, useContext, useMemo, useEffect, Fragment } from 'react'
+import { logger } from '../lib/logger.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { MACRO_PHASES, ZONE_COLORS, ZONE_NAMES } from '../lib/constants.js'
@@ -194,7 +195,7 @@ function PeakBanner({ projection, startCTL }) {
 // ─── Coach Plans Card ─────────────────────────────────────────────────────────
 const PLAN_RESPONSES_KEY = 'sporeus-plan-responses'
 function readPlanResponses() { try { return JSON.parse(localStorage.getItem(PLAN_RESPONSES_KEY)) || {} } catch { return {} } }
-function savePlanResponses(obj) { try { localStorage.setItem(PLAN_RESPONSES_KEY, JSON.stringify(obj)) } catch {} }
+function savePlanResponses(obj) { try { localStorage.setItem(PLAN_RESPONSES_KEY, JSON.stringify(obj)) } catch (e) { logger.warn('localStorage:', e.message) } }
 function planViewedKey(planId) { return `sporeus-plan-viewed-${planId}` }
 
 function CoachPlansCard({ authUser }) {
@@ -230,7 +231,7 @@ function CoachPlansCard({ authUser }) {
   }
 
   const markPlanViewed = (planId) => {
-    try { localStorage.setItem(planViewedKey(planId), new Date().toISOString()) } catch {}
+    try { localStorage.setItem(planViewedKey(planId), new Date().toISOString()) } catch (e) { logger.warn('localStorage:', e.message) }
   }
 
   if (!isSupabaseReady() || !authUser) return null

@@ -1,5 +1,6 @@
 // ─── AISettings — subscription tier, daily AI usage, cache controls ──────────
 import { useState, useEffect } from 'react'
+import { logger } from '../../lib/logger.js'
 import { S } from '../../styles.js'
 import { supabase, isSupabaseReady } from '../../lib/supabase.js'
 import { clearInsightCache } from '../../lib/aiPrompts.js'
@@ -16,7 +17,7 @@ export default function AISettings({ authUser }) {
       .then(({ data }) => {
         const t = data?.subscription_tier || 'free'
         setTierState(t)
-        try { localStorage.setItem('sporeus-tier', t) } catch {}
+        try { localStorage.setItem('sporeus-tier', t) } catch (e) { logger.warn('localStorage:', e.message) }
       })
     // Read today's AI usage count
     const today = new Date().toISOString().slice(0, 10)
@@ -33,7 +34,7 @@ export default function AISettings({ authUser }) {
 
   const handleClearCache = async () => {
     await clearInsightCache(authUser.id)
-    try { Object.keys(localStorage).filter(k => k.startsWith('sporeus-ai-')).forEach(k => localStorage.removeItem(k)) } catch {}
+    try { Object.keys(localStorage).filter(k => k.startsWith('sporeus-ai-')).forEach(k => localStorage.removeItem(k)) } catch (e) { logger.warn('localStorage:', e.message) }
     setCleared(true)
     setTimeout(() => setCleared(false), 3000)
   }

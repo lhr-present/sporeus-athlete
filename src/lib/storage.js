@@ -1,3 +1,5 @@
+import { logger } from './logger.js'
+
 export const STORAGE_VERSION = 3
 
 export const SCHEMA = {
@@ -25,7 +27,7 @@ export function loadStorage(key) {
       return migrated
     }
     return raw.data
-  } catch { return SCHEMA[key]?.defaults ?? null }
+  } catch (e) { logger.warn('localStorage:', e.message); return SCHEMA[key]?.defaults ?? null }
 }
 
 export function saveStorage(key, data) {
@@ -34,7 +36,7 @@ export function saveStorage(key, data) {
   } catch (e) {
     if (e?.name === 'QuotaExceededError' || e?.code === 22) {
       window.__storageWarning = true
-      try { localStorage.setItem('sporeus-quota-warned', '1') } catch {}
+      try { localStorage.setItem('sporeus-quota-warned', '1') } catch (e) { logger.warn('localStorage:', e.message) }
     }
   }
 }
@@ -42,7 +44,7 @@ export function saveStorage(key, data) {
 export function exportAllData() {
   const out = {}
   Object.keys(SCHEMA).forEach(key => {
-    try { out[key] = JSON.parse(localStorage.getItem(key)) } catch {}
+    try { out[key] = JSON.parse(localStorage.getItem(key)) } catch (e) { logger.warn('localStorage:', e.message) }
   })
   return JSON.stringify({ _export: true, version: STORAGE_VERSION, ts: Date.now(), data: out }, null, 2)
 }
@@ -53,11 +55,11 @@ export function importAllData(json) {
     const src = parsed._export ? parsed.data : parsed
     Object.entries(src).forEach(([key, val]) => {
       if (key.startsWith('sporeus')) {
-        try { localStorage.setItem(key, JSON.stringify(val)) } catch {}
+        try { localStorage.setItem(key, JSON.stringify(val)) } catch (e) { logger.warn('localStorage:', e.message) }
       }
     })
     return true
-  } catch { return false }
+  } catch (e) { logger.warn('localStorage:', e.message); return false }
 }
 
 // Import just a plan JSON (exported from coach plan builder)
@@ -71,11 +73,11 @@ export function importPlanData(json) {
     if (Array.isArray(plan.coachMessages) && plan.coachMessages.length) {
       const key = 'sporeus-coach-messages'
       let existing = []
-      try { existing = JSON.parse(localStorage.getItem(key)) || [] } catch {}
+      try { existing = JSON.parse(localStorage.getItem(key)) || [] } catch (e) { logger.warn('localStorage:', e.message) }
       const ids = new Set(existing.map(m => m.id))
       const merged = [...existing, ...plan.coachMessages.filter(m => !ids.has(m.id))]
-      try { localStorage.setItem(key, JSON.stringify(merged)) } catch {}
+      try { localStorage.setItem(key, JSON.stringify(merged)) } catch (e) { logger.warn('localStorage:', e.message) }
     }
     return true
-  } catch { return false }
+  } catch (e) { logger.warn('localStorage:', e.message); return false }
 }

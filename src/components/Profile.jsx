@@ -1,4 +1,5 @@
 import { useState, useEffect, useContext, useCallback } from 'react'
+import { logger } from '../lib/logger.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
@@ -51,7 +52,7 @@ export default function Profile({ log, authUser }) {
         await navigator.clipboard.writeText(text)
         setStatus('copied'); setTimeout(()=>setStatus(null),2000)
       }
-    } catch {}
+    } catch (e) { logger.warn('share:', e.message) }
   }
 
   const FIELDS = [
@@ -256,7 +257,7 @@ export default function Profile({ log, authUser }) {
                 </div>
               </div>
             )
-          } catch { return null }
+          } catch (e) { logger.warn('localStorage:', e.message); return null }
         })()}
         <div style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>
           <button style={S.btn} onClick={handleExport}>↓ Export All Data</button>
@@ -292,7 +293,7 @@ export default function Profile({ log, authUser }) {
                       )
                       const win = window.open('', '_blank')
                       if (win) { win.document.write(html); win.document.close(); win.print() }
-                    } catch {}
+                    } catch (e) { logger.warn('caught:', e.message) }
                   }}
                 >
                   ↓ Download Season Report
@@ -373,7 +374,7 @@ export default function Profile({ log, authUser }) {
                     onChange={async (e) => {
                       const val = e.target.checked
                       setMarketingConsent(val)
-                      try { localStorage.setItem('sporeus-marketing-consent', val ? '1' : '0') } catch {}
+                      try { localStorage.setItem('sporeus-marketing-consent', val ? '1' : '0') } catch (e) { logger.warn('localStorage:', e.message) }
                       if (val && authUser?.id) {
                         await logConsent(authUser.id, 'marketing', '1.0')
                       }
@@ -465,7 +466,7 @@ export default function Profile({ log, authUser }) {
                   value={tone.toLowerCase()}
                   checked={aiTone === tone.toLowerCase()}
                   onChange={() => {
-                    try { localStorage.setItem('sporeus-ai-tone', tone.toLowerCase()) } catch {}
+                    try { localStorage.setItem('sporeus-ai-tone', tone.toLowerCase()) } catch (e) { logger.warn('localStorage:', e.message) }
                     setAiTone(tone.toLowerCase())
                   }}
                 />

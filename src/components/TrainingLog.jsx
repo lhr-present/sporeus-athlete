@@ -1,4 +1,5 @@
 import { useState, useEffect, useContext, useRef } from 'react'
+import { logger } from '../lib/logger.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { SESSION_TYPES_BY_DISCIPLINE, ZONE_COLORS, ZONE_NAMES, SPORT_CONFIG } from '../lib/constants.js'
@@ -220,7 +221,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     setLog([...log, sanitizeLogEntry(raw)])
     // Store power stream keyed by entry ID for Power Curve analysis
     if (powers.length >= 30) {
-      try { localStorage.setItem('sporeus-power-' + entryId, JSON.stringify(powers.slice(0, 10800))) } catch {}
+      try { localStorage.setItem('sporeus-power-' + entryId, JSON.stringify(powers.slice(0, 10800))) } catch (e) { logger.warn('localStorage:', e.message) }
     }
     setImportPreview(null)
   }

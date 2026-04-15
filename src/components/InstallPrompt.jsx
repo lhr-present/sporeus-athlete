@@ -1,5 +1,6 @@
 // ─── InstallPrompt.jsx — PWA install banner (v5.11.0) ────────────────────────
 import { useState, useEffect, useRef } from 'react'
+import { logger } from '../lib/logger.js'
 
 const MONO = "'IBM Plex Mono', monospace"
 const DISMISS_KEY = 'sporeus-install-dismissed'
@@ -43,7 +44,7 @@ export default function InstallPrompt() {
   }, [])
 
   function dismiss() {
-    try { localStorage.setItem(DISMISS_KEY, '1') } catch {}
+    try { localStorage.setItem(DISMISS_KEY, '1') } catch (e) { logger.warn('localStorage:', e.message) }
     setShow(false)
   }
 

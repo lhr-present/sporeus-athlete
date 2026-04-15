@@ -1,5 +1,6 @@
 // ─── ReferralCard — referral code + stats for coach/club tier ────────────────
 import { useState, useEffect } from 'react'
+import { logger } from '../../lib/logger.js'
 import { S } from '../../styles.js'
 import { getTierSync } from '../../lib/subscription.js'
 import { generateReferralCode, getReferralStats } from '../../lib/referral.js'
@@ -27,7 +28,7 @@ export default function ReferralCard({ authUser }) {
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
       })
-    } catch {}
+    } catch (e) { logger.warn('share:', e.message) }
   }
 
   return (

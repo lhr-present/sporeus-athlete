@@ -3,6 +3,7 @@
 // Falls back to Sporeus defaults.
 
 import { supabase, isSupabaseReady } from './supabase.js'
+import { logger } from './logger.js'
 
 const DEFAULTS = {
   primaryColor: '#ff6600',
@@ -57,7 +58,7 @@ export async function loadOrgBranding(orgId) {
       logoUrl:      data.logo_url      || '',
     })
     _loaded = true
-  } catch {}
+  } catch (e) { logger.error('db:', e.message) }
 
   return _theme
 }

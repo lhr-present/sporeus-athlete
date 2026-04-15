@@ -1,5 +1,6 @@
 import React from 'react'
 import { exportAllData } from '../lib/storage.js'
+import { logger } from '../lib/logger.js'
 
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -20,7 +21,7 @@ export default class ErrorBoundary extends React.Component {
       }
       const updated = [...existing, entry].slice(-20)  // keep latest 20
       localStorage.setItem(logKey, JSON.stringify(updated))
-    } catch {}
+    } catch (e) { logger.warn('localStorage:', e.message) }
   }
 
   handleExport() {
@@ -33,7 +34,7 @@ export default class ErrorBoundary extends React.Component {
       a.download = `sporeus-error-backup-${new Date().toISOString().slice(0,10)}.json`
       a.click()
       URL.revokeObjectURL(url)
-    } catch {}
+    } catch (e) { logger.warn('caught:', e.message) }
   }
 
   render() {

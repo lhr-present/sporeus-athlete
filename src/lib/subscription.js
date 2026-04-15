@@ -2,6 +2,7 @@
 // Pure module (no DOM, no React). Reads from Supabase profiles or localStorage.
 
 import { supabase, isSupabaseReady } from './supabase.js'
+import { logger } from './logger.js'
 
 // ── Tier definitions ──────────────────────────────────────────────────────────
 export const TIERS = {
@@ -32,10 +33,10 @@ export async function getTier(authUser) {
     try {
       const { data, error } = await supabase.rpc('get_my_tier')
       if (!error && data) {
-        try { localStorage.setItem('sporeus-tier', data) } catch {}
+        try { localStorage.setItem('sporeus-tier', data) } catch (e) { logger.warn('localStorage:', e.message) }
         return data
       }
-    } catch {}
+    } catch (e) { logger.error('db:', e.message) }
     // 2. Fallback: direct table read
     try {
       const { data } = await supabase
@@ -44,10 +45,10 @@ export async function getTier(authUser) {
         .eq('id', authUser.id)
         .maybeSingle()
       if (data?.subscription_tier) {
-        try { localStorage.setItem('sporeus-tier', data.subscription_tier) } catch {}
+        try { localStorage.setItem('sporeus-tier', data.subscription_tier) } catch (e) { logger.warn('localStorage:', e.message) }
         return data.subscription_tier
       }
-    } catch {}
+    } catch (e) { logger.error('db:', e.message) }
   }
   // 3. Last resort: localStorage cache (stale, but better than nothing offline)
   try { return localStorage.getItem('sporeus-tier') || 'free' } catch { return 'free' }

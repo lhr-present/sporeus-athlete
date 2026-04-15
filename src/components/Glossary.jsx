@@ -1,4 +1,5 @@
 import { useState, useEffect, useContext, useMemo } from 'react'
+import { logger } from '../lib/logger.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { GLOSSARY_TERMS } from '../lib/constants.js'
@@ -18,10 +19,10 @@ const ARTICLES_TTL = 48 * 3600e3
 const RATE_KEY = 'sporeus-api-last-fetch'
 const MIN_INTERVAL = 5 * 60 * 1000 // 5 minutes between fetches
 
-function getArticlesCache() { try { const c=JSON.parse(localStorage.getItem(ARTICLES_KEY)); if(c&&Date.now()-c.ts<ARTICLES_TTL) return c.data } catch {} return null }
-function setArticlesCache(d) { try { localStorage.setItem(ARTICLES_KEY,JSON.stringify({ts:Date.now(),data:d})) } catch {} }
+function getArticlesCache() { try { const c=JSON.parse(localStorage.getItem(ARTICLES_KEY)); if(c&&Date.now()-c.ts<ARTICLES_TTL) return c.data } catch (e) { logger.warn('localStorage:', e.message) } return null }
+function setArticlesCache(d) { try { localStorage.setItem(ARTICLES_KEY,JSON.stringify({ts:Date.now(),data:d})) } catch (e) { logger.warn('localStorage:', e.message) } }
 function canFetchApi() { try { return Date.now() - parseInt(localStorage.getItem(RATE_KEY)||'0') >= MIN_INTERVAL } catch { return true } }
-function markApiFetched() { try { localStorage.setItem(RATE_KEY, String(Date.now())) } catch {} }
+function markApiFetched() { try { localStorage.setItem(RATE_KEY, String(Date.now())) } catch (e) { logger.warn('localStorage:', e.message) } }
 
 async function fetchJson(url) {
   const res = await safeFetch(url)

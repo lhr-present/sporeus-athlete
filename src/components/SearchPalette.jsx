@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { logger } from '../lib/logger.js'
 import { S } from '../styles.js'
 import { SEARCH_INDEX } from '../lib/constants.js'
 
@@ -35,7 +36,7 @@ function saveRecent(q) {
   try {
     const prev = loadRecent().filter(s => s !== q)
     localStorage.setItem('sporeus-recent-searches', JSON.stringify([q, ...prev].slice(0, 5)))
-  } catch {}
+  } catch (e) { logger.warn('localStorage:', e.message) }
 }
 
 export default function SearchPalette({ onNavigate, onToggleDark, onToggleLang, onClose, log = [], onSync, onExport }) {

@@ -3,6 +3,7 @@
 // never reaches the browser. Tier enforcement is authoritative on the server.
 
 import { supabase, isSupabaseReady } from './supabase.js'
+import { logger } from './logger.js'
 
 const CACHE_PREFIX = 'sporeus-ai-'
 
@@ -12,13 +13,13 @@ export async function clearInsightCache(athleteId) {
   if (isSupabaseReady() && athleteId) {
     try {
       await supabase.from('ai_insights').delete().eq('athlete_id', athleteId)
-    } catch {}
+    } catch (e) { logger.error('db:', e.message) }
   }
   // Clear matching localStorage keys
   try {
     const keys = Object.keys(localStorage).filter(k => k.startsWith(CACHE_PREFIX))
     keys.forEach(k => localStorage.removeItem(k))
-  } catch {}
+  } catch (e) { logger.warn('localStorage:', e.message) }
 }
 
 // ── appendToneModifier ────────────────────────────────────────────────────────

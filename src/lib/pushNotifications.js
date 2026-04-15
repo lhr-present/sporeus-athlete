@@ -2,6 +2,8 @@
 // Uses the Notifications API with setTimeout-based scheduling (no push server).
 // scheduleSessionReminder fires at the user's chosen hour if permission granted.
 
+import { logger } from './logger.js'
+
 const REMINDER_KEY  = 'sporeus-reminder-enabled'
 const HOUR_KEY      = 'sporeus-reminder-hour'
 const TIMER_KEY     = 'sporeus-reminder-timer-id'  // used internally in this module
@@ -61,10 +63,10 @@ export function scheduleSessionReminder({ hour = DEFAULT_HOUR, sessions = [] } =
         })
       }).catch(() => {
         // Fallback: plain Notification if SW not available
-        try { new Notification(title, { body }) } catch {}
+        try { new Notification(title, { body }) } catch (e) { logger.warn('notification:', e.message) }
       })
     } else {
-      try { new Notification(title, { body }) } catch {}
+      try { new Notification(title, { body }) } catch (e) { logger.warn('notification:', e.message) }
     }
 
     // Reschedule for next day
@@ -92,5 +94,5 @@ export function saveReminderSettings({ enabled, hour }) {
   try {
     localStorage.setItem(REMINDER_KEY, enabled ? '1' : '0')
     localStorage.setItem(HOUR_KEY, String(hour))
-  } catch {}
+  } catch (e) { logger.warn('localStorage:', e.message) }
 }

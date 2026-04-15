@@ -4,6 +4,7 @@
 // mutations in the background. Falls back to localStorage silently.
 
 import { useEffect, useCallback, useRef } from 'react'
+import { logger } from '../lib/logger.js'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { useLocalStorage } from './useLocalStorage.js'
 
@@ -149,12 +150,12 @@ function useSyncedTable({ lsKey, lsDefault, table, toEntry, toRow, userId, order
       .then(({ data: rows, error }) => {
         if (!error && rows) {
           setDataLS(rows.map(toEntry))
-          try { localStorage.removeItem('sporeus-offline-mode') } catch {}
+          try { localStorage.removeItem('sporeus-offline-mode') } catch (e) { logger.warn('localStorage:', e.message) }
         }
         hydrating.current = false
       })
       .catch(() => {
-        try { localStorage.setItem('sporeus-offline-mode', '1') } catch {}
+        try { localStorage.setItem('sporeus-offline-mode', '1') } catch (e) { logger.warn('localStorage:', e.message) }
         hydrating.current = false
       })
   }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps

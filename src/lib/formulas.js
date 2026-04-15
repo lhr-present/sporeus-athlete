@@ -3,6 +3,7 @@ import {
   ZONE_COLORS, ZONE_NAMES, DAY_PATTERNS, DUR_FRAC, SES_RPE,
   ZONE_BY_TYPE, DAYS7, ZLABEL, ZIDX, ZCOL, SESSION_DESCRIPTIONS,
 } from './constants.js'
+import { logger } from './logger.js'
 
 export function navyBF(neck, waist, hip, height, gender) {
   if (gender==='male') {
@@ -155,8 +156,8 @@ export function calcPRs(log) {
 
 // ─── API cache ─────────────────────────────────────────────────────────────────
 const API_KEY='sporeus-api-cache', API_TTL=864e5
-export function getApiCache() { try { const c=JSON.parse(localStorage.getItem(API_KEY)); if(c&&Date.now()-c.ts<API_TTL) return c.data } catch {} return null }
-export function setApiCache(d) { try { localStorage.setItem(API_KEY,JSON.stringify({ts:Date.now(),data:d})) } catch {} }
+export function getApiCache() { try { const c=JSON.parse(localStorage.getItem(API_KEY)); if(c&&Date.now()-c.ts<API_TTL) return c.data } catch (e) { logger.warn('localStorage:', e.message) } return null }
+export function setApiCache(d) { try { localStorage.setItem(API_KEY,JSON.stringify({ts:Date.now(),data:d})) } catch (e) { logger.warn('localStorage:', e.message) } }
 
 // ─── Plan Generator ──────────────────────────────────────────────────────────
 export function generatePlan(goal, totalWeeks, weeklyHours, level) {

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { logger } from '../../lib/logger.js'
 import { S } from '../../styles.js'
 import { supabase, isSupabaseReady } from '../../lib/supabase.js'
 import { generatePlan } from '../../lib/formulas.js'
@@ -12,7 +13,7 @@ const LEVEL_OVERRIDE_OPTS = ['', 'Beginner', 'Recreational', 'Competitive', 'Adv
 const COACH_OVERRIDES_KEY = 'sporeus-coach-overrides'
 
 function readOverrides() { try { return JSON.parse(localStorage.getItem(COACH_OVERRIDES_KEY)) || {} } catch { return {} } }
-function saveOverrides(obj) { try { localStorage.setItem(COACH_OVERRIDES_KEY, JSON.stringify(obj)) } catch {} }
+function saveOverrides(obj) { try { localStorage.setItem(COACH_OVERRIDES_KEY, JSON.stringify(obj)) } catch (e) { logger.warn('localStorage:', e.message) } }
 
 export default function SbAthletePanel({ athleteId, athleteName, data, metrics, injRisk, loading, coachId, coachName }) {
   const [planName,   setPlanName]   = useState(`${athleteName} — Training Plan`)
@@ -38,7 +39,7 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
   const [levelOverride, setLevelOverride] = useState(() => readOverrides()[athleteId] || '')
   const msgKey = `sporeus-messages-${athleteId}`
   const readMsgs  = () => { try { return JSON.parse(localStorage.getItem(msgKey)) || [] } catch { return [] } }
-  const saveMsgs  = (arr) => { try { localStorage.setItem(msgKey, JSON.stringify(arr)) } catch {} }
+  const saveMsgs  = (arr) => { try { localStorage.setItem(msgKey, JSON.stringify(arr)) } catch (e) { logger.warn('localStorage:', e.message) } }
   const [messages,     setMessages]     = useState(() => readMsgs())
   const [msgDraft,     setMsgDraft]     = useState('')
   const [showMessages, setShowMessages] = useState(false)

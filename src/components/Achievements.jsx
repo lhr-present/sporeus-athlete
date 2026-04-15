@@ -1,4 +1,5 @@
 import { useState, useEffect, useContext } from 'react'
+import { logger } from '../lib/logger.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
@@ -82,7 +83,7 @@ export function checkAchievements({ log, recovery, testLog, dark, lang, planStat
   }
 
   // Heat adapted — check via localStorage flag
-  try { if (localStorage.getItem('sporeus-heat-used')==='1') unlocked.heat_adapted = true } catch {}
+  try { if (localStorage.getItem('sporeus-heat-used')==='1') unlocked.heat_adapted = true } catch (e) { logger.warn('localStorage:', e.message) }
 
   // CTL 80 — trained athlete territory
   if (log.length >= 7) {
@@ -193,5 +194,5 @@ export function getRecentAchievement(days = 7) {
     const badge = BADGE_DEFS.find(b => b.id === id)
     if (!badge) return null
     return { ...badge, date: achievements[id] }
-  } catch { return null }
+  } catch (e) { logger.warn('JSON parse:', e.message); return null }
 }

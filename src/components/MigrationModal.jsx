@@ -1,5 +1,6 @@
 // ─── MigrationModal.jsx — localStorage → Supabase import prompt ──────────────
 import { useState, useCallback } from 'react'
+import { logger } from '../lib/logger.js'
 import { migrateToSupabase } from '../lib/dataMigration.js'
 import { exportAllData } from '../lib/storage.js'
 
@@ -26,7 +27,7 @@ export default function MigrationModal({ userId, localData, onComplete, lang }) 
       a.download = `sporeus-premigration-${new Date().toISOString().slice(0, 10)}.json`
       a.click()
       URL.revokeObjectURL(url)
-    } catch {}
+    } catch (e) { logger.warn('caught:', e.message) }
     setPhase('running')
     setTotal(Object.values(localData).filter(v => typeof v === 'number' && v > 0).length || 1)
     try {

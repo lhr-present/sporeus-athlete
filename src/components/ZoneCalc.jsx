@@ -1,4 +1,5 @@
 import { useState, useEffect, useContext } from 'react'
+import { logger } from '../lib/logger.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { RACE_DISTANCES, ZONE_COLORS, ZONE_NAMES, SPORT_CONFIG, ATHLETE_LEVELS } from '../lib/constants.js'
@@ -10,7 +11,7 @@ function HeatModule() {
   const [temp, setTemp] = useState('25')
   const [humid, setHumid] = useState('50')
   const [days, setDays] = useState('0')
-  useEffect(() => { try { localStorage.setItem('sporeus-heat-used','1') } catch {} }, [])
+  useEffect(() => { try { localStorage.setItem('sporeus-heat-used','1') } catch (e) { logger.warn('localStorage:', e.message) } }, [])
 
   const T = parseFloat(temp)||25, H = parseFloat(humid)||50
   const D = parseInt(days)||0
