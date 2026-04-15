@@ -15,8 +15,10 @@ import { getRecommendedProtocols } from '../lib/recoveryProtocols.js'
 const WellnessSparkline = lazy(() => import('./charts/WellnessSparkline.jsx'))
 import { isRESTQDue } from '../lib/sport/restq.js'
 import { flushQueue } from '../lib/offlineQueue.js'
-import { calculateACWR } from '../lib/trainingLoad.js'
+import { calculateACWR, calculateConsistency, generateWeeklyRecap } from '../lib/trainingLoad.js'
+import { BANISTER } from '../lib/sport/constants.js'
 import { S } from '../styles.js'
+import { getOrientationStep, ORIENTATION_MESSAGES } from '../lib/orientation.js'
 
 const EMBED_MODE = new URLSearchParams(window.location.search).get('embed') === 'true'
 
@@ -27,17 +29,17 @@ const AMBER  = '#f5c542'
 const RED    = '#e03030'
 const BLUE   = '#0064ff'
 
-function calcStreak(log, today) {
+function calcConsecutiveDays(log, today) {
   const dates = new Set((log || []).map(e => e.date))
   const start = new Date(today)
   if (!dates.has(today)) start.setDate(start.getDate() - 1)
-  let streak = 0
+  let consecutiveDays = 0
   while (true) {
     const d = start.toISOString().slice(0, 10)
-    if (dates.has(d)) { streak++; start.setDate(start.getDate() - 1) }
+    if (dates.has(d)) { consecutiveDays++; start.setDate(start.getDate() - 1) }
     else break
   }
-  return streak
+  return consecutiveDays
 }
 
 const QUICK_FIELDS = WELLNESS_FIELDS.filter(f => ['sleep', 'energy', 'soreness'].includes(f.key))
@@ -64,10 +66,10 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
     const cutoff = (() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().slice(0, 10) })()
     return (log || []).filter(e => e.date >= cutoff).length
   }, [log])
-  const streak = useMemo(() => calcStreak(log, today), [log, today])
+  const consecutiveDays = useMemo(() => calcConsecutiveDays(log, today), [log, today])
 
   // Consecutive days with wellness logged
-  const wellStreak = useMemo(() => {
+  const wellDays = useMemo(() => {
     const recDates = new Set((recovery || []).map(e => e.date))
     const d = new Date(today)
     if (!recDates.has(today)) d.setDate(d.getDate() - 1)
@@ -96,7 +98,10 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
     return { mean: Math.round(mean), sd: Math.round(sd * 10) / 10, n }
   }, [recovery, today])
 
-  const acwrRatio = useMemo(() => calculateACWR(log).ratio, [log])
+  const acwrRatio    = useMemo(() => calculateACWR(log).ratio, [log])
+  const consistency  = useMemo(() => calculateConsistency(log), [log])
+  const { ctl: todayCtl } = useMemo(() => calcLoad(log || []), [log])
+  const K_CTL = BANISTER.K_CTL
 
   const todayRec = (recovery || []).find(e => e.date === today)
 
@@ -146,6 +151,10 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
   const [shareLoading, setShareLoading]         = useState(false)
   const [expandedProtocol, setExpandedProtocol] = useState(null)
   const [recoveryDone, setRecoveryDone] = useLocalStorage(`sporeus-recovery-done-${today}`, {})
+
+  const [weeklyRecap] = useState(() => generateWeeklyRecap(log))
+  const [recapDismissed, setRecapDismissed] = useState(() => weeklyRecap ? !!localStorage.getItem(`sporeus-recap-seen-${weeklyRecap?.weekLabel}`) : true)
+  const [orientationStep, setOrientationStep] = useState(() => getOrientationStep(log, profile, recovery))
 
   // UUID idempotency key — generated once on mount, reset when today changes
   const idempotencyKey = useRef(null)
@@ -275,8 +284,6 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
     setTab('log')
   }
 
-  const suggestColor = suggestion.level === 'warning' ? RED : suggestion.level === 'ok' ? GREEN : BLUE
-
   const card = {
     background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '8px',
     padding: '20px 18px', marginBottom: '14px', fontFamily: MONO,
@@ -319,6 +326,53 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
 
   return (
     <div className="sp-fade">
+
+      {/* ── Weekly Recap (Monday only) ─────────────────────────────────────── */}
+      {weeklyRecap && !recapDismissed && (
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', color: '#555', marginBottom: '16px', lineHeight: '1.7' }}>
+          <span style={{ color: '#888' }}>{weeklyRecap.weekLabel}</span>
+          {' · '}{weeklyRecap.sessions} sessions · {weeklyRecap.totalTSS} TSS
+          {' · '}CTL {weeklyRecap.ctlDelta >= 0 ? '+' : ''}{weeklyRecap.ctlDelta}
+          {' · '}ATL {weeklyRecap.atlDelta >= 0 ? '+' : ''}{weeklyRecap.atlDelta}
+          <br />
+          {weeklyRecap.comparedToAvg.tssRatio != null && (
+            <>vs 4-wk avg: {weeklyRecap.comparedToAvg.tssRatio >= 1 ? '+' : ''}{Math.round((weeklyRecap.comparedToAvg.tssRatio - 1) * 100)}% TSS
+            {weeklyRecap.comparedToAvg.sessionRatio != null && <> · {weeklyRecap.comparedToAvg.sessionRatio >= 1 ? '+' : ''}{Math.round((weeklyRecap.comparedToAvg.sessionRatio - 1) * 100)}% sessions</>}
+            <br /></>
+          )}
+          {weeklyRecap.dominantType && <>dominant: {weeklyRecap.dominantType}</>}
+          {weeklyRecap.avgRPE && <> · avg RPE {weeklyRecap.avgRPE}</>}
+          {' '}
+          <span
+            onClick={() => { localStorage.setItem(`sporeus-recap-seen-${weeklyRecap.weekLabel}`, '1'); setRecapDismissed(true) }}
+            style={{ cursor: 'pointer', color: '#444', fontSize: '9px' }}
+          >
+            [dismiss]
+          </span>
+        </div>
+      )}
+
+      {/* ── Orientation nudge (disappears once oriented) ──────────────────── */}
+      {orientationStep && (
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', color: '#555', marginBottom: '12px' }}>
+          <span
+            onClick={() => setTab(ORIENTATION_MESSAGES[orientationStep].tab)}
+            style={{ cursor: 'pointer', color: '#0064ff', textDecoration: 'none' }}
+          >
+            {ORIENTATION_MESSAGES[orientationStep][lang] || ORIENTATION_MESSAGES[orientationStep].en}
+          </span>
+          {' '}
+          <span
+            onClick={() => {
+              try { localStorage.setItem(`sporeus-oriented-${orientationStep}`, '1') } catch {}
+              setOrientationStep(getOrientationStep(log, profile, recovery))
+            }}
+            style={{ cursor: 'pointer', color: '#444', fontSize: '9px' }}
+          >
+            [done]
+          </span>
+        </div>
+      )}
 
       {/* ── Morning Brief ─────────────────────────────────────────────────── */}
       {!digest.empty && (() => {
@@ -507,6 +561,12 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
         )}
       </div>
 
+      {consistency && consistency.currentGap >= 2 && todayCtl > 30 && (
+        <div style={{ fontSize: '10px', color: '#555', fontFamily: "'IBM Plex Mono', monospace", marginBottom: '12px' }}>
+          Last session: {consistency.currentGap}d ago — CTL decaying at {(K_CTL * todayCtl).toFixed(1)} TSS/day
+        </div>
+      )}
+
       {/* ── Recovery Protocols Card ───────────────────────────────────────── */}
       {wellnessSaved && todayRec && (todayRec.soreness < 3 || todayRec.energy < 3) && (() => {
         const lastTSS = (log || []).length > 0
@@ -595,10 +655,10 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
           </div>
 
           <div style={{ flex: '1 1 80px', textAlign: 'center', padding: '10px 8px', background: 'var(--surface)', borderRadius: '6px', border: '1px solid var(--border)' }}>
-            <div style={{ fontSize: '20px', fontWeight: 700, color: streak >= 3 ? ORANGE : '#888', marginBottom: '4px' }}>
-              {streak}{streak >= 3 ? ' 🔥' : ''}
+            <div style={{ fontSize: '20px', fontWeight: 700, color: consecutiveDays >= 3 ? ORANGE : '#888', marginBottom: '4px' }}>
+              {consecutiveDays}
             </div>
-            <div style={{ fontSize: '9px', color: '#666', letterSpacing: '0.08em' }}>{t('todayStreak')}</div>
+            <div style={{ fontSize: '9px', color: '#666', letterSpacing: '0.08em' }}>{t('todayConsec')}</div>
           </div>
 
         </div>
@@ -626,7 +686,7 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
         const circ = 2 * Math.PI * R
         const tssPct     = weekTSSTarget > 0 ? Math.min(1, weekTSS / weekTSSTarget)   : 0
         const sessPct    = Math.min(1, sessions7d / sessionTarget)
-        const wellPct    = Math.min(1, wellStreak / 7)
+        const wellPct    = Math.min(1, wellDays / 7)
 
         const Ring = ({ pct, color, val, label, sub }) => (
           <div style={{ textAlign: 'center', flex: '1 1 64px' }}>
@@ -651,7 +711,7 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-around', flexWrap: 'wrap' }}>
               <Ring pct={tssPct}  color={ORANGE} val={weekTSS}   label={t('weekTSS')}   sub={weekTSSTarget > 0 ? `/ ${weekTSSTarget}` : 'no target'} />
               <Ring pct={sessPct} color={GREEN}  val={sessions7d} label={t('sessions')}  sub={`/ ${sessionTarget}`} />
-              <Ring pct={wellPct} color={BLUE}   val={wellStreak} label={t('wellness')}  sub="/ 7" />
+              <Ring pct={wellPct} color={BLUE}   val={wellDays} label={t('wellness')}  sub="/ 7" />
             </div>
           </div>
         )
@@ -724,16 +784,23 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
       )}
 
       {/* ── Card 4: Smart Suggestion ───────────────────────────────────────── */}
-      <div style={{ ...card, borderLeft: `4px solid ${suggestColor}` }}>
+      <div style={{ ...card }}>
         <div style={cardTitle}>{t('todaySuggestion')}</div>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-          <span style={{ fontSize: '16px', flexShrink: 0 }}>
-            {suggestion.level === 'warning' ? '⚠' : suggestion.level === 'ok' ? '◈' : '→'}
-          </span>
-          <p style={{ fontSize: '12px', color: 'var(--text)', lineHeight: 1.65, margin: 0 }}>
-            {suggestion.text[lang] || suggestion.text.en}
-          </p>
-        </div>
+        {suggestion && (
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text)', fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600 }}>
+              {suggestion.action}
+            </div>
+            <div style={{ fontSize: '10px', color: '#555', fontFamily: "'IBM Plex Mono', monospace", marginTop: '3px' }}>
+              {suggestion.rationale}
+            </div>
+            {suggestion.duration && (
+              <div style={{ fontSize: '9px', color: '#444', fontFamily: "'IBM Plex Mono', monospace", marginTop: '2px' }}>
+                → {suggestion.duration}min · {suggestion.load}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
     </div>

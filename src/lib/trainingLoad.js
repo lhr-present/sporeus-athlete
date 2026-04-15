@@ -243,6 +243,60 @@ export function fitBanister(log, testResults) {
   }
 }
 
+// ─── calculateConsistency ────────────────────────────────────────────────────
+/**
+ * @description Training density over the last N days — fraction of days with a logged session.
+ * @param {TrainingEntry[]} log - Full training log
+ * @param {number} [days=28] - Window size in days
+ * @returns {{ sessionDays: number, totalDays: number, pct: number, longestGap: number, currentGap: number }|null}
+ */
+export function calculateConsistency(log, days = 28) {
+  if (!log || log.length === 0) return null
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - days)
+  const cutoffStr = cutoff.toISOString().slice(0, 10)
+  const recent = log.filter(e => e.date >= cutoffStr)
+  if (recent.length === 0) return null
+
+  // Build a Set of dates that had a session
+  const sessionDates = new Set(recent.map(e => e.date))
+
+  // Count session days and find gaps
+  let longestGap = 0
+  let gapCount = 0
+
+  for (let i = 0; i < days; i++) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    const ds = d.toISOString().slice(0, 10)
+    if (!sessionDates.has(ds)) {
+      gapCount++
+    } else {
+      if (gapCount > longestGap) longestGap = gapCount
+      gapCount = 0
+    }
+  }
+  if (gapCount > longestGap) longestGap = gapCount
+
+  // currentGap = days since last session
+  const today = new Date().toISOString().slice(0, 10)
+  const sortedDates = [...sessionDates].sort()
+  const lastSessionDate = sortedDates[sortedDates.length - 1]
+  const msPerDay = 86400000
+  const currentGapDays = lastSessionDate
+    ? Math.floor((new Date(today) - new Date(lastSessionDate)) / msPerDay)
+    : days
+
+  const sessionDays = sessionDates.size
+  return {
+    sessionDays,
+    totalDays: days,
+    pct: Math.round((sessionDays / days) * 100),
+    longestGap,
+    currentGap: currentGapDays,
+  }
+}
+
 // ─── predictBanister ─────────────────────────────────────────────────────────
 // Project Banister performance for future days given a fitted model.
 //
@@ -288,4 +342,78 @@ export function predictBanister(log, fit, planned = [], days = 90) {
   }
 
   return out
+}
+
+// ─── generateWeeklyRecap ─────────────────────────────────────────────────────
+/**
+ * @description Generates a factual weekly recap for display on Monday mornings.
+ * Returns null if not Monday, or if fewer than 7 log entries exist.
+ * @param {TrainingEntry[]} log
+ * @returns {{ sessions: number, totalTSS: number, ctlDelta: number, atlDelta: number, avgRPE: number|null, dominantType: string|null, comparedToAvg: { tssRatio: number, sessionRatio: number }, weekLabel: string }|null}
+ */
+export function generateWeeklyRecap(log) {
+  if (!log || log.length < 7) return null
+  const now = new Date()
+  if (now.getDay() !== 1) return null // 1 = Monday
+
+  // Last 7 days = last week
+  const weekStart = new Date(now)
+  weekStart.setDate(weekStart.getDate() - 7)
+  const weekStartStr = weekStart.toISOString().slice(0, 10)
+  const todayStr = now.toISOString().slice(0, 10)
+
+  const lastWeek = log.filter(e => e.date >= weekStartStr && e.date < todayStr)
+  if (lastWeek.length === 0) return null
+
+  const totalTSS = lastWeek.reduce((s, e) => s + (e.tss || 0), 0)
+  const sessions = lastWeek.length
+  const avgRPE = lastWeek.some(e => e.rpe)
+    ? Math.round((lastWeek.reduce((s, e) => s + (e.rpe || 0), 0) / lastWeek.filter(e => e.rpe).length) * 10) / 10
+    : null
+
+  // Dominant session type
+  const typeCounts = {}
+  lastWeek.forEach(e => { if (e.type) typeCounts[e.type] = (typeCounts[e.type] || 0) + 1 })
+  const dominantType = Object.keys(typeCounts).length > 0
+    ? Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0][0]
+    : null
+
+  // CTL delta — compare CTL now vs 7 days ago using EWMA
+  const K_CTL_R = 1 - Math.exp(-1 / 42)
+  const K_ATL_R = 1 - Math.exp(-1 / 7)
+  const sorted = [...log].sort((a, b) => a.date.localeCompare(b.date))
+  let ctl = 0, atl = 0, ctl7 = null, atl7 = null
+  const sevenDaysAgo = weekStartStr
+  sorted.forEach(e => {
+    if (e.date === sevenDaysAgo) { ctl7 = ctl; atl7 = atl }
+    ctl = ctl * (1 - K_CTL_R) + (e.tss || 0) * K_CTL_R
+    atl = atl * (1 - K_ATL_R) + (e.tss || 0) * K_ATL_R
+  })
+  const ctlDelta = ctl7 !== null ? Math.round((ctl - ctl7) * 10) / 10 : 0
+  const atlDelta = atl7 !== null ? Math.round((atl - atl7) * 10) / 10 : 0
+
+  // Compare to 28-day average (4 prior weeks)
+  const fourWeeksAgo = new Date(weekStart)
+  fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28)
+  const prior28 = log.filter(e => e.date >= fourWeeksAgo.toISOString().slice(0, 10) && e.date < weekStartStr)
+  const avgWeeklyTSS = prior28.length > 0 ? prior28.reduce((s, e) => s + (e.tss || 0), 0) / 4 : null
+  const avgWeeklySessions = prior28.length > 0 ? prior28.length / 4 : null
+  const tssRatio = avgWeeklyTSS && avgWeeklyTSS > 0 ? Math.round((totalTSS / avgWeeklyTSS) * 100) / 100 : null
+  const sessionRatio = avgWeeklySessions && avgWeeklySessions > 0 ? Math.round((sessions / avgWeeklySessions) * 100) / 100 : null
+
+  // ISO week number for dismiss key
+  const jan1 = new Date(now.getFullYear(), 0, 1)
+  const weekNum = Math.ceil(((now - jan1) / 86400000 + jan1.getDay() + 1) / 7)
+  const weekLabel = `WK ${weekNum}`
+
+  return {
+    sessions,
+    totalTSS: Math.round(totalTSS),
+    ctlDelta,
+    atlDelta,
+    avgRPE,
+    dominantType,
+    comparedToAvg: { tssRatio, sessionRatio },
+    weekLabel,
+  }
 }

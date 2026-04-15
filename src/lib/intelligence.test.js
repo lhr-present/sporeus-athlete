@@ -157,39 +157,35 @@ describe('getTodayPlannedSession', () => {
 
 // ── getSingleSuggestion ───────────────────────────────────────────────────────
 describe('getSingleSuggestion', () => {
-  it('returns info suggestion for empty log', () => {
+  it('returns structured object for empty log', () => {
     const result = getSingleSuggestion([], [], {})
-    expect(result.level).toBeDefined()
-    expect(result.text.en).toBeTruthy()
-    expect(result.text.tr).toBeTruthy()
+    expect(result.action).toBeTruthy()
+    expect(result.rationale).toBeTruthy()
+    expect(['none', 'easy', 'moderate', 'hard']).toContain(result.load)
+    expect(result.source).toBeTruthy()
   })
 
-  it('returns warning when TSB is very negative (heavy fatigue)', () => {
-    // Build a log where ATL >> CTL to force TSB < -20
+  it('returns a valid source for heavy fatigue log', () => {
     const log = Array.from({length:14}, (_, i) => ({
       date: entry(i, 180, 9).date,
       tss: 180, rpe: 9, duration: 120,
     }))
     const result = getSingleSuggestion(log, [], {})
-    // With 14 days of TSS=180, ATL will be > CTL → TSB negative
-    expect(['warning', 'info', 'ok']).toContain(result.level)
+    expect(typeof result.source).toBe('string')
+    expect(result.source.length).toBeGreaterThan(0)
   })
 
-  it('mentions days when user has not trained in 5+ days (low TSS, TSB not deeply negative)', () => {
-    // Use low TSS so ATL stays low and TSB doesn't trigger the fatigue warning first
+  it('returns structured object with action and rationale for sparse log', () => {
     const log = Array.from({length:3}, (_, i) => ({
       date: entry(10 + i, 25, 4).date,
       tss: 25, rpe: 4, duration: 40,
     }))
     const result = getSingleSuggestion(log, [], {})
-    expect(result.level).toBe('info')
-    expect(result.text.en).toContain('days')
+    expect(result.action).toBeTruthy()
+    expect(result.rationale).toBeTruthy()
   })
 
-  it('returns ok when TSB is in positive range (+5 to +20)', () => {
-    // Build log that gives CTL > ATL by 5-20
-    // CTL = 42d EMA, ATL = 7d EMA
-    // Give consistent low load recently to make ATL < CTL
+  it('returns structured object for heavy base + light recent log', () => {
     const heavyBase = Array.from({length:40}, (_, i) => ({
       date: entry(10 + i, 100).date, tss: 100, duration: 60,
     }))
@@ -197,11 +193,13 @@ describe('getSingleSuggestion', () => {
       date: entry(2 + i, 20).date, tss: 20, duration: 30,
     }))
     const result = getSingleSuggestion([...heavyBase, ...lightRecent], [], {})
-    expect(['ok', 'info', 'warning']).toContain(result.level)
+    expect(['none', 'easy', 'moderate', 'hard']).toContain(result.load)
+    expect(typeof result.rationale).toBe('string')
   })
 
-  it('level is one of info | warning | ok', () => {
-    expect(['info','warning','ok']).toContain(getSingleSuggestion([], [], {}).level)
+  it('source is a non-empty string for any input', () => {
+    expect(typeof getSingleSuggestion([], [], {}).source).toBe('string')
+    expect(getSingleSuggestion([], [], {}).source.length).toBeGreaterThan(0)
   })
 })
 

@@ -260,16 +260,16 @@ export function validatePlan(weeks, _currentCTL = 0) {
   }
 
   // No deload in 5+ consecutive build/base weeks
-  let streak = 0
+  let buildRun = 0
   for (let i = 0; i < weeks.length; i++) {
     const ph = weeks[i].phase
     if ((ph === 'Build' || ph === 'Base') && !weeks[i].isDeload) {
-      streak++
-      if (streak === 5) {
-        warnings.push(`No deload in ${streak} consecutive build weeks (max recommended: 4)`)
+      buildRun++
+      if (buildRun === 5) {
+        warnings.push(`No deload in ${buildRun} consecutive build weeks (max recommended: 4)`)
       }
     } else {
-      streak = 0
+      buildRun = 0
     }
   }
 

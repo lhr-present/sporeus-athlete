@@ -66,7 +66,7 @@ function WeekColumn({ week, selected, isCurrent, onClick, colW, maxTSS }) {
   return (
     <div
       onClick={onClick}
-      title={`W${week.weekNum} ${week.phase} — TSS ${week.targetTSS}${week.raceName ? ' 🏆' + week.raceName : ''}`}
+      title={`W${week.weekNum} ${week.phase} — TSS ${week.targetTSS}${week.raceName ? ' [R] ' + week.raceName : ''}`}
       style={{
         width:          colW,
         flexShrink:     0,
@@ -117,7 +117,7 @@ function WeekColumn({ week, selected, isCurrent, onClick, colW, maxTSS }) {
         marginTop: 2, height: 18, display: 'flex', alignItems: 'center',
         flexShrink: 0,
       }}>
-        {isRace ? '🏆' : `W${week.weekNum}`}
+        {isRace ? '[R]' : `W${week.weekNum}`}
       </div>
 
       {/* Current week marker dot */}
@@ -207,7 +207,7 @@ function WeekDetailPanel({ week, weekIndex, allWeeks, onUpdateTSS, onOpenBuilder
               RACE
             </div>
             <div style={{ fontFamily: MONO, fontSize: 11, color: '#e03030' }}>
-              🏆 {week.raceName}
+              [R] {week.raceName}
               {week.priority && (
                 <span style={{
                   marginLeft: 6, padding: '2px 6px', borderRadius: 3,

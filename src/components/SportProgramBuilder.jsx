@@ -425,22 +425,22 @@ function Step5({ form, result, onRestart, log, setLog }) {
   const [missedWeek, setMissedWeek]     = useState(null)
   const [missedWeekInput, setMissedWeekInput] = useState('')
   const [adaptedPlan, setAdaptedPlan]   = useState(null)
-  const [complianceStreak, setComplianceStreak] = useState(0)
+  const [complianceRun, setComplianceRun] = useState(0)
 
-  // Compliance streak: consecutive weeks within 10% of planned
+  // Consecutive compliant weeks: consecutive weeks within 10% of planned TSS
   useEffect(() => {
     if (!result?.bestPlan) return
     const basePlan = adaptedPlan ? adaptedPlan.map(w => (typeof w === 'object' ? w.tss ?? 0 : w)) : result.bestPlan
     const filledIdxs = Object.keys(actualTSS).filter(k => actualTSS[k] != null).map(Number).sort((a, b) => a - b)
-    let streak = 0
+    let run = 0
     for (let j = filledIdxs.length - 1; j >= 0; j--) {
       const i = filledIdxs[j]
       const p = basePlan[i] ?? 0
       const a = actualTSS[i] ?? 0
-      if (p > 0 && Math.abs(a - p) / p <= 0.10) streak++
+      if (p > 0 && Math.abs(a - p) / p <= 0.10) run++
       else break
     }
-    setComplianceStreak(streak)
+    setComplianceRun(run)
   }, [actualTSS, adaptedPlan, result])
 
   const pfWindow = useMemo(() => {
@@ -589,15 +589,14 @@ function Step5({ form, result, onRestart, log, setLog }) {
           </div>
         </div>
 
-        {/* Compliance streak badge */}
-        {complianceStreak >= 2 && (
+        {complianceRun >= 2 && (
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',
             background: '#00c85318', border: '1px solid #00c85355',
             borderRadius: '4px', padding: '4px 10px', marginBottom: '10px',
             ...FONT_MONO, fontSize: '10px', color: '#00c853',
           }}>
-            ◈ {complianceStreak}-week compliance streak
+            ◈ {complianceRun} consecutive weeks within plan
           </div>
         )}
 

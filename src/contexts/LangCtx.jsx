@@ -104,7 +104,7 @@ export const LABELS = {
     todayNoPlan: 'No plan active — generate one in the PLAN tab.',
     todayReadiness: "TODAY'S READINESS", todaySaveReadiness: 'SAVE READINESS',
     todaySaved: 'SAVED', todayQuickStats: 'QUICK STATS',
-    todayYesterday: 'YESTERDAY', todayThisWeek: 'THIS WEEK', todayStreak: 'STREAK',
+    todayYesterday: 'YESTERDAY', todayThisWeek: 'THIS WEEK', todayConsec: 'CONSEC.',
     todaySuggestion: 'SMART SUGGESTION', todayLogYesterday: '+ Log Yesterday',
     // TodayView — coach badge + rings + share (STRUCTURE-S5)
     todayCoachMsg: 'unread message from your coach', todayCoachMsgs: 'unread messages from your coach',
@@ -124,6 +124,7 @@ export const LABELS = {
     squadColTSB: 'TSB', squadColACWR: 'ACWR',
     squadColAdherence: 'ADHERENCE', squadColStatus: 'STATUS',
     squadColFlag: 'FLAG', squadColMsg: 'MSG', squadColCompare: 'CMP',
+    weeklyRecapDismiss: '[dismiss]', weeklyRecapLabel: 'WK',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -247,6 +248,7 @@ export const LABELS = {
     squadColTSB: 'TSB', squadColACWR: 'ABYO',
     squadColAdherence: 'UYUM', squadColStatus: 'DURUM',
     squadColFlag: 'İŞARET', squadColMsg: 'MESAJ', squadColCompare: 'KRŞ',
+    weeklyRecapDismiss: '[kapat]', weeklyRecapLabel: 'HF',
   }
 }
 

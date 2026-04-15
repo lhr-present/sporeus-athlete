@@ -139,17 +139,17 @@ export function calcPRs(log) {
   const longDur  = sorted.reduce((best,e)=>(!best||e.duration>best.duration)?e:best, null)
   const highRPE  = sorted.reduce((best,e)=>(!best||e.rpe>best.rpe)?e:best, null)
   const dates = [...new Set(sorted.map(e=>e.date))].sort()
-  let maxStreak=1, cur=1
+  let longestBlock=1, cur=1
   for (let i=1;i<dates.length;i++) {
     const diff=(new Date(dates[i])-new Date(dates[i-1]))/(864e5)
     cur = diff===1 ? cur+1 : 1
-    if (cur>maxStreak) maxStreak=cur
+    if (cur>longestBlock) longestBlock=cur
   }
   return [
     highTSS && { label:'Highest TSS', value:highTSS.tss, date:highTSS.date, unit:'TSS' },
     longDur  && { label:'Longest Session', value:`${longDur.duration}min`, date:longDur.date, unit:longDur.type },
     highRPE  && { label:'Hardest Session', value:`RPE ${highRPE.rpe}`, date:highRPE.date, unit:highRPE.type },
-    { label:'Best Streak', value:`${maxStreak} days`, date:'', unit:'consecutive sessions' },
+    { label:'Longest block', value:`${longestBlock} days`, date:'', unit:'consecutive days' },
   ].filter(Boolean)
 }
 

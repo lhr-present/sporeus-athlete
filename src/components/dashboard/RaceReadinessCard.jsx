@@ -236,7 +236,7 @@ export default function RaceReadinessCard({ log, recovery, injuries, profile, pl
         return (
           <div style={{ marginTop:'10px', padding:'8px 10px', background:'var(--card-bg)', borderRadius:'4px' }}>
             <div style={{ ...S.mono, fontSize:'10px', color:color, fontWeight:600 }}>
-              {delta > 0 ? `🏆 ${delta}% faster than predicted!` : delta < 0 ? `${Math.abs(delta)}% slower than predicted` : '✓ Prediction was spot-on!'}
+              {delta > 0 ? `${delta}% faster than predicted` : delta < 0 ? `${Math.abs(delta)}% slower than predicted` : 'Prediction matched actual.'}
             </div>
             <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginTop:'2px' }}>Predicted: {r.predictedTime} · Actual: {r.time}</div>
           </div>

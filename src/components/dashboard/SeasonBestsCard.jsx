@@ -157,7 +157,7 @@ export default function SeasonBestsCard({ log, dl }) {
                 <td style={{ ...S.mono, fontSize: '12px', fontWeight: 700, color: '#ff6600', padding: '7px 8px' }}>{value}</td>
                 <td style={{ ...S.mono, fontSize: '10px', color: '#666', padding: '7px 0' }}>{date || '—'}</td>
                 <td style={{ padding: '7px 0', textAlign: 'right', fontSize: '13px' }}>
-                  {isPB ? '🏆' : ''}
+                  {isPB ? '◈' : ''}
                 </td>
               </tr>
             ))}

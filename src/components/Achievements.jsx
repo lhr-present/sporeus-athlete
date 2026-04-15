@@ -10,13 +10,13 @@ const BADGE_DEFS = [
   { id:'month_master',    icon:'📅', name:'Month Master',      desc:'20+ sessions in one month' },
   { id:'century_club',    icon:'💯', name:'Century Club',      desc:'100 total sessions logged' },
   { id:'zone_hunter',     icon:'🎯', name:'Zone Hunter',       desc:'Log time in all 5 zones in one session' },
-  { id:'iron_will',       icon:'🔩', name:'Iron Will',         desc:'7-day training streak' },
+  { id:'iron_will',       icon:'🔩', name:'Iron Will',         desc:'7-day training block' },
   { id:'threshold_breaker',icon:'🧪',name:'Threshold Breaker', desc:'Complete any test protocol' },
   { id:'recovery_champ',  icon:'🛌', name:'Recovery Champ',    desc:'7 consecutive recovery logs' },
   { id:'dark_side',       icon:'🌙', name:'Dark Side',         desc:'Enable dark mode' },
   { id:'polyglot',        icon:'🌍', name:'Polyglot',          desc:'Switch interface language' },
   { id:'plan_compliant',  icon:'📋', name:'Plan Compliant',    desc:'80%+ plan compliance for 4 weeks' },
-  { id:'heat_adapted',    icon:'🔥', name:'Heat Adapted',      desc:'Use the heat acclimatization calculator' },
+  { id:'heat_adapted',    icon:'◈',  name:'Heat Adapted',      desc:'Use the heat acclimatization calculator' },
 ]
 
 export function checkAchievements({ log, recovery, testLog, dark, lang, planStatus, plan }) {
@@ -44,14 +44,14 @@ export function checkAchievements({ log, recovery, testLog, dark, lang, planStat
   // Zone hunter
   if (log.some(e=>e.zones && e.zones.length===5 && e.zones.every(z=>z>0))) unlocked.zone_hunter = true
 
-  // Iron will — 7-day streak
+  // Iron will — 7-day training block
   const dates = [...new Set(log.map(e=>e.date))].sort()
-  let maxStreak=0, cur=1
+  let longestBlock=0, cur=1
   for (let i=1;i<dates.length;i++) {
     const diff=(new Date(dates[i])-new Date(dates[i-1]))/864e5
-    cur = diff===1?cur+1:1; if(cur>maxStreak) maxStreak=cur
+    cur = diff===1?cur+1:1; if(cur>longestBlock) longestBlock=cur
   }
-  if (maxStreak>=7) unlocked.iron_will = true
+  if (longestBlock>=7) unlocked.iron_will = true
 
   if (testLog && testLog.length>0) unlocked.threshold_breaker = true
 

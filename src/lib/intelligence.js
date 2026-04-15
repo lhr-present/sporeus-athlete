@@ -471,12 +471,12 @@ export function detectMilestones(log, profile, prevMilestones) {
   check('five_hundred_h',   totalH >= 500,'500 training hours logged!',             '500 antrenman saati kaydedildi!',             '⏱️')
   check('hundred_h',        totalH >= 100,'100 training hours — solid base.',        '100 antrenman saati — sağlam baz.',           '⌚')
   check('ctl_50',           ctl >= 50,    'CTL reached 50 — proper training load.', 'KTY 50\'ye ulaştı — doğru antrenman yükü.',   '📈')
-  check('ctl_80',           ctl >= 80,    'CTL 80 — trained athlete territory.',    'KTY 80 — eğitimli sporcu bölgesi.',           '🔥')
-  check('ctl_100',          ctl >= 100,   'CTL 100 — elite fitness level!',         'KTY 100 — elit kondisyon seviyesi!',          '🏆')
+  check('ctl_80',           ctl >= 80,    'CTL 80 — trained athlete territory.',    'KTY 80 — eğitimli sporcu bölgesi.',           '◈')
+  check('ctl_100',          ctl >= 100,   'CTL 100 — elite fitness level.',         'KTY 100 — elit kondisyon seviyesi.',          '◈')
   check('tss_200',          maxTSS >= 200,'First 200+ TSS session — epic effort.',  'İlk 200+ TSS seansı — destansı çaba.',        '⚡')
   check('month_consistent', last30 >= 12, '12+ sessions in 30 days — consistent!', '30 günde 12+ antrenman — tutarlısın!',        '📅')
   check('three_year_span',  daysSpan >= 365, 'One year of training data!',          'Bir yıllık antrenman verisi!',                '🎂')
-  check('streak_5',         last7 >= 5,   '5 sessions this week — outstanding!',   'Bu hafta 5 antrenman — mükemmel!',            '🔥')
+  check('density_5',        last7 >= 5,   '5 sessions this week — high density.',  'Bu hafta 5 antrenman — yüksek yoğunluk.',     '◈')
 
   return newOnes
 }
@@ -688,9 +688,13 @@ export function getTodayPlannedSession(plan, today) {
   return { ...session, weekIdx, dayIdx: planDayIdx, weekPhase: week.phase || '' }
 }
 
-// ─── v5.14: getSingleSuggestion ───────────────────────────────────────────────
+// ─── v6.1: getSingleSuggestion ────────────────────────────────────────────────
 // Returns the single most actionable suggestion for today.
-// Returns { text: { en, tr }, level: 'info' | 'warning' | 'ok' }
+// Returns:
+//   { action: string, rationale: string, load: 'none'|'easy'|'moderate'|'hard',
+//     duration: number|null, source: string }
+// Rules evaluated in priority order:
+//   wellness_poor → acwr_high → tsb_high → acwr_low → tsb_low → default
 export function getSingleSuggestion(log, recovery, profile) {
   const safeLog = Array.isArray(log) ? log : []
   const safeRec = Array.isArray(recovery) ? recovery : []
@@ -698,46 +702,105 @@ export function getSingleSuggestion(log, recovery, profile) {
   const today     = new Date().toISOString().slice(0, 10)
   const yesterday = daysAgoDate(1)
 
-  const lastSession = safeLog.length ? [...safeLog].sort((a, b) => b.date.localeCompare(a.date))[0] : null
-  const daysSinceSession = lastSession ? Math.floor((new Date(today) - new Date(lastSession.date)) / 86400000) : null
-
+  // ── wellness score (1–5 derived from stored 0–100 score) ──────────────────
   const todayRec = safeRec.find(e => e.date === today)
   const yestRec  = safeRec.find(e => e.date === yesterday)
-  const recentRecScore = todayRec?.score ?? yestRec?.score ?? null
+  const recentRec = todayRec ?? yestRec ?? null
+  // stored score is 0–100; convert to 1–5 scale (score/20, clamp 1–5)
+  const wellnessScore5 = recentRec?.score != null
+    ? Math.max(1, Math.min(5, Math.round(recentRec.score / 20)))
+    : null
 
+  // ── PMC metrics ───────────────────────────────────────────────────────────
   const ctl = computeCTL(safeLog)
   const atl = computeATL(safeLog)
   const tsb = ctl - atl
 
-  const w7Start  = daysAgoDate(7)
-  const w14Start = daysAgoDate(14)
-  const thisWeekTSS = safeLog.filter(e => e.date >= w7Start).reduce((s, e) => s + (e.tss || 0), 0)
-  const prevWeekTSS = safeLog.filter(e => e.date >= w14Start && e.date < w7Start).reduce((s, e) => s + (e.tss || 0), 0)
-  const spikeP = prevWeekTSS > 10 ? Math.round((thisWeekTSS - prevWeekTSS) / prevWeekTSS * 100) : 0
+  // ── ACWR via 28-day EWMA (λ_acute=0.25, λ_chronic=0.067) ─────────────────
+  const acwr = (() => {
+    const now = new Date(); now.setHours(0, 0, 0, 0)
+    const tssMap = {}
+    for (const e of safeLog) {
+      if (!e.date) continue
+      const d = e.date.slice(0, 10)
+      tssMap[d] = Math.min((tssMap[d] || 0) + (e.tss || 0), 300)
+    }
+    let a = 0, c = 0
+    for (let i = 27; i >= 0; i--) {
+      const d = new Date(now); d.setDate(d.getDate() - i)
+      const tss = tssMap[d.toISOString().slice(0, 10)] || 0
+      a = 0.25 * tss + 0.75 * a
+      c = 0.067 * tss + 0.933 * c
+    }
+    return c > 0 ? Math.round((a / c) * 100) / 100 : null
+  })()
 
-  if (tsb < -20) {
-    return { level: 'warning', text: { en: `Form is ${tsb} — large fatigue debt. Consider a rest or easy day today.`, tr: `Form ${tsb} — yüksek yorgunluk birikimi. Bugün kolay veya dinlenme günü düşün.` } }
+  // ── Rule 1: wellness_poor ─────────────────────────────────────────────────
+  if (wellnessScore5 !== null && wellnessScore5 <= 2) {
+    const score = wellnessScore5
+    return {
+      action: 'Rest day',
+      rationale: `Wellness score ${score}/5 — autonomic recovery takes priority over training load`,
+      load: 'none',
+      duration: null,
+      source: 'wellness_poor',
+    }
   }
-  if (spikeP >= 20) {
-    return { level: 'warning', text: { en: `Load jumped ${spikeP}% this week vs last. Ease off to avoid overtraining.`, tr: `Bu hafta yük %${spikeP} arttı. Aşırı antrenmanı önlemek için yavaşla.` } }
+
+  // ── Rule 2: acwr_high ─────────────────────────────────────────────────────
+  if (acwr !== null && acwr > 1.3) {
+    const ratio = acwr
+    return {
+      action: 'Active recovery or rest',
+      rationale: `ACWR ${ratio.toFixed(2)} — injury risk zone (>1.3). ATL ${atl.toFixed(0)} exceeds chronic base.`,
+      load: 'easy',
+      duration: 30,
+      source: 'acwr_high',
+    }
   }
-  if (daysSinceSession !== null && daysSinceSession >= 4 && safeLog.length >= 3) {
-    return { level: 'info', text: { en: `${daysSinceSession} days since last session. A light 30–40 min easy effort will restart momentum.`, tr: `Son antrenmandan ${daysSinceSession} gün geçti. 30-40 dk hafif çalışma ivmeyi yeniden başlatır.` } }
+
+  // ── Rule 3: tsb_high ──────────────────────────────────────────────────────
+  if (tsb > 15) {
+    return {
+      action: 'Hard training session (Z4-Z5)',
+      rationale: `TSB +${tsb.toFixed(0)} — significant freshness. CTL ${ctl.toFixed(0)}, ACWR ${acwr?.toFixed(2) ?? '—'}. Use this window.`,
+      load: 'hard',
+      duration: 90,
+      source: 'tsb_high',
+    }
   }
-  if (recentRecScore !== null && recentRecScore < 45) {
-    return { level: 'warning', text: { en: 'Low readiness score. Prioritise sleep, easy movement, or full rest.', tr: 'Düşük hazırlık skoru. Uyku, hafif hareket veya tam dinlenmeye öncelik ver.' } }
+
+  // ── Rule 4: acwr_low ──────────────────────────────────────────────────────
+  if (acwr !== null && acwr < 0.8) {
+    const ratio = acwr
+    return {
+      action: 'Moderate session (Z3)',
+      rationale: `ACWR ${ratio.toFixed(2)} — below optimal base (0.8–1.3). CTL ${ctl.toFixed(0)} drifting. Increase density.`,
+      load: 'moderate',
+      duration: 60,
+      source: 'acwr_low',
+    }
   }
-  if (tsb >= 5 && tsb <= 20) {
-    return { level: 'ok', text: { en: `TSB +${tsb} — form is positive. Good day for a key session or race effort.`, tr: `TSB +${tsb} — form pozitif. Anahtar seans veya yarış eforu için iyi gün.` } }
+
+  // ── Rule 5: tsb_low ───────────────────────────────────────────────────────
+  if (tsb < -15) {
+    return {
+      action: 'Easy aerobic session (Z1-Z2)',
+      rationale: `TSB ${tsb.toFixed(0)} — accumulated fatigue. CTL ${ctl.toFixed(0)}, ATL ${atl.toFixed(0)}. Reduce intensity.`,
+      load: 'easy',
+      duration: 45,
+      source: 'tsb_low',
+    }
   }
-  if (recentRecScore !== null && recentRecScore >= 75) {
-    return { level: 'ok', text: { en: 'Readiness is high — body recovered. Push today if the plan calls for it.', tr: 'Hazırlık yüksek — vücut toparlanmış. Plan gerektiriyorsa bugün zorla.' } }
+
+  // ── Rule 6: default ───────────────────────────────────────────────────────
+  return {
+    action: 'Moderate aerobic session (Z2-Z3)',
+    rationale: `TSB ${tsb.toFixed(0)}, ACWR ${acwr?.toFixed(2) ?? '—'} — within normal training range.`,
+    load: 'moderate',
+    duration: 60,
+    source: 'default',
   }
-  const n7 = safeLog.filter(e => e.date >= w7Start).length
-  if (n7 >= 4) {
-    return { level: 'ok', text: { en: `${n7} sessions this week — on track. Stick to your planned effort.`, tr: `Bu hafta ${n7} antrenman — yolunda. Planlanan eforu sürdür.` } }
-  }
-  return { level: 'info', text: { en: 'Log today\'s session to keep your training data current.', tr: 'Antrenman verilerini güncel tutmak için bugünkü seansı kaydet.' } }
 }
 
 // ─── v4.6: predictRacePerformance ─────────────────────────────────────────────
@@ -1083,4 +1146,80 @@ export function autoTagSession(entry) {
   if (tss !== null && tss > 120) return 'Key Session'
   if (rpe !== null && rpe <= 5 && tss !== null && tss < 60) return 'Recovery'
   return null
+}
+
+// ─── detectPersonalBests ──────────────────────────────────────────────────────
+/**
+ * @description Detects personal bests set by a new training entry compared to existing log.
+ * Returns null if no PB, or array of factual description strings.
+ * @param {Object} newEntry - The newly logged session
+ * @param {Array} existingLog - All previous entries (not including newEntry)
+ * @returns {string[]|null}
+ */
+export function detectPersonalBests(newEntry, existingLog) {
+  if (!newEntry || !existingLog) return null
+  const results = []
+
+  // 1. Highest TSS for this session type
+  if (newEntry.tss > 0 && newEntry.type) {
+    const sameType = existingLog.filter(e => e.type === newEntry.type && e.tss > 0)
+    const prevMax = sameType.length > 0 ? Math.max(...sameType.map(e => e.tss)) : 0
+    if (prevMax > 0 && newEntry.tss > prevMax) {
+      results.push(`Highest TSS for a ${newEntry.type} session (prev: ${prevMax}, now: ${newEntry.tss})`)
+    }
+  }
+
+  // 2. Highest single-week TSS total
+  const weekStart = new Date(newEntry.date)
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay())
+  const weekStartStr = weekStart.toISOString().slice(0, 10)
+  const thisWeek = [...existingLog, newEntry].filter(e => e.date >= weekStartStr)
+  const thisWeekTSS = thisWeek.reduce((s, e) => s + (e.tss || 0), 0)
+
+  // Find previous best week
+  const allDates = existingLog.map(e => e.date).sort()
+  if (allDates.length > 0) {
+    const oldest = new Date(allDates[0])
+    let bestPrevWeek = 0
+    let d = new Date(oldest)
+    while (d <= new Date(newEntry.date)) {
+      const ws = d.toISOString().slice(0, 10)
+      const we = new Date(d)
+      we.setDate(we.getDate() + 6)
+      const weStr = we.toISOString().slice(0, 10)
+      if (ws < weekStartStr) { // only previous weeks
+        const weekTSS = existingLog.filter(e => e.date >= ws && e.date <= weStr).reduce((s, e) => s + (e.tss || 0), 0)
+        if (weekTSS > bestPrevWeek) bestPrevWeek = weekTSS
+      }
+      d.setDate(d.getDate() + 7)
+    }
+    if (bestPrevWeek > 0 && thisWeekTSS > bestPrevWeek) {
+      results.push(`Highest single-week TSS: ${thisWeekTSS} (prev: ${bestPrevWeek})`)
+    }
+  }
+
+  // 3. Best 4-week TSS total
+  const fourWeeksAgo = new Date(newEntry.date)
+  fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28)
+  const fourWeeksAgoStr = fourWeeksAgo.toISOString().slice(0, 10)
+  const recent4w = [...existingLog, newEntry].filter(e => e.date >= fourWeeksAgoStr)
+  const recent4wTSS = recent4w.reduce((s, e) => s + (e.tss || 0), 0)
+
+  if (allDates && allDates.length > 28) {
+    let bestPrev4w = 0
+    // Sample a few 4-week windows from history
+    for (let offset = 7; offset <= Math.min(allDates.length, 90); offset += 7) {
+      const wEnd = new Date(newEntry.date)
+      wEnd.setDate(wEnd.getDate() - offset)
+      const wStart = new Date(wEnd)
+      wStart.setDate(wStart.getDate() - 28)
+      const wTSS = existingLog.filter(e => e.date >= wStart.toISOString().slice(0,10) && e.date <= wEnd.toISOString().slice(0,10)).reduce((s,e) => s + (e.tss||0), 0)
+      if (wTSS > bestPrev4w) bestPrev4w = wTSS
+    }
+    if (bestPrev4w > 0 && recent4wTSS > bestPrev4w) {
+      results.push(`Best 4-week TSS total: ${recent4wTSS} (prev: ${bestPrev4w})`)
+    }
+  }
+
+  return results.length > 0 ? results : null
 }

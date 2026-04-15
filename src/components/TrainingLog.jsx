@@ -6,7 +6,7 @@ import { calcTSS, normalizedPower, computePowerTSS, computeWPrime } from '../lib
 import { sanitizeLogEntry } from '../lib/validate.js'
 import Calendar from './Calendar.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
-import { scoreSession, autoTagSession, analyseSession } from '../lib/intelligence.js'
+import { scoreSession, autoTagSession, analyseSession, detectPersonalBests } from '../lib/intelligence.js'
 import { parseFIT, parseGPX, detectFileType, parseBulkCSV, deduplicateByDate, downloadCSVTemplate } from '../lib/fileImport.js'
 import ActivityMap from './ActivityMap.jsx'
 
@@ -27,6 +27,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const [calView, setCalView] = useState(false)
   const [lang] = useLocalStorage('sporeus-lang', 'en')
   const [sessionScore, setSessionScore] = useState(null)
+  const [lastPBs, setLastPBs] = useState(null)
   const [importPreview, setImportPreview] = useState(null) // parsed workout before confirm
   const [importError, setImportError]     = useState(null)
   const [importBusy, setImportBusy]       = useState(false)
@@ -58,10 +59,13 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     if (editingId !== null) {
       setLog(log.map(e => e.id === editingId ? entry : e))
       setEditingId(null)
+      setLastPBs(null)
     } else {
       const scored = scoreSession(entry, log, profileLS)
       setSessionScore(scored)
       setTimeout(() => setSessionScore(null), 8000)
+      const pbs = detectPersonalBests(entry, log)
+      setLastPBs(pbs)
       setLog([...log, entry])
     }
     setForm({ date:today, type:'Easy Run', duration:'', rpe:'5', notes:'' })
@@ -77,7 +81,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     setEditingId(entry.id||null)
     window.scrollTo({ top:0, behavior:'smooth' })
   }
-  const cancelEdit = () => { setEditingId(null); setForm({ date:today, type:'Easy Run', duration:'', rpe:'5', notes:'' }); setZoneMins(['','','','','']); setShowZones(false) }
+  const cancelEdit = () => { setEditingId(null); setForm({ date:today, type:'Easy Run', duration:'', rpe:'5', notes:'' }); setZoneMins(['','','','','']); setShowZones(false); setLastPBs(null) }
 
   const handleBulkTag = (tag) => {
     if (!tag) return
@@ -387,6 +391,15 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                           style={{ background:'none', border:'none', color:'#ccc', cursor:'pointer', ...S.mono, fontSize:'12px' }}>✕</button>
                       </td>
                     </tr>
+                    {i === 0 && lastPBs && lastPBs.map((pb, pi) => (
+                      <tr key={`pb-${pi}`} style={{ background: 'transparent' }}>
+                        <td colSpan={bulkMode ? 8 : 7} style={{ padding: 0 }}>
+                          <div style={{ fontSize: '9px', color: '#555', fontStyle: 'italic', fontFamily: "'IBM Plex Mono', monospace", paddingLeft: '16px', marginBottom: '2px' }}>
+                            → {pb}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
                     {isExpanded && (() => {
                       const analysis = analyseSession(s, log.slice(-28))
                       const colCount = bulkMode ? 8 : 7

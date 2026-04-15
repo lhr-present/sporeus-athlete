@@ -5,7 +5,7 @@ import { TSSChart, WeeklyVolChart, ZoneDonut, HelpTip } from './ui.jsx'
 import ErrorBoundary from './ErrorBoundary.jsx'
 const HRVChart  = lazy(() => import('./charts/HRVChart.jsx'))
 import { monotonyStrain, calcPRs, navyBF, mifflinBMR, riegel, fmtSec, fmtPace, calcLoad } from '../lib/formulas.js'
-import { calculateACWR, fitBanister, predictBanister } from '../lib/trainingLoad.js'
+import { calculateACWR, fitBanister, predictBanister, calculateConsistency } from '../lib/trainingLoad.js'
 import { zoneDistribution, trainingModel, MODEL_META } from '../lib/zoneDistrib.js'
 import ShareCard from './ShareCard.jsx'
 import { exportAllData } from '../lib/storage.js'
@@ -108,7 +108,8 @@ export default function Dashboard({ log, profile }) {
   const avgRPE   = last7.length ? (last7.reduce((s,e)=>s+(e.rpe||0),0)/last7.length).toFixed(1) : '\u2014'
   const srpeLoad = last7.reduce((s,e) => s + ((e.rpe||0) * (e.duration||0)), 0)
   const { atl, ctl, tsb, daily } = useMemo(() => calcLoad(log), [log])
-  const acwr = useMemo(() => calculateACWR(log), [log])
+  const acwr        = useMemo(() => calculateACWR(log), [log])
+  const consistency = useMemo(() => calculateConsistency(log), [log])
   const banisterFit = useMemo(() => (testResults?.length ?? 0) >= 3 ? fitBanister(log, testResults) : null, [log, testResults])
 
   const w7Start     = (() => { const d = new Date(); d.setDate(d.getDate()-7);  return d.toISOString().slice(0,10) })()
@@ -326,6 +327,11 @@ export default function Dashboard({ log, profile }) {
                 ))}
               </div>
             )}
+            {consistency && (
+              <div style={{ fontSize: '10px', color: '#555', fontFamily: "'IBM Plex Mono', monospace", marginTop: '4px' }}>
+                Density (28d): {consistency.pct}% · Longest gap: {consistency.longestGap}d · Avg gap: {consistency.totalDays > 0 ? ((consistency.totalDays - consistency.sessionDays) / Math.max(1, consistency.sessionDays + 1)).toFixed(1) : '—'}d
+              </div>
+            )}
           </div>
           <div style={{ ...S.mono, fontSize:'40px', fontWeight:600, color:readiness.color }}>{countTSS}</div>
         </div>
@@ -508,7 +514,7 @@ export default function Dashboard({ log, profile }) {
 
       {dl.records && log.length>0 && (
         <div className="sp-card" style={{ ...S.card, animationDelay:'190ms' }}>
-          <div style={S.cardTitle}>🏆 PERSONAL RECORDS</div>
+          <div style={S.cardTitle}>PERSONAL RECORDS</div>
           <div style={S.row}>
             {calcPRs(log).map(pr=>(
               <div key={pr.label} style={{ ...S.stat, flex:'1 1 130px', textAlign:'left', padding:'10px 12px' }}>
