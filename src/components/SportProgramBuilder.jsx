@@ -448,10 +448,6 @@ function Step5({ form, result, onRestart, log, setLog }) {
     return peakFormWindow(result.bestPlan, form.startCTL || 0, form.startATL || 0)
   }, [result, form.startCTL, form.startATL])
 
-  if (!result) return null
-  const { bestPlan, bestScore, meanScore, histogram } = result
-  const trace = pfWindow?.trace || []
-
   // Derive baseline values for template lookups
   const split2k = useMemo(() => {
     if (form.sport !== 'rowing' || !form.baseline?.time2k) return null
@@ -466,25 +462,12 @@ function Step5({ form, result, onRestart, log, setLog }) {
     return sec && dist ? vdotFromRace(dist, sec) : null
   }, [form.sport, form.baseline?.raceTime, form.baseline?.raceDist])
 
-  // Session labels for weekly table
-  function sessionLabels(weekIdx) {
-    const totalWeeks = form.weeks || 8
-    const pct  = weekIdx / totalWeeks
-    const phase = pct < 0.25 ? 'base' : pct < 0.55 ? 'build' : pct < 0.80 ? 'peak' : 'taper'
-    if (form.sport === 'rowing' && split2k) {
-      return weeklyTemplatePlan(phase).map(id => id.replace(/_/g, ' ').toUpperCase().slice(0, 6)).join(', ')
-    }
-    if (form.sport === 'running' && vdot) {
-      return weeklyRunPlan(phase).map(id => id.split('_')[0].toUpperCase().slice(0, 5)).join(', ')
-    }
-    return null
-  }
-
   // Save plan to training log
   const savePlanToLog = useCallback(() => {
-    if (!setLog || !bestPlan) return
+    const bestPlanInner = result?.bestPlan
+    if (!setLog || !bestPlanInner) return
     const today = new Date()
-    const newEntries = bestPlan.map((tss, i) => {
+    const newEntries = bestPlanInner.map((tss, i) => {
       const d = new Date(today)
       d.setDate(d.getDate() + i * 7)
       return {
@@ -500,7 +483,25 @@ function Step5({ form, result, onRestart, log, setLog }) {
     })
     setLog(prev => [...(prev || []), ...newEntries])
     setSaved(true)
-  }, [bestPlan, setLog])
+  }, [result, setLog])
+
+  if (!result) return null
+  const { bestPlan, bestScore, meanScore, histogram } = result
+  const trace = pfWindow?.trace || []
+
+  // Session labels for weekly table
+  function sessionLabels(weekIdx) {
+    const totalWeeks = form.weeks || 8
+    const pct  = weekIdx / totalWeeks
+    const phase = pct < 0.25 ? 'base' : pct < 0.55 ? 'build' : pct < 0.80 ? 'peak' : 'taper'
+    if (form.sport === 'rowing' && split2k) {
+      return weeklyTemplatePlan(phase).map(id => id.replace(/_/g, ' ').toUpperCase().slice(0, 6)).join(', ')
+    }
+    if (form.sport === 'running' && vdot) {
+      return weeklyRunPlan(phase).map(id => id.split('_')[0].toUpperCase().slice(0, 5)).join(', ')
+    }
+    return null
+  }
 
   // CTL/ATL sparkline
   const maxVal = Math.max(...trace.map(d => Math.max(d.CTL, d.ATL)), 1)

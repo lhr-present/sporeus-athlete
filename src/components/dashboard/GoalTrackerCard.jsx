@@ -6,8 +6,6 @@ const STATUS_COLOR = { on_track: '#5bc25b', behind: '#f5c542', impossible: '#e03
 const STATUS_DOT   = { on_track: '●', behind: '●', impossible: '●' }
 
 export default function GoalTrackerCard({ log, profile, dl }) {
-  if (!dl.goaltracker) return null
-
   const goals = useMemo(() => {
     try {
       return JSON.parse(localStorage.getItem('sporeus-goals') || '[]')
@@ -100,6 +98,8 @@ export default function GoalTrackerCard({ log, profile, dl }) {
       </div>
     )
   }
+
+  if (!dl.goaltracker) return null
 
   return (
     <div className="sp-card" style={{ ...S.card, animationDelay: '0ms' }}>

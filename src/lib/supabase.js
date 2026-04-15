@@ -3,13 +3,10 @@
 // Set these in .env.local (git-ignored) before running the app.
 
 import { createClient } from '@supabase/supabase-js'
+import { ENV } from './env.js'
 
-const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL
-const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY
-
-if (!SUPABASE_URL || !SUPABASE_ANON) {
-  console.error('[Supabase] ENV MISSING:', { url: SUPABASE_URL, key: SUPABASE_ANON ? '***set***' : 'MISSING' })
-}
+const SUPABASE_URL  = ENV.supabaseUrl
+const SUPABASE_ANON = ENV.supabaseAnon
 
 export const supabase = (SUPABASE_URL && SUPABASE_ANON)
   ? createClient(SUPABASE_URL, SUPABASE_ANON, {

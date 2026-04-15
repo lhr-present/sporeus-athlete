@@ -38,8 +38,6 @@ function fmtDateShort(dateStr) {
 }
 
 export default function SeasonBestsCard({ log, dl }) {
-  if (!dl.seasonbests) return null
-
   const { bests, hasEnough } = useMemo(() => {
     if (log.length < 2) return { bests: [], hasEnough: false }
 
@@ -140,6 +138,8 @@ export default function SeasonBestsCard({ log, dl }) {
     const populated = rows.filter(r => r.value !== null)
     return { bests: populated, hasEnough: populated.length > 0 }
   }, [log])
+
+  if (!dl.seasonbests) return null
 
   return (
     <div className="sp-card" style={{ ...S.card, animationDelay: '0ms' }}>

@@ -43,18 +43,19 @@ function MiniCTLChart({ data }) {
  * @param {string} [props.lang='en']
  */
 export default function TriDashboard({ log, lang = 'en' }) {
-  if (!log || log.length < 7) return null
-
-  const { swimLog, bikeRunLog } = useMemo(() => splitDisciplineLogs(log), [log])
-  const hasSwim    = swimLog.length > 0
-  const hasBikeRun = bikeRunLog.length > 0
-  if (!hasSwim && !hasBikeRun) return null
+  const { swimLog, bikeRunLog } = useMemo(() => splitDisciplineLogs(log || []), [log])
 
   // Build dual Banister trace for last 90 days
   const cutoff = (() => { const d = new Date(); d.setDate(d.getDate() - 90); return d.toISOString().slice(0, 10) })()
   const swimSlice    = swimLog.filter(e => e.date >= cutoff)
   const bikeRunSlice = bikeRunLog.filter(e => e.date >= cutoff)
   const trace = useMemo(() => dualBanister(swimSlice, bikeRunSlice), [swimSlice.length, bikeRunSlice.length])
+
+  if (!log || log.length < 7) return null
+
+  const hasSwim    = swimLog.length > 0
+  const hasBikeRun = bikeRunLog.length > 0
+  if (!hasSwim && !hasBikeRun) return null
 
   if (!trace.length) return null
 

@@ -14,12 +14,10 @@ function tssColor(tss) {
 }
 
 export default function LoadHeatmapCard({ log, dl, onDayClick }) {
-  if (!dl.loadheatmap) return null
-
   const { tssMap, weeks, monthLabels } = useMemo(() => {
     // Build TSS lookup: { 'YYYY-MM-DD': tss }
     const map = {}
-    log.forEach(e => {
+    ;(log || []).forEach(e => {
       if (!e.date) return
       map[e.date] = (map[e.date] || 0) + (e.tss || 0)
     })
@@ -57,6 +55,8 @@ export default function LoadHeatmapCard({ log, dl, onDayClick }) {
 
     return { tssMap: map, weeks: cols, monthLabels: labels }
   }, [log])
+
+  if (!dl.loadheatmap) return null
 
   const LABEL_H = 16    // height for month labels row
   const DAY_W   = 18    // width for day label column (M, W, F)

@@ -15,12 +15,13 @@ import { analyzeLoadTrend, analyzeZoneBalance, analyzeRecoveryCorrelation, predi
 export default function InsightsPanel({ log, recovery, profile, lang }) {
   const { t } = useContext(LangCtx)
   const [open, setOpen] = useState(false)
-  if (log.length < 4) return null
 
-  const loadTrend   = useMemo(() => analyzeLoadTrend(log),                    [log])
-  const zoneBalance = useMemo(() => analyzeZoneBalance(log),                   [log])
-  const fitness     = useMemo(() => predictFitness(log),                       [log])
-  const recovCorr   = useMemo(() => analyzeRecoveryCorrelation(log, recovery), [log, recovery])
+  const loadTrend   = useMemo(() => analyzeLoadTrend(log || []),                    [log])
+  const zoneBalance = useMemo(() => analyzeZoneBalance(log || []),                   [log])
+  const fitness     = useMemo(() => predictFitness(log || []),                       [log])
+  const recovCorr   = useMemo(() => analyzeRecoveryCorrelation(log || [], recovery || []), [log, recovery])
+
+  if ((log || []).length < 4) return null
 
   const insights = [
     { label: t('loadTrendLabel'),  value: loadTrend.trend.toUpperCase(),       color: loadTrend.trend==='building'?'#5bc25b':loadTrend.trend==='recovering'?'#4a90d9':'#f5c542', text: loadTrend.advice[lang] || loadTrend.advice.en },

@@ -1,4 +1,4 @@
-import { lazy } from 'react'
+import { lazy, useEffect } from 'react'
 import { LangCtx, TABS } from './contexts/LangCtx.jsx'
 import { useLocalStorage } from './hooks/useLocalStorage.js'
 import { useAppState } from './hooks/useAppState.js'
@@ -408,6 +408,16 @@ export default function App() {
   const [lang, setLang] = useLocalStorage('sporeus-lang', 'en')
   const [dark, setDark] = useLocalStorage('sporeus-dark', true)
   const { user, profile: authProfile, loading, signOut, refreshProfile } = useAuth()
+
+  // Clean up ?code= param left in URL after Supabase magic-link / email confirmation
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.has('code') && !params.has('state')) {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('code')
+      window.history.replaceState({}, '', url.toString())
+    }
+  }, [])
 
   const userId = isSupabaseReady() ? (user?.id ?? null) : null
 

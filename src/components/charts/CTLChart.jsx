@@ -70,11 +70,9 @@ export default function CTLChart({ log, days = 90, raceResults = [], plan = null
     }))
   }, [log, days])
 
-  if (!data.length) return null
-
   // Race markers that fall within the display window
   const raceMarkers = useMemo(() => {
-    if (!raceResults?.length) return []
+    if (!raceResults?.length || !data.length) return []
     const dates = new Set(data.map(p => p.fullDate))
     return raceResults
       .map(r => r.raceDate || r.date)
@@ -83,6 +81,9 @@ export default function CTLChart({ log, days = 90, raceResults = [], plan = null
   }, [raceResults, data])
 
   const phaseBands = useMemo(() => getPhaseBands(plan, days), [plan, days])
+
+  if (!data.length) return null
+
   const interval = Math.max(1, Math.floor(data.length / 6))
 
   return (
