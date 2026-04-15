@@ -26,6 +26,9 @@ import { useAuth } from './hooks/useAuth.js'
 import { isSupabaseReady } from './lib/supabase.js'
 import { hasCurrentConsent, grantConsent } from './lib/db/consentVersion.js'
 import { logConsent } from './lib/db/consent.js'
+import { addNotification } from './lib/notificationCenter.js'
+import NotificationBell from './components/NotificationBell.jsx'
+import { calculateACWR } from './lib/trainingLoad.js'
 import { detectLocalData } from './lib/dataMigration.js'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 const CoachDashboard  = lazy(() => import('./components/CoachDashboard.jsx'))
@@ -217,6 +220,24 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
       try { localStorage.setItem(SYNC_KEY, String(Date.now())) } catch {}
     }).catch(() => {})
   }, [authUser])
+
+  // ACWR spike notification — fires when log changes and ratio exceeds 1.3
+  useEffect(() => {
+    const { ratio } = calculateACWR(log)
+    if (ratio === null || ratio <= 1.3) return
+    const FLAG_KEY = 'sporeus-acwr-notif-date'
+    const today2 = new Date().toISOString().slice(0, 10)
+    try {
+      if (localStorage.getItem(FLAG_KEY) === today2) return
+      localStorage.setItem(FLAG_KEY, today2)
+    } catch {}
+    addNotification(
+      'warning',
+      'High Load Warning',
+      `ACWR is ${ratio.toFixed(2)} — above 1.3. Consider an easy day to reduce injury risk.`,
+      { tab: 'today' }
+    )
+  }, [log])
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return
@@ -468,6 +489,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
                 boxShadow: syncStatus === 'syncing' ? '0 0 6px #f5c54299' : 'none',
               }}
             />
+            <NotificationBell onNavigate={setTab} />
             <button
               onClick={() => setShowSearch(true)}
               title="Search features (Ctrl+K)"

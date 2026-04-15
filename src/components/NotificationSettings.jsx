@@ -1,4 +1,4 @@
-// ─── NotificationSettings.jsx — Push/local notification toggle (v5.11.0) ─────
+// ─── NotificationSettings.jsx — Push/local notification toggle (v6.9.3) ─────
 import { useState, useEffect } from 'react'
 import {
   requestPermission,
@@ -7,7 +7,6 @@ import {
   getReminderSettings,
   saveReminderSettings,
 } from '../lib/pushNotifications.js'
-import { supabase, isSupabaseReady } from '../lib/supabase.js'
 
 const MONO = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -24,64 +23,19 @@ function permLabel(p) {
   return 'NOT SET'
 }
 
-export default function NotificationSettings({ userId }) {
+export default function NotificationSettings() {
   const [permission, setPermission] = useState(() =>
     typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
   )
-  const [enabled, setEnabled]   = useState(false)
-  const [hour, setHour]         = useState(7)
-  const [saved, setSaved]       = useState(false)
-  const [tgChatId, setTgChatId] = useState('')
-  const [tgSaved, setTgSaved]   = useState(false)
-  const [tgError, setTgError]   = useState('')
+  const [enabled, setEnabled] = useState(false)
+  const [hour, setHour]       = useState(7)
+  const [saved, setSaved]     = useState(false)
 
   useEffect(() => {
     const s = getReminderSettings()
     setEnabled(s.enabled)
     setHour(s.hour)
   }, [])
-
-  // Load existing Telegram chat_id from Supabase if logged in
-  useEffect(() => {
-    if (!userId || !isSupabaseReady()) return
-    supabase
-      .from('push_subscriptions')
-      .select('telegram_chat_id')
-      .eq('user_id', userId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.telegram_chat_id) setTgChatId(data.telegram_chat_id)
-      })
-  }, [userId])
-
-  async function handleSaveTelegram() {
-    setTgError('')
-    const chatId = tgChatId.trim()
-    if (!chatId) return
-    if (!/^-?\d+$/.test(chatId)) {
-      setTgError('Chat ID must be a number (get it from @userinfobot on Telegram)')
-      return
-    }
-    if (!isSupabaseReady() || !userId) {
-      setTgError('Sign in to save Telegram settings')
-      return
-    }
-    const { error } = await supabase
-      .from('push_subscriptions')
-      .upsert({ user_id: userId, telegram_chat_id: chatId }, { onConflict: 'user_id' })
-    if (error) {
-      setTgError('Save failed — ' + error.message)
-    } else {
-      setTgSaved(true)
-      setTimeout(() => setTgSaved(false), 2000)
-    }
-  }
-
-  async function handleRemoveTelegram() {
-    if (!isSupabaseReady() || !userId) return
-    await supabase.from('push_subscriptions').update({ telegram_chat_id: null }).eq('user_id', userId)
-    setTgChatId('')
-  }
 
   async function handleToggle() {
     if (!enabled) {
@@ -181,52 +135,6 @@ export default function NotificationSettings({ userId }) {
           )}
         </>
       )}
-
-      {/* ── Telegram Fallback ─────────────────────────────────────────── */}
-      <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #1e1e1e' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-          <div style={{ fontSize: '11px', fontWeight: 700, color: '#ccc', letterSpacing: '0.08em' }}>
-            TELEGRAM (TR)
-          </div>
-          {tgSaved && <span style={{ fontSize: '9px', color: '#5bc25b' }}>SAVED</span>}
-        </div>
-        <div style={{ fontSize: '10px', color: '#555', marginBottom: '10px', lineHeight: 1.5 }}>
-          Get weekly digest via Telegram. Send a message to{' '}
-          <span style={{ color: ORANGE }}>@userinfobot</span> to find your Chat ID.
-        </div>
-        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-          <input
-            type="text"
-            value={tgChatId}
-            onChange={e => setTgChatId(e.target.value)}
-            placeholder="Telegram Chat ID"
-            style={{
-              flex: 1, background: '#1a1a1a', border: '1px solid #333', borderRadius: '4px',
-              color: '#ccc', fontFamily: MONO, fontSize: '11px', padding: '5px 8px',
-            }}
-          />
-          <button
-            onClick={handleSaveTelegram}
-            style={{
-              background: ORANGE, border: 'none', color: '#fff', fontFamily: MONO,
-              fontSize: '10px', fontWeight: 700, padding: '5px 10px', cursor: 'pointer', borderRadius: '3px',
-            }}
-          >
-            SAVE
-          </button>
-          {tgChatId && (
-            <button
-              onClick={handleRemoveTelegram}
-              style={{ background: 'none', border: '1px solid #333', color: '#555', fontFamily: MONO, fontSize: '10px', padding: '5px 8px', cursor: 'pointer', borderRadius: '3px' }}
-            >
-              ✕
-            </button>
-          )}
-        </div>
-        {tgError && (
-          <div style={{ marginTop: '6px', fontSize: '10px', color: '#e03030' }}>{tgError}</div>
-        )}
-      </div>
     </div>
   )
 }

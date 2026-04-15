@@ -2,6 +2,31 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v6.9.3 (2026-04-16)
+Remove Telegram dependency, replace with in-app notification center.
+
+**NotificationBell** (`src/components/NotificationBell.jsx`)
+- Bell icon in header nav with unread red badge (hidden at 0)
+- Dropdown panel (320px, fixed position): type icon | title | body | time-ago
+- Type icons: 🏃 training | 📊 analytics | ⚠️ warning | 🏆 achievement | 💬 coach
+- Mark all read / Clear buttons; empty state; click → markRead + navigate to tab
+- Reads from `sporeus-notifications` localStorage key; refreshes on storage event
+
+**notificationCenter.js** (`src/lib/notificationCenter.js`)
+- `addNotification(type, title, body, metadata)` — saves to localStorage, max 50 newest-first
+- `getNotifications()`, `markRead(id)`, `markAllRead()`, `clearAll()`, `getUnreadCount()`
+- 9 new tests in `notificationCenter.test.js`
+
+**Telegram removal**
+- Deleted `supabase/functions/telegram-notify/` edge function
+- Deleted `src/lib/telegramHelpers.js` and its test file
+- Removed Telegram section from `NotificationSettings.jsx` (no external service needed)
+- Removed `telegram_chat_id` column from `push_subscriptions` (migration `20260417_telegram_cleanup.sql`)
+- Removed `sendTelegramDigest()` and `telegram_chat_id` from `nightly-batch/index.ts`
+
+**ACWR spike notification** (`src/App.jsx`)
+- useEffect fires when log changes; if ACWR > 1.3, fires `addNotification('warning', 'High Load Warning', ...)` once per day (debounced via `sporeus-acwr-notif-date` localStorage key)
+
 ## v5.40.0 (2026-04-13)
 Phase 3 scale features — 551 tests (28 files, +36 tests vs v5.30.0):
 

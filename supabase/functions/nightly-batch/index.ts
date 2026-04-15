@@ -151,26 +151,6 @@ function getWeekStart(dateStr: string): string {
   return monday.toISOString().slice(0, 10)
 }
 
-// ── Send Telegram notification if TELEGRAM_BOT_TOKEN is configured ────────────
-async function sendTelegramDigest(chatId: string, message: string): Promise<void> {
-  const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN")
-  if (!botToken || !chatId) return
-  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? ""
-  const fnUrl = supabaseUrl.replace(".supabase.co", ".supabase.co") + "/functions/v1/telegram-notify"
-  try {
-    await fetch(fnUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type":  "application/json",
-        "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""}`,
-      },
-      body: JSON.stringify({ chat_id: chatId, message, type: "weekly_digest" }),
-    })
-  } catch (e) {
-    console.warn("sendTelegramDigest error:", e instanceof Error ? e.message : String(e))
-  }
-}
-
 // ── Main handler ──────────────────────────────────────────────────────────────
 serve(async (req) => {
   const start = Date.now()
@@ -309,7 +289,7 @@ serve(async (req) => {
     // Query all coaches (role = 'coach') from profiles
     const { data: coaches } = await supabase
       .from("profiles")
-      .select("id, display_name, telegram_chat_id")
+      .select("id, display_name")
       .eq("role", "coach")
 
     let digestOk = 0, digestErr = 0
@@ -362,14 +342,6 @@ serve(async (req) => {
           week_start:  weekStart,
           digest_json: digestJson,
         }, { onConflict: "coach_id,week_start" })
-
-        // Telegram notification if the coach has a chat_id
-        const tgChatId = (coach as { telegram_chat_id?: string }).telegram_chat_id
-        if (tgChatId && typeof digestJson === "object" && digestJson !== null) {
-          const d = digestJson as { headline?: string; recommendation?: string }
-          const msg = `<b>Sporeus Weekly Digest — ${weekStart}</b>\n\n${d.headline ?? ""}\n\n<i>${d.recommendation ?? ""}</i>`
-          await sendTelegramDigest(tgChatId, msg)
-        }
 
         digestOk++
       } catch (e) {
