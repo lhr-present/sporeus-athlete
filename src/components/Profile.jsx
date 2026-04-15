@@ -2,6 +2,7 @@ import { useState, useEffect, useContext, useCallback } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
+import { useData } from '../contexts/DataContext.jsx'
 import { ACTIVITY_MULTS, SPORT_BRANCHES, TRIATHLON_TYPES, ATHLETE_LEVELS } from '../lib/constants.js'
 import { navyBF, mifflinBMR, calcLoad, generateUnlockCode, FREE_ATHLETE_LIMIT } from '../lib/formulas.js'
 import { sanitizeProfile } from '../lib/validate.js'
@@ -1171,8 +1172,9 @@ export function countUnreadCoachMessages() {
   try { return (JSON.parse(localStorage.getItem(COACH_MSG_KEY)) || []).filter(m => m.from === 'coach' && !m.read).length } catch { return 0 }
 }
 
-export default function Profile({ profile, setProfile, log, authUser }) {
+export default function Profile({ log, authUser }) {
   const { t } = useContext(LangCtx)
+  const { profile, setProfile } = useData()
   const [local, setLocal] = useState(profile)
   const [status, setStatus] = useState(null)
   const [coachMode, setCoachMode] = useLocalStorage('sporeus-coach-mode', false)

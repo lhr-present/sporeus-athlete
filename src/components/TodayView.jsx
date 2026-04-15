@@ -45,9 +45,9 @@ function calcConsecutiveDays(log, today) {
 
 const QUICK_FIELDS = WELLNESS_FIELDS.filter(f => ['sleep', 'energy', 'soreness'].includes(f.key))
 
-export default function TodayView({ log, profile, setTab, setLogPrefill }) {
+export default function TodayView({ log, setTab, setLogPrefill }) {
   const { t, lang }   = useContext(LangCtx)
-  const { recovery, setRecovery } = useData()
+  const { recovery, setRecovery, profile } = useData()
 
   const [plan]       = useLocalStorage('sporeus-plan',        null)
   const [planStatus, setPlanStatus] = useLocalStorage('sporeus-plan-status', {})

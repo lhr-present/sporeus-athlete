@@ -100,12 +100,12 @@ function BackupReminder({ log }) {
   )
 }
 
-export default function Dashboard({ log, profile }) {
+export default function Dashboard({ log }) {
   const [dark] = useLocalStorage('sporeus-dark', false)
   const [lang] = useLocalStorage('sporeus-lang', 'en')
   const [plan] = useLocalStorage('sporeus-plan', null)
   const [planStatus] = useLocalStorage('sporeus-plan-status', {})
-  const { recovery, injuries, testResults, raceResults } = useData()
+  const { recovery, injuries, testResults, raceResults, profile } = useData()
   const [myCoach] = useLocalStorage('sporeus-my-coach', null)
   const { t } = useContext(LangCtx)
   const sportLabel = SPORT_BRANCHES.find(b=>b.id===profile.primarySport)?.label || profile.sport || ''

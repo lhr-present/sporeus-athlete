@@ -52,7 +52,6 @@ const Splash = () => (
 function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut }) {
   const {
     log, setLog,
-    profile, setProfile,
     tab, handleTabClick,
     showSearch, setShowSearch,
     showQuickAdd, setShowQuickAdd,
@@ -77,7 +76,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
       <LangCtx.Provider value={{ t, lang, setLang }}>
         <style>{ANIM_CSS}</style>
         <AsyncBoundary name="Today">
-          <TodayView log={log} profile={profile} setTab={() => {}} setLogPrefill={() => {}} />
+          <TodayView log={log} setTab={() => {}} setLogPrefill={() => {}} />
         </AsyncBoundary>
       </LangCtx.Provider>
     )
@@ -291,8 +290,8 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
             </>
           )}
           {coachMode && authProfile?.role !== 'coach' && <AsyncBoundary name="Coach Mode"><CoachDashboard authUser={authUser}/></AsyncBoundary>}
-          {!coachMode && tab === 'today'        && <AsyncBoundary name="Today"><TodayView log={log} profile={profile} setTab={handleTabClick} setLogPrefill={setLogPrefill}/></AsyncBoundary>}
-          {!coachMode && tab === 'dashboard'    && <AsyncBoundary name="Dashboard"><Dashboard log={log} profile={profile}/></AsyncBoundary>}
+          {!coachMode && tab === 'today'        && <AsyncBoundary name="Today"><TodayView log={log} setTab={handleTabClick} setLogPrefill={setLogPrefill}/></AsyncBoundary>}
+          {!coachMode && tab === 'dashboard'    && <AsyncBoundary name="Dashboard"><Dashboard log={log}/></AsyncBoundary>}
           {tab === 'zones'        && <AsyncBoundary name="Zone Calc"><ZoneCalc/></AsyncBoundary>}
           {tab === 'tests'        && <AsyncBoundary name="Protocols"><TestProtocols/></AsyncBoundary>}
           {tab === 'log'          && <AsyncBoundary name="Training Log"><TrainingLog log={log} setLog={setLog} prefill={logPrefill} clearPrefill={() => setLogPrefill(null)}/></AsyncBoundary>}
@@ -300,8 +299,8 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
           {tab === 'plan'         && <AsyncBoundary name="Yearly Plan"><YearlyPlan /></AsyncBoundary>}
           {tab === 'glossary'     && <AsyncBoundary name="Glossary"><Glossary/></AsyncBoundary>}
           {tab === 'recovery'     && <AsyncBoundary name="Recovery"><Recovery/></AsyncBoundary>}
-          {tab === 'profile'      && <AsyncBoundary name="Profile"><Profile profile={profile} setProfile={setProfile} log={log} authUser={authUser}/></AsyncBoundary>}
-          {tab === 'sport'        && <AsyncBoundary name="Sport Plan"><SportProgramBuilder profile={profile}/></AsyncBoundary>}
+          {tab === 'profile'      && <AsyncBoundary name="Profile"><Profile log={log} authUser={authUser}/></AsyncBoundary>}
+          {tab === 'sport'        && <AsyncBoundary name="Sport Plan"><SportProgramBuilder/></AsyncBoundary>}
         </main>
 
         <footer style={S.footer}>

@@ -58,17 +58,12 @@ function fmtTime(sec) {
 }
 
 export default function VO2maxCard() {
-  const { log } = useData()
+  const { log, profile } = useData()
 
   const [showZones, setShowZones]     = useState(false)
   const [manualVdot, setManualVdot]   = useState(null)
   const [raceInp, setRaceInp]         = useState({ dist: '', hh: '', mm: '', ss: '' })
   const [raceErr, setRaceErr]         = useState('')
-
-  // Read profile once (maxHR, cooperDist)
-  const profile = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem('sporeus_profile') || '{}') } catch { return {} }
-  }, [])
 
   const maxHR = parseInt(profile.maxHR || 190)
 

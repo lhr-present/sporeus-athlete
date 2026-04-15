@@ -23,7 +23,7 @@ import { logConsent } from '../lib/db/consent.js'
  *           authUser: object|null, authProfile: object|null, signOut: Function }} opts
  */
 export function useAppState({ lang, setLang, dark, setDark, authUser, authProfile, signOut }) {
-  const { log, setLog, recovery } = useData()
+  const { log, setLog, recovery, profile, setProfile } = useData()
   const isGuest = isSupabaseReady() && !authUser && localStorage.getItem('sporeus-guest-mode') === '1'
   const { toasts, addToast, dismissToast } = useToasts()
 
@@ -82,7 +82,6 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   }, [stravaCallbackCode, authUser]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Core state ────────────────────────────────────────────────────────────────
-  const [profile, setProfile] = useLocalStorage('sporeus_profile', {})
   const [logPrefill, setLogPrefill] = useState(null)
   const [onboarded, setOnboarded] = useLocalStorage('sporeus-onboarded', false)
   const [consentGiven, setConsentGiven] = useState(hasCurrentConsent)

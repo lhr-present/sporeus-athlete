@@ -6,6 +6,7 @@ import { calcTSS, normalizedPower, computePowerTSS, computeWPrime } from '../lib
 import { sanitizeLogEntry } from '../lib/validate.js'
 import Calendar from './Calendar.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
+import { useData } from '../contexts/DataContext.jsx'
 import { scoreSession, autoTagSession, analyseSession, detectPersonalBests } from '../lib/intelligence.js'
 import { BANISTER } from '../lib/sport/constants.js'
 
@@ -50,7 +51,7 @@ import ActivityMap from './ActivityMap.jsx'
 
 export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const { t } = useContext(LangCtx)
-  const [profileLS] = useLocalStorage('sporeus_profile', {})
+  const { profile: profileLS } = useData()
   const today = new Date().toISOString().slice(0,10)
   const defaultType = (() => {
     const sc = SPORT_CONFIG[profileLS?.primarySport]

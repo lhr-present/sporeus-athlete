@@ -876,8 +876,8 @@ function Step5({ form, result, onRestart, log, setLog }) {
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
-export default function SportProgramBuilder({ profile }) {
-  const { log, setLog } = useData()
+export default function SportProgramBuilder() {
+  const { log, setLog, profile } = useData()
 
   const [step, setStep]     = useState(0)
   const [form, setForm]     = useState({ weeks: 8 })

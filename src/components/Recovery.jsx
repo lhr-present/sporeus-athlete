@@ -16,8 +16,7 @@ import { predictInjuryRisk } from '../lib/intelligence.js'
 
 export default function Recovery() {
   const { t } = useContext(LangCtx)
-  const { recovery: entries, setRecovery: setEntries, log } = useData()
-  const [profileLS] = useLocalStorage('sporeus_profile', {})
+  const { recovery: entries, setRecovery: setEntries, log, profile: profileLS } = useData()
   const [lang] = useLocalStorage('sporeus-lang', 'en')
   const isAdvanced = profileLS?.athleteLevel === 'advanced' || profileLS?.athleteLevel === 'elite'
   const today = new Date().toISOString().slice(0,10)

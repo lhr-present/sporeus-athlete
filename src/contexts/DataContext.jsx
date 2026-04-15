@@ -11,6 +11,7 @@ import {
   useTestResults,
   useRaceResults,
 } from '../hooks/useSupabaseData.js'
+import { useLocalStorage } from '../hooks/useLocalStorage.js'
 
 const DataContext = createContext(null)
 
@@ -20,6 +21,7 @@ export function DataProvider({ userId, children }) {
   const [injuries,    setInjuries]    = useInjuries(userId)
   const [testResults, setTestResults] = useTestResults(userId)
   const [raceResults, setRaceResults] = useRaceResults(userId)
+  const [profile,     setProfile]     = useLocalStorage('sporeus_profile', {})
 
   return (
     <DataContext.Provider value={{
@@ -28,6 +30,7 @@ export function DataProvider({ userId, children }) {
       injuries,    setInjuries,
       testResults, setTestResults,
       raceResults, setRaceResults,
+      profile,     setProfile,
     }}>
       {children}
     </DataContext.Provider>
