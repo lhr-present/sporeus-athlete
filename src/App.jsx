@@ -25,6 +25,7 @@ import { InviteModal } from './components/MyCoach.jsx'
 import { useAuth } from './hooks/useAuth.js'
 import { isSupabaseReady } from './lib/supabase.js'
 import { hasCurrentConsent, grantConsent } from './lib/db/consentVersion.js'
+import { logConsent } from './lib/db/consent.js'
 import { detectLocalData } from './lib/dataMigration.js'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 const CoachDashboard  = lazy(() => import('./components/CoachDashboard.jsx'))
@@ -112,7 +113,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
     try { return localStorage.getItem(STORAGE_WARN_KEY)==='1' } catch { return false }
   })
   const [onboarded, setOnboarded] = useLocalStorage('sporeus-onboarded', false)
-  const [consentGiven, setConsentGiven] = useLocalStorage('sporeus-consent-v1', false)
+  const [consentGiven, setConsentGiven] = useState(hasCurrentConsent)
   const [swUpdateReady, setSwUpdateReady] = useState(false)
   const [coachToast, setCoachToast] = useState('')
   const [showSearch, setShowSearch] = useState(false)
@@ -338,7 +339,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
               {lang === 'tr' ? 'Onayı istediğiniz zaman Profil → Gizlilik bölümünden geri çekebilirsiniz.' : 'You may withdraw consent at any time from Profile → Privacy.'}
             </div>
             <button
-              onClick={() => { grantConsent(); setConsentGiven(true) }}
+              onClick={() => { grantConsent(); setConsentGiven(true); if (authUser?.id) logConsent(authUser.id, 'data_processing', '1.1') }}
               style={{ width:'100%', padding:'12px', background:'#ff6600', border:'none', color:'#fff', fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:700, letterSpacing:'0.08em', borderRadius:'4px', cursor:'pointer' }}
             >
               {lang === 'tr' ? 'KABUL EDİYORUM — DEVAM ET' : 'I CONSENT — CONTINUE'}

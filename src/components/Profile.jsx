@@ -8,7 +8,7 @@ import { sanitizeProfile } from '../lib/validate.js'
 import { exportAllData, importAllData } from '../lib/storage.js'
 import { exportAthleteData, deleteAthleteData, triggerDownload } from '../lib/gdprExport.js'
 import { logAction, getMyAuditLog } from '../lib/db/auditLog.js'
-import { hasCurrentConsent } from '../lib/db/consentVersion.js'
+import { hasCurrentConsent, withdrawConsent } from '../lib/db/consentVersion.js'
 import { logConsent } from '../lib/db/consent.js'
 import { generateSeasonReport } from '../lib/pdfReport.js'
 import { getTierSync, isFeatureGated, getUpgradePrompt } from '../lib/subscription.js'
@@ -1482,6 +1482,21 @@ export default function Profile({ profile, setProfile, log, authUser }) {
               <div style={{ ...S.mono, fontSize:'10px', color:'#aaa', marginBottom:'10px' }}>
                 Data processing consent: {hasCurrentConsent() ? '✓ v1.1 — accepted' : '✗ Not given'}
               </div>
+
+              {/* Withdraw consent */}
+              {hasCurrentConsent() && (
+                <button
+                  onClick={() => {
+                    if (window.confirm('Withdraw KVKK/GDPR consent? The app will reload and ask for consent again before you can use it.')) {
+                      withdrawConsent()
+                      window.location.reload()
+                    }
+                  }}
+                  style={{ ...S.mono, fontSize:'10px', color:'#ff4444', background:'transparent', border:'1px solid #ff444440', borderRadius:'3px', padding:'4px 10px', cursor:'pointer', marginBottom:'10px' }}
+                >
+                  Withdraw consent
+                </button>
+              )}
 
               {/* Data retention */}
               <div style={{ ...S.mono, fontSize:'10px', color:'#555', marginBottom:'10px', lineHeight:1.6 }}>
