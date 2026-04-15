@@ -27,6 +27,16 @@ function fmtSplit(min) {
   return `${m}:${s.toString().padStart(2, '0')} /500m`
 }
 
+function fmtDateShort(dateStr) {
+  if (!dateStr) return '—'
+  const d = new Date(dateStr + 'T12:00:00')
+  const thisYear = new Date().getFullYear()
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+  const m = months[d.getMonth()]
+  if (d.getFullYear() === thisYear) return `${m} ${d.getDate()}`
+  return `${m} '${String(d.getFullYear()).slice(2)}`
+}
+
 export default function SeasonBestsCard({ log, dl }) {
   if (!dl.seasonbests) return null
 
@@ -155,7 +165,7 @@ export default function SeasonBestsCard({ log, dl }) {
               <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
                 <td style={{ ...S.mono, fontSize: '11px', color: '#aaa', padding: '7px 0' }}>{metric}</td>
                 <td style={{ ...S.mono, fontSize: '12px', fontWeight: 700, color: '#ff6600', padding: '7px 8px' }}>{value}</td>
-                <td style={{ ...S.mono, fontSize: '10px', color: '#666', padding: '7px 0' }}>{date || '—'}</td>
+                <td style={{ ...S.mono, fontSize: '10px', color: '#666', padding: '7px 0' }}>{fmtDateShort(date)}</td>
                 <td style={{ padding: '7px 0', textAlign: 'right', fontSize: '13px' }}>
                   {isPB ? '◈' : ''}
                 </td>

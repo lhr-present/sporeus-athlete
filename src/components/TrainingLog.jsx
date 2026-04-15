@@ -7,6 +7,44 @@ import { sanitizeLogEntry } from '../lib/validate.js'
 import Calendar from './Calendar.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { scoreSession, autoTagSession, analyseSession, detectPersonalBests } from '../lib/intelligence.js'
+import { BANISTER } from '../lib/sport/constants.js'
+
+// 2-char Bloomberg-style type prefix
+function typePrefix(type) {
+  const t = (type || '').toLowerCase()
+  if (t.includes('race') || t.includes('triathlon')) return 'RC'
+  if (t.includes('run')) return 'RN'
+  if (t.includes('ride') || t.includes('cycl') || t.includes('ftp')) return 'RD'
+  if (t.includes('swim') || t.includes('css')) return 'SW'
+  if (t.includes('row')) return 'RW'
+  return 'TR'
+}
+
+// 4-char Unicode block intensity band
+function tssBand(tss) {
+  const v = tss || 0
+  if (v >= 150) return '███░'
+  if (v >= 100) return '██░░'
+  if (v >= 50)  return '█░░░'
+  return '░░░░'
+}
+
+// CTL before and after a single session using EWMA
+function calcCtlDelta(log, session) {
+  const sorted = [...log].sort((a, b) => a.date.localeCompare(b.date))
+  const idx = sorted.findIndex(e => e.id === session.id)
+  if (idx < 0) return null
+  const K = BANISTER.K_CTL
+  let ctl = 0
+  for (let i = 0; i < idx; i++) {
+    ctl = ctl * (1 - K) + (sorted[i].tss || 0) * K
+  }
+  const ctlBefore = Math.round(ctl * 10) / 10
+  ctl = ctl * (1 - K) + (session.tss || 0) * K
+  const ctlAfter = Math.round(ctl * 10) / 10
+  const delta = Math.round((ctlAfter - ctlBefore) * 10) / 10
+  return { ctlBefore, ctlAfter, delta }
+}
 import { parseFIT, parseGPX, detectFileType, parseBulkCSV, deduplicateByDate, downloadCSVTemplate } from '../lib/fileImport.js'
 import ActivityMap from './ActivityMap.jsx'
 
@@ -333,8 +371,9 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
               <thead>
                 <tr style={{ borderBottom:'2px solid var(--border)', color:'#888', fontSize:'10px', letterSpacing:'0.06em' }}>
                   {bulkMode && <th style={{ padding:'4px 6px 8px 0', fontWeight:600, width:'24px' }}></th>}
-                  {['DATE','TYPE','MIN','RPE','TSS','NOTES',''].map(h=>(
-                    <th key={h} style={{ textAlign:['TSS','MIN','RPE',''].includes(h)?'right':'left', padding:'4px 6px 8px 0', fontWeight:600 }}>{h}</th>
+                  <th style={{ padding:'4px 6px 8px 0', fontWeight:600, width:'28px' }}></th>
+                  {['DATE','TYPE','MIN','RPE','TSS','LOAD','NOTES',''].map(h=>(
+                    <th key={h} style={{ textAlign:['TSS','MIN','RPE','LOAD',''].includes(h)?'right':'left', padding:'4px 6px 8px 0', fontWeight:600 }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -363,11 +402,13 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                           />
                         </td>
                       )}
+                      <td style={{ padding:'6px 4px 6px 0', color:'#444', fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', width:'28px', letterSpacing:'0.04em' }}>{typePrefix(s.type)}</td>
                       <td style={{ padding:'6px 6px 6px 0', color:'var(--sub)' }}>{s.date}</td>
                       <td style={{ padding:'6px 6px 6px 0' }}>{s.type}</td>
                       <td style={{ textAlign:'right', padding:'6px 6px 6px 0' }}>{s.duration}</td>
                       <td style={{ textAlign:'right', padding:'6px 6px 6px 0', color:s.rpe>=8?'#e03030':s.rpe>=6?'#f5c542':'#5bc25b' }}>{s.rpe}</td>
                       <td style={{ textAlign:'right', padding:'6px 6px 6px 0', color:'#ff6600', fontWeight:600 }}>{s.tss}</td>
+                      <td style={{ textAlign:'right', padding:'6px 6px 6px 0', color:'#555', fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', letterSpacing:'0.04em' }}>{tssBand(s.tss)}</td>
                       <td style={{ padding:'6px 6px 6px 0', color:'#888', maxWidth:'160px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                         {s.wPrimeExhausted && <span title="W' reached zero — complete anaerobic depletion (Skiba 2012)" style={{ display:'inline-block', background:'#e03030', color:'#fff', fontSize:'8px', fontWeight:700, borderRadius:'3px', padding:'1px 4px', marginRight:'4px', letterSpacing:'0.05em' }}>⚡W'0</span>}
                         {s.notes}
@@ -393,7 +434,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                     </tr>
                     {i === 0 && lastPBs && lastPBs.map((pb, pi) => (
                       <tr key={`pb-${pi}`} style={{ background: 'transparent' }}>
-                        <td colSpan={bulkMode ? 8 : 7} style={{ padding: 0 }}>
+                        <td colSpan={bulkMode ? 10 : 9} style={{ padding: 0 }}>
                           <div style={{ fontSize: '9px', color: '#555', fontStyle: 'italic', fontFamily: "'IBM Plex Mono', monospace", paddingLeft: '16px', marginBottom: '2px' }}>
                             → {pb}
                           </div>
@@ -402,12 +443,18 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                     ))}
                     {isExpanded && (() => {
                       const analysis = analyseSession(s, log.slice(-28))
-                      const colCount = bulkMode ? 8 : 7
+                      const ctlInfo  = calcCtlDelta(log, s)
+                      const colCount = bulkMode ? 10 : 9
                       return (
                         <tr key={`exp-${i}`} style={{ borderBottom:'1px solid var(--border)', background:'#0a0a0a' }}>
                           <td colSpan={colCount} style={{ padding:'0 0 10px 0' }}>
                             <div style={{ margin:'0 6px 0 0', padding:'12px', background:'#0f0f0f', border:'1px solid #1e1e1e', borderRadius:'4px' }}>
                               <div style={{ fontSize:'9px', color:'#ff6600', letterSpacing:'0.12em', marginBottom:'10px', fontWeight:700, fontFamily:"'IBM Plex Mono',monospace" }}>SESSION ANALYSIS</div>
+                              {ctlInfo && (
+                                <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', color:'#666', marginBottom:'10px' }}>
+                                  CTL: {ctlInfo.ctlBefore} → {ctlInfo.ctlAfter} ({ctlInfo.delta >= 0 ? '+' : ''}{ctlInfo.delta} this session)
+                                </div>
+                              )}
                               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'10px', fontFamily:"'IBM Plex Mono',monospace" }}>
                                 <div>
                                   <div style={{ fontSize:'9px', color:'#555', marginBottom:'3px' }}>COMPARISON</div>

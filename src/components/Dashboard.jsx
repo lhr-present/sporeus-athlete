@@ -10,7 +10,7 @@ import { zoneDistribution, trainingModel, MODEL_META } from '../lib/zoneDistrib.
 import ShareCard from './ShareCard.jsx'
 import { exportAllData } from '../lib/storage.js'
 import { useCountUp } from '../hooks/useCountUp.js'
-import Achievements from './Achievements.jsx'
+import { getRecentAchievement } from './Achievements.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { SPORT_BRANCHES, ATHLETE_LEVELS, LEVEL_CONFIG, DASH_CARD_DEFS } from '../lib/constants.js'
 import { assessDataQuality } from '../lib/intelligence.js'
@@ -36,6 +36,33 @@ import TrainingAgeCard  from './dashboard/TrainingAgeCard.jsx'
 import GoalTrackerCard  from './dashboard/GoalTrackerCard.jsx'
 import LoadHeatmapCard  from './dashboard/LoadHeatmapCard.jsx'
 import SeasonBestsCard  from './dashboard/SeasonBestsCard.jsx'
+
+// Format load values: 1 decimal when < 10 (sport science convention)
+function fmtLoad(v) {
+  const n = typeof v === 'number' ? v : parseFloat(v)
+  if (!isFinite(n)) return '—'
+  if (Math.abs(n) < 10) return n.toFixed(1)
+  return String(Math.round(n))
+}
+
+// Format delta with sign and precision
+function fmtDelta(delta) {
+  if (!delta) return null
+  const abs = Math.abs(delta)
+  const fmt = abs < 10 ? abs.toFixed(1) : String(Math.round(abs))
+  return (delta > 0 ? '+' : '-') + fmt
+}
+
+// Format date as "Apr 12" (current year) or "Apr '25" (prior year)
+function fmtDateShort(dateStr) {
+  if (!dateStr) return dateStr
+  const d = new Date(dateStr + 'T12:00:00')
+  const thisYear = new Date().getFullYear()
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+  const m = months[d.getMonth()]
+  if (d.getFullYear() === thisYear) return `${m} ${d.getDate()}`
+  return `${m} '${String(d.getFullYear()).slice(2)}`
+}
 
 function BackupReminder({ log }) {
   const [lastBackup, setLastBackup] = useLocalStorage('sporeus-last-backup', null)
@@ -247,7 +274,14 @@ export default function Dashboard({ log, profile }) {
           )}
         </div>
 
-        <Achievements log={log} dark={dark} lang={lang}/>
+        {(() => {
+          const ra = getRecentAchievement(7)
+          return ra ? (
+            <div style={{ ...S.mono, fontSize:'10px', color:'#555', marginBottom:'12px' }}>
+              ◈ {ra.name} — {ra.desc}
+            </div>
+          ) : null
+        })()}
 
         <div style={{ textAlign:'center', padding:'20px 0' }}>
           <button style={{ ...S.btnSec, fontSize:'11px' }} onClick={()=>setShowAdvanced(true)}>
@@ -307,9 +341,9 @@ export default function Dashboard({ log, profile }) {
             {lc.showCTL && (
               <div style={{ display:'flex', gap:'16px', marginTop:'10px', flexWrap:'wrap' }}>
                 {[
-                  { lbl:t('ctlLabel'), v:ctl,  c:'#0064ff', delta:trendCTL, tip:'Chronic Training Load — your fitness. Higher = fitter. 42-day average of daily TSS.' },
-                  { lbl:t('atlLabel'), v:atl,  c:'#ef4444', delta:trendATL, tip:'Acute Training Load — your fatigue. 7-day average. Drops after rest days.' },
-                  { lbl:t('tsbLabel'), v:(tsb>=0?'+':'')+tsb, c:tsbColor, delta:trendTSB, tip:'Training Stress Balance = CTL − ATL. Positive = fresh, ready to race. Negative = fatigued.' },
+                  { lbl:t('ctlLabel'), v:fmtLoad(ctl),  c:'#0064ff', delta:trendCTL, tip:'Chronic Training Load — your fitness. Higher = fitter. 42-day average of daily TSS.' },
+                  { lbl:t('atlLabel'), v:fmtLoad(atl),  c:'#ef4444', delta:trendATL, tip:'Acute Training Load — your fatigue. 7-day average. Drops after rest days.' },
+                  { lbl:t('tsbLabel'), v:(tsb>=0?'+':'')+fmtLoad(Math.abs(tsb)), c:tsbColor, delta:trendTSB, tip:'Training Stress Balance = CTL − ATL. Positive = fresh, ready to race. Negative = fatigued.' },
                 ].map(({lbl,v,c,delta,tip})=>(
                   <div key={lbl}>
                     <div style={{ ...S.mono, fontSize:'9px', color:'#888', letterSpacing:'0.08em', display:'flex', alignItems:'center' }}>
@@ -317,11 +351,14 @@ export default function Dashboard({ log, profile }) {
                     </div>
                     <div style={{ display:'flex', alignItems:'baseline', gap:'5px' }}>
                       <div style={{ ...S.mono, fontSize:'16px', fontWeight:600, color:c }}>{v}</div>
-                      {delta !== 0 && prev7 && (
-                        <div style={{ ...S.mono, fontSize:'10px', color: delta > 0 ? '#5bc25b' : '#e03030', letterSpacing:'0.04em' }}>
-                          {delta > 0 ? '↑' : '↓'}{Math.abs(delta)}
-                        </div>
-                      )}
+                      {delta !== 0 && prev7 && (() => {
+                        const d = fmtDelta(delta)
+                        return d ? (
+                          <div style={{ ...S.mono, fontSize:'10px', color: delta > 0 ? '#5bc25b' : '#e03030', letterSpacing:'0.04em' }}>
+                            {d}
+                          </div>
+                        ) : null
+                      })()}
                     </div>
                   </div>
                 ))}
@@ -332,6 +369,14 @@ export default function Dashboard({ log, profile }) {
                 Density (28d): {consistency.pct}% · Longest gap: {consistency.longestGap}d · Avg gap: {consistency.totalDays > 0 ? ((consistency.totalDays - consistency.sessionDays) / Math.max(1, consistency.sessionDays + 1)).toFixed(1) : '—'}d
               </div>
             )}
+            {lc.showCTL && (() => {
+              const complete = dqResult.factors.filter(f => f.score >= 80).length
+              return (
+                <div style={{ ...S.mono, fontSize:'9px', color:'#444', marginTop:'4px' }}>
+                  Data quality: <span style={{ color: dqResult.gradeColor }}>{dqResult.grade}</span> ({complete}/{dqResult.factors.length} factors complete)
+                </div>
+              )
+            })()}
           </div>
           <div style={{ ...S.mono, fontSize:'40px', fontWeight:600, color:readiness.color }}>{countTSS}</div>
         </div>
@@ -648,7 +693,14 @@ export default function Dashboard({ log, profile }) {
         )
       })()}
 
-      {dl.achievements !== false && <Achievements log={log} dark={dark} lang={lang}/>}
+      {dl.achievements !== false && (() => {
+        const ra = getRecentAchievement(7)
+        return ra ? (
+          <div style={{ ...S.mono, fontSize:'10px', color:'#555', marginBottom:'12px' }}>
+            ◈ {ra.name} — {ra.desc}
+          </div>
+        ) : null
+      })()}
 
       {/* ── Normative comparison (FTP + CTL) ─────────────────────────────── */}
       {(() => {

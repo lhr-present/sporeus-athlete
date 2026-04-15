@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from 'react'
+import { useState, useEffect, useContext, useCallback } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
@@ -22,6 +22,7 @@ import { getStravaConnection, initiateStravaOAuth, triggerStravaSync, disconnect
 import { getPushState, subscribePush, unsubscribePush, checkRaceCountdowns } from '../lib/pushNotify.js'
 import { clearInsightCache } from '../lib/aiPrompts.js'
 import { generateReferralCode, getReferralStats } from '../lib/referral.js'
+import Achievements from './Achievements.jsx'
 
 // ─── AI Settings Panel ────────────────────────────────────────────────────────
 // API key is managed server-side (ai-proxy edge function). This panel shows
@@ -1635,6 +1636,17 @@ export default function Profile({ profile, setProfile, log, authUser }) {
       {(local.name?.toLowerCase().includes('hüseyin') || local.name?.toLowerCase().includes('huseyin') || local.email === 'huseyinakbulut@marun.edu.tr') && (
         <AthleteOSCosts />
       )}
+
+      {/* Training milestones — logbook, not reward screen */}
+      {log && log.length > 0 && (() => {
+        const [dark] = [JSON.parse(localStorage.getItem('sporeus-dark') || 'false')]
+        const [lang] = [localStorage.getItem('sporeus-lang') || 'en']
+        return (
+          <div style={S.card}>
+            <Achievements log={log} dark={dark} lang={lang} />
+          </div>
+        )
+      })()}
     </div>
   )
 }

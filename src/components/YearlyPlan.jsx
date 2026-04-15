@@ -66,7 +66,7 @@ function WeekColumn({ week, selected, isCurrent, onClick, colW, maxTSS }) {
   return (
     <div
       onClick={onClick}
-      title={`W${week.weekNum} ${week.phase} — TSS ${week.targetTSS}${week.raceName ? ' [R] ' + week.raceName : ''}`}
+      title={`W${week.weekNum} ${week.phase} — TSS ${week.targetTSS}${week.raceName ? ' ◉ ' + week.raceName : ''}`}
       style={{
         width:          colW,
         flexShrink:     0,
@@ -117,7 +117,7 @@ function WeekColumn({ week, selected, isCurrent, onClick, colW, maxTSS }) {
         marginTop: 2, height: 18, display: 'flex', alignItems: 'center',
         flexShrink: 0,
       }}>
-        {isRace ? '[R]' : `W${week.weekNum}`}
+        {isRace ? '◉' : `W${week.weekNum}`}
       </div>
 
       {/* Current week marker dot */}

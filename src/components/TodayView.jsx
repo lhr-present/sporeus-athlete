@@ -147,7 +147,9 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
   const [wellness, setWellness]       = useState({ sleep: 3, energy: 3, soreness: 3 })
   const [wellnessSaved, setWellnessSaved] = useState(false)
   const [isSubmitting, setIsSubmitting]   = useState(false)
+  const [saveDone, setSaveDone]           = useState(false)
   const [alreadySubmitted, setAlreadySubmitted] = useState(false)
+  const [scoreDisplay, setScoreDisplay]   = useState(0)
   const [shareLoading, setShareLoading]         = useState(false)
   const [expandedProtocol, setExpandedProtocol] = useState(null)
   const [recoveryDone, setRecoveryDone] = useLocalStorage(`sporeus-recovery-done-${today}`, {})
@@ -261,6 +263,17 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
     // The hook handles both online upsert and localStorage persistence.
     setRecovery(prev => [...(prev || []).filter(e => e.date !== today), entry].slice(-90))
     setWellnessSaved(true)
+    setSaveDone(true)
+    setTimeout(() => setSaveDone(false), 3000)
+    // Count-up animation: 0 → score over 400ms
+    const target = score; const start = Date.now(); const dur = 400
+    const tick = () => {
+      const elapsed = Date.now() - start
+      const progress = Math.min(elapsed / dur, 1)
+      setScoreDisplay(Math.round(target * progress))
+      if (progress < 1) requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
     if (EMBED_MODE) {
       try { window.parent.postMessage({ type: 'sporeus-checkin-complete', score }, '*') } catch {}
     }
@@ -497,7 +510,7 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
         {todayRec ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{ fontSize: '36px', fontWeight: 700, color: todayRec.score >= 75 ? GREEN : todayRec.score >= 50 ? AMBER : RED }}>
-              {todayRec.score}
+              {wellnessSaved && scoreDisplay > 0 ? scoreDisplay : todayRec.score}
             </div>
             <div>
               <div style={{ fontSize: '11px', color: '#888' }}>{t('readScoreTitle')} / 100</div>
@@ -531,17 +544,29 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
           </>
         ) : (
           <>
+            {/* Field completion circles */}
+            <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+              {QUICK_FIELDS.map(field => (
+                <span key={field.key} style={{ fontFamily: MONO, fontSize: '12px', color: wellness[field.key] ? '#ff6600' : '#333' }}>
+                  {wellness[field.key] ? '◉' : '○'}
+                </span>
+              ))}
+            </div>
             <div style={{ display: 'flex', gap: '14px', marginBottom: '14px', flexWrap: 'wrap' }}>
               {QUICK_FIELDS.map(field => (
                 <div key={field.key}>
                   <div style={{ ...S.sectionLabel, marginBottom: '6px' }}>{t(field.lk)}</div>
                   <div style={{ display: 'flex', gap: '4px' }}>
-                    {field.emoji.map((em, i) => (
-                      <button type="button" key={i} aria-label={`${field.key} level ${i + 1}`} onClick={() => setWellness(w => ({ ...w, [field.key]: i + 1 }))}
-                        style={{ fontSize: '18px', padding: '8px 8px', borderRadius: '5px', cursor: 'pointer', border: `2px solid ${wellness[field.key] === i + 1 ? ORANGE : 'var(--border)'}`, background: wellness[field.key] === i + 1 ? '#2a1800' : 'var(--surface)', lineHeight: 1 }}>
-                        {em}
-                      </button>
-                    ))}
+                    {field.emoji.map((em, i) => {
+                      const isSelected = wellness[field.key] === i + 1
+                      return (
+                        <button type="button" key={i} aria-label={`${field.key} level ${i + 1}`}
+                          onClick={() => setWellness(w => ({ ...w, [field.key]: i + 1 }))}
+                          style={{ fontSize: '18px', padding: '8px 8px', borderRadius: '5px', cursor: 'pointer', border: `2px solid ${isSelected ? ORANGE : 'var(--border)'}`, background: isSelected ? '#2a1800' : 'var(--surface)', lineHeight: 1, transform: isSelected ? 'scale(1.15)' : 'scale(1)', transition: 'transform 150ms ease-out' }}>
+                          {em}
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
               ))}
@@ -549,9 +574,9 @@ export default function TodayView({ log, profile, setTab, setLogPrefill }) {
             <button
               onClick={saveReadiness}
               disabled={isSubmitting}
-              style={{ ...btn(isSubmitting ? '#555' : ORANGE), opacity: isSubmitting ? 0.6 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}
+              style={{ ...btn(isSubmitting ? '#555' : saveDone ? '#2d6a2d' : ORANGE), opacity: isSubmitting ? 0.6 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}
             >
-              {isSubmitting ? '…' : t('todaySaveReadiness')}
+              {isSubmitting ? 'SAVING...' : saveDone ? 'SAVED ◈' : t('todaySaveReadiness')}
             </button>
             <button onClick={() => setTab('recovery')}
               style={{ ...btn('transparent', '#555'), border: '1px solid var(--border)', marginLeft: '8px' }}>

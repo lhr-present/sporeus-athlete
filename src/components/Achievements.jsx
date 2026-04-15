@@ -3,25 +3,26 @@ import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { useData } from '../contexts/DataContext.jsx'
+import { calcLoad } from '../lib/formulas.js'
 
 const BADGE_DEFS = [
-  { id:'first_step',      icon:'👣', name:'First Step',       desc:'Log your first session' },
-  { id:'week_warrior',    icon:'⚔️', name:'Week Warrior',      desc:'5+ sessions in one week' },
-  { id:'month_master',    icon:'📅', name:'Month Master',      desc:'20+ sessions in one month' },
-  { id:'century_club',    icon:'💯', name:'Century Club',      desc:'100 total sessions logged' },
-  { id:'zone_hunter',     icon:'🎯', name:'Zone Hunter',       desc:'Log time in all 5 zones in one session' },
-  { id:'iron_will',       icon:'🔩', name:'Iron Will',         desc:'7-day training block' },
-  { id:'threshold_breaker',icon:'🧪',name:'Threshold Breaker', desc:'Complete any test protocol' },
-  { id:'recovery_champ',  icon:'🛌', name:'Recovery Champ',    desc:'7 consecutive recovery logs' },
-  { id:'dark_side',       icon:'🌙', name:'Dark Side',         desc:'Enable dark mode' },
-  { id:'polyglot',        icon:'🌍', name:'Polyglot',          desc:'Switch interface language' },
-  { id:'plan_compliant',  icon:'📋', name:'Plan Compliant',    desc:'80%+ plan compliance for 4 weeks' },
-  { id:'heat_adapted',    icon:'◈',  name:'Heat Adapted',      desc:'Use the heat acclimatization calculator' },
+  { id:'first_step',        icon:'👣', name:'First Step',          desc:'Log your first session' },
+  { id:'week_warrior',      icon:'⚔️', name:'Week Warrior',         desc:'5+ sessions in one week' },
+  { id:'month_master',      icon:'📅', name:'Month Master',         desc:'20+ sessions in one month' },
+  { id:'century_club',      icon:'💯', name:'Century Club',         desc:'100 total sessions logged' },
+  { id:'zone_hunter',       icon:'🎯', name:'Zone Hunter',          desc:'Log time in all 5 zones in one session' },
+  { id:'iron_will',         icon:'🔩', name:'Iron Will',            desc:'7-day training block' },
+  { id:'threshold_breaker', icon:'🧪', name:'Threshold Breaker',    desc:'Complete any test protocol' },
+  { id:'recovery_champ',    icon:'🛌', name:'Recovery Champ',       desc:'7 consecutive recovery logs' },
+  { id:'dark_side',         icon:'🌙', name:'Dark Side',            desc:'Enable dark mode' },
+  { id:'polyglot',          icon:'🌍', name:'Polyglot',             desc:'Switch interface language' },
+  { id:'plan_compliant',    icon:'📋', name:'Plan Compliant',       desc:'80%+ plan compliance for 4 weeks' },
+  { id:'heat_adapted',      icon:'◈',  name:'Heat Adapted',         desc:'Use the heat acclimatization calculator' },
+  { id:'ctl_80',            icon:'🔥', name:'High Fitness',         desc:'CTL reached 80 — trained athlete territory' },
 ]
 
 export function checkAchievements({ log, recovery, testLog, dark, lang, planStatus, plan }) {
   const unlocked = {}
-  const today = new Date().toISOString().slice(0,10)
 
   if (log.length >= 1)   unlocked.first_step = true
 
@@ -83,17 +84,31 @@ export function checkAchievements({ log, recovery, testLog, dark, lang, planStat
   // Heat adapted — check via localStorage flag
   try { if (localStorage.getItem('sporeus-heat-used')==='1') unlocked.heat_adapted = true } catch {}
 
+  // CTL 80 — trained athlete territory
+  if (log.length >= 7) {
+    const { ctl } = calcLoad(log)
+    if (ctl >= 80) unlocked.ctl_80 = true
+  }
+
   return unlocked
+}
+
+// Format achievement unlock date as "Apr 2026"
+function fmtAchDate(isoDate) {
+  if (!isoDate) return ''
+  const d = new Date(isoDate + 'T12:00:00')
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+  return `${months[d.getMonth()]} ${d.getFullYear()}`
 }
 
 export default function Achievements({ log, dark, lang }) {
   const { t } = useContext(LangCtx)
   const [achievements, setAchievements] = useLocalStorage('sporeus-achievements', {})
+  const [achievementTs, setAchievementTs] = useLocalStorage('sporeus-achievements-ts', {})
   const [toast, setToast] = useState(null)
   const { recovery, testResults: testLog } = useData()
   const [plan] = useLocalStorage('sporeus-plan', null)
   const [planStatus] = useLocalStorage('sporeus-plan-status', {})
-  const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
     const current = checkAchievements({ log, recovery, testLog, dark, lang, planStatus, plan })
@@ -102,9 +117,16 @@ export default function Achievements({ log, dark, lang }) {
       if (current[id] && !achievements[id]) newUnlocks.push(id)
     })
     if (newUnlocks.length > 0) {
+      const today = new Date().toISOString().slice(0,10)
       const updated = { ...achievements }
-      newUnlocks.forEach(id => { updated[id] = new Date().toISOString().slice(0,10) })
+      const updatedTs = { ...achievementTs }
+      newUnlocks.forEach(id => {
+        updated[id] = today
+        // Only write timestamp on first unlock — never overwrite
+        if (!updatedTs[id]) updatedTs[id] = new Date().toISOString()
+      })
       setAchievements(updated)
+      setAchievementTs(updatedTs)
       const last = BADGE_DEFS.find(b=>b.id===newUnlocks[newUnlocks.length-1])
       if (last) { setToast(last); setTimeout(()=>setToast(null), 3500) }
     }
@@ -125,32 +147,51 @@ export default function Achievements({ log, dark, lang }) {
         </div>
       )}
 
-      <div className="sp-card" style={{ ...S.card, animationDelay:'192ms' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer' }} onClick={()=>setExpanded(!expanded)}>
-          <div style={S.cardTitle}>🏅 ACHIEVEMENTS — {unlockedCount}/{total}</div>
-          <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-            <div style={{ width:'100px', height:'5px', background:'var(--border)', borderRadius:'2px', overflow:'hidden' }}>
-              <div style={{ width:`${unlockedCount/total*100}%`, height:'100%', background:'#f5c542', borderRadius:'2px' }}/>
-            </div>
-            <span style={{ ...S.mono, fontSize:'10px', color:'var(--muted)' }}>{expanded?'▲':'▼'}</span>
-          </div>
+      {/* Milestones grid — compact, logbook style */}
+      <div style={{ marginBottom: '8px' }}>
+        <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'9px', color:'#555', letterSpacing:'0.1em', marginBottom:'8px' }}>
+          TRAINING MILESTONES — {unlockedCount}/{total}
         </div>
-        {expanded && (
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))', gap:'8px', marginTop:'8px' }}>
-            {BADGE_DEFS.map(b => {
-              const date = achievements[b.id]
-              return (
-                <div key={b.id} style={{ padding:'10px', borderRadius:'5px', background:date?'var(--surface)':'var(--card-bg)', border:`1px solid ${date?'#f5c54244':'var(--border)'}`, opacity:date?1:0.45, textAlign:'center' }}>
-                  <div style={{ fontSize:'22px', marginBottom:'4px' }}>{b.icon}</div>
-                  <div style={{ ...S.mono, fontSize:'10px', fontWeight:600, color:date?'var(--text)':'var(--muted)', marginBottom:'2px' }}>{b.name}</div>
-                  <div style={{ ...S.mono, fontSize:'9px', color:'var(--muted)', lineHeight:1.4 }}>{b.desc}</div>
-                  {date && <div style={{ ...S.mono, fontSize:'8px', color:'#f5c542', marginTop:'4px' }}>{date}</div>}
-                </div>
-              )
-            })}
-          </div>
-        )}
+        <div style={{ width:'100%', height:'4px', background:'var(--border)', borderRadius:'2px', overflow:'hidden', marginBottom:'12px' }}>
+          <div style={{ width:`${unlockedCount/total*100}%`, height:'100%', background:'#f5c542', borderRadius:'2px' }}/>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(120px,1fr))', gap:'6px' }}>
+          {BADGE_DEFS.map(b => {
+            const date = achievements[b.id]
+            const ts   = achievementTs[b.id]
+            return (
+              <div key={b.id} title={b.desc} style={{ padding:'8px 10px', borderRadius:'4px', background: date ? 'var(--surface)' : 'transparent', border:`1px solid ${date ? '#f5c54233' : 'var(--border)'}`, opacity: date ? 1 : 0.3, display:'flex', alignItems:'center', gap:'8px' }}>
+                <span style={{ fontSize:'16px', flexShrink:0 }}>{b.icon}</span>
+                {date ? (
+                  <div>
+                    <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'9px', fontWeight:600, color:'var(--text)', lineHeight:1.3 }}>{b.name}</div>
+                    <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'8px', color:'#f5c542', marginTop:'1px' }}>{fmtAchDate(ts || date)}</div>
+                  </div>
+                ) : null}
+              </div>
+            )
+          })}
+        </div>
       </div>
     </>
   )
+}
+
+// Returns the most recently unlocked achievement if within the last N days, else null
+export function getRecentAchievement(days = 7) {
+  try {
+    const achievements = JSON.parse(localStorage.getItem('sporeus-achievements') || '{}')
+    const ts = JSON.parse(localStorage.getItem('sporeus-achievements-ts') || '{}')
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days)
+    const cutoffStr = cutoff.toISOString().slice(0,10)
+    // Find entries unlocked within the window
+    const recent = Object.entries(achievements)
+      .filter(([, date]) => date >= cutoffStr)
+      .sort(([,a],[,b]) => b.localeCompare(a))
+    if (!recent.length) return null
+    const [id] = recent[0]
+    const badge = BADGE_DEFS.find(b => b.id === id)
+    if (!badge) return null
+    return { ...badge, date: achievements[id] }
+  } catch { return null }
 }

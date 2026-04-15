@@ -473,9 +473,9 @@ export function detectMilestones(log, profile, prevMilestones) {
   check('ctl_50',           ctl >= 50,    'CTL reached 50 — proper training load.', 'KTY 50\'ye ulaştı — doğru antrenman yükü.',   '📈')
   check('ctl_80',           ctl >= 80,    'CTL 80 — trained athlete territory.',    'KTY 80 — eğitimli sporcu bölgesi.',           '◈')
   check('ctl_100',          ctl >= 100,   'CTL 100 — elite fitness level.',         'KTY 100 — elit kondisyon seviyesi.',          '◈')
-  check('tss_200',          maxTSS >= 200,'First 200+ TSS session — epic effort.',  'İlk 200+ TSS seansı — destansı çaba.',        '⚡')
-  check('month_consistent', last30 >= 12, '12+ sessions in 30 days — consistent!', '30 günde 12+ antrenman — tutarlısın!',        '📅')
-  check('three_year_span',  daysSpan >= 365, 'One year of training data!',          'Bir yıllık antrenman verisi!',                '🎂')
+  check('tss_200',          maxTSS >= 200,'First 200+ TSS session.',               'İlk 200+ TSS seansı.',                        '⚡')
+  check('month_consistent', last30 >= 12, '12+ sessions in 30 days — consistent.', '30 günde 12+ antrenman — tutarlı.',           '📅')
+  check('three_year_span',  daysSpan >= 365, 'One year of training data.',          'Bir yıllık antrenman verisi.',                '📆')
   check('density_5',        last7 >= 5,   '5 sessions this week — high density.',  'Bu hafta 5 antrenman — yüksek yoğunluk.',     '◈')
 
   return newOnes

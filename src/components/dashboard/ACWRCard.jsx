@@ -57,7 +57,9 @@ export default function ACWRCard({ log, lc, dl }) {
         </div>
         <div style={{ textAlign: 'center' }}>
           <div style={{ ...S.mono, fontSize: '36px', fontWeight: 600, color, lineHeight: 1 }}>{acwrVal.toFixed(2)}</div>
-          <div style={{ ...S.mono, fontSize: '9px', color, fontWeight: 600, marginTop: '4px' }}>{label}</div>
+          <div style={{ ...S.mono, fontSize: '9px', color: '#555', marginTop: '4px' }}>
+            {acwrVal.toFixed(2)} · <span style={{ color }}>{label}</span>
+          </div>
         </div>
       </div>
       <div style={{ ...S.mono, fontSize: '10px', color: 'var(--sub)', marginTop: '10px', padding: '6px 8px', background: 'var(--card-bg)', borderRadius: '4px' }}>

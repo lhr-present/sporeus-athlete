@@ -73,7 +73,7 @@ export const RACE_DISTANCES = [
 export const WELLNESS_FIELDS = [
   { key:'sleep',    emoji:['😴','😪','😐','😊','😁'], lk:'sleepQL' },
   { key:'soreness', emoji:['😩','😕','😐','🙂','💪'], lk:'sorenessL' },
-  { key:'energy',   emoji:['🪫','😓','😐','⚡','⚡'], lk:'energyL' },
+  { key:'energy',   emoji:['🪫','😓','😐','⚡','🔥'], lk:'energyL' },
   { key:'mood',     emoji:['😞','😕','😐','🙂','😁'], lk:'moodL' },
   { key:'stress',   emoji:['😤','😟','😐','😌','🧘'], lk:'stressL' },
 ]
