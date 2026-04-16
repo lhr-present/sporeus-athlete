@@ -23,6 +23,7 @@ Bloomberg Terminal aesthetic: IBM Plex Mono, #ff6600 orange, #0064ff blue, #0a0a
 | `src/hooks/useLocalStorage.js` | localStorage r/w with QuotaExceededError guard |
 | `src/lib/constants.js` | Pure data (zones, session types, glossary terms, plan phases) |
 | `src/lib/formulas.js` | Pure math (TSS, W', zones, VO2max, Riegel, generatePlan, etc.) |
+| `src/lib/decoupling.js` | Aerobic decoupling (Pw:Hr) — Friel method; computeDecoupling(), classifyDecoupling() |
 | `src/lib/storage.js` | Schema v3, exportAllData, importAllData, importPlanData |
 | `src/lib/intelligence.js` | 11 pure analysis functions (CTL, ACWR, race readiness, etc.) |
 | `src/lib/patterns.js` | 5 pure personalized pattern detectors |

@@ -10,6 +10,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { scoreSession, autoTagSession, analyseSession, detectPersonalBests } from '../lib/intelligence.js'
 import { BANISTER } from '../lib/sport/constants.js'
+import { computeDecoupling } from '../lib/decoupling.js'
 
 // 2-char Bloomberg-style type prefix
 function typePrefix(type) {
@@ -230,6 +231,15 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       wPrimeExhausted = wbal.some(v => v <= 0)
     }
 
+    // Aerobic decoupling — requires HR + (power or speed) streams from FIT import
+    const hrSeries    = importPreview.hrSeries    || []
+    const speedSeries = importPreview.speedSeries || []
+    let decouplingPct = null
+    if (hrSeries.length >= 30 && (powers.length >= 30 || speedSeries.length >= 30)) {
+      const dcResult = computeDecoupling({ hr: hrSeries, power: powers.length >= 30 ? powers : undefined, speed: speedSeries.length >= 30 ? speedSeries : undefined })
+      if (dcResult.valid) decouplingPct = dcResult.decouplingPct
+    }
+
     const entryId = Date.now()
     const raw = {
       id: entryId,
@@ -240,8 +250,9 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       tss,
       notes: importPreview.notes || `Imported ${importPreview.source?.toUpperCase()} · ${importPreview.distanceM ? (importPreview.distanceM/1000).toFixed(2)+'km' : ''}${npStr}`,
       source: importPreview.source,
-      ...(wPrimeExhausted ? { wPrimeExhausted: true } : {}),
+      ...(wPrimeExhausted  ? { wPrimeExhausted: true } : {}),
       ...(powers.length >= 30 ? { hasPower: true } : {}),
+      ...(decouplingPct !== null ? { decouplingPct } : {}),
     }
     setLog([...log, sanitizeLogEntry(raw)])
     // Store power stream keyed by entry ID for Power Curve analysis
@@ -498,6 +509,22 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                                   {expandedAnalysis?.notes.map((n,ni) => <div key={ni} style={{ fontSize:'10px', color:'#aaa' }}>· {n}</div>)}
                                 </div>
                               </div>
+                              {expandedEntry?.decouplingPct != null && (() => {
+                                const pct = expandedEntry.decouplingPct
+                                const cls = pct < 5 ? 'coupled' : pct < 10 ? 'mild' : 'significant'
+                                const color = cls === 'coupled' ? '#5bc25b' : cls === 'mild' ? '#ff6600' : '#e03030'
+                                return (
+                                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", marginBottom:'10px' }}>
+                                    <div style={{ fontSize:'9px', color:'#555', marginBottom:'3px' }}>AEROBIC DECOUPLING (Pw:Hr)</div>
+                                    <div style={{ fontSize:'10px', color }}>
+                                      {pct.toFixed(1)}% ({cls})
+                                    </div>
+                                    <div style={{ fontSize:'9px', color:'#444', marginTop:'2px' }}>
+                                      {'<5% coupled · 5–10% mild · >10% significant — Friel 2009'}
+                                    </div>
+                                  </div>
+                                )
+                              })()}
                               {expandedSimilar.length > 0 && (
                                 <div style={{ fontFamily:"'IBM Plex Mono',monospace" }}>
                                   <div style={{ fontSize:'9px', color:'#555', marginBottom:'5px' }}>SIMILAR SESSIONS</div>
