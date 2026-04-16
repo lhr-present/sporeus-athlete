@@ -7,10 +7,14 @@ import { clearAllAppData } from './storage/local.js'
 import { logAction } from './db/auditLog.js'
 import { logger } from './logger.js'
 
-// Tables that store user data, keyed by user_id
+// Tables that store user data, keyed by user_id.
+// Must match the actual Supabase tables used by useSupabaseData.js + DataContext.
 const USER_TABLES = [
-  'wellness_logs',
-  'sessions',
+  'training_log',
+  'recovery',
+  'injuries',
+  'test_results',
+  'race_results',
   'profiles',
   'push_subscriptions',
   'ai_insights',
@@ -65,15 +69,13 @@ export async function deleteAthleteData(userId) {
   if (!isSupabaseReady()) throw new Error('Supabase not configured')
 
   const tablesAffected = []
-  const now = new Date().toISOString()
 
   for (const table of USER_TABLES) {
     try {
       const { error } = await supabase
         .from(table)
-        .update({ deleted_at: now })
+        .delete()
         .eq('user_id', userId)
-        .is('deleted_at', null)  // only touch rows not already deleted
       if (!error) tablesAffected.push(table)
     } catch (e) {
       logger.error('db:', e.message)
@@ -84,7 +86,7 @@ export async function deleteAthleteData(userId) {
   try {
     await supabase.from('gdpr_erasure_log').insert({
       user_id:         userId,
-      requested_at:    now,
+      requested_at:    new Date().toISOString(),
       completed_at:    new Date().toISOString(),
       tables_affected: tablesAffected,
     })

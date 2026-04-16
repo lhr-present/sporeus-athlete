@@ -279,10 +279,24 @@ export default function AuthGate({ lang }) {
         </button>
 
         {/* Footer */}
-        <p style={{ fontSize: '9px', color: '#333', textAlign: 'center', marginTop: '16px', lineHeight: 1.6 }}>
-          {isTR
-            ? 'Devam ederek Sporeus gizlilik politikasını kabul etmiş olursunuz. Verileriniz yalnızca sizin hesabınızda saklanır.'
-            : 'By continuing you accept Sporeus privacy policy. Your data is stored only in your account.'}
+        <p style={{ fontSize: '9px', color: '#333', textAlign: 'center', marginTop: '16px', lineHeight: 1.8 }}>
+          {isTR ? (
+            <>
+              Devam ederek{' '}
+              <a href="?privacy=1" target="_blank" rel="noopener noreferrer" style={{ color:'#555', textDecoration:'underline' }}>
+                Sporeus gizlilik politikasını
+              </a>{' '}
+              kabul etmiş olursunuz. Verileriniz yalnızca sizin hesabınızda saklanır.
+            </>
+          ) : (
+            <>
+              By continuing you accept the{' '}
+              <a href="?privacy=1" target="_blank" rel="noopener noreferrer" style={{ color:'#555', textDecoration:'underline' }}>
+                Sporeus privacy policy
+              </a>
+              . Your data is stored only in your account.
+            </>
+          )}
         </p>
       </div>
 

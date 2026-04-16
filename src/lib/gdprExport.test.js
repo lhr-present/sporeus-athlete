@@ -60,7 +60,7 @@ it('exportAthleteData returns userId, exportedAt, and tables', async () => {
 
   expect(result.userId).toBe('u1')
   expect(result.exportedAt).toMatch(/^\d{4}-\d{2}-\d{2}/)
-  expect(result.tables).toHaveProperty('wellness_logs')
+  expect(result.tables).toHaveProperty('training_log')
   expect(result.tables).toHaveProperty('_localStorage')
 })
 
@@ -71,13 +71,12 @@ it('deleteAthleteData throws when userId is missing', async () => {
 
 // ─── Test 4: deleteAthleteData returns tablesAffected list ────────────────────
 it('deleteAthleteData returns tablesAffected array without error', async () => {
-  const updateChain = {
-    update: vi.fn().mockReturnThis(),
-    eq:     vi.fn().mockReturnThis(),
-    is:     vi.fn(async () => ({ error: null })),
+  const deleteChain = {
+    delete: vi.fn().mockReturnThis(),
+    eq:     vi.fn(async () => ({ error: null })),
     insert: vi.fn(async () => ({ error: null })),
   }
-  supabase.from.mockImplementation(() => updateChain)
+  supabase.from.mockImplementation(() => deleteChain)
 
   const result = await deleteAthleteData('u1')
 

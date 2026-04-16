@@ -30,6 +30,7 @@ import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { flushQueue } from './lib/offlineQueue.js'
 import ToastStack from './components/ToastStack.jsx'
 const ScienceReference = lazy(() => import('./components/ScienceReference.jsx'))
+const PrivacyPolicy    = lazy(() => import('./components/PrivacyPolicy.jsx'))
 const CoachDashboard  = lazy(() => import('./components/CoachDashboard.jsx'))
 const CoachOverview   = lazy(() => import('./components/CoachOverview.jsx'))
 const CoachSquadView  = lazy(() => import('./components/CoachSquadView.jsx'))
@@ -43,9 +44,11 @@ const TestProtocols = lazy(() => import('./components/Protocols.jsx'))
 const Periodization = lazy(() => import('./components/Periodization.jsx'))
 
 
-const EMBED_MODE = new URLSearchParams(window.location.search).get('embed') === 'true'
+const EMBED_MODE   = new URLSearchParams(window.location.search).get('embed') === 'true'
 const SCIENCE_MODE = new URLSearchParams(window.location.search).get('science') === '1'
   || window.location.pathname.endsWith('/science')
+const PRIVACY_MODE = new URLSearchParams(window.location.search).get('privacy') === '1'
+  || window.location.pathname.endsWith('/privacy')
 
 
 const Splash = () => (
@@ -129,8 +132,18 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
                 : 'Sporeus processes your training load, recovery scores, and health data to analyse athletic performance. Data is used solely to evaluate your training and is not shared with third parties. Explicit consent is required under Turkish KVKK (Law No. 6698) and EU GDPR Art. 9 for health data.'
               }
             </div>
-            <div style={{ fontSize:'10px', color:'#555', marginBottom:'24px', lineHeight:1.6 }}>
-              {lang === 'tr' ? 'Onayı istediğiniz zaman Profil → Gizlilik bölümünden geri çekebilirsiniz.' : 'You may withdraw consent at any time from Profile → Privacy.'}
+            <div style={{ fontSize:'10px', color:'#555', marginBottom:'24px', lineHeight:1.8 }}>
+              {lang === 'tr' ? (
+                <>
+                  Onayı istediğiniz zaman Profil → Gizlilik bölümünden geri çekebilirsiniz.{' '}
+                  <a href="?privacy=1" target="_blank" rel="noopener noreferrer" style={{ color:'#777', textDecoration:'underline' }}>Gizlilik politikamızı okuyun →</a>
+                </>
+              ) : (
+                <>
+                  You may withdraw consent at any time from Profile → Privacy.{' '}
+                  <a href="?privacy=1" target="_blank" rel="noopener noreferrer" style={{ color:'#777', textDecoration:'underline' }}>Read our privacy policy →</a>
+                </>
+              )}
             </div>
             <button
               onClick={handleConsentGrant}
@@ -386,6 +399,14 @@ export default function App() {
     return (
       <ErrorBoundary name="Science">
         <AsyncBoundary name="Science Reference"><ScienceReference /></AsyncBoundary>
+      </ErrorBoundary>
+    )
+  }
+
+  if (PRIVACY_MODE) {
+    return (
+      <ErrorBoundary name="Privacy">
+        <AsyncBoundary name="Privacy Policy"><PrivacyPolicy /></AsyncBoundary>
       </ErrorBoundary>
     )
   }

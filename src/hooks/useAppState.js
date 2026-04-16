@@ -310,7 +310,10 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   }
 
   const finishOnboarding = (data) => {
-    if (data) setProfile(prev => ({ ...prev, ...data }))
+    if (data) {
+      setProfile(prev => ({ ...prev, ...data }))
+      handleTabClick('zones')  // take user to Zones with pre-filled MaxHR/FTP/pace
+    }
     setOnboarded(true)
   }
 
