@@ -4,9 +4,6 @@ import {
   getFTPNorm,
   getVO2maxNorm,
   getCTLNorm,
-  FTP_NORMS,
-  VO2MAX_NORMS,
-  CTL_NORMS,
 } from './normativeTables.js'
 
 // ── getFTPNorm ────────────────────────────────────────────────────────────────

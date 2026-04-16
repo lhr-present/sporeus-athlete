@@ -2,7 +2,7 @@
 // 7 templates covering full British Rowing intensity spectrum.
 // Each template is sport-validated at the level specified in ROWING_ZONE_DEFS.
 
-import { secToSplit, fmtSplit, rowingZones, paulsLaw } from './rowing.js'
+import { fmtSplit, rowingZones } from './rowing.js'
 
 // ── Template definitions ──────────────────────────────────────────────────────
 // distanceM: total meters per session

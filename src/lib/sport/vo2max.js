@@ -37,7 +37,7 @@ export function estimateVO2maxCooper(distanceMeters12min) {
 // @param {Array} log - array of training log entries
 // @param {Object} profile - athlete profile (unused, reserved for future use)
 // @returns {{ vo2max, method, date, sessionType }|null}
-export function findBestVO2maxSession(log, profile) {
+export function findBestVO2maxSession(log, _profile) {
   if (!Array.isArray(log) || log.length === 0) return null
 
   const cutoff = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)

@@ -9,8 +9,8 @@ import './types.js'
 // Standard Banister (1991) values; can be overridden per athlete.
 const DEFAULT_TAU1 = BANISTER.TAU_CTL   // fitness decay time constant (days)
 const DEFAULT_TAU2 = BANISTER.TAU_ATL   // fatigue decay time constant (days)
-const DEFAULT_K1   = 1    // fitness gain coefficient
-const DEFAULT_K2   = 2    // fatigue gain coefficient (fatigue rises ~2× faster)
+const _DEFAULT_K1  = 1    // fitness gain coefficient (override-ready)
+const _DEFAULT_K2  = 2    // fatigue gain coefficient (override-ready)
 
 // Precompute EWMA decay factors using TrainingPeaks impulse-response formula:
 // K = 1 − e^(−1/τ)  (matches trainingLoad.js K_CTL/K_ATL exactly)
@@ -371,7 +371,7 @@ export function dualBanister(swimLog, bikeRunLog, options = {}) {
 //
 // Returns { swimLog, bikeRunLog } each as Array<{ date, tss, type }>
 const SWIM_TYPES    = new Set(['swim', 'swimming', 'open water', 'pool'])
-const BIKERUN_TYPES = new Set(['ride', 'bike', 'cycling', 'run', 'running', 'trail run', 'brick'])
+const _BIKERUN_TYPES = new Set(['ride', 'bike', 'cycling', 'run', 'running', 'trail run', 'brick']) // complement filter, currently unused
 
 /**
  * @description Splits a mixed training log into separate swim and bike/run sub-logs

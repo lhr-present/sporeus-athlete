@@ -20,7 +20,7 @@ function signNum(n) {
 }
 
 // Convert CTL/ATL/TSB to a sparkline-style inline SVG string
-function tsbBar(tsb) {
+function _tsbBar(tsb) {
   const col = tsb > 5 ? '#5bc25b' : tsb < -10 ? '#e03030' : '#f5c542'
   return `<span style="color:${col};font-weight:700">${signNum(tsb)}</span>`
 }

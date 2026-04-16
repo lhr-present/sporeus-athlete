@@ -1,6 +1,6 @@
 // ─── dashboard/TriDashboard.jsx — Dual CTL chart for triathletes ───────────────
 // Shows three PMC lines: swim CTL (teal), bike/run CTL (blue), combined load (grey).
-import { useMemo, lazy, Suspense } from 'react'
+import { useMemo } from 'react'
 import { S } from '../../styles.js'
 import { dualBanister, splitDisciplineLogs } from '../../lib/sport/simulation.js'
 import ErrorBoundary from '../ErrorBoundary.jsx'
@@ -8,7 +8,7 @@ import ErrorBoundary from '../ErrorBoundary.jsx'
 const MONO  = "'IBM Plex Mono', monospace"
 const TEAL  = '#00c8b8'
 const BLUE  = '#0064ff'
-const GREY  = '#555'
+const _GREY = '#555' // reserved for future grid lines
 const GREEN = '#5bc25b'
 const AMBER = '#f5c542'
 
@@ -49,6 +49,7 @@ export default function TriDashboard({ log, lang = 'en' }) {
   const cutoff = (() => { const d = new Date(); d.setDate(d.getDate() - 90); return d.toISOString().slice(0, 10) })()
   const swimSlice    = swimLog.filter(e => e.date >= cutoff)
   const bikeRunSlice = bikeRunLog.filter(e => e.date >= cutoff)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- length proxy avoids reference churn on identical slices
   const trace = useMemo(() => dualBanister(swimSlice, bikeRunSlice), [swimSlice.length, bikeRunSlice.length])
 
   if (!log || log.length < 7) return null

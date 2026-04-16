@@ -7,14 +7,14 @@ export default function ProactiveInjuryAlert({ log, injuries, lang }) {
   const highConf    = injPatterns.patterns.filter(p => p.confidence === 'high')
   if (!highConf.length) return null
 
-  const now  = new Date().toISOString().slice(0, 10)
+  const _now = new Date().toISOString().slice(0, 10)
   const w1   = (() => { const d = new Date(); d.setDate(d.getDate()-7);  return d.toISOString().slice(0,10) })()
   const w2   = (() => { const d = new Date(); d.setDate(d.getDate()-14); return d.toISOString().slice(0,10) })()
   const recent7  = log.filter(e => e.date >= w1)
   const recent14 = log.filter(e => e.date >= w2)
 
   const tss7  = recent7.reduce((s, e) => s + (e.tss || 0), 0)
-  const tss14 = recent14.reduce((s, e) => s + (e.tss || 0), 0) / 2
+  const _tss14 = recent14.reduce((s, e) => s + (e.tss || 0), 0) / 2
   const prevTSS = log.filter(e => e.date >= w2 && e.date < w1).reduce((s, e) => s + (e.tss || 0), 0)
   const spikeP  = prevTSS > 0 ? (tss7 - prevTSS) / prevTSS * 100 : 0
   const longRun = Math.max(...recent7.map(e => e.duration || 0), 0)

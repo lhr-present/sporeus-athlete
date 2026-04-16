@@ -5,7 +5,7 @@ import { LangCtx } from '../contexts/LangCtx.jsx'
 
 const MONO = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
-const BLUE   = '#0064ff'
+const _BLUE  = '#0064ff' // reserved for future link colour
 const RED    = '#e03030'
 const GREEN  = '#5bc25b'
 
@@ -71,7 +71,7 @@ function GoogleIcon() {
 
 export default function AuthGate({ lang }) {
   const ctx = useContext(LangCtx)
-  const t = ctx?.t || (k => k)
+  const _t = ctx?.t || (k => k) // reserved — auth strings not yet translated
 
   const [mode, setMode]     = useState('login')   // 'login' | 'signup' | 'magic'
   const [email, setEmail]   = useState('')

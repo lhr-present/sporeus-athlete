@@ -14,7 +14,7 @@ export default function WeeklyReportCard({ last7, totalMin, totalTSS, avgRPE, re
   const avgRec = recLast7.length ? Math.round(recLast7.reduce((s, e) => s + (e.score || 0), 0) / recLast7.length) : null
 
   const generateReport = () => {
-    const { mono, strain } = monotonyStrain(last7)
+    const { mono: _mono, strain: _strain } = monotonyStrain(last7)
     const zoneDonutData = (() => {
       const zm = [0, 0, 0, 0, 0]
       last7.forEach(e => {

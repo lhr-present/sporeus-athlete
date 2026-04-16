@@ -6,7 +6,6 @@ import {
   getTemplatesByTag,
   instantiateRunningTemplate,
   raceSpecificPlan,
-  weeklyRunPlan,
   secKmToString,
 } from './runningTemplates.js'
 

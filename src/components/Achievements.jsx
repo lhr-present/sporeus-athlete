@@ -1,7 +1,5 @@
-import { useState, useEffect, useContext } from 'react'
+import { useState, useEffect } from 'react'
 import { logger } from '../lib/logger.js'
-import { LangCtx } from '../contexts/LangCtx.jsx'
-import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { calcLoad } from '../lib/formulas.js'
@@ -103,7 +101,6 @@ function fmtAchDate(isoDate) {
 }
 
 export default function Achievements({ log, dark, lang }) {
-  const { t } = useContext(LangCtx)
   const [achievements, setAchievements] = useLocalStorage('sporeus-achievements', {})
   const [achievementTs, setAchievementTs] = useLocalStorage('sporeus-achievements-ts', {})
   const [toast, setToast] = useState(null)
@@ -131,6 +128,7 @@ export default function Achievements({ log, dark, lang }) {
       const last = BADGE_DEFS.find(b=>b.id===newUnlocks[newUnlocks.length-1])
       if (last) { setToast(last); setTimeout(()=>setToast(null), 3500) }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: react to entry count changes, not object identity
   }, [log.length, dark, lang, recovery.length, testLog.length])
 
   const unlockedCount = Object.keys(achievements).length
@@ -182,7 +180,8 @@ export default function Achievements({ log, dark, lang }) {
 export function getRecentAchievement(days = 7) {
   try {
     const achievements = JSON.parse(localStorage.getItem('sporeus-achievements') || '{}')
-    const ts = JSON.parse(localStorage.getItem('sporeus-achievements-ts') || '{}')
+    // ts (timestamps) not currently used for recency — kept for future display
+    JSON.parse(localStorage.getItem('sporeus-achievements-ts') || '{}')
     const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days)
     const cutoffStr = cutoff.toISOString().slice(0,10)
     // Find entries unlocked within the window

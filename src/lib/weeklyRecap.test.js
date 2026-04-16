@@ -1,5 +1,5 @@
 // weeklyRecap.test.js — Tests for generateWeeklyRecap
-import { describe, it, expect } from 'vitest'
+import { it, expect } from 'vitest'
 import { generateWeeklyRecap } from './trainingLoad.js'
 
 // Helper: build a date string N days before today

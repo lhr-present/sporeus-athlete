@@ -2,7 +2,7 @@
 // 6 template types covering Daniels' E/M/T/I/R zones.
 // Each template can be instantiated for an athlete given their VDOT.
 
-import { trainingPaces, predictRaceTime, vdotFromRace } from './running.js'
+import { trainingPaces } from './running.js'
 
 // ── Template definitions ──────────────────────────────────────────────────────
 // Pace keys map to Daniels' zone system:

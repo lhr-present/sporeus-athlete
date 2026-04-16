@@ -126,7 +126,7 @@ describe('Swimming zones — non-overlapping and exhaustive for CSS = 1.25 m/s',
   })
 
   it('consecutive zones share a boundary (no gaps between pctMax of one and pctMin of next)', () => {
-    const zones = swimmingZones(CSS_TPACE)
+    const _zones = swimmingZones(CSS_TPACE)
     // Zones are ordered slowest (1) to fastest (6): pctMin descends
     // Zone 1 pctMax=Inf, Zone 2 pctMax=1.20 = Zone 1 pctMin=1.20 ✓
     // Zone 2 pctMax=1.10 = Zone 3 pctMin=1.10... etc.

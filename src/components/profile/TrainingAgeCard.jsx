@@ -4,7 +4,7 @@ import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 
-export default function TrainingAgeCard({ log, profile }) {
+export default function TrainingAgeCard({ log, profile: _profile }) {
   const { t } = useContext(LangCtx)
   const [lang] = useLocalStorage('sporeus-lang', 'en')
   const [trainingAge, setTrainingAge] = useLocalStorage('sporeus-training-age', '')
@@ -26,7 +26,7 @@ export default function TrainingAgeCard({ log, profile }) {
     { min:65, max:89,  label: lang==='tr' ? 'İleri Seviye'  : 'Advanced',        color:'#f5c542' },
     { min:90, max:999, label: lang==='tr' ? 'Elit'          : 'Elite',           color:'#ff6600' },
   ]
-  const ctlLevel = ctlScale.find(l => ctl >= l.min && ctl <= l.max) || ctlScale[0]
+  const _ctlLevel = ctlScale.find(l => ctl >= l.min && ctl <= l.max) || ctlScale[0]
 
   const ageOpts = ['< 1 year', '1–2 years', '3–5 years', '6–10 years', '10+ years']
   const ageTr   = ['< 1 yıl', '1–2 yıl', '3–5 yıl', '6–10 yıl', '10+ yıl']

@@ -99,6 +99,7 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
         setActivePlan(plan)
         if (plan) setCompliance(computeCompliance(plan, data?.log || []))
       })
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- data.log identity excluded; .length signals new entries
   }, [athleteId, data?.log?.length])
 
   const handleSendPlan = async () => {

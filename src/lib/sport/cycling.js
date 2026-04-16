@@ -120,7 +120,7 @@ export function calculateCyclingTSS(durationMin, avgNormalizedPowerW, ftpW) {
  * @example
  * predictCyclingTime(280, 40, 500) // => ~5143 seconds (~85 min)
  */
-export function predictCyclingTime(ftpWatts, distanceKm, elevationM, bodyWeightKg = 70) {
+export function predictCyclingTime(ftpWatts, distanceKm, elevationM, _bodyWeightKg = 70) {
   if (!ftpWatts || !distanceKm || ftpWatts <= 0 || distanceKm <= 0) return null
   if (distanceKm <= 0) return null
 

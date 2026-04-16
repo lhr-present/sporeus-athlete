@@ -26,7 +26,7 @@ export function getGoalProgress(goal, currentValue) {
   } else {
     // rough heuristic: are we at least halfway by halfway point?
     // use simple on_track/behind based on linear expected progress
-    const totalDays = Math.ceil(
+    const _totalDays = Math.ceil(
       (new Date(goal.deadline) - new Date(goal.current !== undefined ? Date.now() : Date.now())) / 86400000
     )
     // fall back to: on_track if pct > 0, behind otherwise

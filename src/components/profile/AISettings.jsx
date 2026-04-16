@@ -26,6 +26,7 @@ export default function AISettings({ authUser }) {
     supabase.from('ai_insights').select('*', { count: 'exact', head: true })
       .eq('athlete_id', authUser.id).eq('date', today)
       .then(({ count }) => setDailyUsed(count || 0))
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- reads are idempotent; re-run when auth identity changes
   }, [authUser?.id])
 
   if (!isSupabaseReady() || !authUser) return (

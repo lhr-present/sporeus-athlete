@@ -1,4 +1,4 @@
-import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { vi, describe, it, expect } from 'vitest'
 
 // ── fit-file-parser mock ──────────────────────────────────────────────────────
 vi.mock('fit-file-parser', () => ({

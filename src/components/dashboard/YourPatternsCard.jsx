@@ -5,8 +5,8 @@ import { S } from '../../styles.js'
 import { correlateTrainingToResults, findRecoveryPatterns, findOptimalWeekStructure, findSeasonalPatterns } from '../../lib/patterns.js'
 import { useData } from '../../contexts/DataContext.jsx'
 
-export default function YourPatternsCard({ log, recovery, injuries, profile, lang }) {
-  const { t } = useContext(LangCtx)
+export default function YourPatternsCard({ log, recovery, injuries: _injuries, profile: _profile, lang }) {
+  const { t: _t } = useContext(LangCtx)
   const { testResults } = useData()
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)

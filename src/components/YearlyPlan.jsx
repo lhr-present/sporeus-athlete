@@ -136,6 +136,7 @@ function WeekDetailPanel({ week, weekIndex, allWeeks, onUpdateTSS, onOpenBuilder
   const [tssInput, setTssInput] = useState(String(week.targetTSS))
   const [copyN, setCopyN]       = useState(2)
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- week.weekNum identifies the row; targetTSS syncs when the user navigates weeks
   useEffect(() => { setTssInput(String(week.targetTSS)) }, [week.weekNum])
 
   const applyTSS = () => {
@@ -323,6 +324,7 @@ export default function YearlyPlan() {
     } else {
       setWarnings(validatePlan(plan.weeks, 0))
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- init effect: validates plan once on mount
   }, [])
 
   // Scroll to current week on mount
@@ -330,6 +332,7 @@ export default function YearlyPlan() {
     if (!plan || !scrollRef.current) return
     const idx = currentWeekIndex(plan.weeks)
     scrollRef.current.scrollLeft = Math.max(0, idx * colW - 100)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- boolean presence check; colW and plan identity intentionally excluded
   }, [!!plan])
 
   // ── Supabase auto-save (debounced 2s) ───────────────────────────────────────
@@ -346,6 +349,7 @@ export default function YearlyPlan() {
       }
     }, 2000)
     return () => clearTimeout(saveTimer.current)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- auto-save: react to plan changes; authUser/model stable within session
   }, [plan])
 
   // ── Load from Supabase on mount (if authenticated) ───────────────────────────
@@ -362,6 +366,7 @@ export default function YearlyPlan() {
         }
       })
       .catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- load once per auth identity; setPlan/setModel are stable setters
   }, [authUser?.id])
 
   // ── Actions ──────────────────────────────────────────────────────────────────
@@ -427,7 +432,9 @@ export default function YearlyPlan() {
 
   // ── Derived values ────────────────────────────────────────────────────────────
   const weeks    = plan?.weeks || []
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- weeks is derived from plan; identity recomputed above each render
   const maxTSS   = useMemo(() => Math.max(...weeks.map(w => w.targetTSS), 1), [weeks])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- same
   const curWeek  = useMemo(() => currentWeekIndex(weeks), [weeks])
 
   // CTL projection line points (normalized within CTL_H strip)
@@ -436,7 +443,7 @@ export default function YearlyPlan() {
     const ctlValues = []
     const K   = 1 - Math.exp(-1 / 42)
     const DEC = 1 - K
-    let ctl = plan?.projectedCTL ? 0 : 0
+    let _ctl = plan?.projectedCTL ? 0 : 0 // CTL starting value — unused in simplified weekly overlay
     // Simple EWMA per-week for the overlay chart
     let c = 0
     for (const wk of weeks) {
@@ -452,6 +459,7 @@ export default function YearlyPlan() {
       const y = CTL_H - 4 - ((v - minCTL) / range) * (CTL_H - 8)
       return `${x.toFixed(1)},${y.toFixed(1)}`
     }).join(' ')
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- plan.projectedCTL is read via plan ref above; weeks/colW cover recompute triggers
   }, [weeks, colW])
 
   const totalW = weeks.length * colW

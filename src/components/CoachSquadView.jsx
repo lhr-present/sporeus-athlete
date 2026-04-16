@@ -7,7 +7,7 @@ import { useState, useEffect, useMemo, useCallback, useRef, useContext } from 'r
 import { logger } from '../lib/logger.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { fetchSquad } from '../lib/db/athletes.js'
-import { createInvite, buildInviteUrl, getMyAthletes } from '../lib/inviteUtils.js'
+import { createInvite, getMyAthletes } from '../lib/inviteUtils.js'
 import { supabase } from '../lib/supabase.js'
 import { S } from '../styles.js'
 import { generateDemoSquad, filterByTeam, DEMO_TEAMS, getTeams } from '../lib/squadUtils.js'
@@ -109,6 +109,7 @@ export default function CoachSquadView({ authUser }) {
     const fn      = SORT_FNS[sort.col] || defaultSort
     const activeTeam = activeTeamId === 'all' ? null : teams.find(t => t.id === activeTeamId) || null
     return [...filterByTeam(athletes, activeTeam)].sort((a, b) => fn(a, b) * sort.dir)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- SORT_FNS is a module-level constant
   }, [athletes, sort, activeTeamId, teams])
 
   const handleSort = col => setSort(prev => prev.col === col ? { col, dir: -prev.dir } : { col, dir: 1 })

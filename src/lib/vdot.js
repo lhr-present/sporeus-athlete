@@ -3,7 +3,7 @@ import table from '../data/vdotTable.json'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function secToMinSec(s) {
+function _secToMinSec(s) {
   const m = Math.floor(s / 60)
   const sec = String(Math.round(s % 60)).padStart(2, '0')
   return `${m}:${sec}`

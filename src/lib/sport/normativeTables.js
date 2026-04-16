@@ -34,7 +34,7 @@ export const FTP_NORMS = [
   { sport: 'triathlon', gender: 'female', category: 'Elite',        p25: 3.6, p50: 4.1, p75: 4.6 },
 ]
 
-const CATEGORY_ORDER = ['Untrained', 'Recreational', 'Trained', 'Well-trained', 'Expert', 'Elite']
+const _CATEGORY_ORDER = ['Untrained', 'Recreational', 'Trained', 'Well-trained', 'Expert', 'Elite'] // reserved for ordered display
 // Percentile anchors for each category's p50 — guaranteed monotonic
 const CATEGORY_PCT_ANCHORS = [8, 22, 42, 62, 78, 92]
 
@@ -219,7 +219,7 @@ export function getCTLNorm(sport, level, currentCTL) {
   if (!norm || currentCTL == null) return { status: 'Unknown', typical: [0, 0], peak: [0, 0], percentileOfTypical: 0 }
 
   const [tLo, tHi] = norm.typical_ctl_range
-  const [pLo, pHi] = norm.peak_ctl_range
+  const [_pLo, pHi] = norm.peak_ctl_range
 
   let status
   if (currentCTL < tLo * 0.5)     status = 'Very Low'

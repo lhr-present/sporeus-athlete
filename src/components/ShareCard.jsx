@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { S } from '../styles.js'
 import { calculatePMC } from '../lib/trainingLoad.js'
 import { zoneDistribution, trainingModel, MODEL_META } from '../lib/zoneDistrib.js'
@@ -29,7 +29,7 @@ function tsbColor(tsb) {
   return C.red
 }
 
-export default function ShareCard({ log, profile, filteredLog }) {
+export default function ShareCard({ log, profile, filteredLog: _filteredLog }) {
   const [status, setStatus] = useState(null)
 
   const today = new Date()

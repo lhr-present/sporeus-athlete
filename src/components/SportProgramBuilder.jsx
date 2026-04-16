@@ -1,10 +1,10 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { S } from '../styles.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import {
-  simulateBanister, scoreTrainingPlan, monteCarloOptimizer, peakFormWindow,
+  simulateBanister, monteCarloOptimizer, peakFormWindow,
   addAdaptivePlanAdjustment,
 } from '../lib/sport/simulation.js'
 import {
@@ -13,7 +13,7 @@ import {
 import { weeklyTemplatePlan, instantiateTemplate } from '../lib/sport/rowingTemplates.js'
 import { weeklyRunPlan, instantiateRunningTemplate } from '../lib/sport/runningTemplates.js'
 import { vdotFromRace } from '../lib/sport/running.js'
-import { predict2000m, secToSplit } from '../lib/sport/rowing.js'
+import { secToSplit } from '../lib/sport/rowing.js'
 
 const FONT_MONO = { fontFamily: 'IBM Plex Mono, monospace' }
 const ORANGE = '#ff6600'
@@ -162,7 +162,7 @@ function WeekModal({ weekIdx, trace, sport, form, split2k, vdot, onClose }) {
 
 // ── Step 1: Sport + Goal ──────────────────────────────────────────────────────
 function Step1({ form, setForm, onNext }) {
-  const [lang] = useLocalStorage('sporeus-lang', 'en')
+  const [_lang] = useLocalStorage('sporeus-lang', 'en') // reserved for i18n step labels
   return (
     <div>
       <div style={S.cardTitle}>SPORT &amp; GOAL</div>
@@ -417,7 +417,7 @@ function Step4({ form, onResult, onBack }) {
 }
 
 // ── Step 5: Plan display ───────────────────────────────────────────────────────
-function Step5({ form, result, onRestart, log, setLog }) {
+function Step5({ form, result, onRestart, log: _log, setLog }) {
   const [selectedWeek, setSelectedWeek] = useState(null)
   const [actualTSS, setActualTSS]       = useState({})
   const [saved, setSaved]               = useState(false)
@@ -930,7 +930,8 @@ export default function SportProgramBuilder() {
 
       return updated
     })
-  }, []) // run once on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: init effect populates form from profile/log on mount only
+  }, [])
 
   const handleResult = useCallback((r) => { setResult(r); setStep(4) }, [])
   const restart      = useCallback(() => { setStep(0); setForm({ weeks: 8 }); setResult(null) }, [])

@@ -108,6 +108,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       setForm({ date:today, type:prefill.type||'Easy Run', duration:String(prefill.duration||''), rpe:String(prefill.rpe||5), notes:prefill.description||'' })
       clearPrefill && clearPrefill()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- today/clearPrefill are stable within session; react to prefill object identity
   }, [prefill])
 
   const zoneTotal = zoneMins.reduce((s,v)=>s+(parseInt(v)||0),0)
@@ -543,7 +544,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
               const wCapPrev  = parseInt(profileLS?.wPrime) || 0
               const wbalPrev  = (powers.length >= 30 && cpPrev && wCapPrev) ? computeWPrime(powers, cpPrev, wCapPrev) : null
               const wExhausted = wbalPrev ? wbalPrev.some(v => v <= 0) : false
-              const wExhaustSec = wExhausted ? wbalPrev.findIndex(v => v <= 0) : -1
+              const _wExhaustSec = wExhausted ? wbalPrev.findIndex(v => v <= 0) : -1
               const previewStats = [
                 { lbl:'DATE', val: importPreview.date },
                 { lbl:'DURATION', val: `${importPreview.durationMin} min` },

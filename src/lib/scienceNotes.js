@@ -70,7 +70,7 @@ export const SCIENCE_NOTES = [
   },
   {
     id: 'grey_zone_problem',
-    trigger: (log, _, p) => {
+    trigger: (log, _, _p) => {
       const recent = log.filter(e => { const d = new Date(); d.setDate(d.getDate()-28); return e.date >= d.toISOString().slice(0,10) })
       const z3 = recent.filter(e => (e.rpe||0) >= 6 && (e.rpe||0) <= 7).length
       return z3 / (recent.length || 1) > 0.3

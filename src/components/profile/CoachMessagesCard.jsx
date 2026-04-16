@@ -16,6 +16,7 @@ export default function CoachMessagesCard() {
     if (updated.some((m, i) => m.read !== messages[i].read)) {
       setMessages(updated); saveCoachMsgs(updated)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- init: read coach messages from localStorage once on mount
   }, [])
 
   const sendReply = () => {

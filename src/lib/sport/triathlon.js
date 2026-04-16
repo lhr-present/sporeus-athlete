@@ -3,7 +3,7 @@
 
 import { swimTSS as _swimTSS }                from './swimming.js'
 import { calculateCyclingTSS, getCyclingZones } from './cycling.js'
-import { runningTSS, powerTSS }                from './simulation.js'
+import { runningTSS }                          from './simulation.js'
 import { trainingPaces }                        from './running.js'
 import { swimmingZones }                        from './swimming.js'
 

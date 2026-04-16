@@ -15,7 +15,6 @@
 import { describe, it, expect } from 'vitest'
 import {
   simulateBanister,
-  banisterDay,
   dualBanister,
 } from './simulation.js'
 

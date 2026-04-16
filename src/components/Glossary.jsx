@@ -99,11 +99,13 @@ export default function Glossary() {
       })
       .filter(t2=>t2._score>0)
       .sort((a,b)=>b._score-a._score)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- allTerms is derived from a stable constant; .length is the change signal
   }, [q, selLetter, allTerms.length])
 
   const letters = useMemo(() => {
     const s = new Set(allTerms.map(t2=>normTR(t2.term)[0]).filter(Boolean))
     return 'abcçdefghiıjklmnoöpqrsştuvüwxyz'.split('').filter(l=>s.has(l))
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- same reason
   }, [allTerms.length])
 
   const paginated = filtered.slice(0, page * PER_PAGE)

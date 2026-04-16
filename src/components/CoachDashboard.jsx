@@ -1,5 +1,4 @@
-import { useRef, useState, useEffect, useCallback, useContext } from 'react'
-import { LangCtx } from '../contexts/LangCtx.jsx'
+import { useRef, useState, useEffect, useCallback } from 'react'
 import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
@@ -20,7 +19,7 @@ import SbAthletePanel from './coachDashboard/SbAthletePanel.jsx'
 import SessionManager from './coach/SessionManager.jsx'
 import SquadBenchmarkTable from './coach/SquadBenchmarkTable.jsx'
 import { calcCompliancePct } from '../lib/sport/squadBenchmark.js'
-import { getTierSync, isFeatureGated } from '../lib/subscription.js'
+import { getTierSync } from '../lib/subscription.js'
 import TeamAnnouncements from './TeamAnnouncements.jsx'
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -231,7 +230,7 @@ export default function CoachDashboard({ authUser }) {
     setPendingAthlete(null)
   }
 
-  function applyTemplate(tmpl) {
+  function applyTemplate(_tmpl) {
     // Templates just auto-expand the appropriate athlete and populate plan fields
     // We store it in session state for AthleteDetailPanel — for now just a future hook
   }

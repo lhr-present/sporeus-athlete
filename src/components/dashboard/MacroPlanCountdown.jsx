@@ -7,8 +7,6 @@ import { useLocalStorage } from '../../hooks/useLocalStorage.js'
  */
 export default function MacroPlanCountdown({ dl, lc }) {
   const [plan]       = useLocalStorage('sporeus-plan', null)
-  const [planStatus] = useLocalStorage('sporeus-plan-status', {})
-  const [lang]       = useLocalStorage('sporeus-lang', 'en')
 
   if (!dl.goal || !lc.showTaper || !plan) return null
 
