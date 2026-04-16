@@ -11,6 +11,7 @@ import { hasUnread } from './CoachMessage.jsx'
 import { getMyCoach } from '../lib/inviteUtils.js'
 import { getUpcomingSessions, upsertAttendance } from '../lib/db/coachSessions.js'
 import TeamAnnouncements from './TeamAnnouncements.jsx'
+import QRScanner from './QRScanner.jsx'
 import { supabase } from '../lib/supabase.js'
 import { getRecommendedProtocols } from '../lib/recoveryProtocols.js'
 
@@ -112,6 +113,7 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
   const [coachSessions, setCoachSessions] = useState([])
   const [rsvpBusy, setRsvpBusy]           = useState({}) // { [sessionId]: true }
   const [myCoachId, setMyCoachId]          = useState(null)
+  const [showQrScanner, setShowQrScanner]  = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -139,6 +141,22 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
       s.id === sessionId ? { ...s, _myStatus: status } : s
     ))
     setRsvpBusy(b => ({ ...b, [sessionId]: false }))
+  }
+
+  const handleQrScan = async (sessionId) => {
+    setShowQrScanner(false)
+    // Confirm attendance for the scanned session
+    const match = coachSessions.find(s => s.id === sessionId)
+    if (match) {
+      await handleRsvp(sessionId, 'confirmed')
+    } else {
+      // Session not yet loaded — re-fetch and confirm
+      if (supabase && myCoachId) {
+        const { data } = await getUpcomingSessions(myCoachId, 14)
+        if (data) setCoachSessions(data)
+        await handleRsvp(sessionId, 'confirmed')
+      }
+    }
   }
 
   const [coachUnread, setCoachUnread] = useState(() => {
@@ -749,8 +767,16 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
       {/* ── Upcoming Coach Sessions (RSVP) ────────────────────────────────── */}
       {coachSessions.length > 0 && (
         <div style={card}>
-          <div style={cardTitle}>
-            {lang === 'tr' ? 'YAKLAŞAN ANTRENMANLAR' : 'UPCOMING SESSIONS'}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <div style={cardTitle}>
+              {lang === 'tr' ? 'YAKLAŞAN ANTRENMANLAR' : 'UPCOMING SESSIONS'}
+            </div>
+            <button
+              onClick={() => setShowQrScanner(true)}
+              style={{ fontFamily: MONO, fontSize: '9px', fontWeight: 700, padding: '3px 9px', background: 'none', border: `1px solid ${ORANGE}`, borderRadius: '3px', color: ORANGE, cursor: 'pointer', letterSpacing: '0.06em' }}
+            >
+              ▣ {lang === 'tr' ? 'QR TARA' : 'SCAN QR'}
+            </button>
           </div>
           {coachSessions.map(s => {
             const myStatus = s._myStatus || 'pending'
@@ -795,6 +821,15 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
             )
           })}
         </div>
+      )}
+
+      {/* QR Scanner modal */}
+      {showQrScanner && (
+        <QRScanner
+          onScan={handleQrScan}
+          onClose={() => setShowQrScanner(false)}
+          lang={lang}
+        />
       )}
 
       {/* ── Team Announcements (athlete view, only when connected to coach) ── */}

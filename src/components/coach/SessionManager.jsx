@@ -3,6 +3,7 @@ import { useState, useCallback } from 'react'
 import { S } from '../../styles.js'
 import { createSession, getUpcomingSessions, getSessionAttendance, aggregateAttendance } from '../../lib/db/coachSessions.js'
 import { useAsync } from '../../hooks/useAsync.js'
+import SessionQRModal from './SessionQRModal.jsx'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -28,6 +29,7 @@ export default function SessionManager({ coachId, lang = 'en' }) {
   const [attendance,  setAttendance]  = useState({})     // { [sessionId]: { confirmed, declined, pending, total } }
   const [form, setForm] = useState({ title: '', session_date: '', session_time: '', notes: '' })
   const [err, setErr]   = useState('')
+  const [qrSession,   setQrSession]   = useState(null)   // session object to show QR for
 
   const today = new Date().toISOString().slice(0, 10)
 
@@ -218,6 +220,14 @@ export default function SessionManager({ coachId, lang = 'en' }) {
                         {s.notes}
                       </div>
                     )}
+                    <div style={{ marginTop: '12px', borderTop: '1px solid #1e1e1e', paddingTop: '10px' }}>
+                      <button
+                        onClick={() => setQrSession(s)}
+                        style={{ fontFamily: MONO, fontSize: '9px', fontWeight: 700, padding: '4px 10px', background: 'none', border: `1px solid ${ORANGE}`, borderRadius: '3px', color: ORANGE, cursor: 'pointer', letterSpacing: '0.06em' }}
+                      >
+                        ▣ {isTR ? 'QR KOD GÖSTER' : 'SHOW QR'}
+                      </button>
+                    </div>
                   </>
                 ) : (
                   <div style={{ fontSize: '10px', color: GREY }}>{isTR ? 'Yükleniyor…' : 'Loading…'}</div>
@@ -227,6 +237,15 @@ export default function SessionManager({ coachId, lang = 'en' }) {
           </div>
         )
       })}
+
+      {/* QR Modal */}
+      {qrSession && (
+        <SessionQRModal
+          session={qrSession}
+          onClose={() => setQrSession(null)}
+          lang={lang}
+        />
+      )}
     </div>
   )
 }

@@ -38,6 +38,9 @@ vi.mock('../../lib/offlineQueue.js', () => ({
 vi.mock('../CoachMessage.jsx', () => ({
   hasUnread: vi.fn(() => false),
 }))
+vi.mock('../QRScanner.jsx', () => ({
+  default: () => null,
+}))
 
 import TodayView from '../TodayView.jsx'
 
