@@ -246,6 +246,7 @@ export const DASH_CARD_DEFS = [
   { id:'goaltracker',  label:'Goal Tracker'            },
   { id:'loadheatmap',  label:'Load Heatmap'            },
   { id:'seasonbests',  label:'Season Bests'            },
+  { id:'aiInsights',   label:'AI Coach Insights'       },
 ]
 
 export const TYPE_COLORS = {

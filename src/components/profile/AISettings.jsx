@@ -4,11 +4,13 @@ import { logger } from '../../lib/logger.js'
 import { S } from '../../styles.js'
 import { supabase, isSupabaseReady } from '../../lib/supabase.js'
 import { clearInsightCache } from '../../lib/aiPrompts.js'
+import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 
 export default function AISettings({ authUser }) {
   const [tier, setTierState] = useState('loading')
   const [dailyUsed, setDailyUsed] = useState(0)
   const [cleared, setCleared] = useState(false)
+  const [optedIn, setOptedIn] = useLocalStorage('sporeus-ai-optin', false)
 
   useEffect(() => {
     if (!isSupabaseReady() || !authUser) return
@@ -65,6 +67,25 @@ export default function AISettings({ authUser }) {
             Upgrade to Coach or Club at sporeus.com to enable AI insights.
           </div>
         )}
+      </div>
+
+      {/* AI Insights opt-in toggle */}
+      <div style={{ marginBottom:'14px' }}>
+        <label style={{ ...S.label, marginBottom:'6px' }}>AI COACH INSIGHTS</label>
+        <label style={{ display:'flex', alignItems:'center', gap:'8px', cursor:'pointer' }}>
+          <input
+            type="checkbox"
+            checked={!!optedIn}
+            onChange={e => setOptedIn(e.target.checked)}
+            style={{ accentColor:'#ff6600', width:14, height:14 }}
+          />
+          <span style={{ ...S.mono, fontSize:'11px', color: optedIn ? 'var(--text)' : '#555' }}>
+            {optedIn ? 'Enabled — daily AI summary on dashboard' : 'Disabled — enable to show AI summary card'}
+          </span>
+        </label>
+        <div style={{ ...S.mono, fontSize:'9px', color:'#444', marginTop:'4px' }}>
+          Powered by Claude Haiku. Requires Coach or Club plan. Generates once per day.
+        </div>
       </div>
 
       {/* Clear cache */}

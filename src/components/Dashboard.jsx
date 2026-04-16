@@ -46,6 +46,7 @@ import RacePredictionsCard from './dashboard/RacePredictionsCard.jsx'
 import BanisterModelCard   from './dashboard/BanisterModelCard.jsx'
 import MacroPlanCountdown  from './dashboard/MacroPlanCountdown.jsx'
 import NormativeSection    from './dashboard/NormativeSection.jsx'
+import AICoachInsights    from './dashboard/AICoachInsights.jsx'
 
 export default function Dashboard({ log }) {
   const [lang]       = useLocalStorage('sporeus-lang', 'en')
@@ -288,6 +289,7 @@ export default function Dashboard({ log }) {
         </div>
       )}
 
+      <AICoachInsights dl={dl}/>
       <InsightsPanel log={log} recovery={recovery} profile={profile} lang={lang}/>
       <YourPatternsCard log={log} recovery={recovery} injuries={injuries} profile={profile} lang={lang}/>
       <WeekStoryCard log={log} recovery={recovery} profile={profile} lang={lang}/>
