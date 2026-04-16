@@ -5,6 +5,7 @@ import { useData } from '../contexts/DataContext.jsx'
 import { vdotFromRace, zonesFromVDOT, raceEquivalents, estimateVO2maxTrend, fmtPaceSec } from '../lib/vo2max.js'
 import { cooperVO2 } from '../lib/formulas.js'
 import { S } from '../styles.js'
+import ScienceTooltip from './ScienceTooltip.jsx'
 
 const MONO = "'IBM Plex Mono', monospace"
 
@@ -113,7 +114,7 @@ export default function VO2maxCard() {
               {currentVdot}
             </div>
             <div style={{ fontFamily: MONO, fontSize: '8px', color: '#555', letterSpacing: '0.1em', marginTop: '4px' }}>
-              VDOT (mL/kg/min)
+              <ScienceTooltip anchor="6-vdot--daniels-running-formula" label="VDOT" short="Daniels VDOT — aerobic running fitness index derived from race performance.">VDOT</ScienceTooltip> (mL/kg/min)
             </div>
             {manualVdot !== null && (
               <div style={{ fontFamily: MONO, fontSize: '9px', color: '#5bc25b', marginTop: '4px' }}>

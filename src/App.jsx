@@ -29,6 +29,7 @@ import KeyboardShortcuts from './components/KeyboardShortcuts.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { flushQueue } from './lib/offlineQueue.js'
 import ToastStack from './components/ToastStack.jsx'
+const ScienceReference = lazy(() => import('./components/ScienceReference.jsx'))
 const CoachDashboard  = lazy(() => import('./components/CoachDashboard.jsx'))
 const CoachOverview   = lazy(() => import('./components/CoachOverview.jsx'))
 const CoachSquadView  = lazy(() => import('./components/CoachSquadView.jsx'))
@@ -43,6 +44,8 @@ const Periodization = lazy(() => import('./components/Periodization.jsx'))
 
 
 const EMBED_MODE = new URLSearchParams(window.location.search).get('embed') === 'true'
+const SCIENCE_MODE = new URLSearchParams(window.location.search).get('science') === '1'
+  || window.location.pathname.endsWith('/science')
 
 
 const Splash = () => (
@@ -377,6 +380,14 @@ export default function App() {
     }
     // If guest and a real user signs in behind the scenes, clear the guest flag
     if (isGuest && user) localStorage.removeItem('sporeus-guest-mode')
+  }
+
+  if (SCIENCE_MODE) {
+    return (
+      <ErrorBoundary name="Science">
+        <AsyncBoundary name="Science Reference"><ScienceReference /></AsyncBoundary>
+      </ErrorBoundary>
+    )
   }
 
   return (

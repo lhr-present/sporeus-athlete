@@ -11,6 +11,7 @@ import { useData } from '../contexts/DataContext.jsx'
 import { scoreSession, autoTagSession, analyseSession, detectPersonalBests } from '../lib/intelligence.js'
 import { BANISTER } from '../lib/sport/constants.js'
 import { computeDecoupling } from '../lib/decoupling.js'
+import ScienceTooltip from './ScienceTooltip.jsx'
 
 // 2-char Bloomberg-style type prefix
 function typePrefix(type) {
@@ -515,7 +516,9 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                                 const color = cls === 'coupled' ? '#5bc25b' : cls === 'mild' ? '#ff6600' : '#e03030'
                                 return (
                                   <div style={{ fontFamily:"'IBM Plex Mono',monospace", marginBottom:'10px' }}>
-                                    <div style={{ fontSize:'9px', color:'#555', marginBottom:'3px' }}>AEROBIC DECOUPLING (Pw:Hr)</div>
+                                    <div style={{ fontSize:'9px', color:'#555', marginBottom:'3px' }}>
+                                      <ScienceTooltip anchor="10-aerobic-decoupling-pwhr" label="Aerobic Decoupling" short="Pw:Hr ratio drift first vs second half. <5% = coupled aerobic base. Friel 2009.">AEROBIC DECOUPLING (Pw:Hr)</ScienceTooltip>
+                                    </div>
                                     <div style={{ fontSize:'10px', color }}>
                                       {pct.toFixed(1)}% ({cls})
                                     </div>

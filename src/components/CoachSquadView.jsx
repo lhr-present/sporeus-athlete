@@ -21,6 +21,7 @@ import ExpandedRow  from './coach/ExpandedRow.jsx'
 import CoachMessage from './CoachMessage.jsx'
 import { useRealtimeSquad } from '../hooks/useRealtimeSquad.js'
 import EmptyState from './ui/EmptyState.jsx'
+import ScienceTooltip from './ScienceTooltip.jsx'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -338,7 +339,9 @@ export default function CoachSquadView({ authUser }) {
                   <ColHdr col="name">{t('squadColAthlete')}</ColHdr>
                   <ColHdr col="readiness" style={{ textAlign:'center' }}>{t('squadColReadiness')}</ColHdr>
                   <ColHdr col="tsb">{t('squadColTSB')}</ColHdr>
-                  <ColHdr col="acwr">{t('squadColACWR')}</ColHdr>
+                  <ColHdr col="acwr">
+                    <ScienceTooltip anchor="2-acwr--acutechronic-workload-ratio" label="ACWR" short="Acute:Chronic Workload Ratio — Hulin 2016. Optimal: 0.8–1.3.">{t('squadColACWR')}</ScienceTooltip>
+                  </ColHdr>
                   <ColHdr col="adherence">{t('squadColAdherence')}</ColHdr>
                   <ColHdr col="status">{t('squadColStatus')}</ColHdr>
                   <th style={{ fontFamily: MONO, fontSize: 9, color:'#333', padding:'6px 8px' }}>{t('squadColFlag')}</th>

@@ -14,6 +14,7 @@ import {
   calculateDFAAlpha1,
   parsePolarHRM,
 } from '../lib/hrv.js'
+import ScienceTooltip from './ScienceTooltip.jsx'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const TOOLTIP = {
@@ -55,7 +56,7 @@ function LnRMSSDChart({ data, baseline, band }) {
   return (
     <div>
       <div style={{ fontFamily: MONO, fontSize: 9, color: '#555', marginBottom: 4 }}>
-        lnRMSSD (30d) · baseline {baseline ? baseline.toFixed(2) : '—'} · ±1σ band
+        <ScienceTooltip anchor="4-rmssd--heart-rate-variability" label="RMSSD" short="Root Mean Square of Successive Differences — parasympathetic tone marker.">lnRMSSD</ScienceTooltip> (30d) · baseline {baseline ? baseline.toFixed(2) : '—'} · ±1σ band
       </div>
       <ResponsiveContainer width="100%" height={160}>
         <LineChart data={data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
@@ -109,7 +110,7 @@ function DFABadge({ alpha1, ectopicPct }) {
         border: `1px solid ${interpret.color}44`,
         color: interpret.color,
       }}>
-        DFA-α1 {alpha1.toFixed(3)} · {interpret.label}
+        <ScienceTooltip anchor="5-dfa-1--detrended-fluctuation-analysis" label="DFA-α1" short="DFA-α1 ≈ 0.75 = aerobic threshold (LT1). >0.75 = below LT1. Gronwald 2019.">DFA-α1</ScienceTooltip> {alpha1.toFixed(3)} · {interpret.label}
       </div>
       {ectopicPct > 0 && (
         <div style={{

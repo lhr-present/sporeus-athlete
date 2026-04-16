@@ -226,7 +226,7 @@ describe('computeDecoupling — warmup exclusion matches 60-min-only computation
   // Clean effort: power=250W, HR ramps gently from 145 to 155
   const warmup = 10 * 60  // 600s
   const steady = 60 * 60  // 3600s
-  const D = warmup + steady
+  const _D = warmup + steady
 
   // Warmup has noisy high HR + variable power
   const hrWarmup    = Array.from({ length: warmup }, (_, i) => 120 + (i % 20))

@@ -8,6 +8,7 @@ import { useData } from '../contexts/DataContext.jsx'
 import { S } from '../styles.js'
 import { calculateMMP, fitCriticalPower, detectIntervals, estimateFTP } from '../lib/powerAnalysis.js'
 import IntervalBreakdown from './IntervalBreakdown.jsx'
+import ScienceTooltip from './ScienceTooltip.jsx'
 
 const MONO = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -160,7 +161,7 @@ export default function PowerCurve() {
                 fontFamily: MONO, fontSize: 10, padding: '3px 8px', borderRadius: '2px',
                 border: '1px solid #33333366', color: '#888',
               }}>
-                CP {modelFit.cp}W · W′ {(modelFit.wPrime / 1000).toFixed(1)}kJ
+                <ScienceTooltip anchor="8-critical-power--w" label="Critical Power" short="CP = sustainable power boundary. W′ = finite anaerobic capacity above CP. Monod 1965.">CP</ScienceTooltip> {modelFit.cp}W · W′ {(modelFit.wPrime / 1000).toFixed(1)}kJ
                 {modelFit.source === 'fitted' && modelFit.r2 != null && (
                   <span style={{ color: '#555' }}> · r² {modelFit.r2.toFixed(2)}</span>
                 )}
