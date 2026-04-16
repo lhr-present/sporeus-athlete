@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!--
+    Sporeus threshold mark — SIMPLE (favicon / tiny sizes)
+    Two curves only (curves 2 + 4), thicker strokes for legibility at 16–48px.
+    Threshold line and curves use stroke-width=8/6 (vs 4/2.5 in primary).
+
+    At 16px render: threshold line ≈ 2px physical (clear), curves ≈ 1.5px physical (visible).
+    Crossings retained at x=208 (curve 2) and x=304 (curve 4) — symmetric about center.
+  -->
+
+  <!-- Threshold line — thicker for small-size legibility -->
+  <line x1="64" y1="256" x2="448" y2="256"
+        stroke="#ff6600" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- Curve 2 — amplitude 70, crosses at x=208 -->
+  <path d="M -30 186 C 192 186 192 326 542 326"
+        stroke="#e8e4d8" stroke-width="6" fill="none" stroke-linecap="round"/>
+
+  <!-- Curve 4 — amplitude 130, crosses at x=304 -->
+  <path d="M -30 126 C 320 126 320 386 542 386"
+        stroke="#e8e4d8" stroke-width="6" fill="none" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!--
+    Sporeus threshold mark — MONO (single color, white)
+    Same geometry as sporeus-mark-simple.svg.
+    Used for adaptive/maskable icons where OS applies its own background tint.
+    All strokes: #ffffff (pure white).
+  -->
+
+  <!-- Threshold line -->
+  <line x1="64" y1="256" x2="448" y2="256"
+        stroke="#ffffff" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- Curve 2 — amplitude 70, crosses at x=208 -->
+  <path d="M -30 186 C 192 186 192 326 542 326"
+        stroke="#ffffff" stroke-width="6" fill="none" stroke-linecap="round"/>
+
+  <!-- Curve 4 — amplitude 130, crosses at x=304 -->
+  <path d="M -30 126 C 320 126 320 386 542 386"
+        stroke="#ffffff" stroke-width="6" fill="none" stroke-linecap="round"/>
+</svg>

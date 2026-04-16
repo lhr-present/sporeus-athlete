@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!--
+    Sporeus threshold mark — PRIMARY (transparent background)
+    Five physiological curves crossing a horizontal threshold line.
+    Inspired by EŞİK/THRESHOLD book cover convergence concept.
+
+    Geometry: cubic Bezier M x0 y0 C xc y0 xc y1 x3 y1
+    Each curve crosses y=256 at t=0.5, giving x_crossing = 64 + 0.75*xc
+    Crossings evenly spread: x=160, 208, 256, 304, 352
+    Amplitudes: 40, 70, 100, 130, 160 (flattest to steepest)
+
+    Colors: threshold line #ff6600 (Sporeus orange), curves #e8e4d8 (cream / book-cover tie)
+  -->
+
+  <!-- Threshold line -->
+  <line x1="64" y1="256" x2="448" y2="256"
+        stroke="#ff6600" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Curve 1 — amplitude 40, crosses at x=160 -->
+  <path d="M -30 216 C 128 216 128 296 542 296"
+        stroke="#e8e4d8" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Curve 2 — amplitude 70, crosses at x=208 -->
+  <path d="M -30 186 C 192 186 192 326 542 326"
+        stroke="#e8e4d8" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Curve 3 — amplitude 100, crosses at x=256 -->
+  <path d="M -30 156 C 256 156 256 356 542 356"
+        stroke="#e8e4d8" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Curve 4 — amplitude 130, crosses at x=304 -->
+  <path d="M -30 126 C 320 126 320 386 542 386"
+        stroke="#e8e4d8" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Curve 5 — amplitude 160, crosses at x=352 -->
+  <path d="M -30 96 C 384 96 384 416 542 416"
+        stroke="#e8e4d8" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+</svg>
