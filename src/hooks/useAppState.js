@@ -98,7 +98,7 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   // ── Computed values ───────────────────────────────────────────────────────────
   const today = new Date().toISOString().slice(0, 10)
   const hasRecoveryToday = recovery.some(e => e.date === today)
-  const isProfileIncomplete = onboarded && (!profile.name || !profile.primarySport)
+  const isProfileIncomplete = onboarded && (!profile.name || (!profile.primarySport && !profile.sport))
   const isFirstSession = onboarded && log.length === 0
 
   const appAge = (() => {

@@ -149,13 +149,13 @@ export default function ZoneCalc() {
   const [profileLS] = useLocalStorage('sporeus_profile', {})
   const isElite = profileLS?.athleteLevel === 'elite' || profileLS?.athleteLevel === 'advanced'
   const [mode, setMode] = useState(() => {
-    const sc = SPORT_CONFIG[profileLS?.primarySport]
+    const sc = SPORT_CONFIG[profileLS?.primarySport || profileLS?.sport]
     return sc?.defaultZoneMode === 'power' ? 'power' : sc?.defaultZoneMode === 'pace' ? 'pace' : 'hr'
   })
-  const [maxHR, setMaxHR] = useState('')
-  const [ftp, setFtp] = useState('')
-  const [threshPace, setThreshPace] = useState('')
-  const [age, setAge] = useState('')
+  const [maxHR, setMaxHR] = useState(() => profileLS?.maxhr ? String(profileLS.maxhr) : '')
+  const [ftp, setFtp] = useState(() => profileLS?.ftp ? String(profileLS.ftp) : '')
+  const [threshPace, setThreshPace] = useState(() => profileLS?.threshold || '')
+  const [age, setAge] = useState(() => profileLS?.age ? String(profileLS.age) : '')
   const [zones, setZones] = useState([])
   const [swimT400, setSwimT400] = useState('')
   const [swimT200, setSwimT200] = useState('')
