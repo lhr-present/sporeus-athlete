@@ -1,5 +1,6 @@
 // ─── coachDashboard/ClubOnboarding.jsx — Club-tier first-run wizard ───────────
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import { useFocusTrap } from '../../hooks/useFocusTrap.js'
 import { S } from '../../styles.js'
 import { saveLocalClubProfile, upsertOrgBranding } from '../../lib/db/orgBranding.js'
 
@@ -16,6 +17,8 @@ const PRESET_COLORS = ['#ff6600', '#0064ff', '#5bc25b', '#f5c542', '#e03030', '#
  * @param {{ onDone: Function, authUserId?: string, inviteUrl: string, lang?: string }} props
  */
 export default function ClubOnboarding({ onDone, authUserId, inviteUrl, lang = 'en' }) {
+  const panelRef = useRef(null)
+  useFocusTrap(panelRef, { onEscape: onDone })
   const [step, setStep] = useState(0)
   const [orgName, setOrgName]         = useState('')
   const [primaryColor, setPrimColor]  = useState('#ff6600')
@@ -173,6 +176,7 @@ export default function ClubOnboarding({ onDone, authUserId, inviteUrl, lang = '
     <>
       <div aria-hidden="true" onClick={onDone} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 10200 }} />
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={isTR ? 'Kulüp modu kurulumu' : 'Club mode setup'}

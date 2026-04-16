@@ -1,9 +1,12 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import { useFocusTrap } from '../../hooks/useFocusTrap.js'
 import { S } from '../../styles.js'
 
 // ─── Coach Onboarding ─────────────────────────────────────────────────────────
 
 export default function CoachOnboarding({ onDone, inviteUrl, fileRef }) {
+  const panelRef = useRef(null)
+  useFocusTrap(panelRef, { onEscape: onDone })
   const [step, setStep] = useState(0)
   const steps = [
     {
@@ -71,7 +74,7 @@ export default function CoachOnboarding({ onDone, inviteUrl, fileRef }) {
   return (
     <>
       <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', zIndex:10200 }} onClick={onDone}/>
-      <div role="dialog" aria-modal="true" aria-label="Coach mode setup" style={{ position:'fixed', top:'15vh', left:'50%', transform:'translateX(-50%)', width:'min(480px,92vw)', background:'var(--card-bg)', border:'1px solid #0064ff44', borderRadius:'8px', zIndex:10201, padding:'28px', boxShadow:'0 24px 80px rgba(0,0,0,0.6)' }}>
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-label="Coach mode setup" style={{ position:'fixed', top:'15vh', left:'50%', transform:'translateX(-50%)', width:'min(480px,92vw)', background:'var(--card-bg)', border:'1px solid #0064ff44', borderRadius:'8px', zIndex:10201, padding:'28px', boxShadow:'0 24px 80px rgba(0,0,0,0.6)' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px' }}>
           <div style={{ ...S.mono, fontSize:'10px', color:'#0064ff', letterSpacing:'0.1em' }}>◈ COACH MODE — STEP {step+1}/3</div>
           <button onClick={onDone} aria-label="Close" style={{ background:'none', border:'none', color:'#555', cursor:'pointer', fontSize:'18px' }}>×</button>

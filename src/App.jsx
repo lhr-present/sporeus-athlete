@@ -307,7 +307,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
         </main>
 
         <footer style={S.footer}>
-          SPOREUS ATHLETE CONSOLE v7.0.0 · SPOREUS.COM
+          SPOREUS ATHLETE CONSOLE v7.14.0 · SPOREUS.COM
           <span style={{ marginLeft:'12px', color:'#333', fontSize:'9px', letterSpacing:'0.06em' }}>
             ? = shortcuts · + = quick log · Ctrl+K = search
           </span>

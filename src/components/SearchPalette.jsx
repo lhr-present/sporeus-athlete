@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { useFocusTrap } from '../hooks/useFocusTrap.js'
 import { logger } from '../lib/logger.js'
 import { S } from '../styles.js'
 import { SEARCH_INDEX } from '../lib/constants.js'
@@ -43,7 +44,9 @@ export default function SearchPalette({ onNavigate, onToggleDark, onToggleLang, 
   const [query, setQuery]  = useState('')
   const [sel, setSel]      = useState(0)
   const [recent, setRecent] = useState(loadRecent)
-  const inputRef = useRef(null)
+  const inputRef  = useRef(null)
+  const palRef    = useRef(null)
+  useFocusTrap(palRef, { onEscape: onClose })
   const listRef  = useRef(null)
 
   useEffect(() => { inputRef.current?.focus() }, [])
@@ -136,7 +139,7 @@ export default function SearchPalette({ onNavigate, onToggleDark, onToggleLang, 
       <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.65)', zIndex:10100 }}/>
 
       {/* Palette */}
-      <div role="dialog" aria-modal="true" aria-label="Search" style={{
+      <div ref={palRef} role="dialog" aria-modal="true" aria-label="Search" style={{
         position:'fixed', top:'12vh', left:'50%', transform:'translateX(-50%)',
         width:'min(640px, 94vw)', zIndex:10101,
         background:'#0d0d0d', border:'1px solid #333', borderRadius:'8px',

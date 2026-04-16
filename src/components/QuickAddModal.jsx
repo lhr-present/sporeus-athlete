@@ -2,6 +2,7 @@
 // Opens via the `+` header button. Picks sport type, duration, RPE → computes
 // TSS via calcTSS (RPE-based), adds to the training log, fires a notification.
 import { useState, useEffect, useRef, useContext } from 'react'
+import { useFocusTrap } from '../hooks/useFocusTrap.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { calcTSS } from '../lib/formulas.js'
@@ -34,6 +35,8 @@ export default function QuickAddModal({ onAdd, onClose }) {
 
   // Click-outside to close
   const overlayRef = useRef(null)
+  const panelRef   = useRef(null)
+  useFocusTrap(panelRef, { onEscape: onClose })
   const handleOverlayClick = e => { if (e.target === overlayRef.current) onClose() }
 
   const dur = parseInt(duration) || 0
@@ -70,7 +73,7 @@ export default function QuickAddModal({ onAdd, onClose }) {
         padding: '16px',
       }}
     >
-      <div role="dialog" aria-modal="true" aria-label="Quick add session" style={{
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-label="Quick add session" style={{
         background: 'var(--card-bg, #111)', border: '1px solid var(--border)',
         borderRadius: '4px', padding: '20px 24px', width: '100%', maxWidth: '380px',
         fontFamily: MONO, boxShadow: '0 8px 40px rgba(0,0,0,0.6)',

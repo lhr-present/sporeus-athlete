@@ -1,5 +1,6 @@
 // ─── MigrationModal.jsx — localStorage → Supabase import prompt ──────────────
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
+import { useFocusTrap } from '../hooks/useFocusTrap.js'
 import { logger } from '../lib/logger.js'
 import { migrateToSupabase } from '../lib/dataMigration.js'
 import { exportAllData } from '../lib/storage.js'
@@ -10,6 +11,8 @@ const GREEN  = '#5bc25b'
 const RED    = '#e03030'
 
 export default function MigrationModal({ userId, localData, onComplete, lang }) {
+  const panelRef = useRef(null)
+  useFocusTrap(panelRef, { onEscape: () => phase === 'done' && onComplete() })
   const [phase, setPhase]       = useState('prompt')  // 'prompt' | 'running' | 'done' | 'error'
   const [progress, setProgress] = useState(0)
   const [total, setTotal]       = useState(0)
@@ -62,7 +65,7 @@ export default function MigrationModal({ userId, localData, onComplete, lang }) 
       padding: '24px 16px',
       fontFamily: MONO,
     }}>
-      <div role="dialog" aria-modal="true" aria-label="Data migration" style={{
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-label="Data migration" style={{
         background: '#111',
         border: '1px solid #2a2a2a',
         borderRadius: '8px',

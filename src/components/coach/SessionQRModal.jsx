@@ -1,5 +1,6 @@
 // ─── coach/SessionQRModal.jsx — QR code overlay for session check-in ──────────
 import { useEffect, useRef, useState } from 'react'
+import { useFocusTrap } from '../../hooks/useFocusTrap.js'
 import { S } from '../../styles.js'
 import { logger } from '../../lib/logger.js'
 
@@ -20,6 +21,8 @@ export function buildQrPayload(sessionId) {
  */
 export default function SessionQRModal({ session, onClose, lang = 'en' }) {
   const canvasRef = useRef(null)
+  const panelRef  = useRef(null)
+  useFocusTrap(panelRef, { onEscape: onClose })
   const [ready, setReady] = useState(false)
   const [err, setErr]     = useState('')
   const isTR = lang === 'tr'
@@ -61,6 +64,7 @@ export default function SessionQRModal({ session, onClose, lang = 'en' }) {
       />
       {/* Panel */}
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={isTR ? 'Oturum QR Kodu' : 'Session QR Code'}

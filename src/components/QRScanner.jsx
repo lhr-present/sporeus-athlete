@@ -1,5 +1,6 @@
 // ─── QRScanner.jsx — Camera-based QR scanner for session check-in ─────────────
 import { useEffect, useRef, useState } from 'react'
+import { useFocusTrap } from '../hooks/useFocusTrap.js'
 import { logger } from '../lib/logger.js'
 
 const MONO = "'IBM Plex Mono', monospace"
@@ -31,6 +32,7 @@ export default function QRScanner({ onScan, onClose, lang = 'en' }) {
   const canvasRef = useRef(null)
   const rafRef    = useRef(null)
   const streamRef = useRef(null)
+  const panelRef  = useRef(null)
 
   const [status, setStatus] = useState('starting') // starting | scanning | denied | unsupported | found
   const [found,  setFound]  = useState(false)
@@ -118,6 +120,7 @@ export default function QRScanner({ onScan, onClose, lang = 'en' }) {
     stopStream()
     onClose()
   }
+  useFocusTrap(panelRef, { onEscape: handleClose })
 
   const STATUS_MSG = {
     starting:    isTR ? 'Kamera başlatılıyor…'       : 'Starting camera…',
@@ -137,6 +140,7 @@ export default function QRScanner({ onScan, onClose, lang = 'en' }) {
       />
       {/* Panel */}
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={isTR ? 'QR Kod Tarayıcı' : 'QR Code Scanner'}

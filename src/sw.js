@@ -64,7 +64,7 @@ self.addEventListener('message', event => {
 // ── Push notifications (Phase 3.4) ────────────────────────────────────────────
 self.addEventListener('push', event => {
   let payload = {}
-  try { payload = event.data?.json() || {} } catch {}
+  try { payload = event.data?.json() || {} } catch (e) { console.warn('[sw] push parse:', e.message) }
 
   const title   = payload.title   || 'Sporeus Athlete'
   const body    = payload.body    || ''
