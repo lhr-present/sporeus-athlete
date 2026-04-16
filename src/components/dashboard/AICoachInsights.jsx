@@ -86,11 +86,19 @@ export default function AICoachInsights({ dl }) {
       if (!parsed?.summary) throw new Error('Unexpected response from AI — try again.')
 
       const today = new Date().toISOString().slice(0, 10)
-      const { data: inserted } = await supabase
+      // Use fixed data_hash 'on-demand' so the unique(athlete_id, date, data_hash)
+      // constraint prevents duplicate API calls if the user clicks twice.
+      const { data: inserted, error: insertErr } = await supabase
         .from('ai_insights')
-        .insert({ athlete_id: user.id, date: today, data_hash: `on-demand-${Date.now()}`, insight_json: parsed, model: 'haiku' })
+        .insert({ athlete_id: user.id, date: today, data_hash: 'on-demand', insight_json: parsed, model: 'haiku' })
         .select('id')
         .single()
+      if (insertErr?.code === '23505') {
+        // Already exists — fetch it instead
+        await fetchInsight()
+        setGenerating(false)
+        return
+      }
       setInsight({ id: inserted?.id, summary: parsed.summary, explanation: null, model: 'haiku' })
     } catch (e) {
       setError(e.message)
@@ -107,7 +115,7 @@ export default function AICoachInsights({ dl }) {
         body: {
           model_alias: 'haiku',
           system: 'You are a sport science tutor. Explain the science behind a training recommendation to a non-expert athlete. Under 60 words. Plain language.',
-          user_msg: `Explain the reasoning behind: "${insight.summary}"`,
+          user_msg: `Explain the reasoning behind: "${insight.summary.replace(/[\r\n]+/g, ' ').slice(0, 300)}"`,
           max_tokens: 128,
         },
       })

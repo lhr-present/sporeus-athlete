@@ -57,16 +57,32 @@ serve(async (req) => {
     const limit = TIER_LIMITS[tier] ?? 0
     if (limit === 0) return err('AI features require a Coach or Club plan. Upgrade at sporeus.com.', 403)
 
-    // ── Daily usage check (count today's cached rows as a proxy) ─────────────
+    // ── Daily usage check ─────────────────────────────────────────────────────
+    // Count check runs BEFORE the Anthropic call. Note: this is not fully atomic
+    // (TOCTOU); the unique constraint on ai_insights (athlete_id, date, data_hash)
+    // prevents double-storage on the client side for on-demand calls.
     const today = new Date().toISOString().slice(0, 10)
-    const { count } = await supabase
+    const { count: dailyCount } = await supabase
       .from('ai_insights')
       .select('*', { count: 'exact', head: true })
       .eq('athlete_id', user.id)
       .eq('date', today)
 
-    if ((count ?? 0) >= limit) {
+    if ((dailyCount ?? 0) >= limit) {
       return err(`Daily AI limit reached (${limit} calls/${tier} plan). Resets at midnight.`, 429)
+    }
+
+    // ── Monthly cap — hard circuit breaker ($50 ≈ ~27k Haiku calls) ──────────
+    const monthStart = today.slice(0, 7) + '-01'
+    const { count: monthCount } = await supabase
+      .from('ai_insights')
+      .select('*', { count: 'exact', head: true })
+      .eq('athlete_id', user.id)
+      .gte('date', monthStart)
+
+    const MONTHLY_CAP = 1500  // per-user cap (~$2.70/user/month worst case Haiku)
+    if ((monthCount ?? 0) >= MONTHLY_CAP) {
+      return err('Monthly AI quota reached. Resets on the 1st.', 429)
     }
 
     // ── Call Anthropic ────────────────────────────────────────────────────────
@@ -96,7 +112,8 @@ serve(async (req) => {
 
     const anthData = await anthRes.json()
     const content  = anthData?.content?.[0]?.text || ''
-    return json({ content })
+    const usage    = anthData?.usage ?? null  // { input_tokens, output_tokens }
+    return json({ content, usage })
   } catch (e) {
     return err((e as Error).message || 'Internal error', 500)
   }

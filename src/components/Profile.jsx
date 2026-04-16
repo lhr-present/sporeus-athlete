@@ -505,12 +505,12 @@ export default function Profile({ log, authUser }) {
       })()}
 
       {/* Admin code generator — only shown to Hüseyin */}
-      {(local.name?.toLowerCase().includes('hüseyin') || local.name?.toLowerCase().includes('huseyin') || local.email === 'huseyinakbulut@marun.edu.tr') && (
+      {(authUser?.email === 'huseyinakbulut71@gmail.com' || authUser?.email === 'huseyinakbulut@marun.edu.tr') && (
         <AdminCodeGenerator/>
       )}
 
       {/* AthleteOS developer reference — Cost Cuts + Prompt Library */}
-      {(local.name?.toLowerCase().includes('hüseyin') || local.name?.toLowerCase().includes('huseyin') || local.email === 'huseyinakbulut@marun.edu.tr') && (
+      {(authUser?.email === 'huseyinakbulut71@gmail.com' || authUser?.email === 'huseyinakbulut@marun.edu.tr') && (
         <AthleteOSCosts />
       )}
 

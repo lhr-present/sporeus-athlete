@@ -1,4 +1,5 @@
 import { lazy, useEffect } from 'react'
+import { version as APP_VERSION } from '../package.json'
 import { logger } from './lib/logger.js'
 import { LangCtx, TABS } from './contexts/LangCtx.jsx'
 import { useLocalStorage } from './hooks/useLocalStorage.js'
@@ -308,7 +309,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
         </main>
 
         <footer style={S.footer}>
-          SPOREUS ATHLETE CONSOLE v7.14.0 · SPOREUS.COM
+          SPOREUS ATHLETE CONSOLE v{APP_VERSION} · SPOREUS.COM
           <span style={{ marginLeft:'12px', color:'#333', fontSize:'9px', letterSpacing:'0.06em' }}>
             ? = shortcuts · + = quick log · Ctrl+K = search
           </span>

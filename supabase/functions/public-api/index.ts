@@ -155,9 +155,19 @@ async function handleSquadExport(db: ReturnType<typeof createClient>, orgId: str
   const nameMap = Object.fromEntries(athletes.map((a: { athlete_id: string; display_name: string }) => [a.athlete_id, a.display_name]))
   const weeks: Record<string, { tss: number; rpe: number[]; sessions: number }> = {}
 
+  // ISO 8601 week number — resets on Monday, not month boundary
+  function getISOWeek(d: Date): string {
+    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+    const dayNum = date.getUTCDay() || 7
+    date.setUTCDate(date.getUTCDate() + 4 - dayNum)
+    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1))
+    const weekNo = Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
+    return `${date.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`
+  }
+
   for (const row of (logs ?? []) as { user_id: string; date: string; tss: number; rpe: number }[]) {
     const d = new Date(row.date)
-    const week = `${d.getFullYear()}-W${String(Math.ceil(d.getDate() / 7)).padStart(2, "0")}`
+    const week = getISOWeek(d)
     const key  = `${nameMap[row.user_id] ?? row.user_id}___${week}`
     if (!weeks[key]) weeks[key] = { tss: 0, rpe: [], sessions: 0 }
     weeks[key].tss += (row.tss ?? 0)

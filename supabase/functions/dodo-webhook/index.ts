@@ -13,6 +13,11 @@ const DODO_SECRET   = Deno.env.get("DODO_WEBHOOK_SECRET") ?? ""
 const STRIPE_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? ""
 const RESEND_KEY    = Deno.env.get("RESEND_API_KEY") ?? ""
 
+// Guard: reject cold-start if payment secrets are missing — an empty secret
+// makes HMAC-SHA256 trivially forgeable (attacker signs with "" key).
+if (!DODO_SECRET)   throw new Error("DODO_WEBHOOK_SECRET not configured — set it in Supabase secrets")
+if (!STRIPE_SECRET) throw new Error("STRIPE_WEBHOOK_SECRET not configured — set it in Supabase secrets")
+
 function supabaseAdmin() {
   return createClient(SUPABASE_URL, SERVICE_KEY)
 }

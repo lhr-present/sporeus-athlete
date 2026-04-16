@@ -153,12 +153,20 @@ function getWeekStart(dateStr: string): string {
 
 // ── Main handler ──────────────────────────────────────────────────────────────
 serve(async (req) => {
+  // Auth guard: only accept requests signed with the service role key.
+  // pg_cron sends this in the Authorization header; reject anything else.
+  const authHeader = req.headers.get("Authorization") ?? ""
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+  if (!serviceKey || authHeader !== `Bearer ${serviceKey}`) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } })
+  }
+
   const start = Date.now()
 
   // Service-role client — bypasses RLS
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    serviceKey,
   )
 
   const today = new Date().toISOString().slice(0, 10)
