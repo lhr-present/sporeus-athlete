@@ -290,6 +290,8 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
       if (isInputFocused()) return
       if (e.key === '?') { e.preventDefault(); setShowShortcutsHelp(s => !s); return }
       if (e.key === '+' || e.key === 'a') { e.preventDefault(); setShowQuickAdd(true); return }
+      if (e.key === 'l' || e.key === 'L') { e.preventDefault(); setLang(l => l === 'en' ? 'tr' : 'en'); return }
+      if (e.key === 'd' || e.key === 'D') { e.preventDefault(); setDark(d => !d); return }
       if (TAB_KEYS[e.key]) { e.preventDefault(); handleTabClick(TAB_KEYS[e.key]); return }
     }
     window.addEventListener('keydown', handler)

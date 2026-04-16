@@ -24,6 +24,7 @@ import { hasCurrentConsent } from './lib/db/consentVersion.js'
 import NotificationBell from './components/NotificationBell.jsx'
 import { detectLocalData } from './lib/dataMigration.js'
 import QuickAddModal from './components/QuickAddModal.jsx'
+import KeyboardShortcuts from './components/KeyboardShortcuts.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { flushQueue } from './lib/offlineQueue.js'
 import ToastStack from './components/ToastStack.jsx'
@@ -323,40 +324,11 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
       )}
 
       {/* ── Keyboard Shortcuts Help ───────────────────────────────────────── */}
-      {showShortcutsHelp && (
-        <div
-          onClick={() => setShowShortcutsHelp(false)}
-          style={{ position:'fixed', inset:0, zIndex:9600, background:'rgba(0,0,0,0.65)', display:'flex', alignItems:'center', justifyContent:'center', padding:'16px' }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{ background:'var(--card-bg,#111)', border:'1px solid var(--border)', borderRadius:'4px', padding:'20px 24px', maxWidth:'380px', width:'100%', fontFamily:"'IBM Plex Mono',monospace" }}
-          >
-            <div style={{ fontSize:'11px', fontWeight:700, color:'#ff6600', letterSpacing:'0.1em', marginBottom:'16px' }}>
-              ⌨ {lang === 'tr' ? 'KLAVYE KISAYOLLARI' : 'KEYBOARD SHORTCUTS'}
-            </div>
-            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'11px' }}>
-              <tbody>
-                {[
-                  ['1–7', lang === 'tr' ? 'Sekmelere git (1=Bugün…7=Test)' : 'Navigate tabs (1=Today…7=Tests)'],
-                  ['+  /  a', lang === 'tr' ? 'Hızlı antrenman kaydet' : 'Quick log session'],
-                  ['Ctrl+K', lang === 'tr' ? 'Arama paletini aç' : 'Open search palette'],
-                  ['?', lang === 'tr' ? 'Bu yardımı göster' : 'Show this help'],
-                  ['Esc', lang === 'tr' ? 'Tüm panelleri kapat' : 'Close any panel'],
-                ].map(([key, desc]) => (
-                  <tr key={key} style={{ borderBottom:'1px solid var(--border)' }}>
-                    <td style={{ padding:'6px 0', paddingRight:'16px', color:'#ff6600', fontWeight:700, whiteSpace:'nowrap' }}>{key}</td>
-                    <td style={{ padding:'6px 0', color:'var(--text)' }}>{desc}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <button onClick={() => setShowShortcutsHelp(false)} style={{ marginTop:'14px', ...S.btnSec, fontSize:'11px', padding:'6px 14px' }}>
-              {lang === 'tr' ? 'Kapat' : 'Close'}
-            </button>
-          </div>
-        </div>
-      )}
+      <KeyboardShortcuts
+        open={showShortcutsHelp}
+        onClose={() => setShowShortcutsHelp(false)}
+        lang={lang}
+      />
     </LangCtx.Provider>
   )
 }
