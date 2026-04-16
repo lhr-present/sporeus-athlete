@@ -1,9 +1,8 @@
-import { useRef, useState, useEffect, useCallback } from 'react'
+import { useRef, useState } from 'react'
 import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
-import { supabase, isSupabaseReady } from '../lib/supabase.js'
+import { isSupabaseReady } from '../lib/supabase.js'
 import { FREE_ATHLETE_LIMIT } from '../lib/formulas.js'
-import { predictInjuryRisk } from '../lib/intelligence.js'
 import { generateAthleteReportCard } from '../lib/digestEmail.js'
 
 import { TODAY, daysBefore, computeAthleteMetrics, computeLoad } from './coachDashboard/helpers.jsx'
@@ -15,10 +14,9 @@ import AthleteCard from './coachDashboard/AthleteCard.jsx'
 import AthleteComparison from './coachDashboard/AthleteComparison.jsx'
 import CoachRegistration from './coachDashboard/CoachRegistration.jsx'
 import GatingOverlay from './coachDashboard/GatingOverlay.jsx'
-import SbAthletePanel from './coachDashboard/SbAthletePanel.jsx'
 import SessionManager from './coach/SessionManager.jsx'
 import SquadBenchmarkTable from './coach/SquadBenchmarkTable.jsx'
-import InviteManager from './InviteManager.jsx'
+import CoachSquadView from './coach/CoachSquadView.jsx'
 import { calcCompliancePct } from '../lib/sport/squadBenchmark.js'
 import { getTierSync } from '../lib/subscription.js'
 import TeamAnnouncements from './TeamAnnouncements.jsx'
@@ -43,39 +41,7 @@ export default function CoachDashboard({ authUser }) {
   const [pendingAthlete, setPendingAthlete] = useState(null)
   const [showGating, setShowGating] = useState(false)
   const fileRef = useRef(null)
-  // ── Supabase live-athlete state (only when Supabase is configured) ──────────
-  const [sbAthletes, setSbAthletes]     = useState([])   // [{profile, status, athlete_id}]
-  const [sbSelectedId, setSbSelectedId] = useState(null) // selected athlete id
-  const [sbAthleteData, setSbAthleteData] = useState({}) // {[id]: {log, recovery}}
-  const [sbLoadingData, setSbLoadingData] = useState(false)
-
   const sbCoachId = authUser?.id ?? null
-
-  const loadSbAthletes = useCallback(async () => {
-    if (!isSupabaseReady() || !sbCoachId) return
-    const { data } = await supabase
-      .from('coach_athletes')
-      .select('athlete_id, status, profiles!coach_athletes_athlete_id_fkey(id, display_name, email)')
-      .eq('coach_id', sbCoachId)
-      .in('status', ['active', 'pending'])
-      .order('status')
-    if (data) setSbAthletes(data)
-  }, [sbCoachId])
-
-  useEffect(() => { loadSbAthletes() }, [loadSbAthletes])
-
-
-  const selectSbAthlete = useCallback(async (athleteId) => {
-    setSbSelectedId(prev => prev === athleteId ? null : athleteId)
-    if (sbAthleteData[athleteId] || !isSupabaseReady()) return
-    setSbLoadingData(true)
-    const [{ data: log }, { data: recovery }] = await Promise.all([
-      supabase.from('training_log').select('*').eq('user_id', athleteId).order('date', { ascending: false }).limit(365),
-      supabase.from('recovery').select('*').eq('user_id', athleteId).order('date', { ascending: false }).limit(90),
-    ])
-    setSbAthleteData(prev => ({ ...prev, [athleteId]: { log: log || [], recovery: recovery || [] } }))
-    setSbLoadingData(false)
-  }, [sbAthleteData])
 
   // Derived — all hooks above, safe to conditional-return now
   const myCoachId    = coachProfile?.coachId || ''
@@ -266,79 +232,7 @@ export default function CoachDashboard({ authUser }) {
       {/* ── Supabase Live Athletes ──────────────────────────────────────────── */}
       {isSupabaseReady() && sbCoachId && (
         <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'6px', padding:'16px', marginBottom:'16px' }}>
-          <div style={{ ...S.mono, fontSize:'11px', fontWeight:700, color:'#0064ff', letterSpacing:'0.1em', marginBottom:'12px' }}>
-            MY ATHLETES (LIVE) · {sbAthletes.filter(a => a.status==='active').length} CONNECTED
-          </div>
-
-          {/* Invite manager */}
-          <div style={{ marginBottom: '16px' }}>
-            <InviteManager coachId={sbCoachId} />
-          </div>
-
-          {/* Athlete list */}
-          {sbAthletes.length > 0 && (
-            <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
-              {sbAthletes.map(row => {
-                const profile = row.profiles
-                const isActive = row.status === 'active'
-                const isSelected = sbSelectedId === row.athlete_id
-                const data = sbAthleteData[row.athlete_id]
-                const metrics = data ? computeLoad(data.log) : null
-                const injRisk = data ? predictInjuryRisk(data.log, data.recovery, {}) : null
-                return (
-                  <div key={row.athlete_id}>
-                    <button
-                      onClick={() => isActive && selectSbAthlete(row.athlete_id)}
-                      style={{
-                        width:'100%', textAlign:'left', background: isSelected ? '#0064ff18' : '#0a0a0a',
-                        border:`1px solid ${isSelected ? '#0064ff' : '#222'}`, borderRadius:'5px',
-                        padding:'10px 14px', cursor: isActive ? 'pointer' : 'default',
-                        display:'flex', alignItems:'center', justifyContent:'space-between', gap:'8px',
-                      }}
-                    >
-                      <div style={{ display:'flex', alignItems:'center', gap:'10px', flex:1, minWidth:0 }}>
-                        <div style={{ width:8, height:8, borderRadius:'50%', background: isActive ? '#5bc25b' : '#555', flexShrink:0 }}/>
-                        <div style={{ ...S.mono, fontSize:'12px', color:'#e0e0e0', fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                          {profile?.display_name || 'Athlete'}
-                        </div>
-                        <div style={{ ...S.mono, fontSize:'9px', color:'#555', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                          {profile?.email || ''}
-                        </div>
-                      </div>
-                      <div style={{ display:'flex', gap:'12px', alignItems:'center', flexShrink:0 }}>
-                        {metrics && <div style={{ ...S.mono, fontSize:'10px', color:'#ff6600' }}>CTL {metrics.ctl}</div>}
-                        {injRisk && <div style={{ ...S.mono, fontSize:'10px', color: injRisk.level === 'HIGH' ? '#e03030' : injRisk.level === 'MODERATE' ? '#f5c542' : '#5bc25b' }}>{injRisk.level}</div>}
-                        <div style={{ ...S.mono, fontSize:'9px', color: isActive ? '#5bc25b' : '#555', letterSpacing:'0.08em' }}>
-                          {isActive ? 'ACTIVE' : 'PENDING'}
-                        </div>
-                        {isActive && <div style={{ ...S.mono, fontSize:'10px', color:'#444' }}>{isSelected ? '▲' : '▼'}</div>}
-                      </div>
-                    </button>
-
-                    {/* Expanded athlete detail */}
-                    {isSelected && (
-                      <SbAthletePanel
-                        athleteId={row.athlete_id}
-                        athleteName={profile?.display_name || 'Athlete'}
-                        data={data}
-                        metrics={metrics}
-                        injRisk={injRisk}
-                        loading={sbLoadingData}
-                        coachId={sbCoachId}
-                        coachName={coachProfile?.name || ''}
-                      />
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-
-          {sbAthletes.length === 0 && (
-            <div style={{ ...S.mono, fontSize:'10px', color:'#444', fontStyle:'italic' }}>
-              No connected athletes yet — generate an invite link above.
-            </div>
-          )}
+          <CoachSquadView coachId={sbCoachId} coachName={coachProfile?.name || ''} />
         </div>
       )}
 
