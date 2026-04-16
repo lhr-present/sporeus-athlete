@@ -1,6 +1,7 @@
 import React from 'react'
 import { exportAllData } from '../lib/storage.js'
 import { logger } from '../lib/logger.js'
+import { captureException } from '../lib/sentry.js'
 
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -9,7 +10,10 @@ export default class ErrorBoundary extends React.Component {
   }
   static getDerivedStateFromError(error) { return { hasError: true, error } }
   componentDidCatch(error, errorInfo) {
-    console.error('Sporeus tab error:', error, errorInfo)
+    captureException(error, {
+      tabName:        this.props.tabName || 'unknown',
+      componentStack: (errorInfo?.componentStack || '').slice(0, 500),
+    })
     try {
       const logKey = 'sporeus-error-log'
       const existing = JSON.parse(localStorage.getItem(logKey) || '[]')

@@ -4,7 +4,7 @@
 // Subscribes to coach_athletes realtime channel — new athlete joins instantly.
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { supabase, isSupabaseReady } from '../../lib/supabase.js'
+import { supabase, isSupabaseReady, sbQuery } from '../../lib/supabase.js'
 import { logger } from '../../lib/logger.js'
 import { predictInjuryRisk } from '../../lib/intelligence.js'
 import { computeLoad } from '../coachDashboard/helpers.jsx'
@@ -49,9 +49,11 @@ export default function CoachSquadView({ coachId, coachName = '' }) {
 
   const fetchSquad = useCallback(async () => {
     if (!isSupabaseReady() || !coachId) { setLoading(false); return }
-    const { data, error } = await supabase.rpc('get_squad_overview', { p_coach_id: coachId })
+    const { data, error } = await sbQuery('get_squad_overview', () =>
+      supabase.rpc('get_squad_overview', { p_coach_id: coachId })
+    )
     if (error) {
-      logger.warn('[CoachSquadView] rpc error:', error.message)
+      logger.error(new Error(`[CoachSquadView] rpc: ${error.message}`), { code: error.code })
       setLoading(false)
       return
     }

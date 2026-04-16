@@ -223,7 +223,7 @@ export function parseBulkCSV(text) {
 
     const date = get(dateIdx)
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      console.warn(`[parseBulkCSV] Row ${i + 1}: invalid or missing date "${date}" — skipped`)
+      logger.warn(`[parseBulkCSV] Row ${i + 1}: invalid or missing date "${date}" — skipped`)
       continue
     }
 

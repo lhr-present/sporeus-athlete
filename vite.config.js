@@ -2,6 +2,9 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
+import { readFileSync } from 'fs'
+
+const pkg = JSON.parse(readFileSync('./package.json', 'utf8'))
 
 export default defineConfig({
   server: {
@@ -21,6 +24,10 @@ export default defineConfig({
     },
   },
   base: '/',
+  define: {
+    // Injected at build time — used by sentry.js for release tagging
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   resolve: {
     alias: { '@': path.resolve(__dirname, './src') },
   },
@@ -39,6 +46,9 @@ export default defineConfig({
           }
           if (id.includes('/node_modules/fit-file-parser')) {
             return 'vendor-fit'
+          }
+          if (id.includes('/node_modules/@sentry/')) {
+            return 'vendor-sentry'
           }
         },
       },

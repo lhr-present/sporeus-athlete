@@ -49,7 +49,7 @@ export async function subscribePush(userId) {
       endpoint: subJson.endpoint,
       keys:     subJson.keys,
     }, { onConflict: 'endpoint' })
-    if (error) console.warn('Failed to save push subscription:', error.message)
+    if (error) logger.warn('Failed to save push subscription:', error.message)
   }
 
   return sub
@@ -126,7 +126,7 @@ export async function scheduleCheckinReminder(userId, preferredTime = '07:00') {
       .from('push_subscriptions')
       .update({ checkin_hour: h, checkin_minute: m ?? 0 })
       .eq('user_id', userId)
-    if (error) console.warn('scheduleCheckinReminder: Supabase update failed:', error.message)
+    if (error) logger.warn('scheduleCheckinReminder: Supabase update failed:', error.message)
   }
 
   // Fire a local notification at preferredTime (setTimeout)
@@ -175,7 +175,7 @@ export async function checkSubscriptionExpiry(userId) {
       await subscribePush(userId)
     }
   } catch (e) {
-    console.warn('checkSubscriptionExpiry error:', e.message)
+    logger.warn('checkSubscriptionExpiry error:', e.message)
   }
 }
 

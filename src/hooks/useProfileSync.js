@@ -6,7 +6,7 @@
 
 import { useEffect, useCallback, useRef } from 'react'
 import { logger } from '../lib/logger.js'
-import { supabase, isSupabaseReady } from '../lib/supabase.js'
+import { supabase, isSupabaseReady, sbQuery } from '../lib/supabase.js'
 import { useLocalStorage } from './useLocalStorage.js'
 
 const LS_KEY = 'sporeus_profile'
@@ -22,14 +22,11 @@ export function useProfileSync(userId) {
     if (!useSupabase) return
     hydrated.current = false
 
-    supabase
-      .from('profiles')
-      .select('profile_data')
-      .eq('id', userId)
-      .maybeSingle()
-      .then(({ data: row, error }) => {
+    sbQuery('profiles:hydrate', () =>
+      supabase.from('profiles').select('profile_data').eq('id', userId).maybeSingle()
+    ).then(({ data: row, error }) => {
         if (error) {
-          logger.warn('[useProfileSync] hydrate error:', error.message)
+          logger.error(new Error(`[useProfileSync] hydrate: ${error.message}`), { code: error.code })
           hydrated.current = true
           return
         }

@@ -1,6 +1,8 @@
 // ─── useAuth.js — Supabase auth state + profile hook ─────────────────────────
 import { useEffect, useState, useCallback } from 'react'
-import { supabase } from '../lib/supabase.js'
+import { supabase, sbQuery } from '../lib/supabase.js'
+import { logger } from '../lib/logger.js'
+import { setUser as sentrySetUser, clearUser as sentryClearUser } from '../lib/sentry.js'
 
 export function useAuth() {
   const [user, setUser]       = useState(null)
@@ -10,13 +12,11 @@ export function useAuth() {
 
   const fetchProfile = useCallback(async (userId) => {
     if (!supabase || !userId) return null
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
+    const { data, error } = await sbQuery('profiles:fetch', () =>
+      supabase.from('profiles').select('*').eq('id', userId).single()
+    )
     if (error && error.code !== 'PGRST116') {
-      console.error('[useAuth] profile fetch:', error.message)
+      logger.error(new Error(`[useAuth] profile fetch: ${error.message}`), { code: error.code })
       return null
     }
     return data || null
@@ -44,6 +44,9 @@ export function useAuth() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       const u = session?.user ?? null
       setUser(u)
+      // Sentry user context — id only, never email or profile data
+      if (u) sentrySetUser(u.id)
+      else   sentryClearUser()
       if (event === 'SIGNED_IN') setNeedsUpsert(true)
       if (!u) {
         setProfile(null)

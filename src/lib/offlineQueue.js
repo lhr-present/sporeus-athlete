@@ -8,6 +8,7 @@
 
 import { enqueue, dequeue, getAll } from './db.js'
 import { supabase, isSupabaseReady } from './supabase.js'
+import { logger } from './logger.js'
 
 let _status    = 'synced'
 let _listeners = []
@@ -32,7 +33,7 @@ export async function enqueuePendingLog(entry) {
     await enqueue(entry)
     setStatus('offline')
   } catch (e) {
-    console.warn('[offlineQueue] enqueue failed:', e)
+    logger.warn('[offlineQueue] enqueue failed:', e.message)
   }
 }
 
