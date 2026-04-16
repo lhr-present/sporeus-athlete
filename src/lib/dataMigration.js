@@ -22,10 +22,11 @@ export function detectLocalData() {
   const testResults  = readLS('sporeus-test-results', [])
   const raceResults  = readLS('sporeus-race-results', [])
   const trainingAge  = localStorage.getItem('sporeus-training-age')
+  const profileData  = readLS('sporeus_profile', {})
 
   const total = log.length + recovery.length + injuries.length + testResults.length + raceResults.length
 
-  if (total === 0 && !trainingAge) return null   // nothing to migrate
+  if (total === 0 && !trainingAge && Object.keys(profileData).length === 0) return null   // nothing to migrate
 
   return {
     log:         log.length,
@@ -52,6 +53,9 @@ export async function migrateToSupabase(userId, onProgress) {
   const trainingAge = localStorage.getItem('sporeus-training-age')
 
   let step = 0
+  const profileData  = readLS('sporeus_profile', {})
+  const hasProfile   = Object.keys(profileData).length > 0
+
   const steps = [
     log.length > 0,
     recovery.length > 0,
@@ -59,6 +63,7 @@ export async function migrateToSupabase(userId, onProgress) {
     testResults.length > 0,
     raceResults.length > 0,
     !!trainingAge,
+    hasProfile,
   ].filter(Boolean).length || 1
 
   const errors = []
@@ -154,6 +159,15 @@ export async function migrateToSupabase(userId, onProgress) {
       .update({ training_age: trainingAge, updated_at: new Date().toISOString() })
       .eq('id', userId)
     if (error) errors.push(`profiles.training_age: ${error.message}`)
+    onProgress?.(++step, steps)
+  }
+
+  // ── profile_data ──────────────────────────────────────────────────────────
+  if (hasProfile) {
+    const { error } = await supabase.from('profiles')
+      .update({ profile_data: profileData, updated_at: new Date().toISOString() })
+      .eq('id', userId)
+    if (error) errors.push(`profiles.profile_data: ${error.message}`)
     onProgress?.(++step, steps)
   }
 

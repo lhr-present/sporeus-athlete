@@ -11,7 +11,7 @@ import {
   useTestResults,
   useRaceResults,
 } from '../hooks/useSupabaseData.js'
-import { useLocalStorage } from '../hooks/useLocalStorage.js'
+import { useProfileSync } from '../hooks/useProfileSync.js'
 
 const DataContext = createContext(null)
 
@@ -21,7 +21,7 @@ export function DataProvider({ userId, children }) {
   const [injuries,    setInjuries]    = useInjuries(userId)
   const [testResults, setTestResults] = useTestResults(userId)
   const [raceResults, setRaceResults] = useRaceResults(userId)
-  const [profile,     setProfile]     = useLocalStorage('sporeus_profile', {})
+  const [profile,     setProfile]     = useProfileSync(userId)
 
   return (
     <DataContext.Provider value={{
