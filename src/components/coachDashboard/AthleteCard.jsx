@@ -50,7 +50,7 @@ export default function AthleteCard({ athlete, isOpen, onToggle, onRemove, onUpd
               style={{ ...S.btnSec, fontSize:'11px', padding:'5px 10px', background: isOpen?'#0064ff':'transparent', color: isOpen?'#fff':'#0064ff', borderColor:'#0064ff' }}>
               {isOpen ? '▲' : '▼'}
             </button>
-            <button onClick={onRemove} style={{ ...S.btnSec, fontSize:'11px', padding:'5px 8px', color:'#e03030', borderColor:'#e03030' }}>✕</button>
+            <button onClick={onRemove} aria-label="Remove athlete" style={{ ...S.btnSec, fontSize:'11px', padding:'5px 8px', color:'#e03030', borderColor:'#e03030' }}>✕</button>
           </div>
         </div>
 

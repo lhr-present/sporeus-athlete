@@ -22,7 +22,7 @@ export default function GatingOverlay({ coachProfile, onUnlock, onCancel }) {
   return (
     <>
       <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', zIndex:10200 }} onClick={onCancel}/>
-      <div style={{ position:'fixed', top:'15vh', left:'50%', transform:'translateX(-50%)', width:'min(480px,92vw)', background:'var(--card-bg)', border:'1px solid #f5c54244', borderRadius:'8px', zIndex:10201, padding:'28px', boxShadow:'0 24px 80px rgba(0,0,0,0.6)' }}>
+      <div role="dialog" aria-modal="true" aria-label="Free limit reached" style={{ position:'fixed', top:'15vh', left:'50%', transform:'translateX(-50%)', width:'min(480px,92vw)', background:'var(--card-bg)', border:'1px solid #f5c54244', borderRadius:'8px', zIndex:10201, padding:'28px', boxShadow:'0 24px 80px rgba(0,0,0,0.6)' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px' }}>
           <div style={{ ...S.mono, fontSize:'10px', color:'#f5c542', letterSpacing:'0.1em' }}>◈ FREE LIMIT REACHED</div>
           <button onClick={onCancel} style={{ background:'none', border:'none', color:'#555', cursor:'pointer', fontSize:'18px' }} aria-label="Close">×</button>

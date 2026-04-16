@@ -47,9 +47,9 @@ export default function Calendar({ log, setLog, onEdit }) {
     <div className="sp-card" style={{ ...S.card, animationDelay:'50ms' }}>
       {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'12px' }}>
-        <button onClick={()=>setCur(new Date(yr,mo-1,1))} style={{ ...S.mono, fontSize:'16px', background:'none', border:'none', cursor:'pointer', color:'var(--muted)', padding:'2px 8px' }}>←</button>
+        <button onClick={()=>setCur(new Date(yr,mo-1,1))} aria-label="Previous month" style={{ ...S.mono, fontSize:'16px', background:'none', border:'none', cursor:'pointer', color:'var(--muted)', padding:'2px 8px' }}>←</button>
         <div style={S.cardTitle}>{monthLabel}</div>
-        <button onClick={()=>setCur(new Date(yr,mo+1,1))} style={{ ...S.mono, fontSize:'16px', background:'none', border:'none', cursor:'pointer', color:'var(--muted)', padding:'2px 8px' }}>→</button>
+        <button onClick={()=>setCur(new Date(yr,mo+1,1))} aria-label="Next month" style={{ ...S.mono, fontSize:'16px', background:'none', border:'none', cursor:'pointer', color:'var(--muted)', padding:'2px 8px' }}>→</button>
       </div>
 
       {/* Weekday headers */}
@@ -112,8 +112,8 @@ export default function Calendar({ log, setLog, onEdit }) {
                   {ses.notes && <div style={{ ...S.mono, fontSize:'10px', color:'var(--sub)', marginTop:'2px' }}>{ses.notes}</div>}
                 </div>
                 <div style={{ display:'flex', gap:'4px' }}>
-                  {onEdit && <button onClick={()=>{ onEdit(ses); setSel(null) }} style={{ ...S.mono, fontSize:'12px', background:'none', border:'none', color:'#aaa', cursor:'pointer' }}>✎</button>}
-                  <button onClick={()=>setLog(log.filter(e=>e.id!==ses.id))} style={{ ...S.mono, fontSize:'12px', background:'none', border:'none', color:'#ccc', cursor:'pointer' }}>✕</button>
+                  {onEdit && <button onClick={()=>{ onEdit(ses); setSel(null) }} aria-label="Edit session" style={{ ...S.mono, fontSize:'12px', background:'none', border:'none', color:'#aaa', cursor:'pointer' }}>✎</button>}
+                  <button onClick={()=>setLog(log.filter(e=>e.id!==ses.id))} aria-label="Delete session" style={{ ...S.mono, fontSize:'12px', background:'none', border:'none', color:'#ccc', cursor:'pointer' }}>✕</button>
                 </div>
               </div>
             ))}

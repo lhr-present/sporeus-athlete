@@ -250,13 +250,15 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
         </header>
 
         <nav style={S.navWrap}>
-          <div style={S.nav}>
+          <div role="tablist" style={S.nav}>
             {TABS.map(tab2 => {
               const hasBadge = badges[tab2.id]
               const isLogPulse = tab2.id === 'log' && isFirstSession
               return (
                 <button
                   key={tab2.id}
+                  role="tab"
+                  aria-selected={tab === tab2.id}
                   className={isLogPulse ? 'sp-tab-pulse' : ''}
                   style={{ ...S.navBtn(tab === tab2.id), position:'relative' }}
                   onClick={() => handleTabClick(tab2.id)}

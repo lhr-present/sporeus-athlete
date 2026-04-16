@@ -68,7 +68,7 @@ export default function NotePanel({ athlete, coachId = null, onClose }) {
         <div style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: ORANGE }}>
           NOTES — {athlete.display_name.toUpperCase()}
         </div>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontFamily: MONO, fontSize: 16 }}>✕</button>
+        <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontFamily: MONO, fontSize: 16 }}>✕</button>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px' }}>

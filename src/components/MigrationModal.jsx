@@ -62,7 +62,7 @@ export default function MigrationModal({ userId, localData, onComplete, lang }) 
       padding: '24px 16px',
       fontFamily: MONO,
     }}>
-      <div style={{
+      <div role="dialog" aria-modal="true" aria-label="Data migration" style={{
         background: '#111',
         border: '1px solid #2a2a2a',
         borderRadius: '8px',

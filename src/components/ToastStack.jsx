@@ -10,7 +10,7 @@ export default function ToastStack({ toasts, dismissToast }) {
   if (!toasts.length) return null
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 10002, pointerEvents: 'none' }}>
+    <div role="status" aria-live="polite" aria-atomic="false" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 10002, pointerEvents: 'none' }}>
       {toasts.map(t => (
         <div
           key={t.id}
@@ -40,6 +40,7 @@ export default function ToastStack({ toasts, dismissToast }) {
             )}
             <button
               onClick={() => dismissToast(t.id)}
+              aria-label="Dismiss"
               style={{ background: 'none', border: '1px solid rgba(255,255,255,0.5)', color: '#fff', padding: '2px 8px', cursor: 'pointer', fontFamily: MONO, fontSize: '10px' }}>
               ✕
             </button>

@@ -70,7 +70,7 @@ export default function QuickAddModal({ onAdd, onClose }) {
         padding: '16px',
       }}
     >
-      <div style={{
+      <div role="dialog" aria-modal="true" aria-label="Quick add session" style={{
         background: 'var(--card-bg, #111)', border: '1px solid var(--border)',
         borderRadius: '4px', padding: '20px 24px', width: '100%', maxWidth: '380px',
         fontFamily: MONO, boxShadow: '0 8px 40px rgba(0,0,0,0.6)',
@@ -80,7 +80,7 @@ export default function QuickAddModal({ onAdd, onClose }) {
           <div style={{ fontSize: '11px', fontWeight: 700, color: '#ff6600', letterSpacing: '0.1em' }}>
             ⚡ {t('quickAddTitle')}
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#555', fontSize: '16px', padding: '0 4px' }}>×</button>
+          <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#555', fontSize: '16px', padding: '0 4px' }}>×</button>
         </div>
 
         <form onSubmit={handleSubmit}>

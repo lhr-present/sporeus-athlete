@@ -111,7 +111,7 @@ function WeekModal({ weekIdx, trace, sport, form, split2k, vdot, onClose }) {
           <div style={{ display: 'flex', gap: '8px' }}>
             <button style={{ ...S.btnSec, fontSize: '10px', padding: '3px 8px' }}
               onClick={() => window.print()}>⎙ PRINT</button>
-            <button style={{ ...S.ghostBtn, color: ORANGE, fontSize: '16px' }} onClick={onClose}>✕</button>
+            <button style={{ ...S.ghostBtn, color: ORANGE, fontSize: '16px' }} onClick={onClose} aria-label="Close">✕</button>
           </div>
         </div>
 

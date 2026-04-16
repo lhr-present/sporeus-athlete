@@ -211,7 +211,7 @@ export default function AthleteDetailPanel({ athlete, onUpdate, onClose, templat
                 <textarea style={{ ...S.input, height:'44px', resize:'vertical', flex:1, fontSize:'12px' }} value={editNoteText} onChange={e => setEditNoteText(e.target.value)} autoFocus/>
                 <div style={{ display:'flex', flexDirection:'column', gap:'4px' }}>
                   <button onClick={handleSaveEditNote} style={{ ...S.btn, fontSize:'10px', padding:'4px 10px' }}>✓</button>
-                  <button onClick={() => { setEditingNoteIdx(null); setEditNoteText('') }} style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px' }}>✕</button>
+                  <button onClick={() => { setEditingNoteIdx(null); setEditNoteText('') }} aria-label="Cancel edit" style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px' }}>✕</button>
                 </div>
               </div>
             ) : (
@@ -221,8 +221,8 @@ export default function AthleteDetailPanel({ athlete, onUpdate, onClose, templat
                   <span style={{ ...S.mono, fontSize:'12px' }}>{note.text}</span>
                 </div>
                 <div style={{ display:'flex', gap:'4px', flexShrink:0 }}>
-                  <button onClick={() => { setEditingNoteIdx(i); setEditNoteText(note.text) }} style={{ background:'none', border:'none', cursor:'pointer', color:'#888', ...S.mono, fontSize:'13px', padding:'0 3px', lineHeight:1 }}>✎</button>
-                  <button onClick={() => handleDeleteNote(i)} style={{ background:'none', border:'none', cursor:'pointer', color:'#e03030', ...S.mono, fontSize:'14px', padding:'0 3px', lineHeight:1 }}>×</button>
+                  <button onClick={() => { setEditingNoteIdx(i); setEditNoteText(note.text) }} aria-label="Edit note" style={{ background:'none', border:'none', cursor:'pointer', color:'#888', ...S.mono, fontSize:'13px', padding:'0 3px', lineHeight:1 }}>✎</button>
+                  <button onClick={() => handleDeleteNote(i)} aria-label="Delete note" style={{ background:'none', border:'none', cursor:'pointer', color:'#e03030', ...S.mono, fontSize:'14px', padding:'0 3px', lineHeight:1 }}>×</button>
                 </div>
               </div>
             )}

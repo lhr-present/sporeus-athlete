@@ -136,7 +136,7 @@ export default function SearchPalette({ onNavigate, onToggleDark, onToggleLang, 
       <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.65)', zIndex:10100 }}/>
 
       {/* Palette */}
-      <div style={{
+      <div role="dialog" aria-modal="true" aria-label="Search" style={{
         position:'fixed', top:'12vh', left:'50%', transform:'translateX(-50%)',
         width:'min(640px, 94vw)', zIndex:10101,
         background:'#0d0d0d', border:'1px solid #333', borderRadius:'8px',
@@ -149,6 +149,7 @@ export default function SearchPalette({ onNavigate, onToggleDark, onToggleLang, 
           </span>
           <input
             ref={inputRef}
+            aria-label="Search"
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -159,7 +160,7 @@ export default function SearchPalette({ onNavigate, onToggleDark, onToggleLang, 
             }}
           />
           {query && (
-            <button onClick={() => setQuery('')} style={{ background:'none', border:'none', color:'#555', cursor:'pointer', fontSize:'16px', lineHeight:1, padding:0 }}>×</button>
+            <button onClick={() => setQuery('')} aria-label="Clear search" style={{ background:'none', border:'none', color:'#555', cursor:'pointer', fontSize:'16px', lineHeight:1, padding:0 }}>×</button>
           )}
           <span style={{ ...S.mono, fontSize:'10px', color:'#444', border:'1px solid #333', borderRadius:'3px', padding:'2px 6px', whiteSpace:'nowrap' }}>ESC</span>
         </div>

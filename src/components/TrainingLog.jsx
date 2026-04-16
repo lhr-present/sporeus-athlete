@@ -663,7 +663,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
               <div style={{ fontSize:'11px', fontWeight:700, color:'#ff6600', letterSpacing:'0.1em' }}>
                 ⌖ ROUTE — {routeSession.date}
               </div>
-              <button onClick={() => setRouteSession(null)} style={{ background:'none', border:'none', color:'#666', cursor:'pointer', fontSize:'16px' }}>✕</button>
+              <button onClick={() => setRouteSession(null)} aria-label="Close" style={{ background:'none', border:'none', color:'#666', cursor:'pointer', fontSize:'16px' }}>✕</button>
             </div>
             <ActivityMap trackpoints={routeSession.trackpoints} onClose={() => setRouteSession(null)} />
           </div>

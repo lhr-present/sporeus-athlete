@@ -78,7 +78,7 @@ export default function InstallPrompt() {
               : 'Add to your home screen for offline access and faster loading.'}
           </div>
         </div>
-        <button onClick={dismiss} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '0 0 0 8px' }}>×</button>
+        <button onClick={dismiss} aria-label="Dismiss" style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '0 0 0 8px' }}>×</button>
       </div>
       {!ios && (
         <div style={{ display: 'flex', gap: '8px' }}>

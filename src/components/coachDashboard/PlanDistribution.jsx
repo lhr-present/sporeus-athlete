@@ -26,7 +26,7 @@ export default function PlanDistribution({ templates, setTemplates, onApply }) {
                   {t.name}
                   <span style={{ ...S.mono, fontSize:'9px', color:'#888', marginLeft:'6px' }}>{t.sport} · {t.weeks}wk · {t.goal}</span>
                 </button>
-                <button onClick={() => setTemplates(prev => prev.filter(x => x.id !== t.id))} style={{ background:'none', border:'none', color:'#555', cursor:'pointer', fontSize:'13px', padding:'0 2px' }}>×</button>
+                <button onClick={() => setTemplates(prev => prev.filter(x => x.id !== t.id))} aria-label="Remove template" style={{ background:'none', border:'none', color:'#555', cursor:'pointer', fontSize:'13px', padding:'0 2px' }}>×</button>
               </div>
             ))}
           </div>
