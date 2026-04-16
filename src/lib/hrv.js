@@ -203,6 +203,12 @@ export function calculateDFAAlpha1(nn) {
 // Returns a readiness score and band from today's RMSSD vs 28-day baseline.
 // score = 100 × (recentRMSSD / baselineRMSSD)
 // band thresholds: > 110 → High, 90-110 → Normal, < 90 → Low
+/**
+ * @param {number} recentRMSSD - today's RMSSD in ms
+ * @param {number} baselineRMSSD - 28-day baseline RMSSD in ms
+ * @param {number} [baselineSD=0] - standard deviation of baseline
+ * @returns {{score:number, band:string, advice:string, sdBand:Object|null}|null}
+ */
 export function computeHRVReadiness(recentRMSSD, baselineRMSSD, baselineSD = 0) {
   if (recentRMSSD == null || baselineRMSSD == null || baselineRMSSD <= 0) return null
   const score = Math.round(recentRMSSD / baselineRMSSD * 100)
@@ -227,6 +233,10 @@ export function computeHRVReadiness(recentRMSSD, baselineRMSSD, baselineSD = 0) 
 // Gronwald 2020: DFA-α1 < 0.75 marks aerobic threshold crossing.
 // Expects array of { hr: number, dfa1: number } in ascending HR order.
 // Returns { threshold_hr, confidence: 'high'|'low' } or null.
+/**
+ * @param {Array<{hr:number, dfa1:number}>} dfa1Series - HR and DFA-α1 pairs ascending
+ * @returns {{threshold_hr:number, confidence:string}|null} aerobic threshold or null
+ */
 export function getAerobicThresholdFromDFA(dfa1Series) {
   if (!Array.isArray(dfa1Series) || dfa1Series.length < 3) return null
   const valid = dfa1Series.filter(p => typeof p.hr === 'number' && typeof p.dfa1 === 'number')

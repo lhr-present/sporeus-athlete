@@ -1,16 +1,58 @@
 // ─── Input validation / sanitization ──────────────────────────────────────────
 
+/**
+ * @typedef {Object} LogEntry
+ * @property {string} id
+ * @property {string} date - ISO date YYYY-MM-DD
+ * @property {string} type - session type key
+ * @property {number} duration - minutes
+ * @property {number} tss - Training Stress Score
+ * @property {number} rpe - Rate of Perceived Exertion 1–10
+ * @property {number[]} [zones] - time in each HR zone (minutes)
+ * @property {string} [notes]
+ * @property {string} source - 'manual' | 'strava' | 'fit'
+ */
+
+/**
+ * @typedef {Object} ProfileData
+ * @property {string} [name]
+ * @property {string} [sport]
+ * @property {number} [age]
+ * @property {number} [weight] - kg
+ * @property {number} [height] - cm
+ * @property {number} [maxhr] - max heart rate bpm
+ * @property {number} [ftp] - Functional Threshold Power watts
+ * @property {number} [vo2max] - mL/kg/min
+ * @property {string} [threshold] - threshold pace mm:ss/km
+ * @property {string} [goal]
+ */
+
+/**
+ * @param {*} s - value to sanitize
+ * @param {number} [maxLen=200] - maximum string length
+ * @returns {string} trimmed string within maxLen
+ */
 export function sanitizeString(s, maxLen = 200) {
   if (typeof s !== 'string') return s != null ? String(s).trim().slice(0, maxLen) : ''
   return s.trim().slice(0, maxLen)
 }
 
+/**
+ * @param {*} n - value to sanitize
+ * @param {number} [min=0] - minimum allowed value
+ * @param {number} [max=99999] - maximum allowed value
+ * @returns {number} clamped numeric value (0 if invalid)
+ */
 export function sanitizeNumber(n, min = 0, max = 99999) {
   const v = parseFloat(n)
   if (isNaN(v) || !isFinite(v)) return 0
   return Math.max(min, Math.min(max, v))
 }
 
+/**
+ * @param {*} d - value to parse as date
+ * @returns {string} ISO date YYYY-MM-DD or today's date on parse failure
+ */
 export function sanitizeDate(d) {
   try {
     const date = new Date(d)
@@ -19,6 +61,10 @@ export function sanitizeDate(d) {
   } catch { return new Date().toISOString().slice(0, 10) }
 }
 
+/**
+ * @param {Object} e - raw log entry object
+ * @returns {LogEntry} sanitized and clamped log entry
+ */
 export function sanitizeLogEntry(e) {
   const clamp = (v, lo, hi) => { const n = parseFloat(v); return isNaN(n) ? 0 : Math.max(lo, Math.min(hi, n)) }
   const result = {
@@ -46,6 +92,10 @@ export function sanitizeLogEntry(e) {
 }
 
 // Profile: keeps numeric fields as strings (form inputs expect strings)
+/**
+ * @param {Object} p - raw profile object
+ * @returns {ProfileData} sanitized profile with numeric fields as strings
+ */
 export function sanitizeProfile(p) {
   const str = (v, max = 100) => sanitizeString(v, max)
   const numStr = (v, lo, hi) => {

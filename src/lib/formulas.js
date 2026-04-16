@@ -5,32 +5,138 @@ import {
 } from './constants.js'
 import { logger } from './logger.js'
 
+/**
+ * @typedef {Object} LogEntry
+ * @property {string} id
+ * @property {string} date - ISO date YYYY-MM-DD
+ * @property {string} type - session type key
+ * @property {number} duration - minutes
+ * @property {number} tss - Training Stress Score
+ * @property {number} rpe - Rate of Perceived Exertion 1–10
+ * @property {number[]} [zones] - time in each HR zone (minutes)
+ * @property {string} [notes]
+ * @property {string} source - 'manual' | 'strava' | 'fit'
+ */
+
+/**
+ * @typedef {Object} ProfileData
+ * @property {string} [name]
+ * @property {string} [sport]
+ * @property {number} [age]
+ * @property {number} [weight] - kg
+ * @property {number} [height] - cm
+ * @property {number} [maxhr] - max heart rate bpm
+ * @property {number} [ftp] - Functional Threshold Power watts
+ * @property {number} [vo2max] - mL/kg/min
+ * @property {string} [threshold] - threshold pace mm:ss/km
+ * @property {string} [goal]
+ */
+
+/**
+ * @param {number} neck - neck circumference cm
+ * @param {number} waist - waist circumference cm
+ * @param {number} hip - hip circumference cm (females)
+ * @param {number} height - height cm
+ * @param {string} gender - 'male' | 'female'
+ * @returns {number} body fat percentage
+ */
 export function navyBF(neck, waist, hip, height, gender) {
   if (gender==='male') {
     return Math.max(0, Math.round((495/(1.0324-0.19077*Math.log10(waist-neck)+0.15456*Math.log10(height))-450)*10)/10)
   }
   return Math.max(0, Math.round((495/(1.29579-0.35004*Math.log10(waist+hip-neck)+0.22100*Math.log10(height))-450)*10)/10)
 }
+/**
+ * @param {number} weight - kg
+ * @param {number} height - cm
+ * @param {number} age - years
+ * @param {string} gender - 'male' | 'female'
+ * @returns {number} BMR kcal/day
+ */
 export function mifflinBMR(weight, height, age, gender) {
   const base = 10*weight + 6.25*height - 5*age
   return Math.round(gender==='male' ? base+5 : base-161)
 }
 
+/**
+ * @param {number} maxHR - max heart rate bpm
+ * @returns {Array<Object>} HR zones array with name, low, high, color
+ */
 export const hrZones    = maxHR => [[.50,.60],[.60,.70],[.70,.80],[.80,.90],[.90,1.00]].map(([lo,hi],i) => ({ name:ZONE_NAMES[i], low:Math.round(maxHR*lo), high:Math.round(maxHR*hi), color:ZONE_COLORS[i] }))
+/**
+ * @param {number} ftp - Functional Threshold Power watts
+ * @returns {Array<Object>} power zones array with name, low, high, color
+ */
 export const powerZones = ftp   => [[.55,.74],[.75,.89],[.90,1.04],[1.05,1.20],[1.21,1.50]].map(([lo,hi],i) => ({ name:ZONE_NAMES[i], low:Math.round(ftp*lo), high:Math.round(ftp*hi), color:ZONE_COLORS[i] }))
+/**
+ * @param {number} t0 - threshold pace in sec/km
+ * @returns {Array<Object>} pace zones array with name, pace string, color
+ */
 export const paceZones  = t0    => [1.30,1.15,1.06,1.00,0.92].map((f,i) => { const p=t0*f,m=Math.floor(p),s=Math.round((p-m)*60); return { name:ZONE_NAMES[i], pace:`${m}:${String(s).padStart(2,'0')} /km`, color:ZONE_COLORS[i] } })
+/**
+ * @param {number} dur - duration in minutes
+ * @param {number} rpe - Rate of Perceived Exertion 1–10
+ * @returns {number} TSS estimate
+ */
 export const calcTSS    = (dur, rpe) => Math.round((dur/60)*Math.pow((rpe/10)*1.05,2)*100)
+/**
+ * @param {number} d - distance covered in meters (12-min Cooper test)
+ * @returns {string} VO₂max estimate mL/kg/min
+ */
 export const cooperVO2  = d  => ((d-504.9)/44.73).toFixed(1)
+/**
+ * @param {number} w - peak step watts from ramp test
+ * @returns {number} FTP estimate watts
+ */
 export const rampFTP    = w  => Math.round(w*0.75)
+/**
+ * @param {number} w - 20-min average power watts
+ * @returns {number} FTP estimate watts
+ */
 export const ftpFrom20  = w  => Math.round(w*0.95)
+/**
+ * @param {number} w - weight lifted kg
+ * @param {number} r - repetitions performed
+ * @returns {string} estimated 1RM kg
+ */
 export const epley1RM   = (w,r) => (w*(1+r/30)).toFixed(1)
+/**
+ * @param {number} watts - steady-state power output watts
+ * @param {number} bw - body weight kg
+ * @param {string} gender - 'male' | 'female'
+ * @returns {string} VO₂max estimate mL/kg/min
+ */
 export const astrandVO2 = (watts, bw, gender) => ((watts*(gender==='female'?5.88:6.12)/bw)+3.5).toFixed(1)
+/**
+ * @param {number} lv - final level reached in Yo-Yo IR1
+ * @param {number} sh - final shuttle number within that level
+ * @returns {string} VO₂max estimate mL/kg/min
+ */
 export const yyir1VO2   = (lv, sh) => (35.4 + ((lv-1)+(sh/8))*(62.8-35.4)/22).toFixed(1)
+/**
+ * @param {number} peak - peak power watts
+ * @param {number} mean - mean power watts
+ * @param {number} low - minimum power watts
+ * @param {number} bw - body weight kg
+ * @returns {Object} {relPeak, relMean, fatigue} relative power and fatigue index
+ */
 export const wingateStats = (peak, mean, low, bw) => ({ relPeak:(peak/bw).toFixed(1), relMean:(mean/bw).toFixed(1), fatigue:(((peak-low)/peak)*100).toFixed(1) })
+/**
+ * @param {number} t1 - known race time in seconds
+ * @param {number} d1 - known race distance in meters
+ * @param {number} d2 - target race distance in meters
+ * @returns {number} predicted race time in seconds
+ */
 export const riegel     = (t1, d1, d2) => t1 * Math.pow(d2/d1, 1.06)
 
 // ─── Power-based TSS (Coggan) ─────────────────────────────────────────────────
 // TSS = (durationSec × NP × IF) / (FTP × 3600) × 100   where IF = NP / FTP
+/**
+ * @param {number} np - Normalized Power watts
+ * @param {number} durationSeconds - session duration in seconds
+ * @param {number} ftp - Functional Threshold Power watts
+ * @returns {number} TSS score
+ */
 export function computePowerTSS(np, durationSeconds, ftp) {
   if (!np || !ftp || !durationSeconds) return null
   const IF = np / ftp
@@ -39,6 +145,10 @@ export function computePowerTSS(np, durationSeconds, ftp) {
 
 // ─── W' (W-prime) Balance — Skiba 2012 differential model ────────────────────
 // Normalized Power: 30s rolling mean → 4th-power mean → 0.25 root
+/**
+ * @param {number[]} powers - 1-Hz power stream in watts (min 30 samples)
+ * @returns {number} Normalized Power watts
+ */
 export function normalizedPower(powers) {
   if (!powers || powers.length < 30) return 0
   const W = 30
@@ -56,6 +166,12 @@ export function normalizedPower(powers) {
 // τ_W = 546 × e^(−0.01×(CP − P̄)) + 316  (Skiba 2012)
 // dW'/dt = (W'max − W'(t)) / τ_W           when P < CP
 // dW'/dt = CP − P(t)                        when P ≥ CP
+/**
+ * @param {number[]} powers - 1-Hz power stream in watts
+ * @param {number} cp - Critical Power watts
+ * @param {number} wPrimeMax - W' capacity in joules
+ * @returns {number[]} W' balance series in joules per second
+ */
 export function computeWPrime(powers, cp, wPrimeMax) {
   if (!powers || !powers.length || !cp || !wPrimeMax) return []
   let w = wPrimeMax
@@ -77,18 +193,31 @@ export function computeWPrime(powers, cp, wPrimeMax) {
   return series
 }
 
+/**
+ * @param {string} str - time string hh:mm:ss or mm:ss
+ * @returns {number} total seconds
+ */
 export function parseTimeSec(str) {
   const p = str.split(':').map(Number)
   if (p.length===3) return p[0]*3600+p[1]*60+p[2]
   if (p.length===2) return p[0]*60+p[1]
   return NaN
 }
+/**
+ * @param {number} s - total seconds
+ * @returns {string} formatted time mm:ss or h:mm:ss
+ */
 export function fmtSec(s) {
   s = Math.round(s)
   const h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=s%60
   if (h>0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`
   return `${m}:${String(sec).padStart(2,'0')}`
 }
+/**
+ * @param {number} totalSec - elapsed time in seconds
+ * @param {number} distM - distance in meters
+ * @returns {string} pace per km as mm:ss
+ */
 export function fmtPace(totalSec, distM) {
   const pps = totalSec/(distM/1000)
   const m=Math.floor(pps/60), s=Math.round(pps%60)
@@ -96,6 +225,10 @@ export function fmtPace(totalSec, distM) {
 }
 
 // ─── Training load (EMA) ───────────────────────────────────────────────────────
+/**
+ * @param {LogEntry[]} log - training log entries
+ * @returns {Object} {ctl, atl, tsb, daily} load metrics
+ */
 export function calcLoad(log) {
   if (!log.length) return { atl:0, ctl:0, tsb:0, daily:[] }
   const byDate = {}
@@ -117,6 +250,10 @@ export function calcLoad(log) {
 }
 
 // ─── Monotony & Strain ────────────────────────────────────────────────────────
+/**
+ * @param {LogEntry[]} log - training log entries
+ * @returns {Object} {mono, strain, mean} monotony and strain values
+ */
 export function monotonyStrain(log) {
   const today = new Date()
   const last7 = []
@@ -133,6 +270,10 @@ export function monotonyStrain(log) {
 }
 
 // ─── Personal Records ─────────────────────────────────────────────────────────
+/**
+ * @param {LogEntry[]} log - training log entries
+ * @returns {Object} personal records array with label, value, date, unit
+ */
 export function calcPRs(log) {
   if (!log.length) return []
   const sorted = [...log].sort((a,b) => new Date(a.date) - new Date(b.date))
@@ -160,6 +301,13 @@ export function getApiCache() { try { const c=JSON.parse(localStorage.getItem(AP
 export function setApiCache(d) { try { localStorage.setItem(API_KEY,JSON.stringify({ts:Date.now(),data:d})) } catch (e) { logger.warn('localStorage:', e.message) } }
 
 // ─── Plan Generator ──────────────────────────────────────────────────────────
+/**
+ * @param {string} goal - race or training goal
+ * @param {number} totalWeeks - total plan duration in weeks
+ * @param {number} weeklyHours - target weekly training hours
+ * @param {string} level - athlete level ('beginner'|'intermediate'|'advanced')
+ * @returns {Array<Object>} plan weeks with sessions, phase, TSS, zone percentages
+ */
 export function generatePlan(goal, totalWeeks, weeklyHours, level) {
   const w = parseInt(totalWeeks), h = parseFloat(weeklyHours)
   const taperW = w <= 6 ? 1 : 2
@@ -217,6 +365,11 @@ export async function generateCoachId(name, email) {
   return 'SP-' + hex.slice(0, 8)
 }
 
+/**
+ * @param {string} coachId - coach identifier (SP-xxxxxxxx)
+ * @param {number} limit - max athletes allowed
+ * @returns {Promise<string>} SPUNLOCK code string
+ */
 export async function generateUnlockCode(coachId, limit) {
   const raw = coachId + String(limit) + MASTER_SALT
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw))

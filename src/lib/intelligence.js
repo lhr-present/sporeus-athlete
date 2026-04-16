@@ -31,6 +31,10 @@ function computeATL(log) {
 
 // ─── 1. analyzeLoadTrend ──────────────────────────────────────────────────────
 // Returns training load direction and actionable advice.
+/**
+ * @param {Array} log - training log entries
+ * @returns {Object} {trend, direction, change, tss1, tss2, ctl, atl, advice}
+ */
 export function analyzeLoadTrend(log) {
   if (!log || log.length < 4) {
     return { trend: 'insufficient', direction: null, change: 0, advice: { en: 'Log at least 4 sessions to see load trends.', tr: 'Yük trendini görmek için en az 4 antrenman kaydet.' } }
@@ -79,6 +83,11 @@ export function analyzeLoadTrend(log) {
 
 // ─── 2. analyzeRecoveryCorrelation ────────────────────────────────────────────
 // Finds whether high training days predict worse next-day recovery.
+/**
+ * @param {Array} log - training log entries
+ * @param {Array} recovery - recovery entries with date and score
+ * @returns {Object} {correlation, insight, highLoadThreshold, avgRecAfterHard, avgRecAfterEasy}
+ */
 export function analyzeRecoveryCorrelation(log, recovery) {
   if (!log?.length || !recovery?.length) {
     return { correlation: null, insight: { en: 'Need both training and recovery data.', tr: 'Hem antrenman hem toparlanma verisine ihtiyaç var.' }, highLoadThreshold: 0, avgRecAfterHard: null, avgRecAfterEasy: null }
@@ -131,6 +140,10 @@ export function analyzeRecoveryCorrelation(log, recovery) {
 
 // ─── 3. analyzeZoneBalance ────────────────────────────────────────────────────
 // Checks polarized training model (80/20): Z1+Z2 ≥80%, Z4+Z5 ≤20%.
+/**
+ * @param {Array} log - training log entries
+ * @returns {Object} {z1z2Pct, z4z5Pct, z3Pct, pcts, status, recommendation}
+ */
 export function analyzeZoneBalance(log) {
   if (!log?.length) {
     return { z1z2Pct: 0, z4z5Pct: 0, status: 'no_data', recommendation: { en: 'Log sessions to analyze zone balance.', tr: 'Zon dengesini analiz etmek için antrenman kaydet.' } }
@@ -190,6 +203,11 @@ export function analyzeZoneBalance(log) {
 // ─── 4. predictInjuryRisk ─────────────────────────────────────────────────────
 // 5-factor injury risk: ACWR(25%) + Monotony(20%) + ConsecHard(20%) +
 // RecoveryDeficit(15%) + HRV(20% when available, redistributed when not).
+/**
+ * @param {Array} log - training log entries
+ * @param {Array} recovery - recovery entries with date, score, hrv
+ * @returns {Object} {level, score, factors, advice}
+ */
 export function predictInjuryRisk(log, recovery) {
   const factors = []
   let riskScore = 0
@@ -280,6 +298,10 @@ export function predictInjuryRisk(log, recovery) {
 
 // ─── 5. predictFitness ────────────────────────────────────────────────────────
 // Projects CTL 4 and 8 weeks forward based on current trend.
+/**
+ * @param {Array} log - training log entries
+ * @returns {Object} {current, tsb, in4w, in8w, trajectory, avgWeeklyTSS, label}
+ */
 export function predictFitness(log) {
   const ctl = computeCTL(log)
   const atl = computeATL(log)
@@ -695,6 +717,12 @@ export function getTodayPlannedSession(plan, today) {
 //     duration: number|null, source: string }
 // Rules evaluated in priority order:
 //   wellness_poor → acwr_high → tsb_high → acwr_low → tsb_low → default
+/**
+ * @param {Array} log - training log entries
+ * @param {Array} recovery - recovery entries with date and score
+ * @param {Object} profile - athlete profile data
+ * @returns {Object} {action, rationale, load, duration, source}
+ */
 export function getSingleSuggestion(log, recovery, profile) {
   const safeLog = Array.isArray(log) ? log : []
   const safeRec = Array.isArray(recovery) ? recovery : []
@@ -1088,6 +1116,10 @@ export function generateDailyDigest(log, recovery, profile, lang = 'en') {
 // ─── getFormScore ──────────────────────────────────────────────────────────────
 // Returns { tsb, color, label } where TSB = CTL – ATL.
 // color: green (fresh) / amber (neutral) / red (fatigued)
+/**
+ * @param {Array} log - training log entries
+ * @returns {Object} {tsb, ctl, atl, color, label} form score with color coding
+ */
 export function getFormScore(log) {
   const ctl = computeCTL(log)
   const atl  = computeATL(log)
@@ -1101,6 +1133,10 @@ export function getFormScore(log) {
 
 // ─── getPeakWeekLoad ──────────────────────────────────────────────────────────
 // Returns the highest 7-day rolling TSS total in the entire log.
+/**
+ * @param {Array} log - training log entries
+ * @returns {number} highest 7-day rolling TSS total
+ */
 export function getPeakWeekLoad(log) {
   if (!log || log.length === 0) return 0
   const sorted = [...log].sort((a, b) => a.date > b.date ? 1 : -1)
@@ -1116,6 +1152,11 @@ export function getPeakWeekLoad(log) {
 
 // ─── getConsistencyScore ──────────────────────────────────────────────────────
 // % of days with at least one session over the last `days` days (default 28).
+/**
+ * @param {Array} log - training log entries
+ * @param {number} [days=28] - lookback window in days
+ * @returns {number} percentage of active days 0–100
+ */
 export function getConsistencyScore(log, days = 28) {
   if (!log || log.length === 0) return 0
   const cutoff = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10)
@@ -1124,6 +1165,10 @@ export function getConsistencyScore(log, days = 28) {
 }
 
 // ─── getTimeOfDayAdvice ───────────────────────────────────────────────────────
+/**
+ * @param {number} hour - hour of day 0–23
+ * @returns {string|null} training advice for given hour or null if invalid
+ */
 export function getTimeOfDayAdvice(hour) {
   if (typeof hour !== 'number' || hour < 0 || hour > 23) return null
   if (hour < 9)  return 'Morning training — HR runs 5–10% lower, perceived effort feels higher than it is.'
@@ -1134,6 +1179,10 @@ export function getTimeOfDayAdvice(hour) {
 }
 
 // ─── autoTagSession ───────────────────────────────────────────────────────────
+/**
+ * @param {Object} entry - log entry with type, notes, tss, rpe
+ * @returns {string|null} tag string ('Race'|'Test'|'Key Session'|'Recovery') or null
+ */
 export function autoTagSession(entry) {
   if (!entry || typeof entry !== 'object') return null
   const type  = (entry.type  || '').toLowerCase()

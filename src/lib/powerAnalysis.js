@@ -93,6 +93,14 @@ export function fitCriticalPower(mmps) {
 // ── Interval Detection ────────────────────────────────────────────────────────
 // Detects efforts where P ≥ threshold × CP for ≥ minDuration seconds.
 // Merges gaps ≤ mergeSec apart. Returns intervals sorted by avgPower descending.
+/**
+ * @param {number[]} stream - 1-Hz power stream in watts
+ * @param {number} cp - Critical Power threshold watts
+ * @param {number} [threshold=0.85] - fraction of CP to qualify as effort
+ * @param {number} [minDuration=20] - minimum effort duration in seconds
+ * @param {number} [mergeSec=5] - max gap to merge adjacent efforts
+ * @returns {Array<Object>} intervals sorted by avgPower descending
+ */
 export function detectIntervals(stream, cp, threshold = 0.85, minDuration = 20, mergeSec = 5) {
   if (!stream || stream.length === 0 || !cp) return []
   const limit = cp * threshold
@@ -137,6 +145,10 @@ export function detectIntervals(stream, cp, threshold = 0.85, minDuration = 20, 
 
 // ── FTP Estimate from MMP ─────────────────────────────────────────────────────
 // Priority: 60-min MMP → 20-min × 0.95 → 8-min × 0.90
+/**
+ * @param {Array<{duration:number, power:number}>} mmps - mean maximal power array
+ * @returns {number|null} estimated FTP watts or null if insufficient data
+ */
 export function estimateFTP(mmps) {
   if (!mmps || mmps.length === 0) return null
   const get = d => mmps.find(p => p.duration === d)?.power
