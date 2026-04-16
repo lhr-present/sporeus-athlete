@@ -55,14 +55,14 @@ export default function NotifReminders({ authUser }) {
       const now = new Date()
       const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
       if (reminders.train && hhmm === reminders.trainTime) {
-        new Notification('Sporeus — Time to train!', { body: 'Your training reminder is ready. Check your plan.', icon: '/sporeus-athlete/pwa-192x192.png' })
+        new Notification('Sporeus — Time to train!', { body: 'Your training reminder is ready. Check your plan.', icon: '/pwa-192x192.png' })
       }
       if (reminders.recovery && hhmm === '08:00') {
         const today = new Date().toISOString().slice(0, 10)
         try {
           const rec = JSON.parse(localStorage.getItem('sporeus-recovery') || '[]')
           if (!rec.find(e => e.date === today)) {
-            new Notification('Sporeus — Log your recovery', { body: 'How did you sleep? Fill in your daily wellness check.', icon: '/sporeus-athlete/pwa-192x192.png' })
+            new Notification('Sporeus — Log your recovery', { body: 'How did you sleep? Fill in your daily wellness check.', icon: '/pwa-192x192.png' })
           }
         } catch (e) { logger.warn('localStorage:', e.message) }
       }

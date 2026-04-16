@@ -89,7 +89,7 @@ export default function AuthGate({ lang }) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin + '/sporeus-athlete/',
+          redirectTo: window.location.origin + import.meta.env.BASE_URL,
           queryParams: { access_type: 'offline', prompt: 'consent' },
         },
       })
@@ -105,7 +105,7 @@ export default function AuthGate({ lang }) {
     setBusy(true); clearMsg()
     try {
       let error
-      const redirectTo = window.location.origin + '/sporeus-athlete/'
+      const redirectTo = window.location.origin + import.meta.env.BASE_URL
       if (mode === 'login') {
         ({ error } = await supabase.auth.signInWithPassword({ email, password: pass }))
       } else if (mode === 'signup') {

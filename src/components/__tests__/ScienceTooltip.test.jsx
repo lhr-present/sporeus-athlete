@@ -60,7 +60,7 @@ describe('ScienceTooltip', () => {
     const btn = screen.getByRole('button')
     fireEvent.click(btn)
     expect(openSpy).toHaveBeenCalledWith(
-      '/sporeus-athlete/science#8-critical-power--w',
+      '/science#8-critical-power--w',
       '_blank',
       'noopener,noreferrer'
     )

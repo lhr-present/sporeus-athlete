@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   server: {
     // Live-reload URL for development — comment out for production builds
-    // url: 'https://lhr-present.github.io/sporeus-athlete/',
+    // url: 'https://app.sporeus.com/',
     // cleartext: false,
   },
   plugins: {

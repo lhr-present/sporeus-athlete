@@ -2,7 +2,7 @@
 ## Quick Start
 ```bash
 cd ~/sporeus-athlete-app
-npm run dev        # local dev server → http://localhost:5173/sporeus-athlete/
+npm run dev        # local dev server → http://localhost:5173/
 npm test           # run 860 unit tests (vitest)
 npm run build      # production build → dist/
 git push           # triggers GitHub Actions: test → build → deploy to Pages

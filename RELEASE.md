@@ -31,4 +31,4 @@ The +4 KB bundle delta is entirely the Today tab additions (upsell, countdown, s
 
 ---
 
-*Built with Claude Sonnet 4.6. Live at lhr-present.github.io/sporeus-athlete/*
+*Built with Claude Sonnet 4.6. Live at app.sporeus.com*

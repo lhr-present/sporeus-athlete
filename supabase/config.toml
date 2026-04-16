@@ -25,6 +25,6 @@ enabled = true
 
 [auth]
 enabled = true
-site_url = "https://lhr-present.github.io/sporeus-athlete"
+site_url = "https://app.sporeus.com"
 jwt_expiry = 3600
 enable_signup = true

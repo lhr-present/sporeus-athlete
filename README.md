@@ -2,7 +2,7 @@
 
 **Bloomberg Terminal for endurance athletes.** Training load analytics, periodization, W' balance, race readiness, and coach-athlete collaboration — offline-capable PWA.
 
-**Live:** https://lhr-present.github.io/sporeus-athlete/
+**Live:** https://app.sporeus.com/
 **Repo:** https://github.com/lhr-present/sporeus-athlete
 
 ---

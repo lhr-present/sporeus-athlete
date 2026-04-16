@@ -70,7 +70,7 @@ fi
 # ── Live site ─────────────────────────────────────────────────────────────────
 section "LIVE SITE"
 if command -v curl &>/dev/null; then
-  HTTP=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "https://lhr-present.github.io/sporeus-athlete/" 2>/dev/null || echo "000")
+  HTTP=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "https://app.sporeus.com/" 2>/dev/null || echo "000")
   if [ "$HTTP" = "200" ]; then
     ok "Live site HTTP $HTTP"
   else

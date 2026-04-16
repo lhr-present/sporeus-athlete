@@ -4,6 +4,11 @@ import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
 
 export default defineConfig({
+  server: {
+    host: '0.0.0.0',
+    port: 5173,
+    strictPort: true,
+  },
   test: {
     environment: 'node',
     globals: true,
@@ -15,7 +20,7 @@ export default defineConfig({
       exclude: ['src/lib/**/*.test.js'],
     },
   },
-  base: '/sporeus-athlete/',
+  base: '/',
   resolve: {
     alias: { '@': path.resolve(__dirname, './src') },
   },
@@ -55,7 +60,7 @@ export default defineConfig({
         background_color: '#0a0a0a',
         display: 'standalone',
         orientation: 'portrait-primary',
-        start_url: '/sporeus-athlete/',
+        start_url: '/',
         icons: [
           { src: 'icons/icon-48x48.png',        sizes: '48x48',   type: 'image/png', purpose: 'any' },
           { src: 'icons/icon-72x72.png',         sizes: '72x72',   type: 'image/png', purpose: 'any' },

@@ -2,18 +2,18 @@
 <html lang="tr">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/x-icon" href="/sporeus-athlete/favicon.ico" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/sporeus-athlete/favicon-16.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/sporeus-athlete/favicon-32.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/sporeus-athlete/apple-touch-icon.png" />
+    <link rel="icon" type="image/x-icon" href="%BASE_URL%favicon.ico" />
+    <link rel="icon" type="image/png" sizes="16x16" href="%BASE_URL%favicon-16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="%BASE_URL%favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="%BASE_URL%apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#ff6600" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://sporeus.com https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob: https://sporeus.com;" />
     <meta name="description" content="Sporeus Athlete — Evidence-based training load management for endurance athletes.">
-    <link rel="canonical" href="https://lhr-present.github.io/sporeus-athlete/">
+    <link rel="canonical" href="https://app.sporeus.com/">
     <meta property="og:title" content="Sporeus Athlete Console — Elite Performance Tracker" />
     <meta property="og:description" content="Bloomberg Terminal for endurance athletes. Zones, plans, recovery, analytics." />
-    <meta property="og:url" content="https://lhr-present.github.io/sporeus-athlete/" />
+    <meta property="og:url" content="https://app.sporeus.com/" />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://sporeus.com/wp-content/uploads/sporeus-og.png" />
     <title>Sporeus Athlete Console</title>
@@ -30,7 +30,7 @@
         // Handle ?/ pattern from 404.html redirect
         var search = window.location.search;
         if (search && search.startsWith('?/')) {
-          var path2 = '/sporeus-athlete/' + search.slice(2).replace(/~and~/g, '&');
+          var path2 = '/' + search.slice(2).replace(/~and~/g, '&');
           window.history.replaceState(null, null, path2);
         }
       })();

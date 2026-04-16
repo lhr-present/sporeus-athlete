@@ -56,8 +56,8 @@ export function scheduleSessionReminder({ hour = DEFAULT_HOUR, sessions = [] } =
       navigator.serviceWorker.ready.then(reg => {
         reg.showNotification(title, {
           body,
-          icon:    '/sporeus-athlete/icons/icon-192x192.png',
-          badge:   '/sporeus-athlete/icons/icon-72x72.png',
+          icon:    '/icons/icon-192x192.png',
+          badge:   '/icons/icon-72x72.png',
           tag:     'sporeus-reminder',
           vibrate: [100, 50, 100],
         })

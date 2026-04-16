@@ -5,7 +5,7 @@
 import { useState, useId } from 'react'
 
 const MONO = "'IBM Plex Mono', monospace"
-const BASE_PATH = '/sporeus-athlete/science'
+const BASE_PATH = import.meta.env.BASE_URL + 'science'
 
 export default function ScienceTooltip({ anchor, label, short, children }) {
   const [visible, setVisible] = useState(false)

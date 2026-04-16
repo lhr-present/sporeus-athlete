@@ -137,7 +137,7 @@ serve(async (req: Request) => {
 
   if (!subs?.length) return ok({ sent: 0, message: "No subscriptions" })
 
-  const payload = JSON.stringify({ title, body: msgBody || "", url: url || "/sporeus-athlete/", tag: tag || "sporeus" })
+  const payload = JSON.stringify({ title, body: msgBody || "", url: url || "/", tag: tag || "sporeus" })
 
   let sent = 0
   const expired: string[] = []

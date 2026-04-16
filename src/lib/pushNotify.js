@@ -93,7 +93,7 @@ function incrementPushCount() {
 
 // Send a test/local notification (no server, uses SW directly).
 // Rate-limited to MAX_PUSHES_PER_DAY per calendar day.
-export async function sendLocalNotification(title, body, url = '/sporeus-athlete/') {
+export async function sendLocalNotification(title, body, url = '/') {
   if (!isPushSupported()) return
   if (Notification.permission !== 'granted') return
 
@@ -103,8 +103,8 @@ export async function sendLocalNotification(title, body, url = '/sporeus-athlete
   const reg = await navigator.serviceWorker.ready
   reg.showNotification(title, {
     body,
-    icon:    '/sporeus-athlete/pwa-192x192.png',
-    badge:   '/sporeus-athlete/pwa-192x192.png',
+    icon:    '/pwa-192x192.png',
+    badge:   '/pwa-192x192.png',
     data:    { url },
     vibrate: [100, 50, 100],
     tag:     'sporeus-local',
@@ -144,7 +144,7 @@ export async function scheduleCheckinReminder(userId, preferredTime = '07:00') {
     sendLocalNotification(
       'Sporeus — Daily Check-in',
       'How are you feeling today? Log your wellness in 30 seconds.',
-      '/sporeus-athlete/?tab=today'
+      '/?tab=today'
     )
   }, delay)
 
@@ -202,7 +202,7 @@ export async function checkRaceCountdowns() {
           daysLeft === 1
             ? 'Rest today. Stick to your routine. Trust your training.'
             : 'Final week. Taper in. Don\'t add anything new.',
-          '/sporeus-athlete/'
+          '/'
         )
         notified[key] = true
         localStorage.setItem(notifiedKey, JSON.stringify(notified))

@@ -6,7 +6,7 @@
   <script>
     // GitHub Pages SPA routing: redirect back to root with path encoded as query param.
     // App.jsx reads window.location.search on load and restores the path via history.replaceState.
-    var seg = 1; // path segments to keep as repo prefix (1 = /sporeus-athlete)
+    var seg = 0; // custom domain at root — no repo path prefix
     var l = window.location;
     l.replace(
       l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +

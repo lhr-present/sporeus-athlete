@@ -16,7 +16,7 @@ cleanupOutdatedCaches()
 // ── Navigation fallback ────────────────────────────────────────────────────────
 // Denylist: OAuth callbacks must hit network to avoid serving cached index.html
 const DENYLIST = [/^\/auth/, /\?code=/, /\?error=/, /#access_token=/, /\?state=strava/]
-const handler = createHandlerBoundToURL('/sporeus-athlete/index.html')
+const handler = createHandlerBoundToURL('/index.html')
 registerRoute(new NavigationRoute(handler, { denylist: DENYLIST }))
 
 // ── Supabase — network first, 5-min cache, 3s timeout ────────────────────────
@@ -69,9 +69,9 @@ self.addEventListener('push', event => {
   const title   = payload.title   || 'Sporeus Athlete'
   const body    = payload.body    || ''
   const tag     = payload.tag     || 'sporeus'
-  const url     = payload.url     || '/sporeus-athlete/'
-  const icon    = '/sporeus-athlete/pwa-192x192.png'
-  const badge   = '/sporeus-athlete/pwa-192x192.png'
+  const url     = payload.url     || '/'
+  const icon    = '/pwa-192x192.png'
+  const badge   = '/pwa-192x192.png'
 
   event.waitUntil(
     self.registration.showNotification(title, {
@@ -93,11 +93,11 @@ self.addEventListener('notificationclick', event => {
   event.notification.close()
   if (event.action === 'dismiss') return
 
-  const url = event.notification.data?.url || '/sporeus-athlete/'
+  const url = event.notification.data?.url || '/'
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       for (const client of list) {
-        if (client.url.includes('sporeus-athlete') && 'focus' in client) {
+        if (client.url.startsWith(location.origin) && 'focus' in client) {
           // focus() brings the window to front; navigate() routes to the target tab.
           // client.navigate is available in modern browsers (Chrome 49+).
           client.focus()
