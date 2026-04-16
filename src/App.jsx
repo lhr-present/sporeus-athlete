@@ -232,11 +232,13 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
             </button>
             <button
               onClick={() => setDark(!dark)}
+              aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
               style={{ ...S.mono, fontSize:'13px', padding:'4px 8px', borderRadius:'3px', border:'1px solid #444', background:'transparent', color:'#ccc', cursor:'pointer' }}>
               {dark ? '☀' : '☾'}
             </button>
             <button
               onClick={() => setLang(lang === 'en' ? 'tr' : 'en')}
+              aria-label={lang === 'en' ? 'Switch to Turkish' : 'Switch to English'}
               style={{ ...S.mono, fontSize:'11px', fontWeight:600, padding:'5px 10px', borderRadius:'3px', border:'1px solid #444', background:'transparent', color:'#ccc', cursor:'pointer', letterSpacing:'0.08em' }}>
               {lang === 'en' ? 'TR' : 'EN'}
             </button>

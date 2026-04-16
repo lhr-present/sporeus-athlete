@@ -2,6 +2,7 @@
 import { useState, useCallback, useContext } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
+import { version as APP_VERSION } from '../../package.json'
 
 const MONO = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -287,7 +288,7 @@ export default function AuthGate({ lang }) {
 
       {/* Version tag */}
       <div style={{ marginTop: '20px', fontSize: '9px', color: '#2a2a2a', letterSpacing: '0.1em' }}>
-        SPOREUS v5.20.0 · SPOREUS.COM
+        SPOREUS v{APP_VERSION} · SPOREUS.COM
       </div>
     </div>
   )

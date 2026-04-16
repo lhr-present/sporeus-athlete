@@ -15,6 +15,24 @@
     <meta property="og:image" content="https://sporeus.com/wp-content/uploads/sporeus-og.png" />
     <link rel="apple-touch-icon" href="/sporeus-athlete/apple-touch-icon.png" />
     <title>Sporeus Athlete Console</title>
+    <!-- GitHub Pages SPA routing: restore path encoded by 404.html -->
+    <script>
+      (function() {
+        var redirect = sessionStorage.getItem('spa-redirect');
+        if (redirect) {
+          sessionStorage.removeItem('spa-redirect');
+          var url = new URL(window.location.href);
+          var path = redirect.replace(/~and~/g, '&');
+          window.history.replaceState(null, null, url.origin + path);
+        }
+        // Handle ?/ pattern from 404.html redirect
+        var search = window.location.search;
+        if (search && search.startsWith('?/')) {
+          var path2 = '/sporeus-athlete/' + search.slice(2).replace(/~and~/g, '&');
+          window.history.replaceState(null, null, path2);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
