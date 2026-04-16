@@ -45,9 +45,6 @@ export default function CoachDashboard({ authUser }) {
   const fileRef = useRef(null)
   // ── Supabase live-athlete state (only when Supabase is configured) ──────────
   const [sbAthletes, setSbAthletes]     = useState([])   // [{profile, status, athlete_id}]
-  const [sbInviteCode, setSbInviteCode] = useState(null) // generated code
-  const [sbInviteBusy, setSbInviteBusy] = useState(false)
-  const [sbInviteCopied, setSbInviteCopied] = useState(false)
   const [sbSelectedId, setSbSelectedId] = useState(null) // selected athlete id
   const [sbAthleteData, setSbAthleteData] = useState({}) // {[id]: {log, recovery}}
   const [sbLoadingData, setSbLoadingData] = useState(false)
@@ -67,21 +64,6 @@ export default function CoachDashboard({ authUser }) {
 
   useEffect(() => { loadSbAthletes() }, [loadSbAthletes])
 
-  const generateSbInvite = useCallback(async () => {
-    if (!isSupabaseReady() || !sbCoachId || sbInviteBusy) return
-    setSbInviteBusy(true)
-    const code = crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase()
-    const { error } = await supabase.from('coach_invites').insert({ coach_id: sbCoachId, code })
-    if (!error) setSbInviteCode(code)
-    setSbInviteBusy(false)
-  }, [sbCoachId, sbInviteBusy])
-
-  const copySbInvite = useCallback(() => {
-    const url = `${window.location.origin}${window.location.pathname}?invite=${sbInviteCode}`
-    navigator.clipboard.writeText(url).catch(() => {})
-    setSbInviteCopied(true)
-    setTimeout(() => setSbInviteCopied(false), 2000)
-  }, [sbInviteCode])
 
   const selectSbAthlete = useCallback(async (athleteId) => {
     setSbSelectedId(prev => prev === athleteId ? null : athleteId)

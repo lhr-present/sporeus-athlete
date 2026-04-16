@@ -179,7 +179,6 @@ export default function InviteManager({ coachId }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {invites.map(inv => {
-            const url    = buildInviteUrl(inv.code)
             const isUsed = inv.max_uses !== null && inv.uses_count >= inv.max_uses
             const expLabel = formatExpiry(inv.expires_at)
             const expired  = expLabel === 'EXPIRED'
