@@ -68,8 +68,8 @@ self.addEventListener('push', event => {
 
   const title   = payload.title   || 'Sporeus Athlete'
   const body    = payload.body    || ''
-  const tag     = payload.tag     || 'sporeus'
-  const url     = payload.url     || '/'
+  const tag     = payload.kind   || payload.tag || 'sporeus'
+  const url     = payload.data?.route || payload.url || '/'
   const icon    = '/pwa-192x192.png'
   const badge   = '/pwa-192x192.png'
 

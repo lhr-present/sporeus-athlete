@@ -126,15 +126,21 @@ describe('scheduleCheckinReminder', () => {
     expect(result.scheduledAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)
   })
 
-  it('calls supabase.from(push_subscriptions).update with hour/minute', async () => {
+  it('saves preferred_checkin_time to profiles.profile_data', async () => {
     mockIsSupabaseReady.mockReturnValue(true)
+    // First from('profiles') call: select chain
+    const maybeSingle = vi.fn().mockResolvedValue({ data: { profile_data: {} }, error: null })
+    const eqForSelect = vi.fn().mockReturnValue({ maybeSingle })
+    const selectFn    = vi.fn().mockReturnValue({ eq: eqForSelect })
+    mockChain.from.mockReturnValueOnce({ select: selectFn })
+    // Second from('profiles') call: falls back to mockChain (update chain)
     const result = await scheduleCheckinReminder('user-abc', '08:30')
     expect(result.error).toBeNull()
-    expect(mockChain.from).toHaveBeenCalledWith('push_subscriptions')
-    expect(mockChain.update).toHaveBeenCalledWith(expect.objectContaining({
-      checkin_hour:   8,
-      checkin_minute: 30,
-    }))
-    expect(mockChain.eq).toHaveBeenCalledWith('user_id', 'user-abc')
+    expect(mockChain.from).toHaveBeenCalledWith('profiles')
+    expect(mockChain.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        profile_data: expect.objectContaining({ preferred_checkin_time: '08:30' }),
+      })
+    )
   })
 })

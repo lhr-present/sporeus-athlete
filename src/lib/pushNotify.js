@@ -1,4 +1,4 @@
-// src/lib/pushNotify.js — Web Push subscription management (Phase 3.4)
+// src/lib/pushNotify.js — Web Push subscription management (Phase 3.4 / Phase 1.5)
 // VAPID public key set via VITE_VAPID_PUBLIC_KEY env var.
 // Server sends pushes via supabase/functions/send-push edge function.
 
@@ -16,6 +16,12 @@ function urlBase64ToUint8Array(base64String) {
 
 export function isPushSupported() {
   return 'serviceWorker' in navigator && 'PushManager' in window
+}
+
+// Returns the browser's raw Notification.permission: 'default'|'granted'|'denied'|'unsupported'
+export function getPermissionStatus() {
+  if (typeof Notification === 'undefined') return 'unsupported'
+  return Notification.permission
 }
 
 export async function getPushState() {
@@ -113,20 +119,22 @@ export async function sendLocalNotification(title, body, url = '/') {
 }
 
 // ── scheduleCheckinReminder ────────────────────────────────────────────────────
-// Saves the athlete's preferred check-in time to Supabase for server-side
-// scheduling, then fires a local notification at the chosen hour today/tomorrow.
+// Saves the athlete's preferred check-in time to profiles.profile_data for server-side
+// scheduling (trigger-checkin-reminders cron reads it), then fires a local notification.
 // preferredTime: 'HH:MM' 24h string (e.g. '07:30')
 export async function scheduleCheckinReminder(userId, preferredTime = '07:00') {
   if (!userId) return { error: new Error('Not authenticated') }
 
-  // Persist preference to Supabase for server-side scheduling
+  // Persist preference to profiles.profile_data for server-side cron scheduling
   if (isSupabaseReady()) {
-    const [h, m] = preferredTime.split(':').map(Number)
-    const { error } = await supabase
-      .from('push_subscriptions')
-      .update({ checkin_hour: h, checkin_minute: m ?? 0 })
-      .eq('user_id', userId)
-    if (error) logger.warn('scheduleCheckinReminder: Supabase update failed:', error.message)
+    try {
+      const { data: row } = await supabase.from('profiles').select('profile_data').eq('id', userId).maybeSingle()
+      const merged = { ...(row?.profile_data || {}), preferred_checkin_time: preferredTime }
+      const { error } = await supabase.from('profiles').update({ profile_data: merged }).eq('id', userId)
+      if (error) logger.warn('scheduleCheckinReminder: Supabase update failed:', error.message)
+    } catch (e) {
+      logger.warn('scheduleCheckinReminder: error:', e.message)
+    }
   }
 
   // Fire a local notification at preferredTime (setTimeout)
@@ -176,6 +184,43 @@ export async function checkSubscriptionExpiry(userId) {
     }
   } catch (e) {
     logger.warn('checkSubscriptionExpiry error:', e.message)
+  }
+}
+
+// ── sendTestNotification ──────────────────────────────────────────────────────
+// Sends a test push notification to the user's own devices via the edge function.
+// Unique dedupe_key per call so it always fires (never deduplicated).
+export async function sendTestNotification(userId) {
+  if (!isSupabaseReady() || !userId) return { error: new Error('Not authenticated') }
+  const dedupe_key = `test:${userId}:${Date.now()}`
+  const { data, error } = await supabase.functions.invoke('send-push', {
+    body: {
+      user_id:   userId,
+      kind:      'test',
+      title:     'Sporeus — Test notification',
+      body:      'Push notifications are working correctly.',
+      data:      { route: '/' },
+      dedupe_key,
+    },
+  })
+  return { data, error }
+}
+
+// ── saveNotifPrefs ────────────────────────────────────────────────────────────
+// Merges notification preferences into profiles.profile_data.
+// prefs: { notifications?: object, preferred_checkin_time?: string, timezone?: string }
+export async function saveNotifPrefs(userId, prefs) {
+  if (!isSupabaseReady() || !userId) return { error: new Error('Not authenticated') }
+  try {
+    const { data: row } = await supabase.from('profiles').select('profile_data').eq('id', userId).maybeSingle()
+    const merged = { ...(row?.profile_data || {}), ...prefs }
+    const { error } = await supabase.from('profiles').update({
+      profile_data: merged,
+      updated_at: new Date().toISOString(),
+    }).eq('id', userId)
+    return { error: error || null }
+  } catch (e) {
+    return { error: e }
   }
 }
 

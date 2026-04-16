@@ -1,8 +1,11 @@
 // supabase/functions/send-push/index.ts
-// Sends Web Push notifications to a user or coach's athletes.
-// Secrets required: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT (mailto:you@email.com)
-// Called by: coaches to notify athletes, system triggers (injury alert, race countdown)
+// Sends Web Push notifications. Handles VAPID signing + payload encryption via web-push npm.
+// Secrets required: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT (mailto:...)
+// Body shape: { user_id, kind?, title, body?, data?, dedupe_key?, dedupe_window_hours? }
+// Auth: user JWT (coach→athlete or self) OR service role key (system/cron calls).
 
+// Requires Deno 1.30+ for npm: imports (Supabase runtime satisfies this)
+import webPush from "npm:web-push@3.6.7"
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
@@ -24,68 +27,14 @@ function fail(status: number, msg: string) {
   })
 }
 
-// Build a JWT for VAPID authentication
-async function buildVapidJwt(endpoint: string, subject: string, publicKey: string, privateKeyB64: string): Promise<string> {
-  const url = new URL(endpoint)
-  const audience = `${url.protocol}//${url.host}`
-  const expSeconds = Math.floor(Date.now() / 1000) + 12 * 3600 // 12h
+type NotifKind =
+  | 'checkin_reminder' | 'invite_accepted' | 'readiness_red' | 'session_feedback'
+  | 'missed_checkin' | 'test' | 'race_countdown' | 'injury_alert' | 'system' | 'message'
 
-  const header = btoa(JSON.stringify({ typ: "JWT", alg: "ES256" }))
-    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "")
-  const payload = btoa(JSON.stringify({ aud: audience, exp: expSeconds, sub: subject }))
-    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "")
-  const sigInput = `${header}.${payload}`
-
-  // Import EC private key
-  const rawKey = Uint8Array.from(atob(privateKeyB64.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))
-  const cryptoKey = await crypto.subtle.importKey(
-    "pkcs8", rawKey,
-    { name: "ECDSA", namedCurve: "P-256" },
-    false, ["sign"]
-  )
-  const sig = await crypto.subtle.sign(
-    { name: "ECDSA", hash: "SHA-256" },
-    cryptoKey,
-    new TextEncoder().encode(sigInput)
-  )
-  const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig)))
-    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "")
-  return `${sigInput}.${sigB64}`
-}
-
-// Send a push message to a single subscription
-async function sendPush(
-  subscription: { endpoint: string; keys: { p256dh: string; auth: string } },
-  payload: string,
-  vapidPublic: string,
-  vapidPrivate: string,
-  vapidSubject: string,
-): Promise<{ ok: boolean; error?: string }> {
-  try {
-    const jwt = await buildVapidJwt(subscription.endpoint, vapidSubject, vapidPublic, vapidPrivate)
-
-    const resp = await fetch(subscription.endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/octet-stream",
-        "Content-Encoding": "aesgcm",
-        "Authorization": `vapid t=${jwt},k=${vapidPublic}`,
-        "TTL": "86400",
-      },
-      body: new TextEncoder().encode(payload),
-    })
-
-    if (resp.status === 410 || resp.status === 404) {
-      return { ok: false, error: "subscription_expired" }
-    }
-    if (!resp.ok) {
-      return { ok: false, error: `push_failed:${resp.status}` }
-    }
-    return { ok: true }
-  } catch (e) {
-    return { ok: false, error: String(e) }
-  }
-}
+const VALID_KINDS = new Set<string>([
+  'checkin_reminder','invite_accepted','readiness_red','session_feedback',
+  'missed_checkin','test','race_countdown','injury_alert','system','message',
+])
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders })
@@ -93,67 +42,169 @@ serve(async (req: Request) => {
   const authHeader = req.headers.get("Authorization")
   if (!authHeader) return fail(401, "Unauthorized")
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!
-  const serviceKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-  const anonKey     = Deno.env.get("SUPABASE_ANON_KEY")!
-  const vapidPublic = Deno.env.get("VAPID_PUBLIC_KEY") || ""
+  const supabaseUrl  = Deno.env.get("SUPABASE_URL")!
+  const serviceKey   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  const anonKey      = Deno.env.get("SUPABASE_ANON_KEY")!
+  const vapidPublic  = Deno.env.get("VAPID_PUBLIC_KEY")  || ""
   const vapidPrivate = Deno.env.get("VAPID_PRIVATE_KEY") || ""
-  const vapidSubject = Deno.env.get("VAPID_SUBJECT") || "mailto:admin@sporeus.com"
+  const vapidSubject = Deno.env.get("VAPID_SUBJECT")     || "mailto:admin@sporeus.com"
 
   if (!vapidPublic || !vapidPrivate) return fail(500, "VAPID keys not configured")
 
-  // Verify calling user
-  const userClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authHeader } },
-  })
-  const { data: { user }, error: authError } = await userClient.auth.getUser()
-  if (authError || !user) return fail(401, "Invalid token")
-
+  // ── Auth: accept user JWT or service role key (for cron/trigger calls) ────────
+  const isSystemCall = authHeader === `Bearer ${serviceKey}`
   const admin = createClient(supabaseUrl, serviceKey)
 
-  let body: { target_user_id?: string; title?: string; body?: string; url?: string; tag?: string } = {}
-  try { body = await req.json() } catch {}
+  let callerUserId: string | null = null
+  if (!isSystemCall) {
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    })
+    const { data: { user }, error } = await userClient.auth.getUser()
+    if (error || !user) return fail(401, "Invalid token")
+    callerUserId = user.id
+  }
 
-  const { target_user_id, title, body: msgBody, url, tag } = body
-  if (!target_user_id || !title) return fail(400, "Missing target_user_id or title")
+  let reqBody: {
+    user_id?: string
+    target_user_id?: string
+    kind?: string
+    title?: string
+    body?: string
+    data?: Record<string, unknown>
+    dedupe_key?: string
+    dedupe_window_hours?: number
+    url?: string
+    tag?: string
+  } = {}
+  try { reqBody = await req.json() } catch { return fail(400, "Invalid JSON") }
 
-  // Coach must have an active athlete relationship
-  const { data: rel } = await admin
-    .from("coach_athletes")
-    .select("status")
-    .eq("coach_id", user.id)
-    .eq("athlete_id", target_user_id)
-    .eq("status", "active")
-    .maybeSingle()
+  const targetId = reqBody.user_id || reqBody.target_user_id
+  if (!targetId) return fail(400, "Missing user_id")
 
-  const isSelf = user.id === target_user_id
-  if (!rel && !isSelf) return fail(403, "Not authorized to notify this user")
+  const title    = reqBody.title || "Sporeus"
+  const msgBody  = reqBody.body  || ""
+  const kind     = VALID_KINDS.has(reqBody.kind || "") ? (reqBody.kind as NotifKind) : "system"
+  const pushData = reqBody.data  || {}
+  const route    = (pushData as any).route || reqBody.url || "/"
 
-  // Get subscriptions for target user
-  const { data: subs } = await admin
-    .from("push_subscriptions")
-    .select("endpoint, keys")
-    .eq("user_id", target_user_id)
-
-  if (!subs?.length) return ok({ sent: 0, message: "No subscriptions" })
-
-  const payload = JSON.stringify({ title, body: msgBody || "", url: url || "/", tag: tag || "sporeus" })
-
-  let sent = 0
-  const expired: string[] = []
-  for (const sub of subs) {
-    const result = await sendPush(sub as any, payload, vapidPublic, vapidPrivate, vapidSubject)
-    if (result.ok) {
-      sent++
-    } else if (result.error === "subscription_expired") {
-      expired.push(sub.endpoint)
+  // ── Authorization: user must be self or active coach of target ────────────────
+  if (!isSystemCall) {
+    const isSelf = callerUserId === targetId
+    if (!isSelf) {
+      const { data: rel } = await admin
+        .from("coach_athletes")
+        .select("status")
+        .eq("coach_id", callerUserId!)
+        .eq("athlete_id", targetId)
+        .eq("status", "active")
+        .maybeSingle()
+      if (!rel) return fail(403, "Not authorized to notify this user")
     }
   }
 
-  // Clean up expired subscriptions
-  if (expired.length) {
-    await admin.from("push_subscriptions").delete().in("endpoint", expired)
+  // ── Dedupe check ──────────────────────────────────────────────────────────────
+  const dedupeKey   = reqBody.dedupe_key
+  const windowHours = reqBody.dedupe_window_hours ?? 24
+
+  if (dedupeKey) {
+    const windowStart = new Date(Date.now() - windowHours * 3600000).toISOString()
+    const { data: dup } = await admin
+      .from("notification_log")
+      .select("id")
+      .eq("dedupe_key", dedupeKey)
+      .not("delivery_status", "eq", "failed")
+      .gte("sent_at", windowStart)
+      .maybeSingle()
+
+    if (dup) {
+      await admin.from("notification_log").insert({
+        user_id:         targetId,
+        kind,
+        dedupe_key:      dedupeKey,
+        payload:         { title, body: msgBody },
+        delivery_status: "deduped",
+      })
+      return ok({ skipped: true, reason: "deduped" })
+    }
   }
 
-  return ok({ sent, total: subs.length, expired: expired.length })
+  // ── Load subscriptions ────────────────────────────────────────────────────────
+  const { data: subs } = await admin
+    .from("push_subscriptions")
+    .select("endpoint, keys")
+    .eq("user_id", targetId)
+
+  if (!subs?.length) {
+    return ok({ sent: 0, total: 0, message: "No subscriptions for user" })
+  }
+
+  // ── Configure VAPID ───────────────────────────────────────────────────────────
+  webPush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate)
+
+  // ── Push payload — NO PII: only title, body, kind, deep-link route ───────────
+  const notifPayload = JSON.stringify({
+    title,
+    body: msgBody,
+    kind,
+    data: { route, ...Object.fromEntries(
+      Object.entries(pushData).filter(([k]) => !['route'].includes(k))
+    ) },
+  })
+
+  let sent = 0
+  const expired: string[] = []
+  const rateLimited: string[] = []
+  let deliveryStatus: string = "delivered"
+  let errorMsg: string | undefined
+
+  for (const sub of subs as Array<{ endpoint: string; keys: { p256dh: string; auth: string } }>) {
+    try {
+      await webPush.sendNotification(
+        { endpoint: sub.endpoint, keys: sub.keys },
+        notifPayload,
+      )
+      await admin
+        .from("push_subscriptions")
+        .update({ last_success_at: new Date().toISOString() })
+        .eq("endpoint", sub.endpoint)
+      sent++
+    } catch (err: any) {
+      const status = err.statusCode || err.status
+      if (status === 410 || status === 404) {
+        expired.push(sub.endpoint)
+      } else if (status === 429) {
+        rateLimited.push(sub.endpoint)
+        deliveryStatus = "failed"
+        errorMsg = `rate_limited`
+      } else {
+        deliveryStatus = "failed"
+        errorMsg = String(err.message || err).slice(0, 200)
+      }
+    }
+  }
+
+  if (expired.length) {
+    await admin.from("push_subscriptions").delete().in("endpoint", expired)
+    if (sent === 0 && rateLimited.length === 0) deliveryStatus = "expired_subscription"
+  }
+  if (sent > 0) deliveryStatus = "delivered"
+
+  // ── Insert notification_log row ───────────────────────────────────────────────
+  await admin.from("notification_log").insert({
+    user_id:         targetId,
+    kind,
+    dedupe_key:      dedupeKey ?? null,
+    payload:         { title, body: msgBody },
+    delivery_status: deliveryStatus,
+    error:           errorMsg ?? null,
+  })
+
+  return ok({
+    sent,
+    total:       subs.length,
+    expired:     expired.length,
+    rateLimited: rateLimited.length,
+    status:      deliveryStatus,
+  })
 })
