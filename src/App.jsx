@@ -156,7 +156,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
       )}
 
       {/* Coach invite acceptance modal */}
-      {inviteCode && authUser && authProfile?.role === 'athlete' && (
+      {inviteCode && authUser && authProfile?.role !== 'coach' && (
         <InviteModal
           inviteCode={inviteCode}
           userId={authUser.id}

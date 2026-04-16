@@ -16,17 +16,13 @@ function clearWindow() {
   delete globalThis.window
 }
 
-// ── generateInviteToken ───────────────────────────────────────────────────────
+// ── generateInviteToken (alias for generateInviteCode) ───────────────────────
 describe('generateInviteToken', () => {
-  it('returns a 16-character string', () => {
-    expect(generateInviteToken()).toHaveLength(16)
+  it('returns SP-XXXXXXXX format', () => {
+    expect(generateInviteToken()).toMatch(/^SP-[A-Z2-9]{8}$/)
   })
 
-  it('returns only lowercase hex characters [0-9a-f]', () => {
-    expect(generateInviteToken()).toMatch(/^[0-9a-f]{16}$/)
-  })
-
-  it('generates unique tokens — 100 calls produce 100 distinct values', () => {
+  it('generates unique codes — 100 calls produce 100 distinct values', () => {
     const tokens = new Set(Array.from({ length: 100 }, () => generateInviteToken()))
     expect(tokens.size).toBe(100)
   })
@@ -75,38 +71,26 @@ describe('parseInviteParam', () => {
   })
 })
 
-// ── redeemInvite ──────────────────────────────────────────────────────────────
+// ── redeemInvite (calls edge function via fetch) ──────────────────────────────
 describe('redeemInvite', () => {
-  it('calls supabase with correct code and returns success shape', async () => {
-    const futureDate = new Date(Date.now() + 86400000).toISOString()
-    const mockInvite = { id: 'inv1', coach_id: 'c1', expires_at: futureDate, used_by: null, code: 'testcode' }
-    let singleCall = 0
+  it('returns { success: false, error } when not authenticated', async () => {
     const mock = {
-      from:   vi.fn(() => mock),
-      select: vi.fn(() => mock),
-      eq:     vi.fn(() => mock),
-      single: vi.fn(() => {
-        singleCall++
-        if (singleCall === 1) return Promise.resolve({ data: mockInvite, error: null })
-        return Promise.resolve({ data: { display_name: 'Coach Bob' }, error: null })
-      }),
-      upsert: vi.fn().mockResolvedValue({ error: null }),
-      update: vi.fn(() => mock),
+      supabaseUrl: 'https://test.supabase.co',
+      supabaseKey: 'anon-key',
+      auth: { getSession: vi.fn().mockResolvedValue({ data: { session: null } }) },
     }
-    const result = await redeemInvite(mock, 'testcode', 'athlete1')
-    expect(result.success).toBe(true)
-    expect(result.coachId).toBe('c1')
-    expect(result.coachName).toBe('Coach Bob')
+    const result = await redeemInvite(mock, 'SP-ABC12345')
+    expect(result.success).toBe(false)
+    expect(result.code).toBe('UNAUTHENTICATED')
   })
 
   it('returns { success: false, error } on network failure — never throws', async () => {
     const mock = {
-      from:   vi.fn(() => mock),
-      select: vi.fn(() => mock),
-      eq:     vi.fn(() => mock),
-      single: vi.fn().mockRejectedValue(new Error('Network error')),
+      supabaseUrl: 'https://test.supabase.co',
+      supabaseKey: 'anon-key',
+      auth: { getSession: vi.fn().mockRejectedValue(new Error('Network error')) },
     }
-    const result = await redeemInvite(mock, 'badcode', 'athlete1')
+    const result = await redeemInvite(mock, 'SP-BADCODE')
     expect(result.success).toBe(false)
     expect(result.error).toBeTruthy()
   })

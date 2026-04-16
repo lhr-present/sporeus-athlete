@@ -52,6 +52,32 @@ export default function RoleSelector({ userId, onComplete, lang }) {
         </div>
 
         <div style={{ display: 'flex', gap: '16px', flexDirection: 'column' }}>
+          {/* Both */}
+          <button onClick={() => choose('both')} disabled={busy} style={{
+            background: '#1a1a1a',
+            border: '2px solid #333',
+            borderRadius: '8px',
+            padding: '24px 20px',
+            cursor: busy ? 'not-allowed' : 'pointer',
+            textAlign: 'left',
+            fontFamily: MONO,
+            transition: 'border-color 0.15s',
+            opacity: busy ? 0.5 : 1,
+          }}
+            onMouseOver={e => !busy && (e.currentTarget.style.borderColor = '#9933ff')}
+            onMouseOut={e => !busy && (e.currentTarget.style.borderColor = '#333')}
+          >
+            <div style={{ fontSize: '28px', marginBottom: '10px' }}>🏃📋</div>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: '#eee', letterSpacing: '0.08em', marginBottom: '6px' }}>
+              {isTR ? 'İKİSİ DE' : "I'M BOTH"}
+            </div>
+            <div style={{ fontSize: '10px', color: '#666', lineHeight: 1.6 }}>
+              {isTR
+                ? 'Hem antrenman takip et hem de sporcu yönet.'
+                : 'Log your own training and manage athletes as a coach.'}
+            </div>
+          </button>
+
           {/* Athlete */}
           <button onClick={() => choose('athlete')} disabled={busy} style={{
             background: '#1a1a1a',

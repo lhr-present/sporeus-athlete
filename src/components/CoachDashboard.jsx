@@ -18,6 +18,7 @@ import GatingOverlay from './coachDashboard/GatingOverlay.jsx'
 import SbAthletePanel from './coachDashboard/SbAthletePanel.jsx'
 import SessionManager from './coach/SessionManager.jsx'
 import SquadBenchmarkTable from './coach/SquadBenchmarkTable.jsx'
+import InviteManager from './InviteManager.jsx'
 import { calcCompliancePct } from '../lib/sport/squadBenchmark.js'
 import { getTierSync } from '../lib/subscription.js'
 import TeamAnnouncements from './TeamAnnouncements.jsx'
@@ -287,35 +288,9 @@ export default function CoachDashboard({ authUser }) {
             MY ATHLETES (LIVE) · {sbAthletes.filter(a => a.status==='active').length} CONNECTED
           </div>
 
-          {/* Invite generator */}
-          <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', alignItems:'center', marginBottom:'12px' }}>
-            {!sbInviteCode ? (
-              <button
-                onClick={generateSbInvite}
-                disabled={sbInviteBusy}
-                style={{ ...S.mono, fontSize:'10px', fontWeight:700, padding:'7px 14px', background:'#0064ff', color:'#fff', border:'none', borderRadius:'4px', cursor:'pointer', opacity: sbInviteBusy ? 0.5 : 1 }}
-              >
-                {sbInviteBusy ? '…' : '+ GENERATE INVITE LINK'}
-              </button>
-            ) : (
-              <>
-                <input
-                  readOnly
-                  value={`${window.location.origin}${window.location.pathname}?invite=${sbInviteCode}`}
-                  onFocus={e => e.target.select()}
-                  style={{ ...S.mono, fontSize:'10px', color:'#0064ff', background:'#0064ff11', border:'1px solid #0064ff33', borderRadius:'4px', padding:'6px 10px', flex:'1 1 260px', outline:'none' }}
-                />
-                <button onClick={copySbInvite} style={{ ...S.mono, fontSize:'10px', fontWeight:700, padding:'7px 14px', background: sbInviteCopied ? '#5bc25b' : '#1a1a1a', color: sbInviteCopied ? '#fff' : '#ccc', border:'1px solid #333', borderRadius:'4px', cursor:'pointer', minWidth:'70px' }}>
-                  {sbInviteCopied ? '✓ COPIED' : 'COPY'}
-                </button>
-                <button onClick={generateSbInvite} disabled={sbInviteBusy} style={{ ...S.mono, fontSize:'9px', padding:'7px 10px', background:'transparent', color:'#555', border:'1px solid #333', borderRadius:'4px', cursor:'pointer' }}>
-                  NEW
-                </button>
-              </>
-            )}
-          </div>
-          <div style={{ ...S.mono, fontSize:'9px', color:'#444', marginBottom:sbAthletes.length ? '12px' : 0 }}>
-            Invite expires in 7 days · athlete opens link and accepts
+          {/* Invite manager */}
+          <div style={{ marginBottom: '16px' }}>
+            <InviteManager coachId={sbCoachId} />
           </div>
 
           {/* Athlete list */}
