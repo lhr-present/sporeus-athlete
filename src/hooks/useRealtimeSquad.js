@@ -93,6 +93,7 @@ export function useRealtimeSquad({ authUser, isDemo, athletes, onUpdate }) {
       }
       setRtStatus('disconnected')
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- athletes and onUpdate intentionally excluded to avoid reconnect loops
   }, [authUser?.id, isDemo, athletes.length])
 
   return { rtStatus, lastUpdated, rtToast }

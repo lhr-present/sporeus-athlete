@@ -81,7 +81,7 @@ describe('createSession', () => {
 
   it('calls insert with correct shape', async () => {
     const selectMock = vi.fn().mockResolvedValue({ data: { id: 'sess1', title: 'Tempo Run' }, error: null })
-    const singleMock = vi.fn().mockReturnValue({ select: () => ({ single: () => selectMock() }) })
+    const _singleMock = vi.fn().mockReturnValue({ select: () => ({ single: () => selectMock() }) })
 
     // Chain: from().insert().select().single()
     const insertMock = vi.fn().mockReturnValue({
@@ -92,7 +92,7 @@ describe('createSession', () => {
     supabase.from.mockReturnValue({ insert: insertMock })
 
     const { createSession } = await import('./coachSessions.js')
-    const result = await createSession('c1', { title: 'Tempo Run', session_date: '2026-04-20' })
+    const _result = await createSession('c1', { title: 'Tempo Run', session_date: '2026-04-20' })
     expect(supabase.from).toHaveBeenCalledWith('coach_sessions')
     expect(insertMock).toHaveBeenCalledWith(
       expect.objectContaining({ coach_id: 'c1', title: 'Tempo Run', session_date: '2026-04-20' })

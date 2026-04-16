@@ -5,18 +5,18 @@
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
-function dateStr(d) { return new Date(d).toISOString().slice(0, 10) }
-function daysBack(n) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10) }
+function _dateStr(d) { return new Date(d).toISOString().slice(0, 10) }
+function _daysBack(n) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10) }
 function weekOf(dateString) {
   const d = new Date(dateString)
   d.setDate(d.getDate() - d.getDay())
   return d.toISOString().slice(0, 10)
 }
-function tssRange(log, from, to) {
+function _tssRange(log, from, to) {
   return log.filter(e => e.date >= from && e.date < to).reduce((s, e) => s + (e.tss || 0), 0)
 }
-function zonePct(sessions, zoneIndex) {
-  const totals = [0, 0, 0, 0, 0], totalDur = sessions.reduce((s, e) => s + (e.duration || 0), 0)
+function _zonePct(sessions, zoneIndex) {
+  const totals = [0, 0, 0, 0, 0], _totalDur = sessions.reduce((s, e) => s + (e.duration || 0), 0)
   sessions.forEach(e => {
     const dur = e.duration || 0
     if (e.zones && e.zones.some(z => z > 0)) e.zones.forEach((z, i) => { if (i < 5) totals[i] += z })
@@ -77,7 +77,7 @@ export function correlateTrainingToResults(log, testResults) {
     const topHalf   = sortedByPerf.slice(0, Math.ceil(sortedByPerf.length / 2))
     const botHalf   = sortedByPerf.slice(Math.ceil(sortedByPerf.length / 2))
 
-    const avg = arr => arr => arr.reduce((s, v) => s + v, 0) / arr.length
+    const _avg = _arr => _arr => _arr.reduce((s, v) => s + v, 0) / _arr.length
     const mean = (arr, key) => arr.reduce((s, x) => s + x[key], 0) / arr.length
 
     const vars = ['weeklyTSS', 'weeklySessions', 'z2Hrs', 'avgRPE']

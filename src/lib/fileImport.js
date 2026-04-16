@@ -4,7 +4,7 @@ import { logger } from './logger.js'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function toKmh(ms) { return ms * 3.6 }
+function _toKmh(ms) { return ms * 3.6 }
 function hav(lat1, lon1, lat2, lon2) {
   const R = 6371000
   const dLat = (lat2 - lat1) * Math.PI / 180

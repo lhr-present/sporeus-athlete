@@ -6,7 +6,7 @@ import { logger } from './logger.js'
 
 const REMINDER_KEY  = 'sporeus-reminder-enabled'
 const HOUR_KEY      = 'sporeus-reminder-hour'
-const TIMER_KEY     = 'sporeus-reminder-timer-id'  // used internally in this module
+const _TIMER_KEY     = 'sporeus-reminder-timer-id'  // used internally in this module
 const DEFAULT_HOUR  = 7
 
 let _timerId = null  // module-level timer so cancelReminder can clear it

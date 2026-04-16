@@ -1,5 +1,5 @@
 // VISUAL-2: Achievement timestamp tests
-import { describe, test, expect, beforeEach } from 'vitest'
+import { describe, test, expect } from 'vitest'
 import { checkAchievements } from '../components/Achievements.jsx'
 
 // Minimal log that satisfies first_step

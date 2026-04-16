@@ -217,6 +217,7 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
         })
       })
     }).catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- addToast is stable, SW listener only runs once
   }, [])
 
   // First session toast

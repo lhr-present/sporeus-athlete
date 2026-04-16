@@ -49,7 +49,7 @@ describe('pushTable', () => {
   })
 
   it('surfaces upsert errors', async () => {
-    const chain = makeChain({ upsertErr: new Error('DB constraint') })
+    const _chain = makeChain({ upsertErr: new Error('DB constraint') })
     const { error } = await pushTable('training_log', [{ id: '1' }])
     expect(error).toBeInstanceOf(Error)
     expect(error.message).toBe('DB constraint')
@@ -81,7 +81,7 @@ describe('pullTable', () => {
 
   it('surfaces query errors', async () => {
     makeChain({ eqErr: new Error('network timeout') })
-    const { data, error } = await pullTable('training_log', 'u1')
+    const { data: _data, error } = await pullTable('training_log', 'u1')
     expect(error).toBeInstanceOf(Error)
     expect(error.message).toBe('network timeout')
   })

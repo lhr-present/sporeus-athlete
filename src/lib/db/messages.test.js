@@ -96,7 +96,7 @@ describe('getMessages', () => {
 describe('markReadById', () => {
   it('returns NOT_CONFIGURED when Supabase is not ready', async () => {
     isSupabaseReady.mockReturnValue(false)
-    const { data, error } = await markReadById('msg-123')
+    const { data: _data, error } = await markReadById('msg-123')
     expect(error).toBeInstanceOf(Error)
     expect(supabase.from).not.toHaveBeenCalled()
   })
@@ -153,7 +153,7 @@ describe('markReadMany', () => {
 describe('insertMessage', () => {
   it('returns NOT_CONFIGURED when Supabase is not ready', async () => {
     isSupabaseReady.mockReturnValue(false)
-    const { data, error } = await insertMessage({ coachId: 'c', athleteId: 'a', encryptedBody: 'x' })
+    const { data: _data, error } = await insertMessage({ coachId: 'c', athleteId: 'a', encryptedBody: 'x' })
     expect(error).toBeInstanceOf(Error)
     expect(supabase.from).not.toHaveBeenCalled()
   })

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mapOWActivity, getDevices, addDevice, removeDevice, triggerSync } from './deviceSync.js'
+import { mapOWActivity, getDevices, removeDevice, triggerSync } from './deviceSync.js'
 
 // ─── Mock supabase module ──────────────────────────────────────────────────────
 

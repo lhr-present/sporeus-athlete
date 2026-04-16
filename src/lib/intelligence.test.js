@@ -123,21 +123,21 @@ describe('getTodayPlannedSession', () => {
 
   it('returns null when today is before plan start', () => {
     const plan = makePlan(
-      Array.from({length:7}, (_, i) => ({ type:'Easy Run', duration:60, rpe:5, tss:50 })),
+      Array.from({length:7}, (_el, _i) => ({ type:'Easy Run', duration:60, rpe:5, tss:50 })),
       '2026-04-20'
     )
     expect(getTodayPlannedSession(plan, '2026-04-12')).toBeNull()
   })
 
   it('returns null for Rest sessions', () => {
-    const sessions = Array.from({length:7}, (_, i) => ({ type:'Rest', duration:0, rpe:0, tss:0 }))
+    const sessions = Array.from({length:7}, (_el, _i) => ({ type:'Rest', duration:0, rpe:0, tss:0 }))
     const plan = makePlan(sessions, '2026-04-07')
     const result = getTodayPlannedSession(plan, '2026-04-12')
     expect(result).toBeNull()
   })
 
   it('returns session with weekIdx and dayIdx', () => {
-    const sessions = Array.from({length:7}, (_, i) => ({ type:'Easy Run', duration:60, rpe:5, tss:50 }))
+    const sessions = Array.from({length:7}, (_el, _i) => ({ type:'Easy Run', duration:60, rpe:5, tss:50 }))
     const plan = makePlan(sessions, '2026-04-07')
     const result = getTodayPlannedSession(plan, '2026-04-12')
     // 2026-04-12 is a Sunday: planDayIdx = (0 + 6) % 7 = 6

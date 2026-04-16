@@ -5,7 +5,7 @@
 // v4.6: computeRaceReadiness, predictRacePerformance
 // v4.7: VDOT Daniels table integration, HRV injury factor
 
-import { estimateVDOT, getTrainingPaces, predictTime } from './vdot.js'
+import { estimateVDOT, getTrainingPaces, predictTime as _predictTime } from './vdot.js'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function daysAgoDate(n) {
@@ -409,7 +409,7 @@ export function scoreSession(entry, log, profile) {
 
 // ─── v4.4: generateWeeklyNarrative ────────────────────────────────────────────
 // Produces a 3-5 sentence narrative of the past week's training in EN + TR.
-export function generateWeeklyNarrative(log, recovery, profile, lang) {
+export function generateWeeklyNarrative(log, recovery, profile, _lang) {
   const w1Start = daysAgoDate(7)
   const week    = (log || []).filter(e => e.date >= w1Start)
   const recWeek = (recovery || []).filter(e => e.date >= w1Start)
@@ -421,7 +421,7 @@ export function generateWeeklyNarrative(log, recovery, profile, lang) {
   const avgRPE   = n ? Math.round(week.reduce((s, e) => s + (e.rpe || 0), 0) / n * 10) / 10 : 0
   const avgRec   = recWeek.length ? Math.round(recWeek.reduce((s, e) => s + (e.score || 0), 0) / recWeek.length) : null
 
-  const { trend, change } = analyzeLoadTrend(log)
+  const { trend, change: _change } = analyzeLoadTrend(log)
   const { level: riskLevel } = predictInjuryRisk(log, recovery)
   const { z1z2Pct } = analyzeZoneBalance(log)
   const hrs = Math.floor(totalMin / 60), mins = totalMin % 60
@@ -481,7 +481,7 @@ export function detectMilestones(log, profile, prevMilestones) {
   const ctl    = computeCTL(log || [])
   const totalH = Math.round((log || []).reduce((s, e) => s + (e.duration || 0), 0) / 60)
   const maxTSS = Math.max(...(log || []).map(e => e.tss || 0), 0)
-  const maxRPE = Math.max(...(log || []).map(e => e.rpe || 0), 0)
+  const _maxRPE = Math.max(...(log || []).map(e => e.rpe || 0), 0)
   const daysSpan = n >= 2 ? Math.round((new Date(log[n - 1].date) - new Date(log[0].date)) / 864e5) : 0
   const last30 = (log || []).filter(e => e.date >= daysAgoDate(30)).length
   const last7  = (log || []).filter(e => e.date >= daysAgoDate(7)).length
@@ -723,7 +723,7 @@ export function getTodayPlannedSession(plan, today) {
  * @param {Object} profile - athlete profile data
  * @returns {Object} {action, rationale, load, duration, source}
  */
-export function getSingleSuggestion(log, recovery, profile) {
+export function getSingleSuggestion(log, recovery, _profile) {
   const safeLog = Array.isArray(log) ? log : []
   const safeRec = Array.isArray(recovery) ? recovery : []
 
@@ -835,7 +835,7 @@ export function getSingleSuggestion(log, recovery, profile) {
 // Multi-method prediction. Returns times for multiple distances + training paces.
 export function predictRacePerformance(log, testResults, profile) {
   const ctl = computeCTL(log)
-  const ftp  = parseFloat(profile?.ftp  || 0)
+  const _ftp  = parseFloat(profile?.ftp  || 0)
   const vo2  = parseFloat(profile?.vo2max || 0)
   const ltPace = profile?.ltPace ? (() => {
     const p = profile.ltPace.split(':').map(Number)
@@ -843,7 +843,7 @@ export function predictRacePerformance(log, testResults, profile) {
   })() : 0
 
   // Method A: VO2max → VDOT via Daniels table
-  const vdotFromVO2 = vo2 > 0 ? (() => {
+  const _vdotFromVO2 = vo2 > 0 ? (() => {
     const vdot = vo2 * 0.995  // VDOT ≈ VO2max (Daniels 1998)
     return { vdot }
   })() : null
@@ -854,7 +854,7 @@ export function predictRacePerformance(log, testResults, profile) {
     return age <= 8
   }).sort((a, b) => b.date > a.date ? 1 : -1)
 
-  const recentFTP   = recentTests.find(t => ['ramp','ftp20'].includes(t.testId))
+  const _recentFTP   = recentTests.find(t => ['ramp','ftp20'].includes(t.testId))
   const recentVO2   = recentTests.find(t => ['cooper','yyir1','astrand'].includes(t.testId))
   const recentRace  = recentTests.find(t => t.testId === 'race')
 
@@ -1037,7 +1037,7 @@ export function assessDataQuality(log, recovery, testResults, profile) {
 // ─── generateDailyDigest ───────────────────────────────────────────────────────
 // Template-based morning brief: CTL/TSB/ACWR, today's wellness, zone balance,
 // load trend. Returns { en: string, tr: string, empty: boolean, ctl, tsb, acwr }.
-export function generateDailyDigest(log, recovery, profile, lang = 'en') {
+export function generateDailyDigest(log, recovery, profile, _lang = 'en') {
   const today = new Date().toISOString().slice(0, 10)
 
   if (!(log || []).length) {

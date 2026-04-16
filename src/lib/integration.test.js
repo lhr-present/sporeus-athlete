@@ -280,7 +280,7 @@ describe('Scenario 3 — HRV morning readiness', () => {
 
 describe('Scenario 4 — Yearly plan builder', () => {
   const raceDate = addWeeks(20)
-  const { weeks, warnings, projectedCTL } = buildYearlyPlan({
+  const { weeks, warnings: _warnings, projectedCTL } = buildYearlyPlan({
     startDate:       TODAY,
     races:           [{ date: raceDate, name: 'Target A Race', priority: 'A' }],
     currentCTL:      45,

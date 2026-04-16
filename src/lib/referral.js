@@ -26,7 +26,7 @@ export function generateReferralCode(coachId) {
  * @param {string} newOrgId  UUID of the applying org/user (recorded for dedup)
  * @returns {Promise<{ success: boolean, coach_id?: string, error?: string }>}
  */
-export async function applyReferralCode(code, newOrgId) {
+export async function applyReferralCode(code, _newOrgId) {
   if (!isSupabaseReady() || !supabase) return { success: false, error: 'Supabase not configured' }
   if (!code || !code.startsWith('SP-'))   return { success: false, error: 'Invalid code format' }
 
