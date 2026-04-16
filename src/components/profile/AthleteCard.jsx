@@ -5,7 +5,7 @@ import { S } from '../../styles.js'
 import { calcLoad } from '../../lib/formulas.js'
 
 export default function AthleteCard({ profile, log }) {
-  const { t } = useContext(LangCtx)
+  const { t: _t } = useContext(LangCtx)
   const [status, setStatus] = useState(null)
   const last28 = log.slice(-28)
   const totalH = Math.round(last28.reduce((s,e)=>s+(e.duration||0),0)/60)

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { screen } from '@testing-library/react'
+
 import '@testing-library/jest-dom'
 import { renderWithLang } from './testUtils.jsx'
 

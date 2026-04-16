@@ -5,7 +5,7 @@ import { S } from '../../styles.js'
 import { saveLocalClubProfile, upsertOrgBranding } from '../../lib/db/orgBranding.js'
 
 const MONO  = "'IBM Plex Mono', monospace"
-const BLUE  = '#0064ff'
+const _BLUE  = '#0064ff'
 const ORANGE = '#ff6600'
 
 const PRESET_COLORS = ['#ff6600', '#0064ff', '#5bc25b', '#f5c542', '#e03030', '#9b59b6', '#1abc9c', '#e67e22']

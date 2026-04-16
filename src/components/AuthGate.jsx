@@ -9,7 +9,7 @@ const _BLUE  = '#0064ff' // reserved for future link colour
 const RED    = '#e03030'
 const GREEN  = '#5bc25b'
 
-function S(base, over) { return over ? { ...base, ...over } : base }
+function _S(base, over) { return over ? { ...base, ...over } : base }
 
 const card = {
   background: '#111',

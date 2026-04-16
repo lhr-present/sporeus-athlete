@@ -11,7 +11,7 @@ import { logAction } from '../lib/db/auditLog.js'
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
 const BLUE   = '#0064ff'
-const GREEN  = '#5bc25b'
+const _GREEN  = '#5bc25b'
 const GREY   = '#555'
 
 // ── Pure helpers (exported for unit tests) ────────────────────────────────────

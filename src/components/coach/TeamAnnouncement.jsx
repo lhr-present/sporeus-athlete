@@ -3,7 +3,7 @@ import { S } from '../../styles.js'
 import { supabase } from '../../lib/supabase.js'
 
 const FONT_MONO = { fontFamily: 'IBM Plex Mono, monospace' }
-const ORANGE = '#ff6600'
+const _ORANGE = '#ff6600'
 const MAX_LEN = 280
 
 // ─── TeamAnnouncement ─────────────────────────────────────────────────────────

@@ -14,7 +14,7 @@ const MAX_MSGS = 10
  * ChatPanel — squad AI chatbot.
  * Props: squad (array of athlete objects), isDemo (boolean)
  */
-export default function ChatPanel({ squad, isDemo }) {
+export default function ChatPanel({ squad, isDemo: _isDemo }) {
   const [open,   setOpen]   = useState(false)
   const [msgs,   setMsgs]   = useState([])
   const [input,  setInput]  = useState('')

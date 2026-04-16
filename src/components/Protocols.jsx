@@ -8,7 +8,7 @@ import PowerCurve from './PowerCurve.jsx'
 import VO2maxCard from './VO2maxCard.jsx'
 import ErrorBoundary from './ErrorBoundary.jsx'
 import RESTQScreen from './RESTQScreen.jsx'
-import TestHistoryChart from './protocols/TestHistoryChart.jsx'
+
 import WPrimeChart from './protocols/WPrimeChart.jsx'
 import LactateEstimator from './protocols/LactateEstimator.jsx'
 import HRVDeepAnalysis from './protocols/HRVDeepAnalysis.jsx'

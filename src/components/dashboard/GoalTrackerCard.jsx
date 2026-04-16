@@ -5,7 +5,7 @@ import { getGoalProgress, getGoalStatus, calcWeeklyRate } from '../../lib/sport/
 const STATUS_COLOR = { on_track: '#5bc25b', behind: '#f5c542', impossible: '#e03030' }
 const STATUS_DOT   = { on_track: '●', behind: '●', impossible: '●' }
 
-export default function GoalTrackerCard({ log, profile, dl }) {
+export default function GoalTrackerCard({ log, profile: _profile, dl }) {
   const goals = useMemo(() => {
     try {
       return JSON.parse(localStorage.getItem('sporeus-goals') || '[]')

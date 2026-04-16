@@ -1,7 +1,7 @@
 // ─── coach/SessionQRModal.jsx — QR code overlay for session check-in ──────────
 import { useEffect, useRef, useState } from 'react'
 import { useFocusTrap } from '../../hooks/useFocusTrap.js'
-import { S } from '../../styles.js'
+
 import { logger } from '../../lib/logger.js'
 
 const MONO = "'IBM Plex Mono', monospace"

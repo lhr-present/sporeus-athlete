@@ -131,7 +131,7 @@ function DFABadge({ alpha1, ectopicPct }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function HRVDashboard({ recovery, setRecovery }) {
-  const { t } = useContext(LangCtx)
+  const { t: _t } = useContext(LangCtx)
   const [fileResult, setFileResult]   = useState(null)
   const [uploadError, setUploadError] = useState(null)
   const [manualRMSSD, setManualRMSSD] = useState('')

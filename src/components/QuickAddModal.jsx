@@ -12,7 +12,7 @@ import { addNotification } from '../lib/notificationCenter.js'
 const MONO = "'IBM Plex Mono', monospace"
 const today = () => new Date().toISOString().slice(0, 10)
 
-const ALL_TYPES = Object.values(SESSION_TYPES_BY_DISCIPLINE).flat()
+const _ALL_TYPES = Object.values(SESSION_TYPES_BY_DISCIPLINE).flat()
 
 export default function QuickAddModal({ onAdd, onClose }) {
   const { t, lang } = useContext(LangCtx)

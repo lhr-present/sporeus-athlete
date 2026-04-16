@@ -431,10 +431,8 @@ export default function YearlyPlan() {
   }
 
   // ── Derived values ────────────────────────────────────────────────────────────
-  const weeks    = plan?.weeks || []
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- weeks is derived from plan; identity recomputed above each render
+  const weeks    = useMemo(() => plan?.weeks || [], [plan?.weeks])
   const maxTSS   = useMemo(() => Math.max(...weeks.map(w => w.targetTSS), 1), [weeks])
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- same
   const curWeek  = useMemo(() => currentWeekIndex(weeks), [weeks])
 
   // CTL projection line points (normalized within CTL_H strip)

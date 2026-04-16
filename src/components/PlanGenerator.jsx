@@ -21,7 +21,7 @@ function TaperCalculator() {
     for (let i = 0; i <= TW; i++) {
       let volPct, tssPct
       if (model === 'exp') {
-        const ratio = i === TW ? 0.40 : 1 - (1 - 0.40) * (i / TW) * (2 - i / TW) * 0.5
+        const _ratio = i === TW ? 0.40 : 1 - (1 - 0.40) * (i / TW) * (2 - i / TW) * 0.5
         volPct = Math.round((i === 0 ? 1 : Math.pow(0.40, i / TW)) * 100)
         tssPct = Math.round((i === 0 ? 1 : Math.pow(0.40, i / TW)) * 100)
       } else {

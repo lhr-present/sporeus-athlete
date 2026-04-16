@@ -190,7 +190,7 @@ function Breathing() {
   const [durationIdx, setDurationIdx] = useState(1) // default 5 min
   const [running, setRunning] = useState(false)
   const [elapsed, setElapsed] = useState(0)
-  const [phaseElapsed, setPhaseElapsed] = useState(0)
+  const [_phaseElapsed, setPhaseElapsed] = useState(0)
   const [complete, setComplete] = useState(false)
   const intervalRef = useRef(null)
 

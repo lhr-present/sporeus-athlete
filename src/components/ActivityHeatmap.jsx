@@ -24,6 +24,7 @@ export default function ActivityHeatmap({ log = [] }) {
       if (e.date) map[e.date] = (map[e.date] || 0) + (e.tss || 0)
     }
     return map
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- safeLog is derived from log; [log] covers all changes
   }, [log])
 
   // Build 53-week grid aligned to Sunday

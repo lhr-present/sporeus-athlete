@@ -12,7 +12,7 @@ import { analyzeLoadTrend, analyzeZoneBalance, analyzeRecoveryCorrelation, predi
  * @param {object} props.profile  — athlete profile
  * @param {string} props.lang     — 'en' | 'tr'
  */
-export default function InsightsPanel({ log, recovery, profile, lang }) {
+export default function InsightsPanel({ log, recovery, profile: _profile, lang }) {
   const { t } = useContext(LangCtx)
   const [open, setOpen] = useState(false)
 

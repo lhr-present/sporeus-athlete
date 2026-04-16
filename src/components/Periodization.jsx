@@ -216,6 +216,7 @@ function CoachPlansCard({ authUser }) {
         if (error) { setPlans([]); return }
         setPlans(data || [])
       })
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on auth identity; same pattern as other auth effects
   }, [authUser?.id])
 
   const toggleResponse = (planId, weekNum, icon) => {

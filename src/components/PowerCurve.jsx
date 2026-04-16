@@ -6,7 +6,7 @@ import {
 } from 'recharts'
 import { useData } from '../contexts/DataContext.jsx'
 import { S } from '../styles.js'
-import { calculateMMP, fitCriticalPower, detectIntervals, estimateFTP, KEY_DURATIONS } from '../lib/powerAnalysis.js'
+import { calculateMMP, fitCriticalPower, detectIntervals, estimateFTP } from '../lib/powerAnalysis.js'
 import IntervalBreakdown from './IntervalBreakdown.jsx'
 
 const MONO = "'IBM Plex Mono', monospace"

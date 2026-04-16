@@ -11,7 +11,7 @@ const TYPE_COLORS = {
 }
 
 export default function Calendar({ log, setLog, onEdit }) {
-  const { t } = useContext(LangCtx)
+  const { t: _t } = useContext(LangCtx)
   const [cur, setCur] = useState(new Date())
   const [sel, setSel] = useState(null)
   const [plan] = useLocalStorage('sporeus-plan', null)

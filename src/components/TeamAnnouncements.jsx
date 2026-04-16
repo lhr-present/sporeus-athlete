@@ -23,7 +23,7 @@ function timeAgo(iso) {
 
 // ── Coach compose + list ───────────────────────────────────────────────────────
 function CoachAnnouncementPanel({ coachId, lang }) {
-  const { t } = useContext(LangCtx)
+  const { t: _t } = useContext(LangCtx)
   const [items, setItems]   = useState([])
   const [draft, setDraft]   = useState('')
   const [busy, setBusy]     = useState(false)

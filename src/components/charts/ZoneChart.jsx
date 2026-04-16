@@ -1,6 +1,6 @@
 // ─── ZoneChart.jsx — Weekly zone distribution stacked bar ────────────────────
 import { useMemo } from 'react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine, ResponsiveContainer } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const COLORS = ['#4a90d9', '#5bc25b', '#f5c542', '#ff6600', '#e03030']

@@ -1,5 +1,5 @@
 // ─── IntervalBreakdown.jsx — Zone-sorted interval cards ─────────────────────
-import { S } from '../styles.js'
+
 
 const MONO = "'IBM Plex Mono', monospace"
 

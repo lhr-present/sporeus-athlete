@@ -5,7 +5,7 @@ import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { Sparkline } from '../ui.jsx'
 
-export default function WeightHydration({ profile }) {
+export default function WeightHydration({ profile: _profile }) {
   const { t } = useContext(LangCtx)
   const [weightLog, setWeightLog] = useLocalStorage('sporeus-weight', [])
   const today = new Date().toISOString().slice(0, 10)

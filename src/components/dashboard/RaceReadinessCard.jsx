@@ -6,7 +6,7 @@ import { computeRaceReadiness, predictRacePerformance } from '../../lib/intellig
 import { useData } from '../../contexts/DataContext.jsx'
 
 export default function RaceReadinessCard({ log, recovery, injuries, profile, plan, planStatus, lang }) {
-  const { t } = useContext(LangCtx)
+  const { t: _t } = useContext(LangCtx)
   const { testResults, raceResults: raceResult, setRaceResults: setRaceResult } = useData()
   const [expanded, setExpanded] = useState(false)
   const [showPostRace, setShowPostRace] = useState(false)

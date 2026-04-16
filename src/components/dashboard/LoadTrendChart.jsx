@@ -2,7 +2,7 @@
 // Extracted from Dashboard.jsx inline PMC block (dl.timeline section).
 import { lazy, Suspense } from 'react'
 import { S } from '../../styles.js'
-import { HelpTip } from '../ui.jsx'
+
 import ErrorBoundary from '../ErrorBoundary.jsx'
 import { monotonyStrain } from '../../lib/formulas.js'
 import PerformanceMetrics from './PerformanceMetrics.jsx'

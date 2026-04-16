@@ -32,7 +32,7 @@ import ToastStack from './components/ToastStack.jsx'
 const CoachDashboard  = lazy(() => import('./components/CoachDashboard.jsx'))
 const CoachOverview   = lazy(() => import('./components/CoachOverview.jsx'))
 const CoachSquadView  = lazy(() => import('./components/CoachSquadView.jsx'))
-const PlanGenerator  = lazy(() => import('./components/PlanGenerator.jsx'))
+const _PlanGenerator = lazy(() => import('./components/PlanGenerator.jsx'))
 const YearlyPlan     = lazy(() => import('./components/YearlyPlan.jsx'))
 const Glossary            = lazy(() => import('./components/Glossary.jsx'))
 const SportProgramBuilder = lazy(() => import('./components/SportProgramBuilder.jsx'))

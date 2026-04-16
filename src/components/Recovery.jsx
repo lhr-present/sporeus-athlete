@@ -27,6 +27,7 @@ export default function Recovery() {
   useEffect(() => {
     const e = entries.find(x=>x.date===today)
     setForm(e ? { ...defVals, ...e } : { ...defVals })
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- runs on date change only; defVals and entries are stable refs
   }, [today])
 
   // Auto-calculate sleep hours from bed/wake times

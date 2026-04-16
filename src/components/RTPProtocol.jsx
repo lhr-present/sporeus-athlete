@@ -7,7 +7,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage.js'
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
 const GREEN  = '#5bc25b'
-const BLUE   = '#0064ff'
+const _BLUE   = '#0064ff'
 const GREY   = '#555'
 const RED    = '#e03030'
 

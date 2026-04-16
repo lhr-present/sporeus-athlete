@@ -101,7 +101,7 @@ function ElevationProfile({ trackpoints }) {
  * @param {Array<{lat:number,lon:number,ele:number,time?:string}>} props.trackpoints
  * @param {function} props.onClose — () => void
  */
-export default function ActivityMap({ trackpoints, onClose }) {
+export default function ActivityMap({ trackpoints, onClose: _onClose }) {
   const mapRef  = useRef(null)
   const leafRef = useRef(null)
   const [error, setError] = useState(null)

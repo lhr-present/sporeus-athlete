@@ -45,7 +45,7 @@ export default function SeasonBestsCard({ log, dl }) {
     const season = log.filter(e => e.date >= cutoff)
     if (!season.length) return { bests: [], hasEnough: false }
 
-    const today = new Date().toISOString().slice(0, 10)
+    const _today = new Date().toISOString().slice(0, 10)
     const recent30 = new Date(Date.now() - 30 * MS_PER_DAY).toISOString().slice(0, 10)
 
     // 1. Fastest run pace (min/km) — lower is better

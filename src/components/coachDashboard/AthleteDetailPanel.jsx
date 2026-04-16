@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { S } from '../../styles.js'
-import { daysBefore, computeLoad, getReadinessColor, generateCoachPlan, SPORT_GOALS, ComplianceBar, escHtml, TODAY } from './helpers.jsx'
+import { daysBefore, computeLoad, generateCoachPlan, SPORT_GOALS, ComplianceBar, escHtml, TODAY } from './helpers.jsx'
 import { analyzeLoadTrend, analyzeZoneBalance, predictInjuryRisk, predictFitness, analyzeRecoveryCorrelation, computeRaceReadiness, predictRacePerformance } from '../../lib/intelligence.js'
 import { correlateTrainingToResults, findRecoveryPatterns, mineInjuryPatterns, findOptimalWeekStructure } from '../../lib/patterns.js'
 
 // ─── Athlete Detail ───────────────────────────────────────────────────────────
 
-export default function AthleteDetailPanel({ athlete, onUpdate, onClose, templates, setTemplates }) {
+export default function AthleteDetailPanel({ athlete, onUpdate, onClose: _onClose, templates: _templates, setTemplates }) {
   const log = athlete.log || []
   const recovery = athlete.recovery || []
   const { ctl, atl, tsb } = computeLoad(log)

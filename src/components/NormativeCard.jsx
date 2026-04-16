@@ -1,5 +1,5 @@
 // ─── NormativeCard.jsx — Shows a metric value + percentile bar + category ─────
-import { S } from '../styles.js'
+
 
 const MONO = "'IBM Plex Mono', monospace"
 

@@ -26,6 +26,7 @@ export default function MilestonesList({ log, profile }) {
       const timer = setTimeout(() => setCurrent(null), 3500)
       return () => clearTimeout(timer)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- log.length is change signal; stable closure over setters
   }, [log.length])
 
   if (!current) return null

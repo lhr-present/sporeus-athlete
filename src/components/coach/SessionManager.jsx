@@ -8,7 +8,7 @@ import SessionQRModal from './SessionQRModal.jsx'
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
 const GREEN  = '#5bc25b'
-const YELLOW = '#f5c542'
+const _YELLOW = '#f5c542'
 const RED    = '#e03030'
 const GREY   = '#555'
 
@@ -33,7 +33,7 @@ export default function SessionManager({ coachId, lang = 'en' }) {
 
   const today = new Date().toISOString().slice(0, 10)
 
-  const fetchSessions = useCallback(async (signal) => {
+  const fetchSessions = useCallback(async (_signal) => {
     const { data } = await getUpcomingSessions(coachId, 21)
     return data || []
   }, [coachId])

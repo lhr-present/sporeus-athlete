@@ -1,7 +1,7 @@
 {
   "name": "sporeus-athlete-app",
   "private": true,
-  "version": "7.20.0",
+  "version": "7.20.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "deploy": "npm run build && gh-pages -d dist",
     "bench": "vitest bench",
-    "lint": "eslint src/ --ext .js,.jsx --max-warnings 450",
+    "lint": "eslint src/ --ext .js,.jsx --max-warnings 0",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "vitest run --config vitest.e2e.config.js",

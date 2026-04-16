@@ -161,7 +161,7 @@ export default function Dashboard({ log }) {
   )
 
   // ── Beginner simplified dashboard ─────────────────────────────────────────────
-  const countTSS = useCountUp(totalTSS)
+  const _countTSS = useCountUp(totalTSS)
   if (lc.dashSimple && !showAdvanced) {
     return (
       <div className="sp-fade">

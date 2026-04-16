@@ -41,7 +41,7 @@ export default function WPrimeChart({ series, wPrimeMax }) {
   const xTicks    = []
   for (let m = 0; m <= totalMin; m += tickEvery) xTicks.push(m)
 
-  const fmtTime = sec => {
+  const _fmtTime = sec => {
     const m = Math.floor(sec / 60), s = sec % 60
     return s === 0 ? `${m}m` : `${m}:${String(s).padStart(2,'0')}`
   }
