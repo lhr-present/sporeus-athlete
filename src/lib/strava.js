@@ -186,7 +186,7 @@ export async function getStravaConnection(userId) {
   if (!userId) return { data: null, error: null }
   const { data, error } = await supabase
     .from('strava_tokens')
-    .select('strava_athlete_id, last_sync_at, updated_at')
+    .select('strava_athlete_id, last_sync_at, updated_at, sync_status, last_error, provider_athlete_name')
     .eq('user_id', userId)
     .maybeSingle()
   return { data, error }

@@ -7,12 +7,16 @@ import {
   disconnectStrava, importStravaActivities, deduplicateByStravaId,
 } from '../../lib/strava.js'
 
+const SYNC_COLOR = { idle: '#5bc25b', syncing: '#0064ff', error: '#e03030', paused: '#ffa500' }
+const SYNC_LABEL = { idle: 'CONNECTED', syncing: 'SYNCING', error: 'ERROR', paused: 'PAUSED' }
+
 export default function StravaConnect({ userId }) {
   const [conn, setConn]             = useState(null)
   const [busy, setBusy]             = useState(false)
   const [loading, setLoading]       = useState(true)
   const [msg, setMsg]               = useState('')
   const [syncResult, setSyncResult] = useState(null) // { synced, total, recent }
+  const [confirmDisc, setConfirmDisc] = useState(false)
 
   useEffect(() => {
     if (!userId || !isSupabaseReady()) { setLoading(false); return }
@@ -75,8 +79,8 @@ export default function StravaConnect({ userId }) {
   }
 
   const handleDisconnect = async () => {
-    if (!confirm('Disconnect Strava? Existing synced activities stay in your training log.')) return
     setBusy(true)
+    setConfirmDisc(false)
     await disconnectStrava()
     setConn(null)
     setSyncResult(null)
@@ -92,14 +96,16 @@ export default function StravaConnect({ userId }) {
 
   if (loading) return <div style={{ ...S.mono, fontSize: '11px', color: '#888' }}>Checking connection...</div>
 
+  const displayStatus = busy ? 'syncing' : (conn?.sync_status || 'idle')
+
   return (
     <div>
       {conn?.strava_athlete_id ? (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '14px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
             {[
-              { lbl: 'STATUS',           val: 'CONNECTED',              color: '#5bc25b' },
-              { lbl: 'ATHLETE ID',       val: conn.strava_athlete_id,   color: '#ff6600' },
+              { lbl: 'STATUS',           val: SYNC_LABEL[displayStatus] || 'CONNECTED', color: SYNC_COLOR[displayStatus] || '#5bc25b' },
+              { lbl: 'ATHLETE',          val: conn.provider_athlete_name || conn.strava_athlete_id, color: '#ff6600' },
               { lbl: 'LAST SYNC',        val: conn.last_sync_at
                 ? new Date(conn.last_sync_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
                 : 'Never',                                               color: '#e0e0e0' },
@@ -115,18 +121,51 @@ export default function StravaConnect({ userId }) {
             ))}
           </div>
 
+          {displayStatus === 'error' && conn.last_error && (
+            <div style={{
+              ...S.mono, fontSize: '10px', color: '#e03030',
+              background: '#1a0808', border: '1px solid #3a1010',
+              borderRadius: '4px', padding: '6px 10px', marginBottom: '10px', lineHeight: 1.5,
+            }}>
+              ⚠ {conn.last_error}
+            </div>
+          )}
+
           <div style={{ ...S.mono, fontSize: '10px', color: '#666', marginBottom: '12px', lineHeight: 1.6 }}>
             Syncs last 30 days · runs, rides, swims · distance + HR in notes · auto-deduplicates
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: syncResult ? '12px' : '0' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: syncResult ? '12px' : '0', alignItems: 'center' }}>
             <button style={S.btn} onClick={handleSync} disabled={busy}>
               {busy ? 'SYNCING...' : '↻ SYNC NOW'}
             </button>
-            <button style={{ ...S.btnSec, borderColor: '#e03030', color: '#e03030' }}
-              onClick={handleDisconnect} disabled={busy}>
-              DISCONNECT
-            </button>
+            {!confirmDisc ? (
+              <button
+                style={{ ...S.btnSec, borderColor: '#e03030', color: '#e03030' }}
+                onClick={() => setConfirmDisc(true)}
+                disabled={busy}
+              >
+                DISCONNECT
+              </button>
+            ) : (
+              <>
+                <span style={{ ...S.mono, fontSize: '10px', color: '#e03030' }}>Disconnect Strava?</span>
+                <button
+                  style={{ ...S.btnSec, borderColor: '#e03030', color: '#e03030', padding: '6px 10px' }}
+                  onClick={handleDisconnect}
+                  disabled={busy}
+                >
+                  CONFIRM
+                </button>
+                <button
+                  style={{ ...S.btnSec, padding: '6px 10px' }}
+                  onClick={() => setConfirmDisc(false)}
+                  disabled={busy}
+                >
+                  CANCEL
+                </button>
+              </>
+            )}
           </div>
 
           {syncResult && syncResult.recent.length > 0 && (
