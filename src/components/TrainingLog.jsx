@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, useRef } from 'react'
+import { useState, useEffect, useContext, useRef, useMemo } from 'react'
 import { logger } from '../lib/logger.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
@@ -78,6 +78,30 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const [expandedId, setExpandedId]       = useState(null)
   const fileInputRef    = useRef(null)
   const csvInputRef     = useRef(null)
+
+  // ── Memoised derivations ─────────────────────────────────────────────────
+  const reversedLog = useMemo(() => [...log].reverse(), [log])
+  const expandedEntry = useMemo(
+    () => expandedId != null ? (log.find(s => s.id === expandedId) ?? null) : null,
+    [expandedId, log]
+  )
+  const expandedAnalysis = useMemo(
+    () => expandedEntry ? analyseSession(expandedEntry, log.slice(-28)) : null,
+    [expandedEntry, log.length] // eslint-disable-line react-hooks/exhaustive-deps
+  )
+  const expandedCtlInfo = useMemo(
+    () => expandedEntry ? calcCtlDelta(log, expandedEntry) : null,
+    [expandedEntry, log.length] // eslint-disable-line react-hooks/exhaustive-deps
+  )
+  const expandedSimilar = useMemo(() => {
+    if (!expandedEntry) return []
+    return log.filter(e =>
+      e !== expandedEntry &&
+      (e.type||'') === (expandedEntry.type||'') &&
+      e.tss &&
+      Math.abs(e.tss - (expandedEntry.tss||0)) / Math.max(expandedEntry.tss||1, 1) <= 0.15
+    ).slice(-3)
+  }, [expandedEntry, log.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (prefill) {
@@ -380,7 +404,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                 </tr>
               </thead>
               <tbody>
-                {[...log].reverse().map((s,i)=>{
+                {reversedLog.map((s,i)=>{
                   const hasTag = s.tags && s.tags.length > 0
                   const suggestedTag = !hasTag ? autoTagSession(s) : null
                   const isExpanded = expandedId === s.id
@@ -444,53 +468,47 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                       </tr>
                     ))}
                     {isExpanded && (() => {
-                      const analysis = analyseSession(s, log.slice(-28))
-                      const ctlInfo  = calcCtlDelta(log, s)
                       const colCount = bulkMode ? 10 : 9
                       return (
                         <tr key={`exp-${i}`} style={{ borderBottom:'1px solid var(--border)', background:'#0a0a0a' }}>
                           <td colSpan={colCount} style={{ padding:'0 0 10px 0' }}>
                             <div style={{ margin:'0 6px 0 0', padding:'12px', background:'#0f0f0f', border:'1px solid #1e1e1e', borderRadius:'4px' }}>
                               <div style={{ fontSize:'9px', color:'#ff6600', letterSpacing:'0.12em', marginBottom:'10px', fontWeight:700, fontFamily:"'IBM Plex Mono',monospace" }}>SESSION ANALYSIS</div>
-                              {ctlInfo && (
+                              {expandedCtlInfo && (
                                 <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', color:'#666', marginBottom:'10px' }}>
-                                  CTL: {ctlInfo.ctlBefore} → {ctlInfo.ctlAfter} ({ctlInfo.delta >= 0 ? '+' : ''}{ctlInfo.delta} this session)
+                                  CTL: {expandedCtlInfo.ctlBefore} → {expandedCtlInfo.ctlAfter} ({expandedCtlInfo.delta >= 0 ? '+' : ''}{expandedCtlInfo.delta} this session)
                                 </div>
                               )}
                               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'10px', fontFamily:"'IBM Plex Mono',monospace" }}>
                                 <div>
                                   <div style={{ fontSize:'9px', color:'#555', marginBottom:'3px' }}>COMPARISON</div>
-                                  <div style={{ fontSize:'10px', color:'#aaa' }}>{analysis.comparison}</div>
+                                  <div style={{ fontSize:'10px', color:'#aaa' }}>{expandedAnalysis?.comparison}</div>
                                 </div>
                                 <div>
                                   <div style={{ fontSize:'9px', color:'#555', marginBottom:'3px' }}>ZONE ESTIMATE</div>
-                                  <div style={{ fontSize:'10px', color:'#aaa' }}>{analysis.zone_estimate}</div>
+                                  <div style={{ fontSize:'10px', color:'#aaa' }}>{expandedAnalysis?.zone_estimate}</div>
                                 </div>
                                 <div>
                                   <div style={{ fontSize:'9px', color:'#555', marginBottom:'3px' }}>RECOVERY</div>
-                                  <div style={{ fontSize:'10px', color:'#aaa' }}>{analysis.recovery_time}</div>
+                                  <div style={{ fontSize:'10px', color:'#aaa' }}>{expandedAnalysis?.recovery_time}</div>
                                 </div>
                                 <div>
                                   <div style={{ fontSize:'9px', color:'#555', marginBottom:'3px' }}>NOTES</div>
-                                  {analysis.notes.map((n,ni) => <div key={ni} style={{ fontSize:'10px', color:'#aaa' }}>· {n}</div>)}
+                                  {expandedAnalysis?.notes.map((n,ni) => <div key={ni} style={{ fontSize:'10px', color:'#aaa' }}>· {n}</div>)}
                                 </div>
                               </div>
-                              {(() => {
-                                const similar = log.filter(e => e !== s && (e.type||'') === (s.type||'') && e.tss && Math.abs(e.tss - (s.tss||0)) / Math.max(s.tss||1, 1) <= 0.15).slice(-3)
-                                if (!similar.length) return null
-                                return (
-                                  <div style={{ fontFamily:"'IBM Plex Mono',monospace" }}>
-                                    <div style={{ fontSize:'9px', color:'#555', marginBottom:'5px' }}>SIMILAR SESSIONS</div>
-                                    {similar.map((sm,si) => (
-                                      <div key={si} style={{ fontSize:'10px', color:'#666', display:'flex', gap:'12px' }}>
-                                        <span>{sm.date}</span>
-                                        <span>{sm.tss} TSS</span>
-                                        <span>{sm.duration}min</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )
-                              })()}
+                              {expandedSimilar.length > 0 && (
+                                <div style={{ fontFamily:"'IBM Plex Mono',monospace" }}>
+                                  <div style={{ fontSize:'9px', color:'#555', marginBottom:'5px' }}>SIMILAR SESSIONS</div>
+                                  {expandedSimilar.map((sm,si) => (
+                                    <div key={si} style={{ fontSize:'10px', color:'#666', display:'flex', gap:'12px' }}>
+                                      <span>{sm.date}</span>
+                                      <span>{sm.tss} TSS</span>
+                                      <span>{sm.duration}min</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           </td>
                         </tr>
