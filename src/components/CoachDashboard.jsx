@@ -9,6 +9,7 @@ import { generateAthleteReportCard } from '../lib/digestEmail.js'
 
 import { TODAY, daysBefore, computeAthleteMetrics, computeLoad } from './coachDashboard/helpers.jsx'
 import CoachOnboarding from './coachDashboard/CoachOnboarding.jsx'
+import ClubOnboarding from './coachDashboard/ClubOnboarding.jsx'
 import TeamMetrics from './coachDashboard/TeamMetrics.jsx'
 import PlanDistribution from './coachDashboard/PlanDistribution.jsx'
 import AthleteCard from './coachDashboard/AthleteCard.jsx'
@@ -27,6 +28,8 @@ import TeamAnnouncements from './TeamAnnouncements.jsx'
 export default function CoachDashboard({ authUser }) {
   const [roster, setRoster] = useLocalStorage('sporeus-coach-athletes', [])
   const [coachOnboarded, setCoachOnboarded] = useLocalStorage('sporeus-coach-onboarded', false)
+  const [clubOnboarded, setClubOnboarded]   = useLocalStorage('sporeus-club-onboarded', false)
+  const isClub = getTierSync() === 'club'
   const [coachProfile, setCoachProfile] = useLocalStorage('sporeus-coach-profile', null)
   const [templates, setTemplates] = useLocalStorage('sporeus-coach-templates', [])
   const [expanded, setExpanded] = useLocalStorage('sporeus-coach-last-athlete', null)
@@ -249,6 +252,16 @@ export default function CoachDashboard({ authUser }) {
           onDone={() => setCoachOnboarded(true)}
           inviteUrl={inviteUrl}
           fileRef={fileRef}
+        />
+      )}
+
+      {/* Club Onboarding — shown once for Club-tier coaches */}
+      {coachOnboarded && isClub && !clubOnboarded && (
+        <ClubOnboarding
+          onDone={() => setClubOnboarded(true)}
+          authUserId={sbCoachId}
+          inviteUrl={inviteUrl}
+          lang={lang}
         />
       )}
 
