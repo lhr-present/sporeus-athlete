@@ -138,6 +138,12 @@ export const LABELS = {
     shortcutsNav: 'Navigation', shortcutsActions: 'Actions',
     // Weekly digest notification
     weeklyDigestNotifTitle: 'Weekly Summary',
+    // Reports tab (v7.47)
+    t_reports: 'REPORTS',
+    reportsTitle: 'PDF REPORTS', reportsGenerate: 'Generate', reportsLocked: 'Locked',
+    reportsGenerating: 'Generating…', reportsHistory: 'Report History',
+    reportsNoHistory: 'No reports generated yet.',
+    reportsDownload: 'Download', reportsDelete: 'Delete', reportsExpired: 'Expired',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -275,6 +281,12 @@ export const LABELS = {
     shortcutsNav: 'Gezinme', shortcutsActions: 'Eylemler',
     // Weekly digest notification
     weeklyDigestNotifTitle: 'Haftalık Özet',
+    // Reports tab (v7.47)
+    t_reports: 'RAPORLAR',
+    reportsTitle: 'PDF RAPORLAR', reportsGenerate: 'Oluştur', reportsLocked: 'Kilitli',
+    reportsGenerating: 'Oluşturuluyor…', reportsHistory: 'Rapor Geçmişi',
+    reportsNoHistory: 'Henüz rapor oluşturulmadı.',
+    reportsDownload: 'İndir', reportsDelete: 'Sil', reportsExpired: 'Süresi doldu',
   }
 }
 
@@ -291,4 +303,5 @@ export const TABS = [
   { id: 'recovery',      icon: '\u2661', lk: 't_recovery' },
   { id: 'profile',       icon: '\u25cb', lk: 't_profile' },
   { id: 'sport',         icon: '\u25b6', lk: 't_sport' },
+  { id: 'reports',       icon: '\u25a4', lk: 't_reports' },
 ]

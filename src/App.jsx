@@ -43,6 +43,7 @@ const Dashboard     = lazy(() => import('./components/Dashboard.jsx'))
 const Profile       = lazy(() => import('./components/Profile.jsx'))
 const TestProtocols = lazy(() => import('./components/Protocols.jsx'))
 const Periodization = lazy(() => import('./components/Periodization.jsx'))
+const ReportsTab    = lazy(() => import('./components/ReportsTab.jsx'))
 
 
 const EMBED_MODE   = new URLSearchParams(window.location.search).get('embed') === 'true'
@@ -326,6 +327,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
           {tab === 'recovery'     && <AsyncBoundary name="Recovery"><Recovery/></AsyncBoundary>}
           {tab === 'profile'      && <AsyncBoundary name="Profile"><Profile log={log} authUser={authUser}/></AsyncBoundary>}
           {tab === 'sport'        && <AsyncBoundary name="Sport Plan"><SportProgramBuilder/></AsyncBoundary>}
+          {tab === 'reports'      && <AsyncBoundary name="Reports"><ReportsTab authUser={authUser} authProfile={authProfile} lang={lang}/></AsyncBoundary>}
         </main>
 
         <footer style={S.footer}>
