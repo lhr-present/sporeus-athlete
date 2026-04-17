@@ -130,20 +130,26 @@ own data, with coaches allowed read access to their active athletes.
 
 ## npm Dependency Vulnerability Status
 
-Last audit: 2026-04-18 — **0 vulnerabilities** (0 critical, 0 high, 0 moderate, 0 low)
+Last audit: 2026-04-18 — **4 high** (build-time only, not runtime)
 
-### Previously patched
+| CVE / Advisory | Package | Affected chain | Status |
+|---|---|---|---|
+| GHSA-h4j5-c7cj-74xg (playwright SSL cert bypass) | `playwright` | devDep | **Fixed** — `npm audit fix`, updated to patched version |
+| GHSA-g644-9gfx-q4q4 (RCE via RegExp.flags) | `serialize-javascript@6.x` | workbox-build → @rollup/plugin-terser | **Open** — see below |
+| GHSA-wr3j-pwj9-hqq6 (CPU exhaustion DoS) | `serialize-javascript@6.x` | same chain | **Open** — see below |
+| + 2 more transitive | inherited from above | same chain | **Open** — see below |
 
-| CVE / Advisory | Package | Fix applied |
-|---|---|---|
-| GHSA-h4j5-c7cj-74xg (playwright SSL cert bypass) | `playwright@^1.50.1` | `npm audit fix` — updated to patched version |
-| GHSA-g644-9gfx-q4q4 (RCE via RegExp.flags) | `serialize-javascript@6.x` | `overrides: serialize-javascript@^7.0.5` in package.json |
-| GHSA-wr3j-pwj9-hqq6 (CPU exhaustion DoS) | `serialize-javascript@6.x` | same override |
-| Transitive: @rollup/plugin-terser, workbox-build, vite-plugin-pwa | inherited from above | same override resolves chain |
+### serialize-javascript chain — accepted risk
 
-The `serialize-javascript` vulns (CVE via workbox-build → @rollup/plugin-terser) are **build-time only** — the
-vulnerable code runs during `npm run build` on developer/CI machines, not at runtime in the browser or edge
-functions. Risk is low. Pinned to 7.x via npm `overrides` until upstream releases a fix.
+The 4 remaining HIGH advisories all trace to `serialize-javascript@6.x` via:
+`vite-plugin-pwa → workbox-build → @rollup/plugin-terser → serialize-javascript`.
+
+**Why not overridden:** Forcing `serialize-javascript@7.x` via npm `overrides` breaks builds on Node 18.x
+(`ReferenceError: crypto is not defined` — Node 18 CJS doesn't expose `crypto` as a global; v7.x requires it).
+
+**Actual risk:** The vulnerable code runs only during `npm run build` on developer/CI machines — never in the
+browser or on edge functions. Exploit requires a malicious actor to control the data being serialized during
+the build process. Risk is accepted until `workbox-build` or `vite-plugin-pwa` ships a fix upstream.
 
 ---
 
