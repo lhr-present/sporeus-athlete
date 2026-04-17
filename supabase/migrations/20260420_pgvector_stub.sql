@@ -1,0 +1,46 @@
+-- ─── 20260420_pgvector_stub.sql — pgvector + session_embeddings schema stub ──
+-- P3: RAG layer for grounded AI coaching. STUB ONLY — not yet deployed.
+-- Requires EMBEDDING_API_KEY secret (e.g. OpenAI text-embedding-3-small).
+-- Apply when: EMBEDDING_API_KEY is set in Supabase Secrets.
+
+-- Enable pgvector (when ready to activate, remove the comment below):
+-- CREATE EXTENSION IF NOT EXISTS vector;
+
+-- session_embeddings table (when ready):
+-- CREATE TABLE IF NOT EXISTS session_embeddings (
+--   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--   training_log_id UUID UNIQUE NOT NULL REFERENCES training_log(id) ON DELETE CASCADE,
+--   user_id         UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+--   embedding       vector(1536),   -- OpenAI text-embedding-3-small dimension
+--   content_text    TEXT,           -- the text that was embedded (date+type+notes+tss)
+--   created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+-- );
+--
+-- CREATE INDEX idx_session_embeddings_user
+--   ON session_embeddings USING ivfflat (embedding vector_cosine_ops)
+--   WITH (lists = 100);
+--
+-- ALTER TABLE session_embeddings ENABLE ROW LEVEL SECURITY;
+--
+-- CREATE POLICY "session_embeddings: own rows"
+--   ON session_embeddings FOR SELECT
+--   USING (auth.uid() = user_id);
+--
+-- -- RPC: vector similarity search for coach AI grounding
+-- CREATE OR REPLACE FUNCTION match_sessions(
+--   p_embedding vector(1536),
+--   p_match_count int DEFAULT 5
+-- )
+-- RETURNS TABLE (training_log_id uuid, content_text text, similarity float)
+-- LANGUAGE sql SECURITY DEFINER STABLE AS $$
+--   SELECT training_log_id, content_text,
+--          1 - (embedding <=> p_embedding) AS similarity
+--   FROM session_embeddings
+--   WHERE user_id = auth.uid()
+--   ORDER BY embedding <=> p_embedding
+--   LIMIT p_match_count;
+-- $$;
+-- GRANT EXECUTE ON FUNCTION match_sessions(vector, int) TO authenticated;
+
+-- Nothing deployed — remove this file's comments and apply when EMBEDDING_API_KEY is available.
+SELECT 1 AS stub_acknowledged;
