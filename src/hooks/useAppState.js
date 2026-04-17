@@ -18,6 +18,7 @@ import { sanitizeLogEntry } from '../lib/validate.js'
 import { hasCurrentConsent, grantConsent } from '../lib/db/consentVersion.js'
 import { logConsent } from '../lib/db/consent.js'
 import { useInsightNotifier } from './useInsightNotifier.js'
+import { emitEvent } from '../lib/attribution.js'
 
 /**
  * @param {{ lang: string, setLang: Function, dark: boolean, setDark: Function,
@@ -342,8 +343,28 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   }
 
   const handleAddSession = (entry) => {
-    setLog(prev => [...prev, sanitizeLogEntry(entry)])
+    setLog(prev => {
+      const next = [...prev, sanitizeLogEntry(entry)]
+      // First-ever session milestone — fire once
+      if (prev.length === 0) {
+        emitEvent('first_session_logged', { sport: entry.type || 'unknown' })
+      }
+      return next
+    })
   }
+
+  // ── Attribution: first_week_completed milestone ───────────────────────────
+  // Fires once when the log spans ≥ 7 distinct calendar days.
+  useEffect(() => {
+    if (!log || log.length < 3) return
+    const GATE_KEY = 'spa_first_week'
+    if (localStorage.getItem(GATE_KEY) === '1') return
+    const dates = new Set(log.map(e => e.date?.slice(0, 10)).filter(Boolean))
+    if (dates.size >= 7) {
+      localStorage.setItem(GATE_KEY, '1')
+      emitEvent('first_week_completed', { session_count: log.length })
+    }
+  }, [log])
 
   const handleConsentGrant = () => {
     grantConsent()

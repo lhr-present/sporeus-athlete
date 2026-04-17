@@ -30,6 +30,7 @@ import KeyboardShortcuts from './components/KeyboardShortcuts.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { flushQueue } from './lib/offlineQueue.js'
 import ToastStack from './components/ToastStack.jsx'
+import { parseUtmFromLocation, recordFirstTouch, emitEvent, hasSignupFired, markSignupFired } from './lib/attribution.js'
 const ScienceReference = lazy(() => import('./components/ScienceReference.jsx'))
 const PrivacyPolicy    = lazy(() => import('./components/PrivacyPolicy.jsx'))
 const CoachDashboard  = lazy(() => import('./components/CoachDashboard.jsx'))
@@ -363,6 +364,21 @@ export default function App() {
   const [lang, setLang] = useLocalStorage('sporeus-lang', 'en')
   const [dark, setDark] = useLocalStorage('sporeus-dark', true)
   const { user, profile: authProfile, loading, signOut, refreshProfile } = useAuth()
+
+  // ── Attribution: capture first-touch UTM on every cold mount ──────────────
+  useEffect(() => {
+    const utm = parseUtmFromLocation()
+    recordFirstTouch(utm)
+    emitEvent('landing', { version: APP_VERSION })
+  }, [])  // runs once per page load
+
+  // ── Attribution: emit signup_completed on first authenticated session ──────
+  useEffect(() => {
+    if (!user) return
+    if (hasSignupFired()) return
+    markSignupFired()
+    emitEvent('signup_completed', { user_id: user.id })
+  }, [user])
 
   // Clean up ?code= param left in URL after Supabase magic-link / email confirmation
   useEffect(() => {
