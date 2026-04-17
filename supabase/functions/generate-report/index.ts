@@ -81,8 +81,8 @@ async function fetchWeeklyData(sb: ReturnType<typeof createClient>, userId: stri
       .order("date", { ascending: false })
       .limit(1),
     sb.from("ai_insights")
-      .select("kind, content, created_at")
-      .eq("user_id", userId)
+      .select("kind, insight_json, created_at")
+      .eq("athlete_id", userId)
       .gte("created_at", weekStart + "T00:00:00Z")
       .order("created_at", { ascending: false })
       .limit(5),
@@ -91,7 +91,12 @@ async function fetchWeeklyData(sb: ReturnType<typeof createClient>, userId: stri
   const profile   = profileRes.data  || { display_name: "Athlete", email: "" }
   const sessions  = (sessionsRes.data || []) as WeeklyReportData["sessions"]
   const mvRow     = metricsRes.data?.[0]
-  const insights  = (insightsRes.data || []) as WeeklyReportData["insights"]
+  const rawInsights = insightsRes.data || []
+  const insights: WeeklyReportData["insights"] = rawInsights.map((row: { kind: string; insight_json: { text?: string } | null; created_at: string }) => ({
+    kind:       row.kind || "daily",
+    content:    row.insight_json?.text || "(no content)",
+    created_at: row.created_at,
+  }))
 
   const weekTss   = sessions.reduce((sum, s) => sum + (s.tss || 0), 0)
   const totalMins = sessions.reduce((sum, s) => sum + (s.duration_min || 0), 0)
@@ -218,7 +223,7 @@ async function fetchRaceReadinessData(sb: ReturnType<typeof createClient>, userI
   const eightWeeksAgo = new Date(Date.now() - 56 * 86400000).toISOString().slice(0, 10)
   const daysToRace    = Math.max(0, Math.ceil((new Date(raceDate).getTime() - Date.now()) / 86400000))
 
-  const [profileRes, sessionsRes, metricsRes, testRes, injuryRes] = await Promise.all([
+  const [profileRes, sessionsRes, metricsRes, raceResultRes, injuryRes] = await Promise.all([
     sb.from("profiles").select("display_name").eq("id", userId).single(),
     sb.from("training_log")
       .select("date, type, duration_min, tss, notes")
@@ -231,12 +236,12 @@ async function fetchRaceReadinessData(sb: ReturnType<typeof createClient>, userI
       .eq("user_id", userId)
       .order("date", { ascending: false })
       .limit(1),
-    // Most recent time trial / test result for Riegel
-    sb.from("test_results")
-      .select("test_type, result_value, result_unit, performed_at, notes")
+    // Most recent race result for Riegel predictor (distance_m in metres, actual_s in seconds)
+    sb.from("race_results")
+      .select("distance_m, actual_s, date, notes")
       .eq("user_id", userId)
-      .in("test_type", ["time_trial", "race_result"])
-      .order("performed_at", { ascending: false })
+      .not("actual_s", "is", null)
+      .order("date", { ascending: false })
       .limit(1),
     sb.from("injuries")
       .select("description, severity, created_at")
@@ -249,22 +254,22 @@ async function fetchRaceReadinessData(sb: ReturnType<typeof createClient>, userI
   const profile   = profileRes.data  || { display_name: "Athlete" }
   const sessions  = sessionsRes.data || []
   const mvRow     = metricsRes.data?.[0]
-  const testRow   = testRes.data?.[0]
+  const raceRow   = raceResultRes.data?.[0]
   const injuries  = injuryRes.data   || []
 
-  // Riegel prediction
+  // Riegel prediction from most recent race result
   let predictedTime: string | null = null
   let predictionBasis: string | undefined
-  if (testRow?.result_value && testRow?.test_type) {
+  if (raceRow?.actual_s && raceRow?.distance_m) {
     try {
-      const knownTime = Number(testRow.result_value)   // in seconds
-      const knownDist = Number(testRow.notes?.match(/(\d+\.?\d*)km/)?.[1] || 0) || 10  // default 10km
-      if (knownTime > 0 && knownDist > 0 && raceDistKm > 0) {
-        const predicted = riegel(knownTime, knownDist, raceDistKm)
-        predictedTime  = secsToHMS(predicted)
-        predictionBasis = `Based on ${knownDist}km ${raceSport} in ${secsToHMS(knownTime)} (${testRow.performed_at?.slice(0, 10)})`
+      const knownTimeSecs = Number(raceRow.actual_s)
+      const knownDistKm   = Number(raceRow.distance_m) / 1000
+      if (knownTimeSecs > 0 && knownDistKm > 0 && raceDistKm > 0) {
+        const predicted   = riegel(knownTimeSecs, knownDistKm, raceDistKm)
+        predictedTime     = secsToHMS(predicted)
+        predictionBasis   = `Based on ${knownDistKm.toFixed(1)}km ${raceSport} in ${secsToHMS(knownTimeSecs)} (${raceRow.date})`
       }
-    } catch { /* skip prediction if math fails */ }
+    } catch { /* skip if math fails */ }
   }
 
   const m    = mvRow || { ctl: 0, atl: 0, tsb: 0 }

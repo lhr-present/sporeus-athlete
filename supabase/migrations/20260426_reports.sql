@@ -74,7 +74,7 @@ CREATE POLICY "reports_coach_squad"
     )
   );
 
-GRANT SELECT, INSERT ON public.generated_reports TO authenticated;
+GRANT SELECT, INSERT, DELETE ON public.generated_reports TO authenticated;
 GRANT ALL ON public.generated_reports TO service_role;
 
 -- ── Email reports opt-in on profiles ─────────────────────────────────────────

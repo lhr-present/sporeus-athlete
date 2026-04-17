@@ -286,7 +286,7 @@ function buildDefaultParams(kind) {
     const monday = new Date(today)
     monday.setDate(today.getDate() + mondayOffset - 7)   // last full week
     const weekStart = monday.toISOString().slice(0, 10)
-    return { weekStart }
+    return { week_start: weekStart }
   }
   if (kind === 'monthly_squad') {
     const now = new Date()
