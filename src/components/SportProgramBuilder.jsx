@@ -1,8 +1,9 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useContext } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { S } from '../styles.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
+import { LangCtx } from '../contexts/LangCtx.jsx'
 import {
   simulateBanister, monteCarloOptimizer, peakFormWindow,
   addAdaptivePlanAdjustment,
@@ -21,18 +22,18 @@ const BLUE   = '#0064ff'
 const DIM    = { color: 'var(--muted)', fontSize: '11px', ...FONT_MONO }
 
 const SPORTS = [
-  { id: 'rowing',    label: 'Rowing',    icon: '🚣' },
-  { id: 'running',   label: 'Running',   icon: '🏃' },
-  { id: 'cycling',   label: 'Cycling',   icon: '🚴' },
-  { id: 'swimming',  label: 'Swimming',  icon: '🏊' },
-  { id: 'triathlon', label: 'Triathlon', icon: '🏅' },
+  { id: 'rowing',    lk: 'spb_sport_rowing',    icon: '🚣' },
+  { id: 'running',   lk: 'spb_sport_running',   icon: '🏃' },
+  { id: 'cycling',   lk: 'spb_sport_cycling',   icon: '🚴' },
+  { id: 'swimming',  lk: 'spb_sport_swimming',  icon: '🏊' },
+  { id: 'triathlon', lk: 'spb_sport_triathlon', icon: '🏅' },
 ]
 
 const GOALS = [
-  { id: 'base',     label: 'Build Base Fitness' },
-  { id: 'race',     label: 'Race Preparation' },
-  { id: 'peak',     label: 'Peak for Event' },
-  { id: 'maintain', label: 'Maintain Current Level' },
+  { id: 'base',     lk: 'spb_goal_base' },
+  { id: 'race',     lk: 'spb_goal_race' },
+  { id: 'peak',     lk: 'spb_goal_peak' },
+  { id: 'maintain', lk: 'spb_goal_maintain' },
 ]
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -71,6 +72,7 @@ function StepBar({ step, total = 5 }) {
 
 // ── Week detail modal ─────────────────────────────────────────────────────────
 function WeekModal({ weekIdx, trace, sport, form, split2k, vdot, onClose }) {
+  const { t } = useContext(LangCtx)
   const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   const days = trace ? trace.slice(weekIdx * 7, weekIdx * 7 + 7) : []
 
@@ -110,14 +112,14 @@ function WeekModal({ weekIdx, trace, sport, form, split2k, vdot, onClose }) {
           <span style={{ ...FONT_MONO, fontWeight: 600, color: ORANGE }}>WEEK {weekIdx + 1} · {phase.toUpperCase()}</span>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button style={{ ...S.btnSec, fontSize: '10px', padding: '3px 8px' }}
-              onClick={() => window.print()}>⎙ PRINT</button>
+              onClick={() => window.print()}>{t('spb_modalPrint')}</button>
             <button style={{ ...S.ghostBtn, color: ORANGE, fontSize: '16px' }} onClick={onClose} aria-label="Close">✕</button>
           </div>
         </div>
 
         {sessions.length > 0 && (
           <div style={{ marginBottom: '12px' }}>
-            <div style={{ ...DIM, marginBottom: '6px' }}>PLANNED SESSIONS</div>
+            <div style={{ ...DIM, marginBottom: '6px' }}>{t('spb_modalSessions')}</div>
             {sessions.map((s, i) => (
               <div key={i} style={{
                 display: 'flex', justifyContent: 'space-between',
@@ -130,11 +132,11 @@ function WeekModal({ weekIdx, trace, sport, form, split2k, vdot, onClose }) {
           </div>
         )}
 
-        <div style={{ ...DIM, marginBottom: '6px' }}>DAILY BANISTER TRACE</div>
+        <div style={{ ...DIM, marginBottom: '6px' }}>{t('spb_modalTrace')}</div>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ ...DIM, textAlign: 'left' }}>
-              <th style={{ paddingBottom: '6px' }}>DAY</th>
+              <th style={{ paddingBottom: '6px' }}>{t('spb_modalDay')}</th>
               <th>TSS</th>
               <th>CTL</th>
               <th>ATL</th>
@@ -162,12 +164,12 @@ function WeekModal({ weekIdx, trace, sport, form, split2k, vdot, onClose }) {
 
 // ── Step 1: Sport + Goal ──────────────────────────────────────────────────────
 function Step1({ form, setForm, onNext }) {
-  const [_lang] = useLocalStorage('sporeus-lang', 'en') // reserved for i18n step labels
+  const { t } = useContext(LangCtx)
   return (
     <div>
-      <div style={S.cardTitle}>SPORT &amp; GOAL</div>
+      <div style={S.cardTitle}>{t('spb_step1Title')}</div>
       <div style={{ marginBottom: '16px' }}>
-        <div style={DIM}>SELECT SPORT</div>
+        <div style={DIM}>{t('spb_selectSport')}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
           {SPORTS.map(s => (
             <button key={s.id} onClick={() => setForm(f => ({ ...f, sport: s.id }))}
@@ -176,16 +178,16 @@ function Step1({ form, setForm, onNext }) {
                 background: form.sport === s.id ? ORANGE : 'transparent',
                 color: form.sport === s.id ? '#fff' : ORANGE,
               }}>
-              {s.icon} {s.label}
+              {s.icon} {t(s.lk)}
             </button>
           ))}
         </div>
         {form._sportFromProfile && (
-          <div style={{ ...DIM, marginTop: '6px', color: '#00c853' }}>✓ Pre-filled from your profile</div>
+          <div style={{ ...DIM, marginTop: '6px', color: '#00c853' }}>{t('spb_preFilledProfile')}</div>
         )}
       </div>
       <div style={{ marginBottom: '16px' }}>
-        <div style={DIM}>PRIMARY GOAL</div>
+        <div style={DIM}>{t('spb_primaryGoal')}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
           {GOALS.map(g => (
             <button key={g.id} onClick={() => setForm(f => ({ ...f, goal: g.id }))}
@@ -194,32 +196,33 @@ function Step1({ form, setForm, onNext }) {
                 background: form.goal === g.id ? ORANGE : 'transparent',
                 color: form.goal === g.id ? '#fff' : ORANGE,
               }}>
-              {g.label}
+              {t(g.lk)}
             </button>
           ))}
         </div>
       </div>
       <div style={{ marginBottom: '20px' }}>
-        <label style={S.label}>RACE DATE (optional)</label>
+        <label style={S.label}>{t('spb_raceDate')}</label>
         <input type="date" style={{ ...S.input, width: '200px' }} value={form.raceDate || ''}
           onChange={e => setForm(f => ({ ...f, raceDate: e.target.value }))} />
         {form.raceDate && daysUntil(form.raceDate) != null && (
           <div style={{ ...DIM, marginTop: '6px', color: ORANGE }}>
-            {daysUntil(form.raceDate)} days to race
+            {daysUntil(form.raceDate)} {t('spb_daysToRace')}
           </div>
         )}
       </div>
-      <button style={S.btn} disabled={!form.sport || !form.goal} onClick={onNext}>NEXT →</button>
+      <button style={S.btn} disabled={!form.sport || !form.goal} onClick={onNext}>{t('spb_btnNext')}</button>
     </div>
   )
 }
 
 // ── Step 2: Performance baseline ──────────────────────────────────────────────
 function Step2({ form, setForm, onNext, onBack }) {
+  const { t } = useContext(LangCtx)
   const sport = form.sport
   return (
     <div>
-      <div style={S.cardTitle}>PERFORMANCE BASELINE</div>
+      <div style={S.cardTitle}>{t('spb_step2Title')}</div>
       {sport === 'rowing' && (
         <div style={S.row}>
           <div style={{ flex: '1 1 160px' }}>
@@ -227,7 +230,7 @@ function Step2({ form, setForm, onNext, onBack }) {
             <input style={S.input} placeholder="6:30" value={form.baseline?.time2k || ''}
               onChange={e => setForm(f => ({ ...f, baseline: { ...f.baseline, time2k: e.target.value } }))} />
             {form.baseline?._time2kFromLog && (
-              <div style={{ ...DIM, marginTop: '4px', color: '#00c853' }}>✓ From your test log</div>
+              <div style={{ ...DIM, marginTop: '4px', color: '#00c853' }}>{t('spb_fromTestLog')}</div>
             )}
           </div>
           <div style={{ flex: '1 1 120px' }}>
@@ -255,7 +258,7 @@ function Step2({ form, setForm, onNext, onBack }) {
             <input style={S.input} placeholder="20:00" value={form.baseline?.raceTime || ''}
               onChange={e => setForm(f => ({ ...f, baseline: { ...f.baseline, raceTime: e.target.value } }))} />
             {form.baseline?._raceFromLog && (
-              <div style={{ ...DIM, marginTop: '4px', color: '#00c853' }}>✓ From your log</div>
+              <div style={{ ...DIM, marginTop: '4px', color: '#00c853' }}>{t('spb_fromLog')}</div>
             )}
           </div>
         </div>
@@ -308,8 +311,8 @@ function Step2({ form, setForm, onNext, onBack }) {
         </div>
       )}
       <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
-        <button style={S.btnSec} onClick={onBack}>← BACK</button>
-        <button style={S.btn} onClick={onNext}>NEXT →</button>
+        <button style={S.btnSec} onClick={onBack}>{t('spb_btnBack')}</button>
+        <button style={S.btn} onClick={onNext}>{t('spb_btnNext')}</button>
       </div>
     </div>
   )
@@ -317,12 +320,13 @@ function Step2({ form, setForm, onNext, onBack }) {
 
 // ── Step 3: Constraints ────────────────────────────────────────────────────────
 function Step3({ form, setForm, onNext, onBack }) {
+  const { t } = useContext(LangCtx)
   return (
     <div>
-      <div style={S.cardTitle}>TRAINING CONSTRAINTS</div>
+      <div style={S.cardTitle}>{t('spb_step3Title')}</div>
       <div style={S.row}>
         <div style={{ flex: '1 1 140px' }}>
-          <label style={S.label}>Plan Duration (weeks)</label>
+          <label style={S.label}>{t('spb_planDuration')}</label>
           <select style={S.select} value={form.weeks || 8}
             onChange={e => setForm(f => ({ ...f, weeks: +e.target.value }))}>
             {[4, 6, 8, 10, 12, 16, 20, 24].map(w => (
@@ -331,45 +335,45 @@ function Step3({ form, setForm, onNext, onBack }) {
           </select>
         </div>
         <div style={{ flex: '1 1 140px' }}>
-          <label style={S.label}>Current Weekly TSS</label>
+          <label style={S.label}>{t('spb_currentTSSLabel')}</label>
           <input style={S.input} type="number" placeholder="250" value={form.currentTSS || ''}
             onChange={e => setForm(f => ({ ...f, currentTSS: +e.target.value }))} />
         </div>
         <div style={{ flex: '1 1 140px' }}>
-          <label style={S.label}>Peak Weekly TSS Target</label>
+          <label style={S.label}>{t('spb_peakTSSLabel')}</label>
           <input style={S.input} type="number" placeholder="500" value={form.peakTSS || ''}
             onChange={e => setForm(f => ({ ...f, peakTSS: +e.target.value }))} />
         </div>
       </div>
       <div style={S.row}>
         <div style={{ flex: '1 1 180px' }}>
-          <label style={S.label}>Current CTL (fitness)</label>
+          <label style={S.label}>{t('spb_currentCTL')}</label>
           <input style={S.input} type="number" placeholder="45"
             value={form.startCTL !== undefined ? form.startCTL : ''}
             onChange={e => setForm(f => ({ ...f, startCTL: +e.target.value }))} />
-          {form._ctlFromLog && <div style={{ ...DIM, marginTop: '4px', color: '#00c853' }}>✓ From your training data</div>}
+          {form._ctlFromLog && <div style={{ ...DIM, marginTop: '4px', color: '#00c853' }}>{t('spb_fromTrainingData')}</div>}
         </div>
         <div style={{ flex: '1 1 180px' }}>
-          <label style={S.label}>Current ATL (fatigue)</label>
+          <label style={S.label}>{t('spb_currentATL')}</label>
           <input style={S.input} type="number" placeholder="55"
             value={form.startATL !== undefined ? form.startATL : ''}
             onChange={e => setForm(f => ({ ...f, startATL: +e.target.value }))} />
-          {form._ctlFromLog && <div style={{ ...DIM, marginTop: '4px', color: '#00c853' }}>✓ From your training data</div>}
+          {form._ctlFromLog && <div style={{ ...DIM, marginTop: '4px', color: '#00c853' }}>{t('spb_fromTrainingData')}</div>}
         </div>
         <div style={{ flex: '1 1 140px' }}>
-          <label style={S.label}>Sessions/week (avg)</label>
+          <label style={S.label}>{t('spb_sessionsPerWeek')}</label>
           <input style={S.input} type="number" placeholder="5" value={form.sessionsPerWeek || ''}
             onChange={e => setForm(f => ({ ...f, sessionsPerWeek: +e.target.value }))} />
-          {form._sessionsFromLog && <div style={{ ...DIM, marginTop: '4px', color: '#00c853' }}>✓ From last 4 weeks</div>}
+          {form._sessionsFromLog && <div style={{ ...DIM, marginTop: '4px', color: '#00c853' }}>{t('spb_fromLastWeeks')}</div>}
         </div>
       </div>
-      <div style={{ ...DIM, marginTop: '8px' }}>Recovery weeks auto-inserted every 4th week.</div>
+      <div style={{ ...DIM, marginTop: '8px' }}>{t('spb_recoveryAuto')}</div>
       <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
-        <button style={S.btnSec} onClick={onBack}>← BACK</button>
+        <button style={S.btnSec} onClick={onBack}>{t('spb_btnBack')}</button>
         <button style={S.btn}
           disabled={!(form.currentTSS > 0 && form.peakTSS > 0 && form.peakTSS > form.currentTSS)}
           onClick={onNext}>
-          GENERATE PLAN →
+          {t('spb_generatePlan')}
         </button>
       </div>
     </div>
@@ -378,6 +382,7 @@ function Step3({ form, setForm, onNext, onBack }) {
 
 // ── Step 4: Plan generation ────────────────────────────────────────────────────
 function Step4({ form, onResult, onBack }) {
+  const { t } = useContext(LangCtx)
   const [running, setRunning] = useState(false)
   const generate = () => {
     setRunning(true)
@@ -394,22 +399,22 @@ function Step4({ form, onResult, onBack }) {
   }
   return (
     <div>
-      <div style={S.cardTitle}>GENERATE PLAN</div>
+      <div style={S.cardTitle}>{t('spb_step4Title')}</div>
       <div style={{ ...S.card, background: 'var(--surface)' }}>
         <div style={{ ...FONT_MONO, fontSize: '12px', lineHeight: '1.8', color: 'var(--text)' }}>
-          <div>▸ Sport: <strong>{SPORTS.find(s => s.id === form.sport)?.label || '—'}</strong></div>
-          <div>▸ Goal: <strong>{GOALS.find(g => g.id === form.goal)?.label || '—'}</strong></div>
+          <div>▸ Sport: <strong>{SPORTS.find(s => s.id === form.sport) ? t(SPORTS.find(s => s.id === form.sport).lk) : '—'}</strong></div>
+          <div>▸ Goal: <strong>{GOALS.find(g => g.id === form.goal) ? t(GOALS.find(g => g.id === form.goal).lk) : '—'}</strong></div>
           <div>▸ Duration: <strong>{form.weeks || 8} weeks</strong></div>
           <div>▸ TSS range: <strong>{form.currentTSS || '?'} → {form.peakTSS || '?'} / week</strong></div>
           <div>▸ Start CTL/ATL: <strong>{form.startCTL || 0} / {form.startATL || 0}</strong></div>
           {form.raceDate && <div>▸ Race date: <strong>{form.raceDate}</strong> ({daysUntil(form.raceDate)} days)</div>}
         </div>
       </div>
-      <div style={{ ...DIM, marginBottom: '16px' }}>500 Monte Carlo simulations to find highest-scoring plan.</div>
+      <div style={{ ...DIM, marginBottom: '16px' }}>{t('spb_monteCarloSub')}</div>
       <div style={{ display: 'flex', gap: '8px' }}>
-        <button style={S.btnSec} onClick={onBack} disabled={running}>← BACK</button>
+        <button style={S.btnSec} onClick={onBack} disabled={running}>{t('spb_btnBack')}</button>
         <button style={{ ...S.btn, opacity: running ? 0.6 : 1 }} onClick={generate} disabled={running}>
-          {running ? 'SIMULATING…' : '⚡ RUN OPTIMIZER'}
+          {running ? t('spb_simulating') : t('spb_runOptimizer')}
         </button>
       </div>
     </div>
@@ -418,6 +423,7 @@ function Step4({ form, onResult, onBack }) {
 
 // ── Step 5: Plan display ───────────────────────────────────────────────────────
 function Step5({ form, result, onRestart, log: _log, setLog }) {
+  const { t } = useContext(LangCtx)
   const [selectedWeek, setSelectedWeek] = useState(null)
   const [actualTSS, setActualTSS]       = useState({})
   const [saved, setSaved]               = useState(false)
@@ -528,7 +534,7 @@ function Step5({ form, result, onRestart, log: _log, setLog }) {
         />
       )}
 
-      <div style={S.cardTitle}>YOUR OPTIMIZED PLAN</div>
+      <div style={S.cardTitle}>{t('spb_step5Title')}</div>
 
       {daysLeft != null && (
         <div style={{
@@ -537,27 +543,27 @@ function Step5({ form, result, onRestart, log: _log, setLog }) {
         }}>
           <span style={{ ...FONT_MONO, fontSize: '28px', fontWeight: 700, color: ORANGE }}>{daysLeft}</span>
           <div>
-            <div style={{ ...FONT_MONO, fontSize: '11px', color: 'var(--muted)' }}>DAYS TO RACE</div>
+            <div style={{ ...FONT_MONO, fontSize: '11px', color: 'var(--muted)' }}>{t('spb_daysToRaceLabel')}</div>
             <div style={{ ...FONT_MONO, fontSize: '12px' }}>{form.raceDate}</div>
           </div>
         </div>
       )}
 
       <div style={{ ...S.row, marginBottom: '16px' }}>
-        <div style={S.stat}><span style={S.statVal}>{bestScore}</span><span style={S.statLbl}>PLAN SCORE</span></div>
-        <div style={S.stat}><span style={S.statVal}>{meanScore}</span><span style={S.statLbl}>AVG SCORE</span></div>
-        <div style={S.stat}><span style={{ ...S.statVal, fontSize: '16px' }}>Day {pfWindow?.peakDay ?? '?'}</span><span style={S.statLbl}>PEAK FORM</span></div>
+        <div style={S.stat}><span style={S.statVal}>{bestScore}</span><span style={S.statLbl}>{t('spb_planScore')}</span></div>
+        <div style={S.stat}><span style={S.statVal}>{meanScore}</span><span style={S.statLbl}>{t('spb_avgScore')}</span></div>
+        <div style={S.stat}><span style={{ ...S.statVal, fontSize: '16px' }}>Day {pfWindow?.peakDay ?? '?'}</span><span style={S.statLbl}>{t('spb_peakForm')}</span></div>
         <div style={S.stat}>
           <span style={{ ...S.statVal, fontSize: '16px' }}>
             {pfWindow?.peakTSB != null ? (pfWindow.peakTSB > 0 ? '+' : '') + pfWindow.peakTSB : '?'}
           </span>
-          <span style={S.statLbl}>PEAK TSB</span>
+          <span style={S.statLbl}>{t('spb_peakTSBLabel')}</span>
         </div>
       </div>
 
       {histogram && (
         <div style={{ ...S.card }}>
-          <div style={S.cardTitle}>SCORE DISTRIBUTION (500 simulations)</div>
+          <div style={S.cardTitle}>{t('spb_scoreDistTitle')}</div>
           <ResponsiveContainer width="100%" height={120}>
             <BarChart data={histogram} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
               <XAxis dataKey="range" tick={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 9 }} />
@@ -576,16 +582,16 @@ function Step5({ form, result, onRestart, log: _log, setLog }) {
 
       <div style={{ ...S.card }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={S.cardTitle}>WEEKLY PLAN — PLAN vs ACTUAL</div>
+          <div style={S.cardTitle}>{t('spb_weeklyPlanTitle')}</div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button style={{ ...S.btnSec, fontSize: '10px', padding: '4px 10px' }}
-              onClick={() => exportCSV(adaptedPlan ? adaptedPlan.map(w => w.tss ?? w) : bestPlan, actualTSS, form.raceDate)}>↓ CSV</button>
+              onClick={() => exportCSV(adaptedPlan ? adaptedPlan.map(w => w.tss ?? w) : bestPlan, actualTSS, form.raceDate)}>{t('spb_exportCSV')}</button>
             <button style={{
               ...S.btnSec, fontSize: '10px', padding: '4px 10px',
               background: saved ? '#00c85333' : 'transparent',
               color: saved ? '#00c853' : ORANGE,
             }} onClick={savePlanToLog} disabled={saved}>
-              {saved ? '✓ SAVED' : '+ SAVE TO LOG'}
+              {saved ? t('spb_saved') : t('spb_saveToLog')}
             </button>
           </div>
         </div>
@@ -597,7 +603,7 @@ function Step5({ form, result, onRestart, log: _log, setLog }) {
             borderRadius: '4px', padding: '4px 10px', marginBottom: '10px',
             ...FONT_MONO, fontSize: '10px', color: '#00c853',
           }}>
-            ◈ {complianceRun} consecutive weeks within plan
+            ◈ {complianceRun} {t('spb_consecutiveWeeks')}
           </div>
         )}
 
@@ -613,14 +619,14 @@ function Step5({ form, result, onRestart, log: _log, setLog }) {
                 setAdaptedPlan(addAdaptivePlanAdjustment(bestPlan, actualArray, currentWeekIdx))
               }}
             >
-              ⚡ ADAPT PLAN
+              {t('spb_adaptPlan')}
             </button>
             {adaptedPlan && (
               <button
                 style={{ ...S.ghostBtn, fontSize: '10px', color: 'var(--muted)', marginLeft: '8px' }}
                 onClick={() => setAdaptedPlan(null)}
               >
-                ✕ reset
+                {t('spb_resetPlan')}
               </button>
             )}
           </div>
@@ -630,12 +636,12 @@ function Step5({ form, result, onRestart, log: _log, setLog }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', ...FONT_MONO, fontSize: '11px' }}>
             <thead>
               <tr style={{ color: 'var(--muted)', borderBottom: '1px solid var(--border)' }}>
-                <th style={{ padding: '4px 8px', textAlign: 'left' }}>WK</th>
-                <th style={{ padding: '4px 8px', textAlign: 'right' }}>PLANNED</th>
-                <th style={{ padding: '4px 8px', textAlign: 'right' }}>ACTUAL</th>
-                <th style={{ padding: '4px 8px', textAlign: 'right' }}>VARIANCE</th>
-                <th style={{ padding: '4px 8px', textAlign: 'left' }}>SESSIONS</th>
-                <th style={{ padding: '4px 8px', textAlign: 'center' }}>DETAIL</th>
+                <th style={{ padding: '4px 8px', textAlign: 'left' }}>{t('spb_colWk')}</th>
+                <th style={{ padding: '4px 8px', textAlign: 'right' }}>{t('spb_colPlanned')}</th>
+                <th style={{ padding: '4px 8px', textAlign: 'right' }}>{t('spb_colActual')}</th>
+                <th style={{ padding: '4px 8px', textAlign: 'right' }}>{t('spb_colVariance')}</th>
+                <th style={{ padding: '4px 8px', textAlign: 'left' }}>{t('spb_colSessions')}</th>
+                <th style={{ padding: '4px 8px', textAlign: 'center' }}>{t('spb_colDetail')}</th>
               </tr>
             </thead>
             <tbody>
@@ -699,7 +705,7 @@ function Step5({ form, result, onRestart, log: _log, setLog }) {
 
       {trace.length > 0 && (
         <div style={{ ...S.card }}>
-          <div style={S.cardTitle}>FITNESS / FATIGUE TRACE (Banister)</div>
+          <div style={S.cardTitle}>{t('spb_fitnessTrace')}</div>
           <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
             <path d={makePath('CTL')} fill="none" stroke={BLUE}   strokeWidth="2" />
             <path d={makePath('ATL')} fill="none" stroke={ORANGE} strokeWidth="2" />
@@ -710,9 +716,9 @@ function Step5({ form, result, onRestart, log: _log, setLog }) {
             )}
           </svg>
           <div style={{ display: 'flex', gap: '16px', marginTop: '8px' }}>
-            <span style={{ ...FONT_MONO, fontSize: '10px', color: BLUE }}>— CTL (Fitness)</span>
-            <span style={{ ...FONT_MONO, fontSize: '10px', color: ORANGE }}>— ATL (Fatigue)</span>
-            <span style={{ ...FONT_MONO, fontSize: '10px', color: '#00c853' }}>| Peak form day</span>
+            <span style={{ ...FONT_MONO, fontSize: '10px', color: BLUE }}>{t('spb_ctlLegend')}</span>
+            <span style={{ ...FONT_MONO, fontSize: '10px', color: ORANGE }}>{t('spb_atlLegend')}</span>
+            <span style={{ ...FONT_MONO, fontSize: '10px', color: '#00c853' }}>{t('spb_peakFormLegend')}</span>
           </div>
         </div>
       )}
@@ -720,7 +726,7 @@ function Step5({ form, result, onRestart, log: _log, setLog }) {
       {/* B1 — Compare top 2 plans */}
       <div style={{ ...S.card }}>
         <button style={{ ...S.btnSec, fontSize: '10px', marginTop: 0 }} onClick={() => setShowCompare(s => !s)}>
-          ⇄ Compare top 2 plans
+          {t('spb_comparePlans')}
         </button>
         {showCompare && (() => {
           const planA = bestPlan
@@ -810,19 +816,19 @@ function Step5({ form, result, onRestart, log: _log, setLog }) {
 
       {/* B2 — What-if missed week simulation */}
       <div style={{ ...S.card }}>
-        <div style={{ ...FONT_MONO, fontSize: '10px', color: 'var(--muted)', marginBottom: '8px' }}>SIMULATE MISSED WEEK</div>
+        <div style={{ ...FONT_MONO, fontSize: '10px', color: 'var(--muted)', marginBottom: '8px' }}>{t('spb_simulateMissed')}</div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ ...FONT_MONO, fontSize: '11px' }}>Simulate missed week:</span>
+          <span style={{ ...FONT_MONO, fontSize: '11px' }}>{t('spb_simulateMissed')}:</span>
           <select
             style={{ ...FONT_MONO, fontSize: '11px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '4px', padding: '3px 6px', color: 'var(--text)' }}
             value={missedWeekInput}
             onChange={e => setMissedWeekInput(e.target.value)}
           >
-            <option value="">Select week…</option>
+            <option value="">{t('spb_missedSelectWeek')}</option>
             {bestPlan.map((_, i) => <option key={i} value={i + 1}>Week {i + 1}</option>)}
           </select>
           <button style={{ ...S.btnSec, fontSize: '10px' }} onClick={() => setMissedWeek(missedWeekInput ? parseInt(missedWeekInput) : null)}>
-            Miss this week
+            {t('spb_missWeekBtn')}
           </button>
           {missedWeek && (
             <button style={{ ...S.ghostBtn, fontSize: '10px', color: 'var(--muted)' }} onClick={() => { setMissedWeek(null); setMissedWeekInput('') }}>✕ clear</button>
@@ -853,10 +859,10 @@ function Step5({ form, result, onRestart, log: _log, setLog }) {
           return (
             <div style={{ marginTop: '12px' }}>
               <div style={{ ...FONT_MONO, fontSize: '11px', marginBottom: '8px' }}>
-                Missing week {missedWeek}: TSB drops{' '}
+                Week {missedWeek}: {t('spb_missedImpact')}{' '}
                 <span style={{ color: '#e03030', fontWeight: 700 }}>{Math.abs(ctlDrop)} pts</span>
                 {dayShift !== 0 && (
-                  <>, peak form shifts <span style={{ color: '#f5c542', fontWeight: 700 }}>{Math.abs(dayShift)} days {dayShift > 0 ? 'later' : 'earlier'}</span></>
+                  <>, {t('spb_peakFormShifts')} <span style={{ color: '#f5c542', fontWeight: 700 }}>{Math.abs(dayShift)} {dayShift > 0 ? t('spb_daysLater') : t('spb_daysEarlier')}</span></>
                 )}
               </div>
               <svg viewBox={`0 0 ${OW} ${OH}`} style={{ width: OW, height: OH, display: 'block', overflow: 'visible' }}>
@@ -870,13 +876,14 @@ function Step5({ form, result, onRestart, log: _log, setLog }) {
         })()}
       </div>
 
-      <button style={S.btn} onClick={onRestart}>BUILD NEW PLAN</button>
+      <button style={S.btn} onClick={onRestart}>{t('spb_buildNewPlan')}</button>
     </div>
   )
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function SportProgramBuilder() {
+  const { t } = useContext(LangCtx)
   const { log, setLog, profile } = useData()
 
   const [step, setStep]     = useState(0)
@@ -940,10 +947,8 @@ export default function SportProgramBuilder() {
     <div>
       <style>{`@keyframes fadeIn{from{opacity:0}to{opacity:1}}.spb-step{animation:fadeIn 200ms ease-out both}`}</style>
       <div style={{ ...S.card }}>
-        <div style={{ ...S.cardTitle, marginBottom: '6px' }}>SPORT PROGRAM BUILDER</div>
-        <div style={{ ...DIM, marginBottom: '16px' }}>
-          Monte Carlo optimizer · Banister impulse-response · 500 simulations
-        </div>
+        <div style={{ ...S.cardTitle, marginBottom: '6px' }}>{t('spb_title')}</div>
+        <div style={{ ...DIM, marginBottom: '16px' }}>{t('spb_sub')}</div>
         <StepBar step={step} />
         <div className="spb-step" key={step}>
           {step === 0 && <Step1 form={form} setForm={setForm} onNext={() => setStep(1)} />}
