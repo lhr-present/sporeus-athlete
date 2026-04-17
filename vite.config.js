@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { visualizer } from 'rollup-plugin-visualizer'
 import path from 'path'
 import { readFileSync } from 'fs'
 
@@ -56,6 +57,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    process.env.ANALYZE && visualizer({ filename: 'dist/bundle-stats.html', open: false, gzipSize: true, brotliSize: true }),
     VitePWA({
       registerType: 'autoUpdate',
       strategies: 'injectManifest',   // Phase 3.4: custom SW for push notification handling

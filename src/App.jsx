@@ -1,4 +1,4 @@
-import { lazy, useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { version as APP_VERSION } from '../package.json'
 import { logger } from './lib/logger.js'
 import { LangCtx, TABS } from './contexts/LangCtx.jsx'
@@ -8,25 +8,27 @@ import { DataProvider } from './contexts/DataContext.jsx'
 import { S, ANIM_CSS } from './styles.js'
 import AsyncBoundary from './components/ui/AsyncBoundary.jsx'
 import TodayView from './components/TodayView.jsx'
-import ZoneCalc from './components/ZoneCalc.jsx'
-import TrainingLog from './components/TrainingLog.jsx'
-import Recovery from './components/Recovery.jsx'
-import OnboardingWizard from './components/Onboarding.jsx'
-import SearchPalette from './components/SearchPalette.jsx'
 import AuthGate from './components/AuthGate.jsx'
 import InstallPrompt from './components/InstallPrompt.jsx'
 import OfflineBanner from './components/OfflineBanner.jsx'
 import ConnectionBanner from './components/ConnectionBanner.jsx'
 import RoleSelector from './components/RoleSelector.jsx'
-import MigrationModal from './components/MigrationModal.jsx'
-import { InviteModal } from './components/MyCoach.jsx'
 import { useAuth } from './hooks/useAuth.js'
 import { isSupabaseReady } from './lib/supabase.js'
 import { hasCurrentConsent } from './lib/db/consentVersion.js'
 import NotificationBell from './components/NotificationBell.jsx'
 import { detectLocalData } from './lib/dataMigration.js'
-import QuickAddModal from './components/QuickAddModal.jsx'
-import KeyboardShortcuts from './components/KeyboardShortcuts.jsx'
+// Lazy-loaded tab views (only fetched when tab is first visited)
+const ZoneCalc      = lazy(() => import('./components/ZoneCalc.jsx'))
+const TrainingLog   = lazy(() => import('./components/TrainingLog.jsx'))
+const Recovery      = lazy(() => import('./components/Recovery.jsx'))
+// Lazy-loaded overlays (only fetched when opened)
+const SearchPalette = lazy(() => import('./components/SearchPalette.jsx'))
+const QuickAddModal = lazy(() => import('./components/QuickAddModal.jsx'))
+const MigrationModal     = lazy(() => import('./components/MigrationModal.jsx'))
+const OnboardingWizard   = lazy(() => import('./components/Onboarding.jsx'))
+const KeyboardShortcuts  = lazy(() => import('./components/KeyboardShortcuts.jsx'))
+const InviteModalLazy    = lazy(() => import('./components/MyCoach.jsx').then(m => ({ default: m.InviteModal })))
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { flushQueue } from './lib/offlineQueue.js'
 import ToastStack from './components/ToastStack.jsx'
@@ -104,20 +106,22 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
       <ToastStack toasts={toasts} dismissToast={dismissToast} />
 
       {showSearch && (
-        <SearchPalette
-          onNavigate={tabId => { handleTabClick(tabId); setShowSearch(false) }}
-          onToggleDark={() => setDark(d => !d)}
-          onToggleLang={() => setLang(l => l === 'en' ? 'tr' : 'en')}
-          onClose={() => setShowSearch(false)}
-          log={log}
-          onSync={() => flushQueue()}
-          onExport={handleExport}
-          authUser={authUser}
-          tier={authProfile?.subscription_tier || 'free'}
-        />
+        <Suspense fallback={null}>
+          <SearchPalette
+            onNavigate={tabId => { handleTabClick(tabId); setShowSearch(false) }}
+            onToggleDark={() => setDark(d => !d)}
+            onToggleLang={() => setLang(l => l === 'en' ? 'tr' : 'en')}
+            onClose={() => setShowSearch(false)}
+            log={log}
+            onSync={() => flushQueue()}
+            onExport={handleExport}
+            authUser={authUser}
+            tier={authProfile?.subscription_tier || 'free'}
+          />
+        </Suspense>
       )}
 
-      {!onboarded && <OnboardingWizard onFinish={finishOnboarding} setLang={setLang} lang={lang}/>}
+      {!onboarded && <Suspense fallback={null}><OnboardingWizard onFinish={finishOnboarding} setLang={setLang} lang={lang}/></Suspense>}
 
       {/* ── KVKK / GDPR consent gate — must accept before health data is stored ── */}
       {onboarded && !hasCurrentConsent() && (
@@ -163,11 +167,13 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
 
       {/* Coach invite acceptance modal */}
       {inviteCode && authUser && authProfile?.role !== 'coach' && (
-        <InviteModal
-          inviteCode={inviteCode}
-          userId={authUser.id}
-          onDone={() => setInviteCode(null)}
-        />
+        <Suspense fallback={null}>
+          <InviteModalLazy
+            inviteCode={inviteCode}
+            userId={authUser.id}
+            onDone={() => setInviteCode(null)}
+          />
+        </Suspense>
       )}
 
       {/* Guest mode upgrade nudge — after 30 days or 50 sessions */}
@@ -343,18 +349,24 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
 
       {/* ── Quick-Add Session modal ───────────────────────────────────────── */}
       {showQuickAdd && (
-        <QuickAddModal
-          onAdd={handleAddSession}
-          onClose={() => setShowQuickAdd(false)}
-        />
+        <Suspense fallback={null}>
+          <QuickAddModal
+            onAdd={handleAddSession}
+            onClose={() => setShowQuickAdd(false)}
+          />
+        </Suspense>
       )}
 
       {/* ── Keyboard Shortcuts Help ───────────────────────────────────────── */}
-      <KeyboardShortcuts
-        open={showShortcutsHelp}
-        onClose={() => setShowShortcutsHelp(false)}
-        lang={lang}
-      />
+      {showShortcutsHelp && (
+        <Suspense fallback={null}>
+          <KeyboardShortcuts
+            open={showShortcutsHelp}
+            onClose={() => setShowShortcutsHelp(false)}
+            lang={lang}
+          />
+        </Suspense>
+      )}
     </LangCtx.Provider>
   )
 }
@@ -411,7 +423,7 @@ export default function App() {
       if (authProfile && !authProfile.role) return <RoleSelector userId={user.id} onComplete={refreshProfile} lang={lang} />
       if (!authProfile) return <RoleSelector userId={user.id} onComplete={refreshProfile} lang={lang} />
       const localData = detectLocalData()
-      if (localData) return <MigrationModal userId={user.id} localData={localData} lang={lang} onComplete={refreshProfile} />
+      if (localData) return <AsyncBoundary name="Migration"><MigrationModal userId={user.id} localData={localData} lang={lang} onComplete={refreshProfile} /></AsyncBoundary>
     }
     // If guest and a real user signs in behind the scenes, clear the guest flag
     if (isGuest && user) localStorage.removeItem('sporeus-guest-mode')
