@@ -13,13 +13,14 @@ export const TIERS = {
 
 // Features gated by tier
 const FEATURE_TIERS = {
-  multi_team:           'coach',
-  export_pdf:           'coach',
-  api_access:           'club',
-  white_label:          'club',
-  realtime_dashboard:   'coach',
-  semantic_search:      'coach',
-  squad_pattern_search: 'coach',
+  multi_team:            'coach',
+  export_pdf:            'coach',
+  api_access:            'club',
+  white_label:           'club',
+  realtime_dashboard:    'coach',
+  semantic_search:       'coach',
+  squad_pattern_search:  'coach',
+  debug_realtime_stats:  'coach',
 }
 
 const TIER_RANK = { free: 0, coach: 1, club: 2 }

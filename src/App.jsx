@@ -16,6 +16,7 @@ import SearchPalette from './components/SearchPalette.jsx'
 import AuthGate from './components/AuthGate.jsx'
 import InstallPrompt from './components/InstallPrompt.jsx'
 import OfflineBanner from './components/OfflineBanner.jsx'
+import ConnectionBanner from './components/ConnectionBanner.jsx'
 import RoleSelector from './components/RoleSelector.jsx'
 import MigrationModal from './components/MigrationModal.jsx'
 import { InviteModal } from './components/MyCoach.jsx'
@@ -96,6 +97,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
       <style>{ANIM_CSS}</style>
 
       <OfflineBanner />
+      <ConnectionBanner />
       <InstallPrompt />
       <ToastStack toasts={toasts} dismissToast={dismissToast} />
 

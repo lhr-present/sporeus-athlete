@@ -7,6 +7,7 @@ import { encryptMessage, decryptMessage } from '../lib/crypto.js'
 import { getMessages, markReadById, markReadMany, insertMessage, subscribeToMessages } from '../lib/db/messages.js'
 export { buildChannelId } from '../lib/db/messages.js'
 import { logAction } from '../lib/db/auditLog.js'
+import { useMessageChannel } from '../hooks/useMessageChannel.js'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -51,14 +52,31 @@ export function canSendMessage(senderRole) {
  *   onClose  — close handler
  */
 export default function CoachMessage({ athlete, coachId, onClose }) {
-  const [msgs,    setMsgs]    = useState([])
-  const [input,   setInput]   = useState('')
-  const [sending, setSending] = useState(false)
-  const [error,   setError]   = useState(null)
+  const [msgs,          setMsgs]          = useState([])
+  const [input,         setInput]         = useState('')
+  const [sending,       setSending]       = useState(false)
+  const [error,         setError]         = useState(null)
+  const [partnerTyping, setPartnerTyping] = useState(false)
   const channelRef = useRef(null)
   const threadRef  = useRef(null)
 
   const athleteId = athlete?.athlete_id
+
+  // ── Broadcast channel: typing indicators + read receipts ─────────────────────
+  const { sendTypingStart, sendTypingStop, sendRead } = useMessageChannel({
+    coachId,
+    athleteId: athleteId || '',
+    userId: coachId,
+    onTyping: setPartnerTyping,
+    onRead: () => {
+      // Partner read our messages — mark coach messages as visually read
+      setMsgs(prev => prev.map(m =>
+        m.sender_role === 'coach' && !m.read_at
+          ? { ...m, read_at: new Date().toISOString() }
+          : m
+      ))
+    },
+  })
 
   // ── Load history ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -70,6 +88,7 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
         )
         setMsgs(decrypted)
         markRead(decrypted)
+        sendRead()  // broadcast + persist that coach has read the thread
         logAction('read', 'messages', athleteId, ['body'])
       }
     })
@@ -122,6 +141,7 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
     if (!body || sending || !coachId || !athleteId) return
     setSending(true)
     setError(null)
+    sendTypingStop()
     const encryptedBody = await encryptMessage(body, coachId)
     const { error: e } = await insertMessage({ coachId, athleteId, encryptedBody })
     if (e) {
@@ -130,13 +150,18 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
       setInput('')
     }
     setSending(false)
-  }, [input, sending, coachId, athleteId])
+  }, [input, sending, coachId, athleteId, sendTypingStop])
 
   function handleKey(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
     }
+  }
+
+  function handleInputChange(e) {
+    setInput(e.target.value)
+    sendTypingStart()
   }
 
   if (!athlete) return null
@@ -225,6 +250,18 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
               </div>
             )
           })}
+
+          {/* Typing indicator */}
+          {partnerTyping && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}>
+              <div style={{ padding: '5px 10px', background: '#1e1e1e', borderRadius: '10px 10px 10px 2px' }}>
+                <span style={{ fontSize: 9, color: '#888', fontStyle: 'italic' }}>
+                  {athlete.display_name} is typing
+                  <span style={{ display: 'inline-block', animation: 'sporeus-pulse 1s ease-in-out infinite' }}>…</span>
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Error */}
@@ -242,8 +279,9 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
         }}>
           <textarea
             value={input}
-            onChange={e => setInput(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={handleKey}
+            onBlur={sendTypingStop}
             placeholder="Message… (Enter to send)"
             rows={1}
             style={{

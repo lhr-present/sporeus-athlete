@@ -1,8 +1,9 @@
 // ─── coach/SessionManager.jsx — Coach session scheduling + RSVP overview ──────
 import { useState, useCallback } from 'react'
 import { S } from '../../styles.js'
-import { createSession, getUpcomingSessions, getSessionAttendance, aggregateAttendance } from '../../lib/db/coachSessions.js'
+import { createSession, getUpcomingSessions } from '../../lib/db/coachSessions.js'
 import { useAsync } from '../../hooks/useAsync.js'
+import { useSessionAttendance } from '../../hooks/useSessionAttendance.js'
 import SessionQRModal from './SessionQRModal.jsx'
 
 const MONO   = "'IBM Plex Mono', monospace"
@@ -26,10 +27,15 @@ export default function SessionManager({ coachId, lang = 'en' }) {
   const [creating,    setCreating]    = useState(false)
   const [showForm,    setShowForm]    = useState(false)
   const [expanded,    setExpanded]    = useState(null)   // sessionId with detail open
-  const [attendance,  setAttendance]  = useState({})     // { [sessionId]: { confirmed, declined, pending, total } }
   const [form, setForm] = useState({ title: '', session_date: '', session_time: '', notes: '' })
   const [err, setErr]   = useState('')
   const [qrSession,   setQrSession]   = useState(null)   // session object to show QR for
+
+  // Live RSVP subscription for the currently-expanded session
+  const { attendance: liveAttendance, popAnim } = useSessionAttendance({
+    sessionId: expanded,
+    enabled: !!expanded,
+  })
 
   const today = new Date().toISOString().slice(0, 10)
 
@@ -44,18 +50,8 @@ export default function SessionManager({ coachId, lang = 'en' }) {
     { immediate: !!coachId }
   )
 
-  const loadAttendance = async (sessionId) => {
-    if (attendance[sessionId]) return  // already loaded
-    const { data } = await getSessionAttendance(sessionId)
-    if (data) {
-      setAttendance(prev => ({ ...prev, [sessionId]: aggregateAttendance(data) }))
-    }
-  }
-
-  const handleExpand = async (sessionId) => {
-    const next = expanded === sessionId ? null : sessionId
-    setExpanded(next)
-    if (next) await loadAttendance(next)
+  const handleExpand = (sessionId) => {
+    setExpanded(prev => prev === sessionId ? null : sessionId)
   }
 
   const handleCreate = async () => {
@@ -159,8 +155,9 @@ export default function SessionManager({ coachId, lang = 'en' }) {
       )}
 
       {sessions.map(s => {
-        const att = attendance[s.id]
         const isOpen = expanded === s.id
+        // Use live attendance when this session is expanded, null otherwise
+        const att = isOpen ? liveAttendance : null
         return (
           <div key={s.id} style={{ border: '1px solid #2a2a2a', borderRadius: '4px', marginBottom: '8px', overflow: 'hidden' }}>
             {/* Row */}
@@ -194,11 +191,20 @@ export default function SessionManager({ coachId, lang = 'en' }) {
                   <>
                     <div style={{ fontSize: '9px', color: '#555', letterSpacing: '0.1em', marginBottom: '8px' }}>
                       {isTR ? 'KATILIM DURUMU' : 'ATTENDANCE'}
+                      {popAnim && (
+                        <span style={{ marginLeft: '8px', color: '#5bc25b', fontSize: '8px', animation: 'sporeus-fade 0.6s ease-out' }}>
+                          ● live
+                        </span>
+                      )}
                     </div>
                     <div style={{ display: 'flex', gap: '16px' }}>
                       {(['confirmed', 'declined', 'pending']).map(st => (
                         <div key={st} style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: '18px', fontWeight: 700, color: attendanceColor(st) }}>
+                          <div style={{
+                            fontSize: '18px', fontWeight: 700, color: attendanceColor(st),
+                            transform: popAnim ? 'scale(1.15)' : 'scale(1)',
+                            transition: 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)',
+                          }}>
                             {att[st]}
                           </div>
                           <div style={{ fontSize: '8px', color: '#555', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
@@ -209,7 +215,13 @@ export default function SessionManager({ coachId, lang = 'en' }) {
                         </div>
                       ))}
                       <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '18px', fontWeight: 700, color: '#888' }}>{att.total}</div>
+                        <div style={{
+                          fontSize: '18px', fontWeight: 700, color: '#888',
+                          transform: popAnim ? 'scale(1.15)' : 'scale(1)',
+                          transition: 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)',
+                        }}>
+                          {att.total}
+                        </div>
                         <div style={{ fontSize: '8px', color: '#555', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                           {isTR ? 'Toplam' : 'Total'}
                         </div>

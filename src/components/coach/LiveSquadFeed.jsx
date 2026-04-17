@@ -1,7 +1,9 @@
 // ─── LiveSquadFeed.jsx — Live activity feed panel for coach dashboard ──────────
 // Renders events from useRealtimeSquadFeed with presence dots from useSquadPresence.
-// Designed to sit below the squad table in CoachSquadView.
+// Collapsible; events are clickable and call onAthleteClick(athleteId).
+// Designed to sit above the squad table in CoachSquadView.
 
+import { useState } from 'react'
 import { S } from '../../styles.js'
 
 const STATUS_COLOR = { live: '#5bc25b', connecting: '#f5c542', reconnecting: '#f5c542', disconnected: '#555' }
@@ -9,13 +11,21 @@ const STATUS_LABEL = { live: '● LIVE', connecting: '○ connecting…', reconn
 const KIND_COLOR   = { session: '#5bc25b', recovery: '#0064ff' }
 
 /**
- * @param {object}  props
- * @param {Array}   props.feedEvents   — from useRealtimeSquadFeed
- * @param {string}  props.feedStatus   — 'live' | 'connecting' | 'reconnecting' | 'disconnected'
- * @param {object}  props.presenceMap  — { [athleteId]: { online, last_seen } } from useSquadPresence
- * @param {Array}   props.athletes     — full athlete list for presence dot display
+ * @param {object}   props
+ * @param {Array}    props.feedEvents      — from useRealtimeSquadFeed
+ * @param {string}   props.feedStatus      — 'live' | 'connecting' | 'reconnecting' | 'disconnected'
+ * @param {object}   props.presenceMap     — { [athleteId]: { online, last_seen } }
+ * @param {Array}    props.athletes        — full athlete list for presence dot display
+ * @param {Function} [props.onAthleteClick] — called with athleteId when an event row is clicked
  */
-export default function LiveSquadFeed({ feedEvents = [], feedStatus = 'disconnected', presenceMap = {}, athletes = [] }) {
+export default function LiveSquadFeed({
+  feedEvents = [],
+  feedStatus = 'disconnected',
+  presenceMap = {},
+  athletes = [],
+  onAthleteClick,
+}) {
+  const [collapsed, setCollapsed] = useState(false)
   const onlineCount = athletes.filter(a => presenceMap[a.athlete_id]?.online).length
 
   return (
@@ -25,12 +35,19 @@ export default function LiveSquadFeed({ feedEvents = [], feedStatus = 'disconnec
       borderRadius: '6px',
       overflow: 'hidden',
     }}>
-      {/* Header */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: '12px',
-        padding: '8px 14px', background: '#0d0d0d',
-        borderBottom: '1px solid #1e1e1e',
-      }}>
+      {/* Header — click to collapse/expand */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setCollapsed(c => !c)}
+        onKeyDown={e => e.key === 'Enter' && setCollapsed(c => !c)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '12px',
+          padding: '8px 14px', background: '#0d0d0d',
+          borderBottom: collapsed ? 'none' : '1px solid #1e1e1e',
+          cursor: 'pointer', userSelect: 'none',
+        }}
+      >
         <span style={{ ...S.mono, fontSize: '10px', color: STATUS_COLOR[feedStatus] || '#555', letterSpacing: '0.05em' }}>
           {STATUS_LABEL[feedStatus] || '○ offline'}
         </span>
@@ -56,37 +73,51 @@ export default function LiveSquadFeed({ feedEvents = [], feedStatus = 'disconnec
             ))}
           </div>
         )}
+        {/* Collapse chevron */}
+        <span style={{ ...S.mono, fontSize: '10px', color: '#444', marginLeft: 'auto', flexShrink: 0 }}>
+          {collapsed ? '▼' : '▲'}
+        </span>
       </div>
 
-      {/* Event list */}
-      <div style={{ maxHeight: '200px', overflowY: 'auto', background: '#080808' }}>
-        {feedEvents.length === 0 ? (
-          <div style={{ padding: '20px 14px', ...S.mono, fontSize: '11px', color: '#333', textAlign: 'center' }}>
-            {feedStatus === 'live' ? 'No activity yet — waiting for squad updates…' : 'Connecting to live feed…'}
-          </div>
-        ) : (
-          feedEvents.map(ev => (
-            <div
-              key={ev.id}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '10px',
-                padding: '7px 14px', borderBottom: '1px solid #0d0d0d',
-              }}
-            >
-              <span style={{
-                width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0,
-                background: KIND_COLOR[ev.kind] || '#555',
-              }} />
-              <span style={{ ...S.mono, fontSize: '11px', color: '#c0c0c0', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {ev.label}
-              </span>
-              <span style={{ ...S.mono, fontSize: '9px', color: '#444', flexShrink: 0 }}>
-                {relTime(ev.timestamp)}
-              </span>
+      {/* Event list — hidden when collapsed */}
+      {!collapsed && (
+        <div style={{ maxHeight: '200px', overflowY: 'auto', background: '#080808' }}>
+          {feedEvents.length === 0 ? (
+            <div style={{ padding: '20px 14px', ...S.mono, fontSize: '11px', color: '#333', textAlign: 'center' }}>
+              {feedStatus === 'live' ? 'No activity yet — waiting for squad updates…' : 'Connecting to live feed…'}
             </div>
-          ))
-        )}
-      </div>
+          ) : (
+            feedEvents.map(ev => (
+              <div
+                key={ev.id}
+                role={onAthleteClick ? 'button' : undefined}
+                tabIndex={onAthleteClick ? 0 : undefined}
+                onClick={() => onAthleteClick?.(ev.athleteId)}
+                onKeyDown={e => e.key === 'Enter' && onAthleteClick?.(ev.athleteId)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  padding: '7px 14px', borderBottom: '1px solid #0d0d0d',
+                  cursor: onAthleteClick ? 'pointer' : 'default',
+                  transition: 'background 0.12s',
+                }}
+                onMouseEnter={e => { if (onAthleteClick) e.currentTarget.style.background = '#0f0f0f' }}
+                onMouseLeave={e => { e.currentTarget.style.background = '' }}
+              >
+                <span style={{
+                  width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0,
+                  background: KIND_COLOR[ev.kind] || '#555',
+                }} />
+                <span style={{ ...S.mono, fontSize: '11px', color: '#c0c0c0', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {ev.label}
+                </span>
+                <span style={{ ...S.mono, fontSize: '9px', color: '#444', flexShrink: 0 }}>
+                  {relTime(ev.timestamp)}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   )
 }
