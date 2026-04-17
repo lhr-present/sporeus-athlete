@@ -128,6 +128,25 @@ own data, with coaches allowed read access to their active athletes.
 
 ---
 
+## npm Dependency Vulnerability Status
+
+Last audit: 2026-04-18 — **0 vulnerabilities** (0 critical, 0 high, 0 moderate, 0 low)
+
+### Previously patched
+
+| CVE / Advisory | Package | Fix applied |
+|---|---|---|
+| GHSA-h4j5-c7cj-74xg (playwright SSL cert bypass) | `playwright@^1.50.1` | `npm audit fix` — updated to patched version |
+| GHSA-g644-9gfx-q4q4 (RCE via RegExp.flags) | `serialize-javascript@6.x` | `overrides: serialize-javascript@^7.0.5` in package.json |
+| GHSA-wr3j-pwj9-hqq6 (CPU exhaustion DoS) | `serialize-javascript@6.x` | same override |
+| Transitive: @rollup/plugin-terser, workbox-build, vite-plugin-pwa | inherited from above | same override resolves chain |
+
+The `serialize-javascript` vulns (CVE via workbox-build → @rollup/plugin-terser) are **build-time only** — the
+vulnerable code runs during `npm run build` on developer/CI machines, not at runtime in the browser or edge
+functions. Risk is low. Pinned to 7.x via npm `overrides` until upstream releases a fix.
+
+---
+
 ## Security Notes
 
 - **Service role key** is only used in Supabase edge functions — never exposed to the browser.

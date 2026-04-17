@@ -37,6 +37,9 @@
     "react-dropzone": "^15.0.0",
     "recharts": "^3.8.1"
   },
+  "overrides": {
+    "serialize-javascript": "^7.0.5"
+  },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
     "@testing-library/jest-dom": "^6.9.1",
