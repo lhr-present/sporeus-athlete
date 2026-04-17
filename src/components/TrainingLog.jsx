@@ -53,6 +53,7 @@ import { parseFIT, parseGPX, detectFileType, parseBulkCSV, deduplicateByDate, do
 import { uploadActivityFile } from '../lib/activityUpload.js'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import ActivityMap from './ActivityMap.jsx'
+import UploadActivity from './UploadActivity.jsx'
 
 export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const { t } = useContext(LangCtx)
@@ -68,7 +69,9 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const [showZones, setShowZones] = useState(false)
   const [zoneMins, setZoneMins] = useState(['','','','',''])
   const [editingId, setEditingId] = useState(null)
-  const [calView, setCalView] = useState(false)
+  const [calView, setCalView]           = useState(false)
+  const [authUser, setAuthUser]         = useState(null)
+  const [showUploadPanel, setShowUploadPanel] = useState(false)
   const [lang] = useLocalStorage('sporeus-lang', 'en')
   const [sessionScore, setSessionScore] = useState(null)
   const [lastPBs, setLastPBs] = useState(null)
@@ -117,6 +120,12 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- today/clearPrefill are stable within session; react to prefill object identity
   }, [prefill])
+
+  // Resolve current authUser once (needed by UploadActivity)
+  useEffect(() => {
+    if (!isSupabaseReady()) return
+    supabase.auth.getUser().then(({ data: { user } }) => setAuthUser(user || null)).catch(() => {})
+  }, [])
 
   const requestSessionAnalysis = (entry) => {
     if (!isSupabaseReady()) return
@@ -414,6 +423,14 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
             <button onClick={()=>setCalView(false)} style={{ ...S.mono, fontSize:'9px', fontWeight:600, padding:'3px 8px', borderRadius:'3px', cursor:'pointer', border:`1px solid ${!calView?'#ff6600':'var(--border)'}`, background:!calView?'#ff660022':'transparent', color:!calView?'#ff6600':'var(--muted)' }}>≡ LIST</button>
             <button onClick={()=>setCalView(true)}  style={{ ...S.mono, fontSize:'9px', fontWeight:600, padding:'3px 8px', borderRadius:'3px', cursor:'pointer', border:`1px solid ${calView?'#ff6600':'var(--border)'}`, background:calView?'#ff660022':'transparent', color:calView?'#ff6600':'var(--muted)' }}>⊞ CAL</button>
             {log.length>0 && !calView && <button style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px' }} onClick={exportCSV}>{t('exportCSVBtn')}</button>}
+            {authUser && isSupabaseReady() && (
+              <button
+                style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px', color:'#b060ff', borderColor:'#b060ff' }}
+                onClick={() => setShowUploadPanel(true)}
+              >
+                ↑ UPLOAD &amp; PARSE
+              </button>
+            )}
             <button
               style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px', opacity: importBusy ? 0.5 : 1 }}
               onClick={() => fileInputRef.current?.click()}
@@ -783,6 +800,23 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
           </select>
           <button onClick={handleBulkDelete} style={{ ...S.btn, fontSize:'11px', background:'#e03030', padding:'4px 12px' }}>Delete ({selected.size})</button>
           <button onClick={() => { setSelected(new Set()); setBulkMode(false) }} style={{ ...S.btnSec, fontSize:'11px', padding:'4px 10px' }}>Cancel</button>
+        </div>
+      )}
+
+      {/* ── Upload & Parse overlay ─────────────────────────────────────────── */}
+      {showUploadPanel && (
+        <div
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}
+          onClick={e => { if (e.target === e.currentTarget) setShowUploadPanel(false) }}
+        >
+          <UploadActivity
+            authUser={authUser}
+            onSuccess={logEntryId => {
+              setShowUploadPanel(false)
+              logger.info('upload-parse done, logEntryId:', logEntryId)
+            }}
+            onClose={() => setShowUploadPanel(false)}
+          />
         </div>
       )}
     </div>

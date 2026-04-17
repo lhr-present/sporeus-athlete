@@ -84,6 +84,15 @@ export function isFeatureGated(feature, tier = 'free') {
   return tierRank(tier) < tierRank(required)
 }
 
+// ── canUploadFile(monthlyCount, tier) → boolean ──────────────────────────────
+// Free tier: 5 uploads/month. Coach/Club: unlimited.
+export const FREE_UPLOAD_LIMIT = 5
+
+export function canUploadFile(monthlyCount, tier = 'free') {
+  if (tier === 'coach' || tier === 'club') return true
+  return (monthlyCount ?? 0) < FREE_UPLOAD_LIMIT
+}
+
 // ── getUpgradePrompt(feature) → string ───────────────────────────────────────
 export function getUpgradePrompt(feature) {
   const msgs = {
@@ -92,6 +101,7 @@ export function getUpgradePrompt(feature) {
     api_access:         'Public API access requires a Club plan. Upgrade at sporeus.com.',
     white_label:        'White-label branding requires a Club plan. Upgrade at sporeus.com.',
     realtime_dashboard: 'Real-time dashboard requires a Coach plan. Upgrade at sporeus.com.',
+    upload_files:       'Free plan allows 5 file uploads/month. Upgrade to Coach for unlimited uploads.',
   }
   return msgs[feature] || 'This feature requires an upgraded plan. Visit sporeus.com to upgrade.'
 }
