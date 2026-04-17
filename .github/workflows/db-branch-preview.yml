@@ -1,0 +1,131 @@
+name: "DB Branch Preview"
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - closed
+
+concurrency:
+  group: "db-preview-${{ github.event.number }}"
+  cancel-in-progress: true
+
+jobs:
+  # ── Preview: create / reset branch and run migrations + tests ───────────────
+  preview:
+    runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Supabase CLI
+        run: npm install -g supabase@latest
+
+      - name: Supabase login
+        run: supabase login --token "${{ secrets.SUPABASE_ACCESS_TOKEN }}"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Create or reset preview branch
+        run: |
+          supabase branches create "preview-pr-${{ github.event.number }}" \
+            --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}" || true
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Get branch DB URL
+        id: branch_url
+        run: |
+          BRANCH_DB_URL=$(supabase branches get "preview-pr-${{ github.event.number }}" \
+            --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}" \
+            --output json | jq -r '.db_url')
+          echo "BRANCH_DB_URL=${BRANCH_DB_URL}" >> "$GITHUB_ENV"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Push migrations to branch
+        run: supabase db push --db-url "$BRANCH_DB_URL"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: SQL smoke test — pgmq_flow
+        run: npx supabase db query --db-url "$BRANCH_DB_URL" < supabase/tests/pgmq_flow.sql
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: SQL smoke test — fts_search
+        run: npx supabase db query --db-url "$BRANCH_DB_URL" < supabase/tests/fts_search.sql
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: SQL smoke test — mv_refresh
+        run: npx supabase db query --db-url "$BRANCH_DB_URL" < supabase/tests/mv_refresh.sql
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Run JS/TS tests
+        run: npm test
+
+      - name: Comment on PR
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const outcome = '${{ job.status }}' === 'success' ? '✅ PASS' : '❌ FAIL';
+            const branch  = `preview-pr-${{ github.event.number }}`;
+            const body    = [
+              `## DB Branch Preview — ${outcome}`,
+              '',
+              `**Branch:** \`${branch}\``,
+              `**Migrations pushed:** ${outcome === '✅ PASS' ? 'yes' : 'failed (see logs)'}`,
+              `**SQL smoke tests:** pgmq_flow · fts_search · mv_refresh`,
+              `**JS tests:** npm test`,
+              '',
+              `[View workflow run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner:      context.repo.owner,
+              repo:       context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+  # ── Cleanup: delete preview branch when PR is closed ────────────────────────
+  cleanup:
+    runs-on: ubuntu-latest
+    if: github.event.action == 'closed'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        run: npm install -g supabase@latest
+
+      - name: Supabase login
+        run: supabase login --token "${{ secrets.SUPABASE_ACCESS_TOKEN }}"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Delete preview branch
+        run: |
+          supabase branches delete "preview-pr-${{ github.event.number }}" \
+            --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}" || true
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
