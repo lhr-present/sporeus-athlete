@@ -6,6 +6,7 @@
 // Errors: structured { error, code } with specific error codes.
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
+import { withTelemetry } from '../_shared/telemetry.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const CORS = {
@@ -27,7 +28,7 @@ function fail(status: number, message: string, code: string) {
   })
 }
 
-serve(async (req: Request) => {
+serve(withTelemetry('redeem-invite', async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS })
 
   const authHeader = req.headers.get("Authorization")
@@ -134,4 +135,4 @@ serve(async (req: Request) => {
     const msg = e instanceof Error ? e.message : "Internal error"
     return fail(500, msg, "INTERNAL_ERROR")
   }
-})
+}))

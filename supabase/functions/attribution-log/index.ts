@@ -9,6 +9,7 @@
 // Output: { ok: true, event_id } | { error: string }
 
 import { serve }        from 'https://deno.land/std@0.168.0/http/server.ts'
+import { withTelemetry } from '../_shared/telemetry.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const CORS = {
@@ -35,7 +36,7 @@ function checkRate(anonId: string): boolean {
   return true
 }
 
-serve(async (req) => {
+serve(withTelemetry('attribution-log', async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   const t0 = Date.now()
@@ -141,7 +142,7 @@ serve(async (req) => {
     }))
     return jsonErr('Internal error', 500)
   }
-})
+}))
 
 function jsonErr(msg: string, status: number) {
   return new Response(JSON.stringify({ error: msg }), {

@@ -15,6 +15,7 @@
 //   );
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
+import { withTelemetry } from '../_shared/telemetry.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 // v7.43.0: per-session analysis moved to DB webhook → analyse-session edge fn.
@@ -193,7 +194,7 @@ function getWeekStart(dateStr: string): string {
 }
 
 // ── Main handler ──────────────────────────────────────────────────────────────
-serve(async (req) => {
+serve(withTelemetry('nightly-batch', async (req) => {
   // Auth guard: only accept requests signed with the service role key.
   // pg_cron sends this in the Authorization header; reject anything else.
   const authHeader = req.headers.get("Authorization") ?? ""
@@ -224,4 +225,4 @@ serve(async (req) => {
     JSON.stringify({ date: today, delegated: true, ms }),
     { headers: { "Content-Type": "application/json" }, status: 200 }
   )
-})
+}))

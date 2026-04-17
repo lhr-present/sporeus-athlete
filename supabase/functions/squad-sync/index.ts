@@ -3,6 +3,7 @@
 // Calls get_squad_overview(coach_id) postgres function.
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
+import { withTelemetry } from '../_shared/telemetry.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const corsHeaders = {
@@ -24,7 +25,7 @@ function fail(status: number, message: string) {
   })
 }
 
-serve(async (req) => {
+serve(withTelemetry('squad-sync', async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders })
 
   const authHeader = req.headers.get("Authorization")
@@ -47,4 +48,4 @@ serve(async (req) => {
   if (error) return fail(500, error.message)
 
   return ok(data ?? [])
-})
+}))

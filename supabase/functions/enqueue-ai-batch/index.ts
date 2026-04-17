@@ -4,6 +4,7 @@
 // Exits in < 30s. Processing is done by ai-batch-worker (every minute).
 
 import { serve }        from "https://deno.land/std@0.177.0/http/server.ts"
+import { withTelemetry } from '../_shared/telemetry.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 function jwtRole(h: string | null): string | null {
@@ -23,7 +24,7 @@ function getWeekStart(dateStr: string): string {
   return mon.toISOString().slice(0, 10)
 }
 
-serve(async (req) => {
+serve(withTelemetry('enqueue-ai-batch', async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { status: 200 })
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 })
@@ -105,4 +106,4 @@ serve(async (req) => {
     JSON.stringify({ enqueued, week_start: weekStart, ms }),
     { headers: { "Content-Type": "application/json" } },
   )
-})
+}))

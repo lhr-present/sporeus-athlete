@@ -4,6 +4,7 @@
 // On success: delete from queue. Rate limit: 50/sec via 10-msg parallel batches.
 
 import { serve }        from "https://deno.land/std@0.177.0/http/server.ts"
+import { withTelemetry, telemetryHeartbeat } from '../_shared/telemetry.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 function jwtRole(h: string | null): string | null {
@@ -14,7 +15,11 @@ function jwtRole(h: string | null): string | null {
   } catch { return null }
 }
 
-serve(async (req) => {
+serve(withTelemetry('push-worker', async (req) => {
+
+  // ── Heartbeat: proves liveness every 60s ──────────────────────────────
+  const stopHeartbeat = telemetryHeartbeat('push-worker')
+  // stopHeartbeat() on graceful shutdown if needed
   if (req.method === "OPTIONS") return new Response("ok", { status: 200 })
   if (req.method !== "POST") return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 })
 
@@ -75,4 +80,4 @@ serve(async (req) => {
     JSON.stringify({ sent, failed, total: msgs.length }),
     { headers: { "Content-Type": "application/json" } },
   )
-})
+}))

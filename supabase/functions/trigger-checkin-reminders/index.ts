@@ -14,6 +14,7 @@
 //   );
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
+import { withTelemetry } from '../_shared/telemetry.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const corsHeaders = {
@@ -80,7 +81,7 @@ function jwtRole(authHeader: string | null): string | null {
   } catch { return null }
 }
 
-serve(async (req: Request) => {
+serve(withTelemetry('trigger-checkin-reminders', async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders })
 
   const authHeader = req.headers.get("Authorization")
@@ -175,4 +176,4 @@ serve(async (req: Request) => {
   }
 
   return ok({ processed: profiles.length, sent })
-})
+}))

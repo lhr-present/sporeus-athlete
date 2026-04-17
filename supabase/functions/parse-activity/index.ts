@@ -3,6 +3,7 @@
 // Downloads raw file from Storage, parses, inserts training_log row, updates job.
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
+import { withTelemetry } from '../_shared/telemetry.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { XMLParser } from 'https://esm.sh/fast-xml-parser@4'
 
@@ -215,7 +216,7 @@ function parseGPX(xmlText: string, ftp: number, maxHR: number) {
 
 // ── Main handler ──────────────────────────────────────────────────────────────
 
-serve(async (req) => {
+serve(withTelemetry('parse-activity', async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
@@ -346,4 +347,4 @@ serve(async (req) => {
       headers: corsHeaders,
     })
   }
-})
+}))

@@ -8,6 +8,7 @@
 // If coach linked AND flags non-empty: inserts coach mirror kind='coach_session_flag'.
 
 import { serve }        from 'https://deno.land/std@0.177.0/http/server.ts'
+import { withTelemetry } from '../_shared/telemetry.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const CORS = {
@@ -59,7 +60,7 @@ function detectFlags(session: Record<string, unknown>, acwr: number | null, inju
   return flags
 }
 
-serve(async (req) => {
+serve(withTelemetry('analyse-session', async (req) => {
   if (req.method === 'OPTIONS') return ok('ok')
   if (req.method !== 'POST')   return err('Method not allowed', 405)
 
@@ -239,4 +240,4 @@ Return plain text only. Max 75 words. Be direct and evidence-based.`
   }
 
   return ok({ insight: insightText, flags, stored: !insertErr, kind: 'session_analysis' })
-})
+}))

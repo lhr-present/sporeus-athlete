@@ -7,6 +7,7 @@
 // @react-pdf/renderer v3.4.4 runs in Deno without a browser (pure JS renderer).
 
 import { serve }        from "https://deno.land/std@0.177.0/http/server.ts"
+import { withTelemetry } from '../_shared/telemetry.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import React            from "https://esm.sh/react@18.2.0"
 import { pdf }          from "https://esm.sh/@react-pdf/renderer@3.4.4?deps=react@18.2.0"
@@ -463,7 +464,7 @@ async function runMonthlySquadBatch(sb: ReturnType<typeof createClient>): Promis
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 
-serve(async (req) => {
+serve(withTelemetry('generate-report', async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS })
   if (req.method !== "POST")    return err("Method not allowed", 405)
 
@@ -528,4 +529,4 @@ serve(async (req) => {
     console.error("generate-report error:", e)
     return err(`Report generation failed: ${(e as Error).message}`, 500)
   }
-})
+}))

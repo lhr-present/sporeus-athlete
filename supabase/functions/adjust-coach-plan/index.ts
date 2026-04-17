@@ -5,6 +5,7 @@
 //         next 7 days (based on injury level), writes coach_notes entry.
 
 import { serve }        from 'https://deno.land/std@0.177.0/http/server.ts'
+import { withTelemetry } from '../_shared/telemetry.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const CORS = {
@@ -53,7 +54,7 @@ function applyVolumeCut(weeks: Record<string, unknown>[], fromDate: string, toDa
   })
 }
 
-serve(async (req) => {
+serve(withTelemetry('adjust-coach-plan', async (req) => {
   if (req.method === 'OPTIONS') return ok('ok')
   if (req.method !== 'POST')   return err('Method not allowed', 405)
 
@@ -109,4 +110,4 @@ serve(async (req) => {
   })
 
   return ok({ adjusted: changed, cut_pct: cut, plan_id: planRow.id, athlete_id: user_id, injury_id })
-})
+}))

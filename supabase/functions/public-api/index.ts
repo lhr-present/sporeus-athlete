@@ -29,6 +29,7 @@
  */
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
+import { withTelemetry } from '../_shared/telemetry.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const CORS = {
@@ -186,7 +187,7 @@ async function handleSquadExport(db: ReturnType<typeof createClient>, orgId: str
 }
 
 // ── Main handler ──────────────────────────────────────────────────────────────
-serve(async (req) => {
+serve(withTelemetry('public-api', async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS })
   if (req.method !== "GET")    return err(405, "Method not allowed")
 
@@ -219,4 +220,4 @@ serve(async (req) => {
   }
 
   return err(404, "Unknown endpoint. See function header for available endpoints.")
-})
+}))

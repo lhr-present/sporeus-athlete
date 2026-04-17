@@ -5,6 +5,7 @@
 // Env vars required: DODO_WEBHOOK_SECRET, STRIPE_WEBHOOK_SECRET, RESEND_API_KEY
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
+import { withTelemetry } from '../_shared/telemetry.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const SUPABASE_URL  = Deno.env.get("SUPABASE_URL")  ?? ""
@@ -119,7 +120,7 @@ async function handleStripeEvent(event: { type: string; data?: { object?: { meta
 }
 
 // ── Main handler ──────────────────────────────────────────────────────────────
-serve(async (req) => {
+serve(withTelemetry('dodo-webhook', async (req) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 })
   }
@@ -169,4 +170,4 @@ serve(async (req) => {
   }
 
   return new Response(JSON.stringify({ error: "Unknown webhook source" }), { status: 400 })
-})
+}))

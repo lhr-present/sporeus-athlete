@@ -5,6 +5,7 @@
 // Checks rolling rate counter: max 600 requests per 15-minute window.
 
 import { serve }        from "https://deno.land/std@0.177.0/http/server.ts"
+import { withTelemetry, telemetryHeartbeat } from '../_shared/telemetry.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const RATE_WINDOW_MS = 15 * 60 * 1000   // 15 minutes
@@ -80,7 +81,11 @@ async function refreshIfExpired(
   return refreshed.access_token
 }
 
-serve(async (req) => {
+serve(withTelemetry('strava-backfill-worker', async (req) => {
+
+  // ── Heartbeat: proves liveness every 60s ──────────────────────────────
+  const stopHeartbeat = telemetryHeartbeat('strava-backfill-worker')
+  // stopHeartbeat() on graceful shutdown if needed
   if (req.method === "OPTIONS") return new Response("ok", { status: 200 })
   if (req.method !== "POST") return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 })
 
@@ -251,4 +256,4 @@ serve(async (req) => {
     JSON.stringify({ synced: totalSynced, api_calls: apiCallsUsed }),
     { headers: { "Content-Type": "application/json" } },
   )
-})
+}))

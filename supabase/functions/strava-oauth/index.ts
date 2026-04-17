@@ -4,6 +4,7 @@
 // Auto-provided by Supabase: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
+import { withTelemetry } from '../_shared/telemetry.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const corsHeaders = {
@@ -116,7 +117,7 @@ async function fetchActivitiesPage(
   return { activities: Array.isArray(activities) ? activities : [], rateLimitExceeded: false, retryAfter: 0 }
 }
 
-serve(async (req: Request) => {
+serve(withTelemetry('strava-oauth', async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders })
 
   const authHeader = req.headers.get("Authorization")
@@ -321,4 +322,4 @@ serve(async (req: Request) => {
   }
 
   return fail(400, `Unknown action: ${action}`)
-})
+}))
