@@ -179,6 +179,21 @@ serve(async (req: Request) => {
     })
     if (upsertErr) return fail(500, upsertErr.message)
 
+    // v7.48.0: enqueue historical backfill (last 90 days) via strava_backfill queue.
+    // strava-backfill-worker processes these pages in the background every 2 minutes.
+    const backfillAfter = Math.floor(Date.now() / 1000) - 90 * 24 * 3600
+    await admin.rpc("enqueue_strava_backfill", {
+      p_payload: {
+        user_id:     user.id,
+        page:        1,
+        after:       backfillAfter,
+        enqueued_at: new Date().toISOString(),
+      },
+    }).catch((e: Error) => {
+      // Non-fatal — sync still worked; backfill will not run
+      console.error("strava-oauth: backfill enqueue failed:", e.message)
+    })
+
     return ok({ athlete: athleteName, strava_id: tokens.athlete?.id })
   }
 

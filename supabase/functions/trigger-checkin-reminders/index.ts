@@ -153,27 +153,23 @@ serve(async (req: Request) => {
 
       if (!subs?.length) return  // not subscribed
 
-      // Fire send-push via HTTP (uses service role key → no user auth needed)
+      // v7.48.0: enqueue to push_fanout instead of direct HTTP to send-push.
+      // push-worker (every minute) drains the queue and calls send-push.
       try {
-        const resp = await fetch(`${supabaseUrl}/functions/v1/send-push`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${serviceKey}`,
-            "Content-Type": "application/json",
+        const { error: enqErr } = await admin.rpc("enqueue_push_fanout", {
+          p_payload: {
+            user_id:             row.id,
+            kind:                "checkin_reminder",
+            title:               "Sporeus — Daily Check-in",
+            body:                "How are you feeling today? Log your wellness in 30 seconds.",
+            data:                { route: "/?tab=today" },
+            dedupe_key:          dedupeKey,
+            dedupe_window_hours: 20,
           },
-          body: JSON.stringify({
-            user_id:     row.id,
-            kind:        "checkin_reminder",
-            title:       "Sporeus — Daily Check-in",
-            body:        "How are you feeling today? Log your wellness in 30 seconds.",
-            data:        { route: "/?tab=today" },
-            dedupe_key:  dedupeKey,
-            dedupe_window_hours: 20,  // prevents double-fire on adjacent cron ticks
-          }),
         })
-        if (resp.ok) sent++
+        if (!enqErr) sent++
       } catch {
-        // Network error — skip this user, log will be missing (will retry next hour)
+        // RPC error — skip this user, will retry next hour
       }
     }))
   }

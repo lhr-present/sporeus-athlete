@@ -212,112 +212,16 @@ serve(async (req) => {
 
   const today = new Date().toISOString().slice(0, 10)
 
-  // v7.43.0: Per-session analysis is now event-driven via the on_training_log_insert
-  // DB webhook → analyse-session edge function. nightly-batch now only produces
-  // weekly squad digests (Sunday) and exits immediately on other days.
-
-  const ms_pre_digest = Date.now() - start
-
-  // ── Sunday-only: weekly squad digest for coaches ──────────────────────────
-  const isSunday = new Date(today + "T12:00:00Z").getUTCDay() === 0
-  let weeklyDigestResult: { coaches: number; errors: number } | null = null
-
-  if (isSunday) {
-    console.log(`nightly-batch [${today}]: Sunday detected — running weekly digest`)
-    const weekStart = getWeekStart(today)
-    const sevenDaysAgo = weekStart
-
-    // Query all coaches (role = 'coach') from profiles
-    const { data: coaches } = await supabase
-      .from("profiles")
-      .select("id, display_name")
-      .eq("role", "coach")
-
-    let digestOk = 0, digestErr = 0
-
-    for (const coach of coaches ?? []) {
-      try {
-        // Fetch this coach's athletes
-        const { data: coachAthletes } = await supabase
-          .from("coach_athletes")
-          .select("athlete_id")
-          .eq("coach_id", coach.id)
-
-        if (!coachAthletes || coachAthletes.length === 0) continue
-
-        const athleteIds = coachAthletes.map((r: { athlete_id: string }) => r.athlete_id)
-
-        // Get last 7 days load data for the squad
-        const { data: weekLogs } = await supabase
-          .from("training_log")
-          .select("user_id, date, tss")
-          .in("user_id", athleteIds)
-          .gte("date", sevenDaysAgo)
-          .order("date", { ascending: true })
-
-        // Get wellness scores for the week
-        const { data: weekWellness } = await supabase
-          .from("recovery")
-          .select("user_id, date, score")
-          .in("user_id", athleteIds)
-          .gte("date", sevenDaysAgo)
-
-        // Build per-athlete summaries for the prompt
-        const summaries = athleteIds.map((uid: string) => {
-          const logs = (weekLogs ?? []).filter((l: { user_id: string }) => l.user_id === uid)
-          const wl   = (weekWellness ?? []).filter((w: { user_id: string }) => w.user_id === uid)
-          const weekTSS = logs.reduce((s: number, l: { tss: number }) => s + (l.tss ?? 0), 0)
-          const avgWell = wl.length > 0 ? Math.round(wl.reduce((s: number, w: { score: number }) => s + (w.score ?? 0), 0) / wl.length) : null
-          return { uid: uid.slice(0, 8), weekTSS, avgWellness: avgWell, sessions: logs.length }
-        })
-
-        // ── RAG: embed query, retrieve most relevant squad sessions ─────────
-        const ragQuery = `squad weekly performance summary ${weekStart} coach ${coach.display_name}`
-        const ragEmbedding = await embedText(ragQuery)
-        const ragSessions  = ragEmbedding
-          ? await fetchRagSessions(supabase, Deno.env.get("SUPABASE_URL") ?? "", serviceKey, athleteIds, sevenDaysAgo, ragEmbedding)
-          : []
-        const ragContext   = buildRagContext(ragSessions)
-
-        const userPrompt = `Squad weekly data (coach: ${coach.display_name}, week starting ${weekStart}): ${JSON.stringify(summaries)}`
-        const fullSystem  = ragContext ? ragContext + WEEKLY_DIGEST_SYSTEM : WEEKLY_DIGEST_SYSTEM
-        const digestText  = await retryWithBackoff(() => callHaiku(fullSystem, userPrompt))
-        const digestJson = parseJSON(digestText)
-
-        if (!digestJson) throw new Error("Bad digest JSON")
-
-        // Upsert weekly_digests — idempotent on (coach_id, week_start)
-        // Attach RAG citation map so client can resolve [S1] → session date/type
-        const citations = ragSessions.map((s, i) => ({
-          marker:     `S${i + 1}`,
-          session_id: s.session_id,
-          date:       s.date,
-          type:       s.type || "unknown",
-          athlete_id: s.athlete_id,
-        }))
-
-        await supabase.from("weekly_digests").upsert({
-          coach_id:    coach.id,
-          week_start:  weekStart,
-          digest_json: { ...(digestJson as object), _citations: citations },
-        }, { onConflict: "coach_id,week_start" })
-
-        digestOk++
-      } catch (e) {
-        digestErr++
-        console.error(`weekly-digest error for coach ${coach.id}:`, e instanceof Error ? e.message : String(e))
-      }
-    }
-
-    weeklyDigestResult = { coaches: digestOk, errors: digestErr }
-    console.log(`weekly-digest [${weekStart}]: coaches=${digestOk} errors=${digestErr}`)
-  }
+  // v7.43.0: Per-session analysis delegated to analyse-session DB webhook.
+  // v7.48.0: Sunday weekly squad digests delegated to enqueue-ai-batch (producer)
+  //          + ai-batch-worker (consumer) via pgmq. nightly-batch is now a no-op
+  //          kept in place so the pg_cron job schedule can be repurposed cleanly.
 
   const ms = Date.now() - start
-  console.log(`nightly-batch [${today}]: ms=${ms} weeklyDigest=${JSON.stringify(weeklyDigestResult)}`)
+  console.log(`nightly-batch [${today}]: delegated to queue workers ms=${ms}`)
 
   return new Response(
-    JSON.stringify({ date: today, weeklyDigest: weeklyDigestResult, ms }),
+    JSON.stringify({ date: today, delegated: true, ms }),
     { headers: { "Content-Type": "application/json" }, status: 200 }
   )
 })
