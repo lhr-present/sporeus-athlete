@@ -13,11 +13,13 @@ export const TIERS = {
 
 // Features gated by tier
 const FEATURE_TIERS = {
-  multi_team:         'coach',
-  export_pdf:         'coach',
-  api_access:         'club',
-  white_label:        'club',
-  realtime_dashboard: 'coach',
+  multi_team:           'coach',
+  export_pdf:           'coach',
+  api_access:           'club',
+  white_label:          'club',
+  realtime_dashboard:   'coach',
+  semantic_search:      'coach',
+  squad_pattern_search: 'coach',
 }
 
 const TIER_RANK = { free: 0, coach: 1, club: 2 }
@@ -101,7 +103,9 @@ export function getUpgradePrompt(feature) {
     api_access:         'Public API access requires a Club plan. Upgrade at sporeus.com.',
     white_label:        'White-label branding requires a Club plan. Upgrade at sporeus.com.',
     realtime_dashboard: 'Real-time dashboard requires a Coach plan. Upgrade at sporeus.com.',
-    upload_files:       'Free plan allows 5 file uploads/month. Upgrade to Coach for unlimited uploads.',
+    upload_files:         'Free plan allows 5 file uploads/month. Upgrade to Coach for unlimited uploads.',
+    semantic_search:      'Semantic session search requires a Coach or Club plan. Upgrade at sporeus.com.',
+    squad_pattern_search: 'Squad pattern search requires a Coach or Club plan. Upgrade at sporeus.com.',
   }
   return msgs[feature] || 'This feature requires an upgraded plan. Visit sporeus.com to upgrade.'
 }
