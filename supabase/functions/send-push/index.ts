@@ -36,6 +36,17 @@ const VALID_KINDS = new Set<string>([
   'missed_checkin','test','race_countdown','injury_alert','system','message',
 ])
 
+// Decode a JWT and return the `role` claim without signature verification.
+// Used to detect service_role callers (cron, edge-to-edge). Signature verification
+// is handled by the Supabase gateway; we only need the claim here.
+function jwtRole(authHeader: string): string | null {
+  try {
+    const token = authHeader.replace(/^Bearer\s+/i, "")
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")))
+    return payload.role || null
+  } catch { return null }
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders })
 
@@ -51,8 +62,8 @@ serve(async (req: Request) => {
 
   if (!vapidPublic || !vapidPrivate) return fail(500, "VAPID keys not configured")
 
-  // ── Auth: accept user JWT or service role key (for cron/trigger calls) ────────
-  const isSystemCall = authHeader === `Bearer ${serviceKey}`
+  // ── Auth: service_role JWT (cron/edge calls) or user JWT ─────────────────────
+  const isSystemCall = jwtRole(authHeader) === "service_role"
   const admin = createClient(supabaseUrl, serviceKey)
 
   let callerUserId: string | null = null

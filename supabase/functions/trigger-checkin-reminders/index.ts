@@ -70,6 +70,16 @@ function getLocalDateStr(timezone: string): string {
   }
 }
 
+// Decode a JWT and return the `role` claim without signature verification.
+function jwtRole(authHeader: string | null): string | null {
+  if (!authHeader) return null
+  try {
+    const token = authHeader.replace(/^Bearer\s+/i, "")
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")))
+    return payload.role || null
+  } catch { return null }
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders })
 
@@ -78,7 +88,7 @@ serve(async (req: Request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!
 
   // Only accept calls from the service role (cron or manual trigger)
-  if (authHeader !== `Bearer ${serviceKey}`) return fail(401, "Unauthorized")
+  if (jwtRole(authHeader) !== "service_role") return fail(401, "Unauthorized")
 
   const admin = createClient(supabaseUrl, serviceKey)
 
