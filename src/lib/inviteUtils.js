@@ -112,22 +112,13 @@ export async function revokeInvite(supabaseClient, inviteId) {
  */
 export async function redeemInvite(supabaseClient, code) {
   try {
-    const { data: { session } } = await supabaseClient.auth.getSession()
-    if (!session?.access_token) return { success: false, error: 'Not authenticated', code: 'UNAUTHENTICATED' }
-
-    const supabaseUrl = supabaseClient.supabaseUrl
-    const res = await fetch(`${supabaseUrl}/functions/v1/redeem-invite`, {
-      method:  'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-        'apikey':        supabaseClient.supabaseKey,
-      },
-      body: JSON.stringify({ code }),
+    // functions.invoke automatically attaches the stored auth header — no getSession() needed
+    const { data, error } = await supabaseClient.functions.invoke('redeem-invite', {
+      body: { code },
     })
-    const json = await res.json()
-    if (!res.ok) return { success: false, error: json.error, code: json.code }
-    return { success: true, ...json }
+    if (error) return { success: false, error: error.message, code: 'NETWORK_ERROR' }
+    if (data?.error) return { success: false, error: data.error, code: data.code }
+    return { success: true, ...data }
   } catch (e) {
     return { success: false, error: e?.message || 'Unknown error', code: 'NETWORK_ERROR' }
   }

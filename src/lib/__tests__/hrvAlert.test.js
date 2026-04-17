@@ -65,7 +65,6 @@ describe('detectHRVAlert', () => {
 
   it('returns alert with correct sigma for 3σ drop', () => {
     // Build series with mean=70, predictable stddev
-    const series = Array(20).fill(70)
     // With stddev≈0, we can't get a sigma — use mixed series
     const series2 = Array(10).fill(70).concat(Array(10).fill(80))
     // mean=75, stddev=5 (pop)

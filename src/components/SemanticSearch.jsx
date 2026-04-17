@@ -15,7 +15,7 @@ import { useFocusTrap } from '../hooks/useFocusTrap.js'
 import { S } from '../styles.js'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { isFeatureGated } from '../lib/subscription.js'
-import { injectCitations } from '../lib/ragPrompts.js'
+// ragPrompts used for server-side citation rendering; imported when needed in callers
 import { logger } from '../lib/logger.js'
 
 const DEBOUNCE_MS  = 350

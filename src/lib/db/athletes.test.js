@@ -38,11 +38,7 @@ describe('fetchSquad', () => {
     expect(supabase.functions.invoke).not.toHaveBeenCalled()
   })
 
-  it('invokes squad-sync edge function with Bearer token from session', async () => {
-    const token = 'jwt-token-xyz'
-    supabase.auth.getSession.mockResolvedValue({
-      data: { session: { access_token: token } },
-    })
+  it('invokes squad-sync edge function (auth header injected automatically)', async () => {
     const squadData = { athletes: [{ id: 'a1' }] }
     supabase.functions.invoke.mockResolvedValue({ data: squadData, error: null })
 
@@ -50,22 +46,19 @@ describe('fetchSquad', () => {
 
     expect(error).toBeNull()
     expect(data).toEqual(squadData)
-    expect(supabase.auth.getSession).toHaveBeenCalledOnce()
-    expect(supabase.functions.invoke).toHaveBeenCalledWith('squad-sync', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    // getSession must NOT be called — onAuthStateChange-only architecture
+    expect(supabase.auth.getSession).not.toHaveBeenCalled()
+    // invoke called with function name only — SDK injects auth header automatically
+    expect(supabase.functions.invoke).toHaveBeenCalledWith('squad-sync')
   })
 
-  it('handles null session (unauthenticated) gracefully', async () => {
-    supabase.auth.getSession.mockResolvedValue({ data: { session: null } })
-    supabase.functions.invoke.mockResolvedValue({ data: null, error: null })
+  it('handles unauthenticated state gracefully — invoke still called, edge fn rejects', async () => {
+    supabase.functions.invoke.mockResolvedValue({ data: null, error: { message: 'Unauthorized' } })
 
     await fetchSquad()
 
-    // Authorization header contains "Bearer undefined" — that's intentional behaviour;
-    // the edge function's RLS will reject it. We just confirm invoke is still called.
-    const callArgs = supabase.functions.invoke.mock.calls[0][1]
-    expect(callArgs.headers.Authorization).toBe('Bearer undefined')
+    expect(supabase.auth.getSession).not.toHaveBeenCalled()
+    expect(supabase.functions.invoke).toHaveBeenCalledWith('squad-sync')
   })
 })
 

@@ -70,13 +70,13 @@ serve(async (req) => {
       continue
     }
 
-    // Check tier via subscriptions table
-    const { data: sub } = await sb
-      .from('subscriptions')
-      .select('tier')
-      .eq('user_id', payload.user_id)
+    // Check tier via profiles table
+    const { data: prof } = await sb
+      .from('profiles')
+      .select('subscription_tier')
+      .eq('id', payload.user_id)
       .maybeSingle()
-    const tier = sub?.tier || 'free'
+    const tier = prof?.subscription_tier || 'free'
     if (!['coach', 'club'].includes(tier)) {
       await sb.rpc('ack_ai_session_msg', { p_msg_id: msgId })
       results.push({ msg_id: msgId, status: 'skipped', error: 'tier_ineligible' })
@@ -89,7 +89,7 @@ serve(async (req) => {
       .select('id')
       .eq('athlete_id', payload.user_id)
       .eq('source_id', String(payload.entry_id))
-      .eq('kind', 'session')
+      .eq('kind', 'session_analysis')
       .maybeSingle()
     if (existing) {
       await sb.rpc('ack_ai_session_msg', { p_msg_id: msgId })
@@ -130,7 +130,7 @@ serve(async (req) => {
         athlete_id:       payload.user_id,
         date:             String(payload.date),
         data_hash:        `session-${payload.entry_id}`,
-        kind:             'session',
+        kind:             'session_analysis',
         source_id:        String(payload.entry_id),
         insight_json:     { text: insightText, queued: true },
         explanation_text: insightText,

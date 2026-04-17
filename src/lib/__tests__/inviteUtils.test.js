@@ -71,28 +71,28 @@ describe('parseInviteParam', () => {
   })
 })
 
-// ── redeemInvite (calls edge function via fetch) ──────────────────────────────
+// ── redeemInvite (calls edge function via functions.invoke) ───────────────────
 describe('redeemInvite', () => {
-  it('returns { success: false, error } when not authenticated', async () => {
+  it('returns { success: false } when edge function returns error (e.g. 401)', async () => {
+    // Simulates unauthenticated call: SDK sends no auth header, edge fn returns error
     const mock = {
-      supabaseUrl: 'https://test.supabase.co',
-      supabaseKey: 'anon-key',
-      auth: { getSession: vi.fn().mockResolvedValue({ data: { session: null } }) },
+      functions: { invoke: vi.fn().mockResolvedValue({ data: { error: 'Unauthorized', code: 'UNAUTHENTICATED' }, error: null }) },
     }
     const result = await redeemInvite(mock, 'SP-ABC12345')
     expect(result.success).toBe(false)
-    expect(result.code).toBe('UNAUTHENTICATED')
+    expect(result.error).toBeTruthy()
+    // getSession must NOT be called
+    expect(mock.functions.invoke).toHaveBeenCalledWith('redeem-invite', { body: { code: 'SP-ABC12345' } })
   })
 
   it('returns { success: false, error } on network failure — never throws', async () => {
     const mock = {
-      supabaseUrl: 'https://test.supabase.co',
-      supabaseKey: 'anon-key',
-      auth: { getSession: vi.fn().mockRejectedValue(new Error('Network error')) },
+      functions: { invoke: vi.fn().mockRejectedValue(new Error('Network error')) },
     }
     const result = await redeemInvite(mock, 'SP-BADCODE')
     expect(result.success).toBe(false)
     expect(result.error).toBeTruthy()
+    expect(result.code).toBe('NETWORK_ERROR')
   })
 })
 

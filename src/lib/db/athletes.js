@@ -13,10 +13,8 @@ const NOT_CONFIGURED = { data: null, error: new Error('Supabase not configured')
  */
 export async function fetchSquad() {
   if (!ready()) return NOT_CONFIGURED
-  const { data: sessionData } = await supabase.auth.getSession()
-  return supabase.functions.invoke('squad-sync', {
-    headers: { Authorization: `Bearer ${sessionData?.session?.access_token}` },
-  })
+  // functions.invoke automatically attaches the stored auth header — no getSession() needed
+  return supabase.functions.invoke('squad-sync')
 }
 
 /** Fetch a single athlete profile by user id */
