@@ -60,6 +60,18 @@ describe('normalizeForSearch', () => {
     const content = normalizeForSearch('KOŞU')   // 'kosu'
     expect(query).toBe(content)
   })
+
+  it('folds Ç → c', () => {
+    expect(normalizeForSearch('ÇARŞAMBA')).toBe('carsamba')
+  })
+
+  it('folds Ğ → g', () => {
+    expect(normalizeForSearch('ĞUĞUK')).toBe('guguk')
+  })
+
+  it('folds Ü → u', () => {
+    expect(normalizeForSearch('ÜNLÜ')).toBe('unlu')
+  })
 })
 
 describe('tokenize', () => {

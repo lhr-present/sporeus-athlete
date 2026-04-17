@@ -111,6 +111,8 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
           log={log}
           onSync={() => flushQueue()}
           onExport={handleExport}
+          authUser={authUser}
+          tier={authProfile?.subscription_tier || 'free'}
         />
       )}
 
