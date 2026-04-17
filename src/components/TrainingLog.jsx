@@ -72,6 +72,8 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const [lang] = useLocalStorage('sporeus-lang', 'en')
   const [sessionScore, setSessionScore] = useState(null)
   const [lastPBs, setLastPBs] = useState(null)
+  const [aiInsight, setAiInsight] = useState(null)   // { text, busy }
+  const aiInsightTimer = useRef(null)
   const [importPreview, setImportPreview] = useState(null) // parsed workout before confirm
   const [importError, setImportError]     = useState(null)
   const [importBusy, setImportBusy]       = useState(false)
@@ -116,6 +118,22 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- today/clearPrefill are stable within session; react to prefill object identity
   }, [prefill])
 
+  const requestSessionAnalysis = (entry) => {
+    if (!isSupabaseReady()) return
+    setAiInsight({ text: null, busy: true })
+    clearTimeout(aiInsightTimer.current)
+    supabase.functions.invoke('analyse-session', {
+      body: { entry: { id: entry.id, date: entry.date, type: entry.type, tss: entry.tss, rpe: entry.rpe, duration: entry.duration, notes: entry.notes } },
+    }).then(({ data, error }) => {
+      if (error || !data?.insight) {
+        setAiInsight(null)
+      } else {
+        setAiInsight({ text: data.insight, busy: false })
+        aiInsightTimer.current = setTimeout(() => setAiInsight(null), 20000)
+      }
+    }).catch(() => setAiInsight(null))
+  }
+
   const zoneTotal = zoneMins.reduce((s,v)=>s+(parseInt(v)||0),0)
   const zoneDiff  = form.duration && showZones ? Math.abs(zoneTotal - parseInt(form.duration)) : 0
   const [tssPreview, setTssPreview] = useState(null)
@@ -137,6 +155,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       const pbs = detectPersonalBests(entry, log)
       setLastPBs(pbs)
       setLog([...log, entry])
+      requestSessionAnalysis(entry)
     }
     setForm({ date:today, type:'Easy Run', duration:'', rpe:'5', notes:'' })
     setZoneMins(['','','','','']); setShowZones(false); setTssPreview(null)
@@ -275,6 +294,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       }).catch(e => logger.warn('activityUpload auth:', e.message))
       importFileRef.current = null
     }
+    requestSessionAnalysis(raw)
     setImportPreview(null)
   }
 
@@ -369,6 +389,21 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
           <div style={{ ...S.mono, fontSize:'11px', color:'var(--sub)', marginTop:'6px', lineHeight:1.6 }}>
             {sessionScore.feedback[lang] || sessionScore.feedback.en}
           </div>
+        </div>
+      )}
+
+      {/* AI session insight */}
+      {aiInsight && (
+        <div className="sp-card" style={{ ...S.card, borderLeft:'4px solid #b060ff', animationDelay:'0ms' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'6px' }}>
+            <span style={{ ...S.mono, fontSize:'10px', color:'#b060ff', letterSpacing:'0.1em' }}>◈ AI COACHING INSIGHT</span>
+            <button onClick={() => { clearTimeout(aiInsightTimer.current); setAiInsight(null) }} style={{ background:'none', border:'none', color:'#555', cursor:'pointer', fontSize:'14px', lineHeight:1, padding:0 }}>×</button>
+          </div>
+          {aiInsight.busy ? (
+            <div style={{ ...S.mono, fontSize:'11px', color:'#555' }}>Analysing session…</div>
+          ) : (
+            <div style={{ ...S.mono, fontSize:'12px', color:'#c0c0c0', lineHeight:1.7 }}>{aiInsight.text}</div>
+          )}
         </div>
       )}
 
