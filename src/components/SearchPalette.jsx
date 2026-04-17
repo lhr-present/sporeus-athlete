@@ -3,6 +3,11 @@ import { useFocusTrap } from '../hooks/useFocusTrap.js'
 import { logger } from '../lib/logger.js'
 import { S } from '../styles.js'
 import { SEARCH_INDEX } from '../lib/constants.js'
+import { supabase, isSupabaseReady } from '../lib/supabase.js'
+import { normalizeForSearch } from '../lib/textNormalize.js'
+
+const KIND_TAB = { session: 'log', note: 'coach', message: 'coach', announcement: 'coach' }
+const KIND_COLOR = { session: '#5bc25b', note: '#ff6600', message: '#0064ff', announcement: '#f5c542' }
 
 // ── Fuzzy search over feature index ──────────────────────────────────────────
 function fuzzyMatch(items, q) {
@@ -41,16 +46,50 @@ function saveRecent(q) {
 }
 
 export default function SearchPalette({ onNavigate, onToggleDark, onToggleLang, onClose, log = [], onSync, onExport }) {
-  const [query, setQuery]  = useState('')
-  const [sel, setSel]      = useState(0)
-  const [recent, setRecent] = useState(loadRecent)
+  const [query, setQuery]    = useState('')
+  const [sel, setSel]        = useState(0)
+  const [recent, setRecent]  = useState(loadRecent)
+  const [dbResults, setDbResults] = useState([])
+  const [dbLoading, setDbLoading] = useState(false)
   const inputRef  = useRef(null)
   const palRef    = useRef(null)
+  const dbTimer   = useRef(null)
   useFocusTrap(palRef, { onEscape: onClose })
   const listRef  = useRef(null)
 
   useEffect(() => { inputRef.current?.focus() }, [])
   useEffect(() => { setSel(0) }, [query])
+
+  // Debounced FTS: fire when query >= 3 chars and not a command/log-prefix
+  useEffect(() => {
+    const q = query.trim()
+    if (q.length < 3 || q.startsWith('/') || q.startsWith('#') || /^\d{4}/.test(q)) {
+      setDbResults([])
+      return
+    }
+    clearTimeout(dbTimer.current)
+    dbTimer.current = setTimeout(async () => {
+      if (!isSupabaseReady()) return
+      setDbLoading(true)
+      try {
+        const normalized = normalizeForSearch(q)
+        const { data, error } = await supabase.rpc('search_everything', {
+          q: normalized, limit_per_kind: 5,
+        })
+        if (error) { logger.warn('FTS:', error.message); return }
+        setDbResults((data || []).map(r => ({
+          id:        `db-${r.kind}-${r.record_id}`,
+          name:      r.snippet || `${r.kind} result`,
+          desc:      `${r.kind} · ${r.date_hint || ''}`,
+          tab:       KIND_TAB[r.kind] || 'log',
+          _dbKind:   r.kind,
+          _dbId:     r.record_id,
+        })))
+      } catch (e) { logger.warn('FTS:', e.message) }
+      finally { setDbLoading(false) }
+    }, 250)
+    return () => clearTimeout(dbTimer.current)
+  }, [query])
 
   // Scroll selected into view
   useEffect(() => {
@@ -96,12 +135,13 @@ export default function SearchPalette({ onNavigate, onToggleDark, onToggleLang, 
       return [...recentItems, ...SEARCH_INDEX.slice(0, 8)]
     }
 
-    // Default: feature fuzzy match + commands
+    // Default: feature fuzzy match + commands + db results
     return [
       ...fuzzyMatch(SEARCH_INDEX, q),
       ...COMMANDS.filter(c => c.action.includes(q.toLowerCase())),
+      ...dbResults,
     ]
-  }, [query, log, recent])
+  }, [query, log, recent, dbResults])
 
   function handleSelect(item) {
     if (!item) return
@@ -132,6 +172,7 @@ export default function SearchPalette({ onNavigate, onToggleDark, onToggleLang, 
 
   const isCommand = query.startsWith('/')
   const isLogSearch = query.startsWith('#') || /^\d{4}/.test(query)
+  const isFTS = !isCommand && !isLogSearch && query.trim().length >= 3
 
   return (
     <>
@@ -215,6 +256,12 @@ export default function SearchPalette({ onNavigate, onToggleDark, onToggleLang, 
                     action
                   </span>
                 )}
+                {/* DB kind badge */}
+                {item._dbKind && (
+                  <span style={{ ...S.mono, fontSize:'9px', color: KIND_COLOR[item._dbKind] || '#888', border:`1px solid ${KIND_COLOR[item._dbKind] || '#888'}44`, borderRadius:'3px', padding:'2px 7px', whiteSpace:'nowrap', flexShrink:0 }}>
+                    {item._dbKind}
+                  </span>
+                )}
               </div>
             ))
           )}
@@ -228,6 +275,8 @@ export default function SearchPalette({ onNavigate, onToggleDark, onToggleLang, 
           <span style={{ color:'#2a2a2a' }}>|</span>
           <span style={{ color:'#333' }}>/cmd</span>
           <span style={{ color:'#333' }}>#log</span>
+          {isFTS && dbLoading && <span style={{ color:'#555' }}>searching db…</span>}
+          {isFTS && !dbLoading && dbResults.length > 0 && <span style={{ color:'#2a5c2a' }}>{dbResults.length} db results</span>}
           {recent.length > 0 && <span style={{ color:'#2a2a2a' }}>↩ recent</span>}
           <span style={{ marginLeft:'auto' }}>Ctrl+K</span>
         </div>
