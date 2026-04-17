@@ -19,7 +19,10 @@ import AthleteRow   from './coach/AthleteRow.jsx'
 import NotePanel    from './coach/NotePanel.jsx'
 import ExpandedRow  from './coach/ExpandedRow.jsx'
 import CoachMessage from './CoachMessage.jsx'
-import { useRealtimeSquad } from '../hooks/useRealtimeSquad.js'
+import { useRealtimeSquad }       from '../hooks/useRealtimeSquad.js'
+import { useRealtimeSquadFeed }    from '../hooks/useRealtimeSquadFeed.js'
+import { useSquadPresence }        from '../hooks/useSquadPresence.js'
+import LiveSquadFeed               from './coach/LiveSquadFeed.jsx'
 import EmptyState from './ui/EmptyState.jsx'
 import ScienceTooltip from './ScienceTooltip.jsx'
 
@@ -95,6 +98,17 @@ export default function CoachSquadView({ authUser }) {
     onUpdate: (athleteId, newDate) => setAthletes(prev => prev.map(a =>
       a.athlete_id === athleteId ? { ...a, last_session_date: newDate } : a
     )),
+  })
+
+  const { feedEvents, feedStatus } = useRealtimeSquadFeed({
+    coachId:  authUser?.id,
+    athletes: athletes,
+    enabled:  !isDemo && !!authUser?.id,
+  })
+
+  const { presenceMap } = useSquadPresence({
+    coachId: authUser?.id,
+    role:    'coach',
   })
 
   // ── Sort + filter ─────────────────────────────────────────────────────────────
@@ -367,6 +381,16 @@ export default function CoachSquadView({ authUser }) {
             </table>
           </div>
         )
+      )}
+
+      {/* Live squad feed + presence */}
+      {!isDemo && authUser && (
+        <LiveSquadFeed
+          feedEvents={feedEvents}
+          feedStatus={feedStatus}
+          presenceMap={presenceMap}
+          athletes={sorted}
+        />
       )}
 
       {/* AI Coach chatbot */}
