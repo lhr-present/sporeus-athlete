@@ -15,6 +15,8 @@ import { getTierSync, isFeatureGated, getUpgradePrompt } from '../lib/subscripti
 import { isSupabaseReady } from '../lib/supabase.js'
 import NotificationSettings from './NotificationSettings.jsx'
 import DeviceSync from './DeviceSync.jsx'
+import MVHealth from './admin/MVHealth.jsx'
+import QueueStats from './admin/QueueStats.jsx'
 import AthleteOSCosts from './AthleteOSCosts.jsx'
 import ActivityHeatmap from './ActivityHeatmap.jsx'
 import StravaConnect from './profile/StravaConnect.jsx'
@@ -508,6 +510,22 @@ export default function Profile({ log, authUser }) {
       {(authUser?.email === 'huseyinakbulut71@gmail.com' || authUser?.email === 'huseyinakbulut@marun.edu.tr') && (
         <AdminCodeGenerator/>
       )}
+
+      {/* Admin infra panels — MV health + queue depth (admin email only) */}
+      {(authUser?.email === 'huseyinakbulut71@gmail.com' || authUser?.email === 'huseyinakbulut@marun.edu.tr') && (() => {
+        const adminLang = localStorage.getItem('sporeus-lang') || 'en'
+        const adminProfile = { role: 'admin' }
+        return (
+          <>
+            <div style={{ ...S.card, marginTop: '16px' }}>
+              <MVHealth authProfile={adminProfile} lang={adminLang} />
+            </div>
+            <div style={{ ...S.card, marginTop: '12px' }}>
+              <QueueStats authProfile={adminProfile} lang={adminLang} />
+            </div>
+          </>
+        )
+      })()}
 
       {/* AthleteOS developer reference — Cost Cuts + Prompt Library */}
       {(authUser?.email === 'huseyinakbulut71@gmail.com' || authUser?.email === 'huseyinakbulut@marun.edu.tr') && (

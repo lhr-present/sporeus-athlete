@@ -4,7 +4,14 @@
 //
 // Input (webhook):  { session_id: string, user_id: string, source: 'db_webhook' }
 // Input (user):     { session_id: string } — user JWT in Authorization header
-// Output:           { session_id, embedded: boolean, skipped?: boolean }
+// Output:           { session_id, embedded: boolean, skipped?: boolean, reason?: string }
+//
+// C2 guard: sessions with < MIN_EMBED_TEXT_CHARS of meaningful text are skipped.
+//   Empty or whitespace-only notes produce noise vectors — skip them entirely.
+//
+// C1 closure: after embedding the session, also embeds any linked ai_insights rows
+//   into insight_embeddings. This closes the orphan chain: insight_embeddings was
+//   defined (v7.44.0) but never written by this function until now.
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -18,12 +25,18 @@ const CORS = {
 const OPENAI_EMBED_URL = 'https://api.openai.com/v1/embeddings'
 const EMBED_MODEL      = 'text-embedding-3-small'  // 1536 dimensions
 
+// C2: minimum meaningful text length before we call OpenAI.
+// Sessions with only structured fields (date/type) and no notes/TSS are skipped.
+const MIN_EMBED_TEXT_CHARS = 20
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
+  const t0 = Date.now()
+
   try {
     const body = await req.json()
-    const { session_id, user_id: bodyUserId, source } = body
+    const { session_id, user_id: bodyUserId } = body
 
     if (!session_id) return jsonErr('Missing session_id', 400)
 
@@ -41,7 +54,6 @@ serve(async (req) => {
 
     let resolvedUserId: string
 
-    // Determine if this is a service-role call (webhook) or user JWT call
     const [_h, payloadB64] = jwt.split('.')
     let isServiceRole = false
     try {
@@ -50,11 +62,9 @@ serve(async (req) => {
     } catch { /* ignore */ }
 
     if (isServiceRole) {
-      // Webhook path: trust user_id from body
       if (!bodyUserId) return jsonErr('Missing user_id for webhook call', 400)
       resolvedUserId = bodyUserId
     } else {
-      // User JWT path: verify user owns this session
       const { data: { user }, error: authErr } = await supabase.auth.getUser(jwt)
       if (authErr || !user) return jsonErr('Unauthorized', 401)
 
@@ -79,9 +89,24 @@ serve(async (req) => {
 
     if (fetchErr || !session) return jsonErr('Session not found', 404)
 
+    // ── C2: guard — skip sessions with insufficient content ───────────────────
+    // Meaningful = notes ≥ MIN_EMBED_TEXT_CHARS OR structured training data present.
+    // A session with only a date+type produces a noise vector — skip it.
+    const noteText      = (session.notes || '').trim()
+    const hasNotes      = noteText.length >= MIN_EMBED_TEXT_CHARS
+    const hasTrainingData = (session.tss && session.tss > 0) || (session.rpe && session.rpe > 0)
+
+    if (!hasNotes && !hasTrainingData) {
+      const dur = Date.now() - t0
+      console.log(JSON.stringify({
+        fn: 'embed-session', status: 'ok', duration_ms: dur,
+        skipped: true, reason: 'insufficient_text',
+        session_id: session_id.slice(0, 8),
+      }))
+      return json({ session_id, embedded: false, skipped: true, reason: 'insufficient_text' })
+    }
+
     // ── Build content text ────────────────────────────────────────────────────
-    // Structured text representation embedded into the vector store.
-    // Changing this format will invalidate existing embeddings (bump content_hash).
     const zonesStr = session.zones
       ? Object.entries(session.zones as Record<string, number>)
           .map(([z, s]) => `${z}:${Math.round(s)}s`).join(' ')
@@ -95,7 +120,7 @@ serve(async (req) => {
       session.rpe          ? `rpe:${session.rpe}` : null,
       session.decoupling_pct != null ? `decoupling:${session.decoupling_pct.toFixed(1)}%` : null,
       zonesStr ? `zones:${zonesStr}` : null,
-      session.notes ? `notes:${session.notes.slice(0, 400)}` : null,
+      noteText ? `notes:${noteText.slice(0, 400)}` : null,
     ].filter(Boolean).join(' | ')
 
     // ── Content hash — skip re-embedding if content unchanged ─────────────────
@@ -126,6 +151,10 @@ serve(async (req) => {
 
     if (!embedRes.ok) {
       const e = await embedRes.json().catch(() => ({}))
+      console.error(JSON.stringify({
+        fn: 'embed-session', status: 'error', duration_ms: Date.now() - t0,
+        error_class: 'OpenAIError', session_id: session_id.slice(0, 8),
+      }))
       return jsonErr(`OpenAI error: ${e?.error?.message || embedRes.status}`, 502)
     }
 
@@ -141,18 +170,118 @@ serve(async (req) => {
       .upsert({
         session_id,
         user_id:      resolvedUserId,
-        embedding:    `[${embedding.join(',')}]`,  // pgvector text literal
+        embedding:    `[${embedding.join(',')}]`,
         content_hash: hashHex,
         created_at:   new Date().toISOString(),
       }, { onConflict: 'session_id' })
 
-    if (upsertErr) return jsonErr(`DB upsert failed: ${upsertErr.message}`, 500)
+    if (upsertErr) {
+      console.error(JSON.stringify({
+        fn: 'embed-session', status: 'error', duration_ms: Date.now() - t0,
+        error_class: 'UpsertError', message: upsertErr.message,
+      }))
+      return jsonErr(`DB upsert failed: ${upsertErr.message}`, 500)
+    }
+
+    // ── C1: embed linked ai_insights → insight_embeddings (best-effort) ───────
+    // Closes the orphan chain. Failure here does NOT fail the session embed.
+    try {
+      const { data: insights } = await supabase
+        .from('ai_insights')
+        .select('id, insight_json, kind, date')
+        .eq('athlete_id', resolvedUserId)
+        .eq('session_id', session_id)
+        .not('insight_json', 'is', null)
+
+      if (insights && insights.length > 0) {
+        for (const insight of insights) {
+          await embedInsight(supabase, embeddingKey, insight, resolvedUserId)
+        }
+      }
+    } catch (insightErr) {
+      console.warn(JSON.stringify({
+        fn: 'embed-session', status: 'warn',
+        message: 'insight embedding failed (non-fatal)',
+        error: (insightErr as Error)?.message,
+      }))
+    }
+
+    const dur = Date.now() - t0
+    console.log(JSON.stringify({
+      fn: 'embed-session', status: 'ok', duration_ms: dur,
+      skipped: false, session_id: session_id.slice(0, 8),
+    }))
 
     return json({ session_id, embedded: true })
+
   } catch (e) {
+    console.error(JSON.stringify({
+      fn: 'embed-session', status: 'error', duration_ms: Date.now() - t0,
+      error_class: (e as Error)?.constructor?.name || 'Unknown',
+    }))
     return jsonErr((e as Error).message || 'Internal error', 500)
   }
 })
+
+// ── embedInsight — embed a single ai_insights row into insight_embeddings ─────
+// Idempotent: content_hash dedup prevents re-embedding unchanged insights.
+async function embedInsight(
+  supabase: ReturnType<typeof createClient>,
+  embeddingKey: string,
+  insight: { id: string; insight_json: unknown; kind: string; date: string },
+  userId: string,
+): Promise<void> {
+  const insightData = insight.insight_json as Record<string, unknown>
+  const textParts = [
+    insight.date ? `date:${insight.date}` : null,
+    insight.kind ? `kind:${insight.kind}` : null,
+    typeof insightData?.summary === 'string'
+      ? `summary:${(insightData.summary as string).slice(0, 500)}`
+      : null,
+    Array.isArray(insightData?.insights)
+      ? `insights:${(insightData.insights as string[]).slice(0, 3).join(' | ')}`
+      : null,
+    typeof insightData?.flags === 'string' ? `flags:${insightData.flags}` : null,
+  ].filter(Boolean).join(' | ')
+
+  if (!textParts || textParts.length < MIN_EMBED_TEXT_CHARS) return
+
+  // Content hash dedup
+  const encoder = new TextEncoder()
+  const hashBuf = await crypto.subtle.digest('SHA-256', encoder.encode(textParts))
+  const hashHex = Array.from(new Uint8Array(hashBuf))
+    .map(b => b.toString(16).padStart(2, '0')).join('')
+
+  const { data: existing } = await supabase
+    .from('insight_embeddings')
+    .select('content_hash')
+    .eq('insight_id', insight.id)
+    .maybeSingle()
+
+  if (existing?.content_hash === hashHex) return  // unchanged — skip
+
+  const embedRes = await fetch(OPENAI_EMBED_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${embeddingKey}`,
+    },
+    body: JSON.stringify({ model: EMBED_MODEL, input: textParts }),
+  })
+  if (!embedRes.ok) return  // best-effort
+
+  const embedData = await embedRes.json()
+  const embedding = embedData?.data?.[0]?.embedding as number[]
+  if (!embedding || embedding.length !== 1536) return
+
+  await supabase.from('insight_embeddings').upsert({
+    insight_id:   insight.id,
+    user_id:      userId,
+    embedding:    `[${embedding.join(',')}]`,
+    content_hash: hashHex,
+    created_at:   new Date().toISOString(),
+  }, { onConflict: 'insight_id' })
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
