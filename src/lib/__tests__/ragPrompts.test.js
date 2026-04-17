@@ -159,6 +159,36 @@ describe('injectCitations', () => {
   })
 })
 
+// ── Cost guard — RAG context is token-efficient vs raw flat dump ──────────────
+
+describe('RAG cost guard', () => {
+  it('formatRagContext(50 sessions) uses ≤60% chars vs raw JSON of all 50', () => {
+    // Simulate a user with 50 sessions, each with substantial notes
+    const fifty = Array.from({ length: 50 }, (_, i) =>
+      makeSession(i + 1, { notes: `Training note for session ${i + 1}. HR was elevated and power dropped slightly. Focus next time on pacing.` })
+    )
+
+    // RAG context: capped at MAX_CITATIONS (10) with notes truncated to 200 chars
+    const ragContext = formatRagContext(fifty)
+
+    // Naive non-RAG approach: dump all 50 sessions as raw JSON
+    const rawFlatDump = fifty.map(s => JSON.stringify(s)).join('\n')
+
+    // RAG should use ≤ 60% of raw dump size (token proxy = character count)
+    expect(ragContext.length).toBeLessThan(rawFlatDump.length * 0.60)
+  })
+
+  it('formatRagContext caps at MAX_CITATIONS regardless of input size', () => {
+    const hundred = Array.from({ length: 100 }, (_, i) => makeSession(i + 1))
+    const ctx = formatRagContext(hundred)
+    // Only [S1]–[S10] should appear
+    expect(ctx).toContain('[S10]')
+    expect(ctx).not.toContain('[S11]')
+    // Session 11 data should not appear
+    expect(ctx).not.toContain(`sess-11`)
+  })
+})
+
 // ── extractCitationMarkers ────────────────────────────────────────────────────
 
 describe('extractCitationMarkers', () => {

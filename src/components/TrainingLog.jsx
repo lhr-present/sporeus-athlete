@@ -54,6 +54,8 @@ import { uploadActivityFile } from '../lib/activityUpload.js'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import ActivityMap from './ActivityMap.jsx'
 import UploadActivity from './UploadActivity.jsx'
+import SemanticSearch from './SemanticSearch.jsx'
+import { getTierSync } from '../lib/subscription.js'
 
 export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const { t } = useContext(LangCtx)
@@ -71,7 +73,8 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const [editingId, setEditingId] = useState(null)
   const [calView, setCalView]           = useState(false)
   const [authUser, setAuthUser]         = useState(null)
-  const [showUploadPanel, setShowUploadPanel] = useState(false)
+  const [showUploadPanel, setShowUploadPanel]   = useState(false)
+  const [showSemanticSearch, setShowSemanticSearch] = useState(false)
   const [lang] = useLocalStorage('sporeus-lang', 'en')
   const [sessionScore, setSessionScore] = useState(null)
   const [lastPBs, setLastPBs] = useState(null)
@@ -422,6 +425,16 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
           <div style={{ display:'flex', gap:'6px', alignItems:'center' }}>
             <button onClick={()=>setCalView(false)} style={{ ...S.mono, fontSize:'9px', fontWeight:600, padding:'3px 8px', borderRadius:'3px', cursor:'pointer', border:`1px solid ${!calView?'#ff6600':'var(--border)'}`, background:!calView?'#ff660022':'transparent', color:!calView?'#ff6600':'var(--muted)' }}>≡ LIST</button>
             <button onClick={()=>setCalView(true)}  style={{ ...S.mono, fontSize:'9px', fontWeight:600, padding:'3px 8px', borderRadius:'3px', cursor:'pointer', border:`1px solid ${calView?'#ff6600':'var(--border)'}`, background:calView?'#ff660022':'transparent', color:calView?'#ff6600':'var(--muted)' }}>⊞ CAL</button>
+            {authUser && isSupabaseReady() && (
+              <button
+                onClick={() => setShowSemanticSearch(true)}
+                title="Semantic session search (Ctrl+Shift+K)"
+                aria-label="Open semantic search"
+                style={{ ...S.mono, fontSize:'9px', fontWeight:600, padding:'3px 8px', borderRadius:'3px', cursor:'pointer', border:'1px solid #a78bfa', background:'#a78bfa22', color:'#a78bfa' }}
+              >
+                ⌕ SEMANTIC
+              </button>
+            )}
             {log.length>0 && !calView && <button style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px' }} onClick={exportCSV}>{t('exportCSVBtn')}</button>}
             {authUser && isSupabaseReady() && (
               <button
@@ -802,6 +815,15 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
           <button onClick={() => { setSelected(new Set()); setBulkMode(false) }} style={{ ...S.btnSec, fontSize:'11px', padding:'4px 10px' }}>Cancel</button>
         </div>
       )}
+
+      {/* ── Semantic Search overlay ───────────────────────────────────────────── */}
+      <SemanticSearch
+        show={showSemanticSearch}
+        onClose={() => setShowSemanticSearch(false)}
+        onJumpToSession={sessionId => { setExpandedId(sessionId); setCalView(false); setShowSemanticSearch(false) }}
+        tier={getTierSync()}
+        authUser={authUser}
+      />
 
       {/* ── Upload & Parse overlay ─────────────────────────────────────────── */}
       {showUploadPanel && (

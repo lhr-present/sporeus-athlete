@@ -104,14 +104,83 @@ function parseJSON(text: string): unknown {
   } catch { return null }
 }
 
-// ── Weekly digest prompt ──────────────────────────────────────────────────────
+// ── Weekly digest prompt (RAG-enhanced) ──────────────────────────────────────
+// When session context [S1]..[Sn] is available it is prepended to this system prompt.
 const WEEKLY_DIGEST_SYSTEM = `You are a sport science assistant. Summarise a coach's squad weekly performance.
-Output ONLY valid JSON: {"headline": string, "highlights": string[], "alerts": string[], "recommendation": string}
+Output ONLY valid JSON: {"headline": string, "highlights": string[], "alerts": string[], "recommendation": string, "citations": [{"marker": string, "date": string, "type": string}]}
 headline: one sentence overall week summary.
-highlights: up to 3 positive individual athlete notes.
-alerts: up to 2 athletes needing attention (high ACWR or low wellness).
+highlights: up to 3 positive individual athlete notes. Cite specific sessions using [S1]..[Sn] where relevant.
+alerts: up to 2 athletes needing attention (high ACWR or low wellness). Cite sessions.
 recommendation: one sentence focus for next week.
-Plain language. Under 120 words total.`
+citations: only include markers you actually used in highlights/alerts.
+Plain language. Under 140 words total.`
+
+const OPENAI_EMBED_URL = "https://api.openai.com/v1/embeddings"
+const EMBED_MODEL = "text-embedding-3-small"
+
+// ── Embed text via EMBEDDING_API_KEY (OpenAI) ────────────────────────────────
+async function embedText(text: string): Promise<number[] | null> {
+  const key = Deno.env.get("EMBEDDING_API_KEY")
+  if (!key) return null
+  try {
+    const res = await fetch(OPENAI_EMBED_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+      body: JSON.stringify({ model: EMBED_MODEL, input: text.slice(0, 8192) }),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    const emb = data?.data?.[0]?.embedding
+    return Array.isArray(emb) && emb.length === 1536 ? emb : null
+  } catch { return null }
+}
+
+// ── Retrieve top-k sessions for squad via HNSW cosine search ─────────────────
+async function fetchRagSessions(
+  sb: ReturnType<typeof createClient>,
+  supabaseUrl: string,
+  serviceKey: string,
+  athleteIds: string[],
+  weekStart: string,
+  queryEmbedding: number[]
+): Promise<{ session_id: string; athlete_id: string; athlete_name: string; date: string; type: string; duration_min: number | null; tss: number | null; rpe: number | null; notes: string | null; similarity: number }[]> {
+  if (!athleteIds.length || !queryEmbedding.length) return []
+  try {
+    // Use match_sessions_for_coach RPC via service-role client (bypasses RLS)
+    // We scope to sessions from the current week only by filtering after retrieval.
+    const { data, error } = await sb.rpc("match_sessions_for_coach", {
+      p_embedding:   `[${queryEmbedding.join(",")}]`,
+      p_athlete_ids: athleteIds,
+      k:             15,  // fetch 15, filter to week, keep top 10
+    })
+    if (error || !data) return []
+    // Filter to sessions from this week and keep top 10
+    return (data as typeof data)
+      .filter((s: { date: string }) => s.date >= weekStart)
+      .slice(0, 10)
+  } catch { return [] }
+}
+
+// ── Format RAG context block [S1]..[Sn] ──────────────────────────────────────
+function buildRagContext(sessions: { session_id: string; athlete_name?: string; date: string; type: string; duration_min: number | null; tss: number | null; rpe: number | null; notes: string | null }[]): string {
+  if (!sessions.length) return ""
+  const lines = sessions.map((s, i) => [
+    `[S${i + 1}]`,
+    s.athlete_name ? `athlete:${s.athlete_name}` : null,
+    `date:${s.date}`,
+    `type:${s.type || "unknown"}`,
+    s.duration_min ? `${s.duration_min}min` : null,
+    s.tss ? `TSS:${s.tss}` : null,
+    s.rpe ? `RPE:${s.rpe}` : null,
+    s.notes ? `notes:"${s.notes.slice(0, 150)}"` : null,
+  ].filter(Boolean).join(" "))
+  return [
+    "=== SQUAD SESSION CONTEXT (most relevant to this week) ===",
+    ...lines,
+    "=== END CONTEXT — cite as [S1] etc. in highlights/alerts ===",
+    "",
+  ].join("\n")
+}
 
 // ── Monday of the current ISO week (YYYY-MM-DD) ──────────────────────────────
 function getWeekStart(dateStr: string): string {
@@ -202,17 +271,35 @@ serve(async (req) => {
           return { uid: uid.slice(0, 8), weekTSS, avgWellness: avgWell, sessions: logs.length }
         })
 
+        // ── RAG: embed query, retrieve most relevant squad sessions ─────────
+        const ragQuery = `squad weekly performance summary ${weekStart} coach ${coach.display_name}`
+        const ragEmbedding = await embedText(ragQuery)
+        const ragSessions  = ragEmbedding
+          ? await fetchRagSessions(supabase, Deno.env.get("SUPABASE_URL") ?? "", serviceKey, athleteIds, sevenDaysAgo, ragEmbedding)
+          : []
+        const ragContext   = buildRagContext(ragSessions)
+
         const userPrompt = `Squad weekly data (coach: ${coach.display_name}, week starting ${weekStart}): ${JSON.stringify(summaries)}`
-        const digestText = await retryWithBackoff(() => callHaiku(WEEKLY_DIGEST_SYSTEM, userPrompt))
+        const fullSystem  = ragContext ? ragContext + WEEKLY_DIGEST_SYSTEM : WEEKLY_DIGEST_SYSTEM
+        const digestText  = await retryWithBackoff(() => callHaiku(fullSystem, userPrompt))
         const digestJson = parseJSON(digestText)
 
         if (!digestJson) throw new Error("Bad digest JSON")
 
         // Upsert weekly_digests — idempotent on (coach_id, week_start)
+        // Attach RAG citation map so client can resolve [S1] → session date/type
+        const citations = ragSessions.map((s, i) => ({
+          marker:     `S${i + 1}`,
+          session_id: s.session_id,
+          date:       s.date,
+          type:       s.type || "unknown",
+          athlete_id: s.athlete_id,
+        }))
+
         await supabase.from("weekly_digests").upsert({
           coach_id:    coach.id,
           week_start:  weekStart,
-          digest_json: digestJson,
+          digest_json: { ...(digestJson as object), _citations: citations },
         }, { onConflict: "coach_id,week_start" })
 
         digestOk++
