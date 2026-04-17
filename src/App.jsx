@@ -30,6 +30,7 @@ const OnboardingWizard   = lazy(() => import('./components/Onboarding.jsx'))
 const KeyboardShortcuts  = lazy(() => import('./components/KeyboardShortcuts.jsx'))
 const InviteModalLazy    = lazy(() => import('./components/MyCoach.jsx').then(m => ({ default: m.InviteModal })))
 import ErrorBoundary from './components/ErrorBoundary.jsx'
+import DebugRealtimeStats from './components/DebugRealtimeStats.jsx'
 import { flushQueue } from './lib/offlineQueue.js'
 import ToastStack from './components/ToastStack.jsx'
 import { parseUtmFromLocation, recordFirstTouch, emitEvent, hasSignupFired, markSignupFired } from './lib/attribution.js'
@@ -367,6 +368,8 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
           />
         </Suspense>
       )}
+      {/* ── Realtime debug overlay (coach tier + sporeus-debug-realtime=1) ──── */}
+      <DebugRealtimeStats tier={authProfile?.subscription_tier || 'free'} />
     </LangCtx.Provider>
   )
 }
