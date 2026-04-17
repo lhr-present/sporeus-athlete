@@ -50,6 +50,8 @@ function calcCtlDelta(log, session) {
   return { ctlBefore, ctlAfter, delta }
 }
 import { parseFIT, parseGPX, detectFileType, parseBulkCSV, deduplicateByDate, downloadCSVTemplate } from '../lib/fileImport.js'
+import { uploadActivityFile } from '../lib/activityUpload.js'
+import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import ActivityMap from './ActivityMap.jsx'
 
 export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
@@ -80,6 +82,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const [expandedId, setExpandedId]       = useState(null)
   const fileInputRef    = useRef(null)
   const csvInputRef     = useRef(null)
+  const importFileRef   = useRef(null)   // raw File object for Storage archival
 
   // ── Memoised derivations ─────────────────────────────────────────────────
   const reversedLog = useMemo(() => [...log].reverse(), [log])
@@ -171,6 +174,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     const file = e.target.files[0]
     e.target.value = ''
     if (!file) return
+    importFileRef.current = file
     setImportError(null); setImportBusy(true)
     const kind = detectFileType(file)
     if (kind === 'unsupported') { setImportError('Unsupported file type. Use .fit or .gpx'); setImportBusy(false); return }
@@ -259,6 +263,17 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     // Store power stream keyed by entry ID for Power Curve analysis
     if (powers.length >= 30) {
       try { localStorage.setItem('sporeus-power-' + entryId, JSON.stringify(powers.slice(0, 10800))) } catch (e) { logger.warn('localStorage:', e.message) }
+    }
+    // Archive raw file to Supabase Storage (fire-and-forget — failures are non-fatal)
+    if (importFileRef.current && isSupabaseReady()) {
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user?.id) {
+          uploadActivityFile(user.id, importFileRef.current, {
+            date: raw.date, durationMin: raw.duration, tss, distanceM: importPreview.distanceM,
+          }, String(entryId)).catch(e => logger.warn('activityUpload:', e.message))
+        }
+      }).catch(e => logger.warn('activityUpload auth:', e.message))
+      importFileRef.current = null
     }
     setImportPreview(null)
   }
