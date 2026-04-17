@@ -17,6 +17,7 @@ import { isSupabaseReady } from '../lib/supabase.js'
 import { sanitizeLogEntry } from '../lib/validate.js'
 import { hasCurrentConsent, grantConsent } from '../lib/db/consentVersion.js'
 import { logConsent } from '../lib/db/consent.js'
+import { useInsightNotifier } from './useInsightNotifier.js'
 
 /**
  * @param {{ lang: string, setLang: Function, dark: boolean, setDark: Function,
@@ -26,6 +27,9 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   const { log, setLog, recovery, profile, setProfile } = useData()
   const isGuest = isSupabaseReady() && !authUser && localStorage.getItem('sporeus-guest-mode') === '1'
   const { toasts, addToast, dismissToast } = useToasts()
+
+  // ── Realtime session analysis notifications ───────────────────────────────────
+  useInsightNotifier({ userId: authUser?.id ?? null, addToast })
 
   // ── Tab — persisted to sessionStorage so refresh restores position ───────────
   const [tab, setTabRaw] = useState(() => {
