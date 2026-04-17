@@ -3,7 +3,7 @@
 // Returns a capped, sorted event list (newest first, max MAX_FEED).
 // Uses backoff on disconnect; respects isSupabaseReady() guard.
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { computeBackoff } from '../lib/realtimeBackoff.js'
 import { logger } from '../lib/logger.js'
@@ -23,6 +23,12 @@ export function useRealtimeSquadFeed({ coachId, athletes = [], enabled = true })
   const channelRef = useRef(null)
   const retryRef   = useRef(0)
   const timerRef   = useRef(null)
+
+  // Stable string key for athlete list — avoids inline expression in dep array
+  const athleteIdsKey = useMemo(
+    () => athletes.map(a => a.athlete_id).join(','),
+    [athletes]
+  )
 
   useEffect(() => {
     if (!enabled || !coachId || !isSupabaseReady() || !athletes.length) return
@@ -54,7 +60,7 @@ export function useRealtimeSquadFeed({ coachId, athletes = [], enabled = true })
       }
 
       const athleteMap = Object.fromEntries(athletes.map(a => [a.athlete_id, a.display_name]))
-      const ids = athletes.map(a => a.athlete_id).join(',') || 'none'
+      const ids = athleteIdsKey || 'none'
 
       const ch = supabase.channel(`squad-feed-${coachId}`)
         .on('postgres_changes', {
@@ -90,7 +96,8 @@ export function useRealtimeSquadFeed({ coachId, athletes = [], enabled = true })
       clearTimeout(timerRef.current)
       if (channelRef.current) supabase.removeChannel(channelRef.current)
     }
-  }, [coachId, enabled, athletes.map(a => a.athlete_id).join(',')])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- athleteIdsKey is a stable string derived from athletes
+  }, [coachId, enabled, athleteIdsKey])
 
   return { feedEvents, feedStatus }
 }
