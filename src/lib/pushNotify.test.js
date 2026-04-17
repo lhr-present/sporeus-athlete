@@ -147,7 +147,7 @@ describe('sendTestNotification', () => {
 
   it('calls send-push invoke with correct kind and user_id', async () => {
     mockInvoke.mockResolvedValueOnce({ data: { sent: 1 }, error: null })
-    const { data, error } = await sendTestNotification('user-abc')
+    const { error } = await sendTestNotification('user-abc')
     expect(error).toBeNull()
     expect(mockInvoke).toHaveBeenCalledWith(
       'send-push',

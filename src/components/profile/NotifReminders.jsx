@@ -1,7 +1,6 @@
 // ─── NotifReminders — push notification controls + reminders (Phase 1.5) ──────
-import { useState, useEffect, useContext } from 'react'
+import { useState, useEffect } from 'react'
 import { S } from '../../styles.js'
-import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { useData } from '../../contexts/DataContext.jsx'
 import { isSupabaseReady, supabase } from '../../lib/supabase.js'
 import {
@@ -26,7 +25,6 @@ const KIND_META = [
 ]
 
 export default function NotifReminders({ authUser }) {
-  const { t } = useContext(LangCtx)
   const { profile, setProfile } = useData()
 
   const [pushState, setPushState]     = useState('loading')
