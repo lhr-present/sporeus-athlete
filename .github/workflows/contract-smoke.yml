@@ -1,0 +1,179 @@
+name: "Contract Smoke"
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/functions/**'
+      - 'src/**'
+      - 'scripts/smoke_contracts.ts'
+
+concurrency:
+  group: "contract-smoke-${{ github.event.number }}"
+  cancel-in-progress: true
+
+jobs:
+  contract-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Supabase CLI
+        run: npm install -g supabase@latest
+
+      - name: Supabase login
+        run: supabase login --token "${{ secrets.SUPABASE_ACCESS_TOKEN }}"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      # ── Create isolated preview branch for this PR ─────────────────────────
+      - name: Create contract-smoke branch
+        run: |
+          supabase branches create "contract-smoke-${{ github.event.number }}" \
+            --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}" || true
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Get branch DB URL
+        id: branch_url
+        run: |
+          BRANCH_DB_URL=$(supabase branches get "contract-smoke-${{ github.event.number }}" \
+            --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}" \
+            --output json | jq -r '.db_url')
+          echo "BRANCH_DB_URL=${BRANCH_DB_URL}" >> "$GITHUB_ENV"
+          BRANCH_API_URL=$(supabase branches get "contract-smoke-${{ github.event.number }}" \
+            --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}" \
+            --output json | jq -r '.api_url')
+          echo "BRANCH_API_URL=${BRANCH_API_URL}" >> "$GITHUB_ENV"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Push migrations to branch
+        run: supabase db push --db-url "$BRANCH_DB_URL"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      # ── SQL contract tests ─────────────────────────────────────────────────
+      - name: SQL contract — analyse_embed_chain
+        run: npx supabase db query --db-url "$BRANCH_DB_URL" < supabase/tests/contracts/analyse_embed_chain.sql
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: SQL contract — search_everything_coach
+        run: npx supabase db query --db-url "$BRANCH_DB_URL" < supabase/tests/contracts/search_everything_coach.sql
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: SQL contract — mv_squad_readiness_triggers
+        run: npx supabase db query --db-url "$BRANCH_DB_URL" < supabase/tests/contracts/mv_squad_readiness_triggers.sql
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      # ── Existing SQL tests (regression guard) ─────────────────────────────
+      - name: SQL test — pgmq_flow
+        run: npx supabase db query --db-url "$BRANCH_DB_URL" < supabase/tests/pgmq_flow.sql
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: SQL test — fts_search
+        run: npx supabase db query --db-url "$BRANCH_DB_URL" < supabase/tests/fts_search.sql
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: SQL test — mv_refresh
+        run: npx supabase db query --db-url "$BRANCH_DB_URL" < supabase/tests/mv_refresh.sql
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      # ── JS/TS contract tests (vitest) ──────────────────────────────────────
+      - name: JS contract tests
+        run: npm test -- --reporter=verbose src/__tests__/contracts/
+
+      # ── Deno smoke script against branch ──────────────────────────────────
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Deno smoke contracts
+        run: |
+          deno run --allow-net --allow-env scripts/smoke_contracts.ts
+        env:
+          SUPABASE_URL: ${{ env.BRANCH_API_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          VERBOSE: "1"
+
+      # ── Full JS test suite (regression guard) ─────────────────────────────
+      - name: Full JS test suite
+        run: npm test
+
+      # ── PR comment ────────────────────────────────────────────────────────
+      - name: Comment on PR
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const outcome  = '${{ job.status }}' === 'success' ? '✅ PASS' : '❌ FAIL';
+            const branch   = `contract-smoke-${{ github.event.number }}`;
+            const sqlTests = [
+              'analyse_embed_chain',
+              'search_everything_coach',
+              'mv_squad_readiness_triggers',
+              'pgmq_flow',
+              'fts_search',
+              'mv_refresh',
+            ].join(' · ');
+            const body = [
+              `## Contract Smoke — ${outcome}`,
+              '',
+              `**Branch:** \`${branch}\``,
+              `**SQL contracts:** ${sqlTests}`,
+              `**JS contracts:** src/__tests__/contracts/`,
+              `**Deno smoke:** scripts/smoke_contracts.ts`,
+              `**Full JS suite:** npm test`,
+              '',
+              `[View workflow run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner:        context.repo.owner,
+              repo:         context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+  # ── Cleanup branch when PR is closed ──────────────────────────────────────
+  cleanup:
+    runs-on: ubuntu-latest
+    if: github.event.action == 'closed'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        run: npm install -g supabase@latest
+
+      - name: Supabase login
+        run: supabase login --token "${{ secrets.SUPABASE_ACCESS_TOKEN }}"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Delete contract-smoke branch
+        run: |
+          supabase branches delete "contract-smoke-${{ github.event.number }}" \
+            --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}" || true
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

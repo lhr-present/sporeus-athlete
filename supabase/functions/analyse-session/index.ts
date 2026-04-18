@@ -216,6 +216,19 @@ Return plain text only. Max 75 words. Be direct and evidence-based.`
 
   if (insertErr) console.error('ai_insights insert error:', insertErr.message)
 
+  // ── Close the embed chain: fire-and-forget embed-session with insight_only ───
+  // Both analyse-session and embed-session are triggered in parallel by the same
+  // training_log INSERT webhook. embed-session's C1 insight-embedding block runs
+  // while ai_insights hasn't been written yet (race condition). Re-invoking with
+  // insight_only:true after the upsert above guarantees the insight gets embedded.
+  if (!insertErr) {
+    fetch(`${supabaseUrl}/functions/v1/embed-session`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${serviceKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, user_id: userId, insight_only: true }),
+    }).catch(() => {})  // fire-and-forget; failure is acceptable
+  }
+
   // ── Coach mirror: insert kind='coach_session_flag' when flags present ─────────
   if (flags.length > 0) {
     const { data: coachLink } = await svc

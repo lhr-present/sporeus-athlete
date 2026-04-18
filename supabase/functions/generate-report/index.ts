@@ -108,9 +108,9 @@ async function fetchWeeklyData(sb: ReturnType<typeof createClient>, userId: stri
     athlete:     { display_name: profile.display_name || "Athlete", email: profile.email || "" },
     weekStart, weekEnd,
     metrics: {
-      ctl:              mvRow?.ctl           ?? 0,
-      atl:              mvRow?.atl           ?? 0,
-      tsb:              mvRow?.tsb           ?? 0,
+      ctl:              mvRow?.ctl_42d        ?? 0,
+      atl:              mvRow?.atl_7d        ?? 0,
+      tsb:              (mvRow?.ctl_42d ?? 0) - (mvRow?.atl_7d ?? 0),
       weekTss:          weekTss,
       sessionsCount:    sessions.length,
       totalDurationMin: totalMins,
@@ -144,7 +144,7 @@ async function fetchMonthlySquadData(sb: ReturnType<typeof createClient>, coachI
       : Promise.resolve({ data: [] }),
     athleteIds.length
       ? sb.from("mv_ctl_atl_daily")
-          .select("user_id, ctl, atl, tsb, date")
+          .select("user_id, ctl_42d, atl_7d, date")
           .in("user_id", athleteIds)
           .lte("date", monthEnd)
           .order("date", { ascending: false })
@@ -174,7 +174,12 @@ async function fetchMonthlySquadData(sb: ReturnType<typeof createClient>, coachI
     const name = (a.profiles as { display_name: string } | null)?.display_name || "Athlete"
 
     const myMetrics = allMetrics.filter((m: { user_id: string }) => m.user_id === id)
-    const latestMetric = myMetrics[0] || { ctl: 0, atl: 0, tsb: 0 }
+    const latestRaw = myMetrics[0] || { ctl_42d: 0, atl_7d: 0 }
+    const latestMetric = {
+      ctl: latestRaw.ctl_42d ?? 0,
+      atl: latestRaw.atl_7d  ?? 0,
+      tsb: (latestRaw.ctl_42d ?? 0) - (latestRaw.atl_7d ?? 0),
+    }
 
     const mySessions = allSessions.filter((s: { user_id: string }) => s.user_id === id)
 
@@ -233,7 +238,7 @@ async function fetchRaceReadinessData(sb: ReturnType<typeof createClient>, userI
       .order("date", { ascending: false })
       .limit(40),
     sb.from("mv_ctl_atl_daily")
-      .select("ctl, atl, tsb")
+      .select("ctl_42d, atl_7d")
       .eq("user_id", userId)
       .order("date", { ascending: false })
       .limit(1),
@@ -273,8 +278,8 @@ async function fetchRaceReadinessData(sb: ReturnType<typeof createClient>, userI
     } catch { /* skip if math fails */ }
   }
 
-  const m    = mvRow || { ctl: 0, atl: 0, tsb: 0 }
-  const tsbN = m.tsb || 0
+  const m    = { ctl: mvRow?.ctl_42d ?? 0, atl: mvRow?.atl_7d ?? 0, tsb: (mvRow?.ctl_42d ?? 0) - (mvRow?.atl_7d ?? 0) }
+  const tsbN = m.tsb
   const taperStatus: RaceReadinessData["taperStatus"] =
     tsbN > 10 ? "fresh" : tsbN < -10 ? "fatigued" : "trained"
 

@@ -6,9 +6,9 @@ import { SEARCH_INDEX } from '../lib/constants.js'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { normalizeForSearch } from '../lib/textNormalize.js'
 
-const KIND_TAB   = { session: 'log', note: 'coach', message: 'coach', announcement: 'coach', athlete: 'coach' }
-const KIND_COLOR = { session: '#5bc25b', note: '#ff6600', message: '#0064ff', announcement: '#f5c542', athlete: '#a78bfa' }
-const KIND_LABEL = { session: 'Sessions', note: 'Notes', message: 'Messages', announcement: 'Announcements', athlete: 'Athletes' }
+const KIND_TAB   = { session: 'log', note: 'coach', message: 'coach', announcement: 'coach', athlete: 'coach', athlete_session: 'log' }
+const KIND_COLOR = { session: '#5bc25b', note: '#ff6600', message: '#0064ff', announcement: '#f5c542', athlete: '#a78bfa', athlete_session: '#2dd4bf' }
+const KIND_LABEL = { session: 'Sessions', note: 'Notes', message: 'Messages', announcement: 'Announcements', athlete: 'Athletes', athlete_session: 'Athlete Sessions' }
 
 // ── Fuzzy search over feature index ──────────────────────────────────────────
 function fuzzyMatch(items, q) {

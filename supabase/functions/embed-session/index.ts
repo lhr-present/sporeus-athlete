@@ -37,7 +37,7 @@ serve(withTelemetry('embed-session', async (req) => {
 
   try {
     const body = await req.json()
-    const { session_id, user_id: bodyUserId } = body
+    const { session_id, user_id: bodyUserId, insight_only } = body
 
     if (!session_id) return jsonErr('Missing session_id', 400)
 
@@ -79,6 +79,26 @@ serve(withTelemetry('embed-session', async (req) => {
         return jsonErr('Session not found or access denied', 403)
       }
       resolvedUserId = user.id
+    }
+
+    // ── insight_only: skip session embed, only run C1 insight embedding ──────
+    // Used by analyse-session after it writes ai_insights to close the race
+    // condition: both functions are triggered in parallel by the same webhook.
+    if (insight_only) {
+      try {
+        const { data: insights } = await supabase
+          .from('ai_insights')
+          .select('id, insight_json, kind, date')
+          .eq('athlete_id', resolvedUserId)
+          .eq('session_id', session_id)
+          .not('insight_json', 'is', null)
+        if (insights && insights.length > 0) {
+          for (const ins of insights) {
+            await embedInsight(supabase, embeddingKey, ins, resolvedUserId)
+          }
+        }
+      } catch { /* best-effort */ }
+      return json({ session_id, embedded: false, insight_only: true })
     }
 
     // ── Load session row ──────────────────────────────────────────────────────
@@ -137,6 +157,21 @@ serve(withTelemetry('embed-session', async (req) => {
       .maybeSingle()
 
     if (existing?.content_hash === hashHex) {
+      // Content unchanged — skip re-embedding the session vector, but still run C1
+      // so that ai_insights written AFTER the last embed get picked up.
+      try {
+        const { data: insights } = await supabase
+          .from('ai_insights')
+          .select('id, insight_json, kind, date')
+          .eq('athlete_id', resolvedUserId)
+          .eq('session_id', session_id)
+          .not('insight_json', 'is', null)
+        if (insights && insights.length > 0) {
+          for (const insight of insights) {
+            await embedInsight(supabase, embeddingKey, insight, resolvedUserId)
+          }
+        }
+      } catch { /* best-effort */ }
       return json({ session_id, embedded: false, skipped: true, reason: 'content_unchanged' })
     }
 
@@ -233,16 +268,28 @@ async function embedInsight(
   userId: string,
 ): Promise<void> {
   const insightData = insight.insight_json as Record<string, unknown>
+  // analyse-session stores: { text, flags (array), session, acwr, ctl, tsb }
+  // nightly-batch digest stores: { summary, insights (array), athletes, etc. }
+  // Support both shapes.
   const textParts = [
     insight.date ? `date:${insight.date}` : null,
     insight.kind ? `kind:${insight.kind}` : null,
+    // Primary: session_analysis / coach_session_flag text field
+    typeof insightData?.text === 'string'
+      ? `insight:${(insightData.text as string).slice(0, 500)}`
+      : null,
+    // Secondary: weekly digest summary field
     typeof insightData?.summary === 'string'
       ? `summary:${(insightData.summary as string).slice(0, 500)}`
       : null,
+    // Array insights (weekly digest)
     Array.isArray(insightData?.insights)
       ? `insights:${(insightData.insights as string[]).slice(0, 3).join(' | ')}`
       : null,
-    typeof insightData?.flags === 'string' ? `flags:${insightData.flags}` : null,
+    // Flags: array (session_analysis) or string (legacy)
+    Array.isArray(insightData?.flags) && (insightData.flags as string[]).length > 0
+      ? `flags:${(insightData.flags as string[]).join(' ')}`
+      : typeof insightData?.flags === 'string' ? `flags:${insightData.flags}` : null,
   ].filter(Boolean).join(' | ')
 
   if (!textParts || textParts.length < MIN_EMBED_TEXT_CHARS) return

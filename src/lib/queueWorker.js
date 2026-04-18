@@ -51,12 +51,14 @@ export function validateAiBatchMessage(msg) {
 /**
  * Builds a new payload for re-enqueue with incremented retry_count.
  * @param {Record<string,unknown>} originalPayload - message.message from pgmq row
+ * @param {string|null} [errorReason] - error description from the failed attempt
  * @returns {Record<string,unknown>} new payload with retry_count + 1
  */
-export function buildRetryMessage(originalPayload) {
+export function buildRetryMessage(originalPayload, errorReason = null) {
   return {
     ...originalPayload,
     retry_count: (originalPayload.retry_count ?? 0) + 1,
     retried_at:  new Date().toISOString(),
+    ...(errorReason !== null ? { last_error: errorReason } : {}),
   }
 }
