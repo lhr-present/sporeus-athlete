@@ -3,8 +3,9 @@
 // Collapsible; events are clickable and call onAthleteClick(athleteId).
 // Designed to sit above the squad table in CoachSquadView.
 
-import { useState } from 'react'
+import { useState, useContext } from 'react'
 import { S } from '../../styles.js'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 
 const STATUS_COLOR = { live: '#5bc25b', connecting: '#f5c542', reconnecting: '#f5c542', disconnected: '#555' }
 const STATUS_LABEL = { live: '● LIVE', connecting: '○ connecting…', reconnecting: '○ reconnecting…', disconnected: '○ offline' }
@@ -25,6 +26,7 @@ export default function LiveSquadFeed({
   athletes = [],
   onAthleteClick,
 }) {
+  const { t } = useContext(LangCtx)
   const [collapsed, setCollapsed] = useState(false)
   const onlineCount = athletes.filter(a => presenceMap[a.athlete_id]?.online).length
 
@@ -51,10 +53,10 @@ export default function LiveSquadFeed({
         <span style={{ ...S.mono, fontSize: '10px', color: STATUS_COLOR[feedStatus] || '#555', letterSpacing: '0.05em' }}>
           {STATUS_LABEL[feedStatus] || '○ offline'}
         </span>
-        <span style={{ ...S.mono, fontSize: '10px', color: '#444' }}>SQUAD FEED</span>
+        <span style={{ ...S.mono, fontSize: '10px', color: '#444' }}>{t('feedSquadLabel')}</span>
         {onlineCount > 0 && (
           <span style={{ ...S.mono, fontSize: '10px', color: '#5bc25b', marginLeft: 'auto' }}>
-            {onlineCount} online
+            {onlineCount} {t('feedOnline')}
           </span>
         )}
         {/* Presence dots */}
@@ -85,10 +87,10 @@ export default function LiveSquadFeed({
           {feedEvents.length === 0 ? (
             <div style={{ padding: '20px 14px', ...S.mono, fontSize: '11px', color: '#333', textAlign: 'center' }}>
               {athletes.length === 0
-                ? 'No athletes yet — invite your first athlete from the Squad tab.'
+                ? t('feedNoAthletes')
                 : feedStatus === 'live'
-                  ? 'No activity yet — waiting for squad updates…'
-                  : 'Connecting to live feed…'}
+                  ? t('feedNoActivity')
+                  : t('feedConnecting')}
             </div>
           ) : (
             feedEvents.map(ev => (

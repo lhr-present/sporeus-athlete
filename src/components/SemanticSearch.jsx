@@ -10,11 +10,12 @@
 //   tier          'free'|'coach'|'club'
 //   authUser      Supabase user object
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useContext } from 'react'
 import { useFocusTrap } from '../hooks/useFocusTrap.js'
 import { S } from '../styles.js'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { isFeatureGated } from '../lib/subscription.js'
+import { LangCtx } from '../contexts/LangCtx.jsx'
 // ragPrompts used for server-side citation rendering; imported when needed in callers
 import { logger } from '../lib/logger.js'
 
@@ -54,6 +55,7 @@ function simBar(similarity) {
 }
 
 export default function SemanticSearch({ show, onClose, onJumpToSession, tier = 'free', authUser }) {
+  const { t } = useContext(LangCtx)
   const [query,    setQuery]    = useState('')
   const [results,  setResults]  = useState([])
   const [loading,  setLoading]  = useState(false)
@@ -167,12 +169,12 @@ export default function SemanticSearch({ show, onClose, onJumpToSession, tier = 
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Search sessions by meaning… (e.g. 'hard interval week')"
-            aria-label="Semantic search query"
+            placeholder={t('ssPlaceholder')}
+            aria-label={t('ssPlaceholder')}
             style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'var(--text)', fontFamily:'IBM Plex Mono, monospace', fontSize:12, padding:0 }}
           />
           {loading && (
-            <span style={{ fontSize:10, color:'#888' }}>searching…</span>
+            <span style={{ fontSize:10, color:'#888' }}>{t('ssSearching')}</span>
           )}
           <button
             onClick={onClose}
@@ -184,8 +186,8 @@ export default function SemanticSearch({ show, onClose, onJumpToSession, tier = 
         {/* Upgrade gate */}
         {gated && (
           <div style={{ padding:'20px 16px', color:'#f5c542', fontSize:11, textAlign:'center' }}>
-            Semantic search requires a Coach or Club plan.{' '}
-            <a href="https://sporeus.com/upgrade" target="_blank" rel="noreferrer" style={{ color:'#ff6600' }}>Upgrade</a>
+            {t('ssUpgradeMsg')}{' '}
+            <a href="https://sporeus.com/upgrade" target="_blank" rel="noreferrer" style={{ color:'#ff6600' }}>{t('ssUpgradeLink')}</a>
           </div>
         )}
 
@@ -199,20 +201,20 @@ export default function SemanticSearch({ show, onClose, onJumpToSession, tier = 
                   onClick={() => search(query)}
                   style={{ marginLeft:8, fontSize:10, background:'none', border:'1px solid #e03030', color:'#e03030', borderRadius:3, padding:'2px 8px', cursor:'pointer', fontFamily:'IBM Plex Mono, monospace' }}
                 >
-                  Retry
+                  {t('ssRetry')}
                 </button>
               </div>
             )}
 
             {!loading && !error && query.length >= MIN_QUERY_LEN && results.length === 0 && (
               <div style={{ padding:'16px 14px', color:'#666', fontSize:11 }}>
-                No matching sessions found. Try a different phrase or add more session notes.
+                {t('ssNoResults')}
               </div>
             )}
 
             {!loading && query.length > 0 && query.length < MIN_QUERY_LEN && (
               <div style={{ padding:'16px 14px', color:'#555', fontSize:11 }}>
-                Type at least {MIN_QUERY_LEN} characters to search.
+                {t('ssMinChars')}
               </div>
             )}
 
@@ -220,15 +222,10 @@ export default function SemanticSearch({ show, onClose, onJumpToSession, tier = 
             {!loading && !error && query.length === 0 && (
               <div style={{ padding:'20px 16px' }}>
                 <div style={{ fontSize:11, color:'#555', marginBottom:12, fontFamily:'IBM Plex Mono, monospace' }}>
-                  Search your sessions by meaning, not just keywords.
+                  {t('ssIdleTitle')}
                 </div>
                 <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                  {[
-                    'hard interval week before the race',
-                    'easy recovery run with low HR',
-                    'long ride in the mountains',
-                    'felt exhausted, poor sleep',
-                  ].map(ex => (
+                  {[t('ssExample1'), t('ssExample2'), t('ssExample3'), t('ssExample4')].map(ex => (
                     <button
                       key={ex}
                       onClick={() => setQuery(ex)}
@@ -239,7 +236,7 @@ export default function SemanticSearch({ show, onClose, onJumpToSession, tier = 
                   ))}
                 </div>
                 <div style={{ marginTop:14, fontSize:9, color:'#333', fontFamily:'IBM Plex Mono, monospace' }}>
-                  Sessions are indexed as you log them. New accounts build their corpus over the first week.
+                  {t('ssIdleCorpus')}
                 </div>
               </div>
             )}
@@ -288,9 +285,9 @@ export default function SemanticSearch({ show, onClose, onJumpToSession, tier = 
 
         {/* Footer */}
         <div style={{ borderTop:'1px solid #1c1c1c', padding:'6px 14px', display:'flex', gap:16, fontSize:10, color:'#555' }}>
-          <span>↑↓ navigate</span>
-          <span>↵ jump to session</span>
-          <span>Esc close</span>
+          <span>{t('ssNavHint')}</span>
+          <span>{t('ssJumpHint')}</span>
+          <span>{t('ssEscHint')}</span>
           <span style={{ marginLeft:'auto' }}>Ctrl+Shift+K</span>
         </div>
       </div>

@@ -58,6 +58,25 @@ export default defineConfig({
     { name: 'webkit',        testMatch: '**/smoke.spec.js', use: { ...devices['Desktop Safari'] } },
     { name: 'mobile-chrome', testMatch: '**/smoke.spec.js', use: { ...devices['Pixel 7'] } },
     { name: 'mobile-safari', testMatch: '**/smoke.spec.js', use: { ...devices['iPhone 14'] } },
+
+    // ── C7 accessibility audit (axe-core) ─────────────────────────────────────
+    {
+      name: 'a11y-chromium',
+      testMatch: '**/a11y.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+    },
+
+    // ── C7 mobile layout tests ────────────────────────────────────────────────
+    {
+      name: 'mobile-layout',
+      testMatch: '**/mobile.spec.ts',
+      use: { ...devices['Pixel 7'] },
+    },
+    {
+      name: 'mobile-layout-safari',
+      testMatch: '**/mobile.spec.ts',
+      use: { ...devices['iPhone 12'] },
+    },
   ],
 
   // Auto-boots `npm run dev` if nothing is already on :5173.

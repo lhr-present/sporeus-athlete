@@ -390,6 +390,11 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
 export default function App() {
   const [lang, setLang] = useLocalStorage('sporeus-lang', 'en')
   const [dark, setDark] = useLocalStorage('sporeus-dark', true)
+
+  // Sync HTML lang attribute for screen readers and proper locale rendering
+  useEffect(() => {
+    document.documentElement.lang = lang
+  }, [lang])
   const { user, profile: authProfile, loading, signOut, refreshProfile } = useAuth()
 
   // ── Attribution: capture first-touch UTM on every cold mount ──────────────

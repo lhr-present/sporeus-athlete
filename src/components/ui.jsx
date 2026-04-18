@@ -3,11 +3,18 @@ import { S } from '../styles.js'
 import { ZONE_COLORS, ZONE_NAMES, typeColor } from '../lib/constants.js'
 
 // ─── ZoneBar ───────────────────────────────────────────────────────────────────
-export function ZoneBar({ pct, color }) {
+export function ZoneBar({ pct, color, label }) {
   const [w, setW] = useState(0)
   useEffect(() => { const id=setTimeout(()=>setW(pct),60); return ()=>clearTimeout(id) }, [pct])
   return (
-    <div style={{ background:'var(--border)', height:'8px', borderRadius:'2px', overflow:'hidden' }}>
+    <div
+      role="progressbar"
+      aria-valuenow={Math.round(pct)}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label={label ? `${label} ${Math.round(pct)}%` : `${Math.round(pct)}%`}
+      style={{ background:'var(--border)', height:'8px', borderRadius:'2px', overflow:'hidden' }}
+    >
       <div style={{ height:'100%', width:`${w}%`, background:color, borderRadius:'2px', transition:'width 400ms ease-out' }} />
     </div>
   )
@@ -45,8 +52,15 @@ export function TSSChart({ daily, t }) {
   const xLabels=daily.filter((_,i)=>i===0||i===6||i===13||i===20||i===daily.length-1)
     .map(d=>({ label:d.date.slice(5), i:daily.indexOf(d) }))
 
+  const lastTss = daily[daily.length-1]?.tss ?? 0
+  const lastCtl = daily[daily.length-1]?.ctl ?? 0
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width:'100%', height:'auto' }}>
+    <svg
+      role="img"
+      aria-label={`Training load chart — last ${daily.length} days. Latest TSS ${Math.round(lastTss)}, CTL ${Math.round(lastCtl)}.`}
+      viewBox={`0 0 ${W} ${H}`}
+      style={{ width:'100%', height:'auto' }}
+    >
       {yTicks.map(v=>(
         <g key={v}>
           <line x1={P.l} x2={W-P.r} y1={yS(v)} y2={yS(v)} stroke="#ebebeb" strokeWidth="1"/>
@@ -85,7 +99,7 @@ export function MiniDonut({ pcts, colors, size=56 }) {
     return <path key={i} d={`M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${large} 1 ${x2.toFixed(2)},${y2.toFixed(2)} Z`} fill={colors[i]}/>
   }).filter(Boolean)
   return (
-    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size}>
+    <svg role="img" aria-label="Zone distribution donut chart" viewBox={`0 0 ${size} ${size}`} width={size} height={size}>
       {segs}
       <circle cx={cx} cy={cy} r={r*0.55} fill="white"/>
     </svg>
@@ -121,9 +135,10 @@ export function WeeklyVolChart({ log }) {
   const yTicks = [0, Math.round(yMax/2), yMax]
 
   if (!log.length) return null
+  const totalMins = weeks.reduce((s, w) => s + w.total, 0)
   return (
     <div>
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width:'100%', height:'auto' }}>
+      <svg role="img" aria-label={`Weekly volume chart — ${weeks.length} weeks, ${Math.round(totalMins/60)}h total`} viewBox={`0 0 ${W} ${H}`} style={{ width:'100%', height:'auto' }}>
         {yTicks.map(v=>(
           <g key={v}>
             <line x1={P.l} x2={W-P.r} y1={P.t+iH-hS(v)} y2={P.t+iH-hS(v)} stroke="#ebebeb" strokeWidth="1"/>

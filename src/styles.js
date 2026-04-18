@@ -18,11 +18,26 @@ export const ANIM_CSS = `
     --bg:#ffffff; --text:#1a1a1a; --card:#ffffff; --card-bg:#f8f8f8;
     --border:#e0e0e0; --muted:#888; --sub:#555; --surface:#fafafa;
     --input-bg:#ffffff; --input-border:#ccc;
+    --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
+    --safe-left:env(safe-area-inset-left,0px); --safe-right:env(safe-area-inset-right,0px);
   }
   :root[data-theme="dark"] {
     --bg:#0a0a0a; --text:#e5e5e5; --card:#1a1a1a; --card-bg:#111111;
     --border:#333333; --muted:#888; --sub:#aaa; --surface:#111111;
     --input-bg:#1a1a1a; --input-border:#444;
+  }
+  /* Mobile-first tap targets */
+  button, [role="button"], input[type="submit"], input[type="button"] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Focus ring — visible for keyboard nav */
+  :focus-visible { outline: 2px solid #ff6600; outline-offset: 2px; border-radius: 2px; }
+  /* Mobile layout overrides */
+  @media (max-width: 640px) {
+    .sp-content { padding: 12px !important; }
+    .sp-nav-btn { padding: 10px 10px !important; font-size: 9px !important; }
+    .sp-header { padding: 8px 12px !important; padding-top: max(8px, var(--safe-top)) !important; }
   }
 `
 
@@ -47,8 +62,8 @@ export const S = {
   input:      { fontFamily:FONT.mono, fontSize:FONT.size.xl, padding:'8px 12px', border:'1px solid var(--input-border)', borderRadius:RADIUS.lg, width:'100%', boxSizing:'border-box', background:'var(--input-bg)', color:'var(--text)' },
   select:     { fontFamily:FONT.mono, fontSize:FONT.size.lg, padding:'8px 12px', border:'1px solid var(--input-border)', borderRadius:RADIUS.lg, width:'100%', boxSizing:'border-box', background:'var(--input-bg)', color:'var(--text)', cursor:'pointer' },
   // ── Buttons ──────────────────────────────────────────────────────────────────
-  btn:        { fontFamily:FONT.mono, fontSize:FONT.size.base, fontWeight:600, letterSpacing:FONT.track.tight, padding:'10px 18px', background:COLOR.orange, color:COLOR.white, border:'none', borderRadius:RADIUS.lg, cursor:'pointer' },
-  btnSec:     { fontFamily:FONT.mono, fontSize:FONT.size.base, fontWeight:600, padding:'8px 14px', background:'transparent', color:COLOR.orange, border:`1px solid ${COLOR.orange}`, borderRadius:RADIUS.lg, cursor:'pointer' },
+  btn:        { fontFamily:FONT.mono, fontSize:FONT.size.base, fontWeight:600, letterSpacing:FONT.track.tight, padding:'10px 18px', background:COLOR.orange, color:COLOR.white, border:'none', borderRadius:RADIUS.lg, cursor:'pointer', touchAction:'manipulation', minHeight:'44px' },
+  btnSec:     { fontFamily:FONT.mono, fontSize:FONT.size.base, fontWeight:600, padding:'8px 14px', background:'transparent', color:COLOR.orange, border:`1px solid ${COLOR.orange}`, borderRadius:RADIUS.lg, cursor:'pointer', touchAction:'manipulation', minHeight:'44px' },
   // ── Stats ────────────────────────────────────────────────────────────────────
   stat:       { flex:'1 1 110px', background:COLOR.black, borderRadius:RADIUS.xl, padding:'14px', textAlign:'center' },
   statVal:    { fontFamily:FONT.mono, fontSize:FONT.size.stat, fontWeight:600, color:COLOR.orange, display:'block' },
