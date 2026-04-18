@@ -131,12 +131,17 @@ describe('ReportsTab', () => {
   })
 
   it('deletes a report after confirmation', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValueOnce(true)
     renderWithLang(<ReportsTab authUser={mockAuthUser} authProfile={mockAuthProfile} lang="en" />)
 
     await waitFor(() => screen.getAllByTitle(/Delete/i))
     const deleteBtn = screen.getAllByTitle(/Delete/i)[0]
     fireEvent.click(deleteBtn)
+
+    // ConfirmModal should appear
+    await waitFor(() => screen.getByRole('dialog'))
+    // Click the confirm button inside the modal
+    const confirmBtn = screen.getByRole('button', { name: /^Delete$/i })
+    fireEvent.click(confirmBtn)
 
     await waitFor(() => expect(mockDeleteReport).toHaveBeenCalledWith('rep1', 'uid123/weekly/2026-04-14.pdf'))
     // Row removed from list
@@ -144,12 +149,16 @@ describe('ReportsTab', () => {
   })
 
   it('does not delete when confirmation is cancelled', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValueOnce(false)
     renderWithLang(<ReportsTab authUser={mockAuthUser} authProfile={mockAuthProfile} lang="en" />)
 
     await waitFor(() => screen.getAllByTitle(/Delete/i))
     const deleteBtn = screen.getAllByTitle(/Delete/i)[0]
     fireEvent.click(deleteBtn)
+
+    // ConfirmModal should appear — cancel it
+    await waitFor(() => screen.getByRole('dialog'))
+    const cancelBtn = screen.getByRole('button', { name: /Cancel/i })
+    fireEvent.click(cancelBtn)
 
     await waitFor(() => expect(mockDeleteReport).not.toHaveBeenCalled())
   })

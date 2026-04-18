@@ -56,6 +56,8 @@ import ActivityMap from './ActivityMap.jsx'
 import UploadActivity from './UploadActivity.jsx'
 import SemanticSearch from './SemanticSearch.jsx'
 import { getTierSync } from '../lib/subscription.js'
+import ConfirmModal from './ui/ConfirmModal.jsx'
+import EmptyState from './ui/EmptyState.jsx'
 
 export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const { t } = useContext(LangCtx)
@@ -87,6 +89,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const [csvPreview, setCsvPreview]       = useState(null) // { entries, skipped, deduped }
   const [bulkMode, setBulkMode]           = useState(false)
   const [selected, setSelected]           = useState(new Set())
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
   const [expandedId, setExpandedId]       = useState(null)
   const fileInputRef    = useRef(null)
   const csvInputRef     = useRef(null)
@@ -191,7 +194,11 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
 
   const handleBulkDelete = () => {
     if (!selected.size) return
-    if (!window.confirm(`Delete ${selected.size} selected session${selected.size > 1 ? 's' : ''}?`)) return
+    setConfirmBulkDelete(true)
+  }
+
+  const confirmBulkDeleteAction = () => {
+    setConfirmBulkDelete(false)
     setLog(log.filter(e => !selected.has(e.id)))
     setSelected(new Set())
     setBulkMode(false)
@@ -483,7 +490,15 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
             window.scrollTo({ top:0, behavior:'smooth' })
           }}/>
         ) : log.length===0 ? (
-          <div style={{ ...S.mono, fontSize:'12px', color:'#aaa', textAlign:'center', padding:'20px' }}>{t('noSessionsYet')}</div>
+          <div style={{ padding:'8px 0' }}>
+            <EmptyState
+              icon="◻"
+              title={t('noSessionsYet')}
+              body={lang === 'tr'
+                ? 'Yukarıdaki formu kullanarak ilk antrenmanınızı ekleyin veya FIT/GPX dosyası içe aktarın.'
+                : 'Log your first session using the form above, or import a FIT/GPX file.'}
+            />
+          </div>
         ) : (
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse', ...S.mono, fontSize:'12px' }}>
@@ -823,6 +838,22 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
         onJumpToSession={sessionId => { setExpandedId(sessionId); setCalView(false); setShowSemanticSearch(false) }}
         tier={getTierSync()}
         authUser={authUser}
+      />
+
+      {/* ── Bulk-delete confirm ──────────────────────────────────────────────── */}
+      <ConfirmModal
+        open={confirmBulkDelete}
+        title={lang === 'tr'
+          ? `${selected.size} antrenman silinsin mi?`
+          : `Delete ${selected.size} selected session${selected.size !== 1 ? 's' : ''}?`}
+        body={lang === 'tr'
+          ? 'Bu işlem geri alınamaz.'
+          : 'This action cannot be undone.'}
+        confirmLabel={lang === 'tr' ? 'Sil' : 'Delete'}
+        cancelLabel={lang === 'tr' ? 'İptal' : 'Cancel'}
+        dangerous
+        onConfirm={confirmBulkDeleteAction}
+        onCancel={() => setConfirmBulkDelete(false)}
       />
 
       {/* ── Upload & Parse overlay ─────────────────────────────────────────── */}

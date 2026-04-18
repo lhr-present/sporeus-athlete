@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { isSupabaseReady } from '../lib/supabase.js'
 import { generateReport, listReports, getSignedUrl, deleteReport } from '../lib/reports.js'
 import { S } from '../styles.js'
+import ConfirmModal from './ui/ConfirmModal.jsx'
 
 const KIND_META = {
   weekly: {
@@ -54,6 +55,7 @@ export default function ReportsTab({ authUser, authProfile, lang = 'en' }) {
   const [error, setError]           = useState(null)
   const [success, setSuccess]       = useState(null)   // { kind, url }
   const [deletingId, setDeletingId] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(null)  // { id, storagePath }
 
   const tr = (en, tr2) => lang === 'tr' ? tr2 : en
 
@@ -103,12 +105,18 @@ export default function ReportsTab({ authUser, authProfile, lang = 'en' }) {
     }
   }
 
-  const handleDelete = async (reportId, storagePath) => {
-    if (!window.confirm(tr('Delete this report?', 'Bu raporu sil?'))) return
-    setDeletingId(reportId)
+  const handleDelete = (reportId, storagePath) => {
+    setConfirmDelete({ id: reportId, storagePath })
+  }
+
+  const confirmDeleteReport = async () => {
+    if (!confirmDelete) return
+    const { id, storagePath } = confirmDelete
+    setConfirmDelete(null)
+    setDeletingId(id)
     try {
-      await deleteReport(reportId, storagePath)
-      setReports(prev => prev.filter(r => r.id !== reportId))
+      await deleteReport(id, storagePath)
+      setReports(prev => prev.filter(r => r.id !== id))
     } catch (e) {
       setError(e.message)
     } finally {
@@ -217,8 +225,16 @@ export default function ReportsTab({ authUser, authProfile, lang = 'en' }) {
         </div>
 
         {!loading && reports.length === 0 && (
-          <div style={{ ...S.mono, fontSize: '10px', color: '#444', padding: '16px 0' }}>
-            {tr('No reports generated yet.', 'Henüz rapor oluşturulmadı.')}
+          <div style={{ ...S.mono, fontSize: '10px', color: '#444', padding: '16px 0', lineHeight: 1.7 }}>
+            <div style={{ marginBottom: '6px' }}>
+              {tr('No reports generated yet.', 'Henüz rapor oluşturulmadı.')}
+            </div>
+            <div style={{ color: '#333', fontSize: '9px' }}>
+              {tr(
+                'Your first Weekly Report becomes available after logging sessions in any full calendar week. Generate one above whenever you\'re ready.',
+                'İlk Haftalık Raporunuz, herhangi bir takvim haftasında antrenman kaydettikten sonra kullanılabilir hale gelir. Hazır olduğunuzda yukarıdan oluşturun.',
+              )}
+            </div>
           </div>
         )}
 
@@ -272,6 +288,16 @@ export default function ReportsTab({ authUser, authProfile, lang = 'en' }) {
           </div>
         )}
       </div>
+      <ConfirmModal
+        open={!!confirmDelete}
+        title={tr('Delete this report?', 'Bu raporu sil?')}
+        body={tr('This action cannot be undone. The PDF file will be permanently removed.', 'Bu işlem geri alınamaz. PDF dosyası kalıcı olarak silinecektir.')}
+        confirmLabel={tr('Delete', 'Sil')}
+        cancelLabel={tr('Cancel', 'İptal')}
+        dangerous
+        onConfirm={confirmDeleteReport}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   )
 }

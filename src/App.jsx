@@ -60,8 +60,17 @@ const PRIVACY_MODE = new URLSearchParams(window.location.search).get('privacy') 
 
 
 const Splash = () => (
-  <div style={{ minHeight:'100vh', background:'#0a0a0a', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'#444', letterSpacing:'0.12em' }}>
-    LOADING...
+  <div style={{ minHeight:'100vh', background:'#0a0a0a', display:'flex', alignItems:'center', justifyContent:'center', padding:'40px 20px' }}>
+    <div style={{ width:'min(480px,100%)', display:'flex', flexDirection:'column', gap:'12px' }}>
+      {[100, 70, 90, 55].map((w, i) => (
+        <div key={i} style={{
+          height: i === 0 ? 16 : 10, borderRadius: 3,
+          background: '#1a1a1a',
+          width: `${w}%`,
+          opacity: 0.7 - i * 0.12,
+        }} />
+      ))}
+    </div>
   </div>
 )
 

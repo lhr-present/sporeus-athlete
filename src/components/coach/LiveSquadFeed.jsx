@@ -84,7 +84,11 @@ export default function LiveSquadFeed({
         <div style={{ maxHeight: '200px', overflowY: 'auto', background: '#080808' }}>
           {feedEvents.length === 0 ? (
             <div style={{ padding: '20px 14px', ...S.mono, fontSize: '11px', color: '#333', textAlign: 'center' }}>
-              {feedStatus === 'live' ? 'No activity yet — waiting for squad updates…' : 'Connecting to live feed…'}
+              {athletes.length === 0
+                ? 'No athletes yet — invite your first athlete from the Squad tab.'
+                : feedStatus === 'live'
+                  ? 'No activity yet — waiting for squad updates…'
+                  : 'Connecting to live feed…'}
             </div>
           ) : (
             feedEvents.map(ev => (

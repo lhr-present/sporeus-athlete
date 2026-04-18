@@ -194,19 +194,53 @@ export default function SemanticSearch({ show, onClose, onJumpToSession, tier = 
           <div style={{ overflowY:'auto', flex:1 }}>
             {error && (
               <div style={{ padding:'10px 14px', color:'#e03030', fontSize:11 }}>
-                {error}
+                ⚠ {error}
+                <button
+                  onClick={() => search(query)}
+                  style={{ marginLeft:8, fontSize:10, background:'none', border:'1px solid #e03030', color:'#e03030', borderRadius:3, padding:'2px 8px', cursor:'pointer', fontFamily:'IBM Plex Mono, monospace' }}
+                >
+                  Retry
+                </button>
               </div>
             )}
 
             {!loading && !error && query.length >= MIN_QUERY_LEN && results.length === 0 && (
               <div style={{ padding:'16px 14px', color:'#666', fontSize:11 }}>
-                No matching sessions found.
+                No matching sessions found. Try a different phrase or add more session notes.
               </div>
             )}
 
             {!loading && query.length > 0 && query.length < MIN_QUERY_LEN && (
               <div style={{ padding:'16px 14px', color:'#555', fontSize:11 }}>
                 Type at least {MIN_QUERY_LEN} characters to search.
+              </div>
+            )}
+
+            {/* Idle state — no query yet */}
+            {!loading && !error && query.length === 0 && (
+              <div style={{ padding:'20px 16px' }}>
+                <div style={{ fontSize:11, color:'#555', marginBottom:12, fontFamily:'IBM Plex Mono, monospace' }}>
+                  Search your sessions by meaning, not just keywords.
+                </div>
+                <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                  {[
+                    'hard interval week before the race',
+                    'easy recovery run with low HR',
+                    'long ride in the mountains',
+                    'felt exhausted, poor sleep',
+                  ].map(ex => (
+                    <button
+                      key={ex}
+                      onClick={() => setQuery(ex)}
+                      style={{ textAlign:'left', background:'none', border:'1px solid #222', borderRadius:3, color:'#555', fontFamily:'IBM Plex Mono, monospace', fontSize:10, padding:'5px 10px', cursor:'pointer', letterSpacing:'0.02em' }}
+                    >
+                      ↗ {ex}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ marginTop:14, fontSize:9, color:'#333', fontFamily:'IBM Plex Mono, monospace' }}>
+                  Sessions are indexed as you log them. New accounts build their corpus over the first week.
+                </div>
               </div>
             )}
 
