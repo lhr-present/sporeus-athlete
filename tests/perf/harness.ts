@@ -17,7 +17,7 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { config as dotenvConfig }             from 'dotenv';
-import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'fs';
+import { writeFileSync, mkdirSync, existsSync, readFileSync, unlinkSync } from 'fs';
 import { join, dirname }                      from 'path';
 import { fileURLToPath }                      from 'url';
 import { performance }                        from 'perf_hooks';
@@ -215,11 +215,6 @@ async function seedViaSql(
         });
 
         if (rows.length >= BATCH_SIZE) {
-          const { error } = await supabase.from('training_log').upsert(rows, {
-            onConflict: 'user_id,date,type',
-            ignoreDuplicates: true,
-          } as Parameters<typeof supabase.from>[0] extends string ? never : never);
-          // upsert with ignoreDuplicates — ignore duplicates silently
           await supabase.from('training_log').insert(rows).then(() => undefined).catch(() => undefined);
           totalInserted += rows.length;
           rows.length = 0;
@@ -295,7 +290,7 @@ async function teardown(supabase: SupabaseClient): Promise<void> {
 
   console.log(`  deleted ${deleted} users (CASCADE removes all their data)`);
 
-  try { require('fs').unlinkSync(STATE_FILE); } catch {}
+  try { unlinkSync(STATE_FILE); } catch { /* already gone */ }
 }
 
 // ── State persistence ─────────────────────────────────────────────────────────
