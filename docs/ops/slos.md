@@ -46,23 +46,20 @@ Review cadence: monthly, or after any SLO breach
 
 | SLO | Primary source | Backup |
 |-----|---------------|--------|
-| S-1 | Axiom: `sporeus-edge` dataset, `status=error/ok` | Supabase edge function logs |
-| S-2 | Axiom: `fn=squad-sync duration_ms` | `tests/perf/baselines/` |
-| S-3 | Axiom: `fn=parse-activity status=ok/error` | `activity_upload_jobs.status` |
-| S-4 | `ai_insights.created_at - training_log.created_at` | Axiom: `fn=analyse-session` |
-| S-5 | `notification_log.delivery_status` | Axiom: `fn=send-push` |
+| S-1 | Supabase edge function logs (stdout JSON from `withTelemetry`) | `operator_alerts` error counts |
+| S-2 | `tests/perf/baselines/` | Supabase edge function logs `fn=squad-sync` |
+| S-3 | `activity_upload_jobs.status` | Supabase edge function logs `fn=parse-activity` |
+| S-4 | `ai_insights.created_at - training_log.created_at` | Supabase edge function logs `fn=analyse-session` |
+| S-5 | `notification_log.delivery_status` | Supabase edge function logs `fn=send-push` |
 | S-6 | `queue_metrics` table (refresh every 5 min) | pgmq.queue_details() RPC |
-| S-7 | Axiom: Supabase Realtime latency metrics | `useRealtimeSquadFeed` telemetry |
+| S-7 | `useRealtimeSquadFeed` telemetry | Supabase Realtime dashboard |
 | S-8 | `operator_alerts.kind=payment_*` | Dodo/Stripe dashboard |
 
 ---
 
 ## Alert Routing
 
-All alerts → `operator_alerts` table (always).  
-Telegram notification (if `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` set in Supabase secrets):
-- **critical** → immediate Telegram
-- **warning** → batched in weekly digest (unless sustained >10 min → Telegram)
+All alerts → `operator_alerts` table (always visible in admin ObservabilityDashboard).
 
 Weekly digest email → `huseyinakbulut71@gmail.com` (Monday 08:00 Istanbul / 05:00 UTC)  
 Requires `RESEND_API_KEY` secret in Supabase vault.

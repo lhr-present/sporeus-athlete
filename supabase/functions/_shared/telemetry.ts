@@ -3,52 +3,20 @@
 //   import { withTelemetry } from '../_shared/telemetry.ts'
 //   serve(withTelemetry('my-function', async (req) => { ... }))
 //
-// Every invocation emits a structured JSON event:
+// Every invocation logs a structured JSON line to stdout:
 //   { fn, status:'ok'|'error', duration_ms, request_id, user_id_hash?, error_class?, ts }
 //
-// Delivery: Axiom HTTP ingest (fire-and-forget, 500ms timeout).
-//   AXIOM_TOKEN  — write-only ingest token (set via supabase secrets)
-//   AXIOM_DATASET — dataset name (default: 'sporeus-edge')
-//
-// Heartbeat: long-running workers call telemetryHeartbeat(fnName) every 60s to
-//   prove liveness. Missing heartbeat > 5 min should alert in Axiom.
+// Supabase captures edge function stdout in its native log drain — no external
+// service required. Query logs via Supabase Dashboard → Edge Functions → Logs,
+// or via the Supabase log drain to any self-hosted destination.
 //
 // Privacy: user_id_hash = sha256(user_id).slice(0,16) — never raw IDs or emails.
 
-const AXIOM_INGEST  = 'https://api.axiom.co/v1/datasets'
-const HEARTBEAT_MS  = 60_000
+const HEARTBEAT_MS = 60_000
 
-// ── emitEvent — fire-and-forget telemetry event ───────────────────────────────
-async function emitEvent(event: Record<string, unknown>): Promise<void> {
-  const token   = Deno.env.get('AXIOM_TOKEN')
-  const dataset = Deno.env.get('AXIOM_DATASET') || 'sporeus-edge'
-
-  if (!token) {
-    // Dev/local: just log to console; no Axiom token needed
-    console.log(JSON.stringify({ _telemetry: true, ...event }))
-    return
-  }
-
-  const url = `${AXIOM_INGEST}/${dataset}/ingest`
-
-  try {
-    const ctrl = new AbortController()
-    const timer = setTimeout(() => ctrl.abort(), 500)  // 500ms hard timeout
-
-    await fetch(url, {
-      method:  'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type':  'application/x-ndjson',
-      },
-      body:    JSON.stringify(event) + '\n',
-      signal:  ctrl.signal,
-    }).catch(() => { /* swallowed — telemetry must not affect hot path */ })
-
-    clearTimeout(timer)
-  } catch {
-    // Intentionally swallowed — telemetry failure must never affect fn response
-  }
+// ── emitEvent — structured JSON log line (stdout → Supabase native logs) ──────
+function emitEvent(event: Record<string, unknown>): void {
+  console.log(JSON.stringify({ _telemetry: true, ...event }))
 }
 
 // ── hashUserId — sha256 → 16-char hex prefix, never raw IDs ──────────────────
@@ -104,7 +72,6 @@ export function withTelemetry(
 
       const userIdHash = rawUserId ? await hashUserId(rawUserId) : undefined
 
-      // fire-and-forget — don't await
       emitEvent({
         fn:           fnName,
         status,
@@ -143,9 +110,7 @@ export function withTelemetry(
 // ── telemetryHeartbeat — liveness signal for long-running workers ─────────────
 // Call once: const stopHeartbeat = telemetryHeartbeat('ai-batch-worker')
 // Cancel on shutdown: stopHeartbeat()
-//
-// Expected cadence: every 60s. Alert rule in Axiom:
-//   fn=<workerName> AND status=alive | absent for 5min → page on-call
+// Expected cadence: every 60s. Absence for 5+ min visible in Supabase edge fn logs.
 export function telemetryHeartbeat(fnName: string): () => void {
   const iv = setInterval(() => {
     emitEvent({

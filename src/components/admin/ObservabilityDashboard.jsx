@@ -6,9 +6,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase, isSupabaseReady } from '../../lib/supabase.js'
 import { S } from '../../styles.js'
 
-const AXIOM_DATASET = 'sporeus-edge'
-const AXIOM_BASE    = `https://app.axiom.co/sporeus/datasets/${AXIOM_DATASET}`
-
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function fmtRelative(iso) {
   if (!iso) return '—'
@@ -249,35 +246,6 @@ function AlertsPanel({ lang }) {
   )
 }
 
-// ── Axiom Deep Links ─────────────────────────────────────────────────────────
-function AxiomLinks() {
-  const links = [
-    { label: 'Edge Function Overview',  href: `${AXIOM_BASE}/explorer?q=fn%3D*&title=Overview` },
-    { label: 'Error Rate Monitor',      href: `${AXIOM_BASE}/explorer?q=status%3Derror&title=Errors` },
-    { label: 'Queue Drain Rate',        href: `${AXIOM_BASE}/explorer?q=category%3Dqueue&title=Queues` },
-    { label: 'User Funnel',             href: `${AXIOM_BASE}/explorer?q=event_type%3Dfunnel&title=Funnel` },
-    { label: 'Payment Events',          href: `${AXIOM_BASE}/explorer?q=fn%3Ddodo-webhook+OR+fn%3Dstripe&title=Money` },
-  ]
-  return (
-    <div style={{ ...S.card, marginBottom: '16px' }}>
-      <div style={{ ...S.mono, fontSize: '11px', fontWeight: 700, color: '#ff6600', letterSpacing: '0.12em', marginBottom: '10px' }}>
-        ◈ AXIOM DASHBOARDS
-      </div>
-      {links.map(l => (
-        <div key={l.label} style={{ padding: '3px 0', borderBottom: '1px solid #1a1a1a' }}>
-          <a
-            href={l.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ ...S.mono, fontSize: '11px', color: '#0064ff', textDecoration: 'none' }}
-          >
-            ↗ {l.label}
-          </a>
-        </div>
-      ))}
-    </div>
-  )
-}
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function ObservabilityDashboard({ authProfile, lang = 'en' }) {
@@ -305,10 +273,9 @@ export default function ObservabilityDashboard({ authProfile, lang = 'en' }) {
       <FunnelPanel       lang={lang} />
       <ErrorsPanel       lang={lang} />
       <AlertsPanel       lang={lang} />
-      <AxiomLinks />
 
       <div style={{ ...S.mono, fontSize: '9px', color: '#333', marginTop: '8px', textAlign: 'center' }}>
-        Auto-refreshes every 30–60s · {tr('Deep links open in Axiom', 'Derin bağlantılar Axiom\'da açılır')}
+        Auto-refreshes every 30–60s
       </div>
     </div>
   )

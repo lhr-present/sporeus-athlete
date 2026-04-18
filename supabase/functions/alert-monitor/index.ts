@@ -1,10 +1,10 @@
 // supabase/functions/alert-monitor/index.ts
-// Checks 8 alert conditions every minute (via pg_cron).
-// Fires alerts by inserting into operator_alerts + posting to Telegram/email.
+// Checks alert conditions every minute (via pg_cron).
+// Fires alerts by inserting into operator_alerts (visible in ObservabilityDashboard).
+// Weekly summary delivered via operator-digest edge function (Resend email).
 //
 // Alert conditions:
-//  1. Edge fn error rate >5% in last 5 min (from axiom — skipped if no AXIOM_TOKEN)
-//  2. Queue depth exceeds SLO thresholds for 10+ min
+//  1. Queue depth exceeds SLO thresholds
 //  3. DLQ (ai_batch_dlq) receives any message
 //  4. Cron job missed its expected window (>= schedule + 5 min lag)
 //  5. RLS policy denial spike >20/min
@@ -50,19 +50,6 @@ async function fire(
   if (await dedup(supa, kind)) return
 
   await supa.from('operator_alerts').insert({ kind, severity, title, body })
-
-  // Telegram notification (if TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID set)
-  const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN')
-  const chatId   = Deno.env.get('TELEGRAM_CHAT_ID')
-  if (botToken && chatId) {
-    const icon = severity === 'critical' ? '🚨' : '⚠️'
-    const text = `${icon} Sporeus Alert\n*${title}*\n${body}`
-    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' }),
-    }).catch(() => { /* non-fatal */ })
-  }
 }
 
 serve(withTelemetry('alert-monitor', async (req: Request) => {

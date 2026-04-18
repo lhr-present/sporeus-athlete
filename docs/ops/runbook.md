@@ -1,7 +1,7 @@
 # Sporeus Operator Runbook v8.0.5
 
 > **Observability complete milestone** — from v8.0.5 forward, silent failures are a bug class.  
-> Every failure must produce: an `operator_alerts` row + Telegram (if `TELEGRAM_BOT_TOKEN` set) + appear in Axiom.
+> Every failure must produce an `operator_alerts` row and appear in the admin ObservabilityDashboard.
 
 ---
 
@@ -10,7 +10,7 @@
 | Need | Where |
 |------|-------|
 | Live queue depths | Admin dashboard → Queue Depths panel |
-| Edge fn error rate | Axiom: Error Rate dashboard |
+| Edge fn logs | Supabase Dashboard → Edge Functions → Logs |
 | Last MV refresh | Admin dashboard → run `get_mv_health()` |
 | Recent alerts | Admin dashboard → Recent Alerts panel |
 | Weekly stats | Monday email OR `operator_alerts WHERE kind='weekly_digest'` |
@@ -23,10 +23,10 @@
 
 | Signal | Severity | First response | SLA |
 |--------|----------|----------------|-----|
-| Telegram 🚨 + `service_down_*` | Critical | Check `system_status` + Axiom | 15 min |
-| Telegram 🚨 + `dlq_nonempty` | Critical | Read DLQ, fix root cause | 30 min |
-| Telegram ⚠️ + queue depth | Warning | Check queue drain rate | 2 hours |
-| Telegram ⚠️ + `push_failure_spike` | Warning | Check VAPID + send-push logs | 2 hours |
+| `service_down_*` alert in dashboard | Critical | Check `system_status` + edge fn logs | 15 min |
+| `dlq_nonempty` alert in dashboard | Critical | Read DLQ, fix root cause | 30 min |
+| `queue_depth_*` warning in dashboard | Warning | Check queue drain rate | 2 hours |
+| `push_failure_spike` warning | Warning | Check VAPID + send-push logs | 2 hours |
 | Weekly digest — critical alerts > 0 | — | Review + post-mortem if >3 | Next business day |
 
 ---
@@ -97,7 +97,7 @@ npx supabase db query --linked <<'SQL'
 INSERT INTO queue_metrics (queue_name, depth, oldest_age_s)
 VALUES ('ai_batch', 150, 600);  -- 150 > SLO of 100
 SQL
-# Then call alert-monitor — should fire 'queue_depth_ai_batch' alert
+# Then call alert-monitor — should insert 'queue_depth_ai_batch' into operator_alerts
 curl -X POST "$SUPABASE_URL/functions/v1/alert-monitor" \
   -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY"
 ```
@@ -116,17 +116,13 @@ supabase functions deploy ai-proxy analyse-session ai-batch-worker
 
 | Secret | Purpose | How to set |
 |--------|---------|------------|
-| `AXIOM_TOKEN` | Edge function telemetry to Axiom | `supabase secrets set AXIOM_TOKEN=...` |
-| `AXIOM_DATASET` | Axiom dataset name (default: `sporeus-edge`) | `supabase secrets set AXIOM_DATASET=sporeus-edge` |
-| `TELEGRAM_BOT_TOKEN` | Telegram alert delivery | `supabase secrets set TELEGRAM_BOT_TOKEN=...` |
-| `TELEGRAM_CHAT_ID` | Operator's Telegram chat ID | `supabase secrets set TELEGRAM_CHAT_ID=...` |
 | `RESEND_API_KEY` | Weekly digest email delivery | `supabase secrets set RESEND_API_KEY=...` |
 
-Without these, alerts are stored in `operator_alerts` table only (still visible in admin dashboard).
+Without this, alerts are stored in `operator_alerts` table only (still visible in admin dashboard).
 
 ---
 
-## New Cron Jobs (v8.0.5)
+## Cron Jobs (v8.0.5)
 
 | Job | Schedule | Function |
 |-----|----------|----------|
@@ -147,11 +143,11 @@ Browser client
 
 Edge functions
   └─ _shared/telemetry.ts (withTelemetry wrapper)
-       └─ AXIOM_TOKEN → Axiom sporeus-edge dataset
+       └─ console.log JSON → Supabase native edge function logs
 
 pg_cron jobs
   ├─ check-dependencies → system_status table → StatusBanner
-  ├─ alert-monitor      → operator_alerts table → Telegram
+  ├─ alert-monitor      → operator_alerts table
   └─ operator-digest    → Resend email (Mon 08:00 Istanbul)
 
 Admin dashboard (ObservabilityDashboard.jsx)
@@ -167,7 +163,7 @@ Admin dashboard (ObservabilityDashboard.jsx)
 ## SLO Breach Escalation
 
 1. Alert fires → `operator_alerts` row inserted
-2. `alert-monitor` picks up Telegram notification
+2. Operator sees it in admin dashboard → Recent Alerts panel
 3. Operator acknowledges: set `resolved_at = NOW()` in `operator_alerts`
 4. Post-mortem for Critical alerts (Duration × Impact matrix):
    - < 5 min: no post-mortem required
@@ -178,12 +174,9 @@ Admin dashboard (ObservabilityDashboard.jsx)
 
 ## First Week Checklist (v8.0.5 deploy)
 
-- [ ] Set `AXIOM_TOKEN` + `AXIOM_DATASET` secrets
-- [ ] Set `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` secrets  
 - [ ] Set `RESEND_API_KEY` secret
-- [ ] Import 5 dashboards from `ops/axiom_dashboards/` into Axiom
 - [ ] Trigger `check-dependencies` manually — verify `system_status` updates
-- [ ] Trigger `alert-monitor` with synthetic queue depth — verify Telegram fires
+- [ ] Trigger `alert-monitor` with synthetic queue depth — verify `operator_alerts` row inserted
 - [ ] Trigger `operator-digest` manually — verify email received
 - [ ] Verify `StatusBanner` shows during simulated outage (set any service to 'down' manually)
 - [ ] Verify `ObservabilityDashboard` renders for admin user
