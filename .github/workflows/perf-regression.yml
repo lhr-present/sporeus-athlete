@@ -1,0 +1,259 @@
+name: Perf Regression
+
+on:
+  schedule:
+    # Nightly at 03:30 UTC (after nightly-batch at 03:00)
+    - cron: '30 3 * * *'
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: 'Single scenario to run (leave empty for all)'
+        required: false
+        default: ''
+
+# Cancel in-progress perf runs for the same PR
+concurrency:
+  group: perf-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+env:
+  SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+  SUPABASE_PROJECT_ID:   pvicqwapvvfempjdgwbm
+  NODE_VERSION:          "20"
+
+jobs:
+  # ── Gate: only run on perf-labeled PRs (not on every PR) ────────────────────
+  check-trigger:
+    runs-on: ubuntu-latest
+    outputs:
+      should-run: ${{ steps.check.outputs.should-run }}
+    steps:
+      - id: check
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            echo "should-run=true" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "should-run=true" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event.label.name }}" == "perf" ]]; then
+            echo "should-run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should-run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  perf:
+    name: Performance Regression
+    needs: check-trigger
+    if: needs.check-trigger.outputs.should-run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      # ── Checkout ────────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Node ────────────────────────────────────────────────────────────────
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ── Supabase CLI ─────────────────────────────────────────────────────────
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # ── Create perf DB branch ────────────────────────────────────────────────
+      - name: Create perf DB branch
+        id: db-branch
+        run: |
+          BRANCH="perf-${{ github.run_id }}"
+          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+
+          supabase branches create "${BRANCH}" \
+            --project-ref "$SUPABASE_PROJECT_ID" 2>&1 | tee branch_create.log
+
+          BRANCH_INFO=$(supabase branches get "${BRANCH}" \
+            --project-ref "$SUPABASE_PROJECT_ID" \
+            --output json 2>/dev/null || echo '{}')
+
+          BRANCH_URL=$(echo "$BRANCH_INFO" | jq -r '.api_url  // empty')
+          ANON_KEY=$(echo   "$BRANCH_INFO" | jq -r '.anon_key // empty')
+          SVC_KEY=$(echo    "$BRANCH_INFO" | jq -r '.service_role_key // empty')
+
+          echo "url=${BRANCH_URL:-${{ secrets.SUPABASE_URL }}}"           >> "$GITHUB_OUTPUT"
+          echo "anon=${ANON_KEY:-${{ secrets.SUPABASE_ANON_KEY }}}"       >> "$GITHUB_OUTPUT"
+          echo "svc=${SVC_KEY:-${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}}"  >> "$GITHUB_OUTPUT"
+
+      # ── Apply migrations ──────────────────────────────────────────────────────
+      - name: Apply migrations to perf branch
+        run: |
+          supabase db push \
+            --project-ref "$SUPABASE_PROJECT_ID" \
+            --branch "${{ steps.db-branch.outputs.branch }}"
+
+      # ── Write .env.e2e ────────────────────────────────────────────────────────
+      - name: Write .env.e2e
+        run: |
+          cat > .env.e2e <<EOF
+          E2E_SUPABASE_URL=${{ steps.db-branch.outputs.url }}
+          E2E_SUPABASE_ANON_KEY=${{ steps.db-branch.outputs.anon }}
+          E2E_SUPABASE_SERVICE_KEY=${{ steps.db-branch.outputs.svc }}
+          EOF
+
+      # ── Run perf harness ──────────────────────────────────────────────────────
+      - name: Run perf harness
+        id: perf
+        run: |
+          set +e
+          SCENARIO="${{ github.event.inputs.scenario }}"
+          if [[ -n "$SCENARIO" ]]; then
+            npx tsx tests/perf/harness.ts --bench-only --keep --scenario="$SCENARIO" \
+              2>&1 | tee perf_output.txt
+          else
+            npx tsx tests/perf/harness.ts 2>&1 | tee perf_output.txt
+          fi
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      # ── Parse SLO results ─────────────────────────────────────────────────────
+      - name: Check SLO results
+        id: slo
+        if: always()
+        run: |
+          node - <<'EOF'
+          const fs   = require('fs');
+          const glob = require('fs');
+
+          // Find the generated baseline
+          const files = fs.readdirSync('tests/perf/baselines')
+            .filter(f => f.endsWith('.json'))
+            .sort()
+            .reverse();
+
+          if (files.length === 0) {
+            console.log('No baseline JSON found — skipping SLO check');
+            process.exit(0);
+          }
+
+          const data   = JSON.parse(fs.readFileSync(`tests/perf/baselines/${files[0]}`, 'utf8'));
+          const slos   = data.slo_summary ?? {};
+          let failed   = false;
+          const rows   = [];
+
+          for (const [key, entry] of Object.entries(slos)) {
+            const { slo, status } = entry;
+            const icon = status === 'PASS' ? '✓' : '✗';
+            rows.push(`| ${icon} | ${key} | SLO=${slo} | ${status} |`);
+            if (status === 'FAIL') failed = true;
+          }
+
+          fs.writeFileSync('slo_table.md', rows.join('\n'));
+          if (failed) process.exit(1);
+          EOF
+
+      # ── PR comment ───────────────────────────────────────────────────────────
+      - name: Comment PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs   = require('fs');
+            const exit = '${{ steps.perf.outputs.exit_code }}';
+            const ok   = exit === '0';
+
+            let output = '';
+            try { output = fs.readFileSync('perf_output.txt','utf8').split('\n').slice(-60).join('\n'); }
+            catch {}
+
+            let sloTable = '';
+            try { sloTable = fs.readFileSync('slo_table.md','utf8'); }
+            catch {}
+
+            let timings = '';
+            try {
+              const files = fs.readdirSync('tests/perf/baselines')
+                .filter(f => f.endsWith('.json')).sort().reverse();
+              if (files.length > 0) {
+                const b = JSON.parse(fs.readFileSync(`tests/perf/baselines/${files[0]}`,'utf8'));
+                const rows = [];
+                const r = b.results ?? {};
+                if (r.coach_dashboard?.get_squad_overview)
+                  rows.push(`| coach_dashboard get_squad_overview | ${r.coach_dashboard.get_squad_overview.p95_ms}ms | 500ms |`);
+                if (r.squad_sync?.mv_refresh_all)
+                  rows.push(`| squad_sync MV refresh | ${r.squad_sync.mv_refresh_all.duration_ms}ms | 30000ms |`);
+                if (r.search_performance?.fts_search_everything)
+                  rows.push(`| FTS search_everything | ${r.search_performance.fts_search_everything.p95_ms}ms | 100ms |`);
+                if (r.ai_proxy_token_cost)
+                  rows.push(`| AI RAG overhead | ${r.ai_proxy_token_cost.rag_overhead_tokens} tokens | 2000 tokens |`);
+                if (rows.length)
+                  timings = `\n\n**Key Metrics**\n| Scenario | Measured | SLO |\n|---|---|---|\n${rows.join('\n')}`;
+              }
+            } catch {}
+
+            const body = `## ${ok ? '✅' : '🚨'} Perf Regression — ${ok ? 'All SLOs met' : 'SLO FAILURES'}
+
+            <details>
+            <summary>${ok ? 'View output' : '⚠️ Expand to see failures — SLO breach'}</summary>
+
+            \`\`\`
+            ${output}
+            \`\`\`
+            </details>${timings}
+
+            ${sloTable ? `\n**SLO Results**\n| | Metric | SLO | Status |\n|---|---|---|---|\n${sloTable}` : ''}
+
+            ${!ok ? '\n> **One or more performance SLOs failed. Investigate before merging.**\n' : ''}
+            _Branch: \`${{ steps.db-branch.outputs.branch }}\` | Run: ${{ github.run_id }}_`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('Perf Regression'),
+            );
+            const params = { owner: context.repo.owner, repo: context.repo.repo, body };
+            if (existing) {
+              await github.rest.issues.updateComment({ ...params, comment_id: existing.id });
+            } else {
+              await github.rest.issues.createComment({ ...params, issue_number: context.issue.number });
+            }
+
+      # ── Upload artifacts ──────────────────────────────────────────────────────
+      - name: Upload perf baseline
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-baseline-${{ github.run_id }}
+          path: tests/perf/baselines/
+          retention-days: 90
+
+      - name: Upload perf output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-output-${{ github.run_id }}
+          path: perf_output.txt
+          retention-days: 30
+
+      # ── Cleanup DB branch ─────────────────────────────────────────────────────
+      - name: Cleanup DB branch
+        if: always()
+        continue-on-error: true
+        run: |
+          supabase branches delete "${{ steps.db-branch.outputs.branch }}" \
+            --project-ref "$SUPABASE_PROJECT_ID" || true
+
+      # ── Hard fail ─────────────────────────────────────────────────────────────
+      - name: Fail if SLOs missed
+        if: steps.perf.outputs.exit_code != '0'
+        run: |
+          echo "::error::One or more performance SLOs failed. See artifacts for details."
+          exit 1

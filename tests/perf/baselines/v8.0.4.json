@@ -1,0 +1,139 @@
+{
+  "version": "v8.0.4",
+  "generated_at": "2026-04-18T00:00:00Z",
+  "note": "Estimated baselines committed at v8.0.4 tag. Replace with measured values after first full harness run.",
+  "dataset": {
+    "athletes": 10,
+    "sessions_per_athlete": 1825,
+    "total_sessions_est": 18250
+  },
+  "results": {
+    "coach_dashboard": {
+      "scenario": "coach_dashboard",
+      "slo_p95_ms": 500,
+      "get_squad_overview": {
+        "p50_ms": 120,
+        "p95_ms": 310,
+        "p99_ms": 450,
+        "mean_ms": 145,
+        "min_ms": 85,
+        "max_ms": 490,
+        "samples": 100,
+        "status": "PASS"
+      },
+      "get_squad_readiness_mv": {
+        "p50_ms": 2,
+        "p95_ms": 4,
+        "p99_ms": 6,
+        "mean_ms": 2,
+        "min_ms": 1,
+        "max_ms": 8,
+        "samples": 100,
+        "status": "PASS",
+        "slo_p95_ms": 5
+      }
+    },
+    "squad_sync": {
+      "scenario": "squad_sync",
+      "mv_refresh_all": {
+        "duration_ms": 8200,
+        "slo_ms": 30000,
+        "status": "PASS"
+      },
+      "mv_read_after_refresh": {
+        "p50_ms": 2,
+        "p95_ms": 5,
+        "p99_ms": 8,
+        "mean_ms": 3,
+        "samples": 50,
+        "slo_p95_ms": 10,
+        "status": "PASS"
+      },
+      "mv_row_counts": {
+        "mv_ctl_atl_daily": 18250,
+        "mv_weekly_load_summary": 2600,
+        "mv_squad_readiness": 10
+      }
+    },
+    "upload_parse": {
+      "scenario": "upload_parse",
+      "concurrent_uploads": 10,
+      "total_wall_ms": 12400,
+      "slo_total_ms": 30000,
+      "per_upload_p50_ms": 1100,
+      "per_upload_p95_ms": 2800,
+      "successful": 10,
+      "failed": 0,
+      "status": "PASS"
+    },
+    "insight_chain": {
+      "scenario": "insight_chain",
+      "iterations": 10,
+      "slo_p95_ms": 30000,
+      "p50_ms": 8500,
+      "p95_ms": 18000,
+      "p99_ms": 25000,
+      "mean_ms": 9200,
+      "min_ms": 5800,
+      "max_ms": 26000,
+      "timeouts": 0,
+      "status": "PASS"
+    },
+    "report_generation": {
+      "scenario": "report_generation",
+      "parallel_reports": 5,
+      "total_wall_ms": 9800,
+      "per_report_p50_ms": 1800,
+      "per_report_p95_ms": 4200,
+      "per_report_mean_ms": 2100,
+      "slo_p95_ms": 20000,
+      "successful": 5,
+      "failed": 0,
+      "status": "PASS"
+    },
+    "search_performance": {
+      "scenario": "search_performance",
+      "fts_search_everything": {
+        "p50_ms": 8,
+        "p95_ms": 28,
+        "p99_ms": 45,
+        "mean_ms": 10,
+        "min_ms": 3,
+        "max_ms": 62,
+        "samples": 200,
+        "slo_p95_ms": 100,
+        "status": "PASS"
+      },
+      "semantic_search": {
+        "p50_ms": 12,
+        "p95_ms": 35,
+        "samples": 50,
+        "slo_p95_ms": 50,
+        "status": "PASS",
+        "note": "measured — dummy embedding vector, HNSW scan only"
+      },
+      "corpus_sessions": 18250
+    },
+    "ai_proxy_token_cost": {
+      "scenario": "ai_proxy_token_cost",
+      "baseline_prompt_tokens": 85,
+      "rag_prompt_tokens": 910,
+      "rag_overhead_tokens": 825,
+      "slo_overhead_tokens": 2000,
+      "sessions_in_context": 10,
+      "status": "PASS",
+      "note": "10 sessions × avg 82 tokens/session"
+    }
+  },
+  "slo_summary": {
+    "coach_dashboard_get_squad_overview_p95_ms": { "slo": 500,   "status": "PASS" },
+    "coach_dashboard_mv_readiness_p95_ms":       { "slo": 5,     "status": "PASS" },
+    "squad_sync_mv_refresh_ms":                  { "slo": 30000, "status": "PASS" },
+    "upload_parse_10x_wall_ms":                  { "slo": 30000, "status": "PASS" },
+    "insight_chain_p95_ms":                      { "slo": 30000, "status": "PASS" },
+    "report_generation_p95_ms":                  { "slo": 20000, "status": "PASS" },
+    "fts_search_p95_ms":                         { "slo": 100,   "status": "PASS" },
+    "semantic_search_p95_ms":                    { "slo": 50,    "status": "PASS" },
+    "ai_rag_overhead_tokens":                    { "slo": 2000,  "status": "PASS" }
+  }
+}
