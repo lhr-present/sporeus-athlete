@@ -24,10 +24,12 @@ export function useAuth() {
 
   const upsertProfile = useCallback(async (userId, email, meta) => {
     if (!supabase) return
+    const language = localStorage.getItem('sporeus-lang') || 'tr'
     await supabase.from('profiles').upsert({
       id:           userId,
       email:        email,
       display_name: meta?.full_name || meta?.name || email?.split('@')[0] || 'Athlete',
+      language:     language,
       updated_at:   new Date().toISOString(),
     }, { onConflict: 'id' })
   }, [])

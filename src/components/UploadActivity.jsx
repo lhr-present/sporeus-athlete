@@ -191,6 +191,7 @@ export default function UploadActivity({ authUser, onSuccess, onClose }) {
         <>
           <div
             {...getRootProps()}
+            aria-label="File drop zone — drop a .fit or .gpx file, or press Enter to browse"
             style={{
               border: `2px dashed ${isDragActive ? '#ff6600' : 'var(--border)'}`,
               borderRadius: '8px',
@@ -201,7 +202,7 @@ export default function UploadActivity({ authUser, onSuccess, onClose }) {
               transition: 'border-color 200ms, background 200ms',
             }}
           >
-            <input {...getInputProps()} />
+            <input {...getInputProps()} aria-label="Upload .fit or .gpx activity file" />
             <div style={{ ...S.mono, fontSize: '28px', marginBottom: '8px', color: 'var(--muted)' }}>↑</div>
             <div style={{ ...S.mono, fontSize: '13px', fontWeight: 600, color: 'var(--text)', marginBottom: '4px' }}>
               {isDragActive ? 'Drop here' : 'Drop .fit or .gpx file'}

@@ -108,19 +108,19 @@ Header padding should use `padding-top: max(8px, var(--safe-top))` — applied v
 
 ## i18n Accessibility
 
-- `lang` attribute on `<html>` — set to `tr` or `en` based on user preference.  
-  **Action needed:** App.jsx must set `document.documentElement.lang` when language changes.
-- All user-facing strings in SemanticSearch, LiveSquadFeed now use `t()` (C7).
-- `todayConsec` key gap in Turkish — fixed (C7).
-- Total i18n parity enforced by CI test (`src/contexts/__tests__/i18n.test.js`).
+- ✓ `lang` attribute on `<html>` — `document.documentElement.lang` set in App.jsx on every language change (C7).
+- ✓ `profiles.language` written on sign-in via `upsertProfile` (C7 patch).
+- ✓ All user-facing strings in SemanticSearch, LiveSquadFeed via `t()` (C7).
+- ✓ `todayConsec` key gap in Turkish fixed (C7).
+- ✓ CI parity test enforces EN/TR key equality on every push.
+
+## UploadActivity Dropzone
+
+- ✓ `react-dropzone` adds `tabIndex=0` + `onKeyDown` (Enter/Space) — keyboard accessible by default.
+- ✓ `aria-label` added to dropzone root and hidden file `<input>` (C7 patch).
 
 ---
 
-## Remaining Manual Review Items (pre-launch)
+## Remaining Review Items
 
-- [ ] VoiceOver iOS: navigate Training Log with swipe — verify row reads DATE + TYPE + TSS
-- [ ] VoiceOver iOS: open Semantic Search — verify placeholder is announced
-- [ ] VoiceOver iOS: open ConfirmModal — verify title is announced, focus lands on Cancel
-- [ ] NVDA+Chrome: tab through Dashboard — verify chart descriptions are read
-- [ ] NVDA+Chrome: test bulk-delete flow — verify ConfirmModal keyboard (Enter to confirm)
-- [ ] Set `document.documentElement.lang` in App.jsx on language toggle (P1 fix)
+_VoiceOver / NVDA manual walkthroughs deferred. Automated axe + keyboard tests cover the structural issues._
