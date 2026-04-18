@@ -7,4 +7,8 @@ dist-ssr
 .env
 .env.local
 .env.production
+.env.e2e
 .mcp.json
+
+# E2E test secrets / state
+tests/e2e/.e2e-users.json

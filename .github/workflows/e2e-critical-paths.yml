@@ -1,0 +1,253 @@
+name: E2E Critical Paths
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "supabase/migrations/**"
+      - "supabase/functions/**"
+      - "tests/e2e/**"
+      - "tests/fixtures/**"
+      - "playwright.config.js"
+      - ".github/workflows/e2e-critical-paths.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "supabase/migrations/**"
+
+# Cancel in-progress runs for the same PR
+concurrency:
+  group: e2e-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+env:
+  SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+  SUPABASE_PROJECT_ID:   pvicqwapvvfempjdgwbm
+  NODE_VERSION:          "20"
+
+jobs:
+  e2e:
+    name: Critical Path E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      # ── Checkout ──────────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Node + npm cache ──────────────────────────────────────────────────────
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ── Playwright browser ────────────────────────────────────────────────────
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      # ── Supabase CLI ──────────────────────────────────────────────────────────
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # ── Create preview DB branch ──────────────────────────────────────────────
+      - name: Create E2E DB branch
+        id: db-branch
+        run: |
+          BRANCH="e2e-pr-${{ github.event.pull_request.number || github.run_id }}"
+          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+
+          supabase branches create "${BRANCH}" \
+            --project-ref "$SUPABASE_PROJECT_ID" 2>&1 | tee branch_create.log
+
+          # Extract branch credentials
+          BRANCH_INFO=$(supabase branches get "${BRANCH}" \
+            --project-ref "$SUPABASE_PROJECT_ID" \
+            --output json 2>/dev/null || echo '{}')
+
+          BRANCH_URL=$(echo "$BRANCH_INFO"  | jq -r '.api_url  // empty')
+          ANON_KEY=$(echo   "$BRANCH_INFO"  | jq -r '.anon_key // empty')
+          SVC_KEY=$(echo    "$BRANCH_INFO"  | jq -r '.service_role_key // empty')
+
+          # Fall back to prod keys when branch doesn't expose separate keys
+          echo "url=${BRANCH_URL:-${{ secrets.SUPABASE_URL }}}"          >> "$GITHUB_OUTPUT"
+          echo "anon=${ANON_KEY:-${{ secrets.SUPABASE_ANON_KEY }}}"      >> "$GITHUB_OUTPUT"
+          echo "svc=${SVC_KEY:-${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}}" >> "$GITHUB_OUTPUT"
+
+      # ── Apply migrations ──────────────────────────────────────────────────────
+      - name: Apply migrations to E2E branch
+        run: |
+          supabase db push \
+            --project-ref "$SUPABASE_PROJECT_ID" \
+            --branch "${{ steps.db-branch.outputs.branch }}"
+
+      # ── Seed test data ────────────────────────────────────────────────────────
+      - name: Seed test data
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          npx supabase db query --linked \
+            < supabase/tests/seed-test-data.sql || true
+
+      # ── Build app (serve in CI) ───────────────────────────────────────────────
+      - name: Build app
+        env:
+          VITE_SUPABASE_URL:      ${{ steps.db-branch.outputs.url }}
+          VITE_SUPABASE_ANON_KEY: ${{ steps.db-branch.outputs.anon }}
+        run: npm run build
+
+      # ── Write .env.e2e for Playwright ─────────────────────────────────────────
+      - name: Write .env.e2e
+        run: |
+          cat > .env.e2e <<EOF
+          E2E_SUPABASE_URL=${{ steps.db-branch.outputs.url }}
+          E2E_SUPABASE_ANON_KEY=${{ steps.db-branch.outputs.anon }}
+          E2E_SUPABASE_SERVICE_KEY=${{ steps.db-branch.outputs.svc }}
+          PLAYWRIGHT_BASE_URL=http://localhost:4173/
+          EOF
+
+      # ── Start preview server ──────────────────────────────────────────────────
+      - name: Start preview server
+        run: npx vite preview --port 4173 &
+        env:
+          VITE_SUPABASE_URL:      ${{ steps.db-branch.outputs.url }}
+          VITE_SUPABASE_ANON_KEY: ${{ steps.db-branch.outputs.anon }}
+
+      - name: Wait for server
+        run: npx wait-on http://localhost:4173 --timeout 30000
+
+      # ── Run E2E critical paths ────────────────────────────────────────────────
+      - name: Run critical path tests
+        id: e2e
+        env:
+          E2E_SUPABASE_URL:          ${{ steps.db-branch.outputs.url }}
+          E2E_SUPABASE_ANON_KEY:     ${{ steps.db-branch.outputs.anon }}
+          E2E_SUPABASE_SERVICE_KEY:  ${{ steps.db-branch.outputs.svc }}
+          PLAYWRIGHT_BASE_URL:       http://localhost:4173/
+        run: |
+          set +e
+          npx playwright test --project=chromium-e2e 2>&1 | tee e2e_output.txt
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      # ── Performance regression check ──────────────────────────────────────────
+      - name: Check perf baselines
+        if: always()
+        run: |
+          node - <<'EOF'
+          const fs = require('fs');
+          const file = 'tests/e2e/perf-baseline.json';
+          if (!fs.existsSync(file)) process.exit(0);
+          const data = JSON.parse(fs.readFileSync(file));
+          const LIMITS = {
+            path1_signup_log_session: 60_000,
+            path2_strava_connect:     30_000,
+            path3_upload_gpx:         45_000,
+            path4_upgrade_invite:     60_000,
+            path5_report_pdf:         45_000,
+          };
+          let failed = false;
+          for (const [key, limit] of Object.entries(LIMITS)) {
+            const runs = data[key] ?? [];
+            if (runs.length === 0) continue;
+            const p95 = runs.sort((a,b)=>a-b)[Math.ceil(runs.length*0.95)-1];
+            if (p95 > limit) {
+              console.error(`PERF REGRESSION: ${key} P95=${p95}ms > limit=${limit}ms`);
+              failed = true;
+            } else {
+              console.log(`OK: ${key} P95=${p95}ms (limit=${limit}ms)`);
+            }
+          }
+          if (failed) process.exit(1);
+          EOF
+
+      # ── PR comment with results ───────────────────────────────────────────────
+      - name: Comment PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs   = require('fs');
+            const exit = '${{ steps.e2e.outputs.exit_code }}';
+            const ok   = exit === '0';
+
+            let output = '';
+            try { output = fs.readFileSync('e2e_output.txt','utf8').split('\n').slice(-40).join('\n') }
+            catch {}
+
+            let timings = '';
+            try {
+              const b = JSON.parse(fs.readFileSync('tests/e2e/perf-baseline.json','utf8'));
+              const rows = Object.entries(b)
+                .filter(([,v]) => Array.isArray(v) && v.length > 0)
+                .map(([k,v]) => {
+                  const last = v[v.length-1];
+                  return `| ${k} | ${(last/1000).toFixed(1)}s |`;
+                }).join('\n');
+              if (rows) timings = `\n\n**Timings (last run)**\n| Path | Duration |\n|---|---|\n${rows}`;
+            } catch {}
+
+            const body = `## ${ok?'✅':'🚨'} E2E Critical Paths — ${ok?'All 5 passed':'FAILURES'}
+
+            <details>
+            <summary>${ok?'View output':'⚠️ Expand to see failures — merge is BLOCKED'}</summary>
+
+            \`\`\`
+            ${output}
+            \`\`\`
+            </details>${timings}
+
+            ${!ok ? '\n> **One or more critical paths failed. Fix before merging.**\n' : ''}
+            _Branch: \`${{ steps.db-branch.outputs.branch }}\` | Run: ${{ github.run_id }}_`;
+
+            const {data:comments} = await github.rest.issues.listComments({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c =>
+              c.user.type==='Bot' && c.body.includes('E2E Critical Paths')
+            );
+            const params = { owner:context.repo.owner, repo:context.repo.repo, body };
+            if (existing) {
+              await github.rest.issues.updateComment({...params, comment_id:existing.id});
+            } else {
+              await github.rest.issues.createComment({...params, issue_number:context.issue.number});
+            }
+
+      # ── Upload artifacts ──────────────────────────────────────────────────────
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_id }}
+          path: playwright-report/
+          retention-days: 14
+
+      - name: Upload perf baseline
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-baseline-${{ github.run_id }}
+          path: tests/e2e/perf-baseline.json
+          retention-days: 30
+
+      # ── Cleanup DB branch ─────────────────────────────────────────────────────
+      - name: Cleanup DB branch
+        if: always()
+        continue-on-error: true
+        run: |
+          supabase branches delete "${{ steps.db-branch.outputs.branch }}" \
+            --project-ref "$SUPABASE_PROJECT_ID" || true
+
+      # ── Hard fail ─────────────────────────────────────────────────────────────
+      - name: Fail if E2E failed
+        if: steps.e2e.outputs.exit_code != '0'
+        run: |
+          echo "::error::One or more critical-path E2E tests failed. See PR comment."
+          exit 1

@@ -1,0 +1,8 @@
+{
+  "_comment": "Auto-updated by E2E specs. Each key holds the last 10 run durations in ms. Used by C4 perf regression checks.",
+  "path1_signup_log_session": [],
+  "path2_strava_connect": [],
+  "path3_upload_gpx": [],
+  "path4_upgrade_invite": [],
+  "path5_report_pdf": []
+}
