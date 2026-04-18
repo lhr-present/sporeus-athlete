@@ -1,0 +1,60 @@
+{
+  "_meta": {
+    "format": "axiom-dashboard-v1",
+    "name": "Sporeus — Errors",
+    "description": "Top error classes, RLS denials, Anthropic API errors, storage quota, cold-start spikes.",
+    "dataset": "sporeus-edge",
+    "import_instructions": "Axiom → Dashboards → New → Import JSON → paste this file",
+    "docs": "docs/ops/axiom_queries.md#dashboard-5-errors"
+  },
+  "charts": [
+    {
+      "id": "top-error-classes",
+      "title": "Top 20 error classes last 24h",
+      "type": "table",
+      "apl": "['sporeus-edge'] | where status == \"error\" | summarize count() by fn, error_class | sort by count_ desc | take 20"
+    },
+    {
+      "id": "error-timeline",
+      "title": "Error rate over time by function (5-min buckets)",
+      "type": "line",
+      "apl": "['sporeus-edge'] | where status == \"error\" | summarize errors = count() by bin(_time, 5m), fn | sort by _time desc"
+    },
+    {
+      "id": "rls-denial-spike",
+      "title": "RLS permission denials per minute (alert >20/min)",
+      "type": "line",
+      "apl": "['sporeus-prod'] | where event_message contains \"permission denied\" | summarize denials = count() by bin(_time, 1m) | where denials > 5"
+    },
+    {
+      "id": "anthropic-api-errors",
+      "title": "Anthropic API errors (429 / overloaded / model errors)",
+      "type": "bar",
+      "apl": "['sporeus-edge'] | where fn in (\"ai-proxy\", \"analyse-session\", \"ai-batch-worker\") | where status == \"error\" | where error_class contains \"Anthropic\" or error_msg contains \"429\" or error_msg contains \"overloaded\" | summarize count() by bin(_time, 5m), fn, error_class"
+    },
+    {
+      "id": "storage-quota-warning",
+      "title": "Storage quota warnings (Supabase log drain)",
+      "type": "bar",
+      "apl": "['sporeus-prod'] | where event_message contains \"storage\" and event_message contains \"quota\" | summarize count() by bin(_time, 1h)"
+    },
+    {
+      "id": "cold-start-timeout-spikes",
+      "title": "Cold-start / timeout spikes (duration > 10s, > 3 per 5 min)",
+      "type": "bar",
+      "apl": "['sporeus-edge'] | where duration_ms > 10000 | summarize slow_calls = count() by bin(_time, 5m), fn | where slow_calls > 3"
+    },
+    {
+      "id": "parse-activity-failures",
+      "title": "FIT/GPX parse failures (SLO S-3: success rate > 95%)",
+      "type": "line",
+      "apl": "['sporeus-edge'] | where fn == \"parse-activity\" | summarize total = count(), errors = countif(status == \"error\") by bin(_time, 1h) | extend fail_pct = round(errors * 100.0 / total, 2) | sort by _time desc"
+    },
+    {
+      "id": "total-errors-24h",
+      "title": "Total errors last 24h",
+      "type": "counter",
+      "apl": "['sporeus-edge'] | where _time >= ago(24h) | where status == \"error\" | summarize count()"
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "_meta": {
+    "format": "axiom-dashboard-v1",
+    "name": "Sporeus — Queue Health",
+    "description": "pgmq queue depths, drain rates, DLQ activity and oldest-message age for all 5 queues.",
+    "dataset": "sporeus-edge",
+    "import_instructions": "Axiom → Dashboards → New → Import JSON → paste this file",
+    "docs": "docs/ops/axiom_queries.md#dashboard-2-queues"
+  },
+  "charts": [
+    {
+      "id": "queue-depth-over-time",
+      "title": "Queue depth over time (5-min buckets)",
+      "type": "line",
+      "apl": "['sporeus-prod'] | where event_message contains \"queue_metrics\" | parse event_message \"queue_name=\\\"*\\\" depth=*\" as queue_name, depth | summarize avg(toint(depth)) by bin(_time, 5m), queue_name"
+    },
+    {
+      "id": "dlq-activity",
+      "title": "DLQ failures — ai_batch_dlq (any = page immediately)",
+      "type": "bar",
+      "apl": "['sporeus-edge'] | where fn == \"ai-batch-worker\" | where status == \"error\" | summarize failures = count() by bin(_time, 5m) | where failures > 0"
+    },
+    {
+      "id": "strava-backfill-drain",
+      "title": "Strava backfill drain rate (2-min buckets)",
+      "type": "line",
+      "apl": "['sporeus-edge'] | where fn == \"strava-backfill-worker\" | summarize runs = count(), errors = countif(status == \"error\"), avg_ms = avg(duration_ms) by bin(_time, 2m)"
+    },
+    {
+      "id": "push-worker-throughput",
+      "title": "Push worker throughput (1-min buckets)",
+      "type": "line",
+      "apl": "['sporeus-edge'] | where fn == \"push-worker\" | summarize runs = count(), avg_ms = avg(duration_ms) by bin(_time, 1m)"
+    },
+    {
+      "id": "ai-batch-worker-throughput",
+      "title": "AI batch worker throughput (2-min buckets)",
+      "type": "line",
+      "apl": "['sporeus-edge'] | where fn == \"ai-batch-worker\" | where status != \"error\" | summarize runs = count(), avg_ms = avg(duration_ms) by bin(_time, 2m)"
+    },
+    {
+      "id": "embed-backfill-drain",
+      "title": "Embed backfill drain rate",
+      "type": "line",
+      "apl": "['sporeus-edge'] | where fn == \"embed-session\" | summarize runs = count(), errors = countif(status == \"error\"), avg_ms = avg(duration_ms) by bin(_time, 5m)"
+    },
+    {
+      "id": "queue-error-rate",
+      "title": "Worker error rate by queue worker",
+      "type": "bar",
+      "apl": "['sporeus-edge'] | where fn in (\"ai-batch-worker\", \"strava-backfill-worker\", \"push-worker\", \"embed-session\") | summarize total = count(), errors = countif(status == \"error\") by fn | extend error_pct = round(errors * 100.0 / total, 2) | sort by error_pct desc"
+    },
+    {
+      "id": "queue-oldest-age-kpi",
+      "title": "Oldest enqueued message age (seconds) — last seen",
+      "type": "table",
+      "apl": "['sporeus-prod'] | where event_message contains \"queue_metrics\" | parse event_message \"queue_name=\\\"*\\\" depth=* oldest_age_s=*\" as queue_name, depth, oldest_age_s | summarize last_age = max(toint(oldest_age_s)) by queue_name | sort by last_age desc"
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "_meta": {
+    "format": "axiom-dashboard-v1",
+    "name": "Sporeus — Money",
+    "description": "Dodo webhook events, payment failures, latency, tier changes. SLO S-8: 100% idempotent, <5s p95.",
+    "dataset": "sporeus-edge",
+    "import_instructions": "Axiom → Dashboards → New → Import JSON → paste this file",
+    "docs": "docs/ops/axiom_queries.md#dashboard-4-money"
+  },
+  "charts": [
+    {
+      "id": "webhook-invocations",
+      "title": "Dodo webhook invocations by status (1h buckets)",
+      "type": "bar",
+      "apl": "['sporeus-edge'] | where fn == \"dodo-webhook\" | summarize count() by bin(_time, 1h), status"
+    },
+    {
+      "id": "webhook-failure-rate",
+      "title": "Payment webhook failure rate % (1h buckets)",
+      "type": "line",
+      "apl": "['sporeus-edge'] | where fn == \"dodo-webhook\" | summarize total = count(), errors = countif(status == \"error\") by bin(_time, 1h) | extend error_pct = round(errors * 100.0 / total, 2)"
+    },
+    {
+      "id": "webhook-latency",
+      "title": "Payment webhook latency — p50/p95/max (SLO S-8: p95 < 5 000 ms)",
+      "type": "table",
+      "apl": "['sporeus-edge'] | where fn == \"dodo-webhook\" | summarize p50 = percentile(duration_ms, 50), p95 = percentile(duration_ms, 95), max_ms = max(duration_ms) by bin(_time, 1h) | sort by _time desc"
+    },
+    {
+      "id": "failed-payment-webhooks",
+      "title": "Failed payment webhooks by error class (1h buckets)",
+      "type": "bar",
+      "apl": "['sporeus-edge'] | where fn == \"dodo-webhook\" | where status == \"error\" | summarize failures = count() by bin(_time, 1h), error_class"
+    },
+    {
+      "id": "generate-report-success",
+      "title": "Report generation (paid tier) — success rate",
+      "type": "line",
+      "apl": "['sporeus-edge'] | where fn == \"generate-report\" | summarize total = count(), ok = countif(status == \"ok\") by bin(_time, 1h) | extend success_pct = round(ok * 100.0 / total, 2)"
+    },
+    {
+      "id": "generate-report-latency",
+      "title": "Report generation p95 latency (SLO: < 20 000 ms)",
+      "type": "line",
+      "apl": "['sporeus-edge'] | where fn == \"generate-report\" | summarize p95 = percentile(duration_ms, 95) by bin(_time, 1h) | sort by _time desc"
+    },
+    {
+      "id": "total-webhooks-today",
+      "title": "Total payment webhooks today",
+      "type": "counter",
+      "apl": "['sporeus-edge'] | where fn == \"dodo-webhook\" | where _time >= startofday(now()) | summarize count()"
+    },
+    {
+      "id": "failed-webhooks-today",
+      "title": "Failed payment webhooks today",
+      "type": "counter",
+      "apl": "['sporeus-edge'] | where fn == \"dodo-webhook\" | where _time >= startofday(now()) | where status == \"error\" | summarize count()"
+    }
+  ]
+}

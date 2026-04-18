@@ -186,6 +186,10 @@ export const LABELS = {
     spb_buildNewPlan: 'BUILD NEW PLAN',
     spb_modalPrint: '\u2399 PRINT', spb_modalSessions: 'PLANNED SESSIONS',
     spb_modalTrace: 'DAILY BANISTER TRACE', spb_modalDay: 'DAY',
+    // Status banner (C5)
+    status_outage: null, status_outage_suffix: 'is experiencing an outage',
+    status_degraded: null, status_degraded_suffix: 'is degraded \u2014 some features may be slow',
+    status_check_stale: 'status check may be stale',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -371,6 +375,10 @@ export const LABELS = {
     spb_buildNewPlan: 'YENİ PLAN OLUŞTUR',
     spb_modalPrint: '\u2399 YAZDIR', spb_modalSessions: 'PLANLANAN SEANSLAR',
     spb_modalTrace: 'GÜNLÜK BANISTER İZİ', spb_modalDay: 'GÜN',
+    // Status banner (C5)
+    status_outage: null, status_outage_suffix: 'hizmet kesintisi yaşıyor',
+    status_degraded: null, status_degraded_suffix: 'yavaşladı \u2014 bazı özellikler geç yanıt verebilir',
+    status_check_stale: 'durum kontrolü eskimiş olabilir',
   }
 }
 

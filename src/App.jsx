@@ -12,6 +12,7 @@ import AuthGate from './components/AuthGate.jsx'
 import InstallPrompt from './components/InstallPrompt.jsx'
 import OfflineBanner from './components/OfflineBanner.jsx'
 import ConnectionBanner from './components/ConnectionBanner.jsx'
+import StatusBanner from './components/StatusBanner.jsx'
 import RoleSelector from './components/RoleSelector.jsx'
 import { useAuth } from './hooks/useAuth.js'
 import { isSupabaseReady } from './lib/supabase.js'
@@ -34,6 +35,7 @@ import DebugRealtimeStats from './components/DebugRealtimeStats.jsx'
 import { flushQueue } from './lib/offlineQueue.js'
 import ToastStack from './components/ToastStack.jsx'
 import { parseUtmFromLocation, recordFirstTouch, emitEvent, hasSignupFired, markSignupFired } from './lib/attribution.js'
+import { initTelemetryFlush } from './lib/telemetry.js'
 const ScienceReference = lazy(() => import('./components/ScienceReference.jsx'))
 const PrivacyPolicy    = lazy(() => import('./components/PrivacyPolicy.jsx'))
 const CoachDashboard  = lazy(() => import('./components/CoachDashboard.jsx'))
@@ -101,6 +103,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
     <LangCtx.Provider value={{ t, lang, setLang }}>
       <style>{ANIM_CSS}</style>
 
+      <StatusBanner />
       <OfflineBanner />
       <ConnectionBanner />
       <InstallPrompt />
@@ -386,6 +389,11 @@ export default function App() {
     recordFirstTouch(utm)
     emitEvent('landing', { version: APP_VERSION })
   }, [])  // runs once per page load
+
+  // ── Telemetry flush: activate server-side flush after auth resolves ─────────
+  useEffect(() => {
+    initTelemetryFlush({ userId: user?.id, appVersion: APP_VERSION })
+  }, [user?.id])  // re-init when user changes (login/logout)
 
   // ── Attribution: emit signup_completed on first authenticated session ──────
   useEffect(() => {
