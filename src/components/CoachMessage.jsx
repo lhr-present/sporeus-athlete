@@ -92,6 +92,7 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
         logAction('read', 'messages', athleteId, ['body'])
       }
     })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [coachId, athleteId])
 
   // ── Realtime subscription ─────────────────────────────────────────────────────

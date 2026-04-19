@@ -3,8 +3,7 @@
 // Validates: all status transitions update UI correctly, parsed_session_id
 // is correctly forwarded on 'done', error message forwarded on 'error'.
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, act, waitFor } from '@testing-library/react'
+import { describe, it, expect } from 'vitest'
 import '@testing-library/jest-dom'
 
 // ── Status machine validator ──────────────────────────────────────────────────

@@ -83,7 +83,7 @@ describe('validateAiBatchMessage', () => {
   })
 
   it('rejects missing coach_id', () => {
-    const { coach_id, ...rest } = valid
+    const { coach_id: _coach_id, ...rest } = valid
     const r = validateAiBatchMessage(rest)
     expect(r.valid).toBe(false)
     expect(r.error).toMatch(/coach_id/)
@@ -96,7 +96,7 @@ describe('validateAiBatchMessage', () => {
   })
 
   it('rejects missing week_start', () => {
-    const { week_start, ...rest } = valid
+    const { week_start: _week_start, ...rest } = valid
     const r = validateAiBatchMessage(rest)
     expect(r.valid).toBe(false)
     expect(r.error).toMatch(/week_start/)
@@ -121,7 +121,7 @@ describe('validateAiBatchMessage', () => {
   })
 
   it('rejects undefined retry_count', () => {
-    const { retry_count, ...rest } = valid
+    const { retry_count: _retry_count, ...rest } = valid
     const r = validateAiBatchMessage(rest)
     expect(r.valid).toBe(false)
     expect(r.error).toMatch(/retry_count/)

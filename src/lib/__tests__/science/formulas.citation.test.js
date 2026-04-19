@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   riegel, computePowerTSS, normalizedPower, computeWPrime,
-  calcTSS, rampFTP, ftpFrom20, cooperVO2,
+  calcTSS, rampFTP, ftpFrom20,
 } from '../../formulas.js'
 
 // ─── Riegel (1981) ─────────────────────────────────────────────────────────

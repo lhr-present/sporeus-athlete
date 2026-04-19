@@ -119,6 +119,7 @@ export function useSquadPresence({ coachId, role, athleteId, showOnlineStatus = 
       removeStatus(channelName)
       supabase.removeChannel(ch)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [coachId, role, athleteId, showOnlineStatus])
 
   return { presenceMap }

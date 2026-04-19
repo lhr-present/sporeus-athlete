@@ -20,6 +20,7 @@ export default function ReportsSettings({ authUser }) {
         if (error) { setLoadError(error.message); return }
         if (data) setEmailReports(!!data.email_reports)
       })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser?.id])
 
   const handleToggle = async (checked) => {

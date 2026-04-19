@@ -291,7 +291,7 @@ function TemplateWidget({ bonus, lang }) {
 }
 
 // ── Simulator widget ────────────────────────────────────────────────────────
-function SimulatorWidget({ bonus, lang }) {
+function SimulatorWidget({ bonus: _bonus, lang }) {
   return (
     <div style={{ textAlign: 'center', padding: '20px', background: '#0d0d0d', border: '1px solid #222', borderRadius: '2px' }}>
       <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔒</div>

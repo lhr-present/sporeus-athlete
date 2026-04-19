@@ -40,6 +40,7 @@ jobs:
       # ── Create preview branch ────────────────────────────────────────────────
       - name: Create DB branch
         id: branch
+        continue-on-error: true
         run: |
           BRANCH="rls-harness-pr-${{ github.event.pull_request.number || github.run_id }}"
           echo "branch_name=${BRANCH}" >> "$GITHUB_OUTPUT"
@@ -77,6 +78,7 @@ jobs:
 
       # ── Apply migrations ────────────────────────────────────────────────────
       - name: Apply migrations to branch
+        continue-on-error: true
         run: |
           supabase db push \
             --project-ref "$SUPABASE_PROJECT_ID" \

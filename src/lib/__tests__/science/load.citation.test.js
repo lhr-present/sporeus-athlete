@@ -5,7 +5,7 @@
 //   Hulin B.T. et al. (2016). Br J Sports Med 50(4):231–236.
 //   Foster C. et al. (1998). Med Sci Sports Exerc 30(7):1164–1168.
 //   Coggan A.R. (2003). TSB zone classification.
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { calculatePMC, calculateACWR, computeMonotony, classifyTSB, TSB_ZONES } from '../../trainingLoad.js'
 
 // ─── Banister EWMA constants (Banister & Calvert 1980) ─────────────────────
@@ -57,7 +57,6 @@ describe('PMC EWMA constants — Banister & Calvert (1980)', () => {
 
   it('TSB = CTL(yesterday) − ATL(yesterday)', () => {
     // One session today only
-    const today = new Date('2025-06-01')
     const log = [{ date: '2025-06-01', tss: 100 }]
     const pmc = calculatePMC(log, 5, 0)
     const dayOf = pmc.find(p => p.date === '2025-06-01')

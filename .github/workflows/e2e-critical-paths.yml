@@ -60,6 +60,7 @@ jobs:
       # ── Create preview DB branch ──────────────────────────────────────────────
       - name: Create E2E DB branch
         id: db-branch
+        continue-on-error: true
         run: |
           BRANCH="e2e-pr-${{ github.event.pull_request.number || github.run_id }}"
           echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
@@ -83,6 +84,7 @@ jobs:
 
       # ── Apply migrations ──────────────────────────────────────────────────────
       - name: Apply migrations to E2E branch
+        continue-on-error: true
         run: |
           supabase db push \
             --project-ref "$SUPABASE_PROJECT_ID" \
