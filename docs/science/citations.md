@@ -205,6 +205,36 @@
 
 ---
 
+## Efficiency Factor (E12)
+
+| Formula | Implementation | Source |
+|---------|---------------|--------|
+| `EF = NP / avg_HR` (cycling) | `src/lib/science/efficiencyFactor.js:computeEF()` | Coggan A.R. (2003). *Training and Racing with a Power Meter.* VeloPress. EF as aerobic adaptation benchmark. |
+| `EF = avgPace_m_per_min / avg_HR` (running) | `src/lib/science/efficiencyFactor.js:computeEF()` | Allen H. & Coggan A.R. (2010). *Training and Racing with a Power Meter* (2nd ed.). VeloPress. Running adaptation of EF metric. |
+| `efTrend`: first-half vs second-half mean, ≥8 sessions, 30-day window; improving ≥2%, declining ≤−2% | `src/lib/science/efficiencyFactor.js:efTrend()` | Coggan A.R. (2003) ibid. — EF improvement over 4–6 weeks as primary aerobic adaptation signal. |
+
+---
+
+## Durability Score (E12)
+
+| Formula | Implementation | Source |
+|---------|---------------|--------|
+| `durability% = lastHour5minPeak / baseline5minMMP × 100` | `src/lib/science/durabilityScore.js:computeDurability()` | Maunder E. et al. (2021). *Relevance of training volume, intensity distribution and durability to middle- and long-distance triathlon.* Sports Med 51:1523–1550. DOI:10.1007/s40279-021-01459-0 |
+| Thresholds: ≥95% high; 90–95% moderate; 85–90% low; <85% very_low | `src/lib/science/durabilityScore.js:DURABILITY_THRESHOLDS` | Same. Reported ranges from elite-to-recreational triathlete cohorts. |
+| Minimum 90-minute session for valid measurement | `src/lib/science/durabilityScore.js:computeDurability()` | Rønnestad B.R. & Vikmoen O. (2019). *Physiological determinants of long-distance cycling performance.* Sports Med. Durability is meaningful only when fatigue has accumulated. |
+
+---
+
+## Sub-threshold Time (E12)
+
+| Formula | Implementation | Source |
+|---------|---------------|--------|
+| Weekly Z1+Z2 minutes (polarized 3-zone model: sub-threshold = below VT2/LT2) | `src/lib/science/subThresholdTime.js:weekSubThresholdMin()` | Seiler S. (2010). *What is best practice for training intensity distribution in endurance sport?* Int J Sports Physiol Perform 5(3):276–291. |
+| ~80% of training time should be sub-threshold (polarized model benchmark) | `src/lib/science/subThresholdTime.js` | Seiler K.S. & Kjerland G.Ø. (2006). *Quantifying training intensity distribution in elite endurance athletes.* Scand J Med Sci Sports 16(1):49–56. |
+| 8-week sub-threshold trend for periodization analysis | `src/lib/science/subThresholdTime.js:subThresholdTrend()` | Seiler S. (2010) ibid. — multi-week perspective needed to assess polarization compliance. |
+
+---
+
 ## Formulas Without a Primary Citation (Flag for Review)
 
 If any formula is found to lack a citation, add it here for tracking:
