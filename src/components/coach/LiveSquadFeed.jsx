@@ -9,7 +9,7 @@ import { LangCtx } from '../../contexts/LangCtx.jsx'
 
 const STATUS_COLOR = { live: '#5bc25b', connecting: '#f5c542', reconnecting: '#f5c542', disconnected: '#555' }
 const STATUS_LABEL = { live: '● LIVE', connecting: '○ connecting…', reconnecting: '○ reconnecting…', disconnected: '○ offline' }
-const KIND_COLOR   = { session: '#5bc25b', recovery: '#0064ff' }
+const KIND_COLOR   = { session: '#5bc25b', recovery: '#0064ff', comment: '#ff6600' }
 
 /**
  * @param {object}   props
@@ -17,7 +17,8 @@ const KIND_COLOR   = { session: '#5bc25b', recovery: '#0064ff' }
  * @param {string}   props.feedStatus      — 'live' | 'connecting' | 'reconnecting' | 'disconnected'
  * @param {object}   props.presenceMap     — { [athleteId]: { online, last_seen } }
  * @param {Array}    props.athletes        — full athlete list for presence dot display
- * @param {Function} [props.onAthleteClick] — called with athleteId when an event row is clicked
+ * @param {Function} [props.onAthleteClick]  — called with athleteId when an event row is clicked
+ * @param {Function} [props.onCommentClick]  — called with { sessionId, athleteId } for comment events
  */
 export default function LiveSquadFeed({
   feedEvents = [],
@@ -25,6 +26,7 @@ export default function LiveSquadFeed({
   presenceMap = {},
   athletes = [],
   onAthleteClick,
+  onCommentClick,
 }) {
   const { t } = useContext(LangCtx)
   const [collapsed, setCollapsed] = useState(false)
@@ -96,10 +98,16 @@ export default function LiveSquadFeed({
             feedEvents.map(ev => (
               <div
                 key={ev.id}
-                role={onAthleteClick ? 'button' : undefined}
-                tabIndex={onAthleteClick ? 0 : undefined}
-                onClick={() => onAthleteClick?.(ev.athleteId)}
-                onKeyDown={e => e.key === 'Enter' && onAthleteClick?.(ev.athleteId)}
+                role={(onAthleteClick || (ev.kind === 'comment' && onCommentClick)) ? 'button' : undefined}
+                tabIndex={(onAthleteClick || (ev.kind === 'comment' && onCommentClick)) ? 0 : undefined}
+                onClick={() => ev.kind === 'comment'
+                  ? onCommentClick?.({ sessionId: ev.sessionId, athleteId: ev.athleteId })
+                  : onAthleteClick?.(ev.athleteId)
+                }
+                onKeyDown={e => e.key === 'Enter' && (ev.kind === 'comment'
+                  ? onCommentClick?.({ sessionId: ev.sessionId, athleteId: ev.athleteId })
+                  : onAthleteClick?.(ev.athleteId)
+                )}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '10px',
                   padding: '7px 14px', borderBottom: '1px solid #0d0d0d',

@@ -58,7 +58,7 @@ export async function initSentry() {
     mod.init({
       dsn,
       environment:              import.meta.env.MODE,
-      release:                  import.meta.env.VITE_APP_VERSION ?? 'unknown',
+      release:                  typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'unknown',
       tracesSampleRate:         import.meta.env.PROD ? 0.1 : 1.0,
       replaysSessionSampleRate: 0,  // privacy — no session replay
       replaysOnErrorSampleRate: 0,
