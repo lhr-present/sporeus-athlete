@@ -40,15 +40,39 @@
 
 ## Setting up the comment-notification Webhook
 
+**Status: Must be configured manually — the edge function is deployed but inert until this step.**
+
+Sporeus project ref: `pvicqwapvvfempjdgwbm`
+
 1. Supabase Dashboard → Database → Webhooks → Create Webhook
 2. Name: `comment-notification`
 3. Table: `public.session_comments`
-4. Events: `INSERT`
-5. Webhook URL: `https://<project>.supabase.co/functions/v1/comment-notification`
-6. HTTP Headers:
-   - `Authorization: Bearer <service_role_key>`
+4. Events: `INSERT` only (UPDATE/DELETE are soft-deletes; no notification needed)
+5. Webhook URL: `https://pvicqwapvvfempjdgwbm.supabase.co/functions/v1/comment-notification`
+6. HTTP Headers (add both):
+   - `Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>`
    - `Content-Type: application/json`
-7. Test with a manual comment insert; verify push arrives within 5s
+7. Timeout: 10000 ms (default 5000 is too low for push delivery)
+8. Click **Save**
+
+### Verification
+```sql
+-- Insert a test comment as an athlete in a coach-linked session
+INSERT INTO public.session_comments (session_id, author_id, body)
+VALUES ('your-session-uuid', 'your-athlete-uuid', 'test push');
+-- Coach's device should receive push within 5 seconds
+-- Check edge function logs: Supabase → Edge Functions → comment-notification → Logs
+```
+
+### Expected log output on success
+```json
+{"_telemetry":true,"fn":"comment-notification","status":"ok","duration_ms":342,"sent":1,"failed":0}
+```
+
+### If no push arrives
+1. Check `send-push` edge function logs for the same timeframe
+2. Verify the coach has a push subscription in `push_subscriptions` table
+3. Verify VAPID keys are set in Supabase project secrets
 
 ## Offline Queue Integration
 
