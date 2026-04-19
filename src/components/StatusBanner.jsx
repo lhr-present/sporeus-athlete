@@ -7,7 +7,7 @@ import { LangCtx } from '../contexts/LangCtx.jsx'
 
 const MONO        = "'IBM Plex Mono', monospace"
 const POLL_MS     = 5 * 60_000   // 5 min
-const RETRY_MS    = 30_000       // retry on fetch error
+const _RETRY_MS   = 30_000       // retry on fetch error (reserved for future use)
 
 // Service labels for user-facing messages
 const SERVICE_LABEL = {

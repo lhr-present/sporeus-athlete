@@ -14,7 +14,6 @@
 //   workload_pattern  — 8-week load pattern (Foster monotony)
 //   milestone         — session count milestone (100, 200, 250, 500, etc.)
 
-const MIN_WEEKS_FOR_TREND  = 4
 const MIN_SESSIONS_PATTERN = 8
 
 /**

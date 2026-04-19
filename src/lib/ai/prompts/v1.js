@@ -163,7 +163,7 @@ export function getPrompt(surface, config = {}) {
  * @param {string} userId
  * @returns {'v1'}  currently always v1
  */
-export function getPromptVariant(surface, userId) {
+export function getPromptVariant(_surface, _userId) {
   // Future: hash(userId + surface) % 100 < 10 → return 'v2'
   return 'v1'
 }

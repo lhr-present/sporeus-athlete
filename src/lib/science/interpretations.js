@@ -16,7 +16,7 @@
  * @param {{ en: string, tr: string }} [context] - optional athlete name / context
  * @returns {{ en: string, tr: string, citation: string }}
  */
-export function interpretACWR(ratio, context = {}) {
+export function interpretACWR(ratio, _context = {}) {
   const citation = 'Gabbett T.J. (2016) Br J Sports Med 50:273-280; Hulin et al. (2016) 50:231-236'
 
   if (ratio == null) {
@@ -68,7 +68,7 @@ export function interpretACWR(ratio, context = {}) {
  * @param {string} sport
  * @returns {{ en: string, tr: string, citation: string }}
  */
-export function interpretCTL(ctl, prevCTL, sport = 'general') {
+export function interpretCTL(ctl, prevCTL, _sport = 'general') {
   const citation = 'Banister & Calvert (1980); Coggan A.R. (2003) Training & Racing with a Power Meter'
   const delta = prevCTL != null ? Math.round(ctl - prevCTL) : null
   const trend = delta != null ? (delta > 5 ? '↑' : delta < -5 ? '↓' : '→') : ''
@@ -152,7 +152,7 @@ export function interpretTSB(tsb, isRaceWeek = false) {
  * @param {number|null} strain
  * @returns {{ en: string, tr: string, citation: string }}
  */
-export function interpretMonotony(monotony, strain) {
+export function interpretMonotony(monotony, _strain) {
   const citation = 'Foster C. (1998) Med Sci Sports Exerc 30(7):1164-1168'
 
   if (monotony == null) {

@@ -66,8 +66,8 @@ export default function ConsentCenter({ userId, lang = 'en' }) {
       .select('purpose, granted, changed_at')
       .eq('user_id', userId)
       .then(({ data }) => {
-        const map: Record<string, boolean> = {}
-        const atMap: Record<string, string> = {}
+        const map = {}
+        const atMap = {}
         if (data) {
           for (const row of data) {
             map[row.purpose]   = row.granted

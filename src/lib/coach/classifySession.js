@@ -77,7 +77,6 @@ export function classifySession(session, plan = null) {
   // 4. Plan-context classification
   const planWeek = findPlanWeek(plan, session.date)
   if (planWeek && planWeek.targetTSS > 0) {
-    const ratio = tss / planWeek.targetTSS
     // Per-session target is roughly 1/5 of weekly target (avg 5 sessions/week)
     const sessionTarget = planWeek.targetTSS / 5
 

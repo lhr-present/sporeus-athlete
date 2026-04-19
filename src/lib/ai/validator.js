@@ -12,9 +12,6 @@
 //   const result = validateAiOutput(text, inputContext)
 //   if (!result.valid) { show "Analysis unavailable — please retry"; logFailure(result) }
 
-// Numerical claim pattern: captures the number + unit where unit is a sports-science token
-const CLAIM_PATTERN = /\b(\d+(?:\.\d+)?)\s*(%)|(bpm|W(?:kg)?|km|mi(?:les)?|TSS|RPE|min(?:utes)?)\b/g
-
 // Banned sycophantic phrases — exact lowercase matches or substrings
 const BANNED_PHRASES = [
   "you're doing great",

@@ -5,7 +5,6 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useLanguage } from '../../contexts/LangCtx.jsx'
-import { S } from '../../styles.js'
 
 /**
  * @param {Object}  props

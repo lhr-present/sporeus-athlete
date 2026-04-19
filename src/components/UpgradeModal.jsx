@@ -125,7 +125,7 @@ export default function UpgradeModal({ open, onClose, featureKey = null, lang = 
 
         {/* Pricing cards */}
         <div style={{ display: 'flex', gap: '12px', padding: '20px 24px', flexWrap: 'wrap' }}>
-          {(['coach', 'club'] as const).map(tier => {
+          {['coach', 'club'].map(tier => {
             const p = pricing[tier]
             const isCurrentTier = currentTier === tier
             const isCoach = tier === 'coach'

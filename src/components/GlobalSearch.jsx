@@ -45,7 +45,7 @@ function renderSnippet(raw) {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function GlobalSearch({ onNavigate, tier = 'free' }) {
+export default function GlobalSearch({ onNavigate, tier: _tier = 'free' }) {
   const { t } = useContext(LangCtx)
 
   const [open,    setOpen]    = useState(false)
@@ -131,6 +131,7 @@ export default function GlobalSearch({ onNavigate, tier = 'free' }) {
       e.preventDefault()
       selectResult(results[active])
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [results, active])
 
   // Scroll selected item into view

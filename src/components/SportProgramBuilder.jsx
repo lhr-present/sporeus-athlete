@@ -2,7 +2,6 @@ import { useState, useMemo, useCallback, useEffect, useContext } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { S } from '../styles.js'
 import { useData } from '../contexts/DataContext.jsx'
-import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import {
   simulateBanister, monteCarloOptimizer, peakFormWindow,
