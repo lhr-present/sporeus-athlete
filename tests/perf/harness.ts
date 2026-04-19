@@ -1,5 +1,5 @@
 #!/usr/bin/env -S npx tsx
-// tests/perf/harness.ts — Sporeus Performance Harness v8.0.4
+// tests/perf/harness.ts — Sporeus Performance Harness v8.1.1
 //
 // Usage:
 //   npx tsx tests/perf/harness.ts               # full run (setup → bench → teardown)
@@ -12,8 +12,9 @@
 //   E2E_SUPABASE_URL         Supabase project URL
 //   E2E_SUPABASE_SERVICE_KEY service_role key (bypasses RLS)
 //
-// Output: tests/perf/baselines/v8.0.4.json
+// Output: tests/perf/baselines/v8.1.1.json
 // Exit code 1 if any SLO is FAIL.
+// v8.1.1 additions: embed_throughput + squad_pattern_search scenarios
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { config as dotenvConfig }             from 'dotenv';
@@ -31,13 +32,16 @@ import { runInsightChain }       from './scenarios/insight_chain.ts';
 import { runReportGeneration }   from './scenarios/report_generation.ts';
 import { runSearchPerformance }  from './scenarios/search_performance.ts';
 import { runAiProxyTokenCost }   from './scenarios/ai_proxy_token_cost.ts';
+import { runEmbedThroughput }    from './scenarios/embed_throughput.ts';
+import { runSquadPatternSearch } from './scenarios/squad_pattern_search.ts';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const VERSION       = 'v8.0.4';
+const VERSION       = 'v8.1.1';
 const __dir         = dirname(fileURLToPath(import.meta.url));
 const BASELINE_DIR  = join(__dir, 'baselines');
 const BASELINE_PATH = join(BASELINE_DIR, `${VERSION}.json`);
+
 const STATE_FILE    = join(__dir, '.perf-state.json');
 
 const PERF_COACH_EMAIL   = 'coach@perf.sporeus.dev';
@@ -314,40 +318,56 @@ async function runBenchmarks(
     onlyScene === null || onlyScene === name;
 
   if (run('coach_dashboard')) {
-    console.log('\n[1/7] coach_dashboard …');
+    console.log('\n[1/9] coach_dashboard …');
     results.coach_dashboard = await runCoachDashboard(supabase, state.coachId);
   }
 
   if (run('squad_sync')) {
-    console.log('[2/7] squad_sync …');
+    console.log('[2/9] squad_sync …');
     results.squad_sync = await runSquadSync(supabase, state.coachId);
   }
 
   if (run('upload_parse')) {
-    console.log('[3/7] upload_parse …');
+    console.log('[3/9] upload_parse …');
     results.upload_parse = await runUploadParse(supabase, state.athleteIds[0]);
   }
 
   if (run('insight_chain')) {
-    console.log('[4/7] insight_chain …');
+    console.log('[4/9] insight_chain …');
     results.insight_chain = await runInsightChain(supabase, state.athleteIds[1]);
   }
 
   if (run('report_generation')) {
-    console.log('[5/7] report_generation …');
+    console.log('[5/9] report_generation …');
     results.report_generation = await runReportGeneration(supabase, state.coachId);
   }
 
   if (run('search_performance')) {
-    console.log('[6/7] search_performance …');
+    console.log('[6/9] search_performance …');
     results.search_performance = await runSearchPerformance(supabase);
   }
 
   if (run('ai_proxy_token_cost')) {
-    console.log('[7/7] ai_proxy_token_cost …');
+    console.log('[7/9] ai_proxy_token_cost …');
     results.ai_proxy_token_cost = await runAiProxyTokenCost(
       supabase,
       state.athleteIds[2],
+    );
+  }
+
+  if (run('embed_throughput')) {
+    console.log('[8/9] embed_throughput …');
+    results.embed_throughput = await runEmbedThroughput(
+      supabase,
+      state.athleteIds[3],
+    );
+  }
+
+  if (run('squad_pattern_search')) {
+    console.log('[9/9] squad_pattern_search …');
+    results.squad_pattern_search = await runSquadPatternSearch(
+      supabase,
+      state.coachId,
     );
   }
 

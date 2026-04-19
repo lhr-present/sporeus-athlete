@@ -20,15 +20,30 @@ const LABEL = { fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'
 const INPUT = { fontFamily:"'IBM Plex Mono',monospace", fontSize:'14px', padding:'8px 12px', border:'1px solid var(--border)', borderRadius:'4px', width:'100%', boxSizing:'border-box', background:'var(--input-bg,#fff)', color:'var(--text,#1a1a1a)' }
 const pill  = active => ({ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', padding:'8px 16px', borderRadius:'4px', border:`2px solid ${active?'#ff6600':'#e0e0e0'}`, background:active?'#ff6600':'transparent', color:active?'#fff':'#888', cursor:'pointer', fontWeight:active?600:400 })
 
+const PURPOSES = ['General fitness','A race','Weight goal','Rehabbing','Just exploring']
+const LOGGING_METHODS = [
+  { id:'manual',     label:'Log manually',     desc:'Enter sessions by hand' },
+  { id:'strava',     label:'Connect Strava',   desc:'Auto-import activities' },
+  { id:'fit_upload', label:'Upload FIT files', desc:'From Garmin/Wahoo/etc.' },
+]
+
 export default function OnboardingWizard({ onFinish, setLang, lang }) {
   const [step, setStep] = useState(0)
   const [data, setData] = useState({
+    // New fast-track fields
+    purpose:'', loggingMethod:'manual',
+    // Original detailed fields
     name:'', sport:'Running', age:'', gender:'male',
     level:'Intermediate', maxhr:'', ftp:'', ltpace:'',
     goal:'Half Marathon', weeks:'',
   })
   const set = (k,v) => setData(d=>({...d,[k]:v}))
   const sports = ['Running','Cycling','Triathlon','Swimming','Rowing','Other']
+
+  const quickFinish = () => onFinish({
+    name:data.name || '', sport:data.sport, purpose:data.purpose,
+    loggingMethod:data.loggingMethod, quickStart:true,
+  })
 
   const steps = [
     // ── 0: Welcome ─────────────────────────────────────────────────────────
@@ -44,9 +59,57 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
       </div>
     </div>,
 
-    // ── 1: Basic info ───────────────────────────────────────────────────────
+    // ── 1: What are you training for? (E9 fast-track Q1) ───────────────────
+    <div key="purpose">
+      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'12px' }}>01 / WHAT ARE YOU TRAINING FOR?</div>
+      <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+        {PURPOSES.map(p=>(
+          <button key={p} onClick={()=>set('purpose',p)}
+            style={{ textAlign:'left', padding:'12px 14px', borderRadius:'6px', border:`2px solid ${data.purpose===p?'#ff6600':'var(--border)'}`, background:data.purpose===p?'#fff3eb':'transparent', cursor:'pointer', fontFamily:"'IBM Plex Mono',monospace", fontSize:'13px', color:data.purpose===p?'#ff6600':'var(--text)', fontWeight:data.purpose===p?600:400 }}>
+            {p}
+          </button>
+        ))}
+      </div>
+    </div>,
+
+    // ── 2: Primary sport? (E9 fast-track Q2) ──────────────────────────────
+    <div key="sport_pick">
+      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'12px' }}>02 / PRIMARY SPORT</div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px' }}>
+        {sports.map(s=>(
+          <button key={s} onClick={()=>set('sport',s)}
+            style={{ padding:'14px 8px', borderRadius:'6px', border:`2px solid ${data.sport===s?'#ff6600':'var(--border)'}`, background:data.sport===s?'#fff3eb':'transparent', cursor:'pointer', fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', color:data.sport===s?'#ff6600':'var(--text)', fontWeight:data.sport===s?600:400, textAlign:'center' }}>
+            {s === 'Running' ? '🏃' : s === 'Cycling' ? '🚴' : s === 'Triathlon' ? '🏊' : s === 'Swimming' ? '🏊' : s === 'Rowing' ? '🚣' : '⚡'}<br/>{s}
+          </button>
+        ))}
+      </div>
+    </div>,
+
+    // ── 3: How do you want to log? (E9 fast-track Q3) ─────────────────────
+    <div key="log_method">
+      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'12px' }}>03 / HOW DO YOU WANT TO LOG?</div>
+      <div style={{ display:'flex', flexDirection:'column', gap:'8px', marginBottom:'20px' }}>
+        {LOGGING_METHODS.map(m=>(
+          <button key={m.id} onClick={()=>set('loggingMethod',m.id)}
+            style={{ textAlign:'left', padding:'12px 14px', borderRadius:'6px', border:`2px solid ${data.loggingMethod===m.id?'#ff6600':'var(--border)'}`, background:data.loggingMethod===m.id?'#fff3eb':'transparent', cursor:'pointer', fontFamily:"'IBM Plex Mono',monospace" }}>
+            <div style={{ fontSize:'13px', color:data.loggingMethod===m.id?'#ff6600':'var(--text)', fontWeight:data.loggingMethod===m.id?600:400, marginBottom:'2px' }}>{m.label}</div>
+            <div style={{ fontSize:'11px', color:'#888' }}>{m.desc}</div>
+          </button>
+        ))}
+      </div>
+      <button onClick={quickFinish}
+        style={{ width:'100%', padding:'12px', borderRadius:'6px', background:'#ff6600', border:'none', color:'#fff', fontFamily:"'IBM Plex Mono',monospace", fontSize:'13px', fontWeight:600, cursor:'pointer', marginBottom:'8px' }}>
+        Start logging →
+      </button>
+      <button onClick={()=>setStep(s=>s+1)}
+        style={{ width:'100%', padding:'10px', borderRadius:'6px', background:'transparent', border:'1px solid var(--border)', color:'#888', fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', cursor:'pointer' }}>
+        Full setup (metrics, goals, plan preview)
+      </button>
+    </div>,
+
+    // ── 4: Basic info (optional full-setup) ────────────────────────────────
     <div key="basic">
-      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'16px' }}>01 / BASIC INFO</div>
+      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'16px' }}>04 / BASIC INFO</div>
       <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
         {[{l:'Name',k:'name',ph:'Athlete name'},{l:'Age',k:'age',ph:'32',type:'number'}].map(f=>(
           <div key={f.k}>
@@ -77,9 +140,9 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
       </div>
     </div>,
 
-    // ── 2: Fitness level (NEW) ──────────────────────────────────────────────
+    // ── 5: Fitness level ───────────────────────────────────────────────────
     <div key="level">
-      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'16px' }}>02 / FITNESS LEVEL</div>
+      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'16px' }}>05 / FITNESS LEVEL</div>
       <div style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
         <div>
           <label style={LABEL}>CURRENT LEVEL</label>
@@ -111,9 +174,9 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
       </div>
     </div>,
 
-    // ── 3: Key metrics ──────────────────────────────────────────────────────
+    // ── 6: Key metrics ─────────────────────────────────────────────────────
     <div key="metrics">
-      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'16px' }}>03 / KEY METRICS</div>
+      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'16px' }}>06 / KEY METRICS</div>
       <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
         <div>
           <label style={LABEL}>MAX HEART RATE (bpm)</label>
@@ -141,9 +204,9 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
       </div>
     </div>,
 
-    // ── 4: Goal + plan preview ──────────────────────────────────────────────
+    // ── 7: Goal + plan preview ─────────────────────────────────────────────
     <div key="goal">
-      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'16px' }}>04 / YOUR GOAL</div>
+      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'16px' }}>07 / YOUR GOAL</div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))', gap:'8px', marginBottom:'16px' }}>
         {PLAN_GOALS.map(g=>(
           <button key={g} onClick={()=>set('goal',g)}
@@ -183,6 +246,7 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
   const finish = () => {
     onFinish({
       name:data.name, age:data.age, gender:data.gender, sport:data.sport,
+      purpose:data.purpose, loggingMethod:data.loggingMethod,
       athleteLevel: data.level, trainDays: data.trainDays,
       maxhr:data.maxhr, ftp:data.ftp, threshold:data.ltpace, goal:data.goal,
     })

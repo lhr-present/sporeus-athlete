@@ -41,7 +41,7 @@
 npm install
 cp .env.example .env.local    # fill in Supabase + Strava keys
 npm run dev                   # → http://localhost:5173/sporeus-athlete/
-npm test                      # 860 unit tests (vitest)
+npm test                      # 2019 unit tests (vitest)
 npm run build                 # production build → dist/
 bash scripts/healthcheck.sh  # pre-push sanity: tests + build + bundle + security + git
 ```
@@ -66,9 +66,11 @@ Secrets required in repo: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_S
 
 ## Database (Supabase · pvicqwapvvfempjdgwbm)
 
-Tables: `profiles` · `training_log` · `recovery` · `injuries` · `test_results` · `race_results` · `coach_athletes` · `coach_notes` · `strava_tokens` · `push_subscriptions` · `coach_plans`
+**v8.1.0:** 40 tables · 3 materialized views · 55 migrations · 25 edge functions · 14 pg_cron jobs · 9 pgmq queues
 
-Edge functions: `strava-oauth` (connect / sync / disconnect) · `send-push` (VAPID)
+Key tables: `profiles` · `training_log` · `recovery` · `ai_insights` · `coach_athletes` · `coach_plans` · `session_embeddings` · `processed_webhooks` · `billing_events` · `attribution_events` · `client_events`
+
+Edge functions include: AI pipeline (`analyse-session`, `embed-session`, `ai-proxy`, `ai-batch-worker`) · Payments (`dodo-webhook`) · Realtime (`squad-sync`, `send-push`) · Observability (`ingest-telemetry`, `check-dependencies`, `alert-monitor`, `operator-digest`) · Attribution (`attribution-log`)
 
 ---
 

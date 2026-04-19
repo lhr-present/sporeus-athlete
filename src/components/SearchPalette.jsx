@@ -5,6 +5,7 @@ import { S } from '../styles.js'
 import { SEARCH_INDEX } from '../lib/constants.js'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { normalizeForSearch } from '../lib/textNormalize.js'
+import { isFeatureGated } from '../lib/subscription.js'
 
 const KIND_TAB   = { session: 'log', note: 'coach', message: 'coach', announcement: 'coach', athlete: 'coach', athlete_session: 'log' }
 const KIND_COLOR = { session: '#5bc25b', note: '#ff6600', message: '#0064ff', announcement: '#f5c542', athlete: '#a78bfa', athlete_session: '#2dd4bf' }
@@ -216,7 +217,7 @@ export default function SearchPalette({ onNavigate, onToggleDark, onToggleLang, 
   const activeDbCount = semanticMode ? semanticResults.length : dbResults.length
 
   // Semantic toggle: only available for authenticated coach/club tier users
-  const canSemantic = authUser && (tier === 'coach' || tier === 'club')
+  const canSemantic = authUser && !isFeatureGated('semantic_search', tier)
 
   return (
     <>

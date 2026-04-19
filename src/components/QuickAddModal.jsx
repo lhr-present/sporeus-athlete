@@ -46,6 +46,11 @@ export default function QuickAddModal({ onAdd, onClose }) {
     e.preventDefault()
     if (!dur || dur < 1) return
 
+    // Haptic feedback: short tick on save
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try { navigator.vibrate(10) } catch (_) {}
+    }
+
     const entry = {
       date:        today(),
       type,
@@ -113,12 +118,13 @@ export default function QuickAddModal({ onAdd, onClose }) {
             </label>
             <input
               type="number"
+              inputMode="decimal"
               min={1}
               max={600}
               value={duration}
               onChange={e => setDuration(e.target.value)}
               placeholder="60"
-              style={{ ...S.input, width: '100%' }}
+              style={{ ...S.input, width: '100%', fontSize: 'max(16px, 14px)' }}
             />
           </div>
 

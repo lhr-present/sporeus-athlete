@@ -1,4 +1,4 @@
-// ─── trainingLoad.js — PMC + ACWR + Banister model ────────────────────────
+// ─── trainingLoad.js — PMC + ACWR + Banister model + monotony/strain + TSB zones ─
 // Pure JS — no React, no DOM, no localStorage.
 // PMC uses TrainingPeaks impulse-response decay: K = 1 − e^(−1/τ)
 
@@ -416,4 +416,156 @@ export function generateWeeklyRecap(log) {
     comparedToAvg: { tssRatio, sessionRatio },
     weekLabel,
   }
+}
+
+// ─── Training Monotony & Strain (Foster et al. 1998) ────────────────────────
+// Reference: Foster C. (1998). "Monitoring training in athletes with reference
+// to overtraining syndrome." Med Sci Sports Exerc 30(7):1164–1168.
+//
+// monotony = mean7dTSS / stdev7dTSS
+// strain   = sum7dTSS × monotony
+//
+// Risk thresholds (Foster 1998):
+//   monotony > 2.0 → high illness / overreach risk
+//   strain > 6000  → high cumulative stress (sport-scaled; use relative to athlete baseline)
+//
+// Requires at least 7 days of data to be meaningful.
+// Days with no session are included as 0 TSS (critical for monotony calc).
+//
+// @param {Array} log - training log entries [{ date, tss }]
+// @param {Date}  [asOf] - reference date (defaults to today)
+// @returns {{ monotony: number|null, strain: number|null, weekTSS: number,
+//             dailyTSS: number[], status: 'low'|'moderate'|'high'|'insufficient' }}
+
+export function computeMonotony(log, asOf = new Date()) {
+  const ref = new Date(asOf)
+  ref.setHours(0, 0, 0, 0)
+
+  // Build daily TSS for the 7 days ending on ref (inclusive)
+  const tssMap = {}
+  for (const e of (log || [])) {
+    if (!e.date) continue
+    tssMap[e.date.slice(0, 10)] = (tssMap[e.date.slice(0, 10)] || 0) + (e.tss || 0)
+  }
+
+  const localDate = (d) => {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
+
+  const dailyTSS = []
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(ref)
+    d.setDate(d.getDate() - i)
+    dailyTSS.push(tssMap[localDate(d)] || 0)
+  }
+
+  const totalLogged = dailyTSS.reduce((s, v) => s + v, 0)
+  if (totalLogged === 0) {
+    return { monotony: null, strain: null, weekTSS: 0, dailyTSS, status: 'insufficient' }
+  }
+
+  const mean = totalLogged / 7
+  const variance = dailyTSS.reduce((s, v) => s + (v - mean) ** 2, 0) / 7
+  const stdev = Math.sqrt(variance)
+
+  const monotony = stdev < 1 ? null : Math.round((mean / stdev) * 100) / 100
+  const strain   = monotony !== null ? Math.round(totalLogged * monotony) : null
+
+  const status = monotony === null ? 'insufficient'
+    : monotony > 2.0 ? 'high'
+    : monotony > 1.5 ? 'moderate'
+    : 'low'
+
+  return {
+    monotony,
+    strain,
+    weekTSS: Math.round(totalLogged),
+    dailyTSS,
+    status,
+  }
+}
+
+// ─── TSB Zone Classification (Coggan) ────────────────────────────────────────
+// Reference: Coggan A. (2003). "Using TrainingPeaks to guide training."
+// Adapted from: Coggan A. Training and Racing with a Power Meter (2nd ed.).
+//
+// TSB (Training Stress Balance) = CTL(yesterday) − ATL(yesterday)
+//
+// Zones:
+//   > +25           → 'transitional'   — fitness decaying rapidly, under-training
+//   +5 to +25       → 'fresh'          — optimal race form window
+//   −10 to +5       → 'neutral'        — maintenance; normal training week
+//   −30 to −10      → 'optimal'        — ideal training stimulus zone
+//   < −30           → 'overreaching'   — cumulative fatigue; injury/illness risk
+//
+// @param {number} tsb - Training Stress Balance value
+// @returns {{ zone: string, label: { en: string, tr: string }, color: string,
+//             advice: { en: string, tr: string } }}
+
+export const TSB_ZONES = Object.freeze([
+  {
+    zone: 'transitional',
+    min: 25, max: Infinity,
+    color: '#888',
+    label:  { en: 'Transitional', tr: 'Geçiş' },
+    advice: {
+      en: 'Fitness is decaying — return to training soon to avoid detraining.',
+      tr: 'Form düşüyor — antrenmanları atlamaktan kaçın, antrenman kaybına uğramazsınız.',
+    },
+  },
+  {
+    zone: 'fresh',
+    min: 5, max: 25,
+    color: '#5bc25b',
+    label:  { en: 'Fresh / Peak Form', tr: 'Taze / Form' },
+    advice: {
+      en: 'Optimal form window for racing or testing. TSB +5 to +25 (Coggan).',
+      tr: 'Yarış veya test için optimal form penceresi. TSB +5 ile +25 arası (Coggan).',
+    },
+  },
+  {
+    zone: 'neutral',
+    min: -10, max: 5,
+    color: '#0064ff',
+    label:  { en: 'Neutral', tr: 'Nötr' },
+    advice: {
+      en: 'Normal training week. Fitness building at a manageable fatigue level.',
+      tr: 'Normal antrenman haftası. Sürdürülebilir yorgunlukla form artıyor.',
+    },
+  },
+  {
+    zone: 'optimal',
+    min: -30, max: -10,
+    color: '#ff6600',
+    label:  { en: 'Optimal Training Stress', tr: 'Optimal Antrenman Stresi' },
+    advice: {
+      en: 'Classic training zone — strong adaptations. Monitor recovery scores closely.',
+      tr: 'Klasik antrenman zonu — güçlü adaptasyonlar. Toparlanma skorlarını yakından izle.',
+    },
+  },
+  {
+    zone: 'overreaching',
+    min: -Infinity, max: -30,
+    color: '#cc0000',
+    label:  { en: 'Overreaching Risk', tr: 'Aşırı Yorgunluk Riski' },
+    advice: {
+      en: 'TSB below −30. High overreaching risk. Reduce load immediately (Coggan).',
+      tr: 'TSB −30 altında. Aşırı yüklenme riski yüksek. Yükü hemen azalt (Coggan).',
+    },
+  },
+])
+
+// @param {number} tsb - TSB value (can be fractional)
+// @returns {{ zone, label, color, advice }}
+export function classifyTSB(tsb) {
+  if (tsb == null || !isFinite(tsb)) {
+    return { zone: 'unknown', label: { en: 'No data', tr: 'Veri yok' }, color: '#555', advice: { en: '', tr: '' } }
+  }
+  for (const z of TSB_ZONES) {
+    if (tsb >= z.min && tsb < z.max) return z
+  }
+  return TSB_ZONES[TSB_ZONES.length - 1]  // overreaching catch-all
 }

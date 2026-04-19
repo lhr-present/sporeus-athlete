@@ -1,6 +1,51 @@
-# Sporeus Athlete — Security & RLS Policy Reference
+# Sporeus Athlete — Security Policy
 
-## Row-Level Security Summary
+## Reporting a Vulnerability
+
+If you discover a security vulnerability in this project, please report it responsibly.
+
+**Contact**: huseyinakbulut71@gmail.com  
+**Subject line**: `[SECURITY] Sporeus — <brief description>`
+
+Please include:
+- Description of the vulnerability and its potential impact
+- Steps to reproduce (minimal proof-of-concept preferred)
+- Affected component (edge function, RLS policy, API endpoint, frontend)
+
+## Acknowledgment Timeline
+
+| Stage | Timeline |
+|-------|----------|
+| Initial acknowledgment | Within 48 hours |
+| Triage and severity assessment | Within 7 days |
+| Fix deployed (critical/high) | Within 14 days of confirmation |
+| Public disclosure | After fix deployed, coordinated with reporter |
+
+## Scope
+
+**In scope:** tenant isolation bypass, JWT forgery/bypass, privilege escalation, data exfiltration, stored XSS, SSRF/injection via edge functions, storage bucket traversal, webhook replay attacks.
+
+**Out of scope:** DoS attacks, social engineering, physical access, vulnerabilities in third-party services (Supabase, Anthropic, Stripe, Dodo), issues already documented in `docs/security/pentest_findings_v811.md`.
+
+## Bounty Policy
+
+No formal bug bounty program. Critical findings (full tenant isolation bypass, account takeover) receive public acknowledgment and coordinated disclosure.
+
+## Responsible Disclosure
+
+1. Do not access or exfiltrate real user data — use accounts you control
+2. Do not publicly disclose until we have had a reasonable opportunity to fix it
+3. Do not perform destructive testing against any environment
+
+## Security Testing Infrastructure
+
+- **Weekly**: adversarial RLS pentest (`rls-pentest.yml`) — 51 attack scenarios across 7 attacker personas
+- **Per migration PR**: standard RLS harness (`rls-harness.yml`) — 220+ tenancy isolation tests
+- Findings tracked in [`docs/security/pentest_findings_v811.md`](docs/security/pentest_findings_v811.md)
+
+---
+
+## RLS Policy Reference
 
 All tables have RLS enabled. Policies enforce that users can only access their
 own data, with coaches allowed read access to their active athletes.

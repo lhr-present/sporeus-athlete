@@ -33,11 +33,18 @@ export const ANIM_CSS = `
   }
   /* Focus ring — visible for keyboard nav */
   :focus-visible { outline: 2px solid #ff6600; outline-offset: 2px; border-radius: 2px; }
-  /* Mobile layout overrides */
+  /* Mobile layout overrides + bottom bar */
   @media (max-width: 640px) {
     .sp-content { padding: 12px !important; }
     .sp-nav-btn { padding: 10px 10px !important; font-size: 9px !important; }
     .sp-header { padding: 8px 12px !important; padding-top: max(8px, var(--safe-top)) !important; }
+    /* Show mobile bottom bar and FAB */
+    .sp-mobile-bottom-bar { display: block !important; }
+    .sp-mobile-fab { display: flex !important; }
+    /* Pad main content so it doesn't hide behind the bottom bar */
+    .sp-main-content { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important; }
+    /* Prevent iOS zoom on input focus — minimum 16px */
+    input, select, textarea { font-size: max(16px, 1em) !important; }
   }
 `
 

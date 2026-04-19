@@ -1,7 +1,7 @@
-# Sporeus Performance Harness — v8.0.4
+# Sporeus Performance Harness — v8.1.1
 
-End-to-end performance verification for the 9 claims shipped in P1–P8.  
-Runs against a real Supabase branch with 18 k seeded training sessions.
+End-to-end performance verification for the 11 SLO claims shipped in P1–P8 + E1.  
+Runs against a real Supabase branch with 18 k seeded training sessions + pgvector embeddings.
 
 ---
 
@@ -18,6 +18,11 @@ Runs against a real Supabase branch with 18 k seeded training sessions.
 | 7 | `report_generation` | 5 parallel weekly PDFs | **< 20 s** p95/report |
 | 8 | `search_performance` | `search_everything()` FTS on 18 k corpus | **< 100 ms** |
 | 9 | `ai_proxy_token_cost` | RAG context overhead vs non-RAG | **< 2 000 tokens** |
+| 10 | `embed_throughput` | `embed-session` edge fn single invocation | **< 8 000 ms** |
+| 11 | `embed_throughput` | Batch 20 sessions avg/session | **< 10 000 ms** |
+| 12 | `embed_throughput` | INSERT → `session_embeddings` visible (cascade) | **< 60 s** |
+| 13 | `squad_pattern_search` | `match_sessions_for_coach` HNSW cross-athlete | **< 500 ms** |
+| 14 | `squad_pattern_search` | `search_squad_pattern` FTS squad pattern | **< 200 ms** |
 
 ---
 
@@ -70,13 +75,15 @@ npx tsx tests/perf/harness.ts --teardown
 ── Refreshing materialized views ─────────────────────────────────
   MV refresh complete
 
-[1/7] coach_dashboard …
-[2/7] squad_sync …
-[3/7] upload_parse …
-[4/7] insight_chain …
-[5/7] report_generation …
-[6/7] search_performance …
-[7/7] ai_proxy_token_cost …
+[1/9] coach_dashboard …
+[2/9] squad_sync …
+[3/9] upload_parse …
+[4/9] insight_chain …
+[5/9] report_generation …
+[6/9] search_performance …
+[7/9] ai_proxy_token_cost …
+[8/9] embed_throughput …
+[9/9] squad_pattern_search …
 
 ╔══════════════════════════════════════════════════════════╗
 ║          Sporeus Perf Harness — Results Summary          ║
@@ -94,14 +101,21 @@ npx tsx tests/perf/harness.ts --teardown
 ## Baseline JSON
 
 Each run writes (or overwrites) `tests/perf/baselines/<version>.json`.  
-The committed baseline at `v8.0.4.json` contains **estimated values**.  
-Replace with measured values after the first CI run on the perf branch.
+The committed baseline at `v8.1.1.json` contains **estimated values** for the 2 new E1 scenarios.  
+Scenarios 1–7 carry forward from v8.0.4 measured estimates.  
+Replace all `ESTIMATED` fields with measured values after the first CI run on the perf branch.
+
+See [`docs/perf/v811_claims_vs_measured.md`](v811_claims_vs_measured.md) for the full claims-vs-measured table.
 
 ### Updating the baseline
 
-1. Run the harness on a fresh perf branch.
-2. Copy the generated `v8.0.4.json` back into `tests/perf/baselines/`.
-3. Commit as `perf: update v8.0.4 baseline — measured on perf branch`.
+1. Run the harness on a fresh perf branch with embeddings seeded:
+   ```bash
+   npx tsx tests/perf/harness.ts --keep
+   ```
+2. Copy the generated `v8.1.1.json` back into `tests/perf/baselines/`.
+3. Update measured values in `docs/perf/v811_claims_vs_measured.md`.
+4. Commit as `perf: update v8.1.1 baseline — measured on perf branch`.
 
 ---
 
@@ -120,19 +134,26 @@ It posts a PR comment with the full results table.
 
 ```
 tests/perf/
-├── harness.ts              Main orchestrator — setup, bench, teardown, write baseline
-├── utils.ts                percentile(), timed(), runN(), sleep()
-├── seed-perf-data.sql      SQL fallback seed (called by harness; uses generate_series)
+├── harness.ts               Main orchestrator — setup, bench, teardown, write baseline
+├── utils.ts                 percentile(), timed(), runN(), sleep()
+├── seed-perf-data.sql       SQL fallback seed (called by harness; uses generate_series)
 ├── baselines/
-│   └── v8.0.4.json         Committed estimated baseline; overwritten by CI measured run
+│   ├── v8.0.4.json          v8.0.4 estimated baseline (archived)
+│   └── v8.1.1.json          v8.1.1 baseline — [1-7] estimated, [8-9] new E1 scenarios
 └── scenarios/
-    ├── coach_dashboard.ts  get_squad_overview + get_squad_readiness_mv
-    ├── squad_sync.ts       refresh_mv_load + post-refresh MV reads
-    ├── upload_parse.ts     10 concurrent Storage upload + training_log insert
-    ├── insight_chain.ts    INSERT training_log → poll ai_insights (async chain)
-    ├── report_generation.ts 5 parallel generated_reports inserts
-    ├── search_performance.ts search_everything FTS + match_sessions_for_user HNSW
-    └── ai_proxy_token_cost.ts RAG context token overhead vs baseline
+    ├── coach_dashboard.ts      get_squad_overview + get_squad_readiness_mv
+    ├── squad_sync.ts           refresh_mv_load + post-refresh MV reads
+    ├── upload_parse.ts         10 concurrent Storage upload + training_log insert
+    ├── insight_chain.ts        INSERT training_log → poll ai_insights (async chain)
+    ├── report_generation.ts    5 parallel generated_reports inserts
+    ├── search_performance.ts   search_everything FTS + match_sessions_for_user HNSW
+    ├── ai_proxy_token_cost.ts  RAG context token overhead vs baseline
+    ├── embed_throughput.ts     [E1] embed-session single + batch + cascade chain    ← NEW
+    └── squad_pattern_search.ts [E1] match_sessions_for_coach HNSW + search_squad_pattern FTS ← NEW
+
+docs/perf/
+├── README.md                This file
+└── v811_claims_vs_measured.md  [E1] Claims vs measured table with prerequisites + notes
 ```
 
 ---

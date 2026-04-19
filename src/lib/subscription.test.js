@@ -1,5 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
-import { TIERS, canAddAthlete, canUseAI, getRemainingAICalls, isFeatureGated, getUpgradePrompt } from './subscription.js'
+import {
+  TIERS, canAddAthlete, canUseAI, getRemainingAICalls,
+  isFeatureGated, getUpgradePrompt, canUploadFile, FREE_UPLOAD_LIMIT,
+  isOnTrial, isPastDue, isCancelled, isExpired, daysUntilExpiry,
+} from './subscription.js'
 
 vi.mock('./supabase.js', () => ({
   supabase: { from: vi.fn(() => ({ select: vi.fn(), eq: vi.fn(), maybeSingle: vi.fn() })) },
@@ -54,5 +58,81 @@ describe('getUpgradePrompt', () => {
     const msg = getUpgradePrompt('multi_team')
     expect(typeof msg).toBe('string')
     expect(msg.length).toBeGreaterThan(10)
+  })
+  it('returns fallback for unknown feature', () => {
+    const msg = getUpgradePrompt('unknown_xyz')
+    expect(typeof msg).toBe('string')
+    expect(msg.length).toBeGreaterThan(0)
+  })
+})
+
+// ── canUploadFile ──────────────────────────────────────────────────────────────
+describe('canUploadFile', () => {
+  it('free at 0: allowed', () => expect(canUploadFile(0, 'free')).toBe(true))
+  it(`free at ${FREE_UPLOAD_LIMIT}: blocked`, () => expect(canUploadFile(FREE_UPLOAD_LIMIT, 'free')).toBe(false))
+  it('coach: always allowed regardless of count', () => expect(canUploadFile(9999, 'coach')).toBe(true))
+  it('club: always allowed', () => expect(canUploadFile(9999, 'club')).toBe(true))
+})
+
+// ── Status predicates ──────────────────────────────────────────────────────────
+describe('isOnTrial', () => {
+  it('true for trialing with future trial_ends_at', () => {
+    const future = new Date(Date.now() + 7 * 86400000).toISOString()
+    expect(isOnTrial({ subscription_status: 'trialing', trial_ends_at: future })).toBe(true)
+  })
+  it('false for trialing with past trial_ends_at', () => {
+    const past = new Date(Date.now() - 1000).toISOString()
+    expect(isOnTrial({ subscription_status: 'trialing', trial_ends_at: past })).toBe(false)
+  })
+  it('false for active status', () => {
+    expect(isOnTrial({ subscription_status: 'active', trial_ends_at: null })).toBe(false)
+  })
+  it('false for null profile', () => expect(isOnTrial(null)).toBe(false))
+})
+
+describe('isPastDue', () => {
+  it('true for past_due status', () => expect(isPastDue({ subscription_status: 'past_due' })).toBe(true))
+  it('false for active status', () => expect(isPastDue({ subscription_status: 'active' })).toBe(false))
+  it('false for null', () => expect(isPastDue(null)).toBe(false))
+})
+
+describe('isCancelled', () => {
+  it('true for cancelled with future end_date', () => {
+    const future = new Date(Date.now() + 5 * 86400000).toISOString()
+    expect(isCancelled({ subscription_status: 'cancelled', subscription_end_date: future })).toBe(true)
+  })
+  it('false for cancelled with past end_date', () => {
+    const past = new Date(Date.now() - 1000).toISOString()
+    expect(isCancelled({ subscription_status: 'cancelled', subscription_end_date: past })).toBe(false)
+  })
+  it('false for active', () => {
+    expect(isCancelled({ subscription_status: 'active', subscription_end_date: null })).toBe(false)
+  })
+})
+
+describe('isExpired', () => {
+  it('true for expired status', () => {
+    expect(isExpired({ subscription_status: 'expired', subscription_tier: 'coach' })).toBe(true)
+  })
+  it('true for free tier regardless of status', () => {
+    expect(isExpired({ subscription_status: 'active', subscription_tier: 'free' })).toBe(true)
+  })
+  it('false for active coach', () => {
+    expect(isExpired({ subscription_status: 'active', subscription_tier: 'coach' })).toBe(false)
+  })
+  it('true for null', () => expect(isExpired(null)).toBe(true))
+})
+
+describe('daysUntilExpiry', () => {
+  it('returns 0 for null profile', () => expect(daysUntilExpiry(null)).toBe(0))
+  it('returns ~7 for a trial ending in 7 days', () => {
+    const future = new Date(Date.now() + 7 * 86400000).toISOString()
+    const days = daysUntilExpiry({ subscription_status: 'trialing', trial_ends_at: future })
+    expect(days).toBeGreaterThanOrEqual(6)
+    expect(days).toBeLessThanOrEqual(8)
+  })
+  it('returns 0 when cutoff is in the past', () => {
+    const past = new Date(Date.now() - 86400000).toISOString()
+    expect(daysUntilExpiry({ subscription_status: 'trialing', trial_ends_at: past })).toBe(0)
   })
 })

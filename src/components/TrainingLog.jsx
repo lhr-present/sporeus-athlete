@@ -96,6 +96,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const importFileRef   = useRef(null)   // raw File object for Storage archival
 
   // ── Memoised derivations ─────────────────────────────────────────────────
+  const [visibleCount, setVisibleCount] = useState(100)
   const reversedLog = useMemo(() => [...log].reverse(), [log])
   const expandedEntry = useMemo(
     () => expandedId != null ? (log.find(s => s.id === expandedId) ?? null) : null,
@@ -131,6 +132,32 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   useEffect(() => {
     if (!isSupabaseReady()) return
     supabase.auth.getUser().then(({ data: { user } }) => setAuthUser(user || null)).catch(() => {})
+  }, [])
+
+  // ── GlobalSearch cross-component events ──────────────────────────────────
+  // sporeus:open-semantic-search — GlobalSearch "semantic →" button fires this
+  // sporeus:jump-to-session     — GlobalSearch session result navigates to Log, then fires this
+  useEffect(() => {
+    const onOpenSemantic = e => {
+      setShowSemanticSearch(true)
+      // If the event carries a query string, pre-fill SemanticSearch via a data attribute trick —
+      // SemanticSearch manages its own query state, so we store it for it to pick up on mount.
+      if (e.detail?.query) {
+        try { sessionStorage.setItem('sporeus-semantic-prefill', e.detail.query) } catch {}
+      }
+    }
+    const onJumpToSession = e => {
+      if (e.detail?.sessionId) {
+        setCalView(false)
+        setExpandedId(e.detail.sessionId)
+      }
+    }
+    window.addEventListener('sporeus:open-semantic-search', onOpenSemantic)
+    window.addEventListener('sporeus:jump-to-session', onJumpToSession)
+    return () => {
+      window.removeEventListener('sporeus:open-semantic-search', onOpenSemantic)
+      window.removeEventListener('sporeus:jump-to-session', onJumpToSession)
+    }
   }, [])
 
   const requestSessionAnalysis = (entry) => {
@@ -512,7 +539,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                 </tr>
               </thead>
               <tbody>
-                {reversedLog.map((s,i)=>{
+                {reversedLog.slice(0, visibleCount).map((s,i)=>{
                   const hasTag = s.tags && s.tags.length > 0
                   const suggestedTag = !hasTag ? autoTagSession(s) : null
                   const isExpanded = expandedId === s.id
@@ -645,6 +672,17 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                 })}
               </tbody>
             </table>
+            {/* Load More — keeps DOM below 100 rows for performance (E4) */}
+            {reversedLog.length > visibleCount && (
+              <div style={{ textAlign:'center', padding:'12px 0' }}>
+                <button
+                  onClick={() => setVisibleCount(c => c + 100)}
+                  style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'8px 20px', background:'transparent', border:'1px solid #444', color:'#888', borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em' }}
+                >
+                  ▼ Load more ({reversedLog.length - visibleCount} remaining)
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

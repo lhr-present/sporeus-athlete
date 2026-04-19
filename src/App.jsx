@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { version as APP_VERSION } from '../package.json'
 import { logger } from './lib/logger.js'
 import { LangCtx, TABS } from './contexts/LangCtx.jsx'
@@ -50,6 +50,11 @@ const Profile       = lazy(() => import('./components/Profile.jsx'))
 const TestProtocols = lazy(() => import('./components/Protocols.jsx'))
 const Periodization = lazy(() => import('./components/Periodization.jsx'))
 const ReportsTab    = lazy(() => import('./components/ReportsTab.jsx'))
+const UpgradeModal  = lazy(() => import('./components/UpgradeModal.jsx'))
+const GlobalSearch  = lazy(() => import('./components/GlobalSearch.jsx'))
+import PastDueBanner from './components/PastDueBanner.jsx'
+import MobileBottomBar from './components/MobileBottomBar.jsx'
+import MobileFAB from './components/MobileFAB.jsx'
 
 
 const EMBED_MODE   = new URLSearchParams(window.location.search).get('embed') === 'true'
@@ -93,6 +98,14 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
     finishOnboarding, t, handleExport, handleAddSession,
   } = useAppState({ lang, setLang, dark, setDark, authUser, authProfile, signOut })
 
+  const [showUpgrade, setShowUpgrade]         = useState(false)
+  const [upgradeFeatureKey, setUpgradeFeatureKey] = useState(null)
+
+  function openUpgrade(featureKey = null) {
+    setUpgradeFeatureKey(featureKey)
+    setShowUpgrade(true)
+  }
+
   const now = new Date()
   const timeStr = now.toLocaleTimeString('tr-TR', { hour:'2-digit', minute:'2-digit' })
   const dateStr = now.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }).toUpperCase()
@@ -115,8 +128,39 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
       <StatusBanner />
       <OfflineBanner />
       <ConnectionBanner />
+      <PastDueBanner profile={authProfile} lang={lang} onUpgrade={() => openUpgrade(null)} />
       <InstallPrompt />
       <ToastStack toasts={toasts} dismissToast={dismissToast} />
+
+      {/* ── Mobile bottom tab bar + FAB (hidden on ≥641px via CSS) ─────────── */}
+      <MobileBottomBar activeTab={tab} onTabChange={handleTabClick} />
+      <MobileFAB onClick={() => setShowQuickAdd(true)} />
+
+      {showUpgrade && (
+        <Suspense fallback={null}>
+          <UpgradeModal
+            open={showUpgrade}
+            onClose={() => setShowUpgrade(false)}
+            featureKey={upgradeFeatureKey}
+            lang={lang}
+            currentTier={authProfile?.subscription_tier || 'free'}
+          />
+        </Suspense>
+      )}
+
+      {/* GlobalSearch — FTS across sessions/notes/messages/announcements; Ctrl+Shift+F */}
+      <Suspense fallback={null}>
+        <GlobalSearch
+          onNavigate={(tabId, sessionId) => {
+            handleTabClick(tabId)
+            if (sessionId) {
+              // broadcast so TrainingLog can expand the correct row
+              window.dispatchEvent(new CustomEvent('sporeus:jump-to-session', { detail: { sessionId } }))
+            }
+          }}
+          tier={authProfile?.subscription_tier || 'free'}
+        />
+      </Suspense>
 
       {showSearch && (
         <Suspense fallback={null}>
@@ -323,7 +367,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
           </div>
         </nav>
 
-        <main style={S.content}>
+        <main style={S.content} className="sp-main-content">
           {coachMode && authProfile?.role === 'coach' && (
             <>
               <AsyncBoundary name="Squad View">

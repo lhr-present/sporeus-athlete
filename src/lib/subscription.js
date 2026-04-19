@@ -99,14 +99,83 @@ export function canUploadFile(monthlyCount, tier = 'free') {
 // ── getUpgradePrompt(feature) → string ───────────────────────────────────────
 export function getUpgradePrompt(feature) {
   const msgs = {
-    multi_team:         'Multi-team management requires a Coach plan. Upgrade at sporeus.com.',
-    export_pdf:         'PDF season reports require a Coach plan. Upgrade at sporeus.com.',
-    api_access:         'Public API access requires a Club plan. Upgrade at sporeus.com.',
-    white_label:        'White-label branding requires a Club plan. Upgrade at sporeus.com.',
-    realtime_dashboard: 'Real-time dashboard requires a Coach plan. Upgrade at sporeus.com.',
-    upload_files:         'Free plan allows 5 file uploads/month. Upgrade to Coach for unlimited uploads.',
-    semantic_search:      'Semantic session search requires a Coach or Club plan. Upgrade at sporeus.com.',
-    squad_pattern_search: 'Squad pattern search requires a Coach or Club plan. Upgrade at sporeus.com.',
+    multi_team:           'Managing multiple teams requires a Coach plan. Start your free 14-day trial.',
+    export_pdf:           'PDF season reports require a Coach plan. Try Coach free for 14 days.',
+    api_access:           'API access is a Club feature. Upgrade to Club for full integration capabilities.',
+    white_label:          'White-label branding is a Club feature. Remove the Sporeus branding for your athletes.',
+    realtime_dashboard:   'Live squad dashboard requires a Coach plan. See every athlete in real time.',
+    upload_files:         'Free plan: 5 uploads/month. Upgrade to Coach for unlimited FIT/GPX uploads.',
+    semantic_search:      'Semantic AI search requires a Coach plan. Find any session by meaning, not just date.',
+    squad_pattern_search: 'Squad pattern analysis requires a Coach plan. Detect overtraining across your whole squad.',
+    debug_realtime_stats: 'Real-time diagnostics require a Coach plan.',
   }
-  return msgs[feature] || 'This feature requires an upgraded plan. Visit sporeus.com to upgrade.'
+  return msgs[feature] || 'This feature requires an upgraded plan. Start a free 14-day Coach trial.'
+}
+
+// ── getCheckoutUrl(tier, lang) → string | null ────────────────────────────────
+// Returns the checkout URL for the given tier + locale.
+// Dodo for TR (TRY pricing), Stripe for international (EUR/USD).
+export function getCheckoutUrl(tier = 'coach', lang = 'tr') {
+  const isDodo = lang === 'tr'
+  if (tier === 'coach') {
+    return isDodo
+      ? (import.meta.env?.VITE_DODO_CHECKOUT_COACH   || null)
+      : (import.meta.env?.VITE_STRIPE_CHECKOUT_COACH || null)
+  }
+  if (tier === 'club') {
+    return isDodo
+      ? (import.meta.env?.VITE_DODO_CHECKOUT_CLUB    || null)
+      : (import.meta.env?.VITE_STRIPE_CHECKOUT_CLUB  || null)
+  }
+  return null
+}
+
+// ── Status predicates — read from profile object ──────────────────────────────
+
+// isOnTrial: user is in the 14-day free trial period
+export function isOnTrial(profile) {
+  if (!profile) return false
+  return (
+    profile.subscription_status === 'trialing' &&
+    profile.trial_ends_at != null &&
+    new Date(profile.trial_ends_at) > new Date()
+  )
+}
+
+// isPastDue: payment failed, 3-day grace period active
+export function isPastDue(profile) {
+  if (!profile) return false
+  return profile.subscription_status === 'past_due'
+}
+
+// isCancelled: cancelled but still within paid period
+export function isCancelled(profile) {
+  if (!profile) return false
+  return (
+    profile.subscription_status === 'cancelled' &&
+    profile.subscription_end_date != null &&
+    new Date(profile.subscription_end_date) > new Date()
+  )
+}
+
+// isExpired: subscription has lapsed — on free or status=expired
+export function isExpired(profile) {
+  if (!profile) return true
+  return (
+    profile.subscription_status === 'expired' ||
+    profile.subscription_tier   === 'free'
+  )
+}
+
+// daysUntilExpiry: days remaining in trial / paid period / grace period
+export function daysUntilExpiry(profile) {
+  if (!profile) return 0
+  const cutoff =
+    profile.subscription_status === 'trialing'  ? profile.trial_ends_at        :
+    profile.subscription_status === 'past_due'  ? profile.grace_period_ends_at :
+    profile.subscription_status === 'cancelled' ? profile.subscription_end_date :
+    profile.subscription_expires_at
+  if (!cutoff) return 0
+  const ms = new Date(cutoff).getTime() - Date.now()
+  return Math.max(0, Math.ceil(ms / 86400000))
 }

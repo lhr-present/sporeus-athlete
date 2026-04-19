@@ -1,6 +1,7 @@
-// ─── InstallPrompt.jsx — PWA install banner (v5.11.0) ────────────────────────
+// ─── InstallPrompt.jsx — PWA install banner (v8.2.3 / E4) ────────────────────
 import { useState, useEffect, useRef } from 'react'
 import { logger } from '../lib/logger.js'
+import { emitEvent } from '../lib/attribution.js'
 
 const MONO = "'IBM Plex Mono', monospace"
 const DISMISS_KEY = 'sporeus-install-dismissed'
@@ -22,13 +23,24 @@ export default function InstallPrompt() {
   const deferredRef = useRef(null)
 
   useEffect(() => {
-    // Never show if already installed or dismissed
-    if (isStandalone()) return
+    // If the app is already installed, never show and record conversion if not yet recorded
+    if (isStandalone()) {
+      const key = 'sporeus-install-converted'
+      if (!localStorage.getItem(key)) {
+        try { localStorage.setItem(key, '1') } catch (_) {}
+        emitEvent('pwa_already_installed', {})
+      }
+      return
+    }
     if (localStorage.getItem(DISMISS_KEY) === '1') return
 
+    // Emit prompt_shown telemetry once per session
     if (isIOS()) {
-      // iOS: no beforeinstallprompt — show manual instructions after 30s
-      const t = setTimeout(() => { setIos(true); setShow(true) }, 30000)
+      const t = setTimeout(() => {
+        setIos(true)
+        setShow(true)
+        emitEvent('pwa_install_prompt_shown', { platform: 'ios' })
+      }, 30000)
       return () => clearTimeout(t)
     }
 
@@ -36,15 +48,26 @@ export default function InstallPrompt() {
     const handler = e => {
       e.preventDefault()
       deferredRef.current = e
-      // Show after 30s delay
-      setTimeout(() => setShow(true), 30000)
+      setTimeout(() => {
+        setShow(true)
+        emitEvent('pwa_install_prompt_shown', { platform: 'android' })
+      }, 30000)
     }
     window.addEventListener('beforeinstallprompt', handler)
-    return () => window.removeEventListener('beforeinstallprompt', handler)
+
+    // Track when app installs (appinstalled fires in Chrome/Edge)
+    const onInstalled = () => emitEvent('pwa_install_accepted', { platform: 'android' })
+    window.addEventListener('appinstalled', onInstalled)
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler)
+      window.removeEventListener('appinstalled', onInstalled)
+    }
   }, [])
 
   function dismiss() {
     try { localStorage.setItem(DISMISS_KEY, '1') } catch (e) { logger.warn('localStorage:', e.message) }
+    emitEvent('pwa_install_prompt_dismissed', { platform: ios ? 'ios' : 'android' })
     setShow(false)
   }
 
@@ -52,7 +75,12 @@ export default function InstallPrompt() {
     if (deferredRef.current) {
       deferredRef.current.prompt()
       const { outcome } = await deferredRef.current.userChoice
-      if (outcome === 'accepted') deferredRef.current = null
+      if (outcome === 'accepted') {
+        emitEvent('pwa_install_accepted', { platform: 'android' })
+        deferredRef.current = null
+      } else {
+        emitEvent('pwa_install_declined', { platform: 'android' })
+      }
     }
     dismiss()
   }
