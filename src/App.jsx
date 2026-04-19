@@ -51,7 +51,8 @@ const TestProtocols = lazy(() => import('./components/Protocols.jsx'))
 const Periodization = lazy(() => import('./components/Periodization.jsx'))
 const ReportsTab    = lazy(() => import('./components/ReportsTab.jsx'))
 const UpgradeModal  = lazy(() => import('./components/UpgradeModal.jsx'))
-const GlobalSearch  = lazy(() => import('./components/GlobalSearch.jsx'))
+const GlobalSearch   = lazy(() => import('./components/GlobalSearch.jsx'))
+const ChapterLanding = lazy(() => import('./pages/book/ChapterLanding.jsx'))
 import PastDueBanner from './components/PastDueBanner.jsx'
 import MobileBottomBar from './components/MobileBottomBar.jsx'
 import MobileFAB from './components/MobileFAB.jsx'
@@ -62,6 +63,10 @@ const SCIENCE_MODE = new URLSearchParams(window.location.search).get('science') 
   || window.location.pathname.endsWith('/science')
 const PRIVACY_MODE = new URLSearchParams(window.location.search).get('privacy') === '1'
   || window.location.pathname.endsWith('/privacy')
+// Book-chapter landing: /b/ch1 through /b/ch22 (QR codes in EŞİK/THRESHOLD)
+const _BOOK_MATCH  = window.location.pathname.match(/\/b\/(ch(?:[1-9]|1[0-9]|2[0-2]))$/)
+const BOOK_MODE    = !!_BOOK_MATCH
+const BOOK_CHAPTER = _BOOK_MATCH?.[1] ?? null
 
 
 const Splash = () => (
@@ -510,6 +515,21 @@ export default function App() {
     return (
       <ErrorBoundary name="Privacy">
         <AsyncBoundary name="Privacy Policy"><PrivacyPolicy /></AsyncBoundary>
+      </ErrorBoundary>
+    )
+  }
+
+  // Book chapter landing — QR codes in EŞİK/THRESHOLD physical book
+  if (BOOK_MODE) {
+    return (
+      <ErrorBoundary name="BookChapter">
+        <AsyncBoundary name="Chapter Landing">
+          <ChapterLanding
+            chapterId={BOOK_CHAPTER}
+            lang={lang}
+            onSignup={() => window.location.replace('/?utm_source=esik_book&utm_medium=qr&utm_content=' + BOOK_CHAPTER)}
+          />
+        </AsyncBoundary>
       </ErrorBoundary>
     )
   }
