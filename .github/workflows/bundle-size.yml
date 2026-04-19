@@ -1,0 +1,96 @@
+name: Bundle Size Guard
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "package.json"
+      - "vite.config.*"
+      - "scripts/checkBundleSize.js"
+      - ".github/workflows/bundle-size.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "package.json"
+
+concurrency:
+  group: bundle-size-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  bundle-size:
+    name: Bundle Size Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        env:
+          VITE_SUPABASE_URL:      ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: npm run build
+
+      - name: Check bundle size
+        id: bundle
+        run: |
+          set +e
+          node scripts/checkBundleSize.js 2>&1 | tee bundle_report.txt
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          # Capture report for PR comment
+          {
+            echo 'report<<EOF'
+            cat bundle_report.txt
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Comment PR with bundle report
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const exit = '${{ steps.bundle.outputs.exit_code }}';
+            const ok   = exit === '0';
+            const report = `${{ steps.bundle.outputs.report }}`;
+
+            const body = `## ${ok ? '✅' : '🚨'} Bundle Size — ${ok ? 'All budgets met' : 'BUDGET EXCEEDED'}
+
+            \`\`\`
+            ${report}
+            \`\`\`
+
+            ${!ok ? '\n> **Bundle exceeds size budgets. Investigate with `npm run build` + `node scripts/checkBundleSize.js`.**\n' : ''}
+            _Run: ${{ github.run_id }}_`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('Bundle Size')
+            );
+            const params = { owner: context.repo.owner, repo: context.repo.repo, body };
+            if (existing) {
+              await github.rest.issues.updateComment({ ...params, comment_id: existing.id });
+            } else {
+              await github.rest.issues.createComment({ ...params, issue_number: context.issue.number });
+            }
+
+      - name: Fail if budget exceeded
+        if: steps.bundle.outputs.exit_code != '0'
+        run: |
+          echo "::error::Bundle size exceeds budgets. See PR comment for details."
+          exit 1

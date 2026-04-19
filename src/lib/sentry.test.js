@@ -1,97 +1,95 @@
 // ─── sentry.test.js ───────────────────────────────────────────────────────────
-// Tests for the PII-safe Sentry wrapper.
-// We test the exported pure helpers (scrubData, sanitiseBeforeSend) and verify
-// that the public API no-ops gracefully before initSentry() is called.
-// We do NOT mock @sentry/react internals.
+// Tests for src/lib/sentry.js (backward-compat shim → observability/sentry.js).
+// scrubData now delegates to scrubPII (value-based scrubbing, not key stripping).
+// sanitiseBeforeSend removed; use _scrubSentryEvent from observability/sentry.js.
 import { describe, it, expect } from 'vitest'
 import {
   scrubData,
-  sanitiseBeforeSend,
   captureException,
   setUser,
   clearUser,
   addBreadcrumb,
 } from './sentry.js'
+import { _scrubSentryEvent } from './observability/sentry.js'
 
-// ── scrubData ─────────────────────────────────────────────────────────────────
+// ── scrubData (now = scrubPII — value scrubbing, keys preserved) ──────────────
 
 describe('scrubData', () => {
-  it('passes through non-PII fields', () => {
+  it('passes through non-PII fields unchanged', () => {
     const out = scrubData({ operation: 'profiles:fetch', code: 'PGRST116', count: 3 })
     expect(out).toEqual({ operation: 'profiles:fetch', code: 'PGRST116', count: 3 })
   })
 
-  it('strips keys named email', () => {
+  it('scrubs email address in value (key preserved)', () => {
     const out = scrubData({ id: 'uuid-123', email: 'user@example.com' })
-    expect(out).not.toHaveProperty('email')
+    expect(out.email).toBe('[email]')   // value scrubbed, key kept
     expect(out.id).toBe('uuid-123')
   })
 
-  it('strips keys named name and display_name', () => {
-    const out = scrubData({ id: 'uuid-123', name: 'Alice', display_name: 'Alice B' })
-    expect(out).not.toHaveProperty('name')
-    expect(out).not.toHaveProperty('display_name')
+  it('scrubs phone number value', () => {
+    const out = scrubData({ athleteId: 'abc', contact: '+905551234567' })
+    expect(out.contact).toBe('[phone]')
+    expect(out.athleteId).toBe('abc')
   })
 
-  it('strips keys named phone', () => {
-    const out = scrubData({ athleteId: 'uuid', phone: '+90555555' })
-    expect(out).not.toHaveProperty('phone')
-  })
-
-  it('strips values that look like email addresses', () => {
-    const out = scrubData({ info: 'user@sporeus.com', code: 'ABCD' })
-    expect(out).not.toHaveProperty('info')
+  it('scrubs email in a string value', () => {
+    const out = scrubData({ info: 'contact: user@sporeus.com', code: 'ABCD' })
+    expect(out.info).toContain('[email]')
+    expect(out.info).not.toContain('@')
     expect(out.code).toBe('ABCD')
   })
 
-  it('returns obj unchanged when no PII', () => {
+  it('returns plain object when no PII', () => {
     const input = { duration: 60, tss: 80, acwr: 1.1 }
     expect(scrubData(input)).toEqual(input)
   })
 
   it('returns non-object values unchanged', () => {
     expect(scrubData(null)).toBeNull()
-    expect(scrubData('string')).toBe('string')
     expect(scrubData(42)).toBe(42)
   })
 
   it('does not mutate the original object', () => {
     const original = { email: 'a@b.com', id: '1' }
     scrubData(original)
-    expect(original).toHaveProperty('email')
+    expect(original.email).toBe('a@b.com')  // original unchanged
   })
 })
 
-// ── sanitiseBeforeSend ────────────────────────────────────────────────────────
+// ── _scrubSentryEvent (replaces sanitiseBeforeSend) ───────────────────────────
 
-describe('sanitiseBeforeSend', () => {
-  it('strips query string from request.url', () => {
-    const event = { request: { url: 'https://app.sporeus.com/?invite=SP-ABC12345' } }
-    const out = sanitiseBeforeSend(event)
-    expect(out.request.url).toBe('https://app.sporeus.com/')
-    expect(out.request.url).not.toContain('invite=')
+describe('_scrubSentryEvent', () => {
+  it('returns null for /debug/ URLs', () => {
+    const event = { request: { url: 'https://sporeus.com/debug/rls' } }
+    expect(_scrubSentryEvent(event)).toBeNull()
   })
 
-  it('strips email from user context if it leaked', () => {
-    const event = { user: { id: 'uuid-1', email: 'leaked@example.com' } }
-    const out = sanitiseBeforeSend(event)
-    expect(out.user).not.toHaveProperty('email')
-    expect(out.user.id).toBe('uuid-1')
+  it('scrubs access_token from request URL', () => {
+    const event = { request: { url: 'https://app.sporeus.com/?access_token=eyJhbGc.abc.def' } }
+    const out = _scrubSentryEvent(event)
+    expect(out.request.url).not.toContain('access_token=')
   })
 
-  it('leaves event unchanged when no URL or email', () => {
-    const event = { level: 'error', message: 'test error' }
-    const out = sanitiseBeforeSend(event)
-    expect(out).toEqual(event)
+  it('scrubs email from event message', () => {
+    const event = { message: 'auth failed for user@test.com', request: {} }
+    const out = _scrubSentryEvent(event)
+    expect(out.message).not.toContain('@')
+    expect(out.message).toContain('[email]')
+  })
+
+  it('leaves clean events unchanged', () => {
+    const event = { message: 'TypeError: null ref', request: { url: 'https://sporeus.com/log' } }
+    const out = _scrubSentryEvent(event)
+    expect(out.message).toBe('TypeError: null ref')
   })
 
   it('handles missing request gracefully', () => {
-    const event = { user: { id: 'uuid-2' } }
-    expect(() => sanitiseBeforeSend(event)).not.toThrow()
+    const event = { message: 'test error' }
+    expect(() => _scrubSentryEvent(event)).not.toThrow()
   })
 })
 
-// ── Public API graceful no-ops (Sentry not loaded) ────────────────────────────
+// ── Public API graceful no-ops (Sentry not initialized) ──────────────────────
 
 describe('captureException before initSentry', () => {
   it('does not throw when called before init', () => {
@@ -125,10 +123,10 @@ describe('clearUser before initSentry', () => {
 
 describe('addBreadcrumb before initSentry', () => {
   it('does not throw when called before init', () => {
-    expect(() => addBreadcrumb('auth', 'user signed in', { id: 'uuid' })).not.toThrow()
+    expect(() => addBreadcrumb('user signed in', 'auth', { id: 'uuid' })).not.toThrow()
   })
 
   it('does not throw with PII-shaped data', () => {
-    expect(() => addBreadcrumb('profile', 'updated', { email: 'a@b.com', id: '1' })).not.toThrow()
+    expect(() => addBreadcrumb('updated', 'profile', { email: 'a@b.com', id: '1' })).not.toThrow()
   })
 })

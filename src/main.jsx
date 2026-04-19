@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
-import { initSentry } from './lib/sentry.js'
+import { initSentry } from './lib/observability/sentry.js'
+import { initWebVitals } from './lib/observability/webVitals.js'
 // Self-hosted fonts — latin + latin-ext only (covers EN + TR characters)
 // No Google Fonts CDN dependency — fonts served from same origin
 import '@fontsource/ibm-plex-mono/latin-400.css'
@@ -29,6 +30,7 @@ if ('serviceWorker' in navigator) {
 
 createRoot(document.getElementById('root')).render(<App />)
 
-// Load Sentry after first paint — async so it never blocks the main bundle.
-// No-ops gracefully if VITE_SENTRY_DSN is not set.
+// Load Sentry + Web Vitals after first paint — async, never blocks main bundle.
+// Both no-op gracefully if env vars / plausible are absent.
 initSentry()
+initWebVitals()

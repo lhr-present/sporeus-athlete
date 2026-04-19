@@ -173,3 +173,37 @@ The following fields qualify as **special-category health data**:
 ## Third-Party Data Flows
 
 See `docs/privacy/third_party_disclosures.md` for Strava, Dodo, Stripe, Anthropic, Axiom DPA status.
+
+---
+
+## E15 Additions — Observability Pipeline
+
+### Sentry Error Events
+
+| Field sent | Value | Notes |
+|-----------|-------|-------|
+| `user.id` | djb2 hash of user_id (8-char hex) | Never raw user_id |
+| `tags.user_hash` | Same hash | For search/grouping |
+| `tags.tier` | `free` / `coach` / `club` | No PII |
+| `tags.lang` | `en` / `tr` | No PII |
+| `tags.release` | Git SHA / npm version | No PII |
+| `message` | Error message — PII scrubbed | `[email]`, `[jwt]`, `[uuid]`, etc. |
+| `exception.values[].value` | Exception text — PII scrubbed | Same scrubber |
+| `breadcrumbs[].message` | Event trail — PII scrubbed | `console.debug` breadcrumbs dropped |
+| `extra` | Structured context — PII scrubbed | Depth-capped at 3 |
+
+**Never sent:** raw `user_id`, email, name, phone, JWT, API keys, 32+ hex strings.  
+**Technical safeguard:** `src/lib/observability/piiScrubber.js` — 30+ unit tests covering all patterns.  
+**Retention:** 90 days (Sentry default).  
+**Legal basis:** Legitimate interest — incident response (GDPR Art.6(1)(f) / KVKK Art.5(2)(f)).
+
+### Plausible Custom Events
+
+| Event name | Props sent | Notes |
+|-----------|-----------|-------|
+| `web_vital` | `name`, `value_ms`, `rating` | No user identifier |
+| `route_change` | `from`, `to` (paths only, IDs stripped) | Path segments matching UUIDs → `:id` |
+
+**Retention:** Plausible aggregated only — no raw event log retained.  
+**Legal basis:** Legitimate interest — product analytics (GDPR Art.6(1)(f)).  
+**Note:** Plausible is GDPR-compliant by design — no cookies, no cross-site tracking, IP not stored.
