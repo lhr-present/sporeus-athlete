@@ -461,7 +461,7 @@ export const LABELS = {
     feedNoAthletes: 'Henüz sporcu yok \u2014 Kadro sekmesinden ilk sporcunu davet et.',
     feedNoActivity: 'Henüz aktivite yok \u2014 kadro güncellemeleri bekleniyor\u2026',
     feedConnecting: 'Canlı akışa bağlanıyor\u2026',
-    feedOnline: '\u00e7evrimii\u00e7i',
+    feedOnline: '\u00e7evrimi\u00e7i',
     // E11 — session comments + presence
     commentsTitle: 'YORUMLAR',
     commentPlaceholder: 'Yorum ekle\u2026 (maks 2000 karakter)',
@@ -474,7 +474,7 @@ export const LABELS = {
     commentCancel: '\u0130ptal',
     commentSave: 'Kaydet',
     commentEmpty: 'Hen\u00fcz yorum yok.',
-    commentOffline: 'Yorum kuyru\u011fa al\u0131nd\u0131 \u2014 \u00e7evrimii\u00e7i olunca g\u00f6nderilecek.',
+    commentOffline: 'Yorum kuyru\u011fa al\u0131nd\u0131 \u2014 \u00e7evrimi\u00e7i olunca g\u00f6nderilecek.',
     coachPresenceViewing: '\u015eu an g\u00f6r\u00fcnt\u00fcl\u00fcyor',
     coachPresenceNever: 'Hen\u00fcz g\u00f6r\u00fcnt\u00fclenmedi',
     coachPresenceLabel: 'ANTREN\u00d6R',
