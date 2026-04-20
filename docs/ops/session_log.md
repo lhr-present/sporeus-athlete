@@ -83,3 +83,34 @@ timeout_ms:          10000
 **Deferred:** Full behavioral smoke (scenarios A, B, C, D, F, G) deferred to a separate manual session. E14 proceeds on RLS-isolation-only evidence.
 
 **Status: ✅ ITEM 5 RLS SMOKE COMPLETE — E14 UNBLOCKED (behavioral scenarios deferred)**
+
+---
+
+## Deferred from debt session (2026-04-21)
+
+Two items explicitly deferred from the debt session. Not RLS-critical, not E14-blocking, but must be tracked with specific next actions rather than left in session notes.
+
+### Deferred Item A — CoachPresenceBadge two-browser render
+
+**Scope:** Verify that after the `20260461_fix_sv_rls.sql` policy fix, a real athlete session (authenticated, real JWT) shows the CoachPresenceBadge when the linked coach has a `session_views` row.
+
+**Why deferred:** Requires two simultaneous real authenticated sessions (coach + athlete). Cannot be automated without real credentials in test env. Data-layer evidence confirmed (SQL scenario 6 passes; Realtime REPLICA IDENTITY FULL set; component filter correct), but browser rendering not verified.
+
+**Next action:** Manual two-browser test in a real Supabase session. Open athlete session view as athlete; separately open the same session as coach to create a `session_views` row; confirm badge renders. Expected: badge appears within Realtime subscription latency (~500ms). File a passing test note in this document when done.
+
+**Blocking:** Nothing in E14–E20. Pick up before E11 behavioral block.
+
+---
+
+### Deferred Item B — E11 behavioral scenarios A–D, F–G
+
+**Scope:** Comment CRUD flow end-to-end (A), edit/soft-delete (B), offline queue behavior (C), reconnect recovery (D), concurrent editing (F), stress test / message ordering (G). These are behavioral Playwright/manual tests for the `useSessionComments` hook and `commentActions.js` flows.
+
+**Why deferred:** Debt session item 5 verified RLS isolation only (SQL-level, 7 scenarios). Behavioral flows require either a running dev server with two auth sessions or purpose-built Playwright multi-user fixtures. Time constraint in debt session.
+
+**Next action:** Create a dedicated E11-behavioral block. Recommend:
+1. Playwright multi-context fixture (two `browser.newContext()` with different storage states, each authenticated as coach/athlete)
+2. Cover scenarios A (post, read, reply), B (edit title shows edited-at, soft-delete hides body), C (queue survives offline), D (queue drains on reconnect), F (two editors, last-write-wins vs optimistic), G (50-message burst, ordering preserved)
+3. Add to CI as a separate `e11-behavioral` job gated on `rls-harness` passing
+
+**Blocking:** Nothing in E14–E20. Pick up as a standalone block after E14 closes.
