@@ -4,6 +4,14 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v9.2.5] — 2026-04-21
+
+### Fixed
+- P4 hook enforcement: `commit-msg` hook replaces broken `pre-commit` approach. `pre-commit` was reading stale `COMMIT_EDITMSG` (previous commit's message); `commit-msg` receives `$1` by git contract. Hook was non-functional between 10b271e–e36687c.
+- Hook versioned in `.githooks/commit-msg` (tracked). `core.hooksPath` set in repo config. `postinstall` in `package.json` auto-wires new clones.
+
+DEPENDS ON: v9.2.4 (P4 CHANGELOG + pre-commit hook — now superseded by this fix)
+
 ## [v9.2.4] — 2026-04-21
 
 **Infrastructure hardening (P1 + P3 + P4). No feature additions.**

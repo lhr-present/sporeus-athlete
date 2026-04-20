@@ -22,7 +22,8 @@
     "mobile:ios": "npm run mobile:build && npx cap open ios",
     "mobile:android": "npm run mobile:build && npx cap open android",
     "check:bundle": "node scripts/checkBundleSize.js",
-    "check:lighthouse": "lhci autorun"
+    "check:lighthouse": "lhci autorun",
+    "postinstall": "git config core.hooksPath .githooks"
   },
   "dependencies": {
     "@capacitor/cli": "^8.3.0",

@@ -1,0 +1,18 @@
+#!/bin/sh
+# commit-msg: require CHANGELOG.md staged on feat/fix/hotfix commits.
+# $1 = path to the commit message file (set by git, always reliable).
+
+MSG_FILE="$1"
+FIRST_LINE=$(head -1 "$MSG_FILE" 2>/dev/null || true)
+
+if echo "$FIRST_LINE" | grep -qE '^(feat|fix|hotfix)\('; then
+  if ! git diff --cached --name-only | grep -q "CHANGELOG.md"; then
+    echo ""
+    echo "  commit-msg: CHANGELOG.md must be staged for feat/fix/hotfix commits."
+    echo "  Add a CHANGELOG.md entry and: git add CHANGELOG.md"
+    echo ""
+    exit 1
+  fi
+fi
+
+exit 0
