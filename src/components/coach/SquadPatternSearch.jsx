@@ -8,12 +8,12 @@
 //   tier          'free'|'coach'|'club'
 //   authUser      Supabase user object
 
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useContext } from 'react'
 import { S } from '../../styles.js'
 import { supabase, isSupabaseReady } from '../../lib/supabase.js'
 import { isFeatureGated } from '../../lib/subscription.js'
 import { logger } from '../../lib/logger.js'
-import { useLanguage } from '../../contexts/LangCtx.jsx'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 
 const DEBOUNCE_MS   = 400
 const MIN_QUERY_LEN = 3
@@ -38,7 +38,7 @@ export default function SquadPatternSearch({ athleteIds = [], tier = 'free', aut
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState(null)
   const [expanded, setExpanded] = useState(null)  // session_id of expanded row
-  const { t } = useLanguage()
+  const { t } = useContext(LangCtx)
 
   const timerRef = useRef(null)
   const abortRef = useRef(null)

@@ -1,8 +1,8 @@
 // ─── coach/ExpandedRow.jsx — Expanded athlete detail (PMC + recent sessions) ──
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { supabase } from '../../lib/supabase.js'
 import CTLChart from '../charts/CTLChart.jsx'
-import { useLanguage } from '../../contexts/LangCtx.jsx'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -20,7 +20,7 @@ function fmtDate(d) { return d ? d.slice(5) : '—' }
 export default function ExpandedRow({ athlete, coachId = null, onNote }) {
   const [liveLog, setLiveLog] = useState(null)
   const [loading, setLoading] = useState(false)
-  const { t } = useLanguage()
+  const { t } = useContext(LangCtx)
 
   useEffect(() => {
     if (athlete._log) { setLiveLog(athlete._log); return }

@@ -3,8 +3,8 @@
 // Shows EF sparkline, trend direction arrow, CV%, and session count.
 // Based on Coggan (2003) aerobic adaptation benchmark.
 
-import { useMemo } from 'react'
-import { useLanguage } from '../../contexts/LangCtx.jsx'
+import { useMemo, useContext } from 'react'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { computeEF, efTrend } from '../../lib/science/efficiencyFactor.js'
 import { EFTrendExplainer } from './MetricExplainerDecoupling.jsx'
 
@@ -57,7 +57,7 @@ function Sparkline({ values, width = 120, height = 32, color = '#0064ff' }) {
  * @param {number}   [props.windowDays=30] - Rolling window for trend analysis
  */
 export default function EFTrendCard({ sessions, windowDays = 30 }) {
-  const { lang } = useLanguage()
+  const { lang } = useContext(LangCtx)
 
   const result = useMemo(() => efTrend(sessions, windowDays), [sessions, windowDays])
 

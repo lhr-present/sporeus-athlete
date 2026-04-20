@@ -3,8 +3,8 @@
 // Shows: metric name, current value, citation, plain-language explanation.
 // Uses LangCtx for bilingual copy. Zero external deps (no portal, no modal lib).
 
-import { useState, useEffect, useRef } from 'react'
-import { useLanguage } from '../../contexts/LangCtx.jsx'
+import { useState, useEffect, useRef, useContext } from 'react'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 
 /**
  * @param {Object}  props
@@ -23,7 +23,7 @@ export default function MetricExplainer({
 }) {
   const [open, setOpen] = useState(false)
   const sheetRef = useRef(null)
-  const { lang } = useLanguage()
+  const { lang } = useContext(LangCtx)
 
   // Close on Escape or outside click
   useEffect(() => {

@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useContext } from 'react'
 import { S } from '../../styles.js'
 import { supabase } from '../../lib/supabase.js'
-import { useLanguage } from '../../contexts/LangCtx.jsx'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 
 const FONT_MONO = { fontFamily: 'IBM Plex Mono, monospace' }
 const _ORANGE = '#ff6600'
@@ -16,7 +16,7 @@ export default function TeamAnnouncement({ coachId, athletes }) {
   const [sending, setSending] = useState(false)
   const [sent, setSent]       = useState(false)
   const [error, setError]     = useState('')
-  const { t } = useLanguage()
+  const { t } = useContext(LangCtx)
 
   if (!coachId) return null
 

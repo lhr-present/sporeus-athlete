@@ -4,7 +4,7 @@
 // Midpoint vertical line separates first/second halves.
 // Classification badge (coupled / mild / significant) from Friel (2009).
 
-import { useMemo } from 'react'
+import { useMemo, useContext } from 'react'
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -17,7 +17,7 @@ import {
   Legend,
 } from 'recharts'
 import { classifyDecoupling } from '../../lib/decoupling.js'
-import { useLanguage } from '../../contexts/LangCtx.jsx'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -63,7 +63,7 @@ export default function DecouplingChart({
   decouplingPct,
   height = '220px',
 }) {
-  const { lang } = useLanguage()
+  const { lang } = useContext(LangCtx)
 
   const { chartData, midpointMin, tier, sport } = useMemo(() => {
     if (!hrStream || hrStream.length === 0) {

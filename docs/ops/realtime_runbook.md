@@ -1,5 +1,31 @@
 # Realtime Runbook — E11
 
+## coach_athletes Schema (E11 RLS dependency)
+
+The E11 RLS policies on `session_comments` and `session_views` join against `coach_athletes`
+to verify coach↔athlete links. The assumed schema is:
+
+| Column | Type | Notes |
+|---|---|---|
+| `coach_id` | `uuid` NOT NULL | FK → `profiles(id)` CASCADE |
+| `athlete_id` | `uuid` NOT NULL | FK → `profiles(id)` CASCADE |
+| `status` | `link_status` enum | `pending` / `active` / `revoked` — default `pending` |
+| `invite_token` | `text` UNIQUE | Used in invite link `?coach=TOKEN` |
+| `coachLevelOverride` | `text` | Added manually post-migration; coach-set level override |
+| `created_at` | `timestamptz` | |
+| `updated_at` | `timestamptz` | |
+
+**Primary key:** `(coach_id, athlete_id)`  
+**Indexes:** `coach_athletes_athlete ON (athlete_id, status)`, `idx_coach_athletes_coach_id ON (coach_id)`
+
+RLS policies on `session_comments` and `session_views` filter with:
+```sql
+JOIN public.coach_athletes ca ON ca.athlete_id = tl.user_id AND ca.status = 'active'
+```
+If `coach_athletes.status` is not `'active'` the coach sees nothing — this is intentional isolation.
+
+---
+
 ## Channels in Production
 
 | Channel pattern          | Consumer            | Tables subscribed                        |
