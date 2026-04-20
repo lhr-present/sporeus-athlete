@@ -30,6 +30,16 @@ Bloomberg Terminal aesthetic: IBM Plex Mono, #ff6600 orange, #0064ff blue, #0a0a
 | `src/lib/validate.js` | Input sanitization (sanitizeLogEntry, sanitizeProfile, etc.) |
 | `src/lib/fetch.js` | safeFetch() — 10s timeout + 2-retry exponential backoff |
 | `src/lib/strava.js` | Strava OAuth client helpers (token exchange via edge function) |
+| `src/lib/realtimeBackoff.js` | computeBackoff(attempt, maxMs) — exponential backoff for Realtime reconnect |
+| `src/lib/realtimeStatus.js` | reportStatus/removeStatus — global channel health registry |
+| `src/lib/realtime/commentActions.js` | postComment/editComment/deleteComment/recordSessionView/getSessionViews |
+| `src/lib/realtime/squadChannel.js` | createSquadChannel — 3-table postgres_changes + presence for coach dashboard |
+| `src/lib/realtime/presenceFormat.js` | formatViewedAt, presenceBucket, formatPresenceList — bilingual presence labels |
+| `src/lib/science/efficiencyFactor.js` | computeEF (Coggan 2003: NP/HR or pace/HR) + efTrend (30d window) |
+| `src/lib/science/durabilityScore.js` | computeDurability (Maunder 2021: last-hour 5-min peak vs MMP) |
+| `src/lib/science/subThresholdTime.js` | weekSubThresholdMin + subThresholdTrend (Seiler 2010 polarized) |
+| `src/hooks/useSessionComments.js` | Per-session comment thread — Realtime + optimistic updates + offline queue |
+| `src/hooks/useSquadChannel.js` | Coach squad feed hook — wraps squadChannel lifecycle |
 | `src/components/ui.jsx` | Shared SVG chart primitives (ZoneBar, TSSChart, CTLTimeline, etc.) |
 
 ## Conventions
@@ -61,8 +71,8 @@ git push               # triggers GitHub Actions: npm test → npm build → dep
 npm test              # run all tests (vitest run)
 npm run test:watch    # interactive watch mode
 ```
-Test files: `src/lib/*.test.js` — pure function tests only (no React, no DOM).
-Target: keep all 1370 tests green before every commit.
+Test files: `src/lib/*.test.js` + `src/hooks/__tests__/` + `src/lib/__tests__/` — pure functions, hooks (jsdom), realtime, science.
+Target: keep all 2629 tests green before every commit.
 
 **Do not mock internal libraries.** Tests run against real formulas — mock only at system boundaries (external APIs, localStorage when unavoidable).
 
