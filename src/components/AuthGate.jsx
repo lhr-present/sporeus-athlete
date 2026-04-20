@@ -90,7 +90,7 @@ export default function AuthGate({ lang }) {
         provider: 'google',
         options: {
           redirectTo: window.location.origin + import.meta.env.BASE_URL,
-          queryParams: { access_type: 'offline', prompt: 'consent' },
+          queryParams: { prompt: 'select_account' },
         },
       })
       if (error) { setMsg({ type: 'error', text: error.message }); setBusy(false) }

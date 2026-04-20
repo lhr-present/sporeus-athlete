@@ -4,6 +4,21 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v9.3.0] — 2026-04-21
+
+### F1 — Auth flow audit & Google sign-in hardening
+
+**Three production issues fixed:**
+- **Security**: Removed stale `https://lhr-present.github.io/sporeus-athlete/` from Supabase allowed redirect URLs. If that GitHub Pages URL was ever compromised, it could have received real auth tokens. Fixed via Supabase Management API.
+- **UX**: Removed `prompt:'consent'` + `access_type:'offline'` from Google OAuth params. These forced the Google consent screen on every login for returning users. Replaced with `prompt:'select_account'` (shows account picker, no forced consent).
+- **Dev**: Fixed dev redirect URL in allowlist — was `/sporeus-athlete/` (wrong path for `base:'/'`), now `http://localhost:5173/`.
+- 2 new assertions in `AuthGate.test.jsx` verifying OAuth params and redirect URL.
+- `docs/ops/auth_flow_audit.md` committed with full findings.
+
+DEPENDS ON: v9.2.5 (AuthGate, supabase.js implicit flow)
+
+---
+
 ## [v9.2.5] — 2026-04-21
 
 ### Fixed

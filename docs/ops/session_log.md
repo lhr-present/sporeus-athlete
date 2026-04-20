@@ -1,5 +1,29 @@
 # Debt Session Log
 
+## F1 — Auth flow audit (2026-04-21)
+
+**Gate:** F-series pre-flight passed (5 ✅ in log, Sentry DSN set, route-smoke 27/27).
+
+**Findings:** 4 findings. 3 fixed. 1 documented.
+
+| # | Finding | Status |
+|---|---------|--------|
+| 1 | Stale `lhr-present.github.io` in Supabase allowed redirect URLs | ✅ Fixed |
+| 2 | `prompt:'consent'` forced Google consent screen on every returning login | ✅ Fixed |
+| 3 | Dev redirect URL had wrong `/sporeus-athlete/` path suffix | ✅ Fixed |
+| 4 | Sign-out does not clear user localStorage (shared-device privacy) | Documented — intentional design |
+| 5 | `flowType:'implicit'` (not PKCE) | No action — protected invariant |
+
+**Changes:**
+- `AuthGate.jsx`: replaced `{ access_type:'offline', prompt:'consent' }` → `{ prompt:'select_account' }`
+- Supabase `uri_allow_list`: removed stale GitHub Pages URL + wrong dev path, added `http://localhost:5173/`
+- `AuthGate.test.jsx`: 2 new assertions (OAuth params, redirectTo construction)
+- `docs/ops/auth_flow_audit.md`: full findings doc
+
+**Tests:** 2631 (was 2629) — all pass.
+
+**Status: ✅ F1 COMPLETE**
+
 ## Item 1 — /b/ch7 chapter landing smoke (2026-04-20)
 
 **Gate:** E16 prerequisite — ChapterLanding must render without auth, CTA must redirect with correct UTM params.
@@ -31,6 +55,14 @@ Console: CORS errors on `/attribution-log` endpoint — dev-only, not gate-block
 - Verified: Playwright smoke sent 4 envelopes to ingest endpoint; no "DSN not set" warning
 
 **Status: ✅ ITEM 2 COMPLETE**
+
+## Item 3 — coach_athletes schema in realtime_runbook.md (2026-04-21)
+
+**Gate:** E11 prerequisite — `docs/ops/realtime_runbook.md` must document `coach_athletes` schema so realtime subscription setup is reproducible.
+
+**Action:** `coach_athletes` schema (columns: `coach_id`, `athlete_id`, `status`, `coachLevelOverride`) added to `realtime_runbook.md` in v9.2.2 commit. Verified: `grep -c "coach_athletes" docs/ops/realtime_runbook.md` → 5 matches.
+
+**Status: ✅ ITEM 3 COMPLETE**
 
 ## Item 4 — comment-notification webhook (2026-04-21)
 

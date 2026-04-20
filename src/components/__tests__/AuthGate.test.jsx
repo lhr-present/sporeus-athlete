@@ -43,4 +43,31 @@ describe('AuthGate', () => {
     expect(screen.queryByPlaceholderText(/min\. 8 characters/i)).not.toBeInTheDocument()
     expect(screen.queryByPlaceholderText(/••••••••/)).not.toBeInTheDocument()
   })
+
+  it('Google OAuth called with select_account — not forced consent', async () => {
+    const { supabase } = await import('../../lib/supabase.js')
+    renderWithLang(<AuthGate lang="en" />)
+    fireEvent.click(screen.getByText('Continue with Google'))
+    await vi.waitFor(() => expect(supabase.auth.signInWithOAuth).toHaveBeenCalled())
+    const call = supabase.auth.signInWithOAuth.mock.calls[0][0]
+    expect(call.provider).toBe('google')
+    // Must NOT force the consent screen on returning users
+    expect(call.options?.queryParams?.prompt).not.toBe('consent')
+    // Must NOT request offline access (Supabase handles its own token refresh)
+    expect(call.options?.queryParams?.access_type).toBeUndefined()
+  })
+
+  it('Google OAuth redirectTo is origin + base URL, not hardcoded', async () => {
+    const { supabase } = await import('../../lib/supabase.js')
+    renderWithLang(<AuthGate lang="en" />)
+    fireEvent.click(screen.getByText('Continue with Google'))
+    await vi.waitFor(() => expect(supabase.auth.signInWithOAuth).toHaveBeenCalled())
+    const call = supabase.auth.signInWithOAuth.mock.calls[0][0]
+    const redirectTo = call.options?.redirectTo
+    expect(redirectTo).toBeTruthy()
+    // Must not be the stale GitHub Pages URL
+    expect(redirectTo).not.toContain('lhr-present.github.io')
+    // Must not hardcode the wrong path suffix
+    expect(redirectTo).not.toContain('/sporeus-athlete/')
+  })
 })
