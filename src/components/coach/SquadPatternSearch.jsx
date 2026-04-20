@@ -13,6 +13,7 @@ import { S } from '../../styles.js'
 import { supabase, isSupabaseReady } from '../../lib/supabase.js'
 import { isFeatureGated } from '../../lib/subscription.js'
 import { logger } from '../../lib/logger.js'
+import { useLanguage } from '../../contexts/LangCtx.jsx'
 
 const DEBOUNCE_MS   = 400
 const MIN_QUERY_LEN = 3
@@ -37,6 +38,7 @@ export default function SquadPatternSearch({ athleteIds = [], tier = 'free', aut
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState(null)
   const [expanded, setExpanded] = useState(null)  // session_id of expanded row
+  const { t } = useLanguage()
 
   const timerRef = useRef(null)
   const abortRef = useRef(null)
@@ -105,7 +107,7 @@ export default function SquadPatternSearch({ athleteIds = [], tier = 'free', aut
     return (
       <div style={{ ...S.card, padding:'14px 16px', textAlign:'center' }}>
         <div style={{ color:'#f5c542', fontSize:11, marginBottom:8 }}>
-          Squad pattern search requires a Coach or Club plan.
+          {t('squadSearchUpgrade')}
         </div>
         <a
           href="https://sporeus.com/upgrade"
@@ -122,7 +124,7 @@ export default function SquadPatternSearch({ athleteIds = [], tier = 'free', aut
   if (!athleteIds.length) {
     return (
       <div style={{ ...S.card, padding:'14px 16px', color:'#555', fontSize:11 }}>
-        No active athletes linked to search across.
+        {t('squadSearchNoAthletes')}
       </div>
     )
   }
@@ -131,14 +133,14 @@ export default function SquadPatternSearch({ athleteIds = [], tier = 'free', aut
     <div style={{ ...S.card, padding:0, overflow:'hidden' }}>
       {/* Header */}
       <div style={{ padding:'10px 14px', borderBottom:'1px solid #222', display:'flex', alignItems:'center', gap:8 }}>
-        <span style={{ color:'#a78bfa', fontSize:11, fontWeight:700 }}>SQUAD PATTERN SEARCH</span>
+        <span style={{ color:'#a78bfa', fontSize:11, fontWeight:700 }}>{t('squadPatternSearch')}</span>
         <span style={{ color:'#555', fontSize:10 }}>— {athleteIds.length} athletes</span>
       </div>
 
       {/* Search input */}
       <div style={{ padding:'8px 14px', borderBottom:'1px solid #1c1c1c' }}>
         <label htmlFor={inputId} style={{ ...S.label }}>
-          Search across all athlete sessions by meaning
+          {t('squadSearchLabel')}
         </label>
         <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:4 }}>
           <input
@@ -146,7 +148,7 @@ export default function SquadPatternSearch({ athleteIds = [], tier = 'free', aut
             type="text"
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="e.g. 'overreaching pattern' or 'recovery week after race'"
+            placeholder={t('squadSearchPlaceholder')}
             style={{ ...S.input, flex:1, fontSize:11 }}
           />
           {loading && <span style={{ fontSize:10, color:'#888' }}>…</span>}
@@ -161,7 +163,7 @@ export default function SquadPatternSearch({ athleteIds = [], tier = 'free', aut
       )}
       {!loading && !error && query.length >= MIN_QUERY_LEN && results.length === 0 && (
         <div style={{ padding:'12px 14px', color:'#555', fontSize:11 }}>
-          No matching sessions found across squad.
+          {t('squadSearchNoResults')}
         </div>
       )}
 

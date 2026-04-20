@@ -18,18 +18,19 @@ function makeLastWeekLog(count, tss = 80, type = 'Run') {
   return entries
 }
 
-// 1. TSS sum: 5 sessions × 80 TSS → totalTSS = 400
+// 1. TSS sum: 7 sessions × 80 TSS → totalTSS = 560
+// Note: function guards require log.length >= 7 (see test 6) — must provide ≥7 entries.
 it('test 1 — TSS sum is correct when today is Monday', () => {
   const now = new Date()
   if (now.getDay() !== 1) {
-    // Not Monday — function must return null, so we can only assert that
-    expect(generateWeeklyRecap(makeLastWeekLog(5, 80))).toBeNull()
+    // Not Monday — function returns null before the length check
+    expect(generateWeeklyRecap(makeLastWeekLog(7, 80))).toBeNull()
     return
   }
-  const log = makeLastWeekLog(5, 80)
+  const log = makeLastWeekLog(7, 80)
   const result = generateWeeklyRecap(log)
   expect(result).not.toBeNull()
-  expect(result.totalTSS).toBe(400)
+  expect(result.totalTSS).toBe(560)
 })
 
 // 2. ctlDelta: verify it's a finite number (not NaN)

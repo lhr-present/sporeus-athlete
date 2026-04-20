@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase.js'
 import CTLChart from '../charts/CTLChart.jsx'
+import { useLanguage } from '../../contexts/LangCtx.jsx'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -19,6 +20,7 @@ function fmtDate(d) { return d ? d.slice(5) : '—' }
 export default function ExpandedRow({ athlete, coachId = null, onNote }) {
   const [liveLog, setLiveLog] = useState(null)
   const [loading, setLoading] = useState(false)
+  const { t } = useLanguage()
 
   useEffect(() => {
     if (athlete._log) { setLiveLog(athlete._log); return }
@@ -48,8 +50,8 @@ export default function ExpandedRow({ athlete, coachId = null, onNote }) {
           )}
         </div>
         <div style={{ flex: '0 0 auto' }}>
-          <div style={{ fontFamily: MONO, fontSize: 9, color: '#555', letterSpacing: '0.1em', marginBottom: 6 }}>RECENT SESSIONS</div>
-          {recent3.length === 0 && <div style={{ fontFamily: MONO, fontSize: 10, color: '#444' }}>No sessions in last 30 days</div>}
+          <div style={{ fontFamily: MONO, fontSize: 9, color: '#555', letterSpacing: '0.1em', marginBottom: 6 }}>{t('recentSessions')}</div>
+          {recent3.length === 0 && <div style={{ fontFamily: MONO, fontSize: 10, color: '#444' }}>{t('noRecentSessions')}</div>}
           {recent3.map((s, i) => (
             <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 4, alignItems: 'center' }}>
               <span style={{ fontFamily: MONO, fontSize: 9, color: '#666', minWidth: 48 }}>{fmtDate(s.date)}</span>
@@ -64,7 +66,7 @@ export default function ExpandedRow({ athlete, coachId = null, onNote }) {
         onClick={() => onNote(athlete)}
         style={{ marginTop: 10, fontFamily: MONO, fontSize: 9, letterSpacing: '0.08em', padding: '4px 10px', background: 'transparent', border: '1px solid #333', borderRadius: '2px', color: '#888', cursor: 'pointer' }}
       >
-        + ADD NOTE
+        {t('addNote')}
       </button>
     </div>
   )

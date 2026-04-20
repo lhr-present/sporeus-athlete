@@ -338,7 +338,7 @@ export default function TestProtocols() {
               </div>
               <textarea
                 style={{ ...S.input, fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', minHeight:'60px', resize:'vertical', width:'100%', boxSizing:'border-box' }}
-                placeholder="250,255,248,260,270,265,... (one value per second)"
+                placeholder={t('wPrimePastePlaceholder')}
                 value={v('wPowerPaste')}
                 onChange={e=>set('wPowerPaste',e.target.value)}
               />

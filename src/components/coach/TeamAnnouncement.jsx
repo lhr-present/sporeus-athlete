@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { S } from '../../styles.js'
 import { supabase } from '../../lib/supabase.js'
+import { useLanguage } from '../../contexts/LangCtx.jsx'
 
 const FONT_MONO = { fontFamily: 'IBM Plex Mono, monospace' }
 const _ORANGE = '#ff6600'
@@ -15,6 +16,7 @@ export default function TeamAnnouncement({ coachId, athletes }) {
   const [sending, setSending] = useState(false)
   const [sent, setSent]       = useState(false)
   const [error, setError]     = useState('')
+  const { t } = useLanguage()
 
   if (!coachId) return null
 
@@ -42,7 +44,7 @@ export default function TeamAnnouncement({ coachId, athletes }) {
       setMessage('')
       setTimeout(() => setSent(false), 3000)
     } catch (err) {
-      setError(err?.message || 'Failed to send announcement.')
+      setError(err?.message || t('teamAnnErrorSend'))
     } finally {
       setSending(false)
     }
@@ -54,7 +56,7 @@ export default function TeamAnnouncement({ coachId, athletes }) {
 
   return (
     <div style={{ ...S.card }}>
-      <div style={{ ...S.cardTitle, marginBottom: '10px' }}>TEAM ANNOUNCEMENT</div>
+      <div style={{ ...S.cardTitle, marginBottom: '10px' }}>{t('teamAnnHeading')}</div>
 
       <textarea
         style={{
@@ -71,7 +73,7 @@ export default function TeamAnnouncement({ coachId, athletes }) {
           lineHeight: 1.5,
           boxSizing: 'border-box',
         }}
-        placeholder="Write a message to all your athletes…"
+        placeholder={t('teamAnnComposePlaceholder')}
         value={message}
         maxLength={MAX_LEN + 20}  // slight buffer; real guard is canSend check
         onChange={e => setMessage(e.target.value)}
@@ -84,12 +86,12 @@ export default function TeamAnnouncement({ coachId, athletes }) {
           fontSize: '10px',
           color: isOverLimit ? '#e03030' : remaining < 40 ? '#f5c542' : 'var(--muted)',
         }}>
-          {remaining} chars remaining
+          {remaining} {t('teamAnnCharsRemaining')}
         </span>
 
         {sent ? (
           <span style={{ ...FONT_MONO, fontSize: '11px', color: '#5bc25b' }}>
-            Sent to {athleteCount} athlete{athleteCount !== 1 ? 's' : ''}
+            {(athleteCount !== 1 ? t('teamAnnSentNp') : t('teamAnnSentN')).replace('{n}', athleteCount)}
           </span>
         ) : (
           <button
@@ -103,7 +105,7 @@ export default function TeamAnnouncement({ coachId, athletes }) {
             onClick={handleSend}
             disabled={!canSend}
           >
-            {sending ? 'Sending…' : 'Send to all athletes'}
+            {sending ? t('teamAnnSending') : t('teamAnnSend')}
           </button>
         )}
       </div>
