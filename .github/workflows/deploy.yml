@@ -76,8 +76,40 @@ jobs:
           SUPABASE_TEST_COACH: ${{ secrets.SUPABASE_TEST_COACH }}
           SUPABASE_TEST_COACH_PW: ${{ secrets.SUPABASE_TEST_COACH_PW }}
 
-  deploy:
+  route-smoke:
+    name: Route smoke gate (P3)
     needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Build (stub Supabase for route smoke)
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: https://stub.supabase.co
+          VITE_SUPABASE_ANON_KEY: stub_anon_key
+          VITE_STRAVA_CLIENT_ID: "0"
+          VITE_VAPID_PUBLIC_KEY: stub_vapid
+          VITE_SENTRY_DSN: ""
+      - name: Install Playwright (Chromium only)
+        run: npx playwright install --with-deps chromium
+      - name: Run route-smoke spec
+        run: npx playwright test --config=playwright.route-smoke.config.js
+        env:
+          CI: "true"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: route-smoke-report
+          path: playwright-report/
+          retention-days: 7
+
+  deploy:
+    needs: [build, route-smoke]
     runs-on: ubuntu-latest
     environment:
       name: github-pages

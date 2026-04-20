@@ -73,4 +73,13 @@ timeout_ms:          10000
 | 6 | Athlete sees coach presence (session_views) | 1 | ✅ 1 |
 | 7 | Unlinked user sees no presence | 0 | ✅ 0 |
 
-**Status: ✅ ITEM 5 COMPLETE — E14 UNBLOCKED**
+**Scope clarification:** What was tested above is RLS isolation (7 SQL-level assertions equivalent to scenario E of the debt checklist). Behavioral scenarios A–D and F–G — comment CRUD flow, edit/soft-delete, offline queue, reconnect, concurrent editing, stress — were **not** tested. CoachPresenceBadge rendering against the fixed policy was not browser-verified.
+
+**CoachPresenceBadge data-layer analysis (without real auth):**
+- SQL: `SELECT session_views WHERE user_id=coachId AND session_id=X` now returns 1 row for the athlete ✅ (verified above)
+- Realtime: `postgres_changes` on `session_views` passes through RLS; REPLICA IDENTITY FULL set; component filter `row.user_id === coachId` guards correctly ✅
+- Browser: full two-browser rendering test (real auth, real coach views real session, athlete sees badge) **deferred** — requires real credentials, cannot be automated without them
+
+**Deferred:** Full behavioral smoke (scenarios A, B, C, D, F, G) deferred to a separate manual session. E14 proceeds on RLS-isolation-only evidence.
+
+**Status: ✅ ITEM 5 RLS SMOKE COMPLETE — E14 UNBLOCKED (behavioral scenarios deferred)**

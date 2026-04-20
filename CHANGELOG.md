@@ -2,6 +2,74 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+---
+
+## [v9.2.4] — 2026-04-21
+
+**Infrastructure hardening (P1 + P3 + P4). No feature additions.**
+
+- **P1 route-smoke suite** (`tests/e2e/route-smoke.spec.ts`): 27 Playwright tests covering all 22 BOOK_MODE chapter routes + EMBED/SCIENCE/PRIVACY modes. No auth required. Catches white-screen and auth-gate regressions before tag.
+- **P3 pre-deploy gate** (`deploy.yml`): `deploy` job now requires `route-smoke` job to pass. Uses `playwright.route-smoke.config.js` + stub Supabase env — no production secrets needed.
+- **CHANGELOG.md backfill**: v9.x history added (this block + below).
+- **Session log corrections**: debt session item 5 accurately scoped to RLS-isolation-only; behavioral scenarios A–D + F–G flagged as deferred.
+- Caveat verification: `supabase_functions.hooks` confirms `comment-notification` is a managed webhook (visible in Dashboard), not a shadow pg_net trigger.
+
+DEPENDS ON: v9.2.3, v9.2.2
+
+---
+
+## [v9.2.3] — 2026-04-21 (HOTFIX — E16 regression)
+
+**Impact window:** ~6 days (E16 shipped ~2026-04-15, caught 2026-04-21 in debt session)
+**Symptom:** All 22 book QR codes hit login screen. Silent — Sentry was dark, 2629 tests green.
+
+- `App.jsx`: moved `if (BOOK_MODE)` from line 522 (after `if (!user) return <AuthGate>`) to line 479 (before auth gate). Unauthenticated visitors now reach `ChapterLanding` correctly.
+- `docs/ops/session_log.md`: item 1 evidence committed.
+
+DEPENDS ON: App.jsx BOOK_MODE, ChapterLanding, E16 chapter routes
+
+---
+
+## [v9.2.2] — 2026-04-21 (HOTFIX — build break)
+
+**Symptom:** Dev server and prod build would crash on first render of coach/science components. Silent — never deployed with this bug in the bundle.
+
+- 6 components imported non-existent `useLanguage` hook from `LangCtx.jsx`: `ExpandedRow`, `TeamAnnouncement`, `SquadPatternSearch`, `EFTrendCard`, `MetricExplainer`, `DecouplingChart`. Fixed to `useContext(LangCtx)`.
+- `docs/ops/realtime_runbook.md`: added `coach_athletes` schema (debt session item 3).
+- `supabase/migrations/20260460_realtime_comments.sql` applied: `session_comments` + `session_views` tables, RLS, Realtime publication.
+- `supabase/migrations/20260461_fix_sv_rls.sql`: fixed `sv: read own or linked` — athletes can now see coach presence records for their sessions (CoachPresenceBadge was silently broken since E11).
+- `VITE_SENTRY_DSN` GitHub secret set; CSP `connect-src` updated for Sentry ingest; `.env.test` blanks DSN for test isolation.
+
+DEPENDS ON: LangCtx, E11 realtime, E15 Sentry, E16 book routes
+
+---
+
+## [v9.2.1] — 2026-04-19
+
+- E12: aerobic decoupling (Pw:Hr Friel method), durability score (Maunder 2021), sub-threshold time tracker (Seiler 2010 polarized)
+- E11 i18n and ConnectionBanner polish
+
+DEPENDS ON: training_log, profiles, coach_athletes (E11 schema)
+
+---
+
+## [v9.1.0] — 2026-04-17
+
+- E11: coach↔athlete real-time multiplayer — session comments threaded view, CoachPresenceBadge, offline queue, squad Realtime channel
+
+DEPENDS ON: coach_athletes (active status), training_log, push_subscriptions
+
+---
+
+## [v9.0.0] — 2026-04-16
+
+- E15: Sentry error monitoring, Web Vitals, bundle budgets, Lighthouse CI
+- E16: EŞİK/THRESHOLD book QR chapter landings (ch1–ch22), UTM attribution, LocalStorage book_reader_attribution
+
+DEPENDS ON: App.jsx routing, ChapterLanding, chapterBonuses.js, book_reader_attribution migration
+
+---
+
 ## v7.0.0 (2026-04-16)
 System enhancement sprint — Team Announcements, Quick-Add session, keyboard shortcuts, Sunday digest notification.
 
