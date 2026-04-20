@@ -4,7 +4,7 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
-## [v9.3.0] — 2026-04-21
+## [v9.2.6] — 2026-04-21
 
 ### F1 — Auth flow audit & Google sign-in hardening
 
