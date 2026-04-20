@@ -50,3 +50,27 @@ timeout_ms:          10000
 ```
 
 **Status: ✅ ITEM 4 COMPLETE**
+
+## Item 5 — Two-browser E11 RLS smoke (2026-04-21)
+
+**Gate:** E11 RLS must isolate session_comments and session_views per participant.
+
+**Method:** pgTAP + direct SQL checks via Supabase Management API against live DB.
+
+**Bug found and fixed during test:**
+- `sv: read own or linked` policy third branch checked `ca.coach_id = tl.user_id` (session owner is a coach) — never matches since sessions are athlete-owned.
+- Fixed in migration `20260461_fix_sv_rls.sql`: added fourth branch — "viewer is my coach" (`ca.coach_id = session_views.user_id AND ca.athlete_id = tl.user_id AND tl.user_id = auth.uid()`).
+
+**7-scenario results:**
+
+| # | Scenario | Expected | Result |
+|---|----------|----------|--------|
+| 1 | Athlete reads own session comments | 1 | ✅ 1 |
+| 2 | Coach reads linked athlete session | 1 | ✅ 1 |
+| 3 | Unlinked user reads (isolation) | 0 | ✅ 0 |
+| 4 | Unlinked user INSERT blocked | 42501 | ✅ 42501 |
+| 5 | Spoofed author_id blocked | 42501 | ✅ 42501 |
+| 6 | Athlete sees coach presence (session_views) | 1 | ✅ 1 |
+| 7 | Unlinked user sees no presence | 0 | ✅ 0 |
+
+**Status: ✅ ITEM 5 COMPLETE — E14 UNBLOCKED**
