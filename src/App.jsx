@@ -478,6 +478,21 @@ export default function App() {
 
   const userId = isSupabaseReady() ? (user?.id ?? null) : null
 
+  // Book chapter landing — no auth required (QR codes from physical book)
+  if (BOOK_MODE) {
+    return (
+      <ErrorBoundary name="BookChapter">
+        <AsyncBoundary name="Chapter Landing">
+          <ChapterLanding
+            chapterId={BOOK_CHAPTER}
+            lang={lang}
+            onSignup={() => window.location.replace('/?utm_source=esik_book&utm_medium=qr&utm_content=' + BOOK_CHAPTER)}
+          />
+        </AsyncBoundary>
+      </ErrorBoundary>
+    )
+  }
+
   // Auth gates (only when Supabase is configured)
   if (isSupabaseReady()) {
     const isGuest = localStorage.getItem('sporeus-guest-mode') === '1'
@@ -515,21 +530,6 @@ export default function App() {
     return (
       <ErrorBoundary name="Privacy">
         <AsyncBoundary name="Privacy Policy"><PrivacyPolicy /></AsyncBoundary>
-      </ErrorBoundary>
-    )
-  }
-
-  // Book chapter landing — QR codes in EŞİK/THRESHOLD physical book
-  if (BOOK_MODE) {
-    return (
-      <ErrorBoundary name="BookChapter">
-        <AsyncBoundary name="Chapter Landing">
-          <ChapterLanding
-            chapterId={BOOK_CHAPTER}
-            lang={lang}
-            onSignup={() => window.location.replace('/?utm_source=esik_book&utm_medium=qr&utm_content=' + BOOK_CHAPTER)}
-          />
-        </AsyncBoundary>
       </ErrorBoundary>
     )
   }
