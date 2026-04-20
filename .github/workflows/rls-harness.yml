@@ -10,92 +10,37 @@ on:
     branches: [main]
     paths:
       - "supabase/migrations/**"
+      - "supabase/tests/rls/**"
 
-# Cancel in-progress runs for the same PR
 concurrency:
   group: rls-harness-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 env:
-  SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
   SUPABASE_PROJECT_ID: pvicqwapvvfempjdgwbm
   DENO_VERSION: "1.42.1"
 
 jobs:
+  # ── Job 1: Full Deno harness (220+ assertions against live project) ──────────
   rls-harness:
     name: RLS Policy Harness
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    if: ${{ secrets.SUPABASE_ACCESS_TOKEN != '' }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # ── Supabase CLI ────────────────────────────────────────────────────────
-      - name: Install Supabase CLI
-        uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      # ── Create preview branch ────────────────────────────────────────────────
-      - name: Create DB branch
-        id: branch
-        run: |
-          BRANCH="rls-harness-pr-${{ github.event.pull_request.number || github.run_id }}"
-          echo "branch_name=${BRANCH}" >> "$GITHUB_OUTPUT"
-
-          supabase branches create "${BRANCH}" \
-            --project-ref "$SUPABASE_PROJECT_ID" 2>&1 | tee branch_create.log
-
-          # Extract preview URL and keys from branch creation output
-          BRANCH_URL=$(supabase branches get "${BRANCH}" \
-            --project-ref "$SUPABASE_PROJECT_ID" \
-            --output json 2>/dev/null | jq -r '.api_url // empty')
-
-          ANON_KEY=$(supabase branches get "${BRANCH}" \
-            --project-ref "$SUPABASE_PROJECT_ID" \
-            --output json 2>/dev/null | jq -r '.anon_key // empty')
-
-          SERVICE_KEY=$(supabase branches get "${BRANCH}" \
-            --project-ref "$SUPABASE_PROJECT_ID" \
-            --output json 2>/dev/null | jq -r '.service_role_key // empty')
-
-          # Fall back to prod keys if branch doesn't expose separate keys
-          if [ -z "$BRANCH_URL" ]; then
-            BRANCH_URL="${{ secrets.SUPABASE_URL }}"
-          fi
-          if [ -z "$ANON_KEY" ]; then
-            ANON_KEY="${{ secrets.SUPABASE_ANON_KEY }}"
-          fi
-          if [ -z "$SERVICE_KEY" ]; then
-            SERVICE_KEY="${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
-          fi
-
-          echo "branch_url=${BRANCH_URL}" >> "$GITHUB_OUTPUT"
-          echo "anon_key=${ANON_KEY}" >> "$GITHUB_OUTPUT"
-          echo "service_key=${SERVICE_KEY}" >> "$GITHUB_OUTPUT"
-
-      # ── Apply migrations ────────────────────────────────────────────────────
-      - name: Apply migrations to branch
-        run: |
-          supabase db push \
-            --project-ref "$SUPABASE_PROJECT_ID" \
-            --branch "${{ steps.branch.outputs.branch_name }}"
-
-      # ── Deno setup ──────────────────────────────────────────────────────────
       - name: Setup Deno
         uses: denoland/setup-deno@v1
         with:
           deno-version: ${{ env.DENO_VERSION }}
 
-      # ── Run RLS harness ─────────────────────────────────────────────────────
       - name: Run RLS harness
         id: harness
         env:
-          SUPABASE_URL: ${{ steps.branch.outputs.branch_url }}
-          SUPABASE_ANON_KEY: ${{ steps.branch.outputs.anon_key }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ steps.branch.outputs.service_key }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           set +e
           deno run \
@@ -104,16 +49,8 @@ jobs:
             supabase/tests/rls/harness.ts 2>&1 | tee harness_output.txt
           EXIT_CODE=$?
           echo "exit_code=${EXIT_CODE}" >> "$GITHUB_OUTPUT"
-
-          # Extract summary line
-          SUMMARY=$(grep -E "^(PASS|FAIL|RLS harness)" harness_output.txt | tail -5 || true)
-          echo "summary<<EOF" >> "$GITHUB_OUTPUT"
-          echo "${SUMMARY}" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-
           exit $EXIT_CODE
 
-      # ── PR comment (always runs — shows pass or fail detail) ────────────────
       - name: Comment PR with results
         if: github.event_name == 'pull_request' && always()
         uses: actions/github-script@v7
@@ -122,84 +59,72 @@ jobs:
             const fs = require('fs');
             const exitCode = '${{ steps.harness.outputs.exit_code }}';
             const passed   = exitCode === '0';
-
-            let body = '';
-            try {
-              const out = fs.readFileSync('harness_output.txt', 'utf8');
-              const lines = out.split('\n');
-
-              // Extract last 60 lines (summary + failures)
-              const tail = lines.slice(-60).join('\n');
-
-              body = `## ${passed ? '✅' : '🚨'} RLS Harness — ${passed ? 'All tests passed' : 'FAILURES DETECTED'}
-
-            <details>
-            <summary>${passed ? 'View test output' : '⚠️ Click to expand failures — merge is BLOCKED'}</summary>
+            let output = '';
+            try { output = fs.readFileSync('harness_output.txt', 'utf8').split('\n').slice(-60).join('\n'); }
+            catch { output = '(no output)'; }
+            const body = `## ${passed ? '✅' : '🚨'} RLS Harness — ${passed ? 'All tests passed' : 'FAILURES DETECTED'}
+            <details><summary>${passed ? 'View output' : '⚠️ Expand failures — merge BLOCKED'}</summary>
 
             \`\`\`
-            ${tail}
+            ${output}
             \`\`\`
-            </details>
-
-            ${!passed ? '\n> **This PR introduces RLS regressions. Fix all failures before merging.**\n' : ''}
-            _Branch: \`${{ steps.branch.outputs.branch_name }}\` | Run: ${{ github.run_id }}_`;
-            } catch(e) {
-              body = `## 🚨 RLS Harness — Could not read output\n\nHarness may have crashed. Check [run logs](${context.payload.pull_request.html_url}).`;
-            }
-
-            // Find existing bot comment to update (avoid spam)
+            </details>${!passed ? '\n\n> **Fix all RLS failures before merging.**' : ''}
+            _Run: ${{ github.run_id }}_`;
             const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo:  context.repo.repo,
+              owner: context.repo.owner, repo: context.repo.repo,
               issue_number: context.issue.number,
             });
-
-            const existing = comments.find(c =>
-              c.user.type === 'Bot' && c.body.includes('RLS Harness')
-            );
-
+            const existing = comments.find(c => c.user.type === 'Bot' && c.body.includes('RLS Harness'));
             if (existing) {
               await github.rest.issues.updateComment({
-                owner:      context.repo.owner,
-                repo:       context.repo.repo,
-                comment_id: existing.id,
-                body,
+                owner: context.repo.owner, repo: context.repo.repo,
+                comment_id: existing.id, body,
               });
             } else {
               await github.rest.issues.createComment({
-                owner:       context.repo.owner,
-                repo:        context.repo.repo,
-                issue_number: context.issue.number,
-                body,
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: context.issue.number, body,
               });
             }
 
-      # ── Cleanup branch ──────────────────────────────────────────────────────
-      - name: Cleanup DB branch
+      - uses: actions/upload-artifact@v4
         if: always()
-        continue-on-error: true
-        run: |
-          supabase branches delete "${{ steps.branch.outputs.branch_name }}" \
-            --project-ref "$SUPABASE_PROJECT_ID" || true
-
-      # ── Hard fail after comment posted ──────────────────────────────────────
-      - name: Fail if harness failed
-        if: steps.harness.outputs.exit_code != '0'
-        run: |
-          echo "::error::RLS harness reported failures. See PR comment for details."
-          exit 1
-
-  # ── Upload artifact for debugging ──────────────────────────────────────────
-  upload-artifact:
-    name: Upload harness output
-    runs-on: ubuntu-latest
-    needs: rls-harness
-    if: always()
-    steps:
-      - name: Download output
-        continue-on-error: true
-        uses: actions/upload-artifact@v4
         with:
           name: rls-harness-output-${{ github.run_id }}
           path: harness_output.txt
           retention-days: 14
+
+  # ── Job 2: SQL-level isolation smoke (the 7 scenarios from debt session) ─────
+  rls-sql-smoke:
+    name: RLS SQL Isolation Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Seed test data
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          npx supabase db query --linked \
+            -f supabase/tests/rls/sql_smoke_seed.sql
+
+      - name: Run 7-scenario isolation checks
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: pvicqwapvvfempjdgwbm
+        run: python3 supabase/tests/rls/sql_smoke_runner.py
+
+      - name: Cleanup test data
+        if: always()
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          npx supabase db query --linked \
+            -f supabase/tests/rls/sql_smoke_cleanup.sql

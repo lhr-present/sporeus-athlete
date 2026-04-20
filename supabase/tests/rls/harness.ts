@@ -767,6 +767,76 @@ async function runTests() {
   await expectEmpty("S30.3 Anonymous cannot SELECT batch_errors",
     ctx.sbAnon.from("batch_errors").select("id").limit(1))
 
+  // ── S31: session_comments isolation (E11) ────────────────────────────────
+  suite("S31 — session_comments isolation (E11)")
+
+  // Need a training_log entry owned by AthleteA
+  const { data: [logEntry] } = await ctx.sbAdmin.from("training_log")
+    .insert({ user_id: ctx.uidA, date: new Date().toISOString().slice(0, 10), type: "run" })
+    .select("id")
+
+  if (logEntry) {
+    // Seed a comment by CoachA on AthleteA's session
+    const { data: [cmtRow] } = await ctx.sbAdmin.from("session_comments")
+      .insert({ session_id: logEntry.id, author_id: ctx.uidC, body: "RLS harness test comment" })
+      .select("id")
+
+    if (cmtRow) {
+      // AthleteA can read comments on own session
+      await expectRows("S31.1 AthleteA reads own session comment",
+        ctx.sbA.from("session_comments").select("id").eq("id", cmtRow.id))
+
+      // CoachA can read comments on linked athlete session
+      await expectRows("S31.2 CoachA reads linked athlete session comment",
+        ctx.sbC.from("session_comments").select("id").eq("id", cmtRow.id))
+
+      // AthleteB (unlinked) cannot read
+      await expectEmpty("S31.3 AthleteB cannot read session_comments (isolation)",
+        ctx.sbB.from("session_comments").select("id").eq("id", cmtRow.id))
+
+      // Anonymous cannot read
+      await expectEmpty("S31.4 Anonymous cannot read session_comments",
+        ctx.sbAnon.from("session_comments").select("id").eq("id", cmtRow.id))
+
+      // AthleteB cannot INSERT into another athlete's session
+      await expectBlocked("S31.5 AthleteB cannot INSERT comment on AthleteA session",
+        ctx.sbB.from("session_comments").insert({ session_id: logEntry.id, author_id: ctx.uidB, body: "Intruder" }))
+
+      // AthleteA cannot spoof author_id
+      await expectBlocked("S31.6 AthleteA cannot INSERT with spoofed author_id",
+        ctx.sbA.from("session_comments").insert({ session_id: logEntry.id, author_id: ctx.uidC, body: "Fake coach" }))
+    }
+  }
+
+  // ── S32: session_views isolation + presence visibility (E11) ─────────────
+  suite("S32 — session_views isolation + presence visibility (E11)")
+
+  if (logEntry) {
+    // Seed a view by CoachA
+    await ctx.sbAdmin.from("session_views")
+      .upsert({ user_id: ctx.uidC, session_id: logEntry.id, viewed_at: new Date().toISOString() })
+
+    // AthleteA can see CoachA's view record (CoachPresenceBadge)
+    await expectRows("S32.1 AthleteA sees CoachA presence in session_views",
+      ctx.sbA.from("session_views").select("user_id").eq("user_id", ctx.uidC).eq("session_id", logEntry.id))
+
+    // CoachA can see own view record
+    await expectRows("S32.2 CoachA sees own session_views record",
+      ctx.sbC.from("session_views").select("user_id").eq("user_id", ctx.uidC).eq("session_id", logEntry.id))
+
+    // AthleteB (unlinked) cannot see session_views for AthleteA's session
+    await expectEmpty("S32.3 AthleteB cannot see session_views (isolation)",
+      ctx.sbB.from("session_views").select("user_id").eq("session_id", logEntry.id))
+
+    // Anonymous cannot see session_views
+    await expectEmpty("S32.4 Anonymous cannot see session_views",
+      ctx.sbAnon.from("session_views").select("user_id").eq("session_id", logEntry.id))
+
+    // AthleteB cannot INSERT view record with spoofed user_id
+    await expectBlocked("S32.5 AthleteB cannot INSERT session_views with spoofed user_id",
+      ctx.sbB.from("session_views").insert({ user_id: ctx.uidC, session_id: logEntry.id, viewed_at: new Date().toISOString() }))
+  }
+
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────
@@ -792,8 +862,8 @@ if (failures.length) {
   Deno.exit(1)
 }
 
-if (passed + failed < 200) {
-  console.error(`\nWARN: Only ${passed + failed} tests ran — harness should run >200. Investigate skipped sections.`)
+if (passed + failed < 210) {
+  console.error(`\nWARN: Only ${passed + failed} tests ran — harness should run >210. Investigate skipped sections.`)
   Deno.exit(1)
 }
 
