@@ -4,6 +4,22 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v9.5.0] — 2026-04-21
+
+### G5 — Morning Readiness & HRV Integration (E17)
+
+30-second daily check-in modal with Plews 2013 HRV trend analysis. Feeds into the G3 next-action direction card.
+
+- **`src/lib/hrv.js`**: added `computeHRVTrend(entries)` — 7-day rolling CV (Plews 2013), thresholds: stable <7%, warning 7–10%, unstable ≥10%; and `isHRVSuppressed(entries)` — convenience predicate. Bilingual interpretation strings.
+- **`src/lib/nextAction.js`**: Rule 3 `hrv_drift` inserted (priority 3, between `wellness_poor` and `acwr_high`) — fires when HRV CV ≥10% + latest >5% below baseline → recommends easy session (Plews 2013 citation)
+- **`src/components/MorningCheckIn.jsx`**: modal with `useFocusTrap`, overlay/Escape dismiss, optional HRV RMSSD input (ms), three 1–5 wellness sliders (sleep/energy/soreness), saves to `recovery` store `{date, score, sleepHrs:null, soreness, stress:3, mood, hrv}`, post-save shows HRV trend card with color + bilingual interpretation
+- **`src/components/TodayView.jsx`**: "Morning Readiness Check-In" button added above NextActionCard, visible when no recovery entry exists for today; `MorningCheckIn` lazy-loaded via `Suspense`
+- **15 tests** in `src/lib/__tests__/hrv.test.js` (insufficient_data, stable, warning, unstable, dropPct, window filtering, null HRV, output shape, isHRVSuppressed)
+
+DEPENDS ON: v9.4.0 (DataContext setRecovery, G3 nextAction.js hrv_drift rule)
+
+---
+
 ## [v9.4.0] — 2026-04-21
 
 ### G4 — E14 Race Readiness Calculator

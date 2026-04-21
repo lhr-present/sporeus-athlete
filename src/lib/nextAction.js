@@ -3,13 +3,15 @@
 // Input:  log (array), recovery (array), profile (object)
 // Output: action object | null
 //
-// 9 priority-ordered rules. Each rule has:
+// 10 priority-ordered rules. Each rule has:
 //   id:        string — unique identifier (used for 24h dismissal key)
-//   priority:  1–9 (1 = highest)
+//   priority:  1–10 (1 = highest)
 //   action:    { en, tr } — headline
 //   rationale: { en, tr } — explanation with metric values
 //   citation:  string — scientific source
 //   color:     'red' | 'amber' | 'green' | 'blue' | 'muted'
+
+import { computeHRVTrend } from './hrv.js'
 
 const LAMBDA_ACUTE   = 0.25          // 4-day EWMA
 const LAMBDA_CHRONIC = 0.067         // 28-day EWMA
@@ -131,11 +133,28 @@ function evalRules(log, recovery, profile) {
     }
   }
 
-  // ── Rule 3: acwr_high (ACWR 1.3–1.5) — caution zone ─────────────────────────
+  // ── Rule 3: hrv_drift — HRV CV ≥ 10% + latest below mean (Plews 2013) ───────
+  const hrv = computeHRVTrend(safeRec)
+  if (hrv.trend === 'unstable' && (hrv.dropPct ?? 0) > 5) {
+    return {
+      id:        'hrv_drift',
+      priority:  3,
+      action:    { en: 'Easy session — HRV suppressed', tr: 'Kolay antrenman — HRV baskılı' },
+      rationale: {
+        en: `HRV CV ${(hrv.cv * 100).toFixed(1)}% ≥ 10% with latest ${hrv.latestHRV}ms below ${hrv.baseline}ms baseline — autonomic strain. Easy session or rest.`,
+        tr: `HRV CV %${(hrv.cv * 100).toFixed(1)} ≥ %10, son değer ${hrv.latestHRV}ms baz ${hrv.baseline}ms altında. Otonom yük — kolay seans veya dinlenme.`,
+      },
+      citation:  'Plews 2013 (Int J Sports Physiol Perform)',
+      color:     'amber',
+      metrics:   { ctl, atl, tsb, acwr, wellness, hrv: hrv.latestHRV, hrvCV: hrv.cv },
+    }
+  }
+
+  // ── Rule 4: acwr_high (ACWR 1.3–1.5) — caution zone ─────────────────────────
   if (acwr !== null && acwr > 1.3) {
     return {
       id:        'acwr_high',
-      priority:  3,
+      priority:  4,
       action:    { en: 'Active recovery or rest', tr: 'Aktif toparlanma veya dinlenme' },
       rationale: { en: `ACWR ${acwr.toFixed(2)} — caution zone (1.3–1.5). Acute load elevated above chronic base. Easy session or off day.`, tr: `ACWR ${acwr.toFixed(2)} — dikkat bölgesi. Hafif antrenman veya dinlenme.` },
       citation:  'Gabbett 2016 (Br J Sports Med)',

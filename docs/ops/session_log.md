@@ -1,5 +1,21 @@
 # Debt Session Log
 
+## G5 — Morning Readiness & HRV Integration (2026-04-21)
+
+**Changes:**
+- `src/lib/hrv.js`: `computeHRVTrend(entries)` + `isHRVSuppressed(entries)` — 7-day Plews 2013 CV method
+- `src/lib/nextAction.js`: Rule 3 `hrv_drift` (priority 3) — easy session when HRV CV ≥10% + latest >5% below baseline
+- `src/components/MorningCheckIn.jsx`: 30-second check-in modal — optional HRV RMSSD + sleep/energy/soreness sliders; saves to recovery store; shows HRV trend post-save
+- `src/components/TodayView.jsx`: "Morning Readiness Check-In" button (visible when no today recovery entry); MorningCheckIn lazy-loaded
+- `src/lib/__tests__/hrv.test.js`: 15 tests (NEW file)
+
+**Tests:** 2720 (was 2705) — all pass.
+**Semver:** v9.5.0
+
+**Status: ✅ G5 COMPLETE**
+
+---
+
 ## G4 — E14 Race Readiness Calculator (2026-04-21)
 
 **Changes:**

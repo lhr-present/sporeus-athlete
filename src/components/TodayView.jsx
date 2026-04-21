@@ -23,6 +23,7 @@ import { BANISTER } from '../lib/sport/constants.js'
 import { S } from '../styles.js'
 import { getOrientationStep, ORIENTATION_MESSAGES } from '../lib/orientation.js'
 import NextActionCard from './NextActionCard.jsx'
+const MorningCheckIn = lazy(() => import('./MorningCheckIn.jsx'))
 
 const EMBED_MODE = new URLSearchParams(window.location.search).get('embed') === 'true'
 
@@ -175,6 +176,7 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
   const [scoreDisplay, setScoreDisplay]   = useState(0)
   const [shareLoading, setShareLoading]         = useState(false)
   const [expandedProtocol, setExpandedProtocol] = useState(null)
+  const [showCheckIn, setShowCheckIn]           = useState(false)
   const [recoveryDone, setRecoveryDone] = useLocalStorage(`sporeus-recovery-done-${today}`, {})
 
   const [weeklyRecap] = useState(() => generateWeeklyRecap(log))
@@ -408,6 +410,23 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
             [done]
           </span>
         </div>
+      )}
+
+      {/* ── Morning check-in button — G5 ──────────────────────────────────── */}
+      {!todayRec && (
+        <div style={{ marginBottom: '10px' }}>
+          <button
+            onClick={() => setShowCheckIn(true)}
+            style={{ ...S.btn, fontSize: '11px', padding: '8px 18px', width: '100%' }}
+          >
+            🌅 {lang === 'tr' ? 'Sabah Hazırlık Girişi' : 'Morning Readiness Check-In'}
+          </button>
+        </div>
+      )}
+      {showCheckIn && (
+        <Suspense fallback={null}>
+          <MorningCheckIn onClose={() => setShowCheckIn(false)} />
+        </Suspense>
       )}
 
       {/* ── Next Action card — G3 rules-based ──────────────────────────────── */}

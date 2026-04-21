@@ -259,6 +259,82 @@ export function getAerobicThresholdFromDFA(dfa1Series) {
   return { threshold_hr, confidence }
 }
 
+// ─── computeHRVTrend ────────────────────────────────────────────────────────
+// Plews 2013 (Int J Sports Physiol Perform): 7-day rolling CV of HRV values.
+// Input: recovery entries []{ date: 'YYYY-MM-DD', hrv: number|null }
+// Output: trend object used by G3 direction card + MorningCheckIn display.
+//
+// CV thresholds:
+//   < 7%  → stable   (productive training state)
+//   7–10% → warning  (monitor)
+//   ≥ 10% → unstable (reduce load — Plews 2013)
+
+const _CV_UNSTABLE = 0.10
+const _CV_WARNING  = 0.07
+const _TREND_MIN   = 3
+
+export function computeHRVTrend(entries) {
+  const safe    = Array.isArray(entries) ? entries : []
+  const today   = new Date(); today.setHours(0, 0, 0, 0)
+  const cutoff  = new Date(today); cutoff.setDate(cutoff.getDate() - 7)
+  const cutStr  = cutoff.toISOString().slice(0, 10)
+
+  const recent = safe
+    .filter(e => e.date >= cutStr && parseFloat(e.hrv) > 0)
+    .map(e => ({ date: e.date, hrv: parseFloat(e.hrv) }))
+    .sort((a, b) => a.date < b.date ? -1 : 1)
+
+  if (recent.length < _TREND_MIN) {
+    return {
+      baseline: null, cv: null, latestHRV: recent.length > 0 ? recent.at(-1).hrv : null,
+      daysWithData: recent.length, trend: 'insufficient_data', dropPct: null,
+      interpretation: {
+        en: `Only ${recent.length} HRV reading${recent.length !== 1 ? 's' : ''} in 7 days — need ${_TREND_MIN}+.`,
+        tr: `Son 7 günde yalnızca ${recent.length} HRV ölçümü — en az ${_TREND_MIN} gerekiyor.`,
+      },
+    }
+  }
+
+  const vals = recent.map(e => e.hrv)
+  const mean = vals.reduce((s, v) => s + v, 0) / vals.length
+  const std  = Math.sqrt(vals.reduce((s, v) => s + (v - mean) ** 2, 0) / vals.length)
+  const cv   = mean > 0 ? std / mean : 0
+  const last = vals.at(-1)
+  const drop = mean > 0 ? (mean - last) / mean : null
+
+  let trend
+  if (cv >= _CV_UNSTABLE)  trend = 'unstable'
+  else if (cv >= _CV_WARNING) trend = 'warning'
+  else                     trend = 'stable'
+
+  const base  = Math.round(mean * 10) / 10
+  const cvPct = Math.round(cv * 1000) / 10
+
+  const msgs = {
+    stable:   { en: `HRV stable (CV ${cvPct}%, base ${base}ms). Train as planned.`, tr: `HRV kararlı (CV %${cvPct}, baz ${base}ms). Planlandığı gibi antrenman.` },
+    warning:  { en: `HRV variable (CV ${cvPct}%, base ${base}ms). Monitor — consider easy session.`, tr: `HRV değişken (CV %${cvPct}, baz ${base}ms). Dikkat — kolay seans düşün.` },
+    unstable: { en: `HRV unstable (CV ${cvPct}% ≥ 10%, base ${base}ms). Reduce load. (Plews 2013)`, tr: `HRV kararsız (CV %${cvPct} ≥ %10, baz ${base}ms). Yükü azalt. (Plews 2013)` },
+  }
+
+  return {
+    baseline:    base,
+    cv:          Math.round(cv * 10000) / 10000,
+    latestHRV:   Math.round(last * 10) / 10,
+    daysWithData: recent.length,
+    trend,
+    dropPct:     drop !== null ? Math.round(drop * 1000) / 10 : null,
+    interpretation: msgs[trend],
+  }
+}
+
+/**
+ * Returns true when HRV CV ≥ 10% AND latest is below mean — load should be suppressed.
+ */
+export function isHRVSuppressed(entries) {
+  const t = computeHRVTrend(entries)
+  return t.trend === 'unstable' && (t.dropPct ?? 0) > 5
+}
+
 // ─── parsePolarHRM ────────────────────────────────────────────────────────────
 // Parse Polar .hrm text file and extract RR intervals (ms) from [HRData].
 // Physiological range filter: 300–2000 ms distinguishes RR from HR bpm.
