@@ -14,7 +14,8 @@ import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { SPORT_BRANCHES, ATHLETE_LEVELS, LEVEL_CONFIG, DASH_CARD_DEFS } from '../lib/constants.js'
 import { assessDataQuality } from '../lib/intelligence.js'
 import { interpretCTL, interpretTSB, interpretMonotony } from '../lib/science/interpretations.js'
-import { subThresholdTrend } from '../lib/science/subThresholdTime.js'
+import { subThresholdTrend, } from '../lib/science/subThresholdTime.js'
+import { computeMonotony } from '../lib/trainingLoad.js'
 import { useData } from '../contexts/DataContext.jsx'
 
 // ── Previously extracted sub-components ──────────────────────────────────────
@@ -127,6 +128,9 @@ export default function Dashboard({ log }) {
   const prev28CTL  = daily.length >= 29 ? (daily[daily.length - 29]?.ctl ?? null) : null
   const ctlInterp  = useMemo(() => interpretCTL(ctl, prev28CTL), [ctl, prev28CTL])
   const tsbInterp  = useMemo(() => interpretTSB(tsb), [tsb])
+
+  // K4 — Monotony daily TSS bars (computeMonotony Foster 1998)
+  const weekLoadDetail = useMemo(() => computeMonotony(log), [log])
 
   // J5 — Sub-threshold 8-week trend (Seiler 2010)
   const subZones = useMemo(() => {
@@ -401,6 +405,20 @@ export default function Dashboard({ log }) {
                     return (
                       <div style={{ ...S.mono, fontSize: '9px', color: '#555', marginTop: '5px', lineHeight: 1.5 }}>
                         {lang === 'tr' ? mi.tr : mi.en}
+                      </div>
+                    )
+                  })()}
+                  {weekLoadDetail.weekTSS > 0 && (() => {
+                    const maxT = Math.max(...weekLoadDetail.dailyTSS, 1)
+                    const days = ['M','T','W','T','F','S','S']
+                    return (
+                      <div style={{ display: 'flex', gap: '2px', alignItems: 'flex-end', marginTop: '8px', height: '20px' }}>
+                        {weekLoadDetail.dailyTSS.map((t, i) => (
+                          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <div style={{ width: '100%', height: `${t > 0 ? Math.max(3, Math.round(t / maxT * 18)) : 2}px`, background: t > 0 ? (monoRed ? '#e03030aa' : '#ff660088') : '#1a1a1a', borderRadius: '1px' }} />
+                            <div style={{ ...S.mono, fontSize: '7px', color: '#2a2a2a' }}>{days[i]}</div>
+                          </div>
+                        ))}
                       </div>
                     )
                   })()}

@@ -26,6 +26,7 @@ import NextActionCard from './NextActionCard.jsx'
 const MorningCheckIn = lazy(() => import('./MorningCheckIn.jsx'))
 import { computeHRVTrend } from '../lib/hrv.js'
 import { findSeasonalPatterns } from '../lib/patterns.js'
+import { computeMonotony } from '../lib/trainingLoad.js'
 
 const EMBED_MODE = new URLSearchParams(window.location.search).get('embed') === 'true'
 
@@ -115,6 +116,7 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
   const hrvTrend   = useMemo(() => computeHRVTrend(recovery || []), [recovery])
   const seasonal   = useMemo(() => findSeasonalPatterns(log || [], recovery || []), [log, recovery])
   const thisMonth  = new Date().toLocaleString('en', { month: 'short' })
+  const weekLoad   = useMemo(() => computeMonotony(log || []), [log])
 
   // Coach message unread count (athlete reads from localStorage)
   // Coach sessions RSVP + announcements
@@ -507,6 +509,39 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                 {timeAdvice}
               </div>
             )}
+          </div>
+        )
+      })()}
+
+      {/* ── K3 — 7-day TSS load strip (computeMonotony) ──────────────────── */}
+      {weekLoad.weekTSS > 0 && (() => {
+        const maxTSS = Math.max(...weekLoad.dailyTSS, 1)
+        const days   = ['M','T','W','T','F','S','S']
+        const today  = new Date().getDay()
+        const todayIdx = today === 0 ? 6 : today - 1
+        const STATUS_C = { low: '#5bc25b', moderate: '#f5c542', high: '#e03030', insufficient: '#555' }
+        const sc = STATUS_C[weekLoad.status] || '#555'
+        return (
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', padding: '8px 12px', background: 'var(--surface, #0f0f0f)', borderRadius: '3px', marginBottom: '10px', borderLeft: `3px solid ${sc}` }}>
+            {weekLoad.dailyTSS.map((tss, i) => {
+              const h = tss > 0 ? Math.max(6, Math.round(tss / maxTSS * 32)) : 3
+              const isToday = i === todayIdx
+              return (
+                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+                  <div style={{ width: '100%', height: `${h}px`, background: isToday ? '#ff6600' : tss > 0 ? '#0064ff88' : '#1a1a1a', borderRadius: '2px' }} />
+                  <div style={{ fontFamily: MONO, fontSize: '8px', color: isToday ? '#ff6600' : '#333' }}>{days[i]}</div>
+                </div>
+              )
+            })}
+            <div style={{ marginLeft: '8px', minWidth: '56px' }}>
+              <div style={{ fontFamily: MONO, fontSize: '11px', fontWeight: 700, color: sc }}>{weekLoad.weekTSS}</div>
+              <div style={{ fontFamily: MONO, fontSize: '8px', color: '#333', letterSpacing: '0.06em' }}>WEEK TSS</div>
+              {weekLoad.monotony !== null && (
+                <div style={{ fontFamily: MONO, fontSize: '8px', color: sc, marginTop: '2px' }}>
+                  M {weekLoad.monotony.toFixed(1)}
+                </div>
+              )}
+            </div>
           </div>
         )
       })()}

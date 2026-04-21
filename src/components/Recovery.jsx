@@ -14,6 +14,8 @@ import RTPProtocol from './RTPProtocol.jsx'
 import CycleTracker from './CycleTracker.jsx'
 import { predictInjuryRisk, analyzeRecoveryCorrelation } from '../lib/intelligence.js'
 import { findRecoveryPatterns } from '../lib/patterns.js'
+import { calcLoad } from '../lib/formulas.js'
+import { classifyTSB } from '../lib/trainingLoad.js'
 
 export default function Recovery() {
   const { t } = useContext(LangCtx)
@@ -64,8 +66,9 @@ export default function Recovery() {
   const avg7sleep   = last7sleep.length ? Math.round(last7sleep.reduce((s,v)=>s+v,0)/last7sleep.length*10)/10 : 0
   const showSleepWarn = avg7sleep > 0 && avg7sleep < 7 && score < 60
 
-  const patterns = useMemo(() => findRecoveryPatterns(log, entries), [log, entries])
-  const corr     = useMemo(() => analyzeRecoveryCorrelation(log, entries), [log, entries])
+  const patterns  = useMemo(() => findRecoveryPatterns(log, entries), [log, entries])
+  const corr      = useMemo(() => analyzeRecoveryCorrelation(log, entries), [log, entries])
+  const tsbZone   = useMemo(() => { const { tsb } = calcLoad(log); return classifyTSB(tsb) }, [log])
 
   return (
     <div className="sp-fade">
@@ -211,6 +214,12 @@ export default function Recovery() {
         {showSleepWarn && (
           <div style={{ ...S.mono, fontSize:'10px', color:'#f5c542', marginTop:'10px', padding:'6px 10px', background:'#f5c54211', borderRadius:'4px' }}>
             ⚠ {t('sleepLowWarning')}
+          </div>
+        )}
+        {log.length >= 7 && (
+          <div style={{ ...S.mono, fontSize:'9px', marginTop:'10px', padding:'5px 8px', background:`${tsbZone.color}11`, border:`1px solid ${tsbZone.color}33`, borderRadius:'3px', display:'inline-flex', alignItems:'center', gap:'8px' }}>
+            <span style={{ color: tsbZone.color, fontWeight:700 }}>TSB {lang==='tr' ? tsbZone.label.tr : tsbZone.label.en}</span>
+            <span style={{ color:'#444' }}>{lang==='tr' ? tsbZone.advice.tr : tsbZone.advice.en}</span>
           </div>
         )}
       </div>

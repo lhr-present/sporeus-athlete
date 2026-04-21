@@ -4,6 +4,25 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v9.9.0] — 2026-04-21
+
+### K1–K5 — Final unused function sweep (durabilityScore, trainingLoad, interpretations)
+
+Five enhancements exhausting the remaining unused science library functions.
+
+- **K1 — `interpretDecoupling` in TrainingLog expanded rows** (`TrainingLog.jsx`): replaces the static `"<5% coupled · 5–10% mild · >10% significant — Friel 2009"` line with the full bilingual interpretation from `interpretDecoupling(pct)` (Friel 2009). Fires only when `entry.decouplingPct` is set (FIT imports with HR streams).
+- **K2 — `classifyTSB` in `PerformanceMetrics.jsx`** (`dashboard/PerformanceMetrics.jsx`): TSB tile now shows Coggan zone name (Fresh / Peak Form, Neutral, Optimal Training Stress, Overreaching Risk) and bilingual advice text from `classifyTSB(form.tsb)`. Border color updated to match zone color.
+- **K3 — `computeMonotony.dailyTSS` 7-day bar chart in `TodayView.jsx`**: compact 7-day TSS mini bar strip (Mon–Sun) using `computeMonotony(log).dailyTSS`. Today highlighted in orange; zero-TSS days in dark. Monotony value and week total shown right of bars. Color-coded by monotony status (Foster 1998: low/moderate/high).
+- **K4 — `computeMonotony.dailyTSS` bars in Dashboard monotony card**: 7-bar daily TSS sparkline added below the monotony interpretation text in the existing monotony index card. Color follows monoRed alert state.
+- **K5 — `classifyTSB` zone badge in `Recovery.jsx`** readiness section: TSB zone badge (zone name + Coggan advice, `log.length >= 7` gate) inserted below the sleep warning in the readiness score card, providing training-load context alongside the wellness-based readiness score.
+
+**Tests:** 2728 (unchanged) — all pass. Build: clean.
+**Semver:** v9.9.0
+
+DEPENDS ON: v9.8.0 (J-series, interpretations.js, subThresholdTime.js)
+
+---
+
 ## [v9.8.0] — 2026-04-21
 
 ### J1–J5 — Science interpretation library surfaced (interpretations.js + subThresholdTime.js)

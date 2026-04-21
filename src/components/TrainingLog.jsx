@@ -11,6 +11,7 @@ import { useData } from '../contexts/DataContext.jsx'
 import { scoreSession, autoTagSession, analyseSession, detectPersonalBests } from '../lib/intelligence.js'
 import { BANISTER } from '../lib/sport/constants.js'
 import { computeDecoupling } from '../lib/decoupling.js'
+import { interpretDecoupling } from '../lib/science/interpretations.js'
 import ScienceTooltip from './ScienceTooltip.jsx'
 
 // 2-char Bloomberg-style type prefix
@@ -633,19 +634,20 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                                 </div>
                               </div>
                               {expandedEntry?.decouplingPct != null && (() => {
-                                const pct = expandedEntry.decouplingPct
-                                const cls = pct < 5 ? 'coupled' : pct < 10 ? 'mild' : 'significant'
-                                const color = cls === 'coupled' ? '#5bc25b' : cls === 'mild' ? '#ff6600' : '#e03030'
+                                const pct   = expandedEntry.decouplingPct
+                                const color = pct < 5 ? '#5bc25b' : pct < 10 ? '#ff6600' : '#e03030'
+                                const interp = interpretDecoupling(pct)
+                                const isTR  = lang === 'tr'
                                 return (
                                   <div style={{ fontFamily:"'IBM Plex Mono',monospace", marginBottom:'10px' }}>
                                     <div style={{ fontSize:'9px', color:'#555', marginBottom:'3px' }}>
                                       <ScienceTooltip anchor="10-aerobic-decoupling-pwhr" label="Aerobic Decoupling" short="Pw:Hr ratio drift first vs second half. <5% = coupled aerobic base. Friel 2009.">AEROBIC DECOUPLING (Pw:Hr)</ScienceTooltip>
                                     </div>
                                     <div style={{ fontSize:'10px', color }}>
-                                      {pct.toFixed(1)}% ({cls})
+                                      {pct.toFixed(1)}%
                                     </div>
-                                    <div style={{ fontSize:'9px', color:'#444', marginTop:'2px' }}>
-                                      {'<5% coupled · 5–10% mild · >10% significant — Friel 2009'}
+                                    <div style={{ fontSize:'9px', color:'#555', marginTop:'3px', lineHeight:1.5 }}>
+                                      {isTR ? interp.tr : interp.en}
                                     </div>
                                   </div>
                                 )

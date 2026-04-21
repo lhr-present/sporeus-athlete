@@ -1,5 +1,24 @@
 # Debt Session Log
 
+## K1–K5 — Final unused function sweep (2026-04-21)
+
+Exhausts remaining unused functions from `durabilityScore.js`, `trainingLoad.js`, `interpretations.js`.
+
+**Changes:**
+- `src/components/TrainingLog.jsx`: `interpretDecoupling(pct)` replaces static "coupled/mild/significant" label in expanded session rows; bilingual; `lang` available via existing `useLocalStorage`
+- `src/components/dashboard/PerformanceMetrics.jsx`: `classifyTSB` replaces generic TSB tile — zone name + Coggan advice text, color from zone.color
+- `src/components/TodayView.jsx`: `computeMonotony.dailyTSS` 7-bar week strip below Morning Brief — today in orange, zeros dimmed, week TSS + monotony value right of bars
+- `src/components/Dashboard.jsx`: `computeMonotony.dailyTSS` 7-bar chart inside monotony index card (Foster 1998 color-coded)
+- `src/components/Recovery.jsx`: `classifyTSB` TSB zone badge below sleep warning in readiness card (gated log.length ≥ 7)
+- Fix: removed duplicate `lang` from LangCtx destructure in TrainingLog (was already declared via useLocalStorage)
+
+**Tests:** 2728 (unchanged) — all pass. Build: clean.
+**Semver:** v9.9.0
+
+**Status: ✅ K1–K5 COMPLETE**
+
+---
+
 ## J1–J5 — Science interpretation library surfaced (2026-04-21)
 
 Five enhancements wiring the `src/lib/science/interpretations.js` and `subThresholdTime.js` functions into existing UI cards.
