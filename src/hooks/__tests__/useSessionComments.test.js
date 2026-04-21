@@ -55,6 +55,13 @@ const mocks = vi.hoisted(() => {
   }
 })
 
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: vi.fn(() => ({
+    setQueryData:    vi.fn(),
+    invalidateQueries: vi.fn(),
+  })),
+}))
+
 vi.mock('../../lib/supabase.js', () => ({
   isSupabaseReady: mocks.isReady,
   supabase: {

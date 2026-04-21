@@ -1,5 +1,25 @@
 # Debt Session Log
 
+## G2 — TanStack Query for three core data flows (2026-04-21)
+
+**Changes:**
+- `@tanstack/react-query` v5.99.2 installed
+- `useTrainingLogQuery.js`: TQ-powered training log hook (`useQuery` + optimistic `setLog`) — replaces `useTrainingLog` in DataContext
+- `useProfileQuery.js`: TQ-powered profile hook — replaces `useProfileSync` in DataContext
+- `useSessionComments.js`: TQ cache seeded on `fetchComments`; `invalidateQueries` after mutations
+- `useSupabaseData.js`: `logRowToEntry` + `logEntryToRow` exported for reuse
+- `DataContext.jsx`: imports `useTrainingLogQuery` + `useProfileQuery`
+- `App.jsx`: `QueryClientProvider` wraps `DataProvider`; `ReactQueryDevtools` lazy-loaded (dev only)
+- 12 new tests in `useTrainingLogQuery.test.js` + `useProfileQuery.test.js`
+- `useSessionComments.test.js`: TQ mock added
+- `docs/ops/tanstack_query_pattern.md`: pattern guide for adding new TQ flows
+
+**Tests:** 2661 (was 2649) — all pass.
+
+**Status: ✅ G2 COMPLETE**
+
+---
+
 ## G1 — Smart QuickAdd defaults + first-session flow (2026-04-21)
 
 **Changes:**

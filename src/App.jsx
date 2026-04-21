@@ -1,4 +1,8 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+const TQDevtools = import.meta.env.DEV
+  ? lazy(() => import('@tanstack/react-query-devtools').then(m => ({ default: m.ReactQueryDevtools })))
+  : () => null
 import { version as APP_VERSION } from '../package.json'
 import { logger } from './lib/logger.js'
 import { LangCtx, TABS } from './contexts/LangCtx.jsx'
@@ -57,6 +61,12 @@ import PastDueBanner from './components/PastDueBanner.jsx'
 import MobileBottomBar from './components/MobileBottomBar.jsx'
 import MobileFAB from './components/MobileFAB.jsx'
 
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: true },
+  },
+})
 
 const EMBED_MODE   = new URLSearchParams(window.location.search).get('embed') === 'true'
 const SCIENCE_MODE = new URLSearchParams(window.location.search).get('science') === '1'
@@ -537,14 +547,17 @@ export default function App() {
   }
 
   return (
-    <ErrorBoundary name="DataProvider">
-      <DataProvider userId={userId}>
-        <AppInner
-          lang={lang} setLang={setLang}
-          dark={dark} setDark={setDark}
-          authUser={user} authProfile={authProfile} signOut={signOut}
-        />
-      </DataProvider>
-    </ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <ErrorBoundary name="DataProvider">
+        <DataProvider userId={userId}>
+          <AppInner
+            lang={lang} setLang={setLang}
+            dark={dark} setDark={setDark}
+            authUser={user} authProfile={authProfile} signOut={signOut}
+          />
+        </DataProvider>
+      </ErrorBoundary>
+      {import.meta.env.DEV && <Suspense fallback={null}><TQDevtools initialIsOpen={false} /></Suspense>}
+    </QueryClientProvider>
   )
 }

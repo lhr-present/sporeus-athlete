@@ -9,8 +9,9 @@ import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { useLocalStorage } from './useLocalStorage.js'
 
 // ─── Field transformers ────────────────────────────────────────────────────────
+// Exported so TanStack Query hooks can reuse them without duplication.
 
-function logRowToEntry(row) {
+export function logRowToEntry(row) {
   return {
     id:       row.id,
     date:     row.date,
@@ -23,7 +24,7 @@ function logRowToEntry(row) {
     source:   row.source   || 'manual',
   }
 }
-function logEntryToRow(entry, userId) {
+export function logEntryToRow(entry, userId) {
   return {
     id:           entry.id,
     user_id:      userId,

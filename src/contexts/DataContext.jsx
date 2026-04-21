@@ -5,23 +5,23 @@
 
 import { createContext, useContext } from 'react'
 import {
-  useTrainingLog,
   useRecovery,
   useInjuries,
   useTestResults,
   useRaceResults,
 } from '../hooks/useSupabaseData.js'
-import { useProfileSync } from '../hooks/useProfileSync.js'
+import { useTrainingLogQuery } from '../hooks/useTrainingLogQuery.js'
+import { useProfileQuery }     from '../hooks/useProfileQuery.js'
 
 const DataContext = createContext(null)
 
 export function DataProvider({ userId, children }) {
-  const [log,         setLog]         = useTrainingLog(userId)
+  const [log,         setLog]         = useTrainingLogQuery(userId)
   const [recovery,    setRecovery]    = useRecovery(userId)
   const [injuries,    setInjuries]    = useInjuries(userId)
   const [testResults, setTestResults] = useTestResults(userId)
   const [raceResults, setRaceResults] = useRaceResults(userId)
-  const [profile,     setProfile]     = useProfileSync(userId)
+  const [profile,     setProfile]     = useProfileQuery(userId)
 
   return (
     <DataContext.Provider value={{

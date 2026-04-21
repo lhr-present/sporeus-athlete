@@ -4,6 +4,23 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v9.2.8] — 2026-04-21
+
+### G2 — TanStack Query v5 for training log, profile, and session comments
+
+- **`@tanstack/react-query` v5.99.2** added (13 KB gzip); `ReactQueryDevtools` lazy-loaded in dev only
+- **`useTrainingLogQuery`**: replaces `useTrainingLog` in DataContext; `useQuery` with `initialData` from localStorage (zero flash), staleTime 30s, `refetchOnWindowFocus`, optimistic `setLog()` with TQ cache + localStorage update + Supabase background sync + `invalidateQueries`
+- **`useProfileQuery`**: replaces `useProfileSync` in DataContext; same pattern; staleTime 60s; preserves new-user local→remote migration logic
+- **`useSessionComments`**: TQ cache seeded after `fetchComments`; `invalidateQueries` after post/edit/delete mutations
+- **`DataContext.jsx`**: imports new TQ hooks; recovery/injuries/testResults/raceResults unchanged
+- **`App.jsx`**: `QueryClientProvider` wraps `DataProvider`; `TQDevtools` lazy via `import.meta.env.DEV`
+- 12 new tests (query key, offline data, setLog/setProfile signatures); `useSessionComments.test.js` TQ mock added
+- `docs/ops/tanstack_query_pattern.md`: pattern guide for new flows
+
+DEPENDS ON: v9.2.7 (G1 onboarding, DataContext shape)
+
+---
+
 ## [v9.2.7] — 2026-04-21
 
 ### G1 — Smart QuickAdd defaults, Valibot validation, first-session flow

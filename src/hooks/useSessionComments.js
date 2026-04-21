@@ -10,6 +10,7 @@
 //   • session_views upsert on mount (drives CoachPresenceBadge)
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { computeBackoff }       from '../lib/realtimeBackoff.js'
 import { reportStatus, removeStatus } from '../lib/realtimeStatus.js'
@@ -34,7 +35,12 @@ const MAX_RETRY = 6
  *   deleteComment: (commentId: string) => Promise<void>,
  * }}
  */
+export const sessionCommentsKey = (sessionId) => ['session_comments', sessionId]
+
 export function useSessionComments(sessionId, currentUserId) {
+  const qc = useQueryClient()
+  const qKey = sessionCommentsKey(sessionId)
+
   const [comments,    setComments]    = useState([])
   const [status,      setStatus]      = useState('disconnected')
   const [typingUsers, setTypingUsers] = useState([])
@@ -76,7 +82,10 @@ export function useSessionComments(sessionId, currentUserId) {
       .select('*')
       .eq('session_id', sessionId)
       .order('created_at', { ascending: true })
-    if (data) setComments(data)
+    if (data) {
+      setComments(data)
+      qc.setQueryData(qKey, data)   // seed TQ cache for cross-component dedup
+    }
   }
 
   // ── Realtime subscription ─────────────────────────────────────────────────────
@@ -186,6 +195,7 @@ export function useSessionComments(sessionId, currentUserId) {
       )
     }
     // queued=true: leave optimistic row; it'll be reconciled when Realtime echoes the insert
+    if (!queued) qc.invalidateQueries({ queryKey: qKey })
 
     return { queued }
   }, [sessionId, currentUserId])
@@ -199,8 +209,9 @@ export function useSessionComments(sessionId, currentUserId) {
           : c
         )
       )
+      qc.invalidateQueries({ queryKey: qKey })
     }
-  }, [])
+  }, [qc, qKey])
 
   const deleteComment = useCallback(async (commentId) => {
     const { error } = await dbDeleteComment(supabase, commentId)
@@ -211,8 +222,9 @@ export function useSessionComments(sessionId, currentUserId) {
           : c
         )
       )
+      qc.invalidateQueries({ queryKey: qKey })
     }
-  }, [])
+  }, [qc, qKey])
 
   return { comments, status, typingUsers, postComment, editComment, deleteComment }
 }
