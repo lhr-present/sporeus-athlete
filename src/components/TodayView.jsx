@@ -24,7 +24,7 @@ import { S } from '../styles.js'
 import { getOrientationStep, ORIENTATION_MESSAGES } from '../lib/orientation.js'
 import NextActionCard from './NextActionCard.jsx'
 const MorningCheckIn = lazy(() => import('./MorningCheckIn.jsx'))
-import { computeHRVTrend } from '../lib/hrv.js'
+import { computeHRVTrend, isHRVSuppressed } from '../lib/hrv.js'
 import { findSeasonalPatterns } from '../lib/patterns.js'
 import { computeMonotony } from '../lib/trainingLoad.js'
 
@@ -117,6 +117,17 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
   const seasonal   = useMemo(() => findSeasonalPatterns(log || [], recovery || []), [log, recovery])
   const thisMonth  = new Date().toLocaleString('en', { month: 'short' })
   const weekLoad   = useMemo(() => computeMonotony(log || []), [log])
+
+  // M1 — HRV suppression alert (isHRVSuppressed: CV ≥10% AND latest below mean)
+  const hrvSuppressed = useMemo(() => (recovery || []).length >= 3 ? isHRVSuppressed(recovery || []) : false, [recovery])
+
+  // M2 — Latest RESTQ result
+  const restqLatest = (() => {
+    try {
+      const history = JSON.parse(localStorage.getItem('sporeus-restq-history') || '[]')
+      return history.length > 0 ? history[history.length - 1] : null
+    } catch { return null }
+  })()
 
   // L1 — predictFitness forecast strip (gated: ≥14 sessions)
   const fitnessForecast = useMemo(() => (log || []).length >= 14 ? predictFitness(log || []) : null, [log])
@@ -483,6 +494,16 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
         )
       })()}
 
+      {/* ── M1 — HRV suppression alert (isHRVSuppressed) ───────────────────── */}
+      {hrvSuppressed && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 12px', background: '#e0303011', border: '1px solid #e0303044', borderRadius: '3px', marginBottom: '10px', fontFamily: MONO }}>
+          <span style={{ color: RED, fontWeight: 700, fontSize: '12px', flexShrink: 0 }}>⬇ HRV</span>
+          <div style={{ fontSize: '10px', color: RED }}>
+            {lang === 'tr' ? 'HRV baskılanmış — yalnızca kolay antrenman. (Plews 2013)' : 'HRV suppressed — easy session only. (Plews 2013)'}
+          </div>
+        </div>
+      )}
+
       {/* ── Next Action card — G3 rules-based ──────────────────────────────── */}
       <NextActionCard />
 
@@ -518,6 +539,12 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
             {yesterdayEntry && (
               <div style={{ fontFamily: MONO, fontSize: '10px', color: '#888', marginTop: '6px' }}>
                 Yesterday: {yesterdayEntry.tss} TSS {yesterdayEntry.type} · {yesterdayEntry.duration}min
+              </div>
+            )}
+            {/* M5 — Yesterday's session note */}
+            {yesterdayEntry?.notes && (
+              <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', marginTop: '4px', fontStyle: 'italic', paddingLeft: '8px', borderLeft: '2px solid #333' }}>
+                "{yesterdayEntry.notes}"
               </div>
             )}
             {timeAdvice && (
@@ -1028,6 +1055,26 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
           <span style={{ fontSize: '20px', flexShrink: 0 }}>📋</span>
         </div>
       )}
+
+      {/* ── M2 — Latest RESTQ result badge ───────────────────────────────── */}
+      {restqLatest && !restqDue && (() => {
+        const INTERP_C = { well_recovered: GREEN, adequate: BLUE, watch: AMBER, overreaching_risk: RED }
+        const ic = INTERP_C[restqLatest.interpretation] || '#555'
+        return (
+          <div style={{ fontFamily: MONO, fontSize: '10px', padding: '7px 12px', marginBottom: '10px', background: `${ic}11`, border: `1px solid ${ic}33`, borderRadius: '3px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ minWidth: '36px', textAlign: 'center' }}>
+              <div style={{ fontSize: '16px', fontWeight: 700, color: ic, lineHeight: 1 }}>{restqLatest.balance?.toFixed(1) ?? '—'}</div>
+              <div style={{ fontSize: '7px', color: '#555', letterSpacing: '0.06em' }}>RESTQ</div>
+            </div>
+            <div>
+              <div style={{ color: ic, fontWeight: 700, letterSpacing: '0.06em' }}>
+                {lang === 'tr' ? restqLatest.interpretationLabel?.tr : restqLatest.interpretationLabel?.en}
+              </div>
+              <div style={{ fontSize: '9px', color: '#444', marginTop: '2px' }}>{restqLatest.date}</div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── Card 4: Smart Suggestion ───────────────────────────────────────── */}
       <div style={{ ...card }}>

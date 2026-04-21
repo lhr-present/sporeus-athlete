@@ -1,5 +1,19 @@
 # Debt Session Log
 
+## M1–M5 — Unused function surfacing + data display (2026-04-22)
+
+**Changes:**
+- `src/components/TodayView.jsx`: M1 `isHRVSuppressed` red alert strip (above NextActionCard, gate recovery≥3); M2 RESTQ latest balance badge (between RESTQ nudge + Smart Suggestion, gate !restqDue); M5 yesterday session note quoted block in Morning Brief
+- `src/components/TrainingLog.jsx`: M3 STR/FIT source badge before notes in session rows
+- `src/components/Dashboard.jsx`: M4 SESSION NOTES card (last 3 entries with notes, after RecentSessionsCard)
+
+**Tests:** 2728 (unchanged) — all pass.
+**Semver:** v10.1.0
+
+**Status: ✅ M1–M5 COMPLETE**
+
+---
+
 ## L1–L5 — New feature enhancements (2026-04-21)
 
 Genuine UX additions: fitness trajectory forecast, race countdown, recovery baseline, goal context.

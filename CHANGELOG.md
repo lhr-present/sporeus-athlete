@@ -4,6 +4,25 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v10.1.0] — 2026-04-22
+
+### M1–M5 — Unused function surfacing + data field display
+
+Five enhancements: one unused function wired, four stored-data fields surfaced.
+
+- **M1 — `isHRVSuppressed` alert in `TodayView.jsx`**: Red alert strip ("HRV suppressed — easy session only. Plews 2013") shown above NextActionCard when `isHRVSuppressed(recovery)` is true (HRV CV ≥ 10% AND latest below mean). Gated `recovery.length >= 3`. Wires the only remaining unused hrv.js export.
+- **M2 — Latest RESTQ result badge in `TodayView.jsx`**: Shows most recent RESTQ balance score and interpretation label (green/blue/amber/red) between RESTQ nudge card and Smart Suggestion. Gated: history exists AND `!restqDue` (complements the nudge, not duplicates it).
+- **M3 — Source badge in `TrainingLog.jsx` session rows**: `STR` (orange, Strava) or `FIT` (blue) label before notes text when `entry.source === 'strava'` or `'fit'`. Manual entries show no badge (default assumption).
+- **M4 — Recent session notes widget in `Dashboard.jsx`**: Compact card "SESSION NOTES" showing last 3 entries with non-empty notes (date · type · TSS + note text). Inserted after RecentSessionsCard. Gate: at least 1 entry with notes in filtered log.
+- **M5 — Yesterday's session note in `TodayView.jsx` Morning Brief**: If `yesterdayEntry.notes` exists, shows it as an italicised quote below the "Yesterday: X TSS…" line with a left border accent.
+
+**Tests:** 2728 (unchanged) — all pass. Build: clean.
+**Semver:** v10.1.0
+
+DEPENDS ON: v10.0.0 (L-series, predictFitness, isHRVSuppressed now wired)
+
+---
+
 ## [v10.0.0] — 2026-04-21
 
 ### L1–L5 — New feature enhancements (fitness forecast, race countdown, recovery baseline, goal context)

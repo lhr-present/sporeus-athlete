@@ -404,6 +404,27 @@ export default function Dashboard({ log }) {
 
       <RecentSessionsCard filteredLog={filteredLog} rangeLabel={rangeLabel} dl={dl}/>
 
+      {/* M4 — Recent session notes */}
+      {(() => {
+        const withNotes = [...(filteredLog || [])].reverse().filter(e => e.notes?.trim()).slice(0, 3)
+        if (withNotes.length === 0) return null
+        return (
+          <div className="sp-card" style={{ ...S.card, animationDelay: '155ms' }}>
+            <div style={S.cardTitle}>SESSION NOTES</div>
+            {withNotes.map((e, i) => (
+              <div key={i} style={{ marginBottom: i < withNotes.length - 1 ? '10px' : 0, borderBottom: i < withNotes.length - 1 ? '1px solid var(--border)' : 'none', paddingBottom: i < withNotes.length - 1 ? '10px' : 0 }}>
+                <div style={{ ...S.mono, fontSize: '9px', color: '#555', marginBottom: '3px', letterSpacing: '0.06em' }}>
+                  {e.date} · {e.type} · {e.tss} TSS
+                </div>
+                <div style={{ ...S.mono, fontSize: '11px', color: 'var(--text)', lineHeight: 1.6 }}>
+                  {e.notes}
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
+
       {dl.weekly && log.length > 0 && (
         <div className="sp-card" style={{ ...S.card, animationDelay: '170ms' }}>
           <div style={S.cardTitle}>WEEKLY VOLUME — LAST 8 WEEKS</div>
