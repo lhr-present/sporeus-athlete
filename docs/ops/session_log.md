@@ -1,5 +1,20 @@
 # Debt Session Log
 
+## G1 — Smart QuickAdd defaults + first-session flow (2026-04-21)
+
+**Changes:**
+- `QuickAddModal.jsx`: sport-based default type, duration=45, RPE=6 defaults; Valibot SessionSchema; post-save confirmation phase (2.2s); "Training Load (TSS)" label; Foster 2001 citation; first-session 🏆 celebration; `isFirst` prop
+- `App.jsx`: passes `profile` and `isFirst` props to QuickAddModal
+- `useAppState.js`: `handleAddSession` auto-navigates to Today tab after first session (2.4s delay)
+- `src/components/__tests__/QuickAddModal.test.jsx`: 18 new tests (NEW file)
+- `docs/ops/new_user_flow.md`: flow documentation
+
+**Tests:** 2649 (was 2631) — all pass.
+
+**Status: ✅ G1 COMPLETE**
+
+---
+
 ## F1 — Auth flow audit (2026-04-21)
 
 **Gate:** F-series pre-flight passed (5 ✅ in log, Sentry DSN set, route-smoke 27/27).

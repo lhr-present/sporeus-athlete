@@ -415,6 +415,8 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
           <QuickAddModal
             onAdd={handleAddSession}
             onClose={() => setShowQuickAdd(false)}
+            profile={profile}
+            isFirst={isFirstSession}
           />
         </Suspense>
       )}

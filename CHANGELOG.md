@@ -4,6 +4,20 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v9.2.7] — 2026-04-21
+
+### G1 — Smart QuickAdd defaults, Valibot validation, first-session flow
+
+- **QuickAddModal**: sport-based default session type (Running→Easy Run, Cycling→Easy Ride, Swimming→Easy Swim); duration defaults to 45 min; RPE effort labels (5 plain-language levels); Valibot `SessionSchema` validates before submit; post-save confirmation phase (2.2s checkmark + Training Load summary); "Training Load (TSS)" label replaces "Est. TSS"; Foster 2001 sRPE citation shown; `isFirst` prop triggers 🏆 first-step celebration
+- **App.jsx**: passes `profile` and `isFirst={log.length === 0}` to QuickAddModal
+- **useAppState.js**: `handleAddSession` detects first entry and auto-navigates to Today tab after 2.4s
+- **18 new tests** in `QuickAddModal.test.jsx` (5 describe blocks: defaults, TSS label, RPE labels, validation, submission/close)
+- `docs/ops/new_user_flow.md`: new-user journey documented
+
+DEPENDS ON: v9.2.6 (AuthGate, profile shape)
+
+---
+
 ## [v9.2.6] — 2026-04-21
 
 ### F1 — Auth flow audit & Google sign-in hardening

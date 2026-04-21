@@ -343,14 +343,18 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   }
 
   const handleAddSession = (entry) => {
+    const wasFirst = log.length === 0
     setLog(prev => {
       const next = [...prev, sanitizeLogEntry(entry)]
-      // First-ever session milestone — fire once
       if (prev.length === 0) {
         emitEvent('first_session_logged', { sport: entry.type || 'unknown' })
       }
       return next
     })
+    // After first session, navigate to Today so the orientation card updates
+    if (wasFirst) {
+      setTimeout(() => handleTabClick('today'), 2400)
+    }
   }
 
   // ── Attribution: first_week_completed milestone ───────────────────────────
