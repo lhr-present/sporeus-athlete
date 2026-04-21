@@ -22,6 +22,7 @@ import { calculateACWR, calculateConsistency, generateWeeklyRecap } from '../lib
 import { BANISTER } from '../lib/sport/constants.js'
 import { S } from '../styles.js'
 import { getOrientationStep, ORIENTATION_MESSAGES } from '../lib/orientation.js'
+import NextActionCard from './NextActionCard.jsx'
 
 const EMBED_MODE = new URLSearchParams(window.location.search).get('embed') === 'true'
 
@@ -408,6 +409,9 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
           </span>
         </div>
       )}
+
+      {/* ── Next Action card — G3 rules-based ──────────────────────────────── */}
+      <NextActionCard />
 
       {/* ── Morning Brief ─────────────────────────────────────────────────── */}
       {!digest.empty && (() => {

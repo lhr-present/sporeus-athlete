@@ -1,5 +1,20 @@
 # Debt Session Log
 
+## G3 — Rules-based next-action card (2026-04-21)
+
+**Changes:**
+- `src/lib/nextAction.js`: pure rules engine — 9 priority-ordered rules (no_sessions, acwr_spike, wellness_poor, acwr_high, tsb_deep, race_taper, tsb_high, tsb_low, acwr_low, default); bilingual; citations; `isDismissed`/`dismissRule` 24h suppress
+- `src/components/NextActionCard.jsx`: card component — reads from `useData()`, computes action, dismissible per-rule; color-coded by severity
+- `src/components/TodayView.jsx`: `<NextActionCard />` inserted above Morning Brief
+- `src/lib/__tests__/nextAction.test.js`: 29 tests covering all 9 rules + dismissal + output shape
+
+**Tests:** 2690 (was 2661) — all pass.
+**Semver:** v9.3.0 — first new user-visible feature since E12.
+
+**Status: ✅ G3 COMPLETE**
+
+---
+
 ## G2 — TanStack Query for three core data flows (2026-04-21)
 
 **Changes:**

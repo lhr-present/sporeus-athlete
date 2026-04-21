@@ -4,6 +4,21 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v9.3.0] — 2026-04-21
+
+### G3 — Rules-based next-action card
+
+First new user-visible feature since E12. Above-the-fold card on TodayView that tells the user what to do next — replacing passive data display with active guidance.
+
+- **`src/lib/nextAction.js`** (pure): 9 priority-ordered rules — `no_sessions` (orientation), `acwr_spike` (Gabbett 2016 — ACWR > 1.5 → mandatory rest), `wellness_poor` (Meeusen 2013 — low wellbeing), `acwr_high` (ACWR 1.3–1.5 → caution), `tsb_deep` (Banister 1991 — TSB < −20 → rest), `race_taper` (Mujika 2003 — race ≤14d), `tsb_high` (Coggan 2003 — quality window), `tsb_low` (fatigue → easy), `acwr_low` (below base → build), `default` (Seiler 2010 — moderate session). Every rule bilingual (EN/TR) + citation.
+- **`src/components/NextActionCard.jsx`**: color-coded card (red/amber/green/blue/muted), dismiss button suppresses rule for 24h via `sporeus-nac-dismissed-{ruleId}` localStorage key
+- **`TodayView.jsx`**: `<NextActionCard />` renders above Morning Brief
+- **29 tests** in `nextAction.test.js` (all 9 rules, output shape, dismissal)
+
+DEPENDS ON: v9.2.8 (DataContext with TQ hooks)
+
+---
+
 ## [v9.2.8] — 2026-04-21
 
 ### G2 — TanStack Query v5 for training log, profile, and session comments
