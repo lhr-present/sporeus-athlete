@@ -4,6 +4,20 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v9.4.0] — 2026-04-21
+
+### G4 — E14 Race Readiness Calculator
+
+- **`RaceReadiness.jsx`**: new RACE READY tab — 0–100 readiness score, A+/A/B/C/D/F grade, traffic-light indicator (green ≥75, amber 55–74, red <55), 10-factor breakdown with progress bars (FITNESS, FRESHNESS, TAPER, CONSISTENCY, RECOVERY, SLEEP, INJURY, COMPLIANCE, ZONE BALANCE, LONG SESSION), top-3 improvement areas, race date + goal inputs with save-to-profile, citation footer (Banister 1991, Coggan 2003, Morton 1991, Mujika 2003)
+- Uses existing `computeRaceReadiness()` from `intelligence.js` — no new computation added
+- **LangCtx**: `t_race` label (EN: 'RACE READY', TR: 'YARIŞ HAZIRLIĞI'); `race` tab added to TABS
+- **App.jsx**: lazy import + `tab === 'race'` render
+- **15 tests** in `raceReadiness.test.js` (acceptance gate, boundary conditions, output shape, injury suppression)
+
+DEPENDS ON: v9.3.0 (DataContext via useData, G3 rules card)
+
+---
+
 ## [v9.3.0] — 2026-04-21
 
 ### G3 — Rules-based next-action card

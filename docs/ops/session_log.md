@@ -1,5 +1,20 @@
 # Debt Session Log
 
+## G4 — E14 Race Readiness Calculator (2026-04-21)
+
+**Changes:**
+- `src/components/RaceReadiness.jsx`: new tab component — score (0–100), grade (A+–F), traffic-light, 10-factor breakdown with progress bars, top-3 improvement areas, race date + goal inputs, save to profile, citation footer
+- `src/contexts/LangCtx.jsx`: `t_race` label (EN: 'RACE READY', TR: 'YARIŞ HAZIRLIĞI'); `{ id: 'race', icon: '▶', lk: 't_race' }` tab added
+- `src/App.jsx`: lazy import `RaceReadiness` + `tab === 'race'` render
+- `src/lib/__tests__/raceReadiness.test.js`: 15 tests (acceptance gate, boundary conditions, output shape, injury suppression)
+
+**Tests:** 2705 (was 2690) — all pass.
+**Semver:** v9.4.0
+
+**Status: ✅ G4 COMPLETE**
+
+---
+
 ## G3 — Rules-based next-action card (2026-04-21)
 
 **Changes:**

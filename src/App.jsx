@@ -53,7 +53,8 @@ const Dashboard     = lazy(() => import('./components/Dashboard.jsx'))
 const Profile       = lazy(() => import('./components/Profile.jsx'))
 const TestProtocols = lazy(() => import('./components/Protocols.jsx'))
 const Periodization = lazy(() => import('./components/Periodization.jsx'))
-const ReportsTab    = lazy(() => import('./components/ReportsTab.jsx'))
+const ReportsTab     = lazy(() => import('./components/ReportsTab.jsx'))
+const RaceReadiness  = lazy(() => import('./components/RaceReadiness.jsx'))
 const UpgradeModal  = lazy(() => import('./components/UpgradeModal.jsx'))
 const GlobalSearch   = lazy(() => import('./components/GlobalSearch.jsx'))
 const ChapterLanding = lazy(() => import('./pages/book/ChapterLanding.jsx'))
@@ -409,6 +410,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
           {tab === 'profile'      && <AsyncBoundary name="Profile"><Profile log={log} authUser={authUser}/></AsyncBoundary>}
           {tab === 'sport'        && <AsyncBoundary name="Sport Plan"><SportProgramBuilder/></AsyncBoundary>}
           {tab === 'reports'      && <AsyncBoundary name="Reports"><ReportsTab authUser={authUser} authProfile={authProfile} lang={lang}/></AsyncBoundary>}
+          {tab === 'race'         && <AsyncBoundary name="Race Readiness"><RaceReadiness /></AsyncBoundary>}
         </main>
 
         <footer style={S.footer}>
