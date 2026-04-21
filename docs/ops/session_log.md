@@ -1,5 +1,22 @@
 # Debt Session Log
 
+## J1–J5 — Science interpretation library surfaced (2026-04-21)
+
+Five enhancements wiring the `src/lib/science/interpretations.js` and `subThresholdTime.js` functions into existing UI cards.
+
+**Changes:**
+- `src/components/dashboard/ACWRCard.jsx`: `interpretACWR(acwrVal)` appended below 8-week trend chart — bilingual text + citation (Gabbett 2016)
+- `src/components/Dashboard.jsx`: `interpretCTL` + `interpretTSB` block below ReadinessCard (gated log.length ≥ 14, uses prev28CTL from `daily[−28]`)
+- `src/components/Dashboard.jsx`: `interpretMonotony(mono, strain)` text appended inside monotony index card (Foster 1998)
+- `src/components/Dashboard.jsx`: `subThresholdTrend` 8-week bar chart (Seiler 2010) — gated on profile.maxhr or profile.ftp; thresholdHR = 90% maxHR; shows bar for each week + this-week highlight in green
+
+**Tests:** 2728 (unchanged) — all pass. Build: clean.
+**Semver:** v9.8.0
+
+**Status: ✅ J1–J5 COMPLETE**
+
+---
+
 ## I1–I5 — Intelligence surfacing II (2026-04-21)
 
 Five enhancements wiring existing tested pure functions into new UI locations (second pass).

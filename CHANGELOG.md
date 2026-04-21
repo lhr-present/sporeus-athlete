@@ -4,6 +4,25 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v9.8.0] — 2026-04-21
+
+### J1–J5 — Science interpretation library surfaced (interpretations.js + subThresholdTime.js)
+
+Five enhancements wiring the previously unused science interpretation functions into existing UI cards.
+
+- **J1 — `interpretACWR` in ACWRCard** (`dashboard/ACWRCard.jsx`): bilingual science interpretation (Gabbett 2016 / Hulin 2016) appended below the 8-week ACWR chart. Explains current ratio meaning and action guidance with citation.
+- **J2 — `interpretCTL` in Dashboard**: CTL fitness-phase interpretation (Banister/Coggan) shown below ReadinessCard, gated `log.length >= 14`. Includes 4-week trend using `daily[−28].ctl`.
+- **J3 — `interpretTSB` in Dashboard**: TSB zone interpretation (Coggan zones) shown alongside CTL interpretation, same gate.
+- **J4 — `interpretMonotony` in Dashboard monotony section**: bilingual interpretation text (Foster 1998) added beneath the monotony index number in the zone distribution card.
+- **J5 — `subThresholdTrend` 8-week bar chart in Dashboard** (`src/lib/science/subThresholdTime.js`, Seiler 2010): compact 8-bar sparkline of weekly Z1+Z2 minutes. Gated on `profile.maxhr` (uses 90% of max HR as threshold) or `profile.ftp` (uses FTP as power threshold). Only renders when at least one non-null week exists.
+
+**Tests:** 2728 (unchanged) — all pass. Build: clean.
+**Semver:** v9.8.0
+
+DEPENDS ON: v9.7.0 (I-series wiring)
+
+---
+
 ## [v9.7.0] — 2026-04-21
 
 ### I1–I5 — Intelligence surfacing II: 5 more enhancements using existing pure functions

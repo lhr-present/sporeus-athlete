@@ -13,6 +13,8 @@ import { getRecentAchievement } from './Achievements.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { SPORT_BRANCHES, ATHLETE_LEVELS, LEVEL_CONFIG, DASH_CARD_DEFS } from '../lib/constants.js'
 import { assessDataQuality } from '../lib/intelligence.js'
+import { interpretCTL, interpretTSB, interpretMonotony } from '../lib/science/interpretations.js'
+import { subThresholdTrend } from '../lib/science/subThresholdTime.js'
 import { useData } from '../contexts/DataContext.jsx'
 
 // ── Previously extracted sub-components ──────────────────────────────────────
@@ -120,6 +122,24 @@ export default function Dashboard({ log }) {
     date: e.date, avgHR: e.avgHR, np: e.np, avgPower: e.avgPower,
     avgPaceMPerMin: e.avgPaceMPerMin, sport: e.sport,
   })), [log])
+
+  // J2/J3 — CTL + TSB interpretations (Banister/Coggan citations)
+  const prev28CTL  = daily.length >= 29 ? (daily[daily.length - 29]?.ctl ?? null) : null
+  const ctlInterp  = useMemo(() => interpretCTL(ctl, prev28CTL), [ctl, prev28CTL])
+  const tsbInterp  = useMemo(() => interpretTSB(tsb), [tsb])
+
+  // J5 — Sub-threshold 8-week trend (Seiler 2010)
+  const subZones = useMemo(() => {
+    const hr = profile?.maxhr ? Math.round(profile.maxhr * 0.9) : null
+    const pw = profile?.ftp   ? parseFloat(profile.ftp)         : null
+    if (!hr && !pw) return null
+    return { ...(hr ? { thresholdHR: hr } : {}), ...(pw ? { thresholdPower: pw } : {}) }
+  }, [profile?.maxhr, profile?.ftp])
+
+  const subTrend = useMemo(
+    () => subZones ? subThresholdTrend(log, subZones, 8) : [],
+    [log, subZones]
+  )
 
   // ── Header badges (sport, level, coach, data quality) ─────────────────────────
   const headerBadges = (
@@ -282,6 +302,15 @@ export default function Dashboard({ log }) {
         consistency={consistency} dqResult={dqResult} coachingMsg={coachingMsg} totalTSS={totalTSS}
       />
 
+      {/* J2+J3 — CTL + TSB science interpretations */}
+      {lc.showCTL && log.length >= 14 && (
+        <div style={{ ...S.mono, fontSize: '10px', color: '#555', lineHeight: 1.7, padding: '8px 12px', marginBottom: '10px', borderLeft: '2px solid #0064ff44', background: 'var(--surface)' }}>
+          <div style={{ color: '#888', marginBottom: '2px' }}>{lang === 'tr' ? ctlInterp.tr : ctlInterp.en}</div>
+          <div style={{ color: '#888' }}>{lang === 'tr' ? tsbInterp.tr : tsbInterp.en}</div>
+          <div style={{ color: '#2a2a2a', fontSize: '9px', marginTop: '3px' }}>{ctlInterp.citation}</div>
+        </div>
+      )}
+
       <ErrorBoundary inline name="Race Readiness">
         <RaceReadinessCard log={log} recovery={recovery} injuries={injuries} profile={profile} plan={plan} planStatus={planStatus} lang={lang}/>
       </ErrorBoundary>
@@ -367,6 +396,14 @@ export default function Dashboard({ log }) {
                   <div style={{ ...S.mono, fontSize: '9px', color: '#888' }}>MONOTONY INDEX</div>
                   <div style={{ ...S.mono, fontSize: '22px', fontWeight: 600, color: monoRed ? '#e03030' : '#1a1a1a' }}>{mono}</div>
                   <div style={{ ...S.mono, fontSize: '9px', color: '#aaa' }}>{monoRed ? '⚠ INJURY RISK' : 'Normal'} (alert &gt;2.0)</div>
+                  {(() => {
+                    const mi = interpretMonotony(mono, strain)
+                    return (
+                      <div style={{ ...S.mono, fontSize: '9px', color: '#555', marginTop: '5px', lineHeight: 1.5 }}>
+                        {lang === 'tr' ? mi.tr : mi.en}
+                      </div>
+                    )
+                  })()}
                 </div>
                 <div style={{ ...S.card, marginBottom: 0, borderLeft: `3px solid ${strainRed ? '#e03030' : '#5bc25b'}` }}>
                   <div style={{ ...S.mono, fontSize: '9px', color: '#888' }}>STRAIN INDEX</div>
@@ -375,6 +412,40 @@ export default function Dashboard({ log }) {
                 </div>
               </div>
             )}
+          </div>
+        )
+      })()}
+
+      {/* J5 — Sub-threshold 8-week trend (Seiler 2010) */}
+      {subZones && subTrend.some(w => w.minutes !== null) && (() => {
+        const maxMin = Math.max(...subTrend.map(w => w.minutes ?? 0), 1)
+        const thisWk = subTrend[subTrend.length - 1]
+        return (
+          <div className="sp-card" style={{ ...S.card, animationDelay: '185ms' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
+              <div style={S.cardTitle}>
+                {lang === 'tr' ? 'EŞİK ALTI SÜRE TRENDİ' : 'SUB-THRESHOLD TREND'}
+              </div>
+              {thisWk?.minutes !== null && (
+                <div style={{ ...S.mono, fontSize: '11px', color: '#5bc25b' }}>
+                  {thisWk.minutes}min {lang === 'tr' ? 'bu hafta' : 'this week'}
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '3px', alignItems: 'flex-end', height: '40px' }}>
+              {subTrend.map((w, i) => {
+                const h = w.minutes !== null ? Math.max(4, Math.round(w.minutes / maxMin * 40)) : 4
+                const isThisWk = i === subTrend.length - 1
+                return (
+                  <div key={w.weekStart} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center' }}>
+                    <div style={{ width: '100%', height: `${h}px`, background: w.minutes === null ? '#1a1a1a' : isThisWk ? '#5bc25b' : '#0064ff66', borderRadius: '2px' }} />
+                  </div>
+                )
+              })}
+            </div>
+            <div style={{ ...S.mono, fontSize: '8px', color: '#333', marginTop: '5px' }}>
+              8W · Z1+Z2 (Seiler 2010) · {subZones.thresholdHR ? `THR ${subZones.thresholdHR}bpm` : `FTP ${subZones.thresholdPower}W`}
+            </div>
           </div>
         )
       })()}

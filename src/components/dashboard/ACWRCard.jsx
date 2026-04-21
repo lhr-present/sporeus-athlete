@@ -2,9 +2,10 @@ import { useContext } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { HelpTip } from '../ui.jsx'
+import { interpretACWR } from '../../lib/science/interpretations.js'
 
 export default function ACWRCard({ log, lc, dl }) {
-  const { t } = useContext(LangCtx)
+  const { t, lang } = useContext(LangCtx)
 
   if (!dl.acwr || !lc.showACWR) return null
   if (log.length < 7) return null
@@ -74,6 +75,15 @@ export default function ACWRCard({ log, lc, dl }) {
         </svg>
       </div>
       <div style={{ ...S.mono, fontSize: '9px', color: '#aaa', marginTop: '6px' }}>{t('acwrNote')}</div>
+      {(() => {
+        const interp = interpretACWR(acwrVal)
+        return (
+          <div style={{ ...S.mono, fontSize: '10px', color: '#666', marginTop: '8px', lineHeight: 1.6, borderTop: '1px solid var(--border)', paddingTop: '6px' }}>
+            {lang === 'tr' ? interp.tr : interp.en}
+            <span style={{ color: '#3a3a3a', marginLeft: '4px', fontSize: '9px' }}>· {interp.citation}</span>
+          </div>
+        )
+      })()}
       <div style={{ marginTop: '12px' }}>
         <div style={{ ...S.mono, fontSize: '9px', color: '#555', letterSpacing: '0.08em', marginBottom: '6px' }}>NEXT WEEK FORECAST (TSS targets)</div>
         <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
