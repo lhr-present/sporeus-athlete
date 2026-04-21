@@ -25,6 +25,7 @@ import { getOrientationStep, ORIENTATION_MESSAGES } from '../lib/orientation.js'
 import NextActionCard from './NextActionCard.jsx'
 const MorningCheckIn = lazy(() => import('./MorningCheckIn.jsx'))
 import { computeHRVTrend } from '../lib/hrv.js'
+import { findSeasonalPatterns } from '../lib/patterns.js'
 
 const EMBED_MODE = new URLSearchParams(window.location.search).get('embed') === 'true'
 
@@ -111,7 +112,9 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
 
   const todayRec = (recovery || []).find(e => e.date === today)
 
-  const hrvTrend = useMemo(() => computeHRVTrend(recovery || []), [recovery])
+  const hrvTrend   = useMemo(() => computeHRVTrend(recovery || []), [recovery])
+  const seasonal   = useMemo(() => findSeasonalPatterns(log || [], recovery || []), [log, recovery])
+  const thisMonth  = new Date().toLocaleString('en', { month: 'short' })
 
   // Coach message unread count (athlete reads from localStorage)
   // Coach sessions RSVP + announcements
@@ -464,6 +467,23 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
 
       {/* ── Next Action card — G3 rules-based ──────────────────────────────── */}
       <NextActionCard />
+
+      {/* ── Seasonal pattern badge — I5 ────────────────────────────────────── */}
+      {seasonal.strongMonths.length > 0 && (() => {
+        const isPeak = seasonal.strongMonths.includes(thisMonth)
+        const isWeak = seasonal.weakMonths.includes(thisMonth)
+        if (!isPeak && !isWeak) return null
+        const tc    = isPeak ? GREEN : AMBER
+        const label = isPeak
+          ? (lang === 'tr' ? 'ZİRVE AY' : 'PEAK MONTH')
+          : (lang === 'tr' ? 'DÜŞÜK AY'  : 'OFF-PEAK MONTH')
+        return (
+          <div style={{ fontFamily: MONO, fontSize: '10px', color: tc, padding: '7px 12px', background: `${tc}11`, border: `1px solid ${tc}33`, borderRadius: '3px', marginBottom: '10px', lineHeight: 1.7 }}>
+            <span style={{ fontWeight: 700, letterSpacing: '0.08em' }}>◈ {label}</span>
+            <span style={{ color: '#555', marginLeft: '8px' }}>{lang === 'tr' ? seasonal.tr : seasonal.en}</span>
+          </div>
+        )
+      })()}
 
       {/* ── Morning Brief ─────────────────────────────────────────────────── */}
       {!digest.empty && (() => {

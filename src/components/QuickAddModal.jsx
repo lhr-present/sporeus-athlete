@@ -5,10 +5,12 @@ import { useState, useEffect, useRef, useContext } from 'react'
 import * as v from 'valibot'
 import { useFocusTrap } from '../hooks/useFocusTrap.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
+import { useData } from '../contexts/DataContext.jsx'
 import { S } from '../styles.js'
 import { calcTSS } from '../lib/formulas.js'
 import { SESSION_TYPES_BY_DISCIPLINE } from '../lib/constants.js'
 import { addNotification } from '../lib/notificationCenter.js'
+import { analyseSession } from '../lib/intelligence.js'
 
 const MONO = "'IBM Plex Mono', monospace"
 const today = () => new Date().toISOString().slice(0, 10)
@@ -47,15 +49,17 @@ const SessionSchema = v.object({
 export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
   const { t, lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
+  const { log } = useData()
 
   const defaultType = SPORT_DEFAULT_TYPE[profile?.sport] || 'Easy Run'
 
-  const [type, setType]         = useState(defaultType)
-  const [duration, setDuration] = useState('45')
-  const [rpe, setRpe]           = useState(6)
-  const [notes, setNotes]       = useState('')
-  const [phase, setPhase]       = useState('form')   // 'form' | 'saved'
-  const [errors, setErrors]     = useState({})
+  const [type, setType]               = useState(defaultType)
+  const [duration, setDuration]       = useState('45')
+  const [rpe, setRpe]                 = useState(6)
+  const [notes, setNotes]             = useState('')
+  const [phase, setPhase]             = useState('form')   // 'form' | 'saved'
+  const [errors, setErrors]           = useState({})
+  const [sessionAnalysis, setSessionAnalysis] = useState(null)
 
   const firstRef = useRef(null)
   useEffect(() => { firstRef.current?.focus() }, [])
@@ -104,8 +108,9 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
     onAdd(entry)
     addNotification('training', isTR ? 'Antrenman Kaydedildi' : 'Session Logged',
       `${type} · ${dur}min · ${tss} TSS`, { tab: 'log' })
+    setSessionAnalysis(analyseSession(entry, (log || []).slice(-28)))
     setPhase('saved')
-    setTimeout(onClose, 2200)
+    setTimeout(onClose, 3500)
   }
 
   return (
@@ -134,9 +139,15 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
             <div style={{ fontSize: '13px', fontWeight: 700, color: '#ff6600', marginBottom: '6px' }}>
               {isTR ? 'Antrenman kaydedildi' : 'Session logged'}
             </div>
-            <div style={{ fontSize: '11px', color: '#888', marginBottom: '16px', lineHeight: 1.6 }}>
+            <div style={{ fontSize: '11px', color: '#888', marginBottom: sessionAnalysis ? '8px' : '16px', lineHeight: 1.6 }}>
               {dur} min {type} · {isTR ? 'Antrenman Yükü' : 'Training Load'} {tss}
             </div>
+            {sessionAnalysis && (
+              <div style={{ fontSize: '10px', marginBottom: '12px', padding: '8px 10px', background: 'var(--surface)', borderRadius: '3px', textAlign: 'left', lineHeight: 1.8, fontFamily: "'IBM Plex Mono', monospace" }}>
+                <div style={{ color: '#ccc' }}>{sessionAnalysis.comparison}</div>
+                <div style={{ color: '#555', marginTop: '2px' }}>{sessionAnalysis.recovery_time}</div>
+              </div>
+            )}
             {isFirst && (
               <div style={{ fontSize: '10px', color: '#5bc25b', padding: '8px 12px', border: '1px solid #2a4a2a', borderRadius: '3px', marginBottom: '12px', lineHeight: 1.6 }}>
                 {isTR ? '🏆 İlk adım tamamlandı. Bugün sekmesinde sonraki adımını gör.' : '🏆 First step done. Check the Today tab for your next step.'}

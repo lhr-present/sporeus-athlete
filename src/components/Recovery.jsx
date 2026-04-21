@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, lazy, Suspense } from 'react'
+import { useState, useEffect, useContext, useMemo, lazy, Suspense } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
@@ -12,7 +12,8 @@ import ErrorBoundary from './ErrorBoundary.jsx'
 import OSTRCQuestionnaire from './OSTRCQuestionnaire.jsx'
 import RTPProtocol from './RTPProtocol.jsx'
 import CycleTracker from './CycleTracker.jsx'
-import { predictInjuryRisk } from '../lib/intelligence.js'
+import { predictInjuryRisk, analyzeRecoveryCorrelation } from '../lib/intelligence.js'
+import { findRecoveryPatterns } from '../lib/patterns.js'
 
 export default function Recovery() {
   const { t } = useContext(LangCtx)
@@ -62,6 +63,9 @@ export default function Recovery() {
   const last7sleep  = entries.slice(-7).map(e=>parseFloat(e.sleepHrs)||0)
   const avg7sleep   = last7sleep.length ? Math.round(last7sleep.reduce((s,v)=>s+v,0)/last7sleep.length*10)/10 : 0
   const showSleepWarn = avg7sleep > 0 && avg7sleep < 7 && score < 60
+
+  const patterns = useMemo(() => findRecoveryPatterns(log, entries), [log, entries])
+  const corr     = useMemo(() => analyzeRecoveryCorrelation(log, entries), [log, entries])
 
   return (
     <div className="sp-fade">
@@ -220,6 +224,64 @@ export default function Recovery() {
           <Sparkline data={last7sleep} w={200} h={36}/>
           <div style={{ display:'flex', justifyContent:'space-between', ...S.mono, fontSize:'9px', color:'#aaa', marginTop:'4px' }}>
             {entries.slice(-7).map(e=><span key={e.date}>{e.date.slice(5)}</span>)}
+          </div>
+        </div>
+      )}
+
+      {/* I2 — Recovery patterns (findRecoveryPatterns) */}
+      {!patterns.needsMore && (
+        <div className="sp-card" style={{ ...S.card, animationDelay:'110ms' }}>
+          <div style={S.cardTitle}>{lang==='tr' ? 'KİŞİSEL DESENLER' : 'YOUR PATTERNS'}</div>
+          {(patterns.bestDay || patterns.worstDay) && (
+            <div style={{ display:'flex', gap:'12px', marginBottom:'10px', flexWrap:'wrap' }}>
+              {patterns.bestDay && (
+                <div style={{ ...S.mono, fontSize:'10px', color:'#5bc25b', border:'1px solid #5bc25b44', padding:'4px 8px', borderRadius:'3px' }}>
+                  ↑ {patterns.bestDay.day}
+                </div>
+              )}
+              {patterns.worstDay && patterns.worstDay.day !== patterns.bestDay?.day && (
+                <div style={{ ...S.mono, fontSize:'10px', color:'#e03030', border:'1px solid #e0303044', padding:'4px 8px', borderRadius:'3px' }}>
+                  ↓ {patterns.worstDay.day}
+                </div>
+              )}
+            </div>
+          )}
+          {patterns.optimalReadiness && (
+            <div style={{ ...S.mono, fontSize:'11px', color:'var(--sub)', lineHeight:1.6, marginBottom:'6px' }}>
+              {lang==='tr' ? patterns.optimalReadiness.tr : patterns.optimalReadiness.en}
+            </div>
+          )}
+          {patterns.optimalSleep && (
+            <div style={{ ...S.mono, fontSize:'11px', color:'var(--sub)', lineHeight:1.6, marginBottom:'6px' }}>
+              {lang==='tr' ? patterns.optimalSleep.tr : patterns.optimalSleep.en}
+            </div>
+          )}
+          {patterns.redFlags.slice(0,2).map(f=>(
+            <div key={f.field} style={{ ...S.mono, fontSize:'10px', color:'#f5c542', marginTop:'4px', lineHeight:1.5 }}>
+              ⚠ {lang==='tr' ? f.tr : f.en}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* I4 — Recovery correlation (analyzeRecoveryCorrelation) */}
+      {corr.correlation !== null && (
+        <div className="sp-card" style={{ ...S.card, animationDelay:'115ms' }}>
+          <div style={S.cardTitle}>{lang==='tr' ? 'YÜK → TOPARLANMA ETKİSİ' : 'LOAD → RECOVERY EFFECT'}</div>
+          {(corr.avgRecAfterHard !== null && corr.avgRecAfterEasy !== null) && (
+            <div style={{ display:'flex', gap:'16px', marginBottom:'10px' }}>
+              <div style={{ textAlign:'center' }}>
+                <div style={{ ...S.mono, fontSize:'20px', fontWeight:700, color:'#e03030' }}>{corr.avgRecAfterHard}</div>
+                <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginTop:'2px' }}>{lang==='tr' ? 'ZOR SONRASI' : 'AFTER HARD'}</div>
+              </div>
+              <div style={{ textAlign:'center' }}>
+                <div style={{ ...S.mono, fontSize:'20px', fontWeight:700, color:'#5bc25b' }}>{corr.avgRecAfterEasy}</div>
+                <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginTop:'2px' }}>{lang==='tr' ? 'KOLAY SONRASI' : 'AFTER EASY'}</div>
+              </div>
+            </div>
+          )}
+          <div style={{ ...S.mono, fontSize:'11px', color:'var(--sub)', lineHeight:1.6 }}>
+            {lang==='tr' ? corr.insight.tr : corr.insight.en}
           </div>
         </div>
       )}

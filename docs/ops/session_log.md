@@ -1,5 +1,23 @@
 # Debt Session Log
 
+## I1–I5 — Intelligence surfacing II (2026-04-21)
+
+Five enhancements wiring existing tested pure functions into new UI locations (second pass).
+
+**Changes:**
+- `src/components/QuickAddModal.jsx`: post-save shows `analyseSession` result (comparison + recovery_time); close delay 2.2s → 3.5s; `useData()` added for log access
+- `src/components/Recovery.jsx`: `findRecoveryPatterns` card (best/worst day, optimal readiness/sleep, red flags — gated ≥7 entries + 6 pairs); `analyzeRecoveryCorrelation` card (avgRecAfterHard/Easy + insight — gated 3+ pairs)
+- `src/components/Dashboard.jsx`: `EFTrendCard` (Coggan 2003, was in science/ but unmounted) lazy-loaded after InsightsPanel; efSessions useMemo transforms log to EF shape
+- `src/components/TodayView.jsx`: `findSeasonalPatterns` PEAK/OFF-PEAK badge between NextActionCard and Morning Brief (gated: 3+ months data, current month in strong/weak list)
+- `src/components/__tests__/QuickAddModal.test.jsx`: added `vi.mock('../../contexts/DataContext.jsx')` for new `useData()` call
+
+**Tests:** 2728 (unchanged) — all pass. Build: clean.
+**Semver:** v9.7.0
+
+**Status: ✅ I1–I5 COMPLETE**
+
+---
+
 ## H1–H5 — Intelligence surfacing (2026-04-21)
 
 Five enhancements that expose existing tested pure functions into new UI locations.

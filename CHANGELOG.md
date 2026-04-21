@@ -4,6 +4,25 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v9.7.0] — 2026-04-21
+
+### I1–I5 — Intelligence surfacing II: 5 more enhancements using existing pure functions
+
+Five additional enhancements wiring already-tested pure functions into new UI locations.
+
+- **I1 — analyseSession in QuickAddModal post-save** (`QuickAddModal.jsx`): post-save confirmation now calls `analyseSession(entry, log.slice(-28))` and displays comparison (above/below type average) + recovery_time estimate. Close delay extended 2.2s → 3.5s. `useData()` added for log access. Test mock updated.
+- **I2 — findRecoveryPatterns card in Recovery.jsx**: data-driven patterns card (gated: `!patterns.needsMore` — requires 7+ recovery entries and 6+ session–recovery pairs). Shows best/worst training day badges, optimal readiness range, optimal sleep range, and up to 2 red flags.
+- **I3 — EFTrendCard wired to Dashboard** (`Dashboard.jsx`): `EFTrendCard` (Coggan 2003, already in `src/components/science/` but unmounted) lazy-loaded after InsightsPanel. Transforms log to EF shape `{date, avgHR, np, avgPower, avgPaceMPerMin, sport}`. Gracefully shows "Need ≥8 sessions in 30d" for users without HR/power data.
+- **I4 — analyzeRecoveryCorrelation card in Recovery.jsx**: load-recovery effect card (gated: `corr.correlation !== null` — requires 3+ session–recovery pairs). Shows avgRecAfterHard / avgRecAfterEasy scores + insight text.
+- **I5 — findSeasonalPatterns badge in TodayView** (`TodayView.jsx`): compact PEAK MONTH / OFF-PEAK MONTH badge (gated: 3+ months of data, current month is strong or weak). Positioned between NextActionCard and Morning Brief.
+
+**Tests:** 2728 (unchanged) — all pass. Build: clean.
+**Semver:** v9.7.0
+
+DEPENDS ON: v9.6.0 (H-series, nextAction chain, MorningCheckIn)
+
+---
+
 ## [v9.6.0] — 2026-04-21
 
 ### H1–H5 — Intelligence surfacing: 5 enhancements using existing pure functions

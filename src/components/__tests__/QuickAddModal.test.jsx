@@ -7,6 +7,7 @@ import QuickAddModal from '../QuickAddModal.jsx'
 
 vi.mock('../../lib/notificationCenter.js', () => ({ addNotification: vi.fn() }))
 vi.mock('../../hooks/useFocusTrap.js', () => ({ useFocusTrap: vi.fn() }))
+vi.mock('../../contexts/DataContext.jsx', () => ({ useData: () => ({ log: [] }) }))
 
 const defaultProps = {
   onAdd: vi.fn(),

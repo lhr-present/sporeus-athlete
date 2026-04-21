@@ -16,6 +16,7 @@ import { assessDataQuality } from '../lib/intelligence.js'
 import { useData } from '../contexts/DataContext.jsx'
 
 // ── Previously extracted sub-components ──────────────────────────────────────
+const EFTrendCard = lazy(() => import('./science/EFTrendCard.jsx'))
 import InsightsPanel        from './dashboard/InsightsPanel.jsx'
 import WeekStoryCard        from './dashboard/WeekStoryCard.jsx'
 import DidYouKnowCard       from './dashboard/DidYouKnowCard.jsx'
@@ -114,6 +115,11 @@ export default function Dashboard({ log }) {
 
   const dqResult = assessDataQuality(log, recovery, testResults, profile)
   const [showDQ, setShowDQ] = useState(false)
+
+  const efSessions = useMemo(() => (log || []).map(e => ({
+    date: e.date, avgHR: e.avgHR, np: e.np, avgPower: e.avgPower,
+    avgPaceMPerMin: e.avgPaceMPerMin, sport: e.sport,
+  })), [log])
 
   // ── Header badges (sport, level, coach, data quality) ─────────────────────────
   const headerBadges = (
@@ -291,6 +297,11 @@ export default function Dashboard({ log }) {
 
       <AICoachInsights dl={dl}/>
       <InsightsPanel log={log} recovery={recovery} profile={profile} lang={lang}/>
+      <ErrorBoundary inline name="EF Trend">
+        <Suspense fallback={null}>
+          <EFTrendCard sessions={efSessions} />
+        </Suspense>
+      </ErrorBoundary>
       <YourPatternsCard log={log} recovery={recovery} injuries={injuries} profile={profile} lang={lang}/>
       <WeekStoryCard log={log} recovery={recovery} profile={profile} lang={lang}/>
       <DidYouKnowCard log={log} recovery={recovery} profile={profile} lang={lang}/>
