@@ -3,15 +3,16 @@
 // Input:  log (array), recovery (array), profile (object)
 // Output: action object | null
 //
-// 10 priority-ordered rules. Each rule has:
+// 12 priority-ordered rules. Each rule has:
 //   id:        string — unique identifier (used for 24h dismissal key)
-//   priority:  1–10 (1 = highest)
+//   priority:  1–11 (1 = highest)
 //   action:    { en, tr } — headline
 //   rationale: { en, tr } — explanation with metric values
 //   citation:  string — scientific source
 //   color:     'red' | 'amber' | 'green' | 'blue' | 'muted'
 
 import { computeHRVTrend } from './hrv.js'
+import { predictInjuryRisk } from './intelligence.js'
 
 const LAMBDA_ACUTE   = 0.25          // 4-day EWMA
 const LAMBDA_CHRONIC = 0.067         // 28-day EWMA
@@ -133,12 +134,30 @@ function evalRules(log, recovery, profile) {
     }
   }
 
-  // ── Rule 3: hrv_drift — HRV CV ≥ 10% + latest below mean (Plews 2013) ───────
+  // ── Rule 3: injury_risk_high — 5-factor model (H2) ───────────────────────────
+  const inj = predictInjuryRisk(safeLog, safeRec)
+  if (inj.level === 'HIGH') {
+    const topFactors = inj.factors.slice(0, 2).map(f => f.label).join(', ')
+    return {
+      id:        'injury_risk_high',
+      priority:  3,
+      action:    { en: 'Injury risk HIGH — reduce intensity 20-30%', tr: 'Yaralanma riski YÜKSEK — yoğunluğu %20-30 azalt' },
+      rationale: {
+        en: `Risk score ${inj.score}/100 (${topFactors}). ${inj.advice.en}`,
+        tr: `Risk skoru ${inj.score}/100 (${topFactors}). ${inj.advice.tr}`,
+      },
+      citation:  'Hulin 2016 (Br J Sports Med)',
+      color:     'red',
+      metrics:   { ctl, atl, tsb, acwr, wellness, injuryScore: inj.score },
+    }
+  }
+
+  // ── Rule 4: hrv_drift — HRV CV ≥ 10% + latest below mean (Plews 2013) ───────
   const hrv = computeHRVTrend(safeRec)
   if (hrv.trend === 'unstable' && (hrv.dropPct ?? 0) > 5) {
     return {
       id:        'hrv_drift',
-      priority:  3,
+      priority:  4,
       action:    { en: 'Easy session — HRV suppressed', tr: 'Kolay antrenman — HRV baskılı' },
       rationale: {
         en: `HRV CV ${(hrv.cv * 100).toFixed(1)}% ≥ 10% with latest ${hrv.latestHRV}ms below ${hrv.baseline}ms baseline — autonomic strain. Easy session or rest.`,
@@ -150,11 +169,32 @@ function evalRules(log, recovery, profile) {
     }
   }
 
-  // ── Rule 4: acwr_high (ACWR 1.3–1.5) — caution zone ─────────────────────────
+  // ── Rule 5: sleep_debt — avg sleep < 7h over last 7 days (H1) ───────────────
+  const w7Start = (() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().slice(0, 10) })()
+  const sleepReadings = safeRec.filter(e => e.date >= w7Start && parseFloat(e.sleepHrs) > 0)
+  if (sleepReadings.length >= 3) {
+    const avgSleep = sleepReadings.reduce((s, e) => s + parseFloat(e.sleepHrs), 0) / sleepReadings.length
+    if (avgSleep < 7) {
+      return {
+        id:        'sleep_debt',
+        priority:  5,
+        action:    { en: `Sleep debt — avg ${avgSleep.toFixed(1)}h this week`, tr: `Uyku açığı — bu hafta ort. ${avgSleep.toFixed(1)} saat` },
+        rationale: {
+          en: `7-day average sleep ${avgSleep.toFixed(1)}h < 7h target. Sleep restriction reduces reaction time, glycogen resynthesis, and HRV within 3 nights (Mah 2011).`,
+          tr: `7 günlük ort. uyku ${avgSleep.toFixed(1)} saat < 7 saat hedef. Uyku kısıtlaması reaksiyon süresini, glikojen sentezini ve HRV'yi düşürür (Mah 2011).`,
+        },
+        citation:  'Mah 2011 (SLEEP — sleep extension in athletes)',
+        color:     'amber',
+        metrics:   { ctl, atl, tsb, acwr, wellness, avgSleep: Math.round(avgSleep * 10) / 10 },
+      }
+    }
+  }
+
+  // ── Rule 6: acwr_high (ACWR 1.3–1.5) — caution zone ─────────────────────────
   if (acwr !== null && acwr > 1.3) {
     return {
       id:        'acwr_high',
-      priority:  4,
+      priority:  6,
       action:    { en: 'Active recovery or rest', tr: 'Aktif toparlanma veya dinlenme' },
       rationale: { en: `ACWR ${acwr.toFixed(2)} — caution zone (1.3–1.5). Acute load elevated above chronic base. Easy session or off day.`, tr: `ACWR ${acwr.toFixed(2)} — dikkat bölgesi. Hafif antrenman veya dinlenme.` },
       citation:  'Gabbett 2016 (Br J Sports Med)',
@@ -163,11 +203,11 @@ function evalRules(log, recovery, profile) {
     }
   }
 
-  // ── Rule 4: tsb_deep (TSB < −20) — mandatory rest ────────────────────────────
+  // ── Rule 6: tsb_deep (TSB < −20) — mandatory rest ────────────────────────────
   if (tsb < -20) {
     return {
       id:        'tsb_deep',
-      priority:  4,
+      priority:  6,
       action:    { en: 'Rest day — deep fatigue', tr: 'Dinlenme günü — derin yorgunluk' },
       rationale: { en: `TSB ${tsb} — well below optimal range (−10 to +5). CTL ${ctl}, ATL ${atl}. Accumulated fatigue suppresses adaptation.`, tr: `TSB ${tsb} — optimal aralığın altında. Yorgunluk adaptasyonu baskılıyor.` },
       citation:  'Banister 1991 (PMC model)',
@@ -176,11 +216,11 @@ function evalRules(log, recovery, profile) {
     }
   }
 
-  // ── Rule 5: race_taper (race in ≤14 days) ────────────────────────────────────
+  // ── Rule 7: race_taper (race in ≤14 days) ────────────────────────────────────
   if (daysToRace !== null && daysToRace >= 0 && daysToRace <= 14) {
     return {
       id:        'race_taper',
-      priority:  5,
+      priority:  7,
       action:    { en: `Race taper — ${daysToRace}d to race`, tr: `Yarış taperi — ${daysToRace} gün kaldı` },
       rationale: { en: `Race in ${daysToRace} days. Reduce volume 40–60%, maintain intensity. Optimal TSB on race day: +5 to +20.`, tr: `${daysToRace} gün sonra yarış. Hacmi %40–60 azalt, yoğunluğu koru.` },
       citation:  'Mujika & Padilla 2003 (Int J Sports Physiol)',
@@ -189,11 +229,11 @@ function evalRules(log, recovery, profile) {
     }
   }
 
-  // ── Rule 6: tsb_high (TSB > 15) — quality window ─────────────────────────────
+  // ── Rule 8: tsb_high (TSB > 15) — quality window ─────────────────────────────
   if (tsb > 15) {
     return {
       id:        'tsb_high',
-      priority:  6,
+      priority:  8,
       action:    { en: 'Quality session window (Z4–Z5)', tr: 'Kaliteli antrenman fırsatı (Z4–Z5)' },
       rationale: { en: `TSB +${tsb} — optimal freshness. CTL ${ctl}, ATL ${atl}. Use this window for threshold or VO2max work.`, tr: `TSB +${tsb} — optimal tazelik. Eşik veya VO2max çalışması yap.` },
       citation:  'Coggan 2003 (PMC adaptation)',
@@ -202,11 +242,11 @@ function evalRules(log, recovery, profile) {
     }
   }
 
-  // ── Rule 7: tsb_low (TSB −10 to −20) ─────────────────────────────────────────
+  // ── Rule 9: tsb_low (TSB −10 to −20) ─────────────────────────────────────────
   if (tsb < -10) {
     return {
       id:        'tsb_low',
-      priority:  7,
+      priority:  9,
       action:    { en: 'Easy aerobic session (Z1–Z2)', tr: 'Kolay aerobik antrenman (Z1–Z2)' },
       rationale: { en: `TSB ${tsb} — moderate fatigue. CTL ${ctl}, ATL ${atl}. Low-intensity session promotes recovery while maintaining base.`, tr: `TSB ${tsb} — orta yorgunluk. Düşük yoğunluklu antrenman toparlanmayı destekler.` },
       citation:  'Banister 1991 (PMC model)',
@@ -215,11 +255,11 @@ function evalRules(log, recovery, profile) {
     }
   }
 
-  // ── Rule 8: acwr_low (ACWR < 0.8) — below base ───────────────────────────────
+  // ── Rule 10: acwr_low (ACWR < 0.8) — below base ─────────────────────────────
   if (acwr !== null && acwr < 0.8) {
     return {
       id:        'acwr_low',
-      priority:  8,
+      priority:  10,
       action:    { en: 'Build training density', tr: 'Antrenman yoğunluğunu artır' },
       rationale: { en: `ACWR ${acwr.toFixed(2)} — below optimal base (0.8–1.3). CTL ${ctl} drifting. Add volume to rebuild chronic base.`, tr: `ACWR ${acwr.toFixed(2)} — optimal tabanın altında. Kronik taban için hacmi artır.` },
       citation:  'Gabbett 2016 (Br J Sports Med)',
@@ -228,10 +268,10 @@ function evalRules(log, recovery, profile) {
     }
   }
 
-  // ── Rule 9: default ───────────────────────────────────────────────────────────
+  // ── Rule 11: default ─────────────────────────────────────────────────────────
   return {
     id:        'default',
-    priority:  9,
+    priority:  11,
     action:    { en: 'Moderate aerobic session (Z2–Z3)', tr: 'Orta yoğunluklu aerobik antrenman (Z2–Z3)' },
     rationale: { en: `TSB ${tsb}, ACWR ${acwr?.toFixed(2) ?? '—'} — within normal training range. Steady-state session builds aerobic base.`, tr: `TSB ${tsb}, ACWR ${acwr?.toFixed(2) ?? '—'} — normal antrenman aralığı.` },
     citation:  'Seiler 2010 (polarized training distribution)',

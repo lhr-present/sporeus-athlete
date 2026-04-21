@@ -6,7 +6,7 @@ import { useMemo, useContext, useState } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { useData } from '../contexts/DataContext.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
-import { computeRaceReadiness } from '../lib/intelligence.js'
+import { computeRaceReadiness, predictRacePerformance } from '../lib/intelligence.js'
 import { S } from '../styles.js'
 
 const MONO   = "'IBM Plex Mono', monospace"
@@ -30,7 +30,7 @@ function trafficLabel(score, lang) {
 
 export default function RaceReadiness() {
   const { t, lang } = useContext(LangCtx)
-  const { log, recovery, injuries, profile, setProfile } = useData()
+  const { log, recovery, injuries, testResults, profile, setProfile } = useData()
   const [plan]       = useLocalStorage('sporeus-plan',        null)
   const [planStatus] = useLocalStorage('sporeus-plan-status', {})
 
@@ -47,6 +47,11 @@ export default function RaceReadiness() {
   const result = useMemo(
     () => computeRaceReadiness(log, recovery, injuries, profileForCalc, plan, planStatus),
     [log, recovery, injuries, profileForCalc, plan, planStatus],
+  )
+
+  const perf = useMemo(
+    () => predictRacePerformance(log, testResults, profileForCalc),
+    [log, testResults, profileForCalc],
   )
 
   function handleSave() {
@@ -192,10 +197,45 @@ export default function RaceReadiness() {
         ))}
       </div>
 
+      {/* ── Predicted race times ──────────────────────────────────────────── */}
+      {perf.reliable && perf.predictions.length > 0 && (
+        <div style={{ marginTop: '20px' }}>
+          <div style={{ fontSize: '9px', color: '#555', letterSpacing: '0.1em', marginBottom: '8px' }}>
+            {isTR ? '◈ TAHMİN YARIŞMA SÜRELERİ' : '◈ PREDICTED RACE TIMES'}
+          </div>
+          <div style={{
+            background: 'var(--surface, #0f0f0f)', borderRadius: '3px',
+            padding: '10px 14px', marginBottom: '6px',
+          }}>
+            {perf.predictions.map(p => (
+              <div key={p.label} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+                padding: '5px 0', borderBottom: '1px solid #1a1a1a',
+              }}>
+                <span style={{ fontSize: '10px', color: '#888', letterSpacing: '0.06em', minWidth: '72px' }}>
+                  {p.label}
+                </span>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: '#ccc', fontFamily: "'IBM Plex Mono', monospace" }}>
+                  {p.predicted}
+                </span>
+                <span style={{ fontSize: '9px', color: '#444' }}>
+                  {p.best} – {p.worst}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: '9px', color: '#333', marginTop: '4px' }}>
+            {perf.method}
+            {perf.vdot ? ` · VDOT ${perf.vdot}` : ''}
+          </div>
+        </div>
+      )}
+
       {/* ── Citation ──────────────────────────────────────────────────────── */}
       <div style={{ fontSize: '9px', color: '#333', marginTop: '16px', lineHeight: 1.6 }}>
         ℹ Banister 1991 (PMC) · Coggan 2003 (TSS/CTL/ATL) · Morton 1991 (dose-response)
         {result.daysToRace !== null && ' · Mujika & Padilla 2003 (taper)'}
+        {perf.reliable && ' · Riegel 1981 · Daniels 1998 (VDOT)'}
       </div>
     </div>
   )

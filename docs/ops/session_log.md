@@ -1,5 +1,24 @@
 # Debt Session Log
 
+## H1–H5 — Intelligence surfacing (2026-04-21)
+
+Five enhancements that expose existing tested pure functions into new UI locations.
+
+**Changes:**
+- `src/components/MorningCheckIn.jsx`: sleep hours slider (4–10h, step 0.5) → saves `sleepHrs` to recovery store
+- `src/lib/nextAction.js`: 2 new rules — `injury_risk_high` (priority 3, `predictInjuryRisk` HIGH, Hulin 2016) + `sleep_debt` (priority 5, avg < 7h, Mah 2011). Priority chain renumbered 0–11.
+- `src/components/RaceReadiness.jsx`: `predictRacePerformance` section — 5K/10K/HM/Marathon times + VDOT (only when reliable)
+- `src/components/TodayView.jsx`: HRV 7-day bar strip with `computeHRVTrend` (visible ≥3 HRV readings)
+- `src/components/Profile.jsx`: `assessDataQuality` data quality card (grade/score/6 factors/tips — previously unused)
+- `src/lib/__tests__/nextAction.test.js`: +8 tests (injury_risk_high × 4 + sleep_debt × 4)
+
+**Tests:** 2728 (was 2720) — all pass. Build: clean.
+**Semver:** v9.6.0
+
+**Status: ✅ H1–H5 COMPLETE**
+
+---
+
 ## G5 — Morning Readiness & HRV Integration (2026-04-21)
 
 **Changes:**

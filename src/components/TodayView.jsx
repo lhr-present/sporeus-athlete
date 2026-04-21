@@ -24,6 +24,7 @@ import { S } from '../styles.js'
 import { getOrientationStep, ORIENTATION_MESSAGES } from '../lib/orientation.js'
 import NextActionCard from './NextActionCard.jsx'
 const MorningCheckIn = lazy(() => import('./MorningCheckIn.jsx'))
+import { computeHRVTrend } from '../lib/hrv.js'
 
 const EMBED_MODE = new URLSearchParams(window.location.search).get('embed') === 'true'
 
@@ -109,6 +110,8 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
   const K_CTL = BANISTER.K_CTL
 
   const todayRec = (recovery || []).find(e => e.date === today)
+
+  const hrvTrend = useMemo(() => computeHRVTrend(recovery || []), [recovery])
 
   // Coach message unread count (athlete reads from localStorage)
   // Coach sessions RSVP + announcements
@@ -428,6 +431,36 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
           <MorningCheckIn onClose={() => setShowCheckIn(false)} />
         </Suspense>
       )}
+
+      {/* ── HRV 7-day trend strip — H4 ─────────────────────────────────────── */}
+      {hrvTrend.daysWithData >= 3 && (() => {
+        const TREND_C = { stable: '#5bc25b', warning: '#f5c542', unstable: '#e03030', insufficient_data: '#555' }
+        const tc = TREND_C[hrvTrend.trend] || '#555'
+        // Build last-7-day HRV bar map
+        const hrvMap = {}
+        ;(recovery || []).forEach(e => { if (parseFloat(e.hrv) > 0) hrvMap[e.date] = parseFloat(e.hrv) })
+        const bars = Array.from({ length: 7 }, (_, i) => {
+          const d = new Date(); d.setDate(d.getDate() - (6 - i)); return d.toISOString().slice(0, 10)
+        }).map(d => ({ date: d, val: hrvMap[d] || 0 }))
+        const maxHRV = Math.max(...bars.map(b => b.val), 1)
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', padding: '8px 12px', background: 'var(--surface, #0f0f0f)', borderRadius: '3px', borderLeft: `3px solid ${tc}` }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', gap: '3px', alignItems: 'flex-end', height: '22px' }}>
+                {bars.map((b, i) => (
+                  <div key={i} style={{ flex: 1, background: b.val > 0 ? tc : '#222', height: `${b.val > 0 ? Math.max(20, Math.round(b.val / maxHRV * 100)) : 20}%`, borderRadius: '1px', opacity: b.val > 0 ? 1 : 0.3 }} />
+                ))}
+              </div>
+            </div>
+            <div style={{ fontSize: '9px', color: tc, fontWeight: 700, letterSpacing: '0.06em', minWidth: '56px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace" }}>
+              HRV {hrvTrend.trend.replace('_', ' ').toUpperCase()}
+            </div>
+            <div style={{ fontSize: '9px', color: '#555', fontFamily: "'IBM Plex Mono', monospace" }}>
+              {hrvTrend.baseline}ms
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── Next Action card — G3 rules-based ──────────────────────────────── */}
       <NextActionCard />

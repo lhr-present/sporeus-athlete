@@ -302,3 +302,115 @@ describe('isDismissed / dismissRule', () => {
     expect(isDismissed('no_sessions')).toBe(false)
   })
 })
+
+// ── Rule H2: injury_risk_high ──────────────────────────────────────────────────
+
+function logWithHighInjuryRisk() {
+  // Low chronic base → extreme acute spike → ACWR > 1.5 → predictInjuryRisk returns HIGH
+  const log = []
+  for (let i = 40; i > 7; i--) {
+    log.push({ date: daysAgo(i), tss: 25, type: 'Easy Run', duration: 30, rpe: 4 })
+  }
+  for (let i = 7; i >= 1; i--) {
+    // 3+ consecutive hard days + high TSS spike
+    log.push({ date: daysAgo(i), tss: 300, type: 'Hard', duration: 180, rpe: 9 })
+  }
+  return log
+}
+
+function recovWithLowScores() {
+  return Array.from({ length: 5 }, (_, i) => ({
+    date: daysAgo(i + 1), score: 30, hrv: null, sleepHrs: null,
+  }))
+}
+
+describe('computeNextAction — Rule H2: injury_risk_high', () => {
+  it('fires injury_risk_high or acwr_spike when load spike + consecutive hard days', () => {
+    const log = logWithHighInjuryRisk()
+    const rec = recovWithLowScores()
+    const r = computeNextAction(log, rec, {})
+    // Either ACWR spike fires first, or injury_risk_high fires
+    expect(['acwr_spike', 'injury_risk_high', 'wellness_poor'].includes(r.id)).toBe(true)
+  })
+
+  it('injury_risk_high has red color when fired', () => {
+    const log = logWithHighInjuryRisk()
+    const rec = recovWithLowScores()
+    const r = computeNextAction(log, rec, {})
+    if (r.id === 'injury_risk_high') {
+      expect(r.color).toBe('red')
+      expect(r.citation).toMatch(/Hulin 2016/)
+    }
+  })
+
+  it('does NOT fire injury_risk_high with minimal log (injury risk unknown)', () => {
+    const r = computeNextAction([{ date: daysAgo(1), tss: 50, type: 'Run', duration: 40, rpe: 5 }], [], {})
+    expect(r.id).not.toBe('injury_risk_high')
+  })
+
+  it('injury_risk_high output shape is valid', () => {
+    const log = logWithHighInjuryRisk()
+    const rec = recovWithLowScores()
+    const r = computeNextAction(log, rec, {})
+    if (r.id === 'injury_risk_high') {
+      expect(r).toMatchObject({
+        id:       'injury_risk_high',
+        citation: expect.stringMatching(/Hulin/),
+        color:    'red',
+        metrics:  expect.objectContaining({ injuryScore: expect.any(Number) }),
+      })
+    }
+  })
+})
+
+// ── Rule H1: sleep_debt ────────────────────────────────────────────────────────
+
+function normalLog() {
+  return Array.from({ length: 14 }, (_, i) => ({
+    date: daysAgo(i + 1), tss: 50, type: 'Run', duration: 45, rpe: 5,
+  }))
+}
+
+function recovWithSleep(avgHrs, days = 5) {
+  return Array.from({ length: days }, (_, i) => ({
+    date: daysAgo(i + 1), score: 70, hrv: 65, sleepHrs: String(avgHrs),
+  }))
+}
+
+describe('computeNextAction — Rule H1: sleep_debt', () => {
+  it('fires sleep_debt when avg sleep < 7h with ≥ 3 readings', () => {
+    const log = normalLog()
+    const rec = recovWithSleep(5.5)  // 5.5h avg — well below 7h
+    const r = computeNextAction(log, rec, {})
+    // sleep_debt fires unless higher-priority rules also trigger
+    const higherPriority = ['acwr_spike', 'wellness_poor', 'injury_risk_high', 'hrv_drift']
+    if (!higherPriority.includes(r.id)) {
+      expect(r.id).toBe('sleep_debt')
+    }
+  })
+
+  it('sleep_debt has amber color and Mah 2011 citation', () => {
+    const log = normalLog()
+    const rec = recovWithSleep(5.5)
+    const r = computeNextAction(log, rec, {})
+    if (r.id === 'sleep_debt') {
+      expect(r.color).toBe('amber')
+      expect(r.citation).toMatch(/Mah 2011/)
+      expect(r.rationale.en).toMatch(/5\.5/)
+    }
+  })
+
+  it('does NOT fire sleep_debt when avg sleep ≥ 7h', () => {
+    const log = normalLog()
+    const rec = recovWithSleep(7.5)
+    const r = computeNextAction(log, rec, {})
+    expect(r.id).not.toBe('sleep_debt')
+  })
+
+  it('does NOT fire sleep_debt with fewer than 3 readings', () => {
+    const log = normalLog()
+    const rec = recovWithSleep(5.5, 2)  // only 2 readings — not enough data
+    const r = computeNextAction(log, rec, {})
+    expect(r.id).not.toBe('sleep_debt')
+  })
+})

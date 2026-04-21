@@ -5,6 +5,7 @@ import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { sanitizeProfile } from '../lib/validate.js'
+import { assessDataQuality } from '../lib/intelligence.js'
 import { exportAllData, importAllData } from '../lib/storage.js'
 import { exportAthleteData, deleteAthleteData, triggerDownload } from '../lib/gdprExport.js'
 import { logAction, getMyAuditLog } from '../lib/db/auditLog.js'
@@ -36,7 +37,7 @@ import AdminCodeGenerator from './profile/AdminCodeGenerator.jsx'
 
 export default function Profile({ log, authUser }) {
   const { t } = useContext(LangCtx)
-  const { profile, setProfile } = useData()
+  const { profile, setProfile, recovery, testResults } = useData()
   const [local, setLocal] = useState(profile)
   const [status, setStatus] = useState(null)
   const [coachMode, setCoachMode] = useLocalStorage('sporeus-coach-mode', false)
@@ -531,6 +532,43 @@ export default function Profile({ log, authUser }) {
       {(authUser?.email === 'huseyinakbulut71@gmail.com' || authUser?.email === 'huseyinakbulut@marun.edu.tr') && (
         <AthleteOSCosts />
       )}
+
+      {/* Data quality indicator — H5 */}
+      {log && log.length >= 3 && (() => {
+        const dq    = assessDataQuality(log, recovery || [], testResults || [], profile)
+        const color = dq.score >= 80 ? '#5bc25b' : dq.score >= 60 ? '#f5c542' : '#e03030'
+        const [open, setOpen] = useState(false)
+        return (
+          <div style={{ ...S.card, borderLeft: `3px solid ${color}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => setOpen(o => !o)}>
+              <div>
+                <div style={{ ...S.cardTitle, marginBottom: 2 }}>DATA QUALITY</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                  <span style={{ fontSize: '24px', fontWeight: 700, color, fontFamily: "'IBM Plex Mono', monospace" }}>{dq.grade}</span>
+                  <span style={{ fontSize: '11px', color: '#888', fontFamily: "'IBM Plex Mono', monospace" }}>{dq.score}/100</span>
+                </div>
+              </div>
+              <span style={{ fontSize: '10px', color: '#555' }}>{open ? '▲' : '▼'}</span>
+            </div>
+            {open && (
+              <div style={{ marginTop: '12px' }}>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                  {dq.factors.map(f => (
+                    <div key={f.name} style={{ fontSize: '9px', padding: '3px 8px', border: `1px solid ${f.score >= 70 ? '#5bc25b33' : f.score >= 50 ? '#f5c54233' : '#e0303033'}`, borderRadius: '2px', color: f.score >= 70 ? '#5bc25b' : f.score >= 50 ? '#f5c542' : '#e03030', fontFamily: "'IBM Plex Mono', monospace" }}>
+                      {f.name} {f.score}
+                    </div>
+                  ))}
+                </div>
+                {dq.tips.slice(0, 3).map((tip, i) => (
+                  <div key={i} style={{ fontSize: '10px', color: '#888', lineHeight: 1.6, marginBottom: '4px', paddingLeft: '10px', borderLeft: '2px solid #333', fontFamily: "'IBM Plex Mono', monospace" }}>
+                    → {tip.en}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Training milestones — logbook, not reward screen */}
       {log && log.length > 0 && (() => {

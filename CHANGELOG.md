@@ -4,6 +4,24 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v9.6.0] — 2026-04-21
+
+### H1–H5 — Intelligence surfacing: 5 enhancements using existing pure functions
+
+Five targeted enhancements that surface already-tested pure analysis functions into new UI locations.
+
+- **H1 — Sleep tracking in MorningCheckIn** (`MorningCheckIn.jsx`): added sleep hours slider (4–10h, step 0.5h) to 30-second check-in. `sleepHrs` now saved to recovery store as string (matches Recovery.jsx format).
+- **H1 — `sleep_debt` rule in nextAction.js**: Rule 5 — fires when avg sleepHrs < 7h over last 7 days with ≥3 readings. Color: amber. Citation: Mah 2011 (SLEEP — sleep extension in athletes).
+- **H2 — `injury_risk_high` rule in nextAction.js**: Rule 3 — calls `predictInjuryRisk(log, recovery)` (existing 5-factor model: ACWR, monotony, consecutive hard days, readiness, HRV); fires when level === 'HIGH'. Color: red. Citation: Hulin 2016 (Br J Sports Med). Priority chain fully renumbered: 0–11.
+- **H3 — Race time predictions in RaceReadiness tab** (`RaceReadiness.jsx`): added `predictRacePerformance` section below 10-factor breakdown — shows 5K/10K/HM/Marathon predicted times (range: best–worst), method label, VDOT. Only renders when `reliable === true`.
+- **H4 — HRV 7-day trend strip in TodayView** (`TodayView.jsx`): inline bar chart (7 bars, last 7 calendar days) with trend badge and baseline ms. Color-coded by `computeHRVTrend` result. Visible when ≥3 HRV readings in 7 days.
+- **H5 — Data quality card in Profile tab** (`Profile.jsx`): collapsible card using `assessDataQuality` (previously unused anywhere). Shows grade A–F, 0–100 score, 6-factor badges (LOGGING/RPE/ZONES/RECOVERY/TESTS/PROFILE), top-3 actionable tips.
+- **+8 tests** in `nextAction.test.js` (4 for `injury_risk_high`, 4 for `sleep_debt`)
+
+DEPENDS ON: v9.5.0 (MorningCheckIn, nextAction rules, computeHRVTrend, predictInjuryRisk)
+
+---
+
 ## [v9.5.0] — 2026-04-21
 
 ### G5 — Morning Readiness & HRV Integration (E17)

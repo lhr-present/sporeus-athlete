@@ -25,10 +25,11 @@ export default function MorningCheckIn({ onClose }) {
   const { recovery, setRecovery } = useData()
   const isTR = lang === 'tr'
 
-  const [hrv,      setHRV]      = useState('')
-  const [wellness, setWellness] = useState({ sleep: 3, energy: 3, soreness: 3 })
-  const [saved,    setSaved]    = useState(false)
-  const [trend,    setTrend]    = useState(null)
+  const [hrv,       setHRV]      = useState('')
+  const [sleepHrs,  setSleepHrs] = useState(7)
+  const [wellness,  setWellness] = useState({ sleep: 3, energy: 3, soreness: 3 })
+  const [saved,     setSaved]    = useState(false)
+  const [trend,     setTrend]    = useState(null)
 
   const panelRef   = useRef(null)
   const overlayRef = useRef(null)
@@ -53,7 +54,7 @@ export default function MorningCheckIn({ onClose }) {
     const entry = {
       date,
       score,
-      sleepHrs: null,
+      sleepHrs: String(sleepHrs),
       soreness:  wellness.soreness,
       stress:    3,
       mood:      wellness.energy,
@@ -160,6 +161,29 @@ export default function MorningCheckIn({ onClose }) {
               />
               <div style={{ fontSize: '9px', color: '#444', marginTop: '3px' }}>
                 {isTR ? 'Uygulamanızın RMSSD değerini girin.' : 'Enter RMSSD from your HRV app.'}
+              </div>
+            </div>
+
+            {/* Sleep hours slider */}
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ display: 'block', fontSize: '9px', color: '#888', letterSpacing: '0.08em', marginBottom: '4px' }}>
+                {isTR ? 'Uyku (s)' : 'Sleep (h)'}
+                <span style={{ color: '#ff6600', fontWeight: 700, marginLeft: '6px' }}>
+                  {sleepHrs}h
+                </span>
+              </label>
+              <input
+                type="range"
+                min={4}
+                max={10}
+                step={0.5}
+                value={sleepHrs}
+                onChange={e => setSleepHrs(Number(e.target.value))}
+                style={{ width: '100%', accentColor: '#ff6600', cursor: 'pointer' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#444', marginTop: '1px' }}>
+                <span>4h</span>
+                <span>10h</span>
               </div>
             </div>
 
