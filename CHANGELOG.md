@@ -4,6 +4,25 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v10.0.0] — 2026-04-21
+
+### L1–L5 — New feature enhancements (fitness forecast, race countdown, recovery baseline, goal context)
+
+Five genuine feature additions beyond unused-function surfacing.
+
+- **L1 — `predictFitness` compact forecast strip in `TodayView.jsx`**: CTL now/4w/8w trajectory bar (↑↓→) with label text from `predictFitness(log)`. Gated `log.length >= 14`. Positioned between K3 weekLoad strip and consecutive rest warning.
+- **L2 — Race countdown card in `TodayView.jsx`**: Days-to-race badge from `profile.raceDate`. Shows phase label (BUILD / TAPER / RACE WEEK / RACE DAY), date, and color coding (blue/amber/orange). Gated on future date ≤ 120 days. Inserted before K3 weekLoad.
+- **L3 — `predictFitness` detailed 4w/8w projection in `Dashboard.jsx`**: Full projection row (CTL now → 4W → 8W, avg TSS/wk, trajectory arrow + label) after J2/J3 CTL/TSB interpretation block. Gated `lc.showCTL && log.length >= 14`.
+- **L4 — Recovery baseline weekly comparison in `Recovery.jsx`**: THIS WEEK avg vs 4W rolling avg score badge in readiness card. Green ≥ 4W avg, amber within 10%, red >10% below. Gated `week1.length >= 2 && week4.length >= 5`.
+- **L5 — Goal-context line in `TodayView.jsx` Morning Brief**: If `profile.goal` is set, shows goal string + CTL phase label (strong base / building / base phase) in Morning Brief card. Gated `profile.goal && todayCtl > 0`.
+
+**Tests:** 2728 (unchanged) — all pass. Build: clean.
+**Semver:** v10.0.0
+
+DEPENDS ON: v9.9.0 (K-series, classifyTSB, computeMonotony)
+
+---
+
 ## [v9.9.0] — 2026-04-21
 
 ### K1–K5 — Final unused function sweep (durabilityScore, trainingLoad, interpretations)

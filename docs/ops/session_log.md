@@ -1,5 +1,21 @@
 # Debt Session Log
 
+## L1–L5 — New feature enhancements (2026-04-21)
+
+Genuine UX additions: fitness trajectory forecast, race countdown, recovery baseline, goal context.
+
+**Changes:**
+- `src/components/TodayView.jsx`: L1 `predictFitness` strip (CTL now/4w/8w + arrow); L2 race countdown from `profile.raceDate` (days + BUILD/TAPER/RACE WEEK/RACE DAY badge); L5 goal-context line in Morning Brief (goal string + CTL phase label)
+- `src/components/Dashboard.jsx`: L3 `predictFitness` 4w/8w projection row after J2/J3 CTL/TSB block; `predictFitness` imported
+- `src/components/Recovery.jsx`: L4 THIS WEEK vs 4W AVG score comparison badge in readiness card; `recoveryBaseline` useMemo
+
+**Tests:** 2728 (unchanged) — all pass. Build: clean.
+**Semver:** v10.0.0
+
+**Status: ✅ L1–L5 COMPLETE**
+
+---
+
 ## K1–K5 — Final unused function sweep (2026-04-21)
 
 Exhausts remaining unused functions from `durabilityScore.js`, `trainingLoad.js`, `interpretations.js`.

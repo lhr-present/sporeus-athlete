@@ -12,7 +12,7 @@ import { useCountUp } from '../hooks/useCountUp.js'
 import { getRecentAchievement } from './Achievements.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { SPORT_BRANCHES, ATHLETE_LEVELS, LEVEL_CONFIG, DASH_CARD_DEFS } from '../lib/constants.js'
-import { assessDataQuality } from '../lib/intelligence.js'
+import { assessDataQuality, predictFitness } from '../lib/intelligence.js'
 import { interpretCTL, interpretTSB, interpretMonotony } from '../lib/science/interpretations.js'
 import { subThresholdTrend, } from '../lib/science/subThresholdTime.js'
 import { computeMonotony } from '../lib/trainingLoad.js'
@@ -128,6 +128,9 @@ export default function Dashboard({ log }) {
   const prev28CTL  = daily.length >= 29 ? (daily[daily.length - 29]?.ctl ?? null) : null
   const ctlInterp  = useMemo(() => interpretCTL(ctl, prev28CTL), [ctl, prev28CTL])
   const tsbInterp  = useMemo(() => interpretTSB(tsb), [tsb])
+
+  // L3 — predictFitness 4w/8w projection
+  const fitProj = useMemo(() => log.length >= 14 ? predictFitness(log) : null, [log])
 
   // K4 — Monotony daily TSS bars (computeMonotony Foster 1998)
   const weekLoadDetail = useMemo(() => computeMonotony(log), [log])
@@ -314,6 +317,31 @@ export default function Dashboard({ log }) {
           <div style={{ color: '#2a2a2a', fontSize: '9px', marginTop: '3px' }}>{ctlInterp.citation}</div>
         </div>
       )}
+
+      {/* L3 — Fitness projection 4w/8w */}
+      {lc.showCTL && fitProj && (() => {
+        const TRAJ = { improving: { c: '#5bc25b', a: '↑' }, declining: { c: '#e03030', a: '↓' }, stable: { c: '#f5c542', a: '→' }, flat: { c: '#555', a: '—' } }
+        const { c, a } = TRAJ[fitProj.trajectory] || TRAJ.flat
+        return (
+          <div style={{ ...S.mono, fontSize: '10px', padding: '8px 12px', marginBottom: '10px', borderLeft: `2px solid ${c}44`, background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '16px', color: c, fontWeight: 700 }}>{a}</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'baseline', flexWrap: 'wrap' }}>
+                <span style={{ color: '#555' }}>CTL</span>
+                <span style={{ color: 'var(--text)', fontWeight: 700 }}>{fitProj.current}</span>
+                <span style={{ color: '#333' }}>→ 4W</span>
+                <span style={{ color: c, fontWeight: 700 }}>{fitProj.in4w}</span>
+                <span style={{ color: '#333' }}>8W</span>
+                <span style={{ color: '#666' }}>{fitProj.in8w}</span>
+                <span style={{ color: '#333', fontSize: '9px' }}>AVG {fitProj.avgWeeklyTSS} TSS/WK</span>
+              </div>
+              <div style={{ color: '#555', fontSize: '9px', marginTop: '3px' }}>
+                {lang === 'tr' ? fitProj.label?.tr : fitProj.label?.en}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       <ErrorBoundary inline name="Race Readiness">
         <RaceReadinessCard log={log} recovery={recovery} injuries={injuries} profile={profile} plan={plan} planStatus={planStatus} lang={lang}/>

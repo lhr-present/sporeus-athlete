@@ -70,6 +70,21 @@ export default function Recovery() {
   const corr      = useMemo(() => analyzeRecoveryCorrelation(log, entries), [log, entries])
   const tsbZone   = useMemo(() => { const { tsb } = calcLoad(log); return classifyTSB(tsb) }, [log])
 
+  // L4 — This-week vs 4-week rolling recovery baseline
+  const recoveryBaseline = useMemo(() => {
+    const cutoff7  = (() => { const d = new Date(); d.setDate(d.getDate() - 7);  return d.toISOString().slice(0, 10) })()
+    const cutoff28 = (() => { const d = new Date(); d.setDate(d.getDate() - 28); return d.toISOString().slice(0, 10) })()
+    const week4 = entries.filter(e => e.date >= cutoff28 && typeof e.score === 'number')
+    const week1 = entries.filter(e => e.date >= cutoff7  && typeof e.score === 'number')
+    if (week1.length < 2 || week4.length < 5) return null
+    const avg1 = Math.round(week1.reduce((s, e) => s + e.score, 0) / week1.length)
+    const avg4 = Math.round(week4.reduce((s, e) => s + e.score, 0) / week4.length)
+    const delta = avg1 - avg4
+    const pct   = avg4 > 0 ? Math.round(Math.abs(delta) / avg4 * 100) : 0
+    const color = delta >= 0 ? '#5bc25b' : pct > 10 ? '#e03030' : '#f5c542'
+    return { avg1, avg4, delta, pct, color }
+  }, [entries])
+
   return (
     <div className="sp-fade">
       {todayEntry && (
@@ -220,6 +235,19 @@ export default function Recovery() {
           <div style={{ ...S.mono, fontSize:'9px', marginTop:'10px', padding:'5px 8px', background:`${tsbZone.color}11`, border:`1px solid ${tsbZone.color}33`, borderRadius:'3px', display:'inline-flex', alignItems:'center', gap:'8px' }}>
             <span style={{ color: tsbZone.color, fontWeight:700 }}>TSB {lang==='tr' ? tsbZone.label.tr : tsbZone.label.en}</span>
             <span style={{ color:'#444' }}>{lang==='tr' ? tsbZone.advice.tr : tsbZone.advice.en}</span>
+          </div>
+        )}
+        {/* L4 — Recovery weekly baseline comparison */}
+        {recoveryBaseline && (
+          <div style={{ ...S.mono, fontSize:'9px', marginTop:'8px', padding:'5px 8px', background:`${recoveryBaseline.color}11`, border:`1px solid ${recoveryBaseline.color}33`, borderRadius:'3px', display:'inline-flex', alignItems:'center', gap:'8px' }}>
+            <span style={{ color: recoveryBaseline.color, fontWeight:700 }}>
+              {lang==='tr' ? 'BU HAFTA' : 'THIS WEEK'} {recoveryBaseline.avg1}
+            </span>
+            <span style={{ color:'#333' }}>·</span>
+            <span style={{ color:'#555' }}>4W AVG {recoveryBaseline.avg4}</span>
+            <span style={{ color: recoveryBaseline.color, fontWeight:700 }}>
+              {recoveryBaseline.delta >= 0 ? '+' : ''}{recoveryBaseline.delta} ({recoveryBaseline.delta >= 0 ? '+' : '-'}{recoveryBaseline.pct}%)
+            </span>
           </div>
         )}
       </div>

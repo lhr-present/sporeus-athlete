@@ -4,7 +4,7 @@ import { logger } from '../lib/logger.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { useData } from '../contexts/DataContext.jsx'
-import { getTodayPlannedSession, getSingleSuggestion, generateDailyDigest, getTimeOfDayAdvice } from '../lib/intelligence.js'
+import { getTodayPlannedSession, getSingleSuggestion, generateDailyDigest, getTimeOfDayAdvice, predictFitness } from '../lib/intelligence.js'
 import { calcLoad } from '../lib/formulas.js'
 import { WELLNESS_FIELDS } from '../lib/constants.js'
 import { hasUnread } from './CoachMessage.jsx'
@@ -117,6 +117,22 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
   const seasonal   = useMemo(() => findSeasonalPatterns(log || [], recovery || []), [log, recovery])
   const thisMonth  = new Date().toLocaleString('en', { month: 'short' })
   const weekLoad   = useMemo(() => computeMonotony(log || []), [log])
+
+  // L1 — predictFitness forecast strip (gated: ≥14 sessions)
+  const fitnessForecast = useMemo(() => (log || []).length >= 14 ? predictFitness(log || []) : null, [log])
+
+  // L2 — Race countdown from profile.raceDate
+  const raceCountdown = useMemo(() => {
+    const rd = profile?.raceDate
+    if (!rd) return null
+    const days = Math.round((new Date(rd) - new Date(today)) / 86400000)
+    if (days < 0 || days > 120) return null
+    const phase = days === 0 ? (lang === 'tr' ? 'YARIŞ GÜNÜ!' : 'RACE DAY!') :
+      days <= 7  ? (lang === 'tr' ? 'YARIŞ HAFTASI'  : 'RACE WEEK')  :
+      days <= 14 ? (lang === 'tr' ? 'TAPER'           : 'TAPER')      :
+                   (lang === 'tr' ? 'YAPIM AŞAMASI'   : 'BUILD')
+    return { days, phase, rd }
+  }, [profile?.raceDate, today, lang])
 
   // Coach message unread count (athlete reads from localStorage)
   // Coach sessions RSVP + announcements
@@ -509,6 +525,32 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                 {timeAdvice}
               </div>
             )}
+            {/* L5 — Goal-context line */}
+            {profile?.goal && todayCtl > 0 && (
+              <div style={{ fontFamily: MONO, fontSize: '10px', color: '#0064ff', marginTop: '6px', letterSpacing: '0.04em' }}>
+                ◈ {lang === 'tr' ? 'HEDEF' : 'GOAL'}: {profile.goal}
+                {' · '}CTL {todayCtl}{todayCtl >= 60 ? (lang === 'tr' ? ' — yüksek form' : ' — strong base') : todayCtl >= 35 ? (lang === 'tr' ? ' — gelişiyor' : ' — building') : (lang === 'tr' ? ' — temel dönem' : ' — base phase')}
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
+      {/* ── L2 — Race countdown ──────────────────────────────────────────── */}
+      {raceCountdown && (() => {
+        const phaseColor = raceCountdown.days <= 7 ? ORANGE : raceCountdown.days <= 14 ? AMBER : BLUE
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 14px', background: `${phaseColor}11`, border: `1px solid ${phaseColor}44`, borderRadius: '3px', marginBottom: '10px', fontFamily: MONO }}>
+            <div style={{ textAlign: 'center', minWidth: '36px' }}>
+              <div style={{ fontSize: '22px', fontWeight: 700, color: phaseColor, lineHeight: 1 }}>{raceCountdown.days}</div>
+              <div style={{ fontSize: '8px', color: '#555', letterSpacing: '0.08em' }}>{lang === 'tr' ? 'GÜN' : 'DAYS'}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '10px', fontWeight: 700, color: phaseColor, letterSpacing: '0.08em' }}>
+                {raceCountdown.days === 0 ? raceCountdown.phase : `${lang === 'tr' ? 'YARIŞA' : 'TO RACE'} · ${raceCountdown.phase}`}
+              </div>
+              <div style={{ fontSize: '9px', color: '#555', marginTop: '2px' }}>{raceCountdown.rd}</div>
+            </div>
           </div>
         )
       })()}
@@ -541,6 +583,32 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                   M {weekLoad.monotony.toFixed(1)}
                 </div>
               )}
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* ── L1 — predictFitness compact forecast ─────────────────────────── */}
+      {fitnessForecast && (() => {
+        const TRAJ_COLOR = { improving: GREEN, declining: RED, stable: AMBER, flat: '#555' }
+        const TRAJ_ARROW = { improving: '↑', declining: '↓', stable: '→', flat: '—' }
+        const tc = TRAJ_COLOR[fitnessForecast.trajectory] || '#555'
+        const ar = TRAJ_ARROW[fitnessForecast.trajectory] || '—'
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '7px 12px', background: 'var(--surface, #0f0f0f)', borderLeft: `3px solid ${tc}`, borderRadius: '3px', marginBottom: '10px', fontFamily: MONO }}>
+            <div style={{ fontSize: '18px', color: tc, fontWeight: 700, lineHeight: 1 }}>{ar}</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'baseline' }}>
+                <span style={{ fontSize: '10px', color: '#555', letterSpacing: '0.06em' }}>CTL {lang === 'tr' ? 'ŞİMDİ' : 'NOW'}</span>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}>{fitnessForecast.current}</span>
+                <span style={{ fontSize: '9px', color: '#555' }}>→ 4W</span>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: tc }}>{fitnessForecast.in4w}</span>
+                <span style={{ fontSize: '9px', color: '#555' }}>8W</span>
+                <span style={{ fontSize: '11px', color: '#666' }}>{fitnessForecast.in8w}</span>
+              </div>
+              <div style={{ fontSize: '9px', color: '#444', marginTop: '3px', letterSpacing: '0.03em' }}>
+                {lang === 'tr' ? fitnessForecast.label?.tr : fitnessForecast.label?.en}
+              </div>
             </div>
           </div>
         )
