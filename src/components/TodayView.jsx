@@ -595,6 +595,16 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                 {timeAdviceText}
               </div>
             )}
+            {/* U4 — PMC dim strip from digest */}
+            {!digest.empty && (digest.ctl > 0 || digest.acwr !== null) && (
+              <div style={{ fontFamily: MONO, fontSize: '9px', color: '#2a2a2a', marginTop: '4px', letterSpacing: '0.04em' }}>
+                {[
+                  digest.ctl > 0 ? `CTL ${digest.ctl}` : null,
+                  digest.tsb !== undefined && digest.tsb !== null ? `TSB ${digest.tsb >= 0 ? '+' : ''}${digest.tsb}` : null,
+                  digest.acwr !== null && digest.acwr !== undefined ? `ACWR ${digest.acwr}` : null,
+                ].filter(Boolean).join(' · ')}
+              </div>
+            )}
             {/* L5 — Goal-context line */}
             {profile?.goal && todayCtl > 0 && (
               <div style={{ fontFamily: MONO, fontSize: '10px', color: '#0064ff', marginTop: '6px', letterSpacing: '0.04em' }}>
@@ -690,6 +700,10 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                 <span style={{ fontSize: '11px', fontWeight: 700, color: tc }}>{fitnessForecast.in4w}</span>
                 <span style={{ fontSize: '9px', color: '#555' }}>8W</span>
                 <span style={{ fontSize: '11px', color: '#666' }}>{fitnessForecast.in8w}</span>
+                {fitnessForecast.avgWeeklyTSS > 0 && <>
+                  <span style={{ fontSize: '9px', color: '#2a2a2a' }}>·</span>
+                  <span style={{ fontSize: '9px', color: '#2a2a2a' }}>{lang === 'tr' ? `ORT ${fitnessForecast.avgWeeklyTSS} TSS/HFT` : `AVG ${fitnessForecast.avgWeeklyTSS} TSS/WK`}</span>
+                </>}
               </div>
               <div style={{ fontSize: '9px', color: '#444', marginTop: '3px', letterSpacing: '0.03em' }}>
                 {lang === 'tr' ? fitnessForecast.label?.tr : fitnessForecast.label?.en}

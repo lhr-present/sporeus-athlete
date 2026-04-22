@@ -4,6 +4,23 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v10.9.0] — 2026-04-23
+
+### U1–U5 — NextAction metrics strip, fitness AVG TSS, monotony status badge, digest PMC strip, EF date range
+
+- **U1 — NextActionCard: `action.metrics` dim strip**: Every `computeNextAction` rule returns `metrics: {ctl, atl, tsb, acwr}` but these were never rendered. Added a `CTL · ATL · TSB · ACWR` dim strip below the citation, styled `#2a2a2a` to avoid visual noise.
+- **U2 — TodayView L1 fitness strip: `avgWeeklyTSS`**: `predictFitness` returns `avgWeeklyTSS` but it was not shown in TodayView's L1 compact forecast (Dashboard.jsx does show it). Added `AVG {N} TSS/WK` (TR: `ORT {N} TSS/HFT`) inline with the CTL NOW → 4W → 8W row.
+- **U3 — Dashboard monotony card: `weekLoadDetail.status` badge**: `computeMonotony` returns `status` ('low'/'moderate'/'high') but Dashboard only used `weekTSS` and `dailyTSS` from that result. Added a colour-coded status badge (`VARIED`/`MODERATE`/`HIGH`) below the daily TSS bars.
+- **U4 — TodayView morning brief: `digest.ctl/tsb/acwr`**: `generateDailyDigest` returns `ctl`, `tsb`, `acwr` alongside the prose text but only the prose was rendered. Added a dim PMC sub-row (`CTL {n} · TSB ±{n} · ACWR {n}`) inside the morning brief card.
+- **U5 — EFTrendCard: `result.dates` range label**: `efTrend.dates` (array of date strings for each EF data point) was returned but never used. Added a `MM-DD → MM-DD` date range line below the sparkline using `dates[0].slice(5)` / `dates[last].slice(5)`.
+
+**Tests:** 2728 (unchanged — 1 pre-existing nextAction failure). Build: clean.
+**Semver:** v10.9.0
+
+DEPENDS ON: v10.8.0, computeNextAction in nextAction.js, predictFitness in intelligence.js, computeMonotony in trainingLoad.js, generateDailyDigest in intelligence.js, efTrend in efficiencyFactor.js
+
+---
+
 ## [v10.8.0] — 2026-04-23
 
 ### T1–T5 — Recovery corr threshold detail, WeekStory stats strip, HRV daysWithData+dropPct, Profile tips TR, patterns sampleSize

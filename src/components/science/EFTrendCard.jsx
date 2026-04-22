@@ -117,7 +117,7 @@ export default function EFTrendCard({ sessions, windowDays = 30 }) {
           </div>
 
           {/* Sparkline */}
-          <div style={{ marginBottom: 6 }}>
+          <div style={{ marginBottom: 2 }}>
             <Sparkline
               values={result.efValues}
               color={trendColor}
@@ -125,6 +125,12 @@ export default function EFTrendCard({ sessions, windowDays = 30 }) {
               height={36}
             />
           </div>
+          {/* U5 — date range */}
+          {result.dates.length >= 2 && (
+            <div style={{ fontSize: '0.62rem', color: 'var(--muted)', marginBottom: 6, fontFamily: 'IBM Plex Mono, monospace' }}>
+              {result.dates[0].slice(5)} → {result.dates[result.dates.length - 1].slice(5)}
+            </div>
+          )}
 
           {/* Stats row */}
           <div style={{ display: 'flex', gap: 12, fontSize: '0.72rem', color: 'var(--muted)' }}>

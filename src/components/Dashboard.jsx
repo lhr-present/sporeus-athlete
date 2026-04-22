@@ -520,15 +520,24 @@ export default function Dashboard({ log }) {
                   {weekLoadDetail.weekTSS > 0 && (() => {
                     const maxT = Math.max(...weekLoadDetail.dailyTSS, 1)
                     const days = ['M','T','W','T','F','S','S']
+                    const statusLabel = { low: lang === 'tr' ? 'ÇEŞİTLİ' : 'VARIED', moderate: lang === 'tr' ? 'ORTA' : 'MODERATE', high: lang === 'tr' ? 'YÜKSEK' : 'HIGH', insufficient: '' }
+                    const statusColor = { low: '#5bc25b', moderate: '#f5c542', high: '#e03030', insufficient: '#333' }
                     return (
-                      <div style={{ display: 'flex', gap: '2px', alignItems: 'flex-end', marginTop: '8px', height: '20px' }}>
-                        {weekLoadDetail.dailyTSS.map((t, i) => (
-                          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <div style={{ width: '100%', height: `${t > 0 ? Math.max(3, Math.round(t / maxT * 18)) : 2}px`, background: t > 0 ? (monoRed ? '#e03030aa' : '#ff660088') : '#1a1a1a', borderRadius: '1px' }} />
-                            <div style={{ ...S.mono, fontSize: '7px', color: '#2a2a2a' }}>{days[i]}</div>
+                      <>
+                        <div style={{ display: 'flex', gap: '2px', alignItems: 'flex-end', marginTop: '8px', height: '20px' }}>
+                          {weekLoadDetail.dailyTSS.map((t, i) => (
+                            <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                              <div style={{ width: '100%', height: `${t > 0 ? Math.max(3, Math.round(t / maxT * 18)) : 2}px`, background: t > 0 ? (monoRed ? '#e03030aa' : '#ff660088') : '#1a1a1a', borderRadius: '1px' }} />
+                              <div style={{ ...S.mono, fontSize: '7px', color: '#2a2a2a' }}>{days[i]}</div>
+                            </div>
+                          ))}
+                        </div>
+                        {weekLoadDetail.status && weekLoadDetail.status !== 'insufficient' && (
+                          <div style={{ ...S.mono, fontSize: '8px', color: statusColor[weekLoadDetail.status] || '#333', marginTop: '4px', letterSpacing: '0.06em' }}>
+                            {statusLabel[weekLoadDetail.status]}
                           </div>
-                        ))}
-                      </div>
+                        )}
+                      </>
                     )
                   })()}
                 </div>
