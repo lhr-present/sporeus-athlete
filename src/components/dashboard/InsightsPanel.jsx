@@ -31,7 +31,9 @@ export default function InsightsPanel({ log, recovery, profile: _profile, lang }
     { label: t('fitnessLabel'),    value: fitness.trajectory.toUpperCase(),    color: fitness.trajectory==='improving'?'#5bc25b':fitness.trajectory==='declining'?'#e03030':'#f5c542', text: fitness.label[lang] || fitness.label.en,
       detail: fitness.current > 0 ? `TSB: ${fitness.tsb >= 0 ? '+' : ''}${fitness.tsb} · 4w: ${fitness.in4w} CTL · 8w: ${fitness.in8w} CTL` : null },
     { label: t('recovCorrLabel'),  value: recovCorr.correlation !== null ? (recovCorr.correlation > 5 ? 'LINKED' : 'RESILIENT') : 'PENDING', color: recovCorr.correlation !== null ? (recovCorr.correlation > 5 ? '#f5c542' : '#5bc25b') : '#888', text: recovCorr.insight[lang] || recovCorr.insight.en,
-      detail: null },
+      detail: recovCorr.correlation !== null && recovCorr.highLoadThreshold > 0 && recovCorr.avgRecAfterHard !== null
+        ? `≥${recovCorr.highLoadThreshold} TSS = hard · after hard: ${recovCorr.avgRecAfterHard} · after easy: ${recovCorr.avgRecAfterEasy}`
+        : null },
   ]
 
   const smartAdj = []

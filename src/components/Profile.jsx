@@ -561,7 +561,7 @@ export default function Profile({ log, authUser }) {
                 </div>
                 {dq.tips.slice(0, 3).map((tip, i) => (
                   <div key={i} style={{ fontSize: '10px', color: '#888', lineHeight: 1.6, marginBottom: '4px', paddingLeft: '10px', borderLeft: '2px solid #333', fontFamily: "'IBM Plex Mono', monospace" }}>
-                    → {tip.en}
+                    → {(localStorage.getItem('sporeus-lang') || 'en') === 'tr' ? tip.tr : tip.en}
                   </div>
                 ))}
               </div>

@@ -515,6 +515,8 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                 </div>
                 <div style={{ fontSize: '9px', color: '#555', fontFamily: "'IBM Plex Mono', monospace" }}>
                   {hrvTrend.latestHRV != null ? `${hrvTrend.latestHRV}ms` : ''}{hrvTrend.baseline && hrvTrend.latestHRV != null ? ` / ${hrvTrend.baseline}ms` : (hrvTrend.baseline ? `${hrvTrend.baseline}ms` : '')}
+                  {hrvTrend.daysWithData > 0 ? ` · ${hrvTrend.daysWithData}d` : ''}
+                  {hrvTrend.dropPct != null && hrvTrend.dropPct !== 0 ? ` · ${hrvTrend.dropPct > 0 ? '↓' : '↑'}${Math.abs(hrvTrend.dropPct)}%` : ''}
                 </div>
               </div>
             </div>

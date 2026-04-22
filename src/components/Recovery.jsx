@@ -312,7 +312,10 @@ export default function Recovery() {
       {/* I2 — Recovery patterns (findRecoveryPatterns) */}
       {!patterns.needsMore && (
         <div className="sp-card" style={{ ...S.card, animationDelay:'110ms' }}>
-          <div style={S.cardTitle}>{lang==='tr' ? 'KİŞİSEL DESENLER' : 'YOUR PATTERNS'}</div>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:'6px' }}>
+            <div style={S.cardTitle}>{lang==='tr' ? 'KİŞİSEL DESENLER' : 'YOUR PATTERNS'}</div>
+            {patterns.sampleSize > 0 && <div style={{ ...S.mono, fontSize:'9px', color:'#333' }}>{patterns.sampleSize} {lang==='tr' ? 'çift' : 'pairs'}</div>}
+          </div>
           {(patterns.bestDay || patterns.worstDay) && (
             <div style={{ display:'flex', gap:'12px', marginBottom:'10px', flexWrap:'wrap' }}>
               {patterns.bestDay && (

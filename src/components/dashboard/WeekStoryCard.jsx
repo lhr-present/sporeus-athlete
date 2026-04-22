@@ -32,6 +32,11 @@ export default function WeekStoryCard({ log, recovery, profile, lang }) {
           </button>
         </div>
       </div>
+      {narrative.n > 0 && (
+        <div style={{ ...S.mono, fontSize:'9px', color:'#444', letterSpacing:'0.06em', marginBottom:'6px' }}>
+          {narrative.n} {lang === 'tr' ? 'antrenman' : 'sessions'} · {Math.floor(narrative.totalMin / 60)}h {narrative.totalMin % 60}m · {narrative.totalTSS} TSS{narrative.avgRPE > 0 ? ` · RPE ${narrative.avgRPE}` : ''}
+        </div>
+      )}
       <div style={{ ...S.mono, fontSize:'12px', color:'var(--text)', lineHeight:1.8 }}>{text}</div>
     </div>
   )

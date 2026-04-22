@@ -4,6 +4,23 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v10.8.0] — 2026-04-23
+
+### T1–T5 — Recovery corr threshold detail, WeekStory stats strip, HRV daysWithData+dropPct, Profile tips TR, patterns sampleSize
+
+- **T1 — InsightsPanel: `recovCorr.highLoadThreshold + avgRecAfterHard/Easy` detail**: Recovery correlation insight row had `detail: null`. Now shows `≥{threshold} TSS = hard · after hard: {X} · after easy: {Y}` when open.
+- **T2 — WeekStoryCard: `n + totalMin + totalTSS + avgRPE` stat strip**: `generateWeeklyNarrative` returns these 4 fields separately but only the prose text was rendered. Added a dim stats strip above the narrative.
+- **T3 — TodayView HRV strip: `daysWithData + dropPct`**: These two fields were returned by `computeHRVTrend` but never shown. Now appended to the secondary info row: `5d · ↓3.2%`.
+- **T4 — Profile.jsx DATA QUALITY tips TR**: Tips rendered `{tip.en}` hardcoded for all languages. Fixed to `{lang === 'tr' ? tip.tr : tip.en}` via `localStorage.getItem('sporeus-lang')`.
+- **T5 — Recovery.jsx YOUR PATTERNS: `sampleSize` shown**: `findRecoveryPatterns.sampleSize` was never shown in the standalone Recovery tab pattern card. Now displayed as a dim `{N} pairs` badge in the card header.
+
+**Tests:** 2728 (unchanged — 1 pre-existing nextAction failure). Build: clean.
+**Semver:** v10.8.0
+
+DEPENDS ON: v10.7.0, analyzeRecoveryCorrelation in intelligence.js, generateWeeklyNarrative, computeHRVTrend in hrv.js, findRecoveryPatterns in patterns.js
+
+---
+
 ## [v10.7.0] — 2026-04-23
 
 ### S1–S5 — CTL/ATL in form tile, HRV strip with interpretation, EF mean, sub-threshold session counts, zone model tip TR fix
