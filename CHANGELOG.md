@@ -4,6 +4,19 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v10.3.1] — 2026-04-23
+
+### Auth bug fix — display_name overwrite on every Google sign-in
+
+- **`useAuth.js`**: Removed `display_name` from `upsertProfile` upsert payload. The `handle_new_user` DB trigger already sets display_name from Google metadata on first sign-in; including it in the upsert was silently overwriting any user-customized name on every subsequent login.
+- **`supabase/config.toml`**: Added `[auth.external.google]` section so Google OAuth works in local Supabase dev (requires `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` env vars). Production remains configured via Supabase Dashboard.
+
+**Tests:** 2728 (unchanged — 1 pre-existing nextAction failure unrelated to auth).
+
+DEPENDS ON: v10.3.0, handle_new_user trigger in 20260416_fix_jwt_hook.sql
+
+---
+
 ## [v10.3.0] — 2026-04-22
 
 ### O1–O5 — UX completeness: session grades, source tags, protocol rationale, recap visual, readiness sparkline

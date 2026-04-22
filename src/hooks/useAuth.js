@@ -22,15 +22,16 @@ export function useAuth() {
     return data || null
   }, [])
 
-  const upsertProfile = useCallback(async (userId, email, meta) => {
+  const upsertProfile = useCallback(async (userId, email) => {
     if (!supabase) return
     const language = localStorage.getItem('sporeus-lang') || 'tr'
+    // display_name intentionally excluded — handle_new_user trigger sets it on
+    // first sign-in from Google metadata; user edits must not be overwritten here
     await supabase.from('profiles').upsert({
-      id:           userId,
-      email:        email,
-      display_name: meta?.full_name || meta?.name || email?.split('@')[0] || 'Athlete',
-      language:     language,
-      updated_at:   new Date().toISOString(),
+      id:         userId,
+      email:      email,
+      language:   language,
+      updated_at: new Date().toISOString(),
     }, { onConflict: 'id' })
   }, [])
 
@@ -63,7 +64,7 @@ export function useAuth() {
   // Runs outside the auth lock, triggered by SIGNED_IN setting needsUpsert.
   useEffect(() => {
     if (!user || !needsUpsert) return
-    upsertProfile(user.id, user.email, user.user_metadata)
+    upsertProfile(user.id, user.email)
       .then(() => setNeedsUpsert(false))
   }, [user, needsUpsert, upsertProfile])
 
