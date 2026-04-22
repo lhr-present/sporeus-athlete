@@ -4,6 +4,23 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v10.4.0] — 2026-04-23
+
+### P1–P5 — Data surfacing: raw metrics, baseline stat, extended history, ACWR tile, race nudge
+
+- **P1 — Raw metrics strip in TrainingLog expanded panel**: avgPower / avgHR / avgCadence / distanceM shown as colored badges when present (FIT/Strava imports). Gate: at least one field > 0.
+- **P2 — 28d wellness baseline stat in TodayView Card 2**: `wellnessBaseline.mean ± sd` shown below the score always when baseline exists, not just in z-score warning. Gate: `wellnessBaseline && todayRec`.
+- **P3 — Extended Recovery history table**: HRV (ms), resting HR (bpm), bedtime columns added conditionally for advanced athletes who log them. Table gets `overflowX: auto` wrapper. Gate: `isAdvanced && any entry has data`.
+- **P4 — ACWR ratio tile in TodayView Card 3 Quick Stats**: `acwrRatio` was computed but only used in share canvas. Now shown as a 4th tile with color coding (green 0.8–1.3, amber <0.8, red >1.3). Gate: `log.length >= 7`.
+- **P5 — Race date nudge in TodayView**: when no `profile.raceDate` set and `log.length >= 10`, shows a compact prompt with Profile shortcut button to unlock L2 race countdown + taper guidance.
+
+**Tests:** 2728 (unchanged — 1 pre-existing nextAction failure). Build: clean.
+**Semver:** v10.4.0
+
+DEPENDS ON: v10.3.1, L2 race countdown in TodayView
+
+---
+
 ## [v10.3.1] — 2026-04-23
 
 ### Auth bug fix — display_name overwrite on every Google sign-in

@@ -424,33 +424,50 @@ export default function Recovery() {
       })()}
 
       {entries.length>0 && (
-        <div className="sp-card" style={{ ...S.card, animationDelay:'100ms' }}>
+        <div className="sp-card" style={{ ...S.card, animationDelay:'100ms', overflowX:'auto' }}>
           <div style={S.cardTitle}>{t('hist7Title')}</div>
-          <table style={{ width:'100%', borderCollapse:'collapse', ...S.mono, fontSize:'12px' }}>
-            <thead>
-              <tr style={{ borderBottom:'2px solid var(--border)', color:'#888', fontSize:'10px' }}>
-                {['DATE','SLEEP','SORENESS','ENERGY','MOOD','STRESS','Zzz','SCORE'].map(h=>(
-                  <th key={h} style={{ textAlign:h==='SCORE'?'right':'left', padding:'4px 6px 8px 0', fontWeight:600, fontSize:'9px', letterSpacing:'0.06em' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {[...entries].slice(-7).reverse().map((e,i)=>{
-                const sc=e.score||0
-                const sc_c=sc>=75?'#5bc25b':sc>=50?'#f5c542':'#e03030'
-                return (
-                  <tr key={i} style={{ borderBottom:'1px solid var(--border)' }}>
-                    <td style={{ padding:'6px 6px 6px 0', color:'var(--sub)' }}>{e.date}</td>
-                    {['sleep','soreness','energy','mood','stress'].map(k=>(
-                      <td key={k} style={{ padding:'6px 6px 6px 0' }}>{WELLNESS_FIELDS.find(f=>f.key===k)?.emoji[(e[k]||3)-1]}</td>
+          {/* P3 — Extended columns: HRV, resting HR, bedtime (advanced only, when data exists) */}
+          {(() => {
+            const recent = [...entries].slice(-7).reverse()
+            const hasHRV  = isAdvanced && recent.some(e => e.hrv)
+            const hasRHR  = isAdvanced && recent.some(e => e.restingHR)
+            const hasBed  = isAdvanced && recent.some(e => e.bedtime)
+            const extraHeaders = [
+              hasHRV  && 'HRV',
+              hasRHR  && 'RHR',
+              hasBed  && 'BED',
+            ].filter(Boolean)
+            return (
+              <table style={{ width:'100%', borderCollapse:'collapse', ...S.mono, fontSize:'12px', minWidth: extraHeaders.length ? '520px' : 'auto' }}>
+                <thead>
+                  <tr style={{ borderBottom:'2px solid var(--border)', color:'#888', fontSize:'10px' }}>
+                    {['DATE','SLEEP','SORENESS','ENERGY','MOOD','STRESS','Zzz',...extraHeaders,'SCORE'].map(h=>(
+                      <th key={h} style={{ textAlign:h==='SCORE'?'right':'left', padding:'4px 6px 8px 0', fontWeight:600, fontSize:'9px', letterSpacing:'0.06em', whiteSpace:'nowrap' }}>{h}</th>
                     ))}
-                    <td style={{ padding:'6px 6px 6px 0', color:'#888' }}>{e.sleepHrs ? `${e.sleepHrs}h` : '—'}</td>
-                    <td style={{ textAlign:'right', padding:'6px 0', color:sc_c, fontWeight:600 }}>{sc}</td>
                   </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                </thead>
+                <tbody>
+                  {recent.map((e,i)=>{
+                    const sc=e.score||0
+                    const sc_c=sc>=75?'#5bc25b':sc>=50?'#f5c542':'#e03030'
+                    return (
+                      <tr key={i} style={{ borderBottom:'1px solid var(--border)' }}>
+                        <td style={{ padding:'6px 6px 6px 0', color:'var(--sub)', whiteSpace:'nowrap' }}>{e.date}</td>
+                        {['sleep','soreness','energy','mood','stress'].map(k=>(
+                          <td key={k} style={{ padding:'6px 6px 6px 0' }}>{WELLNESS_FIELDS.find(f=>f.key===k)?.emoji[(e[k]||3)-1]}</td>
+                        ))}
+                        <td style={{ padding:'6px 6px 6px 0', color:'#888' }}>{e.sleepHrs ? `${e.sleepHrs}h` : '—'}</td>
+                        {hasHRV && <td style={{ padding:'6px 6px 6px 0', color: e.hrv ? '#5bc25b' : '#333', fontSize:'10px' }}>{e.hrv ? `${e.hrv}ms` : '—'}</td>}
+                        {hasRHR && <td style={{ padding:'6px 6px 6px 0', color: e.restingHR ? '#4a90d9' : '#333', fontSize:'10px' }}>{e.restingHR ? `${e.restingHR}` : '—'}</td>}
+                        {hasBed && <td style={{ padding:'6px 6px 6px 0', color: e.bedtime ? '#888' : '#333', fontSize:'10px' }}>{e.bedtime || '—'}</td>}
+                        <td style={{ textAlign:'right', padding:'6px 0', color:sc_c, fontWeight:600 }}>{sc}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )
+          })()}
         </div>
       )}
 

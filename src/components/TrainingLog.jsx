@@ -623,6 +623,24 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                                   CTL: {expandedCtlInfo.ctlBefore} → {expandedCtlInfo.ctlAfter} ({expandedCtlInfo.delta >= 0 ? '+' : ''}{expandedCtlInfo.delta} this session)
                                 </div>
                               )}
+                              {/* P1 — RAW METRICS from FIT/Strava (avgPower, avgHR, avgCadence, distanceM) */}
+                              {(expandedEntry?.avgPower || expandedEntry?.avgHR || expandedEntry?.avgCadence || expandedEntry?.distanceM) && (() => {
+                                const metrics = [
+                                  expandedEntry.avgPower   && { lbl:'AVG PWR',  val:`${expandedEntry.avgPower}W`,                              color:'#ff6600' },
+                                  expandedEntry.avgHR      && { lbl:'AVG HR',   val:`${expandedEntry.avgHR}bpm`,                               color:'#e03030' },
+                                  expandedEntry.avgCadence && { lbl:'CADENCE',  val:`${expandedEntry.avgCadence}rpm`,                          color:'#0064ff' },
+                                  expandedEntry.distanceM  && { lbl:'DIST',     val:`${(expandedEntry.distanceM/1000).toFixed(2)}km`,           color:'#888'    },
+                                ].filter(Boolean)
+                                return (
+                                  <div style={{ display:'flex', gap:'6px', flexWrap:'wrap', marginBottom:'10px', paddingBottom:'8px', borderBottom:'1px solid #1e1e1e' }}>
+                                    {metrics.map(m => (
+                                      <span key={m.lbl} style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', color:m.color, border:`1px solid ${m.color}33`, padding:'2px 7px', borderRadius:'2px' }}>
+                                        {m.lbl} {m.val}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )
+                              })()}
                               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'10px', fontFamily:"'IBM Plex Mono',monospace" }}>
                                 <div>
                                   <div style={{ fontSize:'9px', color:'#555', marginBottom:'3px' }}>COMPARISON</div>

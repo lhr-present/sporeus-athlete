@@ -827,6 +827,15 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
               </div>
             )
           })()}
+          {/* P2 — 28-day baseline reference (always shown when data exists) */}
+          {wellnessBaseline && (
+            <div style={{ fontFamily: MONO, fontSize: '9px', color: '#444', marginTop: '8px', letterSpacing: '0.05em' }}>
+              {lang === 'tr' ? '28g ort' : '28d avg'}:{' '}
+              <span style={{ color: 'var(--text)', fontWeight: 600 }}>{wellnessBaseline.mean}</span>
+              {wellnessBaseline.sd > 0 && <span style={{ color: '#444' }}> ± {wellnessBaseline.sd}</span>}
+              <span style={{ color: '#333' }}> · {wellnessBaseline.n} {lang === 'tr' ? 'gün' : 'days'}</span>
+            </div>
+          )}
           </>
         ) : wellnessSaved ? (
           <>
@@ -985,6 +994,16 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
             <div style={{ fontSize: '9px', color: '#666', letterSpacing: '0.08em' }}>{t('todayConsec')}</div>
           </div>
 
+          {/* P4 — ACWR ratio tile (computed but only used in share canvas before) */}
+          {acwrRatio !== null && (log || []).length >= 7 && (
+            <div style={{ flex: '1 1 80px', textAlign: 'center', padding: '10px 8px', background: 'var(--surface)', borderRadius: '6px', border: `1px solid ${acwrRatio > 1.3 ? RED : acwrRatio < 0.8 ? AMBER : 'var(--border)'}` }}>
+              <div style={{ fontSize: '20px', fontWeight: 700, color: acwrRatio > 1.3 ? RED : acwrRatio < 0.8 ? AMBER : ORANGE, marginBottom: '4px' }}>
+                {acwrRatio.toFixed(2)}
+              </div>
+              <div style={{ fontSize: '9px', color: '#666', letterSpacing: '0.08em' }}>ACWR</div>
+            </div>
+          )}
+
         </div>
 
         {!yesterdayLogged && (log || []).length > 0 && (
@@ -1003,6 +1022,14 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
           </button>
         )}
       </div>
+
+      {/* ── P5 — Race date nudge when raceDate not set ──────────────────── */}
+      {!profile?.raceDate && (log || []).length >= 10 && (
+        <div style={{ fontFamily: MONO, fontSize: '9px', color: '#444', marginBottom: '10px', padding: '7px 12px', border: '1px solid #222', borderRadius: '3px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+          <span>{lang === 'tr' ? '▷ Hedef yarış tarihi yok — Profile\'de ekle → geri sayım + taper rehberi' : '▷ No race date set — add one in Profile for countdown + taper guidance'}</span>
+          <button onClick={() => setTab('profile')} style={{ background: 'none', border: 'none', color: ORANGE, fontFamily: MONO, fontSize: '9px', cursor: 'pointer', padding: '0', flexShrink: 0 }}>→ {lang === 'tr' ? 'Profil' : 'Profile'}</button>
+        </div>
+      )}
 
       {/* ── Progress Rings ────────────────────────────────────────────────── */}
       {(log || []).length >= 3 && (() => {
