@@ -481,7 +481,10 @@ export default function Recovery() {
           <div className="sp-card" style={{ ...S.card, animationDelay:'90ms', borderLeft:`4px solid ${levelColor}` }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px' }}>
               <div style={S.cardTitle}>{t('injuryRiskTitle')}</div>
-              <span style={{ ...S.mono, fontSize:'11px', fontWeight:600, color:levelColor }}>{levelLabel}</span>
+              <div style={{ display:'flex', alignItems:'baseline', gap:'6px' }}>
+                <span style={{ ...S.mono, fontSize:'20px', fontWeight:700, color:levelColor, lineHeight:1 }}>{risk.score}</span>
+                <span style={{ ...S.mono, fontSize:'11px', fontWeight:600, color:levelColor }}>{levelLabel}</span>
+              </div>
             </div>
             {risk.factors.length > 0 && (
               <div style={{ display:'flex', flexDirection:'column', gap:'5px', marginBottom:'8px' }}>

@@ -552,6 +552,14 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
       {!digest.empty && (() => {
         const yesterdayEntry = (log || []).find(e => e.date === yesterday)
         const timeAdvice     = getTimeOfDayAdvice(new Date().getHours())
+        const TIME_ADVICE_TR = {
+          'Morning training — HR runs 5–10% lower, perceived effort feels higher than it is.': 'Sabah antrenmanı — KA %5–10 daha düşük çalışır, algılanan efor gerçekten daha yüksek hissettir.',
+          'Late morning — body temperature rising, good window for quality work.': 'İlk öğle — vücut ısısı yükseliyor, kaliteli antrenman için iyi pencere.',
+          'Midday — peak strength and power output window (Drust et al. 2005).': 'Öğle — güç ve kuvvet çıkışı zirvesi (Drust ve ark. 2005).',
+          'Afternoon — reaction time and coordination peak; ideal for technical sessions.': 'Öğleden sonra — reaksiyon süresi ve koordinasyon zirvede; teknik seanslar için ideal.',
+          'Evening — allow 2h before sleep after hard sessions to avoid elevated cortisol disrupting recovery.': 'Akşam — zorlu seansı uykudan en az 2 saat önce bitir; yüksek kortizol toparlanmayı bozar.',
+        }
+        const timeAdviceText = timeAdvice ? (lang === 'tr' ? (TIME_ADVICE_TR[timeAdvice] || timeAdvice) : timeAdvice) : null
         return (
           <div style={{ ...card, borderLeft: `4px solid #333`, padding: '14px 18px' }}>
             <div style={{ ...cardTitle, marginBottom: '8px' }}>
@@ -571,9 +579,9 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                 "{yesterdayEntry.notes}"
               </div>
             )}
-            {timeAdvice && (
+            {timeAdviceText && (
               <div style={{ fontFamily: MONO, fontSize: '10px', color: '#666', marginTop: '4px', fontStyle: 'italic' }}>
-                {timeAdvice}
+                {timeAdviceText}
               </div>
             )}
             {/* L5 — Goal-context line */}

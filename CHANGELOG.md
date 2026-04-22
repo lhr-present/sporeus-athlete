@@ -4,6 +4,23 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v10.5.0] — 2026-04-23
+
+### Q1–Q5 — Numeric intelligence surfacing: load numbers, zone splits, injury score, fitness projection, TR localization
+
+- **Q1 — InsightsPanel load trend numeric row**: `analyzeLoadTrend.tss1/.tss2/.ctl/.atl` were returned but not rendered. When "MORE" is open, shows `W1: {tss1} TSS · W2: {tss2} TSS · CTL: {ctl} · ATL: {atl}` as a dim sub-row under the load trend advice.
+- **Q2 — TodayView time-of-day advice TR localization**: `getTimeOfDayAdvice()` returns English-only strings. Added a TR lookup table in TodayView; TR users now see localized time advice in the Morning Brief.
+- **Q3 — Injury risk numeric score in Recovery**: `predictInjuryRisk.score` (0–100) was computed but never shown. Added as a large numeric badge next to the RISK level label.
+- **Q4 — InsightsPanel zone balance percentages**: `analyzeZoneBalance.z1z2Pct/.z3Pct/.z4z5Pct` were returned but not rendered. When "MORE" open, shows `Z1/Z2: X% · Z3: Y% · Z4/Z5: Z%` as numeric sub-row.
+- **Q5 — InsightsPanel fitness TSB + 8-week projection**: `predictFitness.tsb` and `.in8w` were computed but not shown. When "MORE" open, shows `TSB: ±N · 4w: N CTL · 8w: N CTL` sub-row.
+
+**Tests:** 2728 (unchanged — 1 pre-existing nextAction failure). Build: clean.
+**Semver:** v10.5.0
+
+DEPENDS ON: v10.4.0, analyzeLoadTrend/analyzeZoneBalance/predictFitness/predictInjuryRisk in intelligence.js
+
+---
+
 ## [v10.4.0] — 2026-04-23
 
 ### P1–P5 — Data surfacing: raw metrics, baseline stat, extended history, ACWR tile, race nudge

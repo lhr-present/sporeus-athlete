@@ -24,10 +24,14 @@ export default function InsightsPanel({ log, recovery, profile: _profile, lang }
   if ((log || []).length < 4) return null
 
   const insights = [
-    { label: t('loadTrendLabel'),  value: loadTrend.trend.toUpperCase(),       color: loadTrend.trend==='building'?'#5bc25b':loadTrend.trend==='recovering'?'#4a90d9':'#f5c542', text: loadTrend.advice[lang] || loadTrend.advice.en },
-    { label: t('zoneBalanceLabel'),value: zoneBalance.status.replace('_',' ').toUpperCase(), color: zoneBalance.status==='polarized'?'#5bc25b':zoneBalance.status==='too_hard'?'#e03030':'#f5c542', text: zoneBalance.recommendation[lang] || zoneBalance.recommendation.en },
-    { label: t('fitnessLabel'),    value: fitness.trajectory.toUpperCase(),    color: fitness.trajectory==='improving'?'#5bc25b':fitness.trajectory==='declining'?'#e03030':'#f5c542', text: fitness.label[lang] || fitness.label.en },
-    { label: t('recovCorrLabel'),  value: recovCorr.correlation !== null ? (recovCorr.correlation > 5 ? 'LINKED' : 'RESILIENT') : 'PENDING', color: recovCorr.correlation !== null ? (recovCorr.correlation > 5 ? '#f5c542' : '#5bc25b') : '#888', text: recovCorr.insight[lang] || recovCorr.insight.en },
+    { label: t('loadTrendLabel'),  value: loadTrend.trend.toUpperCase(),       color: loadTrend.trend==='building'?'#5bc25b':loadTrend.trend==='recovering'?'#4a90d9':'#f5c542', text: loadTrend.advice[lang] || loadTrend.advice.en,
+      detail: loadTrend.tss1 > 0 ? `W1: ${loadTrend.tss1} TSS · W2: ${loadTrend.tss2 || 0} TSS · CTL: ${loadTrend.ctl} · ATL: ${loadTrend.atl}` : null },
+    { label: t('zoneBalanceLabel'),value: zoneBalance.status.replace('_',' ').toUpperCase(), color: zoneBalance.status==='polarized'?'#5bc25b':zoneBalance.status==='too_hard'?'#e03030':'#f5c542', text: zoneBalance.recommendation[lang] || zoneBalance.recommendation.en,
+      detail: zoneBalance.z1z2Pct > 0 ? `Z1/Z2: ${zoneBalance.z1z2Pct}% · Z3: ${zoneBalance.z3Pct || 0}% · Z4/Z5: ${zoneBalance.z4z5Pct}%` : null },
+    { label: t('fitnessLabel'),    value: fitness.trajectory.toUpperCase(),    color: fitness.trajectory==='improving'?'#5bc25b':fitness.trajectory==='declining'?'#e03030':'#f5c542', text: fitness.label[lang] || fitness.label.en,
+      detail: fitness.current > 0 ? `TSB: ${fitness.tsb >= 0 ? '+' : ''}${fitness.tsb} · 4w: ${fitness.in4w} CTL · 8w: ${fitness.in8w} CTL` : null },
+    { label: t('recovCorrLabel'),  value: recovCorr.correlation !== null ? (recovCorr.correlation > 5 ? 'LINKED' : 'RESILIENT') : 'PENDING', color: recovCorr.correlation !== null ? (recovCorr.correlation > 5 ? '#f5c542' : '#5bc25b') : '#888', text: recovCorr.insight[lang] || recovCorr.insight.en,
+      detail: null },
   ]
 
   const smartAdj = []
@@ -51,7 +55,12 @@ export default function InsightsPanel({ log, recovery, profile: _profile, lang }
               <div style={{ ...S.mono, fontSize:'9px', color:'#888', letterSpacing:'0.06em' }}>{ins.label}</div>
               <div style={{ ...S.mono, fontSize:'13px', fontWeight:600, color:ins.color }}>{ins.value}</div>
             </div>
-            {open && <div style={{ ...S.mono, fontSize:'11px', color:'var(--sub)', lineHeight:1.6 }}>{ins.text}</div>}
+            {open && (
+              <div style={{ display:'flex', flexDirection:'column', gap:'2px', flex:1 }}>
+                <div style={{ ...S.mono, fontSize:'11px', color:'var(--sub)', lineHeight:1.6 }}>{ins.text}</div>
+                {ins.detail && <div style={{ ...S.mono, fontSize:'9px', color:'#555', marginTop:'3px', letterSpacing:'0.04em' }}>{ins.detail}</div>}
+              </div>
+            )}
           </div>
         ))}
       </div>
