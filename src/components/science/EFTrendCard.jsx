@@ -143,6 +143,12 @@ export default function EFTrendCard({ sessions, windowDays = 30 }) {
             <span>
               <span style={{ color: 'var(--text)' }}>n={result.sessionsN}</span>
             </span>
+            {result.mean != null && (
+              <span>
+                <span style={{ color: 'var(--text)', fontFamily: 'IBM Plex Mono, monospace' }}>{result.mean.toFixed(3)}</span>{' '}
+                {lang === 'tr' ? 'ort' : 'mean'}
+              </span>
+            )}
           </div>
         </>
       ) : (

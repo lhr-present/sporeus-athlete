@@ -564,8 +564,9 @@ export default function Dashboard({ log }) {
                 const h = w.minutes !== null ? Math.max(4, Math.round(w.minutes / maxMin * 40)) : 4
                 const isThisWk = i === subTrend.length - 1
                 return (
-                  <div key={w.weekStart} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center' }}>
+                  <div key={w.weekStart} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center', gap: '2px' }}>
                     <div style={{ width: '100%', height: `${h}px`, background: w.minutes === null ? '#1a1a1a' : isThisWk ? '#5bc25b' : '#0064ff66', borderRadius: '2px' }} />
+                    {w.sessionsIncluded > 0 && <div style={{ fontSize: '7px', color: '#333', fontFamily: "'IBM Plex Mono',monospace", lineHeight: 1 }}>{w.sessionsIncluded}</div>}
                   </div>
                 )
               })}

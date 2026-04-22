@@ -4,6 +4,23 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v10.7.0] — 2026-04-23
+
+### S1–S5 — CTL/ATL in form tile, HRV strip with interpretation, EF mean, sub-threshold session counts, zone model tip TR fix
+
+- **S1 — PerformanceMetrics: CTL·ATL sub-row in Form tile**: `getFormScore.ctl` and `.atl` were returned but only TSB was shown. Added `CTL {ctl} · ATL {atl}` dim sub-row below the TSB zone advice.
+- **S2 — TodayView HRV strip: latestHRV + interpretation**: `computeHRVTrend.latestHRV` (today's value in ms) and `.interpretation` (bilingual) were computed but not surfaced. HRV strip now shows `{latestHRV}ms / {baseline}ms` and renders bilingual interpretation text below the bars.
+- **S3 — EFTrendCard: mean EF in stats row**: `efTrend.mean` was returned but not shown. Added `{mean.toFixed(3)} mean/ort` to the stats row alongside latest, CV%, and n.
+- **S4 — Dashboard sub-threshold bars: sessionsIncluded annotation**: `subThresholdTrend.sessionsIncluded` (per-week session count) was returned but never rendered. Now shows as a tiny number below each bar.
+- **S5 — ZoneDistributorCard: zone model tip TR bug fix**: Both branches of `lang === 'tr' ? meta.tip : meta.tip` incorrectly rendered the English tip. Added `tipTr` to all 6 MODEL_META entries in `zoneDistrib.js` and fixed the render to `meta.tipTr` for TR users.
+
+**Tests:** 2728 (unchanged — 1 pre-existing nextAction failure). Build: clean.
+**Semver:** v10.7.0
+
+DEPENDS ON: v10.6.0, getFormScore/computeHRVTrend/efTrend/subThresholdTrend in intelligence.js/science/, MODEL_META in zoneDistrib.js
+
+---
+
 ## [v10.6.0] — 2026-04-23
 
 ### R1–R5 — Daniels paces, injury zone chips, week template table, SESSION ANALYSIS TR, recovery_time TR

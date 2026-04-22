@@ -24,6 +24,7 @@ export default function PerformanceMetrics({ log }) {
         <div style={{ fontFamily:MONO, fontSize:'9px', color:'#888', letterSpacing:'0.1em', textTransform:'uppercase', marginTop:'4px' }}>Form (TSB)</div>
         <div style={{ fontFamily:MONO, fontSize:'10px', color:tsbZone.color, marginTop:'2px' }}>{lang === 'tr' ? tsbZone.label.tr : tsbZone.label.en}</div>
         <div style={{ fontFamily:MONO, fontSize:'9px', color:'#444', marginTop:'3px', lineHeight:1.4 }}>{lang === 'tr' ? tsbZone.advice.tr : tsbZone.advice.en}</div>
+        <div style={{ fontFamily:MONO, fontSize:'8px', color:'#333', marginTop:'4px', letterSpacing:'0.04em' }}>CTL {form.ctl} · ATL {form.atl}</div>
       </div>
       <div style={{ flex:'1 1 120px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'6px', padding:'12px', textAlign:'center' }}>
         <div style={{ fontFamily:MONO, fontSize:'22px', fontWeight:600, color:'#ff6600' }}>{peakWk}</div>

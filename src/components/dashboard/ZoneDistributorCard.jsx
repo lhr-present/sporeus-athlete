@@ -45,7 +45,7 @@ export default function ZoneDistributorCard({ filteredLog, rangeLabel }) {
         ))}
       </div>
       <div style={{ ...S.mono, fontSize: 9, color: '#666', lineHeight: 1.5 }}>
-        {lang === 'tr' ? meta.tip : meta.tip}
+        {lang === 'tr' ? meta.tipTr : meta.tip}
       </div>
     </div>
   )

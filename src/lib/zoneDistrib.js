@@ -63,10 +63,10 @@ export function trainingModel(pct) {
 
 /** Human-readable label + colour for each model. */
 export const MODEL_META = {
-  polarized:  { color: '#5bc25b', en: 'POLARIZED',  tr: 'POLARİZE',  tip: 'Optimal for endurance (Seiler). Keep Z3 < 10%.' },
-  pyramidal:  { color: '#0064ff', en: 'PYRAMIDAL',  tr: 'PİRAMİT',   tip: 'Good base — healthy volume pyramid.' },
-  threshold:  { color: '#f5c542', en: 'THRESHOLD-HEAVY', tr: 'TEMPO AĞIRLIKLI', tip: 'High Z3 — replace some tempo with easy or hard efforts.' },
-  recovery:   { color: '#888',    en: 'RECOVERY',   tr: 'TOPARLANMA', tip: 'Very low intensity — ready to add volume.' },
-  mixed:      { color: '#888',    en: 'MIXED',       tr: 'KARMA',     tip: 'No clear distribution pattern yet.' },
-  unknown:    { color: '#555',    en: 'NO DATA',    tr: 'VERİ YOK',  tip: 'Log sessions with RPE to see zone distribution.' },
+  polarized:  { color: '#5bc25b', en: 'POLARIZED',  tr: 'POLARİZE',  tip: 'Optimal for endurance (Seiler). Keep Z3 < 10%.', tipTr: 'Dayanıklılık için optimal (Seiler). Z3\'ü %10 altında tut.' },
+  pyramidal:  { color: '#0064ff', en: 'PYRAMIDAL',  tr: 'PİRAMİT',   tip: 'Good base — healthy volume pyramid.', tipTr: 'İyi taban — sağlıklı hacim piramidi.' },
+  threshold:  { color: '#f5c542', en: 'THRESHOLD-HEAVY', tr: 'TEMPO AĞIRLIKLI', tip: 'High Z3 — replace some tempo with easy or hard efforts.', tipTr: 'Yüksek Z3 — bir kısım tempoyu kolay veya sert eforlarla değiştir.' },
+  recovery:   { color: '#888',    en: 'RECOVERY',   tr: 'TOPARLANMA', tip: 'Very low intensity — ready to add volume.', tipTr: 'Çok düşük yoğunluk — hacim eklemek için hazır.' },
+  mixed:      { color: '#888',    en: 'MIXED',       tr: 'KARMA',     tip: 'No clear distribution pattern yet.', tipTr: 'Henüz net bir dağılım paterni yok.' },
+  unknown:    { color: '#555',    en: 'NO DATA',    tr: 'VERİ YOK',  tip: 'Log sessions with RPE to see zone distribution.', tipTr: 'Zon dağılımını görmek için RPE ile antrenman kaydet.' },
 }
