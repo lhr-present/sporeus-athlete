@@ -1,5 +1,18 @@
 # Debt Session Log
 
+## O1–O5 — UX completeness: session grade, source tags, protocol rationale, recap visual, readiness sparkline (2026-04-22)
+
+**Changes:**
+- `src/components/TrainingLog.jsx`: O1 `scoreSession` A–D grade badge in expanded session panel
+- `src/components/TodayView.jsx`: O2 suggestion.source badge; O3 protocol when_to_use rationale; O4 weekly recap visual card (trend arrows, stat boxes, dismissable); O5 7-day readiness SVG sparkline in Card 2 (recovery.length≥3 + todayRec)
+
+**Tests:** 2728 (unchanged) — all pass.
+**Semver:** v10.3.0
+
+**Status: ✅ O1–O5 COMPLETE**
+
+---
+
 ## N1–N5 — Stored data visualised (2026-04-22)
 
 **Changes:**

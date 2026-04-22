@@ -121,6 +121,12 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     ).slice(-3)
   }, [expandedEntry, log.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // O1 — scoreSession for historical expanded rows
+  const expandedScore = useMemo(
+    () => expandedEntry ? scoreSession(expandedEntry, log, profileLS) : null,
+    [expandedEntry, log.length] // eslint-disable-line react-hooks/exhaustive-deps
+  )
+
   useEffect(() => {
     if (prefill) {
       setForm({ date:today, type:prefill.type||'Easy Run', duration:String(prefill.duration||''), rpe:String(prefill.rpe||5), notes:prefill.description||'' })
@@ -666,6 +672,17 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                                   ))}
                                 </div>
                               )}
+                              {/* O1 — scoreSession grade for historical sessions */}
+                              {expandedScore && (() => {
+                                const gc = expandedScore.grade==='A'?'#5bc25b':expandedScore.grade==='B'?'#0064ff':expandedScore.grade==='C'?'#f5c542':'#e03030'
+                                return (
+                                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", display:'flex', alignItems:'center', gap:'10px', marginTop:'10px', paddingTop:'8px', borderTop:'1px solid #1e1e1e' }}>
+                                    <span style={{ fontSize:'22px', fontWeight:700, color:gc, lineHeight:1 }}>{expandedScore.grade}</span>
+                                    <span style={{ fontSize:'10px', color:'#555' }}>{expandedScore.score}/100</span>
+                                    <span style={{ fontSize:'10px', color:'#666', flex:1, lineHeight:1.5 }}>{expandedScore.feedback[lang] || expandedScore.feedback.en}</span>
+                                  </div>
+                                )
+                              })()}
                             </div>
                           </td>
                         </tr>

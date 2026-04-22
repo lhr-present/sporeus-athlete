@@ -4,6 +4,25 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v10.3.0] — 2026-04-22
+
+### O1–O5 — UX completeness: session grades, source tags, protocol rationale, recap visual, readiness sparkline
+
+Five enhancements closing UX gaps where computed data had no display surface.
+
+- **O1 — Session grade badge in `TrainingLog.jsx`**: expanded session detail panel shows A–D grade, score/100, and bilingual feedback from `scoreSession()`. Gate: entry in expanded state.
+- **O2 — suggestion.source badge in `TodayView.jsx`**: tiny monospace badge above smart suggestion action text showing why the suggestion was triggered (e.g. ACWR_HIGH, HRV_SUPPRESSED). Gate: `suggestion.source` truthy.
+- **O3 — Protocol `when_to_use` rationale in `TodayView.jsx`**: italic one-liner below each recovery protocol name from `p.when_to_use`. No gate — always shown when protocol renders.
+- **O4 — Weekly recap visual upgrade in `TodayView.jsx`**: plain text strip replaced with card — trend arrow + colored TSS total vs 4-week avg, session count %, CTL delta, dominant type, avg RPE. Dismissable with week-keyed localStorage flag.
+- **O5 — 7-day readiness sparkline in `TodayView.jsx`** Card 2: SVG polyline of last 7 recovery scores with a 50-point dashed baseline. Color-coded by today's score level. Gate: `recovery.length >= 3 && todayRec`.
+
+**Tests:** 2728 (unchanged) — all pass (0 regressions). Build: clean.
+**Semver:** v10.3.0
+
+DEPENDS ON: v10.2.0 (N-series), scoreSession in intelligence.js, getRecommendedProtocols in recoveryProtocols.js, generateWeeklyRecap in trainingLoad.js
+
+---
+
 ## [v10.2.0] — 2026-04-22
 
 ### N1–N5 — Stored data surfaced: mood/stress, lactate, VDOT paces, cadence, metrics row

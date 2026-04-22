@@ -408,29 +408,46 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
     <div className="sp-fade">
 
       {/* ── Weekly Recap (Monday only) ─────────────────────────────────────── */}
-      {weeklyRecap && !recapDismissed && (
-        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', color: '#555', marginBottom: '16px', lineHeight: '1.7' }}>
-          <span style={{ color: '#888' }}>{weeklyRecap.weekLabel}</span>
-          {' · '}{weeklyRecap.sessions} sessions · {weeklyRecap.totalTSS} TSS
-          {' · '}CTL {weeklyRecap.ctlDelta >= 0 ? '+' : ''}{weeklyRecap.ctlDelta}
-          {' · '}ATL {weeklyRecap.atlDelta >= 0 ? '+' : ''}{weeklyRecap.atlDelta}
-          <br />
-          {weeklyRecap.comparedToAvg.tssRatio != null && (
-            <>vs 4-wk avg: {weeklyRecap.comparedToAvg.tssRatio >= 1 ? '+' : ''}{Math.round((weeklyRecap.comparedToAvg.tssRatio - 1) * 100)}% TSS
-            {weeklyRecap.comparedToAvg.sessionRatio != null && <> · {weeklyRecap.comparedToAvg.sessionRatio >= 1 ? '+' : ''}{Math.round((weeklyRecap.comparedToAvg.sessionRatio - 1) * 100)}% sessions</>}
-            <br /></>
-          )}
-          {weeklyRecap.dominantType && <>dominant: {weeklyRecap.dominantType}</>}
-          {weeklyRecap.avgRPE && <> · avg RPE {weeklyRecap.avgRPE}</>}
-          {' '}
-          <span
-            onClick={() => { localStorage.setItem(`sporeus-recap-seen-${weeklyRecap.weekLabel}`, '1'); setRecapDismissed(true) }}
-            style={{ cursor: 'pointer', color: '#444', fontSize: '9px' }}
-          >
-            [dismiss]
-          </span>
-        </div>
-      )}
+      {/* ── O4 — Weekly recap card (visual upgrade) ─────────────────────── */}
+      {weeklyRecap && !recapDismissed && (() => {
+        const ratio   = weeklyRecap.comparedToAvg?.tssRatio ?? null
+        const tssColor = ratio == null ? '#555' : ratio >= 1.1 ? GREEN : ratio <= 0.9 ? RED : AMBER
+        const tssArrow = ratio == null ? '' : ratio >= 1.05 ? '↑' : ratio <= 0.95 ? '↓' : '→'
+        const ctlColor = weeklyRecap.ctlDelta > 0 ? GREEN : weeklyRecap.ctlDelta < 0 ? RED : '#555'
+        return (
+          <div style={{ ...card, padding: '12px 16px', marginBottom: '14px', borderLeft: `3px solid ${tssColor}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+              <div style={{ fontFamily: MONO, fontSize: '9px', color: '#555', letterSpacing: '0.10em' }}>
+                ◈ {lang === 'tr' ? 'GEÇEN HAFTA' : 'LAST WEEK'} · {weeklyRecap.weekLabel}
+              </div>
+              <span onClick={() => { localStorage.setItem(`sporeus-recap-seen-${weeklyRecap.weekLabel}`, '1'); setRecapDismissed(true) }}
+                style={{ cursor: 'pointer', fontFamily: MONO, fontSize: '9px', color: '#333' }}>[×]</span>
+            </div>
+            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', fontFamily: MONO }}>
+              <div>
+                <div style={{ fontSize: '20px', fontWeight: 700, color: tssColor, lineHeight: 1 }}>{tssArrow} {weeklyRecap.totalTSS}</div>
+                <div style={{ fontSize: '8px', color: '#555', letterSpacing: '0.06em', marginTop: '2px' }}>TSS{ratio != null ? ` · ${ratio >= 1 ? '+' : ''}${Math.round((ratio - 1) * 100)}% vs 4wk` : ''}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>{weeklyRecap.sessions}</div>
+                <div style={{ fontSize: '8px', color: '#555', letterSpacing: '0.06em', marginTop: '2px' }}>
+                  {lang === 'tr' ? 'SEANS' : 'SESSIONS'}{weeklyRecap.comparedToAvg?.sessionRatio != null ? ` · ${weeklyRecap.comparedToAvg.sessionRatio >= 1 ? '+' : ''}${Math.round((weeklyRecap.comparedToAvg.sessionRatio - 1) * 100)}%` : ''}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: '20px', fontWeight: 700, color: ctlColor, lineHeight: 1 }}>{weeklyRecap.ctlDelta >= 0 ? '+' : ''}{weeklyRecap.ctlDelta}</div>
+                <div style={{ fontSize: '8px', color: '#555', letterSpacing: '0.06em', marginTop: '2px' }}>CTL Δ</div>
+              </div>
+              {weeklyRecap.dominantType && (
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: ORANGE, lineHeight: 1, marginTop: '4px' }}>{weeklyRecap.dominantType.toUpperCase()}</div>
+                  <div style={{ fontSize: '8px', color: '#555', letterSpacing: '0.06em', marginTop: '2px' }}>{lang === 'tr' ? 'BASKN TİP' : 'DOMINANT'}{weeklyRecap.avgRPE ? ` · RPE ${weeklyRecap.avgRPE}` : ''}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── Orientation nudge (disappears once oriented) ──────────────────── */}
       {orientationStep && (
@@ -758,6 +775,7 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
         <div style={cardTitle}>{t('todayReadiness')}</div>
 
         {todayRec ? (
+          <>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{ fontSize: '36px', fontWeight: 700, color: todayRec.score >= 75 ? GREEN : todayRec.score >= 50 ? AMBER : RED }}>
               {wellnessSaved && scoreDisplay > 0 ? scoreDisplay : todayRec.score}
@@ -785,6 +803,31 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
               })()}
             </div>
           </div>
+          {recovery.length >= 3 && (() => {
+            const pts = [...recovery].sort((a,b) => a.date.localeCompare(b.date)).slice(-7).filter(e => typeof e.score === 'number')
+            if (pts.length < 3) return null
+            const scores = pts.map(e => e.score)
+            const W = 120, H = 28
+            const minS = Math.min(...scores, 0), maxS = Math.max(...scores, 100)
+            const range = maxS - minS || 1
+            const toX = i => Math.round((i / (scores.length - 1)) * (W - 4)) + 2
+            const toY = v => Math.round(H - 2 - ((v - minS) / range) * (H - 4))
+            const polyline = scores.map((v,i) => `${toX(i)},${toY(v)}`).join(' ')
+            const scoreColor = todayRec.score >= 75 ? GREEN : todayRec.score >= 50 ? AMBER : RED
+            return (
+              <div style={{ marginTop: '10px' }}>
+                <div style={{ fontFamily: MONO, fontSize: '8px', color: '#555', letterSpacing: '0.08em', marginBottom: '3px' }}>
+                  {lang === 'tr' ? '7 GÜNLÜK HAZIRLIK' : '7-DAY READINESS'}
+                </div>
+                <svg width={W} height={H} style={{ display: 'block', overflow: 'visible' }}>
+                  <line x1="2" y1={toY(50)} x2={W-2} y2={toY(50)} stroke="#333" strokeWidth="0.5" strokeDasharray="2,2" />
+                  <polyline points={polyline} fill="none" stroke={scoreColor} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+                  <circle cx={toX(scores.length-1)} cy={toY(scores[scores.length-1])} r="2.5" fill={scoreColor} />
+                </svg>
+              </div>
+            )
+          })()}
+          </>
         ) : wellnessSaved ? (
           <>
             <div style={{ color: GREEN, fontSize: '12px' }}>
@@ -874,6 +917,12 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                       <div style={{ fontFamily: MONO, fontSize: '12px', fontWeight: 600, color: isDone ? '#5bc25b' : 'var(--text)', marginBottom: '4px' }}>
                         {isDone ? '✓ ' : ''}{p.name}
                       </div>
+                      {/* O3 — when_to_use rationale */}
+                      {p.when_to_use && (
+                        <div style={{ fontFamily: MONO, fontSize: '9px', color: '#555', marginBottom: '6px', lineHeight: 1.5 }}>
+                          {p.when_to_use}
+                        </div>
+                      )}
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                         <span style={{ ...badge('#888'), fontSize: '9px' }}>{p.duration}</span>
                         <span style={{ ...badge(evBadgeColor(p.evidence_level)), fontSize: '9px' }}>
@@ -1103,6 +1152,24 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
         <div style={cardTitle}>{t('todaySuggestion')}</div>
         {suggestion && (
           <div style={{ marginBottom: '16px' }}>
+            {/* O2 — suggestion source badge */}
+            {suggestion.source && suggestion.source !== 'default' && (() => {
+              const SRC = {
+                wellness_poor:   { label: lang==='tr' ? '⚠ TOPARLANMA DÜŞÜK' : '⚠ WELLNESS LOW',      color: RED   },
+                acwr_high:       { label: '↑ ACWR HIGH',                                               color: AMBER },
+                acwr_spike:      { label: '⚠ ACWR SPIKE',                                              color: RED   },
+                acwr_low:        { label: '↓ ACWR LOW',                                                color: BLUE  },
+                tsb_high:        { label: lang==='tr' ? '↑ FORM YÜKSEK' : '↑ TSB HIGH',               color: GREEN },
+                tsb_low:         { label: lang==='tr' ? '↓ FORM DÜŞÜK'  : '↓ TSB LOW',                color: AMBER },
+              }
+              const s = SRC[suggestion.source]
+              if (!s) return null
+              return (
+                <div style={{ display:'inline-flex', marginBottom:'6px', padding:'2px 7px', background:`${s.color}11`, border:`1px solid ${s.color}33`, borderRadius:'3px', fontFamily:MONO, fontSize:'9px', color:s.color, letterSpacing:'0.06em' }}>
+                  {s.label}
+                </div>
+              )
+            })()}
             <div style={{ fontSize: '11px', color: 'var(--text)', fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600 }}>
               {suggestion.action}
             </div>
