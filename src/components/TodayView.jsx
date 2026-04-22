@@ -27,6 +27,7 @@ const MorningCheckIn = lazy(() => import('./MorningCheckIn.jsx'))
 import { computeHRVTrend, isHRVSuppressed } from '../lib/hrv.js'
 import { findSeasonalPatterns } from '../lib/patterns.js'
 import { computeMonotony } from '../lib/trainingLoad.js'
+import { getTrainingPaces } from '../lib/vdot.js'
 
 const EMBED_MODE = new URLSearchParams(window.location.search).get('embed') === 'true'
 
@@ -131,6 +132,12 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
 
   // L1 — predictFitness forecast strip (gated: ≥14 sessions)
   const fitnessForecast = useMemo(() => (log || []).length >= 14 ? predictFitness(log || []) : null, [log])
+
+  // N3 — Training paces from VDOT (Daniels)
+  const paceRef = useMemo(() => {
+    const v = parseFloat(profile?.vo2max)
+    return v > 0 ? getTrainingPaces(v) : null
+  }, [profile?.vo2max])
 
   // L2 — Race countdown from profile.raceDate
   const raceCountdown = useMemo(() => {
@@ -559,6 +566,21 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                 {' · '}CTL {todayCtl}{todayCtl >= 60 ? (lang === 'tr' ? ' — yüksek form' : ' — strong base') : todayCtl >= 35 ? (lang === 'tr' ? ' — gelişiyor' : ' — building') : (lang === 'tr' ? ' — temel dönem' : ' — base phase')}
               </div>
             )}
+          </div>
+        )
+      })()}
+
+      {/* ── N3 — Training pace reference (Daniels VDOT) ─────────────────── */}
+      {paceRef && (() => {
+        const fmt = s => { const m = Math.floor(s/60); return `${m}:${String(Math.round(s%60)).padStart(2,'0')}` }
+        return (
+          <div style={{ display:'flex', gap:'6px', flexWrap:'wrap', padding:'7px 12px', background:'var(--surface, #0f0f0f)', borderRadius:'3px', marginBottom:'10px', fontFamily: MONO, alignItems:'center' }}>
+            <span style={{ fontSize:'9px', color:'#555', letterSpacing:'0.08em', marginRight:'2px' }}>VO₂max {profile.vo2max} · /km</span>
+            {[['EASY', paceRef.easy, GREEN], ['THRESH', paceRef.threshold, AMBER], ['INT', paceRef.interval, RED]].map(([label, val, color]) => (
+              <span key={label} style={{ fontSize:'10px', color, border:`1px solid ${color}33`, borderRadius:'3px', padding:'2px 7px' }}>
+                {label} {fmt(val)}
+              </span>
+            ))}
           </div>
         )
       })()}

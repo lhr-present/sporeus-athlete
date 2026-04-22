@@ -132,6 +132,21 @@ export default function Dashboard({ log }) {
   // L3 — predictFitness 4w/8w projection
   const fitProj = useMemo(() => log.length >= 14 ? predictFitness(log) : null, [log])
 
+  // N4 — Cadence trend (entries from FIT/Strava imports)
+  const cadenceEntries = useMemo(() =>
+    (filteredLog || []).filter(e => (e.avgCadence || 0) > 0).slice(-24),
+    [filteredLog]
+  )
+
+  // N5 — Key profile metrics
+  const profileMetrics = [
+    profile?.ftp      && { label: 'FTP',    val: `${profile.ftp}W`,           color: '#ff6600' },
+    profile?.maxhr    && { label: 'MAX HR', val: `${profile.maxhr}bpm`,        color: '#e03030' },
+    profile?.vo2max   && { label: 'VO₂max', val: `${profile.vo2max}`,          color: '#5bc25b' },
+    profile?.weight   && { label: 'WEIGHT', val: `${profile.weight}kg`,         color: '#888'    },
+    profile?.threshold && { label: 'LT2',   val: `${profile.threshold}W`,      color: '#0064ff' },
+  ].filter(Boolean)
+
   // K4 — Monotony daily TSS bars (computeMonotony Foster 1998)
   const weekLoadDetail = useMemo(() => computeMonotony(log), [log])
 
@@ -149,6 +164,16 @@ export default function Dashboard({ log }) {
   )
 
   // ── Header badges (sport, level, coach, data quality) ─────────────────────────
+  const metricsRow = profileMetrics.length >= 2 ? (
+    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
+      {profileMetrics.map(m => (
+        <span key={m.label} style={{ ...S.mono, fontSize: '10px', color: m.color, border: `1px solid ${m.color}33`, padding: '2px 7px', borderRadius: '2px' }}>
+          {m.label} {m.val}
+        </span>
+      ))}
+    </div>
+  ) : null
+
   const headerBadges = (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px', alignItems: 'center' }}>
       {sportLabel && (
@@ -204,6 +229,7 @@ export default function Dashboard({ log }) {
             {profile.name ? `ATHLETE: ${profile.name.toUpperCase()}` : t('appTitle')}
           </div>
           {headerBadges}
+          {metricsRow}
         </div>
         <div className="sp-card" style={{ ...S.row, marginBottom: '16px', animationDelay: '0ms' }}>
           {[
@@ -272,6 +298,7 @@ export default function Dashboard({ log }) {
           {profile.name ? `ATHLETE: ${profile.name.toUpperCase()}` : t('appTitle')}
         </div>
         {headerBadges}
+        {metricsRow}
         <div style={{ display: 'flex', gap: '5px', marginTop: '10px', flexWrap: 'wrap' }}>
           {[['7', '7D'], ['28', '28D'], ['90', '90D'], ['season', 'SEASON']].map(([val, lbl]) => (
             <button key={val} onClick={() => setDateRange(val)}
@@ -421,6 +448,39 @@ export default function Dashboard({ log }) {
                 </div>
               </div>
             ))}
+          </div>
+        )
+      })()}
+
+      {/* N4 — Cadence trend */}
+      {cadenceEntries.length >= 5 && (() => {
+        const vals = cadenceEntries.map(e => e.avgCadence)
+        const avg  = Math.round(vals.reduce((s,v)=>s+v,0)/vals.length)
+        const min  = Math.min(...vals), max = Math.max(...vals)
+        const range = max - min || 5
+        const W = 200, H = 32, pad = 4
+        const pts = vals.map((v,i) => {
+          const x = pad + i*(W-2*pad)/Math.max(vals.length-1,1)
+          const y = H - pad - (v-min)/range*(H-2*pad)
+          return `${x},${y}`
+        }).join(' ')
+        return (
+          <div className="sp-card" style={{ ...S.card, animationDelay: '160ms' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div style={S.cardTitle}>CADENCE TREND — {cadenceEntries.length} SESSIONS</div>
+              <div style={{ ...S.mono, fontSize:'12px', color:'#0064ff', fontWeight:600 }}>{avg} rpm avg</div>
+            </div>
+            <svg width={W} height={H} style={{ display:'block', overflow:'visible' }}>
+              <polyline points={pts} fill="none" stroke="#0064ff" strokeWidth="1.5" strokeLinejoin="round"/>
+              {vals.map((v,i) => {
+                const x = pad + i*(W-2*pad)/Math.max(vals.length-1,1)
+                const y = H - pad - (v-min)/range*(H-2*pad)
+                return <circle key={i} cx={x} cy={y} r="2" fill="#0064ff"/>
+              })}
+            </svg>
+            <div style={{ ...S.mono, fontSize:'9px', color:'#555', marginTop:'4px' }}>
+              {min}–{max} rpm · {lang==='tr' ? 'Optimal: koşu 170–180, bisiklet 85–95 rpm' : 'Optimal: run 170–180, cycle 85–95 rpm'}
+            </div>
           </div>
         )
       })()}

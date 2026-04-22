@@ -4,6 +4,25 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v10.2.0] — 2026-04-22
+
+### N1–N5 — Stored data surfaced: mood/stress, lactate, VDOT paces, cadence, metrics row
+
+Five enhancements displaying data that was collected but never visualised.
+
+- **N1 — Mood + stress 7-day sparklines in `Recovery.jsx`**: dual SVG polyline (blue = mood, red = stress) below sleep trend. Shows 7-day averages. Alert when avgStress > 3.5 AND avgMood < 3. Gate: `entries.length >= 3`.
+- **N2 — Lactate trend card in `Recovery.jsx`** (advanced/elite only): sparkline of last 10 lactate readings with a 2.0 mmol/L baseline reference line. Latest value shown; red border + "elevated" warning when latest > 2.0. Gate: `isAdvanced && ≥2 readings`.
+- **N3 — Training pace reference in `TodayView.jsx`**: compact 3-badge strip (EASY / THRESH / INT in min:sec/km) from `getTrainingPaces(profile.vo2max)` (Daniels VDOT table). Gate: `profile.vo2max > 0`. First UI surfacing of the vdot.js paces output.
+- **N4 — Cadence trend strip in `Dashboard.jsx`**: SVG sparkline of last 24 sessions with `avgCadence > 0`. Shows avg rpm + optimal range note (run 170–180, cycle 85–95). Gate: `≥5 cadence entries` in filtered log. Positioned before WEEKLY VOLUME card.
+- **N5 — Key profile metrics row in `Dashboard.jsx` header**: FTP / MAX HR / VO₂max / WEIGHT / LT2 badges shown after sport/level/coach row in both beginner and advanced views. Gate: `≥2 metrics set`.
+
+**Tests:** 2728 (unchanged) — all pass (0 regressions). Build: clean.
+**Semver:** v10.2.0
+
+DEPENDS ON: v10.1.0 (M-series), vdot.js Daniels table
+
+---
+
 ## [v10.1.0] — 2026-04-22
 
 ### M1–M5 — Unused function surfacing + data field display

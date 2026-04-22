@@ -265,6 +265,50 @@ export default function Recovery() {
         </div>
       )}
 
+      {/* N1 — Mood + stress 7-day sparklines */}
+      {entries.length >= 3 && (() => {
+        const last7 = [...entries].sort((a,b)=>a.date>b.date?1:-1).slice(-7)
+        const moodVals   = last7.map(e => e.mood   || 3)
+        const stressVals = last7.map(e => e.stress || 3)
+        const avgMood    = Math.round(moodVals.reduce((s,v)=>s+v,0)/moodVals.length*10)/10
+        const avgStress  = Math.round(stressVals.reduce((s,v)=>s+v,0)/stressVals.length*10)/10
+        const W = 130, H = 30, pad = 3
+        const line = (vals, color) => {
+          const pts = vals.map((v,i) => {
+            const x = pad + i * (W - 2*pad) / Math.max(vals.length - 1, 1)
+            const y = H - pad - (v - 1) / 4 * (H - 2*pad)
+            return `${x},${y}`
+          }).join(' ')
+          return <polyline key={color} points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round"/>
+        }
+        return (
+          <div className="sp-card" style={{ ...S.card, animationDelay:'85ms' }}>
+            <div style={S.cardTitle}>{lang==='tr' ? 'RUH HALİ & STRES — 7 GÜN' : 'MOOD & STRESS — 7 DAYS'}</div>
+            <div style={{ display:'flex', gap:'16px', alignItems:'center' }}>
+              <svg width={W} height={H} style={{ display:'block', overflow:'visible' }}>
+                {line(moodVals, '#0064ff')}
+                {line(stressVals, '#e03030')}
+              </svg>
+              <div style={{ display:'flex', flexDirection:'column', gap:'7px' }}>
+                <div style={{ ...S.mono, fontSize:'10px', display:'flex', gap:'6px', alignItems:'center' }}>
+                  <span style={{ width:10, height:2, background:'#0064ff', display:'inline-block', borderRadius:1 }}/>
+                  <span style={{ color:'#0064ff' }}>{lang==='tr' ? 'RUHHAL' : 'MOOD'} {avgMood}</span>
+                </div>
+                <div style={{ ...S.mono, fontSize:'10px', display:'flex', gap:'6px', alignItems:'center' }}>
+                  <span style={{ width:10, height:2, background:'#e03030', display:'inline-block', borderRadius:1 }}/>
+                  <span style={{ color:'#e03030' }}>{lang==='tr' ? 'STRES' : 'STRESS'} {avgStress}</span>
+                </div>
+              </div>
+            </div>
+            {avgStress > 3.5 && avgMood < 3 && (
+              <div style={{ ...S.mono, fontSize:'9px', color:'#f5c542', marginTop:'6px' }}>
+                ⚠ {lang==='tr' ? 'Yüksek stres + düşük ruh hali — yük artışından kaçın.' : 'High stress + low mood — avoid load increase.'}
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
       {/* I2 — Recovery patterns (findRecoveryPatterns) */}
       {!patterns.needsMore && (
         <div className="sp-card" style={{ ...S.card, animationDelay:'110ms' }}>
@@ -335,6 +379,46 @@ export default function Recovery() {
             </div>
             <Sparkline data={hrData} w={200} h={36}/>
             <div style={{ ...S.mono, fontSize:'9px', color:'#aaa', marginTop:'4px' }}>Lower = better recovery. Track for overtraining signals.</div>
+          </div>
+        )
+      })()}
+
+      {/* N2 — Lactate trend (advanced athletes) */}
+      {isAdvanced && (() => {
+        const lactateData = [...entries].sort((a,b)=>a.date>b.date?1:-1).filter(e=>parseFloat(e.lactate)>0).slice(-10)
+        if (lactateData.length < 2) return null
+        const vals = lactateData.map(e=>parseFloat(e.lactate))
+        const latest = vals[vals.length-1]
+        const isHigh = latest > 2.0
+        const chartMin = Math.min(Math.min(...vals), 0.5)
+        const chartMax = Math.max(Math.max(...vals), 2.5)
+        const range = chartMax - chartMin || 1
+        const W = 180, H = 36, pad = 4
+        const pts = vals.map((v,i) => {
+          const x = pad + i*(W-2*pad)/Math.max(vals.length-1,1)
+          const y = H - pad - (v-chartMin)/range*(H-2*pad)
+          return `${x},${y}`
+        }).join(' ')
+        const baselineY = H - pad - (2.0-chartMin)/range*(H-2*pad)
+        return (
+          <div className="sp-card" style={{ ...S.card, animationDelay:'95ms', borderLeft: isHigh?'4px solid #e03030':'4px solid #0064ff44' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div style={{ ...S.cardTitle, color:'#4a90d9' }}>BLOOD LACTATE TREND</div>
+              <div style={{ ...S.mono, fontSize:'12px', color:isHigh?'#e03030':'#5bc25b', fontWeight:600 }}>{latest.toFixed(1)} mmol/L</div>
+            </div>
+            <svg width={W} height={H} style={{ display:'block', overflow:'visible' }}>
+              <line x1={pad} y1={baselineY} x2={W-pad} y2={baselineY} stroke="#444" strokeWidth="1" strokeDasharray="3 3"/>
+              <polyline points={pts} fill="none" stroke={isHigh?'#e03030':'#0064ff'} strokeWidth="1.5" strokeLinejoin="round"/>
+              {vals.map((v,i) => {
+                const x = pad + i*(W-2*pad)/Math.max(vals.length-1,1)
+                const y = H - pad - (v-chartMin)/range*(H-2*pad)
+                return <circle key={i} cx={x} cy={y} r="2.5" fill={isHigh?'#e03030':'#0064ff'}/>
+              })}
+            </svg>
+            <div style={{ ...S.mono, fontSize:'9px', color:'#555', marginTop:'4px' }}>
+              baseline ≤ 2.0 mmol/L · {lactateData.length} readings
+              {isHigh && <span style={{ color:'#e03030', marginLeft:6 }}>⚠ elevated — reduce intensity</span>}
+            </div>
           </div>
         )
       })()}

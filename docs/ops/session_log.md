@@ -1,5 +1,19 @@
 # Debt Session Log
 
+## N1–N5 — Stored data visualised (2026-04-22)
+
+**Changes:**
+- `src/components/Recovery.jsx`: N1 dual mood+stress sparkline card (entries≥3); N2 lactate trend with 2.0 baseline line (isAdvanced + ≥2 readings)
+- `src/components/TodayView.jsx`: N3 training pace badges (EASY/THRESH/INT in mm:ss/km) from `getTrainingPaces(vo2max)` — first UI use of vdot.js paces
+- `src/components/Dashboard.jsx`: N4 cadence trend sparkline card (≥5 cadence entries); N5 FTP/MAXHR/VO₂max/WEIGHT/LT2 metrics row in header
+
+**Tests:** 2728 (unchanged) — all pass.
+**Semver:** v10.2.0
+
+**Status: ✅ N1–N5 COMPLETE**
+
+---
+
 ## M1–M5 — Unused function surfacing + data display (2026-04-22)
 
 **Changes:**
