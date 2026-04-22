@@ -231,6 +231,29 @@ export default function RaceReadiness() {
         </div>
       )}
 
+      {/* ── Daniels Training Paces ────────────────────────────────────────── */}
+      {perf.reliable && perf.trainingPaces && (
+        <div style={{ marginTop: '20px' }}>
+          <div style={{ fontSize: '9px', color: '#555', letterSpacing: '0.1em', marginBottom: '8px' }}>
+            {isTR ? '◈ ANTRENMAN TEMPOLAR (Daniels)' : '◈ TRAINING PACES (Daniels)'}
+          </div>
+          <div style={{ background: 'var(--surface, #0f0f0f)', borderRadius: '3px', padding: '10px 14px' }}>
+            {[
+              { key: 'easy',      label: isTR ? 'KOLAY'    : 'EASY'      },
+              { key: 'marathon',  label: isTR ? 'MARATON'  : 'MARATHON'  },
+              { key: 'threshold', label: isTR ? 'EŞİK'     : 'THRESHOLD' },
+              { key: 'interval',  label: isTR ? 'İNTERVAL' : 'INTERVAL'  },
+              { key: 'rep',       label: 'REP'                             },
+            ].map(({ key, label }) => (
+              <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '4px 0', borderBottom: '1px solid #1a1a1a' }}>
+                <span style={{ fontSize: '9px', color: '#555', letterSpacing: '0.06em', minWidth: '80px' }}>{label}</span>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#ccc', fontFamily: "'IBM Plex Mono', monospace" }}>{perf.trainingPaces[key]}{isTR ? '/km' : '/km'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Citation ──────────────────────────────────────────────────────── */}
       <div style={{ fontSize: '9px', color: '#333', marginTop: '16px', lineHeight: 1.6 }}>
         ℹ Banister 1991 (PMC) · Coggan 2003 (TSS/CTL/ATL) · Morton 1991 (dose-response)

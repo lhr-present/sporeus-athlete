@@ -617,7 +617,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                         <tr key={`exp-${i}`} style={{ borderBottom:'1px solid var(--border)', background:'#0a0a0a' }}>
                           <td colSpan={colCount} style={{ padding:'0 0 10px 0' }}>
                             <div style={{ margin:'0 6px 0 0', padding:'12px', background:'#0f0f0f', border:'1px solid #1e1e1e', borderRadius:'4px' }}>
-                              <div style={{ fontSize:'9px', color:'#ff6600', letterSpacing:'0.12em', marginBottom:'10px', fontWeight:700, fontFamily:"'IBM Plex Mono',monospace" }}>SESSION ANALYSIS</div>
+                              <div style={{ fontSize:'9px', color:'#ff6600', letterSpacing:'0.12em', marginBottom:'10px', fontWeight:700, fontFamily:"'IBM Plex Mono',monospace" }}>{lang==='tr'?'SEANS ANALİZİ':'SESSION ANALYSIS'}</div>
                               {expandedCtlInfo && (
                                 <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', color:'#666', marginBottom:'10px' }}>
                                   CTL: {expandedCtlInfo.ctlBefore} → {expandedCtlInfo.ctlAfter} ({expandedCtlInfo.delta >= 0 ? '+' : ''}{expandedCtlInfo.delta} this session)
@@ -641,24 +641,47 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                                   </div>
                                 )
                               })()}
-                              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'10px', fontFamily:"'IBM Plex Mono',monospace" }}>
-                                <div>
-                                  <div style={{ fontSize:'9px', color:'#555', marginBottom:'3px' }}>COMPARISON</div>
-                                  <div style={{ fontSize:'10px', color:'#aaa' }}>{expandedAnalysis?.comparison}</div>
-                                </div>
-                                <div>
-                                  <div style={{ fontSize:'9px', color:'#555', marginBottom:'3px' }}>ZONE ESTIMATE</div>
-                                  <div style={{ fontSize:'10px', color:'#aaa' }}>{expandedAnalysis?.zone_estimate}</div>
-                                </div>
-                                <div>
-                                  <div style={{ fontSize:'9px', color:'#555', marginBottom:'3px' }}>RECOVERY</div>
-                                  <div style={{ fontSize:'10px', color:'#aaa' }}>{expandedAnalysis?.recovery_time}</div>
-                                </div>
-                                <div>
-                                  <div style={{ fontSize:'9px', color:'#555', marginBottom:'3px' }}>NOTES</div>
-                                  {expandedAnalysis?.notes.map((n,ni) => <div key={ni} style={{ fontSize:'10px', color:'#aaa' }}>· {n}</div>)}
-                                </div>
-                              </div>
+                              {(() => {
+                                const isTR = lang === 'tr'
+                                const ZONE_TR = {
+                                  'Zone 1–2 — Easy/Recovery':               'Zon 1–2 — Kolay/Toparlanma',
+                                  'Zone 2–3 — Aerobic/Tempo':                'Zon 2–3 — Aerobik/Tempo',
+                                  'Zone 3–4 — Threshold — sustained effort': 'Zon 3–4 — Eşik — sürekli efor',
+                                  'Zone 3–4 — Threshold':                    'Zon 3–4 — Eşik',
+                                  'Zone 4–5 — VO2max / Hard':                'Zon 4–5 — VO2max / Zor',
+                                  'Zone 5 — Maximal effort':                 'Zon 5 — Maksimal efor',
+                                  'Zone not determinable':                    'Zon belirlenemiyor',
+                                }
+                                const REC_TR = {
+                                  'Allow 12h before next hard session': 'Sonraki zorlu seans için 12s bekle.',
+                                  'Allow 24h before next hard session': 'Sonraki zorlu seans için 24s bekle.',
+                                  'Allow 36h before next hard session': 'Sonraki zorlu seans için 36s bekle.',
+                                  'Allow 48h before next hard session': 'Sonraki zorlu seans için 48s bekle.',
+                                  'Allow 72h before next hard session': 'Sonraki zorlu seans için 72s bekle.',
+                                }
+                                const zoneText = expandedAnalysis?.zone_estimate
+                                const recText  = expandedAnalysis?.recovery_time
+                                return (
+                                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'10px', fontFamily:"'IBM Plex Mono',monospace" }}>
+                                    <div>
+                                      <div style={{ fontSize:'9px', color:'#555', marginBottom:'3px' }}>{isTR?'KARŞILAŞTIRMA':'COMPARISON'}</div>
+                                      <div style={{ fontSize:'10px', color:'#aaa' }}>{expandedAnalysis?.comparison}</div>
+                                    </div>
+                                    <div>
+                                      <div style={{ fontSize:'9px', color:'#555', marginBottom:'3px' }}>{isTR?'ZON TAHMİNİ':'ZONE ESTIMATE'}</div>
+                                      <div style={{ fontSize:'10px', color:'#aaa' }}>{isTR ? (ZONE_TR[zoneText] || zoneText) : zoneText}</div>
+                                    </div>
+                                    <div>
+                                      <div style={{ fontSize:'9px', color:'#555', marginBottom:'3px' }}>{isTR?'TOPARLANMA':'RECOVERY'}</div>
+                                      <div style={{ fontSize:'10px', color:'#aaa' }}>{isTR ? (REC_TR[recText] || recText) : recText}</div>
+                                    </div>
+                                    <div>
+                                      <div style={{ fontSize:'9px', color:'#555', marginBottom:'3px' }}>{isTR?'NOTLAR':'NOTES'}</div>
+                                      {expandedAnalysis?.notes.map((n,ni) => <div key={ni} style={{ fontSize:'10px', color:'#aaa' }}>· {n}</div>)}
+                                    </div>
+                                  </div>
+                                )
+                              })()}
                               {expandedEntry?.decouplingPct != null && (() => {
                                 const pct   = expandedEntry.decouplingPct
                                 const color = pct < 5 ? '#5bc25b' : pct < 10 ? '#ff6600' : '#e03030'

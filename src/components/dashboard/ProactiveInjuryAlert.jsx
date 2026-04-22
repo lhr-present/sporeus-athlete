@@ -3,8 +3,10 @@ import { S } from '../../styles.js'
 import { mineInjuryPatterns } from '../../lib/patterns.js'
 
 export default function ProactiveInjuryAlert({ log, injuries, lang }) {
-  const injPatterns = mineInjuryPatterns(log, injuries, [])
-  const highConf    = injPatterns.patterns.filter(p => p.confidence === 'high')
+  const injPatterns      = mineInjuryPatterns(log, injuries, [])
+  const highConf         = injPatterns.patterns.filter(p => p.confidence === 'high')
+  const vulnerableZones  = injPatterns.vulnerableZones || []
+  const protectiveFactors = injPatterns.protectiveFactors || []
   if (!highConf.length) return null
 
   const _now = new Date().toISOString().slice(0, 10)
@@ -43,8 +45,21 @@ export default function ProactiveInjuryAlert({ log, injuries, lang }) {
       {longRun > 90 && <div style={{ ...S.mono, fontSize:'10px', color:'#e03030' }}>→ Long session: {longRun} min</div>}
       {consec >= 3  && <div style={{ ...S.mono, fontSize:'10px', color:'#e03030' }}>→ {consec} consecutive hard days</div>}
       <div style={{ ...S.mono, fontSize:'10px', color:'#f5c542', marginTop:'8px', lineHeight:1.6 }}>
-        Suggestion: {lang==='tr'?'Yarınki seansı kolay çalışma ile değiştirin veya dinlenme günü ekleyin.':'Replace tomorrow\'s session with easy work or add a rest day.'}
+        {lang==='tr'?'Öneri:':'Suggestion:'} {lang==='tr'?'Yarınki seansı kolay çalışma ile değiştirin veya dinlenme günü ekleyin.':'Replace tomorrow\'s session with easy work or add a rest day.'}
       </div>
+      {vulnerableZones.length > 0 && (
+        <div style={{ display:'flex', gap:'4px', flexWrap:'wrap', marginTop:'8px' }}>
+          <span style={{ ...S.mono, fontSize:'9px', color:'#555' }}>{lang==='tr'?'Riskli bölge:':'Vulnerable:'}</span>
+          {vulnerableZones.map(z => (
+            <span key={z} style={{ ...S.mono, fontSize:'9px', color:'#e03030', border:'1px solid #e0303044', padding:'1px 5px', borderRadius:'2px' }}>{z}</span>
+          ))}
+        </div>
+      )}
+      {protectiveFactors.length > 0 && (
+        <div style={{ ...S.mono, fontSize:'9px', color:'#5bc25b', marginTop:'6px', lineHeight:1.6 }}>
+          ✓ {protectiveFactors[0][lang] || protectiveFactors[0].en}
+        </div>
+      )}
     </div>
   )
 }

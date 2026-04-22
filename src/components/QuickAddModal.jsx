@@ -145,7 +145,13 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
             {sessionAnalysis && (
               <div style={{ fontSize: '10px', marginBottom: '12px', padding: '8px 10px', background: 'var(--surface)', borderRadius: '3px', textAlign: 'left', lineHeight: 1.8, fontFamily: "'IBM Plex Mono', monospace" }}>
                 <div style={{ color: '#ccc' }}>{sessionAnalysis.comparison}</div>
-                <div style={{ color: '#555', marginTop: '2px' }}>{sessionAnalysis.recovery_time}</div>
+                <div style={{ color: '#555', marginTop: '2px' }}>{isTR ? ({
+                  'Allow 12h before next hard session': 'Sonraki zorlu seans için 12s bekle.',
+                  'Allow 24h before next hard session': 'Sonraki zorlu seans için 24s bekle.',
+                  'Allow 36h before next hard session': 'Sonraki zorlu seans için 36s bekle.',
+                  'Allow 48h before next hard session': 'Sonraki zorlu seans için 48s bekle.',
+                  'Allow 72h before next hard session': 'Sonraki zorlu seans için 72s bekle.',
+                }[sessionAnalysis.recovery_time] || sessionAnalysis.recovery_time) : sessionAnalysis.recovery_time}</div>
               </div>
             )}
             {isFirst && (

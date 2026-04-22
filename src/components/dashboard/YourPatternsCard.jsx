@@ -81,6 +81,20 @@ export default function YourPatternsCard({ log, recovery, injuries: _injuries, p
               +{allPatterns.length - 3} more patterns →
             </button>
           )}
+          {open && weekStruct.reliable && weekStruct.bestPattern && weekStruct.bestPattern.length > 0 && (
+            <div style={{ marginTop:'8px', padding:'8px 10px', background:'var(--card-bg)', borderRadius:'4px', borderLeft:'3px solid #ff660033' }}>
+              <div style={{ ...S.mono, fontSize:'9px', color:'#ff6600', letterSpacing:'0.08em', marginBottom:'6px' }}>
+                {lang==='tr' ? '◈ OPTİMAL HAFTA PLANI' : '◈ OPTIMAL WEEK TEMPLATE'}
+              </div>
+              {weekStruct.bestPattern.map(d => (
+                <div key={d.day} style={{ display:'flex', gap:'8px', ...S.mono, fontSize:'10px', color:'var(--sub)', padding:'2px 0', borderBottom:'1px solid #1a1a1a' }}>
+                  <span style={{ minWidth:'36px', color:'#555' }}>{d.day.slice(0,3).toUpperCase()}</span>
+                  <span style={{ flex:1 }}>{d.type}</span>
+                  <span style={{ color:'#444' }}>{d.avgDuration}min</span>
+                </div>
+              ))}
+            </div>
+          )}
           {open && hints.length > 0 && (
             <div style={{ marginTop:'4px', padding:'8px 10px', background:'var(--card-bg)', borderRadius:'4px' }}>
               {hints.map((h, i) => <div key={i} style={{ ...S.mono, fontSize:'10px', color:'#888', marginBottom:'4px' }}>{h.icon} {h.text}</div>)}

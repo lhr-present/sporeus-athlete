@@ -4,6 +4,23 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v10.6.0] — 2026-04-23
+
+### R1–R5 — Daniels paces, injury zone chips, week template table, SESSION ANALYSIS TR, recovery_time TR
+
+- **R1 — RaceReadiness: Daniels training paces table**: `predictRacePerformance.trainingPaces` (easy/marathon/threshold/interval/rep) was computed but never shown. Now renders as a pace table when prediction is reliable.
+- **R2 — ProactiveInjuryAlert: vulnerable zones + protective factors**: `mineInjuryPatterns.vulnerableZones` (zone chips) and `protectiveFactors` (strength training correlation) were returned but never rendered.
+- **R3 — YourPatternsCard: optimal week day schedule**: `findOptimalWeekStructure.bestPattern` (array of day/type/duration) was returned but only prose summary shown. Now renders as a mini day-by-day table when open and reliable.
+- **R4 — TrainingLog SESSION ANALYSIS TR**: SEANS ANALİZİ / KARŞILAŞTIRMA / ZON TAHMİNİ / TOPARLANMA / NOTLAR labels + `zone_estimate` lookup map for Turkish users.
+- **R5 — `analyseSession.recovery_time` TR**: finite set of "Allow Xh…" strings now localized in TrainingLog SESSION ANALYSIS and QuickAddModal confirmation screen.
+
+**Tests:** 2728 (unchanged — 1 pre-existing nextAction failure). Build: clean.
+**Semver:** v10.6.0
+
+DEPENDS ON: v10.5.0, mineInjuryPatterns/findOptimalWeekStructure/predictRacePerformance in intelligence.js/patterns.js
+
+---
+
 ## [v10.5.0] — 2026-04-23
 
 ### Q1–Q5 — Numeric intelligence surfacing: load numbers, zone splits, injury score, fitness projection, TR localization
