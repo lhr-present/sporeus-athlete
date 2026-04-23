@@ -120,7 +120,6 @@ export default function LoadHeatmapCard({ log, dl, onDayClick }) {
                 onClick={() => {
                   if (!isFuture) {
                     if (typeof onDayClick === 'function') onDayClick(date)
-                    else console.log('heatmap day clicked:', date, 'TSS:', tssMap[date] || 0)
                   }
                 }}
               >

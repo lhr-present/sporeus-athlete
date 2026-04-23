@@ -4,6 +4,38 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.0.3] — 2026-04-23
+
+### FIX: Recovery sleep quality field not persisted; MorningCheckIn semantic mismatch; debug console.log
+
+**Bug 1 — recovery.sleep (1-5) never in DB**
+Sleep quality slider was dropped by `recEntryToRow` (same root cause as the energy bug fixed
+in v11.0.2). Calendar showed "Sleep undefined/5", WellnessSparkline plotted null for every
+sleep point, pdfReport weekly wellness table showed "—" for all sleep cells even with data.
+
+**Bug 2 — MorningCheckIn semantic mismatch**
+`MorningCheckIn` saved `wellness.energy` into the `mood` column and dropped `wellness.sleep`
+entirely. With the `sleep` and `energy` DB columns now available, the entry is saved correctly.
+`mood` defaults to 3 (neutral) since the quick check-in form doesn't ask about mood separately.
+
+**Bug 3 — stray console.log in LoadHeatmapCard**
+Debug `console.log('heatmap day clicked: ...')` in dead-code fallback path removed.
+
+**Other**
+- `package.json` version bumped from 8.1.0 to 11.0.3 (was severely out of sync)
+
+**Changes**:
+- `supabase/migrations/20260465_recovery_sleep_quality_column.sql` — `ADD COLUMN sleep SMALLINT CHECK(1-5)`; applied to production
+- `src/hooks/useSupabaseData.js` — `recRowToEntry` + `recEntryToRow` now include `sleep`
+- `src/lib/dataMigration.js` — guest→auth migration now writes `sleep` and `energy`
+- `src/components/MorningCheckIn.jsx` — saves `sleep: wellness.sleep, energy: wellness.energy, mood: 3`
+- `src/components/dashboard/LoadHeatmapCard.jsx` — removed stray console.log
+- `package.json` — version 8.1.0 → 11.0.3
+
+**Depends on**: migrations 064 (energy), 065 (sleep quality)
+
+---
+
 ## [v11.0.2] — 2026-04-23
 
 ### FIX: Recovery energy field not persisted to DB (V2 fatigue alert permanently silent)

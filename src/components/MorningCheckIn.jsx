@@ -55,9 +55,11 @@ export default function MorningCheckIn({ onClose }) {
       date,
       score,
       sleepHrs: String(sleepHrs),
+      sleep:     wellness.sleep,
+      energy:    wellness.energy,
       soreness:  wellness.soreness,
       stress:    3,
-      mood:      wellness.energy,
+      mood:      3,
       hrv:       hrvVal,
       notes:     '',
     }
