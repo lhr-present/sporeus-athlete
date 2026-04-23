@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import {
   TIERS, canAddAthlete, canUseAI, getRemainingAICalls,
   isFeatureGated, getUpgradePrompt, canUploadFile, FREE_UPLOAD_LIMIT,
-  isOnTrial, isPastDue, isCancelled, isExpired, daysUntilExpiry,
+  isOnTrial, isPastDue, isCancelled, isExpired, daysUntilExpiry, getEffectiveTier,
 } from './subscription.js'
 
 vi.mock('./supabase.js', () => ({
@@ -135,4 +135,17 @@ describe('daysUntilExpiry', () => {
     const past = new Date(Date.now() - 86400000).toISOString()
     expect(daysUntilExpiry({ subscription_status: 'trialing', trial_ends_at: past })).toBe(0)
   })
+})
+
+// ── getEffectiveTier ──────────────────────────────────────────────────────────
+describe('getEffectiveTier', () => {
+  it('active coach → coach', () => expect(getEffectiveTier('coach', 'active')).toBe('coach'))
+  it('trialing coach → coach (trial has full access)', () => expect(getEffectiveTier('coach', 'trialing')).toBe('coach'))
+  it('past_due coach → coach (grace period: keep access, banner shown)', () => expect(getEffectiveTier('coach', 'past_due')).toBe('coach'))
+  it('cancelled coach → free (access ended)', () => expect(getEffectiveTier('coach', 'cancelled')).toBe('free'))
+  it('expired coach → free', () => expect(getEffectiveTier('coach', 'expired')).toBe('free'))
+  it('none status → free', () => expect(getEffectiveTier('coach', 'none')).toBe('free'))
+  it('defaults: free tier active → free', () => expect(getEffectiveTier()).toBe('free'))
+  it('club active → club', () => expect(getEffectiveTier('club', 'active')).toBe('club'))
+  it('club expired → free', () => expect(getEffectiveTier('club', 'expired')).toBe('free'))
 })

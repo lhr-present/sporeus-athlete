@@ -130,6 +130,16 @@ export function getCheckoutUrl(tier = 'coach', lang = 'tr') {
   return null
 }
 
+// ── getEffectiveTier(tier, subscriptionStatus) → tier string ─────────────────
+// Determines the tier cap to enforce based on both tier AND subscription status.
+// - active / trialing / past_due: use the actual tier (past_due shows banner but
+//   keeps access so users aren't locked out during the 3-day grace window)
+// - cancelled / expired / none: revert to free-tier caps regardless of tier field
+export function getEffectiveTier(tier = 'free', status = 'active') {
+  if (status === 'active' || status === 'trialing' || status === 'past_due') return tier
+  return 'free'
+}
+
 // ── Status predicates — read from profile object ──────────────────────────────
 
 // isOnTrial: user is in the 14-day free trial period

@@ -4,6 +4,44 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.1.0] — 2026-04-23
+
+### FEAT: Billing state machine — dodo-webhook + subscription lifecycle
+
+**`supabase/functions/dodo-webhook/index.ts`** (rewritten, 125 lines):
+- HMAC-SHA256 constant-time signature verification for both Dodo (`x-dodo-signature`) and Stripe (`stripe-signature`)
+- All state transitions delegated to `apply_subscription_event()` SQL RPC — function is thin I/O only
+- Email side-effects on `payment.failed` and `subscription.cancelled` kept in function
+- No `withTelemetry` import (MCP deploy compatible); deployed ACTIVE v1
+
+**`supabase/migrations/20260424_subscription_state.sql`**:
+- Added to profiles: `subscription_provider TEXT`, `subscription_id TEXT`, `subscription_current_period_end TIMESTAMPTZ`
+- Created `subscription_events` table with `UNIQUE(event_id)`, RLS enabled, service_role grants
+- Created `apply_subscription_event(p_event jsonb)` SECURITY DEFINER RPC — unified state machine:
+  - `payment.succeeded` / `payment_intent.succeeded` / `invoice.payment_succeeded` → calls `apply_tier_change()`, sets provider
+  - `payment.failed` / `invoice.payment_failed` → `status=past_due`, `grace_period_ends_at=now()+3days`
+  - `subscription.cancelled` / `customer.subscription.deleted` → `status=cancelled`, sets `subscription_end_date`
+  - `subscription.created` / `subscription.trial_start` → `status=trialing`, sets `trial_ends_at`
+  - `subscription.updated` → syncs `subscription_current_period_end`
+  - Idempotent: duplicate `event_id` returns `{ ok: true, duplicate: true }` — safe for Dodo/Stripe retry
+
+**`src/hooks/useSubscription.js`** (new):
+- Subscribes to `profiles` postgres_changes for the authenticated user's row
+- Calls `onUpdate` with `{ subscription_status, subscription_tier, trial_ends_at, grace_period_ends_at, subscription_end_date }` — extra profile fields stripped
+- Cleans up channel on unmount; re-subscribes when `userId` changes
+
+**`src/lib/subscription.js`**:
+- Added `getEffectiveTier(tier, status)`: `past_due` retains tier access (grace window); `cancelled`/`expired`/`none` reverts to `free`
+- Added status predicates: `isOnTrial`, `isPastDue`, `isCancelled`, `isExpired`, `daysUntilExpiry`
+
+**Tests**: `src/lib/subscription.test.js` (+16 tests for predicates + `getEffectiveTier`), `src/hooks/__tests__/useSubscription.test.js` (5 tests). 2754 pass.
+
+**`docs/ops/webhooks.md`** (new): Dodo + Stripe webhook config reference — endpoint, events, metadata shape, signature rotation runbook, local test curl.
+
+**Depends on**: v11.0.10, migrations 052–054 (processed_webhooks, subscription_hardening, apply_tier_change)
+
+---
+
 ## [v11.0.10] — 2026-04-23
 
 ### FIX: Three logic bugs in intelligence.js and formulas.js
