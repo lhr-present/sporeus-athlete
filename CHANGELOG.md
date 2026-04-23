@@ -4,6 +4,42 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.1.1] — 2026-04-23
+
+### FEAT: KVKK/GDPR — export-user-data + purge-deleted-accounts with 30-day grace
+
+**`supabase/migrations/20260425_data_rights.sql`**:
+- `data_rights_requests` unified table (kind: export | deletion, status machine, scheduled_purge_at, export_url + expiry)
+- RLS: user inserts + reads own rows; user can cancel own pending deletion; service_role updates freely
+- `build_user_export(p_user_id)` SECURITY DEFINER: collects all 20 user-scoped tables, excludes `athlete_devices.token_enc` + `insight_embeddings.embedding` vector
+- `purge_user(p_user_id)` SECURITY DEFINER: cascade-safe — archives coach_sessions (null coach_id), soft-deletes comments, deletes all app tables in FK order, returns jsonb result
+- `user-exports` storage bucket (private, 50 MB, service-role write, signed-URL read)
+- pg_cron `purge-deleted-accounts` daily 04:00 UTC
+
+**`supabase/functions/export-user-data/index.ts`** (rewritten, no withTelemetry):
+- Auth via bearer JWT; calls `build_user_export` RPC; uploads to user-exports bucket; returns 7-day signed URL + request_id
+
+**`supabase/functions/purge-deleted-accounts/index.ts`** (rewritten, no withTelemetry):
+- Service-role cron worker; processes `data_rights_requests` past `scheduled_purge_at`; calls `purge_user` then `auth.admin.deleteUser`; error isolation (failed row marked, loop continues); sends confirmation email via Resend
+
+**`src/components/profile/DataPrivacySettings.jsx`** (new):
+- "Export my data" → calls export-user-data edge function, opens download URL
+- "Delete my account" → two-step modal (30-day grace explained, coach/squad impact stated)
+- Pending deletion banner with date + "Cancel deletion" button
+- Cancel updates `data_rights_requests.status='canceled'` via user RLS policy
+
+**`src/contexts/LangCtx.jsx`**: +14 privacy keys under `priv*` namespace (EN + TR)
+
+**Legal**: `docs/legal/kvkk-notice-tr.md` (KVKK No.6698 Art.10 aydınlatma metni) + `docs/legal/privacy-notice-en.md` (GDPR controller notice)
+
+**Ops**: `docs/ops/runbooks.md` — KVKK deletion inquiry runbook, immediate purge SQL, cron job monitoring, manual export
+
+**Tests**: `src/lib/__tests__/privacy/dataRights.test.js` (+23 tests). 2777 pass total.
+
+**Depends on**: v11.1.0, migration 20260458 (export_jobs, deletion_requests), migration 20260460 (session_comments)
+
+---
+
 ## [v11.1.0] — 2026-04-23
 
 ### FEAT: Billing state machine — dodo-webhook + subscription lifecycle

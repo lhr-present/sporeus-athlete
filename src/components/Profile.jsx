@@ -34,6 +34,7 @@ import NutritionEstimator from './profile/NutritionEstimator.jsx'
 import TrainingAgeCard from './profile/TrainingAgeCard.jsx'
 import ReferralCard from './profile/ReferralCard.jsx'
 import AdminCodeGenerator from './profile/AdminCodeGenerator.jsx'
+import DataPrivacySettings from './profile/DataPrivacySettings.jsx'
 
 export default function Profile({ log, authUser }) {
   const { t } = useContext(LangCtx)
@@ -307,32 +308,12 @@ export default function Profile({ log, authUser }) {
           )
         })()}
 
-        {/* GDPR — Download my data / Delete my account */}
-        <div style={{ marginTop:'14px', paddingTop:'12px', borderTop:'1px solid var(--border)' }}>
-          <div style={{ ...S.mono, fontSize:'9px', color:'#555', letterSpacing:'0.1em', marginBottom:'8px' }}>◈ PRIVACY — GDPR RIGHTS</div>
-          <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', alignItems:'center' }}>
-            <button
-              style={{ ...S.btnSec, fontSize:'9px', padding:'4px 12px' }}
-              disabled={gdprStatus === 'exporting'}
-              onClick={handleGdprDownload}
-            >
-              {gdprStatus === 'exporting' ? '…exporting' : gdprStatus === 'done' ? '✓ Downloaded' : '↓ Download my data'}
-            </button>
-            <button
-              style={{ ...S.btnSec, fontSize:'9px', padding:'4px 12px', color:'#e03030', borderColor:'#e03030' }}
-              disabled={!!gdprStatus}
-              onClick={handleGdprDelete}
-            >
-              {gdprStatus === 'deleting' ? '…deleting' : gdprStatus === 'deleted' ? '✓ Deleted' : '✕ Delete my account'}
-            </button>
-            {gdprStatus === 'error' && (
-              <span style={{ ...S.mono, fontSize:'9px', color:'#e03030' }}>Error — try again</span>
-            )}
+        {/* Data & Privacy — KVKK/GDPR data rights */}
+        {authUser && (
+          <div style={{ marginTop:'14px', paddingTop:'12px', borderTop:'1px solid var(--border)' }}>
+            <DataPrivacySettings authUser={authUser} />
           </div>
-          <div style={{ ...S.mono, fontSize:'9px', color:'#444', marginTop:'6px' }}>
-            Download exports all your data as JSON (GDPR Article 20). Delete erases all records from our servers.
-          </div>
-        </div>
+        )}
 
         {/* PRIVACY Dashboard */}
         <div style={{ marginTop:'14px', paddingTop:'12px', borderTop:'1px solid var(--border)' }}>
