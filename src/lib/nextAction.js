@@ -134,13 +134,27 @@ function evalRules(log, recovery, profile) {
     }
   }
 
-  // ── Rule 3: injury_risk_high — 5-factor model (H2) ───────────────────────────
+  // ── Rule 3: acwr_high (ACWR 1.3–1.5) — caution zone ─────────────────────────
+  // Direct objective measurement — evaluated before composite model-based injury risk
+  if (acwr !== null && acwr > 1.3) {
+    return {
+      id:        'acwr_high',
+      priority:  3,
+      action:    { en: 'Active recovery or rest', tr: 'Aktif toparlanma veya dinlenme' },
+      rationale: { en: `ACWR ${acwr.toFixed(2)} — caution zone (1.3–1.5). Acute load elevated above chronic base. Easy session or off day.`, tr: `ACWR ${acwr.toFixed(2)} — dikkat bölgesi. Hafif antrenman veya dinlenme.` },
+      citation:  'Gabbett 2016 (Br J Sports Med)',
+      color:     'amber',
+      metrics:   { ctl, atl, tsb, acwr, wellness },
+    }
+  }
+
+  // ── Rule 4: injury_risk_high — 5-factor model (H2) ───────────────────────────
   const inj = predictInjuryRisk(safeLog, safeRec)
   if (inj.level === 'HIGH') {
     const topFactors = inj.factors.slice(0, 2).map(f => f.label).join(', ')
     return {
       id:        'injury_risk_high',
-      priority:  3,
+      priority:  4,
       action:    { en: 'Injury risk HIGH — reduce intensity 20-30%', tr: 'Yaralanma riski YÜKSEK — yoğunluğu %20-30 azalt' },
       rationale: {
         en: `Risk score ${inj.score}/100 (${topFactors}). ${inj.advice.en}`,
@@ -152,7 +166,7 @@ function evalRules(log, recovery, profile) {
     }
   }
 
-  // ── Rule 4: hrv_drift — HRV CV ≥ 10% + latest below mean (Plews 2013) ───────
+  // ── Rule 5: hrv_drift — HRV CV ≥ 10% + latest below mean (Plews 2013) ───────
   const hrv = computeHRVTrend(safeRec)
   if (hrv.trend === 'unstable' && (hrv.dropPct ?? 0) > 5) {
     return {
@@ -187,19 +201,6 @@ function evalRules(log, recovery, profile) {
         color:     'amber',
         metrics:   { ctl, atl, tsb, acwr, wellness, avgSleep: Math.round(avgSleep * 10) / 10 },
       }
-    }
-  }
-
-  // ── Rule 6: acwr_high (ACWR 1.3–1.5) — caution zone ─────────────────────────
-  if (acwr !== null && acwr > 1.3) {
-    return {
-      id:        'acwr_high',
-      priority:  6,
-      action:    { en: 'Active recovery or rest', tr: 'Aktif toparlanma veya dinlenme' },
-      rationale: { en: `ACWR ${acwr.toFixed(2)} — caution zone (1.3–1.5). Acute load elevated above chronic base. Easy session or off day.`, tr: `ACWR ${acwr.toFixed(2)} — dikkat bölgesi. Hafif antrenman veya dinlenme.` },
-      citation:  'Gabbett 2016 (Br J Sports Med)',
-      color:     'amber',
-      metrics:   { ctl, atl, tsb, acwr, wellness },
     }
   }
 
