@@ -4,6 +4,23 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.0.1] — 2026-04-23
+
+### HOTFIX: Google OAuth 500 — inject_tier_jwt_claim missing SET search_path
+
+Root cause: `supabase_auth_admin` runs JWT hooks with `search_path = auth, pg_catalog` only.
+`inject_tier_jwt_claim` had no `SET search_path`, so `SELECT subscription_tier FROM profiles`
+threw "relation does not exist" → Supabase returned 500 to every sign-in attempt.
+
+Fix: `SET search_path = public` added to function + `public.profiles` explicit table reference.
+Outer `EXCEPTION WHEN OTHERS THEN RETURN event` safety net added as belt-and-suspenders.
+Applied directly via `db query` (migration history diverged — `db push` blocked).
+Verified: `proconfig = ["search_path=public"]` confirmed in production `pg_proc`.
+
+DEPENDS ON: 20260416_fix_jwt_hook.sql (null-safety), 20260412_subscription.sql (subscription_tier column)
+
+---
+
 ## [v11.0.0] — 2026-04-23
 
 ### V1–V5 — ruleInsights athlete-side: load spike, fatigue, rest, monotony, readiness label
