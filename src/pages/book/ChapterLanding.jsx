@@ -357,9 +357,11 @@ export default function ChapterLanding({ chapterId, lang = 'tr', onSignup }) {
       <div style={S.logo}>◈ SPOREUS</div>
 
       <div style={S.card}>
-        {/* Chapter tag */}
+        {/* Chapter tag — uppercase in DOM so Playwright toContainText('CHAPTER X') matches */}
         <div style={S.tag}>
-          EŞİK / THRESHOLD · {chapterId.replace('ch', lang === 'tr' ? 'Bölüm ' : 'Chapter ')}
+          EŞİK / THRESHOLD · {lang === 'tr'
+            ? `BÖLÜM ${chapterId.replace('ch', '')}`
+            : `CHAPTER ${chapterId.replace('ch', '')}`}
         </div>
 
         {/* Titles */}
@@ -388,7 +390,7 @@ export default function ChapterLanding({ chapterId, lang = 'tr', onSignup }) {
             {lang === 'tr' ? 'Sporeus\'ta Hesap Oluştur — Ücretsiz →' : 'Create Free Sporeus Account →'}
           </button>
           <a href="/" style={S.ctaSecondary}>
-            {lang === 'tr' ? 'Zaten hesabım var → Giriş yap' : 'Already have an account → Sign in'}
+            {lang === 'tr' ? 'Zaten hesabım var → Uygulamaya gir' : 'Already have an account? → Open app'}
           </a>
         </div>
 
