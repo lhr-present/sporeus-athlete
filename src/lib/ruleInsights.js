@@ -1,5 +1,7 @@
 // ─── ruleInsights.js — Rule-based coaching insights (zero API cost) ────────────
 // Pure JS module. No external dependencies. All functions are deterministic.
+// Each return object includes .message (EN) + .tr (TR) for bilingual display.
+// .action (EN) + .actionTr (TR) where applicable.
 
 const COLORS = {
   optimal:  '#5bc25b',
@@ -16,21 +18,29 @@ export function getReadinessLabel(acwr, wellnessAvg) {
   const ratio = typeof acwr === 'number' ? acwr : 1.0
 
   if (ratio > 1.5 || well < 40) {
+    const isRatio = ratio > 1.5
     return {
       level:   'high',
       color:   COLORS.high,
-      message: ratio > 1.5
+      message: isRatio
         ? `ACWR ${ratio.toFixed(2)} — acute load spike. Prioritise recovery today.`
         : `Wellness ${well}/100 — significantly below baseline. Rest recommended.`,
+      tr: isRatio
+        ? `ACWR ${ratio.toFixed(2)} — akut yük artışı. Bugün toparlanmaya öncelik ver.`
+        : `Hazırlık ${well}/100 — baz çizgisinin belirgin altında. Dinlenme önerilir.`,
     }
   }
   if (ratio > 1.3 || well < 60) {
+    const isRatio = ratio > 1.3
     return {
       level:   'moderate',
       color:   COLORS.moderate,
-      message: ratio > 1.3
+      message: isRatio
         ? `ACWR ${ratio.toFixed(2)} — approaching high-risk zone. Monitor fatigue.`
         : `Wellness ${well}/100 — below threshold. Reduce intensity if needed.`,
+      tr: isRatio
+        ? `ACWR ${ratio.toFixed(2)} — yüksek risk bölgesine yaklaşıyor. Yorgunluğu izle.`
+        : `Hazırlık ${well}/100 — eşiğin altında. Gerekirse yoğunluğu azalt.`,
     }
   }
   if (ratio < 0.8 && well >= 70) {
@@ -38,12 +48,14 @@ export function getReadinessLabel(acwr, wellnessAvg) {
       level:   'low',
       color:   COLORS.low,
       message: `ACWR ${ratio.toFixed(2)} — undertraining. Capacity to add load if feeling good.`,
+      tr:      `ACWR ${ratio.toFixed(2)} — az antrenman. Forma iyiyse yük artırılabilir.`,
     }
   }
   return {
     level:   'optimal',
     color:   COLORS.optimal,
     message: `ACWR ${ratio.toFixed(2)}, wellness ${well}/100 — green light for planned training.`,
+    tr:      `ACWR ${ratio.toFixed(2)}, hazırlık ${well}/100 — planlı antrenman için yeşil ışık.`,
   }
 }
 
@@ -56,22 +68,32 @@ export function getLoadTrendAlert(loads7days) {
   const week2 = arr.slice(3).reduce((s, v) => s + (Number(v) || 0), 0)     // second half (4 days)
 
   if (week1 === 0) {
-    return { flag: false, message: 'Insufficient prior load data to assess trend.', action: 'Log more sessions.' }
+    return {
+      flag:     false,
+      message:  'Insufficient prior load data to assess trend.',
+      tr:       'Trendi değerlendirmek için yeterli yük verisi yok.',
+      action:   'Log more sessions.',
+      actionTr: 'Daha fazla seans kaydet.',
+    }
   }
 
   const changePct = ((week2 - week1) / week1) * 100
 
   if (changePct > 10) {
     return {
-      flag:    true,
-      message: `Load up ${Math.round(changePct)}% vs prior period — above 10% safe ramp rate.`,
-      action:  'Cap next session TSS or insert a recovery day.',
+      flag:     true,
+      message:  `Load up ${Math.round(changePct)}% vs prior period — above 10% safe ramp rate.`,
+      tr:       `Yük önceki döneme göre %${Math.round(changePct)} arttı — %10 güvenli rampa hızının üzerinde.`,
+      action:   'Cap next session TSS or insert a recovery day.',
+      actionTr: 'Sonraki seansın TSS\'ini sınırla veya toparlanma günü ekle.',
     }
   }
   return {
-    flag:    false,
-    message: `Load change ${changePct >= 0 ? '+' : ''}${Math.round(changePct)}% — within safe range.`,
-    action:  'Maintain current ramp rate.',
+    flag:     false,
+    message:  `Load change ${changePct >= 0 ? '+' : ''}${Math.round(changePct)}% — within safe range.`,
+    tr:       `Yük değişimi ${changePct >= 0 ? '+' : ''}${Math.round(changePct)}% — güvenli aralıkta.`,
+    action:   'Maintain current ramp rate.',
+    actionTr: 'Mevcut rampa hızını koru.',
   }
 }
 
@@ -81,12 +103,24 @@ export function getLoadTrendAlert(loads7days) {
 export function getMonotonyWarning(loads7days) {
   const arr = (Array.isArray(loads7days) ? loads7days : []).map(v => Number(v) || 0)
   if (arr.length < 2) {
-    return { flag: false, message: 'Not enough data to calculate monotony.', action: 'Log at least 2 days.' }
+    return {
+      flag:     false,
+      message:  'Not enough data to calculate monotony.',
+      tr:       'Monotoni hesaplamak için yeterli veri yok.',
+      action:   'Log at least 2 days.',
+      actionTr: 'En az 2 gün kaydet.',
+    }
   }
 
   const mean = arr.reduce((s, v) => s + v, 0) / arr.length
   if (mean === 0) {
-    return { flag: false, message: 'No load recorded — monotony not applicable.', action: 'Log training sessions.' }
+    return {
+      flag:     false,
+      message:  'No load recorded — monotony not applicable.',
+      tr:       'Yük kaydedilmedi — monotoni uygulanamaz.',
+      action:   'Log training sessions.',
+      actionTr: 'Antrenman seansı kaydet.',
+    }
   }
 
   const variance = arr.reduce((s, v) => s + (v - mean) ** 2, 0) / arr.length
@@ -94,9 +128,11 @@ export function getMonotonyWarning(loads7days) {
 
   if (sd === 0) {
     return {
-      flag:    true,
-      message: `Monotony ∞ — identical load every day signals extremely repetitive training.`,
-      action:  'Vary session intensity: mix hard, moderate, and easy days.',
+      flag:     true,
+      message:  'Monotony ∞ — identical load every day signals extremely repetitive training.',
+      tr:       'Monotoni ∞ — her gün özdeş yük, son derece tekdüze antrenman.',
+      action:   'Vary session intensity: mix hard, moderate, and easy days.',
+      actionTr: 'Yük çeşitlendir: sert, orta ve kolay günler karıştır.',
     }
   }
 
@@ -104,15 +140,19 @@ export function getMonotonyWarning(loads7days) {
 
   if (monotony > 2.0) {
     return {
-      flag:    true,
-      message: `Monotony ${monotony.toFixed(2)} — above 2.0 threshold. Training is too uniform.`,
-      action:  'Add variation: insert a rest day or alternate hard/easy sessions.',
+      flag:     true,
+      message:  `Monotony ${monotony.toFixed(2)} — above 2.0 threshold. Training is too uniform.`,
+      tr:       `Monotoni ${monotony.toFixed(2)} — 2.0 eşiğinin üzerinde. Antrenman çok tekdüze.`,
+      action:   'Add variation: insert a rest day or alternate hard/easy sessions.',
+      actionTr: 'Çeşitlilik ekle: dinlenme günü veya sert/kolay seans dönüşümü.',
     }
   }
   return {
-    flag:    false,
-    message: `Monotony ${monotony.toFixed(2)} — acceptable training variety.`,
-    action:  'Continue mixing intensities.',
+    flag:     false,
+    message:  `Monotony ${monotony.toFixed(2)} — acceptable training variety.`,
+    tr:       `Monotoni ${monotony.toFixed(2)} — kabul edilebilir antrenman çeşitliliği.`,
+    action:   'Continue mixing intensities.',
+    actionTr: 'Yoğunluk karışımına devam et.',
   }
 }
 
@@ -125,22 +165,32 @@ export function getFatigueAccumulation(fatigueScores3days) {
     .filter(v => !isNaN(v) && v >= 1 && v <= 5)
 
   if (arr.length === 0) {
-    return { flag: false, message: 'No fatigue scores recorded.', action: 'Log daily wellness check-ins.' }
+    return {
+      flag:     false,
+      message:  'No fatigue scores recorded.',
+      tr:       'Yorgunluk skoru kaydedilmedi.',
+      action:   'Log daily wellness check-ins.',
+      actionTr: 'Günlük durum kontrolü kaydet.',
+    }
   }
 
   const avg = arr.reduce((s, v) => s + v, 0) / arr.length
 
   if (avg < 2.5) {
     return {
-      flag:    true,
-      message: `Average recovery score ${avg.toFixed(1)}/5 — accumulated fatigue detected.`,
-      action:  'Schedule a rest or active recovery day. Avoid high-intensity sessions.',
+      flag:     true,
+      message:  `Average recovery score ${avg.toFixed(1)}/5 — accumulated fatigue detected.`,
+      tr:       `Ortalama toparlanma skoru ${avg.toFixed(1)}/5 — birikmiş yorgunluk tespit edildi.`,
+      action:   'Schedule a rest or active recovery day. Avoid high-intensity sessions.',
+      actionTr: 'Dinlenme veya aktif toparlanma günü planla. Yoğun antrenmanlardan kaçın.',
     }
   }
   return {
-    flag:    false,
-    message: `Average recovery score ${avg.toFixed(1)}/5 — fatigue within acceptable range.`,
-    action:  'Proceed with planned training.',
+    flag:     false,
+    message:  `Average recovery score ${avg.toFixed(1)}/5 — fatigue within acceptable range.`,
+    tr:       `Ortalama toparlanma skoru ${avg.toFixed(1)}/5 — yorgunluk kabul edilebilir seviyede.`,
+    action:   'Proceed with planned training.',
+    actionTr: 'Planlanan antrenmanla devam et.',
   }
 }
 
@@ -154,17 +204,23 @@ export function getMissedRestWarning(consecutiveTrainingDays) {
 
   if (days >= 6) {
     return {
-      flag:    true,
-      message: `${days} consecutive training days — a rest day is overdue.`,
-      action:  'Insert a complete rest or active recovery day before the next session.',
+      flag:     true,
+      message:  `${days} consecutive training days — a rest day is overdue.`,
+      tr:       `${days} ardışık antrenman günü — dinlenme günü gecikmiş.`,
+      action:   'Insert a complete rest or active recovery day before the next session.',
+      actionTr: 'Bir sonraki seanstan önce tam dinlenme veya aktif toparlanma günü ekle.',
     }
   }
   return {
-    flag:    false,
-    message: days === 0
+    flag:     false,
+    message:  days === 0
       ? 'Rest day recorded — good recovery practice.'
       : `${days} consecutive training day${days === 1 ? '' : 's'} — still within safe range.`,
-    action:  days >= 4 ? 'Plan a rest day within the next 2 days.' : 'Continue as planned.',
+    tr: days === 0
+      ? 'Dinlenme günü kaydedildi — iyi toparlanma uygulaması.'
+      : `${days} ardışık antrenman günü — hâlâ güvenli aralıkta.`,
+    action:   days >= 4 ? 'Plan a rest day within the next 2 days.' : 'Continue as planned.',
+    actionTr: days >= 4 ? 'Önümüzdeki 2 gün içinde dinlenme günü planla.' : 'Planlandığı gibi devam et.',
   }
 }
 
@@ -195,7 +251,9 @@ export function getAthleteInsights(athleteData) {
       flag:     c.result.flag ?? (c.result.level !== 'optimal'),
       severity: c.result.level || (c.result.flag ? 'moderate' : 'optimal'),
       message:  c.result.message,
+      tr:       c.result.tr,
       action:   c.result.action,
+      actionTr: c.result.actionTr,
       color:    c.result.color || (c.result.flag ? COLORS.moderate : COLORS.optimal),
     }))
     .sort((a, b) => (SEVERITY[a.severity] ?? 99) - (SEVERITY[b.severity] ?? 99))

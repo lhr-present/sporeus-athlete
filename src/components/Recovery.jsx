@@ -15,7 +15,8 @@ import CycleTracker from './CycleTracker.jsx'
 import { predictInjuryRisk, analyzeRecoveryCorrelation } from '../lib/intelligence.js'
 import { findRecoveryPatterns } from '../lib/patterns.js'
 import { calcLoad } from '../lib/formulas.js'
-import { classifyTSB } from '../lib/trainingLoad.js'
+import { classifyTSB, calculateACWR } from '../lib/trainingLoad.js'
+import { getFatigueAccumulation, getReadinessLabel } from '../lib/ruleInsights.js'
 
 export default function Recovery() {
   const { t } = useContext(LangCtx)
@@ -69,6 +70,21 @@ export default function Recovery() {
   const patterns  = useMemo(() => findRecoveryPatterns(log, entries), [log, entries])
   const corr      = useMemo(() => analyzeRecoveryCorrelation(log, entries), [log, entries])
   const tsbZone   = useMemo(() => { const { tsb } = calcLoad(log); return classifyTSB(tsb) }, [log])
+
+  // V2 — getFatigueAccumulation: last 3 entries' energy scores (1–5)
+  const fatAlert = useMemo(() => {
+    if (entries.length < 3) return null
+    const last3energy = entries.slice(-3).map(e => e.energy || 3)
+    return getFatigueAccumulation(last3energy)
+  }, [entries])
+
+  // V5 — getReadinessLabel: ACWR + 7-day wellness avg composite coaching message
+  const acwrForLabel  = useMemo(() => log.length >= 7 ? calculateACWR(log).ratio : null, [log])
+  const wellnessAvg7  = useMemo(() => {
+    const last7 = entries.slice(-7).filter(e => typeof e.score === 'number')
+    return last7.length > 0 ? Math.round(last7.reduce((s, e) => s + e.score, 0) / last7.length) : 0
+  }, [entries])
+  const readinessLabel = useMemo(() => getReadinessLabel(acwrForLabel, wellnessAvg7), [acwrForLabel, wellnessAvg7])
 
   // L4 — This-week vs 4-week rolling recovery baseline
   const recoveryBaseline = useMemo(() => {
@@ -226,6 +242,22 @@ export default function Recovery() {
             <Sparkline data={last7scores}/>
           </div>
         </div>
+        {/* V5 — getReadinessLabel coaching message (ACWR + wellness composite) */}
+        {entries.length >= 5 && acwrForLabel !== null && (
+          <div style={{ ...S.mono, display:'flex', alignItems:'center', gap:'8px', fontSize:'10px', marginTop:'10px', padding:'6px 10px', background:`${readinessLabel.color}11`, border:`1px solid ${readinessLabel.color}33`, borderRadius:'4px' }}>
+            <span style={{ color: readinessLabel.color, fontWeight:700, fontSize:'9px', letterSpacing:'0.06em', whiteSpace:'nowrap' }}>
+              {readinessLabel.level.toUpperCase()}
+            </span>
+            <span style={{ color:'var(--sub)' }}>{lang === 'tr' ? readinessLabel.tr : readinessLabel.message}</span>
+          </div>
+        )}
+        {/* V2 — getFatigueAccumulation: energy-based fatigue alert */}
+        {fatAlert?.flag && (
+          <div style={{ ...S.mono, fontSize:'10px', color:'#e03030', marginTop:'8px', padding:'6px 10px', background:'#e0303011', borderRadius:'4px' }}>
+            ⚠ {lang === 'tr' ? fatAlert.tr : fatAlert.message}
+            <div style={{ fontSize:'9px', color:'#c02020', marginTop:'2px' }}>{lang === 'tr' ? fatAlert.actionTr : fatAlert.action}</div>
+          </div>
+        )}
         {showSleepWarn && (
           <div style={{ ...S.mono, fontSize:'10px', color:'#f5c542', marginTop:'10px', padding:'6px 10px', background:'#f5c54211', borderRadius:'4px' }}>
             ⚠ {t('sleepLowWarning')}

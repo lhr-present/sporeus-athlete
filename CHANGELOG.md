@@ -4,6 +4,25 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.0.0] — 2026-04-23
+
+### V1–V5 — ruleInsights athlete-side: load spike, fatigue, rest, monotony, readiness label
+
+All 5 items from `ruleInsights.js` — previously used only in the coach's `AthleteRow`. First-time exposure on the athlete side. `ruleInsights.js` extended with `.tr` and `.actionTr` fields on all returns.
+
+- **V1 — TodayView: `getLoadTrendAlert` load spike bar**: When >10% week-on-week TSS increase in `weekLoad.dailyTSS`, shows amber alert bar below K3 strip with bilingual message + action.
+- **V2 — Recovery: `getFatigueAccumulation` energy warning**: Maps last 3 recovery entries' `energy` (1–5) into `getFatigueAccumulation`. When avg < 2.5, shows red warning in the readiness card.
+- **V3 — TodayView: `getMissedRestWarning` rest overdue bar**: Uses existing `consecutiveDays`. When ≥6, shows red "REST DAY OVERDUE" alert bar below K3.
+- **V4 — TodayView K3: `getMonotonyWarning` action note**: When Foster 2001 monotony > 2.0, appends bilingual action text inside K3 below `M X.X`.
+- **V5 — Recovery: `getReadinessLabel` coaching message**: ACWR + 7-day wellness avg composite, colour-coded level badge + message in readiness card (gated: ≥5 entries, ACWR available).
+
+**Tests:** 2728 (unchanged). Build: clean.
+**Semver:** v11.0.0
+
+DEPENDS ON: v10.9.0, ruleInsights.js (all 5 functions), computeMonotony + calculateACWR in trainingLoad.js
+
+---
+
 ## [v10.9.0] — 2026-04-23
 
 ### U1–U5 — NextAction metrics strip, fitness AVG TSS, monotony status badge, digest PMC strip, EF date range

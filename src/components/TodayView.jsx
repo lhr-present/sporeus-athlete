@@ -28,6 +28,7 @@ import { computeHRVTrend, isHRVSuppressed } from '../lib/hrv.js'
 import { findSeasonalPatterns } from '../lib/patterns.js'
 import { computeMonotony } from '../lib/trainingLoad.js'
 import { getTrainingPaces } from '../lib/vdot.js'
+import { getLoadTrendAlert, getMissedRestWarning, getMonotonyWarning } from '../lib/ruleInsights.js'
 
 const EMBED_MODE = new URLSearchParams(window.location.search).get('embed') === 'true'
 
@@ -118,6 +119,13 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
   const seasonal   = useMemo(() => findSeasonalPatterns(log || [], recovery || []), [log, recovery])
   const thisMonth  = new Date().toLocaleString('en', { month: 'short' })
   const weekLoad   = useMemo(() => computeMonotony(log || []), [log])
+
+  // V1 — load trend spike alert (getLoadTrendAlert: >10% week-on-week TSS increase)
+  const loadAlert  = useMemo(() => getLoadTrendAlert(weekLoad.dailyTSS || []), [weekLoad])
+  // V3 — missed rest warning (getMissedRestWarning: ≥6 consecutive training days)
+  const missedRestWarn = useMemo(() => getMissedRestWarning(consecutiveDays), [consecutiveDays])
+  // V4 — monotony coaching action (getMonotonyWarning: Foster 2001 monotony > 2.0)
+  const monoWarn   = useMemo(() => getMonotonyWarning(weekLoad.dailyTSS || []), [weekLoad])
 
   // M1 — HRV suppression alert (isHRVSuppressed: CV ≥10% AND latest below mean)
   const hrvSuppressed = useMemo(() => (recovery || []).length >= 3 ? isHRVSuppressed(recovery || []) : false, [recovery])
@@ -678,10 +686,34 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                   M {weekLoad.monotony.toFixed(1)}
                 </div>
               )}
+              {/* V4 — getMonotonyWarning action note (Foster 2001) */}
+              {monoWarn.flag && (
+                <div style={{ fontFamily: MONO, fontSize: '7px', color: '#f5c542', marginTop: '3px', lineHeight: 1.4 }}>
+                  {lang === 'tr' ? monoWarn.actionTr : monoWarn.action}
+                </div>
+              )}
             </div>
           </div>
         )
       })()}
+
+      {/* ── V1 — getLoadTrendAlert: >10% week-on-week TSS spike ──────────── */}
+      {loadAlert.flag && weekLoad.weekTSS > 0 && (
+        <div style={{ padding: '7px 12px', background: '#f5c54211', borderLeft: '3px solid #f5c542', borderRadius: '3px', marginBottom: '10px', fontFamily: MONO }}>
+          <div style={{ fontSize: '9px', color: '#f5c542', letterSpacing: '0.06em', marginBottom: '2px' }}>↑ {lang === 'tr' ? 'YÜK ARTIŞI' : 'LOAD SPIKE'}</div>
+          <div style={{ fontSize: '10px', color: 'var(--sub)' }}>{lang === 'tr' ? loadAlert.tr : loadAlert.message}</div>
+          <div style={{ fontSize: '9px', color: '#666', marginTop: '2px' }}>{lang === 'tr' ? loadAlert.actionTr : loadAlert.action}</div>
+        </div>
+      )}
+
+      {/* ── V3 — getMissedRestWarning: ≥6 consecutive training days ──────── */}
+      {missedRestWarn.flag && (
+        <div style={{ padding: '7px 12px', background: '#e0303011', borderLeft: '3px solid #e03030', borderRadius: '3px', marginBottom: '10px', fontFamily: MONO }}>
+          <div style={{ fontSize: '9px', color: '#e03030', letterSpacing: '0.06em', marginBottom: '2px' }}>⚠ {lang === 'tr' ? 'DİNLENME GÜNÜ GECİKMİŞ' : 'REST DAY OVERDUE'}</div>
+          <div style={{ fontSize: '10px', color: 'var(--sub)' }}>{lang === 'tr' ? missedRestWarn.tr : missedRestWarn.message}</div>
+          <div style={{ fontSize: '9px', color: '#666', marginTop: '2px' }}>{lang === 'tr' ? missedRestWarn.actionTr : missedRestWarn.action}</div>
+        </div>
+      )}
 
       {/* ── L1 — predictFitness compact forecast ─────────────────────────── */}
       {fitnessForecast && (() => {
