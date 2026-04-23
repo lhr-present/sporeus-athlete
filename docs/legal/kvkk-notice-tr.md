@@ -2,7 +2,7 @@
 
 **Kişisel Verilerin Korunması Kanunu (KVKK) No. 6698 — Madde 10 Kapsamında**
 
-**Veri Sorumlusu:** Sporeus (hello@sporeus.com)
+**Veri Sorumlusu:** Sporeus (info@sporeus.com)
 
 ---
 
@@ -32,7 +32,7 @@
 
 ## KVKK Madde 11 Haklarınız
 
-Aşağıdaki hakları hello@sporeus.com adresine e-posta göndererek kullanabilirsiniz:
+Aşağıdaki hakları info@sporeus.com adresine e-posta göndererek kullanabilirsiniz:
 
 - **Bilgi edinme:** İşlenen verileriniz hakkında bilgi talep edebilirsiniz.
 - **Veri taşınabilirliği (dışa aktarma):** Uygulama → Profil → Veri ve Gizlilik → "Verilerimi indir" butonunu kullanın. Tüm verileriniz JSON formatında indirilir.
@@ -58,7 +58,7 @@ Verileriniz reklam veya üçüncü taraf profilleme amacıyla paylaşılmaz.
 
 ## İletişim
 
-E-posta: hello@sporeus.com  
+E-posta: info@sporeus.com  
 Konu satırı: KVKK Veri Talebi
 
 KVKK şikayetleri için: Kişisel Verileri Koruma Kurumu (kvkk.gov.tr)

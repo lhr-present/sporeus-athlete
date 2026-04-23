@@ -1,7 +1,7 @@
 # Privacy Notice
 
 **Effective date:** 2026-04-23  
-**Controller:** Sporeus (hello@sporeus.com)
+**Controller:** Sporeus (info@sporeus.com)
 
 ---
 
@@ -39,7 +39,7 @@ You can exercise the following rights at any time:
 - **Restriction / objection:** Manage consent granularly in Profile → Privacy Dashboard.
 - **Withdraw consent:** Profile → Privacy Dashboard → "Withdraw consent".
 
-For requests not covered by the in-app controls, email hello@sporeus.com with subject line "GDPR Data Request".
+For requests not covered by the in-app controls, email info@sporeus.com with subject line "GDPR Data Request".
 
 ---
 
@@ -65,6 +65,6 @@ Where data is transferred outside the EEA, we rely on Standard Contractual Claus
 
 ## Contact & Supervisory Authority
 
-**Controller contact:** hello@sporeus.com  
+**Controller contact:** info@sporeus.com  
 
 EU residents may lodge a complaint with their national data protection authority. Turkish residents may contact: Kişisel Verileri Koruma Kurumu — kvkk.gov.tr

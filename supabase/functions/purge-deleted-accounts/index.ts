@@ -81,10 +81,10 @@ serve(async () => {
           method:  'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${resendKey}` },
           body:    JSON.stringify({
-            from:    'Sporeus <noreply@sporeus.com>',
+            from:    'Sporeus <info@sporeus.com>',
             to:      [userEmail],
             subject: 'Your Sporeus account has been deleted',
-            text:    'Your account and all associated data have been permanently deleted as requested. Contact support@sporeus.com if you have questions.',
+            text:    'Your account and all associated data have been permanently deleted as requested. Contact info@sporeus.com if you have questions.',
           }),
         }).catch(() => {})
       }
