@@ -1,11 +1,11 @@
 // ─── dashboard/YourPatternsCard.jsx — Personalised pattern mining card ────────
-import { useContext, useState } from 'react'
+import { useContext, useState , memo} from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { correlateTrainingToResults, findRecoveryPatterns, findOptimalWeekStructure, findSeasonalPatterns } from '../../lib/patterns.js'
 import { useData } from '../../contexts/DataContext.jsx'
 
-export default function YourPatternsCard({ log, recovery, injuries: _injuries, profile: _profile, lang }) {
+function YourPatternsCard({ log, recovery, injuries: _injuries, profile: _profile, lang }) {
   const { t: _t } = useContext(LangCtx)
   const { testResults } = useData()
   const [open, setOpen] = useState(false)
@@ -112,3 +112,4 @@ export default function YourPatternsCard({ log, recovery, injuries: _injuries, p
     </div>
   )
 }
+export default memo(YourPatternsCard)

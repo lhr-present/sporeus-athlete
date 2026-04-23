@@ -1,11 +1,11 @@
 // ─── dashboard/RaceReadinessCard.jsx — Race readiness gauge + taper checklist ──
-import { useContext, useState } from 'react'
+import { useContext, useState , memo} from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { computeRaceReadiness, predictRacePerformance } from '../../lib/intelligence.js'
 import { useData } from '../../contexts/DataContext.jsx'
 
-export default function RaceReadinessCard({ log, recovery, injuries, profile, plan, planStatus, lang }) {
+function RaceReadinessCard({ log, recovery, injuries, profile, plan, planStatus, lang }) {
   const { t: _t } = useContext(LangCtx)
   const { testResults, raceResults: raceResult, setRaceResults: setRaceResult } = useData()
   const [expanded, setExpanded] = useState(false)
@@ -245,3 +245,4 @@ export default function RaceReadinessCard({ log, recovery, injuries, profile, pl
     </div>
   )
 }
+export default memo(RaceReadinessCard)

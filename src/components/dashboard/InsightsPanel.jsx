@@ -1,6 +1,6 @@
 // ─── dashboard/InsightsPanel.jsx — Training insights card ─────────────────────
 // Extracted from Dashboard.jsx. Shows load trend, zone balance, fitness, recovery.
-import { useContext, useState, useMemo } from 'react'
+import { useContext, useState, useMemo , memo} from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { analyzeLoadTrend, analyzeZoneBalance, analyzeRecoveryCorrelation, predictFitness } from '../../lib/intelligence.js'
@@ -12,7 +12,7 @@ import { analyzeLoadTrend, analyzeZoneBalance, analyzeRecoveryCorrelation, predi
  * @param {object} props.profile  — athlete profile
  * @param {string} props.lang     — 'en' | 'tr'
  */
-export default function InsightsPanel({ log, recovery, profile: _profile, lang }) {
+function InsightsPanel({ log, recovery, profile: _profile, lang }) {
   const { t } = useContext(LangCtx)
   const [open, setOpen] = useState(false)
 
@@ -79,3 +79,4 @@ export default function InsightsPanel({ log, recovery, profile: _profile, lang }
     </div>
   )
 }
+export default memo(InsightsPanel)

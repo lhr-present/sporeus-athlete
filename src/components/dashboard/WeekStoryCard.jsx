@@ -1,10 +1,10 @@
 // ─── dashboard/WeekStoryCard.jsx — This Week's Story Card ─────────────────────
-import { useContext, useState } from 'react'
+import { useContext, useState , memo} from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { generateWeeklyNarrative } from '../../lib/intelligence.js'
 
-export default function WeekStoryCard({ log, recovery, profile, lang }) {
+function WeekStoryCard({ log, recovery, profile, lang }) {
   const { t } = useContext(LangCtx)
   const [copied, setCopied] = useState(false)
   if (log.length < 2) return null
@@ -41,3 +41,4 @@ export default function WeekStoryCard({ log, recovery, profile, lang }) {
     </div>
   )
 }
+export default memo(WeekStoryCard)

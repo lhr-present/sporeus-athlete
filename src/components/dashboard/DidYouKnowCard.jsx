@@ -1,11 +1,11 @@
 // ─── dashboard/DidYouKnowCard.jsx — Science trivia card ───────────────────────
-import { useContext, useState } from 'react'
+import { useContext, useState , memo} from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { getTriggeredNotes } from '../../lib/scienceNotes.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 
-export default function DidYouKnowCard({ log, recovery, profile, lang }) {
+function DidYouKnowCard({ log, recovery, profile, lang }) {
   const { t } = useContext(LangCtx)
   const [shownIds, setShownIds] = useLocalStorage('sporeus-shown-notes', [])
   const [noteIdx, setNoteIdx] = useState(0)
@@ -38,3 +38,4 @@ export default function DidYouKnowCard({ log, recovery, profile, lang }) {
     </div>
   )
 }
+export default memo(DidYouKnowCard)

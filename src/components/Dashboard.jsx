@@ -51,6 +51,9 @@ import BanisterModelCard   from './dashboard/BanisterModelCard.jsx'
 import MacroPlanCountdown  from './dashboard/MacroPlanCountdown.jsx'
 import NormativeSection    from './dashboard/NormativeSection.jsx'
 import AICoachInsights    from './dashboard/AICoachInsights.jsx'
+import WeeklyRetroCard    from './dashboard/WeeklyRetroCard.jsx'
+import PhaseAnalyticsCard from './dashboard/PhaseAnalyticsCard.jsx'
+import FuelGuidanceCard   from './dashboard/FuelGuidanceCard.jsx'
 
 export default function Dashboard({ log }) {
   const [lang]       = useLocalStorage('sporeus-lang', 'en')
@@ -290,6 +293,8 @@ export default function Dashboard({ log }) {
     <div className="sp-fade">
       <MilestonesList log={log} profile={profile}/>
       <BackupReminder log={log}/>
+      <WeeklyRetroCard log={log} recovery={recovery} plan={plan} lang={lang}/>
+      <PhaseAnalyticsCard log={log} plan={plan} lang={lang}/>
 
       {/* Header */}
       <div style={{ marginBottom: '16px' }}>
@@ -392,6 +397,7 @@ export default function Dashboard({ log }) {
       </ErrorBoundary>
       <YourPatternsCard log={log} recovery={recovery} injuries={injuries} profile={profile} lang={lang}/>
       <WeekStoryCard log={log} recovery={recovery} profile={profile} lang={lang}/>
+      <FuelGuidanceCard log={log} plan={plan} profile={profile} lang={lang}/>
       <DidYouKnowCard log={log} recovery={recovery} profile={profile} lang={lang}/>
 
       {/* Stats row */}

@@ -4,6 +4,40 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.0.5] — 2026-04-23
+
+### FEAT: Dashboard memo optimization, weekly retrospective, phase analytics, fuel guidance
+
+**Dashboard React.memo (6 components)**
+Wrapped `InsightsPanel`, `WeekStoryCard`, `YourPatternsCard`, `DidYouKnowCard`, `RaceReadinessCard`, and `LoadTrendChart` in `React.memo`. These components now skip re-render when their props haven't changed. Prevents full cascade re-render when `profile`, `recovery`, or `injuries` update independently of `log`.
+
+**WeeklyRetroCard**
+New compact card at top of dashboard showing last week's structured summary: sessions count, total TSS, volume (h/m), top session, average readiness score, average HRV, and adaptive plan adherence % with color-coded status badge. Pulls from `useAdaptivePlan` for plan compliance message.
+
+**PhaseAnalyticsCard**
+New phase-aware metrics card. Reads current periodization plan + `MACRO_PHASES` to show: current phase name (Base/Build/Peak/Recovery/Taper/Race) with phase progress bar, CTL delta from phase start to now, phase compliance % (actual vs planned TSS across all completed weeks in this phase), and current week TSS progress against target.
+
+**FuelGuidanceCard**
+New CHO periodization card based on Burke et al. 2011 + Moore 2014. Shows: today's CHO target range (g/kg and absolute grams) derived from today's TSS, tomorrow's CHO target if plan has a session, daily protein range (1.6–2.2g/kg), and hydration estimate based on training volume. CHO zones: rest 3-5g/kg, easy 5-7, moderate 7-10, hard 10-12, very hard 12-14g/kg.
+
+**Changes**:
+- `src/components/dashboard/InsightsPanel.jsx` — `export default memo(InsightsPanel)`
+- `src/components/dashboard/WeekStoryCard.jsx` — `export default memo(WeekStoryCard)`
+- `src/components/dashboard/YourPatternsCard.jsx` — `export default memo(YourPatternsCard)`
+- `src/components/dashboard/DidYouKnowCard.jsx` — `export default memo(DidYouKnowCard)`
+- `src/components/dashboard/RaceReadinessCard.jsx` — `export default memo(RaceReadinessCard)`
+- `src/components/dashboard/LoadTrendChart.jsx` — `export default memo(LoadTrendChart)`
+- `src/components/dashboard/WeeklyRetroCard.jsx` — new component
+- `src/components/dashboard/PhaseAnalyticsCard.jsx` — new component
+- `src/components/dashboard/FuelGuidanceCard.jsx` — new component
+- `src/components/Dashboard.jsx` — imports + renders WeeklyRetroCard, PhaseAnalyticsCard, FuelGuidanceCard
+
+**Test count**: 2740 (unchanged — new UI components don't require pure-function tests)
+
+**Depends on**: v11.0.4, useAdaptivePlan hook
+
+---
+
 ## [v11.0.4] — 2026-04-23
 
 ### FEAT: App-wide improvements — HRV readiness weighting, workout templates, PMC timeline, adaptive plan, golden tests, i18n completeness, GDPR fix, AI per-tier caps

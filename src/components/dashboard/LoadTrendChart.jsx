@@ -1,6 +1,6 @@
 // ─── dashboard/LoadTrendChart.jsx — PMC card: ACWR badges + metrics + charts ───
 // Extracted from Dashboard.jsx inline PMC block (dl.timeline section).
-import { lazy, Suspense, useState, useMemo, useContext } from 'react'
+import { lazy, Suspense, useState, useMemo, useContext , memo} from 'react'
 import { S } from '../../styles.js'
 
 import ErrorBoundary from '../ErrorBoundary.jsx'
@@ -30,7 +30,7 @@ const PMC_RANGES = [
   { label: 'ALL', days: 3650 },
 ]
 
-export default function LoadTrendChart({ log, acwr, ctlChartDays, raceResults, plan, dl, lc }) {
+function LoadTrendChart({ log, acwr, ctlChartDays, raceResults, plan, dl, lc }) {
   const { t } = useContext(LangCtx)
   if (!dl.timeline || !lc.showCTL || log.length <= 3) return null
 
@@ -107,3 +107,4 @@ export default function LoadTrendChart({ log, acwr, ctlChartDays, raceResults, p
     </div>
   )
 }
+export default memo(LoadTrendChart)
