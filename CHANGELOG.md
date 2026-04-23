@@ -4,6 +4,23 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.0.2] — 2026-04-23
+
+### FIX: Recovery energy field not persisted to DB (V2 fatigue alert permanently silent)
+
+**Root cause**: `recovery` table had no `energy` column — the `energy` slider (1–5) from the
+wellness check-in form was dropped by `recEntryToRow`. After DB hydration, `e.energy` was
+`undefined` on all entries, causing V2's `getFatigueAccumulation` to always use fallback value
+3 (≥ 2.5 threshold) → fatigue alert never fired for any user with synced history.
+
+**Changes**:
+- `supabase/migrations/20260464_recovery_energy_column.sql` — `ALTER TABLE recovery ADD COLUMN IF NOT EXISTS energy SMALLINT CHECK (energy BETWEEN 1 AND 5)`; applied to production
+- `src/hooks/useSupabaseData.js` — `recRowToEntry` now maps `row.energy`; `recEntryToRow` now writes `energy` column
+
+**Depends on**: migration 001 (recovery table), migration 064 (energy column), V2 in Recovery.jsx (v11.0.0)
+
+---
+
 ## [v11.0.1] — 2026-04-23
 
 ### HOTFIX: Google OAuth 500 — inject_tier_jwt_claim missing SET search_path
