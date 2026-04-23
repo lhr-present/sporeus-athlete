@@ -4,6 +4,18 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.0.10] — 2026-04-23
+
+### FIX: Three logic bugs in intelligence.js and formulas.js
+
+- **`detectMilestones` daysSpan** (`intelligence.js:485`): was using `log[0]` and `log[n-1]` assuming insertion order = date order. Backfilled sessions break this. Now uses `Math.max/min` over all timestamp values for correct span regardless of array order.
+- **`wingateStats` NaN** (`formulas.js:123`): fatigue index `(peak-low)/peak` produces `NaN` when `peak=0`. Returns `'0.0'` when peak is zero.
+- **Dead `_maxRPE`** (`intelligence.js:484`): unused variable removed.
+
+**Depends on**: v11.0.9
+
+---
+
 ## [v11.0.9] — 2026-04-23
 
 ### FEAT: DurabilityCard surface + polarization ratio + video session URL

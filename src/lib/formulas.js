@@ -120,7 +120,7 @@ export const yyir1VO2   = (lv, sh) => (35.4 + ((lv-1)+(sh/8))*(62.8-35.4)/22).to
  * @param {number} bw - body weight kg
  * @returns {Object} {relPeak, relMean, fatigue} relative power and fatigue index
  */
-export const wingateStats = (peak, mean, low, bw) => ({ relPeak:(peak/bw).toFixed(1), relMean:(mean/bw).toFixed(1), fatigue:(((peak-low)/peak)*100).toFixed(1) })
+export const wingateStats = (peak, mean, low, bw) => ({ relPeak:(peak/bw).toFixed(1), relMean:(mean/bw).toFixed(1), fatigue: peak > 0 ? (((peak-low)/peak)*100).toFixed(1) : '0.0' })
 /**
  * @param {number} t1 - known race time in seconds
  * @param {number} d1 - known race distance in meters

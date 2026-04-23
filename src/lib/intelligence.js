@@ -481,8 +481,8 @@ export function detectMilestones(log, profile, prevMilestones) {
   const ctl    = computeCTL(log || [])
   const totalH = Math.round((log || []).reduce((s, e) => s + (e.duration || 0), 0) / 60)
   const maxTSS = Math.max(...(log || []).map(e => e.tss || 0), 0)
-  const _maxRPE = Math.max(...(log || []).map(e => e.rpe || 0), 0)
-  const daysSpan = n >= 2 ? Math.round((new Date(log[n - 1].date) - new Date(log[0].date)) / 864e5) : 0
+  const dates = n >= 2 ? (log || []).map(e => new Date(e.date).getTime()).filter(Number.isFinite) : []
+  const daysSpan = dates.length >= 2 ? Math.round((Math.max(...dates) - Math.min(...dates)) / 864e5) : 0
   const last30 = (log || []).filter(e => e.date >= daysAgoDate(30)).length
   const last7  = (log || []).filter(e => e.date >= daysAgoDate(7)).length
 
