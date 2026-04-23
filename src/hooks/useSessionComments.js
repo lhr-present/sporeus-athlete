@@ -198,6 +198,7 @@ export function useSessionComments(sessionId, currentUserId) {
     if (!queued) qc.invalidateQueries({ queryKey: qKey })
 
     return { queued }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- qKey/qc are stable singleton refs
   }, [sessionId, currentUserId])
 
   const editComment = useCallback(async (commentId, body) => {

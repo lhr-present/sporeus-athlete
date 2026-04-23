@@ -1,9 +1,8 @@
 // ─── dashboard/PhaseAnalyticsCard.jsx — Training block phase progress ─────────
 // Shows current periodization phase, CTL progress since phase start, and
 // phase compliance (actual vs planned TSS for weeks completed so far).
-import { memo, useMemo, useContext } from 'react'
+import { memo, useMemo } from 'react'
 import { S } from '../../styles.js'
-import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { calcLoad } from '../../lib/formulas.js'
 import { MACRO_PHASES } from '../../lib/constants.js'
 
@@ -17,8 +16,6 @@ const PHASE_COLOR = {
 }
 
 function PhaseAnalyticsCard({ log, plan, lang }) {
-  const { t } = useContext(LangCtx)
-
   const data = useMemo(() => {
     if (!plan?.start_date || !plan?.weeks?.length) return null
     const today = new Date()

@@ -32,12 +32,9 @@ const PMC_RANGES = [
 
 function LoadTrendChart({ log, acwr, ctlChartDays, raceResults, plan, dl, lc }) {
   const { t } = useContext(LangCtx)
-  if (!dl.timeline || !lc.showCTL || log.length <= 3) return null
 
+  // Hooks must run before any early return
   const [pmcRange, setPmcRange] = useState(ctlChartDays)
-  const effectiveDays = pmcRange
-
-  // Career peak CTL — highest fitness point across all history
   const peakCTL = useMemo(() => {
     if (!log.length) return null
     const sorted = [...log].sort((a, b) => a.date > b.date ? 1 : -1)
@@ -45,6 +42,10 @@ function LoadTrendChart({ log, acwr, ctlChartDays, raceResults, plan, dl, lc }) 
     for (const s of sorted) { ctl = ctl + ((s.tss || 0) - ctl) / 42; if (ctl > peak) peak = ctl }
     return Math.round(peak)
   }, [log])
+
+  if (!dl.timeline || !lc.showCTL || log.length <= 3) return null
+
+  const effectiveDays = pmcRange
 
   const { mono, strain } = monotonyStrain(log)
   const acwrColor = acwr.status === 'danger'      ? '#e03030'

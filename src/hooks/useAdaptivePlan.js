@@ -12,13 +12,6 @@
 import { useMemo } from 'react'
 import { useLocalStorage } from './useLocalStorage.js'
 
-function weekKey(date) {
-  const d = new Date(date)
-  const day = d.getDay() || 7
-  d.setDate(d.getDate() - day + 1) // Monday
-  return d.toISOString().slice(0, 10)
-}
-
 function getWeekDates(mondayStr) {
   const start = new Date(mondayStr)
   const end   = new Date(start)
@@ -44,7 +37,6 @@ export function useAdaptivePlan(log, plan) {
     const planStart = plan.start_date
     if (!planStart) return null
 
-    const today = new Date().toISOString().slice(0, 10)
     const thisMonday = getMonday()
     const prevMonday = (() => {
       const d = new Date(thisMonday)

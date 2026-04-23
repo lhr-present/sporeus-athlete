@@ -5,9 +5,8 @@
 //
 // CHO ranges:   rest <3g/kg · easy 3-5g/kg · moderate 5-7g/kg · hard 7-10g/kg
 // Protein:      1.6-2.2g/kg daily (Morton 2018 meta-analysis)
-import { memo, useMemo, useContext } from 'react'
+import { memo, useMemo } from 'react'
 import { S } from '../../styles.js'
-import { LangCtx } from '../../contexts/LangCtx.jsx'
 
 const CHO_ZONES = [
   { label: 'REST',     labelTr: 'DİNLENME',  range: '3–5',   color: '#5bc25b', tssCap: 30  },
@@ -32,8 +31,6 @@ function getTomorrowKey() {
 }
 
 function FuelGuidanceCard({ log, plan, profile, lang }) {
-  const { t } = useContext(LangCtx)
-
   const data = useMemo(() => {
     const today = getTodayKey()
     const tomorrow = getTomorrowKey()

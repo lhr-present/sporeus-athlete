@@ -101,6 +101,7 @@ export default function Profile({ log, authUser }) {
   const [marketingConsent, setMarketingConsent] = useState(() => { try { return localStorage.getItem('sporeus-marketing-consent') === '1' } catch { return false } })
   const [showPrivacy, setShowPrivacy] = useState(false)
   const [showErrorLog, setShowErrorLog] = useState(false)
+  const [dqOpen, setDqOpen] = useState(false)
 
   const handleGdprDownload = async () => {
     setGdprStatus('exporting')
@@ -537,10 +538,9 @@ export default function Profile({ log, authUser }) {
       {log && log.length >= 3 && (() => {
         const dq    = assessDataQuality(log, recovery || [], testResults || [], profile)
         const color = dq.score >= 80 ? '#5bc25b' : dq.score >= 60 ? '#f5c542' : '#e03030'
-        const [open, setOpen] = useState(false)
         return (
           <div style={{ ...S.card, borderLeft: `3px solid ${color}` }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => setOpen(o => !o)}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => setDqOpen(o => !o)}>
               <div>
                 <div style={{ ...S.cardTitle, marginBottom: 2 }}>DATA QUALITY</div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
@@ -548,9 +548,9 @@ export default function Profile({ log, authUser }) {
                   <span style={{ fontSize: '11px', color: '#888', fontFamily: "'IBM Plex Mono', monospace" }}>{dq.score}/100</span>
                 </div>
               </div>
-              <span style={{ fontSize: '10px', color: '#555' }}>{open ? '▲' : '▼'}</span>
+              <span style={{ fontSize: '10px', color: '#555' }}>{dqOpen ? '▲' : '▼'}</span>
             </div>
-            {open && (
+            {dqOpen && (
               <div style={{ marginTop: '12px' }}>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
                   {dq.factors.map(f => (

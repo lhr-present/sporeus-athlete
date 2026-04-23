@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
+import { screen, fireEvent, act } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { renderWithLang } from './testUtils.jsx'
 import QuickAddModal from '../QuickAddModal.jsx'

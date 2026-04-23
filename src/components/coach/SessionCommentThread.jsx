@@ -29,7 +29,7 @@ export default function SessionCommentThread({
   authorNames = {},
   maxHeight = '320px',
 }) {
-  const { t, lang } = useContext(LangCtx)
+  const { t } = useContext(LangCtx)
   const {
     comments, status, typingUsers,
     postComment, editComment, deleteComment,

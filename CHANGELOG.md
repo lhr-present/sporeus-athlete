@@ -4,6 +4,33 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.0.6] — 2026-04-23
+
+### FIX: All ESLint errors and warnings blocking GitHub Pages deployment
+
+**3 errors** (would break React in production):
+- `LoadTrendChart.jsx` — `useState`/`useMemo` were after an early `return null`, violating rules-of-hooks; moved before the guard
+- `Profile.jsx:540` — `useState(false)` called inside an IIFE JSX expression (`() => {...}()`); hoisted `dqOpen` state to component level
+
+**16 warnings** resolved (all blocked `--max-warnings 0` lint gate):
+- `FuelGuidanceCard` / `PhaseAnalyticsCard` / `WeeklyRetroCard` — unused `t` / `useContext` / `LangCtx` removed (cards use inline `lang === 'tr'` ternaries)
+- `useAdaptivePlan.js` — dead `weekKey()` function and unused `today` variable removed
+- `RaceReadiness.jsx` — unused `t` removed from destructure; `BLUE` renamed `_BLUE`
+- `QuickAddModal.test.jsx` — unused `render` / `waitFor` imports removed
+- `SessionCommentThread.jsx` — unused `lang` removed from `useContext` destructure
+- `useSessionComments.js` — added `eslint-disable` comment for intentionally stable `qKey`/`qc` refs
+- `nextAction.test.js` — unused `vi`, `computeCTL`, `computeATL` imports removed
+- `efficiencyFactor.test.js` — unused `i` parameter replaced with `_` in `Array.from` callback
+- `subThresholdTime.test.js` — unused `WEEK_END` renamed `_WEEK_END`
+
+**Note**: deploy was already failing before this session (same pre-existing warnings). This commit unblocks it.
+
+**Changes**: 13 files
+
+**Depends on**: v11.0.5
+
+---
+
 ## [v11.0.5] — 2026-04-23
 
 ### FEAT: Dashboard memo optimization, weekly retrospective, phase analytics, fuel guidance

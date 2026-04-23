@@ -1,9 +1,8 @@
 // ─── dashboard/WeeklyRetroCard.jsx — Last-week retrospective digest ──────────
 // Compact card shown every Monday (or always) with last week's key numbers.
 // Bridges useAdaptivePlan adherence data with recovery and session summaries.
-import { memo, useMemo, useContext } from 'react'
+import { memo, useMemo } from 'react'
 import { S } from '../../styles.js'
-import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { useAdaptivePlan } from '../../hooks/useAdaptivePlan.js'
 
 function getMonday(d = new Date()) {
@@ -27,7 +26,6 @@ function sundayOf(mondayStr) {
 }
 
 function WeeklyRetroCard({ log, recovery, plan, lang }) {
-  const { t } = useContext(LangCtx)
   const { adaptation } = useAdaptivePlan(log, plan)
 
   const retro = useMemo(() => {

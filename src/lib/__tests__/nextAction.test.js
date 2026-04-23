@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { computeNextAction, isDismissed, dismissRule, computeCTL, computeATL, computeACWR } from '../nextAction.js'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { computeNextAction, isDismissed, dismissRule, computeACWR } from '../nextAction.js'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

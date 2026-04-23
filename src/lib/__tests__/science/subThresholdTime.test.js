@@ -27,7 +27,7 @@ function makeSession(date, opts = {}) {
 }
 
 const WEEK_START = '2026-04-13' // Monday
-const WEEK_END   = '2026-04-19' // Sunday (exclusive — sessions on Mon–Sun inclusive)
+const _WEEK_END  = '2026-04-19' // Sunday (exclusive — sessions on Mon–Sun inclusive)
 
 // ── weekSubThresholdMin — null guards ─────────────────────────────────────────
 

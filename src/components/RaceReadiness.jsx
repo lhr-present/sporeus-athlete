@@ -14,7 +14,7 @@ const ORANGE = '#ff6600'
 const GREEN  = '#5bc25b'
 const AMBER  = '#f5c542'
 const RED    = '#e03030'
-const BLUE   = '#0064ff'
+const _BLUE  = '#0064ff'
 
 function trafficColor(score) {
   if (score >= 75) return GREEN
@@ -29,7 +29,7 @@ function trafficLabel(score, lang) {
 }
 
 export default function RaceReadiness() {
-  const { t, lang } = useContext(LangCtx)
+  const { lang } = useContext(LangCtx)
   const { log, recovery, injuries, testResults, profile, setProfile } = useData()
   const [plan]       = useLocalStorage('sporeus-plan',        null)
   const [planStatus] = useLocalStorage('sporeus-plan-status', {})

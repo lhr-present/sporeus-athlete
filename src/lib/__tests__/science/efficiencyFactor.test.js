@@ -169,7 +169,7 @@ describe('efTrend — Coggan (2003)', () => {
 
   it('excludes sessions older than windowDays', () => {
     // 8 sessions within window + 5 very old ones
-    const old = Array.from({ length: 5 }, (_, i) => ({
+    const old = Array.from({ length: 5 }, () => ({
       date: '2025-01-01',
       avgHR: 140, np: 220, sport: 'cycling',
     }))
