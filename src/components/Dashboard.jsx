@@ -48,6 +48,7 @@ import PersonalRecordsCard from './dashboard/PersonalRecordsCard.jsx'
 import BodyCompositionCard from './dashboard/BodyCompositionCard.jsx'
 import RacePredictionsCard from './dashboard/RacePredictionsCard.jsx'
 import BanisterModelCard   from './dashboard/BanisterModelCard.jsx'
+import DurabilityCard      from './dashboard/DurabilityCard.jsx'
 import MacroPlanCountdown  from './dashboard/MacroPlanCountdown.jsx'
 import NormativeSection    from './dashboard/NormativeSection.jsx'
 import AICoachInsights    from './dashboard/AICoachInsights.jsx'
@@ -165,6 +166,26 @@ export default function Dashboard({ log }) {
     () => subZones ? subThresholdTrend(log, subZones, 8) : [],
     [log, subZones]
   )
+
+  // Polarization ratio for current week (sub-threshold min / total week min)
+  const polarRatio = useMemo(() => {
+    if (!subTrend.length) return null
+    const thisWk = subTrend[subTrend.length - 1]
+    if (thisWk?.minutes == null) return null
+    const weekEnd = new Date(thisWk.weekStart + 'T00:00:00Z')
+    weekEnd.setUTCDate(weekEnd.getUTCDate() + 7)
+    const weekEndStr = weekEnd.toISOString().slice(0, 10)
+    const totalMin = (log || []).reduce((acc, s) => {
+      const d = (s.date || '').slice(0, 10)
+      if (d < thisWk.weekStart || d >= weekEndStr) return acc
+      const m = s.durationSec != null ? s.durationSec / 60
+              : s.duration    != null ? s.duration
+              : 0
+      return acc + m
+    }, 0)
+    if (totalMin <= 0) return null
+    return Math.round(thisWk.minutes / totalMin * 100)
+  }, [subTrend, log])
 
   // ── Header badges (sport, level, coach, data quality) ─────────────────────────
   const metricsRow = profileMetrics.length >= 2 ? (
@@ -568,11 +589,18 @@ export default function Dashboard({ log }) {
               <div style={S.cardTitle}>
                 {lang === 'tr' ? 'EŞİK ALTI SÜRE TRENDİ' : 'SUB-THRESHOLD TREND'}
               </div>
-              {thisWk?.minutes !== null && (
-                <div style={{ ...S.mono, fontSize: '11px', color: '#5bc25b' }}>
-                  {thisWk.minutes}min {lang === 'tr' ? 'bu hafta' : 'this week'}
-                </div>
-              )}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+                {polarRatio !== null && (
+                  <div style={{ ...S.mono, fontSize: '11px', color: polarRatio >= 80 ? '#5bc25b' : '#ff6600', fontWeight: 700 }}>
+                    {polarRatio}% <span style={{ fontSize: '8px', color: '#555', fontWeight: 400 }}>≥80%</span>
+                  </div>
+                )}
+                {thisWk?.minutes !== null && (
+                  <div style={{ ...S.mono, fontSize: '11px', color: '#5bc25b' }}>
+                    {thisWk.minutes}min {lang === 'tr' ? 'bu hafta' : 'this week'}
+                  </div>
+                )}
+              </div>
             </div>
             <div style={{ display: 'flex', gap: '3px', alignItems: 'flex-end', height: '40px' }}>
               {subTrend.map((w, i) => {
@@ -601,6 +629,7 @@ export default function Dashboard({ log }) {
       <LoadTrendChart log={log} acwr={acwr} ctlChartDays={ctlChartDays} raceResults={raceResults} plan={plan} dl={dl} lc={lc}/>
 
       <BanisterModelCard/>
+      <DurabilityCard log={log} lang={lang}/>
       <BodyCompositionCard dl={dl}/>
       <RacePredictionsCard dl={dl}/>
 

@@ -27,7 +27,7 @@ export default function SessionManager({ coachId, lang = 'en' }) {
   const [creating,    setCreating]    = useState(false)
   const [showForm,    setShowForm]    = useState(false)
   const [expanded,    setExpanded]    = useState(null)   // sessionId with detail open
-  const [form, setForm] = useState({ title: '', session_date: '', session_time: '', notes: '' })
+  const [form, setForm] = useState({ title: '', session_date: '', session_time: '', notes: '', meeting_url: '' })
   const [err, setErr]   = useState('')
   const [qrSession,   setQrSession]   = useState(null)   // session object to show QR for
 
@@ -63,7 +63,7 @@ export default function SessionManager({ coachId, lang = 'en' }) {
     const { error } = await createSession(coachId, form)
     setCreating(false)
     if (error) { setErr(error.message || 'Failed to create session'); return }
-    setForm({ title: '', session_date: '', session_time: '', notes: '' })
+    setForm({ title: '', session_date: '', session_time: '', notes: '', meeting_url: '' })
     setShowForm(false)
     await loadSessions()
   }
@@ -124,6 +124,12 @@ export default function SessionManager({ coachId, lang = 'en' }) {
             placeholder={isTR ? 'Notlar (opsiyonel)' : 'Notes (optional)'}
             rows={2}
             style={{ ...S.input, width: '100%', resize: 'vertical', marginBottom: '8px', fontSize: '11px', fontFamily: MONO }}
+          />
+          <input
+            value={form.meeting_url}
+            onChange={e => setForm(f => ({ ...f, meeting_url: e.target.value }))}
+            placeholder={isTR ? 'Video bağlantısı (opsiyonel, https://…)' : 'Video link (optional, https://…)'}
+            style={{ ...S.input, width: '100%', marginBottom: '8px', fontSize: '11px' }}
           />
           {err && <div style={{ fontSize: '10px', color: RED, marginBottom: '6px' }}>⚠ {err}</div>}
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -230,6 +236,18 @@ export default function SessionManager({ coachId, lang = 'en' }) {
                     {s.notes && (
                       <div style={{ fontSize: '10px', color: '#666', marginTop: '10px', lineHeight: 1.5 }}>
                         {s.notes}
+                      </div>
+                    )}
+                    {s.meeting_url && (
+                      <div style={{ marginTop: '10px' }}>
+                        <a
+                          href={s.meeting_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ fontFamily: MONO, fontSize: '10px', color: '#0064ff', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          ▶ {isTR ? 'Video Bağlantısı' : 'Video Link'}
+                        </a>
                       </div>
                     )}
                     <div style={{ marginTop: '12px', borderTop: '1px solid #1e1e1e', paddingTop: '10px' }}>

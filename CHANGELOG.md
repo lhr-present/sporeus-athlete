@@ -4,6 +4,32 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.0.9] — 2026-04-23
+
+### FEAT: DurabilityCard surface + polarization ratio + video session URL
+
+**DurabilityCard** (`src/components/dashboard/DurabilityCard.jsx` → `Dashboard.jsx`):
+- New card rendered after BanisterModelCard; self-hides when athlete has no FIT-imported sessions ≥90 min with a power stream
+- Shows durability % (last-hour 5min peak ÷ baseline MMP), tier label, threshold reference grid (≥95%/90%/85%/<85%), 8-session trend bars
+- O(m) sliding-window `baselineMMP5()` over last 12 months; wrapped in `memo()`
+- Reference: Maunder et al. (2021) Sports Med 51:1523–1550
+
+**Polarization ratio** (J5 sub-threshold card in `Dashboard.jsx`):
+- Header now shows `{pct}% ≥80%` next to weekly sub-threshold minutes
+- Green when ≥80% (Seiler target), orange when below
+- Computed as sub-threshold min / total week min for current week
+
+**Video session URL** (`SessionManager.jsx`, `coachSessions.js`, migration `20260466`):
+- Coach can enter optional `meeting_url` (https://…) when creating a session
+- Stored via `meeting_url` column added to `coach_sessions` table (migration `20260466_coach_sessions_meeting_url.sql`)
+- Rendered as clickable "▶ Video Link" in session detail panel
+
+**Tests**: 2740 pass · **Build**: clean
+
+**Depends on**: v11.0.8, durabilityScore.js, subThresholdTime.js, coachSessions.js
+
+---
+
 ## [v11.0.6] — 2026-04-23
 
 ### FIX: All ESLint errors and warnings blocking GitHub Pages deployment

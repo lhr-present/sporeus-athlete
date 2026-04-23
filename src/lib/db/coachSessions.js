@@ -8,7 +8,7 @@ const NOT_CONFIGURED = { data: null, error: new Error('Supabase not configured')
 /**
  * Create a new coach-scheduled session.
  * @param {string} coachId
- * @param {{ title: string, session_date: string, session_time?: string, notes?: string, org_id?: string }} sessionData
+ * @param {{ title: string, session_date: string, session_time?: string, notes?: string, meeting_url?: string, org_id?: string }} sessionData
  */
 export async function createSession(coachId, sessionData) {
   if (!ready()) return NOT_CONFIGURED
@@ -20,6 +20,7 @@ export async function createSession(coachId, sessionData) {
       session_date: sessionData.session_date,
       session_time: sessionData.session_time || null,
       notes:        sessionData.notes        || null,
+      meeting_url:  sessionData.meeting_url  || null,
       org_id:       sessionData.org_id       || null,
     })
     .select()
