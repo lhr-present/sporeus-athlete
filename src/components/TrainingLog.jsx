@@ -57,6 +57,7 @@ import ActivityMap from './ActivityMap.jsx'
 import UploadActivity from './UploadActivity.jsx'
 import SemanticSearch from './SemanticSearch.jsx'
 import { getTierSync } from '../lib/subscription.js'
+import { useWorkoutTemplates } from '../hooks/useWorkoutTemplates.js'
 import ConfirmModal from './ui/ConfirmModal.jsx'
 import EmptyState from './ui/EmptyState.jsx'
 
@@ -91,6 +92,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const [bulkMode, setBulkMode]           = useState(false)
   const [selected, setSelected]           = useState(new Set())
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
+  const { saveTemplate } = useWorkoutTemplates()
   const [expandedId, setExpandedId]       = useState(null)
   const fileInputRef    = useRef(null)
   const csvInputRef     = useRef(null)
@@ -598,6 +600,8 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                         )}
                         <button onClick={()=>startEdit(s,i)}
                           style={{ background:'none', border:'none', color:'#aaa', cursor:'pointer', ...S.mono, fontSize:'12px', marginRight:'4px' }}>✎</button>
+                        <button onClick={()=>saveTemplate(s)} title="Save as template"
+                          style={{ background:'none', border:'none', color:'#555', cursor:'pointer', ...S.mono, fontSize:'11px', marginRight:'4px' }}>⊕</button>
                         <button onClick={()=>setLog(log.filter((_,idx)=>idx!==log.length-1-i))}
                           style={{ background:'none', border:'none', color:'#ccc', cursor:'pointer', ...S.mono, fontSize:'12px' }}>✕</button>
                       </td>

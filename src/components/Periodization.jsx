@@ -1,4 +1,5 @@
 import React, { useState, useContext, useMemo, useEffect, Fragment } from 'react'
+import { useAdaptivePlan } from '../hooks/useAdaptivePlan.js'
 import { logger } from '../lib/logger.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
@@ -199,6 +200,7 @@ function savePlanResponses(obj) { try { localStorage.setItem(PLAN_RESPONSES_KEY,
 function planViewedKey(planId) { return `sporeus-plan-viewed-${planId}` }
 
 function CoachPlansCard({ authUser }) {
+  const { t } = useContext(LangCtx)
   const [plans, setPlans]     = useState(null)  // null = loading
   const [expanded, setExpanded] = useState({})
   const [responses, setResponses] = useState(() => readPlanResponses())
@@ -239,7 +241,7 @@ function CoachPlansCard({ authUser }) {
   if (plans === null) return (
     <div className="sp-card" style={{ ...S.card, animationDelay:'160ms' }}>
       <div style={S.cardTitle}>PLANS FROM YOUR COACH</div>
-      <div style={{ ...S.mono, fontSize:'11px', color:'#555' }}>Loading…</div>
+      <div style={{ ...S.mono, fontSize:'11px', color:'#555' }}>{t('loadingCoachPlans')}</div>
     </div>
   )
   if (plans.length === 0) return null
@@ -343,7 +345,7 @@ function CoachPlansCard({ authUser }) {
               </div>
             )}
             {isOpen && weeks.length === 0 && (
-              <div style={{ ...S.mono, fontSize:'10px', color:'#555', padding:'10px 12px' }}>No week data.</div>
+              <div style={{ ...S.mono, fontSize:'10px', color:'#555', padding:'10px 12px' }}>{t('noWeekData')}</div>
             )}
           </div>
         )
@@ -353,8 +355,47 @@ function CoachPlansCard({ authUser }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
+// ─── AdaptivePlanCard — shows last-week adherence + next-week suggestion ───────
+function AdaptivePlanCard({ log, plan, lang }) {
+  const { adaptation, dismiss } = useAdaptivePlan(log, plan)
+  if (!adaptation) return null
+
+  const statusColor = {
+    on_track:  '#5bc25b',
+    exceeded:  '#f5c542',
+    overreach: '#e03030',
+    under:     '#f5c542',
+    low:       '#e03030',
+  }[adaptation.status] || '#888'
+
+  return (
+    <div className="sp-card" style={{ ...S.card, borderLeft: `4px solid ${statusColor}`, animationDelay: '0ms' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ ...S.cardTitle, color: statusColor }}>
+          {lang === 'tr' ? 'PLAN UYUM ANALİZİ' : 'PLAN ADAPTATION'}
+        </div>
+        <button onClick={dismiss}
+          style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: '14px', padding: '0 4px' }}>
+          ×
+        </button>
+      </div>
+      <div style={{ ...S.mono, fontSize: '11px', color: '#ccc', lineHeight: 1.7, marginBottom: '10px' }}>
+        {lang === 'tr' ? adaptation.messageTr : adaptation.message}
+      </div>
+      {adaptation.adjustedNextTSS && (
+        <div style={{ ...S.mono, fontSize: '10px', color: '#888', padding: '6px 10px', background: 'var(--surface)', borderRadius: '3px' }}>
+          {lang === 'tr' ? 'Sonraki hafta önerilen yük' : 'Suggested next-week load'}:
+          {' '}<span style={{ color: statusColor, fontWeight: 700 }}>{adaptation.adjustedNextTSS} TSS</span>
+          {' '}({lang === 'tr' ? 'planlı' : 'planned'}: {adaptation.nextPlannedTSS})
+          {' '}· {adaptation.adjustPct > 0 ? '+' : ''}{adaptation.adjustPct}%
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Periodization({ authUser }) {
-  const { t } = useContext(LangCtx)
+  const { t, lang } = useContext(LangCtx)
   const { log } = useData()
 
   const autoCtl = useMemo(() => computeCurrentCTL(log), [log])
@@ -379,11 +420,15 @@ export default function Periodization({ authUser }) {
         .toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })
     : null
 
+  // Read coach plan from localStorage for adaptive analysis (same key used by App.jsx)
+  const coachPlan = (() => { try { return JSON.parse(localStorage.getItem('sporeus-plan') || 'null') } catch { return null } })()
+
   return (
     <div className="sp-fade">
+      <AdaptivePlanCard log={log} plan={coachPlan} lang={lang} />
       {/* ─── Inputs ─── */}
       <div className="sp-card" style={{ ...S.card, animationDelay:'0ms' }}>
-        <div style={S.cardTitle}>{t('macroCycleTitle')} · FRIEL PERIODIZATION</div>
+        <div style={S.cardTitle}>{t('macroCycleTitle')} · {t('periodizationTitle')}</div>
         <div style={S.row}>
           <div style={{ flex:'1 1 160px' }}>
             <label style={S.label}>{t('raceDateL')}</label>
@@ -409,7 +454,7 @@ export default function Periodization({ authUser }) {
         )}
         {!raceDate && (
           <div style={{ ...S.mono, fontSize:'11px', color:'#888', marginTop:'10px' }}>
-            Set a race date to anchor the 13-week plan to calendar dates.
+            {t('raceAnchorHint')}
           </div>
         )}
       </div>
@@ -421,7 +466,7 @@ export default function Periodization({ authUser }) {
           <button
             onClick={() => setShowChart(s => !s)}
             style={{ ...S.mono, fontSize:'10px', padding:'3px 10px', borderRadius:'3px', border:'1px solid #444', background:'transparent', color:'#888', cursor:'pointer' }}>
-            {showChart ? 'HIDE CHART' : 'SHOW CHART'}
+            {showChart ? t('hideChart') : t('showChart')}
           </button>
         </div>
 

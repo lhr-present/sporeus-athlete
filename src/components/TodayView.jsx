@@ -327,10 +327,15 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
     setIsSubmitting(true)
     try { localStorage.setItem(usedKey, idempotencyKey.current) } catch (e) { logger.warn('localStorage:', e.message) }
 
-    const score = Math.round((wellness.sleep + wellness.energy + (6 - wellness.soreness)) / 3 * 20)
+    // HRV weighting: suppressed HRV pulls readiness down even when subjective wellness is high
+    const hrvFactor = hrvTrend.daysWithData >= 3
+      ? (hrvTrend.trend === 'unstable' ? 0.75 : hrvTrend.trend === 'warning' ? 0.90 : 1.0)
+      : 1.0
+    const score = Math.min(100, Math.round((wellness.sleep + wellness.energy + (6 - wellness.soreness)) / 3 * 20 * hrvFactor))
     const entry = {
       date: today, sleep: wellness.sleep, energy: wellness.energy,
       soreness: wellness.soreness, mood: 3, stress: 3, score,
+      hrv_factor: hrvFactor !== 1.0 ? hrvFactor : undefined,
       id: Date.now(), idempotency_key: idempotencyKey.current,
     }
 
@@ -905,7 +910,7 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
         ) : wellnessSaved ? (
           <>
             <div style={{ color: GREEN, fontSize: '12px' }}>
-              {alreadySubmitted ? '✓ Already submitted today' : `✓ ${t('todaySaved')}`}
+              {alreadySubmitted ? t('alreadySubmitted') : `✓ ${t('todaySaved')}`}
             </div>
             <Suspense fallback={null}><WellnessSparkline recovery={recovery} /></Suspense>
           </>

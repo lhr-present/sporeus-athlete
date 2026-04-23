@@ -93,6 +93,13 @@ export default function YourPatternsCard({ log, recovery, injuries: _injuries, p
                   <span style={{ color:'#444' }}>{d.avgDuration}min</span>
                 </div>
               ))}
+              {weekStruct.bestWeeklyHours && (
+                <div style={{ ...S.mono, fontSize:'9px', color:'#333', marginTop:'6px', letterSpacing:'0.04em' }}>
+                  {lang==='tr'
+                    ? `HEDEF: ${weekStruct.bestSessionCount} antrenman · ${weekStruct.bestWeeklyHours.min}–${weekStruct.bestWeeklyHours.max}h/hft`
+                    : `TARGET: ${weekStruct.bestSessionCount} sessions · ${weekStruct.bestWeeklyHours.min}–${weekStruct.bestWeeklyHours.max}h/wk`}
+                </div>
+              )}
             </div>
           )}
           {open && hints.length > 0 && (

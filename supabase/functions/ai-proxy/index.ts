@@ -131,9 +131,11 @@ serve(withTelemetry('ai-proxy', async (req) => {
       .eq('athlete_id', user.id)
       .gte('date', monthStart)
 
-    const MONTHLY_CAP = 1500
-    if ((monthCount ?? 0) >= MONTHLY_CAP) {
-      return err('Monthly AI quota reached. Resets on the 1st.', 429)
+    // Per-tier monthly cap: Coach = 300, Club = 1500 (flat 1500 allowed Sonnet abuse)
+    const MONTHLY_CAPS: Record<string, number> = { free: 0, coach: 300, club: 1500 }
+    const monthlyCap = MONTHLY_CAPS[tier] ?? 0
+    if ((monthCount ?? 0) >= monthlyCap) {
+      return err(`Monthly AI quota reached (${monthlyCap} calls/${tier} plan). Resets on the 1st.`, 429)
     }
 
     // ── RAG: retrieve grounding context ───────────────────────────────────────

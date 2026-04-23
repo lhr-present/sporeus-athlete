@@ -11,6 +11,7 @@ import { calcTSS } from '../lib/formulas.js'
 import { SESSION_TYPES_BY_DISCIPLINE } from '../lib/constants.js'
 import { addNotification } from '../lib/notificationCenter.js'
 import { analyseSession } from '../lib/intelligence.js'
+import { useWorkoutTemplates } from '../hooks/useWorkoutTemplates.js'
 
 const MONO = "'IBM Plex Mono', monospace"
 const today = () => new Date().toISOString().slice(0, 10)
@@ -60,6 +61,9 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
   const [phase, setPhase]             = useState('form')   // 'form' | 'saved'
   const [errors, setErrors]           = useState({})
   const [sessionAnalysis, setSessionAnalysis] = useState(null)
+  const { templates, saveTemplate }   = useWorkoutTemplates()
+  const [savedEntry, setSavedEntry]   = useState(null)
+  const [tplSaved, setTplSaved]       = useState(false)
 
   const firstRef = useRef(null)
   useEffect(() => { firstRef.current?.focus() }, [])
@@ -106,11 +110,12 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
       notes: notes.trim() || undefined,
     }
     onAdd(entry)
+    setSavedEntry(entry)
     addNotification('training', isTR ? 'Antrenman Kaydedildi' : 'Session Logged',
       `${type} · ${dur}min · ${tss} TSS`, { tab: 'log' })
     setSessionAnalysis(analyseSession(entry, (log || []).slice(-28)))
     setPhase('saved')
-    setTimeout(onClose, 3500)
+    setTimeout(onClose, 4000)
   }
 
   return (
@@ -159,6 +164,15 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
                 {isTR ? '🏆 İlk adım tamamlandı. Bugün sekmesinde sonraki adımını gör.' : '🏆 First step done. Check the Today tab for your next step.'}
               </div>
             )}
+            {savedEntry && !tplSaved && (
+              <button type="button"
+                onClick={() => { saveTemplate(savedEntry); setTplSaved(true) }}
+                style={{ fontSize: '9px', color: '#555', background: 'none', border: '1px solid #333', borderRadius: '3px', padding: '3px 10px', cursor: 'pointer', fontFamily: MONO, marginBottom: '8px' }}
+              >
+                {isTR ? '+ Şablon olarak kaydet' : '+ Save as template'}
+              </button>
+            )}
+            {tplSaved && <div style={{ fontSize: '9px', color: '#5bc25b', marginBottom: '8px' }}>✓ {isTR ? 'Şablon kaydedildi' : 'Template saved'}</div>}
             <div style={{ fontSize: '9px', color: '#444' }}>
               {isTR ? 'Kapatılıyor...' : 'Closing…'}
             </div>
@@ -172,6 +186,25 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
               </div>
               <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#555', fontSize: '16px', padding: '0 4px' }}>×</button>
             </div>
+
+            {/* ── Templates picker ───────────────────────────────────────── */}
+            {templates.length > 0 && (
+              <div style={{ marginBottom: '14px' }}>
+                <div style={{ fontSize: '9px', color: '#555', letterSpacing: '0.08em', marginBottom: '5px' }}>
+                  {isTR ? 'ŞABLONDAN BAŞLAT' : 'START FROM TEMPLATE'}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                  {templates.slice(0, 6).map(tpl => (
+                    <button key={tpl.id} type="button"
+                      onClick={() => { setType(tpl.type); setDuration(String(tpl.duration)); setRpe(tpl.rpe); setNotes(tpl.notes || '') }}
+                      style={{ fontSize: '9px', padding: '3px 8px', background: '#1a1a1a', border: '1px solid #333', color: '#ccc', borderRadius: '3px', cursor: 'pointer', fontFamily: MONO }}
+                    >
+                      {tpl.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit}>
               {/* Session type */}

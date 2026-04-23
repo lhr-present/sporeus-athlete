@@ -3,7 +3,7 @@ import { logger } from '../lib/logger.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { useData } from '../contexts/DataContext.jsx'
-import { cooperVO2, rampFTP, ftpFrom20, epley1RM, astrandVO2, yyir1VO2, wingateStats, normalizedPower, computeWPrime } from '../lib/formulas.js'
+import { cooperVO2, rampFTP, ftpFrom20, epley1RM, astrandVO2, yyir1VO2, wingateStats, normalizedPower, computeWPrime, powerZones } from '../lib/formulas.js'
 import PowerCurve from './PowerCurve.jsx'
 import VO2maxCard from './VO2maxCard.jsx'
 import ErrorBoundary from './ErrorBoundary.jsx'
@@ -51,7 +51,7 @@ export default function TestProtocols() {
   const [active, setActive] = useState('cooper')
   const [inputs, setInputs] = useState({})
   const [result, setResult] = useState(null)
-  const { testResults: testLog, setTestResults: setTestLog } = useData()
+  const { testResults: testLog, setTestResults: setTestLog, profile, setProfile } = useData()
   const set = (k,v) => setInputs(prev=>({...prev,[k]:v}))
   const v = k => inputs[k]||''
 
@@ -73,12 +73,12 @@ export default function TestProtocols() {
   const loadLastFITPower = () => {
     try {
       const raw = localStorage.getItem('sporeus-last-fit-power')
-      if (!raw) { setWPrimeError('No FIT power data found. Import a .fit file in Training Log first.'); return }
+      if (!raw) { setWPrimeError(t('wprimePowerError')); return }
       const arr = JSON.parse(raw)
-      if (!Array.isArray(arr) || arr.length === 0) { setWPrimeError('Stored power data is empty.'); return }
+      if (!Array.isArray(arr) || arr.length === 0) { setWPrimeError(t('wprimePowerEmpty')); return }
       set('wPowerPaste', arr.join(','))
       setWPrimeError('')
-    } catch { setWPrimeError('Could not read stored power data.') }
+    } catch { setWPrimeError(t('wprimePowerReadError')) }
   }
 
   const saveTestResult = (testId, value, unit) => {
@@ -139,7 +139,7 @@ export default function TestProtocols() {
       const wPrime = Math.round(180 * (p3 - cp))     // joules
       const wPrimeKj = (wPrime / 1000).toFixed(1)
       const ftpPct = (() => {
-        try { const ftp = parseInt(JSON.parse(localStorage.getItem('sporeus_profile') || '{}').ftp || 0); return ftp ? Math.round(cp / ftp * 100) : null } catch { return null }
+        try { const ftp = parseInt(profile?.ftp || 0); return ftp ? Math.round(cp / ftp * 100) : null } catch { return null }
       })()
       setCpSaved(false)
       saveTestResult('cp_test', cp, 'W CP')
@@ -207,7 +207,7 @@ export default function TestProtocols() {
         </div>
 
         {active==='cooper' && <>
-          <label style={S.label}>DISTANCE COVERED IN 12 MIN (meters)</label>
+          <label style={S.label}>{t('cooperDistance')}</label>
           <input style={{ ...S.input, maxWidth:'200px' }} type="number" placeholder="3200" value={v('dist')} onChange={e=>set('dist',e.target.value)}/>
         </>}
         {active==='ramp' && <>
@@ -297,7 +297,7 @@ export default function TestProtocols() {
           <div>
             {(() => {
               try {
-                const pr = JSON.parse(localStorage.getItem('sporeus_profile') || '{}')
+                const pr = profile || {}
                 const hasCPorFTP = pr.cp || pr.ftp
                 if (!hasCPorFTP) return (
                   <div style={{ ...S.card, borderLeft:'3px solid #ff6600', marginBottom:'14px', padding:'12px 14px' }}>
@@ -386,24 +386,15 @@ export default function TestProtocols() {
             if (line.startsWith('__SAVE__')) {
               const [,cp,wPrime] = line.split('__')
               const saveBoth = () => {
-                try {
-                  const profile = JSON.parse(localStorage.getItem('sporeus_profile') || '{}')
-                  profile.cp = parseInt(cp)
-                  profile.wPrime = parseInt(wPrime)
-                  localStorage.setItem('sporeus_profile', JSON.stringify(profile))
-                  setCpSaved(true)
-                } catch (e) { logger.warn('localStorage:', e.message) }
+                setProfile(prev => ({ ...prev, cp: parseInt(cp), wPrime: parseInt(wPrime) }))
+                setCpSaved(true)
               }
               const useFTP = () => {
                 if (!window.confirm(`Set FTP = ${cp}W (CP)? This replaces your current FTP.`)) return
-                try {
-                  const profile = JSON.parse(localStorage.getItem('sporeus_profile') || '{}')
-                  profile.ftp = parseInt(cp)
-                  profile.cp = parseInt(cp)
-                  profile.wPrime = parseInt(wPrime)
-                  localStorage.setItem('sporeus_profile', JSON.stringify(profile))
-                  setCpSaved(true)
-                } catch (e) { logger.warn('localStorage:', e.message) }
+                const ftpVal = parseInt(cp)
+                const zones = powerZones(ftpVal)
+                setProfile(prev => ({ ...prev, ftp: ftpVal, cp: ftpVal, wPrime: parseInt(wPrime), powerZones: zones }))
+                setCpSaved(true)
               }
               return (
                 <div key={i} style={{ display:'flex', gap:'8px', marginTop:'12px', flexWrap:'wrap' }}>

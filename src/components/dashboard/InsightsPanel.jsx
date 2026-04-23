@@ -25,7 +25,7 @@ export default function InsightsPanel({ log, recovery, profile: _profile, lang }
 
   const insights = [
     { label: t('loadTrendLabel'),  value: loadTrend.trend.toUpperCase(),       color: loadTrend.trend==='building'?'#5bc25b':loadTrend.trend==='recovering'?'#4a90d9':'#f5c542', text: loadTrend.advice[lang] || loadTrend.advice.en,
-      detail: loadTrend.tss1 > 0 ? `W1: ${loadTrend.tss1} TSS · W2: ${loadTrend.tss2 || 0} TSS · CTL: ${loadTrend.ctl} · ATL: ${loadTrend.atl}` : null },
+      detail: loadTrend.tss1 > 0 ? `W1: ${loadTrend.tss1} TSS · W2: ${loadTrend.tss2 || 0} TSS · ${loadTrend.change > 0 ? '+' : ''}${loadTrend.change}% · CTL: ${loadTrend.ctl} · ATL: ${loadTrend.atl}` : null },
     { label: t('zoneBalanceLabel'),value: zoneBalance.status.replace('_',' ').toUpperCase(), color: zoneBalance.status==='polarized'?'#5bc25b':zoneBalance.status==='too_hard'?'#e03030':'#f5c542', text: zoneBalance.recommendation[lang] || zoneBalance.recommendation.en,
       detail: zoneBalance.z1z2Pct > 0 ? `Z1/Z2: ${zoneBalance.z1z2Pct}% · Z3: ${zoneBalance.z3Pct || 0}% · Z4/Z5: ${zoneBalance.z4z5Pct}%` : null },
     { label: t('fitnessLabel'),    value: fitness.trajectory.toUpperCase(),    color: fitness.trajectory==='improving'?'#5bc25b':fitness.trajectory==='declining'?'#e03030':'#f5c542', text: fitness.label[lang] || fitness.label.en,

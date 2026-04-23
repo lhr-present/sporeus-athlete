@@ -79,12 +79,13 @@ export default function NextActionCard() {
 
       {/* ── U1 — metrics dim strip ────────────────────────────────────────── */}
       {action.metrics && (() => {
-        const { ctl, atl, tsb, acwr } = action.metrics
+        const { ctl, atl, tsb, acwr, wellness } = action.metrics
         const parts = []
         if (ctl > 0) parts.push(`CTL ${Math.round(ctl)}`)
         if (atl > 0) parts.push(`ATL ${Math.round(atl)}`)
         if (tsb !== undefined && tsb !== null) parts.push(`TSB ${tsb >= 0 ? '+' : ''}${Math.round(tsb)}`)
         if (acwr !== null && acwr !== undefined) parts.push(`ACWR ${acwr.toFixed(2)}`)
+        if (wellness !== null && wellness !== undefined) parts.push(`WEL ${wellness}/5`)
         if (!parts.length) return null
         return (
           <div style={{ fontSize: '9px', color: '#2a2a2a', fontFamily: MONO, marginTop: '5px', letterSpacing: '0.04em' }}>

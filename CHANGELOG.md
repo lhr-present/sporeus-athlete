@@ -4,6 +4,57 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.0.4] — 2026-04-23
+
+### FEAT: App-wide improvements — HRV readiness weighting, workout templates, PMC timeline, adaptive plan, golden tests, i18n completeness, GDPR fix, AI per-tier caps
+
+**Wave 1 — GDPR purge fix**
+`purgeExpiredData` was referencing dead tables `wellness_logs` and `sessions`, silently no-oping on `recovery` and `injuries` data. Fixed `purgeTables` to target the correct tables. GDPR data retention now enforces deletion of recovery and injury records.
+
+**Wave 2 — AI per-tier monthly cost caps**
+Replaced flat `MONTHLY_CAP = 1500` in `ai-proxy` edge function with per-tier map: `free: 0, coach: 300, club: 1500`. Free-tier users now blocked (0 cap), Coach users capped at 300/month.
+
+**Wave 3 — Protocols: DataContext save + zone auto-assignment**
+`Protocols.jsx` was writing directly to `localStorage` via `saveBoth()` and `useFTP()`, bypassing React state and Supabase sync. Both now route through `setProfile` from `useData()`. `useFTP()` also auto-computes `powerZones(ftp)` and stores them on save.
+
+**Wave 4 — HRV-weighted readiness score**
+`TodayView.jsx` quick-save now multiplies wellness readiness score by an HRV factor: `unstable → 0.75`, `warning → 0.90`, `stable → 1.0`. Requires ≥3 days of HRV data to apply the factor; otherwise defaults to 1.0.
+
+**Wave 5 — Workout templates**
+New `useWorkoutTemplates.js` hook (localStorage, max 30 templates). `QuickAddModal` shows a 6-template picker that pre-fills type/duration/rpe/notes; has a "Save as template" button after logging. `TrainingLog` adds a ⊕ button on each session row to save it as a template.
+
+**Wave 6 — PMC range selector + career peak CTL**
+`LoadTrendChart.jsx` now has 90D/6M/1Y/ALL range buttons for the Performance Management Chart. Displays career peak CTL (highest CTL ever computed across all history) as a reference point.
+
+**Wave 7 — Adaptive plan adherence**
+New `useAdaptivePlan.js` hook compares actual vs planned weekly TSS, classifies adherence status (on_track/under/low/exceeded/overreach), and computes an adjusted next-week TSS. `Periodization.jsx` shows `AdaptivePlanCard` with bilingual EN/TR messaging, dismissable per week.
+
+**Wave 8 — Scientific golden-file tests**
+New `src/lib/__tests__/trainingLoad.golden.test.js` with 12 reference-value assertions: Banister K_CTL/K_ATL constants, ATL convergence rate, ACWR status classification (Hulin 2016), and Foster 2001 monotony/strain properties including the >2.0 flag threshold.
+
+**Wave 9 — i18n completeness**
+Added 16 missing EN+TR translation keys to `LangCtx.jsx`: `pmcTitle`, `pmcPeakCTL`, `periodizationTitle`, `noWeekData`, `raceAnchorHint`, `hideChart`, `showChart`, `loadingCoachPlans`, `alreadySubmitted`, `wprimePower*` (3 error keys), `cooperDistance`. Updated `LoadTrendChart`, `Protocols`, `TodayView`, `Periodization` to use `t()` for all previously hardcoded English strings.
+
+**Changes**:
+- `src/lib/gdprExport.js` — purgeTables now targets `recovery` + `injuries` (not dead `wellness_logs`/`sessions`)
+- `supabase/functions/ai-proxy/index.ts` — per-tier monthly caps `{ free:0, coach:300, club:1500 }`
+- `src/components/Protocols.jsx` — DataContext save + auto `powerZones()` on FTP set; `t()` for 4 hardcoded strings
+- `src/components/TodayView.jsx` — HRV factor multiplier on quick-save readiness; `t('alreadySubmitted')`
+- `src/hooks/useWorkoutTemplates.js` — new hook (localStorage CRUD, max 30 templates)
+- `src/components/QuickAddModal.jsx` — template picker (6 visible) + save-as-template after log
+- `src/components/TrainingLog.jsx` — ⊕ button to save any session as template
+- `src/components/dashboard/LoadTrendChart.jsx` — PMC range selector (90D/6M/1Y/ALL) + career peak CTL + `t()` for title/badge
+- `src/hooks/useAdaptivePlan.js` — new adaptive plan adherence hook
+- `src/components/Periodization.jsx` — AdaptivePlanCard (bilingual, dismissable) + `t()` for 5 hardcoded strings
+- `src/lib/__tests__/trainingLoad.golden.test.js` — 12 golden test assertions
+- `src/contexts/LangCtx.jsx` — 16 new EN+TR keys
+
+**Test count**: 2740 (was 2728 before golden tests)
+
+**Depends on**: v11.0.3, migrations 064+065
+
+---
+
 ## [v11.0.3] — 2026-04-23
 
 ### FIX: Recovery sleep quality field not persisted; MorningCheckIn semantic mismatch; debug console.log

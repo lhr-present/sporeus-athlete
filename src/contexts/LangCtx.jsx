@@ -260,6 +260,19 @@ export const LABELS = {
     coachPresenceNever: 'Not yet viewed',
     coachPresenceLabel: 'COACH',
     coachPresenceAthlete: 'ATHLETE',
+    // v11.0.x i18n completeness
+    pmcTitle: 'PERFORMANCE MANAGEMENT CHART',
+    pmcPeakCTL: 'PEAK CTL',
+    periodizationTitle: 'FRIEL PERIODIZATION',
+    noWeekData: 'No week data.',
+    raceAnchorHint: 'Set a race date to anchor the 13-week plan to calendar dates.',
+    hideChart: 'HIDE CHART', showChart: 'SHOW CHART',
+    loadingCoachPlans: 'Loading…',
+    alreadySubmitted: '✓ Already submitted today',
+    wprimePowerError: 'No FIT power data found in this session.',
+    wprimePowerEmpty: 'Stored power data is empty.',
+    wprimePowerReadError: 'Could not read stored power data.',
+    cooperDistance: 'DISTANCE COVERED IN 12 MIN (meters)',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -519,6 +532,19 @@ export const LABELS = {
     coachPresenceNever: 'Hen\u00fcz g\u00f6r\u00fcnt\u00fclenmedi',
     coachPresenceLabel: 'ANTREN\u00d6R',
     coachPresenceAthlete: 'SPORCU',
+    // v11.0.x i18n completeness
+    pmcTitle: 'PERFORMANS YÖNETİM TABLOSU',
+    pmcPeakCTL: 'TEPE CONDİSYONU',
+    periodizationTitle: 'FRİEL PERİYODİZASYON',
+    noWeekData: 'Hafta verisi yok.',
+    raceAnchorHint: '13 haftalık planı takvime oturtmak için bir yarış tarihi belirle.',
+    hideChart: 'GRAFİĞİ GİZLE', showChart: 'GRAFİĞİ GÖSTER',
+    loadingCoachPlans: 'Yükleniyor…',
+    alreadySubmitted: '✓ Bugün zaten gönderildi',
+    wprimePowerError: 'Bu seansta FİT güç verisi bulunamadı.',
+    wprimePowerEmpty: 'Depolanan güç verisi boş.',
+    wprimePowerReadError: 'Depolanan güç verisi okunamadı.',
+    cooperDistance: '12 DAKİKADA KAPSANAN MESAFE (metre)',
   }
 }
 

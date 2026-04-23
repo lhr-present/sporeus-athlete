@@ -108,7 +108,7 @@ export async function deleteAthleteData(userId) {
 export async function purgeExpiredData(retentionDays = 1095) {
   if (!isSupabaseReady()) throw new Error('Supabase not configured')
   const cutoff = new Date(Date.now() - retentionDays * 86400000).toISOString().slice(0, 10)
-  const purgeTables = ['training_log', 'wellness_logs', 'sessions']
+  const purgeTables = ['training_log', 'recovery', 'injuries']
   const results = {}
   for (const table of purgeTables) {
     try {
