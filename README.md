@@ -76,7 +76,7 @@ Edge functions include: AI pipeline (`analyse-session`, `embed-session`, `ai-pro
 
 ## Author
 
-**Hüseyin Akbulut** — BSc Sport Sciences, MSc Neuroscience, Marmara University
-[sporeus.com](https://sporeus.com) · Based on **EŞİK / THRESHOLD** — Turkish endurance science book (2026)
+**HUSEYIN AKBULUT** — BSc Sport Sciences, MSc Neuroscience, Marmara University
+[sporeus.com](https://sporeus.com) 
 
 *Built with Claude Code · Skiba 2012 · Friel phases · Morton 1996*
