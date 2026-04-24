@@ -14,16 +14,31 @@
 
 ---
 
-## Phase 2: AI Layer — NEXT
+## Phase 2: AI Layer — COMPLETE ✓
 
-Target: embed-session → embed-query → ai-batch-worker behind ai-proxy
+**Completed 2026-04-24 | v11.3.0**
 
 | Block | Scope | Status |
 |-------|-------|--------|
-| P2-A: embed-session | Trigger embedding on training log insert | Planned |
-| P2-B: embed-query | Semantic search over session embeddings | Planned |
-| P2-C: ai-batch-worker | Drain `ai_batch` queue, call ANTHROPIC_API_KEY | Planned |
-| P2-D: ai-proxy edge fn | Auth gateway for all AI calls | Planned |
+| P2-A: embed-session | Embed sessions + ai_insights via OpenAI text-embedding-3-small | ✓ Done (v11.3.0) |
+| P2-B: embed-query | Semantic cosine search; match_sessions_for_user/coach RPCs | ✓ Done (v11.3.0) |
+| P2-C: ai-batch-worker | pgmq drain; Claude Haiku weekly digest; RAG context; cron `* * * * *` | ✓ Done (v11.3.0) |
+| P2-D: ai-proxy edge fn | Tier enforcement + RAG + Anthropic proxy | ✓ Done (v11.3.0) |
+
+**Phase 2 baseline**: 42 tables + 3 MVs, 29 edge fns, 15 cron jobs, 2807 tests
+
+**Pending (not blocking)**: Set `EMBEDDING_API_KEY` in Supabase secrets to activate semantic search
+
+---
+
+## Phase 3: UI — NEXT
+
+| Block | Scope | Status |
+|-------|-------|--------|
+| P3-A: SemanticSearch.jsx | Natural language session search for athletes | Planned |
+| P3-B: SquadPatternSearch.jsx | Coach-only squad semantic search | Planned |
+| P3-C: AI Chat widget | ai-proxy integration in athlete dashboard | Planned |
+| P3-D: WeeklyDigest view | Coach dashboard weekly digest card | Planned |
 
 ---
 

@@ -4,6 +4,35 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.3.0] — 2026-04-24
+
+### FEAT: Phase 2 AI Layer — pgvector embeddings + semantic search + AI proxy
+
+**`supabase/migrations/20260426_ai_embeddings.sql`**:
+- `CREATE EXTENSION IF NOT EXISTS vector` — pgvector installed
+- `session_embeddings` table: `session_id` PK FK→training_log, `user_id` FK→profiles, `embedding vector(1536)`, `content_hash text`
+- `insight_embeddings` table: `insight_id` PK FK→ai_insights, `user_id` FK→profiles, `embedding vector(1536)`, `content_hash text`
+- ivfflat cosine indexes on both tables (lists=100)
+- RLS: own-row ALL policy on both tables (`(SELECT auth.uid()) = user_id`)
+- `match_sessions_for_user(p_embedding, k)` — SECURITY DEFINER, STABLE; `OPERATOR(public.<=>)` qualified cosine distance
+- `match_sessions_for_coach(p_embedding, p_athlete_ids, k)` — SECURITY DEFINER, STABLE; filters by active coach_athletes link
+
+**Edge functions deployed (withTelemetry stripped — shared module not bundleable via MCP)**:
+- `embed-session` v1 (verify_jwt=false): embeds training sessions via OpenAI text-embedding-3-small; C2 guard (skip <20 chars); C1 closure (also embeds linked ai_insights); content_hash dedup; webhook + user JWT paths
+- `embed-query` v1 (verify_jwt=true): embeds search queries; calls match_sessions_for_user or match_sessions_for_coach; squad mode requires coach/club tier
+- `ai-batch-worker` v1 (verify_jwt=false): drains ai_batch pgmq queue (batch_size=20, VT=30s); calls Claude Haiku-4-5 for weekly squad digest; RAG context from session embeddings (optional); retry with backoff [30s/120s/480s]; DLQ after 3 failures
+- `ai-proxy` v1 (verify_jwt=true): server-side Anthropic proxy; tier enforcement (free=0, coach=50/300, club=500/1500 daily/monthly); RAG mode (embed+match_sessions); model_alias haiku/sonnet
+
+**Cron (jobid 9)**: `ai-batch-worker` — `* * * * *` (every minute, service_role JWT)
+
+**Notes**:
+- `EMBEDDING_API_KEY` not yet set → embed-session/embed-query return 500/501; ai-batch-worker + ai-proxy work without it (RAG skipped gracefully)
+- `ANTHROPIC_API_KEY` already set as `sporeus-coach-key` → ai-proxy and ai-batch-worker functional
+
+**Depends on**: v11.2.0, migration 20260426_security_hardening_*
+
+---
+
 ## [v11.2.0] — 2026-04-23
 
 ### PERF/SEC: Security hardening — search_path + RLS initplan + index cleanup

@@ -5,7 +5,6 @@
 // After 3 failures: moves to ai_batch_dlq + writes batch_errors row.
 
 import { serve }        from "https://deno.land/std@0.177.0/http/server.ts"
-import { withTelemetry, telemetryHeartbeat } from '../_shared/telemetry.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
@@ -119,11 +118,7 @@ citations: only include markers you actually used in highlights/alerts.
 Plain language. Under 140 words total.`
 
 // ── Main handler ──────────────────────────────────────────────────────────────
-serve(withTelemetry('ai-batch-worker', async (req) => {
-
-  // ── Heartbeat: proves liveness every 60s ──────────────────────────────
-  const stopHeartbeat = telemetryHeartbeat('ai-batch-worker')
-  // stopHeartbeat() on graceful shutdown if needed
+serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { status: 200 })
   if (req.method !== "POST") return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 })
 
@@ -272,4 +267,4 @@ serve(withTelemetry('ai-batch-worker', async (req) => {
     JSON.stringify({ processed: ok, dlq, retried, errors: errs, total: msgs.length }),
     { headers: { "Content-Type": "application/json" } },
   )
-}))
+})

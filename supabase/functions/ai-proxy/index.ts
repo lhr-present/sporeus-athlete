@@ -12,7 +12,6 @@
 //  4. Returns content + citations array so the UI can render source links
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { withTelemetry } from '../_shared/telemetry.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const CORS = {
@@ -80,7 +79,7 @@ function buildRagContext(sessions: SessionRow[]): string {
   ].join('\n')
 }
 
-serve(withTelemetry('ai-proxy', async (req) => {
+serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
@@ -225,7 +224,7 @@ serve(withTelemetry('ai-proxy', async (req) => {
   } catch (e) {
     return err((e as Error).message || 'Internal error', 500)
   }
-}))
+})
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

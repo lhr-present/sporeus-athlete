@@ -10,7 +10,6 @@
 // squad:true requires coach tier (enforced here + in match_sessions_for_coach RLS).
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { withTelemetry } from '../_shared/telemetry.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const CORS = {
@@ -23,7 +22,7 @@ const OPENAI_EMBED_URL = 'https://api.openai.com/v1/embeddings'
 const EMBED_MODEL      = 'text-embedding-3-small'
 const MAX_K            = 20  // hard cap on top-k results
 
-serve(withTelemetry('embed-query', async (req) => {
+serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
@@ -116,7 +115,7 @@ serve(withTelemetry('embed-query', async (req) => {
   } catch (e) {
     return jsonErr((e as Error).message || 'Internal error', 500)
   }
-}))
+})
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
