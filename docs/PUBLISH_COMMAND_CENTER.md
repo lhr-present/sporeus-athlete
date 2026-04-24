@@ -31,14 +31,18 @@
 
 ---
 
-## Phase 3: UI — NEXT
+## Phase 3: UI — COMPLETE ✓
+
+**Completed 2026-04-24 | v11.4.0**
 
 | Block | Scope | Status |
 |-------|-------|--------|
-| P3-A: SemanticSearch.jsx | Natural language session search for athletes | Planned |
-| P3-B: SquadPatternSearch.jsx | Coach-only squad semantic search | Planned |
-| P3-C: AI Chat widget | ai-proxy integration in athlete dashboard | Planned |
-| P3-D: WeeklyDigest view | Coach dashboard weekly digest card | Planned |
+| P3-A: SemanticSearch.jsx | Natural language session search (Ctrl+Shift+K, ⊞ AI button, tier gate) | ✓ Done (v11.4.0) |
+| P3-B: SquadPatternSearch.jsx | Coach-only squad semantic search wired into CoachDashboard | ✓ Done (v11.4.0) |
+| P3-C: AI Chat widget | ChatPanel in CoachDashboard Supabase block | ✓ Done (v11.4.0) |
+| P3-D: WeeklyDigest view | WeeklyDigestCard reads weekly_digests, Bloomberg aesthetic | ✓ Done (v11.4.0) |
+
+**Phase 3 baseline**: 42 tables + 3 MVs, 29 edge fns, 15 cron jobs, 2807 tests
 
 ---
 

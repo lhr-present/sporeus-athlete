@@ -4,6 +4,17 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.4.1] — 2026-04-24
+
+### FIX: purge-deleted-accounts cron broken (current_setting GUC never set)
+
+**`supabase/migrations/20260424_fix_purge_cron_hardcode_jwt.sql`**:
+- `app.service_role_key` GUC was NULL — cron job failed every night with JSON parse error
+- Unscheduled + rescheduled with hardcoded service_role JWT (same pattern as ai-batch-worker cron)
+- New jobid=10, schedule `0 4 * * *`, active
+
+---
+
 ## [v11.4.0] — 2026-04-24
 
 ### FEAT: Phase 3 UI — SemanticSearch + SquadPatternSearch + ChatPanel + WeeklyDigestCard
