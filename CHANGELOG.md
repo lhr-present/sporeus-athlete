@@ -4,6 +4,27 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.11.0] — 2026-04-24
+
+### PERF/SEC: RLS policy consolidation — 78 WARN advisors cleared
+
+**`supabase/migrations/20260467_fix_multiple_permissive_policies.sql`**:
+- 13 tables had a `FOR ALL` policy + a separate `SELECT`-only policy, causing duplicate permissive SELECT evaluation (Postgres `multiple_permissive_policies` WARN × 78 entries)
+- Fix: split each `FOR ALL` into explicit `SELECT / INSERT / UPDATE / DELETE` policies, merging both SELECT conditions into one `OR` clause per table
+- Tables fixed: `ai_insights`, `coach_invites`, `coach_plans`, `coach_sessions`, `consents`, `injuries`, `profiles`, `race_results`, `recovery`, `session_attendance`, `team_announcements`, `test_results`, `training_log`
+- `consents_service_read` dropped entirely — `service_role` bypasses RLS; policy was a no-op
+
+**`supabase/migrations/20260468_profiles_language_first_touch.sql`**:
+- `profiles.language TEXT NOT NULL DEFAULT 'tr' CHECK (language IN ('en','tr'))` — was in master reference but absent from live schema
+- `profiles.first_touch JSONB` — attribution first-touch payload; written once, never overwritten
+
+**`supabase/migrations/20260469_fix_generated_reports_rls_initplan.sql`**:
+- `generated_reports: own rows` policy replaced with `(SELECT auth.uid())` subquery pattern to eliminate per-row re-evaluation (`auth_rls_initplan` WARN)
+
+**Advisor state after**: 0 WARN performance · 0 WARN security (residual: extension_in_public + auth_leaked_password_protection — Dashboard-only, not fixable via migration)
+
+---
+
 ## [v11.10.0] — 2026-04-24
 
 ### FEAT: 7 missing cron jobs + 3 DB functions
