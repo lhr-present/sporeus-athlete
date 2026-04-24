@@ -4,6 +4,21 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.6.0] — 2026-04-24
+
+### FIX: comment-notification auth + add missing push-worker cron
+
+**`supabase/functions/comment-notification/index.ts`** (v3):
+- `webhookAuth = req.headers.get('Authorization') || Bearer ${serviceKey}` — DB trigger delivers a hardcoded service_role JWT in the Authorization header; forward it directly to send-push instead of constructing from `SUPABASE_SERVICE_ROLE_KEY` env var. Eliminates the send-push 401 that occurred when the env var was not available.
+- `authHeader = webhookAuth` — no other logic changed
+
+**`supabase/migrations/20260424_add_push_worker_cron.sql`**:
+- Cron jobid=12: `push-worker` `* * * * *` — drains `push_fanout` pgmq queue; was missing (trigger-checkin-reminders enqueues to this queue but no worker was consuming it)
+
+**Effect**: Comment push notifications will succeed for real users. Checkin reminder push notifications from the fanout queue will now be delivered.
+
+---
+
 ## [v11.5.0] — 2026-04-24
 
 ### FEAT: AI pipeline activation — embed trigger + backfill + MV security

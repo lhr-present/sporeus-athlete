@@ -42,6 +42,9 @@ serve(withTelemetry('comment-notification', async (req: Request) => {
   const supabaseUrl  = Deno.env.get('SUPABASE_URL')!
   const serviceKey   = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   const fnUrl        = `${supabaseUrl}/functions/v1/send-push`
+  // DB webhook delivers a hardcoded service_role JWT in Authorization; forward it
+  // directly to send-push so edge-to-edge auth never depends on SUPABASE_SERVICE_ROLE_KEY.
+  const webhookAuth  = req.headers.get('Authorization') || `Bearer ${serviceKey}`
 
   // Database Webhook sends the row as JSON body
   const body = await req.json().catch(() => null)
@@ -108,7 +111,7 @@ serve(withTelemetry('comment-notification', async (req: Request) => {
   const pushBody  = 'Tap to view the session.'
 
   // ── Send push to each recipient ───────────────────────────────────────────────
-  const authHeader = `Bearer ${serviceKey}`
+  const authHeader = webhookAuth
   const pushResults = await Promise.allSettled(
     recipients.map(userId =>
       fetch(fnUrl, {
