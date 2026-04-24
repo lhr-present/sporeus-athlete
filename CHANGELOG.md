@@ -4,6 +4,32 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.10.0] — 2026-04-24
+
+### FEAT: 7 missing cron jobs + 3 DB functions
+
+**`supabase/migrations/20260424_missing_crons_and_fns.sql`**:
+
+**DB functions created**:
+- `increment_upload_count(p_user_id uuid)` — increments `profiles.monthly_upload_count`; called by parse-activity (non-fatal)
+- `reset_monthly_upload_count()` — zeroes upload counters on 1st of month
+- `maybe_refresh_squad_mv()` — refreshes `mv_squad_readiness` CONCURRENTLY only if training_log was touched in last 2 min (debounced)
+
+**Schema**: `profiles.monthly_upload_count INTEGER NOT NULL DEFAULT 0` added
+
+**Cron jobs added (now 21 total)**:
+| Job | Schedule | Target |
+|---|---|---|
+| `check-dependencies` | `*/5 * * * *` | check-dependencies edge fn |
+| `alert-monitor` | `* * * * *` | alert-monitor edge fn |
+| `operator-digest-weekly` | `0 5 * * 1` | operator-digest edge fn (Mon 08:00 Istanbul) |
+| `maybe-refresh-squad-mv` | `* * * * *` | `maybe_refresh_squad_mv()` DB fn (debounced) |
+| `reset-file-upload-month` | `0 0 1 * *` | `reset_monthly_upload_count()` DB fn |
+| `generate-report-weekly` | `30 3 * * 1` | generate-report batch=weekly |
+| `generate-report-monthly-squad` | `0 4 1 * *` | generate-report batch=monthly_squad |
+
+---
+
 ## [v11.9.0] — 2026-04-24
 
 ### DEPLOY: final 5 edge functions — all 25/25 now active
