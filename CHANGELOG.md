@@ -4,6 +4,35 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.2.0] — 2026-04-23
+
+### PERF/SEC: Security hardening — search_path + RLS initplan + index cleanup
+
+**`supabase/migrations/20260426_security_hardening_functions.sql`**:
+- 17 SECURITY DEFINER functions: `ALTER FUNCTION ... SET search_path = ''` (bodies already schema-qualified)
+- 10 functions rewritten with `public.*` table references + `SET search_path = ''`: `get_my_tier`, `get_load_timeline`, `get_squad_readiness`, `get_weekly_summary`, `refresh_mv_load`, `handle_new_user`, `increment_referral_uses`, `apply_tier_change`, `search_everything`, `get_squad_overview`
+
+**`supabase/migrations/20260426_security_hardening_rls.sql`**:
+- 59 RLS policies: bare `auth.uid()` → `(SELECT auth.uid())` initplan form (evaluated once per query, not per row)
+- `coach_notes`: 3 permissive policies → 1 (drop redundant `coach_notes_coach` + `coach_notes_athlete_read`)
+- `coach_sessions`: 2 SELECT policies → 1 merged `coach_sessions_select`; drop redundant `coach_sessions_coach_read`
+- `messages` INSERT: `msg_athlete_insert` + `msg_coach_insert` → `msg_insert` (OR-combined)
+- `messages` SELECT: `msg_athlete_select` + `msg_coach_select` → `msg_select` (OR-combined)
+
+**`supabase/migrations/20260426_security_hardening_indexes.sql`**:
+- Drop 26 unused indexes (Supabase performance advisor)
+- Add 3 missing FK indexes: `activity_upload_jobs(log_entry_id)`, `coach_invites(used_by)`, `coach_notes(athlete_id)`
+
+**Docs**: `docs/ops/security-checklist.md` — leaked password toggle, MFA, key rotation cadence, accepted risks
+
+**Tests**: `src/lib/security.test.js` (+18 RLS invariant tests). **2807 pass total.**
+
+**`docs/releases/v11.1.0.md`**: Phase 1 complete release notes (all 3 blocks)
+
+**Depends on**: v11.1.1, migrations 20260453–20260425
+
+---
+
 ## [v11.1.1] — 2026-04-23
 
 ### FEAT: KVKK/GDPR — export-user-data + purge-deleted-accounts with 30-day grace
