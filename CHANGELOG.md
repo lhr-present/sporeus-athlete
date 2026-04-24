@@ -4,6 +4,38 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.9.0] — 2026-04-24
+
+### DEPLOY: final 5 edge functions — all 25/25 now active
+
+**`supabase/migrations/20260424_pre_deploy_schema_fixes.sql`**:
+- `operator_alerts.notified BOOLEAN DEFAULT false` — required by operator-digest email tracking
+- `system_status.latency_ms INTEGER` — written by check-dependencies probe results
+- `generated_reports` table (uuid PK, user_id, kind weekly|monthly_squad|race_readiness, storage_path, params, expires_at) + RLS own-rows policy + 2 indexes + `purge-generated-reports` cron (45 3 * * *)
+- `reports` storage bucket (private) + deny-public storage policy
+- `get_recent_client_errors(p_limit int)` RPC — aggregates client_events WHERE event_type='error' last 24h, used by operator-digest
+
+**`supabase/functions/check-dependencies/index.ts`** (v1 deployed):
+- Pings supabase_api, strava_api, anthropic_api, dodo_payments, stripe in parallel; upserts system_status; fires operator_alerts for any 'down' service
+
+**`supabase/functions/operator-digest/index.ts`** (v1 deployed, with fix):
+- Weekly email digest: MAU/DAU, tier counts, queue health, system status, top errors, alert summary
+- FIX: `notified` update now uses `eq('id', digestRow.id)` instead of invalid `order+limit` on update
+
+**`supabase/functions/public-api/index.ts`** (v1 deployed):
+- GET /api/v1/squad, /api/v1/squad/export, /api/v1/athlete/:id/load
+- Club-tier API key auth + 100 req/hour rate limit via request_counts
+
+**`supabase/functions/adjust-coach-plan/index.ts`** (v1 deployed):
+- DB webhook on injuries INSERT; reduces coach_plans week volume 20–40% based on severity; writes coach_notes
+
+**`supabase/functions/generate-report/index.ts`** (v1 deployed):
+- React PDF reports: weekly athlete summary, monthly squad overview, race readiness one-pager
+- Uploads to reports storage bucket; inserts generated_reports row; returns 7-day signed URL
+- Batch mode (pg_cron): weekly for all coach/club users; monthly_squad for coaches
+
+---
+
 ## [v11.8.0] — 2026-04-24
 
 ### DEPLOY: ops tables + 5 edge functions (squad-sync, parse-activity, alert-monitor, ingest-telemetry, push-worker already done)
