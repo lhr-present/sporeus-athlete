@@ -4,6 +4,24 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.4.2] — 2026-04-24
+
+### FIX: Security + performance hardening round 2 (advisor sweep)
+
+**`supabase/migrations/20260424_security_perf_hardening_round2.sql`**:
+- `touch_updated_at` + `update_training_plan_timestamp`: added `SET search_path = ''` (trigger fns, SECURITY INVOKER)
+- `consents_service_read` policy: `auth.role()` → `(SELECT auth.role())` — initplan form prevents per-row re-evaluation
+- Dropped `ai_insights: service write` INSERT policy — `WITH CHECK (true)` let any authed user insert; service_role bypasses RLS, policy was only an exploit surface
+- Added FK indexes: `athlete_devices(user_id)`, `messages(athlete_id)`, `profiles(coach_id)`, `request_counts(api_key)`
+
+**Residual (acknowledged, not fixed):**
+- `pg_net`, `pgtap`, `vector` extensions in public schema — Supabase-managed, cannot relocate without breaking dependencies
+- 3 MVs (`mv_weekly_load_summary`, `mv_ctl_atl_daily`, `mv_squad_readiness`) accessible to authenticated — MVs don't support RLS; fix requires SECURITY DEFINER wrappers + client changes (Phase 4 candidate)
+- `multiple_permissive_policies` alerts — all are intentional own-row ALL + coach-read SELECT pairs
+- Leaked password protection — manual toggle in Supabase Auth dashboard
+
+---
+
 ## [v11.4.1] — 2026-04-24
 
 ### FIX: purge-deleted-accounts cron broken (current_setting GUC never set)
