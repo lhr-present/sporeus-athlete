@@ -4,6 +4,19 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.7.0] — 2026-04-24
+
+### DEPLOY: push-worker edge function (v1)
+
+**`supabase/functions/push-worker/index.ts`** (first deploy, was missing):
+- Drains `push_fanout` pgmq queue; processes up to 50 messages per minute in 10-msg parallel batches
+- Calls `send-push` with `Bearer ${serviceKey}` per message; treats 404 (no subscriptions) as success
+- Uses `read_push_fanout` + `delete_push_fanout_msg` RPCs; VT=30s for at-least-once delivery
+
+**Effect**: Cron jobid=12 (`push-worker` `* * * * *`) now has a real function to invoke. Checkin reminder push notifications from `trigger-checkin-reminders` will be delivered end-to-end.
+
+---
+
 ## [v11.6.0] — 2026-04-24
 
 ### FIX: comment-notification auth + add missing push-worker cron
