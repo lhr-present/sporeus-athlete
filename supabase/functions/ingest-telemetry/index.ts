@@ -69,7 +69,6 @@ serve(withTelemetry('ingest-telemetry', async (req: Request) => {
   }
 
   // Validate and sanitise each event
-  const now = new Date().toISOString()
   const rows = []
   for (const ev of events) {
     if (!VALID_EVENT_TYPES.has(ev.event_type)) continue
@@ -85,7 +84,6 @@ serve(withTelemetry('ingest-telemetry', async (req: Request) => {
       value:        typeof ev.value === 'number' ? ev.value : null,
       page:         ev.page         ? String(ev.page).slice(0, 200)        : null,
       app_version:  ev.app_version  ? String(ev.app_version).slice(0, 20)  : null,
-      ts:           now,
     })
   }
 

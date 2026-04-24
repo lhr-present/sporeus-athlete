@@ -4,6 +4,34 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.8.0] — 2026-04-24
+
+### DEPLOY: ops tables + 5 edge functions (squad-sync, parse-activity, alert-monitor, ingest-telemetry, push-worker already done)
+
+**`supabase/migrations/20260424_ops_tables.sql`**:
+- `operator_alerts` (bigserial PK, kind, severity warning|critical, title, body, fired_at) — alert dedup table for alert-monitor; idx on (kind, fired_at DESC)
+- `system_status` (service PK, status up|down|degraded|unknown, message, checked_at) — written by check-dependencies, read by alert-monitor
+- `client_events` (bigserial PK, session_id, user_id_hash, event_type, category, action, label, value, page, app_version, created_at) — telemetry sink; idx on created_at DESC and session_id
+- All tables: RLS enabled + deny-public policy (service_role BYPASSRLS only)
+- Cron jobid=13: `purge-client-events` `30 3 * * *` — 30-day TTL for client_events
+
+**`supabase/functions/squad-sync/index.ts`** (v1 deployed):
+- Auth user → calls `get_squad_overview(p_coach_id)` RPC → returns squad data
+
+**`supabase/functions/parse-activity/index.ts`** (v1 deployed):
+- FIT and GPX file parsers; inserts into training_log; updates activity_upload_jobs
+- Uses dynamic import of fit-file-parser@2.3.3 and fast-xml-parser@4
+
+**`supabase/functions/alert-monitor/index.ts`** (v1 deployed):
+- Checks: queue depth SLOs (ai_batch 100, strava_backfill 500, push_fanout 200), DLQ non-empty, system_status service=down, push failure spike >20/10min, stale system_status >10min
+- 15-minute dedup window via operator_alerts table; fired via pg_cron
+
+**`supabase/functions/ingest-telemetry/index.ts`** (v1 deployed, with fix):
+- Receives batched client events (up to 50/batch); validates event_type whitelist; inserts into client_events
+- FIX: removed erroneous `ts` field from insert rows — column is `created_at` with DEFAULT now()
+
+---
+
 ## [v11.7.0] — 2026-04-24
 
 ### DEPLOY: push-worker edge function (v1)
