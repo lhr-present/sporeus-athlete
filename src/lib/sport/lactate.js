@@ -246,6 +246,41 @@ export function estimateLTFromRPE(rpeSteps) {
 }
 
 /**
+ * Detects cross-session lactate threshold drift from a history of LT2 results.
+ * @param {Array<{date: string, lt2W: number}>} sessions - at least 3 required
+ * @returns {{trend: 'improving'|'stable'|'declining', deltaPercent: number, confidence: 'low'|'medium'|'high'}}
+ */
+export function computeLactateDrift(sessions) {
+  // Filter to sessions with valid lt2W, sort by date ascending, take last 6
+  const valid = (Array.isArray(sessions) ? sessions : [])
+    .filter(s => s && s.date && typeof s.lt2W === 'number' && s.lt2W > 0)
+    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .slice(-6);
+
+  if (valid.length < 3) {
+    return { trend: 'stable', deltaPercent: 0, confidence: 'low' };
+  }
+
+  // Linear regression: x = session index (0..n-1), y = lt2W
+  const n = valid.length;
+  const xs = valid.map((_, i) => i);
+  const ys = valid.map(s => s.lt2W);
+  const xMean = xs.reduce((a, b) => a + b, 0) / n;
+  const yMean = ys.reduce((a, b) => a + b, 0) / n;
+  const slope = xs.reduce((acc, x, i) => acc + (x - xMean) * (ys[i] - yMean), 0) /
+                xs.reduce((acc, x) => acc + (x - xMean) ** 2, 0);
+
+  // Convert slope to % change over the span
+  const spanDays = (new Date(valid[n-1].date) - new Date(valid[0].date)) / (1000 * 60 * 60 * 24);
+  const monthlyPct = spanDays > 0 ? (slope * (n - 1) / yMean) * (30 / spanDays) * 100 : 0;
+
+  const confidence = n < 3 ? 'low' : n < 6 ? 'medium' : 'high';
+  const trend = monthlyPct > 1.5 ? 'improving' : monthlyPct < -1.5 ? 'declining' : 'stable';
+
+  return { trend, deltaPercent: Math.round(monthlyPct * 10) / 10, confidence };
+}
+
+/**
  * @description Formats a lactate threshold result object into human-readable display strings.
  * @param {{lt:number|null, lt1:number|null, lt2:number|null, ltLactate:number|null, loadUnit?:string}} result - LT result from estimateLTFromStep
  * @param {'run'|'bike'|'swim'|string} sport - Sport context for zone note generation

@@ -29,6 +29,7 @@ import { findSeasonalPatterns } from '../lib/patterns.js'
 import { computeMonotony } from '../lib/trainingLoad.js'
 import { getTrainingPaces } from '../lib/vdot.js'
 import { getLoadTrendAlert, getMissedRestWarning, getMonotonyWarning } from '../lib/ruleInsights.js'
+import { interpretACWR, interpretCTL, interpretTSB } from '../lib/science/interpretations.js'
 
 const EMBED_MODE = new URLSearchParams(window.location.search).get('embed') === 'true'
 
@@ -140,6 +141,23 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
 
   // L1 — predictFitness forecast strip (gated: ≥14 sessions)
   const fitnessForecast = useMemo(() => (log || []).length >= 14 ? predictFitness(log || []) : null, [log])
+
+  // E6 — Science insights (interpretACWR / interpretCTL / interpretTSB)
+  const scienceInsights = useMemo(() => {
+    const { ctl: curCTL, atl: curATL, tsb: curTSB } = calcLoad(log || [])
+    // prevCTL: CTL 4 weeks ago — filter log to only entries older than 28 days
+    const cutoff28 = (() => { const d = new Date(); d.setDate(d.getDate() - 28); return d.toISOString().slice(0, 10) })()
+    const { ctl: prevCTL } = calcLoad((log || []).filter(e => e.date <= cutoff28))
+    const isRaceWeek = !!(profile?.raceDate && (() => {
+      const days = Math.round((new Date(profile.raceDate) - new Date(today)) / 86400000)
+      return days >= 0 && days <= 7
+    })())
+    const sport = profile?.sport || 'general'
+    const acwrInsight = interpretACWR(acwrRatio != null && (log || []).length >= 7 ? acwrRatio : null)
+    const ctlInsight  = curCTL > 0 ? interpretCTL(curCTL, prevCTL > 0 ? prevCTL : null, sport) : null
+    const tsbInsight  = curCTL > 0 ? interpretTSB(curTSB, isRaceWeek) : null
+    return [acwrInsight, ctlInsight, tsbInsight].filter(Boolean)
+  }, [log, profile, acwrRatio, today])
 
   // N3 — Training paces from VDOT (Daniels)
   const paceRef = useMemo(() => {
@@ -1281,6 +1299,21 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
           </div>
         )}
       </div>
+
+      {/* ── E6 — Science Insights (interpretACWR / interpretCTL / interpretTSB) ── */}
+      {scienceInsights.length > 0 && (
+        <div style={{ ...card, borderLeft: `4px solid ${BLUE}` }}>
+          <div style={cardTitle}>◈ {t('insightsTitle')}</div>
+          {scienceInsights.slice(0, 3).map((insight, i) => (
+            <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: i < scienceInsights.length - 1 ? '10px' : 0 }}>
+              <span style={{ color: BLUE, flexShrink: 0, fontSize: '10px', marginTop: '1px' }}>▸</span>
+              <div style={{ fontFamily: MONO, fontSize: '10px', color: 'var(--sub,#aaa)', lineHeight: 1.7 }}>
+                {insight[lang] || insight.en}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
     </div>
   )

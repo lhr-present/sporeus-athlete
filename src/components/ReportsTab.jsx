@@ -1,7 +1,7 @@
 // ─── ReportsTab.jsx — PDF reports: generate on-demand + download history ──────
 import { useState, useEffect, useCallback } from 'react'
-import { isSupabaseReady } from '../lib/supabase.js'
-import { generateReport, listReports, getSignedUrl, deleteReport } from '../lib/reports.js'
+import { supabase, isSupabaseReady } from '../lib/supabase.js'
+import { generateReport, deleteReport } from '../lib/reports.js'
 import { S } from '../styles.js'
 import ConfirmModal from './ui/ConfirmModal.jsx'
 
@@ -63,8 +63,12 @@ export default function ReportsTab({ authUser, authProfile, lang = 'en' }) {
     if (!authUser || !isSupabaseReady()) return
     setLoading(true)
     try {
-      const rows = await listReports(authUser.id, null, 30)
-      setReports(rows)
+      const { data, error } = await supabase
+        .from('generated_reports')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      setReports(data || [])
     } catch (e) {
       setError(e.message)
     } finally {
@@ -90,16 +94,14 @@ export default function ReportsTab({ authUser, authProfile, lang = 'en' }) {
     }
   }
 
-  const handleDownload = async (storagePath, label) => {
+  const handleDownload = async (storagePath) => {
     setError(null)
     try {
-      const url = await getSignedUrl(storagePath, 3600)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = label + '.pdf'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
+      const { data, error } = await supabase.storage
+        .from('reports')
+        .createSignedUrl(storagePath, 3600)
+      if (error) throw error
+      window.open(data.signedUrl, '_blank', 'noopener,noreferrer')
     } catch (e) {
       setError(e.message)
     }
@@ -225,11 +227,11 @@ export default function ReportsTab({ authUser, authProfile, lang = 'en' }) {
         </div>
 
         {!loading && reports.length === 0 && (
-          <div style={{ ...S.mono, fontSize: '10px', color: '#444', padding: '16px 0', lineHeight: 1.7 }}>
-            <div style={{ marginBottom: '6px' }}>
+          <div style={{ ...S.card, padding: '20px 16px', textAlign: 'center' }}>
+            <div style={{ ...S.mono, fontSize: '11px', color: '#555', marginBottom: '6px' }}>
               {tr('No reports generated yet.', 'Henüz rapor oluşturulmadı.')}
             </div>
-            <div style={{ color: '#333', fontSize: '9px' }}>
+            <div style={{ ...S.mono, color: '#333', fontSize: '9px', lineHeight: 1.7 }}>
               {tr(
                 'Your first Weekly Report becomes available after logging sessions in any full calendar week. Generate one above whenever you\'re ready.',
                 'İlk Haftalık Raporunuz, herhangi bir takvim haftasında antrenman kaydettikten sonra kullanılabilir hale gelir. Hazır olduğunuzda yukarıdan oluşturun.',
@@ -239,48 +241,52 @@ export default function ReportsTab({ authUser, authProfile, lang = 'en' }) {
         )}
 
         {reports.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {/* Table header */}
-            <div style={{ display: 'flex', gap: '8px', padding: '4px 8px', borderBottom: '1px solid #222' }}>
-              {['TYPE', 'DATE', 'EXPIRES', ''].map((h, i) => (
-                <div key={i} style={{ ...S.mono, fontSize: '7px', color: '#555', letterSpacing: '0.1em', flex: i === 3 ? '0 0 80px' : i === 0 ? 2 : 1, textAlign: i === 3 ? 'right' : 'left' }}>
-                  {h}
-                </div>
-              ))}
-            </div>
-
-            {reports.map(r => {
-              const expired = new Date(r.expires_at) < new Date()
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {KIND_ORDER.filter(k => reports.some(r => r.kind === k)).map(kind => {
+              const groupRows = reports.filter(r => r.kind === kind)
               return (
-                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', borderBottom: '1px solid #1a1a1a' }}>
-                  <div style={{ ...S.mono, fontSize: '10px', color: expired ? '#444' : 'var(--text)', flex: 2, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ color: '#ff6600' }}>{kindIcon(r.kind)}</span>
-                    <span>{kindLabel(r.kind, lang)}</span>
+                <div key={kind}>
+                  {/* Group header */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', paddingBottom: '4px', borderBottom: '1px solid #222' }}>
+                    <span style={{ ...S.mono, fontSize: '10px', color: '#ff6600' }}>{kindIcon(kind)}</span>
+                    <span style={{ ...S.mono, fontSize: '10px', fontWeight: 700, color: '#888', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                      {kindLabel(kind, lang)}
+                    </span>
                   </div>
-                  <div style={{ ...S.mono, fontSize: '9px', color: '#666', flex: 1 }}>
-                    {fmtDate(r.created_at)}
-                  </div>
-                  <div style={{ ...S.mono, fontSize: '9px', color: expired ? '#c0392b' : '#555', flex: 1 }}>
-                    {expired ? tr('Expired', 'Süresi doldu') : fmtDate(r.expires_at)}
-                  </div>
-                  <div style={{ display: 'flex', gap: '6px', flex: '0 0 80px', justifyContent: 'flex-end' }}>
-                    {!expired && (
-                      <button
-                        onClick={() => handleDownload(r.storage_path, `sporeus-${r.kind}-${fmtDate(r.created_at)}`)}
-                        title={tr('Download', 'İndir')}
-                        style={{ ...S.mono, fontSize: '9px', padding: '3px 8px', border: '1px solid #333', background: 'transparent', color: '#888', borderRadius: '3px', cursor: 'pointer' }}
-                      >
-                        ↓
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleDelete(r.id, r.storage_path)}
-                      disabled={deletingId === r.id}
-                      title={tr('Delete', 'Sil')}
-                      style={{ ...S.mono, fontSize: '9px', padding: '3px 8px', border: '1px solid #2a0a0a', background: 'transparent', color: '#c0392b', borderRadius: '3px', cursor: 'pointer' }}
-                    >
-                      ✕
-                    </button>
+                  {/* Rows */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {groupRows.map(r => {
+                      const expired = new Date(r.expires_at) < new Date()
+                      return (
+                        <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', borderBottom: '1px solid #1a1a1a' }}>
+                          <div style={{ ...S.mono, fontSize: '9px', color: '#666', flex: 1 }}>
+                            {fmtDate(r.created_at)}
+                          </div>
+                          <div style={{ ...S.mono, fontSize: '9px', color: expired ? '#c0392b' : '#555', flex: 1 }}>
+                            {expired ? tr('Expired', 'Süresi doldu') : fmtDate(r.expires_at)}
+                          </div>
+                          <div style={{ display: 'flex', gap: '6px', flex: '0 0 auto', justifyContent: 'flex-end' }}>
+                            {!expired && (
+                              <button
+                                onClick={() => handleDownload(r.storage_path)}
+                                title={tr('Download PDF', 'PDF İndir')}
+                                style={{ ...S.mono, fontSize: '9px', padding: '3px 10px', border: '1px solid #ff6600', background: 'transparent', color: '#ff6600', borderRadius: '3px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                              >
+                                {tr('Download PDF', 'PDF İndir')}
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleDelete(r.id, r.storage_path)}
+                              disabled={deletingId === r.id}
+                              title={tr('Delete', 'Sil')}
+                              style={{ ...S.mono, fontSize: '9px', padding: '3px 8px', border: '1px solid #2a0a0a', background: 'transparent', color: '#c0392b', borderRadius: '3px', cursor: 'pointer' }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )

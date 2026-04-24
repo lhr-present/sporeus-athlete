@@ -1,8 +1,28 @@
 // ─── LactateEstimator — blood lactate threshold estimator ────────────────────
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { S } from '../../styles.js'
-import { estimateLTFromStep, formatLTResult } from '../../lib/sport/lactate.js'
+import { estimateLTFromStep, formatLTResult, computeLactateDrift } from '../../lib/sport/lactate.js'
 import { logger } from '../../lib/logger.js'
+
+// Translation helper — minimal bilingual map for standalone use
+const DRIFT_LABELS = {
+  en: {
+    lactateTrendImproving: 'Improving',
+    lactateTrendStable: 'Stable',
+    lactateTrendDeclining: 'Declining',
+    lactateTrendLowConf: 'low confidence',
+    lactateTrendMedConf: 'medium confidence',
+    lactateTrendHighConf: 'high confidence',
+  },
+  tr: {
+    lactateTrendImproving: 'Gelişiyor',
+    lactateTrendStable: 'Sabit',
+    lactateTrendDeclining: 'Düşüyor',
+    lactateTrendLowConf: 'düşük güvenilirlik',
+    lactateTrendMedConf: 'orta güvenilirlik',
+    lactateTrendHighConf: 'yüksek güvenilirlik',
+  },
+}
 
 export default function LactateEstimator({ lang = 'en' }) {
   const [sport, setSport]   = useState('bike')
@@ -16,6 +36,19 @@ export default function LactateEstimator({ lang = 'en' }) {
 
   const LOAD_UNIT = { bike:'W', run:'km/h', swim:'min/100m', row:'W' }
   const unit = LOAD_UNIT[sport] || 'W'
+
+  const tl = (key) => (DRIFT_LABELS[lang] || DRIFT_LABELS.en)[key] || key
+
+  // Load LT history from localStorage and compute drift
+  const drift = useMemo(() => {
+    try {
+      const history = JSON.parse(localStorage.getItem('sporeus-lt-history') || '[]')
+      const sessions = history
+        .filter(r => r && r.date && (r.lt2 != null || r.lt != null))
+        .map(r => ({ date: r.date, lt2W: r.lt2 ?? r.lt }))
+      return computeLactateDrift(sessions)
+    } catch { return null }
+  }, [saved])
 
   const setStep = (i, field, val) => {
     const next = [...steps]
@@ -173,6 +206,33 @@ export default function LactateEstimator({ lang = 'en' }) {
                     <div style={{ fontSize:'16px', fontWeight:700, color }}>{val}</div>
                   </div>
                 ))}
+              </div>
+              {/* ── LT2 Drift Badge ──────────────────────────────────────────── */}
+              {drift && drift.confidence !== 'low' && (() => {
+                const confKey = drift.confidence === 'high' ? 'lactateTrendHighConf' : 'lactateTrendMedConf'
+                const confLabel = tl(confKey)
+                if (drift.trend === 'improving') {
+                  return (
+                    <div style={{ fontSize:'10px', fontWeight:600, color:'#00c853', marginTop:'8px', letterSpacing:'0.04em' }}>
+                      ↑ {tl('lactateTrendImproving')} +{drift.deltaPercent}%/mo ({confLabel})
+                    </div>
+                  )
+                }
+                if (drift.trend === 'declining') {
+                  return (
+                    <div style={{ fontSize:'10px', fontWeight:600, color:'#d50000', marginTop:'8px', letterSpacing:'0.04em' }}>
+                      ↓ {tl('lactateTrendDeclining')} {drift.deltaPercent}%/mo ({confLabel})
+                    </div>
+                  )
+                }
+                return (
+                  <div style={{ fontSize:'10px', color:'#555', marginTop:'8px', letterSpacing:'0.04em' }}>
+                    → {tl('lactateTrendStable')}
+                  </div>
+                )
+              })()}
+              {/* ── end drift badge ──────────────────────────────────────────── */}
+              <div style={{ display:'flex', gap:'10px', marginTop:'14px', flexWrap:'wrap' }}>
               </div>
               {fmt.secondary && <div style={{ fontSize:'10px', color:'#5bc25b', marginTop:'8px' }}>{fmt.secondary}</div>}
               {fmt.zoneNote && <div style={{ fontSize:'9px', color:'#555', marginTop:'4px' }}>{fmt.zoneNote}</div>}

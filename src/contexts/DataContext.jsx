@@ -16,7 +16,8 @@ import { useProfileQuery }     from '../hooks/useProfileQuery.js'
 const DataContext = createContext(null)
 
 export function DataProvider({ userId, children }) {
-  const [log,         setLog]         = useTrainingLogQuery(userId)
+  const logResult                     = useTrainingLogQuery({ userId })
+  const [log, setLog]                 = logResult
   const [recovery,    setRecovery]    = useRecovery(userId)
   const [injuries,    setInjuries]    = useInjuries(userId)
   const [testResults, setTestResults] = useTestResults(userId)
@@ -26,6 +27,11 @@ export function DataProvider({ userId, children }) {
   return (
     <DataContext.Provider value={{
       log,         setLog,
+      // Pagination controls for TrainingLog (E4)
+      fetchNextPage:   logResult.fetchNextPage,
+      hasMore:         logResult.hasMore,
+      isLoadingMore:   logResult.isLoadingMore,
+      refetchLog:      logResult.refetch,
       recovery,    setRecovery,
       injuries,    setInjuries,
       testResults, setTestResults,

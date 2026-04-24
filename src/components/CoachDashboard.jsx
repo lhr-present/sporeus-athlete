@@ -23,6 +23,7 @@ import TeamAnnouncements from './TeamAnnouncements.jsx'
 import SquadPatternSearch from './coach/SquadPatternSearch.jsx'
 import ChatPanel          from './coach/ChatPanel.jsx'
 import WeeklyDigestCard   from './coach/WeeklyDigestCard.jsx'
+import SquadCompareStrip  from './coach/SquadCompareStrip.jsx'
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -340,6 +341,9 @@ export default function CoachDashboard({ authUser }) {
           )
         })()}
       </div>
+
+      {/* Squad Comparison Strip (E3) */}
+      {sbCoachId && <SquadCompareStrip coachId={sbCoachId} />}
 
       {/* Athlete Roster */}
       <div style={S.card}>

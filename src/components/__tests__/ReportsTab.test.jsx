@@ -5,22 +5,50 @@ import '@testing-library/jest-dom'
 import { renderWithLang } from './testUtils.jsx'
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
+// vi.mock is hoisted — factories must not reference outer variables.
+// We use vi.hoisted() to declare the mocks that need to be shared.
+
+const { mockCreateSignedUrl, mockStorageFrom, mockSelect, mockOrder, queryChain, supabaseMock } =
+  vi.hoisted(() => {
+    const mockCreateSignedUrl = vi.fn()
+    const mockStorageFrom     = vi.fn(() => ({ createSignedUrl: mockCreateSignedUrl }))
+    const mockSelect          = vi.fn()
+    const mockOrder           = vi.fn()
+
+    // Chainable query object — its thenable is overridden per-test
+    const queryChain = {
+      select: (...a) => { mockSelect(...a); return queryChain },
+      order:  (...a) => { mockOrder(...a);  return queryChain },
+    }
+
+    const supabaseMock = {
+      from: vi.fn(() => queryChain),
+      storage: { from: mockStorageFrom },
+    }
+
+    return { mockCreateSignedUrl, mockStorageFrom, mockSelect, mockOrder, queryChain, supabaseMock }
+  })
+
 vi.mock('../../lib/supabase.js', () => ({
-  supabase: {},
+  supabase: supabaseMock,
   isSupabaseReady: vi.fn(() => true),
 }))
 
-const mockListReports    = vi.fn()
 const mockGenerateReport = vi.fn()
-const mockGetSignedUrl   = vi.fn()
 const mockDeleteReport   = vi.fn()
 
 vi.mock('../../lib/reports.js', () => ({
-  listReports:    (...a) => mockListReports(...a),
   generateReport: (...a) => mockGenerateReport(...a),
-  getSignedUrl:   (...a) => mockGetSignedUrl(...a),
   deleteReport:   (...a) => mockDeleteReport(...a),
 }))
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function makeQueryPromise(data, error = null) {
+  const resolved = { data, error }
+  queryChain.then  = (res, rej) => Promise.resolve(resolved).then(res, rej)
+  queryChain.catch = (fn) => Promise.resolve(resolved).catch(fn)
+}
 
 const mockAuthUser    = { id: 'uid123', email: 'athlete@test.com' }
 const mockAuthProfile = { role: 'athlete', subscription_tier: 'coach' }
@@ -43,15 +71,21 @@ import ReportsTab from '../ReportsTab.jsx'
 describe('ReportsTab', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockListReports.mockResolvedValue(existingReports)
+    // Restore the storage mock after clearAllMocks resets it
+    mockStorageFrom.mockImplementation(() => ({ createSignedUrl: mockCreateSignedUrl }))
+    makeQueryPromise(existingReports)
     mockGenerateReport.mockResolvedValue({
       signedUrl: 'https://example.supabase.co/reports/signed/new.pdf',
       reportId: 'rep-new',
       storagePath: 'uid123/weekly/2026-04-21.pdf',
       expiresAt: '2099-05-21T10:00:00Z',
     })
-    mockGetSignedUrl.mockResolvedValue('https://example.supabase.co/reports/signed/rep1.pdf')
+    mockCreateSignedUrl.mockResolvedValue({
+      data: { signedUrl: 'https://example.supabase.co/reports/signed/rep1.pdf' },
+      error: null,
+    })
     mockDeleteReport.mockResolvedValue(undefined)
+    supabaseMock.from.mockImplementation(() => queryChain)
   })
 
   it('renders the header and generate section', async () => {
@@ -69,16 +103,16 @@ describe('ReportsTab', () => {
 
   it('loads and shows report history on mount', async () => {
     renderWithLang(<ReportsTab authUser={mockAuthUser} authProfile={mockAuthProfile} lang="en" />)
-    await waitFor(() => expect(mockListReports).toHaveBeenCalledWith('uid123', null, 30))
+    await waitFor(() => expect(supabaseMock.from).toHaveBeenCalledWith('generated_reports'))
     // History date row appears (only in the history section, not the generate section)
     expect(await screen.findByText('2026-04-14')).toBeInTheDocument()
-    // Multiple instances of "Weekly Training Report" expected (generate card + history row)
+    // Multiple instances of "Weekly Training Report" expected (generate card + history group header)
     const matches = screen.getAllByText(/Weekly Training Report/i)
     expect(matches.length).toBeGreaterThanOrEqual(2)
   })
 
   it('shows "No reports" message when history is empty', async () => {
-    mockListReports.mockResolvedValueOnce([])
+    makeQueryPromise([])
     renderWithLang(<ReportsTab authUser={mockAuthUser} authProfile={mockAuthProfile} lang="en" />)
     await waitFor(() => expect(screen.getByText(/No reports generated yet/i)).toBeInTheDocument())
   })
@@ -93,8 +127,8 @@ describe('ReportsTab', () => {
     await waitFor(() => expect(mockGenerateReport).toHaveBeenCalledWith('weekly', expect.any(Object)))
     // After generation, success message shown
     expect(await screen.findByText(/generated/i)).toBeInTheDocument()
-    // listReports called again to refresh
-    expect(mockListReports).toHaveBeenCalledTimes(2)
+    // supabase.from called again to refresh (initial load + after generate)
+    expect(supabaseMock.from).toHaveBeenCalledTimes(2)
   })
 
   it('shows error message when generateReport fails', async () => {
@@ -120,14 +154,43 @@ describe('ReportsTab', () => {
     expect(squadBtn).toBeDisabled()
   })
 
-  it('triggers download via anchor element click', async () => {
+  it('triggers Download PDF via supabase.storage.createSignedUrl and opens new tab', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => {})
     renderWithLang(<ReportsTab authUser={mockAuthUser} authProfile={mockAuthProfile} lang="en" />)
 
-    await waitFor(() => screen.getAllByTitle(/Download/i))
-    const downloadBtn = screen.getAllByTitle(/Download/i)[0]
+    await waitFor(() => screen.getAllByTitle(/Download PDF/i))
+    const downloadBtn = screen.getAllByTitle(/Download PDF/i)[0]
     fireEvent.click(downloadBtn)
 
-    await waitFor(() => expect(mockGetSignedUrl).toHaveBeenCalledWith('uid123/weekly/2026-04-14.pdf', 3600))
+    await waitFor(() => {
+      expect(mockStorageFrom).toHaveBeenCalledWith('reports')
+      expect(mockCreateSignedUrl).toHaveBeenCalledWith('uid123/weekly/2026-04-14.pdf', 3600)
+      expect(openSpy).toHaveBeenCalledWith(
+        'https://example.supabase.co/reports/signed/rep1.pdf',
+        '_blank',
+        'noopener,noreferrer',
+      )
+    })
+    openSpy.mockRestore()
+  })
+
+  it('shows inline error when createSignedUrl fails', async () => {
+    mockCreateSignedUrl.mockResolvedValueOnce({ data: null, error: { message: 'Storage error' } })
+    renderWithLang(<ReportsTab authUser={mockAuthUser} authProfile={mockAuthProfile} lang="en" />)
+
+    await waitFor(() => screen.getAllByTitle(/Download PDF/i))
+    const downloadBtn = screen.getAllByTitle(/Download PDF/i)[0]
+    fireEvent.click(downloadBtn)
+
+    await waitFor(() => expect(screen.getByText(/Storage error/i)).toBeInTheDocument())
+  })
+
+  it('groups report history rows under kind headers', async () => {
+    renderWithLang(<ReportsTab authUser={mockAuthUser} authProfile={mockAuthProfile} lang="en" />)
+    // Kind group header + generate card both show "Weekly Training Report"
+    expect(await screen.findByText('2026-04-14')).toBeInTheDocument()
+    const matches = screen.getAllByText(/Weekly Training Report/i)
+    expect(matches.length).toBeGreaterThanOrEqual(2)
   })
 
   it('deletes a report after confirmation', async () => {

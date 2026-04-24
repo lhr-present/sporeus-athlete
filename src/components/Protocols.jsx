@@ -4,6 +4,7 @@ import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { cooperVO2, rampFTP, ftpFrom20, epley1RM, astrandVO2, yyir1VO2, wingateStats, normalizedPower, computeWPrime, powerZones } from '../lib/formulas.js'
+import { computeLactateDrift } from '../lib/sport/lactate.js'
 import PowerCurve from './PowerCurve.jsx'
 import VO2maxCard from './VO2maxCard.jsx'
 import ErrorBoundary from './ErrorBoundary.jsx'
@@ -63,6 +64,17 @@ export default function TestProtocols() {
     testLog.filter(r => r.testId === active).sort((a, b) => a.date.localeCompare(b.date)),
     [testLog, active]
   )
+
+  // Cross-session LT2 drift from sporeus-lt-history
+  const lactateDrift = useMemo(() => {
+    try {
+      const history = JSON.parse(localStorage.getItem('sporeus-lt-history') || '[]')
+      const sessions = history
+        .filter(r => r && r.date && (r.lt2 != null || r.lt != null))
+        .map(r => ({ date: r.date, lt2W: r.lt2 ?? r.lt }))
+      return computeLactateDrift(sessions)
+    } catch { return null }
+  }, [active])
 
   // W' balance state
   const [wPrimeSeries, setWPrimeSeries]     = useState(null)  // computed balance array
@@ -411,6 +423,25 @@ export default function TestProtocols() {
               <div key={i} style={{ ...S.mono, fontSize:'12px', lineHeight:1.9, color:'var(--sub)', borderBottom: i < result.length-2 ? '1px solid var(--border)' : 'none', padding:'4px 0' }}>{line}</div>
             )
           })}
+          {/* ── LT2 Drift Badge (lactate test only) ──────────────────────────── */}
+          {active === 'lactate' && lactateDrift && lactateDrift.confidence !== 'low' && (() => {
+            const confLabel = lactateDrift.confidence === 'high' ? t('lactateTrendHighConf') : t('lactateTrendMedConf')
+            if (lactateDrift.trend === 'improving') return (
+              <div style={{ ...S.mono, fontSize:'10px', fontWeight:600, color:'#00c853', marginTop:'10px', letterSpacing:'0.04em' }}>
+                ↑ {t('lactateTrendImproving')} +{lactateDrift.deltaPercent}%/mo ({confLabel})
+              </div>
+            )
+            if (lactateDrift.trend === 'declining') return (
+              <div style={{ ...S.mono, fontSize:'10px', fontWeight:600, color:'#d50000', marginTop:'10px', letterSpacing:'0.04em' }}>
+                ↓ {t('lactateTrendDeclining')} {lactateDrift.deltaPercent}%/mo ({confLabel})
+              </div>
+            )
+            return (
+              <div style={{ ...S.mono, fontSize:'10px', color:'var(--muted)', marginTop:'10px', letterSpacing:'0.04em' }}>
+                → {t('lactateTrendStable')}
+              </div>
+            )
+          })()}
         </div>
       )}
 

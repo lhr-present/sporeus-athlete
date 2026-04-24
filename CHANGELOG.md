@@ -4,6 +4,54 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.12.0] — 2026-04-24
+
+### FEAT: 8 enhancements — UI, observability, science, testing
+
+**E1 — ReportsTab wired to generated_reports**
+- `src/components/ReportsTab.jsx` now queries `generated_reports` table, groups by kind (weekly/monthly_squad/race_readiness), shows Download PDF button (createSignedUrl 1h TTL), empty state card
+- `src/components/__tests__/ReportsTab.test.jsx` rewritten with storage mock + 2 new tests
+- LangCtx: `reportsDownloadPdf`, `reportsEmptyHint`
+
+**E2 — ObservabilityDashboard: Queue Health panel (6th panel)**
+- `supabase/migrations/20260470_get_queue_metrics.sql` + `get_queue_metrics()` SECURITY DEFINER RPC
+- New panel polls every 30s; shows depth/oldest-age/status badge (green <10, yellow 10–50, red >50) for all 9 pgmq queues; graceful fallback if pgmq.metrics unavailable
+- LangCtx: 6 keys (`queueHealthTitle`, column headers, unavailable)
+
+**E3 — CoachDashboard: Squad Comparison strip**
+- `src/components/coach/SquadCompareStrip.jsx` (new) — Recharts BarChart, CTL (#0064ff) + ACWR (green/yellow/red by zone) bars per athlete; collapsible via `useLocalStorage('sporeus-squad-compare-open', true)`
+- Data source: `mv_squad_readiness`; filters ctl > 0; renders null if no data
+- LangCtx: `squadComparison`, `squadComparisonCTL`, `squadComparisonACWR`
+
+**E4 — Paginated training log**
+- `src/hooks/useTrainingLogQuery.js` — new `{ userId, pageSize=50 }` API; `.range()` pagination; `fetchNextPage`, `hasMore`, `isLoadingMore` exposed as named array properties
+- `src/contexts/DataContext.jsx` — exposes pagination controls via `useData()`
+- `src/components/TrainingLog.jsx` — replaced local `visibleCount` DOM-slice with server "Load more" button (shown when `hasMore`, disabled while loading)
+- LangCtx: `loadMore`
+
+**E5 — Lactate threshold drift detection**
+- `src/lib/sport/lactate.js` — `computeLactateDrift(sessions)`: linear regression over last 6 LT2 tests; returns `{ trend, deltaPercent, confidence }`
+- `src/components/Protocols.jsx` — drift badge rendered after LT2 result (hidden if confidence=low); ↑/→/↓ with %/mo and confidence qualifier
+- `src/lib/__tests__/lactate.test.js` — 7 new tests covering edge cases
+- LangCtx: 6 keys (`lactateTrendImproving/Stable/Declining`, 3 confidence labels)
+
+**E6 — Science interpretations in TodayView**
+- `src/components/TodayView.jsx` — "Training Insights" card; useMemo computes 3 insights via `interpretACWR`, `interpretCTL`, `interpretTSB` from `src/lib/science/interpretations.js`; bilingual via `insight[lang]`; card hidden if no insights
+- All 3 functions return `{ en, tr, citation }` — automatically language-aware
+
+**E7 — Visual regression Playwright snapshots**
+- `e2e/visual-regression.spec.js` (new) — 4 snapshot tests: dashboard, today, log, profile views; guest mode via localStorage init script
+- `playwright.config.js` — new `visual-regression` project; snapshots in `e2e/snapshots/visual-regression/`
+
+**E8 — API key management UI (7th panel in ObservabilityDashboard)**
+- `supabase/migrations/20260471_generate_api_key_fn.sql` + `generate_api_key(p_label, p_org_id)` SECURITY DEFINER; added `label` column to `api_keys`
+- 7th panel: lists masked keys, inline generate form (key shown once + copy button), inline revoke confirm
+- LangCtx: 11 keys (`apiKeysTitle`, columns, actions, warning)
+
+**Test baseline after E1–E8: 2822 tests, 185 files, all green**
+
+---
+
 ## [v11.11.0] — 2026-04-24
 
 ### PERF/SEC: RLS policy consolidation — 78 WARN advisors cleared

@@ -98,8 +98,10 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const csvInputRef     = useRef(null)
   const importFileRef   = useRef(null)   // raw File object for Storage archival
 
+  // ── Pagination controls from DataContext (E4) ────────────────────────────
+  const { fetchNextPage, hasMore, isLoadingMore } = useData()
+
   // ── Memoised derivations ─────────────────────────────────────────────────
-  const [visibleCount, setVisibleCount] = useState(100)
   const reversedLog = useMemo(() => [...log].reverse(), [log])
   const expandedEntry = useMemo(
     () => expandedId != null ? (log.find(s => s.id === expandedId) ?? null) : null,
@@ -548,7 +550,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                 </tr>
               </thead>
               <tbody>
-                {reversedLog.slice(0, visibleCount).map((s,i)=>{
+                {reversedLog.map((s,i)=>{
                   const hasTag = s.tags && s.tags.length > 0
                   const suggestedTag = !hasTag ? autoTagSession(s) : null
                   const isExpanded = expandedId === s.id
@@ -738,14 +740,15 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                 })}
               </tbody>
             </table>
-            {/* Load More — keeps DOM below 100 rows for performance (E4) */}
-            {reversedLog.length > visibleCount && (
+            {/* Load More — server-side pagination (E4) */}
+            {hasMore && (
               <div style={{ textAlign:'center', padding:'12px 0' }}>
                 <button
-                  onClick={() => setVisibleCount(c => c + 100)}
-                  style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'8px 20px', background:'transparent', border:'1px solid #444', color:'#888', borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em' }}
+                  onClick={fetchNextPage}
+                  disabled={isLoadingMore}
+                  style={{ ...S.btn, fontSize:'11px', padding:'8px 20px', opacity: isLoadingMore ? 0.6 : 1 }}
                 >
-                  ▼ Load more ({reversedLog.length - visibleCount} remaining)
+                  {isLoadingMore ? '…' : `▼ ${t('loadMore')}`}
                 </button>
               </div>
             )}

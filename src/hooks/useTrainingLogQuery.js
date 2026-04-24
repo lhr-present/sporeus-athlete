@@ -1,6 +1,7 @@
 // ─── useTrainingLogQuery.js — TanStack Query v5 wrapper for training_log ──────
 // Replaces useTrainingLog (useSupabaseData.js) in DataContext.
-// Returns [log, setLog] — identical interface to the old hook.
+// Returns [entries, setLog] — identical interface to the old hook.
+// Also exposes pagination: fetchNextPage, hasMore, isLoadingMore via array props.
 //
 // Key behaviours:
 //  • initialData from localStorage → no loading flash
@@ -8,30 +9,56 @@
 //  • setLog() applies optimistic update to TQ cache + localStorage, then
 //    syncs to Supabase and invalidates the query for a server-round-trip
 //  • On network failure the TQ cache stays warm and localStorage persists
+//  • Pagination: initial load fetches first pageSize rows; fetchNextPage
+//    appends next page; hasMore tracks whether more rows exist
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { useLocalStorage } from './useLocalStorage.js'
 import { logRowToEntry, logEntryToRow } from './useSupabaseData.js'
 
 export const trainingLogKey = (userId) => ['training_log', userId ?? 'guest']
 
-export function useTrainingLogQuery(userId) {
+// Accepts either:
+//   useTrainingLogQuery(userId)                   — legacy positional form
+//   useTrainingLogQuery({ userId, pageSize })     — new object form
+export function useTrainingLogQuery(arg) {
+  // Resolve userId and pageSize from either call signature
+  let userId, pageSize
+  if (arg !== null && typeof arg === 'object') {
+    userId   = arg.userId
+    pageSize = arg.pageSize ?? 50
+  } else {
+    userId   = arg         // string | null | undefined
+    pageSize = 50
+  }
+
   const [lsData, setLsData] = useLocalStorage('sporeus_log', [])
   const qc = useQueryClient()
 
-  const { data } = useQuery({
+  // Pagination state — page index starts at 1 after the initial load
+  const pageRef = useRef(1)
+  const [allEntries, setAllEntries] = useState(null)  // null = not yet initialised from server
+  const [hasMore, setHasMore] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+
+  const { data, isLoading, error, refetch: refetchQuery } = useQuery({
     queryKey: trainingLogKey(userId),
     queryFn: async () => {
       if (!isSupabaseReady() || !userId) return lsData
-      const { data: rows, error } = await supabase
+      const { data: rows, error: qErr } = await supabase
         .from('training_log')
         .select('*')
         .eq('user_id', userId)
-        .order('date', { ascending: false })
-      if (error) throw error
+        .order('created_at', { ascending: false })
+        .range(0, pageSize - 1)
+      if (qErr) throw qErr
       const entries = rows.map(logRowToEntry)
+      // Reset pagination cursor on fresh load
+      pageRef.current = 1
+      setAllEntries(entries)
+      setHasMore(rows.length >= pageSize)
       setLsData(entries)
       return entries
     },
@@ -42,6 +69,46 @@ export function useTrainingLogQuery(userId) {
     retry: 1,
   })
 
+  // The entries visible to consumers: server-paginated allEntries (when loaded)
+  // or the TQ cache / localStorage fallback
+  const entries = allEntries ?? data ?? lsData
+
+  const fetchNextPage = useCallback(async () => {
+    if (!isSupabaseReady() || !userId || isLoadingMore || !hasMore) return
+    setIsLoadingMore(true)
+    try {
+      const page = pageRef.current
+      const from = page * pageSize
+      const to   = (page + 1) * pageSize - 1
+      const { data: rows, error: qErr } = await supabase
+        .from('training_log')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .range(from, to)
+      if (qErr) throw qErr
+      const newEntries = rows.map(logRowToEntry)
+      pageRef.current = page + 1
+      setAllEntries(prev => {
+        const merged = [...(prev ?? []), ...newEntries]
+        setLsData(merged)
+        return merged
+      })
+      setHasMore(rows.length >= pageSize)
+    } catch (_) {
+      // Network failure — keep current state, user can retry
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }, [userId, pageSize, isLoadingMore, hasMore, setLsData])
+
+  const refetch = useCallback(() => {
+    pageRef.current = 1
+    setAllEntries(null)
+    setHasMore(true)
+    return refetchQuery()
+  }, [refetchQuery])
+
   const setLog = useCallback((fnOrValue) => {
     const qKey = trainingLogKey(userId)
     const prev = qc.getQueryData(qKey) ?? []
@@ -49,6 +116,7 @@ export function useTrainingLogQuery(userId) {
 
     // Optimistic update — both TQ cache and localStorage update instantly
     qc.setQueryData(qKey, next)
+    setAllEntries(next)
     setLsData(next)
 
     if (!isSupabaseReady() || !userId) return
@@ -73,5 +141,17 @@ export function useTrainingLogQuery(userId) {
     })
   }, [userId, qc, setLsData]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  return [data ?? lsData, setLog]
+  // Return a 2-element array for backward compat [entries, setLog]
+  // Also attach named pagination properties so callers can destructure them
+  const result = [entries, setLog]
+  result.entries       = entries
+  result.allEntries    = entries
+  result.fetchNextPage = fetchNextPage
+  result.hasMore       = hasMore
+  result.isLoadingMore = isLoadingMore
+  result.isLoading     = isLoading
+  result.error         = error
+  result.refetch       = refetch
+
+  return result
 }

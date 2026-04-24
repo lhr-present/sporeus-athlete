@@ -77,6 +77,20 @@ export default defineConfig({
       testMatch: '**/mobile.spec.ts',
       use: { ...devices['iPhone 12'] },
     },
+
+    // ── E7 visual regression (guest mode — no auth required) ─────────────────
+    // Snapshots stored under e2e/snapshots/visual-regression/.
+    // Update baselines: npx playwright test --project=visual-regression --update-snapshots
+    {
+      name: 'visual-regression',
+      testMatch: '**/e2e/visual-regression.spec.js',
+      snapshotDir: './e2e/snapshots/visual-regression',
+      use: {
+        ...devices['Desktop Chrome'],
+        // Fixed viewport keeps snapshots pixel-stable across machines
+        viewport: { width: 1280, height: 800 },
+      },
+    },
   ],
 
   // Auto-boots `npm run dev` if nothing is already on :5173.

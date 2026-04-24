@@ -164,6 +164,8 @@ export const LABELS = {
     reportsGenerating: 'Generating…', reportsHistory: 'Report History',
     reportsNoHistory: 'No reports generated yet.',
     reportsDownload: 'Download', reportsDelete: 'Delete', reportsExpired: 'Expired',
+    reportsDownloadPdf: 'Download PDF',
+    reportsEmptyHint: "Your first Weekly Report becomes available after logging sessions in any full calendar week. Generate one above whenever you're ready.",
     // Sport Program Builder (C6)
     spb_sport_rowing: 'Rowing', spb_sport_running: 'Running', spb_sport_cycling: 'Cycling',
     spb_sport_swimming: 'Swimming', spb_sport_triathlon: 'Triathlon',
@@ -289,6 +291,36 @@ export const LABELS = {
     privCancelConfirm: '✓ Deletion cancelled',
     privGraceNote: '30-day grace period — you can still log in and cancel.',
     privLinkPrivacy: 'Privacy Policy',
+    // Queue Health panel (E2)
+    queueHealthTitle: 'QUEUE HEALTH',
+    queueColQueue: 'QUEUE', queueColDepth: 'DEPTH',
+    queueColOldest: 'OLDEST', queueColStatus: 'STATUS',
+    queueMetricsUnavailable: 'Queue metrics unavailable',
+    // Squad Comparison strip (E3)
+    squadComparison: 'Squad Comparison',
+    squadComparisonCTL: 'CTL (Fitness)',
+    squadComparisonACWR: 'ACWR',
+    // Training log pagination (E4)
+    loadMore: 'Load more',
+    // E5 — Lactate drift badge
+    lactateTrendImproving: 'Improving',
+    lactateTrendStable: 'Stable',
+    lactateTrendDeclining: 'Declining',
+    lactateTrendLowConf: 'low confidence',
+    lactateTrendMedConf: 'medium confidence',
+    lactateTrendHighConf: 'high confidence',
+    // E8 — API Keys panel
+    apiKeysTitle: 'API KEYS',
+    apiKeyLabel: 'LABEL',
+    apiKeyTier: 'TIER',
+    apiKeyCreated: 'CREATED',
+    apiKeyRevoke: 'Revoke',
+    apiKeyGenerate: 'Generate new key',
+    apiKeyLabelPlaceholder: 'Key label (e.g. mobile-app)',
+    apiKeyNone: 'No API keys',
+    apiKeyNewKeyWarning: 'This key will not be shown again',
+    apiKeyCopy: 'Copy',
+    apiKeyConfirmRevoke: 'Confirm revoke?',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -452,6 +484,8 @@ export const LABELS = {
     reportsGenerating: 'Oluşturuluyor…', reportsHistory: 'Rapor Geçmişi',
     reportsNoHistory: 'Henüz rapor oluşturulmadı.',
     reportsDownload: 'İndir', reportsDelete: 'Sil', reportsExpired: 'Süresi doldu',
+    reportsDownloadPdf: 'PDF İndir',
+    reportsEmptyHint: 'İlk Haftalık Raporunuz, herhangi bir takvim haftasında antrenman kaydettikten sonra kullanılabilir hale gelir. Hazır olduğunuzda yukarıdan oluşturun.',
     // Sport Program Builder (C6)
     spb_sport_rowing: 'Kürek', spb_sport_running: 'Koşu', spb_sport_cycling: 'Bisiklet',
     spb_sport_swimming: 'Yüzme', spb_sport_triathlon: 'Triatlon',
@@ -577,6 +611,36 @@ export const LABELS = {
     privCancelConfirm: '✓ Silme iptal edildi',
     privGraceNote: '30 günlük bekleme süresi — giriş yapıp hâlâ iptal edebilirsiniz.',
     privLinkPrivacy: 'Gizlilik Politikası',
+    // Queue Health panel (E2)
+    queueHealthTitle: 'KUYRUK SAĞLIĞI',
+    queueColQueue: 'KUYRUK', queueColDepth: 'DERİNLİK',
+    queueColOldest: 'EN ESKİ', queueColStatus: 'DURUM',
+    queueMetricsUnavailable: 'Kuyruk metrikleri kullanılamıyor',
+    // Squad Comparison strip (E3)
+    squadComparison: 'Kadro Karşılaştırması',
+    squadComparisonCTL: 'KTY (Kondisyon)',
+    squadComparisonACWR: 'ABYO',
+    // Training log pagination (E4)
+    loadMore: 'Daha fazla yükle',
+    // E5 — Lactate drift badge
+    lactateTrendImproving: 'Gelişiyor',
+    lactateTrendStable: 'Sabit',
+    lactateTrendDeclining: 'Düşüyor',
+    lactateTrendLowConf: 'düşük güvenilirlik',
+    lactateTrendMedConf: 'orta güvenilirlik',
+    lactateTrendHighConf: 'yüksek güvenilirlik',
+    // E8 — API Keys paneli
+    apiKeysTitle: 'API ANAHTARLARI',
+    apiKeyLabel: 'ETİKET',
+    apiKeyTier: 'KATEGORİ',
+    apiKeyCreated: 'OLUŞTURULDU',
+    apiKeyRevoke: 'İptal Et',
+    apiKeyGenerate: 'Yeni anahtar oluştur',
+    apiKeyLabelPlaceholder: 'Anahtar etiketi (ör. mobil-uygulama)',
+    apiKeyNone: 'API anahtarı yok',
+    apiKeyNewKeyWarning: 'Bu anahtar bir daha gösterilmeyecek',
+    apiKeyCopy: 'Kopyala',
+    apiKeyConfirmRevoke: 'İptal edilsin mi?',
   }
 }
 
