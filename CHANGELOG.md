@@ -4,6 +4,33 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.4.0] — 2026-04-24
+
+### FEAT: Phase 3 UI — SemanticSearch + SquadPatternSearch + ChatPanel + WeeklyDigestCard
+
+**`src/App.jsx`**:
+- Lazy-import `SemanticSearch` from `./components/SemanticSearch.jsx`
+- `showSemanticSearch` state + Ctrl+Shift+K keyboard shortcut (coach/club tier; free-tier shows upgrade modal)
+- `⊞ AI` header button (coach/club only) toggles semantic search
+- Controlled `<SemanticSearch>` render inside `<Suspense fallback={null}>`; `onJumpToSession` dispatches `sporeus:jump-to-session` CustomEvent
+- Footer hint updated: `· Ctrl+Shift+K = AI search`
+
+**`src/components/CoachDashboard.jsx`**:
+- Added `supabase` to import (was `isSupabaseReady` only)
+- Added `sbAthleteIds` state + `useEffect` to fetch active athlete IDs from `coach_athletes` on mount
+- Imports: `SquadPatternSearch`, `ChatPanel`, `WeeklyDigestCard`
+- All three rendered inside `isSupabaseReady() && sbCoachId` block
+
+**`src/components/coach/WeeklyDigestCard.jsx`** (new):
+- Reads latest `weekly_digests` row for coach (`coach_id`, ordered by `week_start desc`)
+- Renders: `headline`, `highlights[]`, `alerts[]`, `recommendation`, `citations[]`
+- Bloomberg terminal aesthetic; "No digest yet — runs Sunday night" when empty
+- Collapsible via toggle button
+
+**Tests**: 2807/2807 ✓
+
+---
+
 ## [v11.3.0] — 2026-04-24
 
 ### FEAT: Phase 2 AI Layer — pgvector embeddings + semantic search + AI proxy

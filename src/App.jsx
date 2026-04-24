@@ -56,7 +56,8 @@ const Periodization = lazy(() => import('./components/Periodization.jsx'))
 const ReportsTab     = lazy(() => import('./components/ReportsTab.jsx'))
 const RaceReadiness  = lazy(() => import('./components/RaceReadiness.jsx'))
 const UpgradeModal  = lazy(() => import('./components/UpgradeModal.jsx'))
-const GlobalSearch   = lazy(() => import('./components/GlobalSearch.jsx'))
+const GlobalSearch      = lazy(() => import('./components/GlobalSearch.jsx'))
+const SemanticSearch    = lazy(() => import('./components/SemanticSearch.jsx'))
 const ChapterLanding = lazy(() => import('./pages/book/ChapterLanding.jsx'))
 import PastDueBanner from './components/PastDueBanner.jsx'
 import MobileBottomBar from './components/MobileBottomBar.jsx'
@@ -114,8 +115,23 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
     finishOnboarding, t, handleExport, handleAddSession,
   } = useAppState({ lang, setLang, dark, setDark, authUser, authProfile, signOut })
 
-  const [showUpgrade, setShowUpgrade]         = useState(false)
+  const [showUpgrade, setShowUpgrade]             = useState(false)
   const [upgradeFeatureKey, setUpgradeFeatureKey] = useState(null)
+  const [showSemanticSearch, setShowSemanticSearch] = useState(false)
+
+  // Ctrl+Shift+K — semantic search (coach/club tier only)
+  useEffect(() => {
+    function onKey(e) {
+      if (e.ctrlKey && e.shiftKey && e.key === 'K') {
+        e.preventDefault()
+        const tier = authProfile?.subscription_tier || 'free'
+        if (tier === 'free') { openUpgrade('semantic_search'); return }
+        setShowSemanticSearch(v => !v)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [authProfile?.subscription_tier])
 
   function openUpgrade(featureKey = null) {
     setUpgradeFeatureKey(featureKey)
@@ -170,13 +186,29 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
           onNavigate={(tabId, sessionId) => {
             handleTabClick(tabId)
             if (sessionId) {
-              // broadcast so TrainingLog can expand the correct row
               window.dispatchEvent(new CustomEvent('sporeus:jump-to-session', { detail: { sessionId } }))
             }
           }}
           tier={authProfile?.subscription_tier || 'free'}
         />
       </Suspense>
+
+      {/* SemanticSearch — pgvector cosine search; Ctrl+Shift+K; coach/club only */}
+      {showSemanticSearch && (
+        <Suspense fallback={null}>
+          <SemanticSearch
+            show={showSemanticSearch}
+            onClose={() => setShowSemanticSearch(false)}
+            onJumpToSession={sessionId => {
+              handleTabClick('log')
+              setShowSemanticSearch(false)
+              window.dispatchEvent(new CustomEvent('sporeus:jump-to-session', { detail: { sessionId } }))
+            }}
+            tier={authProfile?.subscription_tier || 'free'}
+            authUser={authUser}
+          />
+        </Suspense>
+      )}
 
       {showSearch && (
         <Suspense fallback={null}>
@@ -331,6 +363,14 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
               style={{ ...S.mono, fontSize:'12px', padding:'4px 8px', borderRadius:'3px', border:'1px solid #444', background:'transparent', color:'#888', cursor:'pointer', letterSpacing:'0.06em' }}>
               ◈ Search
             </button>
+            {(authProfile?.subscription_tier === 'coach' || authProfile?.subscription_tier === 'club') && (
+              <button
+                onClick={() => setShowSemanticSearch(v => !v)}
+                title="AI semantic search (Ctrl+Shift+K)"
+                style={{ ...S.mono, fontSize:'12px', padding:'4px 8px', borderRadius:'3px', border:'1px solid #ff660044', background: showSemanticSearch ? '#ff660022' : 'transparent', color:'#ff6600', cursor:'pointer', letterSpacing:'0.06em' }}>
+                ⊞ AI
+              </button>
+            )}
             <button
               onClick={() => setDark(!dark)}
               aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -416,7 +456,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
         <footer style={S.footer}>
           SPOREUS ATHLETE CONSOLE v{APP_VERSION} · SPOREUS.COM
           <span style={{ marginLeft:'12px', color:'#333', fontSize:'9px', letterSpacing:'0.06em' }}>
-            ? = shortcuts · + = quick log · Ctrl+K = search
+            ? = shortcuts · + = quick log · Ctrl+K = search · Ctrl+Shift+K = AI search
           </span>
         </footer>
       </div>

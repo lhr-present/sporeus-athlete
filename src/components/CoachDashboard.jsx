@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
-import { isSupabaseReady } from '../lib/supabase.js'
+import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { FREE_ATHLETE_LIMIT } from '../lib/formulas.js'
 import { generateAthleteReportCard } from '../lib/digestEmail.js'
 
@@ -20,6 +20,9 @@ import CoachSquadView from './coach/CoachSquadView.jsx'
 import { calcCompliancePct } from '../lib/sport/squadBenchmark.js'
 import { getTierSync } from '../lib/subscription.js'
 import TeamAnnouncements from './TeamAnnouncements.jsx'
+import SquadPatternSearch from './coach/SquadPatternSearch.jsx'
+import ChatPanel          from './coach/ChatPanel.jsx'
+import WeeklyDigestCard   from './coach/WeeklyDigestCard.jsx'
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -42,6 +45,19 @@ export default function CoachDashboard({ authUser }) {
   const [showGating, setShowGating] = useState(false)
   const fileRef = useRef(null)
   const sbCoachId = authUser?.id ?? null
+  const [sbAthleteIds, setSbAthleteIds] = useState([])
+
+  useEffect(() => {
+    if (!sbCoachId || !isSupabaseReady()) return
+    supabase
+      .from('coach_athletes')
+      .select('athlete_id')
+      .eq('coach_id', sbCoachId)
+      .eq('status', 'active')
+      .then(({ data }) => {
+        if (data) setSbAthleteIds(data.map(r => r.athlete_id))
+      })
+  }, [sbCoachId])
 
   // Derived — all hooks above, safe to conditional-return now
   const myCoachId    = coachProfile?.coachId || ''
@@ -233,6 +249,19 @@ export default function CoachDashboard({ authUser }) {
       {isSupabaseReady() && sbCoachId && (
         <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'6px', padding:'16px', marginBottom:'16px' }}>
           <CoachSquadView coachId={sbCoachId} coachName={coachProfile?.name || ''} />
+          <div style={{ marginTop:'16px' }}>
+            <SquadPatternSearch
+              athleteIds={sbAthleteIds}
+              tier={getTierSync()}
+              authUser={authUser}
+            />
+          </div>
+          <div style={{ marginTop:'12px' }}>
+            <ChatPanel squad={[]} isDemo={false} />
+          </div>
+          <div style={{ marginTop:'12px' }}>
+            <WeeklyDigestCard coachId={sbCoachId} />
+          </div>
         </div>
       )}
 
