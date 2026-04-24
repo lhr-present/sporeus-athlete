@@ -4,6 +4,27 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.5.0] — 2026-04-24
+
+### FEAT: AI pipeline activation — embed trigger + backfill + MV security
+
+**`supabase/migrations/20260424_enhancements_embed_trigger_mv_revoke.sql`**:
+
+**MV security**: REVOKE SELECT on `mv_ctl_atl_daily`, `mv_weekly_load_summary`, `mv_squad_readiness` from `anon`, `authenticated` — MVs have no RLS; all rows were readable by any authenticated user. Only `generate-report` (service_role, BYPASSRLS) uses them.
+
+**Auto-embed trigger** (`on_training_log_embed`, SECURITY DEFINER):
+- `trg_training_log_embed_insert` — AFTER INSERT on training_log → calls embed-session via net.http_post with service_role JWT
+- `trg_training_log_embed_update` — AFTER UPDATE WHEN (`notes`, `type`, `tss`, `rpe`, or `duration_min` changed) → same call
+- embed-session content_hash dedup handles idempotency
+
+**Backfill**:
+- `embed_backfill_batch(batch_size int)` — finds up to N sessions with no session_embeddings row, calls embed-session per session
+- Cron jobid=11: `embed-backfill` `*/10 * * * *` — processes 50 unembedded sessions every 10 min; self-terminating (no-op when all embedded)
+
+**Effect**: SemanticSearch and SquadPatternSearch now produce real results once EMBEDDING_API_KEY sessions begin populating.
+
+---
+
 ## [v11.4.2] — 2026-04-24
 
 ### FIX: Security + performance hardening round 2 (advisor sweep)
