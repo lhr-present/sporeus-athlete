@@ -244,3 +244,30 @@ If any formula is found to lack a citation, add it here for tracking:
 | *(none currently flagged)* | — | — |
 
 **Protocol**: Before adding a new metric, add its citation to this table. Without a citation, the metric does not ship. This is the "we use Coggan/Banister/Skiba/Friel" claim made testable.
+
+---
+
+## Race Readiness Score (E14)
+
+| Formula | Implementation | Source |
+|---------|---------------|--------|
+| TSB taper zone: ≤−10→0; [−10,+5)→0–60 linear; [+5,+20]→100; (20,35]→100–60 linear; >35→30 | `src/lib/race/readinessScore.js:tsbComponent()` | Mujika I. (2010). *Intense training: the key to optimal performance before and during the taper.* Scand J Med Sci Sports 20(s2):24–31. |
+| HRV 7-day vs 28-day z-score: z≥+0.5→100; [−0.5,+0.5]→70; [−1.5,−0.5]→40; <−1.5→10 | `src/lib/race/readinessScore.js:hrvComponent()` | Plews D.J., Laursen P.B., Stanley J., Kilding A.E., Buchheit M. (2012). *Training adaptation and heart rate variability in elite endurance athletes: opening the door to effective monitoring.* Sports Med 43(9):773–781. |
+| Sleep threshold piecewise: ≥7.5h→100; 7.0–7.5→80; 6.5–7.0→60; 6.0–6.5→40; <6.0→20 | `src/lib/race/readinessScore.js:sleepComponent()` | Fullagar H.H.K., Skorski S., Duffield R., Hammes D., Coutts A.J., Meyer T. (2015). *Sleep and athletic performance: the effects of sleep loss on exercise performance, and physiological and cognitive responses to exercise.* Sports Med 45:161–186. |
+| Subjective wellbeing linear: (score−1)/9×100 | `src/lib/race/readinessScore.js:subjectiveComponent()` | Hooper S.L., Mackinnon L.T. (1995). *Monitoring overtraining in athletes: recommendations.* Sports Med 20(5):321–327. |
+| Form component: (CTL/peakCTL30d)×100 clamped [0,100] | `src/lib/race/readinessScore.js:formComponent()` | Coggan A. (2003). *Training and racing using a power meter.* — PMC form = fitness relative to recent peak. |
+| Weight re-normalisation across available components | `src/lib/race/readinessScore.js:computeReadinessScore()` | Busso T. (2003). *Variable dose-response relationship between exercise training and performance.* Med Sci Sports Exerc 35(7):1188–1195. |
+
+## Pace Strategy (E14)
+
+| Formula | Implementation | Source |
+|---------|---------------|--------|
+| VDOT→target time via Daniels binary search | `src/lib/race/paceStrategy.js` (delegates to `running.js:predictRaceTime`) | Daniels J. (2013). *Daniels' Running Formula.* 3rd ed. Human Kinetics. |
+| Elevation: +7.5 s/km per 1% uphill; −5.0 s/km per 1% downhill (capped at −2%) | `src/lib/race/paceStrategy.js:gradeAdjustment()` | Daniels J. (2013) ibid. — Uphill ≈+12s/mile/1%; downhill ≈−8s/mile/1%. Converted: ÷1.609 per km. |
+
+## Taper Simulator (E14)
+
+| Formula | Implementation | Source |
+|---------|---------------|--------|
+| CTL/ATL EWMA projection through taper: ATL k=2/8, CTL k=2/43 | `src/lib/race/taperSimulator.js:simulateTaper()` | Mujika I., Padilla S. (2003). *Scientific bases for precompetition tapering strategies.* Med Sci Sports Exerc 35:1182–1187. |
+| Optimal: TSB [+5,+20], CTL drop 3–20%; under-tapered: TSB<+5 or drop<3%; over-tapered: drop>20% | `src/lib/race/taperSimulator.js` | Mujika & Padilla (2003) ibid. — typical CTL reductions 8–21% across protocols. |

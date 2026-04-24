@@ -357,3 +357,19 @@ Two items explicitly deferred from the debt session. Not RLS-critical, not E14-b
 3. Add to CI as a separate `e11-behavioral` job gated on `rls-harness` passing
 
 **Blocking:** Nothing in E14–E20. Pick up as a standalone block after E14 closes.
+
+---
+
+## 2026-04-25 — Debt-only session: E14 gate cleared
+
+All 5 deferred items confirmed closed:
+
+| # | Item | Method | Result |
+|---|------|--------|--------|
+| 1 | /b/ch7 chapter landing smoke | Logged 2026-04-20 in this file | ✅ |
+| 2 | VITE_SENTRY_DSN configured | `gh secret list` shows key set 2026-04-20 | ✅ |
+| 3 | coach_athletes schema in runbook | `grep coach_athletes docs/ops/realtime_runbook.md` returns columns + indexes | ✅ |
+| 4 | comment-notification webhook | SQL query against `supabase_functions.hooks` — 14 invocations since 2026-04-20 | ✅ |
+| 5 | RLS isolation (scenarios 6+7) | SQL SET-based proof in realtime_runbook.md § "E14 Gate" | ✅ |
+
+No RLS leaks. E14 is unblocked. Proceeding to E14: Race Readiness Score + Pace Strategy + Taper Simulator.

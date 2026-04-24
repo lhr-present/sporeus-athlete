@@ -1,13 +1,18 @@
 // ─── RaceReadiness.jsx — E14 Race Readiness Calculator ────────────────────────
 // Shows 0–100 readiness score, traffic-light indicator, and top-3 recommendations.
 // Uses computeRaceReadiness() from intelligence.js (Banister 1991, Coggan 2003, Morton 1991).
+// E14 additions: Mujika-based composite score card, pace strategy, taper simulator.
 
-import { useMemo, useContext, useState } from 'react'
+import { useMemo, useContext, useState, lazy, Suspense } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { useData } from '../contexts/DataContext.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { computeRaceReadiness, predictRacePerformance } from '../lib/intelligence.js'
 import { S } from '../styles.js'
+
+const RaceReadinessCard = lazy(() => import('./race/RaceReadinessCard.jsx'))
+const TaperSimulatorCard = lazy(() => import('./race/TaperSimulator.jsx'))
+const RaceDayBriefing = lazy(() => import('./race/RaceDayBriefing.jsx'))
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -259,6 +264,30 @@ export default function RaceReadiness() {
         ℹ Banister 1991 (PMC) · Coggan 2003 (TSS/CTL/ATL) · Morton 1991 (dose-response)
         {result.daysToRace !== null && ' · Mujika & Padilla 2003 (taper)'}
         {perf.reliable && ' · Riegel 1981 · Daniels 1998 (VDOT)'}
+      </div>
+
+      {/* ── E14: Composite Readiness Score + Taper Simulator ─────────────── */}
+      <div style={{ marginTop: 24 }}>
+        <Suspense fallback={null}>
+          <RaceReadinessCard
+            log={log}
+            profile={profile}
+            raceDate={raceDate || undefined}
+          />
+        </Suspense>
+        <Suspense fallback={null}>
+          <TaperSimulatorCard
+            log={log}
+            raceDate={raceDate || undefined}
+          />
+        </Suspense>
+        <Suspense fallback={null}>
+          <RaceDayBriefing
+            log={log}
+            raceDate={raceDate || undefined}
+            vdot={perf?.vdot}
+          />
+        </Suspense>
       </div>
     </div>
   )

@@ -4,6 +4,86 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.18.0] — 2026-04-25
+
+**E14 — Race Readiness + Pace Strategy + Taper Simulator**
+
+- `src/lib/race/readinessScore.js` — composite 0–100 score: form (Coggan PMC), TSB zone (Mujika 2010), HRV z-score (Plews 2012), sleep piecewise (Fullagar 2015), subjective (Hooper 1995); weight re-normalisation on missing data; null on CTL/TSB absent or missingWeight > 0.50
+- `src/lib/race/paceStrategy.js` — VDOT or target-time per-km splits with grade adjustment (+7.5s/km/1% uphill, −5s/km/1% downhill capped at −2%; Daniels 2013)
+- `src/lib/race/taperSimulator.js` — CTL/ATL/TSB projection via EWMA taper; `compareTapers` for 1–3 week side-by-side; optimal/under/over classification (Mujika & Padilla 2003)
+- `src/components/race/RaceReadinessCard.jsx` — SVG score dial, 5-component bars, top-drivers callout, null state
+- `src/components/race/TaperSimulator.jsx` — sliders (weeks 1–4, volume 40–85%), SVG mini chart (CTL/TSB), comparison table
+- `src/components/race/RaceDayBriefing.jsx` — shows only on race day; splits table, print button, bilingual checklist, weather link
+- `RaceReadiness.jsx` — E14 cards injected below existing intelligence.js section (lazy + Suspense)
+- `docs/science/citations.md` — 7 new citations appended
+- `docs/science/race_readiness_algorithm.md` — new: algorithm rationale, rejection table, re-normalisation worked example, limitations
+- `src/contexts/LangCtx.jsx` — 26 new EN+TR keys (raceReadiness*, racePace*, taper*, raceDayBriefing)
+- Debt gate cleared: items 4+5 verified via SQL (comment-notification webhook 14 invocations; RLS isolation scenarios 6+7 CLEAN); logged in `docs/ops/realtime_runbook.md` and `docs/ops/session_log.md`
+- **Tests: 2914 (+62), 193 files**
+
+---
+
+## [v11.17.0] — 2026-04-25
+
+**E13 — Race Goal CTL Projection: projectCTLAtRace (Banister 1975), assessRaceReadiness, avgWeeklyTSSFromLog; Race Goal section in GoalTrackerCard; 6 tests.**
+
+- `src/lib/sport/raceGoalProjection.js` (NEW) — `projectCTLAtRace(currentCTL, avgWeeklyTSS, daysUntilRace)` Banister exponential model (τ=42); `assessRaceReadiness(projectedCTL, targetCTL)` → on_track/at_risk/needs_attention; `avgWeeklyTSSFromLog(log, weeks)` 4-week TSS average
+- `src/lib/__tests__/raceGoalProjection.test.js` (NEW) — 6 tests: no-time identity, decay with zero load, CTL builds from zero, on_track/at_risk/needs_attention status thresholds
+- `src/components/dashboard/GoalTrackerCard.jsx` — Race Goal collapsible section (useLocalStorage key `sporeus-race-goal-open`, default true); form with race date + target CTL inputs; projection display with large monospace CTL value, progress bar colored by status (green/yellow/red), status badge, "Banister et al. (1975)" citation; empty state placeholder
+- `src/contexts/LangCtx.jsx` — 10 new keys in en + tr: `raceGoal`, `raceGoalDate`, `raceGoalTargetCTL`, `raceGoalProjected`, `raceGoalOnTrack`, `raceGoalAtRisk`, `raceGoalNeedsAttention`, `raceGoalEmpty`, `raceGoalSave`, `raceGoalDaysLeft`
+- DEPENDS ON: LangCtx (raceGoal* keys), raceGoalProjection.js, formulas.js (calcLoad), useLocalStorage
+
+---
+
+## [v11.16.0] — 2026-04-25
+
+**E12 — Block Periodization Planner: Issurin (2008) three-phase model (Accumulation/Transmutation/Realization); mode toggle in PlanGenerator; generateBlockPlan; 6 tests.**
+
+- `src/lib/sport/blockPeriodization.js` (NEW) — `BLOCK_PHASES` constant (3 phases with tssMultiplier, zoneEmphasis, durationWeeks, bilingual name/focus); `generateBlockPlan({ weeklyHours, totalWeeks, baseTSS })` — distributes weeks ~40/35/25% across phases, returns per-week objects with phaseId, tssTarget, hoursTarget, zoneEmphasis
+- `src/lib/__tests__/blockPeriodization.test.js` (NEW) — 6 tests: 3 phases count, ids in order, array length = totalWeeks, required fields on every week, week 1 = accumulation, last week = realization
+- `src/components/PlanGenerator.jsx` — `blockMode` state; LINEAR/BLOCK toggle (orange when active); 3-phase summary cards shown when block mode on; `generate()` branches to `generateBlockPlan` when blockMode; block weeks mapped to plan shape `{ week, phase, tss, totalHours, sessions:[], zonePct, zoneEmphasis, focus }`; phaseColor maps extended with accumulation/transmutation/realization; focus+zone inline display in week detail panel
+- `src/contexts/LangCtx.jsx` — 6 new keys in en + tr: `blockPeriodization`, `blockModeLinear`, `blockModeBlock`, `blockPhaseLabel`, `blockFocusLabel`, `blockZoneLabel`
+- DEPENDS ON: LangCtx (block* keys), styles.js CSS variables, blockPeriodization.js
+
+---
+
+## [v11.15.0] — 2026-04-25
+
+**E11 — Squad Monthly Challenge: localStorage-based coach-set challenges; SquadChallengeCard (coach); ChallengeWidget (athlete); computeAthleteProgress + rankAthletes; 5 tests.**
+
+- `src/lib/squadChallenge.js` (NEW) — pure functions: `createChallenge`, `computeAthleteProgress` (distance/duration/sessions metrics, date-range filtered), `rankAthletes` (desc sort, 1-based rank)
+- `src/components/coach/SquadChallengeCard.jsx` (NEW) — coach card with inline create form; reads/writes `sporeus-squad-challenge` + renders per-athlete progress bars from `sporeus-squad-challenge-entries`; End challenge button; bilingual
+- `src/components/dashboard/ChallengeWidget.jsx` (NEW) — athlete widget; reads active challenge from localStorage; shows title, progress bar (orange→green at 100%), rank line; returns null if no challenge
+- `src/components/CoachDashboard.jsx` — imports + renders `<SquadChallengeCard />` after `<SquadCompareStrip />`
+- `src/components/Dashboard.jsx` — lazy imports + renders `<ChallengeWidget log={log} />` after `<RowingMetricsCard />`
+- `src/contexts/LangCtx.jsx` — 8 new keys in en + tr: `squadChallenge`, `squadChallengeNone`, `squadChallengeNew`, `squadChallengeEnd`, `squadChallengeTitle`, `squadChallengeMetric`, `squadChallengeTarget`, `squadChallengeRank`
+- `src/lib/__tests__/squadChallenge.test.js` (NEW) — 5 tests: createChallenge uuid+fields; distance sum in range; sessions count in range; pct capped at 100; rankAthletes desc sort
+- DEPENDS ON: LangCtx (squadChallenge* keys), styles.js CSS variables (--bg/--text/--muted/--card-bg/--border/--surface/--input-bg)
+
+---
+
+## [v11.14.0] — 2026-04-25
+
+**E10 — Rowing Sport Module: splitPer500m, formatSplit, strokeEfficiency, classifyStrokeRate, rowingEfficiencyFactor (Nolte 2005, Coggan 2003); RowingMetricsCard renders for rowing sessions in last 30 days; 8 tests.**
+
+- `src/lib/sport/rowing.js` — Extended with `splitPer500m`, `formatSplit`, `strokeEfficiency`, `classifyStrokeRate` (5 zones: recovery/steady/threshold/race/sprint), `rowingEfficiencyFactor`; existing Paul's Law, British Rowing zones, CP model, Concept2 VO2max untouched
+- `src/lib/__tests__/rowing.test.js` — 8 tests covering split calculation, formatting, stroke efficiency, zone classification, efficiency factor
+- `src/components/dashboard/RowingMetricsCard.jsx` (NEW) — shows last rowing session split, stroke efficiency, EF, stroke rate zone badge; returns null if no rowing sessions in last 30 days
+- `src/components/Dashboard.jsx` — lazy imports RowingMetricsCard; renders with log prop inside Suspense
+- `src/contexts/LangCtx.jsx` — 5 new keys (rowingMetrics, rowingSplit, rowingStrokeEff, rowingStrokeRate, rowingEF) in both en + tr
+
+## [v11.13.0] — 2026-04-25
+
+**E9 — Coach Onboarding Wizard: 3-step first-run modal for new coaches with zero athletes; localStorage-gated; bilingual; 4 tests.**
+
+- `src/components/coach/CoachOnboardingWizard.jsx` (NEW) — modal overlay z-index 9000, dark bg, orange accents; step 1 invite code + copy, step 2 plan-push pointer, step 3 timezone-aware reminder; skip sets `sporeus-coach-onboarded` flag; bilingual via LangCtx
+- `src/components/CoachDashboard.jsx` — imports wizard, adds `showWizard` state + useEffect (tier=coach AND roster empty AND sbAthleteIds empty AND flag unset), renders `<CoachOnboardingWizard>`
+- `src/contexts/LangCtx.jsx` — 10 new keys (`coachWizardTitle`, `coachWizardStep1Title/Body`, `coachWizardStep2Title/Body`, `coachWizardStep3Title/Body`, `coachWizardSkip`, `coachWizardDone`) in both en + tr
+- `src/components/__tests__/CoachOnboardingWizard.test.jsx` (NEW) — 4 tests: renders when empty/not-onboarded; hidden when flag set; hidden when open=false; skip sets flag + calls onClose
+- DEPENDS ON: LangCtx (coachWizard* keys), useAuth (profile.invite_code, profile.timezone), styles.js (S object)
+
+---
+
 ## [v11.12.0] — 2026-04-24
 
 ### FEAT: 8 enhancements — UI, observability, science, testing
