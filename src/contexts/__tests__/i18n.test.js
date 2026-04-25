@@ -23,13 +23,14 @@ describe('i18n parity — LABELS', () => {
     // Technical terms that legitimately stay identical across EN/TR:
     // acronyms (TSB, CTL, CSV), universal units (KM), short symbol strings
     const ALLOWED_IDENTICAL = new Set([
-      'tsbLabel',       // 'FORM (TSB)' — TSB is a technical acronym
-      'squadColTSB',    // 'TSB'
-      'pacingKm',       // 'KM' — universal SI unit
-      'spb_exportCSV',  // '↓ CSV' — CSV universal
-      't_plan',         // '⚡ PLAN' — PLAN used in Turkish
-      'nmNormal',       // 'Normal' — loanword identical in Turkish
-      'seasonTSS',      // 'TSS' — technical acronym, same in EN and TR
+      'tsbLabel',        // 'FORM (TSB)' — TSB is a technical acronym
+      'squadColTSB',     // 'TSB'
+      'pacingKm',        // 'KM' — universal SI unit
+      'spb_exportCSV',   // '↓ CSV' — CSV universal
+      't_plan',          // '⚡ PLAN' — PLAN used in Turkish
+      'nmNormal',        // 'Normal' — loanword identical in Turkish
+      'seasonTSS',       // 'TSS' — technical acronym, same in EN and TR
+      'cyclingWperKg',   // 'W/kg' — universal power-to-weight unit, identical in Turkish
     ])
     const gaps = []
     for (const [key, enVal] of Object.entries(EN)) {

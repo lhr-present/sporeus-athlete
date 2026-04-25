@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.44.0 — 2026-04-25
+E40: CyclingZonesCard — getCyclingZones+wattsPerKg (Coggan 2003) wired to Dashboard; 7-zone table with W ranges + W/kg; src/lib/athlete/cyclingZones.js + 15 tests.
+
+---
+
 ## v11.43.0 — 2026-04-25
 E39: PriorityActionCard — computeNextAction() (12-rule engine) wired to dashboard (not just TodayView); color-coded action+rationale; 6 tests.
 

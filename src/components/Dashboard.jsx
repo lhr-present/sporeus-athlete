@@ -81,6 +81,7 @@ const VDOTBenchmarkCard          = lazy(() => import('./dashboard/VDOTBenchmarkC
 const HRVAlertCard               = lazy(() => import('./dashboard/HRVAlertCard.jsx'))
 const TaperAdvisorCard           = lazy(() => import('./dashboard/TaperAdvisorCard.jsx'))
 const PriorityActionCard         = lazy(() => import('./dashboard/PriorityActionCard.jsx'))
+const CyclingZonesCard           = lazy(() => import('./dashboard/CyclingZonesCard.jsx'))
 
 export default function Dashboard({ log }) {
   const [lang]       = useLocalStorage('sporeus-lang', 'en')
@@ -702,6 +703,7 @@ export default function Dashboard({ log }) {
       <Suspense fallback={null}><HRVAlertCard recovery={recovery} /></Suspense>
       <Suspense fallback={null}><TaperAdvisorCard plan={plan} profile={profile} /></Suspense>
       <Suspense fallback={null}><PriorityActionCard log={log} recovery={recovery} profile={profile} /></Suspense>
+      <Suspense fallback={null}><CyclingZonesCard testResults={testResults || []} profile={profile} /></Suspense>
       <LoadHeatmapCard log={log} dl={dl}/>
       <SeasonBestsCard log={log} dl={dl}/>
 

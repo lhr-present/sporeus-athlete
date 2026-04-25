@@ -568,6 +568,11 @@ export const LABELS = {
     // E39 — Priority Action Card
     priorityTitle: "◈ TODAY'S PRIORITY",
     priorityNoAction: 'No priority action triggered.',
+    // E40 — Cycling Zones Card
+    cyclingZonesTitle:  'CYCLING POWER ZONES',
+    cyclingFTPLabel:    'FTP SOURCE',
+    cyclingWperKg:      'W/kg',
+    cyclingZonesNoData: 'Set FTP in Profile to see power zones',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -1135,6 +1140,11 @@ export const LABELS = {
     // E39 — Bugünün Önceliği
     priorityTitle: '◈ BUGÜNÜN ÖNCELİĞİ',
     priorityNoAction: 'Öncelikli aksiyon tetiklenmedi.',
+    // E40 — Bisiklet Güç Zonları Kartı
+    cyclingZonesTitle:  'BİSİKLET GÜÇ ZONESİ',
+    cyclingFTPLabel:    'FTP KAYNAĞI',
+    cyclingWperKg:      'W/kg',
+    cyclingZonesNoData: 'Güç zonlarını görmek için Profil\'e FTP girin',
   }
 }
 
