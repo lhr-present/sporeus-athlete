@@ -67,6 +67,7 @@ const InjuryForecastCard         = lazy(() => import('./dashboard/InjuryForecast
 const StrainHistoryCard          = lazy(() => import('./dashboard/StrainHistoryCard.jsx'))
 const ConsistencyTrendCard       = lazy(() => import('./dashboard/ConsistencyTrendCard.jsx'))
 const InsightFeedCard            = lazy(() => import('./dashboard/InsightFeedCard.jsx'))
+const RecoveryProtocolCard       = lazy(() => import('./dashboard/RecoveryProtocolCard.jsx'))
 
 export default function Dashboard({ log }) {
   const [lang]       = useLocalStorage('sporeus-lang', 'en')
@@ -674,6 +675,7 @@ export default function Dashboard({ log }) {
       <Suspense fallback={null}><StrainHistoryCard log={log} /></Suspense>
       <Suspense fallback={null}><ConsistencyTrendCard log={log} /></Suspense>
       <Suspense fallback={null}><InsightFeedCard log={log} /></Suspense>
+      <Suspense fallback={null}><RecoveryProtocolCard log={log} recovery={recovery} /></Suspense>
       <LoadHeatmapCard log={log} dl={dl}/>
       <SeasonBestsCard log={log} dl={dl}/>
 

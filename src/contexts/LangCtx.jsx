@@ -476,6 +476,11 @@ export const LABELS = {
     // E25 — InsightFeedCard
     insightFeedTitle: 'INSIGHT FEED',
     insightFeedEmpty: 'No active insights',
+    // E26 — RecoveryProtocolCard
+    recoveryProtocolTitle: 'RECOVERY PROTOCOLS',
+    recoveryWellness: 'Wellness',
+    recoveryEvidence: 'evidence',
+    recoveryNoData: 'Log a session or check-in to get recommendations',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -951,6 +956,11 @@ export const LABELS = {
     // E25 — InsightFeedCard
     insightFeedTitle: 'ANLAYIŞ KARTI',
     insightFeedEmpty: 'Aktif anlayış yok',
+    // E26 — RecoveryProtocolCard
+    recoveryProtocolTitle: 'TOPARLANMA REÇETELERİ',
+    recoveryWellness: 'Refah',
+    recoveryEvidence: 'kanıt',
+    recoveryNoData: 'Öneri için seans veya check-in ekleyin',
   }
 }
 
