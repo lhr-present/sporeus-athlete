@@ -443,6 +443,14 @@ export const LABELS = {
     efDeclining: 'DECLINING',
     efWeeksNeeded: 'Need 3+ weeks with HR data',
     efWeeklyGain: 'weekly gain',
+    // E21 — RESTQ Stress Trend Card
+    restqTitle: 'RESTQ STRESS TRACKER',
+    restqDanger: 'OVERTRAINING RISK',
+    restqWarning: 'ELEVATED STRESS',
+    restqOk: 'BALANCED',
+    restqGood: 'WELL RECOVERED',
+    restqNeeded: 'Complete 2+ RESTQ surveys to see trend',
+    restqSrRatio: 'S/R Ratio',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -885,6 +893,14 @@ export const LABELS = {
     efDeclining: 'DÜŞÜYOR',
     efWeeksNeeded: '3+ hafta HR verisi gerekli',
     efWeeklyGain: 'haftalık kazanım',
+    // E21 — RESTQ Stres Trend Kartı
+    restqTitle: 'RESTQ STRES TAKİBİ',
+    restqDanger: 'AŞIRI ANTRENMAN RİSKİ',
+    restqWarning: 'YÜKSEK STRES',
+    restqOk: 'DENGELİ',
+    restqGood: 'İYİ TOPARLANMIŞ',
+    restqNeeded: 'Trend için 2+ RESTQ anketi tamamlayın',
+    restqSrRatio: 'S/T Oranı',
   }
 }
 
