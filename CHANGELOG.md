@@ -4,6 +4,18 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.22.0] — 2026-04-25
+
+**E18 — Season Statistics Card**
+
+- `src/lib/athlete/seasonStats.js` — computeSeasonStats: year-filtered totals (sessions/distance/hours/TSS), sport breakdown with pct, bestWeek by TSS, longestSession, currentStreak, maxStreak, activeWeeks, avgSessionsPerWeek. topSportByVolume utility.
+- `src/components/dashboard/SeasonStatsCard.jsx` — year selector (current/prior), 4 headline stats, segmented sport bar with legend, best week callout, streak row; null if no sessions
+- Dashboard.jsx: SeasonStatsCard lazy-loaded before RowingMetricsCard
+- LangCtx: 9 EN+TR keys (seasonStats, seasonSessions/Distance/Hours/TSS/BestWeek/Streak/SportBreakdown/Year)
+- **Tests: 3009 (+22), 197 files**
+
+---
+
 ## [v11.21.0] — 2026-04-25
 
 **E17 — VDOT Trend & PB Predictor**

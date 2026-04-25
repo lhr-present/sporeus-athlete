@@ -416,6 +416,16 @@ export const LABELS = {
     vdotProjection: '12-week projection',
     vdotFitQuality: 'Fit quality',
     vdotUnlock: 'Log a race or timed effort to unlock VDOT trend',
+    // E18 — Season Statistics Card
+    seasonStats: 'Season Statistics',
+    seasonYear: 'Year',
+    seasonSessions: 'Sessions',
+    seasonDistance: 'Distance',
+    seasonHours: 'Hours',
+    seasonTSS: 'TSS',
+    seasonBestWeek: 'Best week',
+    seasonStreak: 'Streak',
+    seasonSportBreakdown: 'Sport Breakdown',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -831,6 +841,16 @@ export const LABELS = {
     vdotProjection: '12 haftalık projeksiyon',
     vdotFitQuality: 'Uyum kalitesi',
     vdotUnlock: 'VDOT trendini açmak için bir yarış veya zamanlı efor kaydedin',
+    // E18 — Sezon İstatistikleri Kartı
+    seasonStats: 'Sezon İstatistikleri',
+    seasonYear: 'Yıl',
+    seasonSessions: 'Antrenman',
+    seasonDistance: 'Mesafe',
+    seasonHours: 'Saat',
+    seasonTSS: 'TSS',
+    seasonBestWeek: 'En iyi hafta',
+    seasonStreak: 'Seri',
+    seasonSportBreakdown: 'Spor Dağılımı',
   }
 }
 
