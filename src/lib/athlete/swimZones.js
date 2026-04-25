@@ -1,5 +1,5 @@
 // ─── src/lib/athlete/swimZones.js — CSS T-pace + Wakayoshi swim zones wrapper ──
-import { tPaceFromTT, swimmingZones } from '../sport/swimming.js'
+import { tPaceFromTT, swimmingZones, swimTSS } from '../sport/swimming.js'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -91,4 +91,34 @@ export function fmtPaceSecKm(sec) {
   const m = Math.floor(total / 60)
   const s = total % 60
   return `${m}:${String(s).padStart(2, '0')}`
+}
+
+/**
+ * Returns sTSS for each swim session in the last 14 days.
+ * Requires cssSecPer100m > 0 and sessions with duration + distanceM.
+ * @param {Array}  log           - full training log
+ * @param {number} cssSecPer100m - CSS pace in sec/100 m
+ * @param {string} today         - ISO date string (YYYY-MM-DD), defaults to today
+ * @returns {Array<{date:string, duration:number, sTSS:number, currentPace:number}>}
+ */
+export function recentSwimTSS(log, cssSecPer100m, today = new Date().toISOString().slice(0, 10)) {
+  if (!cssSecPer100m || cssSecPer100m <= 0) return []
+  if (!Array.isArray(log) || log.length === 0) return []
+  const cutoff = new Date(today)
+  cutoff.setDate(cutoff.getDate() - 14)
+  const cutoffStr = cutoff.toISOString().slice(0, 10)
+  return log
+    .filter(e => {
+      const isSwim = /swim/i.test(e.type || '') || /swim/i.test(e.sport || '')
+      return isSwim && e.date >= cutoffStr && e.duration > 0 && (e.distanceM || 0) > 0
+    })
+    .map(e => {
+      const currentPace = (e.duration * 60) / (e.distanceM / 100)  // sec/100m
+      if (currentPace < 40 || currentPace > 300) return null
+      const sTSS = swimTSS(e.duration, currentPace, cssSecPer100m)
+      return sTSS != null ? { date: e.date, duration: e.duration, sTSS, currentPace } : null
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 5)  // last 5 sessions max
 }

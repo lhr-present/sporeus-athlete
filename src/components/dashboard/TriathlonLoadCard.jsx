@@ -7,7 +7,7 @@ import { useContext, useMemo } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
-import { computeTriLoad } from '../../lib/athlete/triLoad.js'
+import { computeTriLoad, computeTriZones } from '../../lib/athlete/triLoad.js'
 
 // Discipline colours — swim blue, bike orange, run green
 const DISC_COLORS = {
@@ -28,7 +28,8 @@ export default function TriathlonLoadCard({ log = [], profile = {} }) {
   const [lang] = useLocalStorage('sporeus-lang', 'en')
   const { t }  = useContext(LangCtx)
 
-  const data = useMemo(() => computeTriLoad(log, profile), [log, profile])
+  const data     = useMemo(() => computeTriLoad(log, profile), [log, profile])
+  const triZones = useMemo(() => computeTriZones(profile), [profile])
 
   if (!data) return null
 
@@ -256,6 +257,41 @@ export default function TriathlonLoadCard({ log = [], profile = {} }) {
           {lang === 'tr'
             ? `Temsili haftalık TSS (calculateTriathlonTSS): ~${Math.round(repWeekTSS)}`
             : `Representative week TSS (calculateTriathlonTSS): ~${Math.round(repWeekTSS)}`}
+        </div>
+      )}
+
+      {/* Discipline zone system */}
+      {triZones && (
+        <div style={{ marginTop: '14px' }}>
+          <div style={{ fontSize: '9px', color: '#555', letterSpacing: '0.1em', marginBottom: '6px' }}>
+            {lang === 'tr' ? '◈ DİSİPLİN ZON SİSTEMİ' : '◈ DISCIPLINE ZONE SYSTEM'}
+          </div>
+          {triZones.cycling && (
+            <div style={{ marginBottom: '8px' }}>
+              <div style={{ fontSize: '8px', color: '#ff6600', marginBottom: '3px' }}>BIKE ZONES (Coggan)</div>
+              {triZones.cycling.slice(0, 4).map(z => (
+                <div key={z.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#555', padding: '2px 0' }}>
+                  <span>Z{z.id} {z.name}</span>
+                  <span style={{ color: '#888' }}>{z.minWatts}–{z.maxWatts ?? '∞'}W</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {triZones.running && (
+            <div>
+              <div style={{ fontSize: '8px', color: '#5bc25b', marginBottom: '3px' }}>RUN ZONES (Daniels)</div>
+              {triZones.running.slice(0, 3).map(z => {
+                const m = Math.floor(z.paceSecKm / 60)
+                const s = String(Math.round(z.paceSecKm % 60)).padStart(2, '0')
+                return (
+                  <div key={z.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#555', padding: '2px 0' }}>
+                    <span>Z{z.id} {z.name}</span>
+                    <span style={{ color: '#888' }}>{m}:{s}/km</span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 

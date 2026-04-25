@@ -3,7 +3,7 @@ import { useContext, useMemo } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
-import { computeSwimZones, fmtPaceSecKm } from '../../lib/athlete/swimZones.js'
+import { computeSwimZones, fmtPaceSecKm, recentSwimTSS } from '../../lib/athlete/swimZones.js'
 
 // Zone colors: progressive from easy (grey) to anaerobic (red)
 const ZONE_COLORS = [
@@ -20,6 +20,7 @@ export default function SwimmingZonesCard({ log = [] }) {
   const { t }  = useContext(LangCtx)
 
   const data = useMemo(() => computeSwimZones(log), [log])
+  const sessionTSS = useMemo(() => recentSwimTSS(log, data?.cssSecPer100m), [log, data])
 
   if (!data) return null
 
@@ -123,6 +124,22 @@ export default function SwimmingZonesCard({ log = [] }) {
         </table>
       </div>
 
+      {/* Recent sTSS sessions */}
+      {sessionTSS.length > 0 && (
+        <div style={{ marginTop: '14px' }}>
+          <div style={{ fontSize: '9px', color: '#555', letterSpacing: '0.1em', marginBottom: '6px' }}>
+            {lang === 'tr' ? '◈ SON SEANS sTSS (14 GÜN)' : '◈ RECENT SESSION sTSS (14D)'}
+          </div>
+          {sessionTSS.map(s => (
+            <div key={s.date} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #1a1a1a' }}>
+              <span style={{ fontSize: '9px', color: '#555' }}>{s.date}</span>
+              <span style={{ fontSize: '9px', color: '#888' }}>{Math.round(s.duration)}min · {Math.round(s.currentPace)}s/100m</span>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#0064ff', fontFamily: "'IBM Plex Mono',monospace" }}>{s.sTSS} sTSS</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Citation */}
       <div style={{
         fontFamily: "'IBM Plex Mono', monospace",
@@ -131,7 +148,7 @@ export default function SwimmingZonesCard({ log = [] }) {
         marginTop: '10px',
         letterSpacing: '0.03em',
       }}>
-        ℹ Wakayoshi et al. (1992) — Critical Swim Speed
+        ℹ Wakayoshi et al. (1992) · Mujika et al. (1995) — sTSS
       </div>
     </div>
   )

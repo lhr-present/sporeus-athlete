@@ -1,9 +1,10 @@
-// ─── triLoad.test.js — 15+ tests for triLoad.js (E44) ────────────────────────
+// ─── triLoad.test.js — 15+ tests for triLoad.js (E44) + computeTriZones (E47) ─
 import { describe, it, expect } from 'vitest'
 import {
   extractDisciplineSessions,
   detectBrickSessions,
   computeTriLoad,
+  computeTriZones,
 } from '../../athlete/triLoad.js'
 import { TRIATHLON_DISTANCES } from '../../sport/triathlon.js'
 
@@ -199,6 +200,53 @@ describe('computeTriLoad', () => {
     const log = [makeSwim(daysAgo(2)), makeBike(daysAgo(3)), makeRun(daysAgo(4))]
     const r = computeTriLoad(log, { primarySport: 'triathlon' })
     expect(r.DISTANCES).toBe(TRIATHLON_DISTANCES)
+  })
+})
+
+// ── computeTriZones ───────────────────────────────────────────────────────────
+
+describe('computeTriZones', () => {
+  it('returns null when profile has no ftp or vdot', () => {
+    expect(computeTriZones({})).toBeNull()
+    expect(computeTriZones(null)).toBeNull()
+    expect(computeTriZones({ ftp: 0, vdot: 0 })).toBeNull()
+  })
+
+  it('returns cycling zones when profile.ftp is set', () => {
+    const result = computeTriZones({ ftp: 250 })
+    expect(result).not.toBeNull()
+    expect(Array.isArray(result.cycling)).toBe(true)
+    expect(result.cycling.length).toBeGreaterThan(0)
+  })
+
+  it('returns running zones when profile.vdot is set', () => {
+    const result = computeTriZones({ vdot: 50 })
+    expect(result).not.toBeNull()
+    expect(Array.isArray(result.running)).toBe(true)
+    expect(result.running.length).toBeGreaterThan(0)
+  })
+
+  it('returns both cycling and running zones when both ftp and vdot are set', () => {
+    const result = computeTriZones({ ftp: 250, vdot: 50 })
+    expect(result).not.toBeNull()
+    expect(Array.isArray(result.cycling)).toBe(true)
+    expect(Array.isArray(result.running)).toBe(true)
+  })
+
+  it('cycling zones have minWatts and maxWatts fields', () => {
+    const result = computeTriZones({ ftp: 300 })
+    const z1 = result.cycling[0]
+    expect(z1).toHaveProperty('minWatts')
+    expect(z1).toHaveProperty('maxWatts')
+    expect(typeof z1.minWatts).toBe('number')
+  })
+
+  it('running zones have paceSecKm field', () => {
+    const result = computeTriZones({ vdot: 45 })
+    const z1 = result.running[0]
+    expect(z1).toHaveProperty('paceSecKm')
+    expect(typeof z1.paceSecKm).toBe('number')
+    expect(z1.paceSecKm).toBeGreaterThan(0)
   })
 })
 

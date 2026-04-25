@@ -8,7 +8,7 @@
 // present; run hrThresh defaults to maxHR × 0.85 = 85% of an assumed 180 bpm.
 // Results should be treated as indicative, not prescriptive.
 
-import { calculateTriathlonTSS, brickFatigueAdjustment, TRIATHLON_DISTANCES } from '../sport/triathlon.js'
+import { calculateTriathlonTSS, brickFatigueAdjustment, TRIATHLON_DISTANCES, getTriathlonZones } from '../sport/triathlon.js'
 
 // ── Sport classifier ──────────────────────────────────────────────────────────
 
@@ -195,6 +195,25 @@ function nearestRaceDistance(totalTSS28) {
     if (diff < bestDiff) { bestDiff = diff; best = key }
   }
   return best
+}
+
+// ── Tri zone system ───────────────────────────────────────────────────────────
+
+/**
+ * Compute all 3 discipline zones from profile data using getTriathlonZones.
+ * CSS is not stored in profile; swimming zones are only shown when cssSecPer100m
+ * is explicitly available (currently always null from profile alone).
+ *
+ * @param {object} profile - athlete profile (profile.ftp, profile.vdot checked)
+ * @returns {{cycling?: Array, running?: Array, swimming?: Array}|null}
+ */
+export function computeTriZones(profile) {
+  const ftpWatts      = parseFloat(profile?.ftp  || 0) || null
+  const vdot          = parseFloat(profile?.vdot || 0) || null
+  const cssSecPer100m = null  // not stored in profile; pass null
+  const zones = getTriathlonZones(ftpWatts, vdot, cssSecPer100m)
+  if (!zones || Object.keys(zones).length === 0) return null
+  return zones  // {cycling?: [...], running?: [...], swimming?: [...]}
 }
 
 // ── Main compute function ─────────────────────────────────────────────────────

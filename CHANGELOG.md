@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.51.0 — 2026-04-25
+E47: SwimmingZonesCard + swimTSS (Wakayoshi/Mujika 1995 sTSS per session 14d); TriathlonLoadCard + getTriathlonZones (Coggan/Daniels multi-zone system); 12 new tests.
+
+---
+
 ## v11.50.0 — 2026-04-25
 E46: CyclingZonesCard enhanced with predictCyclingTime (Martin et al. 1998) — route predictions for 40km TT / Gran Fondo / Alpe; computeCyclingPredictions in cyclingZones.js + 6 tests.
 

@@ -1,6 +1,6 @@
-// ─── swimZones.test.js — 15+ tests for bestSwimPace + computeSwimZones + fmtPaceSecKm ──
+// ─── swimZones.test.js — 15+ tests for bestSwimPace + computeSwimZones + fmtPaceSecKm + recentSwimTSS ──
 import { describe, it, expect } from 'vitest'
-import { bestSwimPace, computeSwimZones, fmtPaceSecKm } from '../../athlete/swimZones.js'
+import { bestSwimPace, computeSwimZones, fmtPaceSecKm, recentSwimTSS } from '../../athlete/swimZones.js'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const makeSwim = (id, date, distanceM, durationMin) => ({
@@ -162,6 +162,79 @@ describe('computeSwimZones', () => {
     ]
     const result = computeSwimZones(log)
     expect(result?.sessionsScanned).toBe(2)
+  })
+})
+
+// ── recentSwimTSS ─────────────────────────────────────────────────────────────
+
+describe('recentSwimTSS', () => {
+  // today anchor for deterministic tests
+  const today = '2026-04-25'
+
+  // Swim session 5 days before today — within 14-day window
+  const recentSwim = {
+    id: 's1', date: '2026-04-20', type: 'Swim',
+    duration: 30, distanceM: 1500,  // pace = (30*60)/(1500/100) = 1800/15 = 120 s/100m
+  }
+  // Swim session 20 days before today — outside 14-day window
+  const oldSwim = {
+    id: 's2', date: '2026-04-05', type: 'Swim',
+    duration: 30, distanceM: 1500,
+  }
+  // CSS = 90 s/100m (faster than session pace 120 s/100m → IF < 1)
+
+  it('returns empty array when cssSecPer100m is 0', () => {
+    expect(recentSwimTSS([recentSwim], 0, today)).toEqual([])
+  })
+
+  it('returns empty array when cssSecPer100m is null', () => {
+    expect(recentSwimTSS([recentSwim], null, today)).toEqual([])
+  })
+
+  it('returns empty array when no swim sessions in last 14 days', () => {
+    const result = recentSwimTSS([oldSwim], 90, today)
+    expect(result).toEqual([])
+  })
+
+  it('returns sTSS for valid swim session in last 14 days', () => {
+    const result = recentSwimTSS([recentSwim], 90, today)
+    expect(result).toHaveLength(1)
+    expect(result[0].date).toBe('2026-04-20')
+    expect(typeof result[0].sTSS).toBe('number')
+    expect(result[0].sTSS).toBeGreaterThan(0)
+  })
+
+  it('filters out sessions with pace <40 or >300 s/100m', () => {
+    // pace = (1*60)/(500/100) = 60/5 = 12 s/100m → below 40 → rejected
+    const tooFast = { id: 'sf', date: '2026-04-20', type: 'Swim', duration: 1, distanceM: 500 }
+    // pace = (100*60)/(100/100) = 6000/1 = 6000 s/100m → above 300 → rejected
+    const tooSlow = { id: 'ss', date: '2026-04-20', type: 'Swim', duration: 100, distanceM: 100 }
+    expect(recentSwimTSS([tooFast], 90, today)).toEqual([])
+    expect(recentSwimTSS([tooSlow], 90, today)).toEqual([])
+  })
+
+  it('returns at most 5 sessions', () => {
+    const sessions = Array.from({ length: 8 }, (_, i) => ({
+      id: `s${i}`,
+      date: `2026-04-${String(14 + i).padStart(2, '0')}`,
+      type: 'Swim',
+      duration: 30,
+      distanceM: 1500,
+    }))
+    const result = recentSwimTSS(sessions, 90, today)
+    expect(result.length).toBeLessThanOrEqual(5)
+  })
+
+  it('results sorted by date descending', () => {
+    const sessions = [
+      { id: 's1', date: '2026-04-15', type: 'Swim', duration: 30, distanceM: 1500 },
+      { id: 's2', date: '2026-04-20', type: 'Swim', duration: 30, distanceM: 1500 },
+      { id: 's3', date: '2026-04-18', type: 'Swim', duration: 30, distanceM: 1500 },
+    ]
+    const result = recentSwimTSS(sessions, 90, today)
+    expect(result[0].date).toBe('2026-04-20')
+    expect(result[1].date).toBe('2026-04-18')
+    expect(result[2].date).toBe('2026-04-15')
   })
 })
 
