@@ -543,6 +543,14 @@ export const LABELS = {
     injPatternVulnerable: 'Vulnerable zones',
     injPatternProtective: 'Protective',
     injPatternNeedMore: 'Log 2+ injuries to see patterns',
+    // E36 — VDOT Benchmark Card
+    vdotBenchTitle: 'VDOT BENCHMARK',
+    vdotBenchTop10: 'TOP 10%',
+    vdotBenchTop25: 'TOP 25%',
+    vdotBenchMedian: 'ABOVE MEDIAN',
+    vdotBenchBelow: 'BELOW MEDIAN',
+    vdotBenchNeedMore: 'Log runs with HR to estimate VDOT',
+    vdotBenchNextTier: 'to next tier',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -1085,6 +1093,14 @@ export const LABELS = {
     injPatternVulnerable: 'Risk bölgeleri',
     injPatternProtective: 'Koruyucu',
     injPatternNeedMore: 'Desen için 2+ yaralanma kaydı girin',
+    // E36 — VDOT Benchmark Kartı
+    vdotBenchTitle: 'VDOT NORMUNA KARŞI',
+    vdotBenchTop10: 'İLK %10',
+    vdotBenchTop25: 'İLK %25',
+    vdotBenchMedian: 'MEDYAN ÜSTÜ',
+    vdotBenchBelow: 'MEDYAN ALTI',
+    vdotBenchNeedMore: 'VDOT tahmini için KAH ile koşu kaydedin',
+    vdotBenchNextTier: 'sonraki seviyeye',
   }
 }
 

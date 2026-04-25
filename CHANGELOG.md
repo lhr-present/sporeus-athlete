@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.40.0 — 2026-04-25
+E36: VDOTBenchmarkCard — RUNNING_VDOT_NORMS age/gender percentile lookup (never previously wired); tier badge (top10/top25/median/below), percentile bar with athlete marker, next-tier gap; src/lib/athlete/vdotBenchmark.js + 12 tests.
+
+---
+
 ## v11.39.0 — 2026-04-25
 E35: InjuryPatternCard — mineInjuryPatterns() wired (only patterns.js fn not yet in Dashboard); vulnerable zone chips, trigger tags, protective factors, confidence badge (Gabbett 2016); src/lib/athlete/injuryPatterns.js + 10 tests.
 
