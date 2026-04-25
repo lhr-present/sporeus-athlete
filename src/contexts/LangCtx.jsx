@@ -577,6 +577,11 @@ export const LABELS = {
     swimZonesTitle:  'SWIM ZONE SYSTEM',
     swimTPace:       'T-PACE / CSS',
     swimNoData:      'No swim sessions found',
+    // E42 — Running CV Card
+    cvTitle:         'CRITICAL VELOCITY',
+    cvPaceLabel:     'CV PACE',
+    cvDAnaLabel:     "D' ANAEROBIC RESERVE",
+    cvNoData:        'Need 2+ run distances for CV analysis',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -1153,6 +1158,11 @@ export const LABELS = {
     swimZonesTitle:  'YÜZME ZON SİSTEMİ',
     swimTPace:       'T-TEMPO / CSS',
     swimNoData:      'Yüzme seansı bulunamadı',
+    // E42 — Kritik Hız Kartı
+    cvTitle:         'KRİTİK HIZ',
+    cvPaceLabel:     'KV TEMPO',
+    cvDAnaLabel:     "D' ANAEROBİK REZERVİ",
+    cvNoData:        'CV analizi için 2+ farklı koşu mesafesi gerekli',
   }
 }
 

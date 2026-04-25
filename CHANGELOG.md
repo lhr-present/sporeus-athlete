@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.46.0 — 2026-04-25
+E42: RunningCVCard — criticalVelocity (Monod & Scherrer 1965, Morton 1986) wired to Dashboard; CV pace + D' from multi-distance log analysis; src/lib/athlete/runningCV.js + 15 tests.
+
+---
+
 ## v11.45.0 — 2026-04-25
 E41: SwimmingZonesCard — tPaceFromTT+swimmingZones (Wakayoshi 1992 CSS) wired to Dashboard; 6-zone pace table; src/lib/athlete/swimZones.js + 15 tests.
 
