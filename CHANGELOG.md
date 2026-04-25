@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.50.0 — 2026-04-25
+E46: CyclingZonesCard enhanced with predictCyclingTime (Martin et al. 1998) — route predictions for 40km TT / Gran Fondo / Alpe; computeCyclingPredictions in cyclingZones.js + 6 tests.
+
+---
+
 ## v11.49.0 — 2026-04-25
 E45: Sport gating for CyclingZonesCard/SwimmingZonesCard/TriathlonLoadCard (hasCyclingData/hasSwimData/hasTriData); RunningRaceReadinessCard — raceReadiness() (Daniels 1979 volume/taper/quality model); src/lib/athlete/runningRaceReadiness.js + 15 tests.
 

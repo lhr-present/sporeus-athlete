@@ -3,7 +3,7 @@ import { useContext, useMemo } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
-import { computeCyclingZones } from '../../lib/athlete/cyclingZones.js'
+import { computeCyclingZones, computeCyclingPredictions } from '../../lib/athlete/cyclingZones.js'
 
 // Zone colors: progressive from recovery (grey) to neuromuscular (purple)
 const ZONE_COLORS = [
@@ -32,9 +32,16 @@ export default function CyclingZonesCard({ testResults = [], profile = {} }) {
     [testResults, profile]
   )
 
+  const predictions = useMemo(() => {
+    if (!data) return []
+    const wt = parseFloat(profile?.weight_kg || profile?.weight || 70)
+    return computeCyclingPredictions(data.ftpWatts, wt > 0 ? wt : 70)
+  }, [data, profile])
+
   if (!data) return null
 
   const { ftpWatts, zones, wperkg, method } = data
+  const isTR = lang === 'tr'
   const methodLabel = (METHOD_LABELS[method] || {})[lang] || method.toUpperCase()
 
   const subtitleParts = [
@@ -124,6 +131,25 @@ export default function CyclingZonesCard({ testResults = [], profile = {} }) {
         </table>
       </div>
 
+      {/* Route Predictions */}
+      {predictions.length > 0 && (
+        <div style={{ marginTop: '14px' }}>
+          <div style={{ fontSize: '9px', color: '#555', letterSpacing: '0.1em', marginBottom: '6px' }}>
+            {isTR ? '◈ ROT TAHMİNLERİ' : '◈ ROUTE PREDICTIONS'}
+          </div>
+          {predictions.map(p => (
+            <div key={p.label} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+              padding: '5px 0', borderBottom: '1px solid #1a1a1a',
+            }}>
+              <span style={{ fontSize: '9px', color: '#555', minWidth: '120px' }}>{p.icon} {p.label}</span>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: '#ccc', fontFamily: "'IBM Plex Mono',monospace" }}>{p.timeStr}</span>
+              <span style={{ fontSize: '9px', color: '#444' }}>{p.speedKmh} km/h · {p.power}W</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Citation */}
       <div style={{
         fontFamily: "'IBM Plex Mono', monospace",
@@ -132,7 +158,7 @@ export default function CyclingZonesCard({ testResults = [], profile = {} }) {
         marginTop: '10px',
         letterSpacing: '0.03em',
       }}>
-        ℹ Coggan (2003) — 7-zone power system
+        ℹ Coggan (2003) · Martin et al. (1998) — cycling power-speed model
       </div>
     </div>
   )

@@ -1,5 +1,5 @@
 // ─── src/lib/athlete/cyclingZones.js — FTP derivation + Coggan zone computation ─
-import { getCyclingZones, wattsPerKg } from '../sport/cycling.js'
+import { getCyclingZones, wattsPerKg, predictCyclingTime } from '../sport/cycling.js'
 
 /**
  * Derives FTP from profile.ftp or test results.
@@ -42,6 +42,53 @@ export function getFTPFromData(testResults, profile) {
   }
 
   return null
+}
+
+// ── Route predictions ─────────────────────────────────────────────────────────
+const STANDARD_ROUTES = [
+  { label: '40km TT',          distanceKm: 40,   elevationM: 200,  icon: '→' },
+  { label: 'Gran Fondo 120km', distanceKm: 120,  elevationM: 1500, icon: '↑' },
+  { label: 'Alpe (14km)',      distanceKm: 13.8, elevationM: 1148, icon: '▲' },
+]
+
+/**
+ * Computes route time predictions for standard cycling routes using predictCyclingTime.
+ * @param {number} ftpWatts
+ * @param {number} [bodyWeightKg=70]
+ * @returns {Array<{label:string, icon:string, timeStr:string, speedKmh:number, power:number}>}
+ */
+export function computeCyclingPredictions(ftpWatts, bodyWeightKg = 70) {
+  if (!ftpWatts || ftpWatts <= 0) return []
+  return STANDARD_ROUTES.map(route => {
+    const result = predictCyclingTime(ftpWatts, route.distanceKm, route.elevationM, bodyWeightKg)
+    // predictCyclingTime returns seconds (number) or null
+    if (result == null) return null
+    const timeSeconds = typeof result === 'object' ? result.timeSeconds : result
+    if (!timeSeconds || timeSeconds <= 0) return null
+
+    const h = Math.floor(timeSeconds / 3600)
+    const m = Math.floor((timeSeconds % 3600) / 60)
+    const s = Math.round(timeSeconds % 60)
+    const timeStr = h > 0
+      ? `${h}h ${String(m).padStart(2, '0')}m`
+      : `${m}:${String(s).padStart(2, '0')}`
+
+    // Derive speedKmh and power from the time and distance
+    const speedKmh = typeof result === 'object' && result.speedKmh != null
+      ? Math.round(result.speedKmh * 10) / 10
+      : Math.round((route.distanceKm / (timeSeconds / 3600)) * 10) / 10
+    const power = typeof result === 'object' && result.power != null
+      ? Math.round(result.power)
+      : Math.round(ftpWatts * 0.9) // approx TT power ≈ 90% FTP
+
+    return {
+      label: route.label,
+      icon:  route.icon,
+      timeStr,
+      speedKmh,
+      power,
+    }
+  }).filter(Boolean)
 }
 
 /**
