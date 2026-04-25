@@ -588,6 +588,11 @@ export const LABELS = {
     batteryVsPrev:   'vs previous',
     batteryBaseline: 'baseline — no comparison',
     batteryNoData:   'No battery sessions recorded',
+    // E44 — Triathlon Load Card
+    triLoadTitle:    'TRIATHLON LOAD BREAKDOWN',
+    triBrick:        'BRICK SESSIONS',
+    triTSSBreak:     '28-DAY TSS BY DISCIPLINE',
+    triNoData:       'Set sport to Triathlon or log all 3 disciplines',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -1175,6 +1180,11 @@ export const LABELS = {
     batteryVsPrev:   'öncekiyle karşılaştır',
     batteryBaseline: 'başlangıç — karşılaştırma yok',
     batteryNoData:   'Test bataryası kaydı bulunamadı',
+    // E44 — Triatlon Yük Kartı
+    triLoadTitle:    'TRİATLON YÜK ANALİZİ',
+    triBrick:        'BRICK SEANSLAR',
+    triTSSBreak:     '28 GÜNLÜK DİSİPLİN BAZLI TSS',
+    triNoData:       'Sporu Triatlon yapın veya 3 disiplini de kaydedin',
   }
 }
 

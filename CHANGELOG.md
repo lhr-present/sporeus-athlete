@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.48.0 — 2026-04-25
+E44: TriathlonLoadCard — calculateTriathlonTSS+brickFatigueAdjustment+TRIATHLON_DISTANCES (Banister 1980, Wakayoshi 1992) wired to Dashboard; 28-day tri load breakdown + brick fatigue; src/lib/athlete/triLoad.js + 15 tests.
+
+---
+
 ## v11.47.0 — 2026-04-25
 E43: FitnessBatteryProgressCard — getBatteryForDate+compareBatteryResults (Cooper 1968, Kasch 1970) wired to Dashboard; per-test delta vs previous session; src/lib/athlete/batteryProgress.js + 15 tests.
 
