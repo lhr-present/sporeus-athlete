@@ -601,6 +601,10 @@ export const LABELS = {
     planScoreTitle:  'TRAINING PLAN SCORE',
     planScorePeak:   'PEAK FORM WINDOW',
     planScoreNoData: 'No training plan set',
+    // E49 — Athlete Status Summary Card
+    athleteStatusTitle: 'ATHLETE STATUS SUMMARY',
+    athleteStatusACWR:  'ACWR STATUS',
+    athleteStatusTrend: 'OVERALL TREND',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -1201,6 +1205,10 @@ export const LABELS = {
     planScoreTitle:  'ANTRENMAN PLAN PUANI',
     planScorePeak:   'EN İYİ FORM PENCERESİ',
     planScoreNoData: 'Antrenman planı bulunamadı',
+    // E49 — Athlete Status Summary Card
+    athleteStatusTitle: 'SPORCU DURUM ÖZETİ',
+    athleteStatusACWR:  'ACWR DURUMU',
+    athleteStatusTrend: 'GENEL EĞİLİM',
   }
 }
 

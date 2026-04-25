@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.53.0 — 2026-04-25
+E49: AthleteStatusSummaryCard — ctlTrend+acwrStatusLabel+trendLabel+generateAthleteDigestLine (coachDigest.js) wired to athlete self-view; weekly CTL/ACWR digest; src/lib/athlete/athleteStatusSummary.js + 15 tests.
+
+---
+
 ## v11.52.0 — 2026-04-25
 E48: PlanScoreCard — scoreTrainingPlan+peakFormWindow (Banister 1980) wired to Dashboard; plan quality 0-100 + peak form day; src/lib/athlete/planScore.js + 15 tests.
 
