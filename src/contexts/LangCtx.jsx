@@ -502,6 +502,11 @@ export const LABELS = {
     vo2maxProgDeclining: 'DECLINING',
     vo2maxProgNeeded: 'Need 5+ runs with HR data',
     vo2maxProgLowConf: 'Low confidence',
+    // E30 — Rule-Based Coaching Alerts
+    ruleAlertsTitle: 'COACHING ALERTS',
+    ruleAlertsHigh: 'HIGH',
+    ruleAlertsMod: 'MODERATE',
+    ruleAlertsOpt: 'OPTIMAL',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -1003,6 +1008,11 @@ export const LABELS = {
     vo2maxProgDeclining: 'DÜŞÜYOR',
     vo2maxProgNeeded: '5+ koşu KAH verisi gerekli',
     vo2maxProgLowConf: 'Düşük güven',
+    // E30 — Kural Tabanlı Antrenman Uyarıları
+    ruleAlertsTitle: 'ANTRENMAN UYARILARI',
+    ruleAlertsHigh: 'YÜKSEK',
+    ruleAlertsMod: 'ORTA',
+    ruleAlertsOpt: 'OPTİMAL',
   }
 }
 

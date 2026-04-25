@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.34.0 — 2026-04-25
+E30: RuleAlertsCard — wires getAthleteInsights() (5 rule checks: readiness/load/monotony/fatigue/rest) to dashboard; computeRuleAlerts helper derives ACWR+wellness+loads; src/lib/athlete/ruleAlerts.js + 12 tests.
+
+---
+
 ## v11.33.0 — 2026-04-25
 E29: VO2maxProgressionCard — 8-week VO2max trend from running sessions with HR data (estimateVO2maxTrend, Daniels 2013, Lucia 2002); OLS trend slope, R² confidence, 8-bar SVG; src/lib/athlete/vo2maxProgression.js + 12 tests.
 
