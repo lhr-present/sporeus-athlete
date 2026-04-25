@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.42.0 — 2026-04-25
+E38: TaperAdvisorCard — volumeCutPct+applyVolumeReduction wired (Mujika 2003, Bosquet 2007); taper_active/soon/pre status; src/lib/athlete/taperAdvisor.js + 10 tests.
+
+---
+
 ## v11.41.0 — 2026-04-25
 E37: HRVAlertCard — detectHRVAlert >2σ drop (hrvAlert.js, Plews 2012); shows only when actionable; src/lib/athlete/hrvAlertSummary.js + 8 tests.
 
