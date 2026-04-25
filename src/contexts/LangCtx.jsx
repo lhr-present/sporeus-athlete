@@ -507,6 +507,15 @@ export const LABELS = {
     ruleAlertsHigh: 'HIGH',
     ruleAlertsMod: 'MODERATE',
     ruleAlertsOpt: 'OPTIMAL',
+    // E31 — Cycle Planner
+    cycleTitle: 'CYCLE PLANNER',
+    cycleDayOf: 'Day',
+    cycleNext: 'Next',
+    cycleIn: 'in',
+    cycleDays: 'days',
+    cycleHigh: 'HIGH INTENSITY',
+    cycleMod: 'MODERATE',
+    cycleLow: 'EASY DAY',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -1013,6 +1022,15 @@ export const LABELS = {
     ruleAlertsHigh: 'YÜKSEK',
     ruleAlertsMod: 'ORTA',
     ruleAlertsOpt: 'OPTİMAL',
+    // E31 — Döngü Planlayıcı
+    cycleTitle: 'DÖNGÜ PLANLAYICI',
+    cycleDayOf: 'Gün',
+    cycleNext: 'Sonraki',
+    cycleIn: 'içinde',
+    cycleDays: 'gün',
+    cycleHigh: 'YÜKSEK YOĞUNLUK',
+    cycleMod: 'ORTA',
+    cycleLow: 'KOLAY GÜN',
   }
 }
 

@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.35.0 — 2026-04-25
+E31: CyclePlannerCard — menstrual cycle training guide (currentCyclePhase/PHASE_INFO, cycleUtils.js); phase badge, intensity rec, 4-phase timeline, days-until-next; female-gated via profile.gender; src/lib/athlete/cyclePlanner.js + 10 tests.
+
+---
+
 ## v11.34.0 — 2026-04-25
 E30: RuleAlertsCard — wires getAthleteInsights() (5 rule checks: readiness/load/monotony/fatigue/rest) to dashboard; computeRuleAlerts helper derives ACWR+wellness+loads; src/lib/athlete/ruleAlerts.js + 12 tests.
 
