@@ -57,7 +57,8 @@ import PhaseAnalyticsCard from './dashboard/PhaseAnalyticsCard.jsx'
 import FuelGuidanceCard   from './dashboard/FuelGuidanceCard.jsx'
 const RowingMetricsCard  = lazy(() => import('./dashboard/RowingMetricsCard.jsx'))
 const ChallengeWidget    = lazy(() => import('./dashboard/ChallengeWidget.jsx'))
-const NMFreshnessCard    = lazy(() => import('./dashboard/NMFreshnessCard.jsx'))
+const NMFreshnessCard            = lazy(() => import('./dashboard/NMFreshnessCard.jsx'))
+const PolarizationComplianceCard = lazy(() => import('./dashboard/PolarizationComplianceCard.jsx'))
 
 export default function Dashboard({ log }) {
   const [lang]       = useLocalStorage('sporeus-lang', 'en')
@@ -656,6 +657,7 @@ export default function Dashboard({ log }) {
       <Suspense fallback={null}><RowingMetricsCard log={log} /></Suspense>
       <Suspense fallback={null}><ChallengeWidget log={log} /></Suspense>
       <Suspense fallback={null}><NMFreshnessCard log={log} /></Suspense>
+      <Suspense fallback={null}><PolarizationComplianceCard log={log} /></Suspense>
       <LoadHeatmapCard log={log} dl={dl}/>
       <SeasonBestsCard log={log} dl={dl}/>
 

@@ -4,6 +4,18 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.20.0] — 2026-04-25
+
+**E16 — Week-by-Week Polarization Compliance**
+
+- `src/lib/science/polarizationCompliance.js` — weeklyPolarizationScore: easyPct/hardPct/thresholdPct from zone data or RPE fallback; compliance score via weighted deviation from 80/20 Seiler target; model classification (polarized/pyramidal/threshold/unstructured). polarizationTrend (8-week array). overallPolarizationCompliance (mean + modelCounts). Source: Seiler & Kjerland (2006) Scand J Med Sci Sports; Stöggl & Sperlich (2014).
+- `src/components/dashboard/PolarizationComplianceCard.jsx` — 8 stacked bars (easy/threshold/hard), per-week compliance badges, model labels; null if weeksAnalyzed < 3
+- Dashboard.jsx: PolarizationComplianceCard lazy-loaded
+- LangCtx: 10 EN+TR keys (polarizationCompliance, polComplianceScore, polEasy/Hard/Threshold, polPolarized/Pyramidal/ThresholdModel/Unstructured/Target)
+- **Tests: 2963 (+27), 195 files**
+
+---
+
 ## [v11.19.0] — 2026-04-25
 
 **E15 — Neuromuscular Freshness Index**

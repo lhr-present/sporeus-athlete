@@ -397,6 +397,17 @@ export const LABELS = {
     nmAccumulated: 'Accumulated Fatigue',
     nmOverreached: 'Overreached',
     nmLastHard: 'Last hard session',
+    // E16 — Polarization Compliance
+    polarizationCompliance: 'Polarization Compliance',
+    polComplianceScore: 'Compliance Score',
+    polEasy: 'Easy',
+    polHard: 'Hard',
+    polThreshold: 'Threshold',
+    polPolarized: 'Polarized',
+    polPyramidal: 'Pyramidal',
+    polThresholdModel: 'Threshold Model',
+    polUnstructured: 'Unstructured',
+    polTarget: 'Target: 80% easy / 20% hard',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -793,6 +804,17 @@ export const LABELS = {
     nmAccumulated: 'Birikmiş Yorgunluk',
     nmOverreached: 'Aşırı Yüklenmiş',
     nmLastHard: 'Son sert antrenman',
+    // E16 — Polarizasyon Uyumu
+    polarizationCompliance: 'Polarizasyon Uyumu',
+    polComplianceScore: 'Uyum Puanı',
+    polEasy: 'Kolay',
+    polHard: 'Zor',
+    polThreshold: 'Eşik',
+    polPolarized: 'Polarize',
+    polPyramidal: 'Piramidal',
+    polThresholdModel: 'Eşik Modeli',
+    polUnstructured: 'Yapısız',
+    polTarget: 'Hedef: %80 kolay / %20 zor',
   }
 }
 
