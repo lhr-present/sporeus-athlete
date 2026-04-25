@@ -481,6 +481,15 @@ export const LABELS = {
     recoveryWellness: 'Wellness',
     recoveryEvidence: 'evidence',
     recoveryNoData: 'Log a session or check-in to get recommendations',
+    // E27 — OSTRCMonitorCard
+    ostrcTitle: 'OSTRC INJURY MONITOR',
+    ostrcNone: 'NONE',
+    ostrcMinor: 'MINOR',
+    ostrcModerate: 'MODERATE',
+    ostrcSubstantial: 'SUBSTANTIAL',
+    ostrcNeeded: 'Complete 2+ OSTRC surveys to see trend',
+    ostrcWorsening: 'WORSENING',
+    ostrcImproving: 'IMPROVING',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -961,6 +970,15 @@ export const LABELS = {
     recoveryWellness: 'Refah',
     recoveryEvidence: 'kanıt',
     recoveryNoData: 'Öneri için seans veya check-in ekleyin',
+    // E27 — OSTRCMonitorCard
+    ostrcTitle: 'OSTRC SAKLANMA MONİTÖRÜ',
+    ostrcNone: 'YOK',
+    ostrcMinor: 'HAFİF',
+    ostrcModerate: 'ORTA',
+    ostrcSubstantial: 'CİDDİ',
+    ostrcNeeded: '2+ OSTRC anketi tamamlayın',
+    ostrcWorsening: 'KÖTÜLEŞIYOR',
+    ostrcImproving: 'İYİLEŞİYOR',
   }
 }
 
