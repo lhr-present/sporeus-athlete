@@ -4,6 +4,18 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.19.0] — 2026-04-25
+
+**E15 — Neuromuscular Freshness Index**
+
+- `src/lib/science/neuromuscularFreshness.js` — computeNMFatigue: Z4+Z5 density 7d vs 28d weekly mean, piecewise ratio→score; RPE≥8 fallback (+15 min); zero baseline→80; classification fresh/normal/accumulated/overreached. nmFatigueHistory: 8-week sparkline. Source: Cairns (2006) Sports Med; Seiler (2010) IJSPP.
+- `src/components/dashboard/NMFreshnessCard.jsx` — large colored score, classification badge, last-hard-session line, SVG sparkline; null if log < 14
+- Dashboard.jsx: NMFreshnessCard lazy-loaded
+- LangCtx: 7 EN+TR keys (nmFreshness, nmFresh, nmNormal, nmAccumulated, nmOverreached, nmLastHard, nmFreshnessScore)
+- **Tests: 2936 (+22), 194 files**
+
+---
+
 ## [v11.18.0] — 2026-04-25
 
 **E14 — Race Readiness + Pace Strategy + Taper Simulator**

@@ -23,7 +23,9 @@ import TeamAnnouncements from './TeamAnnouncements.jsx'
 import SquadPatternSearch from './coach/SquadPatternSearch.jsx'
 import ChatPanel          from './coach/ChatPanel.jsx'
 import WeeklyDigestCard   from './coach/WeeklyDigestCard.jsx'
-import SquadCompareStrip  from './coach/SquadCompareStrip.jsx'
+import SquadCompareStrip        from './coach/SquadCompareStrip.jsx'
+import CoachOnboardingWizard    from './coach/CoachOnboardingWizard.jsx'
+import SquadChallengeCard       from './coach/SquadChallengeCard.jsx'
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -44,6 +46,7 @@ export default function CoachDashboard({ authUser }) {
   const [quickNoteText, setQuickNoteText] = useState('')
   const [pendingAthlete, setPendingAthlete] = useState(null)
   const [showGating, setShowGating] = useState(false)
+  const [showWizard, setShowWizard] = useState(false)
   const fileRef = useRef(null)
   const sbCoachId = authUser?.id ?? null
   const [sbAthleteIds, setSbAthleteIds] = useState([])
@@ -59,6 +62,16 @@ export default function CoachDashboard({ authUser }) {
         if (data) setSbAthleteIds(data.map(r => r.athlete_id))
       })
   }, [sbCoachId])
+
+  // E9 — Coach Onboarding Wizard: show when no athletes and not already onboarded
+  useEffect(() => {
+    if (getTierSync() === 'coach' &&
+        roster.length === 0 &&
+        sbAthleteIds.length === 0 &&
+        localStorage.getItem('sporeus-coach-onboarded') !== 'true') {
+      setShowWizard(true)
+    }
+  }, [roster.length, sbAthleteIds.length])
 
   // Derived — all hooks above, safe to conditional-return now
   const myCoachId    = coachProfile?.coachId || ''
@@ -211,6 +224,12 @@ export default function CoachDashboard({ authUser }) {
 
   return (
     <div className="sp-fade">
+      {/* E9 — Coach Onboarding Wizard */}
+      <CoachOnboardingWizard
+        open={showWizard}
+        onClose={() => setShowWizard(false)}
+      />
+
       {/* Coach Onboarding */}
       {!coachOnboarded && (
         <CoachOnboarding
@@ -344,6 +363,9 @@ export default function CoachDashboard({ authUser }) {
 
       {/* Squad Comparison Strip (E3) */}
       {sbCoachId && <SquadCompareStrip coachId={sbCoachId} />}
+
+      {/* Squad Monthly Challenge (E11) */}
+      <SquadChallengeCard />
 
       {/* Athlete Roster */}
       <div style={S.card}>

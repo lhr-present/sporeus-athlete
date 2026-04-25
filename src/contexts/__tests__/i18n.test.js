@@ -28,6 +28,7 @@ describe('i18n parity — LABELS', () => {
       'pacingKm',       // 'KM' — universal SI unit
       'spb_exportCSV',  // '↓ CSV' — CSV universal
       't_plan',         // '⚡ PLAN' — PLAN used in Turkish
+      'nmNormal',       // 'Normal' — loanword identical in Turkish
     ])
     const gaps = []
     for (const [key, enVal] of Object.entries(EN)) {

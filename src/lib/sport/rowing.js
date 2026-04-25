@@ -1,6 +1,13 @@
 // ─── src/lib/sport/rowing.js — Rowing sport-science engine ────────────────────
 // Paul's Law scaling, Critical Power hyperbolic model, Concept2 VO2max,
 // British Rowing 7-zone system, split conversions.
+// E10 additions: splitPer500m, formatSplit, strokeEfficiency,
+//   classifyStrokeRate, rowingEfficiencyFactor.
+//
+// References (E10):
+//   Nolte V. (2005). Rowing Faster. Human Kinetics.
+//   Coggan A.R. (2003). Training and racing using a power meter: an update.
+//     Efficiency Factor concept adapted for pace/HR.
 
 import { ROWING } from './constants.js'
 
@@ -230,4 +237,81 @@ export function predict2000mFromMultipleTests(tests) {
     confidenceInterval95: [Math.round(mean - margin), Math.round(mean + margin)],
     stdDevSec: Math.round(std * 10) / 10,
   }
+}
+
+// ── E10 — Dashboard metric helpers ────────────────────────────────────────────
+
+/**
+ * Split time per 500m — standard rowing performance metric.
+ * @param {number} distanceM - total distance in metres
+ * @param {number} durationSec - total duration in seconds
+ * @returns {number|null} split in seconds per 500m, or null if distanceM is falsy
+ */
+export function splitPer500m(distanceM, durationSec) {
+  if (!distanceM) return null
+  return (durationSec / distanceM) * 500
+}
+
+/**
+ * Format split as mm:ss.t string (e.g. "1:52.3").
+ * Always zero-pads seconds to two digits before the decimal.
+ * @param {number} splitSec - split in seconds per 500m
+ * @returns {string} formatted string, e.g. "1:45.0"
+ */
+export function formatSplit(splitSec) {
+  if (splitSec == null || isNaN(splitSec)) return '—'
+  const totalTenths = Math.round(splitSec * 10)
+  const tenths = totalTenths % 10
+  const totalSeconds = Math.floor(totalTenths / 10)
+  const mins = Math.floor(totalSeconds / 60)
+  const secs = totalSeconds % 60
+  return `${mins}:${String(secs).padStart(2, '0')}.${tenths}`
+}
+
+/**
+ * Stroke efficiency — metres per stroke.
+ * Ref: Nolte (2005) "Rowing Faster"
+ * @param {number} distanceM
+ * @param {number} totalStrokes
+ * @returns {number|null} metres per stroke, or null if totalStrokes falsy
+ */
+export function strokeEfficiency(distanceM, totalStrokes) {
+  if (!totalStrokes) return null
+  return distanceM / totalStrokes
+}
+
+/**
+ * Classify stroke rate (spm) into zones.
+ * Ref: Nolte (2005) — standard competition stroke rate ranges.
+ * @param {number} spm - strokes per minute
+ * @returns {{ zone: string, label: { en: string, tr: string } }}
+ */
+export function classifyStrokeRate(spm) {
+  if (spm < 18) {
+    return { zone: 'recovery', label: { en: 'Recovery / Technical', tr: 'Toparlanma / Teknik' } }
+  }
+  if (spm < 22) {
+    return { zone: 'steady', label: { en: 'Steady state', tr: 'Sabit tempo' } }
+  }
+  if (spm < 26) {
+    return { zone: 'threshold', label: { en: 'Threshold', tr: 'Eşik' } }
+  }
+  if (spm <= 30) {
+    return { zone: 'race', label: { en: 'Race pace', tr: 'Yarış temposu' } }
+  }
+  return { zone: 'sprint', label: { en: 'Sprint', tr: 'Sprint' } }
+}
+
+/**
+ * Rowing efficiency factor — pace-per-HR analogue for rowing.
+ * Adapted from Coggan (2003) efficiency factor concept.
+ * @param {number} distanceM
+ * @param {number} durationSec
+ * @param {number} avgHR - average heart rate (bpm)
+ * @returns {number|null} m/s per bpm (null if avgHR falsy)
+ */
+export function rowingEfficiencyFactor(distanceM, durationSec, avgHR) {
+  if (!avgHR || !durationSec) return null
+  const avgVelocity = distanceM / durationSec  // m/s
+  return Math.round((avgVelocity / avgHR) * 10000) / 10000
 }

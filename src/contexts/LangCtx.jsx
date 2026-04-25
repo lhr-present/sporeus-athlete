@@ -389,6 +389,14 @@ export const LABELS = {
     taperRaceDayTSB: 'Race-day TSB',
     taperCTLDrop: 'CTL Drop',
     raceDayBriefing: 'Race Day Briefing',
+    // E15 — Neuromuscular Freshness
+    nmFreshness: 'Neuromuscular Freshness',
+    nmFreshnessScore: 'NM Freshness Score',
+    nmFresh: 'Fresh',
+    nmNormal: 'Normal',
+    nmAccumulated: 'Accumulated Fatigue',
+    nmOverreached: 'Overreached',
+    nmLastHard: 'Last hard session',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -777,6 +785,14 @@ export const LABELS = {
     taperRaceDayTSB: 'Yarış Günü TSB',
     taperCTLDrop: 'CTL Düşüşü',
     raceDayBriefing: 'Yarış Günü Özeti',
+    // E15 — Nöromüsküler Tazelik
+    nmFreshness: 'Nöromüsküler Tazelik',
+    nmFreshnessScore: 'NM Tazelik Puanı',
+    nmFresh: 'Taze',
+    nmNormal: 'Normal',
+    nmAccumulated: 'Birikmiş Yorgunluk',
+    nmOverreached: 'Aşırı Yüklenmiş',
+    nmLastHard: 'Son sert antrenman',
   }
 }
 

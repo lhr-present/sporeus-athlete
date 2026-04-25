@@ -5,6 +5,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { PLAN_GOALS, PLAN_LEVELS, ZONE_COLORS, ZONE_NAMES } from '../lib/constants.js'
 import { generatePlan } from '../lib/formulas.js'
+import { BLOCK_PHASES, generateBlockPlan } from '../lib/sport/blockPeriodization.js'
 import { MiniDonut } from './ui.jsx'
 import { findOptimalWeekStructure } from '../lib/patterns.js'
 
@@ -109,6 +110,7 @@ export default function PlanGenerator({ onLogSession }) {
   const { log, recovery } = useData()
   const [lang] = useLocalStorage('sporeus-lang', 'en')
   const [selWeek, setSelWeek] = useState(0)
+  const [blockMode, setBlockMode] = useState(false)
 
   const toggleStatus = (wi, di, val) => {
     const key = `${wi}-${di}`
@@ -180,15 +182,30 @@ export default function PlanGenerator({ onLogSession }) {
   }
 
   const generate = () => {
-    const weeks_arr = generatePlan(goal, weeks, hours, level)
-    setPlan({ goal, weeks: weeks_arr, generatedAt: today, level, hoursPerWeek: hours })
+    if (blockMode) {
+      const blockWeeks = generateBlockPlan({ weeklyHours: hours, totalWeeks: weeks, baseTSS: 300 })
+      const weeks_arr = blockWeeks.map(w => ({
+        week: w.week,
+        phase: w.phaseId,
+        tss: w.tssTarget,
+        totalHours: w.hoursTarget,
+        sessions: [],
+        zonePct: [0, 0, 0, 0, 0],
+        zoneEmphasis: w.zoneEmphasis,
+        focus: w.focus,
+      }))
+      setPlan({ goal: t('blockPeriodization'), weeks: weeks_arr, generatedAt: today, level, hoursPerWeek: hours, isBlock: true })
+    } else {
+      const weeks_arr = generatePlan(goal, weeks, hours, level)
+      setPlan({ goal, weeks: weeks_arr, generatedAt: today, level, hoursPerWeek: hours })
+    }
     setSelWeek(0)
   }
 
   const printPlan = () => {
     if (!plan) return
     const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
-    const phaseColors = { Base:'#4a90d9', Build:'#f5c542', Peak:'#e03030', Peak2:'#e03030', Taper:'#888', Recovery:'#5bc25b', 'Race Week':'#ff6600' }
+    const phaseColors = { Base:'#4a90d9', Build:'#f5c542', Peak:'#e03030', Peak2:'#e03030', Taper:'#888', Recovery:'#5bc25b', 'Race Week':'#ff6600', accumulation:'#4a90d9', transmutation:'#f5c542', realization:'#ff6600' }
     const rows = plan.weeks.map(w => {
       const activeSessions = w.sessions.filter(s => s.type !== 'Rest' && s.duration > 0)
       return `<tr>
@@ -295,6 +312,31 @@ export default function PlanGenerator({ onLogSession }) {
             ))}
           </div>
         </div>
+        <div style={{ marginTop:'14px' }}>
+          <label style={S.label}>{t('blockPeriodization')}</label>
+          <div style={{ display:'flex', gap:'8px', alignItems:'center', flexWrap:'wrap' }}>
+            <button
+              onClick={() => setBlockMode(false)}
+              style={{ ...S.navBtn(!blockMode), borderRadius:'4px', fontSize:'11px', padding:'6px 14px' }}
+            >{t('blockModeLinear')}</button>
+            <button
+              onClick={() => setBlockMode(true)}
+              style={{ ...S.navBtn(blockMode), borderRadius:'4px', fontSize:'11px', padding:'6px 14px', ...(blockMode ? { background:'#ff6600', color:'#fff', borderColor:'#ff6600' } : {}) }}
+            >{t('blockModeBlock')}</button>
+          </div>
+          {blockMode && (
+            <div style={{ marginTop:'10px', display:'flex', gap:'6px', flexWrap:'wrap' }}>
+              {BLOCK_PHASES.map(ph => (
+                <div key={ph.id} style={{ flex:'1 1 140px', background:'var(--card-bg)', border:'1px solid #ff660044', borderTop:'3px solid #ff6600', borderRadius:'5px', padding:'8px 10px' }}>
+                  <div style={{ ...S.mono, fontSize:'10px', fontWeight:700, color:'#ff6600', marginBottom:'3px' }}>{ph.name[lang] || ph.name.en}</div>
+                  <div style={{ ...S.mono, fontSize:'9px', color:'var(--muted)', marginBottom:'2px' }}>{t('blockFocusLabel')}: {ph.focus[lang] || ph.focus.en}</div>
+                  <div style={{ ...S.mono, fontSize:'9px', color:'#4a90d9' }}>{t('blockZoneLabel')}: {ph.zoneEmphasis}</div>
+                  <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginTop:'2px' }}>{ph.durationWeeks.min}–{ph.durationWeeks.max} wk</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         <div style={{ display:'flex', gap:'8px', marginTop:'16px', flexWrap:'wrap', alignItems:'center' }}>
           <button style={S.btn} onClick={generate}>{t('genPlanBtn')}</button>
           <button style={{ ...S.btnSec, fontSize:'11px' }} onClick={sharePlan}>⤴ Share Config</button>
@@ -331,7 +373,7 @@ export default function PlanGenerator({ onLogSession }) {
               {plan.weeks.map((w,i) => {
                 const isThis = Boolean(plan) && i === thisWeekIdx
                 const isSel  = i === selWeek
-                const phaseColor = { Base:'#4a90d9', Build:'#f5c542', Peak:'#e03030', Peak2:'#e03030', Taper:'#888', Recovery:'#5bc25b', 'Race Week':'#ff6600' }[w.phase] || '#888'
+                const phaseColor = { Base:'#4a90d9', Build:'#f5c542', Peak:'#e03030', Peak2:'#e03030', Taper:'#888', Recovery:'#5bc25b', 'Race Week':'#ff6600', accumulation:'#4a90d9', transmutation:'#f5c542', realization:'#ff6600' }[w.phase] || '#888'
                 const wc = weekCompliance(i)
                 return (
                   <button key={i} onClick={()=>setSelWeek(i)} style={{
@@ -380,6 +422,18 @@ export default function PlanGenerator({ onLogSession }) {
                 </div>
               </div>
 
+              {plan.isBlock && W.focus && (
+                <div style={{ display:'flex', gap:'12px', marginBottom:'10px', flexWrap:'wrap' }}>
+                  <div style={{ ...S.mono, fontSize:'10px', color:'var(--muted)' }}>
+                    <span style={{ color:'#888' }}>{t('blockFocusLabel')}: </span>
+                    <span style={{ color:'var(--text)', fontWeight:600 }}>{W.focus}</span>
+                  </div>
+                  <div style={{ ...S.mono, fontSize:'10px', color:'var(--muted)' }}>
+                    <span style={{ color:'#888' }}>{t('blockZoneLabel')}: </span>
+                    <span style={{ color:'#4a90d9', fontWeight:600 }}>{W.zoneEmphasis}</span>
+                  </div>
+                </div>
+              )}
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))', gap:'8px' }}>
                 {W.sessions.map((ses, di) => {
                   const stKey = `${selWeek}-${di}`
