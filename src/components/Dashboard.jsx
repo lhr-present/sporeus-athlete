@@ -56,6 +56,7 @@ import WeeklyRetroCard    from './dashboard/WeeklyRetroCard.jsx'
 import PhaseAnalyticsCard from './dashboard/PhaseAnalyticsCard.jsx'
 import FuelGuidanceCard   from './dashboard/FuelGuidanceCard.jsx'
 const SeasonStatsCard    = lazy(() => import('./dashboard/SeasonStatsCard.jsx'))
+const CPDecayCard        = lazy(() => import('./dashboard/CPDecayCard.jsx'))
 const RowingMetricsCard  = lazy(() => import('./dashboard/RowingMetricsCard.jsx'))
 const ChallengeWidget    = lazy(() => import('./dashboard/ChallengeWidget.jsx'))
 const NMFreshnessCard            = lazy(() => import('./dashboard/NMFreshnessCard.jsx'))
@@ -656,6 +657,7 @@ export default function Dashboard({ log }) {
       <TrainingAgeCard log={log} dl={dl}/>
       <GoalTrackerCard log={log} profile={profile} dl={dl}/>
       <Suspense fallback={null}><SeasonStatsCard log={log} /></Suspense>
+      <Suspense fallback={null}><CPDecayCard testResults={testResults || []} /></Suspense>
       <Suspense fallback={null}><RowingMetricsCard log={log} /></Suspense>
       <Suspense fallback={null}><ChallengeWidget log={log} /></Suspense>
       <Suspense fallback={null}><NMFreshnessCard log={log} /></Suspense>

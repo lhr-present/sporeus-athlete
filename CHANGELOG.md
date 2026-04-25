@@ -4,6 +4,18 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.23.0] — 2026-04-25
+
+**E19 — Critical Power Decay Index**
+
+- `src/lib/science/cpDecay.js` — extractCPHistory: filters cp_test/cp/critical_power entries; computeCPDecayIndex: OLS slope (W/week), 12-week peak, decayPct, building/maintaining/detraining classification (slope >0.5/≥−0.5/<−0.5), W' expanding/stable/contracting status, bilingual recommendations. cpTrendSparkline. Sources: Poole et al. (2016) Med Sci Sports Exerc; Vanhatalo et al. (2011) IJSPP.
+- `src/components/dashboard/CPDecayCard.jsx` — current CP, slope badge (±W/wk), classification, W' status, 200×40 SVG sparkline, bilingual recommendation; null if < 2 CP tests
+- Dashboard.jsx: CPDecayCard lazy-loaded after SeasonStatsCard
+- LangCtx: 9 EN+TR keys (cpDecay, cpBuilding/Maintaining/Detraining, cpWPrimeStatus, cpExpanding/Stable/Contracting, cpRecommendation)
+- **Tests: 3038 (+29), 198 files**
+
+---
+
 ## [v11.22.0] — 2026-04-25
 
 **E18 — Season Statistics Card**

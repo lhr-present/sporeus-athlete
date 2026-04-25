@@ -426,6 +426,16 @@ export const LABELS = {
     seasonBestWeek: 'Best week',
     seasonStreak: 'Streak',
     seasonSportBreakdown: 'Sport Breakdown',
+    // E19 — Critical Power Decay Index
+    cpDecay: 'Critical Power Trend',
+    cpBuilding: 'Building',
+    cpMaintaining: 'Maintaining',
+    cpDetraining: 'Detraining',
+    cpWPrimeStatus: "W' Status",
+    cpExpanding: 'Expanding',
+    cpStable: 'Stable',
+    cpContracting: 'Contracting',
+    cpRecommendation: 'Recommendation',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -851,6 +861,16 @@ export const LABELS = {
     seasonBestWeek: 'En iyi hafta',
     seasonStreak: 'Seri',
     seasonSportBreakdown: 'Spor Dağılımı',
+    // E19 — Kritik Güç Bozunma Endeksi
+    cpDecay: 'Kritik Güç Trendi',
+    cpBuilding: 'Gelişiyor',
+    cpMaintaining: 'Stabil',
+    cpDetraining: 'Gerileme',
+    cpWPrimeStatus: "W' Durumu",
+    cpExpanding: 'Genişliyor',
+    cpStable: 'Stabil',
+    cpContracting: 'Daralıyor',
+    cpRecommendation: 'Öneri',
   }
 }
 
