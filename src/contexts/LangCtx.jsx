@@ -436,6 +436,13 @@ export const LABELS = {
     cpStable: 'Stable',
     cpContracting: 'Contracting',
     cpRecommendation: 'Recommendation',
+    // E20 — Aerobic Efficiency Factor Trend
+    efTitle: 'AEROBIC EFFICIENCY',
+    efImproving: 'IMPROVING',
+    efStable: 'STABLE',
+    efDeclining: 'DECLINING',
+    efWeeksNeeded: 'Need 3+ weeks with HR data',
+    efWeeklyGain: 'weekly gain',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -871,6 +878,13 @@ export const LABELS = {
     cpStable: 'Stabil',
     cpContracting: 'Daralıyor',
     cpRecommendation: 'Öneri',
+    // E20 — Aerobik Verimlilik Faktörü Trendi
+    efTitle: 'AEROBİK VERİMLİLİK',
+    efImproving: 'GELİŞİYOR',
+    efStable: 'STABİL',
+    efDeclining: 'DÜŞÜYOR',
+    efWeeksNeeded: '3+ hafta HR verisi gerekli',
+    efWeeklyGain: 'haftalık kazanım',
   }
 }
 

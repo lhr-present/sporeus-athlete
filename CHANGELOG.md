@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.24.0 — 2026-04-25
+E20: AerobicEfficiencyCard — weekly EF history (computeEF Coggan 2003), OLS trend classification (improving/stable/declining), 8-bar SVG chart; src/lib/science/aerobicEfficiency.js + 12 tests.
+
+---
+
 ## [v11.23.0] — 2026-04-25
 
 **E19 — Critical Power Decay Index**
