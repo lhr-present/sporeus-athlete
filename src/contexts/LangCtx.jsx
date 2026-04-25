@@ -582,6 +582,12 @@ export const LABELS = {
     cvPaceLabel:     'CV PACE',
     cvDAnaLabel:     "D' ANAEROBIC RESERVE",
     cvNoData:        'Need 2+ run distances for CV analysis',
+    // E43 — Fitness Battery Progress Card
+    batteryTitle:    'FITNESS BATTERY',
+    batteryLatest:   'LATEST',
+    batteryVsPrev:   'vs previous',
+    batteryBaseline: 'baseline — no comparison',
+    batteryNoData:   'No battery sessions recorded',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -1163,6 +1169,12 @@ export const LABELS = {
     cvPaceLabel:     'KV TEMPO',
     cvDAnaLabel:     "D' ANAEROBİK REZERVİ",
     cvNoData:        'CV analizi için 2+ farklı koşu mesafesi gerekli',
+    // E43 — Fiziksel Test Bataryası Kartı
+    batteryTitle:    'FİZİKSEL TEST BATARYASI',
+    batteryLatest:   'SON TEST',
+    batteryVsPrev:   'öncekiyle karşılaştır',
+    batteryBaseline: 'başlangıç — karşılaştırma yok',
+    batteryNoData:   'Test bataryası kaydı bulunamadı',
   }
 }
 

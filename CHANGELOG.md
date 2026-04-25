@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.47.0 — 2026-04-25
+E43: FitnessBatteryProgressCard — getBatteryForDate+compareBatteryResults (Cooper 1968, Kasch 1970) wired to Dashboard; per-test delta vs previous session; src/lib/athlete/batteryProgress.js + 15 tests.
+
+---
+
 ## v11.46.0 — 2026-04-25
 E42: RunningCVCard — criticalVelocity (Monod & Scherrer 1965, Morton 1986) wired to Dashboard; CV pace + D' from multi-distance log analysis; src/lib/athlete/runningCV.js + 15 tests.
 
