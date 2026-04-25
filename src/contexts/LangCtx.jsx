@@ -458,6 +458,13 @@ export const LABELS = {
     injuryHigh: 'HIGH',
     injuryForecastLabel: 'FORECAST',
     injuryTopFactor: 'Top risk factor',
+    // E23 — Monotony & Strain History
+    strainTitle: 'MONOTONY & STRAIN HISTORY',
+    strainHighMonotony: 'HIGH MONOTONY',
+    strainHighStrain: 'HIGH STRAIN',
+    strainMonotony: 'Monotony',
+    strainStrain: 'Strain',
+    strainThreshold: 'threshold',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -915,6 +922,13 @@ export const LABELS = {
     injuryHigh: 'YÜKSEK',
     injuryForecastLabel: 'TAHMİN',
     injuryTopFactor: 'Başlıca risk faktörü',
+    // E23 — Monotoni & Stres Geçmişi
+    strainTitle: 'MONOTONİ & STRES GEÇMİŞİ',
+    strainHighMonotony: 'YÜKSEK MONOTONİ',
+    strainHighStrain: 'YÜKSEK STRES',
+    strainMonotony: 'Monotoni',
+    strainStrain: 'Stres',
+    strainThreshold: 'eşik',
   }
 }
 

@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.27.0 — 2026-04-25
+E23: StrainHistoryCard — 8-week rolling monotony+strain history (Foster 1998), dual SVG chart, high-monotony warning badge; src/lib/athlete/strainHistory.js + 12 tests.
+
+---
+
 ## v11.26.0 — 2026-04-25
 E22: InjuryForecastCard — 8-week rolling injury risk history + 4-week projection (Malone 2017, Gabbett 2016, Hulin 2016); 12-bar SVG (solid/opacity distinction), top risk factor callout; src/lib/athlete/injuryForecast.js + 12 tests.
 
