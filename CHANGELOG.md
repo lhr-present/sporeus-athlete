@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.45.0 — 2026-04-25
+E41: SwimmingZonesCard — tPaceFromTT+swimmingZones (Wakayoshi 1992 CSS) wired to Dashboard; 6-zone pace table; src/lib/athlete/swimZones.js + 15 tests.
+
+---
+
 ## v11.44.0 — 2026-04-25
 E40: CyclingZonesCard — getCyclingZones+wattsPerKg (Coggan 2003) wired to Dashboard; 7-zone table with W ranges + W/kg; src/lib/athlete/cyclingZones.js + 15 tests.
 

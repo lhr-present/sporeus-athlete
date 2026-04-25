@@ -573,6 +573,10 @@ export const LABELS = {
     cyclingFTPLabel:    'FTP SOURCE',
     cyclingWperKg:      'W/kg',
     cyclingZonesNoData: 'Set FTP in Profile to see power zones',
+    // E41 — Swimming Zones Card
+    swimZonesTitle:  'SWIM ZONE SYSTEM',
+    swimTPace:       'T-PACE / CSS',
+    swimNoData:      'No swim sessions found',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -1145,6 +1149,10 @@ export const LABELS = {
     cyclingFTPLabel:    'FTP KAYNAĞI',
     cyclingWperKg:      'W/kg',
     cyclingZonesNoData: 'Güç zonlarını görmek için Profil\'e FTP girin',
+    // E41 — Yüzme Zon Sistemi Kartı
+    swimZonesTitle:  'YÜZME ZON SİSTEMİ',
+    swimTPace:       'T-TEMPO / CSS',
+    swimNoData:      'Yüzme seansı bulunamadı',
   }
 }
 
