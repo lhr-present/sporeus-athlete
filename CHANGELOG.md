@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.32.0 — 2026-04-25
+E28: HRVSummaryCard — 28-day lnRMSSD baseline, current deviation, suppression alert, 14-dot SVG chart (Plews 2012, Kiviniemi 2007); src/lib/athlete/hrvSummary.js + 12 tests.
+
+---
+
 ## v11.31.0 — 2026-04-25
 E27: OSTRCMonitorCard — 8-entry injury monitoring trend from localStorage (Clarsen 2013), risk badge (none/minor/moderate/substantial), worsening/improving trend, timeline dots; src/lib/athlete/ostrcSummary.js + 10 tests.
 

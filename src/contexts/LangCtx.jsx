@@ -490,6 +490,11 @@ export const LABELS = {
     ostrcNeeded: 'Complete 2+ OSTRC surveys to see trend',
     ostrcWorsening: 'WORSENING',
     ostrcImproving: 'IMPROVING',
+    // E28 — HRV Summary Card
+    hrvSummaryTitle: 'HRV SUMMARY',
+    hrvSuppressed: 'HRV SUPPRESSED — consider rest',
+    hrvVsBaseline: 'vs baseline',
+    hrvNeeded: 'Log 7+ HRV readings to see summary',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -979,6 +984,11 @@ export const LABELS = {
     ostrcNeeded: '2+ OSTRC anketi tamamlayın',
     ostrcWorsening: 'KÖTÜLEŞIYOR',
     ostrcImproving: 'İYİLEŞİYOR',
+    // E28 — HRV Summary Card
+    hrvSummaryTitle: 'KLV ANALİZİ',
+    hrvSuppressed: 'KLV BASKILANMIŞ — dinlenme önerilir',
+    hrvVsBaseline: 'tabana göre',
+    hrvNeeded: 'Özet için 7+ KLV kaydı girin',
   }
 }
 
