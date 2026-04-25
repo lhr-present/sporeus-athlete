@@ -593,6 +593,10 @@ export const LABELS = {
     triBrick:        'BRICK SESSIONS',
     triTSSBreak:     '28-DAY TSS BY DISCIPLINE',
     triNoData:       'Set sport to Triathlon or log all 3 disciplines',
+    // E45 — Running Race Readiness Card
+    runReadinessTitle:  'RUNNING RACE READINESS',
+    runReadinessTarget: 'TARGET DISTANCE',
+    runReadinessNoData: 'Need 3+ run sessions',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -1185,6 +1189,10 @@ export const LABELS = {
     triBrick:        'BRICK SEANSLAR',
     triTSSBreak:     '28 GÜNLÜK DİSİPLİN BAZLI TSS',
     triNoData:       'Sporu Triatlon yapın veya 3 disiplini de kaydedin',
+    // E45 — Running Race Readiness Card
+    runReadinessTitle:  'KOŞU YARIŞ HAZIRLIĞI',
+    runReadinessTarget: 'HEDEF MESAFE',
+    runReadinessNoData: 'En az 3 koşu seansı gerekli',
   }
 }
 

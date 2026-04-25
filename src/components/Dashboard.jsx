@@ -86,6 +86,7 @@ const SwimmingZonesCard          = lazy(() => import('./dashboard/SwimmingZonesC
 const RunningCVCard              = lazy(() => import('./dashboard/RunningCVCard.jsx'))
 const FitnessBatteryProgressCard = lazy(() => import('./dashboard/FitnessBatteryProgressCard.jsx'))
 const TriathlonLoadCard          = lazy(() => import('./dashboard/TriathlonLoadCard.jsx'))
+const RunningRaceReadinessCard   = lazy(() => import('./dashboard/RunningRaceReadinessCard.jsx'))
 
 export default function Dashboard({ log }) {
   const [lang]       = useLocalStorage('sporeus-lang', 'en')
@@ -217,6 +218,21 @@ export default function Dashboard({ log }) {
     if (totalMin <= 0) return null
     return Math.round(thisWk.minutes / totalMin * 100)
   }, [subTrend, log])
+
+  // Compute once — sport-specific render gates
+  const hasCyclingData  = useMemo(() => parseFloat(profile?.ftp || 0) > 0 ||
+    log.some(e => /bike|cycl|ride/i.test(e.type || '') || /cycl/i.test(e.sport || '')),
+    [log, profile])
+
+  const hasSwimData     = useMemo(() =>
+    log.some(e => /swim/i.test(e.type || '') || /swim/i.test(e.sport || '')),
+    [log])
+
+  const hasTriData      = useMemo(() =>
+    profile?.primarySport === 'triathlon' ||
+    new Set(log.map(e => (e.type || '').split(' ')[0].toLowerCase()))
+      .size >= 3,
+    [log, profile])
 
   // ── Header badges (sport, level, coach, data quality) ─────────────────────────
   const metricsRow = profileMetrics.length >= 2 ? (
@@ -707,11 +723,13 @@ export default function Dashboard({ log }) {
       <Suspense fallback={null}><HRVAlertCard recovery={recovery} /></Suspense>
       <Suspense fallback={null}><TaperAdvisorCard plan={plan} profile={profile} /></Suspense>
       <Suspense fallback={null}><PriorityActionCard log={log} recovery={recovery} profile={profile} /></Suspense>
-      <Suspense fallback={null}><CyclingZonesCard testResults={testResults || []} profile={profile} /></Suspense>
-      <Suspense fallback={null}><SwimmingZonesCard log={log} /></Suspense>
+      {hasCyclingData && <Suspense fallback={null}><CyclingZonesCard testResults={testResults || []} profile={profile} /></Suspense>}
+      {hasSwimData    && <Suspense fallback={null}><SwimmingZonesCard log={log} /></Suspense>}
+      {/* RunningCVCard — no gating, useful for most users */}
       <Suspense fallback={null}><RunningCVCard log={log} /></Suspense>
+      <Suspense fallback={null}><RunningRaceReadinessCard log={log} profile={profile} /></Suspense>
       <Suspense fallback={null}><FitnessBatteryProgressCard /></Suspense>
-      <Suspense fallback={null}><TriathlonLoadCard log={log} profile={profile} /></Suspense>
+      {hasTriData     && <Suspense fallback={null}><TriathlonLoadCard log={log} profile={profile} /></Suspense>}
       <LoadHeatmapCard log={log} dl={dl}/>
       <SeasonBestsCard log={log} dl={dl}/>
 

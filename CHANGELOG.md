@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.49.0 — 2026-04-25
+E45: Sport gating for CyclingZonesCard/SwimmingZonesCard/TriathlonLoadCard (hasCyclingData/hasSwimData/hasTriData); RunningRaceReadinessCard — raceReadiness() (Daniels 1979 volume/taper/quality model); src/lib/athlete/runningRaceReadiness.js + 15 tests.
+
+---
+
 ## v11.48.0 — 2026-04-25
 E44: TriathlonLoadCard — calculateTriathlonTSS+brickFatigueAdjustment+TRIATHLON_DISTANCES (Banister 1980, Wakayoshi 1992) wired to Dashboard; 28-day tri load breakdown + brick fatigue; src/lib/athlete/triLoad.js + 15 tests.
 
