@@ -523,6 +523,13 @@ export const LABELS = {
     adherenceUnder: 'UNDER PLAN',
     adherenceNoPlan: 'No active plan — generate one in the Periodization tab',
     adherenceAvg: 'avg compliance',
+    // E33 — PR Timeline Card
+    prTitle: 'PERSONAL BESTS',
+    prTotal: 'total',
+    prLastSet: 'last',
+    prDaysAgo: 'days ago',
+    prEmpty: 'Keep training — PRs coming!',
+    prImprovement: 'improvement',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -1045,6 +1052,13 @@ export const LABELS = {
     adherenceUnder: 'PLAN ALTI',
     adherenceNoPlan: 'Aktif plan yok — Periyodizasyon sekmesinden oluşturun',
     adherenceAvg: 'ort. uyum',
+    // E33 — PR Zaman Çizelgesi Kartı
+    prTitle: 'KİŞİSEL REKORLAR',
+    prTotal: 'toplam',
+    prLastSet: 'son',
+    prDaysAgo: 'gün önce',
+    prEmpty: 'Antrene devam — rekorlar geliyor!',
+    prImprovement: 'gelişim',
   }
 }
 

@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.37.0 — 2026-04-25
+E33: PRTimelineCard — scans full log for PR events using detectPRs(), recent-5 timeline with improvement %, total PR count, days-since-last; src/lib/athlete/prTimeline.js + 12 tests.
+
+---
+
 ## v11.36.0 — 2026-04-25
 E32: PlanAdherenceCard — week-by-week planned vs actual TSS compliance (80–115% on-track), 8-bar SVG with baseline, stats row; src/lib/athlete/planAdherence.js + 10 tests.
 
