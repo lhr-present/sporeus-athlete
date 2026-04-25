@@ -473,6 +473,9 @@ export const LABELS = {
     consistencyPoor: 'POOR',
     consistencyStreak: 'week streak',
     consistencyNeeded: 'Need 2+ weeks of training data',
+    // E25 — InsightFeedCard
+    insightFeedTitle: 'INSIGHT FEED',
+    insightFeedEmpty: 'No active insights',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -945,6 +948,9 @@ export const LABELS = {
     consistencyPoor: 'ZAYIF',
     consistencyStreak: 'haftalık seri',
     consistencyNeeded: '2+ hafta antrenman verisi gerekli',
+    // E25 — InsightFeedCard
+    insightFeedTitle: 'ANLAYIŞ KARTI',
+    insightFeedEmpty: 'Aktif anlayış yok',
   }
 }
 

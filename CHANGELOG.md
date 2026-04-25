@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.29.0 — 2026-04-25
+E25: InsightFeedCard — wires generateInsightCards() (milestone/fitness/consistency/workload) to dashboard; computeCTLDelta + buildMonotonyHistory helpers; src/lib/athlete/insightFeed.js + 10 tests.
+
+---
+
 ## v11.28.0 — 2026-04-25
 E24: ConsistencyTrendCard — 8-week rolling consistency score history (calculateConsistency, Bangsbo 2006), OLS trend slope, tier classification (excellent/good/fair/poor), streak counter, 8-bar SVG with trend overlay; src/lib/athlete/consistencyTrend.js + 12 tests.
 
