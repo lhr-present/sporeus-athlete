@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.26.0 — 2026-04-25
+E22: InjuryForecastCard — 8-week rolling injury risk history + 4-week projection (Malone 2017, Gabbett 2016, Hulin 2016); 12-bar SVG (solid/opacity distinction), top risk factor callout; src/lib/athlete/injuryForecast.js + 12 tests.
+
+---
+
 ## v11.25.0 — 2026-04-25
 E21: RESTQTrendCard — stress/recovery ratio trend from localStorage history (Kellmann & Kallus 2001, Nederhof 2008); srRatio status bands (danger/warning/ok/good), trend classification, timeline dot SVG; src/lib/athlete/restqTrend.js + 10 tests.
 

@@ -451,6 +451,13 @@ export const LABELS = {
     restqGood: 'WELL RECOVERED',
     restqNeeded: 'Complete 2+ RESTQ surveys to see trend',
     restqSrRatio: 'S/R Ratio',
+    // E22 — Injury Risk Forecast
+    injuryForecastTitle: 'INJURY RISK FORECAST',
+    injuryLow: 'LOW',
+    injuryModerate: 'MODERATE',
+    injuryHigh: 'HIGH',
+    injuryForecastLabel: 'FORECAST',
+    injuryTopFactor: 'Top risk factor',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -901,6 +908,13 @@ export const LABELS = {
     restqGood: 'İYİ TOPARLANMIŞ',
     restqNeeded: 'Trend için 2+ RESTQ anketi tamamlayın',
     restqSrRatio: 'S/T Oranı',
+    // E22 — Saklanma Riski Tahmini
+    injuryForecastTitle: 'SAKLANMA RİSKİ TAHMİNİ',
+    injuryLow: 'DÜŞÜK',
+    injuryModerate: 'ORTA',
+    injuryHigh: 'YÜKSEK',
+    injuryForecastLabel: 'TAHMİN',
+    injuryTopFactor: 'Başlıca risk faktörü',
   }
 }
 
