@@ -13,6 +13,7 @@ import { S } from '../styles.js'
 const RaceReadinessCard = lazy(() => import('./race/RaceReadinessCard.jsx'))
 const TaperSimulatorCard = lazy(() => import('./race/TaperSimulator.jsx'))
 const RaceDayBriefing = lazy(() => import('./race/RaceDayBriefing.jsx'))
+const VdotTrendCard = lazy(() => import('./race/VdotTrendCard.jsx'))
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -280,6 +281,9 @@ export default function RaceReadiness() {
             log={log}
             raceDate={raceDate || undefined}
           />
+        </Suspense>
+        <Suspense fallback={null}>
+          <VdotTrendCard log={log} testResults={testResults} />
         </Suspense>
         <Suspense fallback={null}>
           <RaceDayBriefing

@@ -408,6 +408,14 @@ export const LABELS = {
     polThresholdModel: 'Threshold Model',
     polUnstructured: 'Unstructured',
     polTarget: 'Target: 80% easy / 20% hard',
+    // E17 — VDOT Trend & PB Predictor
+    vdotTrend: 'VDOT Trend',
+    vdotImproving: 'Improving',
+    vdotPlateau: 'Plateau / Declining',
+    vdotWeeklyGain: 'pts/week',
+    vdotProjection: '12-week projection',
+    vdotFitQuality: 'Fit quality',
+    vdotUnlock: 'Log a race or timed effort to unlock VDOT trend',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -815,6 +823,14 @@ export const LABELS = {
     polThresholdModel: 'Eşik Modeli',
     polUnstructured: 'Yapısız',
     polTarget: 'Hedef: %80 kolay / %20 zor',
+    // E17 — VDOT Trendi & Kişisel Rekoru Tahmini
+    vdotTrend: 'VDOT Trendi',
+    vdotImproving: 'Gelişiyor',
+    vdotPlateau: 'Plato / Gerileme',
+    vdotWeeklyGain: 'puan/hafta',
+    vdotProjection: '12 haftalık projeksiyon',
+    vdotFitQuality: 'Uyum kalitesi',
+    vdotUnlock: 'VDOT trendini açmak için bir yarış veya zamanlı efor kaydedin',
   }
 }
 

@@ -4,6 +4,18 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## [v11.21.0] — 2026-04-25
+
+**E17 — VDOT Trend & PB Predictor**
+
+- `src/lib/race/vdotTrend.js` — extractVdotHistory (race log + test results, dedup by ISO week, keep highest/week); fitVdotTrend (OLS linear regression, R², weeklyGain); projectPBs (5K/10K/HM/M current + 12-week projected times, delta). Source: Daniels & Gilbert (1979).
+- `src/components/race/VdotTrendCard.jsx` — current VDOT badge, improving/plateau label, weekly gain, R² reliability warning, SVG line chart with OLS fit, 4-row PB projection table with color-coded delta
+- RaceReadiness.jsx: VdotTrendCard lazy-loaded between TaperSimulator and RaceDayBriefing
+- LangCtx: 7 EN+TR keys (vdotTrend, vdotImproving, vdotPlateau, vdotWeeklyGain, vdotProjection, vdotFitQuality, vdotUnlock)
+- **Tests: 2987 (+24), 196 files**
+
+---
+
 ## [v11.20.0] — 2026-04-25
 
 **E16 — Week-by-Week Polarization Compliance**
