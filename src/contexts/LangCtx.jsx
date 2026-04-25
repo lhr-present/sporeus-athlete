@@ -530,6 +530,14 @@ export const LABELS = {
     prDaysAgo: 'days ago',
     prEmpty: 'Keep training — PRs coming!',
     prImprovement: 'improvement',
+    // E34 — Load Projector
+    loadProjTitle: 'LOAD PROJECTOR',
+    loadProjIn4w: 'In 4 weeks',
+    loadProjAt10: 'at +10% load',
+    loadProjFresh: 'FRESH',
+    loadProjNeutral: 'NEUTRAL',
+    loadProjFatigued: 'FATIGUED',
+    loadProjNeeded: 'Need 7+ sessions to project',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -1059,6 +1067,14 @@ export const LABELS = {
     prDaysAgo: 'gün önce',
     prEmpty: 'Antrene devam — rekorlar geliyor!',
     prImprovement: 'gelişim',
+    // E34 — Yük Projektörü
+    loadProjTitle: 'YÜK PROJEKSİYONU',
+    loadProjIn4w: '4 haftada',
+    loadProjAt10: '+10% yükte',
+    loadProjFresh: 'DİNÇ',
+    loadProjNeutral: 'NÖTR',
+    loadProjFatigued: 'YORGUN',
+    loadProjNeeded: 'Projeksiyon için 7+ seans gerekli',
   }
 }
 

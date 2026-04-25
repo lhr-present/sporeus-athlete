@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.38.0 — 2026-04-25
+E34: LoadProjectorCard — 4-week CTL/TSB forward projection at current + +10% load (EWMA PMC, Banister 1991, Coggan PMC); dual SVG line chart, TSB zone coloring; src/lib/athlete/loadProjector.js + 12 tests.
+
+---
+
 ## v11.37.0 — 2026-04-25
 E33: PRTimelineCard — scans full log for PR events using detectPRs(), recent-5 timeline with improvement %, total PR count, days-since-last; src/lib/athlete/prTimeline.js + 12 tests.
 
