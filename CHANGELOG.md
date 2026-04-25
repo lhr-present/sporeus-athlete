@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.41.0 — 2026-04-25
+E37: HRVAlertCard — detectHRVAlert >2σ drop (hrvAlert.js, Plews 2012); shows only when actionable; src/lib/athlete/hrvAlertSummary.js + 8 tests.
+
+---
+
 ## v11.40.0 — 2026-04-25
 E36: VDOTBenchmarkCard — RUNNING_VDOT_NORMS age/gender percentile lookup (never previously wired); tier badge (top10/top25/median/below), percentile bar with athlete marker, next-tier gap; src/lib/athlete/vdotBenchmark.js + 12 tests.
 

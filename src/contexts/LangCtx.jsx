@@ -551,6 +551,23 @@ export const LABELS = {
     vdotBenchBelow: 'BELOW MEDIAN',
     vdotBenchNeedMore: 'Log runs with HR to estimate VDOT',
     vdotBenchNextTier: 'to next tier',
+    // E37 — HRV Alert Card
+    hrvAlertTitle: '⚠ HRV ALERT',
+    hrvAlertAlert: 'ALERT',
+    hrvAlertSuppressed: 'SUPPRESSED',
+    hrvAlertAction: 'Consider rest or reduced intensity today.',
+    hrvAlertAction_tr: 'Rest or easy pace recommended today.',
+    // E38 — Taper Advisor Card
+    taperTitle: '◈ TAPER ADVISOR',
+    taperActive: 'TAPER ACTIVE',
+    taperSoon: 'TAPER SOON',
+    taperPre: 'PRE-TAPER',
+    taperReduce: 'reduce volume by',
+    taperRaceIn: 'Race in',
+    taperDays: 'days',
+    // E39 — Priority Action Card
+    priorityTitle: "◈ TODAY'S PRIORITY",
+    priorityNoAction: 'No priority action triggered.',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -1101,6 +1118,23 @@ export const LABELS = {
     vdotBenchBelow: 'MEDYAN ALTI',
     vdotBenchNeedMore: 'VDOT tahmini için KAH ile koşu kaydedin',
     vdotBenchNextTier: 'sonraki seviyeye',
+    // E37 — KLV Uyarı Kartı
+    hrvAlertTitle: '⚠ KLV DÜŞÜŞÜ',
+    hrvAlertAlert: 'UYARI',
+    hrvAlertSuppressed: 'BASKILI',
+    hrvAlertAction: 'Bugün dinlenme veya hafif tempo önerilir.',
+    hrvAlertAction_tr: 'Bugün dinlenme veya hafif tempo önerilir.',
+    // E38 — Taper Planlayıcı Kartı
+    taperTitle: '◈ POTA PLANLAYICI',
+    taperActive: 'TAPER AKTİF',
+    taperSoon: 'TAPER YAKLAŞIYOR',
+    taperPre: 'TAPER ÖNCESİ',
+    taperReduce: 'hacmi azalt',
+    taperRaceIn: 'Yarışa',
+    taperDays: 'gün',
+    // E39 — Bugünün Önceliği
+    priorityTitle: '◈ BUGÜNÜN ÖNCELİĞİ',
+    priorityNoAction: 'Öncelikli aksiyon tetiklenmedi.',
   }
 }
 
