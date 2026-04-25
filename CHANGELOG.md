@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.54.0 — 2026-04-25
+E50: SleepRestingHRCard — sleep hours trend + resting HR trend from recovery entries; sparkline SVGs; fills major Dashboard UX gap (all platforms show sleep/RHR, this app never did); src/lib/athlete/sleepRestingHR.js + 17 tests.
+
+---
+
 ## v11.53.0 — 2026-04-25
 E49: AthleteStatusSummaryCard — ctlTrend+acwrStatusLabel+trendLabel+generateAthleteDigestLine (coachDigest.js) wired to athlete self-view; weekly CTL/ACWR digest; src/lib/athlete/athleteStatusSummary.js + 15 tests.
 

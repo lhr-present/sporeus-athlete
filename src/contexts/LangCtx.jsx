@@ -605,6 +605,11 @@ export const LABELS = {
     athleteStatusTitle: 'ATHLETE STATUS SUMMARY',
     athleteStatusACWR:  'ACWR STATUS',
     athleteStatusTrend: 'OVERALL TREND',
+    // E50 — Sleep & Resting HR Card
+    sleepRHRTitle:    'SLEEP & RESTING HR',
+    sleepAvg:         'AVG SLEEP',
+    restingHRLabel:   'RESTING HR',
+    sleepRHRNoData:   'No sleep or RHR data logged',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -1209,6 +1214,11 @@ export const LABELS = {
     athleteStatusTitle: 'SPORCU DURUM ÖZETİ',
     athleteStatusACWR:  'ACWR DURUMU',
     athleteStatusTrend: 'GENEL EĞİLİM',
+    // E50 — Sleep & Resting HR Card
+    sleepRHRTitle:    'UYKU & İSTİRAHAT KALBİ',
+    sleepAvg:         'ORT UYKU',
+    restingHRLabel:   'İSTİRAHAT KALBİ',
+    sleepRHRNoData:   'Uyku veya dinlenim nabzı verisi bulunamadı',
   }
 }
 

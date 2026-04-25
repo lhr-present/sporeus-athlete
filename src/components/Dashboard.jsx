@@ -89,6 +89,7 @@ const TriathlonLoadCard          = lazy(() => import('./dashboard/TriathlonLoadC
 const RunningRaceReadinessCard   = lazy(() => import('./dashboard/RunningRaceReadinessCard.jsx'))
 const PlanScoreCard              = lazy(() => import('./dashboard/PlanScoreCard.jsx'))
 const AthleteStatusSummaryCard   = lazy(() => import('./dashboard/AthleteStatusSummaryCard.jsx'))
+const SleepRestingHRCard         = lazy(() => import('./dashboard/SleepRestingHRCard.jsx'))
 
 export default function Dashboard({ log }) {
   const [lang]       = useLocalStorage('sporeus-lang', 'en')
@@ -720,6 +721,7 @@ export default function Dashboard({ log }) {
       <Suspense fallback={null}><PlanAdherenceCard plan={plan} planStatus={planStatus} log={log} /></Suspense>
       <Suspense fallback={null}><PlanScoreCard plan={plan} log={log} /></Suspense>
       <Suspense fallback={null}><AthleteStatusSummaryCard log={log} recovery={recovery} profile={profile} /></Suspense>
+      <Suspense fallback={null}><SleepRestingHRCard recovery={recovery} /></Suspense>
       <Suspense fallback={null}><PRTimelineCard log={log} /></Suspense>
       <Suspense fallback={null}><LoadProjectorCard log={log} /></Suspense>
       <Suspense fallback={null}><InjuryPatternCard log={log} injuries={injuries || []} recovery={recovery} /></Suspense>
