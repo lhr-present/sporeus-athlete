@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.43.0 — 2026-04-25
+E39: PriorityActionCard — computeNextAction() (12-rule engine) wired to dashboard (not just TodayView); color-coded action+rationale; 6 tests.
+
+---
+
 ## v11.42.0 — 2026-04-25
 E38: TaperAdvisorCard — volumeCutPct+applyVolumeReduction wired (Mujika 2003, Bosquet 2007); taper_active/soon/pre status; src/lib/athlete/taperAdvisor.js + 10 tests.
 
