@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.52.0 — 2026-04-25
+E48: PlanScoreCard — scoreTrainingPlan+peakFormWindow (Banister 1980) wired to Dashboard; plan quality 0-100 + peak form day; src/lib/athlete/planScore.js + 15 tests.
+
+---
+
 ## v11.51.0 — 2026-04-25
 E47: SwimmingZonesCard + swimTSS (Wakayoshi/Mujika 1995 sTSS per session 14d); TriathlonLoadCard + getTriathlonZones (Coggan/Daniels multi-zone system); 12 new tests.
 

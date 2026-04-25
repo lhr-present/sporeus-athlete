@@ -597,6 +597,10 @@ export const LABELS = {
     runReadinessTitle:  'RUNNING RACE READINESS',
     runReadinessTarget: 'TARGET DISTANCE',
     runReadinessNoData: 'Need 3+ run sessions',
+    // E48 — Plan Score Card
+    planScoreTitle:  'TRAINING PLAN SCORE',
+    planScorePeak:   'PEAK FORM WINDOW',
+    planScoreNoData: 'No training plan set',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -1193,6 +1197,10 @@ export const LABELS = {
     runReadinessTitle:  'KOŞU YARIŞ HAZIRLIĞI',
     runReadinessTarget: 'HEDEF MESAFE',
     runReadinessNoData: 'En az 3 koşu seansı gerekli',
+    // E48 — Plan Score Card
+    planScoreTitle:  'ANTRENMAN PLAN PUANI',
+    planScorePeak:   'EN İYİ FORM PENCERESİ',
+    planScoreNoData: 'Antrenman planı bulunamadı',
   }
 }
 
