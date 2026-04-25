@@ -3,7 +3,7 @@
 ```bash
 cd ~/sporeus-athlete-app
 npm run dev        # local dev server → http://localhost:5173/
-npm test           # run 860 unit tests (vitest)
+npm test           # run 3786 unit tests (vitest) across 228 test files
 npm run build      # production build → dist/
 git push           # triggers GitHub Actions: test → build → deploy to Pages
 ```
@@ -38,9 +38,14 @@ Bloomberg Terminal aesthetic: IBM Plex Mono, #ff6600 orange, #0064ff blue, #0a0a
 | `src/lib/science/efficiencyFactor.js` | computeEF (Coggan 2003: NP/HR or pace/HR) + efTrend (30d window) |
 | `src/lib/science/durabilityScore.js` | computeDurability (Maunder 2021: last-hour 5-min peak vs MMP) |
 | `src/lib/science/subThresholdTime.js` | weekSubThresholdMin + subThresholdTrend (Seiler 2010 polarized) |
+| `src/lib/athlete/` | **30 pure sport-science wrappers** (cyclingZones, swimZones, runningCV, triLoad, sleepRestingHR, etc.) |
 | `src/hooks/useSessionComments.js` | Per-session comment thread — Realtime + optimistic updates + offline queue |
 | `src/hooks/useSquadChannel.js` | Coach squad feed hook — wraps squadChannel lifecycle |
 | `src/components/ui.jsx` | Shared SVG chart primitives (ZoneBar, TSSChart, CTLTimeline, etc.) |
+| `src/components/dashboard/` | **69 dashboard cards** — all lazy-loaded via React.lazy + Suspense fallback={null} |
+| `src/components/QuickAddModal.jsx` | One-click session logging from any tab (+ button / FAB) |
+| `src/components/TodayView.jsx` | Daily HQ — planned session, readiness, quick wellness, suggestions |
+| `src/components/TrainingLog.jsx` | Full log with inline edit, bulk-delete, calendar, semantic search |
 
 ## Conventions
 - All styles inline via S.{} from styles.js — no CSS files
@@ -50,14 +55,23 @@ Bloomberg Terminal aesthetic: IBM Plex Mono, #ff6600 orange, #0064ff blue, #0a0a
 - localStorage keys: all prefixed `sporeus-` or `sporeus_` (log uses underscore)
 - New tabs: add to TABS array in LangCtx.jsx, add route in App.jsx, wrap in `<ErrorBoundary>`
 - External HTTP calls: use `safeFetch` from `src/lib/fetch.js` — never raw `fetch()`
+- New dashboard cards: create `src/lib/athlete/X.js` (pure fn), `src/components/dashboard/XCard.jsx` (JSX), add lazy import in Dashboard.jsx
+- Sport gating: use `hasCyclingData`/`hasSwimData`/`hasTriData` useMemos in Dashboard.jsx before rendering sport-specific cards
 
 ## Build + Deploy
 ```bash
 cd ~/sporeus-athlete-app
 npm run build          # verify clean build first
-git add -A && git commit -m "vX.X: description"
+git add -A && git commit -m "feat(vX.X.X): description"
 git push               # triggers GitHub Actions: npm test → npm build → deploy Pages
 ```
+
+## Adding a New Dashboard Card
+1. Create `src/lib/athlete/X.js` — pure functions, no React, fully testable
+2. Create `src/components/dashboard/XCard.jsx` — `export default function XCard({ log, profile, ... })`
+3. Add `const XCard = lazy(() => import('./dashboard/XCard.jsx'))` in Dashboard.jsx
+4. Wrap in `<ErrorBoundary><Suspense fallback={null}><XCard .../></Suspense></ErrorBoundary>` in render
+5. Add tests in `src/lib/__tests__/components/X.test.js`
 
 ## Adding a New Tab
 1. Create `src/components/MyTab.jsx` — `export default function MyTab({ ...props })`
@@ -68,11 +82,11 @@ git push               # triggers GitHub Actions: npm test → npm build → dep
 
 ## Testing
 ```bash
-npm test              # run all tests (vitest run)
+npm test              # run all tests (vitest run) — currently 3786 tests, 228 files
 npm run test:watch    # interactive watch mode
 ```
 Test files: `src/lib/*.test.js` + `src/hooks/__tests__/` + `src/lib/__tests__/` — pure functions, hooks (jsdom), realtime, science.
-Target: keep all 2629 tests green before every commit.
+Target: keep all tests green before every commit.
 
 **Do not mock internal libraries.** Tests run against real formulas — mock only at system boundaries (external APIs, localStorage when unavoidable).
 
@@ -95,6 +109,21 @@ Target: keep all 2629 tests green before every commit.
 - `useSyncedTable(tableName, key)` in DataContext.jsx — bidirectional sync localStorage ↔ Supabase
 - Unauthenticated users write to localStorage only; sync activates on sign-in
 
+### Sport Gating in Dashboard
+```javascript
+const hasCyclingData = useMemo(() =>
+  parseFloat(profile?.ftp || 0) > 0 ||
+  log.some(e => /bike|cycl|ride/i.test(e.type || '') || /cycl/i.test(e.sport || '')),
+  [log, profile])
+const hasSwimData = useMemo(() =>
+  log.some(e => /swim/i.test(e.type || '') || /swim/i.test(e.sport || '')),
+  [log])
+const hasTriData = useMemo(() =>
+  profile?.primarySport === 'triathlon' ||
+  new Set(log.map(e => (e.type || '').split(' ')[0].toLowerCase())).size >= 3,
+  [log, profile])
+```
+
 ### Coach Features (v5.2)
 - Coach level override: `sporeus-coach-overrides` localStorage + best-effort `coach_athletes.coachLevelOverride` Supabase
 - Message thread: `sporeus-messages-{athleteId}` (coach), `sporeus-coach-messages` (athlete); transport via JSON export
@@ -107,14 +136,16 @@ Target: keep all 2629 tests green before every commit.
 - Log badge: red `⚡W'0` on any entry where `entry.wPrimeExhausted === true`
 
 ### Performance
-- Lazy-loaded: CoachDashboard, CoachOverview, PlanGenerator, Glossary (React.lazy + Suspense)
+- **69 dashboard cards** all lazy-loaded via React.lazy + Suspense fallback={null}
+- Sport gating prevents irrelevant chunk fetches (cycling/swim/tri cards gated)
 - `CTLTimeline` wrapped in `memo()`; `WeeklyVolChartMemo` + `ZoneDonutMemo` available from ui.jsx
-- Main bundle ~375 KB gzip (1308 KB raw); PWA precaches 29 assets
+- Main bundle ~84 kB gzip; PWA precaches all assets
 
 ## Supabase Backend (All Complete ✓)
 - Project: `pvicqwapvvfempjdgwbm.supabase.co`
+- 40 tables + 3 materialized views, 25 edge functions, 14 pg_cron jobs, 9 pgmq queues
 - Edge functions: `strava-oauth` (connect/sync/disconnect), `send-push` (VAPID push)
-- Migrations in `supabase/migrations/`: 001 (initial schema), 002 (Strava tokens), 003 (coach_plans)
+- Migrations in `supabase/migrations/`: 001–003 (schema, Strava, coach_plans)
 - Manual step done: `coachLevelOverride TEXT` column added to `coach_athletes`
 
 ## Known Limitations
@@ -135,3 +166,8 @@ Target: keep all 2629 tests green before every commit.
 | `VITE_DODO_CHECKOUT_COACH` | Dodo Payments checkout URL for Coach tier (Turkey) |
 | `VITE_DODO_CHECKOUT_CLUB` | Dodo Payments checkout URL for Club tier (Turkey) |
 | `VITE_STRIPE_CHECKOUT_COACH` | Stripe checkout URL for Coach tier (international) |
+
+## Version History
+- v11.55.0 (2026-04-25): 3786 tests, 228 files, 69 dashboard cards, 30 athlete libs
+- v6.7.0 (2026-04-14): Launch-ready, 1084 tests, Supabase 25 tables
+- See CHANGELOG.md for full history

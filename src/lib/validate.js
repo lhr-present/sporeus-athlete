@@ -123,5 +123,6 @@ export function sanitizeProfile(p) {
     waist:         numStr(p.waist, 30, 250),
     hip:           numStr(p.hip, 30, 250),
     email:         str(p.email, 200),
+    weeklyTssGoal: numStr(p.weeklyTssGoal, 0, 2000),
   }
 }

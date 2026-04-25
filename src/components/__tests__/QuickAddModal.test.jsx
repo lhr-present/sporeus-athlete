@@ -73,15 +73,18 @@ describe('QuickAddModal — TSS label', () => {
 describe('QuickAddModal — RPE effort labels', () => {
   it('shows "Easy — aerobic base building" for RPE 4', () => {
     renderWithLang(<QuickAddModal {...defaultProps} />)
-    const slider = screen.getByRole('slider')
-    fireEvent.change(slider, { target: { value: '4' } })
+    // RPE tap buttons — find the button whose text content is exactly '4'
+    const allButtons = screen.getAllByRole('button')
+    const btn4 = allButtons.find(b => b.textContent.trim() === '4')
+    fireEvent.click(btn4)
     expect(screen.getByText(/aerobic base building/i)).toBeInTheDocument()
   })
 
   it('shows "Hard — threshold effort" for RPE 8', () => {
     renderWithLang(<QuickAddModal {...defaultProps} />)
-    const slider = screen.getByRole('slider')
-    fireEvent.change(slider, { target: { value: '8' } })
+    const allButtons = screen.getAllByRole('button')
+    const btn8 = allButtons.find(b => b.textContent.trim() === '8')
+    fireEvent.click(btn8)
     expect(screen.getByText(/threshold effort/i)).toBeInTheDocument()
   })
 })

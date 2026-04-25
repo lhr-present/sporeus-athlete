@@ -58,6 +58,8 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
   const [duration, setDuration]       = useState('45')
   const [rpe, setRpe]                 = useState(6)
   const [notes, setNotes]             = useState('')
+  const [distanceKm, setDistanceKm]   = useState('')
+  const [avgHr, setAvgHr]             = useState('')
   const [phase, setPhase]             = useState('form')   // 'form' | 'saved'
   const [errors, setErrors]           = useState({})
   const [sessionAnalysis, setSessionAnalysis] = useState(null)
@@ -108,6 +110,8 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
       rpe,
       tss,
       notes: notes.trim() || undefined,
+      ...(distanceKm && parseFloat(distanceKm) > 0 ? { distanceKm: parseFloat(distanceKm) } : {}),
+      ...(avgHr && parseInt(avgHr) >= 30 && parseInt(avgHr) <= 250 ? { avgHr: parseInt(avgHr) } : {}),
     }
     onAdd(entry)
     setSavedEntry(entry)
@@ -242,9 +246,49 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
                   style={{ ...S.input, width: '100%', fontSize: 'max(16px, 14px)', borderColor: errors.duration ? '#e03030' : undefined }}
                 />
                 {errors.duration && <div style={{ fontSize: '9px', color: '#e03030', marginTop: '3px' }}>{errors.duration}</div>}
+                <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+                  {[-15, -5, +5, +15].map(d => (
+                    <button key={d} type="button"
+                      onClick={() => setDuration(prev => String(Math.max(1, Math.min(600, (parseInt(prev) || 0) + d))))}
+                      style={{ fontSize: '9px', padding: '3px 8px', background: '#1a1a1a', border: '1px solid #333', color: '#666', borderRadius: '3px', cursor: 'pointer', fontFamily: MONO }}
+                    >{d > 0 ? '+' : ''}{d}</button>
+                  ))}
+                </div>
               </div>
 
-              {/* RPE slider */}
+              {/* Distance + Avg HR */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: '9px', color: '#888', letterSpacing: '0.08em', marginBottom: '5px' }}>
+                    {isTR ? 'MESAFe (km)' : 'DISTANCE (km)'}
+                    <span style={{ color: '#444', fontWeight: 400, marginLeft: '4px', textTransform: 'none', letterSpacing: 0 }}>
+                      {isTR ? 'isteğe bağlı' : 'optional'}
+                    </span>
+                  </label>
+                  <input type="number" inputMode="decimal" min={0} max={300} step={0.1}
+                    value={distanceKm}
+                    onChange={e => setDistanceKm(e.target.value)}
+                    placeholder="0.0"
+                    style={{ ...S.input, width: '100%', fontSize: 'max(16px, 14px)' }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: '9px', color: '#888', letterSpacing: '0.08em', marginBottom: '5px' }}>
+                    {isTR ? 'ORT. KALp (bpm)' : 'AVG HR (bpm)'}
+                    <span style={{ color: '#444', fontWeight: 400, marginLeft: '4px', textTransform: 'none', letterSpacing: 0 }}>
+                      {isTR ? 'isteğe bağlı' : 'optional'}
+                    </span>
+                  </label>
+                  <input type="number" inputMode="numeric" min={30} max={250}
+                    value={avgHr}
+                    onChange={e => setAvgHr(e.target.value)}
+                    placeholder="—"
+                    style={{ ...S.input, width: '100%', fontSize: 'max(16px, 14px)' }}
+                  />
+                </div>
+              </div>
+
+              {/* RPE tap buttons */}
               <div style={{ marginBottom: '14px' }}>
                 <label style={{ display: 'block', fontSize: '9px', color: '#888', letterSpacing: '0.08em', marginBottom: '5px' }}>
                   {t('quickAddRpe')} — <span style={{ color: '#ff6600', fontWeight: 700 }}>{rpe}</span>
@@ -252,15 +296,22 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
                     ({effortLabel(rpe, lang)})
                   </span>
                 </label>
-                <input
-                  type="range" min={1} max={10} step={1} value={rpe}
-                  onChange={e => setRpe(Number(e.target.value))}
-                  style={{ width: '100%', accentColor: '#ff6600', cursor: 'pointer' }}
-                />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#444', marginTop: '2px' }}>
-                  <span>1 {isTR ? 'Kolay' : 'Easy'}</span>
-                  <span>5 {isTR ? 'Orta' : 'Mod'}</span>
-                  <span>10 {isTR ? 'Maks' : 'Max'}</span>
+                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                  {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setRpe(n)}
+                      style={{
+                        width: '28px', height: '28px', fontSize: '11px', fontWeight: 700,
+                        fontFamily: MONO, border: '1px solid',
+                        borderColor: rpe === n ? '#ff6600' : '#333',
+                        background: rpe === n ? '#ff6600' : '#1a1a1a',
+                        color: rpe === n ? '#000' : '#888',
+                        borderRadius: '3px', cursor: 'pointer', flexShrink: 0,
+                      }}
+                    >{n}</button>
+                  ))}
                 </div>
               </div>
 

@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.59.0 — 2026-04-25
+E52–E55: Athlete daily-use pivot. E52: QuickAddModal — RPE slider replaced with 10 tap buttons, duration ±5/±15 stepper, optional distance (km) + avg HR (bpm) fields. E53: GettingStartedCard — empty-state guidance for new athletes (log.length===0), 3-step CTA, wired to QuickAddModal. E54: WeeklyTssGoalCard — weekly TSS goal (set in Profile), progress bar, 7-day sparkbar, weeklyTssGoal in sanitizeProfile. E55: TodayStripCard — top-of-dashboard strip: today date, streak, trained-today indicator, weekly session count, log-today CTA. All wired via onLogSession → setShowQuickAdd. 3786 tests.
+
+---
+
 ## v11.55.0 — 2026-04-25
 E51: RowingMetricsCard enhanced with predict2000m (Paul's Law 1969) + concept2VO2max (Concept2 formula) — 2000m projection + VO2max from any erg session; 12 tests.
 

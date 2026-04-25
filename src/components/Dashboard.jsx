@@ -41,6 +41,7 @@ import SeasonBestsCard      from './dashboard/SeasonBestsCard.jsx'
 // ── Newly extracted sub-components (v7.18) ───────────────────────────────────
 import BackupReminder      from './dashboard/BackupReminder.jsx'
 import LoadSpikeAlert      from './dashboard/LoadSpikeAlert.jsx'
+import WeeklyTssGoalCard  from './dashboard/WeeklyTssGoalCard.jsx'
 import ReadinessCard       from './dashboard/ReadinessCard.jsx'
 import RecentSessionsCard  from './dashboard/RecentSessionsCard.jsx'
 import ZoneDistributorCard from './dashboard/ZoneDistributorCard.jsx'
@@ -55,6 +56,8 @@ import AICoachInsights    from './dashboard/AICoachInsights.jsx'
 import WeeklyRetroCard    from './dashboard/WeeklyRetroCard.jsx'
 import PhaseAnalyticsCard from './dashboard/PhaseAnalyticsCard.jsx'
 import FuelGuidanceCard   from './dashboard/FuelGuidanceCard.jsx'
+import GettingStartedCard from './dashboard/GettingStartedCard.jsx'
+import TodayStripCard    from './dashboard/TodayStripCard.jsx'
 const SeasonStatsCard    = lazy(() => import('./dashboard/SeasonStatsCard.jsx'))
 const CPDecayCard        = lazy(() => import('./dashboard/CPDecayCard.jsx'))
 const RowingMetricsCard  = lazy(() => import('./dashboard/RowingMetricsCard.jsx'))
@@ -91,7 +94,7 @@ const PlanScoreCard              = lazy(() => import('./dashboard/PlanScoreCard.
 const AthleteStatusSummaryCard   = lazy(() => import('./dashboard/AthleteStatusSummaryCard.jsx'))
 const SleepRestingHRCard         = lazy(() => import('./dashboard/SleepRestingHRCard.jsx'))
 
-export default function Dashboard({ log }) {
+export default function Dashboard({ log, onLogSession }) {
   const [lang]       = useLocalStorage('sporeus-lang', 'en')
   const [plan]       = useLocalStorage('sporeus-plan', null)
   const [planStatus] = useLocalStorage('sporeus-plan-status', {})
@@ -297,6 +300,7 @@ export default function Dashboard({ log }) {
   if (lc.dashSimple && !showAdvanced) {
     return (
       <div className="sp-fade">
+        <TodayStripCard log={log} isTR={lang === 'tr'} onLogSession={onLogSession} />
         <div style={{ marginBottom: '16px' }}>
           <div style={{ ...S.mono, fontSize: '11px', color: '#888', marginBottom: '4px' }}>{today}</div>
           <div style={{ ...S.mono, fontSize: '18px', fontWeight: 600 }}>
@@ -305,6 +309,9 @@ export default function Dashboard({ log }) {
           {headerBadges}
           {metricsRow}
         </div>
+        {log.length === 0 && (
+          <GettingStartedCard isTR={lang === 'tr'} onLogSession={onLogSession}/>
+        )}
         <div className="sp-card" style={{ ...S.row, marginBottom: '16px', animationDelay: '0ms' }}>
           {[
             { val: countSess, lbl: t('sessions') },
@@ -362,6 +369,10 @@ export default function Dashboard({ log }) {
   // ── Advanced dashboard ─────────────────────────────────────────────────────────
   return (
     <div className="sp-fade">
+      <TodayStripCard log={log} isTR={lang === 'tr'} onLogSession={onLogSession} />
+      {log.length === 0 && (
+        <GettingStartedCard isTR={lang === 'tr'} onLogSession={onLogSession}/>
+      )}
       <MilestonesList log={log} profile={profile}/>
       <BackupReminder log={log}/>
       <WeeklyRetroCard log={log} recovery={recovery} plan={plan} lang={lang}/>
@@ -451,6 +462,10 @@ export default function Dashboard({ log }) {
       </ErrorBoundary>
       <ProactiveInjuryAlert log={log} injuries={injuries} lang={lang}/>
       <LoadSpikeAlert/>
+
+      <ErrorBoundary>
+        <WeeklyTssGoalCard log={log} profile={profile} isTR={lang === 'tr'} />
+      </ErrorBoundary>
 
       {recovery.some(e => parseFloat(e.hrv) > 0) && (
         <div className="sp-card" style={{ ...S.card, animationDelay: '20ms' }}>

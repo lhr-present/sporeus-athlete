@@ -65,6 +65,7 @@ export default function Profile({ log, authUser }) {
     {k:'maxhr',lk:'maxHRIn',ph:'185',type:'number'},{k:'ftp',lk:'ftpL',ph:'280',type:'number'},
     {k:'vo2max',lk:'vo2L',ph:'55',type:'number'},{k:'threshold',lk:'threshPaceL',ph:'4:30'},
     {k:'goal',lk:'goalL',ph:'Sub-3h marathon Istanbul 2026'},
+    {k:'weeklyTssGoal',lk:'weeklyTssGoalL',ph:'e.g. 400',type:'number'},
   ]
 
   const handleExport = () => {
