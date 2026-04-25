@@ -538,6 +538,11 @@ export const LABELS = {
     loadProjNeutral: 'NEUTRAL',
     loadProjFatigued: 'FATIGUED',
     loadProjNeeded: 'Need 7+ sessions to project',
+    // E35 — Injury Pattern Mining
+    injPatternTitle: 'INJURY PATTERNS',
+    injPatternVulnerable: 'Vulnerable zones',
+    injPatternProtective: 'Protective',
+    injPatternNeedMore: 'Log 2+ injuries to see patterns',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -1075,6 +1080,11 @@ export const LABELS = {
     loadProjNeutral: 'NÖTR',
     loadProjFatigued: 'YORGUN',
     loadProjNeeded: 'Projeksiyon için 7+ seans gerekli',
+    // E35 — Saklanma Desenleri
+    injPatternTitle: 'SAKLANMA DESENLERİ',
+    injPatternVulnerable: 'Risk bölgeleri',
+    injPatternProtective: 'Koruyucu',
+    injPatternNeedMore: 'Desen için 2+ yaralanma kaydı girin',
   }
 }
 

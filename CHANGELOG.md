@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.39.0 — 2026-04-25
+E35: InjuryPatternCard — mineInjuryPatterns() wired (only patterns.js fn not yet in Dashboard); vulnerable zone chips, trigger tags, protective factors, confidence badge (Gabbett 2016); src/lib/athlete/injuryPatterns.js + 10 tests.
+
+---
+
 ## v11.38.0 — 2026-04-25
 E34: LoadProjectorCard — 4-week CTL/TSB forward projection at current + +10% load (EWMA PMC, Banister 1991, Coggan PMC); dual SVG line chart, TSB zone coloring; src/lib/athlete/loadProjector.js + 12 tests.
 
