@@ -516,6 +516,13 @@ export const LABELS = {
     cycleHigh: 'HIGH INTENSITY',
     cycleMod: 'MODERATE',
     cycleLow: 'EASY DAY',
+    // E32 — Plan Adherence Card
+    adherenceTitle: 'PLAN ADHERENCE',
+    adherenceOnTrack: 'ON TRACK',
+    adherenceOver: 'OVER PLAN',
+    adherenceUnder: 'UNDER PLAN',
+    adherenceNoPlan: 'No active plan — generate one in the Periodization tab',
+    adherenceAvg: 'avg compliance',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -1031,6 +1038,13 @@ export const LABELS = {
     cycleHigh: 'YÜKSEK YOĞUNLUK',
     cycleMod: 'ORTA',
     cycleLow: 'KOLAY GÜN',
+    // E32 — Plan Uyum Kartı
+    adherenceTitle: 'PLAN UYUMU',
+    adherenceOnTrack: 'ROTADA',
+    adherenceOver: 'PLAN ÜSTÜ',
+    adherenceUnder: 'PLAN ALTI',
+    adherenceNoPlan: 'Aktif plan yok — Periyodizasyon sekmesinden oluşturun',
+    adherenceAvg: 'ort. uyum',
   }
 }
 

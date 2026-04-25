@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.36.0 — 2026-04-25
+E32: PlanAdherenceCard — week-by-week planned vs actual TSS compliance (80–115% on-track), 8-bar SVG with baseline, stats row; src/lib/athlete/planAdherence.js + 10 tests.
+
+---
+
 ## v11.35.0 — 2026-04-25
 E31: CyclePlannerCard — menstrual cycle training guide (currentCyclePhase/PHASE_INFO, cycleUtils.js); phase badge, intensity rec, 4-phase timeline, days-until-next; female-gated via profile.gender; src/lib/athlete/cyclePlanner.js + 10 tests.
 
