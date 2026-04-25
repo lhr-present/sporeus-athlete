@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.33.0 — 2026-04-25
+E29: VO2maxProgressionCard — 8-week VO2max trend from running sessions with HR data (estimateVO2maxTrend, Daniels 2013, Lucia 2002); OLS trend slope, R² confidence, 8-bar SVG; src/lib/athlete/vo2maxProgression.js + 12 tests.
+
+---
+
 ## v11.32.0 — 2026-04-25
 E28: HRVSummaryCard — 28-day lnRMSSD baseline, current deviation, suppression alert, 14-dot SVG chart (Plews 2012, Kiviniemi 2007); src/lib/athlete/hrvSummary.js + 12 tests.
 

@@ -495,6 +495,13 @@ export const LABELS = {
     hrvSuppressed: 'HRV SUPPRESSED — consider rest',
     hrvVsBaseline: 'vs baseline',
     hrvNeeded: 'Log 7+ HRV readings to see summary',
+    // E29 — VO2max Progression Card
+    vo2maxProgTitle: 'VO₂max PROGRESSION',
+    vo2maxProgImproving: 'IMPROVING',
+    vo2maxProgStable: 'STABLE',
+    vo2maxProgDeclining: 'DECLINING',
+    vo2maxProgNeeded: 'Need 5+ runs with HR data',
+    vo2maxProgLowConf: 'Low confidence',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -989,6 +996,13 @@ export const LABELS = {
     hrvSuppressed: 'KLV BASKILANMIŞ — dinlenme önerilir',
     hrvVsBaseline: 'tabana göre',
     hrvNeeded: 'Özet için 7+ KLV kaydı girin',
+    // E29 — VO2max Progression Card
+    vo2maxProgTitle: 'VO₂max GELİŞİMİ',
+    vo2maxProgImproving: 'GELİŞİYOR',
+    vo2maxProgStable: 'STABİL',
+    vo2maxProgDeclining: 'DÜŞÜYOR',
+    vo2maxProgNeeded: '5+ koşu KAH verisi gerekli',
+    vo2maxProgLowConf: 'Düşük güven',
   }
 }
 

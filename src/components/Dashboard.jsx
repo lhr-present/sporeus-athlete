@@ -70,6 +70,7 @@ const InsightFeedCard            = lazy(() => import('./dashboard/InsightFeedCar
 const RecoveryProtocolCard       = lazy(() => import('./dashboard/RecoveryProtocolCard.jsx'))
 const OSTRCMonitorCard           = lazy(() => import('./dashboard/OSTRCMonitorCard.jsx'))
 const HRVSummaryCard             = lazy(() => import('./dashboard/HRVSummaryCard.jsx'))
+const VO2maxProgressionCard      = lazy(() => import('./dashboard/VO2maxProgressionCard.jsx'))
 
 export default function Dashboard({ log }) {
   const [lang]       = useLocalStorage('sporeus-lang', 'en')
@@ -680,6 +681,7 @@ export default function Dashboard({ log }) {
       <Suspense fallback={null}><RecoveryProtocolCard log={log} recovery={recovery} /></Suspense>
       <Suspense fallback={null}><OSTRCMonitorCard /></Suspense>
       <Suspense fallback={null}><HRVSummaryCard recovery={recovery} /></Suspense>
+      <Suspense fallback={null}><VO2maxProgressionCard log={log} profile={profile} /></Suspense>
       <LoadHeatmapCard log={log} dl={dl}/>
       <SeasonBestsCard log={log} dl={dl}/>
 
