@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.55.0 — 2026-04-25
+E51: RowingMetricsCard enhanced with predict2000m (Paul's Law 1969) + concept2VO2max (Concept2 formula) — 2000m projection + VO2max from any erg session; 12 tests.
+
+---
+
 ## v11.54.0 — 2026-04-25
 E50: SleepRestingHRCard — sleep hours trend + resting HR trend from recovery entries; sparkline SVGs; fills major Dashboard UX gap (all platforms show sleep/RHR, this app never did); src/lib/athlete/sleepRestingHR.js + 17 tests.
 

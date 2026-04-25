@@ -702,7 +702,7 @@ export default function Dashboard({ log }) {
       <GoalTrackerCard log={log} profile={profile} dl={dl}/>
       <Suspense fallback={null}><SeasonStatsCard log={log} /></Suspense>
       <Suspense fallback={null}><CPDecayCard testResults={testResults || []} /></Suspense>
-      <Suspense fallback={null}><RowingMetricsCard log={log} /></Suspense>
+      <Suspense fallback={null}><RowingMetricsCard log={log} profile={profile} /></Suspense>
       <Suspense fallback={null}><ChallengeWidget log={log} /></Suspense>
       <Suspense fallback={null}><NMFreshnessCard log={log} /></Suspense>
       <Suspense fallback={null}><PolarizationComplianceCard log={log} /></Suspense>

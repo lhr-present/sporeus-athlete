@@ -6,6 +6,7 @@ import {
   splitPer500m, formatSplit,
   strokeEfficiency, classifyStrokeRate,
   rowingEfficiencyFactor, fmtSplit,
+  predict2000m, concept2VO2max,  // ADD THESE
 } from '../../lib/sport/rowing.js'
 
 const ZONE_COLORS = {
@@ -16,7 +17,7 @@ const ZONE_COLORS = {
   sprint:    '#9c27b0',
 }
 
-export default function RowingMetricsCard({ log = [] }) {
+export default function RowingMetricsCard({ log = [], profile = {} }) {
   const { lang, t } = useContext(LangCtx)
 
   const rowingData = useMemo(() => {
@@ -29,6 +30,24 @@ export default function RowingMetricsCard({ log = [] }) {
 
   const last = rowingData[0]
   if (!last) return null
+
+  // 2000m prediction and VO2max
+  const pred2k = useMemo(() => {
+    if (!last) return null
+    // If session is already ~2000m, use directly; otherwise predict
+    const timeSec = last.duration
+    const distM   = last.distance
+    if (!timeSec || !distM) return null
+    const predicted = Math.abs(distM - 2000) < 200
+      ? timeSec                              // close enough to 2000m
+      : predict2000m(timeSec, distM)         // Paul's Law projection
+    if (!predicted) return null
+    const bw = parseFloat(profile?.weight_kg || profile?.weight || 0)
+    const vo2 = bw > 0 ? concept2VO2max(predicted, bw) : null
+    const mm = Math.floor(predicted / 60)
+    const ss = String(Math.round(predicted % 60)).padStart(2, '0')
+    return { timeStr: `${mm}:${ss}`, isProjection: Math.abs(distM - 2000) >= 200, vo2 }
+  }, [last, profile])
 
   const split = splitPer500m(last.distance, last.duration)
   const strEff = strokeEfficiency(last.distance, last.strokes)
@@ -131,6 +150,38 @@ export default function RowingMetricsCard({ log = [] }) {
       {rowingData.length > 1 && (
         <div style={{ ...subStyle, marginTop: 10 }}>
           {rowingData.length} rowing sessions in last 30 days
+        </div>
+      )}
+
+      {pred2k && (
+        <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid #1a1a1a' }}>
+          <div style={{ fontSize: 9, color: '#555', letterSpacing: '0.1em', marginBottom: 6 }}>
+            {lang === 'tr' ? '◈ 2000m TAHMİNİ' : '◈ 2000m PREDICTION'}
+          </div>
+          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: "'IBM Plex Mono',monospace", textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>
+                {pred2k.isProjection ? (lang === 'tr' ? 'TAHMİN (Paul Yasası)' : 'PROJECTED (Paul\'s Law)') : (lang === 'tr' ? 'ÖLÇÜLEN' : 'MEASURED')}
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', fontFamily: "'IBM Plex Mono',monospace", lineHeight: 1.1 }}>
+                {pred2k.timeStr}
+              </div>
+            </div>
+            {pred2k.vo2 && (
+              <div>
+                <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: "'IBM Plex Mono',monospace", textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>
+                  VO2max (Concept2)
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: '#0064ff', fontFamily: "'IBM Plex Mono',monospace", lineHeight: 1.1 }}>
+                  {pred2k.vo2}
+                </div>
+                <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: "'IBM Plex Mono',monospace", marginTop: 2 }}>mL/kg/min</div>
+              </div>
+            )}
+          </div>
+          <div style={{ fontSize: 9, color: '#333', marginTop: 8 }}>
+            ℹ Paul (1969) · Concept2 VO2max formula
+          </div>
         </div>
       )}
     </div>
