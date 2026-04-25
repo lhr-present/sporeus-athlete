@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.28.0 — 2026-04-25
+E24: ConsistencyTrendCard — 8-week rolling consistency score history (calculateConsistency, Bangsbo 2006), OLS trend slope, tier classification (excellent/good/fair/poor), streak counter, 8-bar SVG with trend overlay; src/lib/athlete/consistencyTrend.js + 12 tests.
+
+---
+
 ## v11.27.0 — 2026-04-25
 E23: StrainHistoryCard — 8-week rolling monotony+strain history (Foster 1998), dual SVG chart, high-monotony warning badge; src/lib/athlete/strainHistory.js + 12 tests.
 

@@ -465,6 +465,14 @@ export const LABELS = {
     strainMonotony: 'Monotony',
     strainStrain: 'Strain',
     strainThreshold: 'threshold',
+    // E24 — Consistency Trend Card
+    consistencyTitle: 'CONSISTENCY TREND',
+    consistencyExcellent: 'EXCELLENT',
+    consistencyGood: 'GOOD',
+    consistencyFair: 'FAIR',
+    consistencyPoor: 'POOR',
+    consistencyStreak: 'week streak',
+    consistencyNeeded: 'Need 2+ weeks of training data',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -929,6 +937,14 @@ export const LABELS = {
     strainMonotony: 'Monotoni',
     strainStrain: 'Stres',
     strainThreshold: 'eşik',
+    // E24 — Tutarlılık Trend Kartı
+    consistencyTitle: 'TUTARLILIK TRENDİ',
+    consistencyExcellent: 'MÜKEMMEL',
+    consistencyGood: 'İYİ',
+    consistencyFair: 'ORTA',
+    consistencyPoor: 'ZAYIF',
+    consistencyStreak: 'haftalık seri',
+    consistencyNeeded: '2+ hafta antrenman verisi gerekli',
   }
 }
 
