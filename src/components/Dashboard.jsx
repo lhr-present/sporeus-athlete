@@ -95,13 +95,15 @@ const PlanScoreCard              = lazy(() => import('./dashboard/PlanScoreCard.
 const AthleteStatusSummaryCard   = lazy(() => import('./dashboard/AthleteStatusSummaryCard.jsx'))
 const SleepRestingHRCard         = lazy(() => import('./dashboard/SleepRestingHRCard.jsx'))
 const AllZonesCard               = lazy(() => import('./dashboard/AllZonesCard.jsx'))
+const DailyBriefingCard          = lazy(() => import('./dashboard/DailyBriefingCard.jsx'))
 
-export default function Dashboard({ log, onLogSession }) {
+export default function Dashboard({ log, onLogSession, onGoToProfile }) {
   const [lang]       = useLocalStorage('sporeus-lang', 'en')
   const [plan]       = useLocalStorage('sporeus-plan', null)
   const [planStatus] = useLocalStorage('sporeus-plan-status', {})
   const { recovery, injuries, testResults, raceResults, profile } = useData()
   const [myCoach]    = useLocalStorage('sporeus-my-coach', null)
+  const [stravaToken] = useLocalStorage('sporeus-strava-token', '')
   const { t }        = useContext(LangCtx)
 
   const sportLabel = SPORT_BRANCHES.find(b => b.id === profile.primarySport)?.label || profile.sport || ''
@@ -312,6 +314,18 @@ export default function Dashboard({ log, onLogSession }) {
             onGoToProfile={undefined}
           />
         </ErrorBoundary>
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <DailyBriefingCard
+              profile={profile}
+              log={log}
+              plan={plan}
+              planStatus={planStatus}
+              recovery={recovery}
+              isTR={lang === 'tr'}
+            />
+          </Suspense>
+        </ErrorBoundary>
         <div style={{ marginBottom: '16px' }}>
           <div style={{ ...S.mono, fontSize: '11px', color: '#888', marginBottom: '4px' }}>{today}</div>
           <div style={{ ...S.mono, fontSize: '18px', fontWeight: 600 }}>
@@ -321,7 +335,7 @@ export default function Dashboard({ log, onLogSession }) {
           {metricsRow}
         </div>
         {log.length === 0 && (
-          <GettingStartedCard isTR={lang === 'tr'} onLogSession={onLogSession}/>
+          <GettingStartedCard isTR={lang === 'tr'} onLogSession={onLogSession} stravaConnected={!!stravaToken} onConnectStrava={onGoToProfile}/>
         )}
         <div className="sp-card" style={{ ...S.row, marginBottom: '16px', animationDelay: '0ms' }}>
           {[
@@ -393,6 +407,18 @@ export default function Dashboard({ log, onLogSession }) {
           isTR={lang === 'tr'}
           onGoToProfile={undefined}
         />
+      </ErrorBoundary>
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <DailyBriefingCard
+            profile={profile}
+            log={log}
+            plan={plan}
+            planStatus={planStatus}
+            recovery={recovery}
+            isTR={lang === 'tr'}
+          />
+        </Suspense>
       </ErrorBoundary>
       {log.length === 0 && (
         <GettingStartedCard isTR={lang === 'tr'} onLogSession={onLogSession}/>

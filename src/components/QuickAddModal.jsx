@@ -104,6 +104,17 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
   )
   const [tplSaved, setTplSaved]       = useState(false)
 
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  )
+  useEffect(() => {
+    const on  = () => setIsOnline(true)
+    const off = () => setIsOnline(false)
+    window.addEventListener('online',  on)
+    window.addEventListener('offline', off)
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off) }
+  }, [])
+
   const firstRef = useRef(null)
   useEffect(() => { firstRef.current?.focus() }, [])
 
@@ -184,6 +195,12 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
             <div style={{ fontSize: '32px', marginBottom: '12px' }}>✓</div>
             <div style={{ fontSize: '13px', fontWeight: 700, color: '#ff6600', marginBottom: '6px' }}>
               {isTR ? 'Antrenman kaydedildi' : 'Session logged'}
+            </div>
+            <div style={{ fontSize: '9px', marginBottom: '4px', letterSpacing: '0.06em',
+              color: isOnline ? '#5bc25b' : '#f5c542' }}>
+              {isOnline
+                ? (isTR ? '✓ Kaydedildi ve senkronize' : '✓ Saved & syncing')
+                : (isTR ? '⚡ Çevrimdışı — yerel kayıt' : '⚡ Offline — saved locally')}
             </div>
             <div style={{ fontSize: '11px', color: '#888', marginBottom: sessionAnalysis ? '8px' : '16px', lineHeight: 1.6 }}>
               {dur} min {type} · {isTR ? 'Antrenman Yükü' : 'Training Load'} {tss}
@@ -413,6 +430,13 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
                   style={{ ...S.input, width: '100%' }}
                 />
               </div>
+
+              {/* Offline badge */}
+              {!isOnline && (
+                <div style={{ fontSize: '8px', color: '#f5c542', textAlign: 'center', marginBottom: '8px', letterSpacing: '0.06em' }}>
+                  ⚡ {isTR ? 'Çevrimdışı — kaydedilecek' : 'Offline — will save locally'}
+                </div>
+              )}
 
               {/* Actions */}
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>

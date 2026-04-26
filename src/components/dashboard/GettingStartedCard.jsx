@@ -2,7 +2,7 @@
 const MONO = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
 
-export default function GettingStartedCard({ isTR, onLogSession }) {
+export default function GettingStartedCard({ isTR, onLogSession, stravaConnected = false, onConnectStrava }) {
   const steps = isTR ? [
     { n: '01', title: 'İlk antrenmanını kaydet', desc: 'Süre ve RPE ile hızlı kayıt — 10 saniye sürer.' },
     { n: '02', title: 'Bugün sekmesini kontrol et', desc: 'Günlük antrenman önerileri ve hazırlık puanın.' },
@@ -43,6 +43,25 @@ export default function GettingStartedCard({ isTR, onLogSession }) {
       >
         + {isTR ? 'İLK ANTRENMANINI KAYDET' : 'LOG YOUR FIRST SESSION'}
       </button>
+      {/* Only show if Strava not connected */}
+      {!stravaConnected && (
+        <div style={{ textAlign: 'center', marginTop: '10px' }}>
+          <div style={{ fontSize: '8px', color: '#333', marginBottom: '6px' }}>
+            {isTR ? '— ya da otomatik içe aktar —' : '— or auto-import from —'}
+          </div>
+          <button
+            onClick={onConnectStrava}
+            style={{
+              fontSize: '9px', padding: '5px 14px',
+              background: 'none', border: '1px solid #fc4c02',
+              color: '#fc4c02', borderRadius: '3px', cursor: 'pointer',
+              fontFamily: "'IBM Plex Mono', monospace", fontWeight: 700,
+            }}
+          >
+            ⚡ {isTR ? 'Strava Bağla →' : 'Connect Strava →'}
+          </button>
+        </div>
+      )}
       <div style={{ fontSize: '8px', color: '#333', marginTop: '8px', textAlign: 'center' }}>
         {isTR
           ? 'Tüm veriler cihazınızda saklanır · Senkronizasyon için kayıt olun'

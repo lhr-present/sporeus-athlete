@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.72.0 — 2026-04-26
+E65+E67: Prescription loop round 1. E65: dailyPrescription.js — pure coaching engine dailyPrescription(profile,log,plan,planStatus,recovery,metrics); outputs status/tsb/ctl/acwr, zone-annotated session targets, tomorrow suggestion, sessionFlag fn, ACWR+monotony warnings; TYPE_TO_ZONE mapping, TSB status thresholds (fresh/optimal/normal/fatigued/very-fatigued); DailyBriefingCard.jsx in both Dashboard paths (status badge, brief headline, session block with zone+HR+pace+power ranges, tomorrow nudge, warnings strip, CTL/TSB/ACWR row); 47 tests. E67: Offline indicator + Strava CTA — QuickAddModal shows ⚡ offline badge when navigator.onLine=false and sync status in confirmation panel; GettingStartedCard gains Strava connect CTA (#fc4c02) when !stravaConnected; App.jsx fires 8s auto-dismiss toast after 3rd manual log if no strava token (once only, sporeus-strava-nudge-shown localStorage key). 3886 tests, 230 files.
+
+---
+
 ## v11.68.0 — 2026-04-26
 E60–E64: Elite athlete profile propagation engine. E60: profileDerivedMetrics.js — universal profile→metrics engine; deriveAllMetrics(profile,log,testResults) derives W/kg, 7 Coggan power zones, 5 Daniels paces, 5 HR zones (Tanaka age-predicted maxHR, 87% LTHR), auto-VDOT from best log session, profile completeness 0–100 with feature-unlock map; 53 tests. E61: QuickAddModal zone-aware RPE — real-time zone hint below RPE buttons: "RPE 7 → Z4 · 145–163 bpm · 3:21/km" using profile-derived metrics. E62: EliteMetricsStrip — compact W/kg·VDOT·MaxHR·LTHR strip in both Dashboard modes (≥2 metrics threshold). E63: AllZonesCard — lazy-loaded reference card (Coggan 7 power zones + Daniels 5 paces + 5 HR zones) in advanced Dashboard. E64: Profile completeness section — score/progress bar/missing fields/feature-unlock list + auto-VDOT nudge with one-click pre-fill. 3839 tests, 229 files.
 

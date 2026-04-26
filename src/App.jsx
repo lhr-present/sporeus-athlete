@@ -118,6 +118,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
   const [showUpgrade, setShowUpgrade]             = useState(false)
   const [upgradeFeatureKey, setUpgradeFeatureKey] = useState(null)
   const [showSemanticSearch, setShowSemanticSearch] = useState(false)
+  const [showStratvaNudge, setShowStratvaNudge]   = useState(false)
 
   // Ctrl+Shift+K — semantic search (coach/club tier only)
   useEffect(() => {
@@ -132,6 +133,16 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [authProfile?.subscription_tier])
+
+  // Auto-dismiss Strava nudge after 8s
+  useEffect(() => {
+    if (!showStratvaNudge) return
+    const t = setTimeout(() => {
+      localStorage.setItem('sporeus-strava-nudge-shown', '1')
+      setShowStratvaNudge(false)
+    }, 8000)
+    return () => clearTimeout(t)
+  }, [showStratvaNudge])
 
   function openUpgrade(featureKey = null) {
     setUpgradeFeatureKey(featureKey)
@@ -439,7 +450,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
           )}
           {coachMode && authProfile?.role !== 'coach' && <AsyncBoundary name="Coach Mode"><CoachDashboard authUser={authUser}/></AsyncBoundary>}
           {!coachMode && tab === 'today'        && <AsyncBoundary name="Today"><TodayView log={log} setTab={handleTabClick} setLogPrefill={setLogPrefill}/></AsyncBoundary>}
-          {!coachMode && tab === 'dashboard'    && <AsyncBoundary name="Dashboard"><Dashboard log={log} onLogSession={() => setShowQuickAdd(true)}/></AsyncBoundary>}
+          {!coachMode && tab === 'dashboard'    && <AsyncBoundary name="Dashboard"><Dashboard log={log} onLogSession={() => setShowQuickAdd(true)} onGoToProfile={() => handleTabClick('profile')}/></AsyncBoundary>}
           {tab === 'zones'        && <AsyncBoundary name="Zone Calc"><ZoneCalc/></AsyncBoundary>}
           {tab === 'tests'        && <AsyncBoundary name="Protocols"><TestProtocols/></AsyncBoundary>}
           {tab === 'log'          && <AsyncBoundary name="Training Log"><TrainingLog log={log} setLog={setLog} prefill={logPrefill} clearPrefill={() => setLogPrefill(null)}/></AsyncBoundary>}
@@ -461,11 +472,52 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
         </footer>
       </div>
 
+      {/* ── Strava nudge toast — fires after 3rd manual session ─────────────── */}
+      {showStratvaNudge && (
+        <div style={{
+          position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)',
+          zIndex: 9999, background: '#111', border: '1px solid #fc4c02',
+          borderRadius: '4px', padding: '10px 16px', maxWidth: '340px',
+          fontFamily: "'IBM Plex Mono', monospace", boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+        }}>
+          <div style={{ fontSize: '10px', color: '#fc4c02', fontWeight: 700, marginBottom: '4px' }}>
+            ⚡ {lang === 'tr' ? 'Strava\'yı Bağla' : 'Connect Strava'}
+          </div>
+          <div style={{ fontSize: '9px', color: '#888', marginBottom: '8px' }}>
+            {lang === 'tr'
+              ? '3 manuel kayıt yapıldı. Strava bağlanırsa gelecek seanslar otomatik içe aktarılır.'
+              : '3 sessions logged. Connect Strava to auto-import future sessions.'}
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => { setShowStratvaNudge(false); handleTabClick('profile') }}
+              style={{ fontSize: '9px', padding: '4px 10px', background: '#fc4c02', color: '#fff', border: 'none', borderRadius: '3px', cursor: 'pointer', fontFamily: "'IBM Plex Mono', monospace" }}
+            >
+              {lang === 'tr' ? 'Bağlan →' : 'Connect →'}
+            </button>
+            <button
+              onClick={() => { localStorage.setItem('sporeus-strava-nudge-shown', '1'); setShowStratvaNudge(false) }}
+              style={{ fontSize: '9px', padding: '4px 10px', background: 'none', border: '1px solid #333', color: '#555', borderRadius: '3px', cursor: 'pointer', fontFamily: "'IBM Plex Mono', monospace" }}
+            >
+              {lang === 'tr' ? 'Daha sonra' : 'Later'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── Quick-Add Session modal ───────────────────────────────────────── */}
       {showQuickAdd && (
         <Suspense fallback={null}>
           <QuickAddModal
-            onAdd={handleAddSession}
+            onAdd={(entry) => {
+              handleAddSession(entry)
+              const newLen = log.length + 1
+              if (newLen === 3 &&
+                  !localStorage.getItem('sporeus-strava-token') &&
+                  !localStorage.getItem('sporeus-strava-nudge-shown')) {
+                setShowStratvaNudge(true)
+              }
+            }}
             onClose={() => setShowQuickAdd(false)}
             profile={profile}
             isFirst={isFirstSession}

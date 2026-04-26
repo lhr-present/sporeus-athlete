@@ -195,3 +195,127 @@ Take the highest estimate from the last 90 days.
 Store result as `autoVdot.vdot` — NEVER overwrite profile.vo2max.
 **Usage:** AllZonesCard + VO2maxCard show "(auto from best 10k)" label when using autoVdot.
 Show nudge in Profile: "Auto-VDOT 52 detected (from best 10k, 2026-03-15). Set it to unlock all running paces →"
+
+---
+
+## Strategic Gap: The Prescription Loop (E65–E69)
+
+### The Problem
+The app is descriptive, not prescriptive. Athletes log → see metrics → but nothing tells them what to do tomorrow based on today's data. That is the difference between a logger and a daily-use coaching tool.
+
+### Updated Daily-Use Tests (add to the 5 original)
+
+**Test 6: Does the app tell the athlete what to do TODAY?**
+- DailyBriefingCard must show: status (Fresh/Fatigued) + today's target session + zone/HR/pace targets derived from profile
+- Acceptance: athlete at 6am reads one card and knows: duration, zone, HR range, pace or power range
+
+**Test 7: Does logging today's session visibly change tomorrow's recommendation?**
+- After save in QuickAddModal: if RPE ≥ 8 → tomorrow suggestion adjusts to "Easy recovery"
+- Acceptance: athlete logs hard session → tomorrow card changes label and rationale
+
+**Test 8: Does the app warn BEFORE silent overtraining?**
+- DailyPrescription must flag: ACWR > 1.5, monotony > 2.0, 3+ fatigued days in 7
+- Acceptance: no athlete hits ACWR 1.8 without seeing a caution banner first
+
+---
+
+## E65–E69 Prompt Specs (Prescription Loop Sprint)
+
+### E65 — dailyPrescription() engine + DailyBriefingCard
+**The highest-leverage single enhancement. This is what makes the app answer "why open at 6am."**
+
+**`src/lib/dailyPrescription.js`** — pure function:
+```javascript
+export function dailyPrescription(profile, log, plan, planStatus, recovery, metrics)
+// metrics = deriveAllMetrics(profile, log) already computed
+// Returns:
+{
+  status: 'fresh' | 'optimal' | 'normal' | 'fatigued' | 'very-fatigued',  // from TSB
+  tsb: number, ctl: number, acwr: number | null,
+  today: {
+    session: {                     // null on rest/no-plan days
+      type, durationMin, rpe,
+      zoneNum: 1-5 | null,
+      hrRange: '145–163 bpm' | null,     // from metrics.hr.zones[zoneNum-1]
+      paceRange: '4:25–4:45/km' | null,  // from metrics.running.paces
+      powerRange: '228–270W' | null,     // from metrics.power.zones[zoneNum-1]
+    } | null,
+    brief: { en, tr },             // "TSB +5 · Fresh — Z3 Tempo · 145–163 bpm · Race 23d"
+    raceCountdown: number | null,
+  },
+  tomorrow: { suggestion: {en,tr}, type:'reduce'|'rest'|'normal', rationale:{en,tr} } | null,
+  sessionFlag: (entry) => { code, en, tr } | null,  // call after logging; flags RPE mismatch
+  warnings: [{ code, level:'caution'|'danger', en, tr }],
+}
+```
+**Status from TSB:** tsb > 10 = fresh, 5-10 = optimal, -5 to 5 = normal, -10 to -5 = fatigued, < -10 = very-fatigued
+**Zone annotation:** map plan session type → zone number (use existing ZLABEL/ZIDX from formulas.js or constants.js), then look up metrics zones
+**Tomorrow logic:** if today's planned RPE ≥ 8 OR today's ACWR > 1.3 → suggest reduce/rest tomorrow
+**Warnings:** ACWR > 1.5 = caution, > 1.8 = danger; monotony > 2.0 = caution; TSB < -15 = caution
+**Tests:** 30+ in `src/lib/__tests__/dailyPrescription.test.js`
+
+**`src/components/dashboard/DailyBriefingCard.jsx`** — elite morning card:
+- Renders at the TOP of Dashboard (both modes), right after EliteMetricsStrip
+- One orange headline: the brief ("TSB +5 · Fresh — Plan: 60min Z3 · 145–163 bpm · 4:25/km")
+- Session block: type, duration, zone color, HR/pace/power targets
+- Tomorrow suggestion (compact, below session)
+- Warnings in amber/red
+- Race countdown badge if within 30 days
+- Returns null if log is empty
+
+### E66 — TodayView: Readiness gates the prescription
+**Currently: readiness check (sleep/energy/soreness) is Card 2. Plan is Card 1. They're disconnected.**
+**Fix: When readiness score < 50, Card 1 (plan) shows a yellow banner: "Readiness LOW — consider -20% intensity today"**
+**When readiness not yet logged today: show a compact 3-tap check-in ABOVE the plan card, not below it**
+
+The wellness form is already implemented in TodayView (state: wellness, wellnessSaved, readiness score at line 352). The changes are:
+1. Move the wellness 3-slider mini-form to render BEFORE the planned session display when `!wellnessSaved && !todayRec`
+2. When `wellnessSaved && todayRec.score < 50`: inject a warning banner inside Card 1 above the session details
+3. The prescription from E65's `dailyPrescription()` should show the adjusted recommendation
+
+**File:** only `src/components/TodayView.jsx` — no new files
+
+### E67 — Offline indicator + Strava CTA after 3 sessions
+**Part A — Offline indicator in QuickAddModal:**
+- `navigator.onLine` check on mount + event listener for online/offline
+- Show amber badge: "⚡ Offline — session saved locally" when offline (after save, in confirmation)
+- Show "✓ Saved & syncing" when online
+- The `offlineQueue.js` already has `getSyncStatus()` — use it for the confirmation text
+**File:** `src/components/QuickAddModal.jsx` only
+
+**Part B — Strava CTA surfacing:**
+- In `GettingStartedCard.jsx`: add a second CTA below the main orange button: "— or auto-import from —  [Connect Strava →]" (only shown if `!localStorage.getItem('sporeus-strava-token')`)
+- In App.jsx: after 3rd manual log entry saved, show a one-time toast/nudge: "Log 3 sessions → connect Strava to auto-import future sessions"
+**Files:** `src/components/dashboard/GettingStartedCard.jsx`, `src/App.jsx`
+
+### E68 — QuickAddModal post-session flag + tomorrow nudge
+**After saving a session, the confirmation panel already shows session analysis. Add:**
+1. **Zone mismatch flag:** if today had a planned session (use `getTodayPlannedSession` or pass via prop) and logged RPE doesn't match: "You logged RPE 8 on an easy day — flag: check recovery tomorrow"
+2. **Tomorrow nudge strip:** compact "Tomorrow →" suggestion based on today's RPE and TSB (no profile needed, pure heuristic):
+   - RPE ≥ 9: "Tomorrow: mandatory easy day or rest"
+   - RPE 7-8 + consecutive hard days: "Tomorrow: reduce intensity"
+   - RPE ≤ 5: "Tomorrow: on track, maintain plan"
+**File:** `src/components/QuickAddModal.jsx` only (add to the `phase === 'saved'` confirmation block)
+Note: QuickAddModal receives `log` prop — use it to check yesterday's RPE for "consecutive hard days" check.
+
+### E69 — Weekly review card + consistency depth
+**Part A — Weekly review card:**
+`generateWeeklyRecap(log)` already exists in `src/lib/trainingLoad.js` and is called in TodayView (but only shown as dismissible recap). Add a proper `WeeklyReviewCard.jsx` for Dashboard that shows:
+- This week vs last week: sessions count, TSS, avg RPE, total volume
+- Best session badge
+- "Plan adherence: 4/5 sessions completed"
+- "Next week →" suggestion based on current CTL trajectory
+**Files:** `src/components/dashboard/WeeklyReviewCard.jsx` (check if WeeklyReportCard already exists first) + Dashboard integration
+
+**Part B — Consistency depth:**
+Inline section inside WeeklyReviewCard OR standalone `ConsistencyDepthCard.jsx`:
+"67 sessions logged → CTL trend: reliable (42+ days) · VDOT confidence: ±1.2 · Race prediction: ±4%"
+Confidence thresholds: < 14 sessions = "building", 14-42 = "moderate", 42+ = "reliable"
+
+---
+
+## Formula Transparency Rule (apply when adding/modifying metric labels)
+Every metric shown to athletes should have a `title` attribute or `ⓘ` tooltip with:
+- Formula source (e.g., "CTL: 42-day EWMA — Banister 1991")
+- Book reference if applicable (e.g., "See EŞİK Ch. 7")
+Never leave a metric label naked without at least a hover title.
