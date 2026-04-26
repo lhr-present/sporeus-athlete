@@ -13,6 +13,7 @@ import { addNotification } from '../lib/notificationCenter.js'
 import { analyseSession } from '../lib/intelligence.js'
 import { useWorkoutTemplates } from '../hooks/useWorkoutTemplates.js'
 import { deriveAllMetrics } from '../lib/profileDerivedMetrics.js'
+import { dailyPrescription } from '../lib/dailyPrescription.js'
 
 const MONO = "'IBM Plex Mono', monospace"
 const today = () => new Date().toISOString().slice(0, 10)
@@ -222,6 +223,49 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
                 }[sessionAnalysis.recovery_time] || sessionAnalysis.recovery_time) : sessionAnalysis.recovery_time}</div>
               </div>
             )}
+            {/* ── Zone mismatch flag ─────────────────────────────────── */}
+            {savedEntry && (() => {
+              const easyTypes = ['easy', 'recovery', 'aerobic']
+              const hardTypes = ['threshold', 'interval', 'vo2max', 'sprint', 'race']
+              const typeLower = (savedEntry.type || '').toLowerCase()
+              const entryRpe  = savedEntry.rpe ?? 5
+              const isEasy = easyTypes.some(t2 => typeLower.includes(t2))
+              const isHard = hardTypes.some(t2 => typeLower.includes(t2))
+              if (isEasy && entryRpe >= 8) {
+                return (
+                  <div style={{ fontSize: '10px', color: '#f5c542', padding: '6px 10px', background: '#1a1500', border: '1px solid #3a3000', borderRadius: '3px', marginBottom: '8px', textAlign: 'left', lineHeight: 1.5 }}>
+                    {isTR
+                      ? '⚠ Kolay günde yüksek efor — yarın bunu toparlanmaya say'
+                      : '⚠ High effort on easy day — note this in your recovery tomorrow'}
+                  </div>
+                )
+              }
+              if (isHard && entryRpe <= 3) {
+                return (
+                  <div style={{ fontSize: '10px', color: '#f5c542', padding: '6px 10px', background: '#1a1500', border: '1px solid #3a3000', borderRadius: '3px', marginBottom: '8px', textAlign: 'left', lineHeight: 1.5 }}>
+                    {isTR
+                      ? '⚠ Zor günde düşük efor — yorgunluk birikip birikmediğini değerlendir'
+                      : '⚠ Low effort on hard day — consider if fatigue is building'}
+                  </div>
+                )
+              }
+              return null
+            })()}
+            {/* ── Tomorrow nudge strip ───────────────────────────────── */}
+            {savedEntry && (() => {
+              try {
+                const rx = dailyPrescription(profile, [...(log || []), savedEntry], null, null, null, null)
+                const suggStr = rx?.tomorrow?.suggestion?.[isTR ? 'tr' : 'en']
+                if (!suggStr) return null
+                return (
+                  <div style={{ color: '#888', fontSize: 11, marginTop: 8, borderTop: '1px solid #222', paddingTop: 6, textAlign: 'left' }}>
+                    {isTR ? `Yarın → ${suggStr}` : `Tomorrow → ${suggStr}`}
+                  </div>
+                )
+              } catch (_) {
+                return null
+              }
+            })()}
             {isFirst && (
               <div style={{ fontSize: '10px', color: '#5bc25b', padding: '8px 12px', border: '1px solid #2a4a2a', borderRadius: '3px', marginBottom: '12px', lineHeight: 1.6 }}>
                 {isTR ? '🏆 İlk adım tamamlandı. Bugün sekmesinde sonraki adımını gör.' : '🏆 First step done. Check the Today tab for your next step.'}

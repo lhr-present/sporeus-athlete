@@ -96,6 +96,8 @@ const AthleteStatusSummaryCard   = lazy(() => import('./dashboard/AthleteStatusS
 const SleepRestingHRCard         = lazy(() => import('./dashboard/SleepRestingHRCard.jsx'))
 const AllZonesCard               = lazy(() => import('./dashboard/AllZonesCard.jsx'))
 const DailyBriefingCard          = lazy(() => import('./dashboard/DailyBriefingCard.jsx'))
+const WeeklyReviewCard           = lazy(() => import('./dashboard/WeeklyReviewCard.jsx'))
+const ConsistencyDepthCard       = lazy(() => import('./dashboard/ConsistencyDepthCard.jsx'))
 
 export default function Dashboard({ log, onLogSession, onGoToProfile }) {
   const [lang]       = useLocalStorage('sporeus-lang', 'en')
@@ -353,6 +355,16 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
         <ErrorBoundary>
           <WeeklyTssGoalCard log={log} profile={profile} isTR={lang === 'tr'} />
         </ErrorBoundary>
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <WeeklyReviewCard log={log} profile={profile} isTR={lang === 'tr'} />
+          </Suspense>
+        </ErrorBoundary>
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <ConsistencyDepthCard log={log} isTR={lang === 'tr'} />
+          </Suspense>
+        </ErrorBoundary>
         <div className="sp-card" style={{ ...S.card, animationDelay: '50ms', borderLeft: '4px solid #5bc25b' }}>
           <div style={{ ...S.mono, fontSize: '12px', lineHeight: 1.8, color: 'var(--text)' }}>{coachingMsg}</div>
           {avgRPE !== '—' && (
@@ -515,6 +527,16 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
 
       <ErrorBoundary>
         <WeeklyTssGoalCard log={log} profile={profile} isTR={lang === 'tr'} />
+      </ErrorBoundary>
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <WeeklyReviewCard log={log} profile={profile} isTR={lang === 'tr'} />
+        </Suspense>
+      </ErrorBoundary>
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <ConsistencyDepthCard log={log} isTR={lang === 'tr'} />
+        </Suspense>
       </ErrorBoundary>
 
       <ErrorBoundary>

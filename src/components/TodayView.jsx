@@ -236,6 +236,22 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
     } catch (e) { logger.warn('localStorage:', e.message); return 0 }
   })
 
+  // E66 — quick readiness tap state
+  const todayReadiness = useMemo(() => {
+    const entry = (recovery || []).find(e => e.date === today)
+    return entry?.readiness != null ? entry.readiness : entry?.score != null ? entry.score : null
+  }, [recovery, today])
+  const [quickReadinessSaved, setQuickReadinessSaved] = useState(false)
+  const [quickReadinessLogged, setQuickReadinessLogged] = useState(false)
+
+  const handleQuickReadiness = (value) => {
+    const entry = { date: today, readiness: value, score: value, source: 'quick-tap', id: Date.now() }
+    setRecovery(prev => [...(prev || []).filter(e => e.date !== today), entry].slice(-90))
+    setQuickReadinessSaved(true)
+    setQuickReadinessLogged(true)
+    setTimeout(() => setQuickReadinessLogged(false), 2000)
+  }
+
   const [wellness, setWellness]       = useState({ sleep: 3, energy: 3, soreness: 3 })
   const [wellnessSaved, setWellnessSaved] = useState(false)
   const [isSubmitting, setIsSubmitting]   = useState(false)
@@ -809,12 +825,61 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
         </div>
       )}
 
+      {/* ── E66 — Quick readiness check-in (shown only when no entry for today) ── */}
+      {todayReadiness == null && !quickReadinessSaved && (
+        <div style={{ ...card, borderLeft: '3px solid #f5c542', padding: '12px 16px' }}>
+          <div style={{ fontFamily: MONO, fontSize: '9px', color: '#666', letterSpacing: '0.10em', marginBottom: '10px' }}>
+            {lang === 'tr' ? 'BUGÜN NASIL HİSSEDİYORSUN?' : 'HOW DO YOU FEEL TODAY?'}
+          </div>
+          {quickReadinessLogged ? (
+            <div style={{ fontFamily: MONO, fontSize: '11px', color: GREEN }}>Logged ✓</div>
+          ) : (
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {[
+                { emoji: '😴', labelEN: 'Tired',  labelTR: 'Yorgun', value: 25 },
+                { emoji: '😐', labelEN: 'Okay',   labelTR: 'Tamam',  value: 60 },
+                { emoji: '⚡', labelEN: 'Ready',  labelTR: 'Hazır',  value: 90 },
+              ].map(({ emoji, labelEN, labelTR, value }) => (
+                <button
+                  key={value}
+                  onClick={() => handleQuickReadiness(value)}
+                  style={{
+                    fontFamily: MONO, fontSize: '10px', fontWeight: 600,
+                    padding: '8px 12px', borderRadius: '5px', border: '1px solid var(--border)',
+                    background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', flex: 1,
+                  }}
+                >
+                  <span style={{ fontSize: '18px' }}>{emoji}</span>
+                  <span style={{ fontSize: '9px', letterSpacing: '0.06em' }}>
+                    {lang === 'tr' ? labelTR : labelEN}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Card 1: Today's Session ────────────────────────────────────────── */}
       <div style={{ ...card, borderLeft: `4px solid ${plannedSession && todayStatus === 'done' ? GREEN : ORANGE}` }}>
         <div style={cardTitle}>{t('todaySession')}</div>
 
         {plannedSession ? (
           <>
+            {/* E66 — Low readiness warning banner */}
+            {todayReadiness != null && todayReadiness < 50 && (
+              <div style={{
+                padding: '7px 10px', marginBottom: '12px',
+                background: '#f5c54218', border: '1px solid #f5c54266',
+                borderRadius: '4px', fontFamily: MONO, fontSize: '10px', color: '#f5c542',
+                lineHeight: 1.5,
+              }}>
+                {lang === 'tr'
+                  ? `⚠ Hazırlık DÜŞÜK (${todayReadiness}/100) — bugün %20 daha az yoğunluk dene`
+                  : `⚠ Readiness LOW (${todayReadiness}/100) — consider -20% intensity today`}
+              </div>
+            )}
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap', marginBottom: '10px' }}>
               <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text)', letterSpacing: '0.04em' }}>
                 {plannedSession.type}
@@ -1089,6 +1154,22 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                 {acwrRatio.toFixed(2)}
               </div>
               <div style={{ fontSize: '9px', color: '#666', letterSpacing: '0.08em' }}>ACWR</div>
+            </div>
+          )}
+
+          {/* E66 — Readiness score tile */}
+          {todayReadiness != null && (
+            <div style={{
+              flex: '1 1 80px', textAlign: 'center', padding: '10px 8px',
+              background: 'var(--surface)', borderRadius: '6px',
+              border: `1px solid ${todayReadiness >= 75 ? GREEN : todayReadiness >= 50 ? AMBER : RED}44`,
+            }}>
+              <div style={{ fontSize: '20px', fontWeight: 700, color: todayReadiness >= 75 ? GREEN : todayReadiness >= 50 ? AMBER : RED, marginBottom: '4px' }}>
+                {todayReadiness}
+              </div>
+              <div style={{ fontSize: '9px', color: '#666', letterSpacing: '0.08em' }}>
+                {lang === 'tr' ? 'HAZIRLIK' : 'READINESS'}
+              </div>
             </div>
           )}
 

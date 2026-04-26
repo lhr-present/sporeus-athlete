@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.76.0 — 2026-04-26
+E66+E68+E69: Prescription loop round 2. E66: TodayView readiness gates prescription — when todayReadiness<50 shows yellow "⚠ Readiness LOW" banner above plan card; when not yet logged today shows compact 3-tap check-in (😴 Tired=25 / 😐 Okay=60 / ⚡ Ready=90) ABOVE plan card, tapping calls onSaveRecovery+shows 2s "Logged ✓"; readiness tile added to quick stats row. E68: QuickAddModal post-session analysis — zone mismatch flag (easy+RPE≥8 or hard+RPE≤3 → yellow warning strip EN/TR); tomorrow nudge strip from dailyPrescription(profile, log+savedEntry).tomorrow.suggestion. E69: WeeklyReviewCard (this week vs last week TSS+sessions with delta, generateWeeklyNarrative insight) + ConsistencyDepthCard (n→CTL reliability thresholds, #ff6600 progress bar, milestone markers 0/14/42/84), both in beginner+advanced Dashboard paths. 3886 tests, 232 files.
+
+---
+
 ## v11.72.0 — 2026-04-26
 E65+E67: Prescription loop round 1. E65: dailyPrescription.js — pure coaching engine dailyPrescription(profile,log,plan,planStatus,recovery,metrics); outputs status/tsb/ctl/acwr, zone-annotated session targets, tomorrow suggestion, sessionFlag fn, ACWR+monotony warnings; TYPE_TO_ZONE mapping, TSB status thresholds (fresh/optimal/normal/fatigued/very-fatigued); DailyBriefingCard.jsx in both Dashboard paths (status badge, brief headline, session block with zone+HR+pace+power ranges, tomorrow nudge, warnings strip, CTL/TSB/ACWR row); 47 tests. E67: Offline indicator + Strava CTA — QuickAddModal shows ⚡ offline badge when navigator.onLine=false and sync status in confirmation panel; GettingStartedCard gains Strava connect CTA (#fc4c02) when !stravaConnected; App.jsx fires 8s auto-dismiss toast after 3rd manual log if no strava token (once only, sporeus-strava-nudge-shown localStorage key). 3886 tests, 230 files.
 
