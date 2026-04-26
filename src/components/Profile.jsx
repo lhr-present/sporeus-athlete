@@ -1,10 +1,11 @@
-import { useState, useEffect, useContext } from 'react'
+import { useState, useEffect, useContext, useMemo } from 'react'
 import { logger } from '../lib/logger.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { sanitizeProfile } from '../lib/validate.js'
+import { deriveAllMetrics } from '../lib/profileDerivedMetrics.js'
 import { assessDataQuality } from '../lib/intelligence.js'
 import { exportAllData, importAllData } from '../lib/storage.js'
 import { exportAthleteData, deleteAthleteData, triggerDownload } from '../lib/gdprExport.js'
@@ -37,11 +38,17 @@ import AdminCodeGenerator from './profile/AdminCodeGenerator.jsx'
 import DataPrivacySettings from './profile/DataPrivacySettings.jsx'
 
 export default function Profile({ log, authUser }) {
-  const { t } = useContext(LangCtx)
+  const { t, lang } = useContext(LangCtx)
   const { profile, setProfile, recovery, testResults } = useData()
   const [local, setLocal] = useState(profile)
   const [status, setStatus] = useState(null)
   const [coachMode, setCoachMode] = useLocalStorage('sporeus-coach-mode', false)
+
+  const isTR = lang === 'tr'
+  const metrics = useMemo(
+    () => deriveAllMetrics(local, log || [], testResults || []),
+    [local, log, testResults]
+  )
 
   useEffect(()=>{ setLocal(profile) },[profile])
 
@@ -151,6 +158,89 @@ export default function Profile({ log, authUser }) {
           <button style={S.btn} onClick={save}>{status==='saved'?t('savedMsg'):t('saveProfileBtn')}</button>
           <button style={S.btnSec} onClick={share}>{status==='copied'?t('copiedMsg'):t('shareBtn')}</button>
         </div>
+
+        {/* Profile Completeness */}
+        {metrics?.completeness && (
+          <div style={{
+            margin: '16px 0', padding: '14px 16px',
+            border: '1px solid #1a1a1a', borderRadius: '4px',
+            fontFamily: "'IBM Plex Mono', monospace",
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <div style={{ fontSize: '9px', color: '#555', letterSpacing: '0.1em' }}>
+                ◈ {isTR ? 'PROFİL TAMAMLANMA' : 'PROFILE COMPLETENESS'}
+              </div>
+              <div style={{ fontSize: '18px', fontWeight: 700, color: metrics.completeness.score >= 70 ? '#5bc25b' : metrics.completeness.score >= 40 ? '#f5c542' : '#e03030' }}>
+                {metrics.completeness.score}%
+              </div>
+            </div>
+            {/* Progress bar */}
+            <div style={{ width: '100%', height: '4px', background: '#1a1a1a', borderRadius: '2px', marginBottom: '12px' }}>
+              <div style={{
+                width: `${metrics.completeness.score}%`, height: '100%', borderRadius: '2px',
+                background: metrics.completeness.score >= 70 ? '#5bc25b' : metrics.completeness.score >= 40 ? '#f5c542' : '#e03030',
+                transition: 'width 0.3s ease',
+              }} />
+            </div>
+            {/* Filled fields */}
+            {metrics.completeness.filled.length > 0 && (
+              <div style={{ fontSize: '9px', color: '#555', marginBottom: '6px' }}>
+                ✓ {metrics.completeness.filled.join(', ')}
+              </div>
+            )}
+            {/* Missing fields + what they unlock */}
+            {metrics.completeness.missing.length > 0 && (
+              <div>
+                <div style={{ fontSize: '9px', color: '#888', marginBottom: '4px' }}>
+                  {isTR ? 'Eksik → açılacak özellikler:' : 'Missing → features to unlock:'}
+                </div>
+                {metrics.completeness.missing.slice(0, 5).map(field => (
+                  <div key={field} style={{ fontSize: '9px', color: '#555', marginBottom: '3px', display: 'flex', gap: '6px' }}>
+                    <span style={{ color: '#ff6600', minWidth: '70px' }}>{field}</span>
+                    <span style={{ color: '#444' }}>
+                      → {(metrics.completeness.unlocks?.[field] || []).join(', ')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Auto-VDOT nudge */}
+        {metrics?.autoVdot && !local?.vo2max && (
+          <div style={{
+            margin: '0 0 16px', padding: '10px 14px',
+            border: '1px solid #2a2a00', borderRadius: '4px',
+            background: '#0f0f00', fontFamily: "'IBM Plex Mono', monospace",
+          }}>
+            <div style={{ fontSize: '9px', color: '#f5c542', fontWeight: 700, letterSpacing: '0.08em', marginBottom: '4px' }}>
+              ◈ {isTR ? 'OTOMATİK VDOT TESPİT EDİLDİ' : 'AUTO-VDOT DETECTED'}
+            </div>
+            <div style={{ fontSize: '10px', color: '#ccc', marginBottom: '6px' }}>
+              VDOT {metrics.autoVdot.vdot.toFixed(1)}
+              <span style={{ fontSize: '9px', color: '#555', marginLeft: '8px' }}>
+                {isTR ? `en iyi ${metrics.autoVdot.method} · ${metrics.autoVdot.fromDate}` : `from best ${metrics.autoVdot.method} · ${metrics.autoVdot.fromDate}`}
+              </span>
+            </div>
+            <div style={{ fontSize: '9px', color: '#888', marginBottom: '8px', lineHeight: 1.5 }}>
+              {isTR
+                ? 'Antrenman geçmişinden tahmin edildi. Koşu tempolarını ve yarış tahminlerini açmak için VO₂max alanına kaydet.'
+                : 'Estimated from your training history. Save to the VO₂max field above to unlock running paces and race predictions.'}
+            </div>
+            <button
+              onClick={() => setLocal(prev => ({ ...prev, vo2max: String(Math.round(metrics.autoVdot.vdot)) }))}
+              style={{
+                fontSize: '9px', padding: '4px 12px',
+                background: '#f5c542', color: '#000', border: 'none',
+                borderRadius: '3px', cursor: 'pointer',
+                fontFamily: "'IBM Plex Mono', monospace", fontWeight: 700,
+              }}
+            >
+              {isTR ? `VO₂max = ${Math.round(metrics.autoVdot.vdot)} olarak ayarla →` : `Set VO₂max = ${Math.round(metrics.autoVdot.vdot)} →`}
+            </button>
+          </div>
+        )}
       </div>
 
       <HuseyinCoachCard/>

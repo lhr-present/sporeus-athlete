@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.68.0 — 2026-04-26
+E60–E64: Elite athlete profile propagation engine. E60: profileDerivedMetrics.js — universal profile→metrics engine; deriveAllMetrics(profile,log,testResults) derives W/kg, 7 Coggan power zones, 5 Daniels paces, 5 HR zones (Tanaka age-predicted maxHR, 87% LTHR), auto-VDOT from best log session, profile completeness 0–100 with feature-unlock map; 53 tests. E61: QuickAddModal zone-aware RPE — real-time zone hint below RPE buttons: "RPE 7 → Z4 · 145–163 bpm · 3:21/km" using profile-derived metrics. E62: EliteMetricsStrip — compact W/kg·VDOT·MaxHR·LTHR strip in both Dashboard modes (≥2 metrics threshold). E63: AllZonesCard — lazy-loaded reference card (Coggan 7 power zones + Daniels 5 paces + 5 HR zones) in advanced Dashboard. E64: Profile completeness section — score/progress bar/missing fields/feature-unlock list + auto-VDOT nudge with one-click pre-fill. 3839 tests, 229 files.
+
+---
+
 ## v11.63.0 — 2026-04-26
 E56–E59: Daily-use bug fixes. E56: QuickAddModal — date picker (type=date, max=today, default=today) so athletes can log past sessions; entry uses selected date; confirmation shows date if not today. E57: TrainingLog — single-row delete now requires confirmation (inline confirm row with Cancel/Delete, session type+duration shown; also fixed latent index-based filter bug → id-based). E58: Profile — raceDate field added (type=date) so TodayView race countdown is reachable; raceDate in sanitizeProfile + LangCtx. E59: Dashboard — WeeklyTssGoalCard added to beginner mode path; CTL label gets title tooltip. DAILY_USE_RULES.md created. 3786 tests.
 

@@ -103,3 +103,95 @@ If the answer is no, it is not a priority.
 - Offline queue for QuickAddModal saves
 - CSV export from TrainingLog (not just JSON)
 - Session duration in H:MM format instead of raw minutes
+
+---
+
+## Elite Athlete Profile → Metrics Propagation Rules (E60–E64)
+
+### Core Principle: One Field In → Everywhere Out
+When an elite athlete enters ONE profile field, ALL dependent calculations must update immediately.
+The universal rule: **never let a profile field be a dead end**.
+
+| Profile Field | Auto-Derives | Used In |
+|---|---|---|
+| `ftp` + `weight` | W/kg, 7 Coggan power zones, LTHR≈87%maxHR | CyclingZonesCard, NormativeSection, QuickAddModal zone hint, AllZonesCard |
+| `vo2max` | VDOT, 5 Daniels paces (E/M/T/I/R) | VO2maxCard, TodayView paces, RaceReadiness, QuickAddModal zone hint, AllZonesCard |
+| `maxhr` | 5 HR zones (Fox), LTHR=maxhr×0.87 | AllZonesCard, QuickAddModal zone hint, subThresholdTime |
+| `threshold` (pace) | Auto-VDOT if vo2max missing | RunningPaces, AllZonesCard |
+| `age` (if no maxhr) | Predicted maxHR = 208 − 0.7×age (Tanaka 2001) | HR zones, LTHR, all maxhr derivations |
+| `ftp` alone (no weight) | 7 power zones in watts only (no W/kg) | AllZonesCard, CyclingZonesCard |
+
+### E60 — profileDerivedMetrics.js: The Universal Engine
+**Goal:** Single pure function `deriveAllMetrics(profile, log?, testResults?)` that derives every metric from profile fields. Single source of truth. Pure, fully testable.
+
+**Formulas to implement:**
+- MaxHR: `profile.maxhr || Math.round(208 - 0.7 * age)` (Tanaka 2001)
+- LTHR: `Math.round(maxHR * 0.87)` (Friel; also ~95% of FTP HR effort)
+- W/kg: `Math.round(ftp / weight * 100) / 100`
+- Coggan 7 power zones: use existing `getCyclingZones(ftp)` from `src/lib/sport/cycling.js`
+- Daniels VDOT: use existing `vdotFromRace` from `src/lib/sport/running.js`; if no race result, VDOT = vo2max
+- Daniels paces: use existing `getTrainingPaces(vdot)` from `src/lib/vdot.js`
+- HR 5 zones: Z1=50-60%, Z2=60-70%, Z3=70-80%, Z4=80-90%, Z5=90-100% of maxHR
+- Auto-VDOT from log: scan log for best 5k/10k/half/marathon effort using `estimateVO2maxFromRun` from `src/lib/sport/vo2max.js`
+- Profile completeness: score 0-100 based on filled fields, list which features each unlocks
+
+**Return shape:**
+```javascript
+{
+  power: { ftp, wPerKg, zones[7], lthrEstimate } | null,  // requires ftp
+  running: { vdot, source, paces: {easy,marathon,threshold,interval,rep} } | null,  // requires vo2max or threshold
+  hr: { maxHR, maxHRSource, lthr, zones[5], rpeToHrZone: {1..10 → zoneIndex} } | null,  // requires maxhr or age
+  completeness: { score, filled[], missing[], unlocks: { field: [features] } },
+  autoVdot: { vdot, method, fromDate } | null,  // derived from best log session
+}
+```
+
+**File:** `src/lib/profileDerivedMetrics.js`
+**Tests:** `src/lib/__tests__/profileDerivedMetrics.test.js` — 25+ tests
+
+### E61 — Zone-Aware RPE in QuickAddModal
+**Goal:** When athlete selects RPE, show matching zone + HR range + pace/power range.
+**What to show below RPE buttons (only when profileMetrics has hr or running or power):**
+```
+RPE 7 → ZONE 4 · 145–163 bpm · 4:05–4:25 /km  [threshold]
+```
+- Uses `deriveAllMetrics(profile)` (call once on mount or in useMemo)
+- RPE → zone via: 1-2=Z1, 3-4=Z2, 5-6=Z3, 7-8=Z4, 9-10=Z5
+- HR range from `hr.zones[zoneIdx]`
+- Pace range from running zone paces (if runner)
+- Power range from power zones (if cyclist with ftp)
+- Show nothing if profile has no relevant fields
+**File:** `src/components/QuickAddModal.jsx`
+
+### E62 — Elite Metrics Strip in Dashboard
+**Goal:** Compact strip in Dashboard (both modes) showing W/kg, VDOT, MaxHR, LTHR — elite athlete's daily reference numbers.
+```
+W/kg 4.29  ·  VDOT 62.3  ·  MaxHR 181  ·  LTHR 157 bpm
+```
+- Only shows metrics where data is available (no "—" or empty slots)
+- Clicking a metric navigates to Profile tab (via setTab prop)
+- If fewer than 2 metrics available, don't render (athlete hasn't completed enough profile)
+**New component:** `src/components/dashboard/EliteMetricsStrip.jsx`
+**Integration:** Dashboard.jsx — render in both beginner and advanced paths, after TodayStripCard
+
+### E63 — AllZonesCard: Complete Zone Reference
+**Goal:** One card showing ALL training zones for athlete's sport(s).
+**Content (depends on profile):**
+- Section A: Power Zones (7 Coggan) — shows if ftp set
+- Section B: Running Paces (5 Daniels: E/M/T/I/R) — shows if vo2max or threshold set
+- Section C: HR Zones (5-zone) — shows if maxhr or age set
+- Source footer: "Based on: FTP 300W · VDOT 62 · MaxHR 181"
+- "Complete in Profile →" link for missing fields
+**New lib:** extend or use `deriveAllMetrics` output directly (no new lib needed)
+**New component:** `src/components/dashboard/AllZonesCard.jsx`
+**Integration:** Dashboard.jsx — lazy-loaded, render after EliteMetricsStrip
+
+### E64 — Auto-VDOT from Best Log Session
+**Goal:** If `profile.vo2max` is empty but athlete has run sessions with distance, auto-estimate VDOT.
+The estimated value feeds `deriveAllMetrics` as the running engine source.
+**Where:** Inside `deriveAllMetrics` — scan log for qualifying run sessions (distance + duration set).
+Use `estimateVO2maxFromRun(distanceM, durationSec)` from `src/lib/sport/vo2max.js`.
+Take the highest estimate from the last 90 days.
+Store result as `autoVdot.vdot` — NEVER overwrite profile.vo2max.
+**Usage:** AllZonesCard + VO2maxCard show "(auto from best 10k)" label when using autoVdot.
+Show nudge in Profile: "Auto-VDOT 52 detected (from best 10k, 2026-03-15). Set it to unlock all running paces →"

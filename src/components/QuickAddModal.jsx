@@ -1,7 +1,7 @@
 // ─── QuickAddModal.jsx — One-click session logging from any tab ───────────────
 // Opens via the `+` header button or FAB. Uses sport from profile for defaults.
 // Valibot validates before submit; post-save confirmation guides next step.
-import { useState, useEffect, useRef, useContext } from 'react'
+import { useState, useEffect, useRef, useContext, useMemo } from 'react'
 import * as v from 'valibot'
 import { useFocusTrap } from '../hooks/useFocusTrap.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
@@ -12,6 +12,7 @@ import { SESSION_TYPES_BY_DISCIPLINE } from '../lib/constants.js'
 import { addNotification } from '../lib/notificationCenter.js'
 import { analyseSession } from '../lib/intelligence.js'
 import { useWorkoutTemplates } from '../hooks/useWorkoutTemplates.js'
+import { deriveAllMetrics } from '../lib/profileDerivedMetrics.js'
 
 const MONO = "'IBM Plex Mono', monospace"
 const today = () => new Date().toISOString().slice(0, 10)
@@ -37,6 +38,36 @@ function effortLabel(rpe, lang) {
   ]
   const hit = levels.find(l => rpe <= l.max) || levels[levels.length - 1]
   return lang === 'tr' ? hit.tr : hit.en
+}
+
+// Returns a compact zone hint string for a given RPE (1-10), or null
+function getZoneHint(rpe, metrics, isTR) {
+  if (!metrics) return null
+  const zoneIdx = metrics.hr?.rpeToZoneIdx?.[rpe - 1] ?? null
+  const hrZone = metrics.hr?.zones?.[zoneIdx]
+  const rpeZoneNum = zoneIdx != null ? zoneIdx + 1 : null
+
+  const parts = []
+  if (rpeZoneNum) parts.push(`Z${rpeZoneNum}`)
+  if (hrZone) parts.push(`${hrZone.min}–${hrZone.max} bpm`)
+
+  // Pace hint: zones 1-5 → easy/aerobic/tempo/threshold/vo2max paces
+  // metrics.running.paces values are already "M:SS" strings
+  const paces = metrics.running?.paces
+  if (paces && rpeZoneNum) {
+    const paceMap = [paces.easy, paces.easy, paces.marathon, paces.threshold, paces.interval]
+    const pace = paceMap[zoneIdx]
+    if (pace) parts.push(`${pace}/km`)
+  }
+  // Power hint for cyclists (only when no running paces)
+  const powerZones = metrics.power?.zones
+  if (powerZones && rpeZoneNum && !paces) {
+    const pz = powerZones[Math.min(zoneIdx, powerZones.length - 1)]
+    if (pz) parts.push(`${pz.min}–${pz.max}W`)
+  }
+
+  if (parts.length === 0) return null
+  return parts.join(' · ')
 }
 
 // Valibot schema — validates the form before submit
@@ -66,6 +97,11 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
   const [sessionAnalysis, setSessionAnalysis] = useState(null)
   const { templates, saveTemplate }   = useWorkoutTemplates()
   const [savedEntry, setSavedEntry]   = useState(null)
+
+  const metrics = useMemo(
+    () => deriveAllMetrics(profile, log || [], []),
+    [profile, log]
+  )
   const [tplSaved, setTplSaved]       = useState(false)
 
   const firstRef = useRef(null)
@@ -333,6 +369,17 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
                     >{n}</button>
                   ))}
                 </div>
+                {(() => {
+                  const hint = getZoneHint(rpe, metrics, isTR)
+                  return hint ? (
+                    <div style={{
+                      fontSize: '9px', color: '#ff6600', marginTop: '4px',
+                      fontFamily: MONO, letterSpacing: '0.04em',
+                    }}>
+                      RPE {rpe} → {hint}
+                    </div>
+                  ) : null
+                })()}
               </div>
 
               {/* Training load preview — "Training Load" instead of "Est. TSS" */}

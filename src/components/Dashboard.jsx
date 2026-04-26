@@ -58,6 +58,7 @@ import PhaseAnalyticsCard from './dashboard/PhaseAnalyticsCard.jsx'
 import FuelGuidanceCard   from './dashboard/FuelGuidanceCard.jsx'
 import GettingStartedCard from './dashboard/GettingStartedCard.jsx'
 import TodayStripCard    from './dashboard/TodayStripCard.jsx'
+import EliteMetricsStrip from './dashboard/EliteMetricsStrip.jsx'
 const SeasonStatsCard    = lazy(() => import('./dashboard/SeasonStatsCard.jsx'))
 const CPDecayCard        = lazy(() => import('./dashboard/CPDecayCard.jsx'))
 const RowingMetricsCard  = lazy(() => import('./dashboard/RowingMetricsCard.jsx'))
@@ -93,6 +94,7 @@ const RunningRaceReadinessCard   = lazy(() => import('./dashboard/RunningRaceRea
 const PlanScoreCard              = lazy(() => import('./dashboard/PlanScoreCard.jsx'))
 const AthleteStatusSummaryCard   = lazy(() => import('./dashboard/AthleteStatusSummaryCard.jsx'))
 const SleepRestingHRCard         = lazy(() => import('./dashboard/SleepRestingHRCard.jsx'))
+const AllZonesCard               = lazy(() => import('./dashboard/AllZonesCard.jsx'))
 
 export default function Dashboard({ log, onLogSession }) {
   const [lang]       = useLocalStorage('sporeus-lang', 'en')
@@ -301,6 +303,15 @@ export default function Dashboard({ log, onLogSession }) {
     return (
       <div className="sp-fade">
         <TodayStripCard log={log} isTR={lang === 'tr'} onLogSession={onLogSession} />
+        <ErrorBoundary>
+          <EliteMetricsStrip
+            profile={profile}
+            log={log}
+            testResults={testResults}
+            isTR={lang === 'tr'}
+            onGoToProfile={undefined}
+          />
+        </ErrorBoundary>
         <div style={{ marginBottom: '16px' }}>
           <div style={{ ...S.mono, fontSize: '11px', color: '#888', marginBottom: '4px' }}>{today}</div>
           <div style={{ ...S.mono, fontSize: '18px', fontWeight: 600 }}>
@@ -374,6 +385,15 @@ export default function Dashboard({ log, onLogSession }) {
   return (
     <div className="sp-fade">
       <TodayStripCard log={log} isTR={lang === 'tr'} onLogSession={onLogSession} />
+      <ErrorBoundary>
+        <EliteMetricsStrip
+          profile={profile}
+          log={log}
+          testResults={testResults}
+          isTR={lang === 'tr'}
+          onGoToProfile={undefined}
+        />
+      </ErrorBoundary>
       {log.length === 0 && (
         <GettingStartedCard isTR={lang === 'tr'} onLogSession={onLogSession}/>
       )}
@@ -469,6 +489,17 @@ export default function Dashboard({ log, onLogSession }) {
 
       <ErrorBoundary>
         <WeeklyTssGoalCard log={log} profile={profile} isTR={lang === 'tr'} />
+      </ErrorBoundary>
+
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <AllZonesCard
+            profile={profile}
+            log={log}
+            testResults={testResults}
+            isTR={lang === 'tr'}
+          />
+        </Suspense>
       </ErrorBoundary>
 
       {recovery.some(e => parseFloat(e.hrv) > 0) && (
