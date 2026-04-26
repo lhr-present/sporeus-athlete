@@ -3,7 +3,7 @@
 ```bash
 cd ~/sporeus-athlete-app
 npm run dev        # local dev server → http://localhost:5173/
-npm test           # run 3786 unit tests (vitest) across 228 test files
+npm test           # run 3886 unit tests (vitest) across 232 test files
 npm run build      # production build → dist/
 git push           # triggers GitHub Actions: test → build → deploy to Pages
 ```
@@ -42,7 +42,7 @@ Bloomberg Terminal aesthetic: IBM Plex Mono, #ff6600 orange, #0064ff blue, #0a0a
 | `src/hooks/useSessionComments.js` | Per-session comment thread — Realtime + optimistic updates + offline queue |
 | `src/hooks/useSquadChannel.js` | Coach squad feed hook — wraps squadChannel lifecycle |
 | `src/components/ui.jsx` | Shared SVG chart primitives (ZoneBar, TSSChart, CTLTimeline, etc.) |
-| `src/components/dashboard/` | **69 dashboard cards** — all lazy-loaded via React.lazy + Suspense fallback={null} |
+| `src/components/dashboard/` | **74 dashboard cards** — all lazy-loaded via React.lazy + Suspense fallback={null} |
 | `src/components/QuickAddModal.jsx` | One-click session logging from any tab (+ button / FAB) |
 | `src/components/TodayView.jsx` | Daily HQ — planned session, readiness, quick wellness, suggestions |
 | `src/components/TrainingLog.jsx` | Full log with inline edit, bulk-delete, calendar, semantic search |
@@ -82,7 +82,7 @@ git push               # triggers GitHub Actions: npm test → npm build → dep
 
 ## Testing
 ```bash
-npm test              # run all tests (vitest run) — currently 3786 tests, 228 files
+npm test              # run all tests (vitest run) — currently 3886 tests, 232 files
 npm run test:watch    # interactive watch mode
 ```
 Test files: `src/lib/*.test.js` + `src/hooks/__tests__/` + `src/lib/__tests__/` — pure functions, hooks (jsdom), realtime, science.
@@ -136,7 +136,7 @@ const hasTriData = useMemo(() =>
 - Log badge: red `⚡W'0` on any entry where `entry.wPrimeExhausted === true`
 
 ### Performance
-- **69 dashboard cards** all lazy-loaded via React.lazy + Suspense fallback={null}
+- **74 dashboard cards** all lazy-loaded via React.lazy + Suspense fallback={null}
 - Sport gating prevents irrelevant chunk fetches (cycling/swim/tri cards gated)
 - `CTLTimeline` wrapped in `memo()`; `WeeklyVolChartMemo` + `ZoneDonutMemo` available from ui.jsx
 - Main bundle ~84 kB gzip; PWA precaches all assets
@@ -168,6 +168,6 @@ const hasTriData = useMemo(() =>
 | `VITE_STRIPE_CHECKOUT_COACH` | Stripe checkout URL for Coach tier (international) |
 
 ## Version History
-- v11.55.0 (2026-04-25): 3786 tests, 228 files, 69 dashboard cards, 30 athlete libs
+- v11.76.0 (2026-04-26): 3886 tests, 232 files, 74 dashboard cards, 30 athlete libs
 - v6.7.0 (2026-04-14): Launch-ready, 1084 tests, Supabase 25 tables
 - See CHANGELOG.md for full history
