@@ -416,6 +416,68 @@ export function findOptimalWeekStructure(log, recovery) {
   }
 }
 
+// ── F) Day-of-week Pattern Defaults ──────────────────────────────────────────
+/**
+ * Returns the most common session type + median duration for today's weekday
+ * from the last 56 days of the log. Uses noon-UTC weekday to avoid TZ shifts.
+ *
+ * @param {Object[]} log   - training log entries
+ * @param {string}   today - 'YYYY-MM-DD' (default real today)
+ * @returns {{ type: string, durationMin: number, sport: string, confidence: number } | null}
+ *          null if fewer than 3 matching sessions in the 56-day window
+ */
+export function getDayPattern(log, today = new Date().toISOString().slice(0, 10)) {
+  if (!log?.length) return null
+
+  const cutoff = new Date(today + 'T12:00:00Z')
+  cutoff.setUTCDate(cutoff.getUTCDate() - 56)
+  const cutoffStr = cutoff.toISOString().slice(0, 10)
+
+  // today's ISO day-of-week (Mon=0 … Sun=6) using noon-UTC
+  const todayDow = (new Date(today + 'T12:00:00Z').getUTCDay() + 6) % 7
+
+  const recent = log.filter(e => e.date && e.date >= cutoffStr && e.date <= today)
+
+  const matching = recent.filter(e => {
+    const dow = (new Date(e.date + 'T12:00:00Z').getUTCDay() + 6) % 7
+    return dow === todayDow
+  })
+
+  if (matching.length < 3) return null
+
+  // Mode of session type
+  const typeFreq = {}
+  matching.forEach(e => {
+    const t = (e.type || '').trim()
+    if (t) typeFreq[t] = (typeFreq[t] || 0) + 1
+  })
+  const modeType = Object.entries(typeFreq).sort((a, b) => b[1] - a[1])[0]?.[0] || null
+  if (!modeType) return null
+
+  // Median duration
+  const durs = matching.map(e => e.duration || 0).filter(v => v > 0).sort((a, b) => a - b)
+  const mid = Math.floor(durs.length / 2)
+  const medianDur = durs.length === 0 ? 0
+    : durs.length % 2 === 1 ? durs[mid]
+    : Math.round((durs[mid - 1] + durs[mid]) / 2)
+
+  // Mode of sport
+  const sportFreq = {}
+  matching.forEach(e => {
+    const s = (e.sport || '').trim()
+    if (s) sportFreq[s] = (sportFreq[s] || 0) + 1
+  })
+  const modeSport = Object.entries(sportFreq).sort((a, b) => b[1] - a[1])[0]?.[0] || ''
+
+  const confidence = Math.min(matching.length / recent.filter(e => {
+    // total entries on this weekday in window (to normalize confidence)
+    const dow = (new Date(e.date + 'T12:00:00Z').getUTCDay() + 6) % 7
+    return dow === todayDow
+  }).length, 1)
+
+  return { type: modeType, durationMin: medianDur, sport: modeSport, confidence }
+}
+
 // ── E) Seasonal / Cyclical Patterns ──────────────────────────────────────────
 export function findSeasonalPatterns(log, recovery) {
   if (!log?.length) return { strongMonths: [], weakMonths: [], en: '', tr: '' }

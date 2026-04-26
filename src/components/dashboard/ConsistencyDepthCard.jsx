@@ -1,4 +1,5 @@
 import { S } from '../../styles.js'
+import { FormulaPopover } from '../ui/FormulaPopover.jsx'
 
 // ─── ConsistencyDepthCard — E69 ───────────────────────────────────────────────
 // Shows CTL reliability level based on total sessions logged (n/84 progress bar).
@@ -55,7 +56,10 @@ export default function ConsistencyDepthCard({ log, isTR }) {
 
   return (
     <div style={{ ...S.card }}>
-      <div style={S.cardTitle}>{title}</div>
+      <div style={{ ...S.cardTitle, display: 'flex', alignItems: 'center', gap: '4px' }}>
+        {title}
+        <FormulaPopover metricKey="ctl" lang={isTR ? 'tr' : 'en'} />
+      </div>
 
       {/* Progress bar */}
       <div style={{

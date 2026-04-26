@@ -11,6 +11,8 @@ import { calcTSS } from '../lib/formulas.js'
 import { SESSION_TYPES_BY_DISCIPLINE } from '../lib/constants.js'
 import { addNotification } from '../lib/notificationCenter.js'
 import { analyseSession } from '../lib/intelligence.js'
+import { detectPRs } from '../lib/athlete/detectPRs.js'
+import { getDayPattern } from '../lib/patterns.js'
 import { useWorkoutTemplates } from '../hooks/useWorkoutTemplates.js'
 import { deriveAllMetrics } from '../lib/profileDerivedMetrics.js'
 import { dailyPrescription } from '../lib/dailyPrescription.js'
@@ -98,13 +100,17 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
   const isTR = lang === 'tr'
   const { log } = useData()
 
-  const defaultType = SPORT_DEFAULT_TYPE[profile?.sport] || 'Easy Run'
+  // E74 — pre-fill from day-of-week pattern
+  const dayPattern = useMemo(() => getDayPattern(log || []), [log])
+  const defaultType = dayPattern?.type || SPORT_DEFAULT_TYPE[profile?.sport] || 'Easy Run'
+  const defaultDuration = dayPattern?.durationMin > 0 ? String(dayPattern.durationMin) : '45'
 
   const [sessionDate, setSessionDate] = useState(today())
   const [type, setType]               = useState(defaultType)
-  const [duration, setDuration]       = useState('45')
+  const [duration, setDuration]       = useState(defaultDuration)
   const [rpe, setRpe]                 = useState(6)
   const [notes, setNotes]             = useState('')
+  const [patternUsed, setPatternUsed] = useState(!!dayPattern)
   const [distanceKm, setDistanceKm]   = useState('')
   const [avgHr, setAvgHr]             = useState('')
   const [phase, setPhase]             = useState('form')   // 'form' | 'saved'
@@ -112,6 +118,11 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
   const [sessionAnalysis, setSessionAnalysis] = useState(null)
   const { templates, saveTemplate }   = useWorkoutTemplates()
   const [savedEntry, setSavedEntry]   = useState(null)
+  const [prResults,  setPrResults]    = useState(null)
+
+  // E73 — voice recording state
+  const [recording, setRecording]     = useState(false)
+  const recognizerRef                 = useRef(null)
 
   const metrics = useMemo(
     () => deriveAllMetrics(profile, log || [], []),
@@ -178,6 +189,7 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
     }
     onAdd(entry)
     setSavedEntry(entry)
+    setPrResults(detectPRs(entry, log || []))
     addNotification('training', isTR ? 'Antrenman Kaydedildi' : 'Session Logged',
       `${type} · ${dur}min · ${tss} TSS`, { tab: 'log' })
     setSessionAnalysis(analyseSession(entry, (log || []).slice(-28)))
@@ -207,6 +219,24 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
         {/* ── Saved confirmation ─────────────────────────────────────────── */}
         {phase === 'saved' ? (
           <div style={{ textAlign: 'center', padding: '24px 0' }}>
+            {/* ── E70 — PR Celebration ──────────────────────────────────── */}
+            {prResults?.length > 0 && (
+              <div style={{
+                background: '#ff6600', borderRadius: '4px', padding: '10px 14px',
+                marginBottom: '14px', textAlign: 'left',
+                animation: 'pr-pulse 0.6s ease-out',
+              }}>
+                <style>{`@keyframes pr-pulse{0%{transform:scale(0.96);opacity:0.7}60%{transform:scale(1.02)}100%{transform:scale(1);opacity:1}}`}</style>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: '#000', marginBottom: '6px', fontFamily: MONO }}>
+                  🏆 {isTR ? 'Yeni Kişisel Rekor!' : 'New Personal Best!'}
+                </div>
+                {prResults.map((pr, i) => (
+                  <div key={i} style={{ fontSize: '10px', color: '#000', lineHeight: 1.6, fontFamily: MONO }}>
+                    · {isTR ? pr.tr : pr.en}
+                  </div>
+                ))}
+              </div>
+            )}
             <div style={{ fontSize: '32px', marginBottom: '12px' }}>✓</div>
             <div style={{ fontSize: '13px', fontWeight: 700, color: '#ff6600', marginBottom: '6px' }}>
               {isTR ? 'Antrenman kaydedildi' : 'Session logged'}
@@ -344,13 +374,19 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
 
               {/* Session type */}
               <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '9px', color: '#888', letterSpacing: '0.08em', marginBottom: '5px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '9px', color: '#888', letterSpacing: '0.08em', marginBottom: '5px' }}>
                   {t('quickAddSport')}
+                  {/* E74 — Pattern badge */}
+                  {patternUsed && dayPattern && (
+                    <span style={{ fontSize: '8px', color: '#555', background: '#1a1a1a', border: '1px solid #333', borderRadius: '3px', padding: '1px 5px', fontFamily: MONO, letterSpacing: '0.04em' }}>
+                      📅 {isTR ? 'Alışkanlık' : 'Pattern'}
+                    </span>
+                  )}
                 </label>
                 <select
                   ref={firstRef}
                   value={type}
-                  onChange={e => setType(e.target.value)}
+                  onChange={e => { setType(e.target.value); setPatternUsed(false) }}
                   style={{ ...S.input, width: '100%' }}
                 >
                   {Object.entries(SESSION_TYPES_BY_DISCIPLINE).map(([group, types]) => (
@@ -475,18 +511,55 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
                 </div>
               )}
 
-              {/* Notes */}
+              {/* Notes + E73 Voice mic */}
               <div style={{ marginBottom: '18px' }}>
                 <label style={{ display: 'block', fontSize: '9px', color: '#888', letterSpacing: '0.08em', marginBottom: '5px' }}>
                   {t('quickAddNotes')}
                 </label>
-                <input
-                  type="text"
-                  value={notes}
-                  onChange={e => setNotes(e.target.value)}
-                  maxLength={200}
-                  style={{ ...S.input, width: '100%' }}
-                />
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    value={notes}
+                    onChange={e => setNotes(e.target.value)}
+                    maxLength={200}
+                    style={{ ...S.input, flex: 1 }}
+                  />
+                  {(typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition)) && (
+                    <button
+                      type="button"
+                      title={isTR ? 'Sesle not ekle' : 'Voice note'}
+                      onClick={() => {
+                        if (recording) {
+                          recognizerRef.current?.stop()
+                          setRecording(false)
+                          return
+                        }
+                        const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+                        const rec = new SR()
+                        rec.lang = isTR ? 'tr-TR' : 'en-US'
+                        rec.continuous = false
+                        rec.interimResults = false
+                        rec.onresult = ev => {
+                          const t2 = ev.results?.[0]?.[0]?.transcript || ''
+                          if (t2) setNotes(prev => prev ? `${prev} ${t2}` : t2)
+                        }
+                        rec.onend = () => setRecording(false)
+                        rec.onerror = () => setRecording(false)
+                        recognizerRef.current = rec
+                        rec.start()
+                        setRecording(true)
+                      }}
+                      style={{
+                        width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer',
+                        background: recording ? '#ff6600' : '#1a1a1a',
+                        fontSize: '12px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        animation: recording ? 'pr-pulse 0.8s ease-in-out infinite alternate' : 'none',
+                        transition: 'background 0.2s',
+                      }}
+                      aria-label={recording ? (isTR ? 'Kaydı durdur' : 'Stop recording') : (isTR ? 'Sesle not' : 'Voice note')}
+                    >🎙</button>
+                  )}
+                </div>
               </div>
 
               {/* Offline badge */}

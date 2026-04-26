@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { S } from '../../styles.js'
 import { generateWeeklyNarrative } from '../../lib/intelligence.js'
+import { FormulaPopover } from '../ui/FormulaPopover.jsx'
 
 // ─── WeeklyReviewCard — E69 ───────────────────────────────────────────────────
 // Compares this ISO week (Mon–Sun) vs last ISO week by TSS and sessions.
@@ -117,7 +118,7 @@ export default function WeeklyReviewCard({ log, profile, isTR }) {
         {/* This week column */}
         <div style={colStyle}>
           <div style={colHdr}>{thisLbl}</div>
-          <div style={bigNum}>{thisWeekTss} <span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--muted)' }}>TSS</span></div>
+          <div style={bigNum}>{thisWeekTss} <span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--muted)' }}>TSS</span><FormulaPopover metricKey="tss" lang={isTR ? 'tr' : 'en'} /></div>
           <div style={subLine}>
             {thisWeekSessions} {isTR ? 'antrenman' : `session${thisWeekSessions !== 1 ? 's' : ''}`}
           </div>

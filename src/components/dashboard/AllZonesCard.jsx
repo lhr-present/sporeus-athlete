@@ -4,6 +4,7 @@
 
 import { useMemo } from 'react'
 import { deriveAllMetrics } from '../../lib/profileDerivedMetrics.js'
+import { FormulaPopover } from '../ui/FormulaPopover.jsx'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -25,6 +26,7 @@ function fmtPace(val) {
 }
 
 export default function AllZonesCard({ profile, log, testResults, isTR }) {
+  const lang = isTR ? 'tr' : 'en'
   const metrics = useMemo(
     () => deriveAllMetrics(profile, log || [], testResults || []),
     [profile, log, testResults]
@@ -53,10 +55,14 @@ export default function AllZonesCard({ profile, log, testResults, isTR }) {
       {/* Power zones (7 Coggan) */}
       {metrics.power?.zones?.length > 0 && (
         <div style={{ marginBottom: '14px' }}>
-          <div style={{ fontSize: '9px', color: '#555', letterSpacing: '0.1em', marginBottom: '6px' }}>
-            ▶ {isTR ? 'GÜÇ ZONLARI (Coggan)' : 'POWER ZONES (Coggan)'} · FTP {metrics.power.ftp}W
+          <div style={{ fontSize: '9px', color: '#555', letterSpacing: '0.1em', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+            <span>▶ {isTR ? 'GÜÇ ZONLARI (Coggan)' : 'POWER ZONES (Coggan)'} · FTP {metrics.power.ftp}W</span>
+            <FormulaPopover metricKey="ftp" lang={lang} />
             {metrics.power.wPerKg != null && (
-              <span style={{ color: ORANGE, marginLeft: '8px' }}>{metrics.power.wPerKg.toFixed(2)} W/kg</span>
+              <span style={{ color: ORANGE, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                {metrics.power.wPerKg.toFixed(2)} W/kg
+                <FormulaPopover metricKey="wkg" lang={lang} />
+              </span>
             )}
           </div>
           {metrics.power.zones.map((z, i) => (
@@ -79,8 +85,9 @@ export default function AllZonesCard({ profile, log, testResults, isTR }) {
       {/* Running paces (Daniels) */}
       {metrics.running?.paces && (
         <div style={{ marginBottom: '14px' }}>
-          <div style={{ fontSize: '9px', color: '#555', letterSpacing: '0.1em', marginBottom: '6px' }}>
-            ▶ {isTR ? 'KOŞU TEMPOLARI (Daniels)' : 'RUNNING PACES (Daniels)'} · VDOT {metrics.running.vdot?.toFixed(1)}
+          <div style={{ fontSize: '9px', color: '#555', letterSpacing: '0.1em', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+            <span>▶ {isTR ? 'KOŞU TEMPOLARI (Daniels)' : 'RUNNING PACES (Daniels)'} · VDOT {metrics.running.vdot?.toFixed(1)}</span>
+            <FormulaPopover metricKey="vdot" lang={lang} />
             {metrics.running.source === 'auto-log' && (
               <span style={{ color: AMBER, marginLeft: '6px' }}>{isTR ? '(auto)' : '(auto)'}</span>
             )}

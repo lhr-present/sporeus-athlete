@@ -319,3 +319,271 @@ Every metric shown to athletes should have a `title` attribute or `ⓘ` tooltip 
 - Formula source (e.g., "CTL: 42-day EWMA — Banister 1991")
 - Book reference if applicable (e.g., "See EŞİK Ch. 7")
 Never leave a metric label naked without at least a hover title.
+
+---
+
+## Strategic Gap: Engagement & Delight (E70–E74)
+
+### The Problem
+The coaching loop is closed (E65–E69). Athletes get prescriptions and daily briefings. The next gap: **athletes don't feel rewarded for using the app daily.** No moments of surprise, no personal bests celebrated, no formula explanations for curious athletes. The app is functional but not magnetic.
+
+### Updated Daily-Use Tests (add to the 8 existing)
+
+**Test 9: Does the app celebrate athlete achievements?**
+- When a PR is logged, the confirmation screen must acknowledge it explicitly
+- Acceptance: athlete logs a new best 60min TSS and sees the achievement called out by name
+
+**Test 10: Can an athlete understand any metric with one tap?**
+- Every key metric (CTL, ATL, TSB, ACWR, VDOT, FTP, W/kg, LTHR) has a ⓘ popover
+- Acceptance: tap ⓘ on CTL → see formula, plain-language explanation, EŞİK chapter reference
+
+---
+
+## E70–E74 Prompt Specs (Engagement & Delight Sprint)
+
+### E70 — PR Celebration in QuickAddModal confirmation
+**Problem (P2):** The post-save confirmation panel (phase === 'saved') shows a checkmark and sync status. But when an athlete sets a new personal best, nothing highlights it. A PR is the highest-value moment in daily use — it must be celebrated.
+
+**What to add to the `phase === 'saved'` block:**
+1. Import `detectPRs` from `src/lib/intelligence.js` (already exists — returns `{ isPR, prFields }`)
+2. After save, call `detectPRs(savedEntry, log)` — the saved entry is already in `log` by the time phase becomes 'saved' (or pass `[...log, savedEntry]`)
+3. If `isPR === true`, render a celebration banner above the checkmark:
+```
+🏆  New Personal Best!
+Best 60min TSS · 94 TSS  (prev: 81 TSS)
+```
+4. List each PR field that fired: `prFields` is an array like `['tss', 'duration']`
+5. Banner background: `#ff6600` with white text, subtle pulse animation (CSS keyframe `@keyframes pr-pulse`)
+6. Bilingual label: EN "New Personal Best!" / TR "Yeni Kişisel Rekor!"
+7. PR fields label map: `tss → "Best TSS"/"En İyi TSS"`, `duration → "Longest Session"/"En Uzun Antrenman"`, `distance → "Best Distance"/"En İyi Mesafe"`, `avgPace → "Best Pace"/"En İyi Hız"`
+
+**Files:** `src/components/QuickAddModal.jsx` only
+**Tests:** None required — UI-only change. But verify `detectPRs` is imported and called correctly.
+**Acceptance:** Log a session with TSS higher than any existing entry → confirmation shows 🏆 PR banner with correct field and previous best value.
+
+---
+
+### E71 — Formula transparency ⓘ popovers on all key metrics
+**Problem (P3):** Metrics like CTL, ATL, TSB, ACWR, VDOT, W/kg are shown everywhere but never explained. Curious athletes (especially those reading EŞİK) want to understand the math. Currently: naked numbers.
+
+**Implementation — shared Popover component:**
+1. Create `src/components/ui/FormulaPopover.jsx`:
+```jsx
+export function FormulaPopover({ metricKey, lang }) {
+  const [open, setOpen] = useState(false)
+  const info = FORMULA_INFO[metricKey]
+  if (!info) return null
+  return (
+    <>
+      <button onClick={() => setOpen(v => !v)} style={{ ... ⓘ badge ... }}>ⓘ</button>
+      {open && <div style={{ ... popover panel ... }}>
+        <div style={{ fontWeight: 700 }}>{info.name[lang]}</div>
+        <div style={{ fontFamily: 'monospace', fontSize: 11 }}>{info.formula}</div>
+        <div style={{ fontSize: 12, marginTop: 4 }}>{info.explanation[lang]}</div>
+        {info.citation && <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>{info.citation}</div>}
+        {info.esik && <div style={{ fontSize: 11, color: '#ff6600' }}>EŞİK {info.esik[lang]}</div>}
+      </div>}
+    </>
+  )
+}
+```
+
+2. Create `src/lib/formulaInfo.js` — the data file:
+```javascript
+export const FORMULA_INFO = {
+  ctl: {
+    name: { en: 'Chronic Training Load (CTL)', tr: 'Kronik Antrenman Yükü (CTL)' },
+    formula: 'CTL_today = CTL_prev + (TSS − CTL_prev) / 42',
+    explanation: {
+      en: '42-day exponential weighted average of TSS. Represents your aerobic fitness base.',
+      tr: '42 günlük TSS üstel ağırlıklı ortalaması. Aerobik kondisyon tabanını temsil eder.',
+    },
+    citation: 'Banister 1991; Coggan & Allen 2010 (TrainingPeaks PMC)',
+    esik: { en: 'Ch. 7 — Performance Management Chart', tr: 'Bölüm 7 — Performans Yönetim Grafiği' },
+  },
+  atl: {
+    name: { en: 'Acute Training Load (ATL)', tr: 'Akut Antrenman Yükü (ATL)' },
+    formula: 'ATL_today = ATL_prev + (TSS − ATL_prev) / 7',
+    explanation: {
+      en: '7-day EWMA of TSS. Represents recent training fatigue.',
+      tr: '7 günlük TSS üstel ağırlıklı ortalaması. Son antrenman yorgunluğunu temsil eder.',
+    },
+    citation: 'Banister 1991; Coggan & Allen 2010',
+    esik: { en: 'Ch. 7 — ATL and fatigue management', tr: 'Bölüm 7 — ATL ve yorgunluk yönetimi' },
+  },
+  tsb: {
+    name: { en: 'Training Stress Balance (TSB / Form)', tr: 'Antrenman Stres Dengesi (TSB / Form)' },
+    formula: 'TSB = CTL − ATL',
+    explanation: {
+      en: 'Fitness minus fatigue. Positive = fresh and race-ready. Negative = accumulated fatigue.',
+      tr: 'Kondisyon eksi yorgunluk. Pozitif = dinç, yarışa hazır. Negatif = birikmiş yorgunluk.',
+    },
+    citation: 'Coggan & Allen 2010; Morton 1991',
+    esik: { en: 'Ch. 7 — TSB and race timing', tr: 'Bölüm 7 — TSB ve yarış zamanlaması' },
+  },
+  acwr: {
+    name: { en: 'Acute:Chronic Workload Ratio (ACWR)', tr: 'Akut:Kronik İş Yükü Oranı (ACWR)' },
+    formula: 'ACWR = ATL_7d / CTL_28d',
+    explanation: {
+      en: 'Ratio of recent load to baseline load. 0.8–1.3 = safe zone. >1.5 = injury risk.',
+      tr: 'Son yük / baz yük oranı. 0.8–1.3 = güvenli bölge. >1.5 = yaralanma riski.',
+    },
+    citation: 'Gabbett 2016 (BJSports); Murray et al. 2017',
+    esik: { en: 'Ch. 9 — Workload and injury prevention', tr: 'Bölüm 9 — İş yükü ve yaralanma önleme' },
+  },
+  vdot: {
+    name: { en: 'VDOT (Daniels Running Formula)', tr: 'VDOT (Daniels Koşu Formülü)' },
+    formula: 'VDOT = VO2 at race pace; from Daniels & Gilbert 1979 regression tables',
+    explanation: {
+      en: 'Derived from race performance, not lab test. Used to set 5 training pace zones.',
+      tr: 'Yarış performansından türetilir, laboratuvar testi gerekmez. 5 antrenman hız bölgesini belirler.',
+    },
+    citation: 'Daniels J. (2005). Daniels\' Running Formula (2nd ed.). Human Kinetics.',
+    esik: { en: 'Ch. 5 — Running paces and VDOT', tr: 'Bölüm 5 — Koşu hızları ve VDOT' },
+  },
+  ftp: {
+    name: { en: 'Functional Threshold Power (FTP)', tr: 'Fonksiyonel Eşik Gücü (FTP)' },
+    formula: 'FTP ≈ 95% of 20-min best average power (Coggan); or 1-hour TT power',
+    explanation: {
+      en: 'Max average power sustainable for ~1 hour. Foundation of all 7 Coggan power zones.',
+      tr: '~1 saatte sürdürülebilir maksimum ortalama güç. 7 Coggan güç bölgesinin temeli.',
+    },
+    citation: 'Coggan A.R. (2003). Training and Racing with a Power Meter. VeloPress.',
+    esik: { en: 'Ch. 6 — FTP and power zones', tr: 'Bölüm 6 — FTP ve güç bölgeleri' },
+  },
+  wkg: {
+    name: { en: 'Power-to-Weight Ratio (W/kg)', tr: 'Güç/Ağırlık Oranı (W/kg)' },
+    formula: 'W/kg = FTP (watts) / body weight (kg)',
+    explanation: {
+      en: 'The single most important metric for climbing and overall cycling performance.',
+      tr: 'Tırmanma ve genel bisiklet performansı için en önemli tek metrik.',
+    },
+    citation: 'Coggan A.R. Categorization of cyclists by W/kg (2003)',
+    esik: { en: 'Ch. 6 — W/kg athlete categories', tr: 'Bölüm 6 — W/kg sporcu kategorileri' },
+  },
+  lthr: {
+    name: { en: 'Lactate Threshold HR (LTHR)', tr: 'Laktik Eşik Kalp Atış Hızı (LTHR)' },
+    formula: 'LTHR ≈ MaxHR × 0.87 (Friel estimate); or avg HR from 30-min TT last 20 min',
+    explanation: {
+      en: 'HR at the crossover from aerobic to anaerobic metabolism. Z3/Z4 boundary.',
+      tr: 'Aerobik/anaerobik metabolizma geçiş noktasındaki KAH. Z3/Z4 sınırı.',
+    },
+    citation: 'Friel J. (2009). The Triathlete\'s Training Bible. VeloPress.',
+    esik: { en: 'Ch. 4 — Lactate threshold and zones', tr: 'Bölüm 4 — Laktik eşik ve bölgeler' },
+  },
+}
+```
+
+3. Apply `FormulaPopover` to these locations (add `metricKey` prop and pass `lang`):
+   - `DailyBriefingCard.jsx`: beside CTL, TSB, ACWR labels
+   - `EliteMetricsStrip.jsx`: beside W/kg, VDOT, LTHR labels
+   - `AllZonesCard.jsx`: beside section headers (FTP, VDOT, MaxHR)
+   - `ConsistencyDepthCard.jsx`: beside CTL label
+   - `WeeklyReviewCard.jsx`: beside TSS label
+
+**Files:**
+- `src/components/ui/FormulaPopover.jsx` (new)
+- `src/lib/formulaInfo.js` (new)
+- 5 component files (add ⓘ badge inline — one-liners each)
+
+**Tests:** `src/lib/__tests__/formulaInfo.test.js` — 8 tests: every key in FORMULA_INFO has name, formula, explanation (en+tr), citation.
+**Acceptance:** Tap ⓘ beside CTL in DailyBriefingCard → popover shows formula, explanation, "EŞİK Bölüm 7" reference.
+
+---
+
+### E72 — Monthly progress narrative card
+**Problem (P3):** Athletes have no sense of month-over-month progress. Weekly review (E69) handles 7 days. There's no "where was I 30 days ago vs today" moment. This is what coaches review in monthly check-ins.
+
+**New component:** `src/components/dashboard/MonthlyProgressCard.jsx`
+
+**Only shown:** On the 1st–7th of each month (recency gate: `new Date().getDate() <= 7`) AND only if log has sessions from the previous month.
+
+**Content:**
+```
+APRIL SUMMARY
+Sessions: 18  ·  Total TSS: 2,340  ·  Avg RPE: 6.4
+CTL change: +8 (from 42 → 50)
+VDOT change: +1.2 (from 54.1 → 55.3)   [only if VDOT derivable from log]
+Best week: Apr 14–20 · 680 TSS
+
+→ May target: maintain 550–650 TSS/week to reach race-ready CTL of 55
+```
+
+**Logic in `src/lib/athlete/monthlyProgress.js`** (new pure lib):
+```javascript
+export function computeMonthlyProgress(log, profile, today = new Date().toISOString().slice(0, 10))
+// Returns null if prev month has < 4 sessions
+// Returns:
+{
+  monthLabel: 'April 2026' / 'Nisan 2026',
+  sessions: number,
+  totalTSS: number,
+  avgRPE: number,
+  ctlDelta: number,          // CTL end of month - CTL start of month
+  ctlStart: number,
+  ctlEnd: number,
+  bestWeek: { label: 'Apr 14–20', tss: number },
+  vdotDelta: number | null,  // null if no auto-VDOT possible
+  targetNextMonth: { tssLow: number, tssHigh: number, targetCTL: number },
+}
+```
+
+**Files:** `src/lib/athlete/monthlyProgress.js` (new), `src/components/dashboard/MonthlyProgressCard.jsx` (new)
+**Tests:** `src/lib/__tests__/athlete/monthlyProgress.test.js` — 12 tests
+**Integration:** Dashboard.jsx — lazy-load, render in both paths after WeeklyReviewCard
+**Acceptance:** On 1st–7th of any month with prior-month data, card appears with correct session count and CTL delta.
+
+---
+
+### E73 — Voice notes in QuickAddModal
+**Problem (P3):** Athletes want to add "felt tight in left hip, pushed through miles 4–6" type notes after a session. Typing this on mobile while sweaty is painful. Web Speech API exists in all modern browsers.
+
+**Implementation in `src/components/QuickAddModal.jsx`:**
+1. Add a microphone button beside the `notes` textarea (renders only if `'webkitSpeechRecognition' in window || 'SpeechRecognition' in window`)
+2. State: `const [recording, setRecording] = useState(false)`
+3. On mic tap: start `SpeechRecognition` with `lang = lang === 'tr' ? 'tr-TR' : 'en-US'`; set `continuous: false`, `interimResults: false`
+4. On `result` event: append transcript to `notes` field (don't replace — athlete may have typed something)
+5. On `end` event: `setRecording(false)`
+6. On `error` event: `setRecording(false)` silently — do NOT show error to user
+7. Mic button style: 24px circle, `#333` background when idle, `#ff6600` background when recording, pulse animation
+8. If `SpeechRecognition` not available: button simply doesn't render (no fallback message needed)
+
+**No new files.** Changes entirely in `QuickAddModal.jsx`.
+**Tests:** None required — Web Speech API is a browser API; unit testing is not practical.
+**Acceptance:** Tap mic, speak "felt tired in the first half", → text appears in notes field. Button turns orange while recording, returns to grey when done. Works in English and Turkish. If browser doesn't support it, no mic button appears.
+
+---
+
+### E74 — Smart session defaults from weekly patterns
+**Problem (P2):** Athletes open QuickAddModal and have to choose type/sport/duration from scratch every time. But most athletes are creatures of habit: Monday = easy run 45min, Wednesday = tempo 60min, Saturday = long run 90min. The data to detect this already exists in `patterns.js`.
+
+**Implementation:**
+1. In `src/lib/patterns.js`, add a new export:
+```javascript
+export function getDayPattern(log, today = new Date().toISOString().slice(0, 10))
+// Returns the most common session type+duration for this weekday from last 8 weeks
+// Returns null if < 3 matching weekday sessions found
+// Returns: { type: string, durationMin: number, sport: string, confidence: number (0-1) }
+```
+Logic:
+- Filter log to sessions from last 56 days
+- Get `dayOfWeek` = `(new Date(today + 'T12:00:00Z').getDay() + 6) % 7` (Mon=0)
+- Filter to sessions on same day of week (using the same noon-UTC pattern for each entry.date)
+- If < 3 sessions: return null
+- Find mode of `type`, median `durationMin`, mode of `sport`
+- Confidence = matching sessions / total log sessions for that weekday (capped at 1)
+
+2. In `QuickAddModal.jsx`:
+   - On mount: call `getDayPattern(log)` 
+   - If result is non-null AND confidence ≥ 0.5: pre-fill `type`, `durationMin`, `sport` with pattern values
+   - Show a "Pattern" badge next to the type selector: small grey pill "📅 Pattern" 
+   - When athlete changes any field, hide the badge (they've overridden it)
+   - The badge serves as a signal, not a lock — athlete always overrides freely
+
+3. Bilingual: badge label EN "📅 Pattern" / TR "📅 Alışkanlık"
+
+**Files:** `src/lib/patterns.js` (add `getDayPattern` export), `src/components/QuickAddModal.jsx` (use it)
+**Tests:** `src/lib/__tests__/patterns.test.js` — add 8 tests for `getDayPattern`: empty log returns null, < 3 sessions returns null, correct mode type, correct median duration, respects 56-day window, Monday pattern doesn't bleed into Tuesday, noon-UTC weekday calculation matches log entries.
+**Acceptance:** After 3 Mondays of 45min easy runs, open QuickAddModal on Monday → type pre-filled to "Easy Run", duration to 45, "📅 Pattern" badge visible. Change type → badge disappears.
+
+---

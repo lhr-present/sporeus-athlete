@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.84.0 — 2026-04-27
+E70–E74 Engagement & Delight sprint. (E70) PR Celebration: detectPRs() called after QuickAddModal save; 🏆 orange pulse banner lists new personal records (longest session, highest TSS, weekly TSS, streak, power peaks). (E71) Formula ⓘ popovers: FormulaPopover.jsx + formulaInfo.js covering CTL, ATL, TSB, ACWR, VDOT, FTP, W/kg, LTHR — applied to DailyBriefingCard, EliteMetricsStrip, AllZonesCard, ConsistencyDepthCard, WeeklyReviewCard. (E72) MonthlyProgressCard: shows prev-month sessions/TSS/CTL delta/best week/next-month target on 1st–7th of each month; both Dashboard paths. (E73) Voice notes: Web Speech API mic button in QuickAddModal notes field, appends transcript, lang-aware, silent fallback when unsupported. (E74) Day-pattern defaults: getDayPattern() in patterns.js pre-fills QuickAddModal with mode type + median duration for today's weekday (last 56 days); '📅 Pattern' badge; badge disappears on override. 3949 tests (+63), 0 lint, clean build.
+
+---
+
 ## v11.79.0 — 2026-04-27
 General app audit fixes. (1) App.jsx: `profile` was not destructured from useAppState — QuickAddModal was receiving undefined profile (no sport defaults, no zone hints). Fixed by adding `profile` to the destructuring. (2) isoWeekLabel: replaced broken formula with correct ISO 8601 nearest-Thursday algorithm using noon-UTC parsing to avoid timezone boundary shifts; was returning W16 instead of W17 for Apr 25 on UTC servers. (3) aerobicEfficiency.test.js: corrected "same week" test — Apr 25 (W17) and Apr 27 (W18) cross a week boundary; changed to Apr 22 (W17). All CI-blocking issues resolved. 3886 tests, 0 lint warnings.
 

@@ -4,6 +4,7 @@
 import { useMemo } from 'react'
 import { deriveAllMetrics } from '../../lib/profileDerivedMetrics.js'
 import { dailyPrescription } from '../../lib/dailyPrescription.js'
+import { FormulaPopover } from '../ui/FormulaPopover.jsx'
 
 const MONO = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -114,14 +115,15 @@ export default function DailyBriefingCard({ profile, log, plan, planStatus, reco
       ))}
 
       {/* TSB / CTL row */}
-      <div style={{ display: 'flex', gap: '12px', marginTop: '8px', borderTop: '1px solid #1a1a1a', paddingTop: '6px' }}>
+      <div style={{ display: 'flex', gap: '12px', marginTop: '8px', borderTop: '1px solid #1a1a1a', paddingTop: '6px', alignItems: 'center' }}>
         {[
-          { label: 'CTL', val: rx.ctl, title: 'Chronic Training Load — 42-day avg fitness (Banister 1991)' },
-          { label: 'TSB', val: rx.tsb >= 0 ? `+${rx.tsb}` : `${rx.tsb}`, title: 'Training Stress Balance = CTL − ATL. Positive = fresh.' },
-          ...(rx.acwr != null ? [{ label: 'ACWR', val: rx.acwr, title: 'Acute:Chronic Workload Ratio. >1.5 = injury risk (Gabbett 2016)' }] : []),
+          { label: 'CTL', val: rx.ctl, key: 'ctl' },
+          { label: 'TSB', val: rx.tsb >= 0 ? `+${rx.tsb}` : `${rx.tsb}`, key: 'tsb' },
+          ...(rx.acwr != null ? [{ label: 'ACWR', val: rx.acwr, key: 'acwr' }] : []),
         ].map(m => (
-          <span key={m.label} style={{ display: 'flex', alignItems: 'baseline', gap: '3px' }}>
-            <span style={{ fontSize: '8px', color: '#333', letterSpacing: '0.08em' }} title={m.title}>{m.label}</span>
+          <span key={m.label} style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+            <span style={{ fontSize: '8px', color: '#333', letterSpacing: '0.08em' }}>{m.label}</span>
+            <FormulaPopover metricKey={m.key} lang={isTR ? 'tr' : 'en'} />
             <span style={{ fontSize: '11px', fontWeight: 700, color: '#555' }}>{m.val}</span>
           </span>
         ))}
