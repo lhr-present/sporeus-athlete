@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.89.0 — 2026-04-27
+E75–E79 Training Intelligence sprint. (E75) Training Phase Badge: classifyTrainingPhase() in trainingPhase.js — base/build/peak/taper/recovery via CTL trend + race proximity; badge in DailyBriefingCard header. (E76) IntensityBalanceCard: computeIntensityBalance() in intensityBalance.js — 4-week easy/hard split bar, Seiler 2010 polarized target ≥75% easy; added to beginner+advanced Dashboard paths. (E77) ACWR Live Spike Warning: projectedACWR useMemo in QuickAddModal — computes ratio including current session's TSS, shows amber △ warning when >1.3 (Gabbett 2016). (E78) Deload Detector: detectDeloadNeed() in deloadDetector.js — weekly TSS map + consecutive CTL-building weeks count; △ warning in DailyBriefingCard after 3+ build weeks or 4+ weeks without deload (Bompa 2015 3:1 ratio). (E79) WeekSessionTypeCard: this-week sessions grouped easy/moderate/hard by RPE with mini colored strip; added to beginner+advanced Dashboard paths. 29 new tests (trainingPhase 10, intensityBalance 11, deloadDetector 8) → 3978 tests, 235 files.
+
+---
+
 ## v11.84.0 — 2026-04-27
 E70–E74 Engagement & Delight sprint. (E70) PR Celebration: detectPRs() called after QuickAddModal save; 🏆 orange pulse banner lists new personal records (longest session, highest TSS, weekly TSS, streak, power peaks). (E71) Formula ⓘ popovers: FormulaPopover.jsx + formulaInfo.js covering CTL, ATL, TSB, ACWR, VDOT, FTP, W/kg, LTHR — applied to DailyBriefingCard, EliteMetricsStrip, AllZonesCard, ConsistencyDepthCard, WeeklyReviewCard. (E72) MonthlyProgressCard: shows prev-month sessions/TSS/CTL delta/best week/next-month target on 1st–7th of each month; both Dashboard paths. (E73) Voice notes: Web Speech API mic button in QuickAddModal notes field, appends transcript, lang-aware, silent fallback when unsupported. (E74) Day-pattern defaults: getDayPattern() in patterns.js pre-fills QuickAddModal with mode type + median duration for today's weekday (last 56 days); '📅 Pattern' badge; badge disappears on override. 3949 tests (+63), 0 lint, clean build.
 

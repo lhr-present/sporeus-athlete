@@ -99,6 +99,8 @@ const DailyBriefingCard          = lazy(() => import('./dashboard/DailyBriefingC
 const WeeklyReviewCard           = lazy(() => import('./dashboard/WeeklyReviewCard.jsx'))
 const ConsistencyDepthCard       = lazy(() => import('./dashboard/ConsistencyDepthCard.jsx'))
 const MonthlyProgressCard        = lazy(() => import('./dashboard/MonthlyProgressCard.jsx'))
+const IntensityBalanceCard       = lazy(() => import('./dashboard/IntensityBalanceCard.jsx'))
+const WeekSessionTypeCard        = lazy(() => import('./dashboard/WeekSessionTypeCard.jsx'))
 
 export default function Dashboard({ log, onLogSession, onGoToProfile }) {
   const [lang]       = useLocalStorage('sporeus-lang', 'en')
@@ -371,6 +373,16 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
             <MonthlyProgressCard log={log} profile={profile} isTR={lang === 'tr'} />
           </Suspense>
         </ErrorBoundary>
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <WeekSessionTypeCard log={log} isTR={lang === 'tr'} />
+          </Suspense>
+        </ErrorBoundary>
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <IntensityBalanceCard log={log} isTR={lang === 'tr'} />
+          </Suspense>
+        </ErrorBoundary>
         <div className="sp-card" style={{ ...S.card, animationDelay: '50ms', borderLeft: '4px solid #5bc25b' }}>
           <div style={{ ...S.mono, fontSize: '12px', lineHeight: 1.8, color: 'var(--text)' }}>{coachingMsg}</div>
           {avgRPE !== '—' && (
@@ -547,6 +559,16 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       <ErrorBoundary>
         <Suspense fallback={null}>
           <MonthlyProgressCard log={log} profile={profile} isTR={lang === 'tr'} />
+        </Suspense>
+      </ErrorBoundary>
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <WeekSessionTypeCard log={log} isTR={lang === 'tr'} />
+        </Suspense>
+      </ErrorBoundary>
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <IntensityBalanceCard log={log} isTR={lang === 'tr'} />
         </Suspense>
       </ErrorBoundary>
 

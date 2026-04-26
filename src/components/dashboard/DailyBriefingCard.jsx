@@ -4,6 +4,8 @@
 import { useMemo } from 'react'
 import { deriveAllMetrics } from '../../lib/profileDerivedMetrics.js'
 import { dailyPrescription } from '../../lib/dailyPrescription.js'
+import { classifyTrainingPhase } from '../../lib/athlete/trainingPhase.js'
+import { detectDeloadNeed } from '../../lib/athlete/deloadDetector.js'
 import { FormulaPopover } from '../ui/FormulaPopover.jsx'
 
 const MONO = "'IBM Plex Mono', monospace"
@@ -24,6 +26,12 @@ export default function DailyBriefingCard({ profile, log, plan, planStatus, reco
     () => dailyPrescription(profile, log, plan, planStatus, recovery, metrics),
     [profile, log, plan, planStatus, recovery, metrics]
   )
+  const phase    = useMemo(() => {
+    try { return classifyTrainingPhase(log, profile) } catch { return null }
+  }, [log, profile])
+  const deload   = useMemo(() => {
+    try { return detectDeloadNeed(log) } catch { return null }
+  }, [log])
 
   if (!log?.length) return null
 
@@ -40,6 +48,12 @@ export default function DailyBriefingCard({ profile, log, plan, planStatus, reco
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <div style={{ fontSize: '9px', color: '#555', letterSpacing: '0.1em' }}>
           ◈ {isTR ? 'GÜNLÜK REÇETE' : 'DAILY BRIEFING'}
+          {/* E75 — Training phase badge */}
+          {phase && (
+            <span style={{ marginLeft: '8px', fontSize: '8px', color: '#333', border: '1px solid #2a2a2a', borderRadius: '2px', padding: '1px 5px', letterSpacing: '0.04em' }}>
+              {isTR ? phase.tr : phase.en}
+            </span>
+          )}
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {rx.today.raceCountdown != null && rx.today.raceCountdown <= 30 && (
@@ -113,6 +127,12 @@ export default function DailyBriefingCard({ profile, log, plan, planStatus, reco
           {w.level === 'danger' ? '⚠ ' : '△ '}{w[isTR ? 'tr' : 'en']}
         </div>
       ))}
+      {/* E78 — Deload recommendation */}
+      {deload?.needsDeload && (
+        <div style={{ fontSize: '9px', color: AMBER, marginTop: '4px', letterSpacing: '0.04em' }}>
+          △ {isTR ? deload.tr : deload.en}
+        </div>
+      )}
 
       {/* TSB / CTL row */}
       <div style={{ display: 'flex', gap: '12px', marginTop: '8px', borderTop: '1px solid #1a1a1a', paddingTop: '6px', alignItems: 'center' }}>

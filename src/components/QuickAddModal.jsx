@@ -13,6 +13,7 @@ import { addNotification } from '../lib/notificationCenter.js'
 import { analyseSession } from '../lib/intelligence.js'
 import { detectPRs } from '../lib/athlete/detectPRs.js'
 import { getDayPattern } from '../lib/patterns.js'
+import { calculateACWR } from '../lib/trainingLoad.js'
 import { useWorkoutTemplates } from '../hooks/useWorkoutTemplates.js'
 import { deriveAllMetrics } from '../lib/profileDerivedMetrics.js'
 import { dailyPrescription } from '../lib/dailyPrescription.js'
@@ -157,6 +158,14 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
 
   const dur = parseInt(duration) || 0
   const tss = dur > 0 ? estimateTSS(dur, rpe, metrics) : 0
+
+  // E77 — projected ACWR with this session included
+  const projectedACWR = useMemo(() => {
+    if (!tss || !sessionDate) return null
+    const projected = [...(log || []), { date: sessionDate, tss }]
+    const result = calculateACWR(projected)
+    return result?.ratio != null ? result.ratio : null
+  }, [log, tss, sessionDate])
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -508,6 +517,12 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
                       ? `${dur} dk × RPE ${rpe} → Foster 2001 sRPE yöntemi`
                       : `${dur} min × RPE ${rpe} → Foster 2001 sRPE method`}
                   </div>
+                  {/* E77 — ACWR spike warning */}
+                  {projectedACWR != null && projectedACWR > 1.3 && (
+                    <div style={{ fontSize: '9px', color: '#f5c542', marginTop: '5px', padding: '4px 6px', background: '#1a1500', borderRadius: '2px', lineHeight: 1.5 }}>
+                      △ ACWR {projectedACWR.toFixed(2)} — {isTR ? 'Bu seans yük artışı yüksek. Sakatlanma riski artar.' : 'Load spike detected. Injury risk elevated (Gabbett 2016).'}
+                    </div>
+                  )}
                 </div>
               )}
 
