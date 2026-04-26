@@ -23,10 +23,18 @@ export { EF_CITATION }
  * @returns {string}
  */
 export function isoWeekLabel(dateStr) {
-  const d = new Date(dateStr)
-  const jan4 = new Date(d.getFullYear(), 0, 4)
-  const weekNum = Math.ceil(((d - jan4) / 86400000 + jan4.getDay() + 1) / 7)
-  return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`
+  // Parse as noon UTC to avoid date-boundary shifts across timezones.
+  // ISO week: week containing the nearest Thursday; Mon=start of week.
+  const d = new Date(dateStr + 'T12:00:00Z')
+  const dow = (d.getUTCDay() + 6) % 7  // Mon=0 … Sun=6
+  const thursday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - dow + 3))
+  // First Thursday of the ISO year
+  const firstThursday = new Date(Date.UTC(thursday.getUTCFullYear(), 0, 1))
+  if (firstThursday.getUTCDay() !== 4) {
+    firstThursday.setUTCDate(1 + ((4 - firstThursday.getUTCDay() + 7) % 7))
+  }
+  const weekNum = 1 + Math.round((thursday - firstThursday) / 604800000)
+  return `${thursday.getUTCFullYear()}-W${String(weekNum).padStart(2, '0')}`
 }
 
 // ── weeklyEFHistory ───────────────────────────────────────────────────────────

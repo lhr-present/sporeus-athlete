@@ -47,8 +47,8 @@ describe('isoWeekLabel', () => {
   })
 
   it('same week label for two dates in the same computed week', () => {
-    // 2026-04-25 and 2026-04-27 both fall in the same computed week
-    expect(isoWeekLabel('2026-04-25')).toBe(isoWeekLabel('2026-04-27'))
+    // 2026-04-25 (Sat) and 2026-04-22 (Wed) are both in ISO W17 (Apr 20–26)
+    expect(isoWeekLabel('2026-04-25')).toBe(isoWeekLabel('2026-04-22'))
   })
 })
 

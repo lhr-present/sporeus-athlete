@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.79.0 — 2026-04-27
+General app audit fixes. (1) App.jsx: `profile` was not destructured from useAppState — QuickAddModal was receiving undefined profile (no sport defaults, no zone hints). Fixed by adding `profile` to the destructuring. (2) isoWeekLabel: replaced broken formula with correct ISO 8601 nearest-Thursday algorithm using noon-UTC parsing to avoid timezone boundary shifts; was returning W16 instead of W17 for Apr 25 on UTC servers. (3) aerobicEfficiency.test.js: corrected "same week" test — Apr 25 (W17) and Apr 27 (W18) cross a week boundary; changed to Apr 22 (W17). All CI-blocking issues resolved. 3886 tests, 0 lint warnings.
+
+---
+
 ## v11.78.0 — 2026-04-27
 Lint clean-up: fixed all 60 ESLint problems (1 error + 59 warnings) that were blocking CI. RowingMetricsCard.jsx: hoisted conditional useMemo before early return (Rules of Hooks). Protocols.jsx + LactateEstimator.jsx: removed stale useMemo deps. PolarizationComplianceCard.jsx: stabilised safeLog reference. 35 files: unused vars/args prefixed with _ or imports removed. 0 lint problems, 3886 tests.
 

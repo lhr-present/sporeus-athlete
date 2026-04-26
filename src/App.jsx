@@ -113,6 +113,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
     syncStatus,
     badges, isGuest, isFirstSession,
     finishOnboarding, t, handleExport, handleAddSession,
+    profile,
   } = useAppState({ lang, setLang, dark, setDark, authUser, authProfile, signOut })
 
   const [showUpgrade, setShowUpgrade]             = useState(false)
