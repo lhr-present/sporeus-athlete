@@ -14,7 +14,7 @@ const STATUS_COLOR = {
 }
 
 function PlanAdherenceCard({ plan, planStatus, log }) {
-  const { t, lang } = useContext(LangCtx)
+  const { t, lang: _lang } = useContext(LangCtx)
 
   const summary = useMemo(
     () => computeAdherenceSummary(plan, planStatus, log),

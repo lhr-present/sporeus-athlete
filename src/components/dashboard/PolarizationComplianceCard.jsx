@@ -39,7 +39,7 @@ function _scoreColor(score) {
 export default function PolarizationComplianceCard({ log }) {
   const { t } = useContext(LangCtx)
 
-  const safeLog = Array.isArray(log) ? log : []
+  const safeLog = useMemo(() => Array.isArray(log) ? log : [], [log])
 
   const trend = useMemo(() => polarizationTrend(safeLog, 8), [safeLog])
   const overall = useMemo(() => overallPolarizationCompliance(safeLog, 8), [safeLog])

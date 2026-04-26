@@ -15,7 +15,7 @@ const CHECKLIST = {
   tr: ['Yarış numarasını al', 'Besleme başlangıç zamanı (T-45 dk)', '15–20 dk ısınma', 'Ekipman kontrol: ayakkabı, saat, beslenme'],
 }
 
-export default function RaceDayBriefing({ log = [], raceDate, vdot, targetTime_s }) {
+export default function RaceDayBriefing({ log: _log = [], raceDate, vdot, targetTime_s }) {
   const { lang, t } = useContext(LangCtx)
 
   const today   = new Date().toISOString().slice(0, 10)

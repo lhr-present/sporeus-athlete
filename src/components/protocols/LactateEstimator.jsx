@@ -48,7 +48,7 @@ export default function LactateEstimator({ lang = 'en' }) {
         .map(r => ({ date: r.date, lt2W: r.lt2 ?? r.lt }))
       return computeLactateDrift(sessions)
     } catch { return null }
-  }, [saved])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const setStep = (i, field, val) => {
     const next = [...steps]

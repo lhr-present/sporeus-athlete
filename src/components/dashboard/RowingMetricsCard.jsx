@@ -5,7 +5,7 @@ import { S } from '../../styles.js'
 import {
   splitPer500m, formatSplit,
   strokeEfficiency, classifyStrokeRate,
-  rowingEfficiencyFactor, fmtSplit,
+  rowingEfficiencyFactor,
   predict2000m, concept2VO2max,  // ADD THESE
 } from '../../lib/sport/rowing.js'
 
@@ -29,9 +29,8 @@ export default function RowingMetricsCard({ log = [], profile = {} }) {
   }, [log])
 
   const last = rowingData[0]
-  if (!last) return null
 
-  // 2000m prediction and VO2max
+  // 2000m prediction and VO2max — hoisted before early return to satisfy Rules of Hooks
   const pred2k = useMemo(() => {
     if (!last) return null
     // If session is already ~2000m, use directly; otherwise predict
@@ -48,6 +47,8 @@ export default function RowingMetricsCard({ log = [], profile = {} }) {
     const ss = String(Math.round(predicted % 60)).padStart(2, '0')
     return { timeStr: `${mm}:${ss}`, isProjection: Math.abs(distM - 2000) >= 200, vo2 }
   }, [last, profile])
+
+  if (!last) return null
 
   const split = splitPer500m(last.distance, last.duration)
   const strEff = strokeEfficiency(last.distance, last.strokes)

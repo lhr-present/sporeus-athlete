@@ -7,7 +7,7 @@ import {
   buildHRZones,
   thresholdPaceToVdot,
   autoVdotFromLog,
-  buildCompleteness,
+  buildCompleteness as _buildCompleteness,
 } from '../profileDerivedMetrics.js'
 
 // ── Helper: make a recent log run entry ───────────────────────────────────────

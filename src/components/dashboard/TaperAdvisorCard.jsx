@@ -15,7 +15,7 @@ export default function TaperAdvisorCard({ plan, profile }) {
   const advice = computeTaperAdvice(plan, profile)
   if (!advice) return null
 
-  const title = lang === 'tr' ? t('taperTitle').replace('TAPER ADVISOR', 'POTA PLANLAYICI') : t('taperTitle')
+  const _title = lang === 'tr' ? t('taperTitle').replace('TAPER ADVISOR', 'POTA PLANLAYICI') : t('taperTitle')
 
   const statusConfig = {
     taper_active: { label: t('taperActive'), color: '#5bc25b' },

@@ -28,7 +28,7 @@ const alertSeries = [
 ]
 
 // Suppressed (sigma < -1.5 but >= -2.0)
-const suppressedSeries = [
+const _suppressedSeries = [
   makeRec('2024-01-01', 62),
   makeRec('2024-01-02', 60),
   makeRec('2024-01-03', 61),

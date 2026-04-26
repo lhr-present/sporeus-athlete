@@ -8,7 +8,7 @@ export default function DataPrivacySettings({ authUser }) {
   const { t } = useContext(LangCtx)
 
   const [exportState, setExportState]       = useState(null)   // null|'loading'|'done'|'error'
-  const [exportUrl, setExportUrl]           = useState(null)
+  const [_exportUrl, setExportUrl]           = useState(null)
   const [showModal, setShowModal]           = useState(false)
   const [pendingDel, setPendingDel]         = useState(null)   // data_rights_requests row
   const [delState, setDelState]             = useState(null)   // null|'loading'|'scheduled'|'error'

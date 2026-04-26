@@ -40,7 +40,7 @@ export function computePlanAdherence(
   const totalPlanWeeks = plan.weeks.length
 
   // Determine which week index today falls in (0-based)
-  const currentWeekIdx = Math.floor((todayMs - planStart.getTime()) / (7 * 86400000))
+  const _currentWeekIdx = Math.floor((todayMs - planStart.getTime()) / (7 * 86400000))
 
   // Collect all weeks that have started (weekIdx <= currentWeekIdx) and exist in plan
   const completedWeekIndices = []

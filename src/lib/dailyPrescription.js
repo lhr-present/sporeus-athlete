@@ -7,7 +7,7 @@ import { calculatePMC, computeMonotony } from './trainingLoad.js'
 import { getTodayPlannedSession } from './intelligence.js'
 import { deriveAllMetrics } from './profileDerivedMetrics.js'
 
-export function dailyPrescription(profile, log = [], plan = null, planStatus = {}, recovery = [], inMetrics = null) {
+export function dailyPrescription(profile, log = [], plan = null, _planStatus = {}, _recovery = [], inMetrics = null) {
   const today = new Date().toISOString().slice(0, 10)
   const metrics = inMetrics || deriveAllMetrics(profile, log, [])
 

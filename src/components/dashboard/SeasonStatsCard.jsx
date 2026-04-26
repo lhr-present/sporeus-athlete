@@ -1,7 +1,7 @@
 import { useContext, useMemo, useState } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
-import { computeSeasonStats, topSportByVolume } from '../../lib/athlete/seasonStats.js'
+import { computeSeasonStats } from '../../lib/athlete/seasonStats.js'
 
 const SPORT_COLORS = {
   running: '#ff6600',

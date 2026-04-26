@@ -144,7 +144,7 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
 
   // E6 — Science insights (interpretACWR / interpretCTL / interpretTSB)
   const scienceInsights = useMemo(() => {
-    const { ctl: curCTL, atl: curATL, tsb: curTSB } = calcLoad(log || [])
+    const { ctl: curCTL, atl: _curATL, tsb: curTSB } = calcLoad(log || [])
     // prevCTL: CTL 4 weeks ago — filter log to only entries older than 28 days
     const cutoff28 = (() => { const d = new Date(); d.setDate(d.getDate() - 28); return d.toISOString().slice(0, 10) })()
     const { ctl: prevCTL } = calcLoad((log || []).filter(e => e.date <= cutoff28))

@@ -74,7 +74,7 @@ export default function TestProtocols() {
         .map(r => ({ date: r.date, lt2W: r.lt2 ?? r.lt }))
       return computeLactateDrift(sessions)
     } catch { return null }
-  }, [active])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // W' balance state
   const [wPrimeSeries, setWPrimeSeries]     = useState(null)  // computed balance array

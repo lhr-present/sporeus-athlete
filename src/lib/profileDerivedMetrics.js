@@ -6,7 +6,7 @@
 
 import { getCyclingZones, wattsPerKg } from './sport/cycling.js'
 import { vdotFromRace } from './sport/running.js'
-import { getTrainingPaces, estimateVDOT } from './vdot.js'
+import { getTrainingPaces, estimateVDOT as _estimateVDOT } from './vdot.js'
 import { estimateVO2maxFromRun } from './sport/vo2max.js'
 
 // ── HR zone constants ─────────────────────────────────────────────────────────

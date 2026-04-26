@@ -197,8 +197,8 @@ export function nmFatigueHistory(log, weeks = 8, today = new Date().toISOString(
   for (let w = weeks - 1; w >= 0; w--) {
     // weekStart = today minus (w+1)*7 days (day after end of this week)
     // weekEnd   = today minus w*7 days (inclusive)
-    const weekEnd   = _offsetDate(today, -(w * 7))
-    const weekStart = _offsetDate(today, -((w + 1) * 7 - 1 + 1))  // 7 days before weekEnd + 1 day
+    const _weekEnd   = _offsetDate(today, -(w * 7))
+    const _weekStart = _offsetDate(today, -((w + 1) * 7 - 1 + 1))  // 7 days before weekEnd + 1 day
 
     // Re-derive: week covers [weekStart, weekEnd) where weekEnd = today - w*7
     // weekStart = today - (w+1)*7 + 1 → but let's be explicit

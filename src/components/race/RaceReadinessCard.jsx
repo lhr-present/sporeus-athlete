@@ -46,7 +46,7 @@ function ScoreDial({ score, classification }) {
   )
 }
 
-function ComponentBar({ comp, t }) {
+function ComponentBar({ comp, t: _t }) {
   const color = comp.available ? ZONE_COLORS.ready : 'var(--border)'
   const pct   = comp.available ? Math.round((comp.value || 0)) : 0
 
@@ -68,7 +68,7 @@ function ComponentBar({ comp, t }) {
 }
 
 export default function RaceReadinessCard({ log = [], profile = {}, raceDate }) {
-  const { lang, t } = useContext(LangCtx)
+  const { lang: _lang, t } = useContext(LangCtx)
 
   const result = useMemo(() => {
     const load = calcLoad(log)

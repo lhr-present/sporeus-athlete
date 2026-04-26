@@ -15,7 +15,7 @@ export default function PRTimelineCard({ log }) {
 
   if (!timeline) return null
 
-  const { recentPRs, totalPRCount, lastPRDate, daysSinceLastPR } = timeline
+  const { recentPRs, totalPRCount, lastPRDate: _lastPRDate, daysSinceLastPR } = timeline
 
   // Badge summary: e.g. '47 total · last 3 days ago'
   const badgeParts = []

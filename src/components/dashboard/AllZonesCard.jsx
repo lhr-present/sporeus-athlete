@@ -7,7 +7,7 @@ import { deriveAllMetrics } from '../../lib/profileDerivedMetrics.js'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
-const GREEN  = '#5bc25b'
+const _GREEN  = '#5bc25b'
 const AMBER  = '#f5c542'
 
 // Zone color by index (0-based)

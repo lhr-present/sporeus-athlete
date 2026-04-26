@@ -26,7 +26,7 @@ const STATUS_COLOR = {
 }
 
 export default function StrainHistoryCard({ log = [] }) {
-  const { t, lang } = useContext(LangCtx)
+  const { t, lang: _lang } = useContext(LangCtx)
 
   const report = computeStrainReport(log)
   if (!report) return null

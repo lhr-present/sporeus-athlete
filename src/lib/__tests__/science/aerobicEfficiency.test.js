@@ -21,7 +21,7 @@ function cycleSession(date, np, avgHR) {
 }
 
 /** Build a running session with known EF = avgPaceMPerMin/avgHR */
-function runSession(date, avgPaceMPerMin, avgHR) {
+function _runSession(date, avgPaceMPerMin, avgHR) {
   return { date, avgPaceMPerMin, avgHR, sport: 'running' }
 }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { projectCTLAtRace, assessRaceReadiness, avgWeeklyTSSFromLog } from '../sport/raceGoalProjection.js'
+import { projectCTLAtRace, assessRaceReadiness, avgWeeklyTSSFromLog as _avgWeeklyTSSFromLog } from '../sport/raceGoalProjection.js'
 
 describe('raceGoalProjection', () => {
   it('projectCTLAtRace(100, 700, 0) returns 100 (no time = no change)', () => {

@@ -89,14 +89,14 @@ export function vo2maxTrendSlope(values = []) {
   if (!values || values.length < 3) return null
 
   const n = values.length
-  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0
+  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, _sumY2 = 0
 
   for (let i = 0; i < n; i++) {
     sumX  += i
     sumY  += values[i]
     sumXY += i * values[i]
     sumX2 += i * i
-    sumY2 += values[i] * values[i]
+    _sumY2 += values[i] * values[i]
   }
 
   const denom = n * sumX2 - sumX * sumX
@@ -130,7 +130,7 @@ export function vo2maxTrendSlope(values = []) {
 export function computeVO2maxProgression(
   log = [],
   profile = {},
-  today = new Date().toISOString().slice(0, 10),
+  _today = new Date().toISOString().slice(0, 10),
   weeks = 8
 ) {
   const runSessions = filterRunSessions(log)

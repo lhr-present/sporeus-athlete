@@ -1,5 +1,5 @@
 // ─── consistencyTrend.js — E24: 8-week rolling consistency history ────────────
-import { calculateConsistency } from '../trainingLoad.js'
+import { calculateConsistency as _calculateConsistency } from '../trainingLoad.js'
 
 // ─── Tier classification ──────────────────────────────────────────────────────
 /**

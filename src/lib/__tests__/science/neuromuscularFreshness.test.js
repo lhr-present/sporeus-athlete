@@ -68,7 +68,7 @@ function buildLog(last7dLoad = 0, baselineMinPerWeek = 40) {
  * Compute the expected fatigueRatio and score given buildLog parameters.
  * (For test assertions)
  */
-function expectedRatio(last7dLoad, baselineMinPerWeek = 40) {
+function _expectedRatio(last7dLoad, baselineMinPerWeek = 40) {
   const mean = (last7dLoad + baselineMinPerWeek * 3) / 4
   return last7dLoad / mean
 }

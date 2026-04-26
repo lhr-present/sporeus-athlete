@@ -8,7 +8,7 @@ import { renderWithLang } from './testUtils.jsx'
 // vi.mock is hoisted — factories must not reference outer variables.
 // We use vi.hoisted() to declare the mocks that need to be shared.
 
-const { mockCreateSignedUrl, mockStorageFrom, mockSelect, mockOrder, queryChain, supabaseMock } =
+const { mockCreateSignedUrl, mockStorageFrom, _mockSelect, _mockOrder, queryChain, supabaseMock } =
   vi.hoisted(() => {
     const mockCreateSignedUrl = vi.fn()
     const mockStorageFrom     = vi.fn(() => ({ createSignedUrl: mockCreateSignedUrl }))

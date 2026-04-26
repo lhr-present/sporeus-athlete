@@ -21,7 +21,7 @@ function makeLog(n, tss = 60, rpe = 5) {
   return entries
 }
 
-function todayStr() {
+function _todayStr() {
   return new Date().toISOString().slice(0, 10)
 }
 

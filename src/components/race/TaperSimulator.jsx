@@ -1,4 +1,4 @@
-import { useContext, useState, useMemo, useCallback } from 'react'
+import { useContext, useState, useMemo } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { compareTapers, simulateTaper } from '../../lib/race/taperSimulator.js'
@@ -9,7 +9,7 @@ const REC_COLORS = {
   over_tapered:  '#f44336',
 }
 
-function MiniChart({ projection, raceDate }) {
+function MiniChart({ projection, raceDate: _raceDate }) {
   if (!projection?.length) return null
   const ctls = projection.map(d => d.projectedCTL)
   const tsbs = projection.map(d => d.projectedTSB)

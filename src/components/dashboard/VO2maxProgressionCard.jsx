@@ -10,7 +10,7 @@ import { computeVO2maxProgression } from '../../lib/athlete/vo2maxProgression.js
 const FONT = 'IBM Plex Mono, monospace'
 
 export default function VO2maxProgressionCard({ log, profile }) {
-  const { t, lang } = useContext(LangCtx)
+  const { t, lang: _lang } = useContext(LangCtx)
 
   const result = computeVO2maxProgression(log, profile)
   if (!result) {
@@ -27,7 +27,7 @@ export default function VO2maxProgressionCard({ log, profile }) {
     )
   }
 
-  const { history, trend, currentVO2max, maxHR, citation } = result
+  const { history, trend, currentVO2max, maxHR: _maxHR, citation } = result
 
   // ── Trend badge ──────────────────────────────────────────────────────────────
   let trendSymbol = '→'

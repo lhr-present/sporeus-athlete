@@ -17,7 +17,7 @@ const SVG_W   = 220
 const SVG_H   = 50
 const PAD_B   = 0
 const CHART_H = SVG_H - PAD_B
-const MAX_BARS = 8
+const _MAX_BARS = 8
 
 export default function ConsistencyTrendCard({ log = [] }) {
   const { t } = useContext(LangCtx)
@@ -25,7 +25,7 @@ export default function ConsistencyTrendCard({ log = [] }) {
   const trend = computeConsistencyTrend(log)
   if (!trend) return null
 
-  const { weeks, currentScore, currentTier, trendSlope, improving, streak, citation } = trend
+  const { weeks, currentScore, currentTier, trendSlope, improving: _improving, streak, citation } = trend
 
   // ── Tier label key ──────────────────────────────────────────────────────────
   const tierKey = {

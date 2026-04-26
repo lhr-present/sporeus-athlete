@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.78.0 — 2026-04-27
+Lint clean-up: fixed all 60 ESLint problems (1 error + 59 warnings) that were blocking CI. RowingMetricsCard.jsx: hoisted conditional useMemo before early return (Rules of Hooks). Protocols.jsx + LactateEstimator.jsx: removed stale useMemo deps. PolarizationComplianceCard.jsx: stabilised safeLog reference. 35 files: unused vars/args prefixed with _ or imports removed. 0 lint problems, 3886 tests.
+
+---
+
 ## v11.77.0 — 2026-04-27
 Formula audit + interconnection fixes. All 15 formulas verified correct (Tanaka 208−0.7×age, LTHR ×0.87, Coggan 7 zones, CTL K=1−e^{−1/42}, ATL K=1−e^{−1/7}, ACWR=ATL/CTL, Daniels VDOT, Foster monotony/strain, W' Skiba, Riegel, NP, FTP ×0.95, W/kg). Fixes: (1) QuickAddModal TSS now uses profile-derived HR zone IF midpoints (zone-based: t_hours×IF²×100) when profile has maxhr/age — falls back to generic RPE estimate when not; closes FTP-TSS interconnection gap. (2) intelligence.js predictInjuryRisk now accepts profile param and applies sport-specific monotony threshold (cycling 2.4, triathlon 1.8, running 2.0 — Foster 1998). (3) Same call sites wired: nextAction.js, Recovery.jsx, AthleteDetailPanel.jsx, generateWeeklyNarrative. (4) getTodayPlannedSession timezone bug fixed: day-of-week now parsed as noon UTC to prevent UTC±N mismatch on midnight boundaries. 3886 tests, 230 files.
 

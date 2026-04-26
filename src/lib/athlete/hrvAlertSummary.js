@@ -2,7 +2,7 @@
 // Wraps detectHRVAlert / hrv28dStats from src/lib/hrvAlert.js into dashboard-ready
 // state object. Shows alert only when clinically actionable (>2σ drop, Plews 2012).
 
-import { detectHRVAlert, hrv28dStats } from '../hrvAlert.js'
+import { detectHRVAlert, hrv28dStats as _hrv28dStats } from '../hrvAlert.js'
 
 /**
  * Extract valid HRV series from a recovery array.

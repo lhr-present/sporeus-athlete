@@ -1,5 +1,5 @@
 // ─── recoveryRecommender.js — E26 recovery protocol recommendation helpers ───
-import { getRecommendedProtocols, RECOVERY_PROTOCOLS } from '../recoveryProtocols.js'
+import { getRecommendedProtocols, RECOVERY_PROTOCOLS as _RECOVERY_PROTOCOLS } from '../recoveryProtocols.js'
 
 /**
  * Compute wellness score (1–5) from a single recovery entry.

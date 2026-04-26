@@ -189,7 +189,7 @@ describe('computeAthleteStatus', () => {
 
   it('returns acwrLabel as one of safe|low|caution|danger', () => {
     const result = computeAthleteStatus(makeLog(28, 60), [], profile)
-    const valid = ['safe', 'low', 'caution', 'danger', 'insufficient', '—']
+    const _valid = ['safe', 'low', 'caution', 'danger', 'insufficient', '—']
     // acwrStatusLabel may return the raw status when it doesn't match, but for
     // known statuses it should be one of the mapped values
     expect(typeof result.acwrLabel).toBe('string')

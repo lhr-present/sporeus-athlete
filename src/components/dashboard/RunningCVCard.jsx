@@ -29,7 +29,7 @@ export default function RunningCVCard({ log = [] }) {
 
   if (!data) return null
 
-  const { CV, DAna, CVPaceSecKm, effortsUsed, efforts } = data
+  const { CV: _CV, DAna, CVPaceSecKm, effortsUsed, efforts } = data
   const classification = classifyCV(CVPaceSecKm)
   const classColor     = CLASS_COLORS[classification]
   const classLabel     = CLASS_LABELS[classification]?.[lang] || CLASS_LABELS[classification]?.en

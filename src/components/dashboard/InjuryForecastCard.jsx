@@ -15,7 +15,7 @@ const SVG_W   = 260
 const SVG_H   = 60
 const BAR_W   = 14
 const BAR_GAP = 6
-const TOTAL_BARS = 12
+const _TOTAL_BARS = 12
 const PAD_LEFT   = 8
 
 export default function InjuryForecastCard({ log = [], recovery = [] }) {

@@ -56,7 +56,7 @@ function estimateTSS(durationMin, rpe, metrics) {
 }
 
 // Returns a compact zone hint string for a given RPE (1-10), or null
-function getZoneHint(rpe, metrics, isTR) {
+function getZoneHint(rpe, metrics, _isTR) {
   if (!metrics) return null
   const zoneIdx = metrics.hr?.rpeToZoneIdx?.[rpe - 1] ?? null
   const hrZone = metrics.hr?.zones?.[zoneIdx]

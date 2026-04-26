@@ -98,7 +98,7 @@ export default function CyclingZonesCard({ testResults = [], profile = {} }) {
             {zones.map((z, i) => {
               const color    = ZONE_COLORS[i] || '#888'
               const maxLabel = z.maxWatts != null ? `${z.maxWatts}W` : '∞'
-              const wattRange = `${z.minWatts}–${maxLabel}`
+              const _wattRange = `${z.minWatts}–${maxLabel}`
               const pctRange  = z.pctMax === Infinity
                 ? `>${Math.round(z.pctMin * 100)}%`
                 : `${Math.round(z.pctMin * 100)}–${Math.round(z.pctMax * 100)}%`

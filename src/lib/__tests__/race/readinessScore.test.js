@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   computeReadinessScore,
-  formComponent,
+  formComponent as _formComponent,
   tsbComponent,
   hrvComponent,
   sleepComponent,

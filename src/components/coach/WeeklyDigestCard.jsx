@@ -4,7 +4,6 @@
 
 import { useState, useEffect } from 'react'
 import { supabase, isSupabaseReady } from '../../lib/supabase.js'
-import { S } from '../../styles.js'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'

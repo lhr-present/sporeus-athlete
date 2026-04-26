@@ -46,8 +46,8 @@ export default function CyclePlannerCard({ profile }) {
   const totalDur = Object.values(PHASE_DURATIONS).reduce((a, b) => a + b, 0)
 
   // Next phase label
-  const nextPhaseInfo = plan.allPhases.find(p => p.phase === plan.nextPhase)
-  const nextPhaseLabel = plan.phaseInfo[lang]?.label
+  const _nextPhaseInfo = plan.allPhases.find(p => p.phase === plan.nextPhase)
+  const _nextPhaseLabel = plan.phaseInfo[lang]?.label
     ? undefined  // overridden below
     : plan.nextPhase
 

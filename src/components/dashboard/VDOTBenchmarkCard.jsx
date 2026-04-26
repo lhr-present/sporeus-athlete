@@ -96,7 +96,7 @@ export default function VDOTBenchmarkCard({ log, testResults, profile }) {
             { v: p50, label: `p50\n${p50}` },
             { v: p75, label: `p75\n${p75}` },
             { v: p90, label: `p90\n${p90}` },
-          ].map(({ v, label }) => {
+          ].map(({ v, label: _label }) => {
             const x = xOf(v)
             return (
               <g key={v}>

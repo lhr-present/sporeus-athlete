@@ -21,7 +21,7 @@ const COLOR_MAP = {
  * @param {{ log: object[], recovery: object[], profile: object }} props
  */
 export default function PriorityActionCard({ log, recovery, profile }) {
-  const { t, lang } = useContext(LangCtx)
+  const { t: _t, lang } = useContext(LangCtx)
 
   const action = computeNextAction(log, recovery, profile)
   if (!action) return null

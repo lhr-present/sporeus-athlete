@@ -105,7 +105,7 @@ export default function Profile({ log, authUser }) {
     }
   }
 
-  const [gdprStatus, setGdprStatus] = useState(null)
+  const [_gdprStatus, setGdprStatus] = useState(null)
   const [auditLog, setAuditLog]     = useState(null) // null=not loaded, []|[...]=loaded
   const [aiTone, setAiTone] = useState(() => { try { return localStorage.getItem('sporeus-ai-tone') || 'motivating' } catch { return 'motivating' } })
   const [marketingConsent, setMarketingConsent] = useState(() => { try { return localStorage.getItem('sporeus-marketing-consent') === '1' } catch { return false } })
@@ -113,7 +113,7 @@ export default function Profile({ log, authUser }) {
   const [showErrorLog, setShowErrorLog] = useState(false)
   const [dqOpen, setDqOpen] = useState(false)
 
-  const handleGdprDownload = async () => {
+  const _handleGdprDownload = async () => {
     setGdprStatus('exporting')
     try {
       const data = await exportAthleteData(authUser?.id || 'local')
@@ -126,7 +126,7 @@ export default function Profile({ log, authUser }) {
     setTimeout(() => setGdprStatus(null), 3000)
   }
 
-  const handleGdprDelete = async () => {
+  const _handleGdprDelete = async () => {
     if (!confirm('Permanently delete ALL your Sporeus data? This cannot be undone.')) return
     if (!authUser?.id) { alert('You must be signed in to delete your account data.'); return }
     setGdprStatus('deleting')

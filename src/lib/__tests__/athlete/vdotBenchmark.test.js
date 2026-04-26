@@ -163,7 +163,7 @@ describe('computeVDOTBenchmark', () => {
 
   it('nextTier is null for top10 tier', () => {
     // 60+ male: p90=47 — inject a high-VDOT test result
-    const highLog = [
+    const _highLog = [
       makeRaceEntry('2024-01-08', 600),  // very fast — high VDOT (durationSec ≤ 600 triggers *60 → 600*60=36000s — NO: 600 exact means *60, so use 601)
       makeRaceEntry('2024-01-15', 601),
     ]

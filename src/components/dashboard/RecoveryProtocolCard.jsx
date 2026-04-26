@@ -37,7 +37,7 @@ export default function RecoveryProtocolCard({ log = [], recovery = [] }) {
 
   if (protocols.length === 0) return null
 
-  const title = lang === 'tr'
+  const _title = lang === 'tr'
     ? t('recoveryProtocolTitle').split('/')[1]?.trim() ?? t('recoveryProtocolTitle')
     : t('recoveryProtocolTitle').split('/')[0]?.trim() ?? t('recoveryProtocolTitle')
 

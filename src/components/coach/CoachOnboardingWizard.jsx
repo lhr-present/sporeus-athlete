@@ -44,7 +44,7 @@ const stepCounter = {
   textTransform: 'uppercase',
 }
 
-const title = {
+const _title = {
   ...S.mono,
   fontSize: '13px',
   fontWeight: 700,

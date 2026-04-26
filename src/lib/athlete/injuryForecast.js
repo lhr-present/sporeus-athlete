@@ -50,7 +50,7 @@ function sundayOfWeekContaining(date) {
 /**
  * Return the Monday that starts the ISO week containing `date`.
  */
-function mondayOfWeekContaining(date) {
+function _mondayOfWeekContaining(date) {
   const d = new Date(date)
   const day = d.getDay() // 0=Sun
   const daysBack = day === 0 ? 6 : day - 1
