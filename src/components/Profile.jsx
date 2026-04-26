@@ -66,6 +66,7 @@ export default function Profile({ log, authUser }) {
     {k:'vo2max',lk:'vo2L',ph:'55',type:'number'},{k:'threshold',lk:'threshPaceL',ph:'4:30'},
     {k:'goal',lk:'goalL',ph:'Sub-3h marathon Istanbul 2026'},
     {k:'weeklyTssGoal',lk:'weeklyTssGoalL',ph:'e.g. 400',type:'number'},
+    {k:'raceDate',lk:'profileRaceDate',ph:'',type:'date'},
   ]
 
   const handleExport = () => {

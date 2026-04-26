@@ -324,6 +324,10 @@ export default function Dashboard({ log, onLogSession }) {
             </div>
           ))}
         </div>
+        {/* WeeklyTssGoalCard — shown in beginner mode */}
+        <ErrorBoundary>
+          <WeeklyTssGoalCard log={log} profile={profile} isTR={lang === 'tr'} />
+        </ErrorBoundary>
         <div className="sp-card" style={{ ...S.card, animationDelay: '50ms', borderLeft: '4px solid #5bc25b' }}>
           <div style={{ ...S.mono, fontSize: '12px', lineHeight: 1.8, color: 'var(--text)' }}>{coachingMsg}</div>
           {avgRPE !== '—' && (
@@ -441,7 +445,7 @@ export default function Dashboard({ log, onLogSession }) {
             <span style={{ fontSize: '16px', color: c, fontWeight: 700 }}>{a}</span>
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'baseline', flexWrap: 'wrap' }}>
-                <span style={{ color: '#555' }}>CTL</span>
+                <span style={{ color: '#555' }} title="Chronic Training Load — 42-day avg fitness. Higher = more base fitness.">CTL</span>
                 <span style={{ color: 'var(--text)', fontWeight: 700 }}>{fitProj.current}</span>
                 <span style={{ color: '#333' }}>→ 4W</span>
                 <span style={{ color: c, fontWeight: 700 }}>{fitProj.in4w}</span>

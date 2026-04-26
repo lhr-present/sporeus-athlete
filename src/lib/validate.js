@@ -124,5 +124,8 @@ export function sanitizeProfile(p) {
     hip:           numStr(p.hip, 30, 250),
     email:         str(p.email, 200),
     weeklyTssGoal: numStr(p.weeklyTssGoal, 0, 2000),
+    raceDate: (typeof p.raceDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(p.raceDate))
+      ? p.raceDate
+      : undefined,
   }
 }

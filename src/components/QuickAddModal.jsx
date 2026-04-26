@@ -54,6 +54,7 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
 
   const defaultType = SPORT_DEFAULT_TYPE[profile?.sport] || 'Easy Run'
 
+  const [sessionDate, setSessionDate] = useState(today())
   const [type, setType]               = useState(defaultType)
   const [duration, setDuration]       = useState('45')
   const [rpe, setRpe]                 = useState(6)
@@ -103,7 +104,7 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
     }
 
     const entry = {
-      date:        today(),
+      date:        sessionDate,
       type,
       duration:    dur,
       durationSec: dur * 60,
@@ -151,6 +152,11 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
             <div style={{ fontSize: '11px', color: '#888', marginBottom: sessionAnalysis ? '8px' : '16px', lineHeight: 1.6 }}>
               {dur} min {type} · {isTR ? 'Antrenman Yükü' : 'Training Load'} {tss}
             </div>
+            {savedEntry && savedEntry.date !== today() && (
+              <div style={{ fontSize: '9px', color: '#555', marginTop: '2px' }}>
+                {isTR ? `Tarih: ${savedEntry.date}` : `Date: ${savedEntry.date}`}
+              </div>
+            )}
             {sessionAnalysis && (
               <div style={{ fontSize: '10px', marginBottom: '12px', padding: '8px 10px', background: 'var(--surface)', borderRadius: '3px', textAlign: 'left', lineHeight: 1.8, fontFamily: "'IBM Plex Mono', monospace" }}>
                 <div style={{ color: '#ccc' }}>{sessionAnalysis.comparison}</div>
@@ -211,6 +217,20 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
             )}
 
             <form onSubmit={handleSubmit}>
+              {/* Date picker */}
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '9px', color: '#888', letterSpacing: '0.08em', marginBottom: '5px' }}>
+                  {isTR ? 'TARİH' : 'DATE'}
+                </label>
+                <input
+                  type="date"
+                  value={sessionDate}
+                  max={today()}
+                  onChange={e => setSessionDate(e.target.value)}
+                  style={{ ...S.input, width: '100%', fontSize: 'max(16px, 14px)' }}
+                />
+              </div>
+
               {/* Session type */}
               <div style={{ marginBottom: '14px' }}>
                 <label style={{ display: 'block', fontSize: '9px', color: '#888', letterSpacing: '0.08em', marginBottom: '5px' }}>

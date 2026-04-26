@@ -92,6 +92,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const [bulkMode, setBulkMode]           = useState(false)
   const [selected, setSelected]           = useState(new Set())
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null)
   const { saveTemplate } = useWorkoutTemplates()
   const [expandedId, setExpandedId]       = useState(null)
   const fileInputRef    = useRef(null)
@@ -221,6 +222,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     setForm({ date:entry.date, type:entry.type, duration:String(entry.duration), rpe:String(entry.rpe), notes:entry.notes||'' })
     if (entry.zones) { setZoneMins(entry.zones.map(String)); setShowZones(true) }
     setEditingId(entry.id||null)
+    setDeleteConfirmId(null)
     window.scrollTo({ top:0, behavior:'smooth' })
   }
   const cancelEdit = () => { setEditingId(null); setForm({ date:today, type:'Easy Run', duration:'', rpe:'5', notes:'' }); setZoneMins(['','','','','']); setShowZones(false); setLastPBs(null) }
@@ -604,10 +606,35 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                           style={{ background:'none', border:'none', color:'#aaa', cursor:'pointer', ...S.mono, fontSize:'12px', marginRight:'4px' }}>✎</button>
                         <button onClick={()=>saveTemplate(s)} title="Save as template"
                           style={{ background:'none', border:'none', color:'#555', cursor:'pointer', ...S.mono, fontSize:'11px', marginRight:'4px' }}>⊕</button>
-                        <button onClick={()=>setLog(log.filter((_,idx)=>idx!==log.length-1-i))}
+                        <button onClick={() => setDeleteConfirmId(s.id)}
                           style={{ background:'none', border:'none', color:'#ccc', cursor:'pointer', ...S.mono, fontSize:'12px' }}>✕</button>
                       </td>
                     </tr>
+                    {deleteConfirmId === s.id && (
+                      <tr>
+                        <td colSpan={99} style={{ padding:'6px 8px', background:'#1a0000', borderBottom:'1px solid #e03030' }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:'12px', fontSize:'10px', fontFamily:"'IBM Plex Mono', monospace" }}>
+                            <button
+                              onClick={() => setDeleteConfirmId(null)}
+                              style={{ fontSize:'9px', padding:'3px 8px', background:'none', border:'1px solid #333', color:'#666', borderRadius:'3px', cursor:'pointer' }}
+                            >
+                              {lang === 'tr' ? '← İptal' : '← Cancel'}
+                            </button>
+                            <span style={{ color:'#888', flex:1 }}>
+                              {lang === 'tr' ? 'Bu antrenmanı sil?' : 'Delete this session?'}
+                              {' '}
+                              <span style={{ color:'#555' }}>{s.type} · {s.duration}min</span>
+                            </span>
+                            <button
+                              onClick={() => { setLog(log.filter(e => e.id !== s.id)); setDeleteConfirmId(null) }}
+                              style={{ fontSize:'9px', padding:'3px 8px', background:'#e03030', border:'none', color:'#fff', borderRadius:'3px', cursor:'pointer', fontWeight:700 }}
+                            >
+                              {lang === 'tr' ? 'Sil →' : 'Delete →'}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                     {i === 0 && lastPBs && lastPBs.map((pb, pi) => (
                       <tr key={`pb-${pi}`} style={{ background: 'transparent' }}>
                         <td colSpan={bulkMode ? 10 : 9} style={{ padding: 0 }}>

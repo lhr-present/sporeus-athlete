@@ -113,6 +113,7 @@ describe('QuickAddModal — submission', () => {
     renderWithLang(<QuickAddModal {...defaultProps} onAdd={onAdd} />)
     fireEvent.submit(document.querySelector('form'))
     expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({
+      date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
       type: 'Easy Run',
       duration: 45,
       durationSec: 2700,

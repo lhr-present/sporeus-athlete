@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.63.0 — 2026-04-26
+E56–E59: Daily-use bug fixes. E56: QuickAddModal — date picker (type=date, max=today, default=today) so athletes can log past sessions; entry uses selected date; confirmation shows date if not today. E57: TrainingLog — single-row delete now requires confirmation (inline confirm row with Cancel/Delete, session type+duration shown; also fixed latent index-based filter bug → id-based). E58: Profile — raceDate field added (type=date) so TodayView race countdown is reachable; raceDate in sanitizeProfile + LangCtx. E59: Dashboard — WeeklyTssGoalCard added to beginner mode path; CTL label gets title tooltip. DAILY_USE_RULES.md created. 3786 tests.
+
+---
+
 ## v11.59.0 — 2026-04-25
 E52–E55: Athlete daily-use pivot. E52: QuickAddModal — RPE slider replaced with 10 tap buttons, duration ±5/±15 stepper, optional distance (km) + avg HR (bpm) fields. E53: GettingStartedCard — empty-state guidance for new athletes (log.length===0), 3-step CTA, wired to QuickAddModal. E54: WeeklyTssGoalCard — weekly TSS goal (set in Profile), progress bar, 7-day sparkbar, weeklyTssGoal in sanitizeProfile. E55: TodayStripCard — top-of-dashboard strip: today date, streak, trained-today indicator, weekly session count, log-today CTA. All wired via onLogSession → setShowQuickAdd. 3786 tests.
 
