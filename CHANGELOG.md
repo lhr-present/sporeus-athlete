@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v11.77.0 — 2026-04-27
+Formula audit + interconnection fixes. All 15 formulas verified correct (Tanaka 208−0.7×age, LTHR ×0.87, Coggan 7 zones, CTL K=1−e^{−1/42}, ATL K=1−e^{−1/7}, ACWR=ATL/CTL, Daniels VDOT, Foster monotony/strain, W' Skiba, Riegel, NP, FTP ×0.95, W/kg). Fixes: (1) QuickAddModal TSS now uses profile-derived HR zone IF midpoints (zone-based: t_hours×IF²×100) when profile has maxhr/age — falls back to generic RPE estimate when not; closes FTP-TSS interconnection gap. (2) intelligence.js predictInjuryRisk now accepts profile param and applies sport-specific monotony threshold (cycling 2.4, triathlon 1.8, running 2.0 — Foster 1998). (3) Same call sites wired: nextAction.js, Recovery.jsx, AthleteDetailPanel.jsx, generateWeeklyNarrative. (4) getTodayPlannedSession timezone bug fixed: day-of-week now parsed as noon UTC to prevent UTC±N mismatch on midnight boundaries. 3886 tests, 230 files.
+
+---
+
 ## v11.76.0 — 2026-04-26
 E66+E68+E69: Prescription loop round 2. E66: TodayView readiness gates prescription — when todayReadiness<50 shows yellow "⚠ Readiness LOW" banner above plan card; when not yet logged today shows compact 3-tap check-in (😴 Tired=25 / 😐 Okay=60 / ⚡ Ready=90) ABOVE plan card, tapping calls onSaveRecovery+shows 2s "Logged ✓"; readiness tile added to quick stats row. E68: QuickAddModal post-session analysis — zone mismatch flag (easy+RPE≥8 or hard+RPE≤3 → yellow warning strip EN/TR); tomorrow nudge strip from dailyPrescription(profile, log+savedEntry).tomorrow.suggestion. E69: WeeklyReviewCard (this week vs last week TSS+sessions with delta, generateWeeklyNarrative insight) + ConsistencyDepthCard (n→CTL reliability thresholds, #ff6600 progress bar, milestone markers 0/14/42/84), both in beginner+advanced Dashboard paths. 3886 tests, 232 files.
 

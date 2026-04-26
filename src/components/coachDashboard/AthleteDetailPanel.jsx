@@ -235,7 +235,7 @@ export default function AthleteDetailPanel({ athlete, onUpdate, onClose: _onClos
       {log.length >= 4 && (() => {
         const loadTrend   = analyzeLoadTrend(log)
         const zoneBalance = analyzeZoneBalance(log)
-        const injRisk     = predictInjuryRisk(log, recovery)
+        const injRisk     = predictInjuryRisk(log, recovery, athlete?.profile)
         const fitness     = predictFitness(log)
         const recovCorr   = analyzeRecoveryCorrelation(log, recovery)
 

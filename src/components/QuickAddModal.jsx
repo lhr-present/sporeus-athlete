@@ -41,6 +41,20 @@ function effortLabel(rpe, lang) {
   return lang === 'tr' ? hit.tr : hit.en
 }
 
+// TSS estimate using profile-derived zones when available.
+// Standard formula: t_hours × IF² × 100 (Coggan/TrainingPeaks).
+// IF is the zone-midpoint intensity factor (NP/FTP proxy from HR zone).
+// Falls back to generic RPE estimate when profile has no zone data.
+const ZONE_IF_MIDPOINT = [0.50, 0.65, 0.83, 0.97, 1.10]  // HR zones 1-5
+function estimateTSS(durationMin, rpe, metrics) {
+  const zoneIdx = metrics?.hr?.rpeToZoneIdx?.[rpe - 1]
+  if (zoneIdx != null) {
+    const IF = ZONE_IF_MIDPOINT[Math.min(zoneIdx, 4)]
+    return Math.round((durationMin / 60) * IF * IF * 100)
+  }
+  return calcTSS(durationMin, rpe)
+}
+
 // Returns a compact zone hint string for a given RPE (1-10), or null
 function getZoneHint(rpe, metrics, isTR) {
   if (!metrics) return null
@@ -131,7 +145,7 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
   const handleOverlayClick = e => { if (e.target === overlayRef.current) onClose() }
 
   const dur = parseInt(duration) || 0
-  const tss = dur > 0 ? calcTSS(dur, rpe) : 0
+  const tss = dur > 0 ? estimateTSS(dur, rpe, metrics) : 0
 
   function handleSubmit(e) {
     e.preventDefault()

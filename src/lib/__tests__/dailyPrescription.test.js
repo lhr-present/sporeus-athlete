@@ -29,7 +29,8 @@ function todayStr() {
 function makePlan(sessionType, durationMin = 60, rpe = 6) {
   const generatedAt = new Date()
   generatedAt.setDate(generatedAt.getDate() - 2)
-  const planDayIdx = (new Date().getDay() + 6) % 7 // Mon=0…Sun=6
+  const td = new Date().toISOString().slice(0, 10)
+  const planDayIdx = (new Date(td + 'T12:00:00Z').getDay() + 6) % 7 // Mon=0…Sun=6, noon UTC
   const sessions = Array(7).fill(null).map((_, i) =>
     i === planDayIdx
       ? { type: sessionType, duration: durationMin, rpe, description: `${sessionType} session` }

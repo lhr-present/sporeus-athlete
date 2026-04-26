@@ -509,7 +509,7 @@ export default function Recovery() {
       {/* Injury Risk Widget (v4.3) */}
       {(() => {
         if (!log.length) return null
-        const risk = predictInjuryRisk(log, entries)
+        const risk = predictInjuryRisk(log, entries, profile)
         const levelColor = { low:'#5bc25b', moderate:'#f5c542', high:'#e03030', unknown:'#888' }[risk.level]
         const levelLabel = { low:'LOW RISK', moderate:'MODERATE RISK', high:'HIGH RISK', unknown:'UNKNOWN' }[risk.level]
         return (

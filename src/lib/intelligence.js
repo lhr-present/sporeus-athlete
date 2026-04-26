@@ -206,9 +206,10 @@ export function analyzeZoneBalance(log) {
 /**
  * @param {Array} log - training log entries
  * @param {Array} recovery - recovery entries with date, score, hrv
+ * @param {Object} [profile] - athlete profile; sport adjusts monotony threshold
  * @returns {Object} {level, score, factors, advice}
  */
-export function predictInjuryRisk(log, recovery) {
+export function predictInjuryRisk(log, recovery, profile) {
   const factors = []
   let riskScore = 0
 
@@ -231,7 +232,12 @@ export function predictInjuryRisk(log, recovery) {
     }
   }
 
-  // Factor 2: Training monotony (Banister — safe < 2.0)
+  // Factor 2: Training monotony (Banister — safe < 2.0).
+  // Cycling tolerates more monotony than running (lower impact per session).
+  const sport = (profile?.primarySport || profile?.sport || '').toLowerCase()
+  const monoThreshold = sport.includes('cycl') || sport.includes('bike') ? 2.4
+    : sport.includes('tri') ? 1.8
+    : 2.0
   const last7tss = []
   for (let i = 6; i >= 0; i--) {
     const d = daysAgoDate(i)
@@ -240,8 +246,8 @@ export function predictInjuryRisk(log, recovery) {
   const mean7 = last7tss.reduce((s, v) => s + v, 0) / 7
   const std7  = Math.sqrt(last7tss.reduce((s, v) => s + (v - mean7) ** 2, 0) / 7)
   const mono  = std7 > 0 ? Math.round(mean7 / std7 * 10) / 10 : 0
-  if (mono > 2.0) {
-    riskScore += 20; factors.push({ label: `Monotony ${mono}`, severity: 'moderate', detail: { en: `High monotony index (${mono}) — vary intensity daily.`, tr: `Yüksek monotoni indeksi (${mono}) — günlük yoğunluğu değiştir.` } })
+  if (mono > monoThreshold) {
+    riskScore += 20; factors.push({ label: `Monotony ${mono}`, severity: 'moderate', detail: { en: `High monotony index (${mono} > ${monoThreshold}) — vary intensity daily.`, tr: `Yüksek monotoni indeksi (${mono} > ${monoThreshold}) — günlük yoğunluğu değiştir.` } })
   }
 
   // Factor 3: Consecutive hard days
@@ -422,7 +428,7 @@ export function generateWeeklyNarrative(log, recovery, profile, _lang) {
   const avgRec   = recWeek.length ? Math.round(recWeek.reduce((s, e) => s + (e.score || 0), 0) / recWeek.length) : null
 
   const { trend, change: _change } = analyzeLoadTrend(log)
-  const { level: riskLevel } = predictInjuryRisk(log, recovery)
+  const { level: riskLevel } = predictInjuryRisk(log, recovery, profile)
   const { z1z2Pct } = analyzeZoneBalance(log)
   const hrs = Math.floor(totalMin / 60), mins = totalMin % 60
   const volStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins} minutes`
@@ -702,7 +708,7 @@ export function getTodayPlannedSession(plan, today) {
   if (daysDiff < 0) return null
   const weekIdx    = Math.floor(daysDiff / 7)
   if (weekIdx >= plan.weeks.length) return null
-  const planDayIdx = (new Date(todayDate).getDay() + 6) % 7  // Mon=0…Sun=6
+  const planDayIdx = (new Date(todayDate + 'T12:00:00Z').getDay() + 6) % 7  // Mon=0…Sun=6, noon UTC avoids TZ shift
   const week = plan.weeks[weekIdx]
   if (!week || !Array.isArray(week.sessions)) return null
   const session = week.sessions[planDayIdx]

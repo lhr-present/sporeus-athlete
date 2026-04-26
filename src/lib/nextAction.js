@@ -149,7 +149,7 @@ function evalRules(log, recovery, profile) {
   }
 
   // ── Rule 4: injury_risk_high — 5-factor model (H2) ───────────────────────────
-  const inj = predictInjuryRisk(safeLog, safeRec)
+  const inj = predictInjuryRisk(safeLog, safeRec, profile)
   if (inj.level === 'HIGH') {
     const topFactors = inj.factors.slice(0, 2).map(f => f.label).join(', ')
     return {
