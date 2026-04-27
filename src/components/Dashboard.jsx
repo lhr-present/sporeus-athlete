@@ -17,6 +17,7 @@ import { interpretCTL, interpretTSB, interpretMonotony } from '../lib/science/in
 import { subThresholdTrend, } from '../lib/science/subThresholdTime.js'
 import { computeMonotony } from '../lib/trainingLoad.js'
 import { useData } from '../contexts/DataContext.jsx'
+import { isGated, LS_KEY as CONFIRM_LS_KEY } from '../lib/athlete/coachConfirmFlow.js'
 
 // ── Previously extracted sub-components ──────────────────────────────────────
 const EFTrendCard = lazy(() => import('./science/EFTrendCard.jsx'))
@@ -105,14 +106,17 @@ const RaceGoalAnalyzerCard       = lazy(() => import('./dashboard/RaceGoalAnalyz
 const TrainingBridgeCard         = lazy(() => import('./dashboard/TrainingBridgeCard.jsx'))
 const RaceGoalDashCard           = lazy(() => import('./dashboard/RaceGoalDashCard.jsx'))
 const VdotProgressCard           = lazy(() => import('./dashboard/VdotProgressCard.jsx'))
+const ProgramSelectorCard        = lazy(() => import('./dashboard/ProgramSelectorCard.jsx'))
+const CoachGateCard              = lazy(() => import('./dashboard/CoachGateCard.jsx'))
 
 export default function Dashboard({ log, onLogSession, onGoToProfile }) {
   const [lang]       = useLocalStorage('sporeus-lang', 'en')
   const [plan]       = useLocalStorage('sporeus-plan', null)
   const [planStatus] = useLocalStorage('sporeus-plan-status', {})
   const { recovery, injuries, testResults, raceResults, profile } = useData()
-  const [myCoach]    = useLocalStorage('sporeus-my-coach', null)
-  const [stravaToken] = useLocalStorage('sporeus-strava-token', '')
+  const [myCoach]        = useLocalStorage('sporeus-my-coach', null)
+  const [stravaToken]    = useLocalStorage('sporeus-strava-token', '')
+  const [confirmRecord]  = useLocalStorage(CONFIRM_LS_KEY, null)
   const { t }        = useContext(LangCtx)
 
   const sportLabel = SPORT_BRANCHES.find(b => b.id === profile.primarySport)?.label || profile.sport || ''
@@ -342,14 +346,28 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
         </ErrorBoundary>
         <ErrorBoundary>
           <Suspense fallback={null}>
-            <TrainingBridgeCard profile={profile} log={log} isTR={lang === 'tr'} />
+            <ProgramSelectorCard profile={profile} log={log} isTR={lang === 'tr'} />
           </Suspense>
         </ErrorBoundary>
         <ErrorBoundary>
           <Suspense fallback={null}>
-            <RaceGoalDashCard profile={profile} log={log} isTR={lang === 'tr'} />
+            <CoachGateCard isTR={lang === 'tr'} />
           </Suspense>
         </ErrorBoundary>
+        {!isGated(confirmRecord) && (
+          <ErrorBoundary>
+            <Suspense fallback={null}>
+              <TrainingBridgeCard profile={profile} log={log} isTR={lang === 'tr'} />
+            </Suspense>
+          </ErrorBoundary>
+        )}
+        {!isGated(confirmRecord) && (
+          <ErrorBoundary>
+            <Suspense fallback={null}>
+              <RaceGoalDashCard profile={profile} log={log} isTR={lang === 'tr'} />
+            </Suspense>
+          </ErrorBoundary>
+        )}
         <ErrorBoundary>
           <Suspense fallback={null}>
             <VdotProgressCard profile={profile} log={log} isTR={lang === 'tr'} />
@@ -484,14 +502,28 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       </ErrorBoundary>
       <ErrorBoundary>
         <Suspense fallback={null}>
-          <TrainingBridgeCard profile={profile} log={log} isTR={lang === 'tr'} />
+          <ProgramSelectorCard profile={profile} log={log} isTR={lang === 'tr'} />
         </Suspense>
       </ErrorBoundary>
       <ErrorBoundary>
         <Suspense fallback={null}>
-          <RaceGoalDashCard profile={profile} log={log} isTR={lang === 'tr'} />
+          <CoachGateCard isTR={lang === 'tr'} />
         </Suspense>
       </ErrorBoundary>
+      {!isGated(confirmRecord) && (
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <TrainingBridgeCard profile={profile} log={log} isTR={lang === 'tr'} />
+          </Suspense>
+        </ErrorBoundary>
+      )}
+      {!isGated(confirmRecord) && (
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <RaceGoalDashCard profile={profile} log={log} isTR={lang === 'tr'} />
+          </Suspense>
+        </ErrorBoundary>
+      )}
       <ErrorBoundary>
         <Suspense fallback={null}>
           <VdotProgressCard profile={profile} log={log} isTR={lang === 'tr'} />
