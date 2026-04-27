@@ -68,26 +68,34 @@ jobs:
           supabase branches create "${BRANCH}" \
             --project-ref "$SUPABASE_PROJECT_ID" 2>&1 | tee branch_create.log
 
-          # Extract branch credentials
+          # Extract branch credentials + project ref for CLI linking
           BRANCH_INFO=$(supabase branches get "${BRANCH}" \
             --project-ref "$SUPABASE_PROJECT_ID" \
             --output json 2>/dev/null || echo '{}')
 
-          BRANCH_URL=$(echo "$BRANCH_INFO"  | jq -r '.api_url  // empty')
-          ANON_KEY=$(echo   "$BRANCH_INFO"  | jq -r '.anon_key // empty')
+          BRANCH_URL=$(echo "$BRANCH_INFO"  | jq -r '.api_url       // empty')
+          ANON_KEY=$(echo   "$BRANCH_INFO"  | jq -r '.anon_key      // empty')
           SVC_KEY=$(echo    "$BRANCH_INFO"  | jq -r '.service_role_key // empty')
+          BRANCH_REF=$(echo "$BRANCH_INFO"  | jq -r '.project_ref   // .ref // empty')
 
           # Fall back to prod keys when branch doesn't expose separate keys
           echo "url=${BRANCH_URL:-${{ secrets.SUPABASE_URL }}}"          >> "$GITHUB_OUTPUT"
           echo "anon=${ANON_KEY:-${{ secrets.SUPABASE_ANON_KEY }}}"      >> "$GITHUB_OUTPUT"
           echo "svc=${SVC_KEY:-${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}}" >> "$GITHUB_OUTPUT"
+          echo "branch_ref=${BRANCH_REF}"                                >> "$GITHUB_OUTPUT"
 
       # ── Apply migrations ──────────────────────────────────────────────────────
       - name: Apply migrations to E2E branch
         run: |
-          supabase db push \
-            --project-ref "$SUPABASE_PROJECT_ID" \
-            --branch "${{ steps.db-branch.outputs.branch }}"
+          BRANCH_REF="${{ steps.db-branch.outputs.branch_ref }}"
+          if [ -n "$BRANCH_REF" ]; then
+            supabase link --project-ref "$BRANCH_REF" --yes
+            supabase db push --linked --yes
+          else
+            echo "No branch project_ref available — applying to parent project"
+            supabase link --project-ref "$SUPABASE_PROJECT_ID" --yes
+            supabase db push --linked --yes
+          fi
 
       # ── Seed test data ────────────────────────────────────────────────────────
       - name: Seed test data

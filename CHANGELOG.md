@@ -4,6 +4,14 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v12.1.6 — 2026-04-27 — CI: fix db push CLI API in e2e + rls-pentest
+Current supabase CLI db push no longer accepts --project-ref or --branch flags.
+Fixed both workflows: extract branch project_ref from branches get JSON,
+link to it with `supabase link --project-ref`, then `supabase db push --linked`.
+Also consolidated rls-pentest to single branches get call. actionlint CLEAN.
+
+---
+
 ## v12.1.5 — 2026-04-27 — CI: fix secrets context in job-level if condition
 e2e-critical-paths: removed `if: ${{ secrets.X != '' }}` from job level —
 secrets context is not allowed in job.if (only github/inputs/needs/vars are valid).
