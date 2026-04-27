@@ -8,7 +8,7 @@ import { PROGRAMS } from '../../lib/athlete/trainingPrograms.js'
 import { detectVdotFromLog } from '../../lib/athlete/vdotTracker.js'
 import { analyzeRaceGoal, parseMmSs } from '../../lib/athlete/raceGoalEngine.js'
 import {
-  LS_KEY, STATUS, createDraft, submitForReview, isPlanConfirmed,
+  LS_KEY, createDraft, submitForReview, isPlanConfirmed,
 } from '../../lib/athlete/coachConfirmFlow.js'
 import { S } from '../../styles.js'
 
@@ -86,8 +86,6 @@ export default function ProgramSelectorCard({ log = [], profile = {}, isTR }) {
     const submitted = submitForReview(draft, isSolo)
     setConfirmRecord(submitted)
   }
-
-  const selectedProg = selected ? PROGRAMS[selected] : null
 
   return (
     <div style={{ ...S.card, fontFamily: MONO }}>

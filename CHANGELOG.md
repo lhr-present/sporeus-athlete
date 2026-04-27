@@ -4,6 +4,11 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v12.1.1 — 2026-04-27 — lint fix
+9 unused-var warnings → 0; restored --max-warnings 0 CI green. Removed dead ZONE_KEYS/ZONE_LABEL/ZONE_LABEL_TR (RaceGoalDashCard), unused `lang` (RaceGoalAnalyzerCard), unused currentPaces destructure (trainingBridge.js), unused STATUS + selectedProg (ProgramSelectorCard), unused isPlanConfirmed + statusColor imports (CoachGateCard).
+
+---
+
 ## v12.1.0 — 2026-04-27
 E90–E93: Static programs + mandatory coach confirmation gate. (E90) trainingPrograms.js: 3 static programs (10K 24w, HM 18w, Marathon 18w), 15 named WEEK_PATTERNS; buildStaticPlan() expands to typed week array with bilingual descriptions, VDOT-derived paces, deload weeks, phase labels (Base/Build/Peak/Taper); getCurrentStaticWeek() date cursor. (E91) coachConfirmFlow.js: state machine none→draft→pending_review→confirmed/modified→active; solo athletes self-confirm (bypass review); isGated() returns true until confirmed; statusLabel/statusColor helpers; hardcoded as mandatory rule. (E92) ProgramSelectorCard.jsx: VDOT-matched program browser with programScore() ranking, expandable detail rows, solo/coach submit button; hides itself after plan is confirmed. (E93) CoachGateCard.jsx: always-visible status gate across all 5 statuses; shows pending/confirmed/active state; "Start Plan" CTA transitions CONFIRMED→ACTIVE; Dashboard.jsx gates TrainingBridgeCard + RaceGoalDashCard behind isGated() in both simplified and advanced paths. 72 new tests (trainingPrograms 44, coachConfirmFlow 28) → 4175 tests, 241 files.
 

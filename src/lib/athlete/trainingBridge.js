@@ -71,7 +71,7 @@ const PHASE_SESSIONS = {
 export function buildTrainingPlan(goalAnalysis, planStartDate) {
   if (!goalAnalysis) return []
 
-  const { phases, currentVdot, currentPaces } = goalAnalysis
+  const { phases, currentVdot } = goalAnalysis
   const pacesRaw = trainingPaces(currentVdot)
 
   // Build week sequence: expand each phase into individual weeks (deload every 4th)

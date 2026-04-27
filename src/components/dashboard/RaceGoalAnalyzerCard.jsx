@@ -90,8 +90,6 @@ export default function RaceGoalAnalyzerCard({ profile, log, isTR }) {
     setEditing(false)
   }
 
-  const lang = isTR ? 'tr' : 'en'
-
   return (
     <div style={{ ...S.card, fontFamily: MONO }}>
       {/* Header */}

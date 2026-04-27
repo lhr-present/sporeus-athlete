@@ -21,17 +21,6 @@ const DIM    = '#444'
 const DIMMER = '#2a2a2a'
 
 const CONF_COLOR = { high: GREEN, medium: AMBER, low: RED }
-const ZONE_KEYS = ['E', 'M', 'T', 'I', 'R']
-
-// Daniels zone → typical session day purpose
-const ZONE_LABEL = {
-  E: 'Easy Run',    M: 'Marathon Pace', T: 'Threshold',
-  I: 'Intervals',   R: 'Reps / Speed',
-}
-const ZONE_LABEL_TR = {
-  E: 'Kolay Koşu',  M: 'Maraton Hızı',  T: 'Eşik',
-  I: 'İnterval',    R: 'Tekrar / Hız',
-}
 
 // Detect dominant zone from session type string
 function sessionZoneKey(sessionType) {

@@ -4,7 +4,7 @@
 import { useMemo } from 'react'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import {
-  LS_KEY, STATUS, activatePlan, isPlanConfirmed, statusColor,
+  LS_KEY, STATUS, activatePlan,
 } from '../../lib/athlete/coachConfirmFlow.js'
 import { PROGRAMS } from '../../lib/athlete/trainingPrograms.js'
 import { S } from '../../styles.js'
