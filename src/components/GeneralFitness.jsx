@@ -1,11 +1,13 @@
 // src/components/GeneralFitness.jsx — General Fitness track root
 // Tabs: Today | Log | Program | Insights
-import { useState, lazy, Suspense } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import ErrorBoundary from './ErrorBoundary.jsx'
 import OnboardingWizard from './general/OnboardingWizard.jsx'
 import { advanceRotation } from '../lib/athlete/strengthTraining.js'
+import { syncGeneralProgram } from '../lib/generalFitnessSync.js'
+import { supabase, isSupabaseReady } from '../lib/supabase.js'
 
 const GeneralDashboard       = lazy(() => import('./general/GeneralDashboard.jsx'))
 const SessionLogger          = lazy(() => import('./general/SessionLogger.jsx'))
@@ -407,7 +409,7 @@ function buildGapDays(exerciseHistory, today = new Date().toISOString().slice(0,
   return gaps
 }
 
-export default function GeneralFitness({ lang = 'en' }) {
+export default function GeneralFitness({ lang = 'en', authUser = null }) {
   const t = (en, tr) => lang === 'tr' ? tr : en
 
   const [innerTab, setInnerTab]         = useLocalStorage('sporeus-gf-tab', 'today')
@@ -415,6 +417,7 @@ export default function GeneralFitness({ lang = 'en' }) {
   const [activeProgram, setActiveProgram] = useLocalStorage('sporeus-gf-program', null)
   const [sessions, setSessions]         = useLocalStorage('sporeus-gf-sessions', [])
   const [showLogger, setShowLogger]     = useState(false)
+  const [coachConfirmedAt, setCoachConfirmedAt] = useState(null)
 
   const activeTemplate = STATIC_TEMPLATES.find(t => t.id === activeProgram?.templateId) ?? null
   const templateDayCount = activeTemplate?.days_per_week ?? 0
@@ -425,16 +428,37 @@ export default function GeneralFitness({ lang = 'en' }) {
   const currentDayLabel = currentDay ? (lang === 'tr' ? currentDay.day_label_tr : currentDay.day_label_en) : ''
   const programDays     = TEMPLATE_PROGRAM_DATA[activeProgram?.templateId]?.days ?? []
 
+  // Fetch coach confirmation status when authed
+  useEffect(() => {
+    if (!authUser?.id || !isSupabaseReady()) return
+    supabase.from('profiles')
+      .select('general_program_confirmed_at')
+      .eq('id', authUser.id)
+      .single()
+      .then(({ data }) => {
+        if (data?.general_program_confirmed_at) setCoachConfirmedAt(data.general_program_confirmed_at)
+      })
+  }, [authUser?.id])
+
+  // Sync user_mode = 'general' to profile when authed
+  useEffect(() => {
+    if (!authUser?.id || !isSupabaseReady()) return
+    supabase.from('profiles').update({ user_mode: 'general' }).eq('id', authUser.id)
+  }, [authUser?.id])
+
   function handleOnboardingComplete(data) {
-    setActiveProgram({
+    const prog = {
       templateId:         data.templateId,
       reference_date:     data.reference_date,
       next_day_index:     0,
       sessions_completed: 0,
       last_session_date:  null,
-    })
+    }
+    setActiveProgram(prog)
     setOnboarded(true)
     setInnerTab('today')
+    const tmpl = STATIC_TEMPLATES.find(t => t.id === data.templateId)
+    syncGeneralProgram(authUser?.id, prog, lang === 'tr' ? tmpl?.name_tr : tmpl?.name_en)
   }
 
   function handleSaveSession(session) {
@@ -446,17 +470,19 @@ export default function GeneralFitness({ lang = 'en' }) {
     }
     setSessions(prev => [...prev, entry])
 
-    // Advance rotation pointer
+    let updatedProgram = activeProgram
     if (activeProgram) {
       const advanced = advanceRotation({ ...activeProgram, template_days_count: templateDayCount })
-      setActiveProgram(prev => ({
-        ...prev,
+      updatedProgram = {
+        ...activeProgram,
         next_day_index:     advanced.next_day_index,
         sessions_completed: advanced.sessions_completed,
         last_session_date:  today,
-      }))
+      }
+      setActiveProgram(updatedProgram)
     }
 
+    syncGeneralProgram(authUser?.id, updatedProgram, lang === 'tr' ? activeTemplate?.name_tr : activeTemplate?.name_en)
     setShowLogger(false)
     setInnerTab('today')
   }
@@ -514,6 +540,7 @@ export default function GeneralFitness({ lang = 'en' }) {
               sessions={sessions}
               activeProgram={activeProgram}
               activeTemplate={activeTemplate}
+              coachConfirmedAt={coachConfirmedAt}
               lang={lang}
               onLogSession={() => setShowLogger(true)}
             />

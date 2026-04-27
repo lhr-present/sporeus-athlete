@@ -26,6 +26,7 @@ import WeeklyDigestCard   from './coach/WeeklyDigestCard.jsx'
 import SquadCompareStrip        from './coach/SquadCompareStrip.jsx'
 import CoachOnboardingWizard    from './coach/CoachOnboardingWizard.jsx'
 import SquadChallengeCard       from './coach/SquadChallengeCard.jsx'
+import { getGeneralMembers, confirmGeneralProgram } from '../lib/generalFitnessSync.js'
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -50,6 +51,8 @@ export default function CoachDashboard({ authUser }) {
   const fileRef = useRef(null)
   const sbCoachId = authUser?.id ?? null
   const [sbAthleteIds, setSbAthleteIds] = useState([])
+  const [gfMembers, setGfMembers]       = useState([])
+  const [confirmingId, setConfirmingId] = useState(null)
 
   useEffect(() => {
     if (!sbCoachId || !isSupabaseReady()) return
@@ -61,6 +64,11 @@ export default function CoachDashboard({ authUser }) {
       .then(({ data }) => {
         if (data) setSbAthleteIds(data.map(r => r.athlete_id))
       })
+  }, [sbCoachId])
+
+  useEffect(() => {
+    if (!sbCoachId) return
+    getGeneralMembers(sbCoachId).then(setGfMembers)
   }, [sbCoachId])
 
   // E9 — Coach Onboarding Wizard: show when no athletes and not already onboarded
@@ -282,6 +290,49 @@ export default function CoachDashboard({ authUser }) {
           <div style={{ marginTop:'12px' }}>
             <WeeklyDigestCard coachId={sbCoachId} />
           </div>
+        </div>
+      )}
+
+      {/* ── General Fitness Members ─────────────────────────────────────────── */}
+      {isSupabaseReady() && sbCoachId && gfMembers.length > 0 && (
+        <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'6px', padding:'16px', marginBottom:'16px' }}>
+          <div style={{ ...S.mono, fontSize:'10px', color:'#ff6600', letterSpacing:'0.1em', marginBottom:'12px' }}>
+            GYM MEMBERS ({gfMembers.length})
+          </div>
+          {gfMembers.map(m => {
+            const gp       = m.general_program
+            const confirmed = !!m.general_program_confirmed_at
+            return (
+              <div key={m.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid var(--border)' }}>
+                <div>
+                  <span style={{ ...S.mono, fontSize:'11px', color:'var(--text)', fontWeight:600 }}>{m.display_name}</span>
+                  {gp ? (
+                    <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginTop:'2px' }}>
+                      {gp.template_name ?? gp.template_id} · {gp.sessions_completed ?? 0} sessions
+                      {gp.last_session_date ? ` · last ${gp.last_session_date}` : ''}
+                    </div>
+                  ) : (
+                    <div style={{ ...S.mono, fontSize:'9px', color:'#555', marginTop:'2px' }}>No program synced yet</div>
+                  )}
+                </div>
+                {confirmed ? (
+                  <span style={{ ...S.mono, fontSize:'9px', color:'#22aa44', padding:'2px 8px', border:'1px solid #22aa4433', borderRadius:3 }}>✓ CONFIRMED</span>
+                ) : (
+                  <button
+                    disabled={confirmingId === m.id}
+                    onClick={async () => {
+                      setConfirmingId(m.id)
+                      const { error } = await confirmGeneralProgram(m.id)
+                      if (!error) setGfMembers(prev => prev.map(x => x.id === m.id ? { ...x, general_program_confirmed_at: new Date().toISOString() } : x))
+                      setConfirmingId(null)
+                    }}
+                    style={{ ...S.mono, fontSize:'9px', padding:'4px 10px', border:'1px solid #ff660066', background:'transparent', color:'#ff6600', borderRadius:3, cursor:'pointer' }}>
+                    {confirmingId === m.id ? '…' : 'CONFIRM PROGRAM'}
+                  </button>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
 

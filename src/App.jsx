@@ -464,7 +464,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
           {tab === 'sport'        && <AsyncBoundary name="Sport Plan"><SportProgramBuilder/></AsyncBoundary>}
           {tab === 'reports'      && <AsyncBoundary name="Reports"><ReportsTab authUser={authUser} authProfile={authProfile} lang={lang}/></AsyncBoundary>}
           {tab === 'race'         && <AsyncBoundary name="Race Readiness"><RaceReadiness /></AsyncBoundary>}
-          {tab === 'general'      && <AsyncBoundary name="General Fitness"><GeneralFitness lang={lang}/></AsyncBoundary>}
+          {tab === 'general'      && <AsyncBoundary name="General Fitness"><GeneralFitness lang={lang} authUser={authUser}/></AsyncBoundary>}
         </main>
 
         <footer style={S.footer}>

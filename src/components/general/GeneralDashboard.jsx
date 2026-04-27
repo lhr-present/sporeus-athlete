@@ -40,7 +40,7 @@ const TEMPLATE_DAY_LABELS_TR = {
   recomp_4day:            ['Üst A','Alt A','Üst B','Alt B'],
 }
 
-export default function GeneralDashboard({ sessions = [], activeProgram = null, activeTemplate = null, lang = 'en', onLogSession }) {
+export default function GeneralDashboard({ sessions = [], activeProgram = null, activeTemplate = null, coachConfirmedAt = null, lang = 'en', onLogSession }) {
   const t = (en, tr) => lang === 'tr' ? tr : en
 
   const days = daysSinceLastSession(activeProgram?.last_session_date)
@@ -104,6 +104,17 @@ export default function GeneralDashboard({ sessions = [], activeProgram = null, 
           <div style={{ ...S.mono, fontSize: 10, color: '#888' }}>{gapLine}</div>
         )}
       </div>
+
+      {/* ── Coach confirmation badge ──────────────────────── */}
+      {coachConfirmedAt ? (
+        <div style={{ ...S.mono, fontSize: 10, color: '#22aa44', padding: '6px 10px', border: '1px solid #22aa4433', borderRadius: 3, marginBottom: 14, letterSpacing: '0.06em' }}>
+          ✓ {lang === 'tr' ? 'Antrenörün programını onayladı' : 'Program confirmed by your coach'}
+        </div>
+      ) : activeTemplate && (
+        <div style={{ ...S.mono, fontSize: 10, color: '#555', padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 3, marginBottom: 14 }}>
+          {lang === 'tr' ? 'Antrenör onayı bekleniyor…' : 'Awaiting coach review…'}
+        </div>
+      )}
 
       {/* ── Reference strip ───────────────────────────────── */}
       {(refDate || sessCount > 0) && (

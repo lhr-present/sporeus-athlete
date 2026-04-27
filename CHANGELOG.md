@@ -4,6 +4,23 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v12.3.2 — 2026-04-27 — General Fitness: coach-member link
+General fitness users become members/athletes of their coach via the existing invite
+system (SP-XXXXXXXX codes, coach_athletes table, redeem-invite edge function — unchanged).
+Migration 20260476: profiles.general_program JSONB + confirmed_at + confirmed_by columns;
+coach_confirm_general_program() SECURITY DEFINER RPC (validates active coach-athlete link).
+generalFitnessSync.js: syncGeneralProgram (push state to profiles), getGeneralMembers
+(fetch GF athletes for coach), confirmGeneralProgram (call RPC).
+GeneralFitness.jsx: syncs user_mode='general' and program state to Supabase on onboarding
+and session save; reads confirmed_at on mount; passes coachConfirmedAt to GeneralDashboard.
+GeneralDashboard.jsx: shows "✓ Program confirmed by your coach" (green) or
+"Awaiting coach review…" (dim) badge under Next Session card.
+CoachDashboard.jsx: GYM MEMBERS panel shows all general-fitness athletes with template name,
+sessions count, last session date, and CONFIRM PROGRAM button. 4274 tests green.
+DEPENDS ON: v12.3.1 (general_program column from 20260476), existing coach_athletes + invite system
+
+---
+
 ## v12.3.1 — 2026-04-27 — General Fitness: wire history + prescription to SessionLogger + ProgramView
 GeneralFitness.jsx: compute exerciseHistory (buildExerciseHistory), gapDayMap (buildGapDays),
 currentDay (getCurrentDayData) on each render. Both SessionLogger instances (overlay + Log tab)
