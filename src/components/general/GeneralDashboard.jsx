@@ -1,161 +1,138 @@
-// src/components/general/GeneralDashboard.jsx — main surface for general-fitness track
+// src/components/general/GeneralDashboard.jsx — Today screen for general-fitness track
+// Leads with Next Session card. No streaks, no shame copy, no analytics push.
 import { useMemo } from 'react'
 import { S } from '../../styles.js'
-import { volumeLandmarks, volumeStatus, weeklyHardSets } from '../../lib/athlete/strengthTraining.js'
-import WeeklyVolumeChart from './WeeklyVolumeChart.jsx'
-import ProgressionChart from './ProgressionChart.jsx'
+import { daysSinceLastSession } from '../../lib/athlete/strengthTraining.js'
 
-const MUSCLES = ['chest','back','quads','hamstrings','glutes','delts','biceps','triceps','calves','core']
-
-function todayStr() { return new Date().toISOString().slice(0, 10) }
-function weekStart() {
-  const d = new Date(); d.setDate(d.getDate() - d.getDay())
-  return d.toISOString().slice(0, 10)
+// Template day structure for each built-in template
+const TEMPLATE_DAY_EXERCISES = {
+  bw_starter_3day:        [['Push-Up','Bodyweight Squat','Glute Bridge','Plank','Dead Bug'],            ['Push-Up','Bodyweight Squat','Glute Bridge','Plank','Dead Bug'], ['Push-Up','Bodyweight Squat','Glute Bridge','Plank','Dead Bug']],
+  fb_3day_beginner:       [['Barbell Back Squat','Barbell Bench Press','Barbell Row','Barbell Overhead Press','Romanian Deadlift'], ['Barbell Back Squat','Barbell Bench Press','Barbell Row','Barbell Overhead Press','Romanian Deadlift'], ['Barbell Back Squat','Barbell Bench Press','Barbell Row','Barbell Overhead Press','Romanian Deadlift']],
+  ul_4day_beginner:       [['Barbell Bench Press','DB Shoulder Press','Barbell Row','Lat Pulldown','DB Bicep Curl','Tricep Pushdown'], ['Barbell Back Squat','Romanian Deadlift','Leg Press','Lying Leg Curl','DB Calf Raise'], ['DB Incline Press','DB Shoulder Press','Seated Cable Row','Lat Pulldown','DB Bicep Curl','Tricep Pushdown'], ['Barbell Deadlift','Barbell Back Squat','Leg Extension','Lying Leg Curl','DB Calf Raise']],
+  ul_4day_intermediate:   [['Barbell Bench Press','DB Incline Press','DB Shoulder Press','Barbell Row','Lat Pulldown','Face Pull','DB Bicep Curl'], ['Barbell Back Squat','Romanian Deadlift','Leg Press','Lying Leg Curl','DB Calf Raise'], ['DB Incline Press','Cable Crossover Fly','DB Shoulder Press','Seated Cable Row','Lat Pulldown','DB Bicep Curl','Tricep Pushdown'], ['Barbell Deadlift','Barbell Front Squat','Leg Extension','Lying Leg Curl','DB Calf Raise']],
+  ppl_3day_beginner:      [['Barbell Bench Press','DB Shoulder Press','DB Incline Press','Tricep Pushdown','DB Lateral Raise'], ['Barbell Row','Lat Pulldown','Seated Cable Row','DB Bicep Curl','Face Pull'], ['Barbell Back Squat','Romanian Deadlift','Leg Press','Lying Leg Curl','DB Calf Raise']],
+  ppl_6day_intermediate:  [['Barbell Bench Press','DB Incline Press','Cable Crossover Fly','DB Shoulder Press','DB Lateral Raise','Tricep Pushdown'], ['Barbell Row','Lat Pulldown','Seated Cable Row','Face Pull','DB Bicep Curl','Cable Curl'], ['Barbell Back Squat','Romanian Deadlift','Leg Press','Leg Extension','Lying Leg Curl','DB Calf Raise'], ['DB Bench Press','DB Incline Press','Cable Crossover Fly','DB Shoulder Press','DB Lateral Raise','DB Overhead Tricep Ext'], ['Pull-Up','Barbell Row','Seated Cable Row','Face Pull','DB Bicep Curl','Band Pull-Apart'], ['Barbell Deadlift','Barbell Back Squat','Leg Press','Leg Extension','Lying Leg Curl','DB Calf Raise']],
+  home_db_3day:           [['DB Bench Press','DB Shoulder Press','DB Overhead Tricep Ext','DB Lateral Raise','Glute Bridge'], ['DB Single-Arm Row','DB Bicep Curl','Band Row','Band Pull-Apart','Dead Bug'], ['DB Goblet Squat','DB Romanian Deadlift','DB Reverse Lunge','DB Calf Raise','Plank']],
+  home_db_4day:           [['DB Bench Press','DB Incline Press','DB Shoulder Press','DB Lateral Raise','DB Overhead Tricep Ext'], ['DB Goblet Squat','DB Romanian Deadlift','DB Reverse Lunge','DB Calf Raise'], ['DB Single-Arm Row','DB Bicep Curl','Band Row','Band Pull-Apart','Dead Bug'], ['DB Goblet Squat','DB Romanian Deadlift','DB Reverse Lunge','DB Calf Raise','Plank']],
+  recomp_4day:            [['DB Bench Press','DB Shoulder Press','Lat Pulldown','DB Bicep Curl','Tricep Pushdown'], ['Barbell Back Squat','Romanian Deadlift','Leg Press','Lying Leg Curl'], ['DB Incline Press','DB Lateral Raise','Seated Cable Row','Face Pull','DB Bicep Curl'], ['Barbell Deadlift','Leg Press','Leg Extension','Lying Leg Curl','DB Calf Raise']],
 }
 
-export default function GeneralDashboard({ sessions = [], exercises = [], activeProgram = null, templateDays = [], lang = 'en', onLogSession }) {
+const TEMPLATE_DAY_LABELS_EN = {
+  bw_starter_3day:        ['Full Body A','Full Body B','Full Body C'],
+  fb_3day_beginner:       ['Full Body A','Full Body B','Full Body C'],
+  ul_4day_beginner:       ['Upper A','Lower A','Upper B','Lower B'],
+  ul_4day_intermediate:   ['Upper A','Lower A','Upper B','Lower B'],
+  ppl_3day_beginner:      ['Push','Pull','Legs'],
+  ppl_6day_intermediate:  ['Push A','Pull A','Legs A','Push B','Pull B','Legs B'],
+  home_db_3day:           ['Push','Pull','Legs'],
+  home_db_4day:           ['Upper A','Lower A','Upper B','Lower B'],
+  recomp_4day:            ['Upper A','Lower A','Upper B','Lower B'],
+}
+const TEMPLATE_DAY_LABELS_TR = {
+  bw_starter_3day:        ['Tüm Vücut A','Tüm Vücut B','Tüm Vücut C'],
+  fb_3day_beginner:       ['Tüm Vücut A','Tüm Vücut B','Tüm Vücut C'],
+  ul_4day_beginner:       ['Üst A','Alt A','Üst B','Alt B'],
+  ul_4day_intermediate:   ['Üst A','Alt A','Üst B','Alt B'],
+  ppl_3day_beginner:      ['İtiş','Çekiş','Bacak'],
+  ppl_6day_intermediate:  ['İtiş A','Çekiş A','Bacak A','İtiş B','Çekiş B','Bacak B'],
+  home_db_3day:           ['İtiş','Çekiş','Bacak'],
+  home_db_4day:           ['Üst A','Alt A','Üst B','Alt B'],
+  recomp_4day:            ['Üst A','Alt A','Üst B','Alt B'],
+}
+
+export default function GeneralDashboard({ sessions = [], activeProgram = null, activeTemplate = null, lang = 'en', onLogSession }) {
   const t = (en, tr) => lang === 'tr' ? tr : en
 
-  // Build muscleMap: exerciseId → [primary_muscle]
-  const muscleMap = useMemo(() => {
-    const m = {}
-    for (const ex of exercises) m[ex.id] = [ex.primary_muscle, ...(ex.secondary_muscles ?? [])]
-    return m
-  }, [exercises])
+  const days = daysSinceLastSession(activeProgram?.last_session_date)
 
-  // Sessions this week
-  const wk = weekStart()
-  const thisWeekSessions = sessions.filter(s => s.session_date >= wk)
+  // Next session info
+  const nextDayIdx    = activeProgram?.next_day_index ?? 0
+  const templateId    = activeTemplate?.id ?? ''
+  const dayLabels     = (lang === 'tr' ? TEMPLATE_DAY_LABELS_TR : TEMPLATE_DAY_LABELS_EN)[templateId] ?? []
+  const dayExercises  = TEMPLATE_DAY_EXERCISES[templateId]?.[nextDayIdx] ?? []
+  const dayLabel      = dayLabels[nextDayIdx] ?? t('Next Session', 'Sonraki Seans')
+  const previewExs    = dayExercises.slice(0, 4)
+  const hasMore       = dayExercises.length > 4
 
-  // Flat set list this week
-  const weekSets = useMemo(() => {
-    return thisWeekSessions.flatMap(s =>
-      (s.strength_sets ?? []).map(set => ({
-        ...set,
-        exercise_id: set.exercise_id,
-        rir: set.rir ?? 3,
-        reps: set.reps ?? 0,
-        is_warmup: set.is_warmup ?? false,
-      }))
-    )
-  }, [thisWeekSessions])
+  // Friendly gap line — descriptive, never prescriptive
+  const gapLine = useMemo(() => {
+    if (days === null) return null
+    if (days === 0) return null
+    if (days > 14) return t('Welcome back.', 'Tekrar hoş geldin.')
+    return `${t('Last session:', 'Son antrenman:')} ${days} ${t('days ago', 'gün önce')}`
+  }, [days, lang])
 
-  // Streak
-  const streak = useMemo(() => {
-    let s = 0, d = new Date()
-    const done = new Set(sessions.map(x => x.session_date))
-    while (true) {
-      const key = d.toISOString().slice(0, 10)
-      if (!done.has(key)) break
-      s++; d.setDate(d.getDate() - 1)
-    }
-    return s
-  }, [sessions])
+  // Recent sessions (last 3)
+  const recent = [...sessions].sort((a, b) => b.session_date?.localeCompare(a.session_date ?? '') ?? 0).slice(0, 3)
 
-  // Last session
-  const lastSession = sessions.length > 0 ? sessions[sessions.length - 1] : null
-
-  // Today's planned session
-  const today = todayStr()
-  const todayDow = new Date().getDay()
-  const todayPlanned = templateDays.find((_, i) => {
-    if (!activeProgram) return false
-    const scheduledDow = (activeProgram.start_dow ?? 1) + i
-    return scheduledDow % 7 === todayDow
-  })
-
-  // Per-muscle top-set progression for first 3 exercises with enough data
-  const progressExercises = useMemo(() => {
-    const exIds = [...new Set(sessions.flatMap(s => (s.strength_sets ?? []).map(x => x.exercise_id)))]
-    return exIds.filter(id => {
-      const pts = sessions.filter(s => s.strength_sets?.some(x => x.exercise_id === id))
-      return pts.length >= 2
-    }).slice(0, 3)
-  }, [sessions])
-
-  function getProgressData(exerciseId) {
-    return sessions
-      .filter(s => s.strength_sets?.some(x => x.exercise_id === exerciseId))
-      .map(s => {
-        const sets = s.strength_sets.filter(x => x.exercise_id === exerciseId && !x.is_warmup)
-        const top = sets.reduce((best, x) => (!best || (x.load_kg ?? 0) > (best.load_kg ?? 0)) ? x : best, null)
-        return { session_date: s.session_date, load_kg: top?.load_kg ?? 0, reps: top?.reps ?? 0 }
-      })
-  }
+  // Reference strip
+  const refDate = activeProgram?.reference_date
+  const sessCount = activeProgram?.sessions_completed ?? sessions.length
+  const templateName = activeTemplate ? (lang === 'tr' ? activeTemplate.name_tr : activeTemplate.name_en) : null
 
   return (
-    <div style={{ maxWidth: 680 }}>
-      {/* ── Stats strip ────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-        {[
-          { label: t('Streak', 'Seri'), value: `${streak}d` },
-          { label: t('This Week', 'Bu Hafta'), value: `${thisWeekSessions.length} ${t('sessions', 'antrenman')}` },
-          { label: t('Total', 'Toplam'), value: `${sessions.length} ${t('sessions', 'seans')}` },
-        ].map(({ label, value }) => (
-          <div key={label} style={{ flex: 1, background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '10px 14px', textAlign: 'center' }}>
-            <div style={{ ...S.mono, fontSize: 18, color: '#ff6600' }}>{value}</div>
-            <div style={{ ...S.mono, fontSize: 9, color: '#888', letterSpacing: '0.08em' }}>{label}</div>
-          </div>
-        ))}
-      </div>
+    <div style={{ maxWidth: 560 }}>
 
-      {/* ── Today's session CTA ────────────────────────────── */}
-      <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '14px 18px', marginBottom: 16 }}>
-        <div style={{ ...S.mono, fontSize: 11, color: '#ff6600', letterSpacing: '0.1em', marginBottom: 8 }}>
-          {t("TODAY'S TRAINING", 'BUGÜNKÜ ANTRENMAN')}
+      {/* ── Next Session card ─────────────────────────────── */}
+      <div style={{ background: 'var(--card-bg)', border: '1px solid #ff660066', borderRadius: 4, padding: '20px 22px', marginBottom: 14 }}>
+        <div style={{ ...S.mono, fontSize: 10, color: '#ff6600', letterSpacing: '0.1em', marginBottom: 10 }}>
+          {t('NEXT SESSION', 'SONRAKI SEANS')}
         </div>
-        {todayPlanned
-          ? <div style={{ ...S.mono, fontSize: 12, color: 'var(--text)', marginBottom: 10 }}>
-              {lang === 'tr' ? todayPlanned.day_label_tr : todayPlanned.day_label_en}
-            </div>
-          : <div style={{ ...S.mono, fontSize: 11, color: '#888', marginBottom: 10 }}>
-              {activeProgram
-                ? t('Rest day — recovery is part of training.', 'Dinlenme günü — toparlanma da antrenmanın parçası.')
-                : t('No active program. Select one from Programs.', 'Aktif program yok. Programlar\'dan seç.')
-              }
-            </div>
-        }
-        <button
-          onClick={onLogSession}
-          style={{ ...S.mono, fontSize: 12, padding: '8px 20px', border: 'none', background: '#ff6600', color: '#fff', borderRadius: 3, cursor: 'pointer' }}>
-          + {t('Log Session', 'Antrenman Kaydet')}
-        </button>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+          <div>
+            <div style={{ ...S.mono, fontSize: 18, color: 'var(--text)', marginBottom: 8 }}>{dayLabel}</div>
+            {previewExs.length > 0 && (
+              <div style={{ ...S.mono, fontSize: 10, color: '#888', lineHeight: 1.6 }}>
+                {previewExs.join(' · ')}{hasMore ? ' …' : ''}
+              </div>
+            )}
+            {!activeTemplate && (
+              <div style={{ ...S.mono, fontSize: 11, color: '#888' }}>
+                {t('Select a program from the Program tab.', 'Program sekmesinden bir program seç.')}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={onLogSession}
+            style={{ ...S.mono, fontSize: 12, padding: '10px 18px', border: 'none', background: '#ff6600', color: '#fff', borderRadius: 3, cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: 16 }}>
+            {t('START →', 'BAŞLA →')}
+          </button>
+        </div>
+
+        {gapLine && (
+          <div style={{ ...S.mono, fontSize: 10, color: '#888' }}>{gapLine}</div>
+        )}
       </div>
 
-      {/* ── Last session ─────────────────────────────────────── */}
-      {lastSession && (
-        <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '12px 16px', marginBottom: 16 }}>
-          <div style={{ ...S.mono, fontSize: 10, color: '#888', letterSpacing: '0.08em', marginBottom: 4 }}>{t('LAST SESSION', 'SON ANTRENMAN')}</div>
-          <div style={{ ...S.mono, fontSize: 12, color: 'var(--text)' }}>
-            {lastSession.session_date} · {lastSession.day_label || t('Session', 'Seans')}
-            {lastSession.rpe ? ` · RPE ${lastSession.rpe}` : ''}
-          </div>
+      {/* ── Reference strip ───────────────────────────────── */}
+      {(refDate || sessCount > 0) && (
+        <div style={{ ...S.mono, fontSize: 10, color: '#555', padding: '8px 0', marginBottom: 14, borderBottom: '1px solid var(--border)', lineHeight: 1.8 }}>
+          {refDate && `${t('Started', 'Başlangıç')} ${refDate}`}
+          {refDate && sessCount > 0 && ' · '}
+          {sessCount > 0 && `${sessCount} ${t('sessions logged', 'seans tamamlandı')}`}
+          {templateName && ` · ${templateName}`}
         </div>
       )}
 
-      {/* ── Weekly volume chart ───────────────────────────────── */}
-      <div style={{ marginBottom: 16 }}>
-        <WeeklyVolumeChart sets={weekSets} muscleMap={muscleMap} lang={lang} />
-      </div>
-
-      {/* ── Progression charts ────────────────────────────────── */}
-      {progressExercises.length > 0 && (
+      {/* ── Recent sessions ───────────────────────────────── */}
+      {recent.length > 0 && (
         <div>
-          <div style={{ ...S.mono, fontSize: 10, color: '#888', letterSpacing: '0.08em', marginBottom: 10 }}>
-            {t('TOP SET PROGRESSION', 'ÜSTTEN SET İLERLEME')}
+          <div style={{ ...S.mono, fontSize: 10, color: '#888', letterSpacing: '0.08em', marginBottom: 8 }}>
+            {t('RECENT', 'SON SEANSLAR')}
           </div>
-          {progressExercises.map(exId => {
-            const ex = exercises.find(e => e.id === exId)
-            return (
-              <div key={exId} style={{ marginBottom: 12 }}>
-                <ProgressionChart
-                  data={getProgressData(exId)}
-                  exerciseName={ex ? (lang === 'tr' ? ex.name_tr : ex.name_en) : exId}
-                  lang={lang}
-                />
-              </div>
-            )
-          })}
+          {recent.map((s, i) => (
+            <div key={i} style={{ ...S.mono, fontSize: 11, color: 'var(--text)', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+              {s.session_date} · {s.day_label || t('Session', 'Seans')}
+              {s.rpe ? <span style={{ color: '#888', marginLeft: 8 }}>RPE {s.rpe}</span> : ''}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {recent.length === 0 && activeTemplate && (
+        <div style={{ ...S.mono, fontSize: 11, color: '#555', padding: '20px 0', textAlign: 'center' }}>
+          {t('Hit Start → to log your first session.', 'İlk seansını kaydetmek için Başla →\'ya bas.')}
         </div>
       )}
     </div>

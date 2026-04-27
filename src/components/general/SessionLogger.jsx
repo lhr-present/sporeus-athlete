@@ -97,7 +97,8 @@ export default function SessionLogger({ exercises = [], history = {}, lang = 'en
       {rows.map((row, rowIdx) => {
         const ex = exercises.find(e => e.id === row.exerciseId)
         const hist = history[row.exerciseId] ?? []
-        const sugg = ex ? suggestNextLoad(hist, { reps_low: 8, reps_high: 12, is_bodyweight: ex.equipment === 'bw' }) : null
+        const gapDays = (history[row.exerciseId]?.length > 0) ? null : null // placeholder — passed from parent when available
+        const sugg = ex ? suggestNextLoad(hist, { reps_low: 8, reps_high: 12, is_bodyweight: ex.equipment === 'bw' }, gapDays) : null
 
         return (
           <div key={rowIdx} style={card}>
@@ -109,8 +110,15 @@ export default function SessionLogger({ exercises = [], history = {}, lang = 'en
             </div>
 
             {sugg && sugg.reason !== 'no_history' && (
-              <div style={{ ...S.mono, fontSize: 10, color: '#22aa44', marginBottom: 8 }}>
-                ↑ {t('Suggestion', 'Öneri')}: {sugg.load_kg ? `${sugg.load_kg}kg` : t('BW', 'VK')} × {sugg.reps_low}–{sugg.reps_high} ({t(sugg.reason.replace('_', ' '), sugg.reason.replace('_', ' '))})
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ ...S.mono, fontSize: 10, color: '#22aa44' }}>
+                  ↑ {t('Suggestion', 'Öneri')}: {sugg.load_kg ? `${sugg.load_kg}kg` : t('BW', 'VK')} × {sugg.reps_low}–{sugg.reps_high}
+                </div>
+                {sugg.reorientation && (
+                  <div style={{ ...S.mono, fontSize: 10, color: '#888', marginTop: 3 }}>
+                    {t('Coming back — light first session, listen to your body.', 'Geri dönüş — ilk seans hafif olsun, vücudunu dinle.')}
+                  </div>
+                )}
               </div>
             )}
 

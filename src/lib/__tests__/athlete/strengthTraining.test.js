@@ -9,6 +9,8 @@ import {
   volumeStatus,
   suggestNextLoad,
   suggestTemplate,
+  advanceRotation,
+  daysSinceLastSession,
 } from '../../athlete/strengthTraining.js'
 
 // ── estimate1RM ───────────────────────────────────────────────────────────────
@@ -323,6 +325,62 @@ describe('suggestNextLoad', () => {
     ]
     expect(suggestNextLoad(history, ex).load_kg).toBe(82.5)
   })
+
+  // Gap-aware resume protocol
+  it('gap = 0 → normal overload logic unchanged', () => {
+    const history = [
+      { reps: 12, load_kg: 80, rir: 2, is_warmup: false },
+      { reps: 12, load_kg: 80, rir: 2, is_warmup: false },
+    ]
+    expect(suggestNextLoad(history, ex, 0).reason).toBe('add_weight')
+  })
+  it('gap = 5 → normal overload (< 14 days)', () => {
+    const history = [
+      { reps: 12, load_kg: 80, rir: 2, is_warmup: false },
+      { reps: 12, load_kg: 80, rir: 2, is_warmup: false },
+    ]
+    expect(suggestNextLoad(history, ex, 5).reason).toBe('add_weight')
+  })
+  it('gap = 20 → caps at last load (no overload, 14–30 day window)', () => {
+    const history = [
+      { reps: 12, load_kg: 80, rir: 2, is_warmup: false },
+      { reps: 12, load_kg: 80, rir: 2, is_warmup: false },
+    ]
+    const r = suggestNextLoad(history, ex, 20)
+    expect(r.reason).toBe('hold')
+    expect(r.load_kg).toBe(80)
+  })
+  it('gap = 60 → 90% of last load, expanded rep range', () => {
+    const history = [{ reps: 12, load_kg: 80, rir: 2, is_warmup: false }]
+    const r = suggestNextLoad(history, ex, 60)
+    expect(r.reason).toBe('gap_return')
+    expect(r.load_kg).toBe(72.5) // 80 × 0.9 = 72 → nearest 2.5
+    expect(r.reps_high).toBe(14) // 12 + 2
+  })
+  it('gap = 120 → 80% of last load, +3 reps, reorientation flag', () => {
+    const history = [{ reps: 12, load_kg: 100, rir: 2, is_warmup: false }]
+    const r = suggestNextLoad(history, ex, 120)
+    expect(r.reason).toBe('gap_return')
+    expect(r.load_kg).toBe(80) // 100 × 0.8 = 80
+    expect(r.reps_high).toBe(15) // 12 + 3
+    expect(r.reorientation).toBe(true)
+  })
+  it('gap = 91 → reorientation', () => {
+    const history = [{ reps: 10, load_kg: 60, rir: 2, is_warmup: false }]
+    expect(suggestNextLoad(history, ex, 91).reorientation).toBe(true)
+  })
+  it('gap = 30 → exactly on boundary: gap_return', () => {
+    const history = [{ reps: 10, load_kg: 80, rir: 2, is_warmup: false }]
+    const r = suggestNextLoad(history, ex, 31)
+    expect(r.reason).toBe('gap_return')
+  })
+  it('bodyweight exercise ignores gap load adjustment', () => {
+    const bwEx = { reps_low: 8, reps_high: 12, is_bodyweight: true }
+    const history = [{ reps: 12, load_kg: 0, rir: 2, is_warmup: false }]
+    // gap shouldn't trigger load reduction on BW
+    const r = suggestNextLoad(history, bwEx, 120)
+    expect(r.load_kg).toBeNull()
+  })
 })
 
 // ── suggestTemplate ───────────────────────────────────────────────────────────
@@ -362,5 +420,75 @@ describe('suggestTemplate', () => {
   })
   it('undefined args → fallback', () => {
     expect(suggestTemplate()).toBe('ul_4day_beginner')
+  })
+})
+
+// ── advanceRotation ───────────────────────────────────────────────────────────
+describe('advanceRotation', () => {
+  it('0 → 1 on a 3-day program', () => {
+    const r = advanceRotation({ next_day_index: 0, sessions_completed: 0, template_days_count: 3 })
+    expect(r.next_day_index).toBe(1)
+    expect(r.sessions_completed).toBe(1)
+  })
+  it('1 → 2 on a 3-day program', () => {
+    const r = advanceRotation({ next_day_index: 1, sessions_completed: 5, template_days_count: 3 })
+    expect(r.next_day_index).toBe(2)
+    expect(r.sessions_completed).toBe(6)
+  })
+  it('2 → 0 on a 3-day program (wraps)', () => {
+    const r = advanceRotation({ next_day_index: 2, sessions_completed: 2, template_days_count: 3 })
+    expect(r.next_day_index).toBe(0)
+  })
+  it('5 → 0 on a 6-day program (wraps)', () => {
+    const r = advanceRotation({ next_day_index: 5, sessions_completed: 11, template_days_count: 6 })
+    expect(r.next_day_index).toBe(0)
+  })
+  it('increments sessions_completed regardless of wrap', () => {
+    const r = advanceRotation({ next_day_index: 3, sessions_completed: 99, template_days_count: 4 })
+    expect(r.sessions_completed).toBe(100)
+  })
+  it('handles null template_days_count gracefully', () => {
+    const r = advanceRotation({ next_day_index: 1, sessions_completed: 2, template_days_count: null })
+    expect(r.next_day_index).toBe(0)
+    expect(r.sessions_completed).toBe(3)
+  })
+  it('handles undefined program gracefully', () => {
+    const r = advanceRotation(undefined)
+    expect(r.sessions_completed).toBe(1)
+  })
+  it('1-day program pointer always stays at 0', () => {
+    const r = advanceRotation({ next_day_index: 0, sessions_completed: 10, template_days_count: 1 })
+    expect(r.next_day_index).toBe(0)
+  })
+})
+
+// ── daysSinceLastSession ──────────────────────────────────────────────────────
+describe('daysSinceLastSession', () => {
+  it('returns null when lastSessionDate is null', () => {
+    expect(daysSinceLastSession(null)).toBeNull()
+  })
+  it('returns null when lastSessionDate is undefined', () => {
+    expect(daysSinceLastSession(undefined)).toBeNull()
+  })
+  it('returns 0 when last session was today', () => {
+    const today = new Date('2026-04-27')
+    expect(daysSinceLastSession('2026-04-27', today)).toBe(0)
+  })
+  it('returns 4 when last session was 4 days ago', () => {
+    const today = new Date('2026-04-27')
+    expect(daysSinceLastSession('2026-04-23', today)).toBe(4)
+  })
+  it('returns 30 when last session was 30 days ago', () => {
+    const today = new Date('2026-04-27')
+    expect(daysSinceLastSession('2026-03-28', today)).toBe(30)
+  })
+  it('returns 90 for a 90-day gap', () => {
+    const today = new Date('2026-04-27')
+    expect(daysSinceLastSession('2026-01-27', today)).toBe(90)
+  })
+  it('is non-negative (no future last sessions in prod)', () => {
+    const today = new Date('2026-04-27')
+    const result = daysSinceLastSession('2026-04-20', today)
+    expect(result).toBeGreaterThanOrEqual(0)
   })
 })

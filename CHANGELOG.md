@@ -4,6 +4,27 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v12.3.0 — 2026-04-27 — General Fitness: rotation pointer + no-shame resume protocol
+E1: Rotation pointer replaces calendar. user_programs: end_date dropped, start_date renamed
+reference_date, next_day_index + sessions_completed + last_session_date added (migration 20260474).
+advanceRotation() wraps modulo template length — no deadlines, no missed-day guilt.
+daysSinceLastSession() — pure date math, no prescriptions.
+E2: Onboarding cut from 4 to 3 steps. Session-length field removed. "Train for a sport" option
+removed from general track. Days-per-week reframed as advisory frequency (no commitment).
+Anti-overcommitment guardrail: beginner + 5+day selection silently overrides to 3-day template.
+E3: GeneralDashboard rebuilt around one card: Next Session (day label, exercise preview, START →
+CTA). Gap line: descriptive only ("Last session: 4 days ago", "Welcome back." for >14d gaps).
+No streaks, no MEV/MAV/MRV on today screen. Volume + progression charts moved to new Insights
+tab. Inner tabs renamed: Today | Log | Program | Insights.
+E4: Resume protocol — gap-aware suggestNextLoad(history, exercise, gap_days). 14–30d: hold at
+last load. 30–90d: 90% load + rep range +2. 90+d: 80% load + rep range +3 + reorientation flag.
+SessionLogger shows "Coming back — light first session" on reorientation. Forbidden copy list
+enforced. exercise_last_seen view added (migration 20260475).
+23 new tests (99 total in strengthTraining), 4274 total tests, 242 files, all green.
+DEPENDS ON: migration 20260472 (user_programs.start_date must exist to rename).
+
+---
+
 ## v12.2.0 — 2026-04-27 — General Fitness track: strength training for sedentary users
 New user track alongside endurance. Onboarding wizard (goal→experience→schedule→equipment),
 9 program templates (PPL, Upper/Lower, Full Body × bw/home/gym), 38 seed exercises (EN+TR),

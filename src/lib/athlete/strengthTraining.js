@@ -136,43 +136,58 @@ export function volumeStatus(weeklySets, muscle) {
 
 /**
  * Suggest next-session load for a loaded exercise.
- * Rules (Prilepin / LP logic):
- *   - If last 2 sessions both hit top of rep range with RIR ≥ 1 → add weight
- *   - If last session missed bottom of rep range OR RIR === 0 → hold
- *   - If 3+ consecutive stalls → deload to 80%, reset rep range
+ *
+ * Two-axis decision:
+ * 1. Performance history: overload / hold / stall-deload
+ * 2. Gap (days since last session): caps or reduces load after long breaks
+ *
+ * Gap rules (never punishes the gap, only shapes the suggestion):
+ *   < 14 days  → normal performance logic
+ *   14–30 days → cap at last load (no overload)
+ *   30–90 days → 90% of last load, rep range +2
+ *   > 90 days  → 80% of last load, rep range +3, reorientation flag
  *
  * @param {Array<{reps: number, load_kg: number, rir: number|null, is_warmup: boolean}>} history
- *   Chronological set-level history for this exercise (work sets only).
  * @param {{ reps_low: number, reps_high: number, is_bodyweight?: boolean }} exercise
- * @returns {{ load_kg: number|null, reps_low: number, reps_high: number, reason: string }}
+ * @param {number|null} [gap_days] - days since last session for this exercise
+ * @returns {{ load_kg: number|null, reps_low: number, reps_high: number, reason: string, reorientation?: boolean }}
  */
-export function suggestNextLoad(history, exercise) {
+export function suggestNextLoad(history, exercise, gap_days = null) {
   const { reps_low, reps_high, is_bodyweight = false } = exercise ?? {}
   if (!Array.isArray(history) || history.length === 0 || !reps_low || !reps_high) {
     return { load_kg: null, reps_low, reps_high, reason: 'no_history' }
   }
 
-  // Group by session (each "session" = a set from a given day or grouped set index)
-  // We treat history as flat work-sets ordered chronologically.
   const workSets = history.filter(s => !s?.is_warmup)
   if (workSets.length === 0) {
     return { load_kg: null, reps_low, reps_high, reason: 'no_work_sets' }
   }
 
-  // Detect stall count — compare last 3 "top sets" (highest reps from each session block)
-  // Simple heuristic: look at last N sets in order
   const last = workSets[workSets.length - 1]
   const prev = workSets.length >= 2 ? workSets[workSets.length - 2] : null
 
-  // Check if 3+ consecutive sets all missed top of range
   let stallCount = 0
   for (let i = workSets.length - 1; i >= Math.max(0, workSets.length - 3); i--) {
     if (workSets[i].reps < reps_high || workSets[i].rir === 0) stallCount++
     else break
   }
 
-  const lastLoad   = parseFloat(last.load_kg ?? 0)
-  const increment  = is_bodyweight ? 0 : (lastLoad >= 60 ? 2.5 : 1.25)
+  const lastLoad  = parseFloat(last.load_kg ?? 0)
+  const increment = is_bodyweight ? 0 : (lastLoad >= 60 ? 2.5 : 1.25)
+
+  // ── Gap override (applied before performance logic) ────────────────────────
+  if (!is_bodyweight && gap_days != null && gap_days > 13) {
+    if (gap_days > 90) {
+      const load = Math.round((lastLoad * 0.8) / 2.5) * 2.5
+      return { load_kg: load, reps_low, reps_high: reps_high + 3, reason: 'gap_return', reorientation: true }
+    }
+    if (gap_days > 30) {
+      const load = Math.round((lastLoad * 0.9) / 2.5) * 2.5
+      return { load_kg: load, reps_low, reps_high: reps_high + 2, reason: 'gap_return' }
+    }
+    // 14–30 days: cap at last load
+    return { load_kg: lastLoad, reps_low, reps_high, reason: 'hold' }
+  }
 
   // Deload
   if (stallCount >= 3) {
@@ -227,4 +242,34 @@ export function suggestTemplate({ goal, days, equipment, experience } = {}) {
 
   if (days <= 3)                                return 'fb_3day_beginner'
   return 'ul_4day_beginner'
+}
+
+// ── Rotation pointer ──────────────────────────────────────────────────────────
+
+/**
+ * Advance the rotation pointer after a logged session.
+ * The pointer wraps modulo the number of template days — no calendar, no deadlines.
+ * @param {{ next_day_index: number, sessions_completed: number, template_days_count: number }} program
+ * @returns {{ next_day_index: number, sessions_completed: number }}
+ */
+export function advanceRotation(program) {
+  const total = program?.template_days_count
+  if (!total || total < 1) return { next_day_index: 0, sessions_completed: (program?.sessions_completed ?? 0) + 1 }
+  return {
+    next_day_index: (program.next_day_index + 1) % total,
+    sessions_completed: (program.sessions_completed ?? 0) + 1,
+  }
+}
+
+/**
+ * Days since the user's last session. Returns null if they have never logged one.
+ * Pure date math — no shame, no streak, no prescriptions.
+ * @param {string|null} lastSessionDate - ISO date string "YYYY-MM-DD" or null
+ * @param {Date} [today]
+ * @returns {number|null}
+ */
+export function daysSinceLastSession(lastSessionDate, today = new Date()) {
+  if (!lastSessionDate) return null
+  const last = new Date(lastSessionDate)
+  return Math.floor((today - last) / 86_400_000)
 }
