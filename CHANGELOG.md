@@ -4,6 +4,13 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v12.1.4 — 2026-04-27 — CI: fix YAML syntax error in rls-pentest.yml
+Template literal in github-script body had lines at column 1 (** markdown bold),
+breaking YAML block scalar parsing — YAML scanner tried to interpret ** as an alias.
+Fixed by rewriting body as array.join('\n') keeping all content at proper indentation.
+
+---
+
 ## v12.1.3 — 2026-04-27 — CI: restore e2e + rls-pentest auto-triggers
 Supabase secrets configured. e2e-critical-paths: pull_request + push triggers restored.
 rls-pentest: weekly Monday 02:00 UTC cron restored. Both workflows fully active.
