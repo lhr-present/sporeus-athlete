@@ -78,6 +78,335 @@ export const SEED_EXERCISES = [
   { id:'band_row',          name_en:'Band Seated Row',         name_tr:'Bant Oturarak Kürek',      pattern:'pull_h', primary_muscle:'back',       secondary_muscles:['biceps'],                      equipment:'band', is_compound:false, cues_en:'Wrap band around feet, pull to navel.',                     cues_tr:'Bandı ayakların etrafına sar, göbeğe çek.' },
 ]
 
+// ── Full program prescriptions (days + sets × reps × RIR × rest) ─────────────
+// These replace the empty templateDays/templateExercises that would otherwise
+// come from Supabase. All data lives client-side so the app works offline.
+export const TEMPLATE_PROGRAM_DATA = {
+  bw_starter_3day: {
+    days: [
+      { day_index:0, day_label_en:'Full Body A', day_label_tr:'Tüm Vücut A', exercises:[
+        {exercise_id:'bw_pushup',       sets:3, reps_low:8,  reps_high:15, rir:2, rest_seconds:90},
+        {exercise_id:'bw_bodyweight_sq',sets:3, reps_low:10, reps_high:20, rir:2, rest_seconds:90},
+        {exercise_id:'bw_glute_bridge', sets:3, reps_low:12, reps_high:20, rir:2, rest_seconds:60},
+        {exercise_id:'bw_plank',        sets:3, reps_low:20, reps_high:40, rir:2, rest_seconds:60},
+        {exercise_id:'bw_dead_bug',     sets:3, reps_low:8,  reps_high:12, rir:2, rest_seconds:60},
+      ]},
+      { day_index:1, day_label_en:'Full Body B', day_label_tr:'Tüm Vücut B', exercises:[
+        {exercise_id:'bw_incline_push', sets:3, reps_low:10, reps_high:20, rir:2, rest_seconds:90},
+        {exercise_id:'bw_bodyweight_sq',sets:3, reps_low:12, reps_high:20, rir:2, rest_seconds:90},
+        {exercise_id:'bw_hip_thrust',   sets:3, reps_low:12, reps_high:20, rir:2, rest_seconds:60},
+        {exercise_id:'bw_plank',        sets:3, reps_low:25, reps_high:45, rir:2, rest_seconds:60},
+        {exercise_id:'bw_dead_bug',     sets:3, reps_low:10, reps_high:14, rir:2, rest_seconds:60},
+      ]},
+      { day_index:2, day_label_en:'Full Body C', day_label_tr:'Tüm Vücut C', exercises:[
+        {exercise_id:'bw_pushup',       sets:3, reps_low:10, reps_high:16, rir:1, rest_seconds:90},
+        {exercise_id:'bw_bodyweight_sq',sets:3, reps_low:15, reps_high:25, rir:1, rest_seconds:90},
+        {exercise_id:'bw_glute_bridge', sets:3, reps_low:15, reps_high:25, rir:1, rest_seconds:60},
+        {exercise_id:'bw_plank',        sets:3, reps_low:30, reps_high:60, rir:1, rest_seconds:60},
+        {exercise_id:'bw_dead_bug',     sets:3, reps_low:10, reps_high:14, rir:1, rest_seconds:60},
+      ]},
+    ]
+  },
+  fb_3day_beginner: {
+    days: [
+      { day_index:0, day_label_en:'Full Body A', day_label_tr:'Tüm Vücut A', exercises:[
+        {exercise_id:'bb_back_squat',  sets:3, reps_low:5, reps_high:8, rir:2, rest_seconds:180},
+        {exercise_id:'bb_bench_press', sets:3, reps_low:5, reps_high:8, rir:2, rest_seconds:150},
+        {exercise_id:'bb_row',         sets:3, reps_low:6, reps_high:10,rir:2, rest_seconds:120},
+        {exercise_id:'bb_rdl',         sets:3, reps_low:6, reps_high:10,rir:2, rest_seconds:120},
+      ]},
+      { day_index:1, day_label_en:'Full Body B', day_label_tr:'Tüm Vücut B', exercises:[
+        {exercise_id:'bb_back_squat',  sets:3, reps_low:5, reps_high:8, rir:2, rest_seconds:180},
+        {exercise_id:'bb_ohp',         sets:3, reps_low:5, reps_high:8, rir:2, rest_seconds:150},
+        {exercise_id:'machine_lat_pulldown', sets:3, reps_low:8, reps_high:12, rir:2, rest_seconds:120},
+        {exercise_id:'bb_rdl',         sets:3, reps_low:6, reps_high:10,rir:2, rest_seconds:120},
+      ]},
+      { day_index:2, day_label_en:'Full Body C', day_label_tr:'Tüm Vücut C', exercises:[
+        {exercise_id:'bb_back_squat',  sets:3, reps_low:5, reps_high:8, rir:1, rest_seconds:180},
+        {exercise_id:'bb_bench_press', sets:3, reps_low:5, reps_high:8, rir:1, rest_seconds:150},
+        {exercise_id:'bb_row',         sets:3, reps_low:6, reps_high:10,rir:1, rest_seconds:120},
+        {exercise_id:'bb_rdl',         sets:4, reps_low:6, reps_high:10,rir:1, rest_seconds:120},
+      ]},
+    ]
+  },
+  ul_4day_beginner: {
+    days: [
+      { day_index:0, day_label_en:'Upper A', day_label_tr:'Üst A', exercises:[
+        {exercise_id:'bb_bench_press',    sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:150},
+        {exercise_id:'bb_row',            sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:120},
+        {exercise_id:'bb_ohp',            sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:120},
+        {exercise_id:'machine_lat_pulldown',sets:3,reps_low:10,reps_high:15,rir:2,rest_seconds:90},
+        {exercise_id:'db_curl',           sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:60},
+        {exercise_id:'machine_pushdown',  sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:60},
+      ]},
+      { day_index:1, day_label_en:'Lower A', day_label_tr:'Alt A', exercises:[
+        {exercise_id:'bb_back_squat',    sets:3, reps_low:6, reps_high:10,rir:2, rest_seconds:180},
+        {exercise_id:'bb_rdl',           sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:120},
+        {exercise_id:'machine_leg_press',sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:120},
+        {exercise_id:'machine_leg_curl', sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'db_calf_raise',    sets:4, reps_low:12,reps_high:20,rir:2, rest_seconds:60},
+      ]},
+      { day_index:2, day_label_en:'Upper B', day_label_tr:'Üst B', exercises:[
+        {exercise_id:'db_incline_press',  sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:120},
+        {exercise_id:'machine_cable_row', sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:120},
+        {exercise_id:'db_ohp',            sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'machine_lat_pulldown',sets:3,reps_low:10,reps_high:15,rir:2,rest_seconds:90},
+        {exercise_id:'db_curl',           sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:60},
+        {exercise_id:'machine_pushdown',  sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:60},
+      ]},
+      { day_index:3, day_label_en:'Lower B', day_label_tr:'Alt B', exercises:[
+        {exercise_id:'bb_back_squat',    sets:3, reps_low:6, reps_high:10,rir:2, rest_seconds:180},
+        {exercise_id:'bb_rdl',           sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:120},
+        {exercise_id:'machine_leg_ext',  sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'machine_leg_curl', sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'db_calf_raise',    sets:4, reps_low:12,reps_high:20,rir:2, rest_seconds:60},
+      ]},
+    ]
+  },
+  ppl_3day_beginner: {
+    days: [
+      { day_index:0, day_label_en:'Push', day_label_tr:'İtiş', exercises:[
+        {exercise_id:'bb_bench_press',   sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:150},
+        {exercise_id:'bb_ohp',           sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:120},
+        {exercise_id:'db_incline_press', sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'db_lateral_raise', sets:3, reps_low:12,reps_high:20,rir:2, rest_seconds:60},
+        {exercise_id:'machine_pushdown', sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:60},
+      ]},
+      { day_index:1, day_label_en:'Pull', day_label_tr:'Çekiş', exercises:[
+        {exercise_id:'bb_row',               sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:120},
+        {exercise_id:'machine_lat_pulldown', sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:120},
+        {exercise_id:'machine_cable_row',    sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'machine_facepull',     sets:3, reps_low:12,reps_high:20,rir:2, rest_seconds:60},
+        {exercise_id:'db_curl',              sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:60},
+      ]},
+      { day_index:2, day_label_en:'Legs', day_label_tr:'Bacak', exercises:[
+        {exercise_id:'bb_back_squat',    sets:3, reps_low:6, reps_high:10,rir:2, rest_seconds:180},
+        {exercise_id:'bb_rdl',           sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:120},
+        {exercise_id:'machine_leg_press',sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:120},
+        {exercise_id:'machine_leg_curl', sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'db_calf_raise',    sets:4, reps_low:12,reps_high:20,rir:2, rest_seconds:60},
+      ]},
+    ]
+  },
+  ppl_6day_intermediate: {
+    days: [
+      { day_index:0, day_label_en:'Push A', day_label_tr:'İtiş A', exercises:[
+        {exercise_id:'bb_bench_press',   sets:4, reps_low:6, reps_high:10,rir:2, rest_seconds:180},
+        {exercise_id:'db_incline_press', sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:120},
+        {exercise_id:'machine_cable_fly',sets:3, reps_low:12,reps_high:20,rir:2, rest_seconds:90},
+        {exercise_id:'bb_ohp',           sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:120},
+        {exercise_id:'db_lateral_raise', sets:4, reps_low:12,reps_high:20,rir:2, rest_seconds:60},
+        {exercise_id:'machine_pushdown', sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:60},
+      ]},
+      { day_index:1, day_label_en:'Pull A', day_label_tr:'Çekiş A', exercises:[
+        {exercise_id:'bb_row',               sets:4, reps_low:6,reps_high:10,rir:2,rest_seconds:150},
+        {exercise_id:'machine_lat_pulldown', sets:3, reps_low:8,reps_high:12,rir:2,rest_seconds:120},
+        {exercise_id:'machine_cable_row',    sets:3, reps_low:10,reps_high:15,rir:2,rest_seconds:90},
+        {exercise_id:'machine_facepull',     sets:3, reps_low:15,reps_high:25,rir:2,rest_seconds:60},
+        {exercise_id:'db_curl',              sets:3, reps_low:10,reps_high:15,rir:2,rest_seconds:60},
+        {exercise_id:'machine_curl_cable',   sets:3, reps_low:10,reps_high:15,rir:2,rest_seconds:60},
+      ]},
+      { day_index:2, day_label_en:'Legs A', day_label_tr:'Bacak A', exercises:[
+        {exercise_id:'bb_back_squat',    sets:4, reps_low:6, reps_high:10,rir:2, rest_seconds:180},
+        {exercise_id:'bb_rdl',           sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:120},
+        {exercise_id:'machine_leg_press',sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:120},
+        {exercise_id:'machine_leg_ext',  sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'machine_leg_curl', sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'db_calf_raise',    sets:4, reps_low:12,reps_high:20,rir:2, rest_seconds:60},
+      ]},
+      { day_index:3, day_label_en:'Push B', day_label_tr:'İtiş B', exercises:[
+        {exercise_id:'db_bench_press',   sets:4, reps_low:8, reps_high:12,rir:2, rest_seconds:120},
+        {exercise_id:'db_incline_press', sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'machine_cable_fly',sets:3, reps_low:12,reps_high:20,rir:2, rest_seconds:60},
+        {exercise_id:'db_ohp',           sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'db_lateral_raise', sets:4, reps_low:12,reps_high:20,rir:2, rest_seconds:60},
+        {exercise_id:'db_tricep_ext',    sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:60},
+      ]},
+      { day_index:4, day_label_en:'Pull B', day_label_tr:'Çekiş B', exercises:[
+        {exercise_id:'bw_pullup',            sets:4, reps_low:4,reps_high:10,rir:2,rest_seconds:180},
+        {exercise_id:'machine_cable_row',    sets:3, reps_low:8,reps_high:12,rir:2,rest_seconds:120},
+        {exercise_id:'machine_facepull',     sets:3, reps_low:15,reps_high:25,rir:2,rest_seconds:60},
+        {exercise_id:'band_pull_apart',      sets:3, reps_low:15,reps_high:25,rir:2,rest_seconds:60},
+        {exercise_id:'db_curl',              sets:3, reps_low:10,reps_high:15,rir:2,rest_seconds:60},
+      ]},
+      { day_index:5, day_label_en:'Legs B', day_label_tr:'Bacak B', exercises:[
+        {exercise_id:'bb_deadlift',      sets:4, reps_low:4, reps_high:8, rir:2, rest_seconds:210},
+        {exercise_id:'bb_back_squat',    sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:150},
+        {exercise_id:'machine_leg_press',sets:3, reps_low:12,reps_high:20,rir:2, rest_seconds:90},
+        {exercise_id:'machine_leg_curl', sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'db_calf_raise',    sets:4, reps_low:15,reps_high:25,rir:2, rest_seconds:60},
+      ]},
+    ]
+  },
+  home_db_3day: {
+    days: [
+      { day_index:0, day_label_en:'Push', day_label_tr:'İtiş', exercises:[
+        {exercise_id:'db_bench_press',  sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:120},
+        {exercise_id:'db_ohp',          sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:90},
+        {exercise_id:'db_tricep_ext',   sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:60},
+        {exercise_id:'db_lateral_raise',sets:3, reps_low:12,reps_high:20,rir:2, rest_seconds:60},
+        {exercise_id:'bw_glute_bridge', sets:3, reps_low:15,reps_high:25,rir:2, rest_seconds:60},
+      ]},
+      { day_index:1, day_label_en:'Pull', day_label_tr:'Çekiş', exercises:[
+        {exercise_id:'db_row',         sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:90},
+        {exercise_id:'db_curl',        sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:60},
+        {exercise_id:'band_row',       sets:3, reps_low:12,reps_high:20,rir:2, rest_seconds:60},
+        {exercise_id:'band_pull_apart',sets:3, reps_low:15,reps_high:25,rir:2, rest_seconds:60},
+        {exercise_id:'bw_dead_bug',    sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:60},
+      ]},
+      { day_index:2, day_label_en:'Legs', day_label_tr:'Bacak', exercises:[
+        {exercise_id:'db_goblet_squat',sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:120},
+        {exercise_id:'db_rdl',         sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'db_lunge',       sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:90},
+        {exercise_id:'db_calf_raise',  sets:3, reps_low:15,reps_high:25,rir:2, rest_seconds:60},
+        {exercise_id:'bw_plank',       sets:3, reps_low:20,reps_high:40,rir:2, rest_seconds:60},
+      ]},
+    ]
+  },
+  home_db_4day: {
+    days: [
+      { day_index:0, day_label_en:'Upper A', day_label_tr:'Üst A', exercises:[
+        {exercise_id:'db_bench_press',  sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:120},
+        {exercise_id:'db_incline_press',sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'db_ohp',          sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:90},
+        {exercise_id:'db_lateral_raise',sets:3, reps_low:12,reps_high:20,rir:2, rest_seconds:60},
+        {exercise_id:'db_tricep_ext',   sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:60},
+      ]},
+      { day_index:1, day_label_en:'Lower A', day_label_tr:'Alt A', exercises:[
+        {exercise_id:'db_goblet_squat',sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:120},
+        {exercise_id:'db_rdl',         sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'db_lunge',       sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:90},
+        {exercise_id:'db_calf_raise',  sets:3, reps_low:15,reps_high:25,rir:2, rest_seconds:60},
+      ]},
+      { day_index:2, day_label_en:'Upper B', day_label_tr:'Üst B', exercises:[
+        {exercise_id:'db_row',         sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:90},
+        {exercise_id:'db_curl',        sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:60},
+        {exercise_id:'band_row',       sets:3, reps_low:12,reps_high:20,rir:2, rest_seconds:60},
+        {exercise_id:'band_pull_apart',sets:3, reps_low:15,reps_high:25,rir:2, rest_seconds:60},
+        {exercise_id:'bw_dead_bug',    sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:60},
+      ]},
+      { day_index:3, day_label_en:'Lower B', day_label_tr:'Alt B', exercises:[
+        {exercise_id:'db_goblet_squat',sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:120},
+        {exercise_id:'db_rdl',         sets:4, reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'db_lunge',       sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'db_calf_raise',  sets:4, reps_low:15,reps_high:25,rir:2, rest_seconds:60},
+        {exercise_id:'bw_plank',       sets:3, reps_low:30,reps_high:60,rir:2, rest_seconds:60},
+      ]},
+    ]
+  },
+  ul_4day_intermediate: {
+    days: [
+      { day_index:0, day_label_en:'Upper A', day_label_tr:'Üst A', exercises:[
+        {exercise_id:'bb_bench_press',     sets:4, reps_low:6, reps_high:10,rir:2, rest_seconds:180},
+        {exercise_id:'db_incline_press',   sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:120},
+        {exercise_id:'bb_row',             sets:4, reps_low:6, reps_high:10,rir:2, rest_seconds:150},
+        {exercise_id:'machine_lat_pulldown',sets:3,reps_low:8, reps_high:12,rir:2, rest_seconds:120},
+        {exercise_id:'bb_ohp',             sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:120},
+        {exercise_id:'machine_facepull',   sets:3, reps_low:15,reps_high:25,rir:2, rest_seconds:60},
+        {exercise_id:'db_curl',            sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:60},
+      ]},
+      { day_index:1, day_label_en:'Lower A', day_label_tr:'Alt A', exercises:[
+        {exercise_id:'bb_back_squat',    sets:4, reps_low:5, reps_high:8, rir:2, rest_seconds:210},
+        {exercise_id:'bb_rdl',           sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:150},
+        {exercise_id:'machine_leg_press',sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:120},
+        {exercise_id:'machine_leg_curl', sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'db_calf_raise',    sets:4, reps_low:12,reps_high:20,rir:2, rest_seconds:60},
+      ]},
+      { day_index:2, day_label_en:'Upper B', day_label_tr:'Üst B', exercises:[
+        {exercise_id:'db_incline_press',   sets:4, reps_low:8, reps_high:12,rir:2, rest_seconds:120},
+        {exercise_id:'machine_cable_fly',  sets:3, reps_low:12,reps_high:20,rir:2, rest_seconds:90},
+        {exercise_id:'machine_cable_row',  sets:4, reps_low:8, reps_high:12,rir:2, rest_seconds:120},
+        {exercise_id:'machine_lat_pulldown',sets:3,reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'db_ohp',             sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'db_lateral_raise',   sets:4, reps_low:12,reps_high:20,rir:2, rest_seconds:60},
+        {exercise_id:'db_curl',            sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:60},
+        {exercise_id:'machine_pushdown',   sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:60},
+      ]},
+      { day_index:3, day_label_en:'Lower B', day_label_tr:'Alt B', exercises:[
+        {exercise_id:'bb_deadlift',      sets:4, reps_low:4, reps_high:8, rir:2, rest_seconds:210},
+        {exercise_id:'bb_front_squat',   sets:3, reps_low:6, reps_high:10,rir:2, rest_seconds:150},
+        {exercise_id:'machine_leg_ext',  sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'machine_leg_curl', sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'db_calf_raise',    sets:4, reps_low:15,reps_high:25,rir:2, rest_seconds:60},
+      ]},
+    ]
+  },
+  recomp_4day: {
+    days: [
+      { day_index:0, day_label_en:'Upper A', day_label_tr:'Üst A', exercises:[
+        {exercise_id:'db_bench_press',     sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'machine_lat_pulldown',sets:3,reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'db_ohp',             sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'db_curl',            sets:3, reps_low:12,reps_high:20,rir:2, rest_seconds:60},
+        {exercise_id:'machine_pushdown',   sets:3, reps_low:12,reps_high:20,rir:2, rest_seconds:60},
+      ]},
+      { day_index:1, day_label_en:'Lower A', day_label_tr:'Alt A', exercises:[
+        {exercise_id:'bb_back_squat',    sets:3, reps_low:8, reps_high:12,rir:2, rest_seconds:150},
+        {exercise_id:'bb_rdl',           sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:120},
+        {exercise_id:'machine_leg_press',sets:3, reps_low:12,reps_high:20,rir:2, rest_seconds:90},
+        {exercise_id:'machine_leg_curl', sets:3, reps_low:12,reps_high:20,rir:2, rest_seconds:90},
+      ]},
+      { day_index:2, day_label_en:'Upper B', day_label_tr:'Üst B', exercises:[
+        {exercise_id:'db_incline_press',  sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'machine_cable_row', sets:3, reps_low:10,reps_high:15,rir:2, rest_seconds:90},
+        {exercise_id:'db_lateral_raise',  sets:3, reps_low:12,reps_high:20,rir:2, rest_seconds:60},
+        {exercise_id:'machine_facepull',  sets:3, reps_low:15,reps_high:25,rir:2, rest_seconds:60},
+        {exercise_id:'db_curl',           sets:3, reps_low:12,reps_high:20,rir:2, rest_seconds:60},
+      ]},
+      { day_index:3, day_label_en:'Lower B', day_label_tr:'Alt B', exercises:[
+        {exercise_id:'bb_deadlift',      sets:3, reps_low:6, reps_high:10,rir:2, rest_seconds:180},
+        {exercise_id:'machine_leg_press',sets:3, reps_low:12,reps_high:20,rir:2, rest_seconds:90},
+        {exercise_id:'machine_leg_ext',  sets:3, reps_low:12,reps_high:20,rir:2, rest_seconds:90},
+        {exercise_id:'machine_leg_curl', sets:3, reps_low:12,reps_high:20,rir:2, rest_seconds:90},
+        {exercise_id:'db_calf_raise',    sets:4, reps_low:15,reps_high:25,rir:2, rest_seconds:60},
+      ]},
+    ]
+  },
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Get current day's prescription from static data */
+function getCurrentDayData(templateId, nextDayIndex) {
+  const prog = TEMPLATE_PROGRAM_DATA[templateId]
+  if (!prog) return null
+  return prog.days[nextDayIndex % prog.days.length] ?? null
+}
+
+/**
+ * Build exercise history map from logged sessions.
+ * Returns { [exerciseId]: Array<work-sets chronologically> }
+ */
+function buildExerciseHistory(sessions) {
+  const h = {}
+  const sorted = [...sessions].sort((a, b) => (a.session_date ?? '').localeCompare(b.session_date ?? ''))
+  for (const s of sorted) {
+    for (const ex of (s.exercises ?? [])) {
+      if (!h[ex.exercise_id]) h[ex.exercise_id] = []
+      for (const set of (ex.sets ?? [])) {
+        h[ex.exercise_id].push({ ...set, session_date: s.session_date })
+      }
+    }
+  }
+  return h
+}
+
+/**
+ * Compute gap_days per exercise from history.
+ * Returns { [exerciseId]: number|null }
+ */
+function buildGapDays(exerciseHistory, today = new Date().toISOString().slice(0, 10)) {
+  const gaps = {}
+  for (const [exId, sets] of Object.entries(exerciseHistory)) {
+    const dates = sets.map(s => s.session_date).filter(Boolean).sort()
+    const last  = dates[dates.length - 1]
+    if (!last) { gaps[exId] = null; continue }
+    const ms   = new Date(today) - new Date(last)
+    gaps[exId] = Math.floor(ms / 86_400_000)
+  }
+  return gaps
+}
+
 export default function GeneralFitness({ lang = 'en' }) {
   const t = (en, tr) => lang === 'tr' ? tr : en
 
@@ -89,6 +418,12 @@ export default function GeneralFitness({ lang = 'en' }) {
 
   const activeTemplate = STATIC_TEMPLATES.find(t => t.id === activeProgram?.templateId) ?? null
   const templateDayCount = activeTemplate?.days_per_week ?? 0
+
+  const exerciseHistory = buildExerciseHistory(sessions)
+  const gapDayMap       = buildGapDays(exerciseHistory)
+  const currentDay      = getCurrentDayData(activeProgram?.templateId, activeProgram?.next_day_index ?? 0)
+  const currentDayLabel = currentDay ? (lang === 'tr' ? currentDay.day_label_tr : currentDay.day_label_en) : ''
+  const programDays     = TEMPLATE_PROGRAM_DATA[activeProgram?.templateId]?.days ?? []
 
   function handleOnboardingComplete(data) {
     setActiveProgram({
@@ -192,7 +527,10 @@ export default function GeneralFitness({ lang = 'en' }) {
               </button>
               <SessionLogger
                 exercises={SEED_EXERCISES}
-                history={{}}
+                preloadedExercises={currentDay?.exercises ?? []}
+                history={exerciseHistory}
+                gapDays={gapDayMap}
+                initialLabel={currentDayLabel}
                 lang={lang}
                 onSave={handleSaveSession}
               />
@@ -203,7 +541,10 @@ export default function GeneralFitness({ lang = 'en' }) {
           {innerTab === 'log' && !showLogger && (
             <SessionLogger
               exercises={SEED_EXERCISES}
-              history={{}}
+              preloadedExercises={currentDay?.exercises ?? []}
+              history={exerciseHistory}
+              gapDays={gapDayMap}
+              initialLabel={currentDayLabel}
               lang={lang}
               onSave={handleSaveSession}
             />
@@ -216,8 +557,8 @@ export default function GeneralFitness({ lang = 'en' }) {
                 <div style={{ marginBottom: 20 }}>
                   <ProgramView
                     template={activeTemplate}
-                    templateDays={[]}
-                    templateExercises={[]}
+                    templateDays={programDays}
+                    templateExercises={SEED_EXERCISES}
                     exercises={SEED_EXERCISES}
                     lang={lang}
                   />

@@ -4,6 +4,18 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v12.3.1 — 2026-04-27 — General Fitness: wire history + prescription to SessionLogger + ProgramView
+GeneralFitness.jsx: compute exerciseHistory (buildExerciseHistory), gapDayMap (buildGapDays),
+currentDay (getCurrentDayData) on each render. Both SessionLogger instances (overlay + Log tab)
+now receive preloadedExercises, history, gapDays, initialLabel — prescription auto-populates
+rows, load suggestions fire, gap-aware deload/reorientation activates.
+ProgramView now receives programDays from TEMPLATE_PROGRAM_DATA and SEED_EXERCISES — full
+day-by-day exercise list visible in Program tab. 4274 tests green.
+DEPENDS ON: v12.3.0 (TEMPLATE_PROGRAM_DATA, buildExerciseHistory, buildGapDays, getCurrentDayData,
+  SessionLogger preloadedExercises/history/gapDays props)
+
+---
+
 ## v12.3.0 — 2026-04-27 — General Fitness: rotation pointer + no-shame resume protocol
 E1: Rotation pointer replaces calendar. user_programs: end_date dropped, start_date renamed
 reference_date, next_day_index + sessions_completed + last_session_date added (migration 20260474).
