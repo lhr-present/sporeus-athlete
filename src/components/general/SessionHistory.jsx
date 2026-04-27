@@ -5,8 +5,9 @@ import { S } from '../../styles.js'
 const card = { background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '12px 16px', marginBottom: 8, cursor: 'pointer' }
 const lbl  = { ...S.mono, fontSize: 9, color: '#666', letterSpacing: '0.08em' }
 
-export default function SessionHistory({ sessions = [], exercises = [], lang = 'en', onLogNew }) {
-  const [expanded, setExpanded] = useState(null)
+export default function SessionHistory({ sessions = [], exercises = [], lang = 'en', onLogNew, onDelete }) {
+  const [expanded, setExpanded]     = useState(null)
+  const [confirmDel, setConfirmDel] = useState(null) // session id pending delete
   const t = (en, tr) => lang === 'tr' ? tr : en
 
   const sorted = [...sessions].sort((a, b) =>
@@ -34,13 +35,15 @@ export default function SessionHistory({ sessions = [], exercises = [], lang = '
       )}
 
       {sorted.map((s, i) => {
-        const exList     = s.exercises ?? []
-        const workSets   = exList.flatMap(ex => (ex.sets ?? []).filter(set => !set.is_warmup))
-        const isOpen     = expanded === i
+        const sid      = s.id || String(i)
+        const exList   = s.exercises ?? []
+        const workSets = exList.flatMap(ex => (ex.sets ?? []).filter(set => !set.is_warmup))
+        const isOpen   = expanded === i
+        const isDel    = confirmDel === sid
 
         return (
-          <div key={s.id || i} style={{ ...card, borderColor: isOpen ? '#ff660044' : 'var(--border)' }}
-            onClick={() => setExpanded(isOpen ? null : i)}>
+          <div key={sid} style={{ ...card, borderColor: isOpen ? '#ff660044' : 'var(--border)' }}
+            onClick={e => { if (!e.target.closest('button')) setExpanded(isOpen ? null : i) }}>
 
             {/* Row header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -55,9 +58,25 @@ export default function SessionHistory({ sessions = [], exercises = [], lang = '
                   {s.rpe != null && ` · RPE ${s.rpe}`}
                 </div>
               </div>
-              <span style={{ ...S.mono, fontSize: 10, color: '#555', marginLeft: 12 }}>
-                {isOpen ? '▲' : '▼'}
-              </span>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0, marginLeft: 12 }}>
+                {isDel ? (
+                  <>
+                    <button onClick={e => { e.stopPropagation(); onDelete?.(sid); setConfirmDel(null) }}
+                      style={{ ...S.mono, fontSize: 9, padding: '2px 8px', border: '1px solid #e03030', background: 'transparent', color: '#e03030', borderRadius: 3, cursor: 'pointer' }}>
+                      {t('confirm', 'sil?')}
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); setConfirmDel(null) }}
+                      style={{ ...S.mono, fontSize: 9, padding: '2px 8px', border: '1px solid var(--border)', background: 'transparent', color: '#888', borderRadius: 3, cursor: 'pointer' }}>
+                      {t('cancel', 'vazgeç')}
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={e => { e.stopPropagation(); setConfirmDel(sid) }}
+                    style={{ ...S.mono, fontSize: 10, border: 'none', background: 'transparent', color: '#555', cursor: 'pointer', padding: '0 2px' }}
+                    title={t('Delete session', 'Seansı sil')}>✕</button>
+                )}
+                <span style={{ ...S.mono, fontSize: 10, color: '#555' }}>{isOpen ? '▲' : '▼'}</span>
+              </div>
             </div>
 
             {/* Expanded detail */}

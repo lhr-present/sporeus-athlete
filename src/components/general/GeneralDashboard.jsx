@@ -80,6 +80,13 @@ export default function GeneralDashboard({ sessions = [], exercises = [], active
   const templateName = activeTemplate ? (lang === 'tr' ? activeTemplate.name_tr : activeTemplate.name_en) : null
   const milestone = MILESTONES.find(n => n === sessCount) ?? null
 
+  // Week progress within the 4-week program block
+  const daysPerWeek   = activeTemplate?.days_per_week ?? 0
+  const totalWeeks    = activeTemplate?.weeks ?? 4
+  const currentWeek   = daysPerWeek > 0 ? Math.floor(sessCount / daysPerWeek) + 1 : null
+  const totalSessions = daysPerWeek * totalWeeks
+  const cycleJustDone = totalSessions > 0 && sessCount > 0 && sessCount % totalSessions === 0
+
   return (
     <div style={{ maxWidth: 560 }}>
 
@@ -175,6 +182,34 @@ export default function GeneralDashboard({ sessions = [], exercises = [], active
               </span>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* ── Week progress ────────────────────────────────── */}
+      {currentWeek && daysPerWeek > 0 && !cycleJustDone && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+          <div style={{ ...S.mono, fontSize: 10, color: '#888', whiteSpace: 'nowrap' }}>
+            {t('WEEK', 'HAFTA')} {Math.min(currentWeek, totalWeeks)} / {totalWeeks}
+          </div>
+          <div style={{ flex: 1, height: 4, background: 'var(--border)', borderRadius: 2 }}>
+            <div style={{
+              height: '100%',
+              width: `${Math.min((sessCount / totalSessions) * 100, 100)}%`,
+              background: '#ff6600',
+              borderRadius: 2,
+              transition: 'width 0.4s',
+            }} />
+          </div>
+          <div style={{ ...S.mono, fontSize: 9, color: '#555', whiteSpace: 'nowrap' }}>
+            {sessCount}/{totalSessions}
+          </div>
+        </div>
+      )}
+
+      {/* ── Cycle complete ────────────────────────────────── */}
+      {cycleJustDone && (
+        <div style={{ ...S.mono, fontSize: 10, color: '#ff6600', padding: '8px 12px', border: '1px solid #ff660044', borderRadius: 3, marginBottom: 14, letterSpacing: '0.06em' }}>
+          {t('Program block complete. Starting next cycle.', 'Program bloğu tamamlandı. Yeni döngü başlıyor.')}
         </div>
       )}
 

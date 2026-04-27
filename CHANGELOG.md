@@ -4,6 +4,19 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.5.0 — 2026-04-28 — Session delete, week progress bar, reset confirmation
+SessionHistory.jsx: per-session ✕ delete button with inline confirm/cancel — prevents
+  accidental deletion. Click ✕ → shows confirm + cancel inline; confirm calls onDelete.
+GeneralFitness.jsx: handleDeleteSession removes session by id, then recomputes rotation
+  from scratch: next_day_index = updated.length % templateDayCount, sessions_completed =
+  updated.length, last_session_date = latest remaining session. Syncs to Supabase.
+  Reset ⚙ button now shows window.confirm before wiping program — session history preserved.
+GeneralDashboard.jsx: WEEK X / Y progress bar (orange fill, session count / total shown)
+  based on sessions_completed vs days_per_week × weeks. Hides when cycleJustDone.
+  Cycle-complete banner fires when sessions_completed is an exact multiple of
+  (days_per_week × weeks): "Program block complete. Starting next cycle."
+DEPENDS ON: v8.4.0
+
 ## v8.4.0 — 2026-04-28 — Log tab history, program day highlight, UX fixes
 SessionHistory.jsx (NEW): Log tab now shows full session history — expandable cards
   per session with date, day label, exercise count, work sets, top load per exercise

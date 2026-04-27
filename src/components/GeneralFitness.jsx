@@ -520,6 +520,24 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
     setInnerTab('today')
   }
 
+  function handleDeleteSession(sessionId) {
+    const updated = sessions.filter(s => (s.id ?? String(sessions.indexOf(s))) !== sessionId)
+    setSessions(updated)
+    if (activeProgram && templateDayCount > 0) {
+      const lastDate = updated.length > 0
+        ? [...updated].sort((a, b) => (b.session_date ?? '').localeCompare(a.session_date ?? ''))[0].session_date
+        : null
+      const updatedProgram = {
+        ...activeProgram,
+        sessions_completed: updated.length,
+        next_day_index:     updated.length % templateDayCount,
+        last_session_date:  lastDate,
+      }
+      setActiveProgram(updatedProgram)
+      syncGeneralProgram(authUser?.id, updatedProgram, lang === 'tr' ? activeTemplate?.name_tr : activeTemplate?.name_en)
+    }
+  }
+
   function handleSelectTemplate(tmpl) {
     setActiveProgram(prev => ({
       ...prev,
@@ -559,7 +577,12 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
         ))}
         <button
           style={{ ...S.mono, fontSize: 10, padding: '6px 10px', border: '1px solid var(--border)', background: 'transparent', color: '#555', borderRadius: 3, cursor: 'pointer', marginLeft: 'auto' }}
-          onClick={() => { setOnboarded(false); setActiveProgram(null) }}
+          onClick={() => {
+            const msg = lang === 'tr'
+              ? 'Programı sıfırla? Seans geçmişin korunur.'
+              : 'Reset program setup? Your session history is kept.'
+            if (window.confirm(msg)) { setOnboarded(false); setActiveProgram(null) }
+          }}
           title={t('Reset program setup', 'Program kurulumunu sıfırla')}
         >⚙</button>
       </div>
@@ -615,6 +638,7 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
               exercises={SEED_EXERCISES}
               lang={lang}
               onLogNew={() => setShowLogger(true)}
+              onDelete={handleDeleteSession}
             />
           )}
 
