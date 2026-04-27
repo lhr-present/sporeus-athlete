@@ -4,6 +4,14 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v12.1.2 — 2026-04-27 — CI: disable auto-triggers on e2e + rls-pentest
+e2e-critical-paths: removed pull_request + push triggers (requires Supabase Pro branching).
+rls-pentest: removed weekly schedule cron (requires Supabase Pro branching + secrets).
+Both workflows remain manually triggerable via workflow_dispatch.
+Re-enable by restoring triggers once SUPABASE_ACCESS_TOKEN secret is configured.
+
+---
+
 ## v12.1.1 — 2026-04-27 — lint fix
 9 unused-var warnings → 0; restored --max-warnings 0 CI green. Removed dead ZONE_KEYS/ZONE_LABEL/ZONE_LABEL_TR (RaceGoalDashCard), unused `lang` (RaceGoalAnalyzerCard), unused currentPaces destructure (trainingBridge.js), unused STATUS + selectedProg (ProgramSelectorCard), unused isPlanConfirmed + statusColor imports (CoachGateCard).
 

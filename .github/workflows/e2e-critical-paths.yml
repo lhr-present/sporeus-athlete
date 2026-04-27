@@ -1,20 +1,9 @@
 name: E2E Critical Paths
 
 on:
-  pull_request:
-    paths:
-      - "src/**"
-      - "supabase/migrations/**"
-      - "supabase/functions/**"
-      - "tests/e2e/**"
-      - "tests/fixtures/**"
-      - "playwright.config.js"
-      - ".github/workflows/e2e-critical-paths.yml"
-  push:
-    branches: [main]
-    paths:
-      - "src/**"
-      - "supabase/migrations/**"
+  # Auto-triggers disabled until Supabase Pro branching is configured.
+  # Re-enable pull_request + push triggers once SUPABASE_ACCESS_TOKEN secret is set.
+  workflow_dispatch:
 
 # Cancel in-progress runs for the same PR
 concurrency:
