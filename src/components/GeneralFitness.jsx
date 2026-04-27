@@ -545,6 +545,7 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
           {innerTab === 'today' && !showLogger && (
             <GeneralDashboard
               sessions={sessions}
+              exercises={SEED_EXERCISES}
               activeProgram={activeProgram}
               activeTemplate={activeTemplate}
               coachConfirmedAt={coachConfirmedAt}

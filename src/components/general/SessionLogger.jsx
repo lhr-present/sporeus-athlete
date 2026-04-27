@@ -1,7 +1,7 @@
 // src/components/general/SessionLogger.jsx — set-by-set strength session logging
 import { useState, useEffect } from 'react'
 import { S } from '../../styles.js'
-import { suggestNextLoad } from '../../lib/athlete/strengthTraining.js'
+import { suggestNextLoad, plateCalculator } from '../../lib/athlete/strengthTraining.js'
 
 const card  = { background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '16px 20px', marginBottom: 12 }
 const inp   = { ...S.mono, fontSize: 12, padding: '6px 10px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 3, color: 'var(--text)', width: '100%' }
@@ -146,7 +146,10 @@ export default function SessionLogger({
               is_bodyweight: ex.equipment === 'bw',
             }, gap)
           : null
-        const pres = row.prescription
+        const pres   = row.prescription
+        const plates = sugg?.load_kg && ex?.equipment === 'bb'
+          ? plateCalculator(sugg.load_kg)
+          : null
 
         return (
           <div key={rowIdx} style={card}>
@@ -178,6 +181,16 @@ export default function SessionLogger({
               <button onClick={() => removeExercise(rowIdx)} style={{ ...S.mono, fontSize: 10, border: 'none', background: 'transparent', color: '#e03030', cursor: 'pointer', marginLeft: 12, alignSelf: 'flex-start' }}>✕</button>
             </div>
 
+            {/* First-session guidance — no history yet */}
+            {sugg?.reason === 'no_history' && ex?.equipment !== 'bw' && (
+              <div style={{ marginBottom: 10, padding: '6px 10px', background: '#0064ff11', borderRadius: 3 }}>
+                <div style={{ ...S.mono, fontSize: 10, color: '#0064ff' }}>
+                  {t('First session — start with a weight you can do 15+ reps comfortably. You\'ll calibrate over the next few sessions.',
+                     'İlk seans — 15+ tekrar rahatça yapabileceğin bir ağırlıkla başla. Sonraki seanslarda ayarlarsın.')}
+                </div>
+              </div>
+            )}
+
             {/* Suggestion line */}
             {sugg && sugg.reason !== 'no_history' && (
               <div style={{ marginBottom: 10, padding: '6px 10px', background: '#22aa4411', borderRadius: 3 }}>
@@ -187,6 +200,11 @@ export default function SessionLogger({
                   {sugg.reason === 'deload'     && <span style={{ color: '#e03030', marginLeft: 6 }}>{t('deload', 'hafifletme')}</span>}
                   {sugg.reason === 'gap_return' && <span style={{ color: '#888', marginLeft: 6 }}>{t('return', 'dönüş')}</span>}
                 </div>
+                {plates && !plates.barOnly && plates.plates.length > 0 && (
+                  <div style={{ ...S.mono, fontSize: 9, color: '#888', marginTop: 3 }}>
+                    {t('Plates per side', 'Her taraf')}: {plates.plates.map(p => `${p.kg}${p.count > 1 ? `×${p.count}` : ''}`).join(' + ')}
+                  </div>
+                )}
                 {sugg.reorientation && (
                   <div style={{ ...S.mono, fontSize: 10, color: '#888', marginTop: 3 }}>
                     {t('Coming back — light first session, listen to your body.', 'Geri dönüş — ilk seans hafif olsun, vücudunu dinle.')}
@@ -196,11 +214,17 @@ export default function SessionLogger({
             )}
 
             {/* Column headers */}
-            <div style={{ display: 'grid', gridTemplateColumns: '32px 1fr 1fr 60px 32px', gap: 6, marginBottom: 4 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '32px 1fr 1fr 60px 32px', gap: 6, marginBottom: rowIdx === 0 ? 2 : 4 }}>
               {['#', t('Reps','Tekrar'), t('kg','kg'), t('RIR','Yedek'), ''].map((h, i) => (
                 <span key={i} style={{ ...lbl, marginBottom: 0 }}>{h}</span>
               ))}
             </div>
+            {rowIdx === 0 && (
+              <div style={{ ...S.mono, fontSize: 9, color: '#444', marginBottom: 6 }}>
+                {t('RIR = reps left in tank · 2 = could do 2 more · 0 = max effort',
+                   'RIR = tankta kalan tekrar · 2 = 2 tane daha yapabilirsin · 0 = maksimum')}
+              </div>
+            )}
 
             {row.sets.map((s, si) => (
               <div key={si} style={{ display: 'grid', gridTemplateColumns: '32px 1fr 1fr 60px 32px', gap: 6, marginBottom: 4, alignItems: 'center' }}>

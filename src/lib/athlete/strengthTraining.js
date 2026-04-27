@@ -273,3 +273,56 @@ export function daysSinceLastSession(lastSessionDate, today = new Date()) {
   const last = new Date(lastSessionDate)
   return Math.floor((today - last) / 86_400_000)
 }
+
+// ── Plate Calculator ──────────────────────────────────────────────────────────
+
+/**
+ * Given a target barbell load, return the plates needed per side.
+ * Standard plate set: 20, 15, 10, 5, 2.5, 1.25 kg. Bar default 20 kg.
+ * @param {number} targetKg   - total weight including bar
+ * @param {number} [barKg=20] - bar weight
+ * @returns {{ barOnly: boolean, perSide: number, plates: Array<{kg: number, count: number}> } | null}
+ */
+export function plateCalculator(targetKg, barKg = 20) {
+  if (!targetKg || targetKg <= 0) return null
+  if (targetKg <= barKg) return { barOnly: true, perSide: 0, plates: [] }
+  const available = [20, 15, 10, 5, 2.5, 1.25]
+  const result = []
+  let rem = (targetKg - barKg) / 2
+  for (const p of available) {
+    const n = Math.floor(rem / p + 0.001)
+    if (n > 0) { result.push({ kg: p, count: n }); rem -= n * p }
+    if (rem < 0.01) break
+  }
+  return { barOnly: false, perSide: (targetKg - barKg) / 2, plates: result }
+}
+
+// ── Weekly Muscle Frequency ───────────────────────────────────────────────────
+
+/**
+ * Count how many times each muscle group was hit this week (Mon–Sun).
+ * A session "hits" a muscle if it contains at least one work set for an exercise
+ * where that muscle is primary.
+ * @param {Array<{session_date: string, exercises: Array<{exercise_id: string}>}>} sessions
+ * @param {Array<{id: string, primary_muscle: string}>} exerciseDefs
+ * @param {string} [weekStart] - ISO date "YYYY-MM-DD" for Monday; defaults to this week
+ * @returns {Object<string, number>} muscle → session count this week
+ */
+export function weeklyMuscleFrequency(sessions, exerciseDefs, weekStart) {
+  const today = new Date()
+  const monday = weekStart
+    ? new Date(weekStart)
+    : (() => { const d = new Date(today); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d })()
+  const mondayStr = monday.toISOString().slice(0, 10)
+
+  const muscleById = {}
+  for (const e of (exerciseDefs ?? [])) muscleById[e.id] = e.primary_muscle
+
+  const freq = {}
+  for (const s of (sessions ?? [])) {
+    if (!s.session_date || s.session_date < mondayStr) continue
+    const muscles = new Set((s.exercises ?? []).map(ex => muscleById[ex.exercise_id]).filter(Boolean))
+    for (const m of muscles) freq[m] = (freq[m] ?? 0) + 1
+  }
+  return freq
+}

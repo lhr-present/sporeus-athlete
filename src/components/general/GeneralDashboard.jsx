@@ -2,7 +2,7 @@
 // Leads with Next Session card. No streaks, no shame copy, no analytics push.
 import { useMemo } from 'react'
 import { S } from '../../styles.js'
-import { daysSinceLastSession } from '../../lib/athlete/strengthTraining.js'
+import { daysSinceLastSession, weeklyMuscleFrequency } from '../../lib/athlete/strengthTraining.js'
 
 // Template day structure for each built-in template
 const TEMPLATE_DAY_EXERCISES = {
@@ -40,7 +40,10 @@ const TEMPLATE_DAY_LABELS_TR = {
   recomp_4day:            ['Üst A','Alt A','Üst B','Alt B'],
 }
 
-export default function GeneralDashboard({ sessions = [], activeProgram = null, activeTemplate = null, coachConfirmedAt = null, estimatedMinutes = null, lang = 'en', onLogSession }) {
+const MUSCLE_LABEL = { quads:'Quads', hamstrings:'Hams', glutes:'Glutes', chest:'Chest', back:'Back', delts:'Delts', biceps:'Biceps', triceps:'Triceps', calves:'Calves', core:'Core', full:'Full' }
+const MUSCLE_LABEL_TR = { quads:'Ön Bacak', hamstrings:'Arka Bacak', glutes:'Kalça', chest:'Göğüs', back:'Sırt', delts:'Omuz', biceps:'Biseps', triceps:'Triseps', calves:'Baldır', core:'Karın', full:'Tam' }
+
+export default function GeneralDashboard({ sessions = [], exercises = [], activeProgram = null, activeTemplate = null, coachConfirmedAt = null, estimatedMinutes = null, lang = 'en', onLogSession }) {
   const t = (en, tr) => lang === 'tr' ? tr : en
 
   const days = daysSinceLastSession(activeProgram?.last_session_date)
@@ -64,6 +67,10 @@ export default function GeneralDashboard({ sessions = [], activeProgram = null, 
 
   // Recent sessions (last 3)
   const recent = [...sessions].sort((a, b) => b.session_date?.localeCompare(a.session_date ?? '') ?? 0).slice(0, 3)
+
+  // Weekly muscle frequency
+  const muscleFreq = useMemo(() => weeklyMuscleFrequency(sessions, exercises), [sessions, exercises])
+  const muscleEntries = Object.entries(muscleFreq).sort((a, b) => b[1] - a[1])
 
   // Reference strip
   const refDate = activeProgram?.reference_date
@@ -118,6 +125,22 @@ export default function GeneralDashboard({ sessions = [], activeProgram = null, 
       ) : activeTemplate && (
         <div style={{ ...S.mono, fontSize: 10, color: '#555', padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 3, marginBottom: 14 }}>
           {lang === 'tr' ? 'Antrenör onayı bekleniyor…' : 'Awaiting coach review…'}
+        </div>
+      )}
+
+      {/* ── This week: muscle frequency ───────────────────── */}
+      {muscleEntries.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ ...S.mono, fontSize: 10, color: '#888', letterSpacing: '0.08em', marginBottom: 6 }}>
+            {t('THIS WEEK', 'BU HAFTA')}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {muscleEntries.map(([muscle, count]) => (
+              <span key={muscle} style={{ ...S.mono, fontSize: 9, padding: '2px 8px', borderRadius: 3, border: '1px solid var(--border)', color: count >= 2 ? '#22aa44' : 'var(--muted)' }}>
+                {(lang === 'tr' ? MUSCLE_LABEL_TR : MUSCLE_LABEL)[muscle] ?? muscle} {count}×
+              </span>
+            ))}
+          </div>
         </div>
       )}
 

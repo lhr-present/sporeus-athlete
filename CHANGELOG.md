@@ -4,6 +4,21 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v12.3.4 — 2026-04-27 — General Fitness: plate calculator, first-session guidance, RIR hint, muscle frequency
+strengthTraining.js: plateCalculator(targetKg, barKg) — plates per side from standard set
+  (20/15/10/5/2.5/1.25 kg); weeklyMuscleFrequency(sessions, exerciseDefs) — counts how many
+  sessions each muscle was hit this week. 15 new tests (4289 total).
+SessionLogger: plate breakdown shown in suggestion line for barbell exercises
+  ("Plates per side: 20 + 10"); first-session guidance block for no_history (blue hint
+  "start with a weight you can do 15+ reps comfortably"); RIR footnote on first exercise
+  card only ("RIR = reps left in tank · 2 = could do 2 more · 0 = max effort").
+GeneralDashboard: THIS WEEK muscle frequency strip — each hit muscle shown as a pill
+  (green if ≥2×, dim if 1×); accepts exercises prop for frequency computation.
+  estimatedMinutes prop accepted but was already added in v12.3.3.
+DEPENDS ON: v12.3.3 (session shape s.exercises, SEED_EXERCISES with primary_muscle)
+
+---
+
 ## v12.3.3 — 2026-04-27 — General Fitness: fix analytics + ProgramView + beginner UX
 BUG: GeneralInsights read s.strength_sets — sessions are saved as s.exercises → analytics
   (volume chart, progression chart) were always empty. Fixed to read s.exercises with

@@ -11,6 +11,8 @@ import {
   suggestTemplate,
   advanceRotation,
   daysSinceLastSession,
+  plateCalculator,
+  weeklyMuscleFrequency,
 } from '../../athlete/strengthTraining.js'
 
 // ── estimate1RM ───────────────────────────────────────────────────────────────
@@ -490,5 +492,94 @@ describe('daysSinceLastSession', () => {
     const today = new Date('2026-04-27')
     const result = daysSinceLastSession('2026-04-20', today)
     expect(result).toBeGreaterThanOrEqual(0)
+  })
+})
+
+// ── plateCalculator ───────────────────────────────────────────────────────────
+describe('plateCalculator', () => {
+  it('returns null for null input', () => {
+    expect(plateCalculator(null)).toBeNull()
+  })
+  it('returns null for 0 kg', () => {
+    expect(plateCalculator(0)).toBeNull()
+  })
+  it('returns barOnly for load equal to bar weight', () => {
+    expect(plateCalculator(20)).toEqual({ barOnly: true, perSide: 0, plates: [] })
+  })
+  it('returns barOnly for load less than bar weight', () => {
+    expect(plateCalculator(10)).toEqual({ barOnly: true, perSide: 0, plates: [] })
+  })
+  it('60 kg = 20 kg bar + 20 per side', () => {
+    const r = plateCalculator(60)
+    expect(r.barOnly).toBe(false)
+    expect(r.perSide).toBe(20)
+    expect(r.plates).toEqual([{ kg: 20, count: 1 }])
+  })
+  it('100 kg = 20 kg bar + 40 per side (20+20)', () => {
+    const r = plateCalculator(100)
+    expect(r.perSide).toBe(40)
+    expect(r.plates).toEqual([{ kg: 20, count: 2 }])
+  })
+  it('80 kg = 20+10 per side', () => {
+    const r = plateCalculator(80)
+    expect(r.perSide).toBe(30)
+    expect(r.plates).toEqual([{ kg: 20, count: 1 }, { kg: 10, count: 1 }])
+  })
+  it('uses custom bar weight', () => {
+    const r = plateCalculator(50, 15)
+    expect(r.perSide).toBe(17.5)
+  })
+  it('handles 2.5 kg remainder', () => {
+    const r = plateCalculator(65)
+    expect(r.perSide).toBe(22.5)
+    const total = r.plates.reduce((s, p) => s + p.kg * p.count, 0)
+    expect(total).toBeCloseTo(22.5, 1)
+  })
+})
+
+// ── weeklyMuscleFrequency ─────────────────────────────────────────────────────
+describe('weeklyMuscleFrequency', () => {
+  const exDefs = [
+    { id: 'squat',  primary_muscle: 'quads' },
+    { id: 'bench',  primary_muscle: 'chest' },
+    { id: 'row',    primary_muscle: 'back'  },
+    { id: 'press',  primary_muscle: 'delts' },
+  ]
+
+  it('returns empty object with no sessions', () => {
+    expect(weeklyMuscleFrequency([], exDefs, '2026-04-21')).toEqual({})
+  })
+  it('counts one session correctly', () => {
+    const sessions = [{ session_date: '2026-04-21', exercises: [{ exercise_id: 'squat' }, { exercise_id: 'bench' }] }]
+    const r = weeklyMuscleFrequency(sessions, exDefs, '2026-04-21')
+    expect(r.quads).toBe(1)
+    expect(r.chest).toBe(1)
+    expect(r.back).toBeUndefined()
+  })
+  it('counts multiple sessions per muscle', () => {
+    const sessions = [
+      { session_date: '2026-04-21', exercises: [{ exercise_id: 'bench' }] },
+      { session_date: '2026-04-23', exercises: [{ exercise_id: 'bench' }] },
+    ]
+    const r = weeklyMuscleFrequency(sessions, exDefs, '2026-04-21')
+    expect(r.chest).toBe(2)
+  })
+  it('excludes sessions before week start', () => {
+    const sessions = [
+      { session_date: '2026-04-20', exercises: [{ exercise_id: 'squat' }] },
+      { session_date: '2026-04-21', exercises: [{ exercise_id: 'bench' }] },
+    ]
+    const r = weeklyMuscleFrequency(sessions, exDefs, '2026-04-21')
+    expect(r.quads).toBeUndefined()
+    expect(r.chest).toBe(1)
+  })
+  it('counts each muscle once per session even with multiple exercises', () => {
+    const sessions = [{ session_date: '2026-04-21', exercises: [{ exercise_id: 'squat' }, { exercise_id: 'squat' }] }]
+    const r = weeklyMuscleFrequency(sessions, exDefs, '2026-04-21')
+    expect(r.quads).toBe(1)
+  })
+  it('handles missing exercise_id gracefully', () => {
+    const sessions = [{ session_date: '2026-04-21', exercises: [{ exercise_id: 'unknown_ex' }] }]
+    expect(() => weeklyMuscleFrequency(sessions, exDefs, '2026-04-21')).not.toThrow()
   })
 })
