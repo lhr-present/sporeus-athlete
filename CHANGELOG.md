@@ -4,6 +4,19 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v12.2.0 — 2026-04-27 — General Fitness track: strength training for sedentary users
+New user track alongside endurance. Onboarding wizard (goal→experience→schedule→equipment),
+9 program templates (PPL, Upper/Lower, Full Body × bw/home/gym), 38 seed exercises (EN+TR),
+set-by-set SessionLogger with linear progression suggestions (suggestNextLoad), weekly
+volume chart against MEV/MAV/MRV (Schoenfeld 2017), progression SVG chart.
+Science: strengthTraining.js (estimate1RM Epley/Brzycki/Lombardi, rirToPercent1RM Helms 2016,
+volumeLandmarks, volumeStatus, suggestNextLoad, suggestTemplate). 76 new tests, 4251 total.
+DB: migrations 20260472 (7 new tables, RLS) + 20260473 (backfill endurance users).
+GYM/SALON tab added to nav. Zero endurance regressions.
+DEPENDS ON: profiles table (user_mode column), auth.users.
+
+---
+
 ## v12.1.8 — 2026-04-27 — CI: continue-on-error for migration step in e2e workflow
 Branch is created from production so schema is always current.
 Migration push fails only due to history drift (remote versions not in local dir).

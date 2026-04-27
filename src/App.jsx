@@ -55,6 +55,7 @@ const TestProtocols = lazy(() => import('./components/Protocols.jsx'))
 const Periodization = lazy(() => import('./components/Periodization.jsx'))
 const ReportsTab     = lazy(() => import('./components/ReportsTab.jsx'))
 const RaceReadiness  = lazy(() => import('./components/RaceReadiness.jsx'))
+const GeneralFitness = lazy(() => import('./components/GeneralFitness.jsx'))
 const UpgradeModal  = lazy(() => import('./components/UpgradeModal.jsx'))
 const GlobalSearch      = lazy(() => import('./components/GlobalSearch.jsx'))
 const SemanticSearch    = lazy(() => import('./components/SemanticSearch.jsx'))
@@ -463,6 +464,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
           {tab === 'sport'        && <AsyncBoundary name="Sport Plan"><SportProgramBuilder/></AsyncBoundary>}
           {tab === 'reports'      && <AsyncBoundary name="Reports"><ReportsTab authUser={authUser} authProfile={authProfile} lang={lang}/></AsyncBoundary>}
           {tab === 'race'         && <AsyncBoundary name="Race Readiness"><RaceReadiness /></AsyncBoundary>}
+          {tab === 'general'      && <AsyncBoundary name="General Fitness"><GeneralFitness lang={lang}/></AsyncBoundary>}
         </main>
 
         <footer style={S.footer}>
