@@ -4,6 +4,28 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.7.0 — 2026-04-28 — SessionLogger UX: suggested load pre-fill, auto rest timer, cleaned saves
+SessionLogger.jsx: suggested load pre-filled into all set inputs on open — no more retyping
+  the same number across 4 sets. buildRow() computes suggestNextLoad at init time and passes
+  the result into emptyRow() which sets load_kg for every set (skips bodyweight exercises).
+  useEffect re-init also calls buildRow so switching days re-applies fresh suggestions.
+SessionLogger.jsx: tapping ✓ (mark set done) now auto-starts the rest timer for that exercise
+  row (uses prescription rest_seconds or 90s default). Previously required a separate button
+  click after marking done — now one tap completes the set and starts the clock.
+SessionLogger.jsx: REST button shown for all exercises, not just prescribed ones (defaults 90s).
+SessionLogger.jsx: zero-rep sets are filtered out on save — pre-loaded rows the user didn't
+  fill in don't become ghost "0 reps" entries in history.
+SessionLogger.jsx: FINISH SESSION button gated by hasFilledSets (at least one set with reps>0)
+  instead of rows.length>0 — prevents saving blank template-preloaded sessions.
+SessionLogger.jsx: renamed local `exercises` in handleSave to `exerciseEntries` to avoid
+  shadowing the exercises prop.
+GeneralInsights.jsx: weekStart now uses Monday (consistent with weeklyMuscleFrequency).
+GeneralDashboard.jsx: RECENT sessions show exercise count and work-set count inline.
+ProgramTemplateGallery.jsx: "✓ Selected" button is non-interactive (cursor:default) when
+  already the active template.
+GeneralFitness.jsx: EQUIP_ALLOW moved to module scope.
+DEPENDS ON: v8.6.0
+
 ## v8.6.0 — 2026-04-28 — Template-switch counter reset, delete scoping fix, equipment filter
 GeneralFitness.jsx handleSelectTemplate: adds window.confirm dialog before switching;
   on confirm resets sessions_completed=0, reference_date=today, last_session_date=null,

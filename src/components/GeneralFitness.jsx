@@ -16,6 +16,9 @@ const ProgramView            = lazy(() => import('./general/ProgramView.jsx'))
 const ProgramTemplateGallery = lazy(() => import('./general/ProgramTemplateGallery.jsx'))
 const GeneralInsights        = lazy(() => import('./general/GeneralInsights.jsx'))
 
+// equipment value → allowed exercise equipment tags
+const EQUIP_ALLOW = { bw: ['bw'], home: ['bw', 'db'] }
+
 const INNER_TABS = [
   { id: 'today',    en: 'TODAY',    tr: 'BUGÜN' },
   { id: 'log',      en: 'LOG',      tr: 'KAYIT' },
@@ -451,7 +454,6 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
     : false
 
   // Filter exercises to equipment available in the active template
-  const EQUIP_ALLOW = { bw: ['bw'], home: ['bw', 'db'] }
   const filteredExercises = (() => {
     const eq = activeTemplate?.equipment
     const allowed = EQUIP_ALLOW[eq]

@@ -7,16 +7,18 @@ const card  = { background: 'var(--card-bg)', border: '1px solid var(--border)',
 const inp   = { ...S.mono, fontSize: 12, padding: '6px 10px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 3, color: 'var(--text)', width: '100%' }
 const lbl   = { ...S.mono, fontSize: 10, color: '#888', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }
 
-function emptyRow(exerciseId, prescription = null) {
+function emptyRow(exerciseId, prescription = null, suggestion = null, equipment = null) {
+  const isBW         = equipment === 'bw'
+  const suggestedLoad = (!isBW && suggestion?.load_kg) ? String(suggestion.load_kg) : ''
   const defaultSets = prescription
     ? Array.from({ length: prescription.sets }, (_, i) => ({
         set_number: i + 1,
         reps:       '',
-        load_kg:    '',
+        load_kg:    suggestedLoad,
         rir:        String(prescription.rir ?? 2),
         is_warmup:  false,
       }))
-    : [{ set_number: 1, reps: '', load_kg: '', rir: '', is_warmup: false }]
+    : [{ set_number: 1, reps: '', load_kg: suggestedLoad, rir: '', is_warmup: false }]
   return { exerciseId, prescription, sets: defaultSets }
 }
 
@@ -55,18 +57,25 @@ export default function SessionLogger({
     return () => clearTimeout(id)
   }, [restTimer])
 
+  function buildRow(pe) {
+    const ex   = exercises.find(e => e.id === pe.exercise_id)
+    const hist = (history[pe.exercise_id] ?? []).filter(s => !s?.is_warmup)
+    const gap  = gapDays[pe.exercise_id] ?? null
+    const sugg = ex
+      ? suggestNextLoad(hist, { reps_low: pe.reps_low, reps_high: pe.reps_high, is_bodyweight: ex.equipment === 'bw' }, gap)
+      : null
+    return emptyRow(pe.exercise_id, pe, sugg, ex?.equipment)
+  }
+
   // Build initial rows from preloaded exercises (template prescription)
-  const [rows, setRows] = useState(() => {
-    if (preloadedExercises.length > 0) {
-      return preloadedExercises.map(pe => emptyRow(pe.exercise_id, pe))
-    }
-    return []
-  })
+  const [rows, setRows] = useState(() =>
+    preloadedExercises.length > 0 ? preloadedExercises.map(buildRow) : []
+  )
 
   // Re-init when preloaded exercises change (e.g. different day opened)
   useEffect(() => {
     if (preloadedExercises.length > 0) {
-      setRows(preloadedExercises.map(pe => emptyRow(pe.exercise_id, pe)))
+      setRows(preloadedExercises.map(buildRow))
       setDayLabel(initialLabel)
     }
   }, [preloadedExercises.map(e => e.exercise_id).join(','), initialLabel])
@@ -95,26 +104,32 @@ export default function SessionLogger({
   }
 
   function handleSave() {
+    const exerciseEntries = rows.map(row => ({
+      exercise_id: row.exerciseId,
+      sets: row.sets
+        .filter(s => parseInt(s.reps) > 0)
+        .map(s => ({
+          set_number: s.set_number,
+          reps:       parseInt(s.reps),
+          load_kg:    s.load_kg ? parseFloat(s.load_kg) : null,
+          rir:        s.rir !== '' ? parseInt(s.rir) : null,
+          is_warmup:  s.is_warmup,
+        }))
+    })).filter(ex => ex.sets.length > 0)
+
     const session = {
       day_label:        dayLabel,
       notes,
       rpe:              rpe ? parseInt(rpe) : null,
       duration_minutes: null,
-      exercises: rows.map(row => ({
-        exercise_id: row.exerciseId,
-        sets: row.sets.map(s => ({
-          set_number: s.set_number,
-          reps:       parseInt(s.reps) || 0,
-          load_kg:    s.load_kg ? parseFloat(s.load_kg) : null,
-          rir:        s.rir !== '' ? parseInt(s.rir) : null,
-          is_warmup:  s.is_warmup,
-        }))
-      }))
+      exercises:        exerciseEntries,
     }
     onSave?.(session)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
+
+  const hasFilledSets = rows.some(row => row.sets.some(s => parseInt(s.reps) > 0))
 
   return (
     <div style={{ maxWidth: 600 }}>
@@ -258,7 +273,14 @@ export default function SessionLogger({
                     title={t('Toggle warmup', 'Isınma olarak işaretle')}
                     onClick={() => updateSet(rowIdx, si, 'is_warmup', !s.is_warmup)}>W</button>
                   <button
-                    onClick={() => setDoneSets(d => ({ ...d, [doneKey]: !d[doneKey] }))}
+                    onClick={() => {
+                      const wasAlreadyDone = doneSets[doneKey]
+                      setDoneSets(d => ({ ...d, [doneKey]: !d[doneKey] }))
+                      if (!wasAlreadyDone) {
+                        const secs = pres?.rest_seconds ?? 90
+                        setRestTimer({ rowIdx, seconds: secs, total: secs })
+                      }
+                    }}
                     style={{ ...S.mono, fontSize: 11, border: `1px solid ${isDone ? '#22aa44' : 'var(--border)'}`, background: isDone ? '#22aa4422' : 'transparent', color: isDone ? '#22aa44' : '#555', borderRadius: 3, cursor: 'pointer', padding: '4px 2px' }}
                     title={t('Mark set done', 'Seti tamamla')}>✓</button>
                 </div>
@@ -271,11 +293,11 @@ export default function SessionLogger({
               </button>
 
               {/* Rest timer trigger */}
-              {pres?.rest_seconds && restTimer?.rowIdx !== rowIdx && (
+              {restTimer?.rowIdx !== rowIdx && (
                 <button
-                  onClick={() => setRestTimer({ rowIdx, seconds: pres.rest_seconds, total: pres.rest_seconds })}
+                  onClick={() => { const secs = pres?.rest_seconds ?? 90; setRestTimer({ rowIdx, seconds: secs, total: secs }) }}
                   style={{ ...S.mono, fontSize: 10, padding: '4px 10px', border: '1px solid #0064ff44', background: 'transparent', color: '#0064ff', borderRadius: 3, cursor: 'pointer' }}>
-                  REST {pres.rest_seconds}s
+                  REST {pres?.rest_seconds ?? 90}s
                 </button>
               )}
 
@@ -308,9 +330,9 @@ export default function SessionLogger({
       </div>
 
       <button
-        disabled={rows.length === 0}
+        disabled={!hasFilledSets}
         onClick={handleSave}
-        style={{ ...S.mono, fontSize: 12, padding: '10px 24px', border: 'none', background: rows.length > 0 ? '#ff6600' : '#333', color: rows.length > 0 ? '#fff' : '#555', borderRadius: 3, cursor: rows.length > 0 ? 'pointer' : 'not-allowed', width: '100%' }}>
+        style={{ ...S.mono, fontSize: 12, padding: '10px 24px', border: 'none', background: hasFilledSets ? '#ff6600' : '#333', color: hasFilledSets ? '#fff' : '#555', borderRadius: 3, cursor: hasFilledSets ? 'pointer' : 'not-allowed', width: '100%' }}>
         {saved ? (lang === 'tr' ? '✓ KAYDEDİLDİ' : '✓ SAVED') : (lang === 'tr' ? 'ANTRENMANIM BİTTİ' : 'FINISH SESSION')}
       </button>
     </div>

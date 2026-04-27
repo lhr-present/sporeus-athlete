@@ -229,12 +229,20 @@ export default function GeneralDashboard({ sessions = [], exercises = [], active
           <div style={{ ...S.mono, fontSize: 10, color: '#888', letterSpacing: '0.08em', marginBottom: 8 }}>
             {t('RECENT', 'SON SEANSLAR')}
           </div>
-          {recent.map((s, i) => (
-            <div key={i} style={{ ...S.mono, fontSize: 11, color: 'var(--text)', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
-              {s.session_date} · {s.day_label || t('Session', 'Seans')}
-              {s.rpe ? <span style={{ color: '#888', marginLeft: 8 }}>RPE {s.rpe}</span> : ''}
-            </div>
-          ))}
+          {recent.map((s, i) => {
+            const exCount  = (s.exercises ?? []).length
+            const workSets = (s.exercises ?? []).flatMap(ex => (ex.sets ?? []).filter(set => !set.is_warmup)).length
+            return (
+              <div key={i} style={{ ...S.mono, fontSize: 11, color: 'var(--text)', padding: '6px 0', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <span>{s.session_date} · {s.day_label || t('Session', 'Seans')}</span>
+                <span style={{ color: '#555', fontSize: 10 }}>
+                  {exCount > 0 && `${exCount} ${t('ex', 'egz')}`}
+                  {workSets > 0 && ` · ${workSets} ${t('sets', 'set')}`}
+                  {s.rpe ? <span style={{ marginLeft: 6 }}>RPE {s.rpe}</span> : ''}
+                </span>
+              </div>
+            )
+          })}
         </div>
       )}
 

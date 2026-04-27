@@ -44,8 +44,8 @@ export default function ProgramTemplateGallery({ templates = [], activeId = null
                   {isActive && <span style={{ ...S.mono, fontSize: 9, color: '#ff6600', marginLeft: 8, border: '1px solid #ff6600', borderRadius: 2, padding: '1px 5px' }}>{lang === 'tr' ? 'AKTİF' : 'ACTIVE'}</span>}
                 </div>
                 <button
-                  onClick={() => onSelect?.(t)}
-                  style={{ ...S.mono, fontSize: 10, padding: '4px 10px', border: '1px solid var(--border)', background: isActive ? '#ff660022' : 'transparent', color: isActive ? '#ff6600' : '#888', borderRadius: 3, cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: 8 }}>
+                  onClick={() => !isActive && onSelect?.(t)}
+                  style={{ ...S.mono, fontSize: 10, padding: '4px 10px', border: `1px solid ${isActive ? '#ff660044' : 'var(--border)'}`, background: isActive ? '#ff660022' : 'transparent', color: isActive ? '#ff6600' : '#888', borderRadius: 3, cursor: isActive ? 'default' : 'pointer', whiteSpace: 'nowrap', marginLeft: 8 }}>
                   {isActive ? (lang === 'tr' ? '✓ Seçili' : '✓ Selected') : (lang === 'tr' ? 'Seç' : 'Select')}
                 </button>
               </div>
