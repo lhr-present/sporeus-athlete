@@ -10,6 +10,7 @@ export default function SessionHistory({ sessions = [], exercises = [], lang = '
   const [confirmDel, setConfirmDel] = useState(null) // session id pending delete
   const t = (en, tr) => lang === 'tr' ? tr : en
 
+  const today  = new Date().toISOString().slice(0, 10)
   const sorted = [...sessions].sort((a, b) =>
     (b.session_date ?? '').localeCompare(a.session_date ?? '')
   )
@@ -40,6 +41,7 @@ export default function SessionHistory({ sessions = [], exercises = [], lang = '
         const workSets = exList.flatMap(ex => (ex.sets ?? []).filter(set => !set.is_warmup))
         const isOpen   = expanded === i
         const isDel    = confirmDel === sid
+        const isToday  = s.session_date === today
 
         return (
           <div key={sid} style={{ ...card, borderColor: isOpen ? '#ff660044' : 'var(--border)' }}
@@ -50,6 +52,7 @@ export default function SessionHistory({ sessions = [], exercises = [], lang = '
               <div>
                 <div style={{ ...S.mono, fontSize: 12, color: 'var(--text)', marginBottom: 3 }}>
                   {s.session_date ?? '—'}
+                  {isToday && <span style={{ color: '#22aa44', marginLeft: 8, fontSize: 9, border: '1px solid #22aa4444', borderRadius: 2, padding: '1px 5px' }}>{t('TODAY', 'BUGÜN')}</span>}
                   {s.day_label && <span style={{ color: '#888', marginLeft: 10 }}>{s.day_label}</span>}
                 </div>
                 <div style={{ ...lbl }}>

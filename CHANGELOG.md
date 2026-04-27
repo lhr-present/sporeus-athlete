@@ -4,6 +4,25 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.8.0 — 2026-04-28 — BW chart fix, duplicate data removal, exercise dropdown groups, UX polish
+ProgressionChart.jsx: added `isBW` prop — BW exercises now show max-reps progression instead of
+  0 kg flat line. Y-axis labels, tooltips, and header ("MAX REPS" vs "TOP SET PROGRESSION")
+  all switch based on isBW.
+GeneralInsights.jsx: getProgressData receives isBW flag; BW exercises select top set by reps
+  instead of by load. Passes isBW to ProgressionChart.
+GeneralDashboard.jsx: removed ~90 lines of hardcoded TEMPLATE_DAY_EXERCISES and
+  TEMPLATE_DAY_LABELS_EN/TR — single source of truth divergence risk eliminated. Dashboard
+  now derives next-session exercise names and day label from currentDay prop (TEMPLATE_PROGRAM_DATA)
+  via SEED_EXERCISES lookup, exactly like the SessionLogger does.
+  Week progress bar now wraps per cycle: displaySess = sessCount % totalSessions so cycle 2
+  starts at 0/16 instead of showing 17/16.
+GeneralFitness.jsx: passes currentDay prop to GeneralDashboard.
+SessionHistory.jsx: sessions logged today show a green "TODAY" badge inline with the date.
+SessionLogger.jsx: exercise "Add Exercise" dropdown now uses <optgroup> by movement pattern
+  (Squat / Hinge-Hip / Push-Horiz / Push-Vert / Pull-Horiz / Pull-Vert / Isolation / Core)
+  instead of a flat 38-item list. Patterns and labels defined as module-scope constants.
+DEPENDS ON: v8.7.0
+
 ## v8.7.0 — 2026-04-28 — SessionLogger UX: suggested load pre-fill, auto rest timer, cleaned saves
 SessionLogger.jsx: suggested load pre-filled into all set inputs on open — no more retyping
   the same number across 4 sets. buildRow() computes suggestNextLoad at init time and passes

@@ -7,6 +7,12 @@ const card  = { background: 'var(--card-bg)', border: '1px solid var(--border)',
 const inp   = { ...S.mono, fontSize: 12, padding: '6px 10px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 3, color: 'var(--text)', width: '100%' }
 const lbl   = { ...S.mono, fontSize: 10, color: '#888', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }
 
+const PATTERN_ORDER = ['squat','hinge','push_h','push_v','pull_h','pull_v','iso','core']
+const PATTERN_LABELS = {
+  en: { squat:'Squat', hinge:'Hinge / Hip', push_h:'Push (Horiz)', push_v:'Push (Vert)', pull_h:'Pull (Horiz)', pull_v:'Pull (Vert)', iso:'Isolation', core:'Core' },
+  tr: { squat:'Squat', hinge:'Menteşe / Kalça', push_h:'İtiş (Yatay)', push_v:'İtiş (Dikey)', pull_h:'Çekiş (Yatay)', pull_v:'Çekiş (Dikey)', iso:'İzolasyon', core:'Karın/Core' },
+}
+
 function emptyRow(exerciseId, prescription = null, suggestion = null, equipment = null) {
   const isBW         = equipment === 'bw'
   const suggestedLoad = (!isBW && suggestion?.load_kg) ? String(suggestion.load_kg) : ''
@@ -153,9 +159,17 @@ export default function SessionLogger({
         <span style={lbl}>{t('Add Exercise', 'Egzersiz Ekle')}</span>
         <select style={{ ...inp, cursor: 'pointer' }} onChange={e => { addExercise(e.target.value); e.target.value = '' }} defaultValue="">
           <option value="" disabled>{t('Select exercise…', 'Egzersiz seç…')}</option>
-          {exercises.map(ex => (
-            <option key={ex.id} value={ex.id}>{lang === 'tr' ? ex.name_tr : ex.name_en}</option>
-          ))}
+          {PATTERN_ORDER.map(pat => {
+            const group = exercises.filter(e => e.pattern === pat)
+            if (group.length === 0) return null
+            return (
+              <optgroup key={pat} label={PATTERN_LABELS[lang === 'tr' ? 'tr' : 'en'][pat] ?? pat}>
+                {group.map(ex => (
+                  <option key={ex.id} value={ex.id}>{lang === 'tr' ? ex.name_tr : ex.name_en}</option>
+                ))}
+              </optgroup>
+            )
+          })}
         </select>
       </div>
 

@@ -4,60 +4,25 @@ import { useMemo } from 'react'
 import { S } from '../../styles.js'
 import { daysSinceLastSession, weeklyMuscleFrequency } from '../../lib/athlete/strengthTraining.js'
 
-// Template day structure for each built-in template
-const TEMPLATE_DAY_EXERCISES = {
-  bw_starter_3day:        [['Push-Up','Bodyweight Squat','Glute Bridge','Plank','Dead Bug'],            ['Push-Up','Bodyweight Squat','Glute Bridge','Plank','Dead Bug'], ['Push-Up','Bodyweight Squat','Glute Bridge','Plank','Dead Bug']],
-  fb_3day_beginner:       [['Barbell Back Squat','Barbell Bench Press','Barbell Row','Barbell Overhead Press','Romanian Deadlift'], ['Barbell Back Squat','Barbell Bench Press','Barbell Row','Barbell Overhead Press','Romanian Deadlift'], ['Barbell Back Squat','Barbell Bench Press','Barbell Row','Barbell Overhead Press','Romanian Deadlift']],
-  ul_4day_beginner:       [['Barbell Bench Press','DB Shoulder Press','Barbell Row','Lat Pulldown','DB Bicep Curl','Tricep Pushdown'], ['Barbell Back Squat','Romanian Deadlift','Leg Press','Lying Leg Curl','DB Calf Raise'], ['DB Incline Press','DB Shoulder Press','Seated Cable Row','Lat Pulldown','DB Bicep Curl','Tricep Pushdown'], ['Barbell Deadlift','Barbell Back Squat','Leg Extension','Lying Leg Curl','DB Calf Raise']],
-  ul_4day_intermediate:   [['Barbell Bench Press','DB Incline Press','DB Shoulder Press','Barbell Row','Lat Pulldown','Face Pull','DB Bicep Curl'], ['Barbell Back Squat','Romanian Deadlift','Leg Press','Lying Leg Curl','DB Calf Raise'], ['DB Incline Press','Cable Crossover Fly','DB Shoulder Press','Seated Cable Row','Lat Pulldown','DB Bicep Curl','Tricep Pushdown'], ['Barbell Deadlift','Barbell Front Squat','Leg Extension','Lying Leg Curl','DB Calf Raise']],
-  ppl_3day_beginner:      [['Barbell Bench Press','DB Shoulder Press','DB Incline Press','Tricep Pushdown','DB Lateral Raise'], ['Barbell Row','Lat Pulldown','Seated Cable Row','DB Bicep Curl','Face Pull'], ['Barbell Back Squat','Romanian Deadlift','Leg Press','Lying Leg Curl','DB Calf Raise']],
-  ppl_6day_intermediate:  [['Barbell Bench Press','DB Incline Press','Cable Crossover Fly','DB Shoulder Press','DB Lateral Raise','Tricep Pushdown'], ['Barbell Row','Lat Pulldown','Seated Cable Row','Face Pull','DB Bicep Curl','Cable Curl'], ['Barbell Back Squat','Romanian Deadlift','Leg Press','Leg Extension','Lying Leg Curl','DB Calf Raise'], ['DB Bench Press','DB Incline Press','Cable Crossover Fly','DB Shoulder Press','DB Lateral Raise','DB Overhead Tricep Ext'], ['Pull-Up','Barbell Row','Seated Cable Row','Face Pull','DB Bicep Curl','Band Pull-Apart'], ['Barbell Deadlift','Barbell Back Squat','Leg Press','Leg Extension','Lying Leg Curl','DB Calf Raise']],
-  home_db_3day:           [['DB Bench Press','DB Shoulder Press','DB Overhead Tricep Ext','DB Lateral Raise','Glute Bridge'], ['DB Single-Arm Row','DB Bicep Curl','Band Row','Band Pull-Apart','Dead Bug'], ['DB Goblet Squat','DB Romanian Deadlift','DB Reverse Lunge','DB Calf Raise','Plank']],
-  home_db_4day:           [['DB Bench Press','DB Incline Press','DB Shoulder Press','DB Lateral Raise','DB Overhead Tricep Ext'], ['DB Goblet Squat','DB Romanian Deadlift','DB Reverse Lunge','DB Calf Raise'], ['DB Single-Arm Row','DB Bicep Curl','Band Row','Band Pull-Apart','Dead Bug'], ['DB Goblet Squat','DB Romanian Deadlift','DB Reverse Lunge','DB Calf Raise','Plank']],
-  recomp_4day:            [['DB Bench Press','DB Shoulder Press','Lat Pulldown','DB Bicep Curl','Tricep Pushdown'], ['Barbell Back Squat','Romanian Deadlift','Leg Press','Lying Leg Curl'], ['DB Incline Press','DB Lateral Raise','Seated Cable Row','Face Pull','DB Bicep Curl'], ['Barbell Deadlift','Leg Press','Leg Extension','Lying Leg Curl','DB Calf Raise']],
-}
-
-const TEMPLATE_DAY_LABELS_EN = {
-  bw_starter_3day:        ['Full Body A','Full Body B','Full Body C'],
-  fb_3day_beginner:       ['Full Body A','Full Body B','Full Body C'],
-  ul_4day_beginner:       ['Upper A','Lower A','Upper B','Lower B'],
-  ul_4day_intermediate:   ['Upper A','Lower A','Upper B','Lower B'],
-  ppl_3day_beginner:      ['Push','Pull','Legs'],
-  ppl_6day_intermediate:  ['Push A','Pull A','Legs A','Push B','Pull B','Legs B'],
-  home_db_3day:           ['Push','Pull','Legs'],
-  home_db_4day:           ['Upper A','Lower A','Upper B','Lower B'],
-  recomp_4day:            ['Upper A','Lower A','Upper B','Lower B'],
-}
-const TEMPLATE_DAY_LABELS_TR = {
-  bw_starter_3day:        ['Tüm Vücut A','Tüm Vücut B','Tüm Vücut C'],
-  fb_3day_beginner:       ['Tüm Vücut A','Tüm Vücut B','Tüm Vücut C'],
-  ul_4day_beginner:       ['Üst A','Alt A','Üst B','Alt B'],
-  ul_4day_intermediate:   ['Üst A','Alt A','Üst B','Alt B'],
-  ppl_3day_beginner:      ['İtiş','Çekiş','Bacak'],
-  ppl_6day_intermediate:  ['İtiş A','Çekiş A','Bacak A','İtiş B','Çekiş B','Bacak B'],
-  home_db_3day:           ['İtiş','Çekiş','Bacak'],
-  home_db_4day:           ['Üst A','Alt A','Üst B','Alt B'],
-  recomp_4day:            ['Üst A','Alt A','Üst B','Alt B'],
-}
-
-const MUSCLE_LABEL = { quads:'Quads', hamstrings:'Hams', glutes:'Glutes', chest:'Chest', back:'Back', delts:'Delts', biceps:'Biceps', triceps:'Triceps', calves:'Calves', core:'Core', full:'Full' }
+const MUSCLE_LABEL    = { quads:'Quads', hamstrings:'Hams', glutes:'Glutes', chest:'Chest', back:'Back', delts:'Delts', biceps:'Biceps', triceps:'Triceps', calves:'Calves', core:'Core', full:'Full' }
 const MUSCLE_LABEL_TR = { quads:'Ön Bacak', hamstrings:'Arka Bacak', glutes:'Kalça', chest:'Göğüs', back:'Sırt', delts:'Omuz', biceps:'Biseps', triceps:'Triseps', calves:'Baldır', core:'Karın', full:'Tam' }
+const MILESTONES      = [1, 5, 10, 25, 50, 100]
 
-const MILESTONES = [1, 5, 10, 25, 50, 100]
-
-export default function GeneralDashboard({ sessions = [], exercises = [], activeProgram = null, activeTemplate = null, coachConfirmedAt = null, estimatedMinutes = null, deloadHint = false, lastSessionPRs = [], onDismissPRs, lang = 'en', onLogSession }) {
+export default function GeneralDashboard({ sessions = [], exercises = [], activeProgram = null, activeTemplate = null, currentDay = null, coachConfirmedAt = null, estimatedMinutes = null, deloadHint = false, lastSessionPRs = [], onDismissPRs, lang = 'en', onLogSession }) {
   const t = (en, tr) => lang === 'tr' ? tr : en
 
   const days = daysSinceLastSession(activeProgram?.last_session_date)
 
-  // Next session info
-  const nextDayIdx    = activeProgram?.next_day_index ?? 0
-  const templateId    = activeTemplate?.id ?? ''
-  const dayLabels     = (lang === 'tr' ? TEMPLATE_DAY_LABELS_TR : TEMPLATE_DAY_LABELS_EN)[templateId] ?? []
-  const dayExercises  = TEMPLATE_DAY_EXERCISES[templateId]?.[nextDayIdx] ?? []
-  const dayLabel      = dayLabels[nextDayIdx] ?? t('Next Session', 'Sonraki Seans')
-  const previewExs    = dayExercises.slice(0, 4)
-  const hasMore       = dayExercises.length > 4
+  // Next session info — derived from currentDay + exercise definitions
+  const cdExercises = currentDay?.exercises ?? []
+  const dayLabel    = currentDay
+    ? (lang === 'tr' ? currentDay.day_label_tr : currentDay.day_label_en)
+    : t('Next Session', 'Sonraki Seans')
+  const previewExs  = cdExercises.slice(0, 4).map(ce => {
+    const def = exercises.find(e => e.id === ce.exercise_id)
+    return def ? (lang === 'tr' ? def.name_tr : def.name_en) : ce.exercise_id
+  })
+  const hasMore     = cdExercises.length > 4
 
   // Friendly gap line — descriptive, never prescriptive
   const gapLine = useMemo(() => {
@@ -80,12 +45,14 @@ export default function GeneralDashboard({ sessions = [], exercises = [], active
   const templateName = activeTemplate ? (lang === 'tr' ? activeTemplate.name_tr : activeTemplate.name_en) : null
   const milestone = MILESTONES.find(n => n === sessCount) ?? null
 
-  // Week progress within the 4-week program block
-  const daysPerWeek   = activeTemplate?.days_per_week ?? 0
-  const totalWeeks    = activeTemplate?.weeks ?? 4
-  const currentWeek   = daysPerWeek > 0 ? Math.floor(sessCount / daysPerWeek) + 1 : null
-  const totalSessions = daysPerWeek * totalWeeks
-  const cycleJustDone = totalSessions > 0 && sessCount > 0 && sessCount % totalSessions === 0
+  // Week progress within the 4-week program block (wraps per cycle)
+  const daysPerWeek      = activeTemplate?.days_per_week ?? 0
+  const totalWeeks       = activeTemplate?.weeks ?? 4
+  const totalSessions    = daysPerWeek * totalWeeks
+  const cycleJustDone    = totalSessions > 0 && sessCount > 0 && sessCount % totalSessions === 0
+  const sessInCycle      = totalSessions > 0 ? sessCount % totalSessions : 0
+  const displaySess      = cycleJustDone ? totalSessions : sessInCycle
+  const currentWeek      = daysPerWeek > 0 ? Math.floor(displaySess / daysPerWeek) + 1 : null
 
   return (
     <div style={{ maxWidth: 560 }}>
@@ -194,14 +161,14 @@ export default function GeneralDashboard({ sessions = [], exercises = [], active
           <div style={{ flex: 1, height: 4, background: 'var(--border)', borderRadius: 2 }}>
             <div style={{
               height: '100%',
-              width: `${Math.min((sessCount / totalSessions) * 100, 100)}%`,
+              width: `${(displaySess / totalSessions) * 100}%`,
               background: '#ff6600',
               borderRadius: 2,
               transition: 'width 0.4s',
             }} />
           </div>
           <div style={{ ...S.mono, fontSize: 9, color: '#555', whiteSpace: 'nowrap' }}>
-            {sessCount}/{totalSessions}
+            {displaySess}/{totalSessions}
           </div>
         </div>
       )}

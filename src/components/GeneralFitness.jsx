@@ -629,6 +629,7 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
               exercises={SEED_EXERCISES}
               activeProgram={activeProgram}
               activeTemplate={activeTemplate}
+              currentDay={currentDay}
               coachConfirmedAt={coachConfirmedAt}
               estimatedMinutes={estimatedMinutes}
               deloadHint={deloadHint}

@@ -41,13 +41,17 @@ export default function GeneralInsights({ sessions = [], exercises = [], lang = 
       .slice(0, 4)
   }, [sessions])
 
-  function getProgressData(exerciseId) {
+  function getProgressData(exerciseId, isBW = false) {
     return sessions
       .filter(s => s.exercises?.some(ex => ex.exercise_id === exerciseId))
       .map(s => {
         const exData = s.exercises.find(ex => ex.exercise_id === exerciseId)
         const sets   = (exData?.sets ?? []).filter(x => !x.is_warmup)
-        const top    = sets.reduce((best, x) => (!best || (x.load_kg ?? 0) > (best.load_kg ?? 0)) ? x : best, null)
+        const top    = sets.reduce((best, x) => {
+          const val     = isBW ? (x.reps ?? 0)     : (x.load_kg ?? 0)
+          const bestVal = isBW ? (best?.reps ?? 0)  : (best?.load_kg ?? 0)
+          return (!best || val > bestVal) ? x : best
+        }, null)
         return { session_date: s.session_date, load_kg: top?.load_kg ?? 0, reps: top?.reps ?? 0 }
       })
   }
@@ -72,12 +76,14 @@ export default function GeneralInsights({ sessions = [], exercises = [], lang = 
             {t('TOP SET PROGRESSION', 'ÜSTTEN SET İLERLEME')}
           </div>
           {progressExercises.map(exId => {
-            const ex = exercises.find(e => e.id === exId)
+            const ex   = exercises.find(e => e.id === exId)
+            const isBW = ex?.equipment === 'bw'
             return (
               <div key={exId} style={{ marginBottom: 14 }}>
                 <ProgressionChart
-                  data={getProgressData(exId)}
+                  data={getProgressData(exId, isBW)}
                   exerciseName={ex ? (lang === 'tr' ? ex.name_tr : ex.name_en) : exId}
+                  isBW={isBW}
                   lang={lang}
                 />
               </div>
