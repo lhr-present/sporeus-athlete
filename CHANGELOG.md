@@ -4,6 +4,24 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.3.0 — 2026-04-28 — Coach-athlete session confirmation loop (all sports)
+Migration 20260477: `profiles.last_workout_done_at` timestamptz (athlete marks done),
+  `coach_athletes.coach_verified_at + coach_verified_note` (coach review timestamp),
+  `coach_verify_athlete(athlete_id, note)` SECURITY DEFINER RPC validates active link.
+generalFitnessSync.js: `syncGeneralProgram` now accepts sessionSummary (4th arg) and writes
+  `last_session_label`, `last_session_exercise_count` into general_program JSONB + sets
+  `last_workout_done_at` on the same profiles UPDATE call. Added `getEnduranceMembers(coachId)` —
+  fetches non-GF athletes with last_workout_done_at + coach_verified_at via two-step join.
+  Added `verifyAthlete(athleteId, note)` — calls RPC for both GF + endurance athletes.
+GeneralFitness.jsx: handleSaveSession builds sessionSummary and passes to syncGeneralProgram.
+TodayView.jsx: markDone() now also fires `profiles.update({ last_workout_done_at })` when
+  Supabase is ready — endurance athlete's "done" tap is now persisted, not just localStorage.
+CoachDashboard.jsx: GYM MEMBERS panel shows last_session_label + exercise count + "● Session
+  logged — awaiting review" when pendingVerify. Adds VERIFY SESSION ✓ button (calls verifyAthlete).
+  New ATHLETES — SESSION LOG panel for endurance athletes: shows last_workout_done_at vs
+  coach_verified_at, VERIFY ✓ button fires when doneAt > verifiedAt (pending review state).
+DEPENDS ON: v8.2.0 + Supabase migration 20260477
+
 ## v8.2.0 — 2026-04-28 — General Fitness: routing fix, set completion, save confirmation
 suggestTemplate: `some` experience routes to intermediate templates; `strength`/`general` + 5+ days
   routes to ppl_6day_intermediate instead of mismatched ul_4day_beginner; `general` + 4 days explicit.

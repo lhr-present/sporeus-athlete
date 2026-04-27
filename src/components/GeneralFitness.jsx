@@ -503,7 +503,11 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
       setActiveProgram(updatedProgram)
     }
 
-    syncGeneralProgram(authUser?.id, updatedProgram, lang === 'tr' ? activeTemplate?.name_tr : activeTemplate?.name_en)
+    const sessionSummary = {
+      last_session_label:          session.day_label || currentDayLabel || '',
+      last_session_exercise_count: (session.exercises ?? []).length,
+    }
+    syncGeneralProgram(authUser?.id, updatedProgram, lang === 'tr' ? activeTemplate?.name_tr : activeTemplate?.name_en, sessionSummary)
 
     // Detect PRs — compare new entry against sessions logged before this one
     const prs = computeSessionPRs(entry, sessions, SEED_EXERCISES)

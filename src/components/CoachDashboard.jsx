@@ -26,7 +26,7 @@ import WeeklyDigestCard   from './coach/WeeklyDigestCard.jsx'
 import SquadCompareStrip        from './coach/SquadCompareStrip.jsx'
 import CoachOnboardingWizard    from './coach/CoachOnboardingWizard.jsx'
 import SquadChallengeCard       from './coach/SquadChallengeCard.jsx'
-import { getGeneralMembers, confirmGeneralProgram } from '../lib/generalFitnessSync.js'
+import { getGeneralMembers, confirmGeneralProgram, getEnduranceMembers, verifyAthlete } from '../lib/generalFitnessSync.js'
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -51,8 +51,10 @@ export default function CoachDashboard({ authUser }) {
   const fileRef = useRef(null)
   const sbCoachId = authUser?.id ?? null
   const [sbAthleteIds, setSbAthleteIds] = useState([])
-  const [gfMembers, setGfMembers]       = useState([])
-  const [confirmingId, setConfirmingId] = useState(null)
+  const [gfMembers, setGfMembers]             = useState([])
+  const [enduranceAthletes, setEnduranceAthletes] = useState([])
+  const [confirmingId, setConfirmingId]           = useState(null)
+  const [verifyingId, setVerifyingId]             = useState(null)
 
   useEffect(() => {
     if (!sbCoachId || !isSupabaseReady()) return
@@ -69,6 +71,7 @@ export default function CoachDashboard({ authUser }) {
   useEffect(() => {
     if (!sbCoachId) return
     getGeneralMembers(sbCoachId).then(setGfMembers)
+    getEnduranceMembers(sbCoachId).then(setEnduranceAthletes)
   }, [sbCoachId])
 
   // E9 — Coach Onboarding Wizard: show when no athletes and not already onboarded
@@ -300,35 +303,115 @@ export default function CoachDashboard({ authUser }) {
             GYM MEMBERS ({gfMembers.length})
           </div>
           {gfMembers.map(m => {
-            const gp       = m.general_program
+            const gp        = m.general_program
             const confirmed = !!m.general_program_confirmed_at
+            const doneAt    = m.last_workout_done_at
+            const verifiedAt = m.coach_verified_at
+            const pendingVerify = doneAt && (!verifiedAt || new Date(doneAt) > new Date(verifiedAt))
+            return (
+              <div key={m.id} style={{ padding:'10px 0', borderBottom:'1px solid var(--border)' }}>
+                <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
+                  <div>
+                    <span style={{ ...S.mono, fontSize:'11px', color:'var(--text)', fontWeight:600 }}>{m.display_name}</span>
+                    {gp ? (
+                      <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginTop:'2px' }}>
+                        {gp.template_name ?? gp.template_id} · {gp.sessions_completed ?? 0} sessions
+                        {gp.last_session_date ? ` · last ${gp.last_session_date}` : ''}
+                      </div>
+                    ) : (
+                      <div style={{ ...S.mono, fontSize:'9px', color:'#555', marginTop:'2px' }}>No program synced yet</div>
+                    )}
+                    {gp?.last_session_label && (
+                      <div style={{ ...S.mono, fontSize:'9px', color:'#aaa', marginTop:'1px' }}>
+                        Last session: {gp.last_session_label}
+                        {gp.last_session_exercise_count ? ` · ${gp.last_session_exercise_count} exercises` : ''}
+                      </div>
+                    )}
+                    {pendingVerify && (
+                      <div style={{ ...S.mono, fontSize:'8px', color:'#ff6600', marginTop:'2px' }}>
+                        ● Session logged {doneAt?.slice(0, 10)} — awaiting your review
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display:'flex', flexDirection:'column', gap:4, alignItems:'flex-end', flexShrink:0, marginLeft:8 }}>
+                    {confirmed ? (
+                      <span style={{ ...S.mono, fontSize:'9px', color:'#22aa44', padding:'2px 8px', border:'1px solid #22aa4433', borderRadius:3 }}>✓ PLAN OK</span>
+                    ) : (
+                      <button
+                        disabled={confirmingId === m.id}
+                        onClick={async () => {
+                          setConfirmingId(m.id)
+                          const { error } = await confirmGeneralProgram(m.id)
+                          if (!error) setGfMembers(prev => prev.map(x => x.id === m.id ? { ...x, general_program_confirmed_at: new Date().toISOString() } : x))
+                          setConfirmingId(null)
+                        }}
+                        style={{ ...S.mono, fontSize:'9px', padding:'4px 10px', border:'1px solid #ff660066', background:'transparent', color:'#ff6600', borderRadius:3, cursor:'pointer' }}>
+                        {confirmingId === m.id ? '…' : 'CONFIRM PLAN'}
+                      </button>
+                    )}
+                    {pendingVerify && (
+                      <button
+                        disabled={verifyingId === m.id}
+                        onClick={async () => {
+                          setVerifyingId(m.id)
+                          const { error } = await verifyAthlete(m.id)
+                          if (!error) setGfMembers(prev => prev.map(x => x.id === m.id ? { ...x, coach_verified_at: new Date().toISOString() } : x))
+                          setVerifyingId(null)
+                        }}
+                        style={{ ...S.mono, fontSize:'9px', padding:'4px 10px', border:'1px solid #22aa4466', background:'transparent', color:'#22aa44', borderRadius:3, cursor:'pointer' }}>
+                        {verifyingId === m.id ? '…' : 'VERIFY SESSION ✓'}
+                      </button>
+                    )}
+                    {!pendingVerify && verifiedAt && (
+                      <span style={{ ...S.mono, fontSize:'8px', color:'#555' }}>verified {verifiedAt.slice(0,10)}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ── Endurance / Sport Athletes — session verification ──────────────── */}
+      {isSupabaseReady() && sbCoachId && enduranceAthletes.length > 0 && (
+        <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'6px', padding:'16px', marginBottom:'16px' }}>
+          <div style={{ ...S.mono, fontSize:'10px', color:'#0064ff', letterSpacing:'0.1em', marginBottom:'12px' }}>
+            ATHLETES — SESSION LOG ({enduranceAthletes.length})
+          </div>
+          {enduranceAthletes.map(m => {
+            const doneAt     = m.last_workout_done_at
+            const verifiedAt = m.coach_verified_at
+            const pendingVerify = doneAt && (!verifiedAt || new Date(doneAt) > new Date(verifiedAt))
             return (
               <div key={m.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid var(--border)' }}>
                 <div>
-                  <span style={{ ...S.mono, fontSize:'11px', color:'var(--text)', fontWeight:600 }}>{m.display_name}</span>
-                  {gp ? (
-                    <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginTop:'2px' }}>
-                      {gp.template_name ?? gp.template_id} · {gp.sessions_completed ?? 0} sessions
-                      {gp.last_session_date ? ` · last ${gp.last_session_date}` : ''}
+                  <span style={{ ...S.mono, fontSize:'11px', color:'var(--text)', fontWeight:600 }}>{m.display_name || m.id.slice(0,8)}</span>
+                  {doneAt ? (
+                    <div style={{ ...S.mono, fontSize:'9px', color: pendingVerify ? '#ff6600' : '#888', marginTop:'2px' }}>
+                      {pendingVerify ? `● Session done ${doneAt.slice(0,10)} — pending review` : `Last done ${doneAt.slice(0,10)}`}
+                      {!pendingVerify && verifiedAt ? ` · verified ${verifiedAt.slice(0,10)}` : ''}
                     </div>
                   ) : (
-                    <div style={{ ...S.mono, fontSize:'9px', color:'#555', marginTop:'2px' }}>No program synced yet</div>
+                    <div style={{ ...S.mono, fontSize:'9px', color:'#555', marginTop:'2px' }}>No sessions confirmed yet</div>
                   )}
                 </div>
-                {confirmed ? (
-                  <span style={{ ...S.mono, fontSize:'9px', color:'#22aa44', padding:'2px 8px', border:'1px solid #22aa4433', borderRadius:3 }}>✓ CONFIRMED</span>
-                ) : (
+                {pendingVerify ? (
                   <button
-                    disabled={confirmingId === m.id}
+                    disabled={verifyingId === m.id}
                     onClick={async () => {
-                      setConfirmingId(m.id)
-                      const { error } = await confirmGeneralProgram(m.id)
-                      if (!error) setGfMembers(prev => prev.map(x => x.id === m.id ? { ...x, general_program_confirmed_at: new Date().toISOString() } : x))
-                      setConfirmingId(null)
+                      setVerifyingId(m.id)
+                      const { error } = await verifyAthlete(m.id)
+                      if (!error) setEnduranceAthletes(prev => prev.map(x => x.id === m.id ? { ...x, coach_verified_at: new Date().toISOString() } : x))
+                      setVerifyingId(null)
                     }}
-                    style={{ ...S.mono, fontSize:'9px', padding:'4px 10px', border:'1px solid #ff660066', background:'transparent', color:'#ff6600', borderRadius:3, cursor:'pointer' }}>
-                    {confirmingId === m.id ? '…' : 'CONFIRM PROGRAM'}
+                    style={{ ...S.mono, fontSize:'9px', padding:'4px 12px', border:'1px solid #22aa4466', background:'transparent', color:'#22aa44', borderRadius:3, cursor:'pointer', flexShrink:0, marginLeft:8 }}>
+                    {verifyingId === m.id ? '…' : 'VERIFY ✓'}
                   </button>
+                ) : (
+                  <span style={{ ...S.mono, fontSize:'9px', color:'#555', flexShrink:0, marginLeft:8 }}>
+                    {verifiedAt ? '✓ seen' : '—'}
+                  </span>
                 )}
               </div>
             )

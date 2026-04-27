@@ -12,7 +12,7 @@ import { getMyCoach } from '../lib/inviteUtils.js'
 import { getUpcomingSessions, upsertAttendance } from '../lib/db/coachSessions.js'
 import TeamAnnouncements from './TeamAnnouncements.jsx'
 import QRScanner from './QRScanner.jsx'
-import { supabase } from '../lib/supabase.js'
+import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { getRecommendedProtocols } from '../lib/recoveryProtocols.js'
 
 const WellnessSparkline = lazy(() => import('./charts/WellnessSparkline.jsx'))
@@ -402,6 +402,15 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
   const markDone = () => {
     if (!todayKey) return
     setPlanStatus(ps => ({ ...ps, [todayKey]: 'done' }))
+    if (isSupabaseReady()) {
+      supabase.auth.getUser().then(({ data }) => {
+        if (data?.user?.id) {
+          supabase.from('profiles')
+            .update({ last_workout_done_at: new Date().toISOString() })
+            .eq('id', data.user.id)
+        }
+      })
+    }
   }
 
   const logThisSession = () => {
