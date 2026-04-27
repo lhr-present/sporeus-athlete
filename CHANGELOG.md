@@ -4,6 +4,19 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.9.1 — 2026-04-28 — Bug fixes: rest timer null-crash, delete ID mismatch, label typo, NaN date
+SessionLogger.jsx: rest timer decrement no longer crashes when user dismisses mid-countdown.
+  `setRestTimer(t => t ? {...t, seconds: Math.max(0, t.seconds-1)} : null)` — if t is null
+  (user hit ✕ while setTimeout was pending) the state stays null instead of setting {seconds:0}.
+GeneralFitness.jsx: one-time mount migration ensures every session in localStorage has a stable
+  id. Prevents the sorted-index vs unsorted-indexOf mismatch in handleDeleteSession that could
+  delete the wrong session when a session had no id field (possible for externally-imported data).
+ProgramTemplateGallery.jsx: EXP_LABEL advanced.en was 'İleri Seviye' (Turkish text in English
+  key). Corrected to 'Advanced'.
+strengthTraining.js: daysSinceLastSession returns null (not NaN) when lastSessionDate is an
+  invalid date string. Added `if (isNaN(last)) return null` guard.
+DEPENDS ON: v8.9.0
+
 ## v8.9.0 — 2026-04-28 — Draft auto-save + band equipment fix
 SessionLogger.jsx: draft auto-save to localStorage (key `sporeus-gf-draft`). Every change to
   rows, dayLabel, rpe, or notes persists the session in progress. On reload/re-open the draft

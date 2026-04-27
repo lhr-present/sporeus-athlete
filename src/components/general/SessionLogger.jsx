@@ -75,7 +75,7 @@ export default function SessionLogger({
   useEffect(() => {
     if (!restTimer || restTimer.seconds <= 0) return
     const id = setTimeout(() =>
-      setRestTimer(t => t && t.seconds > 0 ? { ...t, seconds: t.seconds - 1 } : { ...t, seconds: 0 })
+      setRestTimer(t => t ? { ...t, seconds: Math.max(0, t.seconds - 1) } : null)
     , 1000)
     return () => clearTimeout(id)
   }, [restTimer])

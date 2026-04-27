@@ -280,6 +280,7 @@ export function advanceRotation(program) {
 export function daysSinceLastSession(lastSessionDate, today = new Date()) {
   if (!lastSessionDate) return null
   const last = new Date(lastSessionDate)
+  if (isNaN(last)) return null
   return Math.floor((today - last) / 86_400_000)
 }
 

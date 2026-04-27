@@ -420,6 +420,13 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
   const [onboarded, setOnboarded]       = useLocalStorage('sporeus-gf-onboarded', false)
   const [activeProgram, setActiveProgram] = useLocalStorage('sporeus-gf-program', null)
   const [sessions, setSessions]         = useLocalStorage('sporeus-gf-sessions', [])
+
+  // One-time migration: ensure every session has a stable id
+  useEffect(() => {
+    if (!sessions.some(s => !s.id)) return
+    setSessions(sessions.map(s => s.id ? s : { ...s, id: crypto.randomUUID?.() ?? String(Date.now() + Math.random()) }))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   const [showLogger, setShowLogger]     = useState(false)
   const [savedJustNow, setSavedJustNow] = useState(false)
   const [coachConfirmedAt, setCoachConfirmedAt] = useState(null)

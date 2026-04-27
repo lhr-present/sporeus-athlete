@@ -10,7 +10,7 @@ const SPLIT_LABEL = {
 const EXP_LABEL = {
   beginner:     { en: 'Beginner',     tr: 'Başlangıç' },
   intermediate: { en: 'Intermediate', tr: 'Orta Seviye' },
-  advanced:     { en: 'İleri Seviye', tr: 'İleri Seviye' },
+  advanced:     { en: 'Advanced',     tr: 'İleri Seviye' },
 }
 const EQ_ICON = { bw: '🤸', home: '🏠', gym: '🏋️' }
 
