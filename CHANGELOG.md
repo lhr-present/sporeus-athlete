@@ -4,6 +4,22 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v12.3.3 — 2026-04-27 — General Fitness: fix analytics + ProgramView + beginner UX
+BUG: GeneralInsights read s.strength_sets — sessions are saved as s.exercises → analytics
+  (volume chart, progression chart) were always empty. Fixed to read s.exercises with
+  per-exercise flatMap into per-set list; exercise_id carried through for muscle mapping.
+BUG: ProgramView filtered templateExercises by day_index but received SEED_EXERCISES →
+  program tab was blank. Fixed: use day.exercises inline from TEMPLATE_PROGRAM_DATA;
+  exercises prop now only used for name lookup.
+FEATURE: Form cues in SessionLogger — "▼ cues" toggle per exercise shows cues_en/tr from
+  SEED_EXERCISES (e.g. "Bar on traps, chest up, descend until thighs parallel").
+FEATURE: Session duration estimate on GeneralDashboard Next Session card — computed from
+  prescription (sets × rest_seconds + sets × reps_high × 3s work time), shown as "~45 min".
+4274 tests green.
+DEPENDS ON: v12.3.2 (TEMPLATE_PROGRAM_DATA, SEED_EXERCISES with cues fields)
+
+---
+
 ## v12.3.2 — 2026-04-27 — General Fitness: coach-member link
 General fitness users become members/athletes of their coach via the existing invite
 system (SP-XXXXXXXX codes, coach_athletes table, redeem-invite edge function — unchanged).

@@ -40,7 +40,7 @@ const TEMPLATE_DAY_LABELS_TR = {
   recomp_4day:            ['Üst A','Alt A','Üst B','Alt B'],
 }
 
-export default function GeneralDashboard({ sessions = [], activeProgram = null, activeTemplate = null, coachConfirmedAt = null, lang = 'en', onLogSession }) {
+export default function GeneralDashboard({ sessions = [], activeProgram = null, activeTemplate = null, coachConfirmedAt = null, estimatedMinutes = null, lang = 'en', onLogSession }) {
   const t = (en, tr) => lang === 'tr' ? tr : en
 
   const days = daysSinceLastSession(activeProgram?.last_session_date)
@@ -85,6 +85,11 @@ export default function GeneralDashboard({ sessions = [], activeProgram = null, 
             {previewExs.length > 0 && (
               <div style={{ ...S.mono, fontSize: 10, color: '#888', lineHeight: 1.6 }}>
                 {previewExs.join(' · ')}{hasMore ? ' …' : ''}
+              </div>
+            )}
+            {estimatedMinutes && (
+              <div style={{ ...S.mono, fontSize: 10, color: '#555', marginTop: 6 }}>
+                ~{estimatedMinutes} {t('min', 'dk')}
               </div>
             )}
             {!activeTemplate && (

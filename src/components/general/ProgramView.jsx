@@ -28,7 +28,9 @@ export default function ProgramView({ template = null, templateDays = [], templa
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {templateDays.map(day => {
-          const dayExercises = templateExercises.filter(te => te.day_index === day.day_index).sort((a, b) => a.position - b.position)
+          // day.exercises are inline prescriptions from TEMPLATE_PROGRAM_DATA;
+          // exercises prop (SEED_EXERCISES) is used only for name lookup.
+          const dayExercises = day.exercises ?? []
           const dayLabel = lang === 'tr' ? day.day_label_tr : day.day_label_en
 
           return (

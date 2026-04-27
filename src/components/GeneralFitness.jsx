@@ -428,6 +428,13 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
   const currentDayLabel = currentDay ? (lang === 'tr' ? currentDay.day_label_tr : currentDay.day_label_en) : ''
   const programDays     = TEMPLATE_PROGRAM_DATA[activeProgram?.templateId]?.days ?? []
 
+  // Rough session duration: sum of (sets × rest_seconds) for each exercise, + ~3s/rep work time
+  const estimatedMinutes = currentDay
+    ? Math.round(currentDay.exercises.reduce((acc, ex) =>
+        acc + ex.sets * (ex.rest_seconds ?? 90) + ex.sets * ex.reps_high * 3
+      , 0) / 60)
+    : null
+
   // Fetch coach confirmation status when authed
   useEffect(() => {
     if (!authUser?.id || !isSupabaseReady()) return
@@ -541,6 +548,7 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
               activeProgram={activeProgram}
               activeTemplate={activeTemplate}
               coachConfirmedAt={coachConfirmedAt}
+              estimatedMinutes={estimatedMinutes}
               lang={lang}
               onLogSession={() => setShowLogger(true)}
             />

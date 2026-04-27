@@ -43,6 +43,7 @@ export default function SessionLogger({
   const [notes, setNotes]       = useState('')
   const [rpe, setRpe]           = useState('')
   const [saved, setSaved]       = useState(false)
+  const [cuesOpen, setCuesOpen] = useState({})
 
   // Build initial rows from preloaded exercises (template prescription)
   const [rows, setRows] = useState(() => {
@@ -150,17 +151,31 @@ export default function SessionLogger({
         return (
           <div key={rowIdx} style={card}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-              <div>
-                <span style={{ ...S.mono, fontSize: 12, color: '#ff6600' }}>
-                  {ex ? (lang === 'tr' ? ex.name_tr : ex.name_en) : row.exerciseId}
-                </span>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ ...S.mono, fontSize: 12, color: '#ff6600' }}>
+                    {ex ? (lang === 'tr' ? ex.name_tr : ex.name_en) : row.exerciseId}
+                  </span>
+                  {ex && (ex.cues_en || ex.cues_tr) && (
+                    <button
+                      onClick={() => setCuesOpen(o => ({ ...o, [rowIdx]: !o[rowIdx] }))}
+                      style={{ ...S.mono, fontSize: 9, border: '1px solid var(--border)', background: 'transparent', color: '#888', borderRadius: 3, cursor: 'pointer', padding: '1px 6px', flexShrink: 0 }}>
+                      {cuesOpen[rowIdx] ? t('▲ cues', '▲ ipucu') : t('▼ cues', '▼ ipucu')}
+                    </button>
+                  )}
+                </div>
                 {pres && (
                   <div style={{ ...S.mono, fontSize: 10, color: '#888', marginTop: 2 }}>
                     {t('Prescribed:', 'Hedef:')} {pres.sets} × {pres.reps_low}–{pres.reps_high} {t('reps', 'tekrar')} · RIR {pres.rir ?? 2} · {pres.rest_seconds ?? 90}s {t('rest', 'dinlenme')}
                   </div>
                 )}
+                {cuesOpen[rowIdx] && ex && (
+                  <div style={{ ...S.mono, fontSize: 10, color: '#aaa', marginTop: 5, lineHeight: 1.6, fontStyle: 'italic' }}>
+                    {lang === 'tr' ? (ex.cues_tr || ex.cues_en) : ex.cues_en}
+                  </div>
+                )}
               </div>
-              <button onClick={() => removeExercise(rowIdx)} style={{ ...S.mono, fontSize: 10, border: 'none', background: 'transparent', color: '#e03030', cursor: 'pointer', marginLeft: 12 }}>✕</button>
+              <button onClick={() => removeExercise(rowIdx)} style={{ ...S.mono, fontSize: 10, border: 'none', background: 'transparent', color: '#e03030', cursor: 'pointer', marginLeft: 12, alignSelf: 'flex-start' }}>✕</button>
             </div>
 
             {/* Suggestion line */}
