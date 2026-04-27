@@ -274,6 +274,55 @@ export function daysSinceLastSession(lastSessionDate, today = new Date()) {
   return Math.floor((today - last) / 86_400_000)
 }
 
+// ── PR Detection ─────────────────────────────────────────────────────────────
+
+/**
+ * Compare estimated 1RMs from the current session against all prior sessions.
+ * Returns exercises where the user set a new estimated 1RM record.
+ * Bodyweight exercises (no load_kg) and warmup sets are excluded.
+ *
+ * @param {{ exercises: Array<{exercise_id: string, sets: Array<{reps:number,load_kg:number,is_warmup:boolean}>}> }} currentSession
+ * @param {Array} allPriorSessions - same shape as currentSession
+ * @param {Array<{id:string, name_en:string, name_tr:string}>} exerciseDefs
+ * @returns {Array<{exercise_id:string, name_en:string, name_tr:string, new1RM:number, prev1RM:number|null}>}
+ */
+export function computeSessionPRs(currentSession, allPriorSessions, exerciseDefs) {
+  const results = []
+  for (const ex of (currentSession?.exercises ?? [])) {
+    const workSets = (ex.sets ?? []).filter(s => !s.is_warmup && s.reps > 0 && (s.load_kg ?? 0) > 0)
+    if (!workSets.length) continue
+
+    let newBest = 0
+    for (const s of workSets) {
+      const est = estimate1RM(s.load_kg, s.reps)
+      if (est?.median > newBest) newBest = est.median
+    }
+    if (!newBest) continue
+
+    let prevBest = 0
+    for (const sess of (allPriorSessions ?? [])) {
+      const priorEx = (sess.exercises ?? []).find(e => e.exercise_id === ex.exercise_id)
+      if (!priorEx) continue
+      for (const s of (priorEx.sets ?? []).filter(s => !s.is_warmup && s.reps > 0 && (s.load_kg ?? 0) > 0)) {
+        const est = estimate1RM(s.load_kg, s.reps)
+        if (est?.median > prevBest) prevBest = est.median
+      }
+    }
+
+    if (newBest > prevBest) {
+      const def = (exerciseDefs ?? []).find(e => e.id === ex.exercise_id)
+      results.push({
+        exercise_id: ex.exercise_id,
+        name_en:     def?.name_en ?? ex.exercise_id,
+        name_tr:     def?.name_tr ?? ex.exercise_id,
+        new1RM:      Math.round(newBest * 10) / 10,
+        prev1RM:     prevBest > 0 ? Math.round(prevBest * 10) / 10 : null,
+      })
+    }
+  }
+  return results
+}
+
 // ── Plate Calculator ──────────────────────────────────────────────────────────
 
 /**

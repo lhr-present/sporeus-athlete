@@ -44,6 +44,15 @@ export default function SessionLogger({
   const [rpe, setRpe]           = useState('')
   const [saved, setSaved]       = useState(false)
   const [cuesOpen, setCuesOpen] = useState({})
+  const [restTimer, setRestTimer] = useState(null) // { rowIdx, seconds, total }
+
+  useEffect(() => {
+    if (!restTimer || restTimer.seconds <= 0) return
+    const id = setTimeout(() =>
+      setRestTimer(t => t && t.seconds > 0 ? { ...t, seconds: t.seconds - 1 } : { ...t, seconds: 0 })
+    , 1000)
+    return () => clearTimeout(id)
+  }, [restTimer])
 
   // Build initial rows from preloaded exercises (template prescription)
   const [rows, setRows] = useState(() => {
@@ -245,9 +254,33 @@ export default function SessionLogger({
               </div>
             ))}
 
-            <button style={{ ...S.mono, fontSize: 10, marginTop: 4, padding: '4px 10px', border: '1px dashed var(--border)', background: 'transparent', color: '#888', borderRadius: 3, cursor: 'pointer' }} onClick={() => addSet(rowIdx)}>
-              + {t('Add Set', 'Set Ekle')}
-            </button>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
+              <button style={{ ...S.mono, fontSize: 10, padding: '4px 10px', border: '1px dashed var(--border)', background: 'transparent', color: '#888', borderRadius: 3, cursor: 'pointer' }} onClick={() => addSet(rowIdx)}>
+                + {t('Add Set', 'Set Ekle')}
+              </button>
+
+              {/* Rest timer trigger */}
+              {pres?.rest_seconds && restTimer?.rowIdx !== rowIdx && (
+                <button
+                  onClick={() => setRestTimer({ rowIdx, seconds: pres.rest_seconds, total: pres.rest_seconds })}
+                  style={{ ...S.mono, fontSize: 10, padding: '4px 10px', border: '1px solid #0064ff44', background: 'transparent', color: '#0064ff', borderRadius: 3, cursor: 'pointer' }}>
+                  REST {pres.rest_seconds}s
+                </button>
+              )}
+
+              {/* Rest timer display */}
+              {restTimer?.rowIdx === rowIdx && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                  <div style={{ flex: 1, height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${(restTimer.seconds / restTimer.total) * 100}%`, background: restTimer.seconds > 0 ? '#0064ff' : '#22aa44', transition: 'width 0.9s linear, background 0.3s' }} />
+                  </div>
+                  <span style={{ ...S.mono, fontSize: 11, color: restTimer.seconds > 0 ? '#0064ff' : '#22aa44', minWidth: 40, textAlign: 'right' }}>
+                    {restTimer.seconds > 0 ? `${restTimer.seconds}s` : t('Go!', 'Haydi!')}
+                  </span>
+                  <button onClick={() => setRestTimer(null)} style={{ ...S.mono, fontSize: 9, border: 'none', background: 'transparent', color: '#555', cursor: 'pointer', padding: '0 4px' }}>✕</button>
+                </div>
+              )}
+            </div>
           </div>
         )
       })}

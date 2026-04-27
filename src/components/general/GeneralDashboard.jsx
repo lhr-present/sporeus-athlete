@@ -43,7 +43,9 @@ const TEMPLATE_DAY_LABELS_TR = {
 const MUSCLE_LABEL = { quads:'Quads', hamstrings:'Hams', glutes:'Glutes', chest:'Chest', back:'Back', delts:'Delts', biceps:'Biceps', triceps:'Triceps', calves:'Calves', core:'Core', full:'Full' }
 const MUSCLE_LABEL_TR = { quads:'Ön Bacak', hamstrings:'Arka Bacak', glutes:'Kalça', chest:'Göğüs', back:'Sırt', delts:'Omuz', biceps:'Biseps', triceps:'Triseps', calves:'Baldır', core:'Karın', full:'Tam' }
 
-export default function GeneralDashboard({ sessions = [], exercises = [], activeProgram = null, activeTemplate = null, coachConfirmedAt = null, estimatedMinutes = null, lang = 'en', onLogSession }) {
+const MILESTONES = [1, 5, 10, 25, 50, 100]
+
+export default function GeneralDashboard({ sessions = [], exercises = [], activeProgram = null, activeTemplate = null, coachConfirmedAt = null, estimatedMinutes = null, deloadHint = false, lastSessionPRs = [], onDismissPRs, lang = 'en', onLogSession }) {
   const t = (en, tr) => lang === 'tr' ? tr : en
 
   const days = daysSinceLastSession(activeProgram?.last_session_date)
@@ -73,9 +75,10 @@ export default function GeneralDashboard({ sessions = [], exercises = [], active
   const muscleEntries = Object.entries(muscleFreq).sort((a, b) => b[1] - a[1])
 
   // Reference strip
-  const refDate = activeProgram?.reference_date
+  const refDate   = activeProgram?.reference_date
   const sessCount = activeProgram?.sessions_completed ?? sessions.length
   const templateName = activeTemplate ? (lang === 'tr' ? activeTemplate.name_tr : activeTemplate.name_en) : null
+  const milestone = MILESTONES.find(n => n === sessCount) ?? null
 
   return (
     <div style={{ maxWidth: 560 }}>
@@ -116,6 +119,41 @@ export default function GeneralDashboard({ sessions = [], exercises = [], active
           <div style={{ ...S.mono, fontSize: 10, color: '#888' }}>{gapLine}</div>
         )}
       </div>
+
+      {/* ── PR celebration ───────────────────────────────── */}
+      {lastSessionPRs.length > 0 && (
+        <div style={{ background: '#ff660011', border: '1px solid #ff660066', borderRadius: 4, padding: '12px 16px', marginBottom: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div style={{ ...S.mono, fontSize: 10, color: '#ff6600', letterSpacing: '0.1em', marginBottom: 6 }}>
+              {t('NEW RECORD', 'YENİ REKOR')}
+            </div>
+            <button onClick={onDismissPRs} style={{ ...S.mono, fontSize: 9, border: 'none', background: 'transparent', color: '#888', cursor: 'pointer' }}>✕</button>
+          </div>
+          {lastSessionPRs.map(pr => (
+            <div key={pr.exercise_id} style={{ ...S.mono, fontSize: 11, color: 'var(--text)', marginBottom: 3 }}>
+              {lang === 'tr' ? pr.name_tr : pr.name_en} — {pr.new1RM} kg {t('est. 1RM', 'tahmini 1TM')}
+              {pr.prev1RM && <span style={{ color: '#888', marginLeft: 8 }}>↑ {t('from', 'önceki')} {pr.prev1RM}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Deload hint ───────────────────────────────────── */}
+      {deloadHint && (
+        <div style={{ ...S.mono, fontSize: 10, color: '#888', padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 3, marginBottom: 14 }}>
+          {t('Your lifts have stalled across several exercises — consider a lighter session today.',
+             'Birden fazla egzersizde duraksama var — bugün daha hafif bir seans düşünebilirsin.')}
+        </div>
+      )}
+
+      {/* ── Session milestone ─────────────────────────────── */}
+      {milestone && (
+        <div style={{ ...S.mono, fontSize: 10, color: '#ff6600', padding: '6px 10px', border: '1px solid #ff660033', borderRadius: 3, marginBottom: 14, letterSpacing: '0.06em' }}>
+          {milestone === 1
+            ? t('First session complete.', 'İlk seans tamamlandı.')
+            : `${milestone} ${t('sessions complete.', 'seans tamamlandı.')}`}
+        </div>
+      )}
 
       {/* ── Coach confirmation badge ──────────────────────── */}
       {coachConfirmedAt ? (

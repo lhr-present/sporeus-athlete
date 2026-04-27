@@ -4,6 +4,22 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v12.3.5 — 2026-04-27 — General Fitness: rest timer, PR detection, deload hint, milestones
+strengthTraining.js: computeSessionPRs(currentSession, priorSessions, exerciseDefs) — compares
+  estimated 1RM per exercise against all prior sessions; returns new records with name, new1RM,
+  prev1RM. 10 new tests (4299 total).
+SessionLogger: REST Xs button per exercise row starts an inline countdown with a shrinking
+  progress bar; turns green and shows "Go!" at zero; one timer at a time; dismissable.
+GeneralFitness: deloadHint — computed from exerciseHistory: majority of today's exercises
+  returning reason=deload triggers hint. computeSessionPRs called after each session save;
+  PRs stored in lastSessionPRs state and passed to dashboard.
+GeneralDashboard: NEW RECORD strip shows after session save with est. 1RM per exercise and
+  delta from previous best; dismissable. Deload hint strip (subtle grey). Session milestone
+  strip fires at 1, 5, 10, 25, 50, 100 sessions_completed.
+DEPENDS ON: v12.3.4 (SEED_EXERCISES, exerciseHistory, gapDayMap, currentDay in root)
+
+---
+
 ## v12.3.4 — 2026-04-27 — General Fitness: plate calculator, first-session guidance, RIR hint, muscle frequency
 strengthTraining.js: plateCalculator(targetKg, barKg) — plates per side from standard set
   (20/15/10/5/2.5/1.25 kg); weeklyMuscleFrequency(sessions, exerciseDefs) — counts how many

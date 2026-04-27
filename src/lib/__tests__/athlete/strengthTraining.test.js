@@ -13,6 +13,7 @@ import {
   daysSinceLastSession,
   plateCalculator,
   weeklyMuscleFrequency,
+  computeSessionPRs,
 } from '../../athlete/strengthTraining.js'
 
 // ── estimate1RM ───────────────────────────────────────────────────────────────
@@ -581,5 +582,74 @@ describe('weeklyMuscleFrequency', () => {
   it('handles missing exercise_id gracefully', () => {
     const sessions = [{ session_date: '2026-04-21', exercises: [{ exercise_id: 'unknown_ex' }] }]
     expect(() => weeklyMuscleFrequency(sessions, exDefs, '2026-04-21')).not.toThrow()
+  })
+})
+
+// ── computeSessionPRs ─────────────────────────────────────────────────────────
+describe('computeSessionPRs', () => {
+  const defs = [
+    { id: 'squat', name_en: 'Barbell Back Squat', name_tr: 'Barbell Arka Squat' },
+    { id: 'bench', name_en: 'Barbell Bench Press', name_tr: 'Barbell Bench Press' },
+  ]
+
+  const makeSession = (exId, sets) => ({
+    exercises: [{ exercise_id: exId, sets }]
+  })
+  const makeSet = (load_kg, reps, is_warmup = false) => ({ load_kg, reps, is_warmup })
+
+  it('returns empty array when no sessions', () => {
+    expect(computeSessionPRs(null, [], defs)).toEqual([])
+  })
+  it('returns empty array when exercises have no loaded sets', () => {
+    const sess = makeSession('squat', [makeSet(0, 8)])
+    expect(computeSessionPRs(sess, [], defs)).toEqual([])
+  })
+  it('detects first-ever PR (no prior history)', () => {
+    const sess = makeSession('squat', [makeSet(80, 5)])
+    const prs = computeSessionPRs(sess, [], defs)
+    expect(prs).toHaveLength(1)
+    expect(prs[0].exercise_id).toBe('squat')
+    expect(prs[0].new1RM).toBeGreaterThan(80)
+    expect(prs[0].prev1RM).toBeNull()
+  })
+  it('detects improved PR over prior session', () => {
+    const prev = makeSession('squat', [makeSet(80, 5)])
+    const curr = makeSession('squat', [makeSet(82.5, 5)])
+    const prs = computeSessionPRs(curr, [prev], defs)
+    expect(prs).toHaveLength(1)
+    expect(prs[0].new1RM).toBeGreaterThan(prs[0].prev1RM)
+  })
+  it('does not flag when load is same', () => {
+    const prev = makeSession('squat', [makeSet(80, 5)])
+    const curr = makeSession('squat', [makeSet(80, 5)])
+    expect(computeSessionPRs(curr, [prev], defs)).toHaveLength(0)
+  })
+  it('does not flag when load decreased', () => {
+    const prev = makeSession('squat', [makeSet(80, 5)])
+    const curr = makeSession('squat', [makeSet(70, 5)])
+    expect(computeSessionPRs(curr, [prev], defs)).toHaveLength(0)
+  })
+  it('ignores warmup sets', () => {
+    const curr = makeSession('squat', [makeSet(100, 5, true)])
+    expect(computeSessionPRs(curr, [], defs)).toHaveLength(0)
+  })
+  it('picks best set from session, not first', () => {
+    const curr = makeSession('squat', [makeSet(60, 5), makeSet(80, 5), makeSet(70, 5)])
+    const prs = computeSessionPRs(curr, [], defs)
+    expect(prs[0].new1RM).toBeGreaterThan(estimate1RM(60, 5).median)
+  })
+  it('handles multiple exercises simultaneously', () => {
+    const curr = { exercises: [
+      { exercise_id: 'squat', sets: [makeSet(80, 5)] },
+      { exercise_id: 'bench', sets: [makeSet(60, 8)] },
+    ]}
+    const prs = computeSessionPRs(curr, [], defs)
+    expect(prs).toHaveLength(2)
+  })
+  it('uses exercise def name fields', () => {
+    const curr = makeSession('squat', [makeSet(80, 5)])
+    const prs = computeSessionPRs(curr, [], defs)
+    expect(prs[0].name_en).toBe('Barbell Back Squat')
+    expect(prs[0].name_tr).toBe('Barbell Arka Squat')
   })
 })

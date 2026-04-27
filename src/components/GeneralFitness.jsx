@@ -5,7 +5,7 @@ import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import ErrorBoundary from './ErrorBoundary.jsx'
 import OnboardingWizard from './general/OnboardingWizard.jsx'
-import { advanceRotation } from '../lib/athlete/strengthTraining.js'
+import { advanceRotation, suggestNextLoad, computeSessionPRs } from '../lib/athlete/strengthTraining.js'
 import { syncGeneralProgram } from '../lib/generalFitnessSync.js'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 
@@ -418,6 +418,7 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
   const [sessions, setSessions]         = useLocalStorage('sporeus-gf-sessions', [])
   const [showLogger, setShowLogger]     = useState(false)
   const [coachConfirmedAt, setCoachConfirmedAt] = useState(null)
+  const [lastSessionPRs, setLastSessionPRs]     = useState([])
 
   const activeTemplate = STATIC_TEMPLATES.find(t => t.id === activeProgram?.templateId) ?? null
   const templateDayCount = activeTemplate?.days_per_week ?? 0
@@ -434,6 +435,18 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
         acc + ex.sets * (ex.rest_seconds ?? 90) + ex.sets * ex.reps_high * 3
       , 0) / 60)
     : null
+
+  // Deload hint: majority of today's exercises suggest deload (≥3 prior work sets, reason=deload)
+  const deloadHint = currentDay
+    ? (() => {
+        const count = currentDay.exercises.filter(ex => {
+          const hist = (exerciseHistory[ex.exercise_id] ?? []).filter(s => !s.is_warmup)
+          if (hist.length < 3) return false
+          return suggestNextLoad(hist, { reps_low: ex.reps_low, reps_high: ex.reps_high }, gapDayMap[ex.exercise_id] ?? null).reason === 'deload'
+        }).length
+        return count >= Math.ceil(currentDay.exercises.length / 2)
+      })()
+    : false
 
   // Fetch coach confirmation status when authed
   useEffect(() => {
@@ -490,6 +503,11 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
     }
 
     syncGeneralProgram(authUser?.id, updatedProgram, lang === 'tr' ? activeTemplate?.name_tr : activeTemplate?.name_en)
+
+    // Detect PRs — compare new entry against sessions logged before this one
+    const prs = computeSessionPRs(entry, sessions, SEED_EXERCISES)
+    if (prs.length > 0) setLastSessionPRs(prs)
+
     setShowLogger(false)
     setInnerTab('today')
   }
@@ -550,6 +568,9 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
               activeTemplate={activeTemplate}
               coachConfirmedAt={coachConfirmedAt}
               estimatedMinutes={estimatedMinutes}
+              deloadHint={deloadHint}
+              lastSessionPRs={lastSessionPRs}
+              onDismissPRs={() => setLastSessionPRs([])}
               lang={lang}
               onLogSession={() => setShowLogger(true)}
             />
