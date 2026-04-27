@@ -103,6 +103,8 @@ const IntensityBalanceCard       = lazy(() => import('./dashboard/IntensityBalan
 const WeekSessionTypeCard        = lazy(() => import('./dashboard/WeekSessionTypeCard.jsx'))
 const RaceGoalAnalyzerCard       = lazy(() => import('./dashboard/RaceGoalAnalyzerCard.jsx'))
 const TrainingBridgeCard         = lazy(() => import('./dashboard/TrainingBridgeCard.jsx'))
+const RaceGoalDashCard           = lazy(() => import('./dashboard/RaceGoalDashCard.jsx'))
+const VdotProgressCard           = lazy(() => import('./dashboard/VdotProgressCard.jsx'))
 
 export default function Dashboard({ log, onLogSession, onGoToProfile }) {
   const [lang]       = useLocalStorage('sporeus-lang', 'en')
@@ -343,6 +345,16 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
             <TrainingBridgeCard profile={profile} log={log} isTR={lang === 'tr'} />
           </Suspense>
         </ErrorBoundary>
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <RaceGoalDashCard profile={profile} log={log} isTR={lang === 'tr'} />
+          </Suspense>
+        </ErrorBoundary>
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <VdotProgressCard profile={profile} log={log} isTR={lang === 'tr'} />
+          </Suspense>
+        </ErrorBoundary>
         <div style={{ marginBottom: '16px' }}>
           <div style={{ ...S.mono, fontSize: '11px', color: '#888', marginBottom: '4px' }}>{today}</div>
           <div style={{ ...S.mono, fontSize: '18px', fontWeight: 600 }}>
@@ -473,6 +485,16 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       <ErrorBoundary>
         <Suspense fallback={null}>
           <TrainingBridgeCard profile={profile} log={log} isTR={lang === 'tr'} />
+        </Suspense>
+      </ErrorBoundary>
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <RaceGoalDashCard profile={profile} log={log} isTR={lang === 'tr'} />
+        </Suspense>
+      </ErrorBoundary>
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <VdotProgressCard profile={profile} log={log} isTR={lang === 'tr'} />
         </Suspense>
       </ErrorBoundary>
       <MilestonesList log={log} profile={profile}/>
