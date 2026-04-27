@@ -450,6 +450,14 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
       })()
     : false
 
+  // Filter exercises to equipment available in the active template
+  const EQUIP_ALLOW = { bw: ['bw'], home: ['bw', 'db'] }
+  const filteredExercises = (() => {
+    const eq = activeTemplate?.equipment
+    const allowed = EQUIP_ALLOW[eq]
+    return allowed ? SEED_EXERCISES.filter(e => allowed.includes(e.equipment)) : SEED_EXERCISES
+  })()
+
   // Fetch coach confirmation status when authed
   useEffect(() => {
     if (!authUser?.id || !isSupabaseReady()) return
@@ -524,13 +532,16 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
     const updated = sessions.filter(s => (s.id ?? String(sessions.indexOf(s))) !== sessionId)
     setSessions(updated)
     if (activeProgram && templateDayCount > 0) {
-      const lastDate = updated.length > 0
-        ? [...updated].sort((a, b) => (b.session_date ?? '').localeCompare(a.session_date ?? ''))[0].session_date
+      const refDate = activeProgram.reference_date ?? '1970-01-01'
+      const onTemplate = updated.filter(s => (s.session_date ?? '') >= refDate)
+      const newCount = onTemplate.length
+      const lastDate = onTemplate.length > 0
+        ? [...onTemplate].sort((a, b) => (b.session_date ?? '').localeCompare(a.session_date ?? ''))[0].session_date
         : null
       const updatedProgram = {
         ...activeProgram,
-        sessions_completed: updated.length,
-        next_day_index:     updated.length % templateDayCount,
+        sessions_completed: newCount,
+        next_day_index:     newCount % templateDayCount,
         last_session_date:  lastDate,
       }
       setActiveProgram(updatedProgram)
@@ -539,11 +550,24 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
   }
 
   function handleSelectTemplate(tmpl) {
-    setActiveProgram(prev => ({
-      ...prev,
-      templateId:     tmpl.id,
-      next_day_index: 0,
-    }))
+    if (activeProgram?.templateId === tmpl.id) return
+    const confirmed = window.confirm(
+      lang === 'tr'
+        ? `Programı "${tmpl.name_tr}" olarak değiştir? İlerleme sıfırlanacak.`
+        : `Switch to "${tmpl.name_en}"? Progress will reset to Day 1.`
+    )
+    if (!confirmed) return
+    const today = new Date().toISOString().slice(0, 10)
+    const newProg = {
+      ...activeProgram,
+      templateId:         tmpl.id,
+      next_day_index:     0,
+      sessions_completed: 0,
+      reference_date:     today,
+      last_session_date:  null,
+    }
+    setActiveProgram(newProg)
+    syncGeneralProgram(authUser?.id, newProg, lang === 'tr' ? tmpl.name_tr : tmpl.name_en)
   }
 
   if (!onboarded) {
@@ -620,7 +644,7 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
                 ← {t('Back', 'Geri')}
               </button>
               <SessionLogger
-                exercises={SEED_EXERCISES}
+                exercises={filteredExercises}
                 preloadedExercises={currentDay?.exercises ?? []}
                 history={exerciseHistory}
                 gapDays={gapDayMap}

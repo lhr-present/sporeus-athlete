@@ -4,6 +4,21 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.6.0 — 2026-04-28 — Template-switch counter reset, delete scoping fix, equipment filter
+GeneralFitness.jsx handleSelectTemplate: adds window.confirm dialog before switching;
+  on confirm resets sessions_completed=0, reference_date=today, last_session_date=null,
+  next_day_index=0 — prevents "Week 3" appearing on a brand-new template selection.
+  Syncs updated program to Supabase.
+GeneralFitness.jsx handleDeleteSession: replace raw updated.length counter with count of
+  sessions with session_date >= activeProgram.reference_date — deleting a session from
+  a previous template no longer corrupts the current-template progress pointer.
+  last_session_date derived from filtered set instead of all sessions.
+GeneralFitness.jsx filteredExercises: equipment-aware exercise list for SessionLogger.
+  bw templates → bw-only exercises; home templates → bw + db exercises;
+  gym/bb → all 38 SEED_EXERCISES. Prevents barbell exercises appearing in bodyweight/home
+  programs "Add Exercise" dropdown.
+DEPENDS ON: v8.5.0
+
 ## v8.5.0 — 2026-04-28 — Session delete, week progress bar, reset confirmation
 SessionHistory.jsx: per-session ✕ delete button with inline confirm/cancel — prevents
   accidental deletion. Click ✕ → shows confirm + cancel inline; confirm calls onDelete.
