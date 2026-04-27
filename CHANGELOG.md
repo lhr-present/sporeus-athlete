@@ -4,6 +4,17 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.2.0 — 2026-04-28 — General Fitness: routing fix, set completion, save confirmation
+suggestTemplate: `some` experience routes to intermediate templates; `strength`/`general` + 5+ days
+  routes to ppl_6day_intermediate instead of mismatched ul_4day_beginner; `general` + 4 days explicit.
+  7 new routing tests added (4306 total, 242 files).
+SessionLogger: per-set ✓ button — tap to mark set done; row dims to 50% opacity, set number
+  replaced with green ✓. State lives in `doneSets` map keyed by "rowIdx-setIdx". Grid extended
+  to 6 columns to fit new button.
+GeneralFitness: `savedJustNow` state shows green "✓ Session logged. Great work." banner for 3s
+  after save before Today screen settles. Bilingual.
+DEPENDS ON: v12.3.5 (suggestTemplate, SessionLogger, GeneralFitness, SEED_EXERCISES)
+
 ## v12.3.5 — 2026-04-27 — General Fitness: rest timer, PR detection, deload hint, milestones
 strengthTraining.js: computeSessionPRs(currentSession, priorSessions, exerciseDefs) — compares
   estimated 1RM per exercise against all prior sessions; returns new records with name, new1RM,

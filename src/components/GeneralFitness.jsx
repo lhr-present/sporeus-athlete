@@ -417,6 +417,7 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
   const [activeProgram, setActiveProgram] = useLocalStorage('sporeus-gf-program', null)
   const [sessions, setSessions]         = useLocalStorage('sporeus-gf-sessions', [])
   const [showLogger, setShowLogger]     = useState(false)
+  const [savedJustNow, setSavedJustNow] = useState(false)
   const [coachConfirmedAt, setCoachConfirmedAt] = useState(null)
   const [lastSessionPRs, setLastSessionPRs]     = useState([])
 
@@ -508,6 +509,8 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
     const prs = computeSessionPRs(entry, sessions, SEED_EXERCISES)
     if (prs.length > 0) setLastSessionPRs(prs)
 
+    setSavedJustNow(true)
+    setTimeout(() => setSavedJustNow(false), 3000)
     setShowLogger(false)
     setInnerTab('today')
   }
@@ -560,6 +563,12 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
         <Suspense fallback={null}>
 
           {/* Today tab */}
+          {innerTab === 'today' && !showLogger && savedJustNow && (
+            <div style={{ ...S.mono, fontSize: 12, padding: '10px 16px', marginBottom: 12, background: '#22aa4422', border: '1px solid #22aa4444', borderRadius: 3, color: '#22aa44', letterSpacing: '0.06em' }}>
+              ✓ {t('Session logged. Great work.', 'Antrenman kaydedildi. Harika iş.')}
+            </div>
+          )}
+
           {innerTab === 'today' && !showLogger && (
             <GeneralDashboard
               sessions={sessions}

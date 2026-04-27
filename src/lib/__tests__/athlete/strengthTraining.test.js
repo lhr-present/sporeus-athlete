@@ -424,6 +424,27 @@ describe('suggestTemplate', () => {
   it('undefined args → fallback', () => {
     expect(suggestTemplate()).toBe('ul_4day_beginner')
   })
+  it('strength + 5 days + some experience → ppl_6day_intermediate', () => {
+    expect(suggestTemplate({ goal: 'strength', days: 5, equipment: 'gym', experience: 'some' })).toBe('ppl_6day_intermediate')
+  })
+  it('strength + 5 days + beginner → ul_4day_beginner (capped)', () => {
+    expect(suggestTemplate({ goal: 'strength', days: 5, equipment: 'gym', experience: 'beginner' })).toBe('ul_4day_beginner')
+  })
+  it('strength + 4 days + some → ul_4day_intermediate', () => {
+    expect(suggestTemplate({ goal: 'strength', days: 4, equipment: 'gym', experience: 'some' })).toBe('ul_4day_intermediate')
+  })
+  it('muscle + 4 days + some → ul_4day_intermediate', () => {
+    expect(suggestTemplate({ goal: 'muscle', days: 4, equipment: 'gym', experience: 'some' })).toBe('ul_4day_intermediate')
+  })
+  it('general + 4 days + some → ul_4day_intermediate', () => {
+    expect(suggestTemplate({ goal: 'general', days: 4, equipment: 'gym', experience: 'some' })).toBe('ul_4day_intermediate')
+  })
+  it('general + 5 days + intermediate → ppl_6day_intermediate', () => {
+    expect(suggestTemplate({ goal: 'general', days: 5, equipment: 'gym', experience: 'intermediate' })).toBe('ppl_6day_intermediate')
+  })
+  it('general + 4 days + beginner → ul_4day_beginner', () => {
+    expect(suggestTemplate({ goal: 'general', days: 4, equipment: 'gym', experience: 'beginner' })).toBe('ul_4day_beginner')
+  })
 })
 
 // ── advanceRotation ───────────────────────────────────────────────────────────

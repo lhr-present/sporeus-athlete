@@ -223,24 +223,33 @@ export function suggestNextLoad(history, exercise, gap_days = null) {
  * @returns {string} - template ID
  */
 export function suggestTemplate({ goal, days, equipment, experience } = {}) {
-  const eq = equipment ?? 'gym'
-  const exp = experience ?? 'beginner'
+  const eq         = equipment ?? 'gym'
+  const exp        = experience ?? 'beginner'
+  const isAdvanced = exp === 'intermediate' || exp === 'some'
 
-  if (eq === 'bw')                              return 'bw_starter_3day'
-  if (eq === 'home' && days <= 3)               return 'home_db_3day'
-  if (eq === 'home' && days >= 4)               return 'home_db_4day'
+  if (eq === 'bw')                 return 'bw_starter_3day'
+  if (eq === 'home' && days <= 3)  return 'home_db_3day'
+  if (eq === 'home' && days >= 4)  return 'home_db_4day'
 
-  if (goal === 'recomp')                        return 'recomp_4day'
-  if (goal === 'muscle' && days >= 6)           return 'ppl_6day_intermediate'
-  if (goal === 'muscle' && days === 5)          return 'ppl_6day_intermediate'
-  if (goal === 'muscle' && days <= 3)           return 'ppl_3day_beginner'
-  if (goal === 'muscle' && days === 4 && exp === 'intermediate') return 'ul_4day_intermediate'
-  if (goal === 'muscle' && days === 4)          return 'ul_4day_beginner'
+  if (goal === 'recomp')           return 'recomp_4day'
 
-  if (goal === 'strength' && days <= 3)         return 'fb_3day_beginner'
-  if (goal === 'strength' && days === 4)        return 'ul_4day_beginner'
+  // Muscle
+  if (goal === 'muscle' && days >= 5)                return 'ppl_6day_intermediate'
+  if (goal === 'muscle' && days <= 3)                return 'ppl_3day_beginner'
+  if (goal === 'muscle' && days === 4 && isAdvanced) return 'ul_4day_intermediate'
+  if (goal === 'muscle' && days === 4)               return 'ul_4day_beginner'
 
-  if (days <= 3)                                return 'fb_3day_beginner'
+  // Strength
+  if (goal === 'strength' && days <= 3)                return 'fb_3day_beginner'
+  if (goal === 'strength' && days === 4 && isAdvanced)  return 'ul_4day_intermediate'
+  if (goal === 'strength' && days === 4)                return 'ul_4day_beginner'
+  if (goal === 'strength' && days >= 5 && isAdvanced)   return 'ppl_6day_intermediate'
+  if (goal === 'strength' && days >= 5)                 return 'ul_4day_beginner'
+
+  // General fitness — full body / U-L is the best match
+  if (days <= 3)                 return 'fb_3day_beginner'
+  if (days === 4 && isAdvanced)  return 'ul_4day_intermediate'
+  if (days >= 5 && isAdvanced)   return 'ppl_6day_intermediate'
   return 'ul_4day_beginner'
 }
 

@@ -44,6 +44,7 @@ export default function SessionLogger({
   const [rpe, setRpe]           = useState('')
   const [saved, setSaved]       = useState(false)
   const [cuesOpen, setCuesOpen] = useState({})
+  const [doneSets, setDoneSets] = useState({}) // "rowIdx-setIdx": true
   const [restTimer, setRestTimer] = useState(null) // { rowIdx, seconds, total }
 
   useEffect(() => {
@@ -223,8 +224,8 @@ export default function SessionLogger({
             )}
 
             {/* Column headers */}
-            <div style={{ display: 'grid', gridTemplateColumns: '32px 1fr 1fr 60px 32px', gap: 6, marginBottom: rowIdx === 0 ? 2 : 4 }}>
-              {['#', t('Reps','Tekrar'), t('kg','kg'), t('RIR','Yedek'), ''].map((h, i) => (
+            <div style={{ display: 'grid', gridTemplateColumns: '32px 1fr 1fr 60px 32px 32px', gap: 6, marginBottom: rowIdx === 0 ? 2 : 4 }}>
+              {['#', t('Reps','Tekrar'), t('kg','kg'), t('RIR','Yedek'), '', ''].map((h, i) => (
                 <span key={i} style={{ ...lbl, marginBottom: 0 }}>{h}</span>
               ))}
             </div>
@@ -235,24 +236,34 @@ export default function SessionLogger({
               </div>
             )}
 
-            {row.sets.map((s, si) => (
-              <div key={si} style={{ display: 'grid', gridTemplateColumns: '32px 1fr 1fr 60px 32px', gap: 6, marginBottom: 4, alignItems: 'center' }}>
-                <span style={{ ...S.mono, fontSize: 11, textAlign: 'center', color: s.is_warmup ? '#888' : 'var(--text)' }}>{s.set_number}{s.is_warmup ? 'W' : ''}</span>
-                <input style={inp} type="number" min={1}
-                  placeholder={pres ? `${pres.reps_low}–${pres.reps_high}` : '10'}
-                  value={s.reps} onChange={e => updateSet(rowIdx, si, 'reps', e.target.value)} />
-                <input style={inp} type="number" min={0} step="2.5"
-                  placeholder={sugg?.load_kg ? String(sugg.load_kg) : '—'}
-                  value={s.load_kg} onChange={e => updateSet(rowIdx, si, 'load_kg', e.target.value)} />
-                <input style={inp} type="number" min={0} max={5}
-                  placeholder={pres ? String(pres.rir ?? 2) : '2'}
-                  value={s.rir} onChange={e => updateSet(rowIdx, si, 'rir', e.target.value)} />
-                <button
-                  style={{ ...S.mono, fontSize: 9, border: '1px solid var(--border)', background: s.is_warmup ? '#ff660022' : 'transparent', color: s.is_warmup ? '#ff6600' : '#555', borderRadius: 3, cursor: 'pointer', padding: '4px 2px' }}
-                  title={t('Toggle warmup', 'Isınma olarak işaretle')}
-                  onClick={() => updateSet(rowIdx, si, 'is_warmup', !s.is_warmup)}>W</button>
-              </div>
-            ))}
+            {row.sets.map((s, si) => {
+              const doneKey = `${rowIdx}-${si}`
+              const isDone  = !!doneSets[doneKey]
+              return (
+                <div key={si} style={{ display: 'grid', gridTemplateColumns: '32px 1fr 1fr 60px 32px 32px', gap: 6, marginBottom: 4, alignItems: 'center', opacity: isDone ? 0.5 : 1, transition: 'opacity 0.2s' }}>
+                  <span style={{ ...S.mono, fontSize: 11, textAlign: 'center', color: isDone ? '#22aa44' : s.is_warmup ? '#888' : 'var(--text)' }}>
+                    {isDone ? '✓' : `${s.set_number}${s.is_warmup ? 'W' : ''}`}
+                  </span>
+                  <input style={{ ...inp, background: isDone ? 'transparent' : undefined }} type="number" min={1}
+                    placeholder={pres ? `${pres.reps_low}–${pres.reps_high}` : '10'}
+                    value={s.reps} onChange={e => updateSet(rowIdx, si, 'reps', e.target.value)} />
+                  <input style={{ ...inp, background: isDone ? 'transparent' : undefined }} type="number" min={0} step="2.5"
+                    placeholder={sugg?.load_kg ? String(sugg.load_kg) : '—'}
+                    value={s.load_kg} onChange={e => updateSet(rowIdx, si, 'load_kg', e.target.value)} />
+                  <input style={{ ...inp, background: isDone ? 'transparent' : undefined }} type="number" min={0} max={5}
+                    placeholder={pres ? String(pres.rir ?? 2) : '2'}
+                    value={s.rir} onChange={e => updateSet(rowIdx, si, 'rir', e.target.value)} />
+                  <button
+                    style={{ ...S.mono, fontSize: 9, border: '1px solid var(--border)', background: s.is_warmup ? '#ff660022' : 'transparent', color: s.is_warmup ? '#ff6600' : '#555', borderRadius: 3, cursor: 'pointer', padding: '4px 2px' }}
+                    title={t('Toggle warmup', 'Isınma olarak işaretle')}
+                    onClick={() => updateSet(rowIdx, si, 'is_warmup', !s.is_warmup)}>W</button>
+                  <button
+                    onClick={() => setDoneSets(d => ({ ...d, [doneKey]: !d[doneKey] }))}
+                    style={{ ...S.mono, fontSize: 11, border: `1px solid ${isDone ? '#22aa44' : 'var(--border)'}`, background: isDone ? '#22aa4422' : 'transparent', color: isDone ? '#22aa44' : '#555', borderRadius: 3, cursor: 'pointer', padding: '4px 2px' }}
+                    title={t('Mark set done', 'Seti tamamla')}>✓</button>
+                </div>
+              )
+            })}
 
             <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
               <button style={{ ...S.mono, fontSize: 10, padding: '4px 10px', border: '1px dashed var(--border)', background: 'transparent', color: '#888', borderRadius: 3, cursor: 'pointer' }} onClick={() => addSet(rowIdx)}>
