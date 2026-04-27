@@ -4,6 +4,14 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v12.1.7 — 2026-04-27 — CI: add --include-all to db push, fix migration history drift
+branches get JSON returns no project_ref so branch_ref falls back to parent project.
+db push was failing: "Remote migration versions not found in local migrations directory"
+because production has migrations not tracked in local supabase/migrations/.
+Fix: --include-all skips the remote history check and applies all local migrations.
+
+---
+
 ## v12.1.6 — 2026-04-27 — CI: fix db push CLI API in e2e + rls-pentest
 Current supabase CLI db push no longer accepts --project-ref or --branch flags.
 Fixed both workflows: extract branch project_ref from branches get JSON,

@@ -88,14 +88,9 @@ jobs:
       - name: Apply migrations to E2E branch
         run: |
           BRANCH_REF="${{ steps.db-branch.outputs.branch_ref }}"
-          if [ -n "$BRANCH_REF" ]; then
-            supabase link --project-ref "$BRANCH_REF" --yes
-            supabase db push --linked --yes
-          else
-            echo "No branch project_ref available — applying to parent project"
-            supabase link --project-ref "$SUPABASE_PROJECT_ID" --yes
-            supabase db push --linked --yes
-          fi
+          TARGET_REF="${BRANCH_REF:-$SUPABASE_PROJECT_ID}"
+          supabase link --project-ref "$TARGET_REF" --yes
+          supabase db push --linked --include-all --yes
 
       # ── Seed test data ────────────────────────────────────────────────────────
       - name: Seed test data
