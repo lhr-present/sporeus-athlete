@@ -4,6 +4,13 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v12.1.5 — 2026-04-27 — CI: fix secrets context in job-level if condition
+e2e-critical-paths: removed `if: ${{ secrets.X != '' }}` from job level —
+secrets context is not allowed in job.if (only github/inputs/needs/vars are valid).
+Verified with actionlint v1.7.12: both workflow files now CLEAN.
+
+---
+
 ## v12.1.4 — 2026-04-27 — CI: fix YAML syntax error in rls-pentest.yml
 Template literal in github-script body had lines at column 1 (** markdown bold),
 breaking YAML block scalar parsing — YAML scanner tried to interpret ** as an alias.

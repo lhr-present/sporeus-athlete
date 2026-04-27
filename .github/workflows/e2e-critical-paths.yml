@@ -32,7 +32,6 @@ jobs:
     name: Critical Path E2E
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: ${{ secrets.SUPABASE_ACCESS_TOKEN != '' }}
 
     steps:
       # ── Checkout ──────────────────────────────────────────────────────────────
