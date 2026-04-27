@@ -101,6 +101,8 @@ const ConsistencyDepthCard       = lazy(() => import('./dashboard/ConsistencyDep
 const MonthlyProgressCard        = lazy(() => import('./dashboard/MonthlyProgressCard.jsx'))
 const IntensityBalanceCard       = lazy(() => import('./dashboard/IntensityBalanceCard.jsx'))
 const WeekSessionTypeCard        = lazy(() => import('./dashboard/WeekSessionTypeCard.jsx'))
+const RaceGoalAnalyzerCard       = lazy(() => import('./dashboard/RaceGoalAnalyzerCard.jsx'))
+const TrainingBridgeCard         = lazy(() => import('./dashboard/TrainingBridgeCard.jsx'))
 
 export default function Dashboard({ log, onLogSession, onGoToProfile }) {
   const [lang]       = useLocalStorage('sporeus-lang', 'en')
@@ -331,6 +333,16 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
             />
           </Suspense>
         </ErrorBoundary>
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <RaceGoalAnalyzerCard profile={profile} log={log} isTR={lang === 'tr'} />
+          </Suspense>
+        </ErrorBoundary>
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <TrainingBridgeCard profile={profile} log={log} isTR={lang === 'tr'} />
+          </Suspense>
+        </ErrorBoundary>
         <div style={{ marginBottom: '16px' }}>
           <div style={{ ...S.mono, fontSize: '11px', color: '#888', marginBottom: '4px' }}>{today}</div>
           <div style={{ ...S.mono, fontSize: '18px', fontWeight: 600 }}>
@@ -453,6 +465,16 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       {log.length === 0 && (
         <GettingStartedCard isTR={lang === 'tr'} onLogSession={onLogSession}/>
       )}
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <RaceGoalAnalyzerCard profile={profile} log={log} isTR={lang === 'tr'} />
+        </Suspense>
+      </ErrorBoundary>
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <TrainingBridgeCard profile={profile} log={log} isTR={lang === 'tr'} />
+        </Suspense>
+      </ErrorBoundary>
       <MilestonesList log={log} profile={profile}/>
       <BackupReminder log={log}/>
       <WeeklyRetroCard log={log} recovery={recovery} plan={plan} lang={lang}/>
