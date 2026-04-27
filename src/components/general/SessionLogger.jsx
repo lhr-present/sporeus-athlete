@@ -1,11 +1,24 @@
 // src/components/general/SessionLogger.jsx — set-by-set strength session logging
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { S } from '../../styles.js'
 import { suggestNextLoad, plateCalculator } from '../../lib/athlete/strengthTraining.js'
 
 const card  = { background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '16px 20px', marginBottom: 12 }
 const inp   = { ...S.mono, fontSize: 12, padding: '6px 10px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 3, color: 'var(--text)', width: '100%' }
 const lbl   = { ...S.mono, fontSize: 10, color: '#888', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }
+
+const DRAFT_KEY = 'sporeus-gf-draft'
+
+function readDraft(dayKey) {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY)
+    if (!raw) return null
+    const d = JSON.parse(raw)
+    if (d?.dayKey !== dayKey) return null
+    if (Date.now() - (d.at ?? 0) > 86400000) { localStorage.removeItem(DRAFT_KEY); return null }
+    return d
+  } catch { return null }
+}
 
 const PATTERN_ORDER = ['squat','hinge','push_h','push_v','pull_h','pull_v','iso','core']
 const PATTERN_LABELS = {
@@ -47,10 +60,14 @@ export default function SessionLogger({
 }) {
   const t = (en, tr) => lang === 'tr' ? tr : en
 
-  const [dayLabel, setDayLabel] = useState(initialLabel)
-  const [notes, setNotes]       = useState('')
-  const [rpe, setRpe]           = useState('')
+  const dayKey  = preloadedExercises.map(e => e.exercise_id).join('|')
+  const _draft  = useRef(preloadedExercises.length > 0 ? readDraft(dayKey) : null)
+
+  const [dayLabel, setDayLabel] = useState(_draft.current?.dayLabel || initialLabel)
+  const [notes, setNotes]       = useState(_draft.current?.notes   || '')
+  const [rpe, setRpe]           = useState(_draft.current?.rpe     || '')
   const [saved, setSaved]       = useState(false)
+  const [draftRestored, setDraftRestored] = useState(!!_draft.current?.rows?.length)
   const [cuesOpen, setCuesOpen] = useState({})
   const [doneSets, setDoneSets] = useState({}) // "rowIdx-setIdx": true
   const [restTimer, setRestTimer] = useState(null) // { rowIdx, seconds, total }
@@ -74,17 +91,45 @@ export default function SessionLogger({
   }
 
   // Build initial rows from preloaded exercises (template prescription)
-  const [rows, setRows] = useState(() =>
-    preloadedExercises.length > 0 ? preloadedExercises.map(buildRow) : []
-  )
+  const [rows, setRows] = useState(() => {
+    if (preloadedExercises.length === 0) return []
+    if (_draft.current?.rows?.length > 0) return _draft.current.rows
+    return preloadedExercises.map(buildRow)
+  })
 
   // Re-init when preloaded exercises change (e.g. different day opened)
   useEffect(() => {
     if (preloadedExercises.length > 0) {
-      setRows(preloadedExercises.map(buildRow))
-      setDayLabel(initialLabel)
+      const newDayKey = preloadedExercises.map(e => e.exercise_id).join('|')
+      const draft     = readDraft(newDayKey)
+      _draft.current  = draft
+      setRows(draft?.rows?.length > 0 ? draft.rows : preloadedExercises.map(buildRow))
+      setDayLabel(draft?.dayLabel || initialLabel)
+      setNotes(draft?.notes || '')
+      setRpe(draft?.rpe || '')
+      setDraftRestored(!!draft?.rows?.length)
     }
   }, [preloadedExercises.map(e => e.exercise_id).join(','), initialLabel])
+
+  // Auto-dismiss draft banner after 4s
+  useEffect(() => {
+    if (!draftRestored) return
+    const id = setTimeout(() => setDraftRestored(false), 4000)
+    return () => clearTimeout(id)
+  }, [draftRestored])
+
+  // Auto-save draft on every change (skip when already saved or no rows)
+  useEffect(() => {
+    if (rows.length === 0 || saved) return
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({
+        dayKey,
+        rows: rows.map(r => ({ exerciseId: r.exerciseId, prescription: r.prescription, sets: r.sets })),
+        dayLabel, rpe, notes,
+        at: Date.now(),
+      }))
+    } catch {}
+  }, [rows, dayLabel, rpe, notes])
 
   function addExercise(exId) {
     if (!exId) return
@@ -130,6 +175,7 @@ export default function SessionLogger({
       duration_minutes: null,
       exercises:        exerciseEntries,
     }
+    localStorage.removeItem(DRAFT_KEY)
     onSave?.(session)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
@@ -172,6 +218,14 @@ export default function SessionLogger({
           })}
         </select>
       </div>
+
+      {/* Draft restored banner */}
+      {draftRestored && (
+        <div style={{ ...S.mono, fontSize: 10, color: '#0064ff', padding: '6px 12px', background: '#0064ff11', border: '1px solid #0064ff33', borderRadius: 3, marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>↩ {t('Draft restored — continue where you left off.', 'Taslak geri yüklendi — kaldığın yerden devam et.')}</span>
+          <button onClick={() => setDraftRestored(false)} style={{ ...S.mono, fontSize: 9, border: 'none', background: 'transparent', color: '#0064ff', cursor: 'pointer', padding: '0 4px' }}>✕</button>
+        </div>
+      )}
 
       {/* Set rows */}
       {rows.map((row, rowIdx) => {

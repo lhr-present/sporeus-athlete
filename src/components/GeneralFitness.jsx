@@ -17,7 +17,7 @@ const ProgramTemplateGallery = lazy(() => import('./general/ProgramTemplateGalle
 const GeneralInsights        = lazy(() => import('./general/GeneralInsights.jsx'))
 
 // equipment value → allowed exercise equipment tags
-const EQUIP_ALLOW = { bw: ['bw'], home: ['bw', 'db'] }
+const EQUIP_ALLOW = { bw: ['bw'], home: ['bw', 'db', 'band'] }
 
 const INNER_TABS = [
   { id: 'today',    en: 'TODAY',    tr: 'BUGÜN' },

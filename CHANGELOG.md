@@ -4,6 +4,21 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.9.0 — 2026-04-28 — Draft auto-save + band equipment fix
+SessionLogger.jsx: draft auto-save to localStorage (key `sporeus-gf-draft`). Every change to
+  rows, dayLabel, rpe, or notes persists the session in progress. On reload/re-open the draft
+  is restored if the dayKey (exercise IDs joined) matches and the draft is under 24h old. A
+  blue "↩ Draft restored" banner auto-dismisses after 4s (or manual ✕). Draft is cleared on
+  FINISH SESSION. Prevents all in-progress data loss from accidental refresh or tab close.
+  readDraft() is a module-scope helper; auto-save useEffect skips when rows are empty or
+  already saved. Re-init useEffect (day change) also checks for a matching draft first.
+GeneralFitness.jsx: EQUIP_ALLOW map now includes 'band' for the 'home' key
+  (was ['bw','db'], now ['bw','db','band']). Home templates (home_db_3day, home_db_4day)
+  reference band_pull_apart and band_row (equipment:'band' in SEED_EXERCISES) — without this
+  fix those exercises showed as raw IDs in the logger and were absent from the Add Exercise
+  dropdown.
+DEPENDS ON: v8.8.0
+
 ## v8.8.0 — 2026-04-28 — BW chart fix, duplicate data removal, exercise dropdown groups, UX polish
 ProgressionChart.jsx: added `isBW` prop — BW exercises now show max-reps progression instead of
   0 kg flat line. Y-axis labels, tooltips, and header ("MAX REPS" vs "TOP SET PROGRESSION")
