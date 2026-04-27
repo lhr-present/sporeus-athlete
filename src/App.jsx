@@ -546,7 +546,8 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
 
 // ─── App — thin shell: auth + providers ──────────────────────────────────────
 export default function App() {
-  const [lang, setLang] = useLocalStorage('sporeus-lang', 'en')
+  const [lang, setLang] = useLocalStorage('sporeus-lang',
+    typeof navigator !== 'undefined' && navigator.language?.startsWith('tr') ? 'tr' : 'en')
   const [dark, setDark] = useLocalStorage('sporeus-dark', true)
 
   // Sync HTML lang attribute for screen readers and proper locale rendering

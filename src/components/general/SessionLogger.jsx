@@ -196,7 +196,7 @@ export default function SessionLogger({
         </div>
         <div style={{ flex: 1 }}>
           <span style={lbl}>{t('Session RPE (1–10)', 'Seans RPE (1–10)')}</span>
-          <input style={inp} type="number" min={1} max={10} placeholder="7" value={rpe} onChange={e => setRpe(e.target.value)} />
+          <input style={inp} type="number" min={1} max={10} placeholder="7" inputMode="numeric" value={rpe} onChange={e => setRpe(e.target.value)} />
         </div>
       </div>
 
@@ -327,13 +327,13 @@ export default function SessionLogger({
                   <span style={{ ...S.mono, fontSize: 11, textAlign: 'center', color: isDone ? '#22aa44' : s.is_warmup ? '#888' : 'var(--text)' }}>
                     {isDone ? '✓' : `${s.set_number}${s.is_warmup ? 'W' : ''}`}
                   </span>
-                  <input style={{ ...inp, background: isDone ? 'transparent' : undefined }} type="number" min={1}
+                  <input style={{ ...inp, background: isDone ? 'transparent' : undefined }} type="number" min={1} inputMode="numeric"
                     placeholder={pres ? `${pres.reps_low}–${pres.reps_high}` : '10'}
                     value={s.reps} onChange={e => updateSet(rowIdx, si, 'reps', e.target.value)} />
-                  <input style={{ ...inp, background: isDone ? 'transparent' : undefined }} type="number" min={0} step="2.5"
+                  <input style={{ ...inp, background: isDone ? 'transparent' : undefined }} type="text" inputMode="decimal"
                     placeholder={sugg?.load_kg ? String(sugg.load_kg) : '—'}
                     value={s.load_kg} onChange={e => updateSet(rowIdx, si, 'load_kg', e.target.value)} />
-                  <input style={{ ...inp, background: isDone ? 'transparent' : undefined }} type="number" min={0} max={5}
+                  <input style={{ ...inp, background: isDone ? 'transparent' : undefined }} type="number" min={0} max={5} inputMode="numeric"
                     placeholder={pres ? String(pres.rir ?? 2) : '2'}
                     value={s.rir} onChange={e => updateSet(rowIdx, si, 'rir', e.target.value)} />
                   <button

@@ -485,6 +485,16 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
     supabase.from('profiles').update({ user_mode: 'general' }).eq('id', authUser.id)
   }, [authUser?.id])
 
+  // Re-sync program state when network comes back (sessions logged offline push to Supabase)
+  useEffect(() => {
+    function handleOnline() {
+      if (!authUser?.id || !activeProgram) return
+      syncGeneralProgram(authUser.id, activeProgram, lang === 'tr' ? activeTemplate?.name_tr : activeTemplate?.name_en)
+    }
+    window.addEventListener('online', handleOnline)
+    return () => window.removeEventListener('online', handleOnline)
+  }, [authUser?.id, activeProgram, activeTemplate, lang])
+
   function handleOnboardingComplete(data) {
     const prog = {
       templateId:         data.templateId,

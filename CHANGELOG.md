@@ -4,6 +4,20 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.10.0 — 2026-04-28 — Locale auto-detect, mobile keyboard, offline-safe sync
+App.jsx: navigator.language auto-detects Turkish on first visit — TR browser gets TR default
+  without manual toggle; stored localStorage preference overrides on subsequent visits.
+SessionLogger.jsx: reps + RIR inputs → inputMode="numeric" (integer keypad, no letters on
+  mobile). load_kg changed from type=number/step=2.5 to type=text/inputMode="decimal" so iOS
+  shows decimal keyboard instead of the number spinner — critical for typing 52.5 with one
+  hand mid-workout. Session RPE also gets inputMode="numeric".
+generalFitnessSync.js: added navigator.onLine guard — Supabase write skipped when offline;
+  avoids queuing failed requests.
+GeneralFitness.jsx: window.addEventListener('online') handler — when connectivity restores,
+  re-pushes current activeProgram to Supabase so sessions logged while offline reach the
+  coach dashboard without user action.
+DEPENDS ON: v8.9.1
+
 ## v8.9.1 — 2026-04-28 — Bug fixes: rest timer null-crash, delete ID mismatch, label typo, NaN date
 SessionLogger.jsx: rest timer decrement no longer crashes when user dismisses mid-countdown.
   `setRestTimer(t => t ? {...t, seconds: Math.max(0, t.seconds-1)} : null)` — if t is null

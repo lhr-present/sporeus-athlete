@@ -13,7 +13,7 @@ import { supabase, isSupabaseReady } from './supabase.js'
  * @param {{ last_session_label?: string, last_session_exercise_count?: number }|null} sessionSummary
  */
 export async function syncGeneralProgram(userId, program, templateName, sessionSummary = null) {
-  if (!userId || !program || !isSupabaseReady()) return
+  if (!userId || !program || !isSupabaseReady() || !navigator.onLine) return
   const update = {
     general_program: {
       template_id:                 program.templateId,
