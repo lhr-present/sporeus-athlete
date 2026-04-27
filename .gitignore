@@ -12,3 +12,4 @@ dist-ssr
 
 # E2E test secrets / state
 tests/e2e/.e2e-users.json
+.claude/worktrees/
