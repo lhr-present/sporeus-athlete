@@ -38,6 +38,11 @@ export default function GeneralInsights({ sessions = [], exercises = [], lang = 
     const ids = [...new Set(sessions.flatMap(s => (s.exercises ?? []).map(ex => ex.exercise_id)))]
     return ids
       .filter(id => sessions.filter(s => s.exercises?.some(ex => ex.exercise_id === id)).length >= 2)
+      .sort((a, b) => {
+        const lastA = sessions.filter(s => s.exercises?.some(ex => ex.exercise_id === a)).at(-1)?.session_date ?? ''
+        const lastB = sessions.filter(s => s.exercises?.some(ex => ex.exercise_id === b)).at(-1)?.session_date ?? ''
+        return lastB.localeCompare(lastA)
+      })
       .slice(0, 4)
   }, [sessions])
 

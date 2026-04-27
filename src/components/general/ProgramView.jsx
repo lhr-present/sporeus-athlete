@@ -2,6 +2,11 @@
 import { S } from '../../styles.js'
 
 const DAY_LABELS_TR = { Push: 'İtiş', Pull: 'Çekiş', Legs: 'Bacak', Upper: 'Üst', Lower: 'Alt', 'Full Body': 'Tüm Vücut', Rest: 'Dinlenme' }
+const EXP_LABEL = {
+  beginner:     { en: 'Beginner',     tr: 'Başlangıç'   },
+  intermediate: { en: 'Intermediate', tr: 'Orta Seviye'  },
+  advanced:     { en: 'Advanced',     tr: 'İleri Seviye' },
+}
 
 function trDay(label, lang) {
   if (lang !== 'tr') return label
@@ -23,7 +28,7 @@ export default function ProgramView({ template = null, templateDays = [], templa
     <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '16px 20px' }}>
       <div style={{ ...S.mono, fontSize: 12, color: '#ff6600', letterSpacing: '0.1em', marginBottom: 4 }}>{name}</div>
       <div style={{ ...S.mono, fontSize: 10, color: '#888', marginBottom: 16 }}>
-        {template.days_per_week}×{lang === 'tr' ? '/hafta' : '/week'} · {template.weeks}w · {template.experience_level}
+        {template.days_per_week}×{lang === 'tr' ? '/hafta' : '/week'} · {template.weeks}w · {EXP_LABEL[template.experience_level]?.[lang] ?? template.experience_level}
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -54,7 +59,7 @@ export default function ProgramView({ template = null, templateDays = [], templa
                       {ex ? (lang === 'tr' ? ex.name_tr : ex.name_en) : te.exercise_id}
                     </span>
                     <span style={{ ...S.mono, fontSize: 10, color: '#888' }}>
-                      {te.sets}×{te.reps_low}–{te.reps_high} RIR{te.rir}
+                      {te.sets}×{te.reps_low}–{te.reps_high} RIR{te.rir} · {te.rest_seconds ?? 90}s
                     </span>
                   </div>
                 )

@@ -4,6 +4,19 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.10.1 — 2026-04-28 — NaN guard, ProgramView polish, Insights sort
+SessionLogger.jsx: load_kg save now guards against non-numeric input —
+  `!isNaN(parseFloat(s.load_kg))` check added. type=text allows typing
+  anything; without the guard "abc" would silently write NaN to the session.
+ProgramView.jsx: experience_level now displays translated label (Beginner /
+  Başlangıç etc.) instead of raw English key even when lang=tr.
+ProgramView.jsx: each exercise row now shows rest_seconds (e.g. "90s"),
+  defaulting to 90 when not specified.
+GeneralInsights.jsx: progressExercises now sorted by most-recently-logged
+  session date before taking the top 4. Users who switched templates now see
+  their current exercises in progression charts, not their oldest ones.
+DEPENDS ON: v8.10.0
+
 ## v8.10.0 — 2026-04-28 — Locale auto-detect, mobile keyboard, offline-safe sync
 App.jsx: navigator.language auto-detects Turkish on first visit — TR browser gets TR default
   without manual toggle; stored localStorage preference overrides on subsequent visits.

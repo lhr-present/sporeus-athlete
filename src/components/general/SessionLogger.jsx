@@ -162,7 +162,7 @@ export default function SessionLogger({
         .map(s => ({
           set_number: s.set_number,
           reps:       parseInt(s.reps),
-          load_kg:    s.load_kg ? parseFloat(s.load_kg) : null,
+          load_kg:    s.load_kg && !isNaN(parseFloat(s.load_kg)) ? parseFloat(s.load_kg) : null,
           rir:        s.rir !== '' ? parseInt(s.rir) : null,
           is_warmup:  s.is_warmup,
         }))
