@@ -4,6 +4,20 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.4.0 — 2026-04-28 — Log tab history, program day highlight, UX fixes
+SessionHistory.jsx (NEW): Log tab now shows full session history — expandable cards
+  per session with date, day label, exercise count, work sets, top load per exercise
+  (sets × kg × reps), warmup count, notes. "LOG NEW →" button opens overlay logger.
+  Sessions sorted newest-first; expand/collapse by tap.
+ProgramView.jsx: accepts `currentDayIndex` prop; active day gets orange border + "NEXT →"
+  pill so athletes can see exactly where they are in the rotation at a glance.
+GeneralFitness.jsx: Log tab swapped from duplicate SessionLogger to SessionHistory;
+  ProgramView now receives `currentDayIndex={activeProgram?.next_day_index ?? 0}`.
+GeneralDashboard.jsx: removed "Awaiting coach review…" badge — it showed for every
+  standalone athlete without a coach, creating permanent false expectation. Green
+  "confirmed by coach" badge still appears when coach has confirmed.
+DEPENDS ON: v8.3.0
+
 ## v8.3.0 — 2026-04-28 — Coach-athlete session confirmation loop (all sports)
 Migration 20260477: `profiles.last_workout_done_at` timestamptz (athlete marks done),
   `coach_athletes.coach_verified_at + coach_verified_note` (coach review timestamp),

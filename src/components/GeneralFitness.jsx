@@ -11,6 +11,7 @@ import { supabase, isSupabaseReady } from '../lib/supabase.js'
 
 const GeneralDashboard       = lazy(() => import('./general/GeneralDashboard.jsx'))
 const SessionLogger          = lazy(() => import('./general/SessionLogger.jsx'))
+const SessionHistory         = lazy(() => import('./general/SessionHistory.jsx'))
 const ProgramView            = lazy(() => import('./general/ProgramView.jsx'))
 const ProgramTemplateGallery = lazy(() => import('./general/ProgramTemplateGallery.jsx'))
 const GeneralInsights        = lazy(() => import('./general/GeneralInsights.jsx'))
@@ -607,16 +608,13 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
             </div>
           )}
 
-          {/* Log tab */}
+          {/* Log tab — history list + LOG NEW button */}
           {innerTab === 'log' && !showLogger && (
-            <SessionLogger
+            <SessionHistory
+              sessions={sessions}
               exercises={SEED_EXERCISES}
-              preloadedExercises={currentDay?.exercises ?? []}
-              history={exerciseHistory}
-              gapDays={gapDayMap}
-              initialLabel={currentDayLabel}
               lang={lang}
-              onSave={handleSaveSession}
+              onLogNew={() => setShowLogger(true)}
             />
           )}
 
@@ -631,6 +629,7 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
                     templateExercises={SEED_EXERCISES}
                     exercises={SEED_EXERCISES}
                     lang={lang}
+                    currentDayIndex={activeProgram?.next_day_index ?? 0}
                   />
                 </div>
               )}

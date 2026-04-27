@@ -155,14 +155,10 @@ export default function GeneralDashboard({ sessions = [], exercises = [], active
         </div>
       )}
 
-      {/* ── Coach confirmation badge ──────────────────────── */}
-      {coachConfirmedAt ? (
+      {/* ── Coach confirmation badge — only show when confirmed ─── */}
+      {coachConfirmedAt && (
         <div style={{ ...S.mono, fontSize: 10, color: '#22aa44', padding: '6px 10px', border: '1px solid #22aa4433', borderRadius: 3, marginBottom: 14, letterSpacing: '0.06em' }}>
           ✓ {lang === 'tr' ? 'Antrenörün programını onayladı' : 'Program confirmed by your coach'}
-        </div>
-      ) : activeTemplate && (
-        <div style={{ ...S.mono, fontSize: 10, color: '#555', padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 3, marginBottom: 14 }}>
-          {lang === 'tr' ? 'Antrenör onayı bekleniyor…' : 'Awaiting coach review…'}
         </div>
       )}
 

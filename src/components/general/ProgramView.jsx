@@ -8,7 +8,7 @@ function trDay(label, lang) {
   return DAY_LABELS_TR[label] ?? label
 }
 
-export default function ProgramView({ template = null, templateDays = [], templateExercises = [], exercises = [], lang = 'en' }) {
+export default function ProgramView({ template = null, templateDays = [], templateExercises = [], exercises = [], lang = 'en', currentDayIndex = 0 }) {
   if (!template) {
     return (
       <div style={{ ...S.mono, fontSize: 11, color: '#555', padding: '24px 0', textAlign: 'center' }}>
@@ -32,11 +32,19 @@ export default function ProgramView({ template = null, templateDays = [], templa
           // exercises prop (SEED_EXERCISES) is used only for name lookup.
           const dayExercises = day.exercises ?? []
           const dayLabel = lang === 'tr' ? day.day_label_tr : day.day_label_en
+          const isNext = day.day_index === currentDayIndex
 
           return (
-            <div key={day.day_index} style={{ border: '1px solid var(--border)', borderRadius: 3, padding: '10px 14px' }}>
-              <div style={{ ...S.mono, fontSize: 11, color: 'var(--text)', letterSpacing: '0.08em', marginBottom: 8 }}>
-                {lang === 'tr' ? `Gün ${day.day_index + 1}` : `Day ${day.day_index + 1}`} — {dayLabel}
+            <div key={day.day_index} style={{ border: `1px solid ${isNext ? '#ff660088' : 'var(--border)'}`, background: isNext ? '#ff660008' : 'transparent', borderRadius: 3, padding: '10px 14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div style={{ ...S.mono, fontSize: 11, color: isNext ? '#ff6600' : 'var(--text)', letterSpacing: '0.08em' }}>
+                  {lang === 'tr' ? `Gün ${day.day_index + 1}` : `Day ${day.day_index + 1}`} — {dayLabel}
+                </div>
+                {isNext && (
+                  <span style={{ ...S.mono, fontSize: 8, color: '#ff6600', border: '1px solid #ff660044', borderRadius: 2, padding: '1px 6px', letterSpacing: '0.06em' }}>
+                    {lang === 'tr' ? 'SIRADA →' : 'NEXT →'}
+                  </span>
+                )}
               </div>
               {dayExercises.map((te, i) => {
                 const ex = exercises.find(e => e.id === te.exercise_id)
