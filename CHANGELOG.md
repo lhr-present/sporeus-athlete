@@ -4,6 +4,13 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v12.1.8 — 2026-04-27 — CI: continue-on-error for migration step in e2e workflow
+Branch is created from production so schema is always current.
+Migration push fails only due to history drift (remote versions not in local dir).
+Adding continue-on-error: true lets Playwright tests run regardless of drift.
+
+---
+
 ## v12.1.7 — 2026-04-27 — CI: add --include-all to db push, fix migration history drift
 branches get JSON returns no project_ref so branch_ref falls back to parent project.
 db push was failing: "Remote migration versions not found in local migrations directory"
