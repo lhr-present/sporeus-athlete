@@ -209,6 +209,58 @@ export default function RaceGoalDashCard({ log = [], profile = {}, isTR }) {
                 : 'TSB too low. Run easy today, recover. Reassess tomorrow.'}
             </div>
           )}
+
+          {/* ── Full prescription (structure text) ── */}
+          {!downgraded && adaptedSession?.run?.structure && (
+            <div style={{ fontSize: '8px', color: '#555', marginTop: '6px', lineHeight: 1.5, padding: '5px 7px', background: '#0a0a0a', borderRadius: '2px', borderLeft: '2px solid #222' }}>
+              {isTR ? adaptedSession.run.structureTr : adaptedSession.run.structure}
+            </div>
+          )}
+
+          {/* ── Drills strip ── */}
+          {!downgraded && adaptedSession?.drills && (
+            <div style={{ marginTop: '6px' }}>
+              <div style={{ fontSize: '7px', color: DIM, letterSpacing: '0.08em', marginBottom: '3px' }}>
+                ◈ {isTR ? 'HAREKETLİLİK / ALIŞTIIRMALAR' : 'DRILLS'} — {adaptedSession.drills.durationMin}min
+              </div>
+              <div style={{ fontSize: '8px', color: '#555', lineHeight: 1.5 }}>
+                {adaptedSession.drills.exercises.map(e => isTR ? e.tr : e.name).join(' · ')}
+              </div>
+            </div>
+          )}
+
+          {/* ── Strength strip ── */}
+          {!downgraded && adaptedSession?.strength && (
+            <div style={{ marginTop: '6px' }}>
+              <div style={{ fontSize: '7px', color: DIM, letterSpacing: '0.08em', marginBottom: '3px' }}>
+                ◈ {isTR ? 'KUVVETLENDİRME' : 'STRENGTH'} — {adaptedSession.strength.durationMin}min
+              </div>
+              <div style={{ fontSize: '8px', color: '#555', lineHeight: 1.5 }}>
+                {adaptedSession.strength.exercises.map(e =>
+                  `${isTR ? e.tr : e.name} ${e.sets}×${e.reps}`
+                ).join(' · ')}
+              </div>
+            </div>
+          )}
+
+          {/* ── Preventive strip ── */}
+          {!downgraded && adaptedSession?.preventive && (
+            <div style={{ marginTop: '6px' }}>
+              <div style={{ fontSize: '7px', color: DIM, letterSpacing: '0.08em', marginBottom: '3px' }}>
+                ◈ {isTR ? 'KORUYucu ÇALIŞMALAR' : 'PREVENTIVE'} — {adaptedSession.preventive.durationMin}min
+              </div>
+              <div style={{ fontSize: '8px', color: '#555', lineHeight: 1.5 }}>
+                {adaptedSession.preventive.exercises.map(e => isTR ? e.tr : e.name).join(' · ')}
+              </div>
+            </div>
+          )}
+
+          {/* ── Total time ── */}
+          {!downgraded && adaptedSession?.totalDurationMin > 0 && (
+            <div style={{ fontSize: '8px', color: '#333', marginTop: '7px', textAlign: 'right' }}>
+              {isTR ? 'TOPLAM' : 'TOTAL'} ~{adaptedSession.totalDurationMin}min
+            </div>
+          )}
         </div>
       )}
 

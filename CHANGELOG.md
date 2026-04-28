@@ -4,6 +4,26 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.27.0 — 2026-04-29 — Full training prescription library: running + strength + drills + preventive
+
+sessionLibrary.js (E90): complete 7-day multi-modal training plan builder.
+  3 progressive drill circuits (beginner → intermediate → advanced).
+  3 preventive routines (hip/glute activation, calf/Achilles care, full mobility).
+  6 strength workout templates (foundation → progressive → maintenance) spanning
+    20 exercises including Nordic hamstring curls, Bulgarian split squats,
+    Copenhagen planks, eccentric calf raises (Alfredson protocol), plyometrics.
+  16 running session templates with full bilingual structure prescriptions, pace
+    placeholders injected from VDOT at build time, HR ranges from maxHR.
+  buildFullWeekPlan(phase, vdot, weekInPhase, maxHR) returns 7-day DayPlan objects
+    with backward-compat top-level fields preserved.
+trainingBridge.js: replaced inline PHASE_SESSIONS with buildFullWeekPlan call;
+  maxHR now extracted from goalAnalysis.predicted.maxHR and passed through.
+RaceGoalDashCard.jsx: today's session block now shows full prescription text,
+  drills strip, strength strip, preventive strip, total training time.
+sessionLibrary.test.js: 47 new tests (249 files, 4479 total — all pass).
+
+DEPENDS ON: raceGoalEngine.js (E80), trainingBridge.js (E82), sport/running.js
+
 ## v8.26.0 — 2026-04-29 — Fix date-anchored HRV suppression test; remove dead templateExercises prop
 
 hrvSummary.test.js: computeHRVTrend uses new Date() for its 7-day window — test
