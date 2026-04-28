@@ -4,7 +4,7 @@
 // and that TR translations display correctly when lang='tr'.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { LangCtx, LABELS } from '../../contexts/LangCtx.jsx'
 import SportProgramBuilder from '../SportProgramBuilder.jsx'
@@ -105,6 +105,43 @@ describe('SportProgramBuilder — i18n', () => {
       expect(screen.queryByText(LABELS.en.spb_step1Title)).not.toBeInTheDocument()
       // NEXT button must be TR
       expect(screen.queryByText(LABELS.en.spb_btnNext)).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Step 1 — sport/goal selection gating', () => {
+    it('NEXT button is disabled before sport and goal are selected', () => {
+      renderWithLang('en')
+      expect(screen.getByText(LABELS.en.spb_btnNext)).toBeDisabled()
+    })
+
+    it('NEXT button stays disabled after selecting sport only (no goal)', () => {
+      renderWithLang('en')
+      fireEvent.click(screen.getByText(new RegExp(LABELS.en.spb_sport_running)))
+      expect(screen.getByText(LABELS.en.spb_btnNext)).toBeDisabled()
+    })
+
+    it('NEXT button enables after selecting both sport and goal', () => {
+      renderWithLang('en')
+      fireEvent.click(screen.getByText(new RegExp(LABELS.en.spb_sport_running)))
+      fireEvent.click(screen.getByText(LABELS.en.spb_goal_base))
+      expect(screen.getByText(LABELS.en.spb_btnNext)).not.toBeDisabled()
+    })
+
+    it('clicking NEXT advances to step 2 (shows step2 title)', () => {
+      renderWithLang('en')
+      fireEvent.click(screen.getByText(new RegExp(LABELS.en.spb_sport_running)))
+      fireEvent.click(screen.getByText(LABELS.en.spb_goal_base))
+      fireEvent.click(screen.getByText(LABELS.en.spb_btnNext))
+      expect(screen.getByText(LABELS.en.spb_step2Title)).toBeInTheDocument()
+    })
+
+    it('Back button on step 2 returns to step 1', () => {
+      renderWithLang('en')
+      fireEvent.click(screen.getByText(new RegExp(LABELS.en.spb_sport_running)))
+      fireEvent.click(screen.getByText(LABELS.en.spb_goal_base))
+      fireEvent.click(screen.getByText(LABELS.en.spb_btnNext))
+      fireEvent.click(screen.getByText(LABELS.en.spb_btnBack))
+      expect(screen.getByText(LABELS.en.spb_step1Title)).toBeInTheDocument()
     })
   })
 
