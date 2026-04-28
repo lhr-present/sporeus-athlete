@@ -32,6 +32,13 @@ function tssBand(tss) {
   if (v >= 50)  return '█░░░'
   return '░░░░'
 }
+function tssBandColor(tss) {
+  const v = tss || 0
+  if (v >= 150) return '#e03030'
+  if (v >= 100) return '#f5c542'
+  if (v >= 50)  return '#5bc25b'
+  return '#555'
+}
 
 // CTL before and after a single session using EWMA
 function calcCtlDelta(log, session) {
@@ -580,7 +587,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                       <td style={{ textAlign:'right', padding:'6px 6px 6px 0' }}>{s.duration}</td>
                       <td style={{ textAlign:'right', padding:'6px 6px 6px 0', color:s.rpe>=8?'#e03030':s.rpe>=6?'#f5c542':'#5bc25b' }}>{s.rpe}</td>
                       <td style={{ textAlign:'right', padding:'6px 6px 6px 0', color:'#ff6600', fontWeight:600 }}>{s.tss}</td>
-                      <td style={{ textAlign:'right', padding:'6px 6px 6px 0', color:'#555', fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', letterSpacing:'0.04em' }}>{tssBand(s.tss)}</td>
+                      <td style={{ textAlign:'right', padding:'6px 6px 6px 0', color: tssBandColor(s.tss), fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', letterSpacing:'0.04em' }}>{tssBand(s.tss)}</td>
                       <td style={{ padding:'6px 6px 6px 0', color:'#888', maxWidth:'160px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                         {s.wPrimeExhausted && <span title="W' reached zero — complete anaerobic depletion (Skiba 2012)" style={{ display:'inline-block', background:'#e03030', color:'#fff', fontSize:'8px', fontWeight:700, borderRadius:'3px', padding:'1px 4px', marginRight:'4px', letterSpacing:'0.05em' }}>⚡W'0</span>}
                         {s.source === 'strava' && <span style={{ display:'inline-block', fontSize:'8px', color:'#fc4c02', border:'1px solid #fc4c0244', borderRadius:'2px', padding:'0px 3px', marginRight:'4px', letterSpacing:'0.04em', fontFamily:"'IBM Plex Mono',monospace" }}>STR</span>}

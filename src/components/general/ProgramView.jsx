@@ -39,8 +39,9 @@ export default function ProgramView({ template = null, templateDays = [], templa
           const dayLabel = lang === 'tr' ? day.day_label_tr : day.day_label_en
           const isNext = day.day_index === currentDayIndex
 
+          const isRest = dayExercises.length === 0
           return (
-            <div key={day.day_index} style={{ border: `1px solid ${isNext ? '#ff660088' : 'var(--border)'}`, background: isNext ? '#ff660008' : 'transparent', borderRadius: 3, padding: '10px 14px' }}>
+            <div key={day.day_index} style={{ border: `1px solid ${isNext ? '#ff660088' : isRest ? '#33333388' : 'var(--border)'}`, background: isNext ? '#ff660008' : isRest ? '#0d0d0d' : 'transparent', borderRadius: 3, padding: '10px 14px', opacity: isRest ? 0.7 : 1 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <div style={{ ...S.mono, fontSize: 11, color: isNext ? '#ff6600' : 'var(--text)', letterSpacing: '0.08em' }}>
                   {lang === 'tr' ? `Gün ${day.day_index + 1}` : `Day ${day.day_index + 1}`} — {dayLabel}
@@ -64,8 +65,8 @@ export default function ProgramView({ template = null, templateDays = [], templa
                   </div>
                 )
               })}
-              {dayExercises.length === 0 && (
-                <span style={{ ...S.mono, fontSize: 10, color: '#555' }}>{lang === 'tr' ? 'Dinlenme günü' : 'Rest day'}</span>
+              {isRest && (
+                <span style={{ ...S.mono, fontSize: 10, color: '#444', letterSpacing: '0.06em' }}>— {lang === 'tr' ? 'DİNLENME GÜNÜ' : 'REST DAY'}</span>
               )}
             </div>
           )

@@ -15,6 +15,14 @@ export default function SessionHistory({ sessions = [], exercises = [], lang = '
     (b.session_date ?? '').localeCompare(a.session_date ?? '')
   )
 
+  const weekStart = (() => {
+    const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+    return d.toISOString().slice(0, 10)
+  })()
+  const weekSessions = sorted.filter(s => (s.session_date ?? '') >= weekStart)
+  const weekSets     = weekSessions.flatMap(s => (s.exercises ?? []).flatMap(ex => (ex.sets ?? []).filter(set => !set.is_warmup)))
+  const weekExIds    = new Set(weekSessions.flatMap(s => (s.exercises ?? []).map(ex => ex.exercise_id)))
+
   return (
     <div style={{ maxWidth: 560 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -28,6 +36,17 @@ export default function SessionHistory({ sessions = [], exercises = [], lang = '
           {t('LOG NEW →', 'KAYDET →')}
         </button>
       </div>
+
+      {/* Weekly aggregate stats */}
+      {sorted.length > 0 && (
+        <div style={{ ...S.mono, fontSize: 9, color: '#888', letterSpacing: '0.07em', marginBottom: 14, padding: '6px 10px', background: 'var(--surface, #111)', borderRadius: 3, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          <span style={{ color: '#ff6600' }}>{t('THIS WEEK', 'BU HAFTA')}</span>
+          <span>{weekSessions.length} {t('sessions', 'seans')}</span>
+          {weekSets.length > 0 && <span>{weekSets.length} {t('work sets', 'çalışma seti')}</span>}
+          {weekExIds.size > 0 && <span>{weekExIds.size} {t('exercises', 'egzersiz')}</span>}
+          {weekSessions.length === 0 && <span style={{ color: '#555' }}>{t('none logged', 'kayıt yok')}</span>}
+        </div>
+      )}
 
       {sorted.length === 0 && (
         <div style={{ ...S.mono, fontSize: 11, color: '#555', textAlign: 'center', padding: '32px 0' }}>

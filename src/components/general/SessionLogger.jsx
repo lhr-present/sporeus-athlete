@@ -63,14 +63,16 @@ export default function SessionLogger({
   const dayKey  = preloadedExercises.map(e => e.exercise_id).join('|')
   const _draft  = useRef(preloadedExercises.length > 0 ? readDraft(dayKey) : null)
 
-  const [dayLabel, setDayLabel] = useState(_draft.current?.dayLabel || initialLabel)
-  const [notes, setNotes]       = useState(_draft.current?.notes   || '')
-  const [rpe, setRpe]           = useState(_draft.current?.rpe     || '')
-  const [saved, setSaved]       = useState(false)
+  const [dayLabel, setDayLabel]     = useState(_draft.current?.dayLabel    || initialLabel)
+  const [notes, setNotes]           = useState(_draft.current?.notes       || '')
+  const [rpe, setRpe]               = useState(_draft.current?.rpe         || '')
+  const [durationMin, setDurationMin] = useState(_draft.current?.durationMin || '')
+  const [saved, setSaved]           = useState(false)
   const [draftRestored, setDraftRestored] = useState(!!_draft.current?.rows?.length)
-  const [cuesOpen, setCuesOpen] = useState({})
-  const [doneSets, setDoneSets] = useState({}) // "rowIdx-setIdx": true
-  const [restTimer, setRestTimer] = useState(null) // { rowIdx, seconds, total }
+  const [cuesOpen, setCuesOpen]     = useState({})
+  const [doneSets, setDoneSets]     = useState({}) // "rowIdx-setIdx": true
+  const [restTimer, setRestTimer]   = useState(null) // { rowIdx, seconds, total }
+  const [confirmDelRow, setConfirmDelRow] = useState(null)
 
   useEffect(() => {
     if (!restTimer || restTimer.seconds <= 0) return
@@ -107,6 +109,7 @@ export default function SessionLogger({
       setDayLabel(draft?.dayLabel || initialLabel)
       setNotes(draft?.notes || '')
       setRpe(draft?.rpe || '')
+      setDurationMin(draft?.durationMin || '')
       setDraftRestored(!!draft?.rows?.length)
     }
   }, [preloadedExercises.map(e => e.exercise_id).join(','), initialLabel])
@@ -125,11 +128,11 @@ export default function SessionLogger({
       localStorage.setItem(DRAFT_KEY, JSON.stringify({
         dayKey,
         rows: rows.map(r => ({ exerciseId: r.exerciseId, prescription: r.prescription, sets: r.sets })),
-        dayLabel, rpe, notes,
+        dayLabel, rpe, notes, durationMin,
         at: Date.now(),
       }))
     } catch {}
-  }, [rows, dayLabel, rpe, notes])
+  }, [rows, dayLabel, rpe, notes, durationMin])
 
   function addExercise(exId) {
     if (!exId) return
@@ -172,16 +175,20 @@ export default function SessionLogger({
       day_label:        dayLabel,
       notes,
       rpe:              rpe ? parseInt(rpe) : null,
-      duration_minutes: null,
+      duration_minutes: durationMin ? parseInt(durationMin) : null,
       exercises:        exerciseEntries,
     }
     localStorage.removeItem(DRAFT_KEY)
     onSave?.(session)
     setSaved(true)
+    setConfirmDelRow(null)
     setTimeout(() => setSaved(false), 2000)
   }
 
   const hasFilledSets = rows.some(row => row.sets.some(s => parseInt(s.reps) > 0))
+  const maxGap = preloadedExercises.length > 0
+    ? Math.max(...preloadedExercises.map(pe => gapDays[pe.exercise_id] ?? 0))
+    : 0
 
   return (
     <div style={{ maxWidth: 600 }}>
@@ -193,6 +200,10 @@ export default function SessionLogger({
         <div style={{ flex: 2 }}>
           <span style={lbl}>{t('Day / Split', 'Gün / Bölüm')}</span>
           <input style={inp} placeholder={t('Push, Upper A, Legs…', 'İtiş, Üst A, Bacak…')} value={dayLabel} onChange={e => setDayLabel(e.target.value)} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <span style={lbl}>{t('Duration (min)', 'Süre (dk)')}</span>
+          <input style={inp} type="number" min={1} max={300} placeholder="60" inputMode="numeric" value={durationMin} onChange={e => setDurationMin(e.target.value)} />
         </div>
         <div style={{ flex: 1 }}>
           <span style={lbl}>{t('Session RPE (1–10)', 'Seans RPE (1–10)')}</span>
@@ -218,6 +229,13 @@ export default function SessionLogger({
           })}
         </select>
       </div>
+
+      {/* Welcome-back safety banner */}
+      {!saved && maxGap > 14 && (
+        <div style={{ ...S.mono, fontSize: 10, color: '#f5c542', padding: '6px 12px', background: '#f5c54211', border: '1px solid #f5c54233', borderRadius: 3, marginBottom: 12 }}>
+          ⚠ {maxGap} {t('days since last session — start light today.', 'gün sonra dönüş — bugün hafif başla.')}
+        </div>
+      )}
 
       {/* Draft restored banner */}
       {draftRestored && (
@@ -271,7 +289,20 @@ export default function SessionLogger({
                   </div>
                 )}
               </div>
-              <button onClick={() => removeExercise(rowIdx)} style={{ ...S.mono, fontSize: 10, border: 'none', background: 'transparent', color: '#e03030', cursor: 'pointer', marginLeft: 12, alignSelf: 'flex-start' }}>✕</button>
+              {confirmDelRow === rowIdx ? (
+                <div style={{ display: 'flex', gap: 4, marginLeft: 12, flexShrink: 0 }}>
+                  <button onClick={() => { removeExercise(rowIdx); setConfirmDelRow(null) }}
+                    style={{ ...S.mono, fontSize: 9, padding: '2px 8px', border: '1px solid #e03030', background: 'transparent', color: '#e03030', borderRadius: 3, cursor: 'pointer' }}>
+                    {t('del', 'sil')}
+                  </button>
+                  <button onClick={() => setConfirmDelRow(null)}
+                    style={{ ...S.mono, fontSize: 9, padding: '2px 8px', border: '1px solid var(--border)', background: 'transparent', color: '#888', borderRadius: 3, cursor: 'pointer' }}>
+                    {t('keep', 'tut')}
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => setConfirmDelRow(rowIdx)} style={{ ...S.mono, fontSize: 10, border: 'none', background: 'transparent', color: '#555', cursor: 'pointer', marginLeft: 12, alignSelf: 'flex-start' }}>✕</button>
+              )}
             </div>
 
             {/* First-session guidance — no history yet */}

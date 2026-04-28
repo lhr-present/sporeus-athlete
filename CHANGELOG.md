@@ -4,6 +4,27 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.14.0 — 2026-04-28 — GF enhancements: duration, 2-stage delete, weekly stats
+
+SessionLogger.jsx: added Duration (min) field — captures session duration alongside
+  RPE; saved as duration_minutes in session object; included in draft save/restore.
+SessionLogger.jsx: two-stage exercise delete — ✕ now shows del/keep buttons before
+  removing; eliminates accidental loss of filled-in rows during active sessions.
+SessionLogger.jsx: welcome-back safety banner — if gap > 14 days for any preloaded
+  exercise, shows yellow ⚠ banner "N days since last session — start light today."
+  Uses maxGap across all exercises in the day's prescription.
+SessionHistory.jsx: weekly aggregate stats bar — always visible when sessions exist;
+  shows session count, work sets, and unique exercise count for the current week
+  (Mon–today). Computed from sorted sessions using same week-start logic as Insights.
+ProgramView.jsx: rest days now visually distinct — dark background (#0d0d0d), faded
+  border, 0.7 opacity, and label changed to uppercase "REST DAY" for clearer scanning.
+TrainingLog.jsx: TSS band (░░░░) column now color-coded — grey <50, green 50-99,
+  yellow 100-149, red 150+. Matches RPE color convention already used in log table.
+  Added tssBandColor() helper function alongside existing tssBand().
+DEPENDS ON: v8.13.0
+
+---
+
 ## v8.13.0 — 2026-04-28 — Bilingual UI pass: Dashboard, TrainingLog, Profile
 
 LangCtx.jsx: +26 new EN/TR keys covering dashboard coaching messages,
