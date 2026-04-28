@@ -187,7 +187,7 @@ export default function SessionLogger({
 
   const hasFilledSets = rows.some(row => row.sets.some(s => parseInt(s.reps) > 0))
   const maxGap = preloadedExercises.length > 0
-    ? Math.max(...preloadedExercises.map(pe => gapDays[pe.exercise_id] ?? 0))
+    ? Math.max(0, ...preloadedExercises.map(pe => gapDays[pe.exercise_id] ?? 0))
     : 0
 
   return (

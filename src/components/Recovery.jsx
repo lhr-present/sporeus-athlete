@@ -129,7 +129,7 @@ export default function Recovery() {
         ))}
 
         {/* Sleep details */}
-        <div style={{ ...S.mono, fontSize:'10px', color:'#888', marginBottom:'8px', marginTop:'4px', letterSpacing:'0.06em' }}>SLEEP DETAILS (OPTIONAL)</div>
+        <div style={{ ...S.mono, fontSize:'10px', color:'#888', marginBottom:'8px', marginTop:'4px', letterSpacing:'0.06em' }}>{t('recovSleepDetails')}</div>
         <div style={S.row}>
           <div style={{ flex:'1 1 110px' }}>
             <label style={S.label}>{t('sleepHrsL')}</label>
@@ -155,18 +155,18 @@ export default function Recovery() {
 
         {/* HRV (rMSSD) — available to all */}
         <div style={{ marginTop:'14px' }}>
-          <div style={{ ...S.mono, fontSize:'10px', color:'#888', letterSpacing:'0.06em', marginBottom:'8px' }}>HRV &amp; BIOMETRICS (OPTIONAL)</div>
+          <div style={{ ...S.mono, fontSize:'10px', color:'#888', letterSpacing:'0.06em', marginBottom:'8px' }}>{t('recovHrvBiometrics')}</div>
           <div style={S.row}>
             <div style={{ flex:'1 1 130px' }}>
-              <label style={S.label}>HRV rMSSD (ms)</label>
+              <label style={S.label}>{t('recovHrvRmssd')}</label>
               <input style={S.input} type="number" min="10" max="200" placeholder="65"
                 value={form.hrv} onChange={e=>setForm({...form,hrv:e.target.value})}/>
               <div style={{ ...S.mono, fontSize:'9px', color:'#555', marginTop:'2px' }}>
-                {lang==='tr' ? 'Sabah, yatakta ölç. Düşük = yorgunluk.' : 'Measure morning, in bed. Low = fatigue.'}
+                {t('recovHrvNote')}
               </div>
             </div>
             <div style={{ flex:'1 1 130px' }}>
-              <label style={S.label}>RESTING HR (bpm)</label>
+              <label style={S.label}>{t('recovRestingHr')}</label>
               <input style={S.input} type="number" min="30" max="100" placeholder="48"
                 value={form.restingHR} onChange={e=>setForm({...form,restingHR:e.target.value})}/>
             </div>
@@ -187,7 +187,7 @@ export default function Recovery() {
             return (
               <div style={{ marginTop:'8px' }}>
                 <div style={{ ...S.mono, fontSize:'8px', color:'#555', marginBottom:'4px' }}>
-                  7-DAY HRV · AVG {avg7} ms
+                  {t('recovHrv7day')} {avg7} ms
                 </div>
                 <svg width={W} height={H} style={{ display:'block', overflow:'visible' }}>
                   <polyline points={pts} fill="none" stroke="#ff6600" strokeWidth="1.5" strokeLinejoin="round"/>
@@ -206,17 +206,17 @@ export default function Recovery() {
         {isAdvanced && (
           <div style={{ marginTop:'14px' }}>
             <div style={{ ...S.mono, fontSize:'10px', color:'#4a90d9', letterSpacing:'0.06em', marginBottom:'8px' }}>
-              ◈ ADVANCED METRICS
+              {t('recovAdvancedMetrics')}
             </div>
             <div style={S.row}>
               <div style={{ flex:'1 1 130px' }}>
-                <label style={S.label}>BLOOD LACTATE (mmol/L)</label>
+                <label style={S.label}>{t('recovBloodLactate')}</label>
                 <input style={S.input} type="number" step="0.1" min="0" max="20" placeholder="1.8"
                   value={form.lactate} onChange={e=>setForm({...form,lactate:e.target.value})}/>
               </div>
             </div>
             <div style={{ ...S.mono, fontSize:'9px', color:'#aaa', marginTop:'4px' }}>
-              Resting lactate &lt;2.0 mmol/L = baseline
+              {t('recovLactateBaseline')}
             </div>
           </div>
         )}

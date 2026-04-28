@@ -644,6 +644,16 @@ export const LABELS = {
     cancelBtn:           'CANCEL',
     bulkImportCsv:       '↑ BULK IMPORT CSV',
     noNewEntriesToImport: 'No new entries to import. All rows were either invalid or already exist in your log.',
+    // Recovery form section labels
+    recovSleepDetails:    'SLEEP DETAILS (OPTIONAL)',
+    recovHrvBiometrics:   'HRV & BIOMETRICS (OPTIONAL)',
+    recovHrvRmssd:        'HRV rMSSD (ms)',
+    recovRestingHr:       'RESTING HR (bpm)',
+    recovHrvNote:         'Measure morning, in bed. Low = fatigue.',
+    recovHrv7day:         '7-DAY HRV · AVG',
+    recovAdvancedMetrics: '◈ ADVANCED METRICS',
+    recovBloodLactate:    'BLOOD LACTATE (mmol/L)',
+    recovLactateBaseline: 'Resting lactate <2.0 mmol/L = baseline',
     // Profile dialogs
     importFailed:         'Import failed — invalid file.',
     confirmDeleteAll:     'Delete ALL Sporeus data? This cannot be undone.',
@@ -1292,6 +1302,16 @@ export const LABELS = {
     cancelBtn:           'İPTAL',
     bulkImportCsv:       '↑ TOPLU CSV AKTARIMI',
     noNewEntriesToImport: 'İçe aktarılacak yeni giriş yok. Tüm satırlar geçersiz ya da zaten günlükte mevcut.',
+    // Recovery form section labels
+    recovSleepDetails:    'UYKU DETAYLARI (İSTEĞE BAĞLI)',
+    recovHrvBiometrics:   'HRV & BİYOMETRİK (İSTEĞE BAĞLI)',
+    recovHrvRmssd:        'HRV rMSSD (ms)',
+    recovRestingHr:       'İSTİRAHAT KALBİ (atım/dk)',
+    recovHrvNote:         'Sabah, yatakta ölç. Düşük = yorgunluk.',
+    recovHrv7day:         '7-GÜNLÜK HRV · ORT',
+    recovAdvancedMetrics: '◈ GELİŞMİŞ METRİKLER',
+    recovBloodLactate:    'KAN LAKTATI (mmol/L)',
+    recovLactateBaseline: 'İstirahat laktat <2.0 mmol/L = baz değer',
     // Profile dialogs
     importFailed:         'Aktarım başarısız — geçersiz dosya.',
     confirmDeleteAll:     'Tüm Sporeus verisi silinsin mi? Bu işlem geri alınamaz.',

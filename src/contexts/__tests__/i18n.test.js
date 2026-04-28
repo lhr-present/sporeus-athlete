@@ -30,6 +30,7 @@ describe('i18n parity — LABELS', () => {
       't_plan',          // '⚡ PLAN' — PLAN used in Turkish
       'nmNormal',        // 'Normal' — loanword identical in Turkish
       'monoNormal',      // 'Normal' — loanword identical in Turkish
+      'recovHrvRmssd',   // 'HRV rMSSD (ms)' — universal technical acronym
       'seasonTSS',       // 'TSS' — technical acronym, same in EN and TR
       'cyclingWperKg',   // 'W/kg' — universal power-to-weight unit, identical in Turkish
     ])

@@ -360,7 +360,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
             </div>
             {/* Sync status dot */}
             <span
-              title={syncStatus === 'offline' ? 'Offline — changes queued' : syncStatus === 'syncing' ? 'Syncing…' : 'Synced'}
+              title={syncStatus === 'offline' ? (lang === 'tr' ? 'Çevrimdışı — değişiklikler kuyruğa alındı' : 'Offline — changes queued') : syncStatus === 'syncing' ? (lang === 'tr' ? 'Senkronize ediliyor…' : 'Syncing…') : (lang === 'tr' ? 'Senkronize edildi' : 'Synced')}
               style={{
                 width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
                 background: syncStatus === 'offline' ? '#555' : syncStatus === 'syncing' ? '#f5c542' : '#5bc25b',
@@ -376,14 +376,14 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
             </button>
             <button
               onClick={() => setShowSearch(true)}
-              title="Search features (Ctrl+K)"
+              title={lang === 'tr' ? 'Arama özellikleri (Ctrl+K)' : 'Search features (Ctrl+K)'}
               style={{ ...S.mono, fontSize:'12px', padding:'4px 8px', borderRadius:'3px', border:'1px solid #444', background:'transparent', color:'#888', cursor:'pointer', letterSpacing:'0.06em' }}>
               ◈ Search
             </button>
             {(authProfile?.subscription_tier === 'coach' || authProfile?.subscription_tier === 'club') && (
               <button
                 onClick={() => setShowSemanticSearch(v => !v)}
-                title="AI semantic search (Ctrl+Shift+K)"
+                title={lang === 'tr' ? 'Yapay zeka semantik arama (Ctrl+Shift+K)' : 'AI semantic search (Ctrl+Shift+K)'}
                 style={{ ...S.mono, fontSize:'12px', padding:'4px 8px', borderRadius:'3px', border:'1px solid #ff660044', background: showSemanticSearch ? '#ff660022' : 'transparent', color:'#ff6600', cursor:'pointer', letterSpacing:'0.06em' }}>
                 ⊞ AI
               </button>

@@ -41,10 +41,9 @@ export default function SessionHistory({ sessions = [], exercises = [], lang = '
       {sorted.length > 0 && (
         <div style={{ ...S.mono, fontSize: 9, color: '#888', letterSpacing: '0.07em', marginBottom: 14, padding: '6px 10px', background: 'var(--surface, #111)', borderRadius: 3, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           <span style={{ color: '#ff6600' }}>{t('THIS WEEK', 'BU HAFTA')}</span>
-          <span>{weekSessions.length} {t('sessions', 'seans')}</span>
+          <span style={{ color: weekSessions.length === 0 ? '#555' : 'inherit' }}>{weekSessions.length} {t('sessions', 'seans')}</span>
           {weekSets.length > 0 && <span>{weekSets.length} {t('work sets', 'çalışma seti')}</span>}
           {weekExIds.size > 0 && <span>{weekExIds.size} {t('exercises', 'egzersiz')}</span>}
-          {weekSessions.length === 0 && <span style={{ color: '#555' }}>{t('none logged', 'kayıt yok')}</span>}
         </div>
       )}
 
@@ -77,6 +76,7 @@ export default function SessionHistory({ sessions = [], exercises = [], lang = '
                 <div style={{ ...lbl }}>
                   {exList.length} {t('exercises', 'egzersiz')}
                   {workSets.length > 0 && ` · ${workSets.length} ${t('work sets', 'çalışma seti')}`}
+                  {s.duration_minutes != null && ` · ${s.duration_minutes} min`}
                   {s.rpe != null && ` · RPE ${s.rpe}`}
                 </div>
               </div>

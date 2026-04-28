@@ -4,6 +4,28 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.15.0 — 2026-04-28 — Verification pass: data display, bilingual Recovery/App fixes
+
+SessionHistory.jsx: duration_minutes now shown in session row subtitle (e.g. "3
+  exercises · 12 work sets · 60 min · RPE 7"). Closes the data-capture-but-never-
+  displayed gap introduced with the duration field in v8.14.0.
+SessionHistory.jsx: removed redundant "none logged" span from weekly stats bar —
+  "0 sessions" already communicates the state; greyed-out color applied instead.
+SessionLogger.jsx: Math.max(0, ...) guard — anchors result to 0 so maxGap is
+  never NaN or negative even if gapDays contains unexpected undefined entries.
+App.jsx: sync status dot tooltip now bilingual (Çevrimdışı / Senkronize edildi /
+  Senkronize ediliyor…). Search and AI semantic search button tooltips bilingual.
+Recovery.jsx: 9 hardcoded English strings replaced with t() calls using 9 new
+  LangCtx keys (recovSleepDetails, recovHrvBiometrics, recovHrvRmssd,
+  recovRestingHr, recovHrvNote, recovHrv7day, recovAdvancedMetrics,
+  recovBloodLactate, recovLactateBaseline). Also removed duplicate lang ternary
+  in HRV note — now consistent with rest of Recovery's t() pattern.
+i18n.test.js: recovHrvRmssd added to ALLOWED_IDENTICAL (technical acronym,
+  same spelling in Turkish).
+DEPENDS ON: v8.14.0
+
+---
+
 ## v8.14.0 — 2026-04-28 — GF enhancements: duration, 2-stage delete, weekly stats
 
 SessionLogger.jsx: added Duration (min) field — captures session duration alongside
