@@ -4,6 +4,64 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.22.0 — 2026-04-28 — Tests: fix misleading SessionHistory expand tests + add delete/expand coverage
+
+SessionHistory.test.jsx: two tests labelled "expanded detail" were checking text
+  visible in the collapsed subtitle (always passing). Fixed to use fireEvent.click on
+  the session date row and assert exercise name appears only after expansion.
+Added: expand shows weighted top-set kg×reps, delete ✕ → confirm/cancel UI flow,
+  confirm calls onDelete with session id, cancel restores ✕ button, LOG NEW → callback.
+10 → 14 tests; all prior passing — no regressions.
+248 test files, 4419 tests total (+4 tests vs v8.21.0).
+DEPENDS ON: v8.21.0
+
+---
+
+## v8.21.0 — 2026-04-28 — Tests: complete GF track test coverage (70 new tests, 3 files)
+
+GeneralDashboard.test.jsx (NEW, 24 tests): gap-line variants, PR celebration+dismiss,
+  deload/coach-confirmed/milestone badges, week progress + cycle-complete, recent sessions,
+  first-session prompt, onLogSession callback, TR locale.
+GeneralOnboarding.test.jsx (NEW, 19 tests): 3-step GF wizard goal/experience/equipment,
+  Next gating, Back navigation, suggested template name, handleFinish shape,
+  anti-overcommitment guard (beginner+5days → 3), no guardrail for intermediate.
+GFSmallComponents.test.jsx (NEW, 29 tests): ProgramTemplateGallery, ProgramView,
+  ProgressionChart (SVG polyline, BW MAX REPS header), WeeklyVolumeChart (10 muscle labels),
+  GeneralInsights (empty state, 2+ sessions progression, 1-session message).
+All GF track components now have test coverage.
+248 test files, 4415 tests total (+3 files, +70 tests vs v8.20.0).
+DEPENDS ON: v8.20.0
+
+---
+
+## v8.20.0 — 2026-04-28 — Tests: SessionLogger 17-test suite (largest untested GF component)
+
+src/components/__tests__/SessionLogger.test.jsx (NEW): 17 tests covering:
+  empty-state renders, LOG SESSION/ANTRENMAN KAYDI heading, FINISH SESSION button
+  gating (disabled until reps entered), onSave session shape for BW exercise
+  (load_kg → null), set filtering (only filled sets saved), duration_minutes and
+  rpe passed through, localStorage draft cleared after save, draft restored banner
+  for matching dayKey, banner absent for wrong day or expired draft (>24h TTL),
+  v8.16.0 regression guard (auto-save when only dayLabel or durationMin set, no rows).
+245 test files, 4343 tests total (+1 file, +17 tests vs v8.19.0).
+DEPENDS ON: v8.19.0
+
+---
+
+## v8.19.0 — 2026-04-28 — Tests: strengthen 3 weak assertions across 244-file audit
+
+TodayView.test.jsx: replaced trivially-true `textContent.length > 0` with
+  `getByText("HOW DO YOU FEEL TODAY?")` and added "TODAY'S READINESS" heading test.
+ErrorBoundary.test.jsx: replaced redundant `getAllByText().length > 0` (getAllByText
+  already throws when empty) with `getByText().toBeInTheDocument()`.
+sessionAnalysis.test.js: replaced `zone_estimate.length > 0` with `/^Zone/` regex —
+  catches accidental empty or 'Unknown' return for valid RPE inputs.
+Complete audit of all 244 test files complete; no other structural weaknesses found.
+244 test files, 4326 tests total (+1 test vs v8.18.0).
+DEPENDS ON: v8.18.0
+
+---
+
 ## v8.18.0 — 2026-04-28 — Tests: +19 covering v8.16/v8.17 fixes + duplicate key warning
 
 ScienceTooltip.jsx: removed duplicate whiteSpace key in tooltip style object
