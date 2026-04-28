@@ -4,6 +4,20 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.26.0 — 2026-04-29 — Fix date-anchored HRV suppression test; remove dead templateExercises prop
+
+hrvSummary.test.js: computeHRVTrend uses new Date() for its 7-day window — test
+  broke as system date advanced past the test data's last entry (2026-04-22 + 7d).
+  Fixed with vi.useFakeTimers({ now: '2026-04-22' }) in try/finally so clock is
+  always restored and test is date-independent going forward.
+ProgramView.jsx: removed unused templateExercises = [] from destructuring — prop
+  was declared but never read (exercises prop does the name lookup at line 56).
+GeneralFitness.jsx: removed corresponding templateExercises={SEED_EXERCISES} pass-through.
+248 test files, 4432 tests total.
+DEPENDS ON: v8.25.0
+
+---
+
 ## v8.25.0 — 2026-04-28 — Tests: ReportsTab exact length; AuthGate form-submission coverage
 
 ReportsTab.test.jsx: two loose toBeGreaterThanOrEqual(2) changed to toHaveLength(2)

@@ -699,7 +699,6 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
                   <ProgramView
                     template={activeTemplate}
                     templateDays={programDays}
-                    templateExercises={SEED_EXERCISES}
                     exercises={SEED_EXERCISES}
                     lang={lang}
                     currentDayIndex={activeProgram?.next_day_index ?? 0}

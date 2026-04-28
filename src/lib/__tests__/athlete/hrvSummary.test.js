@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   extractHRVEntries,
   computeHRVBaseline,
@@ -232,25 +232,32 @@ describe('computeHRVSummary', () => {
   })
 
   it('suppressed is true when recent HRV well below baseline (CV >=10% and drop >5%)', () => {
-    // Build entries: first 20 days high HRV, last 7 days very low and variable
-    const baseDate = new Date('2026-03-27T00:00:00Z')
-    const recovery = []
-    for (let i = 0; i < 20; i++) {
-      const d = new Date(baseDate)
-      d.setUTCDate(baseDate.getUTCDate() + i)
-      recovery.push({ date: d.toISOString().slice(0, 10), hrv: 4.2 })
+    // computeHRVTrend uses new Date() for its 7-day window, so freeze the clock
+    // to match the test data's last entry date (2026-04-22 = baseDate + 26 days).
+    vi.useFakeTimers({ now: new Date('2026-04-22T12:00:00Z') })
+    try {
+      // Build entries: first 20 days high HRV, last 7 days very low and variable
+      const baseDate = new Date('2026-03-27T00:00:00Z')
+      const recovery = []
+      for (let i = 0; i < 20; i++) {
+        const d = new Date(baseDate)
+        d.setUTCDate(baseDate.getUTCDate() + i)
+        recovery.push({ date: d.toISOString().slice(0, 10), hrv: 4.2 })
+      }
+      // Last 7 days: alternating very low (1.5) and higher (4.0) to create high CV + drop
+      const lowHighPairs = [1.5, 4.0, 1.5, 4.0, 1.5, 4.0, 1.5]
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(baseDate)
+        d.setUTCDate(baseDate.getUTCDate() + 20 + i)
+        recovery.push({ date: d.toISOString().slice(0, 10), hrv: lowHighPairs[i] })
+      }
+      const today = new Date(baseDate)
+      today.setUTCDate(baseDate.getUTCDate() + 26)
+      const result = computeHRVSummary(recovery, today.toISOString().slice(0, 10))
+      expect(result).not.toBeNull()
+      expect(result.suppressed).toBe(true)
+    } finally {
+      vi.useRealTimers()
     }
-    // Last 7 days: alternating very low (1.5) and higher (4.0) to create high CV + drop
-    const lowHighPairs = [1.5, 4.0, 1.5, 4.0, 1.5, 4.0, 1.5]
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(baseDate)
-      d.setUTCDate(baseDate.getUTCDate() + 20 + i)
-      recovery.push({ date: d.toISOString().slice(0, 10), hrv: lowHighPairs[i] })
-    }
-    const today = new Date(baseDate)
-    today.setUTCDate(baseDate.getUTCDate() + 26)
-    const result = computeHRVSummary(recovery, today.toISOString().slice(0, 10))
-    expect(result).not.toBeNull()
-    expect(result.suppressed).toBe(true)
   })
 })

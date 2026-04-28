@@ -13,7 +13,7 @@ function trDay(label, lang) {
   return DAY_LABELS_TR[label] ?? label
 }
 
-export default function ProgramView({ template = null, templateDays = [], templateExercises = [], exercises = [], lang = 'en', currentDayIndex = 0 }) {
+export default function ProgramView({ template = null, templateDays = [], exercises = [], lang = 'en', currentDayIndex = 0 }) {
   if (!template) {
     return (
       <div style={{ ...S.mono, fontSize: 11, color: '#555', padding: '24px 0', textAlign: 'center' }}>
