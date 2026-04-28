@@ -441,10 +441,10 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
   const currentDayLabel = currentDay ? (lang === 'tr' ? currentDay.day_label_tr : currentDay.day_label_en) : ''
   const programDays     = TEMPLATE_PROGRAM_DATA[activeProgram?.templateId]?.days ?? []
 
-  // Rough session duration: sum of (sets × rest_seconds) for each exercise, + ~3s/rep work time
+  // Rough session duration: work time (3s/rep × reps) + setup (30s/set) + rest (between sets only)
   const estimatedMinutes = currentDay
     ? Math.round(currentDay.exercises.reduce((acc, ex) =>
-        acc + ex.sets * (ex.rest_seconds ?? 90) + ex.sets * ex.reps_high * 3
+        acc + ex.sets * (ex.reps_high * 3 + 30) + (ex.sets - 1) * (ex.rest_seconds ?? 90)
       , 0) / 60)
     : null
 
@@ -532,8 +532,9 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
     }
 
     const sessionSummary = {
-      last_session_label:          session.day_label || currentDayLabel || '',
-      last_session_exercise_count: (session.exercises ?? []).length,
+      last_session_label:             session.day_label || currentDayLabel || '',
+      last_session_exercise_count:    (session.exercises ?? []).length,
+      last_session_duration_minutes:  session.duration_minutes ?? null,
     }
     syncGeneralProgram(authUser?.id, updatedProgram, lang === 'tr' ? activeTemplate?.name_tr : activeTemplate?.name_en, sessionSummary)
 

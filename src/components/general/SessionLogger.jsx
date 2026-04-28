@@ -121,9 +121,10 @@ export default function SessionLogger({
     return () => clearTimeout(id)
   }, [draftRestored])
 
-  // Auto-save draft on every change (skip when already saved or no rows)
+  // Auto-save draft on every change (skip when already saved or no content)
   useEffect(() => {
-    if (rows.length === 0 || saved) return
+    const hasDraftContent = rows.length > 0 || !!durationMin || !!dayLabel || !!rpe || !!notes
+    if (!hasDraftContent || saved) return
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify({
         dayKey,

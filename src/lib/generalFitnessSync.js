@@ -10,26 +10,28 @@ import { supabase, isSupabaseReady } from './supabase.js'
  * @param {string|null} userId
  * @param {object} program
  * @param {string|null} templateName
- * @param {{ last_session_label?: string, last_session_exercise_count?: number }|null} sessionSummary
+ * @param {{ last_session_label?: string, last_session_exercise_count?: number, last_session_duration_minutes?: number|null }|null} sessionSummary
  */
 export async function syncGeneralProgram(userId, program, templateName, sessionSummary = null) {
   if (!userId || !program || !isSupabaseReady() || !navigator.onLine) return
   const update = {
     general_program: {
-      template_id:                 program.templateId,
-      template_name:               templateName ?? null,
-      next_day_index:              program.next_day_index        ?? 0,
-      sessions_completed:          program.sessions_completed    ?? 0,
-      reference_date:              program.reference_date        ?? null,
-      last_session_date:           program.last_session_date     ?? null,
-      last_session_label:          sessionSummary?.last_session_label          ?? null,
-      last_session_exercise_count: sessionSummary?.last_session_exercise_count ?? null,
+      template_id:                    program.templateId,
+      template_name:                  templateName ?? null,
+      next_day_index:                 program.next_day_index        ?? 0,
+      sessions_completed:             program.sessions_completed    ?? 0,
+      reference_date:                 program.reference_date        ?? null,
+      last_session_date:              program.last_session_date     ?? null,
+      last_session_label:             sessionSummary?.last_session_label             ?? null,
+      last_session_exercise_count:    sessionSummary?.last_session_exercise_count    ?? null,
+      last_session_duration_minutes:  sessionSummary?.last_session_duration_minutes  ?? null,
     }
   }
   if (sessionSummary) {
     update.last_workout_done_at = new Date().toISOString()
   }
-  await supabase.from('profiles').update(update).eq('id', userId)
+  const { error } = await supabase.from('profiles').update(update).eq('id', userId)
+  if (error) console.warn('syncGeneralProgram failed:', error.message)
 }
 
 // ── Coach queries ─────────────────────────────────────────────────────────────

@@ -4,6 +4,22 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.16.0 — 2026-04-28 — Fix three GF data-flow gaps
+
+generalFitnessSync.js: Supabase `.update()` error is now captured and
+  console.warn'd instead of silently swallowed — fixes invisible coach-visibility
+  failures that were impossible to diagnose in production.
+generalFitnessSync.js: last_session_duration_minutes added to general_program
+  JSONB payload so coach dashboard receives session duration after each save.
+SessionLogger.jsx: draft auto-save guard expanded — previously bailed when
+  rows.length === 0, losing duration/label/RPE/notes typed before adding
+  any exercises. Now saves draft whenever any content field is non-empty.
+GeneralFitness.jsx: last_session_duration_minutes threaded into sessionSummary
+  passed to syncGeneralProgram after each session save.
+DEPENDS ON: v8.15.0
+
+---
+
 ## v8.15.0 — 2026-04-28 — Verification pass: data display, bilingual Recovery/App fixes
 
 SessionHistory.jsx: duration_minutes now shown in session row subtitle (e.g. "3
