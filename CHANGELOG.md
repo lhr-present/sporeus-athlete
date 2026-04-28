@@ -4,6 +4,21 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.24.0 — 2026-04-28 — Tests: TrainingLog delete-confirm + CAL toggle; SportProgramBuilder step navigation
+
+TrainingLog.test.jsx: added 6 tests — empty-state 'No sessions logged yet.' message,
+  delete ✕ shows confirm row, ← Cancel hides confirm without calling setLog,
+  Delete → calls setLog filtered, LIST/CAL buttons present, ⊞ CAL hides table.
+  (3 → 9 tests)
+SportProgramBuilder.test.jsx: added 5 interaction tests — NEXT disabled before
+  sport selected, NEXT disabled after sport only (no goal), NEXT enabled after
+  sport+goal, NEXT advances to step 2 (spb_step2Title visible), Back returns to
+  step 1. (18 → 23 tests)
+248 test files, 4430 tests total (+11 tests vs v8.23.0).
+DEPENDS ON: v8.23.0
+
+---
+
 ## v8.23.0 — 2026-04-28 — Tests: fix two misleading assertions in TrainingLog + CoachOnboardingWizard
 
 TrainingLog.test.jsx: replaced `document.body.not.toBeEmptyDOMElement()` (passes for
