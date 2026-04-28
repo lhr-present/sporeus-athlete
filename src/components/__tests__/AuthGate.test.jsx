@@ -57,6 +57,34 @@ describe('AuthGate', () => {
     expect(call.options?.queryParams?.access_type).toBeUndefined()
   })
 
+  it('SIGN IN submits email+password to signInWithPassword', async () => {
+    const { supabase } = await import('../../lib/supabase.js')
+    renderWithLang(<AuthGate lang="en" />)
+    const emailInput = screen.getByPlaceholderText('you@example.com')
+    fireEvent.change(emailInput, { target: { value: 'user@test.com' } })
+    fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'secret99' } })
+    fireEvent.submit(emailInput.closest('form'))
+    await vi.waitFor(() =>
+      expect(supabase.auth.signInWithPassword).toHaveBeenCalledWith(
+        expect.objectContaining({ email: 'user@test.com', password: 'secret99' })
+      )
+    )
+  })
+
+  it('MAGIC mode submits email to signInWithOtp (no password field)', async () => {
+    const { supabase } = await import('../../lib/supabase.js')
+    renderWithLang(<AuthGate lang="en" />)
+    fireEvent.click(screen.getByText('MAGIC'))
+    const emailInput = screen.getByPlaceholderText('you@example.com')
+    fireEvent.change(emailInput, { target: { value: 'magic@test.com' } })
+    fireEvent.submit(emailInput.closest('form'))
+    await vi.waitFor(() =>
+      expect(supabase.auth.signInWithOtp).toHaveBeenCalledWith(
+        expect.objectContaining({ email: 'magic@test.com' })
+      )
+    )
+  })
+
   it('Google OAuth redirectTo is origin + base URL, not hardcoded', async () => {
     const { supabase } = await import('../../lib/supabase.js')
     renderWithLang(<AuthGate lang="en" />)

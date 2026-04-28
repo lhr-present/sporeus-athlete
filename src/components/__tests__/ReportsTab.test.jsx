@@ -108,7 +108,7 @@ describe('ReportsTab', () => {
     expect(await screen.findByText('2026-04-14')).toBeInTheDocument()
     // Multiple instances of "Weekly Training Report" expected (generate card + history group header)
     const matches = screen.getAllByText(/Weekly Training Report/i)
-    expect(matches.length).toBeGreaterThanOrEqual(2)
+    expect(matches).toHaveLength(2)
   })
 
   it('shows "No reports" message when history is empty', async () => {
@@ -190,7 +190,7 @@ describe('ReportsTab', () => {
     // Kind group header + generate card both show "Weekly Training Report"
     expect(await screen.findByText('2026-04-14')).toBeInTheDocument()
     const matches = screen.getAllByText(/Weekly Training Report/i)
-    expect(matches.length).toBeGreaterThanOrEqual(2)
+    expect(matches).toHaveLength(2)
   })
 
   it('deletes a report after confirmation', async () => {
