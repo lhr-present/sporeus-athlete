@@ -4,6 +4,25 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.13.0 — 2026-04-28 — Bilingual UI pass: Dashboard, TrainingLog, Profile
+
+LangCtx.jsx: +26 new EN/TR keys covering dashboard coaching messages,
+  monotony label, TrainingLog toolbar buttons + modal strings, Profile dialogs.
+Dashboard.jsx: coachingMsg IIFE now uses t() for all 4 athlete-level strings.
+  Edge-case TSB fallback message uses lang ternary. Monotony "⚠ INJURY RISK" /
+  "Normal" label now bilingual via t().
+TrainingLog.jsx: extracted lang from useContext(LangCtx) — removed duplicate
+  useLocalStorage('sporeus-lang') declaration (and its unused import). All
+  toolbar buttons, modal headers, AI insight panel, zone breakdown label,
+  save/cancel buttons, and "no entries" message now use t().
+Profile.jsx: confirm() and alert() dialogs (reset data, GDPR delete,
+  import failed, sign-in required) now use t() — Turkish users see native text.
+i18n.test.js: added monoNormal to ALLOWED_IDENTICAL ('Normal' is a Turkish
+  loanword, identical spelling is correct).
+DEPENDS ON: v8.12.0
+
+---
+
 ## v8.12.0 — 2026-04-28 — Bilingual toasts + keyboard fixes
 
 LangCtx.jsx: added 5 new translation keys (toastCoachConnected, toastSwUpdate,

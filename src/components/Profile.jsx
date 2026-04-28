@@ -93,13 +93,13 @@ export default function Profile({ log, authUser }) {
     reader.onload = (ev) => {
       const ok = importAllData(ev.target.result)
       if (ok) window.location.reload()
-      else alert('Import failed — invalid file.')
+      else alert(t('importFailed'))
     }
     reader.readAsText(file)
   }
 
   const handleReset = () => {
-    if (confirm('Delete ALL Sporeus data? This cannot be undone.')) {
+    if (confirm(t('confirmDeleteAll'))) {
       Object.keys(localStorage).filter(k=>k.startsWith('sporeus')).forEach(k=>localStorage.removeItem(k))
       window.location.reload()
     }
@@ -127,8 +127,8 @@ export default function Profile({ log, authUser }) {
   }
 
   const _handleGdprDelete = async () => {
-    if (!confirm('Permanently delete ALL your Sporeus data? This cannot be undone.')) return
-    if (!authUser?.id) { alert('You must be signed in to delete your account data.'); return }
+    if (!confirm(t('confirmDeleteAllGdpr'))) return
+    if (!authUser?.id) { alert(t('signInRequired')); return }
     setGdprStatus('deleting')
     try {
       await deleteAthleteData(authUser.id)

@@ -6,7 +6,6 @@ import { SESSION_TYPES_BY_DISCIPLINE, ZONE_COLORS, ZONE_NAMES, SPORT_CONFIG } fr
 import { calcTSS, normalizedPower, computePowerTSS, computeWPrime } from '../lib/formulas.js'
 import { sanitizeLogEntry } from '../lib/validate.js'
 import Calendar from './Calendar.jsx'
-import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { scoreSession, autoTagSession, analyseSession, detectPersonalBests } from '../lib/intelligence.js'
 import { BANISTER } from '../lib/sport/constants.js'
@@ -62,7 +61,7 @@ import ConfirmModal from './ui/ConfirmModal.jsx'
 import EmptyState from './ui/EmptyState.jsx'
 
 export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
-  const { t } = useContext(LangCtx)
+  const { t, lang } = useContext(LangCtx)
   const { profile: profileLS } = useData()
   const today = new Date().toISOString().slice(0,10)
   const defaultType = (() => {
@@ -79,7 +78,6 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const [authUser, setAuthUser]         = useState(null)
   const [showUploadPanel, setShowUploadPanel]   = useState(false)
   const [showSemanticSearch, setShowSemanticSearch] = useState(false)
-  const [lang] = useLocalStorage('sporeus-lang', 'en')
   const [sessionScore, setSessionScore] = useState(null)
   const [lastPBs, setLastPBs] = useState(null)
   const [aiInsight, setAiInsight] = useState(null)   // { text, busy }
@@ -407,7 +405,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
         <div style={{ marginTop:'10px' }}>
           <label style={{ display:'flex', alignItems:'center', gap:'8px', cursor:'pointer', ...S.mono, fontSize:'11px', color:'#888' }}>
             <input type="checkbox" checked={showZones} onChange={e=>setShowZones(e.target.checked)} style={{ accentColor:'#ff6600' }}/>
-            ADD ZONE BREAKDOWN (optional)
+            {t('addZoneBreakdown')}
           </label>
           {showZones && (
             <div style={{ marginTop:'10px' }}>
@@ -428,8 +426,8 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
           )}
         </div>
         <div style={{ display:'flex', gap:'10px', marginTop:'14px', alignItems:'center', flexWrap:'wrap' }}>
-          <button style={S.btn} onClick={add}>{editingId!==null ? '✓ UPDATE SESSION' : t('addBtn')}</button>
-          {editingId!==null && <button style={S.btnSec} onClick={cancelEdit}>✕ Cancel</button>}
+          <button style={S.btn} onClick={add}>{editingId!==null ? t('updateSessionBtn') : t('addBtn')}</button>
+          {editingId!==null && <button style={S.btnSec} onClick={cancelEdit}>{t('cancelEditBtn')}</button>}
           {editingId===null && <button style={S.btnSec} onClick={()=>form.duration&&setTssPreview(calcTSS(parseInt(form.duration),parseInt(form.rpe)))}>{t('previewTSSBtn')}</button>}
           {tssPreview!==null && <span style={{ ...S.mono, fontSize:'13px', color:'#ff6600', fontWeight:600 }}>TSS: {tssPreview}</span>}
         </div>
@@ -455,11 +453,11 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       {aiInsight && (
         <div className="sp-card" style={{ ...S.card, borderLeft:'4px solid #b060ff', animationDelay:'0ms' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'6px' }}>
-            <span style={{ ...S.mono, fontSize:'10px', color:'#b060ff', letterSpacing:'0.1em' }}>◈ AI COACHING INSIGHT</span>
+            <span style={{ ...S.mono, fontSize:'10px', color:'#b060ff', letterSpacing:'0.1em' }}>{t('aiCoachingInsight')}</span>
             <button onClick={() => { clearTimeout(aiInsightTimer.current); setAiInsight(null) }} style={{ background:'none', border:'none', color:'#555', cursor:'pointer', fontSize:'14px', lineHeight:1, padding:0 }}>×</button>
           </div>
           {aiInsight.busy ? (
-            <div style={{ ...S.mono, fontSize:'11px', color:'#555' }}>Analysing session…</div>
+            <div style={{ ...S.mono, fontSize:'11px', color:'#555' }}>{t('analysingSession')}</div>
           ) : (
             <div style={{ ...S.mono, fontSize:'12px', color:'#c0c0c0', lineHeight:1.7 }}>{aiInsight.text}</div>
           )}
@@ -488,7 +486,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                 style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px', color:'#b060ff', borderColor:'#b060ff' }}
                 onClick={() => setShowUploadPanel(true)}
               >
-                ↑ UPLOAD &amp; PARSE
+                {t('uploadParseBtn')}
               </button>
             )}
             <button
@@ -496,26 +494,26 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
               onClick={() => fileInputRef.current?.click()}
               disabled={importBusy}
             >
-              {importBusy ? '…' : '↑ IMPORT WORKOUT'}
+              {importBusy ? '…' : t('importWorkoutBtn')}
             </button>
             <button
               style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px' }}
               onClick={() => csvInputRef.current?.click()}
             >
-              ↑ IMPORT CSV
+              {t('importCsvBtn')}
             </button>
             <button
               style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px' }}
               onClick={downloadCSVTemplate}
               title="Download CSV template"
             >
-              ↓ TEMPLATE
+              {t('templateBtn')}
             </button>
             <button
               style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px', border: bulkMode ? '1px solid #ff6600' : undefined, color: bulkMode ? '#ff6600' : undefined }}
               onClick={() => { setBulkMode(m => !m); setSelected(new Set()) }}
             >
-              {bulkMode ? 'CANCEL SELECT' : 'SELECT'}
+              {bulkMode ? t('cancelSelectBtn') : t('selectBtn')}
             </button>
             <input ref={fileInputRef} type="file" accept=".fit,.gpx" style={{ display:'none' }} onChange={handleFileImport}/>
             <input ref={csvInputRef}  type="file" accept=".csv"       style={{ display:'none' }} onChange={handleCSVImport}/>
@@ -850,10 +848,10 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
             </div>
             <div style={{ display:'flex', gap:'10px' }}>
               <button onClick={confirmImport} style={{ flex:1, padding:'11px', background:'#ff6600', color:'#fff', border:'none', borderRadius:'4px', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', fontWeight:700, letterSpacing:'0.1em', cursor:'pointer' }}>
-                ✓ SAVE SESSION
+                {t('saveSessionBtn')}
               </button>
               <button onClick={() => setImportPreview(null)} style={{ flex:1, padding:'11px', background:'#1a1a1a', color:'#888', border:'1px solid #333', borderRadius:'4px', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', cursor:'pointer' }}>
-                CANCEL
+                {t('cancelBtn')}
               </button>
             </div>
           </div>
@@ -865,7 +863,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
         <div style={{ position:'fixed', inset:0, zIndex:20500, background:'rgba(0,0,0,0.88)', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px', fontFamily:"'IBM Plex Mono',monospace" }}>
           <div style={{ background:'#111', border:'1px solid #2a2a2a', borderRadius:'8px', padding:'28px', width:'100%', maxWidth:'560px', maxHeight:'90vh', overflowY:'auto' }}>
             <div style={{ fontSize:'12px', fontWeight:700, color:'#ff6600', letterSpacing:'0.1em', marginBottom:'18px' }}>
-              ↑ BULK IMPORT CSV
+              {t('bulkImportCsv')}
             </div>
             {/* Summary counts */}
             <div style={{ display:'flex', gap:'12px', marginBottom:'18px', flexWrap:'wrap' }}>
@@ -914,7 +912,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
               </>
             ) : (
               <div style={{ fontSize:'11px', color:'#888', marginBottom:'16px', padding:'12px', background:'#0a0a0a', borderRadius:'4px' }}>
-                No new entries to import. All rows were either invalid or already exist in your log.
+                {t('noNewEntriesToImport')}
               </div>
             )}
             <div style={{ display:'flex', gap:'10px' }}>
@@ -926,7 +924,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                 ✓ IMPORT {csvPreview.entries.length} {csvPreview.entries.length === 1 ? 'SESSION' : 'SESSIONS'}
               </button>
               <button onClick={() => setCsvPreview(null)} style={{ flex:1, padding:'11px', background:'#1a1a1a', color:'#888', border:'1px solid #333', borderRadius:'4px', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', cursor:'pointer' }}>
-                CANCEL
+                {t('cancelBtn')}
               </button>
             </div>
           </div>

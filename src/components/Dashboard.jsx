@@ -167,12 +167,12 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
     const lvl    = profile.athleteLevel || 'competitive'
     const isBusy = totalTSS > 400
     if (lvl === 'beginner') return isBusy
-      ? "Take it easy today — rest is part of training!"
-      : "Keep showing up — consistency beats intensity every time."
+      ? t('coachMsgBeginnerBusy')
+      : t('coachMsgBeginnerFresh')
     if (!isBusy) return null
-    if (lvl === 'recreational') return "Consider an easy session today — your body needs recovery."
-    if (lvl === 'competitive')  return `Readiness low — consider swapping tomorrow's tempo for an easy run.`
-    return `TSB ${tsb >= 0 ? '+' : ''}${tsb} · High load detected — deload recommended. Swap threshold → Z2 45min.`
+    if (lvl === 'recreational') return t('coachMsgRecreational')
+    if (lvl === 'competitive')  return t('coachMsgCompetitive')
+    return `TSB ${tsb >= 0 ? '+' : ''}${tsb} · ${lang === 'tr' ? 'Yüksek yük — deload önerilir. Eşik → Z2 45dk.' : 'High load detected — deload recommended. Swap threshold → Z2 45min.'}`
   })()
 
   const dqResult = assessDataQuality(log, recovery, testResults, profile)
@@ -792,7 +792,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
                 <div style={{ ...S.card, marginBottom: 0, borderLeft: `3px solid ${monoRed ? '#e03030' : '#5bc25b'}` }}>
                   <div style={{ ...S.mono, fontSize: '9px', color: '#888' }}>MONOTONY INDEX</div>
                   <div style={{ ...S.mono, fontSize: '22px', fontWeight: 600, color: monoRed ? '#e03030' : '#1a1a1a' }}>{mono}</div>
-                  <div style={{ ...S.mono, fontSize: '9px', color: '#aaa' }}>{monoRed ? '⚠ INJURY RISK' : 'Normal'} (alert &gt;2.0)</div>
+                  <div style={{ ...S.mono, fontSize: '9px', color: '#aaa' }}>{monoRed ? t('monoInjuryRisk') : t('monoNormal')} (alert &gt;2.0)</div>
                   {(() => {
                     const mi = interpretMonotony(mono, strain)
                     return (

@@ -29,6 +29,7 @@ describe('i18n parity — LABELS', () => {
       'spb_exportCSV',   // '↓ CSV' — CSV universal
       't_plan',          // '⚡ PLAN' — PLAN used in Turkish
       'nmNormal',        // 'Normal' — loanword identical in Turkish
+      'monoNormal',      // 'Normal' — loanword identical in Turkish
       'seasonTSS',       // 'TSS' — technical acronym, same in EN and TR
       'cyclingWperKg',   // 'W/kg' — universal power-to-weight unit, identical in Turkish
     ])
