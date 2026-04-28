@@ -4,6 +4,20 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.23.0 — 2026-04-28 — Tests: fix two misleading assertions in TrainingLog + CoachOnboardingWizard
+
+TrainingLog.test.jsx: replaced `document.body.not.toBeEmptyDOMElement()` (passes for
+  any render) with `screen.getByText(/SESSION HISTORY/)` — actually catches a blank render.
+CoachOnboardingWizard.test.jsx: test 2 was named 'already onboarded' but passed open={false},
+  making it identical to test 3 (component only gates on open prop, not localStorage). Replaced
+  with 'renders when open=true even if flag set' — catches regression where component
+  mistakenly gates on localStorage instead of deferring to parent.
+No count change — same test count, stronger semantics.
+248 test files, 4419 tests total.
+DEPENDS ON: v8.22.0
+
+---
+
 ## v8.22.0 — 2026-04-28 — Tests: fix misleading SessionHistory expand tests + add delete/expand coverage
 
 SessionHistory.test.jsx: two tests labelled "expanded detail" were checking text
