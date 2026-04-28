@@ -4,6 +4,29 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.28.0 — 2026-04-29 — Olympic coach daily training card redesign
+
+RaceGoalDashCard.jsx (E87 v2): complete visual redesign with professional Olympic-coach hierarchy.
+  Zone colour system: Z1=#555 (rec), Z2=#0064ff (easy), Z3=#5bc25b (marathon),
+    Z4=#f5c542 (threshold), Z5=#ff6600 (VO₂max) — left border on run section.
+  Phase header bar: PHASE · W{n}/{total} | VDOT badge | goal time + distance.
+  Readiness strip: CTL | TSB (color-coded) | ACWR | NORMAL/TIRED/VERY TIRED label.
+  Date + total duration header with TSB fatigue warning inline.
+  TSB downgrade warning box (amber) when TSB < −20; session auto-adapted to easy.
+  Run section: session title, zone badge, TSS; pace/HR/RPE metrics panel;
+    WU/MAIN/CD structured prescription rows parsed from structure text;
+    feel quote italic; science/adaptation note in zone-tinted background.
+  Drills section: level badge, exercise list with distance/reps right-aligned.
+  Strength section: category badge, exercise table with coaching notes, sets×reps.
+  Preventive section: focus badge, exercise table with protocol notes.
+  Weekly TSS progress bar (4px, color-coded by completion ratio).
+  No-plan CTA when VDOT detected but no goal set.
+  Bottom tag: SPOREUS COACHING SYSTEM + VDOT {current} → {goal} · {weeks}w.
+  Bug fixed: todayDow uses (getUTCDay() + 6) % 7 for correct Mon-first indexing.
+  Typos fixed: KOŞU ANTRENMANI, KORUYUCU ÇALIŞMALAR.
+249 test files, 4479 tests — all pass.
+DEPENDS ON: sessionLibrary.js (E90), trainingBridge.js (E82), paceZoneTranslator.js, intelligence.js
+
 ## v8.27.0 — 2026-04-29 — Full training prescription library: running + strength + drills + preventive
 
 sessionLibrary.js (E90): complete 7-day multi-modal training plan builder.
