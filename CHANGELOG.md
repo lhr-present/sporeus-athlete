@@ -4,6 +4,19 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.25.0 — 2026-04-28 — Tests: ReportsTab exact length; AuthGate form-submission coverage
+
+ReportsTab.test.jsx: two loose toBeGreaterThanOrEqual(2) changed to toHaveLength(2)
+  — confirmed exactly 2 matches (generate card + history group header).
+AuthGate.test.jsx: added SIGN IN form-submission test (signInWithPassword called with
+  email+password), MAGIC mode form-submission test (signInWithOtp called with email).
+  Used fireEvent.submit on form element to avoid SIGN IN tab/button text ambiguity.
+  (6 → 8 tests)
+248 test files, 4432 tests total (+2 tests vs v8.24.0).
+DEPENDS ON: v8.24.0
+
+---
+
 ## v8.24.0 — 2026-04-28 — Tests: TrainingLog delete-confirm + CAL toggle; SportProgramBuilder step navigation
 
 TrainingLog.test.jsx: added 6 tests — empty-state 'No sessions logged yet.' message,
