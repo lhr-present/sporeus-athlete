@@ -4,6 +4,7 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import ErrorBoundary from './ErrorBoundary.jsx'
+import ConfirmModal from './ui/ConfirmModal.jsx'
 import OnboardingWizard from './general/OnboardingWizard.jsx'
 import { advanceRotation, suggestNextLoad, computeSessionPRs } from '../lib/athlete/strengthTraining.js'
 import { syncGeneralProgram } from '../lib/generalFitnessSync.js'
@@ -431,6 +432,7 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
   const [savedJustNow, setSavedJustNow] = useState(false)
   const [coachConfirmedAt, setCoachConfirmedAt] = useState(null)
   const [lastSessionPRs, setLastSessionPRs]     = useState([])
+  const [pendingConfirm, setPendingConfirm]     = useState(null) // { title, body, onConfirm }
 
   const activeTemplate = STATIC_TEMPLATES.find(t => t.id === activeProgram?.templateId) ?? null
   const templateDayCount = activeTemplate?.days_per_week ?? 0
@@ -571,23 +573,25 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
 
   function handleSelectTemplate(tmpl) {
     if (activeProgram?.templateId === tmpl.id) return
-    const confirmed = window.confirm(
-      lang === 'tr'
-        ? `Programı "${tmpl.name_tr}" olarak değiştir? İlerleme sıfırlanacak.`
-        : `Switch to "${tmpl.name_en}"? Progress will reset to Day 1.`
-    )
-    if (!confirmed) return
-    const today = new Date().toISOString().slice(0, 10)
-    const newProg = {
-      ...activeProgram,
-      templateId:         tmpl.id,
-      next_day_index:     0,
-      sessions_completed: 0,
-      reference_date:     today,
-      last_session_date:  null,
-    }
-    setActiveProgram(newProg)
-    syncGeneralProgram(authUser?.id, newProg, lang === 'tr' ? tmpl.name_tr : tmpl.name_en)
+    setPendingConfirm({
+      title:     lang === 'tr' ? `"${tmpl.name_tr}" programına geç?` : `Switch to "${tmpl.name_en}"?`,
+      body:      lang === 'tr' ? 'İlerleme Gün 1\'e sıfırlanacak. Seans geçmişin korunur.' : 'Progress resets to Day 1. Your session history is kept.',
+      dangerous: true,
+      onConfirm: () => {
+        const today = new Date().toISOString().slice(0, 10)
+        const newProg = {
+          ...activeProgram,
+          templateId:         tmpl.id,
+          next_day_index:     0,
+          sessions_completed: 0,
+          reference_date:     today,
+          last_session_date:  null,
+        }
+        setActiveProgram(newProg)
+        syncGeneralProgram(authUser?.id, newProg, lang === 'tr' ? tmpl.name_tr : tmpl.name_en)
+        setPendingConfirm(null)
+      },
+    })
   }
 
   if (!onboarded) {
@@ -621,12 +625,12 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
         ))}
         <button
           style={{ ...S.mono, fontSize: 10, padding: '6px 10px', border: '1px solid var(--border)', background: 'transparent', color: '#555', borderRadius: 3, cursor: 'pointer', marginLeft: 'auto' }}
-          onClick={() => {
-            const msg = lang === 'tr'
-              ? 'Programı sıfırla? Seans geçmişin korunur.'
-              : 'Reset program setup? Your session history is kept.'
-            if (window.confirm(msg)) { setOnboarded(false); setActiveProgram(null) }
-          }}
+          onClick={() => setPendingConfirm({
+            title:     lang === 'tr' ? 'Programı sıfırla?' : 'Reset program setup?',
+            body:      lang === 'tr' ? 'Seans geçmişin korunur.' : 'Your session history is kept.',
+            dangerous: true,
+            onConfirm: () => { setOnboarded(false); setActiveProgram(null); setPendingConfirm(null) },
+          })}
           title={t('Reset program setup', 'Program kurulumunu sıfırla')}
         >⚙</button>
       </div>
@@ -722,6 +726,19 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
 
         </Suspense>
       </ErrorBoundary>
+
+      {pendingConfirm && (
+        <ConfirmModal
+          open
+          title={pendingConfirm.title}
+          body={pendingConfirm.body}
+          dangerous={pendingConfirm.dangerous}
+          confirmLabel={lang === 'tr' ? 'Evet' : 'Confirm'}
+          cancelLabel={lang === 'tr' ? 'İptal' : 'Cancel'}
+          onConfirm={pendingConfirm.onConfirm}
+          onCancel={() => setPendingConfirm(null)}
+        />
+      )}
     </div>
   )
 }

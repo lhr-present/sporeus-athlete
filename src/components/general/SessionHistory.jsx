@@ -108,7 +108,7 @@ export default function SessionHistory({ sessions = [], exercises = [], lang = '
                   const def       = exercises.find(e => e.id === ex.exercise_id)
                   const name      = def ? (lang === 'tr' ? def.name_tr : def.name_en) : ex.exercise_id
                   const wSets     = (ex.sets ?? []).filter(set => !set.is_warmup)
-                  const topSet    = wSets.reduce((best, s) => (s.load_kg ?? 0) > (best?.load_kg ?? 0) ? s : best, null)
+                  const topSet    = wSets.length > 0 ? wSets.reduce((best, s) => (s.load_kg ?? 0) > (best?.load_kg ?? 0) ? s : best) : null
                   const warmupCnt = (ex.sets ?? []).filter(set => set.is_warmup).length
 
                   return (

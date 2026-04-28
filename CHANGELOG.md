@@ -4,6 +4,19 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.17.0 — 2026-04-28 — SessionHistory BW reps bug + ConfirmModal in GF
+
+SessionHistory.jsx: topSet reduce seeded with null — for bodyweight exercises
+  (all load_kg === null) the reduce returned null, hiding rep counts entirely.
+  Fixed by seeding with wSets[0] instead of null (no initial value); BW exercises
+  now correctly surface the first set's reps in the expanded detail view.
+GeneralFitness.jsx: replaced both window.confirm() calls (switch template,
+  reset program) with the branded ConfirmModal component — consistent with
+  TrainingLog and ReportsTab; bilingual title/body/buttons included.
+DEPENDS ON: v8.16.0
+
+---
+
 ## v8.16.0 — 2026-04-28 — Fix three GF data-flow gaps
 
 generalFitnessSync.js: Supabase `.update()` error is now captured and
