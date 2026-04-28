@@ -16,8 +16,7 @@ describe('analyseSession', () => {
   it('zone_estimate returns a string for all RPE values 1-10', () => {
     for (let rpe = 1; rpe <= 10; rpe++) {
       const result = analyseSession({ tss: 50, rpe, type: 'Run', duration: 40, date: '2026-04-15' }, [])
-      expect(typeof result.zone_estimate).toBe('string')
-      expect(result.zone_estimate.length).toBeGreaterThan(0)
+      expect(result.zone_estimate).toMatch(/^Zone/)
     }
   })
 

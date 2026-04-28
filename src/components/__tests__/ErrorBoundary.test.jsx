@@ -50,7 +50,7 @@ describe('ErrorBoundary', () => {
         <Thrower />
       </ErrorBoundary>
     )
-    expect(screen.getAllByText(/Retry/i).length).toBeGreaterThan(0)
+    expect(screen.getByText(/Retry/i)).toBeInTheDocument()
   })
 
   it('inline mode shows compact error with Retry', () => {

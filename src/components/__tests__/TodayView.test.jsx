@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 import '@testing-library/jest-dom'
+import { screen } from '@testing-library/react'
 import { renderWithLang } from './testUtils.jsx'
 
 // ── Mock heavy/external dependencies ─────────────────────────────────────────
@@ -62,9 +63,14 @@ describe('TodayView', () => {
     renderWithLang(
       <TodayView log={[]} setTab={noop} setLogPrefill={noop} />
     )
-    // Wellness/recovery check-in is always rendered
-    // Look for a recognisable section heading or input
-    expect(document.body.textContent.length).toBeGreaterThan(0)
+    expect(screen.getByText("HOW DO YOU FEEL TODAY?")).toBeInTheDocument()
+  })
+
+  it("shows TODAY'S READINESS heading", () => {
+    renderWithLang(
+      <TodayView log={[]} setTab={noop} setLogPrefill={noop} />
+    )
+    expect(screen.getByText("TODAY'S READINESS")).toBeInTheDocument()
   })
 
   it('renders with a log entry without crashing', () => {
