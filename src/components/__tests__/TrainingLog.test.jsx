@@ -25,9 +25,9 @@ import TrainingLog from '../TrainingLog.jsx'
 const noop = () => {}
 
 describe('TrainingLog', () => {
-  it('renders without crashing when log is empty', () => {
+  it('renders SESSION HISTORY heading when log is empty', () => {
     renderWithLang(<TrainingLog log={[]} setLog={noop} prefill={null} clearPrefill={noop} />)
-    expect(document.body).not.toBeEmptyDOMElement()
+    expect(screen.getByText(/SESSION HISTORY/)).toBeInTheDocument()
   })
 
   it('shows log entries when data is present', () => {

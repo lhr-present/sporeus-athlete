@@ -42,11 +42,14 @@ describe('CoachOnboardingWizard', () => {
     expect(screen.getByText(/Invite your first athlete/i)).toBeInTheDocument()
   })
 
-  // ── 2. Does not render when already onboarded (localStorage flag set) ─────
-  it('does not render when already onboarded (localStorage flag set)', () => {
+  // ── 2. Renders with open=true even when localStorage flag is set ─────────
+  // Component defers to the `open` prop; the parent reads localStorage to
+  // decide whether to pass open=true. This test catches a regression where
+  // the component itself starts gating on the flag instead.
+  it('renders when open=true even if localStorage onboarded flag is set', () => {
     localStorage.setItem('sporeus-coach-onboarded', 'true')
-    renderWithLang(<CoachOnboardingWizard open={false} onClose={vi.fn()} />)
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    renderWithLang(<CoachOnboardingWizard open={true} onClose={vi.fn()} />)
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
   // ── 3. Does not render when open=false (squad has athletes — caller controls open) ─
