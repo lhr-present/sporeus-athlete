@@ -48,6 +48,7 @@
     "@axe-core/playwright": "^4.11.2",
     "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.50.1",
+    "@tanstack/react-query-devtools": "^5.100.5",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^18.3.1",
