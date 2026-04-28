@@ -4,6 +4,21 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.29.0 — 2026-04-29 — TrainingBridgeCard upgraded to full multi-modal week grid
+
+TrainingBridgeCard.jsx (E88 v2): complete upgrade to use rich sessionLibrary data.
+  Day rows now show colored modality indicators: run (zone-color circle), strength
+    (brown square), drills (blue triangle), preventive (green hollow circle).
+  Per-day totalDurationMin shown right-aligned.
+  Tappable expand: DayDetail sub-component renders full multi-modal prescription —
+    run section with WU/MAIN/CD structure, pace/HR/RPE metrics panel;
+    drills exercise list with distance/reps; strength exercise table with coaching
+    notes and sets×reps; preventive exercise table with protocol notes.
+  todayDow bug fixed: (getUTCDay()+6)%7 — same Mon-first fix as RaceGoalDashCard.
+  Removed paceZoneTranslator dependency; all paces now from sess.run.paceStr.
+4479 tests — all pass.
+DEPENDS ON: sessionLibrary.js (E90), trainingBridge.js (E82)
+
 ## v8.28.0 — 2026-04-29 — Olympic coach daily training card redesign
 
 RaceGoalDashCard.jsx (E87 v2): complete visual redesign with professional Olympic-coach hierarchy.
