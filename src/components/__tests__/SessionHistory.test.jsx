@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import SessionHistory from '../general/SessionHistory.jsx'
 
@@ -79,38 +79,72 @@ describe('SessionHistory — BW topSet regression (v8.17.0)', () => {
     }],
   })
 
-  it('shows exercise name in expanded detail', async () => {
-    const { getByText, container } = render(
-      <SessionHistory sessions={[bwSession]} exercises={EXERCISES} lang="en" />,
-    )
-    // Expand the card
-    container.querySelector('[style]').click()
-    // Exercise name should be in the expanded detail after click
-    // (the card row shows exercise count, not names)
-    expect(container.textContent).toContain('1 exercises')
+  it('shows exercise name in expanded detail after clicking card', () => {
+    render(<SessionHistory sessions={[bwSession]} exercises={EXERCISES} lang="en" />)
+    // Before expand: exercise name not visible (only count shown in subtitle)
+    expect(screen.queryByText('Push-Up')).toBeNull()
+    // Click the session date text to expand the card
+    fireEvent.click(screen.getByText('2026-04-28'))
+    expect(screen.getByText('Push-Up')).toBeInTheDocument()
   })
 
-  it('correctly shows work-set count for BW exercise', () => {
+  it('correctly shows work-set count in subtitle for BW exercise', () => {
     const { container } = render(
       <SessionHistory sessions={[bwSession]} exercises={EXERCISES} lang="en" />,
     )
-    // The subtitle shows "1 exercises · 3 work sets"
     expect(container.textContent).toContain('3 work sets')
   })
 
-  it('weighted exercise shows kg × reps in expanded detail', () => {
+  it('expanded weighted exercise shows top-set kg × reps', () => {
     const weightedSession = session({
       exercises: [{
         exercise_id: 'bb_bench_press',
         sets: [
-          { set_number: 1, reps: 5, load_kg: 80, rir: 2, is_warmup: false },
+          { set_number: 1, reps: 5, load_kg: 80,   rir: 2, is_warmup: false },
           { set_number: 2, reps: 5, load_kg: 82.5, rir: 1, is_warmup: false },
         ],
       }],
     })
-    const { container } = render(
-      <SessionHistory sessions={[weightedSession]} exercises={EXERCISES} lang="en" />,
-    )
-    expect(container.textContent).toContain('2 work sets')
+    render(<SessionHistory sessions={[weightedSession]} exercises={EXERCISES} lang="en" />)
+    fireEvent.click(screen.getByText('2026-04-28'))
+    // Expanded detail shows top-set as "2× 82.5kg × 5"
+    expect(screen.getByText(/82\.5kg/)).toBeInTheDocument()
+  })
+})
+
+// ── Delete flow ───────────────────────────────────────────────────────────────
+describe('SessionHistory — delete flow', () => {
+  const s = {
+    id: 'sess-1', session_date: '2026-04-28', day_label: 'Push', exercises: [],
+  }
+
+  it('LOG NEW → button calls onLogNew', () => {
+    const onLogNew = vi.fn()
+    render(<SessionHistory sessions={[]} exercises={EXERCISES} onLogNew={onLogNew} />)
+    fireEvent.click(screen.getByText('LOG NEW →'))
+    expect(onLogNew).toHaveBeenCalledOnce()
+  })
+
+  it('clicking ✕ shows confirm / cancel buttons', () => {
+    render(<SessionHistory sessions={[s]} exercises={EXERCISES} />)
+    fireEvent.click(screen.getByTitle('Delete session'))
+    expect(screen.getByText('confirm')).toBeInTheDocument()
+    expect(screen.getByText('cancel')).toBeInTheDocument()
+  })
+
+  it('clicking cancel dismisses the confirm buttons', () => {
+    render(<SessionHistory sessions={[s]} exercises={EXERCISES} />)
+    fireEvent.click(screen.getByTitle('Delete session'))
+    fireEvent.click(screen.getByText('cancel'))
+    expect(screen.queryByText('confirm')).toBeNull()
+    expect(screen.getByTitle('Delete session')).toBeInTheDocument()
+  })
+
+  it('clicking confirm calls onDelete with session id', () => {
+    const onDelete = vi.fn()
+    render(<SessionHistory sessions={[s]} exercises={EXERCISES} onDelete={onDelete} />)
+    fireEvent.click(screen.getByTitle('Delete session'))
+    fireEvent.click(screen.getByText('confirm'))
+    expect(onDelete).toHaveBeenCalledWith('sess-1')
   })
 })
