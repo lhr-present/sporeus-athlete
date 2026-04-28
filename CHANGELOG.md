@@ -4,6 +4,22 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.18.0 — 2026-04-28 — Tests: +19 covering v8.16/v8.17 fixes + duplicate key warning
+
+ScienceTooltip.jsx: removed duplicate whiteSpace key in tooltip style object
+  (whiteSpace:'nowrap' immediately overridden by whiteSpace:'normal' on next line).
+  Vite emitted a build warning on every dev-server start; now clean.
+src/components/__tests__/SessionHistory.test.jsx (NEW): 10 tests covering
+  session display, duration_minutes subtitle, weekly stats bar, bilingual labels,
+  and the BW topSet regression fixed in v8.17.0.
+src/lib/__tests__/athlete/generalFitnessSync.test.js (NEW): 9 tests covering
+  syncGeneralProgram no-ops, payload shape, last_workout_done_at gate,
+  last_session_duration_minutes field (v8.16.0), and console.warn on Supabase error.
+244 test files, 4325 tests total (+2 files, +19 tests vs v8.17.0).
+DEPENDS ON: v8.17.0
+
+---
+
 ## v8.17.0 — 2026-04-28 — SessionHistory BW reps bug + ConfirmModal in GF
 
 SessionHistory.jsx: topSet reduce seeded with null — for bodyweight exercises

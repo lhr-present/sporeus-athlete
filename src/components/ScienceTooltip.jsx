@@ -64,7 +64,6 @@ export default function ScienceTooltip({ anchor, label, short, children }) {
             fontFamily: MONO,
             fontSize: '9px',
             color: '#ccc',
-            whiteSpace: 'nowrap',
             zIndex: 1000,
             pointerEvents: 'none',
             maxWidth: '240px',
