@@ -4,6 +4,21 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.11.0 — 2026-04-28 — Live clock, bilingual UI fixes
+App.jsx: header clock now lives — useState + setInterval(30s) replaces the
+  frozen `new Date()` snapshot. During a workout the displayed time was stuck
+  at app-load time; now it updates every 30 seconds.
+App.jsx: dateStr now uses lang-aware locale ('tr-TR' for Turkish, 'en-GB'
+  for English) so Turkish users see "28 NİS 2026" instead of "28 APR 2026".
+  timeStr uses explicit `hour12: false` instead of relying on 'tr-TR' side-
+  effect for 24h format.
+App.jsx: "Start here" first-session tab badge translated (Başla / Start here).
+App.jsx: footer shortcuts hint fully bilingual
+  (? = kısayollar · + = hızlı kayıt … / ? = shortcuts · + = quick log …).
+ConnectionBanner.jsx: accepts lang prop; "RECONNECTING TO LIVE FEED…" now
+  renders as "CANLIYA YENİDEN BAĞLANIYOR…" in Turkish.
+DEPENDS ON: v8.10.1
+
 ## v8.10.1 — 2026-04-28 — NaN guard, ProgramView polish, Insights sort
 SessionLogger.jsx: load_kg save now guards against non-numeric input —
   `!isNaN(parseFloat(s.load_kg))` check added. type=text allows typing

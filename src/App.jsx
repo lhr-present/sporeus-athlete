@@ -151,9 +151,13 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
     setShowUpgrade(true)
   }
 
-  const now = new Date()
-  const timeStr = now.toLocaleTimeString('tr-TR', { hour:'2-digit', minute:'2-digit' })
-  const dateStr = now.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }).toUpperCase()
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30_000)
+    return () => clearInterval(id)
+  }, [])
+  const timeStr = now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', hour12: false })
+  const dateStr = now.toLocaleDateString(lang === 'tr' ? 'tr-TR' : 'en-GB', { day:'2-digit', month:'short', year:'numeric' }).toUpperCase()
 
   if (EMBED_MODE) {
     return (
@@ -172,7 +176,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
 
       <StatusBanner />
       <OfflineBanner />
-      <ConnectionBanner />
+      <ConnectionBanner lang={lang} />
       <PastDueBanner profile={authProfile} lang={lang} onUpgrade={() => openUpgrade(null)} />
       <InstallPrompt />
       <ToastStack toasts={toasts} dismissToast={dismissToast} />
@@ -427,7 +431,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
                   )}
                   {isLogPulse && (
                     <span style={{ position:'absolute', top:'4px', right:'4px', background:'var(--brand-primary,#ff6600)', color:'#fff', fontFamily:"'IBM Plex Mono',monospace", fontSize:'8px', padding:'1px 4px', borderRadius:'2px', whiteSpace:'nowrap', pointerEvents:'none' }}>
-                      Start here
+                      {lang === 'tr' ? 'Başla' : 'Start here'}
                     </span>
                   )}
                 </button>
@@ -470,7 +474,9 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
         <footer style={S.footer}>
           SPOREUS ATHLETE CONSOLE v{APP_VERSION} · SPOREUS.COM
           <span style={{ marginLeft:'12px', color:'#333', fontSize:'9px', letterSpacing:'0.06em' }}>
-            ? = shortcuts · + = quick log · Ctrl+K = search · Ctrl+Shift+K = AI search
+            {lang === 'tr'
+              ? '? = kısayollar · + = hızlı kayıt · Ctrl+K = ara · Ctrl+Shift+K = AI ara'
+              : '? = shortcuts · + = quick log · Ctrl+K = search · Ctrl+Shift+K = AI search'}
           </span>
         </footer>
       </div>

@@ -14,7 +14,7 @@ function isReconnecting(statuses) {
   return Object.values(statuses).some(s => RECONNECTING_STATES.has(s))
 }
 
-export default function ConnectionBanner() {
+export default function ConnectionBanner({ lang = 'en' }) {
   const [show, setShow] = useState(() => isReconnecting(getStatuses()))
 
   useEffect(() => {
@@ -44,7 +44,7 @@ export default function ConnectionBanner() {
       gap: '8px',
     }}>
       <span style={{ animation: 'sporeus-pulse 1.4s ease-in-out infinite', display: 'inline-block' }}>○</span>
-      RECONNECTING TO LIVE FEED…
+      {lang === 'tr' ? 'CANLIYA YENİDEN BAĞLANIYOR…' : 'RECONNECTING TO LIVE FEED…'}
     </div>
   )
 }
