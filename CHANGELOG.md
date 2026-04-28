@@ -4,6 +4,23 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.12.0 — 2026-04-28 — Bilingual toasts + keyboard fixes
+
+LangCtx.jsx: added 5 new translation keys (toastCoachConnected, toastSwUpdate,
+  toastSwUpdateAction, toastFirstSession, toastStorageFull, toastRestDays) in
+  both EN and TR blocks.
+useAppState.js: all 4 hardcoded English toast messages now use LABELS[lang]
+  — coach-connected, SW update, first-session unlock, and storage-full toasts
+  are bilingual for Turkish users.
+TodayView.jsx: "3 rest days — CTL decaying…" inline card translated via
+  lang ternary (Turkish: "3 dinlenme günü — KTY günlük ~%2,3 düşüyor.").
+QuickAddModal.jsx: duration (minutes) input `inputMode` changed from "decimal"
+  to "numeric" — iOS decimal keypad was showing a decimal point for an integer
+  field; whole-number keypad is correct for session duration.
+DEPENDS ON: v8.11.0
+
+---
+
 ## v8.11.0 — 2026-04-28 — Live clock, bilingual UI fixes
 App.jsx: header clock now lives — useState + setInterval(30s) replaces the
   frozen `new Date()` snapshot. During a workout the displayed time was stuck

@@ -147,7 +147,7 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
       if (current !== coachParam) {
         localStorage.setItem('sporeus-my-coach', coachParam)
         const coachLabel = coachParam === 'huseyin-sporeus' ? 'Hüseyin Akbulut' : coachParam
-        addToast({ id: 'coach', message: `◉ Connected to coach ${coachLabel} — go to Profile to send your data.`, type: 'info', duration: 6000 })
+        addToast({ id: 'coach', message: `◉ Connected to coach ${coachLabel} — ${LABELS[lang]?.toastCoachConnected ?? LABELS.en.toastCoachConnected}`, type: 'info', duration: 6000 })
       }
       const url = new URL(window.location.href)
       url.searchParams.delete('coach')
@@ -217,7 +217,7 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
         if (!nw) return
         nw.addEventListener('statechange', () => {
           if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-            addToast({ id: 'sw-update', message: '◈ New version available — reload to update', type: 'update', duration: 0, action: { label: 'RELOAD', onClick: () => window.location.reload() } })
+            addToast({ id: 'sw-update', message: LABELS[lang]?.toastSwUpdate ?? LABELS.en.toastSwUpdate, type: 'update', duration: 0, action: { label: LABELS[lang]?.toastSwUpdateAction ?? LABELS.en.toastSwUpdateAction, onClick: () => window.location.reload() } })
           }
         })
       })
@@ -228,7 +228,7 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   // First session toast
   useEffect(() => {
     if (prevLogLen.current === 0 && log.length >= 1) {
-      addToast({ id: 'first-session', message: '🏆 FIRST STEP UNLOCKED — You logged your first session. Consistency starts here.', type: 'success', duration: 6000 })
+      addToast({ id: 'first-session', message: LABELS[lang]?.toastFirstSession ?? LABELS.en.toastFirstSession, type: 'success', duration: 6000 })
     }
     prevLogLen.current = log.length
   }, [log.length]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -239,7 +239,7 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
       if (localStorage.getItem(STORAGE_WARN_KEY) === '1') {
         addToast({
           id: 'quota',
-          message: '⚠ Storage full — some data may not save. Export your training log.',
+          message: LABELS[lang]?.toastStorageFull ?? LABELS.en.toastStorageFull,
           type: 'error',
           duration: 0,
           onDismiss: () => { try { localStorage.removeItem(STORAGE_WARN_KEY) } catch (e) { logger.warn('localStorage:', e.message) } },

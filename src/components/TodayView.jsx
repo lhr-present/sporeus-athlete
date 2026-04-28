@@ -804,7 +804,7 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
           return (
             <div style={{ ...card, borderLeft: '3px solid #f5c542', padding: '12px 18px' }}>
               <div style={{ fontFamily: MONO, fontSize: '11px', color: '#f5c542', lineHeight: 1.6 }}>
-                3 rest days — CTL decaying at ~2.3% per day. Consider a short activation session.
+                {lang === 'tr' ? '3 dinlenme günü — KTY günlük ~%2,3 düşüyor. Kısa bir aktivasyon seansı düşün.' : '3 rest days — CTL decaying at ~2.3% per day. Consider a short activation session.'}
               </div>
             </div>
           )

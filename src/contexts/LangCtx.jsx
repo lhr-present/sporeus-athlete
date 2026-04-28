@@ -614,6 +614,13 @@ export const LABELS = {
     sleepAvg:         'AVG SLEEP',
     restingHRLabel:   'RESTING HR',
     sleepRHRNoData:   'No sleep or RHR data logged',
+    // Toasts (useAppState)
+    toastCoachConnected: 'go to Profile to send your data.',
+    toastSwUpdate:       '◈ New version available — reload to update',
+    toastSwUpdateAction: 'RELOAD',
+    toastFirstSession:   '🏆 FIRST STEP UNLOCKED — You logged your first session. Consistency starts here.',
+    toastStorageFull:    '⚠ Storage full — some data may not save. Export your training log.',
+    toastRestDays:       '3 rest days — CTL decaying at ~2.3% per day. Consider a short activation session.',
   },
   tr: {
     appTitle: 'SPOREUS SPORCU KONSOLU',
@@ -1227,6 +1234,13 @@ export const LABELS = {
     sleepAvg:         'ORT UYKU',
     restingHRLabel:   'İSTİRAHAT KALBİ',
     sleepRHRNoData:   'Uyku veya dinlenim nabzı verisi bulunamadı',
+    // Toasts (useAppState)
+    toastCoachConnected: 'verilerinizi göndermek için Profil\'e gidin.',
+    toastSwUpdate:       '◈ Yeni sürüm mevcut — güncellemek için yenile',
+    toastSwUpdateAction: 'YENİLE',
+    toastFirstSession:   '🏆 İLK ADIM AÇILDI — İlk seansını kaydettiniz. Tutarlılık buradan başlar.',
+    toastStorageFull:    '⚠ Depolama alanı dolu — bazı veriler kaydedilemeyebilir. Antrenman günlüğünü dışa aktar.',
+    toastRestDays:       '3 dinlenme günü — KTY günlük ~%2,3 düşüyor. Kısa bir aktivasyon seansı düşün.',
   }
 }
 

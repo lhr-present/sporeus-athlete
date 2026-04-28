@@ -413,7 +413,7 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
                 </label>
                 <input
                   type="number"
-                  inputMode="decimal"
+                  inputMode="numeric"
                   min={1}
                   max={600}
                   value={duration}
