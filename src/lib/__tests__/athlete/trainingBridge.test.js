@@ -68,6 +68,25 @@ describe('buildTrainingPlan', () => {
       expect(typeof sess.type).toBe('string')
     }
   })
+
+  it('phaseTr is the short Turkish name (≤10 chars), not a description', () => {
+    for (const w of plan) {
+      if (!w.isDeload) {
+        expect(w.phaseTr.length).toBeLessThanOrEqual(10)
+      }
+    }
+  })
+
+  it('maxHR flows from profile through analyzeRaceGoal into session HR ranges', () => {
+    const analysisWithHR = analyzeRaceGoal(3000, 2400, 10000, { age: 35 }, [])
+    const planWithHR = buildTrainingPlan(analysisWithHR, '2026-04-28')
+    // Build week Tue = TEMPO_2x20 (88–92% maxHR)
+    const buildWeek = planWithHR.find(w => w.phase === 'Build' && !w.isDeload)
+    const tueSess = buildWeek?.sessions[1]
+    expect(tueSess?.run?.hrLow).not.toBeNull()
+    expect(tueSess?.run?.hrLow).toBeGreaterThan(0)
+    expect(tueSess?.run?.hrHigh).toBeGreaterThan(tueSess?.run?.hrLow)
+  })
 })
 
 describe('getCurrentPlanWeek', () => {

@@ -364,3 +364,32 @@ describe('buildFullWeekPlan — totalDurationMin', () => {
     }
   })
 })
+
+describe('buildFullWeekPlan — RPE ranges', () => {
+  it('all run sessions across phases have rpeLow and rpeHigh > 0', () => {
+    for (const phase of ['Base', 'Build', 'Peak', 'Taper', 'Deload']) {
+      const plan = buildFullWeekPlan(phase, 33)
+      for (const d of plan) {
+        if (d.run) {
+          expect(d.run.rpeLow).toBeGreaterThan(0)
+          expect(d.run.rpeHigh).toBeGreaterThan(0)
+          expect(d.run.rpeHigh).toBeGreaterThanOrEqual(d.run.rpeLow)
+        }
+      }
+    }
+  })
+
+  it('quality sessions have higher RPE than easy runs', () => {
+    const build = buildFullWeekPlan('Build', 33)
+    const tempoTue = build[1]  // TEMPO_2x20
+    const easyWed  = build[2]  // EASY_40
+    expect(tempoTue.run.rpeLow).toBeGreaterThan(easyWed.run.rpeLow)
+  })
+
+  it('interval sessions have zone 5 and RPE ≥ 8', () => {
+    const peak = buildFullWeekPlan('Peak', 33)
+    const tue  = peak[1]  // INTERVALS_5x1000
+    expect(tue.run.zone).toBe(5)
+    expect(tue.run.rpeLow).toBeGreaterThanOrEqual(8)
+  })
+})

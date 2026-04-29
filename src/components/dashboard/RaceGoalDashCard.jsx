@@ -53,7 +53,7 @@ function adaptSession(session, tsb) {
       structureTr: '30dk kolay koş. Nabız maks nabzın %70 altında. Sohbet temposu. Kritik yorgunluk nedeniyle planlanan antrenman değiştirildi.',
     }
     return {
-      session: { ...session, run: easyRun, type: easyRun.type, tr: easyRun.tr, zone: 1, paceStr: null },
+      session: { ...session, run: easyRun, type: easyRun.type, tr: easyRun.tr, zone: 1, paceStr: null, totalDurationMin: easyRun.durationMin },
       downgraded: true, warn: false,
     }
   }

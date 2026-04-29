@@ -4,6 +4,20 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.35.0 — 2026-04-30 — Fix totalDurationMin after TSB downgrade; add 5 missing tests
+
+RaceGoalDashCard adaptSession: after replacing run with easyRun (30min), the spread
+  kept totalDurationMin at the original planned value (e.g. 70min for tempo+drills day).
+  The ~Xmin total header showed the pre-adaptation time. Fixed: set totalDurationMin to
+  easyRun.durationMin (30) since drills/strength/preventive are all hidden when downgraded.
+sessionLibrary.test.js: added RPE range suite (3 tests) — verifies rpeLow/rpeHigh > 0
+  on all run sessions across all phases, quality > easy RPE ordering, interval zone 5 ≥8.
+trainingBridge.test.js: added phaseTr length test (≤10 chars — guards against description
+  bleeding back into the name field) and maxHR forwarding test (age 35 profile → HR ranges
+  appear in Build week tempo session).
+4484 tests — all pass.
+DEPENDS ON: v8.34.0
+
 ## v8.34.0 — 2026-04-30 — Fix TSB downgrade run replacement, dead maxHR, CD parse bleed
 
 RaceGoalDashCard adaptSession: when TSB < −20 and a run session is scheduled, the
