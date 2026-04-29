@@ -42,7 +42,7 @@ export function buildTrainingPlan(goalAnalysis, planStartDate) {
         weekNum,
         phase:     phase.name,
         phaseName: phase.name,
-        phaseTr:   phase.tr,
+        phaseTr:   phase.nameTr,
         isDeload,
         tss:       isDeload ? Math.round(phase.tss * 0.60) : phase.tss,
         sessions,

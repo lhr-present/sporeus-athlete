@@ -4,6 +4,21 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.33.0 — 2026-04-30 — Fix phase nameTr shadowing and checkpoint week display
+
+raceGoalEngine.js: each phase object defined `tr` twice — first as the Turkish name
+  ('Taban'/'Gelişim'/'Zirve'/'Azaltma'), then as the Turkish description. JavaScript
+  last-definition-wins silently discarded the name, leaving no way to show the short
+  phase name separately from the long description. Renamed name field to `nameTr`.
+trainingBridge.js: use phase.nameTr for the phaseTr week field so TrainingBridgeCard
+  week grid and RaceGoalDashCard phase badge show 'Taban' not a 60-char description.
+RaceGoalAnalyzerCard.jsx: use phase.nameTr in the phase name heading (line 310).
+VdotProgressCard.jsx: cp.week → cp.weeks (raceGoalEngine pushes 'weeks', not 'week');
+  checkpoint row was rendering "Wundefined · 35.2" for every milestone.
+raceGoalEngine.test.js: added nameTr assertion to phases-have-en/tr-strings test.
+4479 tests — all pass.
+DEPENDS ON: v8.32.0
+
 ## v8.32.0 — 2026-04-29 — Ungate race-goal training cards; fix onLogSession in advanced view
 
 Dashboard.jsx: removed !isGated(confirmRecord) wrapper from TrainingBridgeCard and

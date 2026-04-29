@@ -71,10 +71,11 @@ describe('analyzeRaceGoal — 50:00 → 40:00 for 10K', () => {
     const sum = result.phases.reduce((s, p) => s + p.weeks, 0)
     expect(sum).toBe(result.weeksToGoal)
   })
-  it('all phases have en/tr strings', () => {
+  it('all phases have en/tr strings and nameTr', () => {
     for (const p of result.phases) {
       expect(p.en.length).toBeGreaterThan(5)
       expect(p.tr.length).toBeGreaterThan(5)
+      expect(p.nameTr.length).toBeGreaterThan(2)
     }
   })
   it('checkpoints has at least 1 entry', () => expect(result.checkpoints.length).toBeGreaterThanOrEqual(1))

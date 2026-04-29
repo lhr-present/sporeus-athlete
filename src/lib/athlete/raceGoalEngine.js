@@ -136,25 +136,25 @@ export function analyzeRaceGoal(
 
   const phases = [
     {
-      name: 'Base',  tr: 'Taban',   weeks: baseW,
+      name: 'Base',  nameTr: 'Taban',   weeks: baseW,
       tss: Math.round(safeWeeklyTSS * 0.80),
       en: `Easy aerobic runs at E-pace (${currentPaces?.E || '—'}). 1 long run/week. Build aerobic base.`,
       tr: `E-tempoda kolay koşu (${currentPaces?.E || '—'}). Haftada 1 uzun koşu. Aerobik taban inşası.`,
     },
     {
-      name: 'Build', tr: 'Gelişim', weeks: buildW,
+      name: 'Build', nameTr: 'Gelişim', weeks: buildW,
       tss: safeWeeklyTSS,
       en: `2×20 min at T-pace (${currentPaces?.T || '—'}). Marathon-pace long run. Quality twice/week.`,
       tr: `T-tempoda 2×20 dk (${currentPaces?.T || '—'}). Maraton-tempo uzun koşu. Haftada 2 kaliteli.`,
     },
     {
-      name: 'Peak',  tr: 'Zirve',   weeks: peakW,
+      name: 'Peak',  nameTr: 'Zirve',   weeks: peakW,
       tss: Math.round(safeWeeklyTSS * 1.10),
       en: `I-pace intervals (${currentPaces?.I || '—'}). Race-specific speed. Maximum load week.`,
       tr: `I-tempo aralıklar (${currentPaces?.I || '—'}). Yarış-spesifik hız. Maksimum yük haftası.`,
     },
     {
-      name: 'Taper', tr: 'Azaltma', weeks: taperW,
+      name: 'Taper', nameTr: 'Azaltma', weeks: taperW,
       tss: Math.round(safeWeeklyTSS * 0.55),
       en: `Volume −40%. Keep 1 T-session. Race-simulation run. Arrive fresh.`,
       tr: `Hacim −%40. 1 T-seans koru. Yarış simülasyonu koşusu. Taze gir.`,

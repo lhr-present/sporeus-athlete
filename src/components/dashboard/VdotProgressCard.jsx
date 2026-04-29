@@ -283,7 +283,7 @@ export default function VdotProgressCard({ log = [], profile = {}, isTR }) {
                   border: `1px solid ${reached ? GREEN : '#1a1a1a'}`,
                   color: reached ? GREEN : '#333',
                 }}>
-                  W{cp.week} · {cp.vdot}
+                  W{cp.weeks} · {cp.vdot}
                 </div>
               )
             })}

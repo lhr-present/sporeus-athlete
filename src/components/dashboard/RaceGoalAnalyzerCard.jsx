@@ -307,7 +307,7 @@ export default function RaceGoalAnalyzerCard({ profile, log, isTR }) {
               <div key={i} style={{ marginBottom: '6px', padding: '6px 8px', background: '#0a0a0a', borderRadius: '3px', borderLeft: `3px solid ${[GREEN, AMBER, ORANGE, RED][i] || DIM}` }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
                   <span style={{ fontSize: '9px', fontWeight: 700, color: '#ccc' }}>
-                    {isTR ? phase.tr : phase.name}
+                    {isTR ? phase.nameTr : phase.name}
                   </span>
                   <span style={{ fontSize: '9px', color: DIM }}>
                     {phase.weeks}w · {phase.tss} TSS/wk
