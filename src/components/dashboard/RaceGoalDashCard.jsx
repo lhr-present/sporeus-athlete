@@ -40,12 +40,22 @@ function tsbStatus(tsb) {
   return              { label: 'VERY TIRED', tr: 'ÇOK YORGUN', color: RED  }
 }
 
-// Downgrade today's session when TSB is critically low
+// Downgrade today's session when TSB is critically low.
+// Only replaces a run session — rest/strength/preventive days get warn=true instead.
 function adaptSession(session, tsb) {
   if (!session || tsb >= -5) return { session, downgraded: false, warn: false }
-  if (tsb < -20) return {
-    session: { ...session, type: 'Easy Run — TSB Adapted', tr: 'Kolay Koşu — TSB Uyarlaması', zone: 1, paceStr: null },
-    downgraded: true, warn: false,
+  if (tsb < -20 && session.run) {
+    const easyRun = {
+      type: 'Easy Run — TSB Adapted', tr: 'Kolay Koşu — TSB Uyarlaması',
+      zone: 1, rpeLow: 2, rpeHigh: 3, durationMin: 30,
+      paceStr: null, hrLow: null, hrHigh: null, tss: 20,
+      structure: 'Run 30min easy. HR below 70% maxHR. Conversational pace. Scheduled session replaced due to critical fatigue.',
+      structureTr: '30dk kolay koş. Nabız maks nabzın %70 altında. Sohbet temposu. Kritik yorgunluk nedeniyle planlanan antrenman değiştirildi.',
+    }
+    return {
+      session: { ...session, run: easyRun, type: easyRun.type, tr: easyRun.tr, zone: 1, paceStr: null },
+      downgraded: true, warn: false,
+    }
   }
   return { session, downgraded: false, warn: true }
 }

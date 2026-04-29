@@ -4,6 +4,31 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.34.0 — 2026-04-30 — Fix TSB downgrade run replacement, dead maxHR, CD parse bleed
+
+RaceGoalDashCard adaptSession: when TSB < −20 and a run session is scheduled, the
+  spread { ...session } kept day.run pointing to the original hard session object
+  (e.g. TEMPO_2x20). The full threshold/interval prescription rendered below the
+  "SESSION DOWNGRADED" banner — athlete saw the contradictory warning + workout.
+  Fixed: replace session.run with a lightweight easy-run object (30min, zone 1,
+  RPE 2–3, bilingual structure). Pure rest/preventive days with TSB < −20 now fall
+  through to warn=true instead of claiming a "downgrade" (nothing to downgrade).
+TrainingBridgeCard: removed dead maxHR useMemo (computed from profile but never
+  passed to buildTrainingPlan — trainingBridge.js handles maxHR internally from
+  goalAnalysis.predicted.maxHR).
+sessionLibrary.js: parseStructure's lazy regex stops at stopword prefixes
+  (Science:/Feel:/Note:/Last:/PURPOSE:/AMAÇ:/Bilim:). Seven session structure strings
+  had trailing notes WITHOUT a stopword prefix, so the CD block captured the entire
+  trailing text (e.g. "CD 5min easy. Shorter reps = better pace precision..." instead
+  of just "5min easy"). Fixed all seven:
+  - TEMPO_3x12: added Note: (EN) / AMAÇ: (TR)
+  - MRACE_50: added Science: (EN) / Bilim: (TR)  [used in Build phase Thu]
+  - INTERVALS_5x1000.structureTr: added AMAÇ: before Son tekrar
+  - RACE_SIM_6K: added Note: (EN) / AMAÇ: (TR)  [used in Peak phase Sat]
+  - INTERVALS_6x800, INTERVALS_8x400, INTERVALS_4x1600: added Note: / AMAÇ:
+4479 tests — all pass.
+DEPENDS ON: v8.33.0
+
 ## v8.33.0 — 2026-04-30 — Fix phase nameTr shadowing and checkpoint week display
 
 raceGoalEngine.js: each phase object defined `tr` twice — first as the Turkish name

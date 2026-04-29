@@ -238,12 +238,6 @@ export default function TrainingBridgeCard({ profile, log = [], isTR }) {
   // Mon-first: Mon=0 … Sun=6  (getUTCDay: Sun=0, Mon=1 … Sat=6)
   const todayDow = (new Date(today + 'T12:00:00Z').getUTCDay() + 6) % 7
 
-  const maxHR = useMemo(() => {
-    if (profile?.maxhr > 0) return parseInt(profile.maxhr)
-    if (profile?.age > 0) return Math.round(208 - 0.7 * parseFloat(profile.age))
-    return null
-  }, [profile])
-
   const { analysis, plan, currentWeekData } = useMemo(() => {
     if (!saved) return {}
     const cSec = parseMmSs(saved.currentTime)
