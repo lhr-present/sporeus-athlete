@@ -57,12 +57,13 @@ function weekTSSLogged(log, weekStart, weekEnd) {
     .reduce((s, e) => s + (e.tss || 0), 0)
 }
 
-// Parse structure text into WU / MAIN SET / COOL-DOWN rows
+// Parse structure text into WU / MAIN / CD rows.
+// Handles both EN (WU … MAIN … CD) and TR (Isınma … ANA: … Soğuma) formats.
 function parseStructure(text) {
   if (!text) return null
-  const wu   = text.match(/^WU\s+(.+?)(?=\.\s*MAIN|$)/i)?.[1]?.replace(/\.$/, '').trim()
-  const main = text.match(/MAIN[:\s]+(.+?)(?=\.\s*CD\s|$)/i)?.[1]?.replace(/\.$/, '').trim()
-  const cd   = text.match(/\.\s*CD\s+(.+?)(?=\.\s*(?:Feel|Science|PURPOSE|RPE|Note|Last|Key|Stimulus)|$)/i)?.[1]?.replace(/\.$/, '').trim()
+  const wu   = text.match(/^(?:WU|[Iı]sınma)\s+(.+?)(?=\.\s*(?:MAIN|ANA)[:\s]|$)/i)?.[1]?.replace(/\.$/, '').trim()
+  const main = text.match(/(?:MAIN|ANA)[:\s]+(.+?)(?=\.\s*(?:CD|[Ss]oğuma)\s|$)/i)?.[1]?.replace(/\.$/, '').trim()
+  const cd   = text.match(/\.\s*(?:CD|[Ss]oğuma)\s+(.+?)(?=\.\s*(?:Feel|Science|PURPOSE|RPE|Note|Last|Key|Stimulus|AMAÇ|Bilim|His|Yapısız)|$)/i)?.[1]?.replace(/\.$/, '').trim()
   if (!wu && !main && !cd) return null
   return [
     wu   && { label: 'WU',   text: wu },
@@ -71,13 +72,14 @@ function parseStructure(text) {
   ].filter(Boolean)
 }
 
-// Extract trailing science/adaptation note from structure text
+// Extract trailing science/adaptation note. Handles EN (Science/Stimulus) and TR (Bilim/AMAÇ).
 function parseAdaptation(text) {
   if (!text) return null
   return (
-    text.match(/\.\s*Science[:\s]+([^.]+)/i)?.[1]?.trim() ||
-    text.match(/\.\s*Stimulus[:\s]+([^.]+)/i)?.[1]?.trim() ||
+    text.match(/\.\s*(?:Science|Bilim)[:\s]+([^.]+)/i)?.[1]?.trim() ||
+    text.match(/\.\s*(?:Stimulus|Uyarı)[:\s]+([^.]+)/i)?.[1]?.trim() ||
     text.match(/\.\s*Key adaptation[s]?[:\s]+([^.]+)/i)?.[1]?.trim() ||
+    text.match(/\.\s*AMAÇ[:\s]+([^.]+)/i)?.[1]?.trim() ||
     null
   )
 }
@@ -351,7 +353,7 @@ export default function RaceGoalDashCard({ log = [], profile = {}, isTR, onLogSe
             <div>
               <div style={{ fontSize: 7, color: '#444', letterSpacing: '0.08em', marginBottom: 2 }}>RPE</div>
               <div style={{ fontSize: 10, color: '#888', fontWeight: 600 }}>
-                {zoneInfo?.rpeRange ?? `${day.run.rpeLow}–${day.run.rpeHigh}`} / 10
+                {(day.run.rpeLow && day.run.rpeHigh) ? `${day.run.rpeLow}–${day.run.rpeHigh}` : zoneInfo?.rpeRange ?? '?'} / 10
               </div>
             </div>
             {day.run.durationMin > 0 && (

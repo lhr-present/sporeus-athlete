@@ -4,6 +4,23 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.31.0 — 2026-04-29 — Fix Turkish structure parsing, RPE priority, RACE_DAY format
+
+parseStructure in RaceGoalDashCard + TrainingBridgeCard: added Turkish keyword support
+  — WU|Isınma, MAIN|ANA, CD|Soğuma (case-insensitive, handles ısınma/soğuma lowercase).
+  Previously all Turkish quality sessions (tempo, intervals, race sim) fell through
+  to raw text; now correctly renders WU/MAIN/CD blocks for TR locale users.
+parseAdaptation in RaceGoalDashCard: added TR Science|Bilim, Stimulus|Uyarı, AMAÇ
+  keywords — science notes were silently dropped for all Turkish structure texts.
+RPE display priority fixed in RaceGoalDashCard: run.rpeLow/rpeHigh (session-specific
+  from sessionLibrary) now takes precedence over zoneInfo.rpeRange (generic zone range
+  from paceZoneTranslator). E.g. tempo rpeLow=7 vs generic zone-4 rpeRange=6–7.
+sessionLibrary RACE_DAY structure: changed WU:/Isınma: (colon) to WU /Isınma (space)
+  to match all other session formats, and restructured as WU … MAIN: … so the full
+  pacing strategy is captured in the parsed MAIN block rather than being lost.
+249 test files, 4479 tests — all pass.
+DEPENDS ON: v8.28.0, v8.30.0
+
 ## v8.30.0 — 2026-04-29 — Race goal card fixes: runColor, zoneKey, log shortcut, typos
 
 RaceGoalDashCard.jsx:

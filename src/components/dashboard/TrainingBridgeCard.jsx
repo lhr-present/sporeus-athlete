@@ -39,11 +39,12 @@ function weekTSSLogged(log, weekStart, weekEnd) {
     .reduce((s, e) => s + (e.tss || 0), 0)
 }
 
+// Handles EN (WU … MAIN … CD) and TR (Isınma … ANA: … Soğuma) structure formats.
 function parseStructure(text) {
   if (!text) return null
-  const wu   = text.match(/^WU\s+(.+?)(?=\.\s*MAIN|$)/i)?.[1]?.replace(/\.$/, '').trim()
-  const main = text.match(/MAIN[:\s]+(.+?)(?=\.\s*CD\s|$)/i)?.[1]?.replace(/\.$/, '').trim()
-  const cd   = text.match(/\.\s*CD\s+(.+?)(?=\.\s*(?:Feel|Science|PURPOSE|RPE|Note|Last|Key|Stimulus)|$)/i)?.[1]?.replace(/\.$/, '').trim()
+  const wu   = text.match(/^(?:WU|[Iı]sınma)\s+(.+?)(?=\.\s*(?:MAIN|ANA)[:\s]|$)/i)?.[1]?.replace(/\.$/, '').trim()
+  const main = text.match(/(?:MAIN|ANA)[:\s]+(.+?)(?=\.\s*(?:CD|[Ss]oğuma)\s|$)/i)?.[1]?.replace(/\.$/, '').trim()
+  const cd   = text.match(/\.\s*(?:CD|[Ss]oğuma)\s+(.+?)(?=\.\s*(?:Feel|Science|PURPOSE|RPE|Note|Last|Key|Stimulus|AMAÇ|Bilim|His|Yapısız)|$)/i)?.[1]?.replace(/\.$/, '').trim()
   if (!wu && !main && !cd) return null
   return [
     wu   && { label: 'WU',   text: wu },
