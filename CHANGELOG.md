@@ -4,6 +4,22 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.32.0 — 2026-04-29 — Ungate race-goal training cards; fix onLogSession in advanced view
+
+Dashboard.jsx: removed !isGated(confirmRecord) wrapper from TrainingBridgeCard and
+  RaceGoalDashCard in BOTH the beginner and advanced dashboard views.
+  Root cause: these cards use sporeus-race-goal-v2 (race goal planner flow) but were
+  gated behind sporeus-plan-confirm-v1 (general program selector / coach flow).
+  A brand-new athlete who entered their 50:00→40:00 goal would see the analyzer result
+  but TrainingBridgeCard and RaceGoalDashCard were permanently hidden — blocked by a
+  "No program selected" message from a completely unrelated flow.
+  Both cards already self-gate: TrainingBridgeCard returns null when !analysis,
+  RaceGoalDashCard returns null when !saved && !detected.
+Advanced view RaceGoalDashCard: added missing onLogSession={onLogSession} prop
+  (replace_all missed this instance due to different indentation in v8.30.0).
+4479 tests — all pass. 0→1 journey confirmed clean end-to-end.
+DEPENDS ON: v8.30.0
+
 ## v8.31.0 — 2026-04-29 — Fix Turkish structure parsing, RPE priority, RACE_DAY format
 
 parseStructure in RaceGoalDashCard + TrainingBridgeCard: added Turkish keyword support

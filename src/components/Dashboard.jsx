@@ -354,20 +354,16 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
             <CoachGateCard isTR={lang === 'tr'} />
           </Suspense>
         </ErrorBoundary>
-        {!isGated(confirmRecord) && (
-          <ErrorBoundary>
-            <Suspense fallback={null}>
-              <TrainingBridgeCard profile={profile} log={log} isTR={lang === 'tr'} />
-            </Suspense>
-          </ErrorBoundary>
-        )}
-        {!isGated(confirmRecord) && (
-          <ErrorBoundary>
-            <Suspense fallback={null}>
-              <RaceGoalDashCard profile={profile} log={log} isTR={lang === 'tr'} onLogSession={onLogSession} />
-            </Suspense>
-          </ErrorBoundary>
-        )}
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <TrainingBridgeCard profile={profile} log={log} isTR={lang === 'tr'} />
+          </Suspense>
+        </ErrorBoundary>
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <RaceGoalDashCard profile={profile} log={log} isTR={lang === 'tr'} onLogSession={onLogSession} />
+          </Suspense>
+        </ErrorBoundary>
         <ErrorBoundary>
           <Suspense fallback={null}>
             <VdotProgressCard profile={profile} log={log} isTR={lang === 'tr'} />
@@ -510,20 +506,16 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
           <CoachGateCard isTR={lang === 'tr'} />
         </Suspense>
       </ErrorBoundary>
-      {!isGated(confirmRecord) && (
-        <ErrorBoundary>
-          <Suspense fallback={null}>
-            <TrainingBridgeCard profile={profile} log={log} isTR={lang === 'tr'} />
-          </Suspense>
-        </ErrorBoundary>
-      )}
-      {!isGated(confirmRecord) && (
-        <ErrorBoundary>
-          <Suspense fallback={null}>
-            <RaceGoalDashCard profile={profile} log={log} isTR={lang === 'tr'} />
-          </Suspense>
-        </ErrorBoundary>
-      )}
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <TrainingBridgeCard profile={profile} log={log} isTR={lang === 'tr'} />
+        </Suspense>
+      </ErrorBoundary>
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <RaceGoalDashCard profile={profile} log={log} isTR={lang === 'tr'} onLogSession={onLogSession} />
+        </Suspense>
+      </ErrorBoundary>
       <ErrorBoundary>
         <Suspense fallback={null}>
           <VdotProgressCard profile={profile} log={log} isTR={lang === 'tr'} />
