@@ -113,7 +113,7 @@ export default function RaceGoalAnalyzerCard({ profile, log, isTR }) {
           {/* Distance */}
           <div style={{ marginBottom: '10px' }}>
             <div style={{ fontSize: '9px', color: '#888', letterSpacing: '0.06em', marginBottom: '4px' }}>
-              {isTR ? 'MESAFe' : 'DISTANCE'}
+              {isTR ? 'MESAFE' : 'DISTANCE'}
             </div>
             <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
               {DIST_OPTIONS.map(d => (
@@ -240,7 +240,7 @@ export default function RaceGoalAnalyzerCard({ profile, log, isTR }) {
           {Object.keys(analysis.predicted).length > 0 && (
             <div style={{ marginBottom: '12px', padding: '8px', background: '#0a0a0a', borderRadius: '3px' }}>
               <div style={{ fontSize: '9px', color: DIM, letterSpacing: '0.08em', marginBottom: '6px' }}>
-                {isTR ? 'FİZYOLOJİK PARAMETRELer' : 'PHYSIOLOGICAL PARAMETERS'}
+                {isTR ? 'FİZYOLOJİK PARAMETRELER' : 'PHYSIOLOGICAL PARAMETERS'}
               </div>
               {analysis.predicted.maxHR && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>

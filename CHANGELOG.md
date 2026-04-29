@@ -4,6 +4,23 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.30.0 — 2026-04-29 — Race goal card fixes: runColor, zoneKey, log shortcut, typos
+
+RaceGoalDashCard.jsx:
+  runColor bug fixed — RACE DAY (zone 5, type string no-match) was getting blue
+    (#0064ff) because zoneInfo.color from translateAllZones overrode the correct
+    orange. Now uses zoneColor(runZone) directly; zoneInfo kept only for feel/RPE
+    fallback text.
+  zoneKey fixed — now checks run.zone number first (5→I, 4→T, 3→M) before
+    falling back to type-string regex. Eliminates all zone-number/color mismatches.
+  onLogSession prop added — "+ LOG THIS SESSION" / "+ ANTRENMAN KAYDET" button
+    appears when a run prescription is visible and prop is provided.
+Dashboard.jsx: onLogSession forwarded to RaceGoalDashCard at both render sites.
+RaceGoalAnalyzerCard.jsx: fixed 'MESAFe' → 'MESAFE' and
+  'FİZYOLOJİK PARAMETRELer' → 'FİZYOLOJİK PARAMETRELER'.
+249 test files, 4479 tests — all pass.
+DEPENDS ON: v8.28.0, v8.29.0
+
 ## v8.29.0 — 2026-04-29 — TrainingBridgeCard upgraded to full multi-modal week grid
 
 TrainingBridgeCard.jsx (E88 v2): complete upgrade to use rich sessionLibrary data.

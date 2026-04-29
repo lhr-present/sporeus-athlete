@@ -364,7 +364,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
         {!isGated(confirmRecord) && (
           <ErrorBoundary>
             <Suspense fallback={null}>
-              <RaceGoalDashCard profile={profile} log={log} isTR={lang === 'tr'} />
+              <RaceGoalDashCard profile={profile} log={log} isTR={lang === 'tr'} onLogSession={onLogSession} />
             </Suspense>
           </ErrorBoundary>
         )}

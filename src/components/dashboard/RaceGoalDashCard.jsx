@@ -109,7 +109,7 @@ function Divider() {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function RaceGoalDashCard({ log = [], profile = {}, isTR }) {
+export default function RaceGoalDashCard({ log = [], profile = {}, isTR, onLogSession }) {
   const [saved] = useLocalStorage('sporeus-race-goal-v2', null)
   const today    = new Date().toISOString().slice(0, 10)
 
@@ -152,18 +152,21 @@ export default function RaceGoalDashCard({ log = [], profile = {}, isTR }) {
   const todayRaw = currentWeekData?.week?.sessions?.[todayDow] ?? null
   const { session: day, downgraded, warn } = adaptSession(todayRaw, tsb)
 
-  // Zone info from paceZoneTranslator — falls back to run.zone when unavailable
+  // Zone key: prefer explicit zone number (always correct from sessionLibrary)
   function zoneKey(s) {
-    if (!s) return 'E'
-    const t = (s.type || '').toLowerCase()
+    const z = s?.run?.zone ?? s?.zone
+    if (z === 5) return 'I'
+    if (z === 4) return 'T'
+    if (z === 3) return 'M'
+    const t = (s?.run?.type || s?.type || '').toLowerCase()
     if (/interval|aralık/i.test(t)) return 'I'
-    if (/rep|sprint|hız a/i.test(t)) return 'R'
+    if (/rep|sprint/i.test(t)) return 'R'
     if (/threshold|tempo|eşik/i.test(t)) return 'T'
     if (/marathon|maraton/i.test(t)) return 'M'
     return 'E'
   }
   const zk       = day ? zoneKey(day) : 'E'
-  const zoneInfo = zones?.[zk]
+  const zoneInfo = zones?.[zk]  // used for feel text + pace/HR/RPE fallback only
 
   const loggedTSS  = useMemo(() => {
     if (!currentWeekData?.week) return 0
@@ -174,7 +177,7 @@ export default function RaceGoalDashCard({ log = [], profile = {}, isTR }) {
 
   const week     = currentWeekData?.week
   const runZone  = day?.run?.zone ?? (day?.zone ?? 1)
-  const runColor = zoneInfo?.color ?? zoneColor(runZone)
+  const runColor = zoneColor(runZone)  // always from zone number — zoneInfo.color can mismatch (e.g. RACE DAY)
 
   // Derived date display
   const dateObj   = new Date(today + 'T12:00:00Z')
@@ -523,6 +526,28 @@ export default function RaceGoalDashCard({ log = [], profile = {}, isTR }) {
                 </div>
               ))}
             </div>
+          </div>
+        </>
+      )}
+
+      {/* ══ LOG SESSION SHORTCUT ════════════════════════════════════════════ */}
+      {onLogSession && day?.run && !downgraded && (
+        <>
+          <Divider />
+          <div style={{ padding: '10px 14px' }}>
+            <button
+              onClick={onLogSession}
+              style={{
+                width: '100%', fontFamily: MONO,
+                background: 'transparent',
+                border: `1px solid ${runColor}44`,
+                borderRadius: 3, padding: '7px 0',
+                fontSize: 8, color: runColor,
+                letterSpacing: '0.1em', cursor: 'pointer',
+              }}
+            >
+              + {isTR ? 'ANTRENMAN KAYDET' : 'LOG THIS SESSION'}
+            </button>
           </div>
         </>
       )}
