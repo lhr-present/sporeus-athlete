@@ -234,7 +234,7 @@ export function calcLoad(log) {
   const byDate = {}
   log.forEach(e => { byDate[e.date] = (byDate[e.date]||0)+(e.tss||0) })
   const dates=[], start=new Date(Object.keys(byDate).sort()[0]), today=new Date()
-  today.setHours(0,0,0,0)
+  today.setUTCHours(0,0,0,0)
   for (let d=new Date(start); d<=today; d.setDate(d.getDate()+1)) {
     const ds=d.toISOString().slice(0,10)
     dates.push({ date:ds, tss:byDate[ds]||0 })

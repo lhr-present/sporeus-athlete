@@ -28,7 +28,7 @@ export function calculatePMC(log, daysBack = 90, daysFuture = 30) {
   }
 
   const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  today.setUTCHours(0, 0, 0, 0)
 
   const primeStart  = new Date(today)
   primeStart.setDate(primeStart.getDate() - daysBack - 180)
@@ -83,7 +83,7 @@ const λ_CHRONIC = 0.067
 
 export function calculateACWR(log) {
   const now = new Date()
-  now.setHours(0, 0, 0, 0)
+  now.setUTCHours(0, 0, 0, 0)
 
   // Build daily TSS map (YYYY-MM-DD → capped sum)
   const tssMap = {}
@@ -314,7 +314,7 @@ export function predictBanister(log, fit, planned = [], days = 90) {
   }
 
   const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  today.setUTCHours(0, 0, 0, 0)
 
   // Bring g, h up to today from the beginning of the log
   const sortedDays = Object.keys(byDate).sort()
@@ -439,7 +439,7 @@ export function generateWeeklyRecap(log) {
 
 export function computeMonotony(log, asOf = new Date()) {
   const ref = new Date(asOf)
-  ref.setHours(0, 0, 0, 0)
+  ref.setUTCHours(0, 0, 0, 0)
 
   // Build daily TSS for the 7 days ending on ref (inclusive)
   const tssMap = {}

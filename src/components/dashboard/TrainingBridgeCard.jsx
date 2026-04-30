@@ -233,6 +233,7 @@ function DayDetail({ sess, isTR, onClose }) {
 export default function TrainingBridgeCard({ profile, log = [], isTR }) {
   const [saved] = useLocalStorage('sporeus-race-goal-v2', null)
   const [expandedDay, setExpandedDay] = useState(null)
+  const [displayWeekIdx, setDisplayWeekIdx] = useState(null)
 
   const today    = new Date().toISOString().slice(0, 10)
   // Mon-first: Mon=0 … Sun=6  (getUTCDay: Sun=0, Mon=1 … Sat=6)
@@ -255,7 +256,10 @@ export default function TrainingBridgeCard({ profile, log = [], isTR }) {
 
   if (!analysis || !plan?.length || !currentWeekData) return null
 
-  const { week, weekIdx } = currentWeekData
+  const { weekIdx: currentWeekIdx } = currentWeekData
+  // displayWeekIdx: null means "use the auto-detected current week"
+  const weekIdx    = displayWeekIdx ?? currentWeekIdx
+  const week       = plan[weekIdx]
   const dowLabels  = isTR ? DOW_TR : DOW_EN
   const phaseColor = PHASE_COLORS[week.isDeload ? 'Deload' : week.phase] || DIM
 
@@ -263,8 +267,15 @@ export default function TrainingBridgeCard({ profile, log = [], isTR }) {
   const tssRatio   = week.tss > 0 ? Math.min(1, loggedTSS / week.tss) : 0
   const lookahead  = plan.slice(weekIdx, Math.min(weekIdx + 4, plan.length))
 
+  function navigateWeek(delta) {
+    const next = weekIdx + delta
+    if (next < 0 || next >= plan.length) return
+    setDisplayWeekIdx(next)
+    setExpandedDay(null)
+  }
+
   function toggleDay(i) {
-    const sess = week.sessions[i]
+    const sess = (week.sessions ?? [])[i]
     const isEmpty = !sess?.run && !sess?.strength && !sess?.drills && !sess?.preventive
     if (isEmpty) return
     setExpandedDay(prev => prev === i ? null : i)
@@ -279,14 +290,44 @@ export default function TrainingBridgeCard({ profile, log = [], isTR }) {
           ◈ {isTR ? 'ANTRENMAN PLANI' : 'TRAINING PLAN'}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{
-            fontSize: 8, color: phaseColor,
-            border: `1px solid ${phaseColor}44`, borderRadius: 2, padding: '1px 5px',
-          }}>
-            {isTR ? week.phaseTr : week.phase}{week.isDeload ? ' ↓' : ''}
+          <span
+            title={isTR ? week.phaseTr : week.phase}
+            style={{
+              fontSize: 8, color: phaseColor,
+              border: `1px solid ${phaseColor}44`, borderRadius: 2, padding: '1px 5px',
+              maxWidth: 72, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+            {week.isDeload
+              ? (isTR ? week.phaseTr : week.phase).slice(0, 8) + ' ↓'
+              : (isTR ? week.phaseTr : week.phase)}
           </span>
           <span style={{ fontSize: 8, color: DIMMER }}>W{week.weekNum}/{plan.length}</span>
         </div>
+      </div>
+
+      {/* Prev / Next week navigation */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <button
+          onClick={() => navigateWeek(-1)}
+          disabled={weekIdx === 0}
+          style={{
+            background: 'none', border: 'none', color: weekIdx === 0 ? '#222' : '#555',
+            cursor: weekIdx === 0 ? 'default' : 'pointer', fontSize: 10, padding: '2px 6px',
+          }}>
+          ‹ {isTR ? 'Önceki' : 'Prev'}
+        </button>
+        <span style={{ fontSize: 7, color: DIMMER }}>
+          {week.startDate} → {week.endDate}
+        </span>
+        <button
+          onClick={() => navigateWeek(1)}
+          disabled={weekIdx === plan.length - 1}
+          style={{
+            background: 'none', border: 'none', color: weekIdx === plan.length - 1 ? '#222' : '#555',
+            cursor: weekIdx === plan.length - 1 ? 'default' : 'pointer', fontSize: 10, padding: '2px 6px',
+          }}>
+          {isTR ? 'Sonraki' : 'Next'} ›
+        </button>
       </div>
 
       {/* Week focus */}
@@ -313,8 +354,8 @@ export default function TrainingBridgeCard({ profile, log = [], isTR }) {
         <div style={{ fontSize: 8, color: DIMMER, letterSpacing: '0.08em', marginBottom: 5 }}>
           {isTR ? 'BU HAFTA · bas → detay' : 'THIS WEEK · tap → details'}
         </div>
-        {week.sessions.map((sess, i) => {
-          const isToday    = i === todayDow
+        {(week.sessions ?? []).map((sess, i) => {
+          const isToday    = weekIdx === currentWeekIdx && i === todayDow
           const run        = sess?.run
           const str        = sess?.strength
           const drl        = sess?.drills

@@ -48,15 +48,15 @@ export function detectVdotFromLog(
   const candidates = []
 
   for (const e of log) {
-    if (!e.date || !e.duration) continue
+    if (!e.date || (!e.duration && !e.durationSec)) continue  // must have some duration field
     if ((e.rpe ?? 0) <= 3) continue     // exclude walks and warmups
     if (!isRunEntry(e)) continue
 
     const distM = getDistanceM(e)
     if (!distM || distM < 800) continue  // need at least 800m to estimate
 
-    const durSec = e.durationSec ?? e.duration * 60
-    if (durSec < 120) continue           // exclude sprints < 2 min (VDOT model unreliable)
+    const durSec = e.durationSec ?? (e.duration ? e.duration * 60 : null)
+    if (!durSec || durSec < 120) continue  // exclude sprints < 2 min (VDOT model unreliable)
 
     const v = vdotFromRace(distM, durSec)
     if (!v || v < 20 || v > 90) continue // sanity bounds

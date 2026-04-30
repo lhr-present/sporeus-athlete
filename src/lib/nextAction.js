@@ -19,7 +19,7 @@ const LAMBDA_CHRONIC = 0.067         // 28-day EWMA
 
 function computeCTL(log) {
   const tssMap = buildTSSMap(log)
-  const now = new Date(); now.setHours(0, 0, 0, 0)
+  const now = new Date(); now.setUTCHours(0, 0, 0, 0)
   let ctl = 0
   for (let i = 41; i >= 0; i--) {
     const d = new Date(now); d.setDate(d.getDate() - i)
@@ -31,7 +31,7 @@ function computeCTL(log) {
 
 function computeATL(log) {
   const tssMap = buildTSSMap(log)
-  const now = new Date(); now.setHours(0, 0, 0, 0)
+  const now = new Date(); now.setUTCHours(0, 0, 0, 0)
   let atl = 0
   for (let i = 6; i >= 0; i--) {
     const d = new Date(now); d.setDate(d.getDate() - i)
@@ -43,7 +43,7 @@ function computeATL(log) {
 
 function computeACWR(log) {
   const tssMap = buildTSSMap(log)
-  const now = new Date(); now.setHours(0, 0, 0, 0)
+  const now = new Date(); now.setUTCHours(0, 0, 0, 0)
   let a = 0, c = 0
   for (let i = 27; i >= 0; i--) {
     const d = new Date(now); d.setDate(d.getDate() - i)
@@ -66,8 +66,8 @@ function buildTSSMap(log) {
 
 function daysUntil(dateStr) {
   if (!dateStr) return null
-  const target = new Date(dateStr); target.setHours(0, 0, 0, 0)
-  const now    = new Date();        now.setHours(0, 0, 0, 0)
+  const target = new Date(dateStr); target.setUTCHours(0, 0, 0, 0)
+  const now    = new Date();        now.setUTCHours(0, 0, 0, 0)
   const diff   = Math.round((target - now) / (1000 * 60 * 60 * 24))
   return diff
 }

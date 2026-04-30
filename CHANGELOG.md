@@ -4,6 +4,24 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.37.0 — 2026-04-30 — UTC timezone sweep, null guards, progressive overload, 5115 tests
+
+setHours→setUTCHours across 17 lib+component files — fixes date-window off-by-one in UTC+3.
+validate.js: sanitizeDate(null) returns today not epoch (new Date(null) = epoch guard).
+intelligence.js: computeCTL/ATL null log guard; assessDataQuality null guard; tsb:0 in early return.
+patterns.js: null-safe safeLog in correlate/mineInjury/findOptimal; return crash fix.
+sessionLibrary.js: progressiveDuration helper; buildFullWeekPlan accepts weekNum arg.
+vdotTracker.js: durationSec fallback fixes NaN on entries without explicit durationSec.
+VdotProgressCard.jsx: goal-reached status; TDZ fix (goalVdot referenced before declaration).
+RaceGoalDashCard.jsx: race countdown (≤21d), plan-gap alert, behind-week badge.
+TrainingBridgeCard.jsx: sessions crash guard, phase tooltip, deload overflow, today highlight, nav.
+Dashboard.jsx: TriDashboard gate fix (hasTriData); 35 lazy cards wrapped in ErrorBoundary.
+TodayView.jsx: profile?.vo2max optional chaining.
+Test helpers (acwrProof, trainingLoad.golden, integration): setHours→setUTCHours.
+14 new test suites: formulas(92), intelligence(169), validate(61), patterns(43), athlete/*(247).
+5115 tests — all pass.
+DEPENDS ON: v8.35.0
+
 ## v8.35.0 — 2026-04-30 — Fix totalDurationMin after TSB downgrade; add 5 missing tests
 
 RaceGoalDashCard adaptSession: after replacing run with easyRun (30min), the spread

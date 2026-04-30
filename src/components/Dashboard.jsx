@@ -874,7 +874,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
 
       <PersonalRecordsCard dl={dl}/>
 
-      {(profile.sport || '').toLowerCase().includes('tri') && <TriDashboard log={log} lang={lang}/>}
+      {hasTriData && <TriDashboard log={log} lang={lang}/>}
       <LoadTrendChart log={log} acwr={acwr} ctlChartDays={ctlChartDays} raceResults={raceResults} plan={plan} dl={dl} lc={lc}/>
 
       <BanisterModelCard/>
@@ -899,42 +899,42 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       <PeakWeekCard log={log} dl={dl}/>
       <TrainingAgeCard log={log} dl={dl}/>
       <GoalTrackerCard log={log} profile={profile} dl={dl}/>
-      <Suspense fallback={null}><SeasonStatsCard log={log} /></Suspense>
-      <Suspense fallback={null}><CPDecayCard testResults={testResults || []} /></Suspense>
-      <Suspense fallback={null}><RowingMetricsCard log={log} profile={profile} /></Suspense>
-      <Suspense fallback={null}><ChallengeWidget log={log} /></Suspense>
-      <Suspense fallback={null}><NMFreshnessCard log={log} /></Suspense>
-      <Suspense fallback={null}><PolarizationComplianceCard log={log} /></Suspense>
-      <Suspense fallback={null}><AerobicEfficiencyCard log={log} /></Suspense>
-      <Suspense fallback={null}><RESTQTrendCard /></Suspense>
-      <Suspense fallback={null}><InjuryForecastCard log={log} recovery={recovery} /></Suspense>
-      <Suspense fallback={null}><StrainHistoryCard log={log} /></Suspense>
-      <Suspense fallback={null}><ConsistencyTrendCard log={log} /></Suspense>
-      <Suspense fallback={null}><InsightFeedCard log={log} /></Suspense>
-      <Suspense fallback={null}><RecoveryProtocolCard log={log} recovery={recovery} /></Suspense>
-      <Suspense fallback={null}><OSTRCMonitorCard /></Suspense>
-      <Suspense fallback={null}><HRVSummaryCard recovery={recovery} /></Suspense>
-      <Suspense fallback={null}><VO2maxProgressionCard log={log} profile={profile} /></Suspense>
-      <Suspense fallback={null}><RuleAlertsCard log={log} recovery={recovery} /></Suspense>
-      <Suspense fallback={null}><CyclePlannerCard profile={profile} /></Suspense>
-      <Suspense fallback={null}><PlanAdherenceCard plan={plan} planStatus={planStatus} log={log} /></Suspense>
-      <Suspense fallback={null}><PlanScoreCard plan={plan} log={log} /></Suspense>
-      <Suspense fallback={null}><AthleteStatusSummaryCard log={log} recovery={recovery} profile={profile} /></Suspense>
-      <Suspense fallback={null}><SleepRestingHRCard recovery={recovery} /></Suspense>
-      <Suspense fallback={null}><PRTimelineCard log={log} /></Suspense>
-      <Suspense fallback={null}><LoadProjectorCard log={log} /></Suspense>
-      <Suspense fallback={null}><InjuryPatternCard log={log} injuries={injuries || []} recovery={recovery} /></Suspense>
-      <Suspense fallback={null}><VDOTBenchmarkCard log={log} testResults={testResults || []} profile={profile} /></Suspense>
-      <Suspense fallback={null}><HRVAlertCard recovery={recovery} /></Suspense>
-      <Suspense fallback={null}><TaperAdvisorCard plan={plan} profile={profile} /></Suspense>
-      <Suspense fallback={null}><PriorityActionCard log={log} recovery={recovery} profile={profile} /></Suspense>
-      {hasCyclingData && <Suspense fallback={null}><CyclingZonesCard testResults={testResults || []} profile={profile} /></Suspense>}
-      {hasSwimData    && <Suspense fallback={null}><SwimmingZonesCard log={log} /></Suspense>}
+      <ErrorBoundary><Suspense fallback={null}><SeasonStatsCard log={log} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><CPDecayCard testResults={testResults || []} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><RowingMetricsCard log={log} profile={profile} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><ChallengeWidget log={log} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><NMFreshnessCard log={log} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><PolarizationComplianceCard log={log} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><AerobicEfficiencyCard log={log} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><RESTQTrendCard /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><InjuryForecastCard log={log} recovery={recovery} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><StrainHistoryCard log={log} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><ConsistencyTrendCard log={log} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><InsightFeedCard log={log} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><RecoveryProtocolCard log={log} recovery={recovery} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><OSTRCMonitorCard /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><HRVSummaryCard recovery={recovery} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><VO2maxProgressionCard log={log} profile={profile} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><RuleAlertsCard log={log} recovery={recovery} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><CyclePlannerCard profile={profile} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><PlanAdherenceCard plan={plan} planStatus={planStatus} log={log} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><PlanScoreCard plan={plan} log={log} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><AthleteStatusSummaryCard log={log} recovery={recovery} profile={profile} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><SleepRestingHRCard recovery={recovery} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><PRTimelineCard log={log} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><LoadProjectorCard log={log} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><InjuryPatternCard log={log} injuries={injuries || []} recovery={recovery} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><VDOTBenchmarkCard log={log} testResults={testResults || []} profile={profile} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><HRVAlertCard recovery={recovery} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><TaperAdvisorCard plan={plan} profile={profile} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><PriorityActionCard log={log} recovery={recovery} profile={profile} /></Suspense></ErrorBoundary>
+      {hasCyclingData && <ErrorBoundary><Suspense fallback={null}><CyclingZonesCard testResults={testResults || []} profile={profile} /></Suspense></ErrorBoundary>}
+      {hasSwimData    && <ErrorBoundary><Suspense fallback={null}><SwimmingZonesCard log={log} /></Suspense></ErrorBoundary>}
       {/* RunningCVCard — no gating, useful for most users */}
-      <Suspense fallback={null}><RunningCVCard log={log} /></Suspense>
-      <Suspense fallback={null}><RunningRaceReadinessCard log={log} profile={profile} /></Suspense>
-      <Suspense fallback={null}><FitnessBatteryProgressCard /></Suspense>
-      {hasTriData     && <Suspense fallback={null}><TriathlonLoadCard log={log} profile={profile} /></Suspense>}
+      <ErrorBoundary><Suspense fallback={null}><RunningCVCard log={log} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><RunningRaceReadinessCard log={log} profile={profile} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><FitnessBatteryProgressCard /></Suspense></ErrorBoundary>
+      {hasTriData     && <ErrorBoundary><Suspense fallback={null}><TriathlonLoadCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
       <LoadHeatmapCard log={log} dl={dl}/>
       <SeasonBestsCard log={log} dl={dl}/>
 

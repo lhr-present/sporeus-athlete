@@ -191,6 +191,28 @@ export default function RaceGoalDashCard({ log = [], profile = {}, isTR, onLogSe
   const runZone  = day?.run?.zone ?? (day?.zone ?? 1)
   const runColor = zoneColor(runZone)  // always from zone number — zoneInfo.color can mismatch (e.g. RACE DAY)
 
+  // Enhancement 1 — Race Countdown
+  const daysToRace = useMemo(() => {
+    if (!plan || plan.length === 0) return null
+    const lastWeek = plan[plan.length - 1]
+    if (lastWeek?.phase !== 'Taper') return null
+    const raceDay = lastWeek.endDate
+    if (!raceDay) return null
+    const raceDateMs = new Date(raceDay + 'T12:00:00Z').getTime()
+    const todayMs    = new Date(today   + 'T12:00:00Z').getTime()
+    return Math.round((raceDateMs - todayMs) / 86400000)
+  }, [plan, today])
+
+  const showCountdown = daysToRace != null && daysToRace >= 1 && daysToRace <= 21
+
+  // Enhancement 3 — Behind Week Indicator
+  const showBehindWeek = !!(
+    currentWeekData &&
+    loggedTSS === 0 &&
+    todayDow >= 3 &&
+    week?.isDeload !== true
+  )
+
   // Derived date display
   const dateObj   = new Date(today + 'T12:00:00Z')
   const dayName   = dateObj.toLocaleDateString(isTR ? 'tr-TR' : 'en-US', { weekday: 'short' }).toUpperCase()
@@ -233,6 +255,16 @@ export default function RaceGoalDashCard({ log = [], profile = {}, isTR, onLogSe
           {detected && (
             <span style={{ fontSize: 7, color: CONF_COLOR[detected.confidence], border: `1px solid ${CONF_COLOR[detected.confidence]}33`, borderRadius: 2, padding: '1px 5px' }}>
               VDOT {detected.vdot}
+            </span>
+          )}
+          {/* Enhancement 1 — Race Countdown pill */}
+          {showCountdown && (
+            <span style={{
+              fontSize: 7, color: AMBER,
+              border: `1px solid ${AMBER}44`,
+              borderRadius: 2, padding: '1px 6px', letterSpacing: '0.06em', fontWeight: 700,
+            }}>
+              {isTR ? `🏁 Yarış: ${daysToRace} gün` : `🏁 Race in ${daysToRace} days`}
             </span>
           )}
         </div>
@@ -285,6 +317,12 @@ export default function RaceGoalDashCard({ log = [], profile = {}, isTR, onLogSe
           )}
           {warn && !downgraded && (
             <span style={{ color: AMBER, marginLeft: 8, fontSize: 8 }}>△ {isTR ? 'YORGUNLUK VAR' : 'FATIGUE NOTED'}</span>
+          )}
+          {/* Enhancement 3 — Behind Week badge */}
+          {showBehindWeek && (
+            <span style={{ color: AMBER, marginLeft: 8, fontSize: 8, border: `1px solid ${AMBER}44`, borderRadius: 2, padding: '1px 5px', letterSpacing: '0.06em' }}>
+              {isTR ? '↓ HAFTA GERİSİNDE' : '↓ WEEK BEHIND'}
+            </span>
           )}
         </span>
         {day?.totalDurationMin > 0 && (
@@ -434,6 +472,15 @@ export default function RaceGoalDashCard({ log = [], profile = {}, isTR, onLogSe
       {!day?.run && !day?.strength && day && (
         <div style={{ padding: '10px 14px', fontSize: 9, color: '#333', letterSpacing: '0.06em' }}>
           {isTR ? '— DİNLENME / AKTIF TOPARLANMA' : '— REST / ACTIVE RECOVERY'}
+        </div>
+      )}
+
+      {/* Enhancement 2 — Plan Gap Detection */}
+      {saved && plan && plan.length > 0 && !currentWeekData && (
+        <div style={{ padding: '10px 14px', fontSize: 8, color: '#333', letterSpacing: '0.06em', fontStyle: 'italic' }}>
+          {isTR
+            ? 'Plan verisi mevcut değil — hedef ayarlarını kontrol edin.'
+            : 'Plan data unavailable — check goal settings.'}
         </div>
       )}
 

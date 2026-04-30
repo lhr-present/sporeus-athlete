@@ -32,7 +32,7 @@ function toISOWeekString(date) {
  */
 function sundayEndingWeek(date) {
   const d = new Date(date)
-  d.setHours(0, 0, 0, 0)
+  d.setUTCHours(0, 0, 0, 0)
   const day = d.getDay() // 0=Sun, 1=Mon … 6=Sat
   const daysUntilSunday = day === 0 ? 0 : 7 - day
   d.setDate(d.getDate() + daysUntilSunday)

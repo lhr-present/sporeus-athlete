@@ -174,6 +174,7 @@ export default function VdotProgressCard({ log = [], profile = {}, isTR }) {
   const status = useMemo(() => {
     if (!detected || !expected.length || !analysis) return null
     const todayDay = daysSinceEpoch(today)
+    const gv = analysis.goalVdot  // use analysis directly — avoids TDZ on outer const
     // Find expected VDOT at today
     let expVdot = expected[0]?.vdot ?? analysis.currentVdot
     for (let i = 0; i < expected.length - 1; i++) {
@@ -182,6 +183,10 @@ export default function VdotProgressCard({ log = [], profile = {}, isTR }) {
         expVdot = expected[i].vdot + t * (expected[i + 1].vdot - expected[i].vdot)
         break
       }
+    }
+    // Goal already reached: athlete's current VDOT is at or above goal
+    if (gv && detected.vdot >= gv) {
+      return { key: 'goal-reached', en: `Goal reached! VDOT ${detected.vdot} ≥ ${gv}`, tr: `Hedefe ulaşıldı! VDOT ${detected.vdot} ≥ ${gv}`, color: GREEN }
     }
     const delta = detected.vdot - expVdot
     if (delta > 1.5)  return { key: 'ahead',   en: `Ahead of schedule (+${delta.toFixed(1)} VDOT)`,  tr: `Programın önünde (+${delta.toFixed(1)} VDOT)`,  color: GREEN }

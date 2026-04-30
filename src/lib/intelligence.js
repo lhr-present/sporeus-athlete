@@ -15,14 +15,14 @@ function tssInWindow(log, startDate, endDate) {
   return log.filter(e => e.date >= startDate && e.date < endDate).reduce((s, e) => s + (e.tss || 0), 0)
 }
 function computeCTL(log) {
-  if (!log.length) return 0
+  if (!log?.length) return 0
   const sorted = [...log].sort((a, b) => a.date > b.date ? 1 : -1)
   let ctl = 0
   for (const s of sorted) ctl = ctl + ((s.tss || 0) - ctl) / 42
   return Math.round(ctl)
 }
 function computeATL(log) {
-  if (!log.length) return 0
+  if (!log?.length) return 0
   const sorted = [...log].sort((a, b) => a.date > b.date ? 1 : -1)
   let atl = 0
   for (const s of sorted) atl = atl + ((s.tss || 0) - atl) / 7
@@ -314,7 +314,7 @@ export function predictFitness(log) {
   const tsb = ctl - atl
 
   if (!log?.length || ctl === 0) {
-    return { current: 0, in4w: 0, in8w: 0, trajectory: 'flat', label: { en: 'No data', tr: 'Veri yok' } }
+    return { current: 0, tsb: 0, in4w: 0, in8w: 0, trajectory: 'flat', label: { en: 'No data', tr: 'Veri yok' } }
   }
 
   // Weekly TSS trend over last 4 weeks
@@ -752,7 +752,7 @@ export function getSingleSuggestion(log, recovery, _profile) {
 
   // ── ACWR via 28-day EWMA (λ_acute=0.25, λ_chronic=0.067) ─────────────────
   const acwr = (() => {
-    const now = new Date(); now.setHours(0, 0, 0, 0)
+    const now = new Date(); now.setUTCHours(0, 0, 0, 0)
     const tssMap = {}
     for (const e of safeLog) {
       if (!e.date) continue
@@ -965,7 +965,7 @@ export function predictRacePerformance(log, testResults, profile) {
 // assessDataQuality(log, recovery, testResults, profile)
 export function assessDataQuality(log, recovery, testResults, profile) {
   const d28 = daysAgoDate(28)
-  const log28 = log.filter(e => e.date >= d28)
+  const log28 = (log || []).filter(e => e.date >= d28)
   const rec28 = (recovery || []).filter(e => e.date >= d28)
 
   // Factor 1 — Logging consistency (25%)

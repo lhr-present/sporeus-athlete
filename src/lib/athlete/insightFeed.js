@@ -42,7 +42,7 @@ export function computeCTLDelta(log = [], today = new Date().toISOString().slice
 export function buildMonotonyHistory(log = [], today = new Date().toISOString().slice(0, 10)) {
   // Find the most recent Sunday on or before today
   const ref = new Date(today)
-  ref.setHours(0, 0, 0, 0)
+  ref.setUTCHours(0, 0, 0, 0)
   // day 0 = Sunday, so offset = ref.getDay()
   const dayOfWeek = ref.getDay() // 0=Sun, 1=Mon, ...
   // move back to the previous Sunday (or stay if already Sunday)

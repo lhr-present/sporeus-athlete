@@ -25,11 +25,11 @@ const PHASE_COLORS = {
 function getPhaseBands(plan, days) {
   if (!plan?.weeks?.length || !plan?.generatedAt) return []
 
-  const today  = new Date(); today.setHours(0, 0, 0, 0)
+  const today  = new Date(); today.setUTCHours(0, 0, 0, 0)
   const cutoff = new Date(today); cutoff.setDate(cutoff.getDate() - days)
 
   // Advance generatedAt to the nearest Monday
-  const gen = new Date(plan.generatedAt); gen.setHours(0, 0, 0, 0)
+  const gen = new Date(plan.generatedAt); gen.setUTCHours(0, 0, 0, 0)
   gen.setDate(gen.getDate() + (8 - gen.getDay()) % 7)
 
   const bands = []

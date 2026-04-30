@@ -13,7 +13,7 @@ export default function MacroPlanCountdown({ dl, lc }) {
   const startDate    = new Date(plan.generatedAt)
   const raceDate     = new Date(startDate)
   raceDate.setDate(raceDate.getDate() + plan.weeks.length * 7)
-  const todayD = new Date(); todayD.setHours(0, 0, 0, 0)
+  const todayD = new Date(); todayD.setUTCHours(0, 0, 0, 0)
   const daysLeft     = Math.round((raceDate - todayD) / 864e5)
   const weeksElapsed = Math.min(Math.floor((todayD - startDate) / (7 * 864e5)), plan.weeks.length)
   const progressPct  = Math.round(weeksElapsed / plan.weeks.length * 100)

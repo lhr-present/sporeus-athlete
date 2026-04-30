@@ -9,7 +9,7 @@ function getMonday(d = new Date()) {
   const day = d.getDay() || 7
   const mon = new Date(d)
   mon.setDate(d.getDate() - day + 1)
-  mon.setHours(0, 0, 0, 0)
+  mon.setUTCHours(0, 0, 0, 0)
   return mon.toISOString().slice(0, 10)
 }
 

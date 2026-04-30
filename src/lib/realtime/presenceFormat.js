@@ -45,7 +45,7 @@ export function formatViewedAt(viewedAt, lang = 'en', now = new Date()) {
 
   // Same calendar day
   const todayStart = new Date(now)
-  todayStart.setHours(0, 0, 0, 0)
+  todayStart.setUTCHours(0, 0, 0, 0)
   if (ts >= todayStart) {
     const h = ts.toLocaleTimeString(lang === 'tr' ? 'tr-TR' : 'en-US', {
       hour: '2-digit', minute: '2-digit',
@@ -81,7 +81,7 @@ export function presenceBucket(viewedAt, now = new Date()) {
   if (diffMin < 60) return 'recent'
 
   const todayStart = new Date(now)
-  todayStart.setHours(0, 0, 0, 0)
+  todayStart.setUTCHours(0, 0, 0, 0)
   if (ts >= todayStart) return 'today'
 
   return 'older'

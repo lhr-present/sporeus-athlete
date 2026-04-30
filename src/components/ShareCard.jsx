@@ -54,7 +54,7 @@ export default function ShareCard({ log, profile, filteredLog: _filteredLog }) {
   // This week TSS (Mon–Sun)
   const weekStart = new Date(today)
   weekStart.setDate(today.getDate() - (today.getDay() + 6) % 7)
-  weekStart.setHours(0, 0, 0, 0)
+  weekStart.setUTCHours(0, 0, 0, 0)
   const weekTSS = Math.round((log || []).filter(e => new Date(e.date) >= weekStart).reduce((s, e) => s + (e.tss || 0), 0))
 
   // Zone model (last 28d)

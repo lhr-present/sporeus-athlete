@@ -275,7 +275,7 @@ const _TREND_MIN   = 3
 
 export function computeHRVTrend(entries) {
   const safe    = Array.isArray(entries) ? entries : []
-  const today   = new Date(); today.setHours(0, 0, 0, 0)
+  const today   = new Date(); today.setUTCHours(0, 0, 0, 0)
   const cutoff  = new Date(today); cutoff.setDate(cutoff.getDate() - 7)
   const cutStr  = cutoff.toISOString().slice(0, 10)
 

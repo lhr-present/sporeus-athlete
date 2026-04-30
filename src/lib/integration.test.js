@@ -419,7 +419,7 @@ describe('Scenario 5 — Demo squad smoke test', () => {
 /** YYYY-MM-DD for today + offsetDays */
 function e2eDate(offsetDays) {
   const d = new Date()
-  d.setHours(0, 0, 0, 0)
+  d.setUTCHours(0, 0, 0, 0)
   d.setDate(d.getDate() + offsetDays)
   return d.toISOString().slice(0, 10)
 }

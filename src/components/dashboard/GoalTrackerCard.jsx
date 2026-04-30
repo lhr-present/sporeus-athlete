@@ -108,8 +108,8 @@ export default function GoalTrackerCard({ log, profile: _profile, dl }) {
 
   const raceProjection = useMemo(() => {
     if (!raceGoal.raceDate || !raceGoal.targetCTL) return null
-    const today = new Date(); today.setHours(0, 0, 0, 0)
-    const race  = new Date(raceGoal.raceDate); race.setHours(0, 0, 0, 0)
+    const today = new Date(); today.setUTCHours(0, 0, 0, 0)
+    const race  = new Date(raceGoal.raceDate); race.setUTCHours(0, 0, 0, 0)
     const daysUntilRace = Math.round((race - today) / 86400000)
     if (daysUntilRace < 0) return null
     const { ctl: currentCTL } = calcLoad(log)

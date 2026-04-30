@@ -27,7 +27,7 @@ export function ostrcRisk(score) {
  */
 export function isoWeekKey(date = new Date()) {
   const d = new Date(date)
-  d.setHours(0, 0, 0, 0)
+  d.setUTCHours(0, 0, 0, 0)
   d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7)
   const week1 = new Date(d.getFullYear(), 0, 4)
   const weekNum = 1 + Math.round(

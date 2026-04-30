@@ -40,6 +40,61 @@ describe('detectVdotFromLog — edge cases', () => {
     const e = { date: TODAY, distanceM: 2000, durationSec: 2400, duration: 40, rpe: 7, type: 'Swim' }
     expect(detectVdotFromLog([e], 90, TODAY)).toBeNull()
   })
+  // --- new edge-case tests for reliability fixes ---
+  it('returns null for log with only Bike entries', () => {
+    const log = [
+      { date: TODAY, distanceM: 40000, durationSec: 3600, duration: 60, rpe: 7, type: 'Bike' },
+      { date: TODAY, distanceM: 30000, durationSec: 2700, duration: 45, rpe: 6, type: 'Cycling' },
+    ]
+    expect(detectVdotFromLog(log, 90, TODAY)).toBeNull()
+  })
+  it('returns null for log with only Swim entries', () => {
+    const log = [
+      { date: TODAY, distanceM: 3000, durationSec: 3600, duration: 60, rpe: 7, type: 'Swim' },
+    ]
+    expect(detectVdotFromLog(log, 90, TODAY)).toBeNull()
+  })
+  it('returns null when distanceM is 0 (division-by-zero guard)', () => {
+    const e = { date: TODAY, distanceM: 0, durationSec: 1800, duration: 30, rpe: 7, type: 'Run' }
+    expect(detectVdotFromLog([e], 90, TODAY)).toBeNull()
+  })
+  it('processes entry with durationSec only (no duration field)', () => {
+    // Strava-style entry: has durationSec but no duration property
+    const e = { date: TODAY, distanceM: 10000, durationSec: 2700, rpe: 7, type: 'Run' }
+    const r = detectVdotFromLog([e], 90, TODAY)
+    expect(r).not.toBeNull()
+    expect(r.vdot).toBeGreaterThan(0)
+  })
+  it('returns null for entry with durationMin only (no duration or durationSec)', () => {
+    // Entry that only has durationMin — cannot compute durSec, should be skipped gracefully
+    const e = { date: TODAY, distanceM: 10000, durationMin: 45, rpe: 7, type: 'Run' }
+    expect(detectVdotFromLog([e], 90, TODAY)).toBeNull()
+  })
+  it('uses today parameter for 90-day window (not hardcoded new Date())', () => {
+    // Entry is exactly 91 days before "today" — should fall outside the recent window
+    // but still be returned as fallback (pool = all candidates when recent is empty)
+    const pastToday = '2026-01-01'
+    const entryDate = '2025-10-02'  // 91 days before 2026-01-01
+    const e = run10k(entryDate, 2700, 7)
+    const r = detectVdotFromLog([e], 90, pastToday)
+    // Entry is outside the 90-day window; falls back to all-candidates pool
+    expect(r).not.toBeNull()
+    expect(r.vdot).toBeGreaterThan(0)
+    // Verify it is NOT marked as recent
+    expect(r.trend[0].date).toBe(entryDate)
+  })
+  it('90-day window excludes old entries when recent entries exist', () => {
+    const recentEntry = run10k(TODAY, 2700, 7)           // today — inside window
+    const oldEntry    = run10k('2025-01-01', 2400, 7)    // >90 days ago — outside window
+    const r = detectVdotFromLog([recentEntry, oldEntry], 90, TODAY)
+    // recent pool has only recentEntry (2700s = ~45:00 / VDOT ~33-38)
+    // old pool has 2400s = 40:00 / VDOT ~48
+    // best recent should prefer recentEntry despite it being slower
+    expect(r).not.toBeNull()
+    // vdot from 2700s/10K is less than vdot from 2400s/10K
+    const oldR = detectVdotFromLog([oldEntry], 90, TODAY)
+    expect(r.vdot).toBeLessThan(oldR.vdot)
+  })
 })
 
 describe('detectVdotFromLog — single entry', () => {

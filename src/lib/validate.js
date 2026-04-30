@@ -54,6 +54,7 @@ export function sanitizeNumber(n, min = 0, max = 99999) {
  * @returns {string} ISO date YYYY-MM-DD or today's date on parse failure
  */
 export function sanitizeDate(d) {
+  if (d == null) return new Date().toISOString().slice(0, 10)
   try {
     const date = new Date(d)
     if (isNaN(date.getTime())) return new Date().toISOString().slice(0, 10)

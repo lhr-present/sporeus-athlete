@@ -393,3 +393,42 @@ describe('buildFullWeekPlan — RPE ranges', () => {
     expect(tue.run.rpeLow).toBeGreaterThanOrEqual(8)
   })
 })
+
+describe('buildFullWeekPlan — progressive overload', () => {
+  it('Base wk3 Saturday long run duration > Base wk1 Saturday long run', () => {
+    const wk1Sat = buildFullWeekPlan('Base', 33, 1)[5].run?.durationMin
+    const wk3Sat = buildFullWeekPlan('Base', 33, 3)[5].run?.durationMin
+    expect(wk3Sat).toBeGreaterThan(wk1Sat)
+  })
+
+  it('Taper wk2 total running duration < Taper wk1 total running duration', () => {
+    const sumRun = (plan) => plan.reduce((s, d) => s + (d.run?.durationMin ?? 0), 0)
+    const wk1Total = sumRun(buildFullWeekPlan('Taper', 33, 1))
+    const wk2Total = sumRun(buildFullWeekPlan('Taper', 33, 2))
+    expect(wk2Total).toBeLessThan(wk1Total)
+  })
+
+  it('weekNum=1 gives same result as omitting weekNum (backward compat)', () => {
+    for (const phase of ['Base', 'Build', 'Peak', 'Taper', 'Deload']) {
+      const withDefault = buildFullWeekPlan(phase, 33)
+      const withExplicit = buildFullWeekPlan(phase, 33, 1)
+      withDefault.forEach((day, i) => {
+        expect(withExplicit[i].run?.durationMin).toBe(day.run?.durationMin)
+      })
+    }
+  })
+
+  it('durationMin is never < 20 or > 150 across all phases and weeks 1–4', () => {
+    for (const phase of ['Base', 'Build', 'Peak', 'Taper', 'Deload']) {
+      for (let w = 1; w <= 4; w++) {
+        const plan = buildFullWeekPlan(phase, 33, w)
+        for (const d of plan) {
+          if (d.run) {
+            expect(d.run.durationMin).toBeGreaterThanOrEqual(20)
+            expect(d.run.durationMin).toBeLessThanOrEqual(150)
+          }
+        }
+      }
+    }
+  })
+})

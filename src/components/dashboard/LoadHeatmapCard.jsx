@@ -25,7 +25,7 @@ export default function LoadHeatmapCard({ log, dl, onDayClick }) {
     // Build 52 weeks of columns, each 7 cells (Mon=0 … Sun=6)
     // Start: Monday 364 days ago (52 * 7)
     const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    today.setUTCHours(0, 0, 0, 0)
 
     // Find the Monday of the week 52 weeks ago
     const startMs = today.getTime() - 363 * 86400000           // 364 days ago = day 0 of 52-week window

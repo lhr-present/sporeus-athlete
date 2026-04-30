@@ -294,6 +294,53 @@ const WEEK_CONFIGS = {
   ],
 }
 
+// ── Progressive overload: compute overridden durationMin per day/phase/weekNum ─
+/**
+ * Returns the progressive durationMin for a run session given phase, weekNum, and
+ * the day slot (identified by runKey). Returns null if no override applies (use
+ * the template default).
+ *
+ * Base:   Tue easy  40 + (w-1)*5  → 40/45/50/55
+ *         Sat long  60 + (w-1)*10 → 60/70/80/90
+ * Build:  Sat long  75 + (w-1)*10 → 75/85/95/105
+ * Peak:   no scaling
+ * Taper:  all runs  *= Math.max(0.4, 1 - (w-1)*0.2), rounded to nearest 5
+ * Deload: no scaling
+ *
+ * Constraint: clamp to [20, 150].
+ */
+function clampDuration(min) {
+  return Math.min(150, Math.max(20, min))
+}
+
+function progressiveDuration(phase, runKey, weekNum, templateDuration) {
+  const w = weekNum ?? 1
+
+  if (phase === 'Base') {
+    if (runKey === 'EASY_40') {
+      return clampDuration(40 + (w - 1) * 5)
+    }
+    if (runKey === 'LONG_60_75') {
+      return clampDuration(60 + (w - 1) * 10)
+    }
+  }
+
+  if (phase === 'Build') {
+    if (runKey === 'LONG_75_90') {
+      return clampDuration(75 + (w - 1) * 10)
+    }
+  }
+
+  if (phase === 'Taper') {
+    const factor = Math.max(0.4, 1 - (w - 1) * 0.2)
+    const scaled = templateDuration * factor
+    // round to nearest 5
+    return clampDuration(Math.round(scaled / 5) * 5)
+  }
+
+  return null  // no override → use template default
+}
+
 // ── Main builder ───────────────────────────────────────────────────────────────
 /**
  * Build a complete 7-day training schedule for a given phase and VDOT.
@@ -302,11 +349,11 @@ const WEEK_CONFIGS = {
  *
  * @param {'Base'|'Build'|'Peak'|'Taper'|'Deload'} phase
  * @param {number}      vdot         Current VDOT (e.g. 33 for 50:00/10km athlete)
- * @param {number}      weekInPhase  1-based week within this phase (unused currently, reserved)
+ * @param {number}      weekNum      1-based week position within the phase block (default 1)
  * @param {number|null} maxHR        Athlete maxHR for HR range computation (optional)
  * @returns {Array<DayPlan>}         7 day objects
  */
-export function buildFullWeekPlan(phase, vdot, weekInPhase = 1, maxHR = null) {
+export function buildFullWeekPlan(phase, vdot, weekNum = 1, maxHR = null) {
   const pacesRaw = vdot ? trainingPaces(vdot) : null
   const paces = pacesRaw ? {
     E: fmtPace(pacesRaw.E),
@@ -326,10 +373,11 @@ export function buildFullWeekPlan(phase, vdot, weekInPhase = 1, maxHR = null) {
       const paceStr = runTemplate.paceKey && pacesRaw ? fmtPace(pacesRaw[runTemplate.paceKey]) : null
       const hrLow  = (runTemplate.hrPctLow  && maxHR) ? Math.round(maxHR * runTemplate.hrPctLow)  : null
       const hrHigh = (runTemplate.hrPctHigh && maxHR) ? Math.round(maxHR * runTemplate.hrPctHigh) : null
+      const overrideDuration = progressiveDuration(phase, cfg.runKey, weekNum, runTemplate.durationMin)
       run = {
         type:        runTemplate.type,
         tr:          runTemplate.tr,
-        durationMin: runTemplate.durationMin,
+        durationMin: overrideDuration ?? runTemplate.durationMin,
         paceKey:     runTemplate.paceKey,
         paceStr,
         hrLow, hrHigh,

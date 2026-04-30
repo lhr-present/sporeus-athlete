@@ -65,7 +65,7 @@ export function buildYearlyPlan(params) {
   const dow       = startD.getDay() || 7   // 1=Mon … 7=Sun
   const monday    = new Date(startD)
   monday.setDate(startD.getDate() - (dow - 1))
-  monday.setHours(0, 0, 0, 0)
+  monday.setUTCHours(0, 0, 0, 0)
 
   // Generate 52 week skeletons
   const weeks = []

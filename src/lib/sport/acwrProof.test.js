@@ -25,7 +25,7 @@ import { calculatePMC } from '../trainingLoad.js'
 // Entries end `trailingRestDays` days before today (default 0 = ends today).
 function makeLog(n, tss, trailingRestDays = 0) {
   const anchor = new Date()
-  anchor.setHours(0, 0, 0, 0)
+  anchor.setUTCHours(0, 0, 0, 0)
   const log = []
   for (let i = n - 1; i >= 0; i--) {
     const d = new Date(anchor)

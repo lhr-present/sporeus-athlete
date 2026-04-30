@@ -19,7 +19,7 @@ function getISOWeekBounds(offsetWeeks = 0) {
   const dow = today.getDay() // 0=Sun
   const monday = new Date(today)
   monday.setDate(today.getDate() - ((dow + 6) % 7) - offsetWeeks * 7)
-  monday.setHours(0, 0, 0, 0)
+  monday.setUTCHours(0, 0, 0, 0)
   const sunday = new Date(monday)
   sunday.setDate(monday.getDate() + 6)
   sunday.setHours(23, 59, 59, 999)

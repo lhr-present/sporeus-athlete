@@ -18,7 +18,7 @@ function isoWeek(dateStr) {
   if (isNaN(d.getTime())) return null
   // ISO week: Thursday-based, week 1 contains Jan 4
   const tmp = new Date(d)
-  tmp.setHours(0, 0, 0, 0)
+  tmp.setUTCHours(0, 0, 0, 0)
   // Set to nearest Thursday: current date + 4 - current day number
   tmp.setDate(tmp.getDate() + 4 - (tmp.getDay() || 7))
   const yearStart = new Date(tmp.getFullYear(), 0, 1)

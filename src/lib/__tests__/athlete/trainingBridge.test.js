@@ -87,6 +87,16 @@ describe('buildTrainingPlan', () => {
     expect(tueSess?.run?.hrLow).toBeGreaterThan(0)
     expect(tueSess?.run?.hrHigh).toBeGreaterThan(tueSess?.run?.hrLow)
   })
+
+  it('week 3 in Base phase has a longer Saturday run than week 1', () => {
+    // Find the 1st and 3rd Base (non-deload) weeks
+    const baseWeeks = plan.filter(w => w.phase === 'Base' && !w.isDeload)
+    // Need at least 3 Base non-deload weeks to compare; if not enough, pass (plan length varies)
+    if (baseWeeks.length < 3) return
+    const wk1SatDuration = baseWeeks[0].sessions[5].run?.durationMin
+    const wk3SatDuration = baseWeeks[2].sessions[5].run?.durationMin
+    expect(wk3SatDuration).toBeGreaterThan(wk1SatDuration)
+  })
 })
 
 describe('getCurrentPlanWeek', () => {

@@ -33,6 +33,7 @@ export function correlateTrainingToResults(log, testResults) {
   if (!testResults?.length || testResults.length < 3) {
     return { patterns: [], dataPoints: testResults?.length || 0, reliable: false }
   }
+  const safeLog = log || []
 
   // Normalise values to numeric for comparison
   const testsByType = {}
@@ -55,7 +56,7 @@ export function correlateTrainingToResults(log, testResults) {
     const dataPoints = sorted.map(r => {
       const w4end  = r.date
       const w4start = (() => { const d = new Date(r.date); d.setDate(d.getDate() - 28); return d.toISOString().slice(0, 10) })()
-      const prior = log.filter(e => e.date >= w4start && e.date < w4end)
+      const prior = safeLog.filter(e => e.date >= w4start && e.date < w4end)
       if (!prior.length) return null
       const sessions = prior.length
       const weeklyTSS = prior.reduce((s, e) => s + (e.tss || 0), 0) / 4
@@ -235,6 +236,7 @@ export function mineInjuryPatterns(log, injuries, recovery) {
   if (!injuries?.length || injuries.length < 2) {
     return { patterns: [], vulnerableZones: [], protectiveFactors: [] }
   }
+  const safeLog = log || []
 
   const zoneGroups = {}
   injuries.forEach(inj => {
@@ -257,9 +259,9 @@ export function mineInjuryPatterns(log, injuries, recovery) {
       const w2start = (() => { const d = new Date(injDate); d.setDate(d.getDate() - 14); return d.toISOString().slice(0, 10) })()
       const w1start = (() => { const d = new Date(injDate); d.setDate(d.getDate() - 7);  return d.toISOString().slice(0, 10) })()
 
-      const prev14 = log.filter(e => e.date >= w2start && e.date < injDate)
-      const prev7  = log.filter(e => e.date >= w1start && e.date < injDate)
-      const prevW14 = log.filter(e => e.date >= (() => { const d = new Date(w2start); d.setDate(d.getDate() - 14); return d.toISOString().slice(0, 10) })() && e.date < w2start)
+      const prev14 = safeLog.filter(e => e.date >= w2start && e.date < injDate)
+      const prev7  = safeLog.filter(e => e.date >= w1start && e.date < injDate)
+      const prevW14 = safeLog.filter(e => e.date >= (() => { const d = new Date(w2start); d.setDate(d.getDate() - 14); return d.toISOString().slice(0, 10) })() && e.date < w2start)
 
       const tss7   = prev7.reduce((s, e) => s + (e.tss || 0), 0)
       const tss14  = prev14.reduce((s, e) => s + (e.tss || 0), 0) / 2
@@ -332,7 +334,7 @@ export function mineInjuryPatterns(log, injuries, recovery) {
 // ── D) Optimal Week Structure ─────────────────────────────────────────────────
 export function findOptimalWeekStructure(log, recovery) {
   if (!log?.length || log.length < 20) {
-    return { bestPattern: null, sampleSize: 0, reliable: false, needMore: Math.max(0, 20 - log.length) }
+    return { bestPattern: null, sampleSize: 0, reliable: false, needMore: Math.max(0, 20 - (log?.length || 0)) }
   }
 
   // Group into Mon-Sun weeks

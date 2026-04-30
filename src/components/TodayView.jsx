@@ -677,7 +677,7 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
         const fmt = s => { const m = Math.floor(s/60); return `${m}:${String(Math.round(s%60)).padStart(2,'0')}` }
         return (
           <div style={{ display:'flex', gap:'6px', flexWrap:'wrap', padding:'7px 12px', background:'var(--surface, #0f0f0f)', borderRadius:'3px', marginBottom:'10px', fontFamily: MONO, alignItems:'center' }}>
-            <span style={{ fontSize:'9px', color:'#555', letterSpacing:'0.08em', marginRight:'2px' }}>VO₂max {profile.vo2max} · /km</span>
+            <span style={{ fontSize:'9px', color:'#555', letterSpacing:'0.08em', marginRight:'2px' }}>VO₂max {profile?.vo2max} · /km</span>
             {[['EASY', paceRef.easy, GREEN], ['THRESH', paceRef.threshold, AMBER], ['INT', paceRef.interval, RED]].map(([label, val, color]) => (
               <span key={label} style={{ fontSize:'10px', color, border:`1px solid ${color}33`, borderRadius:'3px', padding:'2px 7px' }}>
                 {label} {fmt(val)}

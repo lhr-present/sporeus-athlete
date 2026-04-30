@@ -28,7 +28,7 @@ function constantLog(tss, days, startDate = '2024-01-01') {
 function recentLog(tss, days, endOffset = 0) {
   const log = []
   const end = new Date()
-  end.setHours(0, 0, 0, 0)
+  end.setUTCHours(0, 0, 0, 0)
   end.setDate(end.getDate() - endOffset)
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(end)
