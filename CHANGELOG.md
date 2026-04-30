@@ -4,6 +4,25 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.39.0 — 2026-04-30 — Test coverage + 5 bug fixes: science/storage/orientation modules, 5489 tests
+
+New test suites (216 new tests):
+  interpretations.test.js: 72 tests — interpretACWR/CTL/TSB/monotony/decoupling, exact source thresholds
+  scienceNotes.test.js: 39 tests — SCIENCE_NOTES shape, all trigger gates, getTriggeredNotes null safety
+  vdot.test.js: 36 tests — estimateVDOT/getTrainingPaces/predictTime, Riegel remapping, edge cases
+  smallModules.test.js: 45 tests — announcementHelpers, realtimeStatus, storage/keys, performanceBudget, orientation
+  storage.test.js: 24 tests — loadStorage/saveStorage round-trip, exportAllData/importAllData, importPlanData
+
+Bug fixes:
+  insightFeed.js buildMonotonyHistory: getDay/getDate/setDate → UTC equivalents (UTC+3 week-anchor was wrong)
+  insightFeed.js computeCTLDelta: setUTCHours + setUTCDate on 28-day cutoff
+  WeeklyReviewCard.jsx: sunday.setDate(monday.getDate()+6) → setUTCDate(getUTCDate()+6); setHours→setUTCHours
+  TrainingBridgeCard.jsx: (isTR?prv.tr:prv.name).split → (?? '').split — optional chaining crash on undefined name
+  RaceGoalDashCard.jsx: same .split crash on strength.tr/.name → (?? '').split
+
+5489 tests — all pass.
+DEPENDS ON: v8.38.0
+
 ## v8.38.0 — 2026-04-30 — Test coverage wave: 9 athlete modules, 5273 tests
 
 injuryForecast.js: null guard on log param for all 3 exported functions (riskBand, injuryRiskHistory, projectInjuryRisk/computeInjuryForecast) — JS default params don't activate on explicit null.

@@ -21,7 +21,8 @@ export function computeCTLDelta(log = [], today = new Date().toISOString().slice
 
   // CTL 4 weeks ago — slice log to entries strictly before (today - 28 days)
   const cutoff = new Date(today)
-  cutoff.setDate(cutoff.getDate() - 28)
+  cutoff.setUTCHours(0, 0, 0, 0)
+  cutoff.setUTCDate(cutoff.getUTCDate() - 28)
   const cutoffStr = cutoff.toISOString().slice(0, 10)
 
   const logBefore28 = log.filter(e => e.date < cutoffStr)
@@ -43,16 +44,16 @@ export function buildMonotonyHistory(log = [], today = new Date().toISOString().
   // Find the most recent Sunday on or before today
   const ref = new Date(today)
   ref.setUTCHours(0, 0, 0, 0)
-  // day 0 = Sunday, so offset = ref.getDay()
-  const dayOfWeek = ref.getDay() // 0=Sun, 1=Mon, ...
+  // day 0 = Sunday, so offset = ref.getUTCDay()
+  const dayOfWeek = ref.getUTCDay() // 0=Sun, 1=Mon, ...
   // move back to the previous Sunday (or stay if already Sunday)
   const mostRecentSunday = new Date(ref)
-  mostRecentSunday.setDate(ref.getDate() - dayOfWeek)
+  mostRecentSunday.setUTCDate(ref.getUTCDate() - dayOfWeek)
 
   const history = []
   for (let i = 7; i >= 0; i--) {
     const sunday = new Date(mostRecentSunday)
-    sunday.setDate(mostRecentSunday.getDate() - i * 7)
+    sunday.setUTCDate(mostRecentSunday.getUTCDate() - i * 7)
     const result = computeMonotony(log, sunday)
     history.push(result.monotony !== null ? result.monotony : 0)
   }

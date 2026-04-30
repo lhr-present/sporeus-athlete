@@ -199,7 +199,7 @@ function DayDetail({ sess, isTR, onClose }) {
               </span>
               <div style={{ display: 'flex', gap: 5 }}>
                 <span style={{ fontSize: 7, color: PREV_COLOR, border: `1px solid ${PREV_COLOR}33`, borderRadius: 2, padding: '1px 4px' }}>
-                  {(isTR ? prv.tr : prv.name).split('—')[0].trim().toUpperCase()}
+                  {((isTR ? prv.tr : prv.name) ?? '').split('—')[0].trim().toUpperCase()}
                 </span>
                 <span style={{ fontSize: 7, color: '#333' }}>{prv.durationMin}min</span>
               </div>

@@ -520,7 +520,7 @@ export default function RaceGoalDashCard({ log = [], profile = {}, isTR, onLogSe
           <div style={{ padding: '12px 14px' }}>
             <SectionHeader
               label={isTR ? 'KUVVETLENDİRME' : 'STRENGTH'}
-              badge={(isTR ? day.strength.tr : day.strength.name).split('—')[0]?.trim().toUpperCase() || day.strength.category.toUpperCase()}
+              badge={((isTR ? day.strength.tr : day.strength.name) ?? '').split('—')[0]?.trim().toUpperCase() || day.strength.category.toUpperCase()}
               badgeColor={STR_COLOR}
               right={`${day.strength.durationMin}min`}
             />
