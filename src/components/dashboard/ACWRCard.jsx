@@ -4,7 +4,7 @@ import { S } from '../../styles.js'
 import { HelpTip } from '../ui.jsx'
 import { interpretACWR } from '../../lib/science/interpretations.js'
 
-export default function ACWRCard({ log, lc, dl }) {
+export default function ACWRCard({ log = [], lc, dl }) {
   const { t, lang } = useContext(LangCtx)
 
   const MONO = "'IBM Plex Mono', monospace"

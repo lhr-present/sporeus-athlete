@@ -371,7 +371,7 @@ export function weeklyMuscleFrequency(sessions, exerciseDefs, weekStart) {
   const today = new Date()
   const monday = weekStart
     ? new Date(weekStart)
-    : (() => { const d = new Date(today); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d })()
+    : (() => { const d = new Date(today); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d })()
   const mondayStr = monday.toISOString().slice(0, 10)
 
   const muscleById = {}

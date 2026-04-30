@@ -40,10 +40,10 @@ function toISOWeekString(date) {
  */
 function sundayOfWeekContaining(date) {
   const d = new Date(date)
-  const day = d.getDay() // 0=Sun, 1=Mon …
+  const day = d.getUTCDay() // 0=Sun, 1=Mon …
   // Days until Sunday: if day===0 → +0, else → +(7-day)
   const daysUntilSunday = day === 0 ? 0 : 7 - day
-  d.setDate(d.getDate() + daysUntilSunday)
+  d.setUTCDate(d.getUTCDate() + daysUntilSunday)
   return d
 }
 
@@ -52,9 +52,9 @@ function sundayOfWeekContaining(date) {
  */
 function _mondayOfWeekContaining(date) {
   const d = new Date(date)
-  const day = d.getDay() // 0=Sun
+  const day = d.getUTCDay() // 0=Sun
   const daysBack = day === 0 ? 6 : day - 1
-  d.setDate(d.getDate() - daysBack)
+  d.setUTCDate(d.getUTCDate() - daysBack)
   return d
 }
 
@@ -63,7 +63,7 @@ function _mondayOfWeekContaining(date) {
  */
 function addDays(date, days) {
   const d = new Date(date)
-  d.setDate(d.getDate() + days)
+  d.setUTCDate(d.getUTCDate() + days)
   return d
 }
 

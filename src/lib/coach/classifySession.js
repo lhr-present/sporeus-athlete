@@ -35,7 +35,7 @@ function findPlanWeek(plan, date) {
     if (!week.startDate) continue
     const wStart = new Date(week.startDate)
     const wEnd = new Date(wStart)
-    wEnd.setDate(wEnd.getDate() + 7)
+    wEnd.setUTCDate(wEnd.getUTCDate() + 7)
     if (d >= wStart && d < wEnd) {
       return { targetTSS: week.tssEst || 0, weekLabel: week.weekLabel || '' }
     }

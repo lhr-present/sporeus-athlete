@@ -61,8 +61,17 @@ export default function ProgramSelectorCard({ log = [], profile = {}, isTR }) {
       .sort((a, b) => b.score - a.score)
   }, [currentVdot, goalDistM])
 
-  // Already confirmed — show compact status only
-  if (isPlanConfirmed(confirmRecord)) return null
+  // Already confirmed — show compact bilingual status
+  if (isPlanConfirmed(confirmRecord)) return (
+    <div style={{ ...S.card, fontFamily: MONO }}>
+      <div style={{ fontSize: '9px', color: DIM, letterSpacing: '0.1em', marginBottom: '8px' }}>◈ {isTR ? 'PROGRAM SEÇ' : 'SELECT PROGRAM'}</div>
+      <div style={{ fontSize: '9px', color: DIMMER }}>
+        {isTR
+          ? 'Eşleşen antrenman programlarını bulmak için bir yarış hedefi belirle.'
+          : 'Set a race goal to browse matching training programs.'}
+      </div>
+    </div>
+  )
 
   if (!currentVdot) return (
     <div style={{ ...S.card, fontFamily: MONO }}>

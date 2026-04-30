@@ -25,13 +25,13 @@ const DURATION_PR_MIN = 30   // minimum session length to qualify for longest_se
  */
 export function weekStart(dateStr) {
   const d = new Date(dateStr)
-  const day = d.getDay()  // 0=Sun..6=Sat
+  const day = d.getUTCDay()  // 0=Sun..6=Sat
   const offset = day === 0 ? -6 : 1 - day   // shift to Monday
   const mon = new Date(d)
-  mon.setDate(d.getDate() + offset)
-  const y = mon.getFullYear()
-  const m = String(mon.getMonth() + 1).padStart(2, '0')
-  const dd = String(mon.getDate()).padStart(2, '0')
+  mon.setUTCDate(d.getUTCDate() + offset)
+  const y = mon.getUTCFullYear()
+  const m = String(mon.getUTCMonth() + 1).padStart(2, '0')
+  const dd = String(mon.getUTCDate()).padStart(2, '0')
   return `${y}-${m}-${dd}`
 }
 
@@ -59,9 +59,9 @@ function weeklyTSSMap(log) {
 function streakUpTo(dateset, upTo) {
   let streak = 0
   const d = new Date(upTo)
-  while (dateset.has(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`)) {
+  while (dateset.has(`${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`)) {
     streak++
-    d.setDate(d.getDate() - 1)
+    d.setUTCDate(d.getUTCDate() - 1)
   }
   return streak
 }

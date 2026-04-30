@@ -33,9 +33,9 @@ function toISOWeekString(date) {
 function sundayEndingWeek(date) {
   const d = new Date(date)
   d.setUTCHours(0, 0, 0, 0)
-  const day = d.getDay() // 0=Sun, 1=Mon … 6=Sat
+  const day = d.getUTCDay() // 0=Sun, 1=Mon … 6=Sat
   const daysUntilSunday = day === 0 ? 0 : 7 - day
-  d.setDate(d.getDate() + daysUntilSunday)
+  d.setUTCDate(d.getUTCDate() + daysUntilSunday)
   return d
 }
 
@@ -89,7 +89,7 @@ export function computeStrainHistory(
   for (let w = weeks - 1; w >= 0; w--) {
     // Sunday for week w weeks back from the anchor
     const sunday = new Date(anchorSunday)
-    sunday.setDate(sunday.getDate() - w * 7)
+    sunday.setUTCDate(sunday.getUTCDate() - w * 7)
 
     const isoWeek = toISOWeekString(sunday)
 

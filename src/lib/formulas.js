@@ -235,7 +235,7 @@ export function calcLoad(log) {
   log.forEach(e => { byDate[e.date] = (byDate[e.date]||0)+(e.tss||0) })
   const dates=[], start=new Date(Object.keys(byDate).sort()[0]), today=new Date()
   today.setUTCHours(0,0,0,0)
-  for (let d=new Date(start); d<=today; d.setDate(d.getDate()+1)) {
+  for (let d=new Date(start); d<=today; d.setUTCDate(d.getUTCDate()+1)) {
     const ds=d.toISOString().slice(0,10)
     dates.push({ date:ds, tss:byDate[ds]||0 })
   }
@@ -258,7 +258,7 @@ export function monotonyStrain(log) {
   const today = new Date()
   const last7 = []
   for (let i=6;i>=0;i--) {
-    const d=new Date(today); d.setDate(d.getDate()-i)
+    const d=new Date(today); d.setUTCDate(d.getUTCDate()-i)
     const ds=d.toISOString().slice(0,10)
     last7.push(log.filter(e=>e.date===ds).reduce((s,e)=>s+(e.tss||0),0))
   }

@@ -4,6 +4,28 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.47.0 — 2026-04-30 — UTC sweep (20 fixes, 6 files) + periodization tests (+43) + 2 fixes, 5624 tests
+
+UTC fixes (DIVE-UU — 6 lib files, 20 locations):
+  formulas.js: calcLoad loop + monotonyStrain setUTCDate
+  coach/classifySession.js: findPlanWeek wEnd setUTCDate
+  athlete/injuryForecast.js: sundayOfWeekContaining + _mondayOfWeekContaining + addDays (6 fixes)
+  athlete/strainHistory.js: sundayEndingWeek + main loop (3 fixes)
+  athlete/detectPRs.js: weekStart + streakUpTo (7 fixes — getUTCDay/getUTCFullYear/getUTCMonth/getUTCDate)
+  athlete/strengthTraining.js: weeklyMuscleFrequency IIFE setUTCDate
+
+New test suite (DIVE-WW):
+  src/lib/__tests__/periodization.test.js — 43 tests covering buildYearlyPlan, validatePlan,
+  updateWeekTSS, exportPlanCSV (phase assignment, Monday normalization, zone fractions, TSS calc, edge cases)
+
+Fixes (DIVE-VV):
+  ProgramSelectorCard.jsx: !saved guard → bilingual empty state (EN/TR)
+  ACWRCard.jsx: log=[] default prop to prevent crash on undefined
+
+5624 tests — all pass (275 files).
+
+---
+
 ## v8.46.0 — 2026-04-30 — deep UTC sweep: 50+ fixes across 22 lib files + 8 empty states, 5581 tests
 
 Core lib UTC fixes (DIVE-PP — trainingLoad.js, 16 locations):
