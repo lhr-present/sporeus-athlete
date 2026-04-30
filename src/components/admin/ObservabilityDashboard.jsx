@@ -128,7 +128,7 @@ function QueuePanel({ lang }) {
               {m.queue_name}
             </span>
             <span style={{ ...S.mono, fontSize: '10px', color: over ? '#ff6600' : '#555' }}>
-              {m.depth} {slo != null ? `/ SLO ${slo}` : ''}{over ? ' ⚠' : ''} · {fmtRelative(m.captured_at)}
+              <span title="Service Level Objective — max allowed queue depth">{m.depth} {slo != null ? `/ SLO ${slo}` : ''}{over ? ' ⚠' : ''}</span> · {fmtRelative(m.captured_at)}
             </span>
           </div>
         )
@@ -286,7 +286,14 @@ function QueueHealthPanel({ lang }) {
             const nameColor = count > 50 ? '#ff4444' : count >= 10 ? '#ffaa00' : '#ccc'
             return (
               <div key={r.queue_name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #1a1a1a' }}>
-                <span style={{ ...S.mono, fontSize: '10px', color: nameColor, flex: 2 }}>{r.queue_name}</span>
+                <span
+                  style={{ ...S.mono, fontSize: '10px', color: nameColor, flex: 2 }}
+                  title={
+                    r.queue_name === 'dlq' || r.queue_name.endsWith('_dlq')
+                      ? 'Dead Letter Queue — messages that failed all retries'
+                      : r.queue_name
+                  }
+                >{r.queue_name}</span>
                 <span style={{ ...S.mono, fontSize: '10px', color: count > 0 ? '#ccc' : '#444', flex: 1, textAlign: 'right' }}>{count}</span>
                 <span style={{ ...S.mono, fontSize: '10px', color: '#555', flex: 1, textAlign: 'right' }}>{fmtAge(age)}</span>
                 <span style={{ width: '48px', textAlign: 'right' }}>

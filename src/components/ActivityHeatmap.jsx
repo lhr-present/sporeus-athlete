@@ -31,15 +31,15 @@ export default function ActivityHeatmap({ log = [] }) {
   const weeks = useMemo(() => {
     const today = new Date()
     const start = new Date(today)
-    start.setDate(start.getDate() - 364)
-    start.setDate(start.getDate() - start.getDay()) // roll back to Sunday
+    start.setUTCDate(start.getUTCDate() - 364)
+    start.setUTCDate(start.getUTCDate() - start.getUTCDay()) // roll back to Sunday
 
     const all = []
     const cursor = new Date(start)
     while (cursor <= today) {
       const d = cursor.toISOString().slice(0, 10)
       all.push({ date: d, tss: byDate[d] || 0 })
-      cursor.setDate(cursor.getDate() + 1)
+      cursor.setUTCDate(cursor.getUTCDate() + 1)
     }
 
     const ws = []

@@ -29,8 +29,19 @@ const BAR_GAP = 4
 export default function NMFreshnessCard({ log }) {
   const { t } = useContext(LangCtx)
 
-  // Return null if log is too short (< 14 sessions minimum context)
-  if (!Array.isArray(log) || log.length < 14) return null
+  // Return placeholder if log is too short (< 14 sessions minimum context)
+  if (!Array.isArray(log) || log.length < 14) {
+    return (
+      <div className="sp-card" style={{ ...S.card }}>
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', color: 'var(--muted)', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, marginBottom: '10px' }}>
+          {t('nmFreshness') || 'Neuromuscular Freshness'}
+        </div>
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '11px', color: 'var(--muted)', lineHeight: 1.6 }}>
+          {t('nmNeeded')}
+        </div>
+      </div>
+    )
+  }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const result = useMemo(() => computeNMFatigue(log), [log])
@@ -81,7 +92,10 @@ export default function NMFreshnessCard({ log }) {
         <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', color: 'var(--muted)' }}>
           / 100
         </div>
-        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', color: '#555', letterSpacing: '0.06em' }}>
+        <div
+          title="NM — Neuromuscular: measures fast-twitch fatigue from recent hard sessions"
+          style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', color: '#555', letterSpacing: '0.06em', cursor: 'help' }}
+        >
           {t('nmFreshnessScore') || 'NM Freshness Score'}
         </div>
       </div>

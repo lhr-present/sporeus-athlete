@@ -36,7 +36,7 @@ export default function CycleTracker() {
   // HRV sparkline with phase background — last 28 days
   const hrvChart = useMemo(() => {
     if (!lastPeriod || !recovery?.length) return null
-    const cutoff = (() => { const d = new Date(today); d.setDate(d.getDate() - 27); return d.toISOString().slice(0, 10) })()
+    const cutoff = (() => { const d = new Date(today); d.setUTCDate(d.getUTCDate() - 27); return d.toISOString().slice(0, 10) })()
     const pts = [...recovery]
       .filter(e => e.date >= cutoff && e.hrv)
       .sort((a, b) => a.date > b.date ? 1 : -1)

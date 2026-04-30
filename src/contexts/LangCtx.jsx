@@ -401,6 +401,7 @@ export const LABELS = {
     nmAccumulated: 'Accumulated Fatigue',
     nmOverreached: 'Overreached',
     nmLastHard: 'Last hard session',
+    nmNeeded: 'Need 14+ sessions to compute NM freshness',
     // E16 — Polarization Compliance
     polarizationCompliance: 'Polarization Compliance',
     polComplianceScore: 'Compliance Score',
@@ -462,6 +463,7 @@ export const LABELS = {
     injuryHigh: 'HIGH',
     injuryForecastLabel: 'FORECAST',
     injuryTopFactor: 'Top risk factor',
+    injuryNeeded: 'Need 8+ sessions to compute injury risk',
     // E23 — Monotony & Strain History
     strainTitle: 'MONOTONY & STRAIN HISTORY',
     strainHighMonotony: 'HIGH MONOTONY',
@@ -469,6 +471,7 @@ export const LABELS = {
     strainMonotony: 'Monotony',
     strainStrain: 'Strain',
     strainThreshold: 'threshold',
+    strainNeeded: 'Need 7+ sessions to compute strain history',
     // E24 — Consistency Trend Card
     consistencyTitle: 'CONSISTENCY TREND',
     consistencyExcellent: 'EXCELLENT',
@@ -606,9 +609,10 @@ export const LABELS = {
     planScorePeak:   'PEAK FORM WINDOW',
     planScoreNoData: 'No training plan set',
     // E49 — Athlete Status Summary Card
-    athleteStatusTitle: 'ATHLETE STATUS SUMMARY',
-    athleteStatusACWR:  'ACWR STATUS',
-    athleteStatusTrend: 'OVERALL TREND',
+    athleteStatusTitle:  'ATHLETE STATUS SUMMARY',
+    athleteStatusACWR:   'ACWR STATUS',
+    athleteStatusTrend:  'OVERALL TREND',
+    athleteStatusNeeded: 'Need 5+ sessions to show status',
     // E50 — Sleep & Resting HR Card
     sleepRHRTitle:    'SLEEP & RESTING HR',
     sleepAvg:         'AVG SLEEP',
@@ -1059,6 +1063,7 @@ export const LABELS = {
     nmAccumulated: 'Birikmiş Yorgunluk',
     nmOverreached: 'Aşırı Yüklenmiş',
     nmLastHard: 'Son sert antrenman',
+    nmNeeded: 'NM tazeliği için 14+ seans gerekli',
     // E16 — Polarizasyon Uyumu
     polarizationCompliance: 'Polarizasyon Uyumu',
     polComplianceScore: 'Uyum Puanı',
@@ -1120,6 +1125,7 @@ export const LABELS = {
     injuryHigh: 'YÜKSEK',
     injuryForecastLabel: 'TAHMİN',
     injuryTopFactor: 'Başlıca risk faktörü',
+    injuryNeeded: 'Saklanma riski için 8+ seans gerekli',
     // E23 — Monotoni & Stres Geçmişi
     strainTitle: 'MONOTONİ & STRES GEÇMİŞİ',
     strainHighMonotony: 'YÜKSEK MONOTONİ',
@@ -1127,6 +1133,7 @@ export const LABELS = {
     strainMonotony: 'Monotoni',
     strainStrain: 'Stres',
     strainThreshold: 'eşik',
+    strainNeeded: 'Stres geçmişi için 7+ seans gerekli',
     // E24 — Tutarlılık Trend Kartı
     consistencyTitle: 'TUTARLILIK TRENDİ',
     consistencyExcellent: 'MÜKEMMEL',
@@ -1264,9 +1271,10 @@ export const LABELS = {
     planScorePeak:   'EN İYİ FORM PENCERESİ',
     planScoreNoData: 'Antrenman planı bulunamadı',
     // E49 — Athlete Status Summary Card
-    athleteStatusTitle: 'SPORCU DURUM ÖZETİ',
-    athleteStatusACWR:  'ACWR DURUMU',
-    athleteStatusTrend: 'GENEL EĞİLİM',
+    athleteStatusTitle:  'SPORCU DURUM ÖZETİ',
+    athleteStatusACWR:   'ACWR DURUMU',
+    athleteStatusTrend:  'GENEL EĞİLİM',
+    athleteStatusNeeded: 'Durum için 5+ seans gerekli',
     // E50 — Sleep & Resting HR Card
     sleepRHRTitle:    'UYKU & İSTİRAHAT KALBİ',
     sleepAvg:         'ORT UYKU',

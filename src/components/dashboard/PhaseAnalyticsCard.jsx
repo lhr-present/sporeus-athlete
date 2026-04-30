@@ -38,7 +38,7 @@ function PhaseAnalyticsCard({ log, plan, lang }) {
     // CTL at phase start vs now
     const { daily } = calcLoad(log)
     const phaseStartDate = new Date(planStart)
-    phaseStartDate.setDate(phaseStartDate.getDate() + phaseStartWeek * 7)
+    phaseStartDate.setUTCDate(phaseStartDate.getUTCDate() + phaseStartWeek * 7)
     const phaseStartKey = phaseStartDate.toISOString().slice(0, 10)
     const startEntry = daily.find(d => d.date === phaseStartKey)
       || daily.slice().reverse().find(d => d.date <= phaseStartKey)
@@ -55,9 +55,9 @@ function PhaseAnalyticsCard({ log, plan, lang }) {
 
       // Actual TSS for that week
       const wStart = new Date(planStart)
-      wStart.setDate(wStart.getDate() + wi * 7)
+      wStart.setUTCDate(wStart.getUTCDate() + wi * 7)
       const wEnd = new Date(wStart)
-      wEnd.setDate(wEnd.getDate() + 7)
+      wEnd.setUTCDate(wEnd.getUTCDate() + 7)
       const wStartKey = wStart.toISOString().slice(0, 10)
       const wEndKey   = wEnd.toISOString().slice(0, 10)
       actualPhase += (log || [])
@@ -73,8 +73,8 @@ function PhaseAnalyticsCard({ log, plan, lang }) {
     // Actual TSS this week
     const thisMonday = (() => {
       const d = new Date()
-      const day = d.getDay() || 7
-      d.setDate(d.getDate() - day + 1)
+      const day = d.getUTCDay() || 7
+      d.setUTCDate(d.getUTCDate() - day + 1)
       return d.toISOString().slice(0, 10)
     })()
     const weekActualTSS = (log || [])

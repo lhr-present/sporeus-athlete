@@ -16,9 +16,9 @@ function estimateTSS(entry) {
 
 function getISOWeekBounds(offsetWeeks = 0) {
   const today = new Date()
-  const dow = today.getDay() // 0=Sun
+  const dow = today.getUTCDay() // 0=Sun
   const monday = new Date(today)
-  monday.setDate(today.getDate() - ((dow + 6) % 7) - offsetWeeks * 7)
+  monday.setUTCDate(today.getUTCDate() - ((dow + 6) % 7) - offsetWeeks * 7)
   monday.setUTCHours(0, 0, 0, 0)
   const sunday = new Date(monday)
   sunday.setUTCDate(monday.getUTCDate() + 6)

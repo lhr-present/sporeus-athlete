@@ -35,7 +35,7 @@ export default function Calendar({ log, setLog, onEdit }) {
     const base = new Date(plan.generatedAt)
     plan.weeks.forEach((w, wi) => {
       w.sessions.forEach((ses, di) => {
-        const d = new Date(base); d.setDate(d.getDate() + wi * 7 + di)
+        const d = new Date(base); d.setUTCDate(d.getUTCDate() + wi * 7 + di)
         planByDate[d.toISOString().slice(0,10)] = ses
       })
     })

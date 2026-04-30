@@ -8,11 +8,11 @@ import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 export default function MacroPlanCountdown({ dl, lc }) {
   const [plan]       = useLocalStorage('sporeus-plan', null)
 
-  if (!dl.goal || !lc.showTaper || !plan) return null
+  if (!dl.goal || !lc.showTaper || !plan || !plan.weeks?.length) return null
 
   const startDate    = new Date(plan.generatedAt)
   const raceDate     = new Date(startDate)
-  raceDate.setDate(raceDate.getDate() + plan.weeks.length * 7)
+  raceDate.setUTCDate(raceDate.getUTCDate() + plan.weeks.length * 7)
   const todayD = new Date(); todayD.setUTCHours(0, 0, 0, 0)
   const daysLeft     = Math.round((raceDate - todayD) / 864e5)
   const weeksElapsed = Math.min(Math.floor((todayD - startDate) / (7 * 864e5)), plan.weeks.length)

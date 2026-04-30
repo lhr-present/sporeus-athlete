@@ -134,7 +134,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
   const [dateRange, setDateRange] = useLocalStorage('sporeus-dash-range', '28')
   const rangeStart = useMemo(() => {
     if (dateRange === 'season') return '2000-01-01'
-    const d = new Date(); d.setDate(d.getDate() - parseInt(dateRange, 10))
+    const d = new Date(); d.setUTCDate(d.getUTCDate() - parseInt(dateRange, 10))
     return d.toISOString().slice(0, 10)
   }, [dateRange])
   const filteredLog   = useMemo(() => log.filter(e => e.date >= rangeStart), [log, rangeStart])

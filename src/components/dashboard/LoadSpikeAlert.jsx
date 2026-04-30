@@ -9,8 +9,8 @@ export default function LoadSpikeAlert() {
   const [lang]  = useLocalStorage('sporeus-lang', 'en')
 
   const loadSpikeP = useMemo(() => {
-    const w7Start  = (() => { const d = new Date(); d.setDate(d.getDate() - 7);  return d.toISOString().slice(0, 10) })()
-    const w14Start = (() => { const d = new Date(); d.setDate(d.getDate() - 14); return d.toISOString().slice(0, 10) })()
+    const w7Start  = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 7);  return d.toISOString().slice(0, 10) })()
+    const w14Start = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 14); return d.toISOString().slice(0, 10) })()
     const thisWeekTSS = log.filter(e => e.date >= w7Start).reduce((s, e) => s + (e.tss || 0), 0)
     const prevWeekTSS = log.filter(e => e.date >= w14Start && e.date < w7Start).reduce((s, e) => s + (e.tss || 0), 0)
     return prevWeekTSS > 10 ? Math.round((thisWeekTSS - prevWeekTSS) / prevWeekTSS * 100) : 0

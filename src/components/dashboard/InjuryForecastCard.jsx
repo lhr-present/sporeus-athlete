@@ -23,8 +23,19 @@ export default function InjuryForecastCard({ log = [], recovery = [] }) {
 
   const data = computeInjuryForecast(log, recovery)
 
-  // Return null if insufficient data
-  if (!data) return null
+  // Return placeholder if insufficient data
+  if (!data) {
+    return (
+      <div className="sp-card" style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#ff6600', marginBottom: '10px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+          ◈ {t('injuryForecastTitle')}
+        </div>
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '11px', color: 'var(--muted)', lineHeight: 1.6 }}>
+          {t('injuryNeeded')}
+        </div>
+      </div>
+    )
+  }
 
   const { history, forecast, topFactor, citation } = data
 

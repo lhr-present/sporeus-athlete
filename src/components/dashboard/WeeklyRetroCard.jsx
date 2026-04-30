@@ -6,22 +6,22 @@ import { S } from '../../styles.js'
 import { useAdaptivePlan } from '../../hooks/useAdaptivePlan.js'
 
 function getMonday(d = new Date()) {
-  const day = d.getDay() || 7
+  const day = d.getUTCDay() || 7
   const mon = new Date(d)
-  mon.setDate(d.getDate() - day + 1)
+  mon.setUTCDate(d.getUTCDate() - day + 1)
   mon.setUTCHours(0, 0, 0, 0)
   return mon.toISOString().slice(0, 10)
 }
 
 function getPrevMonday() {
   const d = new Date(getMonday())
-  d.setDate(d.getDate() - 7)
+  d.setUTCDate(d.getUTCDate() - 7)
   return d.toISOString().slice(0, 10)
 }
 
 function sundayOf(mondayStr) {
   const d = new Date(mondayStr)
-  d.setDate(d.getDate() + 6)
+  d.setUTCDate(d.getUTCDate() + 6)
   return d.toISOString().slice(0, 10)
 }
 

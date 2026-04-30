@@ -48,7 +48,16 @@ export default function RowingMetricsCard({ log = [], profile = {} }) {
     return { timeStr: `${mm}:${ss}`, isProjection: Math.abs(distM - 2000) >= 200, vo2 }
   }, [last, profile])
 
-  if (!last) return null
+  if (!last) return (
+    <div style={{ ...S.card, marginBottom: 16, padding: '16px 20px' }}>
+      <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: "'IBM Plex Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+        {lang === 'tr' ? 'Kürek Metrikleri' : 'Rowing Metrics'}
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--muted)', fontFamily: "'IBM Plex Mono', monospace" }}>
+        {lang === 'tr' ? 'Son 30 günde kürek antrenmanı yok.' : 'No rowing sessions in the last 30 days.'}
+      </div>
+    </div>
+  )
 
   const split = splitPer500m(last.distance, last.duration)
   const strEff = strokeEfficiency(last.distance, last.strokes)
@@ -117,7 +126,7 @@ export default function RowingMetricsCard({ log = [], profile = {} }) {
 
         {ef && (
           <div>
-            <div style={labelStyle}>{t('rowingEF') || 'Rowing EF'}</div>
+            <div style={labelStyle} title="Efficiency Factor: metres per second per heartbeat">{t('rowingEF') || 'Rowing EF'}</div>
             <div style={valueStyle}>{ef}</div>
             <div style={subStyle}>m·s⁻¹/bpm</div>
           </div>

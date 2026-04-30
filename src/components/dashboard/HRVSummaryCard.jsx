@@ -75,11 +75,15 @@ export default function HRVSummaryCard({ recovery = [] }) {
       borderRadius: '8px', padding: '16px', marginBottom: '16px',
     }}>
       {/* Title */}
-      <div style={{
-        fontFamily: MONO, fontSize: '11px', fontWeight: 600,
-        letterSpacing: '0.08em', textTransform: 'uppercase', color: '#ff6600',
-        marginBottom: '10px', borderBottom: '1px solid var(--border)', paddingBottom: '8px',
-      }}>
+      <div
+        title="HRV — Heart Rate Variability: autonomic recovery marker (lnRMSSD)"
+        style={{
+          fontFamily: MONO, fontSize: '11px', fontWeight: 600,
+          letterSpacing: '0.08em', textTransform: 'uppercase', color: '#ff6600',
+          marginBottom: '10px', borderBottom: '1px solid var(--border)', paddingBottom: '8px',
+          cursor: 'help',
+        }}
+      >
         ◈ {t('hrvSummaryTitle')}
       </div>
 

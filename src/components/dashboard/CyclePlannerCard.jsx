@@ -46,7 +46,7 @@ export default function CyclePlannerCard({ profile }) {
   const totalDur = Object.values(PHASE_DURATIONS).reduce((a, b) => a + b, 0)
 
   // Next phase label
-  const _nextPhaseInfo = plan.allPhases.find(p => p.phase === plan.nextPhase)
+  const _nextPhaseInfo = (plan.allPhases || []).find(p => p.phase === plan.nextPhase)
   const _nextPhaseLabel = plan.phaseInfo[lang]?.label
     ? undefined  // overridden below
     : plan.nextPhase
@@ -141,7 +141,7 @@ export default function CyclePlannerCard({ profile }) {
       {/* 4-phase mini timeline */}
       <div style={{ marginBottom: '8px' }}>
         <div style={{ display: 'flex', borderRadius: '4px', overflow: 'hidden', height: '10px' }}>
-          {plan.allPhases.map(p => {
+          {(plan.allPhases || []).map(p => {
             const isCurrent = p.phase === plan.phase
             const pct = (PHASE_DURATIONS[p.phase] / totalDur) * 100
             return (

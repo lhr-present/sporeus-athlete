@@ -46,7 +46,7 @@ export default function TriDashboard({ log, lang = 'en' }) {
   const { swimLog, bikeRunLog } = useMemo(() => splitDisciplineLogs(log || []), [log])
 
   // Build dual Banister trace for last 90 days
-  const cutoff = (() => { const d = new Date(); d.setDate(d.getDate() - 90); return d.toISOString().slice(0, 10) })()
+  const cutoff = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 90); return d.toISOString().slice(0, 10) })()
   const swimSlice    = swimLog.filter(e => e.date >= cutoff)
   const bikeRunSlice = bikeRunLog.filter(e => e.date >= cutoff)
   // eslint-disable-next-line react-hooks/exhaustive-deps -- length proxy avoids reference churn on identical slices

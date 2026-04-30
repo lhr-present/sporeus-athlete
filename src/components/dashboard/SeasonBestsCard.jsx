@@ -37,7 +37,7 @@ function fmtDateShort(dateStr) {
   return `${m} '${String(d.getFullYear()).slice(2)}`
 }
 
-export default function SeasonBestsCard({ log, dl }) {
+export default function SeasonBestsCard({ log = [], dl = {} }) {
   const { bests, hasEnough } = useMemo(() => {
     if (log.length < 2) return { bests: [], hasEnough: false }
 
@@ -139,7 +139,7 @@ export default function SeasonBestsCard({ log, dl }) {
     return { bests: populated, hasEnough: populated.length > 0 }
   }, [log])
 
-  if (!dl.seasonbests) return null
+  if (!dl?.seasonbests) return null
 
   return (
     <div className="sp-card" style={{ ...S.card, animationDelay: '0ms' }}>
@@ -163,7 +163,10 @@ export default function SeasonBestsCard({ log, dl }) {
           <tbody>
             {bests.map(({ metric, value, date, isPB }, i) => (
               <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
-                <td style={{ ...S.mono, fontSize: '11px', color: '#aaa', padding: '7px 0' }}>{metric}</td>
+                <td
+                  style={{ ...S.mono, fontSize: '11px', color: '#aaa', padding: '7px 0' }}
+                  title={metric === 'Highest TSS' ? 'Training Stress Score: session load vs fitness' : undefined}
+                >{metric}</td>
                 <td style={{ ...S.mono, fontSize: '12px', fontWeight: 700, color: '#ff6600', padding: '7px 8px' }}>{value}</td>
                 <td style={{ ...S.mono, fontSize: '10px', color: '#666', padding: '7px 0' }}>{fmtDateShort(date)}</td>
                 <td style={{ padding: '7px 0', textAlign: 'right', fontSize: '13px' }}>

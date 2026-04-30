@@ -28,7 +28,7 @@ export function checkAchievements({ log, recovery, testLog, dark, lang, planStat
   // Week warrior
   const weekMap = {}
   log.forEach(e => {
-    const d = new Date(e.date); d.setDate(d.getDate() - d.getDay())
+    const d = new Date(e.date); d.setUTCDate(d.getUTCDate() - d.getUTCDay())
     const wk = d.toISOString().slice(0,10)
     weekMap[wk] = (weekMap[wk]||0) + 1
   })
@@ -182,7 +182,7 @@ export function getRecentAchievement(days = 7) {
     const achievements = JSON.parse(localStorage.getItem('sporeus-achievements') || '{}')
     // ts (timestamps) not currently used for recency — kept for future display
     JSON.parse(localStorage.getItem('sporeus-achievements-ts') || '{}')
-    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days)
+    const cutoff = new Date(); cutoff.setUTCDate(cutoff.getUTCDate() - days)
     const cutoffStr = cutoff.toISOString().slice(0,10)
     // Find entries unlocked within the window
     const recent = Object.entries(achievements)

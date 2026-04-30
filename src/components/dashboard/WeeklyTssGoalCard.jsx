@@ -104,10 +104,10 @@ export default function WeeklyTssGoalCard({ log, profile, isTR }) {
         <div style={{ ...S.mono, fontSize: '14px', fontWeight: 700, color: 'var(--text)' }}>
           {weekTss}
           {goal > 0 && (
-            <span style={{ fontSize: '11px', fontWeight: 400, color: '#888' }}> / {goal} TSS</span>
+            <span title="Training Stress Score: weekly session load vs fitness" style={{ fontSize: '11px', fontWeight: 400, color: '#888' }}> / {goal} TSS</span>
           )}
           {goal === 0 && (
-            <span style={{ fontSize: '11px', fontWeight: 400, color: '#888' }}> TSS</span>
+            <span title="Training Stress Score: weekly session load vs fitness" style={{ fontSize: '11px', fontWeight: 400, color: '#888' }}> TSS</span>
           )}
         </div>
         {progressPct !== null && (

@@ -143,10 +143,10 @@ function AthleteComparisonPanel({ athletes, selectedIds, onReset }) {
 const COLS = [
   { id: 'select',         label: '☐',    sortable: false, width: '32px'  },
   { id: 'name',           label: 'Name', sortable: true,  width: '1fr'   },
-  { id: 'ctl',            label: 'CTL',  sortable: true,  width: '64px'  },
-  { id: 'acwr',           label: 'ACWR', sortable: true,  width: '72px'  },
-  { id: 'compliance_pct', label: 'Comp%',sortable: true,  width: '72px'  },
-  { id: 'wellness_avg',   label: 'WEL',  sortable: true,  width: '64px'  },
+  { id: 'ctl',            label: 'CTL',  title: 'Chronic Training Load — 42-day fitness base', sortable: true,  width: '64px'  },
+  { id: 'acwr',           label: 'ACWR', title: 'Acute:Chronic Workload Ratio — injury risk indicator', sortable: true,  width: '72px'  },
+  { id: 'compliance_pct', label: 'Comp%',title: 'Plan compliance percentage', sortable: true,  width: '72px'  },
+  { id: 'wellness_avg',   label: 'WEL',  title: 'Average wellness score (1–10)', sortable: true,  width: '64px'  },
 ]
 
 // ─── SquadBenchmarkTable ──────────────────────────────────────────────────────
@@ -282,6 +282,7 @@ export default function SquadBenchmarkTable({ athletes }) {
                   key={col.id}
                   style={headerCellStyle(col.sortable ? col.id : 'select')}
                   onClick={col.sortable ? () => handleSort(col.id) : undefined}
+                  title={col.title}
                 >
                   {col.label}{col.sortable && sortBy === col.id ? ' ↓' : ''}
                 </th>

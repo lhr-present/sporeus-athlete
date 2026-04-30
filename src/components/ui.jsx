@@ -114,9 +114,9 @@ export function WeeklyVolChart({ log }) {
   const todayStr = new Date().toISOString().slice(0,10)
   const weeks = []
   for (let i=7; i>=0; i--) {
-    const d = new Date(); d.setDate(d.getDate() - i*7)
-    const start = new Date(d); start.setDate(start.getDate() - start.getDay())
-    const end   = new Date(start); end.setDate(end.getDate()+6)
+    const d = new Date(); d.setUTCDate(d.getUTCDate() - i*7)
+    const start = new Date(d); start.setUTCDate(start.getUTCDate() - start.getUTCDay())
+    const end   = new Date(start); end.setUTCDate(end.getUTCDate()+6)
     const s0 = start.toISOString().slice(0,10), e0 = end.toISOString().slice(0,10)
     const entries = log.filter(e=>e.date>=s0&&e.date<=e0)
     const byType = {}
@@ -242,7 +242,7 @@ export const CTLTimeline = memo(function CTLTimeline({ log }) {
   log.forEach(e=>{ byDate[e.date]=(byDate[e.date]||0)+(e.tss||0) })
   const dates=[], start=new Date(Object.keys(byDate).sort()[0]), today=new Date()
   today.setUTCHours(0,0,0,0)
-  for (let d=new Date(start);d<=today;d.setDate(d.getDate()+1)) {
+  for (let d=new Date(start);d<=today;d.setUTCDate(d.getUTCDate()+1)) {
     dates.push(d.toISOString().slice(0,10))
   }
   let ctl=0; const kC=2/(42+1)

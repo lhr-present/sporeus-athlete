@@ -31,7 +31,18 @@ export default function AerobicEfficiencyCard({ log = [] }) {
     [log],
   )
 
-  if (result === null) return null
+  if (result === null) {
+    return (
+      <div className="sp-card" style={{ ...S.card, animationDelay: '210ms' }}>
+        <div style={{ ...S.cardTitle, color: '#ff6600', marginBottom: '10px' }}>
+          {'◈ '}{t('efTitle') || 'AEROBIC EFFICIENCY'}
+        </div>
+        <div style={{ ...S.mono, fontSize: '11px', color: 'var(--muted)', lineHeight: 1.6 }}>
+          {t('efWeeksNeeded')}
+        </div>
+      </div>
+    )
+  }
 
   const { weeks, weeklyGain, classification, citation } = result
 
@@ -94,7 +105,10 @@ export default function AerobicEfficiencyCard({ log = [] }) {
           }}>
             {latestEF !== null ? latestEF.toFixed(3) : '—'}
           </div>
-          <div style={{ ...S.mono, fontSize: '9px', color: '#888', marginTop: '3px' }}>
+          <div
+            title="EF — Efficiency Factor: pace or power per heart-rate beat"
+            style={{ ...S.mono, fontSize: '9px', color: '#888', marginTop: '3px', cursor: 'help' }}
+          >
             EF (latest week)
           </div>
         </div>

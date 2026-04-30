@@ -14,7 +14,7 @@ export default function PeakWeekCard({ log, dl }) {
     const seed = []
     for (let i = 27; i >= 0; i--) {
       const d = new Date(today)
-      d.setDate(d.getDate() - i)
+      d.setUTCDate(d.getUTCDate() - i)
       const ds = d.toISOString().slice(0, 10)
       const entry = log.find(e => e.date === ds)
       seed.push(entry ? (entry.tss || 0) : 0)

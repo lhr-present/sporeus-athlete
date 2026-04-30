@@ -31,14 +31,25 @@ const TREND_MAP = {
 }
 
 function AthleteStatusSummaryCard({ log, recovery, profile }) {
-  const { lang } = useContext(LangCtx)
+  const { lang, t } = useContext(LangCtx)
 
   const status = useMemo(
     () => computeAthleteStatus(log, recovery, profile),
     [log, recovery, profile],
   )
 
-  if (!status) return null
+  if (!status) {
+    return (
+      <div style={{ ...S.card, fontFamily: 'IBM Plex Mono, monospace' }}>
+        <div style={{ ...S.cardTitle, color: '#ff6600', letterSpacing: '0.08em', marginBottom: '10px' }}>
+          {lang === 'tr' ? '◈ SPORCU DURUM ÖZETİ' : '◈ ATHLETE STATUS SUMMARY'}
+        </div>
+        <div style={{ ...S.mono, fontSize: '11px', color: 'var(--muted)', lineHeight: 1.6 }}>
+          {t('athleteStatusNeeded')}
+        </div>
+      </div>
+    )
+  }
 
   const {
     ctl, ctlTrendStr, acwrLabel, acwrRatio,
@@ -72,7 +83,10 @@ function AthleteStatusSummaryCard({ log, recovery, profile }) {
         }}>
           {ctl}
         </span>
-        <span style={{ ...S.mono, fontSize: '11px', color: '#888', letterSpacing: '0.06em' }}>
+        <span
+          title="CTL — Chronic Training Load: 42-day fitness accumulation index"
+          style={{ ...S.mono, fontSize: '11px', color: '#888', letterSpacing: '0.06em', cursor: 'help' }}
+        >
           CTL
         </span>
         <span style={{
@@ -91,13 +105,17 @@ function AthleteStatusSummaryCard({ log, recovery, profile }) {
         <div style={{ ...S.mono, fontSize: '9px', color: '#555', letterSpacing: '0.08em', marginBottom: '3px' }}>
           {acwrHeader}
         </div>
-        <div style={{
-          ...S.mono,
-          fontSize: '12px',
-          color: acwrColor,
-          fontWeight: 600,
-          letterSpacing: '0.04em',
-        }}>
+        <div
+          title="ACWR — Acute:Chronic Workload Ratio: injury risk zone 0.8–1.3 is safe"
+          style={{
+            ...S.mono,
+            fontSize: '12px',
+            color: acwrColor,
+            fontWeight: 600,
+            letterSpacing: '0.04em',
+            cursor: 'help',
+          }}
+        >
           ACWR {acwrRatio !== null && acwrRatio !== undefined ? Number(acwrRatio).toFixed(2) : '—'} · {acwrLabel}
         </div>
       </div>

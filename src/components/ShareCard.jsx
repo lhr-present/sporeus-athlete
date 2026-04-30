@@ -53,13 +53,13 @@ export default function ShareCard({ log, profile, filteredLog: _filteredLog }) {
 
   // This week TSS (Mon–Sun)
   const weekStart = new Date(today)
-  weekStart.setDate(today.getDate() - (today.getDay() + 6) % 7)
+  weekStart.setUTCDate(today.getUTCDate() - (today.getUTCDay() + 6) % 7)
   weekStart.setUTCHours(0, 0, 0, 0)
   const weekTSS = Math.round((log || []).filter(e => new Date(e.date) >= weekStart).reduce((s, e) => s + (e.tss || 0), 0))
 
   // Zone model (last 28d)
   const last28 = useMemo(() => {
-    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 28)
+    const cutoff = new Date(); cutoff.setUTCDate(cutoff.getUTCDate() - 28)
     const cut = cutoff.toISOString().slice(0, 10)
     return (log || []).filter(e => e.date >= cut)
   }, [log])

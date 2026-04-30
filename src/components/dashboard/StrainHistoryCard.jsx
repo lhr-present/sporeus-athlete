@@ -29,7 +29,18 @@ export default function StrainHistoryCard({ log = [] }) {
   const { t, lang: _lang } = useContext(LangCtx)
 
   const report = computeStrainReport(log)
-  if (!report) return null
+  if (!report) {
+    return (
+      <div className="sp-card" style={{ ...S.card }}>
+        <div style={{ ...S.mono, fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#ff6600', marginBottom: '10px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+          ◈ {t('strainTitle')}
+        </div>
+        <div style={{ ...S.mono, fontSize: '11px', color: 'var(--muted)', lineHeight: 1.6 }}>
+          {t('strainNeeded')}
+        </div>
+      </div>
+    )
+  }
 
   const { weeks, hasHighMonotony, hasHighStrain, citation } = report
 

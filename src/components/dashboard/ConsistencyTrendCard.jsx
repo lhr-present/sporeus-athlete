@@ -23,7 +23,18 @@ export default function ConsistencyTrendCard({ log = [] }) {
   const { t } = useContext(LangCtx)
 
   const trend = computeConsistencyTrend(log)
-  if (!trend) return null
+  if (!trend) {
+    return (
+      <div className="sp-card" style={{ ...S.card }}>
+        <div style={{ ...S.mono, fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#ff6600', marginBottom: '10px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+          ◈ {t('consistencyTitle')}
+        </div>
+        <div style={{ ...S.mono, fontSize: '11px', color: 'var(--muted)', lineHeight: 1.6 }}>
+          {t('consistencyNeeded')}
+        </div>
+      </div>
+    )
+  }
 
   const { weeks, currentScore, currentTier, trendSlope, improving: _improving, streak, citation } = trend
 

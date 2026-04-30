@@ -88,8 +88,8 @@ export default function Recovery() {
 
   // L4 — This-week vs 4-week rolling recovery baseline
   const recoveryBaseline = useMemo(() => {
-    const cutoff7  = (() => { const d = new Date(); d.setDate(d.getDate() - 7);  return d.toISOString().slice(0, 10) })()
-    const cutoff28 = (() => { const d = new Date(); d.setDate(d.getDate() - 28); return d.toISOString().slice(0, 10) })()
+    const cutoff7  = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 7);  return d.toISOString().slice(0, 10) })()
+    const cutoff28 = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 28); return d.toISOString().slice(0, 10) })()
     const week4 = entries.filter(e => e.date >= cutoff28 && typeof e.score === 'number')
     const week1 = entries.filter(e => e.date >= cutoff7  && typeof e.score === 'number')
     if (week1.length < 2 || week4.length < 5) return null

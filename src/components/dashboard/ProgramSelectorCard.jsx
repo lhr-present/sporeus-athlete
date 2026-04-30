@@ -94,7 +94,7 @@ export default function ProgramSelectorCard({ log = [], profile = {}, isTR }) {
         <div style={{ fontSize: '9px', color: DIM, letterSpacing: '0.1em' }}>
           ◈ {isTR ? 'ANTRENMAN PROGRAMI SEÇ' : 'SELECT TRAINING PROGRAM'}
         </div>
-        <div style={{ fontSize: '8px', color: DIMMER }}>VDOT {currentVdot}</div>
+        <div title="VDOT: running fitness index from race performance" style={{ fontSize: '8px', color: DIMMER }}>VDOT {currentVdot}</div>
       </div>
 
       {/* Coach gate notice */}
@@ -135,7 +135,7 @@ export default function ProgramSelectorCard({ log = [], profile = {}, isTR }) {
                       {isTR ? prog.nameTR : prog.name}
                     </div>
                     <div style={{ fontSize: '8px', color: DIM, marginTop: '2px' }}>
-                      {DIST_LABEL[prog.distanceM] || prog.distanceM/1000+'K'} · {prog.weeks} {isTR ? 'Hafta' : 'Weeks'} · VDOT {prog.vdotMin}–{prog.vdotMax}
+                      {DIST_LABEL[prog.distanceM] || prog.distanceM/1000+'K'} · {prog.weeks} {isTR ? 'Hafta' : 'Weeks'} · <span title="VDOT: running fitness index from race performance">VDOT {prog.vdotMin}–{prog.vdotMax}</span>
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>

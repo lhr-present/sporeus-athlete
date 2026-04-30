@@ -82,11 +82,15 @@ export default function OSTRCMonitorCard() {
       borderRadius: '8px', padding: '16px', marginBottom: '16px',
     }}>
       {/* Title */}
-      <div style={{
-        fontFamily: "'IBM Plex Mono', monospace", fontSize: '11px', fontWeight: 600,
-        letterSpacing: '0.08em', textTransform: 'uppercase', color: '#ff6600',
-        marginBottom: '12px', borderBottom: '1px solid var(--border)', paddingBottom: '8px',
-      }}>
+      <div
+        title="OSTRC — Oslo Sports Trauma Research Centre overuse injury questionnaire"
+        style={{
+          fontFamily: "'IBM Plex Mono', monospace", fontSize: '11px', fontWeight: 600,
+          letterSpacing: '0.08em', textTransform: 'uppercase', color: '#ff6600',
+          marginBottom: '12px', borderBottom: '1px solid var(--border)', paddingBottom: '8px',
+          cursor: 'help',
+        }}
+      >
         ◈ {t('ostrcTitle')}
       </div>
 

@@ -27,7 +27,18 @@ export default function RunningCVCard({ log = [] }) {
 
   const data = useMemo(() => computeRunningCV(log), [log])
 
-  if (!data) return null
+  if (!data) {
+    return (
+      <div className="sp-card" style={{ ...S.card, marginBottom: '16px' }}>
+        <div style={{ ...S.cardTitle, color: '#ff6600', marginBottom: '10px' }}>
+          ◈ {t('cvTitle') || (lang === 'tr' ? 'KRİTİK HIZ' : 'CRITICAL VELOCITY')}
+        </div>
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '11px', color: 'var(--muted)', lineHeight: 1.6 }}>
+          {t('cvNoData')}
+        </div>
+      </div>
+    )
+  }
 
   const { CV: _CV, DAna, CVPaceSecKm, effortsUsed, efforts } = data
   const classification = classifyCV(CVPaceSecKm)
@@ -64,7 +75,10 @@ export default function RunningCVCard({ log = [] }) {
           <span style={{ ...S.statVal, fontSize: '26px' }}>
             {fmtPace(CVPaceSecKm)}
           </span>
-          <span style={{ ...S.statLbl }}>
+          <span
+            title="CV — Critical Velocity: sustainable pace at aerobic-anaerobic threshold"
+            style={{ ...S.statLbl, cursor: 'help' }}
+          >
             {t('cvPaceLabel') || (lang === 'tr' ? 'KV TEMPO' : 'CV PACE')}
           </span>
         </div>
@@ -74,7 +88,10 @@ export default function RunningCVCard({ log = [] }) {
           <span style={{ ...S.statVal, fontSize: '26px', color: '#0064ff' }}>
             {DAna}m
           </span>
-          <span style={{ ...S.statLbl }}>
+          <span
+            title="D' — anaerobic distance reserve above CV before exhaustion"
+            style={{ ...S.statLbl, cursor: 'help' }}
+          >
             {t('cvDAnaLabel') || (lang === 'tr' ? "D' ANAEROBİK REZERVİ" : "D' ANAEROBIC RESERVE")}
           </span>
         </div>

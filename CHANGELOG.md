@@ -4,6 +4,60 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.43.0 — 2026-04-30 — UTC sweep (20 fixes, 9 files) + 8 empty states + 25 tooltips, 5538 tests
+
+Timezone fixes (DIVE-AA — 9 dashboard card files, 20 locations):
+  MacroPlanCountdown.jsx: raceDate.setUTCDate week-offset; division-by-zero guard (!plan.weeks?.length)
+  TriDashboard.jsx: 90-day cutoff setUTCDate
+  PeakWeekCard.jsx: rolling window setUTCDate(-i)
+  ProactiveInjuryAlert.jsx: 2× setUTCDate cutoffs
+  LoadSpikeAlert.jsx: 2× setUTCDate cutoffs
+  LoadHeatmapCard.jsx: getUTCDay() + setUTCDate(+1) week boundary
+  WeeklyRetroCard.jsx: 4× UTC fixes (getUTCDay, setUTCDate×3)
+  PhaseAnalyticsCard.jsx: 5× UTC fixes
+  WeeklyReviewCard.jsx: 2× UTC fixes (getUTCDay, setUTCDate)
+
+Timezone fixes (DIVE-BB — 9 non-dashboard files, 13 locations):
+  Recovery.jsx: 2× cutoff setUTCDate
+  ShareCard.jsx: 3× UTC fixes (setUTCDate, getUTCDay, setUTCDate-28)
+  Dashboard.jsx: dateRange setUTCDate
+  CoachOverview.jsx: setUTCDate
+  ActivityHeatmap.jsx: 3× setUTCDate (364-day span, Sunday rollback, cursor+1)
+  CycleTracker.jsx: setUTCDate-27
+  Achievements.jsx: 2× UTC (getUTCDay/setUTCDate, setUTCDate-days)
+  ui.jsx: 4× UTC (lines 117–119 + 245)
+  Calendar.jsx: line 38 setUTCDate
+
+Bug fixes (DIVE-CC):
+  SeasonBestsCard.jsx: prop defaults crash (log=[], dl={}) + optional chaining on nullable props
+  CyclePlannerCard.jsx: (plan.allPhases || []).find/map — guard against undefined allPhases
+
+UX / tooltips (DIVE-CC/DD/EE):
+  RowingMetricsCard.jsx: EF tooltip
+  ProgramSelectorCard.jsx: 2× VDOT tooltips
+  SeasonBestsCard.jsx: TSS tooltip
+  WeeklyTssGoalCard.jsx: 2× TSS tooltips
+  HRVSummaryCard.jsx: HRV tooltip
+  AerobicEfficiencyCard.jsx: EF tooltip
+  RESTQTrendCard.jsx: RESTQ tooltip
+  NMFreshnessCard.jsx: NM tooltip
+  RunningCVCard.jsx: CV/D' tooltips
+  AthleteStatusSummaryCard.jsx: CTL/ACWR tooltips
+  OSTRCMonitorCard.jsx: OSTRC tooltip
+  ObservabilityDashboard.jsx: SLO + DLQ tooltips
+  SquadBenchmarkTable.jsx: CTL/ACWR/Comp%/WEL column header tooltips
+
+Empty states (DIVE-DD — 8 cards previously returned null silently):
+  AerobicEfficiencyCard.jsx, StrainHistoryCard.jsx, NMFreshnessCard.jsx
+  RunningCVCard.jsx, ConsistencyTrendCard.jsx, InjuryForecastCard.jsx
+  AthleteStatusSummaryCard.jsx, RowingMetricsCard.jsx — all bilingual EN/TR empty states
+
+LangCtx.jsx: 4 new translation keys (injuryNeeded, strainNeeded, nmNeeded, athleteStatusNeeded)
+
+5538 tests — all pass.
+
+---
+
 ## v8.42.0 — 2026-04-30 — 12 more fixes + UX tooltips across 12 files, 5538 tests
 
 Timezone fixes:

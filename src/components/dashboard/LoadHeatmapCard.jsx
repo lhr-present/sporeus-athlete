@@ -30,7 +30,7 @@ export default function LoadHeatmapCard({ log, dl, onDayClick }) {
     // Find the Monday of the week 52 weeks ago
     const startMs = today.getTime() - 363 * 86400000           // 364 days ago = day 0 of 52-week window
     const startDay = new Date(startMs)
-    const dow = startDay.getDay() || 7                          // Mon=1..Sun=7
+    const dow = startDay.getUTCDay() || 7                          // Mon=1..Sun=7
     const monday = new Date(startMs - (dow - 1) * 86400000)    // rewind to that Monday
 
     const cols = []   // each col = array of 7 date strings (Mon..Sun)
@@ -48,7 +48,7 @@ export default function LoadHeatmapCard({ log, dl, onDayClick }) {
           labels.push({ colIdx: w, label: MONTH_ABBR[cur.getMonth()] })
           prevMonth = cur.getMonth()
         }
-        cur.setDate(cur.getDate() + 1)
+        cur.setUTCDate(cur.getUTCDate() + 1)
       }
       cols.push(col)
     }

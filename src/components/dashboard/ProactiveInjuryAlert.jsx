@@ -10,8 +10,8 @@ export default function ProactiveInjuryAlert({ log, injuries, lang }) {
   if (!highConf.length) return null
 
   const _now = new Date().toISOString().slice(0, 10)
-  const w1   = (() => { const d = new Date(); d.setDate(d.getDate()-7);  return d.toISOString().slice(0,10) })()
-  const w2   = (() => { const d = new Date(); d.setDate(d.getDate()-14); return d.toISOString().slice(0,10) })()
+  const w1   = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate()-7);  return d.toISOString().slice(0,10) })()
+  const w2   = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate()-14); return d.toISOString().slice(0,10) })()
   const recent7  = log.filter(e => e.date >= w1)
   const recent14 = log.filter(e => e.date >= w2)
 
