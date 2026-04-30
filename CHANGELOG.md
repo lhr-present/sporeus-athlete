@@ -4,6 +4,29 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.49.0 — 2026-04-30 — trainingLoad.js test coverage (+71 tests), 5697 tests
+
+New test suites for previously untested trainingLoad.js exports:
+
+  trainingLoad.consistency.test.js (E91) — 28 tests: calculateConsistency
+    empty/null log, stale log (all > 28d), today-relative sessions, sessionDays
+    dedup, pct rounding, longestGap, currentGap (0/1/3 days), custom window,
+    cutoff boundary inclusion/exclusion, out-of-window entry exclusion
+
+  trainingLoad.banister.test.js (E92) — 43 tests: fitBanister + predictBanister
+    + generateWeeklyRecap
+    fitBanister: null/< 3 results, non-number filter, OLS shape (k1/k2/p0/r2),
+    minV/maxV accuracy, r2=0 identical values, r2 clamped [0,1]
+    predictBanister: null fit → [], days param, item shape, predicted 0–100,
+    dates ascending from tomorrow, planned session effect, determinism
+    generateWeeklyRecap: non-Monday → null, Monday + valid log → full recap
+    shape (8 keys), weekLabel format, sessions/totalTSS/avgRPE/dominantType
+    (vi.useFakeTimers { toFake:['Date'] } to avoid Vitest timer conflict)
+
+277 test files · 5697 tests · all passing.
+
+---
+
 ## v8.48.0 — 2026-04-30 — UTC fix demoData + Recovery guard + 2 new tests, 5626 tests
 
 UTC fix:
