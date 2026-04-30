@@ -22,7 +22,7 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
   const [planHours,  setPlanHours]  = useState('8')
   const [planLevel,  setPlanLevel]  = useState('Intermediate')
   const [startDate,  setStartDate]  = useState(() => {
-    const d = new Date(); d.setDate(d.getDate() + 7)
+    const d = new Date(); d.setUTCDate(d.getUTCDate() + 7)
     return d.toISOString().slice(0, 10)
   })
   const [sending,  setSending]  = useState(false)

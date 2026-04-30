@@ -336,7 +336,7 @@ export default function AthleteDetailPanel({ athlete, onUpdate, onClose: _onClos
         const prof = athlete.profile || {}
         const goal = prof.goal || '—'
         const raceDate = prof.raceDate || null
-        const daysToRace = raceDate ? Math.ceil((new Date(raceDate) - new Date()) / 864e5) : null
+        const daysToRace = raceDate ? Math.ceil((new Date(raceDate) - new Date(new Date().toISOString().slice(0, 10))) / 864e5) : null
 
         const weakFactors = [...rr.factors].sort((a,b) => a.score-b.score).slice(0,2)
         const goalPred = perf.reliable ? perf.predictions.find(p=>(goal||'').toLowerCase().includes(p.label.toLowerCase())) || perf.predictions[1] : null

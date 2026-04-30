@@ -69,10 +69,12 @@ export default function Profile({ log, authUser }) {
   const FIELDS = [
     {k:'name',lk:'nameL',ph:'Athlete name'},{k:'age',lk:'ageL',ph:'32',type:'number'},
     {k:'height',lk:'heightCmL',ph:'175',type:'number'},{k:'weight',lk:'weightL',ph:'70',type:'number'},
-    {k:'maxhr',lk:'maxHRIn',ph:'185',type:'number'},{k:'ftp',lk:'ftpL',ph:'280',type:'number'},
-    {k:'vo2max',lk:'vo2L',ph:'55',type:'number'},{k:'threshold',lk:'threshPaceL',ph:'4:30'},
+    {k:'maxhr',lk:'maxHRIn',ph:'185',type:'number',title:'Highest HR ever recorded in a max effort test'},
+    {k:'ftp',lk:'ftpL',ph:'280',type:'number',title:'Functional Threshold Power — average watts sustainable for 1 hour'},
+    {k:'vo2max',lk:'vo2L',ph:'55',type:'number',title:'VO₂max in mL/kg/min — from lab test or race VDOT estimate'},
+    {k:'threshold',lk:'threshPaceL',ph:'4:30',title:'Lactate threshold run pace per km (e.g. 4:30)'},
     {k:'goal',lk:'goalL',ph:'Sub-3h marathon Istanbul 2026'},
-    {k:'weeklyTssGoal',lk:'weeklyTssGoalL',ph:'e.g. 400',type:'number'},
+    {k:'weeklyTssGoal',lk:'weeklyTssGoalL',ph:'e.g. 400',type:'number',title:'Target weekly Training Stress Score (typical range 300–700)'},
     {k:'raceDate',lk:'profileRaceDate',ph:'',type:'date'},
   ]
 
@@ -149,6 +151,7 @@ export default function Profile({ log, authUser }) {
             <div key={f.k} style={{ flex:'1 1 200px' }}>
               <label style={S.label}>{t(f.lk)}</label>
               <input style={S.input} type={f.type||'text'} placeholder={f.ph}
+                title={f.title}
                 value={local[f.k]||''} onChange={e=>setLocal({...local,[f.k]:e.target.value})}/>
             </div>
           ))}
@@ -510,7 +513,7 @@ export default function Profile({ log, authUser }) {
                       {auditLog.map(row => (
                         <tr key={row.id} style={{ borderBottom:'1px solid #1a1a1a' }}>
                           <td style={{ padding:'4px 8px 4px 0', color:'var(--sub,#aaa)', whiteSpace:'nowrap' }}>{row.created_at?.slice(0,16)}</td>
-                          <td style={{ padding:'4px 8px 4px 0', color: row.action === 'erase' ? '#e03030' : row.action === 'export' ? '#f5c542' : '#888' }}>{row.action.toUpperCase()}</td>
+                          <td style={{ padding:'4px 8px 4px 0', color: row.action === 'erase' ? '#e03030' : row.action === 'export' ? '#f5c542' : '#888' }}>{row.action?.toUpperCase() ?? '—'}</td>
                           <td style={{ padding:'4px 8px 4px 0' }}>{row.table_name}</td>
                           <td style={{ padding:'4px 8px 4px 0', color:'#666', maxWidth:'120px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{row.record_id || '—'}</td>
                         </tr>

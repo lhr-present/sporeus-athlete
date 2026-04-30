@@ -136,10 +136,10 @@ function WeekModal({ weekIdx, trace, sport, form, split2k, vdot, onClose }) {
           <thead>
             <tr style={{ ...DIM, textAlign: 'left' }}>
               <th style={{ paddingBottom: '6px' }}>{t('spb_modalDay')}</th>
-              <th>TSS</th>
-              <th>CTL</th>
-              <th>ATL</th>
-              <th>TSB</th>
+              <th title="Training Stress Score — daily load">TSS</th>
+              <th title="Chronic Training Load — long-term fitness">CTL</th>
+              <th title="Acute Training Load — short-term fatigue">ATL</th>
+              <th title="Training Stress Balance — form (CTL minus ATL)">TSB</th>
             </tr>
           </thead>
           <tbody>
@@ -265,7 +265,7 @@ function Step2({ form, setForm, onNext, onBack }) {
       {sport === 'cycling' && (
         <div style={S.row}>
           <div style={{ flex: '1 1 160px' }}>
-            <label style={S.label}>FTP (watts)</label>
+            <label style={S.label} title="Functional Threshold Power — max 1-hour sustainable watts">FTP (watts)</label>
             <input style={S.input} type="number" placeholder="250" value={form.baseline?.ftp || ''}
               onChange={e => setForm(f => ({ ...f, baseline: { ...f.baseline, ftp: e.target.value } }))} />
           </div>
@@ -293,7 +293,7 @@ function Step2({ form, setForm, onNext, onBack }) {
       {sport === 'triathlon' && (
         <div style={S.row}>
           <div style={{ flex: '1 1 140px' }}>
-            <label style={S.label}>FTP (watts)</label>
+            <label style={S.label} title="Functional Threshold Power — max 1-hour sustainable watts">FTP (watts)</label>
             <input style={S.input} type="number" placeholder="230" value={form.baseline?.ftp || ''}
               onChange={e => setForm(f => ({ ...f, baseline: { ...f.baseline, ftp: e.target.value } }))} />
           </div>
@@ -474,7 +474,7 @@ function Step5({ form, result, onRestart, log: _log, setLog }) {
     const today = new Date()
     const newEntries = bestPlanInner.map((tss, i) => {
       const d = new Date(today)
-      d.setDate(d.getDate() + i * 7)
+      d.setUTCDate(d.getUTCDate() + i * 7)
       return {
         id:       Date.now() + i,
         date:     d.toISOString().slice(0, 10),
@@ -556,28 +556,31 @@ function Step5({ form, result, onRestart, log: _log, setLog }) {
           <span style={{ ...S.statVal, fontSize: '16px' }}>
             {pfWindow?.peakTSB != null ? (pfWindow.peakTSB > 0 ? '+' : '') + pfWindow.peakTSB : '?'}
           </span>
-          <span style={S.statLbl}>{t('spb_peakTSBLabel')}</span>
+          <span style={S.statLbl} title="Training Stress Balance — form score at peak (CTL minus ATL)">{t('spb_peakTSBLabel')}</span>
         </div>
       </div>
 
-      {histogram && (
-        <div style={{ ...S.card }}>
-          <div style={S.cardTitle}>{t('spb_scoreDistTitle')}</div>
-          <ResponsiveContainer width="100%" height={120}>
-            <BarChart data={histogram} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-              <XAxis dataKey="range" tick={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 9 }} />
-              <YAxis tick={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 9 }} />
-              <Tooltip contentStyle={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 11, background: '#111', border: `1px solid ${ORANGE}` }}
-                formatter={v => [v, 'Plans']} />
-              <Bar dataKey="count" radius={[3, 3, 0, 0]}>
-                {histogram.map((entry, i) => (
-                  <Cell key={i} fill={entry.count === Math.max(...histogram.map(h => h.count)) ? ORANGE : '#0064ff44'} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+      {histogram && (() => {
+        const maxHistCount = Math.max(...histogram.map(h => h.count))
+        return (
+          <div style={{ ...S.card }}>
+            <div style={S.cardTitle}>{t('spb_scoreDistTitle')}</div>
+            <ResponsiveContainer width="100%" height={120}>
+              <BarChart data={histogram} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+                <XAxis dataKey="range" tick={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 9 }} />
+                <YAxis tick={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 9 }} />
+                <Tooltip contentStyle={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 11, background: '#111', border: `1px solid ${ORANGE}` }}
+                  formatter={v => [v, 'Plans']} />
+                <Bar dataKey="count" radius={[3, 3, 0, 0]}>
+                  {histogram.map((entry, i) => (
+                    <Cell key={i} fill={entry.count === maxHistCount ? ORANGE : '#0064ff44'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )
+      })()}
 
       <div style={{ ...S.card }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -636,9 +639,9 @@ function Step5({ form, result, onRestart, log: _log, setLog }) {
             <thead>
               <tr style={{ color: 'var(--muted)', borderBottom: '1px solid var(--border)' }}>
                 <th style={{ padding: '4px 8px', textAlign: 'left' }}>{t('spb_colWk')}</th>
-                <th style={{ padding: '4px 8px', textAlign: 'right' }}>{t('spb_colPlanned')}</th>
-                <th style={{ padding: '4px 8px', textAlign: 'right' }}>{t('spb_colActual')}</th>
-                <th style={{ padding: '4px 8px', textAlign: 'right' }}>{t('spb_colVariance')}</th>
+                <th style={{ padding: '4px 8px', textAlign: 'right' }} title="Planned TSS — target Training Stress Score for the week">{t('spb_colPlanned')}</th>
+                <th style={{ padding: '4px 8px', textAlign: 'right' }} title="Actual TSS — enter your real weekly Training Stress Score">{t('spb_colActual')}</th>
+                <th style={{ padding: '4px 8px', textAlign: 'right' }} title="TSS variance — actual minus planned load">{t('spb_colVariance')}</th>
                 <th style={{ padding: '4px 8px', textAlign: 'left' }}>{t('spb_colSessions')}</th>
                 <th style={{ padding: '4px 8px', textAlign: 'center' }}>{t('spb_colDetail')}</th>
               </tr>

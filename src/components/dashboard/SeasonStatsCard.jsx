@@ -35,7 +35,7 @@ export default function SeasonStatsCard({ log = [] }) {
     { val: stats.totalSessions, lbl: t('seasonSessions') || 'Sessions' },
     { val: stats.totalDistanceKm, lbl: `${t('seasonDistance') || 'Distance'} (km)` },
     { val: hours, lbl: t('seasonHours') || 'Hours' },
-    { val: stats.totalTSS, lbl: t('seasonTSS') || 'TSS' },
+    { val: stats.totalTSS, lbl: t('seasonTSS') || 'TSS', titleTip: 'Training Stress Score — accumulated season load' },
   ]
 
   return (
@@ -82,9 +82,10 @@ export default function SeasonStatsCard({ log = [] }) {
         flexWrap: 'wrap',
         marginBottom: '14px',
       }}>
-        {headlineStats.map(({ val, lbl }) => (
+        {headlineStats.map(({ val, lbl, titleTip }) => (
           <div
             key={lbl}
+            title={titleTip}
             style={{
               flex: '1 1 60px',
               background: 'var(--surface)',

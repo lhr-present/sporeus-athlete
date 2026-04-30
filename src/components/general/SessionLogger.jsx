@@ -156,6 +156,17 @@ export default function SessionLogger({
 
   function removeExercise(rowIdx) {
     setRows(r => r.filter((_, ri) => ri !== rowIdx))
+    // Re-key doneSets: drop the deleted row's entries and shift all subsequent row indices
+    setDoneSets(prev => {
+      const next = {}
+      for (const key of Object.keys(prev)) {
+        const [ri, si] = key.split('-').map(Number)
+        if (ri === rowIdx) continue          // deleted row — drop
+        const newRi = ri > rowIdx ? ri - 1 : ri
+        next[`${newRi}-${si}`] = prev[key]
+      }
+      return next
+    })
   }
 
   function handleSave() {
@@ -341,7 +352,8 @@ export default function SessionLogger({
             {/* Column headers */}
             <div style={{ display: 'grid', gridTemplateColumns: '32px 1fr 1fr 60px 32px 32px', gap: 6, marginBottom: rowIdx === 0 ? 2 : 4 }}>
               {['#', t('Reps','Tekrar'), t('kg','kg'), t('RIR','Yedek'), '', ''].map((h, i) => (
-                <span key={i} style={{ ...lbl, marginBottom: 0 }}>{h}</span>
+                <span key={i} style={{ ...lbl, marginBottom: 0 }}
+                  title={h === t('RIR','Yedek') ? 'Reps in reserve — reps remaining before failure' : undefined}>{h}</span>
               ))}
             </div>
             {rowIdx === 0 && (

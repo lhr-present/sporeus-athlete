@@ -293,12 +293,14 @@ export default function PlanGenerator({ onLogSession }) {
           <div style={{ flex:'1 1 180px' }}>
             <label style={S.label}>{t('planWeeksL')}: <strong>{weeks}</strong></label>
             <input type="range" min="4" max="24" value={weeks} onChange={e=>setWeeks(+e.target.value)}
+              title="Total plan duration: 4–24 weeks"
               style={{ width:'100%', accentColor:'#ff6600' }}/>
             <div style={{ display:'flex', justifyContent:'space-between', ...S.mono, fontSize:'9px', color:'#aaa' }}><span>4</span><span>24</span></div>
           </div>
           <div style={{ flex:'1 1 180px' }}>
             <label style={S.label}>{t('planHoursL')}: <strong>{hours}h</strong></label>
             <input type="range" min="3" max="15" value={hours} onChange={e=>setHours(+e.target.value)}
+              title="Average training hours available per week"
               style={{ width:'100%', accentColor:'#ff6600' }}/>
             <div style={{ display:'flex', justifyContent:'space-between', ...S.mono, fontSize:'9px', color:'#aaa' }}><span>3h</span><span>15h</span></div>
           </div>
@@ -308,6 +310,7 @@ export default function PlanGenerator({ onLogSession }) {
           <div style={{ display:'flex', gap:'8px' }}>
             {PLAN_LEVELS.map(lv=>(
               <button key={lv} onClick={()=>setLevel(lv)}
+                title={lv==='Beginner'?'0–2 years, up to 6h/week':lv==='Intermediate'?'2–5 years, 6–10h/week':'5+ years, 10h+ per week'}
                 style={{ ...S.navBtn(level===lv), borderRadius:'4px', fontSize:'11px', padding:'6px 14px' }}>{lv}</button>
             ))}
           </div>
@@ -484,7 +487,10 @@ export default function PlanGenerator({ onLogSession }) {
       )}
 
       {!plan && (
-        <div style={{ textAlign:'center', ...S.mono, fontSize:'12px', color:'#aaa', padding:'40px 0' }}>{t('noPlanYet')}</div>
+        <div style={{ textAlign:'center', ...S.mono, padding:'40px 0' }}>
+          <div style={{ fontSize:'12px', color:'#aaa', marginBottom:'14px' }}>{t('noPlanYet')}</div>
+          <button style={{ ...S.btn, fontSize:'12px' }} onClick={generate}>{t('genPlanBtn')}</button>
+        </div>
       )}
 
       <TaperCalculator />

@@ -155,8 +155,8 @@ export default function SearchPalette({ onNavigate, onToggleDark, onToggleLang, 
           return label.includes(term)
         })
         .slice(0, 20)
-        .map(e => ({
-          id:     `log-${e.date}-${e.tss}`,
+        .map((e, i) => ({
+          id:     `log-${e.date}-${i}`,
           name:   `${e.date} · ${e.type || 'Session'} · ${e.tss ?? 0} TSS`,
           desc:   e.notes || `RPE ${e.rpe ?? '—'} · ${Math.round((e.durationSec || 0) / 60)} min`,
           tab:    'log',

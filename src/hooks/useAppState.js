@@ -260,7 +260,7 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
       localStorage.setItem(FLAG_KEY, '1')
     } catch (e) { logger.warn('localStorage:', e.message) }
     const sevenAgo = new Date(now)
-    sevenAgo.setDate(sevenAgo.getDate() - 7)
+    sevenAgo.setUTCDate(sevenAgo.getUTCDate() - 7)
     const weekStr = sevenAgo.toISOString().slice(0, 10)
     const weekSessions = log.filter(e => e.date >= weekStr && e.date <= todayStr)
     if (weekSessions.length === 0) return

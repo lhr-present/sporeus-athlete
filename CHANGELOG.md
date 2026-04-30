@@ -4,6 +4,32 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.42.0 — 2026-04-30 — 12 more fixes + UX tooltips across 12 files, 5538 tests
+
+Timezone fixes:
+  SportProgramBuilder.jsx: plan entry dates setUTCDate (entries were 1 day early in UTC+)
+  SbAthletePanel.jsx: startDate default setUTCDate (+7 day offset was wrong)
+  useAppState.js: weekly digest sevenAgo.setUTCDate (7-day window was off in UTC+)
+
+Bug fixes:
+  SportProgramBuilder.jsx: O(n²) histogram max recomputed per bar → hoisted to O(n)
+  SessionLogger.jsx: doneSets state corrupts after exercise removal (row-index keys shifted)
+  Profile.jsx: row.action?.toUpperCase() crash on null audit_log action
+  SearchPalette.jsx: duplicate React key on same-date/same-TSS log entries → use array index
+  AthleteDetailPanel.jsx + PlanGenerator.jsx: fixes applied (read source for details)
+
+UX / tooltips:
+  SportProgramBuilder.jsx: TSS/CTL/ATL/TSB column headers + FTP label titles
+  SessionLogger.jsx: RIR bare header → title tooltip on rows 2+
+  Profile.jsx: 5 field tooltips (maxhr, ftp, vo2max, threshold, weeklyTssGoal)
+  BodyComp.jsx: neck/waist/hip measurement input tooltips
+  QuickAddModal.jsx: Turkish label typo fixes (MESAFe→MESAFE, KALp→KALP); notes placeholder
+  LoadProjectorCard.jsx: CTL/TSB legend tooltips (5 locations)
+  SeasonStatsCard.jsx: TSS headline tooltip
+
+5538 tests — all pass.
+DEPENDS ON: v8.41.0
+
 ## v8.41.0 — 2026-04-30 — 31 bug fixes across 10 components (timezone, crashes, UX), 5538 tests
 
 InjuryTracker.jsx: 2× cutoff.setUTCDate (14-day window was off-by-one in UTC+ timezones)

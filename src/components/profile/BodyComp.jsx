@@ -43,16 +43,16 @@ export default function BodyComp({ profile, setProfile }) {
         </div>
         <div style={{ flex:'1 1 100px' }}>
           <label style={S.label}>{t('neckL')}</label>
-          <input style={S.input} type="number" placeholder="37" value={neck} onChange={e=>setNeck(e.target.value)}/>
+          <input style={S.input} type="number" placeholder="37" title="Circumference at narrowest point of neck (cm)" value={neck} onChange={e=>setNeck(e.target.value)}/>
         </div>
         <div style={{ flex:'1 1 100px' }}>
           <label style={S.label}>{t('waistL')}</label>
-          <input style={S.input} type="number" placeholder="82" value={waist} onChange={e=>setWaist(e.target.value)}/>
+          <input style={S.input} type="number" placeholder="82" title="Circumference at navel level (cm)" value={waist} onChange={e=>setWaist(e.target.value)}/>
         </div>
         {gender==='female' && (
           <div style={{ flex:'1 1 100px' }}>
             <label style={S.label}>{t('hipL')}</label>
-            <input style={S.input} type="number" placeholder="98" value={hip} onChange={e=>setHip(e.target.value)}/>
+            <input style={S.input} type="number" placeholder="98" title="Circumference at widest point of hips (cm)" value={hip} onChange={e=>setHip(e.target.value)}/>
           </div>
         )}
       </div>

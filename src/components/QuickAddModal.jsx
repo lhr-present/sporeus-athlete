@@ -436,7 +436,7 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
               <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '9px', color: '#888', letterSpacing: '0.08em', marginBottom: '5px' }}>
-                    {isTR ? 'MESAFe (km)' : 'DISTANCE (km)'}
+                    {isTR ? 'MESAFE (km)' : 'DISTANCE (km)'}
                     <span style={{ color: '#444', fontWeight: 400, marginLeft: '4px', textTransform: 'none', letterSpacing: 0 }}>
                       {isTR ? 'isteğe bağlı' : 'optional'}
                     </span>
@@ -450,7 +450,7 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '9px', color: '#888', letterSpacing: '0.08em', marginBottom: '5px' }}>
-                    {isTR ? 'ORT. KALp (bpm)' : 'AVG HR (bpm)'}
+                    {isTR ? 'ORT. KALP (bpm)' : 'AVG HR (bpm)'}
                     <span style={{ color: '#444', fontWeight: 400, marginLeft: '4px', textTransform: 'none', letterSpacing: 0 }}>
                       {isTR ? 'isteğe bağlı' : 'optional'}
                     </span>
@@ -537,6 +537,7 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
                     value={notes}
                     onChange={e => setNotes(e.target.value)}
                     maxLength={200}
+                    placeholder={isTR ? 'Antrenman notları (isteğe bağlı)' : 'Optional session notes'}
                     style={{ ...S.input, flex: 1 }}
                   />
                   {(typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition)) && (

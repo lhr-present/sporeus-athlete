@@ -102,11 +102,11 @@ export default function LoadProjectorCard({ log }) {
 
       {/* Current state row: CTL + TSB badge */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', flexWrap: 'wrap' }}>
-        <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '11px', color: '#888' }}>
+        <div title="Chronic Training Load — 42-day fitness base" style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '11px', color: '#888' }}>
           CTL{' '}
           <span style={{ fontWeight: 700, color: '#ff6600', fontSize: '14px' }}>{currentCTL}</span>
         </div>
-        <span style={{
+        <span title="Training Stress Balance — freshness (CTL minus ATL)" style={{
           fontFamily: 'IBM Plex Mono, monospace',
           fontSize: '9px',
           fontWeight: 700,
@@ -186,15 +186,15 @@ export default function LoadProjectorCard({ log }) {
       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '6px', marginBottom: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <svg width="18" height="4"><line x1="0" y1="2" x2="18" y2="2" stroke="#0064ff" strokeWidth="1.5"/></svg>
-          <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '8px', color: '#888' }}>CTL</span>
+          <span title="Chronic Training Load — 42-day fitness base" style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '8px', color: '#888' }}>CTL</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <svg width="18" height="4"><line x1="0" y1="2" x2="18" y2="2" stroke="#0064ff" strokeWidth="1" strokeDasharray="4 2" opacity={0.5}/></svg>
-          <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '8px', color: '#888' }}>CTL +10%</span>
+          <span title="Chronic Training Load projected at +10% weekly load" style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '8px', color: '#888' }}>CTL +10%</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <svg width="18" height="4"><line x1="0" y1="2" x2="18" y2="2" stroke="#f5c542" strokeWidth="1.2" strokeDasharray="2 2"/></svg>
-          <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '8px', color: '#888' }}>TSB</span>
+          <span title="Training Stress Balance — freshness (CTL minus ATL)" style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '8px', color: '#888' }}>TSB</span>
         </div>
       </div>
 
