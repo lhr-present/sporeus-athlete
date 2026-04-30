@@ -29,6 +29,19 @@ describe('weekMonday', () => {
   it('returns Monday for a Sunday', () => {
     expect(weekMonday('2024-01-07')).toBe('2024-01-01') // Sun → Mon
   })
+
+  it('returns Monday for a Saturday', () => {
+    expect(weekMonday('2024-01-06')).toBe('2024-01-01') // Sat → Mon
+  })
+
+  it('returns Monday for a Tuesday', () => {
+    expect(weekMonday('2024-01-02')).toBe('2024-01-01') // Tue → Mon
+  })
+
+  it('works across month boundaries (Saturday → previous month Monday)', () => {
+    // 2024-03-02 is a Saturday; ISO Monday of that week is 2024-02-26
+    expect(weekMonday('2024-03-02')).toBe('2024-02-26')
+  })
 })
 
 // ─── Empty log ───────────────────────────────────────────────────────────────
@@ -229,6 +242,105 @@ describe('computeSeasonStats — duration normalization', () => {
     const log = [makeEntry('2024-05-02', { duration: 90 })] // 90 min
     const result = computeSeasonStats(log, 2024)
     expect(result.totalDurationMin).toBe(90)
+  })
+})
+
+// ─── activeWeeks ─────────────────────────────────────────────────────────────
+describe('computeSeasonStats — activeWeeks', () => {
+  it('counts only weeks that contain at least one session', () => {
+    const log = [
+      makeEntry('2024-01-01'), // week of 2024-01-01
+      makeEntry('2024-01-02'), // same week
+      makeEntry('2024-01-08'), // week of 2024-01-08
+      makeEntry('2024-01-22'), // week of 2024-01-22 (skip 2024-01-15)
+    ]
+    const result = computeSeasonStats(log, 2024)
+    expect(result.activeWeeks).toBe(3)
+  })
+
+  it('returns 1 activeWeek when all sessions fall in the same week', () => {
+    const log = [
+      makeEntry('2024-02-05'), // Mon
+      makeEntry('2024-02-06'), // Tue
+      makeEntry('2024-02-07'), // Wed
+    ]
+    const result = computeSeasonStats(log, 2024)
+    expect(result.activeWeeks).toBe(1)
+  })
+})
+
+// ─── totalSessions / totalDistanceKm / totalDurationMin / totalTSS ───────────
+describe('computeSeasonStats — aggregate totals', () => {
+  it('sums totalSessions correctly', () => {
+    const log = [
+      makeEntry('2024-06-01', { tss: 100 }),
+      makeEntry('2024-06-02', { tss: 120 }),
+      makeEntry('2024-06-03', { tss: 80 }),
+    ]
+    const result = computeSeasonStats(log, 2024)
+    expect(result.totalSessions).toBe(3)
+  })
+
+  it('sums totalTSS correctly', () => {
+    const log = [
+      makeEntry('2024-06-01', { tss: 100 }),
+      makeEntry('2024-06-02', { tss: 120 }),
+      makeEntry('2024-06-03', { tss: 80 }),
+    ]
+    const result = computeSeasonStats(log, 2024)
+    expect(result.totalTSS).toBe(300)
+  })
+
+  it('sums totalDistanceKm from metre entries', () => {
+    const log = [
+      makeEntry('2024-07-01', { distance: 10000 }), // 10 km
+      makeEntry('2024-07-02', { distance: 5000 }),  // 5 km
+    ]
+    const result = computeSeasonStats(log, 2024)
+    expect(result.totalDistanceKm).toBeCloseTo(15, 0)
+  })
+
+  it('sums totalDurationMin from second entries', () => {
+    const log = [
+      makeEntry('2024-08-01', { duration: 3600 }), // 3600s = 60min
+      makeEntry('2024-08-02', { duration: 1800 }), // 1800s = 30min
+    ]
+    const result = computeSeasonStats(log, 2024)
+    expect(result.totalDurationMin).toBe(90)
+  })
+
+  it('handles missing tss field (defaults to 0)', () => {
+    const log = [
+      { date: '2024-09-01', sport: 'running', distance: 5000, duration: 30 },
+    ]
+    const result = computeSeasonStats(log, 2024)
+    expect(result.totalTSS).toBe(0)
+    expect(result.totalSessions).toBe(1)
+  })
+})
+
+// ─── sport_type field alias ───────────────────────────────────────────────────
+describe('computeSeasonStats — sport_type alias', () => {
+  it('uses sport_type when sport is absent', () => {
+    const log = [
+      { date: '2024-04-10', sport_type: 'cycling', distance: 20000, duration: 60, tss: 90 },
+    ]
+    const result = computeSeasonStats(log, 2024)
+    expect(result.sportBreakdown[0].sport).toBe('cycling')
+  })
+})
+
+// ─── totalWeeks for past year ─────────────────────────────────────────────────
+describe('computeSeasonStats — totalWeeks', () => {
+  it('returns 52 for a fully elapsed past year', () => {
+    const log = [makeEntry('2023-06-15')]
+    const result = computeSeasonStats(log, 2023)
+    expect(result.totalWeeks).toBe(52)
+  })
+
+  it('empty log for past year also returns 52 totalWeeks', () => {
+    const result = computeSeasonStats([], 2023)
+    expect(result.totalWeeks).toBe(52)
   })
 })
 

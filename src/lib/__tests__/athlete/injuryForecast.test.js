@@ -60,12 +60,32 @@ describe('riskBand', () => {
   it('returns high for score 100', () => {
     expect(riskBand(100)).toBe('high')
   })
+
+  it('returns low for score 15 (interior low)', () => {
+    expect(riskBand(15)).toBe('low')
+  })
+
+  it('returns moderate for score 45 (interior moderate)', () => {
+    expect(riskBand(45)).toBe('moderate')
+  })
+
+  it('returns high for score 80 (interior high)', () => {
+    expect(riskBand(80)).toBe('high')
+  })
 })
 
 // ─── 2. injuryRiskHistory ────────────────────────────────────────────────────
 describe('injuryRiskHistory', () => {
   it('returns [] for empty log', () => {
     expect(injuryRiskHistory([], [], 8, TODAY)).toEqual([])
+  })
+
+  it('returns [] for null log (default parameter)', () => {
+    expect(injuryRiskHistory(null, [], 8, TODAY)).toEqual([])
+  })
+
+  it('returns [] for undefined log (default parameter)', () => {
+    expect(injuryRiskHistory(undefined, [], 8, TODAY)).toEqual([])
   })
 
   it('returns [] for log < 7 days', () => {
@@ -158,6 +178,36 @@ describe('projectInjuryRisk', () => {
       expect(entry.isoWeek).toMatch(isoWeekPattern)
     }
   })
+
+  it('returns [] for null log', () => {
+    expect(projectInjuryRisk(null, [], 4, TODAY)).toEqual([])
+  })
+
+  it('returns [] for undefined log', () => {
+    expect(projectInjuryRisk(undefined, [], 4, TODAY)).toEqual([])
+  })
+
+  it('band values are valid in projected entries', () => {
+    const result = projectInjuryRisk(LOG60, [], 4, TODAY)
+    const validBands = new Set(['low', 'moderate', 'high'])
+    for (const entry of result) {
+      expect(validBands.has(entry.band)).toBe(true)
+    }
+  })
+
+  it('scores are numbers in range 0–100 for projected entries', () => {
+    const result = projectInjuryRisk(LOG60, [], 4, TODAY)
+    for (const entry of result) {
+      expect(typeof entry.score).toBe('number')
+      expect(entry.score).toBeGreaterThanOrEqual(0)
+      expect(entry.score).toBeLessThanOrEqual(100)
+    }
+  })
+
+  it('respects custom forwardWeeks count', () => {
+    const result = projectInjuryRisk(LOG60, [], 2, TODAY)
+    expect(result).toHaveLength(2)
+  })
 })
 
 // ─── 4. computeInjuryForecast ────────────────────────────────────────────────
@@ -200,5 +250,29 @@ describe('computeInjuryForecast', () => {
       expect(result.topFactor).toHaveProperty('label')
       expect(result.topFactor).toHaveProperty('severity')
     }
+  })
+
+  it('returns null for null log', () => {
+    expect(computeInjuryForecast(null, [], TODAY)).toBeNull()
+  })
+
+  it('history entries all have valid band values', () => {
+    const result = computeInjuryForecast(LOG60, [], TODAY)
+    const validBands = new Set(['low', 'moderate', 'high'])
+    for (const entry of result.history) {
+      expect(validBands.has(entry.band)).toBe(true)
+    }
+  })
+
+  it('forecast entries all have projected: true', () => {
+    const result = computeInjuryForecast(LOG60, [], TODAY)
+    for (const entry of result.forecast) {
+      expect(entry.projected).toBe(true)
+    }
+  })
+
+  it('INJURY_RISK_CITATION is a non-empty string', () => {
+    expect(typeof INJURY_RISK_CITATION).toBe('string')
+    expect(INJURY_RISK_CITATION.length).toBeGreaterThan(0)
   })
 })

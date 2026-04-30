@@ -94,7 +94,7 @@ export function injuryRiskHistory(
   weeks = 8,
   today = new Date().toISOString().slice(0, 10),
 ) {
-  if (log.length < 7) return []
+  if (!log || log.length < 7) return []
 
   const todayDate = new Date(today + 'T00:00:00')
   const results = []
@@ -143,7 +143,7 @@ export function projectInjuryRisk(
   forwardWeeks = 4,
   today = new Date().toISOString().slice(0, 10),
 ) {
-  if (log.length < 14) return []
+  if (!log || log.length < 14) return []
 
   const todayDate = new Date(today + 'T00:00:00')
 
@@ -223,7 +223,7 @@ export function computeInjuryForecast(
   recovery = [],
   today = new Date().toISOString().slice(0, 10),
 ) {
-  if (log.length < 7) return null
+  if (!log || log.length < 7) return null
 
   const history = injuryRiskHistory(log, recovery, 8, today)
   const forecast = projectInjuryRisk(log, recovery, 4, today)

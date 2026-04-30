@@ -17,6 +17,13 @@ describe('weekStart', () => {
   it('Saturday maps to Monday', () => {
     expect(weekStart('2024-04-20')).toBe('2024-04-15')
   })
+  it('Tuesday maps to Monday', () => {
+    expect(weekStart('2024-04-16')).toBe('2024-04-15')
+  })
+  it('different week — Friday maps to that week Monday', () => {
+    // 2024-01-05 is a Friday; Monday of that week is 2024-01-01
+    expect(weekStart('2024-01-05')).toBe('2024-01-01')
+  })
 })
 
 // ── computeMaxStreak ───────────────────────────────────────────────────────
@@ -49,12 +56,24 @@ describe('detectPRs guards', () => {
   it('returns [] for null session', () => {
     expect(detectPRs(null, [])).toEqual([])
   })
+  it('returns [] for undefined session', () => {
+    expect(detectPRs(undefined, [])).toEqual([])
+  })
   it('returns [] for session without date', () => {
     expect(detectPRs({ duration: 60, tss: 100 }, [])).toEqual([])
   })
   it('returns [] when no metrics qualify', () => {
     // duration < 30 min minimum, tss=0
     expect(detectPRs({ date: '2024-06-01', duration: 10, tss: 0 }, [])).toEqual([])
+  })
+  it('prior log filters out sessions on or after current date', () => {
+    // A session with the same date as the new session should NOT count as prior
+    const future = [{ date: '2024-06-01', duration: 200, tss: 999 }]
+    const prs = detectPRs({ date: '2024-06-01', duration: 120, tss: 150 }, future)
+    // The future/same-date entry must NOT block the PR
+    const pr = prs.find(p => p.category === 'longest_session')
+    expect(pr).toBeDefined()
+    expect(pr.value).toBe(120)
   })
 })
 
@@ -137,6 +156,17 @@ describe('highest_tss PR', () => {
     const prior = [{ date: '2024-05-01', duration: 60, tss: 100 }]
     const prs = detectPRs({ ...base, tss: 100 }, prior)
     expect(prs.find(p => p.category === 'highest_tss')).toBeUndefined()
+  })
+
+  it('bilingual strings present for highest_tss PR', () => {
+    const prs = detectPRs({ ...base, tss: 180 }, [])
+    const pr = prs.find(p => p.category === 'highest_tss')
+    expect(pr.en).toContain('180')
+    expect(pr.tr).toContain('180')
+  })
+
+  it('default priorLog is empty array — no throw without second arg', () => {
+    expect(() => detectPRs({ date: '2024-06-01', duration: 60, tss: 100 })).not.toThrow()
   })
 })
 

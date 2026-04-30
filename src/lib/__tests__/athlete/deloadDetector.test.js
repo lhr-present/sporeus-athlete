@@ -97,4 +97,62 @@ describe('detectDeloadNeed', () => {
       expect(typeof r.needsDeload).toBe('boolean')
     }
   })
+
+  it('result always has needsDeload, weeksBuilding, lastDeloadWeek keys when not null', () => {
+    const log = makeWeeklyLog(4, 100)
+    const r = detectDeloadNeed(log, '2026-04-28')
+    expect(r).toHaveProperty('needsDeload')
+    expect(r).toHaveProperty('weeksBuilding')
+    expect(r).toHaveProperty('lastDeloadWeek')
+  })
+
+  it('result always has en and tr string keys when not null', () => {
+    const log = makeWeeklyLog(4, 100)
+    const r = detectDeloadNeed(log, '2026-04-28')
+    expect(r).toHaveProperty('en')
+    expect(r).toHaveProperty('tr')
+    expect(typeof r.en).toBe('string')
+    expect(typeof r.tr).toBe('string')
+  })
+
+  it('lastDeloadWeek is null or a YYYY-MM-DD string', () => {
+    const log = makeWeeklyLog(5, 120)
+    const r = detectDeloadNeed(log, '2026-04-28')
+    if (r !== null && r.lastDeloadWeek !== null) {
+      expect(r.lastDeloadWeek).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    }
+  })
+
+  it('weeksBuilding is never negative', () => {
+    const log = makeWeeklyLog(5, 120)
+    const r = detectDeloadNeed(log, '2026-04-28')
+    if (r !== null) {
+      expect(r.weeksBuilding).toBeGreaterThanOrEqual(0)
+    }
+  })
+
+  it('needsDeload is false when only 3 completed weeks of equal load', () => {
+    const log = makeWeeklyLog(3, 100)
+    const r = detectDeloadNeed(log, '2026-04-28')
+    // 3 equal-TSS weeks → weeksBuilding will be 0 or 1 (CTL barely moves), weeksWithoutDeload = 3
+    if (r !== null) {
+      expect(r.needsDeload).toBe(false)
+    }
+  })
+
+  it('needsDeload true → en string mentions weeksBuilding count', () => {
+    const log = makeWeeklyLog(5, 120)
+    const r = detectDeloadNeed(log, '2026-04-28')
+    if (r?.needsDeload) {
+      expect(r.en).toContain(String(r.weeksBuilding))
+    }
+  })
+
+  it('needsDeload true → tr string mentions weeksBuilding count', () => {
+    const log = makeWeeklyLog(5, 120)
+    const r = detectDeloadNeed(log, '2026-04-28')
+    if (r?.needsDeload) {
+      expect(r.tr).toContain(String(r.weeksBuilding))
+    }
+  })
 })

@@ -4,6 +4,21 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.38.0 — 2026-04-30 — Test coverage wave: 9 athlete modules, 5273 tests
+
+injuryForecast.js: null guard on log param for all 3 exported functions (riskBand, injuryRiskHistory, projectInjuryRisk/computeInjuryForecast) — JS default params don't activate on explicit null.
+New/expanded test suites:
+  injuryForecast.test.js: 41 tests (riskBand thresholds, history, forecast, null safety)
+  detectPRs.test.js: 46 tests (weekStart, longest_session, highest_tss, weekly_tss, streak, prior-only filter)
+  raceGoalEngine.test.js: 89 tests (parseMmSs, analyzeRaceGoal null guards, 10K/5K/marathon/HM scenarios, checkpoints, phases TSS ordering)
+  consistencyTrend.test.js: 45 tests (classifyConsistency, consistencyHistory, consistencyTrendSlope, computeConsistencyTrend)
+  paceZoneTranslator.test.js: 71 tests (translatePaceZone all 20 fields, HR range math, pace ordering, translateAllZones edge cases)
+  seasonStats.test.js: 35 tests (weekMonday, computeSeasonStats totals/streak/bestWeek/sportBreakdown/topSportByVolume)
+  monthlyProgress.test.js: 23 tests (window guard, data shape, year boundary, avgRPE edge cases)
+  deloadDetector.test.js: expanded to 15 tests (shape keys, weeksBuilding, needsDeload threshold)
+5273 tests — all pass.
+DEPENDS ON: v8.37.0
+
 ## v8.37.0 — 2026-04-30 — UTC timezone sweep, null guards, progressive overload, 5115 tests
 
 setHours→setUTCHours across 17 lib+component files — fixes date-window off-by-one in UTC+3.
