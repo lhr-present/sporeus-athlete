@@ -16,7 +16,7 @@ export function parseRHR(entry) {
 // Last N entries with sleep data, sorted by date ascending
 export function sleepHistory(recovery, days = 28) {
   const cutoff = new Date()
-  cutoff.setDate(cutoff.getDate() - days)
+  cutoff.setUTCDate(cutoff.getUTCDate() - days)
   const cutStr = cutoff.toISOString().slice(0, 10)
   return (recovery || [])
     .filter(e => e.date >= cutStr && parseSleepHrs(e) !== null)
@@ -26,7 +26,7 @@ export function sleepHistory(recovery, days = 28) {
 // Last N entries with RHR data, sorted by date ascending
 export function rhrHistory(recovery, days = 28) {
   const cutoff = new Date()
-  cutoff.setDate(cutoff.getDate() - days)
+  cutoff.setUTCDate(cutoff.getUTCDate() - days)
   const cutStr = cutoff.toISOString().slice(0, 10)
   return (recovery || [])
     .filter(e => e.date >= cutStr && parseRHR(e) !== null)

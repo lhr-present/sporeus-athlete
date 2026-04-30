@@ -48,7 +48,7 @@ export function findRecentResult(log, type, distanceM = null) {
 export function sessionFrequencyPerWeek(log, weeks = 4) {
   if (!log || log.length === 0) return 0
   const cutoff = new Date()
-  cutoff.setDate(cutoff.getDate() - weeks * 7)
+  cutoff.setUTCDate(cutoff.getUTCDate() - weeks * 7)
   const cutoffStr = cutoff.toISOString().slice(0, 10)
   const recent = log.filter(e => e && e.date && e.date >= cutoffStr)
   return Math.round((recent.length / weeks) * 10) / 10

@@ -54,8 +54,8 @@ export function consistencyCard(log, asOf) {
   if (!Array.isArray(log) || log.length < 4 || !asOf) return null
 
   const ref = new Date(asOf)
-  const cutRecent = new Date(ref); cutRecent.setDate(ref.getDate() - 28)
-  const cutPrior  = new Date(ref); cutPrior.setDate(ref.getDate() - 56)
+  const cutRecent = new Date(ref); cutRecent.setUTCDate(ref.getUTCDate() - 28)
+  const cutPrior  = new Date(ref); cutPrior.setUTCDate(ref.getUTCDate() - 56)
 
   const recent = log.filter(s => s.date >= cutRecent.toISOString().slice(0,10) && s.date <= asOf).length
   const prior  = log.filter(s => s.date >= cutPrior.toISOString().slice(0,10)  && s.date < cutRecent.toISOString().slice(0,10)).length

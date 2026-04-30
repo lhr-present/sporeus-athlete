@@ -26,8 +26,15 @@ export default function SeasonStatsCard({ log = [] }) {
     [log, selectedYear]
   )
 
-  // Return null if no sessions
-  if (stats.totalSessions === 0) return null
+  // Return empty state if no sessions
+  if (stats.totalSessions === 0) {
+    const MONO = "'IBM Plex Mono', monospace"
+    return (
+      <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+        Log sessions to view your season statistics.<br /><span style={{ fontSize: '9px' }}>Sezon istatistiklerini görmek için antrenman kaydet.</span>
+      </div>
+    )
+  }
 
   const hours = (stats.totalDurationMin / 60).toFixed(1)
 

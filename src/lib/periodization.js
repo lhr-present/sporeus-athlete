@@ -62,16 +62,16 @@ export function buildYearlyPlan(params) {
 
   // Normalize startDate to Monday of that week
   const startD    = new Date(startDate)
-  const dow       = startD.getDay() || 7   // 1=Mon … 7=Sun
+  const dow       = startD.getUTCDay() || 7   // 1=Mon … 7=Sun
   const monday    = new Date(startD)
-  monday.setDate(startD.getDate() - (dow - 1))
+  monday.setUTCDate(startD.getUTCDate() - (dow - 1))
   monday.setUTCHours(0, 0, 0, 0)
 
   // Generate 52 week skeletons
   const weeks = []
   for (let w = 0; w < 52; w++) {
     const ws = new Date(monday)
-    ws.setDate(monday.getDate() + w * 7)
+    ws.setUTCDate(monday.getUTCDate() + w * 7)
     weeks.push({
       weekStart:        ws.toISOString().slice(0, 10),
       weekNum:          w + 1,
@@ -97,7 +97,7 @@ export function buildYearlyPlan(params) {
     for (let w = 0; w < 52; w++) {
       const ws = new Date(weeks[w].weekStart)
       const we = new Date(ws)
-      we.setDate(ws.getDate() + 6)
+      we.setUTCDate(ws.getUTCDate() + 6)
       if (rd >= ws && rd <= we) {
         const existing = raceWeekMap.get(w)
         if (!existing || PRANK[race.priority] < PRANK[existing.priority]) {

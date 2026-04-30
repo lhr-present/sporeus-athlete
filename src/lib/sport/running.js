@@ -167,7 +167,7 @@ export function raceReadiness({ recentLog = [], targetDistanceM = 10000, peakWee
   // 1. Volume adequacy: last 4 weeks vs peak week
   const recent4w = recentLog.filter(e => {
     const d = new Date(e.date)
-    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 28)
+    const cutoff = new Date(); cutoff.setUTCDate(cutoff.getUTCDate() - 28)
     return d >= cutoff && (e.type === 'Run' || e.source === 'strava')
   })
   const totalRecentM = recent4w.reduce((s, e) => s + (e.distanceM || 0), 0)
@@ -184,7 +184,7 @@ export function raceReadiness({ recentLog = [], targetDistanceM = 10000, peakWee
   if (daysToRace <= 14 && daysToRace > 0) {
     const lastWeek = recentLog.filter(e => {
       const d = new Date(e.date)
-      const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 7)
+      const cutoff = new Date(); cutoff.setUTCDate(cutoff.getUTCDate() - 7)
       return d >= cutoff
     })
     const lastWeekM = lastWeek.reduce((s, e) => s + (e.distanceM || 0), 0)
@@ -196,7 +196,7 @@ export function raceReadiness({ recentLog = [], targetDistanceM = 10000, peakWee
   // 3. Race-specific workouts: check for tempo/interval sessions in last 6 weeks
   const sixWeek = recentLog.filter(e => {
     const d = new Date(e.date)
-    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 42)
+    const cutoff = new Date(); cutoff.setUTCDate(cutoff.getUTCDate() - 42)
     return d >= cutoff
   })
   const tempoCount = sixWeek.filter(e => e.rpe >= 7).length

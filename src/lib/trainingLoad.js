@@ -31,17 +31,17 @@ export function calculatePMC(log, daysBack = 90, daysFuture = 30) {
   today.setUTCHours(0, 0, 0, 0)
 
   const primeStart  = new Date(today)
-  primeStart.setDate(primeStart.getDate() - daysBack - 180)
+  primeStart.setUTCDate(primeStart.getUTCDate() - daysBack - 180)
   // windowStart = today − (daysBack−1) so that daysBack+daysFuture total points are returned
   const windowStart = new Date(today)
-  windowStart.setDate(windowStart.getDate() - (daysBack - 1))
+  windowStart.setUTCDate(windowStart.getUTCDate() - (daysBack - 1))
   const windowEnd   = new Date(today)
-  windowEnd.setDate(windowEnd.getDate() + daysFuture)
+  windowEnd.setUTCDate(windowEnd.getUTCDate() + daysFuture)
 
   let ctl = 0, atl = 0
   const points = []
 
-  for (let d = new Date(primeStart); d <= windowEnd; d.setDate(d.getDate() + 1)) {
+  for (let d = new Date(primeStart); d <= windowEnd; d.setUTCDate(d.getUTCDate() + 1)) {
     const ds  = d.toISOString().slice(0, 10)
     const tss = byDate[ds] || 0
     const prevCTL = ctl
@@ -97,7 +97,7 @@ export function calculateACWR(log) {
   let atl = 0, ctl = 0
   for (let i = 27; i >= 0; i--) {
     const d = new Date(now)
-    d.setDate(d.getDate() - i)
+    d.setUTCDate(d.getUTCDate() - i)
     const key = d.toISOString().slice(0, 10)
     const tss = tssMap[key] || 0
     atl = λ_ACUTE   * tss + (1 - λ_ACUTE)   * atl
@@ -149,7 +149,7 @@ function impulseAt(byDate, targetDateStr) {
   const start  = new Date(sortedDays[0])
   const target = new Date(targetDateStr)
   let g = 0, h = 0
-  for (let d = new Date(start); d <= target; d.setDate(d.getDate() + 1)) {
+  for (let d = new Date(start); d <= target; d.setUTCDate(d.getUTCDate() + 1)) {
     const tss = byDate[d.toISOString().slice(0, 10)] || 0
     g = g * DECAY_G + tss
     h = h * DECAY_H + tss
@@ -253,7 +253,7 @@ export function fitBanister(log, testResults) {
 export function calculateConsistency(log, days = 28) {
   if (!log || log.length === 0) return null
   const cutoff = new Date()
-  cutoff.setDate(cutoff.getDate() - days)
+  cutoff.setUTCDate(cutoff.getUTCDate() - days)
   const cutoffStr = cutoff.toISOString().slice(0, 10)
   const recent = log.filter(e => e.date >= cutoffStr)
   if (recent.length === 0) return null
@@ -267,7 +267,7 @@ export function calculateConsistency(log, days = 28) {
 
   for (let i = 0; i < days; i++) {
     const d = new Date()
-    d.setDate(d.getDate() - i)
+    d.setUTCDate(d.getUTCDate() - i)
     const ds = d.toISOString().slice(0, 10)
     if (!sessionDates.has(ds)) {
       gapCount++
@@ -321,7 +321,7 @@ export function predictBanister(log, fit, planned = [], days = 90) {
   let g = 0, h = 0
   if (sortedDays.length) {
     const start = new Date(sortedDays[0])
-    for (let d = new Date(start); d <= today; d.setDate(d.getDate() + 1)) {
+    for (let d = new Date(start); d <= today; d.setUTCDate(d.getUTCDate() + 1)) {
       const tss = byDate[d.toISOString().slice(0, 10)] || 0
       g = g * DECAY_G + tss
       h = h * DECAY_H + tss
@@ -331,7 +331,7 @@ export function predictBanister(log, fit, planned = [], days = 90) {
   const out = []
   for (let i = 1; i <= days; i++) {
     const d  = new Date(today)
-    d.setDate(d.getDate() + i)
+    d.setUTCDate(d.getUTCDate() + i)
     const ds = d.toISOString().slice(0, 10)
     const tss = byDate[ds] || 0
     g = g * DECAY_G + tss
@@ -354,11 +354,11 @@ export function predictBanister(log, fit, planned = [], days = 90) {
 export function generateWeeklyRecap(log) {
   if (!log || log.length < 7) return null
   const now = new Date()
-  if (now.getDay() !== 1) return null // 1 = Monday
+  if (now.getUTCDay() !== 1) return null // 1 = Monday
 
   // Last 7 days = last week
   const weekStart = new Date(now)
-  weekStart.setDate(weekStart.getDate() - 7)
+  weekStart.setUTCDate(weekStart.getUTCDate() - 7)
   const weekStartStr = weekStart.toISOString().slice(0, 10)
   const todayStr = now.toISOString().slice(0, 10)
 
@@ -394,7 +394,7 @@ export function generateWeeklyRecap(log) {
 
   // Compare to 28-day average (4 prior weeks)
   const fourWeeksAgo = new Date(weekStart)
-  fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28)
+  fourWeeksAgo.setUTCDate(fourWeeksAgo.getUTCDate() - 28)
   const prior28 = log.filter(e => e.date >= fourWeeksAgo.toISOString().slice(0, 10) && e.date < weekStartStr)
   const avgWeeklyTSS = prior28.length > 0 ? prior28.reduce((s, e) => s + (e.tss || 0), 0) / 4 : null
   const avgWeeklySessions = prior28.length > 0 ? prior28.length / 4 : null
@@ -402,8 +402,8 @@ export function generateWeeklyRecap(log) {
   const sessionRatio = avgWeeklySessions && avgWeeklySessions > 0 ? Math.round((sessions / avgWeeklySessions) * 100) / 100 : null
 
   // ISO week number for dismiss key
-  const jan1 = new Date(now.getFullYear(), 0, 1)
-  const weekNum = Math.ceil(((now - jan1) / 86400000 + jan1.getDay() + 1) / 7)
+  const jan1 = new Date(Date.UTC(now.getUTCFullYear(), 0, 1))
+  const weekNum = Math.ceil(((now - jan1) / 86400000 + jan1.getUTCDay() + 1) / 7)
   const weekLabel = `WK ${weekNum}`
 
   return {
@@ -449,16 +449,16 @@ export function computeMonotony(log, asOf = new Date()) {
   }
 
   const localDate = (d) => {
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
+    const y = d.getUTCFullYear()
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+    const day = String(d.getUTCDate()).padStart(2, '0')
     return `${y}-${m}-${day}`
   }
 
   const dailyTSS = []
   for (let i = 6; i >= 0; i--) {
     const d = new Date(ref)
-    d.setDate(d.getDate() - i)
+    d.setUTCDate(d.getUTCDate() - i)
     dailyTSS.push(tssMap[localDate(d)] || 0)
   }
 

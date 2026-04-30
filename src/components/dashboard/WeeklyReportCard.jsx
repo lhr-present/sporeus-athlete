@@ -5,7 +5,14 @@ import { monotonyStrain } from '../../lib/formulas.js'
 export default function WeeklyReportCard({ last7, totalMin, totalTSS, avgRPE, recovery, plan, planStatus, rangeLabel }) {
   const [reportVisible, setReportVisible] = useState(false)
 
-  if (!last7.length) return null
+  if (!last7.length) {
+    const MONO = "'IBM Plex Mono', monospace"
+    return (
+      <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+        Log sessions this week to view your weekly report.<br /><span style={{ fontSize: '9px' }}>Haftalık raporu görmek için bu hafta antrenman kaydet.</span>
+      </div>
+    )
+  }
 
   const recLast7 = recovery.filter(e => {
     const d = new Date(e.date), cutoff = new Date(); cutoff.setUTCDate(cutoff.getUTCDate() - 7)

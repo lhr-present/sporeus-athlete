@@ -11,7 +11,7 @@ const K_CTL = 2 / (42 + 1)
 
 function dateAddDays(isoDate, days) {
   const d = new Date(isoDate)
-  d.setDate(d.getDate() + days)
+  d.setUTCDate(d.getUTCDate() + days)
   return d.toISOString().slice(0, 10)
 }
 

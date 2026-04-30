@@ -22,7 +22,7 @@ function computeCTL(log) {
   const now = new Date(); now.setUTCHours(0, 0, 0, 0)
   let ctl = 0
   for (let i = 41; i >= 0; i--) {
-    const d = new Date(now); d.setDate(d.getDate() - i)
+    const d = new Date(now); d.setUTCDate(d.getUTCDate() - i)
     const tss = tssMap[d.toISOString().slice(0, 10)] || 0
     ctl = LAMBDA_CHRONIC * tss + (1 - LAMBDA_CHRONIC) * ctl
   }
@@ -34,7 +34,7 @@ function computeATL(log) {
   const now = new Date(); now.setUTCHours(0, 0, 0, 0)
   let atl = 0
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(now); d.setDate(d.getDate() - i)
+    const d = new Date(now); d.setUTCDate(d.getUTCDate() - i)
     const tss = tssMap[d.toISOString().slice(0, 10)] || 0
     atl = LAMBDA_ACUTE * tss + (1 - LAMBDA_ACUTE) * atl
   }
@@ -46,7 +46,7 @@ function computeACWR(log) {
   const now = new Date(); now.setUTCHours(0, 0, 0, 0)
   let a = 0, c = 0
   for (let i = 27; i >= 0; i--) {
-    const d = new Date(now); d.setDate(d.getDate() - i)
+    const d = new Date(now); d.setUTCDate(d.getUTCDate() - i)
     const tss = Math.min(tssMap[d.toISOString().slice(0, 10)] || 0, 300)
     a = LAMBDA_ACUTE  * tss + (1 - LAMBDA_ACUTE)  * a
     c = LAMBDA_CHRONIC * tss + (1 - LAMBDA_CHRONIC) * c
@@ -86,7 +86,7 @@ function evalRules(log, recovery, profile) {
   const acwr = computeACWR(safeLog)
 
   const today     = new Date().toISOString().slice(0, 10)
-  const yesterday = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10) })()
+  const yesterday = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10) })()
   const recentRec = safeRec.find(e => e.date === today) ?? safeRec.find(e => e.date === yesterday)
   const wellness  = recentRec?.score != null
     ? Math.max(1, Math.min(5, Math.round(recentRec.score / 20)))
@@ -184,7 +184,7 @@ function evalRules(log, recovery, profile) {
   }
 
   // ── Rule 5: sleep_debt — avg sleep < 7h over last 7 days (H1) ───────────────
-  const w7Start = (() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().slice(0, 10) })()
+  const w7Start = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 7); return d.toISOString().slice(0, 10) })()
   const sleepReadings = safeRec.filter(e => e.date >= w7Start && parseFloat(e.sleepHrs) > 0)
   if (sleepReadings.length >= 3) {
     const avgSleep = sleepReadings.reduce((s, e) => s + parseFloat(e.sleepHrs), 0) / sleepReadings.length

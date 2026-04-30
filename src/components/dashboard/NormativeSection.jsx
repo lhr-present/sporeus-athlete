@@ -60,7 +60,14 @@ export default function NormativeSection() {
     return result
   }, [log, profile])
 
-  if (!cards.length) return null
+  if (!cards.length) {
+    const MONO = "'IBM Plex Mono', monospace"
+    return (
+      <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+        Set your sport and fitness metrics in your profile to see normative comparisons.<br /><span style={{ fontSize: '9px' }}>Normatif karşılaştırmalar için profilinde spor ve fitness verilerini gir.</span>
+      </div>
+    )
+  }
 
   return (
     <div className="sp-card" style={{ ...S.card, animationDelay: '210ms' }}>

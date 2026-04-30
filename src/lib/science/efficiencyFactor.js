@@ -110,7 +110,7 @@ export function efTrend(sessions, windowDays = 30) {
   const lastDate = sorted[sorted.length - 1]?.date
   if (!lastDate) return null
   const cutoff = new Date(lastDate)
-  cutoff.setDate(cutoff.getDate() - windowDays)
+  cutoff.setUTCDate(cutoff.getUTCDate() - windowDays)
   const cutoffStr = cutoff.toISOString().slice(0, 10)
 
   // Filter to window and compute EF

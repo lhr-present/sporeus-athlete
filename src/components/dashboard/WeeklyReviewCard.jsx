@@ -61,7 +61,14 @@ export default function WeeklyReviewCard({ log, profile, isTR }) {
     }
   }, [log, profile, isTR])
 
-  if (thisWeekSessions === 0) return null
+  if (thisWeekSessions === 0) {
+    const MONO = "'IBM Plex Mono', monospace"
+    return (
+      <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+        Log at least 4 sessions to generate your weekly review.<br /><span style={{ fontSize: '9px' }}>Haftalık inceleme için en az 4 antrenman kaydet.</span>
+      </div>
+    )
+  }
 
   const title   = isTR ? 'HAFTALIK DEĞERLENDİRME' : 'WEEKLY REVIEW'
   const thisLbl = isTR ? 'BU HAFTA' : 'THIS WEEK'

@@ -6,10 +6,10 @@ const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satur
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
 function _dateStr(d) { return new Date(d).toISOString().slice(0, 10) }
-function _daysBack(n) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10) }
+function _daysBack(n) { const d = new Date(); d.setUTCDate(d.getUTCDate() - n); return d.toISOString().slice(0, 10) }
 function weekOf(dateString) {
   const d = new Date(dateString)
-  d.setDate(d.getDate() - d.getDay())
+  d.setUTCDate(d.getUTCDate() - d.getUTCDay())
   return d.toISOString().slice(0, 10)
 }
 function _tssRange(log, from, to) {
@@ -55,7 +55,7 @@ export function correlateTrainingToResults(log, testResults) {
     // For each result, compute 4-week preconditions
     const dataPoints = sorted.map(r => {
       const w4end  = r.date
-      const w4start = (() => { const d = new Date(r.date); d.setDate(d.getDate() - 28); return d.toISOString().slice(0, 10) })()
+      const w4start = (() => { const d = new Date(r.date); d.setUTCDate(d.getUTCDate() - 28); return d.toISOString().slice(0, 10) })()
       const prior = safeLog.filter(e => e.date >= w4start && e.date < w4end)
       if (!prior.length) return null
       const sessions = prior.length
@@ -148,7 +148,7 @@ export function findRecoveryPatterns(log, recovery) {
   // Pair each session with the recovery from the PREVIOUS day
   const pairs = []
   log.forEach(s => {
-    const prevDay = new Date(s.date); prevDay.setDate(prevDay.getDate() - 1)
+    const prevDay = new Date(s.date); prevDay.setUTCDate(prevDay.getUTCDate() - 1)
     const prev = recMap[prevDay.toISOString().slice(0, 10)]
     if (prev) pairs.push({ session: s, rec: prev })
   })
@@ -256,12 +256,12 @@ export function mineInjuryPatterns(log, injuries, recovery) {
 
     const preconditions = zoneInjuries.map(inj => {
       const injDate = inj.date
-      const w2start = (() => { const d = new Date(injDate); d.setDate(d.getDate() - 14); return d.toISOString().slice(0, 10) })()
-      const w1start = (() => { const d = new Date(injDate); d.setDate(d.getDate() - 7);  return d.toISOString().slice(0, 10) })()
+      const w2start = (() => { const d = new Date(injDate); d.setUTCDate(d.getUTCDate() - 14); return d.toISOString().slice(0, 10) })()
+      const w1start = (() => { const d = new Date(injDate); d.setUTCDate(d.getUTCDate() - 7);  return d.toISOString().slice(0, 10) })()
 
       const prev14 = safeLog.filter(e => e.date >= w2start && e.date < injDate)
       const prev7  = safeLog.filter(e => e.date >= w1start && e.date < injDate)
-      const prevW14 = safeLog.filter(e => e.date >= (() => { const d = new Date(w2start); d.setDate(d.getDate() - 14); return d.toISOString().slice(0, 10) })() && e.date < w2start)
+      const prevW14 = safeLog.filter(e => e.date >= (() => { const d = new Date(w2start); d.setUTCDate(d.getUTCDate() - 14); return d.toISOString().slice(0, 10) })() && e.date < w2start)
 
       const tss7   = prev7.reduce((s, e) => s + (e.tss || 0), 0)
       const tss14  = prev14.reduce((s, e) => s + (e.tss || 0), 0) / 2
@@ -341,7 +341,7 @@ export function findOptimalWeekStructure(log, recovery) {
   const weeks = {}
   log.forEach(s => {
     const d = new Date(s.date)
-    const mon = new Date(d); mon.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+    const mon = new Date(d); mon.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7))
     const key = mon.toISOString().slice(0, 10)
     if (!weeks[key]) weeks[key] = []
     weeks[key].push(s)
@@ -363,7 +363,7 @@ export function findOptimalWeekStructure(log, recovery) {
     const hrs = sessions.reduce((s, e) => s + (e.duration || 0), 0) / 60
     const avgRPE = sessions.reduce((s, e) => s + (e.rpe || 5), 0) / n
     const recScores = sessions.map(s => {
-      const d = new Date(s.date); d.setDate(d.getDate() + 1)
+      const d = new Date(s.date); d.setUTCDate(d.getUTCDate() + 1)
       return recMap[d.toISOString().slice(0, 10)] || 0
     }).filter(v => v > 0)
     const avgNextRec = recScores.length ? recScores.reduce((s, v) => s + v, 0) / recScores.length : 60

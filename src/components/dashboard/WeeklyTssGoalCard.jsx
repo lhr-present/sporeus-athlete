@@ -69,7 +69,14 @@ export default function WeeklyTssGoalCard({ log, profile, isTR }) {
   const isOverGoal  = goal > 0 && weekTss > goal
 
   // Early exit: nothing to show for brand-new athletes with no log and no goal
-  if ((!log || log.length === 0) && goal === 0) return null
+  if ((!log || log.length === 0) && goal === 0) {
+    const MONO = "'IBM Plex Mono', monospace"
+    return (
+      <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+        Set a weekly TSS goal or log sessions to track your load.<br /><span style={{ fontSize: '9px' }}>Yükünü takip etmek için haftalık TSS hedefi belirle veya antrenman kaydet.</span>
+      </div>
+    )
+  }
 
   const dayAbbr  = isTR ? DAY_ABBR_TR : DAY_ABBR_EN
   const maxDay   = Math.max(...dailyTss, 1)

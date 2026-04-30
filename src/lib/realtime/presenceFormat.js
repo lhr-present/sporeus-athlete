@@ -54,7 +54,7 @@ export function formatViewedAt(viewedAt, lang = 'en', now = new Date()) {
   }
 
   const yesterdayStart = new Date(todayStart)
-  yesterdayStart.setDate(yesterdayStart.getDate() - 1)
+  yesterdayStart.setUTCDate(yesterdayStart.getUTCDate() - 1)
   if (ts >= yesterdayStart) return L.yesterday
 
   const diffDays = Math.floor(diffMs / 86_400_000)

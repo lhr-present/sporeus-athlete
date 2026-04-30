@@ -105,7 +105,7 @@ export function recentSwimTSS(log, cssSecPer100m, today = new Date().toISOString
   if (!cssSecPer100m || cssSecPer100m <= 0) return []
   if (!Array.isArray(log) || log.length === 0) return []
   const cutoff = new Date(today)
-  cutoff.setDate(cutoff.getDate() - 14)
+  cutoff.setUTCDate(cutoff.getUTCDate() - 14)
   const cutoffStr = cutoff.toISOString().slice(0, 10)
   return log
     .filter(e => {

@@ -24,7 +24,14 @@ export default function PriorityActionCard({ log, recovery, profile }) {
   const { t: _t, lang } = useContext(LangCtx)
 
   const action = computeNextAction(log, recovery, profile)
-  if (!action) return null
+  if (!action) {
+    const MONO = "'IBM Plex Mono', monospace"
+    return (
+      <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+        Log sessions to generate a priority action recommendation.<br /><span style={{ fontSize: '9px' }}>Öncelikli eylem önerisi için antrenman kaydet.</span>
+      </div>
+    )
+  }
 
   const borderColor = COLOR_MAP[action.color] || '#444444'
 

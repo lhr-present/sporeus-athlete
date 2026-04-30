@@ -10,7 +10,7 @@ import { calcLoad } from './formulas.js'
 function ctlSevenDaysAgo(log) {
   if (!log || !log.length) return null
   const cutoff = new Date()
-  cutoff.setDate(cutoff.getDate() - 7)
+  cutoff.setUTCDate(cutoff.getUTCDate() - 7)
   const cutStr = cutoff.toISOString().slice(0, 10)
   const pastLog = log.filter(e => e.date < cutStr)
   if (!pastLog.length) return null

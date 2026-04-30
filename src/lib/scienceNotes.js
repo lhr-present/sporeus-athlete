@@ -71,7 +71,7 @@ export const SCIENCE_NOTES = [
   {
     id: 'grey_zone_problem',
     trigger: (log, _, _p) => {
-      const recent = log.filter(e => { const d = new Date(); d.setDate(d.getDate()-28); return e.date >= d.toISOString().slice(0,10) })
+      const recent = log.filter(e => { const d = new Date(); d.setUTCDate(d.getUTCDate()-28); return e.date >= d.toISOString().slice(0,10) })
       const z3 = recent.filter(e => (e.rpe||0) >= 6 && (e.rpe||0) <= 7).length
       return z3 / (recent.length || 1) > 0.3
     },
@@ -139,7 +139,7 @@ export const SCIENCE_NOTES = [
   },
   {
     id: 'capillary_density',
-    trigger: (log) => log.filter(e => e.date >= (() => { const d = new Date(); d.setDate(d.getDate()-90); return d.toISOString().slice(0,10) })()).length >= 20,
+    trigger: (log) => log.filter(e => e.date >= (() => { const d = new Date(); d.setUTCDate(d.getUTCDate()-90); return d.toISOString().slice(0,10) })()).length >= 20,
     en: 'Sustained Z1/Z2 training increases capillary density in muscle by up to 40%, improving oxygen delivery without extra cardiac stress.',
     tr: 'Sürdürülen Z1/Z2 antrenmanı, ekstra kalp stresi olmaksızın oksijen iletimini iyileştirerek kas kılcal damar yoğunluğunu %40\'a kadar artırır.',
     source: 'Andersen & Henriksson (1977), J Physiol'
@@ -255,7 +255,7 @@ export const SCIENCE_NOTES = [
   },
   {
     id: 'overtraining_cortisol',
-    trigger: (log) => log.filter(e => { const d = new Date(); d.setDate(d.getDate()-14); return e.date >= d.toISOString().slice(0,10) }).length > 12,
+    trigger: (log) => log.filter(e => { const d = new Date(); d.setUTCDate(d.getUTCDate()-14); return e.date >= d.toISOString().slice(0,10) }).length > 12,
     en: 'Overtraining syndrome elevates basal cortisol and suppresses testosterone. Early signs: performance plateau, mood decline, persistent fatigue.',
     tr: 'Aşırı antrenman sendromu bazal kortizolü yükseltir ve testosteronu baskılar. Erken belirtiler: performans platoya girmesi, ruh hali düşüşü, kalıcı yorgunluk.',
     source: 'Kreher & Schwartz (2012), Sports Health'

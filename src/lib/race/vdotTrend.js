@@ -20,7 +20,7 @@ function isoWeek(dateStr) {
   const tmp = new Date(d)
   tmp.setUTCHours(0, 0, 0, 0)
   // Set to nearest Thursday: current date + 4 - current day number
-  tmp.setDate(tmp.getDate() + 4 - (tmp.getDay() || 7))
+  tmp.setUTCDate(tmp.getUTCDate() + 4 - (tmp.getUTCDay() || 7))
   const yearStart = new Date(tmp.getFullYear(), 0, 1)
   const weekNo = Math.ceil(((tmp - yearStart) / 86400000 + 1) / 7)
   return `${tmp.getFullYear()}-W${String(weekNo).padStart(2, '0')}`

@@ -4,6 +4,42 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.46.0 — 2026-04-30 — deep UTC sweep: 50+ fixes across 22 lib files + 8 empty states, 5581 tests
+
+Core lib UTC fixes (DIVE-PP — trainingLoad.js, 16 locations):
+  calculatePMC: primeStart/windowStart/windowEnd/loop-iterator setUTCDate
+  calculateACWR: loop iterator setUTCDate
+  impulseAt/predictBanister: loop iterators setUTCDate
+  calculateConsistency: cutoff + loop setUTCDate
+  generateWeeklyRecap: weekStart/fourWeeksAgo/getUTCDay Monday check/ISO week UTC
+  computeMonotony: localDate helper + loop — all UTC
+
+Core lib UTC fixes (DIVE-QQ — intelligence.js, 9 locations):
+  daysAgoDate() helper → setUTCDate (fixes all 20+ callers)
+  analyzeRecoveryCorrelation: nextDay setUTCDate
+  ACWR EWMA loop: setUTCDate
+  detectPersonalBests: weekStart/we/d/fourWeeksAgo/wEnd/wStart all setUTCDate
+
+Lib UTC fixes (DIVE-RR — 5 files, 18 locations):
+  patterns.js: _daysBack/weekOf/4 IIFEs/prevDay/mon setUTCDate (9 fixes)
+  nextAction.js: 3 CTL/ATL/ACWR loops + yesterday + w7Start (5 fixes)
+  hrv.js: cutoff setUTCDate
+  scienceNotes.js: 3 trigger IIFEs setUTCDate
+  coachDigest.js: cutoff setUTCDate
+
+Lib UTC fixes (DIVE-SS — 15 files, 21 locations):
+  periodization, squadUtils, pdfReport, efficiencyFactor, running (×3),
+  athleteDataBridge, triLoad, sleepRestingHR (×2), runningRaceReadiness,
+  swimZones, insightCards (×2), taperSimulator, planScore, vdotTrend, presenceFormat
+
+Empty states (DIVE-TT — 8 dashboard cards):
+  SeasonStatsCard, WeeklyReportCard, WeeklyReviewCard, WeeklyTssGoalCard,
+  ZoneDistributorCard, PriorityActionCard, NormativeSection, MacroPlanCountdown
+
+5581 tests — all pass.
+
+---
+
 ## v8.45.0 — 2026-04-30 — 8 empty states + 3 new test suites (+43 tests) + 5 bug fixes, 5581 tests
 
 Empty states (DIVE-KK — 6 cards with bare return null):

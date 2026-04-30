@@ -17,7 +17,7 @@ export function parseGoalDistanceM(goal) {
 // Peak weekly run volume in last 12 weeks (metres)
 export function peakWeeklyRunVolumeM(log, today = new Date().toISOString().slice(0,10)) {
   const cutoff = new Date(today)
-  cutoff.setDate(cutoff.getDate() - 84)  // 12 weeks
+  cutoff.setUTCDate(cutoff.getUTCDate() - 84)  // 12 weeks
   const runSessions = log.filter(e => {
     const isRun = /run/i.test(e.type || '') || /run/i.test(e.sport || '')
     const inWindow = e.date >= cutoff.toISOString().slice(0,10)

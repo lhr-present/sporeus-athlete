@@ -25,7 +25,7 @@ export function extractWeeklyTSS(plan) {
 export function peakFormDate(plan, peakDay) {
   if (!plan?.generatedAt || !peakDay) return null
   const d = new Date(plan.generatedAt)
-  d.setDate(d.getDate() + peakDay - 1)
+  d.setUTCDate(d.getUTCDate() + peakDay - 1)
   return d.toISOString().slice(0, 10)
 }
 

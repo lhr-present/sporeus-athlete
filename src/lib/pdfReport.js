@@ -24,7 +24,7 @@ function sparkline(values) {
 function getWeekKey(dateStr) {
   const d = new Date(dateStr)
   const monday = new Date(d)
-  monday.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+  monday.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7))
   return monday.toISOString().slice(0, 10)
 }
 

@@ -9,7 +9,7 @@ import { estimateVDOT, getTrainingPaces, predictTime as _predictTime } from './v
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function daysAgoDate(n) {
-  const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10)
+  const d = new Date(); d.setUTCDate(d.getUTCDate() - n); return d.toISOString().slice(0, 10)
 }
 function tssInWindow(log, startDate, endDate) {
   return log.filter(e => e.date >= startDate && e.date < endDate).reduce((s, e) => s + (e.tss || 0), 0)
@@ -99,7 +99,7 @@ export function analyzeRecoveryCorrelation(log, recovery) {
   const pairs = []
   log.forEach(e => {
     const nextDay = new Date(e.date)
-    nextDay.setDate(nextDay.getDate() + 1)
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1)
     const nextStr = nextDay.toISOString().slice(0, 10)
     if (recMap[nextStr] !== undefined) {
       pairs.push({ tss: e.tss || 0, rpe: e.rpe || 5, nextRec: recMap[nextStr] })
@@ -761,7 +761,7 @@ export function getSingleSuggestion(log, recovery, _profile) {
     }
     let a = 0, c = 0
     for (let i = 27; i >= 0; i--) {
-      const d = new Date(now); d.setDate(d.getDate() - i)
+      const d = new Date(now); d.setUTCDate(d.getUTCDate() - i)
       const tss = tssMap[d.toISOString().slice(0, 10)] || 0
       a = 0.25 * tss + 0.75 * a
       c = 0.067 * tss + 0.933 * c
@@ -1226,7 +1226,7 @@ export function detectPersonalBests(newEntry, existingLog) {
 
   // 2. Highest single-week TSS total
   const weekStart = new Date(newEntry.date)
-  weekStart.setDate(weekStart.getDate() - weekStart.getDay())
+  weekStart.setUTCDate(weekStart.getUTCDate() - weekStart.getUTCDay())
   const weekStartStr = weekStart.toISOString().slice(0, 10)
   const thisWeek = [...existingLog, newEntry].filter(e => e.date >= weekStartStr)
   const thisWeekTSS = thisWeek.reduce((s, e) => s + (e.tss || 0), 0)
@@ -1240,13 +1240,13 @@ export function detectPersonalBests(newEntry, existingLog) {
     while (d <= new Date(newEntry.date)) {
       const ws = d.toISOString().slice(0, 10)
       const we = new Date(d)
-      we.setDate(we.getDate() + 6)
+      we.setUTCDate(we.getUTCDate() + 6)
       const weStr = we.toISOString().slice(0, 10)
       if (ws < weekStartStr) { // only previous weeks
         const weekTSS = existingLog.filter(e => e.date >= ws && e.date <= weStr).reduce((s, e) => s + (e.tss || 0), 0)
         if (weekTSS > bestPrevWeek) bestPrevWeek = weekTSS
       }
-      d.setDate(d.getDate() + 7)
+      d.setUTCDate(d.getUTCDate() + 7)
     }
     if (bestPrevWeek > 0 && thisWeekTSS > bestPrevWeek) {
       results.push(`Highest single-week TSS: ${thisWeekTSS} (prev: ${bestPrevWeek})`)
@@ -1255,7 +1255,7 @@ export function detectPersonalBests(newEntry, existingLog) {
 
   // 3. Best 4-week TSS total
   const fourWeeksAgo = new Date(newEntry.date)
-  fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28)
+  fourWeeksAgo.setUTCDate(fourWeeksAgo.getUTCDate() - 28)
   const fourWeeksAgoStr = fourWeeksAgo.toISOString().slice(0, 10)
   const recent4w = [...existingLog, newEntry].filter(e => e.date >= fourWeeksAgoStr)
   const recent4wTSS = recent4w.reduce((s, e) => s + (e.tss || 0), 0)
@@ -1265,9 +1265,9 @@ export function detectPersonalBests(newEntry, existingLog) {
     // Sample a few 4-week windows from history
     for (let offset = 7; offset <= Math.min(allDates.length, 90); offset += 7) {
       const wEnd = new Date(newEntry.date)
-      wEnd.setDate(wEnd.getDate() - offset)
+      wEnd.setUTCDate(wEnd.getUTCDate() - offset)
       const wStart = new Date(wEnd)
-      wStart.setDate(wStart.getDate() - 28)
+      wStart.setUTCDate(wStart.getUTCDate() - 28)
       const wTSS = existingLog.filter(e => e.date >= wStart.toISOString().slice(0,10) && e.date <= wEnd.toISOString().slice(0,10)).reduce((s,e) => s + (e.tss||0), 0)
       if (wTSS > bestPrev4w) bestPrev4w = wTSS
     }

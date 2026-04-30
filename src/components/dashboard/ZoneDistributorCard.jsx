@@ -12,10 +12,17 @@ const ZONE_LABELS = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5']
 export default function ZoneDistributorCard({ filteredLog, rangeLabel }) {
   const [lang] = useLocalStorage('sporeus-lang', 'en')
 
-  if (!filteredLog?.length) return null
+  const MONO = "'IBM Plex Mono', monospace"
+  const emptyState = (
+    <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+      Log sessions with zone data to view zone distribution.<br /><span style={{ fontSize: '9px' }}>Bölge dağılımını görmek için bölge verisiyle antrenmanlar kaydet.</span>
+    </div>
+  )
+
+  if (!filteredLog?.length) return emptyState
 
   const dist = zoneDistribution(filteredLog)
-  if (!dist) return null
+  if (!dist) return emptyState
 
   const model = trainingModel(dist)
   const meta  = MODEL_META[model] || MODEL_META.mixed

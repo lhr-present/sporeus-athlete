@@ -84,7 +84,7 @@ function buildLog(tssForDay, rng) {
   const log = []
   for (let i = 89; i >= 0; i--) {
     const d = new Date(today)
-    d.setDate(d.getDate() - i)
+    d.setUTCDate(d.getUTCDate() - i)
     const baseTss = tssForDay(89 - i)   // 0 = 90d ago, 89 = today
     if (baseTss > 0) {
       const noise = Math.round((rng() - 0.5) * 10)
