@@ -115,4 +115,24 @@ describe('generateDemoSessions', () => {
       expect(s.tss).toBeGreaterThan(0)
     }
   })
+
+  it('offsetDate is UTC-stable (correct across all timezones)', () => {
+    // new Date('2024-01-31') is UTC midnight; local methods in UTC-5 give Jan 30 — UTC methods must be used
+    expect(offsetDate('2024-01-31', 1)).toBe('2024-02-01')
+    expect(offsetDate('2024-12-31', 1)).toBe('2025-01-01')
+    expect(offsetDate('2024-02-28', 1)).toBe('2024-02-29') // leap year
+    expect(offsetDate('2025-02-28', 1)).toBe('2025-03-01') // non-leap
+  })
+
+  it('generateDemoSessions dates are UTC-stable', () => {
+    // All output dates must match YYYY-MM-DD relative to the baseDate regardless of timezone
+    const sessions = generateDemoSessions('2024-06-01', 'Running')
+    for (const s of sessions) {
+      expect(s.date).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+      expect(s.date >= '2024-06-01').toBe(true)
+    }
+    // First session should be on or after base date (not a day behind due to local-time offset)
+    const firstDate = sessions.map(s => s.date).sort()[0]
+    expect(firstDate >= '2024-06-01').toBe(true)
+  })
 })

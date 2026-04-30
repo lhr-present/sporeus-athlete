@@ -85,10 +85,10 @@ export function generateDemoSessions(baseDate, sport = 'Running') {
 
   return plan.map(template => {
     const d = new Date(base)
-    d.setDate(base.getDate() + template.dow - 1)
-    const y  = d.getFullYear()
-    const m  = String(d.getMonth() + 1).padStart(2, '0')
-    const dd = String(d.getDate()).padStart(2, '0')
+    d.setUTCDate(base.getUTCDate() + template.dow - 1)
+    const y  = d.getUTCFullYear()
+    const m  = String(d.getUTCMonth() + 1).padStart(2, '0')
+    const dd = String(d.getUTCDate()).padStart(2, '0')
     return {
       date:     `${y}-${m}-${dd}`,
       type:     template.type,
@@ -112,10 +112,10 @@ export function generateDemoSessions(baseDate, sport = 'Running') {
  */
 export function offsetDate(baseDate, offset) {
   const d = new Date(baseDate)
-  d.setDate(d.getDate() + offset)
-  const y  = d.getFullYear()
-  const m  = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
+  d.setUTCDate(d.getUTCDate() + offset)
+  const y  = d.getUTCFullYear()
+  const m  = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const dd = String(d.getUTCDate()).padStart(2, '0')
   return `${y}-${m}-${dd}`
 }
 

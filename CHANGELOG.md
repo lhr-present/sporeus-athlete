@@ -4,6 +4,24 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.48.0 — 2026-04-30 — UTC fix demoData + Recovery guard + 2 new tests, 5626 tests
+
+UTC fix:
+  onboarding/demoData.js: generateDemoSessions + offsetDate — replace setDate/getDate/
+  getFullYear/getMonth with UTC equivalents (ISO strings parse as UTC midnight; local methods
+  give wrong day in UTC-N timezones)
+
+Defensive guard:
+  Recovery.jsx:375: (patterns.redFlags||[]).slice(0,2) — null safety for redFlags field
+
+New tests (+2):
+  demoData.test.js: offsetDate UTC-stability (leap year, year boundary, month boundary)
+  demoData.test.js: generateDemoSessions dates are UTC-stable
+
+5626 tests — all pass (275 files).
+
+---
+
 ## v8.47.0 — 2026-04-30 — UTC sweep (20 fixes, 6 files) + periodization tests (+43) + 2 fixes, 5624 tests
 
 UTC fixes (DIVE-UU — 6 lib files, 20 locations):

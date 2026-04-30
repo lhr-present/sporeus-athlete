@@ -372,7 +372,7 @@ export default function Recovery() {
               {lang==='tr' ? patterns.optimalSleep.tr : patterns.optimalSleep.en}
             </div>
           )}
-          {patterns.redFlags.slice(0,2).map(f=>(
+          {(patterns.redFlags||[]).slice(0,2).map(f=>(
             <div key={f.field} style={{ ...S.mono, fontSize:'10px', color:'#f5c542', marginTop:'4px', lineHeight:1.5 }}>
               ⚠ {lang==='tr' ? f.tr : f.en}
             </div>
