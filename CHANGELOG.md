@@ -4,6 +4,38 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.51.0 — 2026-04-30 — pure-lib coverage wave 2 (+312 tests), 6340 tests
+
+New test suites for 6 previously untested pure-function modules:
+
+  squadView.test.js (E97) — 74 tests: ACWR_COLORS, acwrColor, tsbColor,
+  trainingStatusColor, formatLastSession, sortAthletes (6 keys + directions),
+  filterAthletes (search + chip filters)
+
+  recoveryProtocols.test.js (E98) — 48 tests: RECOVERY_PROTOCOLS shape +
+  evidence levels + unique IDs; getRecommendedProtocols boundary conditions
+  (TSS>80, wellness<3, hours thresholds)
+
+  sport/squadBenchmark.test.js (E99) — 47 tests: rankSquad (4 metrics),
+  exportSquadCSV (CSV structure, quoting), calcCompliancePct (±10% boundary),
+  limitSelection (maxCount clamp + order)
+
+  sport/runningTemplates.test.js (E100) — 52 tests: RUNNING_TEMPLATES shape,
+  lookup/filter functions, instantiateRunningTemplate (pace fields, VDOT
+  sensitivity), raceSpecificPlan (phase ordering), weeklyRunPlan
+
+  sport/rowingTemplates.test.js (E101) — 48 tests: ROWING_TEMPLATES shape,
+  lookup/filter functions, instantiateTemplate (split math, step-test path),
+  weeklyTemplatePlan
+
+  squadUtils.pure.test.js (E102) — 50 tests: DEMO_TEAMS, filterByTeam,
+  makeLCG (range + determinism), deriveTrainingStatus (all 6 statuses),
+  mapAcwrStatus, generateDemoSquad (shape + determinism)
+
+287 test files · 6340 tests · all passing.
+
+---
+
 ## v8.50.0 — 2026-04-30 — zero-coverage pure-lib test sweep (+331 tests), 6028 tests
 
 New test suites for 4 previously untested pure-function modules:
