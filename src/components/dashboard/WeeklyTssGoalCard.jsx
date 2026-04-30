@@ -10,10 +10,10 @@ const DAY_ABBR_TR = ['P', 'S', 'Ç', 'P', 'C', 'C', 'P']
 
 function getMondayISO() {
   const now = new Date()
-  const dow = now.getDay() // 0=Sun, 1=Mon … 6=Sat
+  const dow = now.getUTCDay() // 0=Sun, 1=Mon … 6=Sat
   const diffToMon = (dow === 0 ? -6 : 1 - dow) // days back to Monday
   const mon = new Date(now)
-  mon.setDate(now.getDate() + diffToMon)
+  mon.setUTCDate(now.getUTCDate() + diffToMon)
   return mon.toISOString().slice(0, 10)
 }
 
@@ -23,7 +23,7 @@ function getWeekDates(mondayISO) {
   const base = new Date(mondayISO + 'T00:00:00')
   for (let i = 0; i < 7; i++) {
     const d = new Date(base)
-    d.setDate(base.getDate() + i)
+    d.setUTCDate(base.getUTCDate() + i)
     dates.push(d.toISOString().slice(0, 10))
   }
   return dates

@@ -12,7 +12,7 @@ const ZONE_LABELS = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5']
 export default function ZoneDistributorCard({ filteredLog, rangeLabel }) {
   const [lang] = useLocalStorage('sporeus-lang', 'en')
 
-  if (!filteredLog.length) return null
+  if (!filteredLog?.length) return null
 
   const dist = zoneDistribution(filteredLog)
   if (!dist) return null

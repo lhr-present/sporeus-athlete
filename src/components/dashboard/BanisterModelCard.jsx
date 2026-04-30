@@ -16,7 +16,13 @@ export default function BanisterModelCard() {
     [log, testResults]
   )
 
-  if ((testResults?.length ?? 0) < 3 || !banisterFit) return null
+  const MONO = "'IBM Plex Mono', monospace"
+  if ((testResults?.length ?? 0) < 3 || !banisterFit) return (
+    <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+      Log training sessions to view the Banister impulse-response model.<br />
+      <span style={{ fontSize: '9px' }}>Banister modelini görmek için antrenman kaydet.</span>
+    </div>
+  )
 
   const fit   = banisterFit
   const proj  = predictBanister(log, fit, [], 60)

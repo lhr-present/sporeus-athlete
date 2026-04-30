@@ -26,7 +26,7 @@ function getTodayKey() {
 
 function getTomorrowKey() {
   const d = new Date()
-  d.setDate(d.getDate() + 1)
+  d.setUTCDate(d.getUTCDate() + 1)
   return d.toISOString().slice(0, 10)
 }
 
@@ -49,7 +49,7 @@ function FuelGuidanceCard({ log, plan, profile, lang }) {
       const weekIndex = Math.floor((tom - planStart) / (7 * 86400000))
       if (weekIndex >= 0 && weekIndex < plan.weeks.length) {
         const week = plan.weeks[weekIndex]
-        const dayOfWeek = tom.getDay() === 0 ? 6 : tom.getDay() - 1 // Mon=0
+        const dayOfWeek = tom.getUTCDay() === 0 ? 6 : tom.getUTCDay() - 1 // Mon=0
         const sessions = week?.sessions || []
         const tomorrowSession = sessions[dayOfWeek]
         if (tomorrowSession?.tss) tomorrowPlannedTSS = tomorrowSession.tss

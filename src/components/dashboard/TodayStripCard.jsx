@@ -15,17 +15,17 @@ export default function TodayStripCard({ log, isTR, onLogSession }) {
   const streak = useMemo(() => {
     const dates = new Set((log || []).map(e => e.date))
     let d = new Date()
-    if (!dates.has(d.toISOString().slice(0, 10))) d.setDate(d.getDate() - 1)
+    if (!dates.has(d.toISOString().slice(0, 10))) d.setUTCDate(d.getUTCDate() - 1)
     let s = 0
-    while (dates.has(d.toISOString().slice(0, 10))) { s++; d.setDate(d.getDate() - 1) }
+    while (dates.has(d.toISOString().slice(0, 10))) { s++; d.setUTCDate(d.getUTCDate() - 1) }
     return s
   }, [log])
 
   const weekSessions = useMemo(() => {
     const now = new Date()
-    const dow = now.getDay() === 0 ? 6 : now.getDay() - 1
+    const dow = now.getUTCDay() === 0 ? 6 : now.getUTCDay() - 1
     const monday = new Date(now)
-    monday.setDate(now.getDate() - dow)
+    monday.setUTCDate(now.getUTCDate() - dow)
     const mondayISO = monday.toISOString().slice(0, 10)
     return (log || []).filter(e => e.date >= mondayISO).length
   }, [log])

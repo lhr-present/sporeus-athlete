@@ -80,7 +80,7 @@ export default function ReadinessCard({
               Density (28d): {consistency.pct}% · Longest gap: {consistency.longestGap}d · Avg gap: {consistency.totalDays > 0 ? ((consistency.totalDays - consistency.sessionDays) / Math.max(1, consistency.sessionDays + 1)).toFixed(1) : '—'}d
             </div>
           )}
-          {lc.showCTL && (() => {
+          {lc.showCTL && dqResult?.factors && (() => {
             const complete = dqResult.factors.filter(f => f.score >= 80).length
             return (
               <div style={{ ...S.mono, fontSize: '9px', color: '#444', marginTop: '4px' }}>

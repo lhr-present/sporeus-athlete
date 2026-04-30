@@ -10,7 +10,12 @@ const MONO = "'IBM Plex Mono', monospace"
 export default function IntensityBalanceCard({ log, isTR }) {
   const data = useMemo(() => computeIntensityBalance(log), [log])
 
-  if (!data || data.status === 'insufficient') return null
+  if (!data || data.status === 'insufficient') return (
+    <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+      Log sessions with zone data to view intensity balance.<br />
+      <span style={{ fontSize: '9px' }}>Yoğunluk dengesi için bölge verisiyle antrenmanlar kaydet.</span>
+    </div>
+  )
 
   const lang = isTR ? 'tr' : 'en'
   const BAR_COLORS = {

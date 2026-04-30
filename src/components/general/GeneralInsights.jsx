@@ -14,7 +14,7 @@ export default function GeneralInsights({ sessions = [], exercises = [], lang = 
   }, [exercises])
 
   const weekStart = (() => {
-    const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+    const d = new Date(); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7))
     return d.toISOString().slice(0, 10)
   })()
 

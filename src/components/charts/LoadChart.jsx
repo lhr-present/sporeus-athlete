@@ -7,8 +7,8 @@ const MONO = "'IBM Plex Mono', monospace"
 function buildWeeklyLoad(log, weeks = 10) {
   const data = []
   for (let w = weeks - 1; w >= 0; w--) {
-    const end   = new Date(); end.setDate(end.getDate() - w * 7)
-    const start = new Date(end); start.setDate(start.getDate() - 6)
+    const end   = new Date(); end.setUTCDate(end.getUTCDate() - w * 7)
+    const start = new Date(end); start.setUTCDate(start.getUTCDate() - 6)
     const s = start.toISOString().slice(0, 10)
     const e = end.toISOString().slice(0, 10)
     const tss = log.filter(r => r.date >= s && r.date <= e).reduce((sum, r) => sum + (r.tss || 0), 0)

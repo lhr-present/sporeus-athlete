@@ -4,6 +4,42 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.44.0 — 2026-04-30 — UTC sweep 22 fixes across 8 files + 10 empty states + 5 crash fixes, 5538 tests
+
+Timezone fixes (DIVE-FF — charts + coachDashboard):
+  ZoneChart.jsx: end/start setUTCDate (2 fixes) — weekly zone window was wrong in UTC+
+  LoadChart.jsx: end/start setUTCDate (2 fixes) — weekly load window off-by-day
+  CTLChart.jsx: cutoff/gen/wStart/wEnd setUTCDate + gen.getUTCDay() (4 fixes) — phase bands misaligned
+  WellnessSparkline.jsx: setUTCDate(getUTCDate() - 13..0) (1 fix)
+  coachDashboard/helpers.jsx: daysBefore() setUTCDate (1 fix) — all derived dates in coach dashboard were wrong
+  coachDashboard/TeamMetrics.jsx: prev.setUTCDate + timeZone:'UTC' on toLocaleDateString (2 fixes)
+
+Timezone fixes (DIVE-GG — dashboard + general):
+  TodayStripCard.jsx: streak setUTCDate×2 + weekSessions getUTCDay/setUTCDate×2 (4 fixes)
+  WeeklyReportCard.jsx: cutoff setUTCDate (1 fix)
+  WeeklyTssGoalCard.jsx: getUTCDay + setUTCDate×2 (3 fixes)
+  FuelGuidanceCard.jsx: tomorrow setUTCDate + getUTCDay×2 (3 fixes)
+  general/GeneralInsights.jsx: weekStart setUTCDate + getUTCDay (1 fix)
+  general/SessionHistory.jsx: weekStart setUTCDate + getUTCDay (1 fix)
+  ReportsTab.jsx: getUTCDay + setUTCDate (2 fixes)
+
+Empty states — 10 cards (DIVE-HH + DIVE-II):
+  BanisterModelCard, ACWRCard, DurabilityCard, ConsistencyDepthCard, IntensityBalanceCard,
+  EliteMetricsStrip, AllZonesCard, MonthlyProgressCard — bilingual EN/TR (DIVE-HH)
+  PersonalRecordsCard, SleepRestingHRCard, VO2maxCard, TrainingAgeCard, YourPatternsCard,
+  PlanAdherenceCard, PerformanceMetrics — bilingual EN/TR (DIVE-II)
+  + VO2maxCard: VO2max tooltip; VO2maxCard and SleepRestingHRCard tooltips reviewed
+
+Crash fixes (DIVE-JJ):
+  ReadinessCard: dqResult?.factors null guard (crash behind ErrorBoundary)
+  PRTimelineCard: (ev.prs || []).slice + ev.prs?.length null guard
+  ZoneDistributorCard: filteredLog?.length null guard
+  DailyBriefingCard: (rx.warnings || []).map guard + rx.tsb ?? 0 prevents "+null" display
+
+5538 tests — all pass.
+
+---
+
 ## v8.43.0 — 2026-04-30 — UTC sweep (20 fixes, 9 files) + 8 empty states + 25 tooltips, 5538 tests
 
 Timezone fixes (DIVE-AA — 9 dashboard card files, 20 locations):

@@ -11,7 +11,14 @@ function YourPatternsCard({ log, recovery, injuries: _injuries, profile: _profil
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  if (log.length < 14) return null
+  const MONO = "'IBM Plex Mono', monospace"
+
+  if (log.length < 14) return (
+    <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+      Log at least 2 weeks of sessions to detect training patterns.<br />
+      <span style={{ fontSize: '9px' }}>Antrenman paternlerini tespit etmek için en az 2 hafta antrenman kaydet.</span>
+    </div>
+  )
 
   const trainTest  = correlateTrainingToResults(log, testResults)
   const recPat     = findRecoveryPatterns(log, recovery)

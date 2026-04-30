@@ -17,13 +17,20 @@ export default function VO2maxCard({ log, profile, dl }) {
     return getVO2maxNorm(sport, age, gender, result.vo2max)
   }, [result, profile])
 
-  if (!dl.vo2max || !result) return null
+  const MONO = "'IBM Plex Mono', monospace"
+
+  if (!dl.vo2max || !result) return (
+    <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+      Set your VO2max in your profile or log race results to estimate it.<br />
+      <span style={{ fontSize: '9px' }}>VO2max için profiline değer gir veya yarış sonuçlarını kaydet.</span>
+    </div>
+  )
 
   const methodLabel = result.method === 'cooper' ? 'COOPER' : 'DANIELS'
 
   return (
     <div className="sp-card" style={{ ...S.card, animationDelay: '0ms' }}>
-      <div style={S.cardTitle}>VO2MAX ESTIMATE</div>
+      <div style={S.cardTitle}><span title="VO2max: maximum oxygen uptake (mL/kg/min)">VO2MAX</span> ESTIMATE</div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap', marginBottom: '10px' }}>
         <span style={{ ...S.mono, fontSize: '36px', fontWeight: 700, color: '#ff6600' }}>
           {result.vo2max}

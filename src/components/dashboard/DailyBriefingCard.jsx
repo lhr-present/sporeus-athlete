@@ -119,7 +119,7 @@ export default function DailyBriefingCard({ profile, log, plan, planStatus, reco
       )}
 
       {/* Warnings */}
-      {rx.warnings.map(w => (
+      {(rx.warnings || []).map(w => (
         <div key={w.code} style={{
           fontSize: '9px', color: w.level === 'danger' ? RED : AMBER,
           marginTop: '4px', letterSpacing: '0.04em',
@@ -138,7 +138,7 @@ export default function DailyBriefingCard({ profile, log, plan, planStatus, reco
       <div style={{ display: 'flex', gap: '12px', marginTop: '8px', borderTop: '1px solid #1a1a1a', paddingTop: '6px', alignItems: 'center' }}>
         {[
           { label: 'CTL', val: rx.ctl, key: 'ctl' },
-          { label: 'TSB', val: rx.tsb >= 0 ? `+${rx.tsb}` : `${rx.tsb}`, key: 'tsb' },
+          { label: 'TSB', val: (rx.tsb ?? 0) >= 0 ? `+${rx.tsb ?? 0}` : `${rx.tsb ?? 0}`, key: 'tsb' },
           ...(rx.acwr != null ? [{ label: 'ACWR', val: rx.acwr, key: 'acwr' }] : []),
         ].map(m => (
           <span key={m.label} style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>

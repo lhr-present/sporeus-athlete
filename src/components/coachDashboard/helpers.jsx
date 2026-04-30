@@ -12,7 +12,7 @@ export function escHtml(s) {
 
 export function daysBefore(n) {
   const d = new Date()
-  d.setDate(d.getDate() - n)
+  d.setUTCDate(d.getUTCDate() - n)
   return d.toISOString().slice(0, 10)
 }
 

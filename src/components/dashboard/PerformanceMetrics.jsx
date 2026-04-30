@@ -13,6 +13,14 @@ const MONO = "'IBM Plex Mono', monospace"
  */
 export default function PerformanceMetrics({ log }) {
   const { lang } = useContext(LangCtx)
+
+  if (!log || log.length === 0) return (
+    <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+      Log training data to view performance metrics.<br />
+      <span style={{ fontSize: '9px' }}>Performans metriklerini görmek için antrenman verisi kaydet.</span>
+    </div>
+  )
+
   const form    = getFormScore(log)
   const peakWk  = getPeakWeekLoad(log)
   const consist = getConsistencyScore(log, 28)

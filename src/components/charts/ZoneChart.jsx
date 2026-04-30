@@ -8,8 +8,8 @@ const COLORS = ['#4a90d9', '#5bc25b', '#f5c542', '#ff6600', '#e03030']
 function buildWeeklyZones(log, weeks = 8) {
   const result = []
   for (let w = weeks - 1; w >= 0; w--) {
-    const end   = new Date(); end.setDate(end.getDate() - w * 7)
-    const start = new Date(end); start.setDate(start.getDate() - 6)
+    const end   = new Date(); end.setUTCDate(end.getUTCDate() - w * 7)
+    const start = new Date(end); start.setUTCDate(start.getUTCDate() - 6)
     const s = start.toISOString().slice(0, 10)
     const e = end.toISOString().slice(0, 10)
     const week = log.filter(r => r.date >= s && r.date <= e)

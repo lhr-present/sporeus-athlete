@@ -14,7 +14,12 @@ export default function MonthlyProgressCard({ log, profile, isTR }) {
     [log, profile]
   )
 
-  if (!data) return null
+  if (!data) return (
+    <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+      Log sessions across multiple months to view monthly progress.<br />
+      <span style={{ fontSize: '9px' }}>Aylık ilerleme için birden fazla ay antrenman kaydet.</span>
+    </div>
+  )
 
   const lang   = isTR ? 'tr' : 'en'
   const lbl    = data.monthLabel[lang]

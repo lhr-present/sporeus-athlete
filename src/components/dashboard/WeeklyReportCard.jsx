@@ -8,7 +8,7 @@ export default function WeeklyReportCard({ last7, totalMin, totalTSS, avgRPE, re
   if (!last7.length) return null
 
   const recLast7 = recovery.filter(e => {
-    const d = new Date(e.date), cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 7)
+    const d = new Date(e.date), cutoff = new Date(); cutoff.setUTCDate(cutoff.getUTCDate() - 7)
     return d >= cutoff
   })
   const avgRec = recLast7.length ? Math.round(recLast7.reduce((s, e) => s + (e.score || 0), 0) / recLast7.length) : null

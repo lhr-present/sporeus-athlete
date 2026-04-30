@@ -21,7 +21,14 @@ function PlanAdherenceCard({ plan, planStatus, log }) {
     [plan, planStatus, log],
   )
 
-  if (!summary) return null
+  const MONO_FONT = "'IBM Plex Mono', monospace"
+
+  if (!summary) return (
+    <div style={{ fontFamily: MONO_FONT, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+      Generate or assign a training plan to track adherence.<br />
+      <span style={{ fontSize: '9px' }}>Plan uyumunu takip etmek için bir antrenman planı oluştur veya ata.</span>
+    </div>
+  )
 
   const { adherenceWeeks, avgCompliance, overallStatus, weeksOnTrack, weeksOver, weeksUnder } = summary
 

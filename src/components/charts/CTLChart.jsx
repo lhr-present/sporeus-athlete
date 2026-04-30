@@ -26,16 +26,16 @@ function getPhaseBands(plan, days) {
   if (!plan?.weeks?.length || !plan?.generatedAt) return []
 
   const today  = new Date(); today.setUTCHours(0, 0, 0, 0)
-  const cutoff = new Date(today); cutoff.setDate(cutoff.getDate() - days)
+  const cutoff = new Date(today); cutoff.setUTCDate(cutoff.getUTCDate() - days)
 
   // Advance generatedAt to the nearest Monday
   const gen = new Date(plan.generatedAt); gen.setUTCHours(0, 0, 0, 0)
-  gen.setDate(gen.getDate() + (8 - gen.getDay()) % 7)
+  gen.setUTCDate(gen.getUTCDate() + (8 - gen.getUTCDay()) % 7)
 
   const bands = []
   for (let wi = 0; wi < plan.weeks.length; wi++) {
-    const wStart = new Date(gen); wStart.setDate(wStart.getDate() + wi * 7)
-    const wEnd   = new Date(wStart); wEnd.setDate(wEnd.getDate() + 6)
+    const wStart = new Date(gen); wStart.setUTCDate(wStart.getUTCDate() + wi * 7)
+    const wEnd   = new Date(wStart); wEnd.setUTCDate(wEnd.getUTCDate() + 6)
     if (wEnd < cutoff || wStart > today) continue
     const x1    = (wStart < cutoff ? cutoff : wStart).toISOString().slice(5, 10)
     const x2    = (wEnd   > today  ? today  : wEnd).toISOString().slice(5, 10)

@@ -43,7 +43,14 @@ export default function TrainingAgeCard({ log, dl }) {
     return { years, months, totalMonths, tier, earliest }
   }, [log, dl.trainingage])
 
-  if (!dl.trainingage || log.length === 0 || !result) return null
+  const MONO = "'IBM Plex Mono', monospace"
+
+  if (!dl.trainingage || log.length === 0 || !result) return (
+    <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+      Log training sessions to calculate your training age.<br />
+      <span style={{ fontSize: '9px' }}>Antrenman yaşını hesaplamak için antrenman kaydet.</span>
+    </div>
+  )
 
   const { years, months, tier, earliest } = result
 

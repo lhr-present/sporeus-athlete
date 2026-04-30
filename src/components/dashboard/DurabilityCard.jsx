@@ -51,7 +51,13 @@ function DurabilityCard({ log, lang }) {
       .reverse() // oldest→newest for the trend bar
   }, [qualifying, baseline])
 
-  if (!scores.length) return null
+  const MONO = "'IBM Plex Mono', monospace"
+  if (!scores.length) return (
+    <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+      Log long sessions with power or pace data to view durability.<br />
+      <span style={{ fontSize: '9px' }}>Dayanıklılık için güç veya hız verisiyle uzun antrenmanlar kaydet.</span>
+    </div>
+  )
 
   const latest = scores[scores.length - 1]
   const color  = TIER_COLOR[latest.tier]

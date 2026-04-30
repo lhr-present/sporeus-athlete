@@ -115,7 +115,14 @@ function SleepRestingHRCard({ recovery }) {
 
   const data = useMemo(() => computeSleepRHR(recovery, 28), [recovery])
 
-  if (!data) return null
+  const MONO = "'IBM Plex Mono', monospace"
+
+  if (!data) return (
+    <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+      Log recovery check-ins with HRV or resting HR to view trends.<br />
+      <span style={{ fontSize: '9px' }}>Eğilimleri görmek için HRV veya dinlenme HR verisiyle iyileşme kaydı gir.</span>
+    </div>
+  )
 
   const {
     avgSleep, sleepStatus, sleepEntries,

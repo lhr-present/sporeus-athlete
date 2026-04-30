@@ -75,7 +75,7 @@ export default function PRTimelineCard({ log }) {
 }
 
 function PREventRow({ ev, lang, t }) {
-  const displayPRs = ev.prs.slice(0, 2)
+  const displayPRs = (ev.prs || []).slice(0, 2)
 
   return (
     <div style={{
@@ -133,7 +133,7 @@ function PREventRow({ ev, lang, t }) {
         )
       })}
 
-      {ev.prs.length > 2 && (
+      {(ev.prs?.length ?? 0) > 2 && (
         <div style={{
           fontFamily: 'IBM Plex Mono, monospace',
           fontSize: '9px',

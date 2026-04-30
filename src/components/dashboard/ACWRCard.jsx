@@ -7,15 +7,26 @@ import { interpretACWR } from '../../lib/science/interpretations.js'
 export default function ACWRCard({ log, lc, dl }) {
   const { t, lang } = useContext(LangCtx)
 
+  const MONO = "'IBM Plex Mono', monospace"
   if (!dl.acwr || !lc.showACWR) return null
-  if (log.length < 7) return null
+  if (log.length < 7) return (
+    <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+      Log at least 4 weeks of sessions to calculate ACWR.<br />
+      <span style={{ fontSize: '9px' }}>ACWR hesabı için en az 4 haftalık antrenman kaydet.</span>
+    </div>
+  )
 
   const now    = Date.now()
   const ms7    = 7  * 864e5
   const ms28   = 28 * 864e5
   const acute   = log.filter(e => now - new Date(e.date).getTime() < ms7).reduce((s, e) => s + (e.tss || 0), 0)
   const chronic28 = log.filter(e => now - new Date(e.date).getTime() < ms28).reduce((s, e) => s + (e.tss || 0), 0) / 4
-  if (!chronic28) return null
+  if (!chronic28) return (
+    <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+      Log at least 4 weeks of sessions to calculate ACWR.<br />
+      <span style={{ fontSize: '9px' }}>ACWR hesabı için en az 4 haftalık antrenman kaydet.</span>
+    </div>
+  )
 
   const acwrVal = Math.round(acute / chronic28 * 100) / 100
   const { color, label, rec } = acwrVal < 0.8

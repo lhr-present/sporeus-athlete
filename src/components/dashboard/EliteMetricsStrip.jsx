@@ -28,7 +28,12 @@ export default function EliteMetricsStrip({ profile, log, testResults, isTR, onG
   if (!metrics?.running?.vdot && metrics?.autoVdot?.vdot != null)
     items.push({ label: 'VDOT*', value: metrics.autoVdot.vdot.toFixed(1), auto: true, infoKey: 'vdot' })
 
-  if (items.length < 2) return null
+  if (items.length < 2) return (
+    <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+      Add FTP and VO2max to your profile to unlock elite metrics.<br />
+      <span style={{ fontSize: '9px' }}>Elit metrikleri açmak için profile FTP ve VO2max ekle.</span>
+    </div>
+  )
 
   return (
     <div

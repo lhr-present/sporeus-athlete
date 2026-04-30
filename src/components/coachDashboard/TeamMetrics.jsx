@@ -31,8 +31,8 @@ export default function TeamMetrics({ roster }) {
 
   const avgReadiness = readinessCount ? Math.round(totalReadiness / readinessCount) : null
   const weekLabel = (() => {
-    const d = new Date(); const prev = new Date(d); prev.setDate(prev.getDate() - 6)
-    return `${prev.toLocaleDateString('en-GB',{month:'short',day:'numeric'})} – ${d.toLocaleDateString('en-GB',{month:'short',day:'numeric',year:'numeric'})}`
+    const d = new Date(); const prev = new Date(d); prev.setUTCDate(prev.getUTCDate() - 6)
+    return `${prev.toLocaleDateString('en-GB',{month:'short',day:'numeric',timeZone:'UTC'})} – ${d.toLocaleDateString('en-GB',{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'})}`
   })()
 
   function handleCopySummary() {

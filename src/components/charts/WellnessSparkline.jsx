@@ -5,7 +5,7 @@ export default function WellnessSparkline({ recovery }) {
   const today = new Date()
   const data = Array.from({ length: 14 }, (_, i) => {
     const d = new Date(today)
-    d.setDate(d.getDate() - (13 - i))
+    d.setUTCDate(d.getUTCDate() - (13 - i))
     const date = d.toISOString().slice(0, 10)
     const e = (recovery || []).find(r => r.date === date)
     return { date, sleep: e?.sleep ?? null, energy: e?.energy ?? null, soreness: e?.soreness ?? null }

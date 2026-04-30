@@ -313,10 +313,10 @@ export default function ReportsTab({ authUser, authProfile, lang = 'en' }) {
 function buildDefaultParams(kind) {
   if (kind === 'weekly') {
     const today = new Date()
-    const dayOfWeek = today.getDay()
+    const dayOfWeek = today.getUTCDay()
     const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
     const monday = new Date(today)
-    monday.setDate(today.getDate() + mondayOffset - 7)   // last full week
+    monday.setUTCDate(today.getUTCDate() + mondayOffset - 7)   // last full week
     const weekStart = monday.toISOString().slice(0, 10)
     return { week_start: weekStart }
   }
