@@ -3,6 +3,8 @@ import { S } from '../../styles.js'
 import { useData } from '../../contexts/DataContext.jsx'
 import { riegel, fmtSec, fmtPace } from '../../lib/formulas.js'
 
+const MONO = "'IBM Plex Mono', monospace"
+
 const TARGETS = [
   { label: '5K',       m: 5000  },
   { label: '10K',      m: 10000 },
@@ -13,8 +15,18 @@ const TARGETS = [
 export default function RacePredictionsCard({ dl }) {
   const { profile } = useData()
 
-  if (!dl.predictions) return null
-  if (!profile.ftp && !profile.ltPace) return null
+  if (!dl.predictions) return (
+    <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+      Set your FTP or lactate threshold pace in your profile to see race predictions.<br />
+      <span style={{ fontSize: '9px' }}>Yarış tahminleri için profilinde FTP veya eşik temposunu gir.</span>
+    </div>
+  )
+  if (!profile.ftp && !profile.ltPace) return (
+    <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+      Set your FTP or lactate threshold pace in your profile to see race predictions.<br />
+      <span style={{ fontSize: '9px' }}>Yarış tahminleri için profilinde FTP veya eşik temposunu gir.</span>
+    </div>
+  )
 
   const ltPaceSec = profile.ltPace
     ? profile.ltPace.split(':').reduce((a, v, i, arr) =>

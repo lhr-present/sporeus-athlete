@@ -106,7 +106,7 @@ export default function VO2maxProgressionCard({ log, profile }) {
       {/* Weekly gain */}
       {trend && (
         <div style={{ fontFamily: FONT, fontSize: '11px', color: '#888', marginBottom: '10px' }}>
-          {trend.weeklyGain >= 0 ? '+' : ''}{trend.weeklyGain.toFixed(2)}/wk
+          {(trend.weeklyGain ?? 0) >= 0 ? '+' : ''}{(trend.weeklyGain ?? 0).toFixed(2)}/wk
         </div>
       )}
 
@@ -127,7 +127,7 @@ export default function VO2maxProgressionCard({ log, profile }) {
       {/* R² low confidence warning */}
       {trend && trend.r2 < 0.3 && (
         <div style={{ fontFamily: FONT, fontSize: '11px', color: '#555', marginBottom: '6px' }}>
-          {t('vo2maxProgLowConf')} (R²={trend.r2.toFixed(2)})
+          {t('vo2maxProgLowConf')} (R²={(trend.r2 ?? 0).toFixed(2)})
         </div>
       )}
 

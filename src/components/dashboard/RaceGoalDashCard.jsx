@@ -558,7 +558,7 @@ export default function RaceGoalDashCard({ log = [], profile = {}, isTR, onLogSe
           <div style={{ padding: '12px 14px' }}>
             <SectionHeader
               label={isTR ? 'KORUYUCU ÇALIŞMALAR' : 'PREVENTIVE'}
-              badge={(isTR ? day.preventive.tr : day.preventive.name).toUpperCase()}
+              badge={(isTR ? day.preventive.tr ?? day.preventive.name : day.preventive.name ?? day.preventive.tr)?.toUpperCase() ?? ''}
               badgeColor={PREV_COLOR}
               right={`${day.preventive.durationMin}min`}
             />

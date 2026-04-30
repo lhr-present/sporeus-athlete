@@ -23,7 +23,13 @@ function PlanScoreCard({ plan, log }) {
     [plan, log],
   )
 
-  if (!result) return null
+  const MONO = "'IBM Plex Mono', monospace"
+  if (!result) return (
+    <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+      Generate a training plan to see your plan score.<br />
+      <span style={{ fontSize: '9px' }}>Plan puanını görmek için bir antrenman planı oluştur.</span>
+    </div>
+  )
 
   const { score, peakDay, peakTSB, peakDate, weekCount, totalTSS } = result
   const scoreColor = score != null ? SCORE_COLOR(score) : '#555'

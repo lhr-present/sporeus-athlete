@@ -16,7 +16,12 @@ export default function RuleAlertsCard({ log = [], recovery = [] }) {
 
   const alerts = computeRuleAlerts(log, recovery)
 
-  if (!alerts || alerts.length === 0) return null
+  if (!alerts || alerts.length === 0) return (
+    <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+      No active training alerts. Keep up the good work.<br />
+      <span style={{ fontSize: '9px' }}>Aktif antrenman uyarısı yok. Devam et!</span>
+    </div>
+  )
 
   const visible = alerts.slice(0, 3)
 

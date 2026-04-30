@@ -30,7 +30,9 @@ const PMC_RANGES = [
   { label: 'ALL', days: 3650 },
 ]
 
-function LoadTrendChart({ log, acwr, ctlChartDays, raceResults, plan, dl, lc }) {
+const MONO = "'IBM Plex Mono', monospace"
+
+function LoadTrendChart({ log = [], acwr = {}, ctlChartDays, raceResults, plan, dl = {}, lc = {} }) {
   const { t } = useContext(LangCtx)
 
   // Hooks must run before any early return
@@ -43,7 +45,13 @@ function LoadTrendChart({ log, acwr, ctlChartDays, raceResults, plan, dl, lc }) 
     return Math.round(peak)
   }, [log])
 
-  if (!dl.timeline || !lc.showCTL || log.length <= 3) return null
+  if (!dl.timeline || !lc.showCTL || log.length <= 3) {
+    return (
+      <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+        Log sessions to view load trends.<br /><span style={{ fontSize: '9px' }}>Yük eğrilerini görmek için antrenman kaydet.</span>
+      </div>
+    )
+  }
 
   const effectiveDays = pmcRange
 
@@ -77,7 +85,7 @@ function LoadTrendChart({ log, acwr, ctlChartDays, raceResults, plan, dl, lc }) 
         {acwr.ratio !== null && (
           <span style={{ ...S.mono, fontSize:'10px', padding:'2px 7px', border:`1px solid ${acwrColor}44`, borderRadius:'2px', color: acwrColor }}>
             <ScienceTooltip anchor="2-acwr--acutechronic-workload-ratio" label="ACWR" short="Acute:Chronic Workload Ratio — Hulin 2016. Optimal: 0.8–1.3.">
-              ACWR {acwr.ratio} · {acwr.status.toUpperCase()}
+              ACWR {acwr.ratio} · {acwr.status?.toUpperCase()}
             </ScienceTooltip>
           </span>
         )}

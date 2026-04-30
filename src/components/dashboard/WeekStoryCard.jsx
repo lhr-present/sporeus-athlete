@@ -7,7 +7,13 @@ import { generateWeeklyNarrative } from '../../lib/intelligence.js'
 function WeekStoryCard({ log, recovery, profile, lang }) {
   const { t } = useContext(LangCtx)
   const [copied, setCopied] = useState(false)
-  if (log.length < 2) return null
+  const MONO = "'IBM Plex Mono', monospace"
+  if (log.length < 2) return (
+    <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+      Log at least 2 sessions to generate your weekly story.<br />
+      <span style={{ fontSize: '9px' }}>Haftalık hikayeni oluşturmak için en az 2 antrenman kaydet.</span>
+    </div>
+  )
 
   const narrative = generateWeeklyNarrative(log, recovery, profile, lang)
   const text = narrative[lang] || narrative.en

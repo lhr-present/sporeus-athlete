@@ -4,6 +4,28 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.45.0 — 2026-04-30 — 8 empty states + 3 new test suites (+43 tests) + 5 bug fixes, 5581 tests
+
+Empty states (DIVE-KK — 6 cards with bare return null):
+  BodyCompositionCard, RacePredictionsCard, WeekStoryCard, PlanScoreCard,
+  RuleAlertsCard, PolarizationComplianceCard — all bilingual EN/TR
+
+New test suites (DIVE-LL — 3 pure lib modules, +43 tests, 274 files):
+  src/lib/__tests__/announcementHelpers.test.js (15 tests) — validateAnnouncement + isUnread
+  src/lib/__tests__/performanceBudget.test.js (14 tests) — BUNDLE/LIGHTHOUSE/CWV budget invariants
+  src/lib/__tests__/storageKeys.test.js (14 tests) — STORAGE_KEYS frozen + unique + complete
+
+Bug fixes (DIVE-MM + DIVE-NN):
+  SeasonBestsCard: date helper getUTCFullYear/getUTCMonth/getUTCDate (display was off in UTC-)
+  VO2maxProgressionCard: toFixed(2) on nullable weeklyGain + r2 → guarded with ?? 0
+  LoadTrendChart: prop defaults (dl={}, lc={}, log=[], acwr={}); acwr.status?.toUpperCase(); empty state
+  RaceGoalDashCard: day.preventive.tr/.name toUpperCase crash on undefined
+  RecoveryProtocolCard: bare return null → bilingual empty state
+
+5581 tests — all pass.
+
+---
+
 ## v8.44.0 — 2026-04-30 — UTC sweep 22 fixes across 8 files + 10 empty states + 5 crash fixes, 5538 tests
 
 Timezone fixes (DIVE-FF — charts + coachDashboard):

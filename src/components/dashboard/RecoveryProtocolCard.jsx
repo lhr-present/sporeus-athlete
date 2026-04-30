@@ -35,7 +35,14 @@ export default function RecoveryProtocolCard({ log = [], recovery = [] }) {
 
   const { protocols, wellnessScore } = getTopRecoveryProtocols(latestRecovery, latestSession)
 
-  if (protocols.length === 0) return null
+  const MONO = "'IBM Plex Mono', monospace"
+  if (protocols.length === 0) {
+    return (
+      <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+        Log a session or wellness entry to unlock recovery protocols.<br /><span style={{ fontSize: '9px' }}>Toparlanma önerilerini görmek için antrenman veya iyilik verisi gir.</span>
+      </div>
+    )
+  }
 
   const _title = lang === 'tr'
     ? t('recoveryProtocolTitle').split('/')[1]?.trim() ?? t('recoveryProtocolTitle')

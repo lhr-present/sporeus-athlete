@@ -45,7 +45,13 @@ export default function PolarizationComplianceCard({ log }) {
   const overall = useMemo(() => overallPolarizationCompliance(safeLog, 8), [safeLog])
 
   // Require at least 3 weeks with usable data before showing the card
-  if (overall.weeksAnalyzed < 3) return null
+  const MONO = "'IBM Plex Mono', monospace"
+  if (overall.weeksAnalyzed < 3) return (
+    <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+      Log 3 or more weeks of sessions with zone data to view polarization compliance.<br />
+      <span style={{ fontSize: '9px' }}>Polarizasyon uyumu için bölge verisiyle 3+ haftalık antrenman kaydet.</span>
+    </div>
+  )
 
   const { meanScore, weeksAnalyzed } = overall
   const accentColor = _scoreColor(meanScore)

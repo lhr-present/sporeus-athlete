@@ -29,12 +29,12 @@ function fmtSplit(min) {
 
 function fmtDateShort(dateStr) {
   if (!dateStr) return '—'
-  const d = new Date(dateStr + 'T12:00:00')
-  const thisYear = new Date().getFullYear()
+  const d = new Date(dateStr + 'T00:00:00Z')
+  const thisYear = new Date().getUTCFullYear()
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-  const m = months[d.getMonth()]
-  if (d.getFullYear() === thisYear) return `${m} ${d.getDate()}`
-  return `${m} '${String(d.getFullYear()).slice(2)}`
+  const m = months[d.getUTCMonth()]
+  if (d.getUTCFullYear() === thisYear) return `${m} ${d.getUTCDate()}`
+  return `${m} '${String(d.getUTCFullYear()).slice(2)}`
 }
 
 export default function SeasonBestsCard({ log = [], dl = {} }) {
