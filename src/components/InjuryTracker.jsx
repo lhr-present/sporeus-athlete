@@ -36,7 +36,7 @@ function getZoneColor(count) {
 
 function countRecent(injuries, zoneId) {
   const cutoff = new Date()
-  cutoff.setDate(cutoff.getDate() - 14)
+  cutoff.setUTCDate(cutoff.getUTCDate() - 14)
   const cutoffStr = cutoff.toISOString().slice(0, 10)
   return injuries.filter(i => i.zone === zoneId && i.date >= cutoffStr).length
 }
@@ -53,7 +53,7 @@ export default function InjuryTracker() {
 
   const activeCount = (() => {
     const cutoff = new Date()
-    cutoff.setDate(cutoff.getDate() - 14)
+    cutoff.setUTCDate(cutoff.getUTCDate() - 14)
     const cutoffStr = cutoff.toISOString().slice(0, 10)
     const zones = new Set(injuries.filter(i => i.date >= cutoffStr).map(i => i.zone))
     return zones.size

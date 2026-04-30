@@ -43,11 +43,11 @@ const BLUE   = '#0064ff'
 function calcConsecutiveDays(log, today) {
   const dates = new Set((log || []).map(e => e.date))
   const start = new Date(today)
-  if (!dates.has(today)) start.setDate(start.getDate() - 1)
+  if (!dates.has(today)) start.setUTCDate(start.getUTCDate() - 1)
   let consecutiveDays = 0
   while (true) {
     const d = start.toISOString().slice(0, 10)
-    if (dates.has(d)) { consecutiveDays++; start.setDate(start.getDate() - 1) }
+    if (dates.has(d)) { consecutiveDays++; start.setUTCDate(start.getUTCDate() - 1) }
     else break
   }
   return consecutiveDays
@@ -63,7 +63,7 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
   const [planStatus, setPlanStatus] = useLocalStorage('sporeus-plan-status', {})
 
   const today     = new Date().toISOString().slice(0, 10)
-  const yesterday = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10) })()
+  const yesterday = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10) })()
 
   const plannedSession = useMemo(() => getTodayPlannedSession(plan, today), [plan, today])
   const todayKey       = plannedSession ? `${plannedSession.weekIdx}-${plannedSession.dayIdx}` : null
@@ -74,7 +74,7 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
 
   const yesterdayLogged = (log || []).some(e => e.date === yesterday)
   const sessions7d      = useMemo(() => {
-    const cutoff = (() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().slice(0, 10) })()
+    const cutoff = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 7); return d.toISOString().slice(0, 10) })()
     return (log || []).filter(e => e.date >= cutoff).length
   }, [log])
   const consecutiveDays = useMemo(() => calcConsecutiveDays(log, today), [log, today])
@@ -83,23 +83,23 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
   const wellDays = useMemo(() => {
     const recDates = new Set((recovery || []).map(e => e.date))
     const d = new Date(today)
-    if (!recDates.has(today)) d.setDate(d.getDate() - 1)
+    if (!recDates.has(today)) d.setUTCDate(d.getUTCDate() - 1)
     let s = 0
-    while (recDates.has(d.toISOString().slice(0, 10))) { s++; d.setDate(d.getDate() - 1) }
+    while (recDates.has(d.toISOString().slice(0, 10))) { s++; d.setUTCDate(d.getUTCDate() - 1) }
     return s
   }, [recovery, today])
 
   // Week TSS (Mon–Sun current week)
   const weekTSS = useMemo(() => {
     const d = new Date(today)
-    d.setDate(d.getDate() - (d.getDay() + 6) % 7)
+    d.setUTCDate(d.getUTCDate() - (d.getUTCDay() + 6) % 7)
     const ws = d.toISOString().slice(0, 10)
     return Math.round((log || []).filter(e => e.date >= ws).reduce((s, e) => s + (e.tss || 0), 0))
   }, [log, today])
 
   // ── Z-score personal baseline (28-day rolling) ──────────────────────────────
   const wellnessBaseline = useMemo(() => {
-    const cutoff = (() => { const d = new Date(); d.setDate(d.getDate() - 29); return d.toISOString().slice(0, 10) })()
+    const cutoff = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 29); return d.toISOString().slice(0, 10) })()
     const past = (recovery || []).filter(e => e.date >= cutoff && e.date < today && typeof e.score === 'number')
     if (past.length < 7) return null
     const n    = past.length
@@ -146,7 +146,7 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
   const scienceInsights = useMemo(() => {
     const { ctl: curCTL, atl: _curATL, tsb: curTSB } = calcLoad(log || [])
     // prevCTL: CTL 4 weeks ago — filter log to only entries older than 28 days
-    const cutoff28 = (() => { const d = new Date(); d.setDate(d.getDate() - 28); return d.toISOString().slice(0, 10) })()
+    const cutoff28 = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 28); return d.toISOString().slice(0, 10) })()
     const { ctl: prevCTL } = calcLoad((log || []).filter(e => e.date <= cutoff28))
     const isRaceWeek = !!(profile?.raceDate && (() => {
       const days = Math.round((new Date(profile.raceDate) - new Date(today)) / 86400000)
@@ -316,7 +316,7 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
       // 7-day TSS bars
       const bars = []
       for (let i = 6; i >= 0; i--) {
-        const d = new Date(today); d.setDate(d.getDate() - i)
+        const d = new Date(today); d.setUTCDate(d.getUTCDate() - i)
         const ds = d.toISOString().slice(0, 10)
         bars.push((log || []).filter(e => e.date === ds).reduce((s, e) => s + (e.tss || 0), 0))
       }
@@ -552,7 +552,7 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
         const hrvMap = {}
         ;(recovery || []).forEach(e => { if (parseFloat(e.hrv) > 0) hrvMap[e.date] = parseFloat(e.hrv) })
         const bars = Array.from({ length: 7 }, (_, i) => {
-          const d = new Date(); d.setDate(d.getDate() - (6 - i)); return d.toISOString().slice(0, 10)
+          const d = new Date(); d.setUTCDate(d.getUTCDate() - (6 - i)); return d.toISOString().slice(0, 10)
         }).map(d => ({ date: d, val: hrvMap[d] || 0 }))
         const maxHRV = Math.max(...bars.map(b => b.val), 1)
         return (
@@ -797,7 +797,7 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
       {(() => {
         const { ctl } = calcLoad(log || [])
         const last3 = [-1, -2, -3].map(n => {
-          const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10)
+          const d = new Date(); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10)
         })
         const hasRestDays = last3.every(d => !(log || []).find(e => e.date === d))
         if (ctl > 40 && hasRestDays) {
@@ -1355,6 +1355,11 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
       {/* ── Card 4: Smart Suggestion ───────────────────────────────────────── */}
       <div style={{ ...card }}>
         <div style={cardTitle}>{t('todaySuggestion')}</div>
+        {!suggestion && (
+          <div style={{ fontSize: '11px', color: '#555', fontFamily: MONO }}>
+            {lang === 'tr' ? 'Öneri oluşturmak için daha fazla antrenman kaydı gerekiyor.' : 'Log a few sessions to receive a smart suggestion.'}
+          </div>
+        )}
         {suggestion && (
           <div style={{ marginBottom: '16px' }}>
             {/* O2 — suggestion source badge */}

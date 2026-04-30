@@ -58,8 +58,9 @@ export default function GoalTrackerCard({ log, profile: _profile, dl }) {
         recent.forEach(e => {
           if (!e.distance || e.distance <= 0) return
           const d = new Date(e.date)
-          const dow = d.getDay() || 7
-          const mon = new Date(d); mon.setDate(d.getDate() - dow + 1)
+          // Use UTC variants — e.date is YYYY-MM-DD (UTC midnight); local getDay/setDate shift by timezone
+          const dow = d.getUTCDay() || 7
+          const mon = new Date(d); mon.setUTCDate(d.getUTCDate() - dow + 1)
           const wk = mon.toISOString().slice(0, 10)
           byWeek[wk] = (byWeek[wk] || 0) + e.distance
         })
@@ -74,8 +75,9 @@ export default function GoalTrackerCard({ log, profile: _profile, dl }) {
         recent.forEach(e => {
           if (!e.duration || e.duration <= 0) return
           const d = new Date(e.date)
-          const dow = d.getDay() || 7
-          const mon = new Date(d); mon.setDate(d.getDate() - dow + 1)
+          // Use UTC variants — e.date is YYYY-MM-DD (UTC midnight); local getDay/setDate shift by timezone
+          const dow = d.getUTCDay() || 7
+          const mon = new Date(d); mon.setUTCDate(d.getUTCDate() - dow + 1)
           const wk = mon.toISOString().slice(0, 10)
           byWeek[wk] = (byWeek[wk] || 0) + e.duration
         })
@@ -268,7 +270,7 @@ function RaceGoalSection({
               />
             </div>
             <div style={{ flex: 1, minWidth: '100px' }}>
-              <div style={{ ...S.mono, fontSize: '9px', color: 'var(--muted)', marginBottom: '3px', letterSpacing: '0.05em' }}>
+              <div title="CTL (Chronic Training Load) — 42-day fitness base score" style={{ ...S.mono, fontSize: '9px', color: 'var(--muted)', marginBottom: '3px', letterSpacing: '0.05em' }}>
                 {t('raceGoalTargetCTL').toUpperCase()}
               </div>
               <input
@@ -316,7 +318,7 @@ function RaceGoalSection({
             <div>
               {/* Projected CTL */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
-                <span style={{ ...S.mono, fontSize: '10px', color: 'var(--muted)' }}>
+                <span title="CTL (Chronic Training Load) — projected 42-day fitness at race day" style={{ ...S.mono, fontSize: '10px', color: 'var(--muted)' }}>
                   {t('raceGoalProjected')}
                 </span>
                 <span style={{ ...S.mono, fontSize: '18px', fontWeight: 700, color: 'var(--text)' }}>

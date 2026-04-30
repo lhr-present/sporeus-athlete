@@ -153,7 +153,7 @@ export default function VO2maxCard() {
             <div style={{ fontFamily: MONO, fontSize: '24px', fontWeight: 700, color: '#0064ff', lineHeight: 1 }}>
               {cooperEst}
             </div>
-            <div style={{ fontFamily: MONO, fontSize: '8px', color: '#555', letterSpacing: '0.1em', marginTop: '4px' }}>
+            <div title="Cooper VO₂max — estimated from 12-minute run distance (Cooper 1968)" style={{ fontFamily: MONO, fontSize: '8px', color: '#555', letterSpacing: '0.1em', marginTop: '4px' }}>
               COOPER VO₂max
             </div>
           </div>

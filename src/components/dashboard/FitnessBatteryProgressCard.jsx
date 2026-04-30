@@ -131,7 +131,15 @@ export default function FitnessBatteryProgressCard() {
   const [history]  = useState(() => loadBatteryHistory())
   const progress   = useMemo(() => computeBatteryProgress(history, profile), [history, profile])
 
-  if (!progress) return null
+  if (!progress) return (
+    <div className="sp-card" style={CARD}>
+      <div style={TITLE}>◈ {t('batteryTitle')}</div>
+      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
+        Log sessions to unlock this insight
+        <br /><span style={{ fontSize: '9px' }}>Antrenman kaydet → veri görünür</span>
+      </div>
+    </div>
+  )
 
   const { latestDate, prevDate, results, sessionCount } = progress
 

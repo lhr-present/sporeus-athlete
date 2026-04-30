@@ -4,6 +4,32 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.41.0 — 2026-04-30 — 31 bug fixes across 10 components (timezone, crashes, UX), 5538 tests
+
+InjuryTracker.jsx: 2× cutoff.setUTCDate (14-day window was off-by-one in UTC+ timezones)
+
+TodayView.jsx: 12 UTC fixes — calcConsecutiveDays, yesterday, sessions7d, wellDays, weekTSS Monday anchor,
+  wellnessBaseline cutoff, scienceInsights cutoff, share canvas 7-day bars, HRV 7-day strip, rest-day check;
+  empty state added for Smart Suggestion when null
+
+TrainingLog.jsx: Fragment key on multi-row entries (React mis-reconciliation on delete);
+  expandedAnalysis?.notes?.map (optional chain);
+  wExhausted variables out-of-scope (W' exhaustion warning silently never rendered);
+  IF string/number mismatch (toFixed returns string, used in numeric comparisons)
+
+CoachSquadView.jsx: pastCutoff UTC mismatch; 3× null display_name crash in sort/label;
+  today_tsb null rendered as "+null"
+CoachDashboard.jsx: null name crash in athlete sort; lang undeclared variable (ReferenceError)
+WeekBuilder.jsx: week.phase undefined crash; DnD index key → stable _id key
+
+GoalTrackerCard.jsx: weekly-grouping getDay/getDate/setDate → UTC variants (wrong week bucket in UTC+)
+RaceReadinessCard.jsx: past-race false-positive for first N hours of race day in UTC+ timezone
+FitnessBatteryProgressCard.jsx: silent return null → bilingual empty state
+VO2maxCard.jsx + GoalTrackerCard.jsx + RaceReadinessCard.jsx: title tooltips on CTL, VDOT, VO2max acronyms
+
+5538 tests — all pass.
+DEPENDS ON: v8.40.0
+
 ## v8.40.0 — 2026-04-30 — AI/aiHelpers tests + 8 bug fixes (timezone, ReferenceError, O(n²)), 5538 tests
 
 New tests (+49):

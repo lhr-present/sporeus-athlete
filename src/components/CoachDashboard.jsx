@@ -132,7 +132,7 @@ export default function CoachDashboard({ authUser }) {
     if (sortBy === 'acwr') return ((ma.acwr || 0) - (mb.acwr || 0)) * dir
     if (sortBy === 'readiness') return ((ma.readiness || 0) - (mb.readiness || 0)) * dir
     if (sortBy === 'lastActive') return (ma.lastSession > mb.lastSession ? 1 : -1) * dir
-    if (sortBy === 'name') return a.name.localeCompare(b.name) * dir
+    if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '') * dir
     return 0
   })
 
@@ -256,7 +256,6 @@ export default function CoachDashboard({ authUser }) {
           onDone={() => setClubOnboarded(true)}
           authUserId={sbCoachId}
           inviteUrl={inviteUrl}
-          lang={lang}
         />
       )}
 

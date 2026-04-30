@@ -32,7 +32,8 @@ function RaceReadinessCard({ log, recovery, injuries, profile, plan, planStatus,
 
   const isRaceWeek = rr.daysToRace !== null && rr.daysToRace >= 0 && rr.daysToRace <= 7
   const sortedFactors = [...rr.factors].sort((a, b) => (a.score * a.weight) - (b.score * b.weight))
-  const raceIsPast = raceDate && new Date(raceDate) < new Date()
+  // Compare at UTC midnight to avoid off-by-one in timezones east of UTC
+  const raceIsPast = raceDate && new Date(raceDate) < new Date(new Date().toISOString().slice(0, 10))
   const hasResult  = raceResult.some(r => r.raceDate === raceDate)
 
   const saveResult = () => {
@@ -138,7 +139,7 @@ function RaceReadinessCard({ log, recovery, injuries, profile, plan, planStatus,
           {perf.trainingPaces && (
             <div style={{ marginTop:'10px', padding:'8px 10px', background:'var(--card-bg)', borderRadius:'4px' }}>
               <div style={{ ...S.mono, fontSize:'9px', color:'#ff6600', letterSpacing:'0.06em', marginBottom:'6px' }}>
-                YOUR TRAINING PACES · VDOT {perf.trainingPaces.vdot}
+                YOUR TRAINING PACES · <span title="VDOT — Daniels aerobic running fitness index from race performance">VDOT</span> {perf.trainingPaces.vdot}
               </div>
               <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
                 {[

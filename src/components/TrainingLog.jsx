@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, useRef, useMemo } from 'react'
+import { useState, useEffect, useContext, useRef, useMemo, Fragment } from 'react'
 import { logger } from '../lib/logger.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
@@ -562,8 +562,8 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                   const suggestedTag = !hasTag ? autoTagSession(s) : null
                   const isExpanded = expandedId === s.id
                   return (
-                    <>
-                    <tr key={i} style={{ borderBottom: isExpanded ? 'none' : '1px solid var(--border)', background: bulkMode && selected.has(s.id) ? '#ff660011' : isExpanded ? '#0f0f0f' : undefined, cursor: bulkMode ? undefined : 'pointer' }}
+                    <Fragment key={s.id}>
+                    <tr style={{ borderBottom: isExpanded ? 'none' : '1px solid var(--border)', background: bulkMode && selected.has(s.id) ? '#ff660011' : isExpanded ? '#0f0f0f' : undefined, cursor: bulkMode ? undefined : 'pointer' }}
                       onClick={bulkMode ? undefined : () => setExpandedId(isExpanded ? null : s.id)}>
                       {bulkMode && (
                         <td style={{ padding:'6px 6px 6px 0' }} onClick={e => e.stopPropagation()}>
@@ -715,7 +715,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                                     </div>
                                     <div>
                                       <div style={{ fontSize:'9px', color:'#555', marginBottom:'3px' }}>{isTR?'NOTLAR':'NOTES'}</div>
-                                      {expandedAnalysis?.notes.map((n,ni) => <div key={ni} style={{ fontSize:'10px', color:'#aaa' }}>· {n}</div>)}
+                                      {expandedAnalysis?.notes?.map((n,ni) => <div key={ni} style={{ fontSize:'10px', color:'#aaa' }}>· {n}</div>)}
                                     </div>
                                   </div>
                                 )
@@ -767,7 +767,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                         </tr>
                       )
                     })()}
-                    </>
+                    </Fragment>
                   )
                 })}
               </tbody>
@@ -801,14 +801,15 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
               const np = powers.length >= 30 ? normalizedPower(powers) : 0
               const durationSec = (importPreview.durationMin || 0) * 60
               const powerTSS = (np && ftp) ? computePowerTSS(np, durationSec, ftp) : null
-              const IF = (np && ftp) ? (np / ftp).toFixed(2) : null
+              const IFnum = (np && ftp) ? np / ftp : null
+              const IF = IFnum != null ? IFnum.toFixed(2) : null
               const tssDisplay = powerTSS ?? importPreview.tssEstimate
               const tssLabel = powerTSS ? `TSS (power)` : importPreview.tssEstimate ? 'TSS (HR est.)' : 'TSS (RPE est.)'
               const cpPrev    = parseInt(profileLS?.cp) || 0
               const wCapPrev  = parseInt(profileLS?.wPrime) || 0
               const wbalPrev  = (powers.length >= 30 && cpPrev && wCapPrev) ? computeWPrime(powers, cpPrev, wCapPrev) : null
               const wExhausted = wbalPrev ? wbalPrev.some(v => v <= 0) : false
-              const _wExhaustSec = wExhausted ? wbalPrev.findIndex(v => v <= 0) : -1
+              const wExhaustSec = wExhausted ? wbalPrev.findIndex(v => v <= 0) : -1
               const previewStats = [
                 { lbl:'DATE', val: importPreview.date },
                 { lbl:'DURATION', val: `${importPreview.durationMin} min` },
@@ -816,28 +817,30 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                 { lbl:'AVG HR', val: importPreview.avgHR ? `${importPreview.avgHR} bpm` : '—' },
                 ...(np ? [
                   { lbl:'NORM POWER', val: `${np}W`, color:'#ff6600' },
-                  { lbl:'INT FACTOR', val: IF, color: IF >= 1.05 ? '#e03030' : IF >= 0.88 ? '#f5c542' : '#5bc25b' },
+                  { lbl:'INT FACTOR', val: IF, color: IFnum >= 1.05 ? '#e03030' : IFnum >= 0.88 ? '#f5c542' : '#5bc25b' },
                 ] : []),
                 { lbl: tssLabel, val: tssDisplay, color:'#ff6600' },
                 { lbl:'ELEV GAIN', val: importPreview.elevationGainM != null ? `${importPreview.elevationGainM} m` : '—' },
               ]
               return (
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px', marginBottom:'20px' }}>
-                  {previewStats.map(({ lbl, val, color }) => (
-                    <div key={lbl} style={{ background:'#0a0a0a', borderRadius:'4px', padding:'10px 12px' }}>
-                      <div style={{ fontSize:'8px', color:'#555', letterSpacing:'0.1em', marginBottom:'4px' }}>{lbl}</div>
-                      <div style={{ fontSize:'14px', fontWeight:700, color: color || '#e0e0e0' }}>{val}</div>
+                <>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px', marginBottom:'20px' }}>
+                    {previewStats.map(({ lbl, val, color }) => (
+                      <div key={lbl} style={{ background:'#0a0a0a', borderRadius:'4px', padding:'10px 12px' }}>
+                        <div style={{ fontSize:'8px', color:'#555', letterSpacing:'0.1em', marginBottom:'4px' }}>{lbl}</div>
+                        <div style={{ fontSize:'14px', fontWeight:700, color: color || '#e0e0e0' }}>{val}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {wExhausted && (
+                    <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', background:'rgba(224,48,48,0.1)', border:'1px solid #e0303066', borderRadius:'4px', padding:'8px 12px', marginBottom:'16px', color:'#e03030' }}>
+                      ⚡ W' reached zero at {Math.floor(wExhaustSec/60)}:{String(wExhaustSec%60).padStart(2,'0')} — complete anaerobic reserve depletion.
+                      Session will be flagged in your log. (Skiba 2012)
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               )
             })()}
-            {wExhausted && (
-              <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', background:'rgba(224,48,48,0.1)', border:'1px solid #e0303066', borderRadius:'4px', padding:'8px 12px', marginBottom:'16px', color:'#e03030' }}>
-                ⚡ W' reached zero at {Math.floor(wExhaustSec/60)}:{String(wExhaustSec%60).padStart(2,'0')} — complete anaerobic reserve depletion.
-                Session will be flagged in your log. (Skiba 2012)
-              </div>
-            )}
             <div style={{ marginBottom:'16px' }}>
               <label style={{ fontSize:'9px', color:'#666', letterSpacing:'0.1em', display:'block', marginBottom:'4px' }}>SESSION TYPE</label>
               <select value={importPreview.type} onChange={e => setImportPreview(p => ({...p, type: e.target.value}))}

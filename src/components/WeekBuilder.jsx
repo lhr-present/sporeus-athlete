@@ -178,7 +178,7 @@ export default function WeekBuilder({ week, onClose }) {
             WEEK BUILDER
           </div>
           <div style={{ fontSize: 9, color: '#555', marginTop: 2 }}>
-            WEEK {week.weekNum} — {week.phase.toUpperCase()} — {week.weekStart} · Target: {week.targetTSS} TSS
+            WEEK {week.weekNum} — {(week.phase || 'BASE').toUpperCase()} — {week.weekStart} · Target: {week.targetTSS} TSS
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -264,7 +264,7 @@ export default function WeekBuilder({ week, onClose }) {
                 {/* Day's sessions */}
                 {days[dayIdx].map((sess, si) => (
                   <div
-                    key={si}
+                    key={sess._id ?? `${dayIdx}-${si}`}
                     draggable
                     onDragStart={e => handleSessionDragStart(e, dayIdx, si)}
                   >

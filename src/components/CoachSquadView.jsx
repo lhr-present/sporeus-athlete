@@ -35,7 +35,7 @@ const COLORS = ['#ff6600','#0064ff','#5bc25b','#f5c542','#b060ff']
 const STATUS_ORDER = ['Overreaching','Detraining','Building','Peaking','Recovering','Maintaining']
 function defaultSort(a, b) {
   const d = STATUS_ORDER.indexOf(a.training_status) - STATUS_ORDER.indexOf(b.training_status)
-  return d !== 0 ? d : a.display_name.localeCompare(b.display_name)
+  return d !== 0 ? d : (a.display_name || '').localeCompare(b.display_name || '')
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -62,7 +62,7 @@ export default function CoachSquadView({ authUser }) {
   })
 
   const todayStr    = new Date().toISOString().slice(0, 10)
-  const pastCutoff  = new Date().getHours() >= 10
+  const pastCutoff  = new Date().getUTCHours() >= 10
   const missedCheckIn = a => pastCutoff && a.last_session_date !== todayStr
 
   useEffect(() => {
@@ -113,7 +113,7 @@ export default function CoachSquadView({ authUser }) {
 
   // ── Sort + filter ─────────────────────────────────────────────────────────────
   const SORT_FNS = {
-    name:      (a, b) => a.display_name.localeCompare(b.display_name),
+    name:      (a, b) => (a.display_name || '').localeCompare(b.display_name || ''),
     readiness: (a, b) => (b.last_hrv_score || 0) - (a.last_hrv_score || 0),
     tsb:       (a, b) => (b.today_tsb || 0) - (a.today_tsb || 0),
     acwr:      (a, b) => (b.acwr_ratio || 0) - (a.acwr_ratio || 0),
@@ -265,7 +265,7 @@ export default function CoachSquadView({ authUser }) {
           { label:'CTL',        get: a => a.today_ctl || 0,         fmt: v => String(Math.round(v)),  max: maxCTL  },
           { label:'ACWR',       get: a => a.acwr_ratio || 0,        fmt: v => v.toFixed(2),            max: maxACWR },
           { label:'WELLNESS%',  get: a => wellnessAvg(a),           fmt: v => `${v}%`,                 max: 100 },
-          { label:'TSB',        get: a => (a.today_tsb ?? 0) + 50,  fmt: (_, a) => `${a.today_tsb > 0 ? '+' : ''}${a.today_tsb}`, max: 100 },
+          { label:'TSB',        get: a => (a.today_tsb ?? 0) + 50,  fmt: (_, a) => { const v = a.today_tsb ?? 0; return `${v > 0 ? '+' : ''}${v}` }, max: 100 },
         ]
         return (
           <div style={{ marginBottom: 12, background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: 4, padding: '12px 14px' }}>
@@ -289,7 +289,7 @@ export default function CoachSquadView({ authUser }) {
                   const pct = Math.min(100, Math.round(raw / m.max * 100))
                   return (
                     <div key={a.athlete_id} style={{ display:'flex', alignItems:'center', gap: 8, marginBottom: 3 }}>
-                      <span style={{ fontFamily: MONO, fontSize: 8, color: '#555', minWidth: 90, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{a.display_name.split(' ')[0]}</span>
+                      <span style={{ fontFamily: MONO, fontSize: 8, color: '#555', minWidth: 90, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{(a.display_name || '').split(' ')[0]}</span>
                       <div style={{ flex:1, height:8, background:'#1a1a1a', borderRadius:2, overflow:'hidden' }}>
                         <div style={{ width:`${pct}%`, height:'100%', background: COLORS[i], borderRadius:2, transition:'width 0.3s' }}/>
                       </div>
