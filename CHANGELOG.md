@@ -4,6 +4,30 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.50.0 — 2026-04-30 — zero-coverage pure-lib test sweep (+331 tests), 6028 tests
+
+New test suites for 4 previously untested pure-function modules:
+
+  ruleInsights.test.js (E93) — 143 tests: getReadinessLabel, getLoadTrendAlert,
+  getMonotonyWarning, getFatigueAccumulation, getMissedRestWarning, getAthleteInsights
+  (boundary thresholds, EN+TR strings, severity sort, null/NaN coercion)
+
+  sport/normativeTables.test.js (E94) — 79 tests: FTP_NORMS, VO2MAX_NORMS, CTL_NORMS,
+  ROW_2000M_NORMS, RUNNING_VDOT_NORMS + getFTPNorm, getVO2maxNorm, getCTLNorm
+  (monotonicity, exact anchor lookups, percentile clamping, age group routing)
+
+  sport/goalTracker.test.js (E95) — 48 tests: calcWeeklyRate, projectAchievementDate,
+  getGoalProgress, getGoalStatus (OLS exactness, zero-denominator guards, pct
+  clamping, on_track/behind/impossible paths)
+
+  powerAnalysis.test.js (E96) — 81 tests: KEY_DURATIONS, calculateMMP, fitCriticalPower,
+  detectIntervals, estimateFTP (OLS CP/W' accuracy, interval merge/split, FTP priority
+  chain 60-min→20-min→8-min, non-increasing MMP curve)
+
+281 test files · 6028 tests · all passing.
+
+---
+
 ## v8.49.0 — 2026-04-30 — trainingLoad.js test coverage (+71 tests), 5697 tests
 
 New test suites for previously untested trainingLoad.js exports:
