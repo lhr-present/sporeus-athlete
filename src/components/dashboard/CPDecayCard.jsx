@@ -172,23 +172,25 @@ export default function CPDecayCard({ testResults = [] }) {
               strokeLinejoin="round"
               strokeLinecap="round"
             />
-            {sparkData.map((h, i) => {
+            {(() => {
               const vals = sparkData.map(d => d.cp)
               const minV = Math.min(...vals)
               const maxV = Math.max(...vals)
               const range = maxV - minV || 1
-              const x = PAD + i * (SVG_W - 2 * PAD) / Math.max(vals.length - 1, 1)
-              const y = SVG_H - PAD - (h.cp - minV) / range * (SVG_H - 2 * PAD)
-              return (
-                <circle
-                  key={i}
-                  cx={x.toFixed(1)}
-                  cy={y.toFixed(1)}
-                  r="2"
-                  fill="#ff6600"
-                />
-              )
-            })}
+              return sparkData.map((h, i) => {
+                const x = PAD + i * (SVG_W - 2 * PAD) / Math.max(vals.length - 1, 1)
+                const y = SVG_H - PAD - (h.cp - minV) / range * (SVG_H - 2 * PAD)
+                return (
+                  <circle
+                    key={i}
+                    cx={x.toFixed(1)}
+                    cy={y.toFixed(1)}
+                    r="2"
+                    fill="#ff6600"
+                  />
+                )
+              })
+            })()}
           </svg>
         </div>
       )}

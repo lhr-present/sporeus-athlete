@@ -35,7 +35,7 @@ const TOTAL_COL_H   = BAND_H + BAR_MAX_H + 22  // band + bar + label
 
 function addWeeks(dateStr, n) {
   const d = new Date(dateStr)
-  d.setDate(d.getDate() + n * 7)
+  d.setUTCDate(d.getUTCDate() + n * 7)
   return d.toISOString().slice(0, 10)
 }
 
@@ -46,7 +46,7 @@ function currentWeekIndex(weeks) {
   const today = todayStr()
   for (let i = 0; i < weeks.length; i++) {
     const ws = new Date(weeks[i].weekStart)
-    const we = new Date(ws); we.setDate(ws.getDate() + 6)
+    const we = new Date(ws); we.setUTCDate(ws.getUTCDate() + 6)
     const t  = new Date(today)
     if (t >= ws && t <= we) return i
   }

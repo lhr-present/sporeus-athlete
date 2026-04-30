@@ -128,7 +128,7 @@ function PlanTable({ phases, weeklyHours, raceDate, projection }) {
             const tsbCol = tsb > 5 ? '#5bc25b' : tsb < -10 ? '#e03030' : '#f5c542'
             const dateStr = weekOffset
               ? new Date(weekOffset.getTime() + idx * 7 * 86400000)
-                  .toLocaleDateString('en-GB', { day:'2-digit', month:'short' })
+                  .toLocaleDateString('en-GB', { day:'2-digit', month:'short', timeZone:'UTC' })
               : '—'
 
             return (
@@ -259,7 +259,7 @@ function CoachPlansCard({ authUser }) {
         const weeks = Array.isArray(plan.weeks) ? plan.weeks : []
         const isOpen = !!expanded[plan.id]
         const startDt = plan.start_date
-          ? new Date(plan.start_date).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+          ? new Date(plan.start_date).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric', timeZone:'UTC' })
           : '—'
 
         const hasNotes = weeks.some(wk => wk.coachNote)
@@ -417,7 +417,7 @@ export default function Periodization({ authUser }) {
 
   const startDate = raceDate
     ? new Date(new Date(raceDate).getTime() - (MACRO_PHASES.length - 1) * 7 * 86400000)
-        .toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })
+        .toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric', timeZone:'UTC' })
     : null
 
   // Read coach plan from localStorage for adaptive analysis (same key used by App.jsx)
@@ -449,7 +449,7 @@ export default function Periodization({ authUser }) {
         </div>
         {startDate && (
           <div style={{ ...S.mono, fontSize:'11px', color:'#888', marginTop:'10px' }}>
-            {t('startDateLbl')} {startDate} · Race: {new Date(raceDate).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}
+            {t('startDateLbl')} {startDate} · Race: {new Date(raceDate).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric', timeZone:'UTC' })}
           </div>
         )}
         {!raceDate && (

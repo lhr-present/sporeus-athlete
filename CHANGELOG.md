@@ -4,6 +4,23 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.40.0 — 2026-04-30 — AI/aiHelpers tests + 8 bug fixes (timezone, ReferenceError, O(n²)), 5538 tests
+
+New tests (+49):
+  ai/hash.test.js: 10 tests — createHash determinism, hex format, edge cases
+  ai/v1.test.js: 19 tests — getPrompt, SURFACES, lang switching, version sha
+  aiHelpers.test.js: 20 tests — isSunday, shouldRunWeeklyDigest, getWeekStart
+
+Bug fixes (8):
+  useAdaptivePlan.js: getMonday/getWeekDates/prevMonday — getDay/getDate/setDate → UTC variants
+  YearlyPlan.jsx line 38: addWeeks setDate/getDate → setUTCDate/getUTCDate (week off-by-one in UTC−)
+  YearlyPlan.jsx line 49: currentWeekIndex we.setDate → setUTCDate (week-end boundary wrong)
+  Recovery.jsx line 512: predictInjuryRisk(log, entries, profile) → profileLS (ReferenceError crash)
+  Periodization.jsx lines 130/262/419/452: toLocaleDateString missing timeZone:'UTC' (date shows day early in UTC−)
+  CPDecayCard.jsx: O(n²) vals/minV/maxV/range recomputed per-iteration inside .map() → hoisted out
+5538 tests — all pass.
+DEPENDS ON: v8.39.0
+
 ## v8.39.0 — 2026-04-30 — Test coverage + 5 bug fixes: science/storage/orientation modules, 5489 tests
 
 New test suites (216 new tests):

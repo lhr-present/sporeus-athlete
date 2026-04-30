@@ -15,15 +15,15 @@ import { useLocalStorage } from './useLocalStorage.js'
 function getWeekDates(mondayStr) {
   const start = new Date(mondayStr)
   const end   = new Date(start)
-  end.setDate(end.getDate() + 7)
+  end.setUTCDate(end.getUTCDate() + 7)
   return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) }
 }
 
 function getMonday(d = new Date()) {
-  const day = d.getDay() || 7
+  const day = d.getUTCDay() || 7
   const mon = new Date(d)
-  mon.setDate(d.getDate() - day + 1)
-  mon.setHours(0, 0, 0, 0)
+  mon.setUTCDate(d.getUTCDate() - day + 1)
+  mon.setUTCHours(0, 0, 0, 0)
   return mon.toISOString().slice(0, 10)
 }
 
@@ -40,7 +40,7 @@ export function useAdaptivePlan(log, plan) {
     const thisMonday = getMonday()
     const prevMonday = (() => {
       const d = new Date(thisMonday)
-      d.setDate(d.getDate() - 7)
+      d.setUTCDate(d.getUTCDate() - 7)
       return d.toISOString().slice(0, 10)
     })()
 
