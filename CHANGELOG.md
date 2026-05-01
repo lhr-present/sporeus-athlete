@@ -4,6 +4,27 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.52.0 — 2026-05-01 — pure-lib coverage wave 3 (+133 tests), 6473 tests
+
+New test suites closing the last pure-function coverage gaps:
+
+  coachDigest.test.js (E103) — 98 tests: ctlTrend, wellnessAvg, trendLabel,
+  acwrStatusLabel, generateAthleteDigestLine, generateSquadDigest
+
+  aiPrompts.pure.test.js (E104) — 32 tests: appendToneModifier (3 tones,
+  case-insensitive, whitespace trim, unknown → empty), getFeedbackStats
+  (action/resource/rating filters, ratio math, null guards, div-by-zero)
+
+  sport/athleteDataBridge.test.js (E105) — 60 tests: deriveCtlAtl (ATL>CTL
+  convergence), findRecentResult (type match, distanceM filter, durationSec
+  fallback), sessionFrequencyPerWeek (cutoff, denominator), extractProfileSport
+  (all 8 sport mappings, case-insensitive, primarySport priority),
+  fmtTimeInput + parseTimeInput (round-trip, padding, edge cases)
+
+290 test files · 6473 tests · all passing.
+
+---
+
 ## v8.51.0 — 2026-04-30 — pure-lib coverage wave 2 (+312 tests), 6340 tests
 
 New test suites for 6 previously untested pure-function modules:
