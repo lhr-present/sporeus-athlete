@@ -7,9 +7,10 @@
 //   lang        {string}        — 'tr' | 'en'
 //   onUpgrade   {function}      — called to open UpgradeModal
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { isPastDue, isCancelled, isOnTrial, daysUntilExpiry } from '../lib/subscription.js'
 import { trackEvent } from '../lib/telemetry.js'
+import { announce } from '../lib/a11y/announcer.js'
 
 const DISMISS_KEY = 'sporeus-pastdue-dismissed'
 
@@ -68,8 +69,18 @@ export default function PastDueBanner({ profile, lang = 'tr', onUpgrade }) {
   })
 
   const config = getBannerConfig(profile, lang)
+  const visible = !!config && !dismissed
 
-  if (!config || dismissed) return null
+  // Urgent: announce subscription warnings when the banner becomes visible.
+  // Past-due → assertive (payment failure is time-sensitive).
+  // Cancellation/trial countdowns → polite.
+  useEffect(() => {
+    if (!visible) return
+    const level = isPastDue(profile) ? 'assertive' : 'polite'
+    announce(config.text, level)
+  }, [visible, config?.text, profile])
+
+  if (!visible) return null
 
   function handleCta() {
     trackEvent('upgrade', 'banner_clicked', profile?.subscription_status ?? 'unknown', { event_type: 'conversion' })

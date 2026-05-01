@@ -4,6 +4,40 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.55.0 — 2026-05-02 — adoption wave: announce() + readinessScore + Runalyze/Garmin importers (+155 tests), 7304 tests
+
+  Announce() adoption (E19 a11y lib finally wired):
+    main.jsx — init() before React mount so live regions exist at boot
+    MorningCheckIn.jsx — modal-open + save-success announcements (polite, EN+TR)
+    QuickAddModal.jsx — session-saved announcement (polite, EN+TR)
+    PastDueBanner.jsx — banner appearance announcement (assertive past-due,
+      polite cancellation/trial)
+    SemanticSearch.jsx — Supabase error announcement (assertive, EN+TR)
+    a11y.adoption.test.jsx — 10 jsdom tests for level + bilingual content
+
+  E17 readinessScore wired into MorningCheckIn:
+    Replaced inline simple-average with computeReadinessScore() + recommendSession()
+    Saved-view shows score + reliability badge + top-2 drivers + session rec
+    Mood proxy uses wellness.energy (1-5) — comment explains choice
+    Soreness rescaled 1-5 → 1-10 to match lib expectation, no UI change
+    Recovery entry shape unchanged (date, score, hrv, etc.)
+    Null-score path renders "Insufficient data" / "Yetersiz veri"
+    MorningCheckIn.readiness.test.jsx — 9 tests covering score wiring, drivers,
+      reliability badge, session rec, null branch, bilingual TR rendering
+
+  E20 sister CSV importers (Runalyze + Garmin Connect):
+    runalyzeImport.js — 378 lines, ISO + DD.MM.YYYY dates, TRIMP→tss mapping,
+      km→m distance conversion, source='runalyze_csv' (63 tests)
+    garminConnectImport.js — 419 lines, distance unit handling (km/mi/m),
+      "--" placeholders, deliberate no-tss (Aerobic TE ≠ TSS), source='garmin_csv'
+      (73 tests)
+    Same dedup pattern (date+type+duration ±5min), 200-row perf budget <500ms,
+    BOM/CRLF/quoted-CSV handling consistent with TrainingPeaks importer
+
+302 test files · 7304 tests · all passing · +2456 lines (11 files).
+
+---
+
 ## v8.54.0 — 2026-05-01 — E20 TrainingPeaks CSV importer (+69 tests), 7149 tests
 
   src/lib/integrations/trainingPeaksImport.js — pure-function CSV parser:

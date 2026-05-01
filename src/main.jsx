@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
 import { initSentry } from './lib/observability/sentry.js'
 import { initWebVitals } from './lib/observability/webVitals.js'
+import { init as initA11yAnnouncer } from './lib/a11y/announcer.js'
 // Self-hosted fonts — latin + latin-ext only (covers EN + TR characters)
 // No Google Fonts CDN dependency — fonts served from same origin
 import '@fontsource/ibm-plex-mono/latin-400.css'
@@ -27,6 +28,10 @@ if ('serviceWorker' in navigator) {
     })
   })
 }
+
+// Initialise the a11y live-region announcer once, before React mounts.
+// Subsequent calls to announce() can rely on the regions already existing.
+initA11yAnnouncer()
 
 createRoot(document.getElementById('root')).render(<App />)
 

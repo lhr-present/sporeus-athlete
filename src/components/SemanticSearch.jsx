@@ -12,6 +12,7 @@
 
 import { useState, useEffect, useRef, useCallback, useContext } from 'react'
 import { useFocusTrap } from '../hooks/useFocusTrap.js'
+import { announce } from '../lib/a11y/announcer.js'
 import { S } from '../styles.js'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { isFeatureGated } from '../lib/subscription.js'
@@ -55,7 +56,8 @@ function simBar(similarity) {
 }
 
 export default function SemanticSearch({ show, onClose, onJumpToSession, tier = 'free', authUser }) {
-  const { t } = useContext(LangCtx)
+  const { t, lang } = useContext(LangCtx)
+  const isTR = lang === 'tr'
   const [query,    setQuery]    = useState('')
   const [results,  setResults]  = useState([])
   const [loading,  setLoading]  = useState(false)
@@ -115,7 +117,12 @@ export default function SemanticSearch({ show, onClose, onJumpToSession, tier = 
     } catch (e) {
       if (!ctrl.signal.aborted) {
         logger.error('SemanticSearch:', e.message)
-        setError(e.message || 'Search failed')
+        const msg = e.message || 'Search failed'
+        setError(msg)
+        // Assertive: search failure interrupts the user's task and needs immediate attention.
+        // Wording intentionally avoids the visible "Search failed" copy so screen readers
+        // don't announce it twice and so test queries don't double-match.
+        announce(isTR ? 'Anlamsal arama hata verdi.' : 'Semantic search error.', 'assertive')
       }
     } finally {
       if (!ctrl.signal.aborted) setLoading(false)

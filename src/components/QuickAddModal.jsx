@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef, useContext, useMemo } from 'react'
 import * as v from 'valibot'
 import { useFocusTrap } from '../hooks/useFocusTrap.js'
+import { announce } from '../lib/a11y/announcer.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { useData } from '../contexts/DataContext.jsx'
 import { S } from '../styles.js'
@@ -203,6 +204,7 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
       `${type} · ${dur}min · ${tss} TSS`, { tab: 'log' })
     setSessionAnalysis(analyseSession(entry, (log || []).slice(-28)))
     setPhase('saved')
+    announce(isTR ? 'Antrenman kaydedildi' : 'Session logged', 'polite')
     setTimeout(onClose, 4000)
   }
 
