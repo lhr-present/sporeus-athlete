@@ -4,6 +4,30 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.54.0 — 2026-05-01 — E20 TrainingPeaks CSV importer (+69 tests), 7149 tests
+
+  src/lib/integrations/trainingPeaksImport.js — pure-function CSV parser:
+    mapWorkoutType (Run/Bike/Swim/Strength/Walk/Row/MTB → Sporeus types)
+    parseCSVLine (quoted fields, embedded commas, "" escape, BOM, CRLF)
+    parseTPDate (ISO YYYY-MM-DD + MM/DD/YYYY US default + DD/MM/YYYY when day>12)
+    parseTPDuration (TimeTotalInHours decimal preferred, HH:MM:SS fallback)
+    mapTPRowToSession → { date, type, duration, tss?, rpe?, distanceM?, notes?,
+      source:'tp_csv' }
+    parseTrainingPeaksCSV → { sessions, errors, summary }
+    dedupSessions (date + type + duration ±5min tolerance)
+    importTrainingPeaksCSV end-to-end: parse→map→dedup with idempotency
+
+  Tests: 69 covering BOM stripping, CRLF, quoted commas, escaped quotes,
+  500-row perf budget, error rows don't block valid imports, idempotency
+  (re-import yields 0 new), source='tp_csv' invariant.
+
+NOT included: ImportWizard UI, data_source migration, FIT power parser,
+Apple Health (needs Capacitor), Garmin decision doc.
+
+298 test files · 7149 tests · all passing.
+
+---
+
 ## v8.53.0 — 2026-05-01 — E13 + E17 + E19 enhancement-pack lib portions, 7080 tests
 
 Built the **library portions** of three v9-pack enhancements (UI components and
