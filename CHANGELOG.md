@@ -4,6 +4,43 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.53.0 — 2026-05-01 — E13 + E17 + E19 enhancement-pack lib portions, 7080 tests
+
+Built the **library portions** of three v9-pack enhancements (UI components and
+SQL migrations deferred — only pure-function libs + tests):
+
+  E13 — Adaptive Plan Generator (src/lib/plan/, ~515 tests)
+    generatePlan.js: 3–52 week plans, phase progression Base→Build→Peak→Taper→Race,
+    per-session intent/TSS/RPE/zone, deload every 4th week, ACWR-safe ≤10% WoW
+    floor-clamp; reuses periodization.js zone shapes
+    taperEngine.js: applyTaper + suggestTaper (Mujika & Padilla 2003) — race-day
+    CTL drop 5–10%, TSB +5..+15 across CTL=30..70 range
+    planValidators.js: TSS_SPIKE / NO_RECOVERY / BACK_TO_BACK_Z5 / NEGATIVE_TSS /
+    EMPTY_WEEK codes, bilingual TR/EN errors
+
+  E17 — Morning Readiness (src/lib/recovery/, 66 tests)
+    readinessScore.js: HRV (40%, rolling Z vs 28d median) + sleep (25%) +
+    soreness (20%) + mood (15%); 'full'|'partial'|'low' reliability ladder;
+    top-2 drivers ranked by |delta|×weight; null when insufficient data
+    sessionRecommendation.js: <40 recovery, 40–60 easy, 60–80 planned, ≥80 push
+    (with override that respects deliberately-planned recovery days)
+    Citations: Plews 2013 (HRV), Lastella 2018 (sleep), Foster 1998
+
+  E19 — A11y utilities (src/lib/a11y/, 26 tests)
+    announcer.js: aria-live polite + assertive regions, toggle technique via
+    queueMicrotask, lazy auto-init, SSR-guarded
+    focusTrap.js: trapFocus + releaseFocus, Tab/Shift+Tab wrap, Escape routing,
+    focus restoration, escaped-focus pull-back via capture-phase keydown
+
+297 test files · 7080 tests · all passing · +607 new tests · +3301 lines.
+
+NOT included (deferred): PlanGeneratorWizard UI, RecoveryHub UI, axe-core CI
+integration, SQL migrations for generated_plans / daily_wellness, chart a11y
+updates, integration adoption (existing components not yet wired to announcer/
+focusTrap).
+
+---
+
 ## v8.52.0 — 2026-05-01 — pure-lib coverage wave 3 (+133 tests), 6473 tests
 
 New test suites closing the last pure-function coverage gaps:
