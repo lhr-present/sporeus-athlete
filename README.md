@@ -78,5 +78,3 @@ Edge functions include: AI pipeline (`analyse-session`, `embed-session`, `ai-pro
 
 **HUSEYIN AKBULUT** — BSc Sport Sciences, MSc Neuroscience, Marmara University
 [sporeus.com](https://sporeus.com) 
-
-*Built with Claude Code · Skiba 2012 · Friel phases · Morton 1996*
