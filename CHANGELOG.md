@@ -4,6 +4,30 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.60.0 — 2026-05-02 — staleZones detector lib (+29 tests), 7450 tests
+
+  src/lib/athlete/staleZones.js (193 lines):
+    detectStaleZones(log, today) returns per-zone status (stale|dropped|healthy)
+    over 28-day window. Stale = <5% share for entire window. Dropped = last-7d
+    share <50% of prior-21d share. Healthy = balanced.
+    Handles 3 zone shapes: array [z1..z5], object {Z1..Z5}, RPE→bucket fallback
+    (matches analyzeZoneBalance exact mapping). Unit-agnostic (TSS or minutes).
+    UTC arithmetic (setUTCDate/getUTCDate + ISO date string compares).
+    Strict-less-than boundaries (5% and 50% are healthy, not flagged).
+    reliable flag = distinctDays >= 14.
+    Bilingual {en, tr} messages with computed drop % for dropped zones.
+    Citation: Seiler 2010 polarized; Foster 2001 (exported as
+    STALE_ZONES_CITATION for downstream card use).
+    29 tests covering empty/null log, all-Z2 log → 4 stale zones, polarized
+    healthy mix, both boundary cases, multi-shape parsing, UTC midnight edge,
+    summary counts add to 5.
+
+  Dashboard card deferred to a follow-up.
+
+312 test files · 7450 tests · all passing · +544 lines (2 files).
+
+---
+
 ## v8.59.0 — 2026-05-02 — no-cost weekly audit infra + modal focus trap fills, 7421 tests
 
   No-cost weekly audit infrastructure (zero LLM cost — bash + grep + node):
