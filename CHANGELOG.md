@@ -4,6 +4,38 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.61.0 — 2026-05-02 — StaleZonesCard + workoutDensity lib (+43 tests), 7493 tests
+
+  StaleZonesCard.jsx (158 lines, 5.3 KB lazy chunk):
+    Surfaces detectStaleZones() output as a dashboard card. Three render
+    branches: empty/unreliable → bilingual empty state, all-healthy →
+    green ✓ card, otherwise → 5-tile color-coded legend (healthy green,
+    stale red, dropped amber) + flagged-only message list with citation
+    footer. role="region" + per-tile aria-label, bilingual EN+TR.
+    Wired into Dashboard.jsx after ACWRCard. 11 jsdom tests.
+
+  src/lib/athlete/workoutDensity.js (219 lines):
+    detectWorkoutDensity(log, today) detects injury-risk patterns from
+    consecutive high-intensity weeks. High-intensity day = RPE >= 6 OR
+    Z3+Z4+Z5 share > 40% (strict). Hi-day per week >= 4 → flagged.
+    consecutiveFlagged counted backward from most recent ISO week, breaks
+    on first healthy week (so flagged-then-healthy → low risk).
+    Risk bands: 0 → low, 1 → moderate, 2+ → high.
+    Bilingual {en, tr} message + recommendation per band.
+    Coalesces same-day sessions via Set<date>; UTC-stable ISO weeks.
+    reliable: false when distinctDays < 14 (matches staleZones convention).
+    Citation: Gabbett 2016; Hulin 2016.
+    32 tests covering empty/null/unreliable, polarized 80/20 → low,
+    5-hard-days × 4w → high, both threshold boundaries (4 hi-days exact,
+    40% zone share), RPE-only + zone-only + mixed signals, UTC midnight
+    edge, weeks always 4 entries when reliable.
+
+  Dashboard card for workoutDensity deferred to follow-up.
+
+314 test files · 7493 tests · all passing · +1059 lines (5 files).
+
+---
+
 ## v8.60.0 — 2026-05-02 — staleZones detector lib (+29 tests), 7450 tests
 
   src/lib/athlete/staleZones.js (193 lines):
