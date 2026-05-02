@@ -87,7 +87,7 @@ export default function MessageTemplates({ athlete, onSend }) {
         <span style={{ fontFamily: MONO, fontSize: '10px', fontWeight: 700, color: '#ff6600', letterSpacing: '0.08em' }}>
           {isEn ? 'MESSAGE TEMPLATES' : 'MESAJ ŞABLONLARI'}
         </span>
-        <button onClick={() => setExpanded(false)} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '14px', padding: '0 4px' }}>×</button>
+        <button onClick={() => setExpanded(false)} aria-label={isEn ? 'Close templates' : 'Şablonları kapat'} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '14px', padding: '0 4px' }}>×</button>
       </div>
 
       {/* Template list */}

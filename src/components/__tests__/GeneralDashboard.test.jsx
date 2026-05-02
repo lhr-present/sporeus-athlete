@@ -117,7 +117,8 @@ describe('GeneralDashboard — PR celebration', () => {
   it('dismiss ✕ calls onDismissPRs', () => {
     const onDismissPRs = vi.fn()
     render(<GeneralDashboard lastSessionPRs={prs} onDismissPRs={onDismissPRs} />)
-    fireEvent.click(screen.getByRole('button', { name: '✕' }))
+    // Button now carries an accessible name via aria-label for screen readers.
+    fireEvent.click(screen.getByRole('button', { name: /Dismiss PR notification/i }))
     expect(onDismissPRs).toHaveBeenCalledOnce()
   })
 

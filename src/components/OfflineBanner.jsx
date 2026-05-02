@@ -1,13 +1,22 @@
 // ─── OfflineBanner.jsx — Offline/online indicator banner (v5.11.0) ───────────
 import { useState, useEffect } from 'react'
+import { announce } from '../lib/a11y/announcer.js'
 
 const MONO = "'IBM Plex Mono', monospace"
 
-export default function OfflineBanner() {
+export default function OfflineBanner({ lang = 'en' } = {}) {
   const [offline, setOffline] = useState(!navigator.onLine)
 
   useEffect(() => {
-    function goOffline() { setOffline(true) }
+    function goOffline() {
+      setOffline(true)
+      announce(
+        lang === 'tr'
+          ? 'Çevrimdışı — veriler yerel olarak kaydedilecek'
+          : 'Offline — data will save locally',
+        'assertive',
+      )
+    }
     function goOnline()  { setOffline(false) }
     window.addEventListener('offline', goOffline)
     window.addEventListener('online',  goOnline)
@@ -15,7 +24,7 @@ export default function OfflineBanner() {
       window.removeEventListener('offline', goOffline)
       window.removeEventListener('online',  goOnline)
     }
-  }, [])
+  }, [lang])
 
   if (!offline) return null
 

@@ -101,7 +101,7 @@ export default function GeneralDashboard({ sessions = [], exercises = [], active
             <div style={{ ...S.mono, fontSize: 10, color: '#ff6600', letterSpacing: '0.1em', marginBottom: 6 }}>
               {t('NEW RECORD', 'YENİ REKOR')}
             </div>
-            <button onClick={onDismissPRs} style={{ ...S.mono, fontSize: 9, border: 'none', background: 'transparent', color: '#888', cursor: 'pointer' }}>✕</button>
+            <button onClick={onDismissPRs} aria-label={lang === 'tr' ? 'Rekor bildirimini kapat' : 'Dismiss PR notification'} style={{ ...S.mono, fontSize: 9, border: 'none', background: 'transparent', color: '#888', cursor: 'pointer' }}>✕</button>
           </div>
           {lastSessionPRs.map(pr => (
             <div key={pr.exercise_id} style={{ ...S.mono, fontSize: 11, color: 'var(--text)', marginBottom: 3 }}>

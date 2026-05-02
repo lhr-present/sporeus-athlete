@@ -175,7 +175,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
       <style>{ANIM_CSS}</style>
 
       <StatusBanner />
-      <OfflineBanner />
+      <OfflineBanner lang={lang} />
       <ConnectionBanner lang={lang} />
       <PastDueBanner profile={authProfile} lang={lang} onUpgrade={() => openUpgrade(null)} />
       <InstallPrompt />

@@ -4,10 +4,54 @@ import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { PLAN_GOALS, PLAN_LEVELS, ZONE_COLORS, ZONE_NAMES } from '../lib/constants.js'
-import { generatePlan } from '../lib/formulas.js'
+import { generatePlan, calcLoad } from '../lib/formulas.js'
 import { BLOCK_PHASES, generateBlockPlan } from '../lib/sport/blockPeriodization.js'
 import { MiniDonut } from './ui.jsx'
 import { findOptimalWeekStructure } from '../lib/patterns.js'
+import { generatePlan as generateAdaptivePlan, SESSION_INTENTS } from '../lib/plan/generatePlan.js'
+import { applyTaper, suggestTaper } from '../lib/plan/taperEngine.js'
+import { validatePlan } from '../lib/plan/planValidators.js'
+import { announce } from '../lib/a11y/announcer.js'
+
+// ─── Adapter: maps E13 adaptive plan output → legacy week-card shape ──────────
+// Lets the existing week-card UI render adaptive plans without duplication.
+const E13_ZONE_INDEX = { Z1: 0, Z2: 1, Z3: 2, Z4: 3, Z5: 4 }
+const E13_ZONE_COLOR = (z) => ZONE_COLORS[E13_ZONE_INDEX[z] ?? 1]
+function adaptE13PlanToLegacy(adaptivePlan, lang = 'en') {
+  if (!adaptivePlan || !Array.isArray(adaptivePlan.weeks)) return null
+  const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+  return adaptivePlan.weeks.map(wk => {
+    const sessions = wk.sessions.map((s) => {
+      const lbl = SESSION_INTENTS[s.intent]
+      const typeName = lbl ? (lang === 'tr' ? lbl.tr : lbl.en) : s.intent
+      // Approximate duration from targetTSS using the RPE midpoint (Banister-like)
+      const rpeMid = (s.rpeLow + s.rpeHigh) / 2
+      const intensityFactor = Math.max(0.5, rpeMid / 10) // RPE 6→0.6, RPE 18→1.0+
+      const duration = s.intent === 'rest' ? 0 : Math.max(20, Math.round(s.targetTSS / (intensityFactor * intensityFactor) * 0.6))
+      return {
+        day:         dayNames[(s.day - 1) % 7] || dayNames[0],
+        type:        typeName,
+        duration,
+        rpe:         rpeMid,
+        tss:         s.targetTSS,
+        zone:        s.zone === 'Z0' ? '—' : s.zone,
+        color:       E13_ZONE_COLOR(s.zone),
+        description: '',
+      }
+    })
+    const zd = wk.zoneDistribution || {}
+    const zonePct = ['Z1','Z2','Z3','Z4','Z5'].map(z => Math.round((zd[z] || 0) * 100))
+    return {
+      week:       wk.weekNum,
+      phase:      wk.phase,
+      sessions,
+      totalHours: ((wk.weeklyTSS / 60) * 0.9).toFixed(1),
+      tss:        wk.weeklyTSS,
+      zonePct,
+      isDeload:   wk.isDeload || false,
+    }
+  })
+}
 
 function TaperCalculator() {
   const [peakTSS, setPeakTSS] = useState('500')
@@ -111,6 +155,13 @@ export default function PlanGenerator({ onLogSession }) {
   const [lang] = useLocalStorage('sporeus-lang', 'en')
   const [selWeek, setSelWeek] = useState(0)
   const [blockMode, setBlockMode] = useState(false)
+  // ── E13 Advanced (adaptive) mode state ─────────────────────────────────────
+  const [advancedMode, setAdvancedMode] = useState(false)
+  const [advAvailableDays, setAdvAvailableDays] = useState(5)
+  const [advModel, setAdvModel] = useState('traditional')
+  const [advAutoTaper, setAdvAutoTaper] = useState(true)
+  const [advRaceDate, setAdvRaceDate] = useState('')
+  const [planWarnings, setPlanWarnings] = useState([])
 
   const toggleStatus = (wi, di, val) => {
     const key = `${wi}-${di}`
@@ -182,7 +233,50 @@ export default function PlanGenerator({ onLogSession }) {
   }
 
   const generate = () => {
-    if (blockMode) {
+    if (advancedMode) {
+      // ── E13 adaptive path ────────────────────────────────────────────────
+      const goalKey = ({
+        '5K':'pr','10K':'pr','Half Marathon':'pr','Marathon':'pr',
+        'General Fitness':'fitness','Cycling Event':'pr',
+      })[goal] || 'pr'
+      const levelKey = (level || 'Intermediate').toLowerCase()
+      const ctlNow = calcLoad(log)?.ctl ?? 0
+      // Floor CTL so generator has a workable baseline even for new athletes
+      const currentCTL = Math.max(20, ctlNow)
+      const adaptive = generateAdaptivePlan({
+        goal:          goalKey,
+        currentCTL,
+        weeksToRace:   weeks,
+        availableDays: advAvailableDays,
+        model:         advModel,
+        level:         levelKey,
+      })
+      let finalPlan = adaptive
+      if (finalPlan && advAutoTaper && advRaceDate) {
+        const suggested = suggestTaper(finalPlan, advRaceDate)
+        const tw = suggested?.taperWeeks || 2
+        const tapered = applyTaper(finalPlan, advRaceDate, tw)
+        if (tapered) finalPlan = tapered
+      }
+      const validation = finalPlan ? validatePlan(finalPlan) : { valid: false, errors: [{ code:'INVALID_PLAN', message:{ en:'Could not generate plan — check inputs.', tr:'Plan oluşturulamadı — girdileri kontrol edin.' } }] }
+      const warnMsgs = (validation.errors || []).map(e => (lang === 'tr' ? e.message?.tr : e.message?.en) || e.code)
+      setPlanWarnings(warnMsgs)
+      const legacyWeeks = adaptE13PlanToLegacy(finalPlan, lang) || []
+      setPlan({
+        goal,
+        weeks: legacyWeeks,
+        generatedAt: today,
+        level,
+        hoursPerWeek: hours,
+        isAdaptive: true,
+        adaptiveMeta: finalPlan ? { model: finalPlan.model, raceDate: finalPlan.raceDate || advRaceDate, taperWeeks: finalPlan.taperWeeks, raceDayTSB: finalPlan.raceDayTSB, ctlDropPct: finalPlan.ctlDropPct, recommendation: finalPlan.recommendation } : null,
+      })
+      if (warnMsgs.length > 0) {
+        announce(lang === 'tr' ? `Plan ${warnMsgs.length} uyarı içeriyor` : `Plan has ${warnMsgs.length} issues`, 'assertive')
+      } else {
+        announce(lang === 'tr' ? 'Plan oluşturuldu' : 'Plan generated', 'polite')
+      }
+    } else if (blockMode) {
       const blockWeeks = generateBlockPlan({ weeklyHours: hours, totalWeeks: weeks, baseTSS: 300 })
       const weeks_arr = blockWeeks.map(w => ({
         week: w.week,
@@ -195,9 +289,11 @@ export default function PlanGenerator({ onLogSession }) {
         focus: w.focus,
       }))
       setPlan({ goal: t('blockPeriodization'), weeks: weeks_arr, generatedAt: today, level, hoursPerWeek: hours, isBlock: true })
+      setPlanWarnings([])
     } else {
       const weeks_arr = generatePlan(goal, weeks, hours, level)
       setPlan({ goal, weeks: weeks_arr, generatedAt: today, level, hoursPerWeek: hours })
+      setPlanWarnings([])
     }
     setSelWeek(0)
   }
@@ -340,11 +436,81 @@ export default function PlanGenerator({ onLogSession }) {
             </div>
           )}
         </div>
+        <div style={{ marginTop:'14px', borderTop:'1px dashed var(--border)', paddingTop:'12px' }}>
+          <label style={{ ...S.label, display:'flex', alignItems:'center', gap:'8px', cursor:'pointer' }}>
+            <input
+              type="checkbox"
+              checked={advancedMode}
+              onChange={e => setAdvancedMode(e.target.checked)}
+              aria-label={lang==='tr' ? 'Gelişmiş (uyarlanabilir)' : 'Advanced (adaptive)'}
+            />
+            <span>{lang==='tr' ? 'GELİŞMİŞ (UYARLANABİLİR)' : 'ADVANCED (ADAPTIVE)'}</span>
+          </label>
+          {advancedMode && (
+            <div style={{ marginTop:'10px', display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:'10px' }}>
+              <div>
+                <label style={S.label}>
+                  {lang==='tr' ? 'GÜN/HAFTA' : 'DAYS/WEEK'}: <strong>{advAvailableDays}</strong>
+                </label>
+                <input
+                  type="range" min="2" max="7" value={advAvailableDays}
+                  onChange={e=>setAdvAvailableDays(+e.target.value)}
+                  aria-label={lang==='tr' ? 'Haftalık antrenman günü' : 'Available days per week'}
+                  style={{ width:'100%', accentColor:'#0064ff' }}
+                />
+              </div>
+              <div>
+                <label style={S.label}>{lang==='tr' ? 'PERİYODİZASYON' : 'PERIODIZATION'}</label>
+                <select
+                  value={advModel}
+                  onChange={e=>setAdvModel(e.target.value)}
+                  aria-label={lang==='tr' ? 'Periyodizasyon modeli' : 'Periodization model'}
+                  style={{ ...S.mono, fontSize:'11px', padding:'4px 6px', width:'100%', background:'var(--input-bg)', color:'var(--text)', border:'1px solid var(--border)', borderRadius:'3px' }}
+                >
+                  <option value="traditional">{lang==='tr' ? 'Geleneksel' : 'Traditional'}</option>
+                  <option value="polarized">{lang==='tr' ? 'Polarize' : 'Polarized'}</option>
+                  <option value="block">{lang==='tr' ? 'Blok' : 'Block'}</option>
+                </select>
+              </div>
+              <div>
+                <label style={S.label}>{lang==='tr' ? 'YARIŞ TARİHİ' : 'RACE DATE'}</label>
+                <input
+                  type="date"
+                  value={advRaceDate}
+                  onChange={e=>setAdvRaceDate(e.target.value)}
+                  aria-label={lang==='tr' ? 'Yarış tarihi' : 'Race date'}
+                  style={{ ...S.mono, fontSize:'11px', padding:'4px 6px', width:'100%', background:'var(--input-bg)', color:'var(--text)', border:'1px solid var(--border)', borderRadius:'3px' }}
+                />
+              </div>
+              <div style={{ display:'flex', alignItems:'center' }}>
+                <label style={{ ...S.label, display:'flex', alignItems:'center', gap:'6px', cursor:'pointer', marginTop:'14px' }}>
+                  <input
+                    type="checkbox"
+                    checked={advAutoTaper}
+                    onChange={e=>setAdvAutoTaper(e.target.checked)}
+                    aria-label={lang==='tr' ? 'Otomatik taper' : 'Auto-taper'}
+                  />
+                  <span>{lang==='tr' ? 'OTO. TAPER' : 'AUTO-TAPER'}</span>
+                </label>
+              </div>
+            </div>
+          )}
+        </div>
         <div style={{ display:'flex', gap:'8px', marginTop:'16px', flexWrap:'wrap', alignItems:'center' }}>
           <button style={S.btn} onClick={generate}>{t('genPlanBtn')}</button>
           <button style={{ ...S.btnSec, fontSize:'11px' }} onClick={sharePlan}>⤴ Share Config</button>
           {shareMsg && <span style={{ ...S.mono, fontSize:'11px', color:'#5bc25b' }}>{shareMsg}</span>}
         </div>
+        {planWarnings.length > 0 && (
+          <div role="alert" style={{ marginTop:'12px', padding:'8px 10px', background:'#f5c54222', border:'1px solid #f5c54266', borderLeft:'3px solid #f5c542', borderRadius:'4px' }}>
+            <div style={{ ...S.mono, fontSize:'10px', fontWeight:700, color:'#a07a00', marginBottom:'4px' }}>
+              {lang==='tr' ? `PLAN UYARILARI (${planWarnings.length})` : `PLAN WARNINGS (${planWarnings.length})`}
+            </div>
+            {planWarnings.slice(0, 6).map((w, i) => (
+              <div key={i} style={{ ...S.mono, fontSize:'10px', color:'var(--sub)', lineHeight:1.5 }}>• {w}</div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div style={{ ...S.card, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'6px', padding:'12px 16px', marginBottom:'16px', ...S.mono, fontSize:'11px', color:'var(--sub)', lineHeight:1.8 }}>

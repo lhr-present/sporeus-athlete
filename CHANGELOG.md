@@ -4,6 +4,38 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.56.0 — 2026-05-02 — UI adoption: external CSV imports + E13 Advanced toggle + wider a11y (+40 tests), 7344 tests
+
+  TrainingLog external CSV import UI (3 importers wired):
+    Format selector (TP / Runalyze / Garmin), file picker, preview modal with
+    parsed/duplicate/error counts, collapsible row-error list, 5-row preview,
+    confirm/cancel; auto-detects mismatched format from first-line headers and
+    silently switches; announce() polite/assertive on result
+    +14 LangCtx keys, 12 jsdom tests
+
+  PlanGenerator E13 Advanced toggle:
+    Disambiguated import (generateAdaptivePlan from lib/plan/generatePlan.js)
+    "Advanced (adaptive)" checkbox preserves legacy flow when off
+    UI controls: availableDays (1-7), model, auto-taper checkbox, validate
+    Adapter adaptE13PlanToLegacy() maps E13 output to existing week-card UI
+    CTL floor of 20 protects new athletes from null plans
+    suggestTaper picks 2v3-week duration before applyTaper
+    announce() polite on success, assertive on validate errors
+    +12 jsdom tests, legacy path byte-identical when toggle off
+
+  Wider a11y wave:
+    OfflineBanner.jsx — assertive announce on offline event (EN+TR)
+    TrainingLog.jsx — polite announce on edit save + delete confirm
+    coachDashboard/SbAthletePanel.jsx — polite announce on coach plan saved
+    Added bilingual aria-labels to 6 icon-only buttons:
+      TrainingLog AI insight close, MessageTemplates close, GeneralDashboard
+      PR-dismiss, SessionLogger draft/set-row/rest-timer dismisses
+    +16 jsdom tests covering announce + aria-label coverage
+
+305 test files · 7344 tests · all passing · +1318 lines (13 files).
+
+---
+
 ## v8.55.0 — 2026-05-02 — adoption wave: announce() + readinessScore + Runalyze/Garmin importers (+155 tests), 7304 tests
 
   Announce() adoption (E19 a11y lib finally wired):

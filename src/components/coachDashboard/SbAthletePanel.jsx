@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { logger } from '../../lib/logger.js'
 import { S } from '../../styles.js'
 import { supabase, isSupabaseReady } from '../../lib/supabase.js'
 import { generatePlan } from '../../lib/formulas.js'
 import { openAthleteReport } from '../../lib/reportGenerator.js'
 import { computeCompliance } from './helpers.jsx'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
+import { announce } from '../../lib/a11y/announcer.js'
 
 // ─── SbAthletePanel — expanded detail for a live (Supabase) athlete ──────────
 const PLAN_GOALS_COACH = ['5K','10K','Half Marathon','Marathon','Cycling Event','General Fitness','Triathlon']
@@ -16,6 +18,8 @@ function readOverrides() { try { return JSON.parse(localStorage.getItem(COACH_OV
 function saveOverrides(obj) { try { localStorage.setItem(COACH_OVERRIDES_KEY, JSON.stringify(obj)) } catch (e) { logger.warn('localStorage:', e.message) } }
 
 export default function SbAthletePanel({ athleteId, athleteName, data, metrics, injRisk, loading, coachId, coachName }) {
+  const langCtx = useContext(LangCtx)
+  const lang = langCtx?.lang ?? 'en'
   const [planName,   setPlanName]   = useState(`${athleteName} — Training Plan`)
   const [planGoal,   setPlanGoal]   = useState('Half Marathon')
   const [planWeeks,  setPlanWeeks]  = useState('12')
@@ -117,7 +121,11 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
     })
     setSending(false)
     if (error) setSendMsg(`⚠ ${error.message}`)
-    else { setSendMsg(`✓ Plan sent to ${athleteName}`); setShowForm(false) }
+    else {
+      setSendMsg(`✓ Plan sent to ${athleteName}`)
+      setShowForm(false)
+      announce(lang === 'tr' ? 'Plan sporcuya gönderildi' : 'Plan sent to athlete', 'polite')
+    }
     setTimeout(() => setSendMsg(''), 4000)
   }
 

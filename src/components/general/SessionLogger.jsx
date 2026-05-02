@@ -253,7 +253,7 @@ export default function SessionLogger({
       {draftRestored && (
         <div style={{ ...S.mono, fontSize: 10, color: '#0064ff', padding: '6px 12px', background: '#0064ff11', border: '1px solid #0064ff33', borderRadius: 3, marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>↩ {t('Draft restored — continue where you left off.', 'Taslak geri yüklendi — kaldığın yerden devam et.')}</span>
-          <button onClick={() => setDraftRestored(false)} style={{ ...S.mono, fontSize: 9, border: 'none', background: 'transparent', color: '#0064ff', cursor: 'pointer', padding: '0 4px' }}>✕</button>
+          <button onClick={() => setDraftRestored(false)} aria-label={lang === 'tr' ? 'Taslak bildirimini kapat' : 'Dismiss draft restored notice'} style={{ ...S.mono, fontSize: 9, border: 'none', background: 'transparent', color: '#0064ff', cursor: 'pointer', padding: '0 4px' }}>✕</button>
         </div>
       )}
 
@@ -313,7 +313,7 @@ export default function SessionLogger({
                   </button>
                 </div>
               ) : (
-                <button onClick={() => setConfirmDelRow(rowIdx)} style={{ ...S.mono, fontSize: 10, border: 'none', background: 'transparent', color: '#555', cursor: 'pointer', marginLeft: 12, alignSelf: 'flex-start' }}>✕</button>
+                <button onClick={() => setConfirmDelRow(rowIdx)} aria-label={lang === 'tr' ? 'Set sırasını sil' : 'Delete set row'} style={{ ...S.mono, fontSize: 10, border: 'none', background: 'transparent', color: '#555', cursor: 'pointer', marginLeft: 12, alignSelf: 'flex-start' }}>✕</button>
               )}
             </div>
 
@@ -422,7 +422,7 @@ export default function SessionLogger({
                   <span style={{ ...S.mono, fontSize: 11, color: restTimer.seconds > 0 ? '#0064ff' : '#22aa44', minWidth: 40, textAlign: 'right' }}>
                     {restTimer.seconds > 0 ? `${restTimer.seconds}s` : t('Go!', 'Haydi!')}
                   </span>
-                  <button onClick={() => setRestTimer(null)} style={{ ...S.mono, fontSize: 9, border: 'none', background: 'transparent', color: '#555', cursor: 'pointer', padding: '0 4px' }}>✕</button>
+                  <button onClick={() => setRestTimer(null)} aria-label={lang === 'tr' ? 'Dinlenme sayacını kapat' : 'Dismiss rest timer'} style={{ ...S.mono, fontSize: 9, border: 'none', background: 'transparent', color: '#555', cursor: 'pointer', padding: '0 4px' }}>✕</button>
                 </div>
               )}
             </div>

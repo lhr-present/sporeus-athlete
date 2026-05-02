@@ -5,6 +5,7 @@ import { S } from '../styles.js'
 import { SESSION_TYPES_BY_DISCIPLINE, ZONE_COLORS, ZONE_NAMES, SPORT_CONFIG } from '../lib/constants.js'
 import { calcTSS, normalizedPower, computePowerTSS, computeWPrime } from '../lib/formulas.js'
 import { sanitizeLogEntry } from '../lib/validate.js'
+import { announce } from '../lib/a11y/announcer.js'
 import Calendar from './Calendar.jsx'
 import { useData } from '../contexts/DataContext.jsx'
 import { scoreSession, autoTagSession, analyseSession, detectPersonalBests } from '../lib/intelligence.js'
@@ -66,6 +67,34 @@ import { getTierSync } from '../lib/subscription.js'
 import { useWorkoutTemplates } from '../hooks/useWorkoutTemplates.js'
 import ConfirmModal from './ui/ConfirmModal.jsx'
 import EmptyState from './ui/EmptyState.jsx'
+import { importTrainingPeaksCSV } from '../lib/integrations/trainingPeaksImport.js'
+import { importRunalyzeCSV }      from '../lib/integrations/runalyzeImport.js'
+import { importGarminConnectCSV } from '../lib/integrations/garminConnectImport.js'
+import { announce as a11yAnnounce } from '../lib/a11y/announcer.js'
+
+// External-CSV format registry — { id, label, importer }
+const EXTERNAL_FORMATS = [
+  { id: 'tp',      label: 'TrainingPeaks',  importer: importTrainingPeaksCSV },
+  { id: 'rz',      label: 'Runalyze',       importer: importRunalyzeCSV },
+  { id: 'garmin',  label: 'Garmin Connect', importer: importGarminConnectCSV },
+]
+
+// Auto-detect format from CSV header line. Returns format id or null.
+function detectExternalFormat(csvText) {
+  if (!csvText || typeof csvText !== 'string') return null
+  // First non-empty line, BOM-stripped
+  let text = csvText
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1)
+  const firstLine = (text.split(/\r?\n/).find(l => l.trim() !== '') || '').toLowerCase()
+  if (!firstLine) return null
+  // TrainingPeaks signature: WorkoutDay column is unique to TP
+  if (firstLine.includes('workoutday') || firstLine.includes('timetotalinhours')) return 'tp'
+  // Garmin Connect: "Activity Type" + "Distance" + "Avg HR" combo
+  if (firstLine.includes('activity type') || firstLine.includes('aerobic te') || firstLine.includes('avg hr')) return 'garmin'
+  // Runalyze: simpler "Date" + ("Time" or "Distance") header set
+  if (firstLine.includes('date') && (firstLine.includes('time') || firstLine.includes('distance'))) return 'rz'
+  return null
+}
 
 export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const { t, lang } = useContext(LangCtx)
@@ -103,6 +132,11 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const fileInputRef    = useRef(null)
   const csvInputRef     = useRef(null)
   const importFileRef   = useRef(null)   // raw File object for Storage archival
+  const extInputRef     = useRef(null)   // hidden file input for external CSV import
+  // External CSV import (TrainingPeaks / Runalyze / Garmin Connect)
+  const [extFormat,   setExtFormat]   = useState('tp')
+  const [extPreview,  setExtPreview]  = useState(null) // { toImport, duplicates, errors, summary, formatId, formatLabel }
+  const [extErrorsExpanded, setExtErrorsExpanded] = useState(false)
 
   // ── Pagination controls from DataContext (E4) ────────────────────────────
   const { fetchNextPage, hasMore, isLoadingMore } = useData()
@@ -207,6 +241,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       setLog(log.map(e => e.id === editingId ? entry : e))
       setEditingId(null)
       setLastPBs(null)
+      announce(lang === 'tr' ? 'Antrenman güncellendi' : 'Session updated', 'polite')
     } else {
       const scored = scoreSession(entry, log, profileLS)
       setSessionScore(scored)
@@ -298,6 +333,77 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     if (!csvPreview) return
     setLog(prev => [...prev, ...csvPreview.entries])
     setCsvPreview(null)
+  }
+
+  // ── External-service CSV import (TrainingPeaks / Runalyze / Garmin) ─────
+  const handleExternalImport = async (e) => {
+    const file = e.target.files && e.target.files[0]
+    e.target.value = ''
+    if (!file) return
+    setImportError(null)
+    setExtErrorsExpanded(false)
+    let text
+    try {
+      text = await file.text()
+    } catch (err) {
+      const reason = err && err.message ? err.message : t('importExternalReadFailed')
+      setImportError(t('importExternalReadFailed'))
+      a11yAnnounce(
+        (t('importExternalAnnounceError') || '')
+          .replace('{service}', 'CSV')
+          .replace('{reason}', reason),
+        'assertive'
+      )
+      return
+    }
+    // Auto-detect format and switch if a clear mismatch is detected
+    const detected = detectExternalFormat(text)
+    const useId    = detected && detected !== extFormat ? detected : extFormat
+    const fmt      = EXTERNAL_FORMATS.find(f => f.id === useId) || EXTERNAL_FORMATS[0]
+    if (detected && detected !== extFormat) setExtFormat(detected)
+
+    let result
+    try {
+      result = fmt.importer(text, log)
+    } catch (err) {
+      const reason = err && err.message ? err.message : 'parse error'
+      setImportError(`${fmt.label}: ${reason}`)
+      a11yAnnounce(
+        (t('importExternalAnnounceError') || '')
+          .replace('{service}', fmt.label)
+          .replace('{reason}', reason),
+        'assertive'
+      )
+      return
+    }
+    setExtPreview({ ...result, formatId: fmt.id, formatLabel: fmt.label })
+    if (result.errors && result.errors.length > 0 && (!result.toImport || result.toImport.length === 0)) {
+      a11yAnnounce(
+        (t('importExternalAnnounceError') || '')
+          .replace('{service}', fmt.label)
+          .replace('{reason}', `${result.errors.length} row error${result.errors.length === 1 ? '' : 's'}`),
+        'assertive'
+      )
+    }
+  }
+
+  const confirmExternalImport = () => {
+    if (!extPreview || !extPreview.toImport || extPreview.toImport.length === 0) {
+      setExtPreview(null)
+      return
+    }
+    const toAdd = extPreview.toImport.map(s => sanitizeLogEntry({
+      id: Date.now() + Math.floor(Math.random() * 100000),
+      ...s,
+    }))
+    setLog(prev => [...prev, ...toAdd])
+    a11yAnnounce(
+      (t('importExternalAnnounceSuccess') || '')
+        .replace('{n}', String(toAdd.length))
+        .replace('{service}', extPreview.formatLabel),
+      'polite'
+    )
+    setExtPreview(null)
   }
 
   const confirmImport = () => {
@@ -461,7 +567,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
         <div className="sp-card" style={{ ...S.card, borderLeft:'4px solid #b060ff', animationDelay:'0ms' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'6px' }}>
             <span style={{ ...S.mono, fontSize:'10px', color:'#b060ff', letterSpacing:'0.1em' }}>{t('aiCoachingInsight')}</span>
-            <button onClick={() => { clearTimeout(aiInsightTimer.current); setAiInsight(null) }} style={{ background:'none', border:'none', color:'#555', cursor:'pointer', fontSize:'14px', lineHeight:1, padding:0 }}>×</button>
+            <button onClick={() => { clearTimeout(aiInsightTimer.current); setAiInsight(null) }} aria-label={lang === 'tr' ? 'AI içgörüsünü kapat' : 'Dismiss AI insight'} style={{ background:'none', border:'none', color:'#555', cursor:'pointer', fontSize:'14px', lineHeight:1, padding:0 }}>×</button>
           </div>
           {aiInsight.busy ? (
             <div style={{ ...S.mono, fontSize:'11px', color:'#555' }}>{t('analysingSession')}</div>
@@ -509,6 +615,34 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
             >
               {t('importCsvBtn')}
             </button>
+            {/* External-service CSV import — format selector + file picker */}
+            <span style={{ display:'inline-flex', alignItems:'center', gap:'4px' }} aria-label={t('importExternalTitle')}>
+              <select
+                aria-label={t('importExternalFormat')}
+                value={extFormat}
+                onChange={e => setExtFormat(e.target.value)}
+                style={{ ...S.mono, fontSize:'10px', padding:'3px 6px', background:'var(--input-bg, #111)', color:'var(--text, #ccc)', border:'1px solid var(--border)', borderRadius:'3px' }}
+              >
+                {EXTERNAL_FORMATS.map(f => (
+                  <option key={f.id} value={f.id}>{f.label}</option>
+                ))}
+              </select>
+              <button
+                style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px', borderColor:'#5bc25b', color:'#5bc25b' }}
+                onClick={() => extInputRef.current?.click()}
+                title={t('importExternalTitle')}
+              >
+                {t('importExternalBtn')}
+              </button>
+              <input
+                ref={extInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                style={{ display:'none' }}
+                onChange={handleExternalImport}
+                aria-label={t('importExternalChoose')}
+              />
+            </span>
             <button
               style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px' }}
               onClick={downloadCSVTemplate}
@@ -631,7 +765,11 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                               <span style={{ color:'#555' }}>{s.type} · {s.duration}min</span>
                             </span>
                             <button
-                              onClick={() => { setLog(log.filter(e => e.id !== s.id)); setDeleteConfirmId(null) }}
+                              onClick={() => {
+                                setLog(log.filter(e => e.id !== s.id))
+                                setDeleteConfirmId(null)
+                                announce(lang === 'tr' ? 'Antrenman silindi' : 'Session deleted', 'polite')
+                              }}
                               style={{ fontSize:'9px', padding:'3px 8px', background:'#e03030', border:'none', color:'#fff', borderRadius:'3px', cursor:'pointer', fontWeight:700 }}
                             >
                               {lang === 'tr' ? 'Sil →' : 'Delete →'}
@@ -934,6 +1072,101 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                 ✓ IMPORT {csvPreview.entries.length} {csvPreview.entries.length === 1 ? 'SESSION' : 'SESSIONS'}
               </button>
               <button onClick={() => setCsvPreview(null)} style={{ flex:1, padding:'11px', background:'#1a1a1a', color:'#888', border:'1px solid #333', borderRadius:'4px', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', cursor:'pointer' }}>
+                {t('cancelBtn')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* External-service CSV import preview modal */}
+      {extPreview && (
+        <div style={{ position:'fixed', inset:0, zIndex:20600, background:'rgba(0,0,0,0.88)', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px', fontFamily:"'IBM Plex Mono',monospace" }}>
+          <div role="dialog" aria-label={t('importExternalTitle')} style={{ background:'#111', border:'1px solid #2a2a2a', borderRadius:'8px', padding:'28px', width:'100%', maxWidth:'560px', maxHeight:'90vh', overflowY:'auto' }}>
+            <div style={{ fontSize:'12px', fontWeight:700, color:'#5bc25b', letterSpacing:'0.1em', marginBottom:'4px' }}>
+              {t('importExternalTitle')}
+            </div>
+            <div style={{ fontSize:'10px', color:'#888', letterSpacing:'0.06em', marginBottom:'18px' }}>
+              {extPreview.formatLabel}
+            </div>
+            {/* Summary counts */}
+            <div style={{ display:'flex', gap:'12px', marginBottom:'18px', flexWrap:'wrap' }}>
+              {[
+                { lbl:t('importExternalReady'),      val:extPreview.toImport?.length || 0,   color:'#5bc25b' },
+                { lbl:t('importExternalParsed'),     val:extPreview.summary?.parsed ?? 0,     color:'#888' },
+                { lbl:t('importExternalDuplicates'), val:extPreview.summary?.duplicates ?? extPreview.duplicates?.length ?? 0, color: (extPreview.summary?.duplicates ?? 0) > 0 ? '#f5c542' : '#555' },
+                { lbl:t('importExternalErrors'),     val:extPreview.errors?.length || 0,     color: (extPreview.errors?.length || 0) > 0 ? '#e03030' : '#555' },
+              ].map(({ lbl, val, color }) => (
+                <div key={lbl} style={{ flex:'1 1 100px', background:'#0a0a0a', borderRadius:'4px', padding:'10px 12px', minWidth:'90px' }}>
+                  <div style={{ fontSize:'8px', color:'#555', letterSpacing:'0.08em', marginBottom:'4px' }}>{lbl}</div>
+                  <div style={{ fontSize:'18px', fontWeight:700, color }}>{val}</div>
+                </div>
+              ))}
+            </div>
+            {/* Errors collapsible — shown if any */}
+            {extPreview.errors && extPreview.errors.length > 0 && (
+              <div style={{ marginBottom:'14px', background:'#0a0a0a', border:'1px solid #2a2a2a', borderRadius:'4px', padding:'10px 12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setExtErrorsExpanded(v => !v)}
+                  aria-expanded={extErrorsExpanded}
+                  style={{ background:'none', border:'none', color:'#e03030', cursor:'pointer', fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', fontWeight:700, letterSpacing:'0.08em', padding:0 }}
+                >
+                  {extErrorsExpanded ? '▼' : '▶'} {t('importExternalErrorsTitle')} ({extPreview.errors.length})
+                </button>
+                {extErrorsExpanded && (
+                  <ul style={{ margin:'8px 0 0 0', padding:'0 0 0 18px', fontSize:'10px', color:'#aaa', lineHeight:1.5, maxHeight:'140px', overflowY:'auto' }}>
+                    {extPreview.errors.slice(0, 100).map((er, i) => (
+                      <li key={i}>row {er.row}: {er.reason}</li>
+                    ))}
+                    {extPreview.errors.length > 100 && (
+                      <li style={{ color:'#666' }}>…and {extPreview.errors.length - 100} more</li>
+                    )}
+                  </ul>
+                )}
+              </div>
+            )}
+            {/* Empty state when nothing parseable */}
+            {(!extPreview.toImport || extPreview.toImport.length === 0) ? (
+              <div style={{ fontSize:'11px', color:'#888', marginBottom:'16px', padding:'12px', background:'#0a0a0a', borderRadius:'4px' }}>
+                {t('importExternalNoSessions')}
+              </div>
+            ) : (
+              <>
+                <div style={{ fontSize:'9px', color:'#555', letterSpacing:'0.08em', marginBottom:'8px' }}>PREVIEW (first 5)</div>
+                <div style={{ overflowX:'auto', marginBottom:'12px' }}>
+                  <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'11px' }}>
+                    <thead>
+                      <tr style={{ borderBottom:'1px solid #2a2a2a', color:'#555', fontSize:'9px', letterSpacing:'0.06em' }}>
+                        {['DATE','TYPE','MIN','TSS','RPE'].map(h => (
+                          <th key={h} style={{ padding:'4px 8px 6px 0', textAlign:'left', fontWeight:600, whiteSpace:'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {extPreview.toImport.slice(0,5).map((e,i) => (
+                        <tr key={i} style={{ borderBottom:'1px solid #1a1a1a' }}>
+                          <td style={{ padding:'5px 8px 5px 0', color:'var(--sub,#aaa)' }}>{e.date}</td>
+                          <td style={{ padding:'5px 8px 5px 0' }}>{e.type}</td>
+                          <td style={{ padding:'5px 8px 5px 0' }}>{e.duration ?? '—'}</td>
+                          <td style={{ padding:'5px 8px 5px 0', color:'#ff6600', fontWeight:600 }}>{e.tss ?? '—'}</td>
+                          <td style={{ padding:'5px 8px 5px 0' }}>{e.rpe ?? '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+            <div style={{ display:'flex', gap:'10px' }}>
+              <button
+                onClick={confirmExternalImport}
+                disabled={!extPreview.toImport || extPreview.toImport.length === 0}
+                style={{ flex:1, padding:'11px', background: (extPreview.toImport?.length || 0) > 0 ? '#5bc25b' : '#333', color: (extPreview.toImport?.length || 0) > 0 ? '#000' : '#555', border:'none', borderRadius:'4px', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', fontWeight:700, letterSpacing:'0.1em', cursor: (extPreview.toImport?.length || 0) > 0 ? 'pointer' : 'not-allowed' }}
+              >
+                {(t('importExternalConfirm') || '').replace('{n}', String(extPreview.toImport?.length || 0))}
+              </button>
+              <button onClick={() => setExtPreview(null)} style={{ flex:1, padding:'11px', background:'#1a1a1a', color:'#888', border:'1px solid #333', borderRadius:'4px', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', cursor:'pointer' }}>
                 {t('cancelBtn')}
               </button>
             </div>
