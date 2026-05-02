@@ -1,6 +1,7 @@
 // ─── HRVChart.jsx — HRV daily + 7-day rolling average + baseline band ────────
-import { useMemo } from 'react'
+import { useContext, useMemo } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ReferenceArea, ResponsiveContainer } from 'recharts'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 
 const MONO = "'IBM Plex Mono', monospace"
 
@@ -31,8 +32,24 @@ const darkTooltip = {
 }
 
 export default function HRVChart({ recovery, days = 30 }) {
+  const { lang } = useContext(LangCtx)
   const { data, baseline, band } = useMemo(() => buildHRVSeries(recovery, days), [recovery, days])
   if (data.length < 3) return null
+
+  const hrvVals = data.map(d => d.hrv)
+  const minHrv = Math.min(...hrvVals)
+  const maxHrv = Math.max(...hrvVals)
+  const latest = hrvVals[hrvVals.length - 1]
+
+  const ariaLabel = lang === 'tr'
+    ? 'HRV (rMSSD) eğilim grafiği'
+    : 'HRV (rMSSD) trend chart'
+  const titleText = lang === 'tr'
+    ? `HRV rMSSD (ms) — ${days} gün`
+    : `HRV rMSSD (ms) — ${days} days`
+  const descText = lang === 'tr'
+    ? `HRV rMSSD ${minHrv} ile ${maxHrv} ms arasında değişiyor; taban değer ${baseline} ms (±1σ bandı). Son ölçüm: ${latest} ms.`
+    : `HRV rMSSD ranges from ${minHrv} to ${maxHrv} ms over the last ${days} days; baseline ${baseline} ms (±1σ band). Latest: ${latest} ms.`
 
   return (
     <div>
@@ -40,7 +57,8 @@ export default function HRVChart({ recovery, days = 30 }) {
         HRV rMSSD (ms) · baseline {baseline} · ±1σ band
       </div>
       <ResponsiveContainer width="100%" height={160}>
-        <LineChart data={data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+        <LineChart data={data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}
+          role="img" aria-label={ariaLabel} title={titleText} desc={descText}>
           <CartesianGrid strokeDasharray="3 3" stroke="#222" />
           <XAxis dataKey="date" tick={{ fontFamily: MONO, fontSize: 9, fill: '#555' }} interval={Math.floor(data.length / 5)} />
           <YAxis tick={{ fontFamily: MONO, fontSize: 9, fill: '#555' }} domain={['auto', 'auto']} />

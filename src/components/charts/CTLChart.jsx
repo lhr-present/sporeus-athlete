@@ -1,13 +1,14 @@
 // ─── CTLChart.jsx — Full Performance Management Chart (PMC) ─────────────────
 // CTL (fitness) · ATL (fatigue) · TSB (form) · TSS bars
 // Sweet-spot zones · Race-day markers
-import { useMemo } from 'react'
+import { useContext, useMemo } from 'react'
 import {
   ComposedChart, Line, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ReferenceArea, ReferenceLine, ResponsiveContainer,
 } from 'recharts'
 import { calculatePMC } from '../../lib/trainingLoad.js'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 
 const MONO = "'IBM Plex Mono', monospace"
 
@@ -55,6 +56,7 @@ const darkTooltip = {
 const mmdd = str => str ? str.slice(5) : ''
 
 export default function CTLChart({ log, days = 90, raceResults = [], plan = null }) {
+  const { lang } = useContext(LangCtx)
   const data = useMemo(() => {
     const series = calculatePMC(log || [], days, 0)
     return series.map(p => ({
@@ -86,9 +88,30 @@ export default function CTLChart({ log, days = 90, raceResults = [], plan = null
 
   const interval = Math.max(1, Math.floor(data.length / 6))
 
+  // Accessibility summary — re-uses already-computed series
+  const ctlVals = data.map(p => p.CTL).filter(v => v != null)
+  const minCtl = ctlVals.length ? Math.round(Math.min(...ctlVals)) : 0
+  const maxCtl = ctlVals.length ? Math.round(Math.max(...ctlVals)) : 0
+  const latest = data[data.length - 1] || {}
+  const latestCtl = latest.CTL != null ? Math.round(latest.CTL) : 0
+  const latestAtl = latest.ATL != null ? Math.round(latest.ATL) : 0
+  const latestTsb = (latest.tsbPos ?? latest.tsbNeg)
+  const latestTsbRounded = latestTsb != null ? Math.round(latestTsb) : 0
+
+  const ariaLabel = lang === 'tr'
+    ? 'CTL, ATL ve TSB performans yönetim grafiği'
+    : 'CTL, ATL, and TSB performance management chart'
+  const titleText = lang === 'tr'
+    ? `Performans yönetim grafiği — son ${days} gün`
+    : `Performance management chart — last ${days} days`
+  const descText = lang === 'tr'
+    ? `CTL (form) son ${days} günde ${minCtl} ile ${maxCtl} arasında değişiyor. Güncel CTL: ${latestCtl}, ATL: ${latestAtl}, TSB: ${latestTsbRounded}.`
+    : `CTL (fitness) ranges from ${minCtl} to ${maxCtl} over the last ${days} days. Current CTL: ${latestCtl}, ATL: ${latestAtl}, TSB: ${latestTsbRounded}.`
+
   return (
     <ResponsiveContainer width="100%" height={220}>
-      <ComposedChart data={data} margin={{ top: 4, right: 32, left: -20, bottom: 0 }}>
+      <ComposedChart data={data} margin={{ top: 4, right: 32, left: -20, bottom: 0 }}
+        role="img" aria-label={ariaLabel} title={titleText} desc={descText}>
         <CartesianGrid strokeDasharray="3 3" stroke="#222" />
 
         {/* Periodization phase shading — from YearlyPlan if available */}

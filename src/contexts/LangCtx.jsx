@@ -246,6 +246,8 @@ export const LABELS = {
     gsKind_message: 'Messages',
     gsKind_announcement: 'Announcements',
     gsKind_athlete: 'Athletes',
+    gsResultsLabel: 'Search results',
+    gsResultsCount: 'results',
     // Live squad feed (C7)
     feedSquadLabel: 'SQUAD FEED',
     feedNoAthletes: 'No athletes yet \u2014 invite your first athlete from the Squad tab.',
@@ -926,6 +928,8 @@ export const LABELS = {
     gsKind_message: 'Mesajlar',
     gsKind_announcement: 'Duyurular',
     gsKind_athlete: 'Sporcular',
+    gsResultsLabel: 'Arama sonuçları',
+    gsResultsCount: 'sonuç',
     // Live squad feed (C7)
     feedSquadLabel: 'KADRO AKIŞI',
     feedNoAthletes: 'Henüz sporcu yok \u2014 Kadro sekmesinden ilk sporcunu davet et.',

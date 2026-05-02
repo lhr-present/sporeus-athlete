@@ -12,6 +12,7 @@ import { generatePlan as generateAdaptivePlan, SESSION_INTENTS } from '../lib/pl
 import { applyTaper, suggestTaper } from '../lib/plan/taperEngine.js'
 import { validatePlan } from '../lib/plan/planValidators.js'
 import { announce } from '../lib/a11y/announcer.js'
+import PlanTemplatePicker from './PlanTemplatePicker.jsx'
 
 // ─── Pure: serialize a (legacy-shape) plan to a CSV string ────────────────────
 // Columns: Week, Day, SessionIntent, TargetTSS, RPELow, RPEHigh, Zone, Description
@@ -430,6 +431,7 @@ export default function PlanGenerator({ onLogSession }) {
           </button>
         </div>
       )}
+      <PlanTemplatePicker />
       <div className="sp-card" style={{ ...S.card, animationDelay:'0ms' }}>
         <div style={S.cardTitle}>{t('planGoalL')}</div>
         <div style={{ display:'flex', gap:'6px', flexWrap:'wrap', marginBottom:'14px' }}>

@@ -13,7 +13,10 @@ import { LangCtx } from '../contexts/LangCtx.jsx'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { normalizeForSearch } from '../lib/textNormalize.js'
 import { useFocusTrap } from '../hooks/useFocusTrap.js'
+import { announce } from '../lib/a11y/announcer.js'
 import { logger } from '../lib/logger.js'
+
+const LISTBOX_ID = 'sporeus-gs-listbox'
 
 const DEBOUNCE_MS  = 200
 const MIN_CHARS    = 2
@@ -46,7 +49,7 @@ function renderSnippet(raw) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function GlobalSearch({ onNavigate, tier: _tier = 'free' }) {
-  const { t } = useContext(LangCtx)
+  const { t, lang } = useContext(LangCtx)
 
   const [open,    setOpen]    = useState(false)
   const [query,   setQuery]   = useState('')
@@ -61,7 +64,7 @@ export default function GlobalSearch({ onNavigate, tier: _tier = 'free' }) {
   const containerRef = useRef(null)
   const debounceRef = useRef(null)
 
-  useFocusTrap(containerRef, open)
+  useFocusTrap(containerRef, { active: open, onEscape: () => setOpen(false) })
 
   // ── Global shortcut: Ctrl+Shift+F ─────────────────────────────────────────
   useEffect(() => {
@@ -104,9 +107,16 @@ export default function GlobalSearch({ onNavigate, tier: _tier = 'free' }) {
           limit_per_kind: 10,
         })
         if (rpcErr) throw rpcErr
-        setResults(data ?? [])
-        setActive(-1)
+        const rows = data ?? []
+        setResults(rows)
+        setActive(rows.length > 0 ? 0 : -1)
         setError(null)
+        // Announce result count for screen readers (bilingual)
+        const count = rows.length
+        const msg = lang === 'tr'
+          ? `${count} ${t('gsResultsCount')}`
+          : `${count} ${t('gsResultsCount')}`
+        announce(msg, 'polite')
       } catch (e) {
         logger.error('GlobalSearch rpc:', e.message)
         setError(e.message)
@@ -121,12 +131,30 @@ export default function GlobalSearch({ onNavigate, tier: _tier = 'free' }) {
   // ── Keyboard navigation inside the modal ──────────────────────────────────
   const handleKeyDown = useCallback(e => {
     if (e.key === 'Escape') { e.preventDefault(); setOpen(false); return }
+    // Ctrl+K / Cmd+K — re-focus the search input
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'k') {
+      e.preventDefault()
+      inputRef.current?.focus()
+      inputRef.current?.select?.()
+      return
+    }
+    const n = results.length
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setActive(a => Math.min(a + 1, results.length - 1))
+      if (n === 0) return
+      setActive(a => (a < 0 ? 0 : (a + 1) % n)) // wrap last → first
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      setActive(a => Math.max(a - 1, -1))
+      if (n === 0) return
+      setActive(a => (a <= 0 ? n - 1 : a - 1)) // wrap first → last
+    } else if (e.key === 'Home') {
+      if (n === 0) return
+      e.preventDefault()
+      setActive(0)
+    } else if (e.key === 'End') {
+      if (n === 0) return
+      e.preventDefault()
+      setActive(n - 1)
     } else if (e.key === 'Enter' && active >= 0) {
       e.preventDefault()
       selectResult(results[active])
@@ -219,6 +247,11 @@ export default function GlobalSearch({ onNavigate, tier: _tier = 'free' }) {
             onChange={e => setQuery(e.target.value)}
             placeholder={t('gsPlaceholder')}
             aria-label={t('gsTitle')}
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={results.length > 0}
+            aria-controls={LISTBOX_ID}
+            aria-activedescendant={active >= 0 ? `${LISTBOX_ID}-opt-${active}` : undefined}
             style={{
               flex: 1, background: 'transparent', border: 'none', outline: 'none',
               color: '#e0e0e0', fontFamily: "'IBM Plex Mono', monospace",
@@ -251,7 +284,13 @@ export default function GlobalSearch({ onNavigate, tier: _tier = 'free' }) {
         </div>
 
         {/* ── Results body ── */}
-        <div ref={listRef} style={{ maxHeight: 440, overflowY: 'auto' }}>
+        <div
+          ref={listRef}
+          id={LISTBOX_ID}
+          role="listbox"
+          aria-label={t('gsResultsLabel')}
+          style={{ maxHeight: 440, overflowY: 'auto' }}
+        >
 
           {/* Recent searches */}
           {showRecent && (
@@ -315,7 +354,9 @@ export default function GlobalSearch({ onNavigate, tier: _tier = 'free' }) {
                   return (
                     <div
                       key={row.record_id}
+                      id={`${LISTBOX_ID}-opt-${myIdx}`}
                       data-gs-item
+                      data-gs-index={myIdx}
                       onClick={() => selectResult(row)}
                       onMouseEnter={() => setActive(myIdx)}
                       role="option"
@@ -360,7 +401,9 @@ export default function GlobalSearch({ onNavigate, tier: _tier = 'free' }) {
           display: 'flex', gap: 16, fontSize: 9, color: '#333',
         }}>
           <span>↑↓ navigate</span>
+          <span>Home/End jump</span>
           <span>↵ open</span>
+          <span>Tab cycle</span>
           <span>Esc close</span>
         </div>
       </div>

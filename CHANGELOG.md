@@ -4,6 +4,41 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.58.0 — 2026-05-02 — chart a11y + plan templates + GlobalSearch keyboard nav (+41 tests), 7421 tests
+
+  Chart a11y (5 components):
+    CTLChart, HRVChart, LoadChart, ZoneChart, WellnessSparkline now have
+    role="img" + bilingual aria-label + Recharts title/desc props with
+    range and latest-value summaries (rMSSD/CTL/TSS/Easy% etc.)
+    No visual change. Chart chunks unchanged (1.27–1.99 KB gzip)
+    12 jsdom tests, ResponsiveContainer mocked + ResizeObserver shimmed
+
+  PlanTemplatePicker.jsx (one-click plan presets — 364 lines):
+    7 presets: 5K, 10K, Half Marathon, Marathon, Base Building (running) +
+    2000m Row, Endurance Block (rowing) — sport-coded left-border accent
+    (#ff6600 running, #0064ff rowing)
+    On click → ConfirmModal → generatePlan() with preset args → adapter to
+    legacy shape → useLocalStorage('sporeus-plan') → announce() polite +
+    sporeus:plan-loaded window event
+    Wired ABOVE the manual generator form in PlanGenerator
+    Exports PLAN_TEMPLATE_PRESETS for other components to read catalog
+    12 jsdom tests; PlanGenerator chunk +14KB gzip total
+
+  GlobalSearch keyboard nav + listbox a11y:
+    ArrowUp/Down with wrap-around, Home/End jump, Ctrl+K/Cmd+K refocus
+    Enter triggers selected result, Escape closes (existing useFocusTrap)
+    role="combobox" + aria-autocomplete + aria-expanded + aria-controls
+    + aria-activedescendant on input; role="listbox" + per-option id
+    on results container
+    announce() polite with bilingual result count after each search
+    Fixed latent bug: useFocusTrap was being passed boolean as options;
+      now correctly passes { active: open, onEscape: () => setOpen(false) }
+    +2 LangCtx keys (gsResultsLabel, gsResultsCount), 17 jsdom tests
+
+311 test files · 7421 tests · all passing · +1170 lines (12 files).
+
+---
+
 ## v8.57.0 — 2026-05-02 — RecoveryHub + TodayReadinessCard + PlanGenerator polish (+36 tests), 7380 tests
 
   RecoveryHub.jsx (deferred E17 deliverable, now built — 398 lines, 7.6 KB chunk):

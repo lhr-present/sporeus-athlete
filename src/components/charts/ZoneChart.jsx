@@ -1,6 +1,7 @@
 // ─── ZoneChart.jsx — Weekly zone distribution stacked bar ────────────────────
-import { useMemo } from 'react'
+import { useContext, useMemo } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const COLORS = ['#4a90d9', '#5bc25b', '#f5c542', '#ff6600', '#e03030']
@@ -41,19 +42,36 @@ const darkTooltip = {
 }
 
 export default function ZoneChart({ log, weeks = 8 }) {
+  const { lang } = useContext(LangCtx)
   const data = useMemo(() => buildWeeklyZones(log, weeks), [log, weeks])
   if (!data.length) return null
 
   // 80% easy threshold line (Z1+Z2 should be ≥80% of total)
   const avgEasyPct = data.reduce((s, d) => s + (d.total > 0 ? (d.Z1 + d.Z2) / d.total : 0), 0) / data.length
+  const easyPctRounded = Math.round(avgEasyPct * 100)
+  const latest = data[data.length - 1]
+  const latestEasyPct = latest && latest.total > 0
+    ? Math.round(((latest.Z1 + latest.Z2) / latest.total) * 100)
+    : 0
+
+  const ariaLabel = lang === 'tr'
+    ? 'Haftalık zon dağılım grafiği'
+    : 'Weekly zone distribution chart'
+  const titleText = lang === 'tr'
+    ? `Haftalık zonlar — son ${weeks} hafta`
+    : `Weekly zones — last ${weeks} weeks`
+  const descText = lang === 'tr'
+    ? `Haftalık zon dağılımı (Z1–Z5) son ${weeks} hafta. Ortalama kolay (Z1+Z2) yüzdesi ${easyPctRounded}% (hedef ≥80%). Bu hafta kolay: ${latestEasyPct}%.`
+    : `Weekly zone distribution (Z1–Z5) over the last ${weeks} weeks. Average easy (Z1+Z2) percentage ${easyPctRounded}% (target ≥80%). This week easy: ${latestEasyPct}%.`
 
   return (
     <div>
       <div style={{ fontFamily: MONO, fontSize: 9, color: '#555', marginBottom: 4 }}>
-        WEEKLY ZONES · avg easy {Math.round(avgEasyPct * 100)}% (target ≥80%)
+        WEEKLY ZONES · avg easy {easyPctRounded}% (target ≥80%)
       </div>
       <ResponsiveContainer width="100%" height={160}>
-        <BarChart data={data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+        <BarChart data={data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}
+          role="img" aria-label={ariaLabel} title={titleText} desc={descText}>
           <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
           <XAxis dataKey="week" tick={{ fontFamily: MONO, fontSize: 9, fill: '#555' }} />
           <YAxis tick={{ fontFamily: MONO, fontSize: 9, fill: '#555' }} unit="m" />

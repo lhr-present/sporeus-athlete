@@ -1,6 +1,7 @@
 // ─── LoadChart.jsx — Weekly TSS bar chart with trend coloring ─────────────────
-import { useMemo } from 'react'
+import { useContext, useMemo } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, ReferenceLine, ResponsiveContainer } from 'recharts'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 
 const MONO = "'IBM Plex Mono', monospace"
 
@@ -29,9 +30,25 @@ const darkTooltip = {
 }
 
 export default function LoadChart({ log, weeks = 10 }) {
+  const { lang } = useContext(LangCtx)
   const data = useMemo(() => buildWeeklyLoad(log, weeks), [log, weeks])
   const avg  = data.length ? Math.round(data.reduce((s, d) => s + d.tss, 0) / data.length) : 0
   if (!data.length) return null
+
+  const tssVals = data.map(d => d.tss)
+  const minTss = Math.min(...tssVals)
+  const maxTss = Math.max(...tssVals)
+  const latest = tssVals[tssVals.length - 1]
+
+  const ariaLabel = lang === 'tr'
+    ? 'Haftalık TSS yük grafiği'
+    : 'Weekly TSS load chart'
+  const titleText = lang === 'tr'
+    ? `Haftalık yük (TSS) — son ${weeks} hafta`
+    : `Weekly load (TSS) — last ${weeks} weeks`
+  const descText = lang === 'tr'
+    ? `Haftalık TSS ${minTss} ile ${maxTss} arasında değişiyor; ${weeks} hafta ortalaması ${avg}. Bu hafta: ${latest} TSS.`
+    : `Weekly TSS ranges from ${minTss} to ${maxTss} over the last ${weeks} weeks; ${weeks}-week average ${avg}. This week: ${latest} TSS.`
 
   return (
     <div>
@@ -39,7 +56,8 @@ export default function LoadChart({ log, weeks = 10 }) {
         WEEKLY LOAD (TSS) · {weeks}W avg {avg}
       </div>
       <ResponsiveContainer width="100%" height={140}>
-        <BarChart data={data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+        <BarChart data={data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}
+          role="img" aria-label={ariaLabel} title={titleText} desc={descText}>
           <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
           <XAxis dataKey="week" tick={{ fontFamily: MONO, fontSize: 9, fill: '#555' }} />
           <YAxis tick={{ fontFamily: MONO, fontSize: 9, fill: '#555' }} />

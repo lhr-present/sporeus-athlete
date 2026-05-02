@@ -1,7 +1,10 @@
 // ─── charts/WellnessSparkline.jsx — 14-day wellness trend (lazy-loaded) ─────
+import { useContext } from 'react'
 import { LineChart, Line, ResponsiveContainer } from 'recharts'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 
 export default function WellnessSparkline({ recovery }) {
+  const { lang } = useContext(LangCtx)
   const today = new Date()
   const data = Array.from({ length: 14 }, (_, i) => {
     const d = new Date(today)
@@ -12,6 +15,11 @@ export default function WellnessSparkline({ recovery }) {
   })
   const hasData = data.some(d => d.sleep !== null)
   if (!hasData) return null
+
+  const ariaLabel = lang === 'tr'
+    ? '14 günlük iyilik hali grafiği — uyku, enerji, ağrı'
+    : '14-day wellness sparkline — sleep, energy, soreness'
+
   return (
     <div style={{ marginTop: '10px' }}>
       <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: '9px', color: '#888', letterSpacing: '0.08em', marginBottom: '4px' }}>14-DAY WELLNESS</div>
@@ -21,7 +29,7 @@ export default function WellnessSparkline({ recovery }) {
         <span style={{ color: '#ff6600' }}>◉ soreness</span>
       </div>
       <ResponsiveContainer width="100%" height={80}>
-        <LineChart data={data} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
+        <LineChart data={data} margin={{ top: 4, right: 4, bottom: 4, left: 4 }} role="img" aria-label={ariaLabel}>
           <Line type="monotone" dataKey="sleep"    stroke="#0064ff" strokeWidth={1.5} dot={false} connectNulls />
           <Line type="monotone" dataKey="energy"   stroke="#5bc25b" strokeWidth={1.5} dot={false} connectNulls />
           <Line type="monotone" dataKey="soreness" stroke="#ff6600" strokeWidth={1.5} dot={false} connectNulls />
