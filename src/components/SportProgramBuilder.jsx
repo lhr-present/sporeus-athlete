@@ -695,6 +695,7 @@ function Step5({ form, result, onRestart, log: _log, setLog }) {
                     </td>
                     <td style={{ padding: '4px 8px', textAlign: 'center' }}>
                       <button style={{ ...S.ghostBtn, color: ORANGE, fontSize: '10px' }}
+                        aria-label={t('spb_viewWeek')}
                         onClick={() => setSelectedWeek(i)}>▶</button>
                     </td>
                   </tr>

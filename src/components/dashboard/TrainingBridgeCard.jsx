@@ -71,7 +71,10 @@ function DayDetail({ sess, isTR, onClose }) {
   return (
     <div style={{ margin: '2px 0 6px', padding: '10px', background: '#060606', borderRadius: 3, border: '1px solid #111' }}>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', color: DIM, cursor: 'pointer', fontSize: 10 }}>✕</button>
+        <button
+          onClick={onClose}
+          aria-label={isTR ? 'Gün detayını kapat' : 'Close day detail'}
+          style={{ background: 'none', border: 'none', color: DIM, cursor: 'pointer', fontSize: 10 }}>✕</button>
       </div>
 
       {run && (

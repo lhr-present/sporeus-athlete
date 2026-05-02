@@ -173,6 +173,7 @@ export default function LactateEstimator({ lang = 'en' }) {
                     <td>
                       {steps.length > 4 && (
                         <button onClick={() => removeRow(i)}
+                          aria-label={lang === 'tr' ? `${i + 1}. basamağı sil` : `Remove step ${i + 1}`}
                           style={{ background:'none', border:'none', color:'#555', cursor:'pointer', fontSize:'13px' }}>✕</button>
                       )}
                     </td>

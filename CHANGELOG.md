@@ -4,6 +4,47 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.63.0 — 2026-05-03 — SessionVarietyCard + raceWeekProtocol lib + audit-driven a11y (+76 tests), 7613 tests
+
+  SessionVarietyCard.jsx (6.21 KB lazy chunk, 2.43 KB gzip):
+    Closes the coaching-insight trio (StaleZones + WorkoutDensity + Variety).
+    5-tile legend (Recovery/Long/Steady/Tempo/Intervals) with bilingual
+    labels (TR: Toparlanma/Uzun/Sabit/Tempo/İntervaller) and present/missing
+    color codes (#5bc25b green / #555555 grey). Mix-score badge "X/5".
+    role="region" + role="list" + per-tile role="listitem" + aria-live on rec.
+    Wired into Dashboard.jsx after WorkoutDensityCard. 12 jsdom tests.
+    Bug fix: changed MISSING_COLOR '#555' → '#555555' so the ${color}55
+    opacity-suffix produces a valid 8-hex code.
+
+  src/lib/race/raceWeekProtocol.js (554 lines):
+    generateRaceWeekProtocol(input) returns 7-day structured protocol for
+    5K / 10K / Half Marathon / Marathon / 2000m Row.
+    Per-day session (intent/duration/RPE/TSS), bilingual description.
+    Sleep targets: 8h/8.5h Friday/8h Sat/7h Sun race-day with bilingual
+    rationale (Mujika 2003 D-2 sleep most important).
+    Nutrition cues count down: D-3 carb load begin, D-2/D-1 carb+hydration,
+    D-0 morning fueling.
+    Mental cues: visualize, review, plan, trust the work.
+    Gear checklist with conditional Marathon/Half body-glide and 2000m Row
+    PM5 calibration items.
+    TSS distribution: weeklyTSS = 0.6 × CTL, fractions per day.
+    Invalid input → null (raceType, raceDate, etc.).
+    Citation: Mujika & Padilla 2003; Bompa 2005.
+    64 tests (well over the ~30 spec'd).
+
+  Audit-driven a11y fixes (3 surgical, +8 LOC):
+    TrainingBridgeCard.jsx — bilingual aria-label on ✕ close button
+    SportProgramBuilder.jsx — aria-label key spb_viewWeek for ▶ jump button
+    protocols/LactateEstimator.jsx — bilingual aria-label on ✕ remove-row
+    button with 1-based row index for screen-reader disambiguation
+    LangCtx.jsx — +2 keys (en/tr for spb_viewWeek)
+    Audit modal-without-focus-trap stayed 2 → 2 (both intentionally skipped:
+    GarminSurvey non-blocking, TrainingLog needs dedicated refactor)
+
+318 test files · 7613 tests · all passing · +1327 lines (9 files).
+
+---
+
 ## v8.62.0 — 2026-05-03 — WorkoutDensityCard + sessionVariety lib + audit fixes (+44 tests), 7537 tests
 
   WorkoutDensityCard.jsx (5.57 KB lazy chunk):

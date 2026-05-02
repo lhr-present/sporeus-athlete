@@ -215,6 +215,7 @@ export const LABELS = {
     spb_buildNewPlan: 'BUILD NEW PLAN',
     spb_modalPrint: '\u2399 PRINT', spb_modalSessions: 'PLANNED SESSIONS',
     spb_modalTrace: 'DAILY BANISTER TRACE', spb_modalDay: 'DAY',
+    spb_viewWeek: 'View week details',
     // Status banner (C5)
     status_outage: null, status_outage_suffix: 'is experiencing an outage',
     status_degraded: null, status_degraded_suffix: 'is degraded \u2014 some features may be slow',
@@ -897,6 +898,7 @@ export const LABELS = {
     spb_buildNewPlan: 'YENİ PLAN OLUŞTUR',
     spb_modalPrint: '\u2399 YAZDIR', spb_modalSessions: 'PLANLANAN SEANSLAR',
     spb_modalTrace: 'GÜNLÜK BANISTER İZİ', spb_modalDay: 'GÜN',
+    spb_viewWeek: 'Hafta detaylarını görüntüle',
     // Status banner (C5)
     status_outage: null, status_outage_suffix: 'hizmet kesintisi yaşıyor',
     status_degraded: null, status_degraded_suffix: 'yavaşladı \u2014 bazı özellikler geç yanıt verebilir',
