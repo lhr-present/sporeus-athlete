@@ -108,6 +108,8 @@ const RaceGoalDashCard           = lazy(() => import('./dashboard/RaceGoalDashCa
 const VdotProgressCard           = lazy(() => import('./dashboard/VdotProgressCard.jsx'))
 const ProgramSelectorCard        = lazy(() => import('./dashboard/ProgramSelectorCard.jsx'))
 const CoachGateCard              = lazy(() => import('./dashboard/CoachGateCard.jsx'))
+const TodayReadinessCard         = lazy(() => import('./dashboard/TodayReadinessCard.jsx'))
+const RecoveryHub                = lazy(() => import('./RecoveryHub.jsx'))
 
 export default function Dashboard({ log, onLogSession, onGoToProfile }) {
   const [lang]       = useLocalStorage('sporeus-lang', 'en')
@@ -341,6 +343,11 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
         </ErrorBoundary>
         <ErrorBoundary>
           <Suspense fallback={null}>
+            <TodayReadinessCard log={log} recovery={recovery} profile={profile} />
+          </Suspense>
+        </ErrorBoundary>
+        <ErrorBoundary>
+          <Suspense fallback={null}>
             <RaceGoalAnalyzerCard profile={profile} log={log} isTR={lang === 'tr'} />
           </Suspense>
         </ErrorBoundary>
@@ -486,6 +493,11 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
             recovery={recovery}
             isTR={lang === 'tr'}
           />
+        </Suspense>
+      </ErrorBoundary>
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <TodayReadinessCard log={log} recovery={recovery} profile={profile} />
         </Suspense>
       </ErrorBoundary>
       {log.length === 0 && (
@@ -912,6 +924,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       <ErrorBoundary><Suspense fallback={null}><ConsistencyTrendCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><InsightFeedCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><RecoveryProtocolCard log={log} recovery={recovery} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><RecoveryHub /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><OSTRCMonitorCard /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><HRVSummaryCard recovery={recovery} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><VO2maxProgressionCard log={log} profile={profile} /></Suspense></ErrorBoundary>

@@ -4,6 +4,44 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.57.0 — 2026-05-02 — RecoveryHub + TodayReadinessCard + PlanGenerator polish (+36 tests), 7380 tests
+
+  RecoveryHub.jsx (deferred E17 deliverable, now built — 398 lines, 7.6 KB chunk):
+    28-day readiness heatmap (4×7 grid, color-banded by 40/60/80 cutoffs)
+    HRV 28-day sparkline (inline SVG, no Recharts dep)
+    7-day sleep debt bar with min/max/median labels
+    "Skipped sessions correlated with low readiness" tally
+    role="grid" + aria-label per cell, bilingual EN+TR throughout
+    Wired into Dashboard.jsx alongside RecoveryProtocolCard
+    12 jsdom tests covering empty state, heatmap rendering, edge cases
+
+  TodayReadinessCard.jsx (dashboard-visible E17 readiness — 4.6 KB chunk):
+    Persistent today's-readiness card so score is visible without re-opening
+    MorningCheckIn modal. Compact (single top driver + reliability badge +
+    session recommendation pill — RECOVERY/EASY/PLANNED/PUSH)
+    Empty state CTA dispatches sporeus:open-morning-checkin window event
+    Banded border-left color matching MorningCheckIn cutoffs
+    Wired in BOTH simple-mode and advanced-mode dashboard branches
+    9 jsdom tests covering all states + bilingual TR rendering
+
+  PlanGenerator validator visible warnings + CSV export:
+    Visible warnings panel (yellow #f5c542 accent) when validation.errors > 0
+      role="region" + aria-label, collapsible with aria-expanded toggle
+      Each error shows bilingual message + monospace validator code tag
+      (TSS_SPIKE / NO_RECOVERY / BACK_TO_BACK_Z5 / NEGATIVE_TSS / EMPTY_WEEK)
+      + "Wn" week badge from err.weekNum
+    Export plan as CSV: Blob + URL.createObjectURL pattern, filename
+      sporeus-plan-YYYY-MM-DD.csv, columns Week/Day/SessionIntent/TargetTSS/
+      RPELow/RPEHigh/Zone/Description with proper RFC 4180 escaping
+    Pure planToCSV(plan) function (testable in isolation)
+    +5 LangCtx keys reserved (planWarningsTitle, planWarningsCollapse/Expand,
+      planExportCSV, planExportSuccess)
+    15 tests: 3 planToCSV + 7 warnings panel + 5 CSV export button
+
+308 test files · 7380 tests · all passing · +1495 lines (8 files).
+
+---
+
 ## v8.56.0 — 2026-05-02 — UI adoption: external CSV imports + E13 Advanced toggle + wider a11y (+40 tests), 7344 tests
 
   TrainingLog external CSV import UI (3 importers wired):

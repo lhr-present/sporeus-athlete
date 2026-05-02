@@ -13,6 +13,35 @@ import { applyTaper, suggestTaper } from '../lib/plan/taperEngine.js'
 import { validatePlan } from '../lib/plan/planValidators.js'
 import { announce } from '../lib/a11y/announcer.js'
 
+// ─── Pure: serialize a (legacy-shape) plan to a CSV string ────────────────────
+// Columns: Week, Day, SessionIntent, TargetTSS, RPELow, RPEHigh, Zone, Description
+// Always emits the header row. Escapes any field containing comma / quote / newline.
+const CSV_HEADER = 'Week,Day,SessionIntent,TargetTSS,RPELow,RPEHigh,Zone,Description'
+function csvEscape(v) {
+  const s = v == null ? '' : String(v)
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+}
+export function planToCSV(plan) {
+  if (!plan || !Array.isArray(plan.weeks)) return CSV_HEADER + '\n'
+  const rows = [CSV_HEADER]
+  for (const w of plan.weeks) {
+    for (const s of (w.sessions || [])) {
+      const rpe = s.rpe ?? ''
+      rows.push([
+        csvEscape(w.week),
+        csvEscape(s.day),
+        csvEscape(s.type ?? s.intent ?? ''),
+        csvEscape(s.tss ?? s.targetTSS ?? ''),
+        csvEscape(s.rpeLow ?? rpe),
+        csvEscape(s.rpeHigh ?? rpe),
+        csvEscape(s.zone ?? ''),
+        csvEscape(s.description ?? ''),
+      ].join(','))
+    }
+  }
+  return rows.join('\n') + '\n'
+}
+
 // ─── Adapter: maps E13 adaptive plan output → legacy week-card shape ──────────
 // Lets the existing week-card UI render adaptive plans without duplication.
 const E13_ZONE_INDEX = { Z1: 0, Z2: 1, Z3: 2, Z4: 3, Z5: 4 }
@@ -162,6 +191,10 @@ export default function PlanGenerator({ onLogSession }) {
   const [advAutoTaper, setAdvAutoTaper] = useState(true)
   const [advRaceDate, setAdvRaceDate] = useState('')
   const [planWarnings, setPlanWarnings] = useState([])
+  // Full validator error objects (with code + bilingual message + weekNum) so the
+  // sighted warnings panel can show details beyond the screen-reader announce().
+  const [planValidationErrors, setPlanValidationErrors] = useState([])
+  const [warningsExpanded, setWarningsExpanded] = useState(true)
 
   const toggleStatus = (wi, di, val) => {
     const key = `${wi}-${di}`
@@ -261,6 +294,8 @@ export default function PlanGenerator({ onLogSession }) {
       const validation = finalPlan ? validatePlan(finalPlan) : { valid: false, errors: [{ code:'INVALID_PLAN', message:{ en:'Could not generate plan — check inputs.', tr:'Plan oluşturulamadı — girdileri kontrol edin.' } }] }
       const warnMsgs = (validation.errors || []).map(e => (lang === 'tr' ? e.message?.tr : e.message?.en) || e.code)
       setPlanWarnings(warnMsgs)
+      setPlanValidationErrors(validation.errors || [])
+      setWarningsExpanded(true)
       const legacyWeeks = adaptE13PlanToLegacy(finalPlan, lang) || []
       setPlan({
         goal,
@@ -290,10 +325,12 @@ export default function PlanGenerator({ onLogSession }) {
       }))
       setPlan({ goal: t('blockPeriodization'), weeks: weeks_arr, generatedAt: today, level, hoursPerWeek: hours, isBlock: true })
       setPlanWarnings([])
+      setPlanValidationErrors([])
     } else {
       const weeks_arr = generatePlan(goal, weeks, hours, level)
       setPlan({ goal, weeks: weeks_arr, generatedAt: today, level, hoursPerWeek: hours })
       setPlanWarnings([])
+      setPlanValidationErrors([])
     }
     setSelWeek(0)
   }
@@ -336,6 +373,22 @@ export default function PlanGenerator({ onLogSession }) {
     </body></html>`
     const w = window.open('', '_blank', 'width=900,height=700')
     if (w) { w.document.write(html); w.document.close() }
+  }
+
+  const exportPlanCSV = () => {
+    if (!plan) return
+    const csv = planToCSV(plan)
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    const dateStr = new Date().toISOString().slice(0,10)
+    a.href = url
+    a.download = `sporeus-plan-${dateStr}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    announce(lang === 'tr' ? 'Plan dışa aktarıldı' : 'Plan exported', 'polite')
   }
 
   const W = plan?.weeks[selWeek]
@@ -501,14 +554,45 @@ export default function PlanGenerator({ onLogSession }) {
           <button style={{ ...S.btnSec, fontSize:'11px' }} onClick={sharePlan}>⤴ Share Config</button>
           {shareMsg && <span style={{ ...S.mono, fontSize:'11px', color:'#5bc25b' }}>{shareMsg}</span>}
         </div>
-        {planWarnings.length > 0 && (
-          <div role="alert" style={{ marginTop:'12px', padding:'8px 10px', background:'#f5c54222', border:'1px solid #f5c54266', borderLeft:'3px solid #f5c542', borderRadius:'4px' }}>
-            <div style={{ ...S.mono, fontSize:'10px', fontWeight:700, color:'#a07a00', marginBottom:'4px' }}>
-              {lang==='tr' ? `PLAN UYARILARI (${planWarnings.length})` : `PLAN WARNINGS (${planWarnings.length})`}
+        {advancedMode && planValidationErrors.length > 0 && (
+          <div
+            role="region"
+            aria-label={lang==='tr' ? 'Plan uyarıları' : 'Plan warnings'}
+            style={{ marginTop:'12px', padding:'8px 10px', background:'#f5c54222', border:'1px solid #f5c54266', borderLeft:'3px solid #f5c542', borderRadius:'4px' }}
+          >
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'4px' }}>
+              <div style={{ ...S.mono, fontSize:'10px', fontWeight:700, color:'#a07a00' }}>
+                {lang==='tr' ? `PLAN UYARILARI (${planValidationErrors.length})` : `PLAN WARNINGS (${planValidationErrors.length})`}
+              </div>
+              <button
+                type="button"
+                onClick={() => setWarningsExpanded(v => !v)}
+                aria-expanded={warningsExpanded}
+                aria-label={warningsExpanded
+                  ? (lang==='tr' ? 'Uyarıları gizle' : 'Hide warnings')
+                  : (lang==='tr' ? 'Uyarıları göster' : 'Show warnings')}
+                style={{ ...S.mono, fontSize:'9px', fontWeight:600, padding:'2px 8px', borderRadius:'3px', cursor:'pointer', border:'1px solid #a07a00', background:'transparent', color:'#a07a00' }}
+              >
+                {warningsExpanded ? '▾' : '▸'}
+              </button>
             </div>
-            {planWarnings.slice(0, 6).map((w, i) => (
-              <div key={i} style={{ ...S.mono, fontSize:'10px', color:'var(--sub)', lineHeight:1.5 }}>• {w}</div>
-            ))}
+            {warningsExpanded && planValidationErrors.map((err, i) => {
+              const text = (lang === 'tr' ? err.message?.tr : err.message?.en) || err.code
+              return (
+                <div key={i} style={{ ...S.mono, fontSize:'10px', color:'var(--sub)', lineHeight:1.6, padding:'2px 0', display:'flex', gap:'6px', flexWrap:'wrap', alignItems:'baseline' }}>
+                  <span style={{ display:'inline-block', minWidth:'12px' }}>•</span>
+                  <span style={{ flex:'1 1 200px' }}>{text}</span>
+                  <span style={{ ...S.mono, fontSize:'9px', fontWeight:700, padding:'1px 5px', border:'1px solid #a07a00', borderRadius:'2px', color:'#a07a00', background:'#f5c54211' }}>
+                    {err.code}
+                  </span>
+                  {err.weekNum != null && (
+                    <span style={{ ...S.mono, fontSize:'9px', color:'#888' }}>
+                      W{err.weekNum}
+                    </span>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
@@ -525,6 +609,13 @@ export default function PlanGenerator({ onLogSession }) {
               <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
                 <div style={S.cardTitle}>{plan.goal} — {plan.weeks.length} {t('weekLabel').toLowerCase()}s · {plan.level}</div>
                 <button onClick={printPlan} style={{ ...S.mono, fontSize:'9px', fontWeight:600, padding:'3px 8px', borderRadius:'3px', cursor:'pointer', border:'1px solid var(--border)', background:'transparent', color:'var(--muted)' }}>⎙ Print/PDF</button>
+                <button
+                  onClick={exportPlanCSV}
+                  aria-label={lang==='tr' ? 'CSV olarak indir' : 'Export plan as CSV'}
+                  style={{ ...S.mono, fontSize:'9px', fontWeight:600, padding:'3px 8px', borderRadius:'3px', cursor:'pointer', border:'1px solid var(--border)', background:'transparent', color:'var(--muted)' }}
+                >
+                  {lang==='tr' ? '⤓ CSV' : '⤓ Export CSV'}
+                </button>
               </div>
               {planCompliance() !== null && (
                 <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
