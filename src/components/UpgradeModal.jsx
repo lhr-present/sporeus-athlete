@@ -13,6 +13,7 @@
 import { useEffect, useRef } from 'react'
 import { getCheckoutUrl, getUpgradePrompt } from '../lib/subscription.js'
 import { trackEvent, trackFunnel } from '../lib/telemetry.js'
+import { useFocusTrap } from '../hooks/useFocusTrap.js'
 import { S } from '../styles.js'
 
 // ── Pricing data ──────────────────────────────────────────────────────────────
@@ -46,6 +47,7 @@ const TIER_LABELS = { tr: { free: 'ÜCRETSİZ', coach: 'COACH', club: 'KULÜP' }
 
 export default function UpgradeModal({ open, onClose, featureKey = null, lang = 'tr', currentTier = 'free' }) {
   const overlayRef = useRef(null)
+  const panelRef = useRef(null)
   const pricing = PRICING[lang] || PRICING.en
   const tierLabels = TIER_LABELS[lang] || TIER_LABELS.en
 
@@ -56,13 +58,8 @@ export default function UpgradeModal({ open, onClose, featureKey = null, lang = 
     }
   }, [open, featureKey])
 
-  // ESC to close
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  // Focus trap — handles Escape, Tab cycling, and focus restore
+  useFocusTrap(panelRef, { active: open, onEscape: onClose })
 
   if (!open) return null
 
@@ -91,6 +88,7 @@ export default function UpgradeModal({ open, onClose, featureKey = null, lang = 
 
       {/* Modal */}
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={lang === 'tr' ? 'Plan yükselt' : 'Upgrade plan'}

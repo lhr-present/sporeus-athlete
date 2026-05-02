@@ -1,0 +1,34 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Sporeus weekly self-audit — host crontab snippet
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# What this is:
+#   A no-cost, no-LLM, no-network audit that grep/finds across the repo and
+#   produces a markdown report at audit-reports/audit-YYYY-MM-DD.md.
+#
+# How to install (host cron):
+#   1. Open your user crontab:
+#        crontab -e
+#   2. Append the line below (uncomment first), adjusting the path if your
+#      checkout lives somewhere other than /home/hlnx4/sporeus-athlete-app.
+#   3. Save & exit. cron will pick it up automatically — no daemon restart.
+#
+# How to verify it ran:
+#   tail /tmp/sporeus-audit.log
+#   ls -lt /home/hlnx4/sporeus-athlete-app/audit-reports/ | head
+#
+# How to disable:
+#   crontab -e   # then delete the line
+#   # OR (nuclear) crontab -r   # removes ALL of your cron entries — use with care
+#
+# Notes:
+#   - cron uses the user's local timezone (run `date` to confirm).
+#   - The script never calls an LLM, never pushes to git, never hits the network.
+#   - Reports are kept under audit-reports/ which is gitignored — stale reports
+#     accumulate locally; prune them manually if disk pressure becomes an issue.
+#   - Runtime budget: < 60 seconds. If yours runs longer, file an issue.
+#
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Sporeus weekly audit — runs every Monday 9:07am local time
+7 9 * * 1 cd /home/hlnx4/sporeus-athlete-app && ./scripts/weekly-audit.sh > /tmp/sporeus-audit.log 2>&1

@@ -4,6 +4,36 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.59.0 — 2026-05-02 — no-cost weekly audit infra + modal focus trap fills, 7421 tests
+
+  No-cost weekly audit infrastructure (zero LLM cost — bash + grep + node):
+    scripts/weekly-audit.sh (387 lines, executable, <60s runtime)
+      Sections: header (branch/commit/test count/bundle), coverage gaps,
+      a11y gaps (icon-only buttons, charts without role=img, modals without
+      focus trap), bundle drift vs E15 budget (250KB main / 500KB chunk),
+      stale files (90d+ unmodified), TODO/FIXME counts
+    scripts/weekly-audit.crontab.example — host crontab line: 7 9 * * 1
+    .github/workflows/weekly-audit.yml — schedule: '7 9 * * 1' UTC + manual
+      dispatch, 5-min timeout, uploads audit-reports/ as artifact (90d
+      retention), conditional comment on most-recent open issue tagged 'audit'
+      (silently skipped if none exists)
+    audit-reports/ added to .gitignore
+    CLAUDE.md "Weekly audit (no-cost)" section documenting the workflow
+
+  Modal focus trap fills (a11y regression coverage):
+    UpgradeModal.jsx — replaced standalone Escape listener with useFocusTrap;
+      Tab cycling + focus restoration on close
+    ui/ConfirmModal.jsx — added useFocusTrap, kept existing Enter/Escape
+      handlers intact so existing test contract holds
+
+  Note: a third agent (workout/training program enhancement) hit a stream
+  timeout before producing output — no partial files committed. Will retry
+  in a future wave.
+
+311 test files · 7421 tests · all passing · +560 lines (7 files).
+
+---
+
 ## v8.58.0 — 2026-05-02 — chart a11y + plan templates + GlobalSearch keyboard nav (+41 tests), 7421 tests
 
   Chart a11y (5 components):

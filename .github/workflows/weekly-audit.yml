@@ -1,0 +1,109 @@
+# Sporeus weekly audit — no-cost informational report.
+#
+# This workflow runs the bash audit script (no LLM, no network calls beyond the
+# default Actions checkout / npm registry) and uploads the resulting markdown
+# report as a build artifact. The artifact is free to store on GitHub.
+#
+# IMPORTANT: GitHub Actions cron runs in UTC, NOT the repo owner's local time.
+# The host crontab snippet (scripts/weekly-audit.crontab.example) uses local
+# time — they will not fire at the same wall-clock moment.
+#
+# Manual run: Actions tab → "Weekly audit" → "Run workflow".
+
+name: Weekly audit
+
+on:
+  schedule:
+    # Every Monday at 09:07 UTC
+    - cron: '7 9 * * 1'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Need full history so the "stale files (90+ days)" section is accurate
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run weekly audit
+        run: |
+          chmod +x ./scripts/weekly-audit.sh
+          ./scripts/weekly-audit.sh
+
+      - name: Upload audit report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-audit-${{ github.run_id }}
+          path: audit-reports/
+          retention-days: 90
+
+      - name: Comment on latest open audit issue (if any)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs')
+            const path = require('path')
+
+            // Find the most recent report file
+            const dir = 'audit-reports'
+            if (!fs.existsSync(dir)) {
+              core.info('No audit-reports/ directory — skipping comment.')
+              return
+            }
+            const files = fs.readdirSync(dir)
+              .filter(f => f.startsWith('audit-') && f.endsWith('.md'))
+              .sort()
+            if (files.length === 0) {
+              core.info('No audit-*.md report — skipping comment.')
+              return
+            }
+            const reportPath = path.join(dir, files[files.length - 1])
+            const reportBody = fs.readFileSync(reportPath, 'utf8')
+
+            // Find an open issue tagged "audit"
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'audit',
+              per_page: 1,
+              sort: 'updated',
+              direction: 'desc'
+            })
+            if (issues.length === 0) {
+              core.info('No open issue with label "audit" — skipping comment.')
+              return
+            }
+
+            const issue = issues[0]
+            // GitHub comment body cap is ~65k chars; truncate defensively.
+            const MAX = 60000
+            const body = reportBody.length > MAX
+              ? reportBody.slice(0, MAX) + '\n\n_(report truncated for comment; see workflow artifact for full report)_'
+              : reportBody
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: `Weekly audit (run #${context.runId}):\n\n${body}`
+            })
+            core.info(`Posted comment to issue #${issue.number}`)

@@ -13,3 +13,6 @@ dist-ssr
 # E2E test secrets / state
 tests/e2e/.e2e-users.json
 .claude/worktrees/
+
+# Weekly audit reports (informational, regenerated weekly by scripts/weekly-audit.sh)
+audit-reports/

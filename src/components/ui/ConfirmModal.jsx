@@ -10,6 +10,9 @@
 //   onConfirm   () => void
 //   onCancel    () => void
 
+import { useRef } from 'react'
+import { useFocusTrap } from '../../hooks/useFocusTrap.js'
+
 const MONO = "'IBM Plex Mono', monospace"
 
 export default function ConfirmModal({
@@ -22,6 +25,10 @@ export default function ConfirmModal({
   onConfirm,
   onCancel,
 }) {
+  const panelRef = useRef(null)
+  // Focus trap — Escape via onEscape, Tab cycling kept inside panel
+  useFocusTrap(panelRef, { active: open, onEscape: () => onCancel?.() })
+
   if (!open) return null
 
   function handleBackdrop(e) {
@@ -52,6 +59,7 @@ export default function ConfirmModal({
       }}
     >
       <div
+        ref={panelRef}
         style={{
           background:   'var(--card-bg, #111)',
           border:       '1px solid var(--border, #333)',

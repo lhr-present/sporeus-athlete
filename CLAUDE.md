@@ -171,3 +171,17 @@ const hasTriData = useMemo(() =>
 - v11.76.0 (2026-04-26): 3886 tests, 232 files, 74 dashboard cards, 30 athlete libs
 - v6.7.0 (2026-04-14): Launch-ready, 1084 tests, Supabase 25 tables
 - See CHANGELOG.md for full history
+
+## Weekly audit (no-cost)
+Pure bash + grep + node — **no LLM, no network**. Produces a markdown report
+that a human reviews to decide whether to spend tokens on fixes.
+
+- **Script**: `scripts/weekly-audit.sh` (executable, < 60s runtime)
+- **Output**: `audit-reports/audit-YYYY-MM-DD.md` (gitignored)
+- **Sections**: header, coverage gaps, a11y gaps, bundle drift vs E15 budget, stale files (90d+), TODO/FIXME count
+- **Run manually**: `./scripts/weekly-audit.sh`
+- **Host cron** (every Monday 9:07am local): see `scripts/weekly-audit.crontab.example`
+- **GitHub Action**: `.github/workflows/weekly-audit.yml` runs `7 9 * * 1` UTC + manual
+  dispatch; uploads `audit-reports/` as a workflow artifact (90-day retention) and
+  posts the report as a comment on the most recent open issue tagged `audit` (silently
+  skipped if no such issue exists)
