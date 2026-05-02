@@ -1,6 +1,7 @@
 // ─── WeekBuilder.jsx — 7-day drag-and-drop micro-cycle planner ───────────────
 // Full-screen overlay. HTML5 drag API only — no external DnD packages.
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useContext } from 'react'
+import { LangCtx } from '../contexts/LangCtx.jsx'
 import { logger } from '../lib/logger.js'
 
 const MONO = "'IBM Plex Mono', monospace"
@@ -23,7 +24,7 @@ const SESSION_TEMPLATES = [
 const TYPE_ICONS  = { run: '🏃', bike: '🚴', swim: '🏊', str: '💪', rest: '😴' }
 const ZONE_COLORS = { Z1:'#5bc25b', Z2:'#4a9eff', Z3:'#ff6600', Z4:'#e0a030', Z5:'#e03030', '—':'#555' }
 
-function SessionCard({ session, draggable, onDragStart, onRemove, compact }) {
+function SessionCard({ session, draggable, onDragStart, onRemove, compact, lang }) {
   return (
     <div
       draggable={draggable}
@@ -61,7 +62,7 @@ function SessionCard({ session, draggable, onDragStart, onRemove, compact }) {
           )}
         </div>
         {onRemove && (
-          <button onClick={onRemove} style={{
+          <button onClick={onRemove} aria-label={lang === 'tr' ? `${session.label} antrenmanını kaldır` : `Remove ${session.label} session`} style={{
             fontFamily: MONO, fontSize: 11, background: 'transparent',
             border: 'none', color: '#444', cursor: 'pointer', lineHeight: 1, flexShrink: 0,
           }}>✕</button>
@@ -72,6 +73,7 @@ function SessionCard({ session, draggable, onDragStart, onRemove, compact }) {
 }
 
 export default function WeekBuilder({ week, onClose }) {
+  const { lang } = useContext(LangCtx)
   // days[i] = array of session objects for that day (Mon=0 … Sun=6)
   const [days, setDays] = useState(() => {
     try {
@@ -273,6 +275,7 @@ export default function WeekBuilder({ week, onClose }) {
                       draggable={false}
                       compact
                       onRemove={() => removeSession(dayIdx, si)}
+                      lang={lang}
                     />
                   </div>
                 ))}

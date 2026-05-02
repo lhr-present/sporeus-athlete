@@ -4,6 +4,60 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.64.0 — 2026-05-03 — RaceWeekProtocolCard + CoachingInsightsDigest + fitnessGainRate lib + audit a11y (+57 tests), 7670 tests
+
+  RaceWeekProtocolCard.jsx (12.72 KB lazy chunk):
+    Surfaces v8.63.0 generateRaceWeekProtocol() when race is within 7 days.
+    Returns null when no race, race >7d away, or race in past.
+    Renders countdown badge + today's session/sleep/nutrition/mental cues
+    + 7-day strip with today highlighted.
+    Profile keys verified: only profile.raceDate exists (per intelligence.js
+    computeRaceReadiness); raceType derived from profile.goal via same
+    string-matching (5k/10k/half/marathon/2000m).
+    Wired into Dashboard.jsx after RaceReadinessCard.
+    role="region", aria-live="polite" on today section, role=list on strip.
+    11 jsdom tests.
+
+  CoachingInsightsDigest.jsx (256 lines):
+    Single unified card combining StaleZones + WorkoutDensity + SessionVariety
+    detectors into top-3 prioritized rows.
+    Empty state when all 3 unreliable. Green ✓ "all healthy" when:
+    density=low + variety=good + 0 stale + 0 dropped.
+    Priority: density 'high' first (overtraining), then stale/dropped zones,
+    then variety 'low', fallback to moderate. Cap 3 rows.
+    Severity bullets 🔴/🟡/🟢 (aria-hidden) + bilingual source badge +
+    bilingual message + non-linking "see details →" affordance.
+    Wired ABOVE the three individual cards (additive, none removed).
+    role="region" on root, role="status" for all-green announcement,
+    role="list"/listitem with bilingual aria-label on each insight row.
+    12 jsdom tests.
+
+  src/lib/athlete/fitnessGainRate.js (222 lines):
+    detectFitnessGainRate(log, today) computes 28-day CTL slope via linear
+    regression. 4 bands strictly: <-1 detraining, -1..+0.5 maintaining,
+    +0.5..+2 building, >+2 spiking.
+    Inline EWMA (rather than calculatePMC) so 'today' is parameterizable
+    for testing — matches calculatePMC exactly: same K_CTL constant,
+    same 180-day priming window, same recurrence.
+    Slope rounded to 2dp BEFORE classification (matches user-visible numbers).
+    R² clamped [0,1], degenerate cases return 0.
+    reliable: false when distinctDays in 28d window < 21.
+    Bilingual {en, tr} message includes signed slope value.
+    Citation: Banister 1991; Coggan PMC.
+    34 tests covering boundaries, all 4 bands, r² edge cases.
+
+  Audit-driven a11y (+13 LOC across 3 files):
+    coach/ChatPanel.jsx — ▼ collapse + ↵ send buttons gain aria-labels
+    dashboard/YourPatternsCard.jsx — ▲/▼ expand toggle gains aria-label
+      and aria-expanded
+    WeekBuilder.jsx — ✕ remove-session button gains aria-label
+    Audit count: <button> w/o aria-label 249 → 247 (true a11y improvement
+    is 4 fewer icon-only buttons without accessible names).
+
+321 test files · 7670 tests · all passing · +1464 lines (10 files).
+
+---
+
 ## v8.63.0 — 2026-05-03 — SessionVarietyCard + raceWeekProtocol lib + audit-driven a11y (+76 tests), 7613 tests
 
   SessionVarietyCard.jsx (6.21 KB lazy chunk, 2.43 KB gzip):

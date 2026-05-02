@@ -59,7 +59,7 @@ function YourPatternsCard({ log, recovery, injuries: _injuries, profile: _profil
         <div style={{ display:'flex', gap:'6px' }}>
           {copied && <span style={{ ...S.mono, fontSize:'10px', color:'#5bc25b' }}>✓</span>}
           {allPatterns.length > 0 && <button style={{ ...S.btnSec, fontSize:'10px', padding:'3px 8px' }} onClick={handleCopy}>⎘ Copy</button>}
-          <button style={{ ...S.btnSec, fontSize:'10px', padding:'3px 8px' }} onClick={() => setOpen(o => !o)}>{open ? '▲' : '▼'}</button>
+          <button style={{ ...S.btnSec, fontSize:'10px', padding:'3px 8px' }} onClick={() => setOpen(o => !o)} aria-label={lang === 'tr' ? (open ? 'Desenleri daralt' : 'Desenleri genişlet') : (open ? 'Collapse patterns' : 'Expand patterns')} aria-expanded={open}>{open ? '▲' : '▼'}</button>
         </div>
       </div>
 

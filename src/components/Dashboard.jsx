@@ -92,6 +92,7 @@ const RunningCVCard              = lazy(() => import('./dashboard/RunningCVCard.
 const FitnessBatteryProgressCard = lazy(() => import('./dashboard/FitnessBatteryProgressCard.jsx'))
 const TriathlonLoadCard          = lazy(() => import('./dashboard/TriathlonLoadCard.jsx'))
 const RunningRaceReadinessCard   = lazy(() => import('./dashboard/RunningRaceReadinessCard.jsx'))
+const RaceWeekProtocolCard       = lazy(() => import('./dashboard/RaceWeekProtocolCard.jsx'))
 const PlanScoreCard              = lazy(() => import('./dashboard/PlanScoreCard.jsx'))
 const AthleteStatusSummaryCard   = lazy(() => import('./dashboard/AthleteStatusSummaryCard.jsx'))
 const SleepRestingHRCard         = lazy(() => import('./dashboard/SleepRestingHRCard.jsx'))
@@ -112,6 +113,7 @@ const TodayReadinessCard         = lazy(() => import('./dashboard/TodayReadiness
 const StaleZonesCard             = lazy(() => import('./dashboard/StaleZonesCard.jsx'))
 const WorkoutDensityCard         = lazy(() => import('./dashboard/WorkoutDensityCard.jsx'))
 const SessionVarietyCard         = lazy(() => import('./dashboard/SessionVarietyCard.jsx'))
+const CoachingInsightsDigest     = lazy(() => import('./dashboard/CoachingInsightsDigest.jsx'))
 const RecoveryHub                = lazy(() => import('./RecoveryHub.jsx'))
 
 export default function Dashboard({ log, onLogSession, onGoToProfile }) {
@@ -623,6 +625,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       <ErrorBoundary inline name="Race Readiness">
         <RaceReadinessCard log={log} recovery={recovery} injuries={injuries} profile={profile} plan={plan} planStatus={planStatus} lang={lang}/>
       </ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><RaceWeekProtocolCard profile={profile} log={log}/></Suspense></ErrorBoundary>
       <ProactiveInjuryAlert log={log} injuries={injuries} lang={lang}/>
       <LoadSpikeAlert/>
 
@@ -910,6 +913,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
         recovery={recovery} plan={plan} planStatus={planStatus} rangeLabel={rangeLabel}
       />
       <ACWRCard log={log} lc={lc} dl={dl}/>
+      <ErrorBoundary><Suspense fallback={null}><CoachingInsightsDigest log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><StaleZonesCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><WorkoutDensityCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><SessionVarietyCard log={log} /></Suspense></ErrorBoundary>

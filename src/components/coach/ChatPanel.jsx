@@ -2,8 +2,9 @@
 // Extracted from CoachSquadView.jsx. API calls go through ai-proxy edge function
 // (key never in browser). Converted from streaming to one-shot response.
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useContext } from 'react'
 import { supabase, isSupabaseReady } from '../../lib/supabase.js'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 
 const MONO   = "'IBM Plex Mono', monospace"
@@ -15,6 +16,8 @@ const MAX_MSGS = 10
  * Props: squad (array of athlete objects), isDemo (boolean)
  */
 export default function ChatPanel({ squad, isDemo: _isDemo }) {
+  const { lang } = useContext(LangCtx)
+  const isTR = lang === 'tr'
   const [open,   setOpen]   = useState(false)
   const [msgs,   setMsgs]   = useState([])
   const [input,  setInput]  = useState('')
@@ -93,7 +96,7 @@ export default function ChatPanel({ squad, isDemo: _isDemo }) {
           {msgs.length > 0 && (
             <button onClick={() => setMsgs([])} style={S.ghostBtn}>CLEAR</button>
           )}
-          <button onClick={() => setOpen(false)} style={{ ...S.ghostBtn, fontSize: 10 }}>▼</button>
+          <button onClick={() => setOpen(false)} aria-label={isTR ? 'AI koç panelini kapat' : 'Collapse AI coach panel'} style={{ ...S.ghostBtn, fontSize: 10 }}>▼</button>
         </div>
       </div>
 
@@ -131,6 +134,7 @@ export default function ChatPanel({ squad, isDemo: _isDemo }) {
         <button
           onClick={send}
           disabled={busy || !input.trim()}
+          aria-label={isTR ? 'Mesajı gönder' : 'Send message'}
           style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, padding: '8px 16px', background: busy ? '#222' : ORANGE, border: 'none', color: busy ? '#555' : '#fff', cursor: busy ? 'not-allowed' : 'pointer' }}
         >
           {busy ? '…' : '↵'}
