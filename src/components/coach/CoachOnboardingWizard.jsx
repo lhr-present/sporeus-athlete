@@ -1,8 +1,9 @@
 // CoachOnboardingWizard.jsx — E9: 3-step first-run modal for new coaches
-import { useState, useContext } from 'react'
+import { useState, useContext, useRef } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useAuth } from '../../hooks/useAuth.js'
+import { useFocusTrap } from '../../hooks/useFocusTrap.js'
 
 const TOTAL_STEPS = 3
 
@@ -104,15 +105,19 @@ export default function CoachOnboardingWizard({ open, onClose }) {
   const { profile } = useAuth()
   const [step, setStep] = useState(1)
   const [copied, setCopied] = useState(false)
+  const panelRef = useRef(null)
 
-  if (!open) return null
-
-  function handleComplete() {
+  function handleSkip() {
     localStorage.setItem('sporeus-coach-onboarded', 'true')
     onClose?.()
   }
 
-  function handleSkip() {
+  // Trap focus inside the modal while open; Escape skips
+  useFocusTrap(panelRef, { active: open, onEscape: handleSkip })
+
+  if (!open) return null
+
+  function handleComplete() {
     localStorage.setItem('sporeus-coach-onboarded', 'true')
     onClose?.()
   }
@@ -196,7 +201,7 @@ export default function CoachOnboardingWizard({ open, onClose }) {
 
   return (
     <div style={overlay} role="dialog" aria-modal="true" aria-label={t('coachWizardTitle')}>
-      <div style={modal}>
+      <div ref={panelRef} style={modal}>
         {/* Header */}
         <div style={{ marginBottom: '20px' }}>
           <div style={{ ...S.mono, fontSize: '10px', color: '#ff6600', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '6px' }}>

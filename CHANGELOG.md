@@ -4,6 +4,44 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.62.0 — 2026-05-03 — WorkoutDensityCard + sessionVariety lib + audit fixes (+44 tests), 7537 tests
+
+  WorkoutDensityCard.jsx (5.57 KB lazy chunk):
+    Surfaces v8.61.0 detectWorkoutDensity() output. Risk-graded card:
+    green ✓ for low, amber 3px border for moderate, red 4px border for high.
+    4-week horizontal bar (red flagged / green healthy / dimmed at 0) with
+    Wn labels + hiDays counts. role="region" + role="img" on bar group +
+    aria-live="polite" on message. Citation footer.
+    Wired into Dashboard.jsx after StaleZonesCard. 13 jsdom tests.
+
+  src/lib/athlete/sessionVariety.js (239 lines, complements stale + density):
+    detectSessionVariety(log, today) classifies sessions into 5 intents
+    (recovery/long/steady/tempo/intervals) and detects narrow training mix.
+    Explicit precedence: recovery → long → intervals → tempo → steady;
+    unclassifiable returns null and is dropped from mixScore (no crash).
+    Boundary thresholds: mixScore <=2 = 'low', =3 = 'moderate', >=4 = 'good'.
+    UTC-stable, multiple-same-day sessions count separately (unlike
+    workoutDensity which coalesces). reliable: false when distinctDays <14.
+    Bilingual {en, tr} message + recommendation; TR intent labels:
+    toparlanma/uzun/sabit/tempo/intervaller.
+    Citation: Seiler 2010; Foster 2001 (also exported as constant).
+    31 tests covering all 5 classification paths, boundary cases, NaN
+    safety, multi-shape zones, UTC midnight edge.
+
+  Audit-driven a11y fixes (3 surgical):
+    MetricExplainer.jsx — replaced manual Escape with useFocusTrap (used by
+    8 wrapper explainers — biggest blast radius)
+    coach/CoachOnboardingWizard.jsx — added useFocusTrap to 3-step modal
+    coach/SessionCommentThread.jsx — added bilingual aria-label to ✕
+    cancel-reply icon button using existing commentCancel key
+    Net: ~12 LOC. Audit modal-without-focus-trap count went 4 → 2 (the
+    remaining 2: GarminSurvey is intentionally non-blocking, TrainingLog
+    needs a dedicated refactor pass).
+
+316 test files · 7537 tests · all passing · +982 lines (8 files).
+
+---
+
 ## v8.61.0 — 2026-05-02 — StaleZonesCard + workoutDensity lib (+43 tests), 7493 tests
 
   StaleZonesCard.jsx (158 lines, 5.3 KB lazy chunk):

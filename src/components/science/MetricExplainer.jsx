@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useRef, useContext } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
+import { useFocusTrap } from '../../hooks/useFocusTrap.js'
 
 /**
  * @param {Object}  props
@@ -25,17 +26,17 @@ export default function MetricExplainer({
   const sheetRef = useRef(null)
   const { lang } = useContext(LangCtx)
 
-  // Close on Escape or outside click
+  // Trap keyboard focus inside the popover while open; Escape closes
+  useFocusTrap(sheetRef, { active: open, onEscape: () => setOpen(false) })
+
+  // Close on outside click
   useEffect(() => {
     if (!open) return
-    const onKey = (e) => { if (e.key === 'Escape') setOpen(false) }
     const onOutside = (e) => {
       if (sheetRef.current && !sheetRef.current.contains(e.target)) setOpen(false)
     }
-    document.addEventListener('keydown', onKey)
     document.addEventListener('mousedown', onOutside)
     return () => {
-      document.removeEventListener('keydown', onKey)
       document.removeEventListener('mousedown', onOutside)
     }
   }, [open])

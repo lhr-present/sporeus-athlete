@@ -165,6 +165,7 @@ export default function SessionCommentThread({
           <div style={{ fontSize: FONT.size.xs, color: COLOR.orange, display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span>↳ {t('commentReply')} @{replyTo.authorName}</span>
             <button type="button" onClick={() => setReplyTo(null)}
+              aria-label={t('commentCancel')}
               style={{ ...S.ghostBtn, color: COLOR.dim }}>✕</button>
           </div>
         )}
