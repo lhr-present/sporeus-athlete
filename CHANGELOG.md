@@ -4,6 +4,60 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.65.0 — 2026-05-03 — FitnessGainRateCard + zwoExport + nutritionTiming + audit a11y (+86 tests), 7756 tests
+
+  FitnessGainRateCard.jsx (5.28 KB lazy chunk):
+    Closes the lib→card loop on v8.64.0 detectFitnessGainRate(). Big slope
+    number with sign and CTL/week unit, color-coded by band (red detraining
+    / grey maintaining / green building / amber spiking).
+    CTL endpoints "X → Y", R² fit-quality indicator, bilingual band badges
+    (TR: GERİLEME / KORUMA / GELİŞİM / ANİ YÜKSELİŞ).
+    role="region" + aria-live="polite" on message.
+    Wired into Dashboard.jsx after SessionVarietyCard, completing the
+    coaching-insight cluster (StaleZones + WorkoutDensity + SessionVariety
+    + FitnessGainRate). 13 jsdom tests.
+
+  src/lib/integrations/zwoExport.js (289 lines):
+    Pure-function Zwift .zwo workout XML exporter. Lets cyclists plan in
+    Sporeus and execute on Zwift, Wahoo SYSTM, TrainerRoad, etc.
+    buildZwoWorkout({ name, blocks, ... }) → { xml, errors }
+    sessionToZwoWorkout(session, ftp) maps Sporeus session intent to
+    structured workout (recovery → 1 steady; long/steady/tempo → warmup +
+    main + cooldown; intervals → warmup + 5×3on/2off + cooldown; default
+    → freeride).
+    downloadZwoFile(xml, filename) — Blob + URL.createObjectURL pattern
+    matching downloadCSVTemplate.
+    Power values clamped [0, 2.0] FTP fractions, 2dp precision.
+    XML escape covers & < > " for name/description.
+    Soft validation: unknown block type omitted with errors[] entry; valid
+    blocks still emitted. Hard validation: missing name / empty blocks → no XML.
+    39 tests covering each block type + escape + fallbacks.
+
+  src/lib/athlete/nutritionTiming.js (220 lines):
+    computeNutritionTiming({ intent, durationMin, weightKg, rpe?, heatStress? })
+    returns pre/during/post fueling targets per Burke 2014 + Jeukendrup 2014.
+    Pre-band selection: explicit RPE wins, duration falls back. RPE>=7 OR
+    >=90min → high (3-4 g/kg); RPE 5-6 OR 60-90min → mid (2-3 g/kg);
+    else low (1-2 g/kg).
+    During: 4 bands (<30min water-only, 30-60min carbs optional, 60-150min
+    30-60 g/h single-source, 150min+ 60-90 g/h multi-source).
+    Post: within 30min, 1.0-1.2 g/kg carb + 0.3 g/kg protein.
+    Heat stress flag → fluid × 1.25 (sodium not boosted, conservative).
+    All output integers (rounded), bilingual {en, tr} notes per band.
+    Citation: Burke 2014; Jeukendrup 2014.
+    34 tests covering each intent + duration + weight + heat + post bands.
+
+  Audit-driven a11y fixes (+6 LOC across 2 files):
+    coachDashboard/AthleteDetailPanel.jsx — save-note ✓ button gains aria-label
+    YearlyPlan.jsx — warning-dismiss ✕ chip + race-remove ✕ button (with
+    race name in label for screen-reader context) — added lang state read
+    Audit count: 247 → 246 (heuristic counts same-line additions only;
+    multi-line aria-labels invisible to grep).
+
+324 test files · 7756 tests · all passing · +1413 lines (9 files).
+
+---
+
 ## v8.64.0 — 2026-05-03 — RaceWeekProtocolCard + CoachingInsightsDigest + fitnessGainRate lib + audit a11y (+57 tests), 7670 tests
 
   RaceWeekProtocolCard.jsx (12.72 KB lazy chunk):

@@ -278,6 +278,7 @@ export default function YearlyPlan() {
   const { log }          = useData()
   const { user: authUser } = useAuth()
 
+  const [lang]            = useLocalStorage('sporeus-lang', 'en')
   const [plan,  setPlan]  = useLocalStorage('sporeus-yearly-plan',  null)
   const [races, setRaces] = useLocalStorage('sporeus-plan-races',   [])
   const [model, setModel] = useState('traditional')
@@ -535,7 +536,9 @@ export default function YearlyPlan() {
             fontFamily: MONO, fontSize: 10, color: '#e0a030',
           }}>
             <span>⚠ {warn}</span>
-            <button onClick={() => setDismissedWarns(s => new Set([...s, warn]))} style={{
+            <button onClick={() => setDismissedWarns(s => new Set([...s, warn]))}
+              aria-label={lang === 'tr' ? 'Uyarıyı kapat' : 'Dismiss warning'}
+              style={{
               fontFamily: MONO, fontSize: 10, background: 'transparent',
               border: 'none', color: '#e0a03088', cursor: 'pointer', marginLeft: 8,
             }}>✕</button>
@@ -600,7 +603,9 @@ export default function YearlyPlan() {
                   background: r.priority === 'A' ? '#8b0000' : r.priority === 'B' ? '#4a3a00' : '#1a1a3a',
                   color: '#eee',
                 }}>{r.priority}</span>
-                <button onClick={() => handleRemoveRace(i)} style={{
+                <button onClick={() => handleRemoveRace(i)}
+                  aria-label={lang === 'tr' ? `Yarışı kaldır: ${r.name}` : `Remove race: ${r.name}`}
+                  style={{
                   fontFamily: MONO, fontSize: 10, background: 'transparent',
                   border: 'none', color: '#555', cursor: 'pointer',
                 }}>✕</button>

@@ -210,8 +210,8 @@ export default function AthleteDetailPanel({ athlete, onUpdate, onClose: _onClos
               <div style={{ display:'flex', gap:'8px', alignItems:'flex-start' }}>
                 <textarea style={{ ...S.input, height:'44px', resize:'vertical', flex:1, fontSize:'12px' }} value={editNoteText} onChange={e => setEditNoteText(e.target.value)} autoFocus/>
                 <div style={{ display:'flex', flexDirection:'column', gap:'4px' }}>
-                  <button onClick={handleSaveEditNote} style={{ ...S.btn, fontSize:'10px', padding:'4px 10px' }}>✓</button>
-                  <button onClick={() => { setEditingNoteIdx(null); setEditNoteText('') }} aria-label="Cancel edit" style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px' }}>✕</button>
+                  <button onClick={handleSaveEditNote} aria-label="Save note / Notu kaydet" style={{ ...S.btn, fontSize:'10px', padding:'4px 10px' }}>✓</button>
+                  <button onClick={() => { setEditingNoteIdx(null); setEditNoteText('') }} aria-label="Cancel edit / Düzenlemeyi iptal et" style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px' }}>✕</button>
                 </div>
               </div>
             ) : (
