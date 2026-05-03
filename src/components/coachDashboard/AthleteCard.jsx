@@ -1,11 +1,14 @@
+import { useContext } from 'react'
 import { S } from '../../styles.js'
 import { computeAthleteMetrics, computeLoad, getReadinessColor, daysAgo } from './helpers.jsx'
 import { assessDataQuality } from '../../lib/intelligence.js'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 import AthleteDetailPanel from './AthleteDetailPanel.jsx'
 
 // ─── Athlete Status Card ──────────────────────────────────────────────────────
 
 export default function AthleteCard({ athlete, isOpen, onToggle, onRemove, onUpdate, templates, setTemplates, onQuickNote, myCoachId }) {
+  const { lang } = useContext(LangCtx) || { lang: 'en' }
   const metrics = computeAthleteMetrics(athlete)
   const load = computeLoad(athlete.log || [])
   const dq = assessDataQuality(athlete.log || [], athlete.recovery || [], athlete.testResults || [], athlete.profile || athlete)
@@ -39,14 +42,16 @@ export default function AthleteCard({ athlete, isOpen, onToggle, onRemove, onUpd
           </div>
           {/* Quick action buttons */}
           <div style={{ display:'flex', gap:'4px', flexShrink:0 }}>
-            <button onClick={handleQuickReport} title="Copy quick report" style={{ ...S.mono, fontSize:'11px', padding:'4px 7px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'3px', cursor:'pointer', color:'var(--muted)' }}>
+            <button onClick={handleQuickReport} title="Copy quick report" aria-label={lang === 'tr' ? 'Hızlı rapor kopyala' : 'Copy quick report'} style={{ ...S.mono, fontSize:'11px', padding:'4px 7px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'3px', cursor:'pointer', color:'var(--muted)' }}>
               📋
             </button>
-            <button onClick={onQuickNote} title="Add quick note" style={{ ...S.mono, fontSize:'11px', padding:'4px 7px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'3px', cursor:'pointer', color:'var(--muted)' }}>
+            <button onClick={onQuickNote} title="Add quick note" aria-label={lang === 'tr' ? 'Hızlı not ekle' : 'Add quick note'} style={{ ...S.mono, fontSize:'11px', padding:'4px 7px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'3px', cursor:'pointer', color:'var(--muted)' }}>
               📝
             </button>
             <button
               onClick={onToggle}
+              aria-label={isOpen ? (lang === 'tr' ? 'Detayları gizle' : 'Collapse details') : (lang === 'tr' ? 'Detayları göster' : 'Expand details')}
+              aria-expanded={isOpen}
               style={{ ...S.btnSec, fontSize:'11px', padding:'5px 10px', background: isOpen?'#0064ff':'transparent', color: isOpen?'#fff':'#0064ff', borderColor:'#0064ff' }}>
               {isOpen ? '▲' : '▼'}
             </button>

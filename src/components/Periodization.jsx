@@ -375,6 +375,7 @@ function AdaptivePlanCard({ log, plan, lang }) {
           {lang === 'tr' ? 'PLAN UYUM ANALİZİ' : 'PLAN ADAPTATION'}
         </div>
         <button onClick={dismiss}
+          aria-label={lang === 'tr' ? 'Uyarıyı kapat' : 'Dismiss alert'}
           style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: '14px', padding: '0 4px' }}>
           ×
         </button>

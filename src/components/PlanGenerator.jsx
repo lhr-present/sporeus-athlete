@@ -12,7 +12,32 @@ import { generatePlan as generateAdaptivePlan, SESSION_INTENTS } from '../lib/pl
 import { applyTaper, suggestTaper } from '../lib/plan/taperEngine.js'
 import { validatePlan } from '../lib/plan/planValidators.js'
 import { announce } from '../lib/a11y/announcer.js'
+import { buildZwoWorkout, sessionToZwoWorkout, downloadZwoFile } from '../lib/integrations/zwoExport.js'
 import PlanTemplatePicker from './PlanTemplatePicker.jsx'
+
+// ─── Map a legacy week-card session.type → zwoExport intent keyword ───────────
+// PlanGenerator stores sessions as { type, duration, rpe, ... } where `type` is
+// a free-form label. zwoExport.sessionToZwoWorkout() expects a normalized
+// `intent` keyword. Keep mapping short and predictable.
+function sessionTypeToZwoIntent(rawType) {
+  const t = String(rawType || '').toLowerCase().trim()
+  if (!t) return 'steady'
+  if (t === 'recovery' || t.includes('easy')) return 'recovery'
+  if (t === 'long')      return 'long'
+  if (t === 'tempo')     return 'tempo'
+  if (t === 'intervals' || t.includes('interval')) return 'intervals'
+  return 'steady'
+}
+
+// Detect rest/off rows that should NOT show a Zwift export button.
+function isRestSession(ses) {
+  if (!ses) return true
+  const t = String(ses.type || '').toLowerCase().trim()
+  if (!t) return true
+  if (t === 'rest' || t === 'off') return true
+  if (!(Number(ses.duration) > 0)) return true
+  return false
+}
 
 // ─── Pure: serialize a (legacy-shape) plan to a CSV string ────────────────────
 // Columns: Week, Day, SessionIntent, TargetTSS, RPELow, RPEHigh, Zone, Description
@@ -181,7 +206,7 @@ export default function PlanGenerator({ onLogSession }) {
   const [level, setLevel] = useState('Intermediate')
   const [plan,  setPlan]  = useLocalStorage('sporeus-plan', null)
   const [planStatus, setPlanStatus] = useLocalStorage('sporeus-plan-status', {})
-  const { log, recovery } = useData()
+  const { log, recovery, profile } = useData()
   const [lang] = useLocalStorage('sporeus-lang', 'en')
   const [selWeek, setSelWeek] = useState(0)
   const [blockMode, setBlockMode] = useState(false)
@@ -390,6 +415,29 @@ export default function PlanGenerator({ onLogSession }) {
     document.body.removeChild(a)
     setTimeout(() => URL.revokeObjectURL(url), 1000)
     announce(lang === 'tr' ? 'Plan dışa aktarıldı' : 'Plan exported', 'polite')
+  }
+
+  // ── Download a single session as a .zwo (Zwift / TrainerRoad / SYSTM) file ──
+  const exportSessionZwo = (ses) => {
+    if (!ses || isRestSession(ses)) return
+    const ftpRaw = Number(profile?.ftp)
+    const ftp = Number.isFinite(ftpRaw) && ftpRaw > 0 ? ftpRaw : 200
+    const intent = sessionTypeToZwoIntent(ses.type)
+    const workout = sessionToZwoWorkout({
+      ...ses,
+      intent,
+      duration: Number(ses.duration) || 0,
+    }, ftp)
+    const { xml, errors } = buildZwoWorkout(workout)
+    if (!xml || errors.length > 0) {
+      announce(lang === 'tr' ? 'Antrenman indirilemedi' : 'Workout download failed', 'assertive')
+      return
+    }
+    const dateStr = new Date().toISOString().slice(0, 10)
+    const safeType = String(ses.type || 'session').toLowerCase().replace(/\s+/g, '-')
+    const filename = `sporeus-${safeType}-${dateStr}.zwo`
+    downloadZwoFile(xml, filename)
+    announce(lang === 'tr' ? 'Antrenman indirildi' : 'Workout downloaded', 'polite')
   }
 
   const W = plan?.weeks[selWeek]
@@ -729,6 +777,17 @@ export default function PlanGenerator({ onLogSession }) {
                               {s==='done'?'✓':s==='skipped'?'↷':'~'} {s.charAt(0).toUpperCase()+s.slice(1)}
                             </button>
                           ))}
+                          {!isRestSession(ses) && (
+                            <button
+                              type="button"
+                              onClick={() => exportSessionZwo(ses)}
+                              aria-label={lang === 'tr' ? 'Zwift antrenman dosyası indir' : 'Download Zwift workout file'}
+                              title={lang === 'tr' ? 'Zwift .zwo indir' : 'Download Zwift .zwo'}
+                              style={{ ...S.mono, fontSize:'9px', fontWeight:700, width:'34px', padding:'3px 0', borderRadius:'3px', cursor:'pointer', border:'1px solid var(--border)', background:'transparent', color:'var(--muted)' }}
+                            >
+                              ↓zwo
+                            </button>
+                          )}
                         </div>
                         <button onClick={() => onLogSession(ses)}
                           style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px', marginTop:'6px', width:'100%' }}>

@@ -2,12 +2,13 @@
 // Opened from CoachSquadView per-athlete "✉" button.
 // Uses Supabase Realtime for live delivery + read receipt marking.
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useContext } from 'react'
 import { encryptMessage, decryptMessage } from '../lib/crypto.js'
 import { getMessages, markReadById, markReadMany, insertMessage, subscribeToMessages } from '../lib/db/messages.js'
 export { buildChannelId } from '../lib/db/messages.js'
 import { logAction } from '../lib/db/auditLog.js'
 import { useMessageChannel } from '../hooks/useMessageChannel.js'
+import { LangCtx } from '../contexts/LangCtx.jsx'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -52,6 +53,7 @@ export function canSendMessage(senderRole) {
  *   onClose  — close handler
  */
 export default function CoachMessage({ athlete, coachId, onClose }) {
+  const { lang } = useContext(LangCtx) || { lang: 'en' }
   const [msgs,          setMsgs]          = useState([])
   const [input,         setInput]         = useState('')
   const [sending,       setSending]       = useState(false)
@@ -204,6 +206,7 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
           </div>
           <button
             onClick={onClose}
+            aria-label={lang === 'tr' ? 'Mesajı kapat' : 'Close message'}
             style={{ background: 'none', border: 'none', color: GREY, cursor: 'pointer', fontSize: 14 }}
           >
             ✕

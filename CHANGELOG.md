@@ -4,6 +4,53 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.68.0 — 2026-05-03 — zwoExport UI button + trainingDistribution lib + audit a11y (+38 tests), 7850 tests
+
+  PlanGenerator zwoExport UI button (closes the v8.65.0 lib→UI loop):
+    Inline ↓zwo icon button in each session row, gated by !isRestSession()
+    Maps legacy session.type to zwoExport intent via local helper, uses
+    profile.ftp (200W fallback), calls sessionToZwoWorkout + buildZwoWorkout
+    + downloadZwoFile with sporeus-{type}-{date}.zwo filename
+    Bilingual aria-label (TR: "Zwift antrenman dosyası indir") + announce()
+    polite/assertive on success/error
+    Placement: 4th slot in the existing done/skipped/modified status row,
+    inheriting the rest/duration visibility gate
+    8 jsdom tests covering valid/rest gating, filename format, success+error
+    announce, bilingual aria-label
+
+  src/lib/athlete/trainingDistribution.js (259 lines):
+    detectTrainingDistribution(log, windowDays, today) aggregates training
+    over a configurable window (default 84d ~ 3 months)
+    Output: zone % distribution (Z1-Z5), intent % distribution
+    (recovery/long/steady/tempo/intervals), weeklyAvg {tss, durationMin,
+    sessions}, polarizedMatch (good/moderate/poor) per Seiler 2010 rules,
+    bilingual polarizedNote, totalSessions, weeksObserved, reliable flag
+    Bands:
+      good: Z2 ≥70% AND Z5 in [5%, 15%] AND Z3 ≤10%
+      moderate: Z2 ≥60% AND Z5 ≥5% AND Z3 ≤20%
+      poor: anything else
+    Inlined entryZoneContributions + entryZoneShares + classifyIntent
+    helpers from staleZones/sessionVariety (no private cross-imports).
+    UTC ISO weeks (Mon-Sun), all percentages rounded to whole numbers.
+    reliable: false when weeksObserved < 4.
+    Citation: Seiler 2010; Stöggl & Sperlich 2014.
+    30 tests covering all polarized boundaries, empty/short logs, custom
+    windowDays, weeklyAvg rounding, schema integrity.
+
+  Audit-driven a11y fixes (+15 LOC across 3 files):
+    CoachMessage.jsx — ✕ close button (line 209) gains bilingual aria-label
+    Periodization.jsx — × dismiss button on AdaptivePlanCard (line 379)
+    coachDashboard/AthleteCard.jsx — 3 icon-only buttons (📋 quick-report,
+      📝 quick-note, ▲/▼ toggle) + aria-expanded on toggle
+    Audit count visible drop: 246 → 244 (real drop 5 buttons; the audit
+    grep is single-line and misses multi-line aria-label additions).
+    Pattern saturating per agent report — only 5 genuine icon-only buttons
+    remain out of 246 flagged (rest are multi-line / text+icon false positives).
+
+329 test files · 7850 tests · all passing · +999 lines (7 files).
+
+---
+
 ## v8.67.0 — 2026-05-03 — EasyDayComplianceCard + NutritionTimingCard + CoachingInsightsDigest extension (+29 tests), 7812 tests
 
   EasyDayComplianceCard.jsx (3.7 KB lazy chunk):
