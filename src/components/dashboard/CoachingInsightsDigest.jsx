@@ -1,8 +1,10 @@
 // ─── dashboard/CoachingInsightsDigest.jsx — Unified coaching priorities card ─
-// Combines staleZones + workoutDensity + sessionVariety into ONE compact
-// "this week's coaching priorities" view so users get a single-glance summary
-// before scrolling through the three individual detector cards.
-// Citations: Seiler 2010; Foster 2001; Gabbett 2016.
+// Combines staleZones + workoutDensity + sessionVariety + fitnessGainRate +
+// easyDayCompliance into ONE compact "this week's coaching priorities" view so
+// users get a single-glance summary before scrolling through the five
+// individual detector cards.
+// Citations: Seiler 2010; Foster 2001; Gabbett 2016; Banister 1991;
+//            Stöggl & Sperlich 2014.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useContext, useMemo } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
@@ -10,6 +12,8 @@ import { S } from '../../styles.js'
 import { detectStaleZones } from '../../lib/athlete/staleZones.js'
 import { detectWorkoutDensity } from '../../lib/athlete/workoutDensity.js'
 import { detectSessionVariety } from '../../lib/athlete/sessionVariety.js'
+import { detectFitnessGainRate } from '../../lib/athlete/fitnessGainRate.js'
+import { detectEasyDayCompliance } from '../../lib/athlete/easyDayCompliance.js'
 
 const SEVERITY_BULLET = {
   high:     '🔴',
@@ -24,25 +28,31 @@ const SEVERITY_LABEL = {
 }
 
 const SOURCE_LABEL = {
-  DENSITY: { en: 'DENSITY', tr: 'YOĞUNLUK' },
-  VARIETY: { en: 'VARIETY', tr: 'ÇEŞİTLİLİK' },
-  ZONES:   { en: 'ZONES',   tr: 'BÖLGELER' },
+  DENSITY: { en: 'DENSITY',   tr: 'YOĞUNLUK' },
+  VARIETY: { en: 'VARIETY',   tr: 'ÇEŞİTLİLİK' },
+  ZONES:   { en: 'ZONES',     tr: 'BÖLGELER' },
+  FITNESS: { en: 'FITNESS',   tr: 'FORM' },
+  EASY:    { en: 'EASY DAYS', tr: 'KOLAY GÜNLER' },
 }
 
-const CITATION = 'Seiler 2010; Foster 2001; Gabbett 2016'
+const CITATION = 'Seiler 2010; Foster 2001; Gabbett 2016; Banister 1991; Stöggl & Sperlich 2014'
 const MAX_ROWS = 3
 
 // ─── Priority synthesis ──────────────────────────────────────────────────────
 /**
- * Build a prioritized list of insights from the three detectors.
- *   1. high: density.risk === 'high'
- *   2. then: top stale or dropped zone (one row only)
- *   3. then: variety === 'low' (skip if duplicates)
- *   4. then: density.risk === 'moderate' (lower priority than zones/variety)
- *   5. then: variety === 'moderate'
- * Capped at MAX_ROWS.
+ * Build a prioritized list of insights from the five detectors.
+ *   1. density.risk === 'high'                   (overtraining)
+ *   2. fitnessGainRate.band === 'spiking'        (load spike)
+ *   3. easyDayCompliance.band === 'poor'         (no easy days = no recovery)
+ *   4. first stale/dropped zone                  (zone neglect)
+ *   5. variety === 'low'                         (monotony)
+ *   6. fitnessGainRate.band === 'detraining'     (form loss)
+ *   7. density.risk === 'moderate'               (early overload)
+ *   8. easyDayCompliance.band === 'moderate'     (drift, informational)
+ *   9. variety === 'moderate'                    (informational)
+ * Capped at MAX_ROWS. Detectors with reliable === false are skipped.
  */
-function buildInsights(stale, density, variety) {
+function buildInsights(stale, density, variety, fitness, easy) {
   const rows = []
 
   // 1. High-risk density (most actionable — overtraining warning)
@@ -55,7 +65,27 @@ function buildInsights(stale, density, variety) {
     })
   }
 
-  // 2. Top zone insight: stale beats dropped, lower zone index beats higher
+  // 2. Spiking fitness (load spike → injury risk)
+  if (fitness.reliable && fitness.band === 'spiking') {
+    rows.push({
+      key: 'fitness-spiking',
+      severity: 'high',
+      source: 'FITNESS',
+      message: fitness.message,
+    })
+  }
+
+  // 3. Poor easy-day compliance (training quality — no recovery happening)
+  if (easy.reliable && easy.band === 'poor') {
+    rows.push({
+      key: 'easy-poor',
+      severity: 'moderate',
+      source: 'EASY',
+      message: easy.message,
+    })
+  }
+
+  // 4. Top zone insight: stale beats dropped, lower zone index beats higher
   if (stale.reliable) {
     const staleZone = stale.zones.find(z => z.status === 'stale')
     const droppedZone = stale.zones.find(z => z.status === 'dropped')
@@ -70,7 +100,7 @@ function buildInsights(stale, density, variety) {
     }
   }
 
-  // 3. Low variety
+  // 5. Low variety
   if (variety.reliable && variety.variety === 'low') {
     rows.push({
       key: 'variety-low',
@@ -80,7 +110,17 @@ function buildInsights(stale, density, variety) {
     })
   }
 
-  // 4. Moderate-risk density (only if we still have room)
+  // 6. Detraining fitness (form loss)
+  if (rows.length < MAX_ROWS && fitness.reliable && fitness.band === 'detraining') {
+    rows.push({
+      key: 'fitness-detraining',
+      severity: 'moderate',
+      source: 'FITNESS',
+      message: fitness.message,
+    })
+  }
+
+  // 7. Moderate-risk density (only if we still have room)
   if (rows.length < MAX_ROWS && density.reliable && density.risk === 'moderate') {
     rows.push({
       key: 'density-moderate',
@@ -90,7 +130,17 @@ function buildInsights(stale, density, variety) {
     })
   }
 
-  // 5. Moderate variety (lowest priority — informational)
+  // 8. Moderate easy-day compliance (informational)
+  if (rows.length < MAX_ROWS && easy.reliable && easy.band === 'moderate') {
+    rows.push({
+      key: 'easy-moderate',
+      severity: 'low',
+      source: 'EASY',
+      message: easy.message,
+    })
+  }
+
+  // 9. Moderate variety (lowest priority — informational)
   if (rows.length < MAX_ROWS && variety.reliable && variety.variety === 'moderate') {
     rows.push({
       key: 'variety-moderate',
@@ -110,20 +160,28 @@ export default function CoachingInsightsDigest({ log = [] }) {
 
   const result = useMemo(
     () => ({
-      stale: detectStaleZones(log),
+      stale:   detectStaleZones(log),
       density: detectWorkoutDensity(log),
       variety: detectSessionVariety(log),
+      fitness: detectFitnessGainRate(log),
+      easy:    detectEasyDayCompliance(log),
     }),
     [log]
   )
 
-  const { stale, density, variety } = result
+  const { stale, density, variety, fitness, easy } = result
 
   // Card title (rendered for every state)
   const title = isTR ? 'ANTRENÖR İÇGÖRÜLERİ' : 'COACHING INSIGHTS'
 
-  // ─── Empty state: all three detectors unreliable ───────────────────────────
-  if (!stale.reliable && !density.reliable && !variety.reliable) {
+  // ─── Empty state: every detector unreliable ────────────────────────────────
+  if (
+    !stale.reliable &&
+    !density.reliable &&
+    !variety.reliable &&
+    !fitness.reliable &&
+    !easy.reliable
+  ) {
     return (
       <div
         className="sp-card"
@@ -150,11 +208,15 @@ export default function CoachingInsightsDigest({ log = [] }) {
   }
 
   // ─── All-green state ───────────────────────────────────────────────────────
+  // Requires every detector that has data to be in its healthy band.
   const allGreen =
     density.risk === 'low' &&
     variety.variety === 'good' &&
     stale.summary.stale === 0 &&
-    stale.summary.dropped === 0
+    stale.summary.dropped === 0 &&
+    fitness.band !== 'spiking' &&
+    fitness.band !== 'detraining' &&
+    easy.band === 'good'
 
   if (allGreen) {
     return (
@@ -188,7 +250,7 @@ export default function CoachingInsightsDigest({ log = [] }) {
   }
 
   // ─── Mixed state — prioritized list of up to 3 insights ────────────────────
-  const insights = buildInsights(stale, density, variety)
+  const insights = buildInsights(stale, density, variety, fitness, easy)
 
   return (
     <div

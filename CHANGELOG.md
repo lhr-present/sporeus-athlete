@@ -4,6 +4,58 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.67.0 — 2026-05-03 — EasyDayComplianceCard + NutritionTimingCard + CoachingInsightsDigest extension (+29 tests), 7812 tests
+
+  EasyDayComplianceCard.jsx (3.7 KB lazy chunk):
+    Closes the v8.66.0 easyDayCompliance lib→card loop. 5th coaching-insight
+    card. Big compliance % with band color (good green / moderate amber /
+    poor red), bilingual band badge (İYİ/ORTA/ZAYIF), stats row, message +
+    recommendation, drift-dates list (max 5, only when drift > 0).
+    Wired into Dashboard.jsx after FitnessGainRateCard, completing the
+    5-card cluster (StaleZones + WorkoutDensity + SessionVariety +
+    FitnessGainRate + EasyDayCompliance).
+    role="region" + aria-live="polite" on rec + role=list/listitem on drifts.
+    11 jsdom tests with rgb color verification.
+
+  NutritionTimingCard.jsx (6.7 KB lazy chunk):
+    Closes the v8.65.0 nutritionTiming lib→card loop. Shows pre/during/post
+    fueling targets for today's planned session.
+    Reuses getTodayPlannedSession from intelligence.js to find today's
+    session from the existing plan shape (rather than re-implementing
+    weeks[i]/sessions[j] resolution).
+    Falls back to most recent log entry when plan is empty.
+    Three render branches: empty state (no session), prompt (no weight),
+    full 3-section display (PRE/ÖNCE, DURING/SIRADA, POST/SONRA) with
+    bilingual notes + total summary.
+    Wired into BOTH simplified and advanced Dashboard layouts after
+    DailyBriefingCard, completing the morning-glance cluster.
+    role="region" + role="group" per section + aria-live on total.
+    12 jsdom tests.
+
+  CoachingInsightsDigest extension (3 → 5 detectors):
+    Now runs all 5 coaching detectors (added fitnessGainRate +
+    easyDayCompliance to the existing stale + density + variety).
+    9-step priority order:
+      1. density 'high' (overtraining)
+      2. fitnessGainRate 'spiking' (load spike)
+      3. easyDayCompliance 'poor' (no easy days = no recovery)
+      4. first stale/dropped zone
+      5. variety 'low'
+      6. fitnessGainRate 'detraining'
+      7. density 'moderate'
+      8. easyDayCompliance 'moderate'
+      9. variety 'moderate'
+    Cap stays at 3 rows. All-green check tightened to require all 5 healthy.
+    Source labels: FITNESS/FORM, EASY DAYS/KOLAY GÜNLER added.
+    Citation footer: Seiler 2010; Foster 2001; Gabbett 2016; Banister 1991;
+      Stöggl & Sperlich 2014.
+    +6 tests (12 → 18) covering spiking/detraining/poor-easy/3-row cap/TR
+    badges. Existing tests preserved.
+
+327 test files · 7812 tests · all passing · +973 lines (7 files).
+
+---
+
 ## v8.66.0 — 2026-05-03 — easyDayCompliance lib (+27 tests), 7783 tests
 
   src/lib/athlete/easyDayCompliance.js (5th coaching-insight detector):

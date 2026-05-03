@@ -98,6 +98,7 @@ const AthleteStatusSummaryCard   = lazy(() => import('./dashboard/AthleteStatusS
 const SleepRestingHRCard         = lazy(() => import('./dashboard/SleepRestingHRCard.jsx'))
 const AllZonesCard               = lazy(() => import('./dashboard/AllZonesCard.jsx'))
 const DailyBriefingCard          = lazy(() => import('./dashboard/DailyBriefingCard.jsx'))
+const NutritionTimingCard        = lazy(() => import('./dashboard/NutritionTimingCard.jsx'))
 const WeeklyReviewCard           = lazy(() => import('./dashboard/WeeklyReviewCard.jsx'))
 const ConsistencyDepthCard       = lazy(() => import('./dashboard/ConsistencyDepthCard.jsx'))
 const MonthlyProgressCard        = lazy(() => import('./dashboard/MonthlyProgressCard.jsx'))
@@ -114,6 +115,7 @@ const StaleZonesCard             = lazy(() => import('./dashboard/StaleZonesCard
 const WorkoutDensityCard         = lazy(() => import('./dashboard/WorkoutDensityCard.jsx'))
 const SessionVarietyCard         = lazy(() => import('./dashboard/SessionVarietyCard.jsx'))
 const FitnessGainRateCard        = lazy(() => import('./dashboard/FitnessGainRateCard.jsx'))
+const EasyDayComplianceCard      = lazy(() => import('./dashboard/EasyDayComplianceCard.jsx'))
 const CoachingInsightsDigest     = lazy(() => import('./dashboard/CoachingInsightsDigest.jsx'))
 const RecoveryHub                = lazy(() => import('./RecoveryHub.jsx'))
 
@@ -349,6 +351,11 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
         </ErrorBoundary>
         <ErrorBoundary>
           <Suspense fallback={null}>
+            <NutritionTimingCard profile={profile} plan={plan} log={log} />
+          </Suspense>
+        </ErrorBoundary>
+        <ErrorBoundary>
+          <Suspense fallback={null}>
             <TodayReadinessCard log={log} recovery={recovery} profile={profile} />
           </Suspense>
         </ErrorBoundary>
@@ -499,6 +506,11 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
             recovery={recovery}
             isTR={lang === 'tr'}
           />
+        </Suspense>
+      </ErrorBoundary>
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <NutritionTimingCard profile={profile} plan={plan} log={log} />
         </Suspense>
       </ErrorBoundary>
       <ErrorBoundary>
@@ -919,6 +931,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       <ErrorBoundary><Suspense fallback={null}><WorkoutDensityCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><SessionVarietyCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><FitnessGainRateCard log={log} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><EasyDayComplianceCard log={log} /></Suspense></ErrorBoundary>
       <VO2maxCard log={log} profile={profile} dl={dl}/>
       <PeakWeekCard log={log} dl={dl}/>
       <TrainingAgeCard log={log} dl={dl}/>
