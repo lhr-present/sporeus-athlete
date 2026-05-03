@@ -27,6 +27,7 @@ function today() {
 
 // ─── Journal sub-component ────────────────────────────────────────────────────
 function Journal() {
+  const { lang } = useContext(LangCtx)
   const [entries, setEntries] = useLocalStorage('sporeus-confidence', [])
   const [text, setText] = useState('')
   const [boost, setBoost] = useState(null)
@@ -97,6 +98,7 @@ function Journal() {
                   </div>
                   <button
                     onClick={() => del(realIdx)}
+                    aria-label={lang === 'tr' ? 'Günlük girdisini sil' : 'Delete journal entry'}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e03030', fontSize: '16px', lineHeight: 1, padding: '0 2px', flexShrink: 0 }}
                   >×</button>
                 </div>
@@ -111,6 +113,7 @@ function Journal() {
 
 // ─── Mantras sub-component ────────────────────────────────────────────────────
 function Mantras() {
+  const { lang } = useContext(LangCtx)
   const [mantras, setMantras] = useLocalStorage('sporeus-mantras', [])
   const [input, setInput] = useState('')
   const [display, setDisplay] = useState(null)
@@ -160,6 +163,7 @@ function Mantras() {
               <span>{m}</span>
               <button
                 onClick={() => del(i)}
+                aria-label={lang === 'tr' ? `Mantrayı kaldır: ${m}` : `Remove mantra: ${m}`}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e03030', fontSize: '14px', lineHeight: 1, padding: 0 }}
               >×</button>
             </div>

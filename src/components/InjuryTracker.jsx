@@ -42,7 +42,7 @@ function countRecent(injuries, zoneId) {
 }
 
 export default function InjuryTracker() {
-  useContext(LangCtx)
+  const { lang } = useContext(LangCtx)
   const [expanded, setExpanded] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [selectedZone, setSelectedZone] = useState(null)
@@ -313,6 +313,7 @@ export default function InjuryTracker() {
                             <td style={{ padding: '6px 8px' }}>
                               <button
                                 onClick={() => deleteEntry(entry.id)}
+                                aria-label={lang === 'tr' ? 'Sakatlık girdisini sil' : 'Delete injury entry'}
                                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e03030', fontSize: '14px', lineHeight: 1, padding: '0 4px' }}
                               >×</button>
                             </td>

@@ -4,6 +4,55 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.69.0 — 2026-05-04 — TrainingDistributionCard + coachingSummaryScore lib + audit a11y + flaky-test fix (+42 tests), 7892 tests
+
+  TrainingDistributionCard.jsx (7.5 KB lazy chunk):
+    Closes the v8.68.0 trainingDistribution lib→card loop.
+    Stacked 5-zone bar (Z1-Z5 colored green→red), polarized 80/20 match
+    badge (GOOD/MODERATE/POOR · İYİ/ORTA/ZAYIF), bilingual diagnosis,
+    weekly averages line, intent breakdown (Recovery/Long/Steady/Tempo/
+    Intervals), citation footer.
+    Wired into Dashboard.jsx after EasyDayComplianceCard, completing the
+    6-card season-aware coaching cluster (5 × 28-day detectors + 1 × 84-day).
+    role="region" + role="img" on bar + role="list"/listitem on intents.
+    12 jsdom tests.
+
+  src/lib/athlete/coachingSummaryScore.js (258 lines):
+    computeCoachingSummaryScore(log, today) synthesizes all 5 detectors
+    (workoutDensity, sessionVariety, staleZones, fitnessGainRate,
+    easyDayCompliance) into a single 0-100 health score.
+    Per-detector mappings (equal weight): density low=100/mod=60/high=0;
+    variety good=100/mod=60/low=0; staleZones=100-20*stale-10*dropped
+    (clamp 0); gain building=100/maintaining=80/spiking=50/detraining=30;
+    easy good=100/mod=60/poor=0.
+    Bands: ≥80 excellent, ≥60 good, ≥40 needs_work, else poor.
+    Components null when underlying detector unreliable; reliable=true
+    requires ≥3 detectors reliable. Returns weakest component for guidance.
+    Citation aggregates all 5 source citations.
+    30 tests covering all bands, boundary at 80/60/40/39, weakest tracking,
+    detectorsCounted, bilingual messages.
+
+  Audit-driven a11y fixes (+7 LOC across 3 files):
+    MentalTools.jsx — Journal × delete + Mantras × remove gain bilingual
+      aria-labels (added LangCtx import + lang destructure)
+    InjuryTracker.jsx — History × delete entry gains aria-label
+    general/SessionHistory.jsx — delete ✕ upgraded from title-only to
+      proper aria-label
+    Audit saturation confirmed: only 4 genuine icon-only gaps remained
+    after 6 weeks of fixes. Future audits expected to find ≤2 gaps/cycle.
+
+  Flaky pre-existing test fix (+0 LOC behavioral, -3 LOC fragility):
+    src/lib/weeklyRecap.test.js — 3 tests checked now.getDay() !== 1
+    (LOCAL day) but generateWeeklyRecap uses now.getUTCDay() (UTC day).
+    Mismatch caused tests to fail in UTC+3 between midnight and 3am local
+    time on Mondays. Fixed by changing getDay → getUTCDay in test guards.
+    Pre-existing since v6.9.1; surfaced today (Monday in Turkey, but test
+    ran at 00:10am local = Sunday UTC).
+
+331 test files · 7892 tests · all passing · +1184 lines (9 files).
+
+---
+
 ## v8.68.0 — 2026-05-03 — zwoExport UI button + trainingDistribution lib + audit a11y (+38 tests), 7850 tests
 
   PlanGenerator zwoExport UI button (closes the v8.65.0 lib→UI loop):

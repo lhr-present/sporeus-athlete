@@ -95,6 +95,7 @@ export default function SessionHistory({ sessions = [], exercises = [], lang = '
                 ) : (
                   <button onClick={e => { e.stopPropagation(); setConfirmDel(sid) }}
                     style={{ ...S.mono, fontSize: 10, border: 'none', background: 'transparent', color: '#555', cursor: 'pointer', padding: '0 2px' }}
+                    aria-label={t('Delete session', 'Seansı sil')}
                     title={t('Delete session', 'Seansı sil')}>✕</button>
                 )}
                 <span style={{ ...S.mono, fontSize: 10, color: '#555' }}>{isOpen ? '▲' : '▼'}</span>

@@ -22,7 +22,7 @@ function makeLastWeekLog(count, tss = 80, type = 'Run') {
 // Note: function guards require log.length >= 7 (see test 6) — must provide ≥7 entries.
 it('test 1 — TSS sum is correct when today is Monday', () => {
   const now = new Date()
-  if (now.getDay() !== 1) {
+  if (now.getUTCDay() !== 1) {
     // Not Monday — function returns null before the length check
     expect(generateWeeklyRecap(makeLastWeekLog(7, 80))).toBeNull()
     return
@@ -49,7 +49,7 @@ it('test 2 — ctlDelta is finite', () => {
 // 3. dominantType: 3 Runs + 2 Swims → dominantType = 'Run'
 it('test 3 — dominantType is the most frequent session type', () => {
   const now = new Date()
-  if (now.getDay() !== 1) {
+  if (now.getUTCDay() !== 1) {
     expect(generateWeeklyRecap(makeLastWeekLog(5))).toBeNull()
     return
   }
@@ -71,7 +71,7 @@ it('test 3 — dominantType is the most frequent session type', () => {
 // 4. comparedToAvg: prior 4 weeks avg 300 TSS/wk, this week 400 → tssRatio ≈ 1.33
 it('test 4 — tssRatio compares to 4-week average correctly', () => {
   const now = new Date()
-  if (now.getDay() !== 1) {
+  if (now.getUTCDay() !== 1) {
     expect(generateWeeklyRecap(makeLastWeekLog(5))).toBeNull()
     return
   }
