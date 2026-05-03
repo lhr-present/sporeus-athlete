@@ -4,6 +4,34 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.66.0 — 2026-05-03 — easyDayCompliance lib (+27 tests), 7783 tests
+
+  src/lib/athlete/easyDayCompliance.js (5th coaching-insight detector):
+    Detects RPE/zone drift on labeled-easy days — the classic Seiler 80/20
+    failure mode where athletes go too hard on supposed-to-be-easy sessions.
+    Easy day = type matches /recovery|easy|endurance|z2/i, OR
+               entry.intent in {recovery, long, steady}, OR
+               entry.rpe in (0, 4]
+    Drift = actual RPE > 5 OR Z3+Z4+Z5 zone share > 20%
+    Bands: <60% poor, 60-79% moderate, ≥80% good (strict ≥ at boundaries)
+    Returns totalEasy, driftSessions, compliancePct, band, driftDates (capped
+    at 5 most-recent), bilingual {en, tr} message + recommendation, reliable
+    flag (false when totalEasy < 5).
+    Citation: Seiler 2010; Stöggl & Sperlich 2014.
+    27 tests covering all 4 classification rules, both boundaries, RPE-only
+    + zones-only signals, drift-date capping, sub-window exclusion, bilingual
+    coverage for each band, integer rounding.
+
+  Built directly (agents unavailable due to usage limit reset 9am Istanbul);
+  audit script confirmed no actionable new findings beyond previously-fixed
+  items — pattern saturating.
+
+  Dashboard card for easyDayCompliance deferred to follow-up.
+
+325 test files · 7783 tests · all passing · +400 lines (2 files).
+
+---
+
 ## v8.65.0 — 2026-05-03 — FitnessGainRateCard + zwoExport + nutritionTiming + audit a11y (+86 tests), 7756 tests
 
   FitnessGainRateCard.jsx (5.28 KB lazy chunk):
