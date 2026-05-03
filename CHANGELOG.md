@@ -4,6 +4,56 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.70.0 — 2026-05-04 — CoachingSummaryScoreCard + detrainingDetector lib + audit saturation (+50 tests), 7942 tests
+
+  CoachingSummaryScoreCard.jsx (279 lines, 7.0 KB lazy chunk):
+    Closes the v8.69.0 coachingSummaryScore lib→card loop.
+    Headline 0-100 score with band-colored badge (EXCELLENT/GOOD/
+    NEEDS WORK/POOR · MÜKEMMEL/İYİ/GELİŞTİR/ZAYIF), 52px score number,
+    4px accent border, 5 component dots (>=80 green / >=60 amber /
+    <60 red / null grey) for density/variety/staleZones/gain/easy,
+    weakest-component callout with detector-name mapping for
+    actionable guidance, citation footer aggregating all 5 sources.
+    Placed at top of coaching cluster (above CoachingInsightsDigest)
+    so the cluster is now: Score → Digest → Stale → Density →
+    Variety → Fitness → EasyDay → Distribution.
+    role="region" + aria-live="polite" on score; bilingual
+    aria-labels throughout. animationDelay 160ms.
+    15 jsdom tests covering all 4 bands, dot colors, weakest
+    rendering, null-component handling, bilingual labels.
+
+  src/lib/athlete/detrainingDetector.js (214 lines):
+    detectDetraining(log, today) detects training gaps ≥7 days
+    (illness, travel, injury, off-season). Walks last 90 days,
+    finds longest gap between consecutive logged sessions, then
+    classifies severity:
+      minor    : 7-13 days  (→ aerobic detraining onset, Mujika 2000)
+      moderate : 14-21 days (→ measurable VO2max loss begins)
+      major    : 22-42 days (→ ≥10% VO2max loss, ramp-back required)
+      severe   : >42 days   (→ near-complete detraining, restart base)
+    Returns { gapDays, gapStart, gapEnd, severity, daysSinceReturn,
+    rampGuidance, message: {en,tr}, recommendation: {en,tr},
+    reliable, citation }.
+    rampGuidance scales per Mujika & Padilla 2000: half prior CTL
+    target for moderate+, quarter for major, fresh base for severe.
+    Returns reliable=false when log <14 days history.
+    Citation: Mujika & Padilla 2000.
+    35 tests covering all severity bands, boundary days (7/14/22/42),
+    no-gap path, multiple-gap longest-wins, daysSinceReturn math,
+    bilingual messages, reliable flag.
+
+  Audit confirmed saturation:
+    scripts/weekly-audit.sh run → no new icon-only/unlabeled controls
+    introduced by v8.65.0–v8.69.0 waves. Remaining grep matches are
+    visible-text false positives (buttons with text content rather
+    than icon-only). a11y debt at functional zero.
+
+  Tests: 7892 → 7942 (+50; +15 score card, +35 detrain lib).
+  Files: 331 → 333.
+  DEPENDS ON: v8.69.0 coachingSummaryScore lib (consumed by score card).
+
+---
+
 ## v8.69.0 — 2026-05-04 — TrainingDistributionCard + coachingSummaryScore lib + audit a11y + flaky-test fix (+42 tests), 7892 tests
 
   TrainingDistributionCard.jsx (7.5 KB lazy chunk):

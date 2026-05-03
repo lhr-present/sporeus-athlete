@@ -118,6 +118,7 @@ const FitnessGainRateCard        = lazy(() => import('./dashboard/FitnessGainRat
 const EasyDayComplianceCard      = lazy(() => import('./dashboard/EasyDayComplianceCard.jsx'))
 const TrainingDistributionCard   = lazy(() => import('./dashboard/TrainingDistributionCard.jsx'))
 const CoachingInsightsDigest     = lazy(() => import('./dashboard/CoachingInsightsDigest.jsx'))
+const CoachingSummaryScoreCard   = lazy(() => import('./dashboard/CoachingSummaryScoreCard.jsx'))
 const RecoveryHub                = lazy(() => import('./RecoveryHub.jsx'))
 
 export default function Dashboard({ log, onLogSession, onGoToProfile }) {
@@ -927,6 +928,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
         recovery={recovery} plan={plan} planStatus={planStatus} rangeLabel={rangeLabel}
       />
       <ACWRCard log={log} lc={lc} dl={dl}/>
+      <ErrorBoundary><Suspense fallback={null}><CoachingSummaryScoreCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><CoachingInsightsDigest log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><StaleZonesCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><WorkoutDensityCard log={log} /></Suspense></ErrorBoundary>
