@@ -1,5 +1,6 @@
 import { useState, useEffect, useContext, useRef, useMemo, Fragment } from 'react'
 import { logger } from '../lib/logger.js'
+import { useFocusTrap } from '../hooks/useFocusTrap.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { SESSION_TYPES_BY_DISCIPLINE, ZONE_COLORS, ZONE_NAMES, SPORT_CONFIG } from '../lib/constants.js'
@@ -137,6 +138,8 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const [extFormat,   setExtFormat]   = useState('tp')
   const [extPreview,  setExtPreview]  = useState(null) // { toImport, duplicates, errors, summary, formatId, formatLabel }
   const [extErrorsExpanded, setExtErrorsExpanded] = useState(false)
+  const extPreviewPanelRef = useRef(null)
+  useFocusTrap(extPreviewPanelRef, { active: !!extPreview, onEscape: () => setExtPreview(null) })
 
   // ── Pagination controls from DataContext (E4) ────────────────────────────
   const { fetchNextPage, hasMore, isLoadingMore } = useData()
@@ -1082,7 +1085,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       {/* External-service CSV import preview modal */}
       {extPreview && (
         <div style={{ position:'fixed', inset:0, zIndex:20600, background:'rgba(0,0,0,0.88)', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px', fontFamily:"'IBM Plex Mono',monospace" }}>
-          <div role="dialog" aria-label={t('importExternalTitle')} style={{ background:'#111', border:'1px solid #2a2a2a', borderRadius:'8px', padding:'28px', width:'100%', maxWidth:'560px', maxHeight:'90vh', overflowY:'auto' }}>
+          <div ref={extPreviewPanelRef} role="dialog" aria-label={t('importExternalTitle')} style={{ background:'#111', border:'1px solid #2a2a2a', borderRadius:'8px', padding:'28px', width:'100%', maxWidth:'560px', maxHeight:'90vh', overflowY:'auto' }}>
             <div style={{ fontSize:'12px', fontWeight:700, color:'#5bc25b', letterSpacing:'0.1em', marginBottom:'4px' }}>
               {t('importExternalTitle')}
             </div>

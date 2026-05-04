@@ -3,8 +3,9 @@
 // Shows for users who have ≥5 sessions and no Garmin connection.
 // Non-blocking: dismissable, stores response in localStorage only.
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
+import { useFocusTrap } from '../hooks/useFocusTrap.js'
 
 // Survey questions
 const QUESTIONS = {
@@ -139,6 +140,8 @@ export default function GarminSurvey({ sessionCount = 0, lang = 'en', garminConn
   const [answers, setAnswers] = useState({})
   const [done, setDone]       = useState(false)
   const [dismissed, setDismissed] = useState(false)
+  const thanksRef = useRef(null)
+  const surveyRef = useRef(null)
 
   // Conditions to show: ≥5 sessions, not connected, not yet responded/dismissed
   const shouldShow = (
@@ -148,12 +151,15 @@ export default function GarminSurvey({ sessionCount = 0, lang = 'en', garminConn
     !dismissed
   )
 
-  if (!shouldShow) return null
-
   function handleDismiss() {
     setSurveyState({ dismissed: true, at: new Date().toISOString() })
     setDismissed(true)
   }
+
+  useFocusTrap(thanksRef, { active: shouldShow && done, onEscape: handleDismiss })
+  useFocusTrap(surveyRef, { active: shouldShow && !done, onEscape: handleDismiss })
+
+  if (!shouldShow) return null
 
   function handleSelect(key, idx) {
     setAnswers(prev => ({ ...prev, [key]: idx }))
@@ -184,7 +190,7 @@ export default function GarminSurvey({ sessionCount = 0, lang = 'en', garminConn
 
   if (done) {
     return (
-      <div style={S.overlay} role="dialog" aria-label="Garmin survey complete">
+      <div ref={thanksRef} style={S.overlay} role="dialog" aria-label="Garmin survey complete">
         <div style={S.header}>
           <span style={S.title}>◈ SPOREUS</span>
           <button style={S.dismiss} onClick={handleDismiss} aria-label="Close">×</button>
@@ -202,7 +208,7 @@ export default function GarminSurvey({ sessionCount = 0, lang = 'en', garminConn
   }
 
   return (
-    <div style={S.overlay} role="dialog" aria-label="Garmin interest survey">
+    <div ref={surveyRef} style={S.overlay} role="dialog" aria-label="Garmin interest survey">
       <div style={S.header}>
         <span style={S.title}>
           {lang === 'tr' ? 'Garmin Anketi' : 'Garmin Survey'}

@@ -4,6 +4,76 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.72.0 — 2026-05-04 — MonotonyStrainCard + raceWeekProtocol lib + a11y sweep (+51 tests), 8039 tests
+
+  MonotonyStrainCard.jsx (192 lines):
+    Closes the v8.71.0 trainingMonotonyStrain lib→card loop.
+    Band-colored badge (low=green / moderate=amber / high=red),
+    side-by-side big-number readout: monotony (2 decimals) and
+    strain (integer), with "MONOTONY · MONOTONLUK" and "STRAIN ·
+    YÜK" labels. Sub-line shows weekTotalTSS and daysWithLoad/7.
+    Bilingual message + recommendation, citation footer.
+    role="region" + bilingual aria-label, aria-live="polite" on
+    the metrics row, 4px accent border-left in band color,
+    animationDelay 200ms.
+    Placed after DetrainingDetectorCard, extending coaching
+    cluster to: Score → Digest → Stale → Density → Variety →
+    Fitness → EasyDay → Distribution → Detrain → Monotony.
+    15 jsdom tests covering insufficient-data EN+TR, all 3 bands,
+    high-by-strain-only branch (monotony<2 + strain>6000 still
+    triggers high), 2-decimal monotony format, weekTSS+
+    daysWithLoad rendering, role+aria, bilingual.
+
+  src/lib/athlete/raceWeekProtocol.js (289 lines):
+    generateRaceWeekProtocol(profile, raceDate, options) — Mujika
+    & Padilla 2003 exponential 8-day taper (D-7 .. D-0 race day):
+      D-7: 60% CTL, easy aerobic base
+      D-6: 50% CTL, threshold strides
+      D-5: 40% CTL, easy aerobic
+      D-4: rest / 10% CTL active recovery
+      D-3: 30% CTL, race-pace activation (3×3 min)
+      D-2: 20% CTL, sharpening shakeout
+      D-1: rest / 5% CTL pre-race shakeout
+      D-0: race itself (intensity 'race', durationMin 0)
+    Returns { raceDate, daysToRace, inRaceWeek, days[8],
+    totalTaperTSS, loadReductionPct, message, recommendation,
+    reliable, citation }.
+    UTC date helpers inlined (addDaysStr + diffDays).
+    Reliable=false when profile.recentCTL missing or invalid
+    raceDate. Past-race + pre-taper + in-window paths each
+    surface distinct bilingual top-line message.
+    Citation: 'Mujika & Padilla 2003; Bosquet 2007'.
+    Exports generateRaceWeekProtocol +
+    RACE_WEEK_PROTOCOL_CITATION.
+    36 tests covering all daysToRace branches (-1, 0, 7, 30,
+    invalid), per-day intensity assignments (rest/race-pace/race),
+    bilingual non-empty fields, totalTaperTSS sum, load reduction
+    range 30-70, recentCTL→tssTarget math, deterministic
+    options.today override.
+
+  A11y sweep (3 audit findings from v8.71.0 closed):
+    AuthGate.jsx:63       Google <svg> gains aria-hidden="true";
+                          confirmed decorative (visible "Continue
+                          with Google · Google ile devam et"
+                          sibling span at line 182).
+    GarminSurvey.jsx:191,209  Both role="dialog" elements wired
+                          to useFocusTrap with mutually-exclusive
+                          active gates (shouldShow && done /
+                          shouldShow && !done); existing
+                          handleDismiss reused for onEscape.
+                          No new state.
+    TrainingLog.jsx:1087  Import-preview dialog wired to
+                          useFocusTrap (active: !!extPreview,
+                          onEscape: setExtPreview(null)). Existing
+                          autoFocus untouched.
+
+  Tests: 7988 → 8039 (+51; 15 card + 36 lib).
+  Files: 335 → 337.
+  DEPENDS ON: v8.71.0 trainingMonotonyStrain lib (consumed by
+              card); useFocusTrap hook (existing).
+
+---
+
 ## v8.71.0 — 2026-05-04 — DetrainingDetectorCard + trainingMonotonyStrain lib + audit (+46 tests), 7988 tests
 
   DetrainingDetectorCard.jsx (273 lines):
