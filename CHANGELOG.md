@@ -4,6 +4,28 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.74.0 — 2026-05-05 — Remove duplicate raceWeekProtocol (-36 tests), 8148 tests
+
+  Cleanup of v8.72.0 tech-debt flagged in v8.73.0 changelog.
+  Deleted:
+    src/lib/athlete/raceWeekProtocol.js               (289 lines)
+    src/lib/__tests__/athlete/raceWeekProtocol.test.js (313 lines, 36 tests)
+
+  Reason: v8.72.0 created this as a duplicate of the pre-existing
+  src/lib/race/raceWeekProtocol.js (554 lines, broader API including
+  bilingual descriptions, race-type templates, gear/nutrition cues).
+  Only the duplicate's own test file imported it — no other consumers.
+  RaceWeekProtocolCard.jsx imports from src/lib/race/ (the original,
+  retained), so no UI impact.
+
+  Tests: 8184 → 8148 (-36; duplicate-only tests removed). No
+  functional regression — all retained tests still cover real code.
+  Files: 341 → 340.
+
+  DEPENDS ON: nothing. Pure subtractive cleanup.
+
+---
+
 ## v8.73.0 — 2026-05-04 — Weekly sweep: coverage + a11y + vo2GapDetector (+145 tests), 8184 tests
 
   Three-thread weekly sweep run in parallel; centrally verified and
