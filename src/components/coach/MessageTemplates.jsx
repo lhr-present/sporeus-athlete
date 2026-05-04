@@ -108,10 +108,16 @@ export default function MessageTemplates({ athlete, onSend }) {
                   {isEn ? 'Send' : 'Gönder'}
                 </button>
               )}
-              <button onClick={() => startEdit(t)} style={{ ...S.btnSec, fontSize: '9px', padding: '4px 8px', minHeight: 'unset' }}>
+              <button onClick={() => startEdit(t)}
+                aria-label={isEn ? 'Edit template' : 'Şablonu düzenle'}
+                title={isEn ? 'Edit template' : 'Şablonu düzenle'}
+                style={{ ...S.btnSec, fontSize: '9px', padding: '4px 8px', minHeight: 'unset' }}>
                 ✎
               </button>
-              <button onClick={() => deleteTemplate(t.id)} style={{ background: 'none', border: '1px solid #333', borderRadius: 3, color: '#555', fontSize: '9px', padding: '4px 8px', cursor: 'pointer', fontFamily: MONO }}>
+              <button onClick={() => deleteTemplate(t.id)}
+                aria-label={isEn ? 'Delete template' : 'Şablonu sil'}
+                title={isEn ? 'Delete template' : 'Şablonu sil'}
+                style={{ background: 'none', border: '1px solid #333', borderRadius: 3, color: '#555', fontSize: '9px', padding: '4px 8px', cursor: 'pointer', fontFamily: MONO }}>
                 ✕
               </button>
             </div>

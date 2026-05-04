@@ -4,6 +4,90 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.73.0 — 2026-05-04 — Weekly sweep: coverage + a11y + vo2GapDetector (+145 tests), 8184 tests
+
+  Three-thread weekly sweep run in parallel; centrally verified and
+  committed.
+
+  Thread 1 — coverage gap scan:
+    Discovered 43 truly-untested pure-function libs after deep
+    cross-check (basename diff + import-graph). Filtered for
+    side-effect-free; chose 3 highest-value:
+      src/lib/sport/cycling.js   (Coggan FTP/zone/TSS engine, 6 exports)
+      src/lib/sport/swimming.js  (Wakayoshi CSS engine, 6 exports)
+      src/lib/sport/restq.js     (Kellmann & Kallus 2001 RESTQ-Sport)
+    New test files:
+      src/lib/__tests__/sport/cycling.test.js   — 40 tests
+      src/lib/__tests__/sport/swimming.test.js  — 35 tests
+      src/lib/__tests__/sport/restq.test.js     — 29 tests
+    Coverage: null guards, CP vs 20-min FTP paths, all 7 Coggan
+    zone boundaries, TSS definitional cases (60min @FTP=100), grade
+    clamping, W/kg; CSS sanity (>3 m/s), 6 swim zone boundaries,
+    sTSS IF math, T-pace conversions; RESTQ item-metadata invariants,
+    all 4 interpretation tiers, 28-day cadence with custom interval.
+    No bugs found in libs.
+
+  Thread 2 — a11y regression scan:
+    511 button candidates → 6 genuine icon-only gaps after filter.
+    All 19 dialogs use useFocusTrap (saturated). 51 SVGs all already
+    labeled or decorative siblings (saturated).
+    Fixes (2 files, 6 buttons):
+      TrainingLog.jsx:743-755    4 row-action buttons (⌖ View
+                                  route, ✎ Edit session, ⊕ Save as
+                                  template, ✕ Delete) gain bilingual
+                                  aria-label + title. ✎ and ✕ had
+                                  nothing; ⌖ and ⊕ had title only.
+                                  High-traffic — appears every row.
+      coach/MessageTemplates.jsx:111-116
+                                  ✎ Edit + ✕ Delete template
+                                  buttons gain bilingual aria-label
+                                  + title (reused local isEn flag).
+    Inline `lang === 'tr' ? ... : ...` matches WeekBuilder /
+    SessionHistory convention; no LangCtx changes, no visual
+    changes, no new state.
+
+  Thread 3 — workout/training enhancement:
+    src/lib/athlete/vo2GapDetector.js (174 lines):
+      detectVO2Gap(log, today) flags top-end aerobic loss by:
+        - days since last Z5 / RPE≥9 session
+        - 28d Z5 share against polarized minimum
+      Bands escalate by EITHER signal:
+        ok       (Z5 within 10d AND share ≥5%)
+        warning  (>10d OR <5% share)
+        critical (>14d OR <2% share)
+        severe   (>21d)
+        never    (no Z5 in window)
+      Distinct from staleZones (share-only) and detrainingDetector
+      (total inactivity); fills the "missing top-end stimulus"
+      detection gap.
+      Reuses staleZones zone-parsing convention (array, object, RPE
+      +duration fallback) so works on any log shape.
+      UTC date helpers inlined per trainingMonotonyStrain pattern.
+      Citation: 'Stöggl & Sperlich 2014; Seiler 2010'.
+      Exports detectVO2Gap + VO2_GAP_DETECTOR_CITATION.
+      41 tests covering empty/null, window filtering, recency math,
+      all 5 bands at boundary, reliability flag, 3 zone-shape
+      variants, bilingual.
+    Card intentionally skipped — signal pairs naturally with
+    StaleZonesCard's Z5 row + CoachingInsightsDigest aggregator;
+    standalone card would visually overlap. Lib stays available for
+    future digest wiring.
+
+  Tests: 8039 → 8184 (+145; +104 coverage, +41 vo2Gap).
+  Files: 337 → 341 (+4).
+  Build: clean (3960.38 KiB precache, 203 entries).
+
+  Known issue surfaced (NOT addressed in this commit): v8.72.0
+  created src/lib/athlete/raceWeekProtocol.js as a duplicate of the
+  pre-existing src/lib/race/raceWeekProtocol.js (the path consumed
+  by RaceWeekProtocolCard.jsx). Both have full test coverage; no
+  runtime conflict, but tech debt. Flagged for separate
+  consolidation decision.
+
+  DEPENDS ON: nothing new. Pure additive sweep.
+
+---
+
 ## v8.72.0 — 2026-05-04 — MonotonyStrainCard + raceWeekProtocol lib + a11y sweep (+51 tests), 8039 tests
 
   MonotonyStrainCard.jsx (192 lines):

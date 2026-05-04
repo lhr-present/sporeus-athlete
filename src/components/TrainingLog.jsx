@@ -741,14 +741,21 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                       <td style={{ textAlign:'right', whiteSpace:'nowrap' }} onClick={e => e.stopPropagation()}>
                         {s.trackpoints?.length >= 2 && (
                           <button onClick={() => setRouteSession(s)}
-                            title="View route"
+                            title={lang === 'tr' ? 'Rotayı görüntüle' : 'View route'}
+                            aria-label={lang === 'tr' ? 'Rotayı görüntüle' : 'View route'}
                             style={{ background:'none', border:'none', color:'#0064ff', cursor:'pointer', ...S.mono, fontSize:'11px', marginRight:'4px' }}>⌖</button>
                         )}
                         <button onClick={()=>startEdit(s,i)}
+                          aria-label={lang === 'tr' ? 'Seansı düzenle' : 'Edit session'}
+                          title={lang === 'tr' ? 'Seansı düzenle' : 'Edit session'}
                           style={{ background:'none', border:'none', color:'#aaa', cursor:'pointer', ...S.mono, fontSize:'12px', marginRight:'4px' }}>✎</button>
-                        <button onClick={()=>saveTemplate(s)} title="Save as template"
+                        <button onClick={()=>saveTemplate(s)}
+                          aria-label={lang === 'tr' ? 'Şablon olarak kaydet' : 'Save as template'}
+                          title={lang === 'tr' ? 'Şablon olarak kaydet' : 'Save as template'}
                           style={{ background:'none', border:'none', color:'#555', cursor:'pointer', ...S.mono, fontSize:'11px', marginRight:'4px' }}>⊕</button>
                         <button onClick={() => setDeleteConfirmId(s.id)}
+                          aria-label={lang === 'tr' ? 'Seansı sil' : 'Delete session'}
+                          title={lang === 'tr' ? 'Seansı sil' : 'Delete session'}
                           style={{ background:'none', border:'none', color:'#ccc', cursor:'pointer', ...S.mono, fontSize:'12px' }}>✕</button>
                       </td>
                     </tr>
