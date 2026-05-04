@@ -4,6 +4,66 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.71.0 — 2026-05-04 — DetrainingDetectorCard + trainingMonotonyStrain lib + audit (+46 tests), 7988 tests
+
+  DetrainingDetectorCard.jsx (273 lines):
+    Closes the v8.70.0 detrainingDetector lib→card loop.
+    Surfaces training gaps ≥7 days with severity-banded visuals
+    (minor=amber / moderate=orange / major=red / severe=#a40000).
+    Renders insufficient-history notice when reliable=false; healthy
+    state when no significant gap; otherwise band badge, gap-day big
+    number, gap date range, daysSinceReturn for closed gaps,
+    bilingual description and recommendation, ramp-back guidance
+    derived per band, citation footer.
+    role="region" + bilingual aria-label + aria-live="polite" on
+    gap-days; 4px accent border-left in band color; animationDelay
+    180ms.
+    Adapted to lib's actual return shape (gaps[], currentGap,
+    inActiveGap, activeSeverity, recommendation) — no lib edits.
+    Placed after TrainingDistributionCard, extending the coaching
+    cluster to: Score → Digest → Stale → Density → Variety →
+    Fitness → EasyDay → Distribution → Detrain.
+    14 jsdom tests covering insufficient history (EN+TR), healthy
+    state, all 4 severity bands, bilingual title/band/description,
+    role="region", citation footer, daysSinceReturn rendering.
+
+  src/lib/athlete/trainingMonotonyStrain.js (151 lines):
+    Foster 2001 monotony + strain over fixed 7-day window:
+      monotony = mean(daily_TSS) / sample_stdev(daily_TSS)  [n−1]
+      strain   = weekTotalTSS × monotony
+    Bands: monotony<1.5 low, 1.5–2.0 moderate, ≥2.0 high; strain
+    >6000 forces high regardless of monotony (overtraining-risk
+    override).
+    Edge cases: stdev=0 → monotony=0 (avoids Infinity); empty/null
+    → safe defaults; same-day entries summed; future/out-of-window
+    dates excluded; reliable=true requires ≥5 distinct logged days
+    in window.
+    monotony rounded to 0.01, strain to integer.
+    Bilingual messages + recommendations (none for low band).
+    UTC date helper inlined matching easyDayCompliance.js style.
+    Citation: 'Foster 2001 monotony/strain'.
+    Exports detectMonotonyStrain + MONOTONY_STRAIN_CITATION.
+    32 tests covering all bands, boundaries (1.5/2.0), strain
+    override, daysWithLoad/weekTotalTSS math, same-day aggregation,
+    out-of-window exclusion, reliable flag, bilingual.
+
+  Audit (no-cost script, 2026-05-04 run):
+    Bundle 1150.8 KB / 2000 KB budget, zero per-file overages, zero
+    stale files, zero TODO/FIXME. Recent waves' a11y debt holds at
+    functional zero (244 grep hits dominated by visible-text false
+    positives).
+    Surfaced 3 minor genuine gaps (logged for incidental sweep, not
+    blocking this wave):
+      - AuthGate.jsx:63    Google <svg> needs aria-hidden="true"
+      - GarminSurvey.jsx:187,205   role=dialog without useFocusTrap
+      - TrainingLog.jsx:1085  role=dialog without useFocusTrap
+
+  Tests: 7942 → 7988 (+46; 14 card + 32 lib).
+  Files: 333 → 335.
+  DEPENDS ON: v8.70.0 detrainingDetector lib (consumed by card).
+
+---
+
 ## v8.70.0 — 2026-05-04 — CoachingSummaryScoreCard + detrainingDetector lib + audit saturation (+50 tests), 7942 tests
 
   CoachingSummaryScoreCard.jsx (279 lines, 7.0 KB lazy chunk):
