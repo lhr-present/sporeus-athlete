@@ -64,6 +64,10 @@ function buildHealthyLog() {
   for (let w = 0; w < 4; w++) {
     const weekStart = addDays(w1Start, w * 7)
     for (let d = 0; d < 7; d++) {
+      // Skip Wednesday (d=2) so each week has one full rest day. This keeps
+      // streakDetector's currentStreak < 7 → 'celebrating' band but below the
+      // 7-day positive headline threshold, so the all-green path stays clean.
+      if (d === 2) continue
       const date = addDays(weekStart, d)
       const t = templates[d]
       log.push({
@@ -278,6 +282,143 @@ function buildPoorEasyComplianceLog() {
   return log
 }
 
+// ─── Fixtures for new detectors (detraining / monotony / vo2 / streak) ───────
+
+// Detraining inActiveGap (major): 25 days of training spanning days -60..-25,
+// then NO entries for the trailing 25 days → currentGap = 25 → 'major' band.
+function buildDetrainingGapLog() {
+  const today = todayStr()
+  const log = []
+  // 25 entries from day -60 to day -36 (one per day)
+  for (let i = 60; i >= 36; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      zones: [10, 80, 5, 3, 2],
+    })
+  }
+  return log
+}
+
+// Monotony high: 7 daily entries, near-uniform TSS → very high monotony.
+// Plus older sparse entries so stale/density/variety/etc don't surface as
+// "moderate" in a way that would crowd out the monotony headline. Setting all
+// 7 days near the same TSS keeps monotony >> 2.0 and strain comfortably above
+// the 6000 threshold to be safe.
+function buildMonotonyHighLog() {
+  const today = todayStr()
+  const log = []
+  // 7 daily entries with near-identical TSS (one slight perturbation so stdev
+  // is non-zero — required by detector's `if (stdev > 0)` guard).
+  const tssDaily = [600, 600, 600, 600, 600, 600, 590]
+  for (let i = 6; i >= 0; i--) {
+    const dayIdx = 6 - i
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 7,
+      duration: 90,
+      tss: tssDaily[dayIdx],
+      zones: [10, 50, 20, 15, 5],
+    })
+  }
+  return log
+}
+
+// VO2 gap severe: 28-day window with last Z5 session 24 days ago → severe band
+// (recency > 21). Entries every day so vo2Gap is reliable (≥14 distinct days).
+function buildVO2GapSevereLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 27; i >= 0; i--) {
+    const isLastZ5 = i === 24
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      // Day -24 has Z5; all other days are Z2-heavy with no Z5
+      zones: isLastZ5 ? [5, 50, 20, 15, 10] : [10, 80, 8, 2, 0],
+    })
+  }
+  return log
+}
+
+// Streak risk: 25 consecutive training days ending today → currentStreak ≥ 22
+// → 'risk' band. Span = 25 days → reliable.
+function buildStreakRiskLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 24; i >= 0; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 50,
+      zones: [10, 70, 10, 5, 5],
+    })
+  }
+  return log
+}
+
+// Streak celebrating ≥7d: build a 7-day streak ending today, with older
+// entries spread across day -20..-8 (every-other-day) so allDates span ≥14
+// (reliable=true), but those older entries are NOT consecutive with the recent
+// 7-day streak (so currentStreak = 7, not larger).
+function buildStreakCelebrating7Log() {
+  const today = todayStr()
+  const log = []
+  // Older sparse entries so reliable=true (span ≥ 14d) but no recent streak.
+  for (let i = 20; i >= 8; i -= 2) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 50,
+      zones: [10, 70, 10, 5, 5],
+    })
+  }
+  // Recent 7-day streak: today, today-1, ..., today-6 (all training)
+  for (let i = 6; i >= 0; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 50,
+      zones: [10, 70, 10, 5, 5],
+    })
+  }
+  return log
+}
+
+// Insufficient-data log: 4 entries spread over 4 days. Each new detector
+// returns reliable=false, so none of the new detectors should surface a
+// headline (even if their bands would otherwise qualify).
+//   - detraining: log.length=4 < 14         → unreliable
+//   - monotony:   distinctLoggedDays=4 < 5  → unreliable
+//   - vo2Gap:     distinctDays=4 < 14       → unreliable
+//   - streak:     span=4 < 14               → unreliable
+function buildShortLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 3; i >= 0; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 50,
+      zones: [10, 70, 10, 5, 5],
+    })
+  }
+  return log
+}
+
 // ─── Tests ──────────────────────────────────────────────────────────────────
 describe('CoachingInsightsDigest — empty state', () => {
   it('renders empty state when log is empty (no detector reliable)', () => {
@@ -454,5 +595,105 @@ describe('CoachingInsightsDigest — bilingual new badges', () => {
     const log = buildPoorEasyComplianceLog()
     renderCard({ log }, 'tr')
     expect(screen.getByText('KOLAY GÜNLER')).toBeInTheDocument()
+  })
+})
+
+// ─── New-detector tests (detraining / monotony / vo2Gap / streak) ────────────
+describe('CoachingInsightsDigest — detraining gap', () => {
+  it('surfaces a high-priority GAP headline when athlete is in an active major gap', () => {
+    const log = buildDetrainingGapLog()
+    renderCard({ log })
+    // GAP source badge present
+    expect(screen.getByText('GAP')).toBeInTheDocument()
+    // Detector recommendation copy for major gap mentions a 2-week base block
+    expect(screen.getByText(/2-week aerobic base block/i)).toBeInTheDocument()
+    // Red bullet (high severity) for severe/major
+    const region = screen.getByRole('region')
+    expect(region.textContent).toContain('🔴')
+  })
+
+  it('renders ARA (TR) and Turkish recommendation copy when lang=tr', () => {
+    const log = buildDetrainingGapLog()
+    renderCard({ log }, 'tr')
+    expect(screen.getByText('ARA')).toBeInTheDocument()
+    expect(screen.getByText(/2 hafta aerobik temel bloku/i)).toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — monotony high', () => {
+  it('surfaces a high-priority MONOTONY headline when 7-day monotony band is high', () => {
+    const log = buildMonotonyHighLog()
+    renderCard({ log })
+    expect(screen.getByText('MONOTONY')).toBeInTheDocument()
+    expect(screen.getByText(/Overtraining risk — add a recovery day/i)).toBeInTheDocument()
+    const region = screen.getByRole('region')
+    expect(region.textContent).toContain('🔴')
+  })
+
+  it('renders MONOTONLUK (TR) for the Turkish locale', () => {
+    const log = buildMonotonyHighLog()
+    renderCard({ log }, 'tr')
+    expect(screen.getByText('MONOTONLUK')).toBeInTheDocument()
+    expect(screen.getByText(/Aşırı antrenman riski/i)).toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — vo2 gap', () => {
+  it('surfaces a high-priority VO2 headline when Z5 work has been absent for >21 days', () => {
+    const log = buildVO2GapSevereLog()
+    renderCard({ log })
+    expect(screen.getByText('VO2')).toBeInTheDocument()
+    // Severe band copy mentions VO2max gap / top-end fitness
+    expect(screen.getByText(/Prolonged VO2max gap/i)).toBeInTheDocument()
+    const region = screen.getByRole('region')
+    expect(region.textContent).toContain('🔴')
+  })
+
+  it('renders the VO2 source badge unchanged in TR locale (acronym)', () => {
+    const log = buildVO2GapSevereLog()
+    renderCard({ log }, 'tr')
+    expect(screen.getByText('VO2')).toBeInTheDocument()
+    expect(screen.getByText(/Uzun süreli VO2max boşluğu/i)).toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — streak risk', () => {
+  it('surfaces a STREAK headline urging a rest day when streak ≥ 22 with no rest', () => {
+    const log = buildStreakRiskLog()
+    renderCard({ log })
+    expect(screen.getByText('STREAK')).toBeInTheDocument()
+    // Detector message mentions scheduling a rest day (N-day streak — schedule a rest day)
+    expect(screen.getByText(/streak — schedule a rest day/i)).toBeInTheDocument()
+  })
+
+  it('renders SERİ (TR) for the Turkish streak-risk headline', () => {
+    const log = buildStreakRiskLog()
+    renderCard({ log }, 'tr')
+    expect(screen.getByText('SERİ')).toBeInTheDocument()
+    expect(screen.getByText(/dinlenme günü planla/i)).toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — streak celebrating (positive)', () => {
+  it('surfaces a positive STREAK headline when currentStreak is exactly 7 days', () => {
+    const log = buildStreakCelebrating7Log()
+    renderCard({ log })
+    expect(screen.getByText('STREAK')).toBeInTheDocument()
+    expect(screen.getByText(/7-day streak — building habit/i)).toBeInTheDocument()
+    // Positive headline uses the green bullet
+    const region = screen.getByRole('region')
+    expect(region.textContent).toContain('🟢')
+  })
+})
+
+describe('CoachingInsightsDigest — reliability gating', () => {
+  it('does not surface any new-detector headlines when all 4 are unreliable', () => {
+    const log = buildShortLog()
+    renderCard({ log })
+    // None of the new source badges should appear
+    expect(screen.queryByText('GAP')).not.toBeInTheDocument()
+    expect(screen.queryByText('MONOTONY')).not.toBeInTheDocument()
+    expect(screen.queryByText('VO2')).not.toBeInTheDocument()
+    expect(screen.queryByText('STREAK')).not.toBeInTheDocument()
   })
 })

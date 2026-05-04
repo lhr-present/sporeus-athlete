@@ -1,10 +1,10 @@
 // ─── dashboard/CoachingInsightsDigest.jsx — Unified coaching priorities card ─
 // Combines staleZones + workoutDensity + sessionVariety + fitnessGainRate +
-// easyDayCompliance into ONE compact "this week's coaching priorities" view so
-// users get a single-glance summary before scrolling through the five
-// individual detector cards.
+// easyDayCompliance + detraining + monotonyStrain + vo2Gap + streak into ONE
+// compact "this week's coaching priorities" view so users get a single-glance
+// summary before scrolling through the individual detector cards.
 // Citations: Seiler 2010; Foster 2001; Gabbett 2016; Banister 1991;
-//            Stöggl & Sperlich 2014.
+//            Stöggl & Sperlich 2014; Mujika & Padilla 2000.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useContext, useMemo } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
@@ -14,48 +14,132 @@ import { detectWorkoutDensity } from '../../lib/athlete/workoutDensity.js'
 import { detectSessionVariety } from '../../lib/athlete/sessionVariety.js'
 import { detectFitnessGainRate } from '../../lib/athlete/fitnessGainRate.js'
 import { detectEasyDayCompliance } from '../../lib/athlete/easyDayCompliance.js'
+import { detectDetraining } from '../../lib/athlete/detrainingDetector.js'
+import { detectMonotonyStrain } from '../../lib/athlete/trainingMonotonyStrain.js'
+import { detectVO2Gap } from '../../lib/athlete/vo2GapDetector.js'
+import { detectStreak } from '../../lib/athlete/streakDetector.js'
 
 const SEVERITY_BULLET = {
   high:     '🔴',
   moderate: '🟡',
   low:      '🟢',
+  positive: '🟢',
 }
 
 const SEVERITY_LABEL = {
   high:     { en: 'high',     tr: 'yüksek' },
   moderate: { en: 'moderate', tr: 'orta' },
   low:      { en: 'low',      tr: 'düşük' },
+  positive: { en: 'positive', tr: 'olumlu' },
 }
 
 const SOURCE_LABEL = {
-  DENSITY: { en: 'DENSITY',   tr: 'YOĞUNLUK' },
-  VARIETY: { en: 'VARIETY',   tr: 'ÇEŞİTLİLİK' },
-  ZONES:   { en: 'ZONES',     tr: 'BÖLGELER' },
-  FITNESS: { en: 'FITNESS',   tr: 'FORM' },
-  EASY:    { en: 'EASY DAYS', tr: 'KOLAY GÜNLER' },
+  DENSITY:  { en: 'DENSITY',   tr: 'YOĞUNLUK' },
+  VARIETY:  { en: 'VARIETY',   tr: 'ÇEŞİTLİLİK' },
+  ZONES:    { en: 'ZONES',     tr: 'BÖLGELER' },
+  FITNESS:  { en: 'FITNESS',   tr: 'FORM' },
+  EASY:     { en: 'EASY DAYS', tr: 'KOLAY GÜNLER' },
+  GAP:      { en: 'GAP',       tr: 'ARA' },
+  MONOTONY: { en: 'MONOTONY',  tr: 'MONOTONLUK' },
+  VO2:      { en: 'VO2',       tr: 'VO2' },
+  STREAK:   { en: 'STREAK',    tr: 'SERİ' },
 }
 
-const CITATION = 'Seiler 2010; Foster 2001; Gabbett 2016; Banister 1991; Stöggl & Sperlich 2014'
+const CITATION =
+  'Seiler 2010; Foster 2001; Gabbett 2016; Banister 1991; Stöggl & Sperlich 2014; Mujika & Padilla 2000'
 const MAX_ROWS = 3
+
+// ─── Detraining helpers ──────────────────────────────────────────────────────
+const SEVERITY_RANK = { severe: 4, major: 3, moderate: 2, minor: 1 }
+
+/**
+ * Pick the most severe detraining signal worth surfacing. Prefers the active
+ * trailing gap if present; otherwise scans closed gaps for one of moderate or
+ * worse severity. Returns null when nothing should surface.
+ */
+function pickDetrainingSignal(detraining) {
+  if (!detraining || !detraining.reliable) return null
+  if (detraining.inActiveGap && detraining.activeSeverity) {
+    return {
+      severity: detraining.activeSeverity,
+      durationDays: detraining.currentGap,
+      message: detraining.recommendation,
+      active: true,
+    }
+  }
+  // Fall back to most severe closed gap of moderate or above.
+  const gaps = Array.isArray(detraining.gaps) ? detraining.gaps : []
+  let best = null
+  for (const g of gaps) {
+    if (!g || !g.severity) continue
+    if (SEVERITY_RANK[g.severity] < SEVERITY_RANK.moderate) continue
+    if (!best || SEVERITY_RANK[g.severity] > SEVERITY_RANK[best.severity]) best = g
+  }
+  if (!best) return null
+  return {
+    severity: best.severity,
+    durationDays: best.durationDays,
+    message: best.description,
+    active: false,
+  }
+}
 
 // ─── Priority synthesis ──────────────────────────────────────────────────────
 /**
- * Build a prioritized list of insights from the five detectors.
- *   1. density.risk === 'high'                   (overtraining)
- *   2. fitnessGainRate.band === 'spiking'        (load spike)
- *   3. easyDayCompliance.band === 'poor'         (no easy days = no recovery)
- *   4. first stale/dropped zone                  (zone neglect)
- *   5. variety === 'low'                         (monotony)
- *   6. fitnessGainRate.band === 'detraining'     (form loss)
- *   7. density.risk === 'moderate'               (early overload)
- *   8. easyDayCompliance.band === 'moderate'     (drift, informational)
- *   9. variety === 'moderate'                    (informational)
- * Capped at MAX_ROWS. Detectors with reliable === false are skipped.
+ * Build a prioritized list of insights from the nine detectors.
+ *   1. detraining severe/major                     (gap-based detraining)
+ *   2. vo2Gap severe/never                         (top-end fitness fading)
+ *   3. monotonyStrain band==='high'                (overtraining via uniformity)
+ *   4. density.risk === 'high'                     (overtraining)
+ *   5. fitnessGainRate.band === 'spiking'          (load spike)
+ *   6. easyDayCompliance.band === 'poor'           (no recovery happening)
+ *   7. first stale/dropped zone                    (zone neglect)
+ *   8. variety === 'low'                           (monotony)
+ *   9. fitnessGainRate.band === 'detraining'       (form loss)
+ *  10. density.risk === 'moderate'                 (early overload)
+ *  11. detraining moderate                         (lower-severity gap)
+ *  12. vo2Gap critical                             (Z5 overdue)
+ *  13. easyDayCompliance.band === 'moderate'       (drift, informational)
+ *  14. variety === 'moderate'                      (informational)
+ *  15. streak risk                                 (consecutive-day risk)
+ *  16. streak celebrating ≥7d                      (positive headline, last)
+ * Capped at MAX_ROWS. Detectors with reliable === false are silently excluded.
  */
-function buildInsights(stale, density, variety, fitness, easy) {
+function buildInsights(stale, density, variety, fitness, easy, detraining, monotony, vo2, streak) {
   const rows = []
+  const detSignal = pickDetrainingSignal(detraining)
 
-  // 1. High-risk density (most actionable — overtraining warning)
+  // 1. Detraining severe / major (highest priority — substantial fitness loss)
+  if (detSignal && (detSignal.severity === 'severe' || detSignal.severity === 'major')) {
+    rows.push({
+      key: `detraining-${detSignal.severity}-${detSignal.durationDays}`,
+      severity: 'high',
+      source: 'GAP',
+      message: detSignal.message,
+    })
+  }
+
+  // 2. VO2 gap severe / never (top-end fitness fading)
+  if (vo2.reliable && (vo2.band === 'severe' || vo2.band === 'never')) {
+    rows.push({
+      key: `vo2-${vo2.band}`,
+      severity: 'high',
+      source: 'VO2',
+      message: vo2.message,
+    })
+  }
+
+  // 3. Monotony / strain high (overtraining risk via uniformity)
+  if (monotony.reliable && monotony.band === 'high') {
+    rows.push({
+      key: 'monotony-high',
+      severity: 'high',
+      source: 'MONOTONY',
+      message: monotony.message,
+    })
+  }
+
+  // 4. High-risk density (overtraining warning)
   if (density.reliable && density.risk === 'high') {
     rows.push({
       key: 'density-high',
@@ -65,7 +149,7 @@ function buildInsights(stale, density, variety, fitness, easy) {
     })
   }
 
-  // 2. Spiking fitness (load spike → injury risk)
+  // 5. Spiking fitness (load spike → injury risk)
   if (fitness.reliable && fitness.band === 'spiking') {
     rows.push({
       key: 'fitness-spiking',
@@ -75,7 +159,7 @@ function buildInsights(stale, density, variety, fitness, easy) {
     })
   }
 
-  // 3. Poor easy-day compliance (training quality — no recovery happening)
+  // 6. Poor easy-day compliance (training quality — no recovery happening)
   if (easy.reliable && easy.band === 'poor') {
     rows.push({
       key: 'easy-poor',
@@ -85,7 +169,7 @@ function buildInsights(stale, density, variety, fitness, easy) {
     })
   }
 
-  // 4. Top zone insight: stale beats dropped, lower zone index beats higher
+  // 7. Top zone insight: stale beats dropped, lower zone index beats higher
   if (stale.reliable) {
     const staleZone = stale.zones.find(z => z.status === 'stale')
     const droppedZone = stale.zones.find(z => z.status === 'dropped')
@@ -100,7 +184,7 @@ function buildInsights(stale, density, variety, fitness, easy) {
     }
   }
 
-  // 5. Low variety
+  // 8. Low variety
   if (variety.reliable && variety.variety === 'low') {
     rows.push({
       key: 'variety-low',
@@ -110,7 +194,7 @@ function buildInsights(stale, density, variety, fitness, easy) {
     })
   }
 
-  // 6. Detraining fitness (form loss)
+  // 9. Detraining fitness (form loss via CTL slope)
   if (rows.length < MAX_ROWS && fitness.reliable && fitness.band === 'detraining') {
     rows.push({
       key: 'fitness-detraining',
@@ -120,7 +204,7 @@ function buildInsights(stale, density, variety, fitness, easy) {
     })
   }
 
-  // 7. Moderate-risk density (only if we still have room)
+  // 10. Moderate-risk density
   if (rows.length < MAX_ROWS && density.reliable && density.risk === 'moderate') {
     rows.push({
       key: 'density-moderate',
@@ -130,7 +214,27 @@ function buildInsights(stale, density, variety, fitness, easy) {
     })
   }
 
-  // 8. Moderate easy-day compliance (informational)
+  // 11. Detraining moderate (lower-severity gap)
+  if (rows.length < MAX_ROWS && detSignal && detSignal.severity === 'moderate') {
+    rows.push({
+      key: `detraining-${detSignal.severity}-${detSignal.durationDays}`,
+      severity: 'moderate',
+      source: 'GAP',
+      message: detSignal.message,
+    })
+  }
+
+  // 12. VO2 gap critical (Z5 overdue)
+  if (rows.length < MAX_ROWS && vo2.reliable && vo2.band === 'critical') {
+    rows.push({
+      key: 'vo2-critical',
+      severity: 'moderate',
+      source: 'VO2',
+      message: vo2.message,
+    })
+  }
+
+  // 13. Moderate easy-day compliance (informational)
   if (rows.length < MAX_ROWS && easy.reliable && easy.band === 'moderate') {
     rows.push({
       key: 'easy-moderate',
@@ -140,13 +244,38 @@ function buildInsights(stale, density, variety, fitness, easy) {
     })
   }
 
-  // 9. Moderate variety (lowest priority — informational)
+  // 14. Moderate variety (lowest priority — informational)
   if (rows.length < MAX_ROWS && variety.reliable && variety.variety === 'moderate') {
     rows.push({
       key: 'variety-moderate',
       severity: 'low',
       source: 'VARIETY',
       message: variety.message,
+    })
+  }
+
+  // 15. Streak risk (urgent — schedule a rest day)
+  if (rows.length < MAX_ROWS && streak.reliable && streak.riskBand === 'risk') {
+    rows.push({
+      key: 'streak-risk',
+      severity: 'moderate',
+      source: 'STREAK',
+      message: streak.message,
+    })
+  }
+
+  // 16. Streak celebrating ≥7d (positive headline; render last)
+  if (
+    rows.length < MAX_ROWS &&
+    streak.reliable &&
+    streak.riskBand === 'celebrating' &&
+    streak.currentStreak >= 7
+  ) {
+    rows.push({
+      key: 'streak-celebrating',
+      severity: 'positive',
+      source: 'STREAK',
+      message: streak.message,
     })
   }
 
@@ -160,16 +289,20 @@ export default function CoachingInsightsDigest({ log = [] }) {
 
   const result = useMemo(
     () => ({
-      stale:   detectStaleZones(log),
-      density: detectWorkoutDensity(log),
-      variety: detectSessionVariety(log),
-      fitness: detectFitnessGainRate(log),
-      easy:    detectEasyDayCompliance(log),
+      stale:       detectStaleZones(log),
+      density:     detectWorkoutDensity(log),
+      variety:     detectSessionVariety(log),
+      fitness:     detectFitnessGainRate(log),
+      easy:        detectEasyDayCompliance(log),
+      detraining:  detectDetraining(log),
+      monotony:    detectMonotonyStrain(log),
+      vo2:         detectVO2Gap(log),
+      streak:      detectStreak(log),
     }),
     [log]
   )
 
-  const { stale, density, variety, fitness, easy } = result
+  const { stale, density, variety, fitness, easy, detraining, monotony, vo2, streak } = result
 
   // Card title (rendered for every state)
   const title = isTR ? 'ANTRENÖR İÇGÖRÜLERİ' : 'COACHING INSIGHTS'
@@ -180,7 +313,11 @@ export default function CoachingInsightsDigest({ log = [] }) {
     !density.reliable &&
     !variety.reliable &&
     !fitness.reliable &&
-    !easy.reliable
+    !easy.reliable &&
+    !detraining.reliable &&
+    !monotony.reliable &&
+    !vo2.reliable &&
+    !streak.reliable
   ) {
     return (
       <div
@@ -208,7 +345,14 @@ export default function CoachingInsightsDigest({ log = [] }) {
   }
 
   // ─── All-green state ───────────────────────────────────────────────────────
-  // Requires every detector that has data to be in its healthy band.
+  // Requires every detector that has data to be in its healthy band. We do NOT
+  // require streak.celebrating to suppress the green state because a 7+ day
+  // streak should still surface as a positive headline (handled in mixed
+  // branch). However, if a celebrating-7d streak is the only signal, falling
+  // through to the mixed branch is preferable to showing the generic checkmark.
+  const streakCelebratingHeadline =
+    streak.reliable && streak.riskBand === 'celebrating' && streak.currentStreak >= 7
+
   const allGreen =
     density.risk === 'low' &&
     variety.variety === 'good' &&
@@ -216,7 +360,12 @@ export default function CoachingInsightsDigest({ log = [] }) {
     stale.summary.dropped === 0 &&
     fitness.band !== 'spiking' &&
     fitness.band !== 'detraining' &&
-    easy.band === 'good'
+    easy.band === 'good' &&
+    !(detraining.reliable && detraining.inActiveGap) &&
+    !(monotony.reliable && monotony.band === 'high') &&
+    !(vo2.reliable && (vo2.band === 'severe' || vo2.band === 'never' || vo2.band === 'critical')) &&
+    !(streak.reliable && streak.riskBand === 'risk') &&
+    !streakCelebratingHeadline
 
   if (allGreen) {
     return (
@@ -250,7 +399,10 @@ export default function CoachingInsightsDigest({ log = [] }) {
   }
 
   // ─── Mixed state — prioritized list of up to 3 insights ────────────────────
-  const insights = buildInsights(stale, density, variety, fitness, easy)
+  const insights = buildInsights(
+    stale, density, variety, fitness, easy,
+    detraining, monotony, vo2, streak,
+  )
 
   return (
     <div

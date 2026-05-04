@@ -4,6 +4,90 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.76.0 — 2026-05-05 — StreakCard + CoachingInsightsDigest 9-detector synthesis + audit (+24 tests), 8222 tests
+
+  StreakCard.jsx (218 lines):
+    Closes the v8.75.0 streakDetector lib→card loop.
+    Side-by-side big-number readout: currentStreak ("DAY STREAK ·
+    GÜNLÜK SERİ") + longestStreakIn90d ("BEST 90D · EN İYİ 90G").
+    Sub-line: "X/28 training days · 28G'de X gün". Optional
+    "Last rest Xd ago · Son dinlenme X gün önce" line when
+    daysSinceLastRest non-null.
+    Band-colored 4px accent border-left:
+      celebrating=#28a745 green, consistent=#0064ff blue,
+      monitoring=#ff9500 amber (mathematically unreachable from
+      log walk per lib note — test skipped),
+      risk=#dc3545 red, recovery/broken=#6c757d grey.
+    Bilingual message + recommendation, citation footer.
+    role="region" + aria-live="polite" on streak number,
+    animationDelay 240ms (after VO2Gap at 220ms). Placed after
+    VO2GapCard, extending coaching cluster.
+    Reliability gating uses lib's allDates span (not training
+    days) — fixtures use tss=0/duration=0 anchor entries to
+    extend span without polluting streak counts.
+    14 jsdom tests covering 5 reachable bands, insufficient data,
+    bilingual, role/aria, sub-line conditional rendering.
+
+  CoachingInsightsDigest.jsx — 5→9 detector synthesis:
+    Extended from 5 detectors (staleZones, workoutDensity,
+    sessionVariety, fitnessGainRate, easyDayCompliance) to 9 by
+    ingesting 4 newer ones:
+      detectDetraining        (v8.70.0)
+      detectMonotonyStrain    (v8.71.0)
+      detectVO2Gap            (v8.73.0)
+      detectStreak            (v8.75.0)
+    16-rule synthesis priority chain (capped at MAX_ROWS=3):
+      1.  detraining severe/major
+      2.  vo2Gap severe/never
+      3.  monotony high
+      4.  density high
+      5.  fitness spiking
+      6.  easy poor
+      7.  stale/dropped zone
+      8.  variety low
+      9.  fitness detraining
+      10. density moderate
+      11. detraining moderate
+      12. vo2 critical
+      13. easy moderate
+      14. variety moderate
+      15. streak risk
+      16. streak celebrating ≥7d (positive bottom row)
+    New 'positive' severity (green bullet, bilingual "positive ·
+    olumlu") for celebrating streaks — first non-warning headline
+    type the digest carries.
+    All 9 detectors silently excluded when their reliable flag is
+    false (no "unreliable" warnings — digest stays optimistic).
+    No new translation keys — every headline reuses each
+    detector's existing message/recommendation bilingual fields.
+    detrainingDetector pickSignal helper prefers active trailing
+    gap, falls back to most-severe closed gap ≥moderate so v8.70
+    gaps[] participates when athlete just resumed after layoff.
+    VO2Gap warning band intentionally skipped to avoid digest
+    noise; streak monitoring/consistent/recovery/broken skipped
+    for same reason.
+    Citation footer extended with 'Mujika & Padilla 2000'.
+    Existing healthy-log fixture tweaked (added Wed-skip rest
+    day per week) to keep currentStreak<7 — needed because the
+    new streak rule would otherwise trip 'risk' on the 28-day
+    uninterrupted helper output. Production code unchanged.
+    +10 new tests covering each new feed in active + reliable=
+    false path, bilingual, all-9-unreliable empty-state.
+
+  Audit (no-cost script run 2026-05-05):
+    Saturated. Bundle 412KB raw / 138.8KB gzip; 0 TODOs; 0 stale
+    files; 244 button + 31 SVG flags all visible-text false
+    positives in already-cleaned surfaces. Recommendation:
+    feature work next wave.
+
+  Tests: 8198 → 8222 (+24; 14 card + 10 digest).
+  Files: 342 → 343.
+  Build: clean (3977.22 KiB precache, 209 entries).
+  DEPENDS ON: v8.75.0 streakDetector (consumed by card + digest);
+              v8.70/71/73 detectors (consumed by digest).
+
+---
+
 ## v8.75.0 — 2026-05-05 — VO2GapCard + streakDetector lib + audit saturation (+50 tests), 8198 tests
 
   VO2GapCard.jsx (200 lines):
