@@ -4,6 +4,75 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.75.0 — 2026-05-05 — VO2GapCard + streakDetector lib + audit saturation (+50 tests), 8198 tests
+
+  VO2GapCard.jsx (200 lines):
+    Closes the v8.73.0 vo2GapDetector lib→card loop.
+    Side-by-side big-number readout: daysSince Z5 (or "NEVER" if
+    no Z5 in window) + share28d% with bilingual labels
+    "DAYS SINCE Z5 · Z5 SONRASI GÜN" and "28D Z5 SHARE · 28G Z5
+    PAYI". Band-colored 4px accent border-left:
+      ok=green, warning=amber, critical=#ff6600 orange,
+      severe=#dc3545 red, never=#a40000 darkRed.
+    Bilingual message + recommendation, citation footer.
+    role="region" + aria-live="polite" on metrics row,
+    animationDelay 220ms (after Monotony at 200ms). Placed after
+    MonotonyStrainCard, extending coaching cluster.
+    Adapted to lib's actual key (daysSinceZ5 — defensively reads
+    daysSince ?? daysSinceZ5).
+    14 jsdom tests covering all 5 bands, insufficient data,
+    "NEVER" branch, % suffix on share, bilingual labels,
+    role+aria.
+
+  src/lib/athlete/streakDetector.js (234 lines):
+    detectStreak(log, today) — positive-framed pattern detector
+    counting consecutive training days. Distinct from gap/risk
+    detectors: surfaces consistency wins AND escalates risk when
+    streak runs without rest.
+    Returns { currentStreak, longestStreakIn90d, lastRestDate,
+    daysSinceLastRest, trainingDaysIn28d, riskBand, message,
+    recommendation, reliable, citation }.
+    Bands:
+      celebrating  : currentStreak 1-7   (habit-build)
+      consistent   : currentStreak 8-14  (strong consistency)
+      monitoring   : 15-21 with rest in last 14d
+                     (mathematically unreachable from log-only
+                     walk; retained for future caller-injected
+                     rest dates per spec)
+      risk         : 22+ OR 15+ without rest in last 14d
+      recovery     : currentStreak=0, last train yesterday
+      broken       : currentStreak=0, last train >1d ago
+    Pure self-contained pattern detector — does NOT call other
+    detectors (deeper risk synthesis belongs in
+    coachingSummaryScore).
+    Edge cases: empty/null log → broken with {X}=∞ placeholder
+    safe substitution; duration-only entries count as training
+    days; multiple same-date entries count as 1 day; reliable
+    requires log span ≥14 days.
+    UTC date helper inlined.
+    Citation: 'Habit-formation training research; Foster 2001
+    monotony'.
+    Exports detectStreak + STREAK_DETECTOR_CITATION.
+    36 tests covering all bands, edge cases, longestStreak vs
+    currentStreak independence, daysSinceLastRest math,
+    deterministic options.today.
+
+  Audit (no-cost script run 2026-05-05):
+    244 button hits, 31 SVG hits, 1 stale file (phantom),
+    bundle 1156 KB / 2000 KB. v8.73.0 a11y fixes
+    (TrainingLog.jsx:743-755, MessageTemplates.jsx:111-116) NOT
+    in flag list — closure confirmed. Top button hits all
+    visible-text false positives (multi-line <button> openers
+    where aria-label sits 1-2 lines below grep window). Modals
+    saturated (focus trap clean across 19 sites). 0 TODOs.
+    No fixes needed — recommendation: feature work.
+
+  Tests: 8148 → 8198 (+50; 14 card + 36 lib).
+  Files: 340 → 342.
+  DEPENDS ON: v8.73.0 vo2GapDetector lib (consumed by card).
+
+---
+
 ## v8.74.0 — 2026-05-05 — Remove duplicate raceWeekProtocol (-36 tests), 8148 tests
 
   Cleanup of v8.72.0 tech-debt flagged in v8.73.0 changelog.
