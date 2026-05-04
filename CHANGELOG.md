@@ -4,6 +4,83 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.77.0 — 2026-05-05 — sessionRPEDrift + recoveryDebt libs + audit saturation (+65 tests), 8287 tests
+
+  Two new pure-function detector libs (no cards yet — surface in
+  next wave). Fills gaps that are distinct from existing detectors.
+
+  src/lib/athlete/sessionRPEDrift.js (225 lines):
+    detectSessionRPEDrift(log, today) — broader cousin to
+    easyDayCompliance. Where easyDayCompliance only checks rpe>5
+    on labeled-easy days, this checks ALL typed sessions for
+    actual-RPE drift above the planned-intent ceiling.
+    Planned RPE caps by intent/type:
+      recovery/easy           → max 4
+      long/endurance          → max 5
+      steady/tempo            → max 7
+      threshold/sweetspot     → max 8
+      intervals/vo2/race-pace → no cap (skip)
+    Severity by delta=actual-planned: mild=1, moderate=2, severe≥3.
+    byType bucket {drift, total} per intent so worstType (>=3
+    sessions) surfaces the most-overcooked discipline.
+    Bands: good <20% drift, moderate 20-39%, high ≥40%.
+    Reliable when totalSessions ≥8.
+    Bilingual messages support {p}% and {type} substitutions.
+    Citation: 'Foster 2001 session RPE; Seiler 2010 polarized'.
+    Exports detectSessionRPEDrift + SESSION_RPE_DRIFT_CITATION.
+    32 tests covering all band boundaries (20/40), all severity
+    levels, intent precedence over type, byType groupings,
+    worstType selection, {p}/{type} substitutions, bilingual.
+
+  src/lib/athlete/recoveryDebt.js (197 lines):
+    detectRecoveryDebt(log, today) — cumulative TSB-deficit
+    tracker. Distinct from existing detectors:
+      monotonyStrain → variance over 7 days
+      detrainingDetector → total inactivity gaps
+      fitnessGainRate → CTL slope
+      this → integrated negative TSB across 28 days
+    Inline Banister EWMA (K_CTL=1-exp(-1/42), K_ATL=1-exp(-1/7));
+    pre-window entries warm up the EWMA, then trailing 28 days
+    are sampled for debt accounting.
+    Returns { currentTSB, ctlToday, atlToday, cumulativeDeficit,
+    debtDays, maxConsecutiveNegativeDays, band, message,
+    recommendation, reliable, citation }.
+    Bands (strict — overreached escalation wins):
+      fresh        : currentTSB>0 AND cumDeficit<50
+      maintaining  : currentTSB≥-10 AND cumDeficit<150
+      building     : -25<currentTSB<-10 AND cumDeficit<250
+      fatigued     : currentTSB≤-25 OR cumDeficit≥250
+      overreached  : cumDeficit≥400 OR maxConsecNegDays≥14
+    Reliable when log span ≥28 days (CTL warm-up).
+    Self-contained — does NOT import from intelligence.js
+    (matches easyDayCompliance/monotonyStrain convention).
+    Citation: 'Banister 1991; Coggan PMC; Halson 2014 overreaching'.
+    Exports detectRecoveryDebt + RECOVERY_DEBT_CITATION.
+    33 tests covering all bands, EWMA warm-up, maxConsecutive
+    counting, multi-entry same-date sum, rounding, deterministic
+    options.today.
+    Bug found and fixed during build: initial bandFor checked
+    maintaining (TSB≥-10) before fresh (TSB>0), so positive-TSB
+    tapers got mislabeled. Fixed by reordering — fresh first.
+
+  Audit (no-cost script run 2026-05-05):
+    Saturated. Bundle 1163.5 KB / 2000. 0 TODOs, 0 stale.
+    Recommendation: feature work next wave.
+
+  Test-order flake noted (not a regression):
+    ErrorBoundary.test.jsx emits expected 'boom' uncaught errors
+    that occasionally interact with jsdom's window.scrollTo
+    not-implemented log when TrainingLog test polls adjacent.
+    Two consecutive clean runs (8287/8287) confirm stability.
+    Pure-function libs do not exercise DOM and are not implicated.
+
+  Tests: 8222 → 8287 (+65; 32 sessionRPEDrift + 33 recoveryDebt).
+  Files: 343 → 345.
+  Build: clean (3977.22 KiB precache, 209 entries).
+  DEPENDS ON: nothing new (both libs self-contained).
+
+---
+
 ## v8.76.0 — 2026-05-05 — StreakCard + CoachingInsightsDigest 9-detector synthesis + audit (+24 tests), 8222 tests
 
   StreakCard.jsx (218 lines):
