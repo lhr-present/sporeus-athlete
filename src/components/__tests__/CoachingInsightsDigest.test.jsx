@@ -697,3 +697,281 @@ describe('CoachingInsightsDigest — reliability gating', () => {
     expect(screen.queryByText('STREAK')).not.toBeInTheDocument()
   })
 })
+
+// ─── v8.77.0 fixtures: sessionRPEDrift + recoveryDebt ───────────────────────
+
+// recoveryDebt overreached: requires cumulativeDeficit ≥ 400 OR
+// maxConsecutiveNegativeDays ≥ 14. Build 60 days of moderate base load (so
+// CTL warms up) then 28 days of high daily TSS (180/day) so ATL ramps far
+// above CTL → TSB strongly negative every day in the window.
+function buildRecoveryDebtOverreachedLog() {
+  const today = todayStr()
+  const log = []
+  // Pre-window seed: 60 days of moderate load to warm CTL ~50
+  for (let i = 87; i >= 28; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 50,
+      zones: [10, 70, 10, 5, 5],
+    })
+  }
+  // 28-day window: very high daily TSS so ATL >> CTL → TSB deeply negative
+  for (let i = 27; i >= 0; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 6,
+      duration: 90,
+      tss: 180,
+      zones: [10, 60, 15, 10, 5],
+    })
+  }
+  return log
+}
+
+// recoveryDebt fatigued: currentTSB ≤ -25 OR cumulativeDeficit ≥ 250 (and
+// not overreached → deficit < 400 AND maxConsecutiveNegDays < 14).
+// 60-day pre-window seed at moderate TSS, then 23 in-window days at the same
+// load (TSB ≈ 0), then a 5-day tail at elevated TSS so ATL spikes past CTL
+// → currentTSB ~ -38, deficit ~ 350, maxConsecutiveNegDays ~ 7 → fatigued.
+function buildRecoveryDebtFatiguedLog() {
+  const today = todayStr()
+  const log = []
+  // Pre-window seed: 60 days of moderate load → CTL warms ~50
+  for (let i = 87; i >= 28; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 50,
+      zones: [10, 75, 10, 3, 2],
+    })
+  }
+  // First 23 in-window days: same moderate load → TSB stays near 0
+  for (let i = 27; i >= 5; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 50,
+      zones: [10, 75, 10, 3, 2],
+    })
+  }
+  // Last 5 days: elevated load → ATL spikes, TSB drops into fatigued band
+  for (let i = 4; i >= 0; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 6,
+      duration: 75,
+      tss: 130,
+      zones: [10, 65, 15, 7, 3],
+    })
+  }
+  return log
+}
+
+// sessionRPEDrift high: ≥40% of typed sessions execute above plan.
+// Use a per-week template with 3 tempo@RPE8 (plan max 7 → drift), 1 long@RPE5,
+// 1 recovery@RPE3 — total 5 typed sessions/wk, 3 drift → 60% → band='high'.
+// 'tempo' intent is NOT in easyDayCompliance's labeled-easy set so it doesn't
+// trip easy-poor. Pre-window seed phase keeps fitness/recoveryDebt stable.
+// vo2 stays healthy because tempo zones include Z5 share. 3 hard days/wk
+// (RPE>=6) keeps density low (needs 4+/wk to flag).
+function buildRPEDriftHighLog() {
+  const today = todayStr()
+  const w4Start = isoWeekStart(today)
+  const w1Start = addDays(w4Start, -21)
+  const log = []
+  // 60-day seed phase to warm CTL/ATL → keeps fitness 'maintaining' and
+  // recoveryDebt 'fresh' so they don't crowd RPE high.
+  for (let i = 87; i >= 28; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 55,
+      zones: [10, 70, 10, 5, 5],
+    })
+  }
+  const templates = [
+    null, // Mon: rest
+    { type: 'tempo', intent: 'tempo', rpe: 8, duration: 45, tss: 60, zones: [5, 15, 30, 35, 15] }, // Tue tempo (drift, has Z5)
+    null, // Wed: rest
+    { type: 'long', intent: 'long', rpe: 5, duration: 100, tss: 70, zones: [10, 80, 5, 3, 2] }, // Thu long (no drift)
+    { type: 'tempo', intent: 'tempo', rpe: 8, duration: 45, tss: 60, zones: [5, 15, 30, 35, 15] }, // Fri tempo (drift)
+    { type: 'recovery', intent: 'recovery', rpe: 3, duration: 40, tss: 25, zones: [70, 25, 3, 1, 1] }, // Sat recovery (no drift)
+    { type: 'tempo', intent: 'tempo', rpe: 8, duration: 45, tss: 60, zones: [5, 15, 30, 35, 15] }, // Sun tempo (drift)
+  ]
+  for (let w = 0; w < 4; w++) {
+    const ws = addDays(w1Start, w * 7)
+    for (let d = 0; d < 7; d++) {
+      const t = templates[d]
+      if (!t) continue
+      log.push({ date: addDays(ws, d), ...t })
+    }
+  }
+  return log
+}
+
+// sessionRPEDrift moderate with worstType: 20-39% drift, with one collapsed
+// type reaching ≥3 sessions so worstType !== null.
+// Per week: 1 tempo@RPE8 (drift, collapsed='steady') + 1 steady@RPE5 +
+// 1 long@RPE5 + 1 recovery@RPE3 + 1 intervals@RPE8 = 5 typed/wk over 4 weeks.
+// Drift: 4/20 = 20% → band='moderate'. byType.steady = 6 total / 3 drift,
+// total≥3 so worstType='steady' (set). All other detectors stay quiet:
+// 2 hard days/wk → density low; all 5 intents → variety good; all 5 zones
+// covered → no stale; pre-window seed keeps fitness/recoveryDebt stable.
+function buildRPEDriftModerateWithTypeLog() {
+  const today = todayStr()
+  const w4Start = isoWeekStart(today)
+  const w1Start = addDays(w4Start, -21)
+  const log = []
+  // Seed: 60 days of moderate load → CTL warmed, recoveryDebt fresh
+  for (let i = 87; i >= 28; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 55,
+      zones: [10, 70, 10, 5, 5],
+    })
+  }
+  const templates = [
+    null, // Mon rest
+    { type: 'tempo', intent: 'tempo', rpe: 8, duration: 45, tss: 60, zones: [5, 15, 35, 30, 15] }, // Tue tempo (drift)
+    { type: 'recovery', intent: 'recovery', rpe: 3, duration: 40, tss: 25, zones: [70, 25, 3, 1, 1] }, // Wed recovery
+    { type: 'long', intent: 'long', rpe: 5, duration: 100, tss: 70, zones: [10, 80, 5, 3, 2] }, // Thu long
+    null, // Fri rest
+    { type: 'steady', intent: 'steady', rpe: 5, duration: 60, tss: 50, zones: [10, 70, 10, 5, 5] }, // Sat steady
+    { type: 'intervals', intent: 'intervals', rpe: 8, duration: 45, tss: 60, zones: [0, 10, 20, 40, 30] }, // Sun intervals
+  ]
+  for (let w = 0; w < 4; w++) {
+    const ws = addDays(w1Start, w * 7)
+    for (let d = 0; d < 7; d++) {
+      const t = templates[d]
+      if (!t) continue
+      log.push({ date: addDays(ws, d), ...t })
+    }
+  }
+  return log
+}
+
+// sessionRPEDrift moderate WITHOUT worstType: drift ratio in moderate band
+// but no collapsed type reaches ≥3 sessions, so worstType stays null.
+// Build 8 sessions across many distinct types so each bucket is < 3:
+//   - 2 easy + 2 long + 2 steady + 2 threshold = 8 total
+//   - Drift on 2 of them (e.g. one easy + one long) → 25% drift → moderate
+//   - No bucket has 3+ → worstType=null
+function buildRPEDriftModerateWithoutTypeLog() {
+  const today = todayStr()
+  const log = []
+  // 14-day pad of generic untyped runs (no plan match → ignored by rpeDrift)
+  for (let i = 27; i >= 14; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 50,
+      zones: [10, 70, 10, 5, 5],
+    })
+  }
+  // Trailing 14 days: 8 typed sessions split across 4 collapsed buckets
+  // (2 each), with drift on exactly 2 (25% → moderate), each bucket < 3.
+  log.push({ date: addDays(today, -13), type: 'easy', intent: 'easy', rpe: 6, duration: 45, tss: 50, zones: [10, 70, 10, 5, 5] }) // drift
+  log.push({ date: addDays(today, -12), type: 'easy', intent: 'easy', rpe: 4, duration: 45, tss: 50, zones: [10, 70, 10, 5, 5] }) // ok
+  log.push({ date: addDays(today, -11), type: 'long', intent: 'long', rpe: 7, duration: 90, tss: 80, zones: [10, 70, 10, 5, 5] }) // drift
+  log.push({ date: addDays(today, -10), type: 'long', intent: 'long', rpe: 5, duration: 90, tss: 80, zones: [10, 70, 10, 5, 5] }) // ok
+  log.push({ date: addDays(today, -9),  type: 'steady', intent: 'steady', rpe: 5, duration: 60, tss: 50, zones: [10, 70, 10, 5, 5] })
+  log.push({ date: addDays(today, -8),  type: 'steady', intent: 'steady', rpe: 5, duration: 60, tss: 50, zones: [10, 70, 10, 5, 5] })
+  log.push({ date: addDays(today, -7),  type: 'threshold', intent: 'threshold', rpe: 7, duration: 50, tss: 60, zones: [10, 30, 30, 25, 5] })
+  log.push({ date: addDays(today, -6),  type: 'threshold', intent: 'threshold', rpe: 8, duration: 50, tss: 60, zones: [10, 30, 30, 25, 5] })
+  // Fill the rest of trailing days with generic untyped runs
+  for (const d of [5, 4, 3, 2, 1, 0]) {
+    log.push({ date: addDays(today, -d), type: 'run', rpe: 5, duration: 60, tss: 50, zones: [10, 70, 10, 5, 5] })
+  }
+  return log
+}
+
+// ─── v8.77.0 tests ──────────────────────────────────────────────────────────
+describe('CoachingInsightsDigest — recoveryDebt overreached', () => {
+  it('surfaces a high-priority DEBT headline when band is overreached', () => {
+    const log = buildRecoveryDebtOverreachedLog()
+    renderCard({ log })
+    expect(screen.getByText('DEBT')).toBeInTheDocument()
+    expect(screen.getByText(/Recovery debt high — taper or rest/i)).toBeInTheDocument()
+    const region = screen.getByRole('region')
+    expect(region.textContent).toContain('🔴')
+  })
+
+  it('renders BORÇ (TR) for the Turkish recoveryDebt headline', () => {
+    const log = buildRecoveryDebtOverreachedLog()
+    renderCard({ log }, 'tr')
+    expect(screen.getByText('BORÇ')).toBeInTheDocument()
+    expect(screen.getByText(/Toparlanma borcu yüksek/i)).toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — recoveryDebt fatigued', () => {
+  it('surfaces a moderate DEBT headline when band is fatigued', () => {
+    const log = buildRecoveryDebtFatiguedLog()
+    renderCard({ log })
+    expect(screen.getByText('DEBT')).toBeInTheDocument()
+    expect(screen.getByText(/Fatigued — manage recovery/i)).toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — recoveryDebt fresh (no false positive)', () => {
+  it('does not surface DEBT headline when athlete is fresh on a healthy log', () => {
+    const log = buildHealthyLog()
+    renderCard({ log })
+    // Healthy path stays green; DEBT badge must not appear
+    expect(screen.queryByText('DEBT')).not.toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — sessionRPEDrift high', () => {
+  it('surfaces a high-priority RPE headline when drift band is high', () => {
+    const log = buildRPEDriftHighLog()
+    renderCard({ log })
+    expect(screen.getByText('RPE')).toBeInTheDocument()
+    expect(screen.getByText(/execution discipline issue/i)).toBeInTheDocument()
+    const region = screen.getByRole('region')
+    expect(region.textContent).toContain('🔴')
+  })
+})
+
+describe('CoachingInsightsDigest — sessionRPEDrift moderate (with worstType)', () => {
+  it('surfaces a moderate RPE headline when drift band is moderate and worstType is set', () => {
+    const log = buildRPEDriftModerateWithTypeLog()
+    renderCard({ log })
+    expect(screen.getByText('RPE')).toBeInTheDocument()
+    expect(screen.getByText(/drift above plan/i)).toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — sessionRPEDrift moderate (no worstType, silent)', () => {
+  it('does not surface RPE headline when band is moderate but no worstType identified', () => {
+    const log = buildRPEDriftModerateWithoutTypeLog()
+    renderCard({ log })
+    // RPE source badge must not appear when worstType is null at moderate band
+    expect(screen.queryByText('RPE')).not.toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — v8.77.0 reliability gating', () => {
+  it('does not surface RPE or DEBT headlines when both detectors are unreliable', () => {
+    const log = buildShortLog()
+    renderCard({ log })
+    expect(screen.queryByText('RPE')).not.toBeInTheDocument()
+    expect(screen.queryByText('DEBT')).not.toBeInTheDocument()
+  })
+})

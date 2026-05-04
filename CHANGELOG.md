@@ -4,6 +4,96 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.78.0 — 2026-05-05 — SessionRPEDriftCard + RecoveryDebtCard + Digest 9→11 (+38 tests), 8325 tests
+
+  Closes both v8.77.0 lib→card loops and brings the
+  CoachingInsightsDigest into 11-detector synthesis.
+
+  SessionRPEDriftCard.jsx (272 lines):
+    Surfaces v8.77.0 sessionRPEDrift lib. Big number driftPct%
+    with bilingual label "DRIFT · SAPMA"; sub-line drift/total
+    sessions; severity row "X mild · Y mod · Z severe" with
+    counts; byType breakdown filtered to types with ≥1 drift
+    (Easy/Long/Steady/Threshold/Intervals); worstType callout
+    when set ("Worst: {type} · En kötü: {type}").
+    Band colors: good=#28a745 green, moderate=#ff9500 amber,
+    high=#dc3545 red. Dedicated good-band shortcut renders
+    healthy state without drift/severity scaffolding.
+    role="region" + bilingual aria-label, aria-live="polite" on
+    driftPct, 4px accent border-left, animationDelay 260ms
+    (after Streak at 240ms).
+    15 jsdom tests covering insufficient data, healthy good band,
+    moderate band, high band, byType row, worstType callout,
+    severity counts, drift/total sub-line, role/aria, bilingual.
+
+  RecoveryDebtCard.jsx (232 lines):
+    Surfaces v8.77.0 recoveryDebt lib. Side-by-side big numbers:
+    currentTSB (signed, 1 decimal, "TSB · TSB") + cumulativeDeficit
+    (integer, "DEFICIT · BORÇ"). Sub-line "CTL: X.X · ATL: Y.Y";
+    "X/28 debt days · 28G'de X borç günü"; conditional "Longest
+    deficit run: X days · En uzun borç dizisi: X gün" when
+    maxConsecutiveNegativeDays > 0.
+    Band colors: fresh=#28a745 green, maintaining=#0064ff blue,
+    building=#ff6600 orange, fatigued=#ff9500 amber, overreached=
+    #dc3545 red.
+    Card tests reuse exact load profiles from the lib's own test
+    file (FRESH=100d×70+28d×15, FATIGUED=120d×60+8d×130,
+    OVERREACHED=28d×120) and pin Date via vi.setSystemTime so
+    band selection is verified-deterministic without lib mocks.
+    role="region" + bilingual aria-label, aria-live="polite" on
+    TSB+deficit row, 4px accent border-left, animationDelay 280ms
+    (after SessionRPEDrift at 260ms).
+    15 jsdom tests covering all 5 bands, insufficient-data when
+    log span <28d, CTL/ATL sub-line, debtDays line, conditional
+    consecutive-deficit line, signed-decimal TSB rendering,
+    role/aria, bilingual.
+
+  CoachingInsightsDigest 9→11-detector synthesis:
+    Added detectSessionRPEDrift + detectRecoveryDebt imports +
+    memoized results. SOURCE_LABEL gained RPE/RPE and DEBT/BORÇ.
+    No new LangCtx keys.
+    Synthesis priority chain extended from 16→20 rules (still
+    capped at MAX_ROWS=3):
+       1. detraining severe/major
+       2. recoveryDebt overreached            (NEW)
+       3. vo2 severe/never
+       4. monotony high
+       5. recoveryDebt fatigued               (NEW)
+       6. density high
+       7. fitness spiking
+       8. easy poor
+       9. sessionRPEDrift high                (NEW)
+      10. zones stale/dropped
+      11. variety low
+      12. fitness detraining
+      13. density moderate
+      14. detraining moderate
+      15. vo2 critical
+      16. easy moderate
+      17. sessionRPEDrift moderate w/ worstType (NEW)
+      18. variety moderate
+      19. streak risk
+      20. streak celebrating ≥7d (positive)
+    Surface gates:
+      sessionRPEDrift: high → urgent over-execution; moderate →
+        only when worstType !== null (specific actionable signal);
+        good silent.
+      recoveryDebt: surface only fatigued/overreached; fresh /
+        maintaining / building stay silent (positive or productive
+        states).
+    Empty-state and all-green guards extended to consider all 11
+    detectors. RPE-high test fixture uses intent='tempo' at RPE 8
+    to drift cleanly without tripping easy-poor or density rules.
+    +8 new digest tests (28 → 36); citation footer extended.
+
+  Tests: 8287 → 8325 (+38; 15 SessionRPEDrift card + 15
+         RecoveryDebt card + 8 digest).
+  Files: 345 → 347.
+  Build: clean (3993.48 KiB precache, 213 entries).
+  DEPENDS ON: v8.77.0 sessionRPEDrift + recoveryDebt libs.
+
+---
+
 ## v8.77.0 — 2026-05-05 — sessionRPEDrift + recoveryDebt libs + audit saturation (+65 tests), 8287 tests
 
   Two new pure-function detector libs (no cards yet — surface in
