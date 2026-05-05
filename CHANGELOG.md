@@ -4,6 +4,98 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.80.0 — 2026-05-05 — TimeInZoneCard + SupercompensationWindowCard + Digest 11→13 (+42 tests), 8434 tests
+
+  Closes both v8.79.0 lib→card loops and brings the
+  CoachingInsightsDigest into 13-detector synthesis.
+
+  TimeInZoneCard.jsx (250 lines):
+    Surfaces v8.79.0 timeInZone lib. Big-number totalMinutes
+    "MIN/28D · DK/28G". 5-segment stacked horizontal bar
+    (Z1=#28a745 → Z2=#9acd32 → Z3=#ffd700 → Z4=#ff9500 →
+    Z5=#dc3545) with role="img" + aria-label describing zone
+    shares. byZone breakdown rows: "Z{n}: {minutes} min /
+    target {tgt} {↓/↑/·}" with status glyph (under=red↓,
+    over=red↑, on-target=·).
+    worstZone callout when non-null, bilingual message + recommendation,
+    citation footer.
+    Band colors: good=#28a745 green, moderate=#ff9500 amber,
+    poor=#dc3545 red.
+    role="region" + bilingual aria-label, aria-live="polite" on
+    totalMinutes, 4px accent border-left, animationDelay 300ms
+    (after RecoveryDebt at 280ms).
+    16 jsdom tests covering insufficient data, polarized-perfect
+    good band (28-day 28/56/7/7/4 fixture), moderate band via
+    [28,56,12,7,4] × 28 (Z3 at 1.60× scaled target — exactly
+    1 zone off), poor band, byZone all 5 zones, worstZone
+    callout, status glyphs, role="img", bilingual.
+
+  SupercompensationWindowCard.jsx (287 lines):
+    Surfaces v8.79.0 supercompensationWindow lib. Constructive
+    counterpart to RecoveryDebtCard.
+    Big-number row: peakDaysRemaining ("DAYS LEFT · GÜN KALDI")
+    + currentTSB (signed, 1 decimal, "TSB · TSB"). For building
+    band, left big-number swaps to daysSinceLastDeload ("DAYS
+    SINCE · GÜN GEÇTİ") since no peak window applies.
+    Sub-lines: "TSB rose +X over last 7d ·" (conditional on
+    positive tsbRise7d), "CTL: X.X · ATL: Y.Y", "Days since
+    deload: X · Deloadtan beri: X gün" if non-null.
+    Closed band renders muted state with TSB/CTL/ATL line +
+    message + citation only.
+    Band colors: peak=#28a745 green, opportunity=#0064ff blue,
+    available=#9acd32 light-green, building=#ffd700 yellow,
+    closed=#6c757d grey.
+    role="region" + bilingual aria-label, aria-live="polite" on
+    big-number row, 4px accent border-left, animationDelay 320ms
+    (after TimeInZone at 300ms).
+    16 jsdom tests covering insufficient data, all 5 bands via
+    distinct load profiles (vi.setSystemTime to pin
+    2026-05-05T12:00:00Z), bilingual EN+TR, role/aria, signed-
+    decimal TSB, conditional tsbRise7d sub-line.
+
+  CoachingInsightsDigest 11→13-detector synthesis:
+    Added detectTimeInZone + detectSupercompensation imports +
+    memoized results. SOURCE_LABEL added STALE/İHMAL (newly
+    distinct from existing zone label), ZONES/BÖLGELER for
+    timeInZone, WINDOW/PENCERE for supercompensationWindow.
+    No new LangCtx keys.
+    Synthesis priority chain extended from 20→25 rules (still
+    capped at MAX_ROWS=3):
+      Rule 10 inserted: timeInZone band='poor' (moderate
+        severity, after high-severity tier — placed there
+        rather than between rules 6-7 to avoid demoting
+        fitness-spiking out of top-3 cap).
+      Rule 18 inserted: timeInZone moderate Z2-under (specific
+        actionable; structurally rare with default polarized
+        targets — kept anyway for caller-target use case).
+      Rules 23-25 appended (positive tail):
+        23. supercompensationWindow peak (positive)
+        24. supercompensationWindow opportunity (positive)
+        25. supercompensationWindow building (positive
+            fallback — no 'info' severity exists)
+    Surface gates:
+      timeInZone: poor surfaces; moderate only when worstZone
+        is Z2-under; good silent.
+      supercomp: peak/opportunity surface as positive headlines;
+        building surfaces as positive (informational); available
+        and closed silent.
+    Empty-state and all-green guards extended to consider all 13
+    detectors.
+    Existing buildHealthyLog / buildStreakRiskLog /
+    buildDetrainingFitnessLog fixtures got polarized-zone tweaks
+    so they don't accidentally trip stale or timeInZone-poor.
+    Existing 'ZONES' assertion in stale test renamed to 'STALE'
+    after label split. Production code unchanged.
+    +10 new digest tests (36 → 46).
+
+  Tests: 8392 → 8434 (+42; 16 TimeInZone card + 16 Supercomp
+         card + 10 digest).
+  Files: 349 → 351.
+  Build: clean (4011.61 KiB precache, 217 entries).
+  DEPENDS ON: v8.79.0 timeInZone + supercompensationWindow libs.
+
+---
+
 ## v8.79.0 — 2026-05-05 — timeInZone + supercompensationWindow libs + audit saturation (+67 tests), 8392 tests
 
   Two new pure-function detector libs (no cards yet — surface in

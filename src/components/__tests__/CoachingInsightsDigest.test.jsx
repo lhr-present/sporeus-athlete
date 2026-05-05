@@ -45,21 +45,22 @@ function buildHealthyLog() {
   // Hard days (RPE>=6): Sat (tempo) + Sun (intervals) → 2 hard/wk → flagged.
   // We need ≤1 hard day/wk to keep density low. Move tempo to RPE 5 steady.
   // Keep one intervals/wk → 1 hard day/wk → unflagged.
+  // Zones tuned to polarized template (28/56/7/7/4) so timeInZone band='good'.
   const templates = [
-    // Mon: recovery (RPE 3, 45min, Z1-heavy)
-    { rpe: 3, duration: 45, zones: [60, 30, 5, 3, 2] },
-    // Tue: steady (RPE 5, 60min, Z2-heavy)
-    { rpe: 5, duration: 60, zones: [10, 70, 10, 5, 5] },
+    // Mon: recovery (RPE 3, 60min, Z1-heavy)
+    { rpe: 3, duration: 60, zones: [70, 28, 1, 1, 0] },
+    // Tue: steady (RPE 5, 75min)
+    { rpe: 5, duration: 75, zones: [25, 65, 4, 4, 2] },
     // Wed: recovery (RPE 2, 40min, Z1-heavy)
     { rpe: 2, duration: 40, zones: [70, 25, 3, 1, 1] },
-    // Thu: steady (RPE 5, 60min, Z2-heavy)
-    { rpe: 5, duration: 60, zones: [10, 70, 10, 5, 5] },
-    // Fri: long (RPE 5, 120min, Z2-heavy)
-    { rpe: 5, duration: 120, zones: [10, 75, 10, 3, 2] },
+    // Thu: steady (RPE 5, 75min)
+    { rpe: 5, duration: 75, zones: [25, 65, 4, 4, 2] },
+    // Fri: long (RPE 5, 120min)
+    { rpe: 5, duration: 120, zones: [25, 70, 3, 1, 1] },
     // Sat: tempo (RPE 6, 50min, Z3-dominant) — counts as hard
     { rpe: 6, duration: 50, zones: [5, 15, 50, 20, 10] },
     // Sun: easy (RPE 4) — keep total hard days/wk = 1 (just Sat)
-    { rpe: 4, duration: 60, zones: [10, 75, 10, 3, 2] },
+    { rpe: 4, duration: 50, zones: [25, 65, 4, 4, 2] },
   ]
   for (let w = 0; w < 4; w++) {
     const weekStart = addDays(w1Start, w * 7)
@@ -81,7 +82,11 @@ function buildHealthyLog() {
   }
   // Add an intervals session each week to ensure all 5 intents present.
   // Replace each week's Sun easy entry with an intervals session.
-  // intervals: RPE 8, duration 45min, Z4+Z5 share > 30%.
+  // intervals: RPE 8, duration 45min. Z5 share targets ≥5% over 28 days so
+  // staleZones stays healthy. Note: this lifts Z5 minutes above the polarized
+  // 4% target, so timeInZone band may register 'moderate' with worstZone=Z5
+  // (over) — that case is silent in the digest synthesis (rule 18 only fires
+  // for Z2-under), so the all-green path is preserved.
   for (let w = 0; w < 4; w++) {
     const weekStart = addDays(w1Start, w * 7)
     const sun = addDays(weekStart, 6)
@@ -92,7 +97,7 @@ function buildHealthyLog() {
         type: 'run',
         rpe: 8,
         duration: 45,
-        zones: [0, 10, 20, 40, 30],
+        zones: [5, 15, 25, 25, 30],
       }
     }
   }
@@ -113,7 +118,7 @@ function buildHealthyLog() {
         type: 'run',
         rpe: 5,
         duration: 60,
-        zones: [10, 70, 10, 5, 5],
+        zones: [25, 65, 4, 4, 2],
       }
     }
   }
@@ -213,7 +218,10 @@ function buildSpikingFitnessLog() {
 }
 
 // Detraining fitness: long flat-high history then 28 days of zero-TSS / no
-// activity in the window so CTL slope < -1.0/week.
+// activity in the window so CTL slope < -1.0/week. Trailing-window zones are
+// tuned so all 5 zones have ≥5% share (no staleZones flag) and timeInZone
+// produces 'moderate' worstZone Z5-over (silent — rule 18 fires only on
+// Z2-under) — preserving the fitness-detraining headline in the rotation.
 function buildDetrainingFitnessLog() {
   const today = todayStr()
   const log = []
@@ -236,7 +244,7 @@ function buildDetrainingFitnessLog() {
       rpe: 3,
       duration: 30,
       tss: 0,
-      zones: [60, 30, 5, 3, 2],
+      zones: [25, 55, 8, 7, 5],
     })
   }
   return log
@@ -347,7 +355,10 @@ function buildVO2GapSevereLog() {
 }
 
 // Streak risk: 25 consecutive training days ending today → currentStreak ≥ 22
-// → 'risk' band. Span = 25 days → reliable.
+// → 'risk' band. Span = 25 days → reliable. Zones tuned so all 5 zones have
+// ≥5% share (no staleZones flag) and timeInZone produces 'moderate' worstZone
+// Z5-over (silent in synthesis — only Z2-under fires rule 18) — keeping the
+// streak-risk headline in the top-3 rotation.
 function buildStreakRiskLog() {
   const today = todayStr()
   const log = []
@@ -358,7 +369,7 @@ function buildStreakRiskLog() {
       rpe: 5,
       duration: 60,
       tss: 50,
-      zones: [10, 70, 10, 5, 5],
+      zones: [25, 55, 8, 7, 5],
     })
   }
   return log
@@ -459,12 +470,12 @@ describe('CoachingInsightsDigest — high density risk', () => {
 })
 
 describe('CoachingInsightsDigest — stale zones', () => {
-  it('surfaces a zones insight when Z5 (and others) are stale', () => {
+  it('surfaces a stale-zone insight when Z5 (and others) are stale', () => {
     const log = buildStaleZ5Log()
     renderCard({ log })
     // Stale message visible — Z1, Z3, Z4, Z5 are all stale; surface the first
     expect(screen.getByText(/has been neglected for 28 days/i)).toBeInTheDocument()
-    expect(screen.getByText('ZONES')).toBeInTheDocument()
+    expect(screen.getByText('STALE')).toBeInTheDocument()
   })
 })
 
@@ -973,5 +984,292 @@ describe('CoachingInsightsDigest — v8.77.0 reliability gating', () => {
     renderCard({ log })
     expect(screen.queryByText('RPE')).not.toBeInTheDocument()
     expect(screen.queryByText('DEBT')).not.toBeInTheDocument()
+  })
+})
+
+// ─── v8.79.0 fixtures: timeInZone + supercompensationWindow ─────────────────
+
+// timeInZone 'poor': Z2-only-heavy (28 days at [10, 80, 5, 3, 2]). Multiple
+// zones off polarized target → band='poor'. Other detectors stay quiet enough
+// that the time-in-zone-poor headline is the most actionable surface.
+function buildTimeInZonePoorLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 27; i >= 0; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 50,
+      zones: [10, 80, 5, 3, 2],
+    })
+  }
+  return log
+}
+
+// timeInZone 'moderate' worstZone Z5-over (NOT Z2-under): zones include extra
+// Z5 vs polarized target so only Z5 is off-target. Rule 18 only fires for
+// Z2-under, so this fixture should NOT surface a ZONES headline from
+// timeInZone (stale Z5 will not appear because Z5 share is well above 5%).
+function buildTimeInZoneModerateZ5OverLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 27; i >= 0; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 50,
+      // Z5=8 (twice polarized 4%) → Z5 over; others on-target
+      zones: [28, 56, 7, 7, 8],
+    })
+  }
+  return log
+}
+
+// timeInZone 'good': polarized template per day [28, 56, 7, 7, 4].
+// All zones in [0.8, 1.2] of target → band='good' → silent in synthesis.
+function buildTimeInZoneGoodLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 27; i >= 0; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 50,
+      zones: [28, 56, 7, 7, 4],
+    })
+  }
+  return log
+}
+
+// Supercompensation 'peak': 80-day buildup at TSS=70 with rest every 3rd day,
+// then 8-day complete rest gap → CTL holds, ATL drops sharply → TSB > 15.
+// Other detectors are mostly unreliable (insufficient recent data) so the
+// supercomp peak headline rotates into the top-3.
+function buildSupercompPeakLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 84; i >= 8; i--) {
+    if (i % 3 === 0) continue
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 70,
+      zones: [28, 56, 7, 7, 4],
+    })
+  }
+  return log
+}
+
+// Supercompensation 'opportunity': lower buildup + 6-day rest → TSB in (5, 15]
+// AND 7-day TSB rise ≥ 15.
+function buildSupercompOpportunityLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 84; i >= 6; i--) {
+    if (i % 3 === 0) continue
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 60,
+      zones: [28, 56, 7, 7, 4],
+    })
+  }
+  return log
+}
+
+// Supercompensation 'building': sparse low-load buildup, brief 4-day load
+// spike ending 5 days ago, then complete rest → TSB still slightly negative
+// today but tsbRise7d ≥ 10 → 'building' band. Sparse pre-window keeps
+// recoveryDebt cumulativeDeficit < 250 (no 'fatigued' headline) and
+// monotony/density/variety unreliable (insufficient daily entries).
+function buildSupercompBuildingLog() {
+  const today = todayStr()
+  const log = []
+  // Sparse pre-window: every-other-day low TSS to seed CTL while keeping
+  // cumulative deficit modest.
+  for (let i = 84; i >= 9; i -= 2) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 4,
+      duration: 50,
+      tss: 40,
+      zones: [28, 56, 7, 7, 4],
+    })
+  }
+  // 4-day load spike (days -8..-5) — enough to push ATL above CTL but not
+  // enough to trip recoveryDebt overreached.
+  for (let i = 8; i >= 5; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 6,
+      duration: 70,
+      tss: 95,
+      zones: [20, 50, 15, 10, 5],
+    })
+  }
+  // Days -4..0: complete rest (no entries) → ATL decays sharply.
+  return log
+}
+
+// Supercompensation 'available': very modest TSB > 0 (in [0, 5]) — no rise
+// signature strong enough for opportunity. Light buildup + short rest.
+function buildSupercompAvailableLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 84; i >= 4; i--) {
+    if (i % 3 === 0) continue
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 4,
+      duration: 50,
+      tss: 40,
+      zones: [28, 56, 7, 7, 4],
+    })
+  }
+  return log
+}
+
+// Supercompensation 'closed': sustained high load every single day → TSB
+// deeply negative, no rise → 'closed' band (silent in synthesis).
+function buildSupercompClosedLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 84; i >= 0; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 7,
+      duration: 60,
+      tss: 90,
+      zones: [28, 56, 7, 7, 4],
+    })
+  }
+  return log
+}
+
+// ─── v8.79.0 tests ──────────────────────────────────────────────────────────
+describe('CoachingInsightsDigest — timeInZone poor', () => {
+  it('surfaces a moderate ZONES headline when band is poor (multiple zones off-target)', () => {
+    const log = buildTimeInZonePoorLog()
+    renderCard({ log })
+    expect(screen.getByText('ZONES')).toBeInTheDocument()
+    expect(screen.getByText(/Multiple zones off-target/i)).toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — timeInZone moderate Z5-over', () => {
+  it('does NOT surface a ZONES headline when band is moderate but worstZone is not Z2-under', () => {
+    const log = buildTimeInZoneModerateZ5OverLog()
+    renderCard({ log })
+    // Rule 18 (timeInZone moderate Z2-under) is the only moderate-band gate;
+    // Z5-over is silent.
+    expect(screen.queryByText('ZONES')).not.toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — timeInZone good', () => {
+  it('does NOT surface a ZONES headline when band is good (polarized template hit)', () => {
+    const log = buildTimeInZoneGoodLog()
+    renderCard({ log })
+    expect(screen.queryByText('ZONES')).not.toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — supercompensation peak', () => {
+  it('surfaces a positive WINDOW headline when supercomp band is peak', () => {
+    const log = buildSupercompPeakLog()
+    renderCard({ log })
+    expect(screen.getByText('WINDOW')).toBeInTheDocument()
+    expect(screen.getByText(/Peak readiness/i)).toBeInTheDocument()
+    // Positive headline uses the green bullet
+    const region = screen.getByRole('region')
+    expect(region.textContent).toContain('🟢')
+  })
+
+  it('renders PENCERE (TR) for the Turkish supercomp peak headline', () => {
+    const log = buildSupercompPeakLog()
+    renderCard({ log }, 'tr')
+    expect(screen.getByText('PENCERE')).toBeInTheDocument()
+    expect(screen.getByText(/Zirve hazırlık/i)).toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — supercompensation opportunity', () => {
+  it('surfaces a positive WINDOW headline when supercomp band is opportunity', () => {
+    const log = buildSupercompOpportunityLog()
+    renderCard({ log })
+    expect(screen.getByText('WINDOW')).toBeInTheDocument()
+    expect(screen.getByText(/Opportunity window opening/i)).toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — supercompensation building', () => {
+  it('surfaces a WINDOW headline when supercomp band is building', () => {
+    const log = buildSupercompBuildingLog()
+    renderCard({ log })
+    expect(screen.getByText('WINDOW')).toBeInTheDocument()
+    expect(screen.getByText(/Window approaching/i)).toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — supercompensation available', () => {
+  it('does NOT surface a WINDOW headline when band is available (modest, not noteworthy)', () => {
+    const log = buildSupercompAvailableLog()
+    renderCard({ log })
+    expect(screen.queryByText('WINDOW')).not.toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — supercompensation closed', () => {
+  it('does NOT surface a WINDOW headline when band is closed (silent)', () => {
+    const log = buildSupercompClosedLog()
+    renderCard({ log })
+    expect(screen.queryByText('WINDOW')).not.toBeInTheDocument()
+  })
+})
+
+// Very short log (3 entries × ~50 zone-minutes each = 150 totalMinutes) so
+// timeInZone is unreliable (<200 minute threshold) AND supercompensationWindow
+// is unreliable (<28 day span). All other detectors are also unreliable.
+function buildVeryShortLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 2; i >= 0; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 30,
+      tss: 25,
+      // Zone array values are interpreted as raw minutes (not percentages)
+      // by timeInZone — keep total under 200 minutes across the log.
+      zones: [10, 30, 5, 3, 2],
+    })
+  }
+  return log
+}
+
+describe('CoachingInsightsDigest — v8.79.0 reliability gating', () => {
+  it('does not surface ZONES (timeInZone) or WINDOW headlines when both detectors are unreliable', () => {
+    const log = buildVeryShortLog()
+    renderCard({ log })
+    // timeInZone reliable requires totalMinutes ≥ 200 (this log has 90).
+    // supercomp reliable requires span ≥ 28 days (this log has 3).
+    // Neither headline should appear; the empty-state copy renders instead.
+    expect(screen.queryByText('ZONES')).not.toBeInTheDocument()
+    expect(screen.queryByText('WINDOW')).not.toBeInTheDocument()
   })
 })

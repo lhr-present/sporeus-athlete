@@ -1,9 +1,9 @@
 // ─── dashboard/CoachingInsightsDigest.jsx — Unified coaching priorities card ─
 // Combines staleZones + workoutDensity + sessionVariety + fitnessGainRate +
 // easyDayCompliance + detraining + monotonyStrain + vo2Gap + streak +
-// sessionRPEDrift + recoveryDebt into ONE compact "this week's coaching
-// priorities" view so users get a single-glance summary before scrolling
-// through the individual detector cards.
+// sessionRPEDrift + recoveryDebt + timeInZone + supercompensationWindow into
+// ONE compact "this week's coaching priorities" view so users get a single-
+// glance summary before scrolling through the individual detector cards.
 // Citations: Seiler 2010; Foster 2001; Gabbett 2016; Banister 1991;
 //            Stöggl & Sperlich 2014; Mujika & Padilla 2000.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -21,6 +21,8 @@ import { detectVO2Gap } from '../../lib/athlete/vo2GapDetector.js'
 import { detectStreak } from '../../lib/athlete/streakDetector.js'
 import { detectSessionRPEDrift } from '../../lib/athlete/sessionRPEDrift.js'
 import { detectRecoveryDebt } from '../../lib/athlete/recoveryDebt.js'
+import { detectTimeInZone } from '../../lib/athlete/timeInZone.js'
+import { detectSupercompensation } from '../../lib/athlete/supercompensationWindow.js'
 
 const SEVERITY_BULLET = {
   high:     '🔴',
@@ -40,6 +42,7 @@ const SOURCE_LABEL = {
   DENSITY:  { en: 'DENSITY',   tr: 'YOĞUNLUK' },
   VARIETY:  { en: 'VARIETY',   tr: 'ÇEŞİTLİLİK' },
   ZONES:    { en: 'ZONES',     tr: 'BÖLGELER' },
+  STALE:    { en: 'STALE',     tr: 'İHMAL' },
   FITNESS:  { en: 'FITNESS',   tr: 'FORM' },
   EASY:     { en: 'EASY DAYS', tr: 'KOLAY GÜNLER' },
   GAP:      { en: 'GAP',       tr: 'ARA' },
@@ -48,6 +51,7 @@ const SOURCE_LABEL = {
   STREAK:   { en: 'STREAK',    tr: 'SERİ' },
   RPE:      { en: 'RPE',       tr: 'RPE' },
   DEBT:     { en: 'DEBT',      tr: 'BORÇ' },
+  WINDOW:   { en: 'WINDOW',    tr: 'PENCERE' },
 }
 
 const CITATION =
@@ -91,7 +95,7 @@ function pickDetrainingSignal(detraining) {
 
 // ─── Priority synthesis ──────────────────────────────────────────────────────
 /**
- * Build a prioritized list of insights from the eleven detectors.
+ * Build a prioritized list of insights from the thirteen detectors.
  *   1. detraining severe/major                     (gap-based detraining)
  *   2. recoveryDebt band==='overreached'           (TSB-deficit cumulative)
  *   3. vo2Gap severe/never                         (top-end fitness fading)
@@ -101,22 +105,28 @@ function pickDetrainingSignal(detraining) {
  *   7. fitnessGainRate.band === 'spiking'          (load spike)
  *   8. easyDayCompliance.band === 'poor'           (no recovery happening)
  *   9. sessionRPEDrift band==='high'               (execution discipline urgent)
- *  10. first stale/dropped zone                    (zone neglect)
- *  11. variety === 'low'                           (monotony)
- *  12. fitnessGainRate.band === 'detraining'       (form loss)
- *  13. density.risk === 'moderate'                 (early overload)
- *  14. detraining moderate                         (lower-severity gap)
- *  15. vo2Gap critical                             (Z5 overdue)
- *  16. easyDayCompliance.band === 'moderate'       (drift, informational)
- *  17. sessionRPEDrift moderate w/ worstType       (specific actionable drift)
- *  18. variety === 'moderate'                      (informational)
- *  19. streak risk                                 (consecutive-day risk)
- *  20. streak celebrating ≥7d                      (positive headline, last)
+ *  10. timeInZone band==='poor'                    (broad zone imbalance)
+ *  11. first stale/dropped zone                    (zone neglect)
+ *  12. variety === 'low'                           (monotony)
+ *  13. fitnessGainRate.band === 'detraining'       (form loss)
+ *  14. density.risk === 'moderate'                 (early overload)
+ *  15. detraining moderate                         (lower-severity gap)
+ *  16. vo2Gap critical                             (Z5 overdue)
+ *  17. easyDayCompliance.band === 'moderate'       (drift, informational)
+ *  18. timeInZone moderate Z2-under                (specific actionable)
+ *  19. sessionRPEDrift moderate w/ worstType       (specific actionable drift)
+ *  20. variety === 'moderate'                      (informational)
+ *  21. streak risk                                 (consecutive-day risk)
+ *  22. streak celebrating ≥7d                      (positive headline)
+ *  23. supercompensationWindow band==='peak'       (positive — best window)
+ *  24. supercompensationWindow band==='opportunity'(positive — rising)
+ *  25. supercompensationWindow band==='building'   (informational — approaching)
  * Capped at MAX_ROWS. Detectors with reliable === false are silently excluded.
  */
 function buildInsights(
   stale, density, variety, fitness, easy,
   detraining, monotony, vo2, streak, rpeDrift, recoveryDebt,
+  timeInZone, supercomp,
 ) {
   const rows = []
   const detSignal = pickDetrainingSignal(detraining)
@@ -211,7 +221,19 @@ function buildInsights(
     })
   }
 
-  // 10. Top zone insight: stale beats dropped, lower zone index beats higher
+  // 10. timeInZone poor (broad zone imbalance — multiple zones off-target)
+  // Placed at moderate-severity tier (after the high-severity unconditional
+  // rules) so it doesn't crowd out higher-priority signals.
+  if (timeInZone.reliable && timeInZone.band === 'poor') {
+    rows.push({
+      key: 'time-in-zone-poor',
+      severity: 'moderate',
+      source: 'ZONES',
+      message: timeInZone.message,
+    })
+  }
+
+  // 11. Top stale/dropped zone: stale beats dropped, lower zone index beats higher
   if (stale.reliable) {
     const staleZone = stale.zones.find(z => z.status === 'stale')
     const droppedZone = stale.zones.find(z => z.status === 'dropped')
@@ -220,13 +242,13 @@ function buildInsights(
       rows.push({
         key: `zones-${zoneRow.zone}-${zoneRow.status}`,
         severity: zoneRow.status === 'stale' ? 'moderate' : 'low',
-        source: 'ZONES',
+        source: 'STALE',
         message: zoneRow.message,
       })
     }
   }
 
-  // 11. Low variety
+  // 12. Low variety
   if (variety.reliable && variety.variety === 'low') {
     rows.push({
       key: 'variety-low',
@@ -236,7 +258,7 @@ function buildInsights(
     })
   }
 
-  // 12. Detraining fitness (form loss via CTL slope)
+  // 13. Detraining fitness (form loss via CTL slope)
   if (rows.length < MAX_ROWS && fitness.reliable && fitness.band === 'detraining') {
     rows.push({
       key: 'fitness-detraining',
@@ -246,7 +268,7 @@ function buildInsights(
     })
   }
 
-  // 13. Moderate-risk density
+  // 14. Moderate-risk density
   if (rows.length < MAX_ROWS && density.reliable && density.risk === 'moderate') {
     rows.push({
       key: 'density-moderate',
@@ -256,7 +278,7 @@ function buildInsights(
     })
   }
 
-  // 14. Detraining moderate (lower-severity gap)
+  // 15. Detraining moderate (lower-severity gap)
   if (rows.length < MAX_ROWS && detSignal && detSignal.severity === 'moderate') {
     rows.push({
       key: `detraining-${detSignal.severity}-${detSignal.durationDays}`,
@@ -266,7 +288,7 @@ function buildInsights(
     })
   }
 
-  // 15. VO2 gap critical (Z5 overdue)
+  // 16. VO2 gap critical (Z5 overdue)
   if (rows.length < MAX_ROWS && vo2.reliable && vo2.band === 'critical') {
     rows.push({
       key: 'vo2-critical',
@@ -276,7 +298,7 @@ function buildInsights(
     })
   }
 
-  // 16. Moderate easy-day compliance (informational)
+  // 17. Moderate easy-day compliance (informational)
   if (rows.length < MAX_ROWS && easy.reliable && easy.band === 'moderate') {
     rows.push({
       key: 'easy-moderate',
@@ -286,7 +308,24 @@ function buildInsights(
     })
   }
 
-  // 17. sessionRPEDrift moderate (only when worstType is identified — actionable)
+  // 18. timeInZone moderate Z2-under (specific actionable — Z2 is most-coached)
+  if (
+    rows.length < MAX_ROWS &&
+    timeInZone.reliable &&
+    timeInZone.band === 'moderate' &&
+    timeInZone.worstZone !== null &&
+    timeInZone.worstZone.zone === 'Z2' &&
+    timeInZone.worstZone.status === 'under'
+  ) {
+    rows.push({
+      key: 'time-in-zone-moderate-z2-under',
+      severity: 'moderate',
+      source: 'ZONES',
+      message: timeInZone.message,
+    })
+  }
+
+  // 19. sessionRPEDrift moderate (only when worstType is identified — actionable)
   if (
     rows.length < MAX_ROWS &&
     rpeDrift.reliable &&
@@ -301,7 +340,7 @@ function buildInsights(
     })
   }
 
-  // 18. Moderate variety (lowest priority — informational)
+  // 20. Moderate variety (lowest priority — informational)
   if (rows.length < MAX_ROWS && variety.reliable && variety.variety === 'moderate') {
     rows.push({
       key: 'variety-moderate',
@@ -311,7 +350,7 @@ function buildInsights(
     })
   }
 
-  // 19. Streak risk (urgent — schedule a rest day)
+  // 21. Streak risk (urgent — schedule a rest day)
   if (rows.length < MAX_ROWS && streak.reliable && streak.riskBand === 'risk') {
     rows.push({
       key: 'streak-risk',
@@ -321,7 +360,7 @@ function buildInsights(
     })
   }
 
-  // 20. Streak celebrating ≥7d (positive headline; render last)
+  // 22. Streak celebrating ≥7d (positive headline)
   if (
     rows.length < MAX_ROWS &&
     streak.reliable &&
@@ -333,6 +372,36 @@ function buildInsights(
       severity: 'positive',
       source: 'STREAK',
       message: streak.message,
+    })
+  }
+
+  // 23. Supercompensation peak (positive headline — best window)
+  if (rows.length < MAX_ROWS && supercomp.reliable && supercomp.band === 'peak') {
+    rows.push({
+      key: 'supercomp-peak',
+      severity: 'positive',
+      source: 'WINDOW',
+      message: supercomp.message,
+    })
+  }
+
+  // 24. Supercompensation opportunity (positive — rising)
+  if (rows.length < MAX_ROWS && supercomp.reliable && supercomp.band === 'opportunity') {
+    rows.push({
+      key: 'supercomp-opportunity',
+      severity: 'positive',
+      source: 'WINDOW',
+      message: supercomp.message,
+    })
+  }
+
+  // 25. Supercompensation building (informational — approaching)
+  if (rows.length < MAX_ROWS && supercomp.reliable && supercomp.band === 'building') {
+    rows.push({
+      key: 'supercomp-building',
+      severity: 'positive',
+      source: 'WINDOW',
+      message: supercomp.message,
     })
   }
 
@@ -357,6 +426,8 @@ export default function CoachingInsightsDigest({ log = [] }) {
       streak:        detectStreak(log),
       rpeDrift:      detectSessionRPEDrift(log),
       recoveryDebt:  detectRecoveryDebt(log),
+      timeInZone:    detectTimeInZone(log),
+      supercomp:     detectSupercompensation(log),
     }),
     [log]
   )
@@ -364,6 +435,7 @@ export default function CoachingInsightsDigest({ log = [] }) {
   const {
     stale, density, variety, fitness, easy,
     detraining, monotony, vo2, streak, rpeDrift, recoveryDebt,
+    timeInZone, supercomp,
   } = result
 
   // Card title (rendered for every state)
@@ -381,7 +453,9 @@ export default function CoachingInsightsDigest({ log = [] }) {
     !vo2.reliable &&
     !streak.reliable &&
     !rpeDrift.reliable &&
-    !recoveryDebt.reliable
+    !recoveryDebt.reliable &&
+    !timeInZone.reliable &&
+    !supercomp.reliable
   ) {
     return (
       <div
@@ -417,6 +491,19 @@ export default function CoachingInsightsDigest({ log = [] }) {
   const streakCelebratingHeadline =
     streak.reliable && streak.riskBand === 'celebrating' && streak.currentStreak >= 7
 
+  const supercompPositiveHeadline =
+    supercomp.reliable &&
+    (supercomp.band === 'peak' ||
+      supercomp.band === 'opportunity' ||
+      supercomp.band === 'building')
+
+  const timeInZoneZ2UnderHeadline =
+    timeInZone.reliable &&
+    timeInZone.band === 'moderate' &&
+    timeInZone.worstZone !== null &&
+    timeInZone.worstZone.zone === 'Z2' &&
+    timeInZone.worstZone.status === 'under'
+
   const allGreen =
     density.risk === 'low' &&
     variety.variety === 'good' &&
@@ -432,7 +519,10 @@ export default function CoachingInsightsDigest({ log = [] }) {
     !streakCelebratingHeadline &&
     !(rpeDrift.reliable && rpeDrift.band === 'high') &&
     !(rpeDrift.reliable && rpeDrift.band === 'moderate' && rpeDrift.worstType !== null) &&
-    !(recoveryDebt.reliable && (recoveryDebt.band === 'overreached' || recoveryDebt.band === 'fatigued'))
+    !(recoveryDebt.reliable && (recoveryDebt.band === 'overreached' || recoveryDebt.band === 'fatigued')) &&
+    !(timeInZone.reliable && timeInZone.band === 'poor') &&
+    !timeInZoneZ2UnderHeadline &&
+    !supercompPositiveHeadline
 
   if (allGreen) {
     return (
@@ -469,6 +559,7 @@ export default function CoachingInsightsDigest({ log = [] }) {
   const insights = buildInsights(
     stale, density, variety, fitness, easy,
     detraining, monotony, vo2, streak, rpeDrift, recoveryDebt,
+    timeInZone, supercomp,
   )
 
   return (
