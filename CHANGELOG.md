@@ -4,6 +4,94 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.79.0 — 2026-05-05 — timeInZone + supercompensationWindow libs + audit saturation (+67 tests), 8392 tests
+
+  Two new pure-function detector libs (no cards yet — surface in
+  next wave). Both fill genuine gaps not covered by existing
+  detectors.
+
+  src/lib/athlete/timeInZone.js (249 lines):
+    detectTimeInZone(log, today, targets) — absolute minutes per
+    zone over rolling 28-day window. Distinct from:
+      staleZones — share-only (% of total)
+      trainingDistribution — 84-day polarized-fit pattern
+      this — absolute minutes Z1..Z5 vs minute targets
+    Useful for athletes following minute-based prescriptions and
+    coaches who think in minute targets per zone.
+    Replicates staleZones zone parser inline (array, object
+    {Z1..Z5}, object {z1..z5}, RPE→zone fallback rpe<=3→Z1,
+    4-5→Z2, 6-7→Z3, 8→Z4, 9-10→Z5).
+    Default scaled targets via polarized fractions Z1=28%/Z2=56%
+    /Z3=7%/Z4=7%/Z5=4% applied to actual totalMinutes; caller
+    can override with literal targets via 3rd arg (realistic
+    coach use case).
+    Per-zone status: on-target (0.8 ≤ ratio ≤ 1.2), under, over.
+    Bands: good (all on-target), moderate (1 zone off), poor
+    (2+ zones off).
+    Reliable when totalMinutes ≥ 200.
+    Bilingual messages with {zone}, {direction}, {target_min},
+    {abs_delta} substitutions.
+    Citation: 'Seiler 2010 polarized; Stöggl & Sperlich 2014'.
+    Exports detectTimeInZone + TIME_IN_ZONE_CITATION.
+    35 tests covering empty/insufficient, polarized-perfect
+    good band, single-zone-over moderate (via literal targets),
+    3-zones-off poor, custom targets, all 3 zone-shape parsings,
+    RPE fallback boundaries, multi-entry same-date sum,
+    out-of-window exclusion, byZone/worstZone math, all
+    substitutions, bilingual, deterministic options.today.
+
+  src/lib/athlete/supercompensationWindow.js (271 lines):
+    detectSupercompensation(log, today) — peak-readiness window
+    detector. The inverse of recoveryDebt: rather than warning
+    of accumulated deficit, surfaces the *opportunity window*
+    after a deload when athlete is unusually adapted-and-fresh
+    (Foster/Costill supercompensation; Mujika 2010 freshness).
+    Distinct from existing detectors:
+      recoveryDebt        — fatigue side
+      fitnessGainRate     — long-term CTL slope
+      detrainingDetector  — total inactivity gaps
+      raceWeekProtocol    — race-date driven
+      this                → unprompted "you're in a peak window NOW"
+    Inline Banister EWMA (K_CTL=1-exp(-1/42), K_ATL=1-exp(-1/7))
+    over full log warm-up, samples trailing 21 days for analysis.
+    Bands:
+      peak         : currentTSB >+15 AND ctlToday >0
+      opportunity  : currentTSB >+5 AND tsbRise7d ≥15
+      available    : currentTSB >0 (modestly fresh)
+      closed       : currentTSB ≤0
+      building     : currentTSB still negative AND tsbRise7d ≥10
+                     (slow CTL drift threshold avoids
+                     mis-classifying sustained heavy load as
+                     "window approaching")
+    Deload detection: trailing-7d sum <70% of prior-4wk avg over
+    63-day warm-up; falls back to max-TSB day in trailing 14
+    days; null when neither signal fires.
+    peakDaysRemaining = clamp(5 − max(0, daysSinceDeload−3), 0, 7).
+    Reliable when log span ≥28 days.
+    Self-contained — does NOT import from recoveryDebt.js or
+    intelligence.js (matches detector convention).
+    Bilingual messages with {n} day-count substitution.
+    Citation: 'Foster 1996 supercompensation; Costill 1991;
+    Mujika 2010 freshness'.
+    Exports detectSupercompensation +
+    SUPERCOMP_WINDOW_CITATION.
+    32 tests covering empty/insufficient, all 5 bands via
+    distinct load profiles, EWMA correctness, tsbRise7d math,
+    peakDaysRemaining clamping, daysSinceLastDeload null path,
+    bilingual + {n} substitution, deterministic options.today.
+
+  Audit (no-cost script run 2026-05-05):
+    Saturated. Bundle 1169.7 KB / 2000 KB (~58%). 0 TODOs, 0
+    stale files. 244 button + 31 svg findings all visible-text
+    multi-line opener / decorative noise per filter.
+    Recommendation: feature work next wave.
+
+  Tests: 8325 → 8392 (+67; 35 timeInZone + 32 supercompWindow).
+  Files: 347 → 349.
+  DEPENDS ON: nothing new (both libs self-contained).
+
+---
+
 ## v8.78.0 — 2026-05-05 — SessionRPEDriftCard + RecoveryDebtCard + Digest 9→11 (+38 tests), 8325 tests
 
   Closes both v8.77.0 lib→card loops and brings the
