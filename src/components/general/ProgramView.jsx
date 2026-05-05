@@ -8,7 +8,7 @@ const EXP_LABEL = {
   advanced:     { en: 'Advanced',     tr: 'İleri Seviye' },
 }
 
-function trDay(label, lang) {
+function _trDay(label, lang) {
   if (lang !== 'tr') return label
   return DAY_LABELS_TR[label] ?? label
 }

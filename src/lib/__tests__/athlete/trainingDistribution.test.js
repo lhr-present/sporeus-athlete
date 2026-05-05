@@ -20,7 +20,7 @@ const z2Entry = (date, dur = 60, tss = 50) => ({
 const z3Entry = (date, dur = 50, tss = 60) => ({
   date, type: 'run', duration: dur, tss, rpe: 6, zones: [0, 0, dur, 0, 0],
 })
-const z5Entry = (date, dur = 30, tss = 70) => ({
+const _z5Entry = (date, dur = 30, tss = 70) => ({
   date, type: 'run', duration: dur, tss, rpe: 9, zones: [0, 0, 0, 0, dur],
 })
 

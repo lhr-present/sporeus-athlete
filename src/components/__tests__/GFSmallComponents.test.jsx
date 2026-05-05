@@ -41,7 +41,7 @@ const TEMPLATE_DAYS = [
   { day_index: 1, day_label_en: 'Rest', day_label_tr: 'Dinlenme', exercises: [] },
 ]
 
-const noop = () => {}
+const _noop = () => {}
 
 beforeEach(() => vi.spyOn(console, 'error').mockImplementation(() => {}))
 

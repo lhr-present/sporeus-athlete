@@ -17,7 +17,7 @@ import { interpretCTL, interpretTSB, interpretMonotony } from '../lib/science/in
 import { subThresholdTrend, } from '../lib/science/subThresholdTime.js'
 import { computeMonotony } from '../lib/trainingLoad.js'
 import { useData } from '../contexts/DataContext.jsx'
-import { isGated, LS_KEY as CONFIRM_LS_KEY } from '../lib/athlete/coachConfirmFlow.js'
+import { isGated as _isGated, LS_KEY as CONFIRM_LS_KEY } from '../lib/athlete/coachConfirmFlow.js'
 
 // ── Previously extracted sub-components ──────────────────────────────────────
 const EFTrendCard = lazy(() => import('./science/EFTrendCard.jsx'))
@@ -136,7 +136,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
   const { recovery, injuries, testResults, raceResults, profile } = useData()
   const [myCoach]        = useLocalStorage('sporeus-my-coach', null)
   const [stravaToken]    = useLocalStorage('sporeus-strava-token', '')
-  const [confirmRecord]  = useLocalStorage(CONFIRM_LS_KEY, null)
+  const [_confirmRecord]  = useLocalStorage(CONFIRM_LS_KEY, null)
   const { t }        = useContext(LangCtx)
 
   const sportLabel = SPORT_BRANCHES.find(b => b.id === profile.primarySport)?.label || profile.sport || ''

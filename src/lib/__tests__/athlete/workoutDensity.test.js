@@ -35,7 +35,7 @@ function easyEntry(date, type = 'run') {
 /**
  * 4 weeks of polarized 80/20: 1 hard day per week (W4) + 5 easy days/week.
  */
-function polarizedLog(today = TODAY) {
+function polarizedLog(_today = TODAY) {
   const log = []
   // 28 days ending today (today-27 .. today). Today is Thu 04-30.
   // We anchor entries to actual calendar dates within the 4-week window.
@@ -55,7 +55,7 @@ function polarizedLog(today = TODAY) {
 /**
  * 4 weeks where each week has `hardDays` hi-intensity days (Mon..hardDays-1).
  */
-function hardWeeksLog(hardDays, today = TODAY) {
+function hardWeeksLog(hardDays, _today = TODAY) {
   const log = []
   const w1Start = '2026-04-06'
   for (let w = 0; w < 4; w++) {

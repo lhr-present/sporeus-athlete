@@ -100,6 +100,7 @@ export default function SessionLogger({
   })
 
   // Re-init when preloaded exercises change (e.g. different day opened)
+  const preloadedKey = preloadedExercises.map(e => e.exercise_id).join(',')
   useEffect(() => {
     if (preloadedExercises.length > 0) {
       const newDayKey = preloadedExercises.map(e => e.exercise_id).join('|')
@@ -112,7 +113,11 @@ export default function SessionLogger({
       setDurationMin(draft?.durationMin || '')
       setDraftRestored(!!draft?.rows?.length)
     }
-  }, [preloadedExercises.map(e => e.exercise_id).join(','), initialLabel])
+    // buildRow and preloadedExercises intentionally excluded — preloadedKey captures
+    // the only meaningful change signature; including the array would re-fire on every
+    // render due to identity churn.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preloadedKey, initialLabel])
 
   // Auto-dismiss draft banner after 4s
   useEffect(() => {
@@ -133,7 +138,7 @@ export default function SessionLogger({
         at: Date.now(),
       }))
     } catch {}
-  }, [rows, dayLabel, rpe, notes, durationMin])
+  }, [rows, dayLabel, rpe, notes, durationMin, dayKey, saved])
 
   function addExercise(exId) {
     if (!exId) return

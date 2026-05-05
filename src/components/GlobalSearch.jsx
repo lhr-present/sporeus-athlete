@@ -126,7 +126,7 @@ export default function GlobalSearch({ onNavigate, tier: _tier = 'free' }) {
       }
     }, DEBOUNCE_MS)
     return () => clearTimeout(debounceRef.current)
-  }, [query])
+  }, [query, lang, t])
 
   // ── Keyboard navigation inside the modal ──────────────────────────────────
   const handleKeyDown = useCallback(e => {

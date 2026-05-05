@@ -4,6 +4,63 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.81.0 — 2026-05-05 — Pre-deploy lint sweep (33 warnings → 0), 8434 tests
+
+  Pre-deploy verification surfaced that CI runs
+  `eslint src/ --ext .js,.jsx --max-warnings 0` BEFORE tests/build,
+  and the accumulated 33 warnings across 22 files would block the
+  entire pipeline. Surgical sweep to bring lint to 0 problems.
+
+  Issues saved to (gitignored) audit-reports/deploy-issues/
+  lint-2026-05-05.txt for reference.
+
+  Fix breakdown by category:
+    25 × prefix-with-underscore for unused imports/vars/params
+       (uses existing eslint /^_/u allow-pattern)
+     5 × dep-added for react-hooks/exhaustive-deps:
+       - GlobalSearch.jsx
+       - SemanticSearch.jsx (added isTR)
+       - GeneralDashboard.jsx (wrapped inline t in useCallback so
+         memo deps stay stable)
+       - SessionLogger.jsx (added dayKey + saved deps; extracted
+         preloadedKey)
+       - RecoveryHub.jsx (wrapped recList/logList in useMemo)
+     1 × eslint-disable-next-line at SessionLogger.jsx:115
+       (preloadedExercises array re-identifies each render;
+       preloadedKey joined-IDs is the intentional change signal —
+       including the array would re-fire on every parent render
+       and reset draft state)
+     2 × import alias _name to preserve future-wiring intent
+
+  Files touched (22): Dashboard.jsx, GlobalSearch.jsx,
+    PlanGenerator.jsx, RecoveryHub.jsx, SemanticSearch.jsx, 2
+    component tests, RaceGoalDashCard.jsx, GeneralDashboard.jsx,
+    ProgramView.jsx, SessionLogger.jsx, WeeklyVolumeChart.jsx,
+    timeInZone.js, taperEngine.js, 8 lib tests.
+
+  No production behavior change; cosmetic + memo-stability only.
+
+  Pre-deploy verification also confirmed:
+    - Tests: 8434/8434 still green
+    - Build: clean, main bundle 142.38 KB gz / 150 KB CI cap
+      (~93% — watch for next feature commit)
+    - PWA precache: 217 entries / 4011.61 KiB (well under limit)
+    - Security grep: 0 leaked credentials
+    - Console.log leaks: 0 (only logger.js dev-gated)
+    - npm audit: 1 HIGH transitive in @xmldom/xmldom (dev-only,
+      not in prod bundle)
+    - GitHub Actions deploy.yml: build → (e2e, route-smoke) →
+      deploy chain; 27-test route-smoke gates deploy
+    - Custom domain: app.sporeus.com via public/CNAME, vite
+      base='/' matches
+    - Service worker CACHE_VERSION still v6.0.0 (cleanupOutdated
+      Caches handles upgrade; PWA users will see in-app update
+      banner)
+
+  DEPENDS ON: nothing — additive cleanup unblocks CI deploy.
+
+---
+
 ## v8.80.0 — 2026-05-05 — TimeInZoneCard + SupercompensationWindowCard + Digest 11→13 (+42 tests), 8434 tests
 
   Closes both v8.79.0 lib→card loops and brings the

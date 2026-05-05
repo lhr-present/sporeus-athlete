@@ -127,7 +127,7 @@ export default function SemanticSearch({ show, onClose, onJumpToSession, tier = 
     } finally {
       if (!ctrl.signal.aborted) setLoading(false)
     }
-  }, [authUser])
+  }, [authUser, isTR])
 
   // Debounce input
   useEffect(() => {

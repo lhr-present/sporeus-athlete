@@ -10,7 +10,7 @@ export const TIME_IN_ZONE_CITATION = 'Seiler 2010 polarized; Stöggl & Sperlich 
 
 const ZONES = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5']
 
-const ZONE_LABELS = {
+const _ZONE_LABELS = {
   Z1: { en: 'Z1 (recovery)', tr: 'Z1 (toparlanma)' },
   Z2: { en: 'Z2 (endurance)', tr: 'Z2 (dayanıklılık)' },
   Z3: { en: 'Z3 (tempo)', tr: 'Z3 (tempo)' },

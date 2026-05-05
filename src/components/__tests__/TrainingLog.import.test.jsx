@@ -15,7 +15,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, fireEvent, act, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
-import { renderWithLang, langCtxValue } from './testUtils.jsx'
+import { renderWithLang, langCtxValue as _langCtxValue } from './testUtils.jsx'
 import { LangCtx, LABELS } from '../../contexts/LangCtx.jsx'
 import { render } from '@testing-library/react'
 

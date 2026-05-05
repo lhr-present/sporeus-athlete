@@ -216,7 +216,7 @@ export default function PlanGenerator({ onLogSession }) {
   const [advModel, setAdvModel] = useState('traditional')
   const [advAutoTaper, setAdvAutoTaper] = useState(true)
   const [advRaceDate, setAdvRaceDate] = useState('')
-  const [planWarnings, setPlanWarnings] = useState([])
+  const [_planWarnings, setPlanWarnings] = useState([])
   // Full validator error objects (with code + bilingual message + weekNum) so the
   // sighted warnings panel can show details beyond the screen-reader announce().
   const [planValidationErrors, setPlanValidationErrors] = useState([])

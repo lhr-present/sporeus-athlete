@@ -15,7 +15,7 @@ function addDaysStr(dateStr, days) {
  * Build a 28-day log of one entry per day ending at TODAY. `factory(i)` returns
  * an entry overlay where i=0 is oldest (28 days ago) and i=27 is today.
  */
-function dailyLog(today, factory) {
+function _dailyLog(today, factory) {
   const log = []
   for (let i = 0; i < 28; i++) {
     const date = addDaysStr(today, -(27 - i))

@@ -41,7 +41,7 @@ const PLAN_START = '2026-04-28'
 const TODAY      = '2026-04-30'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function makePlan(currentSec, goalSec, profile = {}) {
+function _makePlan(currentSec, goalSec, profile = {}) {
   const analysis = analyzeRaceGoal(currentSec, goalSec, 10000, profile, [])
   return { analysis, plan: analysis ? buildTrainingPlan(analysis, PLAN_START) : [] }
 }

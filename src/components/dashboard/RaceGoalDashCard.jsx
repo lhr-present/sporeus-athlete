@@ -24,9 +24,9 @@ const GREEN        = '#5bc25b'
 const AMBER        = '#f5c542'
 const RED          = '#e03030'
 const BLUE         = '#0064ff'
-const DIM          = '#444'
-const DIM2         = '#2a2a2a'
-const DIM3         = '#1a1a1a'
+const _DIM         = '#444'
+const _DIM2        = '#2a2a2a'
+const _DIM3        = '#1a1a1a'
 
 const CONF_COLOR = { high: GREEN, medium: AMBER, low: RED }
 

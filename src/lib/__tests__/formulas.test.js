@@ -7,7 +7,7 @@
 // Note: riegel, computePowerTSS, normalizedPower, computeWPrime, calcTSS,
 //       rampFTP, ftpFrom20 are covered in science/formulas.citation.test.js
 
-import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
+import { describe, it, expect, vi as _vi, beforeEach as _beforeEach, beforeAll as _beforeAll } from 'vitest'
 import { webcrypto } from 'node:crypto'
 
 // formulas.js uses bare `crypto` global for SHA-256 (browser Web Crypto API).

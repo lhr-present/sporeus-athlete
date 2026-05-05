@@ -1,5 +1,5 @@
 // src/components/general/WeeklyVolumeChart.jsx — per-muscle hard-set volume bars
-import { volumeLandmarks, volumeStatus, weeklyHardSets } from '../../lib/athlete/strengthTraining.js'
+import { volumeLandmarks, volumeStatus, weeklyHardSets as _weeklyHardSets } from '../../lib/athlete/strengthTraining.js'
 import { S } from '../../styles.js'
 
 const MUSCLES = ['chest','back','quads','hamstrings','glutes','delts','biceps','triceps','calves','core']

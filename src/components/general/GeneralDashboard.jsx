@@ -1,6 +1,6 @@
 // src/components/general/GeneralDashboard.jsx — Today screen for general-fitness track
 // Leads with Next Session card. No streaks, no shame copy, no analytics push.
-import { useMemo } from 'react'
+import { useMemo, useCallback } from 'react'
 import { S } from '../../styles.js'
 import { daysSinceLastSession, weeklyMuscleFrequency } from '../../lib/athlete/strengthTraining.js'
 
@@ -9,7 +9,7 @@ const MUSCLE_LABEL_TR = { quads:'Ön Bacak', hamstrings:'Arka Bacak', glutes:'Ka
 const MILESTONES      = [1, 5, 10, 25, 50, 100]
 
 export default function GeneralDashboard({ sessions = [], exercises = [], activeProgram = null, activeTemplate = null, currentDay = null, coachConfirmedAt = null, estimatedMinutes = null, deloadHint = false, lastSessionPRs = [], onDismissPRs, lang = 'en', onLogSession }) {
-  const t = (en, tr) => lang === 'tr' ? tr : en
+  const t = useCallback((en, tr) => lang === 'tr' ? tr : en, [lang])
 
   const days = daysSinceLastSession(activeProgram?.last_session_date)
 
@@ -30,7 +30,7 @@ export default function GeneralDashboard({ sessions = [], exercises = [], active
     if (days === 0) return null
     if (days > 14) return t('Welcome back.', 'Tekrar hoş geldin.')
     return `${t('Last session:', 'Son antrenman:')} ${days} ${t('days ago', 'gün önce')}`
-  }, [days, lang])
+  }, [days, t])
 
   // Recent sessions (last 3)
   const recent = [...sessions].sort((a, b) => b.session_date?.localeCompare(a.session_date ?? '') ?? 0).slice(0, 3)

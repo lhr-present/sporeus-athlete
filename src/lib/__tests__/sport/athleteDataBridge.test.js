@@ -102,7 +102,7 @@ describe('sessionFrequencyPerWeek', () => {
 
   it('returns correct frequency for 4-week log with 3 sessions/week', () => {
     // 12 sessions in 28 days = 3.0/week
-    const log = makeLog(28, 80)
+    const _log = makeLog(28, 80)
     // Use only every 2-3 days: create a log with 12 entries in 28 days
     const sparse = makeLog(12, 80)
     const result = sessionFrequencyPerWeek(sparse, 4)

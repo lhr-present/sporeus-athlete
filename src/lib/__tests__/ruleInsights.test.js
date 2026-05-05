@@ -314,7 +314,7 @@ describe('getLoadTrendAlert', () => {
 
   describe('safe range (no spike)', () => {
     it('returns flag=false when load stays flat', () => {
-      const r = getLoadTrendAlert([50, 50, 50, 50, 50, 50, 50])
+      const _r = getLoadTrendAlert([50, 50, 50, 50, 50, 50, 50])
       // week1=150, week2=200 => +33% => would actually flag!
       // Actually week1=first 3 = 150, week2=last 4 = 200 => +33%
       // Let's use decreasing load so second half is lower

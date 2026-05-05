@@ -37,7 +37,7 @@ function cloneWeek(wk) {
 }
 
 // ── helper: scale every session's targetTSS by `factor` and recompute weekly ─
-function scaleWeek(wk, factor) {
+function _scaleWeek(wk, factor) {
   const out = cloneWeek(wk)
   out.sessions = out.sessions.map(s => ({
     ...s,

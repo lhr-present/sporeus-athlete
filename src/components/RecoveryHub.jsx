@@ -17,7 +17,7 @@ import { useData } from '../contexts/DataContext.jsx'
 import { computeReadinessScore } from '../lib/recovery/readinessScore.js'
 import { S } from '../styles.js'
 
-const MONO = "'IBM Plex Mono', monospace"
+const _MONO = "'IBM Plex Mono', monospace"
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -65,8 +65,8 @@ export default function RecoveryHub({ idealSleepHrs = 8 }) {
   const { recovery, log } = useData()
   const isTR = lang === 'tr'
 
-  const recList = Array.isArray(recovery) ? recovery : []
-  const logList = Array.isArray(log) ? log : []
+  const recList = useMemo(() => (Array.isArray(recovery) ? recovery : []), [recovery])
+  const logList = useMemo(() => (Array.isArray(log) ? log : []), [log])
 
   // ── Derived: 28-day window ────────────────────────────────────────────────
   const dates28 = useMemo(() => build28Dates(), [])

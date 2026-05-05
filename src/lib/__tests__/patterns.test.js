@@ -15,7 +15,7 @@ import {
 } from '../patterns.js'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function makeLog(entries) {
+function _makeLog(entries) {
   // entries: array of { date, tss, duration, rpe, type, sport?, zones? }
   return entries.map((e, i) => ({ id: i + 1, source: 'manual', ...e }))
 }
