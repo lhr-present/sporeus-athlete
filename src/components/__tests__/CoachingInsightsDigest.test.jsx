@@ -1273,3 +1273,153 @@ describe('CoachingInsightsDigest — v8.79.0 reliability gating', () => {
     expect(screen.queryByText('WINDOW')).not.toBeInTheDocument()
   })
 })
+
+// ─── v8.82.0 fixtures: trainingPolarization ─────────────────────────────────
+
+// Threshold-dominant: 14 days at zones [10, 25, 40, 15, 10] → Z3=40% > 25%
+// → pattern='threshold'. RPE 5 keeps density 'low' so polarization rule fires
+// before density-moderate. timeInZone may also fire 'poor' (rule 11) but
+// polarization (rule 10) is one rank higher, so POL surfaces first.
+function buildPolarizationThresholdLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 13; i >= 0; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 50,
+      zones: [10, 25, 40, 15, 10],
+    })
+  }
+  return log
+}
+
+// Polarized: zones [25, 56, 5, 9, 5] → Z1+Z2=81 ≥75, Z4+Z5=14 ≥10, Z3=5 <10
+// → pattern='polarized'. Silent in synthesis — POL badge must not appear.
+function buildPolarizationPolarizedLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 13; i >= 0; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 50,
+      zones: [25, 56, 5, 9, 5],
+    })
+  }
+  return log
+}
+
+// Pyramidal: zones [35, 30, 20, 10, 5] → monotonic Z1≥Z2≥Z3≥Z4≥Z5, Z3=20≤25
+// → pattern='pyramidal'. Healthy template — silent in synthesis.
+function buildPolarizationPyramidalLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 13; i >= 0; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 50,
+      zones: [35, 30, 20, 10, 5],
+    })
+  }
+  return log
+}
+
+// Mixed: zones [15, 30, 15, 30, 10] → Z3=15 <25 (not threshold),
+// Z1+Z2=45 <75 (not polarized), not monotonic (Z3<Z4) → pattern='mixed'.
+// Silent in synthesis — would conflict with more-specific signals.
+function buildPolarizationMixedLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 13; i >= 0; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 50,
+      zones: [15, 30, 15, 30, 10],
+    })
+  }
+  return log
+}
+
+// Threshold but unreliable: only 4 days → totalMinutes < 200 OR distinctDays
+// < 7 → reliable=false. POL badge must not appear.
+function buildPolarizationThresholdUnreliableLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 3; i >= 0; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 50,
+      zones: [10, 25, 40, 15, 10],
+    })
+  }
+  return log
+}
+
+// ─── v8.82.0 tests ──────────────────────────────────────────────────────────
+describe('CoachingInsightsDigest — trainingPolarization threshold', () => {
+  it('surfaces a moderate POL headline when pattern is threshold (Z3-dominant)', () => {
+    const log = buildPolarizationThresholdLog()
+    renderCard({ log })
+    expect(screen.getByText('POL')).toBeInTheDocument()
+    // Detector message copy mentions Z3 review
+    expect(screen.getByText(/Threshold-dominant — review Z3 load/i)).toBeInTheDocument()
+    // Moderate severity → yellow bullet
+    const region = screen.getByRole('region')
+    expect(region.textContent).toContain('🟡')
+  })
+
+  it('renders POL (TR) and Turkish recommendation copy when lang=tr', () => {
+    const log = buildPolarizationThresholdLog()
+    renderCard({ log }, 'tr')
+    // POL acronym is shared across locales
+    expect(screen.getByText('POL')).toBeInTheDocument()
+    // Turkish threshold message + recommendation
+    expect(screen.getByText(/Eşik-baskın — Z3 yükünü gözden geçir/i)).toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — trainingPolarization polarized (silent)', () => {
+  it('does NOT surface a POL headline when pattern is polarized (already optimal)', () => {
+    const log = buildPolarizationPolarizedLog()
+    renderCard({ log })
+    expect(screen.queryByText('POL')).not.toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — trainingPolarization pyramidal (silent)', () => {
+  it('does NOT surface a POL headline when pattern is pyramidal (healthy)', () => {
+    const log = buildPolarizationPyramidalLog()
+    renderCard({ log })
+    expect(screen.queryByText('POL')).not.toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — trainingPolarization mixed (silent)', () => {
+  it('does NOT surface a POL headline when pattern is mixed (no template)', () => {
+    const log = buildPolarizationMixedLog()
+    renderCard({ log })
+    expect(screen.queryByText('POL')).not.toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — trainingPolarization unreliable', () => {
+  it('does NOT surface a POL headline when polarization is unreliable (insufficient data)', () => {
+    const log = buildPolarizationThresholdUnreliableLog()
+    renderCard({ log })
+    expect(screen.queryByText('POL')).not.toBeInTheDocument()
+  })
+})

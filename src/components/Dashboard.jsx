@@ -125,6 +125,7 @@ const SessionRPEDriftCard        = lazy(() => import('./dashboard/SessionRPEDrif
 const RecoveryDebtCard           = lazy(() => import('./dashboard/RecoveryDebtCard.jsx'))
 const TimeInZoneCard             = lazy(() => import('./dashboard/TimeInZoneCard.jsx'))
 const SupercompensationWindowCard = lazy(() => import('./dashboard/SupercompensationWindowCard.jsx'))
+const TrainingPolarizationCard   = lazy(() => import('./dashboard/TrainingPolarizationCard.jsx'))
 const CoachingInsightsDigest     = lazy(() => import('./dashboard/CoachingInsightsDigest.jsx'))
 const CoachingSummaryScoreCard   = lazy(() => import('./dashboard/CoachingSummaryScoreCard.jsx'))
 const RecoveryHub                = lazy(() => import('./RecoveryHub.jsx'))
@@ -952,6 +953,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       <ErrorBoundary><Suspense fallback={null}><RecoveryDebtCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><TimeInZoneCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><SupercompensationWindowCard log={log} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><TrainingPolarizationCard log={log} /></Suspense></ErrorBoundary>
       <VO2maxCard log={log} profile={profile} dl={dl}/>
       <PeakWeekCard log={log} dl={dl}/>
       <TrainingAgeCard log={log} dl={dl}/>

@@ -4,6 +4,73 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.83.0 — 2026-05-07 — TrainingPolarizationCard + Digest 13→14 + audit (+21 tests), 8483 tests
+
+  Closes the v8.82.0 trainingPolarization lib→card loop and brings
+  the digest into 14-detector synthesis.
+
+  TrainingPolarizationCard.jsx (223 lines):
+    Surfaces v8.82.0 trainingPolarization lib. Pattern badge:
+      polarized=#28a745 green (optimal)
+      pyramidal=#0064ff blue (healthy base)
+      threshold=#dc3545 red (no-man's-land warning)
+      mixed=#ff9500 amber (no clear template)
+    5-segment stacked bar w/ Z1=#28a745 → Z5=#dc3545 gradient
+    matching TimeInZoneCard convention. Big POL INDEX number
+    with bilingual label "POL INDEX · POL ENDEKSİ" (renders "—"
+    when null, i.e. Z4+Z5=0). Sub-lines: Z1+Z2 / Z3 / Z4+Z5
+    percentages; "X min over {windowDays}d · {windowDays}G'de
+    X dk".
+    role="region" + bilingual aria-label, role="img" on stacked
+    bar, aria-live="polite" on POL INDEX, 4px accent border-left
+    in pattern color, animationDelay 340ms (after Supercompensation
+    at 320ms). Placed after SupercompensationWindowCard, extending
+    coaching cluster.
+    15 jsdom tests covering insufficient data, all 4 patterns
+    (polarized/pyramidal/threshold/mixed), threshold red color,
+    null POL index "—" fallback, Z1+Z2/Z3/Z4+Z5 sub-line,
+    windowDays default rendering, role/aria, bilingual.
+
+  CoachingInsightsDigest 13→14-detector synthesis:
+    Added detectTrainingPolarization import + memoized result.
+    SOURCE_LABEL gained POL/POL (acronym, same in EN/TR like
+    VO2/RPE).
+    Synthesis priority chain extended from 25→26 rules (still
+    capped at MAX_ROWS=3):
+      Rule 10 inserted (between sessionRPEDrift high and
+        timeInZone band='poor'): trainingPolarization threshold
+        (warning — Z3 dominance is structural intensity-
+        distribution issue at moderate severity, parallel to
+        timeInZone-poor).
+      Rules 11-26 renumbered.
+    Surface gates:
+      threshold → surface (warning)
+      polarized / pyramidal / mixed → silent
+        (mixed silent because timeInZone-poor is the more
+        specific signal for that case)
+    Headline copy combines polarization.message + recommendation
+    into single bilingual line — no new translation keys.
+    All-green path also gates on `polarization.pattern !==
+    'threshold'` so threshold-dominant athletes drop out of the
+    green branch.
+    Verified via Node script: none of the 18 existing fixtures
+    accidentally trip threshold band — no fixture-helper tweaks
+    needed. Healthy log polarization classifies as polarized
+    (silent). +6 new digest tests (46 → 52).
+
+  Audit (no-cost script run 2026-05-07):
+    Saturated. Bundle 1185.6 KB / 2000 (~59%). 0 TODOs, 0 stale.
+    a11y still functional zero. Recommendation: feature work.
+
+  Tests: 8462 → 8483 (+21; 15 card + 6 digest).
+  Files: 352 → 353.
+  Build: clean, main chunk holds at 83.80 KB gz / 150 KB cap
+         (~66 KB headroom — TodayView lazy-load from v8.82
+         continues to pay off).
+  DEPENDS ON: v8.82.0 trainingPolarization lib.
+
+---
+
 ## v8.82.0 — 2026-05-06 — trainingPolarization lib + bundle -41% + SW version bump (+28 tests), 8462 tests
 
   Three-thread post-deploy follow-up: feature + infra + ops.
