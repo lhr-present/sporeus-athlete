@@ -4,6 +4,103 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.84.0 — 2026-05-07 — fitnessConsistency + recoveryAdherence libs + audit saturation (+67 tests), 8550 tests
+
+  Two new pure-function detector libs (no cards yet — surface in
+  next wave). Both fill genuine gaps not covered by existing
+  detectors.
+
+  src/lib/athlete/fitnessConsistency.js (203 lines after lint
+  cleanup):
+    detectFitnessConsistency(log, today) — meta-pattern signal:
+    measures CTL stability over 90 days via coefficient of
+    variation (CV = stdev/mean) of weekly CTL averages.
+    Distinct from:
+      fitnessGainRate — CTL slope (direction)
+      recoveryDebt — TSB integral (fatigue)
+      monotonyStrain — within-week TSS variance
+      this → between-week CTL stability over 90d
+    Inline Banister EWMA (K_CTL=1-exp(-1/42)) over full available
+    log warm-up, then samples trailing 90 days.
+    Computes 12-13 ISO-week CTL averages (count varies by where
+    today's day-of-week falls in the 90-day window — partial
+    weeks at log start dropped to avoid fake stability on short
+    logs).
+    Bands:
+      rock-solid : CV < 0.05  (very stable)
+      stable     : 0.05-0.10
+      oscillating: 0.10-0.20
+      chaotic    : CV ≥ 0.20  (extreme alternating loads —
+                              EWMA τ=42d damps weekly swings,
+                              reaching chaotic requires e.g.
+                              200/0 alternation from low base)
+    Reliable when log span ≥90 days AND meanCTL > 5 (low CTL
+    makes variance ratios unstable).
+    CV from unrounded numerator/denominator, rounded to 3 decimals.
+    Bilingual messages with band-specific recommendations.
+    Citation: 'Banister 1991; Coggan PMC; Fitz-Clarke 1991 model
+    stability'.
+    Exports detectFitnessConsistency +
+    FITNESS_CONSISTENCY_CITATION.
+    33 tests covering empty/insufficient, all 4 bands, CV math,
+    rangePct math, weeksAnalyzed flexibility (12 vs 13), all
+    rounding, band boundaries (0.05/0.10/0.20), multi-day sum,
+    bilingual, deterministic options.today.
+
+  src/lib/athlete/recoveryAdherence.js (175 lines):
+    detectRecoveryAdherence(log, today) — checks PLANNED rest
+    days actually stayed restful. Common athlete failure mode:
+    "rest day" turns into 30-min easy that turns into 60-min Z2
+    that turns into a tempo. Distinct from:
+      easyDayCompliance — RPE drift on labeled-easy
+      detrainingDetector — total inactivity gaps
+      this → planned-rest-day discipline
+    Rest-day classification (priority order):
+      1. intent in {recovery, rest, off}
+      2. type matches /recovery|rest|off/i
+      (Implicit/inferred rest deliberately skipped.)
+    Per-day classification:
+      adherent     : day TSS ≤30 AND mean RPE ≤4
+      mild_drift   : 30 < TSS ≤60 OR (TSS≤30 AND mean RPE 5-6)
+      severe_drift : TSS >60 OR mean RPE >6
+    Multi-entry days: sum TSS, mean RPE.
+    Bands:
+      good      : adherencePct ≥80 (or 0 planned rest — vacuous)
+      moderate  : 50-79
+      poor      : <50
+    Reliable when totalRestDaysPlanned ≥3.
+    Vacuous-good with 0 planned rest surfaces "schedule weekly
+    recovery" recommendation.
+    Bilingual messages with {p}% substitution.
+    Returns driftDates list (max 5, sorted desc).
+    Citation: 'Halson 2014 recovery; Foster 2001 monotony'.
+    Exports detectRecoveryAdherence +
+    RECOVERY_ADHERENCE_CITATION.
+    34 tests covering empty/zero-planned, <3 unreliable, all
+    band boundaries (50/80), all classification thresholds (TSS
+    30/31/60/61/70, RPE 4/5/6/7), all 3 intent triggers, type
+    regex matches, multi-entry same-day sum, driftDates ordering,
+    bilingual, deterministic options.today.
+
+  Lint cleanup applied during commit:
+    fitnessConsistency.js initial draft included an unused
+    daysToNextSunday helper (left over from an earlier ISO-week
+    boundary approach that got replaced). Deleted before push to
+    keep CI lint --max-warnings 0 gate green.
+
+  Audit (no-cost script run 2026-05-07):
+    Saturated. Bundle 1188.6 KB / 2000 (~59%). 0 TODOs, 0 stale.
+    a11y still functional zero. Recommendation: feature work.
+
+  Tests: 8483 → 8550 (+67; 33 fitnessConsistency + 34
+         recoveryAdherence).
+  Files: 353 → 355.
+  Build: clean, main chunk holds at 83.80 KB gz / 150 KB cap
+         (~66 KB headroom).
+  DEPENDS ON: nothing — both libs self-contained.
+
+---
+
 ## v8.83.0 — 2026-05-07 — TrainingPolarizationCard + Digest 13→14 + audit (+21 tests), 8483 tests
 
   Closes the v8.82.0 trainingPolarization lib→card loop and brings
