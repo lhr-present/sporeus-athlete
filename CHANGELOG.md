@@ -4,6 +4,81 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.82.0 — 2026-05-06 — trainingPolarization lib + bundle -41% + SW version bump (+28 tests), 8462 tests
+
+  Three-thread post-deploy follow-up: feature + infra + ops.
+
+  src/lib/athlete/trainingPolarization.js (184 lines):
+    detectTrainingPolarization(log, today, windowDays=28) —
+    categorical pattern classifier (Esteve-Lanao 2007). Distinct
+    from trainingDistribution (which only scores polarized fit).
+    Patterns:
+      threshold  : Z3 share > 25%   (priority 1; Z3 dominance
+                                     overrides any other signal)
+      polarized  : Z1+Z2 ≥ 75% AND Z4+Z5 ≥ 10% AND Z3 < 10%
+      pyramidal  : monotonic decrease Z1≥Z2≥Z3≥Z4≥Z5 with
+                   positive Z1 and Z5
+      mixed      : none of the above
+    Computes polarizationIndex = log10((Z1+Z2)/(Z4+Z5)),
+    rounded to 1 decimal; null when Z4+Z5=0.
+    Reliable when totalMinutes ≥ 200 AND distinct training days
+    ≥ 7.
+    Bilingual messages with pattern-specific recommendations
+    (polarized recommends nothing — it's already optimal).
+    Self-contained: zone parser replicated inline (array shape,
+    object {Z1..Z5} or {z1..z5}, RPE→zone fallback).
+    Citation: 'Esteve-Lanao 2007 polarization index; Seiler 2010;
+    Stöggl & Sperlich 2014'.
+    Exports detectTrainingPolarization +
+    TRAINING_POLARIZATION_CITATION.
+    28 tests covering empty/insufficient, all 4 patterns,
+    threshold-vs-polarized priority (Z3=27% with monotonic
+    [33,33,27,4,3] → threshold wins), polarizationIndex math,
+    null index when Z4+Z5=0, custom windowDays override, all 3
+    zone-shape parsings, RPE fallback, multi-day sum,
+    out-of-window exclusion, shares sum to 100, deterministic
+    options.today.
+
+  Bundle reduction: main chunk 142.38 → 83.80 KB gz (-58 KB,
+  -41%):
+    Pre-deploy verification flagged 142.38 KB / 150 KB CI cap
+    (~93% — next feature commit could break deploy).
+    Fix: src/App.jsx — TodayView (1415 lines) moved from eager
+    `import` to `lazy(() => import('./components/TodayView.jsx'))`.
+    Both call sites already wrapped in <AsyncBoundary> (which
+    bundles ErrorBoundary+Suspense), so no call-site change
+    needed and no behavior change.
+    TodayView ships as own 16.74 KB gz chunk; default tab still
+    loads on first paint, just in parallel rather than blocking
+    the main bundle.
+    New CI cap headroom: ~66 KB (was ~8 KB) — comfortable margin
+    for next ~10 features.
+
+  Service worker CACHE_VERSION bump:
+    src/sw.js:10 'sporeus-v6.0.0' → 'sporeus-v8.0.0' (was lagging
+    app version v8.x). cleanupOutdatedCaches() handles upgrade
+    safely; existing PWA users will see the in-app update banner.
+    Constant only used in src/sw.js (lines 26, 53); no tests pin
+    the version.
+
+  npm audit cleanup attempted, deferred:
+    1 HIGH @xmldom/xmldom (transitive via @capacitor/cli → plist).
+    `npm audit fix` (non-force) WOULD resolve it, BUT the
+    resulting upgraded serialize-javascript breaks build on Node
+    18.19.1 (crypto.randomBytes module-load failure via
+    workbox-build → @rollup/plugin-terser). Reverted lockfile
+    until either Node version bumps or a compatible terser
+    override is in place. Audit state unchanged at 10 vulns
+    (4 low / 2 mod / 4 high).
+
+  Tests: 8434 → 8462 (+28; trainingPolarization lib).
+  Files: 351 → 352.
+  Build: clean, main 83.80 KB gz (was 142.38), TodayView 16.74
+         KB gz new chunk.
+  DEPENDS ON: nothing — pure addition + reduction.
+
+---
+
 ## v8.81.0 — 2026-05-05 — Pre-deploy lint sweep (33 warnings → 0), 8434 tests
 
   Pre-deploy verification surfaced that CI runs

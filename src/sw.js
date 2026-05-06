@@ -7,7 +7,7 @@ import { NetworkFirst } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
 import { CacheableResponsePlugin } from 'workbox-cacheable-response'
 
-const CACHE_VERSION = 'sporeus-v6.0.0'
+const CACHE_VERSION = 'sporeus-v8.0.0'
 
 // ── Precaching ─────────────────────────────────────────────────────────────────
 precacheAndRoute(self.__WB_MANIFEST)

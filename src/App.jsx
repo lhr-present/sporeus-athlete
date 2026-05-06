@@ -11,7 +11,6 @@ import { useAppState } from './hooks/useAppState.js'
 import { DataProvider } from './contexts/DataContext.jsx'
 import { S, ANIM_CSS } from './styles.js'
 import AsyncBoundary from './components/ui/AsyncBoundary.jsx'
-import TodayView from './components/TodayView.jsx'
 import AuthGate from './components/AuthGate.jsx'
 import InstallPrompt from './components/InstallPrompt.jsx'
 import OfflineBanner from './components/OfflineBanner.jsx'
@@ -24,6 +23,7 @@ import { hasCurrentConsent } from './lib/db/consentVersion.js'
 import NotificationBell from './components/NotificationBell.jsx'
 import { detectLocalData } from './lib/dataMigration.js'
 // Lazy-loaded tab views (only fetched when tab is first visited)
+const TodayView     = lazy(() => import('./components/TodayView.jsx'))
 const ZoneCalc      = lazy(() => import('./components/ZoneCalc.jsx'))
 const TrainingLog   = lazy(() => import('./components/TrainingLog.jsx'))
 const Recovery      = lazy(() => import('./components/Recovery.jsx'))
