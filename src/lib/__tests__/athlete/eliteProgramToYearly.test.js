@@ -205,3 +205,62 @@ describe('eliteProgramToYearlyWeeks — race week + races[]', () => {
     expect(padded.every(w => w.phase === 'Recovery')).toBe(true)
   })
 })
+
+// ─── v8.96.0 — synthetic-anchor passthrough ──────────────────────────────────
+describe('eliteProgramToYearlyWeeks — v8.96.0 synthetic raceDate passthrough', () => {
+  function buildSynthetic(extra = {}) {
+    return buildEliteProgram({
+      currentPR: { distanceM: 10000, timeSec: 3000 },
+      sport: 'run',
+      noTarget: true,
+      weeksOverride: 16,
+      options: { today: TODAY },
+      ...extra,
+    })
+  }
+
+  it('uses program.feasibility.effectiveRaceDate when no opts.raceDate supplied', () => {
+    const program = buildSynthetic()
+    expect(program.synthetic?.raceDate).toBe(true)
+    expect(typeof program.feasibility.effectiveRaceDate).toBe('string')
+    const out = eliteProgramToYearlyWeeks(program, TODAY)
+    expect(out).not.toBeNull()
+    expect(out.raceDate).toBe(program.feasibility.effectiveRaceDate)
+    expect(out.races).toHaveLength(1)
+  })
+
+  it('synthetic race week uses priority C and "Final Week" name', () => {
+    const program = buildSynthetic()
+    const out = eliteProgramToYearlyWeeks(program, TODAY)
+    const raceWeek = out.weeks.find(w => w.phase === 'Race')
+    expect(raceWeek).toBeTruthy()
+    expect(raceWeek.priority).toBe('C')
+    expect(raceWeek.raceName).toBe('Final Week')
+    expect(out.races[0].priority).toBe('C')
+    expect(out.races[0].name).toBe('Final Week')
+  })
+
+  it('opts.raceDate overrides effectiveRaceDate when both present, but priority stays C for synthetic', () => {
+    const program = buildSynthetic()
+    const out = eliteProgramToYearlyWeeks(program, TODAY, {
+      raceDate: '2026-09-15',
+      raceName: 'Tune-up',
+    })
+    expect(out.raceDate).toBe('2026-09-15')
+    expect(out.races[0].priority).toBe('C')
+    expect(out.races[0].name).toBe('Tune-up')
+  })
+
+  it('non-synthetic program preserves priority A behavior', () => {
+    const program = buildEliteProgram({
+      currentPR: { distanceM: 10000, timeSec: 3000 },
+      targetPR:  { distanceM: 10000, timeSec: 2820 },
+      raceDate:  '2026-08-25',
+      sport: 'run',
+      options: { today: TODAY },
+    })
+    expect(program.synthetic).toBeUndefined()
+    const out = eliteProgramToYearlyWeeks(program, TODAY, { raceDate: '2026-08-25', raceName: 'Goal Race' })
+    expect(out.races[0].priority).toBe('A')
+  })
+})

@@ -129,6 +129,16 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
   const [curW, setCurW] = useState(persistedForm?.currentWatts || '')
   const [tgtW, setTgtW] = useState(persistedForm?.targetWatts || '')
 
+  // v8.96.0 — general-user toggles: no race date + no target time
+  const [noRaceDate, setNoRaceDate] = useState(!!persistedForm?.noRaceDate)
+  const initialWeeksOverride = (() => {
+    const w = persistedForm?.weeksOverride
+    if (w === 12 || w === 16 || w === 24) return w
+    return 12
+  })()
+  const [weeksOverride, setWeeksOverride] = useState(initialWeeksOverride)
+  const [noTarget, setNoTarget] = useState(!!persistedForm?.noTarget)
+
   // v8.94.0 — swim: Wakayoshi 2-TT toggle (4 (D, T) pairs total)
   const [swim2TT, setSwim2TT] = useState(!!persistedForm?.swim2TT)
   const [swCurD1, setSwCurD1] = useState(persistedForm?.swim2TT_curD1 || 200)
@@ -162,7 +172,7 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
   const curWattsN = isBikeFtp ? parseInt(curW, 10) : NaN
   const tgtWattsN = isBikeFtp ? parseInt(tgtW, 10) : NaN
   const bikeReady = isBikeFtp && Number.isFinite(curWattsN) && curWattsN > 0
-    && Number.isFinite(tgtWattsN) && tgtWattsN > 0
+    && (noTarget || (Number.isFinite(tgtWattsN) && tgtWattsN > 0))
 
   let swimCssCur = null, swimCssTgt = null, swimSecPer100mCur = null, swimSecPer100mTgt = null
   if (isSwim2TT) {
@@ -177,35 +187,46 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
       if (swimCssTgt != null) swimSecPer100mTgt = cssToSecPer100m(swimCssTgt)
     }
   }
-  const swimReady = isSwim2TT && swimSecPer100mCur != null && swimSecPer100mTgt != null
+  const swimReady = isSwim2TT && swimSecPer100mCur != null
+    && (noTarget || swimSecPer100mTgt != null)
+
+  // v8.96.0 — horizon ready when raceDate provided OR noRaceDate toggle on
+  const horizonReady = noRaceDate || dateOk
 
   let ready = false
-  if (isBikeFtp) ready = bikeReady && dateOk
-  else if (isSwim2TT) ready = swimReady && dateOk
-  else ready = sport && cs != null && ts != null && dateOk
+  if (isBikeFtp) ready = bikeReady && horizonReady
+  else if (isSwim2TT) ready = swimReady && horizonReady
+  else ready = !!sport && cs != null && (noTarget || ts != null) && horizonReady
 
   function submit(e) {
     e.preventDefault()
     if (!ready) return
+    const horizonPayload = noRaceDate
+      ? { raceDate: null, weeksOverride: Number(weeksOverride) }
+      : { raceDate: date }
     if (isBikeFtp) {
       savePersistedForm({
-        sport, raceDate: date,
+        sport, raceDate: noRaceDate ? '' : date,
+        noRaceDate, weeksOverride: Number(weeksOverride), noTarget,
         bikeFtpDirect: true,
         currentWatts: String(curWattsN),
-        targetWatts: String(tgtWattsN),
+        targetWatts: noTarget ? '' : String(tgtWattsN),
         // keep existing TT keys preserved if user toggles off later
         currentDist: curD, currentTime: curT, targetDist: tgtD, targetTime: tgtT,
       })
       onGenerate({
         currentPR: { distanceM: 0, timeSec: curWattsN },
-        targetPR:  { distanceM: 0, timeSec: tgtWattsN },
-        raceDate: date, sport,
+        targetPR:  noTarget ? null : { distanceM: 0, timeSec: tgtWattsN },
+        sport,
+        noTarget,
+        ...horizonPayload,
       })
       return
     }
     if (isSwim2TT) {
       savePersistedForm({
-        sport, raceDate: date,
+        sport, raceDate: noRaceDate ? '' : date,
+        noRaceDate, weeksOverride: Number(weeksOverride), noTarget,
         swim2TT: true,
         swim2TT_curD1: swCurD1, swim2TT_curT1: swCurT1,
         swim2TT_curD2: swCurD2, swim2TT_curT2: swCurT2,
@@ -216,22 +237,29 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
       // Synthesize a single-TT payload that the lib's tPaceFromTT(200, X) → X/2
       // path reproduces the exact CSS we computed via Wakayoshi.
       const synthCurT = swimSecPer100mCur * 2
-      const synthTgtT = swimSecPer100mTgt * 2
+      const synthTgtT = noTarget ? null : (swimSecPer100mTgt * 2)
       onGenerate({
         currentPR: { distanceM: 200, timeSec: synthCurT },
-        targetPR:  { distanceM: 200, timeSec: synthTgtT },
-        raceDate: date, sport,
+        targetPR:  noTarget ? null : { distanceM: 200, timeSec: synthTgtT },
+        sport,
+        noTarget,
+        ...horizonPayload,
       })
       return
     }
     savePersistedForm({
-      sport, currentDist: curD, currentTime: curT, targetDist: tgtD, targetTime: tgtT, raceDate: date,
+      sport,
+      currentDist: curD, currentTime: curT, targetDist: tgtD, targetTime: tgtT,
+      raceDate: noRaceDate ? '' : date,
+      noRaceDate, weeksOverride: Number(weeksOverride), noTarget,
       bikeFtpDirect: false, swim2TT: false,
     })
     onGenerate({
       currentPR: { distanceM: Number(curD), timeSec: cs },
-      targetPR:  { distanceM: Number(tgtD), timeSec: ts },
-      raceDate: date, sport,
+      targetPR:  noTarget ? null : { distanceM: Number(tgtD), timeSec: ts },
+      sport,
+      noTarget,
+      ...horizonPayload,
     })
   }
 
@@ -290,12 +318,29 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
         </label>
       ) : null}
 
+      {/* v8.96.0 — NO TARGET TIME toggle (placement above target inputs) */}
+      <div style={checkboxRowStyle} data-toggle="no-target">
+        <input type="checkbox" checked={noTarget} onChange={e => setNoTarget(e.target.checked)}
+          aria-label={isTR ? 'Hedef süre yok seçeneği' : 'General build mode (auto target)'}
+          style={{ marginTop: '2px' }} />
+        <span aria-hidden="true" style={{ ...S.mono, fontSize: '11px', color: 'var(--text)', lineHeight: 1.4 }}>
+          <span style={{ fontWeight: 700, letterSpacing: '0.06em' }}>
+            {isTR ? 'HEDEF SÜRE YOK' : 'NO TARGET TIME'}
+            <span style={{ margin: '0 4px' }}>·</span>
+            {isTR ? 'NO TARGET TIME' : 'HEDEF SÜRE YOK'}
+          </span>
+          <span style={{ display: 'block', fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>
+            {isTR ? 'Mevcut seviyeden geliştir (otomatik hedef)' : 'Improve from current level (auto-target)'}
+          </span>
+        </span>
+      </div>
+
       {isBikeFtp ? (
         <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }} data-mode="bike-ftp-direct">
           {[
-            { lbl: isTR ? 'MEVCUT FTP' : 'CURRENT FTP', val: curW, setVal: setCurW, aria: isTR ? 'Mevcut FTP (watt)' : 'Current FTP (watts)' },
-            { lbl: isTR ? 'HEDEF FTP' : 'TARGET FTP', val: tgtW, setVal: setTgtW, aria: isTR ? 'Hedef FTP (watt)' : 'Target FTP (watts)' },
-          ].map(f => (
+            { lbl: isTR ? 'MEVCUT FTP' : 'CURRENT FTP', val: curW, setVal: setCurW, aria: isTR ? 'Mevcut FTP (watt)' : 'Current FTP (watts)', isCurrent: true },
+            { lbl: isTR ? 'HEDEF FTP' : 'TARGET FTP', val: tgtW, setVal: setTgtW, aria: isTR ? 'Hedef FTP (watt)' : 'Target FTP (watts)', isCurrent: false },
+          ].filter(f => !(noTarget && !f.isCurrent)).map(f => (
             <div key={f.lbl} style={{ flex: '1 1 140px', minWidth: '120px' }}>
               <label style={LBL}>{f.lbl}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>W</label>
               <input type="number" inputMode="numeric" min={50} max={600} placeholder="245"
@@ -306,21 +351,23 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
       ) : isSwim2TT ? (
         <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }} data-mode="swim-2tt">
           {[
-            { lbl: isTR ? 'MEVCUT' : 'CURRENT',
+            { isCurrent: true,
+              lbl: isTR ? 'MEVCUT' : 'CURRENT',
               d1: swCurD1, setD1: setSwCurD1, t1: swCurT1, setT1: setSwCurT1,
               d2: swCurD2, setD2: setSwCurD2, t2: swCurT2, setT2: setSwCurT2,
               aria1d: isTR ? 'Mevcut TT1 mesafesi' : 'Current TT1 distance',
               aria1t: isTR ? 'Mevcut TT1 süresi' : 'Current TT1 time',
               aria2d: isTR ? 'Mevcut TT2 mesafesi' : 'Current TT2 distance',
               aria2t: isTR ? 'Mevcut TT2 süresi' : 'Current TT2 time' },
-            { lbl: isTR ? 'HEDEF' : 'TARGET',
+            { isCurrent: false,
+              lbl: isTR ? 'HEDEF' : 'TARGET',
               d1: swTgtD1, setD1: setSwTgtD1, t1: swTgtT1, setT1: setSwTgtT1,
               d2: swTgtD2, setD2: setSwTgtD2, t2: swTgtT2, setT2: setSwTgtT2,
               aria1d: isTR ? 'Hedef TT1 mesafesi' : 'Target TT1 distance',
               aria1t: isTR ? 'Hedef TT1 süresi' : 'Target TT1 time',
               aria2d: isTR ? 'Hedef TT2 mesafesi' : 'Target TT2 distance',
               aria2t: isTR ? 'Hedef TT2 süresi' : 'Target TT2 time' },
-          ].map(f => (
+          ].filter(f => !(noTarget && !f.isCurrent)).map(f => (
             <div key={f.lbl} style={{ flex: '1 1 140px', minWidth: '120px' }}>
               <label style={LBL}>{f.lbl}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>TT1</label>
               <select value={f.d1} onChange={e => f.setD1(Number(e.target.value))} aria-label={f.aria1d} style={{ ...INP, marginBottom: '4px' }}>
@@ -383,9 +430,9 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
         })() : null}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
           {[
-            { lbl: isTR ? 'MEVCUT PR' : 'CURRENT PR', dist: curD, setDist: setCurD, t: curT, setT: setCurT, distAria: isTR ? 'Mevcut PR mesafesi' : 'Current PR distance', tAria: isTR ? 'Mevcut PR süresi (MM:SS)' : 'Current PR time (MM:SS)' },
-            { lbl: isTR ? 'HEDEF PR' : 'TARGET PR', dist: tgtD, setDist: setTgtD, t: tgtT, setT: setTgtT, distAria: isTR ? 'Hedef PR mesafesi' : 'Target PR distance', tAria: isTR ? 'Hedef PR süresi (MM:SS)' : 'Target PR time (MM:SS)' },
-          ].map(f => (
+            { isCurrent: true,  lbl: isTR ? 'MEVCUT PR' : 'CURRENT PR', dist: curD, setDist: setCurD, t: curT, setT: setCurT, distAria: isTR ? 'Mevcut PR mesafesi' : 'Current PR distance', tAria: isTR ? 'Mevcut PR süresi (MM:SS)' : 'Current PR time (MM:SS)' },
+            { isCurrent: false, lbl: isTR ? 'HEDEF PR' : 'TARGET PR', dist: tgtD, setDist: setTgtD, t: tgtT, setT: setTgtT, distAria: isTR ? 'Hedef PR mesafesi' : 'Target PR distance', tAria: isTR ? 'Hedef PR süresi (MM:SS)' : 'Target PR time (MM:SS)' },
+          ].filter(f => !(noTarget && !f.isCurrent)).map(f => (
             <div key={f.lbl} style={{ flex: '1 1 140px', minWidth: '120px' }}>
               <label style={LBL}>{f.lbl}</label>
               <select value={f.dist} onChange={e => f.setDist(Number(e.target.value))} aria-label={f.distAria} style={{ ...INP, marginBottom: '4px' }}>
@@ -398,10 +445,45 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
         </>
       )}
 
-      <div style={{ marginBottom: '14px' }}>
-        <label style={LBL}>{isTR ? 'YARIŞ TARİHİ' : 'RACE DATE'}</label>
-        <input type="date" value={date} onChange={e => setDate(e.target.value)} aria-label={isTR ? 'Yarış tarihi' : 'Race date'} style={INP} />
+      {!noRaceDate ? (
+        <div style={{ marginBottom: '10px' }}>
+          <label style={LBL}>{isTR ? 'YARIŞ TARİHİ' : 'RACE DATE'}</label>
+          <input type="date" value={date} onChange={e => setDate(e.target.value)} aria-label={isTR ? 'Yarış tarihi' : 'Race date'} style={INP} />
+        </div>
+      ) : null}
+
+      {/* v8.96.0 — NO RACE DATE toggle (placement: between race date input and submit) */}
+      <div style={checkboxRowStyle} data-toggle="no-race-date">
+        <input type="checkbox" checked={noRaceDate} onChange={e => setNoRaceDate(e.target.checked)}
+          aria-label={isTR ? 'Yarış tarihim yok seçeneği' : 'General build mode (no event)'}
+          style={{ marginTop: '2px' }} />
+        <span aria-hidden="true" style={{ ...S.mono, fontSize: '11px', color: 'var(--text)', lineHeight: 1.4 }}>
+          <span style={{ fontWeight: 700, letterSpacing: '0.06em' }}>
+            {isTR ? 'YARIŞ TARİHİM YOK' : 'NO RACE DATE'}
+            <span style={{ margin: '0 4px' }}>·</span>
+            {isTR ? 'NO RACE DATE' : 'YARIŞ TARİHİM YOK'}
+          </span>
+          <span style={{ display: 'block', fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>
+            {isTR ? 'Bunun yerine ___ hafta için program' : 'Build for ___ weeks instead'}
+          </span>
+        </span>
       </div>
+
+      {noRaceDate ? (
+        <div role="group" data-weeks-override aria-label={isTR ? 'Hafta sayısı seçici' : 'Weeks selector'}
+          style={{ display: 'flex', gap: '4px', marginBottom: '14px', flexWrap: 'wrap' }}>
+          {[12, 16, 24].map(n => {
+            const a = Number(weeksOverride) === n
+            return (
+              <button key={n} type="button" onClick={() => setWeeksOverride(n)} aria-pressed={a}
+                aria-label={isTR ? `${n} hafta için program` : `Build for ${n} weeks`}
+                style={{ ...S.mono, fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', padding: '8px 12px', flex: '1 1 70px', minHeight: '40px', background: a ? '#0064ff' : 'var(--input-bg)', color: a ? '#fff' : 'var(--text)', border: `1px solid ${a ? '#0064ff' : 'var(--input-border)'}`, borderRadius: '4px', cursor: 'pointer' }}>
+                {n}{isTR ? 'h' : 'w'}
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
 
       <button type="submit" disabled={!ready}
         style={{ ...S.mono, fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', padding: '12px 18px', width: '100%', minHeight: '44px', background: ready ? '#ff6600' : '#ff660055', color: '#fff', border: 'none', borderRadius: '4px', cursor: ready ? 'pointer' : 'not-allowed' }}>
@@ -817,7 +899,7 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
       {
         raceDate: persisted.input?.raceDate || null,
         raceName: 'Goal Race',
-        raceDistanceM: persisted.input?.targetPR?.distanceM ?? null,
+        raceDistanceM: persisted.input?.targetPR?.distanceM ?? result?.resolvedTargetPR?.distanceM ?? null,
         model: 'traditional',
       },
     )
@@ -868,13 +950,20 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
   const note = result.feasibility.note?.[isTR ? 'tr' : 'en'] || ''
   const recommendation = result.recommendation?.[isTR ? 'tr' : 'en'] || ''
   const curStr = fmtSec(persisted.input?.currentPR?.timeSec)
-  const tgtStr = fmtSec(persisted.input?.targetPR?.timeSec)
+  // v8.96.0 — when targetPR was synthesized by the orchestrator, fall back to resolvedTargetPR
+  const effectiveTargetPR = persisted.input?.targetPR ?? result?.resolvedTargetPR ?? null
+  const tgtStr = fmtSec(effectiveTargetPR?.timeSec)
+  const synthetic = result.synthetic || null
+  const isGeneralBuild = !!(synthetic && synthetic.targetPR && synthetic.raceDate)
+  const generalBuildSuffix = isGeneralBuild
+    ? (isTR ? ' · GENEL YAPIM' : ' · GENERAL BUILD')
+    : ''
 
   return (
     <div className="sp-card" role="region" aria-label={ariaLabel} style={{ ...cardBase, borderLeft: `4px solid ${accent}` }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-        <div style={{ ...S.cardTitle, marginBottom: 0, borderBottom: 'none', paddingBottom: 0 }}>
-          {titleEN}<span aria-hidden="true" style={{ margin: '0 6px' }}>·</span>{titleTR}
+        <div style={{ ...S.cardTitle, marginBottom: 0, borderBottom: 'none', paddingBottom: 0 }} data-general-build={isGeneralBuild ? 'true' : 'false'}>
+          {titleEN}<span aria-hidden="true" style={{ margin: '0 6px' }}>·</span>{titleTR}{generalBuildSuffix}
         </div>
         <div style={{ display: 'flex', gap: '6px' }}>
           <button type="button"
@@ -910,6 +999,26 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
       <div style={{ ...S.mono, fontSize: '10px', color: 'var(--sub, var(--muted))', marginBottom: '10px' }}>
         {weeksAvail}{isTR ? 'h' : 'w'} {isTR ? 'mevcut' : 'available'} <span aria-hidden="true" style={{ margin: '0 4px' }}>·</span> {weeksNeeded}{isTR ? 'h' : 'w'} {isTR ? 'gerekli' : 'needed'}
       </div>
+
+      {synthetic ? (() => {
+        const parts = []
+        if (synthetic.targetPR) parts.push(isTR ? 'hedef otomatik' : 'auto target')
+        if (synthetic.raceDate) parts.push(isTR ? 'tarih sentetik' : 'synthetic horizon')
+        const detail = parts.length ? ` (${parts.join(', ')})` : ''
+        const ariaLabelText = isTR
+          ? `Otomatik türetilmiş${detail}`
+          : `Auto-derived${detail}`
+        return (
+          <div data-synthetic-badge
+            aria-label={ariaLabelText}
+            title={ariaLabelText}
+            style={{ display: 'inline-block', ...S.mono, fontSize: '10px', fontWeight: 700, color: '#fff', background: '#9966cc', padding: '3px 8px', borderRadius: '3px', letterSpacing: '0.08em', marginBottom: '10px', marginRight: '6px' }}>
+            {isTR ? 'OTOMATİK TÜRETİLMİŞ' : 'AUTO-DERIVED'}
+            <span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>
+            {isTR ? 'AUTO-DERIVED' : 'OTOMATİK TÜRETİLMİŞ'}
+          </div>
+        )
+      })() : null}
 
       <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', marginBottom: '12px' }}>
         <div style={{ flex: '1 1 120px' }}>

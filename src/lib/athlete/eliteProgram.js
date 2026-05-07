@@ -15,6 +15,7 @@
 
 import {
   vdotFromRace,
+  predictRaceTime,
   trainingPaces,
 } from '../sport/running.js'
 import {
@@ -85,7 +86,7 @@ function todayUTC() {
 // ── Sport-specific feasibility math ──────────────────────────────────────────
 
 // Daniels VDOT gain rate per 12-week block — mirrors raceGoalEngine private fn
-function vdotGainPerBlock(vdot) {
+export function vdotGainPerBlock(vdot) {
   if (vdot < 35) return 3.5
   if (vdot < 45) return 2.5
   if (vdot < 55) return 1.5
@@ -93,7 +94,7 @@ function vdotGainPerBlock(vdot) {
 }
 
 // FTP gain rate (W) per 12-week block (Coggan: ~3-5% for trained, ~8% for novices)
-function ftpGainPerBlock(ftpW) {
+export function ftpGainPerBlock(ftpW) {
   if (ftpW < 180) return ftpW * 0.10
   if (ftpW < 240) return ftpW * 0.07
   if (ftpW < 300) return ftpW * 0.05
@@ -102,7 +103,7 @@ function ftpGainPerBlock(ftpW) {
 
 // CSS gain rate (sec/100m faster) per 12-week block.
 // Trained swimmers: ~3 s; intermediate: ~5 s; novices (CSS slower than 1:50/100m): ~7 s
-function cssGainPerBlock(cssSecPer100m) {
+export function cssGainPerBlock(cssSecPer100m) {
   if (cssSecPer100m > 110) return 7
   if (cssSecPer100m > 90)  return 5
   return 3
@@ -388,24 +389,124 @@ function swimSampleWeek(phase, cssSec) {
 // ── Main orchestrator ───────────────────────────────────────────────────────
 export function buildEliteProgram(input) {
   if (!input || typeof input !== 'object') return null
-  const { currentPR, targetPR, raceDate, sport } = input
+  const { currentPR, sport } = input
+  let { targetPR, raceDate } = input
   const profile = input.profile || {}
   const options = input.options || {}
+  const weeksOverrideRaw = input.weeksOverride
+  const noTarget = !!input.noTarget
 
-  if (!currentPR || !targetPR || !raceDate || !sport) {
-    return null
-  }
+  // v8.96.0 — current PR is always required (the floor)
+  if (!currentPR || !sport) return null
   if (!['run', 'bike', 'swim', 'triathlon'].includes(sport)) return null
 
-  // Validate PR shapes
+  // v8.96.0 — when neither raceDate nor weeksOverride supplied, no horizon → reject
+  const hasWeeksOverride = typeof weeksOverrideRaw === 'number'
+    && Number.isFinite(weeksOverrideRaw) && weeksOverrideRaw > 0
+  if (!raceDate && !hasWeeksOverride) return null
+
+  // v8.96.0 — when targetPR not provided AND noTarget=false, reject (legacy)
+  if (!targetPR && !noTarget) return null
+
+  // Validate currentPR shape
   const valPR = (pr) => pr && typeof pr.timeSec === 'number' && pr.timeSec > 0
     && (typeof pr.distanceM === 'number' || pr.distanceM === null || pr.distanceM === undefined)
-  if (!valPR(currentPR) || !valPR(targetPR)) return null
+  if (!valPR(currentPR)) return null
+  if (targetPR && !valPR(targetPR)) return null
 
-  // For run/swim/triathlon and bike-TT mode: targetPR must be faster (smaller timeSec).
-  // For bike direct-FTP mode (distanceM === 0 || null), timeSec is wattage and must be larger.
+  // Detect bike direct-FTP mode (distanceM === 0 || null)
   const bikeDirectFtp = sport === 'bike'
     && (currentPR.distanceM === 0 || currentPR.distanceM === null || currentPR.distanceM === undefined)
+
+  // v8.96.0 — Resolve effective race date.
+  // If raceDate provided AND in past → reject (only !raceDate triggers weeksOverride).
+  // If !raceDate AND weeksOverride → synthesize effectiveRaceDate.
+  const synthetic = { raceDate: false, targetPR: false, raceLabel: null }
+  const today = options.today ? parseUTCDate(options.today) : todayUTC()
+  if (!today) return null
+
+  let effectiveRaceDate = raceDate
+  let weeksAvailable = 0
+
+  if (raceDate) {
+    const race = parseUTCDate(raceDate)
+    if (!race) return null
+    const daysAvailable = daysBetween(today, race)
+    if (daysAvailable < 0) {
+      return {
+        _rejected: true,
+        reason: 'race-in-past',
+        note: {
+          en: 'Race date is in the past',
+          tr: 'Yarış tarihi geçmişte',
+        },
+      }
+    }
+    weeksAvailable = Math.max(0, Math.floor(daysAvailable / 7))
+  } else {
+    // weeksOverride path — clamp to [4,52]
+    const wo = Math.max(4, Math.min(52, Math.floor(weeksOverrideRaw)))
+    weeksAvailable = wo
+    const synthRace = new Date(today.getTime() + wo * 7 * 86400000)
+    effectiveRaceDate = synthRace.toISOString().slice(0, 10)
+    synthetic.raceDate = true
+    synthetic.raceLabel = 'FINAL WEEK'
+  }
+
+  // v8.96.0 — Synthesize target PR per sport when noTarget=true and no targetPR provided.
+  if (noTarget && !targetPR) {
+    const scale = weeksAvailable / 12
+    if (sport === 'run' || sport === 'triathlon') {
+      const dist = currentPR.distanceM || 10000
+      const cVdot = vdotFromRace(dist, currentPR.timeSec)
+      if (!cVdot) return null
+      const gain = vdotGainPerBlock(cVdot) * scale
+      const cappedGain = Math.min(gain, 6)
+      const synthVdot = cVdot + cappedGain
+      const synthTime = predictRaceTime(synthVdot, dist)
+      if (!synthTime || synthTime >= currentPR.timeSec) return null
+      targetPR = { distanceM: dist, timeSec: synthTime }
+      synthetic.targetPR = true
+    } else if (sport === 'bike') {
+      if (bikeDirectFtp) {
+        const cFtp = currentPR.timeSec
+        const gain = ftpGainPerBlock(cFtp) * scale
+        const cappedGain = Math.min(gain, 30)
+        const synthFtp = Math.round(cFtp + cappedGain)
+        if (synthFtp <= cFtp) return null
+        targetPR = { distanceM: 0, timeSec: synthFtp }
+      } else {
+        // Bike TT mode: derive current FTP via existing speed→FTP heuristic, add gain, then convert back to a faster TT time
+        const cSpeed = (currentPR.distanceM / 1000) / (currentPR.timeSec / 3600)
+        const cFtp = Math.round(250 * cSpeed / 35)
+        if (!cFtp || cFtp <= 0) return null
+        const gain = ftpGainPerBlock(cFtp) * scale
+        const cappedGain = Math.min(gain, 30)
+        const gFtp = Math.round(cFtp + cappedGain)
+        if (gFtp <= cFtp) return null
+        // Reverse: speed = ftp * 35 / 250 (km/h); timeHr = distanceKm / speed
+        const gSpeed = gFtp * 35 / 250
+        const synthTime = Math.round((currentPR.distanceM / 1000) / gSpeed * 3600)
+        if (!synthTime || synthTime >= currentPR.timeSec) return null
+        targetPR = { distanceM: currentPR.distanceM, timeSec: synthTime }
+      }
+      synthetic.targetPR = true
+    } else if (sport === 'swim') {
+      const cDist = currentPR.distanceM || 1500
+      const cPace = tPaceFromTT(cDist, currentPR.timeSec)
+      if (!cPace) return null
+      const gain = cssGainPerBlock(cPace) * scale
+      const cappedGain = Math.min(gain, 8)
+      const gPace = cPace - cappedGain
+      if (gPace <= 0 || gPace >= cPace) return null
+      const synthTime = Math.round(gPace * (cDist / 100))
+      if (!synthTime || synthTime >= currentPR.timeSec) return null
+      targetPR = { distanceM: cDist, timeSec: synthTime }
+      synthetic.targetPR = true
+    }
+  }
+
+  // Now that targetPR is resolved, validate target-faster rule.
   if (!bikeDirectFtp) {
     if (targetPR.timeSec >= currentPR.timeSec) {
       return {
@@ -429,24 +530,6 @@ export function buildEliteProgram(input) {
       }
     }
   }
-
-  // Date math
-  const today = options.today ? parseUTCDate(options.today) : todayUTC()
-  const race  = parseUTCDate(raceDate)
-  if (!today || !race) return null
-  const daysAvailable = daysBetween(today, race)
-  if (daysAvailable < 0) {
-    return {
-      _rejected: true,
-      reason: 'race-in-past',
-      note: {
-        en: 'Race date is in the past',
-        tr: 'Yarış tarihi geçmişte',
-      },
-    }
-  }
-
-  const weeksAvailable = Math.max(0, Math.floor(daysAvailable / 7))
   const profileWithDefaults = {
     currentCTL: typeof profile.currentCTL === 'number' && profile.currentCTL > 0 ? profile.currentCTL : 50,
     weeklyHours: typeof profile.weeklyHours === 'number' && profile.weeklyHours > 0 ? profile.weeklyHours : 8,
@@ -599,18 +682,23 @@ export function buildEliteProgram(input) {
     flags.push('Triathlon mode using run-only feasibility (no per-discipline PRs supplied)')
     flagsTr.push('Triatlon modu sadece koşu fizibilitesi kullanıyor (disiplin başına PR yok)')
   }
+  if (synthetic.targetPR || synthetic.raceDate) {
+    flags.push('Auto-target derived from current level (Daniels gain rate)')
+    flagsTr.push('Hedef mevcut seviyeden türetildi (Daniels gelişim hızı)')
+  }
   const recommendation = {
     en: flags.length ? `${recBaseEn}. ${flags.join('; ')}` : recBaseEn,
     tr: flagsTr.length ? `${recBaseTr}. ${flagsTr.join('; ')}` : recBaseTr,
   }
 
-  return {
+  const out = {
     feasibility: {
       band,
       weeksAvailable,
       weeksNeeded,
       deltaPct: Math.round(deltaPct * 10) / 10,
       note: BAND_NOTES[band],
+      effectiveRaceDate,
     },
     sport,
     currentLevel,
@@ -621,5 +709,10 @@ export function buildEliteProgram(input) {
     recommendation,
     citation: CITATION,
     reliable: band !== 'unrealistic',
+    resolvedTargetPR: targetPR,
   }
+  if (synthetic.raceDate || synthetic.targetPR) {
+    out.synthetic = { ...synthetic }
+  }
+  return out
 }

@@ -110,11 +110,28 @@ export function eliteProgramToYearlyWeeks(program, programStart, opts = {}) {
   if (!monday) return null
 
   const {
-    raceDate = null,
-    raceName = 'Goal Race',
+    raceDate: optRaceDate = null,
+    raceName: optRaceName = 'Goal Race',
     raceDistanceM = null,
     model = 'traditional',
   } = opts
+
+  // v8.96.0 — Synthetic-anchor passthrough. When the program was built without
+  // a real race date (general-build mode), the orchestrator produced an
+  // `effectiveRaceDate` synthesized from weeksOverride. Use it as the anchor
+  // and downgrade the appended Race week to a "Final Week" priority C marker.
+  const isSyntheticRace = !!(program.synthetic && program.synthetic.raceDate)
+  let raceDate = optRaceDate
+  let raceName = optRaceName
+  let racePriority = 'A'
+  if (isSyntheticRace && !optRaceDate && program.feasibility?.effectiveRaceDate) {
+    raceDate = program.feasibility.effectiveRaceDate
+    raceName = optRaceName === 'Goal Race' ? 'Final Week' : optRaceName
+    racePriority = 'C'
+  } else if (isSyntheticRace) {
+    // explicit raceDate supplied via opts wins, but priority still C
+    racePriority = 'C'
+  }
 
   const tss = program.weeklyTSS
   const phases = program.phases
@@ -167,7 +184,7 @@ export function eliteProgramToYearlyWeeks(program, programStart, opts = {}) {
       isDeload:         false,
       raceName,
       raceDate,
-      priority:         'A',
+      priority:         racePriority,
       note:             '',
       sessionsBlueprint: Array.isArray(sampleWeeks.Taper)
         ? sampleWeeks.Taper.map(d => ({ ...d }))
@@ -212,7 +229,7 @@ export function eliteProgramToYearlyWeeks(program, programStart, opts = {}) {
   }
 
   const races = (raceDate && /^\d{4}-\d{2}-\d{2}$/.test(raceDate))
-    ? [{ date: raceDate, name: raceName, priority: 'A' }]
+    ? [{ date: raceDate, name: raceName, priority: racePriority }]
     : []
 
   return {

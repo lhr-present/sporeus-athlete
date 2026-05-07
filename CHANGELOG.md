@@ -4,6 +4,125 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.96.0 — 2026-05-07 — Mission #1 general-app-use wave 2: NO RACE DATE + NO TARGET TIME toggles (+34 tests), 8980 tests
+
+  Closes the audit's E2 + E3 gaps for general app users who don't
+  fit the elite-athlete persona. Pair naturally as one wave: "I
+  just want to get fitter for 12 weeks" needs both toggles on.
+
+  src/lib/athlete/eliteProgram.js — orchestrator extensions:
+    Input contract gains two optional fields:
+      - weeksOverride: number 4..52 (clamped). When set AND
+        raceDate is null, the orchestrator synthesizes
+        effectiveRaceDate = today + weeksOverride*7 days.
+      - noTarget: boolean. When true AND targetPR is null, the
+        orchestrator synthesizes a target via existing rate
+        functions, scaled by weeks/12, with realism caps:
+          run/triathlon: cVdot + vdotGainPerBlock(cVdot) *
+                         (weeks/12), capped at +6 VDOT
+          bike:          cFtp + ftpGainPerBlock(cFtp) *
+                         (weeks/12), capped at +30 W
+          swim:          cPace - cssGainPerBlock(cPace) *
+                         (weeks/12), capped at -8 sec/100m
+        Synthetic target → time at same distance via existing
+        helpers (predictRaceTime for run/tri; FTP→TT
+        reverse-derive for bike; tPaceFromTT inverse for swim).
+    Result shape additions:
+      - feasibility.effectiveRaceDate: anchor for downstream
+      - resolvedTargetPR: the actual target used (may be
+        synthetic)
+      - synthetic: { raceDate?, targetPR?, raceLabel } when any
+        anchor is auto-derived
+    recommendation appended with bilingual line when synthetic:
+      EN: 'Auto-target derived from current level (Daniels gain
+          rate)'
+      TR: 'Hedef mevcut seviyeden türetildi (Daniels gelişim
+          hızı)'
+    Existing rejections preserved:
+      - Explicit targetPR + target-not-faster still rejects
+      - Explicit raceDate + race-in-past still rejects
+      - !sport / !currentPR still rejects
+      - !raceDate AND !weeksOverride AND noTarget=true still
+        rejects (no horizon at all)
+      - Explicit anchors win over toggles
+    Newly exported (were internal): vdotGainPerBlock,
+    ftpGainPerBlock, cssGainPerBlock — exposed for autopsy lib's
+    nextCyclePR helper and future general-mode reuse.
+
+  src/lib/athlete/eliteProgramToYearly.js:
+    Synthetic-anchor passthrough. When program.synthetic.raceDate
+    is true, bridge:
+      - Uses program.feasibility.effectiveRaceDate as end anchor
+      - Default raceName = 'Final Week' (bilingual via card)
+      - Priority downgraded 'A' → 'C' (no real race)
+
+  EliteProgramCard.jsx:
+    Two new toggles (sport-agnostic, do not reset on sport flip):
+      - "NO RACE DATE · YARIŞ TARİHİM YOK" with 12/16/24 weeks
+        segment selector. Hides race-date input when checked.
+      - "NO TARGET TIME · HEDEF SÜRE YOK". Hides target row
+        when checked.
+    Readiness gate updated: raceDate not required when
+    noRaceDate=true; targetT not required when noTarget=true.
+    Submit emits weeksOverride + noTarget alongside existing
+    fields; targetPR/raceDate become null when corresponding
+    toggle is on.
+    Plan view:
+      - data-synthetic-badge "AUTO-DERIVED · OTOMATİK TÜRETİLMİŞ"
+        in purple #9966cc when result.synthetic exists
+      - Title appends " · GENERAL BUILD" / " · GENEL YAPIM"
+        when BOTH synthetic.targetPR AND synthetic.raceDate
+    applyToCalendar updated to use result.resolvedTargetPR.distanceM
+    instead of input.targetPR.distanceM (handles synthetic case).
+
+  Edge cases discovered + handled:
+    - testing-library label-text auto-association collision:
+      <label> wrapping <input checkbox> + visible text caused
+      duplicate getByLabelText matches. Resolved by switching
+      toggle rows to <div> + aria-hidden decorative spans + non-
+      conflicting aria-labels ("General build mode (no event)"
+      / "General build mode (auto target)").
+    - One pre-existing TR test substring match /YARIŞ TARİHİ/
+      tightened to ^YARIŞ TARİHİ$ since new toggle text
+      "YARIŞ TARİHİM YOK" creates a regex collision.
+    - Bike TT noTarget reverses speed↔FTP heuristic to produce
+      a faster synthetic TT time without negative-gain edge
+      cases.
+
+  Test counts:
+    eliteProgram lib:    +14 (44 → 58)
+    eliteProgramToYearly: +4 (21 → 25)
+    EliteProgramCard:    +16 (64 → 80)
+    Full suite:          8946 → 8980 (+34, all green, 369 files)
+    Lint:                clean
+    Build:               83.81 KB gz main (within 150 KB gate)
+
+  Together v8.95.0 + v8.96.0 unblock the ~70-80% of users who
+  didn't fit the elite-athlete persona. The card now has 5
+  optional accelerators that all default to "off" (preserving
+  the elite-mode UX as the canonical happy path):
+    1. USE MY RECENT BEST chip (autofill from log)
+    2. FTP DIRECT (bike)
+    3. WAKAYOSHI 2-TT (swim)
+    4. NO RACE DATE → 12/16/24 weeks
+    5. NO TARGET TIME → auto-derive
+
+  DEPENDS ON: v8.91.0 (form persistence shape), v8.92.0 (lib's
+  rate-function exports for autopsy were the model for this
+  wave's exports), v8.93.0 (resolvedTargetPR shape consumed by
+  applyToCalendar), v8.94.0 (FormMode toggle pattern), v8.95.0
+  (recent-best chip lives above the toggles).
+
+  Files modified:
+    src/lib/athlete/eliteProgram.js
+    src/lib/athlete/eliteProgramToYearly.js
+    src/components/dashboard/EliteProgramCard.jsx
+    src/lib/__tests__/athlete/eliteProgram.test.js
+    src/lib/__tests__/athlete/eliteProgramToYearly.test.js
+    src/components/__tests__/EliteProgramCard.test.jsx
+
+---
+
 ## v8.95.0 — 2026-05-07 — Mission #1 general-app-use wave 1: USE-MY-RECENT-BEST autofill + smart sport default (+26 tests), 8946 tests
 
   General-use audit found ~70-80% of app users blocked by Mission

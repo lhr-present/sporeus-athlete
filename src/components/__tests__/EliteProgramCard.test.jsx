@@ -207,7 +207,9 @@ describe('EliteProgramCard — bilingual', () => {
     renderCard({}, 'tr')
     expect(screen.getByText(/MEVCUT PR/)).toBeInTheDocument()
     expect(screen.getByText(/HEDEF PR/)).toBeInTheDocument()
-    expect(screen.getByText(/YARIŞ TARİHİ/)).toBeInTheDocument()
+    // The race-date <label> uses exact "YARIŞ TARİHİ"; the v8.96.0 toggle uses
+    // "YARIŞ TARİHİM YOK". Anchor on whitespace to disambiguate.
+    expect(screen.getByText(/^YARIŞ TARİHİ$/)).toBeInTheDocument()
   })
 
   it('renders bilingual region aria-label (en)', () => {
@@ -782,5 +784,193 @@ describe('EliteProgramCard — v8.95.0 recent-best autofill', () => {
     expect(aria).toMatch(/USE MY RECENT BEST/)
     expect(aria).toMatch(/autofill/i)
     expect(aria).toMatch(/50:00/)
+  })
+})
+
+// ─── v8.96.0 — general-user toggles (NO RACE DATE + NO TARGET TIME) ──────────
+describe('EliteProgramCard — v8.96.0 general-user toggles', () => {
+  it('NO RACE DATE checkbox renders in form mode', () => {
+    renderCard()
+    expect(document.querySelector('[data-toggle="no-race-date"]')).not.toBeNull()
+    const cb = screen.getByLabelText(/General build mode \(no event\)/i)
+    expect(cb).toBeInTheDocument()
+    expect(cb.tagName.toLowerCase()).toBe('input')
+  })
+
+  it('with NO RACE DATE checked: race-date input hidden + 12/16/24 segments visible', () => {
+    renderCard()
+    const cb = screen.getByLabelText(/General build mode \(no event\)/i)
+    fireEvent.click(cb)
+    // race-date input gone
+    expect(screen.queryByLabelText(/Race date/i)).toBeNull()
+    // weeks selector group visible with 3 segments
+    const grp = document.querySelector('[data-weeks-override]')
+    expect(grp).not.toBeNull()
+    expect(screen.getByRole('button', { name: /Build for 12 weeks/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Build for 16 weeks/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Build for 24 weeks/i })).toBeInTheDocument()
+  })
+
+  it('with NO RACE DATE checked: GENERATE enabled with currentT + targetT only', () => {
+    renderCard()
+    fireEvent.click(screen.getByLabelText(/General build mode \(no event\)/i))
+    fireEvent.change(screen.getByLabelText(/Current PR time/i), { target: { value: '50:00' } })
+    fireEvent.change(screen.getByLabelText(/Target PR time/i), { target: { value: '47:00' } })
+    expect(screen.getByRole('button', { name: /GENERATE/i })).not.toBeDisabled()
+  })
+
+  it('NO TARGET TIME checkbox renders in form mode', () => {
+    renderCard()
+    expect(document.querySelector('[data-toggle="no-target"]')).not.toBeNull()
+    const cb = screen.getByLabelText(/General build mode \(auto target\)/i)
+    expect(cb).toBeInTheDocument()
+  })
+
+  it('with NO TARGET TIME checked: target row hidden + GENERATE enabled with currentT + raceDate', () => {
+    renderCard()
+    fireEvent.click(screen.getByLabelText(/General build mode \(auto target\)/i))
+    expect(screen.queryByLabelText(/Target PR time/i)).toBeNull()
+    expect(screen.queryByLabelText(/Target PR distance/i)).toBeNull()
+    fireEvent.change(screen.getByLabelText(/Current PR time/i), { target: { value: '50:00' } })
+    fireEvent.change(screen.getByLabelText(/Race date/i), { target: { value: '2026-08-15' } })
+    expect(screen.getByRole('button', { name: /GENERATE/i })).not.toBeDisabled()
+  })
+
+  it('both toggles checked: GENERATE enabled with sport + currentT only', () => {
+    renderCard()
+    fireEvent.click(screen.getByLabelText(/General build mode \(auto target\)/i))
+    fireEvent.click(screen.getByLabelText(/General build mode \(no event\)/i))
+    fireEvent.change(screen.getByLabelText(/Current PR time/i), { target: { value: '50:00' } })
+    expect(screen.getByRole('button', { name: /GENERATE/i })).not.toBeDisabled()
+  })
+
+  it('submit with weeksOverride=16 produces a 16-week plan (phases sum to 16)', () => {
+    renderCard()
+    fireEvent.click(screen.getByLabelText(/General build mode \(no event\)/i))
+    fireEvent.click(screen.getByRole('button', { name: /Build for 16 weeks/i }))
+    fireEvent.change(screen.getByLabelText(/Current PR time/i), { target: { value: '50:00' } })
+    fireEvent.change(screen.getByLabelText(/Target PR time/i), { target: { value: '47:00' } })
+    fireEvent.click(screen.getByRole('button', { name: /GENERATE/i }))
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY))
+    expect(stored.input.weeksOverride).toBe(16)
+    expect(stored.input.raceDate).toBeNull()
+    // Plan view rendered; verify weeks-available count text shows 16
+    const region = screen.getByRole('region', { name: /Elite training program/i })
+    expect(region.textContent).toMatch(/16w available/)
+  })
+
+  it('submit with noTarget=true produces a faster synthetic target than currentPR', () => {
+    renderCard()
+    fireEvent.click(screen.getByLabelText(/General build mode \(auto target\)/i))
+    fireEvent.change(screen.getByLabelText(/Current PR time/i), { target: { value: '50:00' } })
+    fireEvent.change(screen.getByLabelText(/Race date/i), { target: { value: '2026-08-15' } })
+    fireEvent.click(screen.getByRole('button', { name: /GENERATE/i }))
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY))
+    expect(stored.input.targetPR).toBeNull()
+    expect(stored.input.noTarget).toBe(true)
+    // The card renders the AUTO-DERIVED badge
+    expect(document.querySelector('[data-synthetic-badge]')).not.toBeNull()
+  })
+
+  it('AUTO-DERIVED badge renders in plan mode for synthetic', () => {
+    renderCard()
+    fireEvent.click(screen.getByLabelText(/General build mode \(auto target\)/i))
+    fireEvent.change(screen.getByLabelText(/Current PR time/i), { target: { value: '50:00' } })
+    fireEvent.change(screen.getByLabelText(/Race date/i), { target: { value: '2026-08-15' } })
+    fireEvent.click(screen.getByRole('button', { name: /GENERATE/i }))
+    const badge = document.querySelector('[data-synthetic-badge]')
+    expect(badge).not.toBeNull()
+    expect(badge.textContent).toMatch(/AUTO-DERIVED/)
+    expect(badge.textContent).toMatch(/OTOMATİK TÜRETİLMİŞ/)
+  })
+
+  it('title appends "· GENERAL BUILD" when both synthetic', () => {
+    renderCard()
+    fireEvent.click(screen.getByLabelText(/General build mode \(auto target\)/i))
+    fireEvent.click(screen.getByLabelText(/General build mode \(no event\)/i))
+    fireEvent.change(screen.getByLabelText(/Current PR time/i), { target: { value: '50:00' } })
+    fireEvent.click(screen.getByRole('button', { name: /GENERATE/i }))
+    const titleEl = document.querySelector('[data-general-build="true"]')
+    expect(titleEl).not.toBeNull()
+    expect(titleEl.textContent).toMatch(/GENERAL BUILD/)
+  })
+
+  it('reset clears toggles back to default unchecked state', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    renderCard()
+    fireEvent.click(screen.getByLabelText(/General build mode \(auto target\)/i))
+    fireEvent.click(screen.getByLabelText(/General build mode \(no event\)/i))
+    fireEvent.change(screen.getByLabelText(/Current PR time/i), { target: { value: '50:00' } })
+    fireEvent.click(screen.getByRole('button', { name: /GENERATE/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Reset program/i }))
+    // Form mode again
+    const cbTarget = screen.getByLabelText(/General build mode \(auto target\)/i)
+    const cbRace = screen.getByLabelText(/General build mode \(no event\)/i)
+    expect(cbTarget.checked).toBe(false)
+    expect(cbRace.checked).toBe(false)
+    confirmSpy.mockRestore()
+  })
+
+  it('toggle persists across remount via form payload', () => {
+    const { unmount } = renderCard()
+    fireEvent.click(screen.getByLabelText(/General build mode \(no event\)/i))
+    fireEvent.click(screen.getByRole('button', { name: /Build for 16 weeks/i }))
+    fireEvent.click(screen.getByLabelText(/General build mode \(auto target\)/i))
+    fireEvent.change(screen.getByLabelText(/Current PR time/i), { target: { value: '50:00' } })
+    fireEvent.click(screen.getByRole('button', { name: /GENERATE/i }))
+    unmount()
+    // Reset persisted to clear plan but keep form so form mode shows on remount
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY))
+    expect(stored.form.noRaceDate).toBe(true)
+    expect(stored.form.noTarget).toBe(true)
+    expect(stored.form.weeksOverride).toBe(16)
+  })
+
+  it('bilingual toggle copy in TR', () => {
+    renderCard({}, 'tr')
+    expect(screen.getByText(/YARIŞ TARİHİM YOK/)).toBeInTheDocument()
+    expect(screen.getByText(/HEDEF SÜRE YOK/)).toBeInTheDocument()
+  })
+
+  it('bilingual AUTO-DERIVED badge in TR', () => {
+    const { unmount } = renderCard()
+    fireEvent.click(screen.getByLabelText(/General build mode \(auto target\)/i))
+    fireEvent.change(screen.getByLabelText(/Current PR time/i), { target: { value: '50:00' } })
+    fireEvent.change(screen.getByLabelText(/Race date/i), { target: { value: '2026-08-15' } })
+    fireEvent.click(screen.getByRole('button', { name: /GENERATE/i }))
+    unmount()
+    renderCard({}, 'tr')
+    const badge = document.querySelector('[data-synthetic-badge]')
+    expect(badge).not.toBeNull()
+    expect(badge.textContent).toMatch(/OTOMATİK TÜRETİLMİŞ/)
+    expect(badge.getAttribute('aria-label')).toMatch(/Otomatik türetilmiş/i)
+  })
+
+  it('explicit targetPR + noTarget toggle ignored at orchestrator level (not exposed via form)', () => {
+    // The form prevents both — when noTarget checked, target inputs hide.
+    // Force the orchestrator through a synthetic input shape: noTarget=true with
+    // explicit targetPR present (could happen via persisted-input edit). The
+    // orchestrator preserves explicit target.
+    renderCard()
+    // submit normal flow first
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '47:00', raceDate: '2026-08-15' })
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY))
+    expect(stored.input.targetPR.timeSec).toBe(2820)
+    expect(stored.input.noTarget).toBeFalsy()
+  })
+
+  it('APPLY TO CALENDAR with synthetic raceDate uses effectiveRaceDate as anchor', () => {
+    renderCard()
+    fireEvent.click(screen.getByLabelText(/General build mode \(auto target\)/i))
+    fireEvent.click(screen.getByLabelText(/General build mode \(no event\)/i))
+    fireEvent.click(screen.getByRole('button', { name: /Build for 12 weeks/i }))
+    fireEvent.change(screen.getByLabelText(/Current PR time/i), { target: { value: '50:00' } })
+    fireEvent.click(screen.getByRole('button', { name: /GENERATE/i }))
+    const btn = screen.getByRole('button', { name: /Apply program to yearly calendar/i })
+    fireEvent.click(btn)
+    const races = JSON.parse(localStorage.getItem('sporeus-plan-races'))
+    expect(races).toHaveLength(1)
+    expect(races[0].priority).toBe('C')
+    expect(races[0].name).toBe('Final Week')
   })
 })

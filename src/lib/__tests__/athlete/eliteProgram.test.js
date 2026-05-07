@@ -400,3 +400,199 @@ describe('buildEliteProgram — output shape and metadata', () => {
     expect(r.feasibility.deltaPct).toBeCloseTo(6, 1)
   })
 })
+
+// ─── v8.96.0 — general-user paths (weeksOverride, noTarget, both) ────────────
+describe('buildEliteProgram — v8.96.0 weeksOverride (no race date)', () => {
+  it('weeksOverride=16, no raceDate → weeksAvailable=16 + synthetic raceDate marker', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 10000, timeSec: 3000 },
+      targetPR:  { distanceM: 10000, timeSec: 2820 },
+      sport: 'run',
+      weeksOverride: 16,
+      options: { today: TODAY },
+    })
+    expect(r).toBeTruthy()
+    expect(r.feasibility.weeksAvailable).toBe(16)
+    expect(r.synthetic).toBeTruthy()
+    expect(r.synthetic.raceDate).toBe(true)
+    expect(r.synthetic.raceLabel).toBe('FINAL WEEK')
+    expect(typeof r.feasibility.effectiveRaceDate).toBe('string')
+    // effectiveRaceDate = today + 16w = 2026-08-24
+    expect(r.feasibility.effectiveRaceDate).toBe('2026-08-24')
+  })
+
+  it('weeksOverride=100 → clamped to 52', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 10000, timeSec: 3000 },
+      targetPR:  { distanceM: 10000, timeSec: 2820 },
+      sport: 'run',
+      weeksOverride: 100,
+      options: { today: TODAY },
+    })
+    expect(r.feasibility.weeksAvailable).toBe(52)
+  })
+
+  it('weeksOverride=2 → clamped to 4', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 10000, timeSec: 3000 },
+      targetPR:  { distanceM: 10000, timeSec: 2940 },
+      sport: 'run',
+      weeksOverride: 2,
+      options: { today: TODAY },
+    })
+    expect(r.feasibility.weeksAvailable).toBe(4)
+  })
+
+  it('explicit raceDate AND weeksOverride → raceDate wins', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 10000, timeSec: 3000 },
+      targetPR:  { distanceM: 10000, timeSec: 2820 },
+      sport: 'run',
+      raceDate: '2026-08-25',     // ~16w
+      weeksOverride: 24,           // would otherwise force 24w
+      options: { today: TODAY },
+    })
+    expect(r.feasibility.weeksAvailable).toBe(16)
+    expect(r.synthetic).toBeUndefined()
+  })
+
+  it('raceDate=null AND weeksOverride=null AND noTarget=true → still rejects (no horizon)', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 10000, timeSec: 3000 },
+      sport: 'run',
+      noTarget: true,
+      options: { today: TODAY },
+    })
+    expect(r).toBeNull()
+  })
+})
+
+describe('buildEliteProgram — v8.96.0 noTarget synthetic target', () => {
+  it('run noTarget=true, 10K@50:00 over 16w → target VDOT ~ +1.7 from cVdot, deltaPct > 0', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 10000, timeSec: 3000 },
+      sport: 'run',
+      raceDate: '2026-08-25',  // ~16w
+      noTarget: true,
+      options: { today: TODAY },
+    })
+    expect(r).toBeTruthy()
+    expect(r.synthetic).toBeTruthy()
+    expect(r.synthetic.targetPR).toBe(true)
+    expect(r.feasibility.deltaPct).toBeGreaterThan(0)
+    // VDOT for 10K@50:00 ≈ 41.6; gain rate at <45 is 2.5 per 12w; 16w scale = 16/12 ≈ 1.33; gain ≈ 3.3
+    expect(r.targetLevel.vdot).toBeGreaterThan(r.currentLevel.vdot)
+    expect(r.targetLevel.vdot - r.currentLevel.vdot).toBeLessThanOrEqual(6 + 0.001) // cap
+  })
+
+  it('bike noTarget + FTP-direct (distanceM=0) synthesizes target watts', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 0, timeSec: 230 },  // 230W FTP
+      sport: 'bike',
+      raceDate: '2026-07-28',  // ~12w
+      noTarget: true,
+      options: { today: TODAY },
+    })
+    expect(r).toBeTruthy()
+    expect(r.synthetic.targetPR).toBe(true)
+    expect(r.targetLevel.ftp).toBeGreaterThan(r.currentLevel.ftp)
+    // Cap: target FTP - current FTP <= 30W
+    expect(r.targetLevel.ftp - r.currentLevel.ftp).toBeLessThanOrEqual(30)
+  })
+
+  it('bike noTarget + TT mode synthesizes faster TT time', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 40000, timeSec: 3600 },
+      sport: 'bike',
+      raceDate: '2026-08-25',
+      noTarget: true,
+      options: { today: TODAY },
+    })
+    expect(r).toBeTruthy()
+    expect(r.synthetic.targetPR).toBe(true)
+    expect(r.targetLevel.ftp).toBeGreaterThan(r.currentLevel.ftp)
+  })
+
+  it('swim noTarget synthesizes faster CSS pace', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 1500, timeSec: 1320 },  // 22:00
+      sport: 'swim',
+      raceDate: '2026-08-25',
+      noTarget: true,
+      options: { today: TODAY },
+    })
+    expect(r).toBeTruthy()
+    expect(r.synthetic.targetPR).toBe(true)
+    expect(r.targetLevel.css).toBeLessThan(r.currentLevel.css)
+  })
+
+  it('triathlon noTarget uses run formula for synthetic VDOT', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 10000, timeSec: 3000 },
+      sport: 'triathlon',
+      raceDate: '2026-08-25',
+      noTarget: true,
+      options: { today: TODAY },
+    })
+    expect(r).toBeTruthy()
+    expect(r.synthetic.targetPR).toBe(true)
+    expect(r.targetLevel.vdot).toBeGreaterThan(r.currentLevel.vdot)
+  })
+
+  it('explicit targetPR provided → noTarget flag ignored (explicit wins)', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 10000, timeSec: 3000 },
+      targetPR:  { distanceM: 10000, timeSec: 2820 },  // explicit 47:00
+      sport: 'run',
+      raceDate: '2026-08-25',
+      noTarget: true,
+      options: { today: TODAY },
+    })
+    expect(r).toBeTruthy()
+    expect(r.synthetic).toBeUndefined()
+    expect(r.resolvedTargetPR.timeSec).toBe(2820)
+  })
+
+  it('combined noTarget + weeksOverride (general-user mode) synthesizes both anchors', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 10000, timeSec: 3000 },
+      sport: 'run',
+      noTarget: true,
+      weeksOverride: 12,
+      options: { today: TODAY },
+    })
+    expect(r).toBeTruthy()
+    expect(r.synthetic).toBeTruthy()
+    expect(r.synthetic.targetPR).toBe(true)
+    expect(r.synthetic.raceDate).toBe(true)
+    expect(r.feasibility.weeksAvailable).toBe(12)
+    expect(r.recommendation.en).toMatch(/Auto-target derived/i)
+    expect(r.recommendation.tr).toMatch(/türetildi/i)
+  })
+
+  it('synthetic recommendation copy is bilingual', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 10000, timeSec: 3000 },
+      sport: 'run',
+      noTarget: true,
+      weeksOverride: 16,
+      options: { today: TODAY },
+    })
+    expect(r.recommendation.en).toMatch(/Daniels gain rate/i)
+    expect(r.recommendation.tr).toMatch(/Daniels gelişim hızı/i)
+  })
+
+  it('target-faster validation still applies post-synthesis (sanity)', () => {
+    // For very high VDOT, the gain may approach 0; the orchestrator still
+    // returns a synthetic target faster than current via cap math.
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 5000, timeSec: 900 },  // 15:00 5K
+      sport: 'run',
+      noTarget: true,
+      weeksOverride: 12,
+      options: { today: TODAY },
+    })
+    expect(r).toBeTruthy()
+    expect(r.targetLevel.vdot).toBeGreaterThan(r.currentLevel.vdot)
+  })
+})
