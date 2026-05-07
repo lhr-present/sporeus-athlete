@@ -12,6 +12,41 @@
 //   Coggan A. & Allen H. (2010). Training and Racing with a Power Meter, 2nd ed.
 //   Wakayoshi K. et al. (1992). Determination of critical velocity in swimming. Eur J Appl Physiol.
 //   Seiler S. (2010). What is best practice for training intensity distribution? IJSPP 5:276–291.
+//
+// ── Public API contract (v8.97.0) ────────────────────────────────────────────
+//
+// /**
+//  * @typedef {Object} EliteProgramFeasibility
+//  * @property {'comfortable'|'realistic'|'aggressive'|'unrealistic'} band
+//  * @property {number} weeksAvailable
+//  * @property {number} weeksNeeded
+//  * @property {number} deltaPct
+//  * @property {{en:string, tr:string}} note
+//  * @property {string} [effectiveRaceDate]   // v8.96 — synthesized when no raceDate
+//  */
+//
+// /**
+//  * @typedef {Object} EliteProgramSynthetic
+//  * @property {boolean} raceDate
+//  * @property {boolean} targetPR
+//  * @property {string|null} [raceLabel]
+//  */
+//
+// /**
+//  * @typedef {Object} EliteProgramResult
+//  * @property {EliteProgramFeasibility} feasibility
+//  * @property {string} sport
+//  * @property {Object} currentLevel  // {vdot|ftp|css, paces}
+//  * @property {Object} targetLevel
+//  * @property {Object} resolvedTargetPR  // v8.96 — final target PR (synthesized or explicit)
+//  * @property {EliteProgramSynthetic} [synthetic]  // v8.96 — present when target/race auto-derived
+//  * @property {Array}  phases
+//  * @property {Array<number>} weeklyTSS
+//  * @property {Object} sampleWeeks
+//  * @property {{en:string, tr:string}} recommendation
+//  * @property {string} citation
+//  * @property {boolean} reliable
+//  */
 
 import {
   vdotFromRace,
@@ -32,11 +67,13 @@ const CITATION = 'Daniels 2014; Bompa 2009; Mujika 2003; Coggan 2010; Wakayoshi 
 // ── Scientific model exposition (v8.92.0) ────────────────────────────────────
 // Surfaces the periodization model and per-phase physiological rationale so the
 // UI can render an "About this model" panel without duplicating citations.
+/** @public */
 export const MODEL_NAME = {
   en: 'Traditional Linear Periodization (Bompa 2009)',
   tr: 'Geleneksel Doğrusal Periyodizasyon (Bompa 2009)',
 }
 
+/** @public */
 export const PHASE_RATIONALE = {
   Base: {
     en: 'High-volume low-intensity work drives aerobic enzymatic adaptation, capillary density, and mitochondrial biogenesis. Easy zone-1/zone-2 mileage builds the substrate the later phases depend on.',
@@ -60,6 +97,7 @@ export const PHASE_RATIONALE = {
   },
 }
 
+/** @public */
 export const DELOAD_NOTE = {
   en: '3:1 deload — every 4th week drops to ~60% of build target to consolidate adaptations and limit overreaching (Issurin 2010; Mujika 2009)',
   tr: '3:1 deload — her 4. hafta yapı hedefinin ~%60\'ına iner; adaptasyonları pekiştirir ve aşırı yüklenmeyi sınırlar (Issurin 2010; Mujika 2009)',
@@ -86,6 +124,7 @@ function todayUTC() {
 // ── Sport-specific feasibility math ──────────────────────────────────────────
 
 // Daniels VDOT gain rate per 12-week block — mirrors raceGoalEngine private fn
+/** @internal */
 export function vdotGainPerBlock(vdot) {
   if (vdot < 35) return 3.5
   if (vdot < 45) return 2.5
@@ -94,6 +133,7 @@ export function vdotGainPerBlock(vdot) {
 }
 
 // FTP gain rate (W) per 12-week block (Coggan: ~3-5% for trained, ~8% for novices)
+/** @internal */
 export function ftpGainPerBlock(ftpW) {
   if (ftpW < 180) return ftpW * 0.10
   if (ftpW < 240) return ftpW * 0.07
@@ -103,6 +143,7 @@ export function ftpGainPerBlock(ftpW) {
 
 // CSS gain rate (sec/100m faster) per 12-week block.
 // Trained swimmers: ~3 s; intermediate: ~5 s; novices (CSS slower than 1:50/100m): ~7 s
+/** @internal */
 export function cssGainPerBlock(cssSecPer100m) {
   if (cssSecPer100m > 110) return 7
   if (cssSecPer100m > 90)  return 5
@@ -221,6 +262,7 @@ function buildWeeklyTSS(phasesArr, currentCTL) {
 }
 
 // ── Sample week templates ───────────────────────────────────────────────────
+/** @public */
 export function fmtPaceStr(secPerKm) {
   if (!secPerKm || secPerKm <= 0) return null
   const m = Math.floor(secPerKm / 60)
@@ -228,6 +270,7 @@ export function fmtPaceStr(secPerKm) {
   return `${m}:${String(s).padStart(2, '0')}/km`
 }
 
+/** @public */
 export function fmtSwimPace(secPer100) {
   if (!secPer100 || secPer100 <= 0) return null
   const m = Math.floor(secPer100 / 60)
@@ -387,6 +430,11 @@ function swimSampleWeek(phase, cssSec) {
 }
 
 // ── Main orchestrator ───────────────────────────────────────────────────────
+/**
+ * @public
+ * @param {Object} input
+ * @returns {EliteProgramResult|null}
+ */
 export function buildEliteProgram(input) {
   if (!input || typeof input !== 'object') return null
   const { currentPR, sport } = input

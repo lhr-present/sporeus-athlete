@@ -4,6 +4,135 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.97.0 — 2026-05-07 — Mission #1 pre-launch integration: lifecycle pill + share-with-coach + API contract (+28 tests), 9008 tests
+
+  Pre-launch integration wave. Shifts Mission #1 from
+  "feature-additive" to "audience-integrated." Three artifacts,
+  three audiences, one ship. After this Mission #1 has a stable
+  surface — deferred items (multi-race horizon, real-time coach
+  Supabase sync) become genuine Mission #2/#3 candidates rather
+  than Mission #1 polish.
+
+  src/lib/athlete/planLifecycle.js (NEW, ~190 lines):
+    Pure 6-state lifecycle classifier — getPlanLifecycle(program,
+    log, options) → lifecycle state with bilingual labels +
+    color hex + percent-complete progress.
+    State machine:
+      draft         — program saved, not yet applied
+      applied       — APPLY-TO-CALENDAR done, no log entries
+                      within program window
+      in-progress   — applied AND log has entries in window
+                      AND raceDate is future
+      complete      — raceDate passed AND matching race log
+                      entry within ±7d
+      autopsy-ready — raceDate passed within 14d, no race
+                      entry yet
+      expired       — raceDate >14d past, no race entry
+                      (athlete moved on)
+    percentComplete: 0 (draft) → 5 (applied) → 5..95 linear
+    (in-progress) → 100 (complete/autopsy-ready/expired).
+    Color hex per state: gray / blue / orange / green /
+    amber / faded.
+    Bilingual labels: EN + TR for each state (TASLAK,
+    UYGULANDI, DEVAM EDİYOR, TAMAMLANDI, OTOPSI HAZIR,
+    SÜRESİ DOLDU).
+    18 tests cover null inputs, all 6 states, percent-complete
+    monotonicity, bilingual labels, color stability,
+    daysToRace correctness, malformed log resilience,
+    multi-state walk-through over simulated time.
+
+  EliteProgramCard.jsx — lifecycle pill:
+    Added useLocalStorage(YEARLY_PLAN_KEY) hook + useMemo
+    lifecycle (placed above early-return for stable hook
+    order). Pill renders ABOVE the feasibility band in plan
+    mode. data-lifecycle attribute exposes state to tests +
+    SR users via aria-label "Plan status: COMPLETE" / TR
+    "Plan durumu: TAMAMLANDI". Hidden when reliable=false.
+
+  EliteProgramCard.jsx — SHARE WITH COACH button:
+    Third button in plan-mode action bar (alongside EXPORT
+    CSV + APPLY TO CALENDAR). onClick:
+      - Builds structured JSON payload v=1 with kind:
+        'sporeus-elite-program-share', includes
+        athleteSnapshot, physiology (sport-conditional
+        VDOT/FTP/CSS), phases array, synthetic flag, lifecycle,
+        citation, generatedAt.
+      - Tries navigator.clipboard.writeText. Success →
+        announce "Plan summary copied to clipboard. Paste
+        into your coach messaging."
+      - Failure → falls back to Blob+download (mirrors CSV
+        export pattern at eliteProgramExport.js).
+    Bilingual button copy: "SHARE WITH COACH · KOÇLA PAYLAŞ".
+    Fits CLAUDE.md "Coach messaging is file-based JSON
+    export/import" model — no new backend, no new Supabase
+    table.
+
+  src/lib/athlete/eliteProgram.js — JSDoc API contract:
+    Added top-of-file typedef block:
+      @typedef EliteProgramFeasibility
+      @typedef EliteProgramSynthetic
+      @typedef EliteProgramResult
+    Documents the public result shape that has grown over
+    waves v8.88 → v8.96 (band, weeksAvailable/Needed,
+    deltaPct, note, effectiveRaceDate, sport, currentLevel,
+    targetLevel, resolvedTargetPR, synthetic, phases,
+    weeklyTSS, sampleWeeks, recommendation, citation,
+    reliable). @public/@internal annotations on each export.
+    No new docs file (per CLAUDE.md "NEVER create
+    documentation files unless explicitly requested").
+    JSDoc inline only.
+
+  Audience-served map:
+    Athlete:
+      Lifecycle pill answers "where am I in this plan right
+      now?" — turns the program from a one-shot artifact
+      into a living document. Percent-complete progress
+      visible during in-progress phase.
+    Coach:
+      SHARE WITH COACH button bridges Mission #1 ↔ existing
+      coach JSON-messaging surface. Coach can ingest the
+      payload via existing file-based path. No new backend
+      required for v9.x launch.
+    Developer:
+      Public lib API getPlanLifecycle. Documented result
+      shape via JSDoc. @public/@internal annotations clarify
+      stability surface for v9.x semver.
+
+  Test counts:
+    planLifecycle lib:   18 new
+    EliteProgramCard:    +10 new (80 → 90)
+    Full suite:          8980 → 9008 (+28, all green, 370 files)
+    Lint:                clean
+    Build:               83.80 KB gz main (within 150 KB gate)
+
+  Known concerns about the share-payload as API contract
+  (flagged for v9.x review, not blocking launch):
+    - v=1 envelope is the right forward-compat hook. Once any
+      coach surface ingests kind='sporeus-elite-program-share'
+      we are committed to keeping the documented field shape
+      stable. Breaking shape changes must bump v to 2 with
+      both versions accepted by the coach ingest.
+    - synthetic field is passed through as-is from the
+      orchestrator. If the orchestrator's synthetic shape
+      changes downstream, share consumers feel it. Future
+      cleanup: wrap in an explicit projection helper.
+
+  DEPENDS ON: v8.91.0 (sporeus-eliteProgramStart anchor used
+  by lifecycle), v8.93.0 (autopsy result shape consumed by
+  share payload), v8.96.0 (effectiveRaceDate +
+  resolvedTargetPR fields surfaced via lifecycle).
+
+  Files added:
+    src/lib/athlete/planLifecycle.js (~190 lines)
+    src/lib/__tests__/athlete/planLifecycle.test.js (18 tests)
+  Files modified:
+    src/components/dashboard/EliteProgramCard.jsx
+    src/components/__tests__/EliteProgramCard.test.jsx
+    src/lib/athlete/eliteProgram.js (JSDoc only — no
+                                     behavior change)
+
+---
+
 ## v8.96.0 — 2026-05-07 — Mission #1 general-app-use wave 2: NO RACE DATE + NO TARGET TIME toggles (+34 tests), 8980 tests
 
   Closes the audit's E2 + E3 gaps for general app users who don't

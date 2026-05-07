@@ -21,6 +21,7 @@ import { calculatePMC } from '../../lib/trainingLoad.js'
 import { announce } from '../../lib/a11y/announcer.js'
 import { criticalSwimSpeed, cssToSecPer100m } from '../../lib/sport/swimming.js'
 import { findRecentBest } from '../../lib/athlete/recentBest.js'
+import { getPlanLifecycle } from '../../lib/athlete/planLifecycle.js'
 
 const STORAGE_KEY = 'sporeus-eliteProgram'
 const START_KEY = 'sporeus-eliteProgramStart'
@@ -786,7 +787,8 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
   const [persisted, setPersisted] = useLocalStorage(STORAGE_KEY, null)
-  const [, setStart] = useLocalStorage(START_KEY, null)
+  const [programStart, setStart] = useLocalStorage(START_KEY, null)
+  const [yearlyPlanLs] = useLocalStorage(YEARLY_PLAN_KEY, null)
 
   // Derive personalization signal from caller-supplied log+profile so the
   // orchestrator does not silently default everyone to currentCTL=50.
@@ -830,6 +832,24 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
   }, [persisted])
   const result = evaluation.result
   const rejection = evaluation.rejection
+
+  // ── v8.97.0 — lifecycle pill (athlete-facing plan-status surface) ─────────
+  // Computed unconditionally so hook order remains stable across mode switches.
+  const lifecycle = useMemo(() => {
+    if (!result) return null
+    const programForLifecycle = {
+      input: persisted?.input || null,
+      feasibility: result.feasibility || null,
+      sport: result.sport || null,
+      resolvedTargetPR: result.resolvedTargetPR || null,
+    }
+    const todayIso = new Date().toISOString().slice(0, 10)
+    return getPlanLifecycle(programForLifecycle, _log || [], {
+      today: todayIso,
+      yearlyPlan: yearlyPlanLs,
+      programStart,
+    })
+  }, [result, persisted, _log, yearlyPlanLs, programStart])
 
   const ariaLabel = isTR ? 'Elit antrenman programı' : 'Elite training program'
   const cardBase = { ...S.card, animationDelay: '440ms', padding: '20px' }
@@ -889,6 +909,99 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
         />
       </div>
     )
+  }
+
+  // ── v8.97.0 — SHARE WITH COACH payload (developer-facing API contract) ───
+  function shareWithCoach() {
+    if (!result) return
+    const todayIso = new Date().toISOString().slice(0, 10)
+    const distanceM = persisted.input?.targetPR?.distanceM
+      ?? result?.resolvedTargetPR?.distanceM
+      ?? null
+    const targetTimeSec = persisted.input?.targetPR?.timeSec
+      ?? result?.resolvedTargetPR?.timeSec
+      ?? null
+    const payload = {
+      v: 1,
+      kind: 'sporeus-elite-program-share',
+      athleteSnapshot: {
+        sport: persisted.input?.sport || result?.sport || null,
+        distanceM,
+        currentTime: persisted.input?.currentPR?.timeSec ?? null,
+        targetTime: targetTimeSec,
+        raceDate: persisted.input?.raceDate
+          || result?.feasibility?.effectiveRaceDate
+          || null,
+        weeksAvailable: result.feasibility?.weeksAvailable ?? null,
+        weeksNeeded: result.feasibility?.weeksNeeded ?? null,
+        feasibilityBand: result.feasibility?.band || null,
+      },
+      physiology: {
+        currentVDOT: result.currentLevel?.vdot ?? null,
+        targetVDOT:  result.targetLevel?.vdot ?? null,
+        currentFTP:  result.currentLevel?.ftp ?? null,
+        targetFTP:   result.targetLevel?.ftp ?? null,
+        currentCSS:  result.currentLevel?.css ?? null,
+        targetCSS:   result.targetLevel?.css ?? null,
+      },
+      phases: Array.isArray(result.phases)
+        ? result.phases.map(p => ({
+            phase: p.phase,
+            weeks: Array.isArray(p.weeks) ? p.weeks.length : 0,
+          }))
+        : [],
+      synthetic: result.synthetic || null,
+      lifecycle: lifecycle ? {
+        state: lifecycle.state,
+        percentComplete: lifecycle.percentComplete,
+        daysToRace: lifecycle.daysToRace,
+      } : null,
+      citation: result.citation || null,
+      generatedAt: todayIso,
+    }
+    const json = JSON.stringify(payload, null, 2)
+    const successMsg = isTR
+      ? 'Plan özeti panoya kopyalandı. Koç mesajına yapıştır.'
+      : 'Plan summary copied to clipboard. Paste into your coach messaging.'
+    const fallbackMsg = isTR
+      ? 'Plan özeti dosya olarak indirildi.'
+      : 'Plan summary downloaded as a file.'
+
+    function fallbackDownload() {
+      if (typeof document === 'undefined' || typeof URL === 'undefined') return
+      try {
+        const blob = new Blob([json], { type: 'application/json;charset=utf-8' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'elite-program-share.json'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+        announce(fallbackMsg)
+      } catch {
+        announce(isTR ? 'Paylaşım başarısız' : 'Share failed')
+      }
+    }
+
+    const clip = (typeof navigator !== 'undefined' && navigator.clipboard)
+      ? navigator.clipboard
+      : null
+    if (clip && typeof clip.writeText === 'function') {
+      try {
+        const p = clip.writeText(json)
+        if (p && typeof p.then === 'function') {
+          p.then(() => announce(successMsg)).catch(() => fallbackDownload())
+        } else {
+          announce(successMsg)
+        }
+      } catch {
+        fallbackDownload()
+      }
+    } else {
+      fallbackDownload()
+    }
   }
 
   function applyToCalendar() {
@@ -984,6 +1097,13 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
             style={{ ...S.mono, fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '6px 10px', background: '#0064ff', color: '#fff', border: '1px solid #0064ff', borderRadius: '3px', cursor: 'pointer', minHeight: '32px' }}>
             {isTR ? 'TAKVİME UYGULA' : 'APPLY TO CALENDAR'}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>{isTR ? 'APPLY TO CALENDAR' : 'TAKVİME UYGULA'}
           </button>
+          <button type="button"
+            data-share-with-coach
+            onClick={shareWithCoach}
+            aria-label={isTR ? 'Plan özetini koçla paylaş' : 'Share plan summary with coach'}
+            style={{ ...S.mono, fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '6px 10px', background: 'transparent', color: '#0064ff', border: '1px solid #0064ff', borderRadius: '3px', cursor: 'pointer', minHeight: '32px' }}>
+            {isTR ? 'KOÇLA PAYLAŞ' : 'SHARE WITH COACH'}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>{isTR ? 'SHARE WITH COACH' : 'KOÇLA PAYLAŞ'}
+          </button>
           <button type="button" onClick={handleReset}
             aria-label={isTR ? 'Programı sıfırla' : 'Reset program'}
             style={{ ...S.mono, fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '6px 10px', background: 'transparent', color: '#ff6600', border: '1px solid #ff6600', borderRadius: '3px', cursor: 'pointer', minHeight: '32px' }}>
@@ -991,6 +1111,22 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
           </button>
         </div>
       </div>
+
+      {lifecycle && lifecycle.reliable ? (() => {
+        const lc = lifecycle
+        const lcLabel = lc.label?.[isTR ? 'tr' : 'en'] || lc.state.toUpperCase()
+        const showPct = lc.percentComplete > 5 && lc.percentComplete < 95
+        const ariaLbl = isTR
+          ? `Plan durumu: ${lcLabel}`
+          : `Plan status: ${lcLabel}`
+        return (
+          <div role="status" data-lifecycle={lc.state}
+            aria-label={ariaLbl}
+            style={{ display: 'inline-block', ...S.mono, fontSize: '10px', fontWeight: 700, color: '#fff', background: lc.color, padding: '3px 8px', borderRadius: '3px', letterSpacing: '0.08em', marginBottom: '6px', marginRight: '6px' }}>
+            {lcLabel}{showPct ? ` · ${lc.percentComplete}%` : ''}
+          </div>
+        )
+      })() : null}
 
       <div aria-live="polite" aria-label={isTR ? `Fizibilite: ${bandLbl}` : `Feasibility: ${bandLbl}`} data-band={result.feasibility.band}
         style={{ display: 'inline-block', ...S.mono, fontSize: '11px', fontWeight: 700, color: '#fff', background: accent, padding: '4px 10px', borderRadius: '3px', letterSpacing: '0.08em', marginBottom: '4px' }}>

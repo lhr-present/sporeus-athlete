@@ -974,3 +974,152 @@ describe('EliteProgramCard — v8.96.0 general-user toggles', () => {
     expect(races[0].name).toBe('Final Week')
   })
 })
+
+// ─── v8.97.0 — lifecycle pill + SHARE WITH COACH ────────────────────────────
+describe('EliteProgramCard — v8.97.0 lifecycle + share', () => {
+  it('lifecycle pill renders in plan mode after submit', () => {
+    renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    const pill = document.querySelector('[data-lifecycle]')
+    expect(pill).not.toBeNull()
+  })
+
+  it('pill data-lifecycle attribute is "draft" since no yearly plan applied', () => {
+    renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    const pill = document.querySelector('[data-lifecycle]')
+    expect(pill).not.toBeNull()
+    expect(pill.getAttribute('data-lifecycle')).toBe('draft')
+  })
+
+  it('pill text bilingual EN/TR', () => {
+    const { unmount } = renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    let pill = document.querySelector('[data-lifecycle]')
+    expect(pill.textContent).toMatch(/DRAFT/)
+    unmount()
+    renderCard({}, 'tr')
+    pill = document.querySelector('[data-lifecycle]')
+    expect(pill).not.toBeNull()
+    expect(pill.textContent).toMatch(/TASLAK/)
+  })
+
+  it('SHARE WITH COACH button renders bilingual', () => {
+    renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    const btn = screen.getByRole('button', { name: /Share plan summary with coach/i })
+    expect(btn).toBeInTheDocument()
+    expect(btn.textContent).toMatch(/SHARE WITH COACH/)
+    expect(btn.textContent).toMatch(/KOÇLA PAYLAŞ/)
+  })
+
+  it('click SHARE writes JSON to clipboard (mocked navigator.clipboard.writeText)', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    const orig = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    })
+    try {
+      renderCard()
+      fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+      const btn = screen.getByRole('button', { name: /Share plan summary with coach/i })
+      fireEvent.click(btn)
+      expect(writeText).toHaveBeenCalledTimes(1)
+      const json = writeText.mock.calls[0][0]
+      const parsed = JSON.parse(json)
+      expect(parsed.kind).toBe('sporeus-elite-program-share')
+      expect(parsed.v).toBe(1)
+    } finally {
+      if (orig) Object.defineProperty(navigator, 'clipboard', orig)
+      else delete navigator.clipboard
+    }
+  })
+
+  it('JSON shape includes athleteSnapshot, physiology, phases, citation', () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    const orig = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    })
+    try {
+      renderCard()
+      fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+      fireEvent.click(screen.getByRole('button', { name: /Share plan summary with coach/i }))
+      const parsed = JSON.parse(writeText.mock.calls[0][0])
+      expect(parsed.athleteSnapshot).toBeDefined()
+      expect(parsed.athleteSnapshot.sport).toBe('run')
+      expect(parsed.athleteSnapshot.feasibilityBand).toBeTruthy()
+      expect(parsed.physiology).toBeDefined()
+      expect(parsed.physiology.currentVDOT).toEqual(expect.any(Number))
+      expect(Array.isArray(parsed.phases)).toBe(true)
+      expect(parsed.phases.length).toBeGreaterThan(0)
+      expect(parsed.citation).toMatch(/Daniels 2014/)
+      expect(parsed.lifecycle).toBeDefined()
+      expect(parsed.generatedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    } finally {
+      if (orig) Object.defineProperty(navigator, 'clipboard', orig)
+      else delete navigator.clipboard
+    }
+  })
+
+  it('clipboard rejection falls back to Blob+download (URL.createObjectURL invoked)', async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error('denied'))
+    const origClip = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    })
+    const createObjectURL = vi.fn().mockReturnValue('blob:mock-url')
+    const revokeObjectURL = vi.fn()
+    const origCreate = URL.createObjectURL
+    const origRevoke = URL.revokeObjectURL
+    URL.createObjectURL = createObjectURL
+    URL.revokeObjectURL = revokeObjectURL
+    try {
+      renderCard()
+      fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+      fireEvent.click(screen.getByRole('button', { name: /Share plan summary with coach/i }))
+      // Allow rejected promise microtask to resolve
+      await Promise.resolve()
+      await Promise.resolve()
+      expect(writeText).toHaveBeenCalled()
+      expect(createObjectURL).toHaveBeenCalled()
+    } finally {
+      URL.createObjectURL = origCreate
+      URL.revokeObjectURL = origRevoke
+      if (origClip) Object.defineProperty(navigator, 'clipboard', origClip)
+      else delete navigator.clipboard
+    }
+  })
+
+  it('pill hidden in form mode (no plan yet)', () => {
+    renderCard()
+    expect(document.querySelector('[data-lifecycle]')).toBeNull()
+  })
+
+  it('pill state "applied" when yearly-plan localStorage has weeks with TSS > 0', () => {
+    // Pre-seed yearly-plan as if APPLY TO CALENDAR has been clicked
+    localStorage.setItem('sporeus-yearly-plan', JSON.stringify({
+      weeks: [{ targetTSS: 250 }, { targetTSS: 300 }, { targetTSS: 320 }],
+      model: 'traditional',
+    }))
+    renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    const pill = document.querySelector('[data-lifecycle]')
+    expect(pill).not.toBeNull()
+    // No log entries supplied → applied state expected
+    expect(pill.getAttribute('data-lifecycle')).toBe('applied')
+  })
+
+  it('aria-label on pill exposes plan-status semantics', () => {
+    renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    const pill = document.querySelector('[data-lifecycle]')
+    expect(pill).not.toBeNull()
+    const aria = pill.getAttribute('aria-label') || ''
+    expect(aria).toMatch(/Plan status/i)
+    expect(pill.getAttribute('role')).toBe('status')
+  })
+})
