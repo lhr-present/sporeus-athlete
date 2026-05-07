@@ -4,6 +4,101 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.99.0 — 2026-05-07 — Mission #1 RE-PROJECT button — close the adherence-action loop (+12 tests), 9043 tests
+
+  v8.98 detected adherence ("80% — consider extending race date")
+  but had no action surface — athlete had to manually re-enter the
+  form. v8.99 adds the action: a RE-PROJECT button that takes
+  the trajectory + actual fitness gap and pre-fills the form
+  with a concrete adjustment.
+
+  src/lib/athlete/planAdherence.js — buildReprojectionSuggestion:
+    Pure helper that returns null when no adjustment is warranted
+    (trajectory on-track or ahead) or when inputs are missing.
+    Strategies:
+      behind   → extend race date by 2 weeks, keep target
+      critical → extend race date by 4 weeks AND soften target
+                 by 5%
+    Sport-aware target softening:
+      run / triathlon / swim: target time becomes slower (×1.05)
+      bike (TT mode):         target time becomes slower (×1.05)
+      bike-direct (distanceM=0): target watts become lower
+                                  (×0.95) since wattage convention
+                                  is bigger=better
+    Falls back to program.feasibility.effectiveRaceDate when
+    input.raceDate is missing (synthetic-anchor case from
+    v8.96.0). Bilingual reasoning copy includes the actual gap
+    percent so athlete sees "20% behind" not "you're behind."
+    Returns: { strategy, addWeeks, newRaceDate,
+               adjustedTargetTimeSec, originalTargetTimeSec,
+               targetSoftenPct, reasoning, reliable }
+    11 tests cover null/unreliable inputs, all 4 trajectories,
+    sport-direction-correct softening, raceDate fallback,
+    originalTargetTimeSec preservation for UI diffing,
+    bilingual reasoning gap-percent inclusion.
+
+  EliteProgramCard.jsx — RE-PROJECT button:
+    AdherenceSection extended to accept reprojection +
+    onReproject props. Button renders inside the section ONLY
+    when reprojection is non-null and reliable (i.e. only for
+    behind/critical trajectories). Color matches trajectory.
+    onClick handler:
+      1. confirm() with bilingual reasoning + new race date
+      2. On accept: builds adjusted form payload mirroring
+         FormMode.savePersistedForm shape, including
+         sport-mode toggle preservation (bikeFtpDirect,
+         currentWatts, targetWatts, swim2TT, weeksOverride)
+      3. setPersisted({ input: null, form }) so the card
+         switches to form mode pre-filled with the adjusted
+         values
+      4. Clears sporeus-eliteProgramStart so the new generate
+         writes a fresh anchor
+      5. Bilingual announce confirming the new race date
+
+  Action-loop closed:
+    detect (v8.98) → recommend (v8.98 adherence.recommendation)
+    → action (v8.99 RE-PROJECT button) → regenerate
+    (existing form path)
+    Athlete sees "20% behind. Extending race date by 2 weeks
+    restores feasibility while keeping the target." → one
+    click → form pre-filled with the new date → press
+    GENERATE → fresh plan with adjusted feasibility.
+
+  Audience-served map:
+    Athlete: turns adherence telemetry into a concrete
+             one-click corrective action. No more re-typing
+             the form.
+    Coach:   when athlete shares the post-reprojection plan
+             via v=1 envelope, coach sees both the original
+             and the adjusted target via the form payload.
+    Developer: pure buildReprojectionSuggestion is reusable
+               for future automation (e.g. weekly adherence
+               nudges, coach-pushed reprojections).
+
+  Test counts:
+    planAdherence:       +11 (44 → 55)
+    Full suite:          9031 → 9043 (+12, all green, 370 files)
+    Lint:                clean
+    Build:               83.80 KB gz main (within 150 KB gate)
+
+  Known scope choice (deferred to future wave):
+    The button currently routes through the form-regenerate
+    path (writes adjusted form, sets input=null). A future
+    enhancement could regenerate the program in-place without
+    re-prompting GENERATE. Left out to keep the "re-project"
+    semantics explicit (athlete confirms the new plan).
+
+  DEPENDS ON: v8.96.0 (effectiveRaceDate fallback path),
+  v8.97.0 (program shape with input + feasibility), v8.98.0
+  (adherence trajectory enum that drives the suggestion).
+
+  Files modified:
+    src/lib/athlete/planAdherence.js (extended)
+    src/lib/__tests__/athlete/planAdherence.test.js
+    src/components/dashboard/EliteProgramCard.jsx
+
+---
+
 ## v8.98.0 — 2026-05-07 — Mission #1 adherence + make-up suggestion (+23 tests), 9031 tests
 
   Closes the loop between the prescribed plan and actual training.

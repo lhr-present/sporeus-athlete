@@ -4,6 +4,7 @@ import {
   computePlanAdherence,
   computeAdherenceSummary,
   buildPlanAdherence,
+  buildReprojectionSuggestion,
 } from '../../athlete/planAdherence.js'
 
 // ─── Synthetic data builders ───────────────────────────────────────────────────
@@ -540,5 +541,139 @@ describe('buildPlanAdherence — v8.98.0', () => {
     const r = buildPlanAdherence(program, [], { programStart: PROGRAM_START, today: TODAY_4W })
     expect(r.reliable).toBe(false)
     expect(r.weeksAnalyzed).toBe(0)
+  })
+})
+
+// ─── buildReprojectionSuggestion (v8.99.0) ────────────────────────────────
+describe('buildReprojectionSuggestion — v8.99.0', () => {
+  function makeProgramWithInput({
+    sport = 'run',
+    currentTimeSec = 50 * 60,
+    targetTimeSec = 45 * 60,
+    distanceM = 10000,
+    raceDate = '2026-08-15',
+    weeklyTSS = [300, 300, 300, 300, 300, 300, 300, 300, 300, 300, 300, 300, 300, 300, 300, 300],
+  } = {}) {
+    return {
+      weeklyTSS,
+      input: {
+        sport,
+        currentPR: { distanceM, timeSec: currentTimeSec },
+        targetPR:  { distanceM, timeSec: targetTimeSec },
+        raceDate,
+      },
+      feasibility: { weeksAvailable: weeklyTSS.length, effectiveRaceDate: raceDate },
+      resolvedTargetPR: { distanceM, timeSec: targetTimeSec },
+    }
+  }
+
+  it('returns null when adherence is null', () => {
+    const r = buildReprojectionSuggestion(makeProgramWithInput(), null)
+    expect(r).toBeNull()
+  })
+
+  it('returns null when adherence is unreliable', () => {
+    const adherence = { reliable: false, trajectory: 'critical' }
+    const r = buildReprojectionSuggestion(makeProgramWithInput(), adherence)
+    expect(r).toBeNull()
+  })
+
+  it('returns null for on-track trajectory (no adjustment needed)', () => {
+    const adherence = { reliable: true, trajectory: 'on-track', adherencePct: 95 }
+    const r = buildReprojectionSuggestion(makeProgramWithInput(), adherence)
+    expect(r).toBeNull()
+  })
+
+  it('returns null for ahead trajectory (no adjustment needed)', () => {
+    const adherence = { reliable: true, trajectory: 'ahead', adherencePct: 115 }
+    const r = buildReprojectionSuggestion(makeProgramWithInput(), adherence)
+    expect(r).toBeNull()
+  })
+
+  it('extends race date by 2 weeks for behind trajectory', () => {
+    const adherence = { reliable: true, trajectory: 'behind', adherencePct: 80 }
+    const r = buildReprojectionSuggestion(makeProgramWithInput({ raceDate: '2026-08-15' }), adherence)
+    expect(r).not.toBeNull()
+    expect(r.strategy).toBe('extend')
+    expect(r.addWeeks).toBe(2)
+    expect(r.newRaceDate).toBe('2026-08-29')
+    expect(r.adjustedTargetTimeSec).toBeNull()
+    expect(r.targetSoftenPct).toBe(0)
+  })
+
+  it('extends race date by 4 weeks AND softens target for critical trajectory (run)', () => {
+    const adherence = { reliable: true, trajectory: 'critical', adherencePct: 60 }
+    const r = buildReprojectionSuggestion(
+      makeProgramWithInput({ raceDate: '2026-08-15', targetTimeSec: 40 * 60 }),
+      adherence
+    )
+    expect(r.strategy).toBe('extend-and-soften')
+    expect(r.addWeeks).toBe(4)
+    expect(r.newRaceDate).toBe('2026-09-12')
+    // target was 40:00 = 2400s; softening +5% = 2520s = 42:00
+    expect(r.adjustedTargetTimeSec).toBe(2520)
+    expect(r.targetSoftenPct).toBe(5)
+  })
+
+  it('softens target by lowering watts for bike-direct mode (critical)', () => {
+    const adherence = { reliable: true, trajectory: 'critical', adherencePct: 60 }
+    const program = makeProgramWithInput({
+      sport: 'bike',
+      distanceM: 0,           // bike-direct convention
+      currentTimeSec: 240,    // current FTP watts
+      targetTimeSec: 280,     // target FTP watts (bigger=better)
+    })
+    program.resolvedTargetPR = { distanceM: 0, timeSec: 280 }
+    const r = buildReprojectionSuggestion(program, adherence)
+    expect(r.strategy).toBe('extend-and-soften')
+    // bike-direct: softening lowers wattage; 280 * 0.95 = 266
+    expect(r.adjustedTargetTimeSec).toBe(266)
+  })
+
+  it('reasoning includes the gap percent for both trajectories', () => {
+    const adhBehind = { reliable: true, trajectory: 'behind', adherencePct: 80 }
+    const r1 = buildReprojectionSuggestion(makeProgramWithInput(), adhBehind)
+    expect(r1.reasoning.en).toMatch(/20%/)
+    expect(r1.reasoning.tr).toMatch(/20%/)
+
+    const adhCritical = { reliable: true, trajectory: 'critical', adherencePct: 55 }
+    const r2 = buildReprojectionSuggestion(makeProgramWithInput(), adhCritical)
+    expect(r2.reasoning.en).toMatch(/45%/)
+    expect(r2.reasoning.tr).toMatch(/45%/)
+  })
+
+  it('returns null when program has no targetPR', () => {
+    const program = makeProgramWithInput()
+    program.input.targetPR = null
+    program.resolvedTargetPR = null
+    const adherence = { reliable: true, trajectory: 'behind', adherencePct: 80 }
+    expect(buildReprojectionSuggestion(program, adherence)).toBeNull()
+  })
+
+  it('returns null when raceDate is missing entirely', () => {
+    const program = makeProgramWithInput()
+    program.input.raceDate = null
+    program.feasibility = { weeksAvailable: 16 }   // no effectiveRaceDate
+    const adherence = { reliable: true, trajectory: 'behind', adherencePct: 80 }
+    expect(buildReprojectionSuggestion(program, adherence)).toBeNull()
+  })
+
+  it('falls back to feasibility.effectiveRaceDate when input.raceDate is missing', () => {
+    const program = makeProgramWithInput()
+    program.input.raceDate = null
+    program.feasibility = { weeksAvailable: 16, effectiveRaceDate: '2026-09-01' }
+    const adherence = { reliable: true, trajectory: 'behind', adherencePct: 80 }
+    const r = buildReprojectionSuggestion(program, adherence)
+    expect(r).not.toBeNull()
+    expect(r.newRaceDate).toBe('2026-09-15')
+  })
+
+  it('preserves originalTargetTimeSec for UI diffing', () => {
+    const adherence = { reliable: true, trajectory: 'critical', adherencePct: 60 }
+    const r = buildReprojectionSuggestion(
+      makeProgramWithInput({ targetTimeSec: 2400 }),
+      adherence
+    )
+    expect(r.originalTargetTimeSec).toBe(2400)
   })
 })

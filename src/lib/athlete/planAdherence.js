@@ -444,3 +444,96 @@ export function buildPlanAdherence(program, log, options = {}) {
     citation: ADHERENCE_CITATION,
   }
 }
+
+// ─── Reprojection (v8.99.0) ──────────────────────────────────────────────────
+// When adherence detects the athlete behind the plan, suggest a concrete
+// adjustment: extend the race date OR soften the target. Pure helper that
+// computes the suggested deltas so the UI can render a confirm dialog and
+// pre-fill the regenerate-form path.
+
+/**
+ * Compute a reprojection suggestion given an in-flight program and its
+ * adherence telemetry. Returns null when no adjustment is warranted
+ * (trajectory on-track or ahead) or when inputs are missing.
+ *
+ * Strategy:
+ *   trajectory='behind'   → extend race date by 2 weeks, keep target
+ *   trajectory='critical' → extend race date by 4 weeks AND soften
+ *                            target by 5% (run/tri: VDOT-anchored;
+ *                            bike: FTP-anchored; swim: pace-anchored)
+ *
+ * @param {Object} program   buildEliteProgram() result with input + feasibility
+ * @param {Object} adherence buildPlanAdherence() result
+ * @param {Object} options   { today: ISO date|null }
+ * @returns {{
+ *   strategy: 'extend' | 'extend-and-soften',
+ *   addWeeks: number,
+ *   newRaceDate: string,
+ *   adjustedTargetTimeSec: number | null,   // null when no softening
+ *   originalTargetTimeSec: number,
+ *   targetSoftenPct: number,                // 0 when extend-only
+ *   reasoning: { en: string, tr: string },
+ *   reliable: boolean,
+ * } | null}
+ *
+ * @public
+ */
+export function buildReprojectionSuggestion(program, adherence, options = {}) {
+  if (!program || !adherence || !adherence.reliable) return null
+  if (adherence.trajectory !== 'behind' && adherence.trajectory !== 'critical') return null
+
+  const input = program.input || {}
+  const targetPR = program.resolvedTargetPR || input.targetPR
+  if (!targetPR || typeof targetPR.timeSec !== 'number' || targetPR.timeSec <= 0) return null
+
+  const raceDateStr = input.raceDate || program.feasibility?.effectiveRaceDate
+  if (!raceDateStr) return null
+
+  const today = options.today || new Date().toISOString().slice(0, 10)
+  const todayD = adhParseUTC(today)
+  const raceD = adhParseUTC(raceDateStr)
+  if (!todayD || !raceD) return null
+
+  const isCritical = adherence.trajectory === 'critical'
+  const addWeeks = isCritical ? 4 : 2
+  const targetSoftenPct = isCritical ? 5 : 0
+
+  const newRaceD = adhAddDays(raceD, addWeeks * 7)
+  const newRaceDate = adhIso(newRaceD)
+
+  let adjustedTargetTimeSec = null
+  if (isCritical && targetPR.timeSec > 0) {
+    // Bike-direct convention: timeSec is wattage and bigger = better.
+    const bikeDirectFtp = input.sport === 'bike'
+      && (targetPR.distanceM === 0 || targetPR.distanceM == null)
+    if (bikeDirectFtp) {
+      // Soften = lower wattage target.
+      adjustedTargetTimeSec = Math.round(targetPR.timeSec * (1 - targetSoftenPct / 100))
+    } else {
+      // Soften = slower (larger) time target.
+      adjustedTargetTimeSec = Math.round(targetPR.timeSec * (1 + targetSoftenPct / 100))
+    }
+  }
+
+  const gap = Math.max(0, 100 - adherence.adherencePct)
+  const reasoning = isCritical
+    ? {
+      en: `${gap}% behind. Extend race date by ${addWeeks} weeks AND soften target by ${targetSoftenPct}% to restore feasibility.`,
+      tr: `${gap}% geride. Yarış tarihini ${addWeeks} hafta ertele VE hedefi ${targetSoftenPct}% yumuşat — fizibilite geri kazanılır.`,
+    }
+    : {
+      en: `${gap}% behind. Extending race date by ${addWeeks} weeks restores feasibility while keeping the target.`,
+      tr: `${gap}% geride. Yarış tarihini ${addWeeks} hafta ertelemek hedef korunarak fizibiliteyi geri getirir.`,
+    }
+
+  return {
+    strategy: isCritical ? 'extend-and-soften' : 'extend',
+    addWeeks,
+    newRaceDate,
+    adjustedTargetTimeSec,
+    originalTargetTimeSec: targetPR.timeSec,
+    targetSoftenPct,
+    reasoning,
+    reliable: true,
+  }
+}

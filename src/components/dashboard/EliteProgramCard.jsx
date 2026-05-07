@@ -22,7 +22,7 @@ import { announce } from '../../lib/a11y/announcer.js'
 import { criticalSwimSpeed, cssToSecPer100m } from '../../lib/sport/swimming.js'
 import { findRecentBest } from '../../lib/athlete/recentBest.js'
 import { getPlanLifecycle } from '../../lib/athlete/planLifecycle.js'
-import { buildPlanAdherence } from '../../lib/athlete/planAdherence.js'
+import { buildPlanAdherence, buildReprojectionSuggestion } from '../../lib/athlete/planAdherence.js'
 
 const STORAGE_KEY = 'sporeus-eliteProgram'
 const START_KEY = 'sporeus-eliteProgramStart'
@@ -805,7 +805,7 @@ const INTENT_LABEL = {
   intervals: { en: 'intervals',   tr: 'interval' },
 }
 
-function AdherenceSection({ adherence, isTR }) {
+function AdherenceSection({ adherence, reprojection, onReproject, isTR }) {
   if (!adherence || !adherence.reliable) return null
   const traj = adherence.trajectory
   const color = TRAJECTORY_COLOR[traj] || '#6c757d'
@@ -816,6 +816,7 @@ function AdherenceSection({ adherence, isTR }) {
   const message = adherence.message?.[isTR ? 'tr' : 'en'] || ''
   const missed = Array.isArray(adherence.missedKeySessions) ? adherence.missedKeySessions : []
   const showMissed = missed.length > 0 && missed.length <= 3
+  const showReproject = !!(reprojection && reprojection.reliable && onReproject)
 
   return (
     <div role="region" data-adherence-section
@@ -861,6 +862,14 @@ function AdherenceSection({ adherence, isTR }) {
             )
           })}
         </ul>
+      ) : null}
+      {showReproject ? (
+        <button type="button" onClick={onReproject}
+          data-reproject-btn data-reproject-strategy={reprojection.strategy}
+          aria-label={isTR ? 'Programı yeniden hesapla' : 'Re-project program'}
+          style={{ ...S.mono, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', padding: '6px 10px', marginTop: '8px', background: color, color: '#fff', border: 'none', borderRadius: '3px', cursor: 'pointer', minHeight: '32px' }}>
+          {isTR ? 'YENİDEN HESAPLA' : 'RE-PROJECT'}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>{isTR ? 'RE-PROJECT' : 'YENİDEN HESAPLA'}
+        </button>
       ) : null}
     </div>
   )
@@ -948,6 +957,17 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
     })
   }, [result, _log, programStart, persisted])
 
+  // ── v8.99.0 — reprojection suggestion ─────────────────────────────────────
+  // When adherence trajectory is behind/critical, computeReprojection produces
+  // a concrete adjustment (extend race date and/or soften target) that the
+  // RE-PROJECT button writes back to the form.
+  const reprojection = useMemo(() => {
+    if (!result || !adherence) return null
+    const programWithInput = { ...result, input: persisted?.input || {} }
+    const todayIso = new Date().toISOString().slice(0, 10)
+    return buildReprojectionSuggestion(programWithInput, adherence, { today: todayIso })
+  }, [result, adherence, persisted])
+
   const ariaLabel = isTR ? 'Elit antrenman programı' : 'Elite training program'
   const cardBase = { ...S.card, animationDelay: '440ms', padding: '20px' }
   const titleEN = 'ELITE PROGRAM', titleTR = 'ELİT PROGRAM'
@@ -978,6 +998,51 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
     if (!ok) return
     setPersisted(null)
     setStart(null)
+  }
+
+  function handleReproject() {
+    if (!reprojection || !reprojection.reliable || !persisted?.input) return
+    const reasoning = reprojection.reasoning?.[isTR ? 'tr' : 'en'] || ''
+    const prompt = isTR
+      ? `Önerilen ayarlama:\n\n${reasoning}\n\nFormu yeni değerlerle önceden doldurmak istiyor musun? (Mevcut planı yeniden oluşturman gerekecek.)`
+      : `Suggested adjustment:\n\n${reasoning}\n\nPre-fill the form with the new values? (You'll need to regenerate the plan.)`
+    const ok = (typeof window !== 'undefined' && typeof window.confirm === 'function')
+      ? window.confirm(prompt) : true
+    if (!ok) return
+
+    // Build adjusted form payload mirroring FormMode.savePersistedForm shape.
+    const inp = persisted.input
+    const sport = inp.sport
+    const cur = inp.currentPR || {}
+    const tgt = inp.targetPR || {}
+    const targetTimeSec = reprojection.adjustedTargetTimeSec ?? tgt.timeSec
+    const fmtMmSsLocal = (sec) => {
+      if (sec == null) return ''
+      const s = Math.round(sec)
+      const m = Math.floor(s / 60), r = s % 60
+      return `${m}:${String(r).padStart(2, '0')}`
+    }
+    const form = {
+      sport,
+      currentDist: cur.distanceM ?? 0,
+      currentTime: fmtMmSsLocal(cur.timeSec),
+      targetDist: tgt.distanceM ?? cur.distanceM ?? 0,
+      targetTime: fmtMmSsLocal(targetTimeSec),
+      raceDate: reprojection.newRaceDate,
+      // Sport-mode toggles preserved
+      bikeFtpDirect: !!persisted.form?.bikeFtpDirect,
+      currentWatts: persisted.form?.currentWatts || '',
+      targetWatts: persisted.form?.targetWatts || '',
+      swim2TT: !!persisted.form?.swim2TT,
+      noRaceDate: false,
+      weeksOverride: persisted.form?.weeksOverride || 16,
+      noTarget: false,
+    }
+    setPersisted({ input: null, form })
+    setStart(null)
+    announce(isTR
+      ? `Form yeni hedef tarihiyle dolduruldu: ${reprojection.newRaceDate}. Devam etmek için OLUŞTUR'a bas.`
+      : `Form pre-filled with new race date ${reprojection.newRaceDate}. Press GENERATE to continue.`)
   }
 
   if (!result) {
@@ -1226,7 +1291,12 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
       })() : null}
 
       {lifecycle && lifecycle.state === 'in-progress' && adherence && adherence.reliable ? (
-        <AdherenceSection adherence={adherence} isTR={isTR} />
+        <AdherenceSection
+          adherence={adherence}
+          reprojection={reprojection}
+          onReproject={handleReproject}
+          isTR={isTR}
+        />
       ) : null}
 
       <div aria-live="polite" aria-label={isTR ? `Fizibilite: ${bandLbl}` : `Feasibility: ${bandLbl}`} data-band={result.feasibility.band}
