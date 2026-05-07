@@ -4,6 +4,82 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.0.0 — 2026-05-07 — LAUNCH MARKER · Mission #1 complete
+
+  Version bump only. Marks Mission #1 (Elite Program Builder)
+  as feature-complete and launch-ready after 15 waves of
+  development from v8.88 through v8.103.
+
+  Package: 11.0.20 → 11.1.0 (minor — signals Mission #1
+  milestone; reserves 12.0.0 for Mission #2 / coach-Supabase
+  integration major bump).
+
+  Final state at launch:
+    Tests:    9106 / 9106 passing across 373 files
+    Lint:     clean (--max-warnings 0)
+    Bundle:   83.81 KB gz main (11 KB headroom under 95 KB
+              budget)
+    Deploy:   app.sporeus.com (live)
+
+  Mission #1 closed-loop chain:
+    NEW USER → MissionHeadline → GET STARTED CTA →
+    EliteProgramCard 4-input form (with 5 progressive
+    accelerators: recent-best autofill, FTP-direct,
+    Wakayoshi 2-TT, NO RACE, NO TARGET) →
+    buildEliteProgram orchestrator (VDOT/FTP/CSS levels +
+    phase split + weeklyTSS + sample weeks) → APPLY TO
+    CALENDAR · SHARE WITH COACH · EXPORT CSV →
+    YearlyPlan 52-week editor + coach reads via
+    CoachAthleteProgramCard ingestion →
+    TodayProgrammedSessionCard daily anchor →
+    Plan Adherence telemetry + RE-PROJECT button when
+    behind → RACE DAY → autopsy → GENERATE NEXT CYCLE
+    pre-fill.
+
+  Public lib surface (all @public):
+    buildEliteProgram, buildEliteProgramAutopsy,
+    eliteProgramToYearlyWeeks, eliteProgramToCSV,
+    downloadEliteProgramCSV, getPlanLifecycle,
+    buildPlanAdherence, buildReprojectionSuggestion,
+    findRecentBest, parseCoachShareEnvelope,
+    validateCoachShareEnvelope, getTodayProgrammedSession,
+    MODEL_NAME, PHASE_RATIONALE, PHASE_FOCUS, DELOAD_NOTE,
+    COACH_SHARE_ERRORS
+
+  JSDoc typedefs (single source of truth):
+    EliteProgramResult, EliteProgramFeasibility,
+    EliteProgramSynthetic, CoachShareEnvelope_V1
+
+  Audiences served:
+    Athlete:   first-time UX is a single GET STARTED CTA
+               (was a 74-card grid pre-v8.102); full
+               closed-loop from input through race-day to
+               next cycle.
+    Coach:     CoachAthleteProgramCard ingests v=1 envelope
+               via paste/upload (file-based, no backend);
+               read-only structured snapshot with
+               physiology + phases + lifecycle.
+    Developer: documented JSDoc API contract; shared
+               _logSport.js helper; @public/@internal
+               annotations clarify the v9.x stability surface.
+
+  Items deferred as proper Mission #2 / Mission #3 scope:
+    - Multi-race horizon (B/C race micro-tapers within
+      season) — would touch orchestrator + bridge + form +
+      YearlyPlan integration; multi-week initiative.
+    - Real-time Supabase coach sync — would replace
+      file-based JSON envelope with backend table + RLS +
+      edge function + atomic athlete-side write hook +
+      coach-side read hook; multi-week initiative.
+
+  Cumulative test growth:
+    v8.88 baseline:  ~7700 tests
+    v9.0.0 launch:   9106 tests (+1406 tests over 15 waves)
+
+  No file changes in this commit. Pure version-bump marker.
+
+---
+
 ## v8.103.0 — 2026-05-07 — Mission #1 polish: PHASE_FOCUS dedup + envelope JSDoc + mobile action-bar (+6 tests), 9106 tests
 
   Closes three audit-flagged code-health items that were noted
