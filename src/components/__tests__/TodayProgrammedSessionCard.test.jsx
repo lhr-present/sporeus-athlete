@@ -145,6 +145,126 @@ describe('TodayProgrammedSessionCard', () => {
     expect(screen.getByText(/Program süresi sona erdi/)).toBeInTheDocument()
   })
 
+  // ── v8.93.0 race-result autopsy after-window branch ──────────────────────
+  describe('after-window autopsy', () => {
+    function renderCardWithLog(log, lang = 'en') {
+      const value = { t: k => k, lang, setLang: () => {} }
+      return render(
+        <LangCtx.Provider value={value}>
+          <TodayProgrammedSessionCard log={log} />
+        </LangCtx.Provider>
+      )
+    }
+
+    const RACE_LOG_ENTRY = {
+      date: '2026-09-04',
+      type: 'Race Run',
+      sport: 'run',
+      distanceM: 10000,
+      timeSec: 2700,  // exactly target → on-target
+    }
+
+    it('renders verdict pill + actual time when log has matching entry', () => {
+      persistProgram(RUN_INPUT)
+      vi.setSystemTime(new Date('2026-09-10T12:00:00Z'))
+      renderCardWithLog([RACE_LOG_ENTRY])
+      expect(screen.getByTestId('autopsy-verdict-pill')).toBeInTheDocument()
+      expect(screen.getByText('45:00')).toBeInTheDocument()
+    })
+
+    it('renders ON TARGET label for matched target', () => {
+      persistProgram(RUN_INPUT)
+      vi.setSystemTime(new Date('2026-09-10T12:00:00Z'))
+      renderCardWithLog([RACE_LOG_ENTRY])
+      expect(screen.getByTestId('autopsy-verdict-pill')).toHaveTextContent('ON TARGET')
+    })
+
+    it('renders BEAT TARGET when athlete beat the target', () => {
+      persistProgram(RUN_INPUT)
+      vi.setSystemTime(new Date('2026-09-10T12:00:00Z'))
+      renderCardWithLog([{ ...RACE_LOG_ENTRY, timeSec: 2565 }])  // 5% faster
+      expect(screen.getByTestId('autopsy-verdict-pill')).toHaveTextContent('BEAT TARGET')
+    })
+
+    it('verdict pill is color-coded by verdict', () => {
+      persistProgram(RUN_INPUT)
+      vi.setSystemTime(new Date('2026-09-10T12:00:00Z'))
+      renderCardWithLog([{ ...RACE_LOG_ENTRY, timeSec: 2565 }])  // beat-target
+      const pill = screen.getByTestId('autopsy-verdict-pill')
+      expect(pill.style.background).toMatch(/#28a745|rgb\(40, 167, 69\)/i)
+    })
+
+    it('verdict pill has aria-label for accessibility', () => {
+      persistProgram(RUN_INPUT)
+      vi.setSystemTime(new Date('2026-09-10T12:00:00Z'))
+      renderCardWithLog([RACE_LOG_ENTRY])
+      const pill = screen.getByTestId('autopsy-verdict-pill')
+      expect(pill).toHaveAttribute('aria-label')
+    })
+
+    it('renders bilingual recommendation (EN + TR)', () => {
+      persistProgram(RUN_INPUT)
+      vi.setSystemTime(new Date('2026-09-10T12:00:00Z'))
+      renderCardWithLog([RACE_LOG_ENTRY])
+      expect(screen.getByText(/Build on a successful block/i)).toBeInTheDocument()
+      expect(screen.getByText(/Başarılı bloğun üzerine/)).toBeInTheDocument()
+    })
+
+    it('renders log-it nudge when no matching log entry exists', () => {
+      persistProgram(RUN_INPUT)
+      vi.setSystemTime(new Date('2026-09-10T12:00:00Z'))
+      renderCardWithLog([])  // no race entry
+      expect(screen.getByTestId('log-it-nudge')).toBeInTheDocument()
+      expect(screen.getByText(/Program window has ended/i)).toBeInTheDocument()
+    })
+
+    it('GENERATE NEXT CYCLE button writes form payload to localStorage', () => {
+      persistProgram(RUN_INPUT)
+      vi.setSystemTime(new Date('2026-09-10T12:00:00Z'))
+      renderCardWithLog([RACE_LOG_ENTRY])
+      const btn = screen.getByTestId('next-cycle-btn')
+      btn.click()
+      const stored = JSON.parse(localStorage.getItem(PROGRAM_KEY))
+      expect(stored.input).toBeNull()
+      expect(stored.form).toBeTruthy()
+      expect(stored.form.sport).toBe('run')
+      expect(stored.form.currentDist).toBe(10000)
+      expect(stored.form.targetDist).toBe(10000)
+      expect(stored.form.targetTime).toMatch(/^\d+:\d{2}$/)
+      expect(stored.form.raceDate).toBe('')
+    })
+
+    it('GENERATE NEXT CYCLE clears the program-start anchor', () => {
+      persistProgram(RUN_INPUT)
+      localStorage.setItem('sporeus-eliteProgramStart', JSON.stringify('2026-05-04'))
+      vi.setSystemTime(new Date('2026-09-10T12:00:00Z'))
+      renderCardWithLog([RACE_LOG_ENTRY])
+      screen.getByTestId('next-cycle-btn').click()
+      expect(localStorage.getItem('sporeus-eliteProgramStart')).toBe('null')
+    })
+
+    it('Turkish locale shows TR verdict label', () => {
+      persistProgram(RUN_INPUT)
+      vi.setSystemTime(new Date('2026-09-10T12:00:00Z'))
+      renderCardWithLog([RACE_LOG_ENTRY], 'tr')
+      expect(screen.getByTestId('autopsy-verdict-pill')).toHaveTextContent('HEDEFE TUTTU')
+    })
+
+    it('renders citation for autopsy', () => {
+      persistProgram(RUN_INPUT)
+      vi.setSystemTime(new Date('2026-09-10T12:00:00Z'))
+      renderCardWithLog([RACE_LOG_ENTRY])
+      expect(screen.getByText(/Daniels 2014 VDOT/)).toBeInTheDocument()
+    })
+
+    it('shows VDOT level achieved for run sport', () => {
+      persistProgram(RUN_INPUT)
+      vi.setSystemTime(new Date('2026-09-10T12:00:00Z'))
+      renderCardWithLog([RACE_LOG_ENTRY])
+      expect(screen.getByText(/VDOT \d/)).toBeInTheDocument()
+    })
+  })
+
   it('Turkish render of training day uses TR labels', () => {
     persistProgram(RUN_INPUT)
     vi.setSystemTime(new Date('2026-05-05T12:00:00Z'))

@@ -9,9 +9,33 @@ import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { getTodayProgrammedSession } from '../../lib/athlete/todayProgrammedSession.js'
 import { buildEliteProgram } from '../../lib/athlete/eliteProgram.js'
+import { buildEliteProgramAutopsy } from '../../lib/athlete/eliteProgramAutopsy.js'
+import { announce } from '../../lib/a11y/announcer.js'
 
 const PROGRAM_KEY = 'sporeus-eliteProgram'
 const START_KEY   = 'sporeus-eliteProgramStart'
+
+const VERDICT_COLOR = {
+  'beat-target':     '#28a745',
+  'on-target':       '#0064ff',
+  'shortfall':       '#ff9500',
+  'major-shortfall': '#dc3545',
+}
+
+const VERDICT_LBL = {
+  'beat-target':     { en: 'BEAT TARGET',     tr: 'HEDEFİ GEÇTİ' },
+  'on-target':       { en: 'ON TARGET',       tr: 'HEDEFE TUTTU' },
+  'shortfall':       { en: 'SHORTFALL',       tr: 'EKSİK KALDI' },
+  'major-shortfall': { en: 'MAJOR SHORTFALL', tr: 'ÇOK EKSİK' },
+}
+
+function fmtMmSs(sec) {
+  if (sec == null || !isFinite(sec) || sec <= 0) return '—'
+  const s = Math.round(sec)
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`
+  return `${m}:${String(r).padStart(2, '0')}`
+}
 
 const PHASE_LBL = {
   Base:  { en: 'Base',  tr: 'Temel' },
@@ -67,11 +91,11 @@ function ZonesLegend({ zones, isTR }) {
   )
 }
 
-export default function TodayProgrammedSessionCard() {
+export default function TodayProgrammedSessionCard({ log = [] } = {}) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
-  const [persisted] = useLocalStorage(PROGRAM_KEY, null)
-  const [startOverride] = useLocalStorage(START_KEY, null)
+  const [persisted, setPersisted] = useLocalStorage(PROGRAM_KEY, null)
+  const [startOverride, setStartOverride] = useLocalStorage(START_KEY, null)
 
   const session = useMemo(() => {
     if (!persisted?.input) return null
@@ -85,6 +109,41 @@ export default function TodayProgrammedSessionCard() {
       return null
     }
   }, [persisted, startOverride])
+
+  const autopsy = useMemo(() => {
+    if (!persisted?.input) return null
+    if (!session || session.reliable !== false || session.reason !== 'after') return null
+    try {
+      return buildEliteProgramAutopsy({ input: persisted.input }, log)
+    } catch {
+      return null
+    }
+  }, [persisted, session, log])
+
+  function handleNextCycle() {
+    if (!autopsy || !persisted?.input) return
+    const sport = persisted.input.sport
+    const next = autopsy.nextCyclePR
+    const actualTime = autopsy.foundRace?.timeSec
+    const form = {
+      sport,
+      currentDist: next.distanceM,
+      currentTime: fmtMmSs(actualTime),
+      targetDist:  next.distanceM,
+      targetTime:  fmtMmSs(next.timeSec),
+      raceDate: '',
+    }
+    try {
+      setPersisted({ input: null, form })
+      setStartOverride(null)
+    } catch {
+      announce(isTR ? 'Depolama başarısız' : 'Storage failed')
+      return
+    }
+    announce(isTR
+      ? 'Yeni döngü formu hazırlandı. Yeni yarış tarihi için Elite Program kartını aç'
+      : 'Next-cycle form prepared. Open Elite Program card to set new race date.')
+  }
 
   const ariaLabel = isTR ? "Bugünün planlı seansı" : "Today's planned session"
   const titleEN = "TODAY'S SESSION"
@@ -114,7 +173,61 @@ export default function TodayProgrammedSessionCard() {
 
   // ── Before/after window ──────────────────────────────────────────────────
   if (session.reliable === false) {
+    // After-window: try to surface the race-result autopsy
+    if (session.reason === 'after' && autopsy) {
+      const vAccent = VERDICT_COLOR[autopsy.verdict] || '#6c757d'
+      const vLblObj = VERDICT_LBL[autopsy.verdict] || { en: '', tr: '' }
+      const vLbl = vLblObj[isTR ? 'tr' : 'en']
+      const actualStr = fmtMmSs(autopsy.foundRace?.timeSec)
+      const pctStr = `${(autopsy.pctOfTarget * 100).toFixed(1)}%`
+      const levelStr =
+        autopsy.actualLevel?.vdot != null ? `VDOT ${autopsy.actualLevel.vdot}`
+        : autopsy.actualLevel?.ftp != null ? `FTP ${autopsy.actualLevel.ftp}W`
+        : autopsy.actualLevel?.css != null ? `CSS ${autopsy.actualLevel.css}s/100m`
+        : ''
+      return (
+        <div className="sp-card" role="region" aria-label={ariaLabel}
+          style={{ ...cardBase, borderLeft: `4px solid ${vAccent}` }}>
+          <div style={S.cardTitle}>{titleEN}<span aria-hidden="true" style={{ margin: '0 6px' }}>·</span>{titleTR}</div>
+          <span data-testid="autopsy-verdict-pill"
+            aria-label={`${isTR ? 'yarış sonucu' : 'race result'}: ${vLblObj.en}`}
+            style={{ display: 'inline-block', ...S.mono, fontSize: '10px', fontWeight: 700, color: '#fff', background: vAccent, padding: '4px 10px', borderRadius: '3px', letterSpacing: '0.08em', marginBottom: '8px' }}>
+            {vLbl}
+          </span>
+          <div aria-live="polite" style={{ display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap', marginBottom: '8px' }}>
+            <div style={{ ...S.mono, fontSize: '28px', fontWeight: 700, color: vAccent, lineHeight: 1, letterSpacing: '-0.02em' }}>
+              {actualStr}
+            </div>
+            <div style={{ ...S.mono, fontSize: '11px', color: 'var(--muted)', letterSpacing: '0.06em' }}>
+              {isTR ? 'HEDEF' : 'TARGET'} {pctStr}
+            </div>
+            {levelStr ? (
+              <div style={{ ...S.mono, fontSize: '11px', color: 'var(--muted)', letterSpacing: '0.06em' }}>
+                {levelStr}
+              </div>
+            ) : null}
+          </div>
+          <div style={{ ...S.mono, fontSize: '11px', color: 'var(--text)', lineHeight: 1.7, marginBottom: '6px' }}>
+            {autopsy.message.en}<span aria-hidden="true" style={{ margin: '0 6px' }}>·</span>{autopsy.message.tr}
+          </div>
+          <div style={{ ...S.mono, fontSize: '11px', color: 'var(--text)', lineHeight: 1.6, paddingLeft: '8px', borderLeft: `2px solid ${vAccent}`, marginBottom: '10px' }}>
+            {autopsy.recommendation.en}<span aria-hidden="true" style={{ margin: '0 6px' }}>·</span>{autopsy.recommendation.tr}
+          </div>
+          <button type="button"
+            data-testid="next-cycle-btn"
+            onClick={handleNextCycle}
+            aria-label={isTR ? 'Yeni döngü oluştur' : 'Generate next cycle'}
+            style={{ ...S.mono, fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', padding: '8px 14px', background: vAccent, color: '#fff', border: 'none', borderRadius: '3px', cursor: 'pointer', minHeight: '34px' }}>
+            {isTR ? 'YENİ DÖNGÜ OLUŞTUR' : 'GENERATE NEXT CYCLE'}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>{isTR ? 'GENERATE NEXT CYCLE' : 'YENİ DÖNGÜ OLUŞTUR'}
+          </button>
+          <div style={{ ...S.mono, fontSize: '9px', color: '#555', marginTop: '8px' }}>{autopsy.citation}</div>
+        </div>
+      )
+    }
+
     const accent = '#6c757d'
+    const isAfter = session.reason === 'after'
+    const raceDate = persisted?.input?.raceDate
     return (
       <div className="sp-card" role="region" aria-label={ariaLabel}
         style={{ ...cardBase, borderLeft: `4px solid ${accent}` }}>
@@ -129,6 +242,13 @@ export default function TodayProgrammedSessionCard() {
             {session.recommendation.en}
             <span aria-hidden="true" style={{ margin: '0 6px' }}>·</span>
             {session.recommendation.tr}
+          </div>
+        ) : null}
+        {isAfter && raceDate ? (
+          <div data-testid="log-it-nudge" style={{ ...S.mono, fontSize: '10px', color: 'var(--sub, var(--muted))', lineHeight: 1.6, marginTop: '8px' }}>
+            {isTR
+              ? `Günlüğünde ${raceDate} civarında bir yarış sonucu bulamadık. Tam autopsi için yarışını günlüğe ekle.`
+              : `We didn't find a race result in your log near ${raceDate}. Log it to see your full autopsy.`}
           </div>
         ) : null}
         <div style={{ ...S.mono, fontSize: '9px', color: '#555', marginTop: '8px' }}>{session.citation}</div>

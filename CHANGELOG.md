@@ -4,6 +4,109 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.93.0 — 2026-05-07 — Mission #1 race-result autopsy + season-companion loop (+43 tests), 8909 tests
+
+  Audit gap #3 closed: post-race the daily-answer card dead-ended
+  at "Generate a new program." With this wave, when the program
+  window has closed AND the athlete has logged a race entry within
+  ±7 days of the planned race date, the card surfaces a full
+  autopsy: did you hit your target, what physiology level did you
+  achieve, and what's the right next-cycle target. One-click
+  "GENERATE NEXT CYCLE" pre-fills the EliteProgramCard form with
+  the achieved time as the new currentPR.
+
+  src/lib/athlete/eliteProgramAutopsy.js (NEW, ~210 lines):
+    Pure function buildEliteProgramAutopsy(program, log, today?)
+    that returns null when:
+      - program input incomplete
+      - today is before raceDate (still in window)
+      - no log entry within ±7 days of raceDate at distance
+        within ±10% of targetPR.distanceM matching the program's
+        sport
+    Otherwise returns:
+      {
+        foundRace: { date, distanceM, timeSec },
+        actualLevel: { vdot|ftp|css, paces },  // sport-specific
+        targetLevel, currentLevel,
+        pctOfTarget,                            // actual / target
+        delta: { absSec, pctImprovement },
+        verdict: 'beat-target' | 'on-target' | 'shortfall' |
+                 'major-shortfall',
+        nextCyclePR: { distanceM, timeSec },    // suggested form
+                                                // pre-fill
+        message: { en, tr },
+        recommendation: { en, tr },
+        citation: 'Daniels 2014 VDOT; Galloway 2002 progression
+                   rates',
+      }
+    Verdict thresholds:
+      pctOfTarget < 1.0   → beat-target  (faster than target)
+      1.0–1.02            → on-target
+      1.02–1.07           → shortfall
+      ≥ 1.07              → major-shortfall
+    nextCyclePR extrapolation per verdict:
+      beat-target       → push 2% faster than actual
+      on-target         → push 2% from target
+      shortfall         → keep target, recommend longer block
+      major-shortfall   → reset target to actual+1%
+    Reuses existing helpers (no new exports needed):
+      - vdotFromRace, trainingPaces from running.js
+      - tPaceFromTT, cssToSecPer100m, swimmingZones from
+        swimming.js
+      - getCyclingZones from cycling.js
+    31 tests cover null/pre-race/no-match, all 4 verdicts,
+    ±10% distance + ±7d date tolerance, run/bike/swim/triathlon
+    level computation, nextCyclePR per verdict, bilingual
+    message/recommendation, multi-match nearest-date pick,
+    duration-only entries, lowercase sport, sport mismatch,
+    citation.
+
+  TodayProgrammedSessionCard.jsx:
+    Now accepts log prop (default []). When session.reason ===
+    'after' (program window ended), runs autopsy via useMemo.
+      - Autopsy result → renders verdict pill (color-coded
+        green/blue/orange/red), big-number row (actualTime |
+        pctOfTarget% | VDOT/FTP/CSS achieved), bilingual
+        recommendation, "GENERATE NEXT CYCLE · YENİ DÖNGÜ
+        OLUŞTUR" button.
+      - No log match → preserves "Program window has ended" copy
+        + adds bilingual log-it nudge: "Log your race result to
+        see your full autopsy" with raceDate referenced.
+    GENERATE NEXT CYCLE onClick:
+      - Builds form payload with achieved time as currentPR,
+        nextCyclePR.timeSec as targetPR, raceDate cleared
+      - Writes { input: null, form } to sporeus-eliteProgram so
+        EliteProgramCard re-opens in form mode pre-filled
+      - Clears sporeus-eliteProgramStart
+      - announce("Next-cycle form prepared. Open Elite Program
+        card to set new race date.")
+
+  Dashboard.jsx (1-line change):
+    <TodayProgrammedSessionCard /> → log={log} prop wire-up.
+
+  Test counts:
+    Autopsy lib:         31 new
+    TodayProgrammedSessionCard:  +12 new (autopsy describe block)
+    Full suite:          8866 → 8909 (+43, all green, 368 files)
+    Lint:                clean
+    Build:               83.80 KB gz main (within 150 KB gate)
+
+  DEPENDS ON: v8.88.0 (eliteProgram.js currentLevel/targetLevel
+  shape that autopsy reuses), v8.91.0 (START_KEY anchor that
+  next-cycle clears), v8.92.0 (pace/zone exports) — though the
+  v8.93.0 autopsy doesn't import from v8.92.0's new exports.
+
+  Files added:
+    src/lib/athlete/eliteProgramAutopsy.js (~210 lines)
+    src/lib/__tests__/athlete/eliteProgramAutopsy.test.js
+                                            (~340 lines, 31 tests)
+  Files modified:
+    src/components/dashboard/TodayProgrammedSessionCard.jsx
+    src/components/__tests__/TodayProgrammedSessionCard.test.jsx
+    src/components/Dashboard.jsx (1 line)
+
+---
+
 ## v8.92.0 — 2026-05-07 — Mission #1 physiology surface + about-model rationale (+10 tests), 8866 tests
 
   Audit gap #2 closed: the orchestrator was already computing
