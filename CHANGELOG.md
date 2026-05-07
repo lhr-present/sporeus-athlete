@@ -4,6 +4,107 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.95.0 — 2026-05-07 — Mission #1 general-app-use wave 1: USE-MY-RECENT-BEST autofill + smart sport default (+26 tests), 8946 tests
+
+  General-use audit found ~70-80% of app users blocked by Mission
+  #1's 4-input gate (sport + current PR + target PR + race date)
+  because they don't know their PRs by memory. The card already
+  received `log` and `profile` props but only used them to derive
+  currentCTL — the actual PR data sitting in the log was unused.
+  This wave wires the existing-but-unused data into the form.
+
+  src/lib/athlete/recentBest.js (NEW, ~180 lines):
+    Pure helper findRecentBest(log, options) returns the athlete's
+    best recent effort across sports for autofill. Detection:
+      - Sport classification per entry: regex on type|sport
+      - Distance bucketed to canonical sizes per sport with ±15%
+        tolerance:
+          run:  [5000, 10000, 15000, 21097, 42195]
+          bike: [20000, 40000, 100000]
+          swim: [400, 800, 1500, 3000]
+      - Best per (sport, bucket): smallest timeSec within
+        lookbackDays (default 90)
+      - Output selection priority:
+        1. options.primarySport when set + has data
+        2. Most-trained sport (highest qualifying-entry count)
+      - daysAgo computed against options.today
+      - Returns null when log empty / no matches / all stale
+    Handles mixed unit conventions:
+      - duration vs durationSec (codebase uses both)
+      - distance vs distanceM vs distanceKm (codebase uses all
+        three; >1000 → meters heuristic for ambiguous distance
+        key)
+    Returns canonical { sport, distanceM, timeSec, sessionDate,
+    daysAgo }.
+    16 tests cover null/empty, single + multiple entries per
+    bucket, ±15% tolerance edges, primarySport precedence,
+    cross-sport tiebreak, lookbackDays cutoff, unit-convention
+    matrix, malformed entries, future-dated entries.
+
+  EliteProgramCard.jsx:
+    - Imports findRecentBest; computes recentBest in card-level
+      useMemo alongside derivedProfile.
+    - defaultSport resolution chain: profile.primarySport ?
+      recentBest.sport ? 'run'.
+    - FormMode signature accepts recentBest + defaultSport props;
+      sport state initializes from defaultSport (was hardcoded
+      'run').
+    - Autofill chip renders ABOVE the CURRENT PR row when
+      recentBest exists, recentBest.sport === current sport,
+      and curT empty:
+        EN: "USE MY RECENT BEST · 25:14 / 5K · 12 days ago"
+        TR: "EN İYİ EFORUMU KULLAN · 25:14 / 5K · 12 gün önce"
+      Click sets curD + curT, announces "Filled from recent log
+      entry."
+    - Chip suppressed when bike-FTP-direct OR swim-2TT toggles
+      are active (no PR-time inputs to fill — intentional).
+    Card test additions:
+      - buildLog helper at top of test file
+      - 10-test describe block 'v8.95.0 recent-best autofill':
+        chip absent without log; chip rendered with log;
+        MM:SS + bucket label + days-ago format; click fills
+        fields; click enables GENERATE; chip hides on sport
+        flip away from log sport; primarySport defaults form
+        sport; bilingual TR; aria-label exposes context;
+        chip absent when curT pre-populated.
+
+  Test counts:
+    recentBest lib:      16 new
+    EliteProgramCard:    +10 new (54 → 64)
+    Full suite:          8920 → 8946 (+26, all green, 369 files)
+    Lint:                clean
+    Build:               83.81 KB gz main (within 150 KB gate)
+
+  Distance/duration unit convention (documented for future libs):
+    - duration: minutes (canonical from sanitizeLogEntry,
+      QuickAddModal, manual entry)
+    - durationSec: seconds (FIT/Strava import path)
+    - distanceM: meters (FIT/Strava)
+    - distanceKm: kilometres (manual)
+    - distance: ambiguous — mixed in codebase. Heuristic:
+      value > 1000 → meters; else km.
+    findRecentBest accepts all and emits canonical distanceM +
+    timeSec.
+
+  Known follow-up wave (v8.96.0):
+    - "NO RACE DATE → BUILD FOR 12/16/24 WEEKS" toggle (audit E2)
+    - "NO TARGET TIME → IMPROVE FROM CURRENT" toggle (audit E3)
+    Pair naturally as the "general user with no race + no
+    target" path.
+
+  DEPENDS ON: v8.91.0 (log+profile already plumbed to card via
+  derivedProfile), v8.94.0 (FormMode persistedForm shape).
+
+  Files added:
+    src/lib/athlete/recentBest.js (~180 lines)
+    src/lib/__tests__/athlete/recentBest.test.js (~169 lines,
+                                                  16 tests)
+  Files modified:
+    src/components/dashboard/EliteProgramCard.jsx
+    src/components/__tests__/EliteProgramCard.test.jsx
+
+---
+
 ## v8.94.0 — 2026-05-07 — Mission #1 sport-specific form modes: bike FTP direct + swim Wakayoshi 2-TT + dark-mode contrast (+11 tests), 8920 tests
 
   Audit follow-up wave closing three sport-specific correctness

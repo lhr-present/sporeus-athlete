@@ -679,3 +679,108 @@ describe('EliteProgramCard — persistence', () => {
     expect(screen.getByRole('button', { name: /RESET/i })).toBeInTheDocument()
   })
 })
+
+// ─── v8.95.0 — recent-best autofill chip + sport defaulting ──────────────────
+function buildLog({ days = 30, sport = 'run', distanceKm = 10, durationMin = 50, today = '2026-05-07', count = 1 } = {}) {
+  const typeMap = { run: 'Easy Run', bike: 'Long ride', swim: 'Pool swim' }
+  const out = []
+  const base = new Date(today + 'T12:00:00Z')
+  for (let i = 0; i < count; i++) {
+    const d = new Date(base)
+    d.setUTCDate(d.getUTCDate() - (days + i))
+    out.push({
+      date: d.toISOString().slice(0, 10),
+      type: typeMap[sport] || 'Easy Run',
+      distanceKm,
+      duration: durationMin,
+    })
+  }
+  return out
+}
+
+describe('EliteProgramCard — v8.95.0 recent-best autofill', () => {
+  it('chip not rendered when log is empty', () => {
+    renderCard({ log: [] })
+    expect(document.querySelector('[data-recent-best-chip]')).toBeNull()
+  })
+
+  it('chip rendered when log has 1 run @ 10K within 90 days', () => {
+    const log = buildLog({ days: 12, sport: 'run', distanceKm: 10, durationMin: 50 })
+    renderCard({ log })
+    const chip = document.querySelector('[data-recent-best-chip]')
+    expect(chip).not.toBeNull()
+  })
+
+  it('chip text shows MM:SS, bucket label, and "X days ago"', () => {
+    const log = buildLog({ days: 12, sport: 'run', distanceKm: 10, durationMin: 50 })
+    renderCard({ log })
+    const chip = document.querySelector('[data-recent-best-chip]')
+    expect(chip.textContent).toMatch(/USE MY RECENT BEST/)
+    expect(chip.textContent).toMatch(/50:00/)
+    expect(chip.textContent).toMatch(/10K/)
+    expect(chip.textContent).toMatch(/12 days ago/)
+  })
+
+  it('click chip fills currentDist + currentTime form fields', () => {
+    const log = buildLog({ days: 12, sport: 'run', distanceKm: 10, durationMin: 50 })
+    renderCard({ log })
+    const chip = document.querySelector('[data-recent-best-chip]')
+    fireEvent.click(chip)
+    const curInput = screen.getByLabelText(/Current PR time/i)
+    expect(curInput.value).toBe('50:00')
+    const distSel = screen.getByLabelText(/Current PR distance/i)
+    expect(Number(distSel.value)).toBe(10000)
+  })
+
+  it('click chip + target + date fills form to ready/enabled state', () => {
+    const log = buildLog({ days: 12, sport: 'run', distanceKm: 10, durationMin: 50 })
+    renderCard({ log })
+    fireEvent.click(document.querySelector('[data-recent-best-chip]'))
+    fireEvent.change(screen.getByLabelText(/Target PR time/i), { target: { value: '45:00' } })
+    fireEvent.change(screen.getByLabelText(/Race date/i), { target: { value: '2026-09-01' } })
+    expect(screen.getByRole('button', { name: /GENERATE/i })).not.toBeDisabled()
+  })
+
+  it('chip hidden when sport selector flipped to bike (no bike entries in log)', () => {
+    const log = buildLog({ days: 12, sport: 'run', distanceKm: 10, durationMin: 50 })
+    renderCard({ log })
+    expect(document.querySelector('[data-recent-best-chip]')).not.toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'BIKE' }))
+    expect(document.querySelector('[data-recent-best-chip]')).toBeNull()
+  })
+
+  it('profile.primarySport=bike + log with rides defaults form sport to bike', () => {
+    const log = buildLog({ days: 8, sport: 'bike', distanceKm: 40, durationMin: 75 })
+    renderCard({ log, profile: { primarySport: 'bike' } })
+    expect(screen.getByRole('button', { name: 'BIKE' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'RUN' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('no primarySport, log mixed sports → defaults to most-trained sport', () => {
+    const log = [
+      ...buildLog({ days: 30, sport: 'run',  distanceKm: 10, durationMin: 50, count: 3 }),
+      ...buildLog({ days: 5,  sport: 'bike', distanceKm: 40, durationMin: 75, count: 1 }),
+    ]
+    renderCard({ log })
+    expect(screen.getByRole('button', { name: 'RUN' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('bilingual TR chip text', () => {
+    const log = buildLog({ days: 12, sport: 'run', distanceKm: 10, durationMin: 50 })
+    renderCard({ log }, 'tr')
+    const chip = document.querySelector('[data-recent-best-chip]')
+    expect(chip).not.toBeNull()
+    expect(chip.textContent).toMatch(/EN İYİ EFORUMU KULLAN/)
+    expect(chip.textContent).toMatch(/12 gün önce/)
+  })
+
+  it('chip aria-label exposes the recent-best context for SR users', () => {
+    const log = buildLog({ days: 12, sport: 'run', distanceKm: 10, durationMin: 50 })
+    renderCard({ log })
+    const chip = document.querySelector('[data-recent-best-chip]')
+    const aria = chip.getAttribute('aria-label') || ''
+    expect(aria).toMatch(/USE MY RECENT BEST/)
+    expect(aria).toMatch(/autofill/i)
+    expect(aria).toMatch(/50:00/)
+  })
+})

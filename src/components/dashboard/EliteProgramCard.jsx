@@ -20,6 +20,7 @@ import { downloadEliteProgramCSV } from '../../lib/athlete/eliteProgramExport.js
 import { calculatePMC } from '../../lib/trainingLoad.js'
 import { announce } from '../../lib/a11y/announcer.js'
 import { criticalSwimSpeed, cssToSecPer100m } from '../../lib/sport/swimming.js'
+import { findRecentBest } from '../../lib/athlete/recentBest.js'
 
 const STORAGE_KEY = 'sporeus-eliteProgram'
 const START_KEY = 'sporeus-eliteProgramStart'
@@ -73,6 +74,20 @@ function fmtSec(sec) {
   return `${m}:${String(r).padStart(2, '0')}`
 }
 
+// v8.95.0 — MM:SS form-input format from a number of seconds.
+function fmtMmSs(sec) {
+  const s = Math.max(0, Math.round(Number(sec) || 0))
+  const m = Math.floor(s / 60), r = s % 60
+  return `${m}:${String(r).padStart(2, '0')}`
+}
+
+// v8.95.0 — Find the bucket label for a given (sport, distanceM).
+function bucketLabel(sport, distanceM) {
+  const opts = DISTANCES[sport] || []
+  const hit = opts.find(o => o.m === distanceM)
+  return hit?.lbl || `${distanceM}m`
+}
+
 function dayIntent(intent, isTR) {
   if (!intent) return '—'
   if (typeof intent === 'string') return intent
@@ -99,11 +114,13 @@ const SWIM_TT_LONG = [
   { m: 1500, lbl: '1500m' },
 ]
 
-function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm }) {
-  const [sport, setSport] = useState(persistedForm?.sport || 'run')
-  const [curD, setCurD] = useState(persistedForm?.currentDist || DISTANCES.run[1].m)
+function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBest = null, defaultSport = 'run' }) {
+  const initialSport = persistedForm?.sport || defaultSport || 'run'
+  const initialDistDefault = (DISTANCES[initialSport] || DISTANCES.run)[1]?.m ?? (DISTANCES[initialSport] || DISTANCES.run)[0].m
+  const [sport, setSport] = useState(initialSport)
+  const [curD, setCurD] = useState(persistedForm?.currentDist || initialDistDefault)
   const [curT, setCurT] = useState(persistedForm?.currentTime || '')
-  const [tgtD, setTgtD] = useState(persistedForm?.targetDist || DISTANCES.run[1].m)
+  const [tgtD, setTgtD] = useState(persistedForm?.targetDist || initialDistDefault)
   const [tgtT, setTgtT] = useState(persistedForm?.targetTime || '')
   const [date, setDate] = useState(persistedForm?.raceDate || '')
 
@@ -321,6 +338,49 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm }) {
           ))}
         </div>
       ) : (
+        <>
+        {recentBest && recentBest.sport === sport && !curT ? (() => {
+          const blbl = bucketLabel(sport, recentBest.distanceM)
+          const ts = fmtMmSs(recentBest.timeSec)
+          const da = recentBest.daysAgo
+          const txtEN = `USE MY RECENT BEST · ${ts} / ${blbl} · ${da} day${da === 1 ? '' : 's'} ago`
+          const txtTR = `EN İYİ EFORUMU KULLAN · ${ts} / ${blbl} · ${da} gün önce`
+          const aria = isTR
+            ? `${txtTR} — günlüğünden otomatik doldur`
+            : `${txtEN} — autofill from your training log`
+          return (
+            <button
+              type="button"
+              data-recent-best-chip
+              aria-label={aria}
+              onClick={() => {
+                setCurD(recentBest.distanceM)
+                setCurT(ts)
+                announce(isTR ? 'Günlükten otomatik dolduruldu' : 'Filled from recent log entry')
+              }}
+              style={{
+                ...S.mono,
+                fontSize: '10px',
+                fontWeight: 700,
+                letterSpacing: '0.06em',
+                padding: '8px 10px',
+                marginBottom: '10px',
+                width: '100%',
+                minHeight: '36px',
+                background: 'transparent',
+                color: '#ff6600',
+                border: '1px dashed #ff660088',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+              onMouseOver={e => { e.currentTarget.style.background = '#ff660014'; e.currentTarget.style.borderColor = '#ff6600' }}
+              onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#ff660088' }}
+            >
+              {isTR ? txtTR : txtEN}
+            </button>
+          )
+        })() : null}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
           {[
             { lbl: isTR ? 'MEVCUT PR' : 'CURRENT PR', dist: curD, setDist: setCurD, t: curT, setT: setCurT, distAria: isTR ? 'Mevcut PR mesafesi' : 'Current PR distance', tAria: isTR ? 'Mevcut PR süresi (MM:SS)' : 'Current PR time (MM:SS)' },
@@ -335,6 +395,7 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm }) {
             </div>
           ))}
         </div>
+        </>
       )}
 
       <div style={{ marginBottom: '14px' }}>
@@ -663,6 +724,16 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
     return out
   }, [_log, _profile?.weeklyHours, _profile?.trainingDays])
 
+  // v8.95.0 — recent-best autofill chip + sport-default detection.
+  const recentBest = useMemo(() => findRecentBest(_log, {
+    today: new Date().toISOString().slice(0, 10),
+    primarySport: _profile?.primarySport || null,
+  }), [_log, _profile?.primarySport])
+
+  const defaultSport = (_profile?.primarySport && _profile.primarySport !== 'triathlon')
+    ? _profile.primarySport
+    : (recentBest?.sport || _profile?.primarySport || 'run')
+
   const evaluation = useMemo(() => {
     if (!persisted?.input) return { result: null, rejection: null }
     try {
@@ -731,6 +802,8 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
           onGenerate={handleGenerate}
           persistedForm={persisted?.form}
           savePersistedForm={form => setPersisted({ input: persisted?.input || null, form })}
+          recentBest={recentBest}
+          defaultSport={defaultSport}
         />
       </div>
     )
