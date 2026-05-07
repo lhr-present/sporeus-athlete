@@ -4,6 +4,100 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.103.0 — 2026-05-07 — Mission #1 polish: PHASE_FOCUS dedup + envelope JSDoc + mobile action-bar (+6 tests), 9106 tests
+
+  Closes three audit-flagged code-health items that were noted
+  as "low-impact, safe to defer" through the v8.91→v8.102 chain.
+  Pure cleanup wave — no user-visible behavior changes beyond
+  the mobile button-bar layout fix.
+
+  PHASE_FOCUS dedup:
+    Audit found PHASE_FOCUS defined twice — once in
+    eliteProgram.js (EN-only string) and once in
+    todayProgrammedSession.js (bilingual EN+TR). Lifted the
+    bilingual version to a single export from eliteProgram.js,
+    `@public` annotated. todayProgrammedSession.js now imports
+    it. Side-effect: phase.focus is now a {en, tr} object on
+    every phase emitted by buildEliteProgram (was an EN-only
+    string). Updated the existing "each phase has color and
+    focus" test to assert the bilingual shape; added 4 new
+    tests pinning the contract (PHASE_FOCUS exists, covers all
+    4 phases, both languages non-empty, build output emits
+    bilingual focus matching PHASE_FOCUS).
+
+  v=1 share envelope JSDoc:
+    Audit noted the share-with-coach v=1 envelope shape was
+    used at 4 sites (athlete-side emit, coach-side parse +
+    validate, coach-side render) but had no centralized
+    contract. Added @typedef CoachShareEnvelope_V1 to
+    eliteProgram.js's API contract block alongside
+    EliteProgramResult / EliteProgramFeasibility /
+    EliteProgramSynthetic. Documents kind, v, athleteSnapshot,
+    physiology (sport-conditional, nulls allowed), phases,
+    synthetic, lifecycle, citation, generatedAt. Notes
+    forward-compat rule (extra unknown fields tolerated;
+    breaking changes bump v to 2 with both versions accepted
+    during deprecation). Pure docs — no behavior change.
+
+  Mobile action-bar layout:
+    Audit found the 4-button action bar (EXPORT CSV / APPLY
+    TO CALENDAR / SHARE WITH COACH / RESET) wrapped to a 2x2
+    grid on 375px iPhone because bilingual button widths
+    differ. Fixed by switching the bar from
+    `flexWrap: wrap` to `flexWrap: nowrap` + `overflowX: auto`
+    + buttons get `flexShrink: 0, whiteSpace: nowrap`. On
+    narrow viewports buttons stay one row, scrollable
+    horizontally with WebkitOverflowScrolling: touch for
+    momentum scrolling. Wider viewports unaffected. Added
+    `data-action-bar` attribute for test selector.
+    2 new component tests: nowrap+overflow style asserted;
+    all 4 buttons remain siblings inside the bar.
+
+  Test counts:
+    eliteProgram lib:    +5 PHASE_FOCUS contract tests, 1
+                         test updated for bilingual shape
+                         (61 → 66)
+    EliteProgramCard:    +2 mobile action-bar tests
+    Full suite:          9100 → 9106 (+6 net, all green,
+                         373 files)
+    Lint:                clean
+    Build:               83.81 KB gz main (within 150 KB
+                         gate)
+
+  Audit items NOT addressed (deliberately deferred —
+  multi-week scope, candidate Mission #2/#3):
+    - Multi-race horizon (B/C race micro-tapers within
+      season) — would touch orchestrator + bridge + form +
+      YearlyPlan integration
+    - Real-time Supabase coach sync — would require
+      backend table + RLS + edge function + atomic
+      athlete-side write hook + coach-side read hook
+    - buildEliteProgram triple-call across cards —
+      memoized within useMemo per component; cross-component
+      hoisting requires a shared context. Practical
+      runtime <5ms; deferring.
+
+  DEPENDS ON: v8.97.0 (envelope shape originally landed
+  here — typedef now formalizes it), v8.99.0 deep-dive
+  audit (flagged all three items).
+
+  Files modified:
+    src/lib/athlete/eliteProgram.js (PHASE_FOCUS export +
+                                     CoachShareEnvelope_V1
+                                     typedef)
+    src/lib/athlete/todayProgrammedSession.js (import
+                                                PHASE_FOCUS)
+    src/lib/__tests__/athlete/eliteProgram.test.js
+                                     (PHASE_FOCUS tests +
+                                      bilingual shape)
+    src/components/dashboard/EliteProgramCard.jsx
+                                     (action-bar layout +
+                                      data attr)
+    src/components/__tests__/EliteProgramCard.test.jsx
+                                     (action-bar tests)
+
+---
+
 ## v8.102.0 — 2026-05-07 — Mission #1 promoted to app's #1 rule: MissionHeadline (+10 tests), 9100 tests
 
   User directive: "make Mission #1 the app's number 1 rule."

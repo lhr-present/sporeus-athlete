@@ -47,6 +47,38 @@
 //  * @property {string} citation
 //  * @property {boolean} reliable
 //  */
+//
+// // ── Coach share envelope (v8.97.0 + v8.101.0) ─────────────────────────────
+// /**
+//  * @typedef {Object} CoachShareEnvelope_V1
+//  * @property {1} v                                 // version — bump on
+//  *                                                  // breaking changes
+//  * @property {'sporeus-elite-program-share'} kind
+//  * @property {Object} athleteSnapshot              // sport, distanceM,
+//  *                                                  // currentTime, targetTime,
+//  *                                                  // raceDate,
+//  *                                                  // weeksAvailable,
+//  *                                                  // weeksNeeded,
+//  *                                                  // feasibilityBand
+//  * @property {Object} [physiology]                 // sport-conditional
+//  *                                                  // VDOT/FTP/CSS current
+//  *                                                  // and target (nulls
+//  *                                                  // allowed)
+//  * @property {Array<{phase: string, weeks: number}>} phases
+//  * @property {EliteProgramSynthetic|null} synthetic
+//  * @property {Object} lifecycle                    // { state,
+//  *                                                  // percentComplete,
+//  *                                                  // daysToRace }
+//  * @property {string} citation
+//  * @property {string} generatedAt                  // YYYY-MM-DD
+//  *
+//  * Stable contract — emitted by EliteProgramCard's SHARE WITH COACH
+//  * button (shareWithCoach), parsed by parseCoachShareEnvelope() in
+//  * src/lib/athlete/coachShareEnvelope.js, ingested by
+//  * CoachAthleteProgramCard. Forward-compat: extra unknown fields
+//  * tolerated. Breaking changes must bump v to 2 and the coach ingest
+//  * must accept both versions during deprecation.
+//  */
 
 import {
   vdotFromRace,
@@ -212,11 +244,18 @@ const PHASE_COLORS = {
   Taper: '#9966cc',
 }
 
-const PHASE_FOCUS = {
-  Base:  'Aerobic base, easy volume, technique',
-  Build: 'Threshold and tempo, race-specific load',
-  Peak:  'VO2max intervals, race-pace specificity',
-  Taper: 'Volume reduction, intensity preserved, freshness',
+/**
+ * Bilingual phase-focus copy. Single source of truth — consumed by both
+ * the orchestrator's phase output and by todayProgrammedSession's headline
+ * text.
+ *
+ * @public
+ */
+export const PHASE_FOCUS = {
+  Base:  { en: 'Aerobic base, easy volume, technique',           tr: 'Aerobik temel, kolay hacim, teknik' },
+  Build: { en: 'Threshold and tempo, race-specific load',        tr: 'Eşik ve tempo, yarışa özgü yük' },
+  Peak:  { en: 'VO2max intervals, race-pace specificity',        tr: 'VO2max interval, yarış-tempo özgüllüğü' },
+  Taper: { en: 'Volume reduction, intensity preserved, freshness', tr: 'Hacim azaltma, yoğunluk korunur, tazelik' },
 }
 
 // ── Weekly TSS curve ────────────────────────────────────────────────────────

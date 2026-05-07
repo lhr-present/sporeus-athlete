@@ -10,6 +10,9 @@
 //   Bompa T. & Haff G. (2009). Periodization: Theory and Methodology of Training.
 //   Mujika I., Padilla S. (2003). Scientific bases for precompetition tapering.
 
+// PHASE_FOCUS lifted to single source of truth in eliteProgram.js (v8.103.0).
+import { PHASE_FOCUS } from './eliteProgram.js'
+
 export const TODAY_PROGRAMMED_SESSION_CITATION = 'Daniels 2014; Bompa 2009; Mujika 2003'
 
 const SPORT_LABEL = {
@@ -17,13 +20,6 @@ const SPORT_LABEL = {
   bike:      { en: 'bike', tr: 'bisiklet' },
   swim:      { en: 'swim', tr: 'yüzme' },
   triathlon: { en: 'triathlon', tr: 'triatlon' },
-}
-
-const PHASE_FOCUS = {
-  Base:  { en: 'Aerobic base, easy volume, technique', tr: 'Aerobik temel, kolay hacim, teknik' },
-  Build: { en: 'Threshold and tempo, race-specific load', tr: 'Eşik ve tempo, yarışa özgü yük' },
-  Peak:  { en: 'VO2max intervals, race-pace specificity', tr: 'VO2max interval, yarış-tempo özgüllüğü' },
-  Taper: { en: 'Volume reduction, intensity preserved, freshness', tr: 'Hacim azaltma, yoğunluk korunur, tazelik' },
 }
 
 function parseUTC(iso) {

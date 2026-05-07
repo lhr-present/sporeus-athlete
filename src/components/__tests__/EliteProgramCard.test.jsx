@@ -1312,3 +1312,25 @@ describe('EliteProgramCard — v8.99.0 RE-PROJECT button', () => {
     confirmSpy.mockRestore()
   })
 })
+
+// ─── v8.103.0 — action-bar horizontal scroll on mobile ───────────────────────
+describe('EliteProgramCard — v8.103.0 mobile action-bar layout', () => {
+  it('action bar uses nowrap + overflow scroll instead of wrapping', () => {
+    renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    const bar = document.querySelector('[data-action-bar]')
+    expect(bar).not.toBeNull()
+    const style = bar.getAttribute('style') || ''
+    expect(style).toMatch(/flex-wrap:\s*nowrap/i)
+    expect(style).toMatch(/overflow-x:\s*auto/i)
+  })
+
+  it('all 4 action buttons are siblings inside the action bar', () => {
+    renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    const bar = document.querySelector('[data-action-bar]')
+    expect(bar).not.toBeNull()
+    const buttons = bar.querySelectorAll('button')
+    expect(buttons.length).toBe(4)
+  })
+})

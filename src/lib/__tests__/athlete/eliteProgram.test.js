@@ -1,6 +1,6 @@
 // src/lib/__tests__/athlete/eliteProgram.test.js
 import { describe, it, expect } from 'vitest'
-import { buildEliteProgram } from '../../athlete/eliteProgram.js'
+import { buildEliteProgram, PHASE_FOCUS } from '../../athlete/eliteProgram.js'
 
 const TODAY = '2026-05-04'
 
@@ -198,13 +198,16 @@ describe('buildEliteProgram — phase split', () => {
     expect(sum).toBe(r.feasibility.weeksAvailable)
   })
 
-  it('each phase has color and focus', () => {
+  it('each phase has color and bilingual focus', () => {
     const r = buildEliteProgram(RUN_REALISTIC)
     for (const p of r.phases) {
       expect(typeof p.color).toBe('string')
       expect(p.color).toMatch(/^#/)
-      expect(typeof p.focus).toBe('string')
-      expect(p.focus.length).toBeGreaterThan(0)
+      // v8.103.0: phase.focus is now a bilingual object {en, tr}
+      expect(typeof p.focus).toBe('object')
+      expect(typeof p.focus.en).toBe('string')
+      expect(typeof p.focus.tr).toBe('string')
+      expect(p.focus.en.length).toBeGreaterThan(0)
     }
   })
 })
@@ -594,5 +597,46 @@ describe('buildEliteProgram — v8.96.0 noTarget synthetic target', () => {
     })
     expect(r).toBeTruthy()
     expect(r.targetLevel.vdot).toBeGreaterThan(r.currentLevel.vdot)
+  })
+})
+
+// ─── PHASE_FOCUS export contract (v8.103.0) ─────────────────────────────────
+// Single source of truth — eliteProgram.js owns it; todayProgrammedSession.js
+// imports from here. Lock the bilingual shape so downstream consumers can
+// rely on it.
+describe('PHASE_FOCUS export — single source of truth', () => {
+  it('exports a public bilingual PHASE_FOCUS object', () => {
+    expect(PHASE_FOCUS).toBeDefined()
+    expect(typeof PHASE_FOCUS).toBe('object')
+  })
+
+  it('covers all 4 phases', () => {
+    expect(PHASE_FOCUS.Base).toBeDefined()
+    expect(PHASE_FOCUS.Build).toBeDefined()
+    expect(PHASE_FOCUS.Peak).toBeDefined()
+    expect(PHASE_FOCUS.Taper).toBeDefined()
+  })
+
+  it('each phase has both en and tr keys with non-empty strings', () => {
+    for (const phase of ['Base', 'Build', 'Peak', 'Taper']) {
+      expect(typeof PHASE_FOCUS[phase].en).toBe('string')
+      expect(typeof PHASE_FOCUS[phase].tr).toBe('string')
+      expect(PHASE_FOCUS[phase].en.length).toBeGreaterThan(0)
+      expect(PHASE_FOCUS[phase].tr.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('emits the bilingual focus object onto each phase in build output', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 10000, timeSec: 50 * 60 },
+      targetPR:  { distanceM: 10000, timeSec: 47 * 60 },
+      sport: 'run',
+      raceDate: '2026-08-15',
+      options: { today: TODAY },
+    })
+    expect(r).toBeTruthy()
+    const baseP = r.phases.find(p => p.phase === 'Base')
+    expect(baseP).toBeDefined()
+    expect(baseP.focus).toEqual(PHASE_FOCUS.Base)
   })
 })

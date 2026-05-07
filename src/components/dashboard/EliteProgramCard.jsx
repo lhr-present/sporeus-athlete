@@ -1240,7 +1240,18 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
         <div style={{ ...S.cardTitle, marginBottom: 0, borderBottom: 'none', paddingBottom: 0 }} data-general-build={isGeneralBuild ? 'true' : 'false'}>
           {titleEN}<span aria-hidden="true" style={{ margin: '0 6px' }}>·</span>{titleTR}{generalBuildSuffix}
         </div>
-        <div style={{ display: 'flex', gap: '6px' }}>
+        <div data-action-bar
+          style={{
+            display: 'flex',
+            gap: '6px',
+            // On narrow viewports, allow horizontal scrolling instead of
+            // wrapping into an awkward 2-row grid where bilingual button
+            // widths drift. Buttons stay one row, scrollable.
+            flexWrap: 'nowrap',
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            maxWidth: '100%',
+          }}>
           <button type="button"
             onClick={() => {
               const ok = downloadEliteProgramCSV(
@@ -1250,13 +1261,13 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
               if (ok) announce(isTR ? 'Dışa aktarma tamamlandı' : 'Export complete')
             }}
             aria-label={isTR ? 'CSV olarak dışa aktar' : 'Export program as CSV'}
-            style={{ ...S.mono, fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '6px 10px', background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '3px', cursor: 'pointer', minHeight: '32px' }}>
+            style={{ ...S.mono, fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '6px 10px', background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '3px', cursor: 'pointer', minHeight: '32px', flexShrink: 0, whiteSpace: 'nowrap' }}>
             {isTR ? 'CSV İNDİR' : 'EXPORT CSV'}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>{isTR ? 'EXPORT CSV' : 'CSV İNDİR'}
           </button>
           <button type="button"
             onClick={applyToCalendar}
             aria-label={isTR ? 'Programı yıllık takvime uygula' : 'Apply program to yearly calendar'}
-            style={{ ...S.mono, fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '6px 10px', background: '#0064ff', color: '#fff', border: '1px solid #0064ff', borderRadius: '3px', cursor: 'pointer', minHeight: '32px' }}>
+            style={{ ...S.mono, fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '6px 10px', background: '#0064ff', color: '#fff', border: '1px solid #0064ff', borderRadius: '3px', cursor: 'pointer', minHeight: '32px', flexShrink: 0, whiteSpace: 'nowrap' }}>
             {isTR ? 'TAKVİME UYGULA' : 'APPLY TO CALENDAR'}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>{isTR ? 'APPLY TO CALENDAR' : 'TAKVİME UYGULA'}
           </button>
           <button type="button"
@@ -1264,12 +1275,12 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
             data-export-summary
             onClick={shareWithCoach}
             aria-label={isTR ? 'Plan özetini koçla paylaş' : 'Share plan summary with coach'}
-            style={{ ...S.mono, fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '6px 10px', background: 'transparent', color: '#0064ff', border: '1px solid #0064ff', borderRadius: '3px', cursor: 'pointer', minHeight: '32px' }}>
+            style={{ ...S.mono, fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '6px 10px', background: 'transparent', color: '#0064ff', border: '1px solid #0064ff', borderRadius: '3px', cursor: 'pointer', minHeight: '32px', flexShrink: 0, whiteSpace: 'nowrap' }}>
             {isTR ? 'KOÇLA PAYLAŞ' : 'SHARE WITH COACH'}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>{isTR ? 'SHARE WITH COACH' : 'KOÇLA PAYLAŞ'}
           </button>
           <button type="button" onClick={handleReset}
             aria-label={isTR ? 'Programı sıfırla' : 'Reset program'}
-            style={{ ...S.mono, fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '6px 10px', background: 'transparent', color: '#ff6600', border: '1px solid #ff6600', borderRadius: '3px', cursor: 'pointer', minHeight: '32px' }}>
+            style={{ ...S.mono, fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '6px 10px', background: 'transparent', color: '#ff6600', border: '1px solid #ff6600', borderRadius: '3px', cursor: 'pointer', minHeight: '32px', flexShrink: 0, whiteSpace: 'nowrap' }}>
             {isTR ? 'SIFIRLA' : 'RESET'}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>{isTR ? 'RESET' : 'SIFIRLA'}
           </button>
         </div>
