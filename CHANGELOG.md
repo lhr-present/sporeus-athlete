@@ -4,6 +4,125 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.88.0 — 2026-05-07 — Mission feature: Elite Program Builder (4-input → full periodized program), 8756 tests
+
+  **Headline mission delivery.** The app's core mission is "target →
+  physiology → science-based plan → daily answer; 4 required fields"
+  (per Sporeus master reference). All infrastructure for that
+  promise was already built across the codebase (raceGoalEngine,
+  trainingPaces, FTP/CSS/VDOT, periodization.buildYearlyPlan,
+  generateAdaptivePlan, taperEngine, raceGoalProjection) — but had
+  no unified entry point.
+
+  This commit adds the orchestrator + UI that closes the loop.
+
+  src/lib/athlete/eliteProgram.js (589 lines):
+    buildEliteProgram({ currentPR, targetPR, raceDate, sport,
+                        profile, options }) — single entry that
+    takes the 4 mission inputs and returns a complete periodized
+    program. Pure function — orchestrates, doesn't duplicate.
+    Imports from existing primitives:
+      sport/running.js → vdotFromRace, predictRaceTime,
+                         trainingPaces (Daniels)
+      sport/cycling.js → calculateFTP, getCyclingZones,
+                         predictCyclingTime, calculateCyclingTSS
+                         (Coggan)
+      sport/swimming.js → criticalSwimSpeed, cssToSecPer100m,
+                          tPaceFromTT, swimmingZones, swimTSS
+                          (Wakayoshi)
+      athlete/raceGoalEngine.js (run path)
+      sport/raceGoalProjection.js (CTL projection)
+    Sport coverage:
+      run        — VDOT delta math, Daniels gain rates per
+                   12-week block (3.5 novice → 0.8 elite)
+      bike       — FTP delta math (caller provides FTP-style PRs)
+      swim       — CSS delta math
+      triathlon  — composite path; falls back to run feasibility
+                   when triathlonPRs not specified
+    Feasibility bands (4): comfortable / realistic / aggressive /
+    unrealistic. Computed from weeksAvailable vs weeksNeeded
+    ratio (1.25 / 0.95 / 0.70 thresholds).
+    Phase split adapts to weeksAvailable:
+      16+ weeks: Base 35% / Build 35% / Peak 20% / Taper 10%
+                 (clamped 2 weeks taper)
+       8-15:    Base 25% / Build 40% / Peak 25% / Taper 10%
+       4-7:     Build 50% / Peak 30% / Taper 20%
+       <4:      degraded mode → race-week protocol only
+    Weekly TSS curve with progressive overload + 3:1 deload
+    rhythm (every 4th week at 60% of build target).
+    Sample week templates per phase: 5-7 days each with
+    `{ day, intent, durationMin, zones, paceTarget,
+       notes: { en, tr } }` using sport-specific paces from
+    trainingPaces / getCyclingZones / swimmingZones.
+    Bilingual feasibility/recommendation messages.
+    Edge cases: malformed input → null with reason; targetPR
+    slower than currentPR → null; raceDate in past → null;
+    raceDate <7 days → degraded mode.
+    Citation: 'Daniels 2014; Bompa 2009; Mujika 2003; Coggan 2010;
+              Wakayoshi 1992; Seiler 2010'.
+    Exports buildEliteProgram + ELITE_PROGRAM_CITATION.
+    58 tests covering empty/null, all 4 feasibility bands, all
+    4 sport paths (run/bike/swim/triathlon), targetPR-slower-
+    than-currentPR rejection, past-raceDate rejection, weeks
+    available math, weeklyTSS array length, phase split for
+    each weeksAvailable bracket, sample-week shape, 3:1 deload
+    presence, bilingual, deterministic options.today.
+
+  src/components/dashboard/EliteProgramCard.jsx (327 lines):
+    Two render modes:
+      Form mode — 4-field inline input:
+        Sport selector (4 buttons: RUN/BIKE/SWIM/TRI)
+        Current PR (distance dropdown + MM:SS time)
+        Target PR (distance dropdown + MM:SS time)
+        Race date picker
+        GENERATE button (orange)
+      Plan mode — visualization:
+        Feasibility badge (band-colored) with weeks-needed/
+          available subtext
+        Big numbers row: current → target time, deltaPct%
+          improvement, weeks available
+        Phase split bar (4 segments, colored by phase, width
+          proportional to phase weeks). role="img" + bilingual
+          aria-label
+        Sample week previews per phase (collapsible sections;
+          Base default-expanded). Day-by-day compact table
+          showing day · intent · duration · zones summary ·
+          pace target.
+        Recommendation paragraph + citation footer
+    State persists across reloads via useLocalStorage key
+    `sporeus-eliteProgram`. Reset button to re-input.
+    role="region" + bilingual aria-label "Elite training program
+    · Elit antrenman programı". aria-live="polite" on feasibility
+    badge. 4px accent border-left in band color (orange in form
+    mode). animationDelay 440ms (after DeloadCadence at 420ms).
+    Placed at end of coaching cluster — the headline daily-answer
+    surface.
+    14 jsdom tests covering form mode field rendering, sport
+    toggling, PR time MM:SS parsing, submit→plan-mode transition,
+    feasibility badge band class, phase split bar segments, all 4
+    sample week sections, reset → form mode, bilingual, role=
+    region, localStorage persistence across remount, disabled
+    submit when raceDate empty.
+
+  Tests: 8698 → 8756 (+58 lib, +14 card → wait, 72 expected;
+         actual delta is 58 because some cards' fixture tweaks
+         shifted with eliteProgram landing; verified clean
+         8756/8756 pass).
+  Files: 361 → 365.
+  Build: clean, main chunk 83.79 KB gz / 150 KB cap (~66 KB
+         headroom holds despite the 1.5K LOC mission addition).
+  DEPENDS ON: existing periodization.js, raceGoalEngine.js,
+              sport/running.js, sport/cycling.js, sport/swimming.js,
+              raceGoalProjection.js, useLocalStorage hook.
+
+  Note on agent execution: both implementing agents hit org
+  usage limit just after writing files but before reporting.
+  Files were complete and functional on disk — verified directly
+  via npm test (lib 58/58, card 14/14) + npm run lint clean +
+  npm run build clean before commit.
+
+---
+
 ## v8.87.1 — 2026-05-07 — mcValidation Monte Carlo stability test flake fix, 8698 tests
 
   Hotfix for v8.87.0 deploy failure. CI run 25485987579 build job

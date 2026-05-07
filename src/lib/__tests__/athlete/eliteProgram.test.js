@@ -1,0 +1,402 @@
+// src/lib/__tests__/athlete/eliteProgram.test.js
+import { describe, it, expect } from 'vitest'
+import { buildEliteProgram } from '../../athlete/eliteProgram.js'
+
+const TODAY = '2026-05-04'
+
+// ── canonical fixtures ──
+const RUN_REALISTIC = {
+  currentPR: { distanceM: 10000, timeSec: 3000 },  // 50:00
+  targetPR:  { distanceM: 10000, timeSec: 2820 },  // 47:00
+  raceDate: '2026-08-25',                           // ~16w
+  sport: 'run',
+  options: { today: TODAY },
+}
+
+const RUN_COMFORTABLE = {
+  currentPR: { distanceM: 10000, timeSec: 3000 },  // 50:00
+  targetPR:  { distanceM: 10000, timeSec: 2940 },  // 49:00
+  raceDate: '2026-06-30',                           // ~8w
+  sport: 'run',
+  options: { today: TODAY },
+}
+
+const RUN_AGGRESSIVE = {
+  currentPR: { distanceM: 10000, timeSec: 3000 },  // 50:00
+  targetPR:  { distanceM: 10000, timeSec: 2880 },  // 48:00
+  raceDate: '2026-06-09',                           // ~5w
+  sport: 'run',
+  options: { today: TODAY },
+}
+
+const RUN_UNREALISTIC = {
+  currentPR: { distanceM: 10000, timeSec: 3000 },  // 50:00
+  targetPR:  { distanceM: 10000, timeSec: 2100 },  // 35:00 — huge gap
+  raceDate: '2026-06-02',                           // ~4w
+  sport: 'run',
+  options: { today: TODAY },
+}
+
+describe('buildEliteProgram — input validation', () => {
+  it('returns null for missing input', () => {
+    expect(buildEliteProgram(null)).toBeNull()
+    expect(buildEliteProgram(undefined)).toBeNull()
+    expect(buildEliteProgram({})).toBeNull()
+  })
+
+  it('returns null when currentPR is missing', () => {
+    expect(buildEliteProgram({ targetPR: { distanceM: 10000, timeSec: 2820 }, raceDate: '2026-08-25', sport: 'run' })).toBeNull()
+  })
+
+  it('returns null when targetPR is missing', () => {
+    expect(buildEliteProgram({ currentPR: { distanceM: 10000, timeSec: 3000 }, raceDate: '2026-08-25', sport: 'run' })).toBeNull()
+  })
+
+  it('returns null when raceDate is missing', () => {
+    expect(buildEliteProgram({ ...RUN_REALISTIC, raceDate: undefined })).toBeNull()
+  })
+
+  it('returns null when sport is invalid', () => {
+    expect(buildEliteProgram({ ...RUN_REALISTIC, sport: 'walking' })).toBeNull()
+  })
+
+  it('returns null when raceDate is malformed', () => {
+    expect(buildEliteProgram({ ...RUN_REALISTIC, raceDate: 'not-a-date' })).toBeNull()
+  })
+
+  it('returns null when timeSec is non-numeric or zero', () => {
+    expect(buildEliteProgram({ ...RUN_REALISTIC, currentPR: { distanceM: 10000, timeSec: 0 } })).toBeNull()
+    expect(buildEliteProgram({ ...RUN_REALISTIC, currentPR: { distanceM: 10000, timeSec: 'fast' } })).toBeNull()
+  })
+})
+
+describe('buildEliteProgram — rejection paths', () => {
+  it('rejects targetPR slower than currentPR for run', () => {
+    const r = buildEliteProgram({
+      ...RUN_REALISTIC,
+      targetPR: { distanceM: 10000, timeSec: 3300 },  // slower
+    })
+    expect(r._rejected).toBe(true)
+    expect(r.reason).toBe('target-not-faster')
+    expect(r.note.en).toMatch(/faster|FTP/i)
+    expect(r.note.tr.length).toBeGreaterThan(0)
+  })
+
+  it('rejects equal target and current times', () => {
+    const r = buildEliteProgram({
+      ...RUN_REALISTIC,
+      targetPR: { distanceM: 10000, timeSec: 3000 },
+    })
+    expect(r._rejected).toBe(true)
+  })
+
+  it('rejects raceDate in the past', () => {
+    const r = buildEliteProgram({
+      ...RUN_REALISTIC,
+      raceDate: '2026-04-01',
+    })
+    expect(r._rejected).toBe(true)
+    expect(r.reason).toBe('race-in-past')
+    expect(r.note.tr).toMatch(/geçmiş/i)
+  })
+})
+
+describe('buildEliteProgram — feasibility bands (run)', () => {
+  it('classifies 50:00 → 47:00 in 16w as realistic', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    expect(r.feasibility.band).toBe('realistic')
+    expect(r.reliable).toBe(true)
+  })
+
+  it('classifies 50:00 → 49:00 in 8w as comfortable', () => {
+    const r = buildEliteProgram(RUN_COMFORTABLE)
+    expect(r.feasibility.band).toBe('comfortable')
+    expect(r.reliable).toBe(true)
+  })
+
+  it('classifies a tight near-fit run as aggressive', () => {
+    const r = buildEliteProgram(RUN_AGGRESSIVE)
+    expect(['aggressive', 'unrealistic']).toContain(r.feasibility.band)
+  })
+
+  it('classifies 50:00 → 35:00 in 4w as unrealistic', () => {
+    const r = buildEliteProgram(RUN_UNREALISTIC)
+    expect(r.feasibility.band).toBe('unrealistic')
+    expect(r.reliable).toBe(false)
+  })
+
+  it('feasibility note bilingual messages match band', () => {
+    const r = buildEliteProgram(RUN_COMFORTABLE)
+    expect(r.feasibility.note.en).toMatch(/comfortable/i)
+    expect(r.feasibility.note.tr).toMatch(/rahat/i)
+  })
+})
+
+describe('buildEliteProgram — weeksAvailable computation', () => {
+  it('computes weeksAvailable from today→raceDate', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    expect(r.feasibility.weeksAvailable).toBe(16)
+  })
+
+  it('weeksAvailable matches weeklyTSS length', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    expect(r.weeklyTSS.length).toBe(r.feasibility.weeksAvailable)
+  })
+
+  it('honors options.today override deterministically', () => {
+    const a = buildEliteProgram({ ...RUN_REALISTIC, options: { today: '2026-05-04' } })
+    const b = buildEliteProgram({ ...RUN_REALISTIC, options: { today: '2026-05-04' } })
+    expect(a.feasibility.weeksAvailable).toBe(b.feasibility.weeksAvailable)
+    expect(a.weeklyTSS).toEqual(b.weeklyTSS)
+  })
+})
+
+describe('buildEliteProgram — phase split', () => {
+  it('16+ weeks: includes Base, Build, Peak, Taper with Taper clamped to 2', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    const taper = r.phases.find(p => p.phase === 'Taper')
+    expect(taper.weeks.length).toBe(2)
+    expect(r.phases.map(p => p.phase)).toEqual(['Base', 'Build', 'Peak', 'Taper'])
+  })
+
+  it('8-15 weeks: Base, Build, Peak, Taper present', () => {
+    const r = buildEliteProgram({
+      ...RUN_REALISTIC,
+      raceDate: '2026-07-21',  // ~11w
+    })
+    const phaseNames = r.phases.map(p => p.phase)
+    expect(phaseNames).toContain('Build')
+    expect(phaseNames).toContain('Peak')
+    expect(phaseNames).toContain('Taper')
+  })
+
+  it('4-7 weeks: no Base, only Build/Peak/Taper', () => {
+    const r = buildEliteProgram({
+      ...RUN_COMFORTABLE,
+      raceDate: '2026-06-09',  // ~5w
+    })
+    const phaseNames = r.phases.map(p => p.phase)
+    expect(phaseNames).not.toContain('Base')
+    expect(phaseNames).toContain('Peak')
+    expect(phaseNames).toContain('Taper')
+  })
+
+  it('<4 weeks: degraded mode — Peak + Taper only', () => {
+    const r = buildEliteProgram({
+      ...RUN_COMFORTABLE,
+      raceDate: '2026-05-26',  // ~3w
+    })
+    const phaseNames = r.phases.map(p => p.phase)
+    expect(phaseNames).not.toContain('Base')
+    expect(phaseNames).not.toContain('Build')
+    expect(r.recommendation.en).toMatch(/<7 weeks|degraded/i)
+  })
+
+  it('phase week sums equal weeksAvailable', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    const sum = r.phases.reduce((s, p) => s + p.weeks.length, 0)
+    expect(sum).toBe(r.feasibility.weeksAvailable)
+  })
+
+  it('each phase has color and focus', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    for (const p of r.phases) {
+      expect(typeof p.color).toBe('string')
+      expect(p.color).toMatch(/^#/)
+      expect(typeof p.focus).toBe('string')
+      expect(p.focus.length).toBeGreaterThan(0)
+    }
+  })
+})
+
+describe('buildEliteProgram — weeklyTSS curve and deload', () => {
+  it('weeklyTSS length matches weeksAvailable', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    expect(r.weeklyTSS.length).toBe(r.feasibility.weeksAvailable)
+  })
+
+  it('TSS values are non-negative integers', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    for (const t of r.weeklyTSS) {
+      expect(Number.isInteger(t)).toBe(true)
+      expect(t).toBeGreaterThanOrEqual(0)
+    }
+  })
+
+  it('contains a 3:1 deload pattern (week 4 lower than week 3)', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    expect(r.weeklyTSS[3]).toBeLessThan(r.weeklyTSS[2])
+  })
+
+  it('peak phase TSS exceeds base phase TSS (excluding deloads)', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    const basePhase = r.phases.find(p => p.phase === 'Base')
+    const peakPhase = r.phases.find(p => p.phase === 'Peak')
+    const baseAvg = basePhase.weeks.reduce((s, w) => s + r.weeklyTSS[w - 1], 0) / basePhase.weeks.length
+    const peakAvg = peakPhase.weeks.reduce((s, w) => s + r.weeklyTSS[w - 1], 0) / peakPhase.weeks.length
+    expect(peakAvg).toBeGreaterThan(baseAvg)
+  })
+
+  it('race week TSS is the lowest', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    const last = r.weeklyTSS[r.weeklyTSS.length - 1]
+    expect(last).toBeLessThanOrEqual(Math.min(...r.weeklyTSS))
+  })
+})
+
+describe('buildEliteProgram — sample weeks structure', () => {
+  it('returns sample weeks for present phases', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    expect(Array.isArray(r.sampleWeeks.Base)).toBe(true)
+    expect(r.sampleWeeks.Base.length).toBeGreaterThanOrEqual(5)
+    expect(r.sampleWeeks.Base.length).toBeLessThanOrEqual(7)
+  })
+
+  it('each day has required fields', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    for (const d of r.sampleWeeks.Build) {
+      expect(d).toHaveProperty('day')
+      expect(d).toHaveProperty('intent')
+      expect(d.intent).toHaveProperty('en')
+      expect(d.intent).toHaveProperty('tr')
+      expect(d).toHaveProperty('durationMin')
+      expect(d).toHaveProperty('zones')
+      expect(d.zones).toHaveProperty('Z1')
+      expect(d).toHaveProperty('notes')
+      expect(d.notes).toHaveProperty('en')
+      expect(d.notes).toHaveProperty('tr')
+    }
+  })
+
+  it('sample weeks empty for absent phases', () => {
+    const r = buildEliteProgram({
+      ...RUN_COMFORTABLE,
+      raceDate: '2026-06-09',  // ~5w, no Base
+    })
+    expect(r.sampleWeeks.Base).toEqual([])
+    expect(r.sampleWeeks.Peak.length).toBeGreaterThan(0)
+  })
+})
+
+describe('buildEliteProgram — bike sport', () => {
+  it('handles direct FTP wattage (distanceM=0)', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 0, timeSec: 230 },
+      targetPR:  { distanceM: 0, timeSec: 250 },
+      raceDate: '2026-07-28',
+      sport: 'bike',
+      options: { today: TODAY },
+    })
+    expect(r.currentLevel.ftp).toBe(230)
+    expect(r.targetLevel.ftp).toBe(250)
+    expect(r.currentLevel.vdot).toBeNull()
+  })
+
+  it('rejects bike target FTP below current (direct mode)', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 0, timeSec: 250 },
+      targetPR:  { distanceM: 0, timeSec: 230 },
+      raceDate: '2026-07-28',
+      sport: 'bike',
+      options: { today: TODAY },
+    })
+    expect(r._rejected).toBe(true)
+  })
+
+  it('handles bike TT mode (distance > 0, derives FTP)', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 40000, timeSec: 3600 },
+      targetPR:  { distanceM: 40000, timeSec: 3360 },
+      raceDate: '2026-08-25',
+      sport: 'bike',
+      options: { today: TODAY },
+    })
+    expect(r.currentLevel.ftp).toBeGreaterThan(0)
+    expect(r.targetLevel.ftp).toBeGreaterThan(r.currentLevel.ftp)
+    expect(Array.isArray(r.currentLevel.paces)).toBe(true)  // cycling zones array
+  })
+})
+
+describe('buildEliteProgram — swim sport', () => {
+  it('classifies 1500m 22:00 → 21:00 in 12w (aggressive or realistic)', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 1500, timeSec: 1320 },  // 22:00
+      targetPR:  { distanceM: 1500, timeSec: 1260 },  // 21:00
+      raceDate: '2026-07-28',
+      sport: 'swim',
+      options: { today: TODAY },
+    })
+    expect(['realistic', 'aggressive', 'comfortable']).toContain(r.feasibility.band)
+    expect(r.currentLevel.css).toBeGreaterThan(0)
+    expect(r.targetLevel.css).toBeGreaterThan(0)
+    expect(r.targetLevel.css).toBeLessThan(r.currentLevel.css)
+  })
+
+  it('swim sample weeks have swim-style intents', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 1500, timeSec: 1320 },
+      targetPR:  { distanceM: 1500, timeSec: 1260 },
+      raceDate: '2026-09-15',
+      sport: 'swim',
+      options: { today: TODAY },
+    })
+    const intentTexts = r.sampleWeeks.Build.map(d => d.intent.en).join(' ')
+    expect(intentTexts).toMatch(/CSS|aerobic|threshold/i)
+  })
+})
+
+describe('buildEliteProgram — triathlon sport', () => {
+  it('returns valid shape using run-only feasibility math', () => {
+    const r = buildEliteProgram({
+      ...RUN_REALISTIC,
+      sport: 'triathlon',
+    })
+    expect(r.sport).toBe('triathlon')
+    expect(r.currentLevel.vdot).toBeGreaterThan(0)
+    expect(r.feasibility.band).toBeTruthy()
+    expect(r.recommendation.en).toMatch(/run-only|Triathlon mode/i)
+    expect(r.recommendation.tr).toMatch(/koşu/i)
+  })
+})
+
+describe('buildEliteProgram — output shape and metadata', () => {
+  it('citation includes Daniels, Coggan, Wakayoshi', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    expect(r.citation).toMatch(/Daniels/)
+    expect(r.citation).toMatch(/Coggan/)
+    expect(r.citation).toMatch(/Wakayoshi/)
+  })
+
+  it('includes run-specific paces in currentLevel.paces', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    expect(r.currentLevel.paces).toBeTruthy()
+    expect(typeof r.currentLevel.paces.E).toBe('number')
+    expect(typeof r.currentLevel.paces.T).toBe('number')
+  })
+
+  it('recommendation is bilingual', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    expect(typeof r.recommendation.en).toBe('string')
+    expect(typeof r.recommendation.tr).toBe('string')
+    expect(r.recommendation.tr.length).toBeGreaterThan(0)
+  })
+
+  it('flags weeklyHours outside reasonable band', () => {
+    const r = buildEliteProgram({
+      ...RUN_REALISTIC,
+      profile: { currentCTL: 50, weeklyHours: 30, trainingDays: 5 },
+    })
+    expect(r.recommendation.en).toMatch(/Weekly training hours|3-25/i)
+  })
+
+  it('reliable=false when band is unrealistic', () => {
+    const r = buildEliteProgram(RUN_UNREALISTIC)
+    expect(r.reliable).toBe(false)
+  })
+
+  it('deltaPct reflects requested improvement percent', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    // 50:00→47:00 → 6% improvement
+    expect(r.feasibility.deltaPct).toBeCloseTo(6, 1)
+  })
+})
