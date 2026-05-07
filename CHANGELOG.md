@@ -4,6 +4,88 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.86.0 — 2026-05-07 — trainingDiversity + deloadCadence libs + audit saturation (+72 tests), 8657 tests
+
+  Two new pure-function detector libs (no cards yet — surface in
+  next wave). Both fill genuine gaps not covered by existing
+  detectors.
+
+  src/lib/athlete/trainingDiversity.js (226 lines):
+    detectTrainingDiversity(log, today) — multi-sport variety
+    detector. Distinct from sessionVariety (which classifies by
+    intent: recovery/long/steady/tempo/intervals — not by sport).
+    Sport classification (5 buckets):
+      run     — type/sport matches /run|jog|trail/i
+      bike    — type/sport matches /bike|cycl|ride|spin/i
+      swim    — type/sport matches /swim/i
+      strength— type/sport matches /strength|gym|weight|lift|resistance/i
+      other   — yoga, hike, ski, row, etc.
+    entry.sport overrides entry.type when both present; case
+    insensitive; unmatched → other bucket.
+    Bands (priority: monotypic → fragmented → balanced → limited):
+      monotypic  : sportsActive ≤1 AND totalSessions ≥5
+      fragmented : sportsActive ≥4 AND no sport >50%
+      balanced   : sportsSubstantial ≥3 (≥10% share each)
+      limited    : sportsActive == 2
+    Computes Herfindahl-Hirschman Index (concentration measure):
+    HHI = sum(share²); 1.0 = monotypic, ~0.20 = 5 sports equal.
+    Reliable when totalSessions ≥5.
+    Bilingual {sport} substitution in monotypic message
+    (run/koşu, bike/bisiklet, swim/yüzme, strength/güç,
+    other/aktivite).
+    Citation: 'Bompa & Haff 2009 multi-sport; Tonnessen 2014
+    polarized + variety'.
+    Exports detectTrainingDiversity +
+    TRAINING_DIVERSITY_CITATION.
+    36 tests covering empty/insufficient, all 4 bands, HHI math
+    (1.0, 0.5, 0.33, 0.20), all 5 sport regex patterns, sport
+    overrides type, case insensitivity, substantial threshold
+    (10% inclusive), {sport} substitution bilingual, multi-day
+    sum, deterministic options.today.
+    Judgment call: fragmented prioritized over balanced when
+    both apply (5-equal-split is textbook jack-of-all-trades).
+
+  src/lib/athlete/deloadCadence.js (204 lines):
+    detectDeloadCadence(log, today) — 3:1 build/recovery cycle
+    detector. Distinct from existing detectors:
+      recoveryDebt          — current TSB deficit
+      detrainingDetector    — total inactivity gaps
+      supercompensationWin  — peak readiness window post-deload
+      this → was-the-3:1-cadence-followed pattern
+    Aggregates 12 weekly TSS sums (week ending Sunday convention,
+    matches fitnessConsistency). Deload week = weekTSS ≤ mean ×
+    0.65 (35%+ reduction = clear deload signal).
+    Bands (priority: no-pattern → overdue → too-frequent →
+    on-schedule):
+      no-pattern   : actualDeloads === 0
+      overdue      : weeksSinceLastDeload > 4
+      too-frequent : deloadRatio > 1.5
+      on-schedule  : deloadRatio ≥ 0.75 AND lastDeload ≤ 4w
+    expectedDeloads = floor(weeksAnalyzed / 4).
+    Reliable when weeksAnalyzed ≥8 AND meanWeekTSS > 50.
+    Drops partial weeks at log start.
+    Bilingual {n} substitution for weeksSinceLastDeload.
+    Citation: 'Bompa & Haff 2009 periodization; Issurin 2010
+    block periodization'.
+    Exports detectDeloadCadence + DELOAD_CADENCE_CITATION.
+    36 tests covering perfect 3:1 (3 build at 400 + 1 deload at
+    200, repeat), no-deload constant load, single old deload
+    (overdue), biweekly deload (too-frequent), all bands,
+    deloadRatio math, weeksSinceLastDeload computation, multi-day
+    sum, deterministic options.today.
+
+  Audit (no-cost script run 2026-05-07):
+    Saturated. Bundle 1194.7 KB / 2000 (~60%). 0 TODOs, 0 stale.
+    a11y still functional zero. Recommendation: feature work.
+
+  Tests: 8585 → 8657 (+72; 36 trainingDiversity + 36 deloadCadence).
+  Files: 357 → 359.
+  Build: clean, main chunk holds at 83.80 KB gz / 150 KB cap
+         (~66 KB headroom).
+  DEPENDS ON: nothing — both libs self-contained.
+
+---
+
 ## v8.85.0 — 2026-05-07 — FitnessConsistencyCard + RecoveryAdherenceCard + Digest 14→16 + StaleZones flake fix (+35 tests), 8585 tests
 
   Closes both v8.84.0 lib→card loops and brings the digest into
