@@ -1,9 +1,13 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, lazy, Suspense } from 'react'
 import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { FREE_ATHLETE_LIMIT } from '../lib/formulas.js'
 import { generateAthleteReportCard } from '../lib/digestEmail.js'
+import ErrorBoundary from './ErrorBoundary.jsx'
+
+// v8.101.0 — coach-side ingestion of athlete SHARE WITH COACH envelope.
+const CoachAthleteProgramCard = lazy(() => import('./coach/CoachAthleteProgramCard.jsx'))
 
 import { TODAY, daysBefore, computeAthleteMetrics, computeLoad } from './coachDashboard/helpers.jsx'
 import CoachOnboarding from './coachDashboard/CoachOnboarding.jsx'
@@ -274,6 +278,13 @@ export default function CoachDashboard({ authUser }) {
           </button>
         </div>
       </div>
+
+      {/* ── v8.101.0 — Athlete Program Ingest (paired with athlete SHARE WITH COACH) ── */}
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <CoachAthleteProgramCard />
+        </Suspense>
+      </ErrorBoundary>
 
       {/* ── Supabase Live Athletes ──────────────────────────────────────────── */}
       {isSupabaseReady() && sbCoachId && (

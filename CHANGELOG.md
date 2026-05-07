@@ -4,6 +4,104 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.101.0 — 2026-05-07 — Mission #1 coach-side ingestion: closes the athlete↔coach loop (+30 tests), 9090 tests
+
+  v8.97 shipped a v=1 EXPORT-SUMMARY envelope with no consumer.
+  v8.100 renamed the button to be honest about that gap. v8.101
+  builds the consumer — coaches can now ingest the envelope and
+  see a structured read-only summary of the athlete's plan.
+  Button reverted to "SHARE WITH COACH · KOÇLA PAYLAŞ"
+  legitimately.
+
+  src/lib/athlete/coachShareEnvelope.js (NEW, ~120 lines):
+    Pure helper exposing parseCoachShareEnvelope(jsonStr) →
+    { ok, error, envelope }. Single source of truth for the
+    v=1 contract. Validation rules:
+      - JSON.parse must succeed
+      - kind must equal 'sporeus-elite-program-share'
+      - v must equal 1
+      - athleteSnapshot + phases must be present
+      - physiology, synthetic, lifecycle all optional
+      - extra unknown fields tolerated (forward-compat)
+    Bilingual error code → message lookup
+    (COACH_SHARE_ERRORS): invalid-json, wrong-kind,
+    unsupported-version, missing-required-fields. 20 lib
+    tests cover the validation matrix.
+
+  src/components/coach/CoachAthleteProgramCard.jsx (NEW,
+  ~180 lines):
+    Two-mode coach card.
+    Empty mode: textarea for paste + file upload + "INGEST ·
+    İÇE AKTAR" button. Disabled until input non-empty.
+    Loaded mode: read-only structured summary —
+      - Snapshot: sport + currentTime → targetTime + raceDate
+        + feasibility band pill
+      - Physiology: sport-conditional VDOT/FTP/CSS row
+      - Phase split bar (mirror EliteProgramCard's PhaseSplitBar)
+      - Lifecycle pill (mirror EliteProgramCard's lifecycle)
+      - Synthetic AUTO-DERIVED badge when applicable
+      - Citation footer
+    "CLEAR · TEMİZLE" button returns to empty mode.
+    Persists last ingested envelope to
+    sporeus-coach-ingested-share localStorage. Bilingual
+    throughout. 10 component tests.
+
+  CoachDashboard.jsx wiring:
+    React.lazy + Suspense + ErrorBoundary card placed
+    immediately after the Coach Mode banner (above Supabase
+    Live Athletes). Visible to every signed-in coach
+    regardless of tier — file/clipboard-based, no server
+    dependency.
+
+  EliteProgramCard.jsx rename reverted:
+    Button text: "EXPORT SUMMARY · ÖZET DIŞA AKTAR" →
+    "SHARE WITH COACH · KOÇLA PAYLAŞ"
+    aria-label: "Export plan summary" →
+    "Share plan summary with coach"
+    announce text: now references "Coach can paste it into
+    ATHLETE PROGRAM card on their dashboard."
+    Backward compat: BOTH data-share-with-coach AND
+    data-export-summary attributes on the button so any
+    selector that targeted either continues to resolve.
+
+  Athlete↔coach loop complete:
+    Athlete generates plan → SHARE WITH COACH copies v=1
+    JSON → coach pastes/uploads into ATHLETE PROGRAM card →
+    coach sees full physiology + phases + lifecycle. No
+    backend, no Supabase round-trip, no real-time sync —
+    matches CLAUDE.md "Coach messaging is file-based JSON"
+    architecture. Future Mission #N can layer real-time
+    sync on top without breaking the v=1 contract.
+
+  Test counts:
+    coachShareEnvelope:  20 new lib tests
+    CoachAthleteProgramCard: 10 new component tests
+    EliteProgramCard:    +0 (label-only rename)
+    Full suite:          9060 → 9090 (+30, all green,
+                         372 files)
+    Lint:                clean
+    Build:               83.81 KB gz main (within 150 KB
+                         gate); new code in lazy CoachDashboard
+                         chunk
+
+  DEPENDS ON: v8.97.0 (envelope shape), v8.100.0 (rename
+  groundwork that this wave reverses now that the gap is
+  closed).
+
+  Files added:
+    src/lib/athlete/coachShareEnvelope.js
+    src/lib/__tests__/athlete/coachShareEnvelope.test.js
+    src/components/coach/CoachAthleteProgramCard.jsx
+    src/components/__tests__/CoachAthleteProgramCard.test.jsx
+  Files modified:
+    src/components/CoachDashboard.jsx (lazy import + render)
+    src/components/dashboard/EliteProgramCard.jsx (label
+                                                  rename)
+    src/components/__tests__/EliteProgramCard.test.jsx
+                                                  (label tests)
+
+---
+
 ## v8.100.0 — 2026-05-07 — Mission #1 launch hardening: sport-mismatch fix + v8.98/v8.99 component tests + truth-in-naming (+17 tests), 9060 tests
 
   Deep-dive audit of v8.99 surfaced three credibility gaps that

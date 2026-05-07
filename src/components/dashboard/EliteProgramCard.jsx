@@ -1123,8 +1123,8 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
     }
     const json = JSON.stringify(payload, null, 2)
     const successMsg = isTR
-      ? 'Plan özeti panoya kopyalandı. Koç mesajına yapıştır.'
-      : 'Plan summary copied to clipboard. Paste into your coach messaging.'
+      ? 'Plan özeti kopyalandı. Koç, panodaki SPORCU PROGRAMI kartına yapıştırabilir.'
+      : 'Plan summary copied. Coach can paste it into ATHLETE PROGRAM card on their dashboard.'
     const fallbackMsg = isTR
       ? 'Plan özeti dosya olarak indirildi.'
       : 'Plan summary downloaded as a file.'
@@ -1260,12 +1260,12 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
             {isTR ? 'TAKVİME UYGULA' : 'APPLY TO CALENDAR'}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>{isTR ? 'APPLY TO CALENDAR' : 'TAKVİME UYGULA'}
           </button>
           <button type="button"
-            data-export-summary
             data-share-with-coach
+            data-export-summary
             onClick={shareWithCoach}
-            aria-label={isTR ? 'Plan özetini dışa aktar' : 'Export plan summary'}
+            aria-label={isTR ? 'Plan özetini koçla paylaş' : 'Share plan summary with coach'}
             style={{ ...S.mono, fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '6px 10px', background: 'transparent', color: '#0064ff', border: '1px solid #0064ff', borderRadius: '3px', cursor: 'pointer', minHeight: '32px' }}>
-            {isTR ? 'ÖZET DIŞA AKTAR' : 'EXPORT SUMMARY'}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>{isTR ? 'EXPORT SUMMARY' : 'ÖZET DIŞA AKTAR'}
+            {isTR ? 'KOÇLA PAYLAŞ' : 'SHARE WITH COACH'}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>{isTR ? 'SHARE WITH COACH' : 'KOÇLA PAYLAŞ'}
           </button>
           <button type="button" onClick={handleReset}
             aria-label={isTR ? 'Programı sıfırla' : 'Reset program'}

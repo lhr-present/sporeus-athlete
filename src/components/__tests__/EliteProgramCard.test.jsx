@@ -1007,10 +1007,10 @@ describe('EliteProgramCard — v8.97.0 lifecycle + share', () => {
   it('SHARE WITH COACH button renders bilingual', () => {
     renderCard()
     fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
-    const btn = screen.getByRole('button', { name: /Export plan summary/i })
+    const btn = screen.getByRole('button', { name: /Share plan summary with coach/i })
     expect(btn).toBeInTheDocument()
-    expect(btn.textContent).toMatch(/EXPORT SUMMARY/)
-    expect(btn.textContent).toMatch(/ÖZET DIŞA AKTAR/)
+    expect(btn.textContent).toMatch(/SHARE WITH COACH/)
+    expect(btn.textContent).toMatch(/KOÇLA PAYLAŞ/)
   })
 
   it('click SHARE writes JSON to clipboard (mocked navigator.clipboard.writeText)', async () => {
@@ -1023,7 +1023,7 @@ describe('EliteProgramCard — v8.97.0 lifecycle + share', () => {
     try {
       renderCard()
       fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
-      const btn = screen.getByRole('button', { name: /Export plan summary/i })
+      const btn = screen.getByRole('button', { name: /Share plan summary with coach/i })
       fireEvent.click(btn)
       expect(writeText).toHaveBeenCalledTimes(1)
       const json = writeText.mock.calls[0][0]
@@ -1046,7 +1046,7 @@ describe('EliteProgramCard — v8.97.0 lifecycle + share', () => {
     try {
       renderCard()
       fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
-      fireEvent.click(screen.getByRole('button', { name: /Export plan summary/i }))
+      fireEvent.click(screen.getByRole('button', { name: /Share plan summary with coach/i }))
       const parsed = JSON.parse(writeText.mock.calls[0][0])
       expect(parsed.athleteSnapshot).toBeDefined()
       expect(parsed.athleteSnapshot.sport).toBe('run')
@@ -1080,7 +1080,7 @@ describe('EliteProgramCard — v8.97.0 lifecycle + share', () => {
     try {
       renderCard()
       fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
-      fireEvent.click(screen.getByRole('button', { name: /Export plan summary/i }))
+      fireEvent.click(screen.getByRole('button', { name: /Share plan summary with coach/i }))
       // Allow rejected promise microtask to resolve
       await Promise.resolve()
       await Promise.resolve()
