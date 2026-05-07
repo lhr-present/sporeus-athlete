@@ -4,6 +4,74 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.91.0 — 2026-05-07 — Mission #1 correctness wave: stealth daily-anchor bug + profile passthrough + rejection surface (+10 tests), 8856 tests
+
+  Audit of Mission #1 surfaced one stealth correctness bug and three
+  silent UX dead-ends. Wave fixes them with no new visible features —
+  every athlete already in production gets a more honest plan with
+  this version.
+
+  Stealth bug — `sporeus-eliteProgramStart` was read by
+  TodayProgrammedSessionCard but never written by EliteProgramCard.
+  Fallback chain `persisted.input?.options?.today || startOverride
+  || null` resolved to null for every athlete not in deterministic-
+  test mode, meaning every "TODAY'S SESSION" card silently used the
+  wrong week-anchor. Fix: write START_KEY = today on every generate;
+  clear it on reset. Tests verify both.
+
+  Profile passthrough — `EliteProgramCard` accepted a `profile` prop
+  (line 273) but threw it away before calling buildEliteProgram. The
+  orchestrator's defaults (currentCTL=50, weeklyHours=8,
+  trainingDays=5) fired for every athlete regardless of saved
+  state. Fix: derive profile in card via useMemo:
+    • currentCTL: derived from log via `calculatePMC(log)` last
+      non-future point's CTL; falls through to lib default when log
+      is empty
+    • weeklyHours / trainingDays: passed straight through from
+      profile prop when present
+  Pass enriched profile into buildEliteProgram input. Tests verify
+  fields land in localStorage'd input.profile.
+
+  Rejection surface — when buildEliteProgram returned `_rejected`,
+  the card silently collapsed to the empty form, throwing away the
+  bilingual `note` that the lib already computed. Fix: split useMemo
+  return into `{ result, rejection }`; render a red role=alert
+  banner with `data-rejection` attribute when rejection is present,
+  preserving form values so the user can correct (target-not-faster
+  or race-in-past). Border-left accent flips to #dc3545. Tests
+  verify EN+TR copy + reason attribute + form preservation.
+
+  Reset confirmation — single-click destroyed the program. Fix:
+  bilingual confirm() guard (matches APPLY-TO-CALENDAR pattern at
+  line 339); cancel preserves plan; accept clears both
+  STORAGE_KEY and START_KEY. Existing reset test updated to spy
+  on confirm and return true; new test verifies cancel preserves.
+
+  Test counts:
+    EliteProgramCard:    +10 new (3 START_KEY, 2 profile, 4
+                         rejection, 1 reset-cancel)
+    Total card tests:    23 → 33
+    Full suite:          8846 → 8856 (+10, all green, 367 files)
+    Lint:                clean
+    Build:               83.81 KB gz main (within 150 KB gate)
+
+  Known follow-ups (planned for v8.92.0+):
+    - VDOT/FTP/CSS row not yet surfaced (audit gap #2 — physiology)
+    - "About this model" expandable with phase rationale not yet
+      added (audit gap #2 — model rationale)
+    - Race-result autopsy not yet built (audit gap #3 — season loop)
+
+  DEPENDS ON: v8.88.0 (eliteProgram.js orchestrator), v8.89.0
+  (TodayProgrammedSessionCard reads START_KEY), v8.90.0
+  (apply-to-calendar pattern that this confirm() guard mirrors),
+  src/lib/trainingLoad.js calculatePMC (CTL derivation).
+
+  Files modified:
+    src/components/dashboard/EliteProgramCard.jsx (+47 lines)
+    src/components/__tests__/EliteProgramCard.test.jsx (+89 lines)
+
+---
+
 ## v8.90.0 — 2026-05-07 — Mission #1 ready-to-ship polish: Apply-to-Calendar bridge + WeeklyTSSChart sparkline (+29 tests), 8846 tests
 
   Two concurrent polish additions that close the gap between the

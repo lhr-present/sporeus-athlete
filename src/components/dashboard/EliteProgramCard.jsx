@@ -10,9 +10,11 @@ import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { buildEliteProgram } from '../../lib/athlete/eliteProgram.js'
 import { eliteProgramToYearlyWeeks } from '../../lib/athlete/eliteProgramToYearly.js'
 import { downloadEliteProgramCSV } from '../../lib/athlete/eliteProgramExport.js'
+import { calculatePMC } from '../../lib/trainingLoad.js'
 import { announce } from '../../lib/a11y/announcer.js'
 
 const STORAGE_KEY = 'sporeus-eliteProgram'
+const START_KEY = 'sporeus-eliteProgramStart'
 const YEARLY_PLAN_KEY = 'sporeus-yearly-plan'
 const YEARLY_RACES_KEY = 'sporeus-plan-races'
 
@@ -274,30 +276,81 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
   const [persisted, setPersisted] = useLocalStorage(STORAGE_KEY, null)
+  const [, setStart] = useLocalStorage(START_KEY, null)
 
-  const result = useMemo(() => {
-    if (!persisted?.input) return null
+  // Derive personalization signal from caller-supplied log+profile so the
+  // orchestrator does not silently default everyone to currentCTL=50.
+  const derivedProfile = useMemo(() => {
+    const out = {}
+    try {
+      const pmc = calculatePMC(_log || [])
+      const last = (Array.isArray(pmc) ? pmc : []).filter(p => !p.isFuture).pop()
+      if (last && typeof last.ctl === 'number' && last.ctl > 0) out.currentCTL = last.ctl
+    } catch { /* keep defaults */ }
+    if (typeof _profile?.weeklyHours === 'number' && _profile.weeklyHours > 0) {
+      out.weeklyHours = _profile.weeklyHours
+    }
+    if (typeof _profile?.trainingDays === 'number' && _profile.trainingDays >= 3) {
+      out.trainingDays = _profile.trainingDays
+    }
+    return out
+  }, [_log, _profile?.weeklyHours, _profile?.trainingDays])
+
+  const evaluation = useMemo(() => {
+    if (!persisted?.input) return { result: null, rejection: null }
     try {
       const r = buildEliteProgram(persisted.input)
-      if (!r || r._rejected || !r.feasibility) return null
-      return r
-    } catch { return null }
+      if (!r) return { result: null, rejection: null }
+      if (r._rejected) return { result: null, rejection: r }
+      if (!r.feasibility) return { result: null, rejection: null }
+      return { result: r, rejection: null }
+    } catch {
+      return { result: null, rejection: null }
+    }
   }, [persisted])
+  const result = evaluation.result
+  const rejection = evaluation.rejection
 
   const ariaLabel = isTR ? 'Elit antrenman programı' : 'Elite training program'
   const cardBase = { ...S.card, animationDelay: '440ms', padding: '20px' }
   const titleEN = 'ELITE PROGRAM', titleTR = 'ELİT PROGRAM'
 
-  if (!persisted || !result) {
+  function handleGenerate(input) {
+    const enriched = { ...input, profile: derivedProfile }
+    setPersisted({ input: enriched, form: persisted?.form })
+    setStart(new Date().toISOString().slice(0, 10))
+  }
+
+  function handleReset() {
+    const msg = isTR
+      ? 'Programı sıfırlamak istediğinden emin misin?'
+      : 'Are you sure you want to reset this program?'
+    const ok = (typeof window !== 'undefined' && typeof window.confirm === 'function')
+      ? window.confirm(msg) : true
+    if (!ok) return
+    setPersisted(null)
+    setStart(null)
+  }
+
+  if (!result) {
+    const noteText = rejection?.note?.[isTR ? 'tr' : 'en'] || ''
     return (
-      <div className="sp-card" role="region" aria-label={ariaLabel} style={{ ...cardBase, borderLeft: '4px solid #ff6600' }}>
+      <div className="sp-card" role="region" aria-label={ariaLabel}
+        style={{ ...cardBase, borderLeft: rejection ? '4px solid #dc3545' : '4px solid #ff6600' }}>
         <div style={S.cardTitle}>{titleEN}<span aria-hidden="true" style={{ margin: '0 6px' }}>·</span>{titleTR}</div>
-        <div style={{ ...S.mono, fontSize: '11px', color: 'var(--sub, var(--muted))', lineHeight: 1.6, marginBottom: '12px' }}>
-          {isTR ? 'Hedefini gir: program bilime dayalı tüm sezonu çıkarsın.' : 'Enter your target — get a science-based full-season program.'}
-        </div>
+        {rejection ? (
+          <div role="alert" aria-live="polite" data-rejection={rejection.reason || 'rejected'}
+            style={{ ...S.mono, fontSize: '11px', fontWeight: 600, color: '#fff', background: '#dc3545', padding: '8px 12px', borderRadius: '4px', marginBottom: '12px', lineHeight: 1.5 }}>
+            {noteText}
+          </div>
+        ) : (
+          <div style={{ ...S.mono, fontSize: '11px', color: 'var(--sub, var(--muted))', lineHeight: 1.6, marginBottom: '12px' }}>
+            {isTR ? 'Hedefini gir: program bilime dayalı tüm sezonu çıkarsın.' : 'Enter your target — get a science-based full-season program.'}
+          </div>
+        )}
         <FormMode
           isTR={isTR}
-          onGenerate={input => setPersisted({ input, form: persisted?.form })}
+          onGenerate={handleGenerate}
           persistedForm={persisted?.form}
           savePersistedForm={form => setPersisted({ input: persisted?.input || null, form })}
         />
@@ -391,7 +444,8 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
             style={{ ...S.mono, fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '6px 10px', background: '#0064ff', color: '#fff', border: '1px solid #0064ff', borderRadius: '3px', cursor: 'pointer', minHeight: '32px' }}>
             {isTR ? 'TAKVİME UYGULA' : 'APPLY TO CALENDAR'}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>{isTR ? 'APPLY TO CALENDAR' : 'TAKVİME UYGULA'}
           </button>
-          <button type="button" onClick={() => setPersisted(null)}
+          <button type="button" onClick={handleReset}
+            aria-label={isTR ? 'Programı sıfırla' : 'Reset program'}
             style={{ ...S.mono, fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '6px 10px', background: 'transparent', color: '#ff6600', border: '1px solid #ff6600', borderRadius: '3px', cursor: 'pointer', minHeight: '32px' }}>
             {isTR ? 'SIFIRLA' : 'RESET'}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>{isTR ? 'RESET' : 'SIFIRLA'}
           </button>

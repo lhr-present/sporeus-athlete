@@ -114,12 +114,27 @@ describe('EliteProgramCard — plan mode', () => {
     expect(screen.getByRole('button', { name: /TAPER/i })).toBeInTheDocument()
   })
 
-  it('reset button switches back to form mode', () => {
+  it('reset button switches back to form mode after confirm', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderCard()
     fillFormAndSubmit()
     expect(screen.queryByLabelText(/Current PR time/i)).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: /RESET/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Reset program/i }))
+    expect(confirmSpy).toHaveBeenCalled()
     expect(screen.getByLabelText(/Current PR time/i)).toBeInTheDocument()
+    confirmSpy.mockRestore()
+  })
+
+  it('reset button preserves plan when confirm is cancelled', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    renderCard()
+    fillFormAndSubmit()
+    expect(screen.queryByLabelText(/Current PR time/i)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Reset program/i }))
+    expect(confirmSpy).toHaveBeenCalled()
+    expect(screen.queryByLabelText(/Current PR time/i)).toBeNull()
+    expect(screen.getByRole('button', { name: /Reset program/i })).toBeInTheDocument()
+    confirmSpy.mockRestore()
   })
 
   it('renders EXPORT CSV button in plan mode (bilingual)', () => {
@@ -253,6 +268,98 @@ describe('EliteProgramCard — weekly TSS chart', () => {
     const circles = svg.querySelectorAll('circle')
     // The buildWeeklyTSS uses 3:1 deload pattern, so any plan ≥4 weeks has deload dots
     expect(circles.length).toBeGreaterThan(0)
+  })
+})
+
+describe('EliteProgramCard — v8.91.0 personalization & rejection surface', () => {
+  it('writes sporeus-eliteProgramStart on generate', () => {
+    renderCard()
+    expect(localStorage.getItem('sporeus-eliteProgramStart')).toBeNull()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    const stored = localStorage.getItem('sporeus-eliteProgramStart')
+    expect(stored).not.toBeNull()
+    expect(JSON.parse(stored)).toBe('2026-05-07')
+  })
+
+  it('clears sporeus-eliteProgramStart on reset', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    expect(JSON.parse(localStorage.getItem('sporeus-eliteProgramStart'))).toBe('2026-05-07')
+    fireEvent.click(screen.getByRole('button', { name: /Reset program/i }))
+    // useLocalStorage serializes null as the string "null"
+    expect(JSON.parse(localStorage.getItem('sporeus-eliteProgramStart'))).toBeNull()
+    confirmSpy.mockRestore()
+  })
+
+  it('passes profile.weeklyHours and trainingDays through to the orchestrator input', () => {
+    renderCard({ profile: { weeklyHours: 12, trainingDays: 4 } })
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY))
+    expect(stored.input.profile.weeklyHours).toBe(12)
+    expect(stored.input.profile.trainingDays).toBe(4)
+  })
+
+  it('derives currentCTL from log via PMC and passes it through', () => {
+    // 30 days of 80 TSS/day ending today produces a non-trivial CTL well above
+    // the orchestrator's currentCTL=50 default.
+    const log = []
+    const today = new Date('2026-05-07T00:00:00Z')
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(today)
+      d.setUTCDate(d.getUTCDate() - i)
+      log.push({ date: d.toISOString().slice(0, 10), tss: 80, type: 'run' })
+    }
+    renderCard({ log })
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY))
+    expect(typeof stored.input.profile.currentCTL).toBe('number')
+    expect(stored.input.profile.currentCTL).toBeGreaterThan(20)
+  })
+
+  it('omits currentCTL from input.profile when log is empty (lib default applies)', () => {
+    renderCard({ log: [] })
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY))
+    expect(stored.input.profile.currentCTL).toBeUndefined()
+  })
+
+  it('renders rejection banner with bilingual note for target-not-faster', () => {
+    renderCard()
+    // Slower target → rejected
+    fillFormAndSubmit({ curTime: '40:00', tgtTime: '50:00', raceDate: '2026-08-15' })
+    const banner = document.querySelector('[data-rejection]')
+    expect(banner).not.toBeNull()
+    expect(banner.getAttribute('data-rejection')).toBe('target-not-faster')
+    expect(banner.textContent).toMatch(/Target time must be faster/i)
+    // Form preserved (input fields still visible) so user can correct
+    expect(screen.getByLabelText(/Current PR time/i)).toBeInTheDocument()
+  })
+
+  it('renders TR rejection note when lang=tr', () => {
+    renderCard()
+    fillFormAndSubmit({ curTime: '40:00', tgtTime: '50:00', raceDate: '2026-08-15' })
+    cleanup()
+    renderCard({}, 'tr')
+    const banner = document.querySelector('[data-rejection]')
+    expect(banner).not.toBeNull()
+    expect(banner.textContent).toMatch(/Hedef süre mevcut süreden daha hızlı olmalı/i)
+  })
+
+  it('renders rejection banner for race-in-past', () => {
+    renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-04-30' })
+    const banner = document.querySelector('[data-rejection]')
+    expect(banner).not.toBeNull()
+    expect(banner.getAttribute('data-rejection')).toBe('race-in-past')
+    expect(banner.textContent).toMatch(/Race date is in the past/i)
+  })
+
+  it('rejection banner uses red border-left accent', () => {
+    renderCard()
+    fillFormAndSubmit({ curTime: '40:00', tgtTime: '50:00', raceDate: '2026-08-15' })
+    const region = screen.getByRole('region', { name: /Elite training program/i })
+    expect(region.getAttribute('style')).toMatch(/border-left:\s*4px solid (rgb\(220,\s*53,\s*69\)|#dc3545)/i)
   })
 })
 
