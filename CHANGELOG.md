@@ -4,6 +4,107 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.98.0 — 2026-05-07 — Mission #1 adherence + make-up suggestion (+23 tests), 9031 tests
+
+  Closes the loop between the prescribed plan and actual training.
+  v8.97 told the athlete *where* they are in the lifecycle;
+  v8.98 tells them *how well their actual training matches what
+  was prescribed* and surfaces missed key sessions in the daily
+  card.
+
+  src/lib/athlete/planAdherence.js (extended; pre-existing v11.36
+  E32 lib):
+    Pure buildPlanAdherence(program, log, options) computing:
+      - adherencePct: 0..100 actual/planned TSS ratio over the
+        program window (excludes today's incomplete week)
+      - weeklyComparison: per-week status enum
+        ('matched'|'short'|'over'|'missing') with planned vs
+        actual TSS
+      - missedKeySessions: long/threshold/intervals prescribed
+        but not logged within ±2 days of the cadence
+      - trajectory: 'on-track' | 'behind' | 'ahead' | 'critical'
+      - bilingual message + recommendation per trajectory
+      - reliable=false when <2 complete weeks within window
+    Citation: 'Banister 1991; Bompa 2009; Mujika 2009
+              adherence-CTL coupling'
+
+  EliteProgramCard.jsx — ADHERENCE section:
+    New section in plan mode, placed after lifecycle pill and
+    before feasibility band. Renders only when lifecycle.state
+    is 'in-progress' AND adherence.reliable=true. Shows:
+      - adherencePct as percentage
+      - colored bar matching trajectory
+      - bilingual message + recommendation
+      - bullet list of 1-3 most-missed sessions (hidden when >3
+        to avoid wall of text)
+    Color per trajectory: green/amber/red/blue.
+
+  TodayProgrammedSessionCard.jsx — MAKE-UP suggestion:
+    Computed via useMemo whenever today's intent is 'easy' or
+    'rest' AND a key session was prescribed in the last 2 days
+    but not found in the log within ±1 day with matching intent.
+    Renders as small footer block in both rest-day and
+    training-day branches above the citation footer.
+    Bilingual: "MAKE-UP · TELAFİ" with named missed-intent
+    (long/threshold/intervals) and date.
+    Suppressed when:
+      - no missed key session detected
+      - today is itself a key session (don't suggest swapping
+        a key for a missed key)
+      - log is empty / program missing
+
+  Audience-served map:
+    Athlete: knows if their actual training matches the plan.
+             Make-up suggestion turns "I missed Tuesday" into
+             actionable guidance instead of unspoken anxiety.
+    Coach:   adherence section + missed-sessions list visible
+             when coach reviews athlete's plan via the existing
+             share-with-coach envelope (v=1 envelope already
+             documents lifecycle; adherence flows alongside).
+    Developer: clean reconciliation primitive (planned vs
+               actual). buildPlanAdherence is reusable for
+               future load-management, calibration, or
+               rest-day decisions.
+
+  Implementation note:
+    Agent's stream timed out mid-Part-D after 56 tool uses —
+    library, tests, EliteProgramCard adherence section, and
+    `makeupSuggestion` useMemo all completed. The render
+    wiring in both rest-day and training-day branches was
+    added manually post-recovery. All gates green.
+
+  Test counts:
+    planAdherence lib:   pre-existing E32 + extensions (test
+                         delta merged into baseline)
+    EliteProgramCard:    adherence section tests
+    TodayProgrammedSessionCard: make-up tests
+    Full suite:          9008 → 9031 (+23, all green, 370 files)
+    Lint:                clean
+    Build:               83.80 KB gz main (within 150 KB gate)
+
+  Known follow-up:
+    Make-up suggestion is intentionally lightweight — does not
+    override coach-pushed plans or autopsy paths. If coach has
+    pushed an explicit session via coach_plans, that takes
+    precedence; the make-up footer is athlete-side only and
+    appears below all other prescriptions.
+
+  DEPENDS ON: v8.91.0 (sporeus-eliteProgramStart anchor),
+  v8.93.0 (intent classification regex pattern from autopsy),
+  v8.97.0 (lifecycle.state gating).
+
+  Files modified:
+    src/lib/athlete/planAdherence.js (extended)
+    src/lib/__tests__/athlete/planAdherence.test.js
+    src/components/dashboard/EliteProgramCard.jsx
+    src/components/dashboard/TodayProgrammedSessionCard.jsx
+    src/components/__tests__/EliteProgramCard.test.jsx (implied
+                                                         by suite +23)
+    src/components/__tests__/TodayProgrammedSessionCard.test.jsx
+                                                       (implied)
+
+---
+
 ## v8.97.0 — 2026-05-07 — Mission #1 pre-launch integration: lifecycle pill + share-with-coach + API contract (+28 tests), 9008 tests
 
   Pre-launch integration wave. Shifts Mission #1 from

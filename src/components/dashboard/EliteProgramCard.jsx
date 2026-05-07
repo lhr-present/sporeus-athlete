@@ -22,6 +22,7 @@ import { announce } from '../../lib/a11y/announcer.js'
 import { criticalSwimSpeed, cssToSecPer100m } from '../../lib/sport/swimming.js'
 import { findRecentBest } from '../../lib/athlete/recentBest.js'
 import { getPlanLifecycle } from '../../lib/athlete/planLifecycle.js'
+import { buildPlanAdherence } from '../../lib/athlete/planAdherence.js'
 
 const STORAGE_KEY = 'sporeus-eliteProgram'
 const START_KEY = 'sporeus-eliteProgramStart'
@@ -783,6 +784,88 @@ function AboutThisModel({ isTR }) {
   )
 }
 
+// ── AdherenceSection (v8.98.0) ───────────────────────────────────────────────
+// Surfaces the planned-vs-actual reconciliation. Renders only in
+// in-progress lifecycle state when the adherence builder reports reliable=true.
+const TRAJECTORY_COLOR = {
+  'on-track': '#28a745',
+  behind: '#ff9500',
+  critical: '#dc3545',
+  ahead: '#0064ff',
+}
+const TRAJECTORY_LABEL = {
+  'on-track': { en: 'ON TRACK', tr: 'YOLDA' },
+  behind:     { en: 'BEHIND',   tr: 'GERİDE' },
+  critical:   { en: 'CRITICAL', tr: 'KRİTİK' },
+  ahead:      { en: 'AHEAD',    tr: 'İLERİDE' },
+}
+const INTENT_LABEL = {
+  long:      { en: 'long run',    tr: 'uzun koşu' },
+  threshold: { en: 'threshold',   tr: 'eşik' },
+  intervals: { en: 'intervals',   tr: 'interval' },
+}
+
+function AdherenceSection({ adherence, isTR }) {
+  if (!adherence || !adherence.reliable) return null
+  const traj = adherence.trajectory
+  const color = TRAJECTORY_COLOR[traj] || '#6c757d'
+  const trajLabel = TRAJECTORY_LABEL[traj]?.[isTR ? 'tr' : 'en'] || traj.toUpperCase()
+  const pct = Math.max(0, Math.min(100, Math.round(adherence.adherencePct || 0)))
+  const barWidthPct = Math.max(0, Math.min(100, pct))
+  const recommendation = adherence.recommendation?.[isTR ? 'tr' : 'en'] || ''
+  const message = adherence.message?.[isTR ? 'tr' : 'en'] || ''
+  const missed = Array.isArray(adherence.missedKeySessions) ? adherence.missedKeySessions : []
+  const showMissed = missed.length > 0 && missed.length <= 3
+
+  return (
+    <div role="region" data-adherence-section
+      data-trajectory={traj}
+      aria-label={isTR ? 'Plan uygulama' : 'Plan adherence'}
+      style={{ marginBottom: '12px', padding: '8px', border: '1px solid var(--border)', borderRadius: '4px' }}>
+      <div style={{ ...S.mono, fontSize: '9px', color: 'var(--muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '4px' }}>
+        {isTR ? 'UYGULAMA' : 'ADHERENCE'}
+        <span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>
+        {isTR ? 'ADHERENCE' : 'UYGULAMA'}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+        <div style={{ ...S.mono, fontSize: '20px', fontWeight: 700, color, lineHeight: 1, letterSpacing: '-0.02em' }}
+          data-adherence-pct>{pct}%</div>
+        <div role="img" aria-label={`${pct}%`} data-adherence-bar
+          style={{ flex: '1 1 80px', height: '8px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '2px', overflow: 'hidden', minWidth: '80px' }}>
+          <div style={{ width: `${barWidthPct}%`, height: '100%', background: color }} />
+        </div>
+        <div data-adherence-trajectory style={{ ...S.mono, fontSize: '10px', fontWeight: 700, color: '#fff', background: color, padding: '2px 8px', borderRadius: '3px', letterSpacing: '0.08em' }}>
+          {trajLabel}
+        </div>
+      </div>
+      {message ? (
+        <div style={{ ...S.mono, fontSize: '11px', color: 'var(--text)', lineHeight: 1.6, marginBottom: '4px' }}>
+          {message}
+        </div>
+      ) : null}
+      {recommendation ? (
+        <div style={{ ...S.mono, fontSize: '10px', color: 'var(--sub, var(--muted))', lineHeight: 1.5, paddingLeft: '8px', borderLeft: `2px solid ${color}` }}>
+          {recommendation}
+        </div>
+      ) : null}
+      {showMissed ? (
+        <ul data-adherence-missed style={{ ...S.mono, fontSize: '10px', color: 'var(--text)', lineHeight: 1.5, marginTop: '6px', paddingLeft: '18px' }}>
+          {missed.map((m, i) => {
+            const intentLbl = INTENT_LABEL[m.intent]?.[isTR ? 'tr' : 'en'] || m.intent
+            return (
+              <li key={`${m.date}-${i}`}>
+                {isTR
+                  ? `${m.date} · ${intentLbl} kaçırıldı`
+                  : `${m.date} · missed ${intentLbl}`}
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
+    </div>
+  )
+}
+
 export default function EliteProgramCard({ log: _log = [], profile: _profile = {} }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
@@ -850,6 +933,20 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
       programStart,
     })
   }, [result, persisted, _log, yearlyPlanLs, programStart])
+
+  // ── v8.98.0 — plan adherence (planned vs actual TSS reconciliation) ───────
+  // Pure derivation. Renders only in `in-progress` lifecycle when reliable.
+  const adherence = useMemo(() => {
+    if (!result) return null
+    const todayIso = new Date().toISOString().slice(0, 10)
+    return buildPlanAdherence(result, _log || [], {
+      programStart,
+      today: todayIso,
+      raceDate: persisted?.input?.raceDate
+        || result?.feasibility?.effectiveRaceDate
+        || null,
+    })
+  }, [result, _log, programStart, persisted])
 
   const ariaLabel = isTR ? 'Elit antrenman programı' : 'Elite training program'
   const cardBase = { ...S.card, animationDelay: '440ms', padding: '20px' }
@@ -1127,6 +1224,10 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
           </div>
         )
       })() : null}
+
+      {lifecycle && lifecycle.state === 'in-progress' && adherence && adherence.reliable ? (
+        <AdherenceSection adherence={adherence} isTR={isTR} />
+      ) : null}
 
       <div aria-live="polite" aria-label={isTR ? `Fizibilite: ${bandLbl}` : `Feasibility: ${bandLbl}`} data-band={result.feasibility.band}
         style={{ display: 'inline-block', ...S.mono, fontSize: '11px', fontWeight: 700, color: '#fff', background: accent, padding: '4px 10px', borderRadius: '3px', letterSpacing: '0.08em', marginBottom: '4px' }}>

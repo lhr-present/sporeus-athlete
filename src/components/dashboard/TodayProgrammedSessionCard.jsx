@@ -12,6 +12,33 @@ import { buildEliteProgram } from '../../lib/athlete/eliteProgram.js'
 import { buildEliteProgramAutopsy } from '../../lib/athlete/eliteProgramAutopsy.js'
 import { announce } from '../../lib/a11y/announcer.js'
 
+// ── v8.98.0 — make-up suggestion helpers ─────────────────────────────────────
+// Detect prescribed key intent from a sample-week intent label.
+const MAKEUP_INTENT_LBL = {
+  long:      { en: 'long run',    tr: 'uzun koşu' },
+  threshold: { en: 'threshold',   tr: 'eşik' },
+  intervals: { en: 'intervals',   tr: 'interval' },
+}
+function makeupKeyIntent(intentLabel) {
+  if (!intentLabel) return null
+  const txt = (typeof intentLabel === 'string'
+    ? intentLabel
+    : (intentLabel.en || '')
+  ).toLowerCase()
+  if (/long/.test(txt)) return 'long'
+  if (/threshold|tempo|cruise/.test(txt)) return 'threshold'
+  if (/interval|vo2|race-pace/.test(txt)) return 'intervals'
+  return null
+}
+function logIntentKey(entry) {
+  if (!entry || typeof entry !== 'object') return null
+  const blob = `${entry.type || ''} ${entry.intent || ''} ${entry.notes || ''} ${entry.session || ''}`.toLowerCase()
+  if (/long/.test(blob)) return 'long'
+  if (/threshold|tempo|cruise/.test(blob)) return 'threshold'
+  if (/interval|vo2|race-pace|repetition/.test(blob)) return 'intervals'
+  return null
+}
+
 const PROGRAM_KEY = 'sporeus-eliteProgram'
 const START_KEY   = 'sporeus-eliteProgramStart'
 
@@ -119,6 +146,70 @@ export default function TodayProgrammedSessionCard({ log = [] } = {}) {
       return null
     }
   }, [persisted, session, log])
+
+  // ── v8.98.0 — make-up suggestion ──────────────────────────────────────────
+  // When today's prescribed intent is easy or rest AND a key session was
+  // prescribed in the last 2 days but no matching log entry exists, surface a
+  // small "MAKE-UP" sub-block at the bottom of the card.
+  const makeupSuggestion = useMemo(() => {
+    if (!session || session.reliable === false) return null
+    if (!persisted?.input) return null
+    // Only suggest swap when today is easy or rest
+    const todayKey = session.intentKey
+    if (todayKey !== 'easy' && todayKey !== 'rest') return null
+
+    let result
+    try {
+      result = buildEliteProgram(persisted.input)
+    } catch {
+      return null
+    }
+    if (!result || result._rejected) return null
+    const sample = result.sampleWeeks?.[session.phase]
+    if (!Array.isArray(sample) || sample.length === 0) return null
+
+    // Today's day name (Mon..Sun) inferred from session — not exposed directly,
+    // so derive from current date.
+    const todayDate = new Date()
+    const todayJsDow = todayDate.getUTCDay() // 0=Sun..6=Sat
+    const dayOrder = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    const jsDowToIdx = (d) => (d === 0 ? 6 : d - 1)
+    const todayIdx = jsDowToIdx(todayJsDow)
+
+    // Walk the last 2 prescribed days (today-1, today-2).
+    for (let back = 1; back <= 2; back++) {
+      const checkIdx = (todayIdx - back + 7) % 7
+      const dayName = dayOrder[checkIdx]
+      const dayPlan = sample.find(d => d?.day === dayName)
+      if (!dayPlan) continue
+      const ki = makeupKeyIntent(dayPlan.intent)
+      if (!ki) continue
+      // Compute that calendar date and check log for a matching entry within
+      // ±1 day.
+      const target = new Date(todayDate)
+      target.setUTCDate(target.getUTCDate() - back)
+      const targetMs = target.getTime()
+      const tolMs = 1 * 86400000
+      const safeLog = Array.isArray(log) ? log : []
+      const matched = safeLog.some(e => {
+        if (!e || typeof e !== 'object') return false
+        const ds = (e.date || '').slice(0, 10)
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(ds)) return false
+        const d = new Date(`${ds}T00:00:00Z`)
+        if (isNaN(d.getTime())) return false
+        if (Math.abs(d.getTime() - targetMs) > tolMs) return false
+        return logIntentKey(e) === ki
+      })
+      if (!matched) {
+        return {
+          intent: ki,
+          missedDate: target.toISOString().slice(0, 10),
+          missedDay: dayName,
+        }
+      }
+    }
+    return null
+  }, [session, persisted, log])
 
   function handleNextCycle() {
     if (!autopsy || !persisted?.input) return
@@ -261,6 +352,28 @@ export default function TodayProgrammedSessionCard({ log = [] } = {}) {
   const intentLblObj = INTENT_LBL[session.intentKey] || INTENT_LBL.other
   const intentBadge = intentLblObj[isTR ? 'tr' : 'en']
 
+  const makeupBlock = makeupSuggestion ? (() => {
+    const lbl = MAKEUP_INTENT_LBL[makeupSuggestion.intent] || { en: makeupSuggestion.intent, tr: makeupSuggestion.intent }
+    const dayEN = makeupSuggestion.missedDay
+    const swap = session.intentKey === 'rest'
+      ? null
+      : (isTR ? "Bugün taze hissediyorsan kolay seansla yer değiştir." : "If feeling fresh, swap with today's easy run.")
+    return (
+      <div data-testid="makeup-suggestion" data-intent={makeupSuggestion.intent}
+        style={{ ...S.mono, fontSize: '10px', color: 'var(--sub, var(--muted))', lineHeight: 1.6, marginTop: '10px', paddingTop: '8px', borderTop: '1px dashed var(--border)' }}>
+        <div style={{ fontSize: '9px', letterSpacing: '0.08em', color: 'var(--muted)', marginBottom: '4px' }}>
+          {isTR ? 'TELAFİ' : 'MAKE-UP'}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>{isTR ? 'MAKE-UP' : 'TELAFİ'}
+        </div>
+        <div>
+          {isTR
+            ? `${dayEN} günü planlanan ${lbl.tr} seansı kayıtta yok.`
+            : `You missed ${dayEN}'s ${lbl.en} session.`}
+          {swap ? <> {swap}</> : null}
+        </div>
+      </div>
+    )
+  })() : null
+
   // ── Rest day ──────────────────────────────────────────────────────────────
   if (session.isRest) {
     return (
@@ -281,6 +394,7 @@ export default function TodayProgrammedSessionCard({ log = [] } = {}) {
             {session.recommendation[isTR ? 'tr' : 'en']}
           </div>
         ) : null}
+        {makeupBlock}
         <div style={{ ...S.mono, fontSize: '9px', color: '#555', marginTop: '4px' }}>{session.citation}</div>
       </div>
     )
@@ -338,6 +452,7 @@ export default function TodayProgrammedSessionCard({ log = [] } = {}) {
         </div>
       ) : null}
 
+      {makeupBlock}
       <div style={{ ...S.mono, fontSize: '9px', color: '#555', marginTop: '4px' }}>{session.citation}</div>
     </div>
   )
