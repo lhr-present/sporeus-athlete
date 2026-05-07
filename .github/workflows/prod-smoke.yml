@@ -1,0 +1,36 @@
+name: Production Smoke (post-deploy)
+
+# Runs after "Deploy to GitHub Pages" finishes successfully and hits the
+# LIVE app.sporeus.com URL with a real headless Chromium. Verifies
+# Mission #1 PROGRAM tab is wired and ProgramView renders. Failure is
+# notification-only — the deploy is already shipped by this point.
+on:
+  workflow_run:
+    workflows: ['Deploy to GitHub Pages']
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  prod-smoke:
+    name: Live PROGRAM-tab smoke
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright (Chromium only)
+        run: npx playwright install --with-deps chromium
+      - name: Run prod smoke against app.sporeus.com
+        run: npx playwright test --config=playwright.prod-smoke.config.js
+        env:
+          CI: 'true'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: prod-smoke-report
+          path: playwright-report/
+          retention-days: 14

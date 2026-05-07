@@ -4,6 +4,55 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.1.1 — 2026-05-08 — Add Playwright prod-smoke spec for PROGRAM tab + post-deploy GH Actions workflow
+
+  Adds a real-browser smoke test that runs against the LIVE
+  app.sporeus.com URL after every Deploy-to-Pages workflow
+  succeeds. Catches regressions where the build artifact is
+  served correctly but a runtime error keeps users from
+  reaching the PROGRAM tab.
+
+  Files added:
+    NEW   tests/e2e/program-tab-prod.spec.js       (60 lines)
+            Two tests via headless Chromium:
+              1. PROGRAM tab visible → click → ProgramView
+                 headline visible → [data-elite-program-card]
+                 attached → no pageerrors.
+              2. First-time guest (fresh storage) lands on
+                 PROGRAM by adaptive default.
+            Bypasses AuthGate by setting
+            sporeus-guest-mode='1' via page.addInitScript —
+            no Supabase test creds needed.
+    NEW   playwright.prod-smoke.config.js          (28 lines)
+            Targets PLAYWRIGHT_PROD_URL (default
+            https://app.sporeus.com); 2 retries in CI; no
+            webServer (prod is already running); chromium-
+            only; uploads report on failure.
+    NEW   .github/workflows/prod-smoke.yml         (32 lines)
+            Triggers on workflow_run completion of "Deploy
+            to GitHub Pages" + manual workflow_dispatch.
+            Runs only when the deploy concluded 'success'.
+            Uploads playwright-report artifact (14-day
+            retention) on every run.
+
+  Local verification before commit:
+    npx playwright test --config=playwright.prod-smoke.config.js
+    → 2 passed (5.3s) against live app.sporeus.com.
+
+  Notes:
+    - Failure is NOTIFICATION-ONLY — the deploy is already
+      live by the time this workflow fires. This is a
+      monitoring tool, not a gate.
+    - To gate future deploys behind prod smoke we would need
+      a staging environment + cutover step; out of scope for
+      v9.1.1.
+    - Override target with PLAYWRIGHT_PROD_URL env var (e.g.
+      to point at a Cloudflare tunnel for staging).
+
+  Depends on: v9.1.0 (the PROGRAM tab being live).
+
+---
+
 ## v9.1.0 — 2026-05-08 — Mission #1 elevated to #1 feature: dedicated PROGRAM tab + adaptive landing + Dashboard reorder, 9106 tests
 
   Post-launch elevation wave. Closes the user directive
