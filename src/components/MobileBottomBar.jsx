@@ -8,8 +8,8 @@ const MONO = "'IBM Plex Mono', monospace"
 // The 4 tabs that matter most on a phone, one-handed, post-workout
 const PRIMARY_TABS = [
   { id: 'today',     icon: '\u25c9', labelEn: 'TODAY',     labelTr: 'BUGÜN' },
+  { id: 'program',   icon: '\u2295', labelEn: 'PROGRAM',   labelTr: 'PROGRAM' },
   { id: 'log',       icon: '\u2261', labelEn: 'LOG',       labelTr: 'KAYIT' },
-  { id: 'dashboard', icon: '\u25c8', labelEn: 'DASHBOARD', labelTr: 'PANEL' },
   { id: 'profile',   icon: '\u25cb', labelEn: 'PROFILE',   labelTr: 'PROFİL' },
 ]
 

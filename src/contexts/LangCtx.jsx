@@ -9,7 +9,7 @@ export const LABELS = {
     t_dashboard: 'DASHBOARD', t_zones: 'ZONE CALC', t_tests: 'PROTOCOLS',
     t_log: 'TRAINING LOG', t_macro: 'MACRO PLAN', t_glossary: 'GLOSSARY',
     t_recovery: 'RECOVERY', t_profile: 'PROFILE', t_sport: 'SPORT PLAN',
-    t_race: 'RACE READY', t_general: 'GYM',
+    t_race: 'RACE READY', t_general: 'GYM', t_program: 'PROGRAM',
     readiness: 'READINESS STATUS', fresh: 'FRESH', trained: 'TRAINED', fatigued: 'FATIGUED',
     sessions: 'SESSIONS', volume: 'VOLUME', avgRpe: 'AVG RPE', tss7: '7-DAY TSS',
     recentSessions: 'RECENT SESSIONS', noSessions: 'No sessions logged yet. Use the Training Log tab.',
@@ -691,7 +691,7 @@ export const LABELS = {
     t_dashboard: 'PANO', t_zones: 'ZON HESAP', t_tests: 'PROTOKOLLER',
     t_log: 'ANTRENMAN LOG', t_macro: 'MAKRO PLAN', t_glossary: 'S\u00d6ZL\u00dcK',
     t_recovery: 'TOPARLANMA', t_profile: 'PROFİL', t_sport: 'SPOR PLAN',
-    t_race: 'YARIŞ HAZIRLIĞI', t_general: 'SALON',
+    t_race: 'YARIŞ HAZIRLIĞI', t_general: 'SALON', t_program: 'PROGRAM',
     readiness: 'HAZIRLIK DURUMU', fresh: 'D\u0130NLENM\u0130\u015e', trained: 'ANTRENMANLI', fatigued: 'YORGUN',
     sessions: 'ANTRENMAN', volume: 'HAC\u0130M', avgRpe: 'ORT. ZY', tss7: '7 G\u00dcNL\u00dcK TSS',
     recentSessions: 'SON ANTRENMANLAR',
@@ -1373,6 +1373,7 @@ export const LABELS = {
 // ─── Tabs ──────────────────────────────────────────────────────────────────────
 export const TABS = [
   { id: 'today',         icon: '\u25c9', lk: 't_today' },
+  { id: 'program',       icon: '\u2295', lk: 't_program' },
   { id: 'dashboard',     icon: '\u25c8', lk: 't_dashboard' },
   { id: 'zones',         icon: '\u25c9', lk: 't_zones' },
   { id: 'tests',         icon: '\u25b2', lk: 't_tests' },

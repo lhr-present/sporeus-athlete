@@ -33,8 +33,18 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   useInsightNotifier({ userId: authUser?.id ?? null, addToast })
 
   // ── Tab — persisted to sessionStorage so refresh restores position ───────────
+  // First-time users (no plan, no log) land on 'program' (Mission #1 funnel entry).
   const [tab, setTabRaw] = useState(() => {
-    try { return sessionStorage.getItem('sporeus-active-tab') || 'today' } catch { return 'today' }
+    try {
+      const stored = sessionStorage.getItem('sporeus-active-tab')
+      if (stored) return stored
+      const hasPlan = !!localStorage.getItem('sporeus-eliteProgram') ||
+                      !!localStorage.getItem('sporeus-yearly-plan')
+      const rawLog = localStorage.getItem('sporeus_log')
+      let hasLog = false
+      try { hasLog = Array.isArray(JSON.parse(rawLog || '[]')) && JSON.parse(rawLog).length > 0 } catch { hasLog = false }
+      return (hasPlan || hasLog) ? 'today' : 'program'
+    } catch { return 'today' }
   })
 
   // ── Coach mode ────────────────────────────────────────────────────────────────

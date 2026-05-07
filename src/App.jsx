@@ -50,6 +50,7 @@ const YearlyPlan     = lazy(() => import('./components/YearlyPlan.jsx'))
 const Glossary            = lazy(() => import('./components/Glossary.jsx'))
 const SportProgramBuilder = lazy(() => import('./components/SportProgramBuilder.jsx'))
 const Dashboard     = lazy(() => import('./components/Dashboard.jsx'))
+const ProgramView   = lazy(() => import('./components/ProgramView.jsx'))
 const Profile       = lazy(() => import('./components/Profile.jsx'))
 const TestProtocols = lazy(() => import('./components/Protocols.jsx'))
 const Periodization = lazy(() => import('./components/Periodization.jsx'))
@@ -456,6 +457,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
           )}
           {coachMode && authProfile?.role !== 'coach' && <AsyncBoundary name="Coach Mode"><CoachDashboard authUser={authUser}/></AsyncBoundary>}
           {!coachMode && tab === 'today'        && <AsyncBoundary name="Today"><TodayView log={log} setTab={handleTabClick} setLogPrefill={setLogPrefill}/></AsyncBoundary>}
+          {!coachMode && tab === 'program'      && <AsyncBoundary name="Program"><ProgramView /></AsyncBoundary>}
           {!coachMode && tab === 'dashboard'    && <AsyncBoundary name="Dashboard"><Dashboard log={log} onLogSession={() => setShowQuickAdd(true)} onGoToProfile={() => handleTabClick('profile')}/></AsyncBoundary>}
           {tab === 'zones'        && <AsyncBoundary name="Zone Calc"><ZoneCalc/></AsyncBoundary>}
           {tab === 'tests'        && <AsyncBoundary name="Protocols"><TestProtocols/></AsyncBoundary>}

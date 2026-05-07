@@ -4,6 +4,104 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.1.0 — 2026-05-08 — Mission #1 elevated to #1 feature: dedicated PROGRAM tab + adaptive landing + Dashboard reorder, 9106 tests
+
+  Post-launch elevation wave. Closes the user directive
+  "make this number 1 feature of the app" by promoting
+  Mission #1 from a card buried among 74 dashboard tiles to
+  a top-level navigation surface with adaptive default
+  landing. Pure UX/IA change — no orchestrator, lib, or
+  formula edits.
+
+  New top-level PROGRAM tab:
+    - Added to TABS array in LangCtx.jsx between 'today'
+      (idx 0) and 'dashboard' (idx 1) so it sits as the
+      second tab in the nav.
+    - Icon ⊕ (synthesis/creation glyph; deliberately distinct
+      from 'plan' tab's ⚡ which points to the 52-week
+      output editor).
+    - EN label 'PROGRAM' / TR label 'PROGRAM' (loanword
+      whitelisted in i18n parity test).
+    - New thin standalone component src/components/ProgramView.jsx
+      (50 lines): bilingual headline ("MISSION #1 · YEARLY
+      PROGRAM BUILDER" / "MİSYON #1 · YILLIK PROGRAM
+      ÜRETİCİ") + tagline ("From target to plan — a
+      science-based yearly training program.") + lazy-loaded
+      MissionHeadline + EliteProgramCard wrapped in
+      [data-elite-program-card] for scroll-target compat +
+      TodayProgrammedSessionCard. 720px max-width centered.
+      Lazy-imported in App.jsx like every other tab view.
+
+  Adaptive default landing for first-time users:
+    Updated src/hooks/useAppState.js initial-tab heuristic:
+    if no sessionStorage 'sporeus-active-tab' AND
+    localStorage has neither 'sporeus-eliteProgram' nor
+    'sporeus-yearly-plan' nor any 'sporeus_log' entries →
+    land on 'program' tab (Mission #1 funnel entry).
+    Returning users with any plan or log history fall back
+    to 'today' (preserves prior behavior). Refresh still
+    restores last-visited tab via sessionStorage.
+
+  Mobile bottom-bar reshuffle (≤640 px):
+    src/components/MobileBottomBar.jsx PRIMARY_TABS reordered:
+      Before: TODAY · LOG · DASHBOARD · PROFILE
+      After:  TODAY · PROGRAM · LOG · PROFILE
+    'dashboard' dropped from thumb-zone (still accessible
+    from desktop top nav and via mobile horizontal scroll
+    nav). Rationale: the 74-card dashboard is the analyst
+    view; thumb-zone real estate now reserved for the four
+    most-frequent post-workout actions, with PROGRAM
+    promoted to second slot for plan tweaks on the go.
+
+  Dashboard advanced-view reorder:
+    src/components/Dashboard.jsx: EliteProgramCard moved
+    from line ~987 (buried among 70+ analytics cards) to
+    immediately after MissionHeadline at the top, with
+    TodayProgrammedSessionCard following. Removed duplicate
+    renders of both lower in the file. Beginner simplified
+    view already had this ordering — both branches now
+    consistent.
+
+  i18n parity test update:
+    src/contexts/__tests__/i18n.test.js: added 't_program'
+    to ALLOWED_IDENTICAL set. PROGRAM is a loanword in
+    Turkish (same spelling, same meaning) so EN=TR=PROGRAM
+    is intentional, not an untranslated string.
+
+  Files changed:
+    NEW   src/components/ProgramView.jsx           (50 lines)
+    EDIT  src/contexts/LangCtx.jsx                 (+3 lines: 2 LABELS + 1 TABS)
+    EDIT  src/App.jsx                              (+2 lines: lazy import + route)
+    EDIT  src/hooks/useAppState.js                 (+11 lines: adaptive default)
+    EDIT  src/components/MobileBottomBar.jsx       (~1 line: dashboard→program swap, reorder)
+    EDIT  src/components/Dashboard.jsx             (~25 lines: reorder, dedup)
+    EDIT  src/contexts/__tests__/i18n.test.js      (+1 line: whitelist)
+    EDIT  CHANGELOG.md                             (this entry)
+    EDIT  package.json                             (11.1.0 → 11.2.0)
+
+  Verification:
+    Lint:    clean (--max-warnings 0)
+    Build:   ✓ 83.97 KB gz main bundle (11 KB headroom)
+    Tests:   9106 / 9106 passing across 373 files
+    Manual:  build artifacts under dist/
+
+  Audiences served:
+    First-time user: lands directly on Mission #1 surface
+                     (no hunting through 74 cards or 14 tabs).
+    Returning user:  unchanged — sessionStorage restores
+                     last-visited tab on refresh.
+    Mobile athlete:  thumb-zone access to PROGRAM tab for
+                     mid-week plan tweaks without scrolling
+                     desktop nav.
+    Desktop analyst: Dashboard advanced view now leads with
+                     EliteProgramCard before drilling into
+                     analytics cards.
+
+  Depends on: v9.0.0 launch baseline. No formulas, no
+  orchestrator, no public API surface touched.
+
+---
+
 ## v9.0.0 — 2026-05-07 — LAUNCH MARKER · Mission #1 complete
 
   Version bump only. Marks Mission #1 (Elite Program Builder)

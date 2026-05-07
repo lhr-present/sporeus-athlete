@@ -33,6 +33,7 @@ describe('i18n parity — LABELS', () => {
       'recovHrvRmssd',   // 'HRV rMSSD (ms)' — universal technical acronym
       'seasonTSS',       // 'TSS' — technical acronym, same in EN and TR
       'cyclingWperKg',   // 'W/kg' — universal power-to-weight unit, identical in Turkish
+      't_program',       // 'PROGRAM' — loanword identical in Turkish
     ])
     const gaps = []
     for (const [key, enVal] of Object.entries(EN)) {

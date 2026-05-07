@@ -521,6 +521,18 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
           <MissionHeadline />
         </Suspense>
       </ErrorBoundary>
+      <div data-elite-program-card>
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <EliteProgramCard log={log} profile={profile} />
+          </Suspense>
+        </ErrorBoundary>
+      </div>
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <TodayProgrammedSessionCard log={log} />
+        </Suspense>
+      </ErrorBoundary>
       <TodayStripCard log={log} isTR={lang === 'tr'} onLogSession={onLogSession} />
       <ErrorBoundary>
         <EliteMetricsStrip
@@ -961,7 +973,6 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
         recovery={recovery} plan={plan} planStatus={planStatus} rangeLabel={rangeLabel}
       />
       <ACWRCard log={log} lc={lc} dl={dl}/>
-      <ErrorBoundary><Suspense fallback={null}><TodayProgrammedSessionCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><CoachingSummaryScoreCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><CoachingInsightsDigest log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><StaleZonesCard log={log} /></Suspense></ErrorBoundary>
@@ -983,9 +994,6 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       <ErrorBoundary><Suspense fallback={null}><RecoveryAdherenceCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><TrainingDiversityCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><DeloadCadenceCard log={log} /></Suspense></ErrorBoundary>
-      <div data-elite-program-card>
-        <ErrorBoundary><Suspense fallback={null}><EliteProgramCard log={log} profile={profile} /></Suspense></ErrorBoundary>
-      </div>
       <VO2maxCard log={log} profile={profile} dl={dl}/>
       <PeakWeekCard log={log} dl={dl}/>
       <TrainingAgeCard log={log} dl={dl}/>
