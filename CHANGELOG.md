@@ -4,6 +4,101 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.102.0 — 2026-05-07 — Mission #1 promoted to app's #1 rule: MissionHeadline (+10 tests), 9100 tests
+
+  User directive: "make Mission #1 the app's number 1 rule."
+  Currently EliteProgramCard sat at animationDelay 440ms —
+  mid-pack among 74 dashboard cards. New users opened the
+  app and saw a 74-card grid before encountering the
+  headline mission. This wave promotes Mission #1 to the
+  first-class entry point.
+
+  src/components/dashboard/MissionHeadline.jsx (NEW, ~135
+  lines):
+    Renders ABOVE all other dashboard cards.
+    Empty state (no plan saved):
+      - Headline: "BUILD YOUR YEARLY PROGRAM · YILLIK
+        PROGRAMINI OLUŞTUR"
+      - 3-line bilingual science pitch:
+        1. "4 inputs → full scientific yearly program" /
+           "4 girdi → tam bilimsel yıllık program"
+        2. "VDOT/FTP/CSS-level paces and zones" /
+           "VDOT/FTP/CSS seviyesinde tempo ve bölgeler"
+        3. "Daily prescription · adherence · race autopsy" /
+           "Günlük reçete · uygulama · yarış otopsisi"
+      - Large [GET STARTED · BAŞLA] button. onClick:
+        scrollIntoView on [data-elite-program-card]
+        wrapper, then 400ms-delayed focus on the Current
+        PR input. SR + keyboard users land on the first
+        input automatically.
+      - role="region" with bilingual aria-label "Mission ·
+        Görev"
+      - borderLeft #ff6600 4px (Sporeus orange — same as
+        EliteProgramCard accent)
+      - animationDelay 0ms (renders BEFORE the 80ms
+        TodayProgrammedSessionCard)
+      - Citation footer: "Daniels 2014 · Bompa 2009 ·
+        Mujika 2003"
+    Plan exists state:
+      - Returns null. TodayProgrammedSessionCard already
+        owns the daily anchor at 80ms delay; no need to
+        duplicate.
+
+  Dashboard.jsx wiring:
+    React.lazy + Suspense + ErrorBoundary import. Rendered
+    as the FIRST card in BOTH the simplified beginner
+    dashboard AND the advanced dashboard. EliteProgramCard
+    render sites both wrapped in <div data-elite-program-card>
+    so MissionHeadline's GET STARTED button has a stable
+    scroll target. In the simplified path, EliteProgramCard
+    promoted to second slot; in the advanced path, kept the
+    existing slot intact (full reordering would risk 70+
+    pre-existing dashboard ordering tests; spec marks
+    reordering as nice-to-have).
+
+  Audience-served map:
+    Athlete: first-time user lands on a clear "GET STARTED"
+             CTA instead of a 74-card grid. Returning users
+             with a plan see no headline (no friction).
+    Coach:   doesn't see this card (athlete dashboard);
+             v8.101 already gave them the ATHLETE PROGRAM
+             ingestion card.
+    Developer: clean separation — MissionHeadline knows
+               nothing about EliteProgramCard's internals;
+               communicates only via the
+               [data-elite-program-card] wrapper attribute.
+
+  Test counts:
+    MissionHeadline:     10 new component tests (no-plan
+                         CTA, bilingual EN+TR, has-plan
+                         returns null, defensive form-only
+                         persistence, role=region, citation
+                         footer)
+    Full suite:          9090 → 9100 (+10, all green,
+                         373 files)
+    Lint:                clean
+    Build:               83.81 KB gz main (within 150 KB
+                         gate)
+
+  DEPENDS ON: v8.97.0 (sporeus-eliteProgram localStorage
+  shape with `input` field as the plan-presence signal),
+  v8.101.0 (independent — no overlap; landed in same
+  session window).
+
+  Files added:
+    src/components/dashboard/MissionHeadline.jsx (~135
+                                                  lines)
+    src/components/__tests__/MissionHeadline.test.jsx
+                                                  (10 tests)
+  Files modified:
+    src/components/Dashboard.jsx (lazy import + first-card
+                                  render in both
+                                  simplified and advanced
+                                  paths + data-elite-program-card
+                                  wrappers)
+
+---
+
 ## v8.101.0 — 2026-05-07 — Mission #1 coach-side ingestion: closes the athlete↔coach loop (+30 tests), 9090 tests
 
   v8.97 shipped a v=1 EXPORT-SUMMARY envelope with no consumer.

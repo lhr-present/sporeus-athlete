@@ -131,6 +131,7 @@ const RecoveryAdherenceCard      = lazy(() => import('./dashboard/RecoveryAdhere
 const TrainingDiversityCard      = lazy(() => import('./dashboard/TrainingDiversityCard.jsx'))
 const DeloadCadenceCard          = lazy(() => import('./dashboard/DeloadCadenceCard.jsx'))
 const EliteProgramCard           = lazy(() => import('./dashboard/EliteProgramCard.jsx'))
+const MissionHeadline            = lazy(() => import('./dashboard/MissionHeadline.jsx'))
 const TodayProgrammedSessionCard = lazy(() => import('./dashboard/TodayProgrammedSessionCard.jsx'))
 const CoachingInsightsDigest     = lazy(() => import('./dashboard/CoachingInsightsDigest.jsx'))
 const CoachingSummaryScoreCard   = lazy(() => import('./dashboard/CoachingSummaryScoreCard.jsx'))
@@ -344,6 +345,18 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
   if (lc.dashSimple && !showAdvanced) {
     return (
       <div className="sp-fade">
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <MissionHeadline />
+          </Suspense>
+        </ErrorBoundary>
+        <div data-elite-program-card>
+          <ErrorBoundary>
+            <Suspense fallback={null}>
+              <EliteProgramCard log={log} profile={profile} />
+            </Suspense>
+          </ErrorBoundary>
+        </div>
         <TodayStripCard log={log} isTR={lang === 'tr'} onLogSession={onLogSession} />
         <ErrorBoundary>
           <EliteMetricsStrip
@@ -503,6 +516,11 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
   // ── Advanced dashboard ─────────────────────────────────────────────────────────
   return (
     <div className="sp-fade">
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <MissionHeadline />
+        </Suspense>
+      </ErrorBoundary>
       <TodayStripCard log={log} isTR={lang === 'tr'} onLogSession={onLogSession} />
       <ErrorBoundary>
         <EliteMetricsStrip
@@ -965,7 +983,9 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       <ErrorBoundary><Suspense fallback={null}><RecoveryAdherenceCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><TrainingDiversityCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><DeloadCadenceCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><EliteProgramCard log={log} profile={profile} /></Suspense></ErrorBoundary>
+      <div data-elite-program-card>
+        <ErrorBoundary><Suspense fallback={null}><EliteProgramCard log={log} profile={profile} /></Suspense></ErrorBoundary>
+      </div>
       <VO2maxCard log={log} profile={profile} dl={dl}/>
       <PeakWeekCard log={log} dl={dl}/>
       <TrainingAgeCard log={log} dl={dl}/>
