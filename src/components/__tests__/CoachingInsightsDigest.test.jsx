@@ -185,14 +185,18 @@ function buildLowVarietyOnlyLog() {
 
 // ─── New-detector synthetic logs ─────────────────────────────────────────────
 
-// Spiking fitness: long flat history at low TSS, then a sharp 28-day TSS ramp
+// Spiking fitness: 60-day flat low-load seed, then a sharp 28-day TSS ramp
 // pushes CTL slope > +2.0/week. Otherwise healthy (all 5 zones, ≤1 hard/wk,
 // easy days compliant) so the digest surfaces fitness-spiking, not density.
+// Span deliberately kept at 88 days (<90) so fitnessConsistency stays
+// unreliable — a spiking CTL also chaoticizes weekly-CTL CV, and surfacing
+// both signals at high severity would crowd fitness-spiking out of the
+// MAX_ROWS=3 cap. v8.84.0 fixture tweak.
 function buildSpikingFitnessLog() {
   const today = todayStr()
   const log = []
-  // 180-day prime at flat low load → CTL ~10
-  for (let i = 207; i >= 28; i--) {
+  // 60-day prime at flat low load → CTL warmup, span < 90d
+  for (let i = 87; i >= 28; i--) {
     log.push({
       date: addDays(today, -i),
       type: 'run',
@@ -1421,5 +1425,287 @@ describe('CoachingInsightsDigest — trainingPolarization unreliable', () => {
     const log = buildPolarizationThresholdUnreliableLog()
     renderCard({ log })
     expect(screen.queryByText('POL')).not.toBeInTheDocument()
+  })
+})
+
+// ─── v8.84.0 fixtures: fitnessConsistency + recoveryAdherence ───────────────
+
+// Chaotic CTL: 100 days of alternating high/low TSS by week (200 vs 20).
+// Span 100d (≥90), meanCTL well above 5 → reliable=true. Wild week-to-week
+// CTL swings push CV ≥ 0.20 → band='chaotic'.
+function buildFitnessConsistencyChaoticLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 100; i >= 0; i--) {
+    const weekIdx = Math.floor(i / 7)
+    const tss = (weekIdx % 2 === 0) ? 200 : 20
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss,
+      zones: [10, 80, 5, 3, 2],
+    })
+  }
+  return log
+}
+
+// Oscillating CTL: 200d of 4-week blocks alternating high(120)/low(30) TSS.
+// CV in (0.10, 0.20) → band='oscillating'. Silent in synthesis (rule 5 gate
+// only fires for chaotic).
+function buildFitnessConsistencyOscillatingLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 199; i >= 0; i--) {
+    const weekIdx = Math.floor(i / 7)
+    const blockIdx = Math.floor(weekIdx / 4)
+    const tss = (blockIdx % 2 === 0) ? 120 : 30
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss,
+      zones: [10, 80, 5, 3, 2],
+    })
+  }
+  return log
+}
+
+// Rock-solid CTL: 200 days flat at tss=80 → CV near 0 → band='rock-solid'.
+// Silent in synthesis — already implied by the all-green path.
+function buildFitnessConsistencyRockSolidLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 199; i >= 0; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 80,
+      zones: [10, 80, 5, 3, 2],
+    })
+  }
+  return log
+}
+
+// fitnessConsistency unreliable: only 30-day span (< 90d threshold) so the
+// detector returns reliable=false even though the CV may technically place
+// the band at 'chaotic'. Expectation: STABILITY badge must NOT appear.
+function buildFitnessConsistencyUnreliableLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 30; i >= 0; i--) {
+    const weekIdx = Math.floor(i / 7)
+    const tss = (weekIdx % 2 === 0) ? 200 : 20
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss,
+      zones: [10, 80, 5, 3, 2],
+    })
+  }
+  return log
+}
+
+// recoveryAdherence poor: 28d of base training with 4 labeled rest days that
+// all severely drift (rpe=7 + tss=90 → 'severe' classification). adherentDays
+// = 0 / planned = 4 → 0% → band='poor'.
+function buildRecoveryAdherencePoorLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 27; i >= 0; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 50,
+      zones: [10, 70, 10, 5, 5],
+    })
+  }
+  for (const d of [3, 7, 14, 21]) {
+    log.push({
+      date: addDays(today, -d),
+      type: 'rest',
+      intent: 'rest',
+      rpe: 7,
+      duration: 75,
+      tss: 90,
+      zones: [5, 50, 25, 15, 5],
+    })
+  }
+  return log
+}
+
+// recoveryAdherence moderate: 5 labeled rest days, 3 adherent + 2 mild drift
+// → 60% → band='moderate'. Silent in synthesis (rule 11 fires only on poor).
+function buildRecoveryAdherenceModerateLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 27; i >= 0; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 50,
+      zones: [10, 70, 10, 5, 5],
+    })
+  }
+  for (const d of [2, 9, 16]) {
+    log.push({
+      date: addDays(today, -d),
+      type: 'rest',
+      intent: 'rest',
+      rpe: 3,
+      duration: 30,
+      tss: 20,
+      zones: [50, 40, 5, 3, 2],
+    })
+  }
+  for (const d of [5, 12]) {
+    log.push({
+      date: addDays(today, -d),
+      type: 'rest',
+      intent: 'rest',
+      rpe: 5,
+      duration: 45,
+      tss: 45,
+      zones: [10, 60, 15, 10, 5],
+    })
+  }
+  return log
+}
+
+// recoveryAdherence good: 4 fully-adherent rest days (rpe ≤ 4, tss ≤ 30) →
+// 100% adherence → band='good'. Silent in synthesis.
+function buildRecoveryAdherenceGoodLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 27; i >= 0; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 50,
+      zones: [10, 70, 10, 5, 5],
+    })
+  }
+  for (const d of [3, 10, 17, 24]) {
+    log.push({
+      date: addDays(today, -d),
+      type: 'rest',
+      intent: 'rest',
+      rpe: 2,
+      duration: 20,
+      tss: 10,
+      zones: [50, 40, 5, 3, 2],
+    })
+  }
+  return log
+}
+
+// recoveryAdherence vacuous: log non-empty but contains 0 labeled rest days
+// → totalRestDaysPlanned = 0 → reliable=false (vacuous good). Detector still
+// surfaces a "schedule weekly recovery" message in the card UI but the
+// digest gate requires reliable=true → REST badge must NOT appear here.
+function buildRecoveryAdherenceVacuousLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 27; i >= 0; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 50,
+      zones: [10, 70, 10, 5, 5],
+    })
+  }
+  return log
+}
+
+// ─── v8.84.0 tests ──────────────────────────────────────────────────────────
+describe('CoachingInsightsDigest — fitnessConsistency chaotic', () => {
+  it('surfaces a high-priority STABILITY headline when CTL band is chaotic', () => {
+    const log = buildFitnessConsistencyChaoticLog()
+    renderCard({ log })
+    expect(screen.getByText('STABILITY')).toBeInTheDocument()
+    // Detector message copy mentions chaotic CTL
+    expect(screen.getByText(/Chaotic CTL/i)).toBeInTheDocument()
+    // High severity → red bullet
+    const region = screen.getByRole('region')
+    expect(region.textContent).toContain('🔴')
+  })
+
+  it('renders STABİLİTE (TR) and Turkish chaotic copy when lang=tr', () => {
+    const log = buildFitnessConsistencyChaoticLog()
+    renderCard({ log }, 'tr')
+    expect(screen.getByText('STABİLİTE')).toBeInTheDocument()
+    expect(screen.getByText(/Kaotik CTL/i)).toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — fitnessConsistency oscillating (silent)', () => {
+  it('does NOT surface a STABILITY headline when band is oscillating', () => {
+    const log = buildFitnessConsistencyOscillatingLog()
+    renderCard({ log })
+    expect(screen.queryByText('STABILITY')).not.toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — fitnessConsistency rock-solid (silent)', () => {
+  it('does NOT surface a STABILITY headline when band is rock-solid', () => {
+    const log = buildFitnessConsistencyRockSolidLog()
+    renderCard({ log })
+    expect(screen.queryByText('STABILITY')).not.toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — fitnessConsistency unreliable', () => {
+  it('does NOT surface a STABILITY headline when fitnessConsistency is unreliable (span < 90d)', () => {
+    const log = buildFitnessConsistencyUnreliableLog()
+    renderCard({ log })
+    expect(screen.queryByText('STABILITY')).not.toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — recoveryAdherence poor', () => {
+  it('surfaces a moderate REST headline when rest-day adherence is poor', () => {
+    const log = buildRecoveryAdherencePoorLog()
+    renderCard({ log })
+    expect(screen.getByText('REST')).toBeInTheDocument()
+    // Detector copy for poor band
+    expect(screen.getByText(/rest days are training stealth/i)).toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — recoveryAdherence moderate (silent)', () => {
+  it('does NOT surface a REST headline when band is moderate', () => {
+    const log = buildRecoveryAdherenceModerateLog()
+    renderCard({ log })
+    expect(screen.queryByText('REST')).not.toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — recoveryAdherence good (silent)', () => {
+  it('does NOT surface a REST headline when band is good', () => {
+    const log = buildRecoveryAdherenceGoodLog()
+    renderCard({ log })
+    expect(screen.queryByText('REST')).not.toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — recoveryAdherence vacuous (silent)', () => {
+  it('does NOT surface a REST headline when no rest days are planned (reliable=false)', () => {
+    const log = buildRecoveryAdherenceVacuousLog()
+    renderCard({ log })
+    expect(screen.queryByText('REST')).not.toBeInTheDocument()
   })
 })

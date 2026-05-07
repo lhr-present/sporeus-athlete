@@ -4,6 +4,99 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.85.0 — 2026-05-07 — FitnessConsistencyCard + RecoveryAdherenceCard + Digest 14→16 + StaleZones flake fix (+35 tests), 8585 tests
+
+  Closes both v8.84.0 lib→card loops and brings the digest into
+  16-detector synthesis. Also fixes a pre-existing StaleZonesCard
+  test time-bomb that detonated on 2026-05-07.
+
+  FitnessConsistencyCard.jsx (221 lines):
+    Surfaces v8.84.0 fitnessConsistency lib. Side-by-side big
+    numbers: meanCTL (1 dp) + rangePct as "X.X%". Sub-lines:
+    min/max CTL and "stdev: X.X over {N} weeks".
+    Band colors: rock-solid=#28a745 green, stable=#9acd32
+    light-green, oscillating=#ff9500 amber, chaotic=#dc3545 red.
+    role="region" + bilingual aria-label, aria-live="polite" on
+    metrics row, 4px accent border-left, animationDelay 360ms
+    (after TrainingPolarization at 340ms).
+    14 jsdom tests covering insufficient data, all 4 bands via
+    fixture profiles reused from lib's own test, bilingual,
+    role/aria, citation footer, all big-number + sub-line
+    rendering.
+
+  RecoveryAdherenceCard.jsx (235 lines):
+    Surfaces v8.84.0 recoveryAdherence lib. Three render paths:
+      Vacuous-good (0 planned rest) — brief "schedule weekly
+        recovery" cue; not the full card layout
+      Insufficient (1-2 planned rest, reliable=false) — compact
+        notice
+      Reliable card (3+ planned rest) — adherencePct big number,
+        adherent/total sub-line, severity row "X mild · Y
+        severe drift", driftDates list (max 3 most recent),
+        message + recommendation, citation
+    Band colors: good=#28a745 green, moderate=#ff9500 amber,
+    poor=#dc3545 red.
+    role="region" + bilingual aria-label, aria-live="polite" on
+    adherencePct, 4px accent border-left, animationDelay 380ms
+    (after FitnessConsistency at 360ms).
+    12 jsdom tests covering vacuous-good (EN+TR), insufficient,
+    GOOD/MODERATE/POOR bands, severity counts, drift-dates cap,
+    bilingual, role/citation.
+
+  CoachingInsightsDigest 14→16-detector synthesis:
+    Added detectFitnessConsistency + detectRecoveryAdherence
+    imports + memoized results. SOURCE_LABEL gained STABILITY/
+    STABİLİTE and REST/DİNLENME.
+    Synthesis priority chain extended from 26→28 rules (still
+    capped at MAX_ROWS=3):
+      Rule 5 inserted: fitnessConsistency.band==='chaotic'
+        (high severity, between monotony-high and recoveryDebt-
+        fatigued — chaotic CTL pattern is structural; rules 5-26
+        renumber to 6-27)
+      Rule 11 inserted: recoveryAdherence.band==='poor'
+        (moderate severity, between sessionRPEDrift-high and
+        trainingPolarization-threshold — discipline issue at
+        moderate tier; rules 11-27 renumber to 12-28)
+    Surface gates:
+      fitnessConsistency: only chaotic surfaces; oscillating/
+        stable/rock-solid silent (oscillating partly covered by
+        monotonyStrain + fitnessGainRate)
+      recoveryAdherence: only poor surfaces; moderate/good/
+        vacuous silent (moderate would noise out other discipline
+        signals)
+    Empty-state and all-green guards extended to consider all 16
+    detectors.
+    Fixture tweak: buildSpikingFitnessLog 180-day pre-window
+    shortened to 60 days so fitnessConsistency returns
+    reliable=false rather than chaotic — a real CTL spike
+    intrinsically chaoticizes weekly-CV, and without this tweak
+    the new rule-5 STABILITY headline would crowd out
+    fitness-spiking from MAX_ROWS=3 cap and break v8.76 spiking
+    tests. Same fixture-tweak pattern used in v8.76, v8.80, v8.83.
+    fitnessGainRate slope (the spiking signal) remains reliable.
+    +9 new digest tests (52 → 61).
+
+  StaleZonesCard.test.jsx pre-existing flake fix:
+    Test fixtures hardcode `today='2026-04-30'` but the card
+    invokes `detectStaleZones(log)` without a today override, so
+    the lib uses real `new Date()`. On 2026-05-07 the fixture
+    date fell outside the lib's 7-day recent window → "dropped
+    Z2" assertion failed because share7=0 (no entries in last 7
+    days from real today).
+    Fix: added `vi.setSystemTime(new Date('2026-04-30T12:00:00Z'))`
+    in beforeEach + `vi.useRealTimers()` in afterEach (matches
+    pattern used in RecoveryDebtCard / SupercompensationWindowCard
+    / FitnessConsistencyCard tests).
+    Latent bug; would have failed any run after 2026-05-07.
+
+  Tests: 8550 → 8585 (+35; 14 FC card + 12 RA card + 9 digest).
+  Files: 355 → 357.
+  Build: clean, main chunk holds at 83.80 KB gz / 150 KB cap
+         (~66 KB headroom).
+  DEPENDS ON: v8.84.0 fitnessConsistency + recoveryAdherence libs.
+
+---
+
 ## v8.84.0 — 2026-05-07 — fitnessConsistency + recoveryAdherence libs + audit saturation (+67 tests), 8550 tests
 
   Two new pure-function detector libs (no cards yet — surface in

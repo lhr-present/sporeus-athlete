@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
 // ─── StaleZonesCard.test.jsx — render tests for the zone-balance card ────────
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import StaleZonesCard from '../dashboard/StaleZonesCard.jsx'
+
+beforeEach(() => { vi.setSystemTime(new Date('2026-04-30T12:00:00Z')) })
+afterEach(() => { vi.useRealTimers() })
 
 // ─── Render helper with overridable lang ─────────────────────────────────────
 function renderCard(props, lang = 'en') {
