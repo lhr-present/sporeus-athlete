@@ -46,21 +46,25 @@ function buildHealthyLog() {
   // We need ≤1 hard day/wk to keep density low. Move tempo to RPE 5 steady.
   // Keep one intervals/wk → 1 hard day/wk → unflagged.
   // Zones tuned to polarized template (28/56/7/7/4) so timeInZone band='good'.
+  // v8.86.0: mix run + bike + swim across the week so trainingDiversity lands
+  // in the 'balanced' band (≥3 substantial sports each ≥10% of total minutes).
+  // Without this, run-only days yield band='monotypic' → digest would surface
+  // the warning and break the all-green path.
   const templates = [
-    // Mon: recovery (RPE 3, 60min, Z1-heavy)
-    { rpe: 3, duration: 60, zones: [70, 28, 1, 1, 0] },
-    // Tue: steady (RPE 5, 75min)
-    { rpe: 5, duration: 75, zones: [25, 65, 4, 4, 2] },
-    // Wed: recovery (RPE 2, 40min, Z1-heavy)
-    { rpe: 2, duration: 40, zones: [70, 25, 3, 1, 1] },
-    // Thu: steady (RPE 5, 75min)
-    { rpe: 5, duration: 75, zones: [25, 65, 4, 4, 2] },
-    // Fri: long (RPE 5, 120min)
-    { rpe: 5, duration: 120, zones: [25, 70, 3, 1, 1] },
-    // Sat: tempo (RPE 6, 50min, Z3-dominant) — counts as hard
-    { rpe: 6, duration: 50, zones: [5, 15, 50, 20, 10] },
-    // Sun: easy (RPE 4) — keep total hard days/wk = 1 (just Sat)
-    { rpe: 4, duration: 50, zones: [25, 65, 4, 4, 2] },
+    // Mon: recovery run (RPE 3, 60min, Z1-heavy)
+    { type: 'run',  rpe: 3, duration: 60, zones: [70, 28, 1, 1, 0] },
+    // Tue: steady BIKE (RPE 5, 75min) — diversifies sport mix
+    { type: 'bike', rpe: 5, duration: 75, zones: [25, 65, 4, 4, 2] },
+    // Wed: recovery run (RPE 2, 40min, Z1-heavy)
+    { type: 'run',  rpe: 2, duration: 40, zones: [70, 25, 3, 1, 1] },
+    // Thu: steady SWIM (RPE 5, 75min) — diversifies sport mix
+    { type: 'swim', rpe: 5, duration: 75, zones: [25, 65, 4, 4, 2] },
+    // Fri: long run (RPE 5, 120min)
+    { type: 'run',  rpe: 5, duration: 120, zones: [25, 70, 3, 1, 1] },
+    // Sat: tempo run (RPE 6, 50min, Z3-dominant) — counts as hard
+    { type: 'run',  rpe: 6, duration: 50, zones: [5, 15, 50, 20, 10] },
+    // Sun: easy run (RPE 4) — keep total hard days/wk = 1 (just Sat)
+    { type: 'run',  rpe: 4, duration: 50, zones: [25, 65, 4, 4, 2] },
   ]
   for (let w = 0; w < 4; w++) {
     const weekStart = addDays(w1Start, w * 7)
@@ -73,7 +77,7 @@ function buildHealthyLog() {
       const t = templates[d]
       log.push({
         date,
-        type: 'run',
+        type: t.type,
         rpe: t.rpe,
         duration: t.duration,
         zones: t.zones.slice(),
@@ -363,13 +367,17 @@ function buildVO2GapSevereLog() {
 // ≥5% share (no staleZones flag) and timeInZone produces 'moderate' worstZone
 // Z5-over (silent in synthesis — only Z2-under fires rule 18) — keeping the
 // streak-risk headline in the top-3 rotation.
+// v8.86.0: 2 of 25 sessions are bike (sportsActive=2 → trainingDiversity band
+// 'limited', silent in synthesis) so the new MIX rule does not crowd STREAK.
 function buildStreakRiskLog() {
   const today = todayStr()
   const log = []
   for (let i = 24; i >= 0; i--) {
+    // Days -7 and -14 are bike → 2 sports active → 'limited' band (silent).
+    const isBike = i === 7 || i === 14
     log.push({
       date: addDays(today, -i),
-      type: 'run',
+      type: isBike ? 'bike' : 'run',
       rpe: 5,
       duration: 60,
       tss: 50,
@@ -387,10 +395,12 @@ function buildStreakCelebrating7Log() {
   const today = todayStr()
   const log = []
   // Older sparse entries so reliable=true (span ≥ 14d) but no recent streak.
+  // v8.86.0: 2 of these are bike → sportsActive=2 → 'limited' band (silent).
   for (let i = 20; i >= 8; i -= 2) {
+    const isBike = i === 16 || i === 10
     log.push({
       date: addDays(today, -i),
-      type: 'run',
+      type: isBike ? 'bike' : 'run',
       rpe: 5,
       duration: 60,
       tss: 50,
@@ -999,10 +1009,13 @@ describe('CoachingInsightsDigest — v8.77.0 reliability gating', () => {
 function buildTimeInZonePoorLog() {
   const today = todayStr()
   const log = []
+  // v8.86.0: 3 of 28 sessions are bike → sportsActive=2 → 'limited' band
+  // (silent), so the new MIX rule does not crowd ZONES out of the top 3.
   for (let i = 27; i >= 0; i--) {
+    const isBike = i === 5 || i === 14 || i === 21
     log.push({
       date: addDays(today, -i),
-      type: 'run',
+      type: isBike ? 'bike' : 'run',
       rpe: 5,
       duration: 60,
       tss: 50,
@@ -1077,11 +1090,13 @@ function buildSupercompPeakLog() {
 function buildSupercompOpportunityLog() {
   const today = todayStr()
   const log = []
+  // v8.86.0: every 5th day is bike → sportsActive=2 → 'limited' (silent), so
+  // the new MIX rule does not crowd the WINDOW headline out of the top 3.
   for (let i = 84; i >= 6; i--) {
     if (i % 3 === 0) continue
     log.push({
       date: addDays(today, -i),
-      type: 'run',
+      type: i % 5 === 0 ? 'bike' : 'run',
       rpe: 5,
       duration: 60,
       tss: 60,
@@ -1707,5 +1722,363 @@ describe('CoachingInsightsDigest — recoveryAdherence vacuous (silent)', () => 
     const log = buildRecoveryAdherenceVacuousLog()
     renderCard({ log })
     expect(screen.queryByText('REST')).not.toBeInTheDocument()
+  })
+})
+
+// ─── v8.86.0 fixtures: trainingDiversity + deloadCadence ────────────────────
+
+// trainingDiversity 'monotypic': 28 days of run-only training (≥5 sessions →
+// reliable). Single sport active → band='monotypic' → MIX warning surfaces.
+function buildDiversityMonotypicLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 27; i >= 0; i -= 2) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 50,
+      zones: [25, 55, 8, 7, 5],
+    })
+  }
+  return log
+}
+
+// trainingDiversity 'limited': run + bike across 28 days (2 sports active,
+// each ≥10% of total minutes). band='limited' → silent in synthesis.
+function buildDiversityLimitedLog() {
+  const today = todayStr()
+  const log = []
+  // 14 sessions, every 3rd is bike (5 bike + 9 run → ~36% bike, 64% run)
+  let n = 0
+  for (let i = 27; i >= 0; i -= 2) {
+    log.push({
+      date: addDays(today, -i),
+      type: n % 3 === 0 ? 'bike' : 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 50,
+      zones: [25, 55, 8, 7, 5],
+    })
+    n++
+  }
+  return log
+}
+
+// trainingDiversity 'balanced': run + bike + swim across 28 days, each sport
+// ≥10% of total minutes → band='balanced' → silent (positive).
+function buildDiversityBalancedLog() {
+  const today = todayStr()
+  const log = []
+  // 14 sessions: rotate run/bike/swim → ~33% each → balanced (3 substantial)
+  const sports = ['run', 'bike', 'swim']
+  let n = 0
+  for (let i = 27; i >= 0; i -= 2) {
+    log.push({
+      date: addDays(today, -i),
+      type: sports[n % 3],
+      rpe: 5,
+      duration: 60,
+      tss: 50,
+      zones: [25, 55, 8, 7, 5],
+    })
+    n++
+  }
+  return log
+}
+
+// trainingDiversity 'fragmented': 4 sports active, no dominant share > 50%
+// → band='fragmented' → silent (rule gate skips fragmented).
+function buildDiversityFragmentedLog() {
+  const today = todayStr()
+  const log = []
+  const sports = ['run', 'bike', 'swim', 'strength']
+  for (let i = 27; i >= 0; i--) {
+    log.push({
+      date: addDays(today, -i),
+      type: sports[i % 4],
+      rpe: 5,
+      duration: 60,
+      tss: 50,
+      zones: [25, 55, 8, 7, 5],
+    })
+  }
+  return log
+}
+
+// trainingDiversity unreliable: only 4 sessions (< 5 reliable threshold).
+// Even though sportsActive==1 (would be 'monotypic'), reliable=false → silent.
+function buildDiversityUnreliableLog() {
+  const today = todayStr()
+  const log = []
+  for (let i = 0; i < 4; i++) {
+    log.push({
+      date: addDays(today, -i),
+      type: 'run',
+      rpe: 5,
+      duration: 60,
+      tss: 50,
+      zones: [25, 55, 8, 7, 5],
+    })
+  }
+  return log
+}
+
+// deloadCadence 'overdue': 9 weeks of training, only the OLDEST week is a
+// deload (TSS << threshold). weeksSinceLastDeload = 8 > 4 → 'overdue'.
+// Build TSS kept low enough that recoveryDebt stays in 'maintaining' (silent)
+// and no other high-priority detector eclipses the DELOAD headline. Bike+swim
+// sprinkled so trainingDiversity → 'balanced' (silent).
+function buildDeloadOverdueLog() {
+  const today = todayStr()
+  const log = []
+  // Per-week template Mon..Sun: varied TSS keeps monotony low; sum ~185
+  const buildTemplate = [30, 40, 0, 25, 20, 45, 25]
+  // Deload week: very low TSS so it falls under threshold (mean × 0.65)
+  const deloadTemplate = [5, 10, 0, 5, 10, 5, 5]
+  const todayDow = new Date(today + 'T00:00:00Z').getUTCDay()
+  const lastSunday = todayDow === 0 ? today : addDays(today, -todayDow)
+  for (let w = 0; w < 9; w++) {
+    const weekStart = addDays(lastSunday, -7 * w - 6)
+    const isDeload = w === 8
+    const tpl = isDeload ? deloadTemplate : buildTemplate
+    for (let d = 0; d < 7; d++) {
+      const date = addDays(weekStart, d)
+      if (date > today) continue
+      if (tpl[d] > 0) {
+        const sport = (!isDeload && d === 1) ? 'bike'
+          : (!isDeload && d === 3) ? 'swim'
+          : 'run'
+        log.push({
+          date,
+          type: sport,
+          rpe: 5,
+          duration: 60,
+          tss: tpl[d],
+          zones: [25, 55, 8, 7, 5],
+        })
+      }
+    }
+  }
+  return log
+}
+
+// deloadCadence 'too-frequent': 8 weeks where every other week is deload
+// → deloadRatio = 4/2 = 2.0 > 1.5 → band='too-frequent' (silent in synthesis).
+function buildDeloadTooFrequentLog() {
+  const today = todayStr()
+  const log = []
+  const buildTemplate = [40, 50, 0, 35, 25, 55, 30]
+  const deloadTemplate = [5, 10, 0, 5, 10, 5, 5]
+  const todayDow = new Date(today + 'T00:00:00Z').getUTCDay()
+  const lastSunday = todayDow === 0 ? today : addDays(today, -todayDow)
+  for (let w = 0; w < 8; w++) {
+    const weekStart = addDays(lastSunday, -7 * w - 6)
+    const isDeload = w % 2 === 0
+    const tpl = isDeload ? deloadTemplate : buildTemplate
+    for (let d = 0; d < 7; d++) {
+      const date = addDays(weekStart, d)
+      if (date > today) continue
+      if (tpl[d] > 0) {
+        log.push({
+          date,
+          type: 'run',
+          rpe: 5,
+          duration: 60,
+          tss: tpl[d],
+          zones: [25, 55, 8, 7, 5],
+        })
+      }
+    }
+  }
+  return log
+}
+
+// deloadCadence 'on-schedule': 9 weeks with deload weeks at 4-week intervals
+// (recent deload ≤ 4 weeks ago, deloadRatio ≥ 0.75) → band='on-schedule'
+// (silent — positive band).
+function buildDeloadOnScheduleLog() {
+  const today = todayStr()
+  const log = []
+  const buildTemplate = [40, 50, 0, 35, 25, 55, 30]
+  const deloadTemplate = [5, 10, 0, 5, 10, 5, 5]
+  const todayDow = new Date(today + 'T00:00:00Z').getUTCDay()
+  const lastSunday = todayDow === 0 ? today : addDays(today, -todayDow)
+  // Deload weeks at index 1, 5 → most recent deload 1 week ago, ratio ≈ 1
+  for (let w = 0; w < 9; w++) {
+    const weekStart = addDays(lastSunday, -7 * w - 6)
+    const isDeload = w === 1 || w === 5
+    const tpl = isDeload ? deloadTemplate : buildTemplate
+    for (let d = 0; d < 7; d++) {
+      const date = addDays(weekStart, d)
+      if (date > today) continue
+      if (tpl[d] > 0) {
+        log.push({
+          date,
+          type: 'run',
+          rpe: 5,
+          duration: 60,
+          tss: tpl[d],
+          zones: [25, 55, 8, 7, 5],
+        })
+      }
+    }
+  }
+  return log
+}
+
+// deloadCadence 'no-pattern': 9 weeks of uniform TSS (no week falls below the
+// 0.65 × mean threshold) → actualDeloads=0 → band='no-pattern' (silent).
+function buildDeloadNoPatternLog() {
+  const today = todayStr()
+  const log = []
+  const buildTemplate = [40, 50, 0, 35, 25, 55, 30]
+  const todayDow = new Date(today + 'T00:00:00Z').getUTCDay()
+  const lastSunday = todayDow === 0 ? today : addDays(today, -todayDow)
+  for (let w = 0; w < 9; w++) {
+    const weekStart = addDays(lastSunday, -7 * w - 6)
+    for (let d = 0; d < 7; d++) {
+      const date = addDays(weekStart, d)
+      if (date > today) continue
+      if (buildTemplate[d] > 0) {
+        log.push({
+          date,
+          type: 'run',
+          rpe: 5,
+          duration: 60,
+          tss: buildTemplate[d],
+          zones: [25, 55, 8, 7, 5],
+        })
+      }
+    }
+  }
+  return log
+}
+
+// deloadCadence unreliable: only 4 weeks of data (< 8 weeks reliable threshold)
+// → reliable=false. Even if band would otherwise be 'overdue', DELOAD must
+// stay silent.
+function buildDeloadUnreliableLog() {
+  const today = todayStr()
+  const log = []
+  const buildTemplate = [60, 70, 0, 50, 40, 80, 50]
+  const todayDow = new Date(today + 'T00:00:00Z').getUTCDay()
+  const lastSunday = todayDow === 0 ? today : addDays(today, -todayDow)
+  for (let w = 0; w < 4; w++) {
+    const weekStart = addDays(lastSunday, -7 * w - 6)
+    for (let d = 0; d < 7; d++) {
+      const date = addDays(weekStart, d)
+      if (date > today) continue
+      if (buildTemplate[d] > 0) {
+        log.push({
+          date,
+          type: 'run',
+          rpe: 5,
+          duration: 60,
+          tss: buildTemplate[d],
+          zones: [25, 55, 8, 7, 5],
+        })
+      }
+    }
+  }
+  return log
+}
+
+// ─── v8.86.0 tests ──────────────────────────────────────────────────────────
+describe('CoachingInsightsDigest — trainingDiversity monotypic', () => {
+  it('surfaces a moderate MIX headline when only one sport is logged', () => {
+    const log = buildDiversityMonotypicLog()
+    renderCard({ log })
+    expect(screen.getByText('MIX')).toBeInTheDocument()
+    // Detector message references single-sport focus
+    expect(screen.getByText(/Single-sport focus/i)).toBeInTheDocument()
+    // Moderate severity → yellow bullet
+    const region = screen.getByRole('region')
+    expect(region.textContent).toContain('🟡')
+  })
+
+  it('renders KARIŞIM (TR) and Turkish copy when lang=tr', () => {
+    const log = buildDiversityMonotypicLog()
+    renderCard({ log }, 'tr')
+    expect(screen.getByText('KARIŞIM')).toBeInTheDocument()
+    expect(screen.getByText(/Tek-spor odaklı/i)).toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — trainingDiversity limited (silent)', () => {
+  it('does NOT surface a MIX headline when band is limited (2 sports)', () => {
+    const log = buildDiversityLimitedLog()
+    renderCard({ log })
+    expect(screen.queryByText('MIX')).not.toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — trainingDiversity balanced (silent)', () => {
+  it('does NOT surface a MIX headline when band is balanced (positive)', () => {
+    const log = buildDiversityBalancedLog()
+    renderCard({ log })
+    expect(screen.queryByText('MIX')).not.toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — trainingDiversity fragmented (silent)', () => {
+  it('does NOT surface a MIX headline when band is fragmented (4+ sports, no dominant)', () => {
+    const log = buildDiversityFragmentedLog()
+    renderCard({ log })
+    expect(screen.queryByText('MIX')).not.toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — trainingDiversity unreliable (silent)', () => {
+  it('does NOT surface a MIX headline when reliable=false (< 5 sessions)', () => {
+    const log = buildDiversityUnreliableLog()
+    renderCard({ log })
+    expect(screen.queryByText('MIX')).not.toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — deloadCadence overdue', () => {
+  it('surfaces a high-priority DELOAD headline when 3:1 cadence is overdue', () => {
+    const log = buildDeloadOverdueLog()
+    renderCard({ log })
+    expect(screen.getByText('DELOAD')).toBeInTheDocument()
+    // Detector message mentions weeks since last deload
+    expect(screen.getByText(/since last deload — schedule one this week/i)).toBeInTheDocument()
+    // High severity → red bullet
+    const region = screen.getByRole('region')
+    expect(region.textContent).toContain('🔴')
+  })
+})
+
+describe('CoachingInsightsDigest — deloadCadence too-frequent (silent)', () => {
+  it('does NOT surface a DELOAD headline when band is too-frequent', () => {
+    const log = buildDeloadTooFrequentLog()
+    renderCard({ log })
+    expect(screen.queryByText('DELOAD')).not.toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — deloadCadence on-schedule (silent)', () => {
+  it('does NOT surface a DELOAD headline when band is on-schedule (positive)', () => {
+    const log = buildDeloadOnScheduleLog()
+    renderCard({ log })
+    expect(screen.queryByText('DELOAD')).not.toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — deloadCadence no-pattern (silent)', () => {
+  it('does NOT surface a DELOAD headline when no deload pattern is detected', () => {
+    const log = buildDeloadNoPatternLog()
+    renderCard({ log })
+    expect(screen.queryByText('DELOAD')).not.toBeInTheDocument()
+  })
+})
+
+describe('CoachingInsightsDigest — deloadCadence unreliable (silent)', () => {
+  it('does NOT surface a DELOAD headline when reliable=false (< 8 weeks)', () => {
+    const log = buildDeloadUnreliableLog()
+    renderCard({ log })
+    expect(screen.queryByText('DELOAD')).not.toBeInTheDocument()
   })
 })

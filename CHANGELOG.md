@@ -4,6 +4,92 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.87.0 — 2026-05-07 — TrainingDiversityCard + DeloadCadenceCard + Digest 16→18 (+41 tests), 8698 tests
+
+  Closes both v8.86.0 lib→card loops. Final detector-chain
+  close-out before pivot to focused 2-mission phase.
+
+  TrainingDiversityCard.jsx (252 lines):
+    Surfaces v8.86.0 trainingDiversity lib. Side-by-side big
+    numbers: sportsActive (X/5) + herfindahlIndex (3 decimals)
+    with bilingual "SPORTS · SPOR" and "HHI · YOĞUNLUK" labels.
+    5-segment stacked horizontal bar w/ sport-specific colors
+    (Run=#0064ff blue, Bike=#28a745 green, Swim=#9acd32 cyan,
+    Strength=#ff6600 orange, Other=#9c27b0 purple — distinct
+    from zone palette).
+    Per-sport breakdown rows with bilingual sport names and
+    sessions / minutes / share. dominantSport callout when band
+    !== 'balanced'.
+    Band colors: monotypic=#dc3545 red, limited=#ff9500 amber,
+    balanced=#28a745 green, fragmented=#9acd32 light-green.
+    role="region" + role="img" on stacked bar, aria-live="polite"
+    on metrics row, 4px accent border-left, animationDelay 400ms
+    (after RecoveryAdherence at 380ms).
+    15 jsdom tests covering all 4 bands, role/aria, citation,
+    bilingual EN+TR.
+
+  DeloadCadenceCard.jsx (241 lines):
+    Surfaces v8.86.0 deloadCadence lib. Side-by-side big numbers:
+    actualDeloads/expectedDeloads (rendered as "X/Y") +
+    weeksSinceLastDeload (renders "—" when null/no-pattern).
+    Sub-lines: ratio with target band (0.75-1.50), mean TSS
+    over N weeks, recent deloads inline list (max 3).
+    Band colors: on-schedule=#28a745 green, overdue=#dc3545 red
+    (urgent), too-frequent=#ff9500 amber, no-pattern=#6c757d
+    grey.
+    role="region" + bilingual aria-label, aria-live="polite" on
+    metrics row, 4px accent border-left, animationDelay 420ms
+    (after TrainingDiversity at 400ms).
+    15 jsdom tests covering all 4 bands, "—" rendering for
+    no-pattern, recent deloads list, bilingual.
+
+  CoachingInsightsDigest 16→18-detector synthesis:
+    Added detectTrainingDiversity + detectDeloadCadence imports
+    + memoized results. SOURCE_LABEL gained MIX/KARIŞIM and
+    DELOAD/DELOAD.
+    Synthesis priority chain extended from 28→30 rules (still
+    capped at MAX_ROWS=3):
+      Rule 7 inserted: deloadCadence overdue (high-severity
+        warning, between recoveryDebt-fatigued and density-high
+        — both fatigue-management signals at high tier)
+      Rule 14 inserted: trainingDiversity monotypic (moderate-
+        severity warning, between polarization-threshold and
+        timeInZone-poor — injury-resilience signal at moderate
+        tier; rules 14-29 renumber to 15-30)
+    Surface gates:
+      trainingDiversity: only monotypic surfaces; limited could
+        be by design, balanced is positive, fragmented rare
+      deloadCadence: only overdue surfaces; too-frequent less
+        urgent (recoveryDebt would catch real overreach),
+        on-schedule positive, no-pattern would noise on
+        non-periodized casual athletes
+    Citation footer extended with Bompa & Haff 2009; Issurin
+    2010; Tonnessen 2014.
+    Empty-state and all-green guards extended to consider all 18
+    detectors.
+    Fixture tweaks (minimal — same v8.76 / v8.80 / v8.83 / v8.85
+    pattern):
+      buildHealthyLog gains Tue=bike + Thu=swim per week so
+        trainingDiversity lands balanced not monotypic
+      buildStreakRiskLog, buildStreakCelebrating7Log,
+        buildTimeInZonePoorLog, buildSupercompOpportunityLog
+        each get 2-3 entries flipped to bike so trainingDiversity
+        → limited (silent) — prevents new MIX rule from crowding
+        the asserted headline out of MAX_ROWS=3
+      deloadCadence overdue fixture keeps TSS low (build-week
+        sum ≈185) so recoveryDebt stays in maintaining and
+        doesn't fire a higher-priority rule that would suppress
+        DELOAD
+    +11 new digest tests (61 → 72).
+
+  Tests: 8657 → 8698 (+41; 15 TD card + 15 DC card + 11 digest).
+  Files: 359 → 361.
+  Build: clean, main chunk holds at 83.80 KB gz / 150 KB cap
+         (~66 KB headroom).
+  DEPENDS ON: v8.86.0 trainingDiversity + deloadCadence libs.
+
+---
+
 ## v8.86.0 — 2026-05-07 — trainingDiversity + deloadCadence libs + audit saturation (+72 tests), 8657 tests
 
   Two new pure-function detector libs (no cards yet — surface in
