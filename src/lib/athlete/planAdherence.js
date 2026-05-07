@@ -132,6 +132,8 @@ export function computeAdherenceSummary(
 // Mujika 2009 — adherence and CTL coupling.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { entryMatchesProgramSport } from './_logSport.js'
+
 const ADHERENCE_CITATION = 'Banister 1991; Bompa 2009; Mujika 2009 adherence-CTL coupling'
 
 const TRAJECTORY_LABELS = {
@@ -267,6 +269,7 @@ export function buildPlanAdherence(program, log, options = {}) {
   if (!program || typeof program !== 'object') return unreliableAdherence()
   const weeklyTSS = Array.isArray(program.weeklyTSS) ? program.weeklyTSS : []
   if (weeklyTSS.length === 0) return unreliableAdherence()
+  const programSport = program.sport || program.input?.sport || null
 
   const today = opts.today ? adhParseUTC(opts.today) : adhTodayUTC()
   if (!today) return unreliableAdherence()
@@ -295,11 +298,15 @@ export function buildPlanAdherence(program, log, options = {}) {
   }
 
   const safeLog = Array.isArray(log) ? log : []
-  // Filter log to in-window entries with valid date + numeric tss.
+  // Filter log to in-window entries with valid date + numeric tss + sport
+  // matching the program. Cross-training entries (e.g. cycling on a run plan)
+  // would otherwise inflate adherence — see entryMatchesProgramSport for the
+  // null-tag passthrough rule.
   const inWindow = safeLog.filter(e => {
     if (!e || typeof e !== 'object') return false
     const d = adhParseUTC((e.date || '').slice(0, 10))
     if (!d) return false
+    if (!entryMatchesProgramSport(e, programSport)) return false
     if (typeof e.tss !== 'number' || !Number.isFinite(e.tss)) {
       // allow entries with intent matching even when tss missing — but only
       // count tss=0 toward weekly volume

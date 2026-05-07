@@ -1260,11 +1260,12 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
             {isTR ? 'TAKVİME UYGULA' : 'APPLY TO CALENDAR'}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>{isTR ? 'APPLY TO CALENDAR' : 'TAKVİME UYGULA'}
           </button>
           <button type="button"
+            data-export-summary
             data-share-with-coach
             onClick={shareWithCoach}
-            aria-label={isTR ? 'Plan özetini koçla paylaş' : 'Share plan summary with coach'}
+            aria-label={isTR ? 'Plan özetini dışa aktar' : 'Export plan summary'}
             style={{ ...S.mono, fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '6px 10px', background: 'transparent', color: '#0064ff', border: '1px solid #0064ff', borderRadius: '3px', cursor: 'pointer', minHeight: '32px' }}>
-            {isTR ? 'KOÇLA PAYLAŞ' : 'SHARE WITH COACH'}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>{isTR ? 'SHARE WITH COACH' : 'KOÇLA PAYLAŞ'}
+            {isTR ? 'ÖZET DIŞA AKTAR' : 'EXPORT SUMMARY'}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>{isTR ? 'EXPORT SUMMARY' : 'ÖZET DIŞA AKTAR'}
           </button>
           <button type="button" onClick={handleReset}
             aria-label={isTR ? 'Programı sıfırla' : 'Reset program'}

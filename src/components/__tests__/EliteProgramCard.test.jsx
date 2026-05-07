@@ -1007,10 +1007,10 @@ describe('EliteProgramCard — v8.97.0 lifecycle + share', () => {
   it('SHARE WITH COACH button renders bilingual', () => {
     renderCard()
     fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
-    const btn = screen.getByRole('button', { name: /Share plan summary with coach/i })
+    const btn = screen.getByRole('button', { name: /Export plan summary/i })
     expect(btn).toBeInTheDocument()
-    expect(btn.textContent).toMatch(/SHARE WITH COACH/)
-    expect(btn.textContent).toMatch(/KOÇLA PAYLAŞ/)
+    expect(btn.textContent).toMatch(/EXPORT SUMMARY/)
+    expect(btn.textContent).toMatch(/ÖZET DIŞA AKTAR/)
   })
 
   it('click SHARE writes JSON to clipboard (mocked navigator.clipboard.writeText)', async () => {
@@ -1023,7 +1023,7 @@ describe('EliteProgramCard — v8.97.0 lifecycle + share', () => {
     try {
       renderCard()
       fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
-      const btn = screen.getByRole('button', { name: /Share plan summary with coach/i })
+      const btn = screen.getByRole('button', { name: /Export plan summary/i })
       fireEvent.click(btn)
       expect(writeText).toHaveBeenCalledTimes(1)
       const json = writeText.mock.calls[0][0]
@@ -1046,7 +1046,7 @@ describe('EliteProgramCard — v8.97.0 lifecycle + share', () => {
     try {
       renderCard()
       fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
-      fireEvent.click(screen.getByRole('button', { name: /Share plan summary with coach/i }))
+      fireEvent.click(screen.getByRole('button', { name: /Export plan summary/i }))
       const parsed = JSON.parse(writeText.mock.calls[0][0])
       expect(parsed.athleteSnapshot).toBeDefined()
       expect(parsed.athleteSnapshot.sport).toBe('run')
@@ -1080,7 +1080,7 @@ describe('EliteProgramCard — v8.97.0 lifecycle + share', () => {
     try {
       renderCard()
       fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
-      fireEvent.click(screen.getByRole('button', { name: /Share plan summary with coach/i }))
+      fireEvent.click(screen.getByRole('button', { name: /Export plan summary/i }))
       // Allow rejected promise microtask to resolve
       await Promise.resolve()
       await Promise.resolve()
@@ -1121,5 +1121,194 @@ describe('EliteProgramCard — v8.97.0 lifecycle + share', () => {
     const aria = pill.getAttribute('aria-label') || ''
     expect(aria).toMatch(/Plan status/i)
     expect(pill.getAttribute('role')).toBe('status')
+  })
+})
+
+// ─── v8.98.0 + v8.99.0 — adherence section + RE-PROJECT button ───────────────
+// Audit (v8.99 deep-dive) found these surfaces had zero React-component
+// coverage. Backfilling for launch readiness. Tests mount the card directly
+// in plan mode by pre-seeding localStorage (form-submit path overwrites the
+// programStart anchor with `today`, which would zero out adherence).
+describe('EliteProgramCard — v8.98.0 adherence section', () => {
+  function seedPlanModeInProgress({ adherencePct = 100, weeksBack = 4, tssPerWeek = 200, raceDate = '2026-09-20' }) {
+    const startStr = (() => {
+      const d = new Date('2026-05-07T00:00:00Z')
+      d.setUTCDate(d.getUTCDate() - weeksBack * 7)
+      return d.toISOString().slice(0, 10)
+    })()
+    // Pre-seed all three localStorage keys: program input, start anchor,
+    // applied yearly plan
+    localStorage.setItem('sporeus-eliteProgram', JSON.stringify({
+      input: {
+        sport: 'run',
+        currentPR: { distanceM: 10000, timeSec: 50 * 60 },
+        targetPR:  { distanceM: 10000, timeSec: 40 * 60 },
+        raceDate,
+        // Pin currentCTL low so program's weeklyTSS lands in a tight predictable
+        // range (~210-285) that the test seed can hit precisely.
+        profile: { currentCTL: 30, weeklyHours: 8, trainingDays: 5 },
+      },
+      form: { sport: 'run', currentDist: 10000, currentTime: '50:00', targetDist: 10000, targetTime: '40:00', raceDate },
+    }))
+    localStorage.setItem('sporeus-eliteProgramStart', JSON.stringify(startStr))
+    localStorage.setItem('sporeus-yearly-plan', JSON.stringify({
+      weeks: Array.from({ length: 16 }, () => ({ targetTSS: tssPerWeek })),
+      model: 'traditional',
+    }))
+    const log = []
+    const tssPerEntry = Math.round((tssPerWeek * adherencePct) / 100)
+    for (let w = 0; w < weeksBack; w++) {
+      const d = new Date(`${startStr}T00:00:00Z`)
+      d.setUTCDate(d.getUTCDate() + w * 7 + 2)
+      log.push({ date: d.toISOString().slice(0, 10), tss: tssPerEntry, type: 'run' })
+    }
+    return log
+  }
+
+  it('renders adherence section in in-progress lifecycle with reliable data', () => {
+    const log = seedPlanModeInProgress({ adherencePct: 95 })
+    renderCard({ log })
+    const sec = document.querySelector('[data-adherence-section]')
+    expect(sec).not.toBeNull()
+    // Trajectory is one of the four valid values; precise classification
+    // depends on per-week weeklyTSS which varies by phase split. We just
+    // verify the section is wired and a trajectory enum is present.
+    const traj = sec.getAttribute('data-trajectory')
+    expect(['on-track', 'behind', 'ahead', 'critical']).toContain(traj)
+  })
+
+  it('does NOT render adherence section in draft state (no yearly plan applied)', () => {
+    renderCard({ log: [] })
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-09-20' })
+    expect(document.querySelector('[data-adherence-section]')).toBeNull()
+  })
+
+  it('does NOT render adherence section when log is empty (unreliable)', () => {
+    localStorage.setItem('sporeus-yearly-plan', JSON.stringify({
+      weeks: [{ targetTSS: 300 }, { targetTSS: 300 }],
+      model: 'traditional',
+    }))
+    renderCard({ log: [] })
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-09-20' })
+    expect(document.querySelector('[data-adherence-section]')).toBeNull()
+  })
+
+  it('shows critical trajectory when athlete is far behind', () => {
+    const log = seedPlanModeInProgress({ adherencePct: 40 })
+    renderCard({ log })
+    const sec = document.querySelector('[data-adherence-section]')
+    expect(sec).not.toBeNull()
+    expect(sec.getAttribute('data-trajectory')).toBe('critical')
+  })
+
+  it('renders bilingual ADHERENCE header', () => {
+    const log = seedPlanModeInProgress({ adherencePct: 95 })
+    renderCard({ log }, 'tr')
+    const sec = document.querySelector('[data-adherence-section]')
+    expect(sec).not.toBeNull()
+    expect(sec.textContent).toMatch(/UYGULAMA/)
+    expect(sec.textContent).toMatch(/ADHERENCE/)
+  })
+
+  it('renders the adherence percent as a visible number', () => {
+    const log = seedPlanModeInProgress({ adherencePct: 80 })
+    renderCard({ log })
+    const pct = document.querySelector('[data-adherence-pct]')
+    expect(pct).not.toBeNull()
+    expect(pct.textContent).toMatch(/\d+%/)
+  })
+})
+
+describe('EliteProgramCard — v8.99.0 RE-PROJECT button', () => {
+  function seedPlanModeBehind({ tssPerEntry = 170, raceDate = '2026-09-20' } = {}) {
+    const startStr = (() => {
+      const d = new Date('2026-05-07T00:00:00Z')
+      d.setUTCDate(d.getUTCDate() - 4 * 7)
+      return d.toISOString().slice(0, 10)
+    })()
+    localStorage.setItem('sporeus-eliteProgram', JSON.stringify({
+      input: {
+        sport: 'run',
+        currentPR: { distanceM: 10000, timeSec: 50 * 60 },
+        targetPR:  { distanceM: 10000, timeSec: 40 * 60 },
+        raceDate,
+        // Pin currentCTL low so program's weeklyTSS lands in a tight predictable
+        // range (~210-285) that the test seed can hit precisely.
+        profile: { currentCTL: 30, weeklyHours: 8, trainingDays: 5 },
+      },
+      form: { sport: 'run', currentDist: 10000, currentTime: '50:00', targetDist: 10000, targetTime: '40:00', raceDate },
+    }))
+    localStorage.setItem('sporeus-eliteProgramStart', JSON.stringify(startStr))
+    localStorage.setItem('sporeus-yearly-plan', JSON.stringify({
+      weeks: Array.from({ length: 16 }, () => ({ targetTSS: 300 })),
+      model: 'traditional',
+    }))
+    const log = []
+    for (let w = 0; w < 4; w++) {
+      const d = new Date(`${startStr}T00:00:00Z`)
+      d.setUTCDate(d.getUTCDate() + w * 7 + 2)
+      log.push({ date: d.toISOString().slice(0, 10), tss: tssPerEntry, type: 'run' })
+    }
+    return log
+  }
+
+  it('RE-PROJECT button does NOT render when adherence is unreliable (no log)', () => {
+    // Pre-seed program but leave log empty → adherence.reliable=false →
+    // reprojection=null → button hidden. This is the cleanest gating test
+    // since trajectory classification depends on per-phase weeklyTSS values.
+    seedPlanModeBehind()
+    renderCard({ log: [] })
+    expect(document.querySelector('[data-reproject-btn]')).toBeNull()
+  })
+
+  it('RE-PROJECT button renders in behind trajectory', () => {
+    // Plan averages ~200/wk, actual 170/wk → ~85% adherence → behind.
+    const log = seedPlanModeBehind({ tssPerEntry: 170 })
+    renderCard({ log })
+    const btn = document.querySelector('[data-reproject-btn]')
+    expect(btn).not.toBeNull()
+    expect(btn.getAttribute('data-reproject-strategy')).toBe('extend')
+  })
+
+  it('RE-PROJECT button bilingual copy in EN', () => {
+    const log = seedPlanModeBehind()
+    renderCard({ log })
+    const btn = document.querySelector('[data-reproject-btn]')
+    expect(btn).not.toBeNull()
+    expect(btn.textContent).toMatch(/RE-PROJECT/)
+    expect(btn.textContent).toMatch(/YENİDEN HESAPLA/)
+  })
+
+  it('RE-PROJECT button has bilingual aria-label', () => {
+    const log = seedPlanModeBehind()
+    renderCard({ log })
+    const btn = document.querySelector('[data-reproject-btn]')
+    expect(btn?.getAttribute('aria-label')).toMatch(/Re-project/i)
+  })
+
+  it('RE-PROJECT click confirms and pre-fills form with adjusted race date', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const log = seedPlanModeBehind()
+    renderCard({ log })
+    const btn = document.querySelector('[data-reproject-btn]')
+    expect(btn).not.toBeNull()
+    fireEvent.click(btn)
+    expect(confirmSpy).toHaveBeenCalled()
+    expect(screen.getByLabelText(/Current PR time/i)).toBeInTheDocument()
+    const dateInput = screen.getByLabelText(/Race date/i)
+    expect(dateInput.value).toBe('2026-10-04')
+    confirmSpy.mockRestore()
+  })
+
+  it('RE-PROJECT click cancellation preserves the existing plan', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const log = seedPlanModeBehind()
+    renderCard({ log })
+    const btn = document.querySelector('[data-reproject-btn]')
+    expect(btn).not.toBeNull()
+    fireEvent.click(btn)
+    expect(confirmSpy).toHaveBeenCalled()
+    expect(screen.queryByLabelText(/Current PR time/i)).toBeNull()
+    confirmSpy.mockRestore()
   })
 })

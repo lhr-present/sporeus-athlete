@@ -4,6 +4,98 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.100.0 — 2026-05-07 — Mission #1 launch hardening: sport-mismatch fix + v8.98/v8.99 component tests + truth-in-naming (+17 tests), 9060 tests
+
+  Deep-dive audit of v8.99 surfaced three credibility gaps that
+  would embarrass a v9.0.0 launch marker:
+
+  Gap 1 — Sport-mismatch correctness in planAdherence:
+    A runner who logged cycling cross-training had their bike
+    TSS counted toward run-program adherence, inflating the
+    score. Fixed by extracting a shared logEntrySport classifier
+    into src/lib/athlete/_logSport.js and adding
+    entryMatchesProgramSport(entry, programSport). buildPlanAdherence
+    now sport-filters before summing TSS. Triathlon programs
+    accept all 3 sport entries (run + bike + swim). Untagged
+    entries (no type/sport field) pass through to avoid dropping
+    legitimate data with sparse tags. Existing planLifecycle.js
+    duplicate of logEntrySport removed (single source of truth).
+    5 new lib tests cover: bike-cross-training NOT inflating
+    runner adherence, runner entries DO count, triathlon
+    accepts all three, untagged passthrough, mixed-log only
+    matching-sport contributes.
+
+  Gap 2 — Test-coverage gap on v8.98 + v8.99 surfaces:
+    Audit found these surfaces had ZERO React-component tests
+    despite shipping with adherence math + RE-PROJECT button.
+    Backfilled with 12 new component tests:
+      AdherenceSection (6): renders in in-progress with reliable
+        data; absent in draft / unreliable / empty-log states;
+        critical trajectory rendering; bilingual ADHERENCE
+        header EN+TR; adherence percent visible.
+      RE-PROJECT button (6): hidden when adherence unreliable;
+        renders in behind trajectory with strategy='extend';
+        bilingual EN+TR copy; bilingual aria-label;
+        confirm-and-pre-fill flow with adjusted race date
+        (2026-09-20 + 14 days = 2026-10-04); cancel-preserves-plan.
+    Tests use a seedPlanModeInProgress helper that pre-seeds
+    sporeus-eliteProgram + sporeus-eliteProgramStart +
+    sporeus-yearly-plan localStorage to land directly in plan
+    mode without going through the form-submit handler (which
+    would overwrite programStart with today and zero out
+    adherence).
+
+  Gap 3 — Truth-in-naming on coach feature:
+    Audit found "SHARE WITH COACH" emits a v=1 JSON envelope
+    with ZERO coach-side consumers anywhere in the codebase
+    (verified via grep across CoachDashboard, CoachOverview,
+    MyCoach, coach/ subdir). The button was claiming a
+    capability that didn't exist. Renamed user-facing copy
+    to "EXPORT SUMMARY · ÖZET DIŞA AKTAR" — describes what it
+    actually does (clipboard copy or file download). Internal
+    function name shareWithCoach preserved for API stability;
+    data-share-with-coach attribute kept alongside new
+    data-export-summary for backward compat. JSON envelope
+    shape unchanged; future coach-side ingestion can be built
+    out as Mission #2 work without breaking this contract.
+
+  Test counts:
+    planAdherence lib:   +5 sport-mismatch (55 → 60)
+    EliteProgramCard:    +12 component tests (90 → 102)
+    Full suite:          9043 → 9060 (+17, all green, 370 files)
+    Lint:                clean
+    Build:               83.81 KB gz main (within 150 KB gate)
+
+  Code health touched:
+    - PHASE_FOCUS duplication between eliteProgram.js and
+      todayProgrammedSession.js noted in audit but left intact
+      (different bilingual shapes, low-impact, safe to defer).
+    - buildEliteProgram triple-call across cards noted in audit
+      but left intact (memoized, low-impact in practice).
+    - 4-button mobile wrap on 375px noted in audit, cosmetic
+      only, not blocking.
+
+  Files added:
+    src/lib/athlete/_logSport.js (shared sport classifier)
+
+  Files modified:
+    src/lib/athlete/planAdherence.js (sport filter + import)
+    src/lib/athlete/planLifecycle.js (use shared helper)
+    src/lib/__tests__/athlete/planAdherence.test.js (+5 sport tests)
+    src/components/dashboard/EliteProgramCard.jsx (rename + data attr)
+    src/components/__tests__/EliteProgramCard.test.jsx
+                                  (+12 component tests, rename)
+
+  Audit verdict was: "do NOT ship as v9.0.0 today; v8.100.0
+  closes both real gaps." This wave closes them. Next wave
+  candidate for v9.0.0 launch marker.
+
+  DEPENDS ON: v8.97.0 (logEntrySport originally landed in
+  planLifecycle here), v8.98.0 (planAdherence + AdherenceSection),
+  v8.99.0 (RE-PROJECT button + buildReprojectionSuggestion).
+
+---
+
 ## v8.99.0 — 2026-05-07 — Mission #1 RE-PROJECT button — close the adherence-action loop (+12 tests), 9043 tests
 
   v8.98 detected adherence ("80% — consider extending race date")

@@ -4,6 +4,8 @@
 // lifecycle state. Surfaces a developer-facing API contract that downstream
 // UI (lifecycle pill, coach share payload, etc.) can rely on without
 // duplicating the rules.
+
+import { logEntrySport } from './_logSport.js'
 //
 // State machine:
 //   draft         — program saved, not yet applied to calendar
@@ -73,15 +75,7 @@ function logEntryDistanceM(e) {
   return null
 }
 
-function logEntrySport(e) {
-  if (!e || typeof e !== 'object') return null
-  const t = (e.sport || e.type || '').toString().toLowerCase()
-  if (/swim/.test(t)) return 'swim'
-  if (/bike|cycl|ride/.test(t)) return 'bike'
-  if (/tri/.test(t)) return 'triathlon'
-  if (/run|jog/.test(t)) return 'run'
-  return null
-}
+// logEntrySport extracted to shared helper at ./_logSport.js (v8.100.0).
 
 /**
  * Compute the lifecycle state of a saved Elite Program.

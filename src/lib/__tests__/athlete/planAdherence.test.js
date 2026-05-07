@@ -199,12 +199,17 @@ function makeProgram({
   phases = [{ phase: 'Base', weeks: [1, 2, 3, 4], focus: '', color: '' }],
   sampleWeeks = null,
   raceDate = null,
+  sport = null,
 } = {}) {
+  const input = {}
+  if (raceDate) input.raceDate = raceDate
+  if (sport) input.sport = sport
   return {
     weeklyTSS,
     phases,
     sampleWeeks,
-    input: raceDate ? { raceDate } : {},
+    sport: sport || undefined,
+    input,
     feasibility: { weeksAvailable: weeklyTSS.length },
   }
 }
@@ -675,5 +680,101 @@ describe('buildReprojectionSuggestion — v8.99.0', () => {
       adherence
     )
     expect(r.originalTargetTimeSec).toBe(2400)
+  })
+})
+
+// ─── Sport-mismatch correctness fix (v8.100.0) ────────────────────────────
+describe('buildPlanAdherence — sport filter (v8.100.0)', () => {
+  const PROGRAM_START = '2026-01-05'
+  const TODAY_4W = '2026-02-02'
+
+  it('runner program: cycling cross-training does NOT inflate adherence', () => {
+    const program = makeProgram({
+      weeklyTSS: [300, 300, 300, 300],
+      sport: 'run',
+    })
+    // Athlete logs ~30 TSS run + 270 TSS bike each week. Pre-fix, this would
+    // show 100% adherence (300/300). Post-fix, only the 30 TSS of run counts
+    // → ~10% adherence, trajectory critical.
+    const log = [
+      { date: '2026-01-05', tss: 30,  type: 'run' },
+      { date: '2026-01-06', tss: 270, type: 'bike' },
+      { date: '2026-01-12', tss: 30,  type: 'run' },
+      { date: '2026-01-13', tss: 270, type: 'cycling' },
+      { date: '2026-01-19', tss: 30,  type: 'run' },
+      { date: '2026-01-20', tss: 270, type: 'ride' },
+      { date: '2026-01-26', tss: 30,  type: 'run' },
+      { date: '2026-01-27', tss: 270, type: 'bike' },
+    ]
+    const r = buildPlanAdherence(program, log, { programStart: PROGRAM_START, today: TODAY_4W })
+    expect(r.reliable).toBe(true)
+    expect(r.adherencePct).toBe(10)
+    expect(r.trajectory).toBe('critical')
+  })
+
+  it('runner program: actual run entries DO count toward adherence', () => {
+    const program = makeProgram({
+      weeklyTSS: [300, 300, 300, 300],
+      sport: 'run',
+    })
+    const log = [
+      { date: '2026-01-05', tss: 300, type: 'easy run' },
+      { date: '2026-01-12', tss: 300, type: 'long run' },
+      { date: '2026-01-19', tss: 300, type: 'tempo run' },
+      { date: '2026-01-26', tss: 300, type: 'jog' },
+    ]
+    const r = buildPlanAdherence(program, log, { programStart: PROGRAM_START, today: TODAY_4W })
+    expect(r.adherencePct).toBe(100)
+    expect(r.trajectory).toBe('on-track')
+  })
+
+  it('triathlon program: all three sport entries count', () => {
+    const program = makeProgram({
+      weeklyTSS: [300, 300, 300, 300],
+      sport: 'triathlon',
+    })
+    const log = [
+      { date: '2026-01-05', tss: 300, type: 'swim' },
+      { date: '2026-01-12', tss: 300, type: 'bike' },
+      { date: '2026-01-19', tss: 300, type: 'run' },
+      { date: '2026-01-26', tss: 300, type: 'bike' },
+    ]
+    const r = buildPlanAdherence(program, log, { programStart: PROGRAM_START, today: TODAY_4W })
+    expect(r.adherencePct).toBe(100)
+  })
+
+  it('untagged entries (no type/sport) still count — null-tag passthrough', () => {
+    const program = makeProgram({
+      weeklyTSS: [300, 300, 300, 300],
+      sport: 'run',
+    })
+    // Entries with no type/sport — should be permissive, count toward adherence
+    const log = [
+      { date: '2026-01-05', tss: 300 },
+      { date: '2026-01-12', tss: 300 },
+    ]
+    const r = buildPlanAdherence(program, log, { programStart: PROGRAM_START, today: TODAY_4W })
+    expect(r.adherencePct).toBeGreaterThan(0)
+  })
+
+  it('mixed log: only matching-sport entries contribute', () => {
+    const program = makeProgram({
+      weeklyTSS: [400, 400, 400, 400],
+      sport: 'run',
+    })
+    // Each week has 200 TSS run + 200 TSS bike. Only run should count → 50%.
+    const log = [
+      { date: '2026-01-05', tss: 200, type: 'run' },
+      { date: '2026-01-06', tss: 200, type: 'bike' },
+      { date: '2026-01-12', tss: 200, type: 'run' },
+      { date: '2026-01-13', tss: 200, type: 'cycling' },
+      { date: '2026-01-19', tss: 200, type: 'jog' },
+      { date: '2026-01-20', tss: 200, type: 'ride' },
+      { date: '2026-01-26', tss: 200, type: 'run' },
+      { date: '2026-01-27', tss: 200, type: 'bike' },
+    ]
+    const r = buildPlanAdherence(program, log, { programStart: PROGRAM_START, today: TODAY_4W })
+    expect(r.adherencePct).toBe(50)
+    expect(r.trajectory).toBe('critical')
   })
 })
