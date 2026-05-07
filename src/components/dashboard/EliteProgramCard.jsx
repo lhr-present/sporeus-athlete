@@ -8,6 +8,8 @@ import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { buildEliteProgram } from '../../lib/athlete/eliteProgram.js'
+import { downloadEliteProgramCSV } from '../../lib/athlete/eliteProgramExport.js'
+import { announce } from '../../lib/a11y/announcer.js'
 
 const STORAGE_KEY = 'sporeus-eliteProgram'
 
@@ -269,10 +271,24 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
         <div style={{ ...S.cardTitle, marginBottom: 0, borderBottom: 'none', paddingBottom: 0 }}>
           {titleEN}<span aria-hidden="true" style={{ margin: '0 6px' }}>·</span>{titleTR}
         </div>
-        <button type="button" onClick={() => setPersisted(null)}
-          style={{ ...S.mono, fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '6px 10px', background: 'transparent', color: '#ff6600', border: '1px solid #ff6600', borderRadius: '3px', cursor: 'pointer', minHeight: '32px' }}>
-          {isTR ? 'SIFIRLA' : 'RESET'}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>{isTR ? 'RESET' : 'SIFIRLA'}
-        </button>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <button type="button"
+            onClick={() => {
+              const ok = downloadEliteProgramCSV(
+                result,
+                `elite-program-${persisted.input?.sport || 'run'}-${persisted.input?.raceDate || 'plan'}.csv`,
+              )
+              if (ok) announce(isTR ? 'Dışa aktarma tamamlandı' : 'Export complete')
+            }}
+            aria-label={isTR ? 'CSV olarak dışa aktar' : 'Export program as CSV'}
+            style={{ ...S.mono, fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '6px 10px', background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '3px', cursor: 'pointer', minHeight: '32px' }}>
+            {isTR ? 'CSV İNDİR' : 'EXPORT CSV'}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>{isTR ? 'EXPORT CSV' : 'CSV İNDİR'}
+          </button>
+          <button type="button" onClick={() => setPersisted(null)}
+            style={{ ...S.mono, fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '6px 10px', background: 'transparent', color: '#ff6600', border: '1px solid #ff6600', borderRadius: '3px', cursor: 'pointer', minHeight: '32px' }}>
+            {isTR ? 'SIFIRLA' : 'RESET'}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>{isTR ? 'RESET' : 'SIFIRLA'}
+          </button>
+        </div>
       </div>
 
       <div aria-live="polite" aria-label={isTR ? `Fizibilite: ${bandLbl}` : `Feasibility: ${bandLbl}`} data-band={result.feasibility.band}

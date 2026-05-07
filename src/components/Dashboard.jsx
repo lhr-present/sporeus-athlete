@@ -131,6 +131,7 @@ const RecoveryAdherenceCard      = lazy(() => import('./dashboard/RecoveryAdhere
 const TrainingDiversityCard      = lazy(() => import('./dashboard/TrainingDiversityCard.jsx'))
 const DeloadCadenceCard          = lazy(() => import('./dashboard/DeloadCadenceCard.jsx'))
 const EliteProgramCard           = lazy(() => import('./dashboard/EliteProgramCard.jsx'))
+const TodayProgrammedSessionCard = lazy(() => import('./dashboard/TodayProgrammedSessionCard.jsx'))
 const CoachingInsightsDigest     = lazy(() => import('./dashboard/CoachingInsightsDigest.jsx'))
 const CoachingSummaryScoreCard   = lazy(() => import('./dashboard/CoachingSummaryScoreCard.jsx'))
 const RecoveryHub                = lazy(() => import('./RecoveryHub.jsx'))
@@ -942,6 +943,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
         recovery={recovery} plan={plan} planStatus={planStatus} rangeLabel={rangeLabel}
       />
       <ACWRCard log={log} lc={lc} dl={dl}/>
+      <ErrorBoundary><Suspense fallback={null}><TodayProgrammedSessionCard /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><CoachingSummaryScoreCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><CoachingInsightsDigest log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><StaleZonesCard log={log} /></Suspense></ErrorBoundary>

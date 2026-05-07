@@ -4,6 +4,113 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.89.0 — 2026-05-07 — Mission polish: CSV export + Today's Planned Session daily-answer surface (+61 tests), 8817 tests
+
+  Polish wave for v8.88.0 Elite Program Builder. Two additions
+  that turn the lib+card from "feature" to "daily-useful":
+    1. Plan exportable for sharing with coach / external apps
+    2. Today's prescribed session shown at top of dashboard
+       every time athlete opens the app — the long-promised
+       "daily answer" the mission documents reference
+
+  src/lib/athlete/eliteProgramExport.js (88 lines):
+    Pure helper that flattens an eliteProgram return into CSV.
+    Header (always emitted):
+      Phase,Week,Day,Intent,DurationMin,Z1,Z2,Z3,Z4,Z5,
+      PaceTarget,NotesEN,NotesTR
+    Walks phases × sampleWeeks[phase] × days; one row per
+    (phase × week × day). Zones object expands to 5 numeric
+    columns. Notes EN/TR escaped per RFC 4180 (quote-wrap on
+    , " \n \r ; double-quote escape inside).
+    Companion downloadEliteProgramCSV(program, filename) does
+    the Blob/createObjectURL/anchor-click pattern; returns
+    true on success / false when program null.
+    Exports eliteProgramToCSV + downloadEliteProgramCSV.
+    19 tests covering null/empty, header always emitted, row-
+    count math, all 13 columns, 5-column zone spread, paceTarget,
+    bilingual notes round-trip, comma/quote/multi-line escaping,
+    empty zones → 0,0,0,0,0, missing fields produce no
+    'undefined' literal, download true/false paths.
+
+  EliteProgramCard.jsx EXPORT button (327 → 343 lines):
+    Plan-mode adds "EXPORT CSV · CSV İNDİR" secondary button
+    next to RESET. Transparent background, --border outline.
+    Filename: `elite-program-{sport}-{raceDate}.csv`.
+    onClick fires downloadEliteProgramCSV + announce(...) for
+    SR feedback. Bilingual aria-label.
+    +1 card test (15 → 14 was 14 → 15).
+
+  src/lib/athlete/todayProgrammedSession.js (230 lines):
+    getTodayProgrammedSession(program, today, programStart)
+    — given a saved program and today's date, resolves which
+    phase/week/day applies and returns:
+      { weekIndex, weekTotal, phase, phaseFocus, day, intent,
+        durationMin, zones, paceTarget, notes, isRest, message,
+        recommendation, reliable, citation }
+    Walks program.phases[].weeks[] to find which phase contains
+    week (weeksFromStart+1). Indexes program.sampleWeeks[phase]
+    by today's UTC day-of-week to pick the daily template.
+    Bilingual headline patterns by intent (rest/easy/tempo/
+    intervals/long) with sport substitution (run/koşu, bike/
+    bisiklet, swim/yüzme).
+    Edge cases: null program → null; today before programStart
+    → reliable=false 'before' message; today after final week
+    → 'after' message; intent='rest' or duration=0 →
+    isRest=true; missing sampleWeeks[phase] → graceful null;
+    day index out of bounds → defensive wrap.
+    Citation: 'Daniels 2014; Bompa 2009; Mujika 2003'.
+    Exports getTodayProgrammedSession +
+    TODAY_PROGRAMMED_SESSION_CITATION.
+    25 tests covering null, before/after window, programStart
+    week 1 day 0, week 2/4 indexing, phase boundary (week 6
+    Base last → week 7 Build first), all intent message
+    variants, isRest paths, zones propagation, paceTarget,
+    sport substitution (run/bike), deterministic options.today,
+    bilingual.
+
+  src/components/dashboard/TodayProgrammedSessionCard.jsx
+  (224 lines):
+    Reads sporeus-eliteProgram + sporeus-eliteProgramStart
+    from localStorage via useLocalStorage, rebuilds the
+    program through buildEliteProgram, resolves today's
+    session through the new lib.
+    Three render states:
+      No program → compact "Generate a plan to see today's
+        session · Bugünün seansını görmek için bir plan
+        oluştur" notice
+      Before/after window → small notice
+      Rest day → distinct rest-state visual (lighter styling,
+        bilingual rest message)
+      Training day → big duration label (e.g. "60 MIN") with
+        aria-live="polite", intent badge color-coded
+        (easy=green, tempo=amber, intervals/threshold=orange,
+        long=blue, rest=grey), phase + week label "Build week
+        8/16", paceTarget prominent if present, zones mini-bar
+        with legend, bilingual notes paragraph, citation footer
+    role="region" + bilingual aria-label.
+    4px accent border-left in intent color.
+    animationDelay 80ms — placed BEFORE CoachingSummaryScoreCard
+    so it's visible without scrolling. The headline daily-answer
+    surface.
+    16 tests covering all render states, bilingual,
+    role="region", intent color application, paceTarget rendering,
+    zones bar, week-N/Total label.
+
+  Dashboard.jsx wiring:
+    TodayProgrammedSessionCard slotted before
+    CoachingSummaryScoreCard (now line 946); placed near top
+    of coaching cluster (right after ACWRCard) so daily-answer
+    surface is visible without scrolling.
+
+  Tests: 8756 → 8817 (+61; 19 export lib + 1 card update + 25
+         today lib + 16 today card).
+  Files: 365 → 369.
+  Build: clean.
+  DEPENDS ON: v8.88.0 eliteProgram + EliteProgramCard;
+              useLocalStorage; a11y/announcer.
+
+---
+
 ## v8.88.0 — 2026-05-07 — Mission feature: Elite Program Builder (4-input → full periodized program), 8756 tests
 
   **Headline mission delivery.** The app's core mission is "target →

@@ -122,6 +122,15 @@ describe('EliteProgramCard — plan mode', () => {
     expect(screen.getByLabelText(/Current PR time/i)).toBeInTheDocument()
   })
 
+  it('renders EXPORT CSV button in plan mode (bilingual)', () => {
+    renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    const btn = screen.getByRole('button', { name: /Export program as CSV/i })
+    expect(btn).toBeInTheDocument()
+    expect(btn.textContent).toMatch(/EXPORT CSV/)
+    expect(btn.textContent).toMatch(/CSV İNDİR/)
+  })
+
   it('renders current → target metric row', () => {
     renderCard()
     fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
