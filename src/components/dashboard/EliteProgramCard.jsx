@@ -19,6 +19,7 @@ import { eliteProgramToYearlyWeeks } from '../../lib/athlete/eliteProgramToYearl
 import { downloadEliteProgramCSV } from '../../lib/athlete/eliteProgramExport.js'
 import { calculatePMC } from '../../lib/trainingLoad.js'
 import { announce } from '../../lib/a11y/announcer.js'
+import { criticalSwimSpeed, cssToSecPer100m } from '../../lib/sport/swimming.js'
 
 const STORAGE_KEY = 'sporeus-eliteProgram'
 const START_KEY = 'sporeus-eliteProgramStart'
@@ -86,6 +87,18 @@ function zoneSummary(z) {
 const LBL = { ...S.mono, fontSize: '10px', color: 'var(--muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }
 const INP = { ...S.mono, fontSize: '12px', padding: '8px 10px', border: '1px solid var(--input-border)', borderRadius: '4px', background: 'var(--input-bg)', color: 'var(--text)', boxSizing: 'border-box', width: '100%' }
 
+// Wakayoshi 2-TT distance options (per side: short trial + long trial dropdowns)
+const SWIM_TT_SHORT = [
+  { m: 200, lbl: '200m' },
+  { m: 400, lbl: '400m' },
+  { m: 800, lbl: '800m' },
+]
+const SWIM_TT_LONG = [
+  { m: 400, lbl: '400m' },
+  { m: 800, lbl: '800m' },
+  { m: 1500, lbl: '1500m' },
+]
+
 function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm }) {
   const [sport, setSport] = useState(persistedForm?.sport || 'run')
   const [curD, setCurD] = useState(persistedForm?.currentDist || DISTANCES.run[1].m)
@@ -93,27 +106,119 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm }) {
   const [tgtD, setTgtD] = useState(persistedForm?.targetDist || DISTANCES.run[1].m)
   const [tgtT, setTgtT] = useState(persistedForm?.targetTime || '')
   const [date, setDate] = useState(persistedForm?.raceDate || '')
+
+  // v8.94.0 — bike: FTP direct watts toggle
+  const [bikeFtpDirect, setBikeFtpDirect] = useState(!!persistedForm?.bikeFtpDirect)
+  const [curW, setCurW] = useState(persistedForm?.currentWatts || '')
+  const [tgtW, setTgtW] = useState(persistedForm?.targetWatts || '')
+
+  // v8.94.0 — swim: Wakayoshi 2-TT toggle (4 (D, T) pairs total)
+  const [swim2TT, setSwim2TT] = useState(!!persistedForm?.swim2TT)
+  const [swCurD1, setSwCurD1] = useState(persistedForm?.swim2TT_curD1 || 200)
+  const [swCurT1, setSwCurT1] = useState(persistedForm?.swim2TT_curT1 || '')
+  const [swCurD2, setSwCurD2] = useState(persistedForm?.swim2TT_curD2 || 400)
+  const [swCurT2, setSwCurT2] = useState(persistedForm?.swim2TT_curT2 || '')
+  const [swTgtD1, setSwTgtD1] = useState(persistedForm?.swim2TT_tgtD1 || 200)
+  const [swTgtT1, setSwTgtT1] = useState(persistedForm?.swim2TT_tgtT1 || '')
+  const [swTgtD2, setSwTgtD2] = useState(persistedForm?.swim2TT_tgtD2 || 400)
+  const [swTgtT2, setSwTgtT2] = useState(persistedForm?.swim2TT_tgtT2 || '')
+
   const opts = DISTANCES[sport] || DISTANCES.run
 
   function pickSport(k) {
     setSport(k)
     const def = (DISTANCES[k] || DISTANCES.run)[1]?.m ?? (DISTANCES[k] || DISTANCES.run)[0].m
     setCurD(def); setTgtD(def)
+    // Reset bike-only toggle when leaving bike
+    if (k !== 'bike') setBikeFtpDirect(false)
+    // Reset swim-only toggle when leaving swim
+    if (k !== 'swim') setSwim2TT(false)
   }
 
   const cs = parseMmSs(curT), ts = parseMmSs(tgtT)
-  const ready = sport && cs != null && ts != null && /^\d{4}-\d{2}-\d{2}$/.test(date)
+  const dateOk = /^\d{4}-\d{2}-\d{2}$/.test(date)
+
+  // Compute readiness + Wakayoshi-derived swim payload (when 2-TT mode)
+  const isBikeFtp = sport === 'bike' && bikeFtpDirect
+  const isSwim2TT = sport === 'swim' && swim2TT
+
+  const curWattsN = isBikeFtp ? parseInt(curW, 10) : NaN
+  const tgtWattsN = isBikeFtp ? parseInt(tgtW, 10) : NaN
+  const bikeReady = isBikeFtp && Number.isFinite(curWattsN) && curWattsN > 0
+    && Number.isFinite(tgtWattsN) && tgtWattsN > 0
+
+  let swimCssCur = null, swimCssTgt = null, swimSecPer100mCur = null, swimSecPer100mTgt = null
+  if (isSwim2TT) {
+    const t1c = parseMmSs(swCurT1), t2c = parseMmSs(swCurT2)
+    const t1t = parseMmSs(swTgtT1), t2t = parseMmSs(swTgtT2)
+    if (t1c != null && t2c != null) {
+      swimCssCur = criticalSwimSpeed(Number(swCurD1), t1c, Number(swCurD2), t2c)
+      if (swimCssCur != null) swimSecPer100mCur = cssToSecPer100m(swimCssCur)
+    }
+    if (t1t != null && t2t != null) {
+      swimCssTgt = criticalSwimSpeed(Number(swTgtD1), t1t, Number(swTgtD2), t2t)
+      if (swimCssTgt != null) swimSecPer100mTgt = cssToSecPer100m(swimCssTgt)
+    }
+  }
+  const swimReady = isSwim2TT && swimSecPer100mCur != null && swimSecPer100mTgt != null
+
+  let ready = false
+  if (isBikeFtp) ready = bikeReady && dateOk
+  else if (isSwim2TT) ready = swimReady && dateOk
+  else ready = sport && cs != null && ts != null && dateOk
 
   function submit(e) {
     e.preventDefault()
     if (!ready) return
-    savePersistedForm({ sport, currentDist: curD, currentTime: curT, targetDist: tgtD, targetTime: tgtT, raceDate: date })
+    if (isBikeFtp) {
+      savePersistedForm({
+        sport, raceDate: date,
+        bikeFtpDirect: true,
+        currentWatts: String(curWattsN),
+        targetWatts: String(tgtWattsN),
+        // keep existing TT keys preserved if user toggles off later
+        currentDist: curD, currentTime: curT, targetDist: tgtD, targetTime: tgtT,
+      })
+      onGenerate({
+        currentPR: { distanceM: 0, timeSec: curWattsN },
+        targetPR:  { distanceM: 0, timeSec: tgtWattsN },
+        raceDate: date, sport,
+      })
+      return
+    }
+    if (isSwim2TT) {
+      savePersistedForm({
+        sport, raceDate: date,
+        swim2TT: true,
+        swim2TT_curD1: swCurD1, swim2TT_curT1: swCurT1,
+        swim2TT_curD2: swCurD2, swim2TT_curT2: swCurT2,
+        swim2TT_tgtD1: swTgtD1, swim2TT_tgtT1: swTgtT1,
+        swim2TT_tgtD2: swTgtD2, swim2TT_tgtT2: swTgtT2,
+        currentDist: curD, currentTime: curT, targetDist: tgtD, targetTime: tgtT,
+      })
+      // Synthesize a single-TT payload that the lib's tPaceFromTT(200, X) → X/2
+      // path reproduces the exact CSS we computed via Wakayoshi.
+      const synthCurT = swimSecPer100mCur * 2
+      const synthTgtT = swimSecPer100mTgt * 2
+      onGenerate({
+        currentPR: { distanceM: 200, timeSec: synthCurT },
+        targetPR:  { distanceM: 200, timeSec: synthTgtT },
+        raceDate: date, sport,
+      })
+      return
+    }
+    savePersistedForm({
+      sport, currentDist: curD, currentTime: curT, targetDist: tgtD, targetTime: tgtT, raceDate: date,
+      bikeFtpDirect: false, swim2TT: false,
+    })
     onGenerate({
       currentPR: { distanceM: Number(curD), timeSec: cs },
       targetPR:  { distanceM: Number(tgtD), timeSec: ts },
       raceDate: date, sport,
     })
   }
+
+  const checkboxRowStyle = { display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '10px', padding: '6px 8px', border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--input-bg)' }
 
   return (
     <form onSubmit={submit} aria-label={isTR ? 'Elit antrenman programı formu' : 'Elite program form'}>
@@ -132,20 +237,105 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm }) {
         })}
       </div>
 
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
-        {[
-          { lbl: isTR ? 'MEVCUT PR' : 'CURRENT PR', dist: curD, setDist: setCurD, t: curT, setT: setCurT, distAria: isTR ? 'Mevcut PR mesafesi' : 'Current PR distance', tAria: isTR ? 'Mevcut PR süresi (MM:SS)' : 'Current PR time (MM:SS)' },
-          { lbl: isTR ? 'HEDEF PR' : 'TARGET PR', dist: tgtD, setDist: setTgtD, t: tgtT, setT: setTgtT, distAria: isTR ? 'Hedef PR mesafesi' : 'Target PR distance', tAria: isTR ? 'Hedef PR süresi (MM:SS)' : 'Target PR time (MM:SS)' },
-        ].map(f => (
-          <div key={f.lbl} style={{ flex: '1 1 140px', minWidth: '120px' }}>
-            <label style={LBL}>{f.lbl}</label>
-            <select value={f.dist} onChange={e => f.setDist(Number(e.target.value))} aria-label={f.distAria} style={{ ...INP, marginBottom: '4px' }}>
-              {opts.map(o => <option key={o.m} value={o.m}>{o.lbl}</option>)}
-            </select>
-            <input type="text" inputMode="numeric" placeholder="MM:SS" value={f.t} onChange={e => f.setT(e.target.value)} aria-label={f.tAria} style={INP} />
-          </div>
-        ))}
-      </div>
+      {sport === 'bike' ? (
+        <label style={checkboxRowStyle} data-toggle="bike-ftp-direct">
+          <input type="checkbox" checked={bikeFtpDirect} onChange={e => setBikeFtpDirect(e.target.checked)}
+            aria-label={isTR ? 'FTP doğrudan watt girişi' : 'FTP direct watts entry'}
+            style={{ marginTop: '2px' }} />
+          <span style={{ ...S.mono, fontSize: '11px', color: 'var(--text)', lineHeight: 1.4 }}>
+            <span style={{ fontWeight: 700, letterSpacing: '0.06em' }}>
+              {isTR ? 'FTP DOĞRUDAN' : 'FTP DIRECT'}
+              <span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>
+              {isTR ? 'FTP DIRECT' : 'FTP DOĞRUDAN'}
+            </span>
+            <span style={{ display: 'block', fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>
+              {isTR ? "FTP'yi watt cinsinden gir, TT sonucu yerine" : 'Enter your FTP in watts instead of a TT result'}
+            </span>
+          </span>
+        </label>
+      ) : null}
+
+      {sport === 'swim' ? (
+        <label style={checkboxRowStyle} data-toggle="swim-2tt">
+          <input type="checkbox" checked={swim2TT} onChange={e => setSwim2TT(e.target.checked)}
+            aria-label={isTR ? 'Wakayoshi 2-TT modu' : 'Wakayoshi 2-TT mode'}
+            style={{ marginTop: '2px' }} />
+          <span style={{ ...S.mono, fontSize: '11px', color: 'var(--text)', lineHeight: 1.4 }}>
+            <span style={{ fontWeight: 700, letterSpacing: '0.06em' }}>
+              {isTR ? 'WAKAYOSHI 2-TT' : 'WAKAYOSHI 2-TT'}
+              <span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>
+              {isTR ? 'WAKAYOSHI 2-TT' : 'WAKAYOSHI 2-TT'}
+            </span>
+            <span style={{ display: 'block', fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>
+              {isTR ? 'İki TT daha doğru CSS verir — önerilir' : 'Two time trials produce a more accurate CSS — recommended'}
+            </span>
+          </span>
+        </label>
+      ) : null}
+
+      {isBikeFtp ? (
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }} data-mode="bike-ftp-direct">
+          {[
+            { lbl: isTR ? 'MEVCUT FTP' : 'CURRENT FTP', val: curW, setVal: setCurW, aria: isTR ? 'Mevcut FTP (watt)' : 'Current FTP (watts)' },
+            { lbl: isTR ? 'HEDEF FTP' : 'TARGET FTP', val: tgtW, setVal: setTgtW, aria: isTR ? 'Hedef FTP (watt)' : 'Target FTP (watts)' },
+          ].map(f => (
+            <div key={f.lbl} style={{ flex: '1 1 140px', minWidth: '120px' }}>
+              <label style={LBL}>{f.lbl}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>W</label>
+              <input type="number" inputMode="numeric" min={50} max={600} placeholder="245"
+                value={f.val} onChange={e => f.setVal(e.target.value)} aria-label={f.aria} style={INP} />
+            </div>
+          ))}
+        </div>
+      ) : isSwim2TT ? (
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }} data-mode="swim-2tt">
+          {[
+            { lbl: isTR ? 'MEVCUT' : 'CURRENT',
+              d1: swCurD1, setD1: setSwCurD1, t1: swCurT1, setT1: setSwCurT1,
+              d2: swCurD2, setD2: setSwCurD2, t2: swCurT2, setT2: setSwCurT2,
+              aria1d: isTR ? 'Mevcut TT1 mesafesi' : 'Current TT1 distance',
+              aria1t: isTR ? 'Mevcut TT1 süresi' : 'Current TT1 time',
+              aria2d: isTR ? 'Mevcut TT2 mesafesi' : 'Current TT2 distance',
+              aria2t: isTR ? 'Mevcut TT2 süresi' : 'Current TT2 time' },
+            { lbl: isTR ? 'HEDEF' : 'TARGET',
+              d1: swTgtD1, setD1: setSwTgtD1, t1: swTgtT1, setT1: setSwTgtT1,
+              d2: swTgtD2, setD2: setSwTgtD2, t2: swTgtT2, setT2: setSwTgtT2,
+              aria1d: isTR ? 'Hedef TT1 mesafesi' : 'Target TT1 distance',
+              aria1t: isTR ? 'Hedef TT1 süresi' : 'Target TT1 time',
+              aria2d: isTR ? 'Hedef TT2 mesafesi' : 'Target TT2 distance',
+              aria2t: isTR ? 'Hedef TT2 süresi' : 'Target TT2 time' },
+          ].map(f => (
+            <div key={f.lbl} style={{ flex: '1 1 140px', minWidth: '120px' }}>
+              <label style={LBL}>{f.lbl}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>TT1</label>
+              <select value={f.d1} onChange={e => f.setD1(Number(e.target.value))} aria-label={f.aria1d} style={{ ...INP, marginBottom: '4px' }}>
+                {SWIM_TT_SHORT.map(o => <option key={o.m} value={o.m}>{o.lbl}</option>)}
+              </select>
+              <input type="text" inputMode="numeric" placeholder="MM:SS" value={f.t1}
+                onChange={e => f.setT1(e.target.value)} aria-label={f.aria1t} style={{ ...INP, marginBottom: '6px' }} />
+              <label style={LBL}>{f.lbl}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>TT2</label>
+              <select value={f.d2} onChange={e => f.setD2(Number(e.target.value))} aria-label={f.aria2d} style={{ ...INP, marginBottom: '4px' }}>
+                {SWIM_TT_LONG.map(o => <option key={o.m} value={o.m}>{o.lbl}</option>)}
+              </select>
+              <input type="text" inputMode="numeric" placeholder="MM:SS" value={f.t2}
+                onChange={e => f.setT2(e.target.value)} aria-label={f.aria2t} style={INP} />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
+          {[
+            { lbl: isTR ? 'MEVCUT PR' : 'CURRENT PR', dist: curD, setDist: setCurD, t: curT, setT: setCurT, distAria: isTR ? 'Mevcut PR mesafesi' : 'Current PR distance', tAria: isTR ? 'Mevcut PR süresi (MM:SS)' : 'Current PR time (MM:SS)' },
+            { lbl: isTR ? 'HEDEF PR' : 'TARGET PR', dist: tgtD, setDist: setTgtD, t: tgtT, setT: setTgtT, distAria: isTR ? 'Hedef PR mesafesi' : 'Target PR distance', tAria: isTR ? 'Hedef PR süresi (MM:SS)' : 'Target PR time (MM:SS)' },
+          ].map(f => (
+            <div key={f.lbl} style={{ flex: '1 1 140px', minWidth: '120px' }}>
+              <label style={LBL}>{f.lbl}</label>
+              <select value={f.dist} onChange={e => f.setDist(Number(e.target.value))} aria-label={f.distAria} style={{ ...INP, marginBottom: '4px' }}>
+                {opts.map(o => <option key={o.m} value={o.m}>{o.lbl}</option>)}
+              </select>
+              <input type="text" inputMode="numeric" placeholder="MM:SS" value={f.t} onChange={e => f.setT(e.target.value)} aria-label={f.tAria} style={INP} />
+            </div>
+          ))}
+        </div>
+      )}
 
       <div style={{ marginBottom: '14px' }}>
         <label style={LBL}>{isTR ? 'YARIŞ TARİHİ' : 'RACE DATE'}</label>
@@ -232,7 +422,7 @@ function WeeklyTSSChart({ weeklyTSS, phases, isTR }) {
       </div>
       <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={ariaLabel} style={{ display: 'block', height: '60px' }}>
         {phaseRects.map((r, i) => (
-          <rect key={i} x={r.x} y={PAD} width={r.w} height={H - PAD * 2} fill={r.color} opacity="0.15" />
+          <rect key={i} x={r.x} y={PAD} width={r.w} height={H - PAD * 2} fill={r.color} opacity="0.30" />
         ))}
         <path d={linePath} fill="none" stroke="#ff6600" strokeWidth="2" />
         {deloadIndices.map(i => {
@@ -494,7 +684,18 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
 
   function handleGenerate(input) {
     const enriched = { ...input, profile: derivedProfile }
-    setPersisted({ input: enriched, form: persisted?.form })
+    // Read latest form from localStorage rather than React state, since
+    // savePersistedForm may have just written within the same event handler.
+    let latestForm = persisted?.form
+    try {
+      const raw = typeof window !== 'undefined' && window.localStorage
+        ? window.localStorage.getItem(STORAGE_KEY) : null
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (parsed && parsed.form) latestForm = parsed.form
+      }
+    } catch { /* fallback to React state */ }
+    setPersisted({ input: enriched, form: latestForm })
     setStart(new Date().toISOString().slice(0, 10))
   }
 

@@ -483,6 +483,189 @@ describe('EliteProgramCard — v8.92.0 physiology & model rationale', () => {
   })
 })
 
+describe('EliteProgramCard — v8.94.0 sport-specific form modes', () => {
+  // ── Bike: FTP-direct toggle ────────────────────────────────────────────────
+  it('FTP-DIRECT toggle is visible in bike mode and hidden in run/swim/triathlon', () => {
+    renderCard()
+    // run: hidden
+    expect(document.querySelector('[data-toggle="bike-ftp-direct"]')).toBeNull()
+    // bike: visible
+    fireEvent.click(screen.getByRole('button', { name: 'BIKE' }))
+    expect(document.querySelector('[data-toggle="bike-ftp-direct"]')).not.toBeNull()
+    // swim: hidden
+    fireEvent.click(screen.getByRole('button', { name: 'SWIM' }))
+    expect(document.querySelector('[data-toggle="bike-ftp-direct"]')).toBeNull()
+    // triathlon: hidden
+    fireEvent.click(screen.getByRole('button', { name: 'TRI' }))
+    expect(document.querySelector('[data-toggle="bike-ftp-direct"]')).toBeNull()
+  })
+
+  it('bike FTP-DIRECT ON: distance dropdowns replaced with watts inputs', () => {
+    renderCard()
+    fireEvent.click(screen.getByRole('button', { name: 'BIKE' }))
+    // OFF: select dropdowns present (current PR distance + target PR distance)
+    expect(screen.getByLabelText(/Current PR distance/i)).toBeInTheDocument()
+    // Enable toggle
+    const cb = screen.getByLabelText(/FTP direct watts entry/i)
+    fireEvent.click(cb)
+    // After: no current/target PR distance/time selects in form
+    expect(screen.queryByLabelText(/Current PR distance/i)).toBeNull()
+    expect(screen.queryByLabelText(/Target PR distance/i)).toBeNull()
+    expect(screen.queryByLabelText(/Current PR time/i)).toBeNull()
+    expect(screen.queryByLabelText(/Target PR time/i)).toBeNull()
+    // Watts inputs present
+    expect(screen.getByLabelText(/Current FTP \(watts\)/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Target FTP \(watts\)/i)).toBeInTheDocument()
+    // No <select> remains in the bike-ftp-direct mode block
+    const block = document.querySelector('[data-mode="bike-ftp-direct"]')
+    expect(block).not.toBeNull()
+    expect(block.querySelectorAll('select').length).toBe(0)
+  })
+
+  it('bike FTP-DIRECT submit persists currentPR.distanceM=0 + timeSec=watts', () => {
+    renderCard()
+    fireEvent.click(screen.getByRole('button', { name: 'BIKE' }))
+    fireEvent.click(screen.getByLabelText(/FTP direct watts entry/i))
+    fireEvent.change(screen.getByLabelText(/Current FTP \(watts\)/i), { target: { value: '245' } })
+    fireEvent.change(screen.getByLabelText(/Target FTP \(watts\)/i), { target: { value: '275' } })
+    fireEvent.change(screen.getByLabelText(/Race date/i), { target: { value: '2026-08-15' } })
+    const submit = screen.getByRole('button', { name: /GENERATE/i })
+    expect(submit).not.toBeDisabled()
+    fireEvent.click(submit)
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY))
+    expect(stored.input.currentPR.distanceM).toBe(0)
+    expect(stored.input.currentPR.timeSec).toBe(245)
+    expect(stored.input.targetPR.distanceM).toBe(0)
+    expect(stored.input.targetPR.timeSec).toBe(275)
+    expect(stored.input.sport).toBe('bike')
+  })
+
+  it('bike FTP-DIRECT produces a plan with feasibility band', () => {
+    renderCard()
+    fireEvent.click(screen.getByRole('button', { name: 'BIKE' }))
+    fireEvent.click(screen.getByLabelText(/FTP direct watts entry/i))
+    fireEvent.change(screen.getByLabelText(/Current FTP \(watts\)/i), { target: { value: '245' } })
+    fireEvent.change(screen.getByLabelText(/Target FTP \(watts\)/i), { target: { value: '275' } })
+    fireEvent.change(screen.getByLabelText(/Race date/i), { target: { value: '2026-08-15' } })
+    fireEvent.click(screen.getByRole('button', { name: /GENERATE/i }))
+    const region = screen.getByRole('region', { name: /Elite training program/i })
+    const badge = region.querySelector('[data-band]')
+    expect(badge).not.toBeNull()
+    expect(['comfortable', 'realistic', 'aggressive', 'unrealistic']).toContain(badge.getAttribute('data-band'))
+  })
+
+  it('bike FTP-DIRECT form payload persists across remount', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const { unmount } = renderCard()
+    fireEvent.click(screen.getByRole('button', { name: 'BIKE' }))
+    fireEvent.click(screen.getByLabelText(/FTP direct watts entry/i))
+    fireEvent.change(screen.getByLabelText(/Current FTP \(watts\)/i), { target: { value: '245' } })
+    fireEvent.change(screen.getByLabelText(/Target FTP \(watts\)/i), { target: { value: '275' } })
+    fireEvent.change(screen.getByLabelText(/Race date/i), { target: { value: '2026-08-15' } })
+    fireEvent.click(screen.getByRole('button', { name: /GENERATE/i }))
+    // Reset back to form mode (form payload preserved alongside input by handleReset wiping persisted)
+    // Verify form payload persisted in localStorage at submit time
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY))
+    expect(stored.form.bikeFtpDirect).toBe(true)
+    expect(stored.form.currentWatts).toBe('245')
+    expect(stored.form.targetWatts).toBe('275')
+    unmount()
+    confirmSpy.mockRestore()
+  })
+
+  // ── Swim: Wakayoshi 2-TT toggle ────────────────────────────────────────────
+  it('WAKAYOSHI 2-TT toggle is visible in swim mode and hidden in run/bike/triathlon', () => {
+    renderCard()
+    expect(document.querySelector('[data-toggle="swim-2tt"]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'BIKE' }))
+    expect(document.querySelector('[data-toggle="swim-2tt"]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'SWIM' }))
+    expect(document.querySelector('[data-toggle="swim-2tt"]')).not.toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'TRI' }))
+    expect(document.querySelector('[data-toggle="swim-2tt"]')).toBeNull()
+  })
+
+  it('swim WAKAYOSHI ON: shows 4 (D, T) input groups for current + target', () => {
+    renderCard()
+    fireEvent.click(screen.getByRole('button', { name: 'SWIM' }))
+    fireEvent.click(screen.getByLabelText(/Wakayoshi 2-TT mode/i))
+    expect(screen.getByLabelText(/Current TT1 distance/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Current TT1 time/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Current TT2 distance/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Current TT2 time/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Target TT1 distance/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Target TT1 time/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Target TT2 distance/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Target TT2 time/i)).toBeInTheDocument()
+    // Original single-TT inputs hidden
+    expect(screen.queryByLabelText(/Current PR time \(MM:SS\)/i)).toBeNull()
+  })
+
+  it('swim WAKAYOSHI submit synthesizes 200m + sec-per-100m × 2 payload', () => {
+    renderCard()
+    fireEvent.click(screen.getByRole('button', { name: 'SWIM' }))
+    fireEvent.click(screen.getByLabelText(/Wakayoshi 2-TT mode/i))
+    // Current: 200m @ 2:40, 400m @ 5:40 → CSS = 200/180 = 1.1111 m/s → 90 sec/100m → synthCurT = 180
+    fireEvent.change(screen.getByLabelText(/Current TT1 time/i), { target: { value: '2:40' } })
+    fireEvent.change(screen.getByLabelText(/Current TT2 time/i), { target: { value: '5:40' } })
+    // Target: 200m @ 2:30, 400m @ 5:20 → CSS = 200/170 ≈ 1.1765 m/s → 85 sec/100m → synthTgtT = 170
+    fireEvent.change(screen.getByLabelText(/Target TT1 time/i), { target: { value: '2:30' } })
+    fireEvent.change(screen.getByLabelText(/Target TT2 time/i), { target: { value: '5:20' } })
+    fireEvent.change(screen.getByLabelText(/Race date/i), { target: { value: '2026-08-15' } })
+    const submit = screen.getByRole('button', { name: /GENERATE/i })
+    expect(submit).not.toBeDisabled()
+    fireEvent.click(submit)
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY))
+    expect(stored.input.currentPR.distanceM).toBe(200)
+    expect(stored.input.currentPR.timeSec).toBeCloseTo(180, 0)
+    expect(stored.input.targetPR.distanceM).toBe(200)
+    expect(stored.input.targetPR.timeSec).toBeCloseTo(170, 0)
+    expect(stored.input.sport).toBe('swim')
+    expect(stored.form.swim2TT).toBe(true)
+  })
+
+  it('swim WAKAYOSHI: invalid CSS (T2 ≤ T1) keeps GENERATE disabled', () => {
+    renderCard()
+    fireEvent.click(screen.getByRole('button', { name: 'SWIM' }))
+    fireEvent.click(screen.getByLabelText(/Wakayoshi 2-TT mode/i))
+    // T2 ≤ T1 on current side: 200m @ 5:00 + 400m @ 4:00 (impossible)
+    fireEvent.change(screen.getByLabelText(/Current TT1 time/i), { target: { value: '5:00' } })
+    fireEvent.change(screen.getByLabelText(/Current TT2 time/i), { target: { value: '4:00' } })
+    fireEvent.change(screen.getByLabelText(/Target TT1 time/i), { target: { value: '2:30' } })
+    fireEvent.change(screen.getByLabelText(/Target TT2 time/i), { target: { value: '5:20' } })
+    fireEvent.change(screen.getByLabelText(/Race date/i), { target: { value: '2026-08-15' } })
+    expect(screen.getByRole('button', { name: /GENERATE/i })).toBeDisabled()
+  })
+
+  it('swim WAKAYOSHI submit renders feasibility badge', () => {
+    renderCard()
+    fireEvent.click(screen.getByRole('button', { name: 'SWIM' }))
+    fireEvent.click(screen.getByLabelText(/Wakayoshi 2-TT mode/i))
+    fireEvent.change(screen.getByLabelText(/Current TT1 time/i), { target: { value: '2:40' } })
+    fireEvent.change(screen.getByLabelText(/Current TT2 time/i), { target: { value: '5:40' } })
+    fireEvent.change(screen.getByLabelText(/Target TT1 time/i), { target: { value: '2:30' } })
+    fireEvent.change(screen.getByLabelText(/Target TT2 time/i), { target: { value: '5:20' } })
+    fireEvent.change(screen.getByLabelText(/Race date/i), { target: { value: '2026-08-15' } })
+    fireEvent.click(screen.getByRole('button', { name: /GENERATE/i }))
+    const region = screen.getByRole('region', { name: /Elite training program/i })
+    const badge = region.querySelector('[data-band]')
+    expect(badge).not.toBeNull()
+    expect(['comfortable', 'realistic', 'aggressive', 'unrealistic']).toContain(badge.getAttribute('data-band'))
+  })
+
+  // ── Dark-mode contrast on phase rects ──────────────────────────────────────
+  it('WeeklyTSSChart phase rects use opacity 0.30 for dark-mode legibility', () => {
+    renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    const svg = screen.getByRole('img', { name: /TSS curve/i })
+    const rects = svg.querySelectorAll('rect')
+    expect(rects.length).toBeGreaterThan(0)
+    rects.forEach(r => {
+      expect(r.getAttribute('opacity')).toBe('0.30')
+    })
+  })
+})
+
 describe('EliteProgramCard — persistence', () => {
   it('plan persists across remount via localStorage', () => {
     const { unmount } = renderCard()

@@ -4,6 +4,86 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.94.0 — 2026-05-07 — Mission #1 sport-specific form modes: bike FTP direct + swim Wakayoshi 2-TT + dark-mode contrast (+11 tests), 8920 tests
+
+  Audit follow-up wave closing three sport-specific correctness
+  gaps that were deferred from earlier waves. Pre-launch polish
+  for elite athletes — Mission #1's explicit target audience.
+
+  Bike FTP-direct toggle:
+    Cyclists know their FTP in watts directly (the standard test
+    output). Forcing them to enter a TT distance + time and
+    reverse-deriving via 35 km/h-at-250W heuristic was lossy —
+    accurate only for one rider type, off by 30%+ for mountain
+    or aero TTs. Form now shows a "FTP DIRECT · FTP DOĞRUDAN"
+    checkbox in bike mode. When checked: dropdown + MM:SS row
+    is replaced with two number inputs (50–600 watts range)
+    labeled "CURRENT FTP · MEVCUT FTP" and "TARGET FTP · HEDEF
+    FTP". On submit emits {distanceM: 0, timeSec: parseInt
+    (watts, 10)}. The lib's existing convention at line 486
+    already handles distanceM=0 as wattage — no lib changes
+    required.
+
+  Swim Wakayoshi 2-TT toggle:
+    Single-TT was using tPaceFromTT() which is an approximation
+    accurate only for distances near 1000–1500m. The proper
+    Wakayoshi 1992 protocol uses two trials at different
+    distances:  CSS_m/s = (D2 - D1) / (T2 - T1). The lib has
+    criticalSwimSpeed() implementing this; it just wasn't
+    wired to the form. Form now shows a "WAKAYOSHI 2-TT"
+    checkbox in swim mode. When checked: renders 4 (distance
+    dropdown + MM:SS) pairs (TT1+TT2 for current, TT1+TT2 for
+    target). Computes CSS via criticalSwimSpeed() then derives
+    sec/100m via cssToSecPer100m(). Synthesizes a lossless
+    payload: {distanceM: 200, timeSec: secPer100m * 2} —
+    verified that tPaceFromTT(200, 2x) returns exactly x
+    sec/100m, so CSS round-trips through the existing lib path.
+    If CSS computation returns null (T2 ≤ T1, invalid input)
+    the GENERATE button stays disabled.
+
+  Dark-mode contrast on phase rects:
+    WeeklyTSSChart phase background rects used opacity="0.15"
+    on whatever the body bg was. On #0a0a0a dark theme, Taper
+    (#9966cc @ 0.15) was effectively black-on-black. Bumped to
+    0.30. Slightly bolder in light mode but still acceptable;
+    legible in dark mode.
+
+  Side fix surfaced during test work:
+    handleGenerate previously used React-state persisted?.form
+    which was stale within the same handler tick after
+    savePersistedForm. New code reads form from localStorage —
+    the source of truth at that point. No regressions across
+    8909 baseline tests; 11 new tests pass.
+
+  Test counts:
+    EliteProgramCard:    +11 new (5 bike FTP-direct, 5 swim
+                         Wakayoshi, 1 dark-mode contrast)
+    Total card tests:    43 → 54
+    Full suite:          8909 → 8920 (+11, all green, 368 files)
+    Lint:                clean
+    Build:               83.80 KB gz main (within 150 KB gate)
+
+  Form payload additions (persisted in form key):
+    bikeFtpDirect, currentWatts, targetWatts,
+    swim2TT, swim2TT_curD1, swim2TT_curT1, swim2TT_curD2,
+    swim2TT_curT2, swim2TT_tgtD1, swim2TT_tgtT1,
+    swim2TT_tgtD2, swim2TT_tgtT2.
+    Non-2TT path keeps existing form keys untouched.
+
+  Sport-flip behavior: leaving bike resets bikeFtpDirect=false;
+  leaving swim resets swim2TT=false.
+
+  DEPENDS ON: v8.88.0 (eliteProgram.js bike-direct convention
+  at line 486; criticalSwimSpeed already exported from
+  swimming.js since pre-Mission-#1 work), v8.91.0 (form
+  persistence shape), v8.93.0 (independent — no overlap).
+
+  Files modified:
+    src/components/dashboard/EliteProgramCard.jsx
+    src/components/__tests__/EliteProgramCard.test.jsx
+
+---
+
 ## v8.93.0 — 2026-05-07 — Mission #1 race-result autopsy + season-companion loop (+43 tests), 8909 tests
 
   Audit gap #3 closed: post-race the daily-answer card dead-ended
