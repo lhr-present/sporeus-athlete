@@ -131,6 +131,46 @@ describe('EliteProgramCard — plan mode', () => {
     expect(btn.textContent).toMatch(/CSV İNDİR/)
   })
 
+  it('renders APPLY TO CALENDAR button in plan mode (bilingual)', () => {
+    renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    const btn = screen.getByRole('button', { name: /Apply program to yearly calendar/i })
+    expect(btn).toBeInTheDocument()
+    expect(btn.textContent).toMatch(/APPLY TO CALENDAR/)
+    expect(btn.textContent).toMatch(/TAKVİME UYGULA/)
+  })
+
+  it('APPLY TO CALENDAR writes to sporeus-yearly-plan localStorage', () => {
+    renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    expect(localStorage.getItem('sporeus-yearly-plan')).toBeNull()
+    const btn = screen.getByRole('button', { name: /Apply program to yearly calendar/i })
+    fireEvent.click(btn)
+    const stored = localStorage.getItem('sporeus-yearly-plan')
+    expect(stored).not.toBeNull()
+    const parsed = JSON.parse(stored)
+    expect(Array.isArray(parsed.weeks)).toBe(true)
+    expect(parsed.weeks).toHaveLength(52)
+    const races = JSON.parse(localStorage.getItem('sporeus-plan-races'))
+    expect(races[0]).toMatchObject({ priority: 'A', date: '2026-08-15' })
+  })
+
+  it('APPLY TO CALENDAR confirms before overwriting non-empty plan', () => {
+    localStorage.setItem('sporeus-yearly-plan', JSON.stringify({
+      weeks: [{ targetTSS: 250 }, { targetTSS: 300 }],
+      model: 'traditional',
+    }))
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    const btn = screen.getByRole('button', { name: /Apply program to yearly calendar/i })
+    fireEvent.click(btn)
+    expect(confirmSpy).toHaveBeenCalled()
+    const parsed = JSON.parse(localStorage.getItem('sporeus-yearly-plan'))
+    expect(parsed.weeks).toHaveLength(2)
+    confirmSpy.mockRestore()
+  })
+
   it('renders current → target metric row', () => {
     renderCard()
     fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
@@ -165,6 +205,54 @@ describe('EliteProgramCard — bilingual', () => {
     renderCard({}, 'tr')
     const region = screen.getByRole('region')
     expect(region.getAttribute('aria-label')).toMatch(/Elit antrenman programı/i)
+  })
+})
+
+describe('EliteProgramCard — weekly TSS chart', () => {
+  it('renders TSS curve SVG in plan mode with role=img', () => {
+    renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    const svg = screen.getByRole('img', { name: /TSS curve/i })
+    expect(svg).toBeInTheDocument()
+    expect(svg.tagName.toLowerCase()).toBe('svg')
+  })
+
+  it('renders TR aria-label on TSS chart when lang=tr', () => {
+    // Generate plan in EN so the label-driven form helper works,
+    // then re-render the persisted plan in TR to verify localized aria.
+    const { unmount } = renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    unmount()
+    renderCard({}, 'tr')
+    const svg = screen.getByRole('img', { name: /TSS eğrisi/i })
+    expect(svg).toBeInTheDocument()
+    expect(svg.getAttribute('aria-label')).toMatch(/haftalık TSS eğrisi/i)
+  })
+
+  it('renders one phase background rect per phase inside the TSS chart svg', () => {
+    renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    const svg = screen.getByRole('img', { name: /TSS curve/i })
+    const rects = svg.querySelectorAll('rect')
+    // Phase split for a long block has Base/Build/Peak/Taper — at least 2 phases
+    expect(rects.length).toBeGreaterThanOrEqual(2)
+    expect(rects.length).toBeLessThanOrEqual(4)
+  })
+
+  it('renders header label and deload legend in EN', () => {
+    renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    expect(screen.getByText(/WEEKLY TSS CURVE/i)).toBeInTheDocument()
+    expect(screen.getByText(/Blue dot: deload week/i)).toBeInTheDocument()
+  })
+
+  it('renders deload-week dots when weeklyTSS pattern includes deload weeks', () => {
+    renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    const svg = screen.getByRole('img', { name: /TSS curve/i })
+    const circles = svg.querySelectorAll('circle')
+    // The buildWeeklyTSS uses 3:1 deload pattern, so any plan ≥4 weeks has deload dots
+    expect(circles.length).toBeGreaterThan(0)
   })
 })
 

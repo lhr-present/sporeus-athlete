@@ -4,6 +4,85 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.90.0 — 2026-05-07 — Mission #1 ready-to-ship polish: Apply-to-Calendar bridge + WeeklyTSSChart sparkline (+29 tests), 8846 tests
+
+  Two concurrent polish additions that close the gap between the
+  Elite Program Builder's "view a plan" mode and a fully usable
+  yearly workout system. Both land cleanly together — the bridge
+  adds an action button in EliteProgramCard's action row, the
+  sparkline adds a visualization between feasibility row and the
+  phase-split bar.
+
+  src/lib/athlete/eliteProgramToYearly.js (NEW, ~190 lines):
+    Pure converter eliteProgramToYearlyWeeks(program, programStart, opts)
+    → 52-week array shaped exactly like YearlyPlan.jsx expects:
+      { weekStart, weekNum, phase, targetTSS, plannedHours,
+        zoneDistribution: {Z1..Z5}, isDeload, raceName, raceDate,
+        priority, note, sessionsBlueprint }
+    Spreads weeklyTSS across phase boundaries; pads short
+    programs with Recovery filler weeks to reach 52; preserves
+    deload markers; carries over per-phase pace target into note.
+    21 tests cover input validation, week-shape contract, race
+    + races[] propagation, phase boundaries, deload preservation.
+
+  EliteProgramCard.jsx APPLY-TO-CALENDAR button:
+    Adds "APPLY TO CALENDAR · TAKVİME UYGULA" alongside EXPORT
+    in the plan-mode action bar. confirm()-guarded overwrite of
+    existing sporeus-yearly-plan localStorage when current plan
+    has any week with targetTSS > 0; aborts cleanly on cancel.
+    Bilingual prompt copy. Inline announce("Open the Plan tab
+    to view") nudge on success — Dashboard cards have no
+    onTabChange prop, so explicit tab navigation is left to
+    the user. 3 new card tests: button rendered, writes
+    localStorage on accept, aborted by confirm() decline.
+
+  EliteProgramCard.jsx WeeklyTSSChart (replaces minimal
+  TSSSparkline ~12 lines → richer ~60-line component):
+    Inline SVG 320×60 viewBox with three layered visual encodings:
+      • phase-colored background rects (opacity 0.15) showing
+        Base/Build/Peak/Taper boundaries
+      • orange (#ff6600) TSS line path, strokeWidth 2
+      • blue (#0064ff) deload-week dots at indices where
+        TSS < 75% of both neighbors
+    Bilingual header "WEEKLY TSS CURVE / HAFTALIK TSS EĞRİSİ"
+    plus a deload-legend caption. aria-label uses "${n}-week
+    TSS curve" / "${n} haftalık TSS eğrisi". Placement: AFTER
+    PhaseSplitBar, BEFORE sampleWeeks accordion — chart visually
+    extends the phase-split bar's color encoding. 5 new card
+    tests: svg renders, TR aria-label, phase rects 2-4 present,
+    EN header + legend visible, deload dots > 0.
+
+  Test counts:
+    Bridge tests:        21 new (eliteProgramToYearly.test.js)
+    Card tests:           8 new (3 APPLY + 5 chart)
+    Full suite:           8817 → 8846 (+29, all green, 367 files)
+    Lint:                 clean
+    Build:                83.79 KB gz main (within 150 KB gate)
+
+  Known integration notes (not blocking):
+    - YearlyPlan's PHASE_COLORS lacks 'Taper' entry; bridge keeps
+      'Taper' phase per spec, falls back to gray legend band.
+      Cosmetic — zone bars compute correctly from supplied
+      zoneDistribution. Future polish.
+    - YearlyPlan auto-init effect runs only when plan === null,
+      so APPLY's non-null write skips re-init — applied plan
+      surfaces directly.
+    - Supabase load-on-mount in YearlyPlan may overwrite local
+      plan for signed-in users with a remote plan; out of scope.
+
+  DEPENDS ON: v8.88.0 (eliteProgram.js + EliteProgramCard.jsx),
+  v8.89.0 (CSV export pattern + announce() helper), YearlyPlan.jsx
+  week-shape contract (sporeus-yearly-plan key).
+
+  Files added: src/lib/athlete/eliteProgramToYearly.js,
+               src/lib/__tests__/athlete/eliteProgramToYearly.test.js
+  Files modified: src/components/dashboard/EliteProgramCard.jsx
+                  (343 → 444 lines),
+                  src/components/__tests__/EliteProgramCard.test.jsx
+                  (15 → 23 tests)
+
+---
+
 ## v8.89.0 — 2026-05-07 — Mission polish: CSV export + Today's Planned Session daily-answer surface (+61 tests), 8817 tests
 
   Polish wave for v8.88.0 Elite Program Builder. Two additions

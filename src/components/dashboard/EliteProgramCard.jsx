@@ -8,10 +8,13 @@ import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { buildEliteProgram } from '../../lib/athlete/eliteProgram.js'
+import { eliteProgramToYearlyWeeks } from '../../lib/athlete/eliteProgramToYearly.js'
 import { downloadEliteProgramCSV } from '../../lib/athlete/eliteProgramExport.js'
 import { announce } from '../../lib/a11y/announcer.js'
 
 const STORAGE_KEY = 'sporeus-eliteProgram'
+const YEARLY_PLAN_KEY = 'sporeus-yearly-plan'
+const YEARLY_RACES_KEY = 'sporeus-plan-races'
 
 const SPORTS = [
   { k: 'run',       en: 'RUN',  tr: 'KOŞU' },
@@ -176,16 +179,63 @@ function PhaseSplitBar({ phases, isTR }) {
   )
 }
 
-function TSSSparkline({ tss }) {
-  if (!Array.isArray(tss) || tss.length < 2) return null
-  const w = 280, h = 36, pad = 2
-  const max = Math.max(...tss, 1)
-  const step = (w - pad * 2) / (tss.length - 1)
-  const pts = tss.map((v, i) => `${(pad + i * step).toFixed(1)},${(h - pad - (Math.max(0, v) / max) * (h - pad * 2)).toFixed(1)}`).join(' ')
+function WeeklyTSSChart({ weeklyTSS, phases, isTR }) {
+  if (!Array.isArray(weeklyTSS) || weeklyTSS.length === 0) return null
+  const W = 320, H = 60, PAD = 4
+  const max = Math.max(...weeklyTSS, 1)
+  const min = Math.min(...weeklyTSS, 0)
+  const range = Math.max(max - min, 1)
+  const stepX = (W - PAD * 2) / Math.max(weeklyTSS.length - 1, 1)
+
+  const points = weeklyTSS.map((tss, i) => {
+    const x = PAD + i * stepX
+    const y = H - PAD - ((tss - min) / range) * (H - PAD * 2)
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  })
+  const linePath = 'M ' + points.join(' L ')
+
+  const phaseRects = (Array.isArray(phases) ? phases : []).map(phase => {
+    const wks = Array.isArray(phase.weeks) ? phase.weeks : []
+    if (wks.length === 0) return null
+    const startWeek = Math.min(...wks) - 1
+    const endWeek = Math.max(...wks) - 1
+    const x = PAD + startWeek * stepX
+    const w = (endWeek - startWeek + 1) * stepX
+    return { x, w, color: phase.color || '#888' }
+  }).filter(Boolean)
+
+  const deloadIndices = []
+  weeklyTSS.forEach((tss, i) => {
+    if (i === 0 || i === weeklyTSS.length - 1) return
+    const prev = weeklyTSS[i - 1]
+    const next = weeklyTSS[i + 1]
+    if (tss < prev * 0.75 && tss < next * 0.75) deloadIndices.push(i)
+  })
+
+  const ariaLabel = isTR
+    ? `${weeklyTSS.length} haftalık TSS eğrisi`
+    : `${weeklyTSS.length}-week TSS curve`
+
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" role="img" aria-label="weekly TSS curve" style={{ width: '100%', height: '36px', marginBottom: '12px', display: 'block' }}>
-      <polyline points={pts} fill="none" stroke="#ff6600" strokeWidth="1.5" />
-    </svg>
+    <div style={{ marginTop: '8px', marginBottom: '12px' }}>
+      <div style={{ ...S.mono, fontSize: '9px', color: 'var(--muted)', letterSpacing: '0.1em', marginBottom: '4px' }}>
+        {isTR ? 'HAFTALIK TSS EĞRİSİ' : 'WEEKLY TSS CURVE'}
+      </div>
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={ariaLabel} style={{ display: 'block', height: '60px' }}>
+        {phaseRects.map((r, i) => (
+          <rect key={i} x={r.x} y={PAD} width={r.w} height={H - PAD * 2} fill={r.color} opacity="0.15" />
+        ))}
+        <path d={linePath} fill="none" stroke="#ff6600" strokeWidth="2" />
+        {deloadIndices.map(i => {
+          const x = PAD + i * stepX
+          const y = H - PAD - ((weeklyTSS[i] - min) / range) * (H - PAD * 2)
+          return <circle key={i} cx={x} cy={y} r="3" fill="#0064ff" />
+        })}
+      </svg>
+      <div style={{ ...S.mono, fontSize: '8px', color: '#666', marginTop: '2px' }}>
+        {isTR ? 'Mavi nokta: deload haftası' : 'Blue dot: deload week'}
+      </div>
+    </div>
   )
 }
 
@@ -255,6 +305,57 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
     )
   }
 
+  function applyToCalendar() {
+    if (typeof window === 'undefined' || !window.localStorage) return
+    const yearly = eliteProgramToYearlyWeeks(
+      result,
+      new Date().toISOString().slice(0, 10),
+      {
+        raceDate: persisted.input?.raceDate || null,
+        raceName: 'Goal Race',
+        raceDistanceM: persisted.input?.targetPR?.distanceM ?? null,
+        model: 'traditional',
+      },
+    )
+    if (!yearly) {
+      announce(isTR ? 'Plan oluşturulamadı' : 'Plan could not be built')
+      return
+    }
+
+    // Read existing plan and confirm before overwriting non-empty state.
+    let existingRaw = null
+    try { existingRaw = window.localStorage.getItem(YEARLY_PLAN_KEY) } catch { existingRaw = null }
+    let hasExisting = false
+    if (existingRaw) {
+      try {
+        const parsed = JSON.parse(existingRaw)
+        hasExisting = !!(parsed && Array.isArray(parsed.weeks) && parsed.weeks.some(w => Number(w?.targetTSS) > 0))
+      } catch { hasExisting = false }
+    }
+    if (hasExisting) {
+      const msg = isTR
+        ? 'Mevcut yıllık planın üzerine yazılacak. Devam edilsin mi?'
+        : 'This will overwrite your existing yearly plan. Continue?'
+      const ok = (typeof window.confirm === 'function') ? window.confirm(msg) : true
+      if (!ok) return
+    }
+
+    try {
+      window.localStorage.setItem(YEARLY_PLAN_KEY, JSON.stringify({
+        weeks: yearly.weeks,
+        model: yearly.model,
+        projectedCTL: yearly.projectedCTL,
+      }))
+      window.localStorage.setItem(YEARLY_RACES_KEY, JSON.stringify(yearly.races || []))
+    } catch {
+      announce(isTR ? 'Depolama başarısız' : 'Storage failed')
+      return
+    }
+    announce(isTR
+      ? 'Plan takvime uygulandı. Görüntülemek için Plan sekmesini aç'
+      : 'Plan applied to calendar. Open the Plan tab to view')
+  }
+
   const accent = BAND_COLOR[result.feasibility.band] || '#0064ff'
   const bandLbl = BAND_LABEL[result.feasibility.band]?.[isTR ? 'tr' : 'en'] || (result.feasibility.band || '').toUpperCase()
   const weeksAvail = result.feasibility.weeksAvailable ?? 0
@@ -283,6 +384,12 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
             aria-label={isTR ? 'CSV olarak dışa aktar' : 'Export program as CSV'}
             style={{ ...S.mono, fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '6px 10px', background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '3px', cursor: 'pointer', minHeight: '32px' }}>
             {isTR ? 'CSV İNDİR' : 'EXPORT CSV'}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>{isTR ? 'EXPORT CSV' : 'CSV İNDİR'}
+          </button>
+          <button type="button"
+            onClick={applyToCalendar}
+            aria-label={isTR ? 'Programı yıllık takvime uygula' : 'Apply program to yearly calendar'}
+            style={{ ...S.mono, fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '6px 10px', background: '#0064ff', color: '#fff', border: '1px solid #0064ff', borderRadius: '3px', cursor: 'pointer', minHeight: '32px' }}>
+            {isTR ? 'TAKVİME UYGULA' : 'APPLY TO CALENDAR'}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>{isTR ? 'APPLY TO CALENDAR' : 'TAKVİME UYGULA'}
           </button>
           <button type="button" onClick={() => setPersisted(null)}
             style={{ ...S.mono, fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '6px 10px', background: 'transparent', color: '#ff6600', border: '1px solid #ff6600', borderRadius: '3px', cursor: 'pointer', minHeight: '32px' }}>
@@ -321,7 +428,7 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
       </div>
 
       {Array.isArray(result.phases) && result.phases.length > 0 ? <PhaseSplitBar phases={result.phases} isTR={isTR} /> : null}
-      <TSSSparkline tss={result.weeklyTSS} />
+      <WeeklyTSSChart weeklyTSS={result.weeklyTSS} phases={result.phases} isTR={isTR} />
 
       {result.sampleWeeks ? (
         <div style={{ marginBottom: '10px' }}>
