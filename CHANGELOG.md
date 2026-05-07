@@ -4,6 +4,81 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v8.92.0 — 2026-05-07 — Mission #1 physiology surface + about-model rationale (+10 tests), 8866 tests
+
+  Audit gap #2 closed: the orchestrator was already computing
+  VDOT/FTP/CSS for both current and target levels, but none of it
+  was visible in the card. The athlete saw "50:00 → 40:00" with
+  no bridge to the physiology that prescribes the training paces.
+  This wave surfaces that bridge.
+
+  src/lib/athlete/eliteProgram.js:
+    Promoted fmtPaceStr + fmtSwimPace from private to exported
+    (no behavior change — they were always pure formatters).
+    Added new exports:
+      - MODEL_NAME { en, tr }: 'Traditional Linear Periodization
+        (Bompa 2009)'
+      - PHASE_RATIONALE { Base | Build | Peak | Taper }:
+        each with { en, tr, cite } — 2-sentence bilingual rationale
+        + per-phase citation.
+          Base:  Daniels 2014; Seiler 2010 (aerobic enzymatic
+                 adaptation, capillary density, mitochondrial
+                 biogenesis)
+          Build: Daniels 2014; Coggan & Allen 2010 (VO2max +
+                 lactate-threshold work)
+          Peak:  Bompa 2009; Issurin 2010 (race-pace specificity
+                 + neuromuscular sharpening)
+          Taper: Mujika & Padilla 2003 (14-day exponential
+                 reduction preserves CTL while dropping ATL)
+      - DELOAD_NOTE { en, tr }: 3:1 deload pattern explanation
+        with Issurin 2010; Mujika 2009 citation.
+
+  EliteProgramCard.jsx:
+    Inserted PhysiologyRow component between current→target
+    big-numbers row and PhaseSplitBar. Renders sport-conditional
+    physiology:
+      - run/triathlon: VDOT current → target + 5-row pace
+        mini-table (E/M/T/I/R) with current and target columns
+        in M:SS/km
+      - bike: FTP current → target + 5-zone watts table sourced
+        from currentLevel.paces (lib's actual zone shape)
+      - swim: CSS current → target in M:SS/100m + 5-row pace
+        mini-table derived from CSS via standard multipliers
+        (E=1.20, M=1.08, T=1.00, I=0.93, R=0.88)
+    Added AboutThisModel collapsible <button aria-expanded> below
+    sample-weeks accordion. Open panel shows: model name, 4 phase
+    rationale paragraphs each carrying its cite block, and the
+    deload note. Each rationale's citation is rendered in a
+    dimmer color for legibility.
+
+  Test counts:
+    EliteProgramCard:    +10 new (VDOT row, pace rows, FTP row,
+                         CSS row, about-toggle expand/collapse,
+                         all 4 rationale paragraphs, cite present,
+                         TR rationale, model name, deload note)
+    Total card tests:    33 → 43
+    Full suite:          8856 → 8866 (+10, all green, 367 files)
+    Lint:                clean
+    Build:               83.80 KB gz main (within 150 KB gate)
+
+  DEPENDS ON: v8.88.0 (eliteProgram.js orchestrator's currentLevel
+  + targetLevel computations were already populated and unused
+  by the card), v8.91.0 (rejection-surface refactor that gives
+  the result useMemo a clean shape).
+
+  Files modified:
+    src/lib/athlete/eliteProgram.js (+58 lines: 3 new exports,
+                                     2 promotions to public)
+    src/components/dashboard/EliteProgramCard.jsx (+114 lines:
+                                     PhysiologyRow + AboutThisModel
+                                     components and their JSX
+                                     placement)
+    src/components/__tests__/EliteProgramCard.test.jsx (+90 lines:
+                                     v8.92.0 describe block, 10
+                                     tests)
+
+---
+
 ## v8.91.0 — 2026-05-07 — Mission #1 correctness wave: stealth daily-anchor bug + profile passthrough + rejection surface (+10 tests), 8856 tests
 
   Audit of Mission #1 surfaced one stealth correctness bug and three

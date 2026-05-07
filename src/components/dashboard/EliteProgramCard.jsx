@@ -7,7 +7,14 @@ import { useContext, useMemo, useState } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
-import { buildEliteProgram } from '../../lib/athlete/eliteProgram.js'
+import {
+  buildEliteProgram,
+  fmtPaceStr,
+  fmtSwimPace,
+  MODEL_NAME,
+  PHASE_RATIONALE,
+  DELOAD_NOTE,
+} from '../../lib/athlete/eliteProgram.js'
 import { eliteProgramToYearlyWeeks } from '../../lib/athlete/eliteProgramToYearly.js'
 import { downloadEliteProgramCSV } from '../../lib/athlete/eliteProgramExport.js'
 import { calculatePMC } from '../../lib/trainingLoad.js'
@@ -272,6 +279,176 @@ function SamplePhase({ phase, days, isTR, defaultOpen }) {
   )
 }
 
+// ── PhysiologyRow (v8.92.0) ──────────────────────────────────────────────────
+// Surfaces VDOT/FTP/CSS current → target plus a 5-row pace or zone mini-table
+// computed by the orchestrator. Sport-conditional: run/triathlon → paces,
+// bike → wattage zones, swim → derived E/M/T/I/R per-100m paces.
+function PhysiologyRow({ sport, currentLevel, targetLevel, isTR }) {
+  if (!currentLevel || !targetLevel) return null
+
+  const ROW = { display: 'flex', gap: '8px', borderBottom: '1px dashed var(--border)', padding: '3px 0', flexWrap: 'wrap', alignItems: 'baseline' }
+  const HEAD = { ...S.mono, fontSize: '9px', color: 'var(--muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }
+  const VAL  = { ...S.mono, fontSize: '11px', color: 'var(--text)' }
+  const KEY  = { ...S.mono, fontSize: '10px', color: 'var(--muted)', flex: '0 0 60px', letterSpacing: '0.06em' }
+
+  const aria = isTR ? 'Fizyoloji' : 'Physiology'
+
+  // Helpers
+  const curW = { ...VAL, flex: '1 1 80px' }
+  const tgtW = { ...VAL, flex: '1 1 80px' }
+  const lblTitle = (
+    <div style={{ ...HEAD, marginBottom: '4px' }}>
+      {isTR ? 'FİZYOLOJİ' : 'PHYSIOLOGY'}
+      <span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>
+      {isTR ? 'PHYSIOLOGY' : 'FİZYOLOJİ'}
+    </div>
+  )
+
+  if (sport === 'run' || sport === 'triathlon') {
+    const cv = currentLevel.vdot, tv = targetLevel.vdot
+    if (cv == null || tv == null) return null
+    const cp = currentLevel.paces, tp = targetLevel.paces
+    const rows = ['E', 'M', 'T', 'I', 'R'].map(k => ({
+      k,
+      cur: cp ? fmtPaceStr(cp[k]) : null,
+      tgt: tp ? fmtPaceStr(tp[k]) : null,
+    }))
+    return (
+      <div role="region" aria-label={aria} data-physiology="run" style={{ marginBottom: '12px', padding: '8px', border: '1px solid var(--border)', borderRadius: '4px' }}>
+        {lblTitle}
+        <div style={{ ...ROW, borderBottom: '1px solid var(--border)', paddingBottom: '4px', marginBottom: '4px' }}>
+          <span style={KEY}>VDOT</span>
+          <span style={curW}>{cv}</span>
+          <span aria-hidden="true" style={{ ...VAL, flex: '0 0 12px' }}>→</span>
+          <span style={tgtW}>{tv}</span>
+        </div>
+        {rows.map(r => (
+          <div key={r.k} style={ROW}>
+            <span style={KEY}>{r.k}</span>
+            <span style={curW}>{r.cur || '—'}</span>
+            <span aria-hidden="true" style={{ ...VAL, flex: '0 0 12px' }}>→</span>
+            <span style={tgtW}>{r.tgt || '—'}</span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (sport === 'bike') {
+    const cf = currentLevel.ftp, tf = targetLevel.ftp
+    if (cf == null || tf == null) return null
+    // currentLevel.paces holds the cycling zone array (Coggan 1–7); pick Z1..Z5.
+    const zones = Array.isArray(currentLevel.paces) ? currentLevel.paces.slice(0, 5) : []
+    return (
+      <div role="region" aria-label={aria} data-physiology="bike" style={{ marginBottom: '12px', padding: '8px', border: '1px solid var(--border)', borderRadius: '4px' }}>
+        {lblTitle}
+        <div style={{ ...ROW, borderBottom: '1px solid var(--border)', paddingBottom: '4px', marginBottom: '4px' }}>
+          <span style={KEY}>FTP</span>
+          <span style={curW}>{cf} W</span>
+          <span aria-hidden="true" style={{ ...VAL, flex: '0 0 12px' }}>→</span>
+          <span style={tgtW}>{tf} W</span>
+        </div>
+        {zones.map((z, i) => {
+          const lo = z?.minWatts ?? 0
+          const hi = z?.maxWatts == null ? '∞' : z.maxWatts
+          return (
+            <div key={i} style={ROW}>
+              <span style={KEY}>Z{z?.id ?? i + 1}</span>
+              <span style={{ ...VAL, flex: '1 1 140px' }}>{lo}–{hi} W</span>
+              <span style={{ ...VAL, flex: '1 1 80px', color: 'var(--muted)', fontSize: '9px' }}>{z?.name || ''}</span>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  if (sport === 'swim') {
+    const cc = currentLevel.css, tc = targetLevel.css
+    if (cc == null || tc == null) return null
+    // Derive E/M/T/I/R from CSS using common multipliers
+    // (Threshold ≈ CSS; faster intervals/repetitions; easier endurance/marathon).
+    const mult = { E: 1.20, M: 1.08, T: 1.00, I: 0.93, R: 0.88 }
+    const rows = ['E', 'M', 'T', 'I', 'R'].map(k => ({
+      k,
+      cur: fmtSwimPace(cc * mult[k]),
+      tgt: fmtSwimPace(tc * mult[k]),
+    }))
+    return (
+      <div role="region" aria-label={aria} data-physiology="swim" style={{ marginBottom: '12px', padding: '8px', border: '1px solid var(--border)', borderRadius: '4px' }}>
+        {lblTitle}
+        <div style={{ ...ROW, borderBottom: '1px solid var(--border)', paddingBottom: '4px', marginBottom: '4px' }}>
+          <span style={KEY}>CSS</span>
+          <span style={curW}>{fmtSwimPace(cc) || '—'}</span>
+          <span aria-hidden="true" style={{ ...VAL, flex: '0 0 12px' }}>→</span>
+          <span style={tgtW}>{fmtSwimPace(tc) || '—'}</span>
+        </div>
+        {rows.map(r => (
+          <div key={r.k} style={ROW}>
+            <span style={KEY}>{r.k}</span>
+            <span style={curW}>{r.cur || '—'}</span>
+            <span aria-hidden="true" style={{ ...VAL, flex: '0 0 12px' }}>→</span>
+            <span style={tgtW}>{r.tgt || '—'}</span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  return null
+}
+
+// ── AboutThisModel (v8.92.0) ─────────────────────────────────────────────────
+// Collapsible panel exposing the model name, per-phase rationale paragraphs,
+// and the deload note. All copy + citations come from eliteProgram.js so the
+// lib remains the single source of truth.
+function AboutThisModel({ isTR }) {
+  const [open, setOpen] = useState(false)
+  const lang = isTR ? 'tr' : 'en'
+  const phaseLabels = {
+    Base:  isTR ? 'TEMEL'  : 'BASE',
+    Build: isTR ? 'YAPI'   : 'BUILD',
+    Peak:  isTR ? 'ZİRVE'  : 'PEAK',
+    Taper: isTR ? 'KÖŞELEME' : 'TAPER',
+  }
+  return (
+    <div style={{ borderTop: '1px solid var(--border)', paddingTop: '6px', marginBottom: '6px' }}>
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open}
+        aria-label={isTR ? 'Bu model hakkında' : 'About this model'}
+        style={{ ...S.mono, fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', background: 'transparent', border: 'none', color: 'var(--text)', cursor: 'pointer', padding: '4px 0', width: '100%', textAlign: 'left' }}>
+        {open ? '▾' : '▸'} {isTR ? 'MODEL HAKKINDA' : 'ABOUT THIS MODEL'}
+        <span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>
+        {isTR ? 'ABOUT THIS MODEL' : 'MODEL HAKKINDA'}
+      </button>
+      {open ? (
+        <div data-about-model-panel style={{ ...S.mono, fontSize: '10px', color: 'var(--sub, var(--muted))', lineHeight: 1.6, marginTop: '6px', padding: '8px', border: '1px solid var(--border)', borderRadius: '4px' }}>
+          <div style={{ ...S.mono, fontSize: '11px', fontWeight: 700, color: 'var(--text)', marginBottom: '8px', letterSpacing: '0.04em' }}>
+            {MODEL_NAME[lang]}
+          </div>
+          {['Base', 'Build', 'Peak', 'Taper'].map(p => {
+            const r = PHASE_RATIONALE[p]
+            if (!r) return null
+            return (
+              <div key={p} data-phase-rationale={p} style={{ marginBottom: '8px', paddingBottom: '6px', borderBottom: '1px dashed var(--border)' }}>
+                <div style={{ ...S.mono, fontSize: '10px', fontWeight: 700, color: 'var(--text)', letterSpacing: '0.06em', marginBottom: '2px' }}>
+                  {phaseLabels[p]}
+                </div>
+                <div style={{ marginBottom: '3px' }}>{r[lang]}</div>
+                <div data-cite={r.cite} style={{ ...S.mono, fontSize: '9px', color: 'var(--muted)', letterSpacing: '0.04em' }}>
+                  {isTR ? 'Kaynak' : 'cite'}: {r.cite}
+                </div>
+              </div>
+            )
+          })}
+          <div data-deload-note style={{ ...S.mono, fontSize: '10px', color: 'var(--text)', paddingTop: '4px' }}>
+            {DELOAD_NOTE[lang]}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 export default function EliteProgramCard({ log: _log = [], profile: _profile = {} }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
@@ -481,6 +658,13 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
         </div>
       </div>
 
+      <PhysiologyRow
+        sport={result.sport}
+        currentLevel={result.currentLevel}
+        targetLevel={result.targetLevel}
+        isTR={isTR}
+      />
+
       {Array.isArray(result.phases) && result.phases.length > 0 ? <PhaseSplitBar phases={result.phases} isTR={isTR} /> : null}
       <WeeklyTSSChart weeklyTSS={result.weeklyTSS} phases={result.phases} isTR={isTR} />
 
@@ -491,6 +675,8 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
           ))}
         </div>
       ) : null}
+
+      <AboutThisModel isTR={isTR} />
 
       {note ? <div style={{ ...S.mono, fontSize: '10px', color: 'var(--sub, var(--muted))', marginBottom: '8px', lineHeight: 1.5 }}>{note}</div> : null}
       {recommendation ? (

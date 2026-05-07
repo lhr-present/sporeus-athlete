@@ -363,6 +363,126 @@ describe('EliteProgramCard — v8.91.0 personalization & rejection surface', () 
   })
 })
 
+describe('EliteProgramCard — v8.92.0 physiology & model rationale', () => {
+  it('PhysiologyRow renders VDOT current → target for run sport', () => {
+    renderCard()
+    fillFormAndSubmit({ sport: 'run', curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    const phys = document.querySelector('[data-physiology="run"]')
+    expect(phys).not.toBeNull()
+    expect(phys.textContent).toMatch(/VDOT/)
+    expect(phys.textContent).toMatch(/→/)
+  })
+
+  it('PhysiologyRow renders 5 pace rows (E/M/T/I/R) for run', () => {
+    renderCard()
+    fillFormAndSubmit({ sport: 'run', curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    const phys = document.querySelector('[data-physiology="run"]')
+    expect(phys).not.toBeNull()
+    const text = phys.textContent
+    // The 5 pace keys should each appear in the panel
+    for (const k of ['E', 'M', 'T', 'I', 'R']) {
+      expect(text).toContain(k)
+    }
+    // At least one M:SS/km pace string
+    expect(text).toMatch(/\d:\d{2}\/km/)
+    // Five pace strings in /km format (E, M, T, I, R) per side; expect ≥10 occurrences
+    const km = text.match(/\d{1,2}:\d{2}\/km/g) || []
+    expect(km.length).toBeGreaterThanOrEqual(10)
+  })
+
+  it('PhysiologyRow shows FTP for bike with watts and zone rows', () => {
+    renderCard()
+    fillFormAndSubmit({ sport: 'bike', curTime: '60:00', tgtTime: '55:00', raceDate: '2026-08-15' })
+    const phys = document.querySelector('[data-physiology="bike"]')
+    expect(phys).not.toBeNull()
+    expect(phys.textContent).toMatch(/FTP/)
+    expect(phys.textContent).toMatch(/W/)
+    // Five zone rows Z1..Z5
+    for (const z of ['Z1', 'Z2', 'Z3', 'Z4', 'Z5']) {
+      expect(phys.textContent).toContain(z)
+    }
+  })
+
+  it('PhysiologyRow shows CSS for swim with M:SS/100m formatting', () => {
+    renderCard()
+    fillFormAndSubmit({ sport: 'swim', curTime: '25:30', tgtTime: '23:45', raceDate: '2026-08-15' })
+    const phys = document.querySelector('[data-physiology="swim"]')
+    expect(phys).not.toBeNull()
+    expect(phys.textContent).toMatch(/CSS/)
+    expect(phys.textContent).toMatch(/\d:\d{2}\/100m/)
+  })
+
+  it('About-this-model toggle expands and collapses', () => {
+    renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    const btn = screen.getByRole('button', { name: /About this model/i })
+    expect(btn.getAttribute('aria-expanded')).toBe('false')
+    expect(document.querySelector('[data-about-model-panel]')).toBeNull()
+    fireEvent.click(btn)
+    expect(btn.getAttribute('aria-expanded')).toBe('true')
+    expect(document.querySelector('[data-about-model-panel]')).not.toBeNull()
+    fireEvent.click(btn)
+    expect(btn.getAttribute('aria-expanded')).toBe('false')
+    expect(document.querySelector('[data-about-model-panel]')).toBeNull()
+  })
+
+  it('Expanded panel contains all 4 phase rationale paragraphs', () => {
+    renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    const btn = screen.getByRole('button', { name: /About this model/i })
+    fireEvent.click(btn)
+    for (const p of ['Base', 'Build', 'Peak', 'Taper']) {
+      expect(document.querySelector(`[data-phase-rationale="${p}"]`)).not.toBeNull()
+    }
+  })
+
+  it('Each phase rationale has a cite= text visible', () => {
+    renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    fireEvent.click(screen.getByRole('button', { name: /About this model/i }))
+    const panel = document.querySelector('[data-about-model-panel]')
+    expect(panel).not.toBeNull()
+    expect(panel.textContent).toMatch(/Daniels 2014/)
+    expect(panel.textContent).toMatch(/Coggan & Allen 2010/)
+    expect(panel.textContent).toMatch(/Bompa 2009/)
+    expect(panel.textContent).toMatch(/Mujika & Padilla 2003/)
+    // cite attribute carries the citation string
+    const cites = panel.querySelectorAll('[data-cite]')
+    expect(cites.length).toBe(4)
+  })
+
+  it('TR rationale renders when lang=tr', () => {
+    const { unmount } = renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    unmount()
+    renderCard({}, 'tr')
+    fireEvent.click(screen.getByRole('button', { name: /Bu model hakkında/i }))
+    const panel = document.querySelector('[data-about-model-panel]')
+    expect(panel).not.toBeNull()
+    expect(panel.textContent).toMatch(/aerobik enzim adaptasyonu/i)
+    expect(panel.textContent).toMatch(/Geleneksel Doğrusal Periyodizasyon/i)
+  })
+
+  it('Model name shown in EN includes "Traditional Linear Periodization"', () => {
+    renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    fireEvent.click(screen.getByRole('button', { name: /About this model/i }))
+    const panel = document.querySelector('[data-about-model-panel]')
+    expect(panel.textContent).toMatch(/Traditional Linear Periodization/)
+  })
+
+  it('Deload note rendered in expanded panel', () => {
+    renderCard()
+    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
+    fireEvent.click(screen.getByRole('button', { name: /About this model/i }))
+    const panel = document.querySelector('[data-about-model-panel]')
+    const deload = panel.querySelector('[data-deload-note]')
+    expect(deload).not.toBeNull()
+    expect(deload.textContent).toMatch(/3:1 deload/i)
+    expect(deload.textContent).toMatch(/Issurin 2010/)
+  })
+})
+
 describe('EliteProgramCard — persistence', () => {
   it('plan persists across remount via localStorage', () => {
     const { unmount } = renderCard()

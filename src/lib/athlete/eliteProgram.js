@@ -28,6 +28,42 @@ import {
 
 const CITATION = 'Daniels 2014; Bompa 2009; Mujika 2003; Coggan 2010; Wakayoshi 1992; Seiler 2010'
 
+// ── Scientific model exposition (v8.92.0) ────────────────────────────────────
+// Surfaces the periodization model and per-phase physiological rationale so the
+// UI can render an "About this model" panel without duplicating citations.
+export const MODEL_NAME = {
+  en: 'Traditional Linear Periodization (Bompa 2009)',
+  tr: 'Geleneksel Doğrusal Periyodizasyon (Bompa 2009)',
+}
+
+export const PHASE_RATIONALE = {
+  Base: {
+    en: 'High-volume low-intensity work drives aerobic enzymatic adaptation, capillary density, and mitochondrial biogenesis. Easy zone-1/zone-2 mileage builds the substrate the later phases depend on.',
+    tr: 'Yüksek hacim ve düşük yoğunluklu çalışma aerobik enzim adaptasyonu, kapiller yoğunluk ve mitokondri biyogenezini tetikler. Kolay 1./2. zon hacmi sonraki fazların dayandığı altyapıyı kurar.',
+    cite: 'Daniels 2014; Seiler 2010',
+  },
+  Build: {
+    en: 'Threshold and tempo work raise lactate clearance, while VO2max touches lift the aerobic ceiling. Race-specific load now stresses the same systems that the goal event will tax.',
+    tr: 'Eşik ve tempo çalışmaları laktat temizleme kapasitesini yükseltir; VO2max dokunuşları aerobik tavanı kaldırır. Yarışa özgü yük artık hedef yarışın zorlayacağı sistemleri çalıştırır.',
+    cite: 'Daniels 2014; Coggan & Allen 2010',
+  },
+  Peak: {
+    en: 'Race-pace specificity and neuromuscular sharpening dominate. Volume holds while intensity converges on goal pace so motor patterns and perceived effort match race day demands.',
+    tr: 'Yarış-tempo özgüllüğü ve nöromüsküler keskinleşme baskındır. Hacim korunur, yoğunluk hedef tempoya yakınsar; motor örüntüler ve algılanan efor yarış günü taleplerine uyar.',
+    cite: 'Bompa 2009; Issurin 2010',
+  },
+  Taper: {
+    en: 'A 14-day exponential reduction drops acute training load (ATL) while preserving chronic training load (CTL). Freshness rises without erosion of fitness, peaking form on race day.',
+    tr: '14 günlük üstel azaltma akut antrenman yükünü (ATL) düşürürken kronik yükü (CTL) korur. Form kaybetmeden tazelik yükselir; yarış günü zirveye çıkar.',
+    cite: 'Mujika & Padilla 2003',
+  },
+}
+
+export const DELOAD_NOTE = {
+  en: '3:1 deload — every 4th week drops to ~60% of build target to consolidate adaptations and limit overreaching (Issurin 2010; Mujika 2009)',
+  tr: '3:1 deload — her 4. hafta yapı hedefinin ~%60\'ına iner; adaptasyonları pekiştirir ve aşırı yüklenmeyi sınırlar (Issurin 2010; Mujika 2009)',
+}
+
 // ── Date helpers (UTC-only, no DST drift) ────────────────────────────────────
 function parseUTCDate(s) {
   if (!s || typeof s !== 'string') return null
@@ -184,14 +220,14 @@ function buildWeeklyTSS(phasesArr, currentCTL) {
 }
 
 // ── Sample week templates ───────────────────────────────────────────────────
-function fmtPaceStr(secPerKm) {
+export function fmtPaceStr(secPerKm) {
   if (!secPerKm || secPerKm <= 0) return null
   const m = Math.floor(secPerKm / 60)
   const s = Math.round(secPerKm % 60)
   return `${m}:${String(s).padStart(2, '0')}/km`
 }
 
-function fmtSwimPace(secPer100) {
+export function fmtSwimPace(secPer100) {
   if (!secPer100 || secPer100 <= 0) return null
   const m = Math.floor(secPer100 / 60)
   const s = Math.round(secPer100 % 60)
