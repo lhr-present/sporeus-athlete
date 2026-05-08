@@ -156,6 +156,33 @@ function DisciplineChip({ discipline, isTR }) {
   )
 }
 
+// v9.11.0 — cohort badge on cohort-personalized sessions.
+const COHORT_META = {
+  beginner:     { color: '#0064ff', label: { en: 'BEGINNER',     tr: 'BAŞLANGIÇ' } },
+  intermediate: { color: '#7d4a00', label: { en: 'INTERMEDIATE', tr: 'ORTA' } },
+  elite:        { color: '#dc3545', label: { en: 'ELITE',        tr: 'ELİT' } },
+}
+function CohortChip({ cohort, isTR }) {
+  if (!cohort || !COHORT_META[cohort]) return null
+  const m = COHORT_META[cohort]
+  return (
+    <span style={{
+      display: 'inline-block',
+      padding: '1px 6px',
+      marginRight: 6,
+      background: 'transparent',
+      color: m.color,
+      border: `1px solid ${m.color}`,
+      borderRadius: 3,
+      fontSize: 9,
+      fontWeight: 700,
+      letterSpacing: '0.06em',
+    }}>
+      {isTR ? m.label.tr : m.label.en}
+    </span>
+  )
+}
+
 // ── Key Sessions ─────────────────────────────────────────────────────────────
 export function KeySessionsSection({ keySessionLibrary, isTR, defaultOpen = false }) {
   if (!keySessionLibrary) return null
@@ -189,6 +216,7 @@ export function KeySessionsSection({ keySessionLibrary, isTR, defaultOpen = fals
               }}>
                 <div style={{ fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
                   <DisciplineChip discipline={s.discipline} isTR={isTR} />
+                  <CohortChip cohort={s.cohort} isTR={isTR} />
                   <IntensityChip chip={chip} isTR={isTR} />
                   <span>{bil(s.name, isTR)}</span>
                 </div>

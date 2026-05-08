@@ -10,6 +10,8 @@
 //
 // All bilingual EN+TR. Pure data — no React, no side effects.
 
+import { selectCohort, applyCohort } from './eliteProgramCohorts.js'
+
 /**
  * @typedef {{ en: string, tr: string }} Bilingual
  * @typedef {{
@@ -1068,7 +1070,7 @@ const LIBRARY = {
 
 /**
  * @public
- * @param {'run'|'bike'|'swim'|'triathlon'} sport
+ * @param {'run'|'bike'|'swim'|'triathlon'|'rowing'} sport
  * @returns {Record<'Base'|'Build'|'Peak'|'Taper', KeySession[]>}
  */
 export function getKeySessionsBySport(sport) {
@@ -1081,34 +1083,42 @@ export function getKeySessionsBySport(sport) {
 
 /**
  * @public
- * @param {{ sport: 'run'|'bike'|'swim'|'triathlon', phases: Array<{phase:string}> }} input
+ * @param {{ sport: 'run'|'bike'|'swim'|'triathlon'|'rowing', phases: Array<{phase:string}>, currentLevel?: object }} input
  * @returns {{ Base: KeySession[], Build: KeySession[], Peak: KeySession[], Taper: KeySession[] }}
  */
 export function buildKeySessionLibrary(input) {
-  const { sport, phases } = input || {}
+  const { sport, phases, currentLevel } = input || {}
   const present = new Set((phases || []).map(p => p.phase))
+
+  // v9.11.0 — cohort-aware dose personalization. Cohort applied per discipline
+  // (so triathlon swim sessions resolve via swim CSS, not run VDOT).
+  const cohort = selectCohort(sport, currentLevel)
 
   // v9.6.0 — triathlon merges all three disciplines, tagged for the UI.
   if (sport === 'triathlon') {
+    const swimCohort = selectCohort('swim', currentLevel)
+    const bikeCohort = selectCohort('bike', currentLevel)
+    const runCohort  = selectCohort('run',  currentLevel)
     const out = { Base: [], Build: [], Peak: [], Taper: [] }
     for (const phase of ['Base', 'Build', 'Peak', 'Taper']) {
       if (!present.has(phase)) continue
       const tri = buildTriathlonKeySessions(phase)
       out[phase] = [
-        ...(tri.swim || []).map(s => ({ ...s, discipline: 'swim' })),
-        ...(tri.bike || []).map(s => ({ ...s, discipline: 'bike' })),
-        ...(tri.run  || []).map(s => ({ ...s, discipline: 'run'  })),
+        ...(tri.swim || []).map(s => applyCohort({ ...s, discipline: 'swim' }, swimCohort)),
+        ...(tri.bike || []).map(s => applyCohort({ ...s, discipline: 'bike' }, bikeCohort)),
+        ...(tri.run  || []).map(s => applyCohort({ ...s, discipline: 'run'  }, runCohort)),
       ]
     }
     return out
   }
 
   const lib = getKeySessionsBySport(sport)
+  const apply = arr => arr.map(s => applyCohort(s, cohort))
   return {
-    Base:  present.has('Base')  ? lib.Base  : [],
-    Build: present.has('Build') ? lib.Build : [],
-    Peak:  present.has('Peak')  ? lib.Peak  : [],
-    Taper: present.has('Taper') ? lib.Taper : [],
+    Base:  present.has('Base')  ? apply(lib.Base)  : [],
+    Build: present.has('Build') ? apply(lib.Build) : [],
+    Peak:  present.has('Peak')  ? apply(lib.Peak)  : [],
+    Taper: present.has('Taper') ? apply(lib.Taper) : [],
   }
 }
 

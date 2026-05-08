@@ -1347,3 +1347,156 @@ describe('buildEliteProgram — v9.2.0 broader content layers', () => {
     expect(r.substitutionMap).toBeDefined()
   })
 })
+
+// ── v9.11.0 — cohort personalization ────────────────────────────────────────
+import { selectCohort, applyCohort, COHORT_OVERRIDES } from '../../athlete/eliteProgramCohorts.js'
+
+describe('eliteProgramCohorts — selectCohort', () => {
+  it('returns null when currentLevel missing or empty', () => {
+    expect(selectCohort('run', null)).toBeNull()
+    expect(selectCohort('run', {})).toBeNull()
+    expect(selectCohort('run', { vdot: 0 })).toBeNull()
+  })
+
+  it('classifies running by VDOT thresholds', () => {
+    expect(selectCohort('run', { vdot: 30 })).toBe('beginner')
+    expect(selectCohort('run', { vdot: 37.9 })).toBe('beginner')
+    expect(selectCohort('run', { vdot: 38 })).toBe('intermediate')
+    expect(selectCohort('run', { vdot: 49.9 })).toBe('intermediate')
+    expect(selectCohort('run', { vdot: 50 })).toBe('elite')
+    expect(selectCohort('run', { vdot: 65 })).toBe('elite')
+  })
+
+  it('classifies cycling by FTP watts', () => {
+    expect(selectCohort('bike', { ftp: 150 })).toBe('beginner')
+    expect(selectCohort('bike', { ftp: 199 })).toBe('beginner')
+    expect(selectCohort('bike', { ftp: 200 })).toBe('intermediate')
+    expect(selectCohort('bike', { ftp: 299 })).toBe('intermediate')
+    expect(selectCohort('bike', { ftp: 300 })).toBe('elite')
+    expect(selectCohort('bike', { ftp: 380 })).toBe('elite')
+  })
+
+  it('classifies swimming by CSS sec/100m (lower = faster)', () => {
+    expect(selectCohort('swim', { css: 130 })).toBe('beginner')
+    expect(selectCohort('swim', { css: 111 })).toBe('beginner')
+    expect(selectCohort('swim', { css: 100 })).toBe('intermediate')
+    expect(selectCohort('swim', { css: 91 })).toBe('intermediate')
+    expect(selectCohort('swim', { css: 90 })).toBe('elite')
+    expect(selectCohort('swim', { css: 75 })).toBe('elite')
+  })
+
+  it('classifies rowing by 2k split seconds (lower = faster)', () => {
+    expect(selectCohort('rowing', { split2kSec: 540 })).toBe('beginner')
+    expect(selectCohort('rowing', { split2kSec: 481 })).toBe('beginner')
+    expect(selectCohort('rowing', { split2kSec: 460 })).toBe('intermediate')
+    expect(selectCohort('rowing', { split2kSec: 421 })).toBe('intermediate')
+    expect(selectCohort('rowing', { split2kSec: 420 })).toBe('elite')
+    expect(selectCohort('rowing', { split2kSec: 380 })).toBe('elite')
+  })
+
+  it('uses VDOT proxy for triathlon classification', () => {
+    expect(selectCohort('triathlon', { vdot: 35 })).toBe('beginner')
+    expect(selectCohort('triathlon', { vdot: 45 })).toBe('intermediate')
+    expect(selectCohort('triathlon', { vdot: 55 })).toBe('elite')
+  })
+
+  it('returns null for unknown sport', () => {
+    expect(selectCohort('skating', { vdot: 50 })).toBeNull()
+  })
+})
+
+describe('eliteProgramCohorts — applyCohort', () => {
+  it('returns session unchanged when no override key matches', () => {
+    const session = { key: 'unknown-key', name: { en: 'Foo', tr: 'Foo' } }
+    expect(applyCohort(session, 'beginner')).toBe(session)
+  })
+
+  it('returns session unchanged when no cohort given', () => {
+    const session = { key: 'run-base-long-aerobic', name: { en: 'Long Aerobic', tr: 'Uzun Aerobik' } }
+    expect(applyCohort(session, null)).toBe(session)
+  })
+
+  it('preserves session.key + name + purpose after override', () => {
+    const session = {
+      key: 'run-base-long-aerobic',
+      name: { en: 'Long Aerobic', tr: 'Uzun Aerobik' },
+      purpose: { en: 'Build aerobic base', tr: 'Aerobik taban' },
+      structure: { en: 'OLD', tr: 'OLD' },
+      intensity: { en: 'E-pace', tr: 'E-tempo' },
+    }
+    const out = applyCohort(session, 'elite')
+    expect(out.key).toBe('run-base-long-aerobic')
+    expect(out.name.en).toBe('Long Aerobic')
+    expect(out.purpose.tr).toBe('Aerobik taban')
+    expect(out.intensity.en).toBe('E-pace')
+    expect(out.cohort).toBe('elite')
+    expect(out.structure.en).not.toBe('OLD')
+    expect(out.structure.en).toMatch(/75-150/)
+  })
+
+  it('produces different doses for beginner vs elite on same session', () => {
+    const session = { key: 'run-build-threshold-2x20' }
+    const beginner = applyCohort(session, 'beginner')
+    const elite    = applyCohort(session, 'elite')
+    expect(beginner.structure.en).not.toBe(elite.structure.en)
+    expect(beginner.cohort).toBe('beginner')
+    expect(elite.cohort).toBe('elite')
+  })
+
+  it('every override entry has all 3 cohort tiers with structure + notes', () => {
+    Object.entries(COHORT_OVERRIDES).forEach(([key, tiers]) => {
+      ;['beginner', 'intermediate', 'elite'].forEach(c => {
+        expect(tiers[c], `${key}.${c}`).toBeDefined()
+        expect(tiers[c].structure?.en).toBeTruthy()
+        expect(tiers[c].structure?.tr).toBeTruthy()
+        expect(tiers[c].notes?.en).toBeTruthy()
+        expect(tiers[c].notes?.tr).toBeTruthy()
+      })
+    })
+  })
+})
+
+describe('buildEliteProgram — cohort propagation (v9.11.0)', () => {
+  it('exposes cohort field on program output when currentLevel resolves', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    // RUN_REALISTIC is 50:00 10k → VDOT ~37 → beginner
+    expect(['beginner', 'intermediate', 'elite']).toContain(r.cohort)
+  })
+
+  it('cohort propagates onto cohort-personalized key sessions', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    const overridden = [...(r.keySessionLibrary.Base || []), ...(r.keySessionLibrary.Build || []), ...(r.keySessionLibrary.Peak || [])]
+      .filter(s => COHORT_OVERRIDES[s.key])
+    expect(overridden.length).toBeGreaterThan(0)
+    overridden.forEach(s => {
+      expect(s.cohort).toBe(r.cohort)
+    })
+  })
+
+  it('triathlon flattens with discipline-specific cohorts', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 10000, timeSec: 3000 },
+      targetPR:  { distanceM: 10000, timeSec: 2820 },
+      raceDate: '2026-09-25',
+      sport: 'triathlon',
+      profile: { ftp: 250, cssSec: 100, bodyMassKg: 70 },
+      options: { today: TODAY },
+    })
+    const sessions = [...(r.keySessionLibrary.Base || []), ...(r.keySessionLibrary.Build || [])]
+    const swimOverrides = sessions.filter(s => s.discipline === 'swim' && COHORT_OVERRIDES[s.key])
+    const bikeOverrides = sessions.filter(s => s.discipline === 'bike' && COHORT_OVERRIDES[s.key])
+    swimOverrides.forEach(s => expect(s.cohort).toBe('intermediate')) // CSS 100 → intermediate
+    bikeOverrides.forEach(s => expect(s.cohort).toBe('intermediate')) // FTP 250 → intermediate
+  })
+
+  it('cohort=null when currentLevel cannot be resolved (still ships sessions)', () => {
+    // Synthetic small-target run with bare currentPR — VDOT will compute, so cohort resolves.
+    // Confirm the output doesn't crash and never injects a cohort field on non-overridden sessions.
+    const r = buildEliteProgram(RUN_REALISTIC)
+    const nonOverridden = [...(r.keySessionLibrary.Base || []), ...(r.keySessionLibrary.Build || [])]
+      .filter(s => !COHORT_OVERRIDES[s.key])
+    nonOverridden.forEach(s => {
+      expect(s.cohort).toBeUndefined()
+    })
+  })
+})

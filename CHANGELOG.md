@@ -4,6 +4,65 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.11.0 — 2026-05-08 — Mission #1 cohort personalization (beginner/intermediate/elite dose tables)
+
+  Closes the re-audit's "no dose-matching by ability" gap. Pre-
+  v9.11.0 every key session prescribed identical reps and
+  intensities regardless of athlete level — a 50:00 10k runner
+  and a sub-30 10k runner both received "5x1km @T-pace" and
+  "Long aerobic 60-150 min". Real coaches calibrate by
+  ability cohort. v9.11.0 introduces a literature-calibrated
+  cohort layer that adjusts session structure + notes.
+
+  • New module: src/lib/athlete/eliteProgramCohorts.js
+    – selectCohort(sport, currentLevel) → 'beginner' |
+      'intermediate' | 'elite' | null
+    – Thresholds per literature:
+        run / triathlon : VDOT < 38 / 38-50 / > 50
+        bike            : FTP < 200 W / 200-300 / > 300
+        swim            : CSS > 110 s/100m / 90-110 / < 90
+        rowing          : 2k > 480 s / 420-480 / < 420
+    – COHORT_OVERRIDES map keyed by session.key with
+      bilingual structure + notes per cohort tier.
+    – applyCohort(session, cohort) merges override fields
+      onto a session preserving key/name/purpose; tags
+      session.cohort for UI rendering.
+    – 11 high-traffic sessions overridden in v9.11.0:
+        run-base-long-aerobic, run-build-threshold-2x20,
+        run-build-cruise, run-peak-race-pace,
+        bike-base-z2-long, bike-build-threshold-2x20,
+        swim-build-css-10x200, swim-peak-race-pace,
+        row-base-ut2-long, row-build-at-pieces.
+    – Citations: Daniels 2014; Coggan & Allen 2010;
+      Wakayoshi 1992; Concept2 RP3 / British Rowing 2024;
+      Pfitzinger 2014; Rønnestad & Mujika 2014;
+      Maglischo 2003; Friel 2014.
+
+  • Wired into eliteProgramKeySessions.buildKeySessionLibrary —
+    accepts currentLevel, resolves cohort per discipline
+    (so triathlon swim sessions map via swim CSS, bike via
+    FTP, run via VDOT, not a single sport-wide cohort).
+
+  • Wired into eliteProgram.buildEliteProgram — output now
+    exposes top-level `cohort` field for UI badges + passes
+    currentLevel through to the key-session pipeline.
+    Triathlon currentLevel now also carries profile.ftp +
+    profile.cssSec so per-discipline cohort lookup works.
+
+  • UI: BroaderPlanSections.KeySessionsSection renders a
+    CohortChip beside each cohort-personalized session
+    (BEGINNER blue / INTERMEDIATE amber / ELITE red).
+
+  • Tests: +16 cohort tests (selectCohort across 5 sports +
+    nulls, applyCohort merging, override completeness,
+    discipline-specific tri propagation). Total 9366/9366.
+
+  Depends on: v9.10.2 (key sessions library shape stable);
+  v9.6.0 (triathlon discipline-tagged flatten);
+  v9.7.0 (rowing currentLevel.split2kSec).
+
+---
+
 ## v9.10.2 — 2026-05-09 — coach-roleplay polish: Build polarization + 5x1km recovery time
 
   Coach roleplay audit (Renato Canova / Allen Lim / Daniels

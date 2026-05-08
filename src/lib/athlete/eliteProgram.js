@@ -110,6 +110,7 @@ import {
 
 // v9.2.0 — broader plan content layers
 import { buildKeySessionLibrary }   from './eliteProgramKeySessions.js'
+import { selectCohort }              from './eliteProgramCohorts.js'
 import { buildStrengthProgram }     from './eliteProgramStrength.js'
 import { buildFuelingProgram }      from './eliteProgramFueling.js'
 import { buildRecoveryProgram }     from './eliteProgramRecovery.js'
@@ -851,14 +852,18 @@ export function buildEliteProgram(input) {
     const rate = vdotGainPerBlock(cVdot)
     weeksNeeded = Math.max(4, Math.ceil((gap / rate) * 12))
     deltaPct = ((currentPR.timeSec - targetPR.timeSec) / currentPR.timeSec) * 100
+    // v9.11.0 — for triathlon, surface profile FTP + CSS so per-discipline cohort
+    // lookup (swim CSS, bike FTP) works in the key-session library flatten step.
+    const triFtp = sport === 'triathlon' && Number(profile.ftp) > 0 ? Number(profile.ftp) : null
+    const triCss = sport === 'triathlon' && Number(profile.cssSec) > 0 ? Number(profile.cssSec) : null
     currentLevel = {
       vdot: Math.round(cVdot * 10) / 10,
-      ftp: null, css: null,
+      ftp: triFtp, css: triCss,
       paces: trainingPaces(cVdot),
     }
     targetLevel = {
       vdot: Math.round(gVdot * 10) / 10,
-      ftp: null, css: null,
+      ftp: triFtp, css: triCss,
       paces: trainingPaces(gVdot),
     }
   } else if (sport === 'bike') {
@@ -1071,7 +1076,9 @@ export function buildEliteProgram(input) {
   }
 
   // v9.2.0 — broader plan content layers (per-phase libraries)
-  const keySessionLibrary = buildKeySessionLibrary({ sport, phases })
+  // v9.11.0 — pass currentLevel so cohort dose tables can specialize sessions.
+  const keySessionLibrary = buildKeySessionLibrary({ sport, phases, currentLevel })
+  const cohort = selectCohort(sport, currentLevel)
   const strengthProgram   = buildStrengthProgram({ phases, sport })
   const fuelingProgram    = buildFuelingProgram({
     phases,
@@ -1102,6 +1109,7 @@ export function buildEliteProgram(input) {
     sport,
     currentLevel,
     targetLevel,
+    cohort,
     phases,
     weeklyTSS,
     sampleWeeks,
