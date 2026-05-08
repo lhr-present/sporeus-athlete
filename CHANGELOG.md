@@ -4,6 +4,39 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.3.1 — 2026-05-08 — Fix prod-smoke spec: bypass onboarding wizard + KVKK consent overlay
+
+  The Wave B push (v9.3.0) hit a Production Smoke (post-deploy)
+  failure where the spec's `programTab.click()` timed out
+  with `<div>…</div> intercepts pointer events`. Diagnosis
+  via the report artifact showed the fresh-guest browser
+  context was rendering the Onboarding wizard (Step 1/8)
+  and the KVKK/GDPR consent dialog on top of the nav.
+
+  These overlays have been there since launch; the spec
+  was passing on v9.1.1 + v9.2.0 by browser-context flush
+  timing chance, not by design. v9.3.1 hardens the spec
+  setup script so both overlays are pre-dismissed:
+
+    localStorage.setItem('sporeus-onboarded', 'true')
+    localStorage.setItem('sporeus-consent-v1', '1.1')
+
+  The consent value mirrors the current CONSENT_VERSION
+  constant in src/lib/constants.js. Local run vs live
+  prod: 2 passed in 4.2s.
+
+  Files edited:
+    EDIT tests/e2e/program-tab-prod.spec.js  (+3 lines)
+
+  No app behavior change. No version bump on package.json
+  (this is a test-spec-only patch). Prod is already on
+  v9.3.0; the next push will re-trigger Production Smoke
+  and verify the fix end-to-end.
+
+  Depends on: v9.3.0.
+
+---
+
 ## v9.3.0 — 2026-05-08 — Mission #1 Wave B: coach edit-back via v=2 envelope (athlete↔coach round-trip), 9217 tests
 
   Wave B closes the second half of the user directive

@@ -11,10 +11,15 @@ import { test, expect } from '@playwright/test'
 
 test.describe('app.sporeus.com — Mission #1 PROGRAM tab smoke', () => {
   test.beforeEach(async ({ page }) => {
-    // Activate guest mode + clear any stored tab so adaptive default → 'program'
+    // Activate guest mode + dismiss onboarding wizard + clear any stored tab so
+    // adaptive default → 'program'. useLocalStorage stores JSON-stringified booleans
+    // so the onboarded flag must be 'true' (string), not '1'.
     await page.addInitScript(() => {
       try {
         localStorage.setItem('sporeus-guest-mode', '1')
+        localStorage.setItem('sporeus-onboarded', 'true')
+        // KVKK/GDPR consent gate — must be the current CONSENT_VERSION string.
+        localStorage.setItem('sporeus-consent-v1', '1.1')
         localStorage.removeItem('sporeus-eliteProgram')
         localStorage.removeItem('sporeus-yearly-plan')
         localStorage.removeItem('sporeus_log')
