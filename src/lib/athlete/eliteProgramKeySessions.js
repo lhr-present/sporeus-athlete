@@ -133,8 +133,8 @@ const RUN_BUILD = [
       tr: 'Aşırı yorgunluk olmadan laktat temizleme temposunu sabitleyen tekrarlar.',
     },
     structure: {
-      en: '15 min warm-up + 5x1km @T-pace with 60-90s jog recovery + 10 min cool-down.',
-      tr: '15 dk ısınma + 5x1km @T-tempo, 60-90s jog dinlenme + 10 dk soğuma.',
+      en: '15 min warm-up + 5x1km @T-pace with 2 min jog recovery (equal-time) + 10 min cool-down.',
+      tr: '15 dk ısınma + 5x1km @T-tempo, 2 dk jog dinlenme (eşit-süre) + 10 dk soğuma.',
     },
     warmup: { en: '15 min easy + drills + strides.', tr: '15 dk kolay + drill + adım.' },
     cooldown: { en: '10 min easy.', tr: '10 dk kolay.' },
@@ -142,7 +142,7 @@ const RUN_BUILD = [
     alternates: [
       { en: 'Treadmill: same prescription, 1% incline.', tr: 'Koşubandı: aynı reçete, %1 eğim.' },
     ],
-    citation: 'Daniels 2014',
+    citation: 'Daniels 2014; Pfitzinger 2014 (equal-time recovery for ≥800m reps)',
   },
   {
     key: 'run-build-progression',
@@ -231,16 +231,16 @@ const RUN_PEAK = [
       tr: 'Hedef yarış temposunu kontrollü yorgunlukta nöromüsküler hafızaya yerleştirmek.',
     },
     structure: {
-      en: '15 min warm-up + 5x1km at goal race pace with 90s jog + 10 min cool-down.',
-      tr: '15 dk ısınma + 5x1km hedef yarış temposunda, 90s jog + 10 dk soğuma.',
+      en: '15 min warm-up + 5x1km at goal race pace with 4 min jog (equal-time recovery) + 10 min cool-down.',
+      tr: '15 dk ısınma + 5x1km hedef yarış temposunda, 4 dk jog (eşit-süre dinlenme) + 10 dk soğuma.',
     },
     warmup: { en: '15 min easy + drills + 4x100m.', tr: '15 dk kolay + drill + 4x100m.' },
     cooldown: { en: '10 min easy.', tr: '10 dk kolay.' },
     intensity: { en: 'Goal race pace · RPE 7-8/10', tr: 'Hedef yarış temposu · RPE 7-8/10' },
     alternates: [
-      { en: 'Less rest: 60s jog to simulate end-of-race.', tr: 'Daha az dinlenme: yarış sonunu taklit için 60s jog.' },
+      { en: 'Race-final simulation: 90s jog on final 2 reps only (mimic late-race fatigue).', tr: 'Yarış-sonu simülasyon: sadece son 2 tekrarda 90s jog (yarış sonu yorgunluğunu taklit).' },
     ],
-    citation: 'Daniels 2014; Pfitzinger 2014',
+    citation: 'Daniels 2014; Pfitzinger 2014 (equal-time jog for sub-elite ≥1km reps)',
   },
   {
     key: 'run-peak-tempo-strides',

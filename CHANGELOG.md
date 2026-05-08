@@ -4,6 +4,53 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.10.2 — 2026-05-09 — coach-roleplay polish: Build polarization + 5x1km recovery time
+
+  Coach roleplay audit (Renato Canova / Allen Lim / Daniels
+  perspective on a 45:00 → 42:00 10k athlete) flagged 3
+  prescription-quality issues that real coaches would
+  change. All three are small but operationally
+  meaningful.
+
+  • Build sample week polarization fix. Pre-v9.10.2 the
+    run Build week had Tue threshold 2x20 (Z4) + Thu
+    cruise intervals (Z4) = ~70 min Z4 = 35% high-
+    intensity. Seiler 80/20 calls for max ~20-25%. Real
+    coaches don't double-stack Z4 48h apart.
+    Fix: Thu now prescribes VO2max 5x3 (Z5, 30 min hard),
+    keeping Tue threshold. Net: 40 min Z4 + 30 min Z5 =
+    ~25% hard, properly polarized. paceTarget switches
+    from T-pace to I-pace for Thu.
+
+  • run-build-cruise (5x1km @T-pace) recovery 60-90s →
+    2 min equal-time. Pfitzinger 2014 prescribes equal-
+    time jog for reps ≥800m; 60-90s is junk recovery
+    for 1km T-pace efforts and causes cumulative
+    lactate spike rather than pacing fidelity.
+
+  • run-peak-race-pace (5x1km @goal pace) recovery 90s
+    → 4 min equal-time. Same logic; for race-pace
+    rehearsal at 4:12/km a 90s jog covers ~450m of
+    incomplete clearance. Fix: 4 min jog matches
+    1km duration (equal-time). Alternate kept for
+    "race-final simulation" (90s on final 2 reps).
+
+  Tests: 9350/9350 still green — no test changes needed
+  (the existing assertions don't pin specific recovery
+  durations or Thu intent text, so the polarization fix
+  passes silently). Lint clean.
+
+  Files: src/lib/athlete/eliteProgram.js (1 line in run
+  Build sample week + 4-line comment); src/lib/athlete/
+  eliteProgramKeySessions.js (2 sessions, structure +
+  citation tweaks).
+
+  Citations: Daniels 2014; Pfitzinger 2014; Seiler 2010
+  polarized training; Stöggl & Sperlich 2015 ("Polarized
+  training has greater impact").
+
+---
+
 ## v9.10.1 — 2026-05-09 — fix: QuickAddModal rowing default type was 'Easy Run' copy-paste bug
 
   Audit caught a 1-line copy-paste bug in

@@ -414,7 +414,11 @@ function runSampleWeek(phase, paces, trainingDays) {
       { day: 'Mon', intent: { en: 'Rest',         tr: 'Dinlenme' },         durationMin: 0,        zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },           paceTarget: null },
       { day: 'Tue', intent: { en: 'Threshold 2x20', tr: 'Eşik 2x20' },      durationMin: tempo + 10, zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 40, Z5: 0 },        paceTarget: fmtPaceStr(paces?.T) },
       { day: 'Wed', intent: { en: 'Easy run',     tr: 'Kolay koşu' },       durationMin: easy,     zones: { Z1: easy, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: fmtPaceStr(paces?.E) },
-      { day: 'Thu', intent: { en: 'Cruise intervals', tr: 'Cruise interval' }, durationMin: tempo,  zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 30, Z5: 0 },         paceTarget: fmtPaceStr(paces?.T) },
+      // v9.10.2: Build week polarization fix — was 'Cruise intervals' (Z4),
+      // creating Tue+Thu Z4 doubling = ~35% high-intensity. Coach review
+      // (Seiler 80/20) flagged: spread stimuli, keep Tue threshold, move Thu
+      // to VO2max (Z5). Now ~25% hard, properly polarized.
+      { day: 'Thu', intent: { en: 'VO2max 5x3', tr: 'VO2max 5x3' }, durationMin: 55, zones: { Z1: 25, Z2: 0, Z3: 0, Z4: 0, Z5: 30 },         paceTarget: fmtPaceStr(paces?.I) },
       { day: 'Fri', intent: { en: 'Rest',         tr: 'Dinlenme' },         durationMin: 0,        zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },           paceTarget: null },
       { day: 'Sat', intent: { en: 'Easy + strides', tr: 'Kolay + adımlar' },durationMin: easy,     zones: { Z1: easy - 5, Z2: 0, Z3: 0, Z4: 0, Z5: 5 },    paceTarget: fmtPaceStr(paces?.E) },
       { day: 'Sun', intent: { en: 'Long run + MP', tr: 'Uzun koşu + MP' },  durationMin: long + 10, zones: { Z1: long - 10, Z2: 20, Z3: 0, Z4: 0, Z5: 0 },  paceTarget: fmtPaceStr(paces?.M) },
