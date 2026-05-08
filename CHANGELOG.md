@@ -4,6 +4,96 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.7.0 — 2026-05-08 — Rowing parity in Mission #1: orchestrator unblock + rowingSampleWeek + ROWING_* key sessions + race-week + substitutions + dashboard gate, 9296 tests
+
+  Pre-v9.7.0 the Mission #1 Elite Program builder rejected
+  rowing at the orchestrator gate even though the app has
+  a complete rowing sport-science library (Paul 1969,
+  Concept2 Hagerman 1984, British Rowing 7-zone system)
+  and SportProgramBuilder supports rowing fully. v9.7.0
+  closes the gap so rowers get the same periodized program
+  treatment as runners, cyclists, swimmers, and triathletes.
+
+  Changes:
+
+  • orchestrator (eliteProgram.js) — rowing branch
+    parallel to run/bike/swim/triathlon. PR convention:
+    distanceM=0 → timeSec is the 2000m row time; non-zero
+    distance → predict 2k via Paul's law. Computes 500m
+    split, populates currentLevel.split2kSec /
+    .split500Sec / .paces (British zones).
+
+  • rowingGainPerBlock(time2000Sec) — sec/block gain
+    rate calibrated against C2 World-Records progression
+    and British Rowing pathway (1 sec sub-6:20, 2 sec
+    sub-7:00, 3 sec sub-7:30, 4 sec sub-8:00, 5 sec
+    recreational).
+
+  • rowingSampleWeek(phase, split500Sec) — 7-day week
+    per phase mapping British UT2/UT1/AT/TR/2k/AN to
+    the app's Z1-Z5. Base prioritises long UT2 + AT
+    introduction; Build adds TR pieces; Peak runs 2k
+    pace + AN power; Taper sharpens with race-pace
+    openers.
+
+  • ROWING_BASE / BUILD / PEAK / TAPER key session
+    arrays in eliteProgramKeySessions.js (3 sessions
+    each, all bilingual EN+TR, all citing Paul 1969 /
+    Nolte 2005 / Mujika 2003 / British Rowing).
+
+  • ROWING_SCHEDULE in eliteProgramRaceWeek.js — 8-day
+    T-7 to T-0 protocol with rowing-specific session
+    progression and equipment checks.
+
+  • RACE_DAY_ROWING — short-race fueling (no mid-race
+    nutrition for sub-8-min effort), comprehensive
+    warmup (cold rowing strokes risk back/catch
+    injury), pacing strategy (controlled first 500m,
+    open last 500m).
+
+  • SUBSTITUTIONS_ROWING — erg ↔ on-water swaps,
+    weather alternates (head-wind cost 5-10 sec/500m),
+    injury alternates (back tweak → cycle Z3-Z4
+    sweet-spot).
+
+  • Dashboard.jsx — hasRowingData useMemo mirroring
+    hasCyclingData / hasSwimData. RowingMetricsCard
+    is now gated by it (was always-on).
+
+  Tests: +10 in eliteProgram.test.js covering shape,
+  feasibility math, target-not-faster rejection,
+  Paul-law 2k prediction from non-2k race times,
+  sample-week content, key-session library
+  population, race-week sharpener, race-day fueling
+  language, substitution keys, paceTarget format.
+  Total: 9296/9296 green. Lint clean. Bundle 84.07
+  KB gz (within 95 KB).
+
+  Files: src/lib/athlete/eliteProgram.js (+86 lines:
+  imports, gain helper, sample week, branch);
+  src/lib/athlete/eliteProgramKeySessions.js (+158
+  lines: 12 rowing sessions); src/lib/athlete/
+  eliteProgramRaceWeek.js (+50 lines: ROWING_SCHEDULE
+  + RACE_DAY_ROWING); src/lib/athlete/
+  eliteProgramSubstitutions.js (+33 lines:
+  SUBSTITUTIONS_ROWING); src/components/Dashboard.jsx
+  (+8 lines: hasRowingData + gate).
+
+  Citation: Paul 1969 (Paul's Law); Hagerman 1984
+  (C2 calibration); Nolte 2005 (rowing periodization);
+  Mujika 2003 (taper); British Rowing Performance Plan.
+
+  Out of scope (deferred to v9.8.0): race-simulation
+  Peak workout; field-test recalibration loop;
+  open-water tri transitions; pre-race meal library;
+  altitude/heat/timezone conditional protocol.
+
+  Depends on: v9.6.0 multi-discipline tri; v9.5.0
+  calendar progress + planMilestones; rowing.js +
+  rowingTemplates.js libraries.
+
+---
+
 ## v9.6.0 — 2026-05-08 — Triathlon multi-discipline plans: swim/bike/run sample weeks, flattened key-session library, discipline-aware quick-log, 9286 tests
 
   Pre-v9.6.0 triathlon mode emitted the run sample week

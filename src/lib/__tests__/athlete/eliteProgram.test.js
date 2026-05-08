@@ -404,6 +404,102 @@ describe('buildEliteProgram — triathlon sport', () => {
   })
 })
 
+describe('buildEliteProgram — rowing sport (v9.7.0)', () => {
+  const ROWING_REALISTIC = {
+    sport: 'rowing',
+    currentPR: { distanceM: 0, timeSec: 420 },  // 7:00 2k
+    targetPR:  { distanceM: 0, timeSec: 405 },  // 6:45 2k (15-sec drop)
+    raceDate: '2026-09-15',
+    options: { today: TODAY },
+    profile: { bodyMassKg: 80, weeklyHours: 8 },
+  }
+
+  it('returns valid program shape for rowing', () => {
+    const r = buildEliteProgram(ROWING_REALISTIC)
+    expect(r).toBeTruthy()
+    expect(r.sport).toBe('rowing')
+    expect(r.feasibility?.band).toBeTruthy()
+  })
+
+  it('currentLevel exposes 2k split fields', () => {
+    const r = buildEliteProgram(ROWING_REALISTIC)
+    expect(r.currentLevel.split2kSec).toBe(420)
+    expect(r.currentLevel.split500Sec).toBe(105)  // 420/4
+    expect(r.currentLevel.vdot).toBeNull()
+    expect(r.currentLevel.ftp).toBeNull()
+    expect(r.currentLevel.css).toBeNull()
+  })
+
+  it('rejects target slower than current', () => {
+    const r = buildEliteProgram({
+      ...ROWING_REALISTIC,
+      targetPR: { distanceM: 0, timeSec: 450 },  // 7:30 (slower)
+    })
+    expect(r._rejected).toBe(true)
+    expect(r.reason).toBe('target-not-faster')
+  })
+
+  it('predicts 2k from non-2k race time via Paul law', () => {
+    const r = buildEliteProgram({
+      ...ROWING_REALISTIC,
+      currentPR: { distanceM: 5000, timeSec: 1110 },  // 18:30 5k row
+      targetPR:  { distanceM: 5000, timeSec: 1080 },  // 18:00
+    })
+    expect(r).toBeTruthy()
+    expect(r.currentLevel.split2kSec).toBeGreaterThan(0)
+    expect(r.currentLevel.split2kSec).toBeLessThan(450)
+  })
+
+  it('sample weeks span all 4 phases with rowing-specific content', () => {
+    const r = buildEliteProgram(ROWING_REALISTIC)
+    for (const phase of ['Base', 'Build', 'Peak', 'Taper']) {
+      const wk = r.sampleWeeks[phase]
+      expect(Array.isArray(wk)).toBe(true)
+      expect(wk.length).toBe(7)  // 7 days
+      const intentTexts = wk.map(d => d.intent.en).join(' ').toLowerCase()
+      expect(/ut2|ut1|at|tr|2k|race-pace|sharpener/.test(intentTexts)).toBe(true)
+    }
+  })
+
+  it('keySessionLibrary populated with rowing sessions per phase', () => {
+    const r = buildEliteProgram(ROWING_REALISTIC)
+    for (const phase of ['Base', 'Build', 'Peak', 'Taper']) {
+      const lib = r.keySessionLibrary[phase]
+      expect(Array.isArray(lib)).toBe(true)
+      expect(lib.length).toBeGreaterThan(0)
+      for (const s of lib) {
+        expect(s.key).toMatch(/^row-/)
+        expect(s.citation).toBeTruthy()
+      }
+    }
+  })
+
+  it('raceWeekProtocol includes rowing-specific T-2 sharpener', () => {
+    const r = buildEliteProgram(ROWING_REALISTIC)
+    const t2 = r.raceWeekProtocol.schedule.find(d => d.tMinus === 2)
+    expect(t2).toBeTruthy()
+    expect(t2.session.en.toLowerCase()).toMatch(/sharpener|250m|an/i)
+  })
+
+  it('raceWeekProtocol day-of mentions short-race fueling', () => {
+    const r = buildEliteProgram(ROWING_REALISTIC)
+    expect(r.raceWeekProtocol.raceDay.fueling.en).toMatch(/no mid-race|<8 min|race <8/i)
+  })
+
+  it('substitutionMap has rowing-specific keys (Easy/Threshold/RacePace/Race)', () => {
+    const r = buildEliteProgram(ROWING_REALISTIC)
+    expect(Object.keys(r.substitutionMap)).toContain('Threshold')
+    expect(Object.keys(r.substitutionMap)).toContain('RacePace')
+    expect(r.substitutionMap.Easy.indoor.en).toMatch(/erg/i)
+  })
+
+  it('paceTarget on UT2 days uses split format (M:SS/500m)', () => {
+    const r = buildEliteProgram(ROWING_REALISTIC)
+    const utDay = r.sampleWeeks.Base.find(d => /ut2/i.test(d.intent.en) && d.durationMin > 0)
+    expect(utDay.paceTarget).toMatch(/^\d+:\d{2}\/500m$/)
+  })
+})
+
 describe('buildEliteProgram — output shape and metadata', () => {
   it('citation includes Daniels, Coggan, Wakayoshi', () => {
     const r = buildEliteProgram(RUN_REALISTIC)

@@ -713,10 +713,253 @@ const SWIM_TAPER = [
   },
 ]
 
+// ─── ROWING — British Rowing 7-zone system, Paul 1969 + Concept2 calibration ─
+
+const ROWING_BASE = [
+  {
+    key: 'row-base-ut2-long',
+    name: { en: 'UT2 long row', tr: 'UT2 uzun kürek' },
+    purpose: {
+      en: 'Foundation aerobic capacity. Long, low-intensity rowing builds mitochondrial density and stroke economy.',
+      tr: 'Temel aerobik kapasite. Uzun ve düşük şiddetli kürek mitokondri yoğunluğu ve kürek ekonomisi geliştirir.',
+    },
+    structure: {
+      en: '60-90 min continuous at UT2 split (~115% of 2k split). Stroke rate 18-20 spm.',
+      tr: '60-90 dk kesintisiz UT2 split (~2k split %115). Vuruş hızı 18-20 spm.',
+    },
+    warmup: { en: '10 min easy at 16-18 spm + 4 power-10s.', tr: '10 dk kolay 16-18 spm + 4 güç-10.' },
+    cooldown: { en: '5 min easy at 14 spm + mobility.', tr: '5 dk kolay 14 spm + mobilite.' },
+    intensity: { en: 'UT2 · ~65% HRmax · RPE 4-5/10 · ratio 1:2 work:rest', tr: 'UT2 · ~%65 HRmax · RPE 4-5/10' },
+    alternates: [
+      { en: 'On water: 14-18 km steady-state row.', tr: 'Suda: 14-18 km sabit kürek.' },
+      { en: 'Substitute: 75 min easy bike at Z1-Z2.', tr: 'İkame: 75 dk kolay bisiklet Z1-Z2.' },
+    ],
+    citation: 'Paul 1969; Nolte 2005',
+  },
+  {
+    key: 'row-base-ut1-tempo',
+    name: { en: 'UT1 moderate tempo', tr: 'UT1 orta tempo' },
+    purpose: {
+      en: 'Upper aerobic capacity. UT1 sits just below lactate threshold; sustained tempo improves fatigue resistance.',
+      tr: 'Üst aerobik kapasite. UT1 laktat eşiğinin hemen altındadır; sürekli tempo yorgunluk direncini geliştirir.',
+    },
+    structure: {
+      en: '50-60 min at UT1 split (~110% of 2k split). Stroke rate 20-22 spm.',
+      tr: '50-60 dk UT1 split (~2k split %110). Vuruş hızı 20-22 spm.',
+    },
+    warmup: { en: '10 min UT2 build + 8 spm change drill.', tr: '10 dk UT2 + 8 spm değişim drili.' },
+    cooldown: { en: '5 min easy at 14 spm.', tr: '5 dk kolay 14 spm.' },
+    intensity: { en: 'UT1 · 70-80% HRmax · RPE 6/10', tr: 'UT1 · %70-80 HRmax · RPE 6/10' },
+    alternates: [
+      { en: 'On water: 12-14 km at race +5-8 sec/500m.', tr: 'Suda: 12-14 km yarış +5-8 sn/500m.' },
+    ],
+    citation: 'Paul 1969',
+  },
+  {
+    key: 'row-base-at-intro',
+    name: { en: 'AT threshold 4x2000m', tr: 'AT eşik 4x2000m' },
+    purpose: {
+      en: 'Introduce threshold work. AT pieces at lactate threshold raise MLSS without depleting glycogen excessively.',
+      tr: 'Eşik çalışmasına giriş. AT parçaları laktat eşiğinde MLSS yükseltir, glikojeni aşırı tüketmeden.',
+    },
+    structure: {
+      en: '4x2000m at AT split (~108% of 2k split) with 3 min easy row between. Stroke rate 22-24 spm.',
+      tr: '4x2000m AT split (~2k split %108), 3 dk kolay arası. Vuruş hızı 22-24 spm.',
+    },
+    warmup: { en: '15 min UT2 + 4x250m build.', tr: '15 dk UT2 + 4x250m kademeli.' },
+    cooldown: { en: '10 min UT2 easy.', tr: '10 dk UT2 kolay.' },
+    intensity: { en: 'AT · 82-87% HRmax · RPE 7-8/10', tr: 'AT · %82-87 HRmax · RPE 7-8/10' },
+    alternates: [
+      { en: 'On water: 4x1500m at AT split.', tr: 'Suda: 4x1500m AT split.' },
+      { en: 'Reduced: 3x1500m if recovery low.', tr: 'Azaltılmış: 3x1500m toparlanma düşükse.' },
+    ],
+    citation: 'Paul 1969; British Rowing Performance Plan',
+  },
+]
+
+const ROWING_BUILD = [
+  {
+    key: 'row-build-at-pieces',
+    name: { en: 'AT threshold 5x2000m', tr: 'AT eşik 5x2000m' },
+    purpose: {
+      en: 'Build phase spine. Higher volume of threshold work consolidates lactate clearance capacity.',
+      tr: 'Build fazının omurgası. Daha yüksek hacimli eşik çalışması laktat temizleme kapasitesini sağlamlaştırır.',
+    },
+    structure: {
+      en: '5x2000m at AT split with 3 min easy. Total ~50 min @ AT.',
+      tr: '5x2000m AT split, 3 dk kolay arası. Toplam ~50 dk @ AT.',
+    },
+    warmup: { en: '15 min UT2 + 4 power-20s.', tr: '15 dk UT2 + 4 güç-20.' },
+    cooldown: { en: '10 min UT1 → UT2 fade.', tr: '10 dk UT1 → UT2 azaltma.' },
+    intensity: { en: 'AT · ~85% HRmax · RPE 8/10', tr: 'AT · ~%85 HRmax · RPE 8/10' },
+    alternates: [
+      { en: 'On water: 5x1500m race-prep distance.', tr: 'Suda: 5x1500m yarış-hazırlık mesafe.' },
+    ],
+    citation: 'Nolte 2005; British Rowing Performance Plan',
+  },
+  {
+    key: 'row-build-tr-pieces',
+    name: { en: 'TR pieces 6x1000m', tr: 'TR parçalar 6x1000m' },
+    purpose: {
+      en: 'Race-pace specificity. TR sits just above 2k pace; teaches rowers to hold sustained sub-2k effort.',
+      tr: 'Yarış-tempo özgüllüğü. TR 2k temposunun hemen üstündedir; sürekli sub-2k efor tutmayı öğretir.',
+    },
+    structure: {
+      en: '6x1000m at TR split (~103% of 2k split, i.e. 1-2 sec/500m slower than race). 4 min easy between.',
+      tr: '6x1000m TR split (~2k split %103, yarıştan 1-2 sn/500m yavaş). Aralarda 4 dk kolay.',
+    },
+    warmup: { en: '15 min UT2 + 4x500m build.', tr: '15 dk UT2 + 4x500m kademeli.' },
+    cooldown: { en: '10 min UT1 → UT2.', tr: '10 dk UT1 → UT2.' },
+    intensity: { en: 'TR · 88-92% HRmax · RPE 8-9/10 · stroke 28-30 spm', tr: 'TR · %88-92 HRmax · RPE 8-9/10 · vuruş 28-30 spm' },
+    alternates: [
+      { en: 'On water: 6x500m at TR pace.', tr: 'Suda: 6x500m TR temposunda.' },
+    ],
+    citation: 'Paul 1969; British Rowing TR protocol',
+  },
+  {
+    key: 'row-build-ut2-volume',
+    name: { en: 'UT2 long endurance 90min', tr: 'UT2 uzun dayanıklılık 90dk' },
+    purpose: {
+      en: 'Maintain aerobic base while build phase intensity rises. Volume retention prevents detraining.',
+      tr: 'Build fazı şiddeti yükselirken aerobik tabanı korumak. Hacim koruma detrening önler.',
+    },
+    structure: {
+      en: '90 min continuous UT2 split at 18-20 spm. Insert 4x4 power-10s mid-row.',
+      tr: '90 dk kesintisiz UT2 split, 18-20 spm. Orta yerde 4x4 güç-10 ekle.',
+    },
+    warmup: { en: '10 min easy at 16 spm.', tr: '10 dk kolay 16 spm.' },
+    cooldown: { en: '5 min cooldown at 14 spm.', tr: '5 dk soğuma 14 spm.' },
+    intensity: { en: 'UT2 · 60-70% HRmax · RPE 4-5/10', tr: 'UT2 · %60-70 HRmax · RPE 4-5/10' },
+    alternates: [
+      { en: 'On water: 18-22 km steady row.', tr: 'Suda: 18-22 km sabit kürek.' },
+    ],
+    citation: 'Nolte 2005',
+  },
+]
+
+const ROWING_PEAK = [
+  {
+    key: 'row-peak-2k-pace',
+    name: { en: '2k race-pace 8x500m', tr: '2k yarış-tempo 8x500m' },
+    purpose: {
+      en: 'Race-pace power and lactate tolerance. 8x500m at exact 2k split rehearses race effort.',
+      tr: 'Yarış-tempo gücü ve laktat toleransı. 8x500m tam 2k split yarış eforunu prova eder.',
+    },
+    structure: {
+      en: '8x500m at 2k race split with 5 min easy row between. Total race-pace volume = 4000m.',
+      tr: '8x500m 2k yarış splitinde, aralarda 5 dk kolay. Toplam yarış-tempo hacmi 4000m.',
+    },
+    warmup: { en: '15 min UT2 + 4x250m race-pace primer.', tr: '15 dk UT2 + 4x250m yarış-tempo hazırlık.' },
+    cooldown: { en: '10 min UT2 easy.', tr: '10 dk UT2 kolay.' },
+    intensity: { en: '2k pace · 92-96% HRmax · RPE 9/10 · stroke 32-34 spm', tr: '2k tempo · %92-96 HRmax · RPE 9/10 · vuruş 32-34 spm' },
+    alternates: [
+      { en: 'Variation: 6x500m at 2k pace + 2x500m at AN pace.', tr: 'Varyasyon: 6x500m 2k + 2x500m AN.' },
+    ],
+    citation: 'Paul 1969; British Rowing 2k protocol',
+  },
+  {
+    key: 'row-peak-an-power',
+    name: { en: 'AN power 10x250m', tr: 'AN güç 10x250m' },
+    purpose: {
+      en: 'Anaerobic capacity and sprint finish. Critical for the last 250m of any 2k race.',
+      tr: 'Anaerobik kapasite ve sprint finiş. Her 2k yarışın son 250m\'sinde kritik.',
+    },
+    structure: {
+      en: '10x250m at AN pace (~95% of 2k split, i.e. faster than race). 6 min recovery between (full clearance).',
+      tr: '10x250m AN tempo (~2k split %95, yarıştan hızlı). Aralarda 6 dk toparlanma (tam temizlik).',
+    },
+    warmup: { en: '15 min UT2 + 4x100m sprint primer.', tr: '15 dk UT2 + 4x100m sprint hazırlık.' },
+    cooldown: { en: '10 min UT2 + mobility.', tr: '10 dk UT2 + mobilite.' },
+    intensity: { en: 'AN · ~98% HRmax · RPE 9-10/10 · stroke 36+ spm', tr: 'AN · ~%98 HRmax · RPE 9-10/10 · vuruş 36+ spm' },
+    alternates: [
+      { en: 'Reduced: 8x250m if last hard session was <48h ago.', tr: 'Azaltılmış: 8x250m son sert seans <48s önce ise.' },
+    ],
+    citation: 'Paul 1969; British Rowing AN protocol',
+  },
+  {
+    key: 'row-peak-tr-volume',
+    name: { en: 'TR volume 5x1500m', tr: 'TR hacim 5x1500m' },
+    purpose: {
+      en: 'Sustained race-pace fitness retention. 5x1500m approaches full 2k race volume at TR effort.',
+      tr: 'Sürekli yarış-tempo fitness koruma. 5x1500m TR eforunda tam 2k yarış hacmine yaklaşır.',
+    },
+    structure: {
+      en: '5x1500m at TR split, 4 min easy row between. Total ~50 min @ TR.',
+      tr: '5x1500m TR split, aralarda 4 dk kolay. Toplam ~50 dk @ TR.',
+    },
+    warmup: { en: '15 min UT2 + 4 build pieces.', tr: '15 dk UT2 + 4 kademeli.' },
+    cooldown: { en: '10 min UT1 → UT2.', tr: '10 dk UT1 → UT2.' },
+    intensity: { en: 'TR · 88-92% HRmax · RPE 8-9/10', tr: 'TR · %88-92 HRmax · RPE 8-9/10' },
+    alternates: [
+      { en: 'On water: 5x1000m at TR pace.', tr: 'Suda: 5x1000m TR tempo.' },
+    ],
+    citation: 'Nolte 2005',
+  },
+]
+
+const ROWING_TAPER = [
+  {
+    key: 'row-taper-race-openers',
+    name: { en: 'Race-pace openers 4x500m', tr: 'Yarış-tempo açılış 4x500m' },
+    purpose: {
+      en: 'Neural priming. Short race-pace pieces sharpen stroke timing without depleting glycogen.',
+      tr: 'Nöral hazırlık. Kısa yarış-tempo parçaları kürek zamanlamasını keskinleştirir, glikojen tüketmeden.',
+    },
+    structure: {
+      en: '4x500m at 2k race split with 5 min easy between. Stroke rate exact race rate (32-34 spm).',
+      tr: '4x500m 2k yarış splitinde, aralarda 5 dk kolay. Vuruş hızı yarış hızı (32-34 spm).',
+    },
+    warmup: { en: '12 min UT2 + 2x250m build.', tr: '12 dk UT2 + 2x250m kademeli.' },
+    cooldown: { en: '10 min UT2 easy.', tr: '10 dk UT2 kolay.' },
+    intensity: { en: '2k pace · RPE 8-9/10 · controlled', tr: '2k tempo · RPE 8-9/10 · kontrollü' },
+    alternates: [
+      { en: 'Variation: 3x500m if energy low.', tr: 'Varyasyon: 3x500m enerji düşükse.' },
+    ],
+    citation: 'Mujika 2003 (taper)',
+  },
+  {
+    key: 'row-taper-sharpener',
+    name: { en: 'Sharpener 8x250m', tr: 'Keskinleştirme 8x250m' },
+    purpose: {
+      en: 'Maintain top-end without fatigue. 8x250m at AN pace primes the sprint finish neural pattern.',
+      tr: 'Üst-ucu yorgunluk olmadan korumak. 8x250m AN tempo sprint finiş nöral kalıbını hazırlar.',
+    },
+    structure: {
+      en: '8x250m at AN pace with 4 min easy. Stop early if stroke quality degrades.',
+      tr: '8x250m AN tempo, aralarda 4 dk kolay. Kürek kalitesi bozulursa erken durdur.',
+    },
+    warmup: { en: '12 min UT2 + 4x100m primer.', tr: '12 dk UT2 + 4x100m hazırlık.' },
+    cooldown: { en: '8 min UT1 → UT2.', tr: '8 dk UT1 → UT2.' },
+    intensity: { en: 'AN · RPE 9/10 · short clean strokes', tr: 'AN · RPE 9/10 · kısa temiz vuruşlar' },
+    alternates: [
+      { en: 'Reduced: 6x250m if race within 5 days.', tr: 'Azaltılmış: 6x250m yarış 5 gün içindeyse.' },
+    ],
+    citation: 'Mujika 2003; British Rowing taper',
+  },
+  {
+    key: 'row-taper-shakeout',
+    name: { en: 'Pre-race shakeout 20min', tr: 'Yarış öncesi açılış 20dk' },
+    purpose: {
+      en: 'Wake the system. Short shakeout the day before race retains neural drive without fatigue.',
+      tr: 'Sistemi uyandır. Yarıştan bir gün önce kısa açılış nöral itkiyi korur, yorgunluk olmadan.',
+    },
+    structure: {
+      en: '20 min total: 12 min UT2 + 4x100m at race pace + 4 min UT2.',
+      tr: '20 dk toplam: 12 dk UT2 + 4x100m yarış tempo + 4 dk UT2.',
+    },
+    warmup: { en: 'Built into the row.', tr: 'Kürek içinde.' },
+    cooldown: { en: '5 min mobility.', tr: '5 dk mobilite.' },
+    intensity: { en: 'Easy + brief race-pace · RPE 4 → 7 → 4', tr: 'Kolay + kısa yarış-tempo · RPE 4 → 7 → 4' },
+    alternates: [],
+    citation: 'Mujika 2003',
+  },
+]
+
 const LIBRARY = {
-  run:  { Base: RUN_BASE,  Build: RUN_BUILD,  Peak: RUN_PEAK,  Taper: RUN_TAPER  },
-  bike: { Base: BIKE_BASE, Build: BIKE_BUILD, Peak: BIKE_PEAK, Taper: BIKE_TAPER },
-  swim: { Base: SWIM_BASE, Build: SWIM_BUILD, Peak: SWIM_PEAK, Taper: SWIM_TAPER },
+  run:    { Base: RUN_BASE,    Build: RUN_BUILD,    Peak: RUN_PEAK,    Taper: RUN_TAPER  },
+  bike:   { Base: BIKE_BASE,   Build: BIKE_BUILD,   Peak: BIKE_PEAK,   Taper: BIKE_TAPER },
+  swim:   { Base: SWIM_BASE,   Build: SWIM_BUILD,   Peak: SWIM_PEAK,   Taper: SWIM_TAPER },
+  rowing: { Base: ROWING_BASE, Build: ROWING_BUILD, Peak: ROWING_PEAK, Taper: ROWING_TAPER },
 }
 
 /**

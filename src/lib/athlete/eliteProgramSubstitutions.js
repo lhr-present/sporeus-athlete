@@ -135,15 +135,48 @@ const SUBSTITUTIONS_SWIM = {
   },
 }
 
+// v9.7.0 — Rowing substitutions: erg ↔ on-water, weather, injury alternates.
+const SUBSTITUTIONS_ROWING = {
+  Easy: {
+    indoor: { en: 'Concept2 erg same UT2 prescription.', tr: 'Concept2 erg aynı UT2 reçetesi.' },
+    crossTrain: { en: '45-60 min easy bike Z1-Z2 (preserves leg drive).', tr: '45-60 dk kolay bisiklet Z1-Z2 (bacak gücünü korur).' },
+    injured: { en: 'Back/shoulder injury: pool aqua-jog 30-45 min.', tr: 'Sırt/omuz sakatlığı: havuzda aqua-jog 30-45 dk.' },
+    weather: { en: 'Wind/cold/storm: switch to erg same prescription.', tr: 'Rüzgar/soğuk/fırtına: erge aynı reçete ile geç.' },
+    missedMakeup: { en: 'Skip; UT2 volume builds slowly.', tr: 'Atla; UT2 hacmi yavaş kurulur.' },
+  },
+  Threshold: {
+    indoor: { en: 'Erg: 4-5x2000m at AT split, same prescription.', tr: 'Erg: 4-5x2000m AT splitte, aynı reçete.' },
+    crossTrain: { en: 'No direct swap — AT pieces require rowing-specific muscle recruitment.', tr: 'Doğrudan değiş yok — AT parçaları küreğe özgü kas grubu gerektirir.' },
+    injured: { en: 'Lower-back tweak: cycle 60min Z3-Z4 (sweet-spot) instead.', tr: 'Bel ağrısı: bunun yerine 60dk Z3-Z4 bisiklet (sweet-spot).' },
+    weather: { en: 'On water unsafe: erg with mirror for posture check.', tr: 'Su güvensiz: erg, postür kontrolü için ayna.' },
+    missedMakeup: { en: 'Combine into next AT session at 80% intensity.', tr: 'Sonraki AT seansına %80 şiddette birleştir.' },
+  },
+  RacePace: {
+    indoor: { en: 'Erg: 8x500m at 2k pace.', tr: 'Erg: 8x500m 2k tempo.' },
+    crossTrain: { en: 'No swap — race-pace work is rowing-specific.', tr: 'Değiş yok — yarış-tempo küreğe özgü.' },
+    injured: { en: 'Skip — quality cannot be replicated.', tr: 'Atla — kalite taklit edilemez.' },
+    weather: { en: 'Erg only when on-water unsafe.', tr: 'Su güvensizse sadece erg.' },
+    missedMakeup: { en: 'Reschedule within 48h or skip.', tr: '48 saat içinde yeniden planla veya atla.' },
+  },
+  Race: {
+    indoor: { en: 'Indoor 2k erg race if outdoor cancelled.', tr: 'Dış mekan iptal olursa kapalı 2k erg yarışı.' },
+    crossTrain: { en: 'N/A.', tr: 'Geçerli değil.' },
+    injured: { en: 'Pull from race; recovery > result.', tr: 'Yarıştan çekil; toparlanma > sonuç.' },
+    weather: { en: 'Strong wind/wave: erg backup; head-wind reduces splits 5-10 sec/500m.', tr: 'Şiddetli rüzgar/dalga: erg yedek; baş rüzgar splitleri 5-10 sn/500m yavaşlatır.' },
+    missedMakeup: { en: 'N/A.', tr: 'Geçerli değil.' },
+  },
+}
+
 /**
  * @public
- * @param {{ sport: 'run'|'bike'|'swim'|'triathlon' }} input
+ * @param {{ sport: 'run'|'bike'|'swim'|'triathlon'|'rowing' }} input
  * @returns {Record<string, SubstitutionSet>}
  */
 export function buildSubstitutionMap(input) {
   const sport = input?.sport
-  if (sport === 'bike') return SUBSTITUTIONS_BIKE
-  if (sport === 'swim') return SUBSTITUTIONS_SWIM
+  if (sport === 'bike')   return SUBSTITUTIONS_BIKE
+  if (sport === 'swim')   return SUBSTITUTIONS_SWIM
+  if (sport === 'rowing') return SUBSTITUTIONS_ROWING
   return SUBSTITUTIONS_RUN
 }
 

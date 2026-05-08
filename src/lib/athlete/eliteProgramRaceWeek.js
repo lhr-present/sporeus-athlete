@@ -182,6 +182,50 @@ const RACE_DAY_BIKE = {
   mental: { en: 'Numbers, not feelings, in the first hour.', tr: 'İlk saatte hisler değil, rakamlar.' },
 }
 
+// v9.7.0 — Rowing race-week schedule (Mujika 2003 taper + British Rowing protocol).
+const ROWING_SCHEDULE = [
+  { tMinus: 7, day: 'T-7',
+    session: { en: 'Last full quality: 5x1500m @ AT split.', tr: 'Son tam kalite: 5x1500m AT splitte.' },
+    fueling: { en: 'Normal Build-phase fueling.', tr: 'Normal Build-fazı beslenmesi.' },
+    notes: { en: 'Final equipment check (oars, footplate, slide).', tr: 'Son ekipman kontrolü (kürekler, ayak desteği, kızak).' },
+  },
+  { tMinus: 6, day: 'T-6',
+    session: { en: 'UT2 60min + 4 power-10s mid-row.', tr: 'UT2 60dk + orta yerde 4 güç-10.' },
+    fueling: { en: 'CHO ~7 g/kg.', tr: 'CHO ~7 g/kg.' },
+    notes: { en: 'No new equipment from here.', tr: 'Bundan sonra yeni ekipman yok.' },
+  },
+  { tMinus: 5, day: 'T-5',
+    session: { en: 'Rest or 30min UT2 very easy.', tr: 'Dinlenme veya 30dk UT2 çok kolay.' },
+    fueling: { en: 'CHO ~7 g/kg.', tr: 'CHO ~7 g/kg.' },
+    notes: { en: 'Sleep priority begins.', tr: 'Uyku önceliği başlar.' },
+  },
+  { tMinus: 4, day: 'T-4',
+    session: { en: 'Race-pace primer: 4x500m @ 2k pace, 5min easy between.', tr: 'Yarış-tempo hazırlık: 4x500m 2k temposunda, aralarda 5dk kolay.' },
+    fueling: { en: 'CHO ~8 g/kg.', tr: 'CHO ~8 g/kg.' },
+    notes: { en: 'Last race-pace touch.', tr: 'Son yarış-tempo dokunuşu.' },
+  },
+  { tMinus: 3, day: 'T-3',
+    session: { en: 'Rest or 25min UT2 very easy.', tr: 'Dinlenme veya 25dk UT2 çok kolay.' },
+    fueling: { en: 'Begin carb load: CHO 10 g/kg.', tr: 'Karbonhidrat yüklemeye başla: CHO 10 g/kg.' },
+    notes: { en: 'Reduce fiber, fat. Hydration focus.', tr: 'Lif ve yağ azalt. Hidrasyon odak.' },
+  },
+  { tMinus: 2, day: 'T-2',
+    session: { en: 'Sharpener: 6x250m @ AN pace, full recovery.', tr: 'Keskinleştirme: 6x250m AN temposunda, tam toparlanma.' },
+    fueling: { en: 'CHO 10-12 g/kg.', tr: 'CHO 10-12 g/kg.' },
+    notes: { en: 'Light dinner; no novel foods.', tr: 'Hafif akşam yemeği; yeni yiyecek yok.' },
+  },
+  { tMinus: 1, day: 'T-1',
+    session: { en: 'Pre-race shakeout: 20min total (12 UT2 + 4x100m race-pace + 4 UT2).', tr: 'Yarış öncesi açılış: 20dk toplam (12 UT2 + 4x100m yarış-tempo + 4 UT2).' },
+    fueling: { en: 'CHO 10-12 g/kg.', tr: 'CHO 10-12 g/kg.' },
+    notes: { en: 'Pack uniform, water bottles, race nutrition, pre-race fuel.', tr: 'Üniforma, su şişeleri, yarış beslenmesi, yarış-öncesi yakıt paketle.' },
+  },
+  { tMinus: 0, day: 'T-0 (Race day)',
+    session: { en: 'Race.', tr: 'Yarış.' },
+    fueling: { en: 'See race-day fueling block.', tr: 'Yarış günü beslenme bloğunu gör.' },
+    notes: { en: 'Trust the work. First 500m controlled, then build.', tr: 'Çalışmaya güven. İlk 500m kontrollü, sonra kademe.' },
+  },
+]
+
 const RACE_DAY_SWIM = {
   wakeUp: { en: '3 h before race start. Hydrate (300 ml).', tr: 'Yarış başlangıcından 3 saat önce. Hidrate ol (300 ml).' },
   breakfast: { en: 'CHO 1-1.5 g/kg, low-fiber. 2-3 h pre-race.', tr: 'CHO 1-1.5 g/kg, düşük lif. Yarıştan 2-3 sa önce.' },
@@ -194,6 +238,21 @@ const RACE_DAY_SWIM = {
   mental: { en: 'Smooth stroke first. Speed comes from rhythm.', tr: 'Önce akıcı stroke. Hız ritimden gelir.' },
 }
 
+// v9.7.0 — Rowing race-day protocol. 2k race lasts ~6-8 min so fueling is
+// pre-loaded; warmup is comprehensive because cold rowing strokes risk poor
+// catch and back injury.
+const RACE_DAY_ROWING = {
+  wakeUp: { en: '3-4 h before race start. Hydrate (400 ml + electrolytes).', tr: 'Yarış başlangıcından 3-4 saat önce. Hidrate ol (400 ml + elektrolit).' },
+  breakfast: { en: 'CHO 1.5-2 g/kg, low-fiber, low-fat. Familiar foods. 3 h pre-race.', tr: 'CHO 1.5-2 g/kg, düşük lif, düşük yağ. Bilinen yiyecekler. Yarıştan 3 sa önce.' },
+  warmup: { en: '20-25 min: 10 min UT2 + 4x250m build + 4 power-10s + 6 min easy. Ends 10-15 min before start.', tr: '20-25 dk: 10 dk UT2 + 4x250m kademeli + 4 güç-10 + 6 dk kolay. Başlangıçtan 10-15 dk önce bitir.' },
+  pacing: {
+    en: 'First 500m: 1-2 sec/500m above goal split (avoid lactate spike). Middle 1000m: lock goal split. Last 500m: open up rate, drop split if able.',
+    tr: 'İlk 500m: hedef splitten 1-2 sn/500m yavaş (laktat sıçraması yok). Orta 1000m: hedef splitte sabit. Son 500m: hız aç, gücün varsa split düşür.',
+  },
+  fueling: { en: 'Pre-race only: 30 g CHO 30-45 min pre-race. No mid-race fueling needed (race <8 min).', tr: 'Sadece yarış öncesi: yarıştan 30-45 dk önce 30 g CHO. Yarış sırasında beslenme gerekmez (yarış <8 dk).' },
+  mental: { en: 'Trust the rhythm. First 500m is the hardest mental gate; after that you are committed.', tr: 'Ritme güven. İlk 500m en zor zihinsel kapıdır; sonrası bağlanmıştır.' },
+}
+
 /**
  * @public
  * @param {{ sport?: string, raceDate?: string }} input
@@ -202,12 +261,14 @@ const RACE_DAY_SWIM = {
 export function buildRaceWeekProtocol(input) {
   const sport = input?.sport
   const schedule =
-    sport === 'bike' ? BIKE_SCHEDULE :
-    sport === 'swim' ? SWIM_SCHEDULE :
+    sport === 'bike'   ? BIKE_SCHEDULE :
+    sport === 'swim'   ? SWIM_SCHEDULE :
+    sport === 'rowing' ? ROWING_SCHEDULE :
     RUN_SCHEDULE
   const raceDay =
-    sport === 'bike' ? RACE_DAY_BIKE :
-    sport === 'swim' ? RACE_DAY_SWIM :
+    sport === 'bike'   ? RACE_DAY_BIKE :
+    sport === 'swim'   ? RACE_DAY_SWIM :
+    sport === 'rowing' ? RACE_DAY_ROWING :
     RACE_DAY_RUN
   return {
     schedule,

@@ -285,6 +285,13 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       .size >= 3,
     [log, profile])
 
+  // v9.7.0 — rowing gate. profile.primarySport='rowing' OR any log entry typed
+  // as a row/erg/2k test session OR sport='rowing' literal.
+  const hasRowingData   = useMemo(() =>
+    profile?.primarySport === 'rowing' ||
+    log.some(e => /row|erg|2k\s*test/i.test(e.type || '') || /row/i.test(e.sport || '')),
+    [log, profile])
+
   // ── Header badges (sport, level, coach, data quality) ─────────────────────────
   const metricsRow = profileMetrics.length >= 2 ? (
     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
@@ -1000,7 +1007,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       <GoalTrackerCard log={log} profile={profile} dl={dl}/>
       <ErrorBoundary><Suspense fallback={null}><SeasonStatsCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><CPDecayCard testResults={testResults || []} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><RowingMetricsCard log={log} profile={profile} /></Suspense></ErrorBoundary>
+      {hasRowingData && <ErrorBoundary><Suspense fallback={null}><RowingMetricsCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
       <ErrorBoundary><Suspense fallback={null}><ChallengeWidget log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><NMFreshnessCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><PolarizationComplianceCard log={log} /></Suspense></ErrorBoundary>

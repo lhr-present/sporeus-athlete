@@ -101,6 +101,12 @@ import {
   cssToSecPer100m,
   swimmingZones,
 } from '../sport/swimming.js'
+// v9.7.0 — rowing parity in Mission #1
+import {
+  predict2000m,
+  fmtSplit,
+  rowingZones,
+} from '../sport/rowing.js'
 
 // v9.2.0 — broader plan content layers
 import { buildKeySessionLibrary }   from './eliteProgramKeySessions.js'
@@ -196,6 +202,19 @@ export function cssGainPerBlock(cssSecPer100m) {
   if (cssSecPer100m > 110) return 7
   if (cssSecPer100m > 90)  return 5
   return 3
+}
+
+// v9.7.0 — Rowing 2000m time gain (sec faster) per 12-week block.
+// Elite/sub-7:00 row: 1-2 s/block. Sub-7:30: 3 s/block. Sub-8:00: 4 s/block.
+// Recreational (>8:00): 5+ s/block. Calibrated against Concept2 World Records
+// progression and British Rowing development pathway.
+/** @internal */
+export function rowingGainPerBlock(time2000Sec) {
+  if (time2000Sec < 380) return 1   // sub-6:20 — Olympic-level
+  if (time2000Sec < 420) return 2   // sub-7:00 — international
+  if (time2000Sec < 450) return 3   // sub-7:30 — strong club
+  if (time2000Sec < 480) return 4   // sub-8:00 — competitive amateur
+  return 5                           // recreational
 }
 
 function feasibilityBand(weeksAvailable, weeksNeeded) {
@@ -484,6 +503,68 @@ function swimSampleWeek(phase, cssSec) {
   }))
 }
 
+// ── Rowing sample week ──────────────────────────────────────────────────────
+//
+// v9.7.0. British Rowing 7-zone system mapped to the app's Z1-Z5 (UT2→Z1,
+// UT1→Z2, AT→Z3, TR→Z4, 2k/AN/Sprint→Z5). Each phase reflects standard
+// Concept2/British Rowing periodization (Paul 1969, Nolte 2005):
+//   Base   — high UT2/UT1 volume, AT introduction
+//   Build  — AT pieces become the spine, TR work appears
+//   Peak   — race-pace (2k) and AN power, fewer long rows
+//   Taper  — short race-pace + openers, neural priming
+
+function rowingSampleWeek(phase, split500Sec) {
+  const splitTag = split500Sec ? `${fmtSplit(split500Sec)}/500m` : null
+  const utTag    = split500Sec ? `${fmtSplit(split500Sec * 1.15)}/500m` : null   // UT1/UT2 ~ +15% slower
+  const atTag    = split500Sec ? `${fmtSplit(split500Sec * 1.08)}/500m` : null   // AT ~ +8% slower
+  const trTag    = split500Sec ? `${fmtSplit(split500Sec * 1.03)}/500m` : null   // TR ~ +3% slower
+
+  const weekByPhase = {
+    Base: [
+      { day: 'Mon', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
+      { day: 'Tue', intent: { en: 'UT2 steady 60min',          tr: 'UT2 sabit 60dk' },                durationMin: 60, zones: { Z1: 60, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: utTag },
+      { day: 'Wed', intent: { en: 'UT1 moderate 50min',        tr: 'UT1 orta 50dk' },                 durationMin: 50, zones: { Z1: 5, Z2: 45, Z3: 0, Z4: 0, Z5: 0 },   paceTarget: utTag },
+      { day: 'Thu', intent: { en: 'AT threshold 4x2000m',      tr: 'AT eşik 4x2000m' },               durationMin: 60, zones: { Z1: 20, Z2: 0, Z3: 40, Z4: 0, Z5: 0 },   paceTarget: atTag },
+      { day: 'Fri', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
+      { day: 'Sat', intent: { en: 'UT2 long row 75min',        tr: 'UT2 uzun 75dk' },                 durationMin: 75, zones: { Z1: 75, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: utTag },
+      { day: 'Sun', intent: { en: 'Cross-train (run/bike) 45min', tr: 'Çapraz antrenman 45dk' },     durationMin: 45, zones: { Z1: 45, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: null },
+    ],
+    Build: [
+      { day: 'Mon', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
+      { day: 'Tue', intent: { en: 'AT threshold 4x2000m',      tr: 'AT eşik 4x2000m' },               durationMin: 65, zones: { Z1: 20, Z2: 0, Z3: 45, Z4: 0, Z5: 0 },   paceTarget: atTag },
+      { day: 'Wed', intent: { en: 'UT1 steady 60min',          tr: 'UT1 sabit 60dk' },                durationMin: 60, zones: { Z1: 10, Z2: 50, Z3: 0, Z4: 0, Z5: 0 },   paceTarget: utTag },
+      { day: 'Thu', intent: { en: 'TR pieces 6x1000m',         tr: 'TR parçalar 6x1000m' },           durationMin: 60, zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 40, Z5: 0 },   paceTarget: trTag },
+      { day: 'Fri', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
+      { day: 'Sat', intent: { en: 'UT2 long row 90min',        tr: 'UT2 uzun 90dk' },                 durationMin: 90, zones: { Z1: 90, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: utTag },
+      { day: 'Sun', intent: { en: 'Cross-train + strength',    tr: 'Çapraz + kuvvet' },               durationMin: 50, zones: { Z1: 50, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: null },
+    ],
+    Peak: [
+      { day: 'Mon', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
+      { day: 'Tue', intent: { en: '2k pace 8x500m',            tr: 'Yarış-tempo 8x500m' },            durationMin: 55, zones: { Z1: 25, Z2: 0, Z3: 0, Z4: 0, Z5: 30 },   paceTarget: splitTag },
+      { day: 'Wed', intent: { en: 'UT1 recovery 45min',        tr: 'UT1 toparlanma 45dk' },           durationMin: 45, zones: { Z1: 15, Z2: 30, Z3: 0, Z4: 0, Z5: 0 },   paceTarget: utTag },
+      { day: 'Thu', intent: { en: 'TR race-pace 6x1000m',      tr: 'TR yarış-tempo 6x1000m' },        durationMin: 60, zones: { Z1: 15, Z2: 0, Z3: 0, Z4: 35, Z5: 10 },  paceTarget: trTag },
+      { day: 'Fri', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
+      { day: 'Sat', intent: { en: 'AN power 10x250m',          tr: 'AN güç 10x250m' },                durationMin: 50, zones: { Z1: 25, Z2: 0, Z3: 0, Z4: 0, Z5: 25 },   paceTarget: splitTag },
+      { day: 'Sun', intent: { en: 'UT2 maintenance 60min',     tr: 'UT2 koruma 60dk' },               durationMin: 60, zones: { Z1: 60, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: utTag },
+    ],
+    Taper: [
+      { day: 'Mon', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
+      { day: 'Tue', intent: { en: 'Race-pace openers 4x500m',  tr: 'Yarış-tempo açılış 4x500m' },     durationMin: 35, zones: { Z1: 18, Z2: 0, Z3: 0, Z4: 5, Z5: 12 },   paceTarget: splitTag },
+      { day: 'Wed', intent: { en: 'UT2 easy 30min',            tr: 'UT2 kolay 30dk' },                durationMin: 30, zones: { Z1: 30, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: utTag },
+      { day: 'Thu', intent: { en: 'Sharpener 8x250m',          tr: 'Keskinleştirme 8x250m' },         durationMin: 25, zones: { Z1: 18, Z2: 0, Z3: 0, Z4: 0, Z5: 7 },    paceTarget: splitTag },
+      { day: 'Fri', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
+      { day: 'Sat', intent: { en: 'Pre-race shakeout 20min',   tr: 'Yarış öncesi açılış 20dk' },      durationMin: 20, zones: { Z1: 18, Z2: 0, Z3: 0, Z4: 0, Z5: 2 },    paceTarget: utTag },
+      { day: 'Sun', intent: { en: 'Race day',                  tr: 'Yarış günü' },                    durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
+    ],
+  }
+  const wk = weekByPhase[phase]
+  if (!wk) return []
+  return wk.map(d => ({
+    ...d,
+    notes: { en: `${phase} phase ${d.intent.en.toLowerCase()}`, tr: `${phase} fazı ${d.intent.tr.toLowerCase()}` },
+  }))
+}
+
 // ── Triathlon multi-discipline sample week ──────────────────────────────────
 //
 // v9.6.0. Triathlon is a 3-discipline sport: swim, bike, run. A weekly
@@ -570,7 +651,7 @@ export function buildEliteProgram(input) {
 
   // v8.96.0 — current PR is always required (the floor)
   if (!currentPR || !sport) return null
-  if (!['run', 'bike', 'swim', 'triathlon'].includes(sport)) return null
+  if (!['run', 'bike', 'swim', 'triathlon', 'rowing'].includes(sport)) return null
 
   // v8.96.0 — when neither raceDate nor weeksOverride supplied, no horizon → reject
   const hasWeeksOverride = typeof weeksOverrideRaw === 'number'
@@ -790,6 +871,48 @@ export function buildEliteProgram(input) {
       css: cssToSecPer100m(gMs),
       paces: swimmingZones(gPace),
     }
+  } else if (sport === 'rowing') {
+    // v9.7.0 — Rowing branch.
+    // Convention: currentPR.distanceM === 0 (or null) → currentPR.timeSec is total
+    // 2000m time in seconds. Otherwise predict 2k from any rowing TT distance via
+    // Paul's Law (exponent 1.07, see rowing.js predict2000m).
+    let c2kSec = null, g2kSec = null
+    if (!currentPR.distanceM) {
+      c2kSec = currentPR.timeSec
+      g2kSec = targetPR.timeSec
+    } else {
+      c2kSec = predict2000m(currentPR.timeSec, currentPR.distanceM)
+      g2kSec = predict2000m(targetPR.timeSec, targetPR.distanceM)
+    }
+    if (!c2kSec || !g2kSec || c2kSec <= 0 || g2kSec <= 0) return null
+    if (g2kSec >= c2kSec) {
+      return {
+        _rejected: true,
+        reason: 'target-not-faster',
+        note: {
+          en: 'Target 2000m time must be faster than current',
+          tr: 'Hedef 2000m süresi mevcut süreden daha hızlı olmalı',
+        },
+      }
+    }
+    const gap = c2kSec - g2kSec  // positive seconds to shave
+    const rate = rowingGainPerBlock(c2kSec)
+    weeksNeeded = Math.max(4, Math.ceil((gap / rate) * 12))
+    deltaPct = ((c2kSec - g2kSec) / c2kSec) * 100
+    const cSplit500 = c2kSec / 4   // sec per 500m
+    const gSplit500 = g2kSec / 4
+    currentLevel = {
+      vdot: null, ftp: null, css: null,
+      split2kSec: c2kSec,
+      split500Sec: Math.round(cSplit500 * 10) / 10,
+      paces: rowingZones(cSplit500),
+    }
+    targetLevel = {
+      vdot: null, ftp: null, css: null,
+      split2kSec: g2kSec,
+      split500Sec: Math.round(gSplit500 * 10) / 10,
+      paces: rowingZones(gSplit500),
+    }
   }
 
   const band = feasibilityBand(weeksAvailable, weeksNeeded)
@@ -831,6 +954,8 @@ export function buildEliteProgram(input) {
     }
     if (sport === 'triathlon') {
       sampleWeeks[phaseName] = triSampleWeek(phaseName, currentLevel.paces, currentLevel.ftp, currentLevel.css)
+    } else if (sport === 'rowing') {
+      sampleWeeks[phaseName] = rowingSampleWeek(phaseName, currentLevel.split500Sec)
     } else if (sport === 'run') {
       sampleWeeks[phaseName] = runSampleWeek(phaseName, currentLevel.paces, profileWithDefaults.trainingDays)
     } else if (sport === 'bike') {
