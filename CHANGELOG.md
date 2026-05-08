@@ -4,6 +4,167 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.2.0 — 2026-05-08 — Mission #1 broader & more applicable: 6 new content layers (key sessions, strength, fueling, recovery, race week, substitutions), 9186 tests
+
+  Wave A of the "broader & applicable + coach-editable" ask.
+  Six new content layers extend the orchestrator output from
+  "feasibility + phase split + sample weeks" to a full
+  applicable training program a real athlete can execute
+  without needing a coach to interpret. All bilingual EN+TR,
+  all citation-grounded, all rendered as collapsible sections
+  in EliteProgramCard.
+
+  New pure-data lib modules (~1500 lines content + types):
+    NEW src/lib/athlete/eliteProgramKeySessions.js
+          3-5 named workouts per phase per sport with name,
+          purpose, structure, warm-up, cool-down, intensity,
+          alternates (indoor/cross/missed), and citation.
+          Run keyed to Daniels VDOT pace categories E/M/T/I/R;
+          bike to Coggan FTP zones; swim to Wakayoshi CSS.
+          ~14 named sessions per sport × 4 phases.
+          buildKeySessionLibrary({sport, phases}) +
+          buildTriathlonKeySessions(phase) +
+          getKeySessionsBySport(sport).
+    NEW src/lib/athlete/eliteProgramStrength.js
+          Per-phase S&C: max-strength (Base, 4×4-6 @80-85%
+          1RM) → power conversion (Build, 50-60% explosive +
+          plyo) → maintenance (Peak, 1×/wk) → neural priming
+          (Taper, 20 min, optional). 5 movements per session
+          with sets/reps/intensity/notes. Each phase carries
+          a warning + Rønnestad/Beattie citation.
+          buildStrengthProgram({phases}).
+    NEW src/lib/athlete/eliteProgramFueling.js
+          Per-phase CHO g/kg/d, protein g/kg/d, fat % kcal,
+          during-session g/h, pre/post timing. Carb-load
+          peaks 10-12 g/kg/d in Taper. When bodyMassKg
+          present in profile, absolute g/day ranges computed.
+          Burke/Jeukendrup/Stellingwerf citations.
+          buildFuelingProgram({phases, bodyMassKg}).
+    NEW src/lib/athlete/eliteProgramRecovery.js
+          Per-phase sleep targets, easy-day HR cap, HRV
+          drop trigger %, deload cadence, modalities,
+          warning signs. Halson/Plews/Kellmann citations.
+          buildRecoveryProgram({phases}).
+    NEW src/lib/athlete/eliteProgramRaceWeek.js
+          Sport-specific T-7 to T-0 day-by-day schedule:
+          last quality session, race-pace primer, carb-load
+          start, openers, shakeout. Plus race-day block:
+          wake-up, breakfast, warm-up, pacing strategy,
+          fueling, mental cues. Run/bike/swim variants.
+          Mujika/Bosquet/Stellingwerf citations.
+          buildRaceWeekProtocol({sport}).
+    NEW src/lib/athlete/eliteProgramSubstitutions.js
+          For each session intent (Easy/Tempo/Threshold/VO2/
+          Long/Race) the 5 fallback scenarios:
+          indoor / cross-train / injured / weather /
+          missed-makeup. Race-day Injured = "pull from race"
+          across all sports. Sport-aware (run/bike/swim).
+          Mujika 2010 / Bompa / Issurin citations.
+          buildSubstitutionMap({sport}) +
+          buildTriathlonSubstitutionMap().
+
+  Orchestrator extension (src/lib/athlete/eliteProgram.js):
+    - Added 6 imports of new builders.
+    - Added bodyMassKg to profileWithDefaults (was missing).
+    - Calls all 6 builders and appends to result:
+        keySessionLibrary, strengthProgram, fuelingProgram,
+        recoveryProgram, raceWeekProtocol, substitutionMap.
+    - Extended EliteProgramResult JSDoc typedef with the 6
+      new optional-but-always-emitted fields.
+
+  Coach envelope forward-compat:
+    Per v9.0.0 contract rule "extra unknown fields tolerated;
+    breaking changes bump v to 2 with both versions accepted
+    during deprecation" — the 6 new fields naturally ride
+    in v=1 envelopes. CoachAthleteProgramCard's existing
+    parseCoachShareEnvelope continues working unchanged;
+    coach-side readers gain access to richer data without
+    code changes. Wave B (coach edit-back) will introduce
+    v=2 with explicit edits[] field.
+
+  UI surface (src/components/dashboard/BroaderPlanSections.jsx,
+  ~280 lines):
+    Six collapsible Disclosure panels rendered after the
+    sample-weeks block in EliteProgramCard:
+      ▶ KEY WORKOUTS · N (count badge)
+      ▶ STRENGTH PROGRAM · N
+      ▶ FUELING TARGETS · N
+      ▶ RECOVERY PRESCRIPTION · N
+      ▶ RACE-WEEK PROTOCOL · 8
+      ▶ SUBSTITUTIONS · N
+    All collapsed by default to keep mobile UX clean.
+    Bilingual via isTR. Pure presentational — no orchestrator
+    calls. Imported into EliteProgramCard.jsx (1 line).
+    ProgramView automatically inherits via its embedded
+    EliteProgramCard.
+
+  Mobile UX:
+    All 6 sections nestled inside the existing card, so the
+    ProgramView (PROGRAM tab) and Dashboard plan-mode card
+    surface them identically. Width-respecting; no horizontal
+    overflow. Each disclosure has aria-expanded for a11y.
+
+  Tests (+80 net):
+    NEW src/lib/__tests__/athlete/eliteProgramKeySessions.test.js   (16 tests)
+    NEW src/lib/__tests__/athlete/eliteProgramStrength.test.js      (10 tests)
+    NEW src/lib/__tests__/athlete/eliteProgramFueling.test.js       (10 tests)
+    NEW src/lib/__tests__/athlete/eliteProgramRecovery.test.js      (8 tests)
+    NEW src/lib/__tests__/athlete/eliteProgramRaceWeek.test.js      (11 tests)
+    NEW src/lib/__tests__/athlete/eliteProgramSubstitutions.test.js (10 tests)
+    EDIT src/lib/__tests__/athlete/eliteProgram.test.js             (+10 integration tests)
+    Each module test: bilingual coverage, citation presence,
+    phase gating, sport variants, edge cases (empty input,
+    missing fields, unknown sport), content quality
+    assertions (e.g. "Peak phase contains VO2 work for run",
+    "Taper carb-load reaches 10-12 g/kg/day").
+
+  Verification:
+    Lint:    clean (--max-warnings 0)
+    Tests:   9186 / 9186 passing across 379 files (+80 vs v9.1.1)
+    Build:   84.07 KB gz main bundle (+0.10 KB only — new
+             content rides the lazy-loaded eliteProgram
+             chunk; ~10 KB headroom under 95 KB budget)
+    Bundle:  eliteProgram chunk grew 22.98 KB gz (was ~12 KB)
+             absorbing 6 new lib files; EliteProgramCard
+             chunk +0.5 KB for BroaderPlanSections wire-in.
+
+  What this enables for the athlete:
+    Before v9.2.0 a generated program said "VO2 5×3min
+    @I-pace" — the athlete then had to know what I-pace
+    means, how to warm up for it, what to do if injured,
+    how to fuel it, how much sleep to protect that night,
+    and how to handle race week. After v9.2.0 every one of
+    those questions has a science-grounded, phase-specific,
+    bilingual answer baked into the same plan output, with
+    citations a coach can audit.
+
+  Audiences served:
+    Athlete: receives a plan they can actually execute
+             without external interpretation. Every key
+             session has warm-up, cool-down, intensity,
+             alternates. Race week is day-by-day. Missed
+             session has a make-up rule.
+    Coach:   gets richer audit surface — same envelope,
+             6 new content layers visible read-only via
+             CoachAthleteProgramCard. Can use as
+             conversation starter ("I'd swap your Tuesday
+             VO2 for cruise intervals because…").
+    Dev:     6 stand-alone pure-data libs, each unit-tested,
+             independently importable. JSDoc typedefs
+             extended on EliteProgramResult.
+
+  Deferred to Wave B (next session):
+    - Coach edit-back: v=2 envelope with edits[] field,
+      coach-side editable form, athlete-side merge logic,
+      lifecycle pill state for "coach-modified", conflict
+      resolution when athlete re-runs orchestrator. This
+      is the "upgradable/changeable/enhanceable by coach"
+      half of the user's directive — held for v9.3.0.
+
+  Depends on: v9.1.1 (PROGRAM tab + post-deploy smoke).
+
+---
+
 ## v9.1.1 — 2026-05-08 — Add Playwright prod-smoke spec for PROGRAM tab + post-deploy GH Actions workflow
 
   Adds a real-browser smoke test that runs against the LIVE

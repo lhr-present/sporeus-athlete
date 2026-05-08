@@ -15,6 +15,7 @@ import {
   PHASE_RATIONALE,
   DELOAD_NOTE,
 } from '../../lib/athlete/eliteProgram.js'
+import BroaderPlanSections from './BroaderPlanSections.jsx'
 import { eliteProgramToYearlyWeeks } from '../../lib/athlete/eliteProgramToYearly.js'
 import { downloadEliteProgramCSV } from '../../lib/athlete/eliteProgramExport.js'
 import { calculatePMC } from '../../lib/trainingLoad.js'
@@ -1377,6 +1378,8 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
           ))}
         </div>
       ) : null}
+
+      <BroaderPlanSections result={result} isTR={isTR} />
 
       <AboutThisModel isTR={isTR} />
 

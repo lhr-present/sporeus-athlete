@@ -46,6 +46,14 @@
 //  * @property {{en:string, tr:string}} recommendation
 //  * @property {string} citation
 //  * @property {boolean} reliable
+//  *
+//  * v9.2.0 BROADER PLAN content layers (all optional but always emitted):
+//  * @property {Object} [keySessionLibrary]  // per-phase key workouts (3-5 each, sport-aware)
+//  * @property {Object} [strengthProgram]    // per-phase S&C prescription (Rønnestad/Beattie)
+//  * @property {Object} [fuelingProgram]     // per-phase CHO/protein/fat targets (Burke/Jeukendrup)
+//  * @property {Object} [recoveryProgram]    // per-phase sleep/HRV/deload prescription (Halson/Plews)
+//  * @property {Object} [raceWeekProtocol]   // T-7 to T-0 day-by-day + race-day pacing (Mujika)
+//  * @property {Object} [substitutionMap]    // indoor/cross/injured/weather/missed alternates
 //  */
 //
 // // ── Coach share envelope (v8.97.0 + v8.101.0) ─────────────────────────────
@@ -93,6 +101,14 @@ import {
   cssToSecPer100m,
   swimmingZones,
 } from '../sport/swimming.js'
+
+// v9.2.0 — broader plan content layers
+import { buildKeySessionLibrary }   from './eliteProgramKeySessions.js'
+import { buildStrengthProgram }     from './eliteProgramStrength.js'
+import { buildFuelingProgram }      from './eliteProgramFueling.js'
+import { buildRecoveryProgram }     from './eliteProgramRecovery.js'
+import { buildRaceWeekProtocol }    from './eliteProgramRaceWeek.js'
+import { buildSubstitutionMap }     from './eliteProgramSubstitutions.js'
 
 const CITATION = 'Daniels 2014; Bompa 2009; Mujika 2003; Coggan 2010; Wakayoshi 1992; Seiler 2010'
 
@@ -621,6 +637,7 @@ export function buildEliteProgram(input) {
     currentCTL: typeof profile.currentCTL === 'number' && profile.currentCTL > 0 ? profile.currentCTL : 50,
     weeklyHours: typeof profile.weeklyHours === 'number' && profile.weeklyHours > 0 ? profile.weeklyHours : 8,
     trainingDays: typeof profile.trainingDays === 'number' && profile.trainingDays >= 3 ? profile.trainingDays : 5,
+    bodyMassKg: typeof profile.bodyMassKg === 'number' && profile.bodyMassKg > 0 ? profile.bodyMassKg : null,
   }
 
   // Sport-specific levels and weeksNeeded
@@ -778,6 +795,17 @@ export function buildEliteProgram(input) {
     tr: flagsTr.length ? `${recBaseTr}. ${flagsTr.join('; ')}` : recBaseTr,
   }
 
+  // v9.2.0 — broader plan content layers (per-phase libraries)
+  const keySessionLibrary = buildKeySessionLibrary({ sport, phases })
+  const strengthProgram   = buildStrengthProgram({ phases })
+  const fuelingProgram    = buildFuelingProgram({
+    phases,
+    bodyMassKg: profileWithDefaults.bodyMassKg,
+  })
+  const recoveryProgram   = buildRecoveryProgram({ phases })
+  const raceWeekProtocol  = buildRaceWeekProtocol({ sport, raceDate: effectiveRaceDate })
+  const substitutionMap   = buildSubstitutionMap({ sport })
+
   const out = {
     feasibility: {
       band,
@@ -793,6 +821,12 @@ export function buildEliteProgram(input) {
     phases,
     weeklyTSS,
     sampleWeeks,
+    keySessionLibrary,
+    strengthProgram,
+    fuelingProgram,
+    recoveryProgram,
+    raceWeekProtocol,
+    substitutionMap,
     recommendation,
     citation: CITATION,
     reliable: band !== 'unrealistic',

@@ -640,3 +640,96 @@ describe('PHASE_FOCUS export — single source of truth', () => {
     expect(baseP.focus).toEqual(PHASE_FOCUS.Base)
   })
 })
+
+// ── v9.2.0 BROADER PLAN content layers ───────────────────────────────────────
+describe('buildEliteProgram — v9.2.0 broader content layers', () => {
+  const baseInput = {
+    currentPR: { distanceM: 10000, timeSec: 50 * 60 },
+    targetPR:  { distanceM: 10000, timeSec: 47 * 60 },
+    sport: 'run',
+    raceDate: '2026-08-15',
+    options: { today: TODAY },
+  }
+
+  it('emits keySessionLibrary keyed by phase', () => {
+    const r = buildEliteProgram(baseInput)
+    expect(r.keySessionLibrary).toBeTruthy()
+    expect(Array.isArray(r.keySessionLibrary.Base)).toBe(true)
+    expect(Array.isArray(r.keySessionLibrary.Build)).toBe(true)
+    expect(Array.isArray(r.keySessionLibrary.Peak)).toBe(true)
+    expect(Array.isArray(r.keySessionLibrary.Taper)).toBe(true)
+  })
+
+  it('keySessionLibrary surfaces 3+ workouts per present phase', () => {
+    const r = buildEliteProgram(baseInput)
+    for (const phase of ['Base', 'Build', 'Peak', 'Taper']) {
+      if (r.keySessionLibrary[phase].length > 0) {
+        expect(r.keySessionLibrary[phase].length).toBeGreaterThanOrEqual(3)
+      }
+    }
+  })
+
+  it('emits strengthProgram with per-phase prescriptions', () => {
+    const r = buildEliteProgram(baseInput)
+    expect(r.strengthProgram).toBeTruthy()
+    expect(r.strengthProgram.Base).toBeTruthy()
+    expect(r.strengthProgram.Base.frequencyPerWeek).toBeGreaterThan(0)
+    expect(r.strengthProgram.Base.movements.length).toBeGreaterThan(0)
+  })
+
+  it('emits fuelingProgram with per-phase CHO/protein targets', () => {
+    const r = buildEliteProgram(baseInput)
+    expect(r.fuelingProgram).toBeTruthy()
+    expect(r.fuelingProgram.Base.chodailyPerKg).toBeTruthy()
+    expect(r.fuelingProgram.Taper.chodailyPerKg[1]).toBeGreaterThanOrEqual(10)
+  })
+
+  it('fueling absolute g/day computed when bodyMassKg present', () => {
+    const r = buildEliteProgram({ ...baseInput, profile: { bodyMassKg: 70 } })
+    expect(r.fuelingProgram.Base.dailyCHO_g).toBeTruthy()
+    expect(r.fuelingProgram.Base.dailyProtein_g).toBeTruthy()
+  })
+
+  it('emits recoveryProgram with sleep + HRV trigger per phase', () => {
+    const r = buildEliteProgram(baseInput)
+    expect(r.recoveryProgram).toBeTruthy()
+    expect(r.recoveryProgram.Base.sleepHoursTarget).toBeTruthy()
+    expect(r.recoveryProgram.Build.hrvDropTriggerPct).toBeLessThanOrEqual(7)
+  })
+
+  it('emits raceWeekProtocol with 8-day schedule (T-7 to T-0)', () => {
+    const r = buildEliteProgram(baseInput)
+    expect(r.raceWeekProtocol).toBeTruthy()
+    expect(r.raceWeekProtocol.schedule.length).toBe(8)
+    expect(r.raceWeekProtocol.raceDay).toBeTruthy()
+  })
+
+  it('emits substitutionMap keyed by session intent', () => {
+    const r = buildEliteProgram(baseInput)
+    expect(r.substitutionMap).toBeTruthy()
+    expect(r.substitutionMap.Easy).toBeTruthy()
+    expect(r.substitutionMap.VO2).toBeTruthy()
+  })
+
+  it('substitutionMap is sport-aware (bike vs run)', () => {
+    const r1 = buildEliteProgram(baseInput)
+    const r2 = buildEliteProgram({
+      ...baseInput,
+      sport: 'bike',
+      currentPR: { distanceM: 40000, timeSec: 70 * 60 },
+      targetPR:  { distanceM: 40000, timeSec: 65 * 60 },
+      profile: { ftp: 250 },
+    })
+    expect(JSON.stringify(r1.substitutionMap)).not.toBe(JSON.stringify(r2.substitutionMap))
+  })
+
+  it('all 6 broader content fields are present on minimal input', () => {
+    const r = buildEliteProgram(baseInput)
+    expect(r.keySessionLibrary).toBeDefined()
+    expect(r.strengthProgram).toBeDefined()
+    expect(r.fuelingProgram).toBeDefined()
+    expect(r.recoveryProgram).toBeDefined()
+    expect(r.raceWeekProtocol).toBeDefined()
+    expect(r.substitutionMap).toBeDefined()
+  })
+})
