@@ -360,6 +360,48 @@ describe('buildEliteProgram — triathlon sport', () => {
     expect(r.recommendation.en).toMatch(/run-only|Triathlon mode/i)
     expect(r.recommendation.tr).toMatch(/koşu/i)
   })
+
+  // v9.6.0 — multi-discipline sample weeks + key sessions.
+  it('sampleWeeks.Base spans swim, bike, and run disciplines', () => {
+    const r = buildEliteProgram({ ...RUN_REALISTIC, sport: 'triathlon' })
+    const disciplines = new Set(r.sampleWeeks.Base.map(d => d.discipline))
+    expect(disciplines.has('swim')).toBe(true)
+    expect(disciplines.has('bike')).toBe(true)
+    expect(disciplines.has('run')).toBe(true)
+  })
+
+  it('every triathlon sample-week day has a discipline tag', () => {
+    const r = buildEliteProgram({ ...RUN_REALISTIC, sport: 'triathlon' })
+    for (const phase of ['Base', 'Build', 'Peak', 'Taper']) {
+      for (const day of r.sampleWeeks[phase] || []) {
+        expect(typeof day.discipline).toBe('string')
+        expect(['swim', 'bike', 'run', 'rest']).toContain(day.discipline)
+      }
+    }
+  })
+
+  it('keySessionLibrary flattens all 3 disciplines with discipline tags', () => {
+    const r = buildEliteProgram({ ...RUN_REALISTIC, sport: 'triathlon' })
+    const baseLib = r.keySessionLibrary.Base
+    expect(baseLib.length).toBeGreaterThan(3)  // swim+bike+run > single sport
+    const disciplines = new Set(baseLib.map(s => s.discipline))
+    expect(disciplines.has('swim')).toBe(true)
+    expect(disciplines.has('bike')).toBe(true)
+    expect(disciplines.has('run')).toBe(true)
+  })
+
+  it('triathlon Peak phase includes brick sessions', () => {
+    const r = buildEliteProgram({ ...RUN_REALISTIC, sport: 'triathlon' })
+    const intentTexts = r.sampleWeeks.Peak.map(d => d.intent.en).join(' ')
+    expect(intentTexts).toMatch(/brick/i)
+  })
+
+  it('non-triathlon sports still get untagged sessions', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    for (const day of r.sampleWeeks.Base) {
+      expect(day.discipline).toBeUndefined()
+    }
+  })
 })
 
 describe('buildEliteProgram — output shape and metadata', () => {

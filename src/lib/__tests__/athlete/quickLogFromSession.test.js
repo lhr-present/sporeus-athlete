@@ -110,4 +110,42 @@ describe('buildLogEntryFromSession', () => {
     const e = buildLogEntryFromSession(RUN_THRESHOLD_SESSION, '2026-04-29', 'RUN')
     expect(e.sport).toBe('run')
   })
+
+  // v9.6.0 — triathlon multi-discipline path.
+  describe('discipline override (triathlon)', () => {
+    it('swim discipline overrides program sport=triathlon → Threshold Swim', () => {
+      const s = { ...RUN_THRESHOLD_SESSION, discipline: 'swim',
+        intent: { en: 'Swim CSS 10x200', tr: 'Yüzme CSS 10x200' } }
+      const e = buildLogEntryFromSession(s, '2026-04-29', 'triathlon')
+      expect(e.type).toBe('Threshold Swim')
+      expect(e.sport).toBe('swim')
+    })
+
+    it('bike discipline overrides program sport=triathlon → Threshold Bike', () => {
+      const s = { ...RUN_THRESHOLD_SESSION, discipline: 'bike',
+        intent: { en: 'Bike threshold 3x12', tr: 'Bisiklet eşik 3x12' } }
+      const e = buildLogEntryFromSession(s, '2026-04-29', 'triathlon')
+      expect(e.type).toBe('Threshold Bike')
+      expect(e.sport).toBe('bike')
+    })
+
+    it('run discipline keeps run mapping under triathlon', () => {
+      const s = { ...RUN_THRESHOLD_SESSION, discipline: 'run' }
+      const e = buildLogEntryFromSession(s, '2026-04-29', 'triathlon')
+      expect(e.type).toBe('Threshold Run')
+      expect(e.sport).toBe('run')
+    })
+
+    it('discipline=rest falls back to program sport', () => {
+      const s = { ...RUN_THRESHOLD_SESSION, discipline: 'rest' }
+      const e = buildLogEntryFromSession(s, '2026-04-29', 'bike')
+      expect(e.sport).toBe('bike')
+    })
+
+    it('missing discipline still works for non-tri sports', () => {
+      const e = buildLogEntryFromSession(RUN_THRESHOLD_SESSION, '2026-04-29', 'bike')
+      expect(e.sport).toBe('bike')
+      expect(e.type).toBe('Threshold Bike')
+    })
+  })
 })

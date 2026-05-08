@@ -739,8 +739,24 @@ export function getKeySessionsBySport(sport) {
  */
 export function buildKeySessionLibrary(input) {
   const { sport, phases } = input || {}
-  const lib = getKeySessionsBySport(sport)
   const present = new Set((phases || []).map(p => p.phase))
+
+  // v9.6.0 — triathlon merges all three disciplines, tagged for the UI.
+  if (sport === 'triathlon') {
+    const out = { Base: [], Build: [], Peak: [], Taper: [] }
+    for (const phase of ['Base', 'Build', 'Peak', 'Taper']) {
+      if (!present.has(phase)) continue
+      const tri = buildTriathlonKeySessions(phase)
+      out[phase] = [
+        ...(tri.swim || []).map(s => ({ ...s, discipline: 'swim' })),
+        ...(tri.bike || []).map(s => ({ ...s, discipline: 'bike' })),
+        ...(tri.run  || []).map(s => ({ ...s, discipline: 'run'  })),
+      ]
+    }
+    return out
+  }
+
+  const lib = getKeySessionsBySport(sport)
   return {
     Base:  present.has('Base')  ? lib.Base  : [],
     Build: present.has('Build') ? lib.Build : [],

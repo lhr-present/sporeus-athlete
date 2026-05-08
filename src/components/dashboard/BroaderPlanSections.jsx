@@ -130,6 +130,32 @@ function bil(field, isTR) {
   return isTR ? (field.tr || field.en || '') : (field.en || '')
 }
 
+// v9.6.0 — discipline chip for triathlon key sessions.
+const DISCIPLINE_META = {
+  swim: { icon: '🏊', label: { en: 'SWIM', tr: 'YÜZME' },     color: '#0064ff' },
+  bike: { icon: '🚴', label: { en: 'BIKE', tr: 'BİSİKLET' },  color: '#28a745' },
+  run:  { icon: '🏃', label: { en: 'RUN',  tr: 'KOŞU' },      color: '#ff6600' },
+}
+function DisciplineChip({ discipline, isTR }) {
+  if (!discipline || !DISCIPLINE_META[discipline]) return null
+  const m = DISCIPLINE_META[discipline]
+  return (
+    <span style={{
+      display: 'inline-block',
+      padding: '1px 6px',
+      marginRight: 6,
+      background: m.color,
+      color: '#fff',
+      borderRadius: 3,
+      fontSize: 9,
+      fontWeight: 700,
+      letterSpacing: '0.06em',
+    }}>
+      {m.icon} {isTR ? m.label.tr : m.label.en}
+    </span>
+  )
+}
+
 // ── Key Sessions ─────────────────────────────────────────────────────────────
 export function KeySessionsSection({ keySessionLibrary, isTR, defaultOpen = false }) {
   if (!keySessionLibrary) return null
@@ -162,6 +188,7 @@ export function KeySessionsSection({ keySessionLibrary, isTR, defaultOpen = fals
                 borderRadius: '0 3px 3px 0',
               }}>
                 <div style={{ fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <DisciplineChip discipline={s.discipline} isTR={isTR} />
                   <IntensityChip chip={chip} isTR={isTR} />
                   <span>{bil(s.name, isTR)}</span>
                 </div>

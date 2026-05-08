@@ -70,7 +70,17 @@ export function buildLogEntryFromSession(session, dateISO, sport, _profile = nul
   if (!session || typeof session !== 'object') return null
   if (typeof dateISO !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateISO)) return null
 
-  const sportLower = (sport || 'run').toLowerCase()
+  // v9.6.0 — when the session blueprint carries a `discipline` (triathlon
+  // multi-sport weeks), prefer that over the program sport so a swim session
+  // logs as "Easy Swim" rather than the program's primary "Easy Run" type.
+  const programSport = (sport || 'run').toLowerCase()
+  const discipline = typeof session.discipline === 'string'
+    ? session.discipline.toLowerCase()
+    : null
+  const effectiveSport = discipline === 'rest'
+    ? programSport
+    : (discipline || programSport)
+  const sportLower = effectiveSport
   const intent = session.intent || null
   const type = intentToType(intent, sportLower)
   const durationMin = Number(session.durationMin) || 0

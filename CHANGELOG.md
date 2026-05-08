@@ -4,6 +4,81 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.6.0 — 2026-05-08 — Triathlon multi-discipline plans: swim/bike/run sample weeks, flattened key-session library, discipline-aware quick-log, 9286 tests
+
+  Pre-v9.6.0 triathlon mode emitted the run sample week
+  every day and the run-only key session library. The
+  athlete saw 7 days of run sessions even though they were
+  training for a 3-discipline race. The orchestrator
+  surfaced a `recommendation` flag noting the limitation
+  but did nothing to fix it. v9.6.0 wires up the multi-
+  discipline path that was already partly built in
+  `eliteProgramKeySessions.js`.
+
+  Changes:
+
+  • `triSampleWeek(phase, paces, ftp, cssSec)` — new
+    helper in `eliteProgram.js` producing 7 days mixing
+    swim / bike / run with brick (bike→run) sessions in
+    Build/Peak/Taper. Each day carries a `discipline`
+    field ('swim' | 'bike' | 'run' | 'rest'). Phase
+    distribution: Base = endurance focus across all 3;
+    Build = discipline-specific threshold + brick;
+    Peak = race-pace brick + VO2 + race-pace swim;
+    Taper = openers + sharpening + race day.
+    Citation: Mujika & Padilla 2003; Olbrecht 2000.
+
+  • `buildKeySessionLibrary({sport: 'triathlon'})` —
+    when sport is triathlon, calls existing
+    `buildTriathlonKeySessions(phase)` and flattens the
+    `{swim, bike, run}` triple into a single per-phase
+    array, tagging each session with its discipline.
+    Run/bike/swim sports unchanged.
+
+  • `BroaderPlanSections.jsx` — new `DisciplineChip`
+    component renders a colored discipline badge
+    (🏊 swim blue, 🚴 bike green, 🏃 run orange) on
+    every key session in triathlon mode. Non-tri
+    sessions render nothing (chip returns null when
+    discipline missing).
+
+  • `quickLogFromSession.js` — when `session.discipline`
+    is present, prefers it over the program sport for
+    type/sport mapping. A swim session in a tri program
+    logs as type='Threshold Swim' sport='swim', not the
+    program-level 'Easy Run' fallback. Discipline 'rest'
+    falls back to the program sport.
+
+  Tests: +5 in eliteProgram (sample week disciplines,
+  discipline-tag invariant, key library flattening,
+  brick presence, non-tri unaffected) +5 in
+  quickLogFromSession (swim/bike/run override, rest
+  fallback, non-tri unchanged). Total 9286/9286 green.
+
+  Out of scope: separate triathlonPRs feasibility math
+  (still uses run-only floor — flag in recommendation
+  unchanged); rowing in Mission #1 (still rejected at
+  orchestrator gate, separate work item).
+
+  Files: src/lib/athlete/eliteProgram.js (+72 lines for
+  triSampleWeek + 1-line wiring); src/lib/athlete/
+  eliteProgramKeySessions.js (buildKeySessionLibrary
+  multi-discipline branch, +18 lines);
+  src/lib/athlete/quickLogFromSession.js (discipline
+  override, +12 lines); src/components/dashboard/
+  BroaderPlanSections.jsx (DisciplineChip + render
+  hook, +30 lines).
+
+  Citation: Mujika & Padilla 2003 (taper); Olbrecht
+  2000 (multisport periodization); Coggan 2010 (TSS);
+  Wakayoshi 1992 (CSS).
+
+  Depends on: v9.5.0 calendar progress + quick-log;
+  v9.4.0 BroaderPlanSections phase color tokens; v9.2.0
+  buildTriathlonKeySessions helper.
+
+---
+
 ## v9.5.0 — 2026-05-08 — Mission #1 closes the see→do→reflect loop: race countdown + phase milestones + calendar progress overlay + one-click logging, 9276 tests
 
   Three high-leverage enhancements anchored on a single

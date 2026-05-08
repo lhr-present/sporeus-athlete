@@ -484,6 +484,75 @@ function swimSampleWeek(phase, cssSec) {
   }))
 }
 
+// ── Triathlon multi-discipline sample week ──────────────────────────────────
+//
+// v9.6.0. Triathlon is a 3-discipline sport: swim, bike, run. A weekly
+// schedule must spread sessions across all three with brick (bike→run)
+// transitions in race-specific phases. Each session is tagged with
+// `discipline` so the calendar / quick-log can route it correctly.
+//
+// Day distribution (Mujika & Padilla 2003; Olbrecht 2000):
+//   Mon: rest
+//   Tue: swim key
+//   Wed: bike key (+ optional brick from Build onwards)
+//   Thu: run key
+//   Fri: rest or recovery swim
+//   Sat: long bike (Base) → brick (Peak/Taper)
+//   Sun: long run (Base/Build) → swim race-pace (Peak) → race day (Taper)
+
+function triSampleWeek(phase, paces, _ftp, cssSec) {
+  const swimTag = fmtSwimPace(cssSec)
+  const easyTag = fmtPaceStr(paces?.E)
+  const tTag = fmtPaceStr(paces?.T)
+  const iTag = fmtPaceStr(paces?.I)
+  const mTag = fmtPaceStr(paces?.M)
+
+  const weekByPhase = {
+    Base: [
+      { day: 'Mon', discipline: 'rest', intent: { en: 'Rest',                   tr: 'Dinlenme' },                    durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
+      { day: 'Tue', discipline: 'swim', intent: { en: 'Swim aerobic 2000m',     tr: 'Yüzme aerobik 2000m' },         durationMin: 50,  zones: { Z1: 30, Z2: 20, Z3: 0, Z4: 0, Z5: 0 },   paceTarget: swimTag },
+      { day: 'Wed', discipline: 'bike', intent: { en: 'Bike endurance',         tr: 'Bisiklet dayanıklılık' },       durationMin: 75,  zones: { Z1: 15, Z2: 60, Z3: 0, Z4: 0, Z5: 0 },   paceTarget: null },
+      { day: 'Thu', discipline: 'run',  intent: { en: 'Run easy + strides',     tr: 'Kolay koşu + adımlar' },        durationMin: 45,  zones: { Z1: 40, Z2: 0, Z3: 0, Z4: 0, Z5: 5 },    paceTarget: easyTag },
+      { day: 'Fri', discipline: 'swim', intent: { en: 'Swim technique 1500m',   tr: 'Yüzme teknik 1500m' },          durationMin: 40,  zones: { Z1: 40, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: swimTag },
+      { day: 'Sat', discipline: 'bike', intent: { en: 'Long bike',              tr: 'Uzun bisiklet' },               durationMin: 180, zones: { Z1: 30, Z2: 140, Z3: 10, Z4: 0, Z5: 0 }, paceTarget: null },
+      { day: 'Sun', discipline: 'run',  intent: { en: 'Long run',               tr: 'Uzun koşu' },                   durationMin: 90,  zones: { Z1: 80, Z2: 10, Z3: 0, Z4: 0, Z5: 0 },   paceTarget: easyTag },
+    ],
+    Build: [
+      { day: 'Mon', discipline: 'rest', intent: { en: 'Rest',                   tr: 'Dinlenme' },                    durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
+      { day: 'Tue', discipline: 'swim', intent: { en: 'Swim CSS 10x200',        tr: 'Yüzme CSS 10x200' },            durationMin: 60,  zones: { Z1: 15, Z2: 0, Z3: 0, Z4: 45, Z5: 0 },   paceTarget: swimTag },
+      { day: 'Wed', discipline: 'bike', intent: { en: 'Bike threshold 3x12 + brick', tr: 'Bisiklet eşik 3x12 + brick' }, durationMin: 95, zones: { Z1: 30, Z2: 15, Z3: 0, Z4: 50, Z5: 0 },  paceTarget: null },
+      { day: 'Thu', discipline: 'run',  intent: { en: 'Run threshold 2x20',     tr: 'Koşu eşik 2x20' },              durationMin: 60,  zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 40, Z5: 0 },   paceTarget: tTag },
+      { day: 'Fri', discipline: 'swim', intent: { en: 'Swim aerobic 2500m',     tr: 'Yüzme aerobik 2500m' },         durationMin: 55,  zones: { Z1: 25, Z2: 30, Z3: 0, Z4: 0, Z5: 0 },   paceTarget: swimTag },
+      { day: 'Sat', discipline: 'bike', intent: { en: 'Long bike + tempo',      tr: 'Uzun bisiklet + tempo' },       durationMin: 210, zones: { Z1: 30, Z2: 140, Z3: 40, Z4: 0, Z5: 0 }, paceTarget: null },
+      { day: 'Sun', discipline: 'run',  intent: { en: 'Long run + MP',          tr: 'Uzun koşu + MP' },              durationMin: 100, zones: { Z1: 80, Z2: 20, Z3: 0, Z4: 0, Z5: 0 },   paceTarget: mTag },
+    ],
+    Peak: [
+      { day: 'Mon', discipline: 'rest', intent: { en: 'Rest',                   tr: 'Dinlenme' },                    durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
+      { day: 'Tue', discipline: 'swim', intent: { en: 'Swim VO2max 12x100',     tr: 'Yüzme VO2max 12x100' },         durationMin: 55,  zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 0, Z5: 35 },   paceTarget: swimTag },
+      { day: 'Wed', discipline: 'bike', intent: { en: 'Bike VO2 5x4 + brick run', tr: 'Bisiklet VO2 5x4 + brick koşu' }, durationMin: 90, zones: { Z1: 25, Z2: 5, Z3: 0, Z4: 0, Z5: 60 }, paceTarget: null },
+      { day: 'Thu', discipline: 'run',  intent: { en: 'Run race-pace 5x1k',     tr: 'Koşu yarış-tempo 5x1k' },       durationMin: 55,  zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 0, Z5: 35 },   paceTarget: iTag },
+      { day: 'Fri', discipline: 'swim', intent: { en: 'Swim recovery 1500m',    tr: 'Yüzme toparlanma 1500m' },      durationMin: 35,  zones: { Z1: 35, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: swimTag },
+      { day: 'Sat', discipline: 'bike', intent: { en: 'Race-pace brick (90+30)', tr: 'Yarış-tempo brick (90+30)' },  durationMin: 120, zones: { Z1: 30, Z2: 0, Z3: 0, Z4: 80, Z5: 10 }, paceTarget: null },
+      { day: 'Sun', discipline: 'swim', intent: { en: 'Swim race-pace 6x400',   tr: 'Yüzme yarış-tempo 6x400' },     durationMin: 65,  zones: { Z1: 15, Z2: 0, Z3: 0, Z4: 35, Z5: 15 },  paceTarget: swimTag },
+    ],
+    Taper: [
+      { day: 'Mon', discipline: 'rest', intent: { en: 'Rest',                   tr: 'Dinlenme' },                    durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
+      { day: 'Tue', discipline: 'bike', intent: { en: 'Bike openers 4x3 + brick', tr: 'Bisiklet açılış 4x3 + brick' }, durationMin: 50, zones: { Z1: 25, Z2: 5, Z3: 0, Z4: 15, Z5: 5 },  paceTarget: null },
+      { day: 'Wed', discipline: 'swim', intent: { en: 'Swim race-pace 4x200',   tr: 'Yüzme yarış-tempo 4x200' },     durationMin: 35,  zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 10, Z5: 5 },   paceTarget: swimTag },
+      { day: 'Thu', discipline: 'run',  intent: { en: 'Run race-pace 4x400m',   tr: 'Koşu yarış-tempo 4x400m' },     durationMin: 35,  zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 0, Z5: 15 },   paceTarget: iTag },
+      { day: 'Fri', discipline: 'rest', intent: { en: 'Rest',                   tr: 'Dinlenme' },                    durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
+      { day: 'Sat', discipline: 'bike', intent: { en: 'Pre-race shakeout (bike+run+swim feel)', tr: 'Yarış öncesi açılış' }, durationMin: 30, zones: { Z1: 25, Z2: 0, Z3: 0, Z4: 0, Z5: 5 }, paceTarget: null },
+      { day: 'Sun', discipline: 'run',  intent: { en: 'Race day',               tr: 'Yarış günü' },                  durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
+    ],
+  }
+  const wk = weekByPhase[phase]
+  if (!wk) return []
+  return wk.map(d => ({
+    ...d,
+    notes: { en: `${phase} phase ${d.intent.en.toLowerCase()}`, tr: `${phase} fazı ${d.intent.tr.toLowerCase()}` },
+  }))
+}
+
 // ── Main orchestrator ───────────────────────────────────────────────────────
 /**
  * @public
@@ -760,7 +829,9 @@ export function buildEliteProgram(input) {
       sampleWeeks[phaseName] = []
       continue
     }
-    if (sport === 'run' || sport === 'triathlon') {
+    if (sport === 'triathlon') {
+      sampleWeeks[phaseName] = triSampleWeek(phaseName, currentLevel.paces, currentLevel.ftp, currentLevel.css)
+    } else if (sport === 'run') {
       sampleWeeks[phaseName] = runSampleWeek(phaseName, currentLevel.paces, profileWithDefaults.trainingDays)
     } else if (sport === 'bike') {
       sampleWeeks[phaseName] = bikeSampleWeek(phaseName, currentLevel.paces)
