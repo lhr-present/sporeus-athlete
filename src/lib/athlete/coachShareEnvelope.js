@@ -24,7 +24,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const KIND = 'sporeus-elite-program-share'
-const SUPPORTED_VERSION = 1
+const SUPPORTED_VERSIONS = new Set([1, 2])  // v9.3.0: v=2 adds edits[] for coach-edit-back
 
 /**
  * Bilingual error code → message lookup.
@@ -130,7 +130,7 @@ export function validateCoachShareEnvelope(obj) {
   if (obj.kind !== KIND) {
     return { ok: false, error: 'wrong-kind' }
   }
-  if (obj.v !== SUPPORTED_VERSION) {
+  if (!SUPPORTED_VERSIONS.has(obj.v)) {
     return { ok: false, error: 'unsupported-version' }
   }
   if (!obj.athleteSnapshot || typeof obj.athleteSnapshot !== 'object' || Array.isArray(obj.athleteSnapshot)) {
@@ -177,7 +177,7 @@ export function parseCoachShareEnvelope(jsonStr) {
   // Coerce + return defensive copy. Preserve unknown fields for forward-compat.
   const envelope = {
     ...raw,
-    v: SUPPORTED_VERSION,
+    v: raw.v,                                  // preserve v=1 vs v=2 — caller branches on it
     kind: KIND,
     athleteSnapshot: normalizeSnapshot(raw.athleteSnapshot),
     physiology: normalizePhysiology(raw.physiology),
@@ -187,5 +187,35 @@ export function parseCoachShareEnvelope(jsonStr) {
     citation: safeStr(raw.citation),
     generatedAt: safeStr(raw.generatedAt),
   }
+  // v=2 only: normalize edits[] array.
+  if (raw.v === 2) {
+    envelope.edits = Array.isArray(raw.edits) ? raw.edits.map(normalizeEdit).filter(Boolean) : []
+    envelope.coachId = safeStr(raw.coachId)
+    envelope.editedAt = safeStr(raw.editedAt)
+  }
   return { ok: true, error: null, envelope }
+}
+
+/**
+ * Normalize a single coach edit. Returns null if the edit is malformed
+ * enough that it should be silently dropped. Forward-compat: extra unknown
+ * fields preserved.
+ *
+ * @internal
+ */
+function normalizeEdit(e) {
+  if (!e || typeof e !== 'object' || Array.isArray(e)) return null
+  if (typeof e.type !== 'string' || typeof e.target !== 'string') return null
+  return {
+    ...e,
+    id: safeStr(e.id) || `edit-${Math.random().toString(36).slice(2, 10)}`,
+    type: e.type,
+    target: e.target,
+    prev: e.prev !== undefined ? e.prev : null,
+    next: e.next !== undefined ? e.next : null,
+    note: e.note && typeof e.note === 'object'
+      ? { en: safeStr(e.note.en), tr: safeStr(e.note.tr) }
+      : { en: '', tr: '' },
+    timestamp: safeStr(e.timestamp),
+  }
 }

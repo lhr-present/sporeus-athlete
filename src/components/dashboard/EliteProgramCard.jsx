@@ -16,6 +16,8 @@ import {
   DELOAD_NOTE,
 } from '../../lib/athlete/eliteProgram.js'
 import BroaderPlanSections from './BroaderPlanSections.jsx'
+import CoachEditsBanner, { ATHLETE_EDITS_KEY } from './CoachEditsBanner.jsx'
+import { applyCoachEdits } from '../../lib/athlete/coachEditEngine.js'
 import { eliteProgramToYearlyWeeks } from '../../lib/athlete/eliteProgramToYearly.js'
 import { downloadEliteProgramCSV } from '../../lib/athlete/eliteProgramExport.js'
 import { calculatePMC } from '../../lib/trainingLoad.js'
@@ -923,8 +925,19 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
       return { result: null, rejection: null }
     }
   }, [persisted])
-  const result = evaluation.result
+  const baseResult = evaluation.result
   const rejection = evaluation.rejection
+
+  // ── v9.3.0 — apply accepted coach edits on top of orchestrator result ───────
+  const [coachEditsStored] = useLocalStorage(ATHLETE_EDITS_KEY, null)
+  const coachEdits = useMemo(() =>
+    Array.isArray(coachEditsStored?.edits) ? coachEditsStored.edits : [],
+    [coachEditsStored])
+  const result = useMemo(() => {
+    if (!baseResult) return null
+    if (!coachEdits.length) return baseResult
+    return applyCoachEdits(baseResult, coachEdits)
+  }, [baseResult, coachEdits])
 
   // ── v8.97.0 — lifecycle pill (athlete-facing plan-status surface) ─────────
   // Computed unconditionally so hook order remains stable across mode switches.
@@ -1294,14 +1307,27 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
         const ariaLbl = isTR
           ? `Plan durumu: ${lcLabel}`
           : `Plan status: ${lcLabel}`
+        const editCount = coachEdits.filter(e => e.accepted === true).length
         return (
-          <div role="status" data-lifecycle={lc.state}
-            aria-label={ariaLbl}
-            style={{ display: 'inline-block', ...S.mono, fontSize: '10px', fontWeight: 700, color: '#fff', background: lc.color, padding: '3px 8px', borderRadius: '3px', letterSpacing: '0.08em', marginBottom: '6px', marginRight: '6px' }}>
-            {lcLabel}{showPct ? ` · ${lc.percentComplete}%` : ''}
-          </div>
+          <>
+            <div role="status" data-lifecycle={lc.state}
+              aria-label={ariaLbl}
+              style={{ display: 'inline-block', ...S.mono, fontSize: '10px', fontWeight: 700, color: '#fff', background: lc.color, padding: '3px 8px', borderRadius: '3px', letterSpacing: '0.08em', marginBottom: '6px', marginRight: '6px' }}>
+              {lcLabel}{showPct ? ` · ${lc.percentComplete}%` : ''}
+            </div>
+            {editCount > 0 ? (
+              <div role="status" data-coach-modified-pill
+                aria-label={isTR ? `Koç tarafından düzenlendi: ${editCount}` : `Coach-modified: ${editCount}`}
+                style={{ display: 'inline-block', ...S.mono, fontSize: '10px', fontWeight: 700, color: '#fff', background: '#9966cc', padding: '3px 8px', borderRadius: '3px', letterSpacing: '0.08em', marginBottom: '6px', marginRight: '6px' }}>
+                {isTR ? `KOÇ DÜZENLEMESİ · ${editCount}` : `COACH-MODIFIED · ${editCount}`}
+              </div>
+            ) : null}
+          </>
         )
       })() : null}
+
+      <CoachEditsBanner />
+
 
       {lifecycle && lifecycle.state === 'in-progress' && adherence && adherence.reliable ? (
         <AdherenceSection

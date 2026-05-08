@@ -11,6 +11,7 @@ import {
   parseCoachShareEnvelope,
   COACH_SHARE_ERRORS,
 } from '../../lib/athlete/coachShareEnvelope.js'
+import CoachEditPanel from './CoachEditPanel.jsx'
 
 const STORAGE_KEY = 'sporeus-coach-ingested-share'
 
@@ -142,6 +143,8 @@ export default function CoachAthleteProgramCard() {
   const [stored, setStored] = useLocalStorage(STORAGE_KEY, null)
   const [textValue, setTextValue] = useState('')
   const [errorCode, setErrorCode] = useState(null)
+  const [editMode, setEditMode] = useState(false)
+  const [pendingEdits, setPendingEdits] = useLocalStorage('sporeus-coach-pending-edits', [])
   const fileInputRef = useRef(null)
 
   const titleEN = 'ATHLETE PROGRAM'
@@ -190,12 +193,15 @@ export default function CoachAthleteProgramCard() {
     setStored(null)
     setTextValue('')
     setErrorCode(null)
+    setEditMode(false)
+    setPendingEdits([])
   }
 
   // Defensive: re-validate stored envelope on every render (in case shape drift).
   const envelope = useMemo(() => {
     if (!stored || typeof stored !== 'object') return null
-    if (stored.kind !== 'sporeus-elite-program-share' || stored.v !== 1) return null
+    if (stored.kind !== 'sporeus-elite-program-share') return null
+    if (stored.v !== 1 && stored.v !== 2) return null
     if (!stored.athleteSnapshot || !Array.isArray(stored.phases)) return null
     return stored
   }, [stored])
@@ -271,13 +277,23 @@ export default function CoachAthleteProgramCard() {
         <div style={{ ...S.cardTitle, marginBottom: 0, borderBottom: 'none', paddingBottom: 0 }}>
           {titleEN}<span aria-hidden="true" style={{ margin: '0 6px' }}>·</span>{titleTR}
         </div>
-        <button type="button"
-          onClick={handleClear}
-          data-coach-clear-btn
-          aria-label={isTR ? 'Sporcu programını temizle' : 'Clear athlete program'}
-          style={{ ...S.mono, fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '6px 10px', background: 'transparent', color: '#ff6600', border: '1px solid #ff6600', borderRadius: '3px', cursor: 'pointer', minHeight: '32px' }}>
-          {isTR ? 'TEMİZLE' : 'CLEAR'}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>{isTR ? 'CLEAR' : 'TEMİZLE'}
-        </button>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <button type="button"
+            onClick={() => setEditMode(m => !m)}
+            data-coach-edit-toggle
+            aria-pressed={editMode}
+            aria-label={isTR ? 'Düzenleme modu' : 'Edit mode'}
+            style={{ ...S.mono, fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '6px 10px', background: editMode ? '#ff6600' : 'transparent', color: editMode ? '#fff' : '#ff6600', border: '1px solid #ff6600', borderRadius: '3px', cursor: 'pointer', minHeight: '32px' }}>
+            {editMode ? (isTR ? '✓ DÜZENLE' : '✓ EDIT') : (isTR ? 'DÜZENLE' : 'EDIT')}
+          </button>
+          <button type="button"
+            onClick={handleClear}
+            data-coach-clear-btn
+            aria-label={isTR ? 'Sporcu programını temizle' : 'Clear athlete program'}
+            style={{ ...S.mono, fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', padding: '6px 10px', background: 'transparent', color: '#ff6600', border: '1px solid #ff6600', borderRadius: '3px', cursor: 'pointer', minHeight: '32px' }}>
+            {isTR ? 'TEMİZLE' : 'CLEAR'}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>{isTR ? 'CLEAR' : 'TEMİZLE'}
+          </button>
+        </div>
       </div>
 
       {/* Lifecycle pill (if present) */}
@@ -360,6 +376,15 @@ export default function CoachAthleteProgramCard() {
             <span style={{ marginLeft: '8px' }}>· {isTR ? 'oluşturuldu' : 'generated'} {envelope.generatedAt}</span>
           ) : null}
         </div>
+      ) : null}
+
+      {editMode ? (
+        <CoachEditPanel
+          envelope={envelope}
+          edits={pendingEdits}
+          onChange={setPendingEdits}
+          isTR={isTR}
+        />
       ) : null}
     </div>
   )

@@ -65,6 +65,7 @@ function unreliable(state = 'draft') {
     daysToRace: null,
     percentComplete: 0,
     reliable: false,
+    coachEdits: { applied: 0, pending: 0, total: 0 },
   }
 }
 
@@ -92,6 +93,7 @@ function logEntryDistanceM(e) {
  *   daysToRace: number|null,
  *   percentComplete: number,
  *   reliable: boolean,
+ *   coachEdits: { applied: number, pending: number, total: number }   // v9.3.0
  * }}
  */
 export function getPlanLifecycle(program, log, options) {
@@ -195,6 +197,17 @@ export function getPlanLifecycle(program, log, options) {
     }
   }
 
+  // v9.3.0 — coach-edit summary, additive metadata. UI renders alongside state.
+  let coachEdits = { applied: 0, pending: 0, total: 0 }
+  if (Array.isArray(opts.coachEdits)) {
+    let applied = 0, pending = 0
+    for (const e of opts.coachEdits) {
+      if (e?.accepted === true) applied++
+      else if (e?.accepted !== false) pending++
+    }
+    coachEdits = { applied, pending, total: opts.coachEdits.length }
+  }
+
   return {
     state,
     label: STATE_LABELS[state],
@@ -202,5 +215,6 @@ export function getPlanLifecycle(program, log, options) {
     daysToRace,
     percentComplete,
     reliable: true,
+    coachEdits,
   }
 }

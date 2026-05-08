@@ -74,11 +74,38 @@ describe('parseCoachShareEnvelope — error paths', () => {
     expect(r.error).toBe('wrong-kind')
   })
 
-  it('v=2 returns unsupported-version', () => {
-    const env = validEnvelope({ v: 2 })
+  it('v=2 is now accepted (Wave B coach edit-back)', () => {
+    const env = validEnvelope({ v: 2, edits: [], coachId: 'coach-1', editedAt: '2026-05-08' })
+    const r = parseCoachShareEnvelope(JSON.stringify(env))
+    expect(r.ok).toBe(true)
+    expect(r.envelope.v).toBe(2)
+    expect(Array.isArray(r.envelope.edits)).toBe(true)
+    expect(r.envelope.coachId).toBe('coach-1')
+    expect(r.envelope.editedAt).toBe('2026-05-08')
+  })
+
+  it('v=3 still returns unsupported-version', () => {
+    const env = validEnvelope({ v: 3 })
     const r = parseCoachShareEnvelope(JSON.stringify(env))
     expect(r.ok).toBe(false)
     expect(r.error).toBe('unsupported-version')
+  })
+
+  it('v=2 normalizes edits[] (drops malformed, preserves valid)', () => {
+    const env = validEnvelope({
+      v: 2,
+      edits: [
+        { id: 'a', type: 'phase-tss-bias', target: 'Build', prev: 1, next: 1.1, note: { en: 'x', tr: 'y' }, timestamp: '2026-05-08' },
+        { type: 'phase-note', target: 'Peak' },     // missing fields but normalizable
+        null,                                         // dropped
+        { id: 'c' },                                  // missing type/target — dropped
+        'string-not-object',                          // dropped
+      ],
+    })
+    const r = parseCoachShareEnvelope(JSON.stringify(env))
+    expect(r.ok).toBe(true)
+    expect(r.envelope.edits.length).toBe(2)
+    expect(r.envelope.edits[0].id).toBe('a')
   })
 
   it('missing athleteSnapshot returns missing-required-fields', () => {

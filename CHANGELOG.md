@@ -4,6 +4,211 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.3.0 — 2026-05-08 — Mission #1 Wave B: coach edit-back via v=2 envelope (athlete↔coach round-trip), 9217 tests
+
+  Wave B closes the second half of the user directive
+  "upgradable or changeable or enhanceable by coach". The
+  coach-share envelope now supports a v=2 form with an
+  edits[] array, the coach-side card has an EDIT mode, and
+  the athlete-side EliteProgramCard ingests + merges the
+  edits into the displayed plan with per-edit ACCEPT /
+  REVERT controls. Wave A's broader content layers from
+  v9.2.0 ride along unchanged.
+
+  v=2 envelope (forward-compat extension of v=1):
+    Same shape as v=1 plus four new fields:
+      v: 2,                 // was 1
+      edits: CoachEdit[],   // ordered list of granular edits
+      coachId: string,      // free-form identifier
+      editedAt: 'YYYY-MM-DD'
+
+    parseCoachShareEnvelope now accepts both v=1 and v=2;
+    SUPPORTED_VERSIONS Set replaces the single constant.
+    v=2 normalizes the edits array on parse: malformed
+    entries (missing type/target, non-objects, primitives)
+    are silently dropped. Forward-compat preserved: extra
+    unknown fields tolerated.
+
+    Old v=1 readers continue to ignore `edits/coachId/
+    editedAt` per the v9.0.0 contract rule.
+
+  Coach edit engine (NEW src/lib/athlete/coachEditEngine.js):
+    Four edit types, all bilingual:
+      'phase-tss-bias'     — multiplier 0.5-1.5 applied to a
+                              phase's weeklyTSS slice.
+      'phase-note'         — bilingual coach annotation
+                              attached to a phase.
+      'key-session-swap'   — replace one library entry with
+                              a custom session (key preserved
+                              for reference; content swapped).
+      'general-note'       — free-form annotation on the
+                              whole plan.
+
+    Public API:
+      buildCoachEdit({type, target, prev, next, noteEn, noteTr})
+        → CoachEdit | null   (null on validation failure)
+      validateCoachEdit(e) → {ok, reason}
+      applyCoachEdits(program, edits) → program' (deep-cloned;
+        only edits with accepted===true are merged; others
+        skipped). Mutation-free.
+      acceptCoachEdit(edits, id), revertCoachEdit(edits, id),
+        acceptAllCoachEdits(edits) → new arrays.
+      summarizeCoachEdits(edits)
+        → { total, accepted, pending, rejected }
+
+    applyCoachEdits adds two extra fields to its return:
+      coachAppliedEdits: CoachEdit[]   // edits that landed
+      coachNotes: { phase: { Base: [], ... }, general: [] }
+
+  Coach-side EDIT mode (NEW
+  src/components/coach/CoachEditPanel.jsx, ~270 lines):
+    Toggle button in CoachAthleteProgramCard header opens
+    the panel below the citation footer. Form has:
+      • Edit type tab strip (4 types)
+      • Phase selector (Base/Build/Peak/Taper)
+      • Bias number input (phase-tss-bias) with live preview
+      • Session key/name/structure inputs (key-session-swap)
+      • Bilingual note textarea
+      • + ADD EDIT button (validates via buildCoachEdit)
+      • Staged-edits list with × remove
+      • ↓ EXPORT v=2 FILE (downloads JSON)
+      • 📋 COPY (clipboard write)
+    Pending edits persist to localStorage
+    `sporeus-coach-pending-edits` so the coach can build
+    multiple edits across sessions before exporting.
+    handleClear extends to reset edit-mode + pending edits.
+
+  Athlete-side MERGE UI (NEW
+  src/components/dashboard/CoachEditsBanner.jsx, ~230 lines):
+    Mounted at the top of the EliteProgramCard plan view
+    (above the lifecycle row). Two states:
+
+    Empty state — collapsed disclosure:
+      "IMPORT COACH EDITS (v=2)" expander → textarea +
+      file-upload + INGEST button. Same parser path as the
+      coach card. v=1 envelopes are rejected (only v=2
+      carries edits).
+
+    Loaded state — purple-bordered banner showing:
+      "COACH EDITS RECEIVED · N total · M applied · K pending"
+      + ACCEPT ALL button + SHOW/HIDE expand + × clear.
+      Per-edit list with ACCEPT (✓ green) / REVERT (✗ red)
+      buttons; rejected edits dimmed at 0.5 opacity.
+
+    Persists to localStorage `sporeus-athlete-coach-edits`
+    (exported as ATHLETE_EDITS_KEY). EliteProgramCard reads
+    this key, computes `coachEdits` array, and applies via
+    applyCoachEdits in a useMemo before the result is
+    rendered. Banner re-render → memo re-runs → plan
+    updates immediately.
+
+  Lifecycle pill — coach-modified additive metadata
+  (src/lib/athlete/planLifecycle.js):
+    getPlanLifecycle now accepts options.coachEdits (array)
+    and returns `coachEdits: { applied, pending, total }` on
+    every result (zero-filled when no edits supplied).
+    EliteProgramCard renders a second pill alongside the
+    existing lifecycle pill when applied count > 0:
+      "COACH-MODIFIED · 3"   (purple #9966cc)
+    Additive design: the underlying state (draft/applied/
+    in-progress/complete/...) is never overridden by coach
+    edits; the new pill renders alongside.
+
+  Files added:
+    NEW src/lib/athlete/coachEditEngine.js              (~165 lines)
+    NEW src/components/coach/CoachEditPanel.jsx         (~270 lines)
+    NEW src/components/dashboard/CoachEditsBanner.jsx   (~230 lines)
+    NEW src/lib/__tests__/athlete/coachEditEngine.test.js (29 tests)
+
+  Files edited:
+    EDIT src/lib/athlete/coachShareEnvelope.js
+           SUPPORTED_VERSIONS = {1, 2}; normalizeEdit helper;
+           v=2 fields preserved on parse; JSDoc forward-compat
+           note unchanged.
+    EDIT src/components/coach/CoachAthleteProgramCard.jsx
+           v=2 ingestion gate; EDIT toggle button; pending-
+           edits state via useLocalStorage; CoachEditPanel
+           render hook; handleClear resets edits.
+    EDIT src/components/dashboard/EliteProgramCard.jsx
+           Reads coach edits via useLocalStorage; computes
+           merged result via applyCoachEdits in useMemo;
+           CoachEditsBanner mounted above plan body;
+           COACH-MODIFIED pill rendered alongside lifecycle.
+    EDIT src/lib/athlete/planLifecycle.js
+           options.coachEdits → coachEdits summary on result;
+           unreliable() also zero-fills.
+    EDIT src/lib/__tests__/athlete/coachShareEnvelope.test.js
+           v=2 acceptance tests (3 new); v=3 still rejected;
+           edits[] normalization on malformed entries.
+    EDIT src/lib/__tests__/athlete/planLifecycle.test.js
+           Coach-edits summary cases (3 new).
+
+  Tests (+31 net):
+    coachEditEngine: 29 tests (build/validate/apply/revert/
+                     acceptAll/summarize + edge cases +
+                     mutation-freedom + skip pending +
+                     skip rejected + invalid target).
+    coachShareEnvelope: 3 new tests (v=2 accepted, v=3
+                        rejected, edits[] normalized).
+    planLifecycle: 3 new tests (zero-fill default, count
+                   pending/accepted/rejected, unreliable
+                   path zero-fills too).
+
+  Verification:
+    Lint:    clean (--max-warnings 0)
+    Tests:   9217 / 9217 passing across 380 files (+31 vs v9.2.0)
+    Build:   84.06 KB gz main bundle (-0.01 KB; all Wave B
+             code in lazy-loaded chunks; ~11 KB headroom)
+
+  What this enables for the coach-athlete loop:
+    1. Athlete generates plan → SHARE WITH COACH (v=1, as before).
+    2. Coach loads v=1 envelope → ENTER EDIT MODE → stages
+       edits (bias up Build phase 1.15×, swap VO2 5×4 for
+       cruise 4×10, add a phase note) → EXPORT v=2.
+    3. Athlete imports v=2 → MERGE COACH EDITS banner appears
+       with N pending edits → ACCEPT ALL or pick per-edit.
+    4. Plan view updates immediately:
+         weeklyTSS reflects bias multiplier
+         keySessionLibrary entry swapped (with _swappedByCoach
+         marker)
+         coachNotes attached to phase / general
+         COACH-MODIFIED · N pill alongside lifecycle.
+    5. Athlete can REVERT any edit at any time without losing
+       the coach's input — REVERT is non-destructive, just
+       toggles accepted=false.
+    6. Re-running the orchestrator (RE-PROJECT) does NOT
+       discard merged edits — the coachEdits localStorage is
+       independent of the program output and is re-applied
+       on top of every fresh orchestrator run.
+
+  Audiences served:
+    Athlete: receives, reviews, accepts/reverts coach
+             modifications without losing the orchestrator's
+             scientific baseline. Each edit shows the coach's
+             reasoning ("note") so the athlete understands
+             why the change was suggested.
+    Coach:   stages multiple granular edits before sharing,
+             can build a multi-edit package across sessions
+             via localStorage persistence, exports a single
+             v=2 file the athlete can ingest in one click.
+    Dev:     coachEditEngine is pure data-in/data-out — fully
+             unit-testable; no React deps. coachShareEnvelope
+             dispatches v=1 vs v=2 cleanly. v9.0.0 forward-
+             compat rule enforced (extra unknown fields
+             tolerated; only the version bump triggers the
+             new code path).
+
+  No further Wave is queued — Mission #1 is now feature-
+  complete with both the broader content (Wave A) and the
+  coach round-trip (Wave B). Future enhancements would be
+  Mission #2 / #3 scope (multi-race horizon, real-time
+  Supabase coach sync) per v9.0.0 launch deferral list.
+
+  Depends on: v9.2.0 (broader content rides v=1 envelope;
+  Wave B layers on top without changing the v=1 surface).
+
+---
+
 ## v9.2.0 — 2026-05-08 — Mission #1 broader & more applicable: 6 new content layers (key sessions, strength, fueling, recovery, race week, substitutions), 9186 tests
 
   Wave A of the "broader & applicable + coach-editable" ask.

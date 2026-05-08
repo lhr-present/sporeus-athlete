@@ -278,3 +278,32 @@ describe('getPlanLifecycle — multi-state walk', () => {
     expect(expired.state).toBe('expired')
   })
 })
+
+// ── v9.3.0 — coach edits summary ────────────────────────────────────────────
+describe('getPlanLifecycle — coach edits summary (v9.3.0)', () => {
+  it('returns zero-filled coachEdits when no edits supplied', () => {
+    const program = makeProgram()
+    const out = getPlanLifecycle(program, [], { today: '2026-05-07', programStart: PROGRAM_START })
+    expect(out.coachEdits).toEqual({ applied: 0, pending: 0, total: 0 })
+  })
+
+  it('counts pending vs accepted vs rejected', () => {
+    const program = makeProgram()
+    const edits = [
+      { id: 'a', accepted: true },
+      { id: 'b', accepted: false },
+      { id: 'c' },                     // pending
+      { id: 'd', accepted: true },
+    ]
+    const out = getPlanLifecycle(program, [], {
+      today: '2026-05-07', programStart: PROGRAM_START, coachEdits: edits,
+    })
+    expect(out.coachEdits).toEqual({ applied: 2, pending: 1, total: 4 })
+  })
+
+  it('zero-fills coachEdits on unreliable result', () => {
+    const out = getPlanLifecycle(null, [], { today: '2026-05-07', programStart: PROGRAM_START })
+    expect(out.coachEdits).toEqual({ applied: 0, pending: 0, total: 0 })
+    expect(out.reliable).toBe(false)
+  })
+})
