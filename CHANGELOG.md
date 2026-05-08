@@ -4,6 +4,31 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.10.1 — 2026-05-09 — fix: QuickAddModal rowing default type was 'Easy Run' copy-paste bug
+
+  Audit caught a 1-line copy-paste bug in
+  QuickAddModal.jsx SPORT_DEFAULT_TYPE table:
+  `Rowing: 'Easy Run'` should have been `'Easy Erg'`.
+
+  Impact: athletes with primarySport='rowing' opening
+  the quick-add modal got 'Easy Run' as the default
+  session type. Log entries silently miscategorized as
+  run sessions, breaking RowingMetricsCard's
+  `/row|erg|2k\s*test/i` detection gate and the
+  cross-sport heuristics. RowingMetricsCard would
+  appear empty for rowers using only quick-add.
+
+  Now matches the 'Easy Erg' convention already used in
+  coachDashboard/helpers.jsx rowing weekly templates.
+
+  Files: src/components/QuickAddModal.jsx (1 line).
+
+  No test additions — existing 18 QuickAddModal tests
+  still green; the audit finding came from cross-file
+  consistency review, not from test failure.
+
+---
+
 ## v9.10.0 — 2026-05-09 — Mission #1 strength program v2: prehab tier + core progression + sport-aware Base plyometrics + minimum-dose taper, 9350 tests
 
   Closes the audit B1 strength-program depth gap that

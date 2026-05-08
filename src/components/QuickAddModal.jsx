@@ -28,7 +28,7 @@ const SPORT_DEFAULT_TYPE = {
   Cycling:   'Easy Ride',
   Swimming:  'Easy Swim',
   Triathlon: 'Easy Run',
-  Rowing:    'Easy Run',
+  Rowing:    'Easy Erg',
   Other:     'Easy Run',
 }
 
