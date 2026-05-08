@@ -873,6 +873,109 @@ describe('buildEliteProgram — v9.9.0 cross-sport enhancements', () => {
   })
 })
 
+describe('buildEliteProgram — v9.10.0 strength program v2 (depth)', () => {
+  describe('prehab tier', () => {
+    it('every phase carries a prehab array', () => {
+      const r = buildEliteProgram(RUN_REALISTIC)
+      for (const phase of ['Base', 'Build', 'Peak', 'Taper']) {
+        expect(Array.isArray(r.strengthProgram[phase]?.prehab)).toBe(true)
+        expect(r.strengthProgram[phase].prehab.length).toBeGreaterThan(0)
+      }
+    })
+    it('prehab includes glute med activation', () => {
+      const r = buildEliteProgram(RUN_REALISTIC)
+      const names = r.strengthProgram.Base.prehab.map(m => m.name.en).join(' ')
+      expect(names.toLowerCase()).toContain('glute med')
+    })
+    it('prehab includes ankle dorsiflexion', () => {
+      const r = buildEliteProgram(RUN_REALISTIC)
+      const names = r.strengthProgram.Base.prehab.map(m => m.name.en).join(' ')
+      expect(names.toLowerCase()).toContain('ankle')
+    })
+  })
+
+  describe('core progression', () => {
+    it('every phase carries a core array', () => {
+      const r = buildEliteProgram(RUN_REALISTIC)
+      for (const phase of ['Base', 'Build', 'Peak', 'Taper']) {
+        expect(Array.isArray(r.strengthProgram[phase]?.core)).toBe(true)
+      }
+    })
+    it('Build core introduces Pallof press anti-rotation', () => {
+      const r = buildEliteProgram(RUN_REALISTIC)
+      const names = r.strengthProgram.Build.core.map(m => m.name.en).join(' ')
+      expect(names.toLowerCase()).toContain('pallof')
+    })
+    it('Peak core introduces bird-dog', () => {
+      const r = buildEliteProgram(RUN_REALISTIC)
+      const names = r.strengthProgram.Peak.core.map(m => m.name.en).join(' ')
+      expect(names.toLowerCase()).toContain('bird-dog')
+    })
+    it('Taper core is activation-only (volume drops)', () => {
+      const r = buildEliteProgram(RUN_REALISTIC)
+      expect(r.strengthProgram.Taper.core.length).toBeLessThanOrEqual(2)
+    })
+  })
+
+  describe('sport-aware Base plyometrics (audit B1 closure)', () => {
+    it('run Base includes pogo hops + bound-skips', () => {
+      const r = buildEliteProgram(RUN_REALISTIC)
+      const names = r.strengthProgram.Base.movements.map(m => m.name.en).join(' ')
+      expect(names.toLowerCase()).toContain('pogo')
+      expect(names.toLowerCase()).toContain('bound')
+    })
+    it('rowing Base includes standing broad jumps', () => {
+      const r = buildEliteProgram({
+        sport: 'rowing',
+        currentPR: { distanceM: 0, timeSec: 420 },
+        targetPR:  { distanceM: 0, timeSec: 405 },
+        raceDate: '2026-08-25', options: { today: TODAY },
+      })
+      const names = r.strengthProgram.Base.movements.map(m => m.name.en).join(' ')
+      expect(names.toLowerCase()).toContain('broad jump')
+    })
+    it('swim Base includes streamline vertical jumps', () => {
+      const r = buildEliteProgram({
+        sport: 'swim',
+        currentPR: { distanceM: 1500, timeSec: 1500 },
+        targetPR:  { distanceM: 1500, timeSec: 1380 },
+        raceDate: '2026-08-25', options: { today: TODAY },
+      })
+      const names = r.strengthProgram.Base.movements.map(m => m.name.en).join(' ')
+      expect(names.toLowerCase()).toContain('streamline')
+    })
+    it('bike Base includes squat jumps', () => {
+      const r = buildEliteProgram({
+        sport: 'bike',
+        currentPR: { distanceM: 0, timeSec: 250 },
+        targetPR:  { distanceM: 0, timeSec: 280 },
+        raceDate: '2026-08-25', options: { today: TODAY },
+      })
+      const names = r.strengthProgram.Base.movements.map(m => m.name.en).join(' ')
+      expect(names.toLowerCase()).toContain('squat jump')
+    })
+  })
+
+  describe('minimum-dose taper guidance', () => {
+    it('Taper exposes minimumDose block', () => {
+      const r = buildEliteProgram(RUN_REALISTIC)
+      expect(r.strengthProgram.Taper.minimumDose).toBeTruthy()
+      expect(r.strengthProgram.Taper.minimumDose.en).toMatch(/box jump/i)
+      expect(r.strengthProgram.Taper.minimumDose.tr).toBeTruthy()
+    })
+    it('non-taper phases do not have minimumDose', () => {
+      const r = buildEliteProgram(RUN_REALISTIC)
+      for (const phase of ['Base', 'Build', 'Peak']) {
+        expect(r.strengthProgram[phase]?.minimumDose).toBeUndefined()
+      }
+    })
+    it('Taper warning references the minimum-dose escape', () => {
+      const r = buildEliteProgram(RUN_REALISTIC)
+      expect(r.strengthProgram.Taper.warning.en).toMatch(/minimum-dose|min-doz/i)
+    })
+  })
+})
+
 describe('buildEliteProgram — output shape and metadata', () => {
   it('citation includes Daniels, Coggan, Wakayoshi', () => {
     const r = buildEliteProgram(RUN_REALISTIC)

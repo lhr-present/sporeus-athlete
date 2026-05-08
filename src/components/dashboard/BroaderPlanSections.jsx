@@ -234,6 +234,21 @@ export function StrengthSection({ strengthProgram, isTR, defaultOpen = false }) 
             <div style={{ ...S.mono, fontSize: 11, lineHeight: 1.55 }}>
               <div style={{ marginBottom: 4 }}><strong>{isTR ? 'ODAK' : 'EMPHASIS'}:</strong> {bil(p.emphasis, isTR)}</div>
               <div style={{ marginBottom: 4 }}><strong>{isTR ? 'HAFTALIK SIKLIK' : 'FREQUENCY'}:</strong> {p.frequencyPerWeek}× / {isTR ? 'hafta' : 'week'} · {p.sessionDurationMin} {isTR ? 'dk' : 'min'}</div>
+              {Array.isArray(p.prehab) && p.prehab.length > 0 ? (
+                <>
+                  <div style={{ marginTop: 6, marginBottom: 4, fontWeight: 700, color: '#0064ff' }}>
+                    {isTR ? 'PREHAB (5-8 dk)' : 'PREHAB (5-8 min)'}
+                  </div>
+                  <ul style={{ margin: 0, padding: '0 0 0 16px' }}>
+                    {p.prehab.map((m, i) => (
+                      <li key={i} style={{ marginBottom: 3 }}>
+                        <strong>{bil(m.name, isTR)}</strong> — {m.sets}×{m.reps}
+                        <div style={{ fontSize: 10, color: 'var(--muted)' }}>{bil(m.notes, isTR)}</div>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
               <div style={{ marginTop: 6, marginBottom: 4, fontWeight: 700 }}>{isTR ? 'HAREKETLER' : 'MOVEMENTS'}</div>
               <ul style={{ margin: 0, padding: '0 0 0 16px' }}>
                 {p.movements.map((m, i) => (
@@ -243,6 +258,26 @@ export function StrengthSection({ strengthProgram, isTR, defaultOpen = false }) 
                   </li>
                 ))}
               </ul>
+              {Array.isArray(p.core) && p.core.length > 0 ? (
+                <>
+                  <div style={{ marginTop: 6, marginBottom: 4, fontWeight: 700, color: '#28a745' }}>
+                    {isTR ? 'CORE / GÖVDE' : 'CORE'}
+                  </div>
+                  <ul style={{ margin: 0, padding: '0 0 0 16px' }}>
+                    {p.core.map((m, i) => (
+                      <li key={i} style={{ marginBottom: 3 }}>
+                        <strong>{bil(m.name, isTR)}</strong> — {m.sets}×{m.reps}
+                        <div style={{ fontSize: 10, color: 'var(--muted)' }}>{bil(m.notes, isTR)}</div>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
+              {p.minimumDose ? (
+                <div style={{ marginTop: 8, padding: 6, background: 'rgba(40,167,69,0.10)', borderLeft: '2px solid #28a745', fontSize: 10 }}>
+                  <strong>{isTR ? 'MİN DOZ (yarış haftası)' : 'MINIMUM DOSE (race week)'}:</strong> {bil(p.minimumDose, isTR)}
+                </div>
+              ) : null}
               <div style={{ marginTop: 8, padding: 6, background: 'rgba(255,153,0,0.08)', borderLeft: '2px solid #f90', fontSize: 10 }}>
                 <strong>{isTR ? 'UYARI' : 'WARNING'}:</strong> {bil(p.warning, isTR)}
               </div>

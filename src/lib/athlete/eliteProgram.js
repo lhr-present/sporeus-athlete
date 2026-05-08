@@ -1068,7 +1068,7 @@ export function buildEliteProgram(input) {
 
   // v9.2.0 — broader plan content layers (per-phase libraries)
   const keySessionLibrary = buildKeySessionLibrary({ sport, phases })
-  const strengthProgram   = buildStrengthProgram({ phases })
+  const strengthProgram   = buildStrengthProgram({ phases, sport })
   const fuelingProgram    = buildFuelingProgram({
     phases,
     bodyMassKg: profileWithDefaults.bodyMassKg,

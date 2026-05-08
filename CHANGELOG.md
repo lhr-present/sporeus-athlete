@@ -4,6 +4,84 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.10.0 — 2026-05-09 — Mission #1 strength program v2: prehab tier + core progression + sport-aware Base plyometrics + minimum-dose taper, 9350 tests
+
+  Closes the audit B1 strength-program depth gap that
+  remained after v9.9.0. Real coaches always include
+  joint mobility before lifts, progress core endurance
+  rather than holding planks at 30s forever, prescribe
+  sport-specific plyometrics in Base (not just Build),
+  and give a minimum-dose taper option rather than a
+  binary skip-or-do.
+
+  • prehab tier (5-8 min before main work, every phase):
+    glute med activation (clamshells), monster walks
+    (band), hip CARs, ankle dorsiflexion (wall mob),
+    single-leg balance with eyes closed. Page 2010;
+    Cibulka 2008. Same routine across phases —
+    consistency is the point.
+
+  • core progression per phase: Base = plank +
+    side-plank + dead bug (foundation); Build = plank
+    progression + Pallof press (anti-rotation) + loaded
+    dead bug; Peak = plank-with-leg-lift + Pallof
+    press + bird-dog; Taper = activation only (1x30s
+    plank + 1x6 bird-dog). Replaces the static "30-45s
+    plank only" pattern across all phases.
+
+  • sport-aware Base plyometrics: run gets pogo hops +
+    bound-skips (running stiffness); bike gets squat
+    jumps (standing-attack power); swim gets streamline
+    vertical jumps (dive/wall posture); rowing gets
+    standing broad jumps (catch hip-extension drive);
+    triathlon picks run plyo (highest neuromuscular
+    demand for tri brick). Closes audit "no plyo in Run
+    Base" finding. Beattie 2014.
+
+  • minimum-dose taper protocol: new minimumDose field
+    on Taper phase. "1 short session, 2x3 low box jumps
+    + 5 bodyweight squat-jumps, T-7 to T-3 only. Skip
+    if sleep <6h." The old binary "drop entirely"
+    warning is now nuanced — race week gets a neural-
+    prime escape valve. Mujika 2003.
+
+  Orchestrator change: buildStrengthProgram now accepts
+  `sport` (was phases-only). Default Base plyo falls
+  back to none if sport unknown.
+
+  UI: BroaderPlanSections.StrengthSection renders
+  prehab block (blue label), main movements (default),
+  core block (green label), and the minimum-dose
+  callout (green left-border) when present. Existing
+  warning callout (orange) still surfaces.
+
+  Tests: +14 in eliteProgram.test.js across 4 describe
+  blocks (prehab, core progression, sport-aware plyo,
+  minimum-dose). Total 9350/9350 green. Lint clean.
+  Bundle 1302 KB / 2000 KB.
+
+  Files: src/lib/athlete/eliteProgramStrength.js
+  (rewrite, +180 lines: PREHAB_BASE, CORE_BASE/BUILD/
+  PEAK/TAPER, SPORT_PLYO_BASE map, makeBase factory,
+  minimumDose on Taper); src/lib/athlete/eliteProgram.js
+  (1 line: pass sport into buildStrengthProgram);
+  src/components/dashboard/BroaderPlanSections.jsx
+  (+45 lines: prehab/core block rendering + min-dose
+  callout); src/lib/__tests__/athlete/eliteProgram.test.js
+  (+85 lines).
+
+  Citations: Rønnestad & Mujika 2014; Beattie et al.
+  2014; Sáez de Villarreal 2010; Page 2010 (prehab);
+  Cibulka 2008 (glute med); Mujika 2003 (taper).
+
+  Depends on: v9.9.0 drills library (drills + Base
+  plyo are complementary — drills are sport-skill
+  technique, plyo is force production); v9.7.0 rowing
+  parity (rowing-specific Base plyo); v9.6.0 tri
+  flatten (tri picks run plyo).
+
+---
+
 ## v9.9.0 — 2026-05-08 — Mission #1 cross-sport enhancements: drills library + mental rehearsal scripts + caffeine protocols + contingency map (illness/life/travel), 9336 tests
 
   Continuation of v9.8.0 coaching-maturity work. The
