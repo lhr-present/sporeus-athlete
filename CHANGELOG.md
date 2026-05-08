@@ -4,6 +4,113 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.8.0 — 2026-05-08 — Mission #1 coaching maturity: race simulation + open-water tri + pre-race meal library + travel/altitude/heat protocols + field-test recalibration loop, 9318 tests
+
+  External Mission #1 audit (2026-05-08) graded the
+  builder B+ — strong periodization and key sessions but
+  missing the operational coaching touches that
+  human coaches add. v9.8.0 closes the five highest-
+  leverage gaps the audit flagged.
+
+  • B1 — Race simulation in Peak. Five new key
+    sessions (one per sport: run, bike, swim, rowing,
+    plus triathlon inheriting all three). Each
+    rehearses race pacing, fueling cadence, and pre-
+    race routine under accumulated fatigue 2-3 weeks
+    pre-race. Citation: Stellingwerf 2018; Pfitzinger
+    2014.
+
+  • B3 — Open-water swim transitions. New
+    `swim-peak-open-water` session covering sighting
+    (head-up every 6-8 strokes), drafting position,
+    and exit-sprint rehearsal. Surfaces in tri Peak
+    library via the v9.6.0 flatten path. Citation:
+    Maglischo 2003; ITU coaching framework.
+
+  • B4 — Pre-race meal library. Each RACE_DAY_*
+    object now carries a `preRaceMeals` array (4-5
+    entries per sport, bilingual EN+TR) with concrete
+    examples by athlete weight and time-to-race:
+    "3h pre-race (70 kg, ~140g CHO): white-rice bowl
+    + banana + 2 toast with honey. No dairy, no fiber."
+    Plus AVOID list. Run uses 60-90 g CHO/h reasoning;
+    bike 80-100 g/h; swim no mid-race fueling for
+    races <30 min; rowing no mid-race for sub-8-min
+    effort.
+
+  • B5 — Travel / altitude / heat conditional
+    protocols. `buildRaceWeekProtocol` now accepts
+    `timeZoneShiftHrs`, `raceAltitudeM`, `raceHeatC`
+    optionally. When supplied:
+      - Travel block: ≥3h shift → eastward/westward
+        sleep schedule, melatonin timing, in-flight
+        hydration. (Wittert 2014; Sack 2010.)
+      - Altitude block: ≥1500m → tiered protocol
+        (moderate 1500-2000m, high 2000-3000m, extreme
+        3000m+). Acclimatization windows, pacing
+        decrement (5%/8%/12-15%), iron-rich diet
+        4 weeks pre-race. (Wilber 2007.)
+      - Heat block: ≥25°C → 5-14 day acclimatization
+        with hot-bath alternative (Zurawlew 2016 — 30
+        min @ 40°C post-easy-day), pacing slowdown
+        (2-4%/4-7%/8-12%), sodium 800-1200 mg/h.
+    Blocks are omitted entirely when conditions don't
+    apply.
+
+  • B2 — Field-test recalibration loop. Most
+    architecturally significant change. `buildEliteProgram`
+    now optionally accepts `actualFieldTestResults`
+    (sport-appropriate measurement: VDOT for run/tri,
+    FTP watts for bike, sec/100m CSS for swim, 2k
+    split sec for rowing). When provided:
+      - Computes expected gain at the time of test
+        (rate × baseWeeks/12).
+      - Compares against actual gain.
+      - Half-steps the raw ratio + clamps to [0.7, 1.3]
+        to limit volatility.
+      - Applies the resulting scaling factor to Peak
+        and Taper TSS targets only (Base + Build
+        already executed, untouched).
+      - Returns `result.fieldTestRecal` with rawRatio,
+        scalingApplied, weeksAdjusted, and a
+        bilingual ahead/behind/on-schedule note.
+    New exported helper `fieldTestGainRatio()` for
+    callers that want the raw number.
+
+  Tests: +22 in eliteProgram.test.js across 4
+  describe blocks (race simulation, OW, pre-race
+  meals, environmental, recalibration). Total 9318/
+  9318 green. Lint clean. Bundle 1290 KB / 2000 KB
+  total, individual chunks all within budget.
+
+  Files: src/lib/athlete/eliteProgram.js (+95 lines:
+  fieldTestGainRatio export, recalibration block,
+  env-conditions wiring); src/lib/athlete/
+  eliteProgramKeySessions.js (+90 lines: 5 race-sim
+  sessions, 1 OW session); src/lib/athlete/
+  eliteProgramRaceWeek.js (+200 lines: 4 preRaceMeals
+  blocks, 3 conditional builders, signature change).
+
+  Citations: Stellingwerf 2018 (race simulation);
+  Burke 2017 (fueling); Wilber 2007 (altitude);
+  Zurawlew 2016 (heat / hot bath); Wittert 2014
+  (travel sleep); Maglischo 2003 (OW); ITU
+  framework.
+
+  Out of scope: dashboard UI for entering the field-
+  test result (athlete currently records via the
+  field-test milestone surface added in v9.5.0;
+  passing actualFieldTestResults requires a coach
+  edit envelope or a future "record field test"
+  modal — deferred to v9.9.0+).
+
+  Depends on: v9.7.0 rowing parity (race-sim/OW/
+  pre-race-meals all rowing-aware); v9.6.0 tri
+  flatten (OW surfaces in tri); v9.5.0 milestones
+  (field-test waypoint provides the trigger).
+
+---
+
 ## v9.7.0 — 2026-05-08 — Rowing parity in Mission #1: orchestrator unblock + rowingSampleWeek + ROWING_* key sessions + race-week + substitutions + dashboard gate, 9296 tests
 
   Pre-v9.7.0 the Mission #1 Elite Program builder rejected

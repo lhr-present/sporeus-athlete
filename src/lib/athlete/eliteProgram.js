@@ -204,6 +204,46 @@ export function cssGainPerBlock(cssSecPer100m) {
   return 3
 }
 
+// v9.8.0 — Field-test recalibration helper. Returns actual_gain / expected_gain
+// at the time of a field test conducted after `baseWeeks` of training. >1 means
+// the athlete is ahead of plan; <1 behind. Sport-aware: VDOT (run/tri),
+// FTP-watts (bike), CSS sec/100m (swim), 2k split sec (rowing).
+/** @public */
+export function fieldTestGainRatio(sport, currentLevel, actualResults, baseWeeks) {
+  if (!actualResults || baseWeeks <= 0) return 1
+  const blockFraction = baseWeeks / 12
+  if (sport === 'run' || sport === 'triathlon') {
+    const start = currentLevel?.vdot
+    if (!start) return 1
+    const expected = vdotGainPerBlock(start) * blockFraction
+    const actual = (Number(actualResults.vdot) || start) - start
+    return expected > 0 ? actual / expected : 1
+  }
+  if (sport === 'bike') {
+    const start = currentLevel?.ftp
+    if (!start) return 1
+    const expected = ftpGainPerBlock(start) * blockFraction
+    const actual = (Number(actualResults.ftp) || start) - start
+    return expected > 0 ? actual / expected : 1
+  }
+  if (sport === 'swim') {
+    const start = currentLevel?.css
+    if (!start) return 1
+    // CSS in sec/100m: lower = faster. Expected gain is positive sec/100m faster.
+    const expected = cssGainPerBlock(start) * blockFraction
+    const actual = start - (Number(actualResults.cssSecPer100m) || start)
+    return expected > 0 ? actual / expected : 1
+  }
+  if (sport === 'rowing') {
+    const start = currentLevel?.split2kSec
+    if (!start) return 1
+    const expected = rowingGainPerBlock(start) * blockFraction
+    const actual = start - (Number(actualResults.split2kSec) || start)
+    return expected > 0 ? actual / expected : 1
+  }
+  return 1
+}
+
 // v9.7.0 — Rowing 2000m time gain (sec faster) per 12-week block.
 // Elite/sub-7:00 row: 1-2 s/block. Sub-7:30: 3 s/block. Sub-8:00: 4 s/block.
 // Recreational (>8:00): 5+ s/block. Calibrated against Concept2 World Records
@@ -944,6 +984,40 @@ export function buildEliteProgram(input) {
   while (weeklyTSS.length < weeksAvailable) weeklyTSS.push(0)
   while (weeklyTSS.length > weeksAvailable) weeklyTSS.pop()
 
+  // v9.8.0 — Field-test recalibration. When the athlete records their
+  // post-Base field test (VDOT/FTP/CSS/2k-split), compute the actual gain vs
+  // expected gain at that point and apply a half-step scaling to remaining
+  // Peak + Taper TSS. Conservative: cap at ±30% adjustment, half-step the
+  // raw ratio to avoid over-fitting to a single test result.
+  let fieldTestRecal = null
+  if (input.actualFieldTestResults && typeof input.actualFieldTestResults === 'object') {
+    const baseWeeks = phases.find(p => p.phase === 'Base')?.weeks?.length || 0
+    const buildWeeks = phases.find(p => p.phase === 'Build')?.weeks?.length || 0
+    if (baseWeeks > 0 && weeklyTSS.length > baseWeeks + buildWeeks) {
+      const ftRatio = fieldTestGainRatio(sport, currentLevel, input.actualFieldTestResults, baseWeeks)
+      // Half-step + clamp [0.7, 1.3] to limit volatility
+      const halfStep = 1 + (ftRatio - 1) * 0.5
+      const scaling = Math.max(0.7, Math.min(1.3, halfStep))
+      // Apply to Peak + Taper weeks only (skip Base, skip Build — already executed)
+      const peakStart = baseWeeks + buildWeeks
+      let scaledIdx = 0
+      for (let i = peakStart; i < weeklyTSS.length; i++) {
+        weeklyTSS[i] = Math.round(weeklyTSS[i] * scaling)
+        scaledIdx++
+      }
+      fieldTestRecal = {
+        rawRatio: Math.round(ftRatio * 100) / 100,
+        scalingApplied: Math.round(scaling * 100) / 100,
+        weeksAdjusted: scaledIdx,
+        note: scaling > 1.05
+          ? { en: 'Ahead of schedule — Peak/Taper TSS increased.', tr: 'Programdan ileride — Peak/Taper TSS artırıldı.' }
+          : scaling < 0.95
+            ? { en: 'Behind schedule — Peak/Taper TSS reduced.', tr: 'Programdan geride — Peak/Taper TSS azaltıldı.' }
+            : { en: 'On schedule — no significant adjustment.', tr: 'Programda — anlamlı ayar yok.' },
+      }
+    }
+  }
+
   // Sample weeks per phase
   const sampleWeeks = { Base: [], Build: [], Peak: [], Taper: [] }
   const phasePresent = new Set(phases.map(p => p.phase))
@@ -999,7 +1073,14 @@ export function buildEliteProgram(input) {
     bodyMassKg: profileWithDefaults.bodyMassKg,
   })
   const recoveryProgram   = buildRecoveryProgram({ phases })
-  const raceWeekProtocol  = buildRaceWeekProtocol({ sport, raceDate: effectiveRaceDate })
+  const raceWeekProtocol  = buildRaceWeekProtocol({
+    sport,
+    raceDate: effectiveRaceDate,
+    // v9.8.0 — pass through optional environmental conditions
+    timeZoneShiftHrs: typeof input.timeZoneShiftHrs === 'number' ? input.timeZoneShiftHrs : null,
+    raceAltitudeM:    typeof input.raceAltitudeM === 'number'    ? input.raceAltitudeM    : null,
+    raceHeatC:        typeof input.raceHeatC === 'number'        ? input.raceHeatC        : null,
+  })
   const substitutionMap   = buildSubstitutionMap({ sport })
 
   const out = {
@@ -1030,6 +1111,9 @@ export function buildEliteProgram(input) {
   }
   if (synthetic.raceDate || synthetic.targetPR) {
     out.synthetic = { ...synthetic }
+  }
+  if (fieldTestRecal) {
+    out.fieldTestRecal = fieldTestRecal
   }
   return out
 }

@@ -500,6 +500,199 @@ describe('buildEliteProgram — rowing sport (v9.7.0)', () => {
   })
 })
 
+describe('buildEliteProgram — v9.8.0 coaching maturity', () => {
+  // Race simulation in Peak (B1)
+  describe('race simulation Peak workout', () => {
+    it('run Peak library includes race-simulation session', () => {
+      const r = buildEliteProgram(RUN_REALISTIC)
+      const keys = r.keySessionLibrary.Peak.map(s => s.key)
+      expect(keys).toContain('run-peak-race-simulation')
+    })
+    it('bike Peak library includes race-simulation session', () => {
+      const r = buildEliteProgram({
+        sport: 'bike',
+        currentPR: { distanceM: 0, timeSec: 250 },
+        targetPR:  { distanceM: 0, timeSec: 280 },
+        raceDate: '2026-08-25', options: { today: TODAY },
+      })
+      const keys = r.keySessionLibrary.Peak.map(s => s.key)
+      expect(keys).toContain('bike-peak-race-simulation')
+    })
+    it('swim Peak library includes race-simulation session', () => {
+      const r = buildEliteProgram({
+        sport: 'swim',
+        currentPR: { distanceM: 1500, timeSec: 1500 },
+        targetPR:  { distanceM: 1500, timeSec: 1380 },
+        raceDate: '2026-08-25', options: { today: TODAY },
+      })
+      const keys = r.keySessionLibrary.Peak.map(s => s.key)
+      expect(keys).toContain('swim-peak-race-simulation')
+    })
+    it('rowing Peak library includes race-simulation session', () => {
+      const r = buildEliteProgram({
+        sport: 'rowing',
+        currentPR: { distanceM: 0, timeSec: 420 },
+        targetPR:  { distanceM: 0, timeSec: 405 },
+        raceDate: '2026-08-25', options: { today: TODAY },
+      })
+      const keys = r.keySessionLibrary.Peak.map(s => s.key)
+      expect(keys).toContain('row-peak-race-simulation')
+    })
+    it('triathlon flattened library inherits race-simulation from all 3 disciplines', () => {
+      const r = buildEliteProgram({
+        ...RUN_REALISTIC,
+        sport: 'triathlon',
+      })
+      const keys = r.keySessionLibrary.Peak.map(s => s.key)
+      expect(keys).toContain('run-peak-race-simulation')
+      expect(keys).toContain('bike-peak-race-simulation')
+      expect(keys).toContain('swim-peak-race-simulation')
+    })
+  })
+
+  // OW transitions for tri (B3)
+  describe('open-water swim session', () => {
+    it('swim Peak includes open-water sighting session', () => {
+      const r = buildEliteProgram({
+        sport: 'swim',
+        currentPR: { distanceM: 1500, timeSec: 1500 },
+        targetPR:  { distanceM: 1500, timeSec: 1380 },
+        raceDate: '2026-08-25', options: { today: TODAY },
+      })
+      const keys = r.keySessionLibrary.Peak.map(s => s.key)
+      expect(keys).toContain('swim-peak-open-water')
+    })
+    it('triathlon Peak inherits open-water session', () => {
+      const r = buildEliteProgram({ ...RUN_REALISTIC, sport: 'triathlon' })
+      const keys = r.keySessionLibrary.Peak.map(s => s.key)
+      expect(keys).toContain('swim-peak-open-water')
+    })
+  })
+
+  // Pre-race meal library (B4)
+  describe('pre-race meal library', () => {
+    it('run race-day surface preRaceMeals array (≥4 entries)', () => {
+      const r = buildEliteProgram(RUN_REALISTIC)
+      const meals = r.raceWeekProtocol.raceDay.preRaceMeals
+      expect(Array.isArray(meals.en)).toBe(true)
+      expect(meals.en.length).toBeGreaterThanOrEqual(4)
+      expect(Array.isArray(meals.tr)).toBe(true)
+      expect(meals.tr.length).toBe(meals.en.length)
+    })
+    it('rowing race-day notes no mid-race fueling', () => {
+      const r = buildEliteProgram({
+        sport: 'rowing',
+        currentPR: { distanceM: 0, timeSec: 420 },
+        targetPR:  { distanceM: 0, timeSec: 405 },
+        raceDate: '2026-08-25', options: { today: TODAY },
+      })
+      const meals = r.raceWeekProtocol.raceDay.preRaceMeals.en.join(' ')
+      expect(meals).toMatch(/no mid-race|race <8/i)
+    })
+  })
+
+  // Travel / altitude / heat (B5)
+  describe('environmental conditional protocols', () => {
+    it('no travel/altitude/heat blocks when conditions unset', () => {
+      const r = buildEliteProgram(RUN_REALISTIC)
+      expect(r.raceWeekProtocol.travel).toBeUndefined()
+      expect(r.raceWeekProtocol.altitude).toBeUndefined()
+      expect(r.raceWeekProtocol.heat).toBeUndefined()
+    })
+    it('travel protocol surfaces for ≥3h timezone shift', () => {
+      const r = buildEliteProgram({ ...RUN_REALISTIC, timeZoneShiftHrs: 8 })
+      expect(r.raceWeekProtocol.travel).toBeTruthy()
+      expect(r.raceWeekProtocol.travel.summary.en).toMatch(/8h eastward/i)
+    })
+    it('travel protocol omitted for sub-3h shift', () => {
+      const r = buildEliteProgram({ ...RUN_REALISTIC, timeZoneShiftHrs: 2 })
+      expect(r.raceWeekProtocol.travel).toBeUndefined()
+    })
+    it('altitude block surfaces for ≥1500m race', () => {
+      const r = buildEliteProgram({ ...RUN_REALISTIC, raceAltitudeM: 2400 })
+      expect(r.raceWeekProtocol.altitude).toBeTruthy()
+      expect(r.raceWeekProtocol.altitude.summary.en).toMatch(/2400m.*high/i)
+    })
+    it('altitude omitted at sea level', () => {
+      const r = buildEliteProgram({ ...RUN_REALISTIC, raceAltitudeM: 50 })
+      expect(r.raceWeekProtocol.altitude).toBeUndefined()
+    })
+    it('heat block surfaces for ≥25°C race-day forecast', () => {
+      const r = buildEliteProgram({ ...RUN_REALISTIC, raceHeatC: 33 })
+      expect(r.raceWeekProtocol.heat).toBeTruthy()
+      expect(r.raceWeekProtocol.heat.summary.en).toMatch(/33.C.*extreme/i)
+    })
+    it('heat omitted for cool race-day', () => {
+      const r = buildEliteProgram({ ...RUN_REALISTIC, raceHeatC: 18 })
+      expect(r.raceWeekProtocol.heat).toBeUndefined()
+    })
+  })
+
+  // Field-test recalibration (B2)
+  describe('field-test recalibration', () => {
+    it('no fieldTestRecal when actualFieldTestResults absent', () => {
+      const r = buildEliteProgram(RUN_REALISTIC)
+      expect(r.fieldTestRecal).toBeUndefined()
+    })
+    it('ahead-of-plan athlete gets Peak/Taper TSS scaled UP', () => {
+      const baseline = buildEliteProgram(RUN_REALISTIC)
+      const ahead = buildEliteProgram({
+        ...RUN_REALISTIC,
+        actualFieldTestResults: { vdot: baseline.currentLevel.vdot + 3 },
+      })
+      expect(ahead.fieldTestRecal).toBeTruthy()
+      expect(ahead.fieldTestRecal.scalingApplied).toBeGreaterThan(1)
+      // Last week (Taper W2) should be higher
+      expect(ahead.weeklyTSS[ahead.weeklyTSS.length - 1])
+        .toBeGreaterThan(baseline.weeklyTSS[baseline.weeklyTSS.length - 1])
+    })
+    it('behind-plan athlete gets Peak/Taper TSS scaled DOWN', () => {
+      const baseline = buildEliteProgram(RUN_REALISTIC)
+      const behind = buildEliteProgram({
+        ...RUN_REALISTIC,
+        actualFieldTestResults: { vdot: baseline.currentLevel.vdot - 0.5 },  // regressed
+      })
+      expect(behind.fieldTestRecal).toBeTruthy()
+      expect(behind.fieldTestRecal.scalingApplied).toBeLessThan(1)
+    })
+    it('clamps scaling to [0.7, 1.3] range', () => {
+      const baseline = buildEliteProgram(RUN_REALISTIC)
+      const wayAhead = buildEliteProgram({
+        ...RUN_REALISTIC,
+        actualFieldTestResults: { vdot: baseline.currentLevel.vdot + 10 },  // wildly ahead
+      })
+      expect(wayAhead.fieldTestRecal.scalingApplied).toBeLessThanOrEqual(1.3)
+    })
+    it('Base + Build TSS unaffected — only Peak/Taper rescaled', () => {
+      const baseline = buildEliteProgram(RUN_REALISTIC)
+      const recal = buildEliteProgram({
+        ...RUN_REALISTIC,
+        actualFieldTestResults: { vdot: baseline.currentLevel.vdot + 3 },
+      })
+      // Base weeks (first phase) should match
+      expect(recal.weeklyTSS[0]).toBe(baseline.weeklyTSS[0])
+    })
+    it('rowing field-test uses split2kSec', () => {
+      const base = buildEliteProgram({
+        sport: 'rowing',
+        currentPR: { distanceM: 0, timeSec: 450 },  // 7:30 2k
+        targetPR:  { distanceM: 0, timeSec: 420 },  // 7:00 2k
+        raceDate: '2026-08-25', options: { today: TODAY },
+      })
+      const recal = buildEliteProgram({
+        sport: 'rowing',
+        currentPR: { distanceM: 0, timeSec: 450 },
+        targetPR:  { distanceM: 0, timeSec: 420 },
+        raceDate: '2026-08-25', options: { today: TODAY },
+        actualFieldTestResults: { split2kSec: 442 },  // 8 sec faster than start
+      })
+      expect(recal.fieldTestRecal).toBeTruthy()
+      expect(recal.fieldTestRecal.scalingApplied).toBeGreaterThan(1)
+      void base
+    })
+  })
+})
+
 describe('buildEliteProgram — output shape and metadata', () => {
   it('citation includes Daniels, Coggan, Wakayoshi', () => {
     const r = buildEliteProgram(RUN_REALISTIC)

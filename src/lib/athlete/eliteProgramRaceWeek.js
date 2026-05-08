@@ -161,6 +161,23 @@ const SWIM_SCHEDULE = [
 const RACE_DAY_RUN = {
   wakeUp: { en: '3-4 h before race start. Hydrate immediately (300-500 ml water + electrolytes).', tr: 'Yarış başlangıcından 3-4 saat önce. Hemen hidrate ol (300-500 ml su + elektrolit).' },
   breakfast: { en: 'CHO 1.5-2 g/kg, low-fiber, low-fat. Familiar foods only. 3 h pre-race.', tr: 'CHO 1.5-2 g/kg, düşük lif, düşük yağ. Sadece bilinen yiyecekler. Yarıştan 3 sa önce.' },
+  // v9.8.0 — concrete meal examples by athlete weight and time-to-race
+  preRaceMeals: {
+    en: [
+      '3h pre-race (70 kg athlete, ~140g CHO): white-rice bowl (1.5 cup cooked = 70g CHO) + 1 banana (27g) + 2 slices toast with honey (40g). No dairy, no high-fiber.',
+      '2h pre-race: 1 bagel + 2 tbsp honey (60g CHO) + small black coffee. Test in training.',
+      '1h pre-race top-up: 1 sports gel (25g CHO) + 200ml water. Skip if GI-sensitive.',
+      '30 min pre-race: small sip 200ml water + 1 dose caffeine (3-6 mg/kg if tolerated, evidence-based).',
+      'AVOID: dairy (lactose risk), high-fat (delayed gastric emptying), high-fiber (urgency), novel foods (untested GI).',
+    ],
+    tr: [
+      'Yarıştan 3 sa önce (70 kg sporcu, ~140g CHO): beyaz pilav (1.5 fincan pişmiş = 70g CHO) + 1 muz (27g) + 2 dilim ekmek + bal (40g). Süt ürünü yok, yüksek lif yok.',
+      'Yarıştan 2 sa önce: 1 simit + 2 yk bal (60g CHO) + küçük sade kahve. Antrenmanda test et.',
+      'Yarıştan 1 sa önce ek: 1 spor jeli (25g CHO) + 200ml su. GI hassasiyetin varsa atla.',
+      'Yarıştan 30 dk önce: 200ml su yudumu + 1 doz kafein (3-6 mg/kg toleranslıysa, kanıt-tabanlı).',
+      'KAÇIN: süt ürünleri (laktoz), yüksek yağ (geç sindirim), yüksek lif (acil tuvalet), yeni yiyecekler (test edilmemiş GI).',
+    ],
+  },
   warmup: { en: '15-20 min: 10 min easy + drills + 4x20s strides ending 10 min before race.', tr: '15-20 dk: 10 dk kolay + drill + 4x20s adım, yarıştan 10 dk önce bitir.' },
   pacing: {
     en: 'First 5k: 5-10s/km slower than goal. Middle: lock goal pace. Last 25%: free if able.',
@@ -173,6 +190,22 @@ const RACE_DAY_RUN = {
 const RACE_DAY_BIKE = {
   wakeUp: { en: '3-4 h before race start. 500 ml water + electrolytes.', tr: 'Yarış başlangıcından 3-4 saat önce. 500 ml su + elektrolit.' },
   breakfast: { en: 'CHO 1.5-2 g/kg, low-fiber. 3 h pre-race.', tr: 'CHO 1.5-2 g/kg, düşük lif. Yarıştan 3 sa önce.' },
+  preRaceMeals: {
+    en: [
+      '3h pre-race (75 kg, ~150g CHO): oatmeal (60g dry oats = 36g CHO) + 1 banana (27g) + 2 tbsp honey (35g) + 2 slices toast (50g). Black coffee.',
+      '2h pre-race: 1 bagel + jam (60g CHO) + 250 ml sports drink (15g).',
+      '1h pre-race: 1 gel (25g CHO) + 250ml water. Top-up only if comfortable.',
+      'On bike (15 min in): start fueling early. Aim 80-100 g CHO/h via mix of solids (bars), gels, and drink mix.',
+      'AVOID: high-fat foods (slow gastric emptying), >40g fiber day-before, untrained caffeine doses.',
+    ],
+    tr: [
+      'Yarıştan 3 sa önce (75 kg, ~150g CHO): yulaf ezmesi (60g kuru = 36g CHO) + 1 muz (27g) + 2 yk bal (35g) + 2 dilim ekmek (50g). Sade kahve.',
+      'Yarıştan 2 sa önce: 1 simit + reçel (60g CHO) + 250 ml spor içeceği (15g).',
+      'Yarıştan 1 sa önce: 1 jel (25g CHO) + 250ml su. Sadece rahat hissediyorsan ek.',
+      'Bisiklette (15. dk): erken yakıtlanmaya başla. Katı (bar), jel ve içecek karışımıyla 80-100 g CHO/sa.',
+      'KAÇIN: yüksek yağ (yavaş sindirim), yarış-öncesi gün >40g lif, antrene edilmemiş kafein dozları.',
+    ],
+  },
   warmup: { en: '20-30 min: 15 min Z1-Z2 + 3x1 min @ race power + 5 min easy.', tr: '20-30 dk: 15 dk Z1-Z2 + 3x1 dk yarış gücünde + 5 dk kolay.' },
   pacing: {
     en: 'Conservative first 20%. Stay at goal power; do not chase. Last 10% free if reserves.',
@@ -229,6 +262,20 @@ const ROWING_SCHEDULE = [
 const RACE_DAY_SWIM = {
   wakeUp: { en: '3 h before race start. Hydrate (300 ml).', tr: 'Yarış başlangıcından 3 saat önce. Hidrate ol (300 ml).' },
   breakfast: { en: 'CHO 1-1.5 g/kg, low-fiber. 2-3 h pre-race.', tr: 'CHO 1-1.5 g/kg, düşük lif. Yarıştan 2-3 sa önce.' },
+  preRaceMeals: {
+    en: [
+      '2.5h pre-race (65 kg, ~80g CHO): 1 cup white rice (45g CHO) + 1 banana (27g) + small honey drizzle (10g). Lighter than run/bike (no mid-race fueling for short races).',
+      '1.5h pre-race: 1 plain bagel + 1 tbsp jam (50g CHO).',
+      '30-45 min pre-race: 1 gel (25g CHO) only for races >30 min duration.',
+      'AVOID: dairy (cramp risk), spicy food, excess water (open-water swim → urgency).',
+    ],
+    tr: [
+      'Yarıştan 2.5 sa önce (65 kg, ~80g CHO): 1 fincan beyaz pilav (45g CHO) + 1 muz (27g) + biraz bal (10g). Koşu/bisiklete göre daha hafif (kısa yarışlarda yarış-içi beslenme yok).',
+      'Yarıştan 1.5 sa önce: 1 sade simit + 1 yk reçel (50g CHO).',
+      'Yarıştan 30-45 dk önce: Sadece 30+ dk yarışlar için 1 jel (25g CHO).',
+      'KAÇIN: süt ürünleri (kramp riski), baharatlı yiyecek, aşırı su (açık-su yüzme → acil tuvalet).',
+    ],
+  },
   warmup: { en: '600-1000m in pool: 400m mixed + 4x50m race pace + 200m easy. Ends 15-20 min before start.', tr: 'Havuzda 600-1000m: 400m karışık + 4x50m yarış temposu + 200m kolay. Başlangıçtan 15-20 dk önce bitir.' },
   pacing: {
     en: 'First 100m controlled. Middle stable. Last 100m all-out.',
@@ -244,6 +291,22 @@ const RACE_DAY_SWIM = {
 const RACE_DAY_ROWING = {
   wakeUp: { en: '3-4 h before race start. Hydrate (400 ml + electrolytes).', tr: 'Yarış başlangıcından 3-4 saat önce. Hidrate ol (400 ml + elektrolit).' },
   breakfast: { en: 'CHO 1.5-2 g/kg, low-fiber, low-fat. Familiar foods. 3 h pre-race.', tr: 'CHO 1.5-2 g/kg, düşük lif, düşük yağ. Bilinen yiyecekler. Yarıştan 3 sa önce.' },
+  preRaceMeals: {
+    en: [
+      '3h pre-race (80 kg, ~140g CHO): 1.5 cup oatmeal (50g CHO) + 1 banana (27g) + 2 slices toast + jam (60g). Coffee.',
+      '1.5h pre-race: 1 sports drink 500ml (30g CHO) + 1 small bagel (50g).',
+      '30 min pre-race: 1 gel (25g CHO) + small sip water. Caffeine 3 mg/kg if tolerated.',
+      'NO mid-race fueling needed (race <8 min). Pre-load is everything.',
+      'AVOID: dairy (cramp risk during max effort), excess fluid (uncomfortable in seat), unfamiliar foods.',
+    ],
+    tr: [
+      'Yarıştan 3 sa önce (80 kg, ~140g CHO): 1.5 fincan yulaf (50g CHO) + 1 muz (27g) + 2 dilim ekmek + reçel (60g). Kahve.',
+      'Yarıştan 1.5 sa önce: 1 spor içeceği 500ml (30g CHO) + 1 küçük simit (50g).',
+      'Yarıştan 30 dk önce: 1 jel (25g CHO) + biraz su. Toleranslıysan kafein 3 mg/kg.',
+      'Yarış-içi beslenme YOK (yarış <8 dk). Ön-yükleme her şey.',
+      'KAÇIN: süt ürünleri (max efor sırasında kramp), aşırı sıvı (oturakta rahatsız), bilinmeyen yiyecekler.',
+    ],
+  },
   warmup: { en: '20-25 min: 10 min UT2 + 4x250m build + 4 power-10s + 6 min easy. Ends 10-15 min before start.', tr: '20-25 dk: 10 dk UT2 + 4x250m kademeli + 4 güç-10 + 6 dk kolay. Başlangıçtan 10-15 dk önce bitir.' },
   pacing: {
     en: 'First 500m: 1-2 sec/500m above goal split (avoid lactate spike). Middle 1000m: lock goal split. Last 500m: open up rate, drop split if able.',
@@ -253,9 +316,106 @@ const RACE_DAY_ROWING = {
   mental: { en: 'Trust the rhythm. First 500m is the hardest mental gate; after that you are committed.', tr: 'Ritme güven. İlk 500m en zor zihinsel kapıdır; sonrası bağlanmıştır.' },
 }
 
+// v9.8.0 — Travel / altitude / heat conditional protocol.
+//
+// Inputs from race conditions:
+//   - timeZoneShiftHrs: signed integer (e.g. -8 for EU→East Asia, +5 for EU→US-East)
+//   - raceAltitudeM: race elevation in meters
+//   - raceHeatC: forecast race-day temperature in °C
+//
+// Returns null if no special conditions, else a structured advisory block.
+
+function buildTravelProtocol(timeZoneShiftHrs) {
+  if (!timeZoneShiftHrs || Math.abs(timeZoneShiftHrs) < 3) return null
+  const direction = timeZoneShiftHrs > 0 ? 'eastward' : 'westward'
+  const days = Math.abs(timeZoneShiftHrs)
+  return {
+    summary: {
+      en: `Time-zone shift of ${Math.abs(timeZoneShiftHrs)}h ${direction}. Plan ${days}-${days + 2} days early arrival. Body adapts ~1h/day on average.`,
+      tr: `${Math.abs(timeZoneShiftHrs)} saat ${direction === 'eastward' ? 'doğu' : 'batı'} zaman dilimi farkı. ${days}-${days + 2} gün erken varış planla. Vücut günde ~1 saat adapte olur.`,
+    },
+    sleep: {
+      en: timeZoneShiftHrs > 0
+        ? 'Eastbound: shift bedtime 1h earlier per day, starting 5 days pre-departure. On arrival: morning sun exposure 30+ min. Melatonin 0.5-3 mg 30 min before target bedtime.'
+        : 'Westbound: shift bedtime 1h later per day. On arrival: afternoon sun exposure. Avoid bright morning light on day 1.',
+      tr: timeZoneShiftHrs > 0
+        ? 'Doğuya: kalkıştan 5 gün önce başlayarak yatak saatini günde 1 saat erken al. Varışta: sabah 30+ dk güneş. Hedef yatak saatinden 30 dk önce melatonin 0.5-3 mg.'
+        : 'Batıya: yatak saatini günde 1 saat geç al. Varışta: öğleden sonra güneş. 1. günde sabah parlak ışıktan kaçın.',
+    },
+    fueling: {
+      en: 'Hydrate aggressively in flight (250 ml/h). Avoid alcohol and excess caffeine. Eat on destination time from boarding.',
+      tr: 'Uçuşta agresif hidrasyon (250 ml/sa). Alkol ve aşırı kafeinden kaçın. Biniş anından itibaren varış saatinde ye.',
+    },
+  }
+}
+
+function buildAltitudeProtocol(raceAltitudeM) {
+  if (!raceAltitudeM || raceAltitudeM < 1500) return null
+  const tier = raceAltitudeM >= 3000 ? 'extreme' : raceAltitudeM >= 2000 ? 'high' : 'moderate'
+  return {
+    summary: {
+      en: `Race at ${raceAltitudeM}m (${tier} altitude). Expect 5-15% performance decrement in aerobic events; recovery extended.`,
+      tr: `Yarış ${raceAltitudeM}m'de (${tier === 'extreme' ? 'aşırı' : tier === 'high' ? 'yüksek' : 'orta'} rakım). Aerobik etkinliklerde %5-15 performans kaybı bekle; toparlanma uzar.`,
+    },
+    acclimatization: {
+      en: tier === 'extreme'
+        ? 'Live-high-train-low ideal. Arrive 14-21 days early or use altitude tent 4 weeks prior. Without acclimatization, expect significant DNF risk.'
+        : tier === 'high'
+          ? 'Arrive 7-14 days early OR <24 h pre-race (avoid the dip 3-5 days post-arrival). 2-3 hypoxic sessions in Build phase recommended.'
+          : 'Arrive 4-7 days early. Single hypoxic session (e.g., breath-holding tempo) in Build can help.',
+      tr: tier === 'extreme'
+        ? 'Yüksek-yaşa-düşük-antrene ideal. 14-21 gün erken var ya da 4 hafta önce rakım çadırı. Adapte olmadan ciddi DNF riski.'
+        : tier === 'high'
+          ? '7-14 gün erken var YA DA <24 sa yarış-öncesi (varıştan 3-5 gün sonraki düşüşü önle). Build fazında 2-3 hipoksik seans önerilir.'
+          : '4-7 gün erken var. Build fazında tek hipoksik seans (ör. nefes-tutma tempo) yardımcı olur.',
+    },
+    pacing: {
+      en: 'Reduce goal pace by 5% at 1500m, 8% at 2000m, 12-15% at 3000m+. Expect higher HR for given pace.',
+      tr: '1500m\'de hedef tempoyu %5, 2000m\'de %8, 3000m+\'da %12-15 azalt. Verilen tempoda daha yüksek nabız bekle.',
+    },
+    fueling: {
+      en: 'Increase iron-rich foods 4 weeks pre-race (2x daily red meat or supplement). Hydration needs +30%. Watch for AMS symptoms.',
+      tr: 'Yarıştan 4 hafta önce demir-zengin yiyecekleri arttır (günde 2x kırmızı et veya takviye). Hidrasyon ihtiyacı +%30. AMS belirtilerine dikkat.',
+    },
+  }
+}
+
+function buildHeatProtocol(raceHeatC) {
+  if (raceHeatC == null || raceHeatC < 25) return null
+  const tier = raceHeatC >= 32 ? 'extreme' : raceHeatC >= 28 ? 'high' : 'moderate'
+  return {
+    summary: {
+      en: `Race-day heat ${raceHeatC}°C (${tier}). Heat acclimatization required: 5-14 days improves thermoregulation 5-15%.`,
+      tr: `Yarış-günü sıcaklığı ${raceHeatC}°C (${tier === 'extreme' ? 'aşırı' : tier === 'high' ? 'yüksek' : 'orta'}). Sıcağa adaptasyon gerekli: 5-14 gün termorregülasyonu %5-15 geliştirir.`,
+    },
+    acclimatization: {
+      en: tier === 'extreme'
+        ? '14 days protocol: 5-7 sessions @ 60-90 min in heat (hot bath post-easy-session can substitute). Short sessions ineffective.'
+        : '7-10 days: 4-6 heat sessions, 45-75 min each. Hot bath (40°C, 30-40 min) post-easy-day is evidence-backed alternative (Zurawlew 2016).',
+      tr: tier === 'extreme'
+        ? '14 günlük protokol: sıcakta 5-7 seans 60-90 dk (kolay-seans sonrası sıcak banyo ikame). Kısa seanslar etkisiz.'
+        : '7-10 gün: 4-6 sıcak seans, her biri 45-75 dk. Sıcak banyo (40°C, 30-40 dk) kolay-gün sonrası kanıt-tabanlı alternatif (Zurawlew 2016).',
+    },
+    pacing: {
+      en: `Slow goal pace by ${tier === 'extreme' ? '8-12' : tier === 'high' ? '4-7' : '2-4'}%. Drink 750-1000 ml/h with 800-1200 mg sodium/h. Pre-cool with ice slushie 30 min pre-race.`,
+      tr: `Hedef tempoyu %${tier === 'extreme' ? '8-12' : tier === 'high' ? '4-7' : '2-4'} yavaşlat. 750-1000 ml/sa içecek + 800-1200 mg sodyum/sa. Yarıştan 30 dk önce buzlu içecekle ön-soğut.`,
+    },
+    fueling: {
+      en: 'Sodium critical: 800-1200 mg/h. Test sweat rate in heat sessions. Cold fluids preferred (improves gastric emptying).',
+      tr: 'Sodyum kritik: 800-1200 mg/sa. Sıcak seanslarda terleme oranını test et. Soğuk sıvı tercih edilir (mide boşalmasını iyileştirir).',
+    },
+  }
+}
+
 /**
  * @public
- * @param {{ sport?: string, raceDate?: string }} input
+ * @param {{
+ *   sport?: string,
+ *   raceDate?: string,
+ *   timeZoneShiftHrs?: number,
+ *   raceAltitudeM?: number,
+ *   raceHeatC?: number,
+ * }} input
  * @returns {RaceWeekProtocol}
  */
 export function buildRaceWeekProtocol(input) {
@@ -270,11 +430,19 @@ export function buildRaceWeekProtocol(input) {
     sport === 'swim'   ? RACE_DAY_SWIM :
     sport === 'rowing' ? RACE_DAY_ROWING :
     RACE_DAY_RUN
-  return {
+  // v9.8.0 — conditional advisories
+  const travel    = buildTravelProtocol(input?.timeZoneShiftHrs)
+  const altitude  = buildAltitudeProtocol(input?.raceAltitudeM)
+  const heat      = buildHeatProtocol(input?.raceHeatC)
+  const out = {
     schedule,
     raceDay,
-    citation: 'Mujika 2003; Bosquet et al. 2007; Stellingwerf 2018; Burke 2017',
+    citation: 'Mujika 2003; Bosquet et al. 2007; Stellingwerf 2018; Burke 2017; Zurawlew 2016 (heat); Wilber 2007 (altitude)',
   }
+  if (travel)   out.travel = travel
+  if (altitude) out.altitude = altitude
+  if (heat)     out.heat = heat
+  return out
 }
 
 export const RACE_WEEK_CITATION = 'Mujika 2003; Bosquet et al. 2007; Stellingwerf 2018; Burke 2017'

@@ -259,6 +259,28 @@ const RUN_PEAK = [
     alternates: [],
     citation: 'Daniels 2014',
   },
+  // v9.8.0 — Race simulation. Schedule 2-3 weeks pre-race to rehearse pacing,
+  // fueling, and mental toughness under accumulated fatigue (Stellingwerf 2018).
+  {
+    key: 'run-peak-race-simulation',
+    name: { en: 'Race simulation', tr: 'Yarış simülasyonu' },
+    purpose: {
+      en: 'Rehearse race pacing, fueling, and pre-race routines under accumulated fatigue. Single most predictive workout 2-3 weeks pre-race.',
+      tr: 'Yarış temposunu, beslenmeyi ve yarış-öncesi rutini birikmiş yorgunlukta prova et. Yarıştan 2-3 hafta önceki en öngörü güçlü antrenman.',
+    },
+    structure: {
+      en: 'Total 75-80% of race distance: 15 min easy + 2x20 min @ goal race pace with 5 min easy + 10 min easy. Practice exact race-day breakfast 3h prior + race-day shoes + race-day fueling cadence (gels at goal-pace gel intervals).',
+      tr: 'Yarış mesafesinin %75-80\'i: 15 dk kolay + 2x20 dk hedef yarış temposu, 5 dk kolay arası + 10 dk kolay. Tam yarış-günü kahvaltı 3 sa önce + yarış ayakkabıları + yarış-günü beslenme ritmi (jeller hedef-tempo aralıklarında).',
+    },
+    warmup: { en: '15 min easy + 4x20s strides.', tr: '15 dk kolay + 4x20s adım.' },
+    cooldown: { en: '10 min walk-jog + nutrition log.', tr: '10 dk yürü-jog + beslenme kaydı.' },
+    intensity: { en: 'Goal race pace · RPE 7-8/10 · same gear, fuel, mindset', tr: 'Hedef yarış temposu · RPE 7-8/10 · aynı kıyafet, yakıt, zihin' },
+    alternates: [
+      { en: 'For marathon: 90 min @ goal MP (not full distance).', tr: 'Maraton için: 90 dk hedef MP\'de (tam mesafe değil).' },
+      { en: 'For 5k/10k: 1x15 min @ goal pace + 1x10 min @ goal pace.', tr: '5k/10k için: 1x15 dk hedef + 1x10 dk hedef.' },
+    ],
+    citation: 'Stellingwerf 2018; Pfitzinger 2014',
+  },
 ]
 
 const RUN_TAPER = [
@@ -492,6 +514,27 @@ const BIKE_PEAK = [
     ],
     citation: 'Coggan 2010',
   },
+  // v9.8.0 — Race simulation for cycling.
+  {
+    key: 'bike-peak-race-simulation',
+    name: { en: 'Race simulation', tr: 'Yarış simülasyonu' },
+    purpose: {
+      en: 'Rehearse race-day pacing, fueling cadence, and gear positioning under fatigue. Top predictive workout 2-3 weeks pre-race.',
+      tr: 'Yarış-günü temposunu, beslenme ritmini ve donanım yerleşimini yorgunlukta prova et. Yarıştan 2-3 hafta önce en öngörü güçlü antrenman.',
+    },
+    structure: {
+      en: '70-80% of race duration: 20 min Z2 + 2x30 min @ goal race power with 8 min Z1 + 15 min Z2. Practice exact race nutrition (80-100 g CHO/h), bottle hand-ups, and aero positioning.',
+      tr: 'Yarış süresinin %70-80\'i: 20 dk Z2 + 2x30 dk hedef yarış gücünde, 8 dk Z1 arası + 15 dk Z2. Tam yarış beslenmesi (80-100 g CHO/sa), şişe alımları, aero pozisyon prova.',
+    },
+    warmup: { en: '15 min Z1-Z2 + 3x1 min @ race power.', tr: '15 dk Z1-Z2 + 3x1 dk yarış gücü.' },
+    cooldown: { en: '15 min Z1 + nutrition log.', tr: '15 dk Z1 + beslenme kaydı.' },
+    intensity: { en: 'Goal race power · RPE 7-8/10', tr: 'Hedef yarış gücü · RPE 7-8/10' },
+    alternates: [
+      { en: 'For TT/short race: 1x40 min @ race power.', tr: 'TT/kısa yarış: 1x40 dk yarış gücü.' },
+      { en: 'For Gran Fondo: 4-5h ride with 90 min @ goal power mid-ride.', tr: 'Gran Fondo: 4-5sa sürüş, ortada 90 dk hedef güç.' },
+    ],
+    citation: 'Stellingwerf 2018; Coggan 2010',
+  },
 ]
 
 const BIKE_TAPER = [
@@ -676,6 +719,47 @@ const SWIM_PEAK = [
     intensity: { en: 'Goal race pace · RPE 8-9/10', tr: 'Hedef yarış temposu · RPE 8-9/10' },
     alternates: [],
     citation: 'Maglischo 2003',
+  },
+  // v9.8.0 — Race simulation for swim.
+  {
+    key: 'swim-peak-race-simulation',
+    name: { en: 'Race simulation', tr: 'Yarış simülasyonu' },
+    purpose: {
+      en: 'Rehearse race start, mid-race breathing, and finishing kick. Practice exact pre-race warm-up and goggle/cap routine.',
+      tr: 'Yarış başlangıcını, orta-yarış nefesini ve bitiş atışını prova et. Tam yarış-öncesi ısınma ve gözlük/bone rutini.',
+    },
+    structure: {
+      en: '90% of race distance: 400m mixed WU + 1x(race distance - 100m) at goal race pace + 4x50m all-out finish + 200m CD. Practice race-day suit if open-water.',
+      tr: 'Yarış mesafesinin %90\'ı: 400m karışık ısınma + 1x(yarış mesafesi - 100m) hedef yarış temposu + 4x50m sonuna kadar bitiş + 200m soğuma. Açık-suysa yarış mayosu.',
+    },
+    warmup: { en: '400m mixed strokes + 4x50m race-pace primer.', tr: '400m karışık + 4x50m yarış-tempo hazırlık.' },
+    cooldown: { en: '200m easy + technique log.', tr: '200m kolay + teknik kaydı.' },
+    intensity: { en: 'Goal race pace · RPE 8-9/10 · controlled', tr: 'Hedef yarış temposu · RPE 8-9/10 · kontrollü' },
+    alternates: [
+      { en: 'For 1500m+: split as 1x800m + 1x600m at goal pace.', tr: '1500m+: 1x800m + 1x600m hedef tempoda.' },
+    ],
+    citation: 'Maglischo 2003; Mujika 2003',
+  },
+  // v9.8.0 — Open-water specific. Critical for triathletes and OW swim racers.
+  {
+    key: 'swim-peak-open-water',
+    name: { en: 'Open-water sighting + exit sprints', tr: 'Açık-su yön + çıkış sprintleri' },
+    purpose: {
+      en: 'Practice sighting (head-up every 6-8 strokes), drafting position, and exit sprint. Eliminates panic in race environment.',
+      tr: 'Yön kontrolü (her 6-8 vuruşta baş yukarı), drafting pozisyonu ve çıkış sprinti prova. Yarış ortamında paniği önler.',
+    },
+    structure: {
+      en: '1500m open-water (or pool with sighting drills): 200m steady + 5x100m with sighting every 6 strokes + 4x50m entry/exit sprints + 200m drafting practice (close to a partner) + 200m steady.',
+      tr: '1500m açık-su (veya yön driliyle havuz): 200m sabit + 5x100m her 6 vuruşta yön + 4x50m giriş/çıkış sprintleri + 200m drafting pratiği (eşe yakın) + 200m sabit.',
+    },
+    warmup: { en: '200m loosen-up + 4x50m build, in race-day suit.', tr: '200m gevşeme + 4x50m kademeli, yarış mayosunda.' },
+    cooldown: { en: '100m easy + suit care.', tr: '100m kolay + mayo bakımı.' },
+    intensity: { en: 'Mixed: aerobic + race-effort sprints · RPE 5-9/10', tr: 'Karışık: aerobik + yarış-efor sprintleri · RPE 5-9/10' },
+    alternates: [
+      { en: 'Pool only: substitute "head-up" with closed-eyes (for body-line) every 6 strokes.', tr: 'Sadece havuz: "baş yukarı" yerine her 6 vuruşta gözleri-kapalı (vücut-hattı için).' },
+      { en: 'Solo OW: skip drafting, do 200m race-pace instead.', tr: 'Yalnız açık-su: drafting atla, 200m yarış-tempo yap.' },
+    ],
+    citation: 'Maglischo 2003; ITU coaching framework',
   },
 ]
 
@@ -894,6 +978,26 @@ const ROWING_PEAK = [
       { en: 'On water: 5x1000m at TR pace.', tr: 'Suda: 5x1000m TR tempo.' },
     ],
     citation: 'Nolte 2005',
+  },
+  // v9.8.0 — Race simulation for rowing.
+  {
+    key: 'row-peak-race-simulation',
+    name: { en: 'Race simulation 2k', tr: 'Yarış simülasyonu 2k' },
+    purpose: {
+      en: 'Full 2k race rehearsal under accumulated fatigue. Practice race-day fueling, warmup, and pacing strategy. Schedule 2-3 weeks pre-race.',
+      tr: 'Birikmiş yorgunlukta tam 2k yarış provası. Yarış-günü beslenmesi, ısınma ve tempo stratejisi prova. Yarıştan 2-3 hafta önce.',
+    },
+    structure: {
+      en: 'Full 2000m TT at goal race pace. 1st 500m: split +1-2 sec/500m (avoid lactate spike). Middle 1000m: lock goal split. Last 500m: open up rate, drop split. Practice exact race-day fueling 30 min pre-effort.',
+      tr: 'Tam 2000m TT hedef yarış temposunda. İlk 500m: split +1-2 sn/500m (laktat sıçraması yok). Orta 1000m: hedef splitte sabit. Son 500m: hız aç, split düşür. Tam yarış-günü beslenmesi efordan 30 dk önce.',
+    },
+    warmup: { en: '20-25 min: 10 min UT2 + 4x250m build + 4 power-10s + 6 min easy.', tr: '20-25 dk: 10 dk UT2 + 4x250m kademeli + 4 güç-10 + 6 dk kolay.' },
+    cooldown: { en: '15 min UT2 + nutrition log + stroke-rate review.', tr: '15 dk UT2 + beslenme kaydı + vuruş-hızı incelemesi.' },
+    intensity: { en: 'Goal 2k pace · RPE 9-10/10 · stroke 32-34 spm', tr: 'Hedef 2k tempo · RPE 9-10/10 · vuruş 32-34 spm' },
+    alternates: [
+      { en: 'Split simulation: 4x500m at race pace with 30s standing rest.', tr: 'Bölünmüş simülasyon: 4x500m yarış temposunda 30s ayakta dinlenme.' },
+    ],
+    citation: 'Stellingwerf 2018; British Rowing 2k protocol',
   },
 ]
 
