@@ -4,6 +4,101 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.9.0 — 2026-05-08 — Mission #1 cross-sport enhancements: drills library + mental rehearsal scripts + caffeine protocols + contingency map (illness/life/travel), 9336 tests
+
+  Continuation of v9.8.0 coaching-maturity work. The
+  external audit flagged remaining gaps that real coaches
+  always include but pure-software builders typically
+  ignore. v9.9.0 closes four of them across all 5 sports
+  (run, bike, swim, rowing, triathlon).
+
+  • drillsLibrary — new file
+    src/lib/athlete/eliteProgramDrills.js. 18 sport-
+    specific drills total: run (5: A/B-skip, strides,
+    hill-bounding, cadence-180), bike (4: single-leg,
+    cadence-ladder, standing-sprints, cornering), swim
+    (5: catch-up, fingertip-drag, side-kick, stroke-
+    count, sculling), rowing (4: pause-drill, square-
+    blade, stroke-rate-ladder, power-10). Each drill:
+    name, purpose, structure, phases tag, frequency-
+    per-week, citation. Triathlon merges all 3 +
+    2 tri-specific extras (T1/T2 transition rehearsal,
+    bike-to-run brick). Drill data exposed at
+    result.drillsLibrary keyed by phase.
+
+  • mentalRehearsal — added to all 5 RACE_DAY_*
+    objects. 6 race-plan scripts per sport covering
+    pre-start visualization, mid-race scripts, pain-
+    arrival mantras, last-25% strategy, and 1-2
+    contingency lines. Sport-specific framings: run
+    "compete against next km not finish"; bike
+    "numbers not feelings first hour"; swim "long
+    stroke, drive from hips"; rowing "trust the
+    rhythm, first 500m is the gate". Citations:
+    Vealey 2007; Bull 1996.
+
+  • caffeine — added to all 5 RACE_DAY_* with sport-
+    specific dose timing. Run 3-6 mg/kg 60 min pre-
+    race; bike same with split-dose for >3h races
+    (200mg pre + 100mg at hr 2); swim lower 3 mg/kg
+    (shorter race); rowing 3-6 mg/kg ideal-ergogenic
+    for short max-effort. All protocols include
+    "test in training" warning. Citations: Burke
+    2008; Spriet 2014.
+
+  • contingencyMap — new top-level program field.
+    Sport-aware advice for: illness (above-neck vs
+    below-neck per Friman 2000 — proceed with easy
+    sessions only above-neck; full rest below-neck
+    until 24h fever-free + 48h symptom-free, then
+    3-5 day return ramp); life-event (2-3d skip and
+    proceed; 4-7d shift back 1 week; >1w
+    re-evaluate goal); travel (same-day shifts ±1d;
+    multi-day fallbacks per sport). Citations:
+    Bompa 2009; Halson 2014; Sack 2010; Wittert
+    2014.
+
+  UI: BroaderPlanSections.jsx gains DrillsSection
+  (green accent, with discipline chips for tri) and
+  ContingencySection (red accent — emphasis-as-
+  emergency-care). Both render only when data
+  present.
+
+  Tests: +18 in eliteProgram.test.js across 4
+  describe blocks (drills, mentalRehearsal,
+  caffeine, contingency). Total 9336/9336 green.
+  Lint clean. Bundle 1299 KB / 2000 KB total.
+
+  Files: NEW src/lib/athlete/eliteProgramDrills.js
+  (220 lines, 18 drills + tri merger);
+  src/lib/athlete/eliteProgram.js (+5 lines:
+  imports, wiring, output); src/lib/athlete/
+  eliteProgramRaceWeek.js (+85 lines:
+  mentalRehearsal + caffeine for 4 race-day blocks);
+  src/lib/athlete/eliteProgramSubstitutions.js
+  (+95 lines: CONTINGENCY_BASE + sport overrides +
+  buildContingencyMap export); src/components/
+  dashboard/BroaderPlanSections.jsx (+90 lines:
+  DrillsSection + ContingencySection + composed
+  render).
+
+  Citations: Daniels 2014; Pfitzinger 2014; Maglischo
+  2003; Counsilman 1968; Coggan & Allen 2010;
+  Rønnestad 2017; Nolte 2005; Beattie 2014; Burke
+  2008; Spriet 2014; Friman & Wesslen 2000; Halson
+  2014; Bompa 2009; Sack 2010; Wittert 2014; Vealey
+  2007.
+
+  Out of scope: athlete-facing modal to record
+  field-test results (deferred to v9.10.0+).
+
+  Depends on: v9.8.0 race simulation + travel/
+  altitude/heat blocks; v9.7.0 rowing parity (drills
+  + contingency rowing-aware); v9.6.0 tri flatten
+  (drills surface for tri).
+
+---
+
 ## v9.8.0 — 2026-05-08 — Mission #1 coaching maturity: race simulation + open-water tri + pre-race meal library + travel/altitude/heat protocols + field-test recalibration loop, 9318 tests
 
   External Mission #1 audit (2026-05-08) graded the

@@ -185,6 +185,30 @@ const RACE_DAY_RUN = {
   },
   fueling: { en: 'Mid-race: 60-90 g CHO/h with 200-400 ml water/h. Practiced gel/sports drink only.', tr: 'Yarış ortası: 60-90 g CHO/sa, 200-400 ml su/sa. Sadece denenmiş jel/spor içeceği.' },
   mental: { en: 'Stay present. Compete only against the next km, not the finish.', tr: 'Anda kal. Bitiş ile değil, sadece bir sonraki km ile yarış.' },
+  // v9.9.0 — race-plan rehearsal scripts (Vealey 2007; Bull 1996)
+  mentalRehearsal: {
+    en: [
+      'Visualize the start: relaxed shoulders, controlled first 1 km at 5-10 sec/km slower than goal. Avoid surge with the pack.',
+      'Mid-race script (5k-10k mark): "I trained for this pace. My breathing is rhythmic. Each km gets me one closer."',
+      'When pain arrives (typically km 7-8 of half, 32 of full): "This is the workout I rehearsed. The pain peaks then plateaus."',
+      'Last 25%: "Now I race. Pick someone, reel them in. Smooth, strong, fast."',
+      'Contingency — fall behind goal: switch to "best possible from here" mindset, not "save the goal."',
+      'Contingency — feel great too early: hold goal pace anyway. Negative split is the only safe over-performance.',
+    ],
+    tr: [
+      'Başlangıcı görselleştir: omuzlar gevşek, ilk 1 km hedef tempodan 5-10 sn/km yavaş kontrollü. Grup ile sürüklenme.',
+      'Yarış ortası senaryosu (5k-10k noktası): "Bu tempoya antrene ettim. Nefesim ritmik. Her km beni bir adım yaklaştırıyor."',
+      'Acı geldiğinde (genelde yarı maraton km 7-8, maraton km 32): "Bu provasını yaptığım antrenman. Acı zirve yapıp plato yapar."',
+      'Son %25: "Şimdi yarışıyorum. Birini seç, çek. Pürüzsüz, güçlü, hızlı."',
+      'Acil durum — hedeften geri kal: "buradan mümkün olanı yap" zihniyetine geç, "hedefi koru"\'ya değil.',
+      'Acil durum — çok iyi hisset: yine de hedef tempoda kal. Negatif bölme tek güvenli aşırı-performans.',
+    ],
+  },
+  // v9.9.0 — caffeine protocol (Burke 2008; Spriet 2014)
+  caffeine: {
+    en: 'Evidence-based: 3-6 mg/kg, 60 min pre-race. Athletes 70 kg → 210-420 mg. Only if tolerated in training. Skip if anxiety-prone or sleep-poor week. Avoid >6 mg/kg (no further benefit, GI/jitter risk).',
+    tr: 'Kanıt-tabanlı: 3-6 mg/kg, yarıştan 60 dk önce. 70 kg sporcu → 210-420 mg. Sadece antrenmanda tolere edildiyse. Anksiyete eğilimi veya zayıf uyku haftasıysa atla. >6 mg/kg sakın (ek fayda yok, GI/titrek riski).',
+  },
 }
 
 const RACE_DAY_BIKE = {
@@ -213,6 +237,28 @@ const RACE_DAY_BIKE = {
   },
   fueling: { en: 'Aim 80-100 g CHO/h with 500-750 ml fluid/h. Practiced products only.', tr: '80-100 g CHO/sa, 500-750 ml sıvı/sa hedefle. Sadece denenmiş ürünler.' },
   mental: { en: 'Numbers, not feelings, in the first hour.', tr: 'İlk saatte hisler değil, rakamlar.' },
+  mentalRehearsal: {
+    en: [
+      'Pre-start: focus on power numbers, not feelings. First 10 km is data, not racing.',
+      'When the group surges: do NOT chase. Watts cap is your race; their pace is theirs.',
+      'Climbs: stay seated, find rhythm, hold target NP. Standing only on the steepest 10% sections.',
+      'Hour 2: aerodynamic position is non-negotiable. Tuck even when comfortable to spread out.',
+      'Last 20%: now feelings can override numbers. If reserves remain, attack the gradient or sprint.',
+      'Contingency — mechanical: slow before stop, signal, calm tools work. 2 min mechanical < 10 min crash.',
+    ],
+    tr: [
+      'Başlangıç öncesi: hisler değil, güç rakamlarına odaklan. İlk 10 km veri, yarış değil.',
+      'Grup ataklandığında: takip ETME. Watt limiti senin yarışın; onların temposu onların.',
+      'Yokuşlar: oturarak kal, ritim bul, hedef NP tut. Sadece en dik %10 kesimde ayağa kalk.',
+      '2. saat: aerodinamik pozisyon tartışılmaz. Rahat olduğunda bile yayılmamak için sıkış.',
+      'Son %20: artık hisler rakamları ezebilir. Yedek varsa, eğime atak yap veya sprint.',
+      'Acil durum — mekanik: durmadan önce yavaşla, sinyal ver, sakin araç kullanımı. 2 dk mekanik < 10 dk kaza.',
+    ],
+  },
+  caffeine: {
+    en: 'Evidence-based: 3-6 mg/kg, 60 min pre-race. For long bikes (>3h), split: 200 mg pre + 100 mg at hour 2. Avoid first cycling race with caffeine — test in training.',
+    tr: 'Kanıt-tabanlı: 3-6 mg/kg, yarıştan 60 dk önce. Uzun bisiklette (>3sa), böl: ön 200 mg + 2. saatte 100 mg. İlk bisiklet yarışında kafein deneme — antrenmanda test et.',
+  },
 }
 
 // v9.7.0 — Rowing race-week schedule (Mujika 2003 taper + British Rowing protocol).
@@ -283,6 +329,28 @@ const RACE_DAY_SWIM = {
   },
   fueling: { en: 'For races >30 min: 30 g CHO 30 min pre-race.', tr: '30 dk üstü yarışlar için: yarıştan 30 dk önce 30 g CHO.' },
   mental: { en: 'Smooth stroke first. Speed comes from rhythm.', tr: 'Önce akıcı stroke. Hız ritimden gelir.' },
+  mentalRehearsal: {
+    en: [
+      'Pre-start: visualize first 100m off the wall — relaxed, smooth, controlled. NOT all-out.',
+      'Mid-race (lap 4-6 of 1500): "Long stroke. Drive from the hips, finish at the thigh." Stroke length over rate.',
+      'When the wall hits (typically 800m for 1500): "Catch is what propels me. Anchor the catch."',
+      'Last 200m: cadence increases, stroke length stays. Sprint kicks in only at last 50m.',
+      'Contingency — bad lap split: do NOT overstroke. Reset breathing, hold form, the swim averages.',
+      'Open-water — chop interferes: shorten stroke, breathe to non-wave side. Sight every 8-10 strokes.',
+    ],
+    tr: [
+      'Başlangıç öncesi: duvardan ilk 100m\'yi görselleştir — gevşek, akıcı, kontrollü. SONUNA KADAR DEĞİL.',
+      'Yarış ortası (1500\'ün 4-6. tur): "Uzun stroke. Kalçadan it, uylukta bitir." Vuruş hızından çok vuruş uzunluğu.',
+      'Duvara çarptığında (genelde 1500\'ün 800m\'si): "Yakalama beni iter. Yakalamayı sabitle."',
+      'Son 200m: kadans artar, stroke uzunluğu kalır. Sprint sadece son 50m\'de devreye girer.',
+      'Acil durum — kötü tur splitsi: AŞIRI VURMA. Nefesi sıfırla, formu koru, yüzme ortalamayı alır.',
+      'Açık-su — dalga müdahalesi: stroke\'u kısalt, dalgasız tarafa nefes al. Her 8-10 vuruşta yön kontrolü.',
+    ],
+  },
+  caffeine: {
+    en: 'Evidence-based: 3 mg/kg, 45-60 min pre-race. Lower than run/bike (shorter race). Caffeine + dehydration risk in heat: pair with 250 ml fluid.',
+    tr: 'Kanıt-tabanlı: 3 mg/kg, yarıştan 45-60 dk önce. Koşu/bisiklete göre daha düşük (daha kısa yarış). Sıcakta kafein + dehidrasyon riski: 250 ml sıvıyla eşleştir.',
+  },
 }
 
 // v9.7.0 — Rowing race-day protocol. 2k race lasts ~6-8 min so fueling is
@@ -314,6 +382,28 @@ const RACE_DAY_ROWING = {
   },
   fueling: { en: 'Pre-race only: 30 g CHO 30-45 min pre-race. No mid-race fueling needed (race <8 min).', tr: 'Sadece yarış öncesi: yarıştan 30-45 dk önce 30 g CHO. Yarış sırasında beslenme gerekmez (yarış <8 dk).' },
   mental: { en: 'Trust the rhythm. First 500m is the hardest mental gate; after that you are committed.', tr: 'Ritme güven. İlk 500m en zor zihinsel kapıdır; sonrası bağlanmıştır.' },
+  mentalRehearsal: {
+    en: [
+      'Pre-race: visualize the first 5 strokes — explosive but clean. Do NOT chase others off the line.',
+      'First 500m: "Long, strong, controlled." Hold target split + 1 sec. Keep stroke at 32 spm.',
+      'Middle 1000m: this is the dark zone. Mantra: "Patience. The race is won here by holding split."',
+      'When at 1500m mark and lungs burn: "I have ~2 min left. Anyone can hold for 2 min. Stroke pattern."',
+      'Last 250m: rate up to 36-38, drop split, sprint. Visualize the line.',
+      'Contingency — caught a crab: stay calm, recover the blade, get back to rhythm. Do not panic; you have time.',
+    ],
+    tr: [
+      'Yarış öncesi: ilk 5 vuruşu görselleştir — patlayıcı ama temiz. Başlangıç çizgisinde başkalarını TAKİP ETME.',
+      'İlk 500m: "Uzun, güçlü, kontrollü." Hedef split + 1 sn tut. Vuruş 32 spm\'de kal.',
+      'Orta 1000m: karanlık bölge. Mantra: "Sabır. Yarış burada split tutarak kazanılır."',
+      '1500m\'de akciğerler yandığında: "Yaklaşık 2 dk kaldı. Herkes 2 dk tutabilir. Vuruş paterni."',
+      'Son 250m: hızı 36-38\'e çıkar, split düşür, sprint. Çizgiyi görselleştir.',
+      'Acil durum — yakaladın bir yengeç: sakin kal, bıçağı kurtar, ritmi yakala. Panikleme; zamanın var.',
+    ],
+  },
+  caffeine: {
+    en: 'Evidence-based: 3-6 mg/kg, 60 min pre-race. Short max-effort event = ideal caffeine ergogenic. Test in training; pre-race day-before should already be standard.',
+    tr: 'Kanıt-tabanlı: 3-6 mg/kg, yarıştan 60 dk önce. Kısa max-efor etkinliği = ideal kafein ergojeniği. Antrenmanda test et; yarış-öncesi gün zaten standart olmalı.',
+  },
 }
 
 // v9.8.0 — Travel / altitude / heat conditional protocol.

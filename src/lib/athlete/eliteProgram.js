@@ -114,7 +114,8 @@ import { buildStrengthProgram }     from './eliteProgramStrength.js'
 import { buildFuelingProgram }      from './eliteProgramFueling.js'
 import { buildRecoveryProgram }     from './eliteProgramRecovery.js'
 import { buildRaceWeekProtocol }    from './eliteProgramRaceWeek.js'
-import { buildSubstitutionMap }     from './eliteProgramSubstitutions.js'
+import { buildSubstitutionMap, buildContingencyMap } from './eliteProgramSubstitutions.js'
+import { buildDrillsLibrary }       from './eliteProgramDrills.js'
 
 const CITATION = 'Daniels 2014; Bompa 2009; Mujika 2003; Coggan 2010; Wakayoshi 1992; Seiler 2010'
 
@@ -1082,6 +1083,8 @@ export function buildEliteProgram(input) {
     raceHeatC:        typeof input.raceHeatC === 'number'        ? input.raceHeatC        : null,
   })
   const substitutionMap   = buildSubstitutionMap({ sport })
+  const contingencyMap    = buildContingencyMap({ sport })
+  const drillsLibrary     = buildDrillsLibrary({ sport, phases })
 
   const out = {
     feasibility: {
@@ -1104,6 +1107,8 @@ export function buildEliteProgram(input) {
     recoveryProgram,
     raceWeekProtocol,
     substitutionMap,
+    contingencyMap,
+    drillsLibrary,
     recommendation,
     citation: CITATION,
     reliable: band !== 'unrealistic',

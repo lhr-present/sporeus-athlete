@@ -693,6 +693,186 @@ describe('buildEliteProgram — v9.8.0 coaching maturity', () => {
   })
 })
 
+describe('buildEliteProgram — v9.9.0 cross-sport enhancements', () => {
+  // Drills library
+  describe('drillsLibrary', () => {
+    it('run program exposes drills per phase', () => {
+      const r = buildEliteProgram(RUN_REALISTIC)
+      expect(r.drillsLibrary).toBeTruthy()
+      expect(Array.isArray(r.drillsLibrary.Base)).toBe(true)
+      expect(r.drillsLibrary.Base.length).toBeGreaterThan(0)
+      const baseKeys = r.drillsLibrary.Base.map(d => d.key)
+      expect(baseKeys.some(k => /run-drill-/.test(k))).toBe(true)
+    })
+    it('bike program exposes bike drills', () => {
+      const r = buildEliteProgram({
+        sport: 'bike',
+        currentPR: { distanceM: 0, timeSec: 250 },
+        targetPR:  { distanceM: 0, timeSec: 280 },
+        raceDate: '2026-08-25', options: { today: TODAY },
+      })
+      const baseKeys = r.drillsLibrary.Base.map(d => d.key)
+      expect(baseKeys.some(k => /bike-drill-/.test(k))).toBe(true)
+    })
+    it('rowing program exposes rowing drills', () => {
+      const r = buildEliteProgram({
+        sport: 'rowing',
+        currentPR: { distanceM: 0, timeSec: 420 },
+        targetPR:  { distanceM: 0, timeSec: 405 },
+        raceDate: '2026-08-25', options: { today: TODAY },
+      })
+      const baseKeys = r.drillsLibrary.Base.map(d => d.key)
+      expect(baseKeys.some(k => /row-drill-/.test(k))).toBe(true)
+    })
+    it('triathlon flattens drills from all 3 disciplines + tri-specific extras', () => {
+      const r = buildEliteProgram({ ...RUN_REALISTIC, sport: 'triathlon' })
+      const buildDisciplines = new Set(r.drillsLibrary.Build.map(d => d.discipline))
+      expect(buildDisciplines.has('run')).toBe(true)
+      expect(buildDisciplines.has('bike')).toBe(true)
+      expect(buildDisciplines.has('swim')).toBe(true)
+      expect(buildDisciplines.has('tri')).toBe(true)
+    })
+    it('every drill has key, name, purpose, structure, frequencyPerWeek, citation', () => {
+      const r = buildEliteProgram(RUN_REALISTIC)
+      for (const phase of ['Base', 'Build']) {
+        for (const d of r.drillsLibrary[phase]) {
+          expect(d.key).toBeTruthy()
+          expect(d.name?.en).toBeTruthy()
+          expect(d.name?.tr).toBeTruthy()
+          expect(d.purpose?.en).toBeTruthy()
+          expect(d.structure?.en).toBeTruthy()
+          expect(typeof d.frequencyPerWeek).toBe('number')
+          expect(d.citation).toBeTruthy()
+        }
+      }
+    })
+  })
+
+  // Mental rehearsal
+  describe('mentalRehearsal scripts', () => {
+    it('run race-day surfaces ≥4 mental-rehearsal entries', () => {
+      const r = buildEliteProgram(RUN_REALISTIC)
+      const rehearsal = r.raceWeekProtocol.raceDay.mentalRehearsal
+      expect(Array.isArray(rehearsal.en)).toBe(true)
+      expect(rehearsal.en.length).toBeGreaterThanOrEqual(4)
+      expect(rehearsal.tr.length).toBe(rehearsal.en.length)
+    })
+    it('run rehearsal includes contingency lines', () => {
+      const r = buildEliteProgram(RUN_REALISTIC)
+      const text = r.raceWeekProtocol.raceDay.mentalRehearsal.en.join(' ')
+      expect(text).toMatch(/contingency|fall behind|feel great too early/i)
+    })
+    it('bike rehearsal mentions watts/numbers', () => {
+      const r = buildEliteProgram({
+        sport: 'bike',
+        currentPR: { distanceM: 0, timeSec: 250 },
+        targetPR:  { distanceM: 0, timeSec: 280 },
+        raceDate: '2026-08-25', options: { today: TODAY },
+      })
+      const text = r.raceWeekProtocol.raceDay.mentalRehearsal.en.join(' ')
+      expect(text).toMatch(/watts|power|numbers/i)
+    })
+    it('swim rehearsal mentions stroke length', () => {
+      const r = buildEliteProgram({
+        sport: 'swim',
+        currentPR: { distanceM: 1500, timeSec: 1500 },
+        targetPR:  { distanceM: 1500, timeSec: 1380 },
+        raceDate: '2026-08-25', options: { today: TODAY },
+      })
+      const text = r.raceWeekProtocol.raceDay.mentalRehearsal.en.join(' ')
+      expect(text).toMatch(/stroke length|catch|long stroke/i)
+    })
+    it('rowing rehearsal mentions stroke rate / split', () => {
+      const r = buildEliteProgram({
+        sport: 'rowing',
+        currentPR: { distanceM: 0, timeSec: 420 },
+        targetPR:  { distanceM: 0, timeSec: 405 },
+        raceDate: '2026-08-25', options: { today: TODAY },
+      })
+      const text = r.raceWeekProtocol.raceDay.mentalRehearsal.en.join(' ')
+      expect(text).toMatch(/spm|stroke|split/i)
+    })
+  })
+
+  // Caffeine protocol
+  describe('caffeine protocol', () => {
+    it('run race-day includes evidence-based caffeine dose', () => {
+      const r = buildEliteProgram(RUN_REALISTIC)
+      const c = r.raceWeekProtocol.raceDay.caffeine
+      expect(c.en).toMatch(/3-6 mg\/kg/i)
+      expect(c.en).toMatch(/60 min/i)
+    })
+    it('swim caffeine notes lower dose for shorter race', () => {
+      const r = buildEliteProgram({
+        sport: 'swim',
+        currentPR: { distanceM: 1500, timeSec: 1500 },
+        targetPR:  { distanceM: 1500, timeSec: 1380 },
+        raceDate: '2026-08-25', options: { today: TODAY },
+      })
+      expect(r.raceWeekProtocol.raceDay.caffeine.en).toMatch(/lower|shorter/i)
+    })
+    it('all sports surface caffeine block', () => {
+      for (const sport of ['run', 'bike', 'swim', 'rowing']) {
+        const r = buildEliteProgram({
+          sport,
+          currentPR: sport === 'bike' ? { distanceM: 0, timeSec: 250 }
+                   : sport === 'rowing' ? { distanceM: 0, timeSec: 420 }
+                   : sport === 'swim' ? { distanceM: 1500, timeSec: 1500 }
+                   : { distanceM: 10000, timeSec: 3000 },
+          targetPR: sport === 'bike' ? { distanceM: 0, timeSec: 280 }
+                  : sport === 'rowing' ? { distanceM: 0, timeSec: 405 }
+                  : sport === 'swim' ? { distanceM: 1500, timeSec: 1380 }
+                  : { distanceM: 10000, timeSec: 2820 },
+          raceDate: '2026-08-25',
+          options: { today: TODAY },
+        })
+        expect(r.raceWeekProtocol.raceDay.caffeine).toBeTruthy()
+        expect(r.raceWeekProtocol.raceDay.caffeine.en.length).toBeGreaterThan(20)
+      }
+    })
+  })
+
+  // Contingency scripts
+  describe('contingencyMap', () => {
+    it('run program exposes illness/lifeEvent/travelDay blocks', () => {
+      const r = buildEliteProgram(RUN_REALISTIC)
+      expect(r.contingencyMap).toBeTruthy()
+      expect(r.contingencyMap.illness).toBeTruthy()
+      expect(r.contingencyMap.lifeEvent).toBeTruthy()
+      expect(r.contingencyMap.travelDay).toBeTruthy()
+    })
+    it('illness distinguishes above-neck vs below-neck (Friman 2000)', () => {
+      const r = buildEliteProgram(RUN_REALISTIC)
+      expect(r.contingencyMap.illness.aboveNeck.en).toMatch(/above.*neck/i)
+      expect(r.contingencyMap.illness.belowNeck.en).toMatch(/below.*neck/i)
+    })
+    it('lifeEvent provides 2-3d / 4-7d / >1w guidance', () => {
+      const r = buildEliteProgram(RUN_REALISTIC)
+      expect(r.contingencyMap.lifeEvent.twoToThreeDays).toBeTruthy()
+      expect(r.contingencyMap.lifeEvent.fourToSevenDays).toBeTruthy()
+      expect(r.contingencyMap.lifeEvent.overOneWeek).toBeTruthy()
+    })
+    it('rowing travelDay notes muscle pattern decay', () => {
+      const r = buildEliteProgram({
+        sport: 'rowing',
+        currentPR: { distanceM: 0, timeSec: 420 },
+        targetPR:  { distanceM: 0, timeSec: 405 },
+        raceDate: '2026-08-25', options: { today: TODAY },
+      })
+      expect(r.contingencyMap.travelDay.multiDay.en).toMatch(/muscle pattern|2 weeks|decay/i)
+    })
+    it('swim travelDay notes pool-access fallback', () => {
+      const r = buildEliteProgram({
+        sport: 'swim',
+        currentPR: { distanceM: 1500, timeSec: 1500 },
+        targetPR:  { distanceM: 1500, timeSec: 1380 },
+        raceDate: '2026-08-25', options: { today: TODAY },
+      })
+      expect(r.contingencyMap.travelDay.multiDay.en).toMatch(/pool|dryland|cords/i)
+    })
+  })
+})
+
 describe('buildEliteProgram — output shape and metadata', () => {
   it('citation includes Daniels, Coggan, Wakayoshi', () => {
     const r = buildEliteProgram(RUN_REALISTIC)

@@ -407,8 +407,91 @@ export function SubstitutionsSection({ substitutionMap, isTR, defaultOpen = fals
   )
 }
 
+// v9.9.0 — Drills section (sport-specific neuromuscular work)
+export function DrillsSection({ drillsLibrary, isTR, defaultOpen = false }) {
+  if (!drillsLibrary) return null
+  const phases = ['Base', 'Build', 'Peak', 'Taper'].filter(p =>
+    Array.isArray(drillsLibrary[p]) && drillsLibrary[p].length > 0
+  )
+  if (phases.length === 0) return null
+  const totalDrills = phases.reduce((acc, p) => acc + drillsLibrary[p].length, 0)
+  return (
+    <Disclosure
+      title={isTR ? 'DRİLLER & NÖROMUSKÜLER' : 'DRILLS & NEUROMUSCULAR'}
+      count={totalDrills}
+      accent="#00aa66"
+      defaultOpen={defaultOpen}
+    >
+      {phases.map(phase => (
+        <div key={phase}>
+          <PhaseHeader phase={phase} isTR={isTR} />
+          {drillsLibrary[phase].map(d => (
+            <div key={d.key} style={{
+              ...S.mono,
+              fontSize: 11,
+              lineHeight: 1.55,
+              padding: '6px 10px',
+              borderLeft: `3px solid ${PHASE_COLOR[phase] || '#666'}`,
+              marginBottom: 5,
+              background: 'rgba(255,255,255,0.02)',
+              borderRadius: '0 3px 3px 0',
+            }}>
+              <div style={{ fontWeight: 700, marginBottom: 2, display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+                <DisciplineChip discipline={d.discipline} isTR={isTR} />
+                <span>{bil(d.name, isTR)}</span>
+                <span style={{
+                  marginLeft: 8, fontSize: 9, color: 'var(--muted)',
+                  fontWeight: 400,
+                }}>
+                  {d.frequencyPerWeek}× / {isTR ? 'hafta' : 'wk'}
+                </span>
+              </div>
+              <div style={{ color: 'var(--muted)', fontSize: 10, marginBottom: 2, fontStyle: 'italic' }}>{bil(d.purpose, isTR)}</div>
+              <div style={{ fontSize: 10 }}>{bil(d.structure, isTR)}</div>
+              <div style={{ marginTop: 2, fontSize: 9, color: 'var(--muted)', fontStyle: 'italic' }}>{d.citation}</div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </Disclosure>
+  )
+}
+
+// v9.9.0 — Contingency scripts (illness / life-event / travel)
+export function ContingencySection({ contingencyMap, isTR, defaultOpen = false }) {
+  if (!contingencyMap) return null
+  const blocks = Object.entries(contingencyMap)
+  if (blocks.length === 0) return null
+  return (
+    <Disclosure
+      title={isTR ? 'ACİL DURUMLAR (hastalık/yaşam/seyahat)' : 'CONTINGENCY (illness/life/travel)'}
+      count={blocks.length}
+      accent="#dc3545"
+      defaultOpen={defaultOpen}
+    >
+      {blocks.map(([key, block]) => (
+        <div key={key} style={{ marginBottom: 14 }}>
+          <div style={{ ...S.mono, fontSize: 11, fontWeight: 700, marginBottom: 4, letterSpacing: '0.04em', color: '#dc3545' }}>
+            {bil(block.title, isTR)}
+          </div>
+          <div style={{ ...S.mono, fontSize: 10, lineHeight: 1.55 }}>
+            {Object.entries(block).filter(([k]) => !['title', 'citation'].includes(k)).map(([subKey, val]) => (
+              <div key={subKey} style={{ marginBottom: 3 }}>
+                <strong>{subKey.replace(/([A-Z])/g, ' $1').toUpperCase()}:</strong> {bil(val, isTR)}
+              </div>
+            ))}
+            {block.citation ? (
+              <div style={{ marginTop: 4, fontSize: 9, color: 'var(--muted)', fontStyle: 'italic' }}>{block.citation}</div>
+            ) : null}
+          </div>
+        </div>
+      ))}
+    </Disclosure>
+  )
+}
+
 /**
- * Renders all 6 broader-plan content sections in a single container.
+ * Renders all broader-plan content sections in a single container.
  * Pass the full `result` object from buildEliteProgram.
  */
 export default function BroaderPlanSections({ result, isTR }) {
@@ -419,11 +502,13 @@ export default function BroaderPlanSections({ result, isTR }) {
         {isTR ? 'GENİŞLETİLMİŞ PROGRAM İÇERİĞİ' : 'BROADER PROGRAM CONTENT'}
       </div>
       <KeySessionsSection keySessionLibrary={result.keySessionLibrary} isTR={isTR} />
+      <DrillsSection drillsLibrary={result.drillsLibrary} isTR={isTR} />
       <StrengthSection strengthProgram={result.strengthProgram} isTR={isTR} />
       <FuelingSection fuelingProgram={result.fuelingProgram} isTR={isTR} />
       <RecoverySection recoveryProgram={result.recoveryProgram} isTR={isTR} />
       <RaceWeekSection raceWeekProtocol={result.raceWeekProtocol} isTR={isTR} />
       <SubstitutionsSection substitutionMap={result.substitutionMap} isTR={isTR} />
+      <ContingencySection contingencyMap={result.contingencyMap} isTR={isTR} />
     </div>
   )
 }

@@ -180,6 +180,113 @@ export function buildSubstitutionMap(input) {
   return SUBSTITUTIONS_RUN
 }
 
+// v9.9.0 — Program-level contingency scripts. Sport-aware advice for
+// illness, life-events, and travel disruption — the operational realities
+// real coaches handle but pure-software builders typically ignore.
+//
+// Per Bompa 2009 (load adjustment for life stress) + Mujika 2010 (return-
+// from-detraining curves). Bilingual EN+TR.
+
+const CONTINGENCY_BASE = {
+  illness: {
+    title: { en: 'ILLNESS / SICK DAYS', tr: 'HASTALIK / HASTA GÜNLER' },
+    aboveNeck: {
+      en: 'Symptoms ABOVE neck only (sore throat, runny nose, no fever): proceed with easy/Z1 sessions only at 50% volume. Skip all hard sessions for 3 days.',
+      tr: 'Sadece BOYUN ÜSTÜ belirtiler (boğaz ağrısı, burun akıntısı, ateş yok): sadece kolay/Z1 seansları %50 hacimde. Sert seansları 3 gün atla.',
+    },
+    belowNeck: {
+      en: 'Symptoms BELOW neck (chest congestion, body aches, fever ≥38°C, GI): rest until 24h fever-free + 48h symptom-free. Then 3-5 day return ramp at 30% → 50% → 70% → full volume.',
+      tr: 'BOYUN ALTI belirtiler (göğüs tıkanıklığı, vücut ağrısı, ateş ≥38°C, GI): 24sa ateşsiz + 48sa belirtisiz olana kadar dinlen. Sonra 3-5 gün dönüş rampası %30 → %50 → %70 → tam.',
+    },
+    note: {
+      en: 'Training while febrile risks myocarditis. Consult a physician before resumption if fever lasted >3 days.',
+      tr: 'Ateşliyken antrenman miyokardit riski yaratır. Ateş >3 gün sürdüyse devam etmeden önce hekime başvur.',
+    },
+    citation: 'Friman & Wesslen 2000; Reid 2004',
+  },
+  lifeEvent: {
+    title: { en: 'LIFE-EVENT / WORK / FAMILY', tr: 'YAŞAM-OLAYI / İŞ / AİLE' },
+    twoToThreeDays: {
+      en: 'Disrupted 2-3 days: skip the missed sessions, do not double-up. Pick up the plan where the calendar says.',
+      tr: 'Bozulmuş 2-3 gün: kaçırılan seansları atla, ikiye katlama. Takvimin söylediği yerden plana devam et.',
+    },
+    fourToSevenDays: {
+      en: 'Disrupted 4-7 days: shift the plan back by 1 week (delete 1 high-quality week if race date is fixed). Do NOT compress.',
+      tr: 'Bozulmuş 4-7 gün: planı 1 hafta geriye kaydır (yarış tarihi sabitse 1 yüksek-kalite hafta sil). SIKIŞTIRMA.',
+    },
+    overOneWeek: {
+      en: 'Disrupted >1 week: re-evaluate goal. If race <8 weeks away, downgrade target by ~5%. Restart at last completed phase, not where calendar says.',
+      tr: 'Bozulmuş >1 hafta: hedefi yeniden değerlendir. Yarış <8 hafta uzaktaysa hedefi ~%5 azalt. Takvimin söylediği değil, son tamamlanan fazdan yeniden başla.',
+    },
+    note: {
+      en: 'Sleep <6h average for 4+ nights = day off. Stress fractures and immune crashes correlate with chronic sleep debt, not single bad days.',
+      tr: '4+ gece ortalama uyku <6sa = izin günü. Stres kırıkları ve bağışıklık çöküşü tek kötü günle değil, kronik uyku borcuyla ilişkilidir.',
+    },
+    citation: 'Bompa 2009; Halson 2014',
+  },
+  travelDay: {
+    title: { en: 'TRAVEL / TRANSIT', tr: 'SEYAHAT / GEÇİŞ' },
+    sameDay: {
+      en: 'Travel day same as a hard session: shift hard session ±1 day. Do not run/cycle/row hard within 6h of a >2h flight.',
+      tr: 'Sert seans olan gün seyahat: sert seansı ±1 gün kaydır. >2 saatlik uçuşun 6sa içinde sert koşu/bisiklet/kürek yapma.',
+    },
+    multiDay: {
+      en: 'Multi-day travel with no gym/equipment: substitute body-weight strength + 30-45 min easy hotel-treadmill or stairwell run. Maintain volume floor at 50%.',
+      tr: 'Spor salonu/ekipman olmadan çoklu-gün seyahat: vücut ağırlığı kuvvet + 30-45 dk kolay otel-koşubandı veya merdiven koşusu. Hacim tabanını %50\'de tut.',
+    },
+    citation: 'Sack 2010; Wittert 2014',
+  },
+}
+
+// Sport-specific overrides. For now the scripts above apply to all sports;
+// sport-specific notes can be appended here.
+const CONTINGENCY_RUN  = { ...CONTINGENCY_BASE }
+const CONTINGENCY_BIKE = {
+  ...CONTINGENCY_BASE,
+  travelDay: {
+    ...CONTINGENCY_BASE.travelDay,
+    multiDay: {
+      en: 'Multi-day travel: skip cycling, do not "make up" with hotel-gym bike unless it is a real spin bike. Body-weight legs + walking maintains base.',
+      tr: 'Çoklu-gün seyahat: bisikleti atla, gerçek spin bisikleti olmadıkça otel-spor salonu bisikletiyle "telafi" etme. Vücut-ağırlığı bacak + yürüyüş tabanı korur.',
+    },
+  },
+}
+const CONTINGENCY_SWIM = {
+  ...CONTINGENCY_BASE,
+  travelDay: {
+    ...CONTINGENCY_BASE.travelDay,
+    multiDay: {
+      en: 'No pool access: dryland-swim cords + core work + light run. Resume in pool with 1-week ramp; first session at 50% volume.',
+      tr: 'Havuz erişimi yok: kara-yüzme kordonları + kor çalışması + hafif koşu. Havuza 1 haftalık rampa ile dön; ilk seans %50 hacim.',
+    },
+  },
+}
+const CONTINGENCY_ROWING = {
+  ...CONTINGENCY_BASE,
+  travelDay: {
+    ...CONTINGENCY_BASE.travelDay,
+    multiDay: {
+      en: 'No erg/water: substitute with run + body-weight strength. Note: row-specific muscle pattern decays in ~2 weeks; 1 week ok.',
+      tr: 'Erg/su yok: koşu + vücut-ağırlığı kuvvetle ikame et. Not: küreğe-özgü kas paterni ~2 haftada zayıflar; 1 hafta sorun değil.',
+    },
+  },
+}
+
+/**
+ * @public
+ * @param {{ sport: 'run'|'bike'|'swim'|'triathlon'|'rowing' }} input
+ * @returns {{
+ *   illness: object, lifeEvent: object, travelDay: object,
+ * }}
+ */
+export function buildContingencyMap(input) {
+  const sport = input?.sport
+  if (sport === 'bike')   return CONTINGENCY_BIKE
+  if (sport === 'swim')   return CONTINGENCY_SWIM
+  if (sport === 'rowing') return CONTINGENCY_ROWING
+  return CONTINGENCY_RUN
+}
+
 /** @public Triathlon: returns all 3 maps. */
 export function buildTriathlonSubstitutionMap() {
   return { run: SUBSTITUTIONS_RUN, bike: SUBSTITUTIONS_BIKE, swim: SUBSTITUTIONS_SWIM }
