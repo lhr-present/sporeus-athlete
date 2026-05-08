@@ -10,6 +10,7 @@ const EliteProgramCard  = lazy(() => import('./dashboard/EliteProgramCard.jsx'))
 const TodayProgrammedSessionCard = lazy(() => import('./dashboard/TodayProgrammedSessionCard.jsx'))
 const NextTrainingCard  = lazy(() => import('./dashboard/NextTrainingCard.jsx'))
 const ProgramCalendar   = lazy(() => import('./dashboard/ProgramCalendar.jsx'))
+const RaceCountdownBanner = lazy(() => import('./dashboard/RaceCountdownBanner.jsx'))
 
 export default function ProgramView() {
   const { log, profile } = useData()
@@ -31,6 +32,18 @@ export default function ProgramView() {
           ? 'Hedeften plana — bilim temelli yıllık antrenman programı.'
           : 'From target to plan — a science-based yearly training program.'}
       </div>
+
+      {/* Race countdown banner (only when plan exists with a race date) */}
+      {hasPlan ? (
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <RaceCountdownBanner
+              program={persistedProgram}
+              programStart={programStart}
+            />
+          </Suspense>
+        </ErrorBoundary>
+      ) : null}
 
       {/* Hero: NEXT TRAINING (or empty-state CTA when no plan) */}
       {hasPlan ? (

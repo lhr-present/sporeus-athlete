@@ -14,7 +14,11 @@
 import { useContext, useMemo, useState } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
+import { useData } from '../../contexts/DataContext.jsx'
 import { eliteProgramToYearlyWeeks } from '../../lib/athlete/eliteProgramToYearly.js'
+import { buildCalendarProgress } from '../../lib/athlete/calendarProgress.js'
+import { buildPlanMilestones } from '../../lib/athlete/planMilestones.js'
+import { buildLogEntryFromSession } from '../../lib/athlete/quickLogFromSession.js'
 
 const PHASE_COLOR = {
   Base:  '#0064ff',
@@ -91,8 +95,10 @@ function shortDate(d, isTR) {
 export default function ProgramCalendar({ program, programStart, yearlyPlan, collapseDefault = false }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
+  const { log, setLog } = useData()
   const [expandedKey, setExpandedKey] = useState(null)
   const [allOpen, setAllOpen] = useState(!collapseDefault)
+  const [logToast, setLogToast] = useState(null)
 
   const weeks = useMemo(() => {
     if (yearlyPlan && Array.isArray(yearlyPlan.weeks) && yearlyPlan.weeks.length > 0) {
@@ -103,7 +109,33 @@ export default function ProgramCalendar({ program, programStart, yearlyPlan, col
     return built?.weeks || []
   }, [program, programStart, yearlyPlan])
 
+  const progress = useMemo(() =>
+    buildCalendarProgress(weeks, log, { sport: program?.sport }),
+    [weeks, log, program?.sport])
+
+  const milestonesByDate = useMemo(() => {
+    const m = buildPlanMilestones(program, programStart)
+    const out = {}
+    for (const ms of m) out[ms.dateISO] = ms
+    return out
+  }, [program, programStart])
+
   const today = todayUTC()
+
+  function handleQuickLog(session, dateISO) {
+    const entry = buildLogEntryFromSession(session, dateISO, program?.sport, null)
+    if (!entry) return
+    const safeLog = Array.isArray(log) ? log : []
+    // De-dupe — if athlete already logged this date+type, skip.
+    if (safeLog.some(e => e?.date === dateISO && e?.type === entry.type && e?.source === 'sporeus-plan')) {
+      setLogToast({ kind: 'duplicate', dateISO })
+      setTimeout(() => setLogToast(null), 2500)
+      return
+    }
+    setLog([entry, ...safeLog])
+    setLogToast({ kind: 'success', dateISO, type: entry.type })
+    setTimeout(() => setLogToast(null), 2500)
+  }
 
   if (weeks.length === 0) {
     return (
@@ -186,6 +218,21 @@ export default function ProgramCalendar({ program, programStart, yearlyPlan, col
                   <span style={{ marginLeft: 'auto', fontSize: 9, color: 'var(--muted)' }}>
                     {w.targetTSS} TSS · {w.plannedHours} h
                   </span>
+                  {(() => {
+                    const wp = progress.byWeek[w.weekStart]
+                    if (!wp || isPast === false && !containsToday) return null
+                    if (wp.plannedTSS === 0) return null
+                    const pct = wp.adherencePct
+                    const adColor = pct >= 90 ? '#28a745' : pct >= 70 ? '#ffc107' : '#dc3545'
+                    return (
+                      <span title={isTR
+                        ? `${wp.actualTSS}/${wp.plannedTSS} TSS · ${wp.daysLogged}/${wp.daysPlanned} gün`
+                        : `${wp.actualTSS}/${wp.plannedTSS} TSS · ${wp.daysLogged}/${wp.daysPlanned} days`}
+                        style={{ background: adColor, color: '#fff', fontWeight: 700, padding: '1px 5px', borderRadius: 2, fontSize: 9, letterSpacing: '0.06em' }}>
+                        {pct}%
+                      </span>
+                    )
+                  })()}
                   {w.isDeload ? (
                     <span style={{ background: '#ffc107', color: '#000', fontWeight: 700, padding: '1px 5px', borderRadius: 2, fontSize: 9 }}>
                       {isTR ? 'DELOAD' : 'DELOAD'}
@@ -208,6 +255,10 @@ export default function ProgramCalendar({ program, programStart, yearlyPlan, col
                     const cellKey = `${w.weekStart}::${dk}`
                     const isExpanded = expandedKey === cellKey
 
+                    const dISO = ymd(dayDate)
+                    const dp = progress.byDay[dISO]
+                    const isLogged = dp?.logged === true
+                    const milestone = milestonesByDate[dISO]
                     return (
                       <button
                         key={dk}
@@ -222,7 +273,7 @@ export default function ProgramCalendar({ program, programStart, yearlyPlan, col
                           background: intent
                             ? `linear-gradient(180deg, ${color}40, ${color}15)`
                             : 'rgba(0,0,0,0.05)',
-                          border: isToday ? '2px solid #ff6600' : `1px solid ${intent ? color : 'var(--border)'}`,
+                          border: isToday ? '2px solid #ff6600' : `1px solid ${isLogged ? '#28a745' : (intent ? color : 'var(--border)')}`,
                           color: 'var(--text)',
                           cursor: session ? 'pointer' : 'default',
                           textAlign: 'left',
@@ -232,8 +283,25 @@ export default function ProgramCalendar({ program, programStart, yearlyPlan, col
                           flexDirection: 'column',
                           alignItems: 'flex-start',
                           gap: 2,
+                          position: 'relative',
                         }}>
-                        <span style={{ fontSize: 8, color: 'var(--muted)', letterSpacing: '0.05em' }}>
+                        {isLogged ? (
+                          <span aria-label={isTR ? 'Tamamlandı' : 'Logged'}
+                            style={{ position: 'absolute', top: 2, right: 4, color: '#28a745', fontWeight: 700, fontSize: 11 }}>
+                            ✓
+                          </span>
+                        ) : null}
+                        {milestone ? (
+                          <span aria-label={isTR ? milestone.label.tr : milestone.label.en}
+                            title={isTR ? milestone.label.tr : milestone.label.en}
+                            style={{ position: 'absolute', top: 2, left: 2, fontSize: 11 }}>
+                            {milestone.type === 'race-day' ? '🏁'
+                              : milestone.type === 'taper-start' ? '🛬'
+                              : milestone.type === 'race-pace-primer' ? '⚡'
+                              : '📊'}
+                          </span>
+                        ) : null}
+                        <span style={{ fontSize: 8, color: 'var(--muted)', letterSpacing: '0.05em', marginLeft: milestone ? 14 : 0 }}>
                           {isTR ? dk.toUpperCase() : dk.toUpperCase()} · {dayDate.getUTCDate()}
                         </span>
                         <span style={{ fontWeight: 600, lineHeight: 1.2 }}>
@@ -255,6 +323,11 @@ export default function ProgramCalendar({ program, programStart, yearlyPlan, col
                   if (!session) return null
                   const intent = bil(session.intent, isTR)
                   const color = intent ? intentColor(intent) : '#666'
+                  const dayIdx = DAY_KEYS.indexOf(dk)
+                  const dISO = dayIdx >= 0 ? ymd(addDays(weekStart, dayIdx)) : null
+                  const dp = dISO ? progress.byDay[dISO] : null
+                  const isLogged = dp?.logged === true
+                  const milestone = dISO ? milestonesByDate[dISO] : null
                   return (
                     <div style={{
                       ...S.mono,
@@ -266,8 +339,13 @@ export default function ProgramCalendar({ program, programStart, yearlyPlan, col
                     }}>
                       <div style={{ fontWeight: 700, marginBottom: 4 }}>
                         <span style={{ display: 'inline-block', width: 8, height: 8, background: color, borderRadius: 2, marginRight: 6 }} />
-                        {dk} · {intent}
+                        {dk} {dISO ? `· ${dISO}` : ''} · {intent}
                       </div>
+                      {milestone ? (
+                        <div style={{ marginTop: 4, marginBottom: 6, padding: '4px 8px', background: 'rgba(220,53,69,0.10)', borderLeft: '3px solid #dc3545', fontWeight: 600 }}>
+                          🏁 {isTR ? milestone.label.tr : milestone.label.en}
+                        </div>
+                      ) : null}
                       {session.durationMin ? (
                         <div><strong>{isTR ? 'SÜRE' : 'DURATION'}</strong> · {session.durationMin} {isTR ? 'dk' : 'min'}</div>
                       ) : null}
@@ -286,6 +364,42 @@ export default function ProgramCalendar({ program, programStart, yearlyPlan, col
                       {session.notes ? (
                         <div style={{ marginTop: 4, fontSize: 10, color: 'var(--muted)', fontStyle: 'italic' }}>
                           {bil(session.notes, isTR)}
+                        </div>
+                      ) : null}
+                      {dp ? (
+                        <div style={{ marginTop: 6, fontSize: 10, color: 'var(--muted)' }}>
+                          {isLogged
+                            ? (isTR ? `✓ Loglandı: ${dp.actualTSS} TSS · ${dp.actualDuration} dk` : `✓ Logged: ${dp.actualTSS} TSS · ${dp.actualDuration} min`)
+                            : (isTR ? 'Henüz loglanmadı' : 'Not yet logged')}
+                        </div>
+                      ) : null}
+                      {session.durationMin > 0 && dISO && !isLogged ? (
+                        <div style={{ marginTop: 8 }}>
+                          <button type="button"
+                            onClick={(e) => { e.stopPropagation(); handleQuickLog(session, dISO) }}
+                            data-quick-log-btn
+                            aria-label={isTR ? 'Bu seansı loga kaydet' : 'Mark this session done'}
+                            style={{
+                              ...S.mono,
+                              fontSize: 10,
+                              fontWeight: 700,
+                              padding: '5px 12px',
+                              background: '#28a745',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: 3,
+                              cursor: 'pointer',
+                              letterSpacing: '0.06em',
+                            }}>
+                            ✓ {isTR ? 'BUNU YAPTIM' : 'DID THIS'}
+                          </button>
+                          {logToast && logToast.dateISO === dISO ? (
+                            <span role="status" style={{ marginLeft: 10, fontSize: 10, color: logToast.kind === 'success' ? '#28a745' : '#ffc107' }}>
+                              {logToast.kind === 'success'
+                                ? (isTR ? '✓ Loga eklendi' : '✓ Added to log')
+                                : (isTR ? 'Zaten loglanmış' : 'Already logged')}
+                            </span>
+                          ) : null}
                         </div>
                       ) : null}
                     </div>

@@ -8,7 +8,7 @@
 // chip, countdown ("today" / "tomorrow" / "in 3 days"). When the next
 // training is today, shows the full session detail; otherwise compact.
 
-import { useContext, useMemo } from 'react'
+import { useContext, useMemo, useState } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
@@ -17,6 +17,7 @@ import {
   getTodayProgrammedSession,
   getNextProgrammedSession,
 } from '../../lib/athlete/todayProgrammedSession.js'
+import { buildLogEntryFromSession } from '../../lib/athlete/quickLogFromSession.js'
 
 const PHASE_COLOR = {
   Base:  '#0064ff',
@@ -53,9 +54,10 @@ function relativeDay(daysAhead, isTR) {
 export default function NextTrainingCard({ defaultProgram, defaultProgramStart }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
-  const { profile: _profile } = useData()
+  const { log, setLog, profile: _profile } = useData()
   const [persisted] = useLocalStorage('sporeus-eliteProgram', null)
   const [storedStart] = useLocalStorage('sporeus-eliteProgramStart', null)
+  const [logState, setLogState] = useState(null)
 
   const program = defaultProgram || persisted
   const programStart = defaultProgramStart || storedStart
@@ -194,6 +196,57 @@ export default function NextTrainingCard({ defaultProgram, defaultProgramStart }
             📅 {session.dateISO}
           </div>
         ) : null}
+
+        {/* Quick-log button only when the next training is TODAY */}
+        {session.daysAhead === 0 ? (() => {
+          const dateISO = session.dateISO
+            || (() => {
+              const d = new Date()
+              return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+            })()
+          const safeLog = Array.isArray(log) ? log : []
+          const alreadyLogged = safeLog.some(e => e?.date === dateISO && e?.source === 'sporeus-plan')
+          if (alreadyLogged) {
+            return (
+              <div style={{ ...S.mono, fontSize: 11, color: '#28a745', marginTop: 10, fontWeight: 700 }}>
+                ✓ {isTR ? 'BU SEANS BUGÜN İÇİN LOGLANDI' : 'LOGGED FOR TODAY'}
+              </div>
+            )
+          }
+          return (
+            <div style={{ marginTop: 10 }}>
+              <button type="button"
+                onClick={() => {
+                  const entry = buildLogEntryFromSession(session, dateISO, program.sport, _profile)
+                  if (!entry) return
+                  setLog([entry, ...safeLog])
+                  setLogState({ kind: 'success' })
+                  setTimeout(() => setLogState(null), 2500)
+                }}
+                data-quick-log-btn
+                aria-label={isTR ? 'Bu seansı loga kaydet' : 'Mark this session done'}
+                style={{
+                  ...S.mono,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: '8px 16px',
+                  background: '#28a745',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  letterSpacing: '0.06em',
+                }}>
+                ✓ {isTR ? 'BUNU YAPTIM' : 'DID THIS'}
+              </button>
+              {logState?.kind === 'success' ? (
+                <span role="status" style={{ marginLeft: 10, fontSize: 10, color: '#28a745' }}>
+                  ✓ {isTR ? 'Loga eklendi' : 'Added to log'}
+                </span>
+              ) : null}
+            </div>
+          )
+        })() : null}
       </div>
     </div>
   )

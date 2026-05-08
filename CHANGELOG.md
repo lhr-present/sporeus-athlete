@@ -4,6 +4,199 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.5.0 — 2026-05-08 — Mission #1 closes the see→do→reflect loop: race countdown + phase milestones + calendar progress overlay + one-click logging, 9276 tests
+
+  Three high-leverage enhancements anchored on a single
+  question: does the athlete actually use the plan day-to-
+  day? Pre-v9.5.0 the calendar shows the plan but not
+  whether the athlete is executing it; the next-training
+  card shows what to do but not how to mark it done; there
+  is no temporal urgency anchor. v9.5.0 closes all three.
+
+  ── Race countdown + phase milestones ────────────────────
+  NEW src/lib/athlete/planMilestones.js (~135 lines)
+    buildPlanMilestones(program, programStart) → 4 typed
+    milestones, ordered chronologically, each with bilingual
+    label + weekNum + phase:
+      • field-test       — Wednesday of last Base week
+                            (or last Build if no Base);
+                            recalibrate VDOT/FTP/CSS
+      • race-pace-primer — Saturday mid-Peak; specific
+                            intensity rehearsal
+      • taper-start      — Monday of first Taper week
+      • race-day         — feasibility.effectiveRaceDate
+                            or input.raceDate
+    + getNextMilestone(milestones, today)
+    + daysUntil(targetISO, today)
+    Pure data, no React, sport-agnostic.
+
+  NEW src/components/dashboard/RaceCountdownBanner.jsx
+    (~120 lines)
+    Mounted at the top of ProgramView (before
+    NextTrainingCard) when a plan + raceDate exist. Shows:
+      • Big number: days to race day (negative for past,
+        red highlight for "today")
+      • Current week (W X / Y) + phase chip (colored)
+      • Next milestone with date + days-until
+    Phase color mirrors the BroaderPlanSections + calendar
+    + next-training tokens — visual coherence end-to-end.
+
+  ── Calendar progress overlay ────────────────────────────
+  NEW src/lib/athlete/calendarProgress.js (~140 lines)
+    buildCalendarProgress(weeks, log, opts) → {
+      byDay:   dateISO → { logged, plannedTSS, actualTSS,
+                            plannedDuration, actualDuration,
+                            complianceRatio, sportMatched },
+      byWeek:  weekStart → { plannedTSS, actualTSS,
+                              daysLogged, daysPlanned,
+                              adherencePct },
+      overall: { plannedTSS, actualTSS, adherencePct }
+    }
+    Sport-aware via existing entryMatchesProgramSport
+    (cyclist's run logs filtered out of bike program
+    adherence). overall.adherencePct only counts past +
+    today weeks. plannedTSS estimated via Coggan zone-
+    weighted IF² when the session blueprint doesn't carry
+    TSS directly:
+      Z1²=0.25 · Z2²=0.42 · Z3²=0.64 · Z4²=0.90 · Z5²=1.21
+
+  Wired into ProgramCalendar.jsx:
+    • Per-day cell: green ✓ overlay (top-right) when
+      logged, green border replaces phase border when
+      logged.
+    • Per-day cell: emoji marker (🏁 race / 🛬 taper /
+      ⚡ primer / 📊 field-test) when milestone falls on
+      that date.
+    • Per-week row: adherence% chip alongside the THIS WEEK
+      pill — green ≥90%, amber 70-89%, red <70%. Hover
+      shows actualTSS/plannedTSS · daysLogged/daysPlanned.
+    • Expanded session detail: "✓ Logged: N TSS · M min"
+      or "Not yet logged" status line.
+
+  ── One-click logging ────────────────────────────────────
+  NEW src/lib/athlete/quickLogFromSession.js (~110 lines)
+    buildLogEntryFromSession(session, dateISO, sport)
+    → log entry compatible with sanitizeLogEntry's expected
+    shape. Maps intent → canonical type ("Threshold 2x20" →
+    "Threshold Run"), estimates RPE per intensity, computes
+    TSS via the same zone-weighted IF² formula as
+    calendarProgress, preserves notes, marks
+    source: 'sporeus-plan'.
+
+  Wired into ProgramCalendar.jsx (expanded session detail):
+    "✓ DID THIS" green button that creates a log entry
+    via setLog from useData. De-dupes by date + type +
+    source: writes once per date for plan-sourced entries.
+    Inline toast confirmation ("Added to log" / "Already
+    logged"). Button hidden once the day is logged.
+
+  Wired into NextTrainingCard.jsx:
+    Same "✓ DID THIS" button when daysAhead === 0 (today
+    is a quality day). When session already logged today
+    via sporeus-plan source, button replaced with
+    "✓ LOGGED FOR TODAY" status text.
+
+  ── ProgramView restructure ──────────────────────────────
+  src/components/ProgramView.jsx now opens (when plan
+  exists) with:
+      [ RaceCountdownBanner ]   ← days-to-race + week + phase
+      [ NextTrainingCard ]      ← today's session + DID THIS
+      [ ProgramCalendar ]       ← full N-week with progress
+      [ EliteProgramCard ]      ← plan-mode body (form
+                                  collapsed when plan exists)
+      [ TodayProgrammedSessionCard ] ← retained for autopsy
+  The athlete's first three glances are: how long until
+  race · what to do today · macro arc with my progress.
+
+  Files added:
+    NEW src/lib/athlete/planMilestones.js                       (~135 lines)
+    NEW src/lib/athlete/calendarProgress.js                     (~140 lines)
+    NEW src/lib/athlete/quickLogFromSession.js                  (~110 lines)
+    NEW src/components/dashboard/RaceCountdownBanner.jsx        (~120 lines)
+    NEW src/lib/__tests__/athlete/planMilestones.test.js        (20 tests)
+    NEW src/lib/__tests__/athlete/calendarProgress.test.js      (15 tests)
+    NEW src/lib/__tests__/athlete/quickLogFromSession.test.js   (16 tests)
+
+  Files edited:
+    EDIT src/components/ProgramView.jsx
+           +RaceCountdownBanner lazy import + mount above
+           NextTrainingCard.
+    EDIT src/components/dashboard/ProgramCalendar.jsx
+           +calendarProgress wiring (✓ + adherence chip),
+           +planMilestones wiring (cell emoji marker),
+           +quick-log button on expanded detail,
+           +log-state toast.
+    EDIT src/components/dashboard/NextTrainingCard.jsx
+           +useState for log toast,
+           +quick-log button when daysAhead === 0,
+           +already-logged status replacement.
+
+  Tests (+51 net):
+    planMilestones:        20 tests (chronology, phase
+                            placement, race-day fallbacks,
+                            getNextMilestone, daysUntil)
+    calendarProgress:      15 tests (per-day shape, sport
+                            filtering, week adherence math,
+                            overall past-only, IF² formula,
+                            invalid log handling, ratio cap)
+    quickLogFromSession:   16 tests (intent→type mapping,
+                            RPE estimation, TSS formula,
+                            zone array, sport variants,
+                            notes preserved, edge cases)
+
+  Verification:
+    Lint:    clean (--max-warnings 0)
+    Tests:   9276 / 9276 passing across 384 files (+51 vs v9.4.0)
+    Build:   84.07 KB gz main bundle (+0.005 KB; new
+             code in lazy chunks; ~11 KB headroom)
+
+  What this enables for the athlete:
+    Before v9.5.0 the athlete sees the plan but the app
+    has no idea whether the plan is being executed.
+    Calendar cells are static; "next training" is the same
+    every day until the date changes; logging requires
+    leaving the surface and using QuickAddModal or the LOG
+    tab.
+    After v9.5.0:
+      1. RaceCountdownBanner: "47 days to race · Week 9 of
+         15 · PEAK PHASE · Next: race-pace primer Aug 1"
+      2. Calendar: every executed day has a green ✓ and
+         green border; every week shows adherence %; every
+         phase transition has an emoji marker.
+      3. NextTrainingCard: "✓ DID THIS" button writes a
+         pre-filled log entry in one click — no modal, no
+         tab change. Once logged, button replaced with
+         "✓ LOGGED FOR TODAY".
+      4. The full see→do→reflect loop now closes inside the
+         PROGRAM tab without leaving it.
+
+  Audiences served:
+    Athlete: see plan → do training → click ✓ → see
+             progress accumulate. The calendar visually
+             confirms compliance week-by-week and
+             week-month-by-month.
+    Coach:   the v=2 envelope and applyCoachEdits flow
+             remain unchanged. Coach edits ride into the
+             calendar identically; coach modifications now
+             also appear with progress overlay when
+             athlete logs against modified sessions.
+    Dev:     three new pure-data libs (no React deps); each
+             unit-tested. RaceCountdownBanner is purely
+             presentational. ProgramCalendar accepts log
+             via useData — the only stateful change is the
+             setLog call from quickLog.
+
+  Re-anchor scope discipline (continued):
+    Tangential tabs (zones / tests / glossary / sport / race
+    / general) remain untouched per the v9.4.0 note. Wave A
+    and Wave B's Mission #1 surfaces (PROGRAM tab,
+    ProgramView, EliteProgramCard, BroaderPlanSections,
+    coach envelope) are the active enhancement surface.
+
+  Depends on: v9.4.0 (calendar + next-training base).
+
+---
+
 ## v9.4.0 — 2026-05-08 — Mission #1 visual + calendar wave: color-coded broader content, NEXT TRAINING hero, full N-week calendar, 9225 tests
 
   Three deliverables, all reinforcing Mission #1 as the
