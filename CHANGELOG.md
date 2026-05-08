@@ -4,6 +4,202 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.4.0 — 2026-05-08 — Mission #1 visual + calendar wave: color-coded broader content, NEXT TRAINING hero, full N-week calendar, 9225 tests
+
+  Three deliverables, all reinforcing Mission #1 as the
+  app's #1 surface. No new orchestrator math, no new lib
+  content — pure UX upgrades on top of v9.3.0's complete
+  data layer.
+
+  Color-coded BroaderPlanSections (recolored existing card):
+    Phase color tokens applied as left-border accents on
+    each disclosure (Base #0064ff blue, Build #00aa66 green,
+    Peak #ff6600 orange, Taper #9966cc purple). Section
+    accents:
+      KEY WORKOUTS         → orange   (#ff6600)
+      STRENGTH PROGRAM     → brown    (#7d4a00)
+      FUELING TARGETS      → green    (#28a745)
+      RECOVERY PRESCRIPTION → blue    (#0064ff)
+      RACE-WEEK PROTOCOL   → red      (#dc3545)
+      SUBSTITUTIONS        → purple   (#9966cc)
+    Phase headers replaced with colored chips (white text on
+    phase color). Each key-session card now has a left-border
+    in the phase color + an intensity chip at the top
+    (VO2/THR/TMP/EASY/LONG/R/STR/RACE/REST), sourced via a
+    pattern-matching helper that scans intensity + structure
+    + name strings. STRUCTURE/WARM-UP/COOL-DOWN/INTENSITY
+    labels color-coded so an athlete can scan visually
+    (orange for the structure, green for warm-up, blue for
+    cool-down, red for intensity).
+
+  ProgramCalendar (NEW src/components/dashboard/
+  ProgramCalendar.jsx, ~250 lines):
+    Full N-week training grid as a vertical scroll with one
+    row per week:
+      • Phase chip (colored) + week range + TSS + hours +
+        DELOAD pill (when isDeload) + THIS WEEK pill (when
+        today falls inside the week)
+      • 7 day cells in a CSS grid; each cell colored by
+        session intent (linear-gradient using intent color);
+        TODAY cell highlighted with a 2px orange ring; past
+        weeks dimmed at 0.6 opacity.
+      • Click any day → expands inline below the grid with
+        full session detail: duration, pace target, zone
+        breakdown, notes, citation.
+      • Header has GLOBAL EXPAND / COLLAPSE toggle.
+    Data source priority:
+      1. yearlyPlan.weeks (from APPLY TO CALENDAR)
+      2. Live synthesis via eliteProgramToYearlyWeeks(program,
+         programStart) — falls back to this when athlete
+         hasn't applied yet, so the calendar is visible
+         immediately on plan generation.
+    Rendered conditionally in ProgramView only when a plan
+    exists.
+
+  NextTrainingCard (NEW src/components/dashboard/
+  NextTrainingCard.jsx, ~150 lines):
+    Hero tile mounted at the top of ProgramView (before the
+    form/calendar) and at the top of TodayView. Logic:
+      • If today's programmed session is non-rest & duration
+        > 0 → daysAhead=0 ("TODAY")
+      • Else → walks the next 14 days via new helper
+        getNextProgrammedSession(program, today, programStart),
+        finds the first non-rest day, returns daysAhead +
+        dateISO ("TOMORROW", "IN 3 DAYS", etc.)
+    Visual:
+      • Phase color as 6px left border + 2px outline +
+        translucent gradient background
+      • Phase header strip (colored, white text): ⚡ NEXT
+        TRAINING + relative-day pill
+      • Body: intensity chip + phase chip + WK X/Y badge,
+        18px session intent, DURATION + PACE TARGET +
+        zone breakdown + recommendation + ISO date when
+        not today
+    Reads from sporeus-eliteProgram + sporeus-eliteProgramStart.
+    Empty state when no plan: dashed-border message
+    "Your next training will appear here — generate a plan
+    first." — drives the athlete back to the form.
+
+  New lib helper:
+    NEW getNextProgrammedSession(program, today?, programStart?)
+        in src/lib/athlete/todayProgrammedSession.js.
+        Loops forward up to 14 days calling
+        getTodayProgrammedSession until it finds a non-rest
+        session. Returns the same shape plus
+        { daysAhead, dateISO } or null if nothing found.
+
+  PROGRAM tab restructure (src/components/ProgramView.jsx):
+    When a plan exists:
+      [ NEXT TRAINING hero ]   ← 6px phase-colored stripe
+      [ CALENDAR ]             ← collapsible week grid
+      [ EliteProgramCard ]     ← form (or plan-mode body)
+      [ TodayProgrammedSessionCard ] ← retained for autopsy
+    When no plan exists:
+      [ MissionHeadline ]      ← GET STARTED CTA
+      [ EliteProgramCard ]     ← form
+    Hero swap means the athlete's first visual on
+    return-visit is "what's my next workout" — the
+    science-based answer to the daily question — not a
+    blank form they already filled out.
+
+  TodayView re-anchoring (src/components/TodayView.jsx):
+    NEW NextTrainingCard mounted at the very top of TodayView
+    via lazy import + Suspense + ErrorBoundary. Above the
+    weekly recap, above today's planned, above all
+    intelligence cards. When no plan exists the empty-state
+    message routes the user mentally toward Mission #1.
+    No other TodayView content removed or reordered —
+    additive change.
+
+  Files added:
+    NEW src/components/dashboard/ProgramCalendar.jsx       (~250 lines)
+    NEW src/components/dashboard/NextTrainingCard.jsx      (~155 lines)
+    NEW src/lib/__tests__/athlete/getNextProgrammedSession.test.js (8 tests)
+
+  Files edited:
+    EDIT src/components/dashboard/BroaderPlanSections.jsx
+           +intensity tokens helper, +Disclosure accent prop,
+           +phase chip in PhaseHeader, +per-section accent
+           color, +intensity chip on each key-session card,
+           +color-coded STRUCTURE/WARM-UP/COOL-DOWN/INTENSITY
+           labels.
+    EDIT src/components/ProgramView.jsx
+           +NextTrainingCard hero, +ProgramCalendar mount
+           when plan exists, MissionHeadline only on empty
+           state. Reads sporeus-eliteProgram +
+           sporeus-eliteProgramStart + sporeus-yearly-plan
+           via useLocalStorage.
+    EDIT src/components/TodayView.jsx
+           +NextTrainingCardLazy import, +ErrorBoundary
+           import, +mount at top of return block.
+    EDIT src/lib/athlete/todayProgrammedSession.js
+           +getNextProgrammedSession(program, today,
+           programStart) public helper.
+
+  Tests (+8 net):
+    8 new tests in getNextProgrammedSession.test.js:
+      - Returns today\'s session when today is quality day
+      - Returns next quality day when today is rest
+      - Skips multiple rest days
+      - Returns null when no quality session in 14 days
+      - Walks across week boundaries (3 days ahead)
+      - Returns null for invalid input
+      - Preserves pace target + zones from underlying session
+      - Existing getTodayProgrammedSession sanity check
+
+  Verification:
+    Lint:    clean (--max-warnings 0)
+    Tests:   9225 / 9225 passing across 381 files (+8 vs v9.3.1)
+    Build:   84.06 KB gz main bundle (-0.005 KB; new
+             components in lazy chunks; ~11 KB headroom)
+
+  What this enables for the athlete experience:
+    Before v9.4.0 the PROGRAM tab opened to a form (if no
+    plan) or to the EliteProgramCard plan-mode list of
+    physiology / phases / weekly TSS / sample weeks /
+    six broader sections. The athlete had to scroll +
+    interpret to know "what's my next session." The
+    workout-detail card was monochrome.
+    After v9.4.0 the PROGRAM tab opens to a phase-colored
+    NEXT TRAINING tile (today or next non-rest day) with
+    countdown, then a full N-week calendar where every
+    day is color-coded and clickable, then the form +
+    plan body. The broader content sections are now phase-
+    accented with intensity chips so the athlete can scan
+    a workout's character at a glance.
+
+  Audiences served:
+    Athlete: sees the answer to the daily question
+             ("what should I do next?") at the very top of
+             both TODAY and PROGRAM tabs. The calendar
+             surfaces the entire training arc visually so
+             the athlete builds mental rehearsal of the
+             season ahead.
+    Coach:   coach-side view (CoachAthleteProgramCard) and
+             v=2 envelope are unchanged — coach edits still
+             apply via the existing applyCoachEdits flow,
+             so coach modifications now also color the
+             NEXT TRAINING / CALENDAR cells correctly when
+             an athlete merges.
+    Dev:     getNextProgrammedSession is a new pure-data
+             public lib helper; ProgramCalendar +
+             NextTrainingCard are presentational only with
+             no orchestrator deps.
+
+  Re-anchor scope discipline:
+    The user directive "make sure all the app's is for
+    [Mission #1]" is held to as a guiding principle: this
+    wave promotes Mission #1 surfaces inside ProgramView +
+    TodayView. Tangential tabs (zones / tests / glossary /
+    sport / race / general) are untouched — moving them
+    behind a TOOLS submenu would be larger-blast-radius
+    work outside Mission #1's training-content scope and
+    is held for a future IA pass if requested explicitly.
+
+  Depends on: v9.3.1.
+
+---
+
 ## v9.3.1 — 2026-05-08 — Fix prod-smoke spec: bypass onboarding wizard + KVKK consent overlay
 
   The Wave B push (v9.3.0) hit a Production Smoke (post-deploy)

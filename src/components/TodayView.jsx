@@ -1,5 +1,8 @@
 // ─── TodayView.jsx — v5.14.0: Single-screen daily HQ ─────────────────────────
 import { useState, useMemo, useContext, useRef, useEffect, lazy, Suspense } from 'react'
+import ErrorBoundary from './ErrorBoundary.jsx'
+
+const NextTrainingCardLazy = lazy(() => import('./dashboard/NextTrainingCard.jsx'))
 import { logger } from '../lib/logger.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
@@ -462,6 +465,13 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
 
   return (
     <div className="sp-fade">
+
+      {/* ── v9.4.0 — NEXT TRAINING hero (Mission #1 anchor at top of TODAY) ─ */}
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <NextTrainingCardLazy />
+        </Suspense>
+      </ErrorBoundary>
 
       {/* ── Weekly Recap (Monday only) ─────────────────────────────────────── */}
       {/* ── O4 — Weekly recap card (visual upgrade) ─────────────────────── */}

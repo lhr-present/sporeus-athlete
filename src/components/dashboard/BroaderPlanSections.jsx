@@ -9,10 +9,67 @@
 import { useState } from 'react'
 import { S } from '../../styles.js'
 
-function Disclosure({ title, count, children, defaultOpen = false }) {
-  const [open, setOpen] = useState(defaultOpen)
+// ── Visual tokens (v9.4.0) — phase + intensity color coding ──────────────────
+// Phase colors mirror PHASE_COLORS in eliteProgram.js so coach + athlete
+// + calendar surfaces stay aligned.
+const PHASE_COLOR = {
+  Base:  '#0064ff',   // blue   — aerobic foundation
+  Build: '#00aa66',   // green  — threshold work
+  Peak:  '#ff6600',   // orange — VO2max + race-pace
+  Taper: '#9966cc',   // purple — neural priming
+}
+// Intensity tokens mapped from the structure/intensity strings.
+// Used for compact chips that an athlete can scan.
+const INTENSITY_TOKENS = [
+  { match: /VO2|@I-pace|I-pace|Z5|95-100% HRmax|115%|VO2max/i, label: 'VO2',  bg: '#dc3545', fg: '#fff' },
+  { match: /Threshold|@T-pace|T-pace|Z4 |sweet[- ]spot|95-105% FTP|88-92% HRmax|cruise/i, label: 'THR',  bg: '#ff6600', fg: '#fff' },
+  { match: /Tempo|@M-pace|M-pace|76-85% FTP|80-89% HRmax|Z3/i, label: 'TMP',  bg: '#0064ff', fg: '#fff' },
+  { match: /CSS\b|threshold pace|critical swim/i,             label: 'CSS',  bg: '#ff6600', fg: '#fff' },
+  { match: /Easy|E-pace|@E|Z2|Z1-Z2|recovery|Z1\b|Long aerobic|Long Z2|conversational/i, label: 'EASY', bg: '#00aa66', fg: '#fff' },
+  { match: /Long\b|long-run/i,                                 label: 'LONG', bg: '#0a8a8a', fg: '#fff' },
+  { match: /Strides|R-pace|@R|stride/i,                        label: 'R',    bg: '#9966cc', fg: '#fff' },
+  { match: /Strength|max-strength|power|hypertrophy|squat|deadlift/i, label: 'STR', bg: '#7d4a00', fg: '#fff' },
+  { match: /Race|race-pace|race day|goal pace|goal race/i,     label: 'RACE', bg: '#dc3545', fg: '#fff' },
+  { match: /Rest|Off|Dinlenme/i,                               label: 'REST', bg: '#666',    fg: '#fff' },
+]
+
+function intensityChip(text) {
+  if (!text || typeof text !== 'string') return null
+  for (const t of INTENSITY_TOKENS) {
+    if (t.match.test(text)) return t
+  }
+  return null
+}
+
+function IntensityChip({ chip, isTR: _isTR }) {
+  if (!chip) return null
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 4, marginBottom: 8 }}>
+    <span style={{
+      display: 'inline-block',
+      padding: '2px 6px',
+      fontSize: 9,
+      fontWeight: 700,
+      letterSpacing: '0.06em',
+      background: chip.bg,
+      color: chip.fg,
+      borderRadius: 2,
+      marginRight: 6,
+      verticalAlign: 'baseline',
+    }}>{chip.label}</span>
+  )
+}
+
+function Disclosure({ title, count, accent, children, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen)
+  const accentColor = accent || '#666'
+  return (
+    <div style={{
+      border: '1px solid var(--border)',
+      borderLeft: `4px solid ${accentColor}`,
+      borderRadius: 4,
+      marginBottom: 8,
+      background: open ? `linear-gradient(90deg, ${accentColor}10, transparent 14%)` : undefined,
+    }}>
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
@@ -34,7 +91,13 @@ function Disclosure({ title, count, children, defaultOpen = false }) {
           justifyContent: 'space-between',
         }}
       >
-        <span>{open ? '▼' : '▶'} {title}{typeof count === 'number' ? ` · ${count}` : ''}</span>
+        <span>
+          <span style={{ color: accentColor, marginRight: 6 }}>{open ? '▼' : '▶'}</span>
+          {title}
+          {typeof count === 'number' ? (
+            <span style={{ marginLeft: 6, color: accentColor, fontWeight: 700 }}>· {count}</span>
+          ) : null}
+        </span>
       </button>
       {open ? <div style={{ padding: '0 12px 12px' }}>{children}</div> : null}
     </div>
@@ -42,8 +105,21 @@ function Disclosure({ title, count, children, defaultOpen = false }) {
 }
 
 function PhaseHeader({ phase, isTR }) {
+  const c = PHASE_COLOR[phase] || '#666'
   return (
-    <div style={{ ...S.mono, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.08em', marginTop: 12, marginBottom: 6 }}>
+    <div style={{
+      ...S.mono,
+      fontSize: 10,
+      color: '#fff',
+      letterSpacing: '0.08em',
+      marginTop: 12,
+      marginBottom: 6,
+      background: c,
+      padding: '3px 8px',
+      borderRadius: 3,
+      display: 'inline-block',
+      fontWeight: 700,
+    }}>
       {isTR ? `FAZ · ${phase.toUpperCase()}` : `PHASE · ${phase.toUpperCase()}`}
     </div>
   )
@@ -66,30 +142,46 @@ export function KeySessionsSection({ keySessionLibrary, isTR, defaultOpen = fals
     <Disclosure
       title={isTR ? 'ANAHTAR ANTRENMANLAR' : 'KEY WORKOUTS'}
       count={totalSessions}
+      accent="#ff6600"
       defaultOpen={defaultOpen}
     >
       {phases.map(phase => (
         <div key={phase}>
           <PhaseHeader phase={phase} isTR={isTR} />
-          {keySessionLibrary[phase].map(s => (
-            <div key={s.key} style={{ ...S.mono, fontSize: 11, lineHeight: 1.55, padding: '8px 0', borderBottom: '1px dashed var(--border)' }}>
-              <div style={{ fontWeight: 700, marginBottom: 4 }}>{bil(s.name, isTR)}</div>
-              <div style={{ color: 'var(--muted)', marginBottom: 4 }}>{bil(s.purpose, isTR)}</div>
-              <div style={{ marginBottom: 2 }}><strong>{isTR ? 'YAPISI' : 'STRUCTURE'}:</strong> {bil(s.structure, isTR)}</div>
-              <div style={{ marginBottom: 2 }}><strong>{isTR ? 'ISINMA' : 'WARM-UP'}:</strong> {bil(s.warmup, isTR)}</div>
-              <div style={{ marginBottom: 2 }}><strong>{isTR ? 'SOĞUMA' : 'COOL-DOWN'}:</strong> {bil(s.cooldown, isTR)}</div>
-              <div style={{ marginBottom: 2 }}><strong>{isTR ? 'ŞİDDET' : 'INTENSITY'}:</strong> {bil(s.intensity, isTR)}</div>
-              {Array.isArray(s.alternates) && s.alternates.length > 0 ? (
-                <div style={{ marginTop: 4, fontSize: 10, color: 'var(--muted)' }}>
-                  <strong>{isTR ? 'ALTERNATİF' : 'ALTERNATES'}:</strong>
-                  <ul style={{ margin: '2px 0 0 16px', padding: 0 }}>
-                    {s.alternates.map((alt, i) => <li key={i}>{bil(alt, isTR)}</li>)}
-                  </ul>
+          {keySessionLibrary[phase].map(s => {
+            const chip = intensityChip(`${bil(s.intensity, isTR)} ${bil(s.structure, isTR)} ${bil(s.name, isTR)}`)
+            return (
+              <div key={s.key} style={{
+                ...S.mono,
+                fontSize: 11,
+                lineHeight: 1.55,
+                padding: '8px 10px',
+                borderLeft: `3px solid ${PHASE_COLOR[phase] || '#666'}`,
+                marginBottom: 6,
+                background: 'rgba(255,255,255,0.02)',
+                borderRadius: '0 3px 3px 0',
+              }}>
+                <div style={{ fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <IntensityChip chip={chip} isTR={isTR} />
+                  <span>{bil(s.name, isTR)}</span>
                 </div>
-              ) : null}
-              <div style={{ marginTop: 4, fontSize: 9, color: 'var(--muted)', fontStyle: 'italic' }}>{s.citation}</div>
-            </div>
-          ))}
+                <div style={{ color: 'var(--muted)', marginBottom: 4, fontStyle: 'italic' }}>{bil(s.purpose, isTR)}</div>
+                <div style={{ marginBottom: 2 }}><strong style={{ color: PHASE_COLOR[phase] || '#666' }}>{isTR ? 'YAPISI' : 'STRUCTURE'}</strong> · {bil(s.structure, isTR)}</div>
+                <div style={{ marginBottom: 2 }}><strong style={{ color: '#00aa66' }}>{isTR ? 'ISINMA' : 'WARM-UP'}</strong> · {bil(s.warmup, isTR)}</div>
+                <div style={{ marginBottom: 2 }}><strong style={{ color: '#0064ff' }}>{isTR ? 'SOĞUMA' : 'COOL-DOWN'}</strong> · {bil(s.cooldown, isTR)}</div>
+                <div style={{ marginBottom: 2 }}><strong style={{ color: '#dc3545' }}>{isTR ? 'ŞİDDET' : 'INTENSITY'}</strong> · {bil(s.intensity, isTR)}</div>
+                {Array.isArray(s.alternates) && s.alternates.length > 0 ? (
+                  <div style={{ marginTop: 4, fontSize: 10, color: 'var(--muted)' }}>
+                    <strong>{isTR ? 'ALTERNATİF' : 'ALTERNATES'}:</strong>
+                    <ul style={{ margin: '2px 0 0 16px', padding: 0 }}>
+                      {s.alternates.map((alt, i) => <li key={i}>{bil(alt, isTR)}</li>)}
+                    </ul>
+                  </div>
+                ) : null}
+                <div style={{ marginTop: 4, fontSize: 9, color: 'var(--muted)', fontStyle: 'italic' }}>{s.citation}</div>
+              </div>
+            )
+          })}
         </div>
       ))}
     </Disclosure>
@@ -104,6 +196,7 @@ export function StrengthSection({ strengthProgram, isTR, defaultOpen = false }) 
     <Disclosure
       title={isTR ? 'KUVVET PROGRAMI' : 'STRENGTH PROGRAM'}
       count={phases.length}
+      accent="#7d4a00"
       defaultOpen={defaultOpen}
     >
       {phases.map(phase => {
@@ -143,6 +236,7 @@ export function FuelingSection({ fuelingProgram, isTR, defaultOpen = false }) {
     <Disclosure
       title={isTR ? 'BESLENME HEDEFLERİ' : 'FUELING TARGETS'}
       count={phases.length}
+      accent="#28a745"
       defaultOpen={defaultOpen}
     >
       {phases.map(phase => {
@@ -178,6 +272,7 @@ export function RecoverySection({ recoveryProgram, isTR, defaultOpen = false }) 
     <Disclosure
       title={isTR ? 'TOPARLANMA REÇETESİ' : 'RECOVERY PRESCRIPTION'}
       count={phases.length}
+      accent="#0064ff"
       defaultOpen={defaultOpen}
     >
       {phases.map(phase => {
@@ -215,6 +310,7 @@ export function RaceWeekSection({ raceWeekProtocol, isTR, defaultOpen = false })
     <Disclosure
       title={isTR ? 'YARIŞ HAFTASI PROTOKOLÜ' : 'RACE-WEEK PROTOCOL'}
       count={r.schedule?.length || 0}
+      accent="#dc3545"
       defaultOpen={defaultOpen}
     >
       <div style={{ ...S.mono, fontSize: 11, lineHeight: 1.55 }}>
@@ -260,6 +356,7 @@ export function SubstitutionsSection({ substitutionMap, isTR, defaultOpen = fals
     <Disclosure
       title={isTR ? 'ALTERNATİFLER (kapalı/sakat/kaçırılan)' : 'SUBSTITUTIONS (indoor/injured/missed)'}
       count={intents.length}
+      accent="#9966cc"
       defaultOpen={defaultOpen}
     >
       {intents.map(intent => {

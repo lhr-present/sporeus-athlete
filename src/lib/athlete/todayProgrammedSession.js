@@ -224,3 +224,32 @@ export function getTodayProgrammedSession(program, today, programStart) {
     citation: TODAY_PROGRAMMED_SESSION_CITATION,
   }
 }
+
+/**
+ * @public Find the next NON-REST programmed session starting from `today`.
+ * Walks forward up to 14 days looking for a session with durationMin > 0
+ * and intent !== 'Rest'. Returns the same shape as getTodayProgrammedSession
+ * plus `daysAhead` (0 if today, 1 if tomorrow, ...) and `dateISO`.
+ *
+ * If the current day already has a non-rest session, returns it with
+ * daysAhead=0. If none found in 14 days, returns null.
+ *
+ * @param {object} program          buildEliteProgram result
+ * @param {string} [today]          ISO date YYYY-MM-DD
+ * @param {string} [programStart]   ISO date YYYY-MM-DD
+ * @returns {object|null}
+ */
+export function getNextProgrammedSession(program, today, programStart) {
+  const todayIso = today || todayUTCISO()
+  const startDt = parseUTC(today || todayIso)
+  if (!startDt) return null
+  for (let offset = 0; offset < 14; offset++) {
+    const probe = new Date(startDt.getTime() + offset * 86400000)
+    const probeIso = `${probe.getUTCFullYear()}-${String(probe.getUTCMonth() + 1).padStart(2, '0')}-${String(probe.getUTCDate()).padStart(2, '0')}`
+    const s = getTodayProgrammedSession(program, probeIso, programStart)
+    if (s && s.reliable && !s.isRest && s.durationMin > 0) {
+      return { ...s, daysAhead: offset, dateISO: probeIso }
+    }
+  }
+  return null
+}
