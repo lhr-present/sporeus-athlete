@@ -142,15 +142,80 @@ function gPerHourByCohort(cohort, basePhaseRange) {
   return basePhaseRange  // intermediate or null → unchanged
 }
 
+// v9.25.0 — Body-mass + sex-aware hydration prescription. Replaces hand-waved
+// "200-400 mL/h" with Jeukendrup 2014 baseline of 3-8 mL/kg/h. Females trend
+// toward the lower end (lower sweat rate, ~0.8-1.2 L/h vs male 1.2-2.0 L/h);
+// males trend toward the upper end. Ranges are conservative — explicit
+// individualization via sweat-rate testing always preferred (see protocol).
+//   Citations: Jeukendrup 2014; Burke 2017 Table 7
+function hydrationMlPerHr(bodyMassKg, gender) {
+  if (!bodyMassKg) return null
+  const isFemale = (gender || '').toLowerCase() === 'female'
+  // Female: 3-6 mL/kg/h. Male: 4-8 mL/kg/h. Default to mid-range when no sex.
+  const lo = isFemale ? 3 : 4
+  const hi = isFemale ? 6 : 8
+  return [Math.round(bodyMassKg * lo), Math.round(bodyMassKg * hi)]
+}
+
+// v9.25.0 — Sex- + sweat-rate-tier-aware sodium dose. Burke 2017 Table 7:
+// 300-700 mg sodium per litre of fluid replacement, with high-sweat-rate
+// athletes (>1.2 L/h) and males needing the upper bracket; low-sweat-rate
+// athletes (<1 L/h) and females needing the lower bracket.
+//   Citations: Burke 2017; Jeukendrup 2010; Sawka 2007 (ACSM)
+function sodiumMgPerHr(bodyMassKg, gender) {
+  if (!bodyMassKg) return null
+  const isFemale = (gender || '').toLowerCase() === 'female'
+  // Lower bracket for typical female sweat rate; upper for male/high-sweat.
+  // Hot-race + heavy-sweater athletes should override upward in race-week.
+  const lo = isFemale ? 500 : 700
+  const hi = isFemale ? 800 : 1200
+  return [lo, hi]
+}
+
+// v9.25.0 — Universal sweat-rate self-test protocol. Without individualization
+// every other hydration number is a guess. Documented in Build phase notes so
+// the athlete runs the test on a prescribed long session.
+//   Citations: Jeukendrup 2014; Sawka 2007 ACSM Position Stand
+const SWEAT_RATE_PROTOCOL = {
+  en: 'Sweat-rate test (do once per phase, on a long session in the temperature you race in): weigh nude before and after a 60-90 min session. Sweat rate (L/h) = (pre-weight − post-weight + fluid consumed in L) ÷ duration (h). Multiply by 1000 for mL/h. Rule of thumb: <1 L/h = low (use 500-700 mg sodium/h); 1-1.5 L/h = moderate (800-1000 mg); >1.5 L/h = high (1000-1200 mg).',
+  tr: 'Terleme oranı testi (her fazda 1 kez, yarış sıcaklığında uzun seansta yap): seans öncesi ve sonrası çıplak tartıl. Terleme oranı (L/sa) = (öncesi kilo − sonrası kilo + tüketilen sıvı L) ÷ süre (sa). 1000 ile çarp = mL/sa. Pratik kural: <1 L/sa = düşük (500-700 mg sodyum/sa); 1-1,5 L/sa = orta (800-1000 mg); >1,5 L/sa = yüksek (1000-1200 mg).',
+}
+
+// v9.25.0 — Iron / ferritin guidance for female endurance athletes. Female
+// runners absorb <50% iron vs males; depleted ferritin (<30 ng/mL) → reduced
+// VO2max; Friedmann 2001 + Brownlie 2004 + Peeling 2008 protocol. RED-S
+// screening attached (Mountjoy 2018) since iron deficiency often co-occurs
+// with low energy availability — never supplement in isolation if RED-S
+// signs present.
+//   Citations: Brownlie et al. 2004; Friedmann et al. 2001; Peeling 2008;
+//              Mountjoy et al. 2018 (RED-S CAT)
+const IRON_GUIDANCE_FEMALE = {
+  en: 'Female endurance athletes: ferritin <30 ng/mL → 5-8% VO2max loss (Friedmann 2001). Test 25(OH)D + ferritin annually if available. If supplementing: 25-30 mg elemental Fe daily 4+ weeks pre-race (or red meat 2x/day equivalent), paired with 200 mg vitamin C post-meal. AVOID supplementing during a known infection or if RED-S signs present (missed periods, persistent fatigue, recurrent stress fractures) — refer to sports medicine first.',
+  tr: 'Kadın dayanıklılık sporcuları: ferritin <30 ng/mL → %5-8 VO2max kaybı (Friedmann 2001). Mümkünse yılda bir 25(OH)D + ferritin testi yap. Takviye gerekirse: yarıştan 4+ hafta önce günlük 25-30 mg elemental Fe (veya günde 2 kez kırmızı et eşdeğeri), yemekle birlikte 200 mg C vitamini ile. ENFEKSIYON veya RED-S belirtileri (adet kesintisi, kalıcı yorgunluk, tekrarlayan stres kırıkları) varsa takviye YAPMA — önce spor hekimine başvur.',
+}
+
+// v9.25.0 — RED-S screening checklist. When gender === 'female' the fueling
+// output surfaces this so the athlete sees the screening before any train-low
+// or restrictive intake decision.
+//   Citation: Mountjoy et al. 2018 (RED-S CAT 2.0)
+const RED_S_SCREENING = {
+  en: 'RED-S screening (Relative Energy Deficiency in Sport): ANY of — irregular or missed periods (>2 cycles), persistent fatigue >2 weeks, recurrent stress injuries, low BMD on DEXA, frequent illness — means train-low and caloric restriction are CONTRAINDICATED. Enforce 1.8 g/kg CHO daily floor and refer to sports medicine for full screening.',
+  tr: 'RED-S taraması (Sporda Bağıl Enerji Eksikliği): aşağıdakilerden HERHANGİ BİRİ — düzensiz/atlanmış adet (>2 döngü), 2+ hafta kalıcı yorgunluk, tekrarlayan stres yaralanması, DEXA\'da düşük kemik yoğunluğu, sık hastalık — düşük-glikojen antrenmanı ve kalori kısıtlamasını YASAKLAR. Günde 1,8 g/kg CHO tabanını uygula ve tam tarama için spor hekimine yönlendir.',
+}
+
 /**
  * @public
- * @param {{ phases: Array<{phase:string}>, bodyMassKg?: number, cohort?: ('beginner'|'intermediate'|'elite') }} input
- * @returns {Record<string, FuelingPhasePlan & { dailyCHO_g?: [number, number], dailyProtein_g?: number, cohort?: string }>}
+ * @param {{ phases: Array<{phase:string}>, bodyMassKg?: number, cohort?: ('beginner'|'intermediate'|'elite'), gender?: ('female'|'male'|string) }} input
+ * @returns {Record<string, FuelingPhasePlan & { dailyCHO_g?: [number, number], dailyProtein_g?: number, cohort?: string, hydrationMlPerHr?: [number, number], sodiumMgPerHr?: [number, number], sweatRateProtocol?: Bilingual, ironGuidance?: Bilingual, redsScreening?: Bilingual }>}
  */
 export function buildFuelingProgram(input) {
   const present = new Set((input?.phases || []).map(p => p.phase))
   const bw = Number(input?.bodyMassKg) || null
   const cohort = input?.cohort || null
+  const gender = input?.gender || null
+  const isFemale = (gender || '').toLowerCase() === 'female'
+  const hydrationMl = hydrationMlPerHr(bw, gender)
+  const sodiumMg = sodiumMgPerHr(bw, gender)
   const out = {}
   const wrap = (plan) => {
     // v9.13.0 — apply cohort offset to daily CHO range
@@ -169,6 +234,21 @@ export function buildFuelingProgram(input) {
       duringSession: adjustedDuring,
       proteinPulse: ARETA_PULSE,
       ...(cohort ? { cohort } : {}),
+      // v9.25.0 — hydration + sodium individualization. Null when bodyMassKg
+      // unknown (athlete hasn't filled profile); UI surfaces a fallback hint.
+      ...(hydrationMl ? { hydrationMlPerHr: hydrationMl } : {}),
+      ...(sodiumMg    ? { sodiumMgPerHr: sodiumMg } : {}),
+      // Sweat-rate self-test protocol — surfaced in Build phase (where the
+      // athlete is doing long fueling-rehearsal sessions); other phases get
+      // a pointer back to the test result.
+      ...(plan.phase === 'Build' ? { sweatRateProtocol: SWEAT_RATE_PROTOCOL } : {}),
+      // Iron guidance + RED-S screening — only female. Iron lands in Base
+      // and Build (lead-time matters: 4+ weeks pre-race for any uplift);
+      // RED-S screening on every phase since the contraindication blocks
+      // train-low and carb restriction throughout.
+      ...(isFemale && (plan.phase === 'Base' || plan.phase === 'Build')
+          ? { ironGuidance: IRON_GUIDANCE_FEMALE } : {}),
+      ...(isFemale ? { redsScreening: RED_S_SCREENING } : {}),
     }
     if (!bw) return adjusted
     return {
@@ -185,4 +265,4 @@ export function buildFuelingProgram(input) {
   return out
 }
 
-export const FUELING_CITATION = 'Burke 2017; Jeukendrup 2014; Hawley & Burke 2010; Stellingwerf 2018; Bussau et al. 2002; Areta 2014; Stellingwerff 2019'
+export const FUELING_CITATION = 'Burke 2017; Jeukendrup 2014; Hawley & Burke 2010; Stellingwerf 2018; Bussau et al. 2002; Areta 2014; Stellingwerff 2019; Sawka 2007 (ACSM); Brownlie 2004; Friedmann 2001; Peeling 2008; Mountjoy 2018 (RED-S)'

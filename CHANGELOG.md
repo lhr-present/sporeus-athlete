@@ -4,6 +4,75 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.25.0 — 2026-05-09 — Hydration + sodium + iron + RED-S individualization
+
+  Closes 4 P0 science findings from a triple-agent deep-dive audit
+  (form UX, science precision, coach-loop integrity).
+
+  Mission #1 fueling output had hand-waved hydration ("200-400 mL/h"
+  flat) and zero sodium guidance. CHO and protein were already
+  body-mass + cohort + phase-aware; hydration was the lone outlier.
+  Female athletes — half the audience — got identical doses to males
+  despite consensus that lower sweat rate calls for the lower
+  bracket (Burke 2017 Table 7), and had ZERO iron / ferritin
+  guidance despite 5-8% VO2max loss at ferritin <30 ng/mL
+  (Friedmann 2001). RED-S contraindication for train-low and
+  caloric restriction (Mountjoy 2018) was nominally referenced but
+  not surfaced as a screening checklist.
+
+  Added to `buildFuelingProgram(input)`:
+
+  • `hydrationMlPerHr` — body-mass × sex band per Jeukendrup 2014.
+    Female: 3-6 mL/kg/h. Male/unspecified: 4-8 mL/kg/h.
+    Conservative ranges; explicit individualization via sweat-rate
+    test always preferred (see protocol).
+    Null when bodyMassKg unknown — UI hides the row.
+
+  • `sodiumMgPerHr` — sex-aware bracket per Burke 2017 + Sawka
+    2007 ACSM. Female: 500-800 mg/h. Male: 700-1200 mg/h.
+    Tight to fluid replacement (300-700 mg/L), assumes typical
+    sweat rate for sex.
+
+  • `sweatRateProtocol` — universal self-test instructions
+    (weigh-before/weigh-after method, threshold mapping to
+    sodium dose). Surfaces ONLY in Build phase, where the
+    athlete is already running long fueling-rehearsal sessions
+    in race-temperature conditions. Pointer back to test in
+    other phases.
+
+  • `ironGuidance` — female-only, Base + Build only. 25-30 mg
+    elemental Fe + 200 mg vitamin C, 4+ weeks pre-race lead time.
+    Explicit AVOID conditions (infection / RED-S signs) before
+    self-supplementation. Surfaces only in phases with enough
+    runway for haematological uplift.
+
+  • `redsScreening` — female-only, EVERY phase. RED-S CAT 2.0
+    checklist (Mountjoy 2018): irregular periods, persistent
+    fatigue, recurrent stress injuries, low BMD, frequent
+    illness. Any positive → train-low and caloric restriction
+    CONTRAINDICATED, enforce 1.8 g/kg CHO floor, refer to sports
+    medicine. Persistent across phases because the
+    contraindication blocks behaviors prescribed throughout.
+
+  Wired through orchestrator: `buildEliteProgram` now passes
+  `gender: profile.gender` to fueling. UI: FuelingSection in
+  BroaderPlanSections renders new fields as colored callout
+  boxes (green = sweat-rate, burnt-orange = iron, red = RED-S).
+
+  Tests: 14 new in eliteProgramFueling.test.js — body-mass
+  scaling, sex differentiation, phase-specific surfacing,
+  case-insensitive gender match, RED-S persistence, range
+  invariants. 9489/9489 green. Bundle 1319.8 KB.
+
+  Citations: Jeukendrup 2014; Burke 2017 Table 7; Sawka 2007
+  ACSM; Brownlie 2004; Friedmann 2001; Peeling 2008;
+  Mountjoy 2018 (RED-S CAT 2.0).
+
+  Depends on: v9.13.0 (cohort-aware CHO), v9.18.0 (gender field
+  already plumbed via vdotBenchmark).
+
+---
+
 ## v9.24.0 — 2026-05-09 — Strength sessions woven into sample-week calendar
 
   Closes a P2 adherence gap: Mission #1 prescribes 1-2 strength sessions

@@ -347,6 +347,30 @@ export function FuelingSection({ fuelingProgram, isTR, defaultOpen = false }) {
               <div style={{ marginTop: 4 }}><strong>{isTR ? 'SEANS İÇİ' : 'DURING SESSION'}:</strong> {p.duringSession.hardSessionGPerHr[0]}-{p.duringSession.hardSessionGPerHr[1]} g CHO/h</div>
               <div><strong>{isTR ? 'SEANS ÖNCESİ' : 'PRE-SESSION'}:</strong> {p.preSession.gPerKg} g/kg, {p.preSession.timingMin} {isTR ? 'dk önce' : 'min before'}</div>
               <div><strong>{isTR ? 'SEANS SONRASI' : 'POST-SESSION'}:</strong> {p.postSession.gPerKg} g/kg CHO + {p.postSession.proteinG} g {isTR ? 'protein' : 'protein'}, {p.postSession.timingMin} {isTR ? 'dk içinde' : 'min window'}</div>
+              {p.hydrationMlPerHr ? (
+                <div><strong>{isTR ? 'SIVI ALIMI' : 'HYDRATION'}:</strong> {p.hydrationMlPerHr[0]}-{p.hydrationMlPerHr[1]} mL/h</div>
+              ) : null}
+              {p.sodiumMgPerHr ? (
+                <div><strong>{isTR ? 'SODYUM' : 'SODIUM'}:</strong> {p.sodiumMgPerHr[0]}-{p.sodiumMgPerHr[1]} mg/h</div>
+              ) : null}
+              {p.sweatRateProtocol ? (
+                <div style={{ marginTop: 6, padding: '8px 10px', background: '#28a74511', border: '1px solid #28a74533', borderRadius: 4, fontSize: 10, lineHeight: 1.5 }}>
+                  <div style={{ fontWeight: 700, marginBottom: 4 }}>{isTR ? 'TERLEME ORANI TESTİ' : 'SWEAT-RATE TEST'}</div>
+                  {bil(p.sweatRateProtocol, isTR)}
+                </div>
+              ) : null}
+              {p.ironGuidance ? (
+                <div style={{ marginTop: 6, padding: '8px 10px', background: '#a8410011', border: '1px solid #a8410033', borderRadius: 4, fontSize: 10, lineHeight: 1.5 }}>
+                  <div style={{ fontWeight: 700, marginBottom: 4 }}>{isTR ? 'DEMİR / FERRİTİN (KADIN)' : 'IRON / FERRITIN (FEMALE)'}</div>
+                  {bil(p.ironGuidance, isTR)}
+                </div>
+              ) : null}
+              {p.redsScreening ? (
+                <div style={{ marginTop: 6, padding: '8px 10px', background: '#e0303011', border: '1px solid #e0303044', borderRadius: 4, fontSize: 10, lineHeight: 1.5 }}>
+                  <div style={{ fontWeight: 700, marginBottom: 4, color: '#a01818' }}>{isTR ? 'RED-S TARAMASI' : 'RED-S SCREENING'}</div>
+                  {bil(p.redsScreening, isTR)}
+                </div>
+              ) : null}
               <div style={{ marginTop: 6, color: 'var(--muted)' }}>{bil(p.rationale, isTR)}</div>
               <div style={{ marginTop: 4, fontSize: 10 }}><strong>{isTR ? 'NOT' : 'NOTE'}:</strong> {bil(p.notes, isTR)}</div>
               <div style={{ marginTop: 4, fontSize: 9, color: 'var(--muted)', fontStyle: 'italic' }}>{p.citation}</div>

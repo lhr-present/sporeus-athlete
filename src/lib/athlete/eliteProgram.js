@@ -1192,6 +1192,7 @@ export function buildEliteProgram(input) {
     phases,
     bodyMassKg: profileWithDefaults.bodyMassKg,
     cohort,
+    gender: profile.gender || null,  // v9.25.0 — sex-aware hydration/sodium/iron
   })
   // v9.13.0 — recovery now scales sleep + modalities by phase weeklyTSS + cohort.
   const recoveryProgram   = buildRecoveryProgram({ phases, weeklyTSS, cohort })

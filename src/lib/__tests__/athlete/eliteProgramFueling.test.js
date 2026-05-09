@@ -85,3 +85,104 @@ describe('eliteProgramFueling', () => {
     expect(fp.Base.dailyCHO_g).toBeUndefined()
   })
 })
+
+// ── v9.25.0 — Hydration + sodium + iron + RED-S individualization ───────────
+describe('buildFuelingProgram — hydration + sodium individualization (v9.25.0)', () => {
+  it('hydrationMlPerHr scales with body mass and sex (male 4-8 mL/kg/h)', () => {
+    const fp = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 70, gender: 'male' })
+    expect(fp.Build.hydrationMlPerHr).toEqual([280, 560])
+  })
+
+  it('hydrationMlPerHr is conservative for female (3-6 mL/kg/h)', () => {
+    const fp = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 60, gender: 'female' })
+    expect(fp.Build.hydrationMlPerHr).toEqual([180, 360])
+  })
+
+  it('hydrationMlPerHr defaults to male range when gender unspecified', () => {
+    const fp = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 70 })
+    expect(fp.Build.hydrationMlPerHr).toEqual([280, 560])
+  })
+
+  it('hydrationMlPerHr omitted when bodyMassKg unknown', () => {
+    const fp = buildFuelingProgram({ phases: ALL_PHASES })
+    expect(fp.Build.hydrationMlPerHr).toBeUndefined()
+  })
+
+  it('sodiumMgPerHr is lower bracket for female (500-800 mg/h)', () => {
+    const fp = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 60, gender: 'female' })
+    expect(fp.Build.sodiumMgPerHr).toEqual([500, 800])
+  })
+
+  it('sodiumMgPerHr is upper bracket for male (700-1200 mg/h)', () => {
+    const fp = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 75, gender: 'male' })
+    expect(fp.Build.sodiumMgPerHr).toEqual([700, 1200])
+  })
+
+  it('sweatRateProtocol surfaces ONLY in Build phase (where rehearsal happens)', () => {
+    const fp = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 70, gender: 'male' })
+    expect(fp.Build.sweatRateProtocol).toBeDefined()
+    expect(fp.Build.sweatRateProtocol).toHaveProperty('en')
+    expect(fp.Build.sweatRateProtocol).toHaveProperty('tr')
+    expect(fp.Base.sweatRateProtocol).toBeUndefined()
+    expect(fp.Peak.sweatRateProtocol).toBeUndefined()
+    expect(fp.Taper.sweatRateProtocol).toBeUndefined()
+  })
+
+  it('ironGuidance surfaces ONLY for female athletes in Base + Build', () => {
+    const fp = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 60, gender: 'female' })
+    expect(fp.Base.ironGuidance).toBeDefined()
+    expect(fp.Build.ironGuidance).toBeDefined()
+    expect(fp.Peak.ironGuidance).toBeUndefined()
+    expect(fp.Taper.ironGuidance).toBeUndefined()
+  })
+
+  it('ironGuidance NOT surfaced for male athletes', () => {
+    const fp = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 75, gender: 'male' })
+    expect(fp.Base.ironGuidance).toBeUndefined()
+    expect(fp.Build.ironGuidance).toBeUndefined()
+  })
+
+  it('redsScreening surfaces in EVERY phase for female athletes', () => {
+    const fp = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 60, gender: 'female' })
+    for (const phase of ['Base', 'Build', 'Peak', 'Taper']) {
+      expect(fp[phase].redsScreening).toBeDefined()
+      expect(fp[phase].redsScreening).toHaveProperty('en')
+      expect(fp[phase].redsScreening).toHaveProperty('tr')
+    }
+  })
+
+  it('redsScreening NOT surfaced for male athletes', () => {
+    const fp = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 75, gender: 'male' })
+    for (const phase of ['Base', 'Build', 'Peak', 'Taper']) {
+      expect(fp[phase].redsScreening).toBeUndefined()
+    }
+  })
+
+  it('case-insensitive gender match (FEMALE / Female / female all trigger iron+RED-S)', () => {
+    for (const g of ['female', 'Female', 'FEMALE']) {
+      const fp = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 60, gender: g })
+      expect(fp.Build.ironGuidance).toBeDefined()
+      expect(fp.Build.redsScreening).toBeDefined()
+    }
+  })
+
+  it('hydration and sodium are ranges (low<high), not points', () => {
+    const fp = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 70, gender: 'male' })
+    expect(fp.Build.hydrationMlPerHr[0]).toBeLessThan(fp.Build.hydrationMlPerHr[1])
+    expect(fp.Build.sodiumMgPerHr[0]).toBeLessThan(fp.Build.sodiumMgPerHr[1])
+  })
+
+  it('hydration scales linearly with body mass within sex (50kg vs 80kg male)', () => {
+    const fp50 = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 50, gender: 'male' })
+    const fp80 = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 80, gender: 'male' })
+    expect(fp80.Build.hydrationMlPerHr[0]).toBeGreaterThan(fp50.Build.hydrationMlPerHr[0])
+    expect(fp80.Build.hydrationMlPerHr[1]).toBeGreaterThan(fp50.Build.hydrationMlPerHr[1])
+  })
+
+  it('hydration is sex-differentiated (same body mass, female lower than male)', () => {
+    const fpF = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 70, gender: 'female' })
+    const fpM = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 70, gender: 'male' })
+    expect(fpF.Build.hydrationMlPerHr[1]).toBeLessThan(fpM.Build.hydrationMlPerHr[1])
+  })
+})
+
