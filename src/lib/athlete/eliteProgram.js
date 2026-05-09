@@ -1083,8 +1083,10 @@ export function buildEliteProgram(input) {
   const fuelingProgram    = buildFuelingProgram({
     phases,
     bodyMassKg: profileWithDefaults.bodyMassKg,
+    cohort,
   })
-  const recoveryProgram   = buildRecoveryProgram({ phases })
+  // v9.13.0 — recovery now scales sleep + modalities by phase weeklyTSS + cohort.
+  const recoveryProgram   = buildRecoveryProgram({ phases, weeklyTSS, cohort })
   const raceWeekProtocol  = buildRaceWeekProtocol({
     sport,
     raceDate: effectiveRaceDate,

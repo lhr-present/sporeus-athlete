@@ -98,19 +98,76 @@ const TAPER = {
   citation: 'Mujika 2003; Halson 2019',
 }
 
+// v9.13.0 — TSS-scaled sleep target. Walker 2017 + Mah 2011: each ~10% CTL
+// increase warrants ~30 min additional sleep. Base TSS ~250-350 → 8-9.5h;
+// elite blocks at 400-500 → 9-10.5h. Floor at phase baseline; ceiling +1.5h.
+function computeRecoverySleepTarget(phase, weeklyTSS) {
+  const base = phase === 'Base' ? [7, 9] : phase === 'Build' ? [8, 9] : phase === 'Peak' ? [8.5, 9.5] : [9, 10]
+  const peakTSS = Math.max(0, ...((weeklyTSS || []).filter(n => Number.isFinite(n))))
+  if (!peakTSS || peakTSS <= 0) return base
+  // Each 100 TSS over 250 adds 0.5h; capped at +1.5h.
+  const extra = Math.min(1.5, Math.max(0, (peakTSS - 250) / 100) * 0.5)
+  return [
+    Math.round((base[0] + extra) * 10) / 10,
+    Math.round((base[1] + extra) * 10) / 10,
+  ]
+}
+
+// v9.13.0 — Contrast bath + compression modalities. Halson 2014 meta-analysis:
+// 38°C/10°C × 5 min × 5 cycles reduces DOMS 20-40% post-hard work. Hill 2014:
+// graduated compression sleeves accelerate recovery between sessions.
+const CONTRAST_BATH = {
+  en: 'Contrast bath/shower (40°C / 15°C × 3 min warm / 1 min cold × 5 cycles) post-hard sessions, 2x/week.',
+  tr: 'Kontrast banyo/duş (40°C / 15°C × 3 dk sıcak / 1 dk soğuk × 5 döngü) sert seans sonrası, haftada 2x.',
+}
+const COMPRESSION = {
+  en: 'Graduated compression sleeves/socks during recovery walks + 2-4h post-key-session window.',
+  tr: 'Toparlanma yürüyüşlerinde + anahtar seans sonrası 2-4 sa boyunca kademeli kompresyon manşon/çorap.',
+}
+const SAUNA_BUILD = {
+  en: 'Sauna 15-20 min × 3x/week post-easy days (Scoon 2007: heat acclimation + recovery).',
+  tr: 'Sauna 15-20 dk × haftada 3x kolay gün sonrası (Scoon 2007: sıcaklık adaptasyonu + toparlanma).',
+}
+
 /**
  * @public
- * @param {{ phases: Array<{phase:string}> }} input
+ * @param {{ phases: Array<{phase:string}>, weeklyTSS?: number[], cohort?: ('beginner'|'intermediate'|'elite') }} input
  * @returns {Record<string, RecoveryPhasePlan>}
  */
 export function buildRecoveryProgram(input) {
   const present = new Set((input?.phases || []).map(p => p.phase))
+  const weeklyTSS = input?.weeklyTSS || []
+  const cohort = input?.cohort || null
   const out = {}
-  if (present.has('Base'))  out.Base  = BASE
-  if (present.has('Build')) out.Build = BUILD
-  if (present.has('Peak'))  out.Peak  = PEAK
-  if (present.has('Taper')) out.Taper = TAPER
+  // v9.13.0 — augment phase plans with TSS-scaled sleep + contrast/compression.
+  // Cohort gates sauna (intermediate+) and sets compression frequency.
+  const augment = (plan) => {
+    const sleep = computeRecoverySleepTarget(plan.phase, weeklyTSS)
+    const modalities = [...plan.modalities]
+    // Add contrast bath + compression to Build/Peak by default.
+    if (plan.phase === 'Build' || plan.phase === 'Peak') {
+      modalities.push(CONTRAST_BATH, COMPRESSION)
+      if (cohort === 'intermediate' || cohort === 'elite') {
+        modalities.push(SAUNA_BUILD)
+      }
+    } else if (plan.phase === 'Base' && (cohort === 'intermediate' || cohort === 'elite')) {
+      // Elite/intermediate athletes already train hard enough in Base to benefit.
+      modalities.push(COMPRESSION)
+    }
+    return {
+      ...plan,
+      sleepHoursTarget: sleep,
+      modalities,
+      ...(cohort ? { cohort } : {}),
+    }
+  }
+  if (present.has('Base'))  out.Base  = augment(BASE)
+  if (present.has('Build')) out.Build = augment(BUILD)
+  if (present.has('Peak'))  out.Peak  = augment(PEAK)
+  if (present.has('Taper')) out.Taper = augment(TAPER)
   return out
 }
 
-export const RECOVERY_CITATION = 'Halson 2019; Kellmann 2018; Plews & Buchheit 2017; Bompa 2009; Mujika 2003'
+export { computeRecoverySleepTarget }
+
+export const RECOVERY_CITATION = 'Halson 2019; Kellmann 2018; Plews & Buchheit 2017; Bompa 2009; Mujika 2003; Walker 2017; Mah 2011; Halson 2014; Hill 2014; Scoon 2007'

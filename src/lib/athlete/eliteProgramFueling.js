@@ -114,21 +114,57 @@ const TAPER = {
   citation: 'Burke 2017; Bussau et al. 2002',
 }
 
+// v9.13.0 — Cohort-aware CHO daily targets. Burke 2017 Table 3 + Stellingwerff
+// 2019 show elite endurance athletes >10h/week need 8-10 g/kg in Build (not
+// 6-8); recreational athletes max 5-6 g/kg (overfeeding = weight gain).
+// Ranges below SHIFT the base ranges per cohort tier; values are not absolute.
+const CHO_COHORT_OFFSETS = {
+  beginner:     { Base: [-1, -1], Build: [-1, -1], Peak: [-2, -2], Taper: [-2, -2] },
+  intermediate: { Base: [ 0,  0], Build: [ 0,  0], Peak: [ 0,  0], Taper: [ 0,  0] },
+  elite:        { Base: [ 1,  1], Build: [ 2,  2], Peak: [ 1,  2], Taper: [ 0,  0] },
+}
+
+// v9.13.0 — Cohort-aware in-session CHO. Jeukendrup 2014 + Stellingwerff 2019:
+// beginners cap at 60 g/h (single-source glucose), intermediates 80-90 g/h
+// glucose+fructose 2:1, elites 110-120 g/h with multi-transportable mix.
+function gPerHourByCohort(cohort, basePhaseRange) {
+  if (cohort === 'beginner')     return [Math.max(30, basePhaseRange[0] - 10), Math.min(60, basePhaseRange[1])]
+  if (cohort === 'elite')        return [basePhaseRange[1], Math.max(120, basePhaseRange[1] + 30)]
+  return basePhaseRange  // intermediate or null → unchanged
+}
+
 /**
  * @public
- * @param {{ phases: Array<{phase:string}>, bodyMassKg?: number }} input
- * @returns {Record<string, FuelingPhasePlan & { dailyCHO_g?: [number, number], dailyProtein_g?: number }>}
+ * @param {{ phases: Array<{phase:string}>, bodyMassKg?: number, cohort?: ('beginner'|'intermediate'|'elite') }} input
+ * @returns {Record<string, FuelingPhasePlan & { dailyCHO_g?: [number, number], dailyProtein_g?: number, cohort?: string }>}
  */
 export function buildFuelingProgram(input) {
   const present = new Set((input?.phases || []).map(p => p.phase))
   const bw = Number(input?.bodyMassKg) || null
+  const cohort = input?.cohort || null
   const out = {}
   const wrap = (plan) => {
-    const withPulse = { ...plan, proteinPulse: ARETA_PULSE }
-    if (!bw) return withPulse
+    // v9.13.0 — apply cohort offset to daily CHO range
+    const offset = cohort && CHO_COHORT_OFFSETS[cohort] ? CHO_COHORT_OFFSETS[cohort][plan.phase] : [0, 0]
+    const adjustedCHO = [
+      Math.max(3, plan.chodailyPerKg[0] + offset[0]),
+      Math.max(4, plan.chodailyPerKg[1] + offset[1]),
+    ]
+    const adjustedDuring = {
+      ...plan.duringSession,
+      hardSessionGPerHr: gPerHourByCohort(cohort, plan.duringSession.hardSessionGPerHr),
+    }
+    const adjusted = {
+      ...plan,
+      chodailyPerKg: adjustedCHO,
+      duringSession: adjustedDuring,
+      proteinPulse: ARETA_PULSE,
+      ...(cohort ? { cohort } : {}),
+    }
+    if (!bw) return adjusted
     return {
-      ...withPulse,
-      dailyCHO_g: [Math.round(plan.chodailyPerKg[0] * bw), Math.round(plan.chodailyPerKg[1] * bw)],
+      ...adjusted,
+      dailyCHO_g: [Math.round(adjustedCHO[0] * bw), Math.round(adjustedCHO[1] * bw)],
       dailyProtein_g: Math.round(plan.proteindailyPerKg * bw),
       proteinPulseGPerMeal: Math.round(ARETA_PULSE.gPerKgPerMeal * bw * 10) / 10,
     }
@@ -140,4 +176,4 @@ export function buildFuelingProgram(input) {
   return out
 }
 
-export const FUELING_CITATION = 'Burke 2017; Jeukendrup 2014; Hawley & Burke 2010; Stellingwerf 2018; Bussau et al. 2002; Areta 2014'
+export const FUELING_CITATION = 'Burke 2017; Jeukendrup 2014; Hawley & Burke 2010; Stellingwerf 2018; Bussau et al. 2002; Areta 2014; Stellingwerff 2019'

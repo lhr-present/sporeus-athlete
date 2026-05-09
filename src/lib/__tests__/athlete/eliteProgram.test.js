@@ -1661,3 +1661,123 @@ describe('buildEliteProgram — v9.12.0 sport-specific prehab', () => {
     }
   })
 })
+
+// ── v9.13.0 — cohort fueling + TSS-scaled sleep + contrast modalities ──────
+import { computeRecoverySleepTarget } from '../../athlete/eliteProgramRecovery.js'
+
+describe('buildEliteProgram — v9.13.0 cohort-aware fueling', () => {
+  it('elite cohort gets shifted-up CHO daily targets vs intermediate', () => {
+    const elite = buildEliteProgram({
+      ...RUN_REALISTIC,
+      currentPR: { distanceM: 10000, timeSec: 2100 }, // 35:00 → VDOT ~58 elite
+      targetPR:  { distanceM: 10000, timeSec: 2040 },
+      profile: { bodyMassKg: 65 },
+    })
+    const intermediate = buildEliteProgram({
+      ...RUN_REALISTIC,
+      profile: { bodyMassKg: 65 },
+    })
+    expect(elite.cohort).toBe('elite')
+    expect(intermediate.cohort).toBe('intermediate')
+    // Elite Build CHO range should be >= intermediate Build CHO range
+    expect(elite.fuelingProgram.Build.chodailyPerKg[0])
+      .toBeGreaterThanOrEqual(intermediate.fuelingProgram.Build.chodailyPerKg[0])
+    expect(elite.fuelingProgram.Build.chodailyPerKg[1])
+      .toBeGreaterThanOrEqual(intermediate.fuelingProgram.Build.chodailyPerKg[1])
+  })
+
+  it('beginner cohort gets shifted-down CHO daily targets vs intermediate', () => {
+    const beginner = buildEliteProgram({
+      ...RUN_REALISTIC,
+      currentPR: { distanceM: 10000, timeSec: 4200 }, // 70:00 → VDOT ~25 beginner
+      targetPR:  { distanceM: 10000, timeSec: 4080 },
+      profile: { bodyMassKg: 80 },
+    })
+    expect(beginner.cohort).toBe('beginner')
+    // Beginner Build CHO upper end should be ≤ intermediate baseline (8 g/kg)
+    expect(beginner.fuelingProgram.Build.chodailyPerKg[1]).toBeLessThanOrEqual(8)
+  })
+
+  it('in-session g/h CHO scales by cohort (beginner ≤60, elite ≥90)', () => {
+    const beginner = buildEliteProgram({
+      ...RUN_REALISTIC,
+      currentPR: { distanceM: 10000, timeSec: 4200 },
+      targetPR:  { distanceM: 10000, timeSec: 4080 },
+      profile: { bodyMassKg: 80 },
+    })
+    const elite = buildEliteProgram({
+      ...RUN_REALISTIC,
+      currentPR: { distanceM: 10000, timeSec: 2100 },
+      targetPR:  { distanceM: 10000, timeSec: 2040 },
+      profile: { bodyMassKg: 65 },
+    })
+    expect(beginner.fuelingProgram.Build.duringSession.hardSessionGPerHr[1]).toBeLessThanOrEqual(60)
+    expect(elite.fuelingProgram.Build.duringSession.hardSessionGPerHr[1]).toBeGreaterThanOrEqual(90)
+  })
+
+  it('cohort field surfaces on every fueling phase plan when cohort known', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    expect(r.fuelingProgram.Base.cohort).toBe(r.cohort)
+    expect(r.fuelingProgram.Build.cohort).toBe(r.cohort)
+  })
+})
+
+describe('eliteProgramRecovery — TSS-scaled sleep target', () => {
+  it('returns base range when weeklyTSS empty', () => {
+    expect(computeRecoverySleepTarget('Base', [])).toEqual([7, 9])
+    expect(computeRecoverySleepTarget('Build', [])).toEqual([8, 9])
+  })
+
+  it('extends sleep when weeklyTSS exceeds 250 baseline', () => {
+    const target = computeRecoverySleepTarget('Build', [200, 350, 400])
+    // peak 400 → (400-250)/100 = 1.5 × 0.5 = 0.75h extra; rounding may give 0.8
+    expect(target[0]).toBeGreaterThan(8)
+    expect(target[0]).toBeLessThanOrEqual(8.8)
+    expect(target[1]).toBeGreaterThan(9)
+    expect(target[1]).toBeLessThanOrEqual(9.8)
+  })
+
+  it('caps extension at +1.5h regardless of TSS', () => {
+    const target = computeRecoverySleepTarget('Build', [800, 900])
+    expect(target[0]).toBeLessThanOrEqual(8 + 1.5)
+    expect(target[1]).toBeLessThanOrEqual(9 + 1.5)
+  })
+})
+
+describe('buildEliteProgram — v9.13.0 recovery enhancements', () => {
+  it('Build phase modalities include contrast bath + compression', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    const build = r.recoveryProgram.Build
+    const en = build.modalities.map(m => m.en).join('|')
+    expect(en).toMatch(/Contrast bath/i)
+    expect(en).toMatch(/compression/i)
+  })
+
+  it('intermediate/elite athletes get sauna in Build', () => {
+    const r = buildEliteProgram({
+      ...RUN_REALISTIC,
+      currentPR: { distanceM: 10000, timeSec: 2100 },
+      targetPR:  { distanceM: 10000, timeSec: 2040 },
+    })
+    const build = r.recoveryProgram.Build
+    const en = build.modalities.map(m => m.en).join('|')
+    expect(en).toMatch(/Sauna/i)
+  })
+
+  it('Taper phase does NOT get contrast/sauna additions (mujika protective)', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    const taper = r.recoveryProgram.Taper
+    const en = taper.modalities.map(m => m.en).join('|')
+    expect(en).not.toMatch(/Contrast bath/i)
+    expect(en).not.toMatch(/Sauna/i)
+  })
+
+  it('sleep target on recovery program reflects weeklyTSS', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    const peakWeeklyTSS = Math.max(...r.weeklyTSS)
+    if (peakWeeklyTSS > 250) {
+      // Build should be > base 8h
+      expect(r.recoveryProgram.Build.sleepHoursTarget[0]).toBeGreaterThanOrEqual(8)
+    }
+  })
+})

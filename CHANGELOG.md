@@ -4,6 +4,52 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.13.0 — 2026-05-09 — Cohort layer extends to fueling + recovery (TSS-scaled sleep + contrast/compression)
+
+  Closes 4 audit findings: cohort-blind fueling, untiered race-day
+  g/h CHO, sleep prescription not scaled to load, missing
+  contrast/compression modalities. Single coherent ship: the
+  cohort layer (v9.11.0) now spans across program subsystems.
+
+  • Cohort-aware daily CHO targets in fueling. CHO_COHORT_OFFSETS
+    shifts the base ranges by tier:
+    – beginner Build: 5-7 g/kg/day (was flat 6-8)
+    – intermediate Build: 6-8 g/kg/day (unchanged)
+    – elite Build: 8-10 g/kg/day (Burke 2017 Table 3)
+    Per-phase shifts: beginner -1 across; elite +1-2 across with
+    Peak amplified. Floor protected (3-4 g/kg minimum).
+
+  • Cohort-aware in-session g/h CHO. gPerHourByCohort gates the
+    `duringSession.hardSessionGPerHr` ceiling per Jeukendrup 2014
+    + Stellingwerff 2019:
+    – beginner: capped at 60 g/h (single-source glucose)
+    – intermediate: phase baseline 60-90 g/h (unchanged)
+    – elite: 90-120+ g/h with multi-transportable glucose+fructose
+    Prevents beginner GI distress; unlocks elite race-pace gains
+    that the prior universal 60-90 ceiling left on the table.
+
+  • TSS-scaled sleep target. computeRecoverySleepTarget(phase,
+    weeklyTSS) extends phase baseline by 0.5h per 100 TSS over
+    250, capped at +1.5h. Walker 2017 + Mah 2011: each 10% CTL
+    increase warrants ~30 min additional sleep. Build phase at
+    peak TSS 400 → 8.75-9.75h (was flat 8-9).
+
+  • Contrast bath + compression in Build/Peak modalities.
+    Halson 2014 meta-analysis: 38°C/15°C × 5 cycles cuts DOMS
+    20-40%. Hill 2014: graduated compression accelerates
+    inter-session recovery.
+    Sauna gated to intermediate/elite cohorts in Build (Scoon
+    2007). Taper deliberately stays bare (Mujika 2003 protective
+    — no novel modalities <72h pre-race).
+
+  • Tests: +11 (9391 total). Citations added: Stellingwerff 2019,
+    Walker 2017, Mah 2011, Halson 2014, Hill 2014, Scoon 2007.
+
+  Depends on: v9.11.0 (cohort + selectCohort propagation);
+  v9.12.0 (Areta pulse on fueling phase plans, retained).
+
+---
+
 ## v9.12.0 — 2026-05-09 — Mission #1 staple sessions + Areta protein pulse + sport-specific prehab
 
   Closes 3 P0 audit findings from the v9.11.0 deep-dive (key
