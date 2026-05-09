@@ -132,9 +132,14 @@ const SAUNA_BUILD = {
 // v9.15.0 — Cold-water immersion specifics. Versey 2013: 11-15°C × 11-15 min
 // post-hard work optimal for DOMS; over-cold suppresses HRV. Avoid within 4h
 // of strength session (blunts hypertrophy signaling per Roberts 2015).
+// v9.36.0 — Made the strength-conflict warning schedule-concrete: since
+// v9.24.0 weaves strength sessions onto the hardest endurance days
+// (Tue + Thu in Build), the CWI window is naturally Wed / Sat / Sun
+// (i.e., aerobic recovery days). Surfacing this inline so the athlete
+// doesn't need to reason about it themselves.
 const COLD_WATER_IMMERSION = {
-  en: 'Cold-water immersion 11-15°C × 11-15 min post-hard endurance sessions ONLY (NOT within 4h of strength — blunts hypertrophy signaling per Roberts 2015).',
-  tr: 'Soğuk suya batma 11-15°C × 11-15 dk SADECE sert dayanıklılık seansları sonrası (kuvvet seansından 4 sa içinde DEĞİL — hipertrofi sinyalini bastırır, Roberts 2015).',
+  en: 'Cold-water immersion 11-15°C × 11-15 min post-hard endurance sessions. Schedule on Wed / Sat / Sun (your aerobic / endurance days) — NOT within 4h of any strength session (blunts hypertrophy signaling per Roberts 2015). On lift days the strength stimulus is the priority; let inflammation signal complete its protein-synthesis cascade before any cold exposure.',
+  tr: 'Soğuk suya batma 11-15°C × 11-15 dk sert dayanıklılık seansları sonrası. Çar / Cmt / Paz günleri planla (aerobik / dayanıklılık günleri) — herhangi bir kuvvet seansından sonraki 4 sa içinde DEĞİL (hipertrofi sinyalini bastırır, Roberts 2015). Kaldırış günlerinde kuvvet uyaranı önceliklidir; soğuk maruziyetinden önce inflamasyon sinyalinin protein-sentez kaskadını tamamlamasına izin ver.',
 }
 
 // v9.15.0 — Diaphragmatic breathwork (4-7-8 box / coherent breathing 5.5 bpm)

@@ -73,3 +73,37 @@ describe('eliteProgramRecovery', () => {
     expect(buildRecoveryProgram({})).toEqual({})
   })
 })
+
+// ── v9.36.0 — Cold-water immersion schedule-aware warning ──────────────
+describe('Cold-water immersion — schedule-aware Roberts 2015 warning (v9.36.0)', () => {
+  it('Build modalities include cold-water immersion with Wed/Sat/Sun day guidance', () => {
+    const rp = buildRecoveryProgram({ phases: ALL_PHASES })
+    const cwiText = rp.Build.modalities.find(m => m.en?.match(/Cold-water/i))
+    expect(cwiText).toBeDefined()
+    // v9.36.0 — added schedule-concrete day suggestions (since v9.24.0 strength
+    // weaves onto Tue+Thu, recovery days for CWI are Wed/Sat/Sun)
+    expect(cwiText.en).toMatch(/Wed.*Sat.*Sun|aerobic.*days/i)
+  })
+
+  it('CWI still cites Roberts 2015 hypertrophy-blunting evidence', () => {
+    const rp = buildRecoveryProgram({ phases: ALL_PHASES })
+    const cwiText = rp.Build.modalities.find(m => m.en?.match(/Cold-water/i))
+    expect(cwiText.en).toMatch(/Roberts 2015/)
+    expect(cwiText.en).toMatch(/hypertrophy|protein-synthesis/i)
+  })
+
+  it('CWI explicitly says NOT within 4h of strength', () => {
+    const rp = buildRecoveryProgram({ phases: ALL_PHASES })
+    const cwiText = rp.Build.modalities.find(m => m.en?.match(/Cold-water/i))
+    expect(cwiText.en).toMatch(/4h|4 h|4 hours/i)
+    expect(cwiText.en).toMatch(/strength|lift/i)
+  })
+
+  it('CWI is bilingual (Turkish equivalent present)', () => {
+    const rp = buildRecoveryProgram({ phases: ALL_PHASES })
+    const cwiText = rp.Build.modalities.find(m => m.en?.match(/Cold-water/i))
+    expect(cwiText.tr).toBeDefined()
+    expect(cwiText.tr).toMatch(/Roberts 2015/)
+    expect(cwiText.tr).toMatch(/Çar.*Cmt.*Paz|aerobik/i)
+  })
+})

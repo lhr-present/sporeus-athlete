@@ -4,6 +4,54 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.36.0 — 2026-05-10 — Altitude LHTL caps + cold-water schedule-aware warning
+
+  Closes 2 P1 findings — recovery + altitude refinements that the
+  audit flagged as documented-but-vague.
+
+  • **Altitude LHTL duration cap + CTL floor**: prior protocol said
+    only "14-21 days early" without naming the upper cap or
+    CTL prerequisite. Athletes arriving 28+ days early got no extra
+    benefit (Robertson 2010 plateau) yet often spent extra time/cost.
+    Athletes with low-aerobic-base (CTL <5 h/week) attempting LHTL
+    risk illness on top of hypoxic stress (Wilber 2007). Added:
+    - **Extreme tier (≥3000m)**: ">21 days yields no further gain
+      (Robertson 2010 plateau); <7 days arrival is worse than <24h
+      (post-arrival dip without adaptation); minimum CTL >5 h/week
+      before LHTL exposure (Wilber 2007)."
+    - **High tier (2000-2999m)**: ">14 days yields diminishing
+      returns; minimum CTL >4 h/week."
+    - **Moderate tier (1500-1999m)**: ">10 days yields no extra
+      benefit at this elevation."
+    - AMS detection criteria expanded: headache + nausea + sleep
+      disturbance + altitude-related anorexia. Persistent AMS
+      >48h despite acetazolamide consideration → descend.
+
+  • **Cold-water immersion schedule-aware warning**: prior protocol
+    said "NOT within 4h of strength (Roberts 2015)" but didn't tell
+    the athlete WHICH days were safe. Since v9.24.0 weaves strength
+    onto the hardest endurance days (Tue + Thu in Build), the safe
+    CWI window is naturally Wed / Sat / Sun (aerobic recovery days).
+    Now stated inline so the athlete doesn't need to reason about
+    it: "Schedule on Wed / Sat / Sun (your aerobic / endurance
+    days). On lift days the strength stimulus is the priority; let
+    inflammation signal complete its protein-synthesis cascade
+    before any cold exposure."
+
+  Tests: 6 new lib (altitude tier-specific caps, CTL floor, AMS
+  expansion) + 4 new lib (CWI day guidance, Roberts 2015 retained,
+  4h rule retained, bilingual Turkish). 9611/9611 green.
+  Bundle 1331.4 KB.
+
+  Citations: Robertson & Saugstad 2010 (LHTL saturation); Wilber
+  2007 (altitude min CTL threshold); Roberts et al. 2015 (cold +
+  strength antagonism); Versey 2013 (CWI dose).
+
+  Depends on: v9.8.0 (altitude protocol), v9.15.0 (CWI prescription),
+  v9.24.0 (strength-day scheduling pattern).
+
+---
+
 ## v9.35.0 — 2026-05-10 — DNF triage decision tree + last-3-nights sleep hygiene
 
   Closes 2 P1 findings from the race-week completeness audit.

@@ -564,24 +564,29 @@ function buildAltitudeProtocol(raceAltitudeM) {
       tr: `Yarış ${raceAltitudeM}m'de (${tier === 'extreme' ? 'aşırı' : tier === 'high' ? 'yüksek' : 'orta'} rakım). Aerobik etkinliklerde %5-15 performans kaybı bekle; toparlanma uzar.`,
     },
     acclimatization: {
+      // v9.36.0 — Added LHTL duration cap (>21 days plateaus, Robertson 2010)
+      // and minimum CTL floor (athletes <5 h/week shouldn't attempt LHTL —
+      // hypoxic stress on top of low aerobic base risks illness, Wilber 2007).
+      // Also added <1 week worthlessness to close the "I'll arrive 4 days
+      // early" window where you get the dip without the gain.
       en: tier === 'extreme'
-        ? 'Live-high-train-low ideal. Arrive 14-21 days early or use altitude tent 4 weeks prior. Without acclimatization, expect significant DNF risk.'
+        ? 'Live-high-train-low (LHTL) ideal. Arrive 14-21 days early OR use altitude tent 4 weeks prior. CRITICAL caps: >21 days yields no further gain (Robertson 2010 plateau); <7 days arrival is worse than <24h (you get the post-arrival dip without the adaptation). Minimum CTL >5 h/week before LHTL exposure — hypoxic stress on top of low aerobic base risks illness (Wilber 2007). Without acclimatization, expect significant DNF risk.'
         : tier === 'high'
-          ? 'Arrive 7-14 days early OR <24 h pre-race (avoid the dip 3-5 days post-arrival). 2-3 hypoxic sessions in Build phase recommended.'
-          : 'Arrive 4-7 days early. Single hypoxic session (e.g., breath-holding tempo) in Build can help.',
+          ? 'Arrive 7-14 days early OR <24 h pre-race (avoid the dip 3-5 days post-arrival). >14 days yields diminishing returns. Minimum CTL >4 h/week before exposure. 2-3 hypoxic sessions in Build phase recommended.'
+          : 'Arrive 4-7 days early. >10 days yields no extra benefit at this elevation. Single hypoxic session (e.g., breath-holding tempo) in Build can help.',
       tr: tier === 'extreme'
-        ? 'Yüksek-yaşa-düşük-antrene ideal. 14-21 gün erken var ya da 4 hafta önce rakım çadırı. Adapte olmadan ciddi DNF riski.'
+        ? 'Yüksek-yaşa-düşük-antrene (LHTL) ideal. 14-21 gün erken var YA DA 4 hafta önce rakım çadırı. KRİTİK SINIRLAR: >21 gün ek kazanç vermez (Robertson 2010 platosu); <7 gün varış <24 sa\'den daha kötü (adaptasyon olmadan dip alırsın). LHTL maruziyetinden önce minimum CTL >5 sa/hafta — düşük aerobik taban üzerine hipoksik stres hastalık riski (Wilber 2007). Adapte olmadan ciddi DNF riski.'
         : tier === 'high'
-          ? '7-14 gün erken var YA DA <24 sa yarış-öncesi (varıştan 3-5 gün sonraki düşüşü önle). Build fazında 2-3 hipoksik seans önerilir.'
-          : '4-7 gün erken var. Build fazında tek hipoksik seans (ör. nefes-tutma tempo) yardımcı olur.',
+          ? '7-14 gün erken var YA DA <24 sa yarış-öncesi (varıştan 3-5 gün sonraki düşüşü önle). >14 gün azalan getiri. Maruziyetten önce minimum CTL >4 sa/hafta. Build fazında 2-3 hipoksik seans önerilir.'
+          : '4-7 gün erken var. Bu rakımda >10 gün ek fayda yok. Build fazında tek hipoksik seans (ör. nefes-tutma tempo) yardımcı olur.',
     },
     pacing: {
       en: 'Reduce goal pace by 5% at 1500m, 8% at 2000m, 12-15% at 3000m+. Expect higher HR for given pace.',
       tr: '1500m\'de hedef tempoyu %5, 2000m\'de %8, 3000m+\'da %12-15 azalt. Verilen tempoda daha yüksek nabız bekle.',
     },
     fueling: {
-      en: 'Increase iron-rich foods 4 weeks pre-race (2x daily red meat or supplement). Hydration needs +30%. Watch for AMS symptoms.',
-      tr: 'Yarıştan 4 hafta önce demir-zengin yiyecekleri arttır (günde 2x kırmızı et veya takviye). Hidrasyon ihtiyacı +%30. AMS belirtilerine dikkat.',
+      en: 'Increase iron-rich foods 4 weeks pre-race (2x daily red meat or supplement). Hydration needs +30%. Watch for AMS symptoms (headache + nausea + sleep disturbance + altitude-related anorexia). If AMS persists >48h despite acetazolamide consideration, descend.',
+      tr: 'Yarıştan 4 hafta önce demir-zengin yiyecekleri arttır (günde 2x kırmızı et veya takviye). Hidrasyon ihtiyacı +%30. AMS belirtilerine dikkat (baş ağrısı + bulantı + uyku bozukluğu + rakıma bağlı iştahsızlık). Asetazolamid değerlendirmesine rağmen AMS >48 sa sürerse, in.',
     },
   }
 }

@@ -356,3 +356,41 @@ describe('buildRaceWeekProtocol — last-3-nights sleep hygiene (v9.35.0)', () =
     expect(en).toMatch(/baseline|elevated/i)
   })
 })
+
+// ── v9.36.0 — Altitude protocol LHTL duration cap + CTL floor ──────────
+describe('buildRaceWeekProtocol — altitude refinements (v9.36.0)', () => {
+  it('extreme altitude (≥3000m) cites Robertson 2010 plateau (>21 days no gain)', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run', raceAltitudeM: 3500 })
+    expect(r.altitude).toBeDefined()
+    expect(r.altitude.acclimatization.en).toMatch(/Robertson 2010|>21 days/i)
+  })
+
+  it('extreme altitude warns <7 days arrival is worse than <24h (post-arrival dip)', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run', raceAltitudeM: 3500 })
+    expect(r.altitude.acclimatization.en).toMatch(/<7 days|7 days arrival/i)
+    expect(r.altitude.acclimatization.en).toMatch(/dip/i)
+  })
+
+  it('extreme altitude requires CTL floor (Wilber 2007)', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run', raceAltitudeM: 3500 })
+    expect(r.altitude.acclimatization.en).toMatch(/CTL.*5|5 h\/week|h\/week/i)
+    expect(r.altitude.acclimatization.en).toMatch(/Wilber 2007/i)
+  })
+
+  it('high altitude (2000-2999m) has its own diminishing-returns cap', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run', raceAltitudeM: 2500 })
+    expect(r.altitude.acclimatization.en).toMatch(/diminishing returns|>14 days/i)
+  })
+
+  it('moderate altitude (1500-1999m) has its own >10 days cap', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run', raceAltitudeM: 1700 })
+    expect(r.altitude.acclimatization.en).toMatch(/>10 days|no extra benefit/i)
+  })
+
+  it('AMS detection criteria expanded (headache + nausea + sleep + anorexia)', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run', raceAltitudeM: 2500 })
+    expect(r.altitude.fueling.en).toMatch(/AMS/)
+    expect(r.altitude.fueling.en).toMatch(/headache/i)
+    expect(r.altitude.fueling.en).toMatch(/sleep/i)
+  })
+})
