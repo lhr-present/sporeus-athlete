@@ -4,6 +4,47 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.17.0 — 2026-05-09 — Race-day mental + caffeine + readiness depth
+
+  Closes 4 race-week audit findings:
+  – P1-6: pre-race anxiety / stress-as-enhancing reframe
+    (Crum 2017, Beedie 2007). Reframes pre-start jitter as
+    performance fuel rather than threat — reduces panic without
+    requiring beta-blocker meds.
+  – P1-7: motor imagery / movement priming (Brown 2017).
+    3-5 min mental rehearsal of one perfect movement before
+    warmup raises motor cortex excitability; improves first-km
+    execution.
+  – P1-8: caffeine cohort safety flags (Burke 2008 + Spriet
+    2014). Closes silent-failure mode where caffeine-naïve
+    athletes blow up race day. Flags: never-first-time-on-race-
+    day, naïve-→-200mg-cap, anxiety-→-3mg/kg-or-skip,
+    sleep-deprived-→-skip, novel-gel-combo-→-GI-distress,
+    never-exceed-6mg/kg.
+  – P2-11: morning RHR / HRV readiness check (Plews & Buchheit
+    2017, Itterum 2009). Concrete decision tree: ±5 bpm = full
+    plan; +8-10 = hold back 5-10%; +10-15 with illness signs =
+    hold significantly or DNS; >+15 = DNS likely correct.
+
+  • Implementation: 4 universal blocks defined at module level
+    (PRE_RACE_ANXIETY_REFRAME, MOTOR_IMAGERY,
+    CAFFEINE_SAFETY_FLAGS, MORNING_READINESS_CHECK), merged
+    into raceDay output regardless of sport. No per-sport
+    duplication.
+
+  • UI: BroaderPlanSections RaceWeekSection renders 4 new
+    callout boxes — readiness check (blue), anxiety reframe +
+    motor imagery (green, mental cluster), caffeine safety
+    (brown).
+
+  • Tests: +5 (9421 total). Citations added: Crum 2017,
+    Brown 2017, Spriet 2014, Itterum 2009.
+
+  Depends on: v9.16.0 (raceDay shape + universal-block merge
+  pattern with raceDelayedContingency / bonkWallContingency).
+
+---
+
 ## v9.16.0 — 2026-05-09 — Race-week event-distance specificity (sprint/short/mid/long tiers)
 
   Closes 5 audit findings from the race-week protocol deep-dive:

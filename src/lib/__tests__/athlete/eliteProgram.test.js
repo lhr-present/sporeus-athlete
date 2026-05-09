@@ -2026,3 +2026,54 @@ describe('buildEliteProgram — v9.16.0 race-week distance tiering', () => {
     expect(r.raceWeekProtocol.raceDay.bonkWallContingency).toBeDefined()
   })
 })
+
+// ── v9.17.0 — race-day mental + caffeine + readiness depth ─────────────────
+describe('buildEliteProgram — v9.17.0 race-day mental/caffeine/readiness blocks', () => {
+  it('exposes preRaceAnxietyReframe with Crum stress-as-enhancing language', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    expect(r.raceWeekProtocol.raceDay.preRaceAnxietyReframe).toBeDefined()
+    expect(r.raceWeekProtocol.raceDay.preRaceAnxietyReframe.en).toMatch(/energized, not nervous/i)
+  })
+
+  it('exposes motorImagery rehearsal block', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    expect(r.raceWeekProtocol.raceDay.motorImagery).toBeDefined()
+    expect(r.raceWeekProtocol.raceDay.motorImagery.en).toMatch(/MOTOR IMAGERY/i)
+    expect(r.raceWeekProtocol.raceDay.motorImagery.en).toMatch(/perfect movement/i)
+  })
+
+  it('exposes caffeineSafetyFlags with caffeine-naïve + anxiety + sleep guards', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    expect(r.raceWeekProtocol.raceDay.caffeineSafetyFlags).toBeDefined()
+    const en = r.raceWeekProtocol.raceDay.caffeineSafetyFlags.en
+    expect(en).toMatch(/NEVER first-time caffeine on race day/i)
+    expect(en).toMatch(/Caffeine-naïve/i)
+    expect(en).toMatch(/anxiety/i)
+    expect(en).toMatch(/Sleep <6h/i)
+  })
+
+  it('exposes morningReadinessCheck with concrete RHR thresholds', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    expect(r.raceWeekProtocol.raceDay.morningReadinessCheck).toBeDefined()
+    const en = r.raceWeekProtocol.raceDay.morningReadinessCheck.en
+    expect(en).toMatch(/READINESS CHECK/i)
+    expect(en).toMatch(/\+8-10 bpm/i)
+    expect(en).toMatch(/DNS/i) // do-not-start option
+  })
+
+  it('all 4 v9.17.0 blocks present across all sports', () => {
+    const sports = [
+      RUN_REALISTIC,
+      { currentPR: { distanceM: 0, timeSec: 250 }, targetPR: { distanceM: 0, timeSec: 280 }, raceDate: '2026-08-25', sport: 'bike', options: { today: TODAY } },
+      { currentPR: { distanceM: 1500, timeSec: 1800 }, targetPR: { distanceM: 1500, timeSec: 1700 }, raceDate: '2026-08-25', sport: 'swim', options: { today: TODAY } },
+      { currentPR: { distanceM: 0, timeSec: 480 }, targetPR: { distanceM: 0, timeSec: 440 }, raceDate: '2026-08-25', sport: 'rowing', options: { today: TODAY } },
+    ]
+    for (const input of sports) {
+      const r = buildEliteProgram(input)
+      expect(r.raceWeekProtocol.raceDay.preRaceAnxietyReframe).toBeDefined()
+      expect(r.raceWeekProtocol.raceDay.motorImagery).toBeDefined()
+      expect(r.raceWeekProtocol.raceDay.caffeineSafetyFlags).toBeDefined()
+      expect(r.raceWeekProtocol.raceDay.morningReadinessCheck).toBeDefined()
+    }
+  })
+})

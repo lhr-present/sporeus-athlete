@@ -465,6 +465,26 @@ export function RaceWeekSection({ raceWeekProtocol, isTR, defaultOpen = false })
               <strong>{isTR ? 'DUVAR KONTENJANSI' : 'WALL CONTINGENCY'}:</strong> {bil(r.raceDay.bonkWallContingency, isTR)}
             </div>
           ) : null}
+          {r.raceDay.morningReadinessCheck ? (
+            <div style={{ marginTop: 8, padding: 6, background: 'rgba(0,100,255,0.08)', borderLeft: '2px solid #0064ff', fontSize: 10 }}>
+              <strong>{isTR ? '⚡ HAZIRLIK KONTROLÜ' : '⚡ READINESS CHECK'}:</strong> {bil(r.raceDay.morningReadinessCheck, isTR)}
+            </div>
+          ) : null}
+          {r.raceDay.preRaceAnxietyReframe ? (
+            <div style={{ marginTop: 4, padding: 6, background: 'rgba(40,167,69,0.08)', borderLeft: '2px solid #28a745', fontSize: 10 }}>
+              <strong>{isTR ? '🧠 ANKSİYETE YENİDEN ÇERÇEVELEME' : '🧠 ANXIETY REFRAME'}:</strong> {bil(r.raceDay.preRaceAnxietyReframe, isTR)}
+            </div>
+          ) : null}
+          {r.raceDay.motorImagery ? (
+            <div style={{ marginTop: 4, padding: 6, background: 'rgba(40,167,69,0.08)', borderLeft: '2px solid #28a745', fontSize: 10 }}>
+              <strong>{isTR ? '🎯 MOTOR İMGELEM' : '🎯 MOTOR IMAGERY'}:</strong> {bil(r.raceDay.motorImagery, isTR)}
+            </div>
+          ) : null}
+          {r.raceDay.caffeineSafetyFlags ? (
+            <div style={{ marginTop: 4, padding: 6, background: 'rgba(125,74,0,0.10)', borderLeft: '2px solid #7d4a00', fontSize: 10 }}>
+              <strong>{isTR ? '☕ KAFEİN GÜVENLİK' : '☕ CAFFEINE SAFETY'}:</strong> {bil(r.raceDay.caffeineSafetyFlags, isTR)}
+            </div>
+          ) : null}
         </div>
         <div style={{ marginTop: 6, fontSize: 9, color: 'var(--muted)', fontStyle: 'italic' }}>{r.citation}</div>
       </div>

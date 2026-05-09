@@ -625,6 +625,41 @@ const BONK_WALL_CONTINGENCY = {
   tr: 'DUVAR KONTENJANSI: yarış ortasında tempo aniden çökerse (ani -10s/km kayma, görüşün daralması, bacak takılması) — 20-30s yavaşla, 200ml spor içeceği iç + 25g jel HEMEN al, gerekirse 60s yürü. Hedef tempodan 15s yavaşa sıfırla. Duvar yakıt, fitness değil — sonraki 5-10 dk toparlanırsın.',
 }
 
+// v9.17.0 — Pre-race anxiety / stress reframe. Crum 2017: stress reactivity
+// reframed as performance fuel ("stress is enhancing"). Beedie 2007: placebo/
+// reframe response is real and large. Reduces pre-start panic without
+// requiring beta-blocker meds. Universal across distances.
+const PRE_RACE_ANXIETY_REFRAME = {
+  en: 'PRE-RACE ANXIETY REFRAME: pre-start jitter, racing heart, butterflies are NOT the enemy — they are your body preparing for peak effort. Say aloud: "I am energized, not nervous. This feeling means I\'m ready." Take 4 slow breaths (4-7-8 box). Anxiety = fuel, not threat (Crum 2017).',
+  tr: 'YARIŞ-ÖNCESİ ANKSİYETE YENİDEN ÇERÇEVELEME: başlangıç-öncesi titrek, hızlı kalp, kelebek hissi düşmanın DEĞİL — vücudun zirve eforuna hazırlanıyor. Sesli söyle: "Enerjiklenmişim, gergin değilim. Bu his hazır olduğum anlamına gelir." 4 yavaş nefes al (4-7-8 kutu). Anksiyete = yakıt, tehdit değil (Crum 2017).',
+}
+
+// v9.17.0 — Motor imagery / movement priming (Brown 2017). 3-5 min mental
+// rehearsal of one perfect movement before warmup primes muscle memory and
+// raises motor cortex excitability. Universal: works for run/bike/swim/row.
+const MOTOR_IMAGERY = {
+  en: 'MOTOR IMAGERY (3-5 min before warmup): lie or sit eyes closed. Mentally rehearse ONE perfect movement (one stride / one pedal stroke / one arm cycle / one drive) in vivid detail — feel the footfall rhythm, the smooth pull, the catch timing. Repeat 10 times. Then walk it once physically. Brown 2017: motor cortex excitability rises measurably. Improves first-km execution.',
+  tr: 'MOTOR İMGELEM (ısınmadan 3-5 dk önce): gözler kapalı yat veya otur. TEK kusursuz hareketi (bir adım / bir pedal vuruşu / bir kol çevrimi / bir çekiş) zihninde canlı detayla prova et — ayak vuruş ritmini, yumuşak çekişi, yakalama zamanlamasını hisset. 10 kez tekrarla. Sonra fiziksel olarak bir kez yürü. Brown 2017: motor korteks uyarılabilirliği ölçülebilir yükselir. İlk-km icrasını iyileştirir.',
+}
+
+// v9.17.0 — Caffeine cohort safety flags. Burke 2008 + Spriet 2014 cite the
+// 3-6 mg/kg dose-response, but never warn caffeine-naïve athletes or
+// anxiety-prone cohorts. This block enforces test-in-training protocol +
+// reduces dose for caffeine-naïve / high-anxiety / sleep-poor cohorts.
+const CAFFEINE_SAFETY_FLAGS = {
+  en: 'CAFFEINE SAFETY (read before dosing): (1) NEVER first-time caffeine on race day — must be tested in 2+ training sessions at race-equivalent dose. (2) Caffeine-naïve (no daily coffee for 30+ days)? Start at 200 mg ONLY (do not exceed 3 mg/kg). (3) High anxiety history? Cut to 3 mg/kg or skip entirely. (4) Sleep <6h previous night? Skip — caffeine on cortisol spike worsens jitter. (5) Combine with practiced gel format only — caffeine + novel gel = GI distress. (6) Never exceed 6 mg/kg — diminishing returns + GI/jitter risk.',
+  tr: 'KAFEİN GÜVENLİK (dozlamadan önce oku): (1) Yarış gününde İLK KEZ kafein ASLA — yarış-eşdeğer dozda 2+ antrenmanda test edilmeli. (2) Kafein-naif (30+ gündür günlük kahve yok)? Sadece 200 mg ile başla (3 mg/kg\'ı aşma). (3) Yüksek anksiyete geçmişi? 3 mg/kg\'a düşür veya tamamen atla. (4) Önceki gece <6sa uyku? Atla — kortizol piki üzerine kafein titreği kötüleştirir. (5) Sadece denenmiş jel formatı ile kombine — kafein + yeni jel = GI sıkıntısı. (6) 6 mg/kg\'ı asla geçme — azalan getiri + GI/titrek riski.',
+}
+
+// v9.17.0 — Morning RHR / HRV readiness check. Itterum 2009 / Plews &
+// Buchheit 2017: resting HR > +8-10 bpm above 7-day baseline = autonomic
+// fatigue or sub-clinical illness signal. Provides concrete decision tree
+// rather than vague "trust how you feel." Race-morning version.
+const MORNING_READINESS_CHECK = {
+  en: 'RACE-MORNING READINESS CHECK (do this in bed before standing): take resting HR for 60s. Compare to 7-day baseline. (a) Within ±5 bpm: full race plan. (b) +8-10 bpm: hold back first 5-10% of race intensity, expect 2-3% slower PR. (c) +10-15 bpm with sore throat / fever / fatigue: serious — consider holding back significantly or DNS. (d) >+15 bpm: DNS likely correct call (illness; race not worth chronic-fatigue cost). HRV (if tracked): >7% drop sustained = match the +10 bpm protocol.',
+  tr: 'YARIŞ-SABAHI HAZIRLIK KONTROLÜ (kalkmadan yatakta yap): 60s dinlenme HR ölç. 7-günlük baz ile karşılaştır. (a) ±5 bpm içinde: tam yarış planı. (b) +8-10 bpm: yarış şiddetinin ilk %5-10\'unda tut, %2-3 yavaş PR bekle. (c) +10-15 bpm ile boğaz ağrısı / ateş / yorgunluk: ciddi — büyük ölçüde tut veya DNS düşün. (d) >+15 bpm: muhtemelen DNS doğru karar (hastalık; yarış kronik-yorgunluk maliyetine değmez). HRV (takip ediliyorsa): >%7 düşüş sürerse +10 bpm protokolü ile aynı.',
+}
+
 /**
  * @public
  * @param {{
@@ -650,6 +685,7 @@ export function buildRaceWeekProtocol(input) {
     RACE_DAY_RUN
 
   // v9.16.0 — distance-tier overrides + universal contingencies
+  // v9.17.0 — universal mental + caffeine + readiness blocks
   const distanceTier = classifyDistanceTier(sport, input?.raceDistanceM)
   const tierOverride = distanceTier ? DISTANCE_TIER_OVERRIDES[distanceTier] : null
   const raceDay = {
@@ -662,6 +698,10 @@ export function buildRaceWeekProtocol(input) {
     } : {}),
     raceDelayedContingency: RACE_DELAYED_CONTINGENCY,
     bonkWallContingency: BONK_WALL_CONTINGENCY,
+    preRaceAnxietyReframe: PRE_RACE_ANXIETY_REFRAME,
+    motorImagery: MOTOR_IMAGERY,
+    caffeineSafetyFlags: CAFFEINE_SAFETY_FLAGS,
+    morningReadinessCheck: MORNING_READINESS_CHECK,
   }
 
   // v9.8.0 — conditional advisories
@@ -671,7 +711,7 @@ export function buildRaceWeekProtocol(input) {
   const out = {
     schedule,
     raceDay,
-    citation: 'Mujika 2003; Bosquet et al. 2007; Stellingwerf 2018; Burke 2017; Zurawlew 2016 (heat); Wilber 2007 (altitude); McCormick 2018 (pacing)',
+    citation: 'Mujika 2003; Bosquet et al. 2007; Stellingwerf 2018; Burke 2017; Zurawlew 2016 (heat); Wilber 2007 (altitude); McCormick 2018 (pacing); Crum 2017 (anxiety reframe); Brown 2017 (motor imagery); Plews & Buchheit 2017 (HRV); Burke 2008 + Spriet 2014 (caffeine)',
   }
   if (travel)   out.travel = travel
   if (altitude) out.altitude = altitude
@@ -681,4 +721,4 @@ export function buildRaceWeekProtocol(input) {
 
 export { classifyDistanceTier }
 
-export const RACE_WEEK_CITATION = 'Mujika 2003; Bosquet et al. 2007; Stellingwerf 2018; Burke 2017; McCormick 2018; Bussau 2002'
+export const RACE_WEEK_CITATION = 'Mujika 2003; Bosquet et al. 2007; Stellingwerf 2018; Burke 2017; McCormick 2018; Bussau 2002; Crum 2017; Brown 2017; Burke 2008; Spriet 2014; Plews & Buchheit 2017'
