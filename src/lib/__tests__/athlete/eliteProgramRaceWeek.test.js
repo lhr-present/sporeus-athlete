@@ -310,6 +310,50 @@ describe('buildRaceWeekProtocol — DNF triage (v9.35.0)', () => {
   })
 })
 
+// ── v9.38.0 — DNF triage structured buckets (readability) ─────────────
+describe('buildRaceWeekProtocol — DNF triage structured buckets (v9.38.0)', () => {
+  it('every sport carries dnfTriageBuckets array', () => {
+    for (const sport of ['run', 'bike', 'swim', 'rowing', 'triathlon']) {
+      const r = buildRaceWeekProtocol({ sport })
+      expect(Array.isArray(r.raceDay.dnfTriageBuckets)).toBe(true)
+      expect(r.raceDay.dnfTriageBuckets.length).toBe(3)
+    }
+  })
+
+  it('buckets are ordered stop → exit → continue', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run' })
+    expect(r.raceDay.dnfTriageBuckets.map(b => b.severity)).toEqual(['stop', 'exit', 'continue'])
+  })
+
+  it('every bucket has bilingual title + items array (EN+TR)', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run' })
+    for (const bucket of r.raceDay.dnfTriageBuckets) {
+      expect(bucket.title.en).toBeTruthy()
+      expect(bucket.title.tr).toBeTruthy()
+      expect(Array.isArray(bucket.items.en)).toBe(true)
+      expect(Array.isArray(bucket.items.tr)).toBe(true)
+      expect(bucket.items.en.length).toBeGreaterThan(0)
+      expect(bucket.items.en.length).toBe(bucket.items.tr.length)
+    }
+  })
+
+  it('STOP bucket lists chest pain + syncope + vision discretely', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run' })
+    const stop = r.raceDay.dnfTriageBuckets.find(b => b.severity === 'stop')
+    const flat = stop.items.en.join(' ').toLowerCase()
+    expect(flat).toMatch(/chest pain/)
+    expect(flat).toMatch(/syncope|collapse/)
+    expect(flat).toMatch(/vision/)
+  })
+
+  it('flattened blob (back-compat) still matches all 3 category headers', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run' })
+    expect(r.raceDay.dnfTriageDecisionTree.en).toMatch(/STOP IMMEDIATELY/i)
+    expect(r.raceDay.dnfTriageDecisionTree.en).toMatch(/EXIT TO WALK/i)
+    expect(r.raceDay.dnfTriageDecisionTree.en).toMatch(/CONTINUE WITH ADJUSTMENT/i)
+  })
+})
+
 // ── v9.35.0 — Last 3 nights sleep hygiene ──────────────────────────────
 describe('buildRaceWeekProtocol — last-3-nights sleep hygiene (v9.35.0)', () => {
   it('every sport carries last3NightsSleepHygiene block', () => {

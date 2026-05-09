@@ -4,6 +4,39 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.38.0 — 2026-05-09 — DNF triage readability — wall → 3 severity-tiered callouts
+
+  Coaching audit: previous race-day DNF block was a single 480-word
+  paragraph with three category labels (STOP / EXIT / CONTINUE) buried
+  inside. Athletes scanning under stress can't parse a wall — they need
+  visually distinct severity tiers and one-line bullets.
+
+  • Restructured `DNF_TRIAGE_BUCKETS` as ordered array of {severity, title,
+    items} objects (8 stop signs, 5 exit signs, 4 continue protocols).
+    Each item is now its own bullet, no commas-as-separators.
+
+  • Backwards-compatible: `dnfTriageDecisionTree` blob is now derived from
+    the buckets via `_flattenBuckets(lang)`. All existing tests + JSON
+    consumers see the same blob string.
+
+  • UI: BroaderPlanSections.jsx renders each bucket as its own callout —
+    red for STOP IMMEDIATELY (medical), orange for EXIT TO WALK (sports
+    injury), blue for CONTINUE WITH ADJUSTMENT (recoverable). Items are
+    `<ul><li>` not run-on text. Falls back to blob render if buckets
+    array is absent (zero risk to in-flight serialized plans).
+
+  • 5 new tests v9.38.0 — DNF triage structured buckets verify the array
+    is present, ordered stop→exit→continue, fully bilingual, and that
+    the flattened back-compat blob still matches all 3 category headers.
+
+  CITATIONS: same as v9.35.0 (Bahr 2016, Noakes 2000, Sawka 2007 ACSM,
+  Maron 2007). No protocol changes, only presentation.
+
+  DEPENDS ON: src/lib/athlete/eliteProgramRaceWeek.js (DNF data shape),
+  src/components/dashboard/BroaderPlanSections.jsx (renderer).
+
+---
+
 ## v9.37.0 — 2026-05-09 — Base polarization fix across all 4 sports
 
   Coaching audit (multi-agent critique pass) caught every single-sport Base

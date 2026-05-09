@@ -517,8 +517,29 @@ export function RaceWeekSection({ raceWeekProtocol, isTR, defaultOpen = false })
               <strong>{isTR ? '🌙 SON 3 GECE UYKU HİJYENİ' : '🌙 LAST 3 NIGHTS SLEEP HYGIENE'}:</strong> {bil(r.raceDay.last3NightsSleepHygiene, isTR)}
             </div>
           ) : null}
-          {/* v9.35.0 — DNF triage decision tree (Bahr 2016 + Noakes 2000 + Sawka 2007) */}
-          {r.raceDay.dnfTriageDecisionTree ? (
+          {/* v9.35.0 — DNF triage decision tree (Bahr 2016 + Noakes 2000 + Sawka 2007).
+              v9.38.0 — restructured into 3 severity-tiered callouts for readability. */}
+          {Array.isArray(r.raceDay.dnfTriageBuckets) && r.raceDay.dnfTriageBuckets.length > 0 ? (
+            <div style={{ marginTop: 4, fontSize: 10 }}>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>{isTR ? '🚨 DNF KARAR AĞACI' : '🚨 DNF DECISION TREE'}</div>
+              {r.raceDay.dnfTriageBuckets.map(bucket => {
+                const palette = bucket.severity === 'stop'
+                  ? { bg: 'rgba(220,53,69,0.15)', bd: '#dc3545' }
+                  : bucket.severity === 'exit'
+                    ? { bg: 'rgba(255,102,0,0.12)', bd: '#ff6600' }
+                    : { bg: 'rgba(0,100,255,0.10)', bd: '#0064ff' }
+                const items = bucket.items?.[isTR ? 'tr' : 'en'] || []
+                return (
+                  <div key={bucket.severity} style={{ marginTop: 4, padding: 6, background: palette.bg, borderLeft: `2px solid ${palette.bd}` }}>
+                    <strong>{bil(bucket.title, isTR)}</strong>
+                    <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
+                      {items.map((it, i) => <li key={i} style={{ marginBottom: 2 }}>{it}</li>)}
+                    </ul>
+                  </div>
+                )
+              })}
+            </div>
+          ) : r.raceDay.dnfTriageDecisionTree ? (
             <div style={{ marginTop: 4, padding: 6, background: 'rgba(220,53,69,0.10)', borderLeft: '2px solid #dc3545', fontSize: 10 }}>
               <strong>{isTR ? '🚨 DNF KARAR AĞACI' : '🚨 DNF DECISION TREE'}:</strong> {bil(r.raceDay.dnfTriageDecisionTree, isTR)}
             </div>

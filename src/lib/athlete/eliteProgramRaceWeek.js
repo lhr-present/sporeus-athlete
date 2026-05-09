@@ -683,13 +683,85 @@ function buildHeatProtocol(raceHeatC) {
 //   Citations: Bahr 2016 (cramping etiology multi-factorial); Noakes 2000
 //   (central governor + organ-protective shutdown); Maron 2007 (race-day
 //   cardiac event signs); Sawka 2007 ACSM (heat illness exit criteria).
+// v9.38.0 — Restructured into severity-tiered buckets so the UI can render
+// each tier as its own color-coded callout (red/orange/blue) instead of a
+// 480-word run-on paragraph. The bilingual blob `DNF_TRIAGE_DECISION_TREE`
+// is now derived from the buckets so existing tests + downstream consumers
+// (export, share, JSON) keep working unchanged.
+const DNF_TRIAGE_BUCKETS = [
+  {
+    severity: 'stop',
+    title: { en: 'STOP IMMEDIATELY (medical, not optional)', tr: 'HEMEN DUR (tıbbi, opsiyon değil)' },
+    items: {
+      en: [
+        'Chest pain or pressure',
+        'Severe shortness of breath',
+        'Syncope or near-syncope',
+        'Collapse',
+        'Blurred or tunnel vision',
+        'Sudden severe headache (especially with aura — stroke risk)',
+        'Confusion',
+        'No sweat in heat AND core-temp sensation rising',
+      ],
+      tr: [
+        'Göğüs ağrısı veya baskı',
+        'Şiddetli nefes darlığı',
+        'Bayılma veya bayılma hissi',
+        'Çökme',
+        'Bulanık veya tünel görüş',
+        'Ani şiddetli baş ağrısı (özellikle aura ile — felç riski)',
+        'Zihin bulanıklığı',
+        'Sıcakta terlemeyi DURDURMA + iç-vücut ısısının yükseldiğini hissetme',
+      ],
+    },
+  },
+  {
+    severity: 'exit',
+    title: { en: 'EXIT TO WALK / DNF (sports-injury caution)', tr: 'YÜRÜYÜŞE GEÇ / DNF (spor-yaralanma uyarısı)' },
+    items: {
+      en: [
+        'Tea-colored or dark-cola urine (rhabdomyolysis onset)',
+        'Severe localized joint or bone pain (stress fracture / compartment syndrome)',
+        'Unilateral leg weakness',
+        'Fever + chills + sore throat (infection — viral myocarditis risk)',
+        'One-sided gait failure',
+      ],
+      tr: [
+        'Çay rengi veya koyu kola idrar (rabdomyoliz başlangıcı)',
+        'Şiddetli lokal eklem veya kemik ağrısı (stres kırığı / kompartman sendromu)',
+        'Tek-taraflı bacak zayıflığı',
+        'Ateş + titreme + boğaz ağrısı (enfeksiyon — viral miyokardit riski)',
+        'Tek-taraflı yürüyüş bozukluğu',
+      ],
+    },
+  },
+  {
+    severity: 'continue',
+    title: { en: 'CONTINUE WITH ADJUSTMENT', tr: 'AYARLAYARAK DEVAM ET' },
+    items: {
+      en: [
+        'Mild cramp → slow 20-30s, electrolyte + 100 ml water, resume at -5% pace',
+        'Mid-race nausea → switch to liquid-only fueling, smaller boluses',
+        'Pacing miscalculation (off goal pace) → switch mindset to "best possible from here," do NOT chase original goal',
+        'Mechanical (flat, chain) → solo fix <5 min OK; >10 min = DNF unless near aid station with neutral support',
+      ],
+      tr: [
+        'Hafif kramp → 20-30s yavaşla, elektrolit + 100 ml su, %5 yavaş tempoda devam',
+        'Yarış-ortası bulantı → küçük dozlarda sadece sıvı yakıta geç',
+        'Tempo hatası (hedef tempodan sapma) → "buradan mümkün olanı yap" zihniyetine geç, orijinal hedefi kovalama',
+        'Mekanik arıza (patlak, zincir) → tek başına <5 dk tamir tamam; >10 dk = aid istasyonu + tarafsız destek yoksa DNF',
+      ],
+    },
+  },
+]
+
+const _flattenBuckets = (lang) => DNF_TRIAGE_BUCKETS
+  .map(b => `${b.title[lang]}: ${b.items[lang].join('; ')}.`)
+  .join(' ')
+
 const DNF_TRIAGE_DECISION_TREE = {
-  en: 'STOP IMMEDIATELY (medical, not optional): chest pain or pressure, severe shortness of breath, syncope or near-syncope, collapse, blurred or tunnel vision, sudden severe headache (especially with aura — stroke risk), confusion, no sweat in heat AND core-temp sensation rising. ' +
-      'EXIT TO WALK / DNF (sports-injury caution): tea-colored or dark-cola urine (rhabdomyolysis onset), severe localized joint or bone pain (stress fracture / compartment syndrome), unilateral leg weakness, fever + chills + sore throat (infection — viral myocarditis risk), one-sided gait failure. ' +
-      'CONTINUE WITH ADJUSTMENT: mild cramp → slow 20-30s, electrolyte + 100ml water, resume at -5% pace; mid-race nausea → switch to liquid-only fueling smaller boluses; pacing miscalculation (off goal pace) → switch mindset to "best possible from here," do NOT chase original goal; mechanical (flat, chain) → solo fix <5 min OK; >10 min = DNF unless near aid station with neutral support.',
-  tr: 'HEMEN DUR (tıbbi, opsiyon değil): göğüs ağrısı veya baskı, şiddetli nefes darlığı, bayılma veya bayılma hissi, çökme, bulanık veya tünel görüş, ani şiddetli baş ağrısı (özellikle aura ile — felç riski), zihin bulanıklığı, sıcakta terlemeyi DURDURMA + iç-vücut ısısının yükseldiğini hissetme. ' +
-      'YÜRÜYÜŞE GEÇ / DNF (spor-yaralanma uyarısı): çay rengi veya koyu kola idrar (rabdomyoliz başlangıcı), şiddetli lokal eklem veya kemik ağrısı (stres kırığı / kompartman sendromu), tek-taraflı bacak zayıflığı, ateş + titreme + boğaz ağrısı (enfeksiyon — viral miyokardit riski), tek-taraflı yürüyüş bozukluğu. ' +
-      'AYARLAYARAK DEVAM ET: hafif kramp → 20-30s yavaşla, elektrolit + 100ml su, %5 yavaş tempoda devam; yarış-ortası bulantı → küçük dozlarda sadece sıvı yakıta geç; tempo hatası → "buradan mümkün olanı yap" zihniyetine geç, orijinal hedefi kovalama; mekanik arıza (patlak, zincir) → tek başına <5 dk tamir tamam; >10 dk = aid istasyonu + tarafsız destek yoksa DNF.',
+  en: _flattenBuckets('en'),
+  tr: _flattenBuckets('tr'),
 }
 
 // v9.35.0 — Last 3 nights sleep hygiene protocol. Closes a P1 from the
@@ -952,6 +1024,9 @@ export function buildRaceWeekProtocol(input) {
     postRaceRecovery48h: POST_RACE_RECOVERY_48H,
     // v9.35.0 — DNF triage decision tree (when to STOP, when to adjust).
     dnfTriageDecisionTree: DNF_TRIAGE_DECISION_TREE,
+    // v9.38.0 — structured buckets so the UI can render each severity tier
+    // as its own color-coded callout (red/orange/blue) instead of a wall.
+    dnfTriageBuckets: DNF_TRIAGE_BUCKETS,
     // v9.35.0 — Last 3 nights specific sleep hygiene (caffeine cutoff,
     // melatonin gating, bedroom environment, wake-time anchoring).
     last3NightsSleepHygiene: LAST_3_NIGHTS_SLEEP_HYGIENE,
