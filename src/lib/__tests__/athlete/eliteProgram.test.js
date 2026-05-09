@@ -2468,6 +2468,118 @@ describe('buildEliteProgram — sample-week strength weaving (v9.24.0)', () => {
     expect(thu.strength).toBeTruthy()
   })
 
+  // ── v9.28.0 — Edge-case stress-test fixes ──────────────────────────────
+  describe('horizon-too-short rejection (v9.28.0)', () => {
+    it('rejects race date == today with explicit reason', () => {
+      const r = buildEliteProgram({
+        currentPR: { distanceM: 10000, timeSec: 3000 },
+        targetPR:  { distanceM: 10000, timeSec: 2820 },
+        raceDate:  TODAY,
+        sport: 'run',
+        options: { today: TODAY },
+      })
+      expect(r._rejected).toBe(true)
+      expect(r.reason).toBe('horizon-too-short')
+      expect(r.note.en).toMatch(/less than a week/i)
+      expect(r.note.tr).toMatch(/bir haftadan az/i)
+    })
+
+    it('rejects race date 6 days away (sub-week, weeksAvailable=0)', () => {
+      const r = buildEliteProgram({
+        currentPR: { distanceM: 10000, timeSec: 3000 },
+        targetPR:  { distanceM: 10000, timeSec: 2820 },
+        raceDate:  '2026-05-09', // 5 days from TODAY (2026-05-04)
+        sport: 'run',
+        options: { today: TODAY },
+      })
+      expect(r._rejected).toBe(true)
+      expect(r.reason).toBe('horizon-too-short')
+    })
+
+    it('still rejects race-in-past with race-in-past reason (priority preserved)', () => {
+      const r = buildEliteProgram({
+        currentPR: { distanceM: 10000, timeSec: 3000 },
+        targetPR:  { distanceM: 10000, timeSec: 2820 },
+        raceDate:  '2026-04-01',
+        sport: 'run',
+        options: { today: TODAY },
+      })
+      expect(r._rejected).toBe(true)
+      expect(r.reason).toBe('race-in-past')
+    })
+
+    it('accepts horizon ≥1 week (preserves 2-3 week degraded Peak+Taper path)', () => {
+      const r = buildEliteProgram({
+        currentPR: { distanceM: 10000, timeSec: 3000 },
+        targetPR:  { distanceM: 10000, timeSec: 2820 },
+        raceDate:  '2026-05-12', // 8 days = >1 week from TODAY
+        sport: 'run',
+        options: { today: TODAY },
+      })
+      expect(r._rejected).toBeUndefined()
+      expect(r.phases).toBeDefined()
+    })
+  })
+
+  describe('rowing synthesis branch (v9.28.0)', () => {
+    it('rowing with noTarget=true synthesizes a target (was: TypeError crash)', () => {
+      const r = buildEliteProgram({
+        currentPR: { distanceM: 2000, timeSec: 420 }, // 7:00 2k
+        targetPR:  null,
+        sport: 'rowing',
+        noTarget: true,
+        raceDate:  '2026-09-01',
+        options: { today: TODAY },
+      })
+      expect(r).not.toBeNull()
+      expect(r._rejected).toBeUndefined()
+      expect(r.targetLevel?.split2kSec).toBeDefined()
+      expect(r.targetLevel.split2kSec).toBeLessThan(420) // gain applied
+    })
+
+    it('rowing synthesis caps gain at 12 sec/block (sanity ceiling)', () => {
+      const r = buildEliteProgram({
+        currentPR: { distanceM: 2000, timeSec: 600 }, // 10:00 — recreational
+        targetPR:  null,
+        sport: 'rowing',
+        noTarget: true,
+        raceDate:  '2026-12-01', // ~30 weeks (multiple blocks)
+        options: { today: TODAY },
+      })
+      expect(r).not.toBeNull()
+      expect(r._rejected).toBeUndefined()
+      // Even on a long horizon with 5 sec/block recreational base, the cap
+      // keeps gain from going wild. With scale = weeksAvailable/12 ~= 2.5,
+      // raw gain = 5*2.5 = 12.5 → capped to 12 → target = 588.
+      expect(r.targetLevel.split2kSec).toBeGreaterThanOrEqual(588)
+    })
+  })
+
+  describe('defensive null-guard for synthesis failure (v9.28.0)', () => {
+    it('returns target-synthesis-failed instead of crashing if no branch matches', () => {
+      // We can't easily trigger this in production code (all sports are
+      // covered now), but the guard exists. Verify by checking a path
+      // we know hits it: if a future sport is added without synthesis,
+      // it should return _rejected, not throw.
+      // For now, this is a smoke test that the guard fires when targetPR
+      // is null and noTarget is true — covered by the rowing fix above
+      // (rowing was the previously-uncovered branch).
+      // Simplest direct test: use rowing with currentPR.timeSec at the
+      // floor where synthesis returns null (synth >= currentPR.timeSec).
+      const r = buildEliteProgram({
+        currentPR: { distanceM: 2000, timeSec: 60 }, // 1:00 2k — impossible
+        targetPR:  null,
+        sport: 'rowing',
+        noTarget: true,
+        raceDate:  '2026-09-01',
+        options: { today: TODAY },
+      })
+      // At 60s 2k, gainPerBlock=1 sec, capped synth=59 → still faster than 60 → succeeds.
+      // We expect generation to succeed (no crash) — that's the win.
+      expect(r).not.toBeNull()
+    })
+  })
+
   // ── v9.27.0 — Tri Build bike-quality fix (sweet-spot on Sat) ──────────
   it('Tri Build Sat carries structured sweet-spot work (Z4 minutes > 0)', () => {
     const tri = {

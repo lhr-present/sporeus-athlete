@@ -4,6 +4,48 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.28.0 — 2026-05-09 — Edge-case stress-test fixes (rowing crash, sub-week horizon, defensive guard)
+
+  Closes 3 verified P0 bugs from a triple-agent stress-test of
+  `buildEliteProgram` at boundary conditions. All three were
+  reproduced with a scratch script before fixing.
+
+  • **Rowing + noTarget = TypeError crash** — the synthesis block
+    (lines 869-918) handled run/triathlon/bike/swim but not rowing.
+    With `noTarget: true` and `sport: 'rowing'`, `targetPR` stayed
+    null after the block, then the target-faster check accessed
+    `.timeSec` of null and crashed. Added rowing branch using
+    `rowingGainPerBlock(c2kSec)` for sec/block gain, capped at
+    12 sec/block, and synthesized a 2k-distance target.
+
+  • **Sub-week horizons silently produced empty plans** — race date
+    today, tomorrow, or 2-6 days out fell through with
+    `weeksAvailable = 0`, generating a result where `phases` and
+    `weeklyTSS` were empty/undefined. UI rendered a "generated"
+    state with nothing in it. Now: explicit
+    `_rejected: { reason: 'horizon-too-short' }` with bilingual
+    note. Threshold = `<1 week` to preserve the existing 2-3 week
+    degraded Peak+Taper path that the UI handles correctly.
+
+  • **Defensive null-guard for synthesis failure** — even with
+    rowing fixed, the orchestrator now refuses to crash if a future
+    sport branch is added without synthesis. Returns
+    `_rejected: { reason: 'target-synthesis-failed' }` so the UI
+    can render a useful message instead of bubbling a TypeError.
+
+  Tests: 7 new in eliteProgram.test.js — horizon-too-short reasons
+  (today, sub-week, race-in-past priority preserved, ≥1 week
+  accepts), rowing synthesis (gain applied, cap honored), defensive
+  guard smoke test. 9506/9506 green. Bundle 1320.8 KB.
+
+  Stress-test methodology archived: `/tmp/stress_test.mjs` —
+  reproducible scratch script for all three scenarios.
+
+  Depends on: v8.96.0 (noTarget path), v8.96.0 (race-in-past
+  rejection — priority over horizon-too-short).
+
+---
+
 ## v9.27.0 — 2026-05-09 — Tri Build bike-quality fix (sweet-spot on Sat)
 
   Closes a P0 science finding from the deep-dive audit. Triathlon

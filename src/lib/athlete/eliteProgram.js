@@ -855,6 +855,21 @@ export function buildEliteProgram(input) {
       }
     }
     weeksAvailable = Math.max(0, Math.floor(daysAvailable / 7))
+    // v9.28.0 — Sub-week horizons (race today, tomorrow, 6 days out)
+    // previously generated a result with weeksAvailable=undefined and empty
+    // phases — silent partial output that confused the UI. Reject explicitly.
+    // Threshold is < 1 week (not < 4) so the existing 2-3 week degraded
+    // Peak+Taper path stays valid for last-minute taper planning.
+    if (weeksAvailable < 1) {
+      return {
+        _rejected: true,
+        reason: 'horizon-too-short',
+        note: {
+          en: 'Race is less than a week away — too short to plan. Use the race-week protocol instead.',
+          tr: 'Yarışa bir haftadan az kaldı — plan için çok kısa. Bunun yerine yarış-haftası protokolünü kullan.',
+        },
+      }
+    }
   } else {
     // weeksOverride path — clamp to [4,52]
     const wo = Math.max(4, Math.min(52, Math.floor(weeksOverrideRaw)))
@@ -915,6 +930,33 @@ export function buildEliteProgram(input) {
       if (!synthTime || synthTime >= currentPR.timeSec) return null
       targetPR = { distanceM: cDist, timeSec: synthTime }
       synthetic.targetPR = true
+    } else if (sport === 'rowing') {
+      // v9.28.0 — Rowing was missing from the synthesis block. Crash on line
+      // 923 when noTarget=true with rowing because targetPR stayed null and
+      // the target-faster check accessed `.timeSec` of null.
+      // 2k time → split500 gain via rowingGainPerBlock (sec/block).
+      const c2kSec = currentPR.timeSec
+      const gainSec = rowingGainPerBlock(c2kSec) * scale
+      const cappedGain = Math.min(gainSec, 12)
+      const synthTime = Math.round(c2kSec - cappedGain)
+      if (synthTime <= 0 || synthTime >= c2kSec) return null
+      targetPR = { distanceM: 2000, timeSec: synthTime }
+      synthetic.targetPR = true
+    }
+  }
+
+  // v9.28.0 — Defensive null-guard. The synthesis block may not produce a
+  // targetPR for sport branches I haven't anticipated (or future sport
+  // additions). Without this, line 923 crashes with TypeError. Returning
+  // a structured rejection lets the UI render a useful message instead.
+  if (!targetPR) {
+    return {
+      _rejected: true,
+      reason: 'target-synthesis-failed',
+      note: {
+        en: 'Could not synthesize a realistic target for this sport / current level. Please provide an explicit target.',
+        tr: 'Bu spor / mevcut seviye için gerçekçi bir hedef üretilemedi. Lütfen açık bir hedef belirt.',
+      },
     }
   }
 
