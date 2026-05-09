@@ -348,13 +348,22 @@ describe('EliteProgramCard — v8.91.0 personalization & rejection surface', () 
     expect(banner.textContent).toMatch(/Hedef süre mevcut süreden daha hızlı olmalı/i)
   })
 
-  it('renders rejection banner for race-in-past', () => {
+  // v9.26.0 — past race date is now caught CLIENT-SIDE before submission
+  // (was: rejected post-submit via banner). Form blocks submit, shows
+  // inline alert under the date field. Orchestrator's race-in-past
+  // rejection path is still covered at the lib level (eliteProgram.test.js).
+  it('shows inline alert for past race date and blocks submit', () => {
     renderCard()
-    fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-04-30' })
-    const banner = document.querySelector('[data-rejection]')
-    expect(banner).not.toBeNull()
-    expect(banner.getAttribute('data-rejection')).toBe('race-in-past')
-    expect(banner.textContent).toMatch(/Race date is in the past/i)
+    fireEvent.change(screen.getByLabelText(/Current PR time/i), { target: { value: '50:00' } })
+    fireEvent.change(screen.getByLabelText(/Target PR time/i), { target: { value: '40:00' } })
+    fireEvent.change(screen.getByLabelText(/Race date/i), { target: { value: '2026-04-30' } })
+    // Inline alert appears with bilingual message (scoped — global a11y
+    // live regions also have role="alert")
+    expect(screen.getByText(/Race date must be in the future/i)).toBeInTheDocument()
+    // Submit is disabled, no rejection banner reached
+    const submit = screen.getByRole('button', { name: /GENERATE/i })
+    expect(submit).toBeDisabled()
+    expect(document.querySelector('[data-rejection]')).toBeNull()
   })
 
   it('rejection banner uses red border-left accent', () => {
@@ -1389,5 +1398,75 @@ describe('autoFormatMmSs — digit-driven MM:SS auto-formatting', () => {
       // basic shape check: must contain colon and end with 2-digit seconds
       expect(formatted).toMatch(/^\d{1,2}(:\d{2}){1,2}$/)
     }
+  })
+})
+
+// ── v9.26.0 — Form UX hardening: auto-save, inline date validation, disabled reason
+describe('EliteProgramCard — form UX hardening (v9.26.0)', () => {
+  it('shows specific disabled-reason text when current time is missing', () => {
+    renderCard()
+    fireEvent.change(screen.getByLabelText(/Race date/i), { target: { value: '2026-09-01' } })
+    expect(screen.getByText(/Enter current time as MM:SS/i)).toBeInTheDocument()
+  })
+
+  it('disabled-reason text updates as fields fill in', () => {
+    renderCard()
+    // Empty form: complains about current time first
+    expect(screen.getByText(/Enter current time as MM:SS/i)).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText(/Current PR time/i), { target: { value: '50:00' } })
+    // Now complains about target time
+    expect(screen.getByText(/Enter target time/i)).toBeInTheDocument()
+  })
+
+  it('renders TR disabled-reason when lang=tr', () => {
+    renderCard({}, 'tr')
+    expect(screen.getByText(/Mevcut süreyi MM:SS olarak gir/i)).toBeInTheDocument()
+  })
+
+  it('inline alert appears immediately when past date is typed (no submit needed)', () => {
+    renderCard()
+    fireEvent.change(screen.getByLabelText(/Race date/i), { target: { value: '2025-01-01' } })
+    expect(screen.getByText(/Race date must be in the future/i)).toBeInTheDocument()
+  })
+
+  it('inline alert disappears when date is corrected', () => {
+    renderCard()
+    fireEvent.change(screen.getByLabelText(/Race date/i), { target: { value: '2025-01-01' } })
+    expect(screen.getByText(/Race date must be in the future/i)).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText(/Race date/i), { target: { value: '2026-09-01' } })
+    expect(screen.queryByText(/Race date must be in the future/i)).not.toBeInTheDocument()
+  })
+
+  it('date input has min attribute set to today (native browser block)', () => {
+    renderCard()
+    const dateInput = screen.getByLabelText(/Race date/i)
+    expect(dateInput.getAttribute('min')).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+
+  it('auto-saves form state on field change (within 600ms debounce)', async () => {
+    renderCard()
+    fireEvent.change(screen.getByLabelText(/Current PR time/i), { target: { value: '50:00' } })
+    fireEvent.change(screen.getByLabelText(/Race date/i), { target: { value: '2026-09-01' } })
+    // Wait for debounce + slop
+    await new Promise(r => setTimeout(r, 800))
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY))
+    // Persistence shape varies by mode; the form key carries the latest field values.
+    expect(saved.form?.currentTime).toBe('50:00')
+    expect(saved.form?.raceDate).toBe('2026-09-01')
+  })
+
+  it('does NOT auto-save when no input has been entered (avoids stomping prior state)', async () => {
+    // Pre-seed localStorage with previous form state
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      input: null,
+      form: { sport: 'run', currentTime: '40:00', raceDate: '2026-08-15' },
+    }))
+    renderCard()
+    // Wait through debounce window without entering anything
+    await new Promise(r => setTimeout(r, 800))
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY))
+    // Pre-existing data preserved
+    expect(saved.form.currentTime).toBe('40:00')
+    expect(saved.form.raceDate).toBe('2026-08-15')
   })
 })

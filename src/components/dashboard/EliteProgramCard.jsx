@@ -3,7 +3,7 @@
 // periodized scientific yearly program. Two render modes: form / plan.
 // Source: buildEliteProgram() — see src/lib/athlete/eliteProgram.js spec.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo, useState } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
@@ -185,7 +185,13 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
   }
 
   const cs = parseMmSs(curT), ts = parseMmSs(tgtT)
-  const dateOk = /^\d{4}-\d{2}-\d{2}$/.test(date)
+  const dateFormatOk = /^\d{4}-\d{2}-\d{2}$/.test(date)
+  // v9.26.0 — also reject past race dates inline (was: rejected only on
+  // generate, leaving user with a dead-end submit). Compare ISO strings —
+  // both are YYYY-MM-DD so lexicographic order = chronological order.
+  const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), [])
+  const dateInPast = dateFormatOk && date < todayISO
+  const dateOk = dateFormatOk && !dateInPast
 
   // Compute readiness + Wakayoshi-derived swim payload (when 2-TT mode)
   const isBikeFtp = sport === 'bike' && bikeFtpDirect
@@ -219,6 +225,66 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
   if (isBikeFtp) ready = bikeReady && horizonReady
   else if (isSwim2TT) ready = swimReady && horizonReady
   else ready = !!sport && cs != null && (noTarget || ts != null) && horizonReady
+
+  // v9.26.0 — Disabled-button reason (bilingual). Returns null when ready.
+  // Order matches user-perceived form flow: sport → time → target → date.
+  const disabledReason = useMemo(() => {
+    if (ready) return null
+    if (!sport) return { en: 'Select a sport', tr: 'Bir spor seç' }
+    if (isBikeFtp) {
+      if (!Number.isFinite(curWattsN) || curWattsN <= 0) return { en: 'Enter current FTP (watts)', tr: 'Mevcut FTP gir (watt)' }
+      if (!noTarget && (!Number.isFinite(tgtWattsN) || tgtWattsN <= 0)) return { en: 'Enter target FTP or pick "no target"', tr: 'Hedef FTP gir veya "hedef yok" seç' }
+    } else if (isSwim2TT) {
+      if (swimSecPer100mCur == null) return { en: 'Enter both swim trial times (TT1 + TT2)', tr: 'Her iki yüzme deneme süresini gir (TT1 + TT2)' }
+      if (!noTarget && swimSecPer100mTgt == null) return { en: 'Enter target trial times or pick "no target"', tr: 'Hedef deneme sürelerini gir veya "hedef yok" seç' }
+    } else {
+      if (cs == null) return { en: 'Enter current time as MM:SS', tr: 'Mevcut süreyi MM:SS olarak gir' }
+      if (!noTarget && ts == null) return { en: 'Enter target time or pick "no target"', tr: 'Hedef süre gir veya "hedef yok" seç' }
+    }
+    if (!noRaceDate) {
+      if (!dateFormatOk) return { en: 'Enter race date (YYYY-MM-DD)', tr: 'Yarış tarihini gir (YYYY-AA-GG)' }
+      // dateInPast case: inline alert under the date field already tells
+      // the user — no need to duplicate above the submit button.
+      if (dateInPast) return null
+    }
+    return null
+  }, [ready, sport, isBikeFtp, isSwim2TT, curWattsN, tgtWattsN, swimSecPer100mCur, swimSecPer100mTgt, cs, ts, noTarget, noRaceDate, dateFormatOk, dateInPast])
+
+  // v9.26.0 — Debounced auto-save on any field change. Previously persistence
+  // ONLY fired on submit, so users who filled the form, switched tabs to
+  // check their watch, then came back lost everything. Now every field
+  // change snapshots after 600ms of inactivity. We capture the latest values
+  // via a ref so the effect itself doesn't need to depend on every state.
+  const latestFormRef = useRef(null)
+  latestFormRef.current = {
+    sport, raceDate: noRaceDate ? '' : date,
+    noRaceDate, weeksOverride: Number(weeksOverride), noTarget,
+    bikeFtpDirect: isBikeFtp, swim2TT: isSwim2TT,
+    currentDist: curD, currentTime: curT, targetDist: tgtD, targetTime: tgtT,
+    currentWatts: curW, targetWatts: tgtW,
+    swim2TT_curD1: swCurD1, swim2TT_curT1: swCurT1,
+    swim2TT_curD2: swCurD2, swim2TT_curT2: swCurT2,
+    swim2TT_tgtD1: swTgtD1, swim2TT_tgtT1: swTgtT1,
+    swim2TT_tgtD2: swTgtD2, swim2TT_tgtT2: swTgtT2,
+  }
+  // Single field-watcher: any non-empty form snapshot fires save after 600ms
+  // idle. JSON.stringify of the snapshot is the dependency so React only
+  // re-schedules when something actually changed.
+  const formSnapshotJSON = JSON.stringify(latestFormRef.current)
+  useEffect(() => {
+    const id = setTimeout(() => {
+      // Only persist if user has entered SOMETHING beyond defaults — avoids
+      // stomping a previously-saved form with a blank initial state.
+      const snap = latestFormRef.current
+      if (!snap) return
+      const hasInput = !!(snap.currentTime || snap.targetTime || snap.raceDate
+        || snap.currentWatts || snap.targetWatts
+        || snap.swim2TT_curT1 || snap.swim2TT_curT2)
+      if (!hasInput) return
+      savePersistedForm(snap)
+    }, 600)
+    return () => clearTimeout(id)
+  }, [formSnapshotJSON, savePersistedForm])
 
   function submit(e) {
     e.preventDefault()
@@ -473,7 +539,17 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
       {!noRaceDate ? (
         <div style={{ marginBottom: '10px' }}>
           <label style={LBL}>{isTR ? 'YARIŞ TARİHİ' : 'RACE DATE'}</label>
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} aria-label={isTR ? 'Yarış tarihi' : 'Race date'} style={INP} />
+          <input type="date" value={date} onChange={e => setDate(e.target.value)}
+            min={todayISO}
+            aria-label={isTR ? 'Yarış tarihi' : 'Race date'}
+            aria-invalid={dateInPast || undefined}
+            style={INP} />
+          {dateInPast ? (
+            <div role="alert" aria-live="polite"
+              style={{ ...S.mono, fontSize: '10px', color: '#e03030', marginTop: '4px', letterSpacing: '0.04em' }}>
+              {isTR ? 'Yarış tarihi gelecekte olmalı' : 'Race date must be in the future'}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -510,6 +586,12 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
         </div>
       ) : null}
 
+      {disabledReason ? (
+        <div role="status" aria-live="polite"
+          style={{ ...S.mono, fontSize: '10px', color: 'var(--muted)', marginBottom: '6px', textAlign: 'center', letterSpacing: '0.04em' }}>
+          {isTR ? disabledReason.tr : disabledReason.en}
+        </div>
+      ) : null}
       <button type="submit" disabled={!ready}
         style={{ ...S.mono, fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', padding: '12px 18px', width: '100%', minHeight: '44px', background: ready ? '#ff6600' : '#ff660055', color: '#fff', border: 'none', borderRadius: '4px', cursor: ready ? 'pointer' : 'not-allowed' }}>
         {isTR ? 'OLUŞTUR' : 'GENERATE'}

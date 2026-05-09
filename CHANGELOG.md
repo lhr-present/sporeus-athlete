@@ -4,6 +4,53 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.26.0 — 2026-05-09 — Form UX hardening (auto-save + inline date validation + disabled-reason)
+
+  Closes 3 P0 form UX findings from the deep-dive audit.
+
+  • **Form auto-save on field change** — previously persistence ONLY
+    fired in submit(), so users who filled the form, switched tabs
+    to check a watch, and came back lost everything. Now every field
+    change snapshots after a 600ms debounced idle window. Persisted
+    snapshot only writes when the user has entered SOMETHING beyond
+    initial defaults — avoids stomping a previously-saved form with
+    a blank initial render. Implementation uses a single ref +
+    JSON.stringify dependency so React doesn't track every state
+    individually.
+
+  • **Inline past-date validation** — race date `<input type="date">`
+    previously accepted any past date silently; user discovered
+    rejection only after hitting GENERATE, which left the form in
+    a dead-end state. Now: client-side check compares ISO strings
+    against today; inline `role="alert"` warning appears immediately
+    under the date input with bilingual message
+    (EN: "Race date must be in the future" /
+    TR: "Yarış tarihi gelecekte olmalı"); date input also gets
+    `min={todayISO}` so most browsers block selection natively.
+    Submit button stays disabled.
+
+  • **Disabled-reason hint** — submit button was previously a dim
+    orange with no explanation when disabled. Now: a `role="status"`
+    line above the button explains exactly what's missing in the
+    user-perceived flow order (sport → time → target → date), with
+    bilingual text. Suppressed for the date-past case since the
+    inline alert already covers it (no duplicate messaging).
+
+  Tests: 8 new in EliteProgramCard.test.jsx — disabled-reason text
+  by missing field, EN/TR variants, inline alert appearance/
+  disappearance, date `min` attribute, auto-save after debounce,
+  no-stomp safeguard. The existing post-submit "race-in-past"
+  rejection test was rewritten to verify the new client-side
+  blocking path (orchestrator-level rejection still covered at
+  the lib level).
+
+  9497/9497 green. Bundle 1320.4 KB.
+
+  Depends on: v9.19.0 (autoFormatMmSs), v9.21.0 (44pt min-height
+  on date+submit).
+
+---
+
 ## v9.25.0 — 2026-05-09 — Hydration + sodium + iron + RED-S individualization
 
   Closes 4 P0 science findings from a triple-agent deep-dive audit
