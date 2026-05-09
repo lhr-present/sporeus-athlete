@@ -665,6 +665,40 @@ function buildHeatProtocol(raceHeatC) {
  * }} input
  * @returns {RaceWeekProtocol}
  */
+// v9.35.0 — DNF triage decision tree. Closes a P1 from the race-week
+// completeness audit. Athletes lacked criteria for "when to stop racing"
+// vs "push through pain" — leading to two opposite failure modes:
+// (a) DNF on a fixable issue (mild cramp, minor mechanical) when continuation
+// would have been safe, and (b) pushing through a stop-condition (heat illness,
+// rhabdomyolysis-onset, cardiac event) until medical intervention.
+//
+// The decision tree below is universal across sports — the categories mirror
+// the standard sports-medicine DNS/DNF/DNS-medical triage.
+//
+//   Citations: Bahr 2016 (cramping etiology multi-factorial); Noakes 2000
+//   (central governor + organ-protective shutdown); Maron 2007 (race-day
+//   cardiac event signs); Sawka 2007 ACSM (heat illness exit criteria).
+const DNF_TRIAGE_DECISION_TREE = {
+  en: 'STOP IMMEDIATELY (medical, not optional): chest pain or pressure, severe shortness of breath, syncope or near-syncope, collapse, blurred or tunnel vision, sudden severe headache (especially with aura — stroke risk), confusion, no sweat in heat AND core-temp sensation rising. ' +
+      'EXIT TO WALK / DNF (sports-injury caution): tea-colored or dark-cola urine (rhabdomyolysis onset), severe localized joint or bone pain (stress fracture / compartment syndrome), unilateral leg weakness, fever + chills + sore throat (infection — viral myocarditis risk), one-sided gait failure. ' +
+      'CONTINUE WITH ADJUSTMENT: mild cramp → slow 20-30s, electrolyte + 100ml water, resume at -5% pace; mid-race nausea → switch to liquid-only fueling smaller boluses; pacing miscalculation (off goal pace) → switch mindset to "best possible from here," do NOT chase original goal; mechanical (flat, chain) → solo fix <5 min OK; >10 min = DNF unless near aid station with neutral support.',
+  tr: 'HEMEN DUR (tıbbi, opsiyon değil): göğüs ağrısı veya baskı, şiddetli nefes darlığı, bayılma veya bayılma hissi, çökme, bulanık veya tünel görüş, ani şiddetli baş ağrısı (özellikle aura ile — felç riski), zihin bulanıklığı, sıcakta terlemeyi DURDURMA + iç-vücut ısısının yükseldiğini hissetme. ' +
+      'YÜRÜYÜŞE GEÇ / DNF (spor-yaralanma uyarısı): çay rengi veya koyu kola idrar (rabdomyoliz başlangıcı), şiddetli lokal eklem veya kemik ağrısı (stres kırığı / kompartman sendromu), tek-taraflı bacak zayıflığı, ateş + titreme + boğaz ağrısı (enfeksiyon — viral miyokardit riski), tek-taraflı yürüyüş bozukluğu. ' +
+      'AYARLAYARAK DEVAM ET: hafif kramp → 20-30s yavaşla, elektrolit + 100ml su, %5 yavaş tempoda devam; yarış-ortası bulantı → küçük dozlarda sadece sıvı yakıta geç; tempo hatası → "buradan mümkün olanı yap" zihniyetine geç, orijinal hedefi kovalama; mekanik arıza (patlak, zincir) → tek başına <5 dk tamir tamam; >10 dk = aid istasyonu + tarafsız destek yoksa DNF.',
+}
+
+// v9.35.0 — Last 3 nights sleep hygiene protocol. Closes a P1 from the
+// race-week audit: prior protocol said only "begin sleep priority" on T-5
+// and "sleep early" on T-1 — too vague. Specific protocol below from
+// Czeisler 2005 (circadian misalignment cuts performance 5-10%) and Mah
+// 2011 (cumulative pre-race sleep debt, not the night before, is what
+// matters). Protocol covers caffeine cutoff, melatonin gating, bedroom
+// environment, screen hygiene, wake-time anchoring.
+const LAST_3_NIGHTS_SLEEP_HYGIENE = {
+  en: 'T-3: zero caffeine after 14:00 (caffeine half-life 5-6h; residual at bedtime cuts deep-sleep 30%). T-2: if travel zone shift >5h, 0.5-3 mg melatonin 30 min before target bedtime (Czeisler 2005). T-1: bedroom 16-19°C (optimal for slow-wave sleep), full blackout (eye mask if needed), white noise or earplugs, zero screens 90 min pre-bed (or blue-light blockers). Last 3 nights: consistent wake time ±30 min to anchor circadian phase — sleeping in 2h "to bank rest" actually impairs race-morning alertness. Race morning HRV: if >5% elevated above 30-day baseline, consider executing race plan more conservatively in first 25%.',
+  tr: 'T-3: 14:00 sonrası kafein YOK (kafein yarı ömrü 5-6 sa; yatakta kalan derin uykuyu %30 düşürür). T-2: seyahat zaman dilimi >5 sa ise hedef yatma saatinden 30 dk önce 0,5-3 mg melatonin (Czeisler 2005). T-1: yatak odası 16-19°C (yavaş-dalga uykusu için optimal), tam karartma (gerekirse uyku maskesi), beyaz gürültü veya kulak tıkacı, yatmadan 90 dk önce ekran YOK (veya mavi-ışık engelleyici). Son 3 gece: tutarlı uyanma saati ±30 dk, sirkadiyen fazı sabitlemek için — "dinlenme biriktirmek" için 2 sa fazla uyumak aslında yarış-sabahı dikkatini bozar. Yarış sabahı HRV: 30-günlük bazalın %5\'inden fazla yüksekse, ilk %25\'te yarış planını daha ihtiyatlı uygula.',
+}
+
 // v9.33.0 — Post-race recovery first 48h. Closes a P1 from the race-week
 // completeness audit: protocol previously ended at T-0 race day with no
 // guidance for the immediate post-race window. Stellingwerff 2014 shows
@@ -911,6 +945,11 @@ export function buildRaceWeekProtocol(input) {
     // v9.33.0 — universal post-race recovery first 48h protocol.
     // Sport-invariant; surfaces in raceDay output for inline render.
     postRaceRecovery48h: POST_RACE_RECOVERY_48H,
+    // v9.35.0 — DNF triage decision tree (when to STOP, when to adjust).
+    dnfTriageDecisionTree: DNF_TRIAGE_DECISION_TREE,
+    // v9.35.0 — Last 3 nights specific sleep hygiene (caffeine cutoff,
+    // melatonin gating, bedroom environment, wake-time anchoring).
+    last3NightsSleepHygiene: LAST_3_NIGHTS_SLEEP_HYGIENE,
   }
 
   // v9.8.0 — conditional advisories

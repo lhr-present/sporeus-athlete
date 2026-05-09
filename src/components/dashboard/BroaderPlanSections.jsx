@@ -511,6 +511,18 @@ export function RaceWeekSection({ raceWeekProtocol, isTR, defaultOpen = false })
               <strong>{isTR ? '☕ KAFEİN GÜVENLİK' : '☕ CAFFEINE SAFETY'}:</strong> {bil(r.raceDay.caffeineSafetyFlags, isTR)}
             </div>
           ) : null}
+          {/* v9.35.0 — last 3 nights sleep hygiene (Czeisler 2005 + Mah 2011) */}
+          {r.raceDay.last3NightsSleepHygiene ? (
+            <div style={{ marginTop: 4, padding: 6, background: 'rgba(0,100,255,0.06)', borderLeft: '2px solid #0064ff', fontSize: 10 }}>
+              <strong>{isTR ? '🌙 SON 3 GECE UYKU HİJYENİ' : '🌙 LAST 3 NIGHTS SLEEP HYGIENE'}:</strong> {bil(r.raceDay.last3NightsSleepHygiene, isTR)}
+            </div>
+          ) : null}
+          {/* v9.35.0 — DNF triage decision tree (Bahr 2016 + Noakes 2000 + Sawka 2007) */}
+          {r.raceDay.dnfTriageDecisionTree ? (
+            <div style={{ marginTop: 4, padding: 6, background: 'rgba(220,53,69,0.10)', borderLeft: '2px solid #dc3545', fontSize: 10 }}>
+              <strong>{isTR ? '🚨 DNF KARAR AĞACI' : '🚨 DNF DECISION TREE'}:</strong> {bil(r.raceDay.dnfTriageDecisionTree, isTR)}
+            </div>
+          ) : null}
           {/* v9.29.0 — sport-specific caffeine dose (different from universal safety flags above) */}
           {r.raceDay.caffeine ? (
             <div style={{ marginTop: 4, padding: 6, background: 'rgba(125,74,0,0.06)', borderLeft: '2px solid #7d4a00', fontSize: 10 }}>

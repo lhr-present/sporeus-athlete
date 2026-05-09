@@ -205,6 +205,38 @@ describe('RaceWeekSection — v9.29.0 buried data surfaced', () => {
     expect(screen.queryByText(/POST-RACE 48H RECOVERY/i)).not.toBeInTheDocument()
   })
 
+  // ── v9.35.0 — DNF triage + last-3-nights sleep hygiene render blocks ──
+  it('renders DNF decision tree when present', () => {
+    const protocol = makeProtocol({
+      dnfTriageDecisionTree: {
+        en: 'STOP IMMEDIATELY: chest pain. EXIT: rhabdomyolysis. CONTINUE: mild cramp.',
+        tr: 'HEMEN DUR: göğüs ağrısı. ÇIK: rabdomyoliz. DEVAM: hafif kramp.',
+      },
+    })
+    renderWithLang(<RaceWeekSection raceWeekProtocol={protocol} isTR={false} defaultOpen={true} />)
+    expect(screen.getByText(/DNF DECISION TREE/i)).toBeInTheDocument()
+    expect(screen.getByText(/STOP IMMEDIATELY: chest pain/i)).toBeInTheDocument()
+  })
+
+  it('renders last-3-nights sleep hygiene when present', () => {
+    const protocol = makeProtocol({
+      last3NightsSleepHygiene: {
+        en: 'T-3: zero caffeine after 14:00. T-1: 16-19°C bedroom.',
+        tr: 'T-3: 14:00 sonrası kafein yok. T-1: 16-19°C yatak odası.',
+      },
+    })
+    renderWithLang(<RaceWeekSection raceWeekProtocol={protocol} isTR={false} defaultOpen={true} />)
+    expect(screen.getByText(/LAST 3 NIGHTS SLEEP HYGIENE/i)).toBeInTheDocument()
+    expect(screen.getByText(/zero caffeine after 14:00/i)).toBeInTheDocument()
+  })
+
+  it('hides DNF + sleep hygiene blocks when not present', () => {
+    const protocol = makeProtocol() // no dnfTriageDecisionTree / last3NightsSleepHygiene
+    renderWithLang(<RaceWeekSection raceWeekProtocol={protocol} isTR={false} defaultOpen={true} />)
+    expect(screen.queryByText(/DNF DECISION TREE/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/LAST 3 NIGHTS SLEEP HYGIENE/i)).not.toBeInTheDocument()
+  })
+
   it('returns null when raceWeekProtocol is null/undefined', () => {
     const { container: c1 } = render(<RaceWeekSection raceWeekProtocol={null} isTR={false} />)
     const { container: c2 } = render(<RaceWeekSection raceWeekProtocol={undefined} isTR={false} />)

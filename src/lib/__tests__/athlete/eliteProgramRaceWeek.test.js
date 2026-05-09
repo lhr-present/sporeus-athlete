@@ -266,3 +266,93 @@ describe('buildRaceWeekProtocol — post-race 48h recovery (v9.33.0)', () => {
     }
   })
 })
+
+// ── v9.35.0 — DNF triage decision tree ──────────────────────────────────
+describe('buildRaceWeekProtocol — DNF triage (v9.35.0)', () => {
+  it('every sport carries dnfTriageDecisionTree block', () => {
+    for (const sport of ['run', 'bike', 'swim', 'rowing', 'triathlon']) {
+      const r = buildRaceWeekProtocol({ sport })
+      expect(r.raceDay.dnfTriageDecisionTree).toBeDefined()
+      expect(r.raceDay.dnfTriageDecisionTree.en).toBeDefined()
+      expect(r.raceDay.dnfTriageDecisionTree.tr).toBeDefined()
+    }
+  })
+
+  it('DNF tree includes all 3 triage categories (STOP, EXIT, CONTINUE)', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run' })
+    expect(r.raceDay.dnfTriageDecisionTree.en).toMatch(/STOP IMMEDIATELY/i)
+    expect(r.raceDay.dnfTriageDecisionTree.en).toMatch(/EXIT TO WALK|DNF/i)
+    expect(r.raceDay.dnfTriageDecisionTree.en).toMatch(/CONTINUE WITH ADJUSTMENT/i)
+  })
+
+  it('DNF tree mentions specific stop-conditions: chest pain, syncope, vision', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run' })
+    const en = r.raceDay.dnfTriageDecisionTree.en.toLowerCase()
+    expect(en).toMatch(/chest pain/)
+    expect(en).toMatch(/syncope|collapse/)
+    expect(en).toMatch(/vision/)
+  })
+
+  it('DNF tree mentions sports-injury markers: rhabdo, stress fracture, fever', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run' })
+    const en = r.raceDay.dnfTriageDecisionTree.en.toLowerCase()
+    expect(en).toMatch(/rhabdomyolysis|tea-colored|dark-cola/)
+    expect(en).toMatch(/stress fracture|compartment/)
+    expect(en).toMatch(/fever/)
+  })
+
+  it('DNF tree includes continuation criteria with concrete adjustments', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run' })
+    const en = r.raceDay.dnfTriageDecisionTree.en.toLowerCase()
+    expect(en).toMatch(/cramp/)
+    expect(en).toMatch(/electrolyte/)
+    expect(en).toMatch(/mechanical|flat|chain/)
+  })
+})
+
+// ── v9.35.0 — Last 3 nights sleep hygiene ──────────────────────────────
+describe('buildRaceWeekProtocol — last-3-nights sleep hygiene (v9.35.0)', () => {
+  it('every sport carries last3NightsSleepHygiene block', () => {
+    for (const sport of ['run', 'bike', 'swim', 'rowing', 'triathlon']) {
+      const r = buildRaceWeekProtocol({ sport })
+      expect(r.raceDay.last3NightsSleepHygiene).toBeDefined()
+      expect(r.raceDay.last3NightsSleepHygiene.en).toBeDefined()
+      expect(r.raceDay.last3NightsSleepHygiene.tr).toBeDefined()
+    }
+  })
+
+  it('sleep hygiene specifies caffeine cutoff (T-3) with concrete time/threshold', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run' })
+    const en = r.raceDay.last3NightsSleepHygiene.en.toLowerCase()
+    expect(en).toMatch(/caffeine/)
+    expect(en).toMatch(/14:00|2 ?pm|after.*1[24]/)
+  })
+
+  it('sleep hygiene specifies melatonin gating (T-2) for >5h zone shift', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run' })
+    const en = r.raceDay.last3NightsSleepHygiene.en.toLowerCase()
+    expect(en).toMatch(/melatonin/)
+    expect(en).toMatch(/zone shift|time.zone|>5/i)
+  })
+
+  it('sleep hygiene specifies bedroom environment (T-1): temp + blackout + screens', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run' })
+    const en = r.raceDay.last3NightsSleepHygiene.en.toLowerCase()
+    expect(en).toMatch(/16-19|17|18|19.°c|temperature/)
+    expect(en).toMatch(/blackout|dark/)
+    expect(en).toMatch(/screen/)
+  })
+
+  it('sleep hygiene anchors wake time (NOT bedtime) for circadian phase', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run' })
+    const en = r.raceDay.last3NightsSleepHygiene.en.toLowerCase()
+    expect(en).toMatch(/wake time|consistent/)
+  })
+
+  it('sleep hygiene includes race-morning HRV check', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run' })
+    const en = r.raceDay.last3NightsSleepHygiene.en
+    expect(en).toMatch(/HRV/)
+    expect(en).toMatch(/baseline|elevated/i)
+  })
+})

@@ -4,6 +4,63 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.35.0 — 2026-05-10 — DNF triage decision tree + last-3-nights sleep hygiene
+
+  Closes 2 P1 findings from the race-week completeness audit.
+
+  • **DNF triage decision tree** — athletes lacked criteria for
+    "when to stop racing" vs "push through pain," leading to two
+    opposite failure modes: (a) DNF on a fixable issue (mild cramp,
+    minor mechanical) that would have been safe to continue, and
+    (b) pushing through a stop-condition (heat illness, rhabdomyolysis,
+    cardiac event) until medical intervention. New universal block
+    structures the decision in 3 categories:
+    - **STOP IMMEDIATELY** (medical, not optional): chest pain or
+      pressure, severe shortness of breath, syncope/collapse, blurred
+      or tunnel vision, sudden severe headache (especially with aura
+      → stroke risk), confusion, no-sweat-in-heat + rising core temp.
+    - **EXIT TO WALK / DNF** (sports-injury caution): tea-colored or
+      dark-cola urine (rhabdo onset), severe localized joint/bone pain
+      (stress fracture / compartment syndrome), unilateral leg
+      weakness, fever + chills + sore throat (infection — viral
+      myocarditis risk).
+    - **CONTINUE WITH ADJUSTMENT**: mild cramp → slow 20-30s,
+      electrolyte + 100ml water, resume at -5% pace; mid-race nausea
+      → switch to liquid-only smaller boluses; pacing miscalc →
+      "best possible from here" mindset; mechanical fix solo <5 min
+      OK / >10 min = DNF unless near aid station.
+
+  • **Last-3-nights sleep hygiene** — prior protocol said only
+    "begin sleep priority" (T-5) and "sleep early" (T-1) — too vague.
+    Specific protocol covers: T-3 caffeine cutoff after 14:00
+    (5-6h half-life cuts deep-sleep 30% if residual); T-2 melatonin
+    0.5-3 mg gated on >5h zone shift (Czeisler 2005); T-1 bedroom
+    16-19°C + blackout + zero screens 90 min pre-bed; LAST 3 NIGHTS
+    consistent wake time ±30 min (sleeping in 2h "to bank rest"
+    impairs race-morning alertness). Race-morning HRV check: if
+    >5% elevated above 30-day baseline, race plan more conservative
+    in first 25%.
+
+  Both blocks UNIVERSAL across sports — physiology is sport-invariant.
+  Surfaced as colored callouts in RaceWeekSection (red 🚨 DNF, blue
+  🌙 sleep). Inline in race-day block alongside existing readiness
+  + caffeine + post-race recovery callouts.
+
+  Tests: 11 new lib (DNF: every-sport presence + 3-category coverage
+  + specific markers like rhabdo/syncope; sleep: every-sport presence
+  + caffeine cutoff + melatonin + bedroom temp + wake-time anchor +
+  HRV check). 3 new UI render tests (presence + bilingual + null
+  hiding). 9601/9601 green. Bundle 1330.7 KB.
+
+  Citations: Bahr 2016 (cramping etiology); Noakes 2000 (central
+  governor); Maron 2007 (race-day cardiac signs); Sawka 2007 ACSM
+  (heat illness exit criteria); Czeisler 2005 (circadian
+  misalignment performance loss); Mah 2011 (cumulative sleep debt).
+
+  Depends on: v9.16.0 (raceDay output structure).
+
+---
+
 ## v9.34.0 — 2026-05-10 — Personalization invariant test suite (regression contract)
 
   Coach asked for explicit verification that Mission #1 actually
