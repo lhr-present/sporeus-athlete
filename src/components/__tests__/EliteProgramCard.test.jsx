@@ -1334,3 +1334,60 @@ describe('EliteProgramCard — v8.103.0 mobile action-bar layout', () => {
     expect(buttons.length).toBe(4)
   })
 })
+
+// ─── v9.19.0 — mobile MM:SS auto-format (numeric keyboard has no colon) ─────
+import { autoFormatMmSs } from '../dashboard/EliteProgramCard.jsx'
+
+describe('autoFormatMmSs — digit-driven MM:SS auto-formatting', () => {
+  it('returns empty string for null/empty input', () => {
+    expect(autoFormatMmSs('')).toBe('')
+    expect(autoFormatMmSs(null)).toBe('')
+    expect(autoFormatMmSs(undefined)).toBe('')
+  })
+
+  it('passes through 1-2 digit minutes without colon (still typing)', () => {
+    expect(autoFormatMmSs('5')).toBe('5')
+    expect(autoFormatMmSs('50')).toBe('50')
+  })
+
+  it('inserts colon after 3 digits (M:SS for sprint times)', () => {
+    expect(autoFormatMmSs('500')).toBe('5:00')
+    expect(autoFormatMmSs('547')).toBe('5:47')
+  })
+
+  it('inserts colon after 4 digits (MM:SS standard race time)', () => {
+    expect(autoFormatMmSs('5000')).toBe('50:00')
+    expect(autoFormatMmSs('4230')).toBe('42:30')
+  })
+
+  it('inserts both colons after 5 digits (H:MM:SS)', () => {
+    expect(autoFormatMmSs('12345')).toBe('1:23:45')
+    expect(autoFormatMmSs('30000')).toBe('3:00:00')
+  })
+
+  it('inserts both colons after 6 digits (HH:MM:SS marathon/ultra)', () => {
+    expect(autoFormatMmSs('123456')).toBe('12:34:56')
+    expect(autoFormatMmSs('030000')).toBe('03:00:00')
+  })
+
+  it('caps at 6 digits — 7th digit is dropped', () => {
+    expect(autoFormatMmSs('1234567')).toBe('12:34:56')
+  })
+
+  it('strips non-digit input — pasting "50:00" works', () => {
+    expect(autoFormatMmSs('50:00')).toBe('50:00')
+    expect(autoFormatMmSs('1:23:45')).toBe('1:23:45')
+    expect(autoFormatMmSs('50.00')).toBe('50:00') // mobile period instead of colon
+    expect(autoFormatMmSs('50,00')).toBe('50:00') // mobile comma instead of colon
+  })
+
+  it('produces parseable MM:SS at 3+ digits', () => {
+    // The downstream parser parseMmSs accepts these forms.
+    const cases = ['500', '5000', '12345', '030000']
+    for (const c of cases) {
+      const formatted = autoFormatMmSs(c)
+      // basic shape check: must contain colon and end with 2-digit seconds
+      expect(formatted).toMatch(/^\d{1,2}(:\d{2}){1,2}$/)
+    }
+  })
+})

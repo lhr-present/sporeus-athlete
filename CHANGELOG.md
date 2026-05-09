@@ -4,6 +4,47 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.19.0 — 2026-05-09 — Mobile MM:SS auto-format (numeric keyboard has no colon)
+
+  Production bug fix. Mobile athletes could not enter PR times in
+  Mission #1 because the input fields used `inputMode="numeric"`
+  (correctly, to surface the digit keyboard) with placeholder
+  "MM:SS" — but mobile numeric keyboards expose only digits + .
+  + , and have no colon. Athletes literally could not type
+  "50:00". Reported user-side: "wants you to use : but mobile
+  opens only numbers . and ,".
+
+  • New helper `autoFormatMmSs(raw)` exported from
+    EliteProgramCard.jsx. Takes any raw input, strips non-digits,
+    and formats by digit count:
+    – 0 digits → empty
+    – 1-2 digits → "M" / "MM" (still typing minutes)
+    – 3 digits → "M:SS" (sprint times like 5:47)
+    – 4 digits → "MM:SS" (standard race times like 50:00)
+    – 5 digits → "H:MM:SS" (sub-10h marathon)
+    – 6 digits → "HH:MM:SS" (ultra cap)
+    – 7+ digits → capped at 6 (drops trailing keystrokes)
+
+  • Wired into all 3 PR-time inputs in EliteProgramCard:
+    – swim TT1 time field
+    – swim TT2 time field
+    – primary current/target PR time field
+    Each onChange now applies autoFormatMmSs before persisting,
+    so the parent state stays in valid M:SS / MM:SS / H:MM:SS
+    form for the existing parseMmSs parser.
+
+  • Backwards compatible: pasting "50:00" still works (re-formats
+    to itself); pasting "50.00" or "50,00" (mobile period/comma
+    aliases for colon) also works — auto-corrected to "50:00".
+
+  • Tests: +9 (9448 total). Covers null/empty, all digit-count
+    branches, copy-paste with colons, mobile period/comma alias
+    handling, 7-digit cap.
+
+  Depends on: v8.95.0 (parseMmSs parser shape).
+
+---
+
 ## v9.18.0 — 2026-05-09 — Numeric correctness fixes (caffeine cap + VDOT/FTP gain rates + input bounds)
 
   Closes 6 audit findings from a deep-dive numeric-correctness

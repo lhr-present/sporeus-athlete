@@ -71,6 +71,23 @@ function parseMmSs(str) {
   return h * 3600 + min * 60 + sec
 }
 
+// v9.19.0 — Auto-format raw digit input into MM:SS / HH:MM:SS as athlete types.
+// Mobile numeric keyboards expose only digits + . + , (no colon), so prior
+// inputMode="numeric" + placeholder="MM:SS" was unfillable on mobile. Now the
+// parent stores formatted values, but onChange re-derives from whatever the
+// user types — pasted "50:00" works, raw digits "5000" become "50:00", and
+// backspace deletes one digit at a time. Caps at 6 digits (HH:MM:SS ultra).
+export function autoFormatMmSs(raw) {
+  if (raw == null) return ''
+  const digits = String(raw).replace(/\D/g, '').slice(0, 6)
+  if (digits.length === 0) return ''
+  if (digits.length <= 2) return digits                                              // M or MM (still typing minutes)
+  if (digits.length === 3) return `${digits[0]}:${digits.slice(1)}`                  // M:SS
+  if (digits.length === 4) return `${digits.slice(0, 2)}:${digits.slice(2)}`         // MM:SS
+  if (digits.length === 5) return `${digits[0]}:${digits.slice(1, 3)}:${digits.slice(3)}` // H:MM:SS
+  return `${digits.slice(0, 2)}:${digits.slice(2, 4)}:${digits.slice(4)}`            // HH:MM:SS
+}
+
 function fmtSec(sec) {
   if (sec == null) return '—'
   const s = Math.round(sec)
@@ -379,13 +396,13 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
                 {SWIM_TT_SHORT.map(o => <option key={o.m} value={o.m}>{o.lbl}</option>)}
               </select>
               <input type="text" inputMode="numeric" placeholder="MM:SS" value={f.t1}
-                onChange={e => f.setT1(e.target.value)} aria-label={f.aria1t} style={{ ...INP, marginBottom: '6px' }} />
+                onChange={e => f.setT1(autoFormatMmSs(e.target.value))} aria-label={f.aria1t} style={{ ...INP, marginBottom: '6px' }} />
               <label style={LBL}>{f.lbl}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>TT2</label>
               <select value={f.d2} onChange={e => f.setD2(Number(e.target.value))} aria-label={f.aria2d} style={{ ...INP, marginBottom: '4px' }}>
                 {SWIM_TT_LONG.map(o => <option key={o.m} value={o.m}>{o.lbl}</option>)}
               </select>
               <input type="text" inputMode="numeric" placeholder="MM:SS" value={f.t2}
-                onChange={e => f.setT2(e.target.value)} aria-label={f.aria2t} style={INP} />
+                onChange={e => f.setT2(autoFormatMmSs(e.target.value))} aria-label={f.aria2t} style={INP} />
             </div>
           ))}
         </div>
@@ -443,7 +460,7 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
               <select value={f.dist} onChange={e => f.setDist(Number(e.target.value))} aria-label={f.distAria} style={{ ...INP, marginBottom: '4px' }}>
                 {opts.map(o => <option key={o.m} value={o.m}>{o.lbl}</option>)}
               </select>
-              <input type="text" inputMode="numeric" placeholder="MM:SS" value={f.t} onChange={e => f.setT(e.target.value)} aria-label={f.tAria} style={INP} />
+              <input type="text" inputMode="numeric" placeholder="MM:SS" value={f.t} onChange={e => f.setT(autoFormatMmSs(e.target.value))} aria-label={f.tAria} style={INP} />
             </div>
           ))}
         </div>
