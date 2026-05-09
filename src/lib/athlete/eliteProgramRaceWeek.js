@@ -508,6 +508,134 @@ function buildHeatProtocol(raceHeatC) {
  * }} input
  * @returns {RaceWeekProtocol}
  */
+// v9.16.0 — Event-distance tier classifier. Closes audit P0 finding: prior
+// race-day protocol applied identical pre-race meal + warmup + pacing logic
+// regardless of event duration. Real coaches differentiate sprint (<10k run /
+// <40km bike / <800m swim / <2k row) vs short (10k-half / 40-90km / 800-1500m
+// / 2-5k row) vs mid (half-mara / 90-180km / 1500-3000m / 5-10k row) vs long
+// (mara+ / 180km+ / 3km+ / >10k or 8k+).
+//
+// Per Stellingwerf 2018, Burke 2017, McCormick 2018, Friel 2014.
+function classifyDistanceTier(sport, distanceM) {
+  const m = Number(distanceM)
+  if (!m || m <= 0) return null
+  if (sport === 'run' || sport === 'triathlon') {
+    if (m < 10000)  return 'sprint'   // 5k or shorter
+    if (m < 15000)  return 'short'    // 10k bracket
+    if (m < 30000)  return 'mid'      // half-marathon (21097m)
+    return 'long'                     // marathon and beyond
+  }
+  if (sport === 'bike') {
+    if (m < 40000)  return 'sprint'
+    if (m < 90000)  return 'short'
+    if (m < 180000) return 'mid'
+    return 'long'                     // century+ / IM bike
+  }
+  if (sport === 'swim') {
+    if (m < 800)    return 'sprint'
+    if (m < 1500)   return 'short'
+    if (m < 3000)   return 'mid'
+    return 'long'                     // open-water marathon
+  }
+  if (sport === 'rowing') {
+    if (m <= 2000)  return 'sprint'   // 2k standard race distance is short-tier
+    if (m < 5000)   return 'short'
+    if (m < 10000)  return 'mid'
+    return 'long'                     // 10k+ ergathon
+  }
+  return null
+}
+
+// v9.16.0 — Distance-tier overrides applied on top of sport raceDay default.
+// Each tier shifts pre-race meal CHO + warmup duration + pacing strategy.
+// Stellingwerf 2018 + McCormick 2018 + Reilly 2007 + Burke 2018.
+const DISTANCE_TIER_OVERRIDES = {
+  sprint: {
+    preRaceMealsNote: {
+      en: 'Sprint-distance override: lighter, faster meal. CHO 1.0 g/kg, 2h pre-start. No solids <90 min before start. Optional 25g CHO gel 15 min before.',
+      tr: 'Sprint mesafe: daha hafif, hızlı yemek. CHO 1,0 g/kg, başlangıçtan 2 sa önce. Başlangıca <90 dk varsa katı gıda yok. Opsiyonel 25g CHO jel 15 dk önce.',
+    },
+    warmupNote: {
+      en: 'Sprint warmup: extend by 10-20% — sprint events demand near-max effort from gun. 5-7 min @ race pace within warmup, ending 5 min before start.',
+      tr: 'Sprint ısınma: %10-20 uzat — sprint etkinlikleri başlangıçtan max-yakını efor ister. Isınma içinde 5-7 dk yarış temposunda, başlangıçtan 5 dk önce bitir.',
+    },
+    pacingNote: {
+      en: 'Sprint pacing: NEGATIVE-SPLIT or even split. Hold back first third (5-10s slow per km/per 100m); progressively faster toward finish. Last 25% all-out — sprint reserve must stay until line.',
+      tr: 'Sprint tempo: NEGATIF-SPLIT veya eşit. İlk üçte birde tut (km/100m\'de 5-10s yavaş); finişe doğru kademeli hızlan. Son %25 tam-açık — sprint rezervi çizgiye kadar.',
+    },
+  },
+  short: {
+    preRaceMealsNote: {
+      en: 'Short-distance override: CHO 1.5 g/kg, 2.5h pre-start. Final 25g gel 30 min before. Standard liquid hydration (3-4 ml/kg per 15 min until 30 min pre-start).',
+      tr: 'Kısa mesafe: CHO 1,5 g/kg, başlangıçtan 2,5 sa önce. Son 25g jel 30 dk önce. Standart sıvı hidrasyonu (her 15 dk\'da 3-4 ml/kg, başlangıca 30 dk varana dek).',
+    },
+    warmupNote: {
+      en: 'Short warmup: standard 15-20 min sport-default; pre-race-pace strides at end (4x100m strides for run, 3x1min surges for bike).',
+      tr: 'Kısa ısınma: standart 15-20 dk spor varsayılanı; sonda yarış-tempo adımlar (koşu 4x100m adım, bisiklet 3x1dk atak).',
+    },
+    pacingNote: {
+      en: 'Short pacing: EVEN-SPLIT or slight negative. First 5-10% conservative, lock goal pace by 20%, free legs in final 15-20%. McCormick 2018: even-split is the most predictable PR strategy here.',
+      tr: 'Kısa tempo: EŞİT-SPLIT veya hafif negatif. İlk %5-10 tutucu, %20\'de hedef tempoyu sabitle, son %15-20\'de bacakları serbest bırak. McCormick 2018: eşit-split bu mesafede en güvenilir PR stratejisidir.',
+    },
+  },
+  mid: {
+    preRaceMealsNote: {
+      en: 'Mid-distance override: CHO 2.0 g/kg, 3h pre-start. Top-up 25-30g CHO 30-45 min before. Carb-load Day -2/-1 critical (10-12 g/kg/d).',
+      tr: 'Orta mesafe: CHO 2,0 g/kg, başlangıçtan 3 sa önce. 30-45 dk önce 25-30g CHO ile destekle. -2/-1. gün karbonhidrat yükleme kritik (10-12 g/kg/gün).',
+    },
+    warmupNote: {
+      en: 'Mid warmup: shortened — save glycogen. 10-15 min easy + 2-3 strides only. Don\'t practice race-pace; first 5-10 min of race is your final warmup.',
+      tr: 'Orta ısınma: kısaltılmış — glikojen koru. 10-15 dk kolay + sadece 2-3 adım. Yarış tempoyu prova etme; yarışın ilk 5-10 dk\'sı son ısınma görevi görür.',
+    },
+    pacingNote: {
+      en: 'Mid pacing: PATIENCE FIRST HALF, controlled push second half. First half 1-3% slower than goal pace; second half lock goal pace; final 15% open up. The "feel slow" is normal — trust the data, not the feel.',
+      tr: 'Orta tempo: İLK YARI SABIRLI, ikinci yarı kontrollü baskı. İlk yarı hedef tempodan %1-3 yavaş; ikinci yarı hedef tempo; son %15 aç. "Yavaş hissetme" normal — hisse değil veriye güven.',
+    },
+  },
+  long: {
+    preRaceMealsNote: {
+      en: 'Long-distance override: STAGED fed state. Solid CHO 2-2.5 g/kg at 3h pre-start; liquid CHO 30-50g at 90 min pre-start; final gel 25g at 15 min. Total carb-load 36-48h prior 10-12 g/kg/d critical (Bussau 2002).',
+      tr: 'Uzun mesafe: AŞAMALI doyma durumu. Katı CHO 2-2,5 g/kg başlangıçtan 3 sa önce; sıvı CHO 30-50g 90 dk önce; son jel 25g 15 dk önce. 36-48 sa önce toplam karbonhidrat yükleme 10-12 g/kg/gün kritik (Bussau 2002).',
+    },
+    warmupNote: {
+      en: 'Long warmup: minimal — 5-10 min walk + 5 min easy jog/spin/glide. Conserve every kJ. The first 30-60 min of race IS your warmup; race start is the slowest segment by design.',
+      tr: 'Uzun ısınma: minimal — 5-10 dk yürü + 5 dk kolay jog/dön/kay. Her kJ\'yi koru. Yarışın ilk 30-60 dk\'sı ısınmadır; yarış başı tasarım gereği en yavaş bölümdür.',
+    },
+    pacingNote: {
+      en: 'Long pacing: PRONOUNCED NEGATIVE-SPLIT. First 25% should feel ABSURDLY easy (3-5% slower than goal). Lock goal pace 25-50%. Push 50-75%. Free 75-100% if intact. The marathon "wall" hits at km 30-35 — discipline now buys finish-line speed.',
+      tr: 'Uzun tempo: BELIRGIN NEGATIF-SPLIT. İlk %25 ABSÜRT-kolay hissetmeli (hedeften %3-5 yavaş). %25-50 hedef tempo sabit. %50-75 baskı. %75-100 sağlamsa serbest. Maraton "duvar" 30-35. km\'de — şimdi disiplin finiş çizgisi hızı satın alır.',
+    },
+  },
+}
+
+// v9.16.0 — Race-delayed contingency. Stellingwerf 2018: meal timing shifts
+// ±2h with race postponement; nervous system leaves no room to re-fuel if
+// start moves. Universal across all distances/sports.
+const RACE_DELAYED_CONTINGENCY = {
+  en: 'Race delayed >1h on race morning: every 60 min of delay, take 25-30g CHO + 200ml water. If delay >2h: small banana or 30g rice cake plus 25g gel. Avoid fat/fiber. Re-warmup 15 min before NEW start time.',
+  tr: 'Yarış sabahı >1 sa gecikme: her 60 dk gecikme için 25-30g CHO + 200ml su. Gecikme >2 sa: küçük muz veya 30g pirinç kek artı 25g jel. Yağ/lif kaçın. YENİ başlangıçtan 15 dk önce yeniden ısın.',
+}
+
+// v9.16.0 — Bonk-wall mid-race contingency. Burke 2017 + endurance nutrition:
+// glycogen depletion wall hits marathon runners at ~km 30-35, swim/bike at
+// 85-90% of race. The cause is fueling, not fitness — the script reframes
+// the failure to action, preventing DNF spirals.
+const BONK_WALL_CONTINGENCY = {
+  en: 'WALL CONTINGENCY: if pace collapses suddenly mid-race (sudden -10s/km drift, vision narrowing, leg seize) — slow 20-30s, drink 200ml sports drink + take 25g gel NOW, walk 60s if needed. Reset to 15s slower than goal pace. Wall is fueling, not fitness — the next 5-10 min recover.',
+  tr: 'DUVAR KONTENJANSI: yarış ortasında tempo aniden çökerse (ani -10s/km kayma, görüşün daralması, bacak takılması) — 20-30s yavaşla, 200ml spor içeceği iç + 25g jel HEMEN al, gerekirse 60s yürü. Hedef tempodan 15s yavaşa sıfırla. Duvar yakıt, fitness değil — sonraki 5-10 dk toparlanırsın.',
+}
+
+/**
+ * @public
+ * @param {{
+ *   sport: 'run'|'bike'|'swim'|'triathlon'|'rowing',
+ *   timeZoneShiftHrs?: number,
+ *   raceAltitudeM?: number,
+ *   raceHeatC?: number,
+ *   raceDistanceM?: number,
+ * }} input
+ * @returns {RaceWeekProtocol}
+ */
 export function buildRaceWeekProtocol(input) {
   const sport = input?.sport
   const schedule =
@@ -515,11 +643,27 @@ export function buildRaceWeekProtocol(input) {
     sport === 'swim'   ? SWIM_SCHEDULE :
     sport === 'rowing' ? ROWING_SCHEDULE :
     RUN_SCHEDULE
-  const raceDay =
+  const baseRaceDay =
     sport === 'bike'   ? RACE_DAY_BIKE :
     sport === 'swim'   ? RACE_DAY_SWIM :
     sport === 'rowing' ? RACE_DAY_ROWING :
     RACE_DAY_RUN
+
+  // v9.16.0 — distance-tier overrides + universal contingencies
+  const distanceTier = classifyDistanceTier(sport, input?.raceDistanceM)
+  const tierOverride = distanceTier ? DISTANCE_TIER_OVERRIDES[distanceTier] : null
+  const raceDay = {
+    ...baseRaceDay,
+    ...(distanceTier ? { distanceTier } : {}),
+    ...(tierOverride ? {
+      preRaceMealsTierNote: tierOverride.preRaceMealsNote,
+      warmupTierNote: tierOverride.warmupNote,
+      pacingTierNote: tierOverride.pacingNote,
+    } : {}),
+    raceDelayedContingency: RACE_DELAYED_CONTINGENCY,
+    bonkWallContingency: BONK_WALL_CONTINGENCY,
+  }
+
   // v9.8.0 — conditional advisories
   const travel    = buildTravelProtocol(input?.timeZoneShiftHrs)
   const altitude  = buildAltitudeProtocol(input?.raceAltitudeM)
@@ -527,7 +671,7 @@ export function buildRaceWeekProtocol(input) {
   const out = {
     schedule,
     raceDay,
-    citation: 'Mujika 2003; Bosquet et al. 2007; Stellingwerf 2018; Burke 2017; Zurawlew 2016 (heat); Wilber 2007 (altitude)',
+    citation: 'Mujika 2003; Bosquet et al. 2007; Stellingwerf 2018; Burke 2017; Zurawlew 2016 (heat); Wilber 2007 (altitude); McCormick 2018 (pacing)',
   }
   if (travel)   out.travel = travel
   if (altitude) out.altitude = altitude
@@ -535,4 +679,6 @@ export function buildRaceWeekProtocol(input) {
   return out
 }
 
-export const RACE_WEEK_CITATION = 'Mujika 2003; Bosquet et al. 2007; Stellingwerf 2018; Burke 2017'
+export { classifyDistanceTier }
+
+export const RACE_WEEK_CITATION = 'Mujika 2003; Bosquet et al. 2007; Stellingwerf 2018; Burke 2017; McCormick 2018; Bussau 2002'

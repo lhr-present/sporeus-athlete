@@ -1094,6 +1094,8 @@ export function buildEliteProgram(input) {
     timeZoneShiftHrs: typeof input.timeZoneShiftHrs === 'number' ? input.timeZoneShiftHrs : null,
     raceAltitudeM:    typeof input.raceAltitudeM === 'number'    ? input.raceAltitudeM    : null,
     raceHeatC:        typeof input.raceHeatC === 'number'        ? input.raceHeatC        : null,
+    // v9.16.0 — race distance drives meal/warmup/pacing tier selection
+    raceDistanceM:    targetPR?.distanceM || currentPR?.distanceM || null,
   })
   const substitutionMap   = buildSubstitutionMap({ sport })
   const contingencyMap    = buildContingencyMap({ sport })

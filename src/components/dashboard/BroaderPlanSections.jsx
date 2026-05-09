@@ -426,13 +426,45 @@ export function RaceWeekSection({ raceWeekProtocol, isTR, defaultOpen = false })
         </table>
 
         <div style={{ borderTop: '2px solid #ff6600', paddingTop: 8, marginTop: 8 }}>
-          <div style={{ fontWeight: 700, color: '#ff6600', marginBottom: 6, letterSpacing: '0.06em' }}>{isTR ? '⚡ YARIŞ GÜNÜ' : '⚡ RACE DAY'}</div>
+          <div style={{ fontWeight: 700, color: '#ff6600', marginBottom: 6, letterSpacing: '0.06em' }}>
+            {isTR ? '⚡ YARIŞ GÜNÜ' : '⚡ RACE DAY'}
+            {r.raceDay.distanceTier ? (
+              <span style={{ marginLeft: 8, padding: '1px 6px', background: '#7d4a00', color: '#fff', fontSize: 9, borderRadius: 3, letterSpacing: '0.06em' }}>
+                {r.raceDay.distanceTier.toUpperCase()}
+              </span>
+            ) : null}
+          </div>
           <div><strong>{isTR ? 'UYANIŞ' : 'WAKE-UP'}:</strong> {bil(r.raceDay.wakeUp, isTR)}</div>
           <div><strong>{isTR ? 'KAHVALTI' : 'BREAKFAST'}:</strong> {bil(r.raceDay.breakfast, isTR)}</div>
           <div><strong>{isTR ? 'ISINMA' : 'WARM-UP'}:</strong> {bil(r.raceDay.warmup, isTR)}</div>
+          {r.raceDay.warmupTierNote ? (
+            <div style={{ marginTop: 2, padding: 4, background: 'rgba(125,74,0,0.10)', borderLeft: '2px solid #7d4a00', fontSize: 10 }}>
+              ↳ {bil(r.raceDay.warmupTierNote, isTR)}
+            </div>
+          ) : null}
           <div><strong>{isTR ? 'TEMPOLAMA' : 'PACING'}:</strong> {bil(r.raceDay.pacing, isTR)}</div>
+          {r.raceDay.pacingTierNote ? (
+            <div style={{ marginTop: 2, padding: 4, background: 'rgba(125,74,0,0.10)', borderLeft: '2px solid #7d4a00', fontSize: 10 }}>
+              ↳ {bil(r.raceDay.pacingTierNote, isTR)}
+            </div>
+          ) : null}
           <div><strong>{isTR ? 'BESLENME' : 'FUELING'}:</strong> {bil(r.raceDay.fueling, isTR)}</div>
+          {r.raceDay.preRaceMealsTierNote ? (
+            <div style={{ marginTop: 2, padding: 4, background: 'rgba(125,74,0,0.10)', borderLeft: '2px solid #7d4a00', fontSize: 10 }}>
+              ↳ {bil(r.raceDay.preRaceMealsTierNote, isTR)}
+            </div>
+          ) : null}
           <div><strong>{isTR ? 'ZİHİN' : 'MENTAL'}:</strong> {bil(r.raceDay.mental, isTR)}</div>
+          {r.raceDay.raceDelayedContingency ? (
+            <div style={{ marginTop: 8, padding: 6, background: 'rgba(220,53,69,0.08)', borderLeft: '2px solid #dc3545', fontSize: 10 }}>
+              <strong>{isTR ? 'GECİKME KONTENJANSI' : 'RACE-DELAYED CONTINGENCY'}:</strong> {bil(r.raceDay.raceDelayedContingency, isTR)}
+            </div>
+          ) : null}
+          {r.raceDay.bonkWallContingency ? (
+            <div style={{ marginTop: 4, padding: 6, background: 'rgba(220,53,69,0.08)', borderLeft: '2px solid #dc3545', fontSize: 10 }}>
+              <strong>{isTR ? 'DUVAR KONTENJANSI' : 'WALL CONTINGENCY'}:</strong> {bil(r.raceDay.bonkWallContingency, isTR)}
+            </div>
+          ) : null}
         </div>
         <div style={{ marginTop: 6, fontSize: 9, color: 'var(--muted)', fontStyle: 'italic' }}>{r.citation}</div>
       </div>

@@ -4,6 +4,56 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.16.0 — 2026-05-09 — Race-week event-distance specificity (sprint/short/mid/long tiers)
+
+  Closes 5 audit findings from the race-week protocol deep-dive:
+  P0-1 (event-distance pre-race meal), P0-2 (distance-aware
+  warmup), P0-3 (race-delayed contingency), P1-4 (distance-aware
+  pacing), P1-5 (bonk-wall mid-race contingency).
+
+  • New classifyDistanceTier(sport, distanceM) returns
+    'sprint' | 'short' | 'mid' | 'long' | null. Per-sport
+    bracket logic:
+    – run/tri: sprint <10k, short 10-15k, mid <30k, long ≥30k
+    – bike: sprint <40k, short <90k, mid <180k, long ≥180k
+    – swim: sprint <800m, short <1500m, mid <3000m, long ≥3km
+    – rowing: sprint ≤2k, short <5k, mid <10k, long ≥10k
+
+  • DISTANCE_TIER_OVERRIDES — per-tier bilingual notes layered
+    onto raceDay output as new fields:
+    – preRaceMealsTierNote (CHO g/kg + timing per tier)
+    – warmupTierNote (extend/shorten per tier)
+    – pacingTierNote (negative-split / even / patience-first per
+      tier; McCormick 2018)
+    Long-distance: STAGED fed state + minimal warmup +
+    PRONOUNCED NEGATIVE-SPLIT. Sprint: light meal + extended
+    warmup + negative or even split.
+
+  • RACE_DELAYED_CONTINGENCY — universal across sports.
+    Stellingwerf 2018: every 60 min of delay → 25-30g CHO +
+    200ml water; >2h delay → small banana or rice cake + gel.
+
+  • BONK_WALL_CONTINGENCY — universal across sports.
+    Burke 2017: sudden pace collapse mid-race = fueling, not
+    fitness. Slow 20-30s, drink 200ml + 25g gel, walk 60s if
+    needed, reset 15s slower than goal pace.
+
+  • Orchestrator now passes targetPR.distanceM (or currentPR
+    fallback) as raceDistanceM into buildRaceWeekProtocol.
+
+  • UI: BroaderPlanSections RaceWeekSection renders tier badge
+    next to "RACE DAY" header (brown #7d4a00) + indented
+    tier-note callouts under warmup/pacing/fueling +
+    contingency callouts (red #dc3545) for delayed/bonk.
+
+  • Tests: +10 (9416 total). Citations added: McCormick 2018,
+    Bussau 2002.
+
+  Depends on: v9.8.0 (raceWeek conditional advisories pattern;
+  travel/altitude/heat factories).
+
+---
+
 ## v9.15.0 — 2026-05-09 — Train-low sport-specificity + cold-water immersion + NSDR + breathwork
 
   Closes 4 deferred audit findings (P2 fueling: train-low; P1
