@@ -2468,6 +2468,41 @@ describe('buildEliteProgram — sample-week strength weaving (v9.24.0)', () => {
     expect(thu.strength).toBeTruthy()
   })
 
+  // ── v9.27.0 — Tri Build bike-quality fix (sweet-spot on Sat) ──────────
+  it('Tri Build Sat carries structured sweet-spot work (Z4 minutes > 0)', () => {
+    const tri = {
+      currentPR: { distanceM: 10000, timeSec: 2700 },
+      targetPR:  { distanceM: 10000, timeSec: 2580 },
+      raceDate: '2026-09-01',
+      sport: 'triathlon',
+      options: { today: TODAY },
+    }
+    const r = buildEliteProgram(tri)
+    const sat = r.sampleWeeks.Build.find(d => d.day === 'Sat')
+    expect(sat).toBeTruthy()
+    expect(sat.discipline).toBe('bike')
+    expect(sat.zones.Z4).toBeGreaterThan(0) // sweet-spot includes Z4 minutes
+    expect(sat.intent.en).toMatch(/sweet-spot/i)
+    expect(sat.intent.tr).toMatch(/sweet-spot/i)
+  })
+
+  it('Tri Build week stays under Seiler 80/20 polarization ceiling after sweet-spot add', () => {
+    const tri = {
+      currentPR: { distanceM: 10000, timeSec: 2700 },
+      targetPR:  { distanceM: 10000, timeSec: 2580 },
+      raceDate: '2026-09-01',
+      sport: 'triathlon',
+      options: { today: TODAY },
+    }
+    const r = buildEliteProgram(tri)
+    const wk = r.sampleWeeks.Build
+    const totalMin = wk.reduce((sum, d) => sum + (d.durationMin || 0), 0)
+    const hardMin = wk.reduce((sum, d) => sum + ((d.zones?.Z4 || 0) + (d.zones?.Z5 || 0)), 0)
+    const hardPct = hardMin / totalMin
+    expect(hardPct).toBeLessThanOrEqual(0.20) // Seiler 80/20: <=20% above LT1
+    expect(hardPct).toBeGreaterThanOrEqual(0.13) // not under-stimulated for Build
+  })
+
   it('also weaves strength for triathlon, bike, swim, rowing sample weeks', () => {
     const sports = [
       { sport: 'triathlon', currentPR: { distanceM: 10000, timeSec: 2700 }, targetPR: { distanceM: 10000, timeSec: 2580 } },

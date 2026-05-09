@@ -734,7 +734,14 @@ function triSampleWeek(phase, paces, _ftp, cssSec) {
       { day: 'Wed', discipline: 'bike', intent: { en: 'Bike endurance + brick run', tr: 'Bisiklet dayanıklılık + brick koşu' }, durationMin: 95, zones: { Z1: 30, Z2: 65, Z3: 0, Z4: 0, Z5: 0 }, paceTarget: null },
       { day: 'Thu', discipline: 'run',  intent: { en: 'Run threshold 2x20',     tr: 'Koşu eşik 2x20' },              durationMin: 60,  zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 40, Z5: 0 },   paceTarget: tTag },
       { day: 'Fri', discipline: 'swim', intent: { en: 'Swim aerobic 2500m',     tr: 'Yüzme aerobik 2500m' },         durationMin: 55,  zones: { Z1: 25, Z2: 30, Z3: 0, Z4: 0, Z5: 0 },   paceTarget: swimTag },
-      { day: 'Sat', discipline: 'bike', intent: { en: 'Long bike + tempo',      tr: 'Uzun bisiklet + tempo' },       durationMin: 210, zones: { Z1: 30, Z2: 140, Z3: 40, Z4: 0, Z5: 0 }, paceTarget: null },
+      // v9.27.0 — Tri Build bike-quality fix. Sat was "Long bike + tempo"
+      // (Z3:40 generic) — bike got NO structured key session in the entire
+      // Build week despite being the longest segment of any tri. Replaced
+      // with structured sweet-spot 3x15 @88-94% FTP (Coggan & Allen 2019)
+      // embedded in long endurance ride. Total time unchanged (210 min);
+      // intent now drives true FTP gain. Polarization: weekly Z4 climbs
+      // from 85→100 min (≈17.2% — still under Seiler 80/20 ceiling).
+      { day: 'Sat', discipline: 'bike', intent: { en: 'Long bike + sweet-spot 3x15',  tr: 'Uzun bisiklet + sweet-spot 3x15' }, durationMin: 210, zones: { Z1: 30, Z2: 135, Z3: 30, Z4: 15, Z5: 0 }, paceTarget: null },
       { day: 'Sun', discipline: 'run',  intent: { en: 'Long run + MP',          tr: 'Uzun koşu + MP' },              durationMin: 100, zones: { Z1: 80, Z2: 20, Z3: 0, Z4: 0, Z5: 0 },   paceTarget: mTag },
     ],
     // v9.20.0 — Tri Peak audit fix. Pre-fix had 6-day work block with only

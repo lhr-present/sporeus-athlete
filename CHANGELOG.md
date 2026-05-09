@@ -4,6 +4,43 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.27.0 — 2026-05-09 — Tri Build bike-quality fix (sweet-spot on Sat)
+
+  Closes a P0 science finding from the deep-dive audit. Triathlon
+  Build week had Tue swim CSS (Z4:45) and Thu run threshold (Z4:40)
+  as the only two structured quality sessions — the BIKE leg got
+  ZERO key session despite being the longest segment of any tri
+  (3-7h for full distance). Sat was a generic "Long bike + tempo"
+  Z3:40 block, which is pure-aerobic-with-some-Z3 — not a focused
+  FTP-building stimulus.
+
+  Cyclist-grade fix: replaced Sat with structured "Long bike +
+  sweet-spot 3x15" — same total time (210 min), but the tempo
+  block becomes 3x15 min @88-94% FTP per Coggan & Allen 2019.
+  Zone profile shifts from Z2:140 Z3:40 to Z2:135 Z3:30 Z4:15 to
+  reflect sweet-spot's upper-band proximity to threshold. Long
+  endurance volume preserved; intent now delivers true FTP gain
+  for the bike leg.
+
+  Polarization invariant verified by new test: weekly Z4+Z5
+  rises from 85→100 min (~17.2% of total) — under Seiler 80/20
+  ceiling (≤20% above LT1) and above the under-stimulation floor
+  (~13%). Lambert 1997 spacing still holds (Tue / Thu / Sat hard,
+  with Wed / Fri / Sun easy buffers).
+
+  Tests: 2 new in eliteProgram.test.js — Sat carries Z4 minutes
+  + intent matches 'sweet-spot' bilingually; weekly hard-pct
+  bracketed [13%, 20%]. 9499/9499 green. Bundle 1320.4 KB.
+
+  Citations: Coggan & Allen 2019 (sweet-spot 88-94% FTP),
+  Hunter Allen 2019, Seiler 2010 (80/20), Lambert 1997
+  (recovery spacing).
+
+  Depends on: v9.20.0 (sample-week structure), v9.12.0
+  (bike-build-sweet-spot session in key library).
+
+---
+
 ## v9.26.0 — 2026-05-09 — Form UX hardening (auto-save + inline date validation + disabled-reason)
 
   Closes 3 P0 form UX findings from the deep-dive audit.
