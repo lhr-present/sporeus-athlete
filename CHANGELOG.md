@@ -4,6 +4,72 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.23.0 — 2026-05-09 — Coach-athlete connection path (athlete-side UI)
+
+  Closes the missing link in the coach feature. Backend infrastructure
+  has existed since v5.2 (coach_invites, coach_athletes, coach_plans
+  tables; CoachEditPanel; SessionCommentThread; CoachOnboardingWizard),
+  but the ATHLETE-side UI to actually connect to a coach was not
+  rendered anywhere. MyCoachStatus existed as a component but had no
+  mount-point.
+
+  Added to src/components/MyCoach.jsx:
+
+  • `JoinCoachInput` — manual invite-code entry component.
+    Three stages (input → confirm → done). Validates code against
+    `coach_invites` (rejects unknown / revoked / expired). On confirm,
+    upserts into `coach_athletes` with status='active', marks the
+    invite used_by, and auto-refreshes parent. Touch targets 44pt+
+    (Apple HIG). aria-label on input.
+
+  • `CoachConnectionPanel` — public wrapper. Queries
+    `coach_athletes` for an active link; renders MyCoachStatus when
+    connected, JoinCoachInput when not. Single mount-point that
+    callers don't need to branch on. `refresh` callback wired to both
+    children so sever/connect transitions re-render correctly.
+
+  • `MyCoachStatus` extended to accept `onDisconnect` prop so the
+    parent panel can flip back to the join form when the athlete
+    severs the link.
+
+  Mounted in src/components/Profile.jsx after `<HuseyinCoachCard/>`.
+  Gated on `authUser?.id` — guests don't see it (would have nothing
+  to upsert anyway).
+
+  Coach already has full edit + comment rights via existing
+  CoachEditPanel + coachEditEngine (program changes, suggestions)
+  and SessionCommentThread (per-session comments). RLS on
+  coach_athletes enforces that only the linked coach can write to
+  the athlete's plan / comment thread. So the access path itself
+  was the only missing piece — once linked, all coach abilities
+  the user asked for are already wired.
+
+  Tests: new `src/components/__tests__/MyCoach.test.jsx` —
+  9 tests (CoachConnectionPanel routing, MyCoachStatus disconnect,
+  JoinCoachInput invalid/revoked/expired/valid/upsert paths,
+  44pt touch targets). 9464/9464 total green. Bundle 1317.8 KB.
+
+  Depends on: v5.2 (coach_invites/coach_athletes schema), v9.21.0
+  (44pt touch-target convention reused on inputs).
+
+---
+
+## v9.22.0 — 2026-05-09 — Terminology consistency (Sweet-spot canonical form)
+
+  Tiny consistency fix surfaced by terminology sweep. Sweet-spot
+  zone was rendered as `Z3-Z4 (Sweet-Spot)` on bike-build-sweet-spot
+  session description — every other surface uses
+  `Sweet-spot (Z3-Z4)` (lowercase 's', zone in parens). Aligned to
+  the canonical form. Bike build TR session descriptions now
+  consistent with cohort overrides and BroaderPlanSections labels.
+
+  Tests: 9455/9455 still green (string-only change). No bundle
+  delta.
+
+  Depends on: v9.12.0 (bike-build-sweet-spot session existed).
+
+---
+
 ## v9.21.0 — 2026-05-09 — Mobile touch-target fixes (44pt Apple HIG min)
 
   Closes 3 P0 mobile UX audit findings:

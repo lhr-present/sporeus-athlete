@@ -31,6 +31,10 @@ import Achievements from './Achievements.jsx'
 import AISettings from './profile/AISettings.jsx'
 import SportSelector from './profile/SportSelector.jsx'
 import HuseyinCoachCard from './profile/HuseyinCoachCard.jsx'
+// v9.23.0 — real coach-athlete connection path (was unused: MyCoachStatus
+// existed but no Profile mount + no manual code-entry UI). CoachConnectionPanel
+// auto-routes between MyCoachStatus (when connected) and JoinCoachInput.
+import { CoachConnectionPanel } from './MyCoach.jsx'
 import NutritionEstimator from './profile/NutritionEstimator.jsx'
 import TrainingAgeCard from './profile/TrainingAgeCard.jsx'
 import ReferralCard from './profile/ReferralCard.jsx'
@@ -247,6 +251,7 @@ export default function Profile({ log, authUser }) {
       </div>
 
       <HuseyinCoachCard/>
+      {authUser?.id ? <CoachConnectionPanel userId={authUser.id} /> : null}
 
       <div className="sp-card" style={{ ...S.card, animationDelay:'50ms' }}>
         <div style={S.cardTitle}>{t('aboutTitle')}</div>

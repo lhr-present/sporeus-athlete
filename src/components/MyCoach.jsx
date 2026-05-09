@@ -129,7 +129,9 @@ export function InviteModal({ inviteCode, userId, onDone }) {
 
 // ── MyCoachStatus ─────────────────────────────────────────────────────────────
 // Shown in Profile tab — current coach connection + disconnect button.
-export function MyCoachStatus({ userId }) {
+// v9.23.0 — added onDisconnect callback so parent (CoachConnectionPanel) can
+// flip back to JoinCoachInput when the athlete severs the link.
+export function MyCoachStatus({ userId, onDisconnect }) {
   const [link, setLink]     = useState(null)   // coach_athletes row
   const [coach, setCoach]   = useState(null)   // coach profile
   const [loading, setLoading] = useState(true)
@@ -142,14 +144,14 @@ export function MyCoachStatus({ userId }) {
       .select('*')
       .eq('athlete_id', userId)
       .eq('status', 'active')
-      .single()
+      .maybeSingle()
     if (!data) { setLoading(false); return }
     setLink(data)
     const { data: cp } = await supabase
       .from('profiles')
       .select('display_name, email')
       .eq('id', data.coach_id)
-      .single()
+      .maybeSingle()
     setCoach(cp)
     setLoading(false)
   }, [userId])
@@ -163,6 +165,7 @@ export function MyCoachStatus({ userId }) {
       .update({ status: 'revoked' })
       .eq('id', link.id)
     setLink(null); setCoach(null); setBusy(false)
+    if (onDisconnect) onDisconnect()
   }
 
   if (loading) return null
@@ -197,4 +200,160 @@ function btnStyle(bg, color, disabled) {
     fontWeight: 700, letterSpacing: '0.1em', cursor: disabled ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.5 : 1,
   }
+}
+
+// ── CoachConnectionPanel ──────────────────────────────────────────────────────
+// v9.23.0 — Public wrapper that conditionally renders MyCoachStatus (when
+// athlete already has an active coach link) or JoinCoachInput (when they don't).
+// Single mount-point for the Profile tab. Callers don't need to know which
+// branch to render.
+export function CoachConnectionPanel({ userId }) {
+  const [hasCoach, setHasCoach] = useState(null) // null=loading, true/false
+  const refresh = useCallback(async () => {
+    if (!supabase || !userId) { setHasCoach(false); return }
+    const { data } = await supabase
+      .from('coach_athletes')
+      .select('id')
+      .eq('athlete_id', userId)
+      .eq('status', 'active')
+      .maybeSingle()
+    setHasCoach(!!data)
+  }, [userId])
+  useEffect(() => { refresh() }, [refresh])
+  if (hasCoach === null) return null  // loading: render nothing to avoid flicker
+  if (hasCoach) return <MyCoachStatus userId={userId} onDisconnect={refresh} />
+  return <JoinCoachInput userId={userId} onJoined={refresh} />
+}
+
+// ── JoinCoachInput ────────────────────────────────────────────────────────────
+// v9.23.0 — Manual invite-code entry for athletes who got the code via SMS,
+// Slack, voice, etc. (rather than clicking the URL). Sits on the Profile tab
+// when athlete has no coach connection. On accept, calls the same upsert logic
+// as InviteModal so both paths converge on coach_athletes.
+export function JoinCoachInput({ userId, onJoined }) {
+  const [code, setCode]     = useState('')
+  const [busy, setBusy]     = useState(false)
+  const [msg, setMsg]       = useState('')
+  const [coachName, setCoachName] = useState(null)
+  const [stage, setStage]   = useState('input') // input | confirm | done
+
+  async function lookup() {
+    if (!supabase || !code.trim() || busy) return
+    setBusy(true); setMsg('')
+    const trimmed = code.trim().toUpperCase()
+    try {
+      const { data: invite, error } = await supabase
+        .from('coach_invites')
+        .select('coach_id, code, revoked_at, expires_at')
+        .eq('code', trimmed)
+        .single()
+      if (error || !invite) {
+        setMsg('Invite code not found.'); setBusy(false); return
+      }
+      if (invite.revoked_at) { setMsg('Invite revoked.'); setBusy(false); return }
+      if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
+        setMsg('Invite expired.'); setBusy(false); return
+      }
+      const { data: cp } = await supabase
+        .from('profiles')
+        .select('display_name, email')
+        .eq('id', invite.coach_id)
+        .single()
+      setCoachName(cp?.display_name || cp?.email || 'A coach')
+      setStage('confirm')
+      setBusy(false)
+    } catch (e) {
+      setMsg(e?.message || 'Lookup failed'); setBusy(false)
+    }
+  }
+
+  async function accept() {
+    if (!supabase || !userId || busy) return
+    setBusy(true); setMsg('')
+    const trimmed = code.trim().toUpperCase()
+    try {
+      const { data: invite } = await supabase
+        .from('coach_invites')
+        .select('coach_id, code')
+        .eq('code', trimmed)
+        .single()
+      if (!invite) { setMsg('Invite vanished.'); setBusy(false); return }
+      const { error: linkErr } = await supabase.from('coach_athletes').upsert({
+        coach_id:   invite.coach_id,
+        athlete_id: userId,
+        status:     'active',
+      }, { onConflict: 'coach_id,athlete_id' })
+      if (linkErr) throw linkErr
+      await supabase.from('coach_invites')
+        .update({ used_by: userId })
+        .eq('code', invite.code)
+      setStage('done')
+      setTimeout(() => onJoined && onJoined(), 1500)
+    } catch (e) {
+      setMsg(e?.message || 'Connect failed'); setBusy(false)
+    }
+  }
+
+  if (stage === 'done') {
+    return (
+      <div style={{ background: '#5bc25b11', border: '1px solid #5bc25b33', borderRadius: 6, padding: '12px 16px', marginBottom: 16, fontFamily: MONO, fontSize: 12, color: GREEN, fontWeight: 700 }}>
+        ✓ Connected to {coachName}
+      </div>
+    )
+  }
+
+  return (
+    <div style={{
+      background: '#0064ff08', border: '1px dashed #0064ff44', borderRadius: 6,
+      padding: '14px 16px', marginBottom: 16, fontFamily: MONO,
+    }}>
+      <div style={{ fontSize: '9px', color: '#0064ff88', letterSpacing: '0.1em', marginBottom: 8 }}>JOIN A COACH</div>
+      {stage === 'input' && (
+        <>
+          <div style={{ fontSize: 11, color: '#888', marginBottom: 10, lineHeight: 1.5 }}>
+            Got a coach invite code (e.g. SP-XXXXXXXX)? Enter it here to connect.
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              type="text"
+              value={code}
+              onChange={e => setCode(e.target.value.toUpperCase())}
+              placeholder="SP-XXXXXXXX"
+              style={{
+                flex: 1, fontFamily: MONO, fontSize: 12, padding: '10px 12px',
+                minHeight: 44, border: '1px solid #2a2a2a', borderRadius: 4,
+                background: '#0a0a0a', color: '#e0e0e0', letterSpacing: '0.06em',
+              }}
+              aria-label="Coach invite code"
+            />
+            <button onClick={lookup} disabled={!code.trim() || busy} style={{
+              padding: '10px 16px', minHeight: 44, border: 'none', borderRadius: 4,
+              background: BLUE, color: '#fff', fontFamily: MONO, fontSize: 11,
+              fontWeight: 700, letterSpacing: '0.1em', cursor: busy ? 'not-allowed' : 'pointer',
+              opacity: busy ? 0.5 : 1,
+            }}>{busy ? '…' : 'LOOK UP'}</button>
+          </div>
+        </>
+      )}
+      {stage === 'confirm' && (
+        <>
+          <div style={{ fontSize: 12, color: '#e0e0e0', marginBottom: 10, lineHeight: 1.6 }}>
+            <span style={{ color: ORANGE, fontWeight: 700 }}>{coachName}</span> wants to be your coach.
+          </div>
+          <div style={{ fontSize: 10, color: '#666', marginBottom: 14, lineHeight: 1.5 }}>
+            They will be able to view your training data, send program edits, and post comments.
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={accept} disabled={busy} style={btnStyle(BLUE, '#fff', busy)}>
+              {busy ? '…' : 'ACCEPT'}
+            </button>
+            <button onClick={() => { setStage('input'); setCode(''); setCoachName(null) }} disabled={busy} style={btnStyle('#1a1a1a', '#888')}>
+              CANCEL
+            </button>
+          </div>
+        </>
+      )}
+      {msg && <div style={{ fontSize: 10, color: RED, marginTop: 8 }}>{msg}</div>}
+    </div>
+  )
 }

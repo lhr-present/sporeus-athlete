@@ -493,7 +493,7 @@ const BIKE_BUILD = [
     },
     warmup: { en: '15 min Z1-Z2 + 2x1 min openers.', tr: '15 dk Z1-Z2 + 2x1 dk açılış.' },
     cooldown: { en: '10 min Z1.', tr: '10 dk Z1.' },
-    intensity: { en: 'Z3-Z4 (Sweet-Spot) · RPE 7/10', tr: 'Z3-Z4 (Sweet-Spot) · RPE 7/10' },
+    intensity: { en: 'Sweet-spot (Z3-Z4) · RPE 7/10', tr: 'Sweet-spot (Z3-Z4) · RPE 7/10' },
     alternates: [
       { en: 'Time-crunched: 2x20 min @90% FTP.', tr: 'Zaman kıt: 2x20 dk @%90 FTP.' },
       { en: 'Indoor: same prescription on trainer with ERG mode.', tr: 'Kapalı: aynı reçete ERG modlu trainer üzerinde.' },
