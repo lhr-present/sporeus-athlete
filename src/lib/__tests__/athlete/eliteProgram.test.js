@@ -1781,3 +1781,107 @@ describe('buildEliteProgram — v9.13.0 recovery enhancements', () => {
     }
   })
 })
+
+// ── v9.14.0 — upper-body strength + tri bricks ──────────────────────────────
+describe('buildEliteProgram — v9.14.0 upper-body strength balance', () => {
+  it('Base movements include horizontal pull (row) for every sport', () => {
+    const sports = ['run', 'bike', 'swim', 'rowing']
+    for (const sport of sports) {
+      const input = sport === 'bike'
+        ? { currentPR: { distanceM: 0, timeSec: 250 }, targetPR: { distanceM: 0, timeSec: 280 }, raceDate: '2026-08-25', sport, options: { today: TODAY } }
+        : sport === 'rowing'
+        ? { currentPR: { distanceM: 0, timeSec: 480 }, targetPR: { distanceM: 0, timeSec: 440 }, raceDate: '2026-08-25', sport, options: { today: TODAY } }
+        : sport === 'swim'
+        ? { currentPR: { distanceM: 1500, timeSec: 1800 }, targetPR: { distanceM: 1500, timeSec: 1700 }, raceDate: '2026-08-25', sport, options: { today: TODAY } }
+        : RUN_REALISTIC
+      const r = buildEliteProgram(input)
+      const movementNames = r.strengthProgram.Base.movements.map(m => m.name.en).join('|')
+      expect(movementNames).toMatch(/row/i)
+    }
+  })
+
+  it('Base movements include horizontal push (bench/push-up) for every sport', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    const names = r.strengthProgram.Base.movements.map(m => m.name.en).join('|')
+    expect(names).toMatch(/bench|push-up/i)
+  })
+
+  it('rower gets pull-up + heavy bent-over row in Base (catch-phase strength)', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 0, timeSec: 480 },
+      targetPR:  { distanceM: 0, timeSec: 440 },
+      raceDate: '2026-08-25',
+      sport: 'rowing',
+      options: { today: TODAY },
+    })
+    const names = r.strengthProgram.Base.movements.map(m => m.name.en).join('|')
+    expect(names).toMatch(/pull-up|chin-up/i)
+    expect(names).toMatch(/bent-over barbell row/i)
+  })
+
+  it('cyclist gets standing overhead press in Base', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 0, timeSec: 250 },
+      targetPR:  { distanceM: 0, timeSec: 280 },
+      raceDate: '2026-08-25',
+      sport: 'bike',
+      options: { today: TODAY },
+    })
+    const names = r.strengthProgram.Base.movements.map(m => m.name.en).join('|')
+    expect(names).toMatch(/overhead press/i)
+  })
+
+  it('Build movements include explosive med-ball + row power throw', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    const names = r.strengthProgram.Build.movements.map(m => m.name.en).join('|')
+    expect(names).toMatch(/med-ball chest pass/i)
+    expect(names).toMatch(/explosive bent-over row/i)
+  })
+
+  it('Peak movements include light pull + push for pattern maintenance', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    const names = r.strengthProgram.Peak.movements.map(m => m.name.en).join('|')
+    expect(names).toMatch(/dumbbell row \(light\)/i)
+    expect(names).toMatch(/push-up|press \(light\)/i)
+  })
+})
+
+describe('buildEliteProgram — v9.14.0 triathlon brick workouts', () => {
+  const TRI_INPUT = {
+    currentPR: { distanceM: 10000, timeSec: 3000 },
+    targetPR:  { distanceM: 10000, timeSec: 2820 },
+    raceDate: '2026-09-25',
+    sport: 'triathlon',
+    options: { today: TODAY },
+  }
+
+  it('Build phase includes tri-build-brick-bike-run', () => {
+    const r = buildEliteProgram(TRI_INPUT)
+    const session = (r.keySessionLibrary.Build || []).find(s => s.key === 'tri-build-brick-bike-run')
+    expect(session).toBeDefined()
+    expect(session.discipline).toBe('tri')
+    expect(session.structure.en).toMatch(/bike.+run|run.+bike/i)
+  })
+
+  it('Build phase includes tri-build-brick-swim-bike', () => {
+    const r = buildEliteProgram(TRI_INPUT)
+    const session = (r.keySessionLibrary.Build || []).find(s => s.key === 'tri-build-brick-swim-bike')
+    expect(session).toBeDefined()
+    expect(session.discipline).toBe('tri')
+  })
+
+  it('Peak phase includes tri-peak-brick-race-sim', () => {
+    const r = buildEliteProgram(TRI_INPUT)
+    const session = (r.keySessionLibrary.Peak || []).find(s => s.key === 'tri-peak-brick-race-sim')
+    expect(session).toBeDefined()
+    expect(session.discipline).toBe('tri')
+    expect(session.purpose.en).toMatch(/race-day rehearsal/i)
+  })
+
+  it('non-tri sports never receive brick workouts', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    const allSessions = [...(r.keySessionLibrary.Base || []), ...(r.keySessionLibrary.Build || []), ...(r.keySessionLibrary.Peak || [])]
+    const bricks = allSessions.filter(s => s.key && s.key.startsWith('tri-'))
+    expect(bricks).toHaveLength(0)
+  })
+})

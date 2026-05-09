@@ -4,6 +4,62 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.14.0 — 2026-05-09 — Upper-body strength balance + triathlon brick workouts
+
+  Closes 2 high-impact audit findings: P0 strength (upper-body
+  push/pull movements absent across all 5 sports — violated basic
+  S&C movement-balance principle per Haff & Triplett NSCA) and
+  P1 sessions (no brick workouts in tri key-session library —
+  forced coaches to work around with drill-only protocols).
+
+  • Upper-body Base lifts. Universal common tier (DB row + bench/
+    push-up) layered with sport-specific extras:
+    – run/triathlon: single-arm DB push press (asymmetric arm-
+      swing under fatigue)
+    – bike: standing overhead press (stand-and-attack stability)
+    – swim/triathlon: pull-up or lat pulldown (catch-phase pull
+      pattern)
+    – rowing: pull-up + heavy bent-over barbell row 80% 1RM
+      (heaviest pulling pattern matches stroke-load demand)
+
+  • Upper-body Build movements (power conversion). Med-ball chest
+    pass + explosive bent-over row at 50-60% 1RM with maximal
+    pull velocity intent — same philosophy as lower-body Build
+    (bar/pull velocity is the metric, not load). Rønnestad &
+    Mujika 2014.
+
+  • Upper-body Peak (maintenance). Single push + pull at reduced
+    volume; preserves pattern under taper-approach race-specific
+    load. DB row light + push-up/DB press light.
+
+  • Tri brick workouts. New TRI_BRICKS_BUILD + TRI_BRICKS_PEAK
+    arrays merged into the triathlon discipline-flatten step:
+    – tri-build-brick-bike-run (60-90 min bike Z2-Z3 → ≤3 min
+      transition → 15-25 min run, focus cadence ≥180 spm in
+      first 800m). The single most predictive build-phase tri
+      session — leg heaviness in first km of run is the #1
+      race performance leak.
+    – tri-build-brick-swim-bike (1500-2000m swim → quick T1 →
+      30-45 min bike Z2, focus HR settle + straight-line
+      tracking first 5 min).
+    – tri-peak-brick-race-sim (75% race distance, full-rehearsal:
+      breakfast, gear, fueling cadence, race HR/power/pace
+      ceilings per discipline).
+    All 3 tagged discipline='tri' → UI renders BRICK chip.
+    Citations: Friel 2014, ITU framework, Olbrecht 2000,
+    Stellingwerf 2018.
+
+  • UI: BroaderPlanSections DISCIPLINE_META gets 'tri' entry
+    (BRICK chip with 🔁 icon, brown #7d4a00 color).
+
+  • Tests: +10 (9401 total). Citations added: Haff & Triplett
+    NSCA, ITU coaching framework.
+
+  Depends on: v9.12.0 (sport-specific prehab pattern + strength
+  factory functions); v9.6.0 (triathlon discipline composition).
+
+---
+
 ## v9.13.0 — 2026-05-09 — Cohort layer extends to fueling + recovery (TSS-scaled sleep + contrast/compression)
 
   Closes 4 audit findings: cohort-blind fueling, untiered race-day

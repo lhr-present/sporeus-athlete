@@ -1158,6 +1158,79 @@ const LIBRARY = {
   rowing: { Base: ROWING_BASE, Build: ROWING_BUILD, Peak: ROWING_PEAK, Taper: ROWING_TAPER },
 }
 
+// v9.14.0 — Triathlon-specific brick workouts. Closes audit P1 finding: prior
+// library had only tri-drill-brick-transition in drills, no actual brick key
+// sessions. Brick = back-to-back disciplines (most commonly bike→run) trained
+// in single session to rehearse T2 leg-heaviness and pacing transitions.
+// Friel 2014: weekly brick in build is the #1 mitigator of late-race tri
+// performance failure.
+const TRI_BRICKS_BUILD = [
+  {
+    key: 'tri-build-brick-bike-run',
+    name: { en: 'Brick: bike → run', tr: 'Brick: bisiklet → koşu' },
+    purpose: {
+      en: 'Rehearse T2 transition under accumulated leg-fatigue. The single most predictive build-phase tri session — leg heaviness in first km of run is the #1 race performance leak.',
+      tr: 'Birikmiş bacak-yorgunluğu altında T2 geçişi prova et. Build fazının en öngörü-güçlü tri seansı — koşunun ilk km\'sindeki bacak ağırlığı 1 numaralı yarış performans kaybıdır.',
+    },
+    structure: {
+      en: '60-90 min Z2-Z3 bike (last 10 min @ goal IM/70.3 race power) → immediate transition (≤3 min) → 15-25 min run @ easy-Z2 with focus on cadence ≥180 spm in first 800m + Z3 race-pace in final 5 min.',
+      tr: '60-90 dk Z2-Z3 bisiklet (son 10 dk hedef IM/70.3 yarış güçte) → anında geçiş (≤3 dk) → 15-25 dk koşu kolay-Z2 + ilk 800m\'de kadans ≥180 spm + son 5 dk Z3 yarış-tempoda.',
+    },
+    warmup: { en: '15 min Z1-Z2 spin + cadence pyramids 80-100-80 rpm.', tr: '15 dk Z1-Z2 dönüş + kadans piramidi 80-100-80 rpm.' },
+    cooldown: { en: '5 min walk after run + transition log (T2 rehearsal time, gels consumed, cadence first km).', tr: 'Koşu sonrası 5 dk yürü + geçiş kaydı (T2 prova süresi, alınan jeller, ilk km kadans).' },
+    intensity: { en: 'Bike: Z2 with Z3 final 10min · Run: easy-Z2 first km, Z3 final 5min', tr: 'Bisiklet: Z2, son 10dk Z3 · Koşu: ilk km kolay-Z2, son 5 dk Z3' },
+    alternates: [
+      { en: 'Sprint distance: 30 min bike Z2 → 10 min run @ goal pace.', tr: 'Sprint mesafesi: 30 dk bisiklet Z2 → 10 dk koşu hedef tempoda.' },
+      { en: 'Indoor: trainer + treadmill, transition still ≤3 min.', tr: 'Kapalı: trainer + koşubandı, geçiş yine ≤3 dk.' },
+    ],
+    citation: 'Friel 2014; ITU coaching framework; Olbrecht 2000',
+  },
+  {
+    key: 'tri-build-brick-swim-bike',
+    name: { en: 'Brick: swim → bike', tr: 'Brick: yüzme → bisiklet' },
+    purpose: {
+      en: 'Rehearse T1 transition + post-swim disorientation under cycling effort. Heart-rate decoupling and dizzy-vision recovery in first 5 min of bike are race-decisive.',
+      tr: 'T1 geçişini + bisiklet eforu altında yüzme sonrası dezoryantasyonu prova et. Bisikletin ilk 5 dk\'sındaki HR-decoupling ve baş-dönmesi toparlanması yarış-belirleyicidir.',
+    },
+    structure: {
+      en: '1500-2000m swim (last 200m @ race effort) → quick transition (full strip + helmet/shoes/sunglasses) → 30-45 min bike Z2 with first 5 min focus on settling HR + tracking straight line.',
+      tr: '1500-2000m yüzme (son 200m yarış efor) → hızlı geçiş (tam soyun + kask/ayakkabı/güneş gözlüğü) → 30-45 dk bisiklet Z2, ilk 5 dk HR oturtma + düz çizgi takip odaklı.',
+    },
+    warmup: { en: '300m swim mixed + 4x50m build.', tr: '300m karışık yüzme + 4x50m kademeli.' },
+    cooldown: { en: '10 min Z1 spin + transition log.', tr: '10 dk Z1 dönüş + geçiş kaydı.' },
+    intensity: { en: 'Swim: race-effort final 200m · Bike: Z2 settle, no Z3', tr: 'Yüzme: son 200m yarış efor · Bisiklet: Z2 oturt, Z3 yok' },
+    alternates: [
+      { en: 'No pool access: 20 min hard run pre-bike (mimics post-swim HR).', tr: 'Havuz yoksa: bisiklet öncesi 20 dk sert koşu (yüzme sonrası HR taklit).' },
+    ],
+    citation: 'Friel 2014; Olbrecht 2000',
+  },
+]
+
+// v9.14.0 — Tri Peak: race-simulation brick. Total 75-80% race distance,
+// rehearses pacing + fueling + transition timings 2-3 weeks pre-race.
+const TRI_BRICKS_PEAK = [
+  {
+    key: 'tri-peak-brick-race-sim',
+    name: { en: 'Race-simulation brick (75% race distance)', tr: 'Yarış-simülasyon brick (yarış mesafesinin %75)' },
+    purpose: {
+      en: 'Full race-day rehearsal at 75% distance. Practice exact race-day breakfast, transition gear layout, fueling cadence, race-pace HR ceilings. Single most predictive tri Peak session.',
+      tr: 'Yarış mesafesinin %75\'inde tam yarış-günü provası. Birebir yarış-günü kahvaltısı, geçiş ekipman yerleşimi, beslenme ritmi, yarış-tempo HR tavanları prova et. En öngörü-güçlü tri Peak seansı.',
+    },
+    structure: {
+      en: '75% race distance covered: e.g., 70.3 athlete = 1500m swim + 60-70km bike + 12-14km run. Practice 3h-prior breakfast, race-day kit, exact fueling cadence (gels/hr per discipline), goal HR/power/pace per discipline.',
+      tr: 'Yarış mesafesinin %75\'i: örn. 70.3 atleti = 1500m yüzme + 60-70km bisiklet + 12-14km koşu. 3sa öncesi kahvaltı, yarış kıyafeti, tam beslenme ritmi (disiplin başına jel/sa), disiplin başına hedef HR/güç/tempo prova et.',
+    },
+    warmup: { en: 'Built into swim leg.', tr: 'Yüzme ayağı içinde.' },
+    cooldown: { en: '15 min walk + nutrition log + post-race recovery test (HR drop in 60s).', tr: '15 dk yürü + beslenme kaydı + yarış-sonu toparlanma testi (60s\'de HR düşüşü).' },
+    intensity: { en: 'Goal race intensity per discipline · Stop session if any leg drifts above goal HR by >5%.', tr: 'Disiplin başına hedef yarış şiddeti · Herhangi ayak hedef HR üstünde >%5 kaymaya başlarsa seansı durdur.' },
+    alternates: [
+      { en: 'Sprint distance: 50% race distance (longer needed for pacing rehearsal).', tr: 'Sprint mesafesi: yarış mesafesinin %50 (tempo provası için daha uzun gerekir).' },
+      { en: 'Olympic: 60% distance — full distance too taxing 2-3 weeks pre-race.', tr: 'Olimpik: %60 mesafe — tam mesafe yarıştan 2-3 hafta önce çok yıpratıcı.' },
+    ],
+    citation: 'Stellingwerf 2018; Friel 2014',
+  },
+]
+
 /**
  * @public
  * @param {'run'|'bike'|'swim'|'triathlon'|'rowing'} sport
@@ -1185,6 +1258,9 @@ export function buildKeySessionLibrary(input) {
   const cohort = selectCohort(sport, currentLevel)
 
   // v9.6.0 — triathlon merges all three disciplines, tagged for the UI.
+  // v9.14.0 — Build adds tri-specific bricks (bike→run + swim→bike); Peak
+  // adds the race-sim brick. Bricks tagged discipline='tri' so UI can
+  // render with the orange-blue-green hybrid chip.
   if (sport === 'triathlon') {
     const swimCohort = selectCohort('swim', currentLevel)
     const bikeCohort = selectCohort('bike', currentLevel)
@@ -1193,11 +1269,17 @@ export function buildKeySessionLibrary(input) {
     for (const phase of ['Base', 'Build', 'Peak', 'Taper']) {
       if (!present.has(phase)) continue
       const tri = buildTriathlonKeySessions(phase)
-      out[phase] = [
+      const sessions = [
         ...(tri.swim || []).map(s => applyCohort({ ...s, discipline: 'swim' }, swimCohort)),
         ...(tri.bike || []).map(s => applyCohort({ ...s, discipline: 'bike' }, bikeCohort)),
         ...(tri.run  || []).map(s => applyCohort({ ...s, discipline: 'run'  }, runCohort)),
       ]
+      if (phase === 'Build') {
+        sessions.push(...TRI_BRICKS_BUILD.map(s => ({ ...s, discipline: 'tri' })))
+      } else if (phase === 'Peak') {
+        sessions.push(...TRI_BRICKS_PEAK.map(s => ({ ...s, discipline: 'tri' })))
+      }
+      out[phase] = sessions
     }
     return out
   }

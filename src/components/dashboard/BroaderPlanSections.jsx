@@ -131,10 +131,12 @@ function bil(field, isTR) {
 }
 
 // v9.6.0 — discipline chip for triathlon key sessions.
+// v9.14.0 — added 'tri' for brick workouts (multi-discipline).
 const DISCIPLINE_META = {
   swim: { icon: '🏊', label: { en: 'SWIM', tr: 'YÜZME' },     color: '#0064ff' },
   bike: { icon: '🚴', label: { en: 'BIKE', tr: 'BİSİKLET' },  color: '#28a745' },
   run:  { icon: '🏃', label: { en: 'RUN',  tr: 'KOŞU' },      color: '#ff6600' },
+  tri:  { icon: '🔁', label: { en: 'BRICK', tr: 'BRICK' },    color: '#7d4a00' },
 }
 function DisciplineChip({ discipline, isTR }) {
   if (!discipline || !DISCIPLINE_META[discipline]) return null

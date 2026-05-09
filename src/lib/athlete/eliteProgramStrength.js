@@ -345,29 +345,168 @@ const BASE_LIFTS = [
   },
 ]
 
+// v9.14.0 — Upper-body Base lifts. Closes audit P0 finding: prior strength
+// program was lower-body only, violating push/pull movement-balance principle
+// (Haff & Triplett NSCA, Beattie 2014). Sport emphasis: rowers/swimmers prioritize
+// pulling; cyclists prioritize T-spine/posterior-chain; runners get balanced.
+// Common to all sports: 2 movements (1 push, 1 pull) per Base session.
+const UPPER_BODY_BASE_COMMON = [
+  {
+    name: { en: 'Barbell or dumbbell row', tr: 'Barbel veya dumbel kürek' },
+    sets: 3,
+    reps: '6-8',
+    intensity: { en: '70-75% 1RM', tr: '%70-75 1RM' },
+    notes: { en: 'Horizontal pull. Drive elbow back, retract scap. Critical for posture under endurance load.', tr: 'Yatay çekiş. Dirseği geri sür, skapulayı geri çek. Dayanıklılık yükü altında postür için kritik.' },
+  },
+  {
+    name: { en: 'Dumbbell bench or push-up progression', tr: 'Dumbel bench veya şınav ilerletme' },
+    sets: 3,
+    reps: '6-10',
+    intensity: { en: '70-75% 1RM (DB) or weighted/feet-elevated push-ups', tr: '%70-75 1RM (DB) veya yüklü/ayak-yukarı şınav' },
+    notes: { en: 'Horizontal push balances pulling volume; protects shoulder under freestyle/rowing pull demand.', tr: 'Yatay itme çekiş hacmini dengeler; serbest stil/kürek çekişine karşı omuzu korur.' },
+  },
+]
+
+// Per-sport additional Base upper-body emphasis. Swim/rowing add extra pull
+// volume (vertical or pronated grip); cyclists add overhead press for
+// stand-and-attack stability; runners get unilateral work for arm-swing balance.
+const UPPER_BODY_BASE_SPORT_EXTRA = {
+  run: [
+    {
+      name: { en: 'Single-arm dumbbell push press', tr: 'Tek-kol dumbel push press' },
+      sets: 2,
+      reps: '5 each side',
+      intensity: { en: '60% 1RM', tr: '%60 1RM' },
+      notes: { en: 'Asymmetric overhead loading mimics arm-swing under fatigue.', tr: 'Asimetrik üst-baş yükleme yorgunlukta kol-savruşunu taklit eder.' },
+    },
+  ],
+  bike: [
+    {
+      name: { en: 'Standing overhead press', tr: 'Ayakta üst-baş press' },
+      sets: 3,
+      reps: '6-8',
+      intensity: { en: '65-75% 1RM', tr: '%65-75 1RM' },
+      notes: { en: 'Builds standing-attack stability; activates serratus + lower trap.', tr: 'Ayakta-saldırı stabilitesi geliştirir; serratus + alt trap aktive eder.' },
+    },
+  ],
+  swim: [
+    {
+      name: { en: 'Pull-up or lat pulldown', tr: 'Pull-up veya lat pulldown' },
+      sets: 3,
+      reps: '5-8 (or weighted as fitness allows)',
+      intensity: { en: 'Body weight + load as needed', tr: 'Vücut ağırlığı + gerektiğinde yük' },
+      notes: { en: 'Vertical pull for catch-phase strength. Pronated grip mimics swim pull pattern.', tr: 'Yakalama fazı kuvveti için dikey çekiş. Pronatik tutuş yüzme çekiş kalıbını taklit eder.' },
+    },
+  ],
+  rowing: [
+    {
+      name: { en: 'Pull-up or chin-up', tr: 'Pull-up veya chin-up' },
+      sets: 3,
+      reps: '5-8 (weighted if able)',
+      intensity: { en: 'Body weight + load', tr: 'Vücut ağırlığı + yük' },
+      notes: { en: 'Vertical pull; transfers directly to drive-phase rowing pull.', tr: 'Dikey çekiş; çekiş fazı kürek hareketine doğrudan transfer.' },
+    },
+    {
+      name: { en: 'Bent-over barbell row (heavy)', tr: 'Eğilmiş barbel kürek (ağır)' },
+      sets: 3,
+      reps: '5',
+      intensity: { en: '80% 1RM', tr: '%80 1RM' },
+      notes: { en: 'Heaviest pulling pattern matches stroke-load demand; prioritize over bench.', tr: 'En ağır çekiş kalıbı stroke yükünü karşılar; bench\'ten önce öncelendir.' },
+    },
+  ],
+  triathlon: [
+    {
+      name: { en: 'Pull-up or lat pulldown', tr: 'Pull-up veya lat pulldown' },
+      sets: 3,
+      reps: '5-8',
+      intensity: { en: 'Body weight + load as needed', tr: 'Vücut ağırlığı + gerektiğinde yük' },
+      notes: { en: 'Swim-leg shoulder strength — vertical pull pattern.', tr: 'Yüzme ayağı omuz kuvveti — dikey çekiş kalıbı.' },
+    },
+  ],
+}
+
+function getUpperBodyBase(sport) {
+  const extra = UPPER_BODY_BASE_SPORT_EXTRA[sport] || []
+  return [...UPPER_BODY_BASE_COMMON, ...extra]
+}
+
+// v9.14.0 — Upper-body Build movements (power conversion). Med-ball throws +
+// explosive row/press with reduced load + maximal velocity intent. Same
+// philosophy as lower-body Build (Rønnestad & Mujika 2014: 50-60% 1RM,
+// bar-speed metric not load).
+const UPPER_BODY_BUILD = [
+  {
+    name: { en: 'Med-ball chest pass (power throw)', tr: 'Sağlık topu göğüs pas (güç fırlatma)' },
+    sets: 3,
+    reps: '6',
+    intensity: { en: '4-6kg ball, max velocity', tr: '4-6kg top, maks hız' },
+    notes: { en: 'Horizontal-push power output. Throw against wall or to partner; full extension each rep.', tr: 'Yatay-itme güç çıktısı. Duvara veya partnere fırlat; her tekrar tam ekstansiyon.' },
+  },
+  {
+    name: { en: 'Explosive bent-over row', tr: 'Patlayıcı eğilmiş kürek' },
+    sets: 3,
+    reps: '5',
+    intensity: { en: '50-60% 1RM with maximal pull velocity', tr: '%50-60 1RM, maksimal çekiş hızı' },
+    notes: { en: 'Pull velocity is the metric, not load. Drive elbow back hard; controlled eccentric.', tr: 'Yük değil çekiş hızı metriktir. Dirseği sert geri sür; kontrollü eksantrik.' },
+  },
+]
+
+// v9.14.0 — Upper-body Peak (maintenance dose). Single push + pull at
+// reduced volume; preserves pattern under taper-approach race-specific load.
+const UPPER_BODY_PEAK = [
+  {
+    name: { en: 'Dumbbell row (light)', tr: 'Dumbel kürek (hafif)' },
+    sets: 2,
+    reps: '6',
+    intensity: { en: '60-65% 1RM', tr: '%60-65 1RM' },
+    notes: { en: 'Maintain pulling pattern; no fatigue intent.', tr: 'Çekiş kalıbını koru; yorgunluk niyeti yok.' },
+  },
+  {
+    name: { en: 'Push-up or DB press (light)', tr: 'Şınav veya DB press (hafif)' },
+    sets: 2,
+    reps: '8',
+    intensity: { en: 'Body weight or 60% 1RM', tr: 'Vücut ağırlığı veya %60 1RM' },
+    notes: { en: 'Pattern maintenance. Skip if shoulder fatigued from sport-specific work.', tr: 'Kalıp koruma. Spora-özel işten omuz yorgunsa atla.' },
+  },
+]
+
 function makeBase(sport) {
   const plyo = SPORT_PLYO_BASE[sport] || []
+  // v9.14.0 — interleave lower-body lifts → upper-body lifts → plyo so the
+  // session naturally alternates push/pull/squat/hinge per Beattie 2014.
   return {
     phase: 'Base',
     emphasis: {
-      en: 'Heavy max-strength + sport-specific plyometrics. Prehab opens every session; core progression closes it.',
-      tr: 'Ağır maksimal-kuvvet + spora-özel plyometrik. Her seansı prehab açar; core ilerlemesi kapatır.',
+      en: 'Heavy max-strength + sport-specific plyometrics + balanced upper-body push/pull. Prehab opens every session; core progression closes it.',
+      tr: 'Ağır maksimal-kuvvet + spora-özel plyometrik + dengeli üst-vücut itme/çekiş. Her seansı prehab açar; core ilerlemesi kapatır.',
     },
     frequencyPerWeek: 2,
-    sessionDurationMin: 55,
+    sessionDurationMin: 60,
     prehab: getPrehab(sport),
-    movements: [...BASE_LIFTS, ...plyo],
+    movements: [...BASE_LIFTS, ...getUpperBodyBase(sport), ...plyo],
     core: CORE_BASE,
     warning: {
       en: 'Schedule on a non-key-quality endurance day. Allow 6-8h before next aerobic session.',
       tr: 'Anahtar kaliteli aerobik günden farklı bir günde planla. Sonraki aerobik seansa 6-8 saat bırak.',
     },
-    citation: 'Rønnestad & Mujika 2014; Beattie et al. 2014; Page 2010 (prehab); Cibulka 2008 (glute act)',
+    citation: 'Rønnestad & Mujika 2014; Beattie et al. 2014; Haff & Triplett (NSCA); Page 2010 (prehab); Cibulka 2008 (glute act)',
   }
 }
 
-function makeBuild(sport) { return { ...BUILD_TEMPLATE, prehab: getPrehab(sport) } }
-function makePeak(sport)  { return { ...PEAK_TEMPLATE,  prehab: getPrehab(sport) } }
+function makeBuild(sport) {
+  return {
+    ...BUILD_TEMPLATE,
+    prehab: getPrehab(sport),
+    movements: [...BUILD_TEMPLATE.movements, ...UPPER_BODY_BUILD],
+  }
+}
+function makePeak(sport) {
+  return {
+    ...PEAK_TEMPLATE,
+    prehab: getPrehab(sport),
+    movements: [...PEAK_TEMPLATE.movements, ...UPPER_BODY_PEAK],
+  }
+}
 function makeTaper(sport) { return { ...TAPER_TEMPLATE, prehab: getPrehab(sport) } }
 
 const BUILD_TEMPLATE = {
