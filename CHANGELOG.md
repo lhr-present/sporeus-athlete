@@ -4,6 +4,74 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.30.0 — 2026-05-10 — Triathlon race-week protocol (was falling through to RUN)
+
+  Closes a P0 finding from the race-week completeness audit:
+  `sport === 'triathlon'` was NOT handled in the schedule/raceDay
+  selectors at lines 681-690 — triathletes received the RUN-only
+  protocol despite multi-sport reality. T1/T2 transitions, brick
+  rehearsal, post-swim refuel windows, and tri-specific pacing
+  were all absent.
+
+  Added:
+
+  • **TRIATHLON_SCHEDULE** (8 days T-7 → T-0):
+    - T-7: last full brick (60-90 min bike + 15 min run @T-pace)
+    - T-6: easy run + technique-focus swim
+    - T-5: rest + transition mental rehearsal (T1/T2 walk-through)
+    - T-4: short brick primer (20-25 min bike + 10 min run @goal)
+    - T-3: rest or drill-focus swim only (no leg load)
+    - T-2: light spin + run strides + open-water feel
+    - T-1: brief touches all three disciplines, kit layout, bike check
+    - T-0: race day
+
+  • **RACE_DAY_TRIATHLON** with tri-specific fields:
+    - `wakeUp`: 4-5h before SWIM start (not race start — gun fires
+      before bike start)
+    - `breakfast`: explicit "swim-start" timing reference
+    - `preRaceMeals`: 5 meals including T1 immediate gel
+    - `warmup`: 30-40 min covering all three disciplines
+    - `pacing`: swim 5-10% under goal (energy budget) → bike
+      88-92% FTP (NOT TT) → run accept slow first 1-2km
+    - `fueling`: bike 60-90 g/h, last gel 10-15 min pre-T2,
+      run gel every 4-5 km
+    - `mental`: discipline-specific scripts (smooth swim,
+      deliberate T1, settle bike, T2 sequence, rubber-band run)
+    - `mentalRehearsal`: 7 visualization scripts (Vealey 2007
+      adapted for tri)
+    - `caffeine`: 3-6 mg/kg, 60 min pre-SWIM-start (with breakfast)
+    - **NEW** `transitionLayout`: T1 + T2 layout in execution order
+      (Bonci 2011 — logistical errors are the #1 cause of tri DNF,
+      more than fitness). Walk-through twice on T-1.
+    - **NEW** `brickRefuelWindow`: 0-60s post-swim CHO rule.
+      Glycogen depletion from swim is steeper than athletes
+      expect; failing pre-bike refuel = classic km-30 bike bonk
+      (Stellingwerf 2018).
+
+  Wired `sport === 'triathlon'` in both schedule + raceDay
+  selectors. UI: 2 new render blocks in RaceWeekSection — blue
+  🔁 transitionLayout, red ⚠️ brickRefuelWindow. Non-tri sports
+  pass through unchanged.
+
+  Tests: 10 new in eliteProgramRaceWeek.test.js (tri schedule
+  differs from run, brick mentions in T-7+T-4, full 8-day
+  coverage, transitionLayout shape, brickRefuelWindow shape,
+  mentalRehearsal mentions transitions, preRaceMeals mention
+  T1, sport-specific caffeine, non-tri exclusion, distance-tier
+  preserved). 3 new UI render tests for the tri-only blocks
+  + null-hiding. 9528/9528 green. Bundle 1324.9 KB.
+
+  Citations: Mujika 2003 (multi-sport taper), Stellingwerf 2018
+  (triathlon fueling), Friel 2014 (transition efficiency),
+  Bonci 2011 (T1/T2 logistical errors), Vealey 2007 (mental
+  rehearsal).
+
+  Depends on: v9.16.0 (distance-tier overrides preserved),
+  v9.17.0 (universal mental + caffeine + readiness blocks),
+  v9.29.0 (race-week UI surfacing infrastructure).
+
+---
+
 ## v9.29.0 — 2026-05-09 — Race-week UI surfacing (buried data → visible content)
 
   Closes 4 P2 surface gaps from the race-week completeness audit.

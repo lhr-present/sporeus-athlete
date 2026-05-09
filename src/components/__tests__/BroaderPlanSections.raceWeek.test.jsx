@@ -133,6 +133,38 @@ describe('RaceWeekSection — v9.29.0 buried data surfaced', () => {
     expect(screen.getByText(/^rahatla$/i)).toBeInTheDocument()
   })
 
+  // ── v9.30.0 — Triathlon T1/T2 layout + brick refuel render blocks ──
+  it('renders tri-only transitionLayout block when present', () => {
+    const protocol = makeProtocol({
+      transitionLayout: {
+        en: 'T1 layout: wetsuit-strip, helmet, bike shoes. T2 layout: run shoes, hat.',
+        tr: 'T1 düzeni: neopren, kask, bisiklet ayakkabısı. T2 düzeni: koşu ayakkabısı, şapka.',
+      },
+    })
+    renderWithLang(<RaceWeekSection raceWeekProtocol={protocol} isTR={false} defaultOpen={true} />)
+    expect(screen.getByText(/TRANSITION LAYOUT/i)).toBeInTheDocument()
+    expect(screen.getByText(/T1 layout:.*wetsuit-strip/i)).toBeInTheDocument()
+  })
+
+  it('renders tri-only brickRefuelWindow block when present', () => {
+    const protocol = makeProtocol({
+      brickRefuelWindow: {
+        en: 'T1 immediate-CHO rule: take 25-30 g gel within 60s of mounting bike.',
+        tr: 'T1 hemen-CHO kuralı: bisiklete binişten 60 saniye içinde 25-30 g jel al.',
+      },
+    })
+    renderWithLang(<RaceWeekSection raceWeekProtocol={protocol} isTR={false} defaultOpen={true} />)
+    expect(screen.getByText(/BRICK REFUEL WINDOW/i)).toBeInTheDocument()
+    expect(screen.getByText(/take 25-30 g gel within 60s/i)).toBeInTheDocument()
+  })
+
+  it('hides tri-only blocks when not triathlon (run/bike/swim/rowing)', () => {
+    const protocol = makeProtocol() // no transitionLayout / brickRefuelWindow
+    renderWithLang(<RaceWeekSection raceWeekProtocol={protocol} isTR={false} defaultOpen={true} />)
+    expect(screen.queryByText(/TRANSITION LAYOUT/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/BRICK REFUEL WINDOW/i)).not.toBeInTheDocument()
+  })
+
   it('returns null when raceWeekProtocol is null/undefined', () => {
     const { container: c1 } = render(<RaceWeekSection raceWeekProtocol={null} isTR={false} />)
     const { container: c2 } = render(<RaceWeekSection raceWeekProtocol={undefined} isTR={false} />)

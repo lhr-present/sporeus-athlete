@@ -356,6 +356,122 @@ const RACE_DAY_SWIM = {
 // v9.7.0 — Rowing race-day protocol. 2k race lasts ~6-8 min so fueling is
 // pre-loaded; warmup is comprehensive because cold rowing strokes risk poor
 // catch and back injury.
+// v9.30.0 — Triathlon race-week schedule. Previously sport==='triathlon'
+// fell through to RUN_SCHEDULE — triathletes got a run-only race protocol
+// despite multi-sport reality. This schedule covers brick rehearsal,
+// transition layout walk-through, and reduced-volume per-discipline taper.
+//   Citations: Mujika 2003 (multi-sport taper); Stellingwerf 2018
+//   (triathlon-specific fueling); Friel 2014 (transition efficiency);
+//   Bonci 2011 (T1/T2 logistical errors → DNF).
+const TRIATHLON_SCHEDULE = [
+  { tMinus: 7, day: 'T-7',
+    session: { en: 'Last full brick: 60-90 min bike @goal race pace + 15 min off-bike run @T-pace.', tr: 'Son tam brick: 60-90 dk bisiklet hedef yarış temposunda + 15 dk bisiklet sonrası koşu T-tempoda.' },
+    fueling: { en: 'Practice exact race-day in-race fueling on the brick.', tr: 'Brick üzerinde tam yarış-günü beslenmesini prova et.' },
+    notes: { en: 'No new gear after this point — wetsuit, bike, shoes locked.', tr: 'Bu noktadan sonra yeni ekipman yok — neopren, bisiklet, ayakkabı sabit.' },
+  },
+  { tMinus: 6, day: 'T-6',
+    session: { en: '30-40 min easy run + 1500-2000m easy swim, technique focus.', tr: '30-40 dk kolay koşu + 1500-2000m kolay yüzme, teknik odaklı.' },
+    fueling: { en: 'Maintain Build CHO ~7 g/kg. Hydration baseline.', tr: 'Build CHO ~7 g/kg sürdür. Bazal hidrasyon.' },
+    notes: { en: 'Last regular triple-discipline day.', tr: 'Son normal üç-disiplin günü.' },
+  },
+  { tMinus: 5, day: 'T-5',
+    session: { en: 'Rest OR 30 min easy spin only. Transition rehearsal: lay out T1/T2 mentally.', tr: 'Dinlenme YA DA sadece 30 dk kolay bisiklet. Geçiş provası: T1/T2 zihinsel olarak yerleştir.' },
+    fueling: { en: 'CHO ~7 g/kg. Begin sleep priority.', tr: 'CHO ~7 g/kg. Uyku önceliğine başla.' },
+    notes: { en: 'Walk through bike rack location, swim exit path, run exit path.', tr: 'Bisiklet park yeri, yüzme çıkışı, koşu çıkışı yollarını yürüyerek incele.' },
+  },
+  { tMinus: 4, day: 'T-4',
+    session: { en: 'Short brick primer: 20-25 min bike @goal pace + 10 min run @goal pace, then easy.', tr: 'Kısa brick açılışı: 20-25 dk bisiklet hedef tempoda + 10 dk koşu hedef tempoda, sonrası kolay.' },
+    fueling: { en: 'CHO ~8 g/kg. Practice gel-on-bike timing.', tr: 'CHO ~8 g/kg. Bisiklet üstü jel zamanlamasını prova et.' },
+    notes: { en: 'Race-pace neuromuscular primer for both bike + run.', tr: 'Hem bisiklet hem koşu için yarış-tempo nöromusküler açılış.' },
+  },
+  { tMinus: 3, day: 'T-3',
+    session: { en: 'Rest OR 1500m easy swim, drill-focus only. No bike, no run.', tr: 'Dinlenme YA DA 1500m kolay yüzme, sadece drill odaklı. Bisiklet yok, koşu yok.' },
+    fueling: { en: 'Begin carb load: CHO 10 g/kg. Cut high-fiber.', tr: 'Karbonhidrat yüklemeye başla: CHO 10 g/kg. Yüksek lifi kes.' },
+    notes: { en: 'Swim drill keeps stroke feel without leg load.', tr: 'Yüzme drill\'i bacak yüklemeden stroke hissini korur.' },
+  },
+  { tMinus: 2, day: 'T-2',
+    session: { en: '20 min light spin + 4x20s strides on run + 5 min open-water swim feel (if accessible).', tr: '20 dk hafif bisiklet + 4x20s koşu adımı + 5 dk açık-su yüzme hissi (mümkünse).' },
+    fueling: { en: 'CHO 10-12 g/kg, electrolyte hydration.', tr: 'CHO 10-12 g/kg, elektrolitli hidrasyon.' },
+    notes: { en: 'Light dinner; no novel foods from here. Lay out T1/T2 kit.', tr: 'Hafif akşam yemeği; bundan sonra yeni yiyecek yok. T1/T2 ekipmanını hazırla.' },
+  },
+  { tMinus: 1, day: 'T-1',
+    session: { en: '10 min spin + 5-10 min easy run with 2x15s race-pace touches + 200-400m swim feel. OR full rest.', tr: '10 dk bisiklet + 5-10 dk kolay koşu, 2x15s yarış-tempo dokunuşu + 200-400m yüzme hissi. YA DA tam dinlenme.' },
+    fueling: { en: 'CHO 10-12 g/kg; pre-race dinner before 19:00.', tr: 'CHO 10-12 g/kg; yarış öncesi akşam yemeği 19:00 öncesi.' },
+    notes: { en: 'Bike check (tires, chain, gears, hydration mounts). T1/T2 layout walk-through. Pin race number. Sleep early.', tr: 'Bisiklet kontrolü (lastik, zincir, vites, sıvı tutacakları). T1/T2 düzenini yürüyerek incele. Yarış numarasını iliştir. Erken uyu.' },
+  },
+  { tMinus: 0, day: 'T-0 (Race day)',
+    session: { en: 'Triathlon: swim → T1 → bike → T2 → run.', tr: 'Triatlon: yüzme → T1 → bisiklet → T2 → koşu.' },
+    fueling: { en: 'See race-day fueling block. Critical: refuel in T1 before bike mount.', tr: 'Yarış günü beslenme bloğunu gör. Kritik: T1\'de bisiklete binmeden önce yakıt al.' },
+    notes: { en: 'Trust the work. Pace conservatively in swim; race begins on the bike.', tr: 'Çalışmaya güven. Yüzmede ihtiyatlı tempola; yarış bisiklette başlar.' },
+  },
+]
+
+const RACE_DAY_TRIATHLON = {
+  wakeUp: { en: '4-5 h before swim start. 500 ml water + electrolytes immediately.', tr: 'Yüzme başlangıcından 4-5 saat önce. Hemen 500 ml su + elektrolit.' },
+  breakfast: { en: 'CHO 1.5-2 g/kg, low-fiber. 3-4 h pre-swim-start. NOT pre-race-start — the gun fires earlier than the bike start.', tr: 'CHO 1.5-2 g/kg, düşük lif. Yüzme başlangıcından 3-4 sa önce. Yarış başlangıcından DEĞİL — start düdüğü bisiklet başlangıcından önce çalar.' },
+  preRaceMeals: {
+    en: [
+      '3.5h pre-swim (75 kg, ~150g CHO): oatmeal (60g dry oats = 36g CHO) + 1 banana (27g) + 2 slices toast + honey (50g) + black coffee.',
+      '2h pre-swim: 1 bagel + jam (60g CHO) + 250ml sports drink (15g).',
+      '1h pre-swim: 1 gel (25g CHO) + 200ml water. Skip if GI-sensitive.',
+      'In T1 (post-swim, before bike mount): immediate gel (25g CHO) — CRITICAL refuel window. Glycogen drained from swim.',
+      'AVOID: dairy day-of (lactose + cold-water swallowing), high-fat (gastric emptying), high-fiber (urgency).',
+    ],
+    tr: [
+      'Yüzmeden 3.5 sa önce (75 kg, ~150g CHO): yulaf (60g kuru yulaf = 36g CHO) + 1 muz (27g) + 2 dilim ekmek + bal (50g) + sade kahve.',
+      'Yüzmeden 2 sa önce: 1 simit + reçel (60g CHO) + 250ml spor içeceği (15g).',
+      'Yüzmeden 1 sa önce: 1 jel (25g CHO) + 200ml su. GI hassasiyet varsa atla.',
+      'T1\'de (yüzme sonrası, bisiklete binmeden): hemen jel (25g CHO) — KRİTİK yakıt penceresi. Yüzmeden glikojen tükenmiş.',
+      'KAÇIN: yarış günü süt ürünleri (laktoz + soğuk-su yutma), yüksek yağ (mide boşalması), yüksek lif (acil tuvalet).',
+    ],
+  },
+  warmup: { en: '30-40 min total: 10 min easy run with strides + 10 min bike spin + 10-15 min swim with sighting practice (open water) ending 5-10 min before swim start.', tr: '30-40 dk toplam: 10 dk kolay koşu + adım + 10 dk bisiklet + 10-15 dk yüzme, sighting prova (açık su), yüzme başlangıcından 5-10 dk önce bitir.' },
+  pacing: {
+    en: 'Swim: 5-10% under goal pace — energy budget for bike-run. Bike: upper-Z2/lower-Z3 (88-92% goal FTP, NOT TT effort). Run: first 1-2 km feels SLOW, accept it. Last 25%: free if able.',
+    tr: 'Yüzme: hedef tempodan %5-10 altında — bisiklet-koşu için enerji bütçesi. Bisiklet: üst-Z2/alt-Z3 (%88-92 hedef FTP, TT eforu DEĞİL). Koşu: ilk 1-2 km YAVAŞ hisseder, kabul et. Son %25: gücün varsa serbest.',
+  },
+  fueling: { en: 'On-bike: 60-90 g CHO/h with 600-800 ml fluid/h. Last gel 10-15 min before T2 dismount. On-run: 1 gel every 4-5 km. Salt cap if hot/heavy sweater.', tr: 'Bisiklette: 60-90 g CHO/sa, 600-800 ml sıvı/sa. T2 inişinden 10-15 dk önce son jel. Koşuda: her 4-5 km\'de 1 jel. Sıcak/ağır terleyen: tuz kapsülü.' },
+  mental: { en: 'Swim: stay smooth, sight every 6-8 strokes. T1: deliberate, not rushed — losing 30s here is fine; losing focus costs more. Bike: settle in by km 5; race begins at km 25 of bike. Run: walk-jog T2 area, then settle into the marathon-shuffle pattern.', tr: 'Yüzme: pürüzsüz kal, her 6-8 stroke\'ta sighting. T1: bilinçli, acelesiz — burada 30s kayıp tamam; odak kaybı daha pahalı. Bisiklet: 5. km\'de yerleşin; yarış bisikletin 25. km\'sinde başlar. Koşu: T2 alanını yürü-koş, sonra maraton-shuffle desenine yerleş.' },
+  // v9.30.0 — Mental rehearsal scripts (Vealey 2007; Bull 1996) adapted for tri.
+  mentalRehearsal: {
+    en: [
+      'Visualize the swim start: deliberate pacing, smooth bilateral breathing, sighting every 6-8 strokes. Do not chase the front pack.',
+      'T1 mental script: "Deliberate, not rushed. Wetsuit strip, helmet, glasses, mount line." Practice this sequence 5 times in training week.',
+      'Bike first 10 min: "Settle. Breathing rhythmic. Power steady — not pushing, not coasting." Suppress the urge to chase.',
+      'Bike middle: anchor on aero position, hydration cadence, gel timing. Race begins at km 25.',
+      'T2 mental script: "Bike racked, helmet off, shoes on, hat on, GO." Pre-rehearsed = autopilot.',
+      'Run first 1-2 km: legs feel heavy and slow — THIS IS NORMAL. "Rubber-band release" comes around km 2-3.',
+      'Run final 25%: "Reel them in." Pick one runner, close the gap, repeat. The marathon-shuffle wins.',
+    ],
+    tr: [
+      'Yüzme başlangıcını görselleştir: bilinçli tempo, pürüzsüz çift-taraflı nefes, her 6-8 stroke\'ta sighting. Ön grubu kovalama.',
+      'T1 zihinsel senaryosu: "Bilinçli, acelesiz. Neopren çıkar, kask, gözlük, biniş çizgisi." Antrenman haftası 5 kez prova et.',
+      'Bisiklet ilk 10 dk: "Yerleş. Nefes ritmik. Güç sabit — ittirme yok, kaykılma yok." Kovalama dürtüsünü bastır.',
+      'Bisiklet ortası: aero pozisyon, hidrasyon kadansı, jel zamanlaması. Yarış 25. km\'de başlar.',
+      'T2 zihinsel senaryosu: "Bisiklet rafta, kask çıktı, ayakkabı, şapka, GİT." Önceden prova = otomatik pilot.',
+      'Koşu ilk 1-2 km: bacaklar ağır ve yavaş hisseder — BU NORMAL. "Lastik-bant gevşemesi" 2-3. km civarında gelir.',
+      'Koşu son %25: "Onları çek." Bir koşucu seç, mesafeyi kapat, tekrar et. Maraton-shuffle kazanır.',
+    ],
+  },
+  caffeine: {
+    en: 'Evidence-based: 3-6 mg/kg, 60 min pre-swim-start. Take with breakfast, not last-minute. 75 kg → 225-450 mg. Skip if anxiety-prone or sleep-poor week. Avoid >6 mg/kg (GI/jitter risk magnified by swim cold-water swallowing).',
+    tr: 'Kanıt-tabanlı: 3-6 mg/kg, yüzme başlangıcından 60 dk önce. Kahvaltıyla al, son dakika değil. 75 kg → 225-450 mg. Anksiyete eğilimi veya zayıf uyku haftasıysa atla. >6 mg/kg sakın (yüzme soğuk-su yutmasıyla GI/titrek riski büyür).',
+  },
+  // v9.30.0 — Triathlon-specific transition layout protocol (Bonci 2011 —
+  // logistical errors are the leading cause of triathlon DNF, more than fitness).
+  transitionLayout: {
+    en: 'T1 layout (front-to-back, in execution order): wetsuit-strip mat, goggles+cap drop bag, helmet (open + on bike rail), bike shoes (clipped to pedals or on ground), race belt, water bottle. T2 layout: run shoes pre-loosened, hat, sunglasses, gel #1 in pocket. Walk through both transitions twice on T-1 day. Time the layout. Bike-mount line: clip-in OUTSIDE the line.',
+    tr: 'T1 düzeni (önden arkaya, uygulama sırasında): neopren-çıkarma matı, gözlük+kep çantası, kask (açık + bisiklet ray\'inde), bisiklet ayakkabısı (pedala kilitli veya yerde), yarış kemeri, suluk. T2 düzeni: koşu ayakkabıları önceden gevşetilmiş, şapka, gözlük, 1. jel cepte. T-1 gününde her iki geçişi iki kez yürüyerek incele. Düzeni zamanla. Biniş çizgisi: kilitlenmeyi çizginin DIŞINDA yap.',
+  },
+  // v9.30.0 — Brick refuel window. Glycogen drains aggressively on swim
+  // (anaerobic + cold-water + tension); the 0-10 min post-swim T1 window
+  // is the highest fueling-failure risk in triathlon (Stellingwerf 2018).
+  brickRefuelWindow: {
+    en: 'T1 immediate-CHO rule: take 25-30 g gel within 60s of mounting bike. Glycogen depletion from swim is steeper than most athletes expect; failing to refuel pre-bike causes the classic "felt fine until km 30 of bike" bonk. Practice this on every brick session in training.',
+    tr: 'T1 hemen-CHO kuralı: bisiklete binişten sonraki 60 saniye içinde 25-30 g jel al. Yüzmeden glikojen tükenmesi çoğu sporcunun beklediğinden dik; bisiklet-öncesi yakıt almama klasik "bisikletin 30. km\'sine kadar iyi hissettim" bonk\'una neden olur. Antrenmanda her brick seansında prova et.',
+  },
+}
+
 const RACE_DAY_ROWING = {
   wakeUp: { en: '3-4 h before race start. Hydrate (400 ml + electrolytes).', tr: 'Yarış başlangıcından 3-4 saat önce. Hidrate ol (400 ml + elektrolit).' },
   breakfast: { en: 'CHO 1.5-2 g/kg, low-fiber, low-fat. Familiar foods. 3 h pre-race.', tr: 'CHO 1.5-2 g/kg, düşük lif, düşük yağ. Bilinen yiyecekler. Yarıştan 3 sa önce.' },
@@ -678,15 +794,20 @@ const MORNING_READINESS_CHECK = {
  */
 export function buildRaceWeekProtocol(input) {
   const sport = input?.sport
+  // v9.30.0 — triathlon was previously falling through to RUN protocol.
+  // Now selects sport-specific TRIATHLON_SCHEDULE + RACE_DAY_TRIATHLON
+  // with brick rehearsal, T1/T2 layout, and post-swim refuel window.
   const schedule =
-    sport === 'bike'   ? BIKE_SCHEDULE :
-    sport === 'swim'   ? SWIM_SCHEDULE :
-    sport === 'rowing' ? ROWING_SCHEDULE :
+    sport === 'bike'      ? BIKE_SCHEDULE :
+    sport === 'swim'      ? SWIM_SCHEDULE :
+    sport === 'rowing'    ? ROWING_SCHEDULE :
+    sport === 'triathlon' ? TRIATHLON_SCHEDULE :
     RUN_SCHEDULE
   const baseRaceDay =
-    sport === 'bike'   ? RACE_DAY_BIKE :
-    sport === 'swim'   ? RACE_DAY_SWIM :
-    sport === 'rowing' ? RACE_DAY_ROWING :
+    sport === 'bike'      ? RACE_DAY_BIKE :
+    sport === 'swim'      ? RACE_DAY_SWIM :
+    sport === 'rowing'    ? RACE_DAY_ROWING :
+    sport === 'triathlon' ? RACE_DAY_TRIATHLON :
     RACE_DAY_RUN
 
   // v9.16.0 — distance-tier overrides + universal contingencies

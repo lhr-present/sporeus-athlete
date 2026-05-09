@@ -80,3 +80,77 @@ describe('eliteProgramRaceWeek', () => {
     expect(JSON.stringify(r.schedule)).not.toBe(JSON.stringify(b.schedule))
   })
 })
+
+// ── v9.30.0 — Triathlon race-week protocol (was falling through to RUN) ──
+describe('buildRaceWeekProtocol — triathlon (v9.30.0)', () => {
+  it('triathlon gets sport-specific schedule, NOT run protocol', () => {
+    const tri = buildRaceWeekProtocol({ sport: 'triathlon' })
+    const run = buildRaceWeekProtocol({ sport: 'run' })
+    expect(JSON.stringify(tri.schedule)).not.toBe(JSON.stringify(run.schedule))
+    expect(JSON.stringify(tri.raceDay)).not.toBe(JSON.stringify(run.raceDay))
+  })
+
+  it('triathlon schedule mentions brick session in T-7 and T-4', () => {
+    const tri = buildRaceWeekProtocol({ sport: 'triathlon' })
+    const t7 = tri.schedule.find(d => d.tMinus === 7)
+    const t4 = tri.schedule.find(d => d.tMinus === 4)
+    expect(t7.session.en.toLowerCase()).toMatch(/brick/)
+    expect(t4.session.en.toLowerCase()).toMatch(/brick/)
+    expect(t7.session.tr.toLowerCase()).toMatch(/brick/)
+    expect(t4.session.tr.toLowerCase()).toMatch(/brick/)
+  })
+
+  it('triathlon schedule covers all 8 days T-7 through T-0', () => {
+    const tri = buildRaceWeekProtocol({ sport: 'triathlon' })
+    expect(tri.schedule.length).toBe(8)
+    for (let i = 0; i <= 7; i++) {
+      expect(tri.schedule.find(d => d.tMinus === i)).toBeDefined()
+    }
+  })
+
+  it('triathlon raceDay includes transitionLayout (T1/T2 walk-through)', () => {
+    const tri = buildRaceWeekProtocol({ sport: 'triathlon' })
+    expect(tri.raceDay.transitionLayout).toBeDefined()
+    expect(tri.raceDay.transitionLayout.en).toMatch(/T1.*T2|T2.*T1/i)
+    expect(tri.raceDay.transitionLayout.tr).toBeDefined()
+  })
+
+  it('triathlon raceDay includes brickRefuelWindow (post-swim CHO timing)', () => {
+    const tri = buildRaceWeekProtocol({ sport: 'triathlon' })
+    expect(tri.raceDay.brickRefuelWindow).toBeDefined()
+    expect(tri.raceDay.brickRefuelWindow.en).toMatch(/T1|gel|CHO/i)
+  })
+
+  it('triathlon raceDay carries sport-specific mentalRehearsal scripts mentioning transitions', () => {
+    const tri = buildRaceWeekProtocol({ sport: 'triathlon' })
+    expect(Array.isArray(tri.raceDay.mentalRehearsal?.en)).toBe(true)
+    expect(tri.raceDay.mentalRehearsal.en.length).toBeGreaterThan(4)
+    const allText = tri.raceDay.mentalRehearsal.en.join(' ')
+    expect(allText).toMatch(/T1|T2/)
+  })
+
+  it('triathlon raceDay carries pre-race meals with T1 refuel mention', () => {
+    const tri = buildRaceWeekProtocol({ sport: 'triathlon' })
+    const allMealsEn = tri.raceDay.preRaceMeals.en.join(' ')
+    expect(allMealsEn).toMatch(/T1/i)
+  })
+
+  it('triathlon raceDay carries sport-specific caffeine dosing protocol', () => {
+    const tri = buildRaceWeekProtocol({ sport: 'triathlon' })
+    expect(tri.raceDay.caffeine).toBeDefined()
+    expect(tri.raceDay.caffeine.en).toMatch(/mg\/kg|swim/i)
+  })
+
+  it('non-tri sports do NOT carry transitionLayout or brickRefuelWindow', () => {
+    for (const sport of ['run', 'bike', 'swim', 'rowing']) {
+      const r = buildRaceWeekProtocol({ sport })
+      expect(r.raceDay.transitionLayout).toBeUndefined()
+      expect(r.raceDay.brickRefuelWindow).toBeUndefined()
+    }
+  })
+
+  it('triathlon distance-tier overrides still apply (Olympic distance)', () => {
+    const tri = buildRaceWeekProtocol({ sport: 'triathlon', raceDistanceM: 51500 })
+    expect(tri.raceDay.distanceTier).toBeDefined()
+  })
+})

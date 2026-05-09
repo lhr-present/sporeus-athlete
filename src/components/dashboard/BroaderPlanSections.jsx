@@ -517,6 +517,17 @@ export function RaceWeekSection({ raceWeekProtocol, isTR, defaultOpen = false })
               <strong>{isTR ? '☕ KAFEİN DOZU' : '☕ CAFFEINE DOSING'}:</strong> {bil(r.raceDay.caffeine, isTR)}
             </div>
           ) : null}
+          {/* v9.30.0 — triathlon-only blocks: T1/T2 layout + post-swim refuel window */}
+          {r.raceDay.transitionLayout ? (
+            <div style={{ marginTop: 4, padding: 6, background: 'rgba(0,100,255,0.08)', borderLeft: '2px solid #0064ff', fontSize: 10 }}>
+              <strong>{isTR ? '🔁 GEÇİŞ DÜZENİ (T1/T2)' : '🔁 TRANSITION LAYOUT (T1/T2)'}:</strong> {bil(r.raceDay.transitionLayout, isTR)}
+            </div>
+          ) : null}
+          {r.raceDay.brickRefuelWindow ? (
+            <div style={{ marginTop: 4, padding: 6, background: 'rgba(220,53,69,0.08)', borderLeft: '2px solid #dc3545', fontSize: 10 }}>
+              <strong>{isTR ? '⚠️ BRICK YAKIT PENCERESİ' : '⚠️ BRICK REFUEL WINDOW'}:</strong> {bil(r.raceDay.brickRefuelWindow, isTR)}
+            </div>
+          ) : null}
         </div>
 
         {/* v9.29.0 — pre-race meal examples (4-5 concrete templates per sport, was data-only) */}
