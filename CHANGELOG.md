@@ -4,6 +4,55 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.31.0 — 2026-05-10 — Cold-weather race protocol (<5°C)
+
+  Closes a P0 environmental gap from the race-week completeness audit.
+  Heat had a builder since v9.8.0 but cold (<5°C) was a complete blind
+  spot despite distinct physiology: peripheral vasoconstriction reduces
+  working-muscle perfusion, GI absorption slows with cold fluids
+  (Doubt 1991 — 30-50% slower gastric emptying), frostbite risk on
+  extremities for races >2h, HR-pace dissociation widens (HR runs
+  5-10 bpm lower for same effort).
+
+  New `buildColdProtocol(raceTempC)` mirrors heat/altitude shape so
+  the existing UI renderer (`RaceWeekConditional`) handles it without
+  changes:
+
+  • **Tier**: extreme (≤-10°C) / severe (-10°C to <0°C) /
+    moderate (0°C to <5°C). Threshold inactive at ≥5°C.
+  • **summary**: tier label + duration of acclimatization needed +
+    frostbite-risk callout for >2h race
+  • **acclimatization**: 5-7 / 7-10 / 14 days protocol per tier;
+    cold-shower substitute for outdoor sessions
+  • **pacing**: trust pace/power, NOT HR; warmup 25-50% longer
+    than normal — cold muscles take longer to come online
+  • **fueling**: warm fluids preferred (40°C bottle in jacket
+    pocket); pre-race hot meal 90 min pre-start; glycogen burn
+    +10-15% from shivering thermogenesis. Frostbite watch
+    (white waxy skin = stop and rewarm) on severe + extreme tiers.
+
+  Wired through orchestrator: `buildEliteProgram` now passes
+  `raceTempC: input.raceTempC` to the race-week builder. UI: one
+  new conditional render in `RaceWeekSection` (blue ❄️ COLD WEATHER
+  callout). Form input field for `raceTempC` deferred to a separate
+  ship that bundles `raceAltitudeM` + `raceHeatC` + `raceTempC` +
+  `timeZoneShiftHrs` into a single optional "race conditions"
+  disclosure.
+
+  Tests: 9 new in eliteProgramRaceWeek.test.js — null/threshold
+  inactivation, all 3 tier activations, shape parity with heat,
+  frostbite warning gating by tier, citation list. 1 new UI render
+  test. 9538/9538 green. Bundle 1326.2 KB.
+
+  Citations: Tipton 2017 (cold stress), Castellani 2006 (frostbite
+  thresholds), Febbraio 2000 (cold + fatigue spiral), Doubt 1991
+  (GI absorption in cold).
+
+  Depends on: v9.8.0 (heat/altitude conditional advisory pattern),
+  v9.29.0 (RaceWeekConditional shared renderer).
+
+---
+
 ## v9.30.0 — 2026-05-10 — Triathlon race-week protocol (was falling through to RUN)
 
   Closes a P0 finding from the race-week completeness audit:

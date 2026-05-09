@@ -570,6 +570,9 @@ export function RaceWeekSection({ raceWeekProtocol, isTR, defaultOpen = false })
         {r.heat ? (
           <RaceWeekConditional title={isTR ? '🌡 SICAK HAVA' : '🌡 HEAT'} accent="#dc3545" data={r.heat} isTR={isTR} />
         ) : null}
+        {r.cold ? (
+          <RaceWeekConditional title={isTR ? '❄️ SOĞUK HAVA' : '❄️ COLD WEATHER'} accent="#0064ff" data={r.cold} isTR={isTR} />
+        ) : null}
 
         <div style={{ marginTop: 6, fontSize: 9, color: 'var(--muted)', fontStyle: 'italic' }}>{r.citation}</div>
       </div>

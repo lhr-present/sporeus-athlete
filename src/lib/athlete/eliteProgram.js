@@ -1252,6 +1252,7 @@ export function buildEliteProgram(input) {
     timeZoneShiftHrs: typeof input.timeZoneShiftHrs === 'number' ? input.timeZoneShiftHrs : null,
     raceAltitudeM:    typeof input.raceAltitudeM === 'number'    ? input.raceAltitudeM    : null,
     raceHeatC:        typeof input.raceHeatC === 'number'        ? input.raceHeatC        : null,
+    raceTempC:        typeof input.raceTempC === 'number'        ? input.raceTempC        : null,  // v9.31.0 cold
     // v9.16.0 — race distance drives meal/warmup/pacing tier selection
     raceDistanceM:    targetPR?.distanceM || currentPR?.distanceM || null,
   })

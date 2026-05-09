@@ -94,6 +94,22 @@ describe('RaceWeekSection — v9.29.0 buried data surfaced', () => {
     expect(screen.getByText(/Arrive 7-14 days early/i)).toBeInTheDocument()
   })
 
+  it('renders cold protocol when r.cold present (v9.31.0)', () => {
+    const protocol = {
+      ...makeProtocol(),
+      cold: {
+        summary:         { en: 'Race-day cold -5°C (severe)', tr: 'Yarış-günü soğuk -5°C (şiddetli)' },
+        acclimatization: { en: '7-10 days cold-exposure sessions', tr: '7-10 gün soğuk-maruziyet seansı' },
+        pacing:          { en: 'HR 5-10 bpm lower for same effort', tr: 'Aynı eforda nabız 5-10 bpm düşük' },
+        fueling:         { en: 'Warm fluids, frostbite watch', tr: 'Ilık sıvı, donma izlemi' },
+      },
+    }
+    renderWithLang(<RaceWeekSection raceWeekProtocol={protocol} isTR={false} defaultOpen={true} />)
+    expect(screen.getByText(/❄️ COLD WEATHER/)).toBeInTheDocument()
+    expect(screen.getByText(/Race-day cold -5°C/)).toBeInTheDocument()
+    expect(screen.getByText(/HR 5-10 bpm lower/i)).toBeInTheDocument()
+  })
+
   it('renders heat protocol when r.heat present', () => {
     const protocol = {
       ...makeProtocol(),

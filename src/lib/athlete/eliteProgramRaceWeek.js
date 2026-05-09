@@ -586,6 +586,47 @@ function buildAltitudeProtocol(raceAltitudeM) {
   }
 }
 
+// v9.31.0 — Cold-weather race protocol. Heat had a builder since v9.8.0
+// but cold (<5°C) was a complete blind spot despite its own physiological
+// challenges: peripheral vasoconstriction reduces working-muscle perfusion,
+// GI absorption slows with cold fluids, frostbite risk on extremities for
+// races >2h, and heart-rate-pace dissociation widens. Mirrors heat shape
+// (summary / acclimatization / pacing / fueling) for UI consistency with
+// the existing RaceWeekConditional renderer.
+//   Citations: Tipton 2017 (cold-water immersion + cold stress);
+//   Castellani 2006 (frostbite thresholds); Febbraio 2000 (cold +
+//   fatigue spiral); Doubt 1991 (GI absorption in cold).
+function buildColdProtocol(raceTempC) {
+  if (raceTempC == null || raceTempC >= 5) return null
+  const tier = raceTempC <= -10 ? 'extreme' : raceTempC < 0 ? 'severe' : 'moderate'
+  return {
+    summary: {
+      en: `Race-day cold ${raceTempC}°C (${tier}). Cold acclimatization required: 7-14 days improves vasoregulation and reduces shivering threshold. Below 0°C, frostbite risk on extremities for races >2h.`,
+      tr: `Yarış-günü soğuk ${raceTempC}°C (${tier === 'extreme' ? 'aşırı' : tier === 'severe' ? 'şiddetli' : 'orta'}). Soğuğa adaptasyon gerekli: 7-14 gün vazoregülasyonu iyileştirir, titreme eşiğini düşürür. 0°C altı, >2 sa yarışlarda ekstremitelerde donmaya bağlı doku hasarı riski.`,
+    },
+    acclimatization: {
+      en: tier === 'extreme'
+        ? '14-day protocol: 4-5 outdoor easy sessions in race-similar cold (or cold-shower 3-5 min post-easy-day, 5-7 sessions). Test ALL race kit (gloves, hat, layers, shoe covers) in training before race week.'
+        : tier === 'severe'
+          ? '7-10 days: 4-6 cold-exposure sessions (30-60 min outdoor easy in <5°C OR cold shower 3 min post-session). Test layering. Identify mitten vs glove preference for hands.'
+          : '5-7 days light cold exposure (outdoor easy in <10°C). Test single-layer-baselayer + windproof shell combo. Verify shoe-cover fit on race shoes.',
+      tr: tier === 'extreme'
+        ? '14 günlük protokol: yarışa benzer soğukta 4-5 dış mekan kolay seans (veya kolay-gün sonrası 3-5 dk soğuk duş, 5-7 seans). Yarış haftasından önce TÜM ekipmanı (eldiven, bere, kat, ayakkabı kılıfı) test et.'
+        : tier === 'severe'
+          ? '7-10 gün: 4-6 soğuk-maruziyet seansı (<5°C dış mekan 30-60 dk kolay VEYA seans sonrası 3 dk soğuk duş). Katlamayı test et. El için eldiven mi tek-parça mı tercihini belirle.'
+          : '5-7 gün hafif soğuk maruziyeti (<10°C dış mekan kolay). Tek-kat-içlik + rüzgar geçirmez dış kat kombosunu test et. Yarış ayakkabısında kılıf uyumunu doğrula.',
+    },
+    pacing: {
+      en: `Cold pacing: HR runs 5-10 bpm LOWER for the same effort (peripheral vasoconstriction). Trust pace/power, not HR. Goal pace ${tier === 'extreme' ? 'may be 3-5%' : 'should be unchanged or 1-2%'} slower if effort feels disproportionate. Warmup should be 25-50% LONGER than normal — cold muscles take longer to come online.`,
+      tr: `Soğuk tempo: aynı eforda nabız 5-10 bpm DAHA DÜŞÜK (periferik damar daralması). Nabıza değil tempo/güce güven. Efor orantısız hissederse hedef tempo ${tier === 'extreme' ? '%3-5' : 'aynı veya %1-2'} yavaş olabilir. Isınma normalden %25-50 UZUN olmalı — soğuk kaslar daha geç açılır.`,
+    },
+    fueling: {
+      en: `Cold fueling: warm fluids preferred (40°C water bottle in jacket pocket). Cold fluids slow gastric emptying 30-50% (Doubt 1991). Pre-race hot meal 90 min pre-start (oatmeal + tea). Glycogen burn ~10-15% higher than warm-condition same effort (shivering thermogenesis).${tier === 'extreme' || tier === 'severe' ? ' Frostbite watch: cover ears, nose, fingers, toes. White waxy skin = stop and rewarm.' : ''}`,
+      tr: `Soğuk beslenme: ılık sıvı tercih (montta 40°C suluk). Soğuk sıvı mide boşalmasını %30-50 yavaşlatır (Doubt 1991). Yarıştan 90 dk önce sıcak öğün (yulaf + çay). Aynı eforla glikojen yakımı ılık koşula göre %10-15 daha yüksek (titreme termogenezi).${tier === 'extreme' || tier === 'severe' ? ' Donma izlemi: kulak, burun, parmaklar, ayak parmakları kapalı. Beyaz balmumu cilt = dur ve ısıt.' : ''}`,
+    },
+  }
+}
+
 function buildHeatProtocol(raceHeatC) {
   if (raceHeatC == null || raceHeatC < 25) return null
   const tier = raceHeatC >= 32 ? 'extreme' : raceHeatC >= 28 ? 'high' : 'moderate'
@@ -834,14 +875,17 @@ export function buildRaceWeekProtocol(input) {
   const travel    = buildTravelProtocol(input?.timeZoneShiftHrs)
   const altitude  = buildAltitudeProtocol(input?.raceAltitudeM)
   const heat      = buildHeatProtocol(input?.raceHeatC)
+  // v9.31.0 — cold-weather race protocol; activates when raceTempC<5°C.
+  const cold      = buildColdProtocol(input?.raceTempC)
   const out = {
     schedule,
     raceDay,
-    citation: 'Mujika 2003; Bosquet et al. 2007; Stellingwerf 2018; Burke 2017; Zurawlew 2016 (heat); Wilber 2007 (altitude); McCormick 2018 (pacing); Crum 2017 (anxiety reframe); Brown 2017 (motor imagery); Plews & Buchheit 2017 (HRV); Burke 2008 + Spriet 2014 (caffeine)',
+    citation: 'Mujika 2003; Bosquet et al. 2007; Stellingwerf 2018; Burke 2017; Zurawlew 2016 (heat); Tipton 2017 + Castellani 2006 (cold); Wilber 2007 (altitude); McCormick 2018 (pacing); Crum 2017 (anxiety reframe); Brown 2017 (motor imagery); Plews & Buchheit 2017 (HRV); Burke 2008 + Spriet 2014 (caffeine)',
   }
   if (travel)   out.travel = travel
   if (altitude) out.altitude = altitude
   if (heat)     out.heat = heat
+  if (cold)     out.cold = cold
   return out
 }
 

@@ -154,3 +154,65 @@ describe('buildRaceWeekProtocol — triathlon (v9.30.0)', () => {
     expect(tri.raceDay.distanceTier).toBeDefined()
   })
 })
+
+// ── v9.31.0 — Cold-weather race protocol ─────────────────────────────
+describe('buildRaceWeekProtocol — cold-weather protocol (v9.31.0)', () => {
+  it('omits cold protocol when raceTempC is null/undefined', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run' })
+    expect(r.cold).toBeUndefined()
+  })
+
+  it('omits cold protocol when raceTempC ≥5°C (warm or temperate)', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run', raceTempC: 5 })
+    expect(r.cold).toBeUndefined()
+    const warm = buildRaceWeekProtocol({ sport: 'run', raceTempC: 18 })
+    expect(warm.cold).toBeUndefined()
+  })
+
+  it('activates moderate cold tier between 0°C and 5°C', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run', raceTempC: 3 })
+    expect(r.cold).toBeDefined()
+    expect(r.cold.summary.en).toMatch(/moderate/i)
+    expect(r.cold.summary.tr).toMatch(/orta/i)
+  })
+
+  it('activates severe cold tier between -10°C and 0°C', () => {
+    const r = buildRaceWeekProtocol({ sport: 'bike', raceTempC: -3 })
+    expect(r.cold).toBeDefined()
+    expect(r.cold.summary.en).toMatch(/severe/i)
+    expect(r.cold.summary.tr).toMatch(/şiddetli/i)
+  })
+
+  it('activates extreme cold tier at or below -10°C', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run', raceTempC: -15 })
+    expect(r.cold).toBeDefined()
+    expect(r.cold.summary.en).toMatch(/extreme/i)
+    expect(r.cold.summary.tr).toMatch(/aşırı/i)
+  })
+
+  it('shape matches heat/altitude (summary/acclimatization/pacing/fueling)', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run', raceTempC: -5 })
+    expect(r.cold.summary).toHaveProperty('en')
+    expect(r.cold.summary).toHaveProperty('tr')
+    expect(r.cold.acclimatization).toHaveProperty('en')
+    expect(r.cold.pacing).toHaveProperty('en')
+    expect(r.cold.fueling).toHaveProperty('en')
+  })
+
+  it('frostbite warning surfaces in fueling for severe + extreme tiers', () => {
+    const severe = buildRaceWeekProtocol({ sport: 'run', raceTempC: -3 })
+    expect(severe.cold.fueling.en).toMatch(/frostbite/i)
+    const extreme = buildRaceWeekProtocol({ sport: 'run', raceTempC: -20 })
+    expect(extreme.cold.fueling.en).toMatch(/frostbite/i)
+  })
+
+  it('frostbite warning suppressed for moderate tier (≥0°C)', () => {
+    const moderate = buildRaceWeekProtocol({ sport: 'run', raceTempC: 3 })
+    expect(moderate.cold.fueling.en).not.toMatch(/frostbite/i)
+  })
+
+  it('citation list mentions cold-weather sources', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run', raceTempC: -5 })
+    expect(r.citation).toMatch(/Tipton|Castellani/)
+  })
+})
