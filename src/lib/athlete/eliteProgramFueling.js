@@ -17,11 +17,26 @@
  *   duringSession: { easyKeyHr: [number, number], hardSessionGPerHr: [number, number] },
  *   preSession:  { gPerKg: number, timingMin: number },
  *   postSession: { gPerKg: number, proteinG: number, timingMin: number },
+ *   proteinPulse?: { gPerKgPerMeal: number, mealsPerDay: number, intervalHours: [number, number], rationale: Bilingual },
  *   rationale: Bilingual,
  *   notes: Bilingual,
  *   citation: string
  * }} FuelingPhasePlan
  */
+
+// v9.12.0 — Areta 2014 protein-pulse distribution. Distributed 4x0.4 g/kg per
+// meal across the 12h post-session window outperforms a single large dose for
+// muscle protein synthesis (MPS). Applied across all phases since MPS daily
+// distribution rules are phase-invariant; only daily total varies.
+const ARETA_PULSE = {
+  gPerKgPerMeal: 0.4,
+  mealsPerDay: 4,
+  intervalHours: [3, 4],
+  rationale: {
+    en: '4×0.4 g/kg every 3-4 h sustains MPS for 12 h post-session; outperforms single 40 g dose (Areta 2014).',
+    tr: 'Her 3-4 sa\'de 4×0,4 g/kg, seans sonrası 12 sa boyunca MPS\'i sürdürür; tek 40 g dozdan daha iyi (Areta 2014).',
+  },
+}
 
 const BASE = {
   phase: 'Base',
@@ -109,11 +124,13 @@ export function buildFuelingProgram(input) {
   const bw = Number(input?.bodyMassKg) || null
   const out = {}
   const wrap = (plan) => {
-    if (!bw) return plan
+    const withPulse = { ...plan, proteinPulse: ARETA_PULSE }
+    if (!bw) return withPulse
     return {
-      ...plan,
+      ...withPulse,
       dailyCHO_g: [Math.round(plan.chodailyPerKg[0] * bw), Math.round(plan.chodailyPerKg[1] * bw)],
       dailyProtein_g: Math.round(plan.proteindailyPerKg * bw),
+      proteinPulseGPerMeal: Math.round(ARETA_PULSE.gPerKgPerMeal * bw * 10) / 10,
     }
   }
   if (present.has('Base'))  out.Base  = wrap(BASE)
@@ -123,4 +140,4 @@ export function buildFuelingProgram(input) {
   return out
 }
 
-export const FUELING_CITATION = 'Burke 2017; Jeukendrup 2014; Hawley & Burke 2010; Stellingwerf 2018; Bussau et al. 2002'
+export const FUELING_CITATION = 'Burke 2017; Jeukendrup 2014; Hawley & Burke 2010; Stellingwerf 2018; Bussau et al. 2002; Areta 2014'

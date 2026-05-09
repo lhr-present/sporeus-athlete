@@ -1500,3 +1500,164 @@ describe('buildEliteProgram — cohort propagation (v9.11.0)', () => {
     })
   })
 })
+
+// ── v9.12.0 — new staple sessions + Areta pulse + sport prehab ─────────────
+describe('buildEliteProgram — v9.12.0 new staple sessions', () => {
+  it('includes run-build-lactate-clearance Canova session', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    const session = (r.keySessionLibrary.Build || []).find(s => s.key === 'run-build-lactate-clearance')
+    expect(session).toBeDefined()
+    expect(session.structure.en).toMatch(/float/i)
+    expect(session.citation).toMatch(/Canova/i)
+  })
+
+  it('includes bike-build-sweet-spot session', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 0, timeSec: 250 },
+      targetPR:  { distanceM: 0, timeSec: 280 },
+      raceDate: '2026-08-25',
+      sport: 'bike',
+      options: { today: TODAY },
+    })
+    const session = (r.keySessionLibrary.Build || []).find(s => s.key === 'bike-build-sweet-spot')
+    expect(session).toBeDefined()
+    expect(session.structure.en).toMatch(/88-94/)
+  })
+
+  it('includes bike-build-ftp-test diagnostic session', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 0, timeSec: 250 },
+      targetPR:  { distanceM: 0, timeSec: 280 },
+      raceDate: '2026-08-25',
+      sport: 'bike',
+      options: { today: TODAY },
+    })
+    const session = (r.keySessionLibrary.Build || []).find(s => s.key === 'bike-build-ftp-test')
+    expect(session).toBeDefined()
+    expect(session.purpose.en).toMatch(/FTP/i)
+    expect(session.alternates.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('includes swim-build-descending pacing session', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 1500, timeSec: 1800 },
+      targetPR:  { distanceM: 1500, timeSec: 1700 },
+      raceDate: '2026-08-25',
+      sport: 'swim',
+      options: { today: TODAY },
+    })
+    const session = (r.keySessionLibrary.Build || []).find(s => s.key === 'swim-build-descending')
+    expect(session).toBeDefined()
+    expect(session.structure.en).toMatch(/descending/i)
+  })
+
+  it('new sessions get cohort overrides when currentLevel resolves', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    const lc = (r.keySessionLibrary.Build || []).find(s => s.key === 'run-build-lactate-clearance')
+    expect(lc.cohort).toBeDefined()
+    expect(['beginner', 'intermediate', 'elite']).toContain(lc.cohort)
+  })
+})
+
+describe('buildEliteProgram — v9.12.0 Areta protein pulse', () => {
+  it('every fueling phase carries proteinPulse with Areta dose', () => {
+    const r = buildEliteProgram({
+      ...RUN_REALISTIC,
+      profile: { bodyMassKg: 70 },
+    })
+    expect(r.fuelingProgram.Base.proteinPulse).toBeDefined()
+    expect(r.fuelingProgram.Base.proteinPulse.gPerKgPerMeal).toBe(0.4)
+    expect(r.fuelingProgram.Base.proteinPulse.mealsPerDay).toBe(4)
+    expect(r.fuelingProgram.Base.proteinPulse.rationale.en).toMatch(/Areta/i)
+  })
+
+  it('absolute proteinPulseGPerMeal computed when bodyMassKg present', () => {
+    const r = buildEliteProgram({
+      ...RUN_REALISTIC,
+      profile: { bodyMassKg: 70 },
+    })
+    // 0.4 g/kg × 70 kg = 28 g/meal
+    expect(r.fuelingProgram.Base.proteinPulseGPerMeal).toBe(28)
+  })
+
+  it('proteinPulse present even without bodyMassKg, but no absolute g per meal', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    expect(r.fuelingProgram.Base.proteinPulse).toBeDefined()
+    expect(r.fuelingProgram.Base.proteinPulseGPerMeal).toBeUndefined()
+  })
+})
+
+describe('buildEliteProgram — v9.12.0 sport-specific prehab', () => {
+  it('runner gets tibialis posterior + couch-stretch in addition to base prehab', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    const names = r.strengthProgram.Base.prehab.map(m => m.name.en)
+    expect(names).toContain('Tibialis posterior holds')
+    expect(names).toContain('Couch-stretch hip flexor')
+    // base prehab still present
+    expect(names).toContain('Glute med activation (clamshells)')
+  })
+
+  it('cyclist gets T-spine extension + scap retraction', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 0, timeSec: 250 },
+      targetPR:  { distanceM: 0, timeSec: 280 },
+      raceDate: '2026-08-25',
+      sport: 'bike',
+      options: { today: TODAY },
+    })
+    const names = r.strengthProgram.Base.prehab.map(m => m.name.en)
+    expect(names).toContain('T-spine extension over foam roller')
+    expect(names).toContain('Chin-tuck + scap retraction')
+  })
+
+  it('swimmer gets rotator cuff + scap stab', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 1500, timeSec: 1800 },
+      targetPR:  { distanceM: 1500, timeSec: 1700 },
+      raceDate: '2026-08-25',
+      sport: 'swim',
+      options: { today: TODAY },
+    })
+    const names = r.strengthProgram.Base.prehab.map(m => m.name.en)
+    expect(names).toContain('Band external rotation (rotator cuff)')
+    expect(names).toContain('Scap stab Y-T-W (prone)')
+  })
+
+  it('rower gets bird-dog with reach + farmer carry', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 0, timeSec: 480 },
+      targetPR:  { distanceM: 0, timeSec: 440 },
+      raceDate: '2026-08-25',
+      sport: 'rowing',
+      options: { today: TODAY },
+    })
+    const names = r.strengthProgram.Base.prehab.map(m => m.name.en)
+    expect(names).toContain('Bird-dog with reach (lumbar erectors)')
+    expect(names).toContain('Farmer carry (grip)')
+  })
+
+  it('triathlete gets run + swim prehab extras (tib post + rotator cuff)', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 10000, timeSec: 3000 },
+      targetPR:  { distanceM: 10000, timeSec: 2820 },
+      raceDate: '2026-08-25',
+      sport: 'triathlon',
+      options: { today: TODAY },
+    })
+    const names = r.strengthProgram.Base.prehab.map(m => m.name.en)
+    expect(names).toContain('Tibialis posterior holds')
+    expect(names).toContain('Band external rotation (rotator cuff)')
+  })
+
+  it('sport-specific prehab applies to all phases (Build/Peak/Taper) not just Base', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    const buildNames = r.strengthProgram.Build.prehab.map(m => m.name.en)
+    const peakNames  = r.strengthProgram.Peak.prehab.map(m => m.name.en)
+    expect(buildNames).toContain('Tibialis posterior holds')
+    expect(peakNames).toContain('Tibialis posterior holds')
+    if (r.strengthProgram.Taper) {
+      const taperNames = r.strengthProgram.Taper.prehab.map(m => m.name.en)
+      expect(taperNames).toContain('Tibialis posterior holds')
+    }
+  })
+})

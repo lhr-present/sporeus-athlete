@@ -184,6 +184,28 @@ const RUN_BUILD = [
     ],
     citation: 'Barnes & Kilding 2015',
   },
+  // v9.12.0 — Canova lactate-clearance session. Hard/easy float-recovery
+  // pattern is the signature Renato Canova / Steve Magness build-phase staple.
+  {
+    key: 'run-build-lactate-clearance',
+    name: { en: 'Lactate-clearance fartlek 6x3 min', tr: 'Laktat-temizleme fartlek 6x3 dk' },
+    purpose: {
+      en: 'Train MLSS lactate clearance under repeated supra-threshold pulses; Canova / Magness build-phase staple.',
+      tr: 'Tekrarlanan eşik-üstü darbeler altında MLSS laktat temizliğini antrene eder; Canova / Magness build-faz imzası.',
+    },
+    structure: {
+      en: '15 min warm-up + 6x3 min @T-pace with 30-60s float at M-pace (NOT jog) between + 10 min cool-down.',
+      tr: '15 dk ısınma + 6x3 dk @T-tempo, aralarda 30-60s M-tempo "float" (jog DEĞİL) + 10 dk soğuma.',
+    },
+    warmup: { en: '15 min easy + 4x100m strides.', tr: '15 dk kolay + 4x100m adım.' },
+    cooldown: { en: '10 min easy.', tr: '10 dk kolay.' },
+    intensity: { en: '@T-pace work, M-pace float · RPE 7-8/10', tr: '@T-tempo iş, M-tempo float · RPE 7-8/10' },
+    alternates: [
+      { en: 'Reduce to 5x3 min if M-pace float drifts above T (no junk float).', tr: 'M-tempo float T\'nin üstüne kayarsa 5x3 dk\'ya indir.' },
+      { en: 'Treadmill: same prescription, 1% incline.', tr: 'Koşubandı: aynı reçete, %1 eğim.' },
+    ],
+    citation: 'Canova 2013; Magness 2014; Pfitzinger 2014',
+  },
 ]
 
 const RUN_PEAK = [
@@ -456,6 +478,51 @@ const BIKE_BUILD = [
     ],
     citation: 'Rønnestad 2014; Coggan 2010',
   },
+  // v9.12.0 — Sweet-spot Build (88-94% FTP). Fills the load gap between Z3
+  // and threshold; Hunter Allen / Coggan staple 1-2x/week in build blocks.
+  {
+    key: 'bike-build-sweet-spot',
+    name: { en: 'Sweet-spot 3x15 min', tr: 'Sweet-spot 3x15 dk' },
+    purpose: {
+      en: 'High-aerobic FTP-building work at MTSS-friendly intensity; Coggan & Allen high-frequency build session.',
+      tr: 'MTSS\'e dost yoğunlukta yüksek-aerobik FTP yapım çalışması; Coggan & Allen yüksek-frekanslı build seansı.',
+    },
+    structure: {
+      en: '15 min warm-up + 3x15 min @88-94% FTP with 5 min Z1 between + 10 min cool-down.',
+      tr: '15 dk ısınma + 3x15 dk @FTP %88-94, aralarda 5 dk Z1 + 10 dk soğuma.',
+    },
+    warmup: { en: '15 min Z1-Z2 + 2x1 min openers.', tr: '15 dk Z1-Z2 + 2x1 dk açılış.' },
+    cooldown: { en: '10 min Z1.', tr: '10 dk Z1.' },
+    intensity: { en: 'Z3-Z4 (Sweet-Spot) · RPE 7/10', tr: 'Z3-Z4 (Sweet-Spot) · RPE 7/10' },
+    alternates: [
+      { en: 'Time-crunched: 2x20 min @90% FTP.', tr: 'Zaman kıt: 2x20 dk @%90 FTP.' },
+      { en: 'Indoor: same prescription on trainer with ERG mode.', tr: 'Kapalı: aynı reçete ERG modlu trainer üzerinde.' },
+    ],
+    citation: 'Coggan & Allen 2019; Hunter Allen 2019',
+  },
+  // v9.12.0 — FTP test session. Most cyclists re-test every 4-6 weeks; absent
+  // from prior library, forcing coaches to infer from race-sim. Standard
+  // TrainerRoad / Coggan 20-min protocol.
+  {
+    key: 'bike-build-ftp-test',
+    name: { en: 'FTP test (20-min protocol)', tr: 'FTP testi (20-dk protokol)' },
+    purpose: {
+      en: 'Calibrate FTP via the Coggan 20-min protocol. Diagnostic, not a training stimulus — schedule fresh, ≥48h after hard work.',
+      tr: 'Coggan 20-dk protokolüyle FTP\'yi kalibre eder. Antrenman uyaranı değil tanı — taze, sert işten ≥48s sonra planla.',
+    },
+    structure: {
+      en: '20 min easy + 5 min @110% guess-FTP openers + 10 min easy + 1x20 min all-out time-trial + 10 min cool-down. FTP = avg power × 0.95.',
+      tr: '20 dk kolay + 5 dk @%110 tahmin-FTP açılış + 10 dk kolay + 1x20 dk tam efor TT + 10 dk soğuma. FTP = ort güç × 0.95.',
+    },
+    warmup: { en: '20 min progressive + 5 min openers + 10 min easy.', tr: '20 dk kademeli + 5 dk açılış + 10 dk kolay.' },
+    cooldown: { en: '10 min Z1.', tr: '10 dk Z1.' },
+    intensity: { en: '20-min max sustainable · RPE 9-10/10', tr: '20 dk maks sürdürülebilir · RPE 9-10/10' },
+    alternates: [
+      { en: 'Ramp test alternative: 1 min steps starting at 100W +25W/min until failure (FTP = 75% of MAP).', tr: 'Ramp testi alternatifi: 100W\'tan başlayıp +25W/dk basamaklar başarısızlığa kadar (FTP = MAP %75).' },
+      { en: '8-min protocol: 2x8 min all-out with 10 min easy between (FTP = avg × 0.90).', tr: '8-dk protokol: 2x8 dk tam efor 10 dk kolay arada (FTP = ort × 0.90).' },
+    ],
+    citation: 'Coggan 2010; Allen & Coggan 2019',
+  },
 ]
 
 const BIKE_PEAK = [
@@ -684,6 +751,29 @@ const SWIM_BUILD = [
       { en: 'No equipment: same set freestyle.', tr: 'Ekipman yoksa: aynı set serbest.' },
     ],
     citation: 'Maglischo 2003',
+  },
+  // v9.12.0 — Descending sets train pacing judgment under accumulating fatigue.
+  // Maglischo Chapter 7 staple; absent from prior library which only had
+  // constant-pace CSS work.
+  {
+    key: 'swim-build-descending',
+    name: { en: 'Descending 100s 2x6', tr: 'Azalan tempo 100\'ler 2x6' },
+    purpose: {
+      en: 'Train pacing fidelity and speed-management under fatigue; each rep faster than the previous.',
+      tr: 'Yorgunluk altında tempo sadakati ve hız yönetimi antrenmanı; her tekrar bir öncekinden hızlı.',
+    },
+    structure: {
+      en: '400m WU + 2x[6x100m descending CSS+5 → CSS-5] on 1:50 with 30s extra rest between sets + 200m cool-down.',
+      tr: '400m ısınma + 2x[6x100m CSS+5 → CSS-5 azalan] 1:50 üzerinde, setler arası 30s ekstra dinlenme + 200m soğuma.',
+    },
+    warmup: { en: '400m mixed + 4x50m build.', tr: '400m karışık + 4x50m artarak.' },
+    cooldown: { en: '200m easy.', tr: '200m kolay.' },
+    intensity: { en: 'CSS+5 → CSS-5 (each rep faster) · RPE 6→9/10', tr: 'CSS+5 → CSS-5 (her tekrar hızlanır) · RPE 6→9/10' },
+    alternates: [
+      { en: 'Reduce to 2x4 if final reps cannot hold target descending pace.', tr: 'Son tekrarlar hedef azalan tempoyu tutamıyorsa 2x4\'e düş.' },
+      { en: 'Long-course: same prescription on 200s descending.', tr: 'Uzun-kulvar: aynı reçete 200\'ler azalan.' },
+    ],
+    citation: 'Maglischo 2003 (Chapter 7); Olbrecht 2000',
   },
 ]
 

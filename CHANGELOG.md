@@ -4,6 +4,68 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.12.0 — 2026-05-09 — Mission #1 staple sessions + Areta protein pulse + sport-specific prehab
+
+  Closes 3 P0 audit findings from the v9.11.0 deep-dive (key
+  session library coverage + fueling depth + strength prehab
+  specificity). Single coherent ship: catalog gaps + nutrition
+  layer + sport-aware injury prevention.
+
+  • 4 new staple key sessions in BUILD across 3 sports:
+    – run-build-lactate-clearance (Canova/Magness fartlek
+      6x3 min @T with M-pace float recovery — the signature
+      lactate-clearance pulse drill every elite run coach
+      prescribes weekly in build).
+    – bike-build-sweet-spot (3x15 min @88-94% FTP — Coggan
+      & Allen 2019 high-frequency build session that fills
+      the load gap between Z3 and threshold).
+    – bike-build-ftp-test (Coggan 20-min protocol + ramp +
+      8-min alternates — standard re-calibration session;
+      previously absent, forcing coaches to infer from
+      race-sim data).
+    – swim-build-descending (2x[6x100m descending CSS+5 →
+      CSS-5] — Maglischo 2003 Ch 7 staple for pacing
+      fidelity under accumulating fatigue).
+
+  • Cohort overrides for all 4 new sessions: beginner gets
+    reduced reps + relaxed send-offs; elite gets extended
+    duration + tighter recovery. Continues v9.11.0 cohort
+    pattern.
+
+  • Areta 2014 protein-pulse distribution. Every fueling
+    phase now exposes `proteinPulse: { gPerKgPerMeal: 0.4,
+    mealsPerDay: 4, intervalHours: [3,4] }` and absolute
+    `proteinPulseGPerMeal` when bodyMassKg present
+    (e.g., 70 kg → 28 g/meal). Distributed 4x0.4 g/kg
+    sustains MPS for 12h post-session; outperforms single
+    40 g dose.
+
+  • Sport-specific prehab tier in strength program. Replaced
+    universal-only PREHAB_BASE with PREHAB_BASE +
+    PREHAB_SPORT_EXTRAS map. Extras per sport:
+    – run/triathlon: tibialis posterior + couch-stretch
+      (Brumitt 2010, Mendiguchia 2012)
+    – bike: T-spine extension + chin-tuck/scap retract
+      (Reilly 2015)
+    – swim/triathlon: band external rotation + Y-T-W scap
+      stab (Cools 2003, Newton 2011)
+    – rowing: bird-dog with reach + farmer carry
+      (Wilson 2014, Vossen 2000)
+    Refactored Build/Peak/Taper from constants to factory
+    functions makeBuild/makePeak/makeTaper(sport) so prehab
+    layer is consistent across all phases — not just Base.
+
+  • Tests: +14 (4 new sessions × structure + cohort, Areta
+    pulse incl. absolute g/meal calc, sport prehab across
+    5 sports incl. tri composition, all-phases prehab
+    propagation). Total 9380/9380.
+
+  Depends on: v9.11.0 (cohort layer + applyCohort merging);
+  v9.10.0 (strength prehab + plyo factory pattern);
+  v9.6.0 (triathlon discipline composition).
+
+---
+
 ## v9.11.0 — 2026-05-08 — Mission #1 cohort personalization (beginner/intermediate/elite dose tables)
 
   Closes the re-audit's "no dose-matching by ability" gap. Pre-

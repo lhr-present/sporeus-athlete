@@ -36,6 +36,11 @@
 // ── Prehab tier — 5-8 min before main work in every phase ────────────────────
 // Per Page 2010 (movement screening); Cibulka 2008 (glute med activation);
 // USA Track & Field Level 2 curriculum (mobility-stability sequence).
+//
+// v9.12.0 — Sport-specific extras layered on top of universal base. Each sport
+// has discipline-specific overuse patterns: runners (tib post + hip flexors),
+// cyclists (T-spine + neck), swimmers (rotator cuff + scap stab), rowers
+// (lumbar erectors + grip). Universal PREHAB_BASE retained as common tier.
 const PREHAB_BASE = [
   {
     name: { en: 'Glute med activation (clamshells)', tr: 'Glute med aktivasyon (clamshell)' },
@@ -73,6 +78,99 @@ const PREHAB_BASE = [
     notes: { en: 'Proprioception baseline; targets ankle injury resistance.', tr: 'Propriosepsiyon tabanı; ayak bileği sakatlık direncini hedefler.' },
   },
 ]
+
+// v9.12.0 — Sport-specific prehab extras layered onto PREHAB_BASE.
+// Citations: Mendiguchia 2012 (hip flexor for runners); Brumitt 2010 (tib post);
+// Reilly 2015 (T-spine cycling); Cools 2003 (rotator cuff swimmers); Newton
+// 2011 (scap stab); Wilson 2014 (lumbar erectors rowing); Vossen 2000 (grip).
+const PREHAB_SPORT_EXTRAS = {
+  run: [
+    {
+      name: { en: 'Tibialis posterior holds', tr: 'Tibialis posterior tutuş' },
+      sets: 2,
+      reps: '10s each foot',
+      intensity: { en: 'Body weight, single-leg with arch lift', tr: 'Vücut ağırlığı, tek-bacak ark kaldırma' },
+      notes: { en: 'Critical for runners; tib post weakness drives plantar fasciitis.', tr: 'Koşucular için kritik; tib post zayıflığı plantar fasiit yapar.' },
+    },
+    {
+      name: { en: 'Couch-stretch hip flexor', tr: 'Couch-stretch kalça fleksörü' },
+      sets: 1,
+      reps: '45s each side',
+      intensity: { en: 'Body weight, rear knee on couch/wall', tr: 'Vücut ağırlığı, arka diz koltukta/duvarda' },
+      notes: { en: 'Counters seated-day shortening; preserves stride length.', tr: 'Oturma günü kısalmasını dengeler; adım boyunu korur.' },
+    },
+  ],
+  bike: [
+    {
+      name: { en: 'T-spine extension over foam roller', tr: 'Foam roller üstünde T-omurga ekstansiyonu' },
+      sets: 2,
+      reps: '8 segments',
+      intensity: { en: 'Body weight, controlled extension', tr: 'Vücut ağırlığı, kontrollü ekstansiyon' },
+      notes: { en: 'Counters thoracic kyphosis from saddle position.', tr: 'Sele postüründen gelen torasik kifozu dengeler.' },
+    },
+    {
+      name: { en: 'Chin-tuck + scap retraction', tr: 'Çene-içeri + skapula geri çekme' },
+      sets: 2,
+      reps: '10',
+      intensity: { en: 'Body weight, slow controlled', tr: 'Vücut ağırlığı, yavaş kontrollü' },
+      notes: { en: 'Reduces neck-shoulder strain on long rides.', tr: 'Uzun sürüşlerde boyun-omuz gerginliğini azaltır.' },
+    },
+  ],
+  swim: [
+    {
+      name: { en: 'Band external rotation (rotator cuff)', tr: 'Band dış rotasyon (rotator cuff)' },
+      sets: 2,
+      reps: '12 each arm',
+      intensity: { en: 'Light band, elbow at 90°', tr: 'Hafif band, dirsek 90°' },
+      notes: { en: 'Shoulder impingement prevention; mandatory for swimmers.', tr: 'Omuz sıkışma önlemi; yüzücüler için zorunlu.' },
+    },
+    {
+      name: { en: 'Scap stab Y-T-W (prone)', tr: 'Skapula stab Y-T-W (yüzükoyun)' },
+      sets: 2,
+      reps: '6 each shape',
+      intensity: { en: 'Body weight or 1-2kg DBs', tr: 'Vücut ağırlığı veya 1-2kg DB' },
+      notes: { en: 'Posterior shoulder activation balances overhead pull.', tr: 'Arka omuz aktivasyonu üst-baş çekişi dengeler.' },
+    },
+  ],
+  rowing: [
+    {
+      name: { en: 'Bird-dog with reach (lumbar erectors)', tr: 'Bird-dog uzanma (lomber erektörler)' },
+      sets: 2,
+      reps: '8 each side',
+      intensity: { en: 'Body weight, slow controlled', tr: 'Vücut ağırlığı, yavaş kontrollü' },
+      notes: { en: 'Trains spinal stiffness under catch loading.', tr: 'Yakalama yüklemesinde omurga sertliğini antrene eder.' },
+    },
+    {
+      name: { en: 'Farmer carry (grip)', tr: 'Çiftçi taşıma (kavrama)' },
+      sets: 2,
+      reps: '20s walk',
+      intensity: { en: 'Heavy DBs/KBs at sides', tr: 'Yanlarda ağır DB/KB' },
+      notes: { en: 'Grip endurance for late-race handle hold.', tr: 'Yarış sonunda kulp tutuşu için kavrama dayanıklılığı.' },
+    },
+  ],
+  triathlon: [
+    {
+      name: { en: 'Tibialis posterior holds', tr: 'Tibialis posterior tutuş' },
+      sets: 2,
+      reps: '10s each foot',
+      intensity: { en: 'Body weight, single-leg with arch lift', tr: 'Vücut ağırlığı, tek-bacak ark kaldırma' },
+      notes: { en: 'Run-leg of tri demands tib post resilience post-bike.', tr: 'Tri\'nin koşu ayağı bisiklet sonrası tib post dayanıklılığı ister.' },
+    },
+    {
+      name: { en: 'Band external rotation (rotator cuff)', tr: 'Band dış rotasyon (rotator cuff)' },
+      sets: 2,
+      reps: '12 each arm',
+      intensity: { en: 'Light band, elbow at 90°', tr: 'Hafif band, dirsek 90°' },
+      notes: { en: 'Swim-leg shoulder integrity.', tr: 'Yüzme ayağı omuz bütünlüğü.' },
+    },
+  ],
+}
+
+/** Compose universal + sport-specific prehab. */
+function getPrehab(sport) {
+  const extras = PREHAB_SPORT_EXTRAS[sport] || []
+  return [...PREHAB_BASE, ...extras]
+}
 
 // ── Core packages — progression across phases ────────────────────────────────
 const CORE_BASE = [
@@ -257,7 +355,7 @@ function makeBase(sport) {
     },
     frequencyPerWeek: 2,
     sessionDurationMin: 55,
-    prehab: PREHAB_BASE,
+    prehab: getPrehab(sport),
     movements: [...BASE_LIFTS, ...plyo],
     core: CORE_BASE,
     warning: {
@@ -268,7 +366,11 @@ function makeBase(sport) {
   }
 }
 
-const BUILD = {
+function makeBuild(sport) { return { ...BUILD_TEMPLATE, prehab: getPrehab(sport) } }
+function makePeak(sport)  { return { ...PEAK_TEMPLATE,  prehab: getPrehab(sport) } }
+function makeTaper(sport) { return { ...TAPER_TEMPLATE, prehab: getPrehab(sport) } }
+
+const BUILD_TEMPLATE = {
   phase: 'Build',
   emphasis: {
     en: 'Power conversion: same lifts at lower load with explosive intent + plyometrics added. Core moves to anti-rotation work.',
@@ -322,7 +424,7 @@ const BUILD = {
   citation: 'Rønnestad & Mujika 2014; Sáez de Villarreal et al. 2010',
 }
 
-const PEAK = {
+const PEAK_TEMPLATE = {
   phase: 'Peak',
   emphasis: {
     en: 'Maintenance: minimum effective dose to preserve gains while race-specific work dominates. Core: anti-rotation + bird-dog.',
@@ -362,7 +464,7 @@ const PEAK = {
   citation: 'Rønnestad & Mujika 2014',
 }
 
-const TAPER = {
+const TAPER_TEMPLATE = {
   phase: 'Taper',
   emphasis: {
     en: 'Neural priming only — short, fast, low fatigue. Optional in race week.',
@@ -412,10 +514,10 @@ export function buildStrengthProgram(input) {
   const sport = input?.sport
   const out = {}
   if (present.has('Base'))  out.Base  = makeBase(sport)
-  if (present.has('Build')) out.Build = BUILD
-  if (present.has('Peak'))  out.Peak  = PEAK
-  if (present.has('Taper')) out.Taper = TAPER
+  if (present.has('Build')) out.Build = makeBuild(sport)
+  if (present.has('Peak'))  out.Peak  = makePeak(sport)
+  if (present.has('Taper')) out.Taper = makeTaper(sport)
   return out
 }
 
-export const STRENGTH_CITATION = 'Rønnestad & Mujika 2014; Beattie et al. 2014; Sáez de Villarreal et al. 2010; Page 2010; Cibulka 2008; Mujika 2003'
+export const STRENGTH_CITATION = 'Rønnestad & Mujika 2014; Beattie et al. 2014; Sáez de Villarreal et al. 2010; Page 2010; Cibulka 2008; Mujika 2003; Mendiguchia 2012; Brumitt 2010; Cools 2003; Wilson 2014'

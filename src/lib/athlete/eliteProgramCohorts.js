@@ -219,6 +219,50 @@ export const COHORT_OVERRIDES = {
       notes:     { en: 'Elite MLSS sustainment >50 min.', tr: 'Elit MLSS dayanıklılığı >50 dk.' },
     },
   },
+
+  // v9.12.0 — new staple sessions
+  'run-build-lactate-clearance': {
+    beginner: {
+      structure: { en: '15 min warm-up + 4x3 min @T-pace with 60s float at M-pace + 10 min cool-down.', tr: '15 dk ısınma + 4x3 dk @T-tempo, 60s M-tempo float + 10 dk soğuma.' },
+      notes:     { en: 'Reduced reps; beginner float-recovery discipline saturates 4 reps.', tr: 'Azaltılmış tekrar; başlangıç float-toparlanma disiplini 4 tekrarda doyar.' },
+    },
+    intermediate: {
+      structure: { en: '15 min warm-up + 6x3 min @T-pace with 30-60s float at M-pace + 10 min cool-down.', tr: '15 dk ısınma + 6x3 dk @T-tempo, 30-60s M-tempo float + 10 dk soğuma.' },
+      notes:     { en: 'Canova / Magness build standard.', tr: 'Canova / Magness build standardı.' },
+    },
+    elite: {
+      structure: { en: '15 min warm-up + 8x3 min @T-pace with 30s float at M-pace + 10 min cool-down.', tr: '15 dk ısınma + 8x3 dk @T-tempo, 30s M-tempo float + 10 dk soğuma.' },
+      notes:     { en: 'Tighter float; elite MLSS clearance trained at compressed recovery.', tr: 'Daha sıkı float; elit MLSS temizliği sıkıştırılmış toparlanmada antrene edilir.' },
+    },
+  },
+  'bike-build-sweet-spot': {
+    beginner: {
+      structure: { en: '15 min WU + 2x15 min @88-92% FTP, 5 min Z1 + 10 min CD.', tr: '15 dk ısınma + 2x15 dk @FTP %88-92, 5 dk Z1 + 10 dk soğuma.' },
+      notes:     { en: 'Reduced reps; beginner sweet-spot tolerance <40 min total.', tr: 'Azaltılmış tekrar; başlangıç sweet-spot toleransı <40 dk toplam.' },
+    },
+    intermediate: {
+      structure: { en: '15 min WU + 3x15 min @88-94% FTP, 5 min Z1 + 10 min CD.', tr: '15 dk ısınma + 3x15 dk @FTP %88-94, 5 dk Z1 + 10 dk soğuma.' },
+      notes:     { en: 'Coggan & Allen 2019 standard.', tr: 'Coggan & Allen 2019 standardı.' },
+    },
+    elite: {
+      structure: { en: '15 min WU + 3x20 min @90-94% FTP, 5 min Z1 + 10 min CD.', tr: '15 dk ısınma + 3x20 dk @FTP %90-94, 5 dk Z1 + 10 dk soğuma.' },
+      notes:     { en: 'Extended duration; elite sweet-spot capacity >60 min total.', tr: 'Uzatılmış süre; elit sweet-spot kapasitesi >60 dk toplam.' },
+    },
+  },
+  'swim-build-descending': {
+    beginner: {
+      structure: { en: '400m WU + 1x[6x100m descending CSS+5 → CSS] on 2:00 + 200m CD.', tr: '400m ısınma + 1x[6x100m CSS+5 → CSS azalan] 2:00 üzerinde + 200m soğuma.' },
+      notes:     { en: 'Single set + relaxed send-off; beginner pacing-discipline saturates 600m.', tr: 'Tek set + rahat send-off; başlangıç tempo disiplini 600m\'de doyar.' },
+    },
+    intermediate: {
+      structure: { en: '400m WU + 2x[6x100m descending CSS+5 → CSS-5] on 1:50 + 200m CD.', tr: '400m ısınma + 2x[6x100m CSS+5 → CSS-5 azalan] 1:50 üzerinde + 200m soğuma.' },
+      notes:     { en: 'Maglischo 2003 standard.', tr: 'Maglischo 2003 standardı.' },
+    },
+    elite: {
+      structure: { en: '400m WU + 3x[6x100m descending CSS+5 → CSS-5] on 1:40 + 200m CD.', tr: '400m ısınma + 3x[6x100m CSS+5 → CSS-5 azalan] 1:40 üzerinde + 200m soğuma.' },
+      notes:     { en: 'Three sets + tight send-off; elite pacing fidelity sustains 1800m.', tr: 'Üç set + sıkı send-off; elit tempo sadakati 1800m sürdürülebilir.' },
+    },
+  },
 }
 
 /**
