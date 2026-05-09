@@ -511,10 +511,79 @@ export function RaceWeekSection({ raceWeekProtocol, isTR, defaultOpen = false })
               <strong>{isTR ? '☕ KAFEİN GÜVENLİK' : '☕ CAFFEINE SAFETY'}:</strong> {bil(r.raceDay.caffeineSafetyFlags, isTR)}
             </div>
           ) : null}
+          {/* v9.29.0 — sport-specific caffeine dose (different from universal safety flags above) */}
+          {r.raceDay.caffeine ? (
+            <div style={{ marginTop: 4, padding: 6, background: 'rgba(125,74,0,0.06)', borderLeft: '2px solid #7d4a00', fontSize: 10 }}>
+              <strong>{isTR ? '☕ KAFEİN DOZU' : '☕ CAFFEINE DOSING'}:</strong> {bil(r.raceDay.caffeine, isTR)}
+            </div>
+          ) : null}
         </div>
+
+        {/* v9.29.0 — pre-race meal examples (4-5 concrete templates per sport, was data-only) */}
+        {Array.isArray(r.raceDay.preRaceMeals?.en) && r.raceDay.preRaceMeals.en.length > 0 ? (
+          <details style={{ marginTop: 10, paddingTop: 8, borderTop: '1px dashed var(--border)' }}>
+            <summary style={{ ...S.mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', cursor: 'pointer', padding: '4px 0', minHeight: 44, display: 'flex', alignItems: 'center' }}>
+              🍽 {isTR ? 'YARIŞ ÖNCESİ ÖRNEK ÖĞÜNLER' : 'PRE-RACE MEAL EXAMPLES'} <span style={{ marginLeft: 6, color: 'var(--muted)', fontSize: 9 }}>({(isTR ? r.raceDay.preRaceMeals.tr : r.raceDay.preRaceMeals.en).length})</span>
+            </summary>
+            <ul style={{ ...S.mono, fontSize: 10, lineHeight: 1.55, margin: '4px 0 0 0', paddingLeft: 18 }}>
+              {(isTR ? r.raceDay.preRaceMeals.tr : r.raceDay.preRaceMeals.en).map((meal, i) => (
+                <li key={i} style={{ marginBottom: 3 }}>{meal}</li>
+              ))}
+            </ul>
+          </details>
+        ) : null}
+
+        {/* v9.29.0 — sport-specific mental rehearsal scripts (Vealey 2007; Bull 1996) */}
+        {Array.isArray(r.raceDay.mentalRehearsal?.en) && r.raceDay.mentalRehearsal.en.length > 0 ? (
+          <details style={{ marginTop: 10, paddingTop: 8, borderTop: '1px dashed var(--border)' }}>
+            <summary style={{ ...S.mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', cursor: 'pointer', padding: '4px 0', minHeight: 44, display: 'flex', alignItems: 'center' }}>
+              🎬 {isTR ? 'ZİHİNSEL PROVA' : 'MENTAL REHEARSAL'} <span style={{ marginLeft: 6, color: 'var(--muted)', fontSize: 9 }}>({(isTR ? r.raceDay.mentalRehearsal.tr : r.raceDay.mentalRehearsal.en).length})</span>
+            </summary>
+            <ul style={{ ...S.mono, fontSize: 10, lineHeight: 1.55, margin: '4px 0 0 0', paddingLeft: 18 }}>
+              {(isTR ? r.raceDay.mentalRehearsal.tr : r.raceDay.mentalRehearsal.en).map((script, i) => (
+                <li key={i} style={{ marginBottom: 3 }}>{script}</li>
+              ))}
+            </ul>
+          </details>
+        ) : null}
+
+        {/* v9.29.0 — conditional environmental protocols (travel/altitude/heat) — data
+            was being computed but never rendered. Each is null when threshold not crossed
+            (timeZone <3h, altitude <1500m, heat <25°C). */}
+        {r.travel ? (
+          <RaceWeekConditional title={isTR ? '✈️ SEYAHAT (JET LAG)' : '✈️ TRAVEL (JET LAG)'} accent="#9966cc" data={r.travel} isTR={isTR} />
+        ) : null}
+        {r.altitude ? (
+          <RaceWeekConditional title={isTR ? '⛰ RAKIM' : '⛰ ALTITUDE'} accent="#ff6600" data={r.altitude} isTR={isTR} />
+        ) : null}
+        {r.heat ? (
+          <RaceWeekConditional title={isTR ? '🌡 SICAK HAVA' : '🌡 HEAT'} accent="#dc3545" data={r.heat} isTR={isTR} />
+        ) : null}
+
         <div style={{ marginTop: 6, fontSize: 9, color: 'var(--muted)', fontStyle: 'italic' }}>{r.citation}</div>
       </div>
     </Disclosure>
+  )
+}
+
+// v9.29.0 — Shared renderer for travel/altitude/heat protocol blocks. They have
+// the same overall shape: { summary, acclimatization|sleep, pacing, fueling }
+// (each bilingual). Renders as a colored callout panel with labelled rows.
+function RaceWeekConditional({ title, accent, data, isTR }) {
+  const accentBg = accent + '14' // ~8% opacity hex suffix
+  return (
+    <div style={{ marginTop: 10, padding: 10, background: accentBg, borderLeft: `3px solid ${accent}`, borderRadius: 4 }}>
+      <div style={{ ...S.mono, fontSize: 11, fontWeight: 700, color: accent, letterSpacing: '0.06em', marginBottom: 6 }}>
+        {title}
+      </div>
+      <div style={{ ...S.mono, fontSize: 10, lineHeight: 1.55 }}>
+        {data.summary ? <div style={{ marginBottom: 4 }}>{bil(data.summary, isTR)}</div> : null}
+        {data.acclimatization ? <div><strong>{isTR ? 'ADAPTASYON' : 'ACCLIMATIZATION'}:</strong> {bil(data.acclimatization, isTR)}</div> : null}
+        {data.sleep ? <div><strong>{isTR ? 'UYKU' : 'SLEEP'}:</strong> {bil(data.sleep, isTR)}</div> : null}
+        {data.pacing ? <div><strong>{isTR ? 'TEMPOLAMA' : 'PACING'}:</strong> {bil(data.pacing, isTR)}</div> : null}
+        {data.fueling ? <div><strong>{isTR ? 'BESLENME' : 'FUELING'}:</strong> {bil(data.fueling, isTR)}</div> : null}
+      </div>
+    </div>
   )
 }
 

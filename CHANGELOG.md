@@ -4,6 +4,62 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.29.0 — 2026-05-09 — Race-week UI surfacing (buried data → visible content)
+
+  Closes 4 P2 surface gaps from the race-week completeness audit.
+  The protocol module computed extensive sport-specific content
+  that was never rendered:
+
+  • `r.raceDay.preRaceMeals` — 4-5 concrete meal templates per
+    sport (3h / 2h / 1h / 30min / avoid windows) at lines
+    165 (run), 217 (bike), 311 (swim), 362 (rowing). Data-only;
+    UI hid them. Now: collapsible `<details>` block with bullet
+    list, opens to bilingual menu cards.
+
+  • `r.raceDay.mentalRehearsal` — 6-7 sport-specific Vealey 2007
+    + Bull 1996 visualization scripts per sport at lines 189
+    (run), 240 (bike), 332 (swim), 385 (rowing). Surfaced as
+    🎬 MENTAL REHEARSAL collapsible.
+
+  • `r.raceDay.caffeine` — sport-specific dosing protocol
+    (Burke 2008 + Spriet 2014). Distinct from universal
+    `caffeineSafetyFlags`: this carries the actual mg/kg dose +
+    timing per sport. Was completely hidden. Now renders as a
+    burnt-orange callout below the safety-flags warning.
+
+  • `r.travel` / `r.altitude` / `r.heat` — conditional
+    environmental protocols. Builders return null below
+    threshold (timeZone <3h, altitude <1500m, heat <25°C);
+    when triggered, they returned `{ summary, sleep |
+    acclimatization, pacing, fueling }` … and were never
+    rendered. Now: shared `<RaceWeekConditional>` renderer with
+    per-protocol accent (purple ✈️ travel / orange ⛰ altitude /
+    red 🌡 heat).
+
+  Form does not yet expose `raceAltitudeM` / `raceHeatC` /
+  `timeZoneShiftHrs` inputs — those are a separate ship that
+  needs careful UX (3 optional fields shouldn't clutter primary
+  form). Surfacing the always-present preRaceMeals +
+  mentalRehearsal + sport-specific caffeine adds significant
+  value with zero new input requirements.
+
+  Tests: 9 new in BroaderPlanSections.raceWeek.test.jsx —
+  preRaceMeals/mentalRehearsal/caffeine surfacing,
+  travel/altitude/heat conditional rendering, null-data
+  hiding (no orphan headers when fields absent), Turkish
+  rendering verification, null-protocol pass-through.
+  9515/9515 green. Bundle 1321.3 KB.
+
+  Citations: Vealey 2007 (mental rehearsal), Bull 1996
+  (motor imagery), Burke 2008 + Spriet 2014 (caffeine),
+  Zurawlew 2016 (heat acclimation), Wilber 2007 (altitude).
+
+  Depends on: v9.16.0 (distance-tier overrides), v9.17.0
+  (universal mental + caffeine + readiness blocks), v9.8.0
+  (travel/altitude/heat conditional advisories).
+
+---
+
 ## v9.28.0 — 2026-05-09 — Edge-case stress-test fixes (rowing crash, sub-week horizon, defensive guard)
 
   Closes 3 verified P0 bugs from a triple-agent stress-test of
