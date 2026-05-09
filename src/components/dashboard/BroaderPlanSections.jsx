@@ -558,6 +558,26 @@ export function RaceWeekSection({ raceWeekProtocol, isTR, defaultOpen = false })
           </details>
         ) : null}
 
+        {/* v9.33.0 — universal post-race recovery first 48h (Stellingwerff 2014 +
+            Macaluso 2012 + Banister 1997). Always present in raceDay output. */}
+        {r.raceDay.postRaceRecovery48h ? (
+          <details style={{ marginTop: 10, paddingTop: 8, borderTop: '1px dashed var(--border)' }}>
+            <summary style={{ ...S.mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', cursor: 'pointer', padding: '4px 0', minHeight: 44, display: 'flex', alignItems: 'center', color: '#0064ff' }}>
+              🔄 {isTR ? 'YARIŞ SONRASI 48 SAAT TOPARLANMA' : 'POST-RACE 48H RECOVERY'}
+            </summary>
+            <div style={{ ...S.mono, fontSize: 10, lineHeight: 1.55, marginTop: 6 }}>
+              <div style={{ marginBottom: 6 }}><strong>{isTR ? 'SAAT 0-2' : 'HOUR 0-2'}:</strong> {bil(r.raceDay.postRaceRecovery48h.hour0to2, isTR)}</div>
+              <div style={{ marginBottom: 6 }}><strong>{isTR ? 'SAAT 2-4' : 'HOUR 2-4'}:</strong> {bil(r.raceDay.postRaceRecovery48h.hour2to4, isTR)}</div>
+              <div style={{ marginBottom: 6 }}><strong>{isTR ? '1. GÜN' : 'DAY 1'}:</strong> {bil(r.raceDay.postRaceRecovery48h.day1, isTR)}</div>
+              <div style={{ marginBottom: 6 }}><strong>{isTR ? '2. GÜN' : 'DAY 2'}:</strong> {bil(r.raceDay.postRaceRecovery48h.day2, isTR)}</div>
+              <div style={{ marginBottom: 6 }}><strong>{isTR ? '3. GÜN+' : 'DAY 3+'}:</strong> {bil(r.raceDay.postRaceRecovery48h.day3plus, isTR)}</div>
+              <div style={{ marginTop: 8, padding: 6, background: 'rgba(220,53,69,0.08)', borderLeft: '2px solid #dc3545' }}>
+                <strong>{isTR ? '⚠ TIBBİ İNCELEME GEREKEN BELİRTİLER' : '⚠ WARNING SIGNS NEEDING MEDICAL REVIEW'}:</strong> {bil(r.raceDay.postRaceRecovery48h.warningSigns, isTR)}
+              </div>
+            </div>
+          </details>
+        ) : null}
+
         {/* v9.29.0 — conditional environmental protocols (travel/altitude/heat) — data
             was being computed but never rendered. Each is null when threshold not crossed
             (timeZone <3h, altitude <1500m, heat <25°C). */}

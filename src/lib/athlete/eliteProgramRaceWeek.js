@@ -665,6 +665,45 @@ function buildHeatProtocol(raceHeatC) {
  * }} input
  * @returns {RaceWeekProtocol}
  */
+// v9.33.0 — Post-race recovery first 48h. Closes a P1 from the race-week
+// completeness audit: protocol previously ended at T-0 race day with no
+// guidance for the immediate post-race window. Stellingwerff 2014 shows
+// CHO+protein timing in the first 2h post-race materially affects glycogen
+// resynthesis and muscle protein-synthesis rebound. Macaluso 2012 sets
+// inflammation timeline expectations (DOMS peaks 24-48h, ice vs heat
+// decision depends on injury type). Banister 1997 shows TSS / fatigue
+// signal stays elevated 36+ hours post-race regardless of perceived
+// readiness.
+//
+// Universal across sports — the recovery physiology is sport-invariant.
+// Surfaced in raceDay output so UI renders inline with the race-day block.
+const POST_RACE_RECOVERY_48H = {
+  hour0to2: {
+    en: 'Hour 0-2 (CRITICAL refuel window): 1.0-1.2 g/kg CHO + 20-30 g protein. Liquid form preferred (milkshake, recovery drink) — solids often nauseating immediately post-race. Aim within 30 min of finish line.',
+    tr: 'Saat 0-2 (KRİTİK yakıt penceresi): 1,0-1,2 g/kg CHO + 20-30 g protein. Sıvı form tercih (milkshake, toparlanma içeceği) — yarış sonrası anında katı yiyecek genelde mide bulandırır. Bitiş çizgisinden sonraki 30 dk içinde hedefle.',
+  },
+  hour2to4: {
+    en: 'Hour 2-4: 1.0 g/kg CHO solid meal (rice, pasta, sandwich). Rehydrate 150% of estimated sweat loss across 4 hours (~100 ml/15 min if 1.5 L lost). Sodium 800-1000 mg/L of replacement fluid.',
+    tr: 'Saat 2-4: 1,0 g/kg CHO katı öğün (pilav, makarna, sandviç). Tahmin edilen ter kaybının %150\'sini 4 saat içinde geri al (1,5 L kaybedildiyse ~100 ml/15 dk). Yenileme sıvısının her L\'sinde 800-1000 mg sodyum.',
+  },
+  day1: {
+    en: 'Day 1 post-race: easy walking ONLY (20-30 min low-intensity). NO strength, NO running, NO bike. Soreness peaks 24-48h (Macaluso 2012). Ice bath 10-15 min ONLY if visible swelling or restricted ROM. Heat preferred for purely muscular soreness without inflammation.',
+    tr: 'Yarış sonrası 1. gün: SADECE kolay yürüyüş (20-30 dk düşük yoğunluk). Kuvvet YOK, koşu YOK, bisiklet YOK. Ağrı 24-48 sa\'de zirve yapar (Macaluso 2012). Görünür şişlik veya hareket kısıtı varsa SADECE 10-15 dk buz banyosu. Salt kas ağrısı + inflamasyon yoksa sıcak tercih.',
+  },
+  day2: {
+    en: 'Day 2 post-race: still easy. 30-45 min Z1 movement (walk, easy spin, easy swim). HRV check on AM: if still >10% elevated above baseline, extend easy days to 3-4 (parasympathetic hasn\'t reset). Eat to appetite — caloric needs remain elevated 24-48h post-race.',
+    tr: 'Yarış sonrası 2. gün: hâlâ kolay. 30-45 dk Z1 hareket (yürüyüş, kolay bisiklet, kolay yüzme). Sabah HRV kontrolü: bazalın %10\'undan fazla yüksekse kolay günleri 3-4\'e uzat (parasempatik resetlenmedi). İştaha göre ye — kalori ihtiyacı yarış sonrası 24-48 sa boyunca yüksek kalır.',
+  },
+  day3plus: {
+    en: 'Day 3+: gradual return to training. Run/bike: 50% normal volume Z1-Z2 only. Strength: skip first week post-major-race. NO key/quality session before Day 7. Each "felt great too soon" return cuts ~3% off future ceiling (Banister 1997 supercompensation window).',
+    tr: '3. gün+: antrenmana kademeli dönüş. Koşu/bisiklet: normal hacmin %50\'si, sadece Z1-Z2. Kuvvet: büyük yarış sonrası ilk haftayı atla. 7. günden önce anahtar/kaliteli seans YOK. Her "erken iyi hissettim" dönüşü gelecekteki tavan kapasiteyi ~%3 düşürür (Banister 1997 süperkompansasyon penceresi).',
+  },
+  warningSigns: {
+    en: 'Warning signs needing medical review (do NOT train through): tea-colored or dark-cola urine (rhabdomyolysis), persistent dizziness/syncope, severe localized pain (stress fracture or compartment syndrome risk), no urination 4+ h post-race despite drinking, fever 24-72h post-race (immune dip + infection).',
+    tr: 'Tıbbi inceleme gerektiren uyarı işaretleri (antrenmanla GEÇİŞTİRME): çay rengi veya koyu kola idrar (rabdomyoliz), kalıcı baş dönmesi/bayılma, şiddetli lokal ağrı (stres kırığı veya kompartman sendromu riski), içmesine rağmen yarıştan 4+ sa sonra idrar yok, yarıştan 24-72 sa sonra ateş (immün düşüş + enfeksiyon).',
+  },
+}
+
 // v9.16.0 — Event-distance tier classifier. Closes audit P0 finding: prior
 // race-day protocol applied identical pre-race meal + warmup + pacing logic
 // regardless of event duration. Real coaches differentiate sprint (<10k run /
@@ -869,6 +908,9 @@ export function buildRaceWeekProtocol(input) {
     motorImagery: MOTOR_IMAGERY,
     caffeineSafetyFlags: CAFFEINE_SAFETY_FLAGS,
     morningReadinessCheck: MORNING_READINESS_CHECK,
+    // v9.33.0 — universal post-race recovery first 48h protocol.
+    // Sport-invariant; surfaces in raceDay output for inline render.
+    postRaceRecovery48h: POST_RACE_RECOVERY_48H,
   }
 
   // v9.8.0 — conditional advisories

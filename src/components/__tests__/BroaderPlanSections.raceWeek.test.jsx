@@ -181,6 +181,30 @@ describe('RaceWeekSection — v9.29.0 buried data surfaced', () => {
     expect(screen.queryByText(/BRICK REFUEL WINDOW/i)).not.toBeInTheDocument()
   })
 
+  // ── v9.33.0 — Post-race 48h recovery render block ──
+  it('renders post-race 48h recovery block when present', () => {
+    const protocol = makeProtocol({
+      postRaceRecovery48h: {
+        hour0to2:    { en: 'Hour 0-2: 1.0 g/kg CHO + 25g protein', tr: 'Saat 0-2: 1.0 g/kg CHO + 25g protein' },
+        hour2to4:    { en: 'Hour 2-4: solid meal', tr: 'Saat 2-4: katı öğün' },
+        day1:        { en: 'Day 1: easy walking only', tr: '1. gün: sadece kolay yürüyüş' },
+        day2:        { en: 'Day 2: 30-45 min Z1', tr: '2. gün: 30-45 dk Z1' },
+        day3plus:    { en: 'Day 3+: gradual return', tr: '3. gün+: kademeli dönüş' },
+        warningSigns: { en: 'Rhabdomyolysis: dark urine', tr: 'Rabdomyoliz: koyu idrar' },
+      },
+    })
+    renderWithLang(<RaceWeekSection raceWeekProtocol={protocol} isTR={false} defaultOpen={true} />)
+    expect(screen.getByText(/POST-RACE 48H RECOVERY/i)).toBeInTheDocument()
+    expect(screen.getByText(/1.0 g\/kg CHO \+ 25g protein/)).toBeInTheDocument()
+    expect(screen.getByText(/Rhabdomyolysis: dark urine/i)).toBeInTheDocument()
+  })
+
+  it('hides post-race block when not present', () => {
+    const protocol = makeProtocol() // no postRaceRecovery48h
+    renderWithLang(<RaceWeekSection raceWeekProtocol={protocol} isTR={false} defaultOpen={true} />)
+    expect(screen.queryByText(/POST-RACE 48H RECOVERY/i)).not.toBeInTheDocument()
+  })
+
   it('returns null when raceWeekProtocol is null/undefined', () => {
     const { container: c1 } = render(<RaceWeekSection raceWeekProtocol={null} isTR={false} />)
     const { container: c2 } = render(<RaceWeekSection raceWeekProtocol={undefined} isTR={false} />)

@@ -216,3 +216,53 @@ describe('buildRaceWeekProtocol — cold-weather protocol (v9.31.0)', () => {
     expect(r.citation).toMatch(/Tipton|Castellani/)
   })
 })
+
+// ── v9.33.0 — Universal post-race 48h recovery protocol ────────────────
+describe('buildRaceWeekProtocol — post-race 48h recovery (v9.33.0)', () => {
+  it('every sport carries postRaceRecovery48h block', () => {
+    for (const sport of ['run', 'bike', 'swim', 'rowing', 'triathlon']) {
+      const r = buildRaceWeekProtocol({ sport })
+      expect(r.raceDay.postRaceRecovery48h).toBeDefined()
+    }
+  })
+
+  it('post-race block has all 5 timeline windows + warning signs', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run' })
+    const post = r.raceDay.postRaceRecovery48h
+    expect(post.hour0to2).toBeDefined()
+    expect(post.hour2to4).toBeDefined()
+    expect(post.day1).toBeDefined()
+    expect(post.day2).toBeDefined()
+    expect(post.day3plus).toBeDefined()
+    expect(post.warningSigns).toBeDefined()
+  })
+
+  it('hour0to2 block specifies CHO + protein dosing (Stellingwerff 2014)', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run' })
+    expect(r.raceDay.postRaceRecovery48h.hour0to2.en).toMatch(/CHO|carbohydrate/i)
+    expect(r.raceDay.postRaceRecovery48h.hour0to2.en).toMatch(/protein/i)
+    expect(r.raceDay.postRaceRecovery48h.hour0to2.en).toMatch(/g\/kg/i)
+  })
+
+  it('day1 specifies easy-walking-only / no strength', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run' })
+    expect(r.raceDay.postRaceRecovery48h.day1.en).toMatch(/walking/i)
+    expect(r.raceDay.postRaceRecovery48h.day1.en).toMatch(/no strength/i)
+  })
+
+  it('warningSigns includes rhabdomyolysis + dizziness markers', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run' })
+    expect(r.raceDay.postRaceRecovery48h.warningSigns.en).toMatch(/rhabdo/i)
+    expect(r.raceDay.postRaceRecovery48h.warningSigns.en).toMatch(/dizziness|syncope/i)
+  })
+
+  it('all 6 fields are bilingual EN+TR', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run' })
+    const post = r.raceDay.postRaceRecovery48h
+    for (const field of ['hour0to2', 'hour2to4', 'day1', 'day2', 'day3plus', 'warningSigns']) {
+      expect(post[field]).toHaveProperty('en')
+      expect(post[field]).toHaveProperty('tr')
+      expect(post[field].tr.length).toBeGreaterThan(20)
+    }
+  })
+})

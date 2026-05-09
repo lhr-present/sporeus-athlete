@@ -4,6 +4,60 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.33.0 — 2026-05-10 — Post-race 48h recovery protocol (universal)
+
+  Closes a P1 from the race-week completeness audit. The protocol
+  previously ENDED at T-0 (race day) with no guidance for the
+  immediate post-race window — but the recovery decisions made in
+  the first 48h materially affect both glycogen resynthesis and
+  the next training cycle's ceiling.
+
+  Stellingwerff 2014 sets the 0-2h CHO+protein window critical for
+  glycogen rebuild. Macaluso 2012 sets DOMS expectations (peaks
+  24-48h, ice vs heat depends on injury type). Banister 1997
+  shows TSS / fatigue signal stays elevated 36+ hours regardless
+  of perceived readiness — every "felt great too soon" return
+  cuts ~3% off future ceiling via missed supercompensation.
+
+  New universal `POST_RACE_RECOVERY_48H` block carries 6 fields:
+
+  • `hour0to2` — CRITICAL refuel window. 1.0-1.2 g/kg CHO + 20-30 g
+    protein, liquid form preferred (solids nauseating immediately
+    post-race). Within 30 min of finish line.
+  • `hour2to4` — solid-meal CHO 1.0 g/kg + 150% sweat-loss
+    rehydration over 4h with 800-1000 mg sodium/L.
+  • `day1` — easy walking only, 20-30 min low-intensity. No
+    strength, no run, no bike. Ice-bath only if visible swelling
+    or restricted ROM. Heat preferred for purely muscular
+    soreness without inflammation.
+  • `day2` — 30-45 min Z1 movement. AM HRV check; if still >10%
+    elevated, extend easy days to 3-4.
+  • `day3plus` — gradual return. 50% volume Z1-Z2 only. No
+    key/quality session before Day 7.
+  • `warningSigns` — medical-review markers: tea-colored urine
+    (rhabdomyolysis), persistent dizziness/syncope, severe
+    localized pain (stress fracture / compartment syndrome),
+    no urination 4+h post-race despite drinking, fever 24-72h
+    post-race (immune dip + infection).
+
+  Universal across all sports — recovery physiology is sport-
+  invariant. Surfaced as a blue-accent collapsible `<details>`
+  block in RaceWeekSection, with a red sub-callout for warning
+  signs (visually emphasizes the "do NOT train through" message).
+
+  Tests: 6 new in eliteProgramRaceWeek.test.js (every-sport
+  presence, all 5 timeline + warning fields, CHO/protein dosing
+  in hour0to2, no-strength rule in day1, rhabdo+dizziness markers,
+  bilingual coverage). 2 new UI render tests. 9570/9570 green.
+  Bundle 1329.1 KB.
+
+  Citations: Stellingwerff 2014 (post-race fueling); Macaluso 2012
+  (inflammation timeline); Banister 1997 (supercompensation).
+
+  Depends on: v9.16.0 (raceDay output structure).
+
+---
+
 ## v9.32.0 — 2026-05-10 — Plan staleness detection (VDOT/FTP/CSS drift)
 
   Closes a P0 from the plan-lifecycle audit. Previously, a Mission #1
