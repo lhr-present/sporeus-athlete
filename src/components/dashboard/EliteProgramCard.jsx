@@ -16,6 +16,7 @@ import {
   DELOAD_NOTE,
 } from '../../lib/athlete/eliteProgram.js'
 import BroaderPlanSections from './BroaderPlanSections.jsx'
+import { computePlanStaleness } from '../../lib/athlete/eliteProgramStaleness.js'
 import CoachEditsBanner, { ATHLETE_EDITS_KEY } from './CoachEditsBanner.jsx'
 import { applyCoachEdits } from '../../lib/athlete/coachEditEngine.js'
 import { eliteProgramToYearlyWeeks } from '../../lib/athlete/eliteProgramToYearly.js'
@@ -724,6 +725,43 @@ function SamplePhase({ phase, days, isTR, defaultOpen }) {
           })}
         </div>
       ) : null}
+    </div>
+  )
+}
+
+// ── PlanStalenessBanner (v9.32.0) ─────────────────────────────────────────────
+// Shown above PhysiologyRow when the saved plan's currentLevel has drifted
+// from the athlete's current profile (e.g., athlete re-tested 5K and VDOT
+// jumped from 50 to 55). Severity 'major' renders red; 'minor' renders amber.
+// No render when computePlanStaleness returns null.
+function PlanStalenessBanner({ result, profile, isTR }) {
+  if (!result || !profile) return null
+  const profileLevel = {
+    vdot:        profile.vdot,
+    ftp:         profile.ftp,
+    cssSec:      profile.cssSec ?? profile.css,
+    split2kSec:  profile.split2kSec ?? profile.split2k,
+  }
+  const report = computePlanStaleness(result, profileLevel)
+  if (!report) return null
+  const isMajor = report.severity === 'major'
+  const accent = isMajor ? '#dc3545' : '#ff9900'
+  const bg     = isMajor ? 'rgba(220,53,69,0.10)' : 'rgba(255,153,0,0.10)'
+  const labelEn = isMajor ? '⚠ PLAN OUT OF DATE' : '⚡ PLAN MAY BE STALE'
+  const labelTr = isMajor ? '⚠ PLAN GÜNCEL DEĞİL' : '⚡ PLAN ESKİYOR OLABİLİR'
+  return (
+    <div role="status" aria-live="polite"
+      style={{
+        marginBottom: '10px', padding: '10px 12px', borderLeft: `3px solid ${accent}`,
+        background: bg, borderRadius: 4, ...S.mono, fontSize: 11, lineHeight: 1.55,
+      }}>
+      <div style={{ fontWeight: 700, color: accent, letterSpacing: '0.06em', marginBottom: 4 }}>
+        {isTR ? labelTr : labelEn}
+      </div>
+      <div style={{ color: 'var(--text)' }}>{isTR ? report.message.tr : report.message.en}</div>
+      <div style={{ marginTop: 4, fontSize: 9, color: 'var(--muted)' }}>
+        {report.drifted.map(d => `${d.metric.toUpperCase()}: ${d.planValue} → ${d.currentValue}`).join(' · ')}
+      </div>
     </div>
   )
 }
@@ -1497,6 +1535,12 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
           </div>
         </div>
       </div>
+
+      {/* v9.32.0 — Plan freshness banner. Detects when the saved plan's
+          currentLevel has drifted from the athlete's current profile (athlete
+          re-tested VDOT/FTP/CSS, or detrained). Shows above the physiology
+          row so the user sees it before reading the prescribed paces. */}
+      <PlanStalenessBanner result={result} profile={_profile} isTR={isTR} />
 
       <PhysiologyRow
         sport={result.sport}

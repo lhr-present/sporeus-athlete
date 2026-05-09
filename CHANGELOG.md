@@ -4,6 +4,52 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.32.0 — 2026-05-10 — Plan staleness detection (VDOT/FTP/CSS drift)
+
+  Closes a P0 from the plan-lifecycle audit. Previously, a Mission #1
+  plan generated when an athlete had VDOT 50 / FTP 280W / CSS 95 stayed
+  prescribing those paces forever — even after the athlete completed
+  a 5K test 6 weeks in and the new VDOT was 55. Result: the saved
+  plan kept telling the user to run T-pace at 4:15/km when their actual
+  threshold pace was 4:00/km. No detection, no warning, no prompt.
+
+  New pure module `src/lib/athlete/eliteProgramStaleness.js` exporting
+  `computePlanStaleness(plan, profile)`:
+
+  • Compares the plan's snapshotted `currentLevel` against the
+    athlete's CURRENT profile across 4 metrics: VDOT, FTP, CSS,
+    2k-row split.
+  • Drift thresholds calibrated to evidence:
+    - VDOT ±3 points (Daniels 2014: 1 VDOT ≈ 2-3 sec/km on T-pace)
+    - FTP ±15 W (Coggan re-test threshold)
+    - CSS ±3 sec/100m (Wakayoshi 1992)
+    - 2k row ±10 sec (Concept2 calibration window)
+  • Severity classification: 'major' when max-drift ≥5% pace shift
+    (strong "regenerate" prompt); 'minor' below 5% (soft hint).
+  • Direction-aware messaging: 'improved' / 'dropped' / 'shifted'
+    (mixed direction across metrics, e.g., VDOT up + FTP down).
+  • Bilingual EN+TR. Multi-metric (triathlon profiles report all
+    drifted metrics simultaneously).
+
+  UI: new `<PlanStalenessBanner>` in EliteProgramCard plan-mode,
+  rendered above PhysiologyRow. Major drift → red border + "PLAN
+  OUT OF DATE" header. Minor drift → amber + "PLAN MAY BE STALE".
+  Banner shows the drifted-metric values inline (e.g., "VDOT: 50 → 55")
+  so the user can verify immediately. Returns null when no drift —
+  no false-alarm clutter on fresh plans.
+
+  Tests: 24 new in eliteProgramStaleness.test.js — null returns
+  (5 tests), VDOT drift (4), FTP drift (3), CSS drift (3), 2k drift
+  (2), multi-metric triathlon (3), bilingual messaging (3),
+  citation export (1). 9562/9562 green. Bundle 1327.4 KB.
+
+  Citations: Daniels 2014 (VDOT pace mapping), Coggan & Allen 2010
+  (FTP re-test), Wakayoshi 1992 (CSS), Concept2 calibration.
+
+  Depends on: v8.92.0 (currentLevel structure on plan output).
+
+---
+
 ## v9.31.0 — 2026-05-10 — Cold-weather race protocol (<5°C)
 
   Closes a P0 environmental gap from the race-week completeness audit.
