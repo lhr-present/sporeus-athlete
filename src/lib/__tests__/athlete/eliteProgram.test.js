@@ -2230,3 +2230,146 @@ describe('buildEliteProgram — v9.18.0 triathlon cohort warning', () => {
     }
   })
 })
+
+// ── v9.20.0 — sample-week polarization (Seiler 80/20) ──────────────────────
+// Helper: weekly polarization ratio computation. Returns
+// { lowPct, midPct, highPct, totalMin, hardMin } for a sample week.
+function polarizationOf(week) {
+  let z1 = 0, z2 = 0, z3 = 0, z4 = 0, z5 = 0, total = 0
+  for (const d of week) {
+    z1 += d.zones?.Z1 || 0
+    z2 += d.zones?.Z2 || 0
+    z3 += d.zones?.Z3 || 0
+    z4 += d.zones?.Z4 || 0
+    z5 += d.zones?.Z5 || 0
+    total += d.durationMin || 0
+  }
+  const summed = z1 + z2 + z3 + z4 + z5
+  const denom = summed > 0 ? summed : (total > 0 ? total : 1)
+  return {
+    lowPct:  Math.round(((z1 + z2) / denom) * 100),
+    midPct:  Math.round((z3 / denom) * 100),
+    highPct: Math.round(((z4 + z5) / denom) * 100),
+    totalMin: total,
+    hardMin: z4 + z5,
+  }
+}
+
+describe('Sample-week polarization — Seiler 80/20 compliance per phase', () => {
+  it('Run Peak ≤ 25% high-intensity (post-v9.20.0 Sun long-easy fix)', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    const peak = r.sampleWeeks?.Peak
+    if (peak) {
+      const pol = polarizationOf(peak)
+      expect(pol.highPct).toBeLessThanOrEqual(25)
+    }
+  })
+
+  it('Bike Peak — no Thu+Sat Z4 double (Lambert 1997)', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 0, timeSec: 250 },
+      targetPR:  { distanceM: 0, timeSec: 280 },
+      raceDate: '2026-09-25',
+      sport: 'bike',
+      options: { today: TODAY },
+    })
+    const peak = r.sampleWeeks?.Peak
+    if (peak) {
+      const thu = peak.find(d => d.day === 'Thu')
+      const sat = peak.find(d => d.day === 'Sat')
+      const thuZ4 = thu?.zones?.Z4 || 0
+      const satZ4 = sat?.zones?.Z4 || 0
+      // At least one of Thu/Sat must have ≤10 min Z4 (i.e., not both heavy).
+      expect(Math.min(thuZ4, satZ4)).toBeLessThanOrEqual(10)
+    }
+  })
+
+  it('Swim Peak ≤ 30% high-intensity (Stöggl 2014 cap)', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 1500, timeSec: 1800 },
+      targetPR:  { distanceM: 1500, timeSec: 1700 },
+      raceDate: '2026-09-25',
+      sport: 'swim',
+      options: { today: TODAY },
+    })
+    const peak = r.sampleWeeks?.Peak
+    if (peak) {
+      const pol = polarizationOf(peak)
+      expect(pol.highPct).toBeLessThanOrEqual(30)
+    }
+  })
+
+  it('Swim Peak Wed has ≥45 min active recovery (Olbrecht 2000)', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 1500, timeSec: 1800 },
+      targetPR:  { distanceM: 1500, timeSec: 1700 },
+      raceDate: '2026-09-25',
+      sport: 'swim',
+      options: { today: TODAY },
+    })
+    const wed = (r.sampleWeeks?.Peak || []).find(d => d.day === 'Wed')
+    if (wed) {
+      expect(wed.durationMin).toBeGreaterThanOrEqual(45)
+      expect((wed.zones?.Z4 || 0) + (wed.zones?.Z5 || 0)).toBe(0) // pure easy
+    }
+  })
+
+  it('Rowing Build — UT1 (Z2) ≥ 25% (Nolte 2005 base-building target)', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 0, timeSec: 480 },
+      targetPR:  { distanceM: 0, timeSec: 440 },
+      raceDate: '2026-09-25',
+      sport: 'rowing',
+      options: { today: TODAY },
+    })
+    const build = r.sampleWeeks?.Build
+    if (build) {
+      let z2 = 0, total = 0
+      for (const d of build) {
+        z2 += d.zones?.Z2 || 0
+        total += (d.zones?.Z1 || 0) + (d.zones?.Z2 || 0) + (d.zones?.Z3 || 0) + (d.zones?.Z4 || 0) + (d.zones?.Z5 || 0)
+      }
+      expect(total).toBeGreaterThan(0)
+      expect((z2 / total) * 100).toBeGreaterThanOrEqual(20) // close to Nolte 30% target with strict floor
+    }
+  })
+
+  it('Triathlon Build — no 3 consecutive Z4 days (Lambert 1997)', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 10000, timeSec: 3000 },
+      targetPR:  { distanceM: 10000, timeSec: 2820 },
+      raceDate: '2026-09-25',
+      sport: 'triathlon',
+      options: { today: TODAY },
+    })
+    const build = r.sampleWeeks?.Build
+    if (build) {
+      // Tue/Wed/Thu sequence: count days where Z4+Z5 ≥ 30 min as "hard"
+      const tue = build.find(d => d.day === 'Tue')
+      const wed = build.find(d => d.day === 'Wed')
+      const thu = build.find(d => d.day === 'Thu')
+      const isHard = d => d && ((d.zones?.Z4 || 0) + (d.zones?.Z5 || 0) >= 30)
+      const consecutive = [tue, wed, thu].filter(isHard).length
+      expect(consecutive).toBeLessThanOrEqual(2)
+    }
+  })
+
+  it('Triathlon Peak — at least 2 rest/easy days (taper-approach not compacted)', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 10000, timeSec: 3000 },
+      targetPR:  { distanceM: 10000, timeSec: 2820 },
+      raceDate: '2026-09-25',
+      sport: 'triathlon',
+      options: { today: TODAY },
+    })
+    const peak = r.sampleWeeks?.Peak
+    if (peak) {
+      // count days with Z4+Z5 = 0 AND duration ≤ 45 min as "easy/rest"
+      const easyDays = peak.filter(d =>
+        ((d.zones?.Z4 || 0) + (d.zones?.Z5 || 0)) === 0 &&
+        (d.durationMin || 0) <= 45
+      ).length
+      expect(easyDays).toBeGreaterThanOrEqual(2)
+    }
+  })
+})

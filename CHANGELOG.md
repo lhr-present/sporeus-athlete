@@ -4,6 +4,71 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.20.0 — 2026-05-09 — Sample-week polarization fixes (Seiler 80/20 + Lambert anti-stacking)
+
+  Athlete-safety fix. Deep-dive sample-week audit found 6 P0
+  polarization violations across run/bike/swim/rowing/triathlon
+  Peak/Build phases — multiple sample weeks exceeded Seiler 2010
+  80/20 ceiling (>25% high-intensity) or stacked Z4 sessions
+  ≤24h apart (Lambert 1997 violation: trained athletes need ≥1
+  easy day between Z4+ keys). All 6 fixed.
+
+  • RUN PEAK was 28% high (Tue VO2 + Thu race-pace + Sun
+    tempo+strides). Replaced Sun "Tempo + strides" (Z3:25 +
+    Z5:5 = 30 hard min) with "Long easy run" (75min Z1:65 +
+    Z2:10). Now ~22% hard. Adds the long-run base mileage
+    that Peak phase shouldn't drop entirely (Daniels 2014).
+
+  • BIKE PEAK was 33% hard with Thu "Race-pace 80min" + Sat
+    "Long with race-pace 180min" creating a 48h Z4 double.
+    Thu converted from race-pace (Z4:50 + Z5:10) to "Sweet
+    spot 2x20" (Z3:40 only). Sat keeps the single weekly Z4
+    race-pace key. Now ~22% hard, single Z4 day per week.
+
+  • SWIM PEAK was 38% hard. Tue VO2 reduced 12x100→10x100
+    (Z5:35→25), Thu race-pace 6x400→5x400 (Z4:35→25, Z5:15→10),
+    Sat reduced 70→65min (Z4:15→10). Wed extended from 35 to
+    45min active recovery (Olbrecht 2000 trained-swimmer floor).
+    Now ~28% hard.
+
+  • ROWING BUILD had UT1 (Z2) under-indexed at 18% vs Nolte
+    2005 30% target, and TR (Z4) over-indexed at 14% vs 5%
+    target. Wed UT1 60→90min, Thu TR pieces 6→5 reps (60→50min).
+    Sun cross-train clarified as "run/ski + strength" (rowers
+    benefit from antagonist muscle work, not cycling — Nolte
+    2005). Distribution restored toward UT2:UT1:AT:TR=50:30:15:5.
+
+  • TRI BUILD had 3 consecutive hard days (Tue swim Z4 + Wed
+    bike threshold Z4 + Thu run threshold Z4). Wed converted
+    from "Bike threshold 3x12" (Z4:50) to "Bike endurance +
+    brick run" (Z2:65). Now: Tue swim Z4 + Thu run Z4 with
+    Wed endurance bridge.
+
+  • TRI PEAK had a 6-day work block with only Fri rest (34%
+    hard density — Mujika 2003 says taper-approach should be
+    intensity-preserved + volume-reduced, not compacted). Wed
+    converted from "Bike VO2 5x4 + brick" (Z5:60) to
+    "Bike endurance + brick run" (Z2:60). Sun converted from
+    "Swim race-pace 6x400" (Z4:35 + Z5:15) to "Swim easy
+    1500m" (Z1:35) so legs drain before race-week.
+    Now 3 hard days (Tue/Thu/Sat) properly spaced.
+
+  • Tests: +7 (9455 total). New polarizationOf() helper computes
+    weekly Z1+Z2 / Z3 / Z4+Z5 ratios. Verifies post-fix
+    polarization caps + Lambert anti-stacking + Olbrecht
+    recovery floor + Nolte UT1 base-building target.
+
+  Citations: Seiler 2010 (80/20 polarization), Stöggl 2014
+  (peak high-intensity ceiling 25-30%), Lambert 1997
+  (consecutive hard sessions), Mujika 2003 (taper integrity),
+  Olbrecht 2000 (swim recovery floor), Nolte 2005 (rowing
+  zone distribution), Daniels 2014 (Peak long-run retention).
+
+  Depends on: v9.7.0 (rowing sample week), v9.6.0 (triathlon
+  discipline tagging).
+
+---
+
 ## v9.19.0 — 2026-05-09 — Mobile MM:SS auto-format (numeric keyboard has no colon)
 
   Production bug fix. Mobile athletes could not enter PR times in

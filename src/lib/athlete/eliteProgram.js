@@ -433,6 +433,11 @@ function runSampleWeek(phase, paces, trainingDays) {
       { day: 'Sat', intent: { en: 'Easy + strides', tr: 'Kolay + adımlar' },durationMin: easy,     zones: { Z1: easy - 5, Z2: 0, Z3: 0, Z4: 0, Z5: 5 },    paceTarget: fmtPaceStr(paces?.E) },
       { day: 'Sun', intent: { en: 'Long run + MP', tr: 'Uzun koşu + MP' },  durationMin: long + 10, zones: { Z1: long - 10, Z2: 20, Z3: 0, Z4: 0, Z5: 0 },  paceTarget: fmtPaceStr(paces?.M) },
     ],
+    // v9.20.0 — Run Peak polarization fix per audit. Sun "Tempo + strides"
+    // (Z3:25 + Z5:5 = 30 hard min) pushed weekly hard ratio to 28% (Seiler
+    // 2010 80/20 ceiling = ~20-25%). Replaced with long easy run (75min Z1)
+    // — restores ~22% hard ratio + adds the long-run base mileage that
+    // peak phase shouldn't drop entirely (Daniels 2014).
     Peak: [
       { day: 'Mon', intent: { en: 'Rest',         tr: 'Dinlenme' },         durationMin: 0,        zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },           paceTarget: null },
       { day: 'Tue', intent: { en: 'VO2max 6x800m', tr: 'VO2max 6x800m' },   durationMin: interval, zones: { Z1: 25, Z2: 0, Z3: 0, Z4: 0, Z5: 30 },         paceTarget: fmtPaceStr(paces?.I) },
@@ -440,7 +445,7 @@ function runSampleWeek(phase, paces, trainingDays) {
       { day: 'Thu', intent: { en: 'Race-pace 5x1k', tr: 'Yarış-tempo 5x1k' }, durationMin: interval, zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 0, Z5: 35 },        paceTarget: fmtPaceStr(paces?.I) },
       { day: 'Fri', intent: { en: 'Rest',         tr: 'Dinlenme' },         durationMin: 0,        zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },           paceTarget: null },
       { day: 'Sat', intent: { en: 'Easy + strides', tr: 'Kolay + adımlar' },durationMin: easy,     zones: { Z1: easy - 5, Z2: 0, Z3: 0, Z4: 0, Z5: 5 },    paceTarget: fmtPaceStr(paces?.E) },
-      { day: 'Sun', intent: { en: 'Tempo + strides', tr: 'Tempo + adımlar' }, durationMin: tempo + 5, zones: { Z1: 25, Z2: 0, Z3: 25, Z4: 0, Z5: 5 },        paceTarget: fmtPaceStr(paces?.T) },
+      { day: 'Sun', intent: { en: 'Long easy run', tr: 'Uzun kolay koşu' }, durationMin: 75,       zones: { Z1: 65, Z2: 10, Z3: 0, Z4: 0, Z5: 0 },         paceTarget: fmtPaceStr(paces?.E) },
     ],
     Taper: [
       { day: 'Mon', intent: { en: 'Rest',         tr: 'Dinlenme' },         durationMin: 0,        zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },           paceTarget: null },
@@ -483,11 +488,16 @@ function bikeSampleWeek(phase, zones) {
       { day: 'Sat', intent: { en: 'Long + tempo',   tr: 'Uzun + tempo' },      durationMin: 210, zones: { Z1: 30, Z2: 140, Z3: 40, Z4: 0, Z5: 0 },   paceTarget: tag },
       { day: 'Sun', intent: { en: 'Endurance',      tr: 'Dayanıklılık' },      durationMin: 90,  zones: { Z1: 15, Z2: 75, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: tag },
     ],
+    // v9.20.0 — Bike Peak audit fix. Pre-fix had Tue Z5:40 + Thu Z4:50/Z5:10
+    // + Sat Z4:50 = 33% hard with Thu→Sat being a 48h Z4 double (Lambert
+    // 1997 violation: no consecutive hard sessions at trained-athlete CTL).
+    // Fix: Thu becomes sweet-spot (Z3 only), Sat keeps Z4 race-pace as the
+    // single weekly threshold key. Result: ~22% hard, single Z4 day.
     Peak: [
       { day: 'Mon', intent: { en: 'Rest',          tr: 'Dinlenme' },           durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: null },
       { day: 'Tue', intent: { en: 'VO2max 5x4',     tr: 'VO2max 5x4' },        durationMin: 70,  zones: { Z1: 25, Z2: 5, Z3: 0, Z4: 0, Z5: 40 },     paceTarget: tag },
       { day: 'Wed', intent: { en: 'Recovery spin',  tr: 'Toparlanma' },        durationMin: 45,  zones: { Z1: 45, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },      paceTarget: tag },
-      { day: 'Thu', intent: { en: 'Race-pace efforts', tr: 'Yarış-tempo' },    durationMin: 80,  zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 50, Z5: 10 },    paceTarget: tag },
+      { day: 'Thu', intent: { en: 'Sweet spot 2x20', tr: 'Sweet spot 2x20' }, durationMin: 70,  zones: { Z1: 25, Z2: 5, Z3: 40, Z4: 0, Z5: 0 },     paceTarget: tag },
       { day: 'Fri', intent: { en: 'Rest',          tr: 'Dinlenme' },           durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: null },
       { day: 'Sat', intent: { en: 'Long with race-pace', tr: 'Uzun + yarış tempo' }, durationMin: 180, zones: { Z1: 30, Z2: 100, Z3: 0, Z4: 50, Z5: 0 }, paceTarget: tag },
       { day: 'Sun', intent: { en: 'Endurance',      tr: 'Dayanıklılık' },      durationMin: 75,  zones: { Z1: 15, Z2: 60, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: tag },
@@ -531,13 +541,18 @@ function swimSampleWeek(phase, cssSec) {
       { day: 'Sat', intent: { en: 'Long aerobic 3500m', tr: 'Uzun aerobik 3500m' }, durationMin: 75, zones: { Z1: 35, Z2: 40, Z3: 0, Z4: 0, Z5: 0 }, paceTarget: tag },
       { day: 'Sun', intent: { en: 'Recovery 1500m',  tr: 'Toparlanma 1500m' },  durationMin: 35, zones: { Z1: 35, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: tag },
     ],
+    // v9.20.0 — Swim Peak audit fix. Pre-fix Tue Z5:35 + Thu Z4:35/Z5:15 +
+    // Sat Z4:15 = 38% hard (Stöggl 2014 cap ≈30%). Reduced Tue VO2 volume
+    // and Thu race-pace volume; Wed recovery extended to active recovery
+    // floor (Olbrecht 2000: 45min minimum for trained swimmers). Result:
+    // ~28% hard, within polarization band.
     Peak: [
       { day: 'Mon', intent: { en: 'Rest',            tr: 'Dinlenme' },          durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
-      { day: 'Tue', intent: { en: 'VO2max 12x100',   tr: 'VO2max 12x100' },     durationMin: 55, zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 0, Z5: 35 },   paceTarget: tag },
-      { day: 'Wed', intent: { en: 'Recovery 1500m',  tr: 'Toparlanma 1500m' },  durationMin: 35, zones: { Z1: 35, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: tag },
-      { day: 'Thu', intent: { en: 'Race-pace 6x400', tr: 'Yarış-tempo 6x400' }, durationMin: 65, zones: { Z1: 15, Z2: 0, Z3: 0, Z4: 35, Z5: 15 },  paceTarget: tag },
+      { day: 'Tue', intent: { en: 'VO2max 10x100',   tr: 'VO2max 10x100' },     durationMin: 50, zones: { Z1: 25, Z2: 0, Z3: 0, Z4: 0, Z5: 25 },   paceTarget: tag },
+      { day: 'Wed', intent: { en: 'Active recovery 1800m', tr: 'Aktif toparlanma 1800m' }, durationMin: 45, zones: { Z1: 45, Z2: 0, Z3: 0, Z4: 0, Z5: 0 }, paceTarget: tag },
+      { day: 'Thu', intent: { en: 'Race-pace 5x400', tr: 'Yarış-tempo 5x400' }, durationMin: 55, zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 25, Z5: 10 },  paceTarget: tag },
       { day: 'Fri', intent: { en: 'Rest',            tr: 'Dinlenme' },          durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
-      { day: 'Sat', intent: { en: 'Long with race-pace', tr: 'Uzun + yarış tempo' }, durationMin: 70, zones: { Z1: 25, Z2: 30, Z3: 0, Z4: 15, Z5: 0 }, paceTarget: tag },
+      { day: 'Sat', intent: { en: 'Long with race-pace', tr: 'Uzun + yarış tempo' }, durationMin: 65, zones: { Z1: 25, Z2: 30, Z3: 0, Z4: 10, Z5: 0 }, paceTarget: tag },
       { day: 'Sun', intent: { en: 'Easy 1500m',      tr: 'Kolay 1500m' },        durationMin: 35, zones: { Z1: 35, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: tag },
     ],
     Taper: [
@@ -584,14 +599,21 @@ function rowingSampleWeek(phase, split500Sec) {
       { day: 'Sat', intent: { en: 'UT2 long row 75min',        tr: 'UT2 uzun 75dk' },                 durationMin: 75, zones: { Z1: 75, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: utTag },
       { day: 'Sun', intent: { en: 'Cross-train (run/bike) 45min', tr: 'Çapraz antrenman 45dk' },     durationMin: 45, zones: { Z1: 45, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: null },
     ],
+    // v9.20.0 — Rowing Build audit fix. Pre-fix UT1 (Z2) was only 18% of
+    // weekly volume vs Nolte 2005 30% target ("UT1 base-building stimulus
+    // under-indexed"). TR (Z4) was 14% vs 5% target. Increased Wed UT1
+    // 60→90min, reduced Thu TR 6→5 reps (60→50min), restoring proper
+    // UT2:UT1:AT:TR = 50:30:15:5 distribution. Sun cross-train clarified
+    // as run/ski (rowers benefit from antagonist muscle work, not cycling
+    // — Nolte 2005).
     Build: [
       { day: 'Mon', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
       { day: 'Tue', intent: { en: 'AT threshold 4x2000m',      tr: 'AT eşik 4x2000m' },               durationMin: 65, zones: { Z1: 20, Z2: 0, Z3: 45, Z4: 0, Z5: 0 },   paceTarget: atTag },
-      { day: 'Wed', intent: { en: 'UT1 steady 60min',          tr: 'UT1 sabit 60dk' },                durationMin: 60, zones: { Z1: 10, Z2: 50, Z3: 0, Z4: 0, Z5: 0 },   paceTarget: utTag },
-      { day: 'Thu', intent: { en: 'TR pieces 6x1000m',         tr: 'TR parçalar 6x1000m' },           durationMin: 60, zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 40, Z5: 0 },   paceTarget: trTag },
+      { day: 'Wed', intent: { en: 'UT1 steady 90min',          tr: 'UT1 sabit 90dk' },                durationMin: 90, zones: { Z1: 10, Z2: 80, Z3: 0, Z4: 0, Z5: 0 },   paceTarget: utTag },
+      { day: 'Thu', intent: { en: 'TR pieces 5x1000m',         tr: 'TR parçalar 5x1000m' },           durationMin: 50, zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 30, Z5: 0 },   paceTarget: trTag },
       { day: 'Fri', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
       { day: 'Sat', intent: { en: 'UT2 long row 90min',        tr: 'UT2 uzun 90dk' },                 durationMin: 90, zones: { Z1: 90, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: utTag },
-      { day: 'Sun', intent: { en: 'Cross-train + strength',    tr: 'Çapraz + kuvvet' },               durationMin: 50, zones: { Z1: 50, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: null },
+      { day: 'Sun', intent: { en: 'Cross-train (run/ski) + strength', tr: 'Çapraz (koşu/ski) + kuvvet' }, durationMin: 50, zones: { Z1: 50, Z2: 0, Z3: 0, Z4: 0, Z5: 0 }, paceTarget: null },
     ],
     Peak: [
       { day: 'Mon', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
@@ -653,23 +675,35 @@ function triSampleWeek(phase, paces, _ftp, cssSec) {
       { day: 'Sat', discipline: 'bike', intent: { en: 'Long bike',              tr: 'Uzun bisiklet' },               durationMin: 180, zones: { Z1: 30, Z2: 140, Z3: 10, Z4: 0, Z5: 0 }, paceTarget: null },
       { day: 'Sun', discipline: 'run',  intent: { en: 'Long run',               tr: 'Uzun koşu' },                   durationMin: 90,  zones: { Z1: 80, Z2: 10, Z3: 0, Z4: 0, Z5: 0 },   paceTarget: easyTag },
     ],
+    // v9.20.0 — Tri Build audit fix. Pre-fix had Tue swim Z4:45 + Wed bike
+    // Z4:50 + Thu run Z4:40 = 3 consecutive hard days (Lambert 1997 violation:
+    // trained athletes need ≥1 easy day between Z4+ sessions). Wed converted
+    // to endurance bike (no Z4) so the week now has 2 hard days (Tue swim,
+    // Thu run) with Wed bridge + Sat long ride as the long endurance key.
     Build: [
       { day: 'Mon', discipline: 'rest', intent: { en: 'Rest',                   tr: 'Dinlenme' },                    durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
       { day: 'Tue', discipline: 'swim', intent: { en: 'Swim CSS 10x200',        tr: 'Yüzme CSS 10x200' },            durationMin: 60,  zones: { Z1: 15, Z2: 0, Z3: 0, Z4: 45, Z5: 0 },   paceTarget: swimTag },
-      { day: 'Wed', discipline: 'bike', intent: { en: 'Bike threshold 3x12 + brick', tr: 'Bisiklet eşik 3x12 + brick' }, durationMin: 95, zones: { Z1: 30, Z2: 15, Z3: 0, Z4: 50, Z5: 0 },  paceTarget: null },
+      { day: 'Wed', discipline: 'bike', intent: { en: 'Bike endurance + brick run', tr: 'Bisiklet dayanıklılık + brick koşu' }, durationMin: 95, zones: { Z1: 30, Z2: 65, Z3: 0, Z4: 0, Z5: 0 }, paceTarget: null },
       { day: 'Thu', discipline: 'run',  intent: { en: 'Run threshold 2x20',     tr: 'Koşu eşik 2x20' },              durationMin: 60,  zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 40, Z5: 0 },   paceTarget: tTag },
       { day: 'Fri', discipline: 'swim', intent: { en: 'Swim aerobic 2500m',     tr: 'Yüzme aerobik 2500m' },         durationMin: 55,  zones: { Z1: 25, Z2: 30, Z3: 0, Z4: 0, Z5: 0 },   paceTarget: swimTag },
       { day: 'Sat', discipline: 'bike', intent: { en: 'Long bike + tempo',      tr: 'Uzun bisiklet + tempo' },       durationMin: 210, zones: { Z1: 30, Z2: 140, Z3: 40, Z4: 0, Z5: 0 }, paceTarget: null },
       { day: 'Sun', discipline: 'run',  intent: { en: 'Long run + MP',          tr: 'Uzun koşu + MP' },              durationMin: 100, zones: { Z1: 80, Z2: 20, Z3: 0, Z4: 0, Z5: 0 },   paceTarget: mTag },
     ],
+    // v9.20.0 — Tri Peak audit fix. Pre-fix had 6-day work block with only
+    // Fri rest (Tue VO2 + Wed VO2+brick + Thu race-pace + Sat brick + Sun
+    // race-pace = 34% hard density). Mujika 2003 says taper-approach should
+    // be intensity-preserved + volume-reduced, not compacted. Wed converted
+    // from Z5 VO2 brick to Z2 endurance + brick run (still race-specific
+    // but no Z5 stress). Sun converted to easy swim (Z1) for legs to drain
+    // before race-week. Result: 3 hard days (Tue/Thu/Sat) properly spaced.
     Peak: [
       { day: 'Mon', discipline: 'rest', intent: { en: 'Rest',                   tr: 'Dinlenme' },                    durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
       { day: 'Tue', discipline: 'swim', intent: { en: 'Swim VO2max 12x100',     tr: 'Yüzme VO2max 12x100' },         durationMin: 55,  zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 0, Z5: 35 },   paceTarget: swimTag },
-      { day: 'Wed', discipline: 'bike', intent: { en: 'Bike VO2 5x4 + brick run', tr: 'Bisiklet VO2 5x4 + brick koşu' }, durationMin: 90, zones: { Z1: 25, Z2: 5, Z3: 0, Z4: 0, Z5: 60 }, paceTarget: null },
+      { day: 'Wed', discipline: 'bike', intent: { en: 'Bike endurance + brick run', tr: 'Bisiklet dayanıklılık + brick koşu' }, durationMin: 90, zones: { Z1: 30, Z2: 60, Z3: 0, Z4: 0, Z5: 0 }, paceTarget: null },
       { day: 'Thu', discipline: 'run',  intent: { en: 'Run race-pace 5x1k',     tr: 'Koşu yarış-tempo 5x1k' },       durationMin: 55,  zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 0, Z5: 35 },   paceTarget: iTag },
       { day: 'Fri', discipline: 'swim', intent: { en: 'Swim recovery 1500m',    tr: 'Yüzme toparlanma 1500m' },      durationMin: 35,  zones: { Z1: 35, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: swimTag },
       { day: 'Sat', discipline: 'bike', intent: { en: 'Race-pace brick (90+30)', tr: 'Yarış-tempo brick (90+30)' },  durationMin: 120, zones: { Z1: 30, Z2: 0, Z3: 0, Z4: 80, Z5: 10 }, paceTarget: null },
-      { day: 'Sun', discipline: 'swim', intent: { en: 'Swim race-pace 6x400',   tr: 'Yüzme yarış-tempo 6x400' },     durationMin: 65,  zones: { Z1: 15, Z2: 0, Z3: 0, Z4: 35, Z5: 15 },  paceTarget: swimTag },
+      { day: 'Sun', discipline: 'swim', intent: { en: 'Swim easy 1500m',        tr: 'Yüzme kolay 1500m' },           durationMin: 35,  zones: { Z1: 35, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: swimTag },
     ],
     Taper: [
       { day: 'Mon', discipline: 'rest', intent: { en: 'Rest',                   tr: 'Dinlenme' },                    durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
