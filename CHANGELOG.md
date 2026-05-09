@@ -4,6 +4,38 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.39.0 — 2026-05-09 — RED-S as tickable checklist (Mountjoy 2018 CAT 2.0)
+
+  Coaching audit: previous RED-S screening was a single comma-separated
+  sentence. An athlete sees "missed periods, fatigue, stress fractures,
+  low BMD, illness" buried in prose and can't actually self-assess. The
+  CAT 2.0 instrument is fundamentally a checklist — render it as one.
+
+  • `RED_S_CHECKLIST` = { preface, signs (en/tr arrays of 5), action }.
+    The 5 signs map 1:1 to Mountjoy 2018 CAT 2.0 markers: menstrual
+    dysfunction, persistent fatigue >2 weeks, recurrent stress injuries,
+    low DEXA BMD, frequent illness (URTI / GI).
+
+  • Existing `redsScreening` blob is now derived from the checklist via
+    `_flattenRedsChecklist(lang)` — back-compat preserved for tests +
+    JSON exports + any downstream consumers reading the string.
+
+  • UI: BroaderPlanSections renders preface text → ul of `<input
+    type="checkbox">` with each sign as a clickable label → action text
+    in the red-S brand color. Athletes can self-screen with one click
+    per sign instead of decoding a sentence.
+
+  • 3 new tests v9.39.0 — `redsChecklist` structured shape, 5 Mountjoy
+    markers present, male path correctly excludes the checklist.
+
+  CITATION: Mountjoy et al. 2018 (Br J Sports Med) — RED-S CAT 2.0.
+  Presentation only; no medical content change.
+
+  DEPENDS ON: src/lib/athlete/eliteProgramFueling.js (data shape),
+  src/components/dashboard/BroaderPlanSections.jsx (renderer).
+
+---
+
 ## v9.38.0 — 2026-05-09 — DNF triage readability — wall → 3 severity-tiered callouts
 
   Coaching audit: previous race-day DNF block was a single 480-word

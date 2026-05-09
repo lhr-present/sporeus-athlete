@@ -198,9 +198,45 @@ const IRON_GUIDANCE_FEMALE = {
 // output surfaces this so the athlete sees the screening before any train-low
 // or restrictive intake decision.
 //   Citation: Mountjoy et al. 2018 (RED-S CAT 2.0)
+//
+// v9.39.0 — Restructured into a tickable checklist (preface + 5 boxes +
+// action) so the UI can render `<input type="checkbox">` per sign instead
+// of a comma-separated wall. The bilingual blob `RED_S_SCREENING` is now
+// derived from the checklist for back-compat with existing tests + JSON
+// consumers.
+const RED_S_CHECKLIST = {
+  preface: {
+    en: 'RED-S screening (Relative Energy Deficiency in Sport — Mountjoy 2018 CAT 2.0). Tick any sign that applies to you in the past 3 months:',
+    tr: 'RED-S taraması (Sporda Bağıl Enerji Eksikliği — Mountjoy 2018 CAT 2.0). Son 3 ayda sana uyan herhangi bir belirtiyi işaretle:',
+  },
+  signs: {
+    en: [
+      'Irregular or missed periods (>2 cycles)',
+      'Persistent fatigue lasting >2 weeks',
+      'Recurrent stress injuries (fractures, reactions)',
+      'Low bone mineral density on DEXA',
+      'Frequent illness (URTI, GI)',
+    ],
+    tr: [
+      'Düzensiz veya atlanmış adet (>2 döngü)',
+      '2+ hafta süren kalıcı yorgunluk',
+      'Tekrarlayan stres yaralanması (kırık, reaksiyon)',
+      'DEXA\'da düşük kemik yoğunluğu',
+      'Sık hastalık (üst solunum yolu, sindirim)',
+    ],
+  },
+  action: {
+    en: 'If ANY box ticks → train-low and caloric restriction are CONTRAINDICATED. Enforce 1.8 g/kg CHO daily floor and refer to sports medicine for full screening.',
+    tr: 'HERHANGİ BİR kutu işaretliyse → düşük-glikojen antrenmanı ve kalori kısıtlaması YASAKTIR. Günde 1,8 g/kg CHO tabanını uygula ve tam tarama için spor hekimine yönlendir.',
+  },
+}
+
+const _flattenRedsChecklist = (lang) =>
+  `${RED_S_CHECKLIST.preface[lang]} ANY of — ${RED_S_CHECKLIST.signs[lang].join(', ').toLowerCase()} — ${RED_S_CHECKLIST.action[lang]}`
+
 const RED_S_SCREENING = {
-  en: 'RED-S screening (Relative Energy Deficiency in Sport): ANY of — irregular or missed periods (>2 cycles), persistent fatigue >2 weeks, recurrent stress injuries, low BMD on DEXA, frequent illness — means train-low and caloric restriction are CONTRAINDICATED. Enforce 1.8 g/kg CHO daily floor and refer to sports medicine for full screening.',
-  tr: 'RED-S taraması (Sporda Bağıl Enerji Eksikliği): aşağıdakilerden HERHANGİ BİRİ — düzensiz/atlanmış adet (>2 döngü), 2+ hafta kalıcı yorgunluk, tekrarlayan stres yaralanması, DEXA\'da düşük kemik yoğunluğu, sık hastalık — düşük-glikojen antrenmanı ve kalori kısıtlamasını YASAKLAR. Günde 1,8 g/kg CHO tabanını uygula ve tam tarama için spor hekimine yönlendir.',
+  en: _flattenRedsChecklist('en'),
+  tr: _flattenRedsChecklist('tr'),
 }
 
 /**
@@ -248,7 +284,7 @@ export function buildFuelingProgram(input) {
       // train-low and carb restriction throughout.
       ...(isFemale && (plan.phase === 'Base' || plan.phase === 'Build')
           ? { ironGuidance: IRON_GUIDANCE_FEMALE } : {}),
-      ...(isFemale ? { redsScreening: RED_S_SCREENING } : {}),
+      ...(isFemale ? { redsScreening: RED_S_SCREENING, redsChecklist: RED_S_CHECKLIST } : {}),
     }
     if (!bw) return adjusted
     return {

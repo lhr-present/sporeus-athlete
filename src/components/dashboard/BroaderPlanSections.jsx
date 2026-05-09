@@ -365,7 +365,24 @@ export function FuelingSection({ fuelingProgram, isTR, defaultOpen = false }) {
                   {bil(p.ironGuidance, isTR)}
                 </div>
               ) : null}
-              {p.redsScreening ? (
+              {/* v9.39.0 — RED-S as tickable checklist (preface + 5 boxes + action). */}
+              {p.redsChecklist ? (
+                <div style={{ marginTop: 6, padding: '8px 10px', background: '#e0303011', border: '1px solid #e0303044', borderRadius: 4, fontSize: 10, lineHeight: 1.5 }}>
+                  <div style={{ fontWeight: 700, marginBottom: 4, color: '#a01818' }}>{isTR ? 'RED-S TARAMASI' : 'RED-S SCREENING'}</div>
+                  <div style={{ marginBottom: 6 }}>{bil(p.redsChecklist.preface, isTR)}</div>
+                  <ul style={{ margin: '0 0 6px 0', padding: 0, listStyle: 'none' }}>
+                    {(p.redsChecklist.signs?.[isTR ? 'tr' : 'en'] || []).map((sign, i) => (
+                      <li key={i} style={{ marginBottom: 2 }}>
+                        <label style={{ display: 'inline-flex', alignItems: 'flex-start', gap: 6, cursor: 'pointer' }}>
+                          <input type="checkbox" style={{ marginTop: 2 }} aria-label={sign} />
+                          <span>{sign}</span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: '#a01818' }}>{bil(p.redsChecklist.action, isTR)}</div>
+                </div>
+              ) : p.redsScreening ? (
                 <div style={{ marginTop: 6, padding: '8px 10px', background: '#e0303011', border: '1px solid #e0303044', borderRadius: 4, fontSize: 10, lineHeight: 1.5 }}>
                   <div style={{ fontWeight: 700, marginBottom: 4, color: '#a01818' }}>{isTR ? 'RED-S TARAMASI' : 'RED-S SCREENING'}</div>
                   {bil(p.redsScreening, isTR)}

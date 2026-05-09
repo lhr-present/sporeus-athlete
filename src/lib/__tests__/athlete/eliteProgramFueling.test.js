@@ -166,6 +166,40 @@ describe('buildFuelingProgram — hydration + sodium individualization (v9.25.0)
     }
   })
 
+  // v9.39.0 — RED-S restructured as tickable checklist for readability
+  it('redsChecklist is structured (preface + signs[] + action) for every phase', () => {
+    const fp = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 60, gender: 'female' })
+    for (const phase of ['Base', 'Build', 'Peak', 'Taper']) {
+      const c = fp[phase].redsChecklist
+      expect(c).toBeDefined()
+      expect(c.preface.en).toBeTruthy()
+      expect(c.preface.tr).toBeTruthy()
+      expect(Array.isArray(c.signs.en)).toBe(true)
+      expect(Array.isArray(c.signs.tr)).toBe(true)
+      expect(c.signs.en.length).toBeGreaterThanOrEqual(5)
+      expect(c.signs.en.length).toBe(c.signs.tr.length)
+      expect(c.action.en).toMatch(/contraindicated/i)
+      expect(c.action.tr).toMatch(/yasak/i)
+    }
+  })
+
+  it('redsChecklist signs cover the 5 Mountjoy 2018 CAT 2.0 markers', () => {
+    const fp = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 60, gender: 'female' })
+    const flat = fp.Build.redsChecklist.signs.en.join(' | ').toLowerCase()
+    expect(flat).toMatch(/period/)            // menstrual dysfunction
+    expect(flat).toMatch(/fatigue/)           // persistent fatigue
+    expect(flat).toMatch(/stress.*injur/i)    // recurrent stress injuries
+    expect(flat).toMatch(/dexa|bone/)         // low BMD
+    expect(flat).toMatch(/illness|urti|gi/)   // frequent illness
+  })
+
+  it('redsChecklist NOT surfaced for male athletes', () => {
+    const fp = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 75, gender: 'male' })
+    for (const phase of ['Base', 'Build', 'Peak', 'Taper']) {
+      expect(fp[phase].redsChecklist).toBeUndefined()
+    }
+  })
+
   it('hydration and sodium are ranges (low<high), not points', () => {
     const fp = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 70, gender: 'male' })
     expect(fp.Build.hydrationMlPerHr[0]).toBeLessThan(fp.Build.hydrationMlPerHr[1])
