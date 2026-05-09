@@ -4,6 +4,49 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.37.0 — 2026-05-09 — Base polarization fix across all 4 sports
+
+  Coaching audit (multi-agent critique pass) caught every single-sport Base
+  Thursday session running far above the Seiler 2010 80/20 ≤5% Z3+ ceiling.
+  Pre-fix Base weeks had Run 10.7%, Bike 8.6%, Swim 12.8%, Rowing 13.8%
+  Z3+ — i.e. tempo / sweet-spot / CSS / AT pieces creeping into what should
+  be a high-volume aerobic foundation. Daniels 2014 (Running Formula 3rd
+  ed.) is explicit: true Base has no tempo, only easy mileage + strides.
+  Olbrecht 2000 (swim) and Nolte 2005 (rowing) carry the same rule.
+
+  • **Run Base Thu**: `Tempo` (50min, Z3:25) → `Aerobic + M-pace finish`
+    (50min, Z1:30, Z2:20). Marathon-pace stimulus retained as Z2 progression
+    rather than Z3 tempo. Run Base Z3+ now 1.8% (Wed strides only).
+
+  • **Bike Base Thu**: `Sweet spot 2x15` (75min, Z3:30) → `Endurance +
+    cadence drills` (75min, Z1:25, Z2:50). Coggan Base I-III high-volume
+    Z2. Bike Base Z3+ now 2.2% (Sat long-ride aerobic top-end only).
+
+  • **Swim Base Thu**: `CSS 8x100` (45min, Z3:30) → `Aerobic + 4x100 CSS`
+    (45min, Z1:25, Z2:10, Z3:10). CSS-feel maintenance dose preserved at
+    a fraction of prior volume. Swim Base Z3+ now 4.3%.
+
+  • **Rowing Base Thu**: `AT threshold 4x2000m` (60min, Z3:40) → `UT1 +
+    2x10min AT` (60min, Z1:30, Z2:20, Z3:10). Nolte 2005 70:25:5:0
+    UT2:UT1:AT:TR distribution restored. Rowing Base Z3+ now 3.4%.
+
+  • Triathlon Base inherits all 3 single-sport fixes via shared sample-week
+    builders → Tri Base Z3+ now 3.1%.
+
+  5 new tests (`v9.37.0 — Base polarization Z3+ ≤5%`) lock the ceiling per
+  sport so future edits can't quietly re-introduce mid-zone creep.
+
+  CITATIONS: Seiler 2010 (Int J Sports Physiol Perform 5:276–291),
+  Daniels 2014 (Running Formula, 3rd ed.), Olbrecht 2000 (Complete
+  Conditioning for Swimming), Nolte 2005 (Rowing Faster), Coggan & Allen
+  2010 (Training and Racing with a Power Meter).
+
+  DEPENDS ON: src/lib/athlete/eliteProgram.js (sample-week builders for
+  run/bike/swim/rowing). No new modules; no protocol changes outside the
+  Thursday Base session per sport.
+
+---
+
 ## v9.36.0 — 2026-05-10 — Altitude LHTL caps + cold-water schedule-aware warning
 
   Closes 2 P1 findings — recovery + altitude refinements that the

@@ -463,7 +463,14 @@ function runSampleWeek(phase, paces, trainingDays) {
       { day: 'Mon', intent: { en: 'Rest',         tr: 'Dinlenme' },         durationMin: 0,        zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },           paceTarget: null },
       { day: 'Tue', intent: { en: 'Easy run',     tr: 'Kolay koşu' },       durationMin: easy,     zones: { Z1: easy, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: fmtPaceStr(paces?.E) },
       { day: 'Wed', intent: { en: 'Easy + strides', tr: 'Kolay + adımlar' },durationMin: easy,     zones: { Z1: easy - 5, Z2: 0, Z3: 0, Z4: 0, Z5: 5 },    paceTarget: fmtPaceStr(paces?.E) },
-      { day: 'Thu', intent: { en: 'Tempo',        tr: 'Tempo' },            durationMin: tempo,    zones: { Z1: 20, Z2: 5, Z3: 25, Z4: 0, Z5: 0 },         paceTarget: fmtPaceStr(paces?.M) },
+      // v9.37.0 — Base polarization fix per coaching audit. Pre-fix had
+      // 25min Z3 tempo, pushing Run Base weekly Z3+ to 10.7% (Seiler 2010
+      // 80/20 ceiling for Base = ≤5%). Daniels 2014 (Running Formula 3rd
+      // ed.) is explicit: true Base has NO tempo; only easy mileage, long
+      // run, and short strides. Tempo enters in Build. Replaced with M-pace
+      // progression (Z2) — keeps marathon-specific aerobic stimulus without
+      // breaking 80/20. Result: Run Base Z3+ = 1.8% (strides only).
+      { day: 'Thu', intent: { en: 'Aerobic + M-pace finish', tr: 'Aerobik + M-tempo bitiş' }, durationMin: tempo, zones: { Z1: 30, Z2: 20, Z3: 0, Z4: 0, Z5: 0 }, paceTarget: fmtPaceStr(paces?.M) },
       { day: 'Fri', intent: { en: 'Rest',         tr: 'Dinlenme' },         durationMin: 0,        zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },           paceTarget: null },
       { day: 'Sat', intent: { en: 'Easy run',     tr: 'Kolay koşu' },       durationMin: easy + 5, zones: { Z1: easy + 5, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: fmtPaceStr(paces?.E) },
       { day: 'Sun', intent: { en: 'Long run',     tr: 'Uzun koşu' },        durationMin: long,     zones: { Z1: long - 10, Z2: 10, Z3: 0, Z4: 0, Z5: 0 },  paceTarget: fmtPaceStr(paces?.E) },
@@ -522,7 +529,13 @@ function bikeSampleWeek(phase, zones) {
       { day: 'Mon', intent: { en: 'Rest',          tr: 'Dinlenme' },           durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: null },
       { day: 'Tue', intent: { en: 'Endurance ride', tr: 'Dayanıklılık sürüşü' }, durationMin: 75,  zones: { Z1: 15, Z2: 60, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: tag },
       { day: 'Wed', intent: { en: 'Recovery spin',  tr: 'Toparlanma' },         durationMin: 45,  zones: { Z1: 45, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },      paceTarget: tag },
-      { day: 'Thu', intent: { en: 'Sweet spot 2x15', tr: 'Sweet spot 2x15' },   durationMin: 75,  zones: { Z1: 25, Z2: 20, Z3: 30, Z4: 0, Z5: 0 },    paceTarget: tag },
+      // v9.37.0 — Base polarization fix per coaching audit. Pre-fix had
+      // 30min Z3 sweet-spot, pushing Bike Base weekly Z3+ to 8.6% (Seiler
+      // 2010 ceiling = ≤5%). Coggan's Base I-III protocol is high-volume
+      // Z2 endurance with cadence work — sweet-spot belongs to Build.
+      // Replaced with endurance + cadence drills. Result: Bike Base Z3+ =
+      // 2.2% (Sat long-ride aerobic top-end only).
+      { day: 'Thu', intent: { en: 'Endurance + cadence drills', tr: 'Dayanıklılık + kadans' }, durationMin: 75, zones: { Z1: 25, Z2: 50, Z3: 0, Z4: 0, Z5: 0 }, paceTarget: tag },
       { day: 'Fri', intent: { en: 'Rest',          tr: 'Dinlenme' },           durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: null },
       { day: 'Sat', intent: { en: 'Long ride',      tr: 'Uzun sürüş' },        durationMin: 180, zones: { Z1: 30, Z2: 140, Z3: 10, Z4: 0, Z5: 0 },   paceTarget: tag },
       { day: 'Sun', intent: { en: 'Endurance',      tr: 'Dayanıklılık' },      durationMin: 90,  zones: { Z1: 20, Z2: 70, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: tag },
@@ -575,7 +588,13 @@ function swimSampleWeek(phase, cssSec) {
       { day: 'Mon', intent: { en: 'Rest',           tr: 'Dinlenme' },           durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
       { day: 'Tue', intent: { en: 'Aerobic 2000m',   tr: 'Aerobik 2000m' },     durationMin: 50, zones: { Z1: 30, Z2: 20, Z3: 0, Z4: 0, Z5: 0 },   paceTarget: tag },
       { day: 'Wed', intent: { en: 'Technique 1500m', tr: 'Teknik 1500m' },      durationMin: 40, zones: { Z1: 40, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: tag },
-      { day: 'Thu', intent: { en: 'CSS 8x100',       tr: 'CSS 8x100' },         durationMin: 45, zones: { Z1: 15, Z2: 0, Z3: 30, Z4: 0, Z5: 0 },   paceTarget: tag },
+      // v9.37.0 — Base polarization fix per coaching audit. Pre-fix had
+      // 30min Z3 CSS, pushing Swim Base weekly Z3+ to 12.8% (Seiler 2010
+      // ceiling = ≤5%). Olbrecht 2000 (Complete Conditioning for Swimming)
+      // says true Base is EN1+EN2 dominant with minimal CSS. Reduced to
+      // 4x100 CSS as a small CSS-feel maintenance dose, rest aerobic.
+      // Result: Swim Base Z3+ = 4.3%, within Seiler band.
+      { day: 'Thu', intent: { en: 'Aerobic + 4x100 CSS', tr: 'Aerobik + 4x100 CSS' }, durationMin: 45, zones: { Z1: 25, Z2: 10, Z3: 10, Z4: 0, Z5: 0 }, paceTarget: tag },
       { day: 'Fri', intent: { en: 'Rest',            tr: 'Dinlenme' },          durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
       { day: 'Sat', intent: { en: 'Long aerobic 3000m', tr: 'Uzun aerobik 3000m' }, durationMin: 65, zones: { Z1: 35, Z2: 30, Z3: 0, Z4: 0, Z5: 0 }, paceTarget: tag },
       { day: 'Sun', intent: { en: 'Easy 1500m',      tr: 'Kolay 1500m' },        durationMin: 35, zones: { Z1: 35, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: tag },
@@ -642,7 +661,13 @@ function rowingSampleWeek(phase, split500Sec) {
       { day: 'Mon', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
       { day: 'Tue', intent: { en: 'UT2 steady 60min',          tr: 'UT2 sabit 60dk' },                durationMin: 60, zones: { Z1: 60, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: utTag },
       { day: 'Wed', intent: { en: 'UT1 moderate 50min',        tr: 'UT1 orta 50dk' },                 durationMin: 50, zones: { Z1: 5, Z2: 45, Z3: 0, Z4: 0, Z5: 0 },   paceTarget: utTag },
-      { day: 'Thu', intent: { en: 'AT threshold 4x2000m',      tr: 'AT eşik 4x2000m' },               durationMin: 60, zones: { Z1: 20, Z2: 0, Z3: 40, Z4: 0, Z5: 0 },   paceTarget: atTag },
+      // v9.37.0 — Base polarization fix per coaching audit. Pre-fix had
+      // 40min AT (Z3) at 4x2000m, pushing Rowing Base weekly Z3+ to 13.8%
+      // (Seiler 2010 ceiling = ≤5%). Nolte 2005 (Rowing Faster) Base
+      // distribution is UT2:UT1:AT:TR = 70:25:5:0 → AT should be ~5% of
+      // weekly volume in Base. Reduced to 2x10min AT pieces with UT1 ramp.
+      // Result: Rowing Base Z3+ = 3.4%, within Nolte/Seiler band.
+      { day: 'Thu', intent: { en: 'UT1 + 2x10min AT',          tr: 'UT1 + 2x10dk AT' },               durationMin: 60, zones: { Z1: 30, Z2: 20, Z3: 10, Z4: 0, Z5: 0 },   paceTarget: atTag },
       { day: 'Fri', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
       { day: 'Sat', intent: { en: 'UT2 long row 75min',        tr: 'UT2 uzun 75dk' },                 durationMin: 75, zones: { Z1: 75, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: utTag },
       { day: 'Sun', intent: { en: 'Cross-train (run/bike) 45min', tr: 'Çapraz antrenman 45dk' },     durationMin: 45, zones: { Z1: 45, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: null },

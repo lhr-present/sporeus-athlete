@@ -2640,3 +2640,78 @@ describe('buildEliteProgram — sample-week strength weaving (v9.24.0)', () => {
     }
   })
 })
+
+// ── v9.37.0 — Base polarization: Seiler 2010 ≤5% Z3+ ceiling ──────────────
+// Coaching audit caught all 4 single-sport Base weeks (and tri Base) with
+// Thursday tempo/sweet-spot/CSS/AT sessions pushing weekly Z3+ above 5%.
+// True Base in Seiler 2010 (and Daniels 2014, Olbrecht 2000, Nolte 2005) is
+// almost entirely Z1+Z2 with strides — high-intensity arrives in Build.
+describe('v9.37.0 — Base polarization Z3+ ≤5% (Seiler 2010, Daniels 2014, Nolte 2005)', () => {
+  const baseZ3PlusPct = (week) => {
+    let total = 0, hard = 0
+    for (const d of week) {
+      total += d.durationMin || 0
+      hard += (d.zones?.Z3 || 0) + (d.zones?.Z4 || 0) + (d.zones?.Z5 || 0)
+    }
+    return total > 0 ? (hard / total) * 100 : 0
+  }
+
+  it('Run Base ≤5% Z3+ (Daniels 2014: no tempo in true Base)', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    const base = r.sampleWeeks?.Base
+    expect(base).toBeTruthy()
+    expect(baseZ3PlusPct(base)).toBeLessThanOrEqual(5)
+  })
+
+  it('Bike Base ≤5% Z3+ (Coggan Base I-III: high-volume Z2)', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 0, timeSec: 250 },
+      targetPR:  { distanceM: 0, timeSec: 280 },
+      raceDate: '2026-09-25',
+      sport: 'bike',
+      options: { today: TODAY },
+    })
+    const base = r?.sampleWeeks?.Base
+    expect(base).toBeTruthy()
+    expect(baseZ3PlusPct(base)).toBeLessThanOrEqual(5)
+  })
+
+  it('Swim Base ≤5% Z3+ (Olbrecht 2000: EN1+EN2 dominant Base)', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 1500, timeSec: 1800 },
+      targetPR:  { distanceM: 1500, timeSec: 1700 },
+      raceDate: '2026-09-25',
+      sport: 'swim',
+      options: { today: TODAY },
+    })
+    const base = r?.sampleWeeks?.Base
+    expect(base).toBeTruthy()
+    expect(baseZ3PlusPct(base)).toBeLessThanOrEqual(5)
+  })
+
+  it('Rowing Base ≤5% Z3+ (Nolte 2005: UT2:UT1:AT:TR = 70:25:5:0)', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 0, timeSec: 480 },
+      targetPR:  { distanceM: 0, timeSec: 440 },
+      raceDate: '2026-09-25',
+      sport: 'rowing',
+      options: { today: TODAY },
+    })
+    const base = r?.sampleWeeks?.Base
+    expect(base).toBeTruthy()
+    expect(baseZ3PlusPct(base)).toBeLessThanOrEqual(5)
+  })
+
+  it('Triathlon Base ≤5% Z3+ across all 3 disciplines combined', () => {
+    const r = buildEliteProgram({
+      currentPR: { distanceM: 10000, timeSec: 3000 },
+      targetPR:  { distanceM: 10000, timeSec: 2820 },
+      raceDate: '2026-09-25',
+      sport: 'triathlon',
+      options: { today: TODAY },
+    })
+    const base = r?.sampleWeeks?.Base
+    expect(base).toBeTruthy()
+    expect(baseZ3PlusPct(base)).toBeLessThanOrEqual(5)
+  })
+})
