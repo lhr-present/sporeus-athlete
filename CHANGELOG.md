@@ -4,6 +4,35 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.21.0 — 2026-05-09 — Mobile touch-target fixes (44pt Apple HIG min)
+
+  Closes 3 P0 mobile UX audit findings:
+
+  • Checkbox / toggle rows in EliteProgramCard were padding 6×8
+    (~28px tall — below Apple HIG 44pt minimum). Bike FTP-direct,
+    swim 2-TT, no-target, no-race-date toggles all under-spec.
+    Fixed: padding 12×10 + minHeight 44 + alignItems center.
+    Glove-tap precision now reliable.
+
+  • Sport selector buttons + weeks-override buttons were
+    minHeight 40 (≤44pt). Bumped to 44px globally via
+    replace-all on EliteProgramCard.
+
+  • Disclosure buttons in BroaderPlanSections (10 collapsible
+    program sections) were padding 10×12 (~32px tall). Fixed:
+    padding 14×14 + minHeight 44 + new aria-label so screen
+    readers announce "expand"/"collapse" not just title.
+
+  Tests: 9455/9455 still green (no behavioral changes — pure
+  layout). Bundle 1316.9 KB.
+
+  Citations: Apple HIG 44pt minimum touch target, Material
+  Design 48dp minimum.
+
+  Depends on: v9.19.0 (mobile MM:SS auto-format).
+
+---
+
 ## v9.20.0 — 2026-05-09 — Sample-week polarization fixes (Seiler 80/20 + Lambert anti-stacking)
 
   Athlete-safety fix. Deep-dive sample-week audit found 6 P0

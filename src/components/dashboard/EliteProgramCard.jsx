@@ -285,7 +285,10 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
     })
   }
 
-  const checkboxRowStyle = { display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '10px', padding: '6px 8px', border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--input-bg)' }
+  // v9.21.0 — touch target fix per mobile UX audit. Was padding 6x8 (~28px
+  // height); Apple HIG min 44pt. Increased to padding 12x10 with minHeight
+  // 44 so glove-tap precision works.
+  const checkboxRowStyle = { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px', padding: '12px 10px', minHeight: '44px', border: '1px solid var(--border)', borderRadius: '4px', background: 'var(--input-bg)' }
 
   return (
     <form onSubmit={submit} aria-label={isTR ? 'Elit antrenman programı formu' : 'Elite program form'}>
@@ -297,7 +300,7 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
           const a = s.k === sport
           return (
             <button key={s.k} type="button" onClick={() => pickSport(s.k)} aria-pressed={a}
-              style={{ ...S.mono, fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', padding: '8px 12px', flex: '1 1 70px', minHeight: '40px', background: a ? '#ff6600' : 'var(--input-bg)', color: a ? '#fff' : 'var(--text)', border: `1px solid ${a ? '#ff6600' : 'var(--input-border)'}`, borderRadius: '4px', cursor: 'pointer' }}>
+              style={{ ...S.mono, fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', padding: '8px 12px', flex: '1 1 70px', minHeight: '44px', background: a ? '#ff6600' : 'var(--input-bg)', color: a ? '#fff' : 'var(--text)', border: `1px solid ${a ? '#ff6600' : 'var(--input-border)'}`, borderRadius: '4px', cursor: 'pointer' }}>
               {isTR ? s.tr : s.en}
             </button>
           )
@@ -499,7 +502,7 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
             return (
               <button key={n} type="button" onClick={() => setWeeksOverride(n)} aria-pressed={a}
                 aria-label={isTR ? `${n} hafta için program` : `Build for ${n} weeks`}
-                style={{ ...S.mono, fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', padding: '8px 12px', flex: '1 1 70px', minHeight: '40px', background: a ? '#0064ff' : 'var(--input-bg)', color: a ? '#fff' : 'var(--text)', border: `1px solid ${a ? '#0064ff' : 'var(--input-border)'}`, borderRadius: '4px', cursor: 'pointer' }}>
+                style={{ ...S.mono, fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', padding: '8px 12px', flex: '1 1 70px', minHeight: '44px', background: a ? '#0064ff' : 'var(--input-bg)', color: a ? '#fff' : 'var(--text)', border: `1px solid ${a ? '#0064ff' : 'var(--input-border)'}`, borderRadius: '4px', cursor: 'pointer' }}>
                 {n}{isTR ? 'h' : 'w'}
               </button>
             )

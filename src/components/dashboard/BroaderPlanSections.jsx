@@ -74,11 +74,13 @@ function Disclosure({ title, count, accent, children, defaultOpen = false }) {
         type="button"
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
+        aria-label={`${title} ${open ? 'collapse' : 'expand'}`}
         style={{
           ...S.mono,
           width: '100%',
           textAlign: 'left',
-          padding: '10px 12px',
+          padding: '14px 14px',
+          minHeight: 44,
           background: 'transparent',
           color: 'var(--text)',
           border: 'none',
