@@ -1885,3 +1885,46 @@ describe('buildEliteProgram — v9.14.0 triathlon brick workouts', () => {
     expect(bricks).toHaveLength(0)
   })
 })
+
+// ── v9.15.0 — train-low + recovery breathwork/CWI/NSDR ─────────────────────
+describe('buildEliteProgram — v9.15.0 fueling + recovery depth', () => {
+  it('Base fueling carries sport-specific train-low guidance', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    expect(r.fuelingProgram.Base.trainLow).toBeDefined()
+    expect(r.fuelingProgram.Base.trainLow.en).toMatch(/Train-low/i)
+    expect(r.fuelingProgram.Base.trainLow.en).toMatch(/AVOID.+swim/i)
+    expect(r.fuelingProgram.Base.trainLow.en).toMatch(/beginners/i)
+  })
+
+  it('every recovery phase carries breathwork modality (zero risk universal)', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    for (const phase of ['Base', 'Build', 'Peak', 'Taper']) {
+      if (!r.recoveryProgram[phase]) continue
+      const en = r.recoveryProgram[phase].modalities.map(m => m.en).join('|')
+      expect(en).toMatch(/breathwork|Diaphragmatic/i)
+    }
+  })
+
+  it('Build + Peak phases get cold-water immersion modality with strength-blunting warning', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    const buildEn = r.recoveryProgram.Build.modalities.map(m => m.en).join('|')
+    expect(buildEn).toMatch(/Cold-water immersion/i)
+    expect(buildEn).toMatch(/NOT within 4h.+strength|hypertrophy/i)
+  })
+
+  it('Build + Peak phases get NSDR / yoga nidra modality', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    const buildEn = r.recoveryProgram.Build.modalities.map(m => m.en).join('|')
+    const peakEn  = r.recoveryProgram.Peak.modalities.map(m => m.en).join('|')
+    expect(buildEn).toMatch(/NSDR|yoga nidra/i)
+    expect(peakEn).toMatch(/NSDR|yoga nidra/i)
+  })
+
+  it('Taper phase does NOT get cold-water immersion (Mujika protective)', () => {
+    const r = buildEliteProgram(RUN_REALISTIC)
+    if (r.recoveryProgram.Taper) {
+      const en = r.recoveryProgram.Taper.modalities.map(m => m.en).join('|')
+      expect(en).not.toMatch(/Cold-water immersion/i)
+    }
+  })
+})

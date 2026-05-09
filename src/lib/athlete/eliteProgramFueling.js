@@ -46,6 +46,15 @@ const BASE = {
   duringSession: { easyKeyHr: [0, 30], hardSessionGPerHr: [30, 60] },
   preSession:  { gPerKg: 1, timingMin: 90 },
   postSession: { gPerKg: 1, proteinG: 25, timingMin: 60 },
+  // v9.15.0 — Sport-specific train-low guidance. Hawley & Burke 2010 + Impey
+  // 2018: train-low tolerance differs by sport. Run/bike easy Z1 work safe;
+  // swim risky (GI + coordination); never apply to women with low energy
+  // availability or to beginners (CNS fatigue). Schedule weeks 3-4 of Base
+  // only — not race-critical weeks.
+  trainLow: {
+    en: 'Train-low (low-glycogen sessions to upregulate fat oxidation): 1x/week max in weeks 3-4 of Base. Safe: 45-90 min Z1 runs or rides. AVOID: swim sessions (GI + coordination risk), VO2max work, beginners, anyone with low energy availability.',
+    tr: 'Düşük-glikojenle antrenman (yağ oksidasyonunu artırmak): Base 3-4. haftada haftada 1 kez maks. Güvenli: 45-90 dk Z1 koşu/sürüş. KAÇIN: yüzme seansları (GI + koordinasyon riski), VO2max işi, başlangıç sporcusu, düşük enerji uygunluğu olanlar.',
+  },
   rationale: {
     en: 'Moderate CHO supports high-volume aerobic load. Train-low feasible 1-2x/week to upregulate fat oxidation.',
     tr: 'Orta CHO yüksek hacimli aerobik yükü destekler. Yağ oksidasyonunu artırmak için haftada 1-2 kez düşük-glikojenle antrenman uygulanabilir.',
@@ -54,7 +63,7 @@ const BASE = {
     en: 'Long runs >90 min: take 30-60 g/h CHO. Sessions <90 min easy: water-only acceptable.',
     tr: 'Uzun koşu >90 dk: 30-60 g/sa CHO al. <90 dk kolay seans: sadece su yeterli.',
   },
-  citation: 'Burke 2017; Hawley & Burke 2010',
+  citation: 'Burke 2017; Hawley & Burke 2010; Impey 2018',
 }
 
 const BUILD = {

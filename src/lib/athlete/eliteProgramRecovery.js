@@ -129,6 +129,31 @@ const SAUNA_BUILD = {
   tr: 'Sauna 15-20 dk × haftada 3x kolay gün sonrası (Scoon 2007: sıcaklık adaptasyonu + toparlanma).',
 }
 
+// v9.15.0 — Cold-water immersion specifics. Versey 2013: 11-15°C × 11-15 min
+// post-hard work optimal for DOMS; over-cold suppresses HRV. Avoid within 4h
+// of strength session (blunts hypertrophy signaling per Roberts 2015).
+const COLD_WATER_IMMERSION = {
+  en: 'Cold-water immersion 11-15°C × 11-15 min post-hard endurance sessions ONLY (NOT within 4h of strength — blunts hypertrophy signaling per Roberts 2015).',
+  tr: 'Soğuk suya batma 11-15°C × 11-15 dk SADECE sert dayanıklılık seansları sonrası (kuvvet seansından 4 sa içinde DEĞİL — hipertrofi sinyalini bastırır, Roberts 2015).',
+}
+
+// v9.15.0 — Diaphragmatic breathwork (4-7-8 box / coherent breathing 5.5 bpm)
+// activates parasympathetic recovery. Russo 2017 + Lehrer 2014: 5-10 min
+// pre-sleep increases HRV and sleep onset speed.
+const BREATHWORK = {
+  en: 'Diaphragmatic breathwork 5-10 min pre-sleep (4-7-8 box or coherent at 5.5 bpm). Activates parasympathetic; raises HRV.',
+  tr: 'Diyafragmatik nefes egzersizi yatmadan önce 5-10 dk (4-7-8 kutu veya 5,5 bpm koherent). Parasempatiği aktifleştirir; HRV\'yi yükseltir.',
+}
+
+// v9.15.0 — NSDR / yoga nidra. Walker 2017 + Huberman protocol: 10-20 min
+// non-sleep deep rest in afternoon delivers ~80% of nap recovery without
+// sleep-pressure depletion. Particularly useful for athletes with poor
+// nap response or shift constraints.
+const NSDR = {
+  en: 'NSDR / yoga nidra 10-20 min in afternoon (alternative to nap). Walker 2017 + Huberman: ~80% of nap recovery without sleep-pressure depletion.',
+  tr: 'NSDR / yoga nidra öğleden sonra 10-20 dk (kestirme alternatifi). Walker 2017 + Huberman: kestirmenin ~%80\'i kadar toparlanma, uyku basıncı tüketmeden.',
+}
+
 /**
  * @public
  * @param {{ phases: Array<{phase:string}>, weeklyTSS?: number[], cohort?: ('beginner'|'intermediate'|'elite') }} input
@@ -141,12 +166,14 @@ export function buildRecoveryProgram(input) {
   const out = {}
   // v9.13.0 — augment phase plans with TSS-scaled sleep + contrast/compression.
   // Cohort gates sauna (intermediate+) and sets compression frequency.
+  // v9.15.0 — Breathwork added universally (zero risk, zero equipment).
+  // Cold-water immersion gated to Build/Peak only; NSDR added to Build/Peak.
   const augment = (plan) => {
     const sleep = computeRecoverySleepTarget(plan.phase, weeklyTSS)
-    const modalities = [...plan.modalities]
-    // Add contrast bath + compression to Build/Peak by default.
+    const modalities = [...plan.modalities, BREATHWORK]
+    // Add contrast bath + compression + CWI + NSDR to Build/Peak by default.
     if (plan.phase === 'Build' || plan.phase === 'Peak') {
-      modalities.push(CONTRAST_BATH, COMPRESSION)
+      modalities.push(CONTRAST_BATH, COMPRESSION, COLD_WATER_IMMERSION, NSDR)
       if (cohort === 'intermediate' || cohort === 'elite') {
         modalities.push(SAUNA_BUILD)
       }
@@ -170,4 +197,4 @@ export function buildRecoveryProgram(input) {
 
 export { computeRecoverySleepTarget }
 
-export const RECOVERY_CITATION = 'Halson 2019; Kellmann 2018; Plews & Buchheit 2017; Bompa 2009; Mujika 2003; Walker 2017; Mah 2011; Halson 2014; Hill 2014; Scoon 2007'
+export const RECOVERY_CITATION = 'Halson 2019; Kellmann 2018; Plews & Buchheit 2017; Bompa 2009; Mujika 2003; Walker 2017; Mah 2011; Halson 2014; Hill 2014; Scoon 2007; Versey 2013; Roberts 2015; Russo 2017; Lehrer 2014; Huberman 2022'

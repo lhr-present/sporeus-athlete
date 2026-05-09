@@ -4,6 +4,47 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.15.0 — 2026-05-09 — Train-low sport-specificity + cold-water immersion + NSDR + breathwork
+
+  Closes 4 deferred audit findings (P2 fueling: train-low; P1
+  recovery: contrast/CWI depth) plus adds 2 high-leverage low-
+  cost modalities (NSDR + diaphragmatic breathwork) per Walker
+  2017 + Huberman 2022 protocol.
+
+  • Sport-specific train-low guidance in fueling Base. Hawley &
+    Burke 2010 + Impey 2018: 1x/week max in Base weeks 3-4. Safe
+    for 45-90 min Z1 run/ride; AVOID swim (GI + coordination
+    risk), VO2max work, beginners, anyone with low energy
+    availability. Surfaces as new `trainLow` field on Base
+    fueling phase plan.
+
+  • Cold-water immersion specifics. Versey 2013: 11-15°C × 11-15
+    min post-hard endurance work optimal. Crucial: NOT within 4h
+    of strength session — Roberts 2015 shows CWI blunts
+    hypertrophy signaling. Added to Build + Peak modalities.
+
+  • Diaphragmatic breathwork (4-7-8 box / coherent at 5.5 bpm).
+    Russo 2017 + Lehrer 2014: 5-10 min pre-sleep raises HRV +
+    accelerates sleep onset. Added universally across all phases
+    (Base/Build/Peak/Taper) — zero risk, zero equipment.
+
+  • NSDR / yoga nidra. Walker 2017 + Huberman protocol: 10-20
+    min afternoon non-sleep deep rest delivers ~80% of nap
+    recovery without sleep-pressure depletion. Added to Build +
+    Peak. Particularly useful for athletes who can't nap due
+    to schedule.
+
+  • Taper deliberately stays unchanged for new modalities.
+    Mujika 2003 protective: no novel stimuli <72h pre-race.
+
+  • Tests: +5 (9406 total). Citations added: Impey 2018, Versey
+    2013, Roberts 2015, Russo 2017, Lehrer 2014, Huberman 2022.
+
+  Depends on: v9.13.0 (recovery augment factory + CONTRAST_BATH
+  / COMPRESSION / SAUNA pattern).
+
+---
+
 ## v9.14.0 — 2026-05-09 — Upper-body strength balance + triathlon brick workouts
 
   Closes 2 high-impact audit findings: P0 strength (upper-body
