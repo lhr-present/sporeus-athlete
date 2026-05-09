@@ -566,16 +566,16 @@ const DISTANCE_TIER_OVERRIDES = {
   },
   short: {
     preRaceMealsNote: {
-      en: 'Short-distance override: CHO 1.5 g/kg, 2.5h pre-start. Final 25g gel 30 min before. Standard liquid hydration (3-4 ml/kg per 15 min until 30 min pre-start).',
-      tr: 'Kısa mesafe: CHO 1,5 g/kg, başlangıçtan 2,5 sa önce. Son 25g jel 30 dk önce. Standart sıvı hidrasyonu (her 15 dk\'da 3-4 ml/kg, başlangıca 30 dk varana dek).',
+      en: 'Short-distance override (10-15k run / 40-90km bike / 800-1500m swim / 2-5k row): CHO 1.5 g/kg, 2.5h pre-start. Final 25g gel 30 min before. Standard liquid hydration (3-4 ml/kg per 15 min until 30 min pre-start).',
+      tr: 'Kısa mesafe (10-15k koşu / 40-90km bisiklet / 800-1500m yüzme / 2-5k kürek): CHO 1,5 g/kg, başlangıçtan 2,5 sa önce. Son 25g jel 30 dk önce. Standart sıvı hidrasyonu (her 15 dk\'da 3-4 ml/kg, başlangıca 30 dk varana dek).',
     },
     warmupNote: {
-      en: 'Short warmup: standard 15-20 min sport-default; pre-race-pace strides at end (4x100m strides for run, 3x1min surges for bike).',
-      tr: 'Kısa ısınma: standart 15-20 dk spor varsayılanı; sonda yarış-tempo adımlar (koşu 4x100m adım, bisiklet 3x1dk atak).',
+      en: 'Short warmup: standard 15-20 min sport-default; pre-race-pace strides at end (4x100m strides for run, 3x1min surges for bike). 10k-specific: extend strides to 6 (race demands threshold-pace from gun).',
+      tr: 'Kısa ısınma: standart 15-20 dk spor varsayılanı; sonda yarış-tempo adımlar (koşu 4x100m adım, bisiklet 3x1dk atak). 10k için: adımı 6\'ya uzat (yarış pistten itibaren eşik-tempo ister).',
     },
     pacingNote: {
-      en: 'Short pacing: EVEN-SPLIT or slight negative. First 5-10% conservative, lock goal pace by 20%, free legs in final 15-20%. McCormick 2018: even-split is the most predictable PR strategy here.',
-      tr: 'Kısa tempo: EŞİT-SPLIT veya hafif negatif. İlk %5-10 tutucu, %20\'de hedef tempoyu sabitle, son %15-20\'de bacakları serbest bırak. McCormick 2018: eşit-split bu mesafede en güvenilir PR stratejisidir.',
+      en: 'Short pacing: EVEN-SPLIT (10k pace ≈ T-pace/threshold). 10k specifically — this IS a threshold race, not a sprint. First 2k 1-2s slow per km, lock goal pace 2-8k, final 2k free if intact. 12-15k: same logic, hold goal slightly longer first half. McCormick 2018: even-split is the most predictable PR strategy here.',
+      tr: 'Kısa tempo: EŞİT-SPLIT (10k tempo ≈ T-tempo/eşik). 10k özel — bu BIR EŞİK yarışıdır, sprint değil. İlk 2km km\'de 1-2s yavaş, 2-8km hedef tempo sabit, son 2km sağlamsa serbest. 12-15k: aynı mantık, ilk yarıda hedef tempoyu biraz daha uzun tut. McCormick 2018: eşit-split bu mesafede en güvenilir PR stratejisidir.',
     },
   },
   mid: {
@@ -646,9 +646,14 @@ const MOTOR_IMAGERY = {
 // 3-6 mg/kg dose-response, but never warn caffeine-naïve athletes or
 // anxiety-prone cohorts. This block enforces test-in-training protocol +
 // reduces dose for caffeine-naïve / high-anxiety / sleep-poor cohorts.
+// v9.18.0 — Caffeine naïve cap fix. Prior version specified "200 mg ONLY"
+// for caffeine-naïve athletes, which is 43-186% above the safe naïve dose
+// per Spriet 2014 + Burke 2008 (1-2 mg/kg max for first exposure). For a
+// 70 kg athlete that's 70-140 mg, NOT 200. The old cap risked GI distress,
+// jitter, and headache in untrained users — corrected to 1-2 mg/kg.
 const CAFFEINE_SAFETY_FLAGS = {
-  en: 'CAFFEINE SAFETY (read before dosing): (1) NEVER first-time caffeine on race day — must be tested in 2+ training sessions at race-equivalent dose. (2) Caffeine-naïve (no daily coffee for 30+ days)? Start at 200 mg ONLY (do not exceed 3 mg/kg). (3) High anxiety history? Cut to 3 mg/kg or skip entirely. (4) Sleep <6h previous night? Skip — caffeine on cortisol spike worsens jitter. (5) Combine with practiced gel format only — caffeine + novel gel = GI distress. (6) Never exceed 6 mg/kg — diminishing returns + GI/jitter risk.',
-  tr: 'KAFEİN GÜVENLİK (dozlamadan önce oku): (1) Yarış gününde İLK KEZ kafein ASLA — yarış-eşdeğer dozda 2+ antrenmanda test edilmeli. (2) Kafein-naif (30+ gündür günlük kahve yok)? Sadece 200 mg ile başla (3 mg/kg\'ı aşma). (3) Yüksek anksiyete geçmişi? 3 mg/kg\'a düşür veya tamamen atla. (4) Önceki gece <6sa uyku? Atla — kortizol piki üzerine kafein titreği kötüleştirir. (5) Sadece denenmiş jel formatı ile kombine — kafein + yeni jel = GI sıkıntısı. (6) 6 mg/kg\'ı asla geçme — azalan getiri + GI/titrek riski.',
+  en: 'CAFFEINE SAFETY (read before dosing): (1) NEVER first-time caffeine on race day — must be tested in 2+ training sessions at race-equivalent dose. (2) Caffeine-naïve (no daily coffee for 30+ days)? Cap first dose at 1-2 mg/kg ONLY (≈70-140 mg for 70 kg athlete; do not exceed 3 mg/kg even after a few exposures). (3) High anxiety history? Cut to 3 mg/kg or skip entirely. (4) Sleep <6h previous night? Skip — caffeine on cortisol spike worsens jitter. (5) Combine with practiced gel format only — caffeine + novel gel = GI distress. (6) Never exceed 6 mg/kg — diminishing returns + GI/jitter risk.',
+  tr: 'KAFEİN GÜVENLİK (dozlamadan önce oku): (1) Yarış gününde İLK KEZ kafein ASLA — yarış-eşdeğer dozda 2+ antrenmanda test edilmeli. (2) Kafein-naif (30+ gündür günlük kahve yok)? İlk doz 1-2 mg/kg ile sınırla (70 kg sporcu için ≈70-140 mg; birkaç deneyimden sonra bile 3 mg/kg\'ı geçme). (3) Yüksek anksiyete geçmişi? 3 mg/kg\'a düşür veya tamamen atla. (4) Önceki gece <6sa uyku? Atla — kortizol piki üzerine kafein titreği kötüleştirir. (5) Sadece denenmiş jel formatı ile kombine — kafein + yeni jel = GI sıkıntısı. (6) 6 mg/kg\'ı asla geçme — azalan getiri + GI/titrek riski.',
 }
 
 // v9.17.0 — Morning RHR / HRV readiness check. Itterum 2009 / Plews &

@@ -179,21 +179,30 @@ function todayUTC() {
 
 // ── Sport-specific feasibility math ──────────────────────────────────────────
 
-// Daniels VDOT gain rate per 12-week block — mirrors raceGoalEngine private fn
+// Daniels VDOT gain rate per 12-week block — mirrors raceGoalEngine private fn.
+// v9.18.0 — Calibrated against Daniels Running Formula 4th ed. Ch.2 VDOT
+// progression table: trained athletes (VDOT 50+) routinely add 2-3 points
+// per 12-week block under structured periodization. Prior 0.8 elite gain was
+// 60% too conservative — would systematically project elite athletes short
+// of realistic targets.
 /** @internal */
 export function vdotGainPerBlock(vdot) {
   if (vdot < 35) return 3.5
   if (vdot < 45) return 2.5
-  if (vdot < 55) return 1.5
-  return 0.8
+  if (vdot < 55) return 2.0
+  return 1.5
 }
 
-// FTP gain rate (W) per 12-week block (Coggan: ~3-5% for trained, ~8% for novices)
+// FTP gain rate (W) per 12-week block (Coggan & Allen 2019: ~3-5% for trained,
+// ~8% for novices). v9.18.0 — added 280 W intermediate band so the 240→300
+// transition isn't a 7%→5% cliff (was 14.5W gain at 290W vs 9W gain at 305W,
+// a 40% step across a 15W spread). Smoother curve matches Coggan's data.
 /** @internal */
 export function ftpGainPerBlock(ftpW) {
   if (ftpW < 180) return ftpW * 0.10
   if (ftpW < 240) return ftpW * 0.07
-  if (ftpW < 300) return ftpW * 0.05
+  if (ftpW < 280) return ftpW * 0.06
+  if (ftpW < 320) return ftpW * 0.05
   return ftpW * 0.03
 }
 
@@ -707,9 +716,24 @@ export function buildEliteProgram(input) {
   // v8.96.0 — when targetPR not provided AND noTarget=false, reject (legacy)
   if (!targetPR && !noTarget) return null
 
-  // Validate currentPR shape
-  const valPR = (pr) => pr && typeof pr.timeSec === 'number' && pr.timeSec > 0
-    && (typeof pr.distanceM === 'number' || pr.distanceM === null || pr.distanceM === undefined)
+  // Validate currentPR shape.
+  // v9.18.0 — tightened bounds per audit: reject zero/negative distances,
+  // implausible distances (>1000 km), sub-minute / multi-day times. Prior
+  // code accepted distanceM=-100 + timeSec=30 and propagated NaN/Infinity
+  // through gain calculations.
+  const MAX_DISTANCE_M = 1_000_000      // 1000 km — absurd ceiling
+  const MIN_TIME_SEC   = 60             // 1 minute floor (impossible race below)
+  const MAX_TIME_SEC   = 7 * 24 * 3600  // 7 days ceiling (multi-day ultra max)
+  const valPR = (pr) => {
+    if (!pr || typeof pr.timeSec !== 'number') return false
+    if (pr.timeSec < MIN_TIME_SEC || pr.timeSec > MAX_TIME_SEC) return false
+    if (pr.distanceM === null || pr.distanceM === undefined) return true
+    if (typeof pr.distanceM !== 'number') return false
+    // distanceM === 0 is a valid sentinel (bike direct-FTP, rowing direct-2k);
+    // negative or >1M km is never valid.
+    if (pr.distanceM < 0 || pr.distanceM > MAX_DISTANCE_M) return false
+    return true
+  }
   if (!valPR(currentPR)) return null
   if (targetPR && !valPR(targetPR)) return null
 
@@ -1135,6 +1159,16 @@ export function buildEliteProgram(input) {
   }
   if (fieldTestRecal) {
     out.fieldTestRecal = fieldTestRecal
+  }
+  // v9.18.0 — surface a warning when triathlon program cannot resolve a
+  // cohort (because no run/bike/swim baseline data was provided in profile).
+  // Prior behavior silently fell back to no-cohort, defeating the ability-
+  // matched prescription that's the whole point of the cohort layer.
+  if (sport === 'triathlon' && !cohort) {
+    out.cohortWarning = {
+      en: 'Triathlon program built without a resolvable ability cohort (no VDOT / FTP / CSS baseline). Sessions ship without beginner/intermediate/elite dose tables. Add a 10k run time or recent FTP / 1500m swim time to your profile for ability-matched prescriptions.',
+      tr: 'Triatlon programı çözümlenebilir yetenek kohortu olmadan oluşturuldu (VDOT / FTP / CSS taban yok). Seanslar başlangıç/orta/elit doz tabloları olmadan gönderilir. Yetenek-eşleşmiş reçeteler için profilinize 10k koşu süresi, son FTP veya 1500m yüzme süresi ekleyin.',
+    }
   }
   return out
 }

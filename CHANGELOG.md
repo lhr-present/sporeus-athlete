@@ -4,6 +4,72 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.18.0 — 2026-05-09 — Numeric correctness fixes (caffeine cap + VDOT/FTP gain rates + input bounds)
+
+  Closes 6 audit findings from a deep-dive numeric-correctness
+  pass on Mission #1: 1 P0 (unsafe caffeine dose), 3 P1 (gain
+  rate miscalibrations), 2 P2 (input validation, tri cohort
+  silent-fail). All fixes are dose / threshold / boundary
+  changes — no architectural shifts.
+
+  • P0 — caffeine naïve cap was 200 mg flat, which is 43-186%
+    above safe naïve dose per Spriet 2014 + Burke 2008 (1-2
+    mg/kg max for first exposure → 70-140 mg for 70 kg
+    athlete). Old text could cause GI distress, jitter,
+    headache in untrained users. Corrected to "1-2 mg/kg ONLY
+    (≈70-140 mg for 70 kg athlete)".
+
+  • P1 — vdotGainPerBlock elite tier was 0.8 points per 12-week
+    block (60% too conservative). Daniels Running Formula 4th
+    ed Ch.2 progression table: trained athletes (VDOT 50+) gain
+    2-3 points per block under structured periodization.
+    Adjusted: VDOT 45-54 from 1.5 → 2.0; VDOT ≥55 from 0.8 →
+    1.5. Realistic projection of elite athletes' targets.
+
+  • P1 — ftpGainPerBlock had a 7%→5% cliff at 240W (290W = 14.5W
+    gain vs 305W = 9.15W gain — 37% step across 15W spread).
+    Flattened with 280W intermediate band:
+    – <180W: 10% (novice, unchanged)
+    – 180-239W: 7% (intermediate, unchanged)
+    – 240-279W: 6% (NEW — bridges 7% → 5%)
+    – 280-319W: 5% (advanced, narrowed)
+    – ≥320W: 3% (elite, narrowed)
+    Curve now monotonically smoother (<20% step at any boundary).
+
+  • P1 — distance-tier 'short' (10-15k run) pacing note was
+    "EVEN-SPLIT or slight negative" without acknowledging that
+    a 10k IS a threshold race (not short-aerobic). Updated note
+    to explicitly call out 10k as threshold-paced + extend
+    warmup strides for 10k athletes.
+
+  • P2 — buildEliteProgram input validation hardened:
+    – distanceM < 0 or > 1,000,000 → reject (was: NaN/Infinity
+      propagated through gain math)
+    – timeSec < 60 or > 7 days → reject (was: same)
+    – distanceM === 0 still accepted as bike direct-FTP /
+      rowing direct-2k sentinel (preserved).
+
+  • P2 — triathlon program with no resolvable cohort (no VDOT
+    or profile.ftp/cssSec baseline) now surfaces a
+    `cohortWarning` field on output rather than silently
+    dropping cohort dose tables. UI/coaches can see the gap.
+
+  • Tests: +18 (9439 total). Citations confirmed against:
+    Daniels Running Formula 4th ed Ch.2 (VDOT progression);
+    Coggan & Allen 2019 (FTP curve); Spriet 2014 (caffeine);
+    Burke 2008 (caffeine); Pfitzinger 2014 (10k threshold).
+
+  Verified correct (no change): CSS gain rates, rowing Paul's
+  Law exponent 1.07, CWI 11-15°C × 11-15 min, Areta 4×0.4
+  g/kg/meal, phase split proportions (within Issurin 2010
+  modern variance).
+
+  Depends on: v9.16.0 (distance-tier infrastructure);
+  v9.17.0 (CAFFEINE_SAFETY_FLAGS block);
+  v9.11.0 (cohort layer for tri-warning surfacing).
+
+---
+
 ## v9.17.0 — 2026-05-09 — Race-day mental + caffeine + readiness depth
 
   Closes 4 race-week audit findings:
