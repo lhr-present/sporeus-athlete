@@ -4,6 +4,73 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.34.0 — 2026-05-10 — Personalization invariant test suite (regression contract)
+
+  Coach asked for explicit verification that Mission #1 actually
+  produces a personalized scientific yearly plan from the athlete's
+  current status + target PR + physiological data — not a generic
+  template. End-to-end audit ran with two distinct athlete profiles
+  (50:00 10K female 60kg vs 38:00 10K male 70kg) and confirmed
+  every dimension genuinely differentiates:
+
+      Dimension          Athlete A         Athlete B
+      ──────────────     ─────────────     ─────────────
+      VDOT computed      40                55.2
+      Cohort             intermediate      elite
+      T-pace prescribed  4:52/km           3:42/km    (70s faster)
+      Weekly TSS range   113–428           200–760    (2× CTL → 2× TSS)
+      CHO daily          6–8 g/kg          8–10 g/kg  (elite bump)
+      CHO absolute       360–480 g         560–700 g
+      Hydration          180–360 mL/h (F)  280–560 mL/h (M)
+      Sodium             500–800 mg/h      700–1200 mg/h
+      Iron + RED-S       surfaced (F)      suppressed (M)
+      Key session dose   "2x20 @T"         "3x20 @T"  (elite volume)
+      Sample week pace   4:52/km           3:42/km    (matches T-pace)
+
+  New `eliteProgram.personalization.test.js` — 17 invariant tests
+  spanning 8 personalization dimensions:
+    1. Current PR drives prescribed paces (different VDOT → different
+       paces; faster athlete → faster paces; sample week paceTarget
+       MATCHES computed T-pace within 5 sec)
+    2. Target PR drives feasibility band recommendation (realistic
+       vs unrealistic with appropriate language)
+    3. Body mass scales fueling LINEARLY (60 vs 80 kg → 1.33× CHO
+       grams)
+    4. Sex drives hydration/sodium/iron/RED-S differential (female
+       lower brackets; iron + RED-S surface for female only)
+    5. CTL drives weekly TSS curve (2× CTL → ~2× peak weekly TSS)
+    6. Cohort drives key session dosing (different cohorts produce
+       different structure prescriptions for the same session key)
+    7. Race-week protocol is sport-specific (tri ≠ run; tri-only
+       fields like transitionLayout + brickRefuelWindow present;
+       postRaceRecovery48h surfaces for every sport)
+    8. End-to-end shape: currentLevel + targetLevel + cohort +
+       bilingual recommendation + bilingual phase.focus all present
+
+  Graceful-degradation contract verified: when athlete profile lacks
+  body mass or gender, fueling correctly omits absolute g / mL/h /
+  mg/h fields and surfaces only g/kg ranges + protein/CHO percentage
+  guidance. VDOT-derived paces still work since paces don't depend
+  on profile body composition.
+
+  Tests: 17 new (pure regression — no production code change).
+  9587/9587 green. Bundle 1329.1 KB unchanged.
+
+  Audit script: `/tmp/personalization_audit.mjs` — reproducible
+  end-to-end probe for any future personalization concerns.
+
+  Citations (audit-time references): Daniels 2014 (VDOT pace
+  mapping), Coggan & Allen 2010 (FTP cohorts), Wakayoshi 1992
+  (CSS), Stellingwerff 2019 (cohort CHO), Burke 2017 (sex-aware
+  fueling), Mountjoy 2018 (RED-S CAT 2.0).
+
+  Depends on: every personalization-touching version (v8.92.0
+  currentLevel + v9.13.0 cohort fueling + v9.18.0 numeric correctness
+  + v9.25.0 hydration/sodium/iron + v9.27.0 tri Build sweet-spot +
+  v9.30.0 tri race-week + v9.32.0 staleness + v9.33.0 post-race).
+
+---
+
 ## v9.33.0 — 2026-05-10 — Post-race 48h recovery protocol (universal)
 
   Closes a P1 from the race-week completeness audit. The protocol
