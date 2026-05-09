@@ -622,12 +622,21 @@ function SamplePhase({ phase, days, isTR, defaultOpen }) {
             const pace = d.paceTarget != null ? d.paceTarget : d.pace
             const z = zoneSummary(d.zones)
             return (
-              <div key={i} style={{ display: 'flex', gap: '6px', borderBottom: '1px dashed var(--border)', padding: '3px 0', flexWrap: 'wrap' }}>
-                <span style={{ flex: '0 0 36px', color: 'var(--text)' }}>{d.day || `D${i + 1}`}</span>
-                <span style={{ flex: '1 1 90px' }}>{dayIntent(d.intent, isTR)}</span>
-                <span style={{ flex: '0 0 56px' }}>{dur != null ? `${dur}${isTR ? 'dk' : 'min'}` : ''}</span>
-                {z ? <span style={{ flex: '0 0 90px', fontSize: '9px' }}>{z}</span> : null}
-                {pace ? <span style={{ flex: '0 0 70px' }}>{pace}</span> : null}
+              <div key={i} style={{ borderBottom: '1px dashed var(--border)', padding: '3px 0' }}>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  <span style={{ flex: '0 0 36px', color: 'var(--text)' }}>{d.day || `D${i + 1}`}</span>
+                  <span style={{ flex: '1 1 90px' }}>{dayIntent(d.intent, isTR)}</span>
+                  <span style={{ flex: '0 0 56px' }}>{dur != null ? `${dur}${isTR ? 'dk' : 'min'}` : ''}</span>
+                  {z ? <span style={{ flex: '0 0 90px', fontSize: '9px' }}>{z}</span> : null}
+                  {pace ? <span style={{ flex: '0 0 70px' }}>{pace}</span> : null}
+                </div>
+                {d.strength ? (
+                  <div style={{ display: 'flex', gap: '6px', marginTop: '2px', paddingLeft: '36px', fontSize: '9px', color: '#a85d00' }}>
+                    <span style={{ flex: '0 0 14px', fontWeight: 700 }}>+</span>
+                    <span style={{ flex: '1 1 90px' }}>{dayIntent(d.strength.intent, isTR)}</span>
+                    <span style={{ flex: '0 0 56px' }}>{d.strength.durationMin}{isTR ? 'dk' : 'min'}</span>
+                  </div>
+                ) : null}
               </div>
             )
           })}

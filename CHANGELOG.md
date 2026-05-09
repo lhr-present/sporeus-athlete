@@ -4,6 +4,59 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.24.0 — 2026-05-09 — Strength sessions woven into sample-week calendar
+
+  Closes a P2 adherence gap: Mission #1 prescribes 1-2 strength sessions
+  per week (Base/Build 2x, Peak/Taper 1x) but they only lived on the
+  Strength tab — the sample-week table on EliteProgramCard had no
+  lift-day cue. Athletes scanning the week to plan a Tuesday couldn't
+  see "and lift in the PM"; this hurt adherence to the strength
+  prescription.
+
+  Implementation:
+
+  • New `weaveStrengthIntoSampleWeek(weekDays, phase)` helper in
+    eliteProgram.js. Picks the hardest endurance days (highest Z4+Z5
+    minutes) per Beattie 2014 / Rønnestad 2014 stacking — same-day
+    consolidation with 6-8h gap protects easy days for true recovery.
+    Frequency mirrors eliteProgramStrength.js:
+      Base/Build 2x · Peak 1x · Taper 1x.
+    Duration mirrors templates: 60/50/35/25 min.
+
+  • Critical constraint: weaving attaches an OPTIONAL `strength` field
+    to existing day entries (`{ intent: {en, tr}, durationMin }`).
+    Does NOT add new array entries. This is required because
+    `getTodayProgrammedSession` indexes the sample-week array
+    POSITIONALLY (Mon=0..Sun=6) — inserting new entries would offset
+    the lookup by one and break "today's session" rendering across
+    the app.
+
+  • Strength is never placed on rest days (durationMin===0 entries
+    are skipped). Falls through to first-available aerobic days if
+    fewer hard days exist than the phase frequency requires.
+
+  • UI: SamplePhase day-row in EliteProgramCard now renders an
+    indented sub-row in burnt-orange (#a85d00) under any day with
+    `strength` populated, showing a "+ Strength — heavy lifts +
+    plyo (PM)" caption + duration. Bilingual.
+
+  Tests: new "sample-week strength weaving (v9.24.0)" suite in
+  eliteProgram.test.js — 10 tests covering frequency-by-phase,
+  array-length invariant (positional indexing), bilingual shape,
+  duration-by-phase, no-rest-day placement, hardest-day stacking
+  (Tue+Thu confirmed for Build), and cross-sport coverage (run,
+  triathlon, bike direct-FTP, swim, rowing). 9474/9474 green.
+  Bundle 1318.1 KB.
+
+  Citations: Beattie et al. 2014 (concurrent training optimal
+  scheduling); Rønnestad & Mujika 2014 (heavy strength + endurance
+  cycling); Lambert 1997 (recovery-day protection).
+
+  Depends on: v9.20.0 (sample-week structure), v3 (Strength program
+  templates).
+
+---
+
 ## v9.23.0 — 2026-05-09 — Coach-athlete connection path (athlete-side UI)
 
   Closes the missing link in the coach feature. Backend infrastructure

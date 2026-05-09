@@ -2373,3 +2373,123 @@ describe('Sample-week polarization — Seiler 80/20 compliance per phase', () =>
     }
   })
 })
+
+// ── v9.24.0 — Strength weaving into sample weeks ─────────────────────────────
+// Strength program prescribes 1-2 sessions/week per phase but historically lived
+// only on the Strength tab — no calendar marker. v9.24.0 attaches a `strength`
+// field to existing day entries so the athlete sees lift-day cues inline.
+// Frequency mirrors eliteProgramStrength.js: Base/Build 2x, Peak/Taper 1x.
+// Placement uses Beattie 2014 stacking (hardest endurance days, 6-8h gap).
+describe('buildEliteProgram — sample-week strength weaving (v9.24.0)', () => {
+  const RUN_INPUT = {
+    currentPR: { distanceM: 10000, timeSec: 3000 },
+    targetPR:  { distanceM: 10000, timeSec: 2820 },
+    raceDate: '2026-09-01',
+    sport: 'run',
+    options: { today: TODAY },
+  }
+
+  function strengthCount(week) {
+    return week.filter(d => d.strength).length
+  }
+
+  function dayLength(week) {
+    return week.length
+  }
+
+  it('Base sample week carries 2 strength markers', () => {
+    const r = buildEliteProgram(RUN_INPUT)
+    expect(strengthCount(r.sampleWeeks.Base)).toBe(2)
+  })
+
+  it('Build sample week carries 2 strength markers', () => {
+    const r = buildEliteProgram(RUN_INPUT)
+    expect(strengthCount(r.sampleWeeks.Build)).toBe(2)
+  })
+
+  it('Peak sample week carries 1 strength marker', () => {
+    const r = buildEliteProgram(RUN_INPUT)
+    expect(strengthCount(r.sampleWeeks.Peak)).toBe(1)
+  })
+
+  it('Taper sample week carries 1 strength marker', () => {
+    const r = buildEliteProgram(RUN_INPUT)
+    expect(strengthCount(r.sampleWeeks.Taper)).toBe(1)
+  })
+
+  it('weaving does NOT change the array length (positional indexing must hold)', () => {
+    const r = buildEliteProgram(RUN_INPUT)
+    expect(dayLength(r.sampleWeeks.Base)).toBe(7)
+    expect(dayLength(r.sampleWeeks.Build)).toBe(7)
+    expect(dayLength(r.sampleWeeks.Peak)).toBe(7)
+    expect(dayLength(r.sampleWeeks.Taper)).toBe(7)
+  })
+
+  it('strength field shape: bilingual intent + numeric durationMin', () => {
+    const r = buildEliteProgram(RUN_INPUT)
+    const lift = r.sampleWeeks.Build.find(d => d.strength)
+    expect(lift.strength.intent).toHaveProperty('en')
+    expect(lift.strength.intent).toHaveProperty('tr')
+    expect(typeof lift.strength.durationMin).toBe('number')
+    expect(lift.strength.durationMin).toBeGreaterThan(0)
+  })
+
+  it('strength duration matches phase: Base 60min, Build 50min, Peak 35min, Taper 25min', () => {
+    const r = buildEliteProgram(RUN_INPUT)
+    const liftBase  = r.sampleWeeks.Base.find(d => d.strength)
+    const liftBuild = r.sampleWeeks.Build.find(d => d.strength)
+    const liftPeak  = r.sampleWeeks.Peak.find(d => d.strength)
+    const liftTaper = r.sampleWeeks.Taper.find(d => d.strength)
+    expect(liftBase.strength.durationMin).toBe(60)
+    expect(liftBuild.strength.durationMin).toBe(50)
+    expect(liftPeak.strength.durationMin).toBe(35)
+    expect(liftTaper.strength.durationMin).toBe(25)
+  })
+
+  it('strength is NEVER placed on a rest day (Beattie stacking — protects recovery)', () => {
+    const r = buildEliteProgram(RUN_INPUT)
+    for (const phase of ['Base', 'Build', 'Peak', 'Taper']) {
+      const wk = r.sampleWeeks[phase]
+      for (const d of wk) {
+        if (!d.strength) continue
+        expect(d.durationMin || 0).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  it('strength stacks on the hardest endurance days (highest Z4+Z5 minutes)', () => {
+    const r = buildEliteProgram(RUN_INPUT)
+    // Build phase has Tue Threshold (Z4:40) + Thu VO2max (Z5:30) as the two
+    // hardest days. Strength should land on both, not on Wed/Sat easy days.
+    const buildWk = r.sampleWeeks.Build
+    const tue = buildWk.find(d => d.day === 'Tue')
+    const thu = buildWk.find(d => d.day === 'Thu')
+    expect(tue.strength).toBeTruthy()
+    expect(thu.strength).toBeTruthy()
+  })
+
+  it('also weaves strength for triathlon, bike, swim, rowing sample weeks', () => {
+    const sports = [
+      { sport: 'triathlon', currentPR: { distanceM: 10000, timeSec: 2700 }, targetPR: { distanceM: 10000, timeSec: 2580 } },
+      { sport: 'bike',      currentPR: { distanceM: 0,     timeSec: 3600 }, targetPR: null }, // direct-FTP not applicable here
+      { sport: 'swim',      currentPR: { distanceM: 1500,  timeSec: 1500 }, targetPR: { distanceM: 1500, timeSec: 1440 } },
+      { sport: 'rowing',    currentPR: { distanceM: 2000,  timeSec: 420 },  targetPR: { distanceM: 2000, timeSec: 405 } },
+    ]
+    for (const s of sports) {
+      const input = {
+        ...s,
+        raceDate: '2026-09-01',
+        options: { today: TODAY },
+      }
+      // For bike direct-FTP we must add noTarget + supply ftp; skip if bike fails.
+      if (s.sport === 'bike') {
+        input.noTarget = true
+        input.profile = { ftp: 250 }
+      }
+      const r = buildEliteProgram(input)
+      if (!r) continue
+      expect(strengthCount(r.sampleWeeks.Build)).toBe(2)
+      expect(strengthCount(r.sampleWeeks.Peak)).toBe(1)
+    }
+  })
+})

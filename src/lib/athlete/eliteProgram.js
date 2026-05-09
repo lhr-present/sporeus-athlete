@@ -403,6 +403,54 @@ export function fmtSwimPace(secPer100) {
   return `${m}:${String(s).padStart(2, '0')}/100m`
 }
 
+// v9.24.0 — Weave strength sessions into sample-week days as an optional
+// `strength` field on existing entries (NOT new array entries — the array is
+// indexed positionally Mon=0..Sun=6 by getTodayProgrammedSession). Picks the
+// hardest endurance days for stacking (Beattie 2014 / Rønnestad 2014: same-day
+// stacking with 6-8h gap consolidates hard load and protects recovery days).
+// Frequency per phase mirrors eliteProgramStrength.js (Base/Build 2x, Peak/Taper 1x).
+const STRENGTH_FREQ_BY_PHASE = { Base: 2, Build: 2, Peak: 1, Taper: 1 }
+const STRENGTH_DUR_BY_PHASE  = { Base: 60, Build: 50, Peak: 35, Taper: 25 }
+const STRENGTH_INTENT_BY_PHASE = {
+  Base:  { en: 'Strength — heavy lifts + plyo (PM, 6h+ after AM)', tr: 'Kuvvet — ağır kaldırış + plyo (PM, AM sonrası 6+ saat)' },
+  Build: { en: 'Strength — power conversion + plyo (PM)',           tr: 'Kuvvet — güç dönüşümü + plyo (PM)' },
+  Peak:  { en: 'Strength — maintenance dose (PM)',                  tr: 'Kuvvet — koruma dozu (PM)' },
+  Taper: { en: 'Strength — neural priming (low fatigue)',           tr: 'Kuvvet — nöral hazırlık (düşük yorgunluk)' },
+}
+
+function hardLoad(d) {
+  const z = d?.zones || {}
+  return (z.Z4 || 0) + (z.Z5 || 0)
+}
+
+function weaveStrengthIntoSampleWeek(weekDays, phase) {
+  if (!Array.isArray(weekDays) || weekDays.length === 0) return weekDays
+  const freq = STRENGTH_FREQ_BY_PHASE[phase] || 0
+  if (freq === 0) return weekDays
+
+  // Rank candidate days: skip rest, prefer hardest. Stable secondary sort by
+  // original index so Tue beats Thu when both have the same Z4+Z5 minutes
+  // (keeps the canonical Tue+Thu Beattie pattern).
+  const candidates = weekDays
+    .map((d, idx) => ({ idx, day: d.day, isRest: (d.durationMin || 0) === 0, hard: hardLoad(d) }))
+    .filter(c => !c.isRest)
+    .sort((a, b) => b.hard - a.hard || a.idx - b.idx)
+
+  // If insufficient hard days, top up with first-available aerobic days.
+  const picked = candidates.slice(0, freq).map(c => c.idx)
+
+  const intent = STRENGTH_INTENT_BY_PHASE[phase]
+  const durationMin = STRENGTH_DUR_BY_PHASE[phase]
+
+  return weekDays.map((d, i) => {
+    if (!picked.includes(i)) return { ...d, strength: null }
+    return {
+      ...d,
+      strength: { intent, durationMin },
+    }
+  })
+}
+
 function runSampleWeek(phase, paces, trainingDays) {
   const days = Math.max(3, Math.min(7, trainingDays || 5))
   const long = Math.min(120, 60 + Math.floor(days * 6))
@@ -1105,6 +1153,8 @@ export function buildEliteProgram(input) {
     } else if (sport === 'swim') {
       sampleWeeks[phaseName] = swimSampleWeek(phaseName, currentLevel.css)
     }
+    // v9.24.0 — weave strength sessions into the week (Beattie 2014 stacking)
+    sampleWeeks[phaseName] = weaveStrengthIntoSampleWeek(sampleWeeks[phaseName], phaseName)
   }
 
   // Recommendation — bilingual, with caveats for unrealistic profile params
