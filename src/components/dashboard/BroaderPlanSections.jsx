@@ -326,6 +326,11 @@ export function StrengthSection({ strengthProgram, isTR, defaultOpen = false }) 
 export function FuelingSection({ fuelingProgram, isTR, defaultOpen = false }) {
   if (!fuelingProgram || Object.keys(fuelingProgram).length === 0) return null
   const phases = ['Base', 'Build', 'Peak', 'Taper'].filter(p => fuelingProgram[p])
+  // v9.40.0 — when body weight unknown, dailyCHO_g/dailyProtein_g are
+  // omitted (eliteProgramFueling.js gates absolute grams on bodyMassKg).
+  // Surface a single banner so the athlete knows why they're seeing only
+  // relative g/kg — and what to do about it.
+  const missingBW = phases.length > 0 && !fuelingProgram[phases[0]].dailyCHO_g
   return (
     <Disclosure
       title={isTR ? 'BESLENME HEDEFLERİ' : 'FUELING TARGETS'}
@@ -333,6 +338,14 @@ export function FuelingSection({ fuelingProgram, isTR, defaultOpen = false }) {
       accent="#28a745"
       defaultOpen={defaultOpen}
     >
+      {missingBW ? (
+        <div style={{ marginBottom: 8, padding: '8px 10px', background: '#0064ff11', border: '1px solid #0064ff44', borderRadius: 4, fontSize: 10, lineHeight: 1.5 }}>
+          <strong>{isTR ? '🪪 VÜCUT AĞIRLIĞI EKSİK' : '🪪 BODY WEIGHT MISSING'}:</strong>{' '}
+          {isTR
+            ? 'Mutlak gram hedeflerini görmek için profile vücut ağırlığını ekle. Şimdilik yalnızca g/kg oranları gösteriliyor.'
+            : 'Add your body weight in Profile to see absolute gram targets. Right now only g/kg ratios are shown.'}
+        </div>
+      ) : null}
       {phases.map(phase => {
         const p = fuelingProgram[phase]
         const choAbs = p.dailyCHO_g ? ` (${p.dailyCHO_g[0]}-${p.dailyCHO_g[1]} g)` : ''

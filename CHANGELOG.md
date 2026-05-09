@@ -4,6 +4,28 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.40.0 — 2026-05-09 — Body-weight-missing banner in Fueling section
+
+  Coaching audit: when an athlete leaves bodyMassKg blank, the fueling
+  output silently drops `dailyCHO_g` / `dailyProtein_g` and the UI shows
+  only `5-7 g/kg/day` with no absolute-gram annotation. Most amateurs
+  can't compute body mass × g/kg in their head — they need either the
+  numbers OR a clear "fix this in profile" prompt.
+
+  • Banner above per-phase Fueling content: `🪪 BODY WEIGHT MISSING`
+    explaining that absolute grams are gated on profile body weight.
+    Bilingual EN+TR. Renders only when `dailyCHO_g` is absent on phase[0]
+    (the gate is uniform across phases since it's set once in
+    `buildFuelingProgram`).
+
+  • No data-shape change — purely UI. The fueling library already gates
+    absolute grams correctly; this just makes the gate visible.
+
+  DEPENDS ON: src/components/dashboard/BroaderPlanSections.jsx
+  (FuelingSection renderer).
+
+---
+
 ## v9.39.0 — 2026-05-09 — RED-S as tickable checklist (Mountjoy 2018 CAT 2.0)
 
   Coaching audit: previous RED-S screening was a single comma-separated
