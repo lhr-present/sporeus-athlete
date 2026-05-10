@@ -4,6 +4,32 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.45.0 — 2026-05-10 — CoachingInsightsDigest healthy fixture rebalanced
+
+  Found while investigating CI deploy failure on v9.42-v9.44 ships: the
+  `buildHealthyLog` test fixture in CoachingInsightsDigest.test.jsx
+  encoded `entry.zones[]` as percentages summing to 100, but the live
+  `detectTimeInZone` (and `detectStaleZones`) detectors read the array as
+  raw MINUTES per zone. Result: 28-day windows landed Z3 at ~12% (target
+  7%) and Z5 at ~3% (target 4% / stale threshold 5%) → digest surfaced
+  "Multiple zones off-target" + "Z5 stale" → all-green tests failed.
+
+  • Rebalanced templates so each `zones[i]` sums to `duration`. New
+    per-week distribution lands Z1≈29%, Z2≈52%, Z3≈8%, Z4≈7%, Z5≈5.2%
+    — all within the polarized template ±20% band AND above stale
+    thresholds.
+
+  • Updated post-loop replacement entries (Sun intervals all 4 weeks +
+    Sat steady weeks 1-3) — they were also still in the old shape.
+
+  • No production-code change. Pure test-fixture correction. 72/72
+    digest tests pass; full suite 9637/9637.
+
+  DEPENDS ON: src/components/__tests__/CoachingInsightsDigest.test.jsx
+  (template + replacement entries).
+
+---
+
 ## v9.44.0 — 2026-05-10 — Heat acclim startBy + timing flag
 
   Scientific audit caught the timing gap: heat acclimatization protocol

@@ -50,21 +50,27 @@ function buildHealthyLog() {
   // in the 'balanced' band (≥3 substantial sports each ≥10% of total minutes).
   // Without this, run-only days yield band='monotypic' → digest would surface
   // the warning and break the all-green path.
+  // v9.45.0 — fixture corrected: detectTimeInZone reads zones[] as raw
+  // MINUTES per zone (not percentages × 100). Pre-fix arrays summed to 100
+  // but durations were 40-120, leaving the detector off by 100/duration —
+  // any week landed >25% Z3+ vs the 28/56/7/7/4 polarized template. New
+  // arrays sum to entry.duration so per-week zones land at Z1=29%, Z2=52%,
+  // Z3=7.2%, Z4=7.2%, Z5=4.2% — all inside the ±20% polarized band.
   const templates = [
     // Mon: recovery run (RPE 3, 60min, Z1-heavy)
-    { type: 'run',  rpe: 3, duration: 60, zones: [70, 28, 1, 1, 0] },
-    // Tue: steady BIKE (RPE 5, 75min) — diversifies sport mix
-    { type: 'bike', rpe: 5, duration: 75, zones: [25, 65, 4, 4, 2] },
-    // Wed: recovery run (RPE 2, 40min, Z1-heavy)
-    { type: 'run',  rpe: 2, duration: 40, zones: [70, 25, 3, 1, 1] },
-    // Thu: steady SWIM (RPE 5, 75min) — diversifies sport mix
-    { type: 'swim', rpe: 5, duration: 75, zones: [25, 65, 4, 4, 2] },
-    // Fri: long run (RPE 5, 120min)
-    { type: 'run',  rpe: 5, duration: 120, zones: [25, 70, 3, 1, 1] },
-    // Sat: tempo run (RPE 6, 50min, Z3-dominant) — counts as hard
-    { type: 'run',  rpe: 6, duration: 50, zones: [5, 15, 50, 20, 10] },
-    // Sun: easy run (RPE 4) — keep total hard days/wk = 1 (just Sat)
-    { type: 'run',  rpe: 4, duration: 50, zones: [25, 65, 4, 4, 2] },
+    { type: 'run',  rpe: 3, duration: 60, zones: [42, 17, 1, 0, 0] },
+    // Tue: steady BIKE (RPE 5, 75min) sub-threshold Z3 dose, light Z4
+    { type: 'bike', rpe: 5, duration: 75, zones: [15, 45, 7, 6, 2] },
+    // Wed: recovery run (RPE 2, 40min) — skipped from log loop, kept for clarity
+    { type: 'run',  rpe: 2, duration: 40, zones: [28, 10, 1, 1, 0] },
+    // Thu: steady SWIM (RPE 5, 75min) — same shape as Tue, diversifies sport
+    { type: 'swim', rpe: 5, duration: 75, zones: [15, 45, 7, 6, 2] },
+    // Fri: long run (RPE 5, 120min, Z2-heavy with light Z3 progression)
+    { type: 'run',  rpe: 5, duration: 120, zones: [30, 78, 7, 4, 1] },
+    // Sat: VO2 intervals (RPE 6, 50min) — single hard day, Z3/Z4/Z5 mix
+    { type: 'run',  rpe: 6, duration: 50, zones: [10, 10, 5, 13, 12] },
+    // Sun: easy run (RPE 4, 50min) — Z3 hint to round out polarized week
+    { type: 'run',  rpe: 4, duration: 50, zones: [13, 30, 4, 2, 1] },
   ]
   for (let w = 0; w < 4; w++) {
     const weekStart = addDays(w1Start, w * 7)
@@ -101,7 +107,9 @@ function buildHealthyLog() {
         type: 'run',
         rpe: 8,
         duration: 45,
-        zones: [5, 15, 25, 25, 30],
+        // v9.45.0 — sums to duration (was 100); Z4/Z5-dominant intervals
+        // tuned so Z5 share clears 5% staleZones threshold over 28d window.
+        zones: [3, 12, 5, 11, 14],
       }
     }
   }
@@ -122,7 +130,8 @@ function buildHealthyLog() {
         type: 'run',
         rpe: 5,
         duration: 60,
-        zones: [25, 65, 4, 4, 2],
+        // v9.45.0 — sums to duration (was 100), Z2-dominant steady with light Z3
+        zones: [15, 35, 6, 3, 1],
       }
     }
   }
