@@ -43,9 +43,24 @@ export default function RowingMetricsCard({ log = [], profile = {} }) {
     if (!predicted) return null
     const bw = parseFloat(profile?.weight_kg || profile?.weight || 0)
     const vo2 = bw > 0 ? concept2VO2max(predicted, bw) : null
+    // v9.51.0 — W/kg from predicted 2k split.
+    // Concept2 power formula: P (W) = 2.80 / (split_sec / 500)^3
+    // Benchmarks (Mikulic 2008, Kerr 2007 AIS rowing):
+    //   ≥6.4 elite HW men · ≥5.4 university D1/Henley men · ≥4.4 club · <3.5 recreational
+    let wkg = null, wkgBand = null
+    if (bw > 0) {
+      const splitSec = predicted / 4
+      const powerW = 2.80 / Math.pow(splitSec / 500, 3)
+      wkg = Math.round((powerW / bw) * 100) / 100
+      if (wkg >= 6.4) wkgBand = { en: 'World class',  tr: 'Dünya sınıfı', color: '#f5c542' }
+      else if (wkg >= 5.4) wkgBand = { en: 'University', tr: 'Üniversite',   color: '#ff6600' }
+      else if (wkg >= 4.4) wkgBand = { en: 'Club',       tr: 'Kulüp',        color: '#5bc25b' }
+      else if (wkg >= 3.5) wkgBand = { en: 'Competitive', tr: 'Rekabetçi',  color: '#4a90d9' }
+      else                 wkgBand = { en: 'Recreational', tr: 'Rekreasyon', color: '#888' }
+    }
     const mm = Math.floor(predicted / 60)
     const ss = String(Math.round(predicted % 60)).padStart(2, '0')
-    return { timeStr: `${mm}:${ss}`, isProjection: Math.abs(distM - 2000) >= 200, vo2 }
+    return { timeStr: `${mm}:${ss}`, isProjection: Math.abs(distM - 2000) >= 200, vo2, wkg, wkgBand }
   }, [last, profile])
 
   if (!last) return (
@@ -188,9 +203,22 @@ export default function RowingMetricsCard({ log = [], profile = {} }) {
                 <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: "'IBM Plex Mono',monospace", marginTop: 2 }}>mL/kg/min</div>
               </div>
             )}
+            {pred2k.wkg && (
+              <div>
+                <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: "'IBM Plex Mono',monospace", textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>
+                  W/kg (2k erg)
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: pred2k.wkgBand.color, fontFamily: "'IBM Plex Mono',monospace", lineHeight: 1.1 }}>
+                  {pred2k.wkg}
+                </div>
+                <div style={{ fontSize: 9, color: pred2k.wkgBand.color, fontFamily: "'IBM Plex Mono',monospace", marginTop: 2, fontWeight: 600 }}>
+                  {pred2k.wkgBand[lang] || pred2k.wkgBand.en}
+                </div>
+              </div>
+            )}
           </div>
           <div style={{ fontSize: 9, color: '#333', marginTop: 8 }}>
-            ℹ Paul (1969) · Concept2 VO2max formula
+            ℹ Paul (1969) · Concept2 VO2max formula · Mikulic 2008 / Kerr 2007 W/kg bands
           </div>
         </div>
       )}

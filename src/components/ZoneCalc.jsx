@@ -5,6 +5,7 @@ import { S } from '../styles.js'
 import { RACE_DISTANCES, ZONE_COLORS, ZONE_NAMES, SPORT_CONFIG } from '../lib/constants.js'
 import { hrZones, powerZones, paceZones, parseTimeSec, fmtSec, fmtPace, riegel } from '../lib/formulas.js'
 import { autoFormatMmSs } from '../lib/format/mmss.js'
+import { rowingZones } from '../lib/sport/rowing.js'
 import { ZoneBar } from './ui.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 
@@ -185,16 +186,38 @@ export default function ZoneCalc() {
       return { name, pace:`${m}:${String(s).padStart(2,'0')} /100m`, color:ZONE_COLORS[i] }
     })
   }
-  // Rowing: 2K split + 5s = threshold split per 500m
+  // Rowing: 7-zone British Rowing system (UT2 / UT1 / AT / TR / 2k / AN /
+  // Sprint), driven by rowingZones() from src/lib/sport/rowing.js. Replaces
+  // pre-v9.51.0 5-zone approximation that mapped Z1-Z5 → UT2 / UT1 / AT / TR /
+  // Race with hand-tuned ±s offsets — diverged from the British Rowing zone
+  // definitions used everywhere else in the app (eliteProgram, rowingTemplates).
+  const ROW_ZONE_COLORS = [
+    '#4a90d9',  // UT2
+    '#5bc25b',  // UT1
+    '#f5c542',  // AT
+    '#f08c00',  // TR
+    '#e03030',  // 2k
+    '#a01010',  // AN (deep red)
+    '#660066',  // Sprint (magenta)
+  ]
+  const fmtSplit = (s) => {
+    if (s == null) return '—'
+    const m = Math.floor(s / 60), sec = Math.round(s % 60)
+    return `${m}:${String(sec).padStart(2, '0')}`
+  }
   const rowZones = (t2kStr) => {
-    const t2k=parseTimeSec(t2kStr)
-    if(isNaN(t2k)) return []
-    const split=t2k/4 // split per 500m
-    const offsets=[25,15,5,0,-5]
-    const rateLabels=['UT2','UT1','AT','TR','Race']
-    return ZONE_NAMES.map((name,i)=>{
-      const s=split+offsets[i]+5, m=Math.floor(s/60), sec=Math.round(s%60)
-      return { name:`${name} (${rateLabels[i]})`, pace:`${m}:${String(sec).padStart(2,'0')} /500m`, color:ZONE_COLORS[i] }
+    const t2k = parseTimeSec(t2kStr)
+    if (isNaN(t2k) || t2k <= 0) return []
+    const split2k = t2k / 4
+    return rowingZones(split2k).map((z, i) => {
+      // splitMin/splitMax are sec/500m at zone boundaries. UT2 has no upper
+      // bound on slowness (splitMax=null) → "≥". Sprint has no lower bound on
+      // speed (splitMin=null) → "≤". Interior zones show "fast–slow" range.
+      let pace
+      if (z.splitMin == null) pace = `≤ ${fmtSplit(z.splitMax)} /500m`
+      else if (z.splitMax == null) pace = `≥ ${fmtSplit(z.splitMin)} /500m`
+      else pace = `${fmtSplit(z.splitMax)}–${fmtSplit(z.splitMin)} /500m`
+      return { name: `Z${z.id} ${z.name}`, pace, color: ROW_ZONE_COLORS[i] }
     })
   }
 
@@ -344,7 +367,7 @@ export default function ZoneCalc() {
                 <span style={{ ...S.mono, fontSize:'12px', fontWeight:600, color:z.color }}>{z.name}</span>
                 <span style={{ ...S.mono, fontSize:'13px', fontWeight:600 }}>{z.pace||`${z.low}\u2013${z.high} ${mode==='hr'?'bpm':'W'}`}</span>
               </div>
-              <ZoneBar pct={(i+1)*20} color={z.color}/>
+              <ZoneBar pct={Math.round(((i+1)/zones.length)*100)} color={z.color}/>
             </div>
           ))}
           {/* Elite: W/kg display */}

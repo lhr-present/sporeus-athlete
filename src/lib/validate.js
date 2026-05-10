@@ -25,6 +25,7 @@
  * @property {number} [vo2max] - mL/kg/min
  * @property {string} [threshold] - threshold pace mm:ss/km
  * @property {string} [goal]
+ * @property {number} [dragFactor] - Concept2 erg drag factor (80-220)
  */
 
 /**
@@ -119,6 +120,11 @@ export function sanitizeProfile(p) {
     vo2max:        numStr(p.vo2max, 0, 100),
     maxhr:         numStr(p.maxhr, 60, 280),
     threshold:     str(p.threshold, 20),
+    // v9.51.0 — Concept2 erg drag factor (rowing). DF norms:
+    //   HW men 130-140, LW men 115-130, HW women 120-130 (Concept2, 2019)
+    //   World Rowing Indoor cap: 140 men / 130 women (WRIC rulebook 2023)
+    // Range 80-220 covers junior/novice (low) through max competition setting.
+    dragFactor:    numStr(p.dragFactor, 80, 220),
     goal:          str(p.goal, 200),
     neck:          numStr(p.neck, 10, 100),
     waist:         numStr(p.waist, 30, 250),

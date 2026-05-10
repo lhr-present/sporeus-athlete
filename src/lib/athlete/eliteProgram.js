@@ -656,21 +656,36 @@ function rowingSampleWeek(phase, split500Sec) {
   const atTag    = split500Sec ? `${fmtSplit(split500Sec * 1.08)}/500m` : null   // AT ~ +8% slower
   const trTag    = split500Sec ? `${fmtSplit(split500Sec * 1.03)}/500m` : null   // TR ~ +3% slower
 
+  // v9.51.0 — SPM (stroke-rate) targets per zone, per Nolte 2005 "Rowing
+  // Faster" + British Rowing Coaching Guidance 2018 + Steinacker 1993.
+  // UT2 stays 18-20 across phases (Seiler 2010 polarized — low-intensity
+  // SPM does not shift up across phases; Tran 2015 confirmed for elite
+  // rowers). Sprint SPM intentionally NOT pinned — race-tactical, not
+  // phase-prescribable (Kleshnev 2016).
+  const SPM = {
+    UT2: '18-20 spm',
+    UT1: '20-24 spm',
+    AT:  '24-28 spm',
+    TR:  '28-32 spm',
+    K2:  '32-36 spm',  // 2k race pace
+    AN:  '36-40 spm',
+  }
+
   const weekByPhase = {
     Base: [
-      { day: 'Mon', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
-      { day: 'Tue', intent: { en: 'UT2 steady 60min',          tr: 'UT2 sabit 60dk' },                durationMin: 60, zones: { Z1: 60, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: utTag },
-      { day: 'Wed', intent: { en: 'UT1 moderate 50min',        tr: 'UT1 orta 50dk' },                 durationMin: 50, zones: { Z1: 5, Z2: 45, Z3: 0, Z4: 0, Z5: 0 },   paceTarget: utTag },
+      { day: 'Mon', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null,    spmTarget: null },
+      { day: 'Tue', intent: { en: 'UT2 steady 60min',          tr: 'UT2 sabit 60dk' },                durationMin: 60, zones: { Z1: 60, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: utTag,   spmTarget: SPM.UT2 },
+      { day: 'Wed', intent: { en: 'UT1 moderate 50min',        tr: 'UT1 orta 50dk' },                 durationMin: 50, zones: { Z1: 5, Z2: 45, Z3: 0, Z4: 0, Z5: 0 },   paceTarget: utTag,   spmTarget: SPM.UT1 },
       // v9.37.0 — Base polarization fix per coaching audit. Pre-fix had
       // 40min AT (Z3) at 4x2000m, pushing Rowing Base weekly Z3+ to 13.8%
       // (Seiler 2010 ceiling = ≤5%). Nolte 2005 (Rowing Faster) Base
       // distribution is UT2:UT1:AT:TR = 70:25:5:0 → AT should be ~5% of
       // weekly volume in Base. Reduced to 2x10min AT pieces with UT1 ramp.
       // Result: Rowing Base Z3+ = 3.4%, within Nolte/Seiler band.
-      { day: 'Thu', intent: { en: 'UT1 + 2x10min AT',          tr: 'UT1 + 2x10dk AT' },               durationMin: 60, zones: { Z1: 30, Z2: 20, Z3: 10, Z4: 0, Z5: 0 },   paceTarget: atTag },
-      { day: 'Fri', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
-      { day: 'Sat', intent: { en: 'UT2 long row 75min',        tr: 'UT2 uzun 75dk' },                 durationMin: 75, zones: { Z1: 75, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: utTag },
-      { day: 'Sun', intent: { en: 'Cross-train (run/bike) 45min', tr: 'Çapraz antrenman 45dk' },     durationMin: 45, zones: { Z1: 45, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: null },
+      { day: 'Thu', intent: { en: 'UT1 + 2x10min AT',          tr: 'UT1 + 2x10dk AT' },               durationMin: 60, zones: { Z1: 30, Z2: 20, Z3: 10, Z4: 0, Z5: 0 },   paceTarget: atTag,   spmTarget: SPM.AT },
+      { day: 'Fri', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null,    spmTarget: null },
+      { day: 'Sat', intent: { en: 'UT2 long row 75min',        tr: 'UT2 uzun 75dk' },                 durationMin: 75, zones: { Z1: 75, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: utTag,   spmTarget: SPM.UT2 },
+      { day: 'Sun', intent: { en: 'Cross-train (run/bike) 45min', tr: 'Çapraz antrenman 45dk' },     durationMin: 45, zones: { Z1: 45, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: null,    spmTarget: null },
     ],
     // v9.20.0 — Rowing Build audit fix. Pre-fix UT1 (Z2) was only 18% of
     // weekly volume vs Nolte 2005 30% target ("UT1 base-building stimulus
@@ -680,31 +695,31 @@ function rowingSampleWeek(phase, split500Sec) {
     // as run/ski (rowers benefit from antagonist muscle work, not cycling
     // — Nolte 2005).
     Build: [
-      { day: 'Mon', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
-      { day: 'Tue', intent: { en: 'AT threshold 4x2000m',      tr: 'AT eşik 4x2000m' },               durationMin: 65, zones: { Z1: 20, Z2: 0, Z3: 45, Z4: 0, Z5: 0 },   paceTarget: atTag },
-      { day: 'Wed', intent: { en: 'UT1 steady 90min',          tr: 'UT1 sabit 90dk' },                durationMin: 90, zones: { Z1: 10, Z2: 80, Z3: 0, Z4: 0, Z5: 0 },   paceTarget: utTag },
-      { day: 'Thu', intent: { en: 'TR pieces 5x1000m',         tr: 'TR parçalar 5x1000m' },           durationMin: 50, zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 30, Z5: 0 },   paceTarget: trTag },
-      { day: 'Fri', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
-      { day: 'Sat', intent: { en: 'UT2 long row 90min',        tr: 'UT2 uzun 90dk' },                 durationMin: 90, zones: { Z1: 90, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: utTag },
-      { day: 'Sun', intent: { en: 'Cross-train (run/ski) + strength', tr: 'Çapraz (koşu/ski) + kuvvet' }, durationMin: 50, zones: { Z1: 50, Z2: 0, Z3: 0, Z4: 0, Z5: 0 }, paceTarget: null },
+      { day: 'Mon', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null,    spmTarget: null },
+      { day: 'Tue', intent: { en: 'AT threshold 4x2000m',      tr: 'AT eşik 4x2000m' },               durationMin: 65, zones: { Z1: 20, Z2: 0, Z3: 45, Z4: 0, Z5: 0 },   paceTarget: atTag,   spmTarget: SPM.AT },
+      { day: 'Wed', intent: { en: 'UT1 steady 90min',          tr: 'UT1 sabit 90dk' },                durationMin: 90, zones: { Z1: 10, Z2: 80, Z3: 0, Z4: 0, Z5: 0 },   paceTarget: utTag,   spmTarget: SPM.UT1 },
+      { day: 'Thu', intent: { en: 'TR pieces 5x1000m',         tr: 'TR parçalar 5x1000m' },           durationMin: 50, zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 30, Z5: 0 },   paceTarget: trTag,   spmTarget: SPM.TR },
+      { day: 'Fri', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null,    spmTarget: null },
+      { day: 'Sat', intent: { en: 'UT2 long row 90min',        tr: 'UT2 uzun 90dk' },                 durationMin: 90, zones: { Z1: 90, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: utTag,   spmTarget: SPM.UT2 },
+      { day: 'Sun', intent: { en: 'Cross-train (run/ski) + strength', tr: 'Çapraz (koşu/ski) + kuvvet' }, durationMin: 50, zones: { Z1: 50, Z2: 0, Z3: 0, Z4: 0, Z5: 0 }, paceTarget: null,    spmTarget: null },
     ],
     Peak: [
-      { day: 'Mon', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
-      { day: 'Tue', intent: { en: '2k pace 8x500m',            tr: 'Yarış-tempo 8x500m' },            durationMin: 55, zones: { Z1: 25, Z2: 0, Z3: 0, Z4: 0, Z5: 30 },   paceTarget: splitTag },
-      { day: 'Wed', intent: { en: 'UT1 recovery 45min',        tr: 'UT1 toparlanma 45dk' },           durationMin: 45, zones: { Z1: 15, Z2: 30, Z3: 0, Z4: 0, Z5: 0 },   paceTarget: utTag },
-      { day: 'Thu', intent: { en: 'TR race-pace 6x1000m',      tr: 'TR yarış-tempo 6x1000m' },        durationMin: 60, zones: { Z1: 15, Z2: 0, Z3: 0, Z4: 35, Z5: 10 },  paceTarget: trTag },
-      { day: 'Fri', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
-      { day: 'Sat', intent: { en: 'AN power 10x250m',          tr: 'AN güç 10x250m' },                durationMin: 50, zones: { Z1: 25, Z2: 0, Z3: 0, Z4: 0, Z5: 25 },   paceTarget: splitTag },
-      { day: 'Sun', intent: { en: 'UT2 maintenance 60min',     tr: 'UT2 koruma 60dk' },               durationMin: 60, zones: { Z1: 60, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: utTag },
+      { day: 'Mon', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null,    spmTarget: null },
+      { day: 'Tue', intent: { en: '2k pace 8x500m',            tr: 'Yarış-tempo 8x500m' },            durationMin: 55, zones: { Z1: 25, Z2: 0, Z3: 0, Z4: 0, Z5: 30 },   paceTarget: splitTag, spmTarget: SPM.K2 },
+      { day: 'Wed', intent: { en: 'UT1 recovery 45min',        tr: 'UT1 toparlanma 45dk' },           durationMin: 45, zones: { Z1: 15, Z2: 30, Z3: 0, Z4: 0, Z5: 0 },   paceTarget: utTag,   spmTarget: SPM.UT1 },
+      { day: 'Thu', intent: { en: 'TR race-pace 6x1000m',      tr: 'TR yarış-tempo 6x1000m' },        durationMin: 60, zones: { Z1: 15, Z2: 0, Z3: 0, Z4: 35, Z5: 10 },  paceTarget: trTag,   spmTarget: SPM.TR },
+      { day: 'Fri', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null,    spmTarget: null },
+      { day: 'Sat', intent: { en: 'AN power 10x250m',          tr: 'AN güç 10x250m' },                durationMin: 50, zones: { Z1: 25, Z2: 0, Z3: 0, Z4: 0, Z5: 25 },   paceTarget: splitTag, spmTarget: SPM.AN },
+      { day: 'Sun', intent: { en: 'UT2 maintenance 60min',     tr: 'UT2 koruma 60dk' },               durationMin: 60, zones: { Z1: 60, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: utTag,   spmTarget: SPM.UT2 },
     ],
     Taper: [
-      { day: 'Mon', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
-      { day: 'Tue', intent: { en: 'Race-pace openers 4x500m',  tr: 'Yarış-tempo açılış 4x500m' },     durationMin: 35, zones: { Z1: 18, Z2: 0, Z3: 0, Z4: 5, Z5: 12 },   paceTarget: splitTag },
-      { day: 'Wed', intent: { en: 'UT2 easy 30min',            tr: 'UT2 kolay 30dk' },                durationMin: 30, zones: { Z1: 30, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: utTag },
-      { day: 'Thu', intent: { en: 'Sharpener 8x250m',          tr: 'Keskinleştirme 8x250m' },         durationMin: 25, zones: { Z1: 18, Z2: 0, Z3: 0, Z4: 0, Z5: 7 },    paceTarget: splitTag },
-      { day: 'Fri', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
-      { day: 'Sat', intent: { en: 'Pre-race shakeout 20min',   tr: 'Yarış öncesi açılış 20dk' },      durationMin: 20, zones: { Z1: 18, Z2: 0, Z3: 0, Z4: 0, Z5: 2 },    paceTarget: utTag },
-      { day: 'Sun', intent: { en: 'Race day',                  tr: 'Yarış günü' },                    durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null },
+      { day: 'Mon', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null,    spmTarget: null },
+      { day: 'Tue', intent: { en: 'Race-pace openers 4x500m',  tr: 'Yarış-tempo açılış 4x500m' },     durationMin: 35, zones: { Z1: 18, Z2: 0, Z3: 0, Z4: 5, Z5: 12 },   paceTarget: splitTag, spmTarget: SPM.K2 },
+      { day: 'Wed', intent: { en: 'UT2 easy 30min',            tr: 'UT2 kolay 30dk' },                durationMin: 30, zones: { Z1: 30, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: utTag,   spmTarget: SPM.UT2 },
+      { day: 'Thu', intent: { en: 'Sharpener 8x250m',          tr: 'Keskinleştirme 8x250m' },         durationMin: 25, zones: { Z1: 18, Z2: 0, Z3: 0, Z4: 0, Z5: 7 },    paceTarget: splitTag, spmTarget: SPM.K2 },
+      { day: 'Fri', intent: { en: 'Rest',                      tr: 'Dinlenme' },                      durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null,    spmTarget: null },
+      { day: 'Sat', intent: { en: 'Pre-race shakeout 20min',   tr: 'Yarış öncesi açılış 20dk' },      durationMin: 20, zones: { Z1: 18, Z2: 0, Z3: 0, Z4: 0, Z5: 2 },    paceTarget: utTag,   spmTarget: SPM.UT2 },
+      { day: 'Sun', intent: { en: 'Race day',                  tr: 'Yarış günü' },                    durationMin: 0,  zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: null,    spmTarget: null },
     ],
   }
   const wk = weekByPhase[phase]

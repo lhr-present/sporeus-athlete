@@ -4,6 +4,105 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.51.0 — 2026-05-10 — Rowing flagship round 1: 7-zone ZoneCalc + drag factor + SPM targets + W/kg
+
+  Round 2 of the rowing-as-best-detailed-feature ask. Three parallel
+  audit agents identified the gaps; this ship lands four of them.
+
+  ### (1) ZoneCalc rowing: 5-zone → 7-zone British Rowing system
+
+  Pre-v9.51.0 ZoneCalc.jsx mapped Z1-Z5 to UT2 / UT1 / AT / TR / Race
+  with hand-tuned ±s offsets — diverged from the canonical British
+  Rowing 7-zone system (UT2 / UT1 / AT / TR / 2k / AN / Sprint) used
+  everywhere else (`eliteProgram.js:1141`, `rowingTemplates.js:157`).
+
+  Now drives off `rowingZones()` from `src/lib/sport/rowing.js` directly.
+  Display per zone shows the actual split range (e.g. UT2 "≥ 2:00 /500m",
+  AT "1:46–1:52 /500m", Sprint "≤ 1:33 /500m") instead of a single point.
+  ZoneBar pct generalized from `(i+1)*20` to `(i+1)/zones.length*100` so
+  the visual works for any zone count.
+
+  Two new colors added (`#a01010` AN, `#660066` Sprint) extending the
+  5-color ZONE_COLORS palette without touching the constant.
+
+  ### (2) Drag factor profile field (Concept2 erg DF)
+
+  • Profile typedef + `sanitizeProfile` now accepts `dragFactor`,
+    bounded 80-220 (covers junior/novice through max competition cap).
+  • Bilingual label `dragFactorL` (EN: "DRAG FACTOR (rowing)", TR:
+    "DRAG FAKTÖRÜ (kürek)").
+  • Profile.jsx FIELDS extended; tooltip cites Concept2 norms (HW men
+    130-140, LW men 115-130, HW women 120-130; WRIC cap 140 men /
+    130 women).
+
+  ### (3) SPM zone targets in rowing sample weeks
+
+  `rowingSampleWeek()` (eliteProgram.js Base/Build/Peak/Taper) now
+  emits `spmTarget` per non-rest day alongside `paceTarget`:
+
+  ```
+  UT2 → 18-20 spm    UT1 → 20-24 spm    AT → 24-28 spm
+  TR  → 28-32 spm    2k  → 32-36 spm    AN → 36-40 spm
+  ```
+
+  Sprint/Max SPM intentionally NOT pinned — race-tactical, not phase-
+  prescribable per Kleshnev (Biomechanics of Rowing, 2016).
+
+  Low-intensity SPM stays constant across phases per Seiler 2010
+  polarized + Tran 2015 elite rower data — Peak doesn't shift UT2 SPM
+  up; it shifts the volume distribution toward race-specific work.
+
+  Citations: Nolte 2005 *Rowing Faster*, British Rowing Coaching
+  Guidance 2018, Steinacker 1993 *Int J Sports Med*.
+
+  EliteProgramCard SamplePhase renders `spmTarget` next to paceTarget,
+  gated to `sport === 'rowing'` only.
+
+  ### (4) W/kg surfaced in RowingMetricsCard
+
+  When profile.weight is set, the 2k prediction panel now shows W/kg
+  computed from the predicted 2k split via Concept2 power formula
+  `P = 2.80 / (split_sec / 500)^3`, then `power / weight`.
+
+  Bands (Mikulic 2008 *J Strength Cond Res*, Kerr 2007 AIS):
+  ```
+  ≥6.4   World class           (gold)
+  ≥5.4   University / Henley   (orange)
+  ≥4.4   Club                  (green)
+  ≥3.5   Competitive           (blue)
+  <3.5   Recreational          (grey)
+  ```
+
+  Renders next to VO2max in the prediction strip; gracefully absent
+  when no body weight set.
+
+  ### Files
+
+  • Modified: `src/components/ZoneCalc.jsx` (rowZones rewired to
+    rowingZones + new ROW_ZONE_COLORS + ZoneBar pct generalized)
+  • Modified: `src/contexts/LangCtx.jsx` (dragFactorL EN+TR)
+  • Modified: `src/lib/validate.js` (sanitizeProfile + ProfileData
+    typedef → dragFactor 80-220)
+  • Modified: `src/components/Profile.jsx` (FIELDS array)
+  • Modified: `src/lib/athlete/eliteProgram.js` (rowingSampleWeek →
+    spmTarget per day)
+  • Modified: `src/components/dashboard/EliteProgramCard.jsx`
+    (SamplePhase render → spmTarget chip)
+  • Modified: `src/components/dashboard/RowingMetricsCard.jsx`
+    (pred2k → wkg + wkgBand + render block)
+
+  Tests: 9684/9684 pass (390 files). Lint clean. Build clean.
+
+  Depends on: v9.7.0 (rowingZones engine), v9.20.0 + v9.37.0 (rowing
+  Build/Base distribution audits), v9.50.0 (rowing in SPORTS picker).
+
+  Caveat (Kleshnev 2016): SPM is incomplete prescription without
+  drive distance per stroke — same SPM at 1.35m vs 1.25m drive yields
+  ~15% different power. Future ship can compute DPS = distance /
+  strokes per session.
+
+---
+
 ## v9.50.0 — 2026-05-10 — PR picker WR/beginner reference + rowing in SPORTS
 
   User ask: *"Make all the current PRs and mission PRs to be selected on

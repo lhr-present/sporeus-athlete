@@ -884,6 +884,9 @@ function SamplePhase({ phase, days, isTR, defaultOpen, sport, log, setLog, profi
                   <span style={{ flex: '0 0 56px' }}>{dur != null ? `${dur}${isTR ? 'dk' : 'min'}` : ''}</span>
                   {z ? <span style={{ flex: '0 0 90px', fontSize: '9px' }}>{z}</span> : null}
                   {pace ? <span style={{ flex: '0 0 70px' }}>{pace}</span> : null}
+                  {sport === 'rowing' && d.spmTarget
+                    ? <span style={{ flex: '0 0 60px', fontSize: '9px', color: 'var(--muted)' }}>{d.spmTarget}</span>
+                    : null}
                   <MarkDoneCell session={d} sport={sport} isTR={isTR} log={log} setLog={setLog} profile={profile} />
                 </div>
                 {d.strength ? (

@@ -77,6 +77,7 @@ export default function Profile({ log, authUser }) {
     {k:'ftp',lk:'ftpL',ph:'280',type:'number',title:'Functional Threshold Power — average watts sustainable for 1 hour'},
     {k:'vo2max',lk:'vo2L',ph:'55',type:'number',title:'VO₂max in mL/kg/min — from lab test or race VDOT estimate'},
     {k:'threshold',lk:'threshPaceL',ph:'4:30',title:'Lactate threshold run pace per km (e.g. 4:30)'},
+    {k:'dragFactor',lk:'dragFactorL',ph:'130',type:'number',title:'Concept2 erg drag factor — HW men 130-140, LW men 115-130, HW women 120-130 (Concept2 standard)'},
     {k:'goal',lk:'goalL',ph:'Sub-3h marathon Istanbul 2026'},
     {k:'weeklyTssGoal',lk:'weeklyTssGoalL',ph:'e.g. 400',type:'number',title:'Target weekly Training Stress Score (typical range 300–700)'},
     {k:'raceDate',lk:'profileRaceDate',ph:'',type:'date'},
