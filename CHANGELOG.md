@@ -4,6 +4,49 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.46.0 — 2026-05-10 — Mark Done button on Elite Program sample weeks
+
+  User asked for a one-tap "training is done" button. The pattern already
+  existed in NextTrainingCard + ProgramCalendar via `buildLogEntryFromSession`
+  + `source: 'sporeus-plan'`, but the Elite Program SamplePhase rows had
+  no completion UI — the most-viewed plan surface for athletes following
+  Mission #1 was read-only.
+
+  • New `<MarkDoneCell>` inline in EliteProgramCard for each non-rest
+    sample-week row. Click → `buildLogEntryFromSession(d, todayISO, sport,
+    profile)` with appended `doneAt: <ISO>` → prepends to log via setLog.
+    Dedupes by `(date, sport, source='sporeus-plan')`. Bilingual EN ✓
+    DONE / TR ✓ YAPILDI; aria-label is "Mark this session done today" /
+    "Bu seansı bugün tamamlandı işaretle."
+
+  • Done state replaces button with a green chip `✓ done · HH:MM` (or
+    `✓ tamamlandı · HH:MM`) — same flex slot, no layout shift.
+
+  • Triathlon multi-discipline rows respect the row's `discipline` field:
+    a swim row in a tri week logs as `sport: 'swim'`, not the program's
+    primary sport.
+
+  • Back-compat: when `setLog` prop is missing (old callers, tests with
+    no DataContext), the button silently doesn't render. EliteProgramCard
+    now accepts `setLog` prop; Dashboard.jsx + ProgramView.jsx wire it
+    via DataContext.useData(). 121 existing EliteProgramCard tests still
+    pass; 5 new tests cover render-with/without-setLog, click writes
+    correct log shape, dedupe shows chip, TR aria-label.
+
+  • Coach surface inherits for free: athlete `training_log` syncs through
+    Supabase, so the doneAt + planRef metadata round-trip to coach view
+    without a schema change.
+
+  Files: src/components/dashboard/EliteProgramCard.jsx (MarkDoneCell +
+  SamplePhase wiring), src/components/Dashboard.jsx (setLog plumbing),
+  src/components/ProgramView.jsx (setLog plumbing),
+  src/components/__tests__/EliteProgramCard.test.jsx (5 new tests).
+
+  CITATION: Sporeus internal — same idiom as NextTrainingCard "DID THIS"
+  v8.x. No new sport-science cite required.
+
+---
+
 ## v9.45.0 — 2026-05-10 — CoachingInsightsDigest healthy fixture rebalanced
 
   Found while investigating CI deploy failure on v9.42-v9.44 ships: the

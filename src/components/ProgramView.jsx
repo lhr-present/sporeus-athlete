@@ -13,7 +13,7 @@ const ProgramCalendar   = lazy(() => import('./dashboard/ProgramCalendar.jsx'))
 const RaceCountdownBanner = lazy(() => import('./dashboard/RaceCountdownBanner.jsx'))
 
 export default function ProgramView() {
-  const { log, profile } = useData()
+  const { log, profile, setLog } = useData()
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -83,7 +83,7 @@ export default function ProgramView() {
       <div data-elite-program-card>
         <ErrorBoundary>
           <Suspense fallback={null}>
-            <EliteProgramCard log={log} profile={profile} />
+            <EliteProgramCard log={log} profile={profile} setLog={setLog} />
           </Suspense>
         </ErrorBoundary>
       </div>

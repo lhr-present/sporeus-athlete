@@ -27,6 +27,7 @@ import { criticalSwimSpeed, cssToSecPer100m } from '../../lib/sport/swimming.js'
 import { findRecentBest } from '../../lib/athlete/recentBest.js'
 import { getPlanLifecycle } from '../../lib/athlete/planLifecycle.js'
 import { buildPlanAdherence, buildReprojectionSuggestion } from '../../lib/athlete/planAdherence.js'
+import { buildLogEntryFromSession } from '../../lib/athlete/quickLogFromSession.js'
 
 const STORAGE_KEY = 'sporeus-eliteProgram'
 const START_KEY = 'sporeus-eliteProgramStart'
@@ -689,7 +690,73 @@ function WeeklyTSSChart({ weeklyTSS, phases, isTR }) {
   )
 }
 
-function SamplePhase({ phase, days, isTR, defaultOpen }) {
+// v9.46.0 — Mark-done cell for sample-week rows. Mirrors the NextTrainingCard
+// "DID THIS" button: builds a log entry via buildLogEntryFromSession with
+// today's date, prepends to log, then renders a green "✓ done · HH:MM"
+// chip in the same slot. Dedupes by (date, sport, source='sporeus-plan').
+// Skipped on Rest days (durationMin === 0) since there's nothing to log.
+function MarkDoneCell({ session, sport, isTR, log, setLog, profile }) {
+  const dur = Number(session?.durationMin || session?.duration || 0)
+  if (!dur) return null
+  // v9.46.0 — when no setLog handler is wired (e.g., legacy callers or tests
+  // without DataContext), render a static "—" placeholder rather than a dead
+  // button. Athlete still sees the row content; the action just isn't surfaced.
+  if (typeof setLog !== 'function') return null
+  const todayISO = (() => {
+    const d = new Date()
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+  })()
+  const safeLog = Array.isArray(log) ? log : []
+  const effectiveSport = (typeof session?.discipline === 'string' && session.discipline !== 'rest')
+    ? session.discipline.toLowerCase()
+    : (sport || 'run').toLowerCase()
+  const alreadyLogged = safeLog.some(e =>
+    e?.date === todayISO
+    && e?.source === 'sporeus-plan'
+    && (e?.sport || '').toLowerCase() === effectiveSport
+  )
+  if (alreadyLogged) {
+    const matchEntry = safeLog.find(e => e?.date === todayISO && e?.source === 'sporeus-plan')
+    const ts = matchEntry?.doneAt ? new Date(matchEntry.doneAt) : null
+    const hhmm = ts ? `${String(ts.getHours()).padStart(2, '0')}:${String(ts.getMinutes()).padStart(2, '0')}` : null
+    return (
+      <span style={{ flex: '0 0 auto', color: '#28a745', fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em' }}>
+        ✓ {isTR ? 'tamamlandı' : 'done'}{hhmm ? ` · ${hhmm}` : ''}
+      </span>
+    )
+  }
+  return (
+    <button
+      type="button"
+      data-mark-done
+      aria-label={isTR ? 'Bu seansı bugün tamamlandı işaretle' : 'Mark this session done today'}
+      onClick={() => {
+        const entry = buildLogEntryFromSession(session, todayISO, effectiveSport, profile)
+        if (!entry) return
+        entry.doneAt = new Date().toISOString()
+        setLog([entry, ...safeLog])
+      }}
+      style={{
+        flex: '0 0 auto',
+        minHeight: '24px',
+        padding: '2px 8px',
+        background: '#28a745',
+        color: '#fff',
+        border: 'none',
+        borderRadius: 3,
+        fontFamily: 'inherit',
+        fontSize: '9px',
+        fontWeight: 700,
+        letterSpacing: '0.04em',
+        cursor: 'pointer',
+      }}
+    >
+      ✓ {isTR ? 'YAPILDI' : 'DONE'}
+    </button>
+  )
+}
+
+function SamplePhase({ phase, days, isTR, defaultOpen, sport, log, setLog, profile }) {
   const [open, setOpen] = useState(!!defaultOpen)
   const lbl = PHASE_LABEL[phase]?.[isTR ? 'tr' : 'en'] || phase
   return (
@@ -706,12 +773,13 @@ function SamplePhase({ phase, days, isTR, defaultOpen }) {
             const z = zoneSummary(d.zones)
             return (
               <div key={i} style={{ borderBottom: '1px dashed var(--border)', padding: '3px 0' }}>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
                   <span style={{ flex: '0 0 36px', color: 'var(--text)' }}>{d.day || `D${i + 1}`}</span>
                   <span style={{ flex: '1 1 90px' }}>{dayIntent(d.intent, isTR)}</span>
                   <span style={{ flex: '0 0 56px' }}>{dur != null ? `${dur}${isTR ? 'dk' : 'min'}` : ''}</span>
                   {z ? <span style={{ flex: '0 0 90px', fontSize: '9px' }}>{z}</span> : null}
                   {pace ? <span style={{ flex: '0 0 70px' }}>{pace}</span> : null}
+                  <MarkDoneCell session={d} sport={sport} isTR={isTR} log={log} setLog={setLog} profile={profile} />
                 </div>
                 {d.strength ? (
                   <div style={{ display: 'flex', gap: '6px', marginTop: '2px', paddingLeft: '36px', fontSize: '9px', color: '#a85d00' }}>
@@ -1027,7 +1095,7 @@ function AdherenceSection({ adherence, reprojection, onReproject, isTR }) {
   )
 }
 
-export default function EliteProgramCard({ log: _log = [], profile: _profile = {} }) {
+export default function EliteProgramCard({ log: _log = [], profile: _profile = {}, setLog }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
   const [persisted, setPersisted] = useLocalStorage(STORAGE_KEY, null)
@@ -1555,7 +1623,7 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
       {result.sampleWeeks ? (
         <div style={{ marginBottom: '10px' }}>
           {['Base', 'Build', 'Peak', 'Taper'].map((p, i) => (
-            <SamplePhase key={p} phase={p} days={result.sampleWeeks[p]} isTR={isTR} defaultOpen={i === 0} />
+            <SamplePhase key={p} phase={p} days={result.sampleWeeks[p]} isTR={isTR} defaultOpen={i === 0} sport={result.sport || persisted?.input?.sport} log={_log} setLog={setLog} profile={_profile} />
           ))}
         </div>
       ) : null}

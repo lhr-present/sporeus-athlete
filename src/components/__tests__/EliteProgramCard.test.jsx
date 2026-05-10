@@ -1470,3 +1470,88 @@ describe('EliteProgramCard — form UX hardening (v9.26.0)', () => {
     expect(saved.form.raceDate).toBe('2026-08-15')
   })
 })
+
+// ── v9.46.0 — Mark Done button on Elite Program sample weeks ─────────────
+describe('EliteProgramCard — Mark Done button on sample-week rows', () => {
+  it('renders ✓ DONE button on non-rest sample-week sessions when setLog is wired', () => {
+    const setLog = vi.fn()
+    render(
+      <LangCtx.Provider value={{ t: k => k, lang: 'en', setLang: () => {} }}>
+        <EliteProgramCard log={[]} profile={{}} setLog={setLog} />
+      </LangCtx.Provider>
+    )
+    fillFormAndSubmit({ sport: 'run', curTime: '50:00', tgtTime: '47:00', raceDate: '2026-08-15' })
+    // Default-open phase is Base; expect at least one DONE button on a non-rest day
+    const buttons = screen.getAllByRole('button', { name: /Mark this session done today/i })
+    expect(buttons.length).toBeGreaterThan(0)
+  })
+
+  it('does NOT render the button when setLog is missing (back-compat)', () => {
+    render(
+      <LangCtx.Provider value={{ t: k => k, lang: 'en', setLang: () => {} }}>
+        <EliteProgramCard log={[]} profile={{}} />
+      </LangCtx.Provider>
+    )
+    fillFormAndSubmit({ sport: 'run', curTime: '50:00', tgtTime: '47:00', raceDate: '2026-08-15' })
+    const buttons = screen.queryAllByRole('button', { name: /Mark this session done today/i })
+    expect(buttons.length).toBe(0)
+  })
+
+  it('clicking ✓ DONE calls setLog with a session entry carrying source=sporeus-plan + doneAt', () => {
+    const setLog = vi.fn()
+    render(
+      <LangCtx.Provider value={{ t: k => k, lang: 'en', setLang: () => {} }}>
+        <EliteProgramCard log={[]} profile={{}} setLog={setLog} />
+      </LangCtx.Provider>
+    )
+    fillFormAndSubmit({ sport: 'run', curTime: '50:00', tgtTime: '47:00', raceDate: '2026-08-15' })
+    const button = screen.getAllByRole('button', { name: /Mark this session done today/i })[0]
+    fireEvent.click(button)
+    expect(setLog).toHaveBeenCalledTimes(1)
+    const [newLog] = setLog.mock.calls[0]
+    expect(Array.isArray(newLog)).toBe(true)
+    expect(newLog[0].source).toBe('sporeus-plan')
+    expect(newLog[0].doneAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+    expect(newLog[0].date).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(newLog[0].sport).toBeTruthy()
+  })
+
+  it('shows "✓ done" chip instead of button when a sporeus-plan entry exists today', () => {
+    const setLog = vi.fn()
+    const today = new Date()
+    const todayISO = `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, '0')}-${String(today.getUTCDate()).padStart(2, '0')}`
+    render(
+      <LangCtx.Provider value={{ t: k => k, lang: 'en', setLang: () => {} }}>
+        <EliteProgramCard
+          log={[{ id: 1, date: todayISO, source: 'sporeus-plan', sport: 'run', type: 'easy', duration: 45 }]}
+          profile={{}}
+          setLog={setLog}
+        />
+      </LangCtx.Provider>
+    )
+    fillFormAndSubmit({ sport: 'run', curTime: '50:00', tgtTime: '47:00', raceDate: '2026-08-15' })
+    // At least one row shows the done chip (matches at least one of the run sessions today)
+    const doneChips = screen.getAllByText(/✓ done/i)
+    expect(doneChips.length).toBeGreaterThan(0)
+  })
+
+  it('button aria-label is TR-translated when lang=tr (Bu seansı bugün tamamlandı işaretle)', () => {
+    const setLog = vi.fn()
+    // Pre-seed program persistence + lang as TR; bypass form (which is also bilingual)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      input: {
+        sport: 'run',
+        currentPR: { distanceM: 10000, timeSec: 3000 },
+        targetPR: { distanceM: 10000, timeSec: 2820 },
+        raceDate: '2026-08-15',
+      },
+    }))
+    render(
+      <LangCtx.Provider value={{ t: k => k, lang: 'tr', setLang: () => {} }}>
+        <EliteProgramCard log={[]} profile={{}} setLog={setLog} />
+      </LangCtx.Provider>
+    )
+    const trButtons = screen.queryAllByRole('button', { name: /Bu seansı bugün tamamlandı işaretle/i })
+    expect(trButtons.length).toBeGreaterThan(0)
+  })
+})

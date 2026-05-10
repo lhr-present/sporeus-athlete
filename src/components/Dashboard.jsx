@@ -141,7 +141,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
   const [lang]       = useLocalStorage('sporeus-lang', 'en')
   const [plan]       = useLocalStorage('sporeus-plan', null)
   const [planStatus] = useLocalStorage('sporeus-plan-status', {})
-  const { recovery, injuries, testResults, raceResults, profile } = useData()
+  const { recovery, injuries, testResults, raceResults, profile, setLog } = useData()
   const [myCoach]        = useLocalStorage('sporeus-my-coach', null)
   const [stravaToken]    = useLocalStorage('sporeus-strava-token', '')
   const [_confirmRecord]  = useLocalStorage(CONFIRM_LS_KEY, null)
@@ -360,7 +360,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
         <div data-elite-program-card>
           <ErrorBoundary>
             <Suspense fallback={null}>
-              <EliteProgramCard log={log} profile={profile} />
+              <EliteProgramCard log={log} profile={profile} setLog={setLog} />
             </Suspense>
           </ErrorBoundary>
         </div>
@@ -531,7 +531,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       <div data-elite-program-card>
         <ErrorBoundary>
           <Suspense fallback={null}>
-            <EliteProgramCard log={log} profile={profile} />
+            <EliteProgramCard log={log} profile={profile} setLog={setLog} />
           </Suspense>
         </ErrorBoundary>
       </div>
