@@ -4,6 +4,77 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.52.0 — 2026-05-10 — % of WR everywhere + DPS bands + DF norm delta
+
+  Round 3 from this session's agent-driven push. Three parallel agents
+  scoped: Agent A (% of WR placement), Agent B (DPS / drive:recovery /
+  DF norm science), Agent C (PLAN-mode insertion point). Drive:recovery
+  intentionally NOT shipped — Agent B caveat: ±0.2 sensor-dependent.
+
+  ### (1) % of WR strip in Mission #1 PLAN mode
+
+  After clicking Generate, the header strip now reads:
+  `current 50.3% → target 58.7% · % OF WR · DR ORANI`
+  alongside the existing CURRENT→TARGET / IMPROVEMENT / WEEKS chips.
+
+  Computed as `WR_time / your_time × 100` so faster = higher %, parallels
+  the W/kg "% of best" framing rowers already think in. Resolves via
+  `getReference(sport, distanceM)` from `sportsRecords.js` (shipped
+  v9.50.0). Rowing direct-2k (`distanceM === 0`) substitutes 2000m so
+  the chip resolves; bike direct-FTP gracefully omits.
+
+  ### (2) % of 2k WR in RowingMetricsCard prediction strip
+
+  Third chip alongside VO2max + W/kg in the 2k prediction block. Uses
+  predicted 2k vs Concept2 men's WR (5:35.8). Footer citation row
+  updated to credit the source.
+
+  ### (3) DPS class bands on m/stroke
+
+  RowingMetricsCard "m/stroke" display (existing, computes `distance /
+  strokes`) now color-bands per Kleshnev 2016 + Nolte 2005 single-scull
+  on-water norms:
+
+  ```
+  ≥10.8   Elite          (gold)
+  ≥9.5    University     (orange)
+  ≥8.0    Club           (green)
+  ≥6.5    Recreational   (blue)
+  <6.5    Novice         (grey)
+  ```
+
+  Label renamed to `DPS (m/stroke)` to match coaching terminology.
+  Caveat acknowledged in comments: Kleshnev 2016 — DPS without speed
+  is meaningless. Surfacing it works because split is rendered in the
+  same row as context.
+
+  ### (4) Drag factor delta vs class norm
+
+  When `profile.dragFactor` is set, RowingMetricsCard now shows:
+  `DF 100 · below norm · HW male norm 130-140`
+
+  Class derivation uses `gender + weight` per Concept2 cutoffs:
+  HW men (>72.5 kg) 130-140, LW men 115-130, HW women (>59 kg) 120-130,
+  LW women 110-125. Falls back to "Concept2 standard 120-140" when
+  gender or weight unset. In-range → green, below → blue, above → red
+  (Kleshnev RBN Vol 5 2005: above norm = stroke-shortening / lumbar
+  overload risk).
+
+  ### Files
+
+  • Modified: `src/components/dashboard/EliteProgramCard.jsx`
+    (pctOfWR helper + PR strip new flex item)
+  • Modified: `src/components/dashboard/RowingMetricsCard.jsx`
+    (getReference import, dpsBand, dfClass useMemo, %WR chip,
+    drag-factor callout)
+
+  Tests: 9684/9684 pass (390 files). Lint clean. Build clean.
+
+  Depends on: v9.50.0 (sportsRecords), v9.51.0 (dragFactor profile
+  field, RowingMetricsCard W/kg base layout).
+
+---
+
 ## v9.51.0 — 2026-05-10 — Rowing flagship round 1: 7-zone ZoneCalc + drag factor + SPM targets + W/kg
 
   Round 2 of the rowing-as-best-detailed-feature ask. Three parallel

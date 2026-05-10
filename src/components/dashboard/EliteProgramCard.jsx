@@ -1567,6 +1567,22 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
   // v8.96.0 — when targetPR was synthesized by the orchestrator, fall back to resolvedTargetPR
   const effectiveTargetPR = persisted.input?.targetPR ?? result?.resolvedTargetPR ?? null
   const tgtStr = fmtSec(effectiveTargetPR?.timeSec)
+  // v9.52.0 — % of WR. For rowing direct-2k (distanceM === 0), substitute 2000m
+  // so the chip resolves; for bike direct-FTP we skip — no time-based WR.
+  const sport = persisted.input?.sport
+  const curPR = persisted.input?.currentPR
+  const tgtPR = effectiveTargetPR
+  const pctOfWR = (pr) => {
+    if (!sport || !pr || !pr.timeSec) return null
+    let dist = pr.distanceM
+    if (sport === 'rowing' && (!dist || dist === 0)) dist = 2000
+    if (!dist) return null
+    const ref = getReference(sport, dist)
+    if (!ref || !ref.wr) return null
+    return Math.round((ref.wr / pr.timeSec) * 1000) / 10
+  }
+  const curPctWR = pctOfWR(curPR)
+  const tgtPctWR = pctOfWR(tgtPR)
   const synthetic = result.synthetic || null
   const isGeneralBuild = !!(synthetic && synthetic.targetPR && synthetic.raceDate)
   const generalBuildSuffix = isGeneralBuild
@@ -1710,6 +1726,18 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
             WEEKS<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>HAFTA
           </div>
         </div>
+        {curPctWR != null ? (
+          <div style={{ flex: '1 1 100px' }} aria-label={isTR ? 'Dünya rekoruna oran' : 'Percent of world record'}>
+            <div style={{ ...S.mono, fontSize: '15px', fontWeight: 700, color: 'var(--text)', lineHeight: 1.2 }}>
+              {curPctWR}%
+              {tgtPctWR != null ? <span style={{ color: 'var(--muted)' }}> → </span> : null}
+              {tgtPctWR != null ? `${tgtPctWR}%` : ''}
+            </div>
+            <div style={{ ...S.mono, fontSize: '9px', color: 'var(--muted)', letterSpacing: '0.06em', marginTop: '2px' }}>
+              {isTR ? 'DR ORANI' : '% OF WR'}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {/* v9.32.0 — Plan freshness banner. Detects when the saved plan's

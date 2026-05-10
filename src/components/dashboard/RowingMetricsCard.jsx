@@ -8,6 +8,7 @@ import {
   rowingEfficiencyFactor,
   predict2000m, concept2VO2max,  // ADD THESE
 } from '../../lib/sport/rowing.js'
+import { getReference } from '../../lib/sport/sportsRecords.js'
 
 const ZONE_COLORS = {
   recovery:  '#4caf50',
@@ -29,6 +30,35 @@ export default function RowingMetricsCard({ log = [], profile = {} }) {
   }, [log])
 
   const last = rowingData[0]
+
+  // v9.52.0 — Drag factor vs class norm. Concept2 + Kleshnev RBN Vol 5 (2005):
+  //   HW male  (>72.5kg):    130-140
+  //   LW male  (≤72.5kg):    115-130
+  //   HW female (>59kg):     120-130
+  //   LW female (≤59kg):     110-125
+  // Below norm = under-loaded for class; above = stroke-shortening / lumbar
+  // overload. In-range = green. Skipped entirely when dragFactor unset.
+  const dfClass = useMemo(() => {
+    const df = parseFloat(profile?.dragFactor || 0)
+    if (!df) return null
+    const wt = parseFloat(profile?.weight || 0)
+    const gender = profile?.gender
+    let norm = { min: 120, max: 140, label: { en: 'Concept2 standard', tr: 'Concept2 standart' } }
+    if (gender === 'male' && wt > 0) {
+      norm = wt > 72.5
+        ? { min: 130, max: 140, label: { en: 'HW male norm', tr: 'Ağır sıklet erkek normu' } }
+        : { min: 115, max: 130, label: { en: 'LW male norm', tr: 'Hafif sıklet erkek normu' } }
+    } else if (gender === 'female' && wt > 0) {
+      norm = wt > 59
+        ? { min: 120, max: 130, label: { en: 'HW female norm', tr: 'Ağır sıklet kadın normu' } }
+        : { min: 110, max: 125, label: { en: 'LW female norm', tr: 'Hafif sıklet kadın normu' } }
+    }
+    let status, color
+    if (df < norm.min)      { status = { en: 'below norm',  tr: 'norm altı'    }; color = '#4a90d9' }
+    else if (df > norm.max) { status = { en: 'above norm',  tr: 'norm üstü'    }; color = '#e03030' }
+    else                    { status = { en: 'in range',    tr: 'aralık içi'  }; color = '#5bc25b' }
+    return { df, norm, status, color }
+  }, [profile])
 
   // 2000m prediction and VO2max — hoisted before early return to satisfy Rules of Hooks
   const pred2k = useMemo(() => {
@@ -58,9 +88,13 @@ export default function RowingMetricsCard({ log = [], profile = {} }) {
       else if (wkg >= 3.5) wkgBand = { en: 'Competitive', tr: 'Rekabetçi',  color: '#4a90d9' }
       else                 wkgBand = { en: 'Recreational', tr: 'Rekreasyon', color: '#888' }
     }
+    // v9.52.0 — % of 2k WR. Predicted 2k vs WR (sportsRecords rowing 2000 = 5:35.8).
+    // Note: ratio is WR/predicted so faster=higher percent (WR-grade).
+    const wrRef = getReference('rowing', 2000)
+    const pctWR = wrRef ? Math.round((wrRef.wr / predicted) * 1000) / 10 : null
     const mm = Math.floor(predicted / 60)
     const ss = String(Math.round(predicted % 60)).padStart(2, '0')
-    return { timeStr: `${mm}:${ss}`, isProjection: Math.abs(distM - 2000) >= 200, vo2, wkg, wkgBand }
+    return { timeStr: `${mm}:${ss}`, isProjection: Math.abs(distM - 2000) >= 200, vo2, wkg, wkgBand, pctWR }
   }, [last, profile])
 
   if (!last) return (
@@ -78,6 +112,19 @@ export default function RowingMetricsCard({ log = [], profile = {} }) {
   const strEff = strokeEfficiency(last.distance, last.strokes)
   const srClass = last.avg_spm ? classifyStrokeRate(last.avg_spm) : null
   const ef = rowingEfficiencyFactor(last.distance, last.duration, last.avg_hr)
+
+  // v9.52.0 — DPS (distance per stroke) class bands per Kleshnev 2016
+  // (Biomechanics of Rowing) + Nolte 2005 (Rowing Faster). Single-scull on-
+  // water norms; erg DPS runs ~1m higher per zone. Caveat (Kleshnev 2016):
+  // DPS only meaningful given speed — same DPS at low velocity = paddling.
+  // We surface it anyway because the split is rendered alongside.
+  const dpsBand = strEff
+    ? (strEff >= 10.8 ? { en: 'Elite',        tr: 'Elit',          color: '#f5c542' }
+      : strEff >= 9.5  ? { en: 'University',  tr: 'Üniversite',    color: '#ff6600' }
+      : strEff >= 8    ? { en: 'Club',        tr: 'Kulüp',         color: '#5bc25b' }
+      : strEff >= 6.5  ? { en: 'Recreational', tr: 'Rekreasyon',   color: '#4a90d9' }
+      :                  { en: 'Novice',       tr: 'Acemi',         color: '#888' })
+    : null
 
   const cardStyle = {
     ...S.card,
@@ -133,9 +180,12 @@ export default function RowingMetricsCard({ log = [], profile = {} }) {
 
         {strEff && (
           <div>
-            <div style={labelStyle}>{t('rowingStrokeEff') || 'm/stroke'}</div>
-            <div style={valueStyle}>{strEff.toFixed(1)}</div>
-            <div style={subStyle}>{last.strokes ? `${last.strokes} strokes` : ''}</div>
+            <div style={labelStyle}>{t('rowingStrokeEff') || 'DPS (m/stroke)'}</div>
+            <div style={{ ...valueStyle, color: dpsBand?.color || valueStyle.color }}>{strEff.toFixed(1)}</div>
+            <div style={{ ...subStyle, color: dpsBand?.color || subStyle.color, fontWeight: 600 }}>
+              {dpsBand ? (dpsBand[lang] || dpsBand.en) : ''}
+              {last.strokes ? ` · ${last.strokes} strokes` : ''}
+            </div>
           </div>
         )}
 
@@ -147,6 +197,31 @@ export default function RowingMetricsCard({ log = [], profile = {} }) {
           </div>
         )}
       </div>
+
+      {/* v9.52.0 — Drag factor vs class norm */}
+      {dfClass && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <span style={{ fontSize: 11, color: 'var(--muted)', fontFamily: "'IBM Plex Mono', monospace" }}>
+            {lang === 'tr' ? 'Drag faktörü' : 'Drag factor'}
+          </span>
+          <span style={{
+            display: 'inline-block',
+            padding: '2px 10px',
+            borderRadius: 4,
+            fontSize: 12,
+            fontFamily: "'IBM Plex Mono', monospace",
+            fontWeight: 600,
+            background: dfClass.color + '22',
+            color: dfClass.color,
+            border: `1px solid ${dfClass.color}55`,
+          }}>
+            DF {dfClass.df} · {dfClass.status[lang] || dfClass.status.en}
+            <span style={{ opacity: 0.7, fontWeight: 400 }}>
+              {' · '}{dfClass.norm.label[lang] || dfClass.norm.label.en} {dfClass.norm.min}-{dfClass.norm.max}
+            </span>
+          </span>
+        </div>
+      )}
 
       {/* Stroke rate zone badge */}
       {srClass && (
@@ -216,9 +291,22 @@ export default function RowingMetricsCard({ log = [], profile = {} }) {
                 </div>
               </div>
             )}
+            {pred2k.pctWR != null && (
+              <div>
+                <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: "'IBM Plex Mono',monospace", textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>
+                  % of 2k WR
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', fontFamily: "'IBM Plex Mono',monospace", lineHeight: 1.1 }}>
+                  {pred2k.pctWR}%
+                </div>
+                <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: "'IBM Plex Mono',monospace", marginTop: 2 }}>
+                  {lang === 'tr' ? '5:35.8 DR' : 'WR 5:35.8'}
+                </div>
+              </div>
+            )}
           </div>
           <div style={{ fontSize: 9, color: '#333', marginTop: 8 }}>
-            ℹ Paul (1969) · Concept2 VO2max formula · Mikulic 2008 / Kerr 2007 W/kg bands
+            ℹ Paul (1969) · Concept2 VO2max formula · Mikulic 2008 / Kerr 2007 W/kg bands · Concept2 WR
           </div>
         </div>
       )}
