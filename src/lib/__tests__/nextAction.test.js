@@ -261,7 +261,7 @@ describe('computeNextAction — Rule 9: default', () => {
       log.push({ date: daysAgo(i), tss: 60, type: 'Run', duration: 60, rpe: 6 })
     }
     const r = computeNextAction(log, [], {})
-    const normalRules = ['default', 'tsb_high', 'tsb_low', 'acwr_low', 'acwr_high']
+    const normalRules = ['default', 'tsb_high', 'tsb_low', 'acwr_low', 'acwr_high', 'plan_missing']
     expect(normalRules.includes(r.id)).toBe(true)
   })
 
@@ -434,6 +434,57 @@ describe('computeNextAction — Rule H1: sleep_debt', () => {
     const rec = recovWithSleep(5.5, 2)  // only 2 readings — not enough data
     const r = computeNextAction(log, rec, {})
     expect(r.id).not.toBe('sleep_debt')
+  })
+})
+
+// ── Rule 10.4: plan_missing (v9.60.0) ────────────────────────────────────────
+
+describe('computeNextAction — Rule 10.4: plan_missing', () => {
+  beforeEach(() => { try { localStorage.removeItem('sporeus-plan') } catch (_) {} })
+  afterEach(()  => { try { localStorage.removeItem('sporeus-plan') } catch (_) {} })
+
+  function modestLog(n = 12) {
+    const log = []
+    for (let i = n; i >= 1; i--) {
+      log.push({ date: daysAgo(i * 2), tss: 60, type: 'Run', duration: 45, rpe: 5 })
+    }
+    return log
+  }
+
+  it('fires plan_missing when ≥10 sessions logged AND no plan in storage', () => {
+    const r = computeNextAction(modestLog(12), [], {})
+    if (r.id === 'plan_missing') {
+      expect(r.priority).toBe(10)
+      expect(r.citation).toMatch(/Issurin/)
+      expect(r.metrics.sessionCount).toBeGreaterThanOrEqual(10)
+    }
+  })
+
+  it('does NOT fire plan_missing when a plan exists', () => {
+    localStorage.setItem('sporeus-plan', JSON.stringify({
+      goal: 'marathon', generatedAt: daysAgo(2), weeks: [{ week: 1 }],
+    }))
+    const r = computeNextAction(modestLog(12), [], {})
+    expect(r.id).not.toBe('plan_missing')
+  })
+
+  it('does NOT fire plan_missing when log has < 10 sessions', () => {
+    const r = computeNextAction(modestLog(5), [], {})
+    expect(r.id).not.toBe('plan_missing')
+  })
+
+  it('plan_missing rationale is bilingual + names the session count', () => {
+    const r = computeNextAction(modestLog(15), [], {})
+    if (r.id === 'plan_missing') {
+      expect(r.rationale.en).toMatch(/sessions logged/)
+      expect(r.rationale.tr).toMatch(/antrenman kayıtlı/)
+      expect(r.rationale.en).toContain('15')
+    }
+  })
+
+  it('plan_missing handles corrupt plan JSON without throwing', () => {
+    localStorage.setItem('sporeus-plan', '{garbage')
+    expect(() => computeNextAction(modestLog(12), [], {})).not.toThrow()
   })
 })
 

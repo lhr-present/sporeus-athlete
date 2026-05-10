@@ -21,6 +21,19 @@ import { computeNextAction } from '../lib/nextAction.js'
 import { buildContingencyMap } from '../lib/athlete/eliteProgramSubstitutions.js'
 
 const WellnessSparkline = lazy(() => import('./charts/WellnessSparkline.jsx'))
+
+// v9.60.0 — Rule IDs that warrant downgrading a hard planned session to easy.
+// Kept module-scope so its identity stays stable across renders (so useMemo
+// below has the correct dependency contract).
+const SWAP_TRIGGER_RULES = [
+  'hrv_drift',         // Plews 2013 — autonomic strain
+  'tsb_deep',          // Banister 1991 — deep fatigue
+  'injury_risk_high',  // Hulin 2016 — composite risk model
+  'injury_window',     // Foster 1998 — predictive 14d risk window
+  'acwr_spike',        // Gabbett 2016 — ACWR > 1.5
+  'acwr_high',         // Gabbett 2016 — ACWR 1.3–1.5
+  'wellness_poor',     // Meeusen 2013 — subjective ≤ 2/5
+]
 import { isRESTQDue } from '../lib/sport/restq.js'
 import { flushQueue } from '../lib/offlineQueue.js'
 import { calculateACWR, calculateConsistency, generateWeeklyRecap } from '../lib/trainingLoad.js'
@@ -77,16 +90,15 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
   const suggestion = useMemo(() => getSingleSuggestion(log, recovery, profile), [log, recovery, profile])
   const digest     = useMemo(() => generateDailyDigest(log, recovery, profile), [log, recovery, profile])
 
-  // v9.56.0 — HRV/TSB-flagged session-swap recommendation. When today's
-  // planned session is hard AND nextAction signals autonomic strain
-  // (hrv_drift, Plews 2013) or deep fatigue (tsb_deep, Banister 1991), surface
-  // a "downgrade to easy" banner on the planned-session card. Existing
-  // "low readiness" banner at todayReadiness < 50 is a different (subjective)
-  // axis; this fires from objective HRV/TSB.
+  // v9.56.0 → v9.60.0 — Session-swap banner. When today's planned session is
+  // hard AND nextAction signals ANY hard-rest condition, surface a "downgrade
+  // to easy" banner on the planned card. Pre-v9.60.0 this only fired for 3 of
+  // 11+ rules — wellness_poor, injury_window, acwr_spike, acwr_high all
+  // bypassed it, so safety-critical fatigue rules failed to suggest swap.
   const nextAction = useMemo(() => computeNextAction(log, recovery, profile), [log, recovery, profile])
   const sessionSwapFlag = useMemo(() => {
     if (!plannedSession) return null
-    if (!nextAction || !['hrv_drift', 'tsb_deep', 'injury_risk_high'].includes(nextAction.id)) return null
+    if (!nextAction || !SWAP_TRIGGER_RULES.includes(nextAction.id)) return null
     const t = String(plannedSession.type || '').toLowerCase()
     const isHard = (plannedSession.rpe ?? 0) >= 7
       || /vo2|interval|threshold|race.?pace|tempo|hard/i.test(t)

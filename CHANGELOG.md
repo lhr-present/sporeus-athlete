@@ -4,6 +4,122 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.60.0 — 2026-05-11 — Mission-flow bug bash (race date, plan_missing, Concept2 dispatch, swap scope)
+
+  User reported the app had "many bugs and not working functions" with the
+  core mission being: physiological data + race target → yearly plan →
+  daily answer. Round 11 launched 3 deep-dive agents to find broken
+  reality (not enhancements); after verification, 5 mission-critical bugs
+  shipped. Agent A's "race date never persisted" claim was a false
+  positive — RaceReadiness.jsx uses the proper setProfile path — but the
+  other 4 findings reproduced cleanly.
+
+  ### (1) Onboarding never collected race date (Agent A #2)
+
+  Pre-fix `Onboarding.jsx` step 7 asked for a race-distance *category*
+  ("Half Marathon", "5k") and an optional "weeks until event" slider, but
+  no calendar date. `finish()` at L250 passed only `goal:data.goal` to
+  onFinish. Result: a fresh user finished onboarding with `profile.raceDate`
+  undefined; the taper engine, race readiness, and nextAction race rules
+  all silently no-op'd.
+
+  Now step 7 has a `<input type="date">` field bound bidirectionally with
+  the weeks slider — picking a date sets weeks, moving the slider sets
+  date. `finish()` passes both `raceDate` and `nextRaceDate` to onFinish
+  so all 9 downstream read sites see consistent data.
+
+  ### (2) raceDate vs nextRaceDate field-name collision (Agent A #3)
+
+  9 read sites disagreed about which field name to read:
+  - `nextAction.js:96` → only `nextRaceDate`
+  - `intelligence.js:520` → only `raceDate`
+  - `TodayView.jsx:173,192,1294` → only `raceDate`
+  - `RaceWeekProtocolCard.jsx:38`, `RaceReadinessCard.jsx:15` → only `raceDate`
+  - `dailyPrescription.js:121`, `runningRaceReadiness.js:46`,
+    `trainingPhase.js:20`, `taperAdvisor.js:56` → fallbacks in mixed orders
+
+  When a profile came from Supabase with only one field set, half the
+  system went blind. Race-week countdown could show on TodayView while
+  the daily answer (computeNextAction) saw no race.
+
+  Fix is upstream: `sanitizeProfile()` in `validate.js` now mirrors both
+  fields. If either input is valid, both outputs hold the same normalized
+  ISO date. New exported `getProfileRaceDate(profile)` helper is the
+  single source of truth — falls back internally so any read site can
+  switch to it incrementally without breaking.
+
+  ### (3) Concept2 CSV import dispatch was dead code (Agents B + C agreed)
+
+  v9.58.0 shipped `parseConcept2CSV(text)` and `isConcept2CSV(text)` in
+  `fileImport.js`. The detector was never imported by `TrainingLog.jsx`,
+  so the CSV upload handler `handleCSVImport` (L335) always called
+  `parseBulkCSV`. Rowers' Concept2 exports silently fell through to the
+  generic parser, losing stroke rate / split pace / drag factor.
+
+  Now `TrainingLog.jsx:61` imports `parseConcept2CSV, isConcept2CSV` and
+  `handleCSVImport` dispatches on `isConcept2CSV(text)` before falling
+  back to `parseBulkCSV`. Source tag (`'concept2'` vs `'sporeus'`)
+  attached to the preview for downstream UI.
+
+  ### (4) New plan_missing rule in nextAction.js (Agent A #6)
+
+  Pre-fix there was `plan_stale` (fires when plan is >14d old + CTL drift)
+  but nothing for "user has logged 50 sessions and never made a plan."
+  Daily answer fell through to Rule 11 (generic Z2) forever; the path to
+  plan generation never surfaced.
+
+  New Rule 10.4: when `localStorage.sporeus-plan` is empty AND log has
+  ≥10 sessions, fire `plan_missing` with bilingual rationale pointing
+  the athlete to the PLAN tab. Cites Issurin 2010 (block periodization
+  rationale for structured plans). Blue color (informational).
+
+  ### (5) SessionSwapFlag widened from 3 → 7 rule IDs (Agent A #7)
+
+  `TodayView.jsx:89` only triggered the "downgrade hard session to easy"
+  banner for `['hrv_drift', 'tsb_deep', 'injury_risk_high']`. Four
+  safety-critical rules — `wellness_poor`, `injury_window`, `acwr_spike`,
+  `acwr_high` — would fire as the day's nextAction but TodayView still
+  showed the planned hard session with no swap suggestion. Athlete sees
+  "rest mandatory" advice and a planned VO2max workout side-by-side.
+
+  Now `SWAP_TRIGGER_RULES` module constant lists all 7 rule IDs that
+  warrant the swap banner. Foster 1998 (injury window), Gabbett 2016
+  (ACWR), Meeusen 2013 (wellness) join Plews / Banister / Hulin.
+
+  ### Files
+
+  - `src/components/Onboarding.jsx` — date input + bidirectional weeks
+    binding; thread raceDate + nextRaceDate through `finish()`
+  - `src/lib/validate.js` — `normalizeRaceDate()` helper + mirror both
+    output fields in `sanitizeProfile`; new exported `getProfileRaceDate`
+  - `src/components/TrainingLog.jsx` — import + dispatch `isConcept2CSV`
+    in `handleCSVImport`
+  - `src/lib/nextAction.js` — new `plan_missing` rule (priority 10)
+    before `plan_stale`
+  - `src/components/TodayView.jsx` — `SWAP_TRIGGER_RULES` module constant
+    with 7 IDs
+  - `src/lib/__tests__/validate.test.js` — 9 tests for raceDate
+    normalization + `getProfileRaceDate`
+  - `src/lib/__tests__/nextAction.test.js` — 5 tests for `plan_missing`,
+    update normalRules array in default-rule test
+  - `package.json` — 11.59.0 → 11.60.0
+
+  Tests 9712/9712 (+13). Lint + build clean.
+
+  ### Bugs verified but deferred (not mission-flow critical)
+
+  - **NavyBF NaN trap** (Agent B): `Math.log10(waist-neck)` with neck >
+    waist returns NaN; propagates blank in profile UI
+  - **getSession() auth-rule violations** (Agent B): `reports.js:19`,
+    `DataExport.jsx:31`, `StravaConnect:28` — violate `onAuthStateChange`-
+    only rule. Real bug, not mission-flow critical.
+  - **Hardcoded EN/TR literals** (Agent C): scattered components bypass
+    `t()` helper. UX inconsistency only.
+  - **Agent B "double JSON.parse" claim** (useAppState.js:45) — likely
+    false positive; re-verify before fixing.
+
+---
+
 ## v9.59.0 — 2026-05-10 — iOS notch + CTL ramp safe-band + stale-plan rule
 
   Round 10. Three new audit agents (periodization / onboarding / mobile-PWA)

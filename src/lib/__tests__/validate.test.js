@@ -10,6 +10,7 @@ import {
   sanitizeDate,
   sanitizeLogEntry,
   sanitizeProfile,
+  getProfileRaceDate,
 } from '../validate.js'
 
 // ─── sanitizeString ───────────────────────────────────────────────────────────
@@ -395,5 +396,52 @@ describe('sanitizeProfile', () => {
     const longGoal = 'g'.repeat(250)
     const p = sanitizeProfile({ ...validProfile, goal: longGoal })
     expect(p.goal).toHaveLength(200)
+  })
+
+  // ─── v9.60.0: raceDate / nextRaceDate field normalization ──────────────────
+  it('mirrors raceDate to nextRaceDate when only raceDate is given', () => {
+    const p = sanitizeProfile({ ...validProfile, raceDate: '2026-09-15', nextRaceDate: undefined })
+    expect(p.raceDate).toBe('2026-09-15')
+    expect(p.nextRaceDate).toBe('2026-09-15')
+  })
+
+  it('mirrors nextRaceDate to raceDate when only nextRaceDate is given', () => {
+    const p = sanitizeProfile({ ...validProfile, raceDate: undefined, nextRaceDate: '2026-09-15' })
+    expect(p.raceDate).toBe('2026-09-15')
+    expect(p.nextRaceDate).toBe('2026-09-15')
+  })
+
+  it('raceDate takes precedence when both fields are valid but differ', () => {
+    const p = sanitizeProfile({ ...validProfile, raceDate: '2026-09-15', nextRaceDate: '2026-10-15' })
+    expect(p.raceDate).toBe('2026-09-15')
+    expect(p.nextRaceDate).toBe('2026-09-15')
+  })
+
+  it('both fields are undefined when neither input is valid', () => {
+    const p = sanitizeProfile({ ...validProfile, raceDate: 'not-a-date', nextRaceDate: undefined })
+    expect(p.raceDate).toBeUndefined()
+    expect(p.nextRaceDate).toBeUndefined()
+  })
+})
+
+// ─── v9.60.0: getProfileRaceDate helper ───────────────────────────────────────
+describe('getProfileRaceDate', () => {
+  it('returns raceDate when set', () => {
+    expect(getProfileRaceDate({ raceDate: '2026-09-15' })).toBe('2026-09-15')
+  })
+
+  it('falls back to nextRaceDate when raceDate is missing', () => {
+    expect(getProfileRaceDate({ nextRaceDate: '2026-09-15' })).toBe('2026-09-15')
+  })
+
+  it('returns null when neither field is set', () => {
+    expect(getProfileRaceDate({})).toBeNull()
+    expect(getProfileRaceDate(null)).toBeNull()
+    expect(getProfileRaceDate(undefined)).toBeNull()
+  })
+
+  it('returns null for malformed dates', () => {
+    expect(getProfileRaceDate({ raceDate: '2026' })).toBeNull()
+    expect(getProfileRaceDate({ nextRaceDate: 'tomorrow' })).toBeNull()
   })
 })

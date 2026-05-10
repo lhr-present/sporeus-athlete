@@ -131,8 +131,30 @@ export function sanitizeProfile(p) {
     hip:           numStr(p.hip, 30, 250),
     email:         str(p.email, 200),
     weeklyTssGoal: numStr(p.weeklyTssGoal, 0, 2000),
-    raceDate: (typeof p.raceDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(p.raceDate))
-      ? p.raceDate
-      : undefined,
+    // v9.60.0 — Race date is read from two field names across 9+ call sites
+    // (nextAction reads nextRaceDate; intelligence reads raceDate; etc.).
+    // Normalize: accept either input, mirror to both outputs so downstream
+    // readers see consistent state regardless of which field they check.
+    raceDate:     normalizeRaceDate(p.raceDate, p.nextRaceDate),
+    nextRaceDate: normalizeRaceDate(p.raceDate, p.nextRaceDate),
   }
+}
+
+function normalizeRaceDate(a, b) {
+  const re = /^\d{4}-\d{2}-\d{2}$/
+  const aOk = typeof a === 'string' && re.test(a)
+  const bOk = typeof b === 'string' && re.test(b)
+  if (aOk) return a
+  if (bOk) return b
+  return undefined
+}
+
+/**
+ * v9.60.0 — Single source of truth for "when is the athlete's next race?"
+ * Pure helper. Use this instead of `profile?.raceDate || profile?.nextRaceDate`
+ * to avoid the field-name disagreements that propagated through 9 read sites.
+ * @returns {string|null} ISO date YYYY-MM-DD or null
+ */
+export function getProfileRaceDate(profile) {
+  return normalizeRaceDate(profile?.raceDate, profile?.nextRaceDate) || null
 }

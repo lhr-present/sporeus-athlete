@@ -360,6 +360,32 @@ function evalRules(log, recovery, profile) {
     }
   }
 
+  // ── Rule 10.4: plan_missing — log has data but no plan exists ───────────────
+  // v9.60.0 — Closes the gap between "user has been logging" and "user has a
+  // structured plan to follow." Pre-fix, athletes with weeks of data but no
+  // generated plan got Rule 11 default (generic Z2 advice) forever — the
+  // daily answer never surfaced the plan-generation path.
+  try {
+    if (typeof localStorage !== 'undefined' && safeLog.length >= 10) {
+      const planRaw = localStorage.getItem('sporeus-plan')
+      const hasPlan = planRaw && JSON.parse(planRaw)?.weeks?.length > 0
+      if (!hasPlan) {
+        return {
+          id:        'plan_missing',
+          priority:  10,
+          action:    { en: 'Generate a training plan', tr: 'Antrenman planı oluştur' },
+          rationale: {
+            en: `${safeLog.length} sessions logged but no plan in place. Generate a phased plan (PLAN tab) to anchor daily targets to a race date and avoid drift.`,
+            tr: `${safeLog.length} antrenman kayıtlı ama plan yok. Günlük hedefleri yarış tarihine bağlamak için fazlı bir plan oluştur (PLAN sekmesi).`,
+          },
+          citation:  'Issurin 2010 (block periodization)',
+          color:     'blue',
+          metrics:   { ctl, atl, tsb, acwr, wellness, sessionCount: safeLog.length },
+        }
+      }
+    }
+  } catch (_) { /* localStorage / JSON parse failure — silent fall-through */ }
+
   // ── Rule 10.5: plan_stale — surface when prescribed plan is out of date ─────
   // v9.59.0 — Fires when sporeus-plan is >14d old AND athlete's CTL has drifted
   // ≥10pts above the plan's baseline (fitness exceeded what plan assumed).

@@ -58,7 +58,7 @@ function calcCtlDelta(log, session) {
   const delta = Math.round((ctlAfter - ctlBefore) * 10) / 10
   return { ctlBefore, ctlAfter, delta }
 }
-import { parseFIT, parseGPX, detectFileType, parseBulkCSV, deduplicateByDate, downloadCSVTemplate } from '../lib/fileImport.js'
+import { parseFIT, parseGPX, detectFileType, parseBulkCSV, deduplicateByDate, downloadCSVTemplate, parseConcept2CSV, isConcept2CSV } from '../lib/fileImport.js'
 import { uploadActivityFile } from '../lib/activityUpload.js'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import ActivityMap from './ActivityMap.jsx'
@@ -339,10 +339,14 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     setImportError(null)
     try {
       const text    = await file.text()
-      const parsed  = parseBulkCSV(text)
+      // v9.60.0 — Detect Concept2 ErgData CSV first; route to its dedicated
+      // parser so rowing-specific fields (Stroke Rate, Avg Pace, Drag Factor)
+      // survive. Falls through to generic parseBulkCSV for Sporeus-format CSVs.
+      const isC2    = isConcept2CSV(text)
+      const parsed  = isC2 ? parseConcept2CSV(text) : parseBulkCSV(text)
       const skipped = text.split('\n').length - 1 - parsed.length
       const deduped = deduplicateByDate(log, parsed)
-      setCsvPreview({ entries: deduped, allParsed: parsed, skipped: Math.max(0, skipped), duplicates: parsed.length - deduped.length })
+      setCsvPreview({ entries: deduped, allParsed: parsed, skipped: Math.max(0, skipped), duplicates: parsed.length - deduped.length, source: isC2 ? 'concept2' : 'sporeus' })
     } catch (err) {
       setImportError('CSV parse error: ' + err.message)
     }

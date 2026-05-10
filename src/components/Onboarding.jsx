@@ -36,7 +36,7 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
     // Original detailed fields
     name:'', sport:'Running', age:'', gender:'male',
     level:'Intermediate', maxhr:'', ftp:'', ltpace:'',
-    goal:'Half Marathon', weeks:'',
+    goal:'Half Marathon', weeks:'', raceDate:'',
   })
   const set = (k,v) => setData(d=>({...d,[k]:v}))
   const sports = ['Running','Cycling','Triathlon','Swimming','Rowing','Other']
@@ -219,9 +219,33 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
           </button>
         ))}
       </div>
+      <div style={{ marginBottom:'12px' }}>
+        <label style={LABEL}>RACE DATE (optional)</label>
+        <input
+          style={INPUT}
+          type="date"
+          value={data.raceDate}
+          min={new Date().toISOString().slice(0, 10)}
+          onChange={e => {
+            const v = e.target.value
+            set('raceDate', v)
+            if (v) {
+              const wks = Math.max(4, Math.min(52, Math.round((new Date(v) - new Date()) / (7 * 86400000))))
+              set('weeks', String(wks))
+            }
+          }}
+        />
+      </div>
       <div style={{ marginBottom:'16px' }}>
         <label style={LABEL}>WEEKS UNTIL EVENT (optional): {data.weeks||'—'}</label>
-        <input type="range" min="4" max="52" value={data.weeks||12} onChange={e=>set('weeks',e.target.value)} style={{ width:'100%', accentColor:'#ff6600' }}/>
+        <input type="range" min="4" max="52" value={data.weeks||12} onChange={e=>{
+          const wks = parseInt(e.target.value, 10)
+          set('weeks', e.target.value)
+          if (wks > 0) {
+            const d = new Date(); d.setDate(d.getDate() + wks * 7)
+            set('raceDate', d.toISOString().slice(0, 10))
+          }
+        }} style={{ width:'100%', accentColor:'#ff6600' }}/>
       </div>
       {/* ── Plan preview ── */}
       {(() => {
@@ -253,6 +277,10 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
       purpose:data.purpose, loggingMethod:data.loggingMethod,
       athleteLevel: data.level, trainDays: data.trainDays,
       maxhr:data.maxhr, ftp:data.ftp, threshold:data.ltpace, goal:data.goal,
+      // v9.60.0 — collect race date during onboarding so the daily answer +
+      // taper + race readiness engines have an anchor from day one
+      raceDate: data.raceDate || undefined,
+      nextRaceDate: data.raceDate || undefined,
     })
   }
 
