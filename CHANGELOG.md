@@ -4,6 +4,73 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.54.0 — 2026-05-10 — Starter estimator + Coggan W/kg cycling bands
+
+  Round 5. Three parallel agents scoped: Agent A (starter UX), Agent B
+  (Coggan W/kg table), Agent C (swim SR feasibility). Swim SR
+  intentionally NOT shipped — Agent C verdict: Toussaint 1990 shows
+  arm-length variance dominates over zone-to-zone variance, making SR
+  bands less robust than rowing/run/bike cadence.
+
+  ### (1) Starter estimator: "I HAVEN'T DONE THIS YET" toggle
+
+  After the SPORTS picker, a new bilingual toggle lets a complete
+  beginner skip the current PR input entirely. When on:
+  • Current PR input is hidden
+  • On submit, `currentPR` is synthesized from the BEGINNER reference
+    at the canonical distance for the chosen sport
+  • Display fields stay empty so the user isn't surprised by autofill
+
+  Available in standard time-based mode only — bike FTP-direct + swim
+  2-TT have their own input shapes that don't map to a beginner ref.
+  Auto-resets when the sport changes (a runner who has no 5K but DOES
+  have a 2K erg shouldn't have noCurrent silently persist after
+  switching to rowing).
+
+  Engine validator (`if (!currentPR) return null` at eliteProgram.js
+  line 822) is satisfied by synthesis — no engine change needed.
+
+  ### (2) Coggan W/kg cycling category bands
+
+  Bike FTP-direct mode now shows a live W/kg readout below each FTP
+  input, color-banded per Coggan's power profile chart published in
+  Allen, Coggan & McGregor 2019 *Training and Racing with a Power
+  Meter* (3rd ed., Ch. 3, pp. 51-54):
+
+  ```
+  Adult male           Adult female
+  ≥5.6  World class    ≥5.0
+  4.6+  Pro / Cat 1    4.1+  Pro
+  4.0+  Cat 2          3.5+  Cat 1
+  3.4+  Cat 3          3.0+  Cat 2
+  2.9+  Cat 4          2.5+  Cat 3
+  2.4+  Cat 5          2.1+  Cat 4
+  1.9+  Fair           1.6+  Fair
+  <1.9  Untrained      <1.6  Untrained
+  ```
+
+  Updates as the user types FTP. Hidden when profile.weight unset.
+  Female bands route via `profile.gender === 'female'`; default is
+  male.
+
+  Caveat (per Coggan power profile spec): these are FTP-only bands.
+  The full chart rates 5-sec / 1-min / 5-min / FTP separately to
+  distinguish rider phenotypes (sprinter vs climber vs all-rounder).
+  FTP-only is the defensible MVP; multi-duration is a future ship.
+
+  ### Files
+
+  • Modified: `src/components/dashboard/EliteProgramCard.jsx`
+    (noCurrent state + toggle, starterRef synthesis, coggsWkgBand
+    helper + render, profile threaded through FormMode props)
+
+  Tests: 9684/9684 pass (390 files). Lint clean. Build clean.
+
+  Depends on: v9.50.0 (sportsRecords + DEFAULT_DISTANCE_M map),
+  v9.51.0 (dragFactor / W/kg precedent for live-readout pattern).
+
+---
+
 ## v9.53.0 — 2026-05-10 — Live %-of-WR readout + run cadence + bike rpm parity
 
   Round 4 of the rowing-flagship + WR-target push. Two parallel agents

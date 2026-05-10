@@ -234,7 +234,36 @@ function ReferenceChips({ isTR, sport, distanceM, onPick }) {
   )
 }
 
-function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBest = null, defaultSport = 'run' }) {
+// v9.54.0 — Coggan FTP W/kg category bands per Allen, Coggan, McGregor 2019
+// (Training and Racing with a Power Meter, 3rd ed., Ch. 3, pp. 51-54).
+// Adult open-category bands; not age-adjusted (masters benchmarked the same).
+// Female bands published separately and lower across the board.
+function coggsWkgBand(wkg, gender) {
+  if (!wkg || wkg <= 0) return null
+  const fem = gender === 'female'
+  const t = fem
+    ? [{ k: 5.0, en: 'World class',  tr: 'Dünya sınıfı' },
+       { k: 4.1, en: 'Pro',           tr: 'Pro' },
+       { k: 3.5, en: 'Cat 1',         tr: 'Kat 1' },
+       { k: 3.0, en: 'Cat 2',         tr: 'Kat 2' },
+       { k: 2.5, en: 'Cat 3',         tr: 'Kat 3' },
+       { k: 2.1, en: 'Cat 4',         tr: 'Kat 4' },
+       { k: 1.6, en: 'Fair',          tr: 'Orta' }]
+    : [{ k: 5.6, en: 'World class',  tr: 'Dünya sınıfı' },
+       { k: 4.6, en: 'Pro / Cat 1',   tr: 'Pro / Kat 1' },
+       { k: 4.0, en: 'Cat 2',         tr: 'Kat 2' },
+       { k: 3.4, en: 'Cat 3',         tr: 'Kat 3' },
+       { k: 2.9, en: 'Cat 4',         tr: 'Kat 4' },
+       { k: 2.4, en: 'Cat 5',         tr: 'Kat 5' },
+       { k: 1.9, en: 'Fair',          tr: 'Orta' }]
+  const COL = ['#f5c542','#ff6600','#5bc25b','#4a90d9','#888','#888','#888']
+  for (let i = 0; i < t.length; i++) {
+    if (wkg >= t[i].k) return { ...t[i], color: COL[i] }
+  }
+  return { en: 'Untrained', tr: 'Antrenmansız', color: '#888' }
+}
+
+function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBest = null, defaultSport = 'run', profile = {} }) {
   const initialSport = persistedForm?.sport || defaultSport || 'run'
   const initialDistDefault = defaultDistanceFor(initialSport)
   const [sport, setSport] = useState(initialSport)
@@ -258,6 +287,12 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
   })()
   const [weeksOverride, setWeeksOverride] = useState(initialWeeksOverride)
   const [noTarget, setNoTarget] = useState(!!persistedForm?.noTarget)
+  // v9.54.0 — Starter-estimator toggle. When on, the form hides the current
+  // PR inputs and synthesizes currentPR from the BEGINNER reference at the
+  // canonical distance (DEFAULT_DISTANCE_M) on submit. Auto-resets when sport
+  // changes. Disabled in bike FTP-direct + swim 2-TT branches because those
+  // have their own input shapes that don't map to a time-based reference.
+  const [noCurrent, setNoCurrent] = useState(!!persistedForm?.noCurrent)
 
   // v8.94.0 — swim: Wakayoshi 2-TT toggle (4 (D, T) pairs total)
   const [swim2TT, setSwim2TT] = useState(!!persistedForm?.swim2TT)
@@ -280,6 +315,10 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
     if (k !== 'bike') setBikeFtpDirect(false)
     // Reset swim-only toggle when leaving swim
     if (k !== 'swim') setSwim2TT(false)
+    // v9.54.0 — Starter estimator: drop on sport change so the user actively
+    // re-confirms it for the new sport (a runner who has no 5K but DOES have
+    // a 2k erg shouldn't have noCurrent silently persist after switching).
+    setNoCurrent(false)
   }
 
   const cs = parseMmSs(curT), ts = parseMmSs(tgtT)
@@ -319,9 +358,20 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
   // v8.96.0 — horizon ready when raceDate provided OR noRaceDate toggle on
   const horizonReady = noRaceDate || dateOk
 
+  // v9.54.0 — Starter estimator override: in standard mode, when noCurrent is
+  // on AND the BEGINNER reference exists for the canonical distance, the form
+  // is "ready" without an explicit current-time entry — synthesis happens on
+  // submit. We only check the canonical distance because pickSport() resets
+  // curD to defaultDistanceFor(sport) on every sport change.
+  const starterRef = (!isBikeFtp && !isSwim2TT && noCurrent && sport)
+    ? getReference(sport, defaultDistanceFor(sport))
+    : null
+  const starterReady = !!starterRef && (noTarget || ts != null)
+
   let ready = false
   if (isBikeFtp) ready = bikeReady && horizonReady
   else if (isSwim2TT) ready = swimReady && horizonReady
+  else if (starterRef) ready = starterReady && horizonReady
   else ready = !!sport && cs != null && (noTarget || ts != null) && horizonReady
 
   // v9.26.0 — Disabled-button reason (bilingual). Returns null when ready.
@@ -336,7 +386,9 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
       if (swimSecPer100mCur == null) return { en: 'Enter both swim trial times (TT1 + TT2)', tr: 'Her iki yüzme deneme süresini gir (TT1 + TT2)' }
       if (!noTarget && swimSecPer100mTgt == null) return { en: 'Enter target trial times or pick "no target"', tr: 'Hedef deneme sürelerini gir veya "hedef yok" seç' }
     } else {
-      if (cs == null) return { en: 'Enter current time as MM:SS', tr: 'Mevcut süreyi MM:SS olarak gir' }
+      // v9.54.0 — When noCurrent is on AND starter ref exists, current time
+      // is auto-synthesized — only target / horizon can hold readiness back.
+      if (!starterRef && cs == null) return { en: 'Enter current time as MM:SS', tr: 'Mevcut süreyi MM:SS olarak gir' }
       if (!noTarget && ts == null) return { en: 'Enter target time or pick "no target"', tr: 'Hedef süre gir veya "hedef yok" seç' }
     }
     if (!noRaceDate) {
@@ -346,7 +398,7 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
       if (dateInPast) return null
     }
     return null
-  }, [ready, sport, isBikeFtp, isSwim2TT, curWattsN, tgtWattsN, swimSecPer100mCur, swimSecPer100mTgt, cs, ts, noTarget, noRaceDate, dateFormatOk, dateInPast])
+  }, [ready, sport, isBikeFtp, isSwim2TT, curWattsN, tgtWattsN, swimSecPer100mCur, swimSecPer100mTgt, cs, ts, noTarget, noRaceDate, dateFormatOk, dateInPast, starterRef])
 
   // v9.26.0 — Debounced auto-save on any field change. Previously persistence
   // ONLY fired on submit, so users who filled the form, switched tabs to
@@ -356,7 +408,7 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
   const latestFormRef = useRef(null)
   latestFormRef.current = {
     sport, raceDate: noRaceDate ? '' : date,
-    noRaceDate, weeksOverride: Number(weeksOverride), noTarget,
+    noRaceDate, weeksOverride: Number(weeksOverride), noTarget, noCurrent,
     bikeFtpDirect: isBikeFtp, swim2TT: isSwim2TT,
     currentDist: curD, currentTime: curT, targetDist: tgtD, targetTime: tgtT,
     currentWatts: curW, targetWatts: tgtW,
@@ -433,15 +485,26 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
       })
       return
     }
+    // v9.54.0 — Starter estimator synthesis. When noCurrent is on, currentPR
+    // is filled from the BEGINNER reference at the canonical distance for
+    // this sport. The display fields stay empty so the UI doesn't surprise
+    // the user with values they didn't type.
+    let synthCurD = Number(curD)
+    let synthCurT = cs
+    if (starterRef) {
+      synthCurD = defaultDistanceFor(sport)
+      synthCurT = starterRef.beginner
+    }
     savePersistedForm({
       sport,
       currentDist: curD, currentTime: curT, targetDist: tgtD, targetTime: tgtT,
       raceDate: noRaceDate ? '' : date,
       noRaceDate, weeksOverride: Number(weeksOverride), noTarget,
+      noCurrent,
       bikeFtpDirect: false, swim2TT: false,
     })
     onGenerate({
-      currentPR: { distanceM: Number(curD), timeSec: cs },
+      currentPR: { distanceM: synthCurD, timeSec: synthCurT },
       targetPR:  noTarget ? null : { distanceM: Number(tgtD), timeSec: ts },
       sport,
       noTarget,
@@ -470,6 +533,28 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
           )
         })}
       </div>
+
+      {/* v9.54.0 — Starter estimator. Available in standard mode only (bike
+          FTP-direct + swim 2-TT have their own input shapes). Toggle hides
+          current PR inputs; on submit we synthesize currentPR from the
+          BEGINNER reference at the canonical distance for this sport. */}
+      {!bikeFtpDirect && !swim2TT ? (
+        <label style={checkboxRowStyle} data-toggle="no-current">
+          <input type="checkbox" checked={noCurrent} onChange={e => setNoCurrent(e.target.checked)}
+            aria-label={isTR ? 'Bunu yapmadıysam — acemi referansını otomatik doldur' : "I haven't done this yet — autofill beginner reference"}
+            style={{ marginTop: '2px' }} />
+          <span aria-hidden="true" style={{ ...S.mono, fontSize: '11px', color: 'var(--text)', lineHeight: 1.4 }}>
+            <span style={{ fontWeight: 700, letterSpacing: '0.06em' }}>
+              {isTR ? 'BUNU YAPMADIYSAM' : "I HAVEN'T DONE THIS YET"}
+              <span style={{ margin: '0 4px' }}>·</span>
+              {isTR ? "I HAVEN'T DONE THIS YET" : 'BUNU YAPMADIYSAM'}
+            </span>
+            <span style={{ display: 'block', fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>
+              {isTR ? 'Sıfırdan başla — acemi referansından otomatik doldurulur' : 'Start from zero — autofill from beginner reference'}
+            </span>
+          </span>
+        </label>
+      ) : null}
 
       {sport === 'bike' ? (
         <label style={checkboxRowStyle} data-toggle="bike-ftp-direct">
@@ -529,13 +614,26 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
           {[
             { lbl: isTR ? 'MEVCUT FTP' : 'CURRENT FTP', val: curW, setVal: setCurW, aria: isTR ? 'Mevcut FTP (watt)' : 'Current FTP (watts)', isCurrent: true },
             { lbl: isTR ? 'HEDEF FTP' : 'TARGET FTP', val: tgtW, setVal: setTgtW, aria: isTR ? 'Hedef FTP (watt)' : 'Target FTP (watts)', isCurrent: false },
-          ].filter(f => !(noTarget && !f.isCurrent)).map(f => (
-            <div key={f.lbl} style={{ flex: '1 1 140px', minWidth: '120px' }}>
-              <label style={LBL}>{f.lbl}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>W</label>
-              <input type="number" inputMode="numeric" min={50} max={600} placeholder="245"
-                value={f.val} onChange={e => f.setVal(e.target.value)} aria-label={f.aria} style={INP} />
-            </div>
-          ))}
+          ].filter(f => !(noTarget && !f.isCurrent)).map(f => {
+            // v9.54.0 — Coggan W/kg live readout when profile.weight is set.
+            const weightKg = parseFloat(profile?.weight || 0)
+            const watts = parseFloat(f.val || 0)
+            const wkg = (weightKg > 0 && watts > 0) ? Math.round((watts / weightKg) * 100) / 100 : null
+            const band = wkg ? coggsWkgBand(wkg, profile?.gender) : null
+            return (
+              <div key={f.lbl} style={{ flex: '1 1 140px', minWidth: '120px' }}>
+                <label style={LBL}>{f.lbl}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>W</label>
+                <input type="number" inputMode="numeric" min={50} max={600} placeholder="245"
+                  value={f.val} onChange={e => f.setVal(e.target.value)} aria-label={f.aria} style={INP} />
+                {band ? (
+                  <div style={{ ...S.mono, fontSize: '10px', color: band.color, marginTop: '3px', letterSpacing: '0.04em', fontWeight: 600 }}
+                    aria-live="polite">
+                    {wkg} W/kg · {band[isTR ? 'tr' : 'en']}
+                  </div>
+                ) : null}
+              </div>
+            )
+          })}
         </div>
       ) : isSwim2TT ? (
         <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }} data-mode="swim-2tt">
@@ -625,7 +723,7 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
           {[
             { isCurrent: true,  lbl: isTR ? 'MEVCUT PR' : 'CURRENT PR', dist: curD, setDist: setCurD, t: curT, setT: setCurT, distAria: isTR ? 'Mevcut PR mesafesi' : 'Current PR distance', tAria: isTR ? 'Mevcut PR süresi (MM:SS)' : 'Current PR time (MM:SS)' },
             { isCurrent: false, lbl: isTR ? 'HEDEF PR' : 'TARGET PR', dist: tgtD, setDist: setTgtD, t: tgtT, setT: setTgtT, distAria: isTR ? 'Hedef PR mesafesi' : 'Target PR distance', tAria: isTR ? 'Hedef PR süresi (MM:SS)' : 'Target PR time (MM:SS)' },
-          ].filter(f => !(noTarget && !f.isCurrent)).map(f => (
+          ].filter(f => !(noTarget && !f.isCurrent) && !(noCurrent && f.isCurrent)).map(f => (
             <div key={f.lbl} style={{ flex: '1 1 140px', minWidth: '120px' }}>
               <label style={LBL}>{f.lbl}</label>
               <select value={f.dist} onChange={e => f.setDist(Number(e.target.value))} aria-label={f.distAria} style={{ ...INP, marginBottom: '4px' }}>
@@ -1431,6 +1529,7 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
           savePersistedForm={form => setPersisted({ input: persisted?.input || null, form })}
           recentBest={recentBest}
           defaultSport={defaultSport}
+          profile={_profile}
         />
       </div>
     )
