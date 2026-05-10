@@ -62,33 +62,16 @@ const PHASE_LABEL = {
   Taper: { en: 'TAPER', tr: 'KÖŞELEME' },
 }
 
-function parseMmSs(str) {
-  if (!str || typeof str !== 'string') return null
-  const m = str.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/)
-  if (!m) return null
-  const h = m[3] != null ? Number(m[1]) : 0
-  const min = m[3] != null ? Number(m[2]) : Number(m[1])
-  const sec = m[3] != null ? Number(m[3]) : Number(m[2])
-  if (sec >= 60) return null
-  return h * 3600 + min * 60 + sec
-}
+// v9.49.0 — autoFormatMmSs + parseMmSs extracted to src/lib/format/mmss.js so
+// the same lenient mobile-friendly parsing reaches every PR/time input across
+// Onboarding, ZoneCalc, SportProgramBuilder, etc. The local re-export below
+// preserves the v9.19.0 import path for any test still hitting it.
+import { parseMmSs as _sharedParseMmSs, autoFormatMmSs as _sharedAutoFormatMmSs } from '../../lib/format/mmss.js'
+const parseMmSs = _sharedParseMmSs
 
-// v9.19.0 — Auto-format raw digit input into MM:SS / HH:MM:SS as athlete types.
-// Mobile numeric keyboards expose only digits + . + , (no colon), so prior
-// inputMode="numeric" + placeholder="MM:SS" was unfillable on mobile. Now the
-// parent stores formatted values, but onChange re-derives from whatever the
-// user types — pasted "50:00" works, raw digits "5000" become "50:00", and
-// backspace deletes one digit at a time. Caps at 6 digits (HH:MM:SS ultra).
-export function autoFormatMmSs(raw) {
-  if (raw == null) return ''
-  const digits = String(raw).replace(/\D/g, '').slice(0, 6)
-  if (digits.length === 0) return ''
-  if (digits.length <= 2) return digits                                              // M or MM (still typing minutes)
-  if (digits.length === 3) return `${digits[0]}:${digits.slice(1)}`                  // M:SS
-  if (digits.length === 4) return `${digits.slice(0, 2)}:${digits.slice(2)}`         // MM:SS
-  if (digits.length === 5) return `${digits[0]}:${digits.slice(1, 3)}:${digits.slice(3)}` // H:MM:SS
-  return `${digits.slice(0, 2)}:${digits.slice(2, 4)}:${digits.slice(4)}`            // HH:MM:SS
-}
+// v9.19.0 — moved to src/lib/format/mmss.js in v9.49.0; re-exported here for
+// any external consumer that imports `autoFormatMmSs` from this module.
+export const autoFormatMmSs = _sharedAutoFormatMmSs
 
 function fmtSec(sec) {
   if (sec == null) return '—'
@@ -467,13 +450,17 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
                 {SWIM_TT_SHORT.map(o => <option key={o.m} value={o.m}>{o.lbl}</option>)}
               </select>
               <input type="text" inputMode="numeric" placeholder="MM:SS" value={f.t1}
-                onChange={e => f.setT1(autoFormatMmSs(e.target.value))} aria-label={f.aria1t} style={{ ...INP, marginBottom: '6px' }} />
+                onChange={e => f.setT1(autoFormatMmSs(e.target.value))}
+                onBlur={e => f.setT1(autoFormatMmSs(e.target.value, { padOnBlur: true }))}
+                aria-label={f.aria1t} style={{ ...INP, marginBottom: '6px' }} />
               <label style={LBL}>{f.lbl}<span aria-hidden="true" style={{ margin: '0 4px' }}>·</span>TT2</label>
               <select value={f.d2} onChange={e => f.setD2(Number(e.target.value))} aria-label={f.aria2d} style={{ ...INP, marginBottom: '4px' }}>
                 {SWIM_TT_LONG.map(o => <option key={o.m} value={o.m}>{o.lbl}</option>)}
               </select>
               <input type="text" inputMode="numeric" placeholder="MM:SS" value={f.t2}
-                onChange={e => f.setT2(autoFormatMmSs(e.target.value))} aria-label={f.aria2t} style={INP} />
+                onChange={e => f.setT2(autoFormatMmSs(e.target.value))}
+                onBlur={e => f.setT2(autoFormatMmSs(e.target.value, { padOnBlur: true }))}
+                aria-label={f.aria2t} style={INP} />
             </div>
           ))}
         </div>
@@ -531,7 +518,10 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
               <select value={f.dist} onChange={e => f.setDist(Number(e.target.value))} aria-label={f.distAria} style={{ ...INP, marginBottom: '4px' }}>
                 {opts.map(o => <option key={o.m} value={o.m}>{o.lbl}</option>)}
               </select>
-              <input type="text" inputMode="numeric" placeholder="MM:SS" value={f.t} onChange={e => f.setT(autoFormatMmSs(e.target.value))} aria-label={f.tAria} style={INP} />
+              <input type="text" inputMode="numeric" placeholder="MM:SS" value={f.t}
+                onChange={e => f.setT(autoFormatMmSs(e.target.value))}
+                onBlur={e => f.setT(autoFormatMmSs(e.target.value, { padOnBlur: true }))}
+                aria-label={f.tAria} style={INP} />
             </div>
           ))}
         </div>

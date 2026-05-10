@@ -169,6 +169,42 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
             ))}
           </div>
 
+          {/* v9.49.0 — Concern checklist (predictInjuryRisk factors). Was
+              previously only the level badge above; now coaches see the
+              specific reasons (ACWR spike / monotony / consecutive hard /
+              readiness drop) as a science-cited row list. */}
+          {Array.isArray(injRisk?.factors) && injRisk.factors.length > 0 ? (
+            <div style={{ marginBottom:'12px', padding:'8px 10px', background:'#0a0a0a', border:'1px solid #1e1e1e', borderRadius:'4px' }}>
+              <div style={{ ...S.mono, fontSize:'9px', color:'#888', letterSpacing:'0.08em', marginBottom:'6px' }}>
+                {lang === 'tr' ? 'YARALANMA RİSKİ FAKTÖRLERİ' : 'INJURY-RISK FACTORS'}
+                <span style={{ color:'#555', marginLeft:6, fontWeight:400 }}>· {injRisk.factors.length}</span>
+              </div>
+              {injRisk.factors.map((f, i) => {
+                const sevColor = f.severity === 'high' ? '#e03030'
+                              : f.severity === 'moderate' ? '#f5c542'
+                              : '#888'
+                return (
+                  <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:'8px', marginBottom:'4px' }}>
+                    <span style={{ ...S.mono, fontSize:'9px', fontWeight:700, color:sevColor, minWidth:'80px', letterSpacing:'0.04em' }}>
+                      {f.severity?.toUpperCase() || '—'}
+                    </span>
+                    <span style={{ ...S.mono, fontSize:'10px', color:'#ccc', minWidth:'120px', fontWeight:600 }}>
+                      {f.label}
+                    </span>
+                    <span style={{ ...S.mono, fontSize:'10px', color:'#888', flex:1, lineHeight:1.4 }}>
+                      {f.detail?.[lang] || f.detail?.en || ''}
+                    </span>
+                  </div>
+                )
+              })}
+              {injRisk.advice ? (
+                <div style={{ ...S.mono, fontSize:'10px', color:'#ff6600', marginTop:'6px', paddingTop:'6px', borderTop:'1px dashed #1e1e1e', fontWeight:600 }}>
+                  → {injRisk.advice[lang] || injRisk.advice.en}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           {/* Plan compliance row */}
           {compliance && (
             <div style={{ marginBottom:'12px' }}>

@@ -4,6 +4,71 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.49.0 — 2026-05-10 — PR input mobile-friendly + coach injury-risk checklist
+
+  Two ships from this round's deep-dive agents. (1) athlete: a verified
+  user-reported bug — PR input required `:` but mobile keyboard with
+  `inputMode="numeric"` has no colon, so the field was unfillable on
+  phone. (2) coach: `predictInjuryRisk` already computed a 5-factor
+  checklist (monotony, ACWR, consecutive-hard, readiness, HRV) but
+  SbAthletePanel only rendered the level badge — the science was
+  computed and dropped on the floor.
+
+  ### (1) PR input mobile-friendly — extracted to shared lib
+
+  • New `src/lib/format/mmss.js` exports `autoFormatMmSs` + `parseMmSs`.
+    Was inline in EliteProgramCard.jsx (v9.19.0); now reachable from any
+    PR/time input across the app.
+
+  • `parseMmSs` is now lenient — accepts BOTH the colon form ("MM:SS",
+    "H:MM:SS", "HH:MM:SS") AND digit-only forms (1-6 digits matching
+    autoFormatMmSs output). User who types "50" on numeric keypad gets
+    50 minutes; "5000" gets 50:00; "12345" gets 1:23:45.
+
+  • New `padOnBlur` option for `autoFormatMmSs`: 1-2 digit input gets
+    `:00` appended on blur so "50" displays as "50:00" — input visually
+    confirms the parser interpretation.
+
+  • Rewired 9 input sites with `inputMode="numeric"` + onChange auto-
+    format + onBlur padding:
+      - EliteProgramCard.jsx (3 PR inputs — current/target + swim 2-TT)
+      - Onboarding.jsx (threshold pace)
+      - ZoneCalc.jsx (pace, swim 400m, swim 200m, 2k erg, race time)
+      - SportProgramBuilder.jsx (2k row, race time, swim TT400, TT200)
+
+  • 25 new tests for the shared lib (round-trip digits ↔ colon, all
+    edge cases, validation rejections).
+
+  ### (2) Coach: injury-risk factors checklist in SbAthletePanel
+
+  • `injRisk.factors` array (computed by `predictInjuryRisk` in
+    intelligence.js) is now rendered as a row list below the metrics
+    tiles. Each row: severity badge (HIGH/MODERATE/LOW with red/yellow/
+    grey color), factor label (e.g. "ACWR > 1.5", "Monotony 1.8",
+    "3 consecutive hard days"), and bilingual detail with citation.
+
+  • `injRisk.advice` rendered as the orange call-to-action footer below
+    the factor list.
+
+  • Coaches drill-down depth went from "HIGH" badge → 5 actionable rows
+    with science citations (Hulin 2016 ACWR, Foster 2001 monotony,
+    Lambert 1997 hard-stacking).
+
+  9684/9684 tests green. No schema change.
+
+  CITATIONS: Hulin 2016 (Br J Sports Med — ACWR injury predictor);
+  Foster 2001 (monotony/strain); Lambert 1997 (consecutive hard days);
+  Mountjoy 2018 RED-S (already cited via v9.39).
+
+  Files: src/lib/format/mmss.js (new), src/lib/__tests__/format/mmss.test.js
+  (new, 25 tests), src/components/dashboard/EliteProgramCard.jsx
+  (delete inline parseMmSs, import shared, add onBlur), src/components/
+  Onboarding.jsx (1 input), src/components/ZoneCalc.jsx (5 inputs),
+  src/components/SportProgramBuilder.jsx (4 inputs),
+  src/components/coachDashboard/SbAthletePanel.jsx (factors checklist).
+
+---
+
 ## v9.48.0 — 2026-05-10 — Coach: Today's Red Flags triage card
 
   Coach UX P0 from the audit: laptop coaches with 5+ athletes were

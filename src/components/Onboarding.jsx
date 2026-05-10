@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { PLAN_GOALS } from '../lib/constants.js'
+import { autoFormatMmSs } from '../lib/format/mmss.js'
 
 // ── Rule-based plan preview (no API key required) ─────────────────────────────
 function getPlanPreview(data) {
@@ -193,7 +194,10 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
         {['Running','Triathlon','Rowing'].includes(data.sport) ? (
           <div>
             <label style={LABEL}>THRESHOLD PACE (MM:SS /km)</label>
-            <input style={INPUT} type="text" placeholder="4:45" value={data.ltpace} onChange={e=>set('ltpace',e.target.value)}/>
+            <input style={INPUT} type="text" inputMode="numeric" placeholder="4:45" value={data.ltpace}
+              onChange={e=>set('ltpace', autoFormatMmSs(e.target.value))}
+              onBlur={e=>set('ltpace', autoFormatMmSs(e.target.value, { padOnBlur: true }))}
+            />
           </div>
         ) : (
           <div>

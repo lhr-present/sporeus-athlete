@@ -4,6 +4,7 @@ import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { RACE_DISTANCES, ZONE_COLORS, ZONE_NAMES, SPORT_CONFIG } from '../lib/constants.js'
 import { hrZones, powerZones, paceZones, parseTimeSec, fmtSec, fmtPace, riegel } from '../lib/formulas.js'
+import { autoFormatMmSs } from '../lib/format/mmss.js'
 import { ZoneBar } from './ui.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 
@@ -302,25 +303,33 @@ export default function ZoneCalc() {
         {mode==='pace' && (
           <div style={{ flex:'1 1 200px' }}>
             <label style={S.label}>{t('threshPaceIn')}</label>
-            <input style={S.input} type="text" placeholder="4:45" value={threshPace} onChange={e=>setThreshPace(e.target.value)}/>
+            <input style={S.input} type="text" inputMode="numeric" placeholder="4:45" value={threshPace}
+              onChange={e=>setThreshPace(autoFormatMmSs(e.target.value))}
+              onBlur={e=>setThreshPace(autoFormatMmSs(e.target.value, { padOnBlur: true }))}/>
           </div>
         )}
         {mode==='swim' && (
           <div style={S.row}>
             <div style={{ flex:'1 1 160px' }}>
               <label style={S.label}>400m TIME (mm:ss)</label>
-              <input style={S.input} type="text" placeholder="6:30" value={swimT400} onChange={e=>setSwimT400(e.target.value)}/>
+              <input style={S.input} type="text" inputMode="numeric" placeholder="6:30" value={swimT400}
+                onChange={e=>setSwimT400(autoFormatMmSs(e.target.value))}
+                onBlur={e=>setSwimT400(autoFormatMmSs(e.target.value, { padOnBlur: true }))}/>
             </div>
             <div style={{ flex:'1 1 160px' }}>
               <label style={S.label}>200m TIME (mm:ss)</label>
-              <input style={S.input} type="text" placeholder="3:00" value={swimT200} onChange={e=>setSwimT200(e.target.value)}/>
+              <input style={S.input} type="text" inputMode="numeric" placeholder="3:00" value={swimT200}
+                onChange={e=>setSwimT200(autoFormatMmSs(e.target.value))}
+                onBlur={e=>setSwimT200(autoFormatMmSs(e.target.value, { padOnBlur: true }))}/>
             </div>
           </div>
         )}
         {mode==='row' && (
           <div style={{ flex:'1 1 200px' }}>
             <label style={S.label}>2K ERG TIME (mm:ss)</label>
-            <input style={S.input} type="text" placeholder="6:45" value={rowT2k} onChange={e=>setRowT2k(e.target.value)}/>
+            <input style={S.input} type="text" inputMode="numeric" placeholder="6:45" value={rowT2k}
+              onChange={e=>setRowT2k(autoFormatMmSs(e.target.value))}
+              onBlur={e=>setRowT2k(autoFormatMmSs(e.target.value, { padOnBlur: true }))}/>
           </div>
         )}
         <button style={{ ...S.btn, marginTop:'14px' }} onClick={calcZones}>{t('calcZonesBtn')}</button>
@@ -400,7 +409,9 @@ export default function ZoneCalc() {
           )}
           <div style={{ flex:'1 1 180px' }}>
             <label style={S.label}>{t('raceTimeLabel')}</label>
-            <input style={S.input} type="text" placeholder="22:30" value={rTime} onChange={e=>setRTime(e.target.value)}/>
+            <input style={S.input} type="text" inputMode="numeric" placeholder="22:30" value={rTime}
+              onChange={e=>setRTime(autoFormatMmSs(e.target.value))}
+              onBlur={e=>setRTime(autoFormatMmSs(e.target.value, { padOnBlur: true }))}/>
           </div>
         </div>
         <button style={{ ...S.btn, marginTop:'14px' }} onClick={predict}>{t('predictBtn')}</button>

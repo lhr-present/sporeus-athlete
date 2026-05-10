@@ -3,6 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { S } from '../styles.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { LangCtx } from '../contexts/LangCtx.jsx'
+import { autoFormatMmSs } from '../lib/format/mmss.js'
 import {
   simulateBanister, monteCarloOptimizer, peakFormWindow,
   addAdaptivePlanAdjustment,
@@ -226,8 +227,9 @@ function Step2({ form, setForm, onNext, onBack }) {
         <div style={S.row}>
           <div style={{ flex: '1 1 160px' }}>
             <label style={S.label}>2000m Time (mm:ss)</label>
-            <input style={S.input} placeholder="6:30" value={form.baseline?.time2k || ''}
-              onChange={e => setForm(f => ({ ...f, baseline: { ...f.baseline, time2k: e.target.value } }))} />
+            <input style={S.input} type="text" inputMode="numeric" placeholder="6:30" value={form.baseline?.time2k || ''}
+              onChange={e => setForm(f => ({ ...f, baseline: { ...f.baseline, time2k: autoFormatMmSs(e.target.value) } }))}
+              onBlur={e => setForm(f => ({ ...f, baseline: { ...f.baseline, time2k: autoFormatMmSs(e.target.value, { padOnBlur: true }) } }))} />
             {form.baseline?._time2kFromLog && (
               <div style={{ ...DIM, marginTop: '4px', color: '#00c853' }}>{t('spb_fromTestLog')}</div>
             )}
@@ -254,8 +256,9 @@ function Step2({ form, setForm, onNext, onBack }) {
           </div>
           <div style={{ flex: '1 1 160px' }}>
             <label style={S.label}>Race Time (mm:ss)</label>
-            <input style={S.input} placeholder="20:00" value={form.baseline?.raceTime || ''}
-              onChange={e => setForm(f => ({ ...f, baseline: { ...f.baseline, raceTime: e.target.value } }))} />
+            <input style={S.input} type="text" inputMode="numeric" placeholder="20:00" value={form.baseline?.raceTime || ''}
+              onChange={e => setForm(f => ({ ...f, baseline: { ...f.baseline, raceTime: autoFormatMmSs(e.target.value) } }))}
+              onBlur={e => setForm(f => ({ ...f, baseline: { ...f.baseline, raceTime: autoFormatMmSs(e.target.value, { padOnBlur: true }) } }))} />
             {form.baseline?._raceFromLog && (
               <div style={{ ...DIM, marginTop: '4px', color: '#00c853' }}>{t('spb_fromLog')}</div>
             )}
@@ -280,13 +283,15 @@ function Step2({ form, setForm, onNext, onBack }) {
         <div style={S.row}>
           <div style={{ flex: '1 1 160px' }}>
             <label style={S.label}>400m TT Time (mm:ss)</label>
-            <input style={S.input} placeholder="5:30" value={form.baseline?.tt400 || ''}
-              onChange={e => setForm(f => ({ ...f, baseline: { ...f.baseline, tt400: e.target.value } }))} />
+            <input style={S.input} type="text" inputMode="numeric" placeholder="5:30" value={form.baseline?.tt400 || ''}
+              onChange={e => setForm(f => ({ ...f, baseline: { ...f.baseline, tt400: autoFormatMmSs(e.target.value) } }))}
+              onBlur={e => setForm(f => ({ ...f, baseline: { ...f.baseline, tt400: autoFormatMmSs(e.target.value, { padOnBlur: true }) } }))} />
           </div>
           <div style={{ flex: '1 1 160px' }}>
             <label style={S.label}>200m TT Time (mm:ss)</label>
-            <input style={S.input} placeholder="2:30" value={form.baseline?.tt200 || ''}
-              onChange={e => setForm(f => ({ ...f, baseline: { ...f.baseline, tt200: e.target.value } }))} />
+            <input style={S.input} type="text" inputMode="numeric" placeholder="2:30" value={form.baseline?.tt200 || ''}
+              onChange={e => setForm(f => ({ ...f, baseline: { ...f.baseline, tt200: autoFormatMmSs(e.target.value) } }))}
+              onBlur={e => setForm(f => ({ ...f, baseline: { ...f.baseline, tt200: autoFormatMmSs(e.target.value, { padOnBlur: true }) } }))} />
           </div>
         </div>
       )}
