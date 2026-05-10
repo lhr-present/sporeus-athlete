@@ -4,6 +4,97 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.59.0 — 2026-05-10 — iOS notch + CTL ramp safe-band + stale-plan rule
+
+  Round 10. Three new audit agents (periodization / onboarding / mobile-PWA)
+  returned 16 ranked gaps; this ship lands the top three by impact ÷ effort.
+
+  ### (1) iOS PWA notch + status-bar styling (Agent C #1)
+
+  Pre-fix, `index.html` had a bare `viewport` meta with no `viewport-fit=cover`,
+  no `apple-mobile-web-app-capable`, and no status-bar style hint. iPhone 12+
+  athletes who installed the app to home screen saw header text overlap the
+  notch / Dynamic Island.
+
+  Now:
+  ```html
+  <meta name="viewport" content="…, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Sporeus" />
+  ```
+
+  Existing `safe-area-inset-*` CSS in `styles.js` now actually pushes content
+  past the notch. `black-translucent` matches the Bloomberg-Terminal dark
+  header (#0a0a0a) for the immersive look.
+
+  ### (2) CTL ramp safe-band validator on plan generation (Agent A #1)
+
+  Pre-fix, `generatePlan()` could prescribe weekly TSS jumps that breached
+  Coggan's 5–7 TSS/wk safe ramp band — high-`weeklyHours` × high-`level`
+  combos produced plans where weeks 3–4 spiked CTL by +18, with no warning.
+
+  New `validatePlanRamp(weeks, startCTL)` in `formulas.js` projects CTL
+  forward week-by-week using the standard 42-day EMA (`k = 1/42`, daily TSS
+  = weekTSS/7). Flags any 2-week window where the net CTL gain exceeds 7
+  with a bilingual `CTL_RAMP_HIGH` warning carrying weekNum + gain. Cites
+  Coggan 2003.
+
+  Wired into `PlanGenerator.jsx` for both the standard and block-periodization
+  branches: warnings populate the existing `planValidationErrors` array,
+  surfaced via the existing yellow warning panel — auto-expands when present,
+  and the panel is no longer gated to `advancedMode` (was hidden for casual
+  users; injury-risk warnings shouldn't be).
+
+  Plan object now carries `baselineCTL` (computed from `log` at generation
+  time) for downstream stale-plan detection.
+
+  ### (3) Stale-plan rule in nextAction.js (Agent A #4)
+
+  New `plan_stale` rule (priority 10, before default) fires when:
+  • `localStorage.sporeus-plan.generatedAt` is >14 days old, AND
+  • current CTL has drifted ≥10pts above `plan.baselineCTL`
+
+  Rationale (bilingual): `Plan is N days old; CTL is +X above plan baseline
+  (Y→Z). Weekly TSS targets undershoot current capacity — regenerate to
+  recalibrate.` Cites Banister 1991. Color: blue (informational, not
+  blocking). Localstorage read wrapped in try/catch — corrupt JSON or
+  missing baseline is a silent fall-through to the default rule.
+
+  Depends on plan objects carrying `baselineCTL` — only plans generated
+  on v9.59.0+ surface this rule. Older plans gracefully no-op.
+
+  ### Files
+
+  - `index.html` — viewport-fit + 3 apple-mobile-web-app meta tags
+  - `src/lib/formulas.js` — `validatePlanRamp(weeks, startCTL)` (+40 LOC)
+  - `src/components/PlanGenerator.jsx` — wires validator into both branches,
+    stores baselineCTL on plan, removes advancedMode gate on warning panel,
+    auto-expands warnings on generate
+  - `src/lib/nextAction.js` — `plan_stale` rule with localStorage read
+  - `src/lib/__tests__/formulas.test.js` — 5 tests for validatePlanRamp
+  - `src/lib/__tests__/nextAction.test.js` — 6 tests for plan_stale
+  - `package.json` — 11.58.0 → 11.59.0
+
+  Tests 9699/9699 (+11). Lint + build clean.
+
+  ### Deferred from this round's audits (bigger ships):
+
+  • **Multi-race A/B/C support** (Agent A #2, ~80 LOC) — schema change to
+    `profile.nextRaces[]`, separate B-race taper rules
+  • **Sport-specific onboarding fork** (Agent B #1, ~120 LOC) — branch
+    metric prompts on sport selection
+  • **Required-field gating + science callouts** (Agent B #2, ~60 LOC) —
+    explain why FTP/maxHR matter; surface fallback usage
+  • **Offline FIT/CSV import queue** (Agent C #4, ~30 LOC) — extend
+    `offlineQueue` to `_table:'training_sessions'`/`'fit_imports'`
+  • **Adaptive recovery week trigger** (Agent A #5, ~50 LOC) — fatigue-
+    based deload firing rule
+  • **Next-block zone-distribution target** (Agent A #3) — Seiler 80:20
+    forecast for next phase
+
+---
+
 ## v9.58.0 — 2026-05-10 — NP auto-compute on FIT import + Concept2 ErgData CSV parser
 
   Round 9. Lands the two import-pipeline ships deferred from v9.57.0

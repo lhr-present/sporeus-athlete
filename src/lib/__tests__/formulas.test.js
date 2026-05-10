@@ -35,6 +35,7 @@ import {
   monotonyStrain,
   calcPRs,
   generatePlan,
+  validatePlanRamp,
   normTR,
   generateCoachId,
   generateUnlockCode,
@@ -613,6 +614,58 @@ describe('generatePlan — training plan generator', () => {
         expect(session).toHaveProperty('tss')
       })
     })
+  })
+})
+
+// ─── validatePlanRamp (v9.59.0) ──────────────────────────────────────────────
+describe('validatePlanRamp — Coggan 5–7 TSS/wk safe band', () => {
+  it('returns empty array for empty / single-week input', () => {
+    expect(validatePlanRamp([], 40)).toEqual([])
+    expect(validatePlanRamp([{ week: 1, tss: 300 }], 40)).toEqual([])
+  })
+
+  it('flags any 2-week window where CTL gain exceeds 7', () => {
+    // Aggressive ramp: 200 → 800 TSS jump in one week
+    const weeks = [
+      { week: 1, phase: 'Base',  tss: 200 },
+      { week: 2, phase: 'Build', tss: 800 },
+      { week: 3, phase: 'Build', tss: 800 },
+    ]
+    const warnings = validatePlanRamp(weeks, 30)
+    expect(warnings.length).toBeGreaterThan(0)
+    expect(warnings[0].code).toBe('CTL_RAMP_HIGH')
+    expect(warnings[0].message).toHaveProperty('en')
+    expect(warnings[0].message).toHaveProperty('tr')
+    expect(warnings[0].message.en).toMatch(/Coggan/)
+  })
+
+  it('returns no warnings for a moderate plan in safe band', () => {
+    const weeks = Array.from({ length: 8 }, (_, i) => ({
+      week: i + 1, phase: 'Base', tss: 350,
+    }))
+    const warnings = validatePlanRamp(weeks, 50)
+    expect(warnings).toEqual([])
+  })
+
+  it('handles missing tss / non-numeric inputs gracefully', () => {
+    const weeks = [
+      { week: 1, phase: 'Base' },
+      { week: 2, phase: 'Build', tss: null },
+      { week: 3, phase: 'Peak', tss: 'oops' },
+    ]
+    expect(() => validatePlanRamp(weeks, 40)).not.toThrow()
+  })
+
+  it('reports the WK number where the spike lands', () => {
+    const weeks = [
+      { week: 1, phase: 'Base',  tss: 200 },
+      { week: 2, phase: 'Base',  tss: 200 },
+      { week: 3, phase: 'Build', tss: 1200 },
+    ]
+    const warnings = validatePlanRamp(weeks, 25)
+    const w3 = warnings.find(w => w.weekNum === 3)
+    expect(w3).toBeDefined()
+    expect(w3.gain).toBeGreaterThan(7)
   })
 })
 

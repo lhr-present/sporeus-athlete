@@ -436,3 +436,79 @@ describe('computeNextAction — Rule H1: sleep_debt', () => {
     expect(r.id).not.toBe('sleep_debt')
   })
 })
+
+// ── Rule 10.5: plan_stale (v9.59.0) ──────────────────────────────────────────
+
+describe('computeNextAction — Rule 10.5: plan_stale', () => {
+  beforeEach(() => { try { localStorage.removeItem('sporeus-plan') } catch (_) {} })
+  afterEach(()  => { try { localStorage.removeItem('sporeus-plan') } catch (_) {} })
+
+  // Build a log producing CTL well above any plausible plan baseline
+  function highCTLLog() {
+    const log = []
+    for (let i = 60; i >= 1; i--) {
+      log.push({ date: daysAgo(i), tss: 90, type: 'Run', duration: 75, rpe: 7 })
+    }
+    return log
+  }
+
+  it('fires plan_stale when plan >14d old AND CTL drift ≥ 10pts', () => {
+    const log = highCTLLog()
+    localStorage.setItem('sporeus-plan', JSON.stringify({
+      goal: 'marathon', generatedAt: daysAgo(20), baselineCTL: 50, weeks: [],
+    }))
+    const r = computeNextAction(log, [], {})
+    if (r.id === 'plan_stale') {
+      expect(r.priority).toBe(10)
+      expect(r.citation).toMatch(/Banister/)
+      expect(r.metrics.planAgeDays).toBeGreaterThan(14)
+      expect(r.metrics.ctlDrift).toBeGreaterThanOrEqual(10)
+    }
+  })
+
+  it('does NOT fire plan_stale when plan is fresh (<14d)', () => {
+    const log = highCTLLog()
+    localStorage.setItem('sporeus-plan', JSON.stringify({
+      goal: 'marathon', generatedAt: daysAgo(7), baselineCTL: 50, weeks: [],
+    }))
+    const r = computeNextAction(log, [], {})
+    expect(r.id).not.toBe('plan_stale')
+  })
+
+  it('does NOT fire plan_stale when CTL drift < 10pts', () => {
+    const log = highCTLLog()
+    // baseline near current CTL → small drift
+    localStorage.setItem('sporeus-plan', JSON.stringify({
+      goal: 'marathon', generatedAt: daysAgo(30), baselineCTL: 100, weeks: [],
+    }))
+    const r = computeNextAction(log, [], {})
+    expect(r.id).not.toBe('plan_stale')
+  })
+
+  it('does NOT fire plan_stale when plan has no baselineCTL', () => {
+    const log = highCTLLog()
+    localStorage.setItem('sporeus-plan', JSON.stringify({
+      goal: 'marathon', generatedAt: daysAgo(30), weeks: [],
+    }))
+    const r = computeNextAction(log, [], {})
+    expect(r.id).not.toBe('plan_stale')
+  })
+
+  it('handles corrupt plan JSON without throwing', () => {
+    const log = highCTLLog()
+    localStorage.setItem('sporeus-plan', '{not-valid-json')
+    expect(() => computeNextAction(log, [], {})).not.toThrow()
+  })
+
+  it('plan_stale rationale is bilingual', () => {
+    const log = highCTLLog()
+    localStorage.setItem('sporeus-plan', JSON.stringify({
+      goal: 'marathon', generatedAt: daysAgo(25), baselineCTL: 40, weeks: [],
+    }))
+    const r = computeNextAction(log, [], {})
+    if (r.id === 'plan_stale') {
+      expect(r.rationale.en).toMatch(/days old/)
+      expect(r.rationale.tr).toMatch(/gün eski/)
+    }
+  })
+})

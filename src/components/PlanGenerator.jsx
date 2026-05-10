@@ -4,7 +4,8 @@ import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { PLAN_GOALS, PLAN_LEVELS, ZONE_COLORS, ZONE_NAMES } from '../lib/constants.js'
-import { generatePlan, calcLoad } from '../lib/formulas.js'
+import { generatePlan, calcLoad, validatePlanRamp } from '../lib/formulas.js'
+import { computeCTL } from '../lib/nextAction.js'
 import { BLOCK_PHASES, generateBlockPlan } from '../lib/sport/blockPeriodization.js'
 import { MiniDonut } from './ui.jsx'
 import { findOptimalWeekStructure } from '../lib/patterns.js'
@@ -349,14 +350,20 @@ export default function PlanGenerator({ onLogSession }) {
         zoneEmphasis: w.zoneEmphasis,
         focus: w.focus,
       }))
-      setPlan({ goal: t('blockPeriodization'), weeks: weeks_arr, generatedAt: today, level, hoursPerWeek: hours, isBlock: true })
-      setPlanWarnings([])
-      setPlanValidationErrors([])
+      const baselineCTL = computeCTL(log)
+      const rampWarn = validatePlanRamp(weeks_arr, baselineCTL)
+      setPlan({ goal: t('blockPeriodization'), weeks: weeks_arr, generatedAt: today, level, hoursPerWeek: hours, isBlock: true, baselineCTL })
+      setPlanWarnings(rampWarn.map(w => (lang === 'tr' ? w.message.tr : w.message.en)))
+      setPlanValidationErrors(rampWarn)
+      setWarningsExpanded(rampWarn.length > 0)
     } else {
       const weeks_arr = generatePlan(goal, weeks, hours, level)
-      setPlan({ goal, weeks: weeks_arr, generatedAt: today, level, hoursPerWeek: hours })
-      setPlanWarnings([])
-      setPlanValidationErrors([])
+      const baselineCTL = computeCTL(log)
+      const rampWarn = validatePlanRamp(weeks_arr, baselineCTL)
+      setPlan({ goal, weeks: weeks_arr, generatedAt: today, level, hoursPerWeek: hours, baselineCTL })
+      setPlanWarnings(rampWarn.map(w => (lang === 'tr' ? w.message.tr : w.message.en)))
+      setPlanValidationErrors(rampWarn)
+      setWarningsExpanded(rampWarn.length > 0)
     }
     setSelWeek(0)
   }
@@ -604,7 +611,7 @@ export default function PlanGenerator({ onLogSession }) {
           <button style={{ ...S.btnSec, fontSize:'11px' }} onClick={sharePlan}>⤴ Share Config</button>
           {shareMsg && <span style={{ ...S.mono, fontSize:'11px', color:'#5bc25b' }}>{shareMsg}</span>}
         </div>
-        {advancedMode && planValidationErrors.length > 0 && (
+        {planValidationErrors.length > 0 && (
           <div
             role="region"
             aria-label={lang==='tr' ? 'Plan uyarıları' : 'Plan warnings'}

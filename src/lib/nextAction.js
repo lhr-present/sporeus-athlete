@@ -360,6 +360,38 @@ function evalRules(log, recovery, profile) {
     }
   }
 
+  // ── Rule 10.5: plan_stale — surface when prescribed plan is out of date ─────
+  // v9.59.0 — Fires when sporeus-plan is >14d old AND athlete's CTL has drifted
+  // ≥10pts above the plan's baseline (fitness exceeded what plan assumed).
+  // Banister 1991: plan baseline drift means weekly TSS targets undershoot the
+  // current adaptive capacity. Suggests regeneration, not rest.
+  try {
+    const planRaw = typeof localStorage !== 'undefined' ? localStorage.getItem('sporeus-plan') : null
+    if (planRaw) {
+      const plan = JSON.parse(planRaw)
+      const generatedAt = plan?.generatedAt
+      const baselineCTL = parseFloat(plan?.baselineCTL)
+      if (generatedAt && Number.isFinite(baselineCTL) && baselineCTL > 0) {
+        const ageDays = Math.floor((Date.now() - new Date(generatedAt).getTime()) / 86400000)
+        const drift = ctl - baselineCTL
+        if (ageDays > 14 && drift >= 10) {
+          return {
+            id:        'plan_stale',
+            priority:  10,
+            action:    { en: 'Regenerate plan — fitness has outgrown baseline', tr: 'Planı yenile — kondisyon temelini aştı' },
+            rationale: {
+              en: `Plan is ${ageDays} days old; CTL is +${Math.round(drift)} above plan baseline (${Math.round(baselineCTL)}→${ctl}). Weekly TSS targets undershoot current capacity — regenerate to recalibrate.`,
+              tr: `Plan ${ageDays} gün eski; KTY plan temeline göre +${Math.round(drift)} (${Math.round(baselineCTL)}→${ctl}). Haftalık TSS hedefleri mevcut kapasitenin altında — yeniden oluştur.`,
+            },
+            citation:  'Banister 1991 (PMC baseline drift)',
+            color:     'blue',
+            metrics:   { ctl, atl, tsb, acwr, wellness, planAgeDays: ageDays, ctlDrift: Math.round(drift) },
+          }
+        }
+      }
+    }
+  } catch (_) { /* localStorage unavailable / corrupt JSON — silent fall-through */ }
+
   // ── Rule 11: default ─────────────────────────────────────────────────────────
   return {
     id:        'default',

@@ -349,6 +349,47 @@ export function generatePlan(goal, totalWeeks, weeklyHours, level) {
   })
 }
 
+/**
+ * v9.59.0 — Validate a generated plan against the Coggan 5–7 TSS/wk safe ramp
+ * band. Projects CTL forward week-by-week using daily TSS = weekTSS / 7 and
+ * the standard 42-day EMA. Returns warnings for any 2-week window where the
+ * net CTL gain exceeds 14 (≈ 7 TSS/wk × 2). Surfaced in PlanGenerator's
+ * existing planValidationErrors UI.
+ *
+ * @param {Array} weeks  - generatePlan output (each week has .tss, .week, .phase)
+ * @param {number} startCTL - athlete's current CTL at plan-generation time
+ * @returns {Array} warnings — { code, message:{en,tr}, weekNum, gain }
+ */
+export function validatePlanRamp(weeks, startCTL = 40) {
+  if (!Array.isArray(weeks) || weeks.length < 2) return []
+  const k = 1 / 42
+  let ctl = Math.max(0, parseFloat(startCTL) || 0)
+  const ctlByWeek = []
+  for (const w of weeks) {
+    const dailyTSS = (parseFloat(w?.tss) || 0) / 7
+    for (let d = 0; d < 7; d++) ctl = ctl + (dailyTSS - ctl) * k
+    ctlByWeek.push(Math.round(ctl))
+  }
+  const warnings = []
+  for (let i = 1; i < ctlByWeek.length; i++) {
+    const gain = ctlByWeek[i] - ctlByWeek[i - 1]
+    if (gain > 7) {
+      const wkA = weeks[i - 1]?.week ?? i
+      const wkB = weeks[i]?.week ?? i + 1
+      warnings.push({
+        code: 'CTL_RAMP_HIGH',
+        weekNum: wkB,
+        gain,
+        message: {
+          en: `CTL ramp WK${wkA}→WK${wkB} = +${gain} (Coggan safe band 5–7 TSS/wk). Consider reducing ${weeks[i].phase} hours ≥10% to lower overreach risk.`,
+          tr: `KTY artışı HF${wkA}→HF${wkB} = +${gain} (Coggan güvenli aralık 5–7 TSS/hf). Aşırı yük riskini azaltmak için ${weeks[i].phase} saatlerini ≥%10 düşür.`,
+        },
+      })
+    }
+  }
+  return warnings
+}
+
 // ─── normTR (Turkish normalizer, no JSX) ─────────────────────────────────────
 export const normTR = s => (s||'').toLowerCase()
   .replace(/ş/g,'s').replace(/ğ/g,'g').replace(/ı/g,'i').replace(/ü/g,'u').replace(/ö/g,'o').replace(/ç/g,'c')
