@@ -216,7 +216,10 @@ export function findRecoveryPatterns(log, recovery) {
 
   // Best/worst day of week
   const dayQuality = Array.from({length: 7}, (_, i) => {
-    const daySessions = scored.filter(p => new Date(p.session.date).getDay() === i)
+    // v9.62.0 — Anchor at UTC noon so .getUTCDay() bucketing is consistent
+    // across all timezones; was new Date(date).getDay() which read as local
+    // midnight and skewed by 1 day for users in negative UTC offsets.
+    const daySessions = scored.filter(p => new Date(p.session.date + 'T12:00:00Z').getUTCDay() === i)
     return { day: DAYS[i], count: daySessions.length, avgQ: daySessions.length ? daySessions.reduce((s, p) => s + p.quality, 0) / daySessions.length : 0 }
   }).filter(d => d.count >= 2)
 
@@ -337,10 +340,13 @@ export function findOptimalWeekStructure(log, recovery) {
     return { bestPattern: null, sampleSize: 0, reliable: false, needMore: Math.max(0, 20 - (log?.length || 0)) }
   }
 
-  // Group into Mon-Sun weeks
+  // Group into Mon-Sun weeks.
+  // v9.62.0 — Anchor at UTC noon. `new Date('2026-05-01')` parses in browser
+  // local TZ, so .getUTCDay() then disagrees with the YYYY-MM-DD intent for
+  // users in negative UTC offsets; sessions bucketed into wrong ISO week.
   const weeks = {}
   log.forEach(s => {
-    const d = new Date(s.date)
+    const d = new Date(s.date + 'T12:00:00Z')
     const mon = new Date(d); mon.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7))
     const key = mon.toISOString().slice(0, 10)
     if (!weeks[key]) weeks[key] = []
@@ -363,7 +369,8 @@ export function findOptimalWeekStructure(log, recovery) {
     const hrs = sessions.reduce((s, e) => s + (e.duration || 0), 0) / 60
     const avgRPE = sessions.reduce((s, e) => s + (e.rpe || 5), 0) / n
     const recScores = sessions.map(s => {
-      const d = new Date(s.date); d.setUTCDate(d.getUTCDate() + 1)
+      // v9.62.0 — UTC-anchored to keep "next-day recovery" lookup consistent
+      const d = new Date(s.date + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + 1)
       return recMap[d.toISOString().slice(0, 10)] || 0
     }).filter(v => v > 0)
     const avgNextRec = recScores.length ? recScores.reduce((s, v) => s + v, 0) / recScores.length : 60
@@ -384,7 +391,8 @@ export function findOptimalWeekStructure(log, recovery) {
   const dayAgg = Array.from({length: 7}, (_, i) => ({
     dayIdx: i,
     day: DAYS[i],
-    sessions: top25.flatMap(w => w.sessions.filter(s => new Date(s.date).getDay() === i)),
+    // v9.62.0 — UTC-anchored day-of-week bucketing
+    sessions: top25.flatMap(w => w.sessions.filter(s => new Date(s.date + 'T12:00:00Z').getUTCDay() === i)),
   }))
 
   const bestPattern = dayAgg
@@ -493,7 +501,10 @@ export function findSeasonalPatterns(log, recovery) {
   }))
 
   log.forEach(e => {
-    const m = new Date(e.date).getMonth()
+    // v9.62.0 — UTC-anchored month bucketing. .getMonth() against a
+    // local-parsed date misplaces month-boundary sessions for negative-UTC
+    // users (e.g. '2026-05-01' parses to '2026-04-30 20:00 UTC-4').
+    const m = new Date(e.date + 'T12:00:00Z').getUTCMonth()
     byMonth[m].sessions.push(e)
     byMonth[m].totalTSS += e.tss || 0
     byMonth[m].count++

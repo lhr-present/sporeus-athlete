@@ -165,13 +165,19 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     () => expandedId != null ? (log.find(s => s.id === expandedId) ?? null) : null,
     [expandedId, log]
   )
+  // v9.62.0 — These four memos previously used `[expandedEntry, log.length]`
+  // (with eslint-disable). That deps choice produced stale closures when a
+  // session's TSS was edited in place: log gets a new reference but length
+  // does not change, so the cached analysis kept showing pre-edit values.
+  // Using `log` as a dep is correct; cost is one re-memo per log change,
+  // which is rare and cheap since only the expanded row's analysis runs.
   const expandedAnalysis = useMemo(
     () => expandedEntry ? analyseSession(expandedEntry, log.slice(-28)) : null,
-    [expandedEntry, log.length] // eslint-disable-line react-hooks/exhaustive-deps
+    [expandedEntry, log]
   )
   const expandedCtlInfo = useMemo(
     () => expandedEntry ? calcCtlDelta(log, expandedEntry) : null,
-    [expandedEntry, log.length] // eslint-disable-line react-hooks/exhaustive-deps
+    [expandedEntry, log]
   )
   const expandedSimilar = useMemo(() => {
     if (!expandedEntry) return []
@@ -181,12 +187,12 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       e.tss &&
       Math.abs(e.tss - (expandedEntry.tss||0)) / Math.max(expandedEntry.tss||1, 1) <= 0.15
     ).slice(-3)
-  }, [expandedEntry, log.length]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [expandedEntry, log])
 
   // O1 — scoreSession for historical expanded rows
   const expandedScore = useMemo(
     () => expandedEntry ? scoreSession(expandedEntry, log, profileLS) : null,
-    [expandedEntry, log.length] // eslint-disable-line react-hooks/exhaustive-deps
+    [expandedEntry, log, profileLS]
   )
 
   useEffect(() => {

@@ -4,6 +4,117 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.62.0 — 2026-05-11 — Round 13 verified bug fixes: stale useMemo, timezone, sport collision
+
+  Round 13 launched 3 deep-dive agents (data integrity / error handling /
+  performance). 22 findings returned; 6 verified false positives or
+  defensively-handled non-bugs; 3 confirmed mission-critical bugs shipped.
+  Pattern continues from Round 11/12: verify before fixing because agents
+  produce false positives at ~30% rate.
+
+  ### False positives discarded (verified by reading source)
+
+  - Agent X#1: claimed `storage.js:19–31` v2→v3 migration silently drops
+    array entries. Re-read: the `Array.isArray(raw) ? raw : (raw?.data || …)`
+    fall-through correctly extracts arrays from v2 versioned blobs. Code
+    is fine.
+  - Agent Y#1: claimed parseFIT crashes on 0-byte input. Re-read: every
+    accessor uses optional chaining (`data?.activity?.sessions?.[0]`,
+    `data?.records || []`), defaults are present. Empty input produces an
+    empty result, not a crash.
+  - Agent Y#2: claimed `parseBulkCSV` silently skips rows when columns are
+    reordered. Re-read: `col(name) = headers.indexOf(name)` finds columns
+    by name dynamically — reordering is supported.
+
+  ### (1) Stale-closure useMemo bug in TrainingLog (Agent Z#2 — CRITICAL)
+
+  Four useMemos at `TrainingLog.jsx:169, 174, 184, 191` listed `log.length`
+  in their deps with `eslint-disable react-hooks/exhaustive-deps`. When a
+  user edited a session's TSS in place, the log array got a new reference
+  but its length stayed the same — so the memo did not recompute and the
+  user kept seeing the analysis of the *pre-edit* TSS in the expanded
+  row's similar-sessions / CTL-delta / score panels.
+
+  Fix: replace all four `log.length` deps with `log`. Cost: at most one
+  re-memo per log mutation; only runs while a row is expanded. The
+  `expandedScore` memo also gains its missing `profileLS` dep (eslint
+  caught it once the disable comment was removed).
+
+  ### (2) Timezone-naive date bucketing in patterns.js (Agent X#2 — HIGH)
+
+  5 lines in `patterns.js` did `new Date(e.date).getMonth()` / `.getDay()`
+  without normalizing to UTC. `new Date('2026-05-01')` parses as local
+  midnight; for users in negative UTC offsets, the resulting Date reads
+  back as the *previous* day (`2026-04-30 19:00 UTC-5`), so
+  `.getMonth()` and `.getDay()` returned wrong values for sessions on
+  month/week boundaries.
+
+  Symptoms: monthly aggregations (`generateMonthlyPattern`) put May 1st
+  sessions in April for EST users; weekly bucketing (`findOptimalWeekStructure`)
+  put Monday sessions in the previous Sunday's week.
+
+  Fix: all 5 sites now anchor at UTC noon — `new Date(date + 'T12:00:00Z')`
+  — and switch to `.getUTCMonth()` / `.getUTCDay()`. Lines 444 + 476
+  already used this pattern; v9.62.0 makes it consistent.
+
+  ### (3) `sport` ↔ `primarySport` field collision (Agent X#3 — HIGH)
+
+  Same class of bug as the v9.60.0 raceDate ↔ nextRaceDate fix. 10+
+  read sites disagree about which field to read:
+  - `Dashboard.jsx:283, 291`, `triLoad.js:237` — read only `primarySport`
+  - `dailyPrescription.js:92`, `QuickAddModal.jsx:107`, `orientation.js:19`
+    — read only `sport`
+  - `useAppState.js:116`, `intelligence.js:237`, `athleteDataBridge.js:75`
+    — read both with fallback
+
+  When a coach pushed `primarySport: 'Cycling'` to a profile whose
+  onboarding had written `sport: 'Running'`, the merge produced
+  `{ sport: 'Running', primarySport: 'Cycling' }`. Dashboard's sport
+  gating saw Cycling and showed cycling cards; QuickAddModal's
+  `SPORT_DEFAULT_TYPE[profile.sport]` defaulted to Run.
+
+  Fix: same pattern as v9.60.0. `sanitizeProfile()` in `validate.js` now
+  computes `normSport = primarySport || sport` and assigns to both
+  output fields. Downstream read sites see consistent state regardless
+  of which field they prefer. `primarySport` wins on collision (it is
+  the canonical field; coach-pushed profiles use it).
+
+  ### Files
+
+  - `src/components/TrainingLog.jsx` — 4 useMemo deps fixed; profileLS
+    added; eslint-disable comments removed
+  - `src/lib/patterns.js` — 5 date-bucketing sites switched to UTC anchor
+  - `src/lib/validate.js` — sanitizeProfile mirrors sport ↔ primarySport
+  - `src/lib/__tests__/validate.test.js` — 4 new tests for sport mirror
+  - `package.json` — 11.61.0 → 11.62.0
+
+  Tests 9719/9719 (+4). Lint + build clean.
+
+  ### Verified but deferred (real bugs, bigger ships)
+
+  - **TrainingLog has no list virtualization** (Agent Z#5) — react-virtuoso
+    in package.json but never imported here. CLAUDE.md says it's used; it
+    is not. Real perf issue for users with 1000+ log entries. Defer:
+    needs careful integration to preserve existing edit/expand/search UX.
+  - **Realtime channel leak in useSessionComments** (Agent Y#5) — orphan
+    channels after MAX_RETRY exhaustion. Defer: needs careful hook surgery
+    + a regression test that exercises the retry path.
+  - **Dashboard cards lack memo()** (Agent Z#3, #10) — 100+ cards re-render
+    on every Dashboard prop change. Defer: scoped audit + memo pass.
+  - **Coach plan idempotency** (Agent X#5) — `.insert()` with no onConflict
+    creates duplicate rows on retry. Defer: needs schema/RLS review.
+
+  ### Confirmed false-positive trend across rounds
+
+  Round 11: Agent A "race date never persisted" (it was persisted).
+  Round 13: Agent X "v2→v3 migration drops arrays" (it does not),
+  Agent Y "FIT 0-byte crashes" (defensively handled),
+  Agent Y "CSV column reorder skips rows" (handled by `col()`).
+  Verification step is load-bearing — without it, ~30% of agent findings
+  would generate cargo-cult fixes.
+
+---
+
 ## v9.61.0 — 2026-05-11 — Mission-flow polish: post-onboarding routing + yearly-plan support + verified deferred bugs
 
   Continuation of the mission-flow focus (physiology + race target → yearly

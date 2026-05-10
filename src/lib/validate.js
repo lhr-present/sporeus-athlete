@@ -105,10 +105,17 @@ export function sanitizeProfile(p) {
     if (isNaN(n) || !isFinite(n)) return ''
     return String(Math.max(lo, Math.min(hi, n)))
   }
+  // v9.62.0 — sport / primarySport collision. ~10 read sites disagree on
+  // which field to read: Dashboard.jsx:283/291 reads only primarySport;
+  // dailyPrescription.js:92 + QuickAddModal.jsx:107 read only sport;
+  // useAppState.js:116 falls back. Result: coach pushes primarySport but
+  // onboarding wrote sport → sport gating misfires. Mirror both fields so
+  // any read site sees consistent state regardless of which name it checks.
+  const normSport = str(p.primarySport, 50) || str(p.sport, 50)
   return {
     name:          str(p.name),
-    sport:         str(p.sport, 50),
-    primarySport:  str(p.primarySport, 50),
+    sport:         normSport,
+    primarySport:  normSport,
     triathlonType: str(p.triathlonType, 30),
     secondarySports: Array.isArray(p.secondarySports) ? p.secondarySports.slice(0, 10).map(s => str(s, 30)) : [],
     athleteLevel:  str(p.athleteLevel, 30),

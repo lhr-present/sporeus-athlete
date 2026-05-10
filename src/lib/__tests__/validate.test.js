@@ -445,3 +445,32 @@ describe('getProfileRaceDate', () => {
     expect(getProfileRaceDate({ nextRaceDate: 'tomorrow' })).toBeNull()
   })
 })
+
+// ─── v9.62.0: sport / primarySport mirroring ──────────────────────────────────
+describe('sanitizeProfile — sport ↔ primarySport mirror (v9.62.0)', () => {
+  const base = { name: 'Test', age: '30', gender: 'male' }
+
+  it('mirrors primarySport to sport when only primarySport is given', () => {
+    const p = sanitizeProfile({ ...base, primarySport: 'Cycling' })
+    expect(p.sport).toBe('Cycling')
+    expect(p.primarySport).toBe('Cycling')
+  })
+
+  it('mirrors sport to primarySport when only sport is given', () => {
+    const p = sanitizeProfile({ ...base, sport: 'Running' })
+    expect(p.sport).toBe('Running')
+    expect(p.primarySport).toBe('Running')
+  })
+
+  it('primarySport wins when both are set (coach-push precedence)', () => {
+    const p = sanitizeProfile({ ...base, sport: 'Running', primarySport: 'Cycling' })
+    expect(p.sport).toBe('Cycling')
+    expect(p.primarySport).toBe('Cycling')
+  })
+
+  it('both fields empty when neither input is set', () => {
+    const p = sanitizeProfile({ ...base })
+    expect(p.sport).toBe('')
+    expect(p.primarySport).toBe('')
+  })
+})
