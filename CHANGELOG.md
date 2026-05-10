@@ -4,6 +4,85 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.58.0 — 2026-05-10 — NP auto-compute on FIT import + Concept2 ErgData CSV parser
+
+  Round 9. Lands the two import-pipeline ships deferred from v9.57.0
+  (Agent B "data import" findings). Both close measurable accuracy and
+  format-coverage gaps with no UI work.
+
+  ### (1) Normalized Power auto-compute on FIT import (Coggan 2003)
+
+  Pre-fix, `parseFIT()` stored the raw 1-Hz power series to localStorage
+  but never computed Normalized Power. Athletes who didn't manually run
+  the CP test in Protocols saw their powered rides logged with HR-derived
+  TSS only — meaning every ride with a power meter recorded the *less*
+  accurate load metric while the data needed for the *more* accurate one
+  sat unused on disk.
+
+  Now on import, when `powerSeries.length >= 30`:
+
+  ```
+  np              = round(normalizedPower(series))    // Coggan 2003
+                                                      // 30s rolling → ^4 → mean → ^0.25
+  intensityFactor = round((np / FTP) × 100) / 100     // requires profile.ftp
+  powerTSS        = round((NP/FTP)² × duration_h × 100)
+  tssEstimate     = powerTSS  ← when computable
+                  | hrTSS     ← otherwise (existing behaviour preserved)
+  tssEstimateHR   = always retained as fallback for visibility
+  ```
+
+  Wiring: `TrainingLog.jsx:onFileDrop` now reads `profileLS.ftp` and
+  passes it as the third arg to `parseFIT(buf, maxHR, ftp)`. When FTP
+  is missing, NP is still computed and stored — IF/powerTSS just stay
+  null and the entry falls back to HR-TSS.
+
+  ### (2) Concept2 ErgData CSV parser
+
+  Pre-fix, rowers exporting from Concept2's online logbook (or via the
+  ErgData iOS/Android app) had no first-class import path. They could
+  paste data into the manual log or use the generic Sporeus CSV
+  schema, but neither understood the Concept2 column layout.
+
+  New `parseConcept2CSV(text)` + `isConcept2CSV(text)` detector in
+  `fileImport.js`. Detection heuristic on first header line:
+
+  ```
+  contains "stroke rate"   OR  "avg spm"
+                            OR  ("avg pace" AND "total distance")
+  ```
+
+  Recognized columns (case + punctuation insensitive):
+  Date · Description · Total Time · Total Distance · Avg Pace · Avg Watts
+  Avg HR · Stroke Rate / Avg SPM · Drag Factor.
+
+  Time fields support Concept2's `HH:MM:SS.t`, `MM:SS.t`, and bare-second
+  conventions. Date supports ISO `YYYY-MM-DD` and US `MM/DD/YYYY`.
+
+  Output entries are tagged `sport:'rowing'`, `sport_type:'rowing'`,
+  `source:'concept2_csv'`, with `distance` (m), `duration` (min),
+  `durationSec`, `avg_spm`, `drag_factor`, `avg_hr`, `avg_power`,
+  `avgPaceSec500m`, `notes` (= Description). Wired into the existing
+  rowing dashboard cards (drag-factor trend, split-500 pace, SPM
+  distribution) — no new UI required.
+
+  Rows missing date / time / distance are logged via `logger.warn` and
+  skipped rather than throwing.
+
+  ### Files
+
+  - `src/lib/fileImport.js` — `parseFIT` accepts `profileFTP`; computes
+    np/IF/powerTSS via existing `formulas.js` exports. New
+    `parseConcept2CSV` + `isConcept2CSV` (~125 LOC).
+  - `src/components/TrainingLog.jsx` — passes `profileLS.ftp` through to
+    `parseFIT()`.
+  - `package.json` — 11.57.0 → 11.58.0.
+
+  Depends on: `src/lib/formulas.js` (`normalizedPower`, `computePowerTSS`),
+  `src/lib/logger.js`. Tests: 9688 unchanged (existing FIT_VALID mock has
+  2 records < 30 threshold so NP block is dormant for it; no regression).
+
+---
+
 ## v9.57.0 — 2026-05-10 — Escalating taper + injury foreshadowing + sick-day surface
 
   Round 8. Three new agents (AI insights / data import / elite-athlete

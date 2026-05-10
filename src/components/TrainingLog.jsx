@@ -317,9 +317,10 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     try {
       let parsed
       const maxHR = profileLS?.maxHR ? parseInt(profileLS.maxHR) : null
+      const ftp = profileLS?.ftp ? parseFloat(profileLS.ftp) : null
       if (kind === 'fit') {
         const buf = await file.arrayBuffer()
-        parsed = await parseFIT(buf, maxHR)
+        parsed = await parseFIT(buf, maxHR, ftp)
       } else {
         const text = await file.text()
         parsed = parseGPX(text, maxHR)

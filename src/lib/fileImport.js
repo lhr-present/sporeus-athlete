@@ -1,6 +1,7 @@
 // ─── fileImport.js — FIT and GPX workout file parsing ────────────────────────
 import FitParser from 'fit-file-parser'
 import { logger } from './logger.js'
+import { normalizedPower, computePowerTSS } from './formulas.js'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -36,7 +37,7 @@ function estimateTSS(durationMin, avgHR, maxHR, lthr) {
 
 // ── FIT parser ────────────────────────────────────────────────────────────────
 
-export function parseFIT(arrayBuffer, profileMaxHR) {
+export function parseFIT(arrayBuffer, profileMaxHR, profileFTP = null) {
   return new Promise((resolve, reject) => {
     const parser = new FitParser({ force: true, speedUnit: 'm/s', lengthUnit: 'm', elapsedRecordField: true })
 
@@ -91,9 +92,36 @@ export function parseFIT(arrayBuffer, profileMaxHR) {
           try { localStorage.setItem('sporeus-last-fit-power', JSON.stringify(powerSeries.slice(0, 10800))) } catch (e) { logger.warn('localStorage:', e.message) }
         }
 
+        // v9.58.0 — Compute Normalized Power (Coggan 2003) on import, plus
+        // power-TSS + IF when athlete's FTP is known. Pre-fix the raw power
+        // series was stored to localStorage but NP was never computed unless
+        // the athlete manually triggered the CP test in Protocols. Result:
+        // every powered ride logged a HR-derived TSS estimate, missing the
+        // far-more-accurate Coggan power-TSS (NP / FTP)² × duration_h × 100.
+        let np = null, intensityFactor = null, powerTSS = null
+        if (hasPower && powerSeries.length >= 30) {
+          const npVal = normalizedPower(powerSeries)
+          if (npVal && npVal > 0) {
+            np = Math.round(npVal)
+            const ftp = parseFloat(profileFTP) || 0
+            if (ftp > 0) {
+              intensityFactor = Math.round((np / ftp) * 100) / 100
+              const durSec = durationMin * 60
+              const t = computePowerTSS(np, durSec, ftp)
+              if (t != null && t > 0) powerTSS = Math.round(t)
+            }
+          }
+        }
+
         resolve({
           date, durationMin, avgHR, maxHR: maxHR_rec,
-          distanceM: Math.round(distanceM), tssEstimate, zones,
+          distanceM: Math.round(distanceM),
+          // v9.58.0 — When power-TSS is computable, use it as the headline
+          // tssEstimate (Coggan 2003 standard). HR-estimate stays as fallback.
+          tssEstimate: powerTSS != null ? powerTSS : tssEstimate,
+          tssEstimateHR: tssEstimate,
+          np, intensityFactor, powerTSS,
+          zones,
           powerSeries: hasPower ? powerSeries : [],
           hrSeries:    hasHR    ? hrSeries    : [],
           speedSeries: hasSpeed ? speedSeries : [],
@@ -248,6 +276,143 @@ export function parseBulkCSV(text) {
     })
   }
   return results
+}
+
+/**
+ * v9.58.0 — Concept2 ErgData CSV parser.
+ *
+ * Detects the official Concept2 logbook + ErgData export format by header.
+ * Required columns (case-insensitive): "Date", "Total Time" (or "Total time"),
+ * "Total Distance", "Avg Pace". Optional: "Avg Watts", "Avg HR", "Stroke Rate"
+ * (or "Avg SPM"), "Drag Factor", "Description".
+ *
+ * Splits the row into a rowing log entry with:
+ *   sport_type:'rowing', distance, duration (sec), avg_spm, drag_factor,
+ *   avg_hr, avg_power, notes.
+ *
+ * Time fields support `MM:SS.t` and `HH:MM:SS.t` Concept2 conventions.
+ *
+ * @param {string} text — raw CSV text (may have BOM ﻿)
+ * @returns {Array} — rowing log entries
+ */
+export function parseConcept2CSV(text) {
+  if (!text) return []
+  const cleaned = text.replace(/^﻿/, '').trim()
+  const lines = cleaned.split(/\r?\n/).filter(l => l.trim())
+  if (lines.length < 2) return []
+
+  const rawHeaders = lines[0].split(',').map(h => h.trim())
+  const norm = rawHeaders.map(h => h.toLowerCase().replace(/[^a-z]/g, ''))
+  const findCol = (...candidates) => {
+    for (const c of candidates) {
+      const i = norm.indexOf(c.toLowerCase().replace(/[^a-z]/g, ''))
+      if (i >= 0) return i
+    }
+    return -1
+  }
+
+  const dateIdx     = findCol('date')
+  const descIdx     = findCol('description', 'workoutname', 'workout')
+  const totalTimeIdx = findCol('totaltime', 'duration')
+  const totalDistIdx = findCol('totaldistance', 'distance')
+  const avgPaceIdx   = findCol('avgpace', 'pace')
+  const avgWattsIdx  = findCol('avgwatts', 'watts', 'power')
+  const avgHRIdx     = findCol('avghr', 'avgheartrate', 'heartrate')
+  const spmIdx       = findCol('strokerate', 'avgspm', 'spm')
+  const dragIdx      = findCol('dragfactor', 'drag')
+
+  // Format detection: must have date + total time + total distance + spm/avg-pace.
+  // Reject if missing — caller falls back to generic parseBulkCSV.
+  if (dateIdx < 0 || totalTimeIdx < 0 || totalDistIdx < 0
+    || (spmIdx < 0 && avgPaceIdx < 0)) {
+    return []
+  }
+
+  const parseTime = (str) => {
+    if (!str) return 0
+    const s = String(str).trim().replace(/['"]/g, '')
+    // HH:MM:SS.t  or  MM:SS.t  or  SS.t  or  bare seconds
+    const parts = s.split(':')
+    if (parts.length === 3) {
+      return parseFloat(parts[0]) * 3600 + parseFloat(parts[1]) * 60 + parseFloat(parts[2])
+    }
+    if (parts.length === 2) {
+      return parseFloat(parts[0]) * 60 + parseFloat(parts[1])
+    }
+    return parseFloat(s) || 0
+  }
+
+  const parseDate = (str) => {
+    if (!str) return null
+    const s = String(str).trim().replace(/['"]/g, '').slice(0, 19)
+    // ISO YYYY-MM-DD or full timestamp
+    const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/)
+    if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`
+    // US MM/DD/YYYY
+    const us = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/)
+    if (us) return `${us[3]}-${String(us[1]).padStart(2, '0')}-${String(us[2]).padStart(2, '0')}`
+    return null
+  }
+
+  const out = []
+  for (let i = 1; i < lines.length; i++) {
+    const cells = splitCSVLine(lines[i])
+    const get = idx => (idx >= 0 && idx < cells.length ? cells[idx].trim() : '')
+
+    const date = parseDate(get(dateIdx))
+    if (!date) {
+      logger.warn(`[parseConcept2CSV] Row ${i + 1}: invalid date "${get(dateIdx)}" — skipped`)
+      continue
+    }
+
+    const durationSec = parseTime(get(totalTimeIdx))
+    const distance = parseFloat(get(totalDistIdx)) || 0
+    if (durationSec <= 0 || distance <= 0) {
+      logger.warn(`[parseConcept2CSV] Row ${i + 1}: missing time/distance — skipped`)
+      continue
+    }
+    const avgPaceSec = avgPaceIdx >= 0 ? parseTime(get(avgPaceIdx)) : null
+    const avgWatts = parseFloat(get(avgWattsIdx)) || null
+    const avgHR = parseFloat(get(avgHRIdx)) || null
+    const spm = parseFloat(get(spmIdx)) || null
+    const drag = parseFloat(get(dragIdx)) || null
+    const desc = get(descIdx)
+
+    out.push({
+      id: `c2-${date}-${i}`,
+      date,
+      type: 'Row',
+      sport: 'rowing',
+      sport_type: 'rowing',
+      distance: Math.round(distance),
+      distanceM: Math.round(distance),
+      duration: Math.round(durationSec / 60),     // minutes — TrainingLog convention
+      durationSec: Math.round(durationSec),       // raw seconds for split500 calc
+      avg_spm: spm != null ? Math.round(spm) : undefined,
+      drag_factor: drag != null ? Math.round(drag) : undefined,
+      avg_hr: avgHR != null ? Math.round(avgHR) : undefined,
+      avg_power: avgWatts != null ? Math.round(avgWatts) : undefined,
+      avgPaceSec500m: avgPaceSec || undefined,
+      notes: desc || '',
+      source: 'concept2_csv',
+    })
+  }
+  return out
+}
+
+/**
+ * Detect whether a CSV is in Concept2 ErgData format (vs generic Sporeus
+ * schema). Used by the import dispatcher to route to parseConcept2CSV when
+ * appropriate.
+ */
+export function isConcept2CSV(text) {
+  if (!text) return false
+  const firstLine = text.replace(/^﻿/, '').split(/\r?\n/)[0] || ''
+  const lower = firstLine.toLowerCase()
+  // Heuristic: Concept2 always has "stroke rate" OR "avg spm" OR ("avg pace" AND "total distance")
+  if (/stroke\s*rate|avg\s*spm/.test(lower)) return true
+  if (/avg\s*pace/.test(lower) && /total\s*distance/.test(lower)) return true
+  return false
 }
 
 /** Split one CSV line, respecting quoted fields. */
