@@ -554,7 +554,18 @@ export function RaceWeekSection({ raceWeekProtocol, isTR, defaultOpen = false })
               <strong>{isTR ? '🎯 MOTOR İMGELEM' : '🎯 MOTOR IMAGERY'}:</strong> {bil(r.raceDay.motorImagery, isTR)}
             </div>
           ) : null}
-          {r.raceDay.caffeineSafetyFlags ? (
+          {/* v9.43.0 — caffeine safety as numbered checklist; falls back to blob for back-compat */}
+          {r.raceDay.caffeineSafetyRules ? (
+            <div style={{ marginTop: 4, padding: 6, background: 'rgba(125,74,0,0.10)', borderLeft: '2px solid #7d4a00', fontSize: 10 }}>
+              <strong>{isTR ? '☕ KAFEİN GÜVENLİK' : '☕ CAFFEINE SAFETY'}</strong>
+              <div style={{ marginTop: 2 }}>{bil(r.raceDay.caffeineSafetyRules.preface, isTR)}</div>
+              <ol style={{ margin: '4px 0 0 18px', padding: 0 }}>
+                {(r.raceDay.caffeineSafetyRules.rules?.[isTR ? 'tr' : 'en'] || []).map((rule, i) => (
+                  <li key={i} style={{ marginBottom: 2 }}>{rule}</li>
+                ))}
+              </ol>
+            </div>
+          ) : r.raceDay.caffeineSafetyFlags ? (
             <div style={{ marginTop: 4, padding: 6, background: 'rgba(125,74,0,0.10)', borderLeft: '2px solid #7d4a00', fontSize: 10 }}>
               <strong>{isTR ? '☕ KAFEİN GÜVENLİK' : '☕ CAFFEINE SAFETY'}:</strong> {bil(r.raceDay.caffeineSafetyFlags, isTR)}
             </div>

@@ -354,6 +354,39 @@ describe('buildRaceWeekProtocol — DNF triage structured buckets (v9.38.0)', ()
   })
 })
 
+// ── v9.43.0 — Caffeine safety as numbered rules ────────────────────────
+describe('buildRaceWeekProtocol — caffeine safety structured rules (v9.43.0)', () => {
+  it('every sport carries caffeineSafetyRules (preface + rules array)', () => {
+    for (const sport of ['run', 'bike', 'swim', 'rowing', 'triathlon']) {
+      const r = buildRaceWeekProtocol({ sport })
+      const c = r.raceDay.caffeineSafetyRules
+      expect(c).toBeDefined()
+      expect(c.preface.en).toBeTruthy()
+      expect(c.preface.tr).toBeTruthy()
+      expect(Array.isArray(c.rules.en)).toBe(true)
+      expect(c.rules.en.length).toBe(6)
+      expect(c.rules.en.length).toBe(c.rules.tr.length)
+    }
+  })
+
+  it('caffeine rules cover the 6 critical safety conditions', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run' })
+    const flat = r.raceDay.caffeineSafetyRules.rules.en.join(' | ').toLowerCase()
+    expect(flat).toMatch(/never first-time|first-time caffeine/)
+    expect(flat).toMatch(/naïve|naive/)
+    expect(flat).toMatch(/anxiety/)
+    expect(flat).toMatch(/sleep|6\s?h/)
+    expect(flat).toMatch(/gel|format/)
+    expect(flat).toMatch(/6\s?mg\/kg/)
+  })
+
+  it('caffeine flags blob (back-compat) preserved', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run' })
+    expect(r.raceDay.caffeineSafetyFlags).toBeDefined()
+    expect(r.raceDay.caffeineSafetyFlags.en).toMatch(/CAFFEINE SAFETY/i)
+  })
+})
+
 // ── v9.35.0 — Last 3 nights sleep hygiene ──────────────────────────────
 describe('buildRaceWeekProtocol — last-3-nights sleep hygiene (v9.35.0)', () => {
   it('every sport carries last3NightsSleepHygiene block', () => {

@@ -4,6 +4,29 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.43.0 — 2026-05-10 — Caffeine safety as numbered checklist
+
+  Jargon audit P0: caffeine safety was a 6-point safety-critical paragraph
+  with conditional rules and dose math packed inline. Athletes use this on
+  race morning under stress — exactly the wrong audience for prose.
+
+  • `CAFFEINE_SAFETY_RULES` = { preface, rules.en/tr (6 each) }. Renderer
+    uses `<ol>` with one rule per `<li>`. Same back-compat pattern as
+    DNF buckets and RED-S checklist (v9.38, v9.39): existing
+    `caffeineSafetyFlags` blob preserved untouched.
+
+  • 3 new tests v9.43.0 — `caffeineSafetyRules` shape, the 6 conditions
+    (first-time, naïve, anxiety, sleep, gel, 6 mg/kg cap), back-compat
+    blob.
+
+  CITATIONS: Spriet 2014; Burke 2008. Same content, restructured for
+  scannability. No protocol change.
+
+  DEPENDS ON: src/lib/athlete/eliteProgramRaceWeek.js,
+  src/components/dashboard/BroaderPlanSections.jsx.
+
+---
+
 ## v9.42.0 — 2026-05-10 — Day-type CHO periodization + DNF jargon plain-English
 
   Multi-agent audit on the now-improved Mission #1. Two scientific gaps and

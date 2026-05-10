@@ -970,6 +970,35 @@ const CAFFEINE_SAFETY_FLAGS = {
   tr: 'KAFEİN GÜVENLİK (dozlamadan önce oku): (1) Yarış gününde İLK KEZ kafein ASLA — yarış-eşdeğer dozda 2+ antrenmanda test edilmeli. (2) Kafein-naif (30+ gündür günlük kahve yok)? İlk doz 1-2 mg/kg ile sınırla (70 kg sporcu için ≈70-140 mg; birkaç deneyimden sonra bile 3 mg/kg\'ı geçme). (3) Yüksek anksiyete geçmişi? 3 mg/kg\'a düşür veya tamamen atla. (4) Önceki gece <6sa uyku? Atla — kortizol piki üzerine kafein titreği kötüleştirir. (5) Sadece denenmiş jel formatı ile kombine — kafein + yeni jel = GI sıkıntısı. (6) 6 mg/kg\'ı asla geçme — azalan getiri + GI/titrek riski.',
 }
 
+// v9.43.0 — Same content, structured as a 6-rule checklist (preface + rules
+// array). UI renders one bullet per rule with the dose math bolded. The
+// flat blob above is preserved for back-compat with existing tests + JSON
+// consumers — derived from the rules in a future ship if helpful.
+const CAFFEINE_SAFETY_RULES = {
+  preface: {
+    en: '☕ Read before dosing on race morning:',
+    tr: '☕ Yarış sabahı dozlamadan önce oku:',
+  },
+  rules: {
+    en: [
+      'NEVER first-time caffeine on race day — must be tested in 2+ training sessions at race-equivalent dose.',
+      'Caffeine-naïve (no daily coffee for 30+ days)? Cap first dose at 1–2 mg/kg ONLY (≈70–140 mg for 70 kg). Do not exceed 3 mg/kg even after a few exposures.',
+      'High anxiety history? Cut to 3 mg/kg or skip entirely.',
+      'Slept <6 h last night? Skip — caffeine on top of a cortisol spike worsens jitter, not focus.',
+      'Combine only with a gel format you have tested — caffeine + novel gel = GI distress.',
+      'Never exceed 6 mg/kg — diminishing returns + GI/jitter risk.',
+    ],
+    tr: [
+      'Yarış gününde İLK KEZ kafein ASLA — yarış-eşdeğer dozda 2+ antrenmanda test edilmeli.',
+      'Kafein-naif (30+ gündür günlük kahve yok)? İlk doz 1–2 mg/kg ile sınırla (70 kg için ≈70–140 mg). Birkaç deneyimden sonra bile 3 mg/kg\'ı geçme.',
+      'Yüksek anksiyete geçmişi? 3 mg/kg\'a düşür veya tamamen atla.',
+      'Önceki gece <6 sa uyku? Atla — kortizol piki üzerine kafein titreği kötüleştirir, odağı değil.',
+      'Sadece denenmiş bir jel formatı ile kombine — kafein + yeni jel = GI sıkıntısı.',
+      '6 mg/kg\'ı asla geçme — azalan getiri + GI/titrek riski.',
+    ],
+  },
+}
+
 // v9.17.0 — Morning RHR / HRV readiness check. Itterum 2009 / Plews &
 // Buchheit 2017: resting HR > +8-10 bpm above 7-day baseline = autonomic
 // fatigue or sub-clinical illness signal. Provides concrete decision tree
@@ -1025,6 +1054,7 @@ export function buildRaceWeekProtocol(input) {
     preRaceAnxietyReframe: PRE_RACE_ANXIETY_REFRAME,
     motorImagery: MOTOR_IMAGERY,
     caffeineSafetyFlags: CAFFEINE_SAFETY_FLAGS,
+    caffeineSafetyRules: CAFFEINE_SAFETY_RULES,
     morningReadinessCheck: MORNING_READINESS_CHECK,
     // v9.33.0 — universal post-race recovery first 48h protocol.
     // Sport-invariant; surfaces in raceDay output for inline render.
