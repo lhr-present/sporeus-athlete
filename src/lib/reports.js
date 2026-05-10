@@ -1,9 +1,5 @@
 // ─── reports.js — Client helpers for PDF report generation + retrieval ────────
 import { supabase, isSupabaseReady } from './supabase.js'
-import { safeFetch } from './fetch.js'
-import { ENV } from './env.js'
-
-const EDGE_URL = `${ENV.supabaseUrl}/functions/v1/generate-report`
 
 /**
  * Invoke the generate-report edge function to produce a PDF on-demand.
@@ -14,26 +10,17 @@ const EDGE_URL = `${ENV.supabaseUrl}/functions/v1/generate-report`
  * @returns {Promise<{ signedUrl: string, reportId: string, storagePath: string, expiresAt: string }>}
  */
 export async function generateReport(kind, params = {}) {
+  // v9.61.0 — Was: manually fetching session via getSession() to attach a
+  // Bearer header. getSession() violates the implicit-flow + onAuthStateChange-
+  // only auth contract (causes Web Locks contention on iOS/Safari). Use
+  // functions.invoke() which auto-attaches the cached auth header — same
+  // pattern as inviteUtils.js:115.
   if (!isSupabaseReady()) throw new Error('Supabase not configured')
-
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) throw new Error('Not authenticated')
-
-  const res = await safeFetch(EDGE_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify({ kind, params }),
+  const { data, error } = await supabase.functions.invoke('generate-report', {
+    body: { kind, params },
   })
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => 'unknown error')
-    throw new Error(`generate-report failed (${res.status}): ${text}`)
-  }
-
-  return res.json()
+  if (error) throw new Error(`generate-report failed: ${error.message || error}`)
+  return data
 }
 
 /**

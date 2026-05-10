@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // ── Hoist mocks so they are available inside vi.mock() factories ───────────────
 const {
   mockGetSession,
+  mockFunctionsInvoke,
   mockStorageChain,
   mockQueryChain,
   mockSelectData,
@@ -16,6 +17,11 @@ const {
   ]
 
   const mockGetSession = vi.fn().mockResolvedValue({ data: { session: { access_token: 'tok123' } } })
+  // v9.61.0 — generateReport now uses functions.invoke instead of safeFetch+Bearer.
+  const mockFunctionsInvoke = vi.fn().mockResolvedValue({
+    data: { signedUrl: 'https://x.com/s.pdf', reportId: 'rep3', storagePath: 'uid/weekly/x.pdf', expiresAt: '2026-05-14T10:00:00Z' },
+    error: null,
+  })
 
   const mockStorageChain = {
     createSignedUrl: vi.fn().mockResolvedValue({ data: { signedUrl: mockSignedUrl }, error: null }),
@@ -45,7 +51,7 @@ const {
     return mockQueryChain
   })
 
-  return { mockGetSession, mockStorageChain, mockQueryChain, mockSelectData, mockSignedUrl }
+  return { mockGetSession, mockFunctionsInvoke, mockStorageChain, mockQueryChain, mockSelectData, mockSignedUrl }
 })
 
 vi.mock('../../lib/supabase.js', () => ({
@@ -54,6 +60,7 @@ vi.mock('../../lib/supabase.js', () => ({
     auth: { getSession: mockGetSession },
     from: vi.fn(() => mockQueryChain),
     storage: { from: vi.fn(() => mockStorageChain) },
+    functions: { invoke: mockFunctionsInvoke },
   },
 }))
 
@@ -74,44 +81,34 @@ vi.mock('../../lib/env.js', () => ({
 }))
 
 import { generateReport, listReports, getSignedUrl, deleteReport } from '../reports.js'
-import { safeFetch } from '../fetch.js'
 import { supabase, isSupabaseReady } from '../supabase.js'
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('generateReport', () => {
+describe('generateReport (v9.61.0 — uses functions.invoke; no getSession)', () => {
   beforeEach(() => {
-    mockGetSession.mockResolvedValue({ data: { session: { access_token: 'tok123' } } })
-    safeFetch.mockResolvedValue({
-      ok: true,
-      json: vi.fn().mockResolvedValue({ signedUrl: 'https://x.com/s.pdf', reportId: 'rep3', storagePath: 'uid/weekly/x.pdf', expiresAt: '2026-05-14T10:00:00Z' }),
+    mockFunctionsInvoke.mockResolvedValue({
+      data: { signedUrl: 'https://x.com/s.pdf', reportId: 'rep3', storagePath: 'uid/weekly/x.pdf', expiresAt: '2026-05-14T10:00:00Z' },
+      error: null,
     })
   })
 
-  it('POSTs to the edge function with auth header and returns JSON', async () => {
+  it('invokes generate-report with body and returns the data field', async () => {
     const result = await generateReport('weekly', { weekStart: '2026-04-07' })
-
-    expect(safeFetch).toHaveBeenCalledWith(
-      expect.stringContaining('generate-report'),
-      expect.objectContaining({
-        method: 'POST',
-        headers: expect.objectContaining({ Authorization: 'Bearer tok123' }),
-        body: expect.stringContaining('"weekly"'),
-      })
+    expect(mockFunctionsInvoke).toHaveBeenCalledWith(
+      'generate-report',
+      { body: { kind: 'weekly', params: { weekStart: '2026-04-07' } } },
     )
     expect(result.reportId).toBe('rep3')
   })
 
-  it('throws when session is null', async () => {
-    mockGetSession.mockResolvedValueOnce({ data: { session: null } })
-    await expect(generateReport('weekly', {})).rejects.toThrow('Not authenticated')
+  it('does NOT call supabase.auth.getSession (Web Locks contention rule)', async () => {
+    await generateReport('weekly', {})
+    expect(mockGetSession).not.toHaveBeenCalled()
   })
 
-  it('throws when edge function returns non-ok', async () => {
-    safeFetch.mockResolvedValueOnce({
-      ok: false,
-      text: vi.fn().mockResolvedValue('Internal Server Error'),
-    })
+  it('throws when the invoke call returns an error', async () => {
+    mockFunctionsInvoke.mockResolvedValueOnce({ data: null, error: { message: 'Internal Server Error' } })
     await expect(generateReport('weekly', {})).rejects.toThrow('generate-report failed')
   })
 })

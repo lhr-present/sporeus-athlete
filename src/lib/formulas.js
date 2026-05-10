@@ -41,10 +41,20 @@ import { logger } from './logger.js'
  * @returns {number} body fat percentage
  */
 export function navyBF(neck, waist, hip, height, gender) {
-  if (gender==='male') {
-    return Math.max(0, Math.round((495/(1.0324-0.19077*Math.log10(waist-neck)+0.15456*Math.log10(height))-450)*10)/10)
+  // v9.61.0 — Guard log10 against non-positive arguments. Without this,
+  // physically-impossible inputs (neck ≥ waist for males; waist+hip ≤ neck
+  // for females) produced log10(≤0) = NaN / -Infinity, which Math.max(0, NaN)
+  // does NOT clamp — NaN propagated into the profile UI as a blank value.
+  const h = parseFloat(height) || 0
+  if (h <= 0) return 0
+  if (gender === 'male') {
+    const d = parseFloat(waist) - parseFloat(neck)
+    if (d <= 0) return 0
+    return Math.max(0, Math.round((495/(1.0324-0.19077*Math.log10(d)+0.15456*Math.log10(h))-450)*10)/10)
   }
-  return Math.max(0, Math.round((495/(1.29579-0.35004*Math.log10(waist+hip-neck)+0.22100*Math.log10(height))-450)*10)/10)
+  const d = parseFloat(waist) + parseFloat(hip) - parseFloat(neck)
+  if (d <= 0) return 0
+  return Math.max(0, Math.round((495/(1.29579-0.35004*Math.log10(d)+0.22100*Math.log10(h))-450)*10)/10)
 }
 /**
  * @param {number} weight - kg

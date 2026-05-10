@@ -327,7 +327,12 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   const finishOnboarding = (data) => {
     if (data) {
       setProfile(prev => ({ ...prev, ...data }))
-      handleTabClick('zones')  // take user to Zones with pre-filled MaxHR/FTP/pace
+      // v9.61.0 — Mission-flow routing. If the athlete supplied a race date
+      // during onboarding (v9.60.0), the natural next step is generating a
+      // plan — not staring at zones. Without a race date, fall back to the
+      // legacy ZONES landing so the user sees zones derived from the metrics
+      // they just entered.
+      handleTabClick(data.raceDate ? 'plan' : 'zones')
     }
     setOnboarded(true)
   }

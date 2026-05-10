@@ -28,9 +28,11 @@ export default function DataExport({ lang = 'en' }) {
 
     try {
       if (!isSupabaseReady()) throw new Error('Not connected')
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) throw new Error('Not authenticated')
-
+      // v9.61.0 — Removed redundant getSession() pre-check (violates
+      // onAuthStateChange-only auth contract on static hosting). functions.invoke
+      // auto-attaches the cached auth header and surfaces auth errors via
+      // res.error below, so the explicit guard is both unnecessary and harmful
+      // (Web Locks contention on iOS/Safari).
       const res = await supabase.functions.invoke('export-user-data', {
         method: 'POST',
       })

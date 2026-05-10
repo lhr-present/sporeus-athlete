@@ -24,9 +24,9 @@ export default function StravaConnectInContext({ sessionCount, lang = 'en', user
           .from('onboarding_state')
           .upsert({ user_id: userId, strava_prompted: true }, { onConflict: 'user_id' })
       }
-      // Redirect to Strava OAuth via edge function
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
+      // Redirect to Strava OAuth via edge function.
+      // v9.61.0 — Removed getSession() pre-check; functions.invoke auto-handles
+      // auth and the userId prop above already gates the code path.
       const res = await supabase.functions.invoke('strava-oauth', {
         body: { action: 'connect' },
       })

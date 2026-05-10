@@ -65,12 +65,27 @@ describe('navyBF — Navy body fat formula', () => {
     expect(bf % 1).toBeCloseTo(Math.round(bf * 10) / 10 % 1, 10)
   })
 
-  it('degenerate input (neck > waist): Math.log10 of negative → NaN propagates', () => {
-    // Source: Math.max(0, NaN) returns NaN in JS — this is a source limitation
-    // The formula requires waist > neck; with neck > waist the result is NaN
-    const bf = navyBF(50, 40, 0, 178, 'male')
-    // NaN is the actual source behavior for this degenerate case
+  it('degenerate input (neck >= waist) returns 0 instead of NaN (v9.61.0 guard)', () => {
+    // Pre-v9.61.0, navyBF(50, 40, 0, 178, 'male') → Math.log10(40-50) → NaN,
+    // and Math.max(0, NaN) → NaN (a JS quirk); the profile UI showed a blank.
+    // The guard now returns 0 for physically-impossible inputs.
+    expect(navyBF(50, 40, 0, 178, 'male')).toBe(0)
+    expect(navyBF(40, 40, 0, 178, 'male')).toBe(0)  // exact equality also invalid
+  })
+
+  it('degenerate female input (waist+hip <= neck) returns 0 (v9.61.0 guard)', () => {
+    expect(navyBF(200, 70, 80, 165, 'female')).toBe(0)
+  })
+
+  it('zero height returns 0 (v9.61.0 guard)', () => {
+    expect(navyBF(38, 86, 0, 0, 'male')).toBe(0)
+  })
+
+  it('tolerates string inputs (parseFloat coerces)', () => {
+    const bf = navyBF('38', '86', '0', '178', 'male')
     expect(typeof bf).toBe('number')
+    expect(bf).toBeGreaterThan(10)
+    expect(bf).toBeLessThan(30)
   })
 
   it('female higher hip → higher body fat estimate', () => {

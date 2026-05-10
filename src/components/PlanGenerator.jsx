@@ -201,13 +201,23 @@ function TaperCalculator() {
 
 export default function PlanGenerator({ onLogSession }) {
   const { t } = useContext(LangCtx)
+  const { log, recovery, profile } = useData()
   const [goal,  setGoal]  = useState('Half Marathon')
-  const [weeks, setWeeks] = useState(12)
+  // v9.61.0 — When the athlete already supplied a race date during onboarding,
+  // pre-fill the plan duration from that anchor so a full-year plan generates
+  // with one click. Clamps to the slider range [4, 52].
+  const [weeks, setWeeks] = useState(() => {
+    const rd = profile?.raceDate || profile?.nextRaceDate
+    if (rd) {
+      const w = Math.round((new Date(rd).getTime() - Date.now()) / 604800000)
+      if (Number.isFinite(w) && w >= 4 && w <= 52) return w
+    }
+    return 12
+  })
   const [hours, setHours] = useState(8)
   const [level, setLevel] = useState('Intermediate')
   const [plan,  setPlan]  = useLocalStorage('sporeus-plan', null)
   const [planStatus, setPlanStatus] = useLocalStorage('sporeus-plan-status', {})
-  const { log, recovery, profile } = useData()
   const [lang] = useLocalStorage('sporeus-lang', 'en')
   const [selWeek, setSelWeek] = useState(0)
   const [blockMode, setBlockMode] = useState(false)
@@ -269,7 +279,7 @@ export default function PlanGenerator({ onLogSession }) {
   useEffect(() => {
     const p = new URLSearchParams(window.location.search)
     if (p.get('plan_goal')) setGoal(decodeURIComponent(p.get('plan_goal')))
-    if (p.get('plan_weeks')) setWeeks(Math.min(24, Math.max(4, parseInt(p.get('plan_weeks'))||12)))
+    if (p.get('plan_weeks')) setWeeks(Math.min(52, Math.max(4, parseInt(p.get('plan_weeks'))||12)))
     if (p.get('plan_hours')) setHours(Math.min(15, Math.max(3, parseInt(p.get('plan_hours'))||8)))
     if (p.get('plan_level')) setLevel(decodeURIComponent(p.get('plan_level')))
   }, [])
@@ -498,10 +508,11 @@ export default function PlanGenerator({ onLogSession }) {
         <div style={S.row}>
           <div style={{ flex:'1 1 180px' }}>
             <label style={S.label}>{t('planWeeksL')}: <strong>{weeks}</strong></label>
-            <input type="range" min="4" max="24" value={weeks} onChange={e=>setWeeks(+e.target.value)}
-              title="Total plan duration: 4–24 weeks"
+            {/* v9.61.0 — Range extended to 52 weeks (yearly plan support). */}
+            <input type="range" min="4" max="52" value={weeks} onChange={e=>setWeeks(+e.target.value)}
+              title="Total plan duration: 4–52 weeks (full year)"
               style={{ width:'100%', accentColor:'#ff6600' }}/>
-            <div style={{ display:'flex', justifyContent:'space-between', ...S.mono, fontSize:'9px', color:'#aaa' }}><span>4</span><span>24</span></div>
+            <div style={{ display:'flex', justifyContent:'space-between', ...S.mono, fontSize:'9px', color:'#aaa' }}><span>4</span><span>52</span></div>
           </div>
           <div style={{ flex:'1 1 180px' }}>
             <label style={S.label}>{t('planHoursL')}: <strong>{hours}h</strong></label>

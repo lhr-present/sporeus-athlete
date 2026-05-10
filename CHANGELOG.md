@@ -4,6 +4,109 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.61.0 — 2026-05-11 — Mission-flow polish: post-onboarding routing + yearly-plan support + verified deferred bugs
+
+  Continuation of the mission-flow focus (physiology + race target → yearly
+  plan → daily answer). v9.60.0 fixed the broken handoffs; v9.61.0 makes
+  the path obvious and unblocks the deferred verified bugs.
+
+  ### (1) Post-onboarding routes to PLAN tab when race date is set
+
+  Pre-fix `useAppState.js:330` unconditionally sent the user to ZONES after
+  onboarding finish — designed for the old flow ("see your zones derived
+  from MaxHR/FTP"). With v9.60.0 now collecting a race date during
+  onboarding, the natural next step is generating the plan keyed to that
+  race, not staring at zones.
+
+  Now `finishOnboarding(data)` routes to `'plan'` when `data.raceDate` is
+  set, otherwise falls back to the legacy `'zones'` landing. Users who
+  pick "Just exploring" or skip the date input still see zones as before.
+
+  ### (2) PlanGenerator supports true yearly plans
+
+  Pre-fix the weeks slider was clamped `min="4" max="24"` — physically
+  impossible to generate a 52-week plan from the UI, despite the user's
+  stated #1 function being "create yearly plans". The URL-share parser
+  at L282 also clamped to 24.
+
+  Now the slider range is 4–52 and the URL parser clamps to 52. Slider
+  initial value pre-fills from `profile.raceDate` (or `nextRaceDate`):
+  `weeks = round((raceDate - today) / 7)`, clamped to [4, 52]. A user who
+  onboards with a race 36 weeks out lands on PLAN tab with the slider
+  already at 36 and clicks Generate.
+
+  ### (3) NavyBF NaN trap guarded (deferred from Round 11, Agent B finding)
+
+  Pre-fix `formulas.js:navyBF` called `Math.log10(waist-neck)` (male) and
+  `Math.log10(waist+hip-neck)` (female) without guarding. Physically-
+  impossible anthropometry (neck ≥ waist; waist+hip ≤ neck) produced
+  `log10(≤0) = NaN / -Infinity`. `Math.max(0, NaN)` does NOT clamp NaN —
+  it returns NaN. The blank body-fat value propagated into the profile
+  UI and downstream macro calculations.
+
+  Now both branches guard the log10 argument and return 0 for invalid
+  input (matches the existing `Math.max(0, ...)` clamp semantics — 0
+  reads as "not calculable" in callers like `BodyCompositionCard.jsx:26`
+  which already guards on inputs being present).
+
+  Also coerces inputs via `parseFloat()` so string measurements from
+  localStorage work consistently.
+
+  ### (4) Removed `supabase.auth.getSession()` from 3 call sites (deferred)
+
+  Verified all 3 of Agent B's flagged sites — real violations of the
+  implicit-flow + onAuthStateChange-only auth contract (causes Web Locks
+  contention on iOS/Safari). `inviteUtils.js:115` shows the correct
+  pattern: `supabase.functions.invoke()` auto-attaches the cached auth
+  header — no `getSession()` needed. `athletes.test.js:37` already
+  enforces this rule with `expect(getSession).not.toHaveBeenCalled()`.
+
+  - `src/lib/reports.js:19` — `generateReport()` swapped from manual
+    safeFetch + `Bearer ${session.access_token}` to `functions.invoke
+    ('generate-report', { body: { kind, params } })`. Eliminates the
+    EDGE_URL constant, ENV/safeFetch imports, and 12 lines of header-
+    juggling.
+  - `src/pages/profile/DataExport.jsx:31` — pre-check removed; the
+    existing `functions.invoke('export-user-data')` already surfaces
+    auth errors via `res.error`.
+  - `src/components/onboarding/StravaConnectInContext.jsx:28` — pre-
+    check removed; the `userId` prop already gates the code path.
+
+  Test suite for `generateReport` rewritten: 3 old tests assumed the
+  safeFetch+Bearer pattern; new tests verify `functions.invoke` is
+  called with the correct body, verify `getSession` is NOT called, and
+  verify error propagation.
+
+  ### Files
+
+  - `src/lib/formulas.js` — NavyBF guards + parseFloat coercion
+  - `src/lib/reports.js` — full rewrite to `functions.invoke`
+  - `src/pages/profile/DataExport.jsx` — remove getSession pre-check
+  - `src/components/onboarding/StravaConnectInContext.jsx` — same
+  - `src/hooks/useAppState.js` — race-aware post-onboarding routing
+  - `src/components/PlanGenerator.jsx` — weeks slider 24→52, raceDate
+    pre-fill, useData destructuring moved up to avoid TDZ
+  - `src/lib/__tests__/formulas.test.js` — 4 new NavyBF tests
+  - `src/lib/__tests__/reports.test.js` — generateReport tests rewritten
+    + 1 new test verifying getSession not called
+  - `package.json` — 11.60.0 → 11.61.0
+
+  Tests 9715/9715 (+3). Lint + build clean.
+
+  ### Deferred (still real, lower priority)
+
+  - **Hardcoded EN/TR literals** scattered across components — UX
+    inconsistency, not functional break. Best fixed alongside i18n cleanup.
+  - **NotificationSettings.jsx hardcoded English** — likely dead/legacy
+    (Agent C noted it's superseded by NotifReminders.jsx). Verify before
+    fixing.
+  - **Push notification edge-function delivery verification** — needs
+    integration testing, not in scope for this round.
+  - **Agent B's "double JSON.parse" claim** at useAppState.js:45 — still
+    needs re-verification; treated as likely false positive.
+
+---
+
 ## v9.60.0 — 2026-05-11 — Mission-flow bug bash (race date, plan_missing, Concept2 dispatch, swap scope)
 
   User reported the app had "many bugs and not working functions" with the
