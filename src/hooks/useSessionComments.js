@@ -138,6 +138,12 @@ export function useSessionComments(sessionId, currentUserId) {
                 subscribe()
               }, delay)
             } else {
+              // v9.63.0 — On retry exhaustion, free the Realtime slot. Pre-fix
+              // the channel stayed subscribed in the disconnected state,
+              // accumulating orphan channels on the user's quota (multiple
+              // sessions × MAX_RETRY = exceeded limit on coach tier).
+              try { supabase.removeChannel(ch) } catch { /* ignore */ }
+              channelRef.current = null
               reportStatus(statusKey, 'disconnected')
               setStatus('disconnected')
             }

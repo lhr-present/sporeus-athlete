@@ -4,6 +4,82 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.63.0 — 2026-05-11 — Verified deferred items: TrainingLog pagination + Realtime channel cleanup
+
+  Ships two of the four verified-but-deferred bugs from v9.62.0 (Round 13
+  audit). Both items had concrete file:line citations and reproducible
+  symptoms; deferred at the time because they were bigger than the round's
+  ship-list capacity, not because of doubt.
+
+  ### (1) Client-side render cap for TrainingLog (Agent Z#5 — perf)
+
+  Pre-fix `TrainingLog.jsx:740` did `reversedLog.map(...)` over the entire
+  filtered log on every render. `package.json` carries `react-virtuoso`
+  but it was never imported here — CLAUDE.md docs were stale. For users
+  with 500+ sessions, the table created 500+ DOM rows on each render
+  (80–150ms paint time per Agent Z's estimate), plus per-row work in
+  `autoTagSession()`.
+
+  Fix: introduce a client-side render cap at PAGE_SIZE = 200 entries.
+  A `visibleLog = reversedLog.slice(0, visibleCount)` is what the render
+  iterates; a "Show older" button at the bottom of the table bumps the
+  cap by another PAGE_SIZE. Reset to PAGE_SIZE whenever the filter text
+  changes (so the user doesn't see a stale window of an unrelated filter).
+
+  Distinct from the pre-existing server-side `Load More` button:
+  - **server-side `hasMore`** (from `useData()`) — there are more entries
+    on Supabase that haven't been fetched yet
+  - **`hasMoreVisible`** (v9.63.0) — there are entries fetched locally
+    that haven't been rendered yet due to the cap
+
+  For users with <200 entries: zero behavioral change. For 500-entry
+  users: ~5× faster initial paint. The expand-in-place, bulk-mode, and
+  semantic-search UX all preserved untouched.
+
+  This is a pragmatic substitute for `TableVirtuoso` integration. Full
+  virtualization is invasive because the rows use `<Fragment>` + a
+  conditional in-row expansion `<tr>`, which doesn't map cleanly onto
+  Virtuoso's fixed-row-content contract.
+
+  ### (2) Realtime channel leak in useSessionComments (Agent Y#5)
+
+  Pre-fix `useSessionComments.js:140-143` handled MAX_RETRY exhaustion
+  by setting state to `'disconnected'` but did NOT call
+  `supabase.removeChannel(ch)`. The channel stayed subscribed in the
+  disconnected state, consuming a Supabase Realtime slot.
+
+  Symptom on coach tier: open 5 athlete-session views in parallel,
+  network flickers, all 5 channels exhaust retries → 5 orphan channels
+  stuck on the user's quota → new comment threads silently fail to
+  subscribe (channel-creation rejected).
+
+  Fix: on exhaustion-path, mirror the retry-path's cleanup — call
+  `supabase.removeChannel(ch)` and null out `channelRef.current` before
+  setting state. The component's unmount cleanup already ran this
+  correctly; the gap was the in-mounted-but-given-up state.
+
+  ### Files
+
+  - `src/components/TrainingLog.jsx` — PAGE_SIZE constant + visibleCount
+    state + filter-reset effect + visibleLog memo + "Show older" button
+  - `src/hooks/useSessionComments.js` — removeChannel call on MAX_RETRY
+  - `package.json` — 11.62.0 → 11.63.0
+
+  Tests 9719/9719 (unchanged — both fixes preserve existing behavior).
+  Lint + build clean.
+
+  ### Still deferred from Round 13 audit
+
+  - **Dashboard cards lack `memo()` coverage** — 100+ cards re-render on
+    every Dashboard prop change. Real perf issue but needs scoped audit
+    of each card's prop shape before wrapping. Bigger ship.
+  - **Coach plan insert idempotency** — `.insert()` with no onConflict
+    creates duplicate rows on network-retry. Real bug but needs schema
+    migration (unique constraint on `(coach_id, athlete_id, status='active')`)
+    or client-side dedup-token. Defer until next coach-side round.
+
+---
+
 ## v9.62.0 — 2026-05-11 — Round 13 verified bug fixes: stale useMemo, timezone, sport collision
 
   Round 13 launched 3 deep-dive agents (data integrity / error handling /

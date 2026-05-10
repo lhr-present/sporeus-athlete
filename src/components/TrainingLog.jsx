@@ -127,6 +127,13 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const [bulkMode, setBulkMode]           = useState(false)
   const [selected, setSelected]           = useState(new Set())
   const [filterText, setFilterText]       = useState('')  // v9.47.0 — inline keyword filter
+  // v9.63.0 — Paginated reveal. TrainingLog rendered every log entry as a DOM
+  // row (no Virtuoso integration despite package.json having react-virtuoso),
+  // costing 80–150ms paint time for users with 500+ entries. Capping the
+  // initial render at 200 + a "Show older" button gives the common-case 5x
+  // speedup without changing the search/edit/expand UX.
+  const PAGE_SIZE = 200
+  const [visibleCount, setVisibleCount]    = useState(PAGE_SIZE)
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
   const [deleteConfirmId, setDeleteConfirmId] = useState(null)
   const { saveTemplate } = useWorkoutTemplates()
@@ -161,6 +168,14 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       return hay.includes(q)
     })
   }, [log, filterText])
+  // v9.63.0 — Reset paginated reveal whenever the filter changes so the user
+  // doesn't see an unrelated old `visibleCount` window of the new filter result.
+  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [filterText])
+  const visibleLog = useMemo(() => reversedLog.slice(0, visibleCount), [reversedLog, visibleCount])
+  // Distinct from the `hasMore` destructured above for server-side pagination
+  // (more entries available on the server). `hasMoreVisible` means we have
+  // entries locally that haven't been rendered yet due to the PAGE_SIZE cap.
+  const hasMoreVisible = reversedLog.length > visibleCount
   const expandedEntry = useMemo(
     () => expandedId != null ? (log.find(s => s.id === expandedId) ?? null) : null,
     [expandedId, log]
@@ -743,7 +758,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                 </tr>
               </thead>
               <tbody>
-                {reversedLog.map((s,i)=>{
+                {visibleLog.map((s,i)=>{
                   const hasTag = s.tags && s.tags.length > 0
                   const suggestedTag = !hasTag ? autoTagSession(s) : null
                   const isExpanded = expandedId === s.id
@@ -970,6 +985,22 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
               </tbody>
             </table>
             </div>
+            {/* v9.63.0 — Client-side render cap. Reveals the next page of
+                already-loaded log entries (PAGE_SIZE at a time) without an
+                extra network round-trip. Distinct from the server-side
+                "Load More" button below which fetches more from Supabase. */}
+            {hasMoreVisible && (
+              <div style={{ textAlign:'center', padding:'10px 0 6px' }}>
+                <button
+                  onClick={() => setVisibleCount(n => n + PAGE_SIZE)}
+                  style={{ ...S.btnSec, fontSize:'10px', padding:'6px 14px' }}
+                >
+                  {lang === 'tr'
+                    ? `▼ Daha eski (+${Math.min(PAGE_SIZE, reversedLog.length - visibleCount)} / ${reversedLog.length - visibleCount} kalan)`
+                    : `▼ Show older (+${Math.min(PAGE_SIZE, reversedLog.length - visibleCount)} of ${reversedLog.length - visibleCount} remaining)`}
+                </button>
+              </div>
+            )}
             {/* Load More — server-side pagination (E4) */}
             {hasMore && (
               <div style={{ textAlign:'center', padding:'12px 0' }}>
