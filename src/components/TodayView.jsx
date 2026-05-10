@@ -17,6 +17,7 @@ import TeamAnnouncements from './TeamAnnouncements.jsx'
 import QRScanner from './QRScanner.jsx'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { getRecommendedProtocols } from '../lib/recoveryProtocols.js'
+import { computeNextAction } from '../lib/nextAction.js'
 
 const WellnessSparkline = lazy(() => import('./charts/WellnessSparkline.jsx'))
 import { isRESTQDue } from '../lib/sport/restq.js'
@@ -74,6 +75,23 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
 
   const suggestion = useMemo(() => getSingleSuggestion(log, recovery, profile), [log, recovery, profile])
   const digest     = useMemo(() => generateDailyDigest(log, recovery, profile), [log, recovery, profile])
+
+  // v9.56.0 — HRV/TSB-flagged session-swap recommendation. When today's
+  // planned session is hard AND nextAction signals autonomic strain
+  // (hrv_drift, Plews 2013) or deep fatigue (tsb_deep, Banister 1991), surface
+  // a "downgrade to easy" banner on the planned-session card. Existing
+  // "low readiness" banner at todayReadiness < 50 is a different (subjective)
+  // axis; this fires from objective HRV/TSB.
+  const nextAction = useMemo(() => computeNextAction(log, recovery, profile), [log, recovery, profile])
+  const sessionSwapFlag = useMemo(() => {
+    if (!plannedSession) return null
+    if (!nextAction || !['hrv_drift', 'tsb_deep', 'injury_risk_high'].includes(nextAction.id)) return null
+    const t = String(plannedSession.type || '').toLowerCase()
+    const isHard = (plannedSession.rpe ?? 0) >= 7
+      || /vo2|interval|threshold|race.?pace|tempo|hard/i.test(t)
+    if (!isHard) return null
+    return nextAction
+  }, [plannedSession, nextAction])
 
   const yesterdayLogged = (log || []).some(e => e.date === yesterday)
   const sessions7d      = useMemo(() => {
@@ -897,6 +915,27 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                 {lang === 'tr'
                   ? `⚠ Hazırlık DÜŞÜK (${todayReadiness}/100) — bugün %20 daha az yoğunluk dene`
                   : `⚠ Readiness LOW (${todayReadiness}/100) — consider -20% intensity today`}
+              </div>
+            )}
+            {/* v9.56.0 — HRV/TSB-flagged session-swap recommendation. Fires
+                only when today's planned session is hard AND objective
+                signals (hrv_drift / tsb_deep / injury_risk_high) suggest the
+                athlete shouldn't push. Cites the rule's source (Plews 2013
+                for HRV, Banister 1991 for TSB, Hulin 2016 for injury risk). */}
+            {sessionSwapFlag && (
+              <div role="alert" style={{
+                padding: '8px 10px', marginBottom: '12px',
+                background: '#e0303018', border: '1px solid #e0303066',
+                borderRadius: '4px', fontFamily: MONO, fontSize: '10px', color: '#ff6a6a',
+                lineHeight: 1.55,
+              }}>
+                <div style={{ fontWeight: 700, letterSpacing: '0.05em', marginBottom: '4px' }}>
+                  {lang === 'tr' ? '⚠ KOLAY GÜNE GEÇ' : '⚠ DOWNGRADE TO EASY'}
+                </div>
+                <div>{sessionSwapFlag.rationale?.[lang] || sessionSwapFlag.rationale?.en}</div>
+                <div style={{ color: '#888', marginTop: '4px', fontSize: '9px' }}>
+                  {sessionSwapFlag.citation}
+                </div>
               </div>
             )}
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap', marginBottom: '10px' }}>

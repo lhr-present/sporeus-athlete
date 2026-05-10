@@ -4,6 +4,91 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.56.0 — 2026-05-10 — Coach profile + HRV session-swap + sleep extension
+
+  Round 7 — gap-driven, three new agents this round (coach side / wellness
+  surface / race-day flow). All three returned high-impact gaps; this
+  ship lands the smallest-LOC / highest-impact items from each:
+
+  ### (1) Coach: athlete profile fetch (Agent A #1)
+
+  Pre-fix `selectAthlete` in `CoachSquadView.jsx` fetched only `training_log`
+  and `recovery` — coaches saw CTL / ACWR / TSB / injury risk but were
+  blind to the athlete's sport, FTP, VO2max, weight, gender, drag factor,
+  threshold pace. Without these, the coach couldn't reason about
+  rowing drag norms, W/kg bands, sport-specific cadence, or %-of-WR.
+
+  Now fetches `profiles.profile_data` in parallel and threads through to
+  SbAthletePanel via the existing `data` prop. SbAthletePanel renders
+  a single dashed-bottom strip above the metrics row showing each
+  populated profile field as `LBL value` chips (sport, kg, sex, FTP,
+  VO₂, DF, MaxHR, LT pace) — gated to non-empty fields only.
+
+  ### (2) HRV/TSB-flagged session-swap on TodayView (Agent B #1)
+
+  Pre-fix HRV-modulation existed in `nextAction.js:170` (Plews 2013 rule
+  fires when CV ≥ 10% + below baseline → "easy session"), but the
+  recommendation lived buried in a single global "next action" badge
+  elsewhere in the dashboard, not adjacent to the *planned session* the
+  athlete was about to execute.
+
+  TodayView now imports `computeNextAction` and computes a
+  `sessionSwapFlag`. When today's planned session is hard (RPE ≥ 7 or
+  type matches `vo2|interval|threshold|race-pace|tempo|hard`) AND
+  `nextAction.id` is `hrv_drift` (Plews 2013), `tsb_deep` (Banister
+  1991), or `injury_risk_high` (Hulin 2016), a red-bordered banner
+  renders inside the planned-session card with:
+  • `⚠ DOWNGRADE TO EASY` headline (bilingual)
+  • The rule's `rationale` (already bilingual + science-cited)
+  • Source citation footer (Plews 2013 / Banister 1991 / Hulin 2016)
+
+  Independent of the existing subjective-readiness banner (`< 50/100`)
+  which fires on Foster 1998 wellness composite, not objective signals.
+
+  ### (3) Sleep extension protocol card (Agent B #2)
+
+  RecoveryHub already shows a 7-day sleep-debt gauge (already cited
+  Lastella 2018). Pre-fix, when debt > 4h (red zone), the user saw the
+  number but no remediation. Now an inset protocol card surfaces under
+  the gauge with the Mah 2011 prescription (4 bullets, bilingual):
+  • +30-60 min × 14 nights with fixed bedtime
+  • Cut screen light 60 min pre-bed
+  • Room 18-19°C, dark, quiet
+  • Daily consistency over weekend catch-up
+
+  Footer cites Mah 2011 (SLEEP) + Walker 2017. Card hidden when debt
+  ≤ 4h to avoid clutter.
+
+  ### Deferred from this round's audits (lower impact-ratio):
+
+  • **Coach edit UI** for elite-program features (drag factor / cadence
+    overrides) — needs schema ext to `coach_athletes.coachMetricsOverrides`
+  • **Cycle-phase prescription** (Carmichael 2021) — Agent B caveat:
+    "luteal phase needs lower-intensity prescription". Pure track now,
+    prescription later (needs plan-builder integration)
+  • **Race-day morning HQ** (Agent C): caffeine timer + tappable mental
+    drills — bigger ship (~270 LOC)
+  • **Post-race RPE → next-block adaptive resync** (Agent C): genuinely
+    cool but ~230 LOC and needs careful CTL ceiling math
+
+  ### Files
+
+  • Modified: `src/components/coach/CoachSquadView.jsx` (profile fetch
+    in selectAthlete)
+  • Modified: `src/components/coachDashboard/SbAthletePanel.jsx`
+    (profile chips strip above metrics row)
+  • Modified: `src/components/TodayView.jsx` (computeNextAction import,
+    sessionSwapFlag useMemo, banner inside planned-session card)
+  • Modified: `src/components/RecoveryHub.jsx` (Mah 2011 protocol card
+    when sleep debt > 4h)
+
+  Tests: 9684/9684 pass (390 files). Lint clean. Build clean.
+
+  Depends on: v9.39.0 (RED-S checklist precedent), v9.48.0 (coach
+  red-flag triage), v9.49.0 (SbAthletePanel injRisk render).
+
+---
+
 ## v9.55.0 — 2026-05-10 — General app health round: mobile UX + tri fueling
 
   Round 6. Three parallel agents ran a general app audit (security/perf,

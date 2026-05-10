@@ -373,6 +373,33 @@ export default function RecoveryHub({ idealSleepHrs = 8 }) {
                     ? `${sleepDebt.days}/7 gün kaydedildi · ideal ${idealSleepHrs}sa/gün`
                     : `${sleepDebt.days}/7 days logged · ideal ${idealSleepHrs}h/night`}
                 </div>
+                {/* v9.56.0 — Mah 2011 sleep extension protocol surfaced when
+                    debt > 4h. Pre-fix the debt was shown but no remediation
+                    advice. Mah's basketball cohort gained 9% FT% / 7% sprint
+                    speed by extending sleep +1.5h × 14 nights. Walker 2017
+                    confirms pre-race sleep extension as a performance lever. */}
+                {sleepDebt.debt > 4 && (
+                  <div style={{
+                    marginTop: '8px',
+                    padding: '8px 10px',
+                    background: '#0064ff14',
+                    border: '1px dashed #0064ff66',
+                    borderRadius: '4px',
+                  }} data-testid="sleep-extension-protocol">
+                    <div style={{ ...S.mono, fontSize: '9px', fontWeight: 700, color: '#0064ff', letterSpacing: '0.06em', marginBottom: '4px' }}>
+                      {isTR ? '◈ UYKU UZATMA PROTOKOLÜ' : '◈ SLEEP EXTENSION PROTOCOL'}
+                    </div>
+                    <ul style={{ ...S.mono, fontSize: '10px', color: '#bbb', margin: 0, paddingLeft: '14px', lineHeight: 1.55 }}>
+                      <li>{isTR ? '14 gece × +30-60 dk uyku ekle (sabit yatış saati)' : '+30-60 min × 14 nights (fixed bedtime)'}</li>
+                      <li>{isTR ? 'Yatak öncesi 60 dk ekran ışığı kapat' : 'Cut screen light 60 min pre-bed'}</li>
+                      <li>{isTR ? 'Oda 18-19°C · Karanlık · Sessiz' : 'Room 18-19°C · Dark · Quiet'}</li>
+                      <li>{isTR ? 'Hafta sonu telafi yerine günlük tutarlılık' : 'Daily consistency over weekend catch-up'}</li>
+                    </ul>
+                    <div style={{ ...S.mono, fontSize: '8px', color: '#888', marginTop: '6px', fontStyle: 'italic' }}>
+                      Mah 2011 (SLEEP) · Walker 2017 (Sleep &amp; performance)
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>

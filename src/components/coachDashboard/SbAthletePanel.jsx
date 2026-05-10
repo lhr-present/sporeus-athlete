@@ -153,6 +153,35 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
         <div style={{ ...S.mono, fontSize:'10px', color:'#555' }}>Loading…</div>
       ) : (
         <>
+          {/* v9.56.0 — Athlete profile header. Pre-fix coaches couldn't see
+              sport / FTP / VO2max / weight / dragFactor — blocking visibility
+              into sport-specific context. Now rendered in a single line above
+              the metrics row, gated to known-non-empty fields only. */}
+          {(() => {
+            const p = data?.profile || {}
+            const chips = [
+              p.primarySport && { lbl: lang === 'tr' ? 'SPOR' : 'SPORT', val: String(p.primarySport).toUpperCase() },
+              p.weight && { lbl: lang === 'tr' ? 'KG' : 'KG', val: `${p.weight}` },
+              p.gender && { lbl: lang === 'tr' ? 'CIN.' : 'SEX', val: p.gender === 'female' ? 'F' : 'M' },
+              p.ftp && { lbl: 'FTP', val: `${p.ftp}W` },
+              p.vo2max && { lbl: 'VO₂', val: p.vo2max },
+              p.dragFactor && { lbl: 'DF', val: p.dragFactor },
+              p.maxhr && { lbl: 'MaxHR', val: p.maxhr },
+              p.threshold && { lbl: 'LT', val: p.threshold },
+            ].filter(Boolean)
+            if (chips.length === 0) return null
+            return (
+              <div style={{ display:'flex', gap:'10px', flexWrap:'wrap', marginBottom:'10px', paddingBottom:'8px', borderBottom:'1px dashed #1e1e1e' }}>
+                {chips.map((c, i) => (
+                  <span key={i} style={{ ...S.mono, fontSize:'10px', color:'#bbb' }}>
+                    <span style={{ color:'#555', letterSpacing:'0.04em' }}>{c.lbl}</span>{' '}
+                    <span style={{ fontWeight:700 }}>{c.val}</span>
+                  </span>
+                ))}
+              </div>
+            )
+          })()}
+
           {/* Metrics row */}
           <div style={{ display:'flex', gap:'16px', flexWrap:'wrap', marginBottom:'12px' }}>
             {[

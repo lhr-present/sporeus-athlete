@@ -85,7 +85,11 @@ export default function CoachSquadView({ coachId, coachName = '' }) {
     setSelectedId(athleteId)
     if (athleteData[athleteId] || !isSupabaseReady()) return
     setLoadingDetail(true)
-    const [{ data: log }, { data: recovery }] = await Promise.all([
+    // v9.56.0 — coach drill-down was missing athlete profile (sport, FTP,
+    // VO2max, weight, gender). Without it, SbAthletePanel can't surface
+    // sport-specific context, drag-factor norms, W/kg bands, or W/kg-derived
+    // %-of-WR. Fetch in parallel with log + recovery.
+    const [{ data: log }, { data: recovery }, { data: profileRow }] = await Promise.all([
       supabase
         .from('training_log')
         .select('*')
@@ -98,8 +102,20 @@ export default function CoachSquadView({ coachId, coachName = '' }) {
         .eq('user_id', athleteId)
         .order('date', { ascending: false })
         .limit(90),
+      supabase
+        .from('profiles')
+        .select('profile_data')
+        .eq('id', athleteId)
+        .maybeSingle(),
     ])
-    setAthleteData(prev => ({ ...prev, [athleteId]: { log: log || [], recovery: recovery || [] } }))
+    setAthleteData(prev => ({
+      ...prev,
+      [athleteId]: {
+        log: log || [],
+        recovery: recovery || [],
+        profile: profileRow?.profile_data || {},
+      },
+    }))
     setLoadingDetail(false)
   }
 
