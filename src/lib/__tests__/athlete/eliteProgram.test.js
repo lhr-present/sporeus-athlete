@@ -2158,10 +2158,12 @@ describe('buildEliteProgram — v9.18.0 input validation hardening', () => {
     expect(r).toBeNull()
   })
 
-  it('rejects sub-minute time (impossible race)', () => {
+  it('rejects sub-15-second time (data corruption floor)', () => {
+    // v9.50.0 — MIN_TIME_SEC lowered 60→15 so sub-minute elite efforts pass
+    // (50m swim WR 21s, 1km bike TT WR 55s). Floor still rejects garbage values.
     const r = buildEliteProgram({
-      currentPR: { distanceM: 10000, timeSec: 30 },
-      targetPR:  { distanceM: 10000, timeSec: 25 },
+      currentPR: { distanceM: 10000, timeSec: 5 },
+      targetPR:  { distanceM: 10000, timeSec: 4 },
       raceDate: '2026-08-25',
       sport: 'run',
       options: { today: TODAY },

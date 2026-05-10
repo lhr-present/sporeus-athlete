@@ -835,8 +835,11 @@ export function buildEliteProgram(input) {
   // implausible distances (>1000 km), sub-minute / multi-day times. Prior
   // code accepted distanceM=-100 + timeSec=30 and propagated NaN/Infinity
   // through gain calculations.
+  // v9.50.0 — MIN_TIME_SEC lowered 60→15 so legit sub-minute efforts pass
+  // (50m swim WR 21s, 1km bike TT WR 55s, 100m swim WR 46s). 15s is still
+  // well below any humanly possible race-distance time.
   const MAX_DISTANCE_M = 1_000_000      // 1000 km — absurd ceiling
-  const MIN_TIME_SEC   = 60             // 1 minute floor (impossible race below)
+  const MIN_TIME_SEC   = 15             // sub-15s would be data corruption
   const MAX_TIME_SEC   = 7 * 24 * 3600  // 7 days ceiling (multi-day ultra max)
   const valPR = (pr) => {
     if (!pr || typeof pr.timeSec !== 'number') return false

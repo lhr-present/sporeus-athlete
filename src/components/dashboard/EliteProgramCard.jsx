@@ -28,6 +28,7 @@ import { findRecentBest } from '../../lib/athlete/recentBest.js'
 import { getPlanLifecycle } from '../../lib/athlete/planLifecycle.js'
 import { buildPlanAdherence, buildReprojectionSuggestion } from '../../lib/athlete/planAdherence.js'
 import { buildLogEntryFromSession } from '../../lib/athlete/quickLogFromSession.js'
+import { getReference } from '../../lib/sport/sportsRecords.js'
 
 const STORAGE_KEY = 'sporeus-eliteProgram'
 const START_KEY = 'sporeus-eliteProgramStart'
@@ -35,18 +36,84 @@ const YEARLY_PLAN_KEY = 'sporeus-yearly-plan'
 const YEARLY_RACES_KEY = 'sporeus-plan-races'
 
 const SPORTS = [
-  { k: 'run',       en: 'RUN',  tr: 'KOŞU' },
-  { k: 'bike',      en: 'BIKE', tr: 'BİSİKLET' },
-  { k: 'swim',      en: 'SWIM', tr: 'YÜZME' },
-  { k: 'triathlon', en: 'TRI',  tr: 'TRİ' },
+  { k: 'run',       en: 'RUN',    tr: 'KOŞU' },
+  { k: 'bike',      en: 'BIKE',   tr: 'BİSİKLET' },
+  { k: 'swim',      en: 'SWIM',   tr: 'YÜZME' },
+  { k: 'rowing',    en: 'ROWING', tr: 'KÜREK' },
+  { k: 'triathlon', en: 'TRI',    tr: 'TRİ' },
 ]
 
+// v9.50.0 — DISTANCES expanded to cover beginner → world-record range for every
+// sport. Keys must match src/lib/sport/sportsRecords.js exactly so the inline
+// WR / BEGINNER reference chips can resolve a hit. Rowing added (was absent
+// from picker pre-v9.50.0) with full Concept2 erg distance set.
 const DISTANCES = {
-  run:       [{ m: 5000, lbl: '5K' }, { m: 10000, lbl: '10K' }, { m: 15000, lbl: '15K' }, { m: 21097, lbl: '21.1K' }, { m: 42195, lbl: '42.2K' }],
-  bike:      [{ m: 20000, lbl: '20K' }, { m: 40000, lbl: '40K' }, { m: 100000, lbl: '100K' }],
-  swim:      [{ m: 400, lbl: '400m' }, { m: 800, lbl: '800m' }, { m: 1500, lbl: '1500m' }, { m: 3000, lbl: '3000m' }],
-  triathlon: [{ m: 51500, lbl: 'Olympic' }, { m: 113000, lbl: '70.3' }, { m: 226000, lbl: 'Full' }],
+  run: [
+    { m: 1500,   lbl: '1500m' },
+    { m: 1609,   lbl: '1 mi' },
+    { m: 3000,   lbl: '3K' },
+    { m: 5000,   lbl: '5K' },
+    { m: 10000,  lbl: '10K' },
+    { m: 15000,  lbl: '15K' },
+    { m: 16093,  lbl: '10 mi' },
+    { m: 21097,  lbl: 'HM' },
+    { m: 42195,  lbl: 'M' },
+    { m: 50000,  lbl: '50K' },
+    { m: 100000, lbl: '100K' },
+    { m: 160934, lbl: '100 mi' },
+  ],
+  bike: [
+    { m: 1000,   lbl: 'Kilo TT' },
+    { m: 4000,   lbl: '4K IP' },
+    { m: 16093,  lbl: '10 mi TT' },
+    { m: 20000,  lbl: '20K' },
+    { m: 40000,  lbl: '40K TT' },
+    { m: 40234,  lbl: '25 mi TT' },
+    { m: 100000, lbl: '100K' },
+  ],
+  swim: [
+    { m: 50,    lbl: '50m' },
+    { m: 100,   lbl: '100m' },
+    { m: 200,   lbl: '200m' },
+    { m: 400,   lbl: '400m' },
+    { m: 800,   lbl: '800m' },
+    { m: 1500,  lbl: '1500m' },
+    { m: 3000,  lbl: '3000m' },
+    { m: 5000,  lbl: '5K OW' },
+    { m: 10000, lbl: '10K OW' },
+    { m: 25000, lbl: '25K OW' },
+  ],
+  rowing: [
+    { m: 500,   lbl: '500m' },
+    { m: 1000,  lbl: '1K' },
+    { m: 2000,  lbl: '2K' },
+    { m: 5000,  lbl: '5K' },
+    { m: 6000,  lbl: '6K' },
+    { m: 10000, lbl: '10K' },
+    { m: 21097, lbl: 'HM erg' },
+    { m: 42195, lbl: 'M erg' },
+  ],
+  triathlon: [
+    { m: 25750,  lbl: 'Sprint' },
+    { m: 51500,  lbl: 'Olympic' },
+    { m: 113000, lbl: '70.3' },
+    { m: 226000, lbl: 'Full' },
+  ],
 }
+
+// v9.50.0 — default distance per sport. With the expanded lists, picking
+// DISTANCES[sport][1] would land on niche events (1 mi, 4K IP) rather than
+// the canonical "default PR" most athletes think in. This keeps the picker
+// landing on the iconic distance for each discipline.
+const DEFAULT_DISTANCE_M = {
+  run:       10000,
+  bike:      40000,
+  swim:      1500,
+  rowing:    2000,
+  triathlon: 51500,
+}
+const defaultDistanceFor = (sport) => DEFAULT_DISTANCE_M[sport]
+  ?? (DISTANCES[sport] || DISTANCES.run)[0].m
 
 const BAND_COLOR = { comfortable: '#28a745', realistic: '#0064ff', aggressive: '#ff9500', unrealistic: '#dc3545' }
 const BAND_LABEL = {
@@ -121,9 +188,55 @@ const SWIM_TT_LONG = [
   { m: 1500, lbl: '1500m' },
 ]
 
+// v9.50.0 — Tap-to-fill reference chips for the PR picker. For the currently
+// selected (sport, distance), look up the WR + beginner reference times in
+// sportsRecords.js and render two chips that fill the time input on click.
+// Hidden when no reference exists for the distance (e.g. distanceM === 0
+// bike FTP-direct sentinel).
+function ReferenceChips({ isTR, sport, distanceM, onPick }) {
+  const ref = getReference(sport, distanceM)
+  if (!ref) return null
+  const begStr = fmtSec(ref.beginner)
+  const wrStr = fmtSec(ref.wr)
+  const chipBase = {
+    ...S.mono,
+    fontSize: '9px',
+    fontWeight: 700,
+    letterSpacing: '0.06em',
+    padding: '6px 8px',
+    flex: '1 1 0',
+    minHeight: '32px',
+    border: '1px dashed var(--border)',
+    borderRadius: '4px',
+    background: 'transparent',
+    color: 'var(--muted)',
+    cursor: 'pointer',
+    textAlign: 'center',
+  }
+  return (
+    <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }} role="group"
+      aria-label={isTR ? 'Referans süre çipleri' : 'Reference time chips'}>
+      <button type="button" onClick={() => onPick(begStr)}
+        aria-label={isTR ? `Acemi süresini doldur: ${begStr}` : `Fill beginner time: ${begStr}`}
+        style={chipBase}
+        onMouseOver={e => { e.currentTarget.style.borderColor = '#28a745'; e.currentTarget.style.color = '#28a745' }}
+        onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--muted)' }}>
+        {isTR ? 'ACEMİ' : 'BEGINNER'} · {begStr}
+      </button>
+      <button type="button" onClick={() => onPick(wrStr)}
+        aria-label={isTR ? `Dünya rekoru süresini doldur: ${wrStr}` : `Fill world-record time: ${wrStr}`}
+        style={chipBase}
+        onMouseOver={e => { e.currentTarget.style.borderColor = '#ff6600'; e.currentTarget.style.color = '#ff6600' }}
+        onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--muted)' }}>
+        {isTR ? 'DR' : 'WR'} · {wrStr}
+      </button>
+    </div>
+  )
+}
+
 function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBest = null, defaultSport = 'run' }) {
   const initialSport = persistedForm?.sport || defaultSport || 'run'
-  const initialDistDefault = (DISTANCES[initialSport] || DISTANCES.run)[1]?.m ?? (DISTANCES[initialSport] || DISTANCES.run)[0].m
+  const initialDistDefault = defaultDistanceFor(initialSport)
   const [sport, setSport] = useState(initialSport)
   const [curD, setCurD] = useState(persistedForm?.currentDist || initialDistDefault)
   const [curT, setCurT] = useState(persistedForm?.currentTime || '')
@@ -161,7 +274,7 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
 
   function pickSport(k) {
     setSport(k)
-    const def = (DISTANCES[k] || DISTANCES.run)[1]?.m ?? (DISTANCES[k] || DISTANCES.run)[0].m
+    const def = defaultDistanceFor(k)
     setCurD(def); setTgtD(def)
     // Reset bike-only toggle when leaving bike
     if (k !== 'bike') setBikeFtpDirect(false)
@@ -522,6 +635,8 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
                 onChange={e => f.setT(autoFormatMmSs(e.target.value))}
                 onBlur={e => f.setT(autoFormatMmSs(e.target.value, { padOnBlur: true }))}
                 aria-label={f.tAria} style={INP} />
+              <ReferenceChips
+                isTR={isTR} sport={sport} distanceM={Number(f.dist)} onPick={f.setT} />
             </div>
           ))}
         </div>

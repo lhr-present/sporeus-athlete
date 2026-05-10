@@ -4,6 +4,88 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.50.0 — 2026-05-10 — PR picker WR/beginner reference + rowing in SPORTS
+
+  User ask: *"Make all the current PRs and mission PRs to be selected on
+  the app, all of the possibilities — athlete starting from 0, target PR
+  could be the sports WORLD RECORDS. Apply for all sports we have, and
+  make rowing one of the best detailed features."*
+
+  This ship lands the **picker side** of that ask. Rowing flagship work
+  (drag factor, SPM zones, W/kg, 7-zone ZoneCalc) lands in v9.51.0+.
+
+  ### (1) Rowing added to Mission #1 SPORTS picker
+
+  • Rowing was missing from the SPORTS button row in EliteProgramCard
+    (only RUN / BIKE / SWIM / TRI). The engine in `eliteProgram.js`
+    already supported `sport: 'rowing'` (since v9.7.0) — the picker UI
+    was the last gap.
+
+  • New SPORTS button "ROWING · KÜREK" between SWIM and TRI. Picks
+    default to the canonical 2K erg distance.
+
+  ### (2) DISTANCES expanded for every sport (beginner → WR coverage)
+
+  Picker no longer caps at common race events — covers every distance an
+  athlete might enter, from sprint efforts to ultra events:
+
+  • RUN: 1500m, 1 mi, 3K, 5K, 10K, 15K, 10 mi, HM, M, 50K, 100K, 100 mi
+  • BIKE: Kilo TT, 4K IP, 10 mi TT, 20K, 40K TT, 25 mi TT, 100K
+  • SWIM: 50m, 100m, 200m, 400m, 800m, 1500m, 3000m + 5K/10K/25K OW
+  • ROWING: 500m, 1K, 2K, 5K, 6K, 10K, HM erg, M erg
+  • TRI: Sprint (NEW), Olympic, 70.3, Full
+
+  Default-distance map (v9.50.0) lands the picker on the iconic distance
+  per sport (run 10K, bike 40K, swim 1500m, row 2K, tri Olympic) —
+  previously fell on index [1] which became odd events (1 mi, 4K IP)
+  after the expansion.
+
+  ### (3) Tap-to-fill BEGINNER · WR reference chips
+
+  • New module `src/lib/sport/sportsRecords.js` — `{ wr, beginner }`
+    times per (sport, distanceM), sourced from World Athletics, IAU,
+    UCI, World Aquatics, Ironman/70.3 records, Concept2 heavyweight
+    men's records (Mar 2026 snapshot, rounded to 1-second precision for
+    resilience to fractional-second updates).
+
+  • Two chips render below every PR time input: "BEGINNER · 5:30:00"
+    fills typical novice time, "WR · 2:00:35" fills the world-record
+    time. Aria-labeled, bilingual EN/TR (DR for "dünya rekoru").
+
+  • Beginner reference points sourced from coaching manuals (Daniels
+    2014 race-pace tables, Friel 2016 Triathlete's Training Bible,
+    Olbrecht 2000 swim, Concept2 first-2k coach notes) and event cutoff
+    bands.
+
+  ### (4) MIN_TIME_SEC floor lowered 60s → 15s
+
+  Validation in `eliteProgram.js` rejected sub-minute PRs as data
+  corruption, but legitimate sub-minute elite efforts exist — 50m swim
+  WR is 21s, 1km bike TT is 55s, 100m swim WR is 46s. Pre-v9.50.0,
+  picking the WR chip on these distances and submitting silently failed
+  the validator. New floor: 15s (still well below any humanly possible
+  race-distance time).
+
+  Test `rejects sub-minute time` updated to `rejects sub-15-second
+  time` with new floor value.
+
+  ### Files
+
+  • Added: `src/lib/sport/sportsRecords.js`
+  • Modified: `src/components/dashboard/EliteProgramCard.jsx` (SPORTS,
+    DISTANCES, defaultDistanceFor, ReferenceChips, getReference import)
+  • Modified: `src/lib/athlete/eliteProgram.js` (MIN_TIME_SEC 60→15)
+  • Modified: `src/lib/__tests__/athlete/eliteProgram.test.js` (test
+    threshold updated)
+
+  Tests: 9684 pass (390 files). Bundle: eliteProgram chunk gzip change
+  negligible — chip render is conditional on a reference hit.
+
+  Depends on: v9.7.0 (rowing engine support), v9.49.0 (mmss.js shared
+  lib), v8.96.0 (DISTANCES/SPORTS arrays).
+
+---
+
 ## v9.49.0 — 2026-05-10 — PR input mobile-friendly + coach injury-risk checklist
 
   Two ships from this round's deep-dive agents. (1) athlete: a verified
