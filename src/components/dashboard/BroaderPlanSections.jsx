@@ -704,6 +704,23 @@ function RaceWeekConditional({ title, accent, data, isTR }) {
       </div>
       <div style={{ ...S.mono, fontSize: 10, lineHeight: 1.55 }}>
         {data.summary ? <div style={{ marginBottom: 4 }}>{bil(data.summary, isTR)}</div> : null}
+        {/* v9.44.0 — heat acclim startBy + timing flag (Périard 2015 / Racinais 2015) */}
+        {data.startWindowNote ? (
+          <div style={{
+            marginBottom: 6,
+            padding: '4px 6px',
+            borderRadius: 3,
+            background: data.timing === 'too-late'
+              ? 'rgba(220,53,69,0.15)'
+              : data.timing === 'last-call'
+                ? 'rgba(255,102,0,0.15)'
+                : 'rgba(40,167,69,0.15)',
+            fontWeight: 600,
+          }}>
+            {data.timing === 'too-late' ? '⛔ ' : data.timing === 'last-call' ? '⚠️ ' : '✅ '}
+            {bil(data.startWindowNote, isTR)}
+          </div>
+        ) : null}
         {data.acclimatization ? <div><strong>{isTR ? 'ADAPTASYON' : 'ACCLIMATIZATION'}:</strong> {bil(data.acclimatization, isTR)}</div> : null}
         {data.sleep ? <div><strong>{isTR ? 'UYKU' : 'SLEEP'}:</strong> {bil(data.sleep, isTR)}</div> : null}
         {data.pacing ? <div><strong>{isTR ? 'TEMPOLAMA' : 'PACING'}:</strong> {bil(data.pacing, isTR)}</div> : null}

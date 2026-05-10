@@ -387,6 +387,60 @@ describe('buildRaceWeekProtocol — caffeine safety structured rules (v9.43.0)',
   })
 })
 
+// ── v9.44.0 — Heat protocol startBy + timing flag ───────────────────────
+describe('buildRaceWeekProtocol — heat startBy + timing (v9.44.0)', () => {
+  it('emits startBy + on-time when race is far enough away', () => {
+    const r = buildRaceWeekProtocol({
+      sport: 'run',
+      raceHeatC: 30,
+      raceDate: '2026-08-01',
+      today: '2026-06-01',  // 60 days out — plenty of room for 10-day window
+    })
+    expect(r.heat.startBy).toBe('2026-07-22')  // race - 10 days (high tier)
+    expect(r.heat.timing).toBe('on-time')
+    expect(r.heat.startWindowNote.en).toMatch(/start by 2026-07-22/i)
+  })
+
+  it('flags last-call when athlete is 1-3 days late on the start window', () => {
+    const r = buildRaceWeekProtocol({
+      sport: 'run',
+      raceHeatC: 28,
+      raceDate: '2026-06-15',
+      today: '2026-06-07',  // 8 days out, 10-day window → 2 days late
+    })
+    expect(r.heat.timing).toBe('last-call')
+    expect(r.heat.startWindowNote.en).toMatch(/last-call/i)
+  })
+
+  it('flags too-late when start window has fully passed', () => {
+    const r = buildRaceWeekProtocol({
+      sport: 'run',
+      raceHeatC: 30,
+      raceDate: '2026-06-15',
+      today: '2026-06-12',  // race-week, 3 days out, way past 10-day window
+    })
+    expect(r.heat.timing).toBe('too-late')
+    expect(r.heat.startWindowNote.en).toMatch(/too late/i)
+  })
+
+  it('extreme tier uses 14-day acclim window', () => {
+    const r = buildRaceWeekProtocol({
+      sport: 'run',
+      raceHeatC: 33,  // extreme
+      raceDate: '2026-08-01',
+      today: '2026-06-01',
+    })
+    expect(r.heat.startBy).toBe('2026-07-18')  // race - 14 days
+  })
+
+  it('omits startBy when raceDate not provided (back-compat)', () => {
+    const r = buildRaceWeekProtocol({ sport: 'run', raceHeatC: 30 })
+    expect(r.heat).toBeDefined()
+    expect(r.heat.startBy).toBeUndefined()
+    expect(r.heat.timing).toBeUndefined()
+  })
+})
+
 // ── v9.35.0 — Last 3 nights sleep hygiene ──────────────────────────────
 describe('buildRaceWeekProtocol — last-3-nights sleep hygiene (v9.35.0)', () => {
   it('every sport carries last3NightsSleepHygiene block', () => {

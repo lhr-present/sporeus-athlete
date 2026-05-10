@@ -632,14 +632,66 @@ function buildColdProtocol(raceTempC) {
   }
 }
 
-function buildHeatProtocol(raceHeatC) {
+// v9.44.0 — minimal date helpers local to this module (avoids cross-module
+// import + keeps buildHeatProtocol self-contained).
+function _parseUTCDate(s) {
+  if (!s || typeof s !== 'string') return null
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) return null
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]))
+  return isNaN(d.getTime()) ? null : d
+}
+
+function buildHeatProtocol(raceHeatC, raceDate, today) {
   if (raceHeatC == null || raceHeatC < 25) return null
   const tier = raceHeatC >= 32 ? 'extreme' : raceHeatC >= 28 ? 'high' : 'moderate'
+  // v9.44.0 — Compute when the athlete must START heat acclim. Périard 2015 +
+  // Racinais 2015 consensus: 10-14 day window pre-race. If the user is
+  // viewing this protocol after the start window has passed, surface a
+  // clear "TOO LATE for full protocol — focus on race-day pre-cool" note
+  // instead of an acclim block they can't act on.
+  const ACCLIM_DAYS = tier === 'extreme' ? 14 : 10
+  let startBy = null
+  let daysToStart = null
+  let timing = 'unscheduled'  // 'on-time' | 'last-call' | 'too-late' | 'unscheduled'
+  if (raceDate && today) {
+    const race = _parseUTCDate(raceDate)
+    const now = _parseUTCDate(today)
+    if (race && now) {
+      const daysToRace = Math.floor((race.getTime() - now.getTime()) / 86400000)
+      const startDate = new Date(race.getTime() - ACCLIM_DAYS * 86400000)
+      startBy = startDate.toISOString().slice(0, 10)
+      daysToStart = daysToRace - ACCLIM_DAYS
+      if (daysToRace < 0) timing = 'too-late'
+      else if (daysToStart >= 1) timing = 'on-time'
+      else if (daysToStart >= -3) timing = 'last-call'  // started ≤3 days late, salvageable
+      else timing = 'too-late'
+    }
+  }
   return {
     summary: {
       en: `Race-day heat ${raceHeatC}°C (${tier}). Heat acclimatization required: 5-14 days improves thermoregulation 5-15%.`,
       tr: `Yarış-günü sıcaklığı ${raceHeatC}°C (${tier === 'extreme' ? 'aşırı' : tier === 'high' ? 'yüksek' : 'orta'}). Sıcağa adaptasyon gerekli: 5-14 gün termorregülasyonu %5-15 geliştirir.`,
     },
+    // v9.44.0 — Explicit start window so athletes don't read this in race
+    // week and realise they should have started 2 weeks ago.
+    ...(startBy ? {
+      startBy,
+      daysToStart,
+      timing,
+      startWindowNote: {
+        en: timing === 'on-time'
+          ? `Start by ${startBy} (in ${daysToStart} days). ${ACCLIM_DAYS}-day window pre-race.`
+          : timing === 'last-call'
+            ? `LAST-CALL: should have started by ${startBy}. Begin TODAY at compressed dose; expect partial adaptation.`
+            : `TOO LATE for full protocol (start window ${startBy} has passed). Skip acclim; focus on race-day pre-cool + sodium + pacing slowdown below.`,
+        tr: timing === 'on-time'
+          ? `${startBy} tarihine kadar başla (${daysToStart} gün sonra). Yarış öncesi ${ACCLIM_DAYS} günlük pencere.`
+          : timing === 'last-call'
+            ? `SON ÇAĞRI: ${startBy} tarihine kadar başlamalıydın. BUGÜN sıkıştırılmış dozda başla; kısmi adaptasyon bekle.`
+            : `Tam protokol için ÇOK GEÇ (${startBy} başlangıç penceresi geçti). Adaptasyonu atla; aşağıdaki yarış-günü ön-soğutma + sodyum + tempo yavaşlatmasına odaklan.`,
+      },
+    } : {}),
     acclimatization: {
       en: tier === 'extreme'
         ? '14 days protocol: 5-7 sessions @ 60-90 min in heat (hot bath post-easy-session can substitute). Short sessions ineffective.'
@@ -1072,7 +1124,9 @@ export function buildRaceWeekProtocol(input) {
   // v9.8.0 — conditional advisories
   const travel    = buildTravelProtocol(input?.timeZoneShiftHrs)
   const altitude  = buildAltitudeProtocol(input?.raceAltitudeM)
-  const heat      = buildHeatProtocol(input?.raceHeatC)
+  // v9.44.0 — pass raceDate + today so heat protocol can compute startBy
+  // (race - 14 days) and timing flag (on-time / last-call / too-late).
+  const heat      = buildHeatProtocol(input?.raceHeatC, input?.raceDate, input?.today)
   // v9.31.0 — cold-weather race protocol; activates when raceTempC<5°C.
   const cold      = buildColdProtocol(input?.raceTempC)
   const out = {

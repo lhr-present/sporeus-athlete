@@ -4,6 +4,48 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.44.0 — 2026-05-10 — Heat acclim startBy + timing flag
+
+  Scientific audit caught the timing gap: heat acclimatization protocol
+  rendered only inside race-week output. Athletes opening race-week 5
+  days before a hot race read the 14-day acclim block and realised they
+  should have started 10 days ago. Périard 2015 + Racinais 2015 require
+  10-14 day pre-race acclim window — the protocol must surface BEFORE
+  race week.
+
+  • `buildHeatProtocol` now accepts `(raceHeatC, raceDate, today)` and
+    computes: `startBy` = race date − 10 (or 14 for extreme tier),
+    `daysToStart`, and `timing` ∈ { on-time, last-call, too-late }.
+    Last-call = started up to 3 days after the ideal start (compressed
+    dose still salvages partial adaptation per Périard 2015 short
+    acclim study). Too-late = window fully passed; protocol pivots to
+    race-day mitigation only.
+
+  • `startWindowNote` (bilingual) communicates the verdict in one line:
+    on-time → "Start by YYYY-MM-DD (in N days)"; last-call → "LAST-CALL,
+    begin TODAY at compressed dose"; too-late → "TOO LATE for full
+    protocol, skip acclim, focus on pre-cool + sodium + pacing."
+
+  • UI: HEAT callout renders `startWindowNote` as a colored badge above
+    the acclim block — green / orange / red by timing flag. Athletes see
+    the verdict at the top, no scrolling.
+
+  • Local `_parseUTCDate` helper added to keep the heat-protocol module
+    self-contained (no cross-module date helper import).
+
+  • 5 new tests v9.44.0 verify on-time / last-call / too-late branches,
+    extreme tier 14-day window, omission when raceDate absent.
+
+  CITATIONS: Périard 2015 (Compr Physiol 5:1373), Racinais 2015 (BJSM
+  consensus statement on heat in athletics), Zurawlew 2016 (post-train
+  hot bath).
+
+  DEPENDS ON: src/lib/athlete/eliteProgramRaceWeek.js (buildHeatProtocol
+  + call site), src/components/dashboard/BroaderPlanSections.jsx
+  (RaceWeekConditional renderer).
+
+---
+
 ## v9.43.0 — 2026-05-10 — Caffeine safety as numbered checklist
 
   Jargon audit P0: caffeine safety was a 6-point safety-critical paragraph
