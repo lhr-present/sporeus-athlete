@@ -5,6 +5,7 @@ import { supabase, isSupabaseReady } from '../../lib/supabase.js'
 import { generatePlan } from '../../lib/formulas.js'
 import { openAthleteReport } from '../../lib/reportGenerator.js'
 import { computeCompliance } from './helpers.jsx'
+import { planSignature, isDuplicatePlanSend, recordPlanSend } from '../../lib/coachPlanDedup.js'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { announce } from '../../lib/a11y/announcer.js'
 
@@ -108,8 +109,20 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
 
   const handleSendPlan = async () => {
     if (!isSupabaseReady() || !coachId || !athleteId) return
-    setSending(true)
     const weeks = generatePlan(planGoal, planWeeks, planHours, planLevel.toLowerCase())
+    // v9.64.0 — Client-side idempotency. The `coach_plans` insert lacks a
+    // server-side onConflict / unique constraint, so a network-retry after a
+    // lost response would create duplicate active plans. Until a DB migration
+    // adds the constraint, suppress duplicates within a 60s window using a
+    // localStorage signature keyed on (coach, athlete, plan shape).
+    const signature = planSignature({ coachId, athleteId, planName, planGoal, startDate, weeks, planLevel })
+    if (isDuplicatePlanSend(athleteId, signature)) {
+      setSendMsg(lang === 'tr' ? '⚠ Aynı plan az önce gönderildi — tekrar engellendi' : '⚠ Same plan was just sent — duplicate suppressed')
+      setTimeout(() => setSendMsg(''), 4000)
+      return
+    }
+
+    setSending(true)
     const { error } = await supabase.from('coach_plans').insert({
       coach_id:   coachId,
       athlete_id: athleteId,
@@ -119,6 +132,7 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
       weeks:      weeks,
       status:     'active',
     })
+    if (!error) recordPlanSend(athleteId, signature)
     setSending(false)
     if (error) setSendMsg(`⚠ ${error.message}`)
     else {

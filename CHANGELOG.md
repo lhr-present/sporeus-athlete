@@ -4,6 +4,84 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.64.0 — 2026-05-11 — Coach plan client-side idempotency
+
+  Last of the 4 verified-deferred items from Round 13's audit, sized for
+  the available risk budget. Picked **coach plan idempotency** over the
+  dashboard-card memo wrap: the latter would have been blind churn
+  without per-card prop-shape verification, which would itself have been
+  a multi-hour investigation. Shipping one tight, testable win.
+
+  ### Coach plan duplicate-send suppression (Agent X#5)
+
+  Pre-fix `SbAthletePanel.jsx:113` did `supabase.from('coach_plans').insert(...)`
+  with no `onConflict` clause and no client-side dedup. On a network
+  retry path (user clicks Send, request goes out, response is lost,
+  error toast shows, user clicks Send again) two `active` plan rows get
+  written for the same athlete. CoachPlansCard's `.limit(1)` masks the
+  duplicate at read time, but the row stays in the DB.
+
+  Real fix is a DB unique constraint on `(coach_id, athlete_id, status)`
+  filtered by `status='active'` — but that requires a schema migration
+  and a coach-side test plan I'd want to defer until a coach-feature
+  round. v9.64.0 ships a client-side stopgap that closes the common
+  retry-window without DB changes.
+
+  New `src/lib/coachPlanDedup.js`:
+  - `planSignature({ coachId, athleteId, planName, planGoal, startDate, weeks, planLevel })`
+    → stable string for a logically-identical plan
+  - `isDuplicatePlanSend(athleteId, signature, now=Date.now())` → checks
+    a per-athlete localStorage ledger; returns true if the same signature
+    was recorded within 60 seconds
+  - `recordPlanSend(athleteId, signature, now=Date.now())` → writes the
+    ledger entry on a successful insert
+  - Tolerant of corrupt JSON + missing args + quota errors — never
+    blocks a legitimate send.
+
+  `SbAthletePanel.handleSendPlan` now:
+  1. Computes the signature once weeks are generated
+  2. Calls `isDuplicatePlanSend` — if true, shows bilingual "duplicate
+     suppressed" toast and returns without touching Supabase
+  3. Calls `recordPlanSend` only on successful insert (failed inserts
+     don't poison the ledger — the user can retry immediately)
+
+  The 60-second TTL is intentional: rapid double-clicks and short
+  network retries are blocked, but a coach who genuinely wants to
+  re-send the same plan after fixing an athlete's profile a minute
+  later isn't.
+
+  ### Why I did NOT ship dashboard-card `memo()` wraps this round
+
+  Round 13's Agent Z flagged "103 of 118 dashboard cards lack memo()".
+  Verification: count confirmed (118 total, 15 currently memoized).
+  But: `memo()` only avoids re-renders when the *parent* passes stable
+  prop references. Several of the heavy cards (e.g. `AICoachInsights`
+  which takes a `dl` prop) might be receiving a freshly-computed object
+  on each parent render — in which case the memo barrier doesn't fire
+  and we've added shallowEqual overhead for nothing. Doing this right
+  needs a Dashboard.jsx prop-shape audit, then targeted memo wraps with
+  custom equality for known-unstable prop shapes. Bigger ship; defer.
+
+  ### Files
+
+  - `src/lib/coachPlanDedup.js` — NEW: pure-function dedup helpers
+  - `src/lib/__tests__/coachPlanDedup.test.js` — NEW: 15 tests covering
+    signature stability, TTL, corruption tolerance, end-to-end double-send
+  - `src/components/coachDashboard/SbAthletePanel.jsx` — wires the helper
+    into `handleSendPlan`; replaces inline localStorage write/read
+  - `package.json` — 11.63.0 → 11.64.0
+
+  Tests 9734/9734 (+15). Lint + build clean.
+
+  ### Still deferred from Round 13
+
+  - **Dashboard card memo() coverage** — needs prop-shape audit per card
+    before any wrap, as explained above. Scoped follow-up round.
+  - **`coach_plans` DB unique constraint** — proper server-side
+    idempotency. Pairs naturally with the schema-migration cadence.
+
+---
+
 ## v9.63.0 — 2026-05-11 — Verified deferred items: TrainingLog pagination + Realtime channel cleanup
 
   Ships two of the four verified-but-deferred bugs from v9.62.0 (Round 13
