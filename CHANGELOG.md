@@ -4,6 +4,50 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.42.0 — 2026-05-10 — Day-type CHO periodization + DNF jargon plain-English
+
+  Multi-agent audit on the now-improved Mission #1. Two scientific gaps and
+  one safety-readability gap verified before shipping (one agent claim
+  failed verification — heat acclim Peak trigger needs a separate ship).
+
+  • **Day-type CHO periodization (Burke 2017 — fuel for the work required)**:
+    pre-fix the fueling output emitted ONE g/kg/day range per phase. A
+    Build phase rest day at 6-8 g/kg overfeeds; a Build VO2 day at 6-8
+    underfuels. New `DAY_TYPE_CHO_MULTIPLIERS` (recovery 0.6×, easy 0.9×,
+    key 1.2×, race 1.4×) modulate the cohort-adjusted phase mid-point.
+    Output now carries `dayTypeCHO: { recovery, easy, key, race }` per
+    phase with `gPerKg` ranges and `gPerDay` absolute (when body mass
+    known). Bilingual `dayTypeCHOLabels` ride along. Cohort-aware: elite
+    Build key day = 9.4-11.5 g/kg, beginner Build key = 5.4-6.6 g/kg.
+    Stellingwerff 2018 floor of 3 g/kg enforced even on full rest.
+
+  • **UI: CHO BY DAY TYPE callout** in FuelingSection (2-column grid:
+    label / `g/kg (g)` with Burke 2017 attribution). Renders inside each
+    phase block — athlete can see at a glance how today's intake should
+    differ from a key-day intake.
+
+  • **DNF triage plain-English appositives** (jargon audit P0): post-v9.38
+    bullets still hid medical Latin (rhabdomyolysis, compartment syndrome,
+    viral myocarditis, syncope) inside parentheses. An amateur skims past.
+    Now each safety-critical bullet carries a 4-6 word plain English
+    explanation IN the bullet text — Latin stays as a hook, plain
+    explanation rides with it. Same fix applied to the post-race-48h
+    `warningSigns` block (which had identical Latin terms).
+
+  • 5 new tests v9.42.0 — `dayTypeCHO` shape, day-type ordering
+    (recovery < easy < key < race), gPerDay gating on body mass, cohort
+    scaling (elite > beginner), bilingual labels.
+
+  CITATIONS: Burke 2017 (Sports Med 47, fuel for the work required);
+  Stellingwerff 2018; Impey 2018. DNF readability: same as v9.35 / v9.38.
+
+  DEPENDS ON: src/lib/athlete/eliteProgramFueling.js (DAY_TYPE_CHO logic),
+  src/lib/athlete/eliteProgramRaceWeek.js (DNF bucket text +
+  POST_RACE_RECOVERY_48H warningSigns), src/components/dashboard/
+  BroaderPlanSections.jsx (renderer + React.Fragment import).
+
+---
+
 ## v9.40.0 — 2026-05-09 — Body-weight-missing banner in Fueling section
 
   Coaching audit: when an athlete leaves bodyMassKg blank, the fueling

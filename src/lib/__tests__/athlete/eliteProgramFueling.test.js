@@ -200,6 +200,53 @@ describe('buildFuelingProgram — hydration + sodium individualization (v9.25.0)
     }
   })
 
+  // v9.42.0 — Day-type CHO periodization (Burke 2017 fuel for the work required)
+  it('dayTypeCHO present per phase with recovery/easy/key/race ranges', () => {
+    const fp = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 70 })
+    for (const phase of ['Base', 'Build', 'Peak', 'Taper']) {
+      const d = fp[phase].dayTypeCHO
+      expect(d).toBeDefined()
+      for (const dayType of ['recovery', 'easy', 'key', 'race']) {
+        expect(d[dayType]).toBeDefined()
+        expect(Array.isArray(d[dayType].gPerKg)).toBe(true)
+        expect(d[dayType].gPerKg[0]).toBeGreaterThanOrEqual(3)
+        expect(d[dayType].gPerKg[0]).toBeLessThanOrEqual(d[dayType].gPerKg[1])
+      }
+    }
+  })
+
+  it('dayTypeCHO scales by day type (recovery < easy < key < race)', () => {
+    const fp = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 70 })
+    const d = fp.Build.dayTypeCHO
+    expect(d.recovery.gPerKg[1]).toBeLessThan(d.easy.gPerKg[1])
+    expect(d.easy.gPerKg[1]).toBeLessThan(d.key.gPerKg[1])
+    expect(d.key.gPerKg[1]).toBeLessThan(d.race.gPerKg[1])
+  })
+
+  it('dayTypeCHO emits absolute g/day when bodyMassKg known, omits when not', () => {
+    const fpBW = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 70 })
+    const fpNoBW = buildFuelingProgram({ phases: ALL_PHASES })
+    expect(fpBW.Build.dayTypeCHO.key.gPerDay).toBeDefined()
+    expect(Array.isArray(fpBW.Build.dayTypeCHO.key.gPerDay)).toBe(true)
+    expect(fpNoBW.Build.dayTypeCHO.key.gPerDay).toBeUndefined()
+  })
+
+  it('dayTypeCHO scales by cohort offset (elite > beginner for same day type)', () => {
+    const elite = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 70, cohort: 'elite' })
+    const beginner = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 70, cohort: 'beginner' })
+    expect(elite.Build.dayTypeCHO.key.gPerKg[1]).toBeGreaterThan(beginner.Build.dayTypeCHO.key.gPerKg[1])
+  })
+
+  it('dayTypeCHOLabels are bilingual', () => {
+    const fp = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 70 })
+    const labels = fp.Build.dayTypeCHOLabels
+    expect(labels).toBeDefined()
+    for (const k of ['recovery', 'easy', 'key', 'race']) {
+      expect(labels[k].en).toBeTruthy()
+      expect(labels[k].tr).toBeTruthy()
+    }
+  })
+
   it('hydration and sodium are ranges (low<high), not points', () => {
     const fp = buildFuelingProgram({ phases: ALL_PHASES, bodyMassKg: 70, gender: 'male' })
     expect(fp.Build.hydrationMlPerHr[0]).toBeLessThan(fp.Build.hydrationMlPerHr[1])

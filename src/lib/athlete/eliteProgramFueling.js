@@ -142,6 +142,43 @@ function gPerHourByCohort(cohort, basePhaseRange) {
   return basePhaseRange  // intermediate or null → unchanged
 }
 
+// v9.42.0 — Day-type CHO periodization (Burke 2017 "fuel for the work
+// required"). Phase-level g/kg ranges are the floor/ceiling; this layer
+// modulates DAILY intake by session type, so a Build rest day at 6-8 g/kg
+// doesn't overfeed and a Build VO2 day at 6-8 doesn't underfuel. The phase
+// mid-point is multiplied by the session-type factor; range is ±10% around
+// the result, with absolute floors per Stellingwerff 2018 (3 g/kg minimum
+// to protect immune + CNS function even on full rest).
+//   Citations: Burke 2017 (Sports Med 47); Stellingwerff 2018; Impey 2018
+const DAY_TYPE_CHO_MULTIPLIERS = {
+  recovery: 0.6,  // full rest or active recovery only
+  easy:     0.9,  // Z1-Z2 endurance, no quality work
+  key:      1.2,  // threshold / VO2 / long with intensity
+  race:     1.4,  // race day or full race-simulation rehearsal
+}
+
+function buildDayTypeCHO(phasePlan, bodyMassKg) {
+  const mid = (phasePlan.chodailyPerKg[0] + phasePlan.chodailyPerKg[1]) / 2
+  const out = {}
+  for (const [dayType, mult] of Object.entries(DAY_TYPE_CHO_MULTIPLIERS)) {
+    const center = mid * mult
+    const lo = Math.max(3, +(center * 0.9).toFixed(1))
+    const hi = +(center * 1.1).toFixed(1)
+    const gPerKg = [lo, hi]
+    out[dayType] = bodyMassKg
+      ? { gPerKg, gPerDay: [Math.round(lo * bodyMassKg), Math.round(hi * bodyMassKg)] }
+      : { gPerKg }
+  }
+  return out
+}
+
+const DAY_TYPE_CHO_LABELS = {
+  recovery: { en: 'Recovery / rest day', tr: 'Toparlanma / dinlenme günü' },
+  easy:     { en: 'Easy day (Z1–Z2 only)',  tr: 'Kolay gün (sadece Z1–Z2)' },
+  key:      { en: 'Key day (threshold / VO2 / long)', tr: 'Anahtar gün (eşik / VO2 / uzun)' },
+  race:     { en: 'Race or full simulation', tr: 'Yarış veya tam simülasyon' },
+}
+
 // v9.25.0 — Body-mass + sex-aware hydration prescription. Replaces hand-waved
 // "200-400 mL/h" with Jeukendrup 2014 baseline of 3-8 mL/kg/h. Females trend
 // toward the lower end (lower sweat rate, ~0.8-1.2 L/h vs male 1.2-2.0 L/h);
@@ -285,6 +322,11 @@ export function buildFuelingProgram(input) {
       ...(isFemale && (plan.phase === 'Base' || plan.phase === 'Build')
           ? { ironGuidance: IRON_GUIDANCE_FEMALE } : {}),
       ...(isFemale ? { redsScreening: RED_S_SCREENING, redsChecklist: RED_S_CHECKLIST } : {}),
+      // v9.42.0 — Day-type CHO periodization. Computed from the (cohort-
+      // adjusted) phase mid-point so beginner/intermediate/elite each see
+      // a properly anchored set of recovery/easy/key/race-day g/kg ranges.
+      dayTypeCHO: buildDayTypeCHO({ chodailyPerKg: adjustedCHO }, bw),
+      dayTypeCHOLabels: DAY_TYPE_CHO_LABELS,
     }
     if (!bw) return adjusted
     return {

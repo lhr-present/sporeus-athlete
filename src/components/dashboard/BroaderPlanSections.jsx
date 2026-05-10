@@ -6,7 +6,7 @@
 // All bilingual via the `isTR` prop. Pure presentational — no orchestrator
 // calls, just renders fields off `result` from buildEliteProgram.
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { S } from '../../styles.js'
 
 // ── Visual tokens (v9.4.0) — phase + intensity color coding ──────────────────
@@ -360,6 +360,24 @@ export function FuelingSection({ fuelingProgram, isTR, defaultOpen = false }) {
               <div style={{ marginTop: 4 }}><strong>{isTR ? 'SEANS İÇİ' : 'DURING SESSION'}:</strong> {p.duringSession.hardSessionGPerHr[0]}-{p.duringSession.hardSessionGPerHr[1]} g CHO/h</div>
               <div><strong>{isTR ? 'SEANS ÖNCESİ' : 'PRE-SESSION'}:</strong> {p.preSession.gPerKg} g/kg, {p.preSession.timingMin} {isTR ? 'dk önce' : 'min before'}</div>
               <div><strong>{isTR ? 'SEANS SONRASI' : 'POST-SESSION'}:</strong> {p.postSession.gPerKg} g/kg CHO + {p.postSession.proteinG} g {isTR ? 'protein' : 'protein'}, {p.postSession.timingMin} {isTR ? 'dk içinde' : 'min window'}</div>
+              {/* v9.42.0 — Day-type CHO periodization (Burke 2017 fuel for the work required). */}
+              {p.dayTypeCHO ? (
+                <div style={{ marginTop: 6, padding: '6px 8px', background: '#28a74511', border: '1px solid #28a74533', borderRadius: 4, fontSize: 10, lineHeight: 1.5 }}>
+                  <div style={{ fontWeight: 700, marginBottom: 4 }}>{isTR ? 'CHO — GÜN TİPİNE GÖRE' : 'CHO BY DAY TYPE'}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '2px 8px' }}>
+                    {Object.entries(p.dayTypeCHO).map(([key, v]) => (
+                      <React.Fragment key={key}>
+                        <div style={{ color: 'var(--muted)' }}>{bil(p.dayTypeCHOLabels?.[key], isTR) || key}</div>
+                        <div>
+                          <strong>{v.gPerKg[0]}–{v.gPerKg[1]} g/kg</strong>
+                          {v.gPerDay ? <span style={{ color: 'var(--muted)' }}> ({v.gPerDay[0]}–{v.gPerDay[1]} g)</span> : null}
+                        </div>
+                      </React.Fragment>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 9, fontStyle: 'italic', color: 'var(--muted)', marginTop: 4 }}>Burke 2017 — fuel for the work required</div>
+                </div>
+              ) : null}
               {p.hydrationMlPerHr ? (
                 <div><strong>{isTR ? 'SIVI ALIMI' : 'HYDRATION'}:</strong> {p.hydrationMlPerHr[0]}-{p.hydrationMlPerHr[1]} mL/h</div>
               ) : null}

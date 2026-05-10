@@ -696,12 +696,12 @@ const DNF_TRIAGE_BUCKETS = [
       en: [
         'Chest pain or pressure',
         'Severe shortness of breath',
-        'Syncope or near-syncope',
+        'Syncope (fainting) or near-syncope (about to faint)',
         'Collapse',
         'Blurred or tunnel vision',
         'Sudden severe headache (especially with aura — stroke risk)',
         'Confusion',
-        'No sweat in heat AND core-temp sensation rising',
+        'No sweat in heat AND core-temp sensation rising (heat-stroke onset)',
       ],
       tr: [
         'Göğüs ağrısı veya baskı',
@@ -719,19 +719,24 @@ const DNF_TRIAGE_BUCKETS = [
     severity: 'exit',
     title: { en: 'EXIT TO WALK / DNF (sports-injury caution)', tr: 'YÜRÜYÜŞE GEÇ / DNF (spor-yaralanma uyarısı)' },
     items: {
+      // v9.41.0 — Added 4-6 word plain-English appositives for medical Latin
+      // (rhabdomyolysis, compartment syndrome, viral myocarditis) so a
+      // non-clinician athlete reading under race stress doesn't skim past
+      // safety-critical bullets. The Latin term stays as a hook but the
+      // plain explanation rides with it in the same bullet.
       en: [
-        'Tea-colored or dark-cola urine (rhabdomyolysis onset)',
-        'Severe localized joint or bone pain (stress fracture / compartment syndrome)',
-        'Unilateral leg weakness',
-        'Fever + chills + sore throat (infection — viral myocarditis risk)',
-        'One-sided gait failure',
+        'Tea-colored or dark-cola urine (rhabdomyolysis — muscle breakdown leaking protein into blood, kidney damage risk)',
+        'Severe localized joint or bone pain (stress fracture or compartment syndrome — swelling that traps blood inside a muscle group, ER-level)',
+        'Unilateral leg weakness (one leg failing — neurological warning, do NOT push through)',
+        'Fever + chills + sore throat (infection — viral myocarditis risk: heart inflammation triggered by viral illness, sudden-cardiac risk)',
+        'One-sided gait failure (you can\'t make one leg drive forward symmetrically)',
       ],
       tr: [
-        'Çay rengi veya koyu kola idrar (rabdomyoliz başlangıcı)',
-        'Şiddetli lokal eklem veya kemik ağrısı (stres kırığı / kompartman sendromu)',
-        'Tek-taraflı bacak zayıflığı',
-        'Ateş + titreme + boğaz ağrısı (enfeksiyon — viral miyokardit riski)',
-        'Tek-taraflı yürüyüş bozukluğu',
+        'Çay rengi veya koyu kola idrar (rabdomyoliz — kası parçalayıp kan akımına protein bırakır, böbrek hasarı riski)',
+        'Şiddetli lokal eklem veya kemik ağrısı (stres kırığı veya kompartman sendromu — kası saran zarın içinde kan birikmesi, ER seviyesi acil)',
+        'Tek-taraflı bacak zayıflığı (tek bacağın çekilmesi — nörolojik uyarı, üstüne gitme)',
+        'Ateş + titreme + boğaz ağrısı (enfeksiyon — viral miyokardit riski: viral hastalık tetikli kalp iltihabı, ani kalp riski)',
+        'Tek-taraflı yürüyüş bozukluğu (bir bacağı simetrik öne süremiyor olman)',
       ],
     },
   },
@@ -810,8 +815,10 @@ const POST_RACE_RECOVERY_48H = {
     tr: '3. gün+: antrenmana kademeli dönüş. Koşu/bisiklet: normal hacmin %50\'si, sadece Z1-Z2. Kuvvet: büyük yarış sonrası ilk haftayı atla. 7. günden önce anahtar/kaliteli seans YOK. Her "erken iyi hissettim" dönüşü gelecekteki tavan kapasiteyi ~%3 düşürür (Banister 1997 süperkompansasyon penceresi).',
   },
   warningSigns: {
-    en: 'Warning signs needing medical review (do NOT train through): tea-colored or dark-cola urine (rhabdomyolysis), persistent dizziness/syncope, severe localized pain (stress fracture or compartment syndrome risk), no urination 4+ h post-race despite drinking, fever 24-72h post-race (immune dip + infection).',
-    tr: 'Tıbbi inceleme gerektiren uyarı işaretleri (antrenmanla GEÇİŞTİRME): çay rengi veya koyu kola idrar (rabdomyoliz), kalıcı baş dönmesi/bayılma, şiddetli lokal ağrı (stres kırığı veya kompartman sendromu riski), içmesine rağmen yarıştan 4+ sa sonra idrar yok, yarıştan 24-72 sa sonra ateş (immün düşüş + enfeksiyon).',
+    // v9.41.0 — Plain-English appositives for medical Latin so post-race
+    // athletes (likely tired, low-EQ on jargon) catch the safety triggers.
+    en: 'Warning signs needing medical review (do NOT train through): tea-colored or dark-cola urine (rhabdomyolysis — muscle protein leaking into blood, kidney risk), persistent dizziness or fainting, severe localized pain (stress fracture or compartment syndrome — swelling trapped inside a muscle group), no urination 4+ h post-race despite drinking, fever 24-72h post-race (immune dip + infection — viral myocarditis risk if you train through).',
+    tr: 'Tıbbi inceleme gerektiren uyarı işaretleri (antrenmanla GEÇİŞTİRME): çay rengi veya koyu kola idrar (rabdomyoliz — kasın kan akımına protein bırakması, böbrek riski), kalıcı baş dönmesi veya bayılma, şiddetli lokal ağrı (stres kırığı veya kompartman sendromu — kası saran zarın içinde sıkışmış şişlik), içmesine rağmen yarıştan 4+ sa sonra idrar yok, yarıştan 24-72 sa sonra ateş (immün düşüş + enfeksiyon — antrenman sürdürülürse viral miyokardit riski).',
   },
 }
 
