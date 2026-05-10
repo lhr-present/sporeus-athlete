@@ -13,6 +13,7 @@
 
 import { computeHRVTrend } from './hrv.js'
 import { predictInjuryRisk } from './intelligence.js'
+import { computeMonotony } from './trainingLoad.js'
 
 const LAMBDA_ACUTE   = 0.25          // 4-day EWMA
 const LAMBDA_CHRONIC = 0.067         // 28-day EWMA
@@ -166,6 +167,46 @@ function evalRules(log, recovery, profile) {
     }
   }
 
+  // ── Rule 4.5: injury_window — predictive 2-week risk window ─────────────────
+  // v9.57.0: pre-fix rules only fired AT injury threshold (HIGH). This rule
+  // fires BEFORE the spike when monotony is rising AND readiness is dropping
+  // AND consecutive training days ≥ 4 — buying the athlete a deload window.
+  // Foster 1998 monotony rising is the canonical pre-overreaching signal;
+  // Hulin 2016 ACWR-style early warning extended to monotony Δ.
+  const monoNow = computeMonotony(safeLog)
+  const monoPrev = computeMonotony(safeLog, (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 7); return d })())
+  const monoRising = (monoNow.monotony && monoPrev.monotony)
+    ? (monoNow.monotony / monoPrev.monotony) - 1
+    : null
+  const consecutiveDays = (() => {
+    const datesWithSession = new Set((safeLog || []).filter(e => (e.tss || 0) > 0).map(e => (e.date || '').slice(0, 10)))
+    const today = new Date(); today.setUTCHours(0, 0, 0, 0)
+    let n = 0
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(today); d.setUTCDate(d.getUTCDate() - i)
+      if (datesWithSession.has(d.toISOString().slice(0, 10))) n++
+      else break
+    }
+    return n
+  })()
+  if (monoRising !== null && monoRising > 0.15
+    && wellness !== null && wellness < 3
+    && consecutiveDays >= 4
+    && (!inj || inj.level !== 'HIGH')) {
+    return {
+      id:        'injury_window',
+      priority:  4,
+      action:    { en: 'Plan deload — injury window approaching', tr: 'Deload planla — yaralanma penceresi yaklaşıyor' },
+      rationale: {
+        en: `Monotony rising ${(monoRising * 100).toFixed(0)}% (now ${monoNow.monotony}, was ${monoPrev.monotony}), wellness ${wellness}/5, ${consecutiveDays}d consecutive. Next 14d high-risk — schedule a deload week or extra rest day before threshold.`,
+        tr: `Monotoni yükseliyor %${(monoRising * 100).toFixed(0)} (şimdi ${monoNow.monotony}, önce ${monoPrev.monotony}), iyilik ${wellness}/5, ${consecutiveDays}g üst üste. Sonraki 14 gün yüksek risk — eşik öncesi deload haftası veya ek dinlenme günü planla.`,
+      },
+      citation:  'Foster 1998 (Med Sci Sports Exerc) + Hulin 2016 (Br J Sports Med)',
+      color:     'amber',
+      metrics:   { ctl, atl, tsb, acwr, wellness, monotony: monoNow.monotony, monoRising: Math.round(monoRising * 100) / 100, consecutiveDays },
+    }
+  }
+
   // ── Rule 5: hrv_drift — HRV CV ≥ 10% + latest below mean (Plews 2013) ───────
   const hrv = computeHRVTrend(safeRec)
   if (hrv.trend === 'unstable' && (hrv.dropPct ?? 0) > 5) {
@@ -217,13 +258,63 @@ function evalRules(log, recovery, profile) {
     }
   }
 
-  // ── Rule 7: race_taper (race in ≤14 days) ────────────────────────────────────
+  // ── Rule 7: race_taper — 4 graduated phases per Mujika & Padilla 2003 ───────
+  // v9.57.0: split single ≤14d rule into 4 sub-rules so the coaching
+  // escalates as race day approaches. Pre-fix: athlete saw the same
+  // "reduce 40-60%" message at d-14 and d-2. Now each phase prescribes
+  // the appropriate volume cut + intensity rule.
   if (daysToRace !== null && daysToRace >= 0 && daysToRace <= 14) {
+    if (daysToRace <= 1) {
+      return {
+        id:        'race_taper_d1',
+        priority:  7,
+        action:    { en: `Race day-${daysToRace} — full rest`, tr: `Yarış-${daysToRace} — tam dinlenme` },
+        rationale: {
+          en: `${daysToRace}d to race. Walking + 10-min easy shake-out only. Hydrate, fuel-load, sleep. Adding work now subtracts performance.`,
+          tr: `Yarışa ${daysToRace} gün. Sadece yürüyüş + 10 dk hafif açılım. Su iç, karbonhidrat yükle, uyu. Bu noktada eklenen iş performanstan eksiltir.`,
+        },
+        citation:  'Mujika & Padilla 2003 (Int J Sports Physiol)',
+        color:     'blue',
+        metrics:   { ctl, atl, tsb, acwr, wellness, daysToRace },
+      }
+    }
+    if (daysToRace <= 4) {
+      return {
+        id:        'race_taper_d2_4',
+        priority:  7,
+        action:    { en: `Race ${daysToRace}d out — race-sim only`, tr: `Yarış ${daysToRace} gün — sadece yarış-simülasyonu` },
+        rationale: {
+          en: `${daysToRace}d to race. Vol -75 to -85% baseline. One short race-pace tune-up (4-6×400m or 3×3min). NO new training; preserve glycogen + neural readiness.`,
+          tr: `Yarışa ${daysToRace} gün. Hacmi %75-85 azalt. Bir kısa yarış-tempo açılım (4-6×400m veya 3×3dk). YENİ antrenman yok; glikojen ve sinir hazırlığını koru.`,
+        },
+        citation:  'Mujika & Padilla 2003 (Int J Sports Physiol)',
+        color:     'blue',
+        metrics:   { ctl, atl, tsb, acwr, wellness, daysToRace },
+      }
+    }
+    if (daysToRace <= 9) {
+      return {
+        id:        'race_taper_d5_9',
+        priority:  7,
+        action:    { en: `Taper week — ${daysToRace}d to race`, tr: `Taper haftası — ${daysToRace} gün kaldı` },
+        rationale: {
+          en: `${daysToRace}d to race. Vol -50 to -60%, INTENSITY MAINTAINED. Race-pace work in 5-15 min doses, 1 quality session this week. Avoid new sessions; sharpen — don't build.`,
+          tr: `Yarışa ${daysToRace} gün. Hacmi %50-60 azalt, YOĞUNLUĞU KORU. 5-15 dk dozlarda yarış-tempo işi, bu hafta 1 kaliteli seans. Yeni seans yok; keskinleştir — geliştirme.`,
+        },
+        citation:  'Mujika & Padilla 2003 (Int J Sports Physiol)',
+        color:     'blue',
+        metrics:   { ctl, atl, tsb, acwr, wellness, daysToRace },
+      }
+    }
+    // 10-14 days
     return {
-      id:        'race_taper',
+      id:        'race_taper_d10_14',
       priority:  7,
-      action:    { en: `Race taper — ${daysToRace}d to race`, tr: `Yarış taperi — ${daysToRace} gün kaldı` },
-      rationale: { en: `Race in ${daysToRace} days. Reduce volume 40–60%, maintain intensity. Optimal TSB on race day: +5 to +20.`, tr: `${daysToRace} gün sonra yarış. Hacmi %40–60 azalt, yoğunluğu koru.` },
+      action:    { en: `Pre-taper — ${daysToRace}d to race`, tr: `Taper-öncesi — ${daysToRace} gün kaldı` },
+      rationale: {
+        en: `${daysToRace}d to race. Vol -30 to -40%, intensity preserved. Last block of bigger workouts ENDS this week — final long run / threshold key. Target race-day TSB +5 to +20.`,
+        tr: `Yarışa ${daysToRace} gün. Hacmi %30-40 azalt, yoğunluğu koru. Son büyük antrenman bloğu BU hafta biter — son uzun koşu / eşik anahtarı. Yarış günü TSB hedef +5 / +20.`,
+      },
       citation:  'Mujika & Padilla 2003 (Int J Sports Physiol)',
       color:     'blue',
       metrics:   { ctl, atl, tsb, acwr, wellness, daysToRace },

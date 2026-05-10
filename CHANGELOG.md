@@ -4,6 +4,95 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.57.0 — 2026-05-10 — Escalating taper + injury foreshadowing + sick-day surface
+
+  Round 8. Three new agents (AI insights / data import / elite-athlete
+  walkthrough) returned 13 ranked gaps. This ship lands the 3 with the
+  highest impact ÷ effort ratio.
+
+  ### (1) Race-week taper escalates over 4 phases (Agent A #4)
+
+  Pre-fix `nextAction.js` race_taper was a single rule firing when
+  daysToRace ≤ 14, surfacing the same "reduce 40-60%" message at d-14
+  and d-2 alike. Athletes saw no graduated guidance.
+
+  Now split into 4 sub-rules per Mujika & Padilla 2003:
+
+  ```
+  d-14 to d-10  vol -30/40%  intensity preserved · last big block ENDS
+  d-9  to d-5   vol -50/60%  INTENSITY MAINTAINED · 1 quality session
+  d-4  to d-2   vol -75/85%  short race-pace tune-up only · NO new work
+  d-1  to d-0   vol = walk + 10-min shake-out · hydrate / fuel-load / sleep
+  ```
+
+  Test suite extended with 4 new assertions verifying each phase fires
+  at its band (12d, 7d, 3d, 1d).
+
+  ### (2) Injury foreshadowing rule (Agent A #1)
+
+  Existing `predictInjuryRisk` returns past patterns + current 5-factor
+  score, but only fires `injury_risk_high` AT threshold. Athletes had
+  no warning of the *upcoming* 14-day window.
+
+  New `injury_window` rule (priority 4, just after `injury_risk_high`)
+  fires when:
+  • Monotony rising > 15% week-over-week (Foster 1998 pre-overreaching
+    canonical signal)
+  • Wellness < 3/5 (subjective drop)
+  • Consecutive training days ≥ 4
+
+  Recommendation: "Plan deload — injury window approaching. Schedule
+  a deload week or extra rest day before threshold." Cites Foster 1998
+  + Hulin 2016 (BJSM ACWR-style early warning extended to monotony Δ).
+
+  Uses existing `computeMonotony` from `trainingLoad.js` — runs twice
+  (today + 7d ago) for the trend Δ.
+
+  ### (3) Sick-day / disruption substitution guide on TodayView (Agent C #3)
+
+  `eliteProgramSubstitutions.js:184-239` has rich bilingual contingency
+  data: above-neck vs below-neck illness rules, life-event 2-3d vs
+  4-7d vs 1+ week disruption guidance, travel protocols. Pre-fix this
+  was a library function with no UI consumer.
+
+  Now an expandable `<details>` element renders inside the planned-
+  session card with:
+  • `↑ ABOVE-NECK` symptoms → easy/Z1 only at 50% volume, 3-day no-hard
+  • `↓ BELOW-NECK` symptoms → rest until 24h fever-free + 48h symptom-
+    free, 3-5d return ramp 30→50→70→100%
+  • `2-3d disruption` → skip missed, don't double up
+  • `4-7d disruption` → shift plan back 1 week, don't compress
+
+  Sport-aware via `buildContingencyMap({ sport: profile.primarySport })`.
+  Cites Friman & Wesslen 2000, Reid 2004, Bompa 2009, Halson 2014.
+
+  ### Deferred from this round's audits (bigger ships):
+
+  • **Plan re-anchor after >7d disruption** (Agent C #2) — needs CTL
+    ceiling math + future-week shift logic
+  • **Cohort dose transparency** (Agent C #4) — UI explainer for "why
+    you're at 2x20 not 3x20"
+  • **NP auto-compute on FIT import** (Agent B implicit) — Coggan 2003
+    NP formula needed; fileImport.js extension
+  • **Concept2 ErgData CSV parser** (Agent B #2) — closes rowing import
+  • **AICoachInsights cohort percentile** (Agent A #3)
+
+  ### Files
+
+  • Modified: `src/lib/nextAction.js` (computeMonotony import,
+    injury_window rule, race_taper split into 4 sub-rules)
+  • Modified: `src/lib/__tests__/nextAction.test.js` (race_taper tests
+    refactored to use isRaceTaper helper, 4 new sub-phase assertions)
+  • Modified: `src/components/TodayView.jsx` (buildContingencyMap
+    import, expandable contingency guide inside planned-session card)
+
+  Tests: 9688/9688 pass (390 files, +4). Lint clean. Build clean.
+
+  Depends on: v9.56.0 (sessionSwapFlag pattern), nextAction.js v9.39
+  (priority engine), eliteProgramSubstitutions.js (existing library).
+
+---
+
 ## v9.56.0 — 2026-05-10 — Coach profile + HRV session-swap + sleep extension
 
   Round 7 — gap-driven, three new agents this round (coach side / wellness

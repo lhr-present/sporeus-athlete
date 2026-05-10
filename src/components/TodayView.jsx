@@ -18,6 +18,7 @@ import QRScanner from './QRScanner.jsx'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { getRecommendedProtocols } from '../lib/recoveryProtocols.js'
 import { computeNextAction } from '../lib/nextAction.js'
+import { buildContingencyMap } from '../lib/athlete/eliteProgramSubstitutions.js'
 
 const WellnessSparkline = lazy(() => import('./charts/WellnessSparkline.jsx'))
 import { isRESTQDue } from '../lib/sport/restq.js'
@@ -965,6 +966,45 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                 </button>
               </div>
             )}
+            {/* v9.57.0 — Substitution / contingency guide (always available,
+                collapsed). Pre-fix the rich illness + life-event + travel
+                guidance in eliteProgramSubstitutions.js never surfaced — the
+                athlete on a sick day saw their planned session and no advice
+                on what to do instead. Now expandable, sport-aware via
+                buildContingencyMap. Cites Friman & Wesslen, Bompa, Halson. */}
+            {(() => {
+              const cont = buildContingencyMap({ sport: profile?.primarySport || 'run' })
+              return (
+                <details style={{ marginTop: '12px', paddingTop: '8px', borderTop: '1px dashed var(--border)' }}>
+                  <summary style={{ ...{ fontFamily: MONO }, fontSize: '10px', color: '#888', cursor: 'pointer', letterSpacing: '0.06em' }}>
+                    {lang === 'tr' ? '◈ HASTA / BOZULDU MU? — KILAVUZ' : "◈ SICK / DISRUPTED TODAY? — GUIDE"}
+                  </summary>
+                  <div style={{ marginTop: '8px', fontSize: '10px', color: '#aaa', lineHeight: 1.6 }}>
+                    <div style={{ fontWeight: 700, color: '#ccc', marginBottom: '4px' }}>
+                      {cont.illness.title[lang] || cont.illness.title.en}
+                    </div>
+                    <div style={{ marginBottom: '6px' }}>
+                      <span style={{ color: '#5bc25b' }}>↑ </span>{cont.illness.aboveNeck[lang] || cont.illness.aboveNeck.en}
+                    </div>
+                    <div style={{ marginBottom: '6px' }}>
+                      <span style={{ color: '#e03030' }}>↓ </span>{cont.illness.belowNeck[lang] || cont.illness.belowNeck.en}
+                    </div>
+                    <div style={{ fontWeight: 700, color: '#ccc', marginTop: '10px', marginBottom: '4px' }}>
+                      {cont.lifeEvent.title[lang] || cont.lifeEvent.title.en}
+                    </div>
+                    <div style={{ marginBottom: '4px' }}>
+                      <span style={{ color: '#888' }}>2-3d: </span>{cont.lifeEvent.twoToThreeDays[lang] || cont.lifeEvent.twoToThreeDays.en}
+                    </div>
+                    <div style={{ marginBottom: '4px' }}>
+                      <span style={{ color: '#888' }}>4-7d: </span>{cont.lifeEvent.fourToSevenDays[lang] || cont.lifeEvent.fourToSevenDays.en}
+                    </div>
+                    <div style={{ marginTop: '8px', fontSize: '9px', color: '#666', fontStyle: 'italic' }}>
+                      {cont.illness.citation} · {cont.lifeEvent.citation}
+                    </div>
+                  </div>
+                </details>
+              )
+            })()}
           </>
         ) : (
           <div style={{ color: '#555', fontSize: '12px', lineHeight: 1.6 }}>

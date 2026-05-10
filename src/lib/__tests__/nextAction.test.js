@@ -172,7 +172,11 @@ describe('computeNextAction — Rule 4: tsb_deep', () => {
 
 // ── Rule 5: race_taper ────────────────────────────────────────────────────────
 
-describe('computeNextAction — Rule 5: race_taper', () => {
+describe('computeNextAction — Rule 5: race_taper (4 graduated phases v9.57.0)', () => {
+  // v9.57.0 — race_taper split into race_taper_d1 / d2_4 / d5_9 / d10_14
+  // so tests now match any race_taper* id rather than literal 'race_taper'.
+  const isRaceTaper = (id) => id?.startsWith('race_taper')
+
   it('fires when race is within 14 days with no higher-priority rule', () => {
     // User with 60+ day base and taper-like low recent load → low ACWR, no TSB issues
     const log = [
@@ -183,28 +187,28 @@ describe('computeNextAction — Rule 5: race_taper', () => {
     ]
     const profile = { nextRaceDate: daysFrom(7) }
     const r = computeNextAction(log, [], profile)
-    // race_taper should fire since ACWR is low and no critical issues
-    expect(['race_taper', 'acwr_low'].includes(r.id)).toBe(true)
+    // race_taper_d5_9 should fire since ACWR is low and no critical issues
+    expect(isRaceTaper(r.id) || r.id === 'acwr_low').toBe(true)
   })
 
   it('does NOT fire when race is 15+ days away', () => {
     const log = [{ date: daysAgo(1), tss: 60, type: 'Run', duration: 60, rpe: 6 }]
     const profile = { nextRaceDate: daysFrom(20) }
     const r = computeNextAction(log, [], profile)
-    expect(r.id).not.toBe('race_taper')
+    expect(isRaceTaper(r.id)).toBe(false)
   })
 
   it('does NOT fire when race date is in the past', () => {
     const log = [{ date: daysAgo(1), tss: 60, type: 'Run', duration: 60, rpe: 6 }]
     const profile = { nextRaceDate: daysAgo(1) }
     const r = computeNextAction(log, [], profile)
-    expect(r.id).not.toBe('race_taper')
+    expect(isRaceTaper(r.id)).toBe(false)
   })
 
   it('includes days-to-race in action text', () => {
     const log = [{ date: daysAgo(1), tss: 60, type: 'Run', duration: 60, rpe: 6 }]
     const r = computeNextAction(log, [], { nextRaceDate: daysFrom(5) })
-    if (r.id === 'race_taper') {
+    if (isRaceTaper(r.id)) {
       expect(r.action.en).toMatch(/5d/)
     }
   })
@@ -212,7 +216,25 @@ describe('computeNextAction — Rule 5: race_taper', () => {
   it('cites Mujika & Padilla', () => {
     const log = [{ date: daysAgo(1), tss: 60, type: 'Run', duration: 60, rpe: 6 }]
     const r = computeNextAction(log, [], { nextRaceDate: daysFrom(7) })
-    if (r.id === 'race_taper') expect(r.citation).toMatch(/Mujika/)
+    if (isRaceTaper(r.id)) expect(r.citation).toMatch(/Mujika/)
+  })
+
+  // v9.57.0 — verify all 4 sub-rules differentiate by daysToRace band
+  it('returns d10_14 phase at 12 days out', () => {
+    const r = computeNextAction([{ date: daysAgo(1), tss: 60 }], [], { nextRaceDate: daysFrom(12) })
+    if (isRaceTaper(r.id)) expect(r.id).toBe('race_taper_d10_14')
+  })
+  it('returns d5_9 phase at 7 days out', () => {
+    const r = computeNextAction([{ date: daysAgo(1), tss: 60 }], [], { nextRaceDate: daysFrom(7) })
+    if (isRaceTaper(r.id)) expect(r.id).toBe('race_taper_d5_9')
+  })
+  it('returns d2_4 phase at 3 days out', () => {
+    const r = computeNextAction([{ date: daysAgo(1), tss: 60 }], [], { nextRaceDate: daysFrom(3) })
+    if (isRaceTaper(r.id)) expect(r.id).toBe('race_taper_d2_4')
+  })
+  it('returns d1 phase at 1 day out', () => {
+    const r = computeNextAction([{ date: daysAgo(1), tss: 60 }], [], { nextRaceDate: daysFrom(1) })
+    if (isRaceTaper(r.id)) expect(r.id).toBe('race_taper_d1')
   })
 })
 
