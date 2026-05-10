@@ -627,9 +627,9 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
           ))}
         </div>
         {showAdvanced && (
-          <button style={{ ...S.btnSec, fontSize: '10px', marginTop: '8px', padding: '3px 8px' }} onClick={() => setShowAdvanced(false)}>← SIMPLE VIEW</button>
+          <button style={{ ...S.btnSec, fontSize: '10px', marginTop: '8px', padding: '10px 14px', minHeight: '44px' }} onClick={() => setShowAdvanced(false)}>← SIMPLE VIEW</button>
         )}
-        <button style={{ ...S.mono, fontSize: '9px', color: 'var(--muted)', background: 'transparent', border: '1px solid var(--border)', borderRadius: '3px', padding: '2px 8px', cursor: 'pointer', marginTop: '8px', marginLeft: '8px' }} onClick={() => setShowCustomize(s => !s)}>
+        <button style={{ ...S.mono, fontSize: '9px', color: 'var(--muted)', background: 'transparent', border: '1px solid var(--border)', borderRadius: '3px', padding: '10px 14px', minHeight: '44px', cursor: 'pointer', marginTop: '8px', marginLeft: '8px' }} onClick={() => setShowCustomize(s => !s)}>
           ⚙ Customize Dashboard
         </button>
         {showCustomize && (

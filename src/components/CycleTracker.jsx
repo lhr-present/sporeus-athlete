@@ -233,7 +233,7 @@ export default function CycleTracker() {
               <div style={{ marginBottom: 12 }}>
                 <div style={{ fontFamily: MONO, fontSize: 9, color: GREY, marginBottom: 4 }}>{L.cycleLen}</div>
                 <input
-                  type="number" min="21" max="45" step="1"
+                  type="number" inputMode="numeric" min="21" max="45" step="1"
                   value={draftLen}
                   onChange={e => setDraftLen(e.target.value)}
                   style={{ ...S.input, fontFamily: MONO, fontSize: 11, width: 80 }}

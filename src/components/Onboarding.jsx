@@ -182,7 +182,7 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
         <div>
           <label style={LABEL}>MAX HEART RATE (bpm)</label>
           <div style={{ display:'flex', gap:'8px' }}>
-            <input style={{ ...INPUT, flex:1 }} type="number" placeholder="185" value={data.maxhr} onChange={e=>set('maxhr',e.target.value)}/>
+            <input style={{ ...INPUT, flex:1 }} type="number" inputMode="numeric" placeholder="185" value={data.maxhr} onChange={e=>set('maxhr',e.target.value)}/>
             {data.age && (
               <button onClick={()=>set('maxhr',String(Math.round(208-0.7*parseInt(data.age))))}
                 style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'8px 12px', borderRadius:'4px', border:'1px solid #ff6600', background:'transparent', color:'#ff6600', cursor:'pointer', whiteSpace:'nowrap' }}>
@@ -202,7 +202,7 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
         ) : (
           <div>
             <label style={LABEL}>FTP (watts)</label>
-            <input style={INPUT} type="number" placeholder="240" value={data.ftp} onChange={e=>set('ftp',e.target.value)}/>
+            <input style={INPUT} type="number" inputMode="numeric" placeholder="240" value={data.ftp} onChange={e=>set('ftp',e.target.value)}/>
           </div>
         )}
       </div>

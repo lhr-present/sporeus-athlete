@@ -47,9 +47,9 @@ export default function Calendar({ log, setLog, onEdit }) {
     <div className="sp-card" style={{ ...S.card, animationDelay:'50ms' }}>
       {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'12px' }}>
-        <button onClick={()=>setCur(new Date(yr,mo-1,1))} aria-label="Previous month" style={{ ...S.mono, fontSize:'16px', background:'none', border:'none', cursor:'pointer', color:'var(--muted)', padding:'2px 8px' }}>←</button>
+        <button onClick={()=>setCur(new Date(yr,mo-1,1))} aria-label="Previous month" style={{ ...S.mono, fontSize:'16px', background:'none', border:'none', cursor:'pointer', color:'var(--muted)', padding:'10px 14px', minHeight:'44px', minWidth:'44px' }}>←</button>
         <div style={S.cardTitle}>{monthLabel}</div>
-        <button onClick={()=>setCur(new Date(yr,mo+1,1))} aria-label="Next month" style={{ ...S.mono, fontSize:'16px', background:'none', border:'none', cursor:'pointer', color:'var(--muted)', padding:'2px 8px' }}>→</button>
+        <button onClick={()=>setCur(new Date(yr,mo+1,1))} aria-label="Next month" style={{ ...S.mono, fontSize:'16px', background:'none', border:'none', cursor:'pointer', color:'var(--muted)', padding:'10px 14px', minHeight:'44px', minWidth:'44px' }}>→</button>
       </div>
 
       {/* Weekday headers */}

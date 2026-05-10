@@ -153,12 +153,12 @@ export default function InviteManager({ coachId }) {
           </div>
           <div style={{ minWidth: '80px' }}>
             <label style={label_s}>MAX USES</label>
-            <input style={input_s} type="number" placeholder="∞" value={maxUses}
+            <input style={input_s} type="number" inputMode="numeric" placeholder="∞" value={maxUses}
               onChange={e => setMaxUses(e.target.value)} min="1" max="999" />
           </div>
           <div style={{ minWidth: '80px' }}>
             <label style={label_s}>EXPIRES (days)</label>
-            <input style={input_s} type="number" placeholder="7" value={days}
+            <input style={input_s} type="number" inputMode="numeric" placeholder="7" value={days}
               onChange={e => setDays(e.target.value)} min="1" max="365" />
           </div>
         </div>
@@ -240,7 +240,7 @@ export default function InviteManager({ coachId }) {
         }}>
           <span>{toast.msg}</span>
           {toast.type === 'undo' && (
-            <button onClick={handleUndo} style={{ ...btn(ORANGE, '#fff', false), padding: '4px 12px' }}>
+            <button onClick={handleUndo} style={{ ...btn(ORANGE, '#fff', false), padding: '10px 14px', minHeight: '44px' }}>
               UNDO
             </button>
           )}

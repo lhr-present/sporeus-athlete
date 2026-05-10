@@ -4,6 +4,90 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.55.0 — 2026-05-10 — General app health round: mobile UX + tri fueling
+
+  Round 6. Three parallel agents ran a general app audit (security/perf,
+  sport parity, UX/dead-code/mobile). This ship lands the highest-impact
+  findings; the rest (touch-target sweep across 211 buttons, AuthGate
+  translation) deferred as bigger ships.
+
+  ### (1) Mobile keyboard fixes — `inputMode="numeric"` on 6 inputs
+
+  Number inputs without `inputMode` force the qwerty keyboard on iOS
+  Safari, blocking thumb-only entry. Audit found 6 missing:
+
+  • `InviteManager.jsx:156, 161` — coach invite max-uses + expiry days
+  • `HRVDashboard.jsx:299` — manual RMSSD entry
+  • `Onboarding.jsx:185, 205` — max HR + FTP onboarding
+  • `CycleTracker.jsx:236` — cycle length
+
+  All now route through the numeric keypad on mobile. v9.49.0 introduced
+  the lenient `parseMmSs` for time inputs; this batch closes the
+  number-input parity.
+
+  ### (2) Top-3 touch target fixes (≥44px Apple HIG)
+
+  Audit found 211 micro-buttons under 44px. Top offenders fixed:
+
+  • `Calendar.jsx:50, 52` — month nav arrows (was 24px → 44×44 min)
+  • `InviteManager.jsx:243` — invite-undo toast (28px → 44px)
+  • `Dashboard.jsx:630, 632` — dashboard customize toggles (26px → 44px)
+
+  Remaining 200+ violations across the dashboard cards deferred — they
+  need a coordinated batch sweep.
+
+  ### (3) Triathlon distance-gated race fueling
+
+  Pre-fix, `classifyDistanceTier` lumped triathlon into run-distance
+  bands, so sprint tri (25.75 km total ~52 min effort) collapsed to
+  "mid" run tier and Iron 226 km to "long" — wrong fueling guidance:
+  sprint got marathon-style carb-load, Iron got run-marathon CHO/h.
+
+  New tri-specific tiers: `tri-sprint`, `tri-olympic`, `tri-half`,
+  `tri-full`, with distance-aware preRaceMealsNote / warmupNote /
+  pacingNote per Burke & Jeukendrup 2018 (sport-specific CHO/h
+  windows), Stellingwerf 2018 (triathlete fueling paradigm),
+  Jeukendrup 2014 (multiple transportable CHO above 60 g/h):
+
+  ```
+  Sprint   no during-race CHO needed (endogenous glycogen covers ~52min)
+  Olympic  T1 gel mandatory + 30-60 g/h on bike, 1 mid-run gel
+  70.3     60-90 g/h on bike (multi-transporters), gels every 4-5 km run
+  Iron     90-100 g/h on bike (glucose+fructose 2:1), 60 g/h run + salt
+  ```
+
+  Pacing notes track: sprint = threshold throughout / Olympic =
+  88-92% goal FTP / 70.3 = 80-85% goal FTP / Iron = 70-78% goal FTP
+  (steady aerobic, not threshold). Bilingual EN/TR.
+
+  ### Deferred (lower impact-ratio for v9.55.0):
+
+  • Swim stroke-rate parity — Toussaint 1990 caveat (arm-length
+    variance dominates) flagged as deferral reason in v9.53.0
+  • 200+ remaining touch-target violations
+  • AuthGate strings still EN-only — needs bulk LABELS additions
+  • Cycling EFTrendCard *was* Agent 2's gap, but is already wired in
+    Dashboard.jsx:750 generically (auto-routes between cycling NP/HR
+    and running pace/HR). Confirmed in audit, no ship needed.
+
+  ### Files
+
+  • Modified: `src/components/InviteManager.jsx` (3 fixes)
+  • Modified: `src/components/HRVDashboard.jsx` (inputMode)
+  • Modified: `src/components/Onboarding.jsx` (2 inputModes)
+  • Modified: `src/components/CycleTracker.jsx` (inputMode)
+  • Modified: `src/components/Calendar.jsx` (touch targets)
+  • Modified: `src/components/Dashboard.jsx` (touch targets)
+  • Modified: `src/lib/athlete/eliteProgramRaceWeek.js`
+    (classifyDistanceTier tri branch + 4 new tier overrides)
+
+  Tests: 9684/9684 pass (390 files). Lint clean. Build clean.
+
+  Depends on: v9.16.0 (DISTANCE_TIER_OVERRIDES infrastructure),
+  v9.49.0 (mmss.js + numeric-keypad pattern).
+
+---
+
 ## v9.54.0 — 2026-05-10 — Starter estimator + Coggan W/kg cycling bands
 
   Round 5. Three parallel agents scoped: Agent A (starter UX), Agent B

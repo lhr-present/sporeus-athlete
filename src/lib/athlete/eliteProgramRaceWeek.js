@@ -885,7 +885,17 @@ const POST_RACE_RECOVERY_48H = {
 function classifyDistanceTier(sport, distanceM) {
   const m = Number(distanceM)
   if (!m || m <= 0) return null
-  if (sport === 'run' || sport === 'triathlon') {
+  if (sport === 'triathlon') {
+    // v9.55.0 — Tri-specific distance bands. Pre-fix used run heuristics, so
+    // sprint tri (25.75km total) collapsed to "mid" run tier and on-bike CHO
+    // / pre-race meal guidance was wrong (sprint tri ~52min effort needs no
+    // during-race CHO; Iron 226km needs 90-100g/h mixed transporters).
+    if (m < 30000)   return 'tri-sprint'    // sprint ~25.75km
+    if (m < 70000)   return 'tri-olympic'   // olympic 51.5km
+    if (m < 150000)  return 'tri-half'      // 70.3 113km
+    return 'tri-full'                       // Iron 140.6 226km
+  }
+  if (sport === 'run') {
     if (m < 10000)  return 'sprint'   // 5k or shorter
     if (m < 15000)  return 'short'    // 10k bracket
     if (m < 30000)  return 'mid'      // half-marathon (21097m)
@@ -970,6 +980,68 @@ const DISTANCE_TIER_OVERRIDES = {
     pacingNote: {
       en: 'Long pacing: PRONOUNCED NEGATIVE-SPLIT. First 25% should feel ABSURDLY easy (3-5% slower than goal). Lock goal pace 25-50%. Push 50-75%. Free 75-100% if intact. The marathon "wall" hits at km 30-35 — discipline now buys finish-line speed.',
       tr: 'Uzun tempo: BELIRGIN NEGATIF-SPLIT. İlk %25 ABSÜRT-kolay hissetmeli (hedeften %3-5 yavaş). %25-50 hedef tempo sabit. %50-75 baskı. %75-100 sağlamsa serbest. Maraton "duvar" 30-35. km\'de — şimdi disiplin finiş çizgisi hızı satın alır.',
+    },
+  },
+  // v9.55.0 — Triathlon distance-specific overrides. Replaces run-flavored
+  // tier collapse for tri events. CHO/h targets per Burke & Jeukendrup 2018
+  // (Sport-specific CHO/h windows) + Stellingwerf 2018 (triathlete fueling
+  // paradigm shifts) + Jeukendrup 2014 (multiple transportable CHO above
+  // 60g/h requires glucose+fructose). Sprint tri (~52min) needs no during-
+  // race CHO — pre-race load only. Iron (~9-15h) requires ~90-100g/h mixed.
+  'tri-sprint': {
+    preRaceMealsNote: {
+      en: 'Sprint tri (~25.75km, ~52-90min effort): CHO 1.5 g/kg, 2h pre-swim. Optional 25g gel 15 min pre-start. NO during-race CHO needed — endogenous glycogen covers the duration. Caffeine 3 mg/kg 60 min pre.',
+      tr: 'Sprint tri (~25,75km, ~52-90dk efor): CHO 1,5 g/kg, yüzmeden 2 sa önce. Opsiyonel 25g jel başlangıçtan 15 dk önce. Yarış-içi CHO YOK — endojen glikojen süreyi karşılar. Kafein 3 mg/kg 60 dk önce.',
+    },
+    warmupNote: {
+      en: 'Sprint tri warmup: full sport-default — 10 min run + strides, 10 min bike with surges, 10 min swim with sighting. Sprint tri is near-max from gun; warmup matters.',
+      tr: 'Sprint tri ısınma: tam spor-varsayılanı — 10 dk koşu + adımlar, 10 dk bisiklet + ataklar, 10 dk yüzme + sighting. Sprint tri başlangıçtan max-yakını; ısınma kritik.',
+    },
+    pacingNote: {
+      en: 'Sprint tri pacing: SWIM threshold (no save), BIKE 92-95% goal FTP, RUN even-split. Total ~52min — no glycogen wall, push throughout. T1/T2 efficiency = 30-60s of placing.',
+      tr: 'Sprint tri tempo: YÜZME eşik (kaynak yok), BİSİKLET %92-95 hedef FTP, KOŞU eşit-split. Toplam ~52dk — glikojen duvarı yok, sürekli baskı. T1/T2 verimliliği = 30-60s sıralama farkı.',
+    },
+  },
+  'tri-olympic': {
+    preRaceMealsNote: {
+      en: 'Olympic tri (51.5km, ~2-2.5h effort): CHO 2 g/kg, 3h pre-swim. T1 gel (25g CHO) MANDATORY — swim drains glycogen aggressively. On-bike: 30-60 g CHO/h. On-run: 1 gel mid-run if conditions permit.',
+      tr: 'Olympic tri (51,5km, ~2-2,5sa efor): CHO 2 g/kg, yüzmeden 3 sa önce. T1 jeli (25g CHO) ZORUNLU — yüzme glikojeni hızla tüketir. Bisiklette: 30-60 g CHO/sa. Koşuda: koşu ortasında 1 jel.',
+    },
+    warmupNote: {
+      en: 'Olympic warmup: 25-30 min total — 10 min run + 10 min bike + 10 min swim with sighting. End 5-10 min before swim start. Save legs for the run; bike at end of warmup, not race-pace.',
+      tr: 'Olympic ısınma: 25-30 dk toplam — 10 dk koşu + 10 dk bisiklet + 10 dk yüzme + sighting. Yüzme başlangıcından 5-10 dk önce bitir. Koşu için bacakları sakla; ısınma sonu bisiklet, yarış-tempo değil.',
+    },
+    pacingNote: {
+      en: 'Olympic pacing: SWIM 5-7% under goal (energy budget). BIKE upper-Z2/lower-Z3 (88-92% goal FTP). RUN first 1km feels slow — accept; lock goal pace 1-7km; final 3km free if intact.',
+      tr: 'Olympic tempo: YÜZME hedeften %5-7 altında (enerji bütçesi). BİSİKLET üst-Z2/alt-Z3 (%88-92 hedef FTP). KOŞU ilk 1km yavaş hisseder — kabul et; 1-7km hedef tempo; son 3km sağlamsa serbest.',
+    },
+  },
+  'tri-half': {
+    preRaceMealsNote: {
+      en: '70.3 (113km, ~4-6h effort): Solid CHO 2-2.5 g/kg at 3h pre-swim. Liquid CHO 30g at 90 min pre. Last gel 25g at 15 min. Carb-load 36-48h prior 10 g/kg/d. On-bike: 60-90 g CHO/h (multiple transporters above 60g). On-run: 1 gel every 4-5 km. Salt cap if hot.',
+      tr: '70.3 (113km, ~4-6sa efor): Katı CHO 2-2,5 g/kg yüzmeden 3 sa önce. Sıvı CHO 30g 90 dk önce. Son jel 25g 15 dk önce. 36-48 sa önce karbonhidrat yükleme 10 g/kg/gün. Bisiklette: 60-90 g CHO/sa (60g üstünde çoklu taşıyıcı). Koşuda: her 4-5 km\'de 1 jel. Sıcaksa tuz kapsülü.',
+    },
+    warmupNote: {
+      en: '70.3 warmup: shortened — 15-20 min total. 5 min easy jog + 5 min bike + 5-10 min swim. Conserve glycogen; first 30 min of bike IS your final warmup. No race-pace strides.',
+      tr: '70.3 ısınma: kısaltılmış — 15-20 dk toplam. 5 dk kolay jog + 5 dk bisiklet + 5-10 dk yüzme. Glikojen koru; bisikletin ilk 30 dk\'sı son ısınma. Yarış-tempo adım yok.',
+    },
+    pacingNote: {
+      en: '70.3 pacing: SWIM steady (no Sprint surge). BIKE 80-85% goal FTP — well below threshold; the run is won by bike discipline. RUN first 5km absurdly easy (3-5% slow); lock goal 5-15km; free km 15+ if glycogen holds.',
+      tr: '70.3 tempo: YÜZME sabit (sprint atak yok). BİSİKLET %80-85 hedef FTP — eşik altı; koşu bisiklet disipliniyle kazanılır. KOŞU ilk 5km absürt-kolay (%3-5 yavaş); 5-15km hedef sabit; 15. km+ glikojen tutarsa serbest.',
+    },
+  },
+  'tri-full': {
+    preRaceMealsNote: {
+      en: 'Iron 140.6 (226km, ~9-15h effort): Carb-load 36-48h prior 10-12 g/kg/d (CRITICAL). Race morning: solid CHO 2.5 g/kg at 3h pre-swim. Liquid CHO 30-50g at 90 min. Last gel 25g at 15 min. On-bike: 90-100 g CHO/h (glucose+fructose 2:1 mandatory above 60g). On-run: 60 g CHO/h, alternate gel + sports drink. Salt cap every 60-90 min. Test fueling on long brick weeks 6+ pre-race.',
+      tr: 'Iron 140.6 (226km, ~9-15sa efor): 36-48 sa önce karbonhidrat yükleme 10-12 g/kg/gün (KRİTİK). Yarış sabahı: katı CHO 2,5 g/kg yüzmeden 3 sa önce. Sıvı CHO 30-50g 90 dk önce. Son jel 25g 15 dk önce. Bisiklette: 90-100 g CHO/sa (60g üstünde glikoz+fruktoz 2:1 zorunlu). Koşuda: 60 g CHO/sa, jel + spor içeceği nöbetleşe. Her 60-90 dk tuz kapsülü. Beslenmeyi yarış öncesi 6+ haftada uzun brick\'lerde dene.',
+    },
+    warmupNote: {
+      en: 'Iron warmup: minimal — 10 min walk + 5 min easy jog + 10 min swim with sighting. Save EVERY kJ. The first 60-90 min of bike IS your warmup; bike start is the slowest segment by design.',
+      tr: 'Iron ısınma: minimal — 10 dk yürü + 5 dk kolay jog + 10 dk yüzme + sighting. HER kJ\'yi koru. Bisikletin ilk 60-90 dk\'sı ısınma; bisiklet başı tasarım gereği en yavaş.',
+    },
+    pacingNote: {
+      en: 'Iron pacing: PRONOUNCED NEGATIVE-SPLIT every leg. SWIM 8-10% under goal. BIKE 70-78% goal FTP (not threshold; this is a steady aerobic effort). RUN first 10km absurdly easy (5-8% slow); lock 10-30km; the marathon "wall" hits at km 30-35 if fueling fails — discipline + 60g CHO/h prevents it. Walk aid stations early to lock fueling.',
+      tr: 'Iron tempo: HER LEG\'DE BELIRGIN NEGATIF-SPLIT. YÜZME hedeften %8-10 altında. BİSİKLET %70-78 hedef FTP (eşik değil; sabit aerobik efor). KOŞU ilk 10km absürt-kolay (%5-8 yavaş); 10-30km sabit; 30-35. km\'de "duvar" beslenme başarısız olursa — disiplin + 60g CHO/sa engeller. Beslenmeyi sabitlemek için aid istasyonlarını erkenden yürü.',
     },
   },
 }
