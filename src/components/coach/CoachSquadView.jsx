@@ -10,6 +10,7 @@ import { predictInjuryRisk } from '../../lib/intelligence.js'
 import { computeLoad } from '../coachDashboard/helpers.jsx'
 import SbAthletePanel from '../coachDashboard/SbAthletePanel.jsx'
 import InviteManager from '../InviteManager.jsx'
+import SquadRedFlagsCard from './SquadRedFlagsCard.jsx'
 import {
   acwrColor, tsbColor, trainingStatusColor,
   formatLastSession, sortAthletes, filterAthletes,
@@ -140,6 +141,13 @@ export default function CoachSquadView({ coachId, coachName = '' }) {
       <div style={{ marginBottom: '16px' }}>
         <InviteManager coachId={coachId} />
       </div>
+
+      {/* v9.48.0 — Today's Red Flags triage card. Surfaces athletes with
+          ACWR>1.5 (Gabbett 2016) / TSB<-20 / 5+d silent BEFORE the squad
+          table so coaches see who needs attention without scanning rows. */}
+      {!loading && athletes.length > 0 ? (
+        <SquadRedFlagsCard athletes={athletes} onSelectAthlete={selectAthlete} />
+      ) : null}
 
       {/* ── Nothing connected yet ── */}
       {!loading && athletes.length === 0 && (

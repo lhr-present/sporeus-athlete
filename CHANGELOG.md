@@ -4,6 +4,45 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.48.0 — 2026-05-10 — Coach: Today's Red Flags triage card
+
+  Coach UX P0 from the audit: laptop coaches with 5+ athletes were
+  scanning the squad table row-by-row to find who needs attention. The
+  data was already there (ACWR, TSB, last_session_date from the
+  `get_squad_overview` RPC) — just not surfaced as triage.
+
+  • New `<SquadRedFlagsCard>` above the squad table. Pure derived view
+    from the existing `athletes` array — zero new RPC, zero schema. Three
+    rules:
+      - **INJURY-RISK** (high): `acwr_ratio > 1.5` (Gabbett 2016
+        sweet-spot ceiling)
+      - **DEEPLY-FATIGUED** (high): `today_tsb < -20` (Coggan 2003 form
+        floor — recovery needed)
+      - **SILENT** (moderate): no log entry in 5+ days
+      - **NEVER-LOGGED** (moderate): no `last_session_date` at all
+
+  • Sorted high-severity first, then alphabetically. Each athlete row is
+    a button → calls `selectAthlete(id)` to expand the full detail panel.
+
+  • Empty state when squad is healthy: green "✓ all clear · Squad
+    healthy: ACWR safe, TSB adequate, everyone logged in last 5 days."
+
+  • Bilingual EN/TR throughout. Collapsible (▾/▸) to free vertical space.
+    `role="region"` + `aria-label` for screen readers; `aria-expanded`
+    on collapse toggle.
+
+  • 17 new tests cover deriveFlags rules (each threshold + edge cases),
+    daysSince helper, sort order, render states, TR translation.
+
+  CITATIONS: Gabbett 2016 (Br J Sports Med — sweet-spot ceiling 1.5);
+  Coggan & Allen 2010 (TSB form floor); Hulin 2014 (ACWR validation).
+
+  Files: src/components/coach/SquadRedFlagsCard.jsx (new),
+  src/components/coach/CoachSquadView.jsx (mount above table),
+  src/components/__tests__/coach/SquadRedFlagsCard.test.jsx (17 tests).
+
+---
+
 ## v9.47.0 — 2026-05-10 — Athlete UX wins: current-phase highlight + log filter
 
   Two athlete-friendly UX wins from the smoothness audit, both small but
