@@ -126,6 +126,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const [csvPreview, setCsvPreview]       = useState(null) // { entries, skipped, deduped }
   const [bulkMode, setBulkMode]           = useState(false)
   const [selected, setSelected]           = useState(new Set())
+  const [filterText, setFilterText]       = useState('')  // v9.47.0 — inline keyword filter
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
   const [deleteConfirmId, setDeleteConfirmId] = useState(null)
   const { saveTemplate } = useWorkoutTemplates()
@@ -145,7 +146,21 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const { fetchNextPage, hasMore, isLoadingMore } = useData()
 
   // ── Memoised derivations ─────────────────────────────────────────────────
-  const reversedLog = useMemo(() => [...log].reverse(), [log])
+  // v9.47.0 — inline keyword filter (substring match across date, type, sport,
+  // notes, tags). Empty filter → full log. Solves "find my long run from 3
+  // weeks ago" without paywalled SemanticSearch.
+  const reversedLog = useMemo(() => {
+    const all = [...log].reverse()
+    const q = filterText.trim().toLowerCase()
+    if (!q) return all
+    return all.filter(s => {
+      const hay = [
+        s.date, s.type, s.sport, s.notes,
+        Array.isArray(s.tags) ? s.tags.join(' ') : '',
+      ].filter(Boolean).join(' ').toLowerCase()
+      return hay.includes(q)
+    })
+  }, [log, filterText])
   const expandedEntry = useMemo(
     () => expandedId != null ? (log.find(s => s.id === expandedId) ?? null) : null,
     [expandedId, log]
@@ -682,6 +697,29 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
             />
           </div>
         ) : (
+          <div>
+            {/* v9.47.0 — inline keyword filter (date / type / sport / notes / tags) */}
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
+              <input
+                type="search"
+                value={filterText}
+                onChange={e => setFilterText(e.target.value)}
+                placeholder={lang === 'tr' ? 'Filtrele: tarih, tip, not, etiket…' : 'Filter: date, type, notes, tag…'}
+                aria-label={lang === 'tr' ? 'Antrenman geçmişini filtrele' : 'Filter training log'}
+                style={{ ...S.input, flex:1, fontSize:'12px', padding:'6px 8px' }}
+              />
+              {filterText ? (
+                <button type="button" onClick={() => setFilterText('')} aria-label={lang === 'tr' ? 'Filtreyi temizle' : 'Clear filter'}
+                  style={{ ...S.btnSec, fontSize:'10px', padding:'4px 10px' }}>
+                  {lang === 'tr' ? 'Temizle' : 'Clear'}
+                </button>
+              ) : null}
+              {filterText ? (
+                <span style={{ ...S.mono, fontSize:'10px', color:'var(--muted)' }}>
+                  {reversedLog.length} {lang === 'tr' ? 'eşleşme' : 'matches'}
+                </span>
+              ) : null}
+            </div>
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse', ...S.mono, fontSize:'12px' }}>
               <thead>
@@ -920,6 +958,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                 })}
               </tbody>
             </table>
+            </div>
             {/* Load More — server-side pagination (E4) */}
             {hasMore && (
               <div style={{ textAlign:'center', padding:'12px 0' }}>

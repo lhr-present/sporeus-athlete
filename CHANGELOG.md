@@ -4,6 +4,34 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.47.0 — 2026-05-10 — Athlete UX wins: current-phase highlight + log filter
+
+  Two athlete-friendly UX wins from the smoothness audit, both small but
+  high-leverage.
+
+  • **Periodization "you are here" marker**: PlanTable computes which week
+    is "today" from `weekOffset` (race date − N weeks) and the current
+    week row gets `boxShadow: inset 3px 0 0 #ff6600` + an orange wash +
+    a `▸` glyph in the WK column. `aria-current="true"` for screen
+    readers. Athletes can now answer "where am I in the macro plan?" at
+    a glance instead of counting weeks. No-op when raceDate is absent.
+
+  • **TrainingLog inline filter**: search input above the log table that
+    filters `reversedLog` by substring across date, type, sport, notes,
+    and tags. Bilingual placeholder + Clear button + match count chip.
+    Solves "find my long run from 3 weeks ago" without trip to the
+    paywalled SemanticSearch overlay. Pure client-side filter; pagination
+    + bulk mode unchanged.
+
+  9 existing TrainingLog tests still pass; 126 EliteProgramCard tests
+  still pass; full build clean.
+
+  Files: src/components/Periodization.jsx (PlanTable currentWeekIdx +
+  row highlight), src/components/TrainingLog.jsx (filterText state +
+  reversedLog memo + filter input).
+
+---
+
 ## v9.46.0 — 2026-05-10 — Mark Done button on Elite Program sample weeks
 
   User asked for a one-tap "training is done" button. The pattern already

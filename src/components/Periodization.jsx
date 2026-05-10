@@ -106,6 +106,15 @@ function PlanTable({ phases, weeklyHours, raceDate, projection }) {
         return startDt
       })()
     : null
+  // v9.47.0 — locate which week is "today" so the table can highlight it.
+  // Without a raceDate (no weekOffset), nothing is highlighted.
+  const currentWeekIdx = weekOffset
+    ? (() => {
+        const today = Date.now()
+        const idx = Math.floor((today - weekOffset.getTime()) / (7 * 86400000))
+        return idx >= 0 && idx < phases.length ? idx : -1
+      })()
+    : -1
 
   return (
     <div style={{ overflowX:'auto' }}>
@@ -131,12 +140,21 @@ function PlanTable({ phases, weeklyHours, raceDate, projection }) {
                   .toLocaleDateString('en-GB', { day:'2-digit', month:'short', timeZone:'UTC' })
               : '—'
 
+            const isCurrent = idx === currentWeekIdx
             return (
-              <tr key={row.week} style={{
+              <tr key={row.week} aria-current={isCurrent ? 'true' : undefined} style={{
                 borderBottom:'1px solid var(--border)',
-                background: isRace ? '#ff000011' : isRec ? '#fffbf011' : 'transparent',
+                background: isCurrent
+                  ? '#ff660018'
+                  : isRace ? '#ff000011' : isRec ? '#fffbf011' : 'transparent',
+                // v9.47.0 — current-week marker (orange inset shadow) so the
+                // athlete can answer "where am I in the macro plan?" at a glance.
+                boxShadow: isCurrent ? 'inset 3px 0 0 #ff6600' : undefined,
+                fontWeight: isCurrent ? 600 : undefined,
               }}>
-                <td style={{ padding:'6px 8px 6px 0', fontWeight:700, color:'#ff6600' }}>{row.week}</td>
+                <td style={{ padding:'6px 8px 6px 0', fontWeight:700, color:'#ff6600' }}>
+                  {isCurrent ? '▸ ' : ''}{row.week}
+                </td>
                 <td style={{ padding:'6px 8px 6px 0', color:'#888', fontSize:'10px' }}>{dateStr}</td>
                 <td style={{ padding:'6px 8px 6px 0' }}>{row.phase}</td>
                 <td style={{ padding:'6px 8px 6px 0', color:'var(--sub)', fontSize:'10px' }}>{row.focus}</td>
