@@ -4,6 +4,82 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.53.0 — 2026-05-10 — Live %-of-WR readout + run cadence + bike rpm parity
+
+  Round 4 of the rowing-flagship + WR-target push. Two parallel agents
+  scoped: Agent A (FORM-mode insertion point + edge cases), Agent B
+  (sample-week cadence parity vs rowing's spmTarget).
+
+  ### (1) Live % of WR readout in Mission #1 FORM mode
+
+  As the user types a time, a 10px orange `45.2% WR` chip appears below
+  the input — sandwiched between the time field and the BEGINNER · WR
+  reference chips. Updates on every keystroke via `parseMmSs(curT) +
+  getReference(sport, curD)`.
+
+  Hidden gracefully when:
+  • Time invalid / unparseable (parseMmSs returns null)
+  • No reference for distance (getReference returns null)
+  • bike FTP-direct mode (separate render branch)
+  • swim 2-TT mode (separate render branch)
+
+  Pairs with v9.52.0's PLAN-mode header strip — athletes now see their
+  WR-grade *before* clicking Generate, not just after.
+
+  ### (2) Run cadenceTarget in sample weeks
+
+  Per Daniels 2014 (Running Formula 3rd ed.) + Mercer 2003 (cadence ≥175
+  spm reduces injury risk):
+
+  ```
+  Easy / long           170-178 spm   (recreational drift-down zone)
+  M-pace / tempo (Z2/3) 175-183 spm
+  Threshold (Z4)        178-185 spm
+  Intervals / VO2 (Z5)  180-190 spm
+  ```
+
+  Wired into every non-rest day across Base / Build / Peak / Taper.
+
+  ### (3) Bike rpmTarget in sample weeks
+
+  Per Coggan & Allen 2010 (Training and Racing with a Power Meter, 2nd
+  ed., Ch. 7) + Lucia 2002 (high-cadence economy):
+
+  ```
+  Easy / recovery       85-95 rpm
+  Endurance (Z2)        85-95 rpm
+  Sweet-spot (Z3)       88-95 rpm
+  Threshold (Z4)        85-95 rpm
+  VO2max (Z5)           95-105 rpm
+  Cadence drills (Thu)  70-110 rpm sweep
+  ```
+
+  ### (4) SamplePhase render generalized
+
+  EliteProgramCard SamplePhase row now renders a sport-appropriate rate
+  chip: rowing → spmTarget (shipped v9.51.0), run/triathlon →
+  cadenceTarget, bike → rpmTarget. Single conditional, no per-sport
+  branches in the JSX.
+
+  Swim stroke-rate parity intentionally deferred — Maglischo 2003 SR
+  prescription has wider variance per stroke type / event distance and
+  needs a deeper design pass.
+
+  ### Files
+
+  • Modified: `src/components/dashboard/EliteProgramCard.jsx` (live
+    %WR readout in FormMode, generalized rate chip in SamplePhase)
+  • Modified: `src/lib/athlete/eliteProgram.js` (cadenceTarget on
+    runSampleWeek, rpmTarget on bikeSampleWeek)
+
+  Tests: 9684/9684 pass (390 files). Lint clean. Build clean.
+
+  Depends on: v9.50.0 (sportsRecords + ReferenceChips), v9.51.0
+  (rowing spmTarget pattern + render template), v9.52.0 (PLAN-mode %WR
+  strip).
+
+---
+
 ## v9.52.0 — 2026-05-10 — % of WR everywhere + DPS bands + DF norm delta
 
   Round 3 from this session's agent-driven push. Three parallel agents

@@ -458,11 +458,23 @@ function runSampleWeek(phase, paces, trainingDays) {
   const tempo = 50
   const interval = 55
 
+  // v9.53.0 — Cadence targets per intensity band. Daniels 2014 (Running
+  // Formula 3rd ed.) anchors elite cadence at ~180 spm at any pace; faster
+  // paces drift slightly higher (Mercer 2003 found injury-rate reduction at
+  // ≥175 spm). Recreational runners often hit 160-170 at easy pace — this
+  // band gives them a corrective target without overprescribing.
+  const CAD = {
+    easy: '170-178 spm',  // Z1 — most cadence-leakage risk for novices
+    tempo:'175-183 spm',  // Z2/Z3 marathon/tempo
+    thr:  '178-185 spm',  // Z4 threshold
+    intr: '180-190 spm',  // Z5 VO2max / race-pace
+  }
+
   const weekByPhase = {
     Base: [
-      { day: 'Mon', intent: { en: 'Rest',         tr: 'Dinlenme' },         durationMin: 0,        zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },           paceTarget: null },
-      { day: 'Tue', intent: { en: 'Easy run',     tr: 'Kolay koşu' },       durationMin: easy,     zones: { Z1: easy, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: fmtPaceStr(paces?.E) },
-      { day: 'Wed', intent: { en: 'Easy + strides', tr: 'Kolay + adımlar' },durationMin: easy,     zones: { Z1: easy - 5, Z2: 0, Z3: 0, Z4: 0, Z5: 5 },    paceTarget: fmtPaceStr(paces?.E) },
+      { day: 'Mon', intent: { en: 'Rest',         tr: 'Dinlenme' },         durationMin: 0,        zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },           paceTarget: null,                     cadenceTarget: null },
+      { day: 'Tue', intent: { en: 'Easy run',     tr: 'Kolay koşu' },       durationMin: easy,     zones: { Z1: easy, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: fmtPaceStr(paces?.E),     cadenceTarget: CAD.easy },
+      { day: 'Wed', intent: { en: 'Easy + strides', tr: 'Kolay + adımlar' },durationMin: easy,     zones: { Z1: easy - 5, Z2: 0, Z3: 0, Z4: 0, Z5: 5 },    paceTarget: fmtPaceStr(paces?.E),     cadenceTarget: CAD.easy },
       // v9.37.0 — Base polarization fix per coaching audit. Pre-fix had
       // 25min Z3 tempo, pushing Run Base weekly Z3+ to 10.7% (Seiler 2010
       // 80/20 ceiling for Base = ≤5%). Daniels 2014 (Running Formula 3rd
@@ -470,23 +482,23 @@ function runSampleWeek(phase, paces, trainingDays) {
       // run, and short strides. Tempo enters in Build. Replaced with M-pace
       // progression (Z2) — keeps marathon-specific aerobic stimulus without
       // breaking 80/20. Result: Run Base Z3+ = 1.8% (strides only).
-      { day: 'Thu', intent: { en: 'Aerobic + M-pace finish', tr: 'Aerobik + M-tempo bitiş' }, durationMin: tempo, zones: { Z1: 30, Z2: 20, Z3: 0, Z4: 0, Z5: 0 }, paceTarget: fmtPaceStr(paces?.M) },
-      { day: 'Fri', intent: { en: 'Rest',         tr: 'Dinlenme' },         durationMin: 0,        zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },           paceTarget: null },
-      { day: 'Sat', intent: { en: 'Easy run',     tr: 'Kolay koşu' },       durationMin: easy + 5, zones: { Z1: easy + 5, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: fmtPaceStr(paces?.E) },
-      { day: 'Sun', intent: { en: 'Long run',     tr: 'Uzun koşu' },        durationMin: long,     zones: { Z1: long - 10, Z2: 10, Z3: 0, Z4: 0, Z5: 0 },  paceTarget: fmtPaceStr(paces?.E) },
+      { day: 'Thu', intent: { en: 'Aerobic + M-pace finish', tr: 'Aerobik + M-tempo bitiş' }, durationMin: tempo, zones: { Z1: 30, Z2: 20, Z3: 0, Z4: 0, Z5: 0 }, paceTarget: fmtPaceStr(paces?.M), cadenceTarget: CAD.tempo },
+      { day: 'Fri', intent: { en: 'Rest',         tr: 'Dinlenme' },         durationMin: 0,        zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },           paceTarget: null,                     cadenceTarget: null },
+      { day: 'Sat', intent: { en: 'Easy run',     tr: 'Kolay koşu' },       durationMin: easy + 5, zones: { Z1: easy + 5, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },    paceTarget: fmtPaceStr(paces?.E),     cadenceTarget: CAD.easy },
+      { day: 'Sun', intent: { en: 'Long run',     tr: 'Uzun koşu' },        durationMin: long,     zones: { Z1: long - 10, Z2: 10, Z3: 0, Z4: 0, Z5: 0 },  paceTarget: fmtPaceStr(paces?.E),     cadenceTarget: CAD.easy },
     ],
     Build: [
-      { day: 'Mon', intent: { en: 'Rest',         tr: 'Dinlenme' },         durationMin: 0,        zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },           paceTarget: null },
-      { day: 'Tue', intent: { en: 'Threshold 2x20', tr: 'Eşik 2x20' },      durationMin: tempo + 10, zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 40, Z5: 0 },        paceTarget: fmtPaceStr(paces?.T) },
-      { day: 'Wed', intent: { en: 'Easy run',     tr: 'Kolay koşu' },       durationMin: easy,     zones: { Z1: easy, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: fmtPaceStr(paces?.E) },
+      { day: 'Mon', intent: { en: 'Rest',         tr: 'Dinlenme' },         durationMin: 0,        zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },           paceTarget: null,                     cadenceTarget: null },
+      { day: 'Tue', intent: { en: 'Threshold 2x20', tr: 'Eşik 2x20' },      durationMin: tempo + 10, zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 40, Z5: 0 },        paceTarget: fmtPaceStr(paces?.T),     cadenceTarget: CAD.thr },
+      { day: 'Wed', intent: { en: 'Easy run',     tr: 'Kolay koşu' },       durationMin: easy,     zones: { Z1: easy, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: fmtPaceStr(paces?.E),     cadenceTarget: CAD.easy },
       // v9.10.2: Build week polarization fix — was 'Cruise intervals' (Z4),
       // creating Tue+Thu Z4 doubling = ~35% high-intensity. Coach review
       // (Seiler 80/20) flagged: spread stimuli, keep Tue threshold, move Thu
       // to VO2max (Z5). Now ~25% hard, properly polarized.
-      { day: 'Thu', intent: { en: 'VO2max 5x3', tr: 'VO2max 5x3' }, durationMin: 55, zones: { Z1: 25, Z2: 0, Z3: 0, Z4: 0, Z5: 30 },         paceTarget: fmtPaceStr(paces?.I) },
-      { day: 'Fri', intent: { en: 'Rest',         tr: 'Dinlenme' },         durationMin: 0,        zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },           paceTarget: null },
-      { day: 'Sat', intent: { en: 'Easy + strides', tr: 'Kolay + adımlar' },durationMin: easy,     zones: { Z1: easy - 5, Z2: 0, Z3: 0, Z4: 0, Z5: 5 },    paceTarget: fmtPaceStr(paces?.E) },
-      { day: 'Sun', intent: { en: 'Long run + MP', tr: 'Uzun koşu + MP' },  durationMin: long + 10, zones: { Z1: long - 10, Z2: 20, Z3: 0, Z4: 0, Z5: 0 },  paceTarget: fmtPaceStr(paces?.M) },
+      { day: 'Thu', intent: { en: 'VO2max 5x3', tr: 'VO2max 5x3' }, durationMin: 55, zones: { Z1: 25, Z2: 0, Z3: 0, Z4: 0, Z5: 30 },         paceTarget: fmtPaceStr(paces?.I),                                    cadenceTarget: CAD.intr },
+      { day: 'Fri', intent: { en: 'Rest',         tr: 'Dinlenme' },         durationMin: 0,        zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },           paceTarget: null,                     cadenceTarget: null },
+      { day: 'Sat', intent: { en: 'Easy + strides', tr: 'Kolay + adımlar' },durationMin: easy,     zones: { Z1: easy - 5, Z2: 0, Z3: 0, Z4: 0, Z5: 5 },    paceTarget: fmtPaceStr(paces?.E),     cadenceTarget: CAD.easy },
+      { day: 'Sun', intent: { en: 'Long run + MP', tr: 'Uzun koşu + MP' },  durationMin: long + 10, zones: { Z1: long - 10, Z2: 20, Z3: 0, Z4: 0, Z5: 0 },  paceTarget: fmtPaceStr(paces?.M),     cadenceTarget: CAD.tempo },
     ],
     // v9.20.0 — Run Peak polarization fix per audit. Sun "Tempo + strides"
     // (Z3:25 + Z5:5 = 30 hard min) pushed weekly hard ratio to 28% (Seiler
@@ -494,22 +506,22 @@ function runSampleWeek(phase, paces, trainingDays) {
     // — restores ~22% hard ratio + adds the long-run base mileage that
     // peak phase shouldn't drop entirely (Daniels 2014).
     Peak: [
-      { day: 'Mon', intent: { en: 'Rest',         tr: 'Dinlenme' },         durationMin: 0,        zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },           paceTarget: null },
-      { day: 'Tue', intent: { en: 'VO2max 6x800m', tr: 'VO2max 6x800m' },   durationMin: interval, zones: { Z1: 25, Z2: 0, Z3: 0, Z4: 0, Z5: 30 },         paceTarget: fmtPaceStr(paces?.I) },
-      { day: 'Wed', intent: { en: 'Easy run',     tr: 'Kolay koşu' },       durationMin: easy,     zones: { Z1: easy, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: fmtPaceStr(paces?.E) },
-      { day: 'Thu', intent: { en: 'Race-pace 5x1k', tr: 'Yarış-tempo 5x1k' }, durationMin: interval, zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 0, Z5: 35 },        paceTarget: fmtPaceStr(paces?.I) },
-      { day: 'Fri', intent: { en: 'Rest',         tr: 'Dinlenme' },         durationMin: 0,        zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },           paceTarget: null },
-      { day: 'Sat', intent: { en: 'Easy + strides', tr: 'Kolay + adımlar' },durationMin: easy,     zones: { Z1: easy - 5, Z2: 0, Z3: 0, Z4: 0, Z5: 5 },    paceTarget: fmtPaceStr(paces?.E) },
-      { day: 'Sun', intent: { en: 'Long easy run', tr: 'Uzun kolay koşu' }, durationMin: 75,       zones: { Z1: 65, Z2: 10, Z3: 0, Z4: 0, Z5: 0 },         paceTarget: fmtPaceStr(paces?.E) },
+      { day: 'Mon', intent: { en: 'Rest',         tr: 'Dinlenme' },         durationMin: 0,        zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },           paceTarget: null,                     cadenceTarget: null },
+      { day: 'Tue', intent: { en: 'VO2max 6x800m', tr: 'VO2max 6x800m' },   durationMin: interval, zones: { Z1: 25, Z2: 0, Z3: 0, Z4: 0, Z5: 30 },         paceTarget: fmtPaceStr(paces?.I),     cadenceTarget: CAD.intr },
+      { day: 'Wed', intent: { en: 'Easy run',     tr: 'Kolay koşu' },       durationMin: easy,     zones: { Z1: easy, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: fmtPaceStr(paces?.E),     cadenceTarget: CAD.easy },
+      { day: 'Thu', intent: { en: 'Race-pace 5x1k', tr: 'Yarış-tempo 5x1k' }, durationMin: interval, zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 0, Z5: 35 },        paceTarget: fmtPaceStr(paces?.I),     cadenceTarget: CAD.intr },
+      { day: 'Fri', intent: { en: 'Rest',         tr: 'Dinlenme' },         durationMin: 0,        zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },           paceTarget: null,                     cadenceTarget: null },
+      { day: 'Sat', intent: { en: 'Easy + strides', tr: 'Kolay + adımlar' },durationMin: easy,     zones: { Z1: easy - 5, Z2: 0, Z3: 0, Z4: 0, Z5: 5 },    paceTarget: fmtPaceStr(paces?.E),     cadenceTarget: CAD.easy },
+      { day: 'Sun', intent: { en: 'Long easy run', tr: 'Uzun kolay koşu' }, durationMin: 75,       zones: { Z1: 65, Z2: 10, Z3: 0, Z4: 0, Z5: 0 },         paceTarget: fmtPaceStr(paces?.E),     cadenceTarget: CAD.easy },
     ],
     Taper: [
-      { day: 'Mon', intent: { en: 'Rest',         tr: 'Dinlenme' },         durationMin: 0,        zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },           paceTarget: null },
-      { day: 'Tue', intent: { en: 'Race-pace 4x400m', tr: 'Yarış-tempo 4x400m' }, durationMin: 35, zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 0, Z5: 15 },         paceTarget: fmtPaceStr(paces?.I) },
-      { day: 'Wed', intent: { en: 'Easy run',     tr: 'Kolay koşu' },       durationMin: 30,       zones: { Z1: 30, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },          paceTarget: fmtPaceStr(paces?.E) },
-      { day: 'Thu', intent: { en: 'Easy + strides', tr: 'Kolay + adımlar' },durationMin: 30,       zones: { Z1: 25, Z2: 0, Z3: 0, Z4: 0, Z5: 5 },          paceTarget: fmtPaceStr(paces?.E) },
-      { day: 'Fri', intent: { en: 'Rest',         tr: 'Dinlenme' },         durationMin: 0,        zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },           paceTarget: null },
-      { day: 'Sat', intent: { en: 'Pre-race shakeout', tr: 'Yarış öncesi açılış' }, durationMin: 20, zones: { Z1: 18, Z2: 0, Z3: 0, Z4: 0, Z5: 2 },         paceTarget: fmtPaceStr(paces?.E) },
-      { day: 'Sun', intent: { en: 'Race day',     tr: 'Yarış günü' },       durationMin: 0,        zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },           paceTarget: null },
+      { day: 'Mon', intent: { en: 'Rest',         tr: 'Dinlenme' },         durationMin: 0,        zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },           paceTarget: null,                     cadenceTarget: null },
+      { day: 'Tue', intent: { en: 'Race-pace 4x400m', tr: 'Yarış-tempo 4x400m' }, durationMin: 35, zones: { Z1: 20, Z2: 0, Z3: 0, Z4: 0, Z5: 15 },         paceTarget: fmtPaceStr(paces?.I),     cadenceTarget: CAD.intr },
+      { day: 'Wed', intent: { en: 'Easy run',     tr: 'Kolay koşu' },       durationMin: 30,       zones: { Z1: 30, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },          paceTarget: fmtPaceStr(paces?.E),     cadenceTarget: CAD.easy },
+      { day: 'Thu', intent: { en: 'Easy + strides', tr: 'Kolay + adımlar' },durationMin: 30,       zones: { Z1: 25, Z2: 0, Z3: 0, Z4: 0, Z5: 5 },          paceTarget: fmtPaceStr(paces?.E),     cadenceTarget: CAD.easy },
+      { day: 'Fri', intent: { en: 'Rest',         tr: 'Dinlenme' },         durationMin: 0,        zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },           paceTarget: null,                     cadenceTarget: null },
+      { day: 'Sat', intent: { en: 'Pre-race shakeout', tr: 'Yarış öncesi açılış' }, durationMin: 20, zones: { Z1: 18, Z2: 0, Z3: 0, Z4: 0, Z5: 2 },         paceTarget: fmtPaceStr(paces?.E),     cadenceTarget: CAD.easy },
+      { day: 'Sun', intent: { en: 'Race day',     tr: 'Yarış günü' },       durationMin: 0,        zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },           paceTarget: null,                     cadenceTarget: null },
     ],
   }
   const wk = weekByPhase[phase]
@@ -524,30 +536,42 @@ function bikeSampleWeek(phase, zones) {
   // zones is array from getCyclingZones(ftp)
   const ftp = zones && zones.length ? Math.round((zones[3]?.minWatts + zones[3]?.maxWatts) / 2 / 0.975) : null
   const tag = ftp ? `${ftp}W FTP` : null
+  // v9.53.0 — Cadence (rpm) targets per zone. Coggan & Allen 2010 (Training
+  // and Racing with a Power Meter, 2nd ed., Ch. 7) + Lucia 2002 (cycling
+  // economy at high cadence). Pros pedal 90-100 rpm self-selected; sweet-
+  // spot 85-95; threshold 85-95 (slight drop under load); VO2max intervals
+  // 95-110 (Lucia: high cadence reduces force-per-stroke, lengthens TTE).
+  const RPM = {
+    easy:  '85-95 rpm',
+    end:   '85-95 rpm',
+    ss:    '88-95 rpm',
+    thr:   '85-95 rpm',
+    vo2:   '95-105 rpm',
+  }
   const baseDays = {
     Base: [
-      { day: 'Mon', intent: { en: 'Rest',          tr: 'Dinlenme' },           durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: null },
-      { day: 'Tue', intent: { en: 'Endurance ride', tr: 'Dayanıklılık sürüşü' }, durationMin: 75,  zones: { Z1: 15, Z2: 60, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: tag },
-      { day: 'Wed', intent: { en: 'Recovery spin',  tr: 'Toparlanma' },         durationMin: 45,  zones: { Z1: 45, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },      paceTarget: tag },
+      { day: 'Mon', intent: { en: 'Rest',          tr: 'Dinlenme' },           durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: null,                rpmTarget: null },
+      { day: 'Tue', intent: { en: 'Endurance ride', tr: 'Dayanıklılık sürüşü' }, durationMin: 75,  zones: { Z1: 15, Z2: 60, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: tag,                 rpmTarget: RPM.end },
+      { day: 'Wed', intent: { en: 'Recovery spin',  tr: 'Toparlanma' },         durationMin: 45,  zones: { Z1: 45, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },      paceTarget: tag,                 rpmTarget: RPM.easy },
       // v9.37.0 — Base polarization fix per coaching audit. Pre-fix had
       // 30min Z3 sweet-spot, pushing Bike Base weekly Z3+ to 8.6% (Seiler
       // 2010 ceiling = ≤5%). Coggan's Base I-III protocol is high-volume
       // Z2 endurance with cadence work — sweet-spot belongs to Build.
       // Replaced with endurance + cadence drills. Result: Bike Base Z3+ =
       // 2.2% (Sat long-ride aerobic top-end only).
-      { day: 'Thu', intent: { en: 'Endurance + cadence drills', tr: 'Dayanıklılık + kadans' }, durationMin: 75, zones: { Z1: 25, Z2: 50, Z3: 0, Z4: 0, Z5: 0 }, paceTarget: tag },
-      { day: 'Fri', intent: { en: 'Rest',          tr: 'Dinlenme' },           durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: null },
-      { day: 'Sat', intent: { en: 'Long ride',      tr: 'Uzun sürüş' },        durationMin: 180, zones: { Z1: 30, Z2: 140, Z3: 10, Z4: 0, Z5: 0 },   paceTarget: tag },
-      { day: 'Sun', intent: { en: 'Endurance',      tr: 'Dayanıklılık' },      durationMin: 90,  zones: { Z1: 20, Z2: 70, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: tag },
+      { day: 'Thu', intent: { en: 'Endurance + cadence drills', tr: 'Dayanıklılık + kadans' }, durationMin: 75, zones: { Z1: 25, Z2: 50, Z3: 0, Z4: 0, Z5: 0 }, paceTarget: tag, rpmTarget: '70-110 rpm drills' },
+      { day: 'Fri', intent: { en: 'Rest',          tr: 'Dinlenme' },           durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: null,                rpmTarget: null },
+      { day: 'Sat', intent: { en: 'Long ride',      tr: 'Uzun sürüş' },        durationMin: 180, zones: { Z1: 30, Z2: 140, Z3: 10, Z4: 0, Z5: 0 },   paceTarget: tag,                 rpmTarget: RPM.end },
+      { day: 'Sun', intent: { en: 'Endurance',      tr: 'Dayanıklılık' },      durationMin: 90,  zones: { Z1: 20, Z2: 70, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: tag,                 rpmTarget: RPM.end },
     ],
     Build: [
-      { day: 'Mon', intent: { en: 'Rest',          tr: 'Dinlenme' },           durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: null },
-      { day: 'Tue', intent: { en: 'Threshold 3x12', tr: 'Eşik 3x12' },         durationMin: 80,  zones: { Z1: 25, Z2: 15, Z3: 0, Z4: 40, Z5: 0 },    paceTarget: tag },
-      { day: 'Wed', intent: { en: 'Endurance',      tr: 'Dayanıklılık' },      durationMin: 75,  zones: { Z1: 15, Z2: 60, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: tag },
-      { day: 'Thu', intent: { en: 'Over-unders',    tr: 'Over-under' },        durationMin: 80,  zones: { Z1: 25, Z2: 5, Z3: 20, Z4: 30, Z5: 0 },    paceTarget: tag },
-      { day: 'Fri', intent: { en: 'Rest',          tr: 'Dinlenme' },           durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: null },
-      { day: 'Sat', intent: { en: 'Long + tempo',   tr: 'Uzun + tempo' },      durationMin: 210, zones: { Z1: 30, Z2: 140, Z3: 40, Z4: 0, Z5: 0 },   paceTarget: tag },
-      { day: 'Sun', intent: { en: 'Endurance',      tr: 'Dayanıklılık' },      durationMin: 90,  zones: { Z1: 15, Z2: 75, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: tag },
+      { day: 'Mon', intent: { en: 'Rest',          tr: 'Dinlenme' },           durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: null,                rpmTarget: null },
+      { day: 'Tue', intent: { en: 'Threshold 3x12', tr: 'Eşik 3x12' },         durationMin: 80,  zones: { Z1: 25, Z2: 15, Z3: 0, Z4: 40, Z5: 0 },    paceTarget: tag,                 rpmTarget: RPM.thr },
+      { day: 'Wed', intent: { en: 'Endurance',      tr: 'Dayanıklılık' },      durationMin: 75,  zones: { Z1: 15, Z2: 60, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: tag,                 rpmTarget: RPM.end },
+      { day: 'Thu', intent: { en: 'Over-unders',    tr: 'Over-under' },        durationMin: 80,  zones: { Z1: 25, Z2: 5, Z3: 20, Z4: 30, Z5: 0 },    paceTarget: tag,                 rpmTarget: RPM.thr },
+      { day: 'Fri', intent: { en: 'Rest',          tr: 'Dinlenme' },           durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: null,                rpmTarget: null },
+      { day: 'Sat', intent: { en: 'Long + tempo',   tr: 'Uzun + tempo' },      durationMin: 210, zones: { Z1: 30, Z2: 140, Z3: 40, Z4: 0, Z5: 0 },   paceTarget: tag,                 rpmTarget: RPM.ss },
+      { day: 'Sun', intent: { en: 'Endurance',      tr: 'Dayanıklılık' },      durationMin: 90,  zones: { Z1: 15, Z2: 75, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: tag,                 rpmTarget: RPM.end },
     ],
     // v9.20.0 — Bike Peak audit fix. Pre-fix had Tue Z5:40 + Thu Z4:50/Z5:10
     // + Sat Z4:50 = 33% hard with Thu→Sat being a 48h Z4 double (Lambert
@@ -555,22 +579,22 @@ function bikeSampleWeek(phase, zones) {
     // Fix: Thu becomes sweet-spot (Z3 only), Sat keeps Z4 race-pace as the
     // single weekly threshold key. Result: ~22% hard, single Z4 day.
     Peak: [
-      { day: 'Mon', intent: { en: 'Rest',          tr: 'Dinlenme' },           durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: null },
-      { day: 'Tue', intent: { en: 'VO2max 5x4',     tr: 'VO2max 5x4' },        durationMin: 70,  zones: { Z1: 25, Z2: 5, Z3: 0, Z4: 0, Z5: 40 },     paceTarget: tag },
-      { day: 'Wed', intent: { en: 'Recovery spin',  tr: 'Toparlanma' },        durationMin: 45,  zones: { Z1: 45, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },      paceTarget: tag },
-      { day: 'Thu', intent: { en: 'Sweet spot 2x20', tr: 'Sweet spot 2x20' }, durationMin: 70,  zones: { Z1: 25, Z2: 5, Z3: 40, Z4: 0, Z5: 0 },     paceTarget: tag },
-      { day: 'Fri', intent: { en: 'Rest',          tr: 'Dinlenme' },           durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: null },
-      { day: 'Sat', intent: { en: 'Long with race-pace', tr: 'Uzun + yarış tempo' }, durationMin: 180, zones: { Z1: 30, Z2: 100, Z3: 0, Z4: 50, Z5: 0 }, paceTarget: tag },
-      { day: 'Sun', intent: { en: 'Endurance',      tr: 'Dayanıklılık' },      durationMin: 75,  zones: { Z1: 15, Z2: 60, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: tag },
+      { day: 'Mon', intent: { en: 'Rest',          tr: 'Dinlenme' },           durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: null,                rpmTarget: null },
+      { day: 'Tue', intent: { en: 'VO2max 5x4',     tr: 'VO2max 5x4' },        durationMin: 70,  zones: { Z1: 25, Z2: 5, Z3: 0, Z4: 0, Z5: 40 },     paceTarget: tag,                 rpmTarget: RPM.vo2 },
+      { day: 'Wed', intent: { en: 'Recovery spin',  tr: 'Toparlanma' },        durationMin: 45,  zones: { Z1: 45, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },      paceTarget: tag,                 rpmTarget: RPM.easy },
+      { day: 'Thu', intent: { en: 'Sweet spot 2x20', tr: 'Sweet spot 2x20' }, durationMin: 70,  zones: { Z1: 25, Z2: 5, Z3: 40, Z4: 0, Z5: 0 },     paceTarget: tag,                 rpmTarget: RPM.ss },
+      { day: 'Fri', intent: { en: 'Rest',          tr: 'Dinlenme' },           durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: null,                rpmTarget: null },
+      { day: 'Sat', intent: { en: 'Long with race-pace', tr: 'Uzun + yarış tempo' }, durationMin: 180, zones: { Z1: 30, Z2: 100, Z3: 0, Z4: 50, Z5: 0 }, paceTarget: tag,            rpmTarget: RPM.thr },
+      { day: 'Sun', intent: { en: 'Endurance',      tr: 'Dayanıklılık' },      durationMin: 75,  zones: { Z1: 15, Z2: 60, Z3: 0, Z4: 0, Z5: 0 },     paceTarget: tag,                 rpmTarget: RPM.end },
     ],
     Taper: [
-      { day: 'Mon', intent: { en: 'Rest',          tr: 'Dinlenme' },           durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: null },
-      { day: 'Tue', intent: { en: 'Openers 4x3',    tr: 'Açılış 4x3' },        durationMin: 50,  zones: { Z1: 25, Z2: 5, Z3: 0, Z4: 15, Z5: 5 },     paceTarget: tag },
-      { day: 'Wed', intent: { en: 'Easy spin',      tr: 'Kolay sürüş' },       durationMin: 40,  zones: { Z1: 40, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },      paceTarget: tag },
-      { day: 'Thu', intent: { en: 'Short tempo',    tr: 'Kısa tempo' },        durationMin: 45,  zones: { Z1: 20, Z2: 5, Z3: 20, Z4: 0, Z5: 0 },     paceTarget: tag },
-      { day: 'Fri', intent: { en: 'Rest',          tr: 'Dinlenme' },           durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: null },
-      { day: 'Sat', intent: { en: 'Pre-race shakeout', tr: 'Yarış öncesi' },   durationMin: 30,  zones: { Z1: 25, Z2: 0, Z3: 0, Z4: 0, Z5: 5 },      paceTarget: tag },
-      { day: 'Sun', intent: { en: 'Race day',       tr: 'Yarış günü' },        durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: null },
+      { day: 'Mon', intent: { en: 'Rest',          tr: 'Dinlenme' },           durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: null,                rpmTarget: null },
+      { day: 'Tue', intent: { en: 'Openers 4x3',    tr: 'Açılış 4x3' },        durationMin: 50,  zones: { Z1: 25, Z2: 5, Z3: 0, Z4: 15, Z5: 5 },     paceTarget: tag,                 rpmTarget: RPM.vo2 },
+      { day: 'Wed', intent: { en: 'Easy spin',      tr: 'Kolay sürüş' },       durationMin: 40,  zones: { Z1: 40, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },      paceTarget: tag,                 rpmTarget: RPM.easy },
+      { day: 'Thu', intent: { en: 'Short tempo',    tr: 'Kısa tempo' },        durationMin: 45,  zones: { Z1: 20, Z2: 5, Z3: 20, Z4: 0, Z5: 0 },     paceTarget: tag,                 rpmTarget: RPM.ss },
+      { day: 'Fri', intent: { en: 'Rest',          tr: 'Dinlenme' },           durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: null,                rpmTarget: null },
+      { day: 'Sat', intent: { en: 'Pre-race shakeout', tr: 'Yarış öncesi' },   durationMin: 30,  zones: { Z1: 25, Z2: 0, Z3: 0, Z4: 0, Z5: 5 },      paceTarget: tag,                 rpmTarget: RPM.easy },
+      { day: 'Sun', intent: { en: 'Race day',       tr: 'Yarış günü' },        durationMin: 0,   zones: { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 },        paceTarget: null,                rpmTarget: null },
     ],
   }
   const wk = baseDays[phase]

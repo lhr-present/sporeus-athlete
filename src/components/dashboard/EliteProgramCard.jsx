@@ -635,6 +635,21 @@ function FormMode({ isTR, onGenerate, persistedForm, savePersistedForm, recentBe
                 onChange={e => f.setT(autoFormatMmSs(e.target.value))}
                 onBlur={e => f.setT(autoFormatMmSs(e.target.value, { padOnBlur: true }))}
                 aria-label={f.tAria} style={INP} />
+              {(() => {
+                // v9.53.0 — Live % of WR readout. Updates as user types so they see
+                // their effort-grade against the world record without leaving the form.
+                // Hidden when time invalid or no reference for distance.
+                const sec = parseMmSs(f.t)
+                const ref = sec != null ? getReference(sport, Number(f.dist)) : null
+                if (!ref || !ref.wr) return null
+                const pct = Math.round((ref.wr / sec) * 1000) / 10
+                return (
+                  <div style={{ ...S.mono, fontSize: '10px', color: '#ff6600', marginTop: '3px', letterSpacing: '0.04em' }}
+                    aria-live="polite">
+                    {pct}% {isTR ? 'DR' : 'WR'}
+                  </div>
+                )
+              })()}
               <ReferenceChips
                 isTR={isTR} sport={sport} distanceM={Number(f.dist)} onPick={f.setT} />
             </div>
@@ -884,9 +899,18 @@ function SamplePhase({ phase, days, isTR, defaultOpen, sport, log, setLog, profi
                   <span style={{ flex: '0 0 56px' }}>{dur != null ? `${dur}${isTR ? 'dk' : 'min'}` : ''}</span>
                   {z ? <span style={{ flex: '0 0 90px', fontSize: '9px' }}>{z}</span> : null}
                   {pace ? <span style={{ flex: '0 0 70px' }}>{pace}</span> : null}
-                  {sport === 'rowing' && d.spmTarget
-                    ? <span style={{ flex: '0 0 60px', fontSize: '9px', color: 'var(--muted)' }}>{d.spmTarget}</span>
-                    : null}
+                  {(() => {
+                    // v9.53.0 — Cadence/rate chip per sport. Rowing → spmTarget
+                    // (v9.51.0), running → cadenceTarget, cycling → rpmTarget.
+                    // All other sports / rest days render nothing.
+                    const rate = sport === 'rowing' ? d.spmTarget
+                      : sport === 'run' || sport === 'triathlon' ? d.cadenceTarget
+                      : sport === 'bike' ? d.rpmTarget
+                      : null
+                    return rate
+                      ? <span style={{ flex: '0 0 78px', fontSize: '9px', color: 'var(--muted)' }}>{rate}</span>
+                      : null
+                  })()}
                   <MarkDoneCell session={d} sport={sport} isTR={isTR} log={log} setLog={setLog} profile={profile} />
                 </div>
                 {d.strength ? (
