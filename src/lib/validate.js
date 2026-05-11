@@ -1,4 +1,5 @@
 // ─── Input validation / sanitization ──────────────────────────────────────────
+import { normalizeAthleteLevel } from './constants.js'
 
 /**
  * @typedef {Object} LogEntry
@@ -118,7 +119,12 @@ export function sanitizeProfile(p) {
     primarySport:  normSport,
     triathlonType: str(p.triathlonType, 30),
     secondarySports: Array.isArray(p.secondarySports) ? p.secondarySports.slice(0, 10).map(s => str(s, 30)) : [],
-    athleteLevel:  str(p.athleteLevel, 30),
+    // v9.67.0 — Normalize to LEVEL_CONFIG key. Pre-fix the Onboarding picker
+    // stored 'Beginner'/'Intermediate'/'Advanced' (capital) while LEVEL_CONFIG
+    // keys are lowercase ATHLETE_LEVELS values. Mismatch caused new "Beginner"
+    // users to fall through to the competitive fallback in Dashboard.jsx:152,
+    // bypassing the dashSimple simplified branch designed exactly for them.
+    athleteLevel:  normalizeAthleteLevel(str(p.athleteLevel, 30)),
     age:           numStr(p.age, 5, 120),
     weight:        numStr(p.weight, 10, 400),
     height:        numStr(p.height, 50, 280),

@@ -446,6 +446,36 @@ describe('getProfileRaceDate', () => {
   })
 })
 
+// ─── v9.67.0: athleteLevel normalization through sanitizeProfile ──────────────
+describe('sanitizeProfile — athleteLevel normalization (v9.67.0)', () => {
+  const base = { name: 'Test', age: '30', gender: 'male' }
+
+  it('maps capital "Beginner" to LEVEL_CONFIG key "beginner"', () => {
+    const p = sanitizeProfile({ ...base, athleteLevel: 'Beginner' })
+    expect(p.athleteLevel).toBe('beginner')
+  })
+
+  it('maps capital "Intermediate" to "competitive"', () => {
+    const p = sanitizeProfile({ ...base, athleteLevel: 'Intermediate' })
+    expect(p.athleteLevel).toBe('competitive')
+  })
+
+  it('maps capital "Advanced" to "advanced"', () => {
+    const p = sanitizeProfile({ ...base, athleteLevel: 'Advanced' })
+    expect(p.athleteLevel).toBe('advanced')
+  })
+
+  it('passes through already-lowercase ATHLETE_LEVELS values', () => {
+    expect(sanitizeProfile({ ...base, athleteLevel: 'elite' }).athleteLevel).toBe('elite')
+    expect(sanitizeProfile({ ...base, athleteLevel: 'recreational' }).athleteLevel).toBe('recreational')
+  })
+
+  it('returns empty string for unknown level (caller fallback chain handles it)', () => {
+    expect(sanitizeProfile({ ...base, athleteLevel: 'nonsense' }).athleteLevel).toBe('')
+    expect(sanitizeProfile({ ...base, athleteLevel: '' }).athleteLevel).toBe('')
+  })
+})
+
 // ─── v9.62.0: sport / primarySport mirroring ──────────────────────────────────
 describe('sanitizeProfile — sport ↔ primarySport mirror (v9.62.0)', () => {
   const base = { name: 'Test', age: '30', gender: 'male' }

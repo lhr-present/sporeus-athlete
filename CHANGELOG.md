@@ -4,6 +4,94 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.67.0 — 2026-05-10 — Beginner-tier simplified dashboard actually fires
+
+  User asked to verify the app works "from starting to elite level" and to
+  ensure new athletes see a clear, simplified app — without removing any
+  advanced features (just unpublished for beginners). Three things MUST
+  stay visible for beginners: physiological data entry, mission flow
+  (target → physiology → plan → daily answer), and strength training.
+
+  ### The bug (verified by source read, not agent claim)
+
+  `LEVEL_CONFIG` in `src/lib/constants.js` is keyed on lowercase
+  `ATHLETE_LEVELS` values (`beginner` / `recreational` / `competitive` /
+  `advanced` / `elite`). The `beginner` entry sets `dashSimple: true` —
+  this is the existing simplified-dashboard branch in
+  `Dashboard.jsx:352`, complete with a "SHOW ADVANCED ANALYTICS ↓"
+  reveal at line 517.
+
+  But `Onboarding.jsx` step 5 stores the picker's literal label —
+  `'Beginner'` / `'Intermediate'` / `'Advanced'` (capitalized) — into
+  `profile.athleteLevel`. Then `Dashboard.jsx:152`:
+
+  ```js
+  const lc = LEVEL_CONFIG[profile.athleteLevel] || LEVEL_CONFIG.competitive
+  ```
+
+  `LEVEL_CONFIG['Beginner']` is undefined → fallback to `competitive` →
+  every new "Beginner" user got the full-features dashboard. The
+  simplified branch existed but was unreachable from onboarding.
+
+  ### Fix — Normalize at every write site + central helper
+
+  - `src/lib/constants.js` — new `normalizeAthleteLevel(input)` pure
+    helper. Maps `'Beginner' → 'beginner'`, `'Intermediate' →
+    'competitive'`, `'Advanced' → 'advanced'`; passes through
+    already-lowercase `LEVEL_CONFIG` keys; case-insensitive +
+    whitespace-tolerant; returns `''` for unknown/falsy so caller
+    fallback chains still work.
+  - `src/lib/validate.js` — `sanitizeProfile()` runs `athleteLevel`
+    through the normalizer, so any reload/import path heals existing
+    profiles too.
+  - `src/components/Onboarding.jsx` — `finish()` maps the picker label
+    via `LEVEL_MAP` before calling `onFinish`. (Belt + suspenders with
+    `sanitizeProfile`; either alone would fix the bug, but both gives
+    us defense in depth against new write sites.)
+
+  ### Why "Intermediate" → "competitive" (not "recreational")
+
+  Pre-fix, "Intermediate" users hit the same `||
+  LEVEL_CONFIG.competitive` fallback as "Beginner". Mapping them to
+  `competitive` preserves their existing experience byte-for-byte —
+  zero regression. Mapping to `recreational` would have silently
+  removed `showCTL` / `showACWR` from a tier that's had them all along.
+
+  ### The three "must stay" surfaces (verified before shipping)
+
+  1. **Physiological data entry** — Profile tab + Zones tab. Tab-level
+     navigation, not gated by `dashSimple`. ✓ Beginners still see it.
+  2. **Mission flow** — `MissionHeadline` + `EliteProgramCard` are the
+     first two cards inside the `if (lc.dashSimple && !showAdvanced)`
+     branch (Dashboard.jsx:354–375). ✓ First thing a beginner sees.
+  3. **Strength training** — `WeekBuilder`, `Protocols` 1RM,
+     `StrengthSection`. Tab-level, not dashboard-gated. ✓ Untouched.
+
+  ### Files
+
+  - `src/lib/constants.js` — `normalizeAthleteLevel()` exported
+  - `src/lib/validate.js` — import + normalizer call in `sanitizeProfile`
+  - `src/components/Onboarding.jsx` — `LEVEL_MAP` in `finish()`
+  - `src/lib/__tests__/normalizeAthleteLevel.test.js` — NEW, 7 tests
+  - `src/lib/__tests__/validate.test.js` — +5 tests in new describe block
+
+  ### Tests
+
+  Full suite: **9865 passed (+12 net)** in 64s. Lint clean. Build clean
+  (213ms).
+
+  ### Deferred (intentionally not in this ship)
+
+  - LEVEL_CONFIG already had `recreational` keyed lowercase but no
+    Onboarding picker option for it — that's a tier-vocabulary
+    conversation, not a bug. Future ship.
+  - "SHOW ADVANCED ANALYTICS" reveal is a per-session toggle (`useState`);
+    no persistence yet. Once a beginner clicks reveal, they see the
+    full dashboard for that session only. If we want a sticky
+    preference, add to profile in a later ship.
+
+---
+
 ## v9.66.0 — 2026-05-12 — First-time-athlete + coach-finding flow fixes
 
   After v9.65.0 deployed, the user asked for a general first-time-user

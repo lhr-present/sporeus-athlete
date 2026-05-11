@@ -50,6 +50,34 @@ export const LEVEL_CONFIG = {
   elite:        { showCTL:true,  showTSB:true,  showACWR:true,  showMonotony:true,  showZoneDonut:true,  showTaper:true,  dashSimple:false },
 }
 
+/**
+ * v9.67.0 — Normalize athleteLevel input to a LEVEL_CONFIG key.
+ *
+ * Pre-fix the Onboarding step-5 picker stored capitalized PLAN_LEVELS values
+ * ('Beginner' / 'Intermediate' / 'Advanced'), but LEVEL_CONFIG keys are
+ * lowercase ATHLETE_LEVELS values ('beginner' / 'recreational' / 'competitive'
+ * / 'advanced' / 'elite'). Dashboard.jsx:152 did `LEVEL_CONFIG[level] ||
+ * LEVEL_CONFIG.competitive`, so a new "Beginner" athlete fell through to
+ * competitive and saw the FULL feature set — defeating the simplified
+ * dashSimple branch (Dashboard.jsx:352) that was designed exactly for them.
+ *
+ * Maps:
+ *   'Beginner'     → 'beginner'      (simplified — protects newcomers)
+ *   'Intermediate' → 'competitive'   (full features — matches old fallback)
+ *   'Advanced'     → 'advanced'      (full + monotony — matches old fallback)
+ *   already-lowercase ATHLETE_LEVELS keys pass through unchanged.
+ *
+ * Returns '' for null/undefined so the caller's default-fallback chain still
+ * works.
+ */
+export function normalizeAthleteLevel(input) {
+  if (!input || typeof input !== 'string') return ''
+  const lower = input.trim().toLowerCase()
+  if (lower in LEVEL_CONFIG) return lower
+  if (lower === 'intermediate') return 'competitive'
+  return ''
+}
+
 // Default zone mode and sport behaviour by primary sport
 export const SPORT_CONFIG = {
   running:    { defaultZoneMode:'pace',  showFTP:false, showCSS:false, sessionGroup:'Running',      unitPrimary:'min/km' },

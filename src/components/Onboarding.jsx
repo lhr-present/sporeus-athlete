@@ -280,10 +280,15 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
   const pct   = Math.round((step / (TOTAL - 1)) * 100)
 
   const finish = () => {
+    // v9.67.0 — Map step-5 picker values ('Beginner' / 'Intermediate' /
+    // 'Advanced') to LEVEL_CONFIG keys so the simplified dashSimple dashboard
+    // actually fires for new "Beginner" users. sanitizeProfile() also runs
+    // this on load; doing it here too means the first save lands clean.
+    const LEVEL_MAP = { Beginner: 'beginner', Intermediate: 'competitive', Advanced: 'advanced' }
     onFinish({
       name:data.name, age:data.age, gender:data.gender, sport:data.sport,
       purpose:data.purpose, loggingMethod:data.loggingMethod,
-      athleteLevel: data.level, trainDays: data.trainDays,
+      athleteLevel: LEVEL_MAP[data.level] || data.level, trainDays: data.trainDays,
       maxhr:data.maxhr, ftp:data.ftp, threshold:data.ltpace, goal:data.goal,
       // v9.60.0 — collect race date during onboarding so the daily answer +
       // taper + race readiness engines have an anchor from day one
