@@ -151,7 +151,10 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
   const levelLabel = ATHLETE_LEVELS.find(l => l.id === profile.athleteLevel)?.label || ''
   const lc         = LEVEL_CONFIG[profile.athleteLevel] || LEVEL_CONFIG.competitive
 
-  const [showAdvanced, setShowAdvanced] = useState(false)
+  // v9.68.0 — Persist across reloads. A beginner who opens advanced once shouldn't
+  // get reset to simplified view on every refresh; that turns "explore deeper" into
+  // a per-session toy. localStorage keeps the user's chosen depth.
+  const [showAdvanced, setShowAdvanced] = useLocalStorage('sporeus-show-advanced', false)
   const defaultLayout = Object.fromEntries(DASH_CARD_DEFS.map(c => [c.id, true]))
   const [dashLayout, setDashLayout] = useLocalStorage('sporeus-dash-layout', defaultLayout)
   const [showCustomize, setShowCustomize] = useState(false)
@@ -371,7 +374,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
             log={log}
             testResults={testResults}
             isTR={lang === 'tr'}
-            onGoToProfile={undefined}
+            onGoToProfile={onGoToProfile}
           />
         </ErrorBoundary>
         <ErrorBoundary>
@@ -514,7 +517,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
         </div>
         {(() => { const ra = getRecentAchievement(7); return ra ? <div style={{ ...S.mono, fontSize: '10px', color: '#555', marginBottom: '12px' }}>◈ {ra.name} — {ra.desc}</div> : null })()}
         <div style={{ textAlign: 'center', padding: '20px 0' }}>
-          <button style={{ ...S.btnSec, fontSize: '11px' }} onClick={() => setShowAdvanced(true)}>SHOW ADVANCED ANALYTICS ↓</button>
+          <button style={{ ...S.btnSec, fontSize: '11px' }} onClick={() => setShowAdvanced(true)}>{t('showAdvancedBtn')}</button>
         </div>
       </div>
     )
@@ -627,7 +630,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
           ))}
         </div>
         {showAdvanced && (
-          <button style={{ ...S.btnSec, fontSize: '10px', marginTop: '8px', padding: '10px 14px', minHeight: '44px' }} onClick={() => setShowAdvanced(false)}>← SIMPLE VIEW</button>
+          <button style={{ ...S.btnSec, fontSize: '10px', marginTop: '8px', padding: '10px 14px', minHeight: '44px' }} onClick={() => setShowAdvanced(false)}>{t('simpleViewBtn')}</button>
         )}
         <button style={{ ...S.mono, fontSize: '9px', color: 'var(--muted)', background: 'transparent', border: '1px solid var(--border)', borderRadius: '3px', padding: '10px 14px', minHeight: '44px', cursor: 'pointer', marginTop: '8px', marginLeft: '8px' }} onClick={() => setShowCustomize(s => !s)}>
           ⚙ Customize Dashboard

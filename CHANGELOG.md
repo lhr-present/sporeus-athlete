@@ -4,6 +4,121 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.68.0 — 2026-05-12 — Mission-1 daily-answer + beginner depth polish
+
+  After v9.67.0 wired beginners to the `dashSimple` branch, the user
+  asked us to keep going: "easy for beginner, opens deep dive later as
+  elite athlete, mission 1 working perfect." Three parallel audits then
+  manual source verification surfaced four real issues. This ship fixes
+  them.
+
+  ### VERIFIED BLOCKER — `DailyBriefingCard` returned null on empty log
+
+  `src/components/dashboard/DailyBriefingCard.jsx:36` literally read:
+  ```js
+  if (!log?.length) return null
+  ```
+
+  DailyBriefingCard is the "what should I do today" surface — Mission 1
+  step 4. For a day-1 beginner with zero training history, the card
+  rendered nothing. The mission flow (target → physiology → plan →
+  daily answer) terminated at "daily answer = blank space."
+
+  **Fix:** Replace the null with a mission-framed bilingual placeholder
+  that:
+  - Keeps the same `◈ DAILY BRIEFING` / `◈ GÜNLÜK REÇETE` header so
+    the card slot is recognizable.
+  - Tells the user *why* the card is empty: "Log your first session —
+    Sporeus will tell you exactly what to do today based on target →
+    physiology → plan → daily answer."
+  - TR mirror: "İlk antrenmanını kaydet — Sporeus sana bugün ne
+    yapman gerektiğini hedef → fizyoloji → plan → günlük cevap
+    zincirine göre söyleyecek."
+
+  This teaches the mission contract on the very surface that delivers
+  it, instead of vanishing on the user.
+
+  ### VERIFIED — `onGoToProfile={undefined}` in beginner branch
+
+  `Dashboard.jsx:374` (beginner `EliteMetricsStrip`) passed
+  `onGoToProfile={undefined}`. EliteMetricsStrip uses that prop as its
+  click handler (`EliteMetricsStrip.jsx:46`) — meaning a beginner who
+  tapped the elite-metrics strip got nothing. The strip is the most
+  prominent "you don't have FTP/VO2max yet" surface; making it a dead
+  click defeated its own CTA.
+
+  **Fix:** Pass `onGoToProfile={onGoToProfile}` from the Dashboard prop
+  (Dashboard's signature already has it at line 140; line 438 already
+  consumes it for `GettingStartedCard.onConnectStrava`).
+
+  ### VERIFIED — SHOW ADVANCED / SIMPLE VIEW buttons English-only
+
+  `Dashboard.jsx:517` and `:630` hardcoded `'SHOW ADVANCED ANALYTICS ↓'`
+  and `'← SIMPLE VIEW'`. Violates the bilingual contract; a TR user
+  saw English chrome at the depth-toggle.
+
+  **Fix:** New label keys in `LangCtx.jsx`:
+  - `showAdvancedBtn` — EN `'SHOW ADVANCED ANALYTICS ↓'` / TR
+    `'İLERİ ANALİZLERİ GÖSTER ↓'`
+  - `simpleViewBtn` — EN `'← SIMPLE VIEW'` / TR `'← BASİT GÖRÜNÜM'`
+
+  Both buttons now use `t(...)`.
+
+  ### VERIFIED — `showAdvanced` state lost on every reload
+
+  `Dashboard.jsx:154` used pure `useState(false)`. A beginner who hit
+  "SHOW ADVANCED ANALYTICS ↓" once, then refreshed the page, got
+  bounced back to the simplified view. That turns "grow into deeper
+  features" into a per-session toggle. The user explicitly framed the
+  progression as beginner → eventually elite — depth preference must
+  persist.
+
+  **Fix:** Swap to
+  `useLocalStorage('sporeus-show-advanced', false)`. Key is
+  per-browser, default `false` (beginners still start simplified).
+  Once they reveal advanced, it stays revealed across reloads.
+
+  ### Three "must stay" surfaces re-verified intact
+
+  - **Physiology entry** — Profile/Zones tabs unchanged. Bonus: the
+    EliteMetricsStrip in the beginner branch is now actually clickable
+    to Profile (was dead before this ship).
+  - **Mission flow** — `MissionHeadline` + `EliteProgramCard` still
+    first two cards in beginner branch. `DailyBriefingCard` now also
+    speaks the mission shape ("target → physiology → plan → daily
+    answer") on day 1, before any session is logged.
+  - **Strength** — Tab-level (SPORT PLAN tab + Protocols). Unchanged.
+    Strength bridge card on the beginner dashboard remains a deferred
+    scope-creep candidate.
+
+  ### Files
+
+  - `src/components/dashboard/DailyBriefingCard.jsx` — empty-log
+    placeholder
+  - `src/components/Dashboard.jsx` — `useLocalStorage` for
+    `showAdvanced`, `onGoToProfile` wired in beginner branch, `t()`
+    for both reveal buttons
+  - `src/contexts/LangCtx.jsx` — 4 new label keys × EN+TR
+  - `src/components/__tests__/DailyBriefingCard.test.jsx` — NEW, 4
+    tests covering empty-log placeholder rendering (EN, TR,
+    `undefined`, `null`)
+
+  ### Tests
+
+  Full suite: **9869 passed (+4 net)** in 65s. Lint clean. Build clean
+  (262 entries, 4521 KiB precache).
+
+  ### Deferred (intentional)
+
+  - Strength bridge card on the beginner dashboard — `TrainingBridgeCard`
+    already touches strength terminology in the beginner branch; a
+    dedicated card is a separate scope conversation.
+  - Onboarding step 5 ("FITNESS LEVEL") title + per-tier descriptions
+    are English-only. Bilingual conversion deferred to a focused
+    onboarding-bilingual pass.
+
+---
+
 ## v9.67.0 — 2026-05-10 — Beginner-tier simplified dashboard actually fires
 
   User asked to verify the app works "from starting to elite level" and to

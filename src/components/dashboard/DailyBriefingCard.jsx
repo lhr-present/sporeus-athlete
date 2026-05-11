@@ -33,7 +33,28 @@ export default function DailyBriefingCard({ profile, log, plan, planStatus, reco
     try { return detectDeloadNeed(log) } catch { return null }
   }, [log])
 
-  if (!log?.length) return null
+  // v9.68.0 — Mission 1 step 4 (daily answer) was a dead zone for day-1 users:
+  // returning null left a beginner's dashboard with no "what should I do today"
+  // surface. Show a brief mission-framed placeholder instead so the user knows
+  // what this card will become and why their first session unlocks it.
+  if (!log?.length) {
+    return (
+      <div style={{
+        borderLeft: '4px solid #2a2a2a', borderRadius: '3px',
+        padding: '14px 16px', marginBottom: '16px',
+        background: 'var(--surface, #0f0f0f)', fontFamily: MONO,
+      }}>
+        <div style={{ fontSize: '9px', color: '#555', letterSpacing: '0.1em', marginBottom: '8px' }}>
+          ◈ {isTR ? 'GÜNLÜK REÇETE' : 'DAILY BRIEFING'}
+        </div>
+        <div style={{ fontSize: '10px', color: '#888', lineHeight: 1.5 }}>
+          {isTR
+            ? 'İlk antrenmanını kaydet — Sporeus sana bugün ne yapman gerektiğini hedef → fizyoloji → plan → günlük cevap zincirine göre söyleyecek.'
+            : 'Log your first session — Sporeus will tell you exactly what to do today based on target → physiology → plan → daily answer.'}
+        </div>
+      </div>
+    )
+  }
 
   const color = STATUS_COLOR[rx.status] || AMBER
   const sess  = rx.today.session
