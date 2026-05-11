@@ -11,8 +11,9 @@ export default function ACWRCard({ log = [], lc, dl }) {
   if (!dl.acwr || !lc.showACWR) return null
   if (log.length < 7) return (
     <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-      Log at least 4 weeks of sessions to calculate ACWR.<br />
-      <span style={{ fontSize: '9px' }}>ACWR hesabı için en az 4 haftalık antrenman kaydet.</span>
+      {lang === 'tr'
+        ? 'ACWR hesabı için en az 4 haftalık antrenman kaydet.'
+        : 'Log at least 4 weeks of sessions to calculate ACWR.'}
     </div>
   )
 
@@ -23,8 +24,9 @@ export default function ACWRCard({ log = [], lc, dl }) {
   const chronic28 = log.filter(e => now - new Date(e.date).getTime() < ms28).reduce((s, e) => s + (e.tss || 0), 0) / 4
   if (!chronic28) return (
     <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-      Log at least 4 weeks of sessions to calculate ACWR.<br />
-      <span style={{ fontSize: '9px' }}>ACWR hesabı için en az 4 haftalık antrenman kaydet.</span>
+      {lang === 'tr'
+        ? 'ACWR hesabı için en az 4 haftalık antrenman kaydet.'
+        : 'Log at least 4 weeks of sessions to calculate ACWR.'}
     </div>
   )
 

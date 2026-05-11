@@ -1,15 +1,19 @@
-import { useState } from 'react'
+import { useContext, useState } from 'react'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { monotonyStrain } from '../../lib/formulas.js'
 
 export default function WeeklyReportCard({ last7, totalMin, totalTSS, avgRPE, recovery, plan, planStatus, rangeLabel }) {
+  const { lang } = useContext(LangCtx)
   const [reportVisible, setReportVisible] = useState(false)
 
   if (!last7.length) {
     const MONO = "'IBM Plex Mono', monospace"
     return (
       <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-        Log sessions this week to view your weekly report.<br /><span style={{ fontSize: '9px' }}>Haftalık raporu görmek için bu hafta antrenman kaydet.</span>
+        {lang === 'tr'
+          ? 'Haftalık raporu görmek için bu hafta antrenman kaydet.'
+          : 'Log sessions this week to view your weekly report.'}
       </div>
     )
   }

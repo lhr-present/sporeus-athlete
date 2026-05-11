@@ -39,7 +39,9 @@ export default function RecoveryProtocolCard({ log = [], recovery = [] }) {
   if (protocols.length === 0) {
     return (
       <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-        Log a session or wellness entry to unlock recovery protocols.<br /><span style={{ fontSize: '9px' }}>Toparlanma önerilerini görmek için antrenman veya iyilik verisi gir.</span>
+        {lang === 'tr'
+          ? 'Toparlanma önerilerini görmek için antrenman veya iyilik verisi gir.'
+          : 'Log a session or wellness entry to unlock recovery protocols.'}
       </div>
     )
   }

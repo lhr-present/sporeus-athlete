@@ -37,7 +37,7 @@ function _scoreColor(score) {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function PolarizationComplianceCard({ log }) {
-  const { t } = useContext(LangCtx)
+  const { t, lang } = useContext(LangCtx)
 
   const safeLog = useMemo(() => Array.isArray(log) ? log : [], [log])
 
@@ -48,8 +48,9 @@ export default function PolarizationComplianceCard({ log }) {
   const MONO = "'IBM Plex Mono', monospace"
   if (overall.weeksAnalyzed < 3) return (
     <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-      Log 3 or more weeks of sessions with zone data to view polarization compliance.<br />
-      <span style={{ fontSize: '9px' }}>Polarizasyon uyumu için bölge verisiyle 3+ haftalık antrenman kaydet.</span>
+      {lang === 'tr'
+        ? 'Polarizasyon uyumu için bölge verisiyle 3+ haftalık antrenman kaydet.'
+        : 'Log 3 or more weeks of sessions with zone data to view polarization compliance.'}
     </div>
   )
 

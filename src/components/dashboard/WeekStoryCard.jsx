@@ -10,8 +10,9 @@ function WeekStoryCard({ log, recovery, profile, lang }) {
   const MONO = "'IBM Plex Mono', monospace"
   if (log.length < 2) return (
     <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-      Log at least 2 sessions to generate your weekly story.<br />
-      <span style={{ fontSize: '9px' }}>Haftalık hikayeni oluşturmak için en az 2 antrenman kaydet.</span>
+      {lang === 'tr'
+        ? 'Haftalık hikayeni oluşturmak için en az 2 antrenman kaydet.'
+        : 'Log at least 2 sessions to generate your weekly story.'}
     </div>
   )
 

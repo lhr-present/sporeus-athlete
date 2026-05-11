@@ -65,7 +65,9 @@ export default function WeeklyReviewCard({ log, profile, isTR }) {
     const MONO = "'IBM Plex Mono', monospace"
     return (
       <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-        Log at least 4 sessions to generate your weekly review.<br /><span style={{ fontSize: '9px' }}>Haftalık inceleme için en az 4 antrenman kaydet.</span>
+        {isTR
+          ? 'Haftalık inceleme için en az 4 antrenman kaydet.'
+          : 'Log at least 4 sessions to generate your weekly review.'}
       </div>
     )
   }

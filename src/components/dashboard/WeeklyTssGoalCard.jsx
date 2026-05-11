@@ -73,7 +73,9 @@ export default function WeeklyTssGoalCard({ log, profile, isTR }) {
     const MONO = "'IBM Plex Mono', monospace"
     return (
       <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-        Set a weekly TSS goal or log sessions to track your load.<br /><span style={{ fontSize: '9px' }}>Yükünü takip etmek için haftalık TSS hedefi belirle veya antrenman kaydet.</span>
+        {isTR
+          ? 'Yükünü takip etmek için haftalık TSS hedefi belirle veya antrenman kaydet.'
+          : 'Set a weekly TSS goal or log sessions to track your load.'}
       </div>
     )
   }

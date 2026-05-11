@@ -1,4 +1,6 @@
 // ─── dashboard/MacroPlanCountdown.jsx — days-to-race countdown from macro plan ─
+import { useContext } from 'react'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 
@@ -6,13 +8,16 @@ import { useLocalStorage } from '../../hooks/useLocalStorage.js'
  * @param {{ dl: object, lc: object }} props
  */
 export default function MacroPlanCountdown({ dl, lc }) {
+  const { lang } = useContext(LangCtx)
   const [plan]       = useLocalStorage('sporeus-plan', null)
 
   if (!dl.goal || !lc.showTaper || !plan || !plan.weeks?.length) {
     const MONO = "'IBM Plex Mono', monospace"
     return (
       <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-        Generate a training plan with a goal race to view the countdown.<br /><span style={{ fontSize: '9px' }}>Geri sayımı görmek için hedef yarışlı bir antrenman planı oluştur.</span>
+        {lang === 'tr'
+          ? 'Geri sayımı görmek için hedef yarışlı bir antrenman planı oluştur.'
+          : 'Generate a training plan with a goal race to view the countdown.'}
       </div>
     )
   }

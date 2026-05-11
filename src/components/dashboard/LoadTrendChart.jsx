@@ -33,7 +33,7 @@ const PMC_RANGES = [
 const MONO = "'IBM Plex Mono', monospace"
 
 function LoadTrendChart({ log = [], acwr = {}, ctlChartDays, raceResults, plan, dl = {}, lc = {} }) {
-  const { t } = useContext(LangCtx)
+  const { t, lang } = useContext(LangCtx)
 
   // Hooks must run before any early return
   const [pmcRange, setPmcRange] = useState(ctlChartDays)
@@ -48,7 +48,9 @@ function LoadTrendChart({ log = [], acwr = {}, ctlChartDays, raceResults, plan, 
   if (!dl.timeline || !lc.showCTL || log.length <= 3) {
     return (
       <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-        Log sessions to view load trends.<br /><span style={{ fontSize: '9px' }}>Yük eğrilerini görmek için antrenman kaydet.</span>
+        {lang === 'tr'
+          ? 'Yük eğrilerini görmek için antrenman kaydet.'
+          : 'Log sessions to view load trends.'}
       </div>
     )
   }

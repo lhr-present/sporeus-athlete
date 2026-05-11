@@ -135,8 +135,9 @@ export default function FitnessBatteryProgressCard() {
     <div className="sp-card" style={CARD}>
       <div style={TITLE}>◈ {t('batteryTitle')}</div>
       <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-        Log sessions to unlock this insight
-        <br /><span style={{ fontSize: '9px' }}>Antrenman kaydet → veri görünür</span>
+        {lang === 'tr'
+          ? 'Antrenman kaydet → veri görünür'
+          : 'Log sessions to unlock this insight'}
       </div>
     </div>
   )

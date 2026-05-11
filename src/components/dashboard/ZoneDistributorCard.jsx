@@ -15,7 +15,9 @@ export default function ZoneDistributorCard({ filteredLog, rangeLabel }) {
   const MONO = "'IBM Plex Mono', monospace"
   const emptyState = (
     <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-      Log sessions with zone data to view zone distribution.<br /><span style={{ fontSize: '9px' }}>Bölge dağılımını görmek için bölge verisiyle antrenmanlar kaydet.</span>
+      {lang === 'tr'
+        ? 'Bölge dağılımını görmek için bölge verisiyle antrenmanlar kaydet.'
+        : 'Log sessions with zone data to view zone distribution.'}
     </div>
   )
 

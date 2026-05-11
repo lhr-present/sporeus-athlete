@@ -1,25 +1,30 @@
 // ─── dashboard/PersonalRecordsCard.jsx — all-time personal records ────────────
+import { useContext } from 'react'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useData } from '../../contexts/DataContext.jsx'
 import { calcPRs } from '../../lib/formulas.js'
 
 export default function PersonalRecordsCard({ dl }) {
+  const { lang } = useContext(LangCtx)
   const { log } = useData()
 
   const MONO = "'IBM Plex Mono', monospace"
 
   if (!dl.records || log.length === 0) return (
     <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-      Log sessions to track your personal records.<br />
-      <span style={{ fontSize: '9px' }}>Kişisel rekorlarınızı takip etmek için antrenman kaydet.</span>
+      {lang === 'tr'
+        ? 'Kişisel rekorlarınızı takip etmek için antrenman kaydet.'
+        : 'Log sessions to track your personal records.'}
     </div>
   )
 
   const prs = calcPRs(log)
   if (!prs.length) return (
     <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-      Log sessions to track your personal records.<br />
-      <span style={{ fontSize: '9px' }}>Kişisel rekorlarınızı takip etmek için antrenman kaydet.</span>
+      {lang === 'tr'
+        ? 'Kişisel rekorlarınızı takip etmek için antrenman kaydet.'
+        : 'Log sessions to track your personal records.'}
     </div>
   )
 

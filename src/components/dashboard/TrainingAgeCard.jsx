@@ -1,7 +1,9 @@
-import { useMemo } from 'react'
+import { useContext, useMemo } from 'react'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 
 export default function TrainingAgeCard({ log, dl }) {
+  const { lang } = useContext(LangCtx)
   const result = useMemo(() => {
     if (!dl.trainingage || log.length === 0) return null
 
@@ -47,8 +49,9 @@ export default function TrainingAgeCard({ log, dl }) {
 
   if (!dl.trainingage || log.length === 0 || !result) return (
     <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-      Log training sessions to calculate your training age.<br />
-      <span style={{ fontSize: '9px' }}>Antrenman yaşını hesaplamak için antrenman kaydet.</span>
+      {lang === 'tr'
+        ? 'Antrenman yaşını hesaplamak için antrenman kaydet.'
+        : 'Log training sessions to calculate your training age.'}
     </div>
   )
 

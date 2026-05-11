@@ -4,6 +4,91 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.69.0 — 2026-05-12 — Stop showing both languages at the same time
+
+  User feedback: "never show both languages at the same time, make it
+  English OR Turkish as options not explanations both languages at the
+  same time."
+
+  ### The bad pattern
+
+  22 dashboard-card empty states stacked EN + TR text simultaneously:
+
+  ```jsx
+  <div ...>
+    Log training sessions to calculate your training age.<br />
+    <span style={{ fontSize: '9px' }}>
+      Antrenman yaşını hesaplamak için antrenman kaydet.
+    </span>
+  </div>
+  ```
+
+  Same surface, both languages, no gate. The TR text was rendered as a
+  fallback for users whose language preference was never checked. A
+  user in English mode saw a Turkish duplicate underneath their English
+  prompt, and vice versa. Visual noise + violates the bilingual
+  contract (`isTR ? tr : en`) used everywhere else.
+
+  ### Fix
+
+  20 files, 22 dual-language blocks rewritten to language-gate via
+  whichever variable was already in scope (`isTR` prop, `lang` prop,
+  or `lang` from `useContext(LangCtx)`). Five files needed
+  `useContext(LangCtx)` added because they previously had no language
+  access — they were always rendering BOTH languages because they had
+  no way to gate.
+
+  ### Pattern applied
+
+  ```jsx
+  <div ...>
+    {isTR
+      ? 'Antrenman yaşını hesaplamak için antrenman kaydet.'
+      : 'Log training sessions to calculate your training age.'}
+  </div>
+  ```
+
+  Strings preserved exactly — no rewording. Only the rendering changed.
+
+  ### Files (20)
+
+  Dashboard empty-state blocks rewritten:
+  - `ACWRCard.jsx` (×2 instances)
+  - `BanisterModelCard.jsx`
+  - `EliteMetricsStrip.jsx`
+  - `FitnessBatteryProgressCard.jsx`
+  - `LoadTrendChart.jsx`
+  - `MacroPlanCountdown.jsx` *(added LangCtx)*
+  - `MonthlyProgressCard.jsx`
+  - `NormativeSection.jsx` *(added LangCtx)*
+  - `PersonalRecordsCard.jsx` (×2 instances) *(added LangCtx)*
+  - `PolarizationComplianceCard.jsx`
+  - `PriorityActionCard.jsx`
+  - `RecoveryProtocolCard.jsx`
+  - `SeasonStatsCard.jsx`
+  - `TrainingAgeCard.jsx` *(added LangCtx)*
+  - `WeekStoryCard.jsx`
+  - `WeeklyReportCard.jsx` *(added LangCtx)*
+  - `WeeklyReviewCard.jsx`
+  - `WeeklyTssGoalCard.jsx`
+  - `YourPatternsCard.jsx`
+  - `ZoneDistributorCard.jsx`
+
+  ### Tests
+
+  Full suite: **9869 passed**. Lint clean. Build clean (262 entries).
+  No new tests added — this is a rendering change, the gated branches
+  are already exercised by existing card tests.
+
+  ### Deferred
+
+  Onboarding step 5 ("FITNESS LEVEL" title + the three tier
+  descriptions) is still English-only without a TR mirror — a
+  different problem (missing TR, not duplicated). Tracking for a
+  focused onboarding-bilingual pass.
+
+---
+
 ## v9.68.0 — 2026-05-12 — Mission-1 daily-answer + beginner depth polish
 
   After v9.67.0 wired beginners to the `dashSimple` branch, the user

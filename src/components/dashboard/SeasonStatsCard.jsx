@@ -17,7 +17,7 @@ function sportColor(sport, index) {
 }
 
 export default function SeasonStatsCard({ log = [] }) {
-  const { t } = useContext(LangCtx)
+  const { t, lang } = useContext(LangCtx)
   const currentYear = new Date().getFullYear()
   const [selectedYear, setSelectedYear] = useState(currentYear)
 
@@ -31,7 +31,9 @@ export default function SeasonStatsCard({ log = [] }) {
     const MONO = "'IBM Plex Mono', monospace"
     return (
       <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-        Log sessions to view your season statistics.<br /><span style={{ fontSize: '9px' }}>Sezon istatistiklerini görmek için antrenman kaydet.</span>
+        {lang === 'tr'
+          ? 'Sezon istatistiklerini görmek için antrenman kaydet.'
+          : 'Log sessions to view your season statistics.'}
       </div>
     )
   }
