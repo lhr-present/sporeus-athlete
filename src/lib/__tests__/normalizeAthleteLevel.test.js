@@ -9,6 +9,30 @@ describe('normalizeAthleteLevel — v9.67.0', () => {
     expect(normalizeAthleteLevel('Advanced')).toBe('advanced')
   })
 
+  it('v9.74.0 — handles new picker values Recreational + Competitive + Elite', () => {
+    // The v9.74.0 picker exposes 5 tiers (was 3). All capitalized labels
+    // normalize to lowercase LEVEL_CONFIG keys via the case-insensitive
+    // pass-through (no LEVEL_MAP entry needed for these — they share spelling).
+    expect(normalizeAthleteLevel('Recreational')).toBe('recreational')
+    expect(normalizeAthleteLevel('Competitive')).toBe('competitive')
+    expect(normalizeAthleteLevel('Elite')).toBe('elite')
+  })
+
+  it('v9.74.0 — Recreational maps to a mid-tier config (CTL off, TSB on)', () => {
+    const mapped = normalizeAthleteLevel('Recreational')
+    expect(LEVEL_CONFIG[mapped].dashSimple).toBe(false)
+    expect(LEVEL_CONFIG[mapped].showCTL).toBe(false)
+    expect(LEVEL_CONFIG[mapped].showTSB).toBe(true)
+    expect(LEVEL_CONFIG[mapped].showACWR).toBe(false)
+  })
+
+  it('v9.74.0 — Elite maps to the same full-feature config as Advanced', () => {
+    const mapped = normalizeAthleteLevel('Elite')
+    expect(LEVEL_CONFIG[mapped].showCTL).toBe(true)
+    expect(LEVEL_CONFIG[mapped].showMonotony).toBe(true)
+    expect(LEVEL_CONFIG[mapped].dashSimple).toBe(false)
+  })
+
   it('passes through already-lowercase ATHLETE_LEVELS keys unchanged', () => {
     expect(normalizeAthleteLevel('beginner')).toBe('beginner')
     expect(normalizeAthleteLevel('recreational')).toBe('recreational')

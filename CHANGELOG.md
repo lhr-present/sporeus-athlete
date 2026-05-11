@@ -4,6 +4,103 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.74.0 — 2026-05-12 — Recreational tier picker (LEVEL_CONFIG orphan resolved)
+
+  User strategic ask #3: investigate `LEVEL_CONFIG.recreational` —
+  defined but never selectable from Onboarding. Decision: **Option A
+  (expose the picker), not Option B (deprecate).**
+
+  ### Pre-decision findings (codebase + Supabase)
+
+  1. **`ATHLETE_LEVELS[1]`** already defines recreational with label
+     `'Recreational'` + sub `'1–3 yr · fun races'`. The slot was
+     furnished, just not displayed.
+  2. **`LEVEL_CONFIG.recreational`** is a sensible mid-tier:
+     `showCTL:false, showTSB:true, showZoneDonut:true` — between
+     `beginner` (dashSimple) and `competitive` (full). Gives users a
+     real 5-step ladder.
+  3. **6+ read sites** already default to or compute recreational:
+     `taperAdvisor.js:64`, `NormativeSection.jsx:44,46`,
+     `AICoachInsights.jsx:23`, `Dashboard.jsx:204` (translation key
+     exists), `runningCV.js:135` (computed when CV > 360).
+  4. **Zero UI write paths** previously created recreational. Old
+     picker had 3 buttons; the v9.67 normalizer maps
+     `'Intermediate' → 'competitive'` — never recreational.
+  5. **Supabase row count: 0 stored.** `profiles` table has no
+     `athlete_level` column (athleteLevel lives in localStorage).
+     `coach_athletes.coachLevelOverride` had zero non-null rows.
+     **Migration risk = zero.**
+
+  ### The bug, plainly
+
+  The picker undersold the tier ladder. A user who's done 1–3 years
+  of training and runs fun races had to pick `Intermediate` (which
+  normalized to `competitive` — too aggressive, all features on) or
+  `Beginner` (which triggered `dashSimple` — too simplified). No
+  middle option matched the actual data model's tier they should be
+  in.
+
+  ### Fix
+
+  - **`src/components/Onboarding.jsx` step 5 picker** — extended from
+    3 buttons to 5: `Beginner`, `Recreational`, `Competitive`,
+    `Advanced`, `Elite`. Descriptions now match `ATHLETE_LEVELS.sub`
+    values (`'< 1 yr · first steps'` etc.) for consistency with the
+    source-of-truth array.
+  - **`getPlanPreview()`** — `tssMap` + `daysMap` expanded to include
+    Recreational (320 TSS / 4 days), Competitive (380 / 5 — explicit
+    label for the bucket previously called Intermediate), Elite
+    (700 / 6). `'Intermediate'` kept as back-compat alias for any
+    in-flight onboarding state from pre-v9.74.
+  - **`finish()` `LEVEL_MAP`** — six entries now: Beginner,
+    Recreational, Intermediate (alias), Competitive, Advanced, Elite.
+    All five canonical labels + the one alias.
+  - **Default state** `level:'Intermediate'` → `level:'Competitive'`.
+    Both normalize to `competitive`; the new picker highlights
+    `Competitive` visually instead of leaving the old `'Intermediate'`
+    string sitting unhighlighted.
+
+  ### `normalizeAthleteLevel` requires no changes
+
+  The function does `input.trim().toLowerCase()` then checks
+  membership in `LEVEL_CONFIG`. `'Recreational' → 'recreational'`
+  already round-trips. Tests added to lock that behavior:
+
+  ```js
+  expect(normalizeAthleteLevel('Recreational')).toBe('recreational')
+  expect(normalizeAthleteLevel('Competitive')).toBe('competitive')
+  expect(normalizeAthleteLevel('Elite')).toBe('elite')
+  ```
+
+  Plus assertions on the `recreational` config shape
+  (`dashSimple:false, showCTL:false, showTSB:true`) and the `elite`
+  config matching `advanced` (full feature set + monotony).
+
+  ### Files
+
+  - `src/components/Onboarding.jsx` — 4 edits (preview, default
+    state, picker, LEVEL_MAP)
+  - `src/lib/__tests__/normalizeAthleteLevel.test.js` — +3 tests
+
+  ### Tests
+
+  Full suite: **9872 passed (+3 net)**. Lint clean. Build clean.
+
+  ### Deferred
+
+  - **TR translations for the picker** (the larger #2 item: full
+    Onboarding TR pass). Sport-science vocab matters and the user
+    wants to set it; drafting TR labels + descriptions next, awaiting
+    approval before commit.
+  - `PLAN_LEVELS = ['Beginner','Intermediate','Advanced']` in
+    `constants.js` is now a legacy 3-tier vocabulary used elsewhere
+    (`SbAthletePanel.jsx` LEVEL_OVERRIDE_OPTS extends it to 6 with
+    Recreational/Competitive/Elite — already covers the wider set).
+    Consolidating PLAN_LEVELS vs ATHLETE_LEVELS vs LEVEL_OVERRIDE_OPTS
+    is a future tier-vocabulary cleanup ship.
+
+---
+
 ## v9.73.0 — 2026-05-12 — Fix remaining EN-only empty-states (audit follow-up)
 
   The v9.71.0 path6 spec proved the v9.67–9.70 work was solid. With the

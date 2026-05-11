@@ -3,17 +3,28 @@ import { PLAN_GOALS } from '../lib/constants.js'
 import { autoFormatMmSs } from '../lib/format/mmss.js'
 
 // ── Rule-based plan preview (no API key required) ─────────────────────────────
+// v9.74.0 — Expanded from 3 to 5 tier buckets to match ATHLETE_LEVELS.
+// 'Intermediate' kept as a back-compat alias for users with pre-v9.74 state
+// (it maps to the same numbers as 'Competitive' — the new explicit label).
 function getPlanPreview(data) {
-  const level = data.level || 'Intermediate'
+  const level = data.level || 'Competitive'
   const wks   = parseInt(data.weeks) || 12
   const phase  = wks >= 16 ? 'Base Build' : wks >= 8 ? 'Build' : 'Peak/Taper'
-  const tssMap = { Beginner: 250, Intermediate: 380, Advanced: 550 }
-  const daysMap = { Beginner: 4, Intermediate: 5, Advanced: 6 }
+  const tssMap = {
+    Beginner: 250, Recreational: 320,
+    Intermediate: 380, Competitive: 380,
+    Advanced: 550, Elite: 700,
+  }
+  const daysMap = {
+    Beginner: 4, Recreational: 4,
+    Intermediate: 5, Competitive: 5,
+    Advanced: 6, Elite: 6,
+  }
   return {
-    weeklyTss:  tssMap[level],
-    daysPerWk:  daysMap[level],
+    weeklyTss:  tssMap[level] ?? 380,
+    daysPerWk:  daysMap[level] ?? 5,
     phase,
-    suggestion: `Start ${phase} block. Target ${tssMap[level]} TSS/week across ${daysMap[level]} sessions.`,
+    suggestion: `Start ${phase} block. Target ${tssMap[level] ?? 380} TSS/week across ${daysMap[level] ?? 5} sessions.`,
   }
 }
 
@@ -35,7 +46,7 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
     purpose:'', loggingMethod:'manual',
     // Original detailed fields
     name:'', sport:'Running', age:'', gender:'male',
-    level:'Intermediate', maxhr:'', ftp:'', ltpace:'',
+    level:'Competitive', maxhr:'', ftp:'', ltpace:'',
     goal:'Half Marathon', weeks:'', raceDate:'',
   })
   const set = (k,v) => setData(d=>({...d,[k]:v}))
@@ -149,9 +160,11 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
           <label style={LABEL}>CURRENT LEVEL</label>
           <div style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>
             {[
-              { id:'Beginner',     desc:'< 1 yr training, mostly recreational' },
-              { id:'Intermediate', desc:'1–4 yrs, regular structured training' },
-              { id:'Advanced',     desc:'5+ yrs, race-focused, high volume' },
+              { id:'Beginner',     desc:'< 1 yr · first steps' },
+              { id:'Recreational', desc:'1–3 yr · fun races' },
+              { id:'Competitive',  desc:'3–7 yr · age-group medals' },
+              { id:'Advanced',     desc:'7+ yr · top 10% finisher' },
+              { id:'Elite',        desc:'National / international level' },
             ].map(({ id, desc })=>(
               <button key={id} onClick={()=>set('level',id)}
                 style={{ flex:'1 1 130px', textAlign:'left', padding:'12px', borderRadius:'6px', border:`2px solid ${data.level===id?'#ff6600':'var(--border)'}`, background:data.level===id?'#fff3eb':'transparent', cursor:'pointer' }}>
@@ -284,7 +297,17 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
     // 'Advanced') to LEVEL_CONFIG keys so the simplified dashSimple dashboard
     // actually fires for new "Beginner" users. sanitizeProfile() also runs
     // this on load; doing it here too means the first save lands clean.
-    const LEVEL_MAP = { Beginner: 'beginner', Intermediate: 'competitive', Advanced: 'advanced' }
+    // v9.74.0 — Picker now exposes all 5 tiers; map all five to lowercase
+    // LEVEL_CONFIG keys. 'Intermediate' kept as a back-compat alias for
+    // user state from pre-v9.74 onboarding (still maps to 'competitive').
+    const LEVEL_MAP = {
+      Beginner:     'beginner',
+      Recreational: 'recreational',
+      Intermediate: 'competitive',
+      Competitive:  'competitive',
+      Advanced:     'advanced',
+      Elite:        'elite',
+    }
     onFinish({
       name:data.name, age:data.age, gender:data.gender, sport:data.sport,
       purpose:data.purpose, loggingMethod:data.loggingMethod,
