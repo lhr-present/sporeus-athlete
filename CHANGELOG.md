@@ -4,6 +4,44 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.72.0 — 2026-05-12 — Fix E2E trigger gap (path6 wasn't running)
+
+  v9.71.0 shipped `path6-beginner-mission.spec.ts` but it never executed.
+  The E2E Critical Paths workflow has asymmetric triggers:
+
+  - **pull_request**: src, supabase, tests/e2e, tests/fixtures,
+    playwright.config.js, workflow file
+  - **push to main**: src, supabase/migrations ONLY
+
+  v9.71.0 touched `tests/e2e/` and the workflow file — neither in the
+  push trigger — so the new spec sat on main untested.
+
+  Same blind spot for any future E2E-only change to main.
+
+  ### Fix
+
+  Mirror the PR trigger to the push trigger. Now any commit touching
+  test specs, fixtures, Playwright config, or the workflow file itself
+  will run E2E on main.
+
+  This commit itself touches the workflow file → workflow file is now
+  in the push trigger → this push triggers E2E. Path6 gets its first
+  real run.
+
+  ### Cost / benefit
+
+  - Cost: one extra E2E run per test-only commit to main (currently
+    rare; was 0 in v9.59–v9.70 history)
+  - Benefit: structural fix — no future E2E spec can ship to main
+    without being exercised
+
+  ### Files
+
+  - `.github/workflows/e2e-critical-paths.yml` — 5 paths added to
+    push trigger
+
+---
+
 ## v9.71.0 — 2026-05-12 — Beginner mission E2E lock-in (regression coverage for v9.67–9.70)
 
   After four ships in 48 hours all stabilizing the same day-1 beginner

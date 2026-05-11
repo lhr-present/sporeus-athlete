@@ -15,6 +15,11 @@ on:
     paths:
       - "src/**"
       - "supabase/migrations/**"
+      - "supabase/functions/**"
+      - "tests/e2e/**"
+      - "tests/fixtures/**"
+      - "playwright.config.js"
+      - ".github/workflows/e2e-critical-paths.yml"
   workflow_dispatch:
 
 # Cancel in-progress runs for the same PR
