@@ -158,6 +158,9 @@ jobs:
             path3_upload_gpx:         45_000,
             path4_upgrade_invite:     60_000,
             path5_report_pdf:         45_000,
+            // v9.71.0 — path6 is guest-mode, no Supabase round-trip → tight budget
+            path6_en_mission_order:   15_000,
+            path6_tr_mission_order:   15_000,
           };
           let failed = false;
           for (const [key, limit] of Object.entries(LIMITS)) {
