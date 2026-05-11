@@ -4,6 +4,115 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.66.0 — 2026-05-12 — First-time-athlete + coach-finding flow fixes
+
+  After v9.65.0 deployed, the user asked for a general first-time-user
+  walkthrough audit with special attention to the "find/attend my coach"
+  flow. An Explore agent traced the actual code path; verification of
+  each finding by direct source reads confirmed two BLOCKERs and four
+  HIGH/MED friction points. This ship fixes them.
+
+  ### Two verified BLOCKERs (coach feature was inaccessible to guests)
+
+  **BLOCKER 1** — `App.jsx:292` literally read:
+  ```js
+  {inviteCode && authUser && authProfile?.role !== 'coach' && (
+    <InviteModalLazy ... />
+  )}
+  ```
+  Guests arriving at `https://app.sporeus.com/?invite=SP-abc12345` saw
+  absolutely nothing. The URL was parsed, the modal was gated on
+  `authUser`, the code dropped on the floor.
+
+  **BLOCKER 2** — `Profile.jsx:255` read:
+  ```js
+  {authUser?.id ? <CoachConnectionPanel userId={authUser.id} /> : null}
+  ```
+  The manual code-entry surface (`JoinCoachInput`) was auth-walled.
+  Guests who couldn't get the invite link to work and tried to enter a
+  code manually found nothing.
+
+  Also discovered: `useAppState.js:54–63` had a partial sessionStorage
+  survival mechanism (a `useEffect` replays `sporeus-pending-invite`
+  after auth) — but the initial URL parse never WROTE to sessionStorage.
+  So any remount before auth dropped the code anyway.
+
+  ### Fix (1) — Guest invite-link survival
+
+  - `useAppState.js` — when the initial URL parse finds `?invite=CODE`,
+    persist to `sessionStorage.sporeus-pending-invite` *before* cleaning
+    the URL. Existing post-auth replay effect now actually has something
+    to replay.
+  - `App.jsx` — new bottom-edge banner for `inviteCode && !authUser`:
+    bilingual EN+TR, shows the pending code, explains "sign in to
+    finish", has a Dismiss button. Uses `role="dialog"` + `aria-label`.
+    Does NOT block the rest of the UI (`aria-modal="false"`).
+
+  ### Fix (2) — Guest-side surface in Profile
+
+  - `Profile.jsx:255` — instead of rendering `null` for guests, surface
+    a bilingual EN+TR card explaining: "Sign in to enter your coach
+    code (SP-XXXXXXXX). If you arrived via an invite link, the
+    connection will complete automatically after auth." Cites the
+    top-right sign-in icon.
+
+  ### Fix (3) — Onboarding mentions coaches
+
+  - `Onboarding.jsx` step 7 (goal) — added a dashed inline note below
+    the starter plan preview: "Have a coach? After signup you can enter
+    their SP-XXXXXXXX code in the Profile tab, or open the invite link
+    they sent you." Bilingual EN+TR. New athletes now learn the feature
+    exists during the onboarding flow itself, not by accidentally
+    exploring the Profile tab.
+
+  ### Fix (4) — TodayView fresh-user nudge
+
+  - `TodayView.jsx` — new conditional banner above the existing
+    race-date nudge, shown only when `log.length === 0`. Bilingual EN+TR:
+    "Have a coach? Enter your invite code in Profile." Routes to the
+    Profile tab on click. Hidden once the user has any log entry to
+    avoid nagging established athletes.
+
+  ### Fix (5) — JoinCoachInput help text
+
+  - `MyCoach.jsx:319–324` — helper text now mentions both formats
+    explicitly: the bare `SP-XXXXXXXX` code AND the full invite URL
+    (`app.sporeus.com/?invite=SP-XXXXXXXX`). Previously only mentioned
+    the code; users who pasted the full URL would silently fail at
+    lookup. (Kept English-only — the rest of `MyCoach.jsx` is English;
+    a full bilingual conversion of that file is scope creep for a
+    separate round.)
+
+  ### Friction noted but deferred
+
+  - **No top-level "Coach" tab** in `TABS` array — coach features live
+    inside Profile. The new banners + Profile guest CTA partly mitigate
+    discoverability; a dedicated tab is a layout-level decision the
+    user would want input on.
+  - **Fast-track onboarding lands on PROGRAM tab with empty state** —
+    surfaced but lower-priority than the BLOCKERs and bigger to fix
+    (touches `useAppState.js:37–48` initial tab selection logic).
+  - **`MyCoach.jsx` full bilingual conversion** — the whole file is
+    English-only; doing it surgically alongside the BLOCKER fixes
+    would have ballooned scope.
+
+  ### Files
+
+  - `src/hooks/useAppState.js` — sessionStorage persistence on URL parse
+  - `src/App.jsx` — guest invite banner (bilingual)
+  - `src/components/Profile.jsx` — guest sign-in CTA in place of null
+  - `src/components/Onboarding.jsx` — bilingual coach-mention note in step 7
+  - `src/components/TodayView.jsx` — empty-log coach-nudge banner
+  - `src/components/MyCoach.jsx` — helper text mentions URL format
+  - `package.json` — 11.65.0 → 11.66.0
+
+  Tests 9853/9853 (unchanged — fixes preserve existing behavior, no
+  new tests needed since changes are mechanical UI additions; the
+  underlying `coachPlanDedup` and `inviteUtils` paths already have
+  coverage). Lint + build clean.
+
+---
+
 ## v9.65.0 — 2026-05-12 — Weekly enhancement sweep: coverage + a11y + hard-day spacing + test-fixture fix
 
   Three parallel agent threads (coverage gap scan, a11y regression scan,

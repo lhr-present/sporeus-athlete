@@ -320,7 +320,9 @@ export function JoinCoachInput({ userId, onJoined }) {
       {stage === 'input' && (
         <>
           <div style={{ fontSize: 11, color: '#888', marginBottom: 10, lineHeight: 1.5 }}>
-            Got a coach invite code (e.g. SP-XXXXXXXX)? Enter it here to connect.
+            Got a coach invite code (e.g. <code style={{ color: '#0064ff' }}>SP-XXXXXXXX</code>)?
+            Paste the code below, or open the full invite link your coach sent
+            (e.g. <code style={{ color: '#0064ff' }}>app.sporeus.com/?invite=SP-XXXXXXXX</code>).
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <input

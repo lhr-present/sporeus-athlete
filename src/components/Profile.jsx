@@ -252,7 +252,27 @@ export default function Profile({ log, authUser }) {
       </div>
 
       <HuseyinCoachCard/>
-      {authUser?.id ? <CoachConnectionPanel userId={authUser.id} /> : null}
+      {authUser?.id
+        ? <CoachConnectionPanel userId={authUser.id} />
+        : (
+          /* v9.66.0 — guests previously saw nothing here; the JoinCoachInput
+             that hosts manual code entry was auth-walled. Surface a clear
+             sign-in CTA so a fresh user with a coach code can act on it. */
+          <div className="sp-card" style={{ ...S.card, animationDelay:'30ms', borderLeft:'3px solid #0064ff' }}>
+            <div style={S.cardTitle}>
+              {isTR ? 'ANTRENÖRE BAĞLAN' : 'JOIN A COACH'}
+            </div>
+            <div style={{ fontSize:12, color:'var(--sub)', lineHeight:1.6, marginBottom:10 }}>
+              {isTR
+                ? 'Antrenör kodunu (SP-XXXXXXXX) girmek için önce giriş yapmanız gerekir. Davet bağlantısıyla geldiyseniz kaydolduktan sonra otomatik bağlanacaksınız.'
+                : 'Sign in to enter your coach code (SP-XXXXXXXX). If you arrived via an invite link, the connection will complete automatically after auth.'}
+            </div>
+            <div style={{ fontSize:10, color:'var(--muted)' }}>
+              {isTR ? 'Üst köşedeki kullanıcı ikonundan giriş yapabilirsiniz.' : 'Use the user icon in the top-right to sign in.'}
+            </div>
+          </div>
+        )
+      }
 
       <div className="sp-card" style={{ ...S.card, animationDelay:'50ms' }}>
         <div style={S.cardTitle}>{t('aboutTitle')}</div>

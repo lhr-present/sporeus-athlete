@@ -265,6 +265,14 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
           </div>
         )
       })()}
+      {/* v9.66.0 — Surface the coach-invite path during onboarding so new
+          athletes know the feature exists. Previously hidden in Profile tab
+          with zero discoverability. */}
+      <div style={{ marginTop:'14px', padding:'10px 12px', background:'#0064ff08', border:'1px dashed #0064ff44', borderRadius:'6px', fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', color:'#888', lineHeight:1.6 }}>
+        {lang === 'tr'
+          ? '◆ Antrenörünüz var mı? Kayıt sonrası Profil sekmesinden SP-XXXXXXXX kodunu girebilir veya davet bağlantısını açabilirsiniz.'
+          : '◆ Have a coach? After signup you can enter their SP-XXXXXXXX code in the Profile tab, or open the invite link they sent you.'}
+      </div>
     </div>,
   ]
 

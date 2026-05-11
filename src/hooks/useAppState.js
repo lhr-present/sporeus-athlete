@@ -51,10 +51,16 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   const [coachMode] = useLocalStorage('sporeus-coach-mode', false)
 
   // ── Invite code — from URL param or sessionStorage (survives auth redirect) ──
+  // v9.66.0 — Previously the URL parse cleaned `?invite=` but never persisted
+  // the code anywhere durable. Guests arriving with `?invite=CODE` would see
+  // nothing (the modal is auth-gated), and any remount before they signed in
+  // dropped the code on the floor. Now we always stash to sessionStorage on
+  // first parse so the post-auth replay effect below can find it.
   const [inviteCode, setInviteCode] = useState(() => {
     const params = new URLSearchParams(window.location.search)
     const code = params.get('invite')
     if (code) {
+      try { sessionStorage.setItem('sporeus-pending-invite', code) } catch (_) { /* private mode — non-critical */ }
       const url = new URL(window.location.href)
       url.searchParams.delete('invite')
       window.history.replaceState({}, '', url.toString())

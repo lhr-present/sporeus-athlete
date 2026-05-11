@@ -1302,6 +1302,21 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
         )}
       </div>
 
+      {/* v9.66.0 — Coach discovery nudge. Fresh users (no log yet) previously
+          had zero surface telling them the coach feature exists; it was
+          buried in Profile. Shown only for empty-log athletes to avoid
+          nagging users who are already established or already attached. */}
+      {(log || []).length === 0 && (
+        <div style={{ fontFamily: MONO, fontSize: '10px', color: '#888', marginBottom: '10px', padding: '8px 12px', border: '1px dashed #0064ff44', borderRadius: '4px', background: '#0064ff08', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+          <span style={{ flex: '1 1 200px' }}>
+            {lang === 'tr' ? '◆ Antrenörünüz var mı? Davet kodunuzu Profil\'de girin.' : '◆ Have a coach? Enter your invite code in Profile.'}
+          </span>
+          <button onClick={() => setTab('profile')} style={{ background: 'none', border: '1px solid #0064ff44', color: '#0064ff', fontFamily: MONO, fontSize: '9px', cursor: 'pointer', padding: '4px 10px', borderRadius: '3px', minHeight: '28px', flexShrink: 0 }}>
+            {lang === 'tr' ? 'PROFİL →' : 'PROFILE →'}
+          </button>
+        </div>
+      )}
+
       {/* ── P5 — Race date nudge when raceDate not set ──────────────────── */}
       {!profile?.raceDate && (log || []).length >= 10 && (
         <div style={{ fontFamily: MONO, fontSize: '9px', color: '#444', marginBottom: '10px', padding: '7px 12px', border: '1px solid #222', borderRadius: '3px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>

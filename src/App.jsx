@@ -288,7 +288,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
         </div>
       )}
 
-      {/* Coach invite acceptance modal */}
+      {/* Coach invite acceptance modal — for already-signed-in athletes */}
       {inviteCode && authUser && authProfile?.role !== 'coach' && (
         <Suspense fallback={null}>
           <InviteModalLazy
@@ -297,6 +297,38 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
             onDone={() => setInviteCode(null)}
           />
         </Suspense>
+      )}
+
+      {/* v9.66.0 — Guest-side invite banner. When an unauthenticated visitor
+          arrives with ?invite=CODE we previously dropped the code silently.
+          Now we surface a persistent banner pointing them at sign-in; the
+          code is already stashed in sessionStorage by useAppState so it
+          replays after auth via the existing post-auth effect. */}
+      {inviteCode && !authUser && (
+        <div
+          role="dialog"
+          aria-modal="false"
+          aria-label={lang === 'tr' ? 'Bekleyen antrenör daveti' : 'Pending coach invite'}
+          style={{ position:'fixed', left:12, right:12, bottom:12, zIndex:9000, background:'#0a0a0a', border:'1px solid #0064ff', borderLeft:'4px solid #0064ff', borderRadius:6, padding:'12px 14px', boxShadow:'0 4px 12px rgba(0,0,0,0.5)', fontFamily:"'IBM Plex Mono',monospace", display:'flex', gap:10, alignItems:'flex-start', flexWrap:'wrap' }}
+        >
+          <div style={{ flex:'1 1 220px', minWidth:0 }}>
+            <div style={{ fontSize:9, color:'#0064ff', letterSpacing:'0.1em', marginBottom:4 }}>
+              {lang === 'tr' ? '● ANTRENÖR DAVETİ BEKLİYOR' : '● COACH INVITE PENDING'}
+            </div>
+            <div style={{ fontSize:12, color:'#e0e0e0', lineHeight:1.4 }}>
+              {lang === 'tr'
+                ? `Davet kodu ${inviteCode} alındı. Antrenörünüze bağlanmak için giriş yapın — kayıttan sonra otomatik tamamlanacak.`
+                : `Invite code ${inviteCode} received. Sign in to join your coach — we'll finish the connection automatically after auth.`}
+            </div>
+          </div>
+          <button
+            onClick={() => { try { sessionStorage.removeItem('sporeus-pending-invite') } catch (_) {} ; setInviteCode(null) }}
+            aria-label={lang === 'tr' ? 'Daveti yoksay' : 'Dismiss invite'}
+            style={{ background:'transparent', border:'1px solid #2a2a2a', color:'#888', padding:'6px 10px', borderRadius:4, fontFamily:"'IBM Plex Mono',monospace", fontSize:10, cursor:'pointer', minHeight:32 }}
+          >
+            {lang === 'tr' ? 'Yoksay' : 'Dismiss'}
+          </button>
+        </div>
       )}
 
       {/* Guest mode upgrade nudge — after 30 days or 50 sessions */}
