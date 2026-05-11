@@ -4,6 +4,70 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.75.0 — 2026-05-12 — Onboarding TR pass (all 8 steps)
+
+  User strategic ask #2: Onboarding step 5 ("FITNESS LEVEL" + tier
+  labels) was English-only. After surveying the file, every other
+  onboarding step had the same problem — TR users got an
+  English-only first-run experience. Extended the scope from "step
+  5 only" (the original prompt) to "all 8 steps" since the agent
+  was already in the file.
+
+  ### Translated surfaces (steps 0–7)
+
+  | Step | EN → TR coverage |
+  |---|---|
+  | 0 (Welcome) | Tagline `'Bloomberg Terminal for your body'` → `'Vücudunun Bloomberg Terminali'` |
+  | 1 (Purpose) | Title + 5 purpose buttons (General fitness / A race / Weight goal / Rehabbing / Just exploring) |
+  | 2 (Sport) | Title + 6 sport buttons (Running → Koşu, Cycling → Bisiklet, Triathlon, Swimming → Yüzme, Rowing → Kürek, Other → Diğer) |
+  | 3 (Logging method) | Title + 3 method cards (manual/strava/fit_upload) with EN+TR label+desc pairs. Quick-finish + Full-setup CTAs translated. |
+  | 4 (Basic info) | Title + 4 labels (Name/Age/Gender/Primary Sport) + Athlete-name placeholder + Male/Female buttons (Erkek/Kadın) |
+  | 5 (Fitness level) | Title + section label + all 5 tier labels (Başlangıç/Rekreasyonel/Yarışmacı/İleri/Elit) + descriptions + "Training days per week" label |
+  | 6 (Key metrics) | Title + 3 labels (Max HR / Threshold Pace / FTP) + "Estimate from age" button |
+  | 7 (Goal + plan) | Title + Race Date label + Weeks Until Event label + "Your Starter Plan" header + 3 stat labels (Phase/TSS/wk/Days/wk → Faz/TSS·hafta/Gün·hafta) |
+
+  ### `getPlanPreview` is now lang-aware
+
+  Previously returned a single EN suggestion string. v9.75.0 makes it
+  take `lang` and return localized phase name (`Base Build`/`Build`/
+  `Peak/Taper` ↔ `Baz Yapı`/`Geliştirme`/`Zirve/Konik`) plus a TR or
+  EN suggestion line. Call site at step 7 passes `lang` from props.
+
+  ### What stayed English (deliberate)
+
+  - **Stored data values** — `'Beginner'`, `'Running'`, `'male'`, etc.
+    The picker UI shows TR labels but writes English keys, since
+    downstream sport gating / LEVEL_CONFIG / Supabase storage all key
+    on English IDs. Only the display text changes.
+  - **Step number prefixes** (`01 /`, `02 /`, etc.) — universal, same
+    in both languages.
+  - **Numeric placeholders** (`'185'`, `'4:45'`, `'240'`, `'32'`) —
+    no language content.
+
+  ### Files
+
+  - `src/components/Onboarding.jsx` — 11 edits across 8 steps +
+    `getPlanPreview` signature
+
+  ### Tests
+
+  Full suite: **9872 passed** (unchanged — UI rendering change, no
+  logic touched). Lint clean. Build clean (262 entries, 4524 KiB
+  precache; +2 KiB vs v9.74.0 for the inline TR strings).
+
+  ### Coverage gap remaining
+
+  - **`sanitizeProfile` doesn't translate stored values** — if a user
+    flips lang mid-flow after picking 'Beginner', the stored
+    `athleteLevel` stays `'beginner'` (correct — that's the data
+    model). UI re-renders to "Başlangıç" via the picker mapping. No
+    bug, just an explicit invariant.
+  - **Plan-tab + Profile-tab content** outside Onboarding still has
+    EN-only sections that the v9.73.0 sweep didn't catch. Those
+    surfaces aren't in the day-1 funnel; future ship.
+
+---
+
 ## v9.74.0 — 2026-05-12 — Recreational tier picker (LEVEL_CONFIG orphan resolved)
 
   User strategic ask #3: investigate `LEVEL_CONFIG.recreational` —
