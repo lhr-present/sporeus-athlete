@@ -21,7 +21,9 @@ export default function HRVAlertCard({ recovery }) {
   const badgeColor   = isAlert ? '#e03030' : '#f5c542'
   const badgeLabel   = isAlert ? t('hrvAlertAlert') : t('hrvAlertSuppressed')
   const title        = lang === 'tr' ? '⚠ KLV DÜŞÜŞÜ' : '⚠ HRV ALERT'
-  const sigmaLabel   = `${state.sigma.toFixed(2)}σ below baseline`
+  const sigmaLabel   = lang === 'tr'
+    ? `temelden ${state.sigma.toFixed(2)}σ aşağıda`
+    : `${state.sigma.toFixed(2)}σ below baseline`
   const deltaLabel   = `${state.delta > 0 ? '+' : ''}${state.delta.toFixed(1)} RMSSD`
   const actionText   = lang === 'tr' ? t('hrvAlertAction_tr') : t('hrvAlertAction')
 

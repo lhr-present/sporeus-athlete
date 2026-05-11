@@ -2,7 +2,8 @@
 // Reads today's pre-generated insight from ai_insights (written by nightly-batch).
 // Falls back to on-demand generation via ai-proxy if nightly batch hasn't run yet.
 // Tier-gated server-side (free → 403); opt-in toggle client-side.
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useContext } from 'react'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useData } from '../../contexts/DataContext.jsx'
 import { useAuth } from '../../hooks/useAuth.js'
@@ -28,6 +29,7 @@ Last 7 sessions:\n${recent || '(none)'}`
  * @param {{ dl: object }} props
  */
 export default function AICoachInsights({ dl }) {
+  const { lang }                 = useContext(LangCtx)
   const { log, profile }         = useData()
   const { user }                 = useAuth()
   const [optedIn, setOptedIn]    = useLocalStorage('sporeus-ai-optin', false)
@@ -166,7 +168,7 @@ export default function AICoachInsights({ dl }) {
       </div>
 
       {loading ? (
-        <div style={{ ...S.mono, fontSize: '11px', color: '#555' }}>Loading…</div>
+        <div style={{ ...S.mono, fontSize: '11px', color: '#555' }}>{lang === 'tr' ? 'Yükleniyor…' : 'Loading…'}</div>
       ) : insight ? (
         <>
           <div style={{ ...S.mono, fontSize: '12px', color: 'var(--text)', lineHeight: 1.8, marginBottom: 8 }}>

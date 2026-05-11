@@ -782,9 +782,13 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
           <div style={S.cardTitle}>{t('tssChartTitle')}</div>
           {daily.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '28px 0' }}>
-              <div style={{ ...S.mono, fontSize: '13px', color: '#555', marginBottom: '6px' }}>No sessions yet</div>
+              <div style={{ ...S.mono, fontSize: '13px', color: '#555', marginBottom: '6px' }}>
+                {lang === 'tr' ? 'Henüz antrenman yok' : 'No sessions yet'}
+              </div>
               <div style={{ ...S.mono, fontSize: '11px', color: '#888', lineHeight: 1.7 }}>
-                Log your first session to see your fitness trend here.<br/>Tap the <span style={{ color: '#ff6600' }}>Log</span> tab →
+                {lang === 'tr'
+                  ? <>İlk antrenmanını kaydet — fitness trendini burada gör. <span style={{ color: '#ff6600' }}>Log</span> sekmesine dokun →</>
+                  : <>Log your first session to see your fitness trend here. Tap the <span style={{ color: '#ff6600' }}>Log</span> tab →</>}
               </div>
             </div>
           ) : (

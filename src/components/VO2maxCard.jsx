@@ -1,5 +1,6 @@
 // ─── VO₂max / VDOT Card ───────────────────────────────────────────────────────
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useContext } from 'react'
+import { LangCtx } from '../contexts/LangCtx.jsx'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useData } from '../contexts/DataContext.jsx'
 import { vdotFromRace, zonesFromVDOT, raceEquivalents, estimateVO2maxTrend, fmtPaceSec } from '../lib/vo2max.js'
@@ -59,6 +60,7 @@ function fmtTime(sec) {
 }
 
 export default function VO2maxCard() {
+  const { lang } = useContext(LangCtx)
   const { log, profile } = useData()
 
   const [showZones, setShowZones]     = useState(false)
@@ -143,8 +145,9 @@ export default function VO2maxCard() {
           </div>
         ) : (
           <div style={{ fontFamily: MONO, fontSize: '11px', color: '#555', lineHeight: 1.6 }}>
-            No VDOT estimate yet.<br/>
-            Import runs (≥20 min) or enter a race result below.
+            {lang === 'tr'
+              ? <>Henüz VDOT tahmini yok.<br/>Koşuları içe aktar (≥20 dk) veya aşağıya yarış sonucu gir.</>
+              : <>No VDOT estimate yet.<br/>Import runs (≥20 min) or enter a race result below.</>}
           </div>
         )}
 

@@ -6,7 +6,7 @@ import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { exportAllData } from '../../lib/storage.js'
 
 export default function HuseyinCoachCard() {
-  const { t } = useContext(LangCtx)
+  const { t, lang } = useContext(LangCtx)
   const [myCoach, setMyCoach] = useLocalStorage('sporeus-my-coach', null)
   const connected = !!myCoach
   const isHuseyin = !myCoach || myCoach === 'huseyin-sporeus'
@@ -38,7 +38,9 @@ export default function HuseyinCoachCard() {
             {isHuseyin ? 'HÜSEYİN AKBULUT' : myCoach}
           </div>
           <div style={{...S.mono,fontSize:'10px',color:'#888',lineHeight:1.8}}>
-            {isHuseyin ? <>MSc Sport Science · Marmara University<br/>Uzmanlık: Dayanıklılık · Triatlon · Periyodizasyon</> : 'Connected coach · Sporeus Athlete Console'}
+            {isHuseyin
+              ? <>MSc Sport Science · Marmara University<br/>{lang === 'tr' ? 'Uzmanlık: Dayanıklılık · Triatlon · Periyodizasyon' : 'Specialty: Endurance · Triathlon · Periodization'}</>
+              : (lang === 'tr' ? 'Bağlı koç · Sporeus Sporcu Konsolu' : 'Connected coach · Sporeus Athlete Console')}
           </div>
         </div>
       </div>

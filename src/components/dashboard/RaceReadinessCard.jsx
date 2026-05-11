@@ -96,7 +96,7 @@ function RaceReadinessCard({ log, recovery, injuries, profile, plan, planStatus,
             if (!match) return null
             return (
               <div style={{ ...S.mono, fontSize:'10px', color:'#888', lineHeight:1.6 }}>
-                Predicted: <strong style={{ color:'#ff6600' }}>{match.predicted}</strong> (best {match.best} — worst {match.worst})<br/>
+                {lang === 'tr' ? 'Tahmini' : 'Predicted'}: <strong style={{ color:'#ff6600' }}>{match.predicted}</strong> ({lang === 'tr' ? 'en iyi' : 'best'} {match.best} — {lang === 'tr' ? 'en kötü' : 'worst'} {match.worst})<br/>
                 <span style={{ fontSize:'9px' }}>via {perf.method}</span>
               </div>
             )

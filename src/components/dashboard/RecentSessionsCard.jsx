@@ -7,7 +7,7 @@ import { S } from '../../styles.js'
  * @param {{ filteredLog: object[], rangeLabel: string, dl: object }} props
  */
 export default function RecentSessionsCard({ filteredLog, rangeLabel, dl }) {
-  const { t } = useContext(LangCtx)
+  const { t, lang } = useContext(LangCtx)
 
   if (!dl.sessions) return null
 
@@ -18,10 +18,13 @@ export default function RecentSessionsCard({ filteredLog, rangeLabel, dl }) {
       </div>
       {filteredLog.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '20px 0' }}>
-          <div style={{ ...S.mono, fontSize: '13px', color: '#555', marginBottom: '6px' }}>No sessions in this period</div>
+          <div style={{ ...S.mono, fontSize: '13px', color: '#555', marginBottom: '6px' }}>
+            {lang === 'tr' ? 'Bu dönemde antrenman yok' : 'No sessions in this period'}
+          </div>
           <div style={{ ...S.mono, fontSize: '11px', color: '#888', lineHeight: 1.7 }}>
-            Log a session to start tracking your progress.<br/>
-            Takes less than 30 seconds →
+            {lang === 'tr'
+              ? 'İlerlemeni takip etmek için bir antrenman kaydet. 30 saniyeden az sürer →'
+              : 'Log a session to start tracking your progress. Takes less than 30 seconds →'}
           </div>
         </div>
       ) : (

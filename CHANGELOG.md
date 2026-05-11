@@ -4,6 +4,79 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.73.0 — 2026-05-12 — Fix remaining EN-only empty-states (audit follow-up)
+
+  The v9.71.0 path6 spec proved the v9.67–9.70 work was solid. With the
+  beginner funnel locked, ran the refined bilingual completeness audit
+  (Strategy A direct grep, Strategy B mixed-`t()`, Strategy C brand
+  decision).
+
+  ### What direct grep found that the audit agents kept missing
+
+  Strategy A — `grep -rn "<br />" src/` — surfaced **18 hits**. Same
+  pattern as v9.69 → v9.70: the audit agent reported 3 findings;
+  direct grep showed the truth. The 9 hits classified FIX below are
+  EN-only empty-state messages that a Turkish user saw as English.
+
+  ### Files fixed (12 patches across 11 files)
+
+  | File | What changed |
+  |---|---|
+  | `Dashboard.jsx:787` | Empty TSS-chart state ("Log your first session…") gated on `lang` (already in scope from `useLocalStorage`) |
+  | `dashboard/RecentSessionsCard.jsx` | "No sessions in this period" + "Log a session to start tracking…" both gated; added `lang` to existing `useContext(LangCtx)` destructure |
+  | `dashboard/RaceReadinessCard.jsx:99` | "Predicted: best X — worst Y" → `lang === 'tr' ? 'Tahmini' : 'Predicted'` + TR best/worst |
+  | `Protocols.jsx:367–374` | 2-point Critical Power test description + 3 steps fully translated (sport-science vocab: "İki maksimal efor", "Adım 1") |
+  | `Profile.jsx:351` | Coach-mode toggle copy + "File-based · No server · No API keys · Zero tracking" → TR mirror |
+  | `profile/StravaConnect.jsx:201` | Strava connect explanation + privacy note → TR mirror. Added `useContext(LangCtx)` import. |
+  | `profile/HuseyinCoachCard.jsx:41` | EN academic credentials stay (`MSc Sport Science · Marmara University` — universal academic English); TR specialty list (`Uzmanlık: Dayanıklılık · Triatlon · Periyodizasyon`) now language-gated — EN users see `Specialty: Endurance · Triathlon · Periodization`. Other-coach fallback also gated. |
+  | `coachDashboard/CoachRegistration.jsx:31–32, 51–53` | Two empty-state explanations + tier-limit note gated. Added `useContext(LangCtx)` import. |
+  | `dashboard/HRVAlertCard.jsx:24` | `sigmaLabel` (`"X.XXσ below baseline"` → TR `"temelden X.XXσ aşağıda"`). `deltaLabel` left as-is (`RMSSD` is a universal acronym). |
+  | `dashboard/AICoachInsights.jsx:169` | `Loading…` → `Yükleniyor…`. Added `useContext(LangCtx)` import. |
+  | `components/VO2maxCard.jsx:146` | **Non-dashboard** VO2max card (Protocols-tab variant, distinct from `dashboard/VO2maxCard.jsx`). "No VDOT estimate yet" empty-state gated. Added `useContext(LangCtx)` import. |
+
+  ### Decisions logged
+
+  - **`MissionHeadline.jsx`** — confirmed BRAND-INTENT. The bilingual
+    headline (`BUILD YOUR YEARLY PROGRAM · YILLIK PROGRAMINI OLUŞTUR`)
+    stays as a deliberate brand banner. path6 already allow-lists it.
+  - **`HuseyinCoachCard.jsx`** — academic credentials (Marmara
+    University degree) stay English globally; specialty list gates on
+    `lang`. This is the cleanest split for a bicultural coach profile.
+  - **`HRVAlertCard.jsx` `deltaLabel`** — `+X.X RMSSD` not gated. RMSSD
+    is the universal heart-rate variability acronym; translating it
+    would harm clarity, not improve it.
+
+  ### Investigated, NOT fixed
+
+  - **HTML email / PDF / CSV export `<br>` tags** (`digestEmail.js`,
+    `pdfReport.js`, `PlanGenerator.jsx`) — different category. These
+    render outside the React UI; bilingual export is a separate scope
+    conversation, not an empty-state-leak bug.
+  - **`coachDashboard/AthleteDetailPanel.jsx`** EN labels — admin tool,
+    deliberately English-only. Not in the funnel.
+  - **`Onboarding.jsx:83`** — `<br/>` is between an emoji and a sport
+    name (proper noun); not a translatable string.
+
+  ### Tests
+
+  Full suite: **9869 passed** (unchanged — rendering fix). Lint clean.
+  Build clean (262 entries, 4522 KiB precache).
+
+  ### Deferred (intentional)
+
+  - `coachDashboard/CoachRegistration.jsx` and other coach UI files
+    have many MORE hardcoded English strings beyond the `<br />` hits
+    (button labels, form labels). Full bilingual coach-UI conversion
+    is a separate ship. This commit fixes only the empty-state
+    explanations directly visible at the v9.71 audit's grep boundary.
+  - Investigate whether `components/VO2maxCard.jsx` and
+    `components/dashboard/VO2maxCard.jsx` should be consolidated.
+    They're distinct components used in different surfaces
+    (Protocols tab vs Dashboard), but the naming collision is a
+    maintenance risk.
+
+---
+
 ## v9.72.0 — 2026-05-12 — Fix E2E trigger gap (path6 wasn't running)
 
   v9.71.0 shipped `path6-beginner-mission.spec.ts` but it never executed.

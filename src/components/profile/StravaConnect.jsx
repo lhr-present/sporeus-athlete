@@ -1,5 +1,6 @@
 // ─── StravaConnect — OAuth + sync for Strava (Profile Phase 3.1) ────────────
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { isSupabaseReady } from '../../lib/supabase.js'
 import {
@@ -11,6 +12,7 @@ const SYNC_COLOR = { idle: '#5bc25b', syncing: '#0064ff', error: '#e03030', paus
 const SYNC_LABEL = { idle: 'CONNECTED', syncing: 'SYNCING', error: 'ERROR', paused: 'PAUSED' }
 
 export default function StravaConnect({ userId }) {
+  const { lang } = useContext(LangCtx)
   const [conn, setConn]             = useState(null)
   const [busy, setBusy]             = useState(false)
   const [loading, setLoading]       = useState(true)
@@ -196,9 +198,9 @@ export default function StravaConnect({ userId }) {
       ) : (
         <>
           <div style={{ ...S.mono, fontSize: '11px', color: '#888', marginBottom: '12px', lineHeight: 1.7 }}>
-            Connect your Strava account to automatically import activities.
-            Runs and rides sync with distance, HR data, and estimated TSS.
-            <br/>Only reads your activity data — never posts on your behalf.
+            {lang === 'tr'
+              ? <>Aktiviteleri otomatik içe aktarmak için Strava hesabını bağla. Koşu ve bisiklet mesafe, KA verisi ve tahmini TSS ile senkronize olur.<br/>Sadece aktivite verini okur — adına asla paylaşım yapmaz.</>
+              : <>Connect your Strava account to automatically import activities. Runs and rides sync with distance, HR data, and estimated TSS.<br/>Only reads your activity data — never posts on your behalf.</>}
           </div>
           <button style={{ ...S.btn, background: '#fc4c02', borderColor: '#fc4c02' }} onClick={initiateStravaOAuth}>
             Connect Strava

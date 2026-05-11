@@ -347,8 +347,9 @@ export default function Profile({ log, authUser }) {
           </label>
         </div>
         <div style={{ ...S.mono, fontSize:'10px', color:'#888', marginTop:'6px', lineHeight:1.6 }}>
-          Import athlete JSON exports and view their dashboards, create plans, track compliance.
-          <br/>File-based · No server · No API keys · Zero tracking
+          {lang === 'tr'
+            ? <>Sporcu JSON dışa aktarımlarını içe aktar, panolarını gör, plan oluştur, uyumu takip et.<br/>Dosya tabanlı · Sunucusuz · API anahtarı yok · Takip yok</>
+            : <>Import athlete JSON exports and view their dashboards, create plans, track compliance.<br/>File-based · No server · No API keys · Zero tracking</>}
         </div>
       </div>
 

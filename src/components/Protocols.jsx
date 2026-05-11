@@ -364,14 +364,24 @@ export default function TestProtocols() {
         {active==='cp_test' && (
           <div>
             <div style={{ ...S.mono, fontSize:'10px', color:'#888', lineHeight:1.7, marginBottom:'12px' }}>
-              2-point Critical Power model (Morton 1996). Perform two maximal efforts — the math derives
-              your sustainable power limit (CP) and anaerobic work capacity (W').
-              Results feed directly into the W' Balance analyser.
+              {lang === 'tr'
+                ? "2-noktalı Kritik Güç modeli (Morton 1996). İki maksimal efor uygula — matematik sürdürülebilir güç sınırını (CP) ve anaerobik iş kapasitesini (W') türetir. Sonuçlar doğrudan W' Denge analizörüne aktarılır."
+                : "2-point Critical Power model (Morton 1996). Perform two maximal efforts — the math derives your sustainable power limit (CP) and anaerobic work capacity (W'). Results feed directly into the W' Balance analyser."}
             </div>
             <div style={{ ...S.mono, fontSize:'10px', color:'#555', lineHeight:1.7, marginBottom:'12px', borderLeft:'2px solid #333', paddingLeft:'10px' }}>
-              Step 1 — 3-min all-out effort on bike/erg. Record average power.<br/>
-              Step 2 — Rest 30 min completely.<br/>
-              Step 3 — 12-min all-out effort. Record average power.
+              {lang === 'tr' ? (
+                <>
+                  Adım 1 — bisiklet/erg üzerinde 3 dakika maksimal efor. Ortalama gücü kaydet.<br/>
+                  Adım 2 — 30 dakika tam dinlenme.<br/>
+                  Adım 3 — 12 dakika maksimal efor. Ortalama gücü kaydet.
+                </>
+              ) : (
+                <>
+                  Step 1 — 3-min all-out effort on bike/erg. Record average power.<br/>
+                  Step 2 — Rest 30 min completely.<br/>
+                  Step 3 — 12-min all-out effort. Record average power.
+                </>
+              )}
             </div>
             <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
               <div style={{ flex:'1 1 160px' }}>
