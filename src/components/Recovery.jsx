@@ -189,7 +189,7 @@ export default function Recovery() {
                 <div style={{ ...S.mono, fontSize:'8px', color:'#555', marginBottom:'4px' }}>
                   {t('recovHrv7day')} {avg7} ms
                 </div>
-                <svg width={W} height={H} style={{ display:'block', overflow:'visible' }}>
+                <svg role="img" aria-label={lang==='tr' ? `HRV trendi son 7 gün, ortalama ${avg7} ms` : `HRV trend last 7 days, ${avg7} ms average`} width={W} height={H} style={{ display:'block', overflow:'visible' }}>
                   <polyline points={pts} fill="none" stroke="#ff6600" strokeWidth="1.5" strokeLinejoin="round"/>
                   {vals.map((v,i) => {
                     const x = pad + i * (W - 2*pad) / (vals.length - 1)
@@ -317,7 +317,7 @@ export default function Recovery() {
           <div className="sp-card" style={{ ...S.card, animationDelay:'85ms' }}>
             <div style={S.cardTitle}>{lang==='tr' ? 'RUH HALİ & STRES — 7 GÜN' : 'MOOD & STRESS — 7 DAYS'}</div>
             <div style={{ display:'flex', gap:'16px', alignItems:'center' }}>
-              <svg width={W} height={H} style={{ display:'block', overflow:'visible' }}>
+              <svg role="img" aria-label={lang==='tr' ? `Ruh hali ${avgMood} ve stres ${avgStress} ortalaması, son 7 gün` : `Mood ${avgMood} and stress ${avgStress} average, last 7 days`} width={W} height={H} style={{ display:'block', overflow:'visible' }}>
                 {line(moodVals, '#0064ff')}
                 {line(stressVals, '#e03030')}
               </svg>

@@ -4,6 +4,118 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.65.0 — 2026-05-12 — Weekly enhancement sweep: coverage + a11y + hard-day spacing + test-fixture fix
+
+  Three parallel agent threads (coverage gap scan, a11y regression scan,
+  workout/training enhancement) ran with strict scope and surgical-fix
+  discipline. After the sweep, 2 pre-existing test failures in
+  `CoachingInsightsDigest` surfaced (date-drift in the test fixture,
+  unrelated to any thread); a fourth focused agent diagnosed + fixed it
+  with a one-line change. All 9853 tests now green.
+
+  ### (1) Coverage gap scan — 3 new test files, 89 new tests
+
+  Surveyed all pure-function libs in `src/lib/` and subdirs, skipping
+  the infra exclusion list (Supabase, fetch, telemetry, push, gdpr,
+  reportGenerator, etc.). Found a small set of untested pure files;
+  picked the 3 highest-impact and wrote ~30 tests each.
+
+  - `src/lib/__tests__/sport/sportsRecords.test.js` — 28 tests
+  - `src/lib/__tests__/athlete/eliteProgramDrills.test.js` — 30 tests
+  - `src/lib/__tests__/athlete/_logSport.test.js` — 30 tests
+
+  Coverage of `_logSport` is load-bearing: it's the shared sport
+  classifier used by `planLifecycle`, `planAdherence`, `recentBest` — a
+  silent regression there would miscount adherence across multiple
+  dashboard cards.
+
+  ### (2) A11y regression scan — 5 surgical fixes
+
+  Audited buttons-without-aria-label, SVG-charts-without-role-img,
+  modals-without-Escape, toasts-without-announce. 552 raw button hits
+  collapsed to 0 real gaps after manual review (icon-only patterns
+  already labeled). Real gaps found and fixed:
+
+  - `src/components/ui.jsx` — `CTLTimeline` SVG gains `role="img"` +
+    bilingual aria-label summarizing first/last/latest CTL
+  - `src/components/MyCoach.jsx` — InviteModal gains `useFocusTrap` +
+    Escape handler + `role="dialog"` + `aria-modal` + `aria-label`
+  - `src/components/Recovery.jsx` — HRV sparkline + Mood/Stress chart
+    both gain bilingual `role="img"` aria-labels describing the data
+  - `src/components/Dashboard.jsx` — cadence trend chart aria-label
+  - `src/components/coachDashboard/SbAthletePanel.jsx` — `announce()`
+    wired into duplicate-suppress (assertive) and network-error
+    (assertive) paths; success path already announced
+
+  All new strings bilingual EN+TR matching the local style of each
+  file (`t(...)` lookup or inline `lang === 'tr' ? ... : ...`).
+
+  ### (3) Workout/training enhancement — hard-day spacing detector
+
+  New pure-function lib `src/lib/athlete/hardDaySpacing.js` (~210 LOC,
+  30 tests, no UI wiring yet) detects violations of the canonical
+  hard-easy alternation principle in endurance training.
+
+  Hard-session rule: `RPE ≥ 7` OR type matches
+  `/tempo|interval|threshold|vo2|race|sweet.?spot|hard/i` OR intent ∈
+  `{tempo, intervals, race}` OR `Z3+Z4+Z5 zone share > 50%`. Same-day
+  double sessions collapse to one hard day. Violation = consecutive
+  calendar-day hard pair. Compliance computed as
+  `1 - violations / hard_pairs` over a rolling 28d window; bands at
+  60% (poor) and 80% (good).
+
+  Pre-fix the codebase had polarization, monotony/strain, easy-day RPE
+  drift, session variety, workout density, deload cadence, and
+  consecutive-hard-day post-injury patterns — but no PROSPECTIVE
+  compliance metric tracking back-to-back hard sessions over time.
+  Existing detectors caught this either retrospectively (after injury,
+  via `patterns.js`) or at the >3-week aggregate (`workoutDensity.js`).
+
+  Citation: Lambert 1997 (Exerc Immunol Rev — open-window post-exercise
+  immune dip); Foster 1998 (MSSE — overtraining monitoring); Seiler
+  2010 (IJSPP — polarized intensity distribution). Exported as
+  `HARD_DAY_SPACING_CITATION`. Bilingual EN+TR rationale strings.
+
+  UI wiring deferred — a `HardDaySpacingCard.jsx` could surface this
+  alongside `EasyDayCompliance` and `SessionVariety` in a future round.
+
+  ### (4) Pre-existing test-fixture fix (date drift)
+
+  `CoachingInsightsDigest.test.jsx:41` `buildHealthyLog()` anchored
+  week 4 on `isoWeekStart(today)`. On a Monday the helper returned
+  today itself → week 4 spanned `today..today+6` → 5 future entries
+  (including the Sunday Z5 intervals session) fell outside the
+  `staleZones` 28d window `[today-27..today]`. Z5 share dropped from
+  expected ~5.3% to 4.4%, just under the 5% staleness threshold; the
+  "all-green" assertion broke whenever the test ran Mon–Sat.
+
+  Fix: `const w4Start = addDays(today, -6)` so week 4 ends ON `today`
+  regardless of weekday. Window now coincides exactly with the
+  detector's window on every calendar day — will not drift again. The
+  other 70 tests in the file unaffected.
+
+  Verified pre-existing on clean `0946bc7` (v9.64.0) before the sweep
+  by stashing all changes and re-running — the 2 failures persisted.
+  Diagnosed and fixed in isolation.
+
+  ### Files
+
+  - **+5 new files**: `src/lib/athlete/hardDaySpacing.js`,
+    `src/lib/__tests__/athlete/hardDaySpacing.test.js`,
+    `src/lib/__tests__/athlete/_logSport.test.js`,
+    `src/lib/__tests__/athlete/eliteProgramDrills.test.js`,
+    `src/lib/__tests__/sport/sportsRecords.test.js`
+  - **6 modified**: `src/components/ui.jsx`, `MyCoach.jsx`,
+    `Recovery.jsx`, `Dashboard.jsx`,
+    `coachDashboard/SbAthletePanel.jsx`,
+    `__tests__/CoachingInsightsDigest.test.jsx`
+  - `package.json` — 11.64.0 → 11.65.0
+
+  Tests 9853/9853 (+119 net: +89 coverage, +30 hardDaySpacing). Lint +
+  build clean.
+
+---
+
 ## v9.64.0 — 2026-05-11 — Coach plan client-side idempotency
 
   Last of the 4 verified-deferred items from Round 13's audit, sized for

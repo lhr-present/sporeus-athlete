@@ -1,6 +1,7 @@
 // ─── MyCoach.jsx — Athlete-side coach connection (invite accept + status) ─────
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
+import { useFocusTrap } from '../hooks/useFocusTrap.js'
 
 const MONO  = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -67,15 +68,23 @@ export function InviteModal({ inviteCode, userId, onDone }) {
     onDone()
   }, [onDone])
 
+  const panelRef = useRef(null)
+  useFocusTrap(panelRef, { onEscape: decline })
+
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 20000,
-      background: 'rgba(0,0,0,0.85)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '24px',
-      fontFamily: MONO,
-    }}>
-      <div style={{
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Coach invite"
+      style={{
+        position: 'fixed', inset: 0, zIndex: 20000,
+        background: 'rgba(0,0,0,0.85)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '24px',
+        fontFamily: MONO,
+      }}
+    >
+      <div ref={panelRef} style={{
         background: '#111', border: '1px solid #2a2a2a', borderRadius: '8px',
         padding: '36px 32px', width: '100%', maxWidth: '380px', textAlign: 'center',
       }}>

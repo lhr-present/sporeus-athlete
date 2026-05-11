@@ -38,7 +38,13 @@ function isoWeekStart(dateStr) {
 // Cycle through 7-day templates that include recovery, long, steady, tempo, intervals.
 function buildHealthyLog() {
   const today = todayStr()
-  const w4Start = isoWeekStart(today)
+  // v9.65.0 — anchor week 4 to end ON today (not on isoWeekStart) so all 28
+  // fixture days fall inside the staleZones 28d window [today-27..today]
+  // regardless of weekday. Previously w4Start = isoWeekStart(today) drifted
+  // late-week entries (incl. Sun intervals w/ Z5=14) past `today` when today
+  // landed Mon-Sat; the window then dropped enough Z5 dose for share<5% to
+  // mark Z5 STALE and break the all-green path.
+  const w4Start = addDays(today, -6)
   const w1Start = addDays(w4Start, -21)
   const log = []
   // Per-week template (Mon..Sun): recovery, steady, recovery, steady, long, tempo, intervals

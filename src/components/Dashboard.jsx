@@ -831,7 +831,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
               <div style={S.cardTitle}>CADENCE TREND — {cadenceEntries.length} SESSIONS</div>
               <div style={{ ...S.mono, fontSize:'12px', color:'#0064ff', fontWeight:600 }}>{avg} rpm avg</div>
             </div>
-            <svg width={W} height={H} style={{ display:'block', overflow:'visible' }}>
+            <svg role="img" aria-label={lang==='tr' ? `Kadans trendi: ${cadenceEntries.length} antrenman, ortalama ${avg} rpm, ${min}–${max} aralığı` : `Cadence trend: ${cadenceEntries.length} sessions, ${avg} rpm average, ${min}–${max} range`} width={W} height={H} style={{ display:'block', overflow:'visible' }}>
               <polyline points={pts} fill="none" stroke="#0064ff" strokeWidth="1.5" strokeLinejoin="round"/>
               {vals.map((v,i) => {
                 const x = pad + i*(W-2*pad)/Math.max(vals.length-1,1)

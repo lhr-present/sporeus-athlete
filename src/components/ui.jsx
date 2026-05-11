@@ -261,8 +261,16 @@ export const CTLTimeline = memo(function CTLTimeline({ log }) {
   const monthLabels=[]
   points.forEach((p,i)=>{ if(p.dt.slice(8)==='01'||i===0) monthLabels.push({i,label:p.dt.slice(0,7)}) })
 
+  const latestCtl = points[points.length-1]?.ctl ?? 0
+  const firstDate = points[0]?.dt ?? ''
+  const lastDate  = points[points.length-1]?.dt ?? ''
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width:'100%', height:'auto' }}>
+    <svg
+      role="img"
+      aria-label={`CTL fitness timeline from ${firstDate} to ${lastDate}. Latest CTL ${latestCtl}.`}
+      viewBox={`0 0 ${W} ${H}`}
+      style={{ width:'100%', height:'auto' }}
+    >
       {bands.map(b=>(
         <rect key={b.l} x={P.l} y={yS(Math.min(b.hi,maxCTL+20))} width={iW} height={Math.abs(yS(b.lo)-yS(Math.min(b.hi,maxCTL+20)))} fill={b.c}/>
       ))}

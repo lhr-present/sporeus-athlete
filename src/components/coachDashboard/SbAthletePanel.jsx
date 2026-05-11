@@ -117,7 +117,9 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
     // localStorage signature keyed on (coach, athlete, plan shape).
     const signature = planSignature({ coachId, athleteId, planName, planGoal, startDate, weeks, planLevel })
     if (isDuplicatePlanSend(athleteId, signature)) {
-      setSendMsg(lang === 'tr' ? '⚠ Aynı plan az önce gönderildi — tekrar engellendi' : '⚠ Same plan was just sent — duplicate suppressed')
+      const dupMsg = lang === 'tr' ? '⚠ Aynı plan az önce gönderildi — tekrar engellendi' : '⚠ Same plan was just sent — duplicate suppressed'
+      setSendMsg(dupMsg)
+      announce(dupMsg, 'assertive')
       setTimeout(() => setSendMsg(''), 4000)
       return
     }
@@ -134,8 +136,11 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
     })
     if (!error) recordPlanSend(athleteId, signature)
     setSending(false)
-    if (error) setSendMsg(`⚠ ${error.message}`)
-    else {
+    if (error) {
+      const errMsg = `⚠ ${error.message}`
+      setSendMsg(errMsg)
+      announce(lang === 'tr' ? `Plan gönderimi başarısız: ${error.message}` : `Plan send failed: ${error.message}`, 'assertive')
+    } else {
       setSendMsg(`✓ Plan sent to ${athleteName}`)
       setShowForm(false)
       announce(lang === 'tr' ? 'Plan sporcuya gönderildi' : 'Plan sent to athlete', 'polite')
