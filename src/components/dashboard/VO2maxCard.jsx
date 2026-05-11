@@ -1,9 +1,11 @@
-import { useMemo } from 'react'
+import { useContext, useMemo } from 'react'
 import { S } from '../../styles.js'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { findBestVO2maxSession } from '../../lib/sport/vo2max.js'
 import { getVO2maxNorm } from '../../lib/sport/normativeTables.js'
 
 export default function VO2maxCard({ log, profile, dl }) {
+  const { lang } = useContext(LangCtx)
   const result = useMemo(() => {
     if (!dl.vo2max) return null
     return findBestVO2maxSession(log, profile)
@@ -21,8 +23,9 @@ export default function VO2maxCard({ log, profile, dl }) {
 
   if (!dl.vo2max || !result) return (
     <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-      Set your VO2max in your profile or log race results to estimate it.<br />
-      <span style={{ fontSize: '9px' }}>VO2max için profiline değer gir veya yarış sonuçlarını kaydet.</span>
+      {lang === 'tr'
+        ? 'VO2max için profiline değer gir veya yarış sonuçlarını kaydet.'
+        : 'Set your VO2max in your profile or log race results to estimate it.'}
     </div>
   )
 

@@ -1,5 +1,7 @@
 // ─── dashboard/RacePredictionsCard.jsx — Riegel race time predictor ──────────
+import { useContext } from 'react'
 import { S } from '../../styles.js'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { useData } from '../../contexts/DataContext.jsx'
 import { riegel, fmtSec, fmtPace } from '../../lib/formulas.js'
 
@@ -14,17 +16,20 @@ const TARGETS = [
 
 export default function RacePredictionsCard({ dl }) {
   const { profile } = useData()
+  const { lang } = useContext(LangCtx)
 
   if (!dl.predictions) return (
     <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-      Set your FTP or lactate threshold pace in your profile to see race predictions.<br />
-      <span style={{ fontSize: '9px' }}>Yarış tahminleri için profilinde FTP veya eşik temposunu gir.</span>
+      {lang === 'tr'
+        ? 'Yarış tahminleri için profilinde FTP veya eşik temposunu gir.'
+        : 'Set your FTP or lactate threshold pace in your profile to see race predictions.'}
     </div>
   )
   if (!profile.ftp && !profile.ltPace) return (
     <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-      Set your FTP or lactate threshold pace in your profile to see race predictions.<br />
-      <span style={{ fontSize: '9px' }}>Yarış tahminleri için profilinde FTP veya eşik temposunu gir.</span>
+      {lang === 'tr'
+        ? 'Yarış tahminleri için profilinde FTP veya eşik temposunu gir.'
+        : 'Set your FTP or lactate threshold pace in your profile to see race predictions.'}
     </div>
   )
 

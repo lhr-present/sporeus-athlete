@@ -12,8 +12,9 @@ export default function IntensityBalanceCard({ log, isTR }) {
 
   if (!data || data.status === 'insufficient') return (
     <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-      Log sessions with zone data to view intensity balance.<br />
-      <span style={{ fontSize: '9px' }}>Yoğunluk dengesi için bölge verisiyle antrenmanlar kaydet.</span>
+      {isTR
+        ? 'Yoğunluk dengesi için bölge verisiyle antrenmanlar kaydet.'
+        : 'Log sessions with zone data to view intensity balance.'}
     </div>
   )
 

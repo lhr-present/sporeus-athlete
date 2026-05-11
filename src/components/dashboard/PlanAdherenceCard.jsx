@@ -14,7 +14,7 @@ const STATUS_COLOR = {
 }
 
 function PlanAdherenceCard({ plan, planStatus, log }) {
-  const { t, lang: _lang } = useContext(LangCtx)
+  const { t, lang } = useContext(LangCtx)
 
   const summary = useMemo(
     () => computeAdherenceSummary(plan, planStatus, log),
@@ -25,8 +25,9 @@ function PlanAdherenceCard({ plan, planStatus, log }) {
 
   if (!summary) return (
     <div style={{ fontFamily: MONO_FONT, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-      Generate or assign a training plan to track adherence.<br />
-      <span style={{ fontSize: '9px' }}>Plan uyumunu takip etmek için bir antrenman planı oluştur veya ata.</span>
+      {lang === 'tr'
+        ? 'Plan uyumunu takip etmek için bir antrenman planı oluştur veya ata.'
+        : 'Generate or assign a training plan to track adherence.'}
     </div>
   )
 

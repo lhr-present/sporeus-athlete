@@ -50,8 +50,9 @@ export default function ConsistencyDepthCard({ log, isTR }) {
   const n = (log || []).length
   if (n === 0) return (
     <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-      Log sessions consistently to view consistency depth.<br />
-      <span style={{ fontSize: '9px' }}>Tutarlılık derinliği için antrenmanları düzenli kaydet.</span>
+      {isTR
+        ? 'Tutarlılık derinliği için antrenmanları düzenli kaydet.'
+        : 'Log sessions consistently to view consistency depth.'}
     </div>
   )
 

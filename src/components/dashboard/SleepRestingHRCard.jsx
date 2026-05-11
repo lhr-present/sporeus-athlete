@@ -119,8 +119,9 @@ function SleepRestingHRCard({ recovery }) {
 
   if (!data) return (
     <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-      Log recovery check-ins with HRV or resting HR to view trends.<br />
-      <span style={{ fontSize: '9px' }}>Eğilimleri görmek için HRV veya dinlenme HR verisiyle iyileşme kaydı gir.</span>
+      {lang === 'tr'
+        ? 'Eğilimleri görmek için HRV veya dinlenme HR verisiyle iyileşme kaydı gir.'
+        : 'Log recovery check-ins with HRV or resting HR to view trends.'}
     </div>
   )
 

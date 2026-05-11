@@ -4,6 +4,59 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.70.0 — 2026-05-12 — Finish the dual-language sweep (v9.69.0 was incomplete)
+
+  User asked "check and confirm them all" after v9.69.0 shipped. A
+  direct `grep -rn "<br />" src/components/dashboard/` revealed 13
+  MORE dashboard cards (14 instances) that the original audit agent
+  missed. v9.69.0 fixed 22; this ship fixes the remaining 14.
+
+  ### Why the first sweep missed these
+
+  The first Explore agent stopped at 22 findings without exhausting
+  the grep — agent reports of "I found N instances" are not the same
+  as "I found all instances." Direct grep is the only reliable
+  enumeration. Lesson re-learned: verify completeness with `grep`,
+  not "agent says done."
+
+  ### Files (13 files, 14 instances)
+
+  Same pattern as v9.69.0: `English text<br /><span small>Turkish</span>`
+  rewritten to gate on the available language variable.
+
+  - `AllZonesCard.jsx` — `isTR` prop already in scope
+  - `BodyCompositionCard.jsx` — **added LangCtx import**
+  - `ConsistencyDepthCard.jsx` — `isTR` prop already in scope
+  - `DurabilityCard.jsx` — `lang` prop already in scope
+  - `IntensityBalanceCard.jsx` — `isTR` prop already in scope
+  - `PerformanceMetrics.jsx` — `lang` already from `useContext(LangCtx)`
+  - `PlanAdherenceCard.jsx` — had `lang: _lang` (unused alias),
+    renamed to `lang`
+  - `PlanScoreCard.jsx` — `lang` already from `useContext(LangCtx)`
+  - `RacePredictionsCard.jsx` — **added LangCtx import**, ×2 instances
+  - `RuleAlertsCard.jsx` — `lang` already from `useLocalStorage`
+  - `SleepRestingHRCard.jsx` — `lang` from `useContext(LangCtx)` (the
+    `isTR` derivation in this file comes *after* the empty-state, so
+    used `lang === 'tr'` instead of moving the derivation)
+  - `VO2maxCard.jsx` — **added LangCtx import**
+
+  ### Verification this time
+
+  Direct `grep -rn "<br />"` on `src/components/dashboard/` and
+  `src/components/` returns zero matches. Direct grep for ungated TR
+  spans (`fontSize: '9px' }}>` followed by Turkish characters not
+  wrapped in `isTR ? / lang ===` / `t(`) returns zero matches.
+
+  Combined effect of v9.69.0 + v9.70.0: **36 dual-language blocks
+  eliminated across 33 dashboard cards.**
+
+  ### Tests
+
+  Full suite: **9869 passed** (unchanged). Lint clean. Build clean
+  (262 entries, 4519 KiB precache).
+
+---
+
 ## v9.69.0 — 2026-05-12 — Stop showing both languages at the same time
 
   User feedback: "never show both languages at the same time, make it

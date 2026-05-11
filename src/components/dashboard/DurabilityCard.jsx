@@ -54,8 +54,9 @@ function DurabilityCard({ log, lang }) {
   const MONO = "'IBM Plex Mono', monospace"
   if (!scores.length) return (
     <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-      Log long sessions with power or pace data to view durability.<br />
-      <span style={{ fontSize: '9px' }}>Dayanıklılık için güç veya hız verisiyle uzun antrenmanlar kaydet.</span>
+      {lang === 'tr'
+        ? 'Dayanıklılık için güç veya hız verisiyle uzun antrenmanlar kaydet.'
+        : 'Log long sessions with power or pace data to view durability.'}
     </div>
   )
 

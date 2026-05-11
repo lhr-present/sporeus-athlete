@@ -35,8 +35,9 @@ export default function AllZonesCard({ profile, log, testResults, isTR }) {
   const hasAny = metrics?.power || metrics?.running || metrics?.hr
   if (!hasAny) return (
     <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-      Log sessions with zone data to view all-zone distribution.<br />
-      <span style={{ fontSize: '9px' }}>Tüm bölge dağılımı için bölge verisiyle antrenmanlar kaydet.</span>
+      {isTR
+        ? 'Tüm bölge dağılımı için bölge verisiyle antrenmanlar kaydet.'
+        : 'Log sessions with zone data to view all-zone distribution.'}
     </div>
   )
 

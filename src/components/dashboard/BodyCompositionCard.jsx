@@ -1,5 +1,7 @@
 // ─── dashboard/BodyCompositionCard.jsx — body fat / BMI / BMR panel ──────────
+import { useContext } from 'react'
 import { S } from '../../styles.js'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { useData } from '../../contexts/DataContext.jsx'
 import { navyBF, mifflinBMR } from '../../lib/formulas.js'
 
@@ -7,11 +9,13 @@ const MONO = "'IBM Plex Mono', monospace"
 
 export default function BodyCompositionCard({ dl }) {
   const { profile } = useData()
+  const { lang } = useContext(LangCtx)
 
   if (!dl.body) return (
     <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-      Log body composition measurements in your profile to view trends.<br />
-      <span style={{ fontSize: '9px' }}>Eğilimleri görmek için profilde vücut kompozisyonu ölçümlerini kaydet.</span>
+      {lang === 'tr'
+        ? 'Eğilimleri görmek için profilde vücut kompozisyonu ölçümlerini kaydet.'
+        : 'Log body composition measurements in your profile to view trends.'}
     </div>
   )
 

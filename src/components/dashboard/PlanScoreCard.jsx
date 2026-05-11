@@ -26,8 +26,9 @@ function PlanScoreCard({ plan, log }) {
   const MONO = "'IBM Plex Mono', monospace"
   if (!result) return (
     <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
-      Generate a training plan to see your plan score.<br />
-      <span style={{ fontSize: '9px' }}>Plan puanını görmek için bir antrenman planı oluştur.</span>
+      {lang === 'tr'
+        ? 'Plan puanını görmek için bir antrenman planı oluştur.'
+        : 'Generate a training plan to see your plan score.'}
     </div>
   )
 
