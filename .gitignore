@@ -16,3 +16,7 @@ tests/e2e/.e2e-users.json
 
 # Weekly audit reports (informational, regenerated weekly by scripts/weekly-audit.sh)
 audit-reports/
+
+# Playwright artifacts (regenerated on every test run)
+playwright-report/
+test-results/
