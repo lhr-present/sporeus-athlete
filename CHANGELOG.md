@@ -14,6 +14,101 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.88.0 — 2026-05-12 — Interval structure breakdown for hard sessions
+
+  Clears one of the larger deferred items from v9.84.0+. The Mission 1
+  TodayView session card now shows a structured warm-up + reps +
+  recovery + cool-down breakdown for known interval workouts —
+  derived from the existing `type` string + duration (no data-model
+  migration required).
+
+  ### What you see
+  For a session with `type: 'Threshold 2x20'` duration 70 min, the
+  card now shows a blue-tinted structure strip:
+
+  > ◇ STRUCTURE
+  > 17 min WU easy + 2×20 min @Z4 threshold (1.5 min recovery) + 11 min CD easy
+  > _estimated structure_
+
+  For "VO2max 5x3" (equal-time recovery per Laursen 2002):
+
+  > ◇ STRUCTURE
+  > 14 min WU easy + 5×3 min @Z5 VO2max (3 min recovery) + 14 min CD easy
+
+  For non-interval sessions (Easy / Long / Recovery / Tempo without
+  NxM), the strip stays hidden — no false claim of structure when
+  the session is a single sustained block.
+
+  ### How it works
+  New module `src/lib/athlete/sessionStructure.js`:
+  - Pure function `deriveSessionStructure(plannedSession)` returns
+    a structured breakdown or `null`
+  - Pattern-matches `NxM` (with optional unit: min / km / m / s)
+    from the type string
+  - Zone-keyword matching: `threshold` → Z4, `vo2max`/`vo2` → Z5,
+    `cruise` → Z4, `intervals` → Z5, `race-pace` → Z4, `tempo` → Z3
+  - Specific qualifiers (`cruise`, `race-pace`) match BEFORE the
+    generic `intervals` so "Cruise intervals 4x10" correctly resolves
+    to Z4 threshold (not Z5 generic intervals)
+  - Unit conversion: minutes used directly; km × 4 ≈ minutes; m ÷ 250
+    ≈ minutes (treadmill heuristic); seconds → fractional minutes
+    with a 10-300s sanity range
+  - Recovery: defaults vary by zone (Z4 threshold = 1.5 min; Z5
+    VO2max = equal-time per rep; race-pace = 2 min)
+  - WU/CD: budgeted from remaining time (after reps + inter-rep
+    recovery), 60/40 split, WU clamped to [10, 20] min
+
+  ### Tests
+  17 new vitest cases in
+  `src/lib/__tests__/athlete/sessionStructure.test.js` covering:
+  - Null/missing input
+  - Non-interval session types (Easy/Long/Recovery/Tempo) returning null
+  - Threshold/VO2max/Race-pace/Intervals/Cruise parsing
+  - Meter-to-minute heuristic (800m → 3 min)
+  - Seconds (strides) and out-of-range rejection
+  - Case-insensitivity (THRESHOLD 2X20)
+  - Reasonable rep-count rejection (0x20, 50x20)
+  - Zero-duration edge case (WU/CD = 0)
+  - Generous-budget WU clamping to 20 min max
+  - Specific-keyword priority over generic (vo2max > vo2, cruise >
+    intervals)
+  - Bilingual label structure
+
+  Total test count moves 9881 → 9898 (+17).
+
+  ### Why this approach
+  The alternative — adding `intervals: [...]` to every session in
+  the plan data model — would require a migration of stored plans,
+  changes to the plan generator, and changes to every fixture.
+  Deriving at render time from text the generator already produces is
+  fully backward-compatible. Cost: estimates are tagged as
+  "estimated structure" because we infer WU/CD lengths from
+  remaining budget rather than reading them from data.
+
+  ### Remaining backlog
+  - Post-session feedback vs targets — cross-reference today's logged
+    entry with the planned session to show "you hit X vs plan Y"
+    deltas. Needs design call on what counts as "on target" since
+    pace/HR are sometimes missing.
+  - Dead-code prune (7 files) — held back per preservation rule;
+    `scripts/weekly-audit.sh:119` explicitly retains cloudSync.js
+    and whiteLabel.js as part of an exclusion list.
+
+  Files: `package.json` (11.88.0), `CHANGELOG.md`,
+  `src/lib/athlete/sessionStructure.js` (new, 110 LOC),
+  `src/lib/__tests__/athlete/sessionStructure.test.js` (new, 17 cases),
+  `src/components/TodayView.jsx` (import + render block).
+
+  Tests 9898/9898, lint clean, build clean, version-sync passes
+  (11.88.0 ↔ v9.88.0).
+
+  Depends on: v9.84.0 (Mission 1 enrichment foundation — this slots
+  into the same Card 1 layout pattern), v9.85.0 (pace/zones strip
+  established the orange-tint info-strip style; STRUCTURE uses
+  the blue-tint variant to differentiate from execution data).
+
+---
+
 ## v9.87.0 — 2026-05-12 — Dashboard tooltip TR pass (sport-science definitions)
 
   Clears another deferred backlog item from v9.82.0. The dashboard

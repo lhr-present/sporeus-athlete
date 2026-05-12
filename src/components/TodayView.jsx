@@ -19,6 +19,7 @@ import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { getRecommendedProtocols } from '../lib/recoveryProtocols.js'
 import { computeNextAction } from '../lib/nextAction.js'
 import { buildContingencyMap } from '../lib/athlete/eliteProgramSubstitutions.js'
+import { deriveSessionStructure } from '../lib/athlete/sessionStructure.js'
 
 const WellnessSparkline = lazy(() => import('./charts/WellnessSparkline.jsx'))
 
@@ -1085,6 +1086,60 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                 {plannedSession.description}
               </p>
             )}
+            {/* v9.88.0 — Session structure breakdown for interval workouts.
+                For sessions like "Threshold 2x20", "VO2max 5x3",
+                "Intervals 6x800m" — surfaces the warm-up + reps +
+                recovery + cool-down split so the athlete can execute
+                without re-deriving the structure mentally. Pattern-matched
+                from the type string + duration; returns null for
+                non-interval sessions (Easy/Long/Tempo without NxM). */}
+            {(() => {
+              const struct = deriveSessionStructure(plannedSession)
+              if (!struct) return null
+              const [wu, rep, cd] = struct.blocks
+              return (
+                <div style={{
+                  fontSize: '10px', color: '#aaa',
+                  padding: '8px 10px', marginBottom: '12px',
+                  background: 'rgba(0,100,255,0.04)', border: '1px solid #0064ff33', borderRadius: '4px',
+                  fontFamily: MONO, lineHeight: 1.5,
+                }}>
+                  <div style={{ color: '#666', fontSize: '9px', letterSpacing: '0.08em', marginBottom: '4px' }}>
+                    {lang === 'tr' ? '◇ YAPI' : '◇ STRUCTURE'}
+                  </div>
+                  <div>
+                    <span style={{ color: '#ccc' }}>{wu.durationMin}{lang === 'tr' ? ' dk ' : 'min '}</span>
+                    <span style={{ color: '#666' }}>{wu.label[lang] || wu.label.en}</span>
+                    <span style={{ color: '#444' }}>{' + '}</span>
+                    <span style={{ color: '#0064ff', fontWeight: 700 }}>
+                      {rep.count}×{rep.durationMin}{lang === 'tr' ? ' dk' : 'min'}
+                    </span>
+                    <span style={{ color: '#666' }}> @{rep.zone} {rep.label[lang] || rep.label.en}</span>
+                    {rep.recoveryMin > 0 && (
+                      <span style={{ color: '#666' }}>
+                        {' ('}
+                        <span style={{ color: '#888' }}>
+                          {rep.recoveryMin}{lang === 'tr' ? ' dk toparlanma' : 'min recovery'}
+                        </span>
+                        {')'}
+                      </span>
+                    )}
+                    {cd.durationMin > 0 && (
+                      <>
+                        <span style={{ color: '#444' }}>{' + '}</span>
+                        <span style={{ color: '#ccc' }}>{cd.durationMin}{lang === 'tr' ? ' dk ' : 'min '}</span>
+                        <span style={{ color: '#666' }}>{cd.label[lang] || cd.label.en}</span>
+                      </>
+                    )}
+                  </div>
+                  {struct.estimate && (
+                    <div style={{ color: '#444', fontSize: '8px', marginTop: '3px', letterSpacing: '0.04em' }}>
+                      {lang === 'tr' ? 'tahmini yapı' : 'estimated structure'}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
             {/* v9.85.0 — Fueling guidance for long sessions. Activates at the
                 90-minute mark (Burke 2017: glycogen depletion becomes
                 performance-limiting beyond ~75-90 min at moderate+ intensity).
