@@ -40,6 +40,7 @@ import TrainingAgeCard from './profile/TrainingAgeCard.jsx'
 import ReferralCard from './profile/ReferralCard.jsx'
 import AdminCodeGenerator from './profile/AdminCodeGenerator.jsx'
 import DataPrivacySettings from './profile/DataPrivacySettings.jsx'
+import ConfirmModal from './ui/ConfirmModal.jsx'
 
 export default function Profile({ log, authUser }) {
   const { t, lang } = useContext(LangCtx)
@@ -47,6 +48,11 @@ export default function Profile({ log, authUser }) {
   const [local, setLocal] = useState(profile)
   const [status, setStatus] = useState(null)
   const [coachMode, setCoachMode] = useLocalStorage('sporeus-coach-mode', false)
+
+  // v9.83.0 — confirm modals (replacing window.confirm) for destructive actions
+  const [confirmResetOpen, setConfirmResetOpen]           = useState(false)
+  const [confirmGdprDeleteOpen, setConfirmGdprDeleteOpen] = useState(false)
+  const [confirmWithdrawOpen, setConfirmWithdrawOpen]     = useState(false)
 
   const isTR = lang === 'tr'
   const metrics = useMemo(
@@ -106,10 +112,13 @@ export default function Profile({ log, authUser }) {
   }
 
   const handleReset = () => {
-    if (confirm(t('confirmDeleteAll'))) {
-      Object.keys(localStorage).filter(k=>k.startsWith('sporeus')).forEach(k=>localStorage.removeItem(k))
-      window.location.reload()
-    }
+    setConfirmResetOpen(true)
+  }
+
+  const doReset = () => {
+    Object.keys(localStorage).filter(k=>k.startsWith('sporeus')).forEach(k=>localStorage.removeItem(k))
+    setConfirmResetOpen(false)
+    window.location.reload()
   }
 
   const [_gdprStatus, setGdprStatus] = useState(null)
@@ -133,8 +142,12 @@ export default function Profile({ log, authUser }) {
     setTimeout(() => setGdprStatus(null), 3000)
   }
 
-  const _handleGdprDelete = async () => {
-    if (!confirm(t('confirmDeleteAllGdpr'))) return
+  const _handleGdprDelete = () => {
+    setConfirmGdprDeleteOpen(true)
+  }
+
+  const doGdprDelete = async () => {
+    setConfirmGdprDeleteOpen(false)
     if (!authUser?.id) { alert(t('signInRequired')); return }
     setGdprStatus('deleting')
     try {
@@ -455,12 +468,7 @@ export default function Profile({ log, authUser }) {
               {/* Withdraw consent */}
               {hasCurrentConsent() && (
                 <button
-                  onClick={() => {
-                    if (window.confirm('Withdraw KVKK/GDPR consent? The app will reload and ask for consent again before you can use it.')) {
-                      withdrawConsent()
-                      window.location.reload()
-                    }
-                  }}
+                  onClick={() => setConfirmWithdrawOpen(true)}
                   style={{ ...S.mono, fontSize:'10px', color:'#ff4444', background:'transparent', border:'1px solid #ff444440', borderRadius:'3px', padding:'4px 10px', cursor:'pointer', marginBottom:'10px' }}
                 >
                   Withdraw consent
@@ -690,6 +698,44 @@ export default function Profile({ log, authUser }) {
           </div>
         )
       })()}
+
+      {/* v9.83.0 — destructive-action confirm modals */}
+      <ConfirmModal
+        open={confirmResetOpen}
+        title={isTR ? 'Tüm verileri sil' : 'Delete all data'}
+        body={t('confirmDeleteAll')}
+        confirmLabel={isTR ? 'Sil' : 'Delete'}
+        cancelLabel={isTR ? 'İptal' : 'Cancel'}
+        dangerous
+        onConfirm={doReset}
+        onCancel={() => setConfirmResetOpen(false)}
+      />
+      <ConfirmModal
+        open={confirmGdprDeleteOpen}
+        title={isTR ? 'Tüm Sporeus verini sil' : 'Delete all Sporeus data'}
+        body={t('confirmDeleteAllGdpr')}
+        confirmLabel={isTR ? 'Kalıcı olarak sil' : 'Delete permanently'}
+        cancelLabel={isTR ? 'İptal' : 'Cancel'}
+        dangerous
+        onConfirm={doGdprDelete}
+        onCancel={() => setConfirmGdprDeleteOpen(false)}
+      />
+      <ConfirmModal
+        open={confirmWithdrawOpen}
+        title={isTR ? 'KVKK/GDPR onayını geri al' : 'Withdraw KVKK/GDPR consent'}
+        body={isTR
+          ? 'Uygulamayı kullanmaya devam edebilmek için yeniden onay vermen gerekecek. Sayfa yeniden yüklenecek.'
+          : 'The app will reload and ask for consent again before you can use it.'}
+        confirmLabel={isTR ? 'Onayı geri al' : 'Withdraw'}
+        cancelLabel={isTR ? 'İptal' : 'Cancel'}
+        dangerous
+        onConfirm={() => {
+          setConfirmWithdrawOpen(false)
+          withdrawConsent()
+          window.location.reload()
+        }}
+        onCancel={() => setConfirmWithdrawOpen(false)}
+      />
     </div>
   )
 }

@@ -115,26 +115,24 @@ describe('EliteProgramCard — plan mode', () => {
   })
 
   it('reset button switches back to form mode after confirm', () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderCard()
     fillFormAndSubmit()
     expect(screen.queryByLabelText(/Current PR time/i)).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /Reset program/i }))
-    expect(confirmSpy).toHaveBeenCalled()
+    // ConfirmModal opens; click the modal's "Reset" confirm button
+    fireEvent.click(screen.getByRole('button', { name: /^Reset$/ }))
     expect(screen.getByLabelText(/Current PR time/i)).toBeInTheDocument()
-    confirmSpy.mockRestore()
   })
 
   it('reset button preserves plan when confirm is cancelled', () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
     renderCard()
     fillFormAndSubmit()
     expect(screen.queryByLabelText(/Current PR time/i)).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /Reset program/i }))
-    expect(confirmSpy).toHaveBeenCalled()
+    // ConfirmModal opens; click its Cancel button
+    fireEvent.click(screen.getByRole('button', { name: /^Cancel$/ }))
     expect(screen.queryByLabelText(/Current PR time/i)).toBeNull()
     expect(screen.getByRole('button', { name: /Reset program/i })).toBeInTheDocument()
-    confirmSpy.mockRestore()
   })
 
   it('renders EXPORT CSV button in plan mode (bilingual)', () => {
@@ -175,15 +173,14 @@ describe('EliteProgramCard — plan mode', () => {
       weeks: [{ targetTSS: 250 }, { targetTSS: 300 }],
       model: 'traditional',
     }))
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
     renderCard()
     fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
     const btn = screen.getByRole('button', { name: /Apply program to yearly calendar/i })
     fireEvent.click(btn)
-    expect(confirmSpy).toHaveBeenCalled()
+    // ConfirmModal opens; cancel to verify plan is preserved
+    fireEvent.click(screen.getByRole('button', { name: /^Cancel$/ }))
     const parsed = JSON.parse(localStorage.getItem('sporeus-yearly-plan'))
     expect(parsed.weeks).toHaveLength(2)
-    confirmSpy.mockRestore()
   })
 
   it('renders current → target metric row', () => {
@@ -284,14 +281,13 @@ describe('EliteProgramCard — v8.91.0 personalization & rejection surface', () 
   })
 
   it('clears sporeus-eliteProgramStart on reset', () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderCard()
     fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
     expect(JSON.parse(localStorage.getItem('sporeus-eliteProgramStart'))).toBe('2026-05-07')
     fireEvent.click(screen.getByRole('button', { name: /Reset program/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^Reset$/ }))
     // useLocalStorage serializes null as the string "null"
     expect(JSON.parse(localStorage.getItem('sporeus-eliteProgramStart'))).toBeNull()
-    confirmSpy.mockRestore()
   })
 
   it('passes profile.weeklyHours and trainingDays through to the orchestrator input', () => {
@@ -566,7 +562,6 @@ describe('EliteProgramCard — v8.94.0 sport-specific form modes', () => {
   })
 
   it('bike FTP-DIRECT form payload persists across remount', () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     const { unmount } = renderCard()
     fireEvent.click(screen.getByRole('button', { name: 'BIKE' }))
     fireEvent.click(screen.getByLabelText(/FTP direct watts entry/i))
@@ -581,7 +576,6 @@ describe('EliteProgramCard — v8.94.0 sport-specific form modes', () => {
     expect(stored.form.currentWatts).toBe('245')
     expect(stored.form.targetWatts).toBe('275')
     unmount()
-    confirmSpy.mockRestore()
   })
 
   // ── Swim: Wakayoshi 2-TT toggle ────────────────────────────────────────────
@@ -905,19 +899,18 @@ describe('EliteProgramCard — v8.96.0 general-user toggles', () => {
   })
 
   it('reset clears toggles back to default unchecked state', () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderCard()
     fireEvent.click(screen.getByLabelText(/General build mode \(auto target\)/i))
     fireEvent.click(screen.getByLabelText(/General build mode \(no event\)/i))
     fireEvent.change(screen.getByLabelText(/Current PR time/i), { target: { value: '50:00' } })
     fireEvent.click(screen.getByRole('button', { name: /GENERATE/i }))
     fireEvent.click(screen.getByRole('button', { name: /Reset program/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^Reset$/ }))
     // Form mode again
     const cbTarget = screen.getByLabelText(/General build mode \(auto target\)/i)
     const cbRace = screen.getByLabelText(/General build mode \(no event\)/i)
     expect(cbTarget.checked).toBe(false)
     expect(cbRace.checked).toBe(false)
-    confirmSpy.mockRestore()
   })
 
   it('toggle persists across remount via form payload', () => {
@@ -1296,29 +1289,27 @@ describe('EliteProgramCard — v8.99.0 RE-PROJECT button', () => {
   })
 
   it('RE-PROJECT click confirms and pre-fills form with adjusted race date', () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     const log = seedPlanModeBehind()
     renderCard({ log })
     const btn = document.querySelector('[data-reproject-btn]')
     expect(btn).not.toBeNull()
     fireEvent.click(btn)
-    expect(confirmSpy).toHaveBeenCalled()
+    // ConfirmModal opens; click its "Pre-fill" confirm button
+    fireEvent.click(screen.getByRole('button', { name: /^Pre-fill$/ }))
     expect(screen.getByLabelText(/Current PR time/i)).toBeInTheDocument()
     const dateInput = screen.getByLabelText(/Race date/i)
     expect(dateInput.value).toBe('2026-10-04')
-    confirmSpy.mockRestore()
   })
 
   it('RE-PROJECT click cancellation preserves the existing plan', () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
     const log = seedPlanModeBehind()
     renderCard({ log })
     const btn = document.querySelector('[data-reproject-btn]')
     expect(btn).not.toBeNull()
     fireEvent.click(btn)
-    expect(confirmSpy).toHaveBeenCalled()
+    // ConfirmModal opens; click its Cancel button
+    fireEvent.click(screen.getByRole('button', { name: /^Cancel$/ }))
     expect(screen.queryByLabelText(/Current PR time/i)).toBeNull()
-    confirmSpy.mockRestore()
   })
 })
 

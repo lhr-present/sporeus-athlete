@@ -5,6 +5,7 @@ import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { FREE_ATHLETE_LIMIT } from '../lib/formulas.js'
 import { generateAthleteReportCard } from '../lib/digestEmail.js'
 import ErrorBoundary from './ErrorBoundary.jsx'
+import ConfirmModal from './ui/ConfirmModal.jsx'
 
 // v8.101.0 — coach-side ingestion of athlete SHARE WITH COACH envelope.
 const CoachAthleteProgramCard = lazy(() => import('./coach/CoachAthleteProgramCard.jsx'))
@@ -59,6 +60,8 @@ export default function CoachDashboard({ authUser }) {
   const [enduranceAthletes, setEnduranceAthletes] = useState([])
   const [confirmingId, setConfirmingId]           = useState(null)
   const [verifyingId, setVerifyingId]             = useState(null)
+  const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false)
+  const [pendingRemoveId, setPendingRemoveId]     = useState(null)
 
   useEffect(() => {
     if (!sbCoachId || !isSupabaseReady()) return
@@ -192,9 +195,18 @@ export default function CoachDashboard({ authUser }) {
   }
 
   function handleRemove(id) {
-    if (!window.confirm('Remove this athlete?')) return
-    setRoster(prev => prev.filter(a => a.id !== id))
-    if (expanded === id) setExpanded(null)
+    setPendingRemoveId(id)
+    setConfirmRemoveOpen(true)
+  }
+
+  function doRemove() {
+    const id = pendingRemoveId
+    if (id != null) {
+      setRoster(prev => prev.filter(a => a.id !== id))
+      if (expanded === id) setExpanded(null)
+    }
+    setConfirmRemoveOpen(false)
+    setPendingRemoveId(null)
   }
 
   function handleUpdateAthlete(updated) {
@@ -591,6 +603,17 @@ export default function CoachDashboard({ authUser }) {
           onCancel={() => { setShowGating(false); setPendingAthlete(null) }}
         />
       )}
+
+      <ConfirmModal
+        open={confirmRemoveOpen}
+        title="Remove athlete?"
+        body="This cannot be undone."
+        confirmLabel="Remove"
+        cancelLabel="Cancel"
+        dangerous
+        onConfirm={doRemove}
+        onCancel={() => { setConfirmRemoveOpen(false); setPendingRemoveId(null) }}
+      />
     </div>
   )
 }

@@ -9,6 +9,7 @@ import PowerCurve from './PowerCurve.jsx'
 import VO2maxCard from './VO2maxCard.jsx'
 import ErrorBoundary from './ErrorBoundary.jsx'
 import RESTQScreen from './RESTQScreen.jsx'
+import ConfirmModal from './ui/ConfirmModal.jsx'
 
 import WPrimeChart from './protocols/WPrimeChart.jsx'
 import LactateEstimator from './protocols/LactateEstimator.jsx'
@@ -58,6 +59,10 @@ export default function TestProtocols() {
 
   // CP test save state
   const [cpSaved, setCpSaved] = useState(false)
+  // CP-as-FTP confirm modal state
+  const [ftpConfirmOpen, setFtpConfirmOpen]   = useState(false)
+  const [pendingFtpVals, setPendingFtpVals]   = useState(null)  // { cp, wPrime }
+  const isTR = lang === 'tr'
 
   // History for the currently active test, sorted chronologically
   const activeHistory = useMemo(() =>
@@ -186,6 +191,18 @@ export default function TestProtocols() {
       setWPrimeStats({ np, minW, exhausted: exhaustIdx >= 0, exhaustSec: exhaustIdx, tAbove, tBelow, cp, wCap, totalSec: powers.length })
       setResult(null)
     }
+  }
+
+  function doSetFtp() {
+    if (pendingFtpVals) {
+      const { cp, wPrime } = pendingFtpVals
+      const ftpVal = parseInt(cp)
+      const zones = powerZones(ftpVal)
+      setProfile(prev => ({ ...prev, ftp: ftpVal, cp: ftpVal, wPrime: parseInt(wPrime), powerZones: zones }))
+      setCpSaved(true)
+    }
+    setFtpConfirmOpen(false)
+    setPendingFtpVals(null)
   }
 
   const activeTest = TESTS.find(x=>x.id===active)
@@ -412,11 +429,8 @@ export default function TestProtocols() {
                 setCpSaved(true)
               }
               const useFTP = () => {
-                if (!window.confirm(`Set FTP = ${cp}W (CP)? This replaces your current FTP.`)) return
-                const ftpVal = parseInt(cp)
-                const zones = powerZones(ftpVal)
-                setProfile(prev => ({ ...prev, ftp: ftpVal, cp: ftpVal, wPrime: parseInt(wPrime), powerZones: zones }))
-                setCpSaved(true)
+                setPendingFtpVals({ cp, wPrime })
+                setFtpConfirmOpen(true)
               }
               return (
                 <div key={i} style={{ display:'flex', gap:'8px', marginTop:'12px', flexWrap:'wrap' }}>
@@ -523,6 +537,20 @@ export default function TestProtocols() {
 
       {/* ─ Progress comparison + MDC ─────────────────────────────────────── */}
       <ResultComparison testLog={testLog} mdcPct={MDC_PCT} />
+
+      <ConfirmModal
+        open={ftpConfirmOpen}
+        title={isTR ? 'FTP olarak CP kullanılsın mı?' : 'Use CP as FTP?'}
+        body={pendingFtpVals
+          ? (isTR
+              ? `FTP = ${pendingFtpVals.cp}W (CP) olarak ayarlanacak. Bu, profilinizdeki mevcut FTP değerinin yerine geçer.`
+              : `Set FTP = ${pendingFtpVals.cp}W (CP)? This replaces your current FTP.`)
+          : ''}
+        confirmLabel={isTR ? 'Onayla' : 'Set FTP'}
+        cancelLabel={isTR ? 'İptal' : 'Cancel'}
+        onConfirm={doSetFtp}
+        onCancel={() => { setFtpConfirmOpen(false); setPendingFtpVals(null) }}
+      />
     </div>
   )
 }

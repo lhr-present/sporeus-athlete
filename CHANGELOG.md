@@ -14,6 +14,74 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.83.0 — 2026-05-12 — Browser dialog migration to ConfirmModal
+
+  v9.82.0 deferred this as a focused follow-up ship. User said
+  "schedule and run agent right now" — picked it up immediately
+  instead of scheduling.
+
+  Migrates the 9 remaining `window.confirm()` calls to use the
+  existing themed `ConfirmModal` component (already shipped, already
+  used by TrainingLog/PlanTemplatePicker/ReportsTab). Removes the
+  browser-native dialog (blocking, unstyled, breaks Bloomberg-terminal
+  aesthetic) from every destructive-action path.
+
+  ### Sites migrated
+  - `CoachDashboard.jsx` — Remove athlete confirm (line ~195)
+  - `Protocols.jsx` — Set FTP from CP test confirm (line ~415).
+    Required hoisting closure state out of `.map` into component-top
+    `ftpConfirmOpen` + `pendingFtpVals`.
+  - `DeviceSync.jsx` — Remove sync device confirm (line ~81)
+  - `Profile.jsx:108-122` — Reset all `sporeus-*` localStorage keys
+    (`confirmResetOpen` / `doReset`)
+  - `Profile.jsx:145-160` — GDPR data delete (`confirmGdprDeleteOpen`
+    / `doGdprDelete`)
+  - `Profile.jsx:459` — Withdraw KVKK/GDPR consent
+    (`confirmWithdrawOpen`)
+  - `EliteProgramCard.jsx:1453-1461` — Reset program
+    (`confirmResetOpen` / `doReset`)
+  - `EliteProgramCard.jsx:1465-1480` — Re-project (separate
+    `confirmReprojectOpen` + dynamic `reprojectMsg` for the
+    reasoning string)
+  - `EliteProgramCard.jsx:1658-1664` — Apply-to-calendar overwrite
+    check. Refactored the post-build write into a
+    `writeYearlyToCalendar(yearly)` helper. No-existing-plan path
+    bypasses the modal (preserves original behavior).
+
+  ### Tests updated
+  - `EliteProgramCard.test.jsx` — 7 tests previously spied on
+    `window.confirm` (deprecated approach). Updated to drive the
+    modal directly via `getByRole('button', { name: /^Reset$/ })` etc.
+
+  ### Properties of ConfirmModal that come for free now
+  - Focus trap (`useFocusTrap` hook, already wired)
+  - Escape closes via `onCancel`
+  - Enter triggers `onConfirm`
+  - Backdrop click closes
+  - Dangerous flag for destructive actions (red styling)
+  - Bilingual labels via the existing `isTR` / `t()` patterns
+  - `role="dialog"` + `aria-modal="true"` + `aria-labelledby`
+  - Auto-focuses Cancel (safer default for destructive flows)
+
+  ### Still TODO (out of scope for this ship)
+  - 6 `alert()` calls remain (strava.js, CoachDashboard 2x,
+    Profile 2x, AthleteDetailPanel). These are notifications not
+    confirmations — they need an `AlertModal` or single-button
+    `ConfirmModal` mode. Separate ship.
+
+  Files: `package.json` (11.83.0), `CHANGELOG.md`,
+  `CoachDashboard.jsx`, `DeviceSync.jsx`, `Profile.jsx`,
+  `Protocols.jsx`, `dashboard/EliteProgramCard.jsx`,
+  `__tests__/EliteProgramCard.test.jsx`.
+
+  Tests 9881/9881 unchanged, lint clean, build clean,
+  version-sync passes (11.83.0 ↔ v9.83.0).
+
+  Depends on: v9.82.0 (deferred this work explicitly; ConfirmModal
+  was already in production, three components already using it).
+
+---
+
 ## v9.82.0 — 2026-05-12 — A11y + Notification TR pass (4-agent audit synthesis)
 
   Launched 4 parallel audit agents (EN-only TR gaps, dead-code,

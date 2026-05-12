@@ -1,6 +1,7 @@
 // ─── DeviceSync.jsx — Open Wearables device management UI (v5.12.0) ──────────
 import { useState, useEffect, useCallback } from 'react'
 import { getDevices, addDevice, removeDevice, triggerSync } from '../lib/deviceSync.js'
+import ConfirmModal from './ui/ConfirmModal.jsx'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -29,6 +30,10 @@ export default function DeviceSync({ userId }) {
   const [form, setForm] = useState({ provider: 'garmin', label: '', baseUrl: '', token: '' })
   const [formErr, setFormErr] = useState('')
   const [adding, setAdding]   = useState(false)
+
+  // Confirm-remove modal state
+  const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false)
+  const [pendingRemoveId, setPendingRemoveId]     = useState(null)
 
   const loadDevices = useCallback(async () => {
     setLoading(true)
@@ -77,10 +82,19 @@ export default function DeviceSync({ userId }) {
     loadDevices()
   }
 
-  async function handleRemove(deviceId) {
-    if (!confirm('Remove this device? Existing synced data is kept.')) return
-    await removeDevice(deviceId)
-    loadDevices()
+  function handleRemove(deviceId) {
+    setPendingRemoveId(deviceId)
+    setConfirmRemoveOpen(true)
+  }
+
+  async function doRemove() {
+    const id = pendingRemoveId
+    setConfirmRemoveOpen(false)
+    setPendingRemoveId(null)
+    if (id != null) {
+      await removeDevice(id)
+      loadDevices()
+    }
   }
 
   function fmtDate(iso) {
@@ -191,6 +205,17 @@ export default function DeviceSync({ userId }) {
           ))}
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmRemoveOpen}
+        title="Remove device?"
+        body="Existing synced data is kept."
+        confirmLabel="Remove"
+        cancelLabel="Cancel"
+        dangerous
+        onConfirm={doRemove}
+        onCancel={() => { setConfirmRemoveOpen(false); setPendingRemoveId(null) }}
+      />
     </div>
   )
 }

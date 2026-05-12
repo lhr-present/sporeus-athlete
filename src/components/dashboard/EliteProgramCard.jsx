@@ -29,6 +29,7 @@ import { getPlanLifecycle } from '../../lib/athlete/planLifecycle.js'
 import { buildPlanAdherence, buildReprojectionSuggestion } from '../../lib/athlete/planAdherence.js'
 import { buildLogEntryFromSession } from '../../lib/athlete/quickLogFromSession.js'
 import { getReference } from '../../lib/sport/sportsRecords.js'
+import ConfirmModal from '../ui/ConfirmModal.jsx'
 
 const STORAGE_KEY = 'sporeus-eliteProgram'
 const START_KEY = 'sporeus-eliteProgramStart'
@@ -1332,6 +1333,13 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
   const [programStart, setStart] = useLocalStorage(START_KEY, null)
   const [yearlyPlanLs] = useLocalStorage(YEARLY_PLAN_KEY, null)
 
+  // v9.83.0 — confirm modal state replacing window.confirm() calls
+  const [confirmResetOpen, setConfirmResetOpen]             = useState(false)
+  const [confirmReprojectOpen, setConfirmReprojectOpen]     = useState(false)
+  const [reprojectMsg, setReprojectMsg]                     = useState('')
+  const [confirmOverwriteOpen, setConfirmOverwriteOpen]     = useState(false)
+  const [pendingYearly, setPendingYearly]                   = useState(null)
+
   // Derive personalization signal from caller-supplied log+profile so the
   // orchestrator does not silently default everyone to currentCTL=50.
   const derivedProfile = useMemo(() => {
@@ -1451,12 +1459,11 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
   }
 
   function handleReset() {
-    const msg = isTR
-      ? 'Programı sıfırlamak istediğinden emin misin?'
-      : 'Are you sure you want to reset this program?'
-    const ok = (typeof window !== 'undefined' && typeof window.confirm === 'function')
-      ? window.confirm(msg) : true
-    if (!ok) return
+    setConfirmResetOpen(true)
+  }
+
+  function doReset() {
+    setConfirmResetOpen(false)
     setPersisted(null)
     setStart(null)
   }
@@ -1464,12 +1471,15 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
   function handleReproject() {
     if (!reprojection || !reprojection.reliable || !persisted?.input) return
     const reasoning = reprojection.reasoning?.[isTR ? 'tr' : 'en'] || ''
-    const prompt = isTR
+    setReprojectMsg(isTR
       ? `Önerilen ayarlama:\n\n${reasoning}\n\nFormu yeni değerlerle önceden doldurmak istiyor musun? (Mevcut planı yeniden oluşturman gerekecek.)`
-      : `Suggested adjustment:\n\n${reasoning}\n\nPre-fill the form with the new values? (You'll need to regenerate the plan.)`
-    const ok = (typeof window !== 'undefined' && typeof window.confirm === 'function')
-      ? window.confirm(prompt) : true
-    if (!ok) return
+      : `Suggested adjustment:\n\n${reasoning}\n\nPre-fill the form with the new values? (You'll need to regenerate the plan.)`)
+    setConfirmReprojectOpen(true)
+  }
+
+  function doReproject() {
+    setConfirmReprojectOpen(false)
+    if (!reprojection || !reprojection.reliable || !persisted?.input) return
 
     // Build adjusted form payload mirroring FormMode.savePersistedForm shape.
     const inp = persisted.input
@@ -1656,13 +1666,15 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
       } catch { hasExisting = false }
     }
     if (hasExisting) {
-      const msg = isTR
-        ? 'Mevcut yıllık planın üzerine yazılacak. Devam edilsin mi?'
-        : 'This will overwrite your existing yearly plan. Continue?'
-      const ok = (typeof window.confirm === 'function') ? window.confirm(msg) : true
-      if (!ok) return
+      setPendingYearly(yearly)
+      setConfirmOverwriteOpen(true)
+      return
     }
+    writeYearlyToCalendar(yearly)
+  }
 
+  function writeYearlyToCalendar(yearly) {
+    if (!yearly || typeof window === 'undefined' || !window.localStorage) return
     try {
       window.localStorage.setItem(YEARLY_PLAN_KEY, JSON.stringify({
         weeks: yearly.weeks,
@@ -1677,6 +1689,13 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
     announce(isTR
       ? 'Plan takvime uygulandı. Görüntülemek için Plan sekmesini aç'
       : 'Plan applied to calendar. Open the Plan tab to view')
+  }
+
+  function doOverwriteYearly() {
+    const y = pendingYearly
+    setConfirmOverwriteOpen(false)
+    setPendingYearly(null)
+    if (y) writeYearlyToCalendar(y)
   }
 
   const accent = BAND_COLOR[result.feasibility.band] || '#0064ff'
@@ -1898,6 +1917,41 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
         </div>
       ) : null}
       {result.citation ? <div style={{ ...S.mono, fontSize: '9px', color: '#555', marginTop: '4px' }}>{result.citation}</div> : null}
+
+      {/* v9.83.0 — confirm modals replacing window.confirm() */}
+      <ConfirmModal
+        open={confirmResetOpen}
+        title={isTR ? 'Programı sıfırla' : 'Reset program'}
+        body={isTR
+          ? 'Programı sıfırlamak istediğinden emin misin?'
+          : 'Are you sure you want to reset this program?'}
+        confirmLabel={isTR ? 'Sıfırla' : 'Reset'}
+        cancelLabel={isTR ? 'İptal' : 'Cancel'}
+        dangerous
+        onConfirm={doReset}
+        onCancel={() => setConfirmResetOpen(false)}
+      />
+      <ConfirmModal
+        open={confirmReprojectOpen}
+        title={isTR ? 'Formu yeniden doldur' : 'Re-project plan'}
+        body={reprojectMsg}
+        confirmLabel={isTR ? 'Doldur' : 'Pre-fill'}
+        cancelLabel={isTR ? 'İptal' : 'Cancel'}
+        onConfirm={doReproject}
+        onCancel={() => setConfirmReprojectOpen(false)}
+      />
+      <ConfirmModal
+        open={confirmOverwriteOpen}
+        title={isTR ? 'Yıllık planın üzerine yaz' : 'Overwrite yearly plan'}
+        body={isTR
+          ? 'Mevcut yıllık planın üzerine yazılacak. Devam edilsin mi?'
+          : 'This will overwrite your existing yearly plan. Continue?'}
+        confirmLabel={isTR ? 'Üzerine yaz' : 'Overwrite'}
+        cancelLabel={isTR ? 'İptal' : 'Cancel'}
+        dangerous
+        onConfirm={doOverwriteYearly}
+        onCancel={() => { setConfirmOverwriteOpen(false); setPendingYearly(null) }}
+      />
     </div>
   )
 }
