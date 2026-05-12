@@ -12,7 +12,7 @@ function getPlanPreview(data, lang = 'en') {
   const wks   = parseInt(data.weeks) || 12
   const isTR  = lang === 'tr'
   const phaseEN = wks >= 16 ? 'Base Build' : wks >= 8 ? 'Build' : 'Peak/Taper'
-  const phaseTR = wks >= 16 ? 'Baz Yapı' : wks >= 8 ? 'Geliştirme' : 'Zirve/Konik'
+  const phaseTR = wks >= 16 ? 'Temel Yapı' : wks >= 8 ? 'Geliştirme' : 'Zirve/Konik'
   const tssMap = {
     Beginner: 250, Recreational: 320,
     Intermediate: 380, Competitive: 380,
@@ -124,7 +124,7 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
       <div style={{ display:'flex', flexDirection:'column', gap:'8px', marginBottom:'20px' }}>
         {LOGGING_METHODS.map(m=>{
           const LM_TR = {
-            manual:     { label:'Manuel kaydet',    desc:'Antrenmanları elle gir' },
+            manual:     { label:'Elle kaydet',      desc:'Antrenmanları elle gir' },
             strava:     { label:"Strava'ya bağlan", desc:'Aktiviteleri otomatik içe aktar' },
             fit_upload: { label:'FIT dosyası yükle', desc:'Garmin/Wahoo vb.' },
           }
@@ -215,7 +215,7 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
           </div>
         </div>
         <div>
-          <label style={LABEL}>{lang === 'tr' ? 'HAFTALIK ANTRENMAN GÜNÜ (mevcut)' : 'TRAINING DAYS PER WEEK (current)'}</label>
+          <label style={LABEL}>{lang === 'tr' ? 'HAFTALIK ANTRENMAN GÜNLERİ (mevcut)' : 'TRAINING DAYS PER WEEK (current)'}</label>
           <div style={{ display:'flex', gap:'6px' }}>
             {[2,3,4,5,6,7].map(n=>(
               <button key={n} onClick={()=>set('trainDays',n)}
@@ -248,7 +248,7 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
         </div>
         {['Running','Triathlon','Rowing'].includes(data.sport) ? (
           <div>
-            <label style={LABEL}>{lang === 'tr' ? 'EŞİK TEMPO (DD:SS /km)' : 'THRESHOLD PACE (MM:SS /km)'}</label>
+            <label style={LABEL}>{lang === 'tr' ? 'EŞİK TEMPOSU (DD:SS /km)' : 'THRESHOLD PACE (MM:SS /km)'}</label>
             <input style={INPUT} type="text" inputMode="numeric" placeholder="4:45" value={data.ltpace}
               onChange={e=>set('ltpace', autoFormatMmSs(e.target.value))}
               onBlur={e=>set('ltpace', autoFormatMmSs(e.target.value, { padOnBlur: true }))}

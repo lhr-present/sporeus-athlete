@@ -20,7 +20,7 @@ export default function HRVAlertCard({ recovery }) {
   const isAlert      = state.status === 'alert'
   const badgeColor   = isAlert ? '#e03030' : '#f5c542'
   const badgeLabel   = isAlert ? t('hrvAlertAlert') : t('hrvAlertSuppressed')
-  const title        = lang === 'tr' ? '⚠ KLV DÜŞÜŞÜ' : '⚠ HRV ALERT'
+  const title        = lang === 'tr' ? '⚠ HRV UYARISI' : '⚠ HRV ALERT'
   const sigmaLabel   = lang === 'tr'
     ? `temelden ${state.sigma.toFixed(2)}σ aşağıda`
     : `${state.sigma.toFixed(2)}σ below baseline`
@@ -71,7 +71,7 @@ export default function HRVAlertCard({ recovery }) {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           <div style={{ ...S.mono, fontSize: '10px', color: '#555' }}>
-            {lang === 'tr' ? 'Ortalama' : 'Baseline'}: <span style={{ color: 'var(--text)' }}>{state.mean}</span>
+            {lang === 'tr' ? 'Başlangıç' : 'Baseline'}: <span style={{ color: 'var(--text)' }}>{state.mean}</span>
           </div>
           <div style={{ ...S.mono, fontSize: '10px', color: '#555' }}>
             {lang === 'tr' ? 'Bugün' : 'Today'}: <span style={{ color: badgeColor, fontWeight: 700 }}>{state.current}</span>

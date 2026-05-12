@@ -787,7 +787,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
               </div>
               <div style={{ ...S.mono, fontSize: '11px', color: '#888', lineHeight: 1.7 }}>
                 {lang === 'tr'
-                  ? <>İlk antrenmanını kaydet — fitness trendini burada gör. <span style={{ color: '#ff6600' }}>Log</span> sekmesine dokun →</>
+                  ? <>İlk antrenmanını kaydet — kondisyon trendini burada gör. <span style={{ color: '#ff6600' }}>Log</span> sekmesine dokun →</>
                   : <>Log your first session to see your fitness trend here. Tap the <span style={{ color: '#ff6600' }}>Log</span> tab →</>}
               </div>
             </div>

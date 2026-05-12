@@ -31,7 +31,7 @@ export default function EliteMetricsStrip({ profile, log, testResults, isTR, onG
   if (items.length < 2) return (
     <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
       {isTR
-        ? 'Elit metrikleri açmak için profile FTP ve VO2max ekle.'
+        ? 'Elit metrikleri açmak için profiline FTP ve VO2max ekle.'
         : 'Add FTP and VO2max to your profile to unlock elite metrics.'}
     </div>
   )

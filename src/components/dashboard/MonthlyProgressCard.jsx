@@ -17,7 +17,7 @@ export default function MonthlyProgressCard({ log, profile, isTR }) {
   if (!data) return (
     <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
       {isTR
-        ? 'Aylık ilerleme için birden fazla ay antrenman kaydet.'
+        ? 'Aylık ilerlemeyi görmek için birden fazla ay boyunca antrenman kaydet.'
         : 'Log sessions across multiple months to view monthly progress.'}
     </div>
   )

@@ -14,6 +14,79 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.80.0 — 2026-05-11 — Turkish translation audit pass
+
+  Careful audit of TR strings introduced during the v9.67→v9.79 push,
+  per user request: "Check all the language, TR is different and ENG in
+  different, be careful about it."
+
+  Found 4 HIGH-impact issues (invented acronyms, semantic mismatches,
+  missing grammatical suffixes) and 7 MED issues (vocabulary drift,
+  word order, tone inconsistency). No swapped ternaries — the
+  structural bilingual gating from v9.69/v9.70/v9.73 held up. This
+  ship corrects the specific surface strings.
+
+  ### HIGH
+  - `HRVAlertCard.jsx`: TR title was "⚠ KLV DÜŞÜŞÜ" — KLV is an
+    invented acronym, not standard TR sport-science vocabulary. HRV
+    is widely recognized in TR coaching contexts; corrected to
+    "⚠ HRV UYARISI" (HRV Warning) to match meaning of "HRV ALERT".
+  - `HRVAlertCard.jsx`: "Ortalama" (Average) used for `Baseline` —
+    semantically wrong. Baseline is a starting reference, not a mean.
+    Corrected to "Başlangıç" (Baseline).
+  - `Onboarding.jsx`: "EŞİK TEMPO" missing genitive-possessive suffix
+    required by Turkish noun-noun construction. Corrected to
+    "EŞİK TEMPOSU" (Threshold's Pace).
+  - `EliteMetricsStrip.jsx`: "profile FTP ve VO2max ekle" missing
+    dative case marker. Corrected to "profiline FTP ve VO2max ekle"
+    (add to your profile).
+
+  ### MED
+  - `Onboarding.jsx`: "Manuel kaydet" → "Elle kaydet" (Manuel is a
+    loanword; native form is "elle" / "by hand"; "elle gir" already
+    used in adjacent desc, now consistent).
+  - `Onboarding.jsx`: "Baz Yapı" → "Temel Yapı" (Baz is informal
+    loanword; Temel is the standard sport-science term for Base).
+  - `Onboarding.jsx`: "HAFTALIK ANTRENMAN GÜNÜ" → "HAFTALIK ANTRENMAN
+    GÜNLERİ" (plural — multiple days per week, not one).
+  - `Dashboard.jsx:790`: "fitness trendini" → "kondisyon trendini"
+    (fitness is loanword; kondisyon is the term used elsewhere in
+    the app's TR surface).
+  - `MonthlyProgressCard.jsx`: word order tightened — "birden fazla
+    ay antrenman kaydet" was missing the temporal connector;
+    corrected to "birden fazla ay boyunca antrenman kaydet"
+    (log training across multiple months).
+  - `StravaConnect.jsx`: TR connector — "Koşu ve bisiklet mesafe..."
+    was a broken noun chain; corrected to "Koşu ve bisiklet
+    aktiviteleri mesafe..." (cycling and running activities sync
+    with distance...).
+  - `Profile.jsx` coach-code section: formal `-iniz` /
+    `-yapmanız` / `-yapabilirsiniz` mixed into otherwise informal
+    `sen`-tone surface. Unified to informal: "girmek için önce giriş
+    yapman gerekir", "geldiysen", "yapabilirsin".
+
+  ### Why
+  TR is the user's native language; he is a published TR sport
+  science author. Vocabulary precision matters more than EN parity.
+  These fixes were caught by a careful re-read after agent-driven
+  translation passes — agents got the structure right but missed the
+  domain-specific vocabulary norms.
+
+  Files: `package.json` (11.80.0), `CHANGELOG.md`,
+  `src/components/dashboard/HRVAlertCard.jsx`,
+  `src/components/dashboard/EliteMetricsStrip.jsx`,
+  `src/components/dashboard/MonthlyProgressCard.jsx`,
+  `src/components/Onboarding.jsx`, `src/components/Dashboard.jsx`,
+  `src/components/Profile.jsx`,
+  `src/components/profile/StravaConnect.jsx`.
+
+  Depends on: v9.69.0 (dual-language elimination — these strings only
+  exist because that ship eliminated the EN/TR concatenation pattern),
+  v9.75.0 (full Onboarding TR pass — most fixed surfaces are from
+  that ship), v9.79.0 (version-sync CI now blocks pkg/CHANGELOG drift).
+
+---
+
 ## v9.79.0 — 2026-05-12 — Formalize the two-version system
 
   Deep dive #3 confirmed the `package.json` (`11.X.Y`) vs `CHANGELOG.md`

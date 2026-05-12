@@ -264,11 +264,11 @@ export default function Profile({ log, authUser }) {
             </div>
             <div style={{ fontSize:12, color:'var(--sub)', lineHeight:1.6, marginBottom:10 }}>
               {isTR
-                ? 'Antrenör kodunu (SP-XXXXXXXX) girmek için önce giriş yapmanız gerekir. Davet bağlantısıyla geldiyseniz kaydolduktan sonra otomatik bağlanacaksınız.'
+                ? 'Antrenör kodunu (SP-XXXXXXXX) girmek için önce giriş yapman gerekir. Davet bağlantısıyla geldiysen kaydolduktan sonra otomatik bağlanacaksın.'
                 : 'Sign in to enter your coach code (SP-XXXXXXXX). If you arrived via an invite link, the connection will complete automatically after auth.'}
             </div>
             <div style={{ fontSize:10, color:'var(--muted)' }}>
-              {isTR ? 'Üst köşedeki kullanıcı ikonundan giriş yapabilirsiniz.' : 'Use the user icon in the top-right to sign in.'}
+              {isTR ? 'Üst köşedeki kullanıcı ikonundan giriş yapabilirsin.' : 'Use the user icon in the top-right to sign in.'}
             </div>
           </div>
         )

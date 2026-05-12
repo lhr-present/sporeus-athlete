@@ -199,7 +199,7 @@ export default function StravaConnect({ userId }) {
         <>
           <div style={{ ...S.mono, fontSize: '11px', color: '#888', marginBottom: '12px', lineHeight: 1.7 }}>
             {lang === 'tr'
-              ? <>Aktiviteleri otomatik içe aktarmak için Strava hesabını bağla. Koşu ve bisiklet mesafe, KA verisi ve tahmini TSS ile senkronize olur.<br/>Sadece aktivite verini okur — adına asla paylaşım yapmaz.</>
+              ? <>Aktiviteleri otomatik içe aktarmak için Strava hesabını bağla. Koşu ve bisiklet aktiviteleri mesafe, KA verisi ve tahmini TSS ile senkronize olur.<br/>Sadece aktivite verini okur — adına asla paylaşım yapmaz.</>
               : <>Connect your Strava account to automatically import activities. Runs and rides sync with distance, HR data, and estimated TSS.<br/>Only reads your activity data — never posts on your behalf.</>}
           </div>
           <button style={{ ...S.btn, background: '#fc4c02', borderColor: '#fc4c02' }} onClick={initiateStravaOAuth}>
