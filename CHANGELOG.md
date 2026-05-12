@@ -14,6 +14,77 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.85.0 — 2026-05-12 — Mission 1 follow-ups (race-week, fueling, tomorrow)
+
+  User direction: "check and continue to complete them all" —
+  clearing the v9.84.0 deferred backlog. Three of the deferred
+  items shipped here as continued TodayView session-card enrichments.
+  Same additive-render shape as v9.84.0 (zero structural change).
+
+  ### Race-week alignment flag
+  Calendar-based safety warning. When the athlete is inside a 7-day
+  race-week window (`raceCountdown.days <= 7`) AND today's planned
+  session is hard (RPE ≥7 OR threshold/VO2/tempo/intervals in the
+  type string), surface an orange alert:
+
+  > ⚠ RACE IN Nd — TAPER CONFLICT
+  > Today's hard session may compromise your taper. Downgrade
+  > to easy or halve the duration.
+  > Bosquet 2007 (meta-analysis: 2-week taper, intensity preserved,
+  > volume −41%)
+
+  This is independent of the existing HRV/TSB-driven
+  `sessionSwapFlag` (which fires on subjective/objective fatigue).
+  Race-week is calendar-driven; the two can both fire. Reuses the
+  isHardToday memo (extracted from sessionSwapFlag's internal
+  detector so they agree on what counts as "hard").
+
+  ### Fueling guidance
+  Surfaces when today's planned session ≥90 min running (or ≥75 min
+  cycling — carb-burn rate is higher per minute on the bike).
+  Sport detection: `profile.primarySport` OR session type containing
+  `bike|cycl|ride`. Two-tier message: 30-60g CHO/hr for moderate
+  length, 60-90g CHO/hr beyond 150 min (matches Burke 2017 +
+  Jeukendrup 2014 multiple-transportable-CHO findings).
+
+  Renders bilingual; cites the source under the card so the athlete
+  can audit the recommendation.
+
+  ### Tomorrow preview
+  One compact line at the bottom of Card 1 (above the contingency
+  guide), separated by a dashed top-border. Reads tomorrow's
+  planned session via `getTodayPlannedSession(plan, tomorrowISO)`
+  and shows: `TOMORROW · {type} · {duration} min · RPE {n}`.
+
+  Tells the athlete what's coming so they can: prep their intervals
+  workout track, charge their HR strap, eat carbs the night before a
+  long ride, set an earlier alarm. Conditional — only renders if
+  tomorrow has a non-rest plan; otherwise stays silent (no clutter
+  on rest-day eves).
+
+  ### Still on the backlog (deferred from v9.84.0)
+  - Interval structure breakdown (needs `intervals[]` data-model
+    extension)
+  - Post-session feedback vs targets (cross-ref log+plan)
+  - 6 alert() calls → AlertModal/single-button ConfirmModal mode
+    (next ship — v9.86.0)
+  - Dead-code prune (held back per preservation rule + weekly-audit
+    exclusion list)
+  - Dashboard hover-tooltip TR pass
+
+  Files: `package.json` (11.85.0), `CHANGELOG.md`,
+  `src/components/TodayView.jsx` (~80 lines added: hooks for
+  tomorrowSession + isHardToday memo; race-week alert block;
+  fueling guidance block; tomorrow preview line).
+
+  Tests 9881/9881 unchanged, lint clean, build clean,
+  version-sync passes (11.85.0 ↔ v9.85.0).
+
+  Depends on: v9.84.0 (Mission 1 enrichment foundation — these
+  three additions slot into the same Card 1 layout).
+
+---
+
 ## v9.84.0 — 2026-05-12 — Mission 1 clarity pass (TodayView session card)
 
   User direction: "check and continue for enhancements generally,

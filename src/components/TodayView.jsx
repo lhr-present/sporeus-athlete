@@ -87,6 +87,25 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
   const todayKey       = plannedSession ? `${plannedSession.weekIdx}-${plannedSession.dayIdx}` : null
   const todayStatus    = todayKey ? planStatus[todayKey] : null
 
+  // v9.85.0 — Tomorrow preview. Read tomorrow's planned session so the
+  // athlete can gear up (e.g. set alarm earlier for long ride, prepare
+  // intervals workout track). Uses the same helper as today; null if rest
+  // or no plan.
+  const tomorrowSession = useMemo(() => {
+    const t = new Date(today); t.setUTCDate(t.getUTCDate() + 1)
+    return getTodayPlannedSession(plan, t.toISOString().slice(0, 10))
+  }, [plan, today])
+
+  // v9.85.0 — Hard session detector (reused for race-week alignment flag).
+  // Mirrors the heuristic from sessionSwapFlag so both flags agree on
+  // what counts as a high-stress session.
+  const isHardToday = useMemo(() => {
+    if (!plannedSession) return false
+    const typeStr = String(plannedSession.type || '').toLowerCase()
+    return (plannedSession.rpe ?? 0) >= 7
+      || /vo2|interval|threshold|race.?pace|tempo|hard/i.test(typeStr)
+  }, [plannedSession])
+
   const suggestion = useMemo(() => getSingleSuggestion(log, recovery, profile), [log, recovery, profile])
   const digest     = useMemo(() => generateDailyDigest(log, recovery, profile), [log, recovery, profile])
 
@@ -947,6 +966,35 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                   : `✓ Readiness good (${todayReadiness}/100) — train as planned`}
               </div>
             )}
+            {/* v9.85.0 — Race-week alignment flag. When the athlete is inside
+                a 7-day race-week window and today's planned session is hard
+                (RPE ≥7 OR threshold/VO2/tempo/intervals), surface a taper
+                warning. Calendar-based — independent of HRV/TSB fatigue
+                signals (which are covered by sessionSwapFlag below). Hard
+                work this close to race day defeats the taper; either
+                downgrade or confirm intent. */}
+            {raceCountdown && raceCountdown.days > 0 && raceCountdown.days <= 7 && isHardToday && (
+              <div role="alert" style={{
+                padding: '8px 10px', marginBottom: '12px',
+                background: '#ff660018', border: '1px solid #ff660066',
+                borderRadius: '4px', fontFamily: MONO, fontSize: '10px', color: '#ff6600',
+                lineHeight: 1.55,
+              }}>
+                <div style={{ fontWeight: 700, letterSpacing: '0.05em', marginBottom: '4px' }}>
+                  {lang === 'tr'
+                    ? `⚠ YARIŞA ${raceCountdown.days} GÜN — TAPER İHLALİ`
+                    : `⚠ RACE IN ${raceCountdown.days}d — TAPER CONFLICT`}
+                </div>
+                <div>
+                  {lang === 'tr'
+                    ? 'Bugünkü sert antrenman taperı bozabilir. Kolay seansa geç ya da süreyi yarıya indir.'
+                    : "Today's hard session may compromise your taper. Downgrade to easy or halve the duration."}
+                </div>
+                <div style={{ color: '#888', marginTop: '4px', fontSize: '9px' }}>
+                  Bosquet 2007 (meta-analysis: 2-week taper, intensity preserved, volume −41%)
+                </div>
+              </div>
+            )}
             {/* v9.56.0 — HRV/TSB-flagged session-swap recommendation. Fires
                 only when today's planned session is hard AND objective
                 signals (hrv_drift / tsb_deep / injury_risk_high) suggest the
@@ -1037,6 +1085,41 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                 {plannedSession.description}
               </p>
             )}
+            {/* v9.85.0 — Fueling guidance for long sessions. Activates at the
+                90-minute mark (Burke 2017: glycogen depletion becomes
+                performance-limiting beyond ~75-90 min at moderate+ intensity).
+                Bike-specific threshold lower (~75 min) since carb-burn rate
+                is higher per minute. Cycling sport-detection via primarySport
+                or session type containing 'bike'/'ride'. */}
+            {(() => {
+              const dur = Number(plannedSession.duration || 0)
+              const sport = String(profile?.primarySport || '').toLowerCase()
+              const typeStr = String(plannedSession.type || '').toLowerCase()
+              const isCycling = sport.includes('cycl') || sport.includes('bike') || /bike|cycl|ride/.test(typeStr)
+              const cutoff = isCycling ? 75 : 90
+              if (dur < cutoff) return null
+              const veryLong = dur >= 150
+              return (
+                <div style={{
+                  fontSize: '10px', color: '#5bc25b', marginBottom: '12px',
+                  padding: '6px 10px', borderLeft: '3px solid #5bc25b',
+                  background: 'rgba(91,194,91,0.06)', lineHeight: 1.55,
+                }}>
+                  <div style={{ fontWeight: 700, letterSpacing: '0.05em', marginBottom: '3px' }}>
+                    {lang === 'tr' ? '◆ BESLENME · ' : '◆ FUELING · '}
+                    {dur}{lang === 'tr' ? ' dk' : ' min'}
+                  </div>
+                  <div style={{ color: '#aaa' }}>
+                    {lang === 'tr'
+                      ? `${veryLong ? '60-90' : '30-60'}g KH/saat, 30. dakikadan itibaren her 20-30 dk al. 500-750ml sıvı/saat (sıcakta 1L+). Uzun antrenmanda elektrolit ekle.`
+                      : `${veryLong ? '60-90' : '30-60'}g CHO/hr starting at min 30, every 20-30 min. Fluid 500-750ml/hr (1L+ in heat). Electrolytes on long sessions.`}
+                  </div>
+                  <div style={{ color: '#666', marginTop: '2px', fontSize: '9px' }}>
+                    Burke 2017 · Jeukendrup 2014
+                  </div>
+                </div>
+              )
+            })()}
             {/* v9.84.0 — Coach/programmed session notes (cue, focus, safety).
                 Previously these were stored in the plan but never rendered.
                 Shown as a yellow-rule sidebar so they read like a coach's
@@ -1063,6 +1146,26 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                   onMouseOut={e  => e.currentTarget.style.color = '#888'}>
                   {t('todayMarkDone')}
                 </button>
+              </div>
+            )}
+            {/* v9.85.0 — Tomorrow preview. Tells the athlete what's coming so
+                they can plan: prep intervals workout track, charge HR strap,
+                eat carbs the night before a long ride, set an earlier alarm.
+                One compact line; conditional on a non-rest plan being scheduled
+                for the next day. */}
+            {tomorrowSession && (
+              <div style={{
+                marginTop: '12px', paddingTop: '8px',
+                borderTop: '1px dashed var(--border)',
+                fontSize: '10px', color: '#888', letterSpacing: '0.04em',
+                fontFamily: MONO,
+              }}>
+                <span style={{ color: '#666' }}>{lang === 'tr' ? 'YARIN · ' : 'TOMORROW · '}</span>
+                <span style={{ color: '#ccc', fontWeight: 700 }}>{tomorrowSession.type}</span>
+                <span style={{ color: '#666' }}>
+                  {' · '}{tomorrowSession.duration} min
+                  {tomorrowSession.rpe ? ` · RPE ${tomorrowSession.rpe}` : ''}
+                </span>
               </div>
             )}
             {/* v9.57.0 — Substitution / contingency guide (always available,
