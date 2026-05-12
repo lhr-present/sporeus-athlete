@@ -127,11 +127,13 @@ function getRedirectUri() {
   return window.location.origin + window.location.pathname.replace(/\/$/, '') + '/'
 }
 
-// Redirect user to Strava OAuth authorization page
+// Redirect user to Strava OAuth authorization page.
+// Returns { ok: true } on success / redirect, or { ok: false, error: '...' }
+// when misconfigured (so callers can render the message in-app rather than
+// using the browser alert dialog).
 export function initiateStravaOAuth() {
   if (!STRAVA_CLIENT_ID) {
-    alert('Strava integration not configured. Set VITE_STRAVA_CLIENT_ID in .env.')
-    return
+    return { ok: false, error: 'Strava integration not configured. Set VITE_STRAVA_CLIENT_ID in .env.' }
   }
   const params = new URLSearchParams({
     client_id:     STRAVA_CLIENT_ID,
@@ -142,6 +144,7 @@ export function initiateStravaOAuth() {
     state:         'strava',
   })
   window.location.href = `https://www.strava.com/oauth/authorize?${params}`
+  return { ok: true }
 }
 
 // Exchange authorization code for tokens via Supabase edge function

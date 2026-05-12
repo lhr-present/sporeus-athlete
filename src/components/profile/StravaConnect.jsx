@@ -202,7 +202,10 @@ export default function StravaConnect({ userId }) {
               ? <>Aktiviteleri otomatik içe aktarmak için Strava hesabını bağla. Koşu ve bisiklet aktiviteleri mesafe, KA verisi ve tahmini TSS ile senkronize olur.<br/>Sadece aktivite verini okur — adına asla paylaşım yapmaz.</>
               : <>Connect your Strava account to automatically import activities. Runs and rides sync with distance, HR data, and estimated TSS.<br/>Only reads your activity data — never posts on your behalf.</>}
           </div>
-          <button style={{ ...S.btn, background: '#fc4c02', borderColor: '#fc4c02' }} onClick={initiateStravaOAuth}>
+          <button style={{ ...S.btn, background: '#fc4c02', borderColor: '#fc4c02' }} onClick={() => {
+            const res = initiateStravaOAuth()
+            if (res && res.ok === false) flash(`⚠ ${res.error}`, 6000)
+          }}>
             Connect Strava
           </button>
         </>

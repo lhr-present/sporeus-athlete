@@ -3,6 +3,7 @@ import { S } from '../../styles.js'
 import { daysBefore, computeLoad, generateCoachPlan, SPORT_GOALS, ComplianceBar, escHtml, TODAY } from './helpers.jsx'
 import { analyzeLoadTrend, analyzeZoneBalance, predictInjuryRisk, predictFitness, analyzeRecoveryCorrelation, computeRaceReadiness, predictRacePerformance } from '../../lib/intelligence.js'
 import { correlateTrainingToResults, findRecoveryPatterns, mineInjuryPatterns, findOptimalWeekStructure } from '../../lib/patterns.js'
+import ConfirmModal from '../ui/ConfirmModal.jsx'
 
 // ─── Athlete Detail ───────────────────────────────────────────────────────────
 
@@ -29,6 +30,10 @@ export default function AthleteDetailPanel({ athlete, onUpdate, onClose: _onClos
   const [planHours, setPlanHours] = useState('8')
   const [planLevel, setPlanLevel] = useState('Intermediate')
   const [planSaved, setPlanSaved] = useState(false)
+  // v9.86.0 — alert modal (replaces window.alert)
+  const [alertOpen, setAlertOpen] = useState(false)
+  const [alertText, setAlertText] = useState('')
+  const showAlert = (text) => { setAlertText(text); setAlertOpen(true) }
 
   const [noteText, setNoteText] = useState('')
   const [editingNoteIdx, setEditingNoteIdx] = useState(null)
@@ -90,7 +95,7 @@ export default function AthleteDetailPanel({ athlete, onUpdate, onClose: _onClos
 <div style="text-align:center;color:#444;font-size:9px;margin-top:24px">SPOREUS · ${escHtml(TODAY)} · SPOREUS.COM</div>
 </body></html>`
     const w = window.open('', '_blank', 'width=820,height=940')
-    if (!w) { alert('Pop-up blocked — allow pop-ups to print.'); return }
+    if (!w) { showAlert('Pop-up blocked — allow pop-ups to print.'); return }
     w.document.write(html); w.document.close(); setTimeout(() => w.print(), 600)
   }
 
@@ -386,6 +391,15 @@ export default function AthleteDetailPanel({ athlete, onUpdate, onClose: _onClos
           </div>
         )
       })()}
+      {/* v9.86.0 — alert-only modal for notifications (replaces window.alert) */}
+      <ConfirmModal
+        open={alertOpen}
+        title={alertText}
+        confirmLabel="OK"
+        alertOnly
+        onConfirm={() => setAlertOpen(false)}
+        onCancel={() => setAlertOpen(false)}
+      />
     </div>
   )
 }

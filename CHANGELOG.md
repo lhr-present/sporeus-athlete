@@ -14,6 +14,76 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.86.0 — 2026-05-12 — Alert dialog migration (final browser-dialog removal)
+
+  Clears another deferred backlog item from v9.83.0. The remaining
+  6 `window.alert()` calls (notifications, not confirmations) now
+  use a themed alert-style modal instead of the browser dialog.
+
+  ### ConfirmModal extension
+  Added `alertOnly` prop to `src/components/ui/ConfirmModal.jsx`.
+  When true:
+  - Cancel button is hidden
+  - Auto-focus moves to the Confirm button (since it's the only one)
+  - All other props/behavior preserved (focus trap, Esc handler,
+    backdrop click, role=dialog + aria-modal, dangerous styling)
+
+  ### Sites migrated
+  - `Profile.jsx` — Two alert() calls: `t('importFailed')` and
+    `t('signInRequired')`. Added `alertOpen` / `alertText` state +
+    `showAlert(text)` helper + sibling ConfirmModal alertOnly
+    instance.
+  - `CoachDashboard.jsx` — Two alert() calls in the JSON-import
+    handler: "File too large (max 10MB)." and the JSON parse-failure
+    message. Same state pattern.
+  - `coachDashboard/AthleteDetailPanel.jsx` — "Pop-up blocked"
+    notification fired when window.open() returns null during the
+    coach-print flow. Same state pattern.
+  - `src/lib/strava.js` — non-component lib; can't call React state
+    directly. Refactored `initiateStravaOAuth()` to RETURN
+    `{ ok: true }` on redirect or `{ ok: false, error: '...' }` when
+    misconfigured. Caller (`StravaConnect.jsx`) now wraps the
+    onClick to inspect the result and feed the error into the
+    existing `flash(...)` toast system that already handles Strava
+    sync errors. No new modal needed — uses the toast surface that
+    already lives on the connect card.
+
+  ### Why this matters
+  Every blocking browser dialog is now gone from the app. The
+  themed modal is consistent with the Bloomberg-terminal aesthetic,
+  supports focus trap + keyboard navigation, doesn't break the
+  PWA's immersive feel, and (critically) doesn't bypass the
+  app's CSP/sandbox boundaries.
+
+  Combined with v9.83.0 (15 `window.confirm()` migrations), the
+  app has zero browser-native dialogs now:
+  - v9.83.0: 9 `window.confirm()` → ConfirmModal
+  - v9.86.0: 6 `window.alert()` → ConfirmModal `alertOnly`
+  - Total: 15 dialogs migrated to one themed component
+
+  ### Out of remaining backlog
+  - Interval structure breakdown — pending (data-model extension)
+  - Post-session feedback vs targets — pending (cross-ref refactor)
+  - Dead-code prune — held back per preservation rule
+  - Dashboard hover-tooltip TR pass — pending
+
+  Files: `package.json` (11.86.0), `CHANGELOG.md`,
+  `src/components/ui/ConfirmModal.jsx` (+`alertOnly` prop),
+  `src/lib/strava.js` (return-value refactor),
+  `src/components/profile/StravaConnect.jsx` (caller wrap),
+  `src/components/Profile.jsx` (state + modal instance),
+  `src/components/CoachDashboard.jsx` (state + modal instance),
+  `src/components/coachDashboard/AthleteDetailPanel.jsx`
+  (state + import + modal instance).
+
+  Tests 9881/9881 unchanged, lint clean, build clean,
+  version-sync passes (11.86.0 ↔ v9.86.0).
+
+  Depends on: v9.83.0 (ConfirmModal usage baseline — this ship
+  extends the same component everyone already uses).
+
+---
+
 ## v9.85.0 — 2026-05-12 — Mission 1 follow-ups (race-week, fueling, tomorrow)
 
   User direction: "check and continue to complete them all" —

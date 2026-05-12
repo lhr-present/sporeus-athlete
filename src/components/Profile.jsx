@@ -53,6 +53,10 @@ export default function Profile({ log, authUser }) {
   const [confirmResetOpen, setConfirmResetOpen]           = useState(false)
   const [confirmGdprDeleteOpen, setConfirmGdprDeleteOpen] = useState(false)
   const [confirmWithdrawOpen, setConfirmWithdrawOpen]     = useState(false)
+  // v9.86.0 — alert modal (replaces window.alert) for non-destructive notifications
+  const [alertOpen, setAlertOpen] = useState(false)
+  const [alertText, setAlertText] = useState('')
+  const showAlert = (text) => { setAlertText(text); setAlertOpen(true) }
 
   const isTR = lang === 'tr'
   const metrics = useMemo(
@@ -106,7 +110,7 @@ export default function Profile({ log, authUser }) {
     reader.onload = (ev) => {
       const ok = importAllData(ev.target.result)
       if (ok) window.location.reload()
-      else alert(t('importFailed'))
+      else showAlert(t('importFailed'))
     }
     reader.readAsText(file)
   }
@@ -148,7 +152,7 @@ export default function Profile({ log, authUser }) {
 
   const doGdprDelete = async () => {
     setConfirmGdprDeleteOpen(false)
-    if (!authUser?.id) { alert(t('signInRequired')); return }
+    if (!authUser?.id) { showAlert(t('signInRequired')); return }
     setGdprStatus('deleting')
     try {
       await deleteAthleteData(authUser.id)
@@ -735,6 +739,15 @@ export default function Profile({ log, authUser }) {
           window.location.reload()
         }}
         onCancel={() => setConfirmWithdrawOpen(false)}
+      />
+      {/* v9.86.0 — alert-only modal for notifications (replaces window.alert) */}
+      <ConfirmModal
+        open={alertOpen}
+        title={alertText}
+        confirmLabel="OK"
+        alertOnly
+        onConfirm={() => setAlertOpen(false)}
+        onCancel={() => setAlertOpen(false)}
       />
     </div>
   )

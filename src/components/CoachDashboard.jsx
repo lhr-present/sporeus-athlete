@@ -61,6 +61,10 @@ export default function CoachDashboard({ authUser }) {
   const [confirmingId, setConfirmingId]           = useState(null)
   const [verifyingId, setVerifyingId]             = useState(null)
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false)
+  // v9.86.0 — alert modal (replaces window.alert) for non-destructive notifications
+  const [alertOpen, setAlertOpen] = useState(false)
+  const [alertText, setAlertText] = useState('')
+  const showAlert = (text) => { setAlertText(text); setAlertOpen(true) }
   const [pendingRemoveId, setPendingRemoveId]     = useState(null)
 
   useEffect(() => {
@@ -151,7 +155,7 @@ export default function CoachDashboard({ authUser }) {
   function handleFileSelect(e) {
     const file = e.target.files[0]
     if (!file) return
-    if (file.size > 10 * 1024 * 1024) { alert('File too large (max 10MB).'); e.target.value = ''; return }
+    if (file.size > 10 * 1024 * 1024) { showAlert('File too large (max 10MB).'); e.target.value = ''; return }
     const reader = new FileReader()
     reader.onload = ev => {
       try {
@@ -189,7 +193,7 @@ export default function CoachDashboard({ authUser }) {
           setRoster(prev => [...prev, entry])
           setExpanded(entry.id)
         }
-      } catch { alert('Could not parse JSON. Make sure it is a valid Sporeus export.') }
+      } catch { showAlert('Could not parse JSON. Make sure it is a valid Sporeus export.') }
     }
     reader.readAsText(file); e.target.value = ''
   }
@@ -613,6 +617,15 @@ export default function CoachDashboard({ authUser }) {
         dangerous
         onConfirm={doRemove}
         onCancel={() => { setConfirmRemoveOpen(false); setPendingRemoveId(null) }}
+      />
+      {/* v9.86.0 — alert-only modal for notifications (replaces window.alert) */}
+      <ConfirmModal
+        open={alertOpen}
+        title={alertText}
+        confirmLabel="OK"
+        alertOnly
+        onConfirm={() => setAlertOpen(false)}
+        onCancel={() => setAlertOpen(false)}
       />
     </div>
   )

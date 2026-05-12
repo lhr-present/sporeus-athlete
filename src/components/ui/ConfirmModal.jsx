@@ -1,5 +1,6 @@
 // ─── ConfirmModal.jsx — Non-blocking confirmation dialog ──────────────────────
-// Replaces window.confirm() for destructive actions.
+// Replaces window.confirm() for destructive actions AND window.alert() for
+// acknowledgement-only notifications (set alertOnly={true}).
 // Props:
 //   open        boolean — controlled visibility
 //   title       string  — dialog heading
@@ -7,6 +8,7 @@
 //   confirmLabel string — confirm button label (default "Confirm")
 //   cancelLabel  string — cancel button label (default "Cancel")
 //   dangerous    boolean — makes confirm button red (default false)
+//   alertOnly    boolean — hide the Cancel button (alert-style; default false)
 //   onConfirm   () => void
 //   onCancel    () => void
 
@@ -22,6 +24,7 @@ export default function ConfirmModal({
   confirmLabel = 'Confirm',
   cancelLabel  = 'Cancel',
   dangerous    = false,
+  alertOnly    = false,
   onConfirm,
   onCancel,
 }) {
@@ -83,20 +86,23 @@ export default function ConfirmModal({
         )}
 
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-          <button
-            onClick={onCancel}
-            autoFocus
-            style={{
-              fontFamily: MONO, fontSize: '10px', padding: '6px 16px',
-              border: '1px solid #333', borderRadius: '3px',
-              background: 'transparent', color: '#888', cursor: 'pointer',
-              letterSpacing: '0.06em',
-            }}
-          >
-            {cancelLabel}
-          </button>
+          {!alertOnly && (
+            <button
+              onClick={onCancel}
+              autoFocus
+              style={{
+                fontFamily: MONO, fontSize: '10px', padding: '6px 16px',
+                border: '1px solid #333', borderRadius: '3px',
+                background: 'transparent', color: '#888', cursor: 'pointer',
+                letterSpacing: '0.06em',
+              }}
+            >
+              {cancelLabel}
+            </button>
+          )}
           <button
             onClick={onConfirm}
+            autoFocus={alertOnly}
             style={{
               fontFamily: MONO, fontSize: '10px', padding: '6px 16px',
               border: `1px solid ${dangerous ? '#e03030' : '#ff6600'}`,
