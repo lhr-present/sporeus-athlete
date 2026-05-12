@@ -27,7 +27,7 @@ const BAR_W = 24
 const BAR_GAP = 4
 
 export default function NMFreshnessCard({ log }) {
-  const { t } = useContext(LangCtx)
+  const { t, lang } = useContext(LangCtx)
 
   // Return placeholder if log is too short (< 14 sessions minimum context)
   if (!Array.isArray(log) || log.length < 14) {
@@ -93,7 +93,7 @@ export default function NMFreshnessCard({ log }) {
           / 100
         </div>
         <div
-          title="NM — Neuromuscular: measures fast-twitch fatigue from recent hard sessions"
+          title={lang === 'tr' ? 'NM — Nöromusküler: son sert seanslardan hızlı-kasılan kas yorgunluğunu ölçer' : 'NM — Neuromuscular: measures fast-twitch fatigue from recent hard sessions'}
           style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', color: '#555', letterSpacing: '0.06em', cursor: 'help' }}
         >
           {t('nmFreshnessScore') || 'NM Freshness Score'}

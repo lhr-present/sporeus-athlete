@@ -24,7 +24,7 @@ const CLASS_KEY = {
 }
 
 export default function AerobicEfficiencyCard({ log = [] }) {
-  const { t } = useContext(LangCtx)
+  const { t, lang } = useContext(LangCtx)
 
   const result = useMemo(
     () => computeAerobicEfficiencyTrend(Array.isArray(log) ? log : []),
@@ -106,7 +106,7 @@ export default function AerobicEfficiencyCard({ log = [] }) {
             {latestEF !== null ? latestEF.toFixed(3) : '—'}
           </div>
           <div
-            title="EF — Efficiency Factor: pace or power per heart-rate beat"
+            title={lang === 'tr' ? 'EF — Verim Faktörü: kalp atışı başına tempo veya güç' : 'EF — Efficiency Factor: pace or power per heart-rate beat'}
             style={{ ...S.mono, fontSize: '9px', color: '#888', marginTop: '3px', cursor: 'help' }}
           >
             EF (latest week)

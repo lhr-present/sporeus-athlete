@@ -76,7 +76,7 @@ export default function RunningCVCard({ log = [] }) {
             {fmtPace(CVPaceSecKm)}
           </span>
           <span
-            title="CV — Critical Velocity: sustainable pace at aerobic-anaerobic threshold"
+            title={lang === 'tr' ? 'CV — Kritik Hız: aerobik-anaerobik eşikte sürdürülebilir tempo' : 'CV — Critical Velocity: sustainable pace at aerobic-anaerobic threshold'}
             style={{ ...S.statLbl, cursor: 'help' }}
           >
             {t('cvPaceLabel') || (lang === 'tr' ? 'KV TEMPO' : 'CV PACE')}

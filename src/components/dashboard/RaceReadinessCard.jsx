@@ -139,7 +139,7 @@ function RaceReadinessCard({ log, recovery, injuries, profile, plan, planStatus,
           {perf.trainingPaces && (
             <div style={{ marginTop:'10px', padding:'8px 10px', background:'var(--card-bg)', borderRadius:'4px' }}>
               <div style={{ ...S.mono, fontSize:'9px', color:'#ff6600', letterSpacing:'0.06em', marginBottom:'6px' }}>
-                YOUR TRAINING PACES · <span title="VDOT — Daniels aerobic running fitness index from race performance">VDOT</span> {perf.trainingPaces.vdot}
+                {lang === 'tr' ? 'ANTRENMAN TEMPOLARIN' : 'YOUR TRAINING PACES'} · <span title={lang === 'tr' ? 'VDOT — Daniels aerobik koşu kondisyon göstergesi (yarış performansından)' : 'VDOT — Daniels aerobic running fitness index from race performance'}>VDOT</span> {perf.trainingPaces.vdot}
               </div>
               <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
                 {[

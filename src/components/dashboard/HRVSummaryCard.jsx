@@ -16,7 +16,7 @@ function dotColor(hrv, baseline) {
 }
 
 export default function HRVSummaryCard({ recovery = [] }) {
-  const { t } = useContext(LangCtx)
+  const { t, lang } = useContext(LangCtx)
 
   const summary = computeHRVSummary(recovery)
 
@@ -76,7 +76,7 @@ export default function HRVSummaryCard({ recovery = [] }) {
     }}>
       {/* Title */}
       <div
-        title="HRV — Heart Rate Variability: autonomic recovery marker (lnRMSSD)"
+        title={lang === 'tr' ? 'HRV — Kalp Atış Hızı Değişkenliği: otonom toparlanma göstergesi (lnRMSSD)' : 'HRV — Heart Rate Variability: autonomic recovery marker (lnRMSSD)'}
         style={{
           fontFamily: MONO, fontSize: '11px', fontWeight: 600,
           letterSpacing: '0.08em', textTransform: 'uppercase', color: '#ff6600',

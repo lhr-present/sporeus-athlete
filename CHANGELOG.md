@@ -14,6 +14,78 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.87.0 — 2026-05-12 — Dashboard tooltip TR pass (sport-science definitions)
+
+  Clears another deferred backlog item from v9.82.0. The dashboard
+  cards' "?" hover tooltips for sport-science abbreviations were
+  English-only — Turkish athletes hovering on CTL, ACWR, HRV, etc.
+  got an English explanation. This ship makes all 9 tooltip
+  definitions bilingual.
+
+  ### Tooltips translated (9 sites, 8 cards)
+  All preserve the abbreviation (universal sport-science terms stay
+  in the original form); only the definition text after the em-dash
+  is bilingual.
+
+  - `AerobicEfficiencyCard.jsx` — `EF` → "Verim Faktörü: kalp atışı
+    başına tempo veya güç"
+  - `AthleteStatusSummaryCard.jsx` — `CTL` → "Kronik Antrenman Yükü:
+    42 günlük kondisyon birikim göstergesi"
+  - `AthleteStatusSummaryCard.jsx` — `ACWR` → "Akut:Kronik Yük Oranı:
+    0.8–1.3 aralığı güvenli, sakatlık riski düşük"
+  - `NMFreshnessCard.jsx` — `NM` → "Nöromusküler: son sert seanslardan
+    hızlı-kasılan kas yorgunluğunu ölçer"
+  - `RESTQTrendCard.jsx` — `RESTQ` → "Toparlanma-Stres Anketi: S/T
+    oranı 1.0 üstü dengeli"
+  - `HRVSummaryCard.jsx` — `HRV` → "Kalp Atış Hızı Değişkenliği:
+    otonom toparlanma göstergesi (lnRMSSD)"
+  - `OSTRCMonitorCard.jsx` — `OSTRC` → "Oslo Spor Travma Araştırma
+    Merkezi aşırı kullanım sakatlık anketi"
+  - `RunningCVCard.jsx` — `CV` → "Kritik Hız: aerobik-anaerobik eşikte
+    sürdürülebilir tempo"
+  - `RaceReadinessCard.jsx` — `VDOT` → "Daniels aerobik koşu kondisyon
+    göstergesi (yarış performansından)" + the surrounding section
+    label `YOUR TRAINING PACES` → `ANTRENMAN TEMPOLARIN`
+
+  ### Wiring changes
+  Four cards (AerobicEfficiency, NMFreshness, HRVSummary, OSTRCMonitor)
+  only destructured `t` from LangCtx. Added `lang` so the tooltip
+  ternary has access. The other cards already had `lang` in scope
+  (either from context or as a prop).
+
+  ### Why not translate the abbreviations
+  CTL/ACWR/HRV/EF/CV/VDOT/NM/RESTQ/OSTRC are sport-science standard
+  terms. A Turkish coach reading a training log expects to see CTL,
+  not "KAY" or some other invented Turkish acronym. We translate the
+  DEFINITION text (where ambiguity could exist) and leave the
+  abbreviation alone (where it's industry-canonical). Aligned with
+  the v9.80.0 + v9.81.0 vocabulary discipline.
+
+  ### Remaining backlog
+  - Interval structure breakdown (data-model extension —
+    `intervals[]` per session). Needs a structured representation
+    rather than the natural-language description currently stored.
+  - Post-session feedback vs targets — cross-reference plan with log
+    entry to compute "you hit 4:32 vs plan 4:30, +0.7%".
+  - Dead-code prune (7 files) — held back per preservation rule;
+    `scripts/weekly-audit.sh:119` explicitly retains cloudSync.js
+    and whiteLabel.js as part of an exclusion list.
+
+  Files: `package.json` (11.87.0), `CHANGELOG.md`,
+  `AerobicEfficiencyCard.jsx`, `AthleteStatusSummaryCard.jsx`,
+  `NMFreshnessCard.jsx`, `RESTQTrendCard.jsx`, `HRVSummaryCard.jsx`,
+  `OSTRCMonitorCard.jsx`, `RunningCVCard.jsx`,
+  `RaceReadinessCard.jsx` (9 files, +9 lang destructures, +9 ternaries).
+
+  Tests 9881/9881 unchanged, lint clean, build clean,
+  version-sync passes (11.87.0 ↔ v9.87.0).
+
+  Depends on: v9.80.0 + v9.81.0 (TR vocabulary baseline — uses the
+  same `kondisyon` / `tempo` / `kasılma` etc. terms the user
+  validated in those ships).
+
+---
+
 ## v9.86.0 — 2026-05-12 — Alert dialog migration (final browser-dialog removal)
 
   Clears another deferred backlog item from v9.83.0. The remaining

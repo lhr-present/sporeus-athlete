@@ -80,7 +80,7 @@ export default function RESTQTrendCard() {
     }}>
       {/* Title */}
       <div
-        title="RESTQ — Recovery-Stress Questionnaire: S/R ratio above 1.0 is balanced"
+        title={lang === 'tr' ? 'RESTQ — Toparlanma-Stres Anketi: S/T oranı 1.0 üstü dengeli' : 'RESTQ — Recovery-Stress Questionnaire: S/R ratio above 1.0 is balanced'}
         style={{
           fontFamily: "'IBM Plex Mono', monospace", fontSize: '11px', fontWeight: 600,
           letterSpacing: '0.08em', textTransform: 'uppercase', color: '#ff6600',

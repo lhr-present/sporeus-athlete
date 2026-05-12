@@ -22,7 +22,7 @@ const RISK_KEYS = {
 }
 
 export default function OSTRCMonitorCard() {
-  const { t } = useContext(LangCtx)
+  const { t, lang } = useContext(LangCtx)
 
   const history = parseOSTRCHistory()
   const summary = computeOSTRCSummary(history)
@@ -83,7 +83,7 @@ export default function OSTRCMonitorCard() {
     }}>
       {/* Title */}
       <div
-        title="OSTRC — Oslo Sports Trauma Research Centre overuse injury questionnaire"
+        title={lang === 'tr' ? 'OSTRC — Oslo Spor Travma Araştırma Merkezi aşırı kullanım sakatlık anketi' : 'OSTRC — Oslo Sports Trauma Research Centre overuse injury questionnaire'}
         style={{
           fontFamily: "'IBM Plex Mono', monospace", fontSize: '11px', fontWeight: 600,
           letterSpacing: '0.08em', textTransform: 'uppercase', color: '#ff6600',

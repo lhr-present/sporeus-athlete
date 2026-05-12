@@ -84,7 +84,7 @@ function AthleteStatusSummaryCard({ log, recovery, profile }) {
           {ctl}
         </span>
         <span
-          title="CTL — Chronic Training Load: 42-day fitness accumulation index"
+          title={lang === 'tr' ? 'CTL — Kronik Antrenman Yükü: 42 günlük kondisyon birikim göstergesi' : 'CTL — Chronic Training Load: 42-day fitness accumulation index'}
           style={{ ...S.mono, fontSize: '11px', color: '#888', letterSpacing: '0.06em', cursor: 'help' }}
         >
           CTL
@@ -106,7 +106,7 @@ function AthleteStatusSummaryCard({ log, recovery, profile }) {
           {acwrHeader}
         </div>
         <div
-          title="ACWR — Acute:Chronic Workload Ratio: injury risk zone 0.8–1.3 is safe"
+          title={lang === 'tr' ? 'ACWR — Akut:Kronik Yük Oranı: 0.8–1.3 aralığı güvenli, sakatlık riski düşük' : 'ACWR — Acute:Chronic Workload Ratio: injury risk zone 0.8–1.3 is safe'}
           style={{
             ...S.mono,
             fontSize: '12px',
