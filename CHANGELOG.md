@@ -14,6 +14,98 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.84.0 — 2026-05-12 — Mission 1 clarity pass (TodayView session card)
+
+  User direction: "check and continue for enhancements generally,
+  then focus mission 1, and then make the app athlete using it
+  easily and seeing everything needed for the exercise."
+
+  Mission 1 (per CLAUDE.md + memory): **target → physiology →
+  science-based plan → daily answer**. An athlete opens the app and
+  should immediately see what to do today, why, and the targets
+  needed to execute it.
+
+  Launched a deep audit of TodayView (the primary Mission 1 surface).
+  Audit found 7 HIGH + 5 MED + 3 LOW gaps. This ship applies the 5
+  highest-ROI fixes that enrich the existing session card without
+  restructuring layout.
+
+  ### Session card enrichments (TodayView Card 1, ~line 915)
+
+  1. **Pace / HR target strip** — Critical "what should I run at?"
+     answer. Previously paceTarget existed on `plannedSession` but
+     was never rendered in TodayView (only buried in NextTrainingCard
+     or behind a tab switch). New conditional strip shows
+     `PACE · 4:30/km` / `KA · 160bpm` with orange accent. Bilingual
+     (TEMPO / PACE, KA / HR).
+
+  2. **Zone breakdown strip** — Co-located with pace target.
+     For polarized sessions, shows e.g. `ZONES · Z1 35m Z5 5m` so the
+     aerobic/hard split is obvious. Filters out zero-minute zones.
+     Conditional on `plannedSession.zones` having ≥1 nonzero value.
+
+  3. **Phase + week progress line** — Was: "BUILD" tacked on the end
+     of the duration line, no week count. Now: dedicated line
+     `📍 BUILD · Week 3/12` (or `Hafta 3/12` in TR) reading the week
+     index against `plan.weeks.length`. Tells the athlete where today's
+     session sits in the macro cycle without requiring them to know
+     the periodization model.
+
+  4. **Coach / programmed notes block** — `plannedSession.notes` field
+     existed (in elite-program sessions especially) but was never
+     rendered. Now shown as a yellow left-rule italicized callout —
+     reads like a coach's pre-session cue ("Stay relaxed in the final
+     rep", "Focus on cadence"). Bilingual via `notes.{en,tr}`; also
+     accepts plain string for legacy plans.
+
+  5. **Positive readiness signal** — Was: only the NEGATIVE banner
+     (when readiness <50). Athletes with good readiness got no
+     affirmative signal; they had to scroll to Card 2 to confirm.
+     Now: when readiness ≥75 AND today isn't already done, a green
+     "✓ Readiness good — train as planned" pill renders alongside
+     the warning slot. Symmetric coverage.
+
+  ### Audit findings DEFERRED (recorded for future)
+  - Interval structure (warm-up + reps + cool-down breakdown) needs
+    a data-model extension (`intervals[]` array per session). Bigger
+    refactor — separate ship.
+  - Race-week alignment flag (warn if hard session scheduled inside
+    7-day taper window). Logic gate, not a layout change.
+  - Fueling guidance for sessions >90min — content templates needed.
+  - Tomorrow preview line — separate component, needs
+    getNextProgrammedSession wiring.
+  - Easy-day alternatives card when planned = rest. Content design.
+  - Post-session feedback referencing the targets ("you hit 4:32 vs
+    plan 4:30, +0.7%"). Requires cross-referencing plan with log.
+  - Reordering Readiness card above Session card. The audit
+    suggested this; this ship instead adds a positive readiness
+    signal inside the session card, which surfaces the readiness
+    answer without disrupting the existing layout. Reopen if user
+    prefers the harder reorder.
+
+  ### Why ship the partial set
+  All 5 shipped items are pure additive renders — they only show
+  when the underlying data exists, fall back gracefully when it
+  doesn't. No risk to legacy plan shapes. Zero structural changes
+  to TodayView's card ordering. Every existing test continues to
+  pass (9881/9881).
+
+  Files: `package.json` (11.84.0), `CHANGELOG.md`,
+  `src/components/TodayView.jsx`.
+
+  Tests 9881/9881 unchanged, lint clean, build clean,
+  version-sync passes (11.84.0 ↔ v9.84.0).
+
+  Depends on: v9.83.0 (browser-dialog migration — TodayView's
+  surface is now visually consistent with the rest of the app),
+  v9.67.0 (beginner tier gating — the 5 enrichments still
+  respect dashSimple skips). Note that beginner-tier athletes see
+  the same enriched session card; the enrichments are additive,
+  not behind a level gate, since "what should I run at?" applies
+  at every tier.
+
+---
+
 ## v9.83.0 — 2026-05-12 — Browser dialog migration to ConfirmModal
 
   v9.82.0 deferred this as a focused follow-up ship. User said

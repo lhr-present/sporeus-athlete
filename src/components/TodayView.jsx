@@ -931,6 +931,22 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                   : `⚠ Readiness LOW (${todayReadiness}/100) — consider -20% intensity today`}
               </div>
             )}
+            {/* v9.84.0 — Positive readiness signal. Previously athletes saw only
+                a negative banner when score < 50. With this, a "go signal"
+                surfaces when readiness ≥75 so the athlete opens the app and
+                immediately sees green = train as planned. */}
+            {todayReadiness != null && todayReadiness >= 75 && todayStatus !== 'done' && (
+              <div style={{
+                padding: '6px 10px', marginBottom: '12px',
+                background: '#5bc25b18', border: '1px solid #5bc25b55',
+                borderRadius: '4px', fontFamily: MONO, fontSize: '10px', color: '#5bc25b',
+                lineHeight: 1.5,
+              }}>
+                {lang === 'tr'
+                  ? `✓ Hazırlık iyi (${todayReadiness}/100) — planlandığı gibi antrene ol`
+                  : `✓ Readiness good (${todayReadiness}/100) — train as planned`}
+              </div>
+            )}
             {/* v9.56.0 — HRV/TSB-flagged session-swap recommendation. Fires
                 only when today's planned session is hard AND objective
                 signals (hrv_drift / tsb_deep / injury_risk_high) suggest the
@@ -952,20 +968,90 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                 </div>
               </div>
             )}
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
               <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text)', letterSpacing: '0.04em' }}>
                 {plannedSession.type}
               </span>
               <span style={{ fontSize: '11px', color: '#888' }}>
                 {plannedSession.duration} min
                 {plannedSession.rpe ? ` · RPE ${plannedSession.rpe}` : ''}
-                {plannedSession.weekPhase ? ` · ${plannedSession.weekPhase}` : ''}
               </span>
             </div>
+            {/* v9.84.0 — Phase + week progress on its own line so "why this
+                session" is visible without the athlete having to know what
+                weekPhase means. Shows e.g. "BUILD · Hafta 3/12" so the
+                placement of today's session in the macro cycle is obvious. */}
+            {(plannedSession.weekPhase || plannedSession.weekIdx != null) && (
+              <div style={{ fontSize: '10px', color: '#0064ff', marginBottom: '8px', letterSpacing: '0.06em' }}>
+                {plannedSession.weekPhase && <span style={{ fontWeight: 700 }}>📍 {plannedSession.weekPhase}</span>}
+                {plannedSession.weekIdx != null && plan?.weeks?.length > 0 && (
+                  <span style={{ color: '#888', fontWeight: 400 }}>
+                    {plannedSession.weekPhase ? ' · ' : '📍 '}
+                    {lang === 'tr' ? 'Hafta' : 'Week'} {plannedSession.weekIdx + 1}/{plan.weeks.length}
+                  </span>
+                )}
+              </div>
+            )}
+            {/* v9.84.0 — Pace target + zone breakdown. Critical Mission 1 data
+                the athlete needs to actually execute the session: what pace,
+                which zones. Previously these were either buried in a
+                separate card or omitted entirely. Conditional render —
+                shown only when the plan provides this data. */}
+            {(plannedSession.paceTarget || plannedSession.hrTarget || (plannedSession.zones && Object.values(plannedSession.zones).some(v => v > 0))) && (
+              <div style={{
+                display: 'flex', gap: '14px', flexWrap: 'wrap',
+                fontSize: '10px', color: '#aaa',
+                padding: '8px 10px', marginBottom: '10px',
+                background: 'rgba(255,102,0,0.04)', border: '1px solid #ff660033', borderRadius: '4px',
+                fontFamily: MONO, letterSpacing: '0.04em',
+              }}>
+                {plannedSession.paceTarget && (
+                  <span>
+                    <span style={{ color: '#666' }}>{lang === 'tr' ? 'TEMPO' : 'PACE'} · </span>
+                    <span style={{ color: '#ff6600', fontWeight: 700 }}>{plannedSession.paceTarget}</span>
+                  </span>
+                )}
+                {plannedSession.hrTarget && (
+                  <span>
+                    <span style={{ color: '#666' }}>KA · </span>
+                    <span style={{ color: '#ff6600', fontWeight: 700 }}>{plannedSession.hrTarget}</span>
+                  </span>
+                )}
+                {plannedSession.zones && Object.values(plannedSession.zones).some(v => v > 0) && (
+                  <span>
+                    <span style={{ color: '#666' }}>{lang === 'tr' ? 'BÖLGELER' : 'ZONES'} · </span>
+                    {Object.entries(plannedSession.zones)
+                      .filter(([, v]) => v > 0)
+                      .map(([z, v]) => (
+                        <span key={z} style={{ color: '#ccc', marginRight: '6px' }}>
+                          {z} <span style={{ color: '#666' }}>{v}m</span>
+                        </span>
+                      ))
+                    }
+                  </span>
+                )}
+              </div>
+            )}
             {plannedSession.description && (
               <p style={{ fontSize: '11px', color: '#888', lineHeight: 1.55, marginBottom: '12px' }}>
                 {plannedSession.description}
               </p>
+            )}
+            {/* v9.84.0 — Coach/programmed session notes (cue, focus, safety).
+                Previously these were stored in the plan but never rendered.
+                Shown as a yellow-rule sidebar so they read like a coach's
+                pre-session callout. Bilingual via notes.{en,tr}. */}
+            {plannedSession.notes && (plannedSession.notes.en || plannedSession.notes.tr || typeof plannedSession.notes === 'string') && (
+              <div style={{
+                fontSize: '11px', color: '#f5c542', marginBottom: '12px',
+                padding: '6px 10px', borderLeft: '3px solid #f5c542',
+                background: 'rgba(245,197,66,0.06)', lineHeight: 1.55,
+                fontStyle: 'italic',
+              }}>
+                {typeof plannedSession.notes === 'string'
+                  ? plannedSession.notes
+                  : (plannedSession.notes[lang] || plannedSession.notes.en || plannedSession.notes.tr)}
+              </div>
             )}
             {todayStatus === 'done' ? (
               <span style={badge(GREEN)}>✓ {t('todayDone')}</span>
