@@ -1060,7 +1060,7 @@ const RACE_DELAYED_CONTINGENCY = {
 // the failure to action, preventing DNF spirals.
 const BONK_WALL_CONTINGENCY = {
   en: 'WALL CONTINGENCY: if pace collapses suddenly mid-race (sudden -10s/km drift, vision narrowing, leg seize) — slow 20-30s, drink 200ml sports drink + take 25g gel NOW, walk 60s if needed. Reset to 15s slower than goal pace. Wall is fueling, not fitness — the next 5-10 min recover.',
-  tr: 'DUVAR KONTENJANSI: yarış ortasında tempo aniden çökerse (ani -10s/km kayma, görüşün daralması, bacak takılması) — 20-30s yavaşla, 200ml spor içeceği iç + 25g jel HEMEN al, gerekirse 60s yürü. Hedef tempodan 15s yavaşa sıfırla. Duvar yakıt, fitness değil — sonraki 5-10 dk toparlanırsın.',
+  tr: 'DUVAR KONTENJANSI: yarış ortasında tempo aniden çökerse (ani -10s/km kayma, görüşün daralması, bacak takılması) — 20-30s yavaşla, 200ml spor içeceği iç + 25g jel HEMEN al, gerekirse 60s yürü. Hedef tempodan 15s yavaşa sıfırla. Duvar yakıt sorunu, kondisyon değil — sonraki 5-10 dk toparlanırsın.',
 }
 
 // v9.17.0 — Pre-race anxiety / stress reframe. Crum 2017: stress reactivity

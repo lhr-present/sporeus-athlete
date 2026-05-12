@@ -99,7 +99,7 @@ const MESSAGES = {
   },
   severe: {
     en: 'Prolonged VO2max gap — top-end fitness fading',
-    tr: 'Uzun süreli VO2max boşluğu — üst seviye fitness düşüyor',
+    tr: 'Uzun süreli VO2max boşluğu — üst seviye kondisyon düşüyor',
   },
   never: {
     en: 'No VO2max work logged in 28 days',

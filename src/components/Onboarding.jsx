@@ -193,7 +193,7 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
     // ── 5: Fitness level ───────────────────────────────────────────────────
     <div key="level">
       <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'16px' }}>
-        {lang === 'tr' ? '05 / FİTNES SEVİYESİ' : '05 / FITNESS LEVEL'}
+        {lang === 'tr' ? '05 / KONDİSYON SEVİYESİ' : '05 / FITNESS LEVEL'}
       </div>
       <div style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
         <div>

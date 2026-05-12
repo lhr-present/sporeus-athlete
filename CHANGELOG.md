@@ -14,6 +14,73 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.81.0 — 2026-05-12 — TR audit follow-up (LangCtx labels + science strings)
+
+  v9.80.0 fixed 11 issues in user-facing component files. This ship
+  closes the rest, found by a second sweep covering:
+  - `LangCtx.jsx` LABELS map (the central translation registry)
+  - `src/lib/**` science strings that ship `{en, tr}` pairs
+
+  ### HIGH
+  - `LangCtx.jsx:760` — `'YAGSIZ KÜTLE'` → `'YAĞSIZ KÜTLE'` (missing
+    soft-g diacritic). Body composition card title rendered as
+    "YAGSIZ" instead of "YAĞSIZ" (lean mass).
+  - `LangCtx.jsx:811` — `'coach\' tan okunmamış mesaj'` /
+    `'coach\'tan okunmamış mesajlar'` → `'antrenörden okunmamış
+    mesaj'` / `'antrenörden okunmamış mesajlar'`. English "coach"
+    left in TR string with a broken case marker
+    (`coach' tan` — the suffix should attach to a Turkish noun).
+  - `LangCtx.jsx:781` — `sweatReplace: 'egzersiz sırasında %80
+    yeterliyor'` → `'egzersizde %80\'ini yerine koy'`. The original
+    used "yeterliyor" which is a non-word; semantically the EN says
+    "replace 80% during exercise" — a directive, not a sufficiency
+    claim.
+  - `LangCtx.jsx:1051` — `squadChallengeRank: '{total} sporucudan
+    #{rank}'` → `'{total} sporcu arasında #{rank}'`. Fixed typo
+    (sporucudan→sporcu) and clarified to standard rank-display form.
+  - `Onboarding.jsx:196` — `'05 / FİTNES SEVİYESİ'` →
+    `'05 / KONDİSYON SEVİYESİ'`. "FİTNES" is a half-Turkified loanword
+    that breaks orthography. Onboarding step 5 (level picker) header.
+
+  ### MED
+  - `vo2GapDetector.js:102` — `'üst seviye fitness düşüyor'` →
+    `'üst seviye kondisyon düşüyor'`. The severe VO2max-gap warning
+    now uses the same vocabulary as v9.80.0 fixed in Dashboard:790.
+  - `eliteProgramRaceWeek.js:1063` — `'Duvar yakıt, fitness değil'` →
+    `'Duvar yakıt sorunu, kondisyon değil'`. Race-day wall-contingency
+    instruction — also clarified noun ("yakıt sorunu" / fueling problem)
+    since the original was missing the noun head.
+  - `eliteProgramKeySessions.js:1060` — `'fitness koruma'` →
+    `'kondisyon koruma'`. TR-volume 5x1500m session purpose string.
+
+  ### Why
+  Same domain-precision principle as v9.80.0: the user — a Turkish
+  sport-science author — flags loanwords like "fitness" that have
+  standard native equivalents ("kondisyon"). After v9.80.0 fixed the
+  component-level instances, this ship sweeps the central LABELS map
+  and the cited TR strings inside science modules.
+
+  ### What I checked but left alone (deliberately)
+  - `intelligence.js:600` `name: 'FITNESS'` — metric identifier shown
+    in both languages; sport-science pros recognize "FITNESS" as the
+    CTL-derived score component. Same status as "TSS", "CTL", "VO2max".
+  - `LangCtx.jsx:756` `noPlanYet` — agent flagged as tone-mixed but
+    `seçin` + `oluşturun` are both formal-imperative (consistent).
+  - `intelligence.js` numerous tr-pair strings — all already use
+    `kondisyon` correctly.
+
+  Files: `package.json` (11.81.0), `CHANGELOG.md`, `LangCtx.jsx` (4
+  fixes), `Onboarding.jsx`, `vo2GapDetector.js`,
+  `eliteProgramRaceWeek.js`, `eliteProgramKeySessions.js`.
+
+  Tests 9881/9881 unchanged, lint clean. Version-sync passes
+  (11.81.0 ↔ v9.81.0).
+
+  Depends on: v9.80.0 (first TR audit pass — established the
+  vocabulary rules now enforced here).
+
+---
+
 ## v9.80.0 — 2026-05-11 — Turkish translation audit pass
 
   Careful audit of TR strings introduced during the v9.67→v9.79 push,

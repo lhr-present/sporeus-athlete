@@ -1057,7 +1057,7 @@ const ROWING_PEAK = [
     name: { en: 'TR volume 5x1500m', tr: 'TR hacim 5x1500m' },
     purpose: {
       en: 'Sustained race-pace fitness retention. 5x1500m approaches full 2k race volume at TR effort.',
-      tr: 'Sürekli yarış-tempo fitness koruma. 5x1500m TR eforunda tam 2k yarış hacmine yaklaşır.',
+      tr: 'Sürekli yarış-tempo kondisyon koruma. 5x1500m TR eforunda tam 2k yarış hacmine yaklaşır.',
     },
     structure: {
       en: '5x1500m at TR split, 4 min easy row between. Total ~50 min @ TR.',
