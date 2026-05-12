@@ -4,6 +4,100 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.78.0 — 2026-05-12 — Sport vocabulary unification at sanitizeProfile
+
+  Deep dive agent mapped the codebase's sport vocabulary problem:
+  **three vocabularies coexist** by source.
+
+  - **Capitalized** (`'Running'`, `'Cycling'`, `'Triathlon'`,
+    `'Swimming'`, `'Rowing'`, `'Other'`) — `Onboarding.jsx`, Strava
+    type mapper, FIT mapper, Garmin mapper
+  - **3-letter** (`'run'`, `'bike'`, `'swim'`) — `deviceSync.js`
+    (OpenWater), the only write site using 3-letter
+  - **3-letter internal** (`'run'`, `'bike'`, `'swim'`, `'triathlon'`,
+    `'rowing'`) — `eliteProgram.js` and friends (READ side, internal
+    algorithms; protected by v9.76.0 SPORT_NORM boundary)
+  - **full lowercase** (`'running'`, `'cycling'`, `'swimming'`) —
+    `efficiencyFactor.js`, `runningCV.js`, `swimZones.js`,
+    `triLoad.js`, `intelligence.js`, `scienceNotes.js` (READ side,
+    pattern-match style)
+
+  The profile tier was the unprotected gap: `sanitizeProfile` mirrored
+  `sport` ↔ `primarySport` (v9.62 fix) but **did not normalize case**.
+  A coach who pushed `'cycling'` (lowercase) would land in
+  `profile.sport = 'cycling'`, then `SESSION_TYPES_BY_DISCIPLINE` (keyed
+  Capitalized) would miss-lookup → sport gating misfires.
+
+  ### Fix
+
+  - **`src/lib/constants.js`** — new `normalizeSport(input)` pure
+    helper. Maps any of the three vocabularies (`'run'`/`'running'`/
+    `'Running'`) to the canonical Capitalized form. Returns `''` for
+    unknown so callers can chain fallbacks. Trim + case-insensitive
+    on all forms.
+
+  - **`src/lib/validate.js`** — `sanitizeProfile` runs the mirrored
+    sport through `normalizeSport` with a graceful fallback:
+    ```js
+    const rawSport  = str(p.primarySport, 50) || str(p.sport, 50)
+    const normSport = normalizeSport(rawSport) || rawSport
+    ```
+    Why the fallback to `rawSport`: FIT imports occasionally produce
+    labels like `'Brick (Bike+Run)'` that aren't single-sport.
+    `normalizeSport` returns `''` for those; the fallback preserves
+    the raw legacy value instead of dropping it.
+
+  ### Why Capitalized as canonical (not lowercase or 3-letter)
+
+  1. **Onboarding picker labels are Capitalized** — what users see is
+     what we store
+  2. **`SESSION_TYPES_BY_DISCIPLINE`** in `constants.js` is keyed on
+     Capitalized sport names; aligning profile.sport with this key
+     space eliminates the silent-miss class of bug
+  3. **5 of 6 write sites already write Capitalized** — only
+     `deviceSync.js` (OpenWater) writes 3-letter, and that's the
+     log-entry `sport` field, not `profile.sport` (log entries stay
+     3-letter as internal detail)
+
+  ### What still stays 3-letter internally
+
+  - `eliteProgram.js` and its callees — v9.76.0 SPORT_NORM converts at
+    the function-entry boundary; the rest of the elite-program
+    pipeline operates on `'run'`/`'bike'`/`'swim'`/`'triathlon'`/
+    `'rowing'`. This is the algorithm's preferred form and we
+    explicitly do NOT push Capitalized into it.
+  - **Log entry** `.sport` field — written by device imports and read
+    by pattern-match logic (e.g., `triLoad.js`). Untouched.
+
+  ### Files
+
+  - `src/lib/constants.js` — `normalizeSport()` exported alongside
+    `normalizeAthleteLevel`
+  - `src/lib/validate.js` — import + sanitizeProfile uses normalizer
+  - `src/lib/__tests__/normalizeAthleteLevel.test.js` — +6 tests for
+    `normalizeSport`
+  - `src/lib/__tests__/validate.test.js` — assertion updated to
+    `'Running'` (canonical) + `primarySport` mirror
+
+  ### Tests
+
+  Full suite: **9881 passed (+6 net)**. Lint clean. Build clean.
+  No test broke beyond the one assertion that had to update from
+  `'running'` → `'Running'` (intentional behavior change).
+
+  ### Deferred (still 3 vocabularies but each protected)
+
+  - Pattern-match readers in `efficiencyFactor.js`, `runningCV.js`,
+    `swimZones.js`, `intelligence.js`, `scienceNotes.js`, `triLoad.js`
+    — they use `.toLowerCase().includes()` which absorbs all forms.
+    Already robust; nothing to do.
+  - Log-entry `.sport` field vocabulary — internal to log handling;
+    not user-facing.
+  - Future cleanup: collapse pattern-match readers to use a single
+    `normalizeSport` helper instead of per-call `.toLowerCase()`.
+
+---
+
 ## v9.77.0 — 2026-05-12 — Fix Perf Regression + RLS Pentest nightly CI failures
 
   Both `perf-regression.yml` and `rls-pentest.yml` have been failing

@@ -290,7 +290,11 @@ describe('sanitizeProfile', () => {
   it('passes through a complete valid profile', () => {
     const p = sanitizeProfile(validProfile)
     expect(p.name).toBe('Athlete One')
-    expect(p.sport).toBe('running')
+    // v9.78.0 — sanitizeProfile now normalizes sport to canonical Capitalized
+    // form via normalizeSport (was case-preserving prior to v9.78.0). Both
+    // p.sport and p.primarySport mirror the same normalized value.
+    expect(p.sport).toBe('Running')
+    expect(p.primarySport).toBe('Running')
     expect(p.age).toBe('30')
     expect(p.ftp).toBe('250')
     expect(p.gender).toBe('male')

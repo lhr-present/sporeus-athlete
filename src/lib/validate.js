@@ -1,5 +1,5 @@
 // ─── Input validation / sanitization ──────────────────────────────────────────
-import { normalizeAthleteLevel } from './constants.js'
+import { normalizeAthleteLevel, normalizeSport } from './constants.js'
 
 /**
  * @typedef {Object} LogEntry
@@ -112,7 +112,12 @@ export function sanitizeProfile(p) {
   // useAppState.js:116 falls back. Result: coach pushes primarySport but
   // onboarding wrote sport → sport gating misfires. Mirror both fields so
   // any read site sees consistent state regardless of which name it checks.
-  const normSport = str(p.primarySport, 50) || str(p.sport, 50)
+  // v9.78.0 — Normalize to canonical Capitalized form so the codebase's
+  // three sport vocabularies converge at the profile tier. Falls back to
+  // the trimmed raw string if the input doesn't match a known sport
+  // (preserves legacy values like 'Brick (Bike+Run)' from FIT imports).
+  const rawSport  = str(p.primarySport, 50) || str(p.sport, 50)
+  const normSport = normalizeSport(rawSport) || rawSport
   return {
     name:          str(p.name),
     sport:         normSport,

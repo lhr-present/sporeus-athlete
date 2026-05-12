@@ -1,6 +1,49 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
-import { normalizeAthleteLevel, LEVEL_CONFIG } from '../constants.js'
+import { normalizeAthleteLevel, normalizeSport, LEVEL_CONFIG } from '../constants.js'
+
+describe('normalizeSport — v9.78.0', () => {
+  it('maps 3-letter internal IDs to Capitalized canonical', () => {
+    expect(normalizeSport('run')).toBe('Running')
+    expect(normalizeSport('bike')).toBe('Cycling')
+    expect(normalizeSport('swim')).toBe('Swimming')
+    expect(normalizeSport('triathlon')).toBe('Triathlon')
+    expect(normalizeSport('rowing')).toBe('Rowing')
+  })
+
+  it('maps full lowercase to Capitalized canonical', () => {
+    expect(normalizeSport('running')).toBe('Running')
+    expect(normalizeSport('cycling')).toBe('Cycling')
+    expect(normalizeSport('swimming')).toBe('Swimming')
+  })
+
+  it('passes through Capitalized canonical unchanged (case-insensitive)', () => {
+    expect(normalizeSport('Running')).toBe('Running')
+    expect(normalizeSport('Cycling')).toBe('Cycling')
+    expect(normalizeSport('Triathlon')).toBe('Triathlon')
+  })
+
+  it('trim + case-insensitive across all forms', () => {
+    expect(normalizeSport(' RUN ')).toBe('Running')
+    expect(normalizeSport('  Bike  ')).toBe('Cycling')
+    expect(normalizeSport('SWIMMING')).toBe('Swimming')
+  })
+
+  it('returns empty string for unknown / falsy input', () => {
+    expect(normalizeSport(null)).toBe('')
+    expect(normalizeSport(undefined)).toBe('')
+    expect(normalizeSport('')).toBe('')
+    expect(normalizeSport('walking')).toBe('')
+    expect(normalizeSport(42)).toBe('')
+  })
+
+  it('legacy "Brick (Bike+Run)" is unknown — caller falls back to raw', () => {
+    // FIT imports occasionally produce labels like 'Brick (Bike+Run)';
+    // normalizeSport returns '' so the sanitizeProfile fallback preserves
+    // the raw string instead of dropping the value.
+    expect(normalizeSport('Brick (Bike+Run)')).toBe('')
+  })
+})
 
 describe('normalizeAthleteLevel — v9.67.0', () => {
   it('maps capital Onboarding values to LEVEL_CONFIG keys', () => {

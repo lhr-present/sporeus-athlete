@@ -70,6 +70,37 @@ export const LEVEL_CONFIG = {
  * Returns '' for null/undefined so the caller's default-fallback chain still
  * works.
  */
+/**
+ * v9.78.0 — Normalize any sport input to the canonical Capitalized form.
+ * Three vocabularies exist in the codebase:
+ *   - Capitalized: 'Running' / 'Cycling' / 'Triathlon' / 'Swimming' / 'Rowing'
+ *     (what Onboarding + most device sync mappers write — also what
+ *     SESSION_TYPES_BY_DISCIPLINE is keyed on)
+ *   - full lowercase: 'running' / 'cycling' / 'swimming' (used in some lib
+ *     files like efficiencyFactor.js, runningCV.js)
+ *   - 3-letter internal: 'run' / 'bike' / 'swim' / 'triathlon' / 'rowing'
+ *     (used by eliteProgram.js and the log-entry `sport` field — log entries
+ *     stay 3-letter, this normalizer is for the PROFILE tier only)
+ *
+ * sanitizeProfile uses this so every read site that compares
+ * profile.sport sees the same Capitalized form regardless of write source.
+ *
+ * Returns '' for unknown / falsy input so the caller's fallback chain works.
+ */
+export function normalizeSport(input) {
+  if (!input || typeof input !== 'string') return ''
+  const lower = input.trim().toLowerCase()
+  const MAP = {
+    run: 'Running',       running: 'Running',
+    bike: 'Cycling',      cycling: 'Cycling',   cycle: 'Cycling',
+    swim: 'Swimming',     swimming: 'Swimming',
+    tri: 'Triathlon',     triathlon: 'Triathlon',
+    row: 'Rowing',        rowing: 'Rowing',
+    other: 'Other',
+  }
+  return MAP[lower] || ''
+}
+
 export function normalizeAthleteLevel(input) {
   if (!input || typeof input !== 'string') return ''
   const lower = input.trim().toLowerCase()
