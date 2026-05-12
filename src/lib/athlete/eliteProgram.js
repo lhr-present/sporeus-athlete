@@ -850,7 +850,8 @@ function triSampleWeek(phase, paces, _ftp, cssSec) {
  */
 export function buildEliteProgram(input) {
   if (!input || typeof input !== 'object') return null
-  const { currentPR, sport } = input
+  const { currentPR } = input
+  let sport = input.sport
   let { targetPR, raceDate } = input
   const profile = input.profile || {}
   const options = input.options || {}
@@ -859,6 +860,19 @@ export function buildEliteProgram(input) {
 
   // v8.96.0 — current PR is always required (the floor)
   if (!currentPR || !sport) return null
+
+  // v9.76.0 — normalize sport vocabulary at the boundary. Three vocabularies
+  // coexist in the codebase: capitalized ('Running' from Onboarding),
+  // full-lowercase ('running' in some lib files), and the 3-letter internal
+  // form ('run' used here). Map all into the internal form so any caller works.
+  const SPORT_NORM = {
+    running:'run', run:'run',
+    cycling:'bike', bike:'bike', cycle:'bike',
+    swimming:'swim', swim:'swim',
+    triathlon:'triathlon', tri:'triathlon',
+    rowing:'rowing', row:'rowing',
+  }
+  sport = SPORT_NORM[String(sport).toLowerCase()] || sport
   if (!['run', 'bike', 'swim', 'triathlon', 'rowing'].includes(sport)) return null
 
   // v8.96.0 — when neither raceDate nor weeksOverride supplied, no horizon → reject

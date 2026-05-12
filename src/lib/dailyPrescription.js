@@ -89,7 +89,14 @@ export function dailyPrescription(profile, log = [], plan = null, _planStatus = 
     }
   } else if (status === 'fresh' || status === 'optimal') {
     // No plan — suggest a session based on status
-    const sugType = status === 'fresh' ? (profile?.sport === 'Cycling' ? 'Tempo Ride' : 'Tempo Run') : 'Easy Run'
+    // v9.76.0 — case-insensitive sport check. Previously compared to literal
+    // 'Cycling' (Onboarding writes capitalized), but the codebase has three
+    // sport vocabularies coexisting (capitalized 'Cycling', full lowercase
+    // 'cycling', 3-letter 'bike'). Match any of them so a future
+    // sanitizeProfile normalization can't silently route cyclists to a run.
+    const sportRaw  = String(profile?.sport || '')
+    const isCycling = /^(cycl|bike)/i.test(sportRaw)
+    const sugType   = status === 'fresh' ? (isCycling ? 'Tempo Ride' : 'Tempo Run') : 'Easy Run'
     const sugZone = status === 'fresh' ? 3 : 2
     const hrZone  = metrics?.hr?.zones?.[sugZone - 1]
     const paces   = metrics?.running?.paces

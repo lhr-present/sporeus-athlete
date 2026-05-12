@@ -4,6 +4,97 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.76.0 — 2026-05-12 — String normalization audit fixes (#4 follow-up)
+
+  User ran strategic audit #4: find every case-mismatched string
+  comparison that could fail like v9.67.0. Audit produced a 20-row
+  table; most findings were OK (controlled output or already
+  normalized). Two were real and worth defending now.
+
+  ### HIGH — `dailyPrescription.js:92` cycling check fragility
+
+  Compared `profile?.sport === 'Cycling'` (capitalized literal).
+  Currently matches Onboarding's capitalized storage by coincidence,
+  but the codebase has **three sport vocabularies coexisting**:
+  - Onboarding: `'Cycling'` (capitalized)
+  - `efficiencyFactor.js`, `triLoad.js`: `'cycling'` (full lowercase)
+  - `eliteProgram.js`, `quickLogFromSession.js`: `'bike'` (3-letter
+    internal)
+
+  Any future `sanitizeProfile` change that lowercases `sport` would
+  silently route cyclists to a Tempo Run suggestion. v9.67-class
+  silent failure waiting to happen.
+
+  **Fix:** case-insensitive prefix match against `cycl|bike`:
+  ```js
+  const isCycling = /^(cycl|bike)/i.test(String(profile?.sport || ''))
+  ```
+
+  ### MEDIUM — `buildEliteProgram` boundary defense
+
+  `eliteProgram.js:862` rejected any sport not in
+  `['run','bike','swim','triathlon','rowing']`. A future caller
+  passing `'Running'` (from Onboarding) silently got `return null` —
+  no diagnostic, no elite program. The fact that no caller currently
+  hits this is luck, not design.
+
+  **Fix:** normalize sport vocabulary at function entry. New
+  `SPORT_NORM` map maps all three vocabularies into the 3-letter
+  internal form:
+  ```js
+  const SPORT_NORM = {
+    running:'run', run:'run',
+    cycling:'bike', bike:'bike', cycle:'bike',
+    swimming:'swim', swim:'swim',
+    triathlon:'triathlon', tri:'triathlon',
+    rowing:'rowing', row:'rowing',
+  }
+  sport = SPORT_NORM[String(sport).toLowerCase()] || sport
+  ```
+
+  Now accepts `'Running'`, `'running'`, `'run'`, `'Cycling'`,
+  `'cycling'`, `'bike'`, etc. and lands all in the same internal
+  bucket. Existing 3-letter callers unaffected (passes through).
+
+  ### Audit findings classified OK (no action)
+
+  - All `subscription_tier` / `tier` compares (`App.jsx`,
+    `subscription.js`) — Supabase enforces case at write
+  - `gender === 'male'` (`formulas.js`) — Onboarding writes lowercase
+    and `sanitizeProfile` validates membership
+  - All `level === 'HIGH'` / `'critical'` / `'warning'` — produced by
+    classifier code, never user input
+  - `Dashboard.jsx:152` `LEVEL_CONFIG[profile.athleteLevel]` — already
+    normalized via v9.67.0 + path6 E2E guards
+
+  ### Audit findings deferred (separate scope)
+
+  - **Sport vocabulary unification across `efficiencyFactor.js`,
+    `triLoad.js`, `planAdherence.js`, `quickLogFromSession.js`,
+    `eliteProgramDrills.js`, `eliteProgramKeySessions.js`** — they
+    use full-lowercase or 3-letter forms inconsistently. v9.76.0
+    defends the high-traffic boundaries; full unification is a
+    larger ship.
+  - **Perf Regression nightly workflow has been failing since
+    2026-05-08** — `unknown flag: --project-ref` from a Supabase
+    CLI version mismatch (v2.91.0 → v2.98.x). Pre-existing CI infra
+    issue, not caused by recent commits. Tracking for separate fix.
+
+  ### Files
+
+  - `src/lib/dailyPrescription.js` — case-insensitive sport check
+  - `src/lib/athlete/eliteProgram.js` — sport vocabulary normalization
+    at function entry
+  - `src/lib/__tests__/athlete/eliteProgram.test.js` — +3 tests
+    covering capitalized, full-lowercase, and case-insensitive sport
+    inputs
+
+  ### Tests
+
+  Full suite: **9875 passed (+3 net)**. Lint clean. Build clean.
+
+---
+
 ## v9.75.0 — 2026-05-12 — Onboarding TR pass (all 8 steps)
 
   User strategic ask #2: Onboarding step 5 ("FITNESS LEVEL" + tier
