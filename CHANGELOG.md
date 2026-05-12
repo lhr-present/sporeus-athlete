@@ -14,6 +14,101 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.89.0 — 2026-05-12 — Post-session execution snapshot (plan vs actual)
+
+  Closes the last engineering item on the v9.84.0+ deferred backlog.
+  After today's session is logged, TodayView's session card now
+  surfaces a plan-vs-actual delta strip so the athlete sees how the
+  execution landed without doing arithmetic in their head.
+
+  ### What you see (under the "✓ DONE" badge)
+  Color-coded strip with status: ON-TARGET (green) / OVER (amber) /
+  UNDER (amber) / INCOMPLETE (red):
+
+  > ◆ EXECUTION · ON-TARGET
+  > DUR · 62m / plan 60m (+2) · RPE · 7 / plan 7 · TSS · 78 / plan 80 (-2)
+
+  Or for a curtailed session:
+
+  > ◆ EXECUTION · UNDER
+  > DUR · 40m / plan 60m (-20) · RPE · 7 / plan 7
+
+  ### Design call (the "product question" from previous ships)
+  Compares ONLY fields reliably present in both plan and log:
+  - `duration` — always required, drives the primary status
+  - `rpe` — almost always; bumps status to over/under when ±1
+  - `tss` — when computable on both sides; informational
+
+  Skipped: **pace and HR**. Those are conditional on FIT import or
+  detailed manual entry — half the user base logs sessions without
+  them. A "missing HR delta" line would create more noise than
+  signal. Skip cleanly; show only what's reliable.
+
+  ### Status thresholds (coarse on purpose)
+  - `on-target`  : duration within ±15% AND RPE within ±1
+  - `over`       : duration >115% OR RPE > planned+1
+  - `under`      : duration in [50%, 85%) (athlete-elected reductions
+                   below RPE-1 with duration on-target also count)
+  - `incomplete` : duration <50% (something went wrong)
+
+  Strict-less-than boundaries: at exactly 50%/85%/115% the value
+  classifies on the safer side (50% = under, not incomplete; 85% =
+  on-target, not under; 115% = on-target, not over).
+
+  ### New module
+  `src/lib/athlete/sessionExecution.js`:
+  - Pure function `computeSessionExecution(plannedSession, logEntry)`
+  - Returns null when planned-session is rest, or when either side
+    is missing duration data
+  - Exports `EXECUTION_STATUS_LABEL` (bilingual) and
+    `EXECUTION_STATUS_COLOR` so the renderer doesn't hard-code
+    status semantics
+
+  ### Tests
+  18 new vitest cases in
+  `src/lib/__tests__/athlete/sessionExecution.test.js` covering:
+  - Null / missing input handling
+  - Rest-day return (planned.duration = 0)
+  - On-target / over / under / incomplete classification
+  - RPE-only escalation (duration on-target but RPE diverges)
+  - RPE undershoot + duration overshoot = over (priority order)
+  - TSS comparison from both `targetTSS` and `tss` plan fields
+  - Conditional rendering when RPE / TSS missing on either side
+  - Boundary cases at exactly 50% / 85% / 115%
+  - Decimal-rounded delta minutes
+  - Label and color contract
+
+  Total test count: 9898 → 9916 (+18).
+
+  ### Why a fresh card-level strip rather than replacing the badge
+  Kept the `✓ DONE` badge intact (it confirms the user successfully
+  logged) and added the EXECUTION strip below it. Two distinct
+  signals: "I logged it" vs "Here's how it landed vs plan." The
+  athlete who marked-done without numbers (skipped detailed log)
+  still sees the green confirmation; the athlete who logged
+  duration/RPE/TSS gets the snapshot for free.
+
+  Files: `package.json` (11.89.0), `CHANGELOG.md`,
+  `src/lib/athlete/sessionExecution.js` (new, ~130 LOC),
+  `src/lib/__tests__/athlete/sessionExecution.test.js` (new, 18 cases),
+  `src/components/TodayView.jsx` (import + todayLogEntry memo +
+  sessionExecution memo + render block).
+
+  Tests 9916/9916, lint clean, build clean, version-sync passes
+  (11.89.0 ↔ v9.89.0).
+
+  ### Remaining backlog
+  - Dead-code prune (7 files) — held by user preservation rule +
+    `weekly-audit.sh:119` retention list. Reopen only with explicit
+    user signoff. Everything else previously on the backlog has
+    shipped.
+
+  Depends on: v9.84.0 (Mission 1 session-card foundation),
+  v9.88.0 (sessionStructure precedent — same minimal-additive shape
+  and same `src/lib/athlete/` location).
+
+---
+
 ## v9.88.0 — 2026-05-12 — Interval structure breakdown for hard sessions
 
   Clears one of the larger deferred items from v9.84.0+. The Mission 1

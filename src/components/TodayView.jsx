@@ -20,6 +20,7 @@ import { getRecommendedProtocols } from '../lib/recoveryProtocols.js'
 import { computeNextAction } from '../lib/nextAction.js'
 import { buildContingencyMap } from '../lib/athlete/eliteProgramSubstitutions.js'
 import { deriveSessionStructure } from '../lib/athlete/sessionStructure.js'
+import { computeSessionExecution, EXECUTION_STATUS_LABEL, EXECUTION_STATUS_COLOR } from '../lib/athlete/sessionExecution.js'
 
 const WellnessSparkline = lazy(() => import('./charts/WellnessSparkline.jsx'))
 
@@ -127,6 +128,19 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
   }, [plannedSession, nextAction])
 
   const yesterdayLogged = (log || []).some(e => e.date === yesterday)
+
+  // v9.89.0 — Find today's logged entry (most recent if multiple) for the
+  // execution snapshot. Highest-TSS pick reduces noise when an athlete
+  // logs two short walks plus the actual hard session.
+  const todayLogEntry = useMemo(() => {
+    const todayEntries = (log || []).filter(e => e.date === today)
+    if (!todayEntries.length) return null
+    return [...todayEntries].sort((a, b) => (Number(b.tss) || 0) - (Number(a.tss) || 0))[0]
+  }, [log, today])
+  const sessionExecution = useMemo(
+    () => computeSessionExecution(plannedSession, todayLogEntry),
+    [plannedSession, todayLogEntry]
+  )
   const sessions7d      = useMemo(() => {
     const cutoff = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 7); return d.toISOString().slice(0, 10) })()
     return (log || []).filter(e => e.date >= cutoff).length
@@ -1201,6 +1215,64 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                   onMouseOut={e  => e.currentTarget.style.color = '#888'}>
                   {t('todayMarkDone')}
                 </button>
+              </div>
+            )}
+            {/* v9.89.0 — Execution snapshot. After today's session is logged,
+                compare logged values vs planned to surface the duration / RPE
+                / TSS deltas. Pure additive — renders only when both a plan
+                and a log entry exist for today. Status thresholds: on-target
+                = duration within ±15% AND RPE within ±1; over = >115% OR
+                RPE+1; under = <85% (but ≥50%); incomplete = <50%. */}
+            {sessionExecution && (
+              <div style={{
+                marginTop: '10px', padding: '8px 10px',
+                fontSize: '10px', color: '#aaa', lineHeight: 1.55,
+                background: `${EXECUTION_STATUS_COLOR[sessionExecution.status]}14`,
+                border: `1px solid ${EXECUTION_STATUS_COLOR[sessionExecution.status]}55`,
+                borderRadius: '4px',
+                fontFamily: MONO, letterSpacing: '0.04em',
+              }}>
+                <div style={{
+                  color: EXECUTION_STATUS_COLOR[sessionExecution.status],
+                  fontWeight: 700, fontSize: '9px', letterSpacing: '0.08em', marginBottom: '4px',
+                }}>
+                  {lang === 'tr' ? '◆ İCRA · ' : '◆ EXECUTION · '}
+                  {(EXECUTION_STATUS_LABEL[sessionExecution.status][lang] || EXECUTION_STATUS_LABEL[sessionExecution.status].en).toUpperCase()}
+                </div>
+                <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
+                  <span>
+                    <span style={{ color: '#666' }}>{lang === 'tr' ? 'SÜRE · ' : 'DUR · '}</span>
+                    <span style={{ color: '#ccc', fontWeight: 700 }}>{sessionExecution.duration.logged}m</span>
+                    <span style={{ color: '#666' }}>{lang === 'tr' ? ' / plan ' : ' / plan '}{sessionExecution.duration.planned}m</span>
+                    <span style={{ color: sessionExecution.duration.deltaMin === 0 ? '#888' : sessionExecution.duration.deltaMin > 0 ? '#f5c542' : '#888', marginLeft: '4px' }}>
+                      ({sessionExecution.duration.deltaMin > 0 ? '+' : ''}{sessionExecution.duration.deltaMin})
+                    </span>
+                  </span>
+                  {sessionExecution.rpe && (
+                    <span>
+                      <span style={{ color: '#666' }}>RPE · </span>
+                      <span style={{ color: '#ccc', fontWeight: 700 }}>{sessionExecution.rpe.logged}</span>
+                      <span style={{ color: '#666' }}>{lang === 'tr' ? ' / plan ' : ' / plan '}{sessionExecution.rpe.planned}</span>
+                      {sessionExecution.rpe.delta !== 0 && (
+                        <span style={{ color: Math.abs(sessionExecution.rpe.delta) >= 2 ? '#f5c542' : '#888', marginLeft: '4px' }}>
+                          ({sessionExecution.rpe.delta > 0 ? '+' : ''}{sessionExecution.rpe.delta})
+                        </span>
+                      )}
+                    </span>
+                  )}
+                  {sessionExecution.tss && (
+                    <span>
+                      <span style={{ color: '#666' }}>TSS · </span>
+                      <span style={{ color: '#ccc', fontWeight: 700 }}>{sessionExecution.tss.logged}</span>
+                      <span style={{ color: '#666' }}>{lang === 'tr' ? ' / plan ' : ' / plan '}{sessionExecution.tss.planned}</span>
+                      {sessionExecution.tss.delta !== 0 && (
+                        <span style={{ color: Math.abs(sessionExecution.tss.deltaPct) >= 0.20 ? '#f5c542' : '#888', marginLeft: '4px' }}>
+                          ({sessionExecution.tss.delta > 0 ? '+' : ''}{sessionExecution.tss.delta})
+                        </span>
+                      )}
+                    </span>
+                  )}
+                </div>
               </div>
             )}
             {/* v9.85.0 — Tomorrow preview. Tells the athlete what's coming so
