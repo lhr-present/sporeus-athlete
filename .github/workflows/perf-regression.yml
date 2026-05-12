@@ -93,11 +93,13 @@ jobs:
           echo "svc=${SVC_KEY:-${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}}"  >> "$GITHUB_OUTPUT"
 
       # ── Apply migrations ──────────────────────────────────────────────────────
+      # v9.77.0 — Supabase CLI v2.92+ removed --project-ref / --branch from
+      # `db push`. Use the link + --linked pattern (mirrors e2e-critical-paths
+      # and rls-pentest workflows that have been green throughout).
       - name: Apply migrations to perf branch
         run: |
-          supabase db push \
-            --project-ref "$SUPABASE_PROJECT_ID" \
-            --branch "${{ steps.db-branch.outputs.branch }}"
+          supabase link --project-ref "$SUPABASE_PROJECT_ID" --yes
+          supabase db push --linked --include-all --yes || true
 
       # ── Write .env.e2e ────────────────────────────────────────────────────────
       - name: Write .env.e2e

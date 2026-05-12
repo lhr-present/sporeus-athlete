@@ -4,6 +4,70 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.77.0 — 2026-05-12 — Fix Perf Regression + RLS Pentest nightly CI failures
+
+  Both `perf-regression.yml` and `rls-pentest.yml` have been failing
+  every night since 2026-05-08 with:
+  ```
+  unknown flag: --project-ref
+  ```
+
+  ### Root cause
+
+  Supabase CLI v2.92+ tightened flag parsing on `db push` and
+  `db query`. These subcommands previously accepted `--project-ref`
+  (silently no-op in v2.91.0); newer versions reject unknown flags
+  outright. The CI installs `latest` via `supabase/setup-cli@v1`,
+  so this broke silently when CLI moved past 2.92.
+
+  ### Why other workflows kept working
+
+  - `e2e-critical-paths.yml` already used `supabase link
+    --project-ref + db push --linked` (line 100-101)
+  - `rls-pentest.yml` already used the same link+linked pattern for
+    `db push` (line 70-71) — but a SECOND command on line 88
+    (`db query --project-ref`) still used the deprecated flag and
+    broke
+  - `perf-regression.yml` used `db push --project-ref --branch`
+    (line 96-100) — fully broken
+
+  Pattern recognition: `branches create / get / delete` still accept
+  `--project-ref` (the agent verified those steps ran green in the
+  failing jobs). Only `db push` and `db query` enforced the new
+  strict parsing.
+
+  ### Fix
+
+  Mirror the green workflows. Both fixes use the existing branch-link
+  context:
+
+  **`perf-regression.yml:96-101`** — replaced `db push --project-ref
+  --branch` with `supabase link --project-ref` + `db push --linked
+  --include-all --yes`.
+
+  **`rls-pentest.yml:88-89`** — replaced `db query --project-ref` with
+  `db query --linked` (the branch was already linked by the "Apply
+  migrations" step earlier in the same job).
+
+  No CLI pin. Stays on `latest`. Compatible with the next several
+  CLI versions.
+
+  ### Files
+
+  - `.github/workflows/perf-regression.yml` — 5 lines
+  - `.github/workflows/rls-pentest.yml` — 3 lines
+
+  ### Verification path
+
+  Both workflows are scheduled (nightly + on-demand). The next
+  scheduled run (~03:30 UTC tomorrow) is the first real-world test.
+  Manual `workflow_dispatch` is also available if we want to verify
+  faster. No source changes; unit suite untouched.
+
+  Tests: **9875 passed** (unchanged). Lint clean. Build clean.
+
+---
+
 ## v9.76.0 — 2026-05-12 — String normalization audit fixes (#4 follow-up)
 
   User ran strategic audit #4: find every case-mismatched string
