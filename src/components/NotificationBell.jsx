@@ -19,17 +19,18 @@ const TYPE_ICON = {
   coach:       '💬',
 }
 
-function timeAgo(isoStr) {
+function timeAgo(isoStr, lang = 'en') {
+  const tr = lang === 'tr'
   const diff = Date.now() - new Date(isoStr).getTime()
   const m = Math.floor(diff / 60000)
-  if (m < 1)  return 'just now'
-  if (m < 60) return `${m}m ago`
+  if (m < 1)  return tr ? 'şu anda' : 'just now'
+  if (m < 60) return tr ? `${m} dk önce` : `${m}m ago`
   const h = Math.floor(m / 60)
-  if (h < 24) return `${h}h ago`
-  return `${Math.floor(h / 24)}d ago`
+  if (h < 24) return tr ? `${h} sa önce` : `${h}h ago`
+  return tr ? `${Math.floor(h / 24)} gün önce` : `${Math.floor(h / 24)}d ago`
 }
 
-export default function NotificationBell({ onNavigate }) {
+export default function NotificationBell({ onNavigate, lang = 'en' }) {
   const [open, setOpen]         = useState(false)
   const [items, setItems]       = useState([])
   const [unread, setUnread]     = useState(0)
@@ -85,7 +86,8 @@ export default function NotificationBell({ onNavigate }) {
       {/* Bell button */}
       <button
         onClick={() => setOpen(v => !v)}
-        title="Notifications"
+        title={lang === 'tr' ? 'Bildirimler' : 'Notifications'}
+        aria-label={lang === 'tr' ? 'Bildirimler' : 'Notifications'}
         style={{
           fontFamily: MONO,
           fontSize: '14px',
@@ -151,7 +153,7 @@ export default function NotificationBell({ onNavigate }) {
             background: '#111',
           }}>
             <span style={{ fontSize: '10px', fontWeight: 700, color: '#888', letterSpacing: '0.1em' }}>
-              NOTIFICATIONS {unread > 0 && <span style={{ color: ORANGE }}>({unread})</span>}
+              {lang === 'tr' ? 'BİLDİRİMLER' : 'NOTIFICATIONS'} {unread > 0 && <span style={{ color: ORANGE }}>({unread})</span>}
             </span>
             <div style={{ display: 'flex', gap: '8px' }}>
               {unread > 0 && (
@@ -159,7 +161,7 @@ export default function NotificationBell({ onNavigate }) {
                   onClick={handleMarkAll}
                   style={{ background: 'none', border: 'none', color: '#555', fontSize: '9px', cursor: 'pointer', fontFamily: MONO, letterSpacing: '0.05em' }}
                 >
-                  Mark all read
+                  {lang === 'tr' ? 'Tümünü okundu işaretle' : 'Mark all read'}
                 </button>
               )}
               {items.length > 0 && (
@@ -167,7 +169,7 @@ export default function NotificationBell({ onNavigate }) {
                   onClick={handleClear}
                   style={{ background: 'none', border: 'none', color: '#444', fontSize: '9px', cursor: 'pointer', fontFamily: MONO }}
                 >
-                  Clear
+                  {lang === 'tr' ? 'Temizle' : 'Clear'}
                 </button>
               )}
             </div>
@@ -176,7 +178,7 @@ export default function NotificationBell({ onNavigate }) {
           {/* List */}
           {items.length === 0 ? (
             <div style={{ padding: '24px 14px', textAlign: 'center', fontSize: '10px', color: '#444' }}>
-              No notifications
+              {lang === 'tr' ? 'Bildirim yok' : 'No notifications'}
             </div>
           ) : (
             items.map(n => (
@@ -209,7 +211,7 @@ export default function NotificationBell({ onNavigate }) {
                       {n.title}
                     </span>
                     <span style={{ fontSize: '8px', color: '#444', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                      {timeAgo(n.createdAt)}
+                      {timeAgo(n.createdAt, lang)}
                     </span>
                   </div>
                   {n.body && (

@@ -71,7 +71,14 @@ export default function Calendar({ log, setLog, onEdit }) {
           const isSel = sel === ds
 
           return (
-            <div key={i} onClick={()=>setSel(isSel?null:ds)} style={{
+            <div key={i}
+              role="button"
+              tabIndex={0}
+              aria-pressed={isSel}
+              aria-label={`${day}`}
+              onClick={()=>setSel(isSel?null:ds)}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSel(isSel?null:ds) } }}
+              style={{
               minHeight:'52px', padding:'3px 3px 2px', borderRadius:'4px', cursor:'pointer',
               border: isToday ? '2px solid #ff6600' : isSel ? '2px solid #0064ff' : '1px solid var(--border)',
               background: isSel ? '#0064ff11' : 'var(--card-bg)',

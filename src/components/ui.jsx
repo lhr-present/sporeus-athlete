@@ -224,6 +224,7 @@ export function HelpTip({ text }) {
         onClick={e => { e.stopPropagation(); setOpen(o => !o) }}
         style={{ width:'14px', height:'14px', borderRadius:'50%', border:'1px solid var(--muted)', background:'transparent', cursor:'pointer', fontFamily:"'IBM Plex Mono',monospace", fontSize:'8px', color:'var(--muted)', lineHeight:1, padding:0, marginLeft:'5px', display:'inline-flex', alignItems:'center', justifyContent:'center' }}
         title={text}
+        aria-label={`Help: ${text}`}
       >?</button>
       {open && (
         <div style={{ position:'absolute', bottom:'18px', left:'50%', transform:'translateX(-50%)', zIndex:9500, background:'#111', border:'1px solid #444', borderRadius:'4px', padding:'8px 10px', maxWidth:'220px', minWidth:'140px', fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', color:'#ccc', lineHeight:1.6, whiteSpace:'normal', boxShadow:'0 4px 20px rgba(0,0,0,0.6)', pointerEvents:'none' }}>

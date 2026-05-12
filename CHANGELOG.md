@@ -14,6 +14,80 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.82.0 — 2026-05-12 — A11y + Notification TR pass (4-agent audit synthesis)
+
+  Launched 4 parallel audit agents (EN-only TR gaps, dead-code,
+  a11y gaps, debug-leak scan). Synthesized into a focused fix batch.
+
+  ### A11y HIGH (4)
+  - `TodayView.jsx:520` — weekly-recap dismiss was `<span onClick>`
+    (not keyboard-accessible). Converted to `<button>` with
+    `aria-label`. Reset button styling so it visually unchanged.
+  - `Calendar.jsx:74` — calendar day cells were `<div onClick>` with
+    no keyboard handler. Added `role="button"`, `tabIndex={0}`,
+    `aria-pressed`, `aria-label` (day number), and `onKeyDown` handler
+    for Enter/Space.
+  - `Profile.jsx:646` — "DATA QUALITY" accordion toggle was bare div.
+    Added `role="button"`, `tabIndex={0}`, `aria-expanded`,
+    bilingual `aria-label`, and Enter/Space handler.
+  - `coachDashboard/PlanDistribution.jsx:11` — same accordion pattern
+    fix as Profile (the coach-side template-list toggle).
+
+  ### A11y MED (1)
+  - `ui.jsx:223` — `HelpTip` button had only `title` (mouse-only).
+    Added `aria-label={Help: ${text}}` for screen readers.
+
+  ### TR translation (2)
+  - `AiFeedbackButtons.jsx` — Was English-only across every
+    AI-generated card surface ("Thanks for the feedback" / "Was this
+    analysis helpful?"). Wired `useLocalStorage('sporeus-lang')` to
+    read lang; added TR for both strings: "Geri bildirimin için
+    teşekkürler" / "Bu analiz yardımcı oldu mu?".
+  - `NotificationBell.jsx` — Full bilingual pass. Previously the
+    entire notification center was English-only: bell tooltip,
+    dropdown header, "Mark all read", "Clear", "No notifications",
+    and the `timeAgo()` formatter (just now / Nm ago / Nh ago /
+    Nd ago). Added `lang` prop wired from `App.jsx` line 403;
+    `timeAgo()` now takes lang and emits "şu anda / N dk önce /
+    N sa önce / N gün önce" in TR.
+
+  ### Deliberately NOT shipped (deferred or skipped — see why)
+  - Browser dialogs (15 `alert()` + `window.confirm()` calls in
+    CoachDashboard, DeviceSync, Profile, EliteProgramCard, etc.).
+    Migrating to `ConfirmModal` is a focused refactor — separate ship.
+  - Dead-code candidate deletion (hardDaySpacing, aiHelpers,
+    announcementHelpers, cloudSync, fitParser, queueWorker,
+    whiteLabel). Investigation showed `scripts/weekly-audit.sh:119`
+    explicitly lists cloudSync.js + whiteLabel.js in an exclusion
+    pattern — they're being retained intentionally. User rule from
+    v9.67 onboarding work: "do not remove but unpublish the features
+    or calculations" — bias toward preservation. Reopen with explicit
+    user signoff if pruning becomes priority.
+  - Dashboard MED translation gaps (hover-tooltip `title=` attributes
+    explaining CTL/ACWR/EF/HRV/NM/OSTRC). Many files, smaller user
+    impact — defer to a dedicated tooltip-TR ship.
+  - `LangCtx:756 noPlanYet` agent claim — re-verified, false positive
+    (`seçin` + `oluşturun` are both formal-imperative, consistent).
+
+  ### Why
+  User asked "launch agents and solve all the things you think they
+  are issues." Audits surfaced ~35 candidate findings; this ship
+  applies the 7 highest-confidence, lowest-risk fixes that don't
+  expand scope into multi-ship refactor territory.
+
+  Files: `package.json` (11.82.0), `CHANGELOG.md`, `App.jsx` (1
+  prop wire), `TodayView.jsx`, `Calendar.jsx`, `Profile.jsx`,
+  `coachDashboard/PlanDistribution.jsx`, `ui.jsx`,
+  `AiFeedbackButtons.jsx`, `NotificationBell.jsx`.
+
+  Tests 9881/9881 unchanged, lint clean, build clean, version-sync
+  passes (11.82.0 ↔ v9.82.0).
+
+  Depends on: v9.81.0 (TR audit baseline — vocabulary rules now
+  applied to NotificationBell + AiFeedbackButtons).
+
+---
+
 ## v9.81.0 — 2026-05-12 — TR audit follow-up (LangCtx labels + science strings)
 
   v9.80.0 fixed 11 issues in user-facing component files. This ship

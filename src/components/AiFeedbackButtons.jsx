@@ -4,6 +4,7 @@
 
 import { useState } from 'react'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
+import { useLocalStorage } from '../hooks/useLocalStorage.js'
 
 const S = {
   wrap: {
@@ -52,6 +53,7 @@ export default function AiFeedbackButtons({ surface, promptVersion, insightId, u
   const [rating, setRating]     = useState(null)   // 1 | -1 | null
   const [saved, setSaved]       = useState(false)
   const [loading, setLoading]   = useState(false)
+  const [lang]                  = useLocalStorage('sporeus-lang', 'en')
 
   async function submit(value) {
     if (saved || loading) return
@@ -80,13 +82,13 @@ export default function AiFeedbackButtons({ surface, promptVersion, insightId, u
   if (saved) {
     return (
       <div style={S.wrap}>
-        <span style={S.thanks}>Thanks for the feedback</span>
+        <span style={S.thanks}>{lang === 'tr' ? 'Geri bildirimin için teşekkürler' : 'Thanks for the feedback'}</span>
       </div>
     )
   }
 
   return (
-    <div style={S.wrap} role="group" aria-label="Was this analysis helpful?">
+    <div style={S.wrap} role="group" aria-label={lang === 'tr' ? 'Bu analiz yardımcı oldu mu?' : 'Was this analysis helpful?'}>
       <button
         style={{ ...S.btn, ...(rating === 1 ? S.active_up : {}) }}
         onClick={() => submit(1)}

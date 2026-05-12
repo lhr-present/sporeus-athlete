@@ -517,8 +517,9 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
               <div style={{ fontFamily: MONO, fontSize: '9px', color: '#555', letterSpacing: '0.10em' }}>
                 ◈ {lang === 'tr' ? 'GEÇEN HAFTA' : 'LAST WEEK'} · {weeklyRecap.weekLabel}
               </div>
-              <span onClick={() => { localStorage.setItem(`sporeus-recap-seen-${weeklyRecap.weekLabel}`, '1'); setRecapDismissed(true) }}
-                style={{ cursor: 'pointer', fontFamily: MONO, fontSize: '9px', color: '#333' }}>[×]</span>
+              <button onClick={() => { localStorage.setItem(`sporeus-recap-seen-${weeklyRecap.weekLabel}`, '1'); setRecapDismissed(true) }}
+                aria-label={lang === 'tr' ? 'Haftalık özeti kapat' : 'Dismiss weekly recap'}
+                style={{ cursor: 'pointer', fontFamily: MONO, fontSize: '9px', color: '#333', background: 'transparent', border: 'none', padding: 0, lineHeight: 1 }}>[×]</button>
             </div>
             <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', fontFamily: MONO }}>
               <div>

@@ -8,7 +8,14 @@ export default function PlanDistribution({ templates, setTemplates, onApply }) {
 
   return (
     <div style={{ ...S.card, marginBottom:'16px' }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer' }} onClick={() => setOpen(o => !o)}>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        aria-label="Toggle plan templates"
+        onClick={() => setOpen(o => !o)}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(o => !o) } }}
+        style={{ display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer' }}>
         <div style={S.cardTitle}>PLAN TEMPLATES ({templates.length})</div>
         <span style={{ ...S.mono, fontSize:'12px', color:'var(--muted)' }}>{open ? '▲' : '▼'}</span>
       </div>

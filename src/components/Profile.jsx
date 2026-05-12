@@ -643,7 +643,14 @@ export default function Profile({ log, authUser }) {
         const color = dq.score >= 80 ? '#5bc25b' : dq.score >= 60 ? '#f5c542' : '#e03030'
         return (
           <div style={{ ...S.card, borderLeft: `3px solid ${color}` }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => setDqOpen(o => !o)}>
+            <div
+              role="button"
+              tabIndex={0}
+              aria-expanded={dqOpen}
+              aria-label={isTR ? 'Veri kalitesi ayrıntılarını aç/kapat' : 'Toggle data quality details'}
+              onClick={() => setDqOpen(o => !o)}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDqOpen(o => !o) } }}
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
               <div>
                 <div style={{ ...S.cardTitle, marginBottom: 2 }}>DATA QUALITY</div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>

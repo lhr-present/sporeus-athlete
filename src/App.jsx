@@ -400,7 +400,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
                 boxShadow: syncStatus === 'syncing' ? '0 0 6px #f5c54299' : 'none',
               }}
             />
-            <NotificationBell onNavigate={handleTabClick} />
+            <NotificationBell onNavigate={handleTabClick} lang={lang} />
             <button
               onClick={() => setShowQuickAdd(true)}
               title={`${lang === 'tr' ? 'Hızlı Antrenman Kaydet' : 'Quick Log Session'} (+)`}
