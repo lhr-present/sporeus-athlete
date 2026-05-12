@@ -24,6 +24,41 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # v9.79.0 — Assert the package.json↔CHANGELOG.md version offset.
+      # Two-version system documented in CLAUDE.md → "Version System".
+      # Relationship: pkg.major === changelog.major + 2; minor numbers match.
+      - name: Version sync check
+        run: |
+          PKG_VER=$(node -p "require('./package.json').version")
+          PKG_MAJOR="${PKG_VER%%.*}"
+          PKG_REST="${PKG_VER#*.}"
+          PKG_MINOR="${PKG_REST%%.*}"
+
+          # Match the first heading like "## v9.X.Y — ..."
+          CHG_LINE=$(grep -m1 '^## v[0-9]' CHANGELOG.md || true)
+          CHG_VER=$(echo "$CHG_LINE" | sed -nE 's/^## v([0-9]+\.[0-9]+\.[0-9]+).*/\1/p')
+          CHG_MAJOR="${CHG_VER%%.*}"
+          CHG_REST="${CHG_VER#*.}"
+          CHG_MINOR="${CHG_REST%%.*}"
+
+          echo "package.json:   ${PKG_VER}  (major=${PKG_MAJOR} minor=${PKG_MINOR})"
+          echo "CHANGELOG top:  v${CHG_VER}  (major=${CHG_MAJOR} minor=${CHG_MINOR})"
+
+          if [ -z "$CHG_VER" ]; then
+            echo "::error::Could not parse CHANGELOG.md top heading as a version"
+            exit 1
+          fi
+          if [ "$((CHG_MAJOR + 2))" -ne "$PKG_MAJOR" ]; then
+            echo "::error::Major offset broken — expected pkg.major === changelog.major + 2"
+            echo "::error::pkg=${PKG_MAJOR} changelog=${CHG_MAJOR} (expected pkg=${CHG_MAJOR}+2=$((CHG_MAJOR + 2)))"
+            exit 1
+          fi
+          if [ "$PKG_MINOR" != "$CHG_MINOR" ]; then
+            echo "::error::Minor version drift — pkg=${PKG_MINOR} changelog=${CHG_MINOR}"
+            echo "::error::package.json and CHANGELOG.md minor versions must match"
+            exit 1
+          fi
+          echo "OK — version offset intact"
       - run: npm run lint
       - run: npm test
       - run: npm run build

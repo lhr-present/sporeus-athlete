@@ -7,6 +7,10 @@ import { NetworkFirst } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
 import { CacheableResponsePlugin } from 'workbox-cacheable-response'
 
+// v9.79.0 — Deliberately stable. NOT synced with package.json or
+// CHANGELOG version. Bump manually ONLY when SW caching behavior changes
+// (rotating this nukes every user's precache via the cleanup filter
+// below). See CLAUDE.md → "Version System".
 const CACHE_VERSION = 'sporeus-v8.0.0'
 
 // ── Precaching ─────────────────────────────────────────────────────────────────

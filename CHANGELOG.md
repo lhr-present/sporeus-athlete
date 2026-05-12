@@ -2,6 +2,90 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+<!--
+  VERSION CONVENTION (see CLAUDE.md → "Version System")
+  - This file's headings use the PRODUCT version: v9.X.Y
+  - package.json uses the ENGINEERING version: 11.X.Y
+  - Minor version moves in lockstep (pkg=11.78.0 ↔ this=v9.78.0)
+  - Major offset is fixed: pkg.major === changelog.major + 2
+  - CI enforces the offset on push to main (.github/workflows/deploy.yml).
+  - DO NOT renumber to "fix" the gap — it's intentional history.
+-->
+
+---
+
+## v9.79.0 — 2026-05-12 — Formalize the two-version system
+
+  Deep dive #3 confirmed the `package.json` (`11.X.Y`) vs `CHANGELOG.md`
+  (`v9.X.Y`) split is **intentional, not drift**. Engineering hit
+  major-11 during a re-platforming pass while product stayed on v9
+  release-sprint numbering. The offset `pkg.major = changelog.major + 2`
+  is real and load-bearing — commit messages, Sentry release tagging,
+  and UI telemetry all assume one of the two without the other being
+  wrong.
+
+  But the convention was **undocumented**. Future maintainers (or
+  agents) would reasonably try to "fix" the discrepancy by collapsing
+  them. This ship formalizes the split so that can't happen quietly.
+
+  ### Three pieces
+
+  **1. `CLAUDE.md` — new "Version System" section.** Documents both
+  numbers, who owns each, the exact offset rule
+  (`pkg.major === changelog.major + 2`), and the bump procedure (edit
+  both, commit message cites the product version, minors stay in
+  lockstep).
+
+  **2. `CHANGELOG.md` — metadata comment at top.** A short
+  `<!-- VERSION CONVENTION ... -->` block points readers at CLAUDE.md
+  and includes the most important rules inline. Survives changelog
+  edits since it's not part of any heading.
+
+  **3. `.github/workflows/deploy.yml` — pre-deploy check.** New step
+  before `npm ci` reads `package.json` and the top CHANGELOG heading,
+  asserts:
+  - The CHANGELOG top heading parses as a `vX.Y.Z` version
+  - `pkg.major === changelog.major + 2`
+  - `pkg.minor === changelog.minor`
+
+  Fails the deploy with a clear `::error::` annotation if drift is
+  detected. Catches any future commit that bumps one without the
+  other.
+
+  ### Side note — `src/sw.js` cache key is NOT stale
+
+  The deep-dive agent flagged `CACHE_VERSION = 'sporeus-v8.0.0'` as
+  stale and suggested syncing it to the engineering version. **That's
+  wrong** — the cache key controls a deliberate cleanup pass: rotating
+  it nukes every user's precache. Syncing to `pkg.version` would
+  invalidate every browser's cache on every push (we ship daily).
+
+  Added an explanatory comment in `src/sw.js:10` so the next reader
+  doesn't misread it. The right time to bump `CACHE_VERSION` is when
+  SW *behavior* changes — adding a new route, switching strategies,
+  evicting a cache namespace. Not on routine releases.
+
+  ### Files
+
+  - `CLAUDE.md` — +33 lines (new section before "Environment
+    Variables")
+  - `CHANGELOG.md` — +8 lines (metadata comment after the file's
+    intro)
+  - `.github/workflows/deploy.yml` — +30 lines (version check step
+    before existing lint/test/build)
+  - `src/sw.js` — +4 line comment
+
+  ### Tests
+
+  Full suite: **9881 passed** (unchanged — pure docs + CI infra).
+  Lint clean. Build clean.
+
+  ### Self-test
+
+  This commit's pkg.version `11.79.0` and CHANGELOG heading
+  `v9.79.0` satisfy the new check: `11 === 9 + 2 ✓`, minor `79 ===
+  79 ✓`. CI will exercise the check on push.
+
 ---
 
 ## v9.78.0 — 2026-05-12 — Sport vocabulary unification at sanitizeProfile

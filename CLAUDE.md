@@ -155,6 +155,40 @@ const hasTriData = useMemo(() =>
 - Guest mode: all data in localStorage — lost on browser clear; nudge fires after 30d or 50 sessions
 - Coach messaging is file-based (JSON export/import) — not real-time
 
+## Version System (two numbers, on purpose)
+
+The project tracks **two version numbers** with different semantics. This is
+deliberate, not drift — documented here so future maintainers don't try to
+"fix" the discrepancy by collapsing them.
+
+| Where | Format | Owner | What it tracks |
+|---|---|---|---|
+| `package.json` `"version"` | `11.X.Y` | engineering | Build artifact + every commit. Bumped on every ship. Read by Vite (`__APP_VERSION__`), Sentry release tagging, UI footer telemetry. |
+| `CHANGELOG.md` top heading | `v9.X.Y` | product | Release-sprint narrative. Bumped per release. Cited in every commit message (`feat(v9.X.Y): ...`). |
+
+The relationship: **`pkg.major === changelog.major + 2`**. Minor versions
+move in lockstep (`pkg = 11.78.0` ↔ `changelog = v9.78.0`). The major
+offset (`11 − 9 = 2`) is historical — engineering hit major-11 during a
+re-platforming pass while product was still on v9 release-sprint
+numbering. The offset is enforced by a CI check (see
+`.github/workflows/deploy.yml`).
+
+When you bump versions:
+1. Edit `package.json` to `11.<NEW_MINOR>.0`
+2. Add `## v9.<NEW_MINOR>.0 — YYYY-MM-DD — <title>` heading to top of `CHANGELOG.md`
+3. Commit message starts with `feat(v9.<NEW_MINOR>.0): ...` or `fix(v9.<NEW_MINOR>.0): ...`
+4. Minor numbers must match between the two; CI fails the deploy if they diverge.
+
+When NOT to bump version:
+- Documentation-only commits (`docs:`) — no user-facing change
+- `chore:` commits like gitignore edits — no behavior change
+- The CI check skips these via the leading commit-type marker
+
+`src/sw.js` `CACHE_VERSION` is **deliberately stable** (`'sporeus-v8.0.0'`),
+not synced with either version. Bump it manually only when service-worker
+caching behavior changes — rotating it forces every user's browser to
+invalidate the precache.
+
 ## Environment Variables
 
 | Variable | Purpose |
