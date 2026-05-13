@@ -14,6 +14,101 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.94.0 — 2026-05-13 — Mission 1 chain: EXECUTION → ADAPTATION
+
+  Prompt D from the Mission 1 connection plan — the **most ambitious** of
+  the connection prompts. Closes the feedback loop from logged sessions
+  back to plan-level guidance.
+
+  ### The leak
+
+  The plan generator (v9.92) set a TSS budget per week. The athlete logged
+  actual sessions via QuickAdd / FIT import / etc. Until this ship, the
+  loop never closed:
+
+  - A consistently under-compliant athlete kept seeing the same aggressive
+    plan with no warning that the prescription wasn't landing.
+  - A consistently over-compliant athlete got no fatigue flag.
+  - A drifted athlete (large gap between planned and actual) had no path
+    to a "regenerate from current fitness" CTA.
+
+  `intelligence.js:561` already had a sessionDoneCount-based compliance
+  score, but it operated on a checkbox (`planStatus.done`) not on actual
+  *load* delivered — a 30min easy day marked as a 90min long ride still
+  counted as "done."
+
+  ### The fix
+
+  **New pure module** `src/lib/athlete/planAdaptation.js` (~210 LOC):
+
+  - `computeWeekCompliance(planWeek, weekStartDate, tssMap)` — sums planned
+    TSS over non-rest sessions in the week, sums actual TSS from the log
+    over the 7-day window, returns `{ plannedTSS, actualTSS, pct, status,
+    sessionsPlanned, daysLogged }`.
+  - `computePlanDrift(plan, log, today?)` — analyzes only completed weeks
+    (`weekStart + 6 days < today`), averages compliance over scoring weeks
+    (excludes rest-only weeks), maps to a bilingual recommendation +
+    `action` code:
+
+    | avg | missed | action | recommendation |
+    |---|---|---|---|
+    | <30% OR ≥2 missed | — | `regenerate` | "Plan-execution gap is large. Regenerate from current fitness." |
+    | 30–70% | — | `reduce-next` | "Plan is too aggressive — reduce next week's TSS by 20%." |
+    | 70–130% | — | `continue` | "Execution matches plan. Stay the course." |
+    | >130% | — | `monitor-fatigue` | "Above plan — monitor TSB and HRV; don't add volume." |
+    | 0 completed weeks | — | `continue` | "Adaptation review starts after your first complete week." |
+
+  **TSS per day capped at 300** (matches `intelligence.js` ACWR
+  implementation) so duplicate FIT imports / monster-day outliers don't
+  poison the compliance signal.
+
+  ### TodayView new card — "WEEKLY ADAPTATION"
+
+  Renders only when a plan exists AND ≥1 week is complete. Shows:
+  - Big compliance pct (green / amber / red color-coded by status)
+  - Weeks-analyzed count
+  - Bilingual recommendation in a colored side-stripe panel
+  - Citation (e.g., "Hulin 2016 (ACWR injury risk)" for `over` status)
+  - Per-week sparkline: one cell per completed week, hover for `actualTSS
+    / plannedTSS (pct)` tooltip
+  - **REGENERATE PLAN →** button only when `action === 'regenerate'`
+
+  Sits between Card 1 (Today's Session) and Card 2 (Readiness) — surfaces
+  the loop signal at the same visual altitude as the daily answer.
+
+  ### Files
+
+  - `src/lib/athlete/planAdaptation.js` (new, ~210 LOC)
+  - `src/lib/__tests__/athlete/planAdaptation.test.js` (new, 20 cases)
+  - `src/components/TodayView.jsx` — new Card 1b inserted between session
+    + readiness; adds `computePlanDrift` import
+
+  ### Tests
+
+  - 20 new cases — compliance-status classification at every threshold,
+    drift rules (on-track/under/over/regenerate), ≥2-missed-weeks → drift,
+    rest-week exclusion from average, completed-only-weeks scope,
+    7-day-window boundary, bilingual recommendation contract for every
+    status, citation presence/absence per rule
+  - 9972 → 9992 (+20). Lint clean, build clean.
+
+  ### Mission 1 chain status after this ship
+
+  | Link                          | Status   |
+  |-------------------------------|----------|
+  | TARGET → PHYSIOLOGY           | ✓        |
+  | TARGET → PLAN                 | ✓ (v9.92) |
+  | PLAN → DAILY ANSWER           | ✓ (v9.93) |
+  | PHYSIOLOGY → DAILY ANSWER     | ✓ (v9.91) |
+  | DAILY ANSWER → EXECUTION      | ✓ (v9.89) |
+  | EXECUTION → ADAPTATION        | ✓ (v9.94) |
+  | ONBOARDING → TARGET           | partial (Prompt E) |
+
+  Six of seven links closed. Only the onboarding-cohesion gap (Prompt E)
+  remains.
+
+---
+
 ## v9.93.0 — 2026-05-13 — Mission 1 chain: PLAN → DAILY ANSWER, no-plan branch
 
   Prompt C from the Mission 1 connection plan. Closes the **no-plan dead-end**

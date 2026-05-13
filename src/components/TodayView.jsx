@@ -23,6 +23,7 @@ import { deriveSessionStructure } from '../lib/athlete/sessionStructure.js'
 import { computeSessionExecution, EXECUTION_STATUS_LABEL, EXECUTION_STATUS_COLOR } from '../lib/athlete/sessionExecution.js'
 import { deriveSessionTargets } from '../lib/athlete/derivedSessionTargets.js'
 import { buildDailyRecommendation } from '../lib/athlete/dailyRecommendation.js'
+import { computePlanDrift } from '../lib/athlete/planAdaptation.js'
 
 const WellnessSparkline = lazy(() => import('./charts/WellnessSparkline.jsx'))
 
@@ -1469,6 +1470,77 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
           </div>
         )}
       </div>
+
+      {/* ── Card 1b: Weekly Adaptation (v9.94.0 — Mission 1 EXECUTION → ADAPTATION) ── */}
+      {plan && (() => {
+        const drift = computePlanDrift(plan, log, today)
+        if (!drift || drift.status === 'pending') return null
+        const statusColor =
+          drift.status === 'drift'    ? RED
+          : drift.status === 'under'  ? AMBER
+          : drift.status === 'over'   ? AMBER
+          : drift.status === 'on-track' ? GREEN
+          : '#888'
+        const pctLabel = `${Math.round(drift.avgPct * 100)}%`
+        return (
+          <div style={{ ...card, borderLeft: `4px solid ${statusColor}` }}>
+            <div style={cardTitle}>
+              {lang === 'tr' ? 'HAFTALIK ADAPTASYON' : 'WEEKLY ADAPTATION'}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '24px', fontWeight: 700, color: statusColor }}>{pctLabel}</span>
+              <span style={{ fontSize: '10px', color: '#888', letterSpacing: '0.06em' }}>
+                {lang === 'tr'
+                  ? `${drift.weeksAnalyzed} HAFTA · PLAN UYUMU`
+                  : `${drift.weeksAnalyzed} WEEKS · PLAN COMPLIANCE`}
+              </span>
+            </div>
+            <div style={{
+              fontSize: '11px', color: '#ccc', lineHeight: 1.55, marginBottom: '10px',
+              padding: '8px 10px', background: `${statusColor}0c`,
+              borderLeft: `2px solid ${statusColor}`,
+            }}>
+              {drift.recommendation[lang] || drift.recommendation.en}
+            </div>
+            {drift.citation && (
+              <div style={{ fontSize: '9px', color: '#666', fontStyle: 'italic', marginBottom: '10px' }}>
+                {drift.citation}
+              </div>
+            )}
+            {/* Per-week sparkline: each completed week as a colored cell */}
+            {drift.weeks.length > 0 && (
+              <div style={{ display: 'flex', gap: '4px', marginBottom: '10px', flexWrap: 'wrap' }}>
+                {drift.weeks.map(w => {
+                  const c =
+                    w.status === 'missed'   ? RED
+                    : w.status === 'under'  ? AMBER
+                    : w.status === 'over'   ? AMBER
+                    : w.status === 'on-track' ? GREEN
+                    : '#333'
+                  return (
+                    <div key={w.weekIdx}
+                      title={`W${w.weekIdx + 1}: ${w.actualTSS}/${w.plannedTSS} TSS (${Math.round(w.pct * 100)}%)`}
+                      style={{
+                        flex: '1 0 28px', minWidth: '28px', height: '18px',
+                        background: c + '33', border: `1px solid ${c}66`,
+                        borderRadius: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '8px', color: c, fontWeight: 700,
+                      }}
+                    >
+                      W{w.weekIdx + 1}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            {drift.action === 'regenerate' && (
+              <button onClick={() => setTab('plan')} style={btn(ORANGE)}>
+                {lang === 'tr' ? 'PLANI YENİDEN OLUŞTUR →' : 'REGENERATE PLAN →'}
+              </button>
+            )}
+          </div>
+        )
+      })()}
 
       {/* ── Card 2: Readiness Quick-Check ─────────────────────────────────── */}
       <div style={{ ...card, borderLeft: `4px solid ${todayRec ? (todayRec.score >= 75 ? GREEN : todayRec.score >= 50 ? AMBER : RED) : '#333'}` }}>
