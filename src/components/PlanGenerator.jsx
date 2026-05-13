@@ -4,12 +4,13 @@ import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { PLAN_GOALS, PLAN_LEVELS, ZONE_COLORS, ZONE_NAMES } from '../lib/constants.js'
+import { adaptE13PlanToLegacy } from '../lib/plan/adapter.js'
 import { generatePlan, calcLoad, validatePlanRamp } from '../lib/formulas.js'
 import { computeCTL } from '../lib/nextAction.js'
 import { BLOCK_PHASES, generateBlockPlan } from '../lib/sport/blockPeriodization.js'
 import { MiniDonut } from './ui.jsx'
 import { findOptimalWeekStructure } from '../lib/patterns.js'
-import { generatePlan as generateAdaptivePlan, sportSpecificLabel } from '../lib/plan/generatePlan.js'
+import { generatePlan as generateAdaptivePlan } from '../lib/plan/generatePlan.js'
 import { applyTaper, suggestTaper } from '../lib/plan/taperEngine.js'
 import { validatePlan } from '../lib/plan/planValidators.js'
 import { announce } from '../lib/a11y/announcer.js'
@@ -67,47 +68,6 @@ export function planToCSV(plan) {
     }
   }
   return rows.join('\n') + '\n'
-}
-
-// ─── Adapter: maps E13 adaptive plan output → legacy week-card shape ──────────
-// Lets the existing week-card UI render adaptive plans without duplication.
-const E13_ZONE_INDEX = { Z1: 0, Z2: 1, Z3: 2, Z4: 3, Z5: 4 }
-const E13_ZONE_COLOR = (z) => ZONE_COLORS[E13_ZONE_INDEX[z] ?? 1]
-function adaptE13PlanToLegacy(adaptivePlan, lang = 'en', primarySport = null) {
-  if (!adaptivePlan || !Array.isArray(adaptivePlan.weeks)) return null
-  const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
-  // Allow primarySport override; otherwise fall back to plan's own value
-  const sport = primarySport || adaptivePlan.primarySport || null
-  return adaptivePlan.weeks.map(wk => {
-    const sessions = wk.sessions.map((s) => {
-      const typeName = sportSpecificLabel(s.intent, sport, lang)
-      // Approximate duration from targetTSS using the RPE midpoint (Banister-like)
-      const rpeMid = (s.rpeLow + s.rpeHigh) / 2
-      const intensityFactor = Math.max(0.5, rpeMid / 10) // RPE 6→0.6, RPE 18→1.0+
-      const duration = s.intent === 'rest' ? 0 : Math.max(20, Math.round(s.targetTSS / (intensityFactor * intensityFactor) * 0.6))
-      return {
-        day:         dayNames[(s.day - 1) % 7] || dayNames[0],
-        type:        typeName,
-        duration,
-        rpe:         rpeMid,
-        tss:         s.targetTSS,
-        zone:        s.zone === 'Z0' ? '—' : s.zone,
-        color:       E13_ZONE_COLOR(s.zone),
-        description: '',
-      }
-    })
-    const zd = wk.zoneDistribution || {}
-    const zonePct = ['Z1','Z2','Z3','Z4','Z5'].map(z => Math.round((zd[z] || 0) * 100))
-    return {
-      week:       wk.weekNum,
-      phase:      wk.phase,
-      sessions,
-      totalHours: ((wk.weeklyTSS / 60) * 0.9).toFixed(1),
-      tss:        wk.weeklyTSS,
-      zonePct,
-      isDeload:   wk.isDeload || false,
-    }
-  })
 }
 
 function TaperCalculator() {

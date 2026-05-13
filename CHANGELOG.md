@@ -14,6 +14,111 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.95.0 — 2026-05-13 — Mission 1 chain: ONBOARDING → TARGET (starter-plan seed)
+
+  Prompt E from the Mission 1 connection plan. Closes the **last open
+  link** in the chain. Six previous prompts (v9.89–v9.94) connected
+  TARGET → PHYSIOLOGY → PLAN → DAILY ANSWER → EXECUTION → ADAPTATION.
+  v9.95 connects ONBOARDING into that chain — the entry point.
+
+  ### The leak
+
+  After the full-setup onboarding wizard (purpose → sport → method → name/age →
+  level/days → maxhr/ftp/ltpace → **goal + race date**), `finishOnboarding`
+  in `useAppState.js`:
+
+  1. Saved the profile.
+  2. Navigated to the PLAN tab if a race date was set, else to ZONES.
+  3. Set `onboarded = true`.
+
+  That's it. The user had just answered every question the plan generator
+  needs — goal, weeks-to-race, sport, level, threshold — but no plan was
+  created. They landed on PlanGenerator and were asked to **re-enter the
+  same data**. Mission 1's entry point dead-ended at "fill the form again."
+
+  ### The fix
+
+  Two new pure modules and a thin hook change.
+
+  **`src/lib/plan/adapter.js`** (new, ~75 LOC) — shared `adaptE13PlanToLegacy`
+  helper. The same function was previously duplicated in PlanGenerator.jsx
+  and PlanTemplatePicker.jsx (~38 LOC × 2). With three callers now, the
+  abstraction is justified.
+
+  **`src/lib/plan/starterPlan.js`** (new, ~130 LOC):
+  - `canSeedStarterPlan(data)` — minimum input check (goal must be set).
+  - `buildStarterPlan(data, todayISO, lang)` — produces a complete legacy
+    plan object ready to write to localStorage. Maps onboarding fields to
+    `generatePlan()` params:
+    - goal string → E13 goal key (`pr`/`fitness`)
+    - athleteLevel / level → E13 level (beginner/intermediate/advanced/elite)
+    - weeks slider OR raceDate → weeksToRace (3–52 clamp, default 12)
+    - trainDays → availableDays (2–7 clamp, default 5)
+    - currentCTL → 20 (safe floor for fresh athletes)
+    - raceDistance + primarySport pass-through (v9.92 chain)
+  - Marks the plan with `fromOnboarding: true` for telemetry/UX use.
+
+  **`useAppState.finishOnboarding`** — after `setProfile`, calls
+  `buildStarterPlan(data, _, lang)`. On success, writes to
+  `localStorage['sporeus-plan']` BEFORE navigation and routes the user to
+  `'today'` instead of `'plan'`. Falls back to the legacy `plan`/`zones`
+  routing on null result. Emits a `starter_plan_seeded` attribution event.
+
+  **Refactor**: PlanGenerator.jsx and PlanTemplatePicker.jsx now import
+  `adaptE13PlanToLegacy` from the shared module. Net deletion: ~70 LOC of
+  duplicated code.
+
+  ### Why localStorage write works in this flow
+
+  First-time users land on tab `'program'` (Mission #1 funnel entry, set
+  in `useAppState.js:37–48`). TodayView is **not mounted** during onboarding
+  — it mounts only when tab becomes `'today'`. So writing localStorage
+  just before `handleTabClick('today')` means TodayView's first
+  `useLocalStorage('sporeus-plan', null)` initializer reads the fresh
+  plan. No cross-component state-sync hack needed.
+
+  ### What the user sees (v9.94 vs v9.95)
+
+  | Step | v9.94 behavior | v9.95 behavior |
+  |---|---|---|
+  | Finish onboarding (with goal=Marathon, raceDate=in 16 weeks) | Land on PLAN tab, blank form | Land on TODAY with a populated 16-week marathon plan |
+  | Fast-track exit (no goal selected) | Same as before | Same — only the legacy path |
+  | Cycling Event goal | Plan tab with form | TODAY with cycling-labeled sessions (Long ride, Tempo ride, FTP test) + power targets from FTP |
+  | TR language | Plan tab with form | TODAY with Turkish session labels |
+  | Day-2 onwards | All Mission 1 features available but require Plan setup first | Same chain as long-time users — adaptation card, daily answer, execution snapshot — all from day one |
+
+  ### Files
+
+  - `src/lib/plan/adapter.js` (new)
+  - `src/lib/plan/starterPlan.js` (new)
+  - `src/lib/__tests__/plan/adapter.test.js` (new, 12 cases)
+  - `src/lib/__tests__/plan/starterPlan.test.js` (new, 20 cases)
+  - `src/hooks/useAppState.js` — finishOnboarding seeds plan; +1 import
+  - `src/components/PlanGenerator.jsx` — drops local adapter; imports shared
+  - `src/components/PlanTemplatePicker.jsx` — same
+
+  ### Tests
+
+  - 10024 / 10024 (+32, crossed 10K test milestone)
+  - Lint clean, build clean
+
+  ### Mission 1 chain status after this ship — **all 7 links closed**
+
+  | Link                          | Status       |
+  |-------------------------------|--------------|
+  | ONBOARDING → TARGET           | ✓ (v9.95)    |
+  | TARGET → PHYSIOLOGY           | ✓            |
+  | TARGET → PLAN                 | ✓ (v9.92)    |
+  | PHYSIOLOGY → DAILY ANSWER     | ✓ (v9.91)    |
+  | PLAN → DAILY ANSWER           | ✓ (v9.93)    |
+  | DAILY ANSWER → EXECUTION      | ✓ (v9.89)    |
+  | EXECUTION → ADAPTATION        | ✓ (v9.94)    |
+
+  Mission 1 is structurally complete. Every link from "I just signed up"
+  to "the plan adapts to what I actually did" has a code path.
+
+---
+
 ## v9.94.0 — 2026-05-13 — Mission 1 chain: EXECUTION → ADAPTATION
 
   Prompt D from the Mission 1 connection plan — the **most ambitious** of

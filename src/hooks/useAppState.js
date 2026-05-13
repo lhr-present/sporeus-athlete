@@ -19,6 +19,7 @@ import { hasCurrentConsent, grantConsent } from '../lib/db/consentVersion.js'
 import { logConsent } from '../lib/db/consent.js'
 import { useInsightNotifier } from './useInsightNotifier.js'
 import { emitEvent } from '../lib/attribution.js'
+import { buildStarterPlan } from '../lib/plan/starterPlan.js'
 
 /**
  * @param {{ lang: string, setLang: Function, dark: boolean, setDark: Function,
@@ -348,12 +349,25 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   const finishOnboarding = (data) => {
     if (data) {
       setProfile(prev => ({ ...prev, ...data }))
-      // v9.61.0 — Mission-flow routing. If the athlete supplied a race date
-      // during onboarding (v9.60.0), the natural next step is generating a
-      // plan — not staring at zones. Without a race date, fall back to the
-      // legacy ZONES landing so the user sees zones derived from the metrics
-      // they just entered.
-      handleTabClick(data.raceDate ? 'plan' : 'zones')
+      // v9.95.0 — Mission 1 ONBOARDING → TARGET. Seed a starter plan from the
+      // data the user just entered so they land on a populated TodayView
+      // instead of an empty "no plan" surface. Pre-v9.95 the flow asked
+      // every onboarding question and then navigated to PLAN tab to ask
+      // them again. Now `finishOnboarding` directly generates the plan and
+      // writes it before navigation, so TodayView mounts with a real chain.
+      let landingTab = data.raceDate ? 'plan' : 'zones'
+      try {
+        const starter = buildStarterPlan(data, undefined, lang)
+        if (starter) {
+          localStorage.setItem('sporeus-plan', JSON.stringify(starter))
+          // With a plan in localStorage, TodayView's first mount picks it up.
+          landingTab = 'today'
+          emitEvent('starter_plan_seeded', { goal: data.goal, sport: data.sport, weeks: starter.weeks?.length })
+        }
+      } catch (e) {
+        logger.warn('starter plan seed failed:', e?.message)
+      }
+      handleTabClick(landingTab)
     }
     setOnboarded(true)
   }
