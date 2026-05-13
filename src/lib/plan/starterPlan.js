@@ -17,6 +17,7 @@
 import { generatePlan } from './generatePlan.js'
 import { adaptE13PlanToLegacy } from './adapter.js'
 import { calcLoad } from '../formulas.js'
+import { makeVersionTag } from './versionTracking.js'
 
 // ── Map onboarding goal strings → E13 generatePlan goal keys ─────────────────
 // Mirrors the (lossy) mapping that PlanGenerator.jsx:308 already does.
@@ -172,5 +173,10 @@ export function buildStarterPlan(onboardingData, todayISO, lang = 'en', log) {
     isAdaptive:    true,
     fromOnboarding: true,
     adaptiveMeta:  { model: adaptive.model },
+    // v9.104.0 (Prompt FF): default version tag. Mutators (regen, deload,
+    // recalibrate) override this via recordPlanVersion(plan, kind) after
+    // they've built / mutated their plan, so the tag always reflects the
+    // most recent mutation rather than the starter origin.
+    versionTag:    makeVersionTag('starter'),
   }
 }

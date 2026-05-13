@@ -24,7 +24,9 @@ import { computeSessionExecution, EXECUTION_STATUS_LABEL, EXECUTION_STATUS_COLOR
 import { deriveSessionTargets } from '../lib/athlete/derivedSessionTargets.js'
 import { buildDailyRecommendation } from '../lib/athlete/dailyRecommendation.js'
 import { computePlanDrift, detectStalePlan } from '../lib/athlete/planAdaptation.js'
+import { detectGoalActivityMismatch } from '../lib/athlete/goalActivityMismatch.js'
 import { buildStarterPlan } from '../lib/plan/starterPlan.js'
+import { recordPlanVersion } from '../lib/plan/versionTracking.js'
 import { emitEvent } from '../lib/attribution.js'
 
 const WellnessSparkline = lazy(() => import('./charts/WellnessSparkline.jsx'))
@@ -1546,6 +1548,115 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
         )}
       </div>
 
+      {/* ── Today's Signal tile (v9.104.0 — Prompt EE) ──
+          When there IS a planned session AND the wellness-derived
+          buildDailyRecommendation disagrees by 2+ RPE, surface the
+          alternative as a compact transparency tile. NOT an auto-swap
+          (v9.102 handles low-readiness swaps via downgradeRec) — just
+          shows "if we built today's session from your readiness only,
+          here's what it would be". Helps athletes learn what the system
+          sees. Suppressed when downgradeRec is already on screen (the
+          full v9.102 card supersedes this advisory). */}
+      {plannedSession && !downgradeRec && (() => {
+        const rec = buildDailyRecommendation({ log, recovery, profile, lang })
+        if (!rec) return null
+        const plannedRpe = Number(plannedSession.rpe) || 0
+        const recRpe = Number(rec.rpe) || 0
+        if (Math.abs(plannedRpe - recRpe) < 2) return null
+        const direction = recRpe < plannedRpe ? 'easier' : 'harder'
+        const arrow = direction === 'easier' ? '↓' : '↑'
+        const dotColor = direction === 'easier' ? AMBER : '#0064ff'
+        return (
+          <div style={{
+            marginTop: '-8px', marginBottom: '14px',
+            padding: '8px 12px',
+            background: 'var(--card-bg)', border: '1px solid var(--border)',
+            borderLeft: `3px solid ${dotColor}`, borderRadius: '4px',
+            fontFamily: MONO, fontSize: '11px', color: '#aaa', lineHeight: 1.55,
+          }}>
+            <div style={{ fontSize: '9px', color: '#666', letterSpacing: '0.08em', marginBottom: '4px' }}>
+              {arrow} {lang === 'tr' ? 'BUGÜNÜN SİNYALİ · ŞEFFAFLIK' : "TODAY'S SIGNAL · TRANSPARENCY"}
+            </div>
+            <div style={{ color: '#ccc' }}>
+              {lang === 'tr'
+                ? `Hazırlık verin şunu öneriyor: `
+                : `Your wellness data suggests: `}
+              <span style={{ color: dotColor, fontWeight: 700 }}>{rec.type}</span>
+              <span style={{ color: '#888' }}> · {rec.duration}min · RPE {rec.rpe}</span>
+              <span style={{ color: '#666' }}>
+                {' '}({lang === 'tr' ? 'planlanan' : 'planned'} RPE {plannedRpe})
+              </span>
+            </div>
+            <div style={{ color: '#888', fontSize: '10px', marginTop: '3px' }}>
+              {rec.rationale}
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* ── Card 1z: Goal-Activity Mismatch (v9.104.0 — Prompt DD) ──
+          The most upstream Mission 1 diagnostic. Fires when the rolling
+          28d log is dominated by a sport that isn't the goal sport AND
+          the goal sport itself is being neglected. Surfaces BEFORE
+          stale-plan / drift cards because if the goal itself is wrong,
+          nothing downstream of it matters. Always rendering when
+          mismatch is detected — coaches don't see this card (their copy
+          would need different framing). */}
+      {(() => {
+        const mismatch = detectGoalActivityMismatch(profile, log, { today })
+        if (!mismatch.mismatched) return null
+        return (
+          <div style={{ ...card, borderLeft: `4px solid ${RED}` }}>
+            <div style={cardTitle}>
+              {lang === 'tr' ? 'HEDEF ≠ ANTRENMAN' : 'GOAL ≠ TRAINING'}
+            </div>
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '8px' }}>
+              <span style={{ fontSize: '11px', color: '#888' }}>
+                {lang === 'tr' ? 'Hedef' : 'Goal'}:
+                <span style={{ color: '#ccc', fontWeight: 700, marginLeft: '4px' }}>
+                  {String(mismatch.goalSport).toUpperCase()}
+                </span>
+              </span>
+              <span style={{ fontSize: '11px', color: '#888' }}>
+                {lang === 'tr' ? 'Loglanan' : 'Logged'}:
+                <span style={{ color: RED, fontWeight: 700, marginLeft: '4px' }}>
+                  {String(mismatch.dominantSport).toUpperCase()} {Math.round(mismatch.dominantShare * 100)}%
+                </span>
+              </span>
+              <span style={{ fontSize: '10px', color: '#666' }}>
+                {mismatch.sessionsInWindow} {lang === 'tr' ? 'seans / 28 gün' : 'sessions / 28d'}
+              </span>
+            </div>
+            <div style={{
+              fontSize: '11px', color: '#ccc', lineHeight: 1.55, marginBottom: '10px',
+              padding: '8px 10px', background: `${RED}0c`, borderLeft: `2px solid ${RED}`,
+            }}>
+              {mismatch.recommendation[lang] || mismatch.recommendation.en}
+            </div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => {
+                  emitEvent('goal_activity_mismatch_shown', {
+                    goal_sport:     mismatch.goalSport,
+                    dominant_sport: mismatch.dominantSport,
+                    dominant_share: mismatch.dominantShare,
+                    cta:            'update_goal',
+                  })
+                  setTab('profile')
+                  // Defer scroll until Profile mounts
+                  setTimeout(() => {
+                    const el = document.getElementById('goal-editor')
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                  }, 200)
+                }}
+                style={btn(ORANGE)}>
+                ↻ {lang === 'tr' ? 'HEDEFİ GÜNCELLE' : 'UPDATE GOAL'}
+              </button>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* ── Card 1a: Stale Plan Detector (v9.103.0 — Prompt AA) ──
           computePlanDrift only sees execution drift. A plan that's 8+
           weeks old or whose seedCTL has been left behind by current
@@ -1603,6 +1714,7 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                 const next = buildStarterPlan(seedData, today, lang, log)
                 if (!next) { setTab('plan'); return }
                 try {
+                  recordPlanVersion(next, 'recalibrate', stale.reason)
                   localStorage.setItem('sporeus-plan', JSON.stringify(next))
                   emitEvent('plan_recalibrated_age', {
                     reason:       stale.reason,
@@ -1611,6 +1723,7 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                     seed_ctl:     stale.seedCTL,
                     new_ctl:      Math.round(todayCtl),
                     weeks:        next.weeks?.length || 0,
+                    version_tag:  next.versionTag,
                   })
                   window.location.reload()
                 } catch (e) {
@@ -1719,11 +1832,13 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                       }
                     })}
                     try {
+                      recordPlanVersion(updated, 'deload', `w${nextWeekIdx + 1}`)
                       localStorage.setItem('sporeus-plan', JSON.stringify(updated))
                       emitEvent('plan_deload_applied', {
                         from_pct:        drift.avgPct,
                         week_idx:        nextWeekIdx,
                         scaling:         0.8,
+                        version_tag:     updated.versionTag,
                       })
                       window.location.reload()
                     } catch (e) {
@@ -1763,11 +1878,13 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                       return
                     }
                     try {
+                      recordPlanVersion(next, 'regen')
                       localStorage.setItem('sporeus-plan', JSON.stringify(next))
                       emitEvent('plan_regenerated_from_drift', {
                         from_action: drift.action,
                         from_pct:    drift.avgPct,
                         weeks:       next.weeks?.length || 0,
+                        version_tag: next.versionTag,
                       })
                       // Force a remount so TodayView's useLocalStorage picks
                       // up the new plan. Reload is the simplest reliable path.

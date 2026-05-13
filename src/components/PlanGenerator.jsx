@@ -642,7 +642,14 @@ export default function PlanGenerator({ onLogSession }) {
           <div className="sp-card" style={{ ...S.card, animationDelay:'50ms' }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'6px', marginBottom:'8px' }}>
               <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-                <div style={S.cardTitle}>{plan.goal} — {plan.weeks.length} {t('weekLabel').toLowerCase()}s · {plan.level}</div>
+                <div style={S.cardTitle}>
+                  {plan.goal} — {plan.weeks.length} {t('weekLabel').toLowerCase()}s · {plan.level}
+                  {plan.versionTag && (
+                    <span style={{ ...S.mono, fontSize:'9px', color:'#666', marginLeft:'8px', letterSpacing:'0.04em', fontWeight:400, textTransform:'none' }}>
+                      [{plan.versionTag}]
+                    </span>
+                  )}
+                </div>
                 <button onClick={printPlan} style={{ ...S.mono, fontSize:'9px', fontWeight:600, padding:'3px 8px', borderRadius:'3px', cursor:'pointer', border:'1px solid var(--border)', background:'transparent', color:'var(--muted)' }}>⎙ Print/PDF</button>
                 <button
                   onClick={exportPlanCSV}

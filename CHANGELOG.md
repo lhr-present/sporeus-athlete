@@ -14,6 +14,115 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.104.0 — 2026-05-14 — Plan diagnostics & provenance: goal-mismatch + transparency tile + version tracking
+
+  Prompts DD + EE + FF. Three additive enhancements that surface plan
+  diagnostics the system already has the data for but never showed.
+
+  ### Prompt DD — Goal-activity mismatch detector
+
+  New pure fn `detectGoalActivityMismatch(profile, log, opts)` in
+  `src/lib/athlete/goalActivityMismatch.js`. Compares the goal sport
+  (profile.primarySport / sport) against the rolling 28-day sport mix
+  in the log. Returns `{ mismatched, goalSport, loggedSports,
+  dominantSport, dominantShare, sessionsInWindow, recommendation }`.
+
+  Thresholds:
+  - `dominanceFloor: 0.60` — logged sport must hit 60% to be "dominant"
+  - `minSessions: 6` — need at least 6 sessions in window before flagging
+  - `goalShareCeiling: 0.15` — goal sport must be ≤15% to count as "neglected"
+
+  Triathlon goal returns `goalSport: null` (multi-sport — single-discipline
+  dominance is expected, not a mismatch). Empty / missing profile sport
+  same.
+
+  TodayView gets a new Card 1z (above Card 1a stale-plan) — only renders
+  when `mismatched: true`. Red-rule card showing goal vs dominant sport
+  with share %, session count, and the bilingual recommendation. **↻
+  UPDATE GOAL** button switches to profile tab + scroll-to
+  `#goal-editor` anchor (reuses the v9.103 Prompt CC anchor). Emits
+  `goal_activity_mismatch_shown` telemetry on click.
+
+  Why upstream of stale-plan/drift: if the goal itself is wrong, every
+  downstream prescription is wrong. Fixing this is the highest-leverage
+  Mission 1 intervention available.
+
+  Tests: 15 cases (8 detector, 6 categorizer, 1 malformed-input guard).
+
+  ### Prompt EE — Today's signal transparency tile
+
+  Pre-v9.104, `buildDailyRecommendation` only surfaced when there was
+  no plan (v9.93 fallback). Athletes with a plan never saw what the
+  wellness-only recommendation would have been. Black-box plans = low
+  trust + slow learning.
+
+  New compact tile below Card 1 (Today's Session), above Card 1z. Fires
+  when:
+  - `plannedSession` exists (else dailyRec is already the no-plan
+    fallback content of Card 1)
+  - `downgradeRec` (v9.102) is null (the auto-downgrade card already
+    supersedes this advisory)
+  - `|plannedSession.rpe - buildDailyRecommendation.rpe| >= 2`
+
+  Renders one line: "Your wellness data suggests: {type} · {duration}min
+  · RPE {rec.rpe} (planned RPE {planned.rpe})" + rationale. Color-coded
+  by direction (amber for easier, blue for harder). Header marks it
+  explicitly: "↓/↑ TODAY'S SIGNAL · TRANSPARENCY". Not actionable —
+  this is transparency only; the athlete still chooses what to do.
+
+  ### Prompt FF — Plan version tracking
+
+  New module `src/lib/plan/versionTracking.js` with three exports:
+
+  - `makeVersionTag(kind, suffix?)` — e.g. `'9.104.0-deload-w3'`
+  - `recordPlanVersion(plan, kind, suffix?)` — sets `plan.versionTag`
+    and pushes to `sporeus-plan-history` localStorage array (last 5
+    kept). Each history entry: `{ versionTag, ts, weeks, goal }`
+  - `readPlanHistory()` — robust read; returns `[]` on missing/malformed
+
+  Kinds used:
+  - `'starter'` — buildStarterPlan output (default tag)
+  - `'regen'` — TodayView Prompt S regenerate-from-drift
+  - `'deload'` (suffix `'w{N}'`) — TodayView Prompt U reduce-next
+  - `'recalibrate'` (suffix `stale.reason`) — TodayView Prompt AA
+
+  All three TodayView mutation sites now call `recordPlanVersion` before
+  the localStorage write and include `version_tag` in their telemetry
+  payloads. PlanGenerator header shows `[9.104.0-starter]` next to the
+  plan title. SbAthletePanel coach view shows the tag next to plan name
+  in the WEEK NOTES expander (only when the field exists, so legacy
+  coach-pushed plans render unchanged).
+
+  Why now: plan-history was already implicitly happening (each mutation
+  overwrote the previous plan) without any provenance. Coaches asking
+  "is this the original plan or has it been mutated?" had no way to
+  tell. Now it's one glance at the tag.
+
+  Tests: 12 cases on versionTracking (3 makeVersionTag, 6
+  recordPlanVersion, 3 readPlanHistory). File needs `@vitest-environment
+  jsdom` directive for localStorage access.
+
+  ### Files touched
+
+  - `src/lib/athlete/goalActivityMismatch.js` (new, ~115 LOC)
+  - `src/lib/plan/versionTracking.js` (new, ~55 LOC)
+  - `src/lib/plan/starterPlan.js` (+versionTag on output via
+    makeVersionTag('starter'))
+  - `src/components/TodayView.jsx` (Card 1z mismatch, Today's Signal
+    tile, recordPlanVersion at 3 mutation sites + version_tag in telemetry)
+  - `src/components/PlanGenerator.jsx` (versionTag in title)
+  - `src/components/coachDashboard/SbAthletePanel.jsx` (versionTag chip
+    next to plan name)
+  - `src/lib/__tests__/athlete/goalActivityMismatch.test.js` (new, 15 cases)
+  - `src/lib/__tests__/plan/versionTracking.test.js` (new, 12 cases)
+  - `package.json` 11.104.0, CHANGELOG.md
+
+  10,120 tests pass (+27 vs v9.103). Depends on: v9.93
+  (buildDailyRecommendation), v9.95 (buildStarterPlan), v9.103 (#goal-editor
+  anchor, plan_recalibrated_age path).
+
+---
+
 ## v9.103.0 — 2026-05-14 — Mission 1 gap-closure: stale-plan detector + completion celebration + onboarding bail recovery
 
   Prompts AA + CC + GG from the post-v9.102 backlog. Closes three

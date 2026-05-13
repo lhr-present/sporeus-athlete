@@ -490,6 +490,11 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
                 style={{ display:'flex', alignItems:'center', gap:'8px', background:'transparent', border:'none', cursor:'pointer', padding:0 }}>
                 <div style={{ ...S.mono, fontSize:'9px', color:'#555', letterSpacing:'0.08em' }}>WEEK NOTES</div>
                 <div style={{ ...S.mono, fontSize:'10px', color:'#ff6600' }}>{activePlan.name}</div>
+                {activePlan.versionTag && (
+                  <span style={{ ...S.mono, fontSize:'9px', color:'#666', letterSpacing:'0.04em' }}>
+                    [{activePlan.versionTag}]
+                  </span>
+                )}
                 <span style={{ ...S.mono, fontSize:'9px', color:'#555' }}>{showWeekNotes ? '▲' : '▼'}</span>
               </button>
               {showWeekNotes && (
