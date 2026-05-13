@@ -22,6 +22,7 @@ import { buildContingencyMap } from '../lib/athlete/eliteProgramSubstitutions.js
 import { deriveSessionStructure } from '../lib/athlete/sessionStructure.js'
 import { computeSessionExecution, EXECUTION_STATUS_LABEL, EXECUTION_STATUS_COLOR } from '../lib/athlete/sessionExecution.js'
 import { deriveSessionTargets } from '../lib/athlete/derivedSessionTargets.js'
+import { buildDailyRecommendation } from '../lib/athlete/dailyRecommendation.js'
 
 const WellnessSparkline = lazy(() => import('./charts/WellnessSparkline.jsx'))
 
@@ -1374,12 +1375,96 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
           <div style={{ color: '#555', fontSize: '12px', lineHeight: 1.6 }}>
             {plan
               ? <span style={{ color: AMBER }}>◆ {t('todayRest')}</span>
-              : (
-                <>
-                  <div style={{ color: '#555', marginBottom: '10px' }}>{t('todayNoPlan')}</div>
-                  <button onClick={() => setTab('plan')} style={btn(ORANGE)}>{t('t_plan')} →</button>
-                </>
-              )
+              : (() => {
+                  // v9.93.0 — Mission 1 Prompt C: plan-less athletes used to see
+                  // only "No plan active — generate one." Now they get a real
+                  // recommendation derived from wellness/ACWR/TSB (getSingleSuggestion)
+                  // shaped into a session via sport-aware labels + pace/power.
+                  const rec = buildDailyRecommendation({ log, recovery, profile, lang })
+                  if (!rec) {
+                    return (
+                      <>
+                        <div style={{ color: '#555', marginBottom: '10px' }}>{t('todayNoPlan')}</div>
+                        <button onClick={() => setTab('plan')} style={btn(ORANGE)}>{t('t_plan')} →</button>
+                      </>
+                    )
+                  }
+                  const derived = deriveSessionTargets({ zone: rec.zone, type: rec.type }, profile)
+                  const isRest = rec.load === 'none' || rec.duration === 0
+                  const loadColor =
+                    rec.load === 'hard' ? '#e03030'
+                    : rec.load === 'moderate' ? '#f5c542'
+                    : rec.load === 'easy' ? '#5bc25b'
+                    : '#888'
+                  return (
+                    <>
+                      <div style={{
+                        fontSize: '9px', letterSpacing: '0.12em', color: '#666',
+                        textTransform: 'uppercase', marginBottom: '8px', fontWeight: 700,
+                      }}>
+                        {lang === 'tr' ? 'PLAN YOK · TAVSİYE' : 'NO PLAN · RECOMMENDED TODAY'}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '18px', fontWeight: 700, color: '#ccc' }}>{rec.type}</span>
+                        {!isRest && (
+                          <span style={{ fontSize: '11px', color: '#888' }}>
+                            {rec.duration}min · RPE {rec.rpe} · {rec.zone}
+                          </span>
+                        )}
+                        {isRest && (
+                          <span style={{ fontSize: '11px', color: AMBER, fontWeight: 700 }}>
+                            {lang === 'tr' ? 'DİNLENME' : 'REST'}
+                          </span>
+                        )}
+                      </div>
+                      {!isRest && (derived.paceTarget || derived.powerTarget) && (
+                        <div style={{ fontSize: '10px', color: '#888', marginBottom: '8px', letterSpacing: '0.04em' }}>
+                          {derived.paceTarget && (
+                            <>
+                              <span style={{ color: '#666' }}>{lang === 'tr' ? 'TEMPO · ' : 'PACE · '}</span>
+                              <span style={{ color: '#5bc25b', fontWeight: 700 }}>{derived.paceTarget}</span>
+                              <span style={{ color: '#666', fontSize: '9px', marginLeft: '4px' }}>
+                                {lang === 'tr' ? '(eşikten)' : '(from threshold)'}
+                              </span>
+                            </>
+                          )}
+                          {derived.powerTarget && (
+                            <>
+                              <span style={{ color: '#666' }}>{'POWER · '}</span>
+                              <span style={{ color: '#5bc25b', fontWeight: 700 }}>{derived.powerTarget}</span>
+                              <span style={{ color: '#666', fontSize: '9px', marginLeft: '4px' }}>
+                                {lang === 'tr' ? '(FTP\'den)' : '(from FTP)'}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      )}
+                      <div style={{
+                        fontSize: '10px', color: '#888', marginBottom: '12px',
+                        padding: '6px 8px', borderLeft: `2px solid ${loadColor}`,
+                        background: `${loadColor}0c`, lineHeight: 1.5,
+                      }}>
+                        {rec.rationale}
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {!isRest && (
+                          <button
+                            onClick={() => {
+                              setLogPrefill({ type: rec.type, duration: rec.duration, rpe: rec.rpe, date: today })
+                              setTab('log')
+                            }}
+                            style={btn(ORANGE)}
+                          >
+                            {lang === 'tr' ? 'BUNU KAYDET →' : 'LOG THIS →'}
+                          </button>
+                        )}
+                        <button onClick={() => setTab('plan')} style={btn('transparent', '#888')}>
+                          {lang === 'tr' ? 'PLAN OLUŞTUR' : 'GENERATE PLAN'}
+                        </button>
+                      </div>
+                    </>
+                  )
+                })()
             }
           </div>
         )}

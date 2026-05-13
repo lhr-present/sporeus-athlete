@@ -14,6 +14,98 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.93.0 — 2026-05-13 — Mission 1 chain: PLAN → DAILY ANSWER, no-plan branch
+
+  Prompt C from the Mission 1 connection plan. Closes the **no-plan dead-end**
+  leak.
+
+  ### The leak
+
+  When `plannedSession` was null AND `plan` was null, TodayView's session card
+  showed only this:
+
+  ```
+  No plan active — generate one in the PLAN tab.
+  [⚡ PLAN →]
+  ```
+
+  An athlete who had finished onboarding (with threshold or FTP set) but
+  hadn't yet generated a plan — or one who deleted their plan — was told to
+  go elsewhere. The chain stopped:
+
+  - `getSingleSuggestion` (intelligence.js:732) already produced a sensible
+    daily action from wellness/ACWR/TSB signals, but **nothing in the UI
+    consumed it.** It had tests but no callers.
+  - `deriveSessionTargets` (v9.91) and `sportSpecificLabel` (v9.92) couldn't
+    fire without a session shape to feed them.
+  - So Mission 1's "DAILY ANSWER" link was conditional on a generated plan,
+    when in fact the heuristic could answer for every athlete from day one.
+
+  ### The fix
+
+  New module `src/lib/athlete/dailyRecommendation.js` — a thin adapter that:
+
+  1. Calls the existing `getSingleSuggestion(log, recovery, profile)`
+     heuristic (no algorithm change — same wellness/ACWR/TSB rules).
+  2. Maps the returned `source` rule id to a normalized session intent +
+     zone + RPE (e.g., `tsb_high` → `vo2` / Z5 / RPE 8;
+     `wellness_poor` → `recovery` / Z1 / RPE 4).
+  3. Pipes the (intent, sport, lang) tuple through v9.92's
+     `sportSpecificLabel` to produce a sport-aware title ("Long ride" /
+     "Power intervals" / "Recovery jog" / …).
+  4. Returns Turkish rationale strings (English comes from
+     `getSingleSuggestion`).
+
+  TodayView's no-plan branch now renders a real session card:
+
+  - Sport-specific title + zone + duration + RPE
+  - **Pace target** (running) or **power target** (cycling), derived from
+    profile.threshold or profile.ftp via v9.91's `deriveSessionTargets`
+  - Rationale citing the rule that triggered the recommendation, with a
+    color-coded left border (red=hard, amber=moderate, green=easy)
+  - **LOG THIS →** button: pre-fills the log form with the recommended
+    type/duration/RPE so the athlete can log it in one click
+  - **GENERATE PLAN** button: still available, but no longer the only path
+
+  Wellness_poor or rest recommendations render as REST with the LOG button
+  hidden (only the GENERATE PLAN option shows).
+
+  ### What the user sees (v9.93 vs v9.92)
+
+  | Scenario | v9.92 behavior | v9.93 behavior |
+  |---|---|---|
+  | New athlete, no plan, no log | "No plan active" + 1 button | "Recommended: Long run · 60min · RPE 5 · Z2 — Normal training range" + 2 buttons |
+  | Wellness ≤2/5 saved | Same dead end | "Recovery jog · 30min · Z1 — Wellness low" |
+  | Recent heavy load (acwr_high) | Same dead end | "Recovery jog · Z1 — ACWR injury-risk zone" |
+  | Cyclist with FTP=250 | Same dead end | "Long ride · 60min · 140–188W (from FTP)" |
+  | Runner with threshold=4:30 | Same dead end | "Long run · 60min · 4:50–5:05/km (from threshold)" |
+
+  ### Files
+
+  - `src/lib/athlete/dailyRecommendation.js` (new, ~110 LOC)
+  - `src/lib/__tests__/athlete/dailyRecommendation.test.js` (new, 15 cases)
+  - `src/components/TodayView.jsx` — replaces the no-plan IIFE branch with
+    a recommendation card; adds dailyRecommendation import
+
+  ### Mission 1 chain status after this ship
+
+  | Link                          | Status   |
+  |-------------------------------|----------|
+  | TARGET → PHYSIOLOGY           | ✓        |
+  | TARGET → PLAN                 | ✓ (v9.92) |
+  | PLAN → DAILY ANSWER           | ✓ (v9.93) — no-plan branch closed |
+  | PHYSIOLOGY → DAILY ANSWER     | ✓ (v9.91) |
+  | DAILY ANSWER → EXECUTION      | ✓ (v9.89) |
+  | EXECUTION → ADAPTATION        | open (Prompt D) |
+  | ONBOARDING → TARGET           | partial (Prompt E) |
+
+  ### Tests
+
+  - 9972/9972 (+15 cases)
+  - Lint clean, build clean
+
+---
+
 ## v9.92.0 — 2026-05-13 — Mission 1 chain: target → plan (race-distance + sport pass-through)
 
   Prompt A from the Mission 1 connection plan. Closes the **target-distance
