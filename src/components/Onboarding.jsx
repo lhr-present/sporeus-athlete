@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { PLAN_GOALS } from '../lib/constants.js'
+import { useEffect, useState } from 'react'
+import { goalsForSport } from '../lib/constants.js'
 import { autoFormatMmSs } from '../lib/format/mmss.js'
 
 // ── Rule-based plan preview (no API key required) ─────────────────────────────
@@ -54,10 +54,28 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
     // Original detailed fields
     name:'', sport:'Running', age:'', gender:'male',
     level:'Competitive', maxhr:'', ftp:'', ltpace:'',
-    goal:'Half Marathon', weeks:'', raceDate:'',
+    // v9.96.0 — trainDays default 5 so PlanGenerator + buildStarterPlan get a
+    // sane availableDays even when the user skips the buttons in step 5.
+    trainDays: 5,
+    // v9.96.0 — goal no longer defaults to 'Half Marathon'. The default was a
+    // bias that quietly steered every athlete into a running plan even if they
+    // picked Cycling as primary sport. Empty default + sport-filtered list
+    // (see goalsForSport below) forces an explicit pick.
+    goal:'', weeks:'', raceDate:'',
   })
   const set = (k,v) => setData(d=>({...d,[k]:v}))
   const sports = ['Running','Cycling','Triathlon','Swimming','Rowing','Other']
+
+  // v9.96.0 — Keep goal valid for the current sport. The initial state seeds
+  // an empty goal; this effect picks the first valid option for the sport
+  // (and re-aligns if the user later changes sport to one where the current
+  // goal isn't offered, e.g., picks Cycling after selecting "5K").
+  useEffect(() => {
+    const valid = goalsForSport(data.sport)
+    if (!valid.includes(data.goal)) {
+      setData(d => ({ ...d, goal: valid[0] }))
+    }
+  }, [data.sport, data.goal])
 
   const quickFinish = () => onFinish({
     name:data.name || '', sport:data.sport, purpose:data.purpose,
@@ -269,7 +287,7 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
         {lang === 'tr' ? '07 / HEDEFİN' : '07 / YOUR GOAL'}
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))', gap:'8px', marginBottom:'16px' }}>
-        {PLAN_GOALS.map(g=>(
+        {goalsForSport(data.sport).map(g=>(
           <button key={g} onClick={()=>set('goal',g)}
             style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', padding:'12px', borderRadius:'6px', border:`2px solid ${data.goal===g?'#ff6600':'#e0e0e0'}`, background:data.goal===g?'#fff3eb':'transparent', color:data.goal===g?'#ff6600':'#888', cursor:'pointer', textAlign:'center', fontWeight:data.goal===g?600:400 }}>
             {g}

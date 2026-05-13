@@ -14,6 +14,101 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.96.0 — 2026-05-13 — Mission 1 polish: sport-filtered goals + chain integration guard
+
+  Three follow-throughs from the v9.95 audit — known UX gaps and a safety
+  net against future contract drift between chain modules.
+
+  ### Prompt F — `trainDays` default
+
+  The trainDays picker (Onboarding step 5, lines 217–227) exists, but the
+  initial state never set a default value. Empty state means
+  `availableDays` silently fell to the v9.95 `buildStarterPlan` default of
+  5 — fine outcome, but the UI showed no preselect so users skipped without
+  realising they'd locked it in.
+
+  Fix: initial state now seeds `trainDays: 5` so the button shows
+  highlighted on first render. Users who want a different cadence just
+  click another number.
+
+  ### Prompt G — Sport-filtered goal picker
+
+  Pre-v9.96, the goal picker (step 7) showed every entry from
+  `PLAN_GOALS` regardless of primary sport. A cyclist saw `5K, 10K, Half
+  Marathon, Marathon, General Fitness, Cycling Event` — five running goals
+  and one relevant goal, all weighted equally. Worse, the initial state
+  hardcoded `goal: 'Half Marathon'`, so a cyclist who skipped the step
+  finished onboarding with a running plan for a running race they hadn't
+  picked.
+
+  Two changes:
+
+  1. New `goalsForSport(sport)` helper in `src/lib/constants.js`:
+
+     | Sport | Goals shown |
+     |---|---|
+     | Running  | 5K, 10K, Half Marathon, Marathon, General Fitness |
+     | Cycling  | Cycling Event, General Fitness |
+     | Swimming | General Fitness |
+     | Rowing   | General Fitness |
+     | Triathlon / Other / Hybrid / null | full PLAN_GOALS |
+
+     Triathletes and mixed-sport users keep the full list — a triathlete
+     who also races a standalone 10K is a real case.
+
+  2. `Onboarding.jsx` now seeds `goal: ''` and uses a `useEffect` to
+     auto-sync `data.goal` to the first entry in `goalsForSport(data.sport)`
+     whenever sport changes or the current goal is invalid for the sport.
+     The picker renders only sport-valid options. No hardcoded
+     "Half Marathon" default — but also no empty-goal regression for
+     users who skip the picker, because the effect always keeps a valid
+     pick.
+
+  ### Prompt K — Onboarding → Today integration test
+
+  Every chain link has unit tests, but nothing asserted the **contract**
+  between them. If `buildStarterPlan` started emitting `{ targetTss }`
+  instead of `{ tss }`, every unit test still passes (each module mocks
+  its own inputs), but `planAdaptation.computePlanDrift` would silently
+  read zero TSS for every plan week and recommend "regenerate" on day one.
+
+  New test file `src/lib/__tests__/integration/onboardingToToday.test.js`
+  (8 cases) chains:
+
+  ```
+  onboarding data → buildStarterPlan → JSON round-trip → getTodayPlannedSession
+                                                       → deriveSessionTargets
+                                                       → computePlanDrift
+                                                       → buildDailyRecommendation
+  ```
+
+  and asserts shape compatibility at every join. Includes:
+  - Runner with threshold pace → plan session has derivable pace target
+  - Cyclist with FTP → plan session has derivable power target
+  - Plan from onboarding has the `tss` field name that adaptation expects
+  - Fresh plan + empty log → drift returns `pending` (not crash)
+  - No-goal onboarding correctly returns null from buildStarterPlan
+  - TR lang preserves sport-specific labels through the chain
+
+  Pure-function integration test — no React Testing Library overhead, no
+  jsdom. Runs in ~60ms.
+
+  ### Files
+
+  - `src/components/Onboarding.jsx` — trainDays default, goal init, sport-sync useEffect
+  - `src/lib/constants.js` — `GOALS_BY_SPORT` map, `goalsForSport()` helper
+  - `src/lib/__tests__/constants/goalsForSport.test.js` (new, 9 cases)
+  - `src/lib/__tests__/integration/onboardingToToday.test.js` (new, 8 cases)
+
+  ### Tests
+
+  - 10024 → 10041 (+17)
+  - Lint clean, build clean
+  - Existing Onboarding regression tests still pass (the goal field change
+    didn't break the wizard flow)
+
+---
+
 ## v9.95.0 — 2026-05-13 — Mission 1 chain: ONBOARDING → TARGET (starter-plan seed)
 
   Prompt E from the Mission 1 connection plan. Closes the **last open

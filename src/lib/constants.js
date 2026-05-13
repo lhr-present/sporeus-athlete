@@ -193,6 +193,32 @@ export const MACRO_PHASES = [
 ]
 
 export const PLAN_GOALS = ['5K','10K','Half Marathon','Marathon','General Fitness','Cycling Event']
+
+// v9.96.0 — Sport-filtered goal subsets. Before this, a cyclist user (sport
+// = 'Cycling') saw all running distances in the onboarding goal picker;
+// most were irrelevant. The list of canonical goals stays in PLAN_GOALS
+// for back-compat and tests; the filter is render-side only.
+//
+// Triathlon / Other / Hybrid / unknown sports fall through to the full
+// list — they may legitimately train for any of them (a triathlete who
+// also pursues a standalone 10K is common).
+const GOALS_BY_SPORT = {
+  Running:  ['5K', '10K', 'Half Marathon', 'Marathon', 'General Fitness'],
+  Cycling:  ['Cycling Event', 'General Fitness'],
+  Swimming: ['General Fitness'],
+  Rowing:   ['General Fitness'],
+}
+
+/**
+ * Return the subset of PLAN_GOALS relevant to a given primary sport.
+ * Unknown / mixed-sport / null sports get the full list.
+ *
+ * @param {string|null|undefined} sport - canonical sport string ('Running' | 'Cycling' | ...)
+ * @returns {string[]} subset of PLAN_GOALS in their canonical order
+ */
+export function goalsForSport(sport) {
+  return GOALS_BY_SPORT[sport] || PLAN_GOALS
+}
 export const PLAN_LEVELS = ['Beginner','Intermediate','Advanced']
 export const ACTIVITY_MULTS = [
   { label:'Sedentary (desk job)', mult:1.2 },
