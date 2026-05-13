@@ -74,17 +74,32 @@ export function useAuth() {
   useEffect(() => {
     if (!user?.id) return
     let cancelled = false
-    fetchProfile(user.id).then(p => {
-      if (!cancelled) {
-        setProfile(p)
-        setLoading(false)
-      }
-    })
+    fetchProfile(user.id)
+      .then(p => {
+        if (!cancelled) {
+          setProfile(p)
+          setLoading(false)
+        }
+      })
+      .catch(err => {
+        // v9.90.0 — fetchProfile already logs internally; the bare .then()
+        // chain previously let promise rejection escape uncaught. Now
+        // catch and at least drop the loading state so the UI doesn't hang.
+        logger.warn('[useAuth] profile fetch rejected:', err?.message || err)
+        if (!cancelled) setLoading(false)
+      })
     return () => { cancelled = true }
   }, [user?.id, fetchProfile])  // eslint-disable-line react-hooks/exhaustive-deps
 
   const signOut = useCallback(async () => {
     if (!supabase) return
+    // v9.90.0 — Clear app-layer credentials BEFORE the auth lock releases.
+    // Previously signOut() only cleared Supabase's session; the Strava
+    // token cache survived, so on a shared device the next signed-in user
+    // could see a "↻ SYNC NOW" button using the prior user's token.
+    // (The server-side edge function does enforce JWT ownership, so it
+    // wouldn't actually sync wrong data — but the UX was misleading.)
+    try { localStorage.removeItem('sporeus-strava-token') } catch { /* quota / private mode */ }
     await supabase.auth.signOut()
   }, [])
 

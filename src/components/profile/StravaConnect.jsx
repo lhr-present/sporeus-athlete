@@ -5,7 +5,10 @@ import { S } from '../../styles.js'
 import { isSupabaseReady } from '../../lib/supabase.js'
 import {
   getStravaConnection, initiateStravaOAuth, triggerStravaSync,
-  disconnectStrava, importStravaActivities, deduplicateByStravaId,
+  disconnectStrava,
+  // v9.90.0 — importStravaActivities + deduplicateByStravaId imports removed
+  // alongside the localStorage-token-fallback disable in handleSync. The
+  // functions still live in src/lib/strava.js for future revival.
 } from '../../lib/strava.js'
 
 const SYNC_COLOR = { idle: '#5bc25b', syncing: '#0064ff', error: '#e03030', paused: '#ffa500' }
@@ -46,28 +49,34 @@ export default function StravaConnect({ userId }) {
   const handleSync = async () => {
     setBusy(true)
     setSyncResult(null)
-    const localToken = (() => { try { return localStorage.getItem('sporeus-strava-token') || '' } catch { return '' } })()
-    if (localToken) {
-      const { entries, error } = await importStravaActivities(localToken, 30)
-      if (error) {
-        flash(`⚠ Sync failed: ${error.message.slice(0, 200)}`)
-        setBusy(false)
-        return
-      }
-      try {
-        const existing = JSON.parse(localStorage.getItem('sporeus_log') || '[]')
-        const newEntries = deduplicateByStravaId(existing, entries)
-        const merged = [...existing, ...newEntries].sort((a, b) => a.date.localeCompare(b.date))
-        localStorage.setItem('sporeus_log', JSON.stringify(merged))
-        const recent = newEntries.slice(-3).reverse()
-        setSyncResult({ synced: newEntries.length, total: entries.length, recent })
-        flash(`✓ Imported ${newEntries.length} new activities (${entries.length} fetched)`, 6000)
-      } catch (e) {
-        flash(`⚠ Could not save activities: ${e.message}`)
-      }
-      setBusy(false)
-      return
-    }
+    // v9.90.0 — Local-token fallback DISABLED. The previous branch read
+    // `sporeus-strava-token` from localStorage and made direct Strava API
+    // calls via importStravaActivities(). Audit (v9.90 auth pass) flagged
+    // this as bypassing the edge function's server-side token-refresh logic:
+    // if the local token had expired or been revoked, the call silently
+    // 401-ed with only "Sync failed" surfaced to the user. Worse, on a
+    // shared device a previous user's stale token could trigger a sync the
+    // current user didn't intend. The code below is preserved so the
+    // direct-import path can be revived later if we add proper token
+    // ownership validation and refresh — for now every sync routes through
+    // the edge function (which already handles refresh, revocation, and
+    // per-user ownership via JWT).
+    //
+    // const localToken = (() => { try { return localStorage.getItem('sporeus-strava-token') || '' } catch { return '' } })()
+    // if (localToken) {
+    //   const { entries, error } = await importStravaActivities(localToken, 30)
+    //   if (error) { flash(`⚠ Sync failed: ${error.message.slice(0, 200)}`); setBusy(false); return }
+    //   try {
+    //     const existing = JSON.parse(localStorage.getItem('sporeus_log') || '[]')
+    //     const newEntries = deduplicateByStravaId(existing, entries)
+    //     const merged = [...existing, ...newEntries].sort((a, b) => a.date.localeCompare(b.date))
+    //     localStorage.setItem('sporeus_log', JSON.stringify(merged))
+    //     const recent = newEntries.slice(-3).reverse()
+    //     setSyncResult({ synced: newEntries.length, total: entries.length, recent })
+    //     flash(`✓ Imported ${newEntries.length} new activities (${entries.length} fetched)`, 6000)
+    //   } catch (e) { flash(`⚠ Could not save activities: ${e.message}`) }
+    //   setBusy(false); return
+    // }
     const { data, error } = await triggerStravaSync()
     setBusy(false)
     if (error) {

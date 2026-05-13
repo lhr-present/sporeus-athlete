@@ -92,14 +92,29 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
 
   useEffect(() => {
     if (!stravaCallbackCode || !authUser || !isSupabaseReady()) return
-    setStravaCallbackCode(null)
-    exchangeStravaCode(stravaCallbackCode).then(({ data, error }) => {
-      if (error) {
-        addToast({ id: 'strava', message: `⚠ Strava connection failed: ${(error.message || 'Unknown error').slice(0, 200)}`, type: 'error', duration: 6000 })
-      } else {
-        addToast({ id: 'strava', message: `✓ Strava connected${data?.athlete ? ' — ' + data.athlete : ''}`, type: 'success', duration: 6000 })
-      }
-    })
+    // v9.90.0 — Cancellation flag protects against setState-after-unmount
+    // when the user navigates away mid-exchange (5-min code window, edge
+    // function can take 1-2s on cold start). Clearing state after the
+    // promise resolves (rather than before) ensures a single guarded path.
+    // The bare `.then()` previously had no `.catch()`, so a network
+    // rejection became an unhandled promise rejection (Sentry noise).
+    let cancelled = false
+    exchangeStravaCode(stravaCallbackCode)
+      .then(({ data, error }) => {
+        if (cancelled) return
+        setStravaCallbackCode(null)
+        if (error) {
+          addToast({ id: 'strava', message: `⚠ Strava connection failed: ${(error.message || 'Unknown error').slice(0, 200)}`, type: 'error', duration: 6000 })
+        } else {
+          addToast({ id: 'strava', message: `✓ Strava connected${data?.athlete ? ' — ' + data.athlete : ''}`, type: 'success', duration: 6000 })
+        }
+      })
+      .catch(err => {
+        if (cancelled) return
+        setStravaCallbackCode(null)
+        addToast({ id: 'strava', message: `⚠ Strava connection failed: ${(err?.message || 'Network error').slice(0, 200)}`, type: 'error', duration: 6000 })
+      })
+    return () => { cancelled = true }
   }, [stravaCallbackCode, authUser]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Core state ────────────────────────────────────────────────────────────────

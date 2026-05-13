@@ -54,11 +54,15 @@ export function useTrainingLogQuery(arg) {
         .order('created_at', { ascending: false })
         .range(0, pageSize - 1)
       if (qErr) throw qErr
-      const entries = rows.map(logRowToEntry)
+      // v9.90.0 — null-safe: Supabase can return rows=null when the query
+      // succeeds but the result set is empty (rare; usually returns []).
+      // Falling back to [] avoids a TypeError on .map.
+      const safeRows = rows ?? []
+      const entries = safeRows.map(logRowToEntry)
       // Reset pagination cursor on fresh load
       pageRef.current = 1
       setAllEntries(entries)
-      setHasMore(rows.length >= pageSize)
+      setHasMore(safeRows.length >= pageSize)
       setLsData(entries)
       return entries
     },

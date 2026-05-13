@@ -56,6 +56,8 @@ export function useProfileSync(userId) {
                   try { localStorage.setItem(SYNCED_KEY, userId) } catch (le) { logger.warn('localStorage:', le.message) }
                 }
               })
+              // v9.90.0 — guard against network rejection (was uncaught)
+              .catch(err => logger.warn('[useProfileSync] initial push rejected:', err?.message || err))
           }
         }
 
@@ -81,6 +83,8 @@ export function useProfileSync(userId) {
             .then(({ error }) => {
               if (error) logger.warn('[useProfileSync] save error:', error.message)
             })
+            // v9.90.0 — guard background save against network rejection
+            .catch(err => logger.warn('[useProfileSync] save rejected:', err?.message || err))
         })
       }
 

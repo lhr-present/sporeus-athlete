@@ -1,6 +1,7 @@
 // ─── CoachOverview.jsx — Coach's bird's-eye view of all connected athletes ────
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase.js'
+import { logger } from '../lib/logger.js'
 import { predictInjuryRisk, computeRaceReadiness } from '../lib/intelligence.js'
 
 const MONO   = "'IBM Plex Mono', monospace"
@@ -50,23 +51,29 @@ export default function CoachOverview({ coachId, onSelectAthlete }) {
     if (!supabase || !coachId) { setLoading(false); return }
     setLoading(true)
 
-    // 1. Fetch linked athletes
-    const { data: links } = await supabase
-      .from('coach_athletes')
-      .select('athlete_id, status, profiles!coach_athletes_athlete_id_fkey(id, display_name, email)')
-      .eq('coach_id', coachId)
-      .eq('status', 'active')
+    // v9.90.0 — Wrap the whole load body so any Supabase rejection
+    // (network, RLS, schema mismatch) doesn't escape as an unhandled
+    // promise rejection. Previously `useEffect(() => { load() })` fired
+    // and-forget, so a thrown error became Sentry noise + indefinite
+    // loading state for the user.
+    try {
+      // 1. Fetch linked athletes
+      const { data: links } = await supabase
+        .from('coach_athletes')
+        .select('athlete_id, status, profiles!coach_athletes_athlete_id_fkey(id, display_name, email)')
+        .eq('coach_id', coachId)
+        .eq('status', 'active')
 
-    if (!links?.length) { setLoading(false); return }
+      if (!links?.length) { setLoading(false); return }
 
-    const ids = links.map(l => l.athlete_id)
+      const ids = links.map(l => l.athlete_id)
 
-    // 2. Fetch last 90d training data for all athletes in parallel
-    const [{ data: allLog }, { data: allRecovery }, { data: allNotes }] = await Promise.all([
-      supabase.from('training_log').select('*').in('user_id', ids).gte('date', daysBefore(90)),
-      supabase.from('recovery').select('*').in('user_id', ids).gte('date', daysBefore(30)),
-      supabase.from('coach_notes').select('*').eq('coach_id', coachId).in('athlete_id', ids),
-    ])
+      // 2. Fetch last 90d training data for all athletes in parallel
+      const [{ data: allLog }, { data: allRecovery }, { data: allNotes }] = await Promise.all([
+        supabase.from('training_log').select('*').in('user_id', ids).gte('date', daysBefore(90)),
+        supabase.from('recovery').select('*').in('user_id', ids).gte('date', daysBefore(30)),
+        supabase.from('coach_notes').select('*').eq('coach_id', coachId).in('athlete_id', ids),
+      ])
 
     // 3. Group by athlete
     const enriched = links.map(link => {
@@ -95,6 +102,10 @@ export default function CoachOverview({ coachId, onSelectAthlete }) {
     const noteMap = {}
     ;(allNotes || []).forEach(n => { noteMap[n.athlete_id] = n.note })
     setNotes(noteMap)
+    } catch (err) {
+      // Log and drop the spinner so the user isn't stuck in "Loading..."
+      logger.warn('[CoachOverview] load failed:', err?.message || err)
+    }
 
     setLoading(false)
   }, [coachId])

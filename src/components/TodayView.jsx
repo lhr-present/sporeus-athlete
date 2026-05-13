@@ -257,13 +257,21 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
     let cancelled = false
     async function loadCoachSessions() {
       if (!supabase) return
-      const athleteId = supabase.auth?.getUser ? (await supabase.auth.getUser())?.data?.user?.id : null
-      if (!athleteId) return
-      const coachId = await getMyCoach(supabase, athleteId)
-      if (!coachId || cancelled) return
-      if (!cancelled) setMyCoachId(coachId)
-      const { data } = await getUpcomingSessions(coachId, 14)
-      if (!cancelled && data) setCoachSessions(data)
+      try {
+        // v9.90.0 — Wrapped in try/catch. Previously a network rejection
+        // from getMyCoach or getUpcomingSessions escaped as an unhandled
+        // promise rejection (Sentry noise; no user impact since the
+        // component renders without coach data when these fail).
+        const athleteId = supabase.auth?.getUser ? (await supabase.auth.getUser())?.data?.user?.id : null
+        if (!athleteId) return
+        const coachId = await getMyCoach(supabase, athleteId)
+        if (!coachId || cancelled) return
+        if (!cancelled) setMyCoachId(coachId)
+        const { data } = await getUpcomingSessions(coachId, 14)
+        if (!cancelled && data) setCoachSessions(data)
+      } catch (err) {
+        logger.warn('[TodayView] loadCoachSessions failed:', err?.message || err)
+      }
     }
     loadCoachSessions()
     return () => { cancelled = true }

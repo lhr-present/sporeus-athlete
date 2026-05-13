@@ -14,6 +14,120 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.90.0 — 2026-05-13 — Bug audit pass: auth, Strava, promise-rejection safety
+
+  Ran two parallel diagnostic agents per user direction "check general
+  bugs, if there are big bugs you can keep the code on the base remove
+  the feature." Audited (1) auth + OAuth flows for breakage and (2)
+  null-safety + unhandled-promise patterns across the app.
+
+  ### Big-bug-with-feature-disabled (1)
+
+  **Strava localStorage-token fallback path DISABLED**
+  (`src/components/profile/StravaConnect.jsx` `handleSync`).
+  Auth audit flagged: the previous "if local token exists, use it for
+  direct Strava API import" branch bypassed the edge function's
+  server-side token-refresh + revocation-check logic. Two failure
+  modes:
+  - Expired/revoked token → silent 401, surface message just says
+    "Sync failed" with no actionable detail
+  - Shared device: a previous user's stale `sporeus-strava-token`
+    in localStorage could trigger an unintended sync (the edge
+    function blocks the actual data flow via JWT ownership, but the
+    UX was misleading)
+
+  Per the user rule ("keep the code on the base"): the fallback path
+  is COMMENTED OUT in `handleSync`, not deleted. Imports of
+  `importStravaActivities` + `deduplicateByStravaId` removed from the
+  component to keep lint clean — the functions still live in
+  `src/lib/strava.js` and the commented block carries inline notes
+  on how to revive when proper token-ownership validation lands.
+
+  All syncs now route through `triggerStravaSync()` → edge function
+  → server-side refresh. Single code path, single set of failure
+  modes, clean error surfacing.
+
+  ### Auth fixes (3)
+
+  **`signOut()` now clears Strava token** (`src/hooks/useAuth.js`).
+  Previously the Strava localStorage cache survived sign-out. On a
+  shared device the next user would see a "↻ SYNC NOW" button as if
+  Strava was connected — the server-side JWT check prevented actual
+  cross-user data flow, but the UX was misleading. Now
+  `localStorage.removeItem('sporeus-strava-token')` runs inside the
+  signOut callback (wrapped in try/catch for private-browsing /
+  quota-exceeded environments).
+
+  **Strava OAuth callback race fixed** (`src/hooks/useAppState.js`).
+  Previously: code path cleared `stravaCallbackCode` state BEFORE the
+  async `exchangeStravaCode` resolved, and had no `.catch()`. Two
+  consequences:
+  1. If user navigated away mid-exchange (5-min code window + 1-2s
+     edge-function cold start), the `addToast` call fired against an
+     unmounted component
+  2. Network rejection became an unhandled promise rejection (Sentry
+     noise; no user-visible error message)
+  Now: cancellation flag in cleanup, state cleared AFTER promise
+  resolves, `.catch` branch shows a "connection failed" toast on
+  network errors.
+
+  **`fetchProfile` chain in useAuth.js** — previously bare `.then()`
+  in the profile-fetch effect; rejection escaped uncaught and left
+  the UI stuck in loading state. Added `.catch` that logs and drops
+  the loading state so the gate at least renders.
+
+  ### Promise-rejection safety (4 additional sites)
+
+  Auditor flagged unhandled promise rejections that would surface as
+  Sentry noise + leave UI in indeterminate state on network errors:
+  - `src/components/CoachOverview.jsx` — `load()` wrapped in
+    try/catch. Previously a Supabase rejection (network, RLS, schema)
+    left the spinner spinning forever.
+  - `src/components/TodayView.jsx` — `loadCoachSessions` IIFE
+    wrapped in try/catch. The coach-sessions panel is opt-in
+    secondary data; failures shouldn't crash the day-of-the-week
+    surface.
+  - `src/hooks/useProfileSync.js` — two nested `.then()` chains
+    (initial profile push + background save) gained `.catch`
+    handlers that log via `logger.warn`.
+  - `src/hooks/useTrainingLogQuery.js:57` — null-safe `rows ?? []`
+    on the supabase result before `.map(logRowToEntry)`.
+
+  ### Verified-OK (no change needed)
+  - Google sign-in via `signInWithOAuth({ provider: 'google' })`
+    is correctly wired (`AuthGate.jsx:85-100`). Errors surfaced.
+  - Supabase auth (implicit flow + persistSession + onAuthStateChange,
+    no getSession() per CLAUDE.md) is correctly avoiding the Web
+    Locks deadlock.
+  - Strava callback URL parsing (`?state=strava&code=...`) is
+    correctly cleaned up via `history.replaceState`.
+  - SW denylist covers all OAuth callback patterns.
+  - `_syncPromise` module-mutex in `strava.js` is single-tick safe.
+  - CSP missing `strava.com` from `connect-src` — current code uses
+    `window.location.href` redirect (CSP bypassed by browser nav),
+    so no live issue. Future direct-fetch from client to Strava API
+    would break silently — flagged for future hardening.
+
+  ### Files
+  - `package.json` (11.90.0)
+  - `CHANGELOG.md`
+  - `src/components/profile/StravaConnect.jsx` (fallback disabled)
+  - `src/hooks/useAuth.js` (signOut cleanup + fetchProfile catch)
+  - `src/hooks/useAppState.js` (Strava-callback race + catch)
+  - `src/hooks/useProfileSync.js` (×2 nested catch)
+  - `src/hooks/useTrainingLogQuery.js` (null guard)
+  - `src/components/CoachOverview.jsx` (try/catch + logger import)
+  - `src/components/TodayView.jsx` (loadCoachSessions try/catch)
+
+  Tests 9916/9916 unchanged, lint clean, build clean, version-sync
+  passes (11.90.0 ↔ v9.90.0).
+
+  Depends on: v9.83.0 + v9.86.0 (ConfirmModal infrastructure — error
+  surfacing now goes through themed UI consistently), v9.89.0 (most
+  recent ship — clean baseline for the audit to compare against).
+
+---
+
 ## v9.89.0 — 2026-05-12 — Post-session execution snapshot (plan vs actual)
 
   Closes the last engineering item on the v9.84.0+ deferred backlog.
