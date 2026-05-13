@@ -25,6 +25,7 @@ import { deriveSessionTargets } from '../lib/athlete/derivedSessionTargets.js'
 import { buildDailyRecommendation } from '../lib/athlete/dailyRecommendation.js'
 import { computePlanDrift, detectStalePlan } from '../lib/athlete/planAdaptation.js'
 import { detectGoalActivityMismatch } from '../lib/athlete/goalActivityMismatch.js'
+import { computeTrainingStreak } from '../lib/athlete/trainingStreak.js'
 import { buildStarterPlan } from '../lib/plan/starterPlan.js'
 import { recordPlanVersion } from '../lib/plan/versionTracking.js'
 import { emitEvent } from '../lib/attribution.js'
@@ -574,6 +575,40 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
           <NextTrainingCardLazy />
         </Suspense>
       </ErrorBoundary>
+
+      {/* ── v9.107.0 (Prompt LL) — Training streak chip. One-line summary
+          surfaces a habit signal the system already had. Hidden when
+          current streak is 0 to avoid demoralizing fresh / returning
+          athletes who'd just see "0 days". Always-visible only when
+          they have something to celebrate. */}
+      {(() => {
+        const streak = computeTrainingStreak(log, today)
+        if (streak.current === 0) return null
+        const flame = streak.current >= 7
+        return (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
+            marginBottom: '14px', padding: '8px 14px',
+            background: 'var(--card-bg)', border: '1px solid var(--border)',
+            borderLeft: `3px solid ${flame ? '#ff6600' : '#5bc25b'}`,
+            borderRadius: '4px', fontFamily: MONO,
+          }}>
+            <span style={{ fontSize: '15px', fontWeight: 700, color: flame ? '#ff6600' : '#5bc25b' }}>
+              {flame ? '🔥' : '✓'} {streak.current}-{lang === 'tr' ? 'gün seri' : 'day streak'}
+            </span>
+            {streak.longest > streak.current && (
+              <span style={{ fontSize: '10px', color: '#666' }}>
+                {lang === 'tr' ? 'kişisel rekor' : 'best'}: {streak.longest}
+              </span>
+            )}
+            {streak.current >= 7 && (
+              <span style={{ fontSize: '9px', color: '#888', letterSpacing: '0.06em', marginLeft: 'auto' }}>
+                {lang === 'tr' ? '· bir hafta üst üste · alışkanlık oluşuyor' : '· week-long · habit is forming'}
+              </span>
+            )}
+          </div>
+        )
+      })()}
 
       {/* ── Weekly Recap (Monday only) ─────────────────────────────────────── */}
       {/* ── O4 — Weekly recap card (visual upgrade) ─────────────────────── */}
@@ -1140,6 +1175,31 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                     {lang === 'tr' ? 'Hafta' : 'Week'} {plannedSession.weekIdx + 1}/{plan.weeks.length}
                   </span>
                 )}
+              </div>
+            )}
+            {/* v9.107.0 (Prompt NN) — Deload-active context tile. When the
+                current week's sessions carry _deloaded:true (set by v9.102
+                Prompt U Reduce-Next-Week), explain *why* this week is
+                lighter so athletes don't think the plan is broken or the
+                load is randomly soft. Mujika 2003 anchor matches the
+                citation v9.102 used at scaling time. */}
+            {plan?.weeks?.[plannedSession.weekIdx]?.sessions?.some(s => s?._deloaded) && (
+              <div style={{
+                fontSize: '10px', color: '#5bc25b', marginBottom: '10px',
+                padding: '6px 10px', borderLeft: '3px solid #5bc25b',
+                background: 'rgba(91,194,91,0.06)', lineHeight: 1.55,
+              }}>
+                <div style={{ fontWeight: 700, letterSpacing: '0.05em', marginBottom: '3px' }}>
+                  ↓ {lang === 'tr' ? 'YÜK İNDİRME AKTİF · −%20 TSS' : 'DELOAD ACTIVE · −20% TSS'}
+                </div>
+                <div style={{ color: '#aaa', fontSize: '10px' }}>
+                  {lang === 'tr'
+                    ? 'Bu hafta uyum açığı tespit edildiği için yük azaltıldı. Hafif hisset — kondisyonu korur, uygulamayı düzeltir.'
+                    : 'Load was eased this week after a compliance gap was detected. Should feel light — preserves fitness while restoring execution.'}
+                </div>
+                <div style={{ color: '#666', marginTop: '2px', fontSize: '9px', fontStyle: 'italic' }}>
+                  Mujika 2003 (taper compliance — small load cuts in the −20% range preserve fitness)
+                </div>
               </div>
             )}
             {/* v9.84.0 — Pace target + zone breakdown. Critical Mission 1 data

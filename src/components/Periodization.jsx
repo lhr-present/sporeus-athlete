@@ -335,9 +335,17 @@ function CoachPlansCard({ authUser }) {
         const responseAge = plan.accepted_at || plan.rejected_at
           ? formatLastSession(plan.accepted_at || plan.rejected_at)
           : null
-        // Pending plans get a yellow border to nudge the athlete to respond.
-        const borderColor = isPending  ? '#f5c54299'
-                          : isUpdated  ? '#0064ff55'
+        // v9.107.0 (Prompt MM): nudge when a pending plan sits >5 days.
+        // Coaches reading pending counts (v9.106 KK) get acted on faster
+        // when athletes see a passive reminder they can't dismiss.
+        const pendingAgeDays = isPending && plan.created_at
+          ? Math.floor((Date.now() - new Date(plan.created_at).getTime()) / 86400000)
+          : 0
+        const isPendingStale = pendingAgeDays > 5
+        // Pending plans get a yellow border; stale-pending gets stronger amber.
+        const borderColor = isPendingStale ? '#ff6600bb'
+                          : isPending      ? '#f5c54299'
+                          : isUpdated      ? '#0064ff55'
                           : 'var(--border)'
 
         return (
@@ -380,6 +388,23 @@ function CoachPlansCard({ authUser }) {
                 <span style={{ ...S.mono, fontSize:'11px', color:'#555' }}>{isOpen ? '▲' : '▼'}</span>
               </div>
             </div>
+
+            {/* v9.107.0 (Prompt MM) — Stale-pending nudge banner. Coaches
+                can see pending counts (v9.106 KK), but the athlete-side
+                pressure was just the amber border. After 5 days
+                un-responded, surface an explicit reminder line so the
+                plan doesn't quietly age out of relevance. */}
+            {isPendingStale && (
+              <div style={{
+                padding:'8px 12px', background:'#ff660014',
+                borderTop:'1px solid #ff660044',
+                ...S.mono, fontSize:'10px', color:'#ff9944', lineHeight:1.5,
+              }}>
+                ⏱ {t('coachPlanStaleNudge')
+                  ? `${t('coachPlanStaleNudge')} (${pendingAgeDays}d)`
+                  : `Your coach has been waiting ${pendingAgeDays} days for your response.`}
+              </div>
+            )}
 
             {/* v9.105.0 (Prompt BB) — Action bar: ACCEPT / DECLINE, only on pending */}
             {isPending && (

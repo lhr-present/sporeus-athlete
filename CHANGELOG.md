@@ -14,6 +14,85 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.107.0 — 2026-05-14 — Engagement & feedback closures: streak + stale-pending nudge + deload context
+
+  Prompts LL + MM + NN. Three small surfaces that surface signals the
+  system already had but never showed.
+
+  ### Prompt LL — Daily training streak
+
+  New pure fn `computeTrainingStreak(log, today)` in
+  `src/lib/athlete/trainingStreak.js`. Returns
+  `{ current, longest, lastDate }`.
+
+  Rules:
+  - Streak day = calendar day with at least one log entry where
+    `tss > 0`. Zero-TSS placeholder entries don't count.
+  - One-day grace: streak survives until end-of-day even if today
+    has no entry yet (so a morning visit doesn't reset the count).
+  - Missed day = hard break. No rolling-window proxy — matches the
+    athlete's mental model.
+
+  TodayView renders a slim streak chip below NextTrainingCard:
+  - Hidden when `current === 0` (no demoralizing "0-day streak")
+  - 🔥 flame icon + amber color at 7+ days; ✓ green below
+  - Tagline at 7+: "week-long · habit is forming"
+  - Shows longest-streak if `longest > current`
+
+  Tests: 13 cases (empty, single-day, 5-day, mid-gap break, longest
+  vs current, dedup same-day entries, tss=0 placeholders, malformed
+  inputs, custom today).
+
+  ### Prompt MM — Stale-pending plan nudge
+
+  v9.105 BB added `accepted_at`/`rejected_at` columns + PENDING pill
+  + amber border. But athletes who saw a plan once and didn't respond
+  had no further nudge — plans quietly aged out.
+
+  CoachPlansCard computes `pendingAgeDays` from `plan.created_at`.
+  When > 5 days AND both timestamps null:
+  - Border escalates to orange (`#ff6600bb`) from amber
+  - New banner row between header and accept/decline bar: amber
+    "⏱ Your coach has been waiting N days for your response."
+  - Bilingual via new i18n keys `coachPlanStaleNudge` (EN + TR)
+
+  Pure read of existing data — no DB change, no fetch.
+
+  ### Prompt NN — Deload-active context tile
+
+  v9.102 Prompt U Reduce-Next-Week scales `plan.weeks[N+1].sessions[].tss
+  *= 0.8` and marks each touched session with `_deloaded: true`. Until
+  v9.107 the athlete saw a lighter week with no explanation, easily
+  read as "plan is broken" or "easy on purpose this week".
+
+  TodayView Card 1 now detects
+  `plan.weeks[plannedSession.weekIdx].sessions.some(s => s._deloaded)`
+  and renders a small green tile above the pace strip:
+  - Header: "↓ DELOAD ACTIVE · −20% TSS" (bilingual)
+  - Body: "Load was eased this week after a compliance gap was
+    detected. Should feel light — preserves fitness while restoring
+    execution."
+  - Citation: "Mujika 2003 (taper compliance — small load cuts in the
+    −20% range preserve fitness)" — same anchor v9.102 cited at
+    scaling time.
+
+  ### Files touched
+
+  - `src/lib/athlete/trainingStreak.js` (new, ~70 LOC)
+  - `src/lib/__tests__/athlete/trainingStreak.test.js` (new, 13 cases)
+  - `src/components/TodayView.jsx` (streak chip + deload tile + import)
+  - `src/components/Periodization.jsx` (pendingAgeDays + stale-pending
+    border + nudge banner)
+  - `src/contexts/LangCtx.jsx` (+coachPlanStaleNudge EN + TR)
+  - `package.json` 11.107.0, CHANGELOG.md
+
+  10,147 tests pass (+13 vs v9.106). Lint + build clean.
+
+  Depends on: v9.102 Prompt U (_deloaded marker), v9.105 Prompt BB
+  (accepted_at/rejected_at columns + state vars).
+
+---
+
 ## v9.106.0 — 2026-05-14 — Coach diagnostic visibility + plan history viewer + pending counter
 
   Prompts II + JJ + KK. Three pure-UI follow-throughs that surface
