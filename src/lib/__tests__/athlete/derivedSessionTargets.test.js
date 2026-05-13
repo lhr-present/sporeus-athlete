@@ -5,6 +5,7 @@ import { describe, it, expect } from 'vitest'
 import {
   deriveSessionPace,
   deriveSessionPower,
+  deriveSessionSwimPace,
   deriveSessionTargets,
 } from '../../athlete/derivedSessionTargets.js'
 
@@ -141,6 +142,79 @@ describe('deriveSessionPower', () => {
   })
 })
 
+// v9.98.0 — Swim CSS pace path (Prompt M)
+describe('deriveSessionSwimPace', () => {
+  it('returns null when session or profile is missing', () => {
+    expect(deriveSessionSwimPace(null, { cssSec: 90 })).toBeNull()
+    expect(deriveSessionSwimPace({ zone: 'Z3' }, null)).toBeNull()
+  })
+
+  it('returns null when session is not a swim', () => {
+    expect(deriveSessionSwimPace({ zone: 'Z3', type: 'Tempo run' }, { cssSec: 90 })).toBeNull()
+    expect(deriveSessionSwimPace({ zone: 'Z3' }, { cssSec: 90, primarySport: 'Running' })).toBeNull()
+  })
+
+  it('returns null when cssSec is unset / invalid', () => {
+    expect(deriveSessionSwimPace({ zone: 'Z3', type: 'Long swim' }, {})).toBeNull()
+    expect(deriveSessionSwimPace({ zone: 'Z3', type: 'Long swim' }, { cssSec: 0 })).toBeNull()
+    expect(deriveSessionSwimPace({ zone: 'Z3', type: 'Long swim' }, { cssSec: 'nope' })).toBeNull()
+  })
+
+  it('Z3 (CSS) pace = 100-110% of CSS (the canonical threshold band)', () => {
+    // CSS = 90s/100m → Z3 fast=90 (1:30), slow=99 (1:39)
+    expect(deriveSessionSwimPace(
+      { zone: 'Z3', type: 'Threshold swim' },
+      { cssSec: 90 },
+    )).toBe('1:30–1:39/100m')
+  })
+
+  it('Z5 (VO2max) is faster than CSS', () => {
+    // CSS = 90 → Z5 fast=90*0.85=76.5≈77 (1:17), slow=90*0.95=85.5≈86 (1:26)
+    const out = deriveSessionSwimPace(
+      { zone: 'Z5', type: 'Interval swim' },
+      { cssSec: 90 },
+    )
+    expect(out).toBe('1:17–1:26/100m')
+  })
+
+  it('Z1 (recovery) is slower than CSS (120-130%)', () => {
+    // CSS = 90 → Z1 fast=90*1.20=108 (1:48), slow=90*1.30=117 (1:57)
+    expect(deriveSessionSwimPace(
+      { zone: 'Z1', type: 'Recovery swim' },
+      { cssSec: 90 },
+    )).toBe('1:48–1:57/100m')
+  })
+
+  it('detects swim via primarySport', () => {
+    expect(deriveSessionSwimPace(
+      { zone: 'Z3', type: 'Intervals' },
+      { cssSec: 90, primarySport: 'Swimming' },
+    )).toBe('1:30–1:39/100m')
+  })
+
+  it('detects swim via type keyword "swim"', () => {
+    expect(deriveSessionSwimPace(
+      { zone: 'Z4', type: 'Threshold swim' },
+      { cssSec: 90 },
+    )).toBe('1:26–1:30/100m')
+  })
+
+  it('handles seconds rollover (59 → 60)', () => {
+    // CSS = 100 → Z3 fast=100 (1:40), slow=110 (1:50)
+    expect(deriveSessionSwimPace(
+      { zone: 'Z3', type: 'Swim' },
+      { cssSec: 100 },
+    )).toBe('1:40–1:50/100m')
+  })
+
+  it('case-insensitive zone match', () => {
+    expect(deriveSessionSwimPace(
+      { zone: 'z3', type: 'Swim' },
+      { cssSec: 90 },
+    )).toBe('1:30–1:39/100m')
+  })
+})
+
 describe('deriveSessionTargets', () => {
   it('returns pace for runners (running profile, run session)', () => {
     const out = deriveSessionTargets({ zone: 'Z4' }, { threshold: '4:30', primarySport: 'running' })
@@ -158,5 +232,23 @@ describe('deriveSessionTargets', () => {
     const out = deriveSessionTargets({ zone: 'Z4' }, {})
     expect(out.paceTarget).toBeNull()
     expect(out.powerTarget).toBeNull()
+  })
+
+  it('returns swim pace for swimmers (v9.98.0)', () => {
+    const out = deriveSessionTargets(
+      { zone: 'Z3', type: 'Threshold swim' },
+      { cssSec: 90, primarySport: 'Swimming' },
+    )
+    expect(out.paceTarget).toBe('1:30–1:39/100m')
+    expect(out.powerTarget).toBeNull()
+  })
+
+  it('paceTarget routes to swim path when sport is Swimming, not run pace', () => {
+    // Swimmer with BOTH threshold (run) and cssSec set — swim path wins
+    const out = deriveSessionTargets(
+      { zone: 'Z3', type: 'Long swim' },
+      { cssSec: 90, threshold: '4:30', primarySport: 'Swimming' },
+    )
+    expect(out.paceTarget).toMatch(/100m/)
   })
 })

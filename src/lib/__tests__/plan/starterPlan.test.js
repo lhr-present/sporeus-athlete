@@ -192,4 +192,71 @@ describe('buildStarterPlan', () => {
     expect(out).not.toBeNull()
     // Should still produce a valid plan with the 20-CTL floor
   })
+
+  // ── v9.98.0 (Prompt L) — Page-refresh survival via JSON round-trip ───────
+  describe('localStorage round-trip survival', () => {
+    function roundTrip(plan) {
+      return JSON.parse(JSON.stringify(plan))
+    }
+
+    it('weeks.length survives round-trip', () => {
+      const plan = buildStarterPlan({ goal: '10K', sport: 'Running' }, TODAY)
+      const restored = roundTrip(plan)
+      expect(restored.weeks.length).toBe(plan.weeks.length)
+    })
+
+    it('generatedAt survives round-trip as ISO string', () => {
+      const plan = buildStarterPlan({ goal: '10K', sport: 'Running' }, TODAY)
+      const restored = roundTrip(plan)
+      expect(restored.generatedAt).toBe(plan.generatedAt)
+      expect(restored.generatedAt).toBe(TODAY)
+    })
+
+    it('primarySport survives round-trip', () => {
+      const plan = buildStarterPlan({ goal: 'Cycling Event', sport: 'Cycling' }, TODAY)
+      const restored = roundTrip(plan)
+      expect(restored.primarySport).toBe('Cycling')
+    })
+
+    it('raceDistance + level + hoursPerWeek survive round-trip', () => {
+      const plan = buildStarterPlan(
+        { goal: 'Marathon', sport: 'Running', athleteLevel: 'advanced', trainDays: 6 },
+        TODAY,
+      )
+      const restored = roundTrip(plan)
+      expect(restored.raceDistance).toBe('Marathon')
+      expect(restored.level).toBe('advanced')
+      expect(restored.hoursPerWeek).toBe(9)  // round(6 * 1.5)
+    })
+
+    it('isAdaptive + fromOnboarding survive round-trip', () => {
+      const plan = buildStarterPlan({ goal: '5K', sport: 'Running' }, TODAY)
+      const restored = roundTrip(plan)
+      expect(restored.isAdaptive).toBe(true)
+      expect(restored.fromOnboarding).toBe(true)
+    })
+
+    it('weeks[].sessions[].tss field name survives (planAdaptation depends on it)', () => {
+      const plan = buildStarterPlan({ goal: '10K', sport: 'Running' }, TODAY)
+      const restored = roundTrip(plan)
+      let hasTss = false
+      for (const wk of restored.weeks) {
+        for (const s of wk.sessions) {
+          if (s.type !== 'Rest' && typeof s.tss === 'number') { hasTss = true; break }
+        }
+      }
+      expect(hasTss).toBe(true)
+    })
+
+    it('serialized plan is < 100KB (localStorage quota safety)', () => {
+      // localStorage typical limit is 5-10MB; we want plans under 100KB so
+      // 50+ plans fit comfortably. 12-week plan is the typical worst case.
+      const plan = buildStarterPlan(
+        { goal: 'Marathon', sport: 'Running', weeks: 52 },  // largest reasonable
+        TODAY,
+      )
+      const serialized = JSON.stringify(plan)
+      expect(serialized.length).toBeLessThan(100_000)
+    })
+  })
 })

@@ -39,6 +39,20 @@ const BIKE_ZONE_PCT_FTP = {
   Z6: { lo: 1.21, hi: 1.50 },
 }
 
+// ── Swimming zone → % CSS pace (Wakayoshi 1992) ─────────────────────────────
+// Source: Wakayoshi et al., "Determination and validity of critical velocity
+// as swimming fatigue threshold." Pace is sec/100m: HIGHER value = SLOWER.
+// `lo` = slower end (paceMax in sec/100m), `hi` = faster end (paceMin).
+// Z1/Z6 have practical bounds (130% / 75%) so the displayed range isn't open.
+const SWIM_ZONE_PCT_CSS = {
+  Z1: { lo: 1.30, hi: 1.20 },  // recovery — slower than CSS+20%
+  Z2: { lo: 1.20, hi: 1.10 },  // aerobic
+  Z3: { lo: 1.10, hi: 1.00 },  // CSS / threshold pace
+  Z4: { lo: 1.00, hi: 0.95 },  // threshold-high
+  Z5: { lo: 0.95, hi: 0.85 },  // VO2max
+  Z6: { lo: 0.85, hi: 0.75 },  // anaerobic
+}
+
 // Parse a pace string in "M:SS" or "MM:SS" form into total seconds.
 function parsePaceToSec(s) {
   if (typeof s !== 'string') return null
@@ -88,6 +102,14 @@ function isCyclingSession(session, profile) {
   return /bike|cycl|ride|ftp|w'/i.test(typeStr)
 }
 
+// v9.98.0 — Detect whether the session is a swim workout.
+function isSwimSession(session, profile) {
+  const sport = String(profile?.primarySport || '').toLowerCase()
+  if (sport.includes('swim')) return true
+  const typeStr = String(session?.type || session?.intent || '').toLowerCase()
+  return /swim|css/i.test(typeStr)
+}
+
 /**
  * Derive a pace-range string ("M:SS–M:SS/km") for the session's zone, from
  * the athlete's threshold running pace. Returns null when no threshold is
@@ -100,6 +122,7 @@ function isCyclingSession(session, profile) {
 export function deriveSessionPace(session, profile) {
   if (!session || !profile) return null
   if (isCyclingSession(session, profile)) return null  // power, not pace
+  if (isSwimSession(session, profile)) return null     // swim CSS handled separately
   const tSec = parsePaceToSec(profile.threshold)
   if (tSec == null) return null
   const zone = dominantZone(session)
@@ -139,12 +162,41 @@ export function deriveSessionPower(session, profile) {
 }
 
 /**
+ * v9.98.0 — Derive a swim pace-range string ("M:SS–M:SS/100m") for the
+ * session's zone from the athlete's CSS pace (sec/100m). Returns null
+ * when no CSS is set or the session isn't a swim.
+ *
+ * @param {object} session - planned session
+ * @param {object} profile - athlete profile: { cssSec, ... }
+ * @returns {string|null} e.g. "1:30–1:39/100m" or null
+ * @source Wakayoshi 1992 (Critical Swim Speed zones)
+ */
+export function deriveSessionSwimPace(session, profile) {
+  if (!session || !profile) return null
+  if (!isSwimSession(session, profile)) return null
+  const cssSec = Number(profile.cssSec)
+  if (!Number.isFinite(cssSec) || cssSec <= 0) return null
+  const zone = dominantZone(session)
+  if (!zone) return null
+  const pct = SWIM_ZONE_PCT_CSS[zone]
+  if (!pct) return null
+  const fastSec = cssSec * pct.hi  // lower sec/100m = faster
+  const slowSec = cssSec * pct.lo
+  const fast = formatSecToPace(Math.min(fastSec, slowSec))
+  const slow = formatSecToPace(Math.max(fastSec, slowSec))
+  if (!fast || !slow) return null
+  return fast === slow ? `${fast}/100m` : `${fast}–${slow}/100m`
+}
+
+/**
  * One-call convenience that picks pace OR power depending on sport.
  * Returns { paceTarget, powerTarget } — at most one will be non-null.
+ * v9.98.0: paceTarget covers BOTH run-pace and swim-pace (the suffix —
+ * "/km" implicit for run, "/100m" explicit for swim — disambiguates).
  */
 export function deriveSessionTargets(session, profile) {
   return {
-    paceTarget:  deriveSessionPace(session, profile),
+    paceTarget:  deriveSessionPace(session, profile) || deriveSessionSwimPace(session, profile),
     powerTarget: deriveSessionPower(session, profile),
   }
 }

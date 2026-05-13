@@ -14,6 +14,98 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.98.0 — 2026-05-13 — Mission 1 polish: swim CSS pace + page-refresh survival
+
+  Two more v9.95 audit follow-throughs.
+
+  ### Prompt M — Swim CSS pace targets
+
+  Before this ship, `deriveSessionTargets` had two paths:
+  - Running → pace from `profile.threshold`
+  - Cycling → power from `profile.ftp`
+
+  Swimmers got nothing. The chain produced `paceTarget: null,
+  powerTarget: null` regardless of physiology, so the v9.91 daily-answer
+  link was broken for swim sessions even when the athlete had a `cssSec`
+  saved in profile (CSS is already used by `swimZones.js`,
+  `eliteProgram.js`, the elite-program staleness engine, etc. — but not
+  by the Mission 1 chain until now).
+
+  New `deriveSessionSwimPace(session, profile)` in
+  `src/lib/athlete/derivedSessionTargets.js`:
+
+  - `isSwimSession(session, profile)` — `profile.primarySport === 'Swimming'`
+    OR `session.type` matches `/swim|css/`
+  - Zone offsets per Wakayoshi (1992) — CSS-anchored % bands:
+
+    | Zone | % CSS pace | Semantics |
+    |---|---|---|
+    | Z1 | 120–130% | Recovery (slower) |
+    | Z2 | 110–120% | Aerobic |
+    | Z3 | 100–110% | CSS / threshold |
+    | Z4 | 95–100% | Threshold-high |
+    | Z5 | 85–95% | VO2max |
+    | Z6 | 75–85% | Anaerobic |
+
+    Z1 and Z6 have practical bounds (130% / 75%) so display isn't open-ended.
+
+  - Output: `"1:30–1:39/100m"` — `/100m` suffix disambiguates swim pace
+    from run pace (which is implicit `/km`).
+
+  - `deriveSessionTargets` `paceTarget` now resolves to **run-pace OR
+    swim-pace** depending on sport. Power path unchanged.
+
+  - `deriveSessionPace` (run) explicitly skips swim sessions —
+    previously it would have tried to compute run pace for a swim
+    session if the athlete had both `threshold` and a swim session
+    (rare but possible for triathletes).
+
+  ### Prompt L — Page-refresh survival round-trip test
+
+  v9.95's starter plan writes to `localStorage['sporeus-plan']`. Page
+  refresh re-reads via `useLocalStorage('sporeus-plan', null)`. Until now
+  nothing tested whether the JSON serialize→parse round-trip preserved
+  every field that downstream modules depend on.
+
+  New describe block in `starterPlan.test.js` — 7 cases asserting:
+  - `weeks.length` survives
+  - `generatedAt` stays a valid ISO string (== TODAY)
+  - `primarySport`, `raceDistance`, `level`, `hoursPerWeek` survive
+  - `isAdaptive` + `fromOnboarding` flags survive
+  - `weeks[].sessions[].tss` field name survives (which `planAdaptation`
+    depends on — would break the v9.94 adaptation card silently)
+  - Serialized 52-week plan is < 100 KB (localStorage quota safety;
+    typical browsers cap at 5–10 MB, so 50+ plans fit comfortably)
+
+  ### Files
+
+  - `src/lib/athlete/derivedSessionTargets.js` — `SWIM_ZONE_PCT_CSS` table,
+    `isSwimSession` helper, `deriveSessionSwimPace`, swim path in
+    `deriveSessionTargets`
+  - `src/lib/__tests__/athlete/derivedSessionTargets.test.js` — 9 new
+    swim cases + 2 routing cases for `deriveSessionTargets`
+  - `src/lib/__tests__/plan/starterPlan.test.js` — 7 new round-trip cases
+
+  ### Tests
+
+  - 10054 → 10073 (+19)
+  - Lint clean, build clean
+
+  ### Chain coverage after this ship
+
+  | Athlete sport | Pace target | Power target |
+  |---|---|---|
+  | Running   | ✓ from threshold | — |
+  | Cycling   | — | ✓ from FTP |
+  | Swimming  | ✓ from cssSec (new) | — |
+  | Triathlon | depends on session.type sport keyword | depends on session.type sport keyword |
+  | Other     | — | — |
+
+  Mission 1's daily-answer link now produces a derived target for all
+  three primary endurance sports.
+
+---
+
 ## v9.97.0 — 2026-05-13 — Mission 1 polish: Triathlon/Rowing labels + smart CTL seed + alignment property test
 
   Three more v9.95 audit follow-throughs: label coverage for the two
