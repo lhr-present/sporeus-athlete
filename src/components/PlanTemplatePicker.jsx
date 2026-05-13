@@ -13,9 +13,9 @@ import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { useData } from '../contexts/DataContext.jsx'
-import { generatePlan, SESSION_INTENTS } from '../lib/plan/generatePlan.js'
+import { generatePlan, sportSpecificLabel } from '../lib/plan/generatePlan.js'
 import { calcLoad } from '../lib/formulas.js'
-import { ZONE_COLORS } from '../lib/constants.js'
+import { ZONE_COLORS, normalizeSport } from '../lib/constants.js'
 import { announce } from '../lib/a11y/announcer.js'
 import ConfirmModal from './ui/ConfirmModal.jsx'
 
@@ -24,13 +24,13 @@ import ConfirmModal from './ui/ConfirmModal.jsx'
 // week-card UI keeps rendering. Mirrors PlanGenerator's `adaptE13PlanToLegacy`.
 const E13_ZONE_INDEX = { Z1: 0, Z2: 1, Z3: 2, Z4: 3, Z5: 4 }
 const E13_ZONE_COLOR = (z) => ZONE_COLORS[E13_ZONE_INDEX[z] ?? 1]
-function adaptE13PlanToLegacy(adaptivePlan, lang = 'en') {
+function adaptE13PlanToLegacy(adaptivePlan, lang = 'en', primarySport = null) {
   if (!adaptivePlan || !Array.isArray(adaptivePlan.weeks)) return null
   const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+  const sport = primarySport || adaptivePlan.primarySport || null
   return adaptivePlan.weeks.map(wk => {
     const sessions = wk.sessions.map((s) => {
-      const lbl = SESSION_INTENTS[s.intent]
-      const typeName = lbl ? (lang === 'tr' ? lbl.tr : lbl.en) : s.intent
+      const typeName = sportSpecificLabel(s.intent, sport, lang)
       const rpeMid = (s.rpeLow + s.rpeHigh) / 2
       const intensityFactor = Math.max(0.5, rpeMid / 10)
       const duration = s.intent === 'rest'
@@ -206,6 +206,9 @@ export default function PlanTemplatePicker({ presets = PLAN_TEMPLATE_PRESETS }) 
     if (!preset) return
     const ctlNow = calcLoad(log)?.ctl ?? 0
     const currentCTL = Math.max(20, ctlNow)
+    // v9.92.0 — Mission 1 PLAN link: pass race distance + sport so distance-aware
+    // peak/build templates kick in and sessions render with sport-specific labels.
+    const presetSport = normalizeSport(preset.sport) || null
     const adaptive = generatePlan({
       goal:          preset.genGoal,
       currentCTL,
@@ -213,8 +216,10 @@ export default function PlanTemplatePicker({ presets = PLAN_TEMPLATE_PRESETS }) 
       availableDays: preset.availableDays,
       model:         preset.model,
       level:         preset.level,
+      raceDistance:  preset.goal,
+      primarySport:  presetSport,
     })
-    const legacyWeeks = adaptE13PlanToLegacy(adaptive, lang) || []
+    const legacyWeeks = adaptE13PlanToLegacy(adaptive, lang, presetSport) || []
     const planObj = {
       goal:        preset.goal,
       weeks:       legacyWeeks,
@@ -222,6 +227,8 @@ export default function PlanTemplatePicker({ presets = PLAN_TEMPLATE_PRESETS }) 
       level:       preset.level.charAt(0).toUpperCase() + preset.level.slice(1),
       hoursPerWeek: Math.max(3, Math.round(preset.availableDays * 1.5)),
       isAdaptive:  true,
+      raceDistance: preset.goal,
+      primarySport: presetSport,
       fromTemplate: preset.id,
       adaptiveMeta: adaptive ? { model: adaptive.model } : null,
     }

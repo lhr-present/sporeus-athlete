@@ -6,6 +6,8 @@ import {
   generatePlan,
   flattenPlanSessions,
   SESSION_INTENTS,
+  SPORT_INTENT_LABELS,
+  sportSpecificLabel,
 } from '../../plan/generatePlan.js'
 
 const BASE_PARAMS = Object.freeze({
@@ -364,6 +366,143 @@ describe('generatePlan — bilingual session labels', () => {
         expect(typeof s.label.tr).toBe('string')
         expect(s.label.en.length).toBeGreaterThan(0)
         expect(s.label.tr.length).toBeGreaterThan(0)
+      }
+    }
+  })
+})
+
+// ── v9.92.0 — Mission 1 PLAN link: race-distance-aware intent templates ──────
+describe('generatePlan — raceDistance shapes peak/build intent emphasis', () => {
+  // Count intent occurrences in a phase
+  function countIntentsInPhase(plan, phase) {
+    const out = { endurance: 0, tempo: 0, vo2: 0, recovery: 0, rest: 0, test: 0 }
+    for (const wk of plan.weeks) {
+      if (wk.phase !== phase) continue
+      for (const s of wk.sessions) out[s.intent] = (out[s.intent] ?? 0) + 1
+    }
+    return out
+  }
+
+  it('5K plan has MORE VO2 sessions in Peak than Marathon plan', () => {
+    const fiveK    = genWith({ raceDistance: '5K' })
+    const marathon = genWith({ raceDistance: 'Marathon' })
+    const fK = countIntentsInPhase(fiveK, 'Peak').vo2
+    const mK = countIntentsInPhase(marathon, 'Peak').vo2
+    expect(fK).toBeGreaterThan(mK)
+  })
+
+  it('Marathon plan has MORE endurance sessions in Peak than 5K plan', () => {
+    const fiveK    = genWith({ raceDistance: '5K' })
+    const marathon = genWith({ raceDistance: 'Marathon' })
+    const fE = countIntentsInPhase(fiveK, 'Peak').endurance
+    const mE = countIntentsInPhase(marathon, 'Peak').endurance
+    expect(mE).toBeGreaterThan(fE)
+  })
+
+  it('5K plan differs from Marathon plan in week-by-week session intents', () => {
+    const fiveK    = genWith({ raceDistance: '5K' })
+    const marathon = genWith({ raceDistance: 'Marathon' })
+    // Take the intent sequence of every week and compare; at least one peak
+    // week must differ.
+    const f = fiveK.weeks.map(w => w.sessions.map(s => s.intent).join(','))
+    const m = marathon.weeks.map(w => w.sessions.map(s => s.intent).join(','))
+    let differs = false
+    for (let i = 0; i < f.length; i++) {
+      if (f[i] !== m[i]) { differs = true; break }
+    }
+    expect(differs).toBe(true)
+  })
+
+  it('plan without raceDistance equals plan with unknown raceDistance', () => {
+    const a = genWith({ raceDistance: null })
+    const b = genWith({ raceDistance: 'NotARealDistance' })
+    // Same intent sequence — unknown distance falls through to default
+    const seqA = a.weeks.map(w => w.sessions.map(s => s.intent).join(','))
+    const seqB = b.weeks.map(w => w.sessions.map(s => s.intent).join(','))
+    expect(seqA).toEqual(seqB)
+  })
+
+  it('raceDistance only biases traditional model — polarized falls through', () => {
+    const polA = genWith({ model: 'polarized', raceDistance: '5K' })
+    const polB = genWith({ model: 'polarized', raceDistance: 'Marathon' })
+    // Polarized templates are model-level, not distance-level — intent sequences identical
+    const seqA = polA.weeks.map(w => w.sessions.map(s => s.intent).join(','))
+    const seqB = polB.weeks.map(w => w.sessions.map(s => s.intent).join(','))
+    expect(seqA).toEqual(seqB)
+  })
+
+  it('returns raceDistance and primarySport in plan object', () => {
+    const p = genWith({ raceDistance: '5K', primarySport: 'Running' })
+    expect(p.raceDistance).toBe('5K')
+    expect(p.primarySport).toBe('Running')
+  })
+
+  it('omitted raceDistance/primarySport returns null in plan object', () => {
+    const p = genWith()  // BASE_PARAMS has neither set
+    expect(p.raceDistance).toBeNull()
+    expect(p.primarySport).toBeNull()
+  })
+
+  it('Half Marathon plan has tempo emphasis in Peak (more than 5K)', () => {
+    const half  = genWith({ raceDistance: 'Half Marathon' })
+    const fiveK = genWith({ raceDistance: '5K' })
+    const hT = countIntentsInPhase(half, 'Peak').tempo
+    const fT = countIntentsInPhase(fiveK, 'Peak').tempo
+    expect(hT).toBeGreaterThan(fT)
+  })
+
+  it('Cycling Event raceDistance produces a valid plan', () => {
+    const p = genWith({ raceDistance: 'Cycling Event', primarySport: 'Cycling' })
+    expect(p).not.toBeNull()
+    expect(p.raceDistance).toBe('Cycling Event')
+    expect(p.primarySport).toBe('Cycling')
+  })
+})
+
+// ── v9.92.0 — sportSpecificLabel helper ──────────────────────────────────────
+describe('sportSpecificLabel', () => {
+  it('returns sport-specific EN label for known sport+intent', () => {
+    expect(sportSpecificLabel('endurance', 'Running', 'en')).toBe('Long run')
+    expect(sportSpecificLabel('endurance', 'Cycling', 'en')).toBe('Long ride')
+    expect(sportSpecificLabel('vo2', 'Cycling', 'en')).toBe('Power intervals')
+    expect(sportSpecificLabel('test', 'Cycling', 'en')).toBe('FTP test')
+  })
+
+  it('returns sport-specific TR label for known sport+intent', () => {
+    expect(sportSpecificLabel('endurance', 'Running', 'tr')).toBe('Uzun koşu')
+    expect(sportSpecificLabel('endurance', 'Cycling', 'tr')).toBe('Uzun bisiklet')
+    expect(sportSpecificLabel('test', 'Cycling', 'tr')).toBe('FTP testi')
+  })
+
+  it('falls back to generic SESSION_INTENTS when sport is null', () => {
+    expect(sportSpecificLabel('endurance', null, 'en')).toBe(SESSION_INTENTS.endurance.en)
+    expect(sportSpecificLabel('tempo', null, 'tr')).toBe(SESSION_INTENTS.tempo.tr)
+  })
+
+  it('falls back to generic when sport has no mapping (e.g., Triathlon)', () => {
+    expect(sportSpecificLabel('endurance', 'Triathlon', 'en')).toBe(SESSION_INTENTS.endurance.en)
+    expect(sportSpecificLabel('vo2', 'Rowing', 'en')).toBe(SESSION_INTENTS.vo2.en)
+  })
+
+  it('falls back to generic when intent is unknown for known sport', () => {
+    // 'rest' is in SESSION_INTENTS but NOT in SPORT_INTENT_LABELS — should fall through
+    expect(sportSpecificLabel('rest', 'Running', 'en')).toBe(SESSION_INTENTS.rest.en)
+  })
+
+  it('returns raw intent string when both lookups fail', () => {
+    expect(sportSpecificLabel('madeUpIntent', 'Running', 'en')).toBe('madeUpIntent')
+  })
+
+  it('SPORT_INTENT_LABELS has every endurance-mapped intent for all 3 sports', () => {
+    const intents = ['endurance', 'tempo', 'vo2', 'recovery', 'test']
+    for (const sport of ['Running', 'Cycling', 'Swimming']) {
+      for (const intent of intents) {
+        const lbl = SPORT_INTENT_LABELS[sport][intent]
+        expect(lbl).toBeTruthy()
+        expect(typeof lbl.en).toBe('string')
+        expect(typeof lbl.tr).toBe('string')
+        expect(lbl.en.length).toBeGreaterThan(0)
+        expect(lbl.tr.length).toBeGreaterThan(0)
       }
     }
   })

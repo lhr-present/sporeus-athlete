@@ -34,6 +34,51 @@ export const SESSION_INTENTS = {
   rest:      { en: 'Rest',          tr: 'Dinlenme' },
 }
 
+// v9.92.0 — sport-specific session labels (intent × sport × lang)
+// Lets adaptE13PlanToLegacy emit "Long ride" for cyclists vs "Long run" for
+// runners instead of the generic "Endurance". Falls back to SESSION_INTENTS
+// when sport is unknown.
+export const SPORT_INTENT_LABELS = {
+  Running: {
+    endurance: { en: 'Long run',        tr: 'Uzun koşu' },
+    tempo:     { en: 'Tempo run',       tr: 'Tempo koşu' },
+    vo2:       { en: 'Interval run',    tr: 'İnterval koşu' },
+    recovery:  { en: 'Recovery jog',    tr: 'Toparlanma koşusu' },
+    test:      { en: 'Run test',        tr: 'Koşu testi' },
+  },
+  Cycling: {
+    endurance: { en: 'Long ride',       tr: 'Uzun bisiklet' },
+    tempo:     { en: 'Tempo ride',      tr: 'Tempo bisiklet' },
+    vo2:       { en: 'Power intervals', tr: 'Güç intervalleri' },
+    recovery:  { en: 'Recovery spin',   tr: 'Toparlanma sürüşü' },
+    test:      { en: 'FTP test',        tr: 'FTP testi' },
+  },
+  Swimming: {
+    endurance: { en: 'Long swim',       tr: 'Uzun yüzme' },
+    tempo:     { en: 'Threshold swim',  tr: 'Eşik yüzme' },
+    vo2:       { en: 'Interval swim',   tr: 'İnterval yüzme' },
+    recovery:  { en: 'Recovery swim',   tr: 'Toparlanma yüzme' },
+    test:      { en: 'CSS test',        tr: 'CSS testi' },
+  },
+}
+
+/**
+ * Resolve a session label for the (intent, sport, lang) tuple. Falls back to
+ * SESSION_INTENTS when sport has no mapping (Triathlon, unknown sports, null).
+ *
+ * @param {string} intent      - 'endurance' | 'tempo' | 'vo2' | 'recovery' | 'test' | 'rest'
+ * @param {string|null} sport  - canonical sport ('Running' | 'Cycling' | 'Swimming') or null
+ * @param {string} lang        - 'en' | 'tr'
+ * @returns {string} a human-readable session label
+ */
+export function sportSpecificLabel(intent, sport, lang = 'en') {
+  const sportTbl = SPORT_INTENT_LABELS[sport]
+  const lbl = sportTbl?.[intent]
+  if (lbl) return lang === 'tr' ? lbl.tr : lbl.en
+  const generic = SESSION_INTENTS[intent]
+  return generic ? (lang === 'tr' ? generic.tr : generic.en) : intent
+}
+
 // ── Per-intent RPE bands (Borg 6–20) ─────────────────────────────────────────
 const RPE_BANDS = {
   endurance: [10, 12],
@@ -84,6 +129,43 @@ const GOAL_FACTOR = {
 
 const VALID_MODELS = new Set(['traditional', 'polarized', 'block'])
 
+// ── Race-distance peak/build intent profile (v9.92.0) ────────────────────────
+// Daniels (2014) / Magness (2014): different race distances need different
+// peak-phase intent emphasis. Earlier versions collapsed every distance to a
+// single 'pr' goal, so a 5K and a Marathon plan looked identical.
+//
+// Each entry overrides the (phase × model) template in weeklyIntents for the
+// distance-sensitive phases (Build + Peak). 'traditional' is the default;
+// 'polarized' and 'block' templates fall through to the legacy weeklyIntents
+// templates (which already encode the model's intent mix).
+const DISTANCE_INTENT_TEMPLATES = {
+  // 5K: VO2max-dominant peak; threshold + VO2 in build
+  '5K': {
+    Build: ['vo2', 'endurance', 'tempo', 'recovery', 'vo2', 'endurance', 'rest'],
+    Peak:  ['vo2', 'endurance', 'tempo', 'recovery', 'vo2', 'endurance', 'rest'],
+  },
+  // 10K: balanced VO2 + threshold
+  '10K': {
+    Build: ['tempo', 'endurance', 'recovery', 'vo2', 'endurance', 'vo2', 'rest'],
+    Peak:  ['vo2', 'endurance', 'tempo', 'recovery', 'vo2', 'tempo', 'rest'],
+  },
+  // Half Marathon: threshold + tempo, lighter VO2
+  'Half Marathon': {
+    Build: ['tempo', 'endurance', 'recovery', 'tempo', 'endurance', 'vo2', 'rest'],
+    Peak:  ['tempo', 'endurance', 'tempo', 'recovery', 'vo2', 'endurance', 'rest'],
+  },
+  // Marathon: endurance-dominant, tempo + threshold, minimal VO2
+  'Marathon': {
+    Build: ['tempo', 'endurance', 'recovery', 'endurance', 'endurance', 'tempo', 'rest'],
+    Peak:  ['tempo', 'endurance', 'endurance', 'recovery', 'tempo', 'endurance', 'rest'],
+  },
+  // Cycling Event: sweet-spot/threshold pattern (similar to Half)
+  'Cycling Event': {
+    Build: ['tempo', 'endurance', 'recovery', 'tempo', 'endurance', 'vo2', 'rest'],
+    Peak:  ['tempo', 'endurance', 'tempo', 'recovery', 'vo2', 'endurance', 'rest'],
+  },
+}
+
 // ── helper: zone distribution for a (model, phase, weekNum) tuple ────────────
 function getZoneDistribution(model, phase, weekNum) {
   if (model === 'polarized') return { ...POL_ZONES }
@@ -110,8 +192,8 @@ function phaseForWeek(weekIdx, totalWeeks) {
 
 // ── helper: weekly session intent template ───────────────────────────────────
 // Returns an array (length = availableDays) of intent strings for the week,
-// based on phase and periodization model. Day 0 = Monday.
-function weeklyIntents(phase, model, availableDays) {
+// based on phase, periodization model, and (v9.92.0) race distance. Day 0 = Mon.
+function weeklyIntents(phase, model, availableDays, raceDistance) {
   const days = Math.max(2, Math.min(7, availableDays | 0))
 
   // Base templates by phase & model — long enough for 7d, sliced down.
@@ -122,7 +204,12 @@ function weeklyIntents(phase, model, availableDays) {
   } else if (phase === 'Taper') {
     template = ['recovery', 'tempo', 'endurance', 'rest', 'recovery', 'vo2', 'rest']
   } else if (phase === 'Peak') {
-    if (model === 'polarized') {
+    // v9.92.0 — distance-specific template wins for 'traditional' model;
+    // 'polarized' and 'block' keep their model-specific intent mix.
+    const distTpl = model === 'traditional' && DISTANCE_INTENT_TEMPLATES[raceDistance]?.Peak
+    if (distTpl) {
+      template = distTpl.slice()
+    } else if (model === 'polarized') {
       template = ['vo2', 'endurance', 'recovery', 'vo2', 'endurance', 'tempo', 'rest']
     } else if (model === 'block') {
       template = ['vo2', 'recovery', 'tempo', 'endurance', 'vo2', 'tempo', 'rest']
@@ -130,7 +217,10 @@ function weeklyIntents(phase, model, availableDays) {
       template = ['vo2', 'endurance', 'tempo', 'recovery', 'tempo', 'endurance', 'rest']
     }
   } else if (phase === 'Build') {
-    if (model === 'polarized') {
+    const distTpl = model === 'traditional' && DISTANCE_INTENT_TEMPLATES[raceDistance]?.Build
+    if (distTpl) {
+      template = distTpl.slice()
+    } else if (model === 'polarized') {
       template = ['vo2', 'endurance', 'recovery', 'tempo', 'endurance', 'endurance', 'rest']
     } else if (model === 'block') {
       template = ['tempo', 'endurance', 'tempo', 'recovery', 'vo2', 'endurance', 'rest']
@@ -293,6 +383,8 @@ function applyDeloads(weeks) {
  * @param {number} params.availableDays          - Training days/week (2..7)
  * @param {string} [params.model='traditional']  - 'traditional' | 'polarized' | 'block'
  * @param {string} [params.level='intermediate'] - 'beginner' | 'intermediate' | 'advanced' | 'elite'
+ * @param {string} [params.raceDistance]         - '5K' | '10K' | 'Half Marathon' | 'Marathon' | 'Cycling Event' | 'General Fitness' (v9.92.0 — biases peak/build intent emphasis)
+ * @param {string} [params.primarySport]         - 'Running' | 'Cycling' | 'Swimming' | 'Triathlon' (v9.92.0 — pass-through for renderers; does not alter intent math)
  * @returns {Object|null} { weeks, model, totalWeeks, generatedAt } — null on bad input
  * @source Daniels (2014), Seiler (2010), Issurin (2010), Mujika & Padilla (2003)
  * @example
@@ -307,6 +399,8 @@ export function generatePlan(params) {
     availableDays,
     model          = 'traditional',
     level          = 'intermediate',
+    raceDistance   = null,
+    primarySport   = null,
   } = params
 
   // ── Input validation — return null on insufficient inputs ─────────────────
@@ -326,7 +420,7 @@ export function generatePlan(params) {
   const weeks = []
   for (let w = 0; w < totalWeeks; w++) {
     const phase   = phaseForWeek(w, totalWeeks)
-    const intents = weeklyIntents(phase, model, +availableDays)
+    const intents = weeklyIntents(phase, model, +availableDays, raceDistance)
     const tssBud  = weeklyTSS({ weekIdx: w, totalWeeks, phase, baseTSS, peakTSS })
     const sessions = distributeSessionTSS(tssBud, intents)
     weeks.push({
@@ -349,6 +443,8 @@ export function generatePlan(params) {
     model,
     goal,
     level,
+    raceDistance,
+    primarySport,
     totalWeeks,
     startCTL:    +currentCTL,
     targetCTL:   Math.round(peakTSS / 7 * 10) / 10,

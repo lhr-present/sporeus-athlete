@@ -9,7 +9,7 @@ import { computeCTL } from '../lib/nextAction.js'
 import { BLOCK_PHASES, generateBlockPlan } from '../lib/sport/blockPeriodization.js'
 import { MiniDonut } from './ui.jsx'
 import { findOptimalWeekStructure } from '../lib/patterns.js'
-import { generatePlan as generateAdaptivePlan, SESSION_INTENTS } from '../lib/plan/generatePlan.js'
+import { generatePlan as generateAdaptivePlan, sportSpecificLabel } from '../lib/plan/generatePlan.js'
 import { applyTaper, suggestTaper } from '../lib/plan/taperEngine.js'
 import { validatePlan } from '../lib/plan/planValidators.js'
 import { announce } from '../lib/a11y/announcer.js'
@@ -73,13 +73,14 @@ export function planToCSV(plan) {
 // Lets the existing week-card UI render adaptive plans without duplication.
 const E13_ZONE_INDEX = { Z1: 0, Z2: 1, Z3: 2, Z4: 3, Z5: 4 }
 const E13_ZONE_COLOR = (z) => ZONE_COLORS[E13_ZONE_INDEX[z] ?? 1]
-function adaptE13PlanToLegacy(adaptivePlan, lang = 'en') {
+function adaptE13PlanToLegacy(adaptivePlan, lang = 'en', primarySport = null) {
   if (!adaptivePlan || !Array.isArray(adaptivePlan.weeks)) return null
   const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+  // Allow primarySport override; otherwise fall back to plan's own value
+  const sport = primarySport || adaptivePlan.primarySport || null
   return adaptivePlan.weeks.map(wk => {
     const sessions = wk.sessions.map((s) => {
-      const lbl = SESSION_INTENTS[s.intent]
-      const typeName = lbl ? (lang === 'tr' ? lbl.tr : lbl.en) : s.intent
+      const typeName = sportSpecificLabel(s.intent, sport, lang)
       // Approximate duration from targetTSS using the RPE midpoint (Banister-like)
       const rpeMid = (s.rpeLow + s.rpeHigh) / 2
       const intensityFactor = Math.max(0.5, rpeMid / 10) // RPE 6→0.6, RPE 18→1.0+
@@ -313,6 +314,8 @@ export default function PlanGenerator({ onLogSession }) {
       const ctlNow = calcLoad(log)?.ctl ?? 0
       // Floor CTL so generator has a workable baseline even for new athletes
       const currentCTL = Math.max(20, ctlNow)
+      // v9.92.0 — Mission 1 PLAN link: pass race distance + primary sport
+      // through so 5K ≠ Marathon and cyclist plans show "Long ride" not "Long run"
       const adaptive = generateAdaptivePlan({
         goal:          goalKey,
         currentCTL,
@@ -320,6 +323,8 @@ export default function PlanGenerator({ onLogSession }) {
         availableDays: advAvailableDays,
         model:         advModel,
         level:         levelKey,
+        raceDistance:  goal,
+        primarySport:  profile?.primarySport || null,
       })
       let finalPlan = adaptive
       if (finalPlan && advAutoTaper && advRaceDate) {
@@ -333,7 +338,7 @@ export default function PlanGenerator({ onLogSession }) {
       setPlanWarnings(warnMsgs)
       setPlanValidationErrors(validation.errors || [])
       setWarningsExpanded(true)
-      const legacyWeeks = adaptE13PlanToLegacy(finalPlan, lang) || []
+      const legacyWeeks = adaptE13PlanToLegacy(finalPlan, lang, profile?.primarySport || null) || []
       setPlan({
         goal,
         weeks: legacyWeeks,
@@ -341,6 +346,8 @@ export default function PlanGenerator({ onLogSession }) {
         level,
         hoursPerWeek: hours,
         isAdaptive: true,
+        raceDistance: goal,
+        primarySport: profile?.primarySport || null,
         adaptiveMeta: finalPlan ? { model: finalPlan.model, raceDate: finalPlan.raceDate || advRaceDate, taperWeeks: finalPlan.taperWeeks, raceDayTSB: finalPlan.raceDayTSB, ctlDropPct: finalPlan.ctlDropPct, recommendation: finalPlan.recommendation } : null,
       })
       if (warnMsgs.length > 0) {

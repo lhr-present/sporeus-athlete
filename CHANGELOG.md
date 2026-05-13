@@ -14,6 +14,108 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.92.0 — 2026-05-13 — Mission 1 chain: target → plan (race-distance + sport pass-through)
+
+  Prompt A from the Mission 1 connection plan. Closes the **target-distance
+  collapse** leak — the first audit finding from the chain analysis.
+
+  ### The leak
+
+  Before this change, every race distance went through a single coarse goal
+  key in `PlanGenerator.jsx:308–311`:
+
+  ```js
+  const goalKey = ({
+    '5K':'pr','10K':'pr','Half Marathon':'pr','Marathon':'pr',
+    'General Fitness':'fitness','Cycling Event':'pr',
+  })[goal] || 'pr'
+  ```
+
+  So a 5K runner and a Marathon runner generated **identical plans** — same
+  intent templates, same TSS distribution, same labels. `profile.primarySport`
+  was ignored entirely, so a cyclist's plan rendered with "Long run" and
+  "Field test" labels.
+
+  This defeats the chain's first link: TARGET → PLAN. The whole point of
+  asking the user what race they're training for is that the plan should
+  *look different*.
+
+  ### The fix
+
+  Two changes, both render-shape — the plan math (TSS budgets, deloads, ACWR
+  clamp, taper) stays the same:
+
+  1. **Race-distance-aware intent templates** — `generatePlan.js` adds
+     `DISTANCE_INTENT_TEMPLATES` for the Build + Peak phases. Different
+     race distances now have different intent emphasis:
+
+     | Distance     | Peak emphasis                                   |
+     |--------------|-------------------------------------------------|
+     | 5K           | VO2max-dominant — 2× vo2/week                   |
+     | 10K          | VO2max + threshold balance                      |
+     | Half Marathon| Threshold/tempo, lighter VO2                    |
+     | Marathon     | Endurance + tempo, minimal VO2                  |
+     | Cycling Event| Sweet-spot / threshold pattern                  |
+
+     Per Daniels (2014) and Magness (2014): race-specific peak emphasis is
+     the highest-yield programming variable for distance-runner periodization.
+
+     Bias applies only to the **traditional** model — polarized/block keep
+     their model-level intent mix (those models override at a higher level).
+
+  2. **Sport-specific session labels** — `SPORT_INTENT_LABELS` + the
+     `sportSpecificLabel()` helper map (intent × sport × lang) to a readable
+     workout name. Running gets "Long run", cycling gets "Long ride",
+     swimming gets "Long swim". Triathlon and Rowing fall back to generic
+     `SESSION_INTENTS` labels (no-op for them, by design).
+
+  ### What the user sees
+
+  - **A 5K runner** generating a 12-week plan sees Peak weeks with two VO2
+    sessions per week ("Interval run") and minimal long-run emphasis.
+  - **A Marathon runner** with the same inputs sees Peak weeks dominated by
+    endurance ("Long run") and tempo, with no VO2 sessions in some weeks.
+  - **A cyclist** sees "Power intervals", "Tempo ride", "FTP test" instead
+    of running labels.
+  - **A triathlete** sees generic labels ("Endurance", "Tempo", "VO2max") —
+    sport-mix events fall through cleanly until we add multi-sport templates.
+
+  ### Files
+
+  - `src/lib/plan/generatePlan.js` — `DISTANCE_INTENT_TEMPLATES` map,
+    `weeklyIntents()` accepts `raceDistance`, `generatePlan()` accepts
+    `raceDistance` + `primarySport` (both optional), pass-through to plan
+    object. New exports: `SPORT_INTENT_LABELS`, `sportSpecificLabel`.
+  - `src/components/PlanGenerator.jsx` — passes `goal` as `raceDistance`
+    and `profile?.primarySport` as `primarySport` to `generateAdaptivePlan`;
+    drops the duplicate `SPORT_INTENT_LABELS` constant in favour of the
+    shared import.
+  - `src/components/PlanTemplatePicker.jsx` — same pass-through;
+    `preset.sport` is normalized via `normalizeSport()` to the canonical
+    Capitalized form before passing.
+  - `src/lib/__tests__/plan/generatePlan.test.js` — 16 new cases:
+    distance-shifted intent counts (5K vs Marathon vs Half), polarized
+    fall-through, raceDistance/primarySport in plan object, unknown
+    raceDistance fall-through, `sportSpecificLabel` lookup matrix.
+
+  ### Mission 1 chain status after this ship
+
+  | Link                          | Status   |
+  |-------------------------------|----------|
+  | TARGET → PHYSIOLOGY           | ✓        |
+  | TARGET → PLAN                 | ✓ (v9.92) |
+  | PHYSIOLOGY → DAILY ANSWER     | ✓ (v9.91) |
+  | DAILY ANSWER → EXECUTION      | ✓ (v9.89) |
+  | EXECUTION → ADAPTATION        | open (Prompt D) |
+  | ONBOARDING → TARGET           | partial (Prompt E) |
+
+  ### Tests
+
+  - 9957/9957 (+16 cases)
+  - Lint clean, build clean
+
+---
+
 ## v9.91.0 — 2026-05-13 — Mission 1 chain: physiology → session pace/power
 
   Prompt B from the Mission 1 connection plan. Closes the second-most
