@@ -14,6 +14,109 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.108.0 — 2026-05-14 — Celebration surfaces: streak milestones + race-week mode + distance/pace PRs
+
+  Prompts OO + PP + QQ. Three engagement features that complete the
+  v9.107 retention loop with positive-reinforcement signals on top of
+  the existing streak chip.
+
+  ### Prompt OO — Streak milestones
+
+  Extended `src/lib/athlete/trainingStreak.js` with new
+  `getStreakMilestone(currentStreak)`. Returns
+  `{ tier: 7|14|30|60|100|365, label: { en, tr } }` ONLY on the exact
+  milestone day (one-shot semantic — no re-firing on day 8 of a 7-day
+  streak).
+
+  TodayView's streak chip now renders a `✨ ONE WEEK` / `✨ ONE MONTH`
+  badge inline when a tier is hit. Border-left switches to orange on
+  milestone days for stronger visual weight. The "habit forming"
+  tagline suppresses when a milestone is active (don't compete with
+  the celebration).
+
+  Telemetry: `streak_milestone { tier, current, longest }` emitted
+  once per tier, gated on `sporeus-streak-milestone-{tier}`
+  localStorage key — survives reloads, won't re-fire if streak breaks
+  and re-hits the same tier later. (Operator note: the gate is
+  per-tier-per-device, not per-user — clearing localStorage will
+  re-arm.)
+
+  Tests: 5 new cases on getStreakMilestone (exact hit / off-by-one /
+  bilingual labels / malformed inputs).
+
+  ### Prompt PP — Race-week mode
+
+  Pre-v9.108 race-week-aware alerts existed (v9.85 race-week-conflict
+  warning on hard sessions, L2 race countdown card) but no holistic
+  "RACE WEEK" framing. Athletes within 7 days of their race got the
+  same TodayView as athletes 60 days out.
+
+  New banner above the L2 countdown when `raceCountdown.days >= 0 &&
+  <= 7`:
+  - Orange-rule strong-emphasis card with "◆ RACE WEEK · N DAYS"
+    header (or "◆ RACE DAY" at days === 0)
+  - Bilingual prep checklist that activates items as the race
+    approaches:
+    - Day 7+: Taper (Bosquet 2007) + Sleep (Mah 2011)
+    - Day 3+: Hydration + electrolytes (Sawka 2007)
+    - Day 2+: Carb-load 7–12 g/kg (Burke 2017)
+    - Day 1: Gear check + shakeout strides (3×30s race-pace)
+  - Citations rendered inline so athletes see the science anchor
+
+  Telemetry: `race_week_entered { days_to_race, race_date }` fires
+  once per raceDate the first time the athlete enters the 7-day
+  window. Gated on `sporeus-race-week-entered-{raceDate}` localStorage
+  key. Effect lives at component top level (NOT inside the IIFE) to
+  satisfy `react-hooks/rules-of-hooks`.
+
+  ### Prompt QQ — Distance + pace PRs
+
+  Existing `detectPRs.js` (E6) already covered 5 categories: longest
+  session, highest TSS, weekly TSS, longest streak, power peaks. The
+  two big endurance metrics — total distance and average pace — were
+  missing. QuickAddModal already wires `detectPRs` to render a
+  celebration card on save (line 234), so adding new categories
+  automatically surfaces them.
+
+  New categories in `src/lib/athlete/detectPRs.js`:
+  - **longest_distance**: reads `entry.distance` (km) with `distanceM`
+    fallback. Bilingual: "Longest distance: 21.1 km (previous: 12 km)"
+    or "first of this distance!" when no prior. Skipped on entries
+    without distance (strength/swim drills have none).
+  - **fastest_pace**: gated by `duration >= 20min` to filter
+    interval-rep noise (a 1-rep pickup at 3:00/km would otherwise
+    dominate). Computes sec/km, lower = faster. Bilingual: "Fastest
+    pace at 20+ min: 4:30/km (previous: 5:00/km)". Prior baseline also
+    filters to entries with duration ≥ 20min.
+
+  Tests: 9 new cases (4 distance + 5 pace) — beats-prior, no-prior
+  first PR, fallback to distanceM, duration gate, baseline filter,
+  missing distance, slower entry.
+
+  Note: deleted a redundant `personalRecords.js` scaffold that had
+  been created mid-shift before discovering the existing E6 module.
+  Cleanup kept the codebase one PR-detection module deep.
+
+  ### Files touched
+
+  - `src/lib/athlete/trainingStreak.js` (+getStreakMilestone +
+    MILESTONE_TIERS/LABELS)
+  - `src/lib/__tests__/athlete/trainingStreak.test.js` (+5 cases)
+  - `src/lib/athlete/detectPRs.js` (+longest_distance + fastest_pace
+    categories with bilingual messages)
+  - `src/lib/__tests__/athlete/detectPRs.test.js` (+9 cases)
+  - `src/components/TodayView.jsx` (milestone badge on streak chip +
+    one-shot streak_milestone emit + race-week banner + top-level
+    race_week_entered useEffect)
+  - `package.json` 11.108.0, CHANGELOG.md
+
+  10,161 tests pass (+14 vs v9.107). Lint + build clean.
+
+  Depends on: v9.107 Prompt LL (trainingStreak base + chip render),
+  v9.85 (raceCountdown computation), E6 (detectPRs base structure).
+
+---
+
 ## v9.107.0 — 2026-05-14 — Engagement & feedback closures: streak + stale-pending nudge + deload context
 
   Prompts LL + MM + NN. Three small surfaces that surface signals the

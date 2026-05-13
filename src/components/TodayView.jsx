@@ -25,7 +25,7 @@ import { deriveSessionTargets } from '../lib/athlete/derivedSessionTargets.js'
 import { buildDailyRecommendation } from '../lib/athlete/dailyRecommendation.js'
 import { computePlanDrift, detectStalePlan } from '../lib/athlete/planAdaptation.js'
 import { detectGoalActivityMismatch } from '../lib/athlete/goalActivityMismatch.js'
-import { computeTrainingStreak } from '../lib/athlete/trainingStreak.js'
+import { computeTrainingStreak, getStreakMilestone } from '../lib/athlete/trainingStreak.js'
 import { buildStarterPlan } from '../lib/plan/starterPlan.js'
 import { recordPlanVersion } from '../lib/plan/versionTracking.js'
 import { emitEvent } from '../lib/attribution.js'
@@ -381,6 +381,21 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
     setAlreadySubmitted(false)
   }, [today])
 
+  // v9.108.0 (Prompt PP) — One-shot race_week_entered telemetry. Fires
+  // once per raceDate the first time the athlete is within 7 days. Gated
+  // on localStorage so the event doesn't fire on every page render or
+  // re-fire after browser refresh.
+  useEffect(() => {
+    if (!raceCountdown?.rd) return
+    if (raceCountdown.days < 0 || raceCountdown.days > 7) return
+    const key = `sporeus-race-week-entered-${raceCountdown.rd}`
+    try {
+      if (localStorage.getItem(key)) return
+      emitEvent('race_week_entered', { days_to_race: raceCountdown.days, race_date: raceCountdown.rd })
+      localStorage.setItem(key, new Date().toISOString())
+    } catch { /* fail open */ }
+  }, [raceCountdown?.rd, raceCountdown?.days])
+
   const handleShare = async () => {
     if (shareLoading || (log || []).length < 1) return
     setShareLoading(true)
@@ -580,34 +595,64 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
           surfaces a habit signal the system already had. Hidden when
           current streak is 0 to avoid demoralizing fresh / returning
           athletes who'd just see "0 days". Always-visible only when
-          they have something to celebrate. */}
+          they have something to celebrate.
+          v9.108.0 (Prompt OO): milestone badge on tier days (7/14/30/
+          60/100/365). One-shot streak_milestone telemetry per tier, gated
+          on sporeus-streak-milestone-{tier} so a streak crossing 7 once
+          doesn't re-fire if the athlete breaks and re-hits it later. */}
       {(() => {
         const streak = computeTrainingStreak(log, today)
         if (streak.current === 0) return null
         const flame = streak.current >= 7
+        const milestone = getStreakMilestone(streak.current)
         return (
           <div style={{
             display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
             marginBottom: '14px', padding: '8px 14px',
             background: 'var(--card-bg)', border: '1px solid var(--border)',
-            borderLeft: `3px solid ${flame ? '#ff6600' : '#5bc25b'}`,
+            borderLeft: `3px solid ${milestone ? '#ff6600' : flame ? '#ff6600' : '#5bc25b'}`,
             borderRadius: '4px', fontFamily: MONO,
           }}>
             <span style={{ fontSize: '15px', fontWeight: 700, color: flame ? '#ff6600' : '#5bc25b' }}>
               {flame ? '🔥' : '✓'} {streak.current}-{lang === 'tr' ? 'gün seri' : 'day streak'}
             </span>
+            {milestone && (
+              <span style={{
+                fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em',
+                padding: '3px 8px', background: '#ff660022', color: '#ff6600',
+                border: '1px solid #ff660066', borderRadius: '3px',
+              }}>
+                ✨ {milestone.label[lang] || milestone.label.en}
+              </span>
+            )}
             {streak.longest > streak.current && (
               <span style={{ fontSize: '10px', color: '#666' }}>
                 {lang === 'tr' ? 'kişisel rekor' : 'best'}: {streak.longest}
               </span>
             )}
-            {streak.current >= 7 && (
+            {streak.current >= 7 && !milestone && (
               <span style={{ fontSize: '9px', color: '#888', letterSpacing: '0.06em', marginLeft: 'auto' }}>
                 {lang === 'tr' ? '· bir hafta üst üste · alışkanlık oluşuyor' : '· week-long · habit is forming'}
               </span>
             )}
           </div>
         )
+      })()}
+      {/* Milestone one-shot telemetry — separated from the render so
+          useEffect deps are stable. */}
+      {(() => {
+        const streak = computeTrainingStreak(log, today)
+        const m = getStreakMilestone(streak.current)
+        if (m) {
+          const key = `sporeus-streak-milestone-${m.tier}`
+          try {
+            if (!localStorage.getItem(key)) {
+              emitEvent('streak_milestone', { tier: m.tier, current: streak.current, longest: streak.longest })
+              localStorage.setItem(key, new Date().toISOString())
+            }
+          } catch { /* fail open */ }
+        }
+        return null
       })()}
 
       {/* ── Weekly Recap (Monday only) ─────────────────────────────────────── */}
@@ -831,6 +876,56 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                 {label} {fmt(val)}
               </span>
             ))}
+          </div>
+        )
+      })()}
+
+      {/* ── v9.108.0 (Prompt PP) — Race-week banner. When raceDate is
+          within 7 days, surface a holistic "RACE WEEK" framing above the
+          numeric countdown. Days remaining drive which prep items light
+          up. Emits race_week_entered once per raceDate (gated on
+          localStorage key) — telemetry for the funnel "did the athlete
+          actually engage with race-week mode before their event?". */}
+      {raceCountdown && raceCountdown.days >= 0 && raceCountdown.days <= 7 && (() => {
+        const d = raceCountdown.days
+        const items = [
+          { key: 'taper',    label: lang === 'tr' ? 'Konik (volüm −41%, yoğunluk korunur)' : 'Taper (−41% volume, keep intensity)', when: d >= 0,
+            cite: 'Bosquet 2007' },
+          { key: 'sleep',    label: lang === 'tr' ? 'Uyku önceliği — 8+ saat hedefi'        : 'Sleep priority — target 8+ hrs',     when: d >= 0,
+            cite: 'Mah 2011' },
+          { key: 'hydrate',  label: lang === 'tr' ? 'Sıvı + elektrolit (özellikle son 72s)' : 'Hydration + electrolytes (last 72h)', when: d <= 3,
+            cite: 'Sawka 2007' },
+          { key: 'carbs',    label: lang === 'tr' ? 'Karbonhidrat yükle (7–12 g/kg, son 36–48 saat)' : 'Carb-load (7–12 g/kg, 36–48h pre)', when: d <= 2,
+            cite: 'Burke 2017' },
+          { key: 'gear',     label: lang === 'tr' ? 'Donanım kontrol — pin, ayakkabı, GPS, çorap' : 'Gear check — bib, shoes, GPS, socks', when: d <= 1,
+            cite: '' },
+          { key: 'shakeout', label: lang === 'tr' ? '20 dk gevşek + 3×30s yarış temposu'    : '20min easy + 3×30s race-pace strides', when: d === 1,
+            cite: '' },
+        ]
+        const active = items.filter(i => i.when)
+        return (
+          <div style={{
+            marginBottom: '12px', padding: '12px 16px',
+            background: '#ff66001a', border: '1px solid #ff660066',
+            borderLeft: '4px solid #ff6600', borderRadius: '5px',
+            fontFamily: MONO,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap', marginBottom: '8px' }}>
+              <span style={{ fontSize: '14px', fontWeight: 700, color: '#ff6600', letterSpacing: '0.1em' }}>
+                {d === 0 ? (lang === 'tr' ? '◆ YARIŞ GÜNÜ' : '◆ RACE DAY')
+                 : (lang === 'tr' ? `◆ YARIŞ HAFTASI · ${d} GÜN` : `◆ RACE WEEK · ${d} DAYS`)}
+              </span>
+              <span style={{ fontSize: '10px', color: '#888' }}>{raceCountdown.rd}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {active.map(it => (
+                <div key={it.key} style={{ fontSize: '11px', color: '#ccc', lineHeight: 1.5 }}>
+                  <span style={{ color: '#5bc25b', marginRight: '6px' }}>□</span>
+                  {it.label}
+                  {it.cite && <span style={{ color: '#666', fontStyle: 'italic', marginLeft: '6px' }}>· {it.cite}</span>}
+                </div>
+              ))}
+            </div>
           </div>
         )
       })()}

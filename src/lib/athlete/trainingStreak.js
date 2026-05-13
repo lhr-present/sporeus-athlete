@@ -35,6 +35,43 @@ function dayKey(iso) {
   return Math.floor(d.getTime() / MS_PER_DAY)
 }
 
+// v9.108.0 (Prompt OO) — Milestone tiers. Tiered intentionally:
+// - 7  = one week (habit forming)
+// - 14 = two weeks (consolidating)
+// - 30 = one month (entrenched)
+// - 60 = two months (lifestyle)
+// - 100 = a hundred days (rare)
+// - 365 = a year (extraordinary)
+// `getStreakMilestone` returns the tier hit (or null) so callers can render
+// a one-shot celebration without re-firing on every render.
+const MILESTONE_TIERS = [365, 100, 60, 30, 14, 7]
+
+const MILESTONE_LABELS = {
+  7:   { en: 'ONE WEEK',    tr: 'BİR HAFTA' },
+  14:  { en: 'TWO WEEKS',   tr: 'İKİ HAFTA' },
+  30:  { en: 'ONE MONTH',   tr: 'BİR AY' },
+  60:  { en: 'TWO MONTHS',  tr: 'İKİ AY' },
+  100: { en: '100 DAYS',    tr: '100 GÜN' },
+  365: { en: 'ONE YEAR',    tr: 'BİR YIL' },
+}
+
+/**
+ * @description Return the milestone tier the current streak exactly hits,
+ *   or null. Only fires ON the milestone day — not before, not after.
+ *
+ * @param {number} currentStreak
+ * @returns {{ tier: number, label: { en, tr } } | null}
+ */
+export function getStreakMilestone(currentStreak) {
+  if (!Number.isFinite(currentStreak) || currentStreak <= 0) return null
+  for (const tier of MILESTONE_TIERS) {
+    if (currentStreak === tier) {
+      return { tier, label: MILESTONE_LABELS[tier] }
+    }
+  }
+  return null
+}
+
 /**
  * @description Compute current and longest training streaks.
  *

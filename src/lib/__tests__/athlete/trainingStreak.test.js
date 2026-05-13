@@ -1,7 +1,7 @@
 // v9.107.0 (Prompt LL) — training streak tests.
 
 import { describe, it, expect } from 'vitest'
-import { computeTrainingStreak } from '../../athlete/trainingStreak.js'
+import { computeTrainingStreak, getStreakMilestone } from '../../athlete/trainingStreak.js'
 
 const TODAY = '2026-05-14'
 function addDays(iso, n) {
@@ -121,5 +121,46 @@ describe('computeTrainingStreak', () => {
     const log = [-2, -1, 0].map(d => e(addDays('2026-04-01', d)))
     const out = computeTrainingStreak(log, '2026-04-01')
     expect(out.current).toBe(3)
+  })
+})
+
+// ── v9.108.0 (Prompt OO) — getStreakMilestone ─────────────────────────────
+describe('getStreakMilestone', () => {
+  it('returns null for non-milestone days', () => {
+    expect(getStreakMilestone(1)).toBeNull()
+    expect(getStreakMilestone(6)).toBeNull()
+    expect(getStreakMilestone(8)).toBeNull()
+    expect(getStreakMilestone(99)).toBeNull()
+  })
+
+  it('returns tier object on exact milestone hits', () => {
+    expect(getStreakMilestone(7)?.tier).toBe(7)
+    expect(getStreakMilestone(14)?.tier).toBe(14)
+    expect(getStreakMilestone(30)?.tier).toBe(30)
+    expect(getStreakMilestone(60)?.tier).toBe(60)
+    expect(getStreakMilestone(100)?.tier).toBe(100)
+    expect(getStreakMilestone(365)?.tier).toBe(365)
+  })
+
+  it('does NOT fire on day after milestone (one-shot semantic)', () => {
+    expect(getStreakMilestone(31)).toBeNull()
+    expect(getStreakMilestone(101)).toBeNull()
+  })
+
+  it('returns bilingual labels', () => {
+    const m7 = getStreakMilestone(7)
+    expect(m7.label.en).toBe('ONE WEEK')
+    expect(m7.label.tr).toBe('BİR HAFTA')
+    const m365 = getStreakMilestone(365)
+    expect(m365.label.en).toBe('ONE YEAR')
+    expect(m365.label.tr).toBe('BİR YIL')
+  })
+
+  it('tolerates malformed inputs', () => {
+    expect(getStreakMilestone(0)).toBeNull()
+    expect(getStreakMilestone(-5)).toBeNull()
+    expect(getStreakMilestone(NaN)).toBeNull()
+    expect(getStreakMilestone(null)).toBeNull()
+    expect(getStreakMilestone()).toBeNull()
   })
 })

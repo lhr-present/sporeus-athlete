@@ -145,7 +145,67 @@ export function detectPRs(newSession, priorLog = []) {
     })
   }
 
-  // ── 5. Power peaks (if powerPeaks provided) ───────────────────────────────
+  // ── 5. Longest distance (v9.108.0 Prompt QQ) ─────────────────────────────
+  // Reads `distance` (km) first; falls back to `distanceM` / 1000 for FIT
+  // importers. Skipped on entries without distance — strength/swim drills
+  // typically have none.
+  const distKm = (() => {
+    const d = Number(newSession.distance)
+    if (Number.isFinite(d) && d > 0) return d
+    const m = Number(newSession.distanceM)
+    if (Number.isFinite(m) && m > 0) return m / 1000
+    return 0
+  })()
+  if (distKm > 0) {
+    const prevMax = prior.reduce((m, s) => {
+      const k = Number(s.distance) || (Number(s.distanceM) ? Number(s.distanceM) / 1000 : 0)
+      return Math.max(m, k || 0)
+    }, 0)
+    if (distKm > prevMax) {
+      const dKm = Math.round(distKm * 10) / 10
+      const pKm = prevMax > 0 ? Math.round(prevMax * 10) / 10 : null
+      prs.push({
+        category: 'longest_distance',
+        value: dKm,
+        prev: pKm,
+        en: `Longest distance: ${dKm} km${pKm ? ` (previous: ${pKm} km)` : ' — first of this distance!'}`,
+        tr: `En uzun mesafe: ${dKm} km${pKm ? ` (önceki: ${pKm} km)` : ' — bu mesafede ilk!'}`,
+      })
+    }
+  }
+
+  // ── 6. Fastest pace (v9.108.0 Prompt QQ) ─────────────────────────────────
+  // Pace in sec/km. Gated by duration ≥ 20min so a 1-rep pickup at 3:00/km
+  // doesn't dominate the record. Lower is faster.
+  const MIN_PACE_DURATION = 20
+  if (distKm > 0 && dur >= MIN_PACE_DURATION) {
+    const newPace = (dur * 60) / distKm
+    let prevBest = Infinity
+    for (const s of prior) {
+      const sDur = Number(s.duration) || 0
+      const sKm = Number(s.distance) || (Number(s.distanceM) ? Number(s.distanceM) / 1000 : 0)
+      if (sDur >= MIN_PACE_DURATION && sKm > 0) {
+        const p = (sDur * 60) / sKm
+        if (p < prevBest) prevBest = p
+      }
+    }
+    if (newPace < prevBest) {
+      const fmt = (sec) => {
+        const mm = Math.floor(sec / 60)
+        const ss = String(Math.round(sec) % 60).padStart(2, '0')
+        return `${mm}:${ss}/km`
+      }
+      prs.push({
+        category: 'fastest_pace',
+        value: Math.round(newPace),
+        prev: Number.isFinite(prevBest) ? Math.round(prevBest) : null,
+        en: `Fastest pace at 20+ min: ${fmt(newPace)}${Number.isFinite(prevBest) ? ` (previous: ${fmt(prevBest)})` : ''}`,
+        tr: `20+ dk seansta en hızlı tempo: ${fmt(newPace)}${Number.isFinite(prevBest) ? ` (önceki: ${fmt(prevBest)})` : ''}`,
+      })
+    }
+  }
+
+  // ── 7. Power peaks (if powerPeaks provided) ───────────────────────────────
   const peaks = newSession.powerPeaks  // { 1: W, 5: W, 20: W, 60: W }
   if (peaks && typeof peaks === 'object') {
     for (const [minKey, label] of [['1','1min'],['5','5min'],['20','20min'],['60','60min']]) {
