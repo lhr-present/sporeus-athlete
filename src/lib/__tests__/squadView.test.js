@@ -397,3 +397,112 @@ describe('filterAthletes', () => {
     expect(result).toHaveLength(0)
   })
 })
+
+// ── v9.105.0 (Prompt HH) — getAthleteAttentionSignal ─────────────────────────
+import { getAthleteAttentionSignal, ATTENTION_COLORS, ATTENTION_RANK } from '../squadView.js'
+
+const TODAY = '2026-05-14'
+
+describe('getAthleteAttentionSignal', () => {
+  it('returns ok for a clean row', () => {
+    const row = {
+      acwr_status: 'optimal', today_tsb: 5, adherence_pct: 85,
+      training_status: 'Building', last_session_date: '2026-05-13',
+    }
+    const out = getAthleteAttentionSignal(row, TODAY)
+    expect(out.level).toBe('ok')
+    expect(out.reasons).toEqual([])
+  })
+
+  it('flags urgent on ACWR danger', () => {
+    const row = { acwr_status: 'danger', last_session_date: '2026-05-13' }
+    const out = getAthleteAttentionSignal(row, TODAY)
+    expect(out.level).toBe('urgent')
+    expect(out.reasons.find(r => r.key === 'acwr_danger')).toBeTruthy()
+  })
+
+  it('flags urgent on adherence < 30%', () => {
+    const row = { acwr_status: 'optimal', adherence_pct: 18, last_session_date: '2026-05-13' }
+    const out = getAthleteAttentionSignal(row, TODAY)
+    expect(out.level).toBe('urgent')
+    expect(out.reasons.find(r => r.key === 'adherence_low')).toBeTruthy()
+  })
+
+  it('flags urgent when last session is 7+ days stale', () => {
+    const row = { acwr_status: 'optimal', adherence_pct: 80, last_session_date: '2026-05-01' }
+    const out = getAthleteAttentionSignal(row, TODAY)
+    expect(out.level).toBe('urgent')
+    expect(out.reasons.find(r => r.key === 'stale_7d')).toBeTruthy()
+  })
+
+  it('flags urgent on Detraining status', () => {
+    const row = { training_status: 'Detraining', last_session_date: '2026-05-13', adherence_pct: 80 }
+    const out = getAthleteAttentionSignal(row, TODAY)
+    expect(out.level).toBe('urgent')
+  })
+
+  it('flags attention (not urgent) on caution ACWR + good adherence', () => {
+    const row = { acwr_status: 'caution', adherence_pct: 80, last_session_date: '2026-05-13' }
+    const out = getAthleteAttentionSignal(row, TODAY)
+    expect(out.level).toBe('attention')
+    expect(out.reasons.find(r => r.key === 'acwr_caution')).toBeTruthy()
+  })
+
+  it('flags attention on deep TSB fatigue', () => {
+    const row = { today_tsb: -25, adherence_pct: 80, last_session_date: '2026-05-13' }
+    const out = getAthleteAttentionSignal(row, TODAY)
+    expect(out.level).toBe('attention')
+    expect(out.reasons.find(r => r.key === 'tsb_deep')).toBeTruthy()
+  })
+
+  it('flags attention for adherence 30-60', () => {
+    const row = { acwr_status: 'optimal', adherence_pct: 45, last_session_date: '2026-05-13' }
+    const out = getAthleteAttentionSignal(row, TODAY)
+    expect(out.level).toBe('attention')
+    expect(out.reasons.find(r => r.key === 'adherence_mid')).toBeTruthy()
+  })
+
+  it('escalates to urgent when any urgent reason is set (overrides attention reasons)', () => {
+    const row = { acwr_status: 'caution', adherence_pct: 18, last_session_date: '2026-05-13' }
+    const out = getAthleteAttentionSignal(row, TODAY)
+    expect(out.level).toBe('urgent')
+    // both reasons surface — coach sees the full picture
+    expect(out.reasons.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('tolerates missing fields', () => {
+    expect(getAthleteAttentionSignal(null, TODAY).level).toBe('ok')
+    expect(getAthleteAttentionSignal({}, TODAY).level).toBe('urgent')   // stale_7d fires because last_session_date is missing
+  })
+
+  it('emits bilingual labels with both en + tr', () => {
+    const row = { acwr_status: 'danger', last_session_date: '2026-05-13' }
+    const out = getAthleteAttentionSignal(row, TODAY)
+    const r = out.reasons[0]
+    expect(r.label.en).toBeTruthy()
+    expect(r.label.tr).toBeTruthy()
+  })
+
+  it('ATTENTION_RANK orders urgent > attention > ok', () => {
+    expect(ATTENTION_RANK.urgent).toBeGreaterThan(ATTENTION_RANK.attention)
+    expect(ATTENTION_RANK.attention).toBeGreaterThan(ATTENTION_RANK.ok)
+  })
+
+  it('ATTENTION_COLORS exposes red / amber / green', () => {
+    expect(ATTENTION_COLORS.urgent).toMatch(/^#/)
+    expect(ATTENTION_COLORS.attention).toMatch(/^#/)
+    expect(ATTENTION_COLORS.ok).toMatch(/^#/)
+  })
+})
+
+describe('sortAthletes attention', () => {
+  it('sorts urgent rows to the bottom when asc, top when desc', () => {
+    const urgentRow    = { display_name: 'A', acwr_status: 'danger',   last_session_date: '2026-05-13' }
+    const attentionRow = { display_name: 'B', acwr_status: 'caution',  last_session_date: '2026-05-13', adherence_pct: 80 }
+    const okRow        = { display_name: 'C', acwr_status: 'optimal',  last_session_date: '2026-05-13', adherence_pct: 90 }
+    const asc  = sortAthletes([urgentRow, attentionRow, okRow], 'attention', 'asc')
+    expect(asc.map(r => r.display_name)).toEqual(['C', 'B', 'A'])
+    const desc = sortAthletes([urgentRow, attentionRow, okRow], 'attention', 'desc')
+    expect(desc.map(r => r.display_name)).toEqual(['A', 'B', 'C'])
+  })
+})

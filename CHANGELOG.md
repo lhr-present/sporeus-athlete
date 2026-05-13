@@ -14,6 +14,116 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.105.0 — 2026-05-14 — Coach-athlete relational closures: plan acceptance loop + attention signal
+
+  Prompts BB + HH from the v9.104 backlog. Two coach-facing features
+  that close relational gaps the system had silently been carrying.
+
+  ### Prompt BB — Coach plan acceptance loop
+
+  Pre-v9.105, when a coach pushed a plan via SbAthletePanel's
+  handleSendPlan, neither side knew if the athlete had seen / accepted /
+  rejected it. Coaches messaged athletes out-of-band ("did you get the
+  plan?"). Athletes never had a clean "accept" button — the plan just
+  appeared in CoachPlansCard.
+
+  **Migration (`supabase/migrations/20260478_coach_plan_acceptance.sql`)**:
+  - Two nullable columns on `coach_plans`: `accepted_at` + `rejected_at`
+    (timestamptz). Exactly one is set per plan after the athlete
+    responds; both null = pending.
+  - Partial index `idx_coach_plans_pending` for coaches who want to
+    list pending plans efficiently.
+
+  **Athlete side (`src/components/Periodization.jsx` CoachPlansCard)**:
+  - Pulls `accepted_at` + `rejected_at` from the select.
+  - Header pill shows current state: amber `PENDING` / green `✓ ACCEPTED 2d ago`
+    / grey `✕ DECLINED 1d ago`. Uses formatLastSession from squadView.js
+    for the relative time.
+  - Pending plans get an amber border to nudge response.
+  - **ACCEPT** button writes accepted_at + replaces local `sporeus-plan`
+    with the coach's plan (versionTag `9.105.0-coach-{id8}` for v9.104
+    Prompt FF provenance). Emits `coach_plan_accepted` telemetry.
+  - **DECLINE** button writes rejected_at. Emits `coach_plan_declined`.
+  - Optimistic local update so UI doesn't lag for the round-trip.
+  - Three i18n keys added: `coachPlanAccept`, `coachPlanDecline`,
+    `coachPlanAcceptHint` (EN + TR).
+
+  **Coach side (`src/components/coachDashboard/SbAthletePanel.jsx`)**:
+  - Pulls the same fields in the activePlan query.
+  - WEEK NOTES header gets a response pill: PENDING (amber) / ACCEPTED
+    (green) / DECLINED (grey). Coaches see at-a-glance which athletes
+    haven't responded yet.
+
+  ### Prompt HH — Athlete attention signal aggregation
+
+  Pre-v9.105 the coach squad list showed a separate injury-risk dot
+  that fired only after the athlete's panel was expanded (because
+  predictInjuryRisk needs the log). Coaches managing 10+ athletes
+  couldn't triage at-a-glance.
+
+  New pure fn `getAthleteAttentionSignal(athRow, today?)` in
+  `src/lib/squadView.js` reads the precomputed squad-overview row
+  (no per-athlete fetch needed) and returns
+  `{ level: 'urgent'|'attention'|'ok', reasons: [...] }`.
+
+  Thresholds:
+  - **urgent**: acwr_status === 'danger' OR adherence_pct < 30 OR last
+    session ≥ 7 days ago OR training_status === 'Detraining' OR
+    training_status === 'Overreaching'
+  - **attention**: acwr_status === 'caution' OR today_tsb < −20 OR
+    adherence_pct in [30, 60)
+  - **ok**: otherwise
+
+  Multiple reasons coexist — an athlete with both `acwr_caution` AND
+  `adherence_low` shows urgent (any-urgent escalates) but the tooltip
+  surfaces both reasons.
+
+  **CoachSquadView wiring**:
+  - New leading `ATTN` column (36px) renders the colored dot. Replaces
+    the old standalone injury-risk dot in the name cell.
+  - Hover tooltip lists bilingual reason labels ("• ACWR danger (≥1.5)")
+  - All subsequent column index references shifted (COLS[0]→COLS[1]
+    for name, etc.).
+  - sortAthletes gained an `'attention'` case using new
+    `ATTENTION_RANK` map (urgent: 3, attention: 2, ok: 1). Default
+    sort changed from `name asc` to `attention desc` — urgent rises
+    to top on load.
+  - Tie-breaking: same attention level falls back to display_name
+    alphabetical (stable order).
+
+  Constants exported: `ATTENTION_COLORS` (red/amber/green) and
+  `ATTENTION_RANK` (numeric).
+
+  Tests: 13 cases on getAthleteAttentionSignal + sortAthletes attention
+  (ok/urgent/attention paths, ACWR/adherence/staleness/training-status
+  triggers, escalation, bilingual labels, null tolerance, sort behavior).
+
+  ### Files touched
+
+  - `supabase/migrations/20260478_coach_plan_acceptance.sql` (new)
+  - `src/lib/squadView.js` (+getAthleteAttentionSignal,
+    ATTENTION_COLORS, ATTENTION_RANK, sortAthletes 'attention' case)
+  - `src/components/Periodization.jsx` (CoachPlansCard: select fields,
+    respondToPlan handler, ACCEPT/DECLINE buttons, status pills,
+    pending border, emitEvent + squadView imports)
+  - `src/components/coach/CoachSquadView.jsx` (ATTN column, default
+    sort, dot render, COLS index shift, tooltip)
+  - `src/components/coachDashboard/SbAthletePanel.jsx` (select fields,
+    response pill in WEEK NOTES header)
+  - `src/contexts/LangCtx.jsx` (+3 i18n keys EN+TR)
+  - `src/lib/__tests__/squadView.test.js` (+13 cases)
+  - `package.json` 11.105.0, CHANGELOG.md
+
+  10,134 tests pass (+14 vs v9.104). Depends on: v9.104 Prompt FF
+  (versionTag propagation through accepted-coach-plan replacement),
+  v9.99 (attribution_events RLS for emitEvent), existing
+  get_squad_overview RPC (no schema changes there).
+
+  **Operator note**: Apply migration before deploy so the SELECT
+  doesn't 500 on the new columns. The CI build doesn't run migrations.
+
+---
+
 ## v9.104.0 — 2026-05-14 — Plan diagnostics & provenance: goal-mismatch + transparency tile + version tracking
 
   Prompts DD + EE + FF. Three additive enhancements that surface plan

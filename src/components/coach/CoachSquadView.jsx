@@ -14,12 +14,16 @@ import SquadRedFlagsCard from './SquadRedFlagsCard.jsx'
 import {
   acwrColor, tsbColor, trainingStatusColor,
   formatLastSession, sortAthletes, filterAthletes,
+  getAthleteAttentionSignal, ATTENTION_COLORS,
 } from '../../lib/squadView.js'
 
 const MONO = "'IBM Plex Mono', monospace"
 const DIM  = '#555'
 
 const COLS = [
+  // v9.105.0 (Prompt HH): leading ATTN column. Sort defaults to desc so
+  // urgent rises to top. Click toggles asc/desc.
+  { id: 'attention',   label: 'ATTN',     flex: '0 0 36px'  },
   { id: 'name',        label: 'ATHLETE',  flex: '2 1 120px' },
   { id: 'status',      label: 'STATUS',   flex: '1 1 90px'  },
   { id: 'ctl',         label: 'CTL',      flex: '0 0 48px'  },
@@ -41,8 +45,11 @@ export default function CoachSquadView({ coachId, coachName = '' }) {
   const [loading, setLoading]           = useState(true)
   const [search, setSearch]             = useState('')
   const [chip, setChip]                 = useState('all')
-  const [sortBy, setSortBy]             = useState('name')
-  const [sortDir, setSortDir]           = useState('asc')
+  // v9.105.0 (Prompt HH) — Default to attention DESC so urgent athletes
+  // appear at the top of the list on load. Coaches who want alphabetical
+  // can still click the ATHLETE column to re-sort.
+  const [sortBy, setSortBy]             = useState('attention')
+  const [sortDir, setSortDir]           = useState('desc')
   const [selectedId, setSelectedId]     = useState(null)
   const [athleteData, setAthleteData]   = useState({})   // { [athleteId]: { log, recovery } }
   const [loadingDetail, setLoadingDetail] = useState(false)
@@ -251,46 +258,58 @@ export default function CoachSquadView({ coachId, coachName = '' }) {
                     display: 'flex', alignItems: 'center',
                   }}
                 >
+                  {/* v9.105.0 (Prompt HH) — Attention signal dot. Replaces
+                      the old standalone injury-risk dot in the name column —
+                      attention is a richer superset that combines ACWR,
+                      adherence, fatigue, staleness, and training status. */}
+                  {(() => {
+                    const attn = getAthleteAttentionSignal(ath)
+                    const color = ATTENTION_COLORS[attn.level] || ATTENTION_COLORS.ok
+                    const tip = attn.reasons.length === 0
+                      ? 'OK · no flagged signals'
+                      : attn.reasons.map(r => '• ' + (r.label?.en || r.key)).join('\n')
+                    const visible = attn.level !== 'ok'
+                    return (
+                      <div style={cell(COLS[0].flex, { textAlign: 'center', fontSize: '11px' })} title={tip}>
+                        {visible ? <span style={{ color }}>●</span> : <span style={{ color: '#333' }}>○</span>}
+                      </div>
+                    )
+                  })()}
+
                   {/* Athlete name */}
-                  <div style={cell(COLS[0].flex, { color: '#e0e0e0', fontWeight: 700 })}>
-                    {injRisk && (
-                      <span style={{
-                        color: injRisk.level === 'HIGH' ? '#e03030' : '#f5c542',
-                        marginRight: '4px', fontSize: '9px',
-                      }}>●</span>
-                    )}
+                  <div style={cell(COLS[1].flex, { color: '#e0e0e0', fontWeight: 700 })}>
                     {ath.display_name}
                   </div>
 
                   {/* Training status */}
-                  <div style={cell(COLS[1].flex, { color: trainingStatusColor(ath.training_status), fontSize: '9px', letterSpacing: '0.05em' })}>
+                  <div style={cell(COLS[2].flex, { color: trainingStatusColor(ath.training_status), fontSize: '9px', letterSpacing: '0.05em' })}>
                     {ath.training_status ?? '—'}
                   </div>
 
                   {/* CTL */}
-                  <div style={cell(COLS[2].flex, { color: '#ff6600' })}>
+                  <div style={cell(COLS[3].flex, { color: '#ff6600' })}>
                     {ath.today_ctl != null ? ath.today_ctl : '—'}
                   </div>
 
                   {/* TSB */}
-                  <div style={cell(COLS[3].flex, { color: tsbColor(ath.today_tsb) })}>
+                  <div style={cell(COLS[4].flex, { color: tsbColor(ath.today_tsb) })}>
                     {ath.today_tsb != null
                       ? (ath.today_tsb > 0 ? `+${ath.today_tsb}` : String(ath.today_tsb))
                       : '—'}
                   </div>
 
                   {/* ACWR */}
-                  <div style={cell(COLS[4].flex, { color: acwrColor(ath.acwr_status) })}>
+                  <div style={cell(COLS[5].flex, { color: acwrColor(ath.acwr_status) })}>
                     {ath.acwr_ratio != null ? ath.acwr_ratio : '—'}
                   </div>
 
                   {/* Last session */}
-                  <div style={cell(COLS[5].flex, { fontSize: '10px' })}>
+                  <div style={cell(COLS[6].flex, { fontSize: '10px' })}>
                     {formatLastSession(ath.last_session_date)}
                   </div>
 
                   {/* Adherence% */}
-                  <div style={cell(COLS[6].flex, {
+                  <div style={cell(COLS[7].flex, {
                     color: adherence >= 70 ? '#5bc25b' : adherence >= 40 ? '#f5c542' : '#e03030',
                   })}>
                     {ath.adherence_pct != null ? `${ath.adherence_pct}%` : '—'}

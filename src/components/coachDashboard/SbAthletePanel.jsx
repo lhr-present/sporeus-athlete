@@ -100,7 +100,10 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
     if (!isSupabaseReady() || !athleteId) return
     supabase
       .from('coach_plans')
-      .select('id, name, goal, start_date, weeks, status')
+      // v9.105.0 (Prompt BB): pull accepted_at/rejected_at so the coach
+      // can see whether the athlete actually responded to the plan they
+      // pushed. Pending plans are the highest-value follow-up signal.
+      .select('id, name, goal, start_date, weeks, status, accepted_at, rejected_at')
       .eq('athlete_id', athleteId)
       .eq('status', 'active')
       .order('created_at', { ascending: false })
@@ -495,6 +498,30 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
                     [{activePlan.versionTag}]
                   </span>
                 )}
+                {/* v9.105.0 (Prompt BB) — Response status pill (coach view).
+                    Yellow PENDING is the action signal for the coach: this
+                    athlete saw the plan but hasn't accepted/declined yet. */}
+                {(() => {
+                  if (activePlan.accepted_at) {
+                    return (
+                      <span style={{ ...S.mono, fontSize:'9px', color:'#5bc25b', background:'#5bc25b22', border:'1px solid #5bc25b66', borderRadius:'3px', padding:'1px 6px', letterSpacing:'0.06em' }}>
+                        ✓ ACCEPTED
+                      </span>
+                    )
+                  }
+                  if (activePlan.rejected_at) {
+                    return (
+                      <span style={{ ...S.mono, fontSize:'9px', color:'#888', background:'#88888822', border:'1px solid #88888866', borderRadius:'3px', padding:'1px 6px', letterSpacing:'0.06em' }}>
+                        ✕ DECLINED
+                      </span>
+                    )
+                  }
+                  return (
+                    <span style={{ ...S.mono, fontSize:'9px', color:'#f5c542', background:'#f5c54222', border:'1px solid #f5c54266', borderRadius:'3px', padding:'1px 6px', letterSpacing:'0.06em' }}>
+                      PENDING
+                    </span>
+                  )
+                })()}
                 <span style={{ ...S.mono, fontSize:'9px', color:'#555' }}>{showWeekNotes ? '▲' : '▼'}</span>
               </button>
               {showWeekNotes && (

@@ -6,6 +6,8 @@ import { S } from '../styles.js'
 import { MACRO_PHASES, ZONE_COLORS, ZONE_NAMES } from '../lib/constants.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
+import { emitEvent } from '../lib/attribution.js'
+import { formatLastSession } from '../lib/squadView.js'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid,
   ReferenceLine, ResponsiveContainer, Legend,
@@ -227,7 +229,9 @@ function CoachPlansCard({ authUser }) {
     if (!isSupabaseReady() || !authUser) { setPlans([]); return }
     supabase
       .from('coach_plans')
-      .select('id, name, goal, start_date, weeks, status, created_at, coach_id')
+      // v9.105.0 (Prompt BB): also pull accepted_at/rejected_at so the
+      // ACCEPT/DECLINE buttons or status pill can render.
+      .select('id, name, goal, start_date, weeks, status, created_at, coach_id, accepted_at, rejected_at')
       .eq('athlete_id', authUser.id)
       .eq('status', 'active')
       .order('created_at', { ascending: false })
@@ -253,6 +257,45 @@ function CoachPlansCard({ authUser }) {
 
   const markPlanViewed = (planId) => {
     try { localStorage.setItem(planViewedKey(planId), new Date().toISOString()) } catch (e) { logger.warn('localStorage:', e.message) }
+  }
+
+  // v9.105.0 (Prompt BB) — Acceptance handlers. Optimistic local update +
+  // best-effort DB write. ACCEPT also replaces the local plan so the
+  // athlete's TodayView immediately reflects the coach's prescription.
+  const respondToPlan = async (plan, action) => {
+    if (!isSupabaseReady()) return
+    const nowISO = new Date().toISOString()
+    const patch = action === 'accept'
+      ? { accepted_at: nowISO, rejected_at: null }
+      : { rejected_at: nowISO, accepted_at: null }
+    // Optimistic UI update
+    setPlans(prev => (prev || []).map(p => p.id === plan.id ? { ...p, ...patch } : p))
+    try {
+      await supabase.from('coach_plans').update(patch).eq('id', plan.id)
+      emitEvent(action === 'accept' ? 'coach_plan_accepted' : 'coach_plan_declined', {
+        plan_id:  plan.id,
+        coach_id: plan.coach_id,
+        weeks:    Array.isArray(plan.weeks) ? plan.weeks.length : 0,
+      })
+      if (action === 'accept') {
+        // Replace local plan so TodayView + drift card see the coach's plan.
+        // Same shape as the legacy starter plan, with a versionTag noting
+        // the coach origin for v9.104 Prompt FF provenance.
+        const localPlan = {
+          goal:         plan.goal || 'General Fitness',
+          weeks:        Array.isArray(plan.weeks) ? plan.weeks : [],
+          generatedAt:  plan.start_date || nowISO.slice(0, 10),
+          coachPlanId:  plan.id,
+          versionTag:   `9.105.0-coach-${plan.id.slice(0, 8)}`,
+          fromCoach:    true,
+        }
+        try {
+          localStorage.setItem('sporeus-plan', JSON.stringify(localPlan))
+        } catch (e) { logger.warn('local plan write failed:', e?.message) }
+      }
+    } catch (e) {
+      logger.warn('plan response failed:', e?.message)
+    }
   }
 
   if (!isSupabaseReady() || !authUser) return null
@@ -285,8 +328,20 @@ function CoachPlansCard({ authUser }) {
         const latestNoteTs = weeks.reduce((best, wk) => wk.noteTs && wk.noteTs > best ? wk.noteTs : best, '')
         const isUpdated = hasNotes && latestNoteTs && (!lastViewed || latestNoteTs > lastViewed)
 
+        // v9.105.0 (Prompt BB): three states drive the right action.
+        const isPending  = !plan.accepted_at && !plan.rejected_at
+        const isAccepted = !!plan.accepted_at
+        const isDeclined = !!plan.rejected_at
+        const responseAge = plan.accepted_at || plan.rejected_at
+          ? formatLastSession(plan.accepted_at || plan.rejected_at)
+          : null
+        // Pending plans get a yellow border to nudge the athlete to respond.
+        const borderColor = isPending  ? '#f5c54299'
+                          : isUpdated  ? '#0064ff55'
+                          : 'var(--border)'
+
         return (
-          <div key={plan.id} style={{ marginBottom:'10px', border:`1px solid ${isUpdated ? '#0064ff55' : 'var(--border)'}`, borderRadius:'5px', overflow:'hidden' }}>
+          <div key={plan.id} style={{ marginBottom:'10px', border:`1px solid ${borderColor}`, borderRadius:'5px', overflow:'hidden' }}>
             {/* Plan header row */}
             <div
               onClick={() => { setExpanded(e => ({ ...e, [plan.id]: !e[plan.id] })); if (!isOpen) markPlanViewed(plan.id) }}
@@ -301,6 +356,22 @@ function CoachPlansCard({ authUser }) {
                     ● COACH UPDATED
                   </span>
                 )}
+                {/* v9.105.0 (Prompt BB) — Response status pill */}
+                {isPending && (
+                  <span style={{ ...S.mono, fontSize:'9px', color:'#f5c542', background:'#f5c54222', border:'1px solid #f5c54266', borderRadius:'3px', padding:'1px 6px', letterSpacing:'0.06em' }}>
+                    PENDING
+                  </span>
+                )}
+                {isAccepted && (
+                  <span style={{ ...S.mono, fontSize:'9px', color:'#5bc25b', background:'#5bc25b22', border:'1px solid #5bc25b66', borderRadius:'3px', padding:'1px 6px', letterSpacing:'0.06em' }}>
+                    ✓ ACCEPTED {responseAge}
+                  </span>
+                )}
+                {isDeclined && (
+                  <span style={{ ...S.mono, fontSize:'9px', color:'#888', background:'#88888822', border:'1px solid #88888866', borderRadius:'3px', padding:'1px 6px', letterSpacing:'0.06em' }}>
+                    ✕ DECLINED {responseAge}
+                  </span>
+                )}
               </div>
               <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
                 <span style={{ ...S.mono, fontSize:'10px', color:'#888' }}>
@@ -309,6 +380,25 @@ function CoachPlansCard({ authUser }) {
                 <span style={{ ...S.mono, fontSize:'11px', color:'#555' }}>{isOpen ? '▲' : '▼'}</span>
               </div>
             </div>
+
+            {/* v9.105.0 (Prompt BB) — Action bar: ACCEPT / DECLINE, only on pending */}
+            {isPending && (
+              <div style={{ display:'flex', gap:'8px', padding:'8px 12px', background:'var(--card-bg)', borderTop:'1px solid var(--border)' }}>
+                <button
+                  onClick={(e) => { e.stopPropagation(); respondToPlan(plan, 'accept') }}
+                  style={{ ...S.mono, fontSize:'10px', fontWeight:700, padding:'5px 12px', background:'#5bc25b', border:'none', color:'#fff', borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em' }}>
+                  ✓ {t('coachPlanAccept') || 'ACCEPT PLAN'}
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); respondToPlan(plan, 'decline') }}
+                  style={{ ...S.mono, fontSize:'10px', fontWeight:700, padding:'5px 12px', background:'transparent', border:'1px solid #888', color:'#aaa', borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em' }}>
+                  ✕ {t('coachPlanDecline') || 'DECLINE'}
+                </button>
+                <span style={{ ...S.mono, fontSize:'9px', color:'#666', alignSelf:'center', marginLeft:'auto' }}>
+                  {t('coachPlanAcceptHint') || 'Accepting replaces your current plan'}
+                </span>
+              </div>
+            )}
 
             {/* Expanded week table */}
             {isOpen && weeks.length > 0 && (
