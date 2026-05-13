@@ -14,6 +14,77 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.100.0 — 2026-05-14 — Mission 1 patch: swimmer CSS onboarding capture + sanitizer fix
+
+  A latent leak surfaced during a "what should we polish next?" sweep:
+  the v9.98 swim-pace chain (`deriveSessionSwimPace`) needs
+  `profile.cssSec` — but **no onboarding step ever captured it**.
+
+  Step 6 of the wizard branches the physiology input on `data.sport`:
+  - `['Running','Triathlon','Rowing']` → THRESHOLD PACE (`data.ltpace`)
+  - everything else → FTP (watts)
+
+  A swimmer fell into the "else" branch and was asked for FTP, which is
+  meaningless for pool swimming. Their `profile.cssSec` was never set,
+  so v9.98's daily-answer chain returned `paceTarget: null` for every
+  swim session — a real Mission 1 leak that survived all the prior
+  audits.
+
+  ### The fix — two changes
+
+  **1. Onboarding adds a Swimming branch** (`Onboarding.jsx`):
+
+  ```js
+  data.sport === 'Swimming' ? <CSS PACE (MM:SS /100m)>
+    : ['Running','Triathlon','Rowing'].includes(data.sport) ? <THRESHOLD PACE>
+    : <FTP>
+  ```
+
+  Stored as `data.cssPace` (e.g., `"1:30"`), parsed at `finish()` time
+  into `cssSec` (numeric seconds), and passed to `onFinish`. Out-of-range
+  values (<40s world-class, >300s beginner) drop to `undefined` so
+  `sanitizeProfile` doesn't write a bogus value.
+
+  **2. `sanitizeProfile` whitelists `cssSec`** (`validate.js`):
+
+  Latent bug — `sanitizeProfile` is a whitelist; `cssSec` was missing,
+  so `Profile.jsx`'s `save()` silently stripped CSS on every save. Any
+  user who had `cssSec` from `eliteProgram` or the v9.100 onboarding
+  would lose it the moment they edited any other profile field.
+
+  Clamped to `[40, 300]` per swim-pace sanity bounds. Returns `''` for
+  missing/empty input to match the other numeric form fields.
+
+  ### What changes for swimmers
+
+  | Step | Before | After |
+  |---|---|---|
+  | Onboarding step 6 | FTP input (irrelevant) | CSS pace input (1:30/100m) |
+  | Profile save | `cssSec` silently dropped | preserved through sanitize |
+  | Mission 1 daily answer | `paceTarget: null` | `"1:30–1:39/100m"` for Z3 |
+
+  ### Files
+
+  - `src/components/Onboarding.jsx` — `cssPace` state field, Swimming
+    branch in step 6, finish() parser converts to `cssSec`
+  - `src/lib/validate.js` — `sanitizeProfile.cssSec` whitelist entry
+  - `src/lib/validate.test.js` — 3 new cases (preserves, clamps, empty)
+  - `src/lib/__tests__/integration/onboardingToToday.test.js` — new
+    swimmer integration case proves the chain produces a `/100m` pace
+    target end-to-end
+
+  ### Tests
+
+  - 10080 → 10084 (+4)
+  - Lint clean, build clean
+
+  ### Mission 1 chain — final swimmer parity
+
+  Running / Cycling / Swimming all produce derivable physiology targets
+  from day-one onboarding. The chain is now sport-symmetric.
+
+---
+
 ## v9.99.0 — 2026-05-13 — Personal Mission-1 funnel timeline + coach surface audit
 
   Prompt J (telemetry surfaced to the athlete) and Prompt N (coach

@@ -77,6 +77,34 @@ describe('Mission 1 chain — onboarding → today (integration)', () => {
     expect(derived.powerTarget).toBeNull()
   })
 
+  it('Swimmer with cssSec produces derivable swim pace targets (v9.100.0)', () => {
+    // Pre-v9.100, a swimmer could complete onboarding but the metric input
+    // showed FTP (irrelevant) so no cssSec was ever captured. Mission 1's
+    // daily-answer link returned null for every swim session.
+    const onboardingData = {
+      sport: 'Swimming', goal: 'General Fitness',
+      athleteLevel: 'competitive',
+      cssSec: 90,  // 1:30/100m — captured by the v9.100 onboarding CSS field
+    }
+    const plan = buildStarterPlan(onboardingData, TODAY)
+    const profile = { cssSec: 90, primarySport: 'Swimming' }
+
+    // Find first non-rest session in the plan
+    let session = null
+    for (const wk of plan.weeks) {
+      for (const s of wk.sessions) {
+        if (s.duration > 0 && s.zone && s.zone !== '—') { session = s; break }
+      }
+      if (session) break
+    }
+    expect(session).not.toBeNull()
+
+    // The chain: plan session → deriveSessionTargets → swim pace
+    const derived = deriveSessionTargets({ zone: session.zone, type: session.type }, profile)
+    expect(derived.paceTarget).toMatch(/\/100m$/)  // swim-pace suffix
+    expect(derived.powerTarget).toBeNull()
+  })
+
   it('Cyclist with FTP produces derivable power targets', () => {
     const onboardingData = {
       sport: 'Cycling', goal: 'Cycling Event',

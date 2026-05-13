@@ -54,6 +54,11 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
     // Original detailed fields
     name:'', sport:'Running', age:'', gender:'male',
     level:'Competitive', maxhr:'', ftp:'', ltpace:'',
+    // v9.100.0 — cssPace captures the swimmer's Critical Swim Speed as a
+    // M:SS/100m string. Converted to cssSec (numeric seconds) at finish()
+    // time and written to profile.cssSec so the v9.98 swim-pace chain has
+    // a value to read from day one.
+    cssPace:'',
     // v9.96.0 — trainDays default 5 so PlanGenerator + buildStarterPlan get a
     // sane availableDays even when the user skips the buttons in step 5.
     trainDays: 5,
@@ -264,7 +269,18 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
             )}
           </div>
         </div>
-        {['Running','Triathlon','Rowing'].includes(data.sport) ? (
+        {data.sport === 'Swimming' ? (
+          // v9.100.0 — Swimming gets CSS (Critical Swim Speed) instead of FTP.
+          // FTP is meaningless for pool swimmers; CSS is the canonical pace
+          // metric (sec/100m) that the v9.98 swim-pace chain reads.
+          <div>
+            <label style={LABEL}>{lang === 'tr' ? 'CSS TEMPOSU (DD:SS /100m)' : 'CSS PACE (MM:SS /100m)'}</label>
+            <input style={INPUT} type="text" inputMode="numeric" placeholder="1:30" value={data.cssPace}
+              onChange={e=>set('cssPace', autoFormatMmSs(e.target.value))}
+              onBlur={e=>set('cssPace', autoFormatMmSs(e.target.value, { padOnBlur: true }))}
+            />
+          </div>
+        ) : ['Running','Triathlon','Rowing'].includes(data.sport) ? (
           <div>
             <label style={LABEL}>{lang === 'tr' ? 'EŞİK TEMPOSU (DD:SS /km)' : 'THRESHOLD PACE (MM:SS /km)'}</label>
             <input style={INPUT} type="text" inputMode="numeric" placeholder="4:45" value={data.ltpace}
@@ -375,11 +391,24 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
       Advanced:     'advanced',
       Elite:        'elite',
     }
+    // v9.100.0 — Parse the swimmer's CSS pace ("M:SS/100m") into cssSec
+    // (numeric seconds). The v9.98 deriveSessionSwimPace chain reads
+    // profile.cssSec directly. Invalid / unset values land as undefined so
+    // sanitizeProfile doesn't write a zero.
+    const cssSec = (() => {
+      const m = String(data.cssPace || '').trim().match(/^(\d{1,2}):([0-5]\d)$/)
+      if (!m) return undefined
+      const sec = parseInt(m[1], 10) * 60 + parseInt(m[2], 10)
+      // Reasonable swim CSS bounds: 40s (world-class) to 300s (5min/100m beginner)
+      if (sec < 40 || sec > 300) return undefined
+      return sec
+    })()
     onFinish({
       name:data.name, age:data.age, gender:data.gender, sport:data.sport,
       purpose:data.purpose, loggingMethod:data.loggingMethod,
       athleteLevel: LEVEL_MAP[data.level] || data.level, trainDays: data.trainDays,
       maxhr:data.maxhr, ftp:data.ftp, threshold:data.ltpace, goal:data.goal,
+      cssSec,
       // v9.60.0 — collect race date during onboarding so the daily answer +
       // taper + race readiness engines have an anchor from day one
       raceDate: data.raceDate || undefined,

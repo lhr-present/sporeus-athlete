@@ -138,6 +138,12 @@ export function sanitizeProfile(p) {
     vo2max:        numStr(p.vo2max, 0, 100),
     maxhr:         numStr(p.maxhr, 60, 280),
     threshold:     str(p.threshold, 20),
+    // v9.100.0 — CSS (Critical Swim Speed) in sec/100m. Pre-fix, this field
+    // was set by eliteProgram + onboarding but stripped on every Profile save
+    // because the whitelist didn't include it. Stored as a string to match
+    // the form-input contract; consumers parse via Number(profile.cssSec).
+    // Bounds: 40s (world-class) to 300s (5min/100m beginner).
+    cssSec:        p.cssSec == null || p.cssSec === '' ? '' : numStr(p.cssSec, 40, 300),
     // v9.51.0 — Concept2 erg drag factor (rowing). DF norms:
     //   HW men 130-140, LW men 115-130, HW women 120-130 (Concept2, 2019)
     //   World Rowing Indoor cap: 140 men / 130 women (WRIC rulebook 2023)

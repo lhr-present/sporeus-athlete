@@ -101,4 +101,21 @@ describe('sanitizeProfile', () => {
   it('keeps ftp as string', () => {
     expect(typeof sanitizeProfile({ ftp: '250' }).ftp).toBe('string')
   })
+
+  // v9.100.0 — cssSec is now allowed through the whitelist
+  it('preserves cssSec through sanitization (v9.100.0)', () => {
+    expect(sanitizeProfile({ cssSec: 90 }).cssSec).toBe('90')
+    expect(sanitizeProfile({ cssSec: '85' }).cssSec).toBe('85')
+  })
+
+  it('clamps cssSec to valid range [40, 300]', () => {
+    expect(sanitizeProfile({ cssSec: 20 }).cssSec).toBe('40')   // floor
+    expect(sanitizeProfile({ cssSec: 500 }).cssSec).toBe('300') // ceiling
+  })
+
+  it('returns empty string for missing/empty cssSec', () => {
+    expect(sanitizeProfile({}).cssSec).toBe('')
+    expect(sanitizeProfile({ cssSec: '' }).cssSec).toBe('')
+    expect(sanitizeProfile({ cssSec: null }).cssSec).toBe('')
+  })
 })
