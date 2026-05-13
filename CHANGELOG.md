@@ -14,6 +14,104 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.101.0 — 2026-05-14 — Mission 1 extension: coach view chain + one-click regenerate
+
+  Prompts P + Q + S from the post-v9.100 backlog. Extends the Mission 1
+  operational layer (derived targets, execution snapshot) to the coach
+  surface, and closes the v9.94 adaptation loop with a true one-click
+  apply-recommendation action.
+
+  ### Prompt P — Coach sees derived session targets
+
+  `SbAthletePanel` (the Supabase-live athlete detail view used by
+  coaches) was identified by the v9.99 audit as missing every
+  operational chain link. Athletes see "PACE 4:25–4:35/km (from
+  threshold)" for today's session; coaches saw only "FTP 250" raw chip.
+
+  New "TODAY" chip row inserted between profile chips and metrics row:
+  - `getTodayPlannedSession(activePlan, today)` adapts coach_plans
+    `{ start_date, weeks }` to the lookup-helper's `{ generatedAt, weeks }`
+    shape (one-line wrap)
+  - `deriveSessionTargets(planned, profile)` produces pace or power
+    range string
+  - Chip displays: "TODAY · PACE 4:25–4:35/km" (running) or
+    "TODAY · POWER 228–263W" (cycling)
+  - Falls back to "TODAY · Tempo · 60min · Z3" when physiology isn't set
+    so the planned session shape is still visible
+  - Renders nothing when there's no active plan (avoids blank row)
+
+  ### Prompt Q — Coach sees last-session execution status
+
+  Same chip row now includes `LAST · 45m/60m UNDER` (or `ON-TARGET` /
+  `OVER` / `INCOMPLETE`) badge using `computeSessionExecution` from v9.89.
+  Matches the most-recent log entry against its date's planned session.
+  Color-coded status pill matches the athlete-side EXECUTION_STATUS_COLOR.
+
+  Coach can now see at a glance: today's prescription + how yesterday
+  landed against plan. The "did it hit?" feedback loop that was previously
+  athlete-only.
+
+  ### Prompt S — One-click regenerate from drift card
+
+  TodayView's v9.94 adaptation card had a `REGENERATE PLAN →` button
+  that just navigated to the PLAN tab; the athlete then had to manually
+  re-pick a goal and click GENERATE. Now:
+
+  - Button calls `buildStarterPlan(seedData, today, lang, log)` directly
+    with `seedData` reconstructed from `profile` + the existing plan's
+    parameters (`profile.goal`, `profile.primarySport`, `plan.weeks.length`,
+    `profile.raceDate`)
+  - v9.97 smart-CTL seed kicks in via the `log` arg — the new plan is
+    anchored on the athlete's *current* fitness, not the 20-CTL floor
+    from when they onboarded
+  - Writes to `localStorage['sporeus-plan']`, fires
+    `emitEvent('plan_regenerated_from_drift', { from_action, from_pct, weeks })`
+    for the v9.99 timeline, then `window.location.reload()` to remount
+    every chain consumer with the fresh plan
+  - Falls back to legacy "open PLAN tab" navigation if `buildStarterPlan`
+    returns null (no goal in profile — defensive)
+  - Secondary "OPEN PLAN TAB" button kept for athletes who want to
+    re-pick a goal manually instead of preserving the current one
+
+  Telemetry note: the new `plan_regenerated_from_drift` event lands in
+  `attribution_events` and surfaces in the v9.99 personal timeline. The
+  2026-05-27 scheduled telemetry audit (routine
+  `trig_019Jbd5Agtaw364XbrMabtMS`) should see this event firing in
+  production usage.
+
+  ### Files
+
+  - `src/components/coachDashboard/SbAthletePanel.jsx` — imports
+    `getTodayPlannedSession`, `deriveSessionTargets`,
+    `computeSessionExecution`, `EXECUTION_STATUS_LABEL`,
+    `EXECUTION_STATUS_COLOR`; new chip row IIFE between profile chips
+    and metrics row
+  - `src/components/TodayView.jsx` — imports `buildStarterPlan`,
+    `emitEvent`; drift card's regenerate button replaced with the
+    in-place rebuild + reload flow
+
+  ### Tests
+
+  - 10084 / 10084 unchanged — all the new code is UI plumbing on top
+    of already-tested pure functions (`deriveSessionTargets`: 44 cases,
+    `computeSessionExecution`: 18, `buildStarterPlan`: 23,
+    `getTodayPlannedSession`: tested in intelligence)
+  - Lint clean, build clean
+
+  ### Coach surface audit progress
+
+  | Chain link | Pre-v9.101 | Post-v9.101 |
+  |---|---|---|
+  | 4. PHYSIOLOGY → DAILY ANSWER | ✗ | ✓ |
+  | 6. DAILY ANSWER → EXECUTION | ✗ | ✓ |
+  | 7. EXECUTION → ADAPTATION | ⚠ static | ⚠ static (Prompt R, v9.102) |
+
+  Two of three audit-identified coach gaps closed; the third
+  (computePlanDrift on coach side + "message athlete" CTA) is Prompt R,
+  scheduled for v9.102.
+
+---
+
 ## v9.100.0 — 2026-05-14 — Mission 1 patch: swimmer CSS onboarding capture + sanitizer fix
 
   A latent leak surfaced during a "what should we polish next?" sweep:

@@ -24,6 +24,8 @@ import { computeSessionExecution, EXECUTION_STATUS_LABEL, EXECUTION_STATUS_COLOR
 import { deriveSessionTargets } from '../lib/athlete/derivedSessionTargets.js'
 import { buildDailyRecommendation } from '../lib/athlete/dailyRecommendation.js'
 import { computePlanDrift } from '../lib/athlete/planAdaptation.js'
+import { buildStarterPlan } from '../lib/plan/starterPlan.js'
+import { emitEvent } from '../lib/attribution.js'
 
 const WellnessSparkline = lazy(() => import('./charts/WellnessSparkline.jsx'))
 
@@ -1534,9 +1536,57 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
               </div>
             )}
             {drift.action === 'regenerate' && (
-              <button onClick={() => setTab('plan')} style={btn(ORANGE)}>
-                {lang === 'tr' ? 'PLANI YENİDEN OLUŞTUR →' : 'REGENERATE PLAN →'}
-              </button>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {/* v9.101.0 (Prompt S) — One-click in-place regenerate. Was:
+                    navigate to PLAN tab + user manually clicks GENERATE. Now:
+                    rebuild the plan from current log-anchored CTL (v9.97
+                    smart-CTL seed) and overwrite localStorage. The user stays
+                    on TODAY and the drift card collapses next render. */}
+                <button
+                  onClick={() => {
+                    // Reconstruct onboarding-shape data from current profile
+                    // and the existing plan's parameters.
+                    const seedData = {
+                      goal:         profile?.goal || plan?.goal || 'General Fitness',
+                      sport:        profile?.primarySport || profile?.sport || null,
+                      primarySport: profile?.primarySport || profile?.sport || null,
+                      athleteLevel: profile?.athleteLevel || profile?.level || 'intermediate',
+                      trainDays:    Number(profile?.trainDays) || 5,
+                      weeks:        Array.isArray(plan?.weeks) ? plan.weeks.length : 12,
+                      raceDate:     profile?.raceDate || profile?.nextRaceDate || undefined,
+                    }
+                    const next = buildStarterPlan(seedData, today, lang, log)
+                    if (!next) {
+                      // Fall back to legacy nav if the rebuild can't succeed
+                      setTab('plan')
+                      return
+                    }
+                    try {
+                      localStorage.setItem('sporeus-plan', JSON.stringify(next))
+                      emitEvent('plan_regenerated_from_drift', {
+                        from_action: drift.action,
+                        from_pct:    drift.avgPct,
+                        weeks:       next.weeks?.length || 0,
+                      })
+                      // Force a remount so TodayView's useLocalStorage picks
+                      // up the new plan. Reload is the simplest reliable path.
+                      window.location.reload()
+                    } catch (e) {
+                      logger.warn('plan regenerate failed:', e?.message)
+                      setTab('plan')
+                    }
+                  }}
+                  style={btn(ORANGE)}
+                >
+                  {lang === 'tr' ? '↻ MEVCUT KONDISYONDAN YENİDEN OLUŞTUR' : '↻ REGENERATE FROM CURRENT FITNESS'}
+                </button>
+                <button
+                  onClick={() => setTab('plan')}
+                  style={btn('transparent', '#888')}
+                >
+                  {lang === 'tr' ? 'PLAN SEKMESİNE GİT' : 'OPEN PLAN TAB'}
+                </button>
+              </div>
             )}
           </div>
         )

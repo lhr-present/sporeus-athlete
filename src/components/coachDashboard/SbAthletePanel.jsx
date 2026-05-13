@@ -8,6 +8,10 @@ import { computeCompliance } from './helpers.jsx'
 import { planSignature, isDuplicatePlanSend, recordPlanSend } from '../../lib/coachPlanDedup.js'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { announce } from '../../lib/a11y/announcer.js'
+// v9.101.0 — Mission 1 chain extension to coach surface
+import { getTodayPlannedSession } from '../../lib/intelligence.js'
+import { deriveSessionTargets } from '../../lib/athlete/derivedSessionTargets.js'
+import { computeSessionExecution, EXECUTION_STATUS_LABEL, EXECUTION_STATUS_COLOR } from '../../lib/athlete/sessionExecution.js'
 
 // ─── SbAthletePanel — expanded detail for a live (Supabase) athlete ──────────
 const PLAN_GOALS_COACH = ['5K','10K','Half Marathon','Marathon','Cycling Event','General Fitness','Triathlon']
@@ -197,6 +201,89 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
                     <span style={{ fontWeight:700 }}>{c.val}</span>
                   </span>
                 ))}
+              </div>
+            )
+          })()}
+
+          {/* v9.101.0 (Prompt P) — Today's session derived target + last-session
+              execution status. Surfaces the v9.91 / v9.98 / v9.89 Mission 1
+              chain to the coach side. Only renders when there's an active
+              plan AND physiology is set; otherwise stays out of the way. */}
+          {(() => {
+            const today = new Date().toISOString().slice(0, 10)
+            const profile = data?.profile || {}
+            const log = data?.log || []
+            // Convert coach_plans week shape (which holds plan.start_date /
+            // plan.weeks JSON) into the shape getTodayPlannedSession expects
+            // ({ generatedAt, weeks }). start_date is on activePlan; weeks
+            // is the same JSON array.
+            const planForLookup = activePlan ? {
+              generatedAt: activePlan.start_date,
+              weeks: Array.isArray(activePlan.weeks) ? activePlan.weeks : [],
+            } : null
+            const planned = planForLookup ? getTodayPlannedSession(planForLookup, today) : null
+            const derived = planned ? deriveSessionTargets(planned, profile) : null
+
+            // Last logged session for execution snapshot
+            const sorted = [...log].sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+            const lastLog = sorted[0] || null
+            // Need a planned session for the same date as lastLog to compute execution
+            const lastPlanned = (planForLookup && lastLog?.date) ? getTodayPlannedSession(planForLookup, lastLog.date) : null
+            const exec = (lastPlanned && lastLog) ? computeSessionExecution(lastPlanned, lastLog) : null
+
+            if (!derived?.paceTarget && !derived?.powerTarget && !exec) return null
+            const COL_GREEN = '#5bc25b'
+            const COL_AMBER = '#f5c542'
+            return (
+              <div style={{
+                display:'flex', gap:'14px', flexWrap:'wrap',
+                marginBottom:'10px', paddingBottom:'8px',
+                borderBottom:'1px dashed #1e1e1e',
+              }}>
+                {derived?.paceTarget && (
+                  <span style={{ ...S.mono, fontSize:'10px', color:'#bbb' }}>
+                    <span style={{ color:'#555', letterSpacing:'0.04em' }}>{lang === 'tr' ? 'BUGÜN · TEMPO' : 'TODAY · PACE'}</span>{' '}
+                    <span style={{ fontWeight:700, color: COL_GREEN }}>{derived.paceTarget}</span>
+                  </span>
+                )}
+                {derived?.powerTarget && (
+                  <span style={{ ...S.mono, fontSize:'10px', color:'#bbb' }}>
+                    <span style={{ color:'#555', letterSpacing:'0.04em' }}>{lang === 'tr' ? 'BUGÜN · GÜÇ' : 'TODAY · POWER'}</span>{' '}
+                    <span style={{ fontWeight:700, color: COL_GREEN }}>{derived.powerTarget}</span>
+                  </span>
+                )}
+                {planned && !derived?.paceTarget && !derived?.powerTarget && (
+                  <span style={{ ...S.mono, fontSize:'10px', color:'#bbb' }}>
+                    <span style={{ color:'#555', letterSpacing:'0.04em' }}>{lang === 'tr' ? 'BUGÜN' : 'TODAY'}</span>{' '}
+                    <span style={{ fontWeight:700 }}>{planned.type}</span>
+                    <span style={{ color:'#666' }}> · {planned.duration}min · {planned.zone}</span>
+                  </span>
+                )}
+                {exec && (() => {
+                  // v9.101.0 (Prompt Q) — Last-session execution status badge.
+                  const c = EXECUTION_STATUS_COLOR[exec.status] || COL_AMBER
+                  const lbl = EXECUTION_STATUS_LABEL[exec.status]?.[lang]
+                            || EXECUTION_STATUS_LABEL[exec.status]?.en
+                            || exec.status
+                  return (
+                    <span style={{ ...S.mono, fontSize:'10px', color:'#bbb' }}>
+                      <span style={{ color:'#555', letterSpacing:'0.04em' }}>
+                        {lang === 'tr' ? 'SON · İCRA' : 'LAST · EXEC'}
+                      </span>{' '}
+                      <span style={{ fontWeight:700, color:c }}>
+                        {exec.duration.logged}m/{exec.duration.planned}m
+                      </span>
+                      <span style={{
+                        marginLeft:'4px', padding:'1px 4px',
+                        background:`${c}22`, border:`1px solid ${c}66`,
+                        borderRadius:'2px', fontSize:'8px',
+                        color:c, fontWeight:700, letterSpacing:'0.06em',
+                      }}>
+                        {String(lbl).toUpperCase()}
+                      </span>
+                    </span>
+                  )
+                })()}
               </div>
             )
           })()}
