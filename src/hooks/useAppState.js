@@ -357,7 +357,10 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
       // writes it before navigation, so TodayView mounts with a real chain.
       let landingTab = data.raceDate ? 'plan' : 'zones'
       try {
-        const starter = buildStarterPlan(data, undefined, lang)
+        // v9.97.0 (Prompt I) — pass log so currentCTL anchors on real history
+        // when the athlete onboarded after a Strava import. New users with
+        // empty logs still floor at 20 (matches the prior hardcoded value).
+        const starter = buildStarterPlan(data, undefined, lang, log)
         if (starter) {
           localStorage.setItem('sporeus-plan', JSON.stringify(starter))
           // With a plan in localStorage, TodayView's first mount picks it up.

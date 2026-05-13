@@ -479,9 +479,23 @@ describe('sportSpecificLabel', () => {
     expect(sportSpecificLabel('tempo', null, 'tr')).toBe(SESSION_INTENTS.tempo.tr)
   })
 
-  it('falls back to generic when sport has no mapping (e.g., Triathlon)', () => {
-    expect(sportSpecificLabel('endurance', 'Triathlon', 'en')).toBe(SESSION_INTENTS.endurance.en)
-    expect(sportSpecificLabel('vo2', 'Rowing', 'en')).toBe(SESSION_INTENTS.vo2.en)
+  it('Triathlon labels (v9.97.0) are generic single-discipline-neutral', () => {
+    expect(sportSpecificLabel('endurance', 'Triathlon', 'en')).toBe('Long session')
+    expect(sportSpecificLabel('endurance', 'Triathlon', 'tr')).toBe('Uzun antrenman')
+    expect(sportSpecificLabel('vo2', 'Triathlon', 'en')).toBe('Intervals')
+    expect(sportSpecificLabel('test', 'Triathlon', 'tr')).toBe('Form testi')
+  })
+
+  it('Rowing labels (v9.97.0) use rowing-specific terminology (2k test)', () => {
+    expect(sportSpecificLabel('endurance', 'Rowing', 'en')).toBe('Long row')
+    expect(sportSpecificLabel('test', 'Rowing', 'en')).toBe('2k test')
+    expect(sportSpecificLabel('tempo', 'Rowing', 'tr')).toBe('Sabit tempo kürek')
+  })
+
+  it('falls back to generic when sport has no mapping (Hybrid / Other / unknown)', () => {
+    expect(sportSpecificLabel('endurance', 'Hybrid', 'en')).toBe(SESSION_INTENTS.endurance.en)
+    expect(sportSpecificLabel('vo2', 'Other', 'en')).toBe(SESSION_INTENTS.vo2.en)
+    expect(sportSpecificLabel('tempo', 'NotARealSport', 'en')).toBe(SESSION_INTENTS.tempo.en)
   })
 
   it('falls back to generic when intent is unknown for known sport', () => {
@@ -493,9 +507,9 @@ describe('sportSpecificLabel', () => {
     expect(sportSpecificLabel('madeUpIntent', 'Running', 'en')).toBe('madeUpIntent')
   })
 
-  it('SPORT_INTENT_LABELS has every endurance-mapped intent for all 3 sports', () => {
+  it('SPORT_INTENT_LABELS has every endurance-mapped intent for all 5 sports (v9.97.0: +Triathlon, +Rowing)', () => {
     const intents = ['endurance', 'tempo', 'vo2', 'recovery', 'test']
-    for (const sport of ['Running', 'Cycling', 'Swimming']) {
+    for (const sport of ['Running', 'Cycling', 'Swimming', 'Triathlon', 'Rowing']) {
       for (const intent of intents) {
         const lbl = SPORT_INTENT_LABELS[sport][intent]
         expect(lbl).toBeTruthy()

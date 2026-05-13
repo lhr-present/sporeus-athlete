@@ -148,4 +148,48 @@ describe('buildStarterPlan', () => {
     const out = buildStarterPlan(data, TODAY)
     expect(out.primarySport).toBe('Cycling')
   })
+
+  // ── v9.97.0 (Prompt I) — currentCTL anchored on log when available ──────
+  it('empty log → currentCTL floors at 20 (matches v9.95 behavior)', () => {
+    const data = { goal: '5K', sport: 'Running' }
+    // We can't observe currentCTL directly from the plan output (it's internal
+    // to generatePlan), but the plan's first-week weeklyTSS should match the
+    // 20-CTL baseline. Compare against a no-log call to ensure they match.
+    const noLog = buildStarterPlan(data, TODAY)
+    const emptyLog = buildStarterPlan(data, TODAY, 'en', [])
+    expect(emptyLog.weeks[0].tss).toBe(noLog.weeks[0].tss)
+  })
+
+  it('log with recent training raises weekly TSS baseline above 20-CTL plan', () => {
+    // 14 days of 80 TSS → CTL settles ~30-35. Should produce a plan with
+    // strictly higher week-1 weeklyTSS than the empty-log baseline.
+    const data = { goal: '10K', sport: 'Running' }
+    const log = []
+    for (let i = 1; i <= 14; i++) {
+      const d = new Date(TODAY + 'T12:00:00Z')
+      d.setUTCDate(d.getUTCDate() - i)
+      log.push({ date: d.toISOString().slice(0, 10), type: 'Easy run', tss: 80 })
+    }
+    const baseline = buildStarterPlan(data, TODAY, 'en', [])
+    const withLog  = buildStarterPlan(data, TODAY, 'en', log)
+    expect(withLog.weeks[0].tss).toBeGreaterThan(baseline.weeks[0].tss)
+  })
+
+  it('log arg is optional (back-compat with pre-v9.97 callers)', () => {
+    // Calls without the log arg must still work
+    const out = buildStarterPlan({ goal: '5K', sport: 'Running' }, TODAY, 'en')
+    expect(out).not.toBeNull()
+    expect(out.weeks.length).toBeGreaterThan(0)
+  })
+
+  it('log array with non-numeric tss entries is handled (calcLoad-safe)', () => {
+    const data = { goal: '5K', sport: 'Running' }
+    const log = [
+      { date: '2026-05-12', type: 'Walk' },  // no tss
+      { date: '2026-05-11', tss: 'invalid' },
+    ]
+    const out = buildStarterPlan(data, TODAY, 'en', log)
+    expect(out).not.toBeNull()
+    // Should still produce a valid plan with the 20-CTL floor
+  })
 })

@@ -80,13 +80,22 @@ describe('buildDailyRecommendation', () => {
     expect(out.type).toBe('Long run')
   })
 
-  it('falls back to generic title when sport is unknown', () => {
+  it('Triathlon now produces sport-specific title (v9.97.0: was generic fallback)', () => {
     const out = buildDailyRecommendation({
       log:      [],
       recovery: [],
       profile:  { primarySport: 'Triathlon' },
     })
-    // Triathlon falls through to generic 'Endurance'
+    // v9.97.0 added Triathlon to SPORT_INTENT_LABELS — default 'endurance' intent → 'Long session'
+    expect(out.type).toBe('Long session')
+  })
+
+  it('falls back to generic title when sport has no mapping (Hybrid)', () => {
+    const out = buildDailyRecommendation({
+      log:      [],
+      recovery: [],
+      profile:  { primarySport: 'Hybrid' },
+    })
     expect(out.type).toBe('Endurance')
   })
 

@@ -14,6 +14,85 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.97.0 — 2026-05-13 — Mission 1 polish: Triathlon/Rowing labels + smart CTL seed + alignment property test
+
+  Three more v9.95 audit follow-throughs: label coverage for the two
+  remaining sports that had presets but generic labels, smarter starter-CTL
+  for athletes who imported Strava history before completing onboarding,
+  and a property test confirming the mid-week onboarding day-of-week
+  alignment is correct.
+
+  ### Prompt H — Triathlon + Rowing labels
+
+  `SPORT_INTENT_LABELS` had Running / Cycling / Swimming. Triathlon and
+  Rowing fell through to generic "Endurance / Tempo / VO2max" — usable but
+  degraded, especially since `PLAN_TEMPLATE_PRESETS` already includes a
+  `'2000m Row'` and `'Endurance Block'` rowing preset.
+
+  Added Triathlon (deliberately generic — "Long session" not "Long brick",
+  because a triathlete's long day might be a ride, swim, or run depending
+  on the block) and Rowing (sport-specific: "2k test" is the Concept2
+  standard performance metric). Full EN + TR pairs.
+
+  Triathlon endurance → "Long session" / "Uzun antrenman"
+  Rowing test → "2k test" / "2k testi"
+
+  ### Prompt I — `currentCTL` from log history
+
+  `buildStarterPlan` hardcoded `currentCTL: 20`. If an athlete connected
+  Strava during onboarding (step 3 logging method = strava) and the import
+  completed before they finished the wizard, their actual CTL might be
+  30-50, but the seed plan was scaled to a 20-CTL baseline. Result: v9.94's
+  adaptation card fired "drift / regenerate" on day one because actual
+  training load far exceeded the seed's expectation.
+
+  Now `buildStarterPlan` accepts an optional `log` array. Reads CTL via
+  `calcLoad` (same EWMA the rest of the app uses), floors at 20, defends
+  against NaN from malformed log entries (`Number.isFinite` check). New
+  user with empty log → currentCTL = 20 (unchanged behavior). User with
+  14 days × 80 TSS → CTL ≈ 30 → higher week-1 weeklyTSS.
+
+  `useAppState.finishOnboarding` passes `log` from `useData()` scope.
+
+  ### Prompt O — Mid-week onboarding alignment property test
+
+  `getTodayPlannedSession` (intelligence.js:711) uses
+  `(new Date(today + 'T12:00:00Z').getDay() + 6) % 7` to map calendar
+  day-of-week to template slot (Mon=0..Sun=6). Concern from the v9.95
+  audit: when an athlete onboards on a Wednesday with a 12-week plan,
+  does week-1 day-1 correctly render as Wed's prescription, or does the
+  function look up Mon's slot?
+
+  Property test confirms: **day-of-week alignment is correct**. Generated
+  100 random ISO dates across a 2-year window; for every date,
+  `getTodayPlannedSession(plan, date).dayIdx === expectedDayIdx(date)`.
+  Mon=0, Tue=1, ..., Sun=6 regardless of when the plan was generated.
+
+  Plus concrete fixtures: 7-day-of-week sweep, week-boundary day-7
+  rollover, future generation date returns null, past-end-of-plan returns
+  null.
+
+  This is INTENTIONAL behavior — Mon-anchored intent templates mean
+  "Monday is the easy day, Wednesday is the tempo slot" regardless of when
+  the athlete started. The property test documents and locks this.
+
+  ### Files
+
+  - `src/lib/plan/generatePlan.js` — Triathlon + Rowing entries in `SPORT_INTENT_LABELS`
+  - `src/lib/plan/starterPlan.js` — `log` arg + Number.isFinite guard
+  - `src/hooks/useAppState.js` — pass `log` to `buildStarterPlan`
+  - `src/lib/__tests__/plan/generatePlan.test.js` — Triathlon/Rowing label cases, 5-sport coverage matrix
+  - `src/lib/__tests__/plan/starterPlan.test.js` — 4 new cases for the log arg
+  - `src/lib/__tests__/athlete/dailyRecommendation.test.js` — updated Triathlon assertion (no longer falls back)
+  - `src/lib/__tests__/integration/midWeekOnboarding.test.js` (new, 6 cases incl. property test)
+
+  ### Tests
+
+  - 10041 → 10054 (+13)
+  - Lint clean, build clean
+
+---
+
 ## v9.96.0 — 2026-05-13 — Mission 1 polish: sport-filtered goals + chain integration guard
 
   Three follow-throughs from the v9.95 audit — known UX gaps and a safety

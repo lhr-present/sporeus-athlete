@@ -16,6 +16,7 @@
 
 import { generatePlan } from './generatePlan.js'
 import { adaptE13PlanToLegacy } from './adapter.js'
+import { calcLoad } from '../formulas.js'
 
 // ── Map onboarding goal strings → E13 generatePlan goal keys ─────────────────
 // Mirrors the (lossy) mapping that PlanGenerator.jsx:308 already does.
@@ -99,6 +100,9 @@ export function canSeedStarterPlan(onboardingData) {
  * @param {Object} onboardingData  - the object passed to onFinish()
  * @param {string} [todayISO]      - 'YYYY-MM-DD'; defaults to today UTC
  * @param {'en'|'tr'} [lang='en']
+ * @param {Array}  [log]           - optional training log; used to seed
+ *   currentCTL when the athlete onboarded *after* importing Strava history.
+ *   (v9.97.0 — Prompt I)
  * @returns {Object|null}
  *   Legacy plan shape:
  *   {
@@ -108,7 +112,7 @@ export function canSeedStarterPlan(onboardingData) {
  *   }
  *   or null when canSeedStarterPlan() is false / generatePlan returns null.
  */
-export function buildStarterPlan(onboardingData, todayISO, lang = 'en') {
+export function buildStarterPlan(onboardingData, todayISO, lang = 'en', log) {
   if (!canSeedStarterPlan(onboardingData)) return null
   const data = onboardingData
   const today = todayISO || new Date().toISOString().slice(0, 10)
@@ -120,10 +124,21 @@ export function buildStarterPlan(onboardingData, todayISO, lang = 'en') {
     ? Math.floor(Number(data.trainDays))
     : DEFAULT_AVAILABLE_DAYS
 
-  // currentCTL: new users have no log; start at a safe floor of 20 (matches
-  // PlanGenerator.jsx fallback). Established users importing past data still
-  // re-enter the PLAN tab to recompute from real CTL — this is a SEED only.
-  const currentCTL = 20
+  // v9.97.0 (Prompt I): currentCTL from log when available. Pre-v9.97 this
+  // was hardcoded to 20 — fine for blank-slate users, but if Strava history
+  // synced before onboarding finished, a 30-CTL athlete got a 20-CTL plan
+  // and v9.94's adaptation card fired "drift / regenerate" on day one
+  // because actual training load far exceeded the seed's expectation.
+  //
+  // Reads ctl via calcLoad (same EWMA the rest of the app uses), floors at
+  // 20 so brand-new users with empty logs still get a workable baseline.
+  // Defensive Number() coerces NaN from malformed log entries back to 0 so
+  // the Math.max floor still produces a finite currentCTL.
+  const rawCtl = Array.isArray(log) && log.length > 0
+    ? Number(calcLoad(log)?.ctl)
+    : 0
+  const ctlFromLog = Number.isFinite(rawCtl) ? rawCtl : 0
+  const currentCTL = Math.max(20, ctlFromLog)
 
   const adaptive = generatePlan({
     goal:          goalKey,

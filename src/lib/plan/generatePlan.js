@@ -60,6 +60,27 @@ export const SPORT_INTENT_LABELS = {
     recovery:  { en: 'Recovery swim',   tr: 'Toparlanma yüzme' },
     test:      { en: 'CSS test',        tr: 'CSS testi' },
   },
+  // v9.97.0 — Triathlon labels lean generic (the dominant discipline varies
+  // day-to-day for a triathlete; pinning a label to "brick" or "swim" would
+  // misrepresent most sessions). Brick-specific phrasing belongs in a future
+  // ride-then-run subtype, not here.
+  Triathlon: {
+    endurance: { en: 'Long session',    tr: 'Uzun antrenman' },
+    tempo:     { en: 'Tempo session',   tr: 'Tempo antrenmanı' },
+    vo2:       { en: 'Intervals',       tr: 'İntervaller' },
+    recovery:  { en: 'Recovery session',tr: 'Toparlanma seansı' },
+    test:      { en: 'Fitness test',    tr: 'Form testi' },
+  },
+  // v9.97.0 — Rowing labels. Used by the PLAN_TEMPLATE_PRESETS '2000m Row'
+  // and 'Endurance Block' presets (rowing sport). 2k test is the canonical
+  // rowing performance metric (Concept2 standard).
+  Rowing: {
+    endurance: { en: 'Long row',        tr: 'Uzun kürek' },
+    tempo:     { en: 'Steady-state row',tr: 'Sabit tempo kürek' },
+    vo2:       { en: 'AT pieces',       tr: 'AT parçaları' },
+    recovery:  { en: 'Recovery row',    tr: 'Toparlanma kürek' },
+    test:      { en: '2k test',         tr: '2k testi' },
+  },
 }
 
 /**
