@@ -12,6 +12,8 @@ import { announce } from '../../lib/a11y/announcer.js'
 import { getTodayPlannedSession } from '../../lib/intelligence.js'
 import { deriveSessionTargets } from '../../lib/athlete/derivedSessionTargets.js'
 import { computeSessionExecution, EXECUTION_STATUS_LABEL, EXECUTION_STATUS_COLOR } from '../../lib/athlete/sessionExecution.js'
+// v9.102.0 — Prompt R: drift card on coach side
+import { computePlanDrift } from '../../lib/athlete/planAdaptation.js'
 
 // ─── SbAthletePanel — expanded detail for a live (Supabase) athlete ──────────
 const PLAN_GOALS_COACH = ['5K','10K','Half Marathon','Marathon','Cycling Event','General Fitness','Triathlon']
@@ -340,13 +342,115 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
             </div>
           ) : null}
 
-          {/* Plan compliance row */}
+          {/* v9.102.0 (Prompt R) — TSS-based plan drift card. Replaces the
+              session-count compliance bar. Why: the old bar treated a logged
+              30-min easy ride as "done" against a planned 90-min long ride —
+              load-aware compliance is what the plan was actually budgeted on.
+              When drift.action === 'regenerate', the coach gets a one-click
+              MESSAGE ATHLETE button that opens the thread with the rationale
+              pre-filled, so the conversation starts with science not friction. */}
+          {activePlan && (() => {
+            const today = new Date().toISOString().slice(0, 10)
+            const planForDrift = {
+              generatedAt: activePlan.start_date,
+              weeks: Array.isArray(activePlan.weeks) ? activePlan.weeks : [],
+            }
+            const drift = computePlanDrift(planForDrift, data?.log || [], today)
+            if (!drift || drift.status === 'pending') return null
+            const RED = '#e03030', AMBER = '#f5c542', GREEN = '#5bc25b'
+            const statusColor =
+              drift.status === 'drift'    ? RED
+              : drift.status === 'under'  ? AMBER
+              : drift.status === 'over'   ? AMBER
+              : drift.status === 'on-track' ? GREEN
+              : '#888'
+            const pctLabel = `${Math.round(drift.avgPct * 100)}%`
+            return (
+              <div style={{
+                marginBottom:'12px', padding:'10px 12px',
+                background:'#0a0a0a', border:'1px solid #1e1e1e',
+                borderLeft:`3px solid ${statusColor}`, borderRadius:'4px',
+              }}>
+                <div style={{ display:'flex', alignItems:'baseline', gap:'10px', marginBottom:'8px', flexWrap:'wrap' }}>
+                  <span style={{ ...S.mono, fontSize:'9px', color:'#555', letterSpacing:'0.08em' }}>
+                    {lang === 'tr' ? 'PLAN ADAPTASYONU' : 'PLAN ADAPTATION'}
+                  </span>
+                  <span style={{ ...S.mono, fontSize:'18px', fontWeight:700, color: statusColor }}>{pctLabel}</span>
+                  <span style={{ ...S.mono, fontSize:'9px', color:'#888', letterSpacing:'0.06em' }}>
+                    {lang === 'tr'
+                      ? `${drift.weeksAnalyzed} HAFTA · TSS UYUMU`
+                      : `${drift.weeksAnalyzed} WEEKS · TSS COMPLIANCE`}
+                  </span>
+                </div>
+                <div style={{
+                  ...S.mono, fontSize:'10px', color:'#ccc', lineHeight:1.5,
+                  marginBottom:'8px', padding:'6px 8px',
+                  background:`${statusColor}0c`, borderLeft:`2px solid ${statusColor}`,
+                }}>
+                  {drift.recommendation[lang] || drift.recommendation.en}
+                </div>
+                {drift.citation && (
+                  <div style={{ ...S.mono, fontSize:'8px', color:'#666', fontStyle:'italic', marginBottom:'8px' }}>
+                    {drift.citation}
+                  </div>
+                )}
+                {drift.weeks.length > 0 && (
+                  <div style={{ display:'flex', gap:'3px', marginBottom:'8px', flexWrap:'wrap' }}>
+                    {drift.weeks.map(w => {
+                      const c =
+                        w.status === 'missed'   ? RED
+                        : w.status === 'under'  ? AMBER
+                        : w.status === 'over'   ? AMBER
+                        : w.status === 'on-track' ? GREEN
+                        : '#333'
+                      return (
+                        <div key={w.weekIdx}
+                          title={`W${w.weekIdx + 1}: ${w.actualTSS}/${w.plannedTSS} TSS (${Math.round(w.pct * 100)}%)`}
+                          style={{
+                            flex:'1 0 24px', minWidth:'24px', height:'16px',
+                            background:c + '33', border:`1px solid ${c}66`,
+                            borderRadius:'2px', display:'flex', alignItems:'center', justifyContent:'center',
+                            ...S.mono, fontSize:'8px', color:c, fontWeight:700,
+                          }}
+                        >
+                          W{w.weekIdx + 1}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+                {drift.action === 'regenerate' && (
+                  <button
+                    onClick={() => {
+                      const rationale = drift.recommendation[lang] || drift.recommendation.en
+                      const prefix = lang === 'tr'
+                        ? `${pctLabel} ortalama plan uyumu (${drift.weeksAnalyzed} hafta). `
+                        : `${pctLabel} avg plan compliance over ${drift.weeksAnalyzed} weeks. `
+                      setMsgDraft(prefix + rationale + (drift.citation ? `  — ${drift.citation}` : ''))
+                      setShowMessages(true)
+                      // Mark unread as read since coach is opening the thread
+                      const updated = messages.map(m => m.from === 'athlete' ? { ...m, read: true } : m)
+                      setMessages(updated); saveMsgs(updated)
+                    }}
+                    style={{
+                      ...S.mono, fontSize:'10px', fontWeight:700, padding:'5px 12px',
+                      background:'#ff6600', border:'none', color:'#fff',
+                      borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em',
+                    }}>
+                    ✉ {lang === 'tr' ? 'SPORCUYA MESAJ AT' : 'MESSAGE ATHLETE'}
+                  </button>
+                )}
+              </div>
+            )
+          })()}
+
+          {/* Legacy session-count compliance — collapsible secondary view */}
           {compliance && (
             <div style={{ marginBottom:'12px' }}>
               <button
                 onClick={() => setShowCompli(s => !s)}
                 style={{ display:'flex', alignItems:'center', gap:'8px', background:'transparent', border:'none', cursor:'pointer', padding:0 }}>
-                <div style={{ ...S.mono, fontSize:'9px', color:'#555', letterSpacing:'0.08em' }}>COMPLIANCE</div>
+                <div style={{ ...S.mono, fontSize:'9px', color:'#555', letterSpacing:'0.08em' }}>SESSIONS</div>
                 <div style={{ ...S.mono, fontSize:'13px', fontWeight:700, color: compliance.color }}>{compliance.pct}%</div>
                 <div style={{ flex:1, height:'5px', background:'#1a1a1a', borderRadius:'2px', minWidth:'60px', overflow:'hidden' }}>
                   <div style={{ height:'100%', width:`${compliance.pct}%`, background: compliance.color, borderRadius:'2px', transition:'width 0.4s' }}/>

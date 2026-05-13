@@ -14,6 +14,119 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.102.0 — 2026-05-14 — Mission 1 adaptation depth: coach drift card + auto-downgrade + soft taper
+
+  Prompts R + T + U from the v9.101 ship-order backlog. Pushes the
+  v9.94 adaptation loop deeper into both surfaces — coach side now
+  carries a TSS-based drift card with a pre-filled MESSAGE ATHLETE
+  action, and the athlete side auto-downgrades hard sessions on low
+  readiness instead of just warning. Adds a "Reduce Next Week" deload
+  button so the under-compliance case gets a remedy short of full
+  regenerate.
+
+  ### Prompt R — Coach drift card replaces static compliance bar
+
+  `SbAthletePanel` previously rendered a session-count compliance %
+  ("3 / 5 sessions done"). That metric treated a logged 30-min easy
+  ride as "done" against a planned 90-min long ride, hiding the load
+  gap the plan was actually budgeted on.
+
+  Replaced with a `computePlanDrift`-driven card (v9.94 module already
+  pure):
+  - Wraps `activePlan` `{ start_date, weeks }` → `{ generatedAt, weeks }`
+    using the same adapter pattern as Prompts P/Q
+  - Renders status, weeks-analyzed count, recommendation, citation,
+    per-week TSS-compliance sparkline — same shape the athlete sees on
+    TodayView Card 1b
+  - Adds **MESSAGE ATHLETE** button when `drift.action === 'regenerate'`:
+    opens the existing message thread, pre-fills `msgDraft` with
+    `"{pct}% avg plan compliance over {N} weeks. {rationale} — {citation}"`
+    (bilingual), and marks unread athlete messages as read
+  - Legacy session-count bar kept as collapsible secondary view
+    relabeled "SESSIONS"
+
+  Why coach-side now: every fortnight a coach manually computed
+  "is the load gap big enough to redesign?" by eye-balling sessions.
+  TSS drift is the correct metric — surfaced once at the top of the
+  athlete panel, with the conversation-starter button beside it.
+
+  ### Prompt T — Auto-downgrade hard sessions on low readiness
+
+  Pre-v9.102 the athlete saw the LOW-READINESS banner above a hard
+  session and had to mentally decide to swap. Plan-status data showed
+  a measurable gap between "saw warning" and "swapped session". With
+  this prompt the swap target is computed and rendered as the default
+  card, with the hard session tucked behind a disclosure.
+
+  Trigger: `isHardToday && (todayReadiness < 50 || sessionSwapFlag)`
+
+  Render:
+  - Green-rule "AUTO-DOWNGRADED · EVIDENCE-BASED" panel showing
+    `buildDailyRecommendation`'s `{ type, duration, zone, rpe, rationale }`
+  - Primary action **LOG DOWNGRADED SESSION** prefills logPrefill with
+    the easy session and switches to the log tab; emits
+    `session_downgrade_logged` telemetry `{ from_rpe, to_rpe, source }`
+  - Secondary action **SEE PLANNED SESSION** flips `showOriginalSession`
+    state to reveal the original hard session (type, phase, pace strip,
+    structure, notes, log buttons — everything 1047-1258 of the prior
+    block)
+  - Banners (readiness, race-week, sessionSwap) still render above so
+    context isn't lost when the athlete clicks to see the original
+  - Execution snapshot / tomorrow / contingency stay outside the
+    conditional and render unconditionally
+
+  Why not just keep the warning + hard session: the warning was passive.
+  Renders the easy session as primary so the path-of-least-resistance
+  is the right one. Athletes can still override; the override is one
+  click instead of a self-discipline tax.
+
+  ### Prompt U — Reduce Next Week button (soft taper)
+
+  Pre-v9.102 the drift card had a regenerate action for `action ===
+  'regenerate'` (drift >= 30% missed weeks / pct < 0.30) but NO action
+  for `action === 'reduce-next'` (avg 30-70% compliance). That left
+  under-performing athletes choosing between accepting an over-aggressive
+  plan or nuking + rebuilding it. Now they can soften the next block.
+
+  Added on TodayView Card 1b drift panel:
+  - **REDUCE NEXT WEEK BY 20%** button (amber) renders when
+    `drift.action === 'reduce-next'`
+  - Computes `currentWeekIdx` from `plan.generatedAt` + today
+  - Scales `plan.weeks[currentWeekIdx + 1].sessions[].tss *= 0.8`,
+    marks each touched session with `_deloaded: true` so future renders
+    can show provenance if needed
+  - Writes `sporeus-plan` to localStorage, emits `plan_deload_applied`
+    `{ from_pct, week_idx, scaling }`, reloads page
+  - Skips when there is no next week (last-week plan stays as-is)
+
+  Why 20%: Mujika 2003 (taper meta-analysis) — small load cuts in the
+  -10% to -25% range preserve fitness while restoring execution; the
+  full -41% taper is for race-prep specifically, not for compliance
+  recovery.
+
+  Why client-only state mutation: same pattern as Prompt S regenerate.
+  Plan is athlete-local; coach plans live in `coach_plans` and aren't
+  deloaded by this button (coaches use the Prompt R MESSAGE ATHLETE
+  flow instead). Pure additive.
+
+  ### Files touched
+
+  - `src/components/coachDashboard/SbAthletePanel.jsx` — drift card,
+    MESSAGE ATHLETE button, kept legacy compliance bar collapsible
+  - `src/components/TodayView.jsx` — `downgradeRec` memo,
+    `showOriginalSession` state, auto-downgrade card with
+    SEE PLANNED SESSION toggle wrapping the original session render
+    (type/phase/pace/structure/notes/log buttons), Reduce Next Week
+    button branch on drift card
+
+  Depends on: v9.94 (computePlanDrift), v9.93 (buildDailyRecommendation),
+  v9.91 (deriveSessionTargets), v9.95 (buildStarterPlan from log),
+  v9.101 (coach surface adapter + emitEvent telemetry).
+
+  Tests stay at 10,084 (additive UI; pure-function deps already covered).
+
+---
+
 ## v9.101.0 — 2026-05-14 — Mission 1 extension: coach view chain + one-click regenerate
 
   Prompts P + Q + S from the post-v9.100 backlog. Extends the Mission 1

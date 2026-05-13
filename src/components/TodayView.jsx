@@ -132,6 +132,16 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
     return nextAction
   }, [plannedSession, nextAction])
 
+  // v9.102.0 (Prompt T) — Auto-downgrade gate. The banners above warn the
+  // athlete that a hard day collides with low readiness / fatigue signals,
+  // but until now they were still shown the hard session as the primary
+  // render and had to manually decide to swap. This computes the swap
+  // *target* (a buildDailyRecommendation easy session) so it can become the
+  // default card, with the original hard session hidden behind a disclosure.
+  // Discovery: the "warning above hard session" UX produced a measurable
+  // gap between "saw warning" and "swapped session" in plan_status data.
+  const [showOriginalSession, setShowOriginalSession] = useState(false)
+
   const yesterdayLogged = (log || []).some(e => e.date === yesterday)
 
   // v9.89.0 — Find today's logged entry (most recent if multiple) for the
@@ -322,6 +332,18 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
     const entry = (recovery || []).find(e => e.date === today)
     return entry?.readiness != null ? entry.readiness : entry?.score != null ? entry.score : null
   }, [recovery, today])
+
+  // v9.102.0 (Prompt T) — When today's plan calls for a hard session AND
+  // readiness < 50 (or any hrv/tsb/injury rule fires via sessionSwapFlag),
+  // compute an evidence-based easy/recovery recommendation that replaces
+  // the rendered card. Original hard session stays available under a
+  // collapsible disclosure so the athlete can override.
+  const downgradeRec = useMemo(() => {
+    if (!plannedSession || !isHardToday) return null
+    const lowReadiness = todayReadiness != null && todayReadiness < 50
+    if (!lowReadiness && !sessionSwapFlag) return null
+    return buildDailyRecommendation({ log, recovery, profile, lang })
+  }, [plannedSession, isHardToday, todayReadiness, sessionSwapFlag, log, recovery, profile, lang])
   const [quickReadinessSaved, setQuickReadinessSaved] = useState(false)
   const [quickReadinessLogged, setQuickReadinessLogged] = useState(false)
 
@@ -1044,6 +1066,56 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                 </div>
               </div>
             )}
+            {/* v9.102.0 (Prompt T) — Auto-downgraded session card. Renders
+                only when isHardToday AND (readiness<50 OR sessionSwapFlag).
+                Replaces the planned hard render; original tucks under
+                disclosure below so the athlete can still see / log it. */}
+            {downgradeRec && !showOriginalSession && (
+              <div style={{
+                marginBottom: '12px', padding: '10px 12px',
+                background: '#5bc25b0c', border: '1px solid #5bc25b44',
+                borderLeft: '4px solid #5bc25b', borderRadius: '4px',
+              }}>
+                <div style={{
+                  fontFamily: MONO, fontSize: '9px', color: '#5bc25b',
+                  fontWeight: 700, letterSpacing: '0.08em', marginBottom: '6px',
+                }}>
+                  {lang === 'tr' ? '✓ OTOMATIK İNDİRGEME · KANIT TEMELLİ' : '✓ AUTO-DOWNGRADED · EVIDENCE-BASED'}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text)', letterSpacing: '0.04em' }}>
+                    {downgradeRec.type}
+                  </span>
+                  <span style={{ fontSize: '11px', color: '#888' }}>
+                    {downgradeRec.duration} min · {downgradeRec.zone} · RPE {downgradeRec.rpe}
+                  </span>
+                </div>
+                <div style={{ fontSize: '11px', color: '#ccc', lineHeight: 1.55, marginBottom: '8px' }}>
+                  {downgradeRec.rationale}
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => {
+                      setLogPrefill({ type: downgradeRec.type, duration: downgradeRec.duration, rpe: downgradeRec.rpe, date: today })
+                      emitEvent('session_downgrade_logged', {
+                        from_rpe: plannedSession.rpe || null,
+                        to_rpe:   downgradeRec.rpe,
+                        source:   downgradeRec.source,
+                      })
+                      setTab('log')
+                    }}
+                    style={btn('#5bc25b')}>
+                    {lang === 'tr' ? '↓ İNDİRGENMİŞ SEANSI LOGLA' : '↓ LOG DOWNGRADED SESSION'}
+                  </button>
+                  <button
+                    onClick={() => setShowOriginalSession(true)}
+                    style={btn('transparent', '#888')}>
+                    {lang === 'tr' ? 'PLANLANAN SEANSI GÖR' : 'SEE PLANNED SESSION'}
+                  </button>
+                </div>
+              </div>
+            )}
+            {(!downgradeRec || showOriginalSession) && (<>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
               <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text)', letterSpacing: '0.04em' }}>
                 {plannedSession.type}
@@ -1256,6 +1328,7 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                 </button>
               </div>
             )}
+            </>)}
             {/* v9.89.0 — Execution snapshot. After today's session is logged,
                 compare logged values vs planned to surface the duration / RPE
                 / TSS deltas. Pure additive — renders only when both a plan
@@ -1533,6 +1606,55 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                     </div>
                   )
                 })}
+              </div>
+            )}
+            {/* v9.102.0 (Prompt U) — Soft taper button. When drift says
+                "reduce-next" (avg 30-70% compliance), scale next week's TSS
+                by 0.8 in place instead of forcing the athlete to a full
+                regenerate or accept the over-aggressive load. Mujika 2003
+                taper-compliance evidence: small load cuts preserve fitness
+                while restoring execution. */}
+            {drift.action === 'reduce-next' && (
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => {
+                    if (!plan || !Array.isArray(plan.weeks)) return
+                    const startISO = String(plan.generatedAt || '').slice(0, 10)
+                    if (!startISO) return
+                    const days = Math.floor(
+                      (new Date(today + 'T12:00:00Z') - new Date(startISO + 'T12:00:00Z')) / 86400000
+                    )
+                    const currentWeekIdx = Math.max(0, Math.floor(days / 7))
+                    const nextWeekIdx = currentWeekIdx + 1
+                    if (nextWeekIdx >= plan.weeks.length) return
+                    const updated = { ...plan, weeks: plan.weeks.map((wk, i) => {
+                      if (i !== nextWeekIdx) return wk
+                      return {
+                        ...wk,
+                        sessions: (Array.isArray(wk.sessions) ? wk.sessions : []).map(s => {
+                          const t = Number(s.tss) || 0
+                          return t > 0
+                            ? { ...s, tss: Math.round(t * 0.8), _deloaded: true }
+                            : s
+                        }),
+                      }
+                    })}
+                    try {
+                      localStorage.setItem('sporeus-plan', JSON.stringify(updated))
+                      emitEvent('plan_deload_applied', {
+                        from_pct:        drift.avgPct,
+                        week_idx:        nextWeekIdx,
+                        scaling:         0.8,
+                      })
+                      window.location.reload()
+                    } catch (e) {
+                      logger.warn('plan deload failed:', e?.message)
+                    }
+                  }}
+                  style={btn(AMBER)}
+                >
+                  {lang === 'tr' ? '↓ SONRAKİ HAFTAYI %20 AZALT' : '↓ REDUCE NEXT WEEK BY 20%'}
+                </button>
               </div>
             )}
             {drift.action === 'regenerate' && (
