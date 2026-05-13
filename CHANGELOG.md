@@ -14,6 +14,107 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.91.0 — 2026-05-13 — Mission 1 chain: physiology → session pace/power
+
+  Prompt B from the Mission 1 connection plan. Closes the second-most
+  visible chain leak (after the target-distance collapse, which is
+  v9.92's target).
+
+  ### The leak
+  v9.84.0 added a pace-target strip to the TodayView session card:
+
+  > PACE · 4:30/km · ZONES · Z1 35m Z5 5m
+
+  But the strip is only visible when `plannedSession.paceTarget` is set.
+  The main Plan generator (`generatePlan.js` → `adaptE13PlanToLegacy()`
+  in `PlanGenerator.jsx`) produces sessions WITHOUT `paceTarget` — only
+  the elite-program path (`src/lib/athlete/eliteProgram.js`) sets it.
+  So users on the standard Plan saw an empty strip even after they
+  filled in `profile.threshold`. Physiology was set but never connected
+  to the daily answer.
+
+  ### The fix
+  New pure module `src/lib/athlete/derivedSessionTargets.js`:
+  - `deriveSessionPace(session, profile)` — for runners. Reads
+    `profile.threshold` (lactate-threshold pace, e.g. "4:30") and the
+    session's dominant zone (from `session.zone` OR by picking the
+    highest-intensity zone with >0 minutes in `session.zones`).
+    Applies Daniels (2014) / Friel (2012) zone-to-pace offsets:
+    - Z1 easy:      T + 60–90s/km
+    - Z2 marathon:  T + 20–35s/km
+    - Z3 tempo:     T + 8–15s/km
+    - Z4 threshold: T ± 5s
+    - Z5 VO2max:    T − 8–15s
+    - Z6 rep:       T − 18–30s
+  - `deriveSessionPower(session, profile)` — for cyclists. Reads
+    `profile.ftp` and applies Coggan zones (Z1 = 45–55% FTP, Z2 =
+    56–75%, Z3 = 76–90%, Z4 = 91–105%, Z5 = 106–120%, Z6 = 121–150%).
+  - `deriveSessionTargets(session, profile)` — convenience wrapper
+    returning `{ paceTarget, powerTarget }`; at most one non-null
+    depending on sport detection.
+
+  Sport detection: `profile.primarySport` containing `cycl`/`bike` OR
+  session type containing `bike|cycl|ride`. Otherwise treated as run.
+
+  ### Wired into TodayView
+  The v9.84 pace strip now uses:
+
+  ```js
+  const derived      = deriveSessionTargets(plannedSession, profile)
+  const paceDisplay  = plannedSession.paceTarget || derived.paceTarget
+  ```
+
+  Plan's explicit `paceTarget` still wins when set (preserves the
+  elite-program flow). When it's null but physiology is set, the
+  derived range appears with a tiny "from threshold" / "from FTP"
+  caption so the athlete knows the number is computed, not handed
+  down by the plan.
+
+  Cycling sessions show power range alongside pace (power takes
+  priority when both could exist; the helper returns null for pace
+  on cycling-flagged sessions).
+
+  ### Tests
+  25 new vitest cases in
+  `src/lib/__tests__/athlete/derivedSessionTargets.test.js`:
+  - Null/missing input handling (profile, session, threshold)
+  - Each Z1–Z6 pace offset for running
+  - Each Z1–Z5 power range for cycling
+  - Dominant-zone detection from `zones` object (Z5 wins over Z1)
+  - Fallback to lower zone when no high-intensity present
+  - Sport-detection paths (primarySport, type keywords)
+  - Seconds rollover (59→60 → "5:00–5:30" not "4:60")
+  - Case-insensitive zone match
+  - The convenience wrapper's sport-routing
+
+  Total tests: 9916 → 9941 (+25).
+
+  ### Mission 1 chain status after this ship
+
+  | Step | Status |
+  |---|---|
+  | TARGET (race, distance, date) | PARTIAL — distance collapsed to 'pr' in plan gen (Prompt A finding; v9.92 target) |
+  | PHYSIOLOGY (FTP / VO2max / threshold / age / weight) | **CONNECTED** — pace/power now derive from these |
+  | SCIENCE-BASED PLAN | PARTIAL — sport+distance ignored; v9.92 target |
+  | DAILY ANSWER (TodayView) | RICH — v9.84-v9.91 enrichments cover pace, power, zones, phase, notes, readiness, race-week, fueling, tomorrow, intervals |
+  | EXECUTION SNAPSHOT (post-log delta) | DONE — v9.89.0 |
+  | ADAPTATION (next session adjusts from execution) | NOT WIRED — Prompt D, future ship |
+
+  ### Files
+  - `package.json` (11.91.0)
+  - `CHANGELOG.md`
+  - `src/lib/athlete/derivedSessionTargets.js` (new, ~120 LOC)
+  - `src/lib/__tests__/athlete/derivedSessionTargets.test.js` (new, 25 cases)
+  - `src/components/TodayView.jsx` (import + IIFE replacing the pace-strip block)
+
+  Tests 9941/9941, lint clean, build clean, version-sync passes
+  (11.91.0 ↔ v9.91.0).
+
+  Depends on: v9.84.0 (pace-strip rendering foundation), v9.88.0
+  (dominantZone-like logic precedent in sessionStructure.js).
+
+---
+
 ## v9.90.0 — 2026-05-13 — Bug audit pass: auth, Strava, promise-rejection safety
 
   Ran two parallel diagnostic agents per user direction "check general

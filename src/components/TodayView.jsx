@@ -21,6 +21,7 @@ import { computeNextAction } from '../lib/nextAction.js'
 import { buildContingencyMap } from '../lib/athlete/eliteProgramSubstitutions.js'
 import { deriveSessionStructure } from '../lib/athlete/sessionStructure.js'
 import { computeSessionExecution, EXECUTION_STATUS_LABEL, EXECUTION_STATUS_COLOR } from '../lib/athlete/sessionExecution.js'
+import { deriveSessionTargets } from '../lib/athlete/derivedSessionTargets.js'
 
 const WellnessSparkline = lazy(() => import('./charts/WellnessSparkline.jsx'))
 
@@ -1067,8 +1068,19 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                 the athlete needs to actually execute the session: what pace,
                 which zones. Previously these were either buried in a
                 separate card or omitted entirely. Conditional render —
-                shown only when the plan provides this data. */}
-            {(plannedSession.paceTarget || plannedSession.hrTarget || (plannedSession.zones && Object.values(plannedSession.zones).some(v => v > 0))) && (
+                shown only when the plan provides this data.
+                v9.91.0 — Derive pace/power from profile.threshold + profile.ftp
+                when the plan doesn't carry an explicit paceTarget. The main
+                Plan generator emits sessions without paceTarget; only the
+                elite-program path sets it. Now both paths feed the strip. */}
+            {(() => {
+              const derived       = deriveSessionTargets(plannedSession, profile)
+              const paceDisplay   = plannedSession.paceTarget || derived.paceTarget
+              const powerDisplay  = derived.powerTarget
+              const hasPaceField  = paceDisplay || plannedSession.hrTarget || powerDisplay
+              const hasZoneField  = plannedSession.zones && Object.values(plannedSession.zones).some(v => v > 0)
+              if (!hasPaceField && !hasZoneField) return null
+              return (
               <div style={{
                 display: 'flex', gap: '14px', flexWrap: 'wrap',
                 fontSize: '10px', color: '#aaa',
@@ -1076,10 +1088,24 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                 background: 'rgba(255,102,0,0.04)', border: '1px solid #ff660033', borderRadius: '4px',
                 fontFamily: MONO, letterSpacing: '0.04em',
               }}>
-                {plannedSession.paceTarget && (
+                {paceDisplay && (
                   <span>
                     <span style={{ color: '#666' }}>{lang === 'tr' ? 'TEMPO' : 'PACE'} · </span>
-                    <span style={{ color: '#ff6600', fontWeight: 700 }}>{plannedSession.paceTarget}</span>
+                    <span style={{ color: '#ff6600', fontWeight: 700 }}>{paceDisplay}</span>
+                    {!plannedSession.paceTarget && derived.paceTarget && (
+                      <span style={{ color: '#444', fontSize: '8px', marginLeft: '4px' }}>
+                        ({lang === 'tr' ? 'eşikten' : 'from threshold'})
+                      </span>
+                    )}
+                  </span>
+                )}
+                {powerDisplay && (
+                  <span>
+                    <span style={{ color: '#666' }}>{lang === 'tr' ? 'GÜÇ' : 'POWER'} · </span>
+                    <span style={{ color: '#ff6600', fontWeight: 700 }}>{powerDisplay}</span>
+                    <span style={{ color: '#444', fontSize: '8px', marginLeft: '4px' }}>
+                      ({lang === 'tr' ? 'FTP\'den' : 'from FTP'})
+                    </span>
                   </span>
                 )}
                 {plannedSession.hrTarget && (
@@ -1088,7 +1114,7 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                     <span style={{ color: '#ff6600', fontWeight: 700 }}>{plannedSession.hrTarget}</span>
                   </span>
                 )}
-                {plannedSession.zones && Object.values(plannedSession.zones).some(v => v > 0) && (
+                {hasZoneField && (
                   <span>
                     <span style={{ color: '#666' }}>{lang === 'tr' ? 'BÖLGELER' : 'ZONES'} · </span>
                     {Object.entries(plannedSession.zones)
@@ -1102,7 +1128,8 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                   </span>
                 )}
               </div>
-            )}
+              )
+            })()}
             {plannedSession.description && (
               <p style={{ fontSize: '11px', color: '#888', lineHeight: 1.55, marginBottom: '12px' }}>
                 {plannedSession.description}
