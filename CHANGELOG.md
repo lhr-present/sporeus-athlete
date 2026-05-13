@@ -14,6 +14,107 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.99.0 — 2026-05-13 — Personal Mission-1 funnel timeline + coach surface audit
+
+  Prompt J (telemetry surfaced to the athlete) and Prompt N (coach
+  surface audit, research only).
+
+  ### Prompt J — Personal Mission-1 funnel timeline
+
+  `emitEvent()` (lib/attribution.js v9.95 added a `starter_plan_seeded`
+  event; earlier versions already emitted `signup_completed`,
+  `first_session_logged`, `first_week_completed`). Events POST to the
+  `attribution-log` edge function and land in the `attribution_events`
+  Supabase table (migration `20260430_attribution.sql`). Until now,
+  nothing in the UI consumed these — the data accumulated for no
+  observable purpose.
+
+  Scope check: the `attribution_summary` view (line 73 of the migration)
+  is service_role only. A cross-user admin dashboard ("X% of athletes
+  hit week-1 compliance >70%") would need server-side aggregation +
+  admin auth — out of scope for a self-serve PWA. **What's achievable
+  from the browser**: the user reading their own rows via
+  RLS-scoped query (line 42 of the migration scopes SELECT to
+  `auth.uid() = user_id`).
+
+  Shipped: a **personal Mission-1 funnel timeline** in the Profile tab.
+  Athletes see their own chronological progression:
+
+  ```
+  ● Signed up                    2026-05-13 · Account created
+  ● Starter plan seeded          2026-05-13 · Mission 1 chain activated
+  ○ First session logged         not yet
+  ○ First week complete          not yet                            2/4
+  ```
+
+  - Vertical timeline with a guide line and one row per milestone
+  - Completed milestones show a filled green dot + date + bilingual note
+  - Pending milestones show an empty dot + "not yet" / "henüz değil"
+  - Header counter (completed / total) — green when 4/4
+
+  ### Files (Prompt J)
+
+  - `src/lib/db/attributionEvents.js` (new) —
+    `getUserAttributionEvents(userId, limit)` Supabase fetcher,
+    `filterMissionTimelineEvents(events)` pure filter,
+    `MISSION_1_EVENTS` constant array
+  - `src/components/profile/MissionTimeline.jsx` (new, ~140 LOC) — React
+    component, loading state, error guard, hidden for guest users
+  - `src/components/Profile.jsx` — mounts `<MissionTimeline />` above
+    `<Achievements />`
+  - `src/lib/__tests__/db/attributionEvents.test.js` (new, 7 cases) —
+    pure-helper tests (filter behaviour, event-name allowlist contract)
+
+  ### Prompt N — Coach surface audit (research only, no code)
+
+  Audited `src/components/CoachDashboard.jsx` and `coach/*` for Mission-1
+  chain visibility. Findings:
+
+  | Chain link | Coach surface |
+  |---|---|
+  | 1. ONBOARDING → TARGET | ⚠ Not surfaced |
+  | 2. TARGET → PHYSIOLOGY | ⚠ Raw FTP/VO2 in profile chips; no zones |
+  | 3. TARGET → PLAN | ✓ Coach can generate + send plan |
+  | 4. PHYSIOLOGY → DAILY ANSWER | ✗ `deriveSessionTargets` not imported |
+  | 5. PLAN → DAILY ANSWER | ✗ `buildDailyRecommendation` not imported |
+  | 6. DAILY ANSWER → EXECUTION | ✗ `computeSessionExecution` not imported |
+  | 7. EXECUTION → ADAPTATION | ⚠ Static compliance %; `computePlanDrift` not imported |
+
+  Coach view has its OWN intelligence (CTL/TSB/ACWR, plan compliance %,
+  patterns, race brief) but is missing the operational daily-context
+  layer (today's targets, plan-vs-actual delta, adaptation drift signal).
+
+  Three concrete follow-ups identified (no code shipped — these are
+  candidates for v10.00.0+ if/when coach UX becomes a priority):
+  1. Surface `deriveSessionTargets` next to profile chips in coach view (60 min)
+  2. Expand "Last 5 sessions" to show `computeSessionExecution` delta (45 min)
+  3. Replace static compliance bar with `computePlanDrift` output + regenerate CTA (90 min)
+
+  Recommendation: skip a full coach Mission-1 view (creates two code
+  paths for the same science). Ship the three surgical inserts above
+  only if coach onboarding complaints surface.
+
+  ### Tests
+
+  - 10073 → 10080 (+7)
+  - Lint clean, build clean
+
+  ### Suggestion set status
+
+  All 10 follow-through prompts (F–O) from the v9.95 audit now shipped:
+  - F (trainDays default) — v9.96
+  - G (sport-filtered goals) — v9.96
+  - K (integration test) — v9.96
+  - H (Triathlon/Rowing labels) — v9.97
+  - I (smart CTL seed) — v9.97
+  - O (mid-week alignment property test) — v9.97
+  - L (page-refresh survival) — v9.98
+  - M (swim CSS pace) — v9.98
+  - J (Mission-1 timeline) — v9.99
+  - N (coach audit) — v9.99 (report only, no code)
+
+---
+
 ## v9.98.0 — 2026-05-13 — Mission 1 polish: swim CSS pace + page-refresh survival
 
   Two more v9.95 audit follow-throughs.

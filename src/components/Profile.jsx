@@ -27,6 +27,7 @@ import WeightHydration from './profile/WeightHydration.jsx'
 import BodyComp from './profile/BodyComp.jsx'
 import AthleteCard from './profile/AthleteCard.jsx'
 import CoachMessagesCard from './profile/CoachMessagesCard.jsx'
+import MissionTimeline from './profile/MissionTimeline.jsx'
 import Achievements from './Achievements.jsx'
 import AISettings from './profile/AISettings.jsx'
 import SportSelector from './profile/SportSelector.jsx'
@@ -691,6 +692,12 @@ export default function Profile({ log, authUser }) {
           </div>
         )
       })()}
+
+      {/* v9.99.0 — Personal Mission-1 funnel timeline. Reads attribution_events
+          via RLS-scoped Supabase query. Shows signup → starter-plan-seeded →
+          first-session → first-week milestones with the dates the user hit
+          each one. Hidden for guests. */}
+      <MissionTimeline authUser={authUser} />
 
       {/* Training milestones — logbook, not reward screen */}
       {log && log.length > 0 && (() => {
