@@ -13,7 +13,10 @@ import { getTodayPlannedSession } from '../../lib/intelligence.js'
 import { deriveSessionTargets } from '../../lib/athlete/derivedSessionTargets.js'
 import { computeSessionExecution, EXECUTION_STATUS_LABEL, EXECUTION_STATUS_COLOR } from '../../lib/athlete/sessionExecution.js'
 // v9.102.0 — Prompt R: drift card on coach side
-import { computePlanDrift } from '../../lib/athlete/planAdaptation.js'
+import { computePlanDrift, detectStalePlan } from '../../lib/athlete/planAdaptation.js'
+// v9.106.0 — Prompt II: coach-side diagnostic visibility
+import { detectGoalActivityMismatch } from '../../lib/athlete/goalActivityMismatch.js'
+import { calcLoad } from '../../lib/formulas.js'
 
 // ─── SbAthletePanel — expanded detail for a live (Supabase) athlete ──────────
 const PLAN_GOALS_COACH = ['5K','10K','Half Marathon','Marathon','Cycling Event','General Fitness','Triathlon']
@@ -42,6 +45,10 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
   const [activePlan,   setActivePlan]   = useState(null)   // most recent active plan for this athlete
   const [compliance,   setCompliance]   = useState(null)   // computeCompliance result
   const [showCompli,   setShowCompli]   = useState(false)  // expand compliance breakdown
+  // v9.106.0 (Prompt KK): count of plans pending athlete response.
+  // Surfaces a chip so coaches managing 10+ athletes can triage which
+  // ones haven't accepted/declined the plans they were sent.
+  const [pendingPlanCount, setPendingPlanCount] = useState(0)
   const [showWeekNotes, setShowWeekNotes] = useState(false)
   const [editingWeek,   setEditingWeek]   = useState(null)  // index of week being noted
   const [weekNoteDraft, setWeekNoteDraft] = useState('')
@@ -103,15 +110,19 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
       // v9.105.0 (Prompt BB): pull accepted_at/rejected_at so the coach
       // can see whether the athlete actually responded to the plan they
       // pushed. Pending plans are the highest-value follow-up signal.
+      // v9.106.0 (Prompt KK): widen to last 10 active plans so the
+      // pending-response counter has data, not just the latest plan.
       .select('id, name, goal, start_date, weeks, status, accepted_at, rejected_at')
       .eq('athlete_id', athleteId)
       .eq('status', 'active')
       .order('created_at', { ascending: false })
-      .limit(1)
+      .limit(10)
       .then(({ data: planRows }) => {
-        const plan = planRows?.[0] || null
+        const rows = planRows || []
+        const plan = rows[0] || null
         setActivePlan(plan)
         if (plan) setCompliance(computeCompliance(plan, data?.log || []))
+        setPendingPlanCount(rows.filter(r => !r.accepted_at && !r.rejected_at).length)
       })
   // eslint-disable-next-line react-hooks/exhaustive-deps -- data.log identity excluded; .length signals new entries
   }, [athleteId, data?.log?.length])
@@ -289,6 +300,65 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
                     </span>
                   )
                 })()}
+              </div>
+            )
+          })()}
+
+          {/* v9.106.0 (Prompt II) — Coach-side diagnostic flags. The same
+              detectors the athlete sees on TodayView (Card 1z mismatch,
+              Card 1a stale-plan). Read-only here: coach acts via the
+              existing MESSAGE ATHLETE button on the drift card. Renders
+              as compact chip row only when at least one flag fires. */}
+          {(() => {
+            const profile = data?.profile || {}
+            const log = data?.log || []
+            const today = new Date().toISOString().slice(0, 10)
+            const mismatch = detectGoalActivityMismatch(profile, log, { today })
+            // Build the same {generatedAt, weeks} adapter shape used by
+            // the v9.102 drift card so detectStalePlan reads the right CTL.
+            const planForLookup = activePlan ? {
+              generatedAt: activePlan.start_date,
+              weeks: Array.isArray(activePlan.weeks) ? activePlan.weeks : [],
+              seedCTL: activePlan.seedCTL,
+            } : null
+            const currentCTL = (calcLoad(log)?.ctl) || 0
+            const stale = planForLookup ? detectStalePlan(planForLookup, currentCTL, today) : null
+            const flags = []
+            if (mismatch?.mismatched) {
+              flags.push({
+                key: 'mismatch', color: '#e03030',
+                label: lang === 'tr' ? 'HEDEF ≠ ANTRENMAN' : 'GOAL ≠ TRAINING',
+                detail: `${String(mismatch.dominantSport).toUpperCase()} ${Math.round(mismatch.dominantShare * 100)}% · ${String(mismatch.goalSport).toUpperCase()} goal`,
+              })
+            }
+            if (stale?.stale) {
+              flags.push({
+                key: 'stale', color: '#f5c542',
+                label: lang === 'tr' ? `PLAN BAYAT (${stale.reason})` : `PLAN STALE (${stale.reason})`,
+                detail: `${Math.round(stale.ageDays / 7)}wk old${stale.ctlDriftPct != null ? ` · Δ${Math.round(stale.ctlDriftPct * 100)}%` : ''}`,
+              })
+            }
+            // v9.106.0 (Prompt KK) — pending-plan-response counter
+            if (pendingPlanCount > 0) {
+              flags.push({
+                key: 'pending', color: '#f5c542',
+                label: lang === 'tr' ? `${pendingPlanCount} PLAN BEKLİYOR` : `${pendingPlanCount} PLAN PENDING`,
+                detail: lang === 'tr' ? 'sporcunun yanıt vermesi bekleniyor' : 'awaiting athlete response',
+              })
+            }
+            if (flags.length === 0) return null
+            return (
+              <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', marginBottom:'10px', paddingBottom:'8px', borderBottom:'1px dashed #1e1e1e' }}>
+                {flags.map(f => (
+                  <span key={f.key} title={f.detail} style={{
+                    ...S.mono, fontSize:'9px', letterSpacing:'0.06em', fontWeight:700,
+                    padding:'3px 8px', background:`${f.color}18`, border:`1px solid ${f.color}66`,
+                    color:f.color, borderRadius:'3px',
+                  }}>
+                    ▲ {f.label}
+                    <span style={{ marginLeft:'6px', color:'#aaa', fontWeight:400 }}>{f.detail}</span>
+                  </span>
+                ))}
               </div>
             )
           })()}

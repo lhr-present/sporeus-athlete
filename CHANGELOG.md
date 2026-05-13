@@ -14,6 +14,84 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.106.0 — 2026-05-14 — Coach diagnostic visibility + plan history viewer + pending counter
+
+  Prompts II + JJ + KK. Three pure-UI follow-throughs that surface
+  data already in the system but not yet visible.
+
+  ### Prompt II — Coach-side mismatch + stale diagnostics
+
+  Pre-v9.106 only athletes saw the v9.103 Prompt AA stale-plan card
+  and v9.104 Prompt DD goal-mismatch card on TodayView. Coaches looking
+  at an athlete's panel saw drift compliance (v9.102 Prompt R) but
+  nothing about whether the goal/sport mix was off or the plan anchor
+  had drifted.
+
+  Now SbAthletePanel runs both detectors against the athlete's data
+  and `activePlan`:
+  - `detectGoalActivityMismatch(profile, log, { today })` — same fn the
+    athlete sees in Card 1z. Coaches see GOAL ≠ TRAINING chip with the
+    dominant logged sport + share %.
+  - `detectStalePlan(planForLookup, currentCTL, today)` — same fn the
+    athlete sees in Card 1a. planForLookup adapts the coach_plans
+    `{ start_date, weeks, seedCTL }` shape so it can be passed to a
+    detector built for the legacy `{ generatedAt }` shape.
+
+  Read-only on coach side — no recalibrate button. Coaches act via the
+  existing MESSAGE ATHLETE (v9.102 Prompt R) on the drift card. The
+  chip's `title` attribute carries the bilingual detail string so a
+  hover reveals "STRENGTH 78% · RUN goal" without taking screen space.
+
+  ### Prompt JJ — Plan history viewer
+
+  `recordPlanVersion` (v9.104 FF) has been writing to
+  `sporeus-plan-history` localStorage on every plan mutation, but no
+  UI surfaced the data. Athletes who regen'd then deloaded then
+  recalibrated had no way to inspect the lineage of their plan.
+
+  New `<details>` element in PlanGenerator below the plan title row:
+  - Reads `readPlanHistory()`. Renders nothing when empty.
+  - Title: "◇ PLAN HISTORY · N versions" (bilingual)
+  - Reverse-chronological list: most recent first, marked
+    `[versionTag]` + amber **CURRENT** badge + `Nwk · {goal}` +
+    locale timestamp
+  - Dashed-border separators between entries
+
+  Athletes can now answer "when did my plan last change?" without
+  opening DevTools, and coaches with shared dashboards (if rendered
+  in athlete-context) see the same trail.
+
+  ### Prompt KK — Pending plan-response counter
+
+  After v9.105 BB added accept/decline columns, individual plans show
+  a status pill. But a coach managing 10+ athletes still had to open
+  each panel to see if *that* athlete had multiple unresolved plans.
+
+  SbAthletePanel's `coach_plans` query widened from `.limit(1)` to
+  `.limit(10)`. Filter result for `!accepted_at && !rejected_at`,
+  store count in `pendingPlanCount` state. Render as a third
+  diagnostic chip in the same row as mismatch/stale chips: amber
+  "N PLAN PENDING · awaiting athlete response" (bilingual).
+
+  Only renders when count > 0 — no chip clutter for clean athletes.
+
+  ### Files touched
+
+  - `src/components/coachDashboard/SbAthletePanel.jsx` —
+    detectGoalActivityMismatch + detectStalePlan imports, diagnostic
+    chips row above metrics, pendingPlanCount state, .limit(10)
+  - `src/components/PlanGenerator.jsx` — readPlanHistory import,
+    `<details>` PLAN HISTORY section below title row
+
+  10,134 tests pass (no new tests — UI on top of v9.103/v9.104 pure-fn
+  detectors and v9.104 versionTracking, all already tested).
+
+  Depends on: v9.103 Prompt AA (detectStalePlan), v9.104 Prompt DD
+  (detectGoalActivityMismatch), v9.104 Prompt FF (recordPlanVersion +
+  readPlanHistory), v9.105 Prompt BB (accepted_at/rejected_at columns).
+
+---
+
 ## v9.105.0 — 2026-05-14 — Coach-athlete relational closures: plan acceptance loop + attention signal
 
   Prompts BB + HH from the v9.104 backlog. Two coach-facing features

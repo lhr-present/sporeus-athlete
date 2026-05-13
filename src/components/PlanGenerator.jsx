@@ -13,6 +13,7 @@ import { findOptimalWeekStructure } from '../lib/patterns.js'
 import { generatePlan as generateAdaptivePlan } from '../lib/plan/generatePlan.js'
 import { applyTaper, suggestTaper } from '../lib/plan/taperEngine.js'
 import { validatePlan } from '../lib/plan/planValidators.js'
+import { readPlanHistory } from '../lib/plan/versionTracking.js'
 import { announce } from '../lib/a11y/announcer.js'
 import { buildZwoWorkout, sessionToZwoWorkout, downloadZwoFile } from '../lib/integrations/zwoExport.js'
 import PlanTemplatePicker from './PlanTemplatePicker.jsx'
@@ -671,6 +672,48 @@ export default function PlanGenerator({ onLogSession }) {
                 </div>
               )}
             </div>
+
+            {/* v9.106.0 (Prompt JJ) — Plan history viewer. Reads
+                sporeus-plan-history (v9.104 FF) and surfaces the mutation
+                trail so athletes (and coaches viewing the same view) can
+                see when the current plan was regenerated / deloaded /
+                recalibrated. Collapsed by default — only shown when there
+                are entries to display. */}
+            {(() => {
+              const history = readPlanHistory()
+              if (!history || history.length === 0) return null
+              return (
+                <details style={{ marginTop:'4px', marginBottom:'8px' }}>
+                  <summary style={{ ...S.mono, fontSize:'10px', color:'#888', cursor:'pointer', letterSpacing:'0.06em', userSelect:'none' }}>
+                    ◇ {lang === 'tr' ? `PLAN GEÇMİŞİ · ${history.length} sürüm` : `PLAN HISTORY · ${history.length} versions`}
+                  </summary>
+                  <div style={{ marginTop:'6px', padding:'8px 10px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'4px' }}>
+                    {[...history].reverse().map((entry, i) => {
+                      const isCurrent = i === 0
+                      const when = entry.ts ? new Date(entry.ts).toLocaleString() : '—'
+                      return (
+                        <div key={`${entry.ts}-${i}`} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'3px 0', borderBottom: i < history.length - 1 ? '1px dashed var(--border)' : 'none' }}>
+                          <span style={{ ...S.mono, fontSize:'10px', fontWeight:700, color: isCurrent ? '#ff6600' : '#aaa', minWidth:'170px' }}>
+                            [{entry.versionTag}]
+                          </span>
+                          {isCurrent && (
+                            <span style={{ ...S.mono, fontSize:'8px', color:'#ff6600', background:'#ff660022', border:'1px solid #ff660044', borderRadius:'2px', padding:'1px 4px', letterSpacing:'0.06em' }}>
+                              CURRENT
+                            </span>
+                          )}
+                          <span style={{ ...S.mono, fontSize:'9px', color:'#666' }}>
+                            {entry.weeks}wk · {entry.goal || '—'}
+                          </span>
+                          <span style={{ ...S.mono, fontSize:'9px', color:'#555', marginLeft:'auto' }}>
+                            {when}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </details>
+              )
+            })()}
             <div style={{ display:'flex', gap:'4px', flexWrap:'wrap' }}>
               {plan.weeks.map((w,i) => {
                 const isThis = Boolean(plan) && i === thisWeekIdx
