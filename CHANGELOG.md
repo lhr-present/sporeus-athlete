@@ -14,6 +14,119 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.103.0 — 2026-05-14 — Mission 1 gap-closure: stale-plan detector + completion celebration + onboarding bail recovery
+
+  Prompts AA + CC + GG from the post-v9.102 backlog. Closes three
+  specific Mission 1 gaps: the load-anchor staleness blindspot, the
+  silent completion endpoint, and first-session abandonment loss.
+
+  ### Prompt AA — Stale plan detector
+
+  `computePlanDrift` (v9.94) measures execution compliance only. A plan
+  generated 8+ weeks ago, or whose seedCTL has been left behind by
+  rapid fitness gains, still reads "on-track" — every easy day really
+  is easy, every hard day really is "hard for the seed CTL" — even
+  though the absolute prescriptions are wrong. Detector returns:
+
+  ```
+  { stale, ageDays, ctlDriftPct, seedCTL, reason: 'age' | 'ctl' | 'both' | null, recommendation }
+  ```
+
+  Thresholds: ageDays ≥ 56 (8 weeks) OR ctlDriftPct > 0.40 (40%
+  absolute deviation from seed).
+
+  Wiring:
+  - `src/lib/plan/starterPlan.js` — emits `seedCTL: Math.round(currentCTL)`
+    on every starter plan so the detector has a comparison anchor
+    going forward. Pre-v9.103 plans have no seedCTL and so only
+    trigger the age-stale path (which is the right behavior — we
+    don't have an anchor to compare).
+  - `src/lib/athlete/planAdaptation.js` — new `detectStalePlan` pure
+    function. Bilingual recommendation strings cite the actual age in
+    weeks + drift percentage so the athlete knows *why* recalibrate.
+  - `src/components/TodayView.jsx` — new Card 1a between Today's
+    Session and Card 1b (drift). Renders only when `stale === true`.
+    Shows plan age, seed vs current CTL, drift Δ%. **↻ RECALIBRATE
+    PLAN** button: computes `remainingWeeks` from plan elapsed vs
+    plan length, rebuilds via `buildStarterPlan` with current log
+    (so new plan inherits log-anchored CTL via v9.97 smart-seed),
+    writes localStorage, emits `plan_recalibrated_age` telemetry
+    `{ reason, age_days, ctl_drift_pct, seed_ctl, new_ctl, weeks }`,
+    reloads.
+
+  Tests: 8 new cases on detectStalePlan covering age-only, ctl-only,
+  both, malformed inputs, asymmetric drift, edge-case 39% drift.
+
+  ### Prompt CC — Mission 1 completion celebration
+
+  `MissionTimeline` (v9.99) rendered 4 milestone pips and went silent
+  on the 4th one. Athletes completing Mission 1 saw no acknowledgment.
+  Behavioral psychology says: completion-moment celebration drives
+  Mission 2 engagement; silent endpoint kills the loop.
+
+  Now:
+  - Detects `completedCount === totalCount` (all 4 events present in
+    `attribution_events` for this user — RLS-scoped via v9.99 db helper)
+  - Computes `daysToComplete` = signup → last-milestone diff
+  - Renders green-rule header "✓ MISSION 1 COMPLETE · {N} days"
+    above the timeline with a "Next: set a Mission 2 goal" callout
+    and a `→ SET MISSION 2 GOAL` deep-link that scrolls to the
+    `#goal-editor` anchor in Profile.jsx
+  - Emits `mission_1_complete` event ONCE, gated on a
+    `sporeus-mission-1-celebrated-{uid}` localStorage key — won't
+    re-fire across reloads even though the card always renders when
+    all milestones present
+
+  `src/components/Profile.jsx` — added `id="goal-editor"` to the goal
+  field's wrapper so the scroll-to anchor works.
+
+  ### Prompt GG — Onboarding bail recovery
+
+  Pre-v9.103 abandonment was lossy: if the athlete closed the browser
+  at step 4 of 7, all input was gone. First-session abandonment is the
+  biggest leak in the Mission 1 funnel — every saved partial state is
+  a recoverable user.
+
+  Implementation:
+  - `src/components/Onboarding.jsx` — three helper functions
+    `readDraft / writeDraft / clearDraft` work against
+    `sporeus-onboarding-draft` localStorage key
+  - Mount: `readDraft()` runs once. If a draft exists and `age < 7d`,
+    initial state hydrates from `{ step, data }`. If expired, sweeps
+    + emits `onboarding_abandoned { age_ms, last_step }`
+  - Persistence: useEffect writes draft on every `step` or `data`
+    change. Skips step 0 / pre-resume to avoid writing empty state
+  - `emitEvent('onboarding_resumed', { resumed_at_step })` fires
+    once on mount when hydrated from draft
+  - All three exit paths clear the draft: real `finish()`,
+    `quickFinish()`, and Skip-all (`onFinish(null)`)
+  - New green "↻ PICKED UP WHERE YOU LEFT OFF" banner on the welcome
+    step when hydrated — includes a **START OVER** escape that clears
+    the draft + reloads
+
+  Test fix: `src/components/__tests__/Onboarding.test.jsx` added
+  `beforeEach(() => localStorage.clear())` — draft persistence makes
+  tests order-dependent without isolation. Cleared between each test.
+
+  ### Files touched
+
+  - `src/lib/plan/starterPlan.js` (seedCTL emit)
+  - `src/lib/athlete/planAdaptation.js` (detectStalePlan)
+  - `src/components/TodayView.jsx` (Card 1a stale-plan card)
+  - `src/components/profile/MissionTimeline.jsx` (completion header,
+    one-shot emit, scroll deep-link, hook-order fix)
+  - `src/components/Profile.jsx` (#goal-editor anchor)
+  - `src/components/Onboarding.jsx` (draft persistence + resume banner)
+  - `src/lib/__tests__/athlete/planAdaptation.test.js` (+8 cases)
+  - `src/components/__tests__/Onboarding.test.jsx` (beforeEach)
+  - `package.json` 11.103.0, CHANGELOG.md
+
+  10,093 tests pass (+9 vs v9.102). Depends on: v9.94
+  (computePlanDrift), v9.97 (smart-CTL seed), v9.99 (MissionTimeline,
+  attributionEvents helper).
+
+---
+
 ## v9.102.0 — 2026-05-14 — Mission 1 adaptation depth: coach drift card + auto-downgrade + soft taper
 
   Prompts R + T + U from the v9.101 ship-order backlog. Pushes the

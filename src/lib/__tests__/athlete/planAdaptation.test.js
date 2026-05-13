@@ -3,7 +3,7 @@
 // v9.94.0 — tests for the EXECUTION → ADAPTATION feedback loop.
 
 import { describe, it, expect } from 'vitest'
-import { computeWeekCompliance, computePlanDrift } from '../../athlete/planAdaptation.js'
+import { computeWeekCompliance, computePlanDrift, detectStalePlan } from '../../athlete/planAdaptation.js'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function makeWeek(plannedTssTotal, sessionCount = 4) {
@@ -252,5 +252,73 @@ describe('computePlanDrift — recommendation rules', () => {
     }
     const out = computePlanDrift(plan, log, TODAY)
     expect(out.weeksAnalyzed).toBe(1)  // only week2 counted (week1 = rest, week3 in-flight)
+  })
+})
+
+// ── v9.103.0 (Prompt AA) — detectStalePlan ──────────────────────────────────
+describe('detectStalePlan', () => {
+  it('returns null when plan has no generatedAt', () => {
+    expect(detectStalePlan({}, 40, TODAY)).toBeNull()
+    expect(detectStalePlan(null, 40, TODAY)).toBeNull()
+  })
+
+  it('returns not-stale for a fresh plan with stable CTL', () => {
+    const plan = { generatedAt: addDays(TODAY, -14), seedCTL: 40 }
+    const out = detectStalePlan(plan, 42, TODAY)
+    expect(out.stale).toBe(false)
+    expect(out.reason).toBeNull()
+    expect(out.ageDays).toBe(14)
+  })
+
+  it('flags age-stale when plan is older than 8 weeks', () => {
+    const plan = { generatedAt: addDays(TODAY, -63), seedCTL: 40 }
+    const out = detectStalePlan(plan, 42, TODAY)
+    expect(out.stale).toBe(true)
+    expect(out.reason).toBe('age')
+    expect(out.recommendation.en).toMatch(/9 weeks old/)
+  })
+
+  it('flags ctl-stale when fitness drifted >40% even on a young plan', () => {
+    const plan = { generatedAt: addDays(TODAY, -14), seedCTL: 25 }
+    const out = detectStalePlan(plan, 50, TODAY)  // 100% drift
+    expect(out.stale).toBe(true)
+    expect(out.reason).toBe('ctl')
+    expect(out.ctlDriftPct).toBeCloseTo(1.0, 1)
+  })
+
+  it('flags "both" when age and CTL both stale', () => {
+    const plan = { generatedAt: addDays(TODAY, -70), seedCTL: 20 }
+    const out = detectStalePlan(plan, 50, TODAY)
+    expect(out.stale).toBe(true)
+    expect(out.reason).toBe('both')
+  })
+
+  it('does not flag CTL drift when seedCTL is missing (returns not-stale on young plan)', () => {
+    const plan = { generatedAt: addDays(TODAY, -14) }
+    const out = detectStalePlan(plan, 50, TODAY)
+    expect(out.stale).toBe(false)
+    expect(out.ctlDriftPct).toBeNull()
+    expect(out.seedCTL).toBeNull()
+  })
+
+  it('tolerates malformed inputs', () => {
+    const plan = { generatedAt: addDays(TODAY, -14), seedCTL: 'bad' }
+    const out = detectStalePlan(plan, NaN, TODAY)
+    expect(out.stale).toBe(false)
+    expect(out.ctlDriftPct).toBeNull()
+  })
+
+  it('keeps drift signal asymmetric (CTL drop also flags)', () => {
+    // Athlete's CTL fell — plan now too hard
+    const plan = { generatedAt: addDays(TODAY, -14), seedCTL: 50 }
+    const out = detectStalePlan(plan, 25, TODAY)
+    expect(out.stale).toBe(true)
+    expect(out.reason).toBe('ctl')
+  })
+
+  it('39% drift is below threshold (just-under-edge)', () => {
+    const plan = { generatedAt: addDays(TODAY, -14), seedCTL: 40 }
+    const out = detectStalePlan(plan, 55.5, TODAY)  // 38.75% drift
+    expect(out.stale).toBe(false)
   })
 })

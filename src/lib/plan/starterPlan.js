@@ -161,6 +161,12 @@ export function buildStarterPlan(onboardingData, todayISO, lang = 'en', log) {
     primarySport:  data.sport || data.primarySport || null,
     weeks:         legacyWeeks,
     generatedAt:   today,
+    // v9.103.0 (Prompt AA): persist the CTL the plan was budgeted on so a
+    // stale-plan detector can compare it against current CTL. Without
+    // seedCTL the only signal we had was age, which underweighted athletes
+    // whose absolute load doubled mid-block (their drift card said
+    // "on-track" because *relative* compliance was fine).
+    seedCTL:       Math.round(currentCTL),
     level:         data.athleteLevel || data.level || 'Intermediate',
     hoursPerWeek:  Math.max(3, Math.round(availableDays * 1.5)),
     isAdaptive:    true,

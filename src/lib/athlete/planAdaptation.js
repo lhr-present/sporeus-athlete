@@ -257,3 +257,65 @@ export function computePlanDrift(plan, log, today) {
     citation:      rule.citation,
   }
 }
+
+// ── v9.103.0 (Prompt AA) — Stale plan detector ───────────────────────────────
+// computePlanDrift signals execution compliance. It says nothing about whether
+// the *anchor* (seedCTL, generatedAt) has gone stale. A plan generated 8 weeks
+// ago with seedCTL=25 may still show "on-track" compliance while the athlete's
+// actual CTL has climbed to 50 — meaning every "easy day" is genuinely easy
+// but every "hard day" no longer loads enough. This detector flags that.
+const STALE_THRESHOLDS = {
+  ageDaysWarn: 56,    // 8 weeks — covers a typical build block
+  ctlDriftPct: 0.40,  // 40% absolute CTL deviation from seed
+}
+
+/**
+ * @description Detect whether a plan's anchor (age / seedCTL) has drifted
+ *   enough to warrant recalibration. Pure function.
+ *
+ * @param {object} plan      - { generatedAt, seedCTL? }
+ * @param {number} currentCTL - calcLoad(log).ctl
+ * @param {string} [today]   - 'YYYY-MM-DD'
+ * @returns {{
+ *   stale: boolean,
+ *   ageDays: number,
+ *   ctlDriftPct: number | null,
+ *   seedCTL: number | null,
+ *   reason: 'age' | 'ctl' | 'both' | null,
+ *   recommendation: { en, tr },
+ * } | null}
+ */
+export function detectStalePlan(plan, currentCTL, today) {
+  if (!plan?.generatedAt) return null
+  const todayDate = today || new Date().toISOString().slice(0, 10)
+  const ageDays = dateDiffDays(String(plan.generatedAt).slice(0, 10), todayDate)
+  if (!Number.isFinite(ageDays) || ageDays < 0) return null
+
+  const seedCTL = Number.isFinite(Number(plan.seedCTL)) ? Number(plan.seedCTL) : null
+  const ctl = Number.isFinite(Number(currentCTL)) ? Number(currentCTL) : 0
+  // ctlDriftPct only meaningful when both sides are positive
+  const ctlDriftPct = (seedCTL > 0 && ctl > 0)
+    ? Math.abs(ctl - seedCTL) / seedCTL
+    : null
+
+  const ageStale = ageDays >= STALE_THRESHOLDS.ageDaysWarn
+  const ctlStale = ctlDriftPct != null && ctlDriftPct > STALE_THRESHOLDS.ctlDriftPct
+
+  if (!ageStale && !ctlStale) {
+    return { stale: false, ageDays, ctlDriftPct, seedCTL, reason: null, recommendation: null }
+  }
+
+  const reason = ageStale && ctlStale ? 'both' : ageStale ? 'age' : 'ctl'
+  const recommendation = reason === 'ctl' ? {
+    en: `Your fitness has shifted ${Math.round((ctlDriftPct || 0) * 100)}% since this plan was built. Recalibrating anchors targets to your current CTL.`,
+    tr: `Bu plan oluşturulduğundan beri kondisyonun %${Math.round((ctlDriftPct || 0) * 100)} değişti. Yeniden kalibre edersen hedefler güncel CTL'ne göre yeniden hesaplanır.`,
+  } : reason === 'age' ? {
+    en: `This plan is ${Math.round(ageDays / 7)} weeks old. Recalibrating reseeds it on your current fitness so the remaining weeks scale correctly.`,
+    tr: `Bu plan ${Math.round(ageDays / 7)} haftalık. Yeniden kalibre edersen kalan haftalar güncel kondisyonuna göre ölçeklenir.`,
+  } : {
+    en: `Plan is ${Math.round(ageDays / 7)} weeks old AND fitness has shifted ${Math.round((ctlDriftPct || 0) * 100)}%. Recalibration strongly recommended.`,
+    tr: `Plan ${Math.round(ageDays / 7)} haftalık VE kondisyonun %${Math.round((ctlDriftPct || 0) * 100)} değişti. Yeniden kalibrasyon önerilir.`,
+  }
+
+  return { stale: true, ageDays, ctlDriftPct, seedCTL, reason, recommendation }
+}

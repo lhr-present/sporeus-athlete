@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import OnboardingWizard from '../Onboarding.jsx'
@@ -10,6 +10,14 @@ describe('OnboardingWizard', () => {
     setLang:  vi.fn(),
     lang:     'en',
   }
+
+  // v9.103.0 — Onboarding now persists a draft to localStorage on every
+  // step change. Without isolating localStorage between tests, draft from
+  // one test hydrates the next render and breaks the "starts on welcome"
+  // assumption.
+  beforeEach(() => {
+    localStorage.clear()
+  })
 
   it('renders the welcome step (step 0) on mount', () => {
     render(<OnboardingWizard {...defaultProps} />)

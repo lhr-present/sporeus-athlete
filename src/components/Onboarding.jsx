@@ -1,6 +1,45 @@
 import { useEffect, useState } from 'react'
 import { goalsForSport } from '../lib/constants.js'
 import { autoFormatMmSs } from '../lib/format/mmss.js'
+import { emitEvent } from '../lib/attribution.js'
+import { logger } from '../lib/logger.js'
+
+// v9.103.0 (Prompt GG) — Bail recovery. Save partial state every step so
+// an athlete who closes the browser at step 4 of 7 doesn't have to
+// re-enter everything. Drafts expire after 7 days (treat as abandoned).
+const DRAFT_KEY = 'sporeus-onboarding-draft'
+const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000
+
+function readDraft() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!parsed?.savedAt || !parsed?.data) return null
+    const age = Date.now() - new Date(parsed.savedAt).getTime()
+    if (!Number.isFinite(age) || age < 0) return null
+    if (age > DRAFT_TTL_MS) {
+      // Sweep: log abandonment exactly once, then clear
+      try { emitEvent('onboarding_abandoned', { age_ms: age, last_step: parsed.step ?? 0 }) } catch { /* fail open */ }
+      localStorage.removeItem(DRAFT_KEY)
+      return null
+    }
+    return parsed
+  } catch (e) {
+    logger.warn('onboarding draft read failed:', e?.message)
+    return null
+  }
+}
+function writeDraft(step, data) {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ step, data, savedAt: new Date().toISOString() }))
+  } catch (e) {
+    logger.warn('onboarding draft write failed:', e?.message)
+  }
+}
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY) } catch { /* fail open */ }
+}
 
 // ── Rule-based plan preview (no API key required) ─────────────────────────────
 // v9.74.0 — Expanded from 3 to 5 tier buckets to match ATHLETE_LEVELS.
@@ -47,8 +86,12 @@ const LOGGING_METHODS = [
 ]
 
 export default function OnboardingWizard({ onFinish, setLang, lang }) {
-  const [step, setStep] = useState(0)
-  const [data, setData] = useState({
+  // v9.103.0 (Prompt GG) — Read draft once at mount. When present, hydrate
+  // both step + data so the athlete picks up where they left off. Emits
+  // onboarding_resumed once on hydrate (telemetry to measure recovery rate).
+  const initialDraft = readDraft()
+  const [step, setStep] = useState(initialDraft?.step ?? 0)
+  const [data, setData] = useState(initialDraft?.data ?? {
     // New fast-track fields
     purpose:'', loggingMethod:'manual',
     // Original detailed fields
@@ -68,6 +111,20 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
     // (see goalsForSport below) forces an explicit pick.
     goal:'', weeks:'', raceDate:'',
   })
+  const [resumed] = useState(!!initialDraft)
+  useEffect(() => {
+    if (resumed) {
+      try { emitEvent('onboarding_resumed', { resumed_at_step: initialDraft?.step ?? 0 }) } catch { /* fail open */ }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot on mount
+  }, [])
+  // Persist draft on every meaningful change (skip the welcome step
+  // so we don't write a draft when the user hasn't actually committed
+  // any input yet).
+  useEffect(() => {
+    if (step === 0 && !resumed) return
+    writeDraft(step, data)
+  }, [step, data, resumed])
   const set = (k,v) => setData(d=>({...d,[k]:v}))
   const sports = ['Running','Cycling','Triathlon','Swimming','Rowing','Other']
 
@@ -82,10 +139,13 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
     }
   }, [data.sport, data.goal])
 
-  const quickFinish = () => onFinish({
-    name:data.name || '', sport:data.sport, purpose:data.purpose,
-    loggingMethod:data.loggingMethod, quickStart:true,
-  })
+  const quickFinish = () => {
+    clearDraft()
+    onFinish({
+      name:data.name || '', sport:data.sport, purpose:data.purpose,
+      loggingMethod:data.loggingMethod, quickStart:true,
+    })
+  }
 
   const steps = [
     // ── 0: Welcome ─────────────────────────────────────────────────────────
@@ -403,6 +463,7 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
       if (sec < 40 || sec > 300) return undefined
       return sec
     })()
+    clearDraft()
     onFinish({
       name:data.name, age:data.age, gender:data.gender, sport:data.sport,
       purpose:data.purpose, loggingMethod:data.loggingMethod,
@@ -419,9 +480,43 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
       <div style={{ background:'var(--card)', borderRadius:'12px', padding:'32px', width:'100%', maxWidth:'480px', position:'relative' }}>
-        <button onClick={()=>onFinish(null)} style={{ position:'absolute', top:'16px', right:'16px', background:'none', border:'none', color:'#ccc', cursor:'pointer', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px' }}>
+        <button onClick={()=>{ clearDraft(); onFinish(null) }} style={{ position:'absolute', top:'16px', right:'16px', background:'none', border:'none', color:'#ccc', cursor:'pointer', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px' }}>
           Skip all →
         </button>
+
+        {/* v9.103.0 (Prompt GG) — Resume banner. Only shown on welcome step
+            when state was hydrated from draft. Lets athletes confirm they're
+            resuming, and provides a "start over" escape so they can clear
+            the draft and begin fresh without manually clearing localStorage. */}
+        {resumed && step === 0 && (
+          <div style={{
+            marginBottom:'18px', padding:'10px 14px',
+            background:'#5bc25b14', border:'1px solid #5bc25b66',
+            borderLeft:'4px solid #5bc25b', borderRadius:'4px',
+            fontFamily:"'IBM Plex Mono',monospace",
+          }}>
+            <div style={{ fontSize:'11px', color:'#5bc25b', fontWeight:700, letterSpacing:'0.08em', marginBottom:'4px' }}>
+              ↻ {lang === 'tr' ? 'ÖNCEKİ OTURUMUNU GERİ YÜKLEDİK' : 'PICKED UP WHERE YOU LEFT OFF'}
+            </div>
+            <div style={{ fontSize:'11px', color:'#ccc', lineHeight:1.5, marginBottom:'6px' }}>
+              {lang === 'tr'
+                ? 'Önceki bir oturumdan kayıtlı verilerin bulundu. İstersen baştan başlayabilirsin.'
+                : 'We found your inputs from a previous session. You can continue or start over.'}
+            </div>
+            <button
+              onClick={() => {
+                clearDraft()
+                window.location.reload()
+              }}
+              style={{
+                fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px',
+                padding:'4px 10px', background:'transparent', border:'1px solid #888',
+                color:'#888', borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em',
+              }}>
+              {lang === 'tr' ? 'BAŞTAN BAŞLA' : 'START OVER'}
+            </button>
+          </div>
+        )}
 
         {/* ── Progress bar ── */}
         <div style={{ marginBottom:'24px' }}>

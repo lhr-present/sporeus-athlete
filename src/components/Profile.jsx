@@ -171,7 +171,7 @@ export default function Profile({ log, authUser }) {
         <div style={S.cardTitle}>{t('profileTitle')}</div>
         <div style={S.row}>
           {FIELDS.map(f=>(
-            <div key={f.k} style={{ flex:'1 1 200px' }}>
+            <div key={f.k} style={{ flex:'1 1 200px' }} id={f.k === 'goal' ? 'goal-editor' : undefined}>
               <label style={S.label}>{t(f.lk)}</label>
               <input style={S.input} type={f.type||'text'} placeholder={f.ph}
                 title={f.title}

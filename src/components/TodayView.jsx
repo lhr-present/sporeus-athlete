@@ -23,7 +23,7 @@ import { deriveSessionStructure } from '../lib/athlete/sessionStructure.js'
 import { computeSessionExecution, EXECUTION_STATUS_LABEL, EXECUTION_STATUS_COLOR } from '../lib/athlete/sessionExecution.js'
 import { deriveSessionTargets } from '../lib/athlete/derivedSessionTargets.js'
 import { buildDailyRecommendation } from '../lib/athlete/dailyRecommendation.js'
-import { computePlanDrift } from '../lib/athlete/planAdaptation.js'
+import { computePlanDrift, detectStalePlan } from '../lib/athlete/planAdaptation.js'
 import { buildStarterPlan } from '../lib/plan/starterPlan.js'
 import { emitEvent } from '../lib/attribution.js'
 
@@ -1545,6 +1545,85 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
           </div>
         )}
       </div>
+
+      {/* ── Card 1a: Stale Plan Detector (v9.103.0 — Prompt AA) ──
+          computePlanDrift only sees execution drift. A plan that's 8+
+          weeks old or whose seedCTL has been left behind by current
+          fitness still says "on-track" while every prescribed target is
+          wrong in absolute terms. This card surfaces that. */}
+      {plan && (() => {
+        const stale = detectStalePlan(plan, todayCtl, today)
+        if (!stale?.stale) return null
+        return (
+          <div style={{ ...card, borderLeft: `4px solid ${AMBER}` }}>
+            <div style={cardTitle}>
+              {lang === 'tr' ? 'PLAN BAYAT ·  YENİDEN KALİBRE ET' : 'PLAN AGE WARNING · RECALIBRATE'}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '11px', color: '#888' }}>
+                {lang === 'tr' ? `Plan yaşı: ${Math.round(stale.ageDays / 7)} hafta` : `Plan age: ${Math.round(stale.ageDays / 7)} weeks`}
+              </span>
+              {stale.seedCTL != null && (
+                <span style={{ fontSize: '11px', color: '#888' }}>
+                  {lang === 'tr' ? `Seed CTL: ${stale.seedCTL}  → bugün: ${Math.round(todayCtl)}` : `Seed CTL: ${stale.seedCTL}  → today: ${Math.round(todayCtl)}`}
+                </span>
+              )}
+              {stale.ctlDriftPct != null && (
+                <span style={{ fontSize: '11px', color: AMBER, fontWeight: 700 }}>
+                  Δ {Math.round(stale.ctlDriftPct * 100)}%
+                </span>
+              )}
+            </div>
+            <div style={{
+              fontSize: '11px', color: '#ccc', lineHeight: 1.55, marginBottom: '10px',
+              padding: '8px 10px', background: `${AMBER}0c`, borderLeft: `2px solid ${AMBER}`,
+            }}>
+              {stale.recommendation[lang] || stale.recommendation.en}
+            </div>
+            <button
+              onClick={() => {
+                const remainingWeeks = (() => {
+                  const startISO = String(plan.generatedAt || '').slice(0, 10)
+                  if (!startISO || !Array.isArray(plan.weeks)) return 12
+                  const elapsed = Math.floor(
+                    (new Date(today + 'T12:00:00Z') - new Date(startISO + 'T12:00:00Z')) / 86400000
+                  )
+                  const remaining = plan.weeks.length - Math.floor(elapsed / 7)
+                  return Math.max(4, Math.min(52, remaining))
+                })()
+                const seedData = {
+                  goal:         profile?.goal || plan?.goal || 'General Fitness',
+                  sport:        profile?.primarySport || profile?.sport || null,
+                  primarySport: profile?.primarySport || profile?.sport || null,
+                  athleteLevel: profile?.athleteLevel || profile?.level || 'intermediate',
+                  trainDays:    Number(profile?.trainDays) || 5,
+                  weeks:        remainingWeeks,
+                  raceDate:     profile?.raceDate || profile?.nextRaceDate || undefined,
+                }
+                const next = buildStarterPlan(seedData, today, lang, log)
+                if (!next) { setTab('plan'); return }
+                try {
+                  localStorage.setItem('sporeus-plan', JSON.stringify(next))
+                  emitEvent('plan_recalibrated_age', {
+                    reason:       stale.reason,
+                    age_days:     stale.ageDays,
+                    ctl_drift_pct: stale.ctlDriftPct,
+                    seed_ctl:     stale.seedCTL,
+                    new_ctl:      Math.round(todayCtl),
+                    weeks:        next.weeks?.length || 0,
+                  })
+                  window.location.reload()
+                } catch (e) {
+                  logger.warn('plan recalibrate failed:', e?.message)
+                  setTab('plan')
+                }
+              }}
+              style={btn(AMBER)}>
+              {lang === 'tr' ? '↻ YENİDEN KALİBRE ET' : '↻ RECALIBRATE PLAN'}
+            </button>
+          </div>
+        )
+      })()}
 
       {/* ── Card 1b: Weekly Adaptation (v9.94.0 — Mission 1 EXECUTION → ADAPTATION) ── */}
       {plan && (() => {

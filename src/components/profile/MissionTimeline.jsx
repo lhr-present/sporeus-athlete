@@ -14,6 +14,7 @@ import { useEffect, useState, useContext } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { logger } from '../../lib/logger.js'
+import { emitEvent } from '../../lib/attribution.js'
 import {
   getUserAttributionEvents,
   filterMissionTimelineEvents,
@@ -75,10 +76,9 @@ export default function MissionTimeline({ authUser }) {
     return () => { cancelled = true }
   }, [authUser?.id])
 
-  // Don't render the card for guest users or when Supabase isn't configured
-  if (!authUser?.id) return null
-
   // Map each Mission-1 event slot to its captured row (or undefined if pending)
+  // Computed unconditionally to keep hook ordering stable across renders;
+  // safe when `events` is null (gives all-pending state, no celebration emit).
   const eventBySlot = {}
   for (const e of (events || [])) {
     // Keep the earliest occurrence for each event_name (Mission-1 milestones
@@ -87,6 +87,40 @@ export default function MissionTimeline({ authUser }) {
   }
   const completedCount = MISSION_1_EVENTS.filter(k => eventBySlot[k]).length
   const totalCount = MISSION_1_EVENTS.length
+  const allComplete = completedCount === totalCount && totalCount > 0
+
+  // v9.103.0 (Prompt CC) — Mission 1 completion duration + one-shot celebration
+  // emit. Days from signup to last completed milestone. Once the celebration
+  // event has been emitted (gated on localStorage key per uid), don't refire
+  // even across reloads. The card itself still renders — it's the telemetry
+  // that's idempotent.
+  let daysToComplete = null
+  if (allComplete) {
+    const signup = eventBySlot.signup_completed?.created_at
+    const finalMilestone = MISSION_1_EVENTS
+      .map(k => eventBySlot[k]?.created_at)
+      .filter(Boolean)
+      .sort()
+      .pop()
+    if (signup && finalMilestone) {
+      const ms = new Date(finalMilestone) - new Date(signup)
+      daysToComplete = Math.max(1, Math.round(ms / 86400000))
+    }
+  }
+  useEffect(() => {
+    if (!allComplete || !authUser?.id) return
+    const key = `sporeus-mission-1-celebrated-${authUser.id}`
+    try {
+      if (localStorage.getItem(key)) return
+      emitEvent('mission_1_complete', { days_to_complete: daysToComplete })
+      localStorage.setItem(key, new Date().toISOString())
+    } catch (e) {
+      logger.warn('mission_1_complete emit failed:', e?.message)
+    }
+  }, [allComplete, authUser?.id, daysToComplete])
+
+  // Don't render the card for guest users or when Supabase isn't configured
+  if (!authUser?.id) return null
 
   // Loading state
   if (events === null) {
@@ -104,6 +138,47 @@ export default function MissionTimeline({ authUser }) {
 
   return (
     <div style={S.card}>
+      {/* v9.103.0 (Prompt CC) — Completion celebration header. Renders only
+          when all 4 milestones are present. Provides the punctuated end-of-
+          mission moment that drives Mission 2 engagement. */}
+      {allComplete && (
+        <div style={{
+          marginBottom: '14px', padding: '12px 14px',
+          background: `${GREEN}14`, border: `1px solid ${GREEN}66`,
+          borderLeft: `4px solid ${GREEN}`, borderRadius: '4px',
+        }}>
+          <div style={{
+            fontFamily: MONO, fontSize: '11px', color: GREEN,
+            fontWeight: 700, letterSpacing: '0.1em', marginBottom: '4px',
+          }}>
+            {lang === 'tr' ? '✓ MISSION 1 TAMAMLANDI' : '✓ MISSION 1 COMPLETE'}
+            {daysToComplete != null && (
+              <span style={{ color: '#888', fontWeight: 400, marginLeft: '8px' }}>
+                · {daysToComplete} {lang === 'tr' ? 'gün' : 'days'}
+              </span>
+            )}
+          </div>
+          <div style={{ fontFamily: MONO, fontSize: '11px', color: '#ccc', lineHeight: 1.55 }}>
+            {lang === 'tr'
+              ? 'Adaptasyon motoru artık planını gerçek antrenmana göre düzenliyor. Sırada: Mission 2 hedefini belirle.'
+              : 'The adaptation engine is now tuning your plan against real execution. Next: set a Mission 2 goal.'}
+          </div>
+          <a
+            href="#goal-editor"
+            onClick={e => {
+              e.preventDefault()
+              const el = document.getElementById('goal-editor')
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            }}
+            style={{
+              display: 'inline-block', marginTop: '8px',
+              fontFamily: MONO, fontSize: '10px', color: GREEN,
+              textDecoration: 'underline', letterSpacing: '0.06em',
+            }}>
+            → {lang === 'tr' ? 'MISSION 2 HEDEFİ BELİRLE' : 'SET MISSION 2 GOAL'}
+          </a>
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '14px' }}>
         <div style={{ fontFamily: MONO, fontSize: '10px', color: '#888', letterSpacing: '0.12em' }}>
           {lang === 'tr' ? 'MISSION 1 ZAMAN ÇİZGİSİ' : 'MISSION 1 TIMELINE'}
