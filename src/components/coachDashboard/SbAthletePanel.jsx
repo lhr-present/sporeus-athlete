@@ -325,17 +325,30 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
             const stale = planForLookup ? detectStalePlan(planForLookup, currentCTL, today) : null
             const flags = []
             if (mismatch?.mismatched) {
+              const dom = String(mismatch.dominantSport).toUpperCase()
+              const goal = String(mismatch.goalSport).toUpperCase()
+              const domPct = Math.round(mismatch.dominantShare * 100)
               flags.push({
                 key: 'mismatch', color: '#e03030',
                 label: lang === 'tr' ? 'HEDEF ≠ ANTRENMAN' : 'GOAL ≠ TRAINING',
-                detail: `${String(mismatch.dominantSport).toUpperCase()} ${Math.round(mismatch.dominantShare * 100)}% · ${String(mismatch.goalSport).toUpperCase()} goal`,
+                detail: `${dom} ${domPct}% · ${goal} goal`,
+                prefill: {
+                  en: `I noticed your last 28 days are ${domPct}% ${dom} but your goal is ${goal}. Want to update the goal, or shift training to match it?`,
+                  tr: `Son 28 günün %${domPct} ${dom} ama hedefin ${goal}. Hedefi mi güncelleyelim, yoksa antrenmanı mı hedefe göre değiştirelim?`,
+                },
               })
             }
             if (stale?.stale) {
+              const wks = Math.round(stale.ageDays / 7)
+              const driftPct = stale.ctlDriftPct != null ? Math.round(stale.ctlDriftPct * 100) : null
               flags.push({
                 key: 'stale', color: '#f5c542',
                 label: lang === 'tr' ? `PLAN BAYAT (${stale.reason})` : `PLAN STALE (${stale.reason})`,
-                detail: `${Math.round(stale.ageDays / 7)}wk old${stale.ctlDriftPct != null ? ` · Δ${Math.round(stale.ctlDriftPct * 100)}%` : ''}`,
+                detail: `${wks}wk old${driftPct != null ? ` · Δ${driftPct}%` : ''}`,
+                prefill: {
+                  en: `Your plan is ${wks} weeks old${driftPct != null ? ` and your fitness has shifted ${driftPct}%` : ''}. Should we recalibrate from your current CTL?`,
+                  tr: `Planın ${wks} haftalık${driftPct != null ? ` ve kondisyonun %${driftPct} değişti` : ''}. Mevcut CTL'ne göre yeniden kalibre edelim mi?`,
+                },
               })
             }
             // v9.106.0 (Prompt KK) — pending-plan-response counter
@@ -344,20 +357,42 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
                 key: 'pending', color: '#f5c542',
                 label: lang === 'tr' ? `${pendingPlanCount} PLAN BEKLİYOR` : `${pendingPlanCount} PLAN PENDING`,
                 detail: lang === 'tr' ? 'sporcunun yanıt vermesi bekleniyor' : 'awaiting athlete response',
+                prefill: {
+                  en: `You have ${pendingPlanCount} plan${pendingPlanCount > 1 ? 's' : ''} pending your response. Quick review?`,
+                  tr: `${pendingPlanCount} plan yanıtını bekliyor. Hızlı bir bakar mısın?`,
+                },
               })
             }
             if (flags.length === 0) return null
+            // v9.111.0 (Prompt BBB) — chip becomes button that pre-fills the
+            // message thread. Pre-v9.111 chips were static text — coach had
+            // to scroll, find the v9.102 R drift card, click MESSAGE
+            // ATHLETE. Now any chip is a one-click action.
+            const openWithPrefill = (flag) => {
+              const text = flag.prefill?.[lang] || flag.prefill?.en || ''
+              setMsgDraft(text)
+              setShowMessages(true)
+              const updated = messages.map(m => m.from === 'athlete' ? { ...m, read: true } : m)
+              setMessages(updated); saveMsgs(updated)
+              try {
+                supabase && supabase.from('attribution_events').insert({
+                  user_id: coachId, event_name: 'coach_chip_action',
+                  props: { flag: flag.key, action: 'message', athlete_id: athleteId },
+                })
+              } catch (e) { logger.warn('coach_chip_action emit:', e?.message) }
+            }
             return (
               <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', marginBottom:'10px', paddingBottom:'8px', borderBottom:'1px dashed #1e1e1e' }}>
                 {flags.map(f => (
-                  <span key={f.key} title={f.detail} style={{
+                  <button key={f.key} onClick={() => openWithPrefill(f)} title={f.detail} style={{
                     ...S.mono, fontSize:'9px', letterSpacing:'0.06em', fontWeight:700,
                     padding:'3px 8px', background:`${f.color}18`, border:`1px solid ${f.color}66`,
-                    color:f.color, borderRadius:'3px',
+                    color:f.color, borderRadius:'3px', cursor:'pointer', textAlign:'left',
                   }}>
                     ▲ {f.label}
                     <span style={{ marginLeft:'6px', color:'#aaa', fontWeight:400 }}>{f.detail}</span>
-                  </span>
+                    <span style={{ marginLeft:'8px', color:'#888', fontWeight:400 }}>✉</span>
+                  </button>
                 ))}
               </div>
             )

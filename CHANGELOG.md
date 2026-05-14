@@ -14,6 +14,85 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.111.0 — 2026-05-15 — Coach chip → message + Rest-day streak equivalence
+
+  Prompts BBB + EEE. Two of 5 critique-driven fixes shipped together —
+  both untangle "the data is right, the user-facing action is missing"
+  failures uncovered in the Mission 1 critic pass.
+
+  ### Problem (BBB — coach chip)
+  Coach diagnostic chips (mismatch / stale / pending count) on
+  SbAthletePanel told the coach *what was wrong* but offered no path to
+  *do something about it*. Coaches who clicked got no response and
+  bounced. The chip surfaced a problem, then dead-ended.
+
+  ### Solution (BBB)
+  Each chip is now a button. Clicking it opens the message thread for
+  that athlete with bilingual prefill text describing the rationale —
+  the coach can edit and send rather than starting from a blank
+  composer. Marks athlete-side messages as read on open. Emits a
+  `coach_chip_action` attribution event (props: `{ flag, action,
+  athlete_id }`) so we can measure conversion from chip-shown to
+  message-sent.
+
+  Files:
+  - `src/components/coachDashboard/SbAthletePanel.jsx` — chips → buttons
+    with `openWithPrefill(flag)`; per-flag `prefill: { en, tr }`.
+
+  ### Problem (EEE — streak rest day)
+  v9.107.0 introduced training streaks. v9.110.0 made deload context
+  visible. But the streak metric still broke when athletes followed
+  the plan — a planned Rest day with no logged activity reset the
+  counter. Athletes either skipped logging (broke streak) or invented
+  fake activity (poisoned PMC metrics). Habit-tracking shouldn't
+  punish periodization.
+
+  ### Solution (EEE)
+  Rest-day equivalence in `computeTrainingStreak`:
+  - A log entry with `tss=0, restDayMarked: true` counts toward the
+    streak. Returns `includesRestDay: true` when the current streak
+    contains a rest day.
+  - Mixed-day handling: when an entry with `tss>0` exists on the same
+    date as a rest-marked entry, the day counts as a normal training
+    day (not a rest day) — so the `includesRestDay` flag only flips
+    for days that were purely rest.
+
+  TodayView Card 1 now renders a "✓ MARK REST DAY" button when today's
+  planned session is Rest (i.e. `getTodayPlannedSession` returns null
+  but `plan` is set). Clicking it writes a `{date, type:'Rest',
+  duration:0, tss:0, restDayMarked:true}` entry and emits
+  `rest_day_marked` attribution. Idempotent — button hides once
+  marked, replaced by `✓ Rest day logged · streak preserved`.
+
+  Streak chip caption now appends `(incl. planned rest)` when the
+  current streak includes a rest day, so the athlete knows their
+  streak is honest about its composition.
+
+  Files:
+  - `src/lib/athlete/trainingStreak.js` — two-pass entry iteration;
+    `restDayMarked` recognized; `includesRestDay` return field
+  - `src/lib/__tests__/athlete/trainingStreak.test.js` — 5 new EEE
+    cases (rest counts, mixed-day, rest-only streak, etc.)
+  - `src/components/TodayView.jsx` — rest-day button on Card 1;
+    streak chip "(incl. planned rest)" suffix
+
+  ### Mission 1 framing
+  Both fixes close action-loops the v9.110 critic pass flagged:
+  - Coach side: chip → message thread (was: chip → nothing)
+  - Athlete side: rest day → preserved streak (was: rest day →
+    broken streak → either lie or lose habit)
+
+  ### Tests
+  10194 unit tests passing. New EEE assertions cover rest-equivalence,
+  no-restDayMarked breaks, rest-only streak, mixed-day discrimination.
+
+  ### Depends on
+  - v9.107.0 (Prompt LL — training streak module)
+  - v9.106.0 (Prompt II — coach diagnostic chips)
+  - v9.110.0 (Prompt AAA — diagnostic priority — keeps top-card cap)
+
+---
+
 ## v9.110.0 — 2026-05-15 — Diagnostic priority — stop stacking peer cards
 
   Prompt AAA. First of 5 critique-driven fixes.

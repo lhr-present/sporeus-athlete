@@ -13,7 +13,7 @@ function e(date, tss = 50) { return { date, tss } }
 
 describe('computeTrainingStreak', () => {
   it('returns zeros for empty log', () => {
-    expect(computeTrainingStreak([], TODAY)).toEqual({ current: 0, longest: 0, lastDate: null })
+    expect(computeTrainingStreak([], TODAY)).toEqual({ current: 0, longest: 0, lastDate: null, includesRestDay: false })
     expect(computeTrainingStreak(null, TODAY).current).toBe(0)
   })
 
@@ -162,5 +162,57 @@ describe('getStreakMilestone', () => {
     expect(getStreakMilestone(NaN)).toBeNull()
     expect(getStreakMilestone(null)).toBeNull()
     expect(getStreakMilestone()).toBeNull()
+  })
+})
+
+// ── v9.111.0 (Prompt EEE) — rest-day equivalence ─────────────────────────
+describe('computeTrainingStreak — rest-day equivalence', () => {
+  it('counts restDayMarked entries as streak days when tss=0', () => {
+    const log = [
+      e(addDays(TODAY, -3)),                                                // trained
+      e(addDays(TODAY, -2)),                                                // trained
+      { date: addDays(TODAY, -1), tss: 0, restDayMarked: true },           // rest
+      e(TODAY),                                                             // trained
+    ]
+    const out = computeTrainingStreak(log, TODAY)
+    expect(out.current).toBe(4)
+    expect(out.includesRestDay).toBe(true)
+  })
+
+  it('does NOT count tss=0 without restDayMarked', () => {
+    const log = [
+      e(addDays(TODAY, -2)),
+      { date: addDays(TODAY, -1), tss: 0 },  // no flag → broken
+      e(TODAY),
+    ]
+    const out = computeTrainingStreak(log, TODAY)
+    expect(out.current).toBe(1)
+  })
+
+  it('includesRestDay=false when current streak has no rest days', () => {
+    const log = [-2, -1, 0].map(d => e(addDays(TODAY, d)))
+    const out = computeTrainingStreak(log, TODAY)
+    expect(out.includesRestDay).toBe(false)
+  })
+
+  it('rest-day-only streak still counts', () => {
+    const log = [
+      { date: addDays(TODAY, -1), tss: 0, restDayMarked: true },
+      { date: TODAY, tss: 0, restDayMarked: true },
+    ]
+    const out = computeTrainingStreak(log, TODAY)
+    expect(out.current).toBe(2)
+    expect(out.includesRestDay).toBe(true)
+  })
+
+  it('mixed entry on same day: training entry + rest entry both qualify', () => {
+    const log = [
+      { date: TODAY, tss: 0, restDayMarked: true },
+      { date: TODAY, tss: 50 },  // also trained
+    ]
+    const out = computeTrainingStreak(log, TODAY)
+    expect(out.current).toBe(1)
+    // restDay set is only populated when the day has NO training entry
+    expect(out.includesRestDay).toBe(false)
   })
 })

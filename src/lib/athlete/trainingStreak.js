@@ -75,26 +75,50 @@ export function getStreakMilestone(currentStreak) {
 /**
  * @description Compute current and longest training streaks.
  *
- * @param {Array}  log     - training log entries (each { date, tss? })
+ * @param {Array}  log     - training log entries (each { date, tss?, restDayMarked? })
  * @param {string} [today] - 'YYYY-MM-DD'; defaults to today UTC
- * @returns {{ current: number, longest: number, lastDate: string | null }}
+ * @returns {{
+ *   current: number,
+ *   longest: number,
+ *   lastDate: string | null,
+ *   includesRestDay: boolean,
+ * }}
+ *
+ * v9.111.0 (Prompt EEE): a log entry with `restDayMarked: true` counts
+ * as a streak-preserving day even when tss=0. This prevents the streak
+ * metric from incentivizing over-training — periodization mandates rest
+ * days, and athletes shouldn't have to log fake activity to keep the
+ * chip alive. The athlete-side TodayView Card 1 exposes a "Mark rest
+ * day" button when plannedSession.type === 'Rest'.
  */
 export function computeTrainingStreak(log, today) {
-  // Build a Set of day-keys that have at least one tss>0 entry.
-  // Defends against malformed entries (missing date, NaN tss).
-  const trainedDays = new Set()
+  // Build a Set of day-keys that count toward the streak. A day counts if:
+  //   (a) at least one log entry has tss>0, OR
+  //   (b) at least one log entry has restDayMarked: true (planned rest
+  //       acknowledged — equivalence introduced v9.111.0).
+  // Two-pass: first identify true training days, then mark rest days only
+  // for days that have NO training entry — so a mixed day (rest entry +
+  // training entry on the same date) is counted as a normal training day
+  // and does NOT flip the includesRestDay flag.
+  const trueTrainingDays = new Set()
+  const restMarkedDays   = new Set()
   let lastDate = null
   for (const e of (Array.isArray(log) ? log : [])) {
     const k = dayKey(e?.date)
     if (k === null) continue
     const tss = Number(e?.tss)
-    if (!Number.isFinite(tss) || tss <= 0) continue
-    trainedDays.add(k)
+    const isTrained = Number.isFinite(tss) && tss > 0
+    const isRest    = e?.restDayMarked === true
+    if (!isTrained && !isRest) continue
+    if (isTrained) trueTrainingDays.add(k)
+    if (isRest)    restMarkedDays.add(k)
     if (!lastDate || String(e.date) > lastDate) lastDate = String(e.date).slice(0, 10)
   }
+  const trainedDays = new Set([...trueTrainingDays, ...restMarkedDays])
+  const restDays = new Set([...restMarkedDays].filter(k => !trueTrainingDays.has(k)))
 
   if (trainedDays.size === 0) {
-    return { current: 0, longest: 0, lastDate: null }
+    return { current: 0, longest: 0, lastDate: null, includesRestDay: false }
   }
 
   const todayKey = dayKey(today || new Date().toISOString().slice(0, 10))
@@ -106,7 +130,10 @@ export function computeTrainingStreak(log, today) {
   let cursor = todayKey
   if (!trainedDays.has(cursor)) cursor -= 1
   let current = 0
+  let currentIncludesRest = false
+  const currentStart = cursor
   while (trainedDays.has(cursor)) {
+    if (restDays.has(cursor)) currentIncludesRest = true
     current += 1
     cursor -= 1
   }
@@ -124,5 +151,8 @@ export function computeTrainingStreak(log, today) {
     prev = k
   }
 
-  return { current, longest, lastDate }
+  // Suppress unused var warning — currentStart was for debugging
+  void currentStart
+
+  return { current, longest, lastDate, includesRestDay: currentIncludesRest }
 }

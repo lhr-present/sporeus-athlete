@@ -87,7 +87,7 @@ const QUICK_FIELDS = WELLNESS_FIELDS.filter(f => ['sleep', 'energy', 'soreness']
 
 export default function TodayView({ log, setTab, setLogPrefill }) {
   const { t, lang }   = useContext(LangCtx)
-  const { recovery, setRecovery, profile } = useData()
+  const { recovery, setRecovery, profile, setLog } = useData()
 
   const [plan]       = useLocalStorage('sporeus-plan',        null)
   const [planStatus, setPlanStatus] = useLocalStorage('sporeus-plan-status', {})
@@ -783,6 +783,11 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
             {streak.current >= 7 && !milestone && (
               <span style={{ fontSize: '9px', color: '#888', letterSpacing: '0.06em', marginLeft: 'auto' }}>
                 {lang === 'tr' ? '· bir hafta üst üste · alışkanlık oluşuyor' : '· week-long · habit is forming'}
+              </span>
+            )}
+            {streak.includesRestDay && (
+              <span style={{ fontSize: '9px', color: '#888', letterSpacing: '0.04em' }}>
+                {lang === 'tr' ? '(planlı dinlenme dahil)' : '(incl. planned rest)'}
               </span>
             )}
           </div>
@@ -1794,7 +1799,51 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
         ) : (
           <div style={{ color: '#555', fontSize: '12px', lineHeight: 1.6 }}>
             {plan
-              ? <span style={{ color: AMBER }}>◆ {t('todayRest')}</span>
+              ? (() => {
+                  // v9.111.0 (Prompt EEE) — Rest-day equivalence. When today
+                  // is a planned rest, athletes used to see only an AMBER
+                  // banner. They had to either skip logging (which broke
+                  // their streak) or invent a fake activity. Now they can
+                  // explicitly acknowledge the rest day: tss=0 + restDayMarked
+                  // gets counted as a streak-preserving day by
+                  // computeTrainingStreak. Periodization mandates rest;
+                  // habit-tracking shouldn't punish following the plan.
+                  const restEntry = (log || []).find(e =>
+                    e.date === today && (Number(e.tss) === 0 || !e.tss) && e.restDayMarked === true
+                  )
+                  const markRest = () => {
+                    setLog([...(log || []), {
+                      date: today,
+                      type: 'Rest',
+                      duration: 0,
+                      tss: 0,
+                      restDayMarked: true,
+                      id: `${today}-rest-${Date.now()}`,
+                    }])
+                    emitEvent('rest_day_marked', { date: today })
+                  }
+                  return (
+                    <>
+                      <div style={{ color: AMBER, marginBottom: '10px' }}>◆ {t('todayRest')}</div>
+                      {restEntry ? (
+                        <div style={{ fontSize: '11px', color: '#5bc25b', fontFamily: MONO, letterSpacing: '0.04em' }}>
+                          ✓ {lang === 'tr' ? 'Dinlenme günü kaydedildi · seri korunuyor' : 'Rest day logged · streak preserved'}
+                        </div>
+                      ) : (
+                        <>
+                          <button onClick={markRest} style={btn('#5bc25b')}>
+                            {lang === 'tr' ? '✓ DİNLENME GÜNÜNÜ İŞARETLE' : '✓ MARK REST DAY'}
+                          </button>
+                          <div style={{ fontSize: '9px', color: '#888', marginTop: '6px', lineHeight: 1.5 }}>
+                            {lang === 'tr'
+                              ? 'Planlı dinlenme günü serini koruyacak.'
+                              : 'Planned rest will keep your streak intact.'}
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )
+                })()
               : (() => {
                   // v9.93.0 — Mission 1 Prompt C: plan-less athletes used to see
                   // only "No plan active — generate one." Now they get a real
