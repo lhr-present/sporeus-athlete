@@ -9,6 +9,7 @@ import OnboardingWizard from './general/OnboardingWizard.jsx'
 import { advanceRotation, suggestNextLoad, computeSessionPRs } from '../lib/athlete/strengthTraining.js'
 import { syncGeneralProgram } from '../lib/generalFitnessSync.js'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
+import { emitEvent } from '../lib/attribution.js'
 
 const GeneralDashboard       = lazy(() => import('./general/GeneralDashboard.jsx'))
 const SessionLogger          = lazy(() => import('./general/SessionLogger.jsx'))
@@ -510,6 +511,18 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
     setInnerTab('today')
     const tmpl = STATIC_TEMPLATES.find(t => t.id === data.templateId)
     syncGeneralProgram(authUser?.id, prog, lang === 'tr' ? tmpl?.name_tr : tmpl?.name_en)
+    // Parallel to athlete-track `starter_plan_seeded` (useAppState.js). Distinct
+    // event name so the existing Mission 1 funnel stays athlete-only — the
+    // general-track funnel queries against `general_program_seeded` separately.
+    try {
+      emitEvent('general_program_seeded', {
+        goal:       data.goal,
+        experience: data.experience,
+        days:       data.days,
+        equipment:  data.equipment,
+        templateId: data.templateId,
+      })
+    } catch { /* fail open */ }
   }
 
   function handleSaveSession(session) {

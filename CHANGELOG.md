@@ -14,6 +14,35 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.137.0 — 2026-05-15 — General-track program-seeded telemetry
+
+  Parity follow-up to v9.136. The athlete onboarding emits
+  `starter_plan_seeded { goal, sport, weeks }` from
+  `useAppState.js:368` when a starter plan is generated — that's
+  the Mission 1 funnel anchor. The equivalent path in
+  `GeneralFitness.handleOnboardingComplete` was silent. Users who
+  picked the general-fitness track were invisible in attribution
+  past `signup_completed`.
+
+  Emit `general_program_seeded { goal, experience, days, equipment,
+  templateId }` on successful onboarding completion. Distinct event
+  name (not `starter_plan_seeded`) so:
+  - Existing Mission 1 funnel queries (`MISSION_1_EVENTS` in
+    `db/attributionEvents.js`) stay athlete-only and don't inflate
+  - General-track conversion can be measured separately when the
+    audit on 2026-05-27 runs
+
+  Emission wrapped in try/catch fail-open (matches the athlete
+  emission pattern) — telemetry never breaks the user flow.
+
+  No new test file. The emission lives inside a 743-line component's
+  private handler; the value of a dedicated mount-test doesn't
+  justify the infra cost when the emit is one fail-open line.
+
+  Suite 10366 / 10366 green (unchanged).
+
+  Dependencies: `src/lib/attribution.js` (existing).
+
 ## v9.136.0 — 2026-05-15 — General OnboardingWizard bail-recovery parity
 
   Survey of the "undertouched" trio (Reports / GeneralFitness /
