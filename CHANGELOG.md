@@ -14,6 +14,24 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.118.0 — 2026-05-15 — Mission 2 telemetry hoisted to App level
+
+  Prompt JJJ. Mission 2 emissions (v9.116 HHH) lived inside
+  `MissionTwoTimeline`, so they only fired when the athlete opened
+  Profile — the funnel undercounted athletes who hit a milestone but
+  spent their session in TodayView / Log / etc.
+
+  New `useMission2Telemetry(authUser, profile, log)` runs at AppInner
+  level so emissions fire on milestone crossing, not Profile visits.
+  Same localStorage gate as before; `MissionTwoTimeline` keeps its
+  own derive for rendering but no longer owns the side-effect.
+
+  Files: `src/hooks/useMission2Telemetry.js` (new),
+  `src/App.jsx` (mounted), `src/components/profile/MissionTwoTimeline.jsx`
+  (emission useEffect removed). 10219 tests passing.
+
+---
+
 ## v9.117.0 — 2026-05-15 — PR detection sport canonicalization
 
   Prompt III. Final fix from the v9.110–v9.113 critique pass.

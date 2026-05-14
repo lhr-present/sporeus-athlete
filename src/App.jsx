@@ -18,6 +18,7 @@ import ConnectionBanner from './components/ConnectionBanner.jsx'
 import StatusBanner from './components/StatusBanner.jsx'
 import RoleSelector from './components/RoleSelector.jsx'
 import { useAuth } from './hooks/useAuth.js'
+import { useMission2Telemetry } from './hooks/useMission2Telemetry.js'
 import { isSupabaseReady } from './lib/supabase.js'
 import { hasCurrentConsent } from './lib/db/consentVersion.js'
 import NotificationBell from './components/NotificationBell.jsx'
@@ -122,6 +123,12 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
   const [upgradeFeatureKey, setUpgradeFeatureKey] = useState(null)
   const [showSemanticSearch, setShowSemanticSearch] = useState(false)
   const [showStratvaNudge, setShowStratvaNudge]   = useState(false)
+
+  // v9.118.0 (Prompt JJJ) — Mission 2 milestone telemetry. Runs at App
+  // level so race_committed / first_month_completed / pr_logged /
+  // mission_2_complete fire when the milestone is actually crossed,
+  // not only when the athlete opens Profile.
+  useMission2Telemetry(authUser, profile, log)
 
   // Ctrl+Shift+K — semantic search (coach/club tier only)
   useEffect(() => {

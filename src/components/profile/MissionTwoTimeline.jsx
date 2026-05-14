@@ -13,7 +13,6 @@ import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { useData } from '../../contexts/DataContext.jsx'
 import { S } from '../../styles.js'
 import { logger } from '../../lib/logger.js'
-import { emitEvent } from '../../lib/attribution.js'
 import {
   getMission2Status,
   MISSION_2_EVENTS,
@@ -59,46 +58,11 @@ export default function MissionTwoTimeline({ authUser, log }) {
     return getMission2Status({ attributionEvents: events, profile, log })
   }, [events, profile, log])
 
-  // v9.116.0 (Prompt HHH) — Mission 2 milestone telemetry emissions.
-  //
-  // Pre-v9.116 the Mission 2 framework (v9.113 DDD) derived progress
-  // from existing state but emitted zero events when a milestone was
-  // crossed. The funnel was invisible server-side — coach dashboards
-  // could not aggregate "12 athletes hit first_month_completed this
-  // week." Mission 1 emits each milestone via emitEvent, so the
-  // asymmetry was a real measurement gap, not a polish issue.
-  //
-  // One-shot emission per milestone per user, gated on a localStorage
-  // key so reloads / re-renders don't re-fire. mission_1_complete is
-  // already emitted by MissionTimeline (v9.103 CC) — skip here. A
-  // synthetic mission_2_complete fires once when all four are done.
-  useEffect(() => {
-    if (!status || !authUser?.id) return
-    for (const ev of status.events) {
-      if (!ev.done || ev.key === 'mission_1_complete') continue
-      const key = `sporeus-mission2-${authUser.id}-${ev.key}`
-      try {
-        if (localStorage.getItem(key)) continue
-        emitEvent(ev.key, { reached_at: ev.at })
-        localStorage.setItem(key, new Date().toISOString())
-      } catch (e) {
-        logger.warn(`${ev.key} emit:`, e?.message)
-      }
-    }
-    if (status.complete) {
-      const key = `sporeus-mission2-${authUser.id}-complete`
-      try {
-        if (!localStorage.getItem(key)) {
-          emitEvent('mission_2_complete', {
-            completed_events: status.completedCount,
-          })
-          localStorage.setItem(key, new Date().toISOString())
-        }
-      } catch (e) {
-        logger.warn('mission_2_complete emit:', e?.message)
-      }
-    }
-  }, [status, authUser?.id])
+  // v9.118.0 (Prompt JJJ): emission useEffect moved to
+  // useMission2Telemetry hook (mounted in AppInner). The component
+  // still derives `status` locally for rendering, but no longer
+  // owns the side-effect — fixes the funnel bias where milestones
+  // only counted if the athlete visited Profile.
 
   if (!authUser?.id) return null
   if (events === null) {
