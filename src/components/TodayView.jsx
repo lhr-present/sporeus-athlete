@@ -27,6 +27,7 @@ import { computePlanDrift, detectStalePlan } from '../lib/athlete/planAdaptation
 import { detectGoalActivityMismatch } from '../lib/athlete/goalActivityMismatch.js'
 import { computeTrainingStreak, getStreakMilestone } from '../lib/athlete/trainingStreak.js'
 import { detectComebackGap } from '../lib/athlete/comebackDetector.js'
+import { detectRaceRetrospective, retroLocalStorageKey } from '../lib/athlete/raceRetrospective.js'
 import { rankDiagnostics } from '../lib/athlete/diagnosticPriority.js'
 import { buildStarterPlan } from '../lib/plan/starterPlan.js'
 import { recordPlanVersion } from '../lib/plan/versionTracking.js'
@@ -370,6 +371,13 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
   const [expandedProtocol, setExpandedProtocol] = useState(null)
   const [showCheckIn, setShowCheckIn]           = useState(false)
   const [recoveryDone, setRecoveryDone] = useLocalStorage(`sporeus-recovery-done-${today}`, {})
+
+  // v9.120.0 — Post-race retrospective form state. Local-only; on
+  // submit we emit attribution + set localStorage and the card
+  // self-dismisses via the gate check inside the render block.
+  const [retroOutcome, setRetroOutcome] = useState(null)
+  const [retroNote, setRetroNote]       = useState('')
+  const [retroDismissed, setRetroDismissed] = useState(false)
 
   const [weeklyRecap] = useState(() => generateWeeklyRecap(log))
   const [recapDismissed, setRecapDismissed] = useState(() => weeklyRecap ? !!localStorage.getItem(`sporeus-recap-seen-${weeklyRecap?.weekLabel}`) : true)
@@ -739,6 +747,115 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
           }
         } catch { /* fail open */ }
         return null
+      })()}
+
+      {/* ── v9.120.0 — Post-race retrospective. When profile.raceDate is
+          1–7 days in the past AND the retrospective hasn't been logged
+          for this race yet, surface a card asking how the race went.
+          Closes the loop opened by Mission 2's race_committed milestone
+          (v9.113 DDD) — the system advertised the date as important
+          enough to track, but then never asked about the outcome.
+          Outcome (hit/missed/DNF) + optional free-form note. Emits
+          race_completed with structured outcome + note presence (not
+          note content). Idempotent via per-raceDate localStorage gate. */}
+      {(() => {
+        const retro = detectRaceRetrospective(profile, today)
+        if (!retro) return null
+        if (retroDismissed) return null
+        let alreadyLogged = false
+        try { alreadyLogged = !!localStorage.getItem(retroLocalStorageKey(retro.raceDate)) } catch { /* ignore */ }
+        if (alreadyLogged) return null
+        const outcomes = [
+          { key: 'hit_goal',    en: 'Hit goal',     tr: 'Hedefi tutturdun', color: '#5bc25b' },
+          { key: 'missed_goal', en: 'Missed goal',  tr: 'Hedef tutmadı',    color: '#f5c542' },
+          { key: 'dnf',         en: 'DNF',          tr: 'Tamamlamadın',     color: '#e03030' },
+        ]
+        const submit = () => {
+          if (!retroOutcome) return
+          const note = (retroNote || '').trim().slice(0, 200)
+          emitEvent('race_completed', {
+            race_date: retro.raceDate,
+            outcome:   retroOutcome,
+            days_since_race: retro.daysSince,
+            has_note:  !!note,
+          })
+          try { localStorage.setItem(retroLocalStorageKey(retro.raceDate), JSON.stringify({ outcome: retroOutcome, ts: new Date().toISOString() })) } catch { /* ignore */ }
+          setRetroDismissed(true)
+        }
+        const skip = () => {
+          try { localStorage.setItem(retroLocalStorageKey(retro.raceDate), JSON.stringify({ outcome: 'skipped', ts: new Date().toISOString() })) } catch { /* ignore */ }
+          setRetroDismissed(true)
+        }
+        return (
+          <div style={{
+            marginBottom: '14px', padding: '14px 16px',
+            background: 'var(--card-bg)', border: '1px solid var(--border)',
+            borderLeft: '4px solid #ff6600', borderRadius: '4px',
+          }}>
+            <div style={{ fontFamily: MONO, fontSize: '10px', color: '#ff6600', fontWeight: 700, letterSpacing: '0.1em', marginBottom: '6px' }}>
+              ◆ {lang === 'tr' ? 'YARIŞ SONRASI' : 'POST-RACE'}
+              <span style={{ color: '#888', fontWeight: 400, marginLeft: '8px' }}>
+                · {retro.daysSince}{lang === 'tr' ? ' gün önce' : 'd ago'}
+              </span>
+            </div>
+            <div style={{ fontFamily: MONO, fontSize: '12px', color: 'var(--text)', marginBottom: '12px', lineHeight: 1.5 }}>
+              {lang === 'tr' ? 'Yarış nasıl geçti?' : 'How did your race go?'}
+            </div>
+            <div role="radiogroup" aria-label={lang === 'tr' ? 'Yarış sonucu' : 'Race outcome'}
+              style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
+              {outcomes.map(o => {
+                const selected = retroOutcome === o.key
+                return (
+                  <button
+                    key={o.key}
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => setRetroOutcome(o.key)}
+                    style={{
+                      fontFamily: MONO, fontSize: '11px', fontWeight: 700,
+                      padding: '6px 12px', letterSpacing: '0.06em',
+                      background: selected ? `${o.color}22` : 'transparent',
+                      border: `1px solid ${selected ? `${o.color}aa` : 'var(--border)'}`,
+                      color: selected ? o.color : '#aaa',
+                      borderRadius: '3px', cursor: 'pointer',
+                    }}>
+                    {selected ? '◉' : '○'} {o[lang] || o.en}
+                  </button>
+                )
+              })}
+            </div>
+            <input
+              type="text"
+              value={retroNote}
+              onChange={e => setRetroNote(e.target.value.slice(0, 200))}
+              placeholder={lang === 'tr'
+                ? 'Sonuç (opsiyonel) — ör. 3:42:18'
+                : 'Result (optional) — e.g. 3:42:18'}
+              style={{
+                width: '100%', fontFamily: MONO, fontSize: '11px',
+                padding: '6px 9px', marginBottom: '10px',
+                background: 'var(--input-bg)', color: 'var(--text)',
+                border: '1px solid var(--input-border)', borderRadius: '3px',
+                boxSizing: 'border-box',
+              }}
+            />
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button
+                onClick={submit}
+                disabled={!retroOutcome}
+                style={{
+                  ...btn(retroOutcome ? '#ff6600' : 'transparent'),
+                  opacity: retroOutcome ? 1 : 0.4,
+                  cursor: retroOutcome ? 'pointer' : 'not-allowed',
+                }}>
+                {lang === 'tr' ? 'YARIŞI KAYDET →' : 'LOG RACE →'}
+              </button>
+              <button onClick={skip} style={{ ...btn('transparent', '#888'), fontSize: '9px' }}>
+                {lang === 'tr' ? 'GEÇ' : 'SKIP'}
+              </button>
+            </div>
+          </div>
+        )
       })()}
 
       {/* ── v9.107.0 (Prompt LL) — Training streak chip. One-line summary

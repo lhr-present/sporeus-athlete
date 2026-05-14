@@ -14,6 +14,31 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.120.0 — 2026-05-15 — Post-race retrospective card
+
+  Mission 2's race_committed milestone (v9.113 DDD) marked the race
+  date as important enough to track for taper warnings (v9.85) and
+  race-week banners (v9.108) — but the day after, the system went
+  silent. The commitment fizzled.
+
+  New `detectRaceRetrospective(profile, today)` flags races 1–7 days
+  past. TodayView surfaces a retrospective card with 3 outcome
+  buttons (hit_goal / missed_goal / dnf) + optional free-form result
+  (e.g. "3:42:18"). Submit emits `race_completed` with
+  `{ race_date, outcome, days_since_race, has_note }` and gates on
+  per-raceDate localStorage so the card doesn't reappear. Skip
+  button writes a "skipped" marker so accidental dismissals aren't
+  permanent until the 7-day window expires.
+
+  Card uses the same radiogroup + role=radio ARIA pattern v9.115
+  introduced for the decline modal.
+
+  Files: `src/lib/athlete/raceRetrospective.js` (new),
+  `src/lib/__tests__/athlete/raceRetrospective.test.js` (new, 13
+  cases), `src/components/TodayView.jsx`. 10232 tests passing.
+
+---
+
 ## v9.119.0 — 2026-05-15 — Decline modal focus restoration
 
   Prompt KKK. v9.115 (GGG) added initial focus + focus trap but didn't
