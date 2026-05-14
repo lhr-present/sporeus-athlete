@@ -14,6 +14,49 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.147.0 — 2026-05-15 — Citation progressive disclosure (Prompt 3)
+
+  Every detector banner cites its source (Banister, Bompa, Bosquet,
+  Friman & Wesslen, Plews, Mujika, Friel, Foster, Hulin, Daniels,
+  Coggan, Halson, Seiler, Burke). For sport-science readers (the
+  author's actual audience) this is the right depth — for casual
+  athletes it's intimidating wallpaper.
+
+  New `<Citation text={…}>` component at
+  `src/components/ui/Citation.jsx`. Default: small `? Why` button.
+  Click expands to show the citation in place. The component
+  persists user preference: first expansion writes
+  `sporeus-citations-preferred=expanded` to localStorage; subsequent
+  Citation mounts (this page-load and future) default to expanded.
+  Users who never click `? Why` stay in compact mode permanently.
+
+  Migrated 5 dedicated citation render sites in TodayView (italic
+  divs in their own slot):
+  - Comeback banner — Bompa & Buzzichelli 2018
+  - Decoupling trend — Friel
+  - Polarized week — runtime `pol.citation`
+  - Deload tile — Mujika 2003
+  - Contingency guide — runtime joined illness + lifeEvent citations
+
+  Deferred (out of scope for this ship):
+  - Inline-in-message citations (e.g., "HRV suppressed — easy session
+    only. (Plews 2013)") — different shape; would need text-level
+    edits to extract
+  - Per-factor citations inside planRationale disclosure (those
+    already live inside a `<details>`)
+  - Execution implication citation (v9.140 — already inside
+    structured snapshot block)
+  - Race-week / pace reference / structure breakdown citations
+    that share container styling with surrounding non-citation text
+
+  7 new tests for Citation cover: null gates, default collapsed,
+  expand on click, localStorage persistence, pre-existing pref
+  respected, aria-expanded contract.
+
+  Suite 10395/10395 green (+7).
+
+  Dependencies: React useState/useEffect only.
+
 ## v9.146.0 — 2026-05-15 — Session-card sub-banner collapse (Prompt 2)
 
   Today's Session card rendered 13+ stacked sub-elements per the

@@ -9,6 +9,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { getTodayPlannedSession, getSingleSuggestion, generateDailyDigest, getTimeOfDayAdvice, predictFitness } from '../lib/intelligence.js'
 import { buildGlanceLine } from '../lib/athlete/morningGlance.js'
+import Citation from './ui/Citation.jsx'
 import { calcLoad } from '../lib/formulas.js'
 import { WELLNESS_FIELDS } from '../lib/constants.js'
 import { hasUnread } from './CoachMessage.jsx'
@@ -868,9 +869,7 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
                 ? `${comeback.gapDays} günlük araya çıktın. Önceki kondisyonun ${comeback.priorCTL} CTL'di. Sakatlanmamak için ilk 1-2 hafta ~${comeback.easedCTL} CTL hedefiyle başla (önceki yükün %50'si).`
                 : `You've been away for ${comeback.gapDays} days. Your prior fitness was ${comeback.priorCTL} CTL. Start back at ~${comeback.easedCTL} CTL (50% of prior) for the first 1–2 weeks to avoid re-injury.`}
             </div>
-            <div style={{ fontSize: '9px', color: '#666', fontStyle: 'italic' }}>
-              Bompa & Buzzichelli 2018 (detraining principle — connective tissue de-adapts faster than aerobic capacity)
-            </div>
+            <Citation text="Bompa & Buzzichelli 2018 (detraining principle — connective tissue de-adapts faster than aerobic capacity)" />
           </div>
         )
       })()}
@@ -935,9 +934,7 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
             <div style={{ fontSize: '10px', color: '#ccc', lineHeight: 1.55, marginBottom: '4px' }}>
               {dec.summary[lang] || dec.summary.en}
             </div>
-            <div style={{ fontSize: '9px', color: '#666', fontStyle: 'italic' }}>
-              Friel — Pw:Hr drift &gt;5% on steady aerobic work indicates the aerobic engine cannot sustain demand.
-            </div>
+            <Citation text="Friel — Pw:Hr drift >5% on steady aerobic work indicates the aerobic engine cannot sustain demand." />
           </div>
         )
       })()}
@@ -1041,9 +1038,7 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
             <div style={{ fontSize: '10px', color: '#ccc', lineHeight: 1.55, marginBottom: '4px' }}>
               {pol.interpretation[lang] || pol.interpretation.en}
             </div>
-            <div style={{ fontSize: '9px', color: '#666', fontStyle: 'italic' }}>
-              {pol.citation}
-            </div>
+            <Citation text={pol.citation} />
           </div>
         )
       })()}
@@ -1978,9 +1973,7 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
                     ? 'Bu hafta uyum açığı tespit edildiği için yük azaltıldı. Hafif hisset — kondisyonu korur, uygulamayı düzeltir.'
                     : 'Load was eased this week after a compliance gap was detected. Should feel light — preserves fitness while restoring execution.'}
                 </div>
-                <div style={{ color: '#666', marginTop: '2px', fontSize: '9px', fontStyle: 'italic' }}>
-                  Mujika 2003 (taper compliance — small load cuts in the −20% range preserve fitness)
-                </div>
+                <Citation text="Mujika 2003 (taper compliance — small load cuts in the −20% range preserve fitness)" />
               </div>
             )}
             {/* v9.84.0 — Pace target + zone breakdown. Critical Mission 1 data
@@ -2419,9 +2412,7 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
                     <div style={{ marginBottom: '4px' }}>
                       <span style={{ color: '#888' }}>4-7d: </span>{cont.lifeEvent.fourToSevenDays[lang] || cont.lifeEvent.fourToSevenDays.en}
                     </div>
-                    <div style={{ marginTop: '8px', fontSize: '9px', color: '#666', fontStyle: 'italic' }}>
-                      {cont.illness.citation} · {cont.lifeEvent.citation}
-                    </div>
+                    <Citation text={`${cont.illness.citation} · ${cont.lifeEvent.citation}`} />
                   </div>
                 </details>
               )
