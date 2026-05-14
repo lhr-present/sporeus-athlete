@@ -33,6 +33,7 @@ import { analyzeWellnessTrend } from '../lib/athlete/wellnessTrend.js'
 import { analyzeDecouplingTrend } from '../lib/athlete/decouplingTrend.js'
 import { analyzePolarizedWeek } from '../lib/athlete/polarizedWeek.js'
 import { isBannerSnoozed, snoozeBanner } from '../lib/athlete/bannerSnooze.js'
+import { analyzeWeeklyBudget } from '../lib/athlete/weeklyBudget.js'
 import { rankDiagnostics } from '../lib/athlete/diagnosticPriority.js'
 import { buildStarterPlan } from '../lib/plan/starterPlan.js'
 import { recordPlanVersion } from '../lib/plan/versionTracking.js'
@@ -1032,6 +1033,64 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
           } catch { /* fail open */ }
         }
         return null
+      })()}
+
+      {/* ── v9.127.0 — Weekly TSS budget pace chip. Compact bar showing
+          spent / target with a pace indicator. Visible Mon–Sun whenever
+          the plan provides a target. Surfaces what raw TSS numbers
+          don't: are you on pace for this week's prescribed load?
+          On-pace is rendered with neutral coloring; ahead/behind gets
+          amber and an inline summary line. */}
+      {(() => {
+        const budget = analyzeWeeklyBudget({ weekTSS, weekTSSTarget, today })
+        if (!budget) return null
+        const barFill = Math.min(100, budget.spentPct)
+        const color =
+          budget.status === 'on-pace' ? '#5bc25b'
+          : budget.status === 'ahead' ? '#f5c542'
+          : '#0064ff'  // behind — informational blue, not alarm-red
+        const label = lang === 'tr' ? 'HAFTALIK TSS' : 'WEEK TSS'
+        const statusLabel = budget.status === 'on-pace'
+          ? (lang === 'tr' ? 'hedef hızında' : 'on pace')
+          : budget.status === 'ahead'
+          ? (lang === 'tr' ? `+${budget.paceDelta}% önde` : `+${budget.paceDelta}% ahead`)
+          : (lang === 'tr' ? `${budget.paceDelta}% geride` : `${budget.paceDelta}% behind`)
+        return (
+          <div style={{
+            marginBottom: '14px', padding: '8px 12px',
+            background: 'var(--card-bg)', border: '1px solid var(--border)',
+            borderLeft: `3px solid ${color}`, borderRadius: '4px',
+            fontFamily: MONO,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '4px' }}>
+              <span style={{ fontSize: '9px', color: '#888', letterSpacing: '0.1em' }}>
+                ◇ {label}
+                <span style={{ color: '#aaa', marginLeft: '8px', letterSpacing: '0.04em' }}>
+                  {budget.spent} / {budget.target}
+                </span>
+              </span>
+              <span style={{ fontSize: '9px', color, letterSpacing: '0.06em' }}>
+                {statusLabel}
+              </span>
+            </div>
+            <div style={{ height: '3px', background: 'var(--surface)', borderRadius: '2px', overflow: 'hidden', position: 'relative' }}>
+              <div style={{
+                width: `${barFill}%`, height: '100%', background: color,
+                transition: 'width 200ms ease-out',
+              }}/>
+              {/* Tick at expected pace */}
+              <div style={{
+                position: 'absolute', top: '-2px', height: '7px', width: '1px',
+                left: `${budget.expectedPct}%`, background: '#aaa', opacity: 0.6,
+              }}/>
+            </div>
+            {budget.summary && (
+              <div style={{ fontSize: '9px', color: '#aaa', marginTop: '5px', lineHeight: 1.5 }}>
+                {budget.summary[lang] || budget.summary.en}
+              </div>
+            )}
+          </div>
+        )
       })()}
 
       {/* ── Weekly Recap (Monday only) ─────────────────────────────────────── */}

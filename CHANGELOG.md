@@ -14,6 +14,31 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.127.0 — 2026-05-15 — Weekly TSS budget pace chip
+
+  The plan generator emits a weekly TSS target (sum of planned-
+  session TSS). Athletes mid-week had no compact pace indicator —
+  the existing TSS ring on the Today view sits far below the fold
+  and shows raw numbers, not interpretation. "100 TSS spent" tells
+  you nothing without knowing what day of the week it is.
+
+  New `analyzeWeeklyBudget({weekTSS, weekTSSTarget, today})` returns
+  spent / target / spentPct / expectedPct (day-of-week as % of week
+  completed) / paceDelta / status. Status: `on-pace` (|delta| ≤15pp),
+  `ahead` (>15pp), `behind` (<-15pp). On-pace is silent
+  interpretively; ahead/behind get a bilingual summary line warning
+  against compensating with intensity.
+
+  TodayView shows a compact bar between the streak chip and weekly
+  recap: a 3px progress bar with the expected-pace tick mark + a
+  status pill. Visible every day a target exists, not just Monday.
+
+  Files: `src/lib/athlete/weeklyBudget.js` (new, ~85 LOC),
+  `src/lib/__tests__/athlete/weeklyBudget.test.js` (new, 10 cases),
+  `src/components/TodayView.jsx`. 10315 tests passing.
+
+---
+
 ## v9.126.0 — 2026-05-15 — 7-day snooze on recurring alert banners
 
   Prompt NNN. First fix from the banner-accumulation critique pass.
