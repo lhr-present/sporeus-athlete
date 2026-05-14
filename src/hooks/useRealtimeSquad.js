@@ -45,7 +45,7 @@ export function useRealtimeSquad({ authUser, isDemo, athletes, onUpdate }) {
 
       const ch = supabase.channel(`rt-squad-${authUser.id}`)
         .on('postgres_changes', {
-          event: 'INSERT', schema: 'public', table: 'wellness_logs',
+          event: 'INSERT', schema: 'public', table: 'recovery',
           filter: `user_id=in.(${athleteIds})`,
         }, (payload) => {
           const row = payload.new

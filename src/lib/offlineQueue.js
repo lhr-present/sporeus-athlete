@@ -39,7 +39,7 @@ export async function enqueuePendingLog(entry) {
 
 // ─── Flush queue (retry all pending entries in insertion order) ────────────────
 // Each entry may carry a `_table` field specifying its target table.
-// Defaults to 'wellness_logs' (the primary use case).
+// Defaults to 'recovery' (the primary use case — daily wellness check-ins).
 export async function flushQueue() {
   if (!isSupabaseReady()) return
   if (typeof navigator !== 'undefined' && !navigator.onLine) { setStatus('offline'); return }
@@ -52,7 +52,7 @@ export async function flushQueue() {
   let allOk = true
   for (const row of pending) {
     const { id, _queuedAt, _table, ...entry } = row  // strip internal queue metadata
-    const table = _table || 'wellness_logs'
+    const table = _table || 'recovery'
     try {
       const { error } = await supabase
         .from(table)

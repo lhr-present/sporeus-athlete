@@ -14,6 +14,56 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.135.0 — 2026-05-15 — Realtime publication audit + wellness_logs → recovery fix
+
+  Follow-up to v9.134. After publishing the real `messages` table I
+  ran the same audit across every `postgres_changes` subscription
+  in the codebase. Found 4 more tables that code subscribes to but
+  weren't in `supabase_realtime`, and 1 subscription pointing at a
+  table that doesn't exist:
+
+  Migration `20260482_publish_realtime_missing_tables.sql`:
+  - `activity_upload_jobs` → publish + REPLICA IDENTITY FULL.
+    Subscribed by `UploadActivity.jsx` for upload-progress UI.
+    Before: FIT/TCX drag-drop showed "uploading…" but never advanced
+    until page reload because no realtime UPDATE events delivered.
+  - `ai_insights` → publish + REPLICA IDENTITY FULL.
+    Subscribed by `useInsightNotifier.js` for push notifications.
+    Before: new AI insights only surfaced on cold load.
+  - `profiles` → publish + REPLICA IDENTITY FULL.
+    Subscribed by `useSubscription.js` for tier-change UI.
+    Before: Stripe/Dodo checkout success → user still saw "Free"
+    tier until manual refresh (revenue paper-cut).
+  - `session_attendance` → publish + REPLICA IDENTITY FULL.
+    Subscribed by `useSessionAttendance.js` for group sessions.
+
+  Code fix:
+  - `useRealtimeSquad.js` subscribed to a `wellness_logs` table that
+    doesn't exist — the real table has always been `recovery`.
+    Renamed; the `payload.new` row shape (`user_id`, `date`,
+    `soreness`) matches the `recovery` schema, so the toast logic
+    works as written. Coach dashboard will now actually fire the
+    "athlete just checked in — Fatigue X/5" toast.
+  - `offlineQueue.js` default `_table` renamed from `'wellness_logs'`
+    to `'recovery'`. The default is dead code (no caller omits
+    `_table`), but rename keeps documentation honest.
+
+  Tests left intact: `offlineQueue.test.js` uses `'wellness_logs'`
+  as an arbitrary routing label — it tests the routing mechanism,
+  not table existence.
+
+  Net result of v9.133 → v9.134 → v9.135 arc: zero net new code
+  shipped, four silent realtime bugs fixed, one broken subscription
+  pointed at the right table, CLAUDE.md cleaned up. The "build a
+  foundation" instinct in v9.133 was wrong; the latent-bug audit
+  it triggered was the actual value.
+
+  Suite 10360/10360 green.
+
+  Dependencies: `public.activity_upload_jobs`, `public.ai_insights`,
+  `public.profiles`, `public.session_attendance`, `public.recovery`
+  (existing tables); `supabase_realtime` publication.
+
 ## v9.134.0 — 2026-05-15 — Corrective: drop v9.133 duplicate, publish real messages table
 
   v9.133 shipped a duplicate `coach_messages` table believing the
