@@ -341,6 +341,15 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   function handleTabClick(tabId) {
     setTabRaw(tabId)
     try { sessionStorage.setItem('sporeus-active-tab', tabId) } catch (e) { logger.warn('sessionStorage:', e.message) }
+    // v9.143.0 — Persistent tab-visit tracking. lib/orientation.js
+    // `view_load` step checks `sporeus-tab-visited-dashboard` to decide
+    // whether to keep nudging the athlete to open Dashboard. The orientation
+    // system was designed around this key but nothing was writing it, so
+    // the step could only ever dismiss via the manual [done] click — a
+    // latent bug since the orientation feature shipped. Writing per-tab
+    // here unblocks the existing condition + opens the door for future
+    // visit-gated nudges (e.g., reports, protocols).
+    try { localStorage.setItem(`sporeus-tab-visited-${tabId}`, today) } catch (e) { logger.warn('localStorage:', e.message) }
     if (tabId === 'recovery') {
       setVisitedTabs(v => ({ ...v, recovery_today: today }))
     }

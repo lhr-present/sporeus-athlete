@@ -14,6 +14,43 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.143.0 — 2026-05-15 — Wire tab-visit tracking for orientation auto-dismiss
+
+  Second latent orientation bug in two ships. `lib/orientation.js`
+  `view_load` step has a condition that ANDs two dismissal keys:
+  ```
+  !localStorage.getItem('sporeus-oriented-view_load') &&
+  !localStorage.getItem('sporeus-tab-visited-dashboard')
+  ```
+
+  The first key is set by the [done] click handler. The second
+  key — `sporeus-tab-visited-dashboard` — was **never written
+  anywhere**. The orientation system was designed to auto-dismiss
+  the "open Dashboard to see load trend" nudge when the athlete
+  actually opened Dashboard, but the wiring was missing. So athletes
+  with 7+ logs who acted on the nudge still saw it every TodayView
+  mount until they manually clicked [done].
+
+  Fix: `handleTabClick` in `useAppState.js` now writes
+  `sporeus-tab-visited-${tabId}` on every tab switch (date-stamped
+  so future steps can reason about recency). This:
+  1. Closes the existing `view_load` dismiss path
+  2. Opens the same pattern to future orientation steps that want
+     to gate on visit (reports, protocols, etc.)
+
+  Existing `recovery_today` visit tracking (line 345) left intact —
+  it's session-scoped (sessionStorage) and serves a different
+  purpose (the morning check-in card).
+
+  3 new orientation tests covering: view_load fires on eligible
+  state, suppressed by tab-visit key, suppressed by manual-done key.
+
+  Suite 10375 / 10375 green (+3).
+
+  Combined v9.142+143 effect: the orientation system finally works
+  as designed end-to-end. log_wellness click no longer no-ops;
+  view_load step actually auto-dismisses on Dashboard visit.
+
 ## v9.142.0 — 2026-05-15 — Fix `log_wellness` orientation no-op + auto-dismiss
 
   Found while auditing TodayView's passive surfaces: the orientation

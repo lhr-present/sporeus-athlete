@@ -41,4 +41,34 @@ describe('getOrientationStep', () => {
     // No sport AND empty log — should return set_profile first
     expect(getOrientationStep([], {}, [])).toBe('set_profile')
   })
+
+  // v9.143 — verify the tab-visit-based dismissal now wired in useAppState.handleTabClick
+  describe('view_load step', () => {
+    function buildEligibleState() {
+      const log = Array.from({ length: 8 }, (_, i) => ({ date: `2026-04-${10 + i}`, tss: 50 }))
+      const profile = { sport: 'Run' }
+      const wellness = [{ date: new Date().toISOString().slice(0, 10), score: 80 }]
+      // Suppress earlier-priority steps so we isolate view_load.
+      store['sporeus-oriented-log_wellness'] = '1'
+      store['sporeus-oriented-run_predictor'] = '1'
+      return { log, profile, wellness }
+    }
+
+    it('fires when log has 8 entries, dashboard never visited, and not dismissed', () => {
+      const { log, profile, wellness } = buildEligibleState()
+      expect(getOrientationStep(log, profile, wellness)).toBe('view_load')
+    })
+
+    it('is suppressed once sporeus-tab-visited-dashboard is set (the key handleTabClick now writes)', () => {
+      const { log, profile, wellness } = buildEligibleState()
+      store['sporeus-tab-visited-dashboard'] = '2026-04-18'
+      expect(getOrientationStep(log, profile, wellness)).toBeNull()
+    })
+
+    it('is suppressed once sporeus-oriented-view_load is set (manual [done] path)', () => {
+      const { log, profile, wellness } = buildEligibleState()
+      store['sporeus-oriented-view_load'] = '1'
+      expect(getOrientationStep(log, profile, wellness)).toBeNull()
+    })
+  })
 })
