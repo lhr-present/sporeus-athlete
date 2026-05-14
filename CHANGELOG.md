@@ -14,6 +14,55 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.114.0 — 2026-05-15 — Fix mark-all-read side-effect on coach chips
+
+  Prompt FFF. First fix from the v9.110–v9.113 critique pass — closes
+  a correctness bug introduced by v9.111.0 Prompt BBB.
+
+  ### Problem
+  v9.111.0 made coach diagnostic chips clickable: clicking opens the
+  message thread with prefill text. But the implementation
+  unconditionally ran `messages.map(m => m.from === 'athlete' ?
+  { ...m, read: true } : m)` regardless of whether the panel was
+  already open. So a coach who clicked a chip to send a templated
+  flag message — without having read recent athlete replies —
+  silently zeroed-out the unread state on those replies. The
+  drift-card MESSAGE button had the same bug. The toggle handler
+  also marked-read on every toggle, including when *closing* the
+  panel.
+
+  Net effect: the unread-message indicator could drop to zero while
+  the coach hadn't actually read anything new. The coach's queue of
+  athletes-waiting-for-a-response became invisible.
+
+  ### Solution
+  Decoupled the read-marking from the panel actions:
+  - New `markAthleteMessagesRead()` — idempotent; mutates state only
+    if at least one message was actually unread
+  - Renamed `openMessages` → `toggleMessages`; now marks-read only
+    on the closed→open transition
+  - New `openMessagePanel()` — used by chip click and drift-card
+    MESSAGE button; no-op if already open, marks-read only on the
+    open transition
+
+  Programmatic opens (chip, drift card) and the explicit toggle
+  share the same read-marking semantic: "opened the panel, so coach
+  is presumed to have seen what's there." Re-clicks while open and
+  panel closures no longer mutate read state.
+
+  ### Files
+  - `src/components/coachDashboard/SbAthletePanel.jsx` — refactored
+    read-marking helpers; three call sites routed through them
+
+  ### Tests
+  10214 unit tests passing (no test changes — the bug was state
+  flow, exercised by hand against the message panel).
+
+  ### Depends on
+  - v9.111.0 (Prompt BBB — introduced the chip prefill flow)
+
+---
+
 ## v9.113.0 — 2026-05-15 — Mission 2 framework — replace the dead-end deep-link
 
   Prompt DDD. Fourth of 5 critique-driven fixes from the Mission 1 pass.

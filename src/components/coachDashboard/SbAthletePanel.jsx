@@ -79,11 +79,44 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
     setMessages(updated); saveMsgs(updated); setMsgDraft('')
   }
 
-  const openMessages = () => {
-    setShowMessages(s => !s)
-    // mark all athlete messages as read
-    const updated = messages.map(m => m.from === 'athlete' ? { ...m, read: true } : m)
-    setMessages(updated); saveMsgs(updated)
+  // v9.114.0 (Prompt FFF) — Read-marking decoupled from panel actions.
+  // Pre-v9.114 every code path that opened the message panel — including
+  // toggle, chip-click (BBB), and drift-card MESSAGE button — also
+  // marked ALL athlete messages as read, even when the panel was already
+  // open. That conflated "coach is reading prior athlete messages" with
+  // "coach is sending a templated message about an unrelated flag."
+  //
+  // Fix: a single idempotent markAthleteMessagesRead() helper, called
+  // only when the panel transitions from closed → open. Toggling closed
+  // and re-clicking a chip while open no longer mutates unread state.
+  const markAthleteMessagesRead = () => {
+    const updated = []
+    let changed = false
+    for (const m of messages) {
+      if (m.from === 'athlete' && m.read !== true) {
+        updated.push({ ...m, read: true })
+        changed = true
+      } else {
+        updated.push(m)
+      }
+    }
+    if (changed) { setMessages(updated); saveMsgs(updated) }
+  }
+
+  const toggleMessages = () => {
+    setShowMessages(s => {
+      if (!s) markAthleteMessagesRead()
+      return !s
+    })
+  }
+
+  // Used by chip-click and drift-card MESSAGE button. Opens the panel
+  // (no-op if already open) and marks unread only on the open transition.
+  const openMessagePanel = () => {
+    if (!showMessages) {
+      markAthleteMessagesRead()
+      setShowMessages(true)
+    }
   }
 
   const handleLevelOverride = async (val) => {
@@ -371,9 +404,7 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
             const openWithPrefill = (flag) => {
               const text = flag.prefill?.[lang] || flag.prefill?.en || ''
               setMsgDraft(text)
-              setShowMessages(true)
-              const updated = messages.map(m => m.from === 'athlete' ? { ...m, read: true } : m)
-              setMessages(updated); saveMsgs(updated)
+              openMessagePanel()
               try {
                 supabase && supabase.from('attribution_events').insert({
                   user_id: coachId, event_name: 'coach_chip_action',
@@ -535,10 +566,7 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
                         ? `${pctLabel} ortalama plan uyumu (${drift.weeksAnalyzed} hafta). `
                         : `${pctLabel} avg plan compliance over ${drift.weeksAnalyzed} weeks. `
                       setMsgDraft(prefix + rationale + (drift.citation ? `  — ${drift.citation}` : ''))
-                      setShowMessages(true)
-                      // Mark unread as read since coach is opening the thread
-                      const updated = messages.map(m => m.from === 'athlete' ? { ...m, read: true } : m)
-                      setMessages(updated); saveMsgs(updated)
+                      openMessagePanel()
                     }}
                     style={{
                       ...S.mono, fontSize:'10px', fontWeight:700, padding:'5px 12px',
@@ -775,7 +803,7 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
           {/* Message thread */}
           <div style={{ marginTop:'12px' }}>
             <button
-              onClick={openMessages}
+              onClick={toggleMessages}
               style={{ display:'flex', alignItems:'center', gap:'8px', background:'transparent', border:'1px solid #0064ff33', borderRadius:'4px', padding:'5px 10px', cursor:'pointer' }}>
               <span style={{ ...S.mono, fontSize:'9px', color:'#0064ff', letterSpacing:'0.08em' }}>✉ MESSAGES</span>
               {unreadFromAthlete > 0 && (
