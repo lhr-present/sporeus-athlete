@@ -14,6 +14,27 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.138.0 — 2026-05-15 — General-track first-session telemetry
+
+  Third parity ship. Athlete `useAppState.handleAddSession` emits
+  `first_session_logged { sport }` when `log.length` transitions
+  from 0→1 (Mission 1 funnel step 3). The general-fitness
+  equivalent `GeneralFitness.handleSaveSession` was silent on the
+  same milestone.
+
+  Emit `general_first_session_logged { templateId, exercise_count }`
+  on the first session save. Same naming convention as v9.137:
+  distinct from `first_session_logged` so athlete Mission 1 queries
+  stay clean.
+
+  Same try/catch fail-open pattern. Suite 10366/10366 unchanged.
+
+  Parity complete for the two main milestones (program seeded +
+  first session). The general track now has matching telemetry
+  for the early activation funnel.
+
+  Dependencies: `src/lib/attribution.js` (existing).
+
 ## v9.137.0 — 2026-05-15 — General-track program-seeded telemetry
 
   Parity follow-up to v9.136. The athlete onboarding emits

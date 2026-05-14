@@ -527,12 +527,24 @@ export default function GeneralFitness({ lang = 'en', authUser = null }) {
 
   function handleSaveSession(session) {
     const today = new Date().toISOString().slice(0, 10)
+    const wasFirst = sessions.length === 0
     const entry = {
       ...session,
       id:           crypto.randomUUID?.() ?? Date.now().toString(),
       session_date: today,
     }
     setSessions(prev => [...prev, entry])
+
+    // Parallel to athlete-track `first_session_logged` (useAppState.js:403).
+    // Distinct event name so the athlete Mission 1 funnel stays clean.
+    if (wasFirst) {
+      try {
+        emitEvent('general_first_session_logged', {
+          templateId:     activeProgram?.templateId,
+          exercise_count: (session.exercises ?? []).length,
+        })
+      } catch { /* fail open */ }
+    }
 
     let updatedProgram = activeProgram
     if (activeProgram) {
