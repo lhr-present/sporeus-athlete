@@ -112,7 +112,7 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
       // pushed. Pending plans are the highest-value follow-up signal.
       // v9.106.0 (Prompt KK): widen to last 10 active plans so the
       // pending-response counter has data, not just the latest plan.
-      .select('id, name, goal, start_date, weeks, status, accepted_at, rejected_at')
+      .select('id, name, goal, start_date, weeks, status, accepted_at, rejected_at, decline_reason, decline_note')
       .eq('athlete_id', athleteId)
       .eq('status', 'active')
       .order('created_at', { ascending: false })
@@ -615,9 +615,26 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
                     )
                   }
                   if (activePlan.rejected_at) {
+                    // v9.112.0 (Prompt CCC) — Surface the decline reason
+                    // inline so the coach reads "why" without having to
+                    // expand or open a separate panel. Reason labels
+                    // mirror Periodization.jsx DECLINE_REASONS.
+                    const reasonLabels = {
+                      too_hard:          { en: 'too hard',          tr: 'çok zor' },
+                      schedule_conflict: { en: 'schedule conflict', tr: 'program çakışması' },
+                      injury:            { en: 'injury',            tr: 'sakatlık' },
+                      other:             { en: 'other',             tr: 'diğer' },
+                    }
+                    const reasonLabel = activePlan.decline_reason
+                      ? (reasonLabels[activePlan.decline_reason]?.[lang]
+                          || reasonLabels[activePlan.decline_reason]?.en
+                          || activePlan.decline_reason)
+                      : null
                     return (
-                      <span style={{ ...S.mono, fontSize:'9px', color:'#888', background:'#88888822', border:'1px solid #88888866', borderRadius:'3px', padding:'1px 6px', letterSpacing:'0.06em' }}>
-                        ✕ DECLINED
+                      <span style={{ ...S.mono, fontSize:'9px', color:'#888', background:'#88888822', border:'1px solid #88888866', borderRadius:'3px', padding:'1px 6px', letterSpacing:'0.06em' }}
+                        title={activePlan.decline_note || ''}>
+                        ✕ DECLINED{reasonLabel ? ` · ${reasonLabel}` : ''}
+                        {activePlan.decline_note && <span style={{ color:'#aaa' }}>{' ✎'}</span>}
                       </span>
                     )
                   }

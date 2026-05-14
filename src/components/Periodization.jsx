@@ -219,11 +219,29 @@ function readPlanResponses() { try { return JSON.parse(localStorage.getItem(PLAN
 function savePlanResponses(obj) { try { localStorage.setItem(PLAN_RESPONSES_KEY, JSON.stringify(obj)) } catch (e) { logger.warn('localStorage:', e.message) } }
 function planViewedKey(planId) { return `sporeus-plan-viewed-${planId}` }
 
+// v9.112.0 (Prompt CCC) — Decline reason set. Kept in lockstep with the
+// CHECK constraint added by 20260479_coach_plan_decline_reason.sql.
+// Widening this client-side without also widening the DB constraint will
+// cause the UPDATE to error.
+const DECLINE_REASONS = [
+  { key: 'too_hard',          en: 'Too hard for me right now',  tr: 'Şu an için fazla zor' },
+  { key: 'schedule_conflict', en: "Doesn't fit my schedule",     tr: 'Programa uygun değil' },
+  { key: 'injury',            en: "I'm injured / need recovery", tr: 'Sakatım / iyileşmem gerek' },
+  { key: 'other',             en: 'Other',                       tr: 'Diğer' },
+]
+const DECLINE_REASON_LABEL = Object.fromEntries(
+  DECLINE_REASONS.map(r => [r.key, { en: r.en, tr: r.tr }])
+)
+
 function CoachPlansCard({ authUser }) {
-  const { t } = useContext(LangCtx)
+  const { t, lang } = useContext(LangCtx)
   const [plans, setPlans]     = useState(null)  // null = loading
   const [expanded, setExpanded] = useState({})
   const [responses, setResponses] = useState(() => readPlanResponses())
+  // v9.112.0 (Prompt CCC) — Decline modal state. Plan + draft reason/note
+  // kept here rather than per-row local state so an open modal isn't lost
+  // if the parent re-renders after the optimistic plan list update.
+  const [declineModal, setDeclineModal] = useState(null) // null | { plan, reason, note }
 
   useEffect(() => {
     if (!isSupabaseReady() || !authUser) { setPlans([]); return }
@@ -231,7 +249,7 @@ function CoachPlansCard({ authUser }) {
       .from('coach_plans')
       // v9.105.0 (Prompt BB): also pull accepted_at/rejected_at so the
       // ACCEPT/DECLINE buttons or status pill can render.
-      .select('id, name, goal, start_date, weeks, status, created_at, coach_id, accepted_at, rejected_at')
+      .select('id, name, goal, start_date, weeks, status, created_at, coach_id, accepted_at, rejected_at, decline_reason, decline_note')
       .eq('athlete_id', authUser.id)
       .eq('status', 'active')
       .order('created_at', { ascending: false })
@@ -262,12 +280,17 @@ function CoachPlansCard({ authUser }) {
   // v9.105.0 (Prompt BB) — Acceptance handlers. Optimistic local update +
   // best-effort DB write. ACCEPT also replaces the local plan so the
   // athlete's TodayView immediately reflects the coach's prescription.
-  const respondToPlan = async (plan, action) => {
+  const respondToPlan = async (plan, action, declineReason = null, declineNote = null) => {
     if (!isSupabaseReady()) return
     const nowISO = new Date().toISOString()
     const patch = action === 'accept'
-      ? { accepted_at: nowISO, rejected_at: null }
-      : { rejected_at: nowISO, accepted_at: null }
+      ? { accepted_at: nowISO, rejected_at: null, decline_reason: null, decline_note: null }
+      : {
+          rejected_at:    nowISO,
+          accepted_at:    null,
+          decline_reason: declineReason,
+          decline_note:   declineNote && declineNote.trim() ? declineNote.trim().slice(0, 500) : null,
+        }
     // Optimistic UI update
     setPlans(prev => (prev || []).map(p => p.id === plan.id ? { ...p, ...patch } : p))
     try {
@@ -276,6 +299,7 @@ function CoachPlansCard({ authUser }) {
         plan_id:  plan.id,
         coach_id: plan.coach_id,
         weeks:    Array.isArray(plan.weeks) ? plan.weeks.length : 0,
+        ...(action === 'decline' ? { reason: declineReason } : {}),
       })
       if (action === 'accept') {
         // Replace local plan so TodayView + drift card see the coach's plan.
@@ -378,6 +402,11 @@ function CoachPlansCard({ authUser }) {
                 {isDeclined && (
                   <span style={{ ...S.mono, fontSize:'9px', color:'#888', background:'#88888822', border:'1px solid #88888866', borderRadius:'3px', padding:'1px 6px', letterSpacing:'0.06em' }}>
                     ✕ DECLINED {responseAge}
+                    {plan.decline_reason && (
+                      <span style={{ color:'#aaa' }}>
+                        {' · '}{DECLINE_REASON_LABEL[plan.decline_reason]?.[lang] || DECLINE_REASON_LABEL[plan.decline_reason]?.en || plan.decline_reason}
+                      </span>
+                    )}
                   </span>
                 )}
               </div>
@@ -415,7 +444,7 @@ function CoachPlansCard({ authUser }) {
                   ✓ {t('coachPlanAccept') || 'ACCEPT PLAN'}
                 </button>
                 <button
-                  onClick={(e) => { e.stopPropagation(); respondToPlan(plan, 'decline') }}
+                  onClick={(e) => { e.stopPropagation(); setDeclineModal({ plan, reason: '', note: '' }) }}
                   style={{ ...S.mono, fontSize:'10px', fontWeight:700, padding:'5px 12px', background:'transparent', border:'1px solid #888', color:'#aaa', borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em' }}>
                   ✕ {t('coachPlanDecline') || 'DECLINE'}
                 </button>
@@ -483,6 +512,86 @@ function CoachPlansCard({ authUser }) {
           </div>
         )
       })}
+
+      {/* v9.112.0 (Prompt CCC) — Decline reason modal. Required reason
+          (4 closed options) + optional free-form note. Modal blocks the
+          DECLINE flow so coaches always get a structured signal back.
+          Cancel exits without writing; Submit fires respondToPlan with
+          the reason + trimmed note. */}
+      {declineModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setDeclineModal(null)}
+          style={{
+            position:'fixed', inset:0, background:'rgba(0,0,0,0.75)',
+            display:'flex', alignItems:'center', justifyContent:'center',
+            padding:'16px', zIndex:9999,
+          }}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              ...S.card, maxWidth:'420px', width:'100%',
+              borderLeft:'3px solid #888', padding:'18px',
+            }}>
+            <div style={{ ...S.cardTitle, marginBottom:'14px' }}>
+              ✕ {lang === 'tr' ? 'PLANI REDDET' : 'DECLINE PLAN'}
+            </div>
+            <div style={{ ...S.mono, fontSize:'11px', color:'#aaa', marginBottom:'12px', lineHeight:1.55 }}>
+              {lang === 'tr'
+                ? 'Antrenörünün bir sonraki planı senin için ayarlayabilmesi için neden seçmen gerekiyor.'
+                : 'Pick a reason so your coach can adjust the next plan for you.'}
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:'6px', marginBottom:'14px' }}>
+              {DECLINE_REASONS.map(r => {
+                const selected = declineModal.reason === r.key
+                return (
+                  <button
+                    key={r.key}
+                    onClick={() => setDeclineModal(m => ({ ...m, reason: r.key }))}
+                    style={{
+                      ...S.mono, fontSize:'11px', textAlign:'left',
+                      padding:'8px 10px',
+                      background: selected ? '#ff660018' : 'transparent',
+                      border:`1px solid ${selected ? '#ff660066' : 'var(--border)'}`,
+                      color: selected ? '#ff9944' : '#ccc',
+                      borderRadius:'4px', cursor:'pointer',
+                    }}>
+                    {selected ? '◉' : '○'} {r[lang] || r.en}
+                  </button>
+                )
+              })}
+            </div>
+            <textarea
+              value={declineModal.note}
+              onChange={e => setDeclineModal(m => ({ ...m, note: e.target.value.slice(0, 500) }))}
+              rows={3}
+              placeholder={lang === 'tr'
+                ? 'İsteğe bağlı not (en fazla 500 karakter)…'
+                : 'Optional note (max 500 chars)…'}
+              style={{ ...S.input, width:'100%', fontSize:'11px', padding:'7px 9px', resize:'vertical', lineHeight:1.5, marginBottom:'14px' }}
+            />
+            <div style={{ display:'flex', gap:'8px', justifyContent:'flex-end' }}>
+              <button
+                onClick={() => setDeclineModal(null)}
+                style={{ ...S.mono, fontSize:'10px', fontWeight:700, padding:'6px 14px', background:'transparent', border:'1px solid #555', color:'#aaa', borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em' }}>
+                {lang === 'tr' ? 'VAZGEÇ' : 'CANCEL'}
+              </button>
+              <button
+                onClick={() => {
+                  const { plan, reason, note } = declineModal
+                  if (!reason) return
+                  respondToPlan(plan, 'decline', reason, note)
+                  setDeclineModal(null)
+                }}
+                disabled={!declineModal.reason}
+                style={{ ...S.mono, fontSize:'10px', fontWeight:700, padding:'6px 14px', background:'#e03030', border:'none', color:'#fff', borderRadius:'3px', cursor: declineModal.reason ? 'pointer' : 'not-allowed', letterSpacing:'0.06em', opacity: declineModal.reason ? 1 : 0.4 }}>
+                ✕ {lang === 'tr' ? 'GÖNDER' : 'SUBMIT'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

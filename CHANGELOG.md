@@ -14,6 +14,74 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.112.0 — 2026-05-15 — Decline reason capture — close the feedback loop
+
+  Prompt CCC. Third of 5 critique-driven fixes from the Mission 1 pass.
+
+  ### Problem
+  v9.105.0 (Prompt BB) introduced ACCEPT / DECLINE on coach-pushed
+  plans. The signal was binary — `accepted_at` or `rejected_at`. When
+  an athlete declined, the coach saw `✕ DECLINED` on SbAthletePanel
+  and learned exactly nothing about what to change. Common decline
+  triggers — "too hard right now", "I'm injured", "doesn't fit my
+  schedule" — each imply very different coach corrections. Without
+  that signal the coach guessed, asked out-of-band, or shipped the
+  same plan again. Either way the in-app loop dead-ended.
+
+  ### Solution
+  Migration `20260479_coach_plan_decline_reason.sql` adds two
+  nullable columns on `coach_plans`:
+  - `decline_reason TEXT` constrained to one of `too_hard`,
+    `schedule_conflict`, `injury`, `other`
+  - `decline_note TEXT` free-form optional context (≤500 chars
+    client-side trim)
+
+  The CHECK constraint keeps the reason set closed so coach-side
+  aggregates (e.g. "4 athletes declined for injury this month")
+  remain tractable — widening the set requires a future migration.
+
+  Athlete side (`Periodization.jsx` → `CoachPlansCard`):
+  - DECLINE button now opens a modal instead of immediately rejecting
+  - Modal has 4 radio-style reason buttons (bilingual EN+TR labels)
+    plus an optional free-form note (500-char max)
+  - SUBMIT button stays disabled until a reason is picked — coaches
+    are guaranteed to receive structured signal, not just "declined"
+  - `respondToPlan(plan, 'decline', reason, note)` writes both
+    columns and emits `coach_plan_declined` with a `reason` prop so
+    the funnel telemetry distinguishes triggers
+  - DECLINED status pill now appends the reason inline:
+    `✕ DECLINED · too hard for me right now`
+
+  Coach side (`SbAthletePanel.jsx`):
+  - Fetches `decline_reason` + `decline_note` in the active-plan query
+  - DECLINED pill renders inline reason: `✕ DECLINED · injury`
+  - A note (when present) shows a `✎` indicator and the full note
+    appears in the element's `title` (tooltip on hover)
+
+  ### Mission 1 framing
+  CCC turns the coach-athlete plan loop into a real conversation
+  instead of a fire-and-forget push. Combined with v9.111 BBB (chip →
+  message prefill) the coach now has two structured signals for every
+  declined plan: the reason category and an optional athlete note,
+  plus a primed message thread to act on either.
+
+  ### Files
+  - `supabase/migrations/20260479_coach_plan_decline_reason.sql` (new)
+  - `src/components/Periodization.jsx` — DECLINE_REASONS const,
+    `respondToPlan` accepts reason+note, decline modal, status pill
+  - `src/components/coachDashboard/SbAthletePanel.jsx` — pull new
+    columns, surface reason inline in DECLINED pill
+
+  ### Tests
+  10194 unit tests passing (no test-file changes — modal UI is
+  exercised by hand; reason data flow is straight passthrough).
+
+  ### Depends on
+  - v9.105.0 (Prompt BB — accepted_at / rejected_at columns)
+  - 20260478 migration (acceptance columns)
+
+---
+
 ## v9.111.0 — 2026-05-15 — Coach chip → message + Rest-day streak equivalence
 
   Prompts BBB + EEE. Two of 5 critique-driven fixes shipped together —
