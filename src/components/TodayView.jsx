@@ -2484,11 +2484,40 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
                   return (
                     <>
                       <div style={{ color: AMBER, marginBottom: '10px' }}>◆ {t('todayRest')}</div>
-                      {restEntry ? (
-                        <div style={{ fontSize: '11px', color: '#5bc25b', fontFamily: MONO, letterSpacing: '0.04em' }}>
-                          ✓ {lang === 'tr' ? 'Dinlenme günü kaydedildi · seri korunuyor' : 'Rest day logged · streak preserved'}
-                        </div>
-                      ) : (
+                      {restEntry ? (() => {
+                        // v9.150.0 — Rest-type affirmation (Prompt 7).
+                        // Discriminate by flag: sick (v9.139), corrective
+                        // (v9.144), or planned (v9.111 + this default).
+                        // Color + copy vary by type so the affirmation
+                        // matches the choice the athlete made.
+                        const restType = restEntry.sickDay
+                          ? 'sick'
+                          : restEntry.correctiveRest
+                          ? 'corrective'
+                          : 'planned'
+                        const restMeta = {
+                          planned: {
+                            color: GREEN,
+                            en: '✓ Rest as planned — recovery is part of the program. Streak preserved.',
+                            tr: '✓ Plana göre dinlenme — toparlanma programın parçası. Seri korunuyor.',
+                          },
+                          sick: {
+                            color: AMBER,
+                            en: '✓ Sick day logged — listen to your body. Streak preserved, no penalty.',
+                            tr: '✓ Hastalık günü kaydedildi — bedenini dinle. Seri korunuyor, ceza yok.',
+                          },
+                          corrective: {
+                            color: AMBER,
+                            en: '✓ Rest after 6+ consecutive training days — smart move. Streak preserved.',
+                            tr: '✓ 6+ ardışık antrenmandan sonra dinlenme — akıllıca. Seri korunuyor.',
+                          },
+                        }[restType]
+                        return (
+                          <div style={{ fontSize: '11px', color: restMeta.color, fontFamily: MONO, letterSpacing: '0.04em', lineHeight: 1.5 }}>
+                            {lang === 'tr' ? restMeta.tr : restMeta.en}
+                          </div>
+                        )
+                      })() : (
                         <>
                           <button onClick={markRest} style={btn('#5bc25b')}>
                             {lang === 'tr' ? '✓ DİNLENME GÜNÜNÜ İŞARETLE' : '✓ MARK REST DAY'}

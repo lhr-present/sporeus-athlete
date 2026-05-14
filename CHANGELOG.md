@@ -14,6 +14,48 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.150.0 — 2026-05-15 — Rest-day affirmation by type (Prompt 7)
+
+  Three rest-type flags now coexist after v9.111 + v9.139 + v9.144:
+  - `restDayMarked: true` only         → planned rest (periodization)
+  - `restDayMarked` + `sickDay: true`  → sick rest
+  - `restDayMarked` + `correctiveRest: true` → missed-rest correction
+
+  Pre-v9.150 the confirmation message was identical for all three:
+  "Rest day logged · streak preserved" in green. Functional but flat
+  — the same affirmation regardless of whether the athlete was
+  following a periodization plan, listening to their body, or
+  correcting a streak of overtraining.
+
+  Affirmation now discriminates:
+  - planned     → green   `✓ Rest as planned — recovery is part of
+                            the program. Streak preserved.`
+  - sick        → amber   `✓ Sick day logged — listen to your body.
+                            Streak preserved, no penalty.`
+  - corrective  → amber   `✓ Rest after 6+ consecutive training
+                            days — smart move. Streak preserved.`
+
+  Each variant carries bilingual EN/TR text. Color follows the
+  existing severity vocabulary (green = encouragement, amber =
+  caution-but-correct).
+
+  Pure render-time discrimination — reads the existing log entry's
+  flags. No data migration, no new state. The renamed `restMeta`
+  table compiles to ~40 lines of clean discrimination.
+
+  Out of scope this ship: planned-session branch affirmation (the
+  spec flagged "also check if rest entries elsewhere have similar
+  surfaces"). Currently when an athlete has a planned session AND
+  marks a sick/corrective rest, the CTAs hide via `!todayLogEntry`
+  but no affirmation appears. Adding an affirmation there is a
+  follow-up — the v9.139/v9.144 CTA buttons already provide the
+  confirmation moment.
+
+  Suite 10407 / 10407 green (no logic mutated — copy + color
+  discrimination only).
+
+  Dependencies: existing rest-flag taxonomy from v9.111/v9.139/v9.144.
+
 ## v9.149.0 — 2026-05-15 — Today's Signal tile relocated above session card (Prompt 5)
 
   The Today's Signal tile (v9.104.0 Prompt EE) renders a transparency
