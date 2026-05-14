@@ -32,6 +32,7 @@ import { explainPlannedSession } from '../lib/athlete/planRationale.js'
 import { analyzeWellnessTrend } from '../lib/athlete/wellnessTrend.js'
 import { analyzeDecouplingTrend } from '../lib/athlete/decouplingTrend.js'
 import { analyzePolarizedWeek } from '../lib/athlete/polarizedWeek.js'
+import { isBannerSnoozed, snoozeBanner } from '../lib/athlete/bannerSnooze.js'
 import { rankDiagnostics } from '../lib/athlete/diagnosticPriority.js'
 import { buildStarterPlan } from '../lib/plan/starterPlan.js'
 import { recordPlanVersion } from '../lib/plan/versionTracking.js'
@@ -382,6 +383,11 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
   const [retroOutcome, setRetroOutcome] = useState(null)
   const [retroNote, setRetroNote]       = useState('')
   const [retroDismissed, setRetroDismissed] = useState(false)
+  // v9.126.0 — Banner snooze bumper. snoozeBanner() writes localStorage;
+  // bumping this counter forces a re-render so isBannerSnoozed reads the
+  // fresh value. Per-banner local state would also work but a single
+  // counter keeps the call sites compact.
+  const [snoozeBump, setSnoozeBump] = useState(0)
 
   const [weeklyRecap] = useState(() => generateWeeklyRecap(log))
   const [recapDismissed, setRecapDismissed] = useState(() => weeklyRecap ? !!localStorage.getItem(`sporeus-recap-seen-${weeklyRecap?.weekLabel}`) : true)
@@ -763,6 +769,9 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
       {(() => {
         const dec = analyzeDecouplingTrend(log, today)
         if (!dec.summary) return null
+        if (isBannerSnoozed('decoupling')) return null
+        // snoozeBump dependency: read here so dismissal triggers re-render
+        void snoozeBump
         const isSignificant = dec.flag === 'significant'
         const color = isSignificant ? '#e03030' : '#f5c542'
         return (
@@ -770,9 +779,18 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
             marginBottom: '14px', padding: '10px 14px',
             background: `${color}10`, border: `1px solid ${color}55`,
             borderLeft: `4px solid ${color}`, borderRadius: '4px',
-            fontFamily: MONO,
+            fontFamily: MONO, position: 'relative',
           }}>
-            <div style={{ fontSize: '10px', fontWeight: 700, color, letterSpacing: '0.08em', marginBottom: '6px' }}>
+            <button
+              onClick={() => { snoozeBanner('decoupling'); setSnoozeBump(b => b + 1) }}
+              aria-label={lang === 'tr' ? 'Uyarıyı 7 gün ertele' : 'Snooze alert for 7 days'}
+              title={lang === 'tr' ? '7 gün ertele' : 'Snooze 7 days'}
+              style={{ position: 'absolute', top: '6px', right: '8px',
+                background: 'transparent', border: 'none', color: '#666',
+                cursor: 'pointer', fontSize: '12px', padding: '2px 6px', lineHeight: 1 }}>
+              ×
+            </button>
+            <div style={{ fontSize: '10px', fontWeight: 700, color, letterSpacing: '0.08em', marginBottom: '6px', paddingRight: '20px' }}>
               {isSignificant ? '⚠' : '↓'} {lang === 'tr' ? 'AEROBİK DESENKRONİZASYON' : 'AEROBIC DECOUPLING'}
               <span style={{ color: '#888', fontWeight: 400, marginLeft: '8px' }}>
                 · {dec.avgPct.toFixed(1)}% · {dec.sampleCount} {lang === 'tr' ? 'seans' : 'sessions'}
@@ -798,6 +816,8 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
       {(() => {
         const pol = analyzePolarizedWeek(log, today)
         if (!pol || pol.flag === 'polarized' || !pol.interpretation) return null
+        if (isBannerSnoozed('polarized')) return null
+        void snoozeBump
         const color = pol.flag === 'drift-threshold' ? '#e03030' : '#f5c542'
         const label = pol.flag === 'drift-threshold'
           ? (lang === 'tr' ? 'EŞİK YOĞUNLUĞU FAZLA' : 'THRESHOLD-HEAVY')
@@ -809,9 +829,18 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
             marginBottom: '14px', padding: '10px 14px',
             background: `${color}10`, border: `1px solid ${color}55`,
             borderLeft: `4px solid ${color}`, borderRadius: '4px',
-            fontFamily: MONO,
+            fontFamily: MONO, position: 'relative',
           }}>
-            <div style={{ fontSize: '10px', fontWeight: 700, color, letterSpacing: '0.08em', marginBottom: '6px' }}>
+            <button
+              onClick={() => { snoozeBanner('polarized'); setSnoozeBump(b => b + 1) }}
+              aria-label={lang === 'tr' ? 'Uyarıyı 7 gün ertele' : 'Snooze alert for 7 days'}
+              title={lang === 'tr' ? '7 gün ertele' : 'Snooze 7 days'}
+              style={{ position: 'absolute', top: '6px', right: '8px',
+                background: 'transparent', border: 'none', color: '#666',
+                cursor: 'pointer', fontSize: '12px', padding: '2px 6px', lineHeight: 1 }}>
+              ×
+            </button>
+            <div style={{ fontSize: '10px', fontWeight: 700, color, letterSpacing: '0.08em', marginBottom: '6px', paddingRight: '20px' }}>
               ◇ {label}
               <span style={{ color: '#888', fontWeight: 400, marginLeft: '8px' }}>
                 · {pol.easyPct}% / {pol.thresholdPct}% / {pol.hardPct}%

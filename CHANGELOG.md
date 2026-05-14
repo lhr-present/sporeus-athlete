@@ -14,6 +14,43 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.126.0 — 2026-05-15 — 7-day snooze on recurring alert banners
+
+  Prompt NNN. First fix from the banner-accumulation critique pass.
+
+  The decoupling (v9.123) and polarized (v9.125) alerts fire on every
+  TodayView render that meets the condition — but an athlete actively
+  rebuilding aerobic base sees the same decoupling alert daily for 3
+  weeks after internalizing the message in 2 days. Banner fatigue.
+
+  New `src/lib/athlete/bannerSnooze.js`:
+  - `isBannerSnoozed(slot, now?)` — synchronous localStorage check
+  - `snoozeBanner(slot, now?)` — write 7-day snooze, idempotent
+  - `clearBannerSnooze(slot)` — for future "restore alerts" UI / tests
+
+  TodayView decoupling and polarized banners each gain a `[×]` button
+  in the top-right corner. Clicking writes a 7-day snooze and bumps
+  a render-counter state so the banner hides immediately. After 7
+  days the snooze expires and the banner re-fires if the underlying
+  condition still applies.
+
+  Race retrospective (v9.120) already had a Skip-with-permanent-
+  localStorage-marker pattern keyed per raceDate — different
+  semantic (one-shot per race, not recurring trend), left as-is.
+
+  ### Other critique findings (not yet shipped)
+  - OOO — Polarized day-of-week guard (false positives mid-week)
+  - PPP — Extend rankDiagnostics to cover decoupling + polarized
+    (so they flow through v9.110's priority system instead of
+    bypassing it)
+
+  Files: `src/lib/athlete/bannerSnooze.js` (new),
+  `src/lib/__tests__/athlete/bannerSnooze.test.js` (new, 12 cases),
+  `src/components/TodayView.jsx` — × buttons on 2 banners.
+  10305 tests passing.
+
+---
+
 ## v9.125.0 — 2026-05-15 — Weekly polarized intensity distribution chip
 
   `lib/science/polarizationCompliance.js` (v8-era) already computes
