@@ -10,6 +10,7 @@ import { useData } from '../contexts/DataContext.jsx'
 import { getTodayPlannedSession, getSingleSuggestion, generateDailyDigest, getTimeOfDayAdvice, predictFitness } from '../lib/intelligence.js'
 import { buildGlanceLine } from '../lib/athlete/morningGlance.js'
 import Citation from './ui/Citation.jsx'
+import Banner from './ui/Banner.jsx'
 import { calcLoad } from '../lib/formulas.js'
 import { WELLNESS_FIELDS } from '../lib/constants.js'
 import { hasUnread } from './CoachMessage.jsx'
@@ -903,39 +904,21 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
         const dec = analyzeDecouplingTrend(log, today)
         if (!dec.summary) return null
         if (isBannerSnoozed('decoupling')) return null
-        // v9.128.0 (PPP): defer to a critical Mission 1 diagnostic if one is active
         if (criticalPrimaryActive) return null
-        // snoozeBump dependency: read here so dismissal triggers re-render
-        void snoozeBump
+        void snoozeBump  // dependency: bumping forces re-read
         const isSignificant = dec.flag === 'significant'
-        const color = isSignificant ? '#e03030' : '#f5c542'
         return (
-          <div role="status" style={{
-            marginBottom: '14px', padding: '10px 14px',
-            background: `${color}10`, border: `1px solid ${color}55`,
-            borderLeft: `4px solid ${color}`, borderRadius: '4px',
-            fontFamily: MONO, position: 'relative',
-          }}>
-            <button
-              onClick={() => { snoozeBanner('decoupling'); setSnoozeBump(b => b + 1) }}
-              aria-label={lang === 'tr' ? 'Uyarıyı 7 gün ertele' : 'Snooze alert for 7 days'}
-              title={lang === 'tr' ? '7 gün ertele' : 'Snooze 7 days'}
-              style={{ position: 'absolute', top: '6px', right: '8px',
-                background: 'transparent', border: 'none', color: '#666',
-                cursor: 'pointer', fontSize: '12px', padding: '2px 6px', lineHeight: 1 }}>
-              ×
-            </button>
-            <div style={{ fontSize: '10px', fontWeight: 700, color, letterSpacing: '0.08em', marginBottom: '6px', paddingRight: '20px' }}>
-              {isSignificant ? '⚠' : '↓'} {lang === 'tr' ? 'AEROBİK DESENKRONİZASYON' : 'AEROBIC DECOUPLING'}
-              <span style={{ color: '#888', fontWeight: 400, marginLeft: '8px' }}>
-                · {dec.avgPct.toFixed(1)}% · {dec.sampleCount} {lang === 'tr' ? 'seans' : 'sessions'}
-              </span>
-            </div>
-            <div style={{ fontSize: '10px', color: '#ccc', lineHeight: 1.55, marginBottom: '4px' }}>
-              {dec.summary[lang] || dec.summary.en}
-            </div>
-            <Citation text="Friel — Pw:Hr drift >5% on steady aerobic work indicates the aerobic engine cannot sustain demand." />
-          </div>
+          <Banner
+            severity={isSignificant ? 'critical' : 'warning'}
+            title={lang === 'tr' ? 'AEROBİK DESENKRONİZASYON' : 'AEROBIC DECOUPLING'}
+            subtitle={`· ${dec.avgPct.toFixed(1)}% · ${dec.sampleCount} ${lang === 'tr' ? 'seans' : 'sessions'}`}
+            snoozeKey="decoupling"
+            onSnooze={() => setSnoozeBump(b => b + 1)}
+            lang={lang}
+            citation="Friel — Pw:Hr drift >5% on steady aerobic work indicates the aerobic engine cannot sustain demand."
+          >
+            {dec.summary[lang] || dec.summary.en}
+          </Banner>
         )
       })()}
 
@@ -1004,42 +987,26 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
         const pol = analyzePolarizedWeek(log, today)
         if (!pol || pol.flag === 'polarized' || !pol.interpretation) return null
         if (isBannerSnoozed('polarized')) return null
-        // v9.128.0 (PPP): defer to a critical Mission 1 diagnostic if one is active
         if (criticalPrimaryActive) return null
         void snoozeBump
-        const color = pol.flag === 'drift-threshold' ? '#e03030' : '#f5c542'
         const label = pol.flag === 'drift-threshold'
           ? (lang === 'tr' ? 'EŞİK YOĞUNLUĞU FAZLA' : 'THRESHOLD-HEAVY')
           : pol.flag === 'drift-pyramidal'
           ? (lang === 'tr' ? 'PİRAMİDAL DAĞILIM'   : 'PYRAMIDAL DISTRIBUTION')
           : (lang === 'tr' ? 'YAPILANDIRILMAMIŞ HAFTA' : 'UNSTRUCTURED WEEK')
         return (
-          <div role="status" style={{
-            marginBottom: '14px', padding: '10px 14px',
-            background: `${color}10`, border: `1px solid ${color}55`,
-            borderLeft: `4px solid ${color}`, borderRadius: '4px',
-            fontFamily: MONO, position: 'relative',
-          }}>
-            <button
-              onClick={() => { snoozeBanner('polarized'); setSnoozeBump(b => b + 1) }}
-              aria-label={lang === 'tr' ? 'Uyarıyı 7 gün ertele' : 'Snooze alert for 7 days'}
-              title={lang === 'tr' ? '7 gün ertele' : 'Snooze 7 days'}
-              style={{ position: 'absolute', top: '6px', right: '8px',
-                background: 'transparent', border: 'none', color: '#666',
-                cursor: 'pointer', fontSize: '12px', padding: '2px 6px', lineHeight: 1 }}>
-              ×
-            </button>
-            <div style={{ fontSize: '10px', fontWeight: 700, color, letterSpacing: '0.08em', marginBottom: '6px', paddingRight: '20px' }}>
-              ◇ {label}
-              <span style={{ color: '#888', fontWeight: 400, marginLeft: '8px' }}>
-                · {pol.easyPct}% / {pol.thresholdPct}% / {pol.hardPct}%
-              </span>
-            </div>
-            <div style={{ fontSize: '10px', color: '#ccc', lineHeight: 1.55, marginBottom: '4px' }}>
-              {pol.interpretation[lang] || pol.interpretation.en}
-            </div>
-            <Citation text={pol.citation} />
-          </div>
+          <Banner
+            severity={pol.flag === 'drift-threshold' ? 'critical' : 'warning'}
+            icon="◇"
+            title={label}
+            subtitle={`· ${pol.easyPct}% / ${pol.thresholdPct}% / ${pol.hardPct}%`}
+            snoozeKey="polarized"
+            onSnooze={() => setSnoozeBump(b => b + 1)}
+            lang={lang}
+            citation={pol.citation}
+          >
+            {pol.interpretation[lang] || pol.interpretation.en}
+          </Banner>
         )
       })()}
 
@@ -1635,16 +1602,11 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
 
       {/* ── V3 — getMissedRestWarning: ≥6 consecutive training days ──────── */}
       {missedRestWarn.flag && (
-        <div style={{ padding: '7px 12px', background: '#e0303011', borderLeft: '3px solid #e03030', borderRadius: '3px', marginBottom: '10px', fontFamily: MONO }}>
-          <div style={{ fontSize: '9px', color: '#e03030', letterSpacing: '0.06em', marginBottom: '2px' }}>⚠ {lang === 'tr' ? 'DİNLENME GÜNÜ GECİKMİŞ' : 'REST DAY OVERDUE'}</div>
-          <div style={{ fontSize: '10px', color: 'var(--sub)' }}>{lang === 'tr' ? missedRestWarn.tr : missedRestWarn.message}</div>
-          <div style={{ fontSize: '9px', color: '#666', marginTop: '2px' }}>{lang === 'tr' ? missedRestWarn.actionTr : missedRestWarn.action}</div>
-          {/* v9.144.0 — Action CTA. The banner's `action` field already says
-              "take a rest day" but stops at text. Same evidence-action pattern
-              as v9.139/141. correctiveRest:true flag distinguishes this entry
-              from planned-rest in cohort queries. Hidden when today is
-              already logged. */}
-          {!todayLogEntry && (
+        <Banner
+          severity="critical"
+          title={lang === 'tr' ? 'DİNLENME GÜNÜ GECİKMİŞ' : 'REST DAY OVERDUE'}
+          lang={lang}
+          actions={!todayLogEntry && (
             <button
               onClick={() => {
                 setLog([...(log || []), {
@@ -1658,12 +1620,17 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
                 }])
                 try { emitEvent('missed_rest_action', { consecutive_days: consecutiveDays }) } catch { /* fail open */ }
               }}
-              style={{ ...btn('#e03030'), marginTop: '8px' }}
+              style={btn('#e03030')}
             >
               {lang === 'tr' ? '↓ DİNLENME GÜNÜNÜ İŞARETLE' : '↓ MARK REST DAY'}
             </button>
           )}
-        </div>
+        >
+          <div>{lang === 'tr' ? missedRestWarn.tr : missedRestWarn.message}</div>
+          <div style={{ fontSize: '9px', color: '#666', marginTop: '2px' }}>
+            {lang === 'tr' ? missedRestWarn.actionTr : missedRestWarn.action}
+          </div>
+        </Banner>
       )}
 
       {/* ── L1 — predictFitness compact forecast ─────────────────────────── */}

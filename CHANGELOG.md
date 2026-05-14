@@ -14,6 +14,64 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.148.0 — 2026-05-15 — Unified Banner component (Prompt 4)
+
+  Pre-v9.148 each banner had bespoke layout: different paddings,
+  different snooze-button positions, different citation render,
+  inconsistent severity-to-color mapping. The v9.144 critique
+  flagged this as creating an incomplete mental model — athletes
+  couldn't predict what they could dismiss, what was actionable,
+  what was informational.
+
+  New `<Banner>` component at `src/components/ui/Banner.jsx` with
+  unified API:
+  ```
+  <Banner
+    severity="critical|warning|info|success"
+    icon={?string}            // override default
+    title={string}            // first line, severity-colored
+    subtitle={?string}        // grey second segment
+    snoozeKey={?string}       // enables [×]; required for snooze
+    onSnooze={?() => void}    // called after snooze; bumps state
+    lang={'en'|'tr'}          // for aria-label
+    citation={?string}        // passed to <Citation>
+    actions={?ReactNode}      // CTA buttons / nodes
+  >
+    children                  // body content
+  </Banner>
+  ```
+
+  Severity → color + default icon:
+  - critical → red `#e03030`, ⚠
+  - warning  → amber `#f5c542`, ↓
+  - info     → blue `#0064ff`, ◈
+  - success  → green `#5bc25b`, ✓
+
+  Migrated the 3 simplest banners per spec:
+  - Decoupling (v9.123) — bespoke title+subtitle+stats, snoozable
+  - Polarized (v9.125) — bespoke distribution subtitle, snoozable
+  - Missed-rest (V3 + v9.144 CTA) — critical severity, actions slot
+    holds the MARK REST DAY button. No citation, no snooze (action
+    affordance is sufficient).
+
+  Banner uses Citation internally → snooze-able banners that cite
+  their evidence get the progressive-disclosure pattern for free.
+
+  Deferred (out of scope this ship): banners with truly custom
+  shapes (auto-downgrade card with multiple buttons + structured
+  data; HRV/TSB swap which has rationale.citation override;
+  race-week taper which has Bosquet citation + custom CTA + nested
+  structure).
+
+  12 new Banner tests cover: title+children, default+custom icon,
+  subtitle render, role=alert/status per severity, snooze gate,
+  snooze persistence + callback, actions slot, citation collapse,
+  Turkish aria-label.
+
+  Suite 10407 / 10407 green (+12).
+
+  Dependencies: existing `Citation`, `bannerSnooze` module.
+
 ## v9.147.0 — 2026-05-15 — Citation progressive disclosure (Prompt 3)
 
   Every detector banner cites its source (Banister, Bompa, Bosquet,
