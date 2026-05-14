@@ -39,6 +39,20 @@ const BIKE_ZONE_PCT_FTP = {
   Z6: { lo: 1.21, hi: 1.50 },
 }
 
+// ── Running zone → % max HR ─────────────────────────────────────────────────
+// Karvonen 1957 / Tanaka 2001 / Friel's standard zone breakdown. Bounds are
+// nominal — overlap at the edges is intentional so adjacent zones don't pop
+// a gap when an athlete drifts. v9.155.0 (Prompt 12): `hrTarget` had zero
+// producers across the codebase; HR delta in v9.153 was dead code until now.
+const RUN_ZONE_PCT_MAXHR = {
+  Z1: { lo: 0.65, hi: 0.75 },  // recovery / easy
+  Z2: { lo: 0.75, hi: 0.83 },  // aerobic
+  Z3: { lo: 0.83, hi: 0.88 },  // tempo
+  Z4: { lo: 0.88, hi: 0.93 },  // threshold
+  Z5: { lo: 0.93, hi: 0.98 },  // VO2 / interval
+  Z6: { lo: 0.98, hi: 1.00 },  // neuromuscular (degenerate band — at-max)
+}
+
 // ── Swimming zone → % CSS pace (Wakayoshi 1992) ─────────────────────────────
 // Source: Wakayoshi et al., "Determination and validity of critical velocity
 // as swimming fatigue threshold." Pace is sec/100m: HIGHER value = SLOWER.
@@ -189,14 +203,47 @@ export function deriveSessionSwimPace(session, profile) {
 }
 
 /**
+ * v9.155.0 (Prompt 12) — Derive an HR-range string ("148-168") for the
+ * session's zone from the athlete's max HR. Returns null when no maxhr
+ * is set, the session can't be zoned, or the sport isn't run-like
+ * (cycling uses power; swim uses CSS pace — HR norms shift under-water).
+ *
+ * Format: hyphen-separated bpm range, no unit suffix — matches what
+ * `parseHrTarget` in sessionExecution.js consumes.
+ *
+ * @param {object} session - planned session
+ * @param {object} profile - athlete profile: { maxhr, primarySport, ... }
+ * @returns {string|null} e.g. "148-168" or null
+ */
+export function deriveSessionHr(session, profile) {
+  if (!session || !profile) return null
+  if (isCyclingSession(session, profile)) return null
+  if (isSwimSession(session, profile)) return null
+  const maxhr = Number(profile.maxhr)
+  if (!Number.isFinite(maxhr) || maxhr < 60 || maxhr > 250) return null
+  const zone = dominantZone(session)
+  if (!zone) return null
+  const pct = RUN_ZONE_PCT_MAXHR[zone]
+  if (!pct) return null
+  const lo = Math.round(maxhr * pct.lo)
+  const hi = Math.round(maxhr * pct.hi)
+  return lo === hi ? String(lo) : `${lo}-${hi}`
+}
+
+/**
  * One-call convenience that picks pace OR power depending on sport.
- * Returns { paceTarget, powerTarget } — at most one will be non-null.
+ * Returns { paceTarget, powerTarget, hrTarget }. At most one of paceTarget /
+ * powerTarget will be non-null; hrTarget can coexist with paceTarget for
+ * running sessions.
  * v9.98.0: paceTarget covers BOTH run-pace and swim-pace (the suffix —
  * "/km" implicit for run, "/100m" explicit for swim — disambiguates).
+ * v9.155.0: hrTarget added so the v9.153 EXECUTION HR-delta block actually
+ * has data to compare against.
  */
 export function deriveSessionTargets(session, profile) {
   return {
     paceTarget:  deriveSessionPace(session, profile) || deriveSessionSwimPace(session, profile),
     powerTarget: deriveSessionPower(session, profile),
+    hrTarget:    deriveSessionHr(session, profile),
   }
 }

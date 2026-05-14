@@ -14,6 +14,62 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.155.0 — 2026-05-16 — Mission 1 leak: derived hrTarget + enriched-session wiring (Prompt 12)
+
+  Audit on 2026-05-16 found the v9.153 HR/pace deltas effectively
+  shipped dead code:
+
+  - `hrTarget` had ZERO producers in the codebase — only consumers.
+    Every read returned null/undefined, so the HR-delta block
+    never rendered for any cohort.
+  - Free-tier `paceTarget` was computed at render time by
+    `deriveSessionTargets` but only fed the display strip
+    (`TodayView.jsx:2040`). The `derived` value was never merged
+    into the planned session passed to `computeSessionExecution`
+    two lines earlier, so the detector saw an empty paceTarget.
+  - The pace-string parser anchored at start, so derived ranges
+    like `"5:30–5:45"` silently parsed as the fast edge (`5:30`).
+    Verdict was biased toward "slow".
+
+  Fixes:
+
+  - `deriveSessionHr(session, profile)` in derivedSessionTargets.js
+    reads `profile.maxhr` × zone-HR% (Karvonen 1957 / Tanaka 2001
+    / Friel zones) and returns a band like `"148-168"`. Returns
+    null for cycling (power) / swim (CSS pace) / out-of-range
+    maxhr (<60 or >250).
+  - `deriveSessionTargets` extended: `{ paceTarget, powerTarget,
+    hrTarget }`.
+  - TodayView builds `enrichedPlanned = { ...plannedSession,
+    paceTarget: planned ?? derived, hrTarget: planned ?? derived }`
+    before calling `computeSessionExecution`. The display strip's
+    pre-existing precedence is unchanged.
+  - `sessionExecution` adds `parsePaceRange` for en-dash OR ASCII-
+    hyphen ranges (`"5:30–5:45"` / `"5:30-5:45"`). Pace delta uses
+    midpoint for fast/slow status, but a logged pace falling
+    INSIDE [lo, hi] forces `on-target`. `result.pace.plannedRange`
+    surfaces the band to consumers.
+
+  Effective shipped reach after this:
+
+  | Cohort                          | HR delta | Pace delta |
+  |---------------------------------|----------|------------|
+  | Elite-program + FIT             | ✓        | ✓          |
+  | Elite-program + manual          | ✓        | partial    |
+  | Free-tier + FIT (threshold+max) | ✓        | ✓          |
+  | Free-tier + manual              | ✓        | partial    |
+
+  Pure additive — no behavior change for elite users (their
+  single-point paceTarget still wins; derived only fills nulls).
+
+  Out of scope: power delta (cycling), cadence delta, converting
+  the elite-program path to ranges, backfilling old log entries.
+
+  Suite 10442 / 10442 green (+14 new tests).
+
+  Dependencies: `profile.maxhr`, `profile.threshold` (existing).
+  `RUN_ZONE_PCT_MAXHR` table sourced inline (Karvonen / Tanaka).
+
 ## v9.154.0 — 2026-05-16 — Execution-snapshot label registry (Prompt 6, scoped)
 
   Six `lang === 'tr' ? '...' : '...'` ternaries inside the EXECUTION

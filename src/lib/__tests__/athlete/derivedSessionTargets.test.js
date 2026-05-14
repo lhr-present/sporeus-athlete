@@ -6,6 +6,7 @@ import {
   deriveSessionPace,
   deriveSessionPower,
   deriveSessionSwimPace,
+  deriveSessionHr,
   deriveSessionTargets,
 } from '../../athlete/derivedSessionTargets.js'
 
@@ -250,5 +251,84 @@ describe('deriveSessionTargets', () => {
       { cssSec: 90, threshold: '4:30', primarySport: 'Swimming' },
     )
     expect(out.paceTarget).toMatch(/100m/)
+  })
+})
+
+// v9.155.0 (Prompt 12) — HR target derivation
+describe('deriveSessionHr', () => {
+  it('returns null when maxhr is missing or out of range', () => {
+    expect(deriveSessionHr({ zone: 'Z2' }, {})).toBeNull()
+    expect(deriveSessionHr({ zone: 'Z2' }, { maxhr: 0 })).toBeNull()
+    expect(deriveSessionHr({ zone: 'Z2' }, { maxhr: 50 })).toBeNull()    // <60 sanity
+    expect(deriveSessionHr({ zone: 'Z2' }, { maxhr: 300 })).toBeNull()   // >250 sanity
+    expect(deriveSessionHr({ zone: 'Z2' }, { maxhr: 'foo' })).toBeNull()
+  })
+
+  it('returns null when zone cannot be inferred', () => {
+    expect(deriveSessionHr({}, { maxhr: 190 })).toBeNull()
+    expect(deriveSessionHr({ zone: 'Z9' }, { maxhr: 190 })).toBeNull()
+  })
+
+  it('returns null for cycling sessions (power, not HR)', () => {
+    expect(deriveSessionHr(
+      { zone: 'Z3', type: 'Bike intervals' },
+      { maxhr: 190 },
+    )).toBeNull()
+    expect(deriveSessionHr(
+      { zone: 'Z3' },
+      { maxhr: 190, primarySport: 'Cycling' },
+    )).toBeNull()
+  })
+
+  it('returns null for swim sessions (CSS pace, not HR)', () => {
+    expect(deriveSessionHr(
+      { zone: 'Z3', type: 'Threshold swim' },
+      { maxhr: 190 },
+    )).toBeNull()
+  })
+
+  it('returns a band string for valid run zones', () => {
+    // maxhr=190, Z2 → 75%-83% → 142-158
+    expect(deriveSessionHr({ zone: 'Z2', type: 'Easy run' }, { maxhr: 190 })).toBe('143-158')
+    // Z4 threshold → 88%-93% → 167-177
+    expect(deriveSessionHr({ zone: 'Z4', type: 'Threshold' }, { maxhr: 190 })).toBe('167-177')
+    // Z5 VO2 → 93%-98% → 177-186
+    expect(deriveSessionHr({ zone: 'Z5', type: 'Intervals' }, { maxhr: 190 })).toBe('177-186')
+  })
+
+  it('handles per-minute zones object (intent-dominant)', () => {
+    // VO2 session: mostly Z1 warm-up by minutes but Z5 is the prescription
+    expect(deriveSessionHr(
+      { zones: { Z1: 25, Z2: 0, Z3: 0, Z4: 0, Z5: 30 }, type: 'Intervals' },
+      { maxhr: 190 },
+    )).toBe('177-186')
+  })
+})
+
+describe('deriveSessionTargets — hrTarget integration', () => {
+  it('returns hrTarget alongside paceTarget for runners with both maxhr + threshold', () => {
+    const out = deriveSessionTargets(
+      { zone: 'Z4', type: 'Threshold run' },
+      { maxhr: 190, threshold: '4:30', primarySport: 'Running' },
+    )
+    expect(out.paceTarget).toMatch(/^\d:\d{2}–\d:\d{2}$/)
+    expect(out.hrTarget).toBe('167-177')
+  })
+
+  it('returns hrTarget=null for cyclists', () => {
+    const out = deriveSessionTargets(
+      { zone: 'Z3', type: 'Bike tempo' },
+      { maxhr: 190, ftp: 250, primarySport: 'Cycling' },
+    )
+    expect(out.hrTarget).toBeNull()
+  })
+
+  it('returns hrTarget=null when maxhr missing even if threshold set', () => {
+    const out = deriveSessionTargets(
+      { zone: 'Z2', type: 'Easy run' },
+      { threshold: '4:30' },
+    )
+    expect(out.paceTarget).not.toBeNull()
+    expect(out.hrTarget).toBeNull()
   })
 })

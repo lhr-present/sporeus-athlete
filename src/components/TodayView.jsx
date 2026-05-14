@@ -176,10 +176,24 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
     if (!todayEntries.length) return null
     return [...todayEntries].sort((a, b) => (Number(b.tss) || 0) - (Number(a.tss) || 0))[0]
   }, [log, today])
-  const sessionExecution = useMemo(
-    () => computeSessionExecution(plannedSession, todayLogEntry),
-    [plannedSession, todayLogEntry]
-  )
+  // v9.155.0 (Prompt 12) — Mission 1 leak fix. The free-tier plan generator
+  // doesn't emit paceTarget/hrTarget on sessions; only the elite-program path
+  // does. deriveSessionTargets fills the gap at render time. Merge those
+  // derived values into the planned session BEFORE the execution detector
+  // runs so HR/pace deltas have data to compare against — without this
+  // wiring, v9.153 ships dead code for the majority of users.
+  const sessionExecution = useMemo(() => {
+    if (!plannedSession || !todayLogEntry) {
+      return computeSessionExecution(plannedSession, todayLogEntry)
+    }
+    const derived = deriveSessionTargets(plannedSession, profile)
+    const enrichedPlanned = {
+      ...plannedSession,
+      paceTarget: plannedSession.paceTarget ?? derived.paceTarget,
+      hrTarget:   plannedSession.hrTarget   ?? derived.hrTarget,
+    }
+    return computeSessionExecution(enrichedPlanned, todayLogEntry)
+  }, [plannedSession, todayLogEntry, profile])
   const sessions7d      = useMemo(() => {
     const cutoff = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 7); return d.toISOString().slice(0, 10) })()
     return (log || []).filter(e => e.date >= cutoff).length

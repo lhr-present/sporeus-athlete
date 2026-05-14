@@ -366,4 +366,58 @@ describe('computeSessionExecution — Pace delta', () => {
     expect(out.pace.planned).toBe(90)
     expect(out.pace.status).toBe('on-target')
   })
+
+  // v9.155.0 (Prompt 12) — range-aware pace
+  it('parses en-dash range "5:30–5:45" and uses the midpoint', () => {
+    const out = computeSessionExecution(
+      { duration: 60, paceTarget: '5:30–5:45' },
+      { duration: 60, avgPaceSecKm: 337 }  // ~5:37 — inside the range
+    )
+    expect(out.pace.planned).toBe(338)  // midpoint of 330 and 345 = 337.5 → 338
+    expect(out.pace.plannedRange).toEqual([330, 345])
+    expect(out.pace.status).toBe('on-target')
+  })
+
+  it('parses ASCII-hyphen range "5:30-5:45"', () => {
+    const out = computeSessionExecution(
+      { duration: 60, paceTarget: '5:30-5:45' },
+      { duration: 60, avgPaceSecKm: 340 }
+    )
+    expect(out.pace.plannedRange).toEqual([330, 345])
+    expect(out.pace.status).toBe('on-target')
+  })
+
+  it('logged pace inside the range reads on-target regardless of midpoint distance', () => {
+    // Logged is 332s — only 6s off midpoint 338, but more importantly INSIDE [330, 345]
+    const out = computeSessionExecution(
+      { duration: 60, paceTarget: '5:30–5:45' },
+      { duration: 60, avgPaceSecKm: 332 }
+    )
+    expect(out.pace.status).toBe('on-target')
+  })
+
+  it('logged pace outside the range reads fast/slow against midpoint', () => {
+    // Range midpoint = 338s. Logged 310s = 28s faster (8.3%) → fast.
+    const fast = computeSessionExecution(
+      { duration: 60, paceTarget: '5:30–5:45' },
+      { duration: 60, avgPaceSecKm: 310 }
+    )
+    expect(fast.pace.status).toBe('fast')
+    // 360s = 22s slower (6.5%) → slow.
+    const slow = computeSessionExecution(
+      { duration: 60, paceTarget: '5:30–5:45' },
+      { duration: 60, avgPaceSecKm: 360 }
+    )
+    expect(slow.pace.status).toBe('slow')
+  })
+
+  it('single-point paceTarget continues to work and omits plannedRange', () => {
+    const out = computeSessionExecution(
+      { duration: 60, paceTarget: '5:30/km' },
+      { duration: 60, avgPaceSecKm: 330 }
+    )
+    expect(out.pace.planned).toBe(330)
+    expect(out.pace.plannedRange).toBeUndefined()
+    expect(out.pace.status).toBe('on-target')
+  })
 })

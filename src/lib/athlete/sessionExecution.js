@@ -54,6 +54,24 @@ function parsePaceSec(input) {
   return Number.isFinite(n) && n > 0 ? n : null
 }
 
+// v9.155.0 (Prompt 12) — Range-aware pace parse for derived targets like
+// "5:30–5:45" or "5:30-5:45" (en-dash OR ASCII hyphen). Returns
+// { lo, hi, mid } in seconds where `lo` is the FASTER pace (smaller sec/km)
+// and `hi` is the SLOWER. Returns null on single-point input — callers
+// fall back to parsePaceSec for that. Suffixes ("/km", "/100m") tolerated.
+function parsePaceRange(input) {
+  if (typeof input !== 'string') return null
+  const s = input.trim()
+  const m = s.match(/^(\d{1,2}):([0-5]?\d)\s*[–-]\s*(\d{1,2}):([0-5]?\d)/)
+  if (!m) return null
+  const a = Number(m[1]) * 60 + Number(m[2])
+  const b = Number(m[3]) * 60 + Number(m[4])
+  if (a <= 0 || b <= 0) return null
+  const lo = Math.min(a, b)
+  const hi = Math.max(a, b)
+  return { lo, hi, mid: (lo + hi) / 2 }
+}
+
 // Parse "150-165" → { lo:150, hi:165, mid:157.5 }, "150" → { lo:150, hi:150, mid:150 }.
 // Returns null on garbage input. Range targets win when present so a logged
 // avgHR inside the band reads "in range" rather than +/-deltas off midpoint.
@@ -194,14 +212,27 @@ export function computeSessionExecution(plannedSession, logEntry) {
   // `delta = logged - planned`: negative means faster than plan.
   // Status: `fast` (>3% faster), `slow` (>3% slower), else `on-target`.
   // 3% ≈ ~10s/km at 5:30/km — coarser than HR because GPS noise + terrain.
-  const plannedPaceSec = parsePaceSec(plannedSession.paceTarget)
+  //
+  // v9.155.0 (Prompt 12) — Range-aware. Derived targets emit "5:30–5:45"
+  // ranges; an athlete pacing inside the band reads `on-target` regardless
+  // of midpoint distance. fast/slow status is computed against the midpoint
+  // when the logged pace is outside the band.
+  const paceRange = parsePaceRange(plannedSession.paceTarget)
+  const plannedPaceSec = paceRange ? paceRange.mid : parsePaceSec(plannedSession.paceTarget)
   const loggedPaceSec  = deriveLoggedPaceSec(logEntry)
   if (plannedPaceSec != null && loggedPaceSec != null) {
     const paceDelta = loggedPaceSec - plannedPaceSec
     const paceDeltaPct = paceDelta / plannedPaceSec
-    let paceStatus = 'on-target'
-    if (paceDeltaPct < -0.03) paceStatus = 'fast'
-    else if (paceDeltaPct > 0.03) paceStatus = 'slow'
+    let paceStatus
+    if (paceRange && loggedPaceSec >= paceRange.lo && loggedPaceSec <= paceRange.hi) {
+      paceStatus = 'on-target'
+    } else if (paceDeltaPct < -0.03) {
+      paceStatus = 'fast'
+    } else if (paceDeltaPct > 0.03) {
+      paceStatus = 'slow'
+    } else {
+      paceStatus = 'on-target'
+    }
     result.pace = {
       planned:  Math.round(plannedPaceSec),
       logged:   Math.round(loggedPaceSec),
@@ -209,13 +240,16 @@ export function computeSessionExecution(plannedSession, logEntry) {
       deltaPct: Math.round(paceDeltaPct * 1000) / 1000,
       status:   paceStatus,
     }
+    if (paceRange) {
+      result.pace.plannedRange = [Math.round(paceRange.lo), Math.round(paceRange.hi)]
+    }
   }
 
   return result
 }
 
 // Exported for tests + UI formatters that need consistent parsing.
-export const _internal = { parsePaceSec, parseHrTarget, deriveLoggedPaceSec }
+export const _internal = { parsePaceSec, parsePaceRange, parseHrTarget, deriveLoggedPaceSec }
 
 // Bilingual short label per status. Consumers can format around this.
 export const EXECUTION_STATUS_LABEL = {
