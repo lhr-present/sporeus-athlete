@@ -14,6 +14,33 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.130.0 — 2026-05-15 — Squad summary strip for coach dashboard
+
+  Pre-v9.130 the only roll-up on CoachSquadView was the
+  "(N) connected" count next to the section header. Coaches scanning
+  a 10+ athlete roster had to count urgent/attention rows by eye, and
+  the top-firing reasons across the squad weren't visible anywhere —
+  they had to open each athlete to see why each was urgent.
+
+  New `src/lib/coach/squadSummary.js` rolls up the existing per-
+  athlete `getAthleteAttentionSignal` (v9.105 Prompt HH) across the
+  whole squad:
+  - counts: urgent / attention / ok
+  - topReasons: aggregated by reason key, descending count, with the
+    bilingual labels preserved
+  - activity: activeLast7d / zeroSessionsThisWeek / avgAdherencePct
+
+  CoachSquadView renders a strip above the plan-acceptance row showing
+  the counts, activity tiles, and up to 4 top reasons as chips
+  ("3× ACWR danger · 2× No session 7+ days · …"). Pure derive from
+  the already-fetched squad-overview rows — no new network calls.
+
+  Files: `src/lib/coach/squadSummary.js` (new),
+  `src/lib/__tests__/coach/squadSummary.test.js` (new, 11 cases),
+  `src/components/coach/CoachSquadView.jsx`. 10330 tests passing.
+
+---
+
 ## v9.129.0 — 2026-05-15 — Polarized day-of-week guard (close OOO)
 
   Final fix from the banner-accumulation critique pass.

@@ -16,6 +16,7 @@ import {
   formatLastSession, sortAthletes, filterAthletes,
   getAthleteAttentionSignal, ATTENTION_COLORS,
 } from '../../lib/squadView.js'
+import { summarizeSquad } from '../../lib/coach/squadSummary.js'
 
 const MONO = "'IBM Plex Mono', monospace"
 const DIM  = '#555'
@@ -182,6 +183,75 @@ export default function CoachSquadView({ coachId, coachName = '' }) {
           </span>
         )}
       </div>
+
+      {/* ── v9.130.0 — Squad summary strip. Pre-v9.130 the only roll-up was
+          the (athletes.length) connected count next to the section header.
+          Coaches scanning a 10+ athlete roster had to count urgent/
+          attention rows by eye. This strip surfaces the same per-athlete
+          signal (squadView.getAthleteAttentionSignal) aggregated: counts
+          + top firing reasons + week-level activity stats.
+          Hidden when there are no athletes loaded yet. */}
+      {!loading && athletes.length > 0 && (() => {
+        const summary = summarizeSquad(athletes)
+        const { counts, topReasons, activity } = summary
+        const urgentColor = '#e03030', attentionColor = '#f5c542', okColor = '#5bc25b'
+        return (
+          <div style={{
+            marginBottom: '14px', padding: '10px 12px',
+            background: 'var(--card-bg)', border: '1px solid var(--border)',
+            borderLeft: '3px solid #0064ff', borderRadius: '4px',
+          }}>
+            <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap', alignItems: 'baseline', marginBottom: topReasons.length > 0 ? '8px' : 0 }}>
+              <div style={{ fontSize: '9px', color: '#0064ff', letterSpacing: '0.12em', fontWeight: 700 }}>
+                ◆ SQUAD
+              </div>
+              {counts.urgent > 0 && (
+                <div style={{ fontSize: '11px' }}>
+                  <span style={{ color: urgentColor, fontWeight: 700 }}>{counts.urgent}</span>
+                  <span style={{ color: DIM, marginLeft: '4px' }}>urgent</span>
+                </div>
+              )}
+              {counts.attention > 0 && (
+                <div style={{ fontSize: '11px' }}>
+                  <span style={{ color: attentionColor, fontWeight: 700 }}>{counts.attention}</span>
+                  <span style={{ color: DIM, marginLeft: '4px' }}>attention</span>
+                </div>
+              )}
+              <div style={{ fontSize: '11px' }}>
+                <span style={{ color: okColor, fontWeight: 700 }}>{counts.ok}</span>
+                <span style={{ color: DIM, marginLeft: '4px' }}>ok</span>
+              </div>
+              <div style={{ flex: 1 }}/>
+              <div style={{ fontSize: '10px', color: '#aaa' }}>
+                {activity.activeLast7d}/{summary.total} <span style={{ color: DIM }}>active 7d</span>
+              </div>
+              {activity.zeroSessionsThisWeek > 0 && (
+                <div style={{ fontSize: '10px', color: '#aaa' }}>
+                  {activity.zeroSessionsThisWeek} <span style={{ color: DIM }}>idle this wk</span>
+                </div>
+              )}
+              {activity.avgAdherencePct != null && (
+                <div style={{ fontSize: '10px', color: '#aaa' }}>
+                  {activity.avgAdherencePct}% <span style={{ color: DIM }}>avg adh</span>
+                </div>
+              )}
+            </div>
+            {topReasons.length > 0 && (
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {topReasons.slice(0, 4).map(r => (
+                  <span key={r.key} style={{
+                    fontSize: '9px', color: '#aaa', background: 'var(--surface)',
+                    border: '1px solid var(--border)', borderRadius: '3px',
+                    padding: '2px 7px', letterSpacing: '0.04em',
+                  }}>
+                    {r.count}× <span style={{ color: '#888' }}>{r.label?.en || r.key}</span>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* ── v9.109.0 (Prompt WW) — Plan acceptance stats. One-line summary of
           this coach's coach_plans by status. Surfaces a leading indicator
