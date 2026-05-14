@@ -14,6 +14,22 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.119.0 — 2026-05-15 — Decline modal focus restoration
+
+  Prompt KKK. v9.115 (GGG) added initial focus + focus trap but didn't
+  restore focus to the opener on close. Keyboard users had to re-find
+  their place in the page after every modal interaction.
+
+  `previousFocusRef` captures `document.activeElement` on open;
+  modal-close restores focus to it (deferred one frame so React
+  finishes unmount first). Wrapped in try/catch since the opener
+  may have unmounted (rare — only on plan-list refresh during
+  modal).
+
+  Files: `src/components/Periodization.jsx`. 10219 tests passing.
+
+---
+
 ## v9.118.0 — 2026-05-15 — Mission 2 telemetry hoisted to App level
 
   Prompt JJJ. Mission 2 emissions (v9.116 HHH) lived inside

@@ -247,15 +247,38 @@ function CoachPlansCard({ authUser }) {
   // tabbable queries. firstFocusRef points at the first reason button
   // so keyboard users land somewhere meaningful when the dialog opens
   // rather than at the body (which would scroll the page on Tab).
+  //
+  // v9.119.0 (Prompt KKK) — Focus restoration. previousFocusRef
+  // captures document.activeElement at the moment the modal opens so
+  // we can return focus to the opener (typically the DECLINE button)
+  // when the modal closes. Without this, modal close drops focus to
+  // <body> and keyboard users have to re-find their place.
   const modalRef = useRef(null)
   const firstFocusRef = useRef(null)
+  const previousFocusRef = useRef(null)
   useEffect(() => {
-    if (!declineModal) return
-    // Defer one frame so the button is mounted before .focus()
+    if (!declineModal) {
+      // Closing: restore focus to the element that had it before open.
+      // Defer one frame so React finishes unmount before we move focus.
+      const prev = previousFocusRef.current
+      previousFocusRef.current = null
+      if (prev && typeof prev.focus === 'function') {
+        const id = setTimeout(() => {
+          try { prev.focus() } catch { /* element may have unmounted */ }
+        }, 0)
+        return () => clearTimeout(id)
+      }
+      return
+    }
+    // Opening: capture current focus, then defer one frame so the
+    // button is mounted before .focus()
+    if (!previousFocusRef.current && typeof document !== 'undefined') {
+      previousFocusRef.current = document.activeElement
+    }
     const id = setTimeout(() => firstFocusRef.current?.focus(), 0)
     return () => clearTimeout(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- focus only on first mount per plan; later state changes shouldn't re-steal focus
-  }, [declineModal?.plan?.id])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- focus only on open/close transitions; reason/note keystrokes shouldn't re-steal focus
+  }, [declineModal?.plan?.id, !!declineModal])
 
   useEffect(() => {
     if (!isSupabaseReady() || !authUser) { setPlans([]); return }
