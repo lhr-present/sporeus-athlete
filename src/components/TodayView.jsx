@@ -28,6 +28,7 @@ import { detectGoalActivityMismatch } from '../lib/athlete/goalActivityMismatch.
 import { computeTrainingStreak, getStreakMilestone } from '../lib/athlete/trainingStreak.js'
 import { detectComebackGap } from '../lib/athlete/comebackDetector.js'
 import { detectRaceRetrospective, retroLocalStorageKey } from '../lib/athlete/raceRetrospective.js'
+import { explainPlannedSession } from '../lib/athlete/planRationale.js'
 import { rankDiagnostics } from '../lib/athlete/diagnosticPriority.js'
 import { buildStarterPlan } from '../lib/plan/starterPlan.js'
 import { recordPlanVersion } from '../lib/plan/versionTracking.js'
@@ -1757,6 +1758,52 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                 </button>
               </div>
             )}
+            {/* v9.121.0 — Plan rationale disclosure. Surfaces the factors
+                driving today's prescription (phase, yesterday's load,
+                TSB, sleep). Renders only when at least one factor fires
+                — empty rationale stays hidden so the disclosure never
+                shows a blank panel. Inside the (!downgradeRec ||
+                showOriginalSession) gate so it only appears for the
+                original session, not the auto-downgrade card (which
+                has its own inline rationale). */}
+            {(() => {
+              const rationale = explainPlannedSession({
+                session: plannedSession, log, recovery, profile, today,
+              })
+              if (!rationale.hasContent) return null
+              return (
+                <details style={{
+                  marginTop: '10px', padding: '6px 10px',
+                  background: 'rgba(0,100,255,0.04)', border: '1px solid #0064ff33',
+                  borderRadius: '4px',
+                }}>
+                  <summary style={{
+                    fontFamily: MONO, fontSize: '10px', color: '#6699ff',
+                    letterSpacing: '0.06em', cursor: 'pointer', userSelect: 'none',
+                  }}>
+                    ▼ {lang === 'tr' ? 'BU SEANS NEDEN?' : 'WHY THIS SESSION'}
+                    <span style={{ color: '#888', marginLeft: '8px' }}>· {rationale.factors.length}</span>
+                  </summary>
+                  <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {rationale.factors.map(f => (
+                      <div key={f.key} style={{ fontFamily: MONO, fontSize: '10px', lineHeight: 1.5 }}>
+                        <span style={{ color: '#0064ff', fontWeight: 700 }}>
+                          {(f.label?.[lang] || f.label?.en)}
+                        </span>
+                        <span style={{ color: '#aaa', marginLeft: '6px' }}>
+                          — {(f.detail?.[lang] || f.detail?.en)}
+                        </span>
+                        {f.citation && (
+                          <div style={{ color: '#666', fontSize: '9px', fontStyle: 'italic', marginLeft: '0', marginTop: '2px' }}>
+                            {f.citation}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )
+            })()}
             </>)}
             {/* v9.89.0 — Execution snapshot. After today's session is logged,
                 compare logged values vs planned to surface the duration / RPE

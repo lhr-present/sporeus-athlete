@@ -14,6 +14,38 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.121.0 — 2026-05-15 — Plan rationale disclosure ("why this session")
+
+  Sporeus's mission is "target → physiology → science-based plan →
+  daily answer." The system told athletes WHAT to train but rarely
+  showed the reasoning. Athletes either distrusted prescriptions
+  ("this Easy Z2 makes no sense, I feel great today") or
+  blindly complied without building training intuition.
+
+  New `explainPlannedSession({session, log, recovery, profile, today})`
+  pure derivation returns up to 4 factor blurbs, each with bilingual
+  label + detail + optional citation:
+  - **Phase** — BUILD / TAPER / etc. rationale + citation (Bompa,
+    Bosquet, Seiler, Mujika depending on phase)
+  - **Yesterday** — hard-after-hard / hard-then-easy / easy-then-hard
+    sequencing rationale (Plews 2013, Foster 2017)
+  - **TSB** — fresh / mildly fresh / fatigued / deeply fatigued tier
+    interpretation (Banister 1991, Halson 2014)
+  - **Sleep** — short / ample tier from today's recovery row (Mah 2011)
+
+  Each factor is conditional — empty rationale stays hidden so the
+  disclosure never shows a blank panel. Today's session card on
+  TodayView gets a `<details>` "▼ WHY THIS SESSION" disclosure that
+  expands to the factor list. Sits inside the original-session gate
+  (downgraded sessions have their own inline rationale).
+
+  Files: `src/lib/athlete/planRationale.js` (new, ~150 LOC),
+  `src/lib/__tests__/athlete/planRationale.test.js` (new, 19 cases),
+  `src/components/TodayView.jsx` — disclosure inserted below the
+  todayMarkDone button. 10251 tests passing.
+
+---
+
 ## v9.120.0 — 2026-05-15 — Post-race retrospective card
 
   Mission 2's race_committed milestone (v9.113 DDD) marked the race
