@@ -14,6 +14,51 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.153.0 — 2026-05-15 — HR / pace deltas in execution snapshot (Prompt 8)
+
+  The post-session EXECUTION block compared duration / RPE / TSS
+  but explicitly skipped HR and pace — the original v9.89.0 design
+  call argued half the user base logs sessions without those
+  fields. True, but FIT-import users have always had `avgHR` and
+  derivable `distanceM + durationSec` (or `avgPaceSecKm`) on every
+  imported entry, and `paceTarget` / `hrTarget` have been on every
+  generated plan since elite-program rollout. The two sides were
+  never wired together; v9.144 critique flagged the gap.
+
+  Pure additive in the detector — both blocks are conditional. When
+  either side is missing, the result simply has no `hr` or `pace`
+  key. No status semantics change; existing on-target / over /
+  under / incomplete is still duration+RPE-driven.
+
+  New `hr` shape:
+    { planned, plannedRange?, logged, delta, gap, status }
+  Status is range-aware: `in-range` when logged ∈ [lo, hi],
+  `above` / `below` otherwise. The bare delta is preserved; `gap`
+  reports the distance to the nearest band edge (0 when inside).
+
+  New `pace` shape:
+    { planned, logged, delta, deltaPct, status }
+  All seconds-per-km (works for both run pace and swim per-100m
+  since the unit is dropped). Status thresholds: `fast` when >3%
+  faster, `slow` when >3% slower. 3% ≈ 10s/km at 5:30/km —
+  intentionally coarser than HR to absorb GPS noise and terrain.
+
+  Pace parsing handles "5:30/km", "1:30/100m", and raw seconds.
+  Logged pace prefers `avgPaceSecKm` (set by fileImport.js) and
+  falls back to derive from `distanceM + durationSec`, with a
+  final fallback using `duration` (minutes) for athletes who
+  imported distance but not the per-second duration.
+
+  TodayView renders both blocks inline in the existing snapshot
+  row alongside DUR / RPE / TSS — keeps the glance shape stable
+  while surfacing the new data when present.
+
+  Suite 10422 / 10422 green (+15 new tests).
+
+  Dependencies: existing `EXECUTION_STATUS_COLOR`, `paceTarget` /
+  `hrTarget` on planned sessions, `avgHR` / `distanceM` /
+  `durationSec` / `avgPaceSecKm` on log entries.
+
 ## v9.152.0 — 2026-05-15 — Improvised session path (Prompt 10)
 
   The session card assumed plan adherence. If the athlete trained

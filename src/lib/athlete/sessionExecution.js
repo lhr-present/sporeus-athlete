@@ -8,11 +8,14 @@
 // Design call (matched the v9.88.0 minimal-additive shape):
 // - Compares ONLY fields reliably present in both plan and log:
 //   duration (always), RPE (almost always), TSS (when computable).
-// - Pace/HR comparison is skipped because those fields are conditional
-//   on FIT-import or detailed manual entry — half the user base logs
-//   sessions without them. A "missing HR delta" line would create noise.
 // - Status thresholds are coarse on purpose. The output is a glance-able
 //   summary, not a coaching judgement.
+//
+// v9.153.0 (Prompt 8) — HR and pace deltas added when FIT-import data is
+// available. Both fields are conditional: when the plan carries no
+// hrTarget/paceTarget OR the log entry has no avgHR/distance, the
+// corresponding block is simply omitted. The status field is unaffected
+// — these deltas are pure render-time enrichment, not coaching judgement.
 //
 // Status semantics:
 //   - 'on-target'  : duration within ±15%, RPE within ±1
@@ -32,6 +35,54 @@ const ON_TARGET_TSS_TOL_PCT      = 0.20  // wider — TSS varies with route/HR
 function num(v) {
   const n = Number(v)
   return Number.isFinite(n) ? n : null
+}
+
+// Parse "5:30/km" / "1:30/100m" / "330" → seconds per unit. Returns null on
+// malformed input. The unit suffix is dropped — pace comparison is always
+// like-for-like since hrTarget/paceTarget come from the same plan generator.
+function parsePaceSec(input) {
+  if (input == null) return null
+  if (typeof input === 'number') return Number.isFinite(input) && input > 0 ? input : null
+  const s = String(input).trim()
+  if (!s) return null
+  const m = s.match(/^(\d{1,2}):([0-5]?\d)/)
+  if (m) {
+    const sec = Number(m[1]) * 60 + Number(m[2])
+    return sec > 0 ? sec : null
+  }
+  const n = Number(s)
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
+// Parse "150-165" → { lo:150, hi:165, mid:157.5 }, "150" → { lo:150, hi:150, mid:150 }.
+// Returns null on garbage input. Range targets win when present so a logged
+// avgHR inside the band reads "in range" rather than +/-deltas off midpoint.
+function parseHrTarget(input) {
+  if (input == null) return null
+  if (typeof input === 'number') {
+    return Number.isFinite(input) && input > 0 ? { lo: input, hi: input, mid: input } : null
+  }
+  const s = String(input).trim()
+  if (!s) return null
+  const range = s.match(/^(\d{2,3})\s*[-–—]\s*(\d{2,3})$/)
+  if (range) {
+    const lo = Number(range[1]); const hi = Number(range[2])
+    if (lo > 0 && hi > 0 && hi >= lo) return { lo, hi, mid: (lo + hi) / 2 }
+    return null
+  }
+  const single = Number(s.replace(/[^\d.]/g, ''))
+  return Number.isFinite(single) && single > 0 ? { lo: single, hi: single, mid: single } : null
+}
+
+// Logged pace from log entry. Prefers explicit avgPaceSecKm (set by fileImport),
+// falls back to derive from distanceM + durationSec. Returns sec/km or null.
+function deriveLoggedPaceSec(logEntry) {
+  const direct = num(logEntry.avgPaceSecKm)
+  if (direct != null && direct > 0) return direct
+  const distM = num(logEntry.distanceM)
+  const durSec = num(logEntry.durationSec) ?? (num(logEntry.duration) != null ? num(logEntry.duration) * 60 : null)
+  if (distM == null || distM <= 0 || durSec == null || durSec <= 0) return null
+  return durSec / (distM / 1000)
 }
 
 /**
@@ -114,8 +165,57 @@ export function computeSessionExecution(plannedSession, logEntry) {
       deltaPct: Math.round((tssDelta / plannedTss) * 1000) / 1000,
     }
   }
+
+  // v9.153.0 (Prompt 8) — HR delta. Range-aware: when plannedRange is set,
+  // an avgHR inside [lo, hi] reads as `in-range`; outside surfaces direction
+  // ('above' / 'below') plus the gap to the nearest band edge.
+  const plannedHr = parseHrTarget(plannedSession.hrTarget)
+  const loggedHr  = num(logEntry.avgHR)
+  if (plannedHr && loggedHr != null && loggedHr > 0) {
+    let hrStatus, gap
+    if (loggedHr >= plannedHr.lo && loggedHr <= plannedHr.hi) {
+      hrStatus = 'in-range'; gap = 0
+    } else if (loggedHr > plannedHr.hi) {
+      hrStatus = 'above'; gap = loggedHr - plannedHr.hi
+    } else {
+      hrStatus = 'below'; gap = loggedHr - plannedHr.lo  // negative
+    }
+    result.hr = {
+      planned:      plannedHr.mid,
+      plannedRange: plannedHr.lo === plannedHr.hi ? null : [plannedHr.lo, plannedHr.hi],
+      logged:       loggedHr,
+      delta:        Math.round(loggedHr - plannedHr.mid),
+      gap:          Math.round(gap),
+      status:       hrStatus,
+    }
+  }
+
+  // v9.153.0 (Prompt 8) — Pace delta. Pace is sec/km; lower = faster.
+  // `delta = logged - planned`: negative means faster than plan.
+  // Status: `fast` (>3% faster), `slow` (>3% slower), else `on-target`.
+  // 3% ≈ ~10s/km at 5:30/km — coarser than HR because GPS noise + terrain.
+  const plannedPaceSec = parsePaceSec(plannedSession.paceTarget)
+  const loggedPaceSec  = deriveLoggedPaceSec(logEntry)
+  if (plannedPaceSec != null && loggedPaceSec != null) {
+    const paceDelta = loggedPaceSec - plannedPaceSec
+    const paceDeltaPct = paceDelta / plannedPaceSec
+    let paceStatus = 'on-target'
+    if (paceDeltaPct < -0.03) paceStatus = 'fast'
+    else if (paceDeltaPct > 0.03) paceStatus = 'slow'
+    result.pace = {
+      planned:  Math.round(plannedPaceSec),
+      logged:   Math.round(loggedPaceSec),
+      delta:    Math.round(paceDelta),
+      deltaPct: Math.round(paceDeltaPct * 1000) / 1000,
+      status:   paceStatus,
+    }
+  }
+
   return result
 }
+
+// Exported for tests + UI formatters that need consistent parsing.
+export const _internal = { parsePaceSec, parseHrTarget, deriveLoggedPaceSec }
 
 // Bilingual short label per status. Consumers can format around this.
 export const EXECUTION_STATUS_LABEL = {

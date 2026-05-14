@@ -2338,6 +2338,46 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
                       )}
                     </span>
                   )}
+                  {/* v9.153.0 (Prompt 8) — HR delta. Surfaces only when both
+                      the plan carries hrTarget AND the log entry has avgHR
+                      (typically FIT import or detailed manual entry). */}
+                  {sessionExecution.hr && (
+                    <span>
+                      <span style={{ color: '#666' }}>HR · </span>
+                      <span style={{ color: '#ccc', fontWeight: 700 }}>{sessionExecution.hr.logged}</span>
+                      <span style={{ color: '#666' }}>
+                        {lang === 'tr' ? ' / plan ' : ' / plan '}
+                        {sessionExecution.hr.plannedRange
+                          ? `${sessionExecution.hr.plannedRange[0]}-${sessionExecution.hr.plannedRange[1]}`
+                          : sessionExecution.hr.planned}
+                      </span>
+                      {sessionExecution.hr.status !== 'in-range' && (
+                        <span style={{ color: '#f5c542', marginLeft: '4px' }}>
+                          ({sessionExecution.hr.gap > 0 ? '+' : ''}{sessionExecution.hr.gap})
+                        </span>
+                      )}
+                    </span>
+                  )}
+                  {/* v9.153.0 (Prompt 8) — Pace delta. mm:ss/km display. */}
+                  {sessionExecution.pace && (() => {
+                    const fmt = sec => {
+                      const m = Math.floor(sec / 60)
+                      const s = Math.round(sec % 60)
+                      return `${m}:${String(s).padStart(2, '0')}`
+                    }
+                    return (
+                      <span>
+                        <span style={{ color: '#666' }}>{lang === 'tr' ? 'TEMPO · ' : 'PACE · '}</span>
+                        <span style={{ color: '#ccc', fontWeight: 700 }}>{fmt(sessionExecution.pace.logged)}</span>
+                        <span style={{ color: '#666' }}>{lang === 'tr' ? ' / plan ' : ' / plan '}{fmt(sessionExecution.pace.planned)}</span>
+                        {sessionExecution.pace.status !== 'on-target' && (
+                          <span style={{ color: '#f5c542', marginLeft: '4px' }}>
+                            ({sessionExecution.pace.delta > 0 ? '+' : ''}{sessionExecution.pace.delta}s)
+                          </span>
+                        )}
+                      </span>
+                    )
+                  })()}
                 </div>
                 {/* v9.140.0 — Next-action implication. Converts the delta
                     numbers above into adherence guidance: over → keep

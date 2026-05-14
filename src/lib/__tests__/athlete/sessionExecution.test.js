@@ -224,3 +224,146 @@ describe('getExecutionImplication', () => {
     expect(imp.citation).toMatch(/Banister/)
   })
 })
+
+// v9.153.0 (Prompt 8) — HR/pace delta blocks
+describe('computeSessionExecution — HR delta', () => {
+  it('omits hr block when planned has no hrTarget', () => {
+    const out = computeSessionExecution(
+      { duration: 60, rpe: 7 },
+      { duration: 60, rpe: 7, avgHR: 152 }
+    )
+    expect(out.hr).toBeUndefined()
+  })
+
+  it('omits hr block when log has no avgHR', () => {
+    const out = computeSessionExecution(
+      { duration: 60, rpe: 7, hrTarget: 150 },
+      { duration: 60, rpe: 7 }
+    )
+    expect(out.hr).toBeUndefined()
+  })
+
+  it('marks in-range when avgHR inside the planned band', () => {
+    const out = computeSessionExecution(
+      { duration: 60, rpe: 4, hrTarget: '140-160' },
+      { duration: 60, rpe: 4, avgHR: 152 }
+    )
+    expect(out.hr.status).toBe('in-range')
+    expect(out.hr.gap).toBe(0)
+    expect(out.hr.plannedRange).toEqual([140, 160])
+    expect(out.hr.planned).toBe(150)
+    expect(out.hr.logged).toBe(152)
+  })
+
+  it('marks above when avgHR exceeds the upper band', () => {
+    const out = computeSessionExecution(
+      { duration: 60, rpe: 4, hrTarget: '140-160' },
+      { duration: 60, rpe: 4, avgHR: 172 }
+    )
+    expect(out.hr.status).toBe('above')
+    expect(out.hr.gap).toBe(12)
+    expect(out.hr.delta).toBe(22)
+  })
+
+  it('marks below when avgHR under the lower band', () => {
+    const out = computeSessionExecution(
+      { duration: 60, rpe: 4, hrTarget: '140-160' },
+      { duration: 60, rpe: 4, avgHR: 128 }
+    )
+    expect(out.hr.status).toBe('below')
+    expect(out.hr.gap).toBe(-12)
+  })
+
+  it('treats single-value hrTarget as a degenerate band', () => {
+    const out = computeSessionExecution(
+      { duration: 60, hrTarget: 150 },
+      { duration: 60, avgHR: 150 }
+    )
+    expect(out.hr.plannedRange).toBeNull()
+    expect(out.hr.status).toBe('in-range')
+  })
+
+  it('handles malformed hrTarget by omitting the block', () => {
+    const out = computeSessionExecution(
+      { duration: 60, hrTarget: 'asdf' },
+      { duration: 60, avgHR: 150 }
+    )
+    expect(out.hr).toBeUndefined()
+  })
+})
+
+describe('computeSessionExecution — Pace delta', () => {
+  it('omits pace block when planned has no paceTarget', () => {
+    const out = computeSessionExecution(
+      { duration: 60 },
+      { duration: 60, distanceM: 10000, durationSec: 3300 }
+    )
+    expect(out.pace).toBeUndefined()
+  })
+
+  it('omits pace block when log has no distance/duration data', () => {
+    const out = computeSessionExecution(
+      { duration: 60, paceTarget: '5:30/km' },
+      { duration: 60 }
+    )
+    expect(out.pace).toBeUndefined()
+  })
+
+  it('derives logged pace from distanceM + durationSec', () => {
+    // 10km in 55 min = 330 sec/km = 5:30/km
+    const out = computeSessionExecution(
+      { duration: 55, paceTarget: '5:30/km' },
+      { duration: 55, distanceM: 10000, durationSec: 3300 }
+    )
+    expect(out.pace.planned).toBe(330)
+    expect(out.pace.logged).toBe(330)
+    expect(out.pace.delta).toBe(0)
+    expect(out.pace.status).toBe('on-target')
+  })
+
+  it('uses avgPaceSecKm when present (fileImport path)', () => {
+    const out = computeSessionExecution(
+      { duration: 60, paceTarget: '5:30/km' },
+      { duration: 60, avgPaceSecKm: 320 }
+    )
+    expect(out.pace.logged).toBe(320)
+    expect(out.pace.delta).toBe(-10)
+    expect(out.pace.status).toBe('fast')
+  })
+
+  it('marks slow when logged pace >3% slower than planned', () => {
+    const out = computeSessionExecution(
+      { duration: 60, paceTarget: '5:00/km' },
+      { duration: 60, avgPaceSecKm: 320 }   // 300 → 320 = +6.7%
+    )
+    expect(out.pace.status).toBe('slow')
+    expect(out.pace.delta).toBe(20)
+  })
+
+  it('marks fast when logged pace >3% faster than planned', () => {
+    const out = computeSessionExecution(
+      { duration: 60, paceTarget: '5:00/km' },
+      { duration: 60, avgPaceSecKm: 280 }   // -6.7%
+    )
+    expect(out.pace.status).toBe('fast')
+  })
+
+  it('falls back to duration (min) when durationSec absent', () => {
+    // 8km in 40min → 300 sec/km
+    const out = computeSessionExecution(
+      { duration: 40, paceTarget: '5:00/km' },
+      { duration: 40, distanceM: 8000 }
+    )
+    expect(out.pace.logged).toBe(300)
+    expect(out.pace.status).toBe('on-target')
+  })
+
+  it('handles swim-style paceTarget (1:30/100m)', () => {
+    const out = computeSessionExecution(
+      { duration: 30, paceTarget: '1:30/100m' },
+      { duration: 30, avgPaceSecKm: 88 }  // ~1:28 — under 3% so on-target
+    )
+    expect(out.pace.planned).toBe(90)
+    expect(out.pace.status).toBe('on-target')
+  })
+})
