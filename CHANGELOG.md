@@ -14,6 +14,51 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.134.0 — 2026-05-15 — Corrective: drop v9.133 duplicate, publish real messages table
+
+  v9.133 shipped a duplicate `coach_messages` table believing the
+  CLAUDE.md "Known Limitations" line that coach messaging was
+  file-based JSON. That line was stale documentation: a working
+  `public.messages` table + `src/lib/db/messages.js` + the
+  `CoachMessage.jsx` UI + `useMessageChannel` typing/read broadcast
+  have been in place since the v5.x coach feature shipped. The v9.133
+  table was empty and unreferenced — pure duplicate.
+
+  This ship corrects the mistake and fixes a real bug uncovered in
+  the audit:
+
+  Migration `20260481_drop_coach_messages_and_publish_messages.sql`:
+  - DROP TABLE coach_messages (verified empty pre-drop)
+  - DROP from `supabase_realtime` publication (required before DROP)
+  - ADD `public.messages` to `supabase_realtime` — discovered the real
+    messages table was NEVER in the publication, so
+    `subscribeToMessages` in `db/messages.js` has been silently no-op
+    for INSERT events the entire time the realtime feature has been
+    advertised. Athletes never saw coach messages until refresh; the
+    typing/read broadcast (separate channel) masked the bug because
+    it works without DB publication.
+  - REPLICA IDENTITY FULL on messages — future-proofs UPDATE/DELETE
+    realtime payloads (INSERT is unaffected).
+
+  Removed: `src/lib/coach/realtimeMessages.js` + 22 tests. Module was
+  fine but pointed at the duplicate table; the existing `db/messages.js`
+  layer covers the same surface and is the canonical entry point.
+
+  CLAUDE.md: "Known Limitations" line replaced with a one-paragraph
+  description of the actual messaging architecture (table, hook,
+  encryption, realtime).
+
+  Honest framing per project framing-discipline rule: this is a
+  rollback + bugfix, not a feature ship. v9.133's CHANGELOG entry is
+  left intact for historical accuracy — readers tracing the version
+  story should see both the wrong call and the correction.
+
+  Tests: full suite 10360/10360 green (22 fewer than v9.133 by
+  deletion).
+
+  Dependencies: `public.messages` (existing), `supabase_realtime`
+  publication.
+
 ## v9.133.0 — 2026-05-15 — Realtime coach<->athlete messaging foundation
 
   CLAUDE.md "Known Limitations" calls out the v6-era messaging flow:

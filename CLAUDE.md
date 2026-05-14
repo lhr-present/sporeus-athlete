@@ -153,7 +153,7 @@ const hasTriData = useMemo(() =>
 - W' exhaustion check requires CP + W' saved in profile (from Protocols → CP Test)
 - Push notifications: iOS requires iOS 16.4+ and PWA installed to home screen
 - Guest mode: all data in localStorage — lost on browser clear; nudge fires after 30d or 50 sessions
-- Coach messaging is file-based (JSON export/import) — not real-time
+- Coach messaging: DB-backed `messages` table (coach_id, athlete_id, sender_role, body, sent_at, read_at) + Supabase Realtime postgres_changes subscription. UI in `src/components/CoachMessage.jsx`, data layer in `src/lib/db/messages.js`, typing/read receipts via broadcast in `src/hooks/useMessageChannel.js`. Bodies are encrypted client-side (`src/lib/crypto.js`).
 
 ## Version System (two numbers, on purpose)
 
