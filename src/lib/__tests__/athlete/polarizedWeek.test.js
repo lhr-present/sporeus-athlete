@@ -65,6 +65,48 @@ describe('analyzePolarizedWeek — threshold drift', () => {
   })
 })
 
+describe('analyzePolarizedWeek — day-of-week guard (v9.129 OOO)', () => {
+  const MONDAY    = '2026-05-11'
+  const TUESDAY   = '2026-05-12'
+  const WEDNESDAY = '2026-05-13'
+  it('suppresses banner on Monday when threshold share is moderate', () => {
+    // 60 easy + 90 threshold = 60% threshold (drift-threshold model)
+    const log = [
+      { date: MONDAY, rpe: 4, duration: 60, tss: 60 },
+      { date: MONDAY, rpe: 6, duration: 90, tss: 90 },
+    ]
+    const out = analyzePolarizedWeek(log, MONDAY)
+    // Threshold share = 60% which is >= 50 floor → banner SHOULD fire
+    expect(out).not.toBeNull()
+    expect(out.flag).toBe('drift-threshold')
+  })
+  it('suppresses Monday banner when threshold share is below 50%', () => {
+    // 90 easy + 60 threshold = 40% threshold
+    const log = [
+      { date: MONDAY, rpe: 4, duration: 90, tss: 90 },
+      { date: MONDAY, rpe: 6, duration: 60, tss: 60 },
+    ]
+    expect(analyzePolarizedWeek(log, MONDAY)).toBeNull()
+  })
+  it('suppresses Tuesday banner when threshold share < 50%', () => {
+    const log = [
+      { date: MONDAY,  rpe: 4, duration: 90, tss: 90 },
+      { date: TUESDAY, rpe: 6, duration: 60, tss: 60 },
+    ]
+    expect(analyzePolarizedWeek(log, TUESDAY)).toBeNull()
+  })
+  it('Wednesday fires the banner at moderate threshold share', () => {
+    // By Wednesday, distribution is more meaningful — no early-week guard.
+    const log = [
+      { date: MONDAY,    rpe: 4, duration: 60, tss: 60 },
+      { date: TUESDAY,   rpe: 6, duration: 60, tss: 60 },
+      { date: WEDNESDAY, rpe: 6, duration: 30, tss: 30 },
+    ]
+    const out = analyzePolarizedWeek(log, WEDNESDAY)
+    expect(out).not.toBeNull()
+  })
+})
+
 describe('analyzePolarizedWeek — citation + structure', () => {
   it('exposes weekStart and citation', () => {
     const log = [

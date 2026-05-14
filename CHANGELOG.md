@@ -14,6 +14,28 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.129.0 — 2026-05-15 — Polarized day-of-week guard (close OOO)
+
+  Final fix from the banner-accumulation critique pass.
+
+  v9.125's polarized banner fired on Mon–Tue with a single threshold
+  session as "threshold-heavy" because the planned easy work hadn't
+  happened yet. False positive at the start of the week.
+
+  `analyzePolarizedWeek` now checks ISO day index (Mon=0..Sun=6) and
+  suppresses the result on Mon–Tue UNLESS threshold share ≥50% — at
+  which point no amount of remaining easy volume could salvage the
+  distribution, so the warning fires regardless. Wednesday and later
+  apply the existing model classification without the guard.
+
+  Critique pass now fully closed (NNN + OOO + PPP shipped).
+
+  Files: `src/lib/athlete/polarizedWeek.js` — day-of-week guard,
+  `src/lib/__tests__/athlete/polarizedWeek.test.js` — 4 new cases.
+  10319 tests passing.
+
+---
+
 ## v9.128.0 — 2026-05-15 — Secondary alerts defer to critical diagnostics
 
   Prompt PPP. Second fix from the banner-accumulation critique pass.

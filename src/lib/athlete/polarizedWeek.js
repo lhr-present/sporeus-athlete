@@ -25,14 +25,39 @@
 import { weekStart, weeklyPolarizationScore } from '../science/polarizationCompliance.js'
 
 /**
+ * @description Day-of-week guard threshold. Banner suppresses through
+ *   Tue (dayIdx 0–1) unless the threshold share is so high (>50%) that
+ *   no amount of remaining easy volume could salvage the week's
+ *   distribution. Reason: a Mon/Tue with one threshold session reads
+ *   as "threshold-heavy" even when the planned easy work is still
+ *   ahead in the week — false positive.
+ */
+const EARLY_WEEK_THRESHOLD_FLOOR_PCT = 50
+
+function isoDayIndex(iso) {
+  const d = new Date(String(iso).slice(0, 10) + 'T12:00:00Z')
+  if (Number.isNaN(d.getTime())) return null
+  return (d.getUTCDay() + 6) % 7  // Mon=0..Sun=6
+}
+
+/**
  * @description Resolve current week's score + render-friendly flag.
- *   Returns null when sample is too small or no log data.
+ *   Returns null when sample is too small, no log data, OR when the
+ *   day-of-week guard suppresses an early-week false positive.
  */
 export function analyzePolarizedWeek(log, today) {
   const tToday = today || new Date().toISOString().slice(0, 10)
   const monday = weekStart(tToday)
   const score = weeklyPolarizationScore(log, monday)
   if (!score || score.model === 'insufficient_data') return null
+
+  // v9.129.0 (Prompt OOO) — Mon (idx 0) and Tue (idx 1) suppress the
+  // banner unless the distribution is severely threshold-heavy. The
+  // easy work scheduled later in the week can still balance the ratio.
+  const dayIdx = isoDayIndex(tToday)
+  const isEarlyWeek = dayIdx != null && dayIdx <= 1
+  const severelyThreshold = score.thresholdPct >= EARLY_WEEK_THRESHOLD_FLOOR_PCT
+  if (isEarlyWeek && !severelyThreshold) return null
 
   // Map model → flag + interpretation
   let flag = null
