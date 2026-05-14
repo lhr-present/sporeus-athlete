@@ -14,6 +14,35 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.131.0 — 2026-05-15 — Weekly plan rationale ("why this week")
+
+  v9.121.0 (planRationale.js) explained today's session. This extends
+  the show-your-work surface to the whole current week: which phase
+  of the macro cycle the week sits in, how its TSS ramp compares to
+  last week, what the session-type distribution looks like vs the
+  Seiler 80/20 target, and where the week sits in the overall plan.
+
+  New `explainPlannedWeek({plan, weekIdx})` returns up to 5 factors:
+  - **Phase** — Base/Build/Peak/Taper/Recovery rationale + citation
+    (Seiler, Bompa & Buzzichelli, Bosquet, Mujika)
+  - **Volume ramp** — % delta vs previous week with Coggan's 5–10%
+    safe-ramp band reference (or Mujika citation for step-downs)
+  - **Distribution** — easy/threshold/hard session count classified
+    as polarized / threshold-heavy / pyramidal
+  - **Position** — week N of M and macro-cycle progress percentage
+  - **Transition** — flag the upcoming phase change when next week
+    differs from this one
+
+  Each factor is conditional. PlanGenerator's selected-week card
+  gets a `<details>` "▼ WHY THIS WEEK" disclosure mirroring v9.121's
+  session-level disclosure pattern.
+
+  Files: `src/lib/athlete/weekRationale.js` (new, ~165 LOC),
+  `src/lib/__tests__/athlete/weekRationale.test.js` (new, 18 cases),
+  `src/components/PlanGenerator.jsx`. 10348 tests passing.
+
+---
+
 ## v9.130.0 — 2026-05-15 — Squad summary strip for coach dashboard
 
   Pre-v9.130 the only roll-up on CoachSquadView was the

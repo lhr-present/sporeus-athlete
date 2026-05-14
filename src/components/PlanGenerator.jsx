@@ -13,6 +13,7 @@ import { findOptimalWeekStructure } from '../lib/patterns.js'
 import { generatePlan as generateAdaptivePlan } from '../lib/plan/generatePlan.js'
 import { applyTaper, suggestTaper } from '../lib/plan/taperEngine.js'
 import { validatePlan } from '../lib/plan/planValidators.js'
+import { explainPlannedWeek } from '../lib/athlete/weekRationale.js'
 import { readPlanHistory } from '../lib/plan/versionTracking.js'
 import { announce } from '../lib/a11y/announcer.js'
 import { buildZwoWorkout, sessionToZwoWorkout, downloadZwoFile } from '../lib/integrations/zwoExport.js'
@@ -779,6 +780,48 @@ export default function PlanGenerator({ onLogSession }) {
                   </div>
                 </div>
               )}
+              {/* v9.131.0 — "Why this week" rationale disclosure. Surfaces
+                  phase context, volume ramp vs last week, session-type
+                  distribution, position in macro cycle, upcoming phase
+                  transition. Pure derive from plan + weekIdx. Hidden when
+                  no factors fire (very short plans). */}
+              {(() => {
+                const wr = explainPlannedWeek({ plan, weekIdx: selWeek })
+                if (!wr.hasContent) return null
+                return (
+                  <details style={{
+                    marginBottom: '12px', padding: '6px 10px',
+                    background: 'rgba(0,100,255,0.04)', border: '1px solid #0064ff33',
+                    borderRadius: '4px',
+                  }}>
+                    <summary style={{
+                      ...S.mono, fontSize: '10px', color: '#6699ff',
+                      letterSpacing: '0.06em', cursor: 'pointer', userSelect: 'none',
+                    }}>
+                      ▼ {lang === 'tr' ? 'BU HAFTA NEDEN?' : 'WHY THIS WEEK'}
+                      <span style={{ color: '#888', marginLeft: '8px' }}>· {wr.factors.length}</span>
+                    </summary>
+                    <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {wr.factors.map(f => (
+                        <div key={f.key} style={{ ...S.mono, fontSize: '10px', lineHeight: 1.55 }}>
+                          <span style={{ color: '#0064ff', fontWeight: 700 }}>
+                            {f.label?.[lang] || f.label?.en}
+                          </span>
+                          <span style={{ color: '#aaa', marginLeft: '6px' }}>
+                            — {f.detail?.[lang] || f.detail?.en}
+                          </span>
+                          {f.citation && (
+                            <div style={{ color: '#666', fontSize: '9px', fontStyle: 'italic', marginTop: '2px' }}>
+                              {f.citation}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )
+              })()}
+
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))', gap:'8px' }}>
                 {W.sessions.map((ses, di) => {
                   const stKey = `${selWeek}-${di}`
