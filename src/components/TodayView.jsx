@@ -156,6 +156,12 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
   // Discovery: the "warning above hard session" UX produced a measurable
   // gap between "saw warning" and "swapped session" in plan_status data.
   const [showOriginalSession, setShowOriginalSession] = useState(false)
+  // v9.146.0 — Session-card sub-banner collapse. Gates phase+week,
+  // deload tile, description, structure breakdown, and tomorrow
+  // preview behind one toggle so the morning glance + execution data
+  // stay above the fold. Default false → 5 fewer surfaces visible.
+  // Spec: Prompt 2 from the v9.144 critique.
+  const [showSessionDetails, setShowSessionDetails] = useState(false)
 
   const yesterdayLogged = (log || []).some(e => e.date === yesterday)
 
@@ -1945,11 +1951,8 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
                 {plannedSession.rpe ? ` · RPE ${plannedSession.rpe}` : ''}
               </span>
             </div>
-            {/* v9.84.0 — Phase + week progress on its own line so "why this
-                session" is visible without the athlete having to know what
-                weekPhase means. Shows e.g. "BUILD · Hafta 3/12" so the
-                placement of today's session in the macro cycle is obvious. */}
-            {(plannedSession.weekPhase || plannedSession.weekIdx != null) && (
+            {/* v9.84.0 — Phase + week progress (v9.146 collapsed by default) */}
+            {showSessionDetails && (plannedSession.weekPhase || plannedSession.weekIdx != null) && (
               <div style={{ fontSize: '10px', color: '#0064ff', marginBottom: '8px', letterSpacing: '0.06em' }}>
                 {plannedSession.weekPhase && <span style={{ fontWeight: 700 }}>📍 {plannedSession.weekPhase}</span>}
                 {plannedSession.weekIdx != null && plan?.weeks?.length > 0 && (
@@ -1960,13 +1963,8 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
                 )}
               </div>
             )}
-            {/* v9.107.0 (Prompt NN) — Deload-active context tile. When the
-                current week's sessions carry _deloaded:true (set by v9.102
-                Prompt U Reduce-Next-Week), explain *why* this week is
-                lighter so athletes don't think the plan is broken or the
-                load is randomly soft. Mujika 2003 anchor matches the
-                citation v9.102 used at scaling time. */}
-            {plan?.weeks?.[plannedSession.weekIdx]?.sessions?.some(s => s?._deloaded) && (
+            {/* v9.107.0 (Prompt NN) — Deload-active context tile (v9.146 collapsed by default) */}
+            {showSessionDetails && plan?.weeks?.[plannedSession.weekIdx]?.sessions?.some(s => s?._deloaded) && (
               <div style={{
                 fontSize: '10px', color: '#5bc25b', marginBottom: '10px',
                 padding: '6px 10px', borderLeft: '3px solid #5bc25b',
@@ -2051,19 +2049,14 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
               </div>
               )
             })()}
-            {plannedSession.description && (
+            {/* v9.146 — Description paragraph collapsed by default */}
+            {showSessionDetails && plannedSession.description && (
               <p style={{ fontSize: '11px', color: '#888', lineHeight: 1.55, marginBottom: '12px' }}>
                 {plannedSession.description}
               </p>
             )}
-            {/* v9.88.0 — Session structure breakdown for interval workouts.
-                For sessions like "Threshold 2x20", "VO2max 5x3",
-                "Intervals 6x800m" — surfaces the warm-up + reps +
-                recovery + cool-down split so the athlete can execute
-                without re-deriving the structure mentally. Pattern-matched
-                from the type string + duration; returns null for
-                non-interval sessions (Easy/Long/Tempo without NxM). */}
-            {(() => {
+            {/* v9.88.0 — Session structure breakdown (v9.146 collapsed by default) */}
+            {showSessionDetails && (() => {
               const struct = deriveSessionStructure(plannedSession)
               if (!struct) return null
               const [wu, rep, cd] = struct.blocks
@@ -2301,12 +2294,8 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
                 })()}
               </div>
             )}
-            {/* v9.85.0 — Tomorrow preview. Tells the athlete what's coming so
-                they can plan: prep intervals workout track, charge HR strap,
-                eat carbs the night before a long ride, set an earlier alarm.
-                One compact line; conditional on a non-rest plan being scheduled
-                for the next day. */}
-            {tomorrowSession && (() => {
+            {/* v9.85.0 — Tomorrow preview (v9.146 collapsed by default) */}
+            {showSessionDetails && tomorrowSession && (() => {
               // v9.109.0 (Prompt YY): session-type-specific prep hints.
               // Built from the same hard/long/threshold heuristic the rest
               // of TodayView uses (rpe>=7 OR keyword match) so hints stay
@@ -2437,6 +2426,29 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
                 </details>
               )
             })()}
+            {/* v9.146.0 — Session-details toggle. Reveals 5 collapsed sub-banners
+                (phase+week, deload tile, description, structure breakdown,
+                tomorrow preview) all at once. Spec: Prompt 2 from v9.144
+                critique. Hidden when the auto-downgrade card is active and
+                the original session is suppressed, since there are no details
+                to reveal for the downgrade flow. */}
+            {(!downgradeRec || showOriginalSession) && (
+              <button
+                onClick={() => setShowSessionDetails(v => !v)}
+                style={{
+                  display: 'block', width: '100%', marginTop: '10px',
+                  padding: '6px 10px', fontFamily: MONO, fontSize: '10px',
+                  color: '#888', letterSpacing: '0.06em',
+                  background: 'transparent', border: '1px dashed var(--border)',
+                  borderRadius: '4px', cursor: 'pointer', textAlign: 'center',
+                }}
+                aria-expanded={showSessionDetails}
+              >
+                {showSessionDetails
+                  ? (lang === 'tr' ? '▲ DETAYLARI GİZLE' : '▲ HIDE DETAILS')
+                  : (lang === 'tr' ? '▼ DETAYLARI GÖSTER (faz, yapı, yarın…)' : '▼ SHOW DETAILS (phase, structure, tomorrow…)')}
+              </button>
+            )}
           </>
         ) : (
           <div style={{ color: '#555', fontSize: '12px', lineHeight: 1.6 }}>

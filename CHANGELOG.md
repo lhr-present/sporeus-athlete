@@ -14,6 +14,49 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.146.0 — 2026-05-15 — Session-card sub-banner collapse (Prompt 2)
+
+  Today's Session card rendered 13+ stacked sub-elements per the
+  v9.144 critique. Collapsing the informational ones lets the
+  athlete glance at "what / how long / what target" without
+  parsing through phase metadata, structure breakdowns, and
+  tomorrow-preview hints.
+
+  New `showSessionDetails` state (default false) gates 5 sub-banners:
+  - Phase + week progress (v9.84)
+  - Deload context tile (v9.107 NN)
+  - Description paragraph
+  - Structure breakdown (v9.88)
+  - Tomorrow preview (v9.85/109)
+
+  Always-visible (kept above):
+  - Readiness banners (low + positive)
+  - Race-week taper conflict + CTA (v9.141)
+  - HRV/TSB session-swap (v9.56)
+  - Auto-downgrade card / original session strip (v9.102)
+  - Pace/zone strip
+  - Plan rationale disclosure (v9.121 — already collapsed)
+  - Execution snapshot + implication (v9.89/v9.140)
+  - Sick-day contingency CTAs (v9.139)
+
+  Single toggle button at the bottom of the session card:
+  `▼ SHOW DETAILS (phase, structure, tomorrow…)` / `▲ HIDE DETAILS`.
+  Bilingual. ARIA `aria-expanded` set. Suppressed when auto-downgrade
+  is active and the original session is hidden (nothing to reveal).
+
+  Implementation note: rather than physically relocating the 5 blocks
+  into one `<details>` (high regression risk in a 3300-line file),
+  each block is wrapped at its current position with
+  `{showSessionDetails && (...)}`. When expanded, the blocks reappear
+  in their natural interleaved positions. UX outcome matches the spec
+  (collapsed-by-default, one click reveals all); the visual grouping
+  at the bottom is deferred as a follow-up cosmetic refinement.
+
+  Suite 10388/10388 green (unchanged — no logic mutated, only
+  rendering gates added).
+
+  Dependencies: existing block conditions; new local state.
+
 ## v9.145.0 — 2026-05-15 — Above-fold morning glance (Prompt 1)
 
   TodayView grew to 40+ conditional cards/banners over 140 versions.
