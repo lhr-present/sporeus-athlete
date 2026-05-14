@@ -26,6 +26,7 @@ import { buildDailyRecommendation } from '../lib/athlete/dailyRecommendation.js'
 import { computePlanDrift, detectStalePlan } from '../lib/athlete/planAdaptation.js'
 import { detectGoalActivityMismatch } from '../lib/athlete/goalActivityMismatch.js'
 import { computeTrainingStreak, getStreakMilestone } from '../lib/athlete/trainingStreak.js'
+import { detectComebackGap } from '../lib/athlete/comebackDetector.js'
 import { buildStarterPlan } from '../lib/plan/starterPlan.js'
 import { recordPlanVersion } from '../lib/plan/versionTracking.js'
 import { emitEvent } from '../lib/attribution.js'
@@ -590,6 +591,58 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
           <NextTrainingCardLazy />
         </Suspense>
       </ErrorBoundary>
+
+      {/* ── v9.109.0 (Prompt TT) — Comeback banner. When the athlete returns
+          after a 14+ day gap with prior CTL above floor, surface a
+          welcome-back message + load-easing suggestion (50% prior CTL).
+          Mission 1 normally treats every visit identically; returning
+          athletes need the lighter restart guidance or they re-injure
+          themselves trying to pick up where they left off. */}
+      {(() => {
+        const comeback = detectComebackGap(log, today)
+        if (!comeback.isComeback) return null
+        const weeks = Math.round(comeback.gapDays / 7)
+        return (
+          <div style={{
+            marginBottom: '14px', padding: '12px 16px',
+            background: '#0064ff14', border: '1px solid #0064ff55',
+            borderLeft: '4px solid #0064ff', borderRadius: '5px',
+            fontFamily: MONO,
+          }}>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: '#0064ff', letterSpacing: '0.08em', marginBottom: '6px' }}>
+              ✦ {lang === 'tr'
+                ? `TEKRAR HOŞ GELDİN · ${weeks} HAFTA SONRA`
+                : `WELCOME BACK · AFTER ${weeks} WEEKS`}
+            </div>
+            <div style={{ fontSize: '11px', color: '#ccc', lineHeight: 1.55, marginBottom: '6px' }}>
+              {lang === 'tr'
+                ? `${comeback.gapDays} günlük araya çıktın. Önceki kondisyonun ${comeback.priorCTL} CTL'di. Sakatlanmamak için ilk 1-2 hafta ~${comeback.easedCTL} CTL hedefiyle başla (önceki yükün %50'si).`
+                : `You've been away for ${comeback.gapDays} days. Your prior fitness was ${comeback.priorCTL} CTL. Start back at ~${comeback.easedCTL} CTL (50% of prior) for the first 1–2 weeks to avoid re-injury.`}
+            </div>
+            <div style={{ fontSize: '9px', color: '#666', fontStyle: 'italic' }}>
+              Bompa & Buzzichelli 2018 (detraining principle — connective tissue de-adapts faster than aerobic capacity)
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* v9.109.0 — One-shot comeback_after_gap telemetry */}
+      {(() => {
+        const comeback = detectComebackGap(log, today)
+        if (!comeback.isComeback || !comeback.lastDate) return null
+        const key = `sporeus-comeback-${comeback.lastDate}`
+        try {
+          if (!localStorage.getItem(key)) {
+            emitEvent('comeback_after_gap', {
+              gap_days:   comeback.gapDays,
+              prior_ctl:  comeback.priorCTL,
+              eased_ctl:  comeback.easedCTL,
+            })
+            localStorage.setItem(key, new Date().toISOString())
+          }
+        } catch { /* fail open */ }
+        return null
+      })()}
 
       {/* ── v9.107.0 (Prompt LL) — Training streak chip. One-line summary
           surfaces a habit signal the system already had. Hidden when
@@ -1549,21 +1602,58 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
                 eat carbs the night before a long ride, set an earlier alarm.
                 One compact line; conditional on a non-rest plan being scheduled
                 for the next day. */}
-            {tomorrowSession && (
-              <div style={{
-                marginTop: '12px', paddingTop: '8px',
-                borderTop: '1px dashed var(--border)',
-                fontSize: '10px', color: '#888', letterSpacing: '0.04em',
-                fontFamily: MONO,
-              }}>
-                <span style={{ color: '#666' }}>{lang === 'tr' ? 'YARIN · ' : 'TOMORROW · '}</span>
-                <span style={{ color: '#ccc', fontWeight: 700 }}>{tomorrowSession.type}</span>
-                <span style={{ color: '#666' }}>
-                  {' · '}{tomorrowSession.duration} min
-                  {tomorrowSession.rpe ? ` · RPE ${tomorrowSession.rpe}` : ''}
-                </span>
-              </div>
-            )}
+            {tomorrowSession && (() => {
+              // v9.109.0 (Prompt YY): session-type-specific prep hints.
+              // Built from the same hard/long/threshold heuristic the rest
+              // of TodayView uses (rpe>=7 OR keyword match) so hints stay
+              // consistent across cards.
+              const t = String(tomorrowSession.type || '').toLowerCase()
+              const dur = Number(tomorrowSession.duration) || 0
+              const rpe = Number(tomorrowSession.rpe) || 0
+              const hints = []
+              const isLong   = dur >= 90 || /long|endurance/i.test(t)
+              const isHard   = rpe >= 7 || /interval|threshold|vo2|tempo|race.?pace/i.test(t)
+              const isEarly  = /am|morning/i.test(t)
+              if (isLong) {
+                hints.push(lang === 'tr'
+                  ? 'Akşam karbonhidrat yükle · sabah erken alarm · cebine jel'
+                  : 'Carb-load tonight · early alarm · gels in pocket')
+              }
+              if (isHard) {
+                hints.push(lang === 'tr'
+                  ? 'Ayakkabı + GPS hazır · ısınma için 15 dk ayır · uyku önceliği'
+                  : 'Shoes + GPS ready · 15min for warm-up · prioritize sleep')
+              }
+              if (isEarly) {
+                hints.push(lang === 'tr' ? 'Antrenman kıyafetlerini gece hazırla' : 'Lay out kit tonight')
+              }
+              return (
+                <div style={{
+                  marginTop: '12px', paddingTop: '8px',
+                  borderTop: '1px dashed var(--border)',
+                  fontSize: '10px', color: '#888', letterSpacing: '0.04em',
+                  fontFamily: MONO,
+                }}>
+                  <div>
+                    <span style={{ color: '#666' }}>{lang === 'tr' ? 'YARIN · ' : 'TOMORROW · '}</span>
+                    <span style={{ color: '#ccc', fontWeight: 700 }}>{tomorrowSession.type}</span>
+                    <span style={{ color: '#666' }}>
+                      {' · '}{tomorrowSession.duration} min
+                      {tomorrowSession.rpe ? ` · RPE ${tomorrowSession.rpe}` : ''}
+                    </span>
+                  </div>
+                  {hints.length > 0 && (
+                    <div style={{ marginTop: '4px', color: '#999', lineHeight: 1.5, letterSpacing: 'normal' }}>
+                      {hints.map((h, i) => (
+                        <div key={i} style={{ paddingLeft: '8px' }}>
+                          <span style={{ color: '#5bc25b' }}>→ </span>{h}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
             {/* v9.57.0 — Substitution / contingency guide (always available,
                 collapsed). Pre-fix the rich illness + life-event + travel
                 guidance in eliteProgramSubstitutions.js never surfaced — the

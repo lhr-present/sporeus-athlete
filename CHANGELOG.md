@@ -14,6 +14,88 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.109.0 — 2026-05-15 — Re-engagement + coach metrics + tomorrow prep
+
+  Prompts TT + WW + YY. Three additive surfaces — one re-engagement
+  prompt, one coach-side metric, one prep enhancement.
+
+  ### Prompt TT — Comeback recognition
+
+  New pure fn `detectComebackGap(log, today)` in
+  `src/lib/athlete/comebackDetector.js`. Returns
+  `{ isComeback, gapDays, priorCTL, easedCTL, lastDate }`.
+
+  Conditions for `isComeback: true`:
+  - Last log date 14–180 days ago (14d threshold; >180d treated as
+    fresh start, not comeback)
+  - Prior CTL at last training date >= 10 (else they were barely
+    training before — not a return)
+
+  Suggests an eased CTL = 50% of prior CTL for the first 1–2 weeks
+  (Bompa & Buzzichelli 2018 — connective-tissue de-adapts faster than
+  aerobic capacity, so jumping back to full load risks injury).
+
+  TodayView renders a blue "✦ WELCOME BACK · AFTER N WEEKS" banner
+  high in the page (right after the NextTrainingCard) when triggered.
+  One-shot `comeback_after_gap` telemetry gated on
+  `sporeus-comeback-{lastDate}` so it doesn't re-fire after each
+  reload.
+
+  Inlined a minimal `ctlAtDate` helper (42-day EMA, same constant as
+  `calcLoad`) to keep the module self-contained.
+
+  Tests: 9 cases (empty / recent / exactly-14d / below-CTL-floor /
+  over-6mo / eased-CTL math / malformed log / lastDate picks max /
+  custom today).
+
+  ### Prompt WW — Coach plan acceptance stats
+
+  CoachSquadView fetches the coach's full `coach_plans` once (no
+  realtime subscription — values change slowly) and aggregates client-
+  side:
+  - `total` — all plans sent
+  - `accepted` — plans where `accepted_at` is set
+  - `declined` — plans where `rejected_at` is set
+  - `pending` — neither timestamp set AND status === 'active'
+
+  New strip atop the squad table:
+  `PLANS SENT 24 · ✓ 17 accepted · ✕ 4 declined · ⏱ 3 pending · 71%
+  accept rate` with accept-rate color (green ≥70 / amber ≥40 / red).
+
+  ### Prompt YY — Tomorrow prep hints
+
+  Pre-v9.109 the tomorrow preview was a single line: "TOMORROW · Long
+  Run · 120 min · RPE 6". Useful but didn't tell the athlete what to
+  do *now* to prep for tomorrow.
+
+  Enhanced row now includes session-type-specific prep hints:
+  - Long (dur ≥ 90 OR `long|endurance`): "Carb-load tonight · early
+    alarm · gels in pocket"
+  - Hard (rpe ≥ 7 OR `interval|threshold|vo2|tempo|race-pace`):
+    "Shoes + GPS ready · 15min for warm-up · prioritize sleep"
+  - Morning (`am|morning`): "Lay out kit tonight"
+
+  Hints stack — a 6am long run hits all three. Bilingual (EN + TR).
+  Each hint prefixed `→` in soft green.
+
+  ### Files touched
+
+  - `src/lib/athlete/comebackDetector.js` (new, ~90 LOC)
+  - `src/lib/__tests__/athlete/comebackDetector.test.js` (new, 9 cases)
+  - `src/components/TodayView.jsx` (comeback banner + one-shot emit +
+    tomorrow prep hints + comebackDetector import)
+  - `src/components/coach/CoachSquadView.jsx` (planStats state + fetch
+    effect + stats strip atop squad table)
+  - `package.json` 11.109.0, CHANGELOG.md
+
+  10,170 tests pass (+9 vs v9.108). Lint + build clean.
+
+  Depends on: v9.85 (tomorrowSession), v9.105 Prompt BB (accepted_at/
+  rejected_at columns), v9.107 Prompt LL (training streak surface
+  area established at top of TodayView).
+
+---
+
 ## v9.108.0 — 2026-05-14 — Celebration surfaces: streak milestones + race-week mode + distance/pace PRs
 
   Prompts OO + PP + QQ. Three engagement features that complete the

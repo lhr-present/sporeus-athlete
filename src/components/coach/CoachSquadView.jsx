@@ -54,6 +54,10 @@ export default function CoachSquadView({ coachId, coachName = '' }) {
   const [athleteData, setAthleteData]   = useState({})   // { [athleteId]: { log, recovery } }
   const [loadingDetail, setLoadingDetail] = useState(false)
   const channelRef = useRef(null)
+  // v9.109.0 (Prompt WW) — Coach plan acceptance metrics. Aggregated client-
+  // side from a single coach_plans query keyed on coach_id. Cheaper than a
+  // dedicated RPC for this scale; per-coach plan counts are typically <1000.
+  const [planStats, setPlanStats] = useState(null)
 
   const fetchSquad = useCallback(async () => {
     if (!isSupabaseReady() || !coachId) { setLoading(false); return }
@@ -67,6 +71,25 @@ export default function CoachSquadView({ coachId, coachName = '' }) {
     }
     setAthletes(data ?? [])
     setLoading(false)
+  }, [coachId])
+
+  // v9.109.0 (Prompt WW) — Plan acceptance stats fetch. One-shot on
+  // coach load; doesn't need realtime since accepted_at/rejected_at
+  // updates don't change frequently enough to warrant a subscription.
+  useEffect(() => {
+    if (!isSupabaseReady() || !coachId) return
+    supabase
+      .from('coach_plans')
+      .select('id, accepted_at, rejected_at, status')
+      .eq('coach_id', coachId)
+      .then(({ data, error }) => {
+        if (error || !Array.isArray(data)) return
+        const total = data.length
+        const accepted = data.filter(p => p.accepted_at).length
+        const declined = data.filter(p => p.rejected_at).length
+        const pending  = data.filter(p => !p.accepted_at && !p.rejected_at && p.status === 'active').length
+        setPlanStats({ total, accepted, declined, pending })
+      })
   }, [coachId])
 
   // Initial fetch + realtime subscription
@@ -159,6 +182,41 @@ export default function CoachSquadView({ coachId, coachName = '' }) {
           </span>
         )}
       </div>
+
+      {/* ── v9.109.0 (Prompt WW) — Plan acceptance stats. One-line summary of
+          this coach's coach_plans by status. Surfaces a leading indicator
+          coaches couldn't see before: the accept rate. Bar visually
+          weights accepted (green) vs declined (red) vs pending (amber). */}
+      {planStats && planStats.total > 0 && (() => {
+        const acceptPct = Math.round((planStats.accepted / planStats.total) * 100)
+        return (
+          <div style={{
+            marginBottom: '14px', padding: '8px 12px',
+            background: '#0d0d0d', border: '1px solid #1e1e1e', borderRadius: '4px',
+            display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap',
+            fontSize: '10px',
+          }}>
+            <span style={{ color: DIM, letterSpacing: '0.08em' }}>PLANS SENT</span>
+            <span style={{ color: '#e0e0e0', fontWeight: 700 }}>{planStats.total}</span>
+            <span style={{ color: '#5bc25b' }}>
+              ✓ {planStats.accepted} <span style={{ color: DIM, fontWeight: 400 }}>accepted</span>
+            </span>
+            {planStats.declined > 0 && (
+              <span style={{ color: '#e03030' }}>
+                ✕ {planStats.declined} <span style={{ color: DIM, fontWeight: 400 }}>declined</span>
+              </span>
+            )}
+            {planStats.pending > 0 && (
+              <span style={{ color: '#f5c542' }}>
+                ⏱ {planStats.pending} <span style={{ color: DIM, fontWeight: 400 }}>pending</span>
+              </span>
+            )}
+            <span style={{ marginLeft: 'auto', color: acceptPct >= 70 ? '#5bc25b' : acceptPct >= 40 ? '#f5c542' : '#e03030', fontWeight: 700 }}>
+              {acceptPct}% accept rate
+            </span>
+          </div>
+        )
+      })()}
 
       {/* ── Invite manager ── */}
       <div style={{ marginBottom: '16px' }}>
