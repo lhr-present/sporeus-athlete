@@ -14,6 +14,34 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.123.0 — 2026-05-15 — Aerobic decoupling trend alert
+
+  `lib/decoupling.js` (Friel-method Pw:Hr) computes per-session
+  decoupling at FIT import and stores it as `entry.decouplingPct`.
+  The number sits there but the system never surfaces a multi-
+  session view — an athlete running 8% decoupling on every aerobic
+  ride has no idea it signals an aerobic base deficit, just that
+  yesterday felt fine.
+
+  New `analyzeDecouplingTrend(log, today)` averages decouplingPct
+  across the last 14d of aerobic-RPE sessions (rpe ≤ 6), requires
+  ≥2 samples, and classifies the trend:
+  - `good` (<5%) — silent, no alert
+  - `mild` (5–10%) — amber alert, "lengthen Z2 work for 2–3 weeks"
+  - `significant` (≥10%) — red alert, "rebuild aerobic base before
+    adding intensity"
+
+  TodayView surfaces a single-line alert below the comeback banner
+  area when flagged. Cites Friel directly. Silent for athletes
+  without FIT-imported decoupling data — no false alarms from missing
+  inputs.
+
+  Files: `src/lib/athlete/decouplingTrend.js` (new, ~115 LOC),
+  `src/lib/__tests__/athlete/decouplingTrend.test.js` (new, 19
+  cases), `src/components/TodayView.jsx`. 10287 tests passing.
+
+---
+
 ## v9.122.0 — 2026-05-15 — Wellness 7d-vs-prior trend + planRationale sleep fix
 
   Two things shipped together because they share the same scale

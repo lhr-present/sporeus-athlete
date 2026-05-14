@@ -30,6 +30,7 @@ import { detectComebackGap } from '../lib/athlete/comebackDetector.js'
 import { detectRaceRetrospective, retroLocalStorageKey } from '../lib/athlete/raceRetrospective.js'
 import { explainPlannedSession } from '../lib/athlete/planRationale.js'
 import { analyzeWellnessTrend } from '../lib/athlete/wellnessTrend.js'
+import { analyzeDecouplingTrend } from '../lib/athlete/decouplingTrend.js'
 import { rankDiagnostics } from '../lib/athlete/diagnosticPriority.js'
 import { buildStarterPlan } from '../lib/plan/starterPlan.js'
 import { recordPlanVersion } from '../lib/plan/versionTracking.js'
@@ -749,6 +750,41 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
           }
         } catch { /* fail open */ }
         return null
+      })()}
+
+      {/* ── v9.123.0 — Aerobic decoupling trend alert. Surfaces when the
+          last 14d of aerobic-RPE sessions (≥2 samples) show average
+          Pw:Hr drift ≥5%. Silent for good trends (<5%) and for athletes
+          without FIT-imported decoupling data. Friel-method threshold
+          mirrors the per-session DECOUPLING_THRESHOLDS in
+          lib/decoupling.js — surfacing the multi-session pattern that
+          per-session data alone hides. */}
+      {(() => {
+        const dec = analyzeDecouplingTrend(log, today)
+        if (!dec.summary) return null
+        const isSignificant = dec.flag === 'significant'
+        const color = isSignificant ? '#e03030' : '#f5c542'
+        return (
+          <div role="status" style={{
+            marginBottom: '14px', padding: '10px 14px',
+            background: `${color}10`, border: `1px solid ${color}55`,
+            borderLeft: `4px solid ${color}`, borderRadius: '4px',
+            fontFamily: MONO,
+          }}>
+            <div style={{ fontSize: '10px', fontWeight: 700, color, letterSpacing: '0.08em', marginBottom: '6px' }}>
+              {isSignificant ? '⚠' : '↓'} {lang === 'tr' ? 'AEROBİK DESENKRONİZASYON' : 'AEROBIC DECOUPLING'}
+              <span style={{ color: '#888', fontWeight: 400, marginLeft: '8px' }}>
+                · {dec.avgPct.toFixed(1)}% · {dec.sampleCount} {lang === 'tr' ? 'seans' : 'sessions'}
+              </span>
+            </div>
+            <div style={{ fontSize: '10px', color: '#ccc', lineHeight: 1.55, marginBottom: '4px' }}>
+              {dec.summary[lang] || dec.summary.en}
+            </div>
+            <div style={{ fontSize: '9px', color: '#666', fontStyle: 'italic' }}>
+              Friel — Pw:Hr drift &gt;5% on steady aerobic work indicates the aerobic engine cannot sustain demand.
+            </div>
+          </div>
+        )
       })()}
 
       {/* ── v9.120.0 — Post-race retrospective. When profile.raceDate is
