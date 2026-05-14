@@ -14,6 +14,32 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.149.0 — 2026-05-15 — Today's Signal tile relocated above session card (Prompt 5)
+
+  The Today's Signal tile (v9.104.0 Prompt EE) renders a transparency
+  message when wellness-derived `buildDailyRecommendation` disagrees
+  with the planned session by 2+ RPE points. It said "if we built
+  today's session from your readiness only, here's what it would be."
+
+  Pre-v9.149 it rendered AFTER Card 1 (the session card). Per the
+  v9.144 critique: a meta-summary like "back off this week" belongs
+  BEFORE the session card so context frames execution. Current order
+  is now: warnings → signal → session — matching the spec.
+
+  Moved the entire JSX block from its previous position (around line
+  2554, after the diagnostic cards) to just before the `Card 1: Today's
+  Session` comment marker. Removed the `marginTop: '-8px'` hack that
+  was tightening spacing against the previous card; replaced with the
+  standard `marginBottom: '14px'` rhythm. All logic, props, gates
+  identical otherwise.
+
+  No tests changed — the tile's render gates (planned session present,
+  no downgrade, RPE delta ≥ 2) and content are unchanged. Suite
+  10407 / 10407 green.
+
+  Out of scope: don't change the tile's logic or render text — just
+  move it. Diagnostic priority ranking (v9.110) untouched.
+
 ## v9.148.0 — 2026-05-15 — Unified Banner component (Prompt 4)
 
   Pre-v9.148 each banner had bespoke layout: different paddings,

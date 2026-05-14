@@ -1740,6 +1740,53 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
         </div>
       )}
 
+      {/* ── Today's Signal tile (v9.104.0 — Prompt EE) ──
+          v9.149.0: Moved above Card 1 (per v9.144 critique). When there
+          IS a planned session AND the wellness-derived
+          buildDailyRecommendation disagrees by 2+ RPE, surface the
+          alternative as a compact transparency tile. NOT an auto-swap
+          (v9.102 handles low-readiness swaps via downgradeRec) — just
+          shows "if we built today's session from your readiness only,
+          here's what it would be". Helps athletes learn what the system
+          sees. Suppressed when downgradeRec is already on screen (the
+          full v9.102 card supersedes this advisory). */}
+      {plannedSession && !downgradeRec && (() => {
+        const rec = buildDailyRecommendation({ log, recovery, profile, lang })
+        if (!rec) return null
+        const plannedRpe = Number(plannedSession.rpe) || 0
+        const recRpe = Number(rec.rpe) || 0
+        if (Math.abs(plannedRpe - recRpe) < 2) return null
+        const direction = recRpe < plannedRpe ? 'easier' : 'harder'
+        const arrow = direction === 'easier' ? '↓' : '↑'
+        const dotColor = direction === 'easier' ? AMBER : '#0064ff'
+        return (
+          <div style={{
+            marginBottom: '14px',
+            padding: '8px 12px',
+            background: 'var(--card-bg)', border: '1px solid var(--border)',
+            borderLeft: `3px solid ${dotColor}`, borderRadius: '4px',
+            fontFamily: MONO, fontSize: '11px', color: '#aaa', lineHeight: 1.55,
+          }}>
+            <div style={{ fontSize: '9px', color: '#666', letterSpacing: '0.08em', marginBottom: '4px' }}>
+              {arrow} {lang === 'tr' ? 'BUGÜNÜN SİNYALİ · ŞEFFAFLIK' : "TODAY'S SIGNAL · TRANSPARENCY"}
+            </div>
+            <div style={{ color: '#ccc' }}>
+              {lang === 'tr'
+                ? `Hazırlık verin şunu öneriyor: `
+                : `Your wellness data suggests: `}
+              <span style={{ color: dotColor, fontWeight: 700 }}>{rec.type}</span>
+              <span style={{ color: '#888' }}> · {rec.duration}min · RPE {rec.rpe}</span>
+              <span style={{ color: '#666' }}>
+                {' '}({lang === 'tr' ? 'planlanan' : 'planned'} RPE {plannedRpe})
+              </span>
+            </div>
+            <div style={{ color: '#888', fontSize: '10px', marginTop: '3px' }}>
+              {rec.rationale}
+            </div>
+          </div>
+        )
+      })()}
+
       {/* ── Card 1: Today's Session ────────────────────────────────────────── */}
       <div style={{ ...card, borderLeft: `4px solid ${plannedSession && todayStatus === 'done' ? GREEN : ORANGE}` }}>
         <div style={cardTitle}>{t('todaySession')}</div>
@@ -2550,52 +2597,6 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
           </div>
         )}
       </div>
-
-      {/* ── Today's Signal tile (v9.104.0 — Prompt EE) ──
-          When there IS a planned session AND the wellness-derived
-          buildDailyRecommendation disagrees by 2+ RPE, surface the
-          alternative as a compact transparency tile. NOT an auto-swap
-          (v9.102 handles low-readiness swaps via downgradeRec) — just
-          shows "if we built today's session from your readiness only,
-          here's what it would be". Helps athletes learn what the system
-          sees. Suppressed when downgradeRec is already on screen (the
-          full v9.102 card supersedes this advisory). */}
-      {plannedSession && !downgradeRec && (() => {
-        const rec = buildDailyRecommendation({ log, recovery, profile, lang })
-        if (!rec) return null
-        const plannedRpe = Number(plannedSession.rpe) || 0
-        const recRpe = Number(rec.rpe) || 0
-        if (Math.abs(plannedRpe - recRpe) < 2) return null
-        const direction = recRpe < plannedRpe ? 'easier' : 'harder'
-        const arrow = direction === 'easier' ? '↓' : '↑'
-        const dotColor = direction === 'easier' ? AMBER : '#0064ff'
-        return (
-          <div style={{
-            marginTop: '-8px', marginBottom: '14px',
-            padding: '8px 12px',
-            background: 'var(--card-bg)', border: '1px solid var(--border)',
-            borderLeft: `3px solid ${dotColor}`, borderRadius: '4px',
-            fontFamily: MONO, fontSize: '11px', color: '#aaa', lineHeight: 1.55,
-          }}>
-            <div style={{ fontSize: '9px', color: '#666', letterSpacing: '0.08em', marginBottom: '4px' }}>
-              {arrow} {lang === 'tr' ? 'BUGÜNÜN SİNYALİ · ŞEFFAFLIK' : "TODAY'S SIGNAL · TRANSPARENCY"}
-            </div>
-            <div style={{ color: '#ccc' }}>
-              {lang === 'tr'
-                ? `Hazırlık verin şunu öneriyor: `
-                : `Your wellness data suggests: `}
-              <span style={{ color: dotColor, fontWeight: 700 }}>{rec.type}</span>
-              <span style={{ color: '#888' }}> · {rec.duration}min · RPE {rec.rpe}</span>
-              <span style={{ color: '#666' }}>
-                {' '}({lang === 'tr' ? 'planlanan' : 'planned'} RPE {plannedRpe})
-              </span>
-            </div>
-            <div style={{ color: '#888', fontSize: '10px', marginTop: '3px' }}>
-              {rec.rationale}
-            </div>
-          </div>
-        )
-      })()}
 
       {/* ── Card 1z: Goal-Activity Mismatch (v9.104.0 — Prompt DD) ──
           The most upstream Mission 1 diagnostic. Fires when the rolling
