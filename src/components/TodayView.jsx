@@ -2199,14 +2199,42 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
             {todayStatus === 'done' ? (
               <span style={badge(GREEN)}>✓ {t('todayDone')}</span>
             ) : (
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <button onClick={logThisSession} style={btn(ORANGE)}>{t('todayLogThis')}</button>
-                <button onClick={markDone} style={btn('transparent', '#888')}
-                  onMouseOver={e => e.currentTarget.style.color = '#ccc'}
-                  onMouseOut={e  => e.currentTarget.style.color = '#888'}>
-                  {t('todayMarkDone')}
+              <>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button onClick={logThisSession} style={btn(ORANGE)}>{t('todayLogThis')}</button>
+                  <button onClick={markDone} style={btn('transparent', '#888')}
+                    onMouseOver={e => e.currentTarget.style.color = '#ccc'}
+                    onMouseOut={e  => e.currentTarget.style.color = '#888'}>
+                    {t('todayMarkDone')}
+                  </button>
+                </div>
+                {/* v9.152.0 — Improvised-session shortcut (Prompt 10). The
+                    session card assumes plan adherence; if the athlete
+                    swapped (strength when run was planned), they used to
+                    navigate to Log and start from scratch. Now one click
+                    opens Log with `improvisedSession: true` indicated so
+                    the saved entry carries the off-plan signal for
+                    adherence-aware analysis. */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLogPrefill({
+                      date: today,
+                      improvisedSession: true,
+                      plannedType: plannedSession?.type || null,
+                    })
+                    setTab('log')
+                  }}
+                  style={{
+                    marginTop: '8px', padding: '4px 8px', fontFamily: MONO,
+                    fontSize: '9px', color: '#888', background: 'transparent',
+                    border: 'none', borderBottom: '1px dotted #555',
+                    cursor: 'pointer', letterSpacing: '0.04em',
+                  }}
+                >
+                  {lang === 'tr' ? 'Başka bir şey yaptım →' : 'I trained something else →'}
                 </button>
-              </div>
+              </>
             )}
             {/* v9.121.0 — Plan rationale disclosure. Surfaces the factors
                 driving today's prescription (phase, yesterday's load,

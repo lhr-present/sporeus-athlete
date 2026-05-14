@@ -13,6 +13,7 @@ import { scoreSession, autoTagSession, analyseSession, detectPersonalBests } fro
 import { BANISTER } from '../lib/sport/constants.js'
 import { computeDecoupling } from '../lib/decoupling.js'
 import { interpretDecoupling } from '../lib/science/interpretations.js'
+import { emitEvent } from '../lib/attribution.js'
 import ScienceTooltip from './ScienceTooltip.jsx'
 
 // 2-char Bloomberg-style type prefix
@@ -108,6 +109,9 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     return group?.[0] || 'Easy Run'
   })()
   const [form, setForm] = useState({ date:today, type:defaultType, duration:'', rpe:'5', notes:'' })
+  // v9.152.0 — Side-state for the improvised-session flag from prefill (Prompt 10).
+  // Kept outside `form` because it's metadata not user-editable through the form.
+  const [improvisedMeta, setImprovisedMeta] = useState(null)
   const [showZones, setShowZones] = useState(false)
   const [zoneMins, setZoneMins] = useState(['','','','',''])
   const [editingId, setEditingId] = useState(null)
@@ -213,6 +217,13 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   useEffect(() => {
     if (prefill) {
       setForm({ date:today, type:prefill.type||'Easy Run', duration:String(prefill.duration||''), rpe:String(prefill.rpe||5), notes:prefill.description||'' })
+      // v9.152.0 — Capture improvised-session metadata when prefill carries
+      // the off-plan signal from TodayView's "I trained something else" link.
+      if (prefill.improvisedSession) {
+        setImprovisedMeta({ improvisedSession: true, plannedType: prefill.plannedType || null })
+      } else {
+        setImprovisedMeta(null)
+      }
       clearPrefill && clearPrefill()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- today/clearPrefill are stable within session; react to prefill object identity
@@ -274,7 +285,16 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     if (!form.duration) return
     const tss = calcTSS(parseInt(form.duration), parseInt(form.rpe))
     const zones = showZones ? zoneMins.map(v=>parseInt(v)||0) : null
-    const raw = { id: editingId !== null ? editingId : Date.now(), ...form, duration:parseInt(form.duration), rpe:parseInt(form.rpe), tss, ...(zones ? { zones } : {}) }
+    const raw = {
+      id: editingId !== null ? editingId : Date.now(),
+      ...form,
+      duration: parseInt(form.duration),
+      rpe: parseInt(form.rpe),
+      tss,
+      ...(zones ? { zones } : {}),
+      // v9.152.0 — Pull improvised-session metadata from prefill (Prompt 10).
+      ...(improvisedMeta || {}),
+    }
     const entry = sanitizeLogEntry(raw)
     if (editingId !== null) {
       setLog(log.map(e => e.id === editingId ? entry : e))
@@ -289,7 +309,19 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       setLastPBs(pbs)
       setLog([...log, entry])
       requestSessionAnalysis(entry)
+      // v9.152.0 — Telemetry on off-plan logging (Prompt 10).
+      if (improvisedMeta?.improvisedSession) {
+        try {
+          emitEvent('improvised_session_logged', {
+            planned_type: improvisedMeta.plannedType || null,
+            logged_type:  entry.type,
+            duration:     entry.duration,
+            rpe:          entry.rpe,
+          })
+        } catch { /* fail open */ }
+      }
     }
+    setImprovisedMeta(null)
     setForm({ date:today, type:'Easy Run', duration:'', rpe:'5', notes:'' })
     setZoneMins(['','','','','']); setShowZones(false); setTssPreview(null)
   }

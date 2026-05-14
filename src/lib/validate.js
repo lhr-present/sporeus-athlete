@@ -85,6 +85,15 @@ export function sanitizeLogEntry(e) {
   if (e.wPrimeExhausted === true) result.wPrimeExhausted = true
   if (typeof e.source === 'string' && e.source) result.source = e.source.slice(0, 20)
   if (e.hasPower === true) result.hasPower = true
+  // v9.152.0 — Rest-type and improvised-session classification flags.
+  // restDayMarked + sickDay + correctiveRest established by v9.111/139/144;
+  // improvisedSession + plannedType added by Prompt 10. Each carries a
+  // distinct adherence signal — preserve through sanitization for analysis.
+  if (e.restDayMarked === true) result.restDayMarked = true
+  if (e.sickDay === true) result.sickDay = true
+  if (e.correctiveRest === true) result.correctiveRest = true
+  if (e.improvisedSession === true) result.improvisedSession = true
+  if (typeof e.plannedType === 'string' && e.plannedType) result.plannedType = e.plannedType.slice(0, 50)
   // Fields required by vo2max.js estimateVO2maxTrend — must survive sanitization
   const distM = parseFloat(e.distanceM); if (!isNaN(distM) && distM > 0) result.distanceM = distM
   const dist  = parseFloat(e.distance);  if (!isNaN(dist)  && dist  > 0) result.distance  = dist

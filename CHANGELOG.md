@@ -14,6 +14,41 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.152.0 — 2026-05-15 — Improvised session path (Prompt 10)
+
+  The session card assumed plan adherence. If the athlete trained
+  something different from what was prescribed (strength when a run
+  was planned, an extra activity, swap for any reason), the only
+  paths were `LOG THIS` (logs the planned session — wrong data) or
+  navigate to Log and start a blank entry. Either dishonest or
+  high-friction.
+
+  New affordance below `LOG THIS` + `MARK DONE`:
+
+  `Başka bir şey yaptım →` / `I trained something else →`
+
+  Click → prefills the Log form with
+  `{ improvisedSession: true, plannedType: <planned session type> }`
+  and navigates to the Log tab. Athlete fills duration / type / RPE
+  normally; the two flags persist on the saved entry.
+
+  `sanitizeLogEntry` allowlist extended with the new flags plus the
+  three rest-type flags from v9.111 / v9.139 / v9.144 that had
+  never been added (`restDayMarked`, `sickDay`, `correctiveRest`) —
+  silent loss bug fixed in the same ship.
+
+  New attribution event `improvised_session_logged` carrying
+  `{ planned_type, logged_type, duration, rpe }`. Future analysis:
+  swap rate per planned type, RPE delta between swap-replacements
+  and prescribed sessions.
+
+  Out of scope: visual "improvised" badge in the log list (follow-up).
+
+  Suite 10407 / 10407 green.
+
+  Dependencies: existing `setLogPrefill`, `setTab`, `emitEvent`,
+  `sanitizeLogEntry` allowlist pattern, `plannedSession.type`.
+
 ## v9.151.0 — 2026-05-15 — Auto-downgrade override telemetry (Prompt 9)
 
   v9.102 auto-downgrade replaces hard sessions with a downgraded
