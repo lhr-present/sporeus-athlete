@@ -14,6 +14,50 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.145.0 — 2026-05-15 — Above-fold morning glance (Prompt 1)
+
+  TodayView grew to 40+ conditional cards/banners over 140 versions.
+  The planned session — the *primary* purpose of the tab — ended up
+  scrolled below 5-10 banners depending on athlete state. The v9.144
+  critique called this "structural deprioritization of the hero."
+
+  New `<MorningGlance>` block renders BEFORE all existing banners.
+  Three elements in fixed order:
+
+  1. One-line session: e.g. `Threshold · 60min · Z4 · 4:20/km` —
+     built by new pure helper `buildGlanceLine` in
+     `src/lib/athlete/morningGlance.js`. Conditionally omits any
+     segment whose source field is absent. Returns null when no
+     plan; UI falls back to "No plan for today" copy.
+  2. Readiness chip — emoji + value/100 when logged; the same
+     3-emoji tap row from E66 when readiness is null. Reuses
+     existing `handleQuickReadiness`.
+  3. Critical diagnostic — only when `diagnosticTop.top.severity
+     === 'critical'`. Reuses the existing v9.110 priority ranking;
+     this surface is the new place that signal lives "above the
+     fold". Lower-severity diagnostics stay below in their existing
+     positions.
+
+  All existing content collapses into a `<details>` labelled
+  `▼ MORE CONTEXT`. Auto-open when nothing is critical (first-time
+  users see everything as before). Auto-collapse when a critical
+  diagnostic is active — morning glance stays clean, athlete sees
+  only the urgent signal. `key` prop forces remount when severity
+  changes so `open` re-applies.
+
+  13 new helper tests cover the full shape matrix: null/missing,
+  type-only, duration, zone, RPE fallback, paceTarget, hrTarget,
+  EN/TR locale suffix, empty zones object, full all-fields. Suite
+  10388/10388 green.
+
+  Out of scope (deferred): N-count in summary, true v10 density
+  toggle (that's Prompt 11). The current details auto-expand
+  behaviour means existing power-users see no regression — the
+  glance is purely additive above the prior surface.
+
+  Dependencies: existing `diagnosticTop`, `plannedSession`,
+  `todayReadiness`, `handleQuickReadiness`, `quickReadinessSaved`.
+
 ## v9.144.0 — 2026-05-15 — Missed-rest warning CTA
 
   The V3 banner (`getMissedRestWarning`) already fires when the

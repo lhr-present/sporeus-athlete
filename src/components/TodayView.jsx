@@ -8,6 +8,7 @@ import { LangCtx } from '../contexts/LangCtx.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { getTodayPlannedSession, getSingleSuggestion, generateDailyDigest, getTimeOfDayAdvice, predictFitness } from '../lib/intelligence.js'
+import { buildGlanceLine } from '../lib/athlete/morningGlance.js'
 import { calcLoad } from '../lib/formulas.js'
 import { WELLNESS_FIELDS } from '../lib/constants.js'
 import { hasUnread } from './CoachMessage.jsx'
@@ -683,6 +684,96 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
 
   return (
     <div className="sp-fade">
+
+      {/* ── v9.145.0 — Above-fold morning glance ──────────────────────────
+          The TodayView surface has grown to 40+ conditional cards/banners
+          over the years. The actual planned session (the *primary* purpose
+          of the tab) ends up scrolled below 5-10 banners depending on
+          state. This block puts the 3 things an athlete needs at 6am
+          above everything else: today's session line, readiness, and the
+          single critical diagnostic (if any). The rest collapses into the
+          MORE CONTEXT disclosure below — auto-open when nothing critical,
+          collapsed when something critical so the morning glance stays
+          clean. Spec: Prompt 1 from the v9.144 critique. */}
+      {(() => {
+        const glanceLine = buildGlanceLine({ plannedSession, lang })
+        const criticalDx = diagnosticTop?.top?.severity === 'critical' ? diagnosticTop.top : null
+        const readinessColor = todayReadiness == null ? '#888'
+          : todayReadiness >= 75 ? GREEN
+          : todayReadiness >= 50 ? AMBER
+          : RED
+        const readinessEmoji = todayReadiness == null ? '·'
+          : todayReadiness >= 75 ? '⚡'
+          : todayReadiness >= 50 ? '😐'
+          : '😴'
+        return (
+          <div style={{
+            padding: '12px 16px', marginBottom: '10px',
+            background: 'var(--card-bg)', border: '1px solid var(--border)',
+            borderLeft: `4px solid ${criticalDx ? RED : ORANGE}`,
+            borderRadius: '6px', fontFamily: MONO,
+          }}>
+            {/* Line 1: session glance */}
+            {glanceLine ? (
+              <div style={{ fontSize: '12px', color: 'var(--text)', fontWeight: 700, letterSpacing: '0.04em', marginBottom: '8px' }}>
+                {glanceLine}
+              </div>
+            ) : (
+              <div style={{ fontSize: '11px', color: '#888', marginBottom: '8px', fontStyle: 'italic' }}>
+                {lang === 'tr' ? 'Bugün için plan yok' : 'No plan for today'}
+              </div>
+            )}
+
+            {/* Line 2: readiness — chip when logged, 3-tap when null */}
+            {todayReadiness != null ? (
+              <div style={{ fontSize: '10px', color: readinessColor, marginBottom: criticalDx ? '8px' : 0, fontWeight: 700, letterSpacing: '0.04em' }}>
+                {readinessEmoji} {todayReadiness}/100 · {lang === 'tr' ? 'HAZIRLIK' : 'READINESS'}
+              </div>
+            ) : !quickReadinessSaved ? (
+              <div style={{ display: 'flex', gap: '6px', marginBottom: criticalDx ? '8px' : 0 }}>
+                {[{ e: '😴', v: 25 }, { e: '😐', v: 60 }, { e: '⚡', v: 90 }].map(({ e, v }) => (
+                  <button key={v} onClick={() => handleQuickReadiness(v)} style={{
+                    fontFamily: MONO, fontSize: '14px',
+                    padding: '4px 14px', borderRadius: '4px',
+                    border: '1px solid var(--border)', background: 'var(--surface)',
+                    color: 'var(--text)', cursor: 'pointer',
+                  }}>{e}</button>
+                ))}
+              </div>
+            ) : null}
+
+            {/* Line 3: critical diagnostic only */}
+            {criticalDx && (
+              <div style={{
+                fontSize: '11px', color: RED, padding: '6px 8px',
+                borderLeft: `2px solid ${RED}`, background: `${RED}0c`,
+                fontWeight: 700, letterSpacing: '0.04em', lineHeight: 1.5,
+              }}>
+                ⚠ {criticalDx.payload?.message
+                    || criticalDx.payload?.recommendation?.[lang]
+                    || criticalDx.payload?.recommendation?.en
+                    || criticalDx.key}
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
+      {/* ── v9.145.0 — Everything below collapses when something critical
+          is active. Auto-open otherwise so first-time users see the full
+          density. The key forces a remount when criticality changes so
+          the open prop applies. */}
+      <details
+        open={diagnosticTop?.top?.severity !== 'critical'}
+        key={diagnosticTop?.top?.severity === 'critical' ? 'crit' : 'normal'}
+        style={{ marginBottom: '10px' }}
+      >
+        <summary style={{
+          cursor: 'pointer', userSelect: 'none', padding: '6px 4px',
+          fontFamily: MONO, fontSize: '10px', color: '#888', letterSpacing: '0.06em',
+        }}>
+          ▼ {lang === 'tr' ? 'DAHA FAZLA BAĞLAM' : 'MORE CONTEXT'}
+        </summary>
 
       {/* ── v9.4.0 — NEXT TRAINING hero (Mission #1 anchor at top of TODAY) ─ */}
       <ErrorBoundary>
@@ -3396,6 +3487,7 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
         </div>
       )}
 
+      </details>
     </div>
   )
 }
