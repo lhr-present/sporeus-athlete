@@ -14,6 +14,49 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.133.0 — 2026-05-15 — Realtime coach<->athlete messaging foundation
+
+  CLAUDE.md "Known Limitations" calls out the v6-era messaging flow:
+  coach exports a JSON file, athlete imports it manually. Messages
+  routinely go out of order or get dropped because nobody remembers
+  to import. This ship lays the DB foundation so the hook + UI swap
+  in v9.134 can land against settled schema.
+
+  New `coach_messages` table (migration `20260480_coach_messages.sql`):
+  - `(id, coach_id, athlete_id, sender, body, created_at, read_at)`
+  - `sender` is a TEXT/CHECK enum (`'coach' | 'athlete'`)
+  - `body` length-bounded 1–4000 so a runaway client can't fill storage
+  - Three indexes: thread DESC + per-side unread partials
+  - 6 RLS policies — SELECT/INSERT/UPDATE × coach/athlete. Each requires
+    `auth.uid()` to match the sender side AND the (coach_id, athlete_id)
+    pair to exist in `coach_athletes` (so revoked links retroactively
+    hide history). UPDATE is restricted to the recipient marking read.
+  - Added to `supabase_realtime` publication so the upcoming hook can
+    subscribe to INSERT events filtered by (coach_id, athlete_id).
+
+  New `src/lib/coach/realtimeMessages.js` — pure async module:
+  - `fetchMessages(supabase, coachId, athleteId, limit=100)` — DESC + slice,
+    returns chronological for bottom-anchored UI scroll
+  - `sendMessage(supabase, coachId, athleteId, sender, body)` — trims,
+    validates, falls back to offline writeQueue on network errors
+  - `markReadByIds(supabase, ids)` — bulk read receipt, only flips rows
+    still unread (idempotent)
+  - `countUnread(supabase, coachId, athleteId, viewerSide)` — inbox badge
+
+  Why ship foundation alone: schema decisions (sender TEXT vs. enum,
+  body length cap, retro-hide-on-revoke policy) settle better with a
+  day of review than under same-day UI pressure. v9.134 wires the hook
+  + UI swap on top.
+
+  Out of scope this ship: hook (`useCoachMessages`), UI swap (replace
+  CoachThread JSON export with thread component), notification badge.
+
+  Tests: 22 cases in `src/lib/__tests__/coach/realtimeMessages.test.js`
+  (mocked Supabase chain + writeQueue). Total suite 10382 / 10382 green.
+
+  Dependencies: `coach_athletes` table (existing), `auth.users` (Supabase),
+  `supabase_realtime` publication, `src/lib/offline/writeQueue.js`.
+
 ## v9.132.0 — 2026-05-15 — Strava sync health surface
 
   StravaConnect (Profile → connections) shows per-user sync status,
