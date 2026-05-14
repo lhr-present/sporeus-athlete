@@ -14,6 +14,40 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.142.0 — 2026-05-15 — Fix `log_wellness` orientation no-op + auto-dismiss
+
+  Found while auditing TodayView's passive surfaces: the orientation
+  banner for the `log_wellness` step renders on TodayView with the
+  text "→ Morning check-in takes 20 seconds — it powers the suggestion
+  engine". Clicking it calls `setTab(ORIENTATION_MESSAGES[step].tab)`
+  — but `ORIENTATION_MESSAGES.log_wellness.tab === 'today'`, the tab
+  the user is already on. **The click was a silent no-op the entire
+  time the orientation system has existed.** The actual check-in
+  button sat right below it, so the link's text was a promise the
+  click didn't keep.
+
+  Two fixes:
+
+  1. Click handler now special-cases `log_wellness` to call
+     `setShowCheckIn(true)` instead of the redundant tab switch.
+     Also marks the step done on click so it doesn't reappear next
+     mount. Other orientation steps (set_profile, log_first_session,
+     run_predictor, view_load) still use the existing tab-switch
+     path — they correctly route to a different tab.
+  2. `handleQuickReadiness` (the 3-emoji tap-to-log path right below
+     the orientation banner) now auto-dismisses the `log_wellness`
+     step when fired. The step gate is "any wellness entry in last
+     3 days" — quick readiness satisfies it, so leaving the nudge up
+     after a tap is a duplicated stimulus.
+
+  No new tests — both changes are imperative state updates inside
+  the existing TodayView render path, exercised by manual flow. The
+  `handleQuickReadiness` path is covered by existing TodayView tests
+  through state assertion on the result.
+
+  Suite 10372 / 10372 green (unchanged — no logic mutated, just
+  click action rewired).
+
 ## v9.141.0 — 2026-05-15 — Race-week taper conflict CTA
 
   The v9.85 race-week taper-conflict banner already fires when the

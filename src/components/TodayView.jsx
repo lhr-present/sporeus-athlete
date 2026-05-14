@@ -367,6 +367,14 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
     setQuickReadinessSaved(true)
     setQuickReadinessLogged(true)
     setTimeout(() => setQuickReadinessLogged(false), 2000)
+    // v9.142.0 — Quick readiness satisfies the log_wellness orientation
+    // step (the step only requires *any* wellness entry within 3 days).
+    // Auto-dismiss so the user doesn't see a redundant nudge after
+    // logging.
+    if (orientationStep === 'log_wellness') {
+      try { localStorage.setItem('sporeus-oriented-log_wellness', '1') } catch (e) { logger.warn('localStorage:', e.message) }
+      setOrientationStep(null)
+    }
   }
 
   const [wellness, setWellness]       = useState({ sleep: 3, energy: 3, soreness: 3 })
@@ -1226,7 +1234,19 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
       {orientationStep && (
         <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', color: '#555', marginBottom: '12px' }}>
           <span
-            onClick={() => setTab(ORIENTATION_MESSAGES[orientationStep].tab)}
+            onClick={() => {
+              // v9.142.0 — log_wellness routes to today (the current tab),
+              // making the click a no-op while the actual "Morning Check-In"
+              // button sits right below. Special-case to open the modal
+              // directly so the link does what its label promises.
+              if (orientationStep === 'log_wellness') {
+                setShowCheckIn(true)
+                try { localStorage.setItem(`sporeus-oriented-${orientationStep}`, '1') } catch (e) { logger.warn('localStorage:', e.message) }
+                setOrientationStep(getOrientationStep(log, profile, recovery))
+              } else {
+                setTab(ORIENTATION_MESSAGES[orientationStep].tab)
+              }
+            }}
             style={{ cursor: 'pointer', color: '#0064ff', textDecoration: 'none' }}
           >
             {ORIENTATION_MESSAGES[orientationStep][lang] || ORIENTATION_MESSAGES[orientationStep].en}
