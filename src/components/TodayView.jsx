@@ -2194,6 +2194,46 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
                     <div style={{ marginBottom: '6px' }}>
                       <span style={{ color: '#e03030' }}>↓ </span>{cont.illness.belowNeck[lang] || cont.illness.belowNeck.en}
                     </div>
+                    {/* v9.139.0 — Action CTAs. Until now the contingency guide
+                        explained "above-neck: reduce intensity, below-neck:
+                        rest" but offered no path to log it. Matches the
+                        evidence-action pairing in v9.102 auto-downgrade
+                        (rationale + LOG button) so sick-day adherence is one
+                        click, not three (open log tab + invent reduced
+                        session + submit). Hidden when today is already
+                        logged so the buttons don't propose a duplicate. */}
+                    {!todayLogEntry && (
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px', marginBottom: '8px' }}>
+                        <button
+                          onClick={() => {
+                            const reducedDuration = Math.max(20, Math.floor((plannedSession.duration || 60) / 2))
+                            setLogPrefill({ type: 'Easy', duration: reducedDuration, rpe: 3, date: today })
+                            try { emitEvent('sick_day_action', { severity: 'above_neck', planned_type: plannedSession.type, reduced_duration: reducedDuration }) } catch { /* fail open */ }
+                            setTab('log')
+                          }}
+                          style={btn('#5bc25b')}
+                        >
+                          {lang === 'tr' ? '↑ HAFİF SEANS LOGLA' : '↑ LOG REDUCED SESSION'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setLog([...(log || []), {
+                              date: today,
+                              type: 'Rest',
+                              duration: 0,
+                              tss: 0,
+                              restDayMarked: true,
+                              sickDay: true,
+                              id: `${today}-sick-${Date.now()}`,
+                            }])
+                            try { emitEvent('sick_day_action', { severity: 'below_neck', planned_type: plannedSession.type }) } catch { /* fail open */ }
+                          }}
+                          style={btn('transparent', '#e03030')}
+                        >
+                          {lang === 'tr' ? '↓ HASTA DİNLENME GÜNÜ' : '↓ MARK SICK REST DAY'}
+                        </button>
+                      </div>
+                    )}
                     <div style={{ fontWeight: 700, color: '#ccc', marginTop: '10px', marginBottom: '4px' }}>
                       {cont.lifeEvent.title[lang] || cont.lifeEvent.title.en}
                     </div>

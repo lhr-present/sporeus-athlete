@@ -14,6 +14,41 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.139.0 — 2026-05-15 — Sick-day contingency CTAs in today's session card
+
+  TodayView's substitution / contingency guide (v9.57.0) told the
+  athlete what to do when sick — "above-neck: train at reduced
+  intensity, below-neck: rest" — but offered no path to actually
+  log it. The athlete read evidence-based advice, then had to open
+  the log tab, invent a reduced session shape, and submit. Three
+  manual steps where v9.102's auto-downgrade flow gets the same job
+  done in one click.
+
+  Now matches the v9.102 evidence-action pairing: two CTAs inside
+  the contingency `<details>` panel.
+
+  - `↑ LOG REDUCED SESSION` — prefills Log with type `Easy`,
+    duration = `max(20, planned/2)`, RPE 3. Sends the athlete to
+    the Log tab with the form ready to submit.
+  - `↓ MARK SICK REST DAY` — writes a rest entry directly with
+    `{ tss: 0, restDayMarked: true, sickDay: true }`. The `sickDay`
+    flag distinguishes from planned-rest entries so streak/audit
+    queries can separate the two cohorts.
+
+  Both emit `sick_day_action { severity, planned_type, … }` for
+  adoption telemetry. Hidden when `todayLogEntry` exists so the
+  buttons don't propose a duplicate.
+
+  This converts a well-cited but inert reference card into an
+  actionable surface. Friman & Wesslen + Bompa + Halson citations
+  stay above the buttons so the rationale is read first.
+
+  Suite 10366 / 10366 green (unchanged — UI-only change inside an
+  existing rendered region).
+
+  Dependencies: existing `setLog` / `setLogPrefill` / `setTab` /
+  `emitEvent` / `buildContingencyMap`.
+
 ## v9.138.0 — 2026-05-15 — General-track first-session telemetry
 
   Third parity ship. Athlete `useAppState.handleAddSession` emits
