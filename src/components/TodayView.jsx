@@ -1699,6 +1699,35 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
                 <div style={{ color: '#888', marginTop: '4px', fontSize: '9px' }}>
                   Bosquet 2007 (meta-analysis: 2-week taper, intensity preserved, volume −41%)
                 </div>
+                {/* v9.141.0 — Action CTA. Bosquet 2007 protocol is volume cut,
+                    intensity preserved — so halve duration, keep RPE. Same
+                    evidence-action pairing v9.139/140 introduced. Hidden when
+                    today is already logged. */}
+                {!todayLogEntry && (
+                  <button
+                    onClick={() => {
+                      const halved = Math.max(20, Math.floor((plannedSession.duration || 60) / 2))
+                      setLogPrefill({
+                        type: plannedSession.type,
+                        duration: halved,
+                        rpe: plannedSession.rpe || 6,
+                        date: today,
+                      })
+                      try {
+                        emitEvent('taper_conflict_action', {
+                          days_to_race:   raceCountdown.days,
+                          planned_type:   plannedSession.type,
+                          planned_duration: plannedSession.duration,
+                          halved_duration:  halved,
+                        })
+                      } catch { /* fail open */ }
+                      setTab('log')
+                    }}
+                    style={{ ...btn('#ff6600'), marginTop: '8px' }}
+                  >
+                    {lang === 'tr' ? '↓ SÜREYİ YARIYA İNDİR (YOĞUNLUK KORUNUR)' : '↓ HALVE DURATION (INTENSITY PRESERVED)'}
+                  </button>
+                )}
               </div>
             )}
             {/* v9.56.0 — HRV/TSB-flagged session-swap recommendation. Fires

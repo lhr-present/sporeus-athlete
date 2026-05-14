@@ -14,6 +14,35 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.141.0 — 2026-05-15 — Race-week taper conflict CTA
+
+  The v9.85 race-week taper-conflict banner already fires when the
+  athlete is ≤7 days from race day AND today's planned session is
+  hard. It correctly tells them "downgrade to easy or halve the
+  duration" with a Bosquet 2007 citation — and then leaves them to
+  open the log tab and figure out what "halve the duration" means
+  in concrete numbers.
+
+  Same evidence-action gap pattern as v9.139 (sick-day) and v9.140
+  (execution implication). Adding one CTA:
+
+  `↓ HALVE DURATION (INTENSITY PRESERVED)` — prefills Log with the
+  planned session type, `max(20, planned/2)` minutes, planned RPE
+  preserved. Routes the athlete to the Log tab ready to submit.
+
+  This implements the Bosquet 2007 protocol directly: cut volume,
+  keep intensity. Same RPE because intensity is what preserves
+  fitness over a taper; cutting RPE too would risk detraining.
+  Bilingual label, hidden when today is already logged.
+
+  Emits `taper_conflict_action { days_to_race, planned_type,
+  planned_duration, halved_duration }` for adoption telemetry.
+
+  Suite 10372 / 10372 green (no logic change — UI-only addition).
+
+  Dependencies: existing `raceCountdown`, `plannedSession`,
+  `setLogPrefill`, `setTab`, `emitEvent`, `todayLogEntry`.
+
 ## v9.140.0 — 2026-05-15 — Post-execution implication (next-action from deltas)
 
   The v9.89 EXECUTION snapshot already shows duration/RPE/TSS
