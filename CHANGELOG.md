@@ -14,6 +14,38 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.136.0 — 2026-05-15 — General OnboardingWizard bail-recovery parity
+
+  Survey of the "undertouched" trio (Reports / GeneralFitness /
+  Onboarding) found the surfaces in good shape — except one gap.
+  The athlete `Onboarding.jsx` got bail-recovery in v9.103 (GG):
+  partial state persists every step, recovers after browser close,
+  drafts expire after 7 days. The general fitness `OnboardingWizard`
+  had no such recovery — close the browser at step 2/3 and you
+  re-pick goal + experience + days + equipment from scratch.
+
+  Mirrors the athlete pattern faithfully:
+  - `sporeus-general-onboarding-draft` localStorage key (track-scoped)
+  - 7-day TTL; expired drafts swept on read and emit
+    `onboarding_abandoned { age_ms, last_step, track: 'general' }`
+  - `onboarding_resumed { resumed_at_step, track: 'general' }` fires
+    once on hydrate
+  - Draft writes skip the pre-input idle state (no draft until goal
+    is picked) so we don't pollute storage with empty rows
+  - Subtle `↻ Resumed from where you left off` banner shown when
+    hydrated from a draft
+  - Draft cleared on successful `handleFinish()`
+
+  Tests: 6 new draft-recovery cases (`pre-pick is null` / writes on
+  goal pick / hydrates remount / clears on finish / drops > 7d /
+  ignores corrupt JSON). Existing 19 tests retained — added a
+  `localStorage.removeItem` in `beforeEach` since the wizard now
+  persists across renders.
+
+  Suite 10366 / 10366 green.
+
+  Dependencies: `src/lib/attribution.js` (emitEvent), `src/lib/logger.js`.
+
 ## v9.135.0 — 2026-05-15 — Realtime publication audit + wellness_logs → recovery fix
 
   Follow-up to v9.134. After publishing the real `messages` table I

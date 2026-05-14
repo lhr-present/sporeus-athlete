@@ -1,8 +1,47 @@
 // src/components/general/OnboardingWizard.jsx — 3-step general-fitness onboarding
 // Deliberately cuts commitment-shaped questions. No session length, no deadlines.
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { S } from '../../styles.js'
 import { suggestTemplate } from '../../lib/athlete/strengthTraining.js'
+import { emitEvent } from '../../lib/attribution.js'
+import { logger } from '../../lib/logger.js'
+
+// v9.136.0 — Bail recovery parity with athlete Onboarding.jsx (v9.103 GG).
+// Persist partial state every step so a closed browser at step 2/3 doesn't
+// reset progress. Drafts expire after 7 days (treat as abandoned, emit
+// telemetry).
+const DRAFT_KEY = 'sporeus-general-onboarding-draft'
+const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000
+
+function readDraft() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!parsed?.savedAt || !parsed?.data) return null
+    const age = Date.now() - new Date(parsed.savedAt).getTime()
+    if (!Number.isFinite(age) || age < 0) return null
+    if (age > DRAFT_TTL_MS) {
+      try { emitEvent('onboarding_abandoned', { age_ms: age, last_step: parsed.step ?? 0, track: 'general' }) } catch { /* fail open */ }
+      localStorage.removeItem(DRAFT_KEY)
+      return null
+    }
+    return parsed
+  } catch (e) {
+    logger.warn('general-onboarding draft read failed:', e?.message)
+    return null
+  }
+}
+function writeDraft(step, data) {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ step, data, savedAt: new Date().toISOString() }))
+  } catch (e) {
+    logger.warn('general-onboarding draft write failed:', e?.message)
+  }
+}
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY) } catch { /* fail open */ }
+}
 
 const GOALS = [
   { id: 'muscle',   en: 'Build Muscle',           tr: 'Kas Geliştir' },
@@ -43,11 +82,28 @@ const label = { ...S.mono, fontSize: 10, color: '#888', letterSpacing: '0.08em',
 const h2    = { ...S.mono, fontSize: 14, color: '#ff6600', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 16 }
 
 export default function OnboardingWizard({ lang = 'en', onComplete }) {
-  const [step, setStep]               = useState(0)
-  const [goal, setGoal]               = useState(null)
-  const [experience, setExperience]   = useState(null)
-  const [days, setDays]               = useState(3)
-  const [equipment, setEquipment]     = useState(null)
+  // Hydrate from draft once at mount. Saved shape: { step, data:{goal,experience,days,equipment}, savedAt }
+  const initialDraft = readDraft()
+  const [step, setStep]             = useState(initialDraft?.step ?? 0)
+  const [goal, setGoal]             = useState(initialDraft?.data?.goal       ?? null)
+  const [experience, setExperience] = useState(initialDraft?.data?.experience ?? null)
+  const [days, setDays]             = useState(initialDraft?.data?.days       ?? 3)
+  const [equipment, setEquipment]   = useState(initialDraft?.data?.equipment  ?? null)
+  const [resumed] = useState(!!initialDraft)
+
+  useEffect(() => {
+    if (resumed) {
+      try { emitEvent('onboarding_resumed', { resumed_at_step: initialDraft?.step ?? 0, track: 'general' }) } catch { /* fail open */ }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot on mount
+  }, [])
+
+  // Persist draft once the user has actually committed input. Skip the
+  // pre-input idle state (goal still null) so we don't write empty drafts.
+  useEffect(() => {
+    if (goal == null && !resumed) return
+    writeDraft(step, { goal, experience, days, equipment })
+  }, [step, goal, experience, days, equipment, resumed])
 
   const t = (item) => lang === 'tr' ? item.tr : item.en
 
@@ -62,6 +118,7 @@ export default function OnboardingWizard({ lang = 'en', onComplete }) {
     : null
 
   function handleFinish() {
+    clearDraft()
     onComplete?.({
       goal,
       experience,
@@ -74,6 +131,11 @@ export default function OnboardingWizard({ lang = 'en', onComplete }) {
 
   return (
     <div style={{ maxWidth: 540, margin: '0 auto', padding: '24px 16px' }}>
+      {resumed && (
+        <div style={{ ...S.mono, fontSize: 10, color: '#ff6600', marginBottom: 12, padding: '6px 10px', border: '1px solid #ff660033', background: '#ff660011', borderRadius: 3 }}>
+          {lang === 'tr' ? '↻ Kaldığın yerden devam ediyorsun.' : '↻ Resumed from where you left off.'}
+        </div>
+      )}
       <div style={{ ...S.mono, fontSize: 11, color: '#555', letterSpacing: '0.08em', marginBottom: 20 }}>
         {lang === 'tr' ? 'KURULUM' : 'SETUP'} {step + 1}/3
         <div style={{ marginTop: 6, height: 3, background: 'var(--border)', borderRadius: 2 }}>

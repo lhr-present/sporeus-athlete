@@ -11,6 +11,8 @@ const noop = () => {}
 
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
+  // v9.136 — wizard now persists draft to localStorage; isolate tests
+  try { localStorage.removeItem('sporeus-general-onboarding-draft') } catch { /* fail open */ }
 })
 
 describe('OnboardingWizard — step 0: goal', () => {
@@ -176,5 +178,66 @@ describe('OnboardingWizard — handleFinish', () => {
     fireEvent.click(screen.getByText('Start ✓'))
     const result = onComplete.mock.calls[0][0]
     expect(result.days).toBe(5)
+  })
+})
+
+// v9.136 — draft recovery (parity with athlete Onboarding GG)
+describe('OnboardingWizard — draft recovery', () => {
+  const KEY = 'sporeus-general-onboarding-draft'
+
+  it('does not write a draft before any goal is picked', () => {
+    render(<OnboardingWizard onComplete={noop} />)
+    expect(localStorage.getItem(KEY)).toBeNull()
+  })
+
+  it('writes a draft once a goal is selected', () => {
+    render(<OnboardingWizard onComplete={noop} />)
+    fireEvent.click(screen.getByText('Build Muscle'))
+    const raw = localStorage.getItem(KEY)
+    expect(raw).toBeTruthy()
+    const parsed = JSON.parse(raw)
+    expect(parsed.data.goal).toBe('muscle')
+    expect(parsed.step).toBe(0)
+  })
+
+  it('hydrates from a saved draft on remount', () => {
+    localStorage.setItem(KEY, JSON.stringify({
+      step: 1,
+      data: { goal: 'strength', experience: null, days: 3, equipment: null },
+      savedAt: new Date().toISOString(),
+    }))
+    render(<OnboardingWizard onComplete={noop} />)
+    expect(screen.getByText(/SETUP 2\/3/)).toBeInTheDocument()
+    expect(screen.getByText(/Resumed from where you left off/)).toBeInTheDocument()
+  })
+
+  it('clears the draft on successful completion', () => {
+    const onComplete = vi.fn()
+    render(<OnboardingWizard onComplete={onComplete} />)
+    fireEvent.click(screen.getByText('Build Muscle'))
+    fireEvent.click(screen.getByText('Next →'))
+    fireEvent.click(screen.getByText(/Some Experience/))
+    fireEvent.click(screen.getByText('Next →'))
+    fireEvent.click(screen.getByText('Full Gym (Barbell + Rack)'))
+    fireEvent.click(screen.getByText('Start ✓'))
+    expect(localStorage.getItem(KEY)).toBeNull()
+  })
+
+  it('drops drafts older than 7 days', () => {
+    const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString()
+    localStorage.setItem(KEY, JSON.stringify({
+      step: 2,
+      data: { goal: 'strength', experience: 'some', days: 4, equipment: 'gym' },
+      savedAt: eightDaysAgo,
+    }))
+    render(<OnboardingWizard onComplete={noop} />)
+    expect(screen.getByText(/SETUP 1\/3/)).toBeInTheDocument()
+    expect(localStorage.getItem(KEY)).toBeNull()  // swept on read
+  })
+
+  it('ignores corrupt JSON drafts and starts fresh', () => {
+    localStorage.setItem(KEY, '{not valid json')
+    render(<OnboardingWizard onComplete={noop} />)
+    expect(screen.getByText(/SETUP 1\/3/)).toBeInTheDocument()
   })
 })
