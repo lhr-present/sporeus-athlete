@@ -14,6 +14,35 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.128.0 — 2026-05-15 — Secondary alerts defer to critical diagnostics
+
+  Prompt PPP. Second fix from the banner-accumulation critique pass.
+
+  v9.123 (decoupling) and v9.125 (polarized) shipped as peer banners
+  alongside the v9.110 diagnostic-priority surface. When the Mission 1
+  primary was critical (goal-mismatch, plan-regenerate, stale=both),
+  the secondary banners stacked underneath — undermining v9.110's
+  cognitive-load contract.
+
+  Soft-priority fix: `criticalPrimaryActive = diagnosticTop?.top?.severity
+  === 'critical'` derived inline. Decoupling and polarized banners
+  short-circuit when this is true. They re-surface as soon as the
+  critical clears (the athlete acts on goal-mismatch / regenerates the
+  plan / etc.). Warning-tier diagnostics don't trigger deferral — they
+  share the severity floor with secondary alerts and coexist fine.
+
+  Not a full rankDiagnostics extension (would require redesigning the
+  "▼ N more" disclosure to render heterogeneous banner content); the
+  soft-priority gate is the minimum-viable fix that respects v9.110.
+
+  ### Critique items still open
+  - OOO — Polarized day-of-week guard (false positives mid-week)
+
+  Files: `src/components/TodayView.jsx` — `criticalPrimaryActive`
+  memo + 2 gate checks. 10315 tests passing.
+
+---
+
 ## v9.127.0 — 2026-05-15 — Weekly TSS budget pace chip
 
   The plan generator emits a weekly TSS target (sum of planned-

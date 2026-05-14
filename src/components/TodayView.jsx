@@ -628,6 +628,16 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- planForStaleLookup identity excluded; underlying fields tracked
   }, [profile, log, today, plan, todayCtl])
 
+  // v9.128.0 (Prompt PPP) — Soft priority: when a CRITICAL Mission 1
+  // diagnostic is the primary card, suppress secondary alert banners
+  // (decoupling, polarized) for this render. They re-surface as soon
+  // as the critical clears. Addresses the v9.126 critique that v9.123
+  // and v9.125 bypassed the v9.110 priority system — when goal-mismatch
+  // or plan-regenerate is firing, decoupling can wait.
+  // Warning-tier diagnostics don't trigger deferral — they share the
+  // same severity floor as the secondary alerts, so they coexist.
+  const criticalPrimaryActive = diagnosticTop?.top?.severity === 'critical'
+
   // One-shot telemetry: emit which diagnostic won (per day per top.key) so
   // we can measure detector activation rates in the audit window.
   useEffect(() => {
@@ -771,6 +781,8 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
         const dec = analyzeDecouplingTrend(log, today)
         if (!dec.summary) return null
         if (isBannerSnoozed('decoupling')) return null
+        // v9.128.0 (PPP): defer to a critical Mission 1 diagnostic if one is active
+        if (criticalPrimaryActive) return null
         // snoozeBump dependency: read here so dismissal triggers re-render
         void snoozeBump
         const isSignificant = dec.flag === 'significant'
@@ -818,6 +830,8 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
         const pol = analyzePolarizedWeek(log, today)
         if (!pol || pol.flag === 'polarized' || !pol.interpretation) return null
         if (isBannerSnoozed('polarized')) return null
+        // v9.128.0 (PPP): defer to a critical Mission 1 diagnostic if one is active
+        if (criticalPrimaryActive) return null
         void snoozeBump
         const color = pol.flag === 'drift-threshold' ? '#e03030' : '#f5c542'
         const label = pol.flag === 'drift-threshold'
