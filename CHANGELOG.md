@@ -14,6 +14,37 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.132.0 — 2026-05-15 — Strava sync health surface
+
+  StravaConnect (Profile → connections) shows per-user sync status,
+  but the athlete only sees it if they navigate there. A broken sync
+  can sit silent for days while imports stop and the athlete wonders
+  why. CLAUDE.md's "Known Limitations" calls this out explicitly:
+  "if the edge function crashes, user must retry."
+
+  New `classifyStravaSync(conn, now?)` pure classifier maps the
+  strava_tokens row to one of four states:
+  - `healthy` — synced within 2d, no error
+  - `stale` — no error but last_sync_at ≥ 2 days ago
+  - `failing` — sync_status=error OR last_error present
+  - `disconnected` — no row (athlete doesn't use Strava)
+
+  TodayView fetches the connection once when authUser is available
+  and surfaces a banner for `stale` / `failing` states. Banner has
+  `× Snooze` (7 days, shared `bannerSnooze.js`) and `→ OPEN PROFILE`
+  CTA pointing to where the athlete can re-auth or trigger a manual
+  sync. Silent for `disconnected` and `healthy`. Defers to critical
+  Mission 1 diagnostics (v9.128 PPP soft-priority gate).
+
+  authUser is now threaded into TodayView via App.jsx (was previously
+  unused inside it — only Profile/Periodization received it).
+
+  Files: `src/lib/athlete/stravaSyncHealth.js` (new),
+  `src/lib/__tests__/athlete/stravaSyncHealth.test.js` (new, 12 cases),
+  `src/components/TodayView.jsx`, `src/App.jsx`. 10360 tests passing.
+
+---
+
 ## v9.131.0 — 2026-05-15 — Weekly plan rationale ("why this week")
 
   v9.121.0 (planRationale.js) explained today's session. This extends

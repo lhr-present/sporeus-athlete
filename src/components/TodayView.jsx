@@ -33,6 +33,8 @@ import { analyzeWellnessTrend } from '../lib/athlete/wellnessTrend.js'
 import { analyzeDecouplingTrend } from '../lib/athlete/decouplingTrend.js'
 import { analyzePolarizedWeek } from '../lib/athlete/polarizedWeek.js'
 import { isBannerSnoozed, snoozeBanner } from '../lib/athlete/bannerSnooze.js'
+import { classifyStravaSync } from '../lib/athlete/stravaSyncHealth.js'
+import { getStravaConnection } from '../lib/strava.js'
 import { analyzeWeeklyBudget } from '../lib/athlete/weeklyBudget.js'
 import { rankDiagnostics } from '../lib/athlete/diagnosticPriority.js'
 import { buildStarterPlan } from '../lib/plan/starterPlan.js'
@@ -92,7 +94,7 @@ function calcConsecutiveDays(log, today) {
 
 const QUICK_FIELDS = WELLNESS_FIELDS.filter(f => ['sleep', 'energy', 'soreness'].includes(f.key))
 
-export default function TodayView({ log, setTab, setLogPrefill }) {
+export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
   const { t, lang }   = useContext(LangCtx)
   const { recovery, setRecovery, profile, setLog } = useData()
 
@@ -389,6 +391,22 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
   // fresh value. Per-banner local state would also work but a single
   // counter keeps the call sites compact.
   const [snoozeBump, setSnoozeBump] = useState(0)
+
+  // v9.132.0 — Strava sync health. Fetched once per mount when authUser
+  // is available; null when no Strava connection exists (silent — not
+  // every athlete uses Strava). Re-fetches if authUser.id changes.
+  const [stravaConn, setStravaConn] = useState(null)
+  useEffect(() => {
+    let cancelled = false
+    if (!authUser?.id) { setStravaConn(null); return }
+    getStravaConnection(authUser.id)
+      .then(({ data, error }) => {
+        if (cancelled || error) return
+        setStravaConn(data || null)
+      })
+      .catch(() => { /* silent — Strava is optional */ })
+    return () => { cancelled = true }
+  }, [authUser?.id])
 
   const [weeklyRecap] = useState(() => generateWeeklyRecap(log))
   const [recapDismissed, setRecapDismissed] = useState(() => weeklyRecap ? !!localStorage.getItem(`sporeus-recap-seen-${weeklyRecap?.weekLabel}`) : true)
@@ -815,6 +833,60 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
             <div style={{ fontSize: '9px', color: '#666', fontStyle: 'italic' }}>
               Friel — Pw:Hr drift &gt;5% on steady aerobic work indicates the aerobic engine cannot sustain demand.
             </div>
+          </div>
+        )
+      })()}
+
+      {/* ── v9.132.0 — Strava sync health banner. Surfaces stale/failing
+          Strava connections so an athlete with a silently-broken sync
+          sees it without having to navigate to Profile. Silent when
+          disconnected (athlete doesn't use Strava — no false alarm) or
+          healthy. Snoozable for 7 days like other banners. Defers to
+          critical Mission 1 diagnostics (v9.128 PPP). */}
+      {(() => {
+        const health = classifyStravaSync(stravaConn)
+        if (!health.actionable) return null
+        if (isBannerSnoozed('strava-sync')) return null
+        if (criticalPrimaryActive) return null
+        void snoozeBump
+        const color = health.state === 'failing' ? '#e03030' : '#f5c542'
+        return (
+          <div role="status" style={{
+            marginBottom: '14px', padding: '10px 14px',
+            background: `${color}10`, border: `1px solid ${color}55`,
+            borderLeft: `4px solid ${color}`, borderRadius: '4px',
+            fontFamily: MONO, position: 'relative',
+          }}>
+            <button
+              onClick={() => { snoozeBanner('strava-sync'); setSnoozeBump(b => b + 1) }}
+              aria-label={lang === 'tr' ? 'Uyarıyı 7 gün ertele' : 'Snooze alert for 7 days'}
+              title={lang === 'tr' ? '7 gün ertele' : 'Snooze 7 days'}
+              style={{ position: 'absolute', top: '6px', right: '8px',
+                background: 'transparent', border: 'none', color: '#666',
+                cursor: 'pointer', fontSize: '12px', padding: '2px 6px', lineHeight: 1 }}>
+              ×
+            </button>
+            <div style={{ fontSize: '10px', fontWeight: 700, color, letterSpacing: '0.08em', marginBottom: '6px', paddingRight: '20px' }}>
+              {health.state === 'failing' ? '⚠' : '↻'} {lang === 'tr' ? 'STRAVA SENKRON' : 'STRAVA SYNC'}
+              {health.daysSinceLastSync != null && (
+                <span style={{ color: '#888', fontWeight: 400, marginLeft: '8px' }}>
+                  · {health.daysSinceLastSync}{lang === 'tr' ? ' gün önce' : 'd ago'}
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: '10px', color: '#ccc', lineHeight: 1.55, marginBottom: '6px' }}>
+              {health.summary[lang] || health.summary.en}
+            </div>
+            <button
+              onClick={() => setTab('profile')}
+              style={{
+                fontFamily: MONO, fontSize: '9px', fontWeight: 700,
+                letterSpacing: '0.06em', padding: '4px 10px',
+                background: 'transparent', border: `1px solid ${color}88`,
+                color, borderRadius: '3px', cursor: 'pointer',
+              }}>
+              → {lang === 'tr' ? 'PROFİL\'E GİT' : 'OPEN PROFILE'}
+            </button>
           </div>
         )
       })()}
