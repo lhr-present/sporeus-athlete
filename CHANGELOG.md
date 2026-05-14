@@ -14,6 +14,24 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.154.0 — 2026-05-16 — Execution-snapshot label registry (Prompt 6, scoped)
+
+  Six `lang === 'tr' ? '...' : '...'` ternaries inside the EXECUTION
+  snapshot block extracted to `src/lib/athlete/executionLabels.js`.
+  Pure refactor — zero behavior change. Scope intentionally narrow:
+  only the snapshot row's metric prefixes (`DUR`, `RPE`, `TSS`, `HR`,
+  `PACE`, header). Full TodayView label-registry extraction was
+  considered and rejected as a build-not-ship — the regression
+  surface in a 3300-line file isn't worth the marginal payoff.
+
+  Side benefit: the `vsPlan` suffix (` / plan `) is identical in
+  both EN and TR. Pre-fix it was ternary'd four times — visible
+  drift hazard if one copy ever diverged. Now a single source.
+
+  Suite 10428 / 10428 green (+6 new tests).
+
+  Dependencies: none. Pure data module + lookup helper.
+
 ## v9.153.0 — 2026-05-15 — HR / pace deltas in execution snapshot (Prompt 8)
 
   The post-session EXECUTION block compared duration / RPE / TSS

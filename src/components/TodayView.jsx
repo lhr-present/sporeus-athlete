@@ -24,6 +24,7 @@ import { computeNextAction } from '../lib/nextAction.js'
 import { buildContingencyMap } from '../lib/athlete/eliteProgramSubstitutions.js'
 import { deriveSessionStructure } from '../lib/athlete/sessionStructure.js'
 import { computeSessionExecution, EXECUTION_STATUS_LABEL, EXECUTION_STATUS_COLOR, getExecutionImplication } from '../lib/athlete/sessionExecution.js'
+import { execLabel } from '../lib/athlete/executionLabels.js'
 import { deriveSessionTargets } from '../lib/athlete/derivedSessionTargets.js'
 import { buildDailyRecommendation } from '../lib/athlete/dailyRecommendation.js'
 import { computePlanDrift, detectStalePlan } from '../lib/athlete/planAdaptation.js'
@@ -2302,23 +2303,23 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
                   color: EXECUTION_STATUS_COLOR[sessionExecution.status],
                   fontWeight: 700, fontSize: '9px', letterSpacing: '0.08em', marginBottom: '4px',
                 }}>
-                  {lang === 'tr' ? '◆ İCRA · ' : '◆ EXECUTION · '}
+                  {execLabel('header', lang)}
                   {(EXECUTION_STATUS_LABEL[sessionExecution.status][lang] || EXECUTION_STATUS_LABEL[sessionExecution.status].en).toUpperCase()}
                 </div>
                 <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
                   <span>
-                    <span style={{ color: '#666' }}>{lang === 'tr' ? 'SÜRE · ' : 'DUR · '}</span>
+                    <span style={{ color: '#666' }}>{execLabel('duration', lang)}</span>
                     <span style={{ color: '#ccc', fontWeight: 700 }}>{sessionExecution.duration.logged}m</span>
-                    <span style={{ color: '#666' }}>{lang === 'tr' ? ' / plan ' : ' / plan '}{sessionExecution.duration.planned}m</span>
+                    <span style={{ color: '#666' }}>{execLabel('vsPlan', lang)}{sessionExecution.duration.planned}m</span>
                     <span style={{ color: sessionExecution.duration.deltaMin === 0 ? '#888' : sessionExecution.duration.deltaMin > 0 ? '#f5c542' : '#888', marginLeft: '4px' }}>
                       ({sessionExecution.duration.deltaMin > 0 ? '+' : ''}{sessionExecution.duration.deltaMin})
                     </span>
                   </span>
                   {sessionExecution.rpe && (
                     <span>
-                      <span style={{ color: '#666' }}>RPE · </span>
+                      <span style={{ color: '#666' }}>{execLabel('rpe', lang)}</span>
                       <span style={{ color: '#ccc', fontWeight: 700 }}>{sessionExecution.rpe.logged}</span>
-                      <span style={{ color: '#666' }}>{lang === 'tr' ? ' / plan ' : ' / plan '}{sessionExecution.rpe.planned}</span>
+                      <span style={{ color: '#666' }}>{execLabel('vsPlan', lang)}{sessionExecution.rpe.planned}</span>
                       {sessionExecution.rpe.delta !== 0 && (
                         <span style={{ color: Math.abs(sessionExecution.rpe.delta) >= 2 ? '#f5c542' : '#888', marginLeft: '4px' }}>
                           ({sessionExecution.rpe.delta > 0 ? '+' : ''}{sessionExecution.rpe.delta})
@@ -2328,9 +2329,9 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
                   )}
                   {sessionExecution.tss && (
                     <span>
-                      <span style={{ color: '#666' }}>TSS · </span>
+                      <span style={{ color: '#666' }}>{execLabel('tss', lang)}</span>
                       <span style={{ color: '#ccc', fontWeight: 700 }}>{sessionExecution.tss.logged}</span>
-                      <span style={{ color: '#666' }}>{lang === 'tr' ? ' / plan ' : ' / plan '}{sessionExecution.tss.planned}</span>
+                      <span style={{ color: '#666' }}>{execLabel('vsPlan', lang)}{sessionExecution.tss.planned}</span>
                       {sessionExecution.tss.delta !== 0 && (
                         <span style={{ color: Math.abs(sessionExecution.tss.deltaPct) >= 0.20 ? '#f5c542' : '#888', marginLeft: '4px' }}>
                           ({sessionExecution.tss.delta > 0 ? '+' : ''}{sessionExecution.tss.delta})
@@ -2343,10 +2344,10 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
                       (typically FIT import or detailed manual entry). */}
                   {sessionExecution.hr && (
                     <span>
-                      <span style={{ color: '#666' }}>HR · </span>
+                      <span style={{ color: '#666' }}>{execLabel('hr', lang)}</span>
                       <span style={{ color: '#ccc', fontWeight: 700 }}>{sessionExecution.hr.logged}</span>
                       <span style={{ color: '#666' }}>
-                        {lang === 'tr' ? ' / plan ' : ' / plan '}
+                        {execLabel('vsPlan', lang)}
                         {sessionExecution.hr.plannedRange
                           ? `${sessionExecution.hr.plannedRange[0]}-${sessionExecution.hr.plannedRange[1]}`
                           : sessionExecution.hr.planned}
@@ -2367,9 +2368,9 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
                     }
                     return (
                       <span>
-                        <span style={{ color: '#666' }}>{lang === 'tr' ? 'TEMPO · ' : 'PACE · '}</span>
+                        <span style={{ color: '#666' }}>{execLabel('pace', lang)}</span>
                         <span style={{ color: '#ccc', fontWeight: 700 }}>{fmt(sessionExecution.pace.logged)}</span>
-                        <span style={{ color: '#666' }}>{lang === 'tr' ? ' / plan ' : ' / plan '}{fmt(sessionExecution.pace.planned)}</span>
+                        <span style={{ color: '#666' }}>{execLabel('vsPlan', lang)}{fmt(sessionExecution.pace.planned)}</span>
                         {sessionExecution.pace.status !== 'on-target' && (
                           <span style={{ color: '#f5c542', marginLeft: '4px' }}>
                             ({sessionExecution.pace.delta > 0 ? '+' : ''}{sessionExecution.pace.delta}s)
