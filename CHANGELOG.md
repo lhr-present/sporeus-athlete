@@ -14,6 +14,67 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.110.0 — 2026-05-15 — Diagnostic priority — stop stacking peer cards
+
+  Prompt AAA. First of 5 critique-driven fixes.
+
+  ### Problem
+  Pre-v9.110 four detectors (`detectGoalActivityMismatch`,
+  `detectStalePlan`, `computePlanDrift`, `detectComebackGap`) each
+  rendered as an independent peer card. A worst-case athlete saw 4
+  red/amber surfaces above the actual session card. Athletes stopped
+  reading past card 4; the Mission 1 chain became invisible.
+
+  ### Solution
+  New pure module `src/lib/athlete/diagnosticPriority.js`:
+  - `getDiagnosticSeverity(key, payload)` returns
+    `'critical'|'warning'|'info'|null` per detector. Suppresses info
+    (e.g. `plan-drift action='continue'`) entirely.
+  - `rankDiagnostics(diagnostics)` returns `{ top, rest }` sorted by
+    severity then canonical upstream-ness order (mismatch > stale >
+    drift > comeback) as a tie-breaker.
+
+  Severity assignments:
+  - `goal-mismatch` mismatched=true → critical
+  - `stale-plan` reason='both' → critical; reason='age'|'ctl' → warning
+  - `plan-drift` action='regenerate' → critical; 'reduce-next' /
+    'monitor-fatigue' → warning; 'continue' / pending → suppressed
+  - `comeback` isComeback=true → warning
+
+  ### TodayView refactor
+  - Compute `diagnosticTop` once via `useMemo` at component top.
+  - Each of the 4 existing cards gets a guard:
+    `diagnosticTop?.top?.key === '<this-key>'` — only renders when winning.
+  - New "▼ N MORE DIAGNOSTICS" collapsible disclosure at top of the
+    diagnostics zone (after NextTrainingCard) showing compact
+    one-liners for the rest of the rank list. Hidden when `rest = 0`.
+  - Each compact row: severity-color dot + bilingual label + severity
+    tag. Footer hint: "multiple signals detected; the most important
+    one is shown above".
+
+  Telemetry: `diagnostic_primary_shown { key, severity, rest_count }`
+  fires once per `top.key` per day per device (gated on
+  `sporeus-diagnostic-shown-{today}-{key}`).
+
+  Tests: 19 cases — severity for each key/payload combo, suppression
+  of info-tier, canonical tie-break order, all-4-firing-simultaneously
+  (top=mismatch wins critical-canonical, rest sorted), null/malformed
+  inputs, two-critical canonical tie-break.
+
+  ### Files touched
+  - `src/lib/athlete/diagnosticPriority.js` (new, ~110 LOC)
+  - `src/lib/__tests__/athlete/diagnosticPriority.test.js` (new, 19 cases)
+  - `src/components/TodayView.jsx` (rank computation + 4 gated cards +
+    disclosure + import + telemetry useEffect)
+  - `package.json` 11.110.0, CHANGELOG.md
+
+  10,189 tests pass (+19 vs v9.109). Lint + build clean.
+
+  Depends on: v9.103 AA, v9.104 DD, v9.94, v9.109 TT (the 4 detectors
+  this ranks).
+
+---
+
 ## v9.109.0 — 2026-05-15 — Re-engagement + coach metrics + tomorrow prep
 
   Prompts TT + WW + YY. Three additive surfaces — one re-engagement

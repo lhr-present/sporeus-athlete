@@ -27,6 +27,7 @@ import { computePlanDrift, detectStalePlan } from '../lib/athlete/planAdaptation
 import { detectGoalActivityMismatch } from '../lib/athlete/goalActivityMismatch.js'
 import { computeTrainingStreak, getStreakMilestone } from '../lib/athlete/trainingStreak.js'
 import { detectComebackGap } from '../lib/athlete/comebackDetector.js'
+import { rankDiagnostics } from '../lib/athlete/diagnosticPriority.js'
 import { buildStarterPlan } from '../lib/plan/starterPlan.js'
 import { recordPlanVersion } from '../lib/plan/versionTracking.js'
 import { emitEvent } from '../lib/attribution.js'
@@ -582,6 +583,49 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
     } catch { return false }
   })()
 
+  // v9.110.0 (Prompt AAA) — Diagnostic priority. Pre-v9.110 the 4 detectors
+  // (goal-mismatch, stale-plan, plan-drift, comeback) each rendered as
+  // independent peer cards in different positions. Worst-case render
+  // stacked 4 red/amber surfaces above the actual training session.
+  //
+  // Now: compute all payloads once, rank by severity, only the TOP
+  // diagnostic gets full-presentation card. The rest collapse into a
+  // single "▼ N more diagnostics" disclosure attached to the top card.
+  // Each IIFE checks `diagnosticTop?.key === <its-key>` and short-circuits
+  // when it's not winning.
+  const planForStaleLookup = plan ? {
+    generatedAt: plan.generatedAt,
+    weeks:       Array.isArray(plan.weeks) ? plan.weeks : [],
+    seedCTL:     plan.seedCTL,
+  } : null
+  const diagnosticTop = useMemo(() => {
+    const inputs = [
+      { key: 'goal-mismatch', payload: detectGoalActivityMismatch(profile, log, { today }) },
+      { key: 'stale-plan',    payload: planForStaleLookup ? detectStalePlan(planForStaleLookup, todayCtl, today) : null },
+      { key: 'plan-drift',    payload: plan ? computePlanDrift(plan, log, today) : null },
+      { key: 'comeback',      payload: detectComebackGap(log, today) },
+    ]
+    return rankDiagnostics(inputs)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- planForStaleLookup identity excluded; underlying fields tracked
+  }, [profile, log, today, plan, todayCtl])
+
+  // One-shot telemetry: emit which diagnostic won (per day per top.key) so
+  // we can measure detector activation rates in the audit window.
+  useEffect(() => {
+    if (!diagnosticTop?.top) return
+    const k = `sporeus-diagnostic-shown-${today}-${diagnosticTop.top.key}`
+    try {
+      if (localStorage.getItem(k)) return
+      emitEvent('diagnostic_primary_shown', {
+        key: diagnosticTop.top.key,
+        severity: diagnosticTop.top.severity,
+        rest_count: diagnosticTop.rest.length,
+      })
+      localStorage.setItem(k, new Date().toISOString())
+    } catch { /* fail open */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- diagnosticTop is a memoized object; field-level deps below
+  }, [diagnosticTop?.top?.key, diagnosticTop?.top?.severity, diagnosticTop?.rest?.length, today])
+
   return (
     <div className="sp-fade">
 
@@ -592,13 +636,66 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
         </Suspense>
       </ErrorBoundary>
 
+      {/* ── v9.110.0 (Prompt AAA) — "▼ N more diagnostics" disclosure.
+          Pre-v9.110 each detector rendered its own peer card. Now only the
+          top-ranked card renders inline; this disclosure surfaces the
+          others in compact form so the data is still accessible without
+          stacking 4 cards. Hidden when there are no other diagnostics. */}
+      {diagnosticTop?.rest?.length > 0 && (() => {
+        const rest = diagnosticTop.rest
+        const SEV = { critical: '#e03030', warning: '#f5c542', info: '#888' }
+        const KEY_LABEL = {
+          'goal-mismatch': { en: 'Goal ≠ training mix',   tr: 'Hedef ≠ antrenman' },
+          'stale-plan':    { en: 'Plan anchor is stale',  tr: 'Plan anchorı bayat' },
+          'plan-drift':    { en: 'Plan-execution drift',  tr: 'Plan/icra sapması' },
+          'comeback':      { en: 'Returning after a gap', tr: 'Aradan sonra dönüş' },
+        }
+        return (
+          <details style={{
+            marginBottom: '12px', padding: '6px 12px',
+            background: 'var(--card-bg)', border: '1px solid var(--border)',
+            borderLeft: '3px solid #555', borderRadius: '4px',
+            fontFamily: MONO, fontSize: '10px',
+          }}>
+            <summary style={{ cursor: 'pointer', color: '#888', letterSpacing: '0.06em', userSelect: 'none' }}>
+              ▼ {rest.length} {lang === 'tr'
+                ? (rest.length === 1 ? 'EK TEŞHİS' : 'EK TEŞHİS')
+                : (rest.length === 1 ? 'MORE DIAGNOSTIC' : 'MORE DIAGNOSTICS')}
+            </summary>
+            <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {rest.map(r => {
+                const color = SEV[r.severity] || '#888'
+                const lbl = KEY_LABEL[r.key]?.[lang] || KEY_LABEL[r.key]?.en || r.key
+                return (
+                  <div key={r.key} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ color, fontSize: '11px' }}>●</span>
+                    <span style={{ color: '#ccc' }}>{lbl}</span>
+                    <span style={{ color: '#555', marginLeft: 'auto', fontSize: '9px', letterSpacing: '0.04em' }}>
+                      {r.severity.toUpperCase()}
+                    </span>
+                  </div>
+                )
+              })}
+              <div style={{ color: '#555', fontStyle: 'italic', marginTop: '4px', fontSize: '9px' }}>
+                {lang === 'tr'
+                  ? '— birden fazla işaret tespit edildi; en önemli olan yukarıda gösteriliyor'
+                  : '— multiple signals detected; the most important one is shown above'}
+              </div>
+            </div>
+          </details>
+        )
+      })()}
+
       {/* ── v9.109.0 (Prompt TT) — Comeback banner. When the athlete returns
           after a 14+ day gap with prior CTL above floor, surface a
           welcome-back message + load-easing suggestion (50% prior CTL).
           Mission 1 normally treats every visit identically; returning
           athletes need the lighter restart guidance or they re-injure
-          themselves trying to pick up where they left off. */}
-      {(() => {
+          themselves trying to pick up where they left off.
+          v9.110.0 (Prompt AAA): only render when comeback wins the
+          diagnostic-priority ranking — otherwise the higher-severity
+          flag takes the slot and comeback appears under "▼ N more". */}
+      {diagnosticTop?.top?.key === 'comeback' && (() => {
         const comeback = detectComebackGap(log, today)
         if (!comeback.isComeback) return null
         const weeks = Math.round(comeback.gapDays / 7)
@@ -1842,12 +1939,11 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
       {/* ── Card 1z: Goal-Activity Mismatch (v9.104.0 — Prompt DD) ──
           The most upstream Mission 1 diagnostic. Fires when the rolling
           28d log is dominated by a sport that isn't the goal sport AND
-          the goal sport itself is being neglected. Surfaces BEFORE
-          stale-plan / drift cards because if the goal itself is wrong,
-          nothing downstream of it matters. Always rendering when
-          mismatch is detected — coaches don't see this card (their copy
-          would need different framing). */}
-      {(() => {
+          the goal sport itself is being neglected.
+          v9.110.0 (Prompt AAA): only renders as a full card when
+          mismatch wins the priority ranking. Otherwise it appears in
+          the "▼ N more diagnostics" disclosure under the top card. */}
+      {diagnosticTop?.top?.key === 'goal-mismatch' && (() => {
         const mismatch = detectGoalActivityMismatch(profile, log, { today })
         if (!mismatch.mismatched) return null
         return (
@@ -1906,8 +2002,9 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
           computePlanDrift only sees execution drift. A plan that's 8+
           weeks old or whose seedCTL has been left behind by current
           fitness still says "on-track" while every prescribed target is
-          wrong in absolute terms. This card surfaces that. */}
-      {plan && (() => {
+          wrong in absolute terms. This card surfaces that.
+          v9.110.0 (Prompt AAA): gated by priority ranking. */}
+      {plan && diagnosticTop?.top?.key === 'stale-plan' && (() => {
         const stale = detectStalePlan(plan, todayCtl, today)
         if (!stale?.stale) return null
         return (
@@ -1983,8 +2080,9 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
         )
       })()}
 
-      {/* ── Card 1b: Weekly Adaptation (v9.94.0 — Mission 1 EXECUTION → ADAPTATION) ── */}
-      {plan && (() => {
+      {/* ── Card 1b: Weekly Adaptation (v9.94.0 — Mission 1 EXECUTION → ADAPTATION) ──
+          v9.110.0 (Prompt AAA): gated by priority ranking. */}
+      {plan && diagnosticTop?.top?.key === 'plan-drift' && (() => {
         const drift = computePlanDrift(plan, log, today)
         if (!drift || drift.status === 'pending') return null
         const statusColor =
