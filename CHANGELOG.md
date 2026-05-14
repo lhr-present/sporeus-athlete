@@ -14,6 +14,33 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.125.0 — 2026-05-15 — Weekly polarized intensity distribution chip
+
+  `lib/science/polarizationCompliance.js` (v8-era) already computes
+  Seiler 80/20 compliance per week and powers a Dashboard card. But
+  the daily view never saw the analysis — athletes drifting into the
+  Z3 "no-man's-land" (threshold-heavy weeks) had no surface alerting
+  them until they navigated to Dashboard.
+
+  New `analyzePolarizedWeek(log, today)` wraps the existing scorer:
+  resolves the current week's Monday via `weekStart`, returns a UI-
+  shaped object with a `flag` mapping the model to one of:
+  - `polarized` — silent, no alert
+  - `drift-threshold` — red, Seiler's no-man's-land warning
+  - `drift-pyramidal` — amber, valid-but-not-optimal context
+  - `drift-unstructured` — amber, anchor the week around 80/20
+
+  TodayView renders a compact chip showing easy/threshold/hard
+  percentages + a bilingual one-line interpretation + Seiler 2010
+  citation when flagged. Silent on polarized weeks and on data-poor
+  weeks (<60 total minutes — the scorer's existing threshold).
+
+  Files: `src/lib/athlete/polarizedWeek.js` (new, ~85 LOC),
+  `src/lib/__tests__/athlete/polarizedWeek.test.js` (new, 6 cases),
+  `src/components/TodayView.jsx`. 10293 tests passing.
+
+---
+
 ## v9.124.0 — 2026-05-15 — Hoist mission_1_complete emission to App level
 
   Same bias fix as v9.118 JJJ but for Mission 1. v9.103.0 (Prompt CC)

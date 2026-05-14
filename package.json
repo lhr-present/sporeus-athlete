@@ -1,7 +1,7 @@
 {
   "name": "sporeus-athlete-app",
   "private": true,
-  "version": "11.124.0",
+  "version": "11.125.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
