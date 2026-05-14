@@ -178,23 +178,28 @@ export function explainPlannedSession({ session, log, recovery, profile: _profil
   }
 
   // ── Sleep factor ──
+  // v9.122.0 fix: `recovery[i].sleep` is a 1-5 rating (see
+  // WELLNESS_FIELDS in lib/constants.js), not hours. v9.121.0 used
+  // hour-scale thresholds which fired the short-sleep warning on
+  // every rating in production. Switched to rating tiers consistent
+  // with wellnessTrend.js's concerningLow=2.5 boundary.
   const todayRec = (Array.isArray(recovery) ? recovery : []).find(r => r?.date === today)
   const sleep = Number(todayRec?.sleep)
   if (Number.isFinite(sleep) && sleep > 0) {
-    if (sleep < 6) {
+    if (sleep <= 2) {
       factors.push({
         key: 'sleep',
-        label:  { en: `Sleep ${sleep}h`, tr: `Uyku ${sleep}sa` },
-        detail: { en: 'Short sleep — consider reducing intensity 10–20% today.',
-                  tr: 'Kısa uyku — bugün yoğunluğu %10–20 azaltmayı düşün.' },
+        label:  { en: 'Sleep: poor', tr: 'Uyku: kötü' },
+        detail: { en: 'Sleep self-rated 1–2/5 — consider reducing intensity 10–20% today.',
+                  tr: 'Uyku 1–2/5 — bugün yoğunluğu %10–20 azaltmayı düşün.' },
         citation: 'Mah 2011 (sleep extension in athletes)',
       })
-    } else if (sleep >= 8) {
+    } else if (sleep >= 4) {
       factors.push({
         key: 'sleep',
-        label:  { en: `Sleep ${sleep}h`, tr: `Uyku ${sleep}sa` },
-        detail: { en: 'Ample sleep — recovery substrate is in good shape for today\'s session.',
-                  tr: 'Yeterli uyku — bugünkü seans için iyileşme zemini iyi durumda.' },
+        label:  { en: 'Sleep: good', tr: 'Uyku: iyi' },
+        detail: { en: 'Sleep self-rated 4–5/5 — recovery substrate is in good shape for today\'s session.',
+                  tr: 'Uyku 4–5/5 — bugünkü seans için iyileşme zemini iyi durumda.' },
       })
     }
   }

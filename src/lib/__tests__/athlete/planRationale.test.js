@@ -141,33 +141,34 @@ describe('explainPlannedSession — TSB factor', () => {
   })
 })
 
-describe('explainPlannedSession — sleep factor', () => {
-  it('emits short-sleep warning when sleep < 6h', () => {
+describe('explainPlannedSession — sleep factor (1-5 rating)', () => {
+  // v9.122.0: sleep is a 1-5 rating from WELLNESS_FIELDS, not hours.
+  it('emits poor-sleep warning when rating is 1 or 2', () => {
+    const out = explainPlannedSession({
+      session: { rpe: 5 },
+      log: [],
+      recovery: [{ date: TODAY, sleep: 2 }],
+      today: TODAY,
+    })
+    const s = out.factors.find(f => f.key === 'sleep')
+    expect(s.label.en).toContain('poor')
+    expect(s.detail.en).toContain('1–2/5')
+    expect(s.citation).toContain('Mah')
+  })
+  it('emits good-sleep blurb when rating is 4 or 5', () => {
     const out = explainPlannedSession({
       session: { rpe: 5 },
       log: [],
       recovery: [{ date: TODAY, sleep: 5 }],
       today: TODAY,
     })
-    const s = out.factors.find(f => f.key === 'sleep')
-    expect(s.label.en).toContain('5h')
-    expect(s.detail.en).toContain('10–20%')
-    expect(s.citation).toContain('Mah')
+    expect(out.factors.find(f => f.key === 'sleep')?.detail.en).toContain('good shape')
   })
-  it('emits ample-sleep blurb when sleep >= 8h', () => {
+  it('no sleep factor for neutral rating 3', () => {
     const out = explainPlannedSession({
       session: { rpe: 5 },
       log: [],
-      recovery: [{ date: TODAY, sleep: 8 }],
-      today: TODAY,
-    })
-    expect(out.factors.find(f => f.key === 'sleep')?.detail.en).toContain('Ample')
-  })
-  it('no sleep factor for 6-7h range', () => {
-    const out = explainPlannedSession({
-      session: { rpe: 5 },
-      log: [],
-      recovery: [{ date: TODAY, sleep: 7 }],
+      recovery: [{ date: TODAY, sleep: 3 }],
       today: TODAY,
     })
     expect(out.factors.find(f => f.key === 'sleep')).toBeUndefined()
@@ -194,7 +195,7 @@ describe('explainPlannedSession — full integration', () => {
     const out = explainPlannedSession({
       session: { type: 'Easy', rpe: 4, weekPhase: 'Build' },
       log,
-      recovery: [{ date: TODAY, sleep: 5 }],
+      recovery: [{ date: TODAY, sleep: 2 }],
       today: TODAY,
     })
     const keys = out.factors.map(f => f.key)

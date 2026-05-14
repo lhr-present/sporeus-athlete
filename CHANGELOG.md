@@ -14,6 +14,38 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.122.0 — 2026-05-15 — Wellness 7d-vs-prior trend + planRationale sleep fix
+
+  Two things shipped together because they share the same scale
+  semantics:
+
+  **Wellness trend banner.** The existing 14-day sparkline draws
+  lines but doesn't interpret them. Athletes who eyeball a chart
+  miss the *delta* — "sleep ok each day in isolation" can hide
+  "sleep dropped 1.2 points week-over-week." New
+  `analyzeWellnessTrend(recovery, today)` computes current-7-day
+  vs prior-7-day averages and classifies each field (sleep,
+  energy, soreness) as concerning when avg crosses the bad tier
+  OR delta crosses ±0.8 in the worsening direction. TodayView
+  surfaces this above the readiness card; renders nothing when
+  all fields are healthy.
+
+  **planRationale sleep scale bug.** v9.121.0 (Prompt — plan
+  rationale) checked `sleep < 6` assuming hours. But
+  `recovery.sleep` is a 1-5 rating (see WELLNESS_FIELDS in
+  lib/constants.js), so the check fired on every row in
+  production. Switched to rating tiers consistent with
+  wellnessTrend's concerningLow=2.5 boundary: `<=2` → poor warning,
+  `>=4` → good blurb, 3 → no factor.
+
+  Files: `src/lib/athlete/wellnessTrend.js` (new, ~120 LOC),
+  `src/lib/__tests__/athlete/wellnessTrend.test.js` (new, 17 cases),
+  `src/components/TodayView.jsx` — banner inserted at top of
+  Readiness card, `src/lib/athlete/planRationale.js` — sleep
+  thresholds fixed, tests updated. 10268 tests passing.
+
+---
+
 ## v9.121.0 — 2026-05-15 — Plan rationale disclosure ("why this session")
 
   Sporeus's mission is "target → physiology → science-based plan →

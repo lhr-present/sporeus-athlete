@@ -29,6 +29,7 @@ import { computeTrainingStreak, getStreakMilestone } from '../lib/athlete/traini
 import { detectComebackGap } from '../lib/athlete/comebackDetector.js'
 import { detectRaceRetrospective, retroLocalStorageKey } from '../lib/athlete/raceRetrospective.js'
 import { explainPlannedSession } from '../lib/athlete/planRationale.js'
+import { analyzeWellnessTrend } from '../lib/athlete/wellnessTrend.js'
 import { rankDiagnostics } from '../lib/athlete/diagnosticPriority.js'
 import { buildStarterPlan } from '../lib/plan/starterPlan.js'
 import { recordPlanVersion } from '../lib/plan/versionTracking.js'
@@ -2469,6 +2470,56 @@ export default function TodayView({ log, setTab, setLogPrefill }) {
       {/* ── Card 2: Readiness Quick-Check ─────────────────────────────────── */}
       <div style={{ ...card, borderLeft: `4px solid ${todayRec ? (todayRec.score >= 75 ? GREEN : todayRec.score >= 50 ? AMBER : RED) : '#333'}` }}>
         <div style={cardTitle}>{t('todayReadiness')}</div>
+
+        {/* v9.122.0 — 7d-vs-prior-7d wellness trend banner. Surfaces
+            patterns the individual day inputs don't reveal — "sleep
+            declining all week" matters more than today's number alone.
+            Renders only when at least one field is concerning (low avg
+            or steep delta in the worsening direction). The existing
+            14d sparkline below shows lines; this banner shows insight. */}
+        {(() => {
+          const trend = analyzeWellnessTrend(recovery, today)
+          if (!trend.anyConcerning) return null
+          const concerns = trend.fields.filter(f => f.concerning)
+          const LABELS = {
+            sleep:    { en: 'Sleep',    tr: 'Uyku' },
+            energy:   { en: 'Energy',   tr: 'Enerji' },
+            soreness: { en: 'Soreness', tr: 'Ağrı' },
+          }
+          const REASONS = {
+            'avg-low':    { en: '7d avg low',     tr: '7g ort. düşük' },
+            'avg-high':   { en: '7d avg elevated',tr: '7g ort. yüksek' },
+            'declining':  { en: 'declining',      tr: 'düşüyor' },
+            'rising':     { en: 'rising',         tr: 'yükseliyor' },
+          }
+          return (
+            <div role="status" aria-live="polite" style={{
+              marginBottom: '12px', padding: '8px 10px',
+              background: '#f5c54214', border: '1px solid #f5c54266',
+              borderLeft: '3px solid #f5c542', borderRadius: '4px',
+            }}>
+              <div style={{ fontFamily: MONO, fontSize: '9px', color: '#f5c542', fontWeight: 700, letterSpacing: '0.08em', marginBottom: '6px' }}>
+                ↓ {lang === 'tr' ? 'HAFTA İÇİ EĞİLİM' : 'WEEK-OVER-WEEK TREND'}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                {concerns.map(f => {
+                  const lbl = LABELS[f.key]?.[lang] || LABELS[f.key]?.en
+                  const rzn = REASONS[f.reason]?.[lang] || REASONS[f.reason]?.en || ''
+                  const sign = f.delta > 0 ? '+' : ''
+                  const deltaPart = f.delta != null
+                    ? ` · Δ ${sign}${f.delta.toFixed(1)} vs ${lang === 'tr' ? 'önceki 7g' : 'prior 7d'}`
+                    : ''
+                  return (
+                    <div key={f.key} style={{ fontFamily: MONO, fontSize: '10px', color: 'var(--text)' }}>
+                      <span style={{ fontWeight: 700 }}>{lbl}</span>
+                      <span style={{ color: '#aaa' }}> — {rzn}{deltaPart}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
 
         {todayRec ? (
           <>
