@@ -1,4 +1,4 @@
-import React, { useState, useContext, useMemo, useEffect, Fragment } from 'react'
+import React, { useState, useContext, useMemo, useEffect, useRef, Fragment } from 'react'
 import { useAdaptivePlan } from '../hooks/useAdaptivePlan.js'
 import { logger } from '../lib/logger.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
@@ -242,6 +242,20 @@ function CoachPlansCard({ authUser }) {
   // kept here rather than per-row local state so an open modal isn't lost
   // if the parent re-renders after the optimistic plan list update.
   const [declineModal, setDeclineModal] = useState(null) // null | { plan, reason, note }
+  // v9.115.0 (Prompt GGG) — Focus management for the decline modal.
+  // modalRef is the dialog container, used by the focus trap to scope
+  // tabbable queries. firstFocusRef points at the first reason button
+  // so keyboard users land somewhere meaningful when the dialog opens
+  // rather than at the body (which would scroll the page on Tab).
+  const modalRef = useRef(null)
+  const firstFocusRef = useRef(null)
+  useEffect(() => {
+    if (!declineModal) return
+    // Defer one frame so the button is mounted before .focus()
+    const id = setTimeout(() => firstFocusRef.current?.focus(), 0)
+    return () => clearTimeout(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- focus only on first mount per plan; later state changes shouldn't re-steal focus
+  }, [declineModal?.plan?.id])
 
   useEffect(() => {
     if (!isSupabaseReady() || !authUser) { setPlans([]); return }
@@ -518,80 +532,128 @@ function CoachPlansCard({ authUser }) {
           DECLINE flow so coaches always get a structured signal back.
           Cancel exits without writing; Submit fires respondToPlan with
           the reason + trimmed note. */}
-      {declineModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setDeclineModal(null)}
-          style={{
-            position:'fixed', inset:0, background:'rgba(0,0,0,0.75)',
-            display:'flex', alignItems:'center', justifyContent:'center',
-            padding:'16px', zIndex:9999,
-          }}>
+      {declineModal && (() => {
+        // v9.115.0 (Prompt GGG) — Decline-modal a11y + draft preservation.
+        // Pre-v9.115 the modal had role/aria-modal but no Esc-to-close,
+        // no focus trap, no initial focus, and backdrop click silently
+        // discarded the draft. Keyboard users got stranded behind the
+        // overlay; mid-typing users lost work to a stray click.
+        const hasDraft = !!(declineModal.reason || (declineModal.note || '').trim())
+        const requestClose = () => {
+          if (hasDraft) {
+            const confirmMsg = lang === 'tr'
+              ? 'Taslağı sil ve kapat?'
+              : 'Discard your draft and close?'
+            // eslint-disable-next-line no-alert -- intentional confirm-before-discard
+            if (!window.confirm(confirmMsg)) return
+          }
+          setDeclineModal(null)
+        }
+        const onKeyDown = (e) => {
+          if (e.key === 'Escape') {
+            e.preventDefault()
+            requestClose()
+            return
+          }
+          if (e.key === 'Tab' && modalRef.current) {
+            // Focus trap — cycle within tabbable elements inside the modal.
+            const focusables = modalRef.current.querySelectorAll(
+              'button:not([disabled]), textarea, [href], input, select, [tabindex]:not([tabindex="-1"])'
+            )
+            if (!focusables.length) return
+            const first = focusables[0]
+            const last = focusables[focusables.length - 1]
+            if (e.shiftKey && document.activeElement === first) {
+              e.preventDefault()
+              last.focus()
+            } else if (!e.shiftKey && document.activeElement === last) {
+              e.preventDefault()
+              first.focus()
+            }
+          }
+        }
+        return (
           <div
-            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="decline-modal-title"
+            onClick={requestClose}
+            onKeyDown={onKeyDown}
             style={{
-              ...S.card, maxWidth:'420px', width:'100%',
-              borderLeft:'3px solid #888', padding:'18px',
+              position:'fixed', inset:0, background:'rgba(0,0,0,0.75)',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              padding:'16px', zIndex:9999,
             }}>
-            <div style={{ ...S.cardTitle, marginBottom:'14px' }}>
-              ✕ {lang === 'tr' ? 'PLANI REDDET' : 'DECLINE PLAN'}
-            </div>
-            <div style={{ ...S.mono, fontSize:'11px', color:'#aaa', marginBottom:'12px', lineHeight:1.55 }}>
-              {lang === 'tr'
-                ? 'Antrenörünün bir sonraki planı senin için ayarlayabilmesi için neden seçmen gerekiyor.'
-                : 'Pick a reason so your coach can adjust the next plan for you.'}
-            </div>
-            <div style={{ display:'flex', flexDirection:'column', gap:'6px', marginBottom:'14px' }}>
-              {DECLINE_REASONS.map(r => {
-                const selected = declineModal.reason === r.key
-                return (
-                  <button
-                    key={r.key}
-                    onClick={() => setDeclineModal(m => ({ ...m, reason: r.key }))}
-                    style={{
-                      ...S.mono, fontSize:'11px', textAlign:'left',
-                      padding:'8px 10px',
-                      background: selected ? '#ff660018' : 'transparent',
-                      border:`1px solid ${selected ? '#ff660066' : 'var(--border)'}`,
-                      color: selected ? '#ff9944' : '#ccc',
-                      borderRadius:'4px', cursor:'pointer',
-                    }}>
-                    {selected ? '◉' : '○'} {r[lang] || r.en}
-                  </button>
-                )
-              })}
-            </div>
-            <textarea
-              value={declineModal.note}
-              onChange={e => setDeclineModal(m => ({ ...m, note: e.target.value.slice(0, 500) }))}
-              rows={3}
-              placeholder={lang === 'tr'
-                ? 'İsteğe bağlı not (en fazla 500 karakter)…'
-                : 'Optional note (max 500 chars)…'}
-              style={{ ...S.input, width:'100%', fontSize:'11px', padding:'7px 9px', resize:'vertical', lineHeight:1.5, marginBottom:'14px' }}
-            />
-            <div style={{ display:'flex', gap:'8px', justifyContent:'flex-end' }}>
-              <button
-                onClick={() => setDeclineModal(null)}
-                style={{ ...S.mono, fontSize:'10px', fontWeight:700, padding:'6px 14px', background:'transparent', border:'1px solid #555', color:'#aaa', borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em' }}>
-                {lang === 'tr' ? 'VAZGEÇ' : 'CANCEL'}
-              </button>
-              <button
-                onClick={() => {
-                  const { plan, reason, note } = declineModal
-                  if (!reason) return
-                  respondToPlan(plan, 'decline', reason, note)
-                  setDeclineModal(null)
-                }}
-                disabled={!declineModal.reason}
-                style={{ ...S.mono, fontSize:'10px', fontWeight:700, padding:'6px 14px', background:'#e03030', border:'none', color:'#fff', borderRadius:'3px', cursor: declineModal.reason ? 'pointer' : 'not-allowed', letterSpacing:'0.06em', opacity: declineModal.reason ? 1 : 0.4 }}>
-                ✕ {lang === 'tr' ? 'GÖNDER' : 'SUBMIT'}
-              </button>
+            <div
+              ref={modalRef}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                ...S.card, maxWidth:'420px', width:'100%',
+                borderLeft:'3px solid #888', padding:'18px',
+              }}>
+              <div id="decline-modal-title" style={{ ...S.cardTitle, marginBottom:'14px' }}>
+                ✕ {lang === 'tr' ? 'PLANI REDDET' : 'DECLINE PLAN'}
+              </div>
+              <div style={{ ...S.mono, fontSize:'11px', color:'#aaa', marginBottom:'12px', lineHeight:1.55 }}>
+                {lang === 'tr'
+                  ? 'Antrenörünün bir sonraki planı senin için ayarlayabilmesi için neden seçmen gerekiyor.'
+                  : 'Pick a reason so your coach can adjust the next plan for you.'}
+              </div>
+              <div role="radiogroup" aria-label={lang === 'tr' ? 'Reddetme nedeni' : 'Decline reason'}
+                style={{ display:'flex', flexDirection:'column', gap:'6px', marginBottom:'14px' }}>
+                {DECLINE_REASONS.map((r, i) => {
+                  const selected = declineModal.reason === r.key
+                  return (
+                    <button
+                      key={r.key}
+                      ref={i === 0 ? firstFocusRef : null}
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => setDeclineModal(m => ({ ...m, reason: r.key }))}
+                      style={{
+                        ...S.mono, fontSize:'11px', textAlign:'left',
+                        padding:'8px 10px',
+                        background: selected ? '#ff660018' : 'transparent',
+                        border:`1px solid ${selected ? '#ff660066' : 'var(--border)'}`,
+                        color: selected ? '#ff9944' : '#ccc',
+                        borderRadius:'4px', cursor:'pointer',
+                      }}>
+                      {selected ? '◉' : '○'} {r[lang] || r.en}
+                    </button>
+                  )
+                })}
+              </div>
+              <textarea
+                value={declineModal.note}
+                onChange={e => setDeclineModal(m => ({ ...m, note: e.target.value.slice(0, 500) }))}
+                rows={3}
+                placeholder={lang === 'tr'
+                  ? 'İsteğe bağlı not (en fazla 500 karakter)…'
+                  : 'Optional note (max 500 chars)…'}
+                style={{ ...S.input, width:'100%', fontSize:'11px', padding:'7px 9px', resize:'vertical', lineHeight:1.5, marginBottom:'14px' }}
+              />
+              <div style={{ display:'flex', gap:'8px', justifyContent:'flex-end' }}>
+                <button
+                  onClick={requestClose}
+                  style={{ ...S.mono, fontSize:'10px', fontWeight:700, padding:'6px 14px', background:'transparent', border:'1px solid #555', color:'#aaa', borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em' }}>
+                  {lang === 'tr' ? 'VAZGEÇ' : 'CANCEL'}
+                </button>
+                <button
+                  onClick={() => {
+                    const { plan, reason, note } = declineModal
+                    if (!reason) return
+                    respondToPlan(plan, 'decline', reason, note)
+                    setDeclineModal(null)
+                  }}
+                  disabled={!declineModal.reason}
+                  style={{ ...S.mono, fontSize:'10px', fontWeight:700, padding:'6px 14px', background:'#e03030', border:'none', color:'#fff', borderRadius:'3px', cursor: declineModal.reason ? 'pointer' : 'not-allowed', letterSpacing:'0.06em', opacity: declineModal.reason ? 1 : 0.4 }}>
+                  ✕ {lang === 'tr' ? 'GÖNDER' : 'SUBMIT'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }

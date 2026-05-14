@@ -14,6 +14,59 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.115.0 — 2026-05-15 — Decline-modal a11y + draft preservation
+
+  Prompt GGG. Second fix from the v9.110–v9.113 critique pass.
+
+  ### Problem
+  v9.112.0 (Prompt CCC) shipped the decline-reason modal with
+  `role="dialog"` + `aria-modal="true"` but no actual keyboard
+  affordances: no Esc-to-close, no focus trap, no initial focus.
+  Keyboard users opening the modal got stranded behind the overlay
+  (Tab cycled into the page underneath). Backdrop click silently
+  discarded any typed note, so a mid-typing stray click destroyed
+  the athlete's draft without warning.
+
+  ### Solution
+  Three layered fixes inside the modal:
+
+  - **Initial focus** — first reason button receives focus on open
+    via a ref + deferred `.focus()` so keyboard users land at the
+    decision point, not at body scroll. The dependency key is
+    `declineModal?.plan?.id` so the focus only re-fires when a new
+    decline flow opens, not on every reason/note keystroke (which
+    would steal focus back to the first radio mid-typing).
+
+  - **Focus trap** — Tab and Shift+Tab cycle within the modal's
+    tabbable elements. The handler queries focusables fresh each
+    keystroke so the disabled SUBMIT button is excluded
+    automatically until a reason is picked.
+
+  - **Esc-to-close + confirm-before-discard** — Escape and backdrop
+    click both route through `requestClose()`, which fires
+    `window.confirm()` only when the athlete has typed a note or
+    picked a reason. Empty-modal dismissals stay silent.
+
+  Also added:
+  - `aria-labelledby="decline-modal-title"` linked to the title `id`
+  - `role="radiogroup"` on the reason list with `role="radio"` +
+    `aria-checked` on each option — screen readers now announce the
+    set as a single radio group, not 4 unrelated buttons
+
+  ### Files
+  - `src/components/Periodization.jsx` — `useRef` import,
+    `modalRef` + `firstFocusRef`, focus useEffect, `requestClose`,
+    `onKeyDown` trap, ARIA roles on the radio group
+
+  ### Tests
+  10214 unit tests passing (no test changes — modal a11y is exercised
+  by hand with keyboard nav).
+
+  ### Depends on
+  - v9.112.0 (Prompt CCC — original decline modal)
+
+---
+
 ## v9.114.0 — 2026-05-15 — Fix mark-all-read side-effect on coach chips
 
   Prompt FFF. First fix from the v9.110–v9.113 critique pass — closes
