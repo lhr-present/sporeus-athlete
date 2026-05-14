@@ -163,11 +163,15 @@ export default function MissionTimeline({ authUser }) {
               ? 'Adaptasyon motoru artık planını gerçek antrenmana göre düzenliyor. Sırada: Mission 2 hedefini belirle.'
               : 'The adaptation engine is now tuning your plan against real execution. Next: set a Mission 2 goal.'}
           </div>
+          {/* v9.113.0 (Prompt DDD) — Deep-link now points to the Mission 2
+              consolidation timeline (rendered below this one in Profile),
+              which surfaces the 4-step chain instead of stranding the
+              athlete in the goal editor. */}
           <a
-            href="#goal-editor"
+            href="#mission-two"
             onClick={e => {
               e.preventDefault()
-              const el = document.getElementById('goal-editor')
+              const el = document.getElementById('mission-two')
               if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
             }}
             style={{
@@ -175,7 +179,7 @@ export default function MissionTimeline({ authUser }) {
               fontFamily: MONO, fontSize: '10px', color: GREEN,
               textDecoration: 'underline', letterSpacing: '0.06em',
             }}>
-            → {lang === 'tr' ? 'MISSION 2 HEDEFİ BELİRLE' : 'SET MISSION 2 GOAL'}
+            → {lang === 'tr' ? 'MISSION 2\'YE BAŞLA' : 'BEGIN MISSION 2'}
           </a>
         </div>
       )}

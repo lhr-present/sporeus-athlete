@@ -14,6 +14,85 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.113.0 — 2026-05-15 — Mission 2 framework — replace the dead-end deep-link
+
+  Prompt DDD. Fourth of 5 critique-driven fixes from the Mission 1 pass.
+
+  ### Problem
+  v9.103.0 (Prompt CC) added a Mission 1 completion celebration with a
+  prominent `→ SET MISSION 2 GOAL` deep-link. The link scrolled to
+  the goal editor in Profile and stranded the athlete there. They
+  edited a goal, nothing changed, and the Mission 2 narrative dead-
+  ended. The system was saying "next mission!" while having no next
+  mission defined. Athletes who finished Mission 1 had no structured
+  way to know what came next.
+
+  ### Solution
+  New pure module `src/lib/mission2/missionTwo.js`:
+  - `MISSION_2_EVENTS` — canonical 4-step chain:
+    `mission_1_complete → race_committed → first_month_completed → pr_logged`
+  - `MISSION_2_LABELS` — bilingual EN+TR labels per event
+  - `getMission2Status({ attributionEvents, profile, log, today })` —
+    pure derivation function returning `{ entered, complete,
+    completedCount, totalCount, events: [{key, done, at}…] }`
+
+  The status is purely derived from existing state — no new event
+  emissions required. Each milestone uses already-available signals:
+  - `mission_1_complete` reads the attribution event v9.103.0 already
+    emits
+  - `race_committed` derives from `profile.raceDate` being ≥7 days in
+    the future
+  - `first_month_completed` derives from log: 30+ day span AND 12+
+    qualifying sessions (3/week pace = training discipline)
+  - `pr_logged` derives from log: the earliest session whose duration
+    beat the prior best within its `type` bucket
+
+  Future versions can add explicit emissions for funnel telemetry
+  without breaking the derivation — the framework is forward-
+  compatible.
+
+  New component `src/components/profile/MissionTwoTimeline.jsx`:
+  - Mirrors `MissionTimeline` (Mission 1) shape
+  - Renders nothing until `status.entered` (gates Mission 2 behind
+    Mission 1 — no premature surfacing for new athletes)
+  - Vertical timeline with 4 rows, each showing the milestone date
+    or "not yet" pending state
+  - Completion banner when all 4 done
+  - Next-action hint linking to `#goal-editor` for athletes who
+    haven't yet committed to a race date
+
+  Profile.jsx renders `<MissionTwoTimeline authUser={authUser}
+  log={log} />` directly after the existing Mission 1 timeline.
+
+  MissionTimeline.jsx deep-link rewritten: `→ SET MISSION 2 GOAL`
+  (which scrolled to `#goal-editor`) is now `→ BEGIN MISSION 2`
+  (scrolls to `#mission-two`). The athlete lands on a real timeline
+  instead of a generic editor.
+
+  ### Mission 1 framing
+  DDD closes the most embarrassing critique gap: the Mission 1
+  completion screen advertised a Mission 2 that didn't exist. Now it
+  exists, has a defined chain, and renders progress derived from
+  signals the system already has.
+
+  ### Files
+  - `src/lib/mission2/missionTwo.js` (new, ~180 LOC)
+  - `src/components/profile/MissionTwoTimeline.jsx` (new, ~135 LOC)
+  - `src/lib/__tests__/mission2/missionTwo.test.js` (new, 20 cases)
+  - `src/components/Profile.jsx` — import + render under MissionTimeline
+  - `src/components/profile/MissionTimeline.jsx` — deep-link target
+
+  ### Tests
+  10214 unit tests passing (+20 new for Mission 2 derivation: entry
+  gate, race-committed threshold, first-month dual-condition,
+  pr-logged per-type bucketing, complete state).
+
+  ### Depends on
+  - v9.103.0 (Prompt CC — mission_1_complete event emission)
+  - v9.99.0 (Prompt J — attribution events fetch + RLS)
+
+---
+
 ## v9.112.0 — 2026-05-15 — Decline reason capture — close the feedback loop
 
   Prompt CCC. Third of 5 critique-driven fixes from the Mission 1 pass.

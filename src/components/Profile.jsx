@@ -28,6 +28,7 @@ import BodyComp from './profile/BodyComp.jsx'
 import AthleteCard from './profile/AthleteCard.jsx'
 import CoachMessagesCard from './profile/CoachMessagesCard.jsx'
 import MissionTimeline from './profile/MissionTimeline.jsx'
+import MissionTwoTimeline from './profile/MissionTwoTimeline.jsx'
 import Achievements from './Achievements.jsx'
 import AISettings from './profile/AISettings.jsx'
 import SportSelector from './profile/SportSelector.jsx'
@@ -698,6 +699,12 @@ export default function Profile({ log, authUser }) {
           first-session → first-week milestones with the dates the user hit
           each one. Hidden for guests. */}
       <MissionTimeline authUser={authUser} />
+
+      {/* v9.113.0 (Prompt DDD) — Mission 2 consolidation chain. Renders
+          only after the athlete has completed Mission 1 (entry gate
+          inside the component). Replaces the v9.103.0 dead-end deep-link
+          to #goal-editor with an actual Mission 2 surface. */}
+      <MissionTwoTimeline authUser={authUser} log={log} />
 
       {/* Training milestones — logbook, not reward screen */}
       {log && log.length > 0 && (() => {
