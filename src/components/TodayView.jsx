@@ -1547,6 +1547,30 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
           <div style={{ fontSize: '9px', color: '#e03030', letterSpacing: '0.06em', marginBottom: '2px' }}>⚠ {lang === 'tr' ? 'DİNLENME GÜNÜ GECİKMİŞ' : 'REST DAY OVERDUE'}</div>
           <div style={{ fontSize: '10px', color: 'var(--sub)' }}>{lang === 'tr' ? missedRestWarn.tr : missedRestWarn.message}</div>
           <div style={{ fontSize: '9px', color: '#666', marginTop: '2px' }}>{lang === 'tr' ? missedRestWarn.actionTr : missedRestWarn.action}</div>
+          {/* v9.144.0 — Action CTA. The banner's `action` field already says
+              "take a rest day" but stops at text. Same evidence-action pattern
+              as v9.139/141. correctiveRest:true flag distinguishes this entry
+              from planned-rest in cohort queries. Hidden when today is
+              already logged. */}
+          {!todayLogEntry && (
+            <button
+              onClick={() => {
+                setLog([...(log || []), {
+                  date: today,
+                  type: 'Rest',
+                  duration: 0,
+                  tss: 0,
+                  restDayMarked: true,
+                  correctiveRest: true,
+                  id: `${today}-corrective-rest-${Date.now()}`,
+                }])
+                try { emitEvent('missed_rest_action', { consecutive_days: consecutiveDays }) } catch { /* fail open */ }
+              }}
+              style={{ ...btn('#e03030'), marginTop: '8px' }}
+            >
+              {lang === 'tr' ? '↓ DİNLENME GÜNÜNÜ İŞARETLE' : '↓ MARK REST DAY'}
+            </button>
+          )}
         </div>
       )}
 

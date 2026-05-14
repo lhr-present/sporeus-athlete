@@ -14,6 +14,41 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.144.0 — 2026-05-15 — Missed-rest warning CTA
+
+  The V3 banner (`getMissedRestWarning`) already fires when the
+  athlete is on day 6+ of consecutive training and surfaces
+  bilingual messaging — title, message, "action" text. The action
+  text ("take a rest day", "schedule a recovery day") said what to
+  do but stopped at text. Same evidence-action gap pattern as
+  v9.139/141/144.
+
+  One CTA inside the V3 banner: `↓ MARK REST DAY`. Writes a rest
+  entry directly with `correctiveRest: true` flag (distinguishes
+  from planned-rest entries v9.111 EEE writes and sick-rest entries
+  v9.139 writes — three orthogonal rest cohorts now exist for
+  future analysis).
+
+  Emits `missed_rest_action { consecutive_days }` for adoption
+  telemetry. Hidden when `todayLogEntry` exists. Red color matches
+  the banner's existing severity styling.
+
+  Two related banners in the same region (V1 load-spike,
+  consecutive-rest-day) intentionally left text-only:
+  - V1 action ("recovery week or cut next hard session") is
+    ambiguous — the "right" action depends on what the next hard
+    session is + the recovery cadence. Heavier design call.
+  - Consecutive-rest-day says "consider a short activation
+    session" — the dose isn't specified by the banner; deferring
+    to the existing daily-recommendation surface is correct.
+
+  Three orthogonal rest flags introduced across v9.111+v9.139+v9.144:
+  - `restDayMarked: true` only          → planned rest (periodization)
+  - `restDayMarked + sickDay: true`     → sick rest
+  - `restDayMarked + correctiveRest: true` → missed-rest correction
+
+  Suite 10375 / 10375 green (unchanged — UI-only).
+
 ## v9.143.0 — 2026-05-15 — Wire tab-visit tracking for orientation auto-dismiss
 
   Second latent orientation bug in two ships. `lib/orientation.js`
