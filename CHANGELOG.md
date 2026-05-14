@@ -14,6 +14,57 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.117.0 — 2026-05-15 — PR detection sport canonicalization
+
+  Prompt III. Final fix from the v9.110–v9.113 critique pass.
+
+  ### Retraction note
+  The original critique flagged "no test file for diagnosticPriority.js"
+  — that was wrong. A 15-case test file at
+  `src/lib/__tests__/athlete/diagnosticPriority.test.js` already
+  ships with v9.110.0. The honest gap was the PR detection's raw-
+  type bucketing.
+
+  ### Problem
+  v9.113.0 Mission 2's `findFirstPRSession` bucketed sessions by
+  raw lowercased `type` string. "Long Run", "Easy Run", "Tempo Run"
+  and "Run" each got independent best-so-far counters — so a 90-min
+  "Easy Run" beating a prior 60-min "Long Run" was not detected as
+  a PR. The `goalActivityMismatch.js` module already had canonical
+  sport bucketing via `categorizeLogEntry`; Mission 2 simply didn't
+  use it.
+
+  Net effect: real PRs across overlapping run labels were missed,
+  and the Mission 2 `pr_logged` milestone fired later (or not at all)
+  for athletes who used descriptive type names instead of bare
+  sport keywords.
+
+  ### Solution
+  `findFirstPRSession` now calls `categorizeLogEntry` to map each
+  entry to a canonical sport bucket (`swim`, `bike`, `run`, `row`,
+  `strength`, `walk`, `other`), then computes per-bucket bests
+  against the same vocabulary the goal-mismatch detector uses. All
+  run-like labels compete in one bucket; all cycling labels compete
+  in one bucket. Cross-bucket comparisons stay isolated — a 100-min
+  walk doesn't PR against a 30-min run.
+
+  ### Files
+  - `src/lib/mission2/missionTwo.js` — import `categorizeLogEntry`,
+    refactor `findFirstPRSession` to bucket by sport
+  - `src/lib/__tests__/mission2/missionTwo.test.js` — 5 new
+    canonicalization cases (Long Run + Easy Run, Tempo + Interval +
+    Track, case-insensitive, cycling variants, walk-vs-run isolation)
+
+  ### Tests
+  10219 unit tests passing (+5 new canonicalization cases). Lint
+  and build clean.
+
+  ### Depends on
+  - v9.113.0 (Prompt DDD — Mission 2 framework)
+  - v9.104.0 (Prompt DD — goalActivityMismatch sport bucketing)
+
+---
+
 ## v9.116.0 — 2026-05-15 — Mission 2 telemetry emissions
 
   Prompt HHH. Third fix from the v9.110–v9.113 critique pass.

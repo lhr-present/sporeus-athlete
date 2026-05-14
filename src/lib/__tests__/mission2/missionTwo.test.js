@@ -111,7 +111,7 @@ describe('getMission2Status — first_month_completed', () => {
 })
 
 describe('getMission2Status — pr_logged', () => {
-  it('marks pr_logged when later session beats prior duration of same type', () => {
+  it('marks pr_logged when later session beats prior duration of same bucket', () => {
     const log = [
       sess(addDays(TODAY, -20), 60, 'Run'),
       sess(addDays(TODAY, -10), 75, 'Run'),  // beats 60
@@ -139,7 +139,7 @@ describe('getMission2Status — pr_logged', () => {
     const out = getMission2Status({ attributionEvents: [], profile: {}, log, today: TODAY })
     expect(out.events.find(e => e.key === 'pr_logged').done).toBe(false)
   })
-  it('tracks PRs per type independently', () => {
+  it('tracks PRs per sport bucket independently', () => {
     const log = [
       sess(addDays(TODAY, -20), 60, 'Run'),
       sess(addDays(TODAY, -15), 45, 'Bike'),  // first Bike, no prior
@@ -157,6 +157,56 @@ describe('getMission2Status — pr_logged', () => {
     ]
     const out = getMission2Status({ attributionEvents: [], profile: {}, log, today: TODAY })
     expect(out.events.find(e => e.key === 'pr_logged').done).toBe(true)
+  })
+
+  // v9.117.0 (Prompt III) — Sport canonicalization tests. Pre-v9.117
+  // raw lowercased `type` strings bucketed independently, so "Long Run"
+  // and "Easy Run" had separate best-so-far counters and real PRs across
+  // run variants were missed. Now categorizeLogEntry maps all run-like
+  // labels to a single 'run' bucket.
+  it('buckets "Long Run" + "Easy Run" together as run', () => {
+    const log = [
+      sess(addDays(TODAY, -20), 60, 'Long Run'),
+      sess(addDays(TODAY, -10), 75, 'Easy Run'),  // should beat Long Run's 60 in 'run' bucket
+    ]
+    const out = getMission2Status({ attributionEvents: [], profile: {}, log, today: TODAY })
+    expect(out.events.find(e => e.key === 'pr_logged').done).toBe(true)
+    expect(out.events.find(e => e.key === 'pr_logged').at).toBe(addDays(TODAY, -10))
+  })
+  it('buckets "Tempo Run" + "Interval" + "Track" together as run', () => {
+    const log = [
+      sess(addDays(TODAY, -25), 30, 'Tempo Run'),
+      sess(addDays(TODAY, -15), 45, 'Interval'),  // beats 30 in 'run' bucket
+      sess(addDays(TODAY, -5),  40, 'Track'),
+    ]
+    const out = getMission2Status({ attributionEvents: [], profile: {}, log, today: TODAY })
+    expect(out.events.find(e => e.key === 'pr_logged').done).toBe(true)
+    expect(out.events.find(e => e.key === 'pr_logged').at).toBe(addDays(TODAY, -15))
+  })
+  it('case-insensitive bucketing: "RUN" and "run" share a bucket', () => {
+    const log = [
+      sess(addDays(TODAY, -10), 60, 'RUN'),
+      sess(addDays(TODAY, -5),  90, 'run'),  // beats prior in same bucket
+    ]
+    const out = getMission2Status({ attributionEvents: [], profile: {}, log, today: TODAY })
+    expect(out.events.find(e => e.key === 'pr_logged').done).toBe(true)
+  })
+  it('cycling labels bucket together: "Cycling", "Bike", "Spin"', () => {
+    const log = [
+      sess(addDays(TODAY, -20), 60, 'Cycling'),
+      sess(addDays(TODAY, -10), 90, 'Spin'),   // beats 60 in 'bike' bucket
+    ]
+    const out = getMission2Status({ attributionEvents: [], profile: {}, log, today: TODAY })
+    expect(out.events.find(e => e.key === 'pr_logged').done).toBe(true)
+    expect(out.events.find(e => e.key === 'pr_logged').at).toBe(addDays(TODAY, -10))
+  })
+  it('does NOT cross-bucket: 100-min walk does not PR against 30-min run', () => {
+    const log = [
+      sess(addDays(TODAY, -10), 30, 'Run'),
+      sess(addDays(TODAY, -5), 100, 'Walk'),  // first 'walk' entry, not a PR
+    ]
+    const out = getMission2Status({ attributionEvents: [], profile: {}, log, today: TODAY })
+    expect(out.events.find(e => e.key === 'pr_logged').done).toBe(false)
   })
 })
 

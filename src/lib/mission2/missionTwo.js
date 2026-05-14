@@ -26,6 +26,8 @@
 //
 // Pure functions. No I/O.
 
+import { categorizeLogEntry } from '../athlete/goalActivityMismatch.js'
+
 /**
  * @description Canonical Mission 2 event order. Used by the timeline UI
  *   to render rows in sequence. Same convention as MISSION_1_EVENTS
@@ -77,9 +79,13 @@ function todayISO(today) {
 
 /**
  * @description Detect the earliest log entry whose `duration` exceeded
- *   any prior best within the same `type` bucket. Used as a proxy for
- *   "personal record" without re-running the full E6 PR detector — the
- *   timeline only needs a binary "has this happened, and when."
+ *   any prior best within the same SPORT BUCKET. v9.117.0 (Prompt III)
+ *   replaced the raw lowercased `type` bucketing with canonical sport
+ *   buckets via categorizeLogEntry — so "Long Run", "Long run", "Easy
+ *   Run", and "Run" all compete in the same 'run' bucket. Pre-v9.117
+ *   they each had independent best-so-far counters, so real PRs across
+ *   overlapping session labels were missed and meaningless label
+ *   variations falsely flagged.
  *
  *   Defends against:
  *   - non-array log
@@ -89,22 +95,26 @@ function todayISO(today) {
  *   Returns null when no PR is detected.
  *
  * @param {Array} log
- * @returns {{ date: string, type: string, duration: number } | null}
+ * @returns {{ date: string, bucket: string, duration: number } | null}
  */
 function findFirstPRSession(log) {
   if (!Array.isArray(log) || log.length < 2) return null
   const sorted = log
     .filter(e => e?.date && Number(e?.duration) > 0)
-    .map(e => ({ date: String(e.date).slice(0, 10), type: String(e.type || '').toLowerCase(), duration: Number(e.duration) }))
+    .map(e => ({
+      date:     String(e.date).slice(0, 10),
+      bucket:   categorizeLogEntry(e),
+      duration: Number(e.duration),
+    }))
     .sort((a, b) => a.date.localeCompare(b.date))
-  const maxByType = {}
+  const maxByBucket = {}
   for (const e of sorted) {
-    const prior = maxByType[e.type]
+    const prior = maxByBucket[e.bucket]
     if (prior != null && e.duration > prior) {
       return e
     }
     if (prior == null || e.duration > prior) {
-      maxByType[e.type] = e.duration
+      maxByBucket[e.bucket] = e.duration
     }
   }
   return null
