@@ -140,3 +140,44 @@ export const EXECUTION_THRESHOLDS = {
   ON_TARGET_RPE_TOL,
   ON_TARGET_TSS_TOL_PCT,
 }
+
+/**
+ * v9.140.0 — One-line next-action implication of today's execution.
+ *
+ * The EXECUTION snapshot already surfaces deltas (duration, RPE, TSS).
+ * What it didn't say: *what should tomorrow look like?* This function
+ * maps the status to a single bilingual sentence the UI can render
+ * below the deltas, converting passive numbers into an adherence
+ * signal. Citations are included where the implication maps to a
+ * well-known training principle.
+ *
+ * Returns null for 'on-target' — green-color status is already its
+ * own affirmation; an extra sentence would be noise.
+ *
+ * @param {object|null} execution - return value of computeSessionExecution
+ * @returns {{en: string, tr: string, citation?: string} | null}
+ */
+export function getExecutionImplication(execution) {
+  if (!execution) return null
+  switch (execution.status) {
+    case 'over':
+      return {
+        en: 'Recovery debt. Keep tomorrow easy regardless of plan — let CTL absorb the overshoot.',
+        tr: 'Toparlanma borcu. Plandan bağımsız olarak yarını kolay tut — CTL fazlalığı emsin.',
+        citation: 'Banister 1991 (acute load > chronic load → injury risk)',
+      }
+    case 'under':
+      return {
+        en: 'No recovery cost. Tomorrow stays as planned.',
+        tr: 'Toparlanma maliyeti yok. Yarın plan değişmez.',
+      }
+    case 'incomplete':
+      return {
+        en: 'Adherence over cramming. Tomorrow stays as planned — don\'t double up.',
+        tr: 'Toplama değil süreklilik. Yarın plan değişmez — telafi etmeye çalışma.',
+      }
+    case 'on-target':
+    default:
+      return null
+  }
+}

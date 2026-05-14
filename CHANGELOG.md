@@ -14,6 +14,39 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.140.0 — 2026-05-15 — Post-execution implication (next-action from deltas)
+
+  The v9.89 EXECUTION snapshot already shows duration/RPE/TSS
+  plan-vs-actual deltas, but stopped at numbers. An athlete who
+  overshot by 30 minutes saw "+30m" and had to derive the
+  implication ("does tomorrow change?") themselves. Same gap
+  pattern as v9.139's contingency guide — information without
+  next-action.
+
+  New pure function `getExecutionImplication(execution)` in
+  `src/lib/athlete/sessionExecution.js`:
+  - `over`   → "Recovery debt. Keep tomorrow easy regardless of
+                plan — let CTL absorb the overshoot."
+                Citation: Banister 1991 (acute > chronic = injury risk)
+  - `under`  → "No recovery cost. Tomorrow stays as planned."
+  - `incomplete` → "Adherence over cramming. Tomorrow stays as
+                    planned — don't double up."
+  - `on-target` → null (green color is its own affirmation, extra
+                  sentence would be noise)
+
+  Rendered below the existing delta strip inside the EXECUTION
+  snapshot, separated by a dashed top-border so the implication
+  reads as a conclusion to the numbers, not a separate banner.
+  Color-coded arrow uses the existing status color so visual
+  language stays consistent (yellow→amber for over/under,
+  red for incomplete).
+
+  6 new tests — null guard, on-target null return, three status
+  paths, RPE-bumped over status. Suite 10372 / 10372 green (+6).
+
+  Dependencies: existing `computeSessionExecution`,
+  `EXECUTION_STATUS_COLOR`.
+
 ## v9.139.0 — 2026-05-15 — Sick-day contingency CTAs in today's session card
 
   TodayView's substitution / contingency guide (v9.57.0) told the

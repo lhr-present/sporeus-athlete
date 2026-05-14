@@ -6,6 +6,7 @@ import {
   computeSessionExecution,
   EXECUTION_STATUS_LABEL,
   EXECUTION_STATUS_COLOR,
+  getExecutionImplication,
 } from '../../athlete/sessionExecution.js'
 
 describe('computeSessionExecution', () => {
@@ -173,5 +174,53 @@ describe('computeSessionExecution', () => {
     // 70/60 ≈ 117% > 115% → over.
     const justOver = computeSessionExecution({ duration: 60, rpe: 7 }, { duration: 70, rpe: 7 })
     expect(justOver.status).toBe('over')
+  })
+})
+
+// v9.140 — implication mapping
+describe('getExecutionImplication', () => {
+  it('returns null for null input', () => {
+    expect(getExecutionImplication(null)).toBeNull()
+  })
+
+  it('returns null for on-target status (no banner needed)', () => {
+    const exec = computeSessionExecution({ duration: 60, rpe: 6 }, { duration: 62, rpe: 6 })
+    expect(exec.status).toBe('on-target')
+    expect(getExecutionImplication(exec)).toBeNull()
+  })
+
+  it('returns recovery-debt sentence + Banister citation for over', () => {
+    const exec = computeSessionExecution({ duration: 60, rpe: 6 }, { duration: 90, rpe: 6 })
+    expect(exec.status).toBe('over')
+    const imp = getExecutionImplication(exec)
+    expect(imp.en).toMatch(/recovery debt/i)
+    expect(imp.tr).toMatch(/toparlanma borcu/i)
+    expect(imp.citation).toMatch(/Banister/)
+  })
+
+  it('returns no-cost sentence for under', () => {
+    const exec = computeSessionExecution({ duration: 60, rpe: 6 }, { duration: 45, rpe: 6 })
+    expect(exec.status).toBe('under')
+    const imp = getExecutionImplication(exec)
+    expect(imp.en).toMatch(/no recovery cost/i)
+    expect(imp.tr).toMatch(/maliyeti yok/i)
+    expect(imp.citation).toBeUndefined()
+  })
+
+  it('returns adherence-over-cramming sentence for incomplete', () => {
+    const exec = computeSessionExecution({ duration: 60, rpe: 6 }, { duration: 20, rpe: 6 })
+    expect(exec.status).toBe('incomplete')
+    const imp = getExecutionImplication(exec)
+    expect(imp.en).toMatch(/adherence over cramming/i)
+    expect(imp.tr).toMatch(/süreklilik/i)
+  })
+
+  it('handles RPE-bumped over status', () => {
+    // Duration on target but RPE went way over → status flips to over via RPE bump
+    const exec = computeSessionExecution({ duration: 60, rpe: 5 }, { duration: 60, rpe: 9 })
+    expect(exec.status).toBe('over')
+    const imp = getExecutionImplication(exec)
+    expect(imp).not.toBeNull()
+    expect(imp.citation).toMatch(/Banister/)
   })
 })

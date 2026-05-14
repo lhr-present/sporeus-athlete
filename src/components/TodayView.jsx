@@ -20,7 +20,7 @@ import { getRecommendedProtocols } from '../lib/recoveryProtocols.js'
 import { computeNextAction } from '../lib/nextAction.js'
 import { buildContingencyMap } from '../lib/athlete/eliteProgramSubstitutions.js'
 import { deriveSessionStructure } from '../lib/athlete/sessionStructure.js'
-import { computeSessionExecution, EXECUTION_STATUS_LABEL, EXECUTION_STATUS_COLOR } from '../lib/athlete/sessionExecution.js'
+import { computeSessionExecution, EXECUTION_STATUS_LABEL, EXECUTION_STATUS_COLOR, getExecutionImplication } from '../lib/athlete/sessionExecution.js'
 import { deriveSessionTargets } from '../lib/athlete/derivedSessionTargets.js'
 import { buildDailyRecommendation } from '../lib/athlete/dailyRecommendation.js'
 import { computePlanDrift, detectStalePlan } from '../lib/athlete/planAdaptation.js'
@@ -2112,6 +2112,29 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
                     </span>
                   )}
                 </div>
+                {/* v9.140.0 — Next-action implication. Converts the delta
+                    numbers above into adherence guidance: over → keep
+                    tomorrow easy; under/incomplete → stay on plan. Null
+                    for on-target (the green status is its own affirmation). */}
+                {(() => {
+                  const imp = getExecutionImplication(sessionExecution)
+                  if (!imp) return null
+                  return (
+                    <div style={{
+                      marginTop: '6px', paddingTop: '6px',
+                      borderTop: '1px dashed var(--border)',
+                      fontSize: '10px', color: '#ccc', lineHeight: 1.55, letterSpacing: 'normal',
+                    }}>
+                      <span style={{ color: EXECUTION_STATUS_COLOR[sessionExecution.status] }}>→ </span>
+                      {imp[lang] || imp.en}
+                      {imp.citation && (
+                        <div style={{ color: '#666', fontSize: '9px', fontStyle: 'italic', marginTop: '2px' }}>
+                          {imp.citation}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
             )}
             {/* v9.85.0 — Tomorrow preview. Tells the athlete what's coming so
