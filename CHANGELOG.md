@@ -14,6 +14,31 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.124.0 — 2026-05-15 — Hoist mission_1_complete emission to App level
+
+  Same bias fix as v9.118 JJJ but for Mission 1. v9.103.0 (Prompt CC)
+  emitted `mission_1_complete` from inside MissionTimeline, which only
+  renders on Profile — athletes who completed Mission 1 but never
+  visited Profile silently undercount in the funnel. Mirror of the
+  Mission 2 fix from 6 versions ago.
+
+  `useMission2Telemetry` (slight misnomer at this point — covers both
+  missions) gains a second useEffect that scans the fetched
+  attribution events for all 4 Mission 1 atomics, computes
+  days_to_complete, and emits `mission_1_complete` if not already
+  present in events AND not already gated in localStorage. Uses the
+  same `sporeus-mission-1-celebrated-{uid}` key as v9.103 for
+  backward compatibility.
+
+  MissionTimeline still derives + renders Mission 1 timeline, but
+  no longer owns the side-effect.
+
+  Files: `src/hooks/useMission2Telemetry.js` — second useEffect,
+  `src/components/profile/MissionTimeline.jsx` — emission useEffect
+  removed, `emitEvent` import dropped. 10287 tests passing.
+
+---
+
 ## v9.123.0 — 2026-05-15 — Aerobic decoupling trend alert
 
   `lib/decoupling.js` (Friel-method Pw:Hr) computes per-session

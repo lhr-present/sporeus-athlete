@@ -14,11 +14,18 @@
 //
 // MissionTwoTimeline keeps its own derive for rendering, but the emission
 // side-effect has moved here.
+//
+// v9.124.0 — Now also owns the mission_1_complete synthetic emission,
+// hoisted out of MissionTimeline for the same reason: pre-v9.124 the
+// Mission 1 completion event only fired when the athlete opened Profile,
+// so the v9.103.0 (Prompt CC) celebration telemetry was Profile-biased
+// in the same way Mission 2 was before v9.118. The hook now handles
+// both missions' synthetic-completion events at the same auth boundary.
 
 import { useEffect, useMemo, useState } from 'react'
 import { logger } from '../lib/logger.js'
 import { emitEvent } from '../lib/attribution.js'
-import { getUserAttributionEvents } from '../lib/db/attributionEvents.js'
+import { getUserAttributionEvents, MISSION_1_EVENTS } from '../lib/db/attributionEvents.js'
 import { getMission2Status } from '../lib/mission2/missionTwo.js'
 
 /**
@@ -84,4 +91,45 @@ export function useMission2Telemetry(authUser, profile, log) {
       }
     }
   }, [status, userId])
+
+  // v9.124.0 — Mission 1 synthetic completion emission. Fires when all
+  // 4 atomic Mission 1 events are present and `mission_1_complete`
+  // hasn't been emitted yet for this user. days_to_complete is the gap
+  // between the earliest atomic event (signup_completed) and the
+  // latest. localStorage key matches the one MissionTimeline used
+  // (sporeus-mission-1-celebrated-{uid}) so athletes upgrading from
+  // v9.103 don't re-fire the event.
+  useEffect(() => {
+    if (!events || !userId) return
+    const bySlot = {}
+    for (const e of events) {
+      if (!e?.event_name) continue
+      if (!bySlot[e.event_name]) bySlot[e.event_name] = e
+    }
+    // Already emitted? Skip the work entirely.
+    if (bySlot.mission_1_complete) return
+    // All atomic Mission 1 events present?
+    const completedAll = MISSION_1_EVENTS.every(k => bySlot[k])
+    if (!completedAll) return
+    // Compute days_to_complete from earliest to latest atomic event.
+    const timestamps = MISSION_1_EVENTS
+      .map(k => bySlot[k]?.created_at)
+      .filter(Boolean)
+      .sort()
+    const signup = bySlot.signup_completed?.created_at
+    let daysToComplete = null
+    if (signup && timestamps.length > 0) {
+      const last = timestamps[timestamps.length - 1]
+      const ms = new Date(last) - new Date(signup)
+      daysToComplete = Math.max(1, Math.round(ms / 86400000))
+    }
+    const key = `sporeus-mission-1-celebrated-${userId}`
+    try {
+      if (localStorage.getItem(key)) return
+      emitEvent('mission_1_complete', { days_to_complete: daysToComplete })
+      localStorage.setItem(key, new Date().toISOString())
+    } catch (e) {
+      logger.warn('mission_1_complete emit:', e?.message)
+    }
+  }, [events, userId])
 }

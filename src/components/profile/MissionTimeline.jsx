@@ -14,7 +14,6 @@ import { useEffect, useState, useContext } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { logger } from '../../lib/logger.js'
-import { emitEvent } from '../../lib/attribution.js'
 import {
   getUserAttributionEvents,
   filterMissionTimelineEvents,
@@ -107,17 +106,10 @@ export default function MissionTimeline({ authUser }) {
       daysToComplete = Math.max(1, Math.round(ms / 86400000))
     }
   }
-  useEffect(() => {
-    if (!allComplete || !authUser?.id) return
-    const key = `sporeus-mission-1-celebrated-${authUser.id}`
-    try {
-      if (localStorage.getItem(key)) return
-      emitEvent('mission_1_complete', { days_to_complete: daysToComplete })
-      localStorage.setItem(key, new Date().toISOString())
-    } catch (e) {
-      logger.warn('mission_1_complete emit failed:', e?.message)
-    }
-  }, [allComplete, authUser?.id, daysToComplete])
+  // v9.124.0: mission_1_complete emission moved to useMission2Telemetry
+  // (mounted in AppInner) so it fires at App level regardless of
+  // Profile-tab visits. Same localStorage gate key for backward
+  // compatibility with athletes who already celebrated under v9.103.0.
 
   // Don't render the card for guest users or when Supabase isn't configured
   if (!authUser?.id) return null
