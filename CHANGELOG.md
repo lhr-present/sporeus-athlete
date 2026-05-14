@@ -14,6 +14,62 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.116.0 — 2026-05-15 — Mission 2 telemetry emissions
+
+  Prompt HHH. Third fix from the v9.110–v9.113 critique pass.
+
+  ### Problem
+  v9.113.0 (Prompt DDD) shipped the Mission 2 framework as purely
+  derivational — `getMission2Status` reads attribution events,
+  profile, and log to compute progress without emitting anything.
+  That made the framework self-contained but invisible server-side:
+  Mission 1 fires 4 attribution events into `attribution_events`,
+  Mission 2 fired zero. Coach dashboards and product-analytics
+  could not aggregate "athletes who hit first_month_completed this
+  week." The two missions were measurement-asymmetric.
+
+  ### Solution
+  Inside `MissionTwoTimeline`, after status is derived, a useEffect
+  iterates the events list and emits any newly-detected milestones
+  via `emitEvent()`. Each emission is gated on
+  `sporeus-mission2-{userId}-{eventKey}` localStorage so reloads
+  and re-renders don't re-fire. `mission_1_complete` is excluded
+  (already emitted by MissionTimeline v9.103 CC) to avoid double-
+  counting.
+
+  New attribution events:
+  - `race_committed` — props: `{ reached_at }`
+  - `first_month_completed` — props: `{ reached_at }`
+  - `pr_logged` — props: `{ reached_at }`
+  - `mission_2_complete` — props: `{ completed_events }` — synthetic
+    one-shot when all four milestones present
+
+  Also memoized `getMission2Status` so the derive runs only when
+  (events, profile, log) change, not on every keystroke. The render
+  branch and the emission useEffect share the same memoized value.
+
+  ### Mission 1 framing
+  Mission 1's funnel was the v9.95.0 emission baseline; Mission 2
+  was advertised as the next chain but invisible. With HHH the
+  emission contract is symmetric, so the same `attribution_events`
+  query that powers Mission 1 funnel reports now answers Mission 2
+  questions too.
+
+  ### Files
+  - `src/components/profile/MissionTwoTimeline.jsx` — useMemo for
+    status, emitEvent import, one-shot emission useEffect
+
+  ### Tests
+  10214 unit tests passing (no new tests — emission idempotency is
+  exercised by localStorage gating, same pattern as v9.108
+  streak_milestone).
+
+  ### Depends on
+  - v9.113.0 (Prompt DDD — Mission 2 derivation framework)
+  - v9.99.0 (Prompt J — attribution_events table + RLS)
+
+---
+
 ## v9.115.0 — 2026-05-15 — Decline-modal a11y + draft preservation
 
   Prompt GGG. Second fix from the v9.110–v9.113 critique pass.

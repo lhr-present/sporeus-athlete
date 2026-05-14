@@ -8,11 +8,12 @@
 // Renders only when the athlete has entered Mission 2 (mission_1_complete
 // fired). Hidden otherwise — Mission 2 shouldn't preempt Mission 1.
 
-import { useEffect, useState, useContext } from 'react'
+import { useEffect, useMemo, useState, useContext } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { useData } from '../../contexts/DataContext.jsx'
 import { S } from '../../styles.js'
 import { logger } from '../../lib/logger.js'
+import { emitEvent } from '../../lib/attribution.js'
 import {
   getMission2Status,
   MISSION_2_EVENTS,
@@ -50,6 +51,55 @@ export default function MissionTwoTimeline({ authUser, log }) {
     return () => { cancelled = true }
   }, [authUser?.id])
 
+  // Derive status at the top so hook order stays stable across early
+  // returns. Memoized on (events, profile, log) — the emission useEffect
+  // below reads it without re-deriving.
+  const status = useMemo(() => {
+    if (!events) return null
+    return getMission2Status({ attributionEvents: events, profile, log })
+  }, [events, profile, log])
+
+  // v9.116.0 (Prompt HHH) — Mission 2 milestone telemetry emissions.
+  //
+  // Pre-v9.116 the Mission 2 framework (v9.113 DDD) derived progress
+  // from existing state but emitted zero events when a milestone was
+  // crossed. The funnel was invisible server-side — coach dashboards
+  // could not aggregate "12 athletes hit first_month_completed this
+  // week." Mission 1 emits each milestone via emitEvent, so the
+  // asymmetry was a real measurement gap, not a polish issue.
+  //
+  // One-shot emission per milestone per user, gated on a localStorage
+  // key so reloads / re-renders don't re-fire. mission_1_complete is
+  // already emitted by MissionTimeline (v9.103 CC) — skip here. A
+  // synthetic mission_2_complete fires once when all four are done.
+  useEffect(() => {
+    if (!status || !authUser?.id) return
+    for (const ev of status.events) {
+      if (!ev.done || ev.key === 'mission_1_complete') continue
+      const key = `sporeus-mission2-${authUser.id}-${ev.key}`
+      try {
+        if (localStorage.getItem(key)) continue
+        emitEvent(ev.key, { reached_at: ev.at })
+        localStorage.setItem(key, new Date().toISOString())
+      } catch (e) {
+        logger.warn(`${ev.key} emit:`, e?.message)
+      }
+    }
+    if (status.complete) {
+      const key = `sporeus-mission2-${authUser.id}-complete`
+      try {
+        if (!localStorage.getItem(key)) {
+          emitEvent('mission_2_complete', {
+            completed_events: status.completedCount,
+          })
+          localStorage.setItem(key, new Date().toISOString())
+        }
+      } catch (e) {
+        logger.warn('mission_2_complete emit:', e?.message)
+      }
+    }
+  }, [status, authUser?.id])
+
   if (!authUser?.id) return null
   if (events === null) {
     return (
@@ -64,11 +114,9 @@ export default function MissionTwoTimeline({ authUser, log }) {
     )
   }
 
-  const status = getMission2Status({ attributionEvents: events, profile, log })
-
   // Mission 2 doesn't render until the athlete has crossed Mission 1.
   // Showing it earlier would clutter Profile for athletes still in onboarding.
-  if (!status.entered) return null
+  if (!status?.entered) return null
 
   return (
     <div style={{ ...S.card, borderLeft: `3px solid ${status.complete ? GREEN : BLUE}` }} id="mission-two">
