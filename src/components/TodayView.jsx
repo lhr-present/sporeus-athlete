@@ -690,6 +690,29 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- diagnosticTop is a memoized object; field-level deps below
   }, [diagnosticTop?.top?.key, diagnosticTop?.top?.severity, diagnosticTop?.rest?.length, today])
 
+  // v9.151.0 — Auto-downgrade telemetry (Prompt 9). One-shot per day:
+  // emit downgrade_shown when v9.102's downgrade card renders, so we can
+  // measure the override rate (downgrade_overridden / downgrade_shown).
+  // Adoption signal: if many athletes click SEE PLANNED instead of LOG
+  // DOWNGRADED, the v9.102 thresholds are too aggressive.
+  useEffect(() => {
+    if (!downgradeRec || !plannedSession) return
+    const k = `sporeus-downgrade-shown-${today}`
+    try {
+      if (localStorage.getItem(k)) return
+      emitEvent('downgrade_shown', {
+        planned_type:  plannedSession.type,
+        planned_rpe:   plannedSession.rpe || null,
+        suggested_rpe: downgradeRec.rpe || null,
+        readiness:     todayReadiness ?? null,
+        trigger:       sessionSwapFlag ? 'swap_flag' : 'low_readiness',
+        source:        downgradeRec.source || null,
+      })
+      localStorage.setItem(k, new Date().toISOString())
+    } catch { /* fail open */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- objects are memoized; field-level deps below
+  }, [downgradeRec, plannedSession?.type, plannedSession?.rpe, todayReadiness, sessionSwapFlag, today])
+
   return (
     <div className="sp-fade">
 
@@ -1943,7 +1966,19 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
                     {lang === 'tr' ? '↓ İNDİRGENMİŞ SEANSI LOGLA' : '↓ LOG DOWNGRADED SESSION'}
                   </button>
                   <button
-                    onClick={() => setShowOriginalSession(true)}
+                    onClick={() => {
+                      setShowOriginalSession(true)
+                      try {
+                        emitEvent('downgrade_overridden', {
+                          planned_type:  plannedSession.type,
+                          planned_rpe:   plannedSession.rpe || null,
+                          suggested_rpe: downgradeRec.rpe || null,
+                          readiness:     todayReadiness ?? null,
+                          trigger:       sessionSwapFlag ? 'swap_flag' : 'low_readiness',
+                          source:        downgradeRec.source || null,
+                        })
+                      } catch { /* fail open */ }
+                    }}
                     style={btn('transparent', '#888')}>
                     {lang === 'tr' ? 'PLANLANAN SEANSI GÖR' : 'SEE PLANNED SESSION'}
                   </button>

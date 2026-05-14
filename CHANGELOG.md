@@ -14,6 +14,36 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.151.0 — 2026-05-15 — Auto-downgrade override telemetry (Prompt 9)
+
+  v9.102 auto-downgrade replaces hard sessions with a downgraded
+  version when readiness < 50 OR `sessionSwapFlag` fires. The
+  athlete can click `SEE PLANNED SESSION` to override the
+  recommendation. We never measured how often that happened.
+
+  Two new attribution events:
+
+  `downgrade_shown` — fires one-shot per day (gated by
+  `sporeus-downgrade-shown-${today}` localStorage key) when the
+  downgrade card first renders.
+
+  `downgrade_overridden` — fires when the athlete clicks SEE PLANNED
+  SESSION.
+
+  Both carry: `planned_type`, `planned_rpe`, `suggested_rpe`,
+  `readiness`, `trigger` ('swap_flag' or 'low_readiness'), `source`.
+  Future analysis: `override_rate = downgrade_overridden /
+  downgrade_shown`. If override rate is high (>50%) the v9.102
+  thresholds are too aggressive and need calibration.
+
+  Pure telemetry — no UI changes, no behavior changes. Both emits
+  wrapped in try/catch fail-open per the project convention.
+
+  Suite 10407 / 10407 green.
+
+  Dependencies: existing `emitEvent`, `downgradeRec`,
+  `sessionSwapFlag`, `todayReadiness`.
+
 ## v9.150.0 — 2026-05-15 — Rest-day affirmation by type (Prompt 7)
 
   Three rest-type flags now coexist after v9.111 + v9.139 + v9.144:
