@@ -332,3 +332,34 @@ describe('deriveSessionTargets — hrTarget integration', () => {
     expect(out.hrTarget).toBeNull()
   })
 })
+
+// v9.159.0 (Prompt E) — thresholdDerived fallback
+describe('deriveSessionPace — thresholdDerived fallback', () => {
+  it('uses thresholdDerived when threshold is empty', () => {
+    const out = deriveSessionPace(
+      { zone: 'Z4', type: 'Threshold' },
+      { threshold: '', thresholdDerived: '4:30', primarySport: 'Running' },
+    )
+    expect(out).not.toBeNull()
+    expect(out).toMatch(/^\d:\d{2}/)
+  })
+
+  it('user-set threshold wins over thresholdDerived', () => {
+    const fromUser = deriveSessionPace(
+      { zone: 'Z2', type: 'Easy' },
+      { threshold: '4:00', thresholdDerived: '5:30', primarySport: 'Running' },
+    )
+    const fromDerived = deriveSessionPace(
+      { zone: 'Z2', type: 'Easy' },
+      { threshold: '', thresholdDerived: '5:30', primarySport: 'Running' },
+    )
+    expect(fromUser).not.toBe(fromDerived)
+  })
+
+  it('returns null when both threshold and thresholdDerived are empty', () => {
+    expect(deriveSessionPace(
+      { zone: 'Z2', type: 'Easy' },
+      { threshold: '', thresholdDerived: '', primarySport: 'Running' },
+    )).toBeNull()
+  })
+})

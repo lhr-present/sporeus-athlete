@@ -508,3 +508,37 @@ describe('sanitizeProfile — sport ↔ primarySport mirror (v9.62.0)', () => {
     expect(p.primarySport).toBe('')
   })
 })
+
+// v9.159.0 (Prompt E) — VO2max → thresholdDerived
+describe('sanitizeProfile — thresholdDerived from VO2max (v9.159.0)', () => {
+  it('derives threshold from VO2max when threshold is empty', () => {
+    const p = sanitizeProfile({ vo2max: 50 })
+    expect(p.threshold).toBe('')
+    expect(p.thresholdDerived).toBe('4:11')
+  })
+
+  it('does not derive when user-set threshold exists (user wins)', () => {
+    const p = sanitizeProfile({ vo2max: 50, threshold: '4:30' })
+    expect(p.threshold).toBe('4:30')
+    expect(p.thresholdDerived).toBe('')
+  })
+
+  it('leaves thresholdDerived empty when neither VO2max nor threshold is set', () => {
+    const p = sanitizeProfile({})
+    expect(p.threshold).toBe('')
+    expect(p.thresholdDerived).toBe('')
+  })
+
+  it('skips derivation when VO2max is out of physiological range', () => {
+    expect(sanitizeProfile({ vo2max: 20 }).thresholdDerived).toBe('')
+    expect(sanitizeProfile({ vo2max: 100 }).thresholdDerived).toBe('')
+  })
+
+  it('higher VO2max → faster derived threshold', () => {
+    const slow = sanitizeProfile({ vo2max: 40 })
+    const fast = sanitizeProfile({ vo2max: 70 })
+    expect(slow.thresholdDerived < fast.thresholdDerived).toBe(false)
+    // 4:47 (40) > 3:22 (70) → string-compare is fine for "M:SS"
+    expect(slow.thresholdDerived > fast.thresholdDerived).toBe(true)
+  })
+})

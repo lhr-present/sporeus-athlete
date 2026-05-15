@@ -129,15 +129,20 @@ function isSwimSession(session, profile) {
  * the athlete's threshold running pace. Returns null when no threshold is
  * set or the zone can't be inferred.
  *
+ * v9.159.0 (Prompt E): Falls back to `profile.thresholdDerived` (computed
+ * from VO2max in sanitizeProfile) when the user hasn't manually entered a
+ * threshold. Pre-fix athletes who tested VO2max in lab but skipped the
+ * threshold input saw no pace targets.
+ *
  * @param {object} session - planned session: { type, zone, zones, duration, ... }
- * @param {object} profile - athlete profile: { threshold, primarySport, ... }
+ * @param {object} profile - athlete profile: { threshold, thresholdDerived, primarySport, ... }
  * @returns {string|null} e.g. "5:30–5:45" or null
  */
 export function deriveSessionPace(session, profile) {
   if (!session || !profile) return null
   if (isCyclingSession(session, profile)) return null  // power, not pace
   if (isSwimSession(session, profile)) return null     // swim CSS handled separately
-  const tSec = parsePaceToSec(profile.threshold)
+  const tSec = parsePaceToSec(profile.threshold) ?? parsePaceToSec(profile.thresholdDerived)
   if (tSec == null) return null
   const zone = dominantZone(session)
   if (!zone) return null

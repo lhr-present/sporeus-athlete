@@ -14,6 +14,46 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.159.0 — 2026-05-16 — VO2max → threshold fallback (Prompt E)
+
+  Pre-fix `profile.vo2max` was the largest dead input found in
+  the 2026-05-15 physiology audit: collected from SIX protocol
+  tests (Cooper, Beep, YYIR1, Åstrand, Ramp, plus a manual entry
+  on the Profile form) and consumed by ZERO downstream code.
+  Athletes who tested VO2max in lab but never entered a threshold
+  pace got no pace targets on their plan.
+
+  New `src/lib/athlete/vo2maxToPace.js` exports `vdotToThresholdSec`
+  + `vdotToThresholdStr` using Daniels' VDOT-to-T-pace table from
+  Running Formula (4th ed, 2014). Anchors at VDOT {30, 35, ..., 85}
+  with linear interpolation. Returns null outside [30, 85] for
+  physiological sanity.
+
+  `sanitizeProfile` derives a new field `thresholdDerived` when
+  `threshold === ''` and VO2max is in range. The user-entered
+  `threshold` is NEVER overwritten — the two fields coexist so
+  the UI can distinguish source ("from VO2max" badge) and the
+  athlete's intentional blank stays blank.
+
+  `derivedSessionTargets.deriveSessionPace` reads
+  `profile.threshold ?? profile.thresholdDerived`. User wins when
+  both exist. Pure render-time enrichment — no plan regeneration.
+
+  Out of scope for this ship:
+  - Plan duration scaling (`adapter` from Prompt D) does NOT yet
+    fall back to thresholdDerived. The mechanical-impact scaling
+    is a more aggressive adjustment; deferring keeps the v1
+    behavior conservative for the VDOT-derived cohort.
+  - UI badge surfacing "(from VO2max)" — a separate Profile +
+    TodayView ship.
+  - The vo2maxProgression estimator stays orphaned (it predicts
+    VO2max evolution; wiring to plan inputs is a larger ship).
+
+  Suite 10494 / 10494 green (+21 new tests).
+
+  Dependencies: existing `profile.vo2max` (collected since v1,
+  validated 0–100); new module is fully self-contained.
+
 ## v9.158.0 — 2026-05-16 — Threshold-aware duration scaling in adapter (Prompt D)
 
   Pre-fix the adapter computed running-session duration from

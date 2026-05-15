@@ -1,5 +1,6 @@
 // ─── Input validation / sanitization ──────────────────────────────────────────
 import { normalizeAthleteLevel, normalizeSport } from './constants.js'
+import { vdotToThresholdStr } from './athlete/vo2maxToPace.js'
 
 /**
  * @typedef {Object} LogEntry
@@ -127,6 +128,20 @@ export function sanitizeProfile(p) {
   // (preserves legacy values like 'Brick (Bike+Run)' from FIT imports).
   const rawSport  = str(p.primarySport, 50) || str(p.sport, 50)
   const normSport = normalizeSport(rawSport) || rawSport
+
+  // v9.159.0 (Prompt E) — Derive threshold pace from VO2max when the
+  // athlete has tested VO2max in lab but not entered a threshold pace
+  // manually. Pre-fix `profile.vo2max` was collected from 6 protocol
+  // tests but consumed by zero downstream code. The derived value goes
+  // into a NEW field `thresholdDerived` — the user-entered `threshold`
+  // is never overwritten, so the UI can distinguish source ("from
+  // VO2max" badge) and the athlete's intentional blank stays blank.
+  const userThreshold = str(p.threshold, 20)
+  const vo2maxNum = parseFloat(p.vo2max)
+  const thresholdDerived = !userThreshold && Number.isFinite(vo2maxNum) && vo2maxNum > 0
+    ? (vdotToThresholdStr(vo2maxNum) || '')
+    : ''
+
   return {
     name:          str(p.name),
     sport:         normSport,
@@ -146,7 +161,8 @@ export function sanitizeProfile(p) {
     ftp:           numStr(p.ftp, 0, 3000),
     vo2max:        numStr(p.vo2max, 0, 100),
     maxhr:         numStr(p.maxhr, 60, 280),
-    threshold:     str(p.threshold, 20),
+    threshold:     userThreshold,
+    thresholdDerived,
     // v9.100.0 — CSS (Critical Swim Speed) in sec/100m. Pre-fix, this field
     // was set by eliteProgram + onboarding but stripped on every Profile save
     // because the whitelist didn't include it. Stored as a string to match
