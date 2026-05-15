@@ -93,10 +93,12 @@ function deltaNote(previous, next, lang) {
 
 export default function FieldTestModal({ program, profile, onClose, lang = 'en' }) {
   const isTR = lang === 'tr'
-  const [, setPersistedProgram] = useLocalStorage(STORAGE_PROGRAM, null)
+  const [persistedProgram, setPersistedProgram] = useLocalStorage(STORAGE_PROGRAM, null)
   const [results, setResults]   = useLocalStorage(STORAGE_RESULTS, [])
   const [value, setValue]       = useState('')
-  const [submitted, setSubmitted] = useState(null) // { newProgram, prevTSS, newTSS, note }
+  const [notes, setNotes]       = useState('')
+  const [rpe, setRpe]           = useState('')
+  const [submitted, setSubmitted] = useState(null) // { newProgram, prevTSS, newTSS, note, previousProgram }
   const [error, setError]       = useState(null)
 
   const sport = program?.sport
@@ -142,27 +144,34 @@ export default function FieldTestModal({ program, profile, onClose, lang = 'en' 
     const newPeakTaperTSS  = sumTSS(reAnchored.weeklyTSS, reAnchored.phases, ['Peak', 'Taper'])
     const note = deltaNote(program.currentLevel, reAnchored.currentLevel, lang)
 
-    // Append the raw entry
+    // Append the raw entry — optional notes/rpe only included when set
+    // so the array stays minimal for older readers.
+    const rpeNum = parseFloat(rpe)
+    const entry = {
+      programId: programIdValue,
+      sport,
+      date: today,
+      field: field.key,
+      value: num,
+      previousLevel: program.currentLevel,
+      newLevel:      reAnchored.currentLevel,
+      ...(notes.trim() ? { notes: notes.trim() } : {}),
+      ...(Number.isFinite(rpeNum) && rpeNum >= 1 && rpeNum <= 10 ? { rpe: rpeNum } : {}),
+    }
     try {
       const next = Array.isArray(results) ? [...results] : []
-      next.push({
-        programId: programIdValue,
-        sport,
-        date: today,
-        field: field.key,
-        value: num,
-        previousLevel: program.currentLevel,
-        newLevel:      reAnchored.currentLevel,
-      })
+      next.push(entry)
       setResults(next)
     } catch (e) { logger.warn('field-test results save:', e?.message) }
 
-    // Persist re-anchored program
+    // Capture previous program for undo BEFORE overwriting
+    const previousProgram = persistedProgram || program
     try { setPersistedProgram(reAnchored) }
     catch (e) { logger.warn('field-test program save:', e?.message) }
 
     setSubmitted({
       newProgram: reAnchored,
+      previousProgram,
       prevTSS: prevPeakTaperTSS,
       newTSS:  newPeakTaperTSS,
       note,
@@ -203,6 +212,43 @@ export default function FieldTestModal({ program, profile, onClose, lang = 'en' 
               }}
             />
             <div style={{ fontSize: 10, color: '#666', marginBottom: 14 }}>{field.hint}</div>
+
+            <details style={{ marginBottom: 14 }}>
+              <summary style={{ fontSize: 10, color: '#888', cursor: 'pointer', letterSpacing: '0.06em', marginBottom: 6 }}>
+                {isTR ? '+ ek not / RPE (opsiyonel)' : '+ notes / RPE (optional)'}
+              </summary>
+              <label htmlFor="ft-rpe" style={{ display: 'block', fontSize: 10, color: '#888', letterSpacing: '0.08em', marginTop: 8, marginBottom: 4 }}>
+                {isTR ? 'RPE (1-10)' : 'RPE (1-10)'}
+              </label>
+              <input
+                id="ft-rpe"
+                type="number"
+                min={1}
+                max={10}
+                step={1}
+                value={rpe}
+                onChange={e => setRpe(e.target.value)}
+                style={{
+                  width: '100%', background: '#1a1a1a', border: '1px solid #333', borderRadius: 4,
+                  color: '#fff', fontFamily: MONO, fontSize: 13, padding: '6px 8px', marginBottom: 8,
+                }}
+              />
+              <label htmlFor="ft-notes" style={{ display: 'block', fontSize: 10, color: '#888', letterSpacing: '0.08em', marginBottom: 4 }}>
+                {isTR ? 'NOT' : 'NOTES'}
+              </label>
+              <textarea
+                id="ft-notes"
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                maxLength={500}
+                rows={2}
+                placeholder={isTR ? 'Hava, koşullar, hissedilen efor…' : 'Weather, conditions, felt-effort…'}
+                style={{
+                  width: '100%', background: '#1a1a1a', border: '1px solid #333', borderRadius: 4,
+                  color: '#fff', fontFamily: MONO, fontSize: 11, padding: '6px 8px', resize: 'vertical',
+                }}
+              />
+            </details>
 
             {error && (
               <div role="alert" style={{ fontSize: 11, color: '#e03030', marginBottom: 10 }}>{error}</div>
@@ -246,6 +292,25 @@ export default function FieldTestModal({ program, profile, onClose, lang = 'en' 
             )}
 
             <FooterRow>
+              <button
+                type="button"
+                onClick={() => {
+                  // Restore the previous program + remove the last results entry
+                  try { setPersistedProgram(submitted.previousProgram) }
+                  catch (e) { logger.warn('field-test undo program:', e?.message) }
+                  try {
+                    const arr = Array.isArray(results) ? results.slice(0, -1) : []
+                    setResults(arr)
+                  } catch (e) { logger.warn('field-test undo results:', e?.message) }
+                  setSubmitted(null)
+                  setValue('')
+                  setNotes('')
+                  setRpe('')
+                }}
+                style={btnSecondary}
+                aria-label={isTR ? 'Geri al' : 'Undo'}>
+                {isTR ? '↶ Geri al' : '↶ Undo'}
+              </button>
               <button type="button" onClick={onClose} style={btnPrimary}>
                 {isTR ? CLOSE.tr : CLOSE.en}
               </button>

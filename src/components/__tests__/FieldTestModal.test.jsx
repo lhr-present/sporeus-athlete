@@ -212,3 +212,86 @@ describe('FieldTestModal — close behaviour', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 })
+
+// ── v9.178.0 — optional notes + RPE + Undo ───────────────────────────────────
+
+describe('FieldTestModal — optional notes + RPE (v9.178.0)', () => {
+  it('saves notes + rpe into results entry when provided', () => {
+    reAnchorMock.mockReturnValueOnce({ ...RUN_PROGRAM, currentLevel: { vdot: 47 } })
+    render(<FieldTestModal program={RUN_PROGRAM} onClose={() => {}} />)
+    fireEvent.change(screen.getByLabelText(/VDOT/i), { target: { value: '47' } })
+    fireEvent.change(screen.getByLabelText(/RPE \(1-10\)/i), { target: { value: '8' } })
+    fireEvent.change(screen.getByLabelText(/^NOTES$/i), { target: { value: 'humid 28°C track' } })
+    fireEvent.click(screen.getByText(/Re-anchor program/))
+
+    const results = JSON.parse(localStorage.getItem('sporeus-field-test-results'))
+    expect(results[0].rpe).toBe(8)
+    expect(results[0].notes).toBe('humid 28°C track')
+  })
+
+  it('omits notes + rpe from entry when blank (entry stays minimal)', () => {
+    reAnchorMock.mockReturnValueOnce({ ...RUN_PROGRAM, currentLevel: { vdot: 47 } })
+    render(<FieldTestModal program={RUN_PROGRAM} onClose={() => {}} />)
+    fireEvent.change(screen.getByLabelText(/VDOT/i), { target: { value: '47' } })
+    fireEvent.click(screen.getByText(/Re-anchor program/))
+
+    const results = JSON.parse(localStorage.getItem('sporeus-field-test-results'))
+    expect(results[0]).not.toHaveProperty('rpe')
+    expect(results[0]).not.toHaveProperty('notes')
+  })
+
+  it('rejects out-of-range RPE values (silently dropped, entry still saves)', () => {
+    reAnchorMock.mockReturnValueOnce({ ...RUN_PROGRAM, currentLevel: { vdot: 47 } })
+    render(<FieldTestModal program={RUN_PROGRAM} onClose={() => {}} />)
+    fireEvent.change(screen.getByLabelText(/VDOT/i), { target: { value: '47' } })
+    fireEvent.change(screen.getByLabelText(/RPE \(1-10\)/i), { target: { value: '15' } })
+    fireEvent.click(screen.getByText(/Re-anchor program/))
+
+    const results = JSON.parse(localStorage.getItem('sporeus-field-test-results'))
+    expect(results[0]).not.toHaveProperty('rpe')   // 15 dropped
+    expect(results[0].field).toBe('vdot')          // entry still saved
+  })
+})
+
+describe('FieldTestModal — Undo (v9.178.0)', () => {
+  it('Undo restores the previous program and removes last results entry', () => {
+    // Pre-seed an existing program in localStorage so undo has something to restore to
+    localStorage.setItem('sporeus-eliteProgram', JSON.stringify(RUN_PROGRAM))
+
+    reAnchorMock.mockReturnValueOnce({ ...RUN_PROGRAM, currentLevel: { vdot: 47 } })
+    render(<FieldTestModal program={RUN_PROGRAM} onClose={() => {}} />)
+    fireEvent.change(screen.getByLabelText(/VDOT/i), { target: { value: '47' } })
+    fireEvent.click(screen.getByText(/Re-anchor program/))
+
+    // After submit: re-anchored program is persisted, results has 1 entry
+    expect(JSON.parse(localStorage.getItem('sporeus-eliteProgram')).currentLevel.vdot).toBe(47)
+    expect(JSON.parse(localStorage.getItem('sporeus-field-test-results')).length).toBe(1)
+
+    fireEvent.click(screen.getByText(/Undo/i))
+
+    // After undo: program restored, results emptied
+    expect(JSON.parse(localStorage.getItem('sporeus-eliteProgram')).currentLevel.vdot).toBe(45)
+    expect(JSON.parse(localStorage.getItem('sporeus-field-test-results')).length).toBe(0)
+  })
+
+  it('Undo returns to the input form (form re-shown)', () => {
+    reAnchorMock.mockReturnValueOnce({ ...RUN_PROGRAM, currentLevel: { vdot: 47 } })
+    render(<FieldTestModal program={RUN_PROGRAM} onClose={() => {}} />)
+    fireEvent.change(screen.getByLabelText(/VDOT/i), { target: { value: '47' } })
+    fireEvent.click(screen.getByText(/Re-anchor program/))
+
+    expect(screen.getByText(/Re-anchored ✓/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByText(/Undo/i))
+
+    // Submit button is back (form re-rendered)
+    expect(screen.getByText(/Re-anchor program/)).toBeInTheDocument()
+  })
+
+  it('Undo is bilingual (TR shows "Geri al")', () => {
+    reAnchorMock.mockReturnValueOnce({ ...RUN_PROGRAM, currentLevel: { vdot: 47 } })
+    render(<FieldTestModal program={RUN_PROGRAM} onClose={() => {}} lang="tr" />)
+    fireEvent.change(screen.getByLabelText(/VDOT/i), { target: { value: '47' } })
+    fireEvent.click(screen.getByText(/Programı yeniden hizala/))
+    expect(screen.getByText(/Geri al/i)).toBeInTheDocument()
+  })
+})

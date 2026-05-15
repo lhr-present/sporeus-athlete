@@ -19,6 +19,7 @@ import { eliteProgramToYearlyWeeks } from '../../lib/athlete/eliteProgramToYearl
 import { buildCalendarProgress } from '../../lib/athlete/calendarProgress.js'
 import { buildPlanMilestones } from '../../lib/athlete/planMilestones.js'
 import { buildLogEntryFromSession } from '../../lib/athlete/quickLogFromSession.js'
+import { calcLoad } from '../../lib/formulas.js'
 
 // v9.177.0 — Field-test modal triggered by 📊 milestone marker
 const FieldTestModal = lazy(() => import('../FieldTestModal.jsx'))
@@ -430,7 +431,7 @@ export default function ProgramCalendar({ program, programStart, yearlyPlan, col
         <Suspense fallback={null}>
           <FieldTestModal
             program={program}
-            profile={null}
+            profile={{ currentCTL: Math.max(20, calcLoad(log)?.ctl ?? 0) }}
             lang={lang}
             onClose={() => setFieldTestOpen(false)}
           />

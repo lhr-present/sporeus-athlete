@@ -14,6 +14,41 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.178.0 — 2026-05-17 — FieldTestModal polish — profile + notes/RPE + Undo
+
+  Three follow-ups from the v9.177.0 ship, addressing items 4 / 2 / 5
+  in the modal's known limitations:
+
+  ── #4 Profile pass-through ────────────────────────────────────────
+  `ProgramCalendar` now derives currentCTL from the training log
+  (`Math.max(20, calcLoad(log)?.ctl ?? 0)` — same pattern as
+  PlanTemplatePicker) and passes it to FieldTestModal as
+  `profile={{ currentCTL }}`. `reAnchorEliteProgram` now gets a real
+  CTL anchor instead of an empty profile (was defaulting to the
+  minimal-defaults path in the orchestrator).
+
+  ── #2 Storage shape extension ─────────────────────────────────────
+  FieldTestModal now collects optional `RPE (1-10)` + `NOTES` in a
+  collapsed `<details>` section under the main input. Both fields
+  are saved only when set (entry stays minimal for older readers).
+  RPE outside 1-10 is silently dropped — value still saves. Future
+  Field Test History card can read these without a schema migration.
+
+  ── #5 Undo button ─────────────────────────────────────────────────
+  Success state now shows `↶ Undo` next to Close. Clicking it
+  restores the previous program (captured BEFORE the re-anchor
+  overwrote `sporeus-eliteProgram`), removes the last results
+  entry, clears the inputs, and returns the form for re-entry.
+  Bilingual (en: "Undo" / tr: "Geri al").
+
+  6 new tests covering: notes+rpe-saved-when-set / omitted-when-blank /
+  out-of-range RPE silently dropped / Undo restores both program +
+  results / Undo returns to form / TR label "Geri al". Test count
+  10749 → 10755 (+6). Lint + build green.
+
+  Remaining follow-up: #1 history view (larger UI surface) gated
+  on user confirmation; #3 was informational only (no action).
+
 ## v9.177.0 — 2026-05-17 — Field-test entry modal closes the v9.5.0 ⇄ v9.8.0 ⇄ EP-3 loop
 
   The v9.5.0 field-test milestone has been rendered on ProgramCalendar
