@@ -14,6 +14,59 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.160.0 — 2026-05-16 — dragFactor + rowing zone label on session strip (Prompt F)
+
+  Final ship of the physiology-pipeline arc. Pre-fix
+  `profile.dragFactor` was the smallest user-base dead input —
+  Concept2 erg drag factor (range 80-220), collected on Profile,
+  validated with Concept2 norms in comments, consumed by ZERO
+  code. Rowers configured a value that nothing read.
+
+  - New `deriveSessionRowingTarget(session, profile)` in
+    `derivedSessionTargets.js`. Returns `{ dragFactor, zoneLabel,
+    dfNote }` for rowing sessions; null otherwise.
+  - Sport gate: `primarySport === 'rowing'` OR session type
+    matches `/row|erg/i` (catches multi-sport athletes who erg
+    on cross-training days without flipping primarySport).
+  - E13 zone → British Rowing 7-zone label mapping:
+    Z1→UT2, Z2→UT1, Z3→AT, Z4→TR, Z5→2k, Z6→AN/Sprint
+    (Paul 1969 + British Rowing intensity zones).
+  - dfNote flags out-of-norm settings: `high_df` (>150, above
+    WRIC competition cap of 140 men / 130 women), `low_df`
+    (<100, junior/novice territory).
+  - `deriveSessionTargets` extended to return `rowingTarget`
+    alongside paceTarget / powerTarget / hrTarget.
+
+  TodayView pre-session strip surfaces `DF 130 · ZONE AT` for
+  rowing sessions. Out-of-norm DF gets an inline warning chip
+  (`(above race cap)` / `(low)`). Pre-session placement chosen
+  intentionally — DF is a prescription cue (set the erg before
+  starting), not a post-session execution metric.
+
+  Out of scope for v1:
+  - Target split/500m. The British Rowing zone helper
+    (`rowingZones`) needs a 2k race-pace split as input;
+    `sanitizeProfile` doesn't yet preserve `split2kSec` even
+    though `eliteProgramStaleness` references it. Adding the
+    sanitization gap is a separate ship.
+  - Per-session split derivation from CP + DF (no rowing CP
+    field in profile yet).
+  - Rowing-specific elite programs beyond the existing
+    eliteProgram path.
+
+  Wraps the v9.156–v9.160 arc that landed all five gaps from
+  the 2026-05-15 physiology audit:
+    A — weeklyTssGoal honored          (v9.156)
+    B+C — race-date anchoring + race-relative deloads  (v9.157)
+    D — threshold → adapter duration scaling           (v9.158)
+    E — VO2max → threshold fallback                    (v9.159)
+    F — dragFactor + rowing zone label                 (v9.160)
+
+  Suite 10506 / 10506 green (+12 new tests).
+
+  Dependencies: existing `profile.dragFactor` field (validated
+  v9.51.0); E13 zone vocabulary on planned sessions.
+
 ## v9.159.0 — 2026-05-16 — VO2max → threshold fallback (Prompt E)
 
   Pre-fix `profile.vo2max` was the largest dead input found in

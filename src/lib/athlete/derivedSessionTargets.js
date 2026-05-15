@@ -124,6 +124,31 @@ function isSwimSession(session, profile) {
   return /swim|css/i.test(typeStr)
 }
 
+// v9.160.0 (Prompt F) — Rowing session detector. Sport gate first, then
+// session-type heuristic catches rowers logging in apps where primarySport
+// might be unset (e.g. multi-sport athletes who erg on cross-training days).
+function isRowingSession(session, profile) {
+  const sport = String(profile?.primarySport || '').toLowerCase()
+  if (sport.includes('row')) return true
+  const typeStr = String(session?.type || session?.intent || '').toLowerCase()
+  return /row|erg/i.test(typeStr)
+}
+
+// v9.160.0 — E13 5-zone → British Rowing 7-zone label mapping. The plan
+// generator emits Z1..Z5; the British Rowing system uses UT2/UT1/AT/TR/2k/
+// AN/Sprint (Paul 1969 + British Rowing). Map E13 zones to the most
+// representative BR zone for coaching cues. The mapping is intent-aligned,
+// not numerically equivalent — E13's Z4 ("threshold") aligns with BR's TR
+// (transition) rather than its "2k pace" (which is closer to E13 Z5).
+const E13_TO_ROWING_ZONE_LABEL = {
+  Z1: 'UT2',     // recovery / easy aerobic
+  Z2: 'UT1',     // upper aerobic
+  Z3: 'AT',      // anaerobic threshold
+  Z4: 'TR',      // transition / threshold race-pace
+  Z5: '2k',      // 2k pace / VO2max effort
+  Z6: 'AN/Sprint',
+}
+
 /**
  * Derive a pace-range string ("M:SS–M:SS/km") for the session's zone, from
  * the athlete's threshold running pace. Returns null when no threshold is
@@ -236,19 +261,63 @@ export function deriveSessionHr(session, profile) {
 }
 
 /**
+ * v9.160.0 (Prompt F) — Derive a rowing-specific coaching cue object for
+ * the session's zone. Returns `{ dragFactor, zoneLabel, dfNote }` for
+ * rowing sessions; null otherwise. Pre-fix `profile.dragFactor` was
+ * collected (Concept2 erg setting, range 80-220) and validated but had
+ * ZERO consumers — the field was orphaned. The 2026-05-15 physiology
+ * audit flagged it as the rowing-tier dead input.
+ *
+ * Scope-limited v1:
+ * - Surfaces the drag factor + intent-mapped British Rowing zone label
+ *   (UT2/UT1/AT/TR/2k/AN/Sprint) so the athlete sets the erg correctly
+ *   and knows the target intensity in rower-native vocabulary.
+ * - Does NOT compute a target split/500m. The 2k race time isn't yet
+ *   stored in the sanitized profile (eliteProgramStaleness references
+ *   `profile.split2kSec` but `sanitizeProfile` doesn't preserve it).
+ *   Adding it is a separate ship — surfacing what we have today.
+ * - Sport / type gate matches the dragFactor norms documented in
+ *   validate.js (HW men 130-140, LW 115-130, etc).
+ *
+ * @param {object} session - planned session
+ * @param {object} profile - athlete profile: { dragFactor, primarySport, ... }
+ * @returns {{ dragFactor: number|null, zoneLabel: string|null, dfNote: string|null }|null}
+ */
+export function deriveSessionRowingTarget(session, profile) {
+  if (!session || !profile) return null
+  if (!isRowingSession(session, profile)) return null
+  const dfNum = Number(profile.dragFactor)
+  const dragFactor = Number.isFinite(dfNum) && dfNum >= 80 && dfNum <= 220 ? dfNum : null
+  const zone = dominantZone(session)
+  const zoneLabel = zone ? (E13_TO_ROWING_ZONE_LABEL[zone] || null) : null
+  if (dragFactor == null && zoneLabel == null) return null
+  // Concept2 / World Rowing competition norm note. The DF norms come from
+  // validate.js's existing dragFactor sanity range; this surfaces a hint
+  // when an athlete's setting falls outside typical training windows.
+  let dfNote = null
+  if (dragFactor != null) {
+    if (dragFactor < 100)      dfNote = 'low_df'      // junior / novice territory
+    else if (dragFactor > 150) dfNote = 'high_df'     // above WRIC competition cap (140 men / 130 women)
+  }
+  return { dragFactor, zoneLabel, dfNote }
+}
+
+/**
  * One-call convenience that picks pace OR power depending on sport.
- * Returns { paceTarget, powerTarget, hrTarget }. At most one of paceTarget /
- * powerTarget will be non-null; hrTarget can coexist with paceTarget for
- * running sessions.
+ * Returns { paceTarget, powerTarget, hrTarget, rowingTarget }. At most one of
+ * paceTarget / powerTarget will be non-null; hrTarget can coexist with
+ * paceTarget for running sessions; rowingTarget is non-null only for rowing.
  * v9.98.0: paceTarget covers BOTH run-pace and swim-pace (the suffix —
  * "/km" implicit for run, "/100m" explicit for swim — disambiguates).
  * v9.155.0: hrTarget added so the v9.153 EXECUTION HR-delta block actually
  * has data to compare against.
+ * v9.160.0: rowingTarget added so dragFactor is no longer a dead input.
  */
 export function deriveSessionTargets(session, profile) {
   return {
-    paceTarget:  deriveSessionPace(session, profile) || deriveSessionSwimPace(session, profile),
-    powerTarget: deriveSessionPower(session, profile),
-    hrTarget:    deriveSessionHr(session, profile),
+    paceTarget:    deriveSessionPace(session, profile) || deriveSessionSwimPace(session, profile),
+    powerTarget:   deriveSessionPower(session, profile),
+    hrTarget:      deriveSessionHr(session, profile),
+    rowingTarget:  deriveSessionRowingTarget(session, profile),
   }
 }

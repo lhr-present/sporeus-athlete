@@ -2053,7 +2053,8 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
               const derived       = deriveSessionTargets(plannedSession, profile)
               const paceDisplay   = plannedSession.paceTarget || derived.paceTarget
               const powerDisplay  = derived.powerTarget
-              const hasPaceField  = paceDisplay || plannedSession.hrTarget || powerDisplay
+              const rowing        = derived.rowingTarget  // v9.160.0 (Prompt F)
+              const hasPaceField  = paceDisplay || plannedSession.hrTarget || powerDisplay || rowing
               const hasZoneField  = plannedSession.zones && Object.values(plannedSession.zones).some(v => v > 0)
               if (!hasPaceField && !hasZoneField) return null
               return (
@@ -2088,6 +2089,38 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
                   <span>
                     <span style={{ color: '#666' }}>KA · </span>
                     <span style={{ color: '#ff6600', fontWeight: 700 }}>{plannedSession.hrTarget}</span>
+                  </span>
+                )}
+                {/* v9.160.0 (Prompt F) — Rowing-specific cue: dragFactor +
+                    British Rowing zone label. dfNote flags out-of-norm DF
+                    settings (low_df = junior/novice; high_df = above WRIC
+                    competition cap). Pre-fix profile.dragFactor was a
+                    dead input despite being collected + validated. */}
+                {rowing && (rowing.dragFactor != null || rowing.zoneLabel) && (
+                  <span>
+                    {rowing.dragFactor != null && (
+                      <>
+                        <span style={{ color: '#666' }}>DF · </span>
+                        <span style={{ color: '#ff6600', fontWeight: 700 }}>{rowing.dragFactor}</span>
+                        {rowing.dfNote === 'high_df' && (
+                          <span style={{ color: '#f5c542', fontSize: '8px', marginLeft: '4px' }}>
+                            {lang === 'tr' ? '(yarış sınırı üstü)' : '(above race cap)'}
+                          </span>
+                        )}
+                        {rowing.dfNote === 'low_df' && (
+                          <span style={{ color: '#888', fontSize: '8px', marginLeft: '4px' }}>
+                            {lang === 'tr' ? '(düşük)' : '(low)'}
+                          </span>
+                        )}
+                      </>
+                    )}
+                    {rowing.zoneLabel && (
+                      <>
+                        {rowing.dragFactor != null && <span style={{ color: '#444' }}> · </span>}
+                        <span style={{ color: '#666' }}>{lang === 'tr' ? 'BÖLGE' : 'ZONE'} · </span>
+                        <span style={{ color: '#ff6600', fontWeight: 700 }}>{rowing.zoneLabel}</span>
+                      </>
+                    )}
                   </span>
                 )}
                 {hasZoneField && (

@@ -363,3 +363,119 @@ describe('deriveSessionPace — thresholdDerived fallback', () => {
     )).toBeNull()
   })
 })
+
+// v9.160.0 (Prompt F) — rowing dragFactor + zone label
+import { deriveSessionRowingTarget } from '../../athlete/derivedSessionTargets.js'
+
+describe('deriveSessionRowingTarget', () => {
+  it('returns null for non-rowing sports', () => {
+    expect(deriveSessionRowingTarget(
+      { zone: 'Z3', type: 'Tempo run' },
+      { dragFactor: 130, primarySport: 'Running' },
+    )).toBeNull()
+    expect(deriveSessionRowingTarget(
+      { zone: 'Z3', type: 'FTP intervals' },
+      { dragFactor: 130, primarySport: 'Cycling' },
+    )).toBeNull()
+  })
+
+  it('detects rowing via primarySport', () => {
+    const out = deriveSessionRowingTarget(
+      { zone: 'Z3', type: 'Aerobic' },
+      { dragFactor: 130, primarySport: 'Rowing' },
+    )
+    expect(out).not.toBeNull()
+    expect(out.dragFactor).toBe(130)
+    expect(out.zoneLabel).toBe('AT')
+  })
+
+  it('detects rowing via session type (erg keyword)', () => {
+    const out = deriveSessionRowingTarget(
+      { zone: 'Z4', type: 'Erg threshold' },
+      { dragFactor: 130 },
+    )
+    expect(out).not.toBeNull()
+    expect(out.zoneLabel).toBe('TR')
+  })
+
+  it('maps E13 zones to British Rowing labels', () => {
+    const sess = (z) => ({ zone: z, type: 'Erg' })
+    const prof = { dragFactor: 130 }
+    expect(deriveSessionRowingTarget(sess('Z1'), prof).zoneLabel).toBe('UT2')
+    expect(deriveSessionRowingTarget(sess('Z2'), prof).zoneLabel).toBe('UT1')
+    expect(deriveSessionRowingTarget(sess('Z3'), prof).zoneLabel).toBe('AT')
+    expect(deriveSessionRowingTarget(sess('Z4'), prof).zoneLabel).toBe('TR')
+    expect(deriveSessionRowingTarget(sess('Z5'), prof).zoneLabel).toBe('2k')
+  })
+
+  it('omits dragFactor when outside the validated 80-220 range', () => {
+    const sess = { zone: 'Z3', type: 'Erg' }
+    expect(deriveSessionRowingTarget(sess, { dragFactor: 50 }).dragFactor).toBeNull()
+    expect(deriveSessionRowingTarget(sess, { dragFactor: 250 }).dragFactor).toBeNull()
+    expect(deriveSessionRowingTarget(sess, { dragFactor: 'foo' }).dragFactor).toBeNull()
+  })
+
+  it('flags dfNote = high_df above WRIC cap (>150)', () => {
+    const out = deriveSessionRowingTarget(
+      { zone: 'Z3', type: 'Erg' },
+      { dragFactor: 160 },
+    )
+    expect(out.dfNote).toBe('high_df')
+  })
+
+  it('flags dfNote = low_df below junior threshold (<100)', () => {
+    const out = deriveSessionRowingTarget(
+      { zone: 'Z3', type: 'Erg' },
+      { dragFactor: 90 },
+    )
+    expect(out.dfNote).toBe('low_df')
+  })
+
+  it('dfNote null for typical training range (100-150)', () => {
+    const out = deriveSessionRowingTarget(
+      { zone: 'Z3', type: 'Erg' },
+      { dragFactor: 130 },
+    )
+    expect(out.dfNote).toBeNull()
+  })
+
+  it('returns null when neither dragFactor nor zoneLabel can be derived', () => {
+    // Rowing session detected, but no DF + unparseable zone
+    const out = deriveSessionRowingTarget(
+      { zone: 'Z9', type: 'Erg' },
+      { dragFactor: 50, primarySport: 'Rowing' },  // both invalid
+    )
+    expect(out).toBeNull()
+  })
+
+  it('returns object with zoneLabel only when dragFactor is absent', () => {
+    const out = deriveSessionRowingTarget(
+      { zone: 'Z2', type: 'Erg' },
+      { primarySport: 'Rowing' },
+    )
+    expect(out).not.toBeNull()
+    expect(out.dragFactor).toBeNull()
+    expect(out.zoneLabel).toBe('UT1')
+    expect(out.dfNote).toBeNull()
+  })
+})
+
+// rowingTarget integration on the combined deriveSessionTargets
+describe('deriveSessionTargets — rowingTarget integration', () => {
+  it('exposes rowingTarget for rowing sessions', () => {
+    const out = deriveSessionTargets(
+      { zone: 'Z3', type: 'Erg AT' },
+      { dragFactor: 130, primarySport: 'Rowing' },
+    )
+    expect(out.rowingTarget).not.toBeNull()
+    expect(out.rowingTarget.dragFactor).toBe(130)
+  })
+
+  it('rowingTarget null for non-rowing sports', () => {
+    const out = deriveSessionTargets(
+      { zone: 'Z3', type: 'Threshold' },
+      { dragFactor: 130, threshold: '4:30', primarySport: 'Running' },
+    )
+    expect(out.rowingTarget).toBeNull()
+  })
+})
