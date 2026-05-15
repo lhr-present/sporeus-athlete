@@ -147,20 +147,51 @@ export function initiateStravaOAuth() {
   return { ok: true }
 }
 
-// Exchange authorization code for tokens via Supabase edge function
-export async function exchangeStravaCode(code) {
-  const { data, error } = await supabase.functions.invoke('strava-oauth', {
-    body: { action: 'connect', code, redirectUri: getRedirectUri() },
-  })
-  if (error) {
-    try {
-      const text = await error.context?.text?.()
-      return { data: null, error: { message: text || error.message } }
-    } catch {
-      return { data: null, error: { message: error.message } }
-    }
+// Exchange authorization code for tokens via Supabase edge function.
+//
+// v9.173.0 — Transient-failure retry (was: manual retry only).
+// Strava authorization codes are single-use + 5-min expiry, so 4xx errors
+// MUST NOT be retried (Strava returns invalid_grant on second use). We
+// retry only on:
+//   - network errors (no error.context, i.e. invoke threw before reaching the function)
+//   - 5xx responses from the edge function (transient server / DB / Strava-side issue)
+// Backoff: 250ms then 750ms (small jitter). Max 3 total attempts.
+const EXCHANGE_MAX_ATTEMPTS = 3
+const EXCHANGE_BACKOFF_MS = [250, 750]
+
+function isRetryableInvokeError(error) {
+  if (!error) return false
+  const status = error?.context?.status
+  if (typeof status !== 'number') return true  // network / pre-flight: retry
+  return status >= 500                          // 5xx: retry; 4xx: do not
+}
+
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms + Math.floor(Math.random() * 50)))
+}
+
+export async function exchangeStravaCode(code, options = {}) {
+  const maxAttempts = options.maxAttempts ?? EXCHANGE_MAX_ATTEMPTS
+  let lastErr = null
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const { data, error } = await supabase.functions.invoke('strava-oauth', {
+      body: { action: 'connect', code, redirectUri: getRedirectUri() },
+    })
+    if (!error) return { data, error: null }
+    lastErr = error
+
+    if (!isRetryableInvokeError(error) || attempt >= maxAttempts) break
+    const backoff = EXCHANGE_BACKOFF_MS[attempt - 1] ?? EXCHANGE_BACKOFF_MS[EXCHANGE_BACKOFF_MS.length - 1]
+    await sleep(backoff)
   }
-  return { data, error }
+
+  try {
+    const text = await lastErr.context?.text?.()
+    return { data: null, error: { message: text || lastErr.message } }
+  } catch {
+    return { data: null, error: { message: lastErr?.message || 'Unknown error' } }
+  }
 }
 
 // Module-level mutex — prevents concurrent sync calls from hitting the edge function twice.

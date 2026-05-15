@@ -14,6 +14,36 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.173.0 — 2026-05-16 — Strava OAuth transient-failure retry
+
+  Per the 2026-05-16 audit of CLAUDE.md "Known Limitations" against
+  current code: claim 1 — "Strava OAuth: code is single-use + 5-min
+  expiry; if edge function crashes, user must retry" — was verified
+  accurate. This entry was solvable: the 5-min code-expiry is a Strava
+  platform constraint we can't lift, but the "manual retry on edge
+  function crash" half was a missing retry wrapper.
+
+  `exchangeStravaCode(code)` in src/lib/strava.js now retries
+  automatically on TRANSIENT failures with exponential backoff:
+    - Up to 3 attempts total (configurable via options.maxAttempts)
+    - Retry on network error (no error.context) — invoke threw before
+      reaching the function
+    - Retry on 5xx — server / DB / Strava-side transient issue
+    - DO NOT retry on 4xx — Strava authorization codes are SINGLE-USE,
+      so a 400 (invalid_grant) is permanent. Retrying would burn the
+      retry budget on a guaranteed-fail call.
+    - Backoff: 250ms → 750ms with small ±50ms jitter
+
+  6 new tests cover: first-attempt success path / 4xx no-retry /
+  5xx retry-then-success / network error retry / persistent-5xx
+  give-up / custom maxAttempts=1. Test count 10702 → 10708 (+6).
+
+  Limitation 1 now removed from CLAUDE.md "Known Limitations" section
+  in a follow-up commit (the remaining 3 verified-accurate items stay).
+
+  Citations: standard exponential-backoff with jitter (AWS retry guide).
+  Single-use code constraint per Strava OAuth 2.0 docs.
+
 ## v9.172.0 — 2026-05-16 — Race-type + pack strategy (EP-12)
 
   `buildEliteProgram` knows distance and sport but treated every race as

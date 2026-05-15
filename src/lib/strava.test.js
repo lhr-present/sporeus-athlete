@@ -1,7 +1,8 @@
+// @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   importStravaActivities, deduplicateByStravaId, decodePolyline,
-  getStravaConnection, disconnectStrava,
+  getStravaConnection, disconnectStrava, exchangeStravaCode,
 } from './strava.js'
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
@@ -258,5 +259,67 @@ describe('disconnectStrava', () => {
     const { data, error } = await disconnectStrava()
     expect(data).toEqual({ ok: true })
     expect(error).toBeNull()
+  })
+})
+
+// ── exchangeStravaCode — v9.173.0 retry behaviour ─────────────────────────────
+describe('exchangeStravaCode', () => {
+  it('returns success on first attempt without retry', async () => {
+    supabase.functions.invoke.mockResolvedValueOnce({ data: { athlete: 'x' }, error: null })
+    const { data, error } = await exchangeStravaCode('CODE123')
+    expect(error).toBeNull()
+    expect(data).toEqual({ athlete: 'x' })
+    expect(supabase.functions.invoke).toHaveBeenCalledTimes(1)
+  })
+
+  it('does NOT retry on 4xx (invalid_grant — code single-use)', async () => {
+    supabase.functions.invoke.mockResolvedValue({
+      data: null,
+      error: { message: 'bad request', context: { status: 400, text: async () => 'invalid_grant' } },
+    })
+    const { data, error } = await exchangeStravaCode('EXPIRED')
+    expect(data).toBeNull()
+    expect(error.message).toMatch(/invalid_grant|bad request/)
+    expect(supabase.functions.invoke).toHaveBeenCalledTimes(1) // no retry
+  })
+
+  it('retries on 5xx and succeeds on second attempt', async () => {
+    supabase.functions.invoke
+      .mockResolvedValueOnce({ data: null, error: { message: 'server error', context: { status: 503, text: async () => 'unavailable' } } })
+      .mockResolvedValueOnce({ data: { athlete: 'ok' }, error: null })
+    const { data, error } = await exchangeStravaCode('CODE', { maxAttempts: 3 })
+    expect(error).toBeNull()
+    expect(data).toEqual({ athlete: 'ok' })
+    expect(supabase.functions.invoke).toHaveBeenCalledTimes(2)
+  })
+
+  it('retries on network error (no context) and succeeds', async () => {
+    supabase.functions.invoke
+      .mockResolvedValueOnce({ data: null, error: { message: 'network failure' } })
+      .mockResolvedValueOnce({ data: { athlete: 'ok' }, error: null })
+    const { data, error } = await exchangeStravaCode('CODE', { maxAttempts: 3 })
+    expect(error).toBeNull()
+    expect(data).toEqual({ athlete: 'ok' })
+    expect(supabase.functions.invoke).toHaveBeenCalledTimes(2)
+  })
+
+  it('gives up after maxAttempts retries on persistent 5xx', async () => {
+    supabase.functions.invoke.mockResolvedValue({
+      data: null,
+      error: { message: 'server down', context: { status: 502, text: async () => 'bad gateway' } },
+    })
+    const { data, error } = await exchangeStravaCode('CODE', { maxAttempts: 2 })
+    expect(data).toBeNull()
+    expect(error.message).toMatch(/bad gateway|server down/)
+    expect(supabase.functions.invoke).toHaveBeenCalledTimes(2)
+  })
+
+  it('respects custom maxAttempts=1 (no retry)', async () => {
+    supabase.functions.invoke.mockResolvedValue({
+      data: null,
+      error: { message: 'transient', context: { status: 503, text: async () => 'oops' } },
+    })
+    await exchangeStravaCode('CODE', { maxAttempts: 1 })
+    expect(supabase.functions.invoke).toHaveBeenCalledTimes(1)
   })
 })

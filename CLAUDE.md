@@ -155,7 +155,7 @@ const hasTriData = useMemo(() =>
 - Manual step done: `coachLevelOverride TEXT` column added to `coach_athletes`
 
 ## Known Limitations
-- Strava OAuth: code is single-use + 5-min expiry; if edge function crashes, user must retry
+- Strava OAuth: code is single-use + 5-min expiry (platform constraint). Transient 5xx / network failures retried automatically up to 3× with backoff (v9.173.0); 4xx errors are permanent (single-use code).
 - W' exhaustion check requires CP + W' saved in profile (from Protocols → CP Test)
 - Push notifications: iOS requires iOS 16.4+ and PWA installed to home screen
 - Guest mode: all data in localStorage — lost on browser clear; nudge fires after 30d or 50 sessions
