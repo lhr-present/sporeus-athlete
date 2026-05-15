@@ -14,6 +14,53 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.168.0 — 2026-05-16 — Full elite plan export — CSV + JSON (EP-8)
+
+  The existing `eliteProgramToCSV` emits ONLY the daily grid (one row
+  per phase × week × day). The program object holds far more: weekly
+  TSS targets, strength plan per phase, drill library, key sessions,
+  physiology gap insight, feasibility, cohort, distance category.
+  Coaches importing into spreadsheets and athletes archiving / sharing
+  full plans lost everything outside the daily grid.
+
+  Adds two new exports to `src/lib/athlete/eliteProgramExport.js`:
+
+    - `eliteProgramToFullCSV(program)` — multi-section CSV with six
+      blank-line-separated blocks (each prefixed by `# SECTION`):
+        # META               sport / raceDate / distanceCategory /
+                             cohort / weeksAvailable / weeksNeeded /
+                             weeklyTssGoalApplied / feasibilityWarning /
+                             currentLevel (JSON) / targetLevel (JSON)
+        # WEEKLY_TSS         week / phase / tss per planned week
+        # DAILY_GRID         legacy CSV header + rows (unchanged)
+        # STRENGTH           phase / section (prehab|movements|core) /
+                             name / sets / reps / intensity / notes
+        # DRILLS             phase / key / EN+TR name / structure /
+                             frequency / citation
+        # PHYSIOLOGY_GAP     metric / current / target / gap /
+                             verdict / EN+TR note (EP-6 insight)
+
+    - `eliteProgramToJSON(program)` — stable, versioned envelope
+      `{ exportVersion, exportedAt, program, physiologyGap }`.
+      Round-trippable — JSON.parse + structural validation works.
+
+  Plus browser-only download helpers `downloadEliteProgramFullCSV`
+  and `downloadEliteProgramJSON`. The legacy `eliteProgramToCSV` +
+  `downloadEliteProgramCSV` are unchanged — all 33 existing tests
+  still pin the daily-grid format.
+
+  Tests assert all six section headers appear in order; META has
+  sport/raceDate/distanceCategory/cohort; WEEKLY_TSS row count matches
+  program.weeklyTSS length; STRENGTH has prehab+movements+core
+  per phase; DRILLS has drill keys; PHYSIOLOGY_GAP has correct metric
+  for run (VDOT) and bike (FTP); JSON envelope parses cleanly and
+  contains program + physiology gap.
+
+  Test count: 10593 → 10607 (+14).
+
+  Depends on: src/lib/athlete/eliteProgram.js,
+              src/lib/athlete/physiologyGapInsight.js.
+
 ## v9.167.0 — 2026-05-16 — Drill + strength substitutes (EP-7)
 
   The canonical drill library (eliteProgramDrills.js, 20 drills) and
