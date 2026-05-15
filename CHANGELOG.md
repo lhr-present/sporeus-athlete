@@ -14,6 +14,46 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.167.0 — 2026-05-16 — Drill + strength substitutes (EP-7)
+
+  The canonical drill library (eliteProgramDrills.js, 20 drills) and
+  strength library (eliteProgramStrength.js, ~50 movements) specify
+  gold-standard prescriptions assuming track / hill / pool / road /
+  barbell-gym access. eliteProgramSubstitutions.js already covered
+  SESSION-INTENT swaps (Easy/Tempo/Threshold/VO2/Long indoor / cross-
+  train / injured / weather / missed-makeup), but the drill-by-drill
+  and strength-movement-by-strength-movement layer was missing —
+  athletes on travel or in a hotel room had no fallback for the
+  A-skip / fingertip-drag / box-jump / barbell-deadlift prescriptions
+  the canonical libraries hand them.
+
+  Adds `src/lib/athlete/eliteProgramDrillStrengthSubs.js` with three
+  exports:
+    - `getDrillSubstitute(drillKey, constraint)` — exhaustive map for
+      all 20 drill keys × { noEquipment, noFacility, injured }, EN+TR.
+    - `getStrengthSubstitute(movementName, constraint)` — classifies
+      the movement into one of 7 patterns (squat / hinge / singleLeg /
+      verticalPull / horizontalPull / push / plyo) via name regex,
+      then returns the pattern-specific substitute. New movements get
+      substitutes for free as long as their name matches a pattern.
+    - `buildDrillStrengthSubstitutionMap({ sport, phases })` — resolves
+      substitutes for every drill + main strength movement in a built
+      program, returns a per-phase map.
+
+  Tests assert: every drill across run/bike/swim/rowing/triathlon has
+  all 3 substitute axes resolved; every main strength movement across
+  run/bike/swim/rowing × Base/Build/Peak phases (excluding the
+  intentionally-untagged calf raise) classifies into a pattern and
+  resolves substitutes for noEquipment/noGym/injured.
+
+  Test count: 10580 → 10593 (+13).
+
+  Citations: Suchomel 2018 (movement-pattern taxonomy); Schoenfeld 2010;
+  Mujika 2010; Verstegen 2014 (travel + bodyweight fallbacks).
+
+  Depends on: src/lib/athlete/eliteProgramDrills.js,
+              src/lib/athlete/eliteProgramStrength.js.
+
 ## v9.166.0 — 2026-05-16 — Triathlon daily-balance rules (EP-11)
 
   `triSampleWeek` in eliteProgram.js hand-curates 4 phase weeks for
