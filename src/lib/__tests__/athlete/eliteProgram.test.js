@@ -1,6 +1,11 @@
 // src/lib/__tests__/athlete/eliteProgram.test.js
 import { describe, it, expect } from 'vitest'
-import { buildEliteProgram, PHASE_FOCUS } from '../../athlete/eliteProgram.js'
+import {
+  buildEliteProgram,
+  PHASE_FOCUS,
+  inferDistanceCategory,
+  DISTANCE_PHASE_MULTIPLIERS,
+} from '../../athlete/eliteProgram.js'
 
 const TODAY = '2026-05-04'
 
@@ -2745,5 +2750,211 @@ describe('v9.37.0 — Base polarization Z3+ ≤5% (Seiler 2010, Daniels 2014, No
     const base = r?.sampleWeeks?.Base
     expect(base).toBeTruthy()
     expect(baseZ3PlusPct(base)).toBeLessThanOrEqual(5)
+  })
+})
+
+// v9.161.0 (EP-1) — Distance-specific phase routing
+describe('inferDistanceCategory', () => {
+  it('classifies running distances', () => {
+    expect(inferDistanceCategory('run', 5000)).toBe('5K')
+    expect(inferDistanceCategory('run', 10000)).toBe('10K')
+    expect(inferDistanceCategory('run', 21097)).toBe('HM')
+    expect(inferDistanceCategory('run', 42195)).toBe('Marathon')
+    expect(inferDistanceCategory('run', 50000)).toBe('Ultra')
+  })
+
+  it('classifies swimming distances', () => {
+    expect(inferDistanceCategory('swim', 100)).toBe('Sprint')
+    expect(inferDistanceCategory('swim', 200)).toBe('Sprint')
+    expect(inferDistanceCategory('swim', 400)).toBe('Mid')
+    expect(inferDistanceCategory('swim', 800)).toBe('Mid')
+    expect(inferDistanceCategory('swim', 1500)).toBe('Distance')
+    expect(inferDistanceCategory('swim', 10000)).toBe('Distance')
+  })
+
+  it('classifies triathlon distances by total', () => {
+    expect(inferDistanceCategory('triathlon', 25750)).toBe('Sprint')
+    expect(inferDistanceCategory('triathlon', 51500)).toBe('Olympic')
+    expect(inferDistanceCategory('triathlon', 113000)).toBe('70.3')
+    expect(inferDistanceCategory('triathlon', 226000)).toBe('IM')
+  })
+
+  it('cycling: direct-FTP sentinel maps to TT', () => {
+    expect(inferDistanceCategory('bike', 0)).toBe('TT')
+    expect(inferDistanceCategory('bike', null)).toBe('TT')
+    expect(inferDistanceCategory('bike', 40000)).toBe('TT')
+    expect(inferDistanceCategory('bike', 100000)).toBe('RoadRace')
+    expect(inferDistanceCategory('bike', 250000)).toBe('GranFondo')
+  })
+
+  it('rowing: zero or missing distance maps to Erg', () => {
+    expect(inferDistanceCategory('rowing', 0)).toBe('Erg')
+    expect(inferDistanceCategory('rowing', 2000)).toBe('2k')
+    expect(inferDistanceCategory('rowing', 5000)).toBe('5k')
+  })
+
+  it('returns null for unknown sport', () => {
+    expect(inferDistanceCategory('walking', 5000)).toBeNull()
+    expect(inferDistanceCategory('', 5000)).toBeNull()
+  })
+
+  it('returns null for missing/invalid distance on running', () => {
+    expect(inferDistanceCategory('run', null)).toBeNull()
+    expect(inferDistanceCategory('run', 0)).toBeNull()
+    expect(inferDistanceCategory('run', -100)).toBeNull()
+  })
+})
+
+describe('DISTANCE_PHASE_MULTIPLIERS', () => {
+  it('exposes multipliers for every supported sport', () => {
+    for (const s of ['run', 'swim', 'triathlon', 'bike', 'rowing']) {
+      expect(DISTANCE_PHASE_MULTIPLIERS[s]).toBeTruthy()
+    }
+  })
+
+  it('5K Peak multiplier > Marathon Peak multiplier (5K emphasizes peak)', () => {
+    expect(DISTANCE_PHASE_MULTIPLIERS.run['5K'].Peak)
+      .toBeGreaterThan(DISTANCE_PHASE_MULTIPLIERS.run.Marathon.Peak)
+  })
+
+  it('Marathon Base multiplier > 5K Base multiplier (Marathon emphasizes base)', () => {
+    expect(DISTANCE_PHASE_MULTIPLIERS.run.Marathon.Base)
+      .toBeGreaterThan(DISTANCE_PHASE_MULTIPLIERS.run['5K'].Base)
+  })
+})
+
+describe('buildEliteProgram — distance-aware phase split', () => {
+  function runProgram(extra = {}) {
+    return buildEliteProgram({
+      sport: 'run',
+      raceDate: '2026-11-01',  // ~26 weeks out from 2026-05-04 TODAY
+      currentPR: { distanceM: 10000, timeSec: 3000 },
+      targetPR:  { distanceM: 10000, timeSec: 2820 },
+      ...extra,
+      options: { today: TODAY, ...(extra.options || {}) },
+    })
+  }
+  const phaseLen = (p, name) => p.phases.find(x => x.phase === name)?.weeks.length || 0
+
+  it('surfaces distanceCategory on the returned program', () => {
+    const r = buildEliteProgram({
+      sport: 'run',
+      raceDate: '2026-11-01',
+      currentPR: { distanceM: 42195, timeSec: 13500 },  // Marathon 3:45
+      targetPR:  { distanceM: 42195, timeSec: 12600 },
+      options: { today: TODAY },
+    })
+    expect(r.distanceCategory).toBe('Marathon')
+  })
+
+  it('Marathon plan has more Base weeks than 5K plan at equal total', () => {
+    const marathon = runProgram({
+      currentPR: { distanceM: 42195, timeSec: 13500 },
+      targetPR:  { distanceM: 42195, timeSec: 12600 },
+    })
+    const fiveK = runProgram({
+      currentPR: { distanceM: 5000, timeSec: 1380 },
+      targetPR:  { distanceM: 5000, timeSec: 1260 },
+    })
+    expect(marathon.distanceCategory).toBe('Marathon')
+    expect(fiveK.distanceCategory).toBe('5K')
+    expect(phaseLen(marathon, 'Base')).toBeGreaterThan(phaseLen(fiveK, 'Base'))
+  })
+
+  it('5K plan has more Peak weeks than Marathon plan at equal total', () => {
+    const marathon = runProgram({
+      currentPR: { distanceM: 42195, timeSec: 13500 },
+      targetPR:  { distanceM: 42195, timeSec: 12600 },
+    })
+    const fiveK = runProgram({
+      currentPR: { distanceM: 5000, timeSec: 1380 },
+      targetPR:  { distanceM: 5000, timeSec: 1260 },
+    })
+    expect(phaseLen(fiveK, 'Peak')).toBeGreaterThan(phaseLen(marathon, 'Peak'))
+  })
+
+  it('preserves Taper week count (distance shouldn\'t change race-day freshness)', () => {
+    const marathon = runProgram({
+      currentPR: { distanceM: 42195, timeSec: 13500 },
+      targetPR:  { distanceM: 42195, timeSec: 12600 },
+    })
+    const fiveK = runProgram({
+      currentPR: { distanceM: 5000, timeSec: 1380 },
+      targetPR:  { distanceM: 5000, timeSec: 1260 },
+    })
+    expect(phaseLen(marathon, 'Taper')).toBe(phaseLen(fiveK, 'Taper'))
+  })
+
+  it('explicit distanceCategory overrides inference', () => {
+    const overridden = runProgram({
+      currentPR: { distanceM: 5000, timeSec: 1380 },
+      targetPR:  { distanceM: 5000, timeSec: 1260 },
+      distanceCategory: 'Marathon',  // pretend it's a marathon
+    })
+    expect(overridden.distanceCategory).toBe('Marathon')
+    // Should have Marathon-style base-heavy split, not 5K's peak-heavy
+    const r5K = runProgram({
+      currentPR: { distanceM: 5000, timeSec: 1380 },
+      targetPR:  { distanceM: 5000, timeSec: 1260 },
+    })
+    expect(phaseLen(overridden, 'Base')).toBeGreaterThan(phaseLen(r5K, 'Base'))
+  })
+
+  it('total weeks preserved regardless of distance category', () => {
+    const marathon = runProgram({
+      currentPR: { distanceM: 42195, timeSec: 13500 },
+      targetPR:  { distanceM: 42195, timeSec: 12600 },
+    })
+    const fiveK = runProgram({
+      currentPR: { distanceM: 5000, timeSec: 1380 },
+      targetPR:  { distanceM: 5000, timeSec: 1260 },
+    })
+    const totalM = marathon.phases.reduce((s, p) => s + p.weeks.length, 0)
+    const total5 = fiveK.phases.reduce((s, p) => s + p.weeks.length, 0)
+    expect(totalM).toBe(total5)
+  })
+
+  it('short plans (<8 weeks) fall back to generic split', () => {
+    // 6 weeks out from TODAY
+    const short = runProgram({
+      raceDate: '2026-06-15',
+      currentPR: { distanceM: 5000, timeSec: 1380 },
+      targetPR:  { distanceM: 5000, timeSec: 1320 },
+    })
+    // Should still produce a valid plan; the distance category is set
+    // but the redistribution is skipped (too short to meaningfully shift)
+    expect(short.distanceCategory).toBe('5K')
+    expect(short.phases.length).toBeGreaterThan(0)
+  })
+
+  it('cycling direct-FTP (distanceM=0) infers TT category', () => {
+    const r = buildEliteProgram({
+      sport: 'bike',
+      raceDate: '2026-11-01',
+      currentPR: { distanceM: 0, timeSec: 250 },  // 250W FTP
+      targetPR:  { distanceM: 0, timeSec: 280 },
+      options: { today: TODAY },
+    })
+    expect(r.distanceCategory).toBe('TT')
+  })
+
+  it('70.3 triathlon emphasizes Base over Sprint triathlon', () => {
+    const sprint = buildEliteProgram({
+      sport: 'triathlon',
+      raceDate: '2026-11-01',
+      currentPR: { distanceM: 25750, timeSec: 5400 },
+      targetPR:  { distanceM: 25750, timeSec: 5100 },
+      options: { today: TODAY },
+    })
+    const ironman703 = buildEliteProgram({
+      sport: 'triathlon',
+      raceDate: '2026-11-01',
+      currentPR: { distanceM: 113000, timeSec: 19800 },
+      targetPR:  { distanceM: 113000, timeSec: 18600 },
+      options: { today: TODAY },
+    })
+    expect(sprint.distanceCategory).toBe('Sprint')
+    expect(ironman703.distanceCategory).toBe('70.3')
+    expect(phaseLen(ironman703, 'Base')).toBeGreaterThan(phaseLen(sprint, 'Base'))
   })
 })

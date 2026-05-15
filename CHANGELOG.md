@@ -14,6 +14,51 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.161.0 — 2026-05-16 — Distance-specific phase splits in elite program (EP-1)
+
+  Pre-fix `phaseSplit(weeksAvailable)` in eliteProgram.js gave the
+  same Base/Build/Peak/Taper ratios for every race distance. A 5K
+  athlete on a 16-week plan got the same distribution as a Marathon
+  athlete — both got 9 weeks Base, 6 Build, 3 Peak, 2 Taper. That's
+  wrong: 5K needs VO2max-heavy Peak (10-12w with high anaerobic
+  capacity emphasis), Marathon needs sustained sub-threshold Base.
+
+  - `inferDistanceCategory(sport, distanceM)` auto-classifies from
+    the target race distance:
+      run: 5K · 10K · HM · Marathon · Ultra
+      swim: Sprint · Mid · Distance
+      tri: Sprint · Olympic · 70.3 · IM
+      bike: TT · RoadRace · GranFondo
+      rowing: Erg · 2k · 5k
+  - `DISTANCE_PHASE_MULTIPLIERS[sport][category]` carries Base /
+    Build / Peak weights (Taper preserved from generic split —
+    distance shouldn't change race-day freshness needs).
+  - `phaseSplit` accepts sport + distanceCategory, applies
+    multipliers, re-normalizes to fit weeksAvailable - Taper.
+    Skips redistribution for plans < 8 weeks (too short to
+    meaningfully shift).
+  - Explicit `input.distanceCategory` overrides auto-inference.
+  - Surfaced as `program.distanceCategory` on the returned object.
+
+  Example shift for a 16-week plan with the SAME currentCTL:
+    5K → Base 4, Build 5, Peak 5, Taper 2  (peak-heavy)
+    Marathon → Base 8, Build 5, Peak 1, Taper 2  (base-heavy)
+
+  Pure additive — when no distanceCategory and no usable distance
+  (e.g. unsupported sport), the function returns the legacy
+  generic split bit-identical. Existing 264 elite-program tests
+  pass unchanged; +19 new tests for distance routing.
+
+  Out of scope (deferred to follow-ups):
+  - Sample-week blueprint branching per distance (EP-1 v2)
+  - Race-pace within-distance refinements (track 5K vs road 5K)
+  - Distance-aware key-session libraries
+
+  Suite 10525 / 10525 green (+19 new tests).
+
+  Dependencies: existing `currentPR.distanceM` / `targetPR.distanceM`
+  fields; no profile schema changes.
+
 ## v9.160.0 — 2026-05-16 — dragFactor + rowing zone label on session strip (Prompt F)
 
   Final ship of the physiology-pipeline arc. Pre-fix

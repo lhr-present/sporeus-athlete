@@ -295,7 +295,9 @@ const BAND_NOTES = {
 }
 
 // ── Phase split per total available weeks ────────────────────────────────────
-function phaseSplit(weeksAvailable) {
+// Generic split — distance-agnostic. v9.161.0 (EP-1) wraps this with
+// distance-specific redistribution.
+function genericPhaseSplit(weeksAvailable) {
   if (weeksAvailable <= 0) {
     return { Base: 0, Build: 0, Peak: 0, Taper: 0 }
   }
@@ -321,6 +323,131 @@ function phaseSplit(weeksAvailable) {
   const build = Math.max(2, Math.round(weeksAvailable * 0.35))
   const base  = Math.max(2, weeksAvailable - peak - taper - build)
   return { Base: base, Build: build, Peak: peak, Taper: taper }
+}
+
+// v9.161.0 (EP-1) — Distance-aware phase redistribution. Pre-fix the elite
+// program used the same Base/Build/Peak/Taper ratios for every distance —
+// a 5K athlete on a 16-week plan got the same Base-heavy distribution as
+// a Marathon athlete. Real periodization differs: 5K peaks in 10-12 weeks
+// with high-VO2max emphasis; Marathon needs sustained sub-threshold dose.
+//
+// Multipliers below are applied to the GENERIC split (per phase), then
+// Base/Build/Peak re-normalized to fit `weeksAvailable - Taper`. Taper
+// count is preserved from the generic split — it's about race-day
+// freshness, not aerobic dose, so distance shouldn't change it.
+//
+// Per-sport namespacing avoids the "Sprint" overload between swim
+// (200m) and triathlon (sprint triathlon).
+export const DISTANCE_PHASE_MULTIPLIERS = Object.freeze({
+  run: {
+    '5K':       { Base: 0.65, Build: 0.85, Peak: 1.40 },  // VO2-heavy peak
+    '10K':      { Base: 0.85, Build: 1.00, Peak: 1.15 },  // balanced
+    'HM':       { Base: 1.00, Build: 1.10, Peak: 1.00 },  // slight build emphasis
+    'Marathon': { Base: 1.30, Build: 1.10, Peak: 0.70 },  // base-heavy aerobic
+    'Ultra':    { Base: 1.50, Build: 1.00, Peak: 0.60 },  // maximally base-heavy
+  },
+  swim: {
+    'Sprint':   { Base: 0.70, Build: 0.90, Peak: 1.40 },  // 50/100m: speed dominant
+    'Mid':      { Base: 0.90, Build: 1.00, Peak: 1.15 },  // 200-800m
+    'Distance': { Base: 1.20, Build: 1.10, Peak: 0.80 },  // 1500m+ / OW
+  },
+  triathlon: {
+    'Sprint':   { Base: 0.85, Build: 1.00, Peak: 1.15 },  // ~25km total
+    'Olympic':  { Base: 1.00, Build: 1.10, Peak: 1.00 },  // ~52km
+    '70.3':     { Base: 1.20, Build: 1.10, Peak: 0.80 },  // ~113km
+    'IM':       { Base: 1.40, Build: 1.10, Peak: 0.65 },  // ~226km — maximally aerobic
+  },
+  bike: {
+    'TT':        { Base: 0.85, Build: 1.10, Peak: 1.10 },  // sustained threshold + VO2
+    'RoadRace':  { Base: 1.00, Build: 1.10, Peak: 1.00 },  // mixed tactical
+    'GranFondo': { Base: 1.30, Build: 1.10, Peak: 0.70 },  // multi-hour aerobic
+  },
+  rowing: {
+    '2k':       { Base: 0.85, Build: 1.00, Peak: 1.20 },  // race-distance VO2/lactate
+    'Erg':      { Base: 1.00, Build: 1.10, Peak: 0.95 },  // generic erg training
+    '5k':       { Base: 1.20, Build: 1.10, Peak: 0.80 },  // longer / head-of-the-charles
+  },
+})
+
+/**
+ * v9.161.0 (EP-1) — Infer a distance category from sport + race distance.
+ * Returns null when distance is missing/zero (caller falls back to the
+ * generic phase split).
+ *
+ * @param {string} sport - internal 3-letter form: 'run'|'bike'|'swim'|'triathlon'|'rowing'
+ * @param {number|null} distanceM - race distance in meters
+ * @returns {string|null}
+ */
+export function inferDistanceCategory(sport, distanceM) {
+  const d = Number(distanceM)
+  if (sport === 'run') {
+    if (!Number.isFinite(d) || d <= 0) return null
+    if (d <= 5000)   return '5K'
+    if (d <= 10000)  return '10K'
+    if (d <= 21100)  return 'HM'
+    if (d <= 42500)  return 'Marathon'
+    return 'Ultra'
+  }
+  if (sport === 'swim') {
+    if (!Number.isFinite(d) || d <= 0) return null
+    if (d <= 200)    return 'Sprint'
+    if (d <= 800)    return 'Mid'
+    return 'Distance'
+  }
+  if (sport === 'triathlon') {
+    if (!Number.isFinite(d) || d <= 0) return null
+    if (d <= 35000)  return 'Sprint'
+    if (d <= 75000)  return 'Olympic'
+    if (d <= 150000) return '70.3'
+    return 'IM'
+  }
+  if (sport === 'bike') {
+    // distanceM === 0 || null is the "direct FTP" sentinel — treat as TT
+    if (!Number.isFinite(d) || d === 0)  return 'TT'
+    if (d <= 50000)   return 'TT'
+    if (d <= 200000)  return 'RoadRace'
+    return 'GranFondo'
+  }
+  if (sport === 'rowing') {
+    if (!Number.isFinite(d) || d <= 0) return 'Erg'
+    if (d <= 2500)   return '2k'
+    return '5k'
+  }
+  return null
+}
+
+function phaseSplit(weeksAvailable, sport, distanceCategory) {
+  const base = genericPhaseSplit(weeksAvailable)
+  if (!distanceCategory || !sport || weeksAvailable < 8) return base
+  const mults = DISTANCE_PHASE_MULTIPLIERS[sport]?.[distanceCategory]
+  if (!mults) return base
+
+  const taperWeeks = base.Taper
+  const remaining = weeksAvailable - taperWeeks
+  if (remaining <= 2) return base  // too short to redistribute meaningfully
+
+  const raw = {
+    Base:  base.Base  * mults.Base,
+    Build: base.Build * mults.Build,
+    Peak:  base.Peak  * mults.Peak,
+  }
+  const rawSum = raw.Base + raw.Build + raw.Peak
+  if (rawSum <= 0) return base
+
+  let peakWeeks  = Math.max(1, Math.round(raw.Peak  / rawSum * remaining))
+  let buildWeeks = Math.max(1, Math.round(raw.Build / rawSum * remaining))
+  let baseWeeks  = remaining - peakWeeks - buildWeeks
+  // Handle rounding overflow: if Base goes negative, steal from Build first
+  // then Peak; preserve at-least-1-week floors where the generic split had them.
+  if (baseWeeks < 0) {
+    let overflow = -baseWeeks
+    baseWeeks = 0
+    const buildSteal = Math.min(overflow, buildWeeks - 1)
+    buildWeeks -= buildSteal
+    overflow -= buildSteal
+    if (overflow > 0) peakWeeks = Math.max(1, peakWeeks - overflow)
+  }
+  return { Base: baseWeeks, Build: buildWeeks, Peak: peakWeeks, Taper: taperWeeks }
 }
 
 const PHASE_COLORS = {
@@ -1203,8 +1330,18 @@ export function buildEliteProgram(input) {
 
   const band = feasibilityBand(weeksAvailable, weeksNeeded)
 
+  // v9.161.0 (EP-1) — Distance-aware phase split. Explicit input overrides
+  // inference; absent both, falls back to the generic distance-agnostic
+  // split via phaseSplit. The race distance read for inference is the
+  // TARGET distance (not the current PR distance) since the plan periodizes
+  // toward the goal race; for sports without a meaningful distance
+  // (bike direct-FTP, rowing erg-only) the inference returns null or 'TT'/'Erg'
+  // and the multipliers stay close to neutral.
+  const inferredDist = targetPR ? targetPR.distanceM : currentPR.distanceM
+  const distanceCategory = input.distanceCategory || inferDistanceCategory(sport, inferredDist)
+
   // Phase split
-  const split = phaseSplit(weeksAvailable)
+  const split = phaseSplit(weeksAvailable, sport, distanceCategory)
   const phases = []
   let weekCounter = 1
   for (const phaseName of ['Base', 'Build', 'Peak', 'Taper']) {
@@ -1351,6 +1488,7 @@ export function buildEliteProgram(input) {
       effectiveRaceDate,
     },
     sport,
+    distanceCategory,
     currentLevel,
     targetLevel,
     cohort,
