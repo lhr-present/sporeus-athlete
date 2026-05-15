@@ -211,6 +211,23 @@ describe('FieldTestModal — close behaviour', () => {
     fireEvent.click(screen.getByText('Cancel'))
     expect(onClose).toHaveBeenCalledTimes(1)
   })
+
+  // v9.180.0 — focus-trap a11y
+  it('calls onClose when Escape pressed inside the dialog', async () => {
+    const onClose = vi.fn()
+    render(<FieldTestModal program={RUN_PROGRAM} onClose={onClose} />)
+    const dialog = screen.getByRole('dialog')
+    // useFocusTrap moves focus on the next rAF; trigger event after one frame
+    await new Promise(r => requestAnimationFrame(r))
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('dialog is announced via role + aria-modal', () => {
+    render(<FieldTestModal program={RUN_PROGRAM} onClose={() => {}} />)
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toHaveAttribute('aria-modal', 'true')
+  })
 })
 
 // ── v9.178.0 — optional notes + RPE + Undo ───────────────────────────────────

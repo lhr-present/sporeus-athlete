@@ -20,8 +20,9 @@
 //   4. Show before/after Peak+Taper weekly-TSS comparison + synthesized
 //      bilingual delta note
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
+import { useFocusTrap } from '../hooks/useFocusTrap.js'
 import { reAnchorEliteProgram } from '../lib/athlete/eliteProgram.js'
 import { logger } from '../lib/logger.js'
 
@@ -93,6 +94,8 @@ function deltaNote(previous, next, lang) {
 
 export default function FieldTestModal({ program, profile, onClose, lang = 'en' }) {
   const isTR = lang === 'tr'
+  const containerRef = useRef(null)
+  useFocusTrap(containerRef, { active: true, onEscape: onClose })
   const [persistedProgram, setPersistedProgram] = useLocalStorage(STORAGE_PROGRAM, null)
   const [results, setResults]   = useLocalStorage(STORAGE_RESULTS, [])
   const [value, setValue]       = useState('')
@@ -108,7 +111,7 @@ export default function FieldTestModal({ program, profile, onClose, lang = 'en' 
   if (!program || !field) {
     return (
       <Backdrop onClose={onClose}>
-        <Container>
+        <Container panelRef={containerRef}>
           <Header isTR={isTR} />
           <div style={{ color: '#e03030', fontSize: 12 }}>
             {isTR ? 'Aktif elite program yok veya bu spor desteklenmiyor.' : 'No active elite program or sport not supported.'}
@@ -180,7 +183,7 @@ export default function FieldTestModal({ program, profile, onClose, lang = 'en' 
 
   return (
     <Backdrop onClose={onClose}>
-      <Container>
+      <Container panelRef={containerRef}>
         <Header isTR={isTR} />
 
         {!submitted ? (
@@ -337,9 +340,9 @@ function Backdrop({ children, onClose }) {
   )
 }
 
-function Container({ children }) {
+function Container({ children, panelRef }) {
   return (
-    <div role="dialog" aria-modal="true" style={{
+    <div ref={panelRef} role="dialog" aria-modal="true" style={{
       background: '#0f0f0f', border: '1px solid #333', borderRadius: 6,
       padding: 20, maxWidth: 480, width: '90vw', maxHeight: '85vh', overflowY: 'auto',
       color: '#ccc',

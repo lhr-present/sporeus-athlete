@@ -14,6 +14,33 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.180.0 — 2026-05-17 — FieldTestModal focus-trap + Escape-to-close (a11y)
+
+  The weekly audit (`scripts/weekly-audit.sh`, no-cost grep+bash) caught
+  3 modals without `useFocusTrap`: my just-shipped FieldTestModal,
+  plus pre-existing App.jsx + Periodization.jsx. Fixing the modal I
+  just shipped; the pre-existing two left for separate review.
+
+  Without `useFocusTrap`, keyboard users tabbing inside the modal would
+  fall out into the dashboard behind it, and there was no Escape
+  shortcut to close. Both are basic a11y modal contracts.
+
+  Changes:
+  - `useFocusTrap(containerRef, { active: true, onEscape: onClose })`
+    wired on the dialog panel. First focusable element receives focus
+    on open; Tab cycles within the modal; Shift+Tab reverses; Escape
+    fires `onClose`.
+  - `Container` helper now accepts a `panelRef` prop (was unable to
+    take a ref because it was a non-forwardRef function component).
+
+  2 new tests: Escape closes the dialog; `role="dialog"` +
+  `aria-modal="true"` are announced. Test count 10768 → 10770 (+2).
+  Lint + build green.
+
+  Pre-existing audit findings deferred to user review:
+  - `src/App.jsx` (top-level modals)
+  - `src/components/Periodization.jsx`
+
 ## v9.179.0 — 2026-05-17 — Field Test History card (final v9.177 follow-up #1)
 
   Closes the final v9.177.0 follow-up — a read-only history surface
