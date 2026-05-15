@@ -14,6 +14,45 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.158.0 — 2026-05-16 — Threshold-aware duration scaling in adapter (Prompt D)
+
+  Pre-fix the adapter computed running-session duration from
+  `targetTSS / IF² × 0.6` — athlete-relative for TSS (TSS is
+  defined as athlete-relative to threshold by construction) but
+  identical wall-clock duration for fast and slow runners with
+  matching IF. That ignores per-minute mechanical-impact load: a
+  4:00/km runner covers more ground per minute, so impact and
+  cumulative stride count are higher even at matched IF.
+
+  `adapter.adaptE13PlanToLegacy` accepts a 4th `options` argument
+  with `{ threshold }`. Accepts either an "M:SS" string ("4:00")
+  or numeric seconds-per-km (240). Garbage / empty / numeric-zero
+  falls back to no scaling.
+
+  Scaling: `duration *= sqrt(thresholdSec / 330)`. The 5:30/km
+  baseline produces no scaling at exactly that pace; sqrt damping
+  caps the swing at ±15% for thresholds 4:00 to 6:30. The 20-min
+  duration floor is preserved.
+
+  Gate: running only. Cycling power TSS and swim CSS TSS already
+  track work in athlete-relative units where the mechanical-impact
+  argument doesn't apply; rowing impact is drag-factor-driven and
+  belongs in Prompt F.
+
+  Wiring:
+  - `starterPlan.js` passes `data.threshold`.
+  - `PlanGenerator.jsx` passes `profile.threshold`.
+  - `PlanTemplatePicker.jsx` does NOT — it's preset-only with no
+    profile in scope. Athletes still get scaling via the main
+    PlanGenerator + starterPlan paths.
+
+  Suite 10473 / 10473 green (+7 new tests).
+
+  Dependencies: `profile.threshold` field (existing, v6.x);
+  `parsePaceStrSec` helper inlined (duplicated from
+  `derivedSessionTargets.js` — both are private; extracting to a
+  shared module is deferred).
+
 ## v9.157.0 — 2026-05-16 — Race-date anchoring + race-relative deloads (Prompts B+C)
 
   The 2026-05-15 physiology audit flagged two date-handling bugs:

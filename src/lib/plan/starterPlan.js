@@ -163,7 +163,16 @@ export function buildStarterPlan(onboardingData, todayISO, lang = 'en', log) {
   })
   if (!adaptive) return null
 
-  const legacyWeeks = adaptE13PlanToLegacy(adaptive, lang, data.sport || data.primarySport || null) || []
+  // v9.158.0 (Prompt D) — Pass profile.threshold so the adapter can scale
+  // running-session durations by mechanical-impact load. Pre-fix threshold
+  // was read at render time only (derivedSessionTargets for pace ranges);
+  // the plan itself ignored it.
+  const legacyWeeks = adaptE13PlanToLegacy(
+    adaptive,
+    lang,
+    data.sport || data.primarySport || null,
+    { threshold: data.threshold || null },
+  ) || []
   if (legacyWeeks.length === 0) return null
 
   return {

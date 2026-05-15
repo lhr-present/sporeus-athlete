@@ -300,7 +300,12 @@ export default function PlanGenerator({ onLogSession }) {
       setPlanWarnings(warnMsgs)
       setPlanValidationErrors(validation.errors || [])
       setWarningsExpanded(true)
-      const legacyWeeks = adaptE13PlanToLegacy(finalPlan, lang, profile?.primarySport || null) || []
+      const legacyWeeks = adaptE13PlanToLegacy(
+        finalPlan,
+        lang,
+        profile?.primarySport || null,
+        { threshold: profile?.threshold || null },
+      ) || []
       setPlan({
         goal,
         weeks: legacyWeeks,

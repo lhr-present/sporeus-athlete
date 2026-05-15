@@ -131,3 +131,100 @@ describe('adaptE13PlanToLegacy', () => {
     }
   })
 })
+
+// v9.158.0 (Prompt D) — Threshold-aware duration scaling
+describe('adaptE13PlanToLegacy — threshold-aware duration', () => {
+  function nonRestDurations(legacy) {
+    const out = []
+    for (const wk of legacy) {
+      for (const s of wk.sessions) {
+        if (s.type !== 'Rest' && s.tss > 0) out.push(s.duration)
+      }
+    }
+    return out
+  }
+
+  it('no scaling applied when threshold is absent', () => {
+    const adaptive = baseInputs({ primarySport: 'Running' })
+    const baseline = adaptE13PlanToLegacy(adaptive, 'en', 'Running')
+    const explicit = adaptE13PlanToLegacy(adaptive, 'en', 'Running', { threshold: null })
+    expect(nonRestDurations(baseline)).toEqual(nonRestDurations(explicit))
+  })
+
+  it('faster threshold (4:00/km) produces shorter sessions', () => {
+    const adaptive = baseInputs({ primarySport: 'Running' })
+    const baseline = adaptE13PlanToLegacy(adaptive, 'en', 'Running')
+    const fast = adaptE13PlanToLegacy(adaptive, 'en', 'Running', { threshold: '4:00' })
+    // sqrt(240/330) ≈ 0.853 → ~15% shorter
+    const baselineDurations = nonRestDurations(baseline)
+    const fastDurations = nonRestDurations(fast)
+    expect(fastDurations.length).toBe(baselineDurations.length)
+    // At least one comparison must show a meaningful shorter session
+    // (some short sessions hit the 20-min floor and don't scale)
+    const scaledPairs = baselineDurations
+      .map((d, i) => [d, fastDurations[i]])
+      .filter(([b]) => b > 25)  // skip floor-bound sessions
+    expect(scaledPairs.length).toBeGreaterThan(0)
+    for (const [b, f] of scaledPairs) {
+      expect(f).toBeLessThan(b)
+      // Within sqrt-damped range: 0.80–0.90
+      expect(f / b).toBeGreaterThan(0.78)
+      expect(f / b).toBeLessThan(0.92)
+    }
+  })
+
+  it('slower threshold (6:30/km) produces longer sessions', () => {
+    const adaptive = baseInputs({ primarySport: 'Running' })
+    const baseline = adaptE13PlanToLegacy(adaptive, 'en', 'Running')
+    const slow = adaptE13PlanToLegacy(adaptive, 'en', 'Running', { threshold: '6:30' })
+    // sqrt(390/330) ≈ 1.087 → ~9% longer
+    const baselineDurations = nonRestDurations(baseline)
+    const slowDurations = nonRestDurations(slow)
+    const meaningful = baselineDurations
+      .map((d, i) => [d, slowDurations[i]])
+      .filter(([b]) => b > 20)
+    for (const [b, s] of meaningful) {
+      expect(s).toBeGreaterThanOrEqual(b)
+    }
+  })
+
+  it('threshold scaling skipped for non-running sports', () => {
+    const adaptive = baseInputs({ primarySport: 'Cycling' })
+    const baseline = adaptE13PlanToLegacy(adaptive, 'en', 'Cycling')
+    const withThr  = adaptE13PlanToLegacy(adaptive, 'en', 'Cycling', { threshold: '4:00' })
+    expect(nonRestDurations(baseline)).toEqual(nonRestDurations(withThr))
+  })
+
+  it('accepts numeric threshold (already in sec/km)', () => {
+    const adaptive = baseInputs({ primarySport: 'Running' })
+    const baseline   = adaptE13PlanToLegacy(adaptive, 'en', 'Running')
+    const fromStr    = adaptE13PlanToLegacy(adaptive, 'en', 'Running', { threshold: '4:00' })
+    const fromNumber = adaptE13PlanToLegacy(adaptive, 'en', 'Running', { threshold: 240 })
+    expect(nonRestDurations(fromNumber)).toEqual(nonRestDurations(fromStr))
+    // Sanity: also different from baseline
+    expect(nonRestDurations(fromNumber)).not.toEqual(nonRestDurations(baseline))
+  })
+
+  it('garbage threshold input falls back to no scaling', () => {
+    const adaptive = baseInputs({ primarySport: 'Running' })
+    const baseline  = adaptE13PlanToLegacy(adaptive, 'en', 'Running')
+    const garbage   = adaptE13PlanToLegacy(adaptive, 'en', 'Running', { threshold: 'not-a-pace' })
+    const empty     = adaptE13PlanToLegacy(adaptive, 'en', 'Running', { threshold: '' })
+    const zero      = adaptE13PlanToLegacy(adaptive, 'en', 'Running', { threshold: 0 })
+    expect(nonRestDurations(garbage)).toEqual(nonRestDurations(baseline))
+    expect(nonRestDurations(empty)).toEqual(nonRestDurations(baseline))
+    expect(nonRestDurations(zero)).toEqual(nonRestDurations(baseline))
+  })
+
+  it('respects the 20-min minimum even when scaling would drop below', () => {
+    const adaptive = baseInputs({ primarySport: 'Running' })
+    const fast = adaptE13PlanToLegacy(adaptive, 'en', 'Running', { threshold: '3:00' })  // very fast
+    for (const wk of fast) {
+      for (const s of wk.sessions) {
+        if (s.type !== 'Rest' && s.tss > 0) {
+          expect(s.duration).toBeGreaterThanOrEqual(20)
+        }
+      }
+    }
+  })
+})
