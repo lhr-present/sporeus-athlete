@@ -406,7 +406,8 @@ function applyDeloads(weeks) {
  * @param {string} [params.level='intermediate'] - 'beginner' | 'intermediate' | 'advanced' | 'elite'
  * @param {string} [params.raceDistance]         - '5K' | '10K' | 'Half Marathon' | 'Marathon' | 'Cycling Event' | 'General Fitness' (v9.92.0 — biases peak/build intent emphasis)
  * @param {string} [params.primarySport]         - 'Running' | 'Cycling' | 'Swimming' | 'Triathlon' (v9.92.0 — pass-through for renderers; does not alter intent math)
- * @returns {Object|null} { weeks, model, totalWeeks, generatedAt } — null on bad input
+ * @param {number} [params.weeklyTssGoal]        - Athlete's self-stated weekly TSS target. When within ±30% of the CTL-derived peakTSS, rescales the plan to honor it. Outside that band, ignored with a reason returned on the plan. (v9.156.0)
+ * @returns {Object|null} { weeks, model, totalWeeks, generatedAt, weeklyTssGoalApplied } — null on bad input
  * @source Daniels (2014), Seiler (2010), Issurin (2010), Mujika & Padilla (2003)
  * @example
  * generatePlan({ goal:'pr', currentCTL:50, weeksToRace:12, availableDays:5, model:'polarized', level:'intermediate' })
@@ -422,6 +423,7 @@ export function generatePlan(params) {
     level          = 'intermediate',
     raceDistance   = null,
     primarySport   = null,
+    weeklyTssGoal  = null,
   } = params
 
   // ── Input validation — return null on insufficient inputs ─────────────────
@@ -435,30 +437,74 @@ export function generatePlan(params) {
   const goalFactor = GOAL_FACTOR[goal]    ?? 1.00
 
   // Base & peak weekly TSS — derived from currentCTL with goal/level scaling
-  const baseTSS = Math.max(150, Math.round(+currentCTL * 7 * lvlFactor))
-  const peakTSS = Math.max(baseTSS + 80, Math.round(+currentCTL * 8.5 * lvlFactor * goalFactor))
+  let baseTSS = Math.max(150, Math.round(+currentCTL * 7 * lvlFactor))
+  let peakTSS = Math.max(baseTSS + 80, Math.round(+currentCTL * 8.5 * lvlFactor * goalFactor))
 
-  const weeks = []
-  for (let w = 0; w < totalWeeks; w++) {
-    const phase   = phaseForWeek(w, totalWeeks)
-    const intents = weeklyIntents(phase, model, +availableDays, raceDistance)
-    const tssBud  = weeklyTSS({ weekIdx: w, totalWeeks, phase, baseTSS, peakTSS })
-    const sessions = distributeSessionTSS(tssBud, intents)
-    weeks.push({
-      weekNum:          w + 1,
-      phase,
-      isDeload:         false,
-      weeklyTSS:        tssBud,
-      sessions,
-      zoneDistribution: getZoneDistribution(model, phase, w + 1),
-    })
+  // Build a full set of weeks (with deload + ACWR clamp post-processing) for
+  // a given base/peak pair. Extracted as an inner helper so the v9.156 goal
+  // path can build once, measure the visible peak, then optionally rescale
+  // and rebuild — without that two-pass the goal would compare against the
+  // raw peakTSS anchor instead of the weekly TSS the athlete actually sees.
+  const buildWeeks = (baseT, peakT) => {
+    const ws = []
+    for (let w = 0; w < totalWeeks; w++) {
+      const phase   = phaseForWeek(w, totalWeeks)
+      const intents = weeklyIntents(phase, model, +availableDays, raceDistance)
+      const tssBud  = weeklyTSS({ weekIdx: w, totalWeeks, phase, baseTSS: baseT, peakTSS: peakT })
+      const sessions = distributeSessionTSS(tssBud, intents)
+      ws.push({
+        weekNum:          w + 1,
+        phase,
+        isDeload:         false,
+        weeklyTSS:        tssBud,
+        sessions,
+        zoneDistribution: getZoneDistribution(model, phase, w + 1),
+      })
+    }
+    applyDeloads(ws)
+    clampWoWGrowth(ws)
+    return ws
   }
 
-  // Insert deloads every 4 weeks (skip Race/Taper)
-  applyDeloads(weeks)
+  const visiblePeak = (ws) => {
+    const peakWeeks = ws.filter(w => w.phase === 'Peak' && !w.isDeload).map(w => w.weeklyTSS)
+    return peakWeeks.length ? Math.max(...peakWeeks) : Math.max(...ws.map(w => w.weeklyTSS))
+  }
 
-  // Clamp week-over-week growth ≤10% (ACWR safe)
-  clampWoWGrowth(weeks)
+  let weeks = buildWeeks(baseTSS, peakTSS)
+
+  // v9.156.0 (Prompt A) — Honor athlete's self-stated weeklyTssGoal when
+  // within ±30% of the visible CTL-derived peak weekly TSS. Outside the
+  // band the goal is ignored: above invites ACWR / injury risk, below
+  // would degrade fitness. The ±30% window matches the ACWR-safe ramp
+  // ceiling used in clampWoWGrowth — staying inside keeps the plan
+  // physiologically defensible. Pre-fix this field was collected on the
+  // Profile form but had zero consumers; the plan ignored what the
+  // athlete explicitly asked for. The semantic the athlete expects is
+  // "my hardest week should land near this number" — i.e. visible Peak
+  // weeklyTSS, not the raw peakTSS internal anchor.
+  let weeklyTssGoalApplied = null
+  const goalTss = Number(weeklyTssGoal)
+  if (Number.isFinite(goalTss) && goalTss > 0) {
+    const ctlPeak = visiblePeak(weeks)
+    const lower = Math.round(ctlPeak * 0.70)
+    const upper = Math.round(ctlPeak * 1.30)
+    if (goalTss >= lower && goalTss <= upper) {
+      const scale = goalTss / ctlPeak
+      baseTSS = Math.max(150, Math.round(baseTSS * scale))
+      peakTSS = Math.round(peakTSS * scale)
+      weeks = buildWeeks(baseTSS, peakTSS)
+      weeklyTssGoalApplied = { goal: goalTss, applied: true, ctlDerivedPeak: ctlPeak }
+    } else {
+      weeklyTssGoalApplied = {
+        goal: goalTss,
+        applied: false,
+        reason: goalTss < lower ? 'too_low' : 'too_high',
+        ctlDerivedPeak: ctlPeak,
+        safeRange: [lower, upper],
+      }
+    }
+  }
 
   return {
     model,
@@ -471,6 +517,7 @@ export function generatePlan(params) {
     targetCTL:   Math.round(peakTSS / 7 * 10) / 10,
     weeks,
     generatedAt: new Date().toISOString(),
+    weeklyTssGoalApplied,
   }
 }
 

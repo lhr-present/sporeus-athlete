@@ -14,6 +14,47 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.156.0 — 2026-05-16 — Honor `weeklyTssGoal` in plan generation (Prompt A)
+
+  The Profile form has collected `weeklyTssGoal` since onboarding's
+  inception. The plan generator had ZERO consumers — athletes set
+  a target, the plan ignored it, derived everything from CTL × goal
+  factor instead. The 2026-05-15 physiology audit flagged it as the
+  smallest of five dead inputs.
+
+  Now honored when in-band:
+
+  - Plan builds once with CTL-derived base/peak TSS, measures the
+    visible Peak-phase weekly TSS (after `applyDeloads` +
+    `clampWoWGrowth` post-processing).
+  - If athlete's goal is within ±30% of that visible peak, rescales
+    base+peak by `goal / visiblePeak` and rebuilds the weeks.
+  - Outside the band the goal is rejected with
+    `{ applied: false, reason: 'too_high' | 'too_low', safeRange }`
+    on the returned `plan.weeklyTssGoalApplied`. ACWR-safe ramp is
+    preserved either way.
+
+  The two-pass approach matters because the athlete's mental model
+  is "my hardest week should land near this number" — i.e. visible
+  Peak weekly TSS, not the raw `peakTSS` internal anchor. Comparing
+  against the raw anchor produced the opposite of the intended
+  effect for CTL≥30 athletes (goal=110% of visible peak silently
+  scaled the plan DOWN).
+
+  Why the ±30% band: matches the ACWR-safe weekly ramp ceiling
+  enforced by `clampWoWGrowth`. Outside that window the plan would
+  either invite injury risk (too high) or degrade fitness
+  (too low) — physiologically, not a goal worth honoring.
+
+  Pure additive — when `weeklyTssGoal` is absent, plan output is
+  bit-identical to v9.155. Surfacing the
+  `weeklyTssGoalApplied.reason` to the UI is a separate ship.
+
+  Suite 10448 / 10448 green (+6 new tests).
+
+  Dependencies: `starterPlan.js` passes `data.weeklyTssGoal`
+  through; `validate.js` already stores the field (existing).
+
 ## v9.155.0 — 2026-05-16 — Mission 1 leak: derived hrTarget + enriched-session wiring (Prompt 12)
 
   Audit on 2026-05-16 found the v9.153 HR/pace deltas effectively

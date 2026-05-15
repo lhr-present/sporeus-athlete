@@ -521,3 +521,70 @@ describe('sportSpecificLabel', () => {
     }
   })
 })
+
+// v9.156.0 (Prompt A) — weeklyTssGoal honoring
+describe('generatePlan — weeklyTssGoal', () => {
+  it('weeklyTssGoalApplied is null when no goal is passed', () => {
+    const p = genWith({})
+    expect(p.weeklyTssGoalApplied).toBeNull()
+  })
+
+  it('honors in-band goal: peakTSS rescales proportionally', () => {
+    const ctlOnly = genWith({})
+    const peakOf = (plan) => Math.max(...plan.weeks.filter(w => w.phase === 'Peak' && !w.isDeload).map(w => w.weeklyTSS))
+    const ctlPeak = peakOf(ctlOnly)
+    const goal = Math.round(ctlPeak * 1.10)  // +10%, well in-band
+
+    const withGoal = genWith({ weeklyTssGoal: goal })
+    expect(withGoal.weeklyTssGoalApplied.applied).toBe(true)
+    expect(withGoal.weeklyTssGoalApplied.goal).toBe(goal)
+    const goalPeak = peakOf(withGoal)
+    // clampWoWGrowth(≤10%) and applyDeloads dampen peakTSS in absolute terms,
+    // but the proportional relationship survives: goalPeak/ctlPeak ≈ 1.10.
+    expect(goalPeak / ctlPeak).toBeGreaterThanOrEqual(1.05)
+    expect(goalPeak / ctlPeak).toBeLessThanOrEqual(1.15)
+  })
+
+  it('rejects goal too high (>30% over CTL-derived peak): keeps CTL plan, returns reason', () => {
+    const ctlOnly = genWith({})
+    const ctlPeak = Math.max(...ctlOnly.weeks.filter(w => w.phase === 'Peak' && !w.isDeload).map(w => w.weeklyTSS))
+    const tooHigh = Math.round(ctlPeak * 2)
+
+    const p = genWith({ weeklyTssGoal: tooHigh })
+    expect(p.weeklyTssGoalApplied.applied).toBe(false)
+    expect(p.weeklyTssGoalApplied.reason).toBe('too_high')
+    expect(p.weeklyTssGoalApplied.safeRange).toHaveLength(2)
+    // Plan stays on CTL-derived peak (within rounding)
+    const peak = Math.max(...p.weeks.filter(w => w.phase === 'Peak' && !w.isDeload).map(w => w.weeklyTSS))
+    expect(Math.abs(peak - ctlPeak)).toBeLessThanOrEqual(2)
+  })
+
+  it('rejects goal too low (<30% under CTL peak): keeps CTL plan, returns reason', () => {
+    const p = genWith({ weeklyTssGoal: 50 })   // way below any reasonable CTL=50 plan
+    expect(p.weeklyTssGoalApplied.applied).toBe(false)
+    expect(p.weeklyTssGoalApplied.reason).toBe('too_low')
+  })
+
+  it('rejects malformed goal (0, negative, NaN): treats as absent', () => {
+    expect(genWith({ weeklyTssGoal: 0 }).weeklyTssGoalApplied).toBeNull()
+    expect(genWith({ weeklyTssGoal: -100 }).weeklyTssGoalApplied).toBeNull()
+    expect(genWith({ weeklyTssGoal: NaN }).weeklyTssGoalApplied).toBeNull()
+    expect(genWith({ weeklyTssGoal: 'foo' }).weeklyTssGoalApplied).toBeNull()
+  })
+
+  it('honored plan still respects ACWR week-over-week growth ≤10%', () => {
+    // Goal pushes peak up; clampWoWGrowth must still constrain ramp.
+    const ctlOnly = genWith({})
+    const ctlPeak = Math.max(...ctlOnly.weeks.filter(w => w.phase === 'Peak' && !w.isDeload).map(w => w.weeklyTSS))
+    const goal = Math.round(ctlPeak * 1.25)
+
+    const p = genWith({ weeklyTssGoal: goal })
+    for (let i = 1; i < p.weeks.length; i++) {
+      const prev = p.weeks[i - 1].weeklyTSS
+      const curr = p.weeks[i].weeklyTSS
+      if (prev > 0 && !p.weeks[i].isDeload) {
+        expect(curr / prev).toBeLessThanOrEqual(1.11)  // 10% + rounding slack
+      }
+    }
+  })
+})

@@ -141,6 +141,11 @@ export function buildStarterPlan(onboardingData, todayISO, lang = 'en', log) {
   const ctlFromLog = Number.isFinite(rawCtl) ? rawCtl : 0
   const currentCTL = Math.max(20, ctlFromLog)
 
+  // v9.156.0 (Prompt A) — Pass-through athlete's self-stated weeklyTssGoal so
+  // the plan honors it when in-band. Pre-fix the field was orphaned. The
+  // generator silently ignores out-of-band values; consumers can read
+  // adaptive.weeklyTssGoalApplied to surface the decision.
+  const goalTss = Number(data.weeklyTssGoal)
   const adaptive = generatePlan({
     goal:          goalKey,
     currentCTL,
@@ -150,6 +155,7 @@ export function buildStarterPlan(onboardingData, todayISO, lang = 'en', log) {
     level:         levelKey,
     raceDistance:  data.goal,
     primarySport:  data.sport || data.primarySport || null,
+    weeklyTssGoal: Number.isFinite(goalTss) && goalTss > 0 ? goalTss : null,
   })
   if (!adaptive) return null
 
