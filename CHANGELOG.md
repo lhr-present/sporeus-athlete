@@ -14,6 +14,58 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.172.0 — 2026-05-16 — Race-type + pack strategy (EP-12)
+
+  `buildEliteProgram` knows distance and sport but treated every race as
+  a generic "go fast for X km". Real race day is shaped by the FORMAT
+  (track / road / trail / ultra / time-trial / crit / sprint triathlon
+  / Ironman / head-race) and by whether it is a mass-start pack race or
+  a solo effort.
+
+  Adds `src/lib/athlete/raceStrategy.js` with
+  `buildRaceStrategy({ sport, raceType, packSize?, conditions? })`.
+
+  Coverage — 17 race types across 5 sports:
+    run:       track | road | trail | ultra | xc
+    bike:      road | tt | crit | gran-fondo | mtb
+    swim:      pool | open-water
+    triathlon: sprint | olympic | 70.3 | ironman
+    rowing:    2k | head-race
+
+  Each race type emits five EN+TR sections:
+    - pacing  (split strategy, FTP-IF / CSS / pace targets)
+    - opener  (first-portion tactic, mistake-to-avoid)
+    - closer  (final-portion tactic, kick mechanics)
+    - fueling (CHO/h target + sodium + format-specific timing)
+    - gear    (race-specific equipment + tested-not-new rule)
+
+  Pack-race awareness: a `PACK_RACES` set classifies which formats are
+  mass-start. For pack races, an optional `packSize` selects
+  small (<15) / medium (15-49) / large (≥50) tactical guidance.
+  Solo races (track, TT, pool, 2k erg) return `packStrategy: null`
+  even if `packSize` is passed (ignored).
+
+  Conditions warnings (all bilingual):
+    - heat-warning  (>28°C — slow 3-5% per °C above 25°C, salt)
+    - cold-warning  (<5°C — extended warm-up, carb metabolism drop)
+    - crosswind-warning (>25 km/h, bike/tri only)
+    - altitude-warning  (>1800m — expect 5-10% drop if unacclimatized)
+
+  Tests: input validation (3 reject paths), every defined race type
+  returns content, pack-vs-solo classification per sport, pack-size
+  bucket selection (small/medium/large/default), packSize-on-solo
+  ignored, all 4 conditions warnings fire correctly + bilingual,
+  sport-specific content sanity (TT mentions even power, Ironman
+  mentions win/lose, ultra mentions negative split, 2k rowing mentions
+  500m splits), citation references.
+
+  Test count: 10677 → 10702 (+25).
+
+  Citations: Foster 1999; Coggan & Allen 2010; Skiba 2014; Maughan 2010;
+  Jeukendrup 2014; ITU coaching framework; British Rowing tactics.
+
+  Depends on: standalone (pure-fn library).
+
 ## v9.171.0 — 2026-05-16 — Menstrual-cycle phase gate, opt-in (EP-9)
 
   Adds `src/lib/athlete/cyclePhaseGate.js` — an opt-in, female-only
