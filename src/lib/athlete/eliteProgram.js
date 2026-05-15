@@ -1590,3 +1590,130 @@ export function buildEliteProgram(input) {
   }
   return out
 }
+
+/**
+ * v9.163.0 (EP-3) — Mid-plan re-anchor.
+ *
+ * Recompute an elite program from a fresh field test result while keeping
+ * the original race date as the calendar anchor. The new program covers
+ * (today → raceDate) with phases / TSS / sample weeks / key sessions
+ * rebuilt against the new physiology baseline. Weeks already elapsed in
+ * the original plan are NOT recomputed — they're surfaced as metadata
+ * (`reAnchored.completedWeeks`) so the UI can render a continuous
+ * timeline if desired.
+ *
+ * Pre-fix: `fieldTestGainRatio()` existed with full test coverage but no
+ * orchestration path. Athletes who tested mid-plan had to regenerate
+ * from scratch (losing the calendar anchor) or stay on stale paces.
+ *
+ * @param {object} program - Existing program from buildEliteProgram
+ * @param {object} fieldTest - { vdot? | ftp? | cssSec? | split2kSec? }
+ * @param {string} todayISO - Today's date in 'YYYY-MM-DD'
+ * @param {object} [profileOverride] - Fresh profile (currentCTL, etc.).
+ *   Falls back to a minimal default if not provided. CTL drift between
+ *   the original plan and now is the usual reason to call this function
+ *   so passing a fresh profile is recommended.
+ * @returns {object|null} New program with `reAnchored` metadata, or
+ *   `{ _rejected: true, reason }` on failure. Returns null on invalid input.
+ */
+export function reAnchorEliteProgram(program, fieldTest, todayISO, profileOverride) {
+  if (!program || typeof program !== 'object') return null
+  if (program._rejected) return null
+  if (!fieldTest || typeof fieldTest !== 'object') return null
+  if (typeof todayISO !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(todayISO)) return null
+  if (!program.sport) return null
+
+  // Resolve the race date the original plan was anchored to
+  const raceDateISO = program.feasibility?.effectiveRaceDate || program.raceDate
+  if (!raceDateISO) return null
+
+  // Today must be strictly before the race; otherwise there's nothing to
+  // re-anchor to
+  const today = parseUTCDate(todayISO)
+  const race  = parseUTCDate(raceDateISO)
+  if (!today || !race) return null
+  if (today.getTime() >= race.getTime()) {
+    return { _rejected: true, reason: 'today-on-or-past-race' }
+  }
+
+  // Convert field-test result → new currentPR shape that buildEliteProgram
+  // expects. Sport-specific because each sport stores its physiology
+  // anchor differently:
+  //   • run / triathlon → VDOT → predict raceTime for same distance
+  //   • bike → FTP wattage as direct currentPR.timeSec with distanceM=0
+  //   • swim → CSS sec/100m → currentPR over 1500m
+  //   • rowing → split2kSec (sec/500m) → currentPR.timeSec = split × 4 over 2000m
+  const sport = program.sport
+  let newCurrentPR = null
+  if (sport === 'run' || sport === 'triathlon') {
+    const v = Number(fieldTest.vdot)
+    if (!Number.isFinite(v) || v <= 0) {
+      return { _rejected: true, reason: 'missing-field-test-vdot' }
+    }
+    // Anchor distance: use the original target distance if available,
+    // else fall back to 10K (matches the noTarget synthesis path).
+    const origDist = program.resolvedTargetPR?.distanceM
+      || program.feasibility?.distanceM
+      || 10000
+    const newTime = predictRaceTime(v, origDist)
+    if (!newTime) return { _rejected: true, reason: 'predict-race-time-failed' }
+    newCurrentPR = { distanceM: origDist, timeSec: newTime }
+  } else if (sport === 'bike') {
+    const f = Number(fieldTest.ftp)
+    if (!Number.isFinite(f) || f <= 0) {
+      return { _rejected: true, reason: 'missing-field-test-ftp' }
+    }
+    newCurrentPR = { distanceM: 0, timeSec: f }
+  } else if (sport === 'swim') {
+    const c = Number(fieldTest.cssSec)
+    if (!Number.isFinite(c) || c <= 0) {
+      return { _rejected: true, reason: 'missing-field-test-css' }
+    }
+    // 1500m at CSS pace: time = cssSec × 15 (1500/100)
+    newCurrentPR = { distanceM: 1500, timeSec: Math.round(c * 15) }
+  } else if (sport === 'rowing') {
+    const s = Number(fieldTest.split2kSec)
+    if (!Number.isFinite(s) || s <= 0) {
+      return { _rejected: true, reason: 'missing-field-test-split2k' }
+    }
+    // 2k row time = split sec/500m × 4
+    newCurrentPR = { distanceM: 2000, timeSec: Math.round(s * 4) }
+  } else {
+    return { _rejected: true, reason: 'unsupported-sport' }
+  }
+
+  // Run buildEliteProgram with the new currentPR, same race date,
+  // same targetPR (the goal hasn't changed), same distance category
+  // (don't let inference flip categories due to nominal distance shifts).
+  const newProgram = buildEliteProgram({
+    sport,
+    currentPR: newCurrentPR,
+    targetPR:  program.resolvedTargetPR || undefined,
+    raceDate:  raceDateISO,
+    profile:   profileOverride || {},
+    distanceCategory: program.distanceCategory || undefined,
+    options:   { today: todayISO },
+  })
+
+  if (!newProgram) return { _rejected: true, reason: 'rebuild-failed' }
+  if (newProgram._rejected) return newProgram
+
+  // Compute how many weeks of the ORIGINAL plan were completed by today.
+  // Original plan length = sum of phase weeks. The plan ends on raceDate,
+  // so original generatedAt ≈ raceDate − (originalTotalWeeks × 7 days).
+  const originalTotalWeeks = (program.phases || []).reduce((s, p) => s + (p.weeks?.length || 0), 0)
+  const newTotalWeeks = (newProgram.phases || []).reduce((s, p) => s + (p.weeks?.length || 0), 0)
+  const completedWeeks = Math.max(0, originalTotalWeeks - newTotalWeeks)
+
+  return {
+    ...newProgram,
+    reAnchored: {
+      at: todayISO,
+      completedWeeks,
+      originalTotalWeeks,
+      previousCurrentLevel: program.currentLevel,
+      newCurrentLevel: newProgram.currentLevel,
+      fieldTest,
+    },
+  }
+}

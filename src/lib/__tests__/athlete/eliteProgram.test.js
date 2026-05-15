@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   buildEliteProgram,
+  reAnchorEliteProgram,
   PHASE_FOCUS,
   inferDistanceCategory,
   DISTANCE_PHASE_MULTIPLIERS,
@@ -3041,5 +3042,110 @@ describe('buildEliteProgram — distance-aware phase split', () => {
     expect(sprint.distanceCategory).toBe('Sprint')
     expect(ironman703.distanceCategory).toBe('70.3')
     expect(phaseLen(ironman703, 'Base')).toBeGreaterThan(phaseLen(sprint, 'Base'))
+  })
+})
+
+// v9.163.0 (EP-3) — Mid-plan field-test re-anchor
+describe('reAnchorEliteProgram', () => {
+  function buildOriginal(extra = {}) {
+    return buildEliteProgram({
+      sport: 'run',
+      raceDate: '2026-11-01',
+      currentPR: { distanceM: 10000, timeSec: 3000 },
+      targetPR:  { distanceM: 10000, timeSec: 2700 },
+      profile:   { currentCTL: 50 },
+      options:   { today: TODAY },
+      ...extra,
+    })
+  }
+
+  it('returns null on malformed inputs', () => {
+    expect(reAnchorEliteProgram(null, { vdot: 43 }, '2026-06-29', {})).toBeNull()
+    expect(reAnchorEliteProgram({}, null, '2026-06-29', {})).toBeNull()
+    expect(reAnchorEliteProgram({ sport: 'run' }, { vdot: 43 }, '', {})).toBeNull()
+    expect(reAnchorEliteProgram({ sport: 'run' }, { vdot: 43 }, 'not-a-date', {})).toBeNull()
+  })
+
+  it('returns rejection when today is on or past the race date', () => {
+    const original = buildOriginal()
+    const r = reAnchorEliteProgram(original, { vdot: 43 }, '2027-01-01', {})
+    expect(r._rejected).toBe(true)
+    expect(r.reason).toBe('today-on-or-past-race')
+  })
+
+  it('returns rejection when the field-test metric is missing for the sport', () => {
+    const original = buildOriginal()
+    const r = reAnchorEliteProgram(original, { ftp: 250 }, '2026-06-29', {})
+    expect(r._rejected).toBe(true)
+    expect(r.reason).toBe('missing-field-test-vdot')
+  })
+
+  it('passes through buildEliteProgram rejection when new VDOT exceeds target', () => {
+    // VDOT 60 over 10K predicts faster than the 45:00 target → rebuild rejects.
+    const original = buildOriginal()
+    const r = reAnchorEliteProgram(original, { vdot: 60 }, '2026-06-29', { currentCTL: 55 })
+    expect(r._rejected).toBe(true)
+    expect(r.reason).toBe('target-not-faster')
+  })
+
+  it('produces a shorter plan covering today → raceDate', () => {
+    const original = buildOriginal()
+    const totalOrig = original.phases.reduce((s, p) => s + p.weeks.length, 0)
+    const r = reAnchorEliteProgram(original, { vdot: 43 }, '2026-06-29', { currentCTL: 55 })
+    const totalNew = r.phases.reduce((s, p) => s + p.weeks.length, 0)
+    expect(totalNew).toBeLessThan(totalOrig)
+  })
+
+  it('surfaces completedWeeks = (originalTotal - newTotal)', () => {
+    const original = buildOriginal()
+    const totalOrig = original.phases.reduce((s, p) => s + p.weeks.length, 0)
+    const r = reAnchorEliteProgram(original, { vdot: 43 }, '2026-06-29', { currentCTL: 55 })
+    const totalNew = r.phases.reduce((s, p) => s + p.weeks.length, 0)
+    expect(r.reAnchored.completedWeeks).toBe(totalOrig - totalNew)
+    expect(r.reAnchored.originalTotalWeeks).toBe(totalOrig)
+  })
+
+  it('preserves the race date as the calendar anchor', () => {
+    const original = buildOriginal()
+    const r = reAnchorEliteProgram(original, { vdot: 43 }, '2026-06-29', { currentCTL: 55 })
+    expect(r.feasibility.effectiveRaceDate).toBe('2026-11-01')
+  })
+
+  it('surfaces previous + new currentLevel for traceability', () => {
+    const original = buildOriginal()
+    const r = reAnchorEliteProgram(original, { vdot: 43 }, '2026-06-29', { currentCTL: 55 })
+    expect(r.reAnchored.previousCurrentLevel.vdot).toBe(original.currentLevel.vdot)
+    expect(r.reAnchored.newCurrentLevel.vdot).toBeCloseTo(43, 0)
+  })
+
+  it('preserves distanceCategory across re-anchor', () => {
+    const original = buildOriginal()
+    expect(original.distanceCategory).toBe('10K')
+    const r = reAnchorEliteProgram(original, { vdot: 43 }, '2026-06-29', { currentCTL: 55 })
+    expect(r.distanceCategory).toBe('10K')
+  })
+
+  it('cycling sport requires fieldTest.ftp', () => {
+    const orig = buildEliteProgram({
+      sport: 'bike',
+      raceDate: '2026-11-01',
+      currentPR: { distanceM: 0, timeSec: 250 },
+      targetPR:  { distanceM: 0, timeSec: 280 },
+      profile:   { currentCTL: 60 },
+      options:   { today: TODAY },
+    })
+    const wrong = reAnchorEliteProgram(orig, { vdot: 60 }, '2026-06-29', { currentCTL: 60 })
+    expect(wrong._rejected).toBe(true)
+    expect(wrong.reason).toBe('missing-field-test-ftp')
+    const good = reAnchorEliteProgram(orig, { ftp: 260 }, '2026-06-29', { currentCTL: 60 })
+    expect(good._rejected).toBeFalsy()
+    expect(good.reAnchored.newCurrentLevel.ftp).toBe(260)
+  })
+
+  it('records the field-test payload on reAnchored.fieldTest', () => {
+    const original = buildOriginal()
+    const ft = { vdot: 43 }
+    const r = reAnchorEliteProgram(original, ft, '2026-06-29', { currentCTL: 55 })
+    expect(r.reAnchored.fieldTest).toEqual(ft)
   })
 })

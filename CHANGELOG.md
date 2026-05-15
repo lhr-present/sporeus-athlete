@@ -14,6 +14,56 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.163.0 — 2026-05-16 — Mid-plan field-test re-anchor for elite program (EP-3)
+
+  `fieldTestGainRatio()` has had full test coverage since v9.8 but
+  no orchestration path — athletes who tested mid-plan had to
+  regenerate from scratch (losing the calendar anchor) or stay on
+  paces no longer matching their fitness.
+
+  New `reAnchorEliteProgram(program, fieldTest, todayISO, profile)`:
+
+  - Reads the original program's race date as the locked calendar
+    anchor (`feasibility.effectiveRaceDate || raceDate`).
+  - Converts the field-test result into a new `currentPR` per
+    sport-specific physiology mapping:
+      run / triathlon → `{ vdot }` → `predictRaceTime(vdot, distM)`
+      bike            → `{ ftp }`  → direct FTP wattage
+      swim            → `{ cssSec }` → 1500m at CSS pace
+      rowing          → `{ split2kSec }` → 2k time = split × 4
+  - Calls `buildEliteProgram` with the new currentPR, same race
+    date, same targetPR, same distanceCategory (preserves the
+    original prescription's intent).
+  - Resulting program covers `today → raceDate` with phases /
+    TSS / sample weeks / key sessions rebuilt from the new
+    baseline.
+  - Surfaces `reAnchored: { at, completedWeeks, originalTotalWeeks,
+    previousCurrentLevel, newCurrentLevel, fieldTest }` so a UI
+    timeline can show "you've done 8 weeks → 17 weeks left from
+    new fitness baseline".
+
+  Rejection paths return `{ _rejected: true, reason }`:
+    today-on-or-past-race · missing-field-test-{vdot|ftp|css|split2k}
+    · unsupported-sport · predict-race-time-failed · rebuild-failed
+
+  When the new fitness overshoots the original target (the
+  athlete is ahead of goal), the rebuild surfaces
+  `reason: 'target-not-faster'` — caller's responsibility to
+  prompt for a fresh target.
+
+  Out of scope:
+  - UI button in EliteProgramCard ("I tested mid-plan") —
+    separate render ship.
+  - Continuous timeline composition (frozen + future weeks) —
+    metadata is exposed but the UI composer is deferred.
+  - Auto-detection of mid-plan field-test FROM log entries —
+    requires session-tag inference work.
+
+  Suite 10541 / 10541 green (+11 new tests).
+
+  Dependencies: `predictRaceTime` (running), existing
+  `buildEliteProgram` orchestration; pure function (no I/O).
+
 ## v9.162.0 — 2026-05-16 — ACWR safety cap on elite program weekly TSS (EP-2)
 
   Pre-fix the elite program had no explicit safety cap on absolute
