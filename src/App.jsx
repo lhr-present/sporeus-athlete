@@ -5,6 +5,7 @@ const TQDevtools = import.meta.env.DEV
   : () => null
 import { version as APP_VERSION } from '../package.json'
 import { logger } from './lib/logger.js'
+import { exportAllData } from './lib/storage.js'
 import { LangCtx, TABS } from './contexts/LangCtx.jsx'
 import { useLocalStorage } from './hooks/useLocalStorage.js'
 import { useAppState } from './hooks/useAppState.js'
@@ -359,6 +360,22 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
                 onClick={() => { localStorage.removeItem('sporeus-guest-mode'); window.location.reload() }}
                 style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', fontWeight:700, padding:'5px 14px', background:'#0064ff', border:'none', color:'#fff', borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em' }}>
                 {lang === 'en' ? 'Create Account →' : 'Hesap Oluştur →'}
+              </button>
+              <button
+                onClick={() => {
+                  try {
+                    const json = exportAllData()
+                    const blob = new Blob([json], { type: 'application/json;charset=utf-8' })
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = `sporeus-backup-${new Date().toISOString().slice(0,10)}.json`
+                    document.body.appendChild(a); a.click(); document.body.removeChild(a)
+                    URL.revokeObjectURL(url)
+                  } catch (e) { logger.warn('backup:', e.message) }
+                }}
+                style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', fontWeight:600, padding:'5px 12px', background:'transparent', border:'1px solid #0064ff', color:'#0064ff', borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em' }}>
+                {lang === 'en' ? 'Download Backup' : 'Yedek İndir'}
               </button>
               <button
                 onClick={() => { try { localStorage.setItem(NUDGE_KEY,'1') } catch (e) { logger.warn('localStorage:', e.message) }; window.location.reload() }}

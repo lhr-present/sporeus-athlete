@@ -14,6 +14,33 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.175.0 — 2026-05-16 — Guest-mode "Download Backup" button + CLAUDE.md doc fix
+
+  Per the 2026-05-16 audit, "Known Limitations" item 4 — "Guest mode:
+  all data in localStorage — lost on browser clear; nudge fires after
+  30d or 50 sessions" — was understating reality. The migration
+  infrastructure ALREADY exists: `src/lib/dataMigration.js`
+  (`detectLocalData` + `migrateToSupabase`) is gated behind
+  `MigrationModal` (`src/components/MigrationModal.jsx`) and fires
+  automatically on first sign-in, batch-upserting log / recovery /
+  injuries / test_results / race_results / profile fields to Supabase.
+
+  The doc never mentioned this — a future maintainer would build it
+  again. Updated CLAUDE.md to describe the existing migration flow.
+
+  The REMAINING gap: a guest who clears the browser BEFORE signing up
+  loses everything. Solvable: added a "Download Backup" button to the
+  guest-upgrade nudge in src/App.jsx. Calls existing
+  `exportAllData()` (storage.js), creates a Blob, triggers a JSON
+  download named `sporeus-backup-YYYY-MM-DD.json`. Guests who don't
+  want to commit to an account yet now have a self-serve safety net.
+
+  The button sits between "Create Account →" and the dismiss button.
+  Bilingual ("Download Backup" / "Yedek İndir"). No new tests — pure
+  UI wiring on top of already-tested `exportAllData()`.
+
+  Test count unchanged 10717. Lint + build green.
+
 ## v9.174.0 — 2026-05-16 — W' exhaustion check: CP/W' estimated from FTP fallback
 
   Per the 2026-05-16 CLAUDE.md audit: claim 2 — "W' exhaustion check
