@@ -14,6 +14,51 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.162.0 — 2026-05-16 — ACWR safety cap on elite program weekly TSS (EP-2)
+
+  Pre-fix the elite program had no explicit safety cap on absolute
+  weekly TSS. `buildWeeklyTSS` scales with `currentCTL` (peak ≈
+  `CTL × 9.5` ≈ ACWR 1.36 in steady state) which is fine when the
+  CTL anchor is fresh, but field-test recal can multiply remaining
+  weeks by up to 1.3× — pushing peak weeks to ACWR ~1.77, well
+  into Gabbett 2016's injury danger zone.
+
+  - New helper `applyACWRSafetyCap(weeklyTSS, currentCTL)`. Caps
+    individual weeks at `1.5 × weekly-CTL` (Gabbett danger-zone
+    threshold). Runs as the FINAL TSS adjustment, after
+    `buildWeeklyTSS` and `fieldTestRecal` so it catches anything
+    that downstream scaling pushed past the ceiling.
+  - Floor at `currentCTL ≥ 10` — below that, CTL is too noisy to
+    anchor the ceiling and capping would zero out the plan.
+  - Emits `feasibilityWarning` on the returned program when cap
+    fires: `{ severity, weeksCapped, totalWeeks, ceiling,
+    maxOriginal, ratio, detail: { en, tr } }`. Severity is
+    `'aggressive'` (≤50% weeks capped) or `'unsafe'` (>50%).
+
+  Verified runtime behavior: athlete with CTL=50 and a 1.3×
+  field-test recal → 6/25 weeks capped from 618 → 525 TSS, severity
+  `aggressive`. Canonical plans (no recal, well-anchored CTL) stay
+  under the ceiling and emit `feasibilityWarning: null` — no
+  silent prescription shifts.
+
+  Why 1.5 (danger zone) not 1.3 (sweet-spot upper bound): the
+  baseline `buildWeeklyTSS` peaks at ~1.36 × weekly-CTL by design.
+  Capping at 1.3 would fire on every program (including canonical
+  ones) and create noise; capping at 1.5 fires only when the
+  prescription actually crosses into Gabbett's elevated-risk zone.
+
+  Out of scope:
+  - UI surface for `feasibilityWarning` (separate render ship)
+  - Coach override path to ignore the cap
+  - Applying the same cap to the non-elite `generatePlan.js`
+    (its `clampWoWGrowth` already constrains week-over-week growth)
+
+  Suite 10530 / 10530 green (+5 new tests).
+
+  Dependencies: existing `currentCTL` profile field; no new
+  storage. The warning is computed but UI consumers haven't been
+  wired yet (intentional — separate render ship).
+
 ## v9.161.0 — 2026-05-16 — Distance-specific phase splits in elite program (EP-1)
 
   Pre-fix `phaseSplit(weeksAvailable)` in eliteProgram.js gave the

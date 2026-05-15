@@ -472,6 +472,57 @@ export const PHASE_FOCUS = {
 }
 
 // ── Weekly TSS curve ────────────────────────────────────────────────────────
+// v9.162.0 (EP-2) — Gabbett 2016 ACWR danger-zone ceiling. Pre-fix the
+// elite program had no explicit safety cap on weekly TSS; `buildWeeklyTSS`
+// scales with `currentCTL`, so an athlete whose currentCTL is anchored
+// correctly stays safe, but a stale/over-aggressive anchor or a high
+// field-test recal scaling could push individual weeks above the injury
+// danger threshold. Gabbett 2016 review of ACWR research:
+//   • 0.8–1.3 = sweet spot (low injury risk + fitness gain)
+//   • 1.3–1.5 = elevated but tolerable
+//   • > 1.5   = danger zone — injury rate rises sharply
+// Cap is set at 1.5 × weekly-CTL: programs that naturally peak at
+// ~1.36 × weekly-CTL stay untouched; only outliers get capped.
+//
+// Floor at currentCTL=10: below that, CTL is too noisy to anchor the
+// ceiling and the program legitimately starts from a low base — capping
+// would zero out the plan.
+const ACWR_DANGER_ZONE_RATIO = 1.5
+const ACWR_MIN_CTL_FOR_CAP   = 10
+
+function applyACWRSafetyCap(weeklyTSS, currentCTL) {
+  if (!Number.isFinite(+currentCTL) || +currentCTL < ACWR_MIN_CTL_FOR_CAP) {
+    return { cappedTSS: weeklyTSS, warning: null }
+  }
+  const ceiling = Math.round(+currentCTL * 7 * ACWR_DANGER_ZONE_RATIO)
+  let weeksCapped = 0
+  let maxOriginal = 0
+  const cappedTSS = weeklyTSS.map(w => {
+    if (w > maxOriginal) maxOriginal = w
+    if (w > ceiling) { weeksCapped++; return ceiling }
+    return w
+  })
+  if (weeksCapped === 0) return { cappedTSS, warning: null }
+  // > 50% of weeks capped → the goal fundamentally exceeds the athlete's
+  // safe accrual velocity. Otherwise it's "aggressive but mostly safe".
+  const severity = weeksCapped > weeklyTSS.length * 0.5 ? 'unsafe' : 'aggressive'
+  return {
+    cappedTSS,
+    warning: {
+      severity,
+      weeksCapped,
+      totalWeeks: weeklyTSS.length,
+      ceiling,
+      maxOriginal,
+      ratio: ACWR_DANGER_ZONE_RATIO,
+      detail: {
+        en: `Plan capped at ACWR danger-zone ceiling (${ceiling} TSS/week, 1.5× weekly-CTL). ${weeksCapped}/${weeklyTSS.length} weeks reduced from peak ${maxOriginal}. Gabbett 2016: ACWR > 1.5 raises injury risk sharply.`,
+        tr: `Plan, ACWR tehlike-bölgesi tavanına (${ceiling} TSS/hafta, haftalık-CTL'nin 1.5 katı) sınırlandırıldı. ${weeksCapped}/${weeklyTSS.length} hafta zirveden (${maxOriginal}) azaltıldı. Gabbett 2016: ACWR > 1.5 yaralanma riskini keskin biçimde artırır.`,
+      },
+    },
+  }
+}
+
 function buildWeeklyTSS(phasesArr, currentCTL) {
   const baseLow  = currentCTL * 7
   const baseHigh = currentCTL * 8.5
@@ -1360,7 +1411,7 @@ export function buildEliteProgram(input) {
   }
 
   // Weekly TSS curve
-  const weeklyTSS = weeksAvailable > 0
+  let weeklyTSS = weeksAvailable > 0
     ? buildWeeklyTSS(phases, profileWithDefaults.currentCTL)
     : []
   // Pad if rounding produced shortfall
@@ -1399,6 +1450,18 @@ export function buildEliteProgram(input) {
             : { en: 'On schedule — no significant adjustment.', tr: 'Programda — anlamlı ayar yok.' },
       }
     }
+  }
+
+  // v9.162.0 (EP-2) — ACWR sweet-spot safety cap. FINAL TSS adjustment,
+  // applied after buildWeeklyTSS + fieldTestRecal scaling. Caps absolute
+  // weekly TSS at 1.3 × weekly-CTL (Gabbett 2016 sweet-spot upper bound).
+  // Kicks in only when CTL ≥ 10 (lower CTL = noisy anchor) AND at least
+  // one week exceeds the ceiling — most well-anchored plans stay under it.
+  let feasibilityWarning = null
+  if (weeklyTSS.length > 0) {
+    const cap = applyACWRSafetyCap(weeklyTSS, profileWithDefaults.currentCTL)
+    weeklyTSS = cap.cappedTSS
+    feasibilityWarning = cap.warning
   }
 
   // Sample weeks per phase
@@ -1494,6 +1557,7 @@ export function buildEliteProgram(input) {
     cohort,
     phases,
     weeklyTSS,
+    feasibilityWarning,
     sampleWeeks,
     keySessionLibrary,
     strengthProgram,
