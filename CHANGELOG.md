@@ -14,6 +14,56 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.165.0 — 2026-05-16 — Physiology gap insight on EliteProgramCard (EP-6)
+
+  Pre-fix the elite program already computed current → target VDOT
+  (or FTP / CSS / split2k), the gain rate per 12-week block via
+  `vdotGainPerBlock` / `ftpGainPerBlock` / `cssGainPerBlock` /
+  `rowingGainPerBlock`, and a time-based feasibility band. The
+  EliteProgramCard showed only the current/target row — the
+  delta, the gain rate at the athlete's fitness level, and the
+  physiology-translated verdict were never surfaced. A beginner
+  targeting an unrealistic VDOT jump saw "feasibility: aggressive"
+  (a timeline word) but no signal that the *physiology* itself
+  couldn't bridge the gap in the available weeks.
+
+  - New `computePhysiologyGapInsight(program)` in
+    `src/lib/athlete/physiologyGapInsight.js`. Pure helper:
+    extracts metric + current + target + gap + gainRatePerBlock,
+    computes blocksToBridge / weeksToBridge, translates the
+    `weeksAvailable / weeksNeeded` ratio into one of:
+      already-met · comfortable · realistic · stretching-ceiling
+      · unrealistic · unknown
+  - Bilingual `note` per verdict + citation chip (Daniels 2014;
+    Coggan 2010; Wakayoshi 1992; Issurin 2010).
+  - New `<PhysiologyGapBlock>` component rendered immediately
+    after `<PhysiologyRow>` in EliteProgramCard. Severity-colored
+    border (green = comfortable/realistic; amber = stretching;
+    red = unrealistic; blue = already-met; gray = unknown).
+  - Helper has 11 unit tests covering all four sports + each
+    verdict band + edge cases (null/rejected programs).
+
+  Note on naming: the audit referenced `vo2GapDetector.js` as the
+  source for this feature, but that file detects training-stimulus
+  gaps (Z5 recency + share) — a different concept. The
+  physiology-progression gap (current VDOT vs target VDOT with
+  feasibility) wasn't surfaced anywhere; this ship creates the
+  surface from data the orchestrator already computes.
+
+  Out of scope:
+  - "Auto-suggest a stretch target" when verdict is already-met
+  - "Suggest more weeks" when verdict is unrealistic (UI would
+    need a regenerate-with-new-race-date flow)
+  - Same surface for the non-elite `generatePlan.js` (no equivalent
+    target physiology there yet)
+
+  Suite 10565 / 10565 green (+11 new tests).
+
+  Dependencies: gain-rate exports
+  (`vdotGainPerBlock` / `ftpGainPerBlock` / `cssGainPerBlock` /
+  `rowingGainPerBlock`) already public on `eliteProgram.js`;
+  no schema changes; bundle +4.55 KiB precache.
+
 ## v9.164.0 — 2026-05-16 — Strength cohort overrides + polarization enforcement (EP-5)
 
   Two related quality gaps from the elite-program audit:

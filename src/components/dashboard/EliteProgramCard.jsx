@@ -20,6 +20,7 @@ import { computePlanStaleness } from '../../lib/athlete/eliteProgramStaleness.js
 import CoachEditsBanner, { ATHLETE_EDITS_KEY } from './CoachEditsBanner.jsx'
 import { applyCoachEdits } from '../../lib/athlete/coachEditEngine.js'
 import { eliteProgramToYearlyWeeks } from '../../lib/athlete/eliteProgramToYearly.js'
+import { computePhysiologyGapInsight } from '../../lib/athlete/physiologyGapInsight.js'
 import { downloadEliteProgramCSV } from '../../lib/athlete/eliteProgramExport.js'
 import { calculatePMC } from '../../lib/trainingLoad.js'
 import { announce } from '../../lib/a11y/announcer.js'
@@ -1065,6 +1066,76 @@ function PlanStalenessBanner({ result, profile, isTR }) {
   )
 }
 
+// ── PhysiologyGapBlock (v9.165.0, EP-6) ──────────────────────────────────────
+// Renders the verdict from computePhysiologyGapInsight: current → target,
+// numeric gap, gain rate at this fitness level (Daniels/Coggan/Wakayoshi
+// progression curves), and a physiology-translated feasibility verdict.
+// Pre-fix the card showed current → target paces but no signal about
+// whether the goal was physiologically plausible given the timeline.
+const VERDICT_COLOR = {
+  'already-met':         '#0064ff',
+  comfortable:           '#5bc25b',
+  realistic:             '#5bc25b',
+  'stretching-ceiling':  '#f5c542',
+  unrealistic:           '#e03030',
+  unknown:               '#888888',
+}
+const VERDICT_LABEL = {
+  'already-met':        { en: 'ALREADY MET',         tr: 'ZATEN KARŞILANDI' },
+  comfortable:          { en: 'COMFORTABLE',         tr: 'RAHAT' },
+  realistic:            { en: 'REALISTIC',           tr: 'GERÇEKÇİ' },
+  'stretching-ceiling': { en: 'STRETCHING CEILING',  tr: 'TAVANI ZORLUYOR' },
+  unrealistic:          { en: 'UNREALISTIC',         tr: 'GERÇEKÇİ DEĞİL' },
+  unknown:              { en: 'UNKNOWN',             tr: 'BİLİNMİYOR' },
+}
+
+function PhysiologyGapBlock({ program, isTR }) {
+  const insight = computePhysiologyGapInsight(program)
+  if (!insight) return null
+  const color = VERDICT_COLOR[insight.physVerdict] || '#888'
+  const label = (VERDICT_LABEL[insight.physVerdict]?.[isTR ? 'tr' : 'en']) || insight.physVerdict.toUpperCase()
+  const aria  = isTR ? 'Fizyoloji boşluğu' : 'Physiology gap'
+  return (
+    <div
+      role="region"
+      aria-label={aria}
+      data-physiology-gap={insight.physVerdict}
+      style={{
+        marginBottom: 8, padding: 8,
+        background: `${color}14`,
+        border: `1px solid ${color}55`,
+        borderRadius: 4,
+        fontFamily: 'inherit',
+      }}
+    >
+      <div style={{
+        fontSize: 9, letterSpacing: '0.08em', fontWeight: 700,
+        color, marginBottom: 4,
+      }}>
+        ◆ {insight.metric} · {label}
+      </div>
+      <div style={{ fontSize: 10, color: 'var(--muted)', lineHeight: 1.55 }}>
+        <span style={{ color: 'var(--text)', fontWeight: 700 }}>{insight.current}</span>
+        <span aria-hidden="true"> → </span>
+        <span style={{ color: 'var(--text)', fontWeight: 700 }}>{insight.target}</span>
+        <span> · Δ{insight.gap > 0 ? '+' : ''}{insight.gap}</span>
+        {insight.weeksAvailable != null && (
+          <span> · {insight.weeksAvailable}w {isTR ? 'mevcut' : 'available'}</span>
+        )}
+        {insight.weeksToBridge != null && insight.weeksToBridge > 0 && (
+          <span> · ~{insight.weeksToBridge}w {isTR ? 'kapatmak için' : 'to bridge'}</span>
+        )}
+      </div>
+      <div style={{ marginTop: 4, fontSize: 10, color: 'var(--text)', lineHeight: 1.5 }}>
+        {isTR ? insight.note.tr : insight.note.en}
+      </div>
+      <div style={{ marginTop: 4, fontSize: 9, color: 'var(--muted)', fontStyle: 'italic' }}>
+        {insight.citation}
+      </div>
+    </div>
+  )
+}
+
 // ── PhysiologyRow (v8.92.0) ──────────────────────────────────────────────────
 // Surfaces VDOT/FTP/CSS current → target plus a 5-row pace or zone mini-table
 // computed by the orchestrator. Sport-conditional: run/triathlon → paces,
@@ -1894,6 +1965,9 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
         targetLevel={result.targetLevel}
         isTR={isTR}
       />
+
+      {/* v9.165.0 (EP-6) — physiology-specific feasibility verdict */}
+      <PhysiologyGapBlock program={result} isTR={isTR} />
 
       {Array.isArray(result.phases) && result.phases.length > 0 ? <PhaseSplitBar phases={result.phases} isTR={isTR} /> : null}
       <WeeklyTSSChart weeklyTSS={result.weeklyTSS} phases={result.phases} isTR={isTR} />
