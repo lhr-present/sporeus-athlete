@@ -14,6 +14,50 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.170.0 — 2026-05-16 — Multi-peak season skeleton (EP-4)
+
+  `buildEliteProgram` targets a single race. Real seasons have an
+  A-race (primary, full periodization + 14-21d taper), B-races
+  (secondary, train-through with 5-7d mini-taper), and C-races
+  (developmental, race as a training day, no taper).
+
+  Adds `src/lib/athlete/multiPeakSeason.js` with `buildMultiPeakSeason
+  ({ sport, races, options })`:
+
+    - Validates + sorts races chronologically (1-6 races, future-dated,
+      priorities A/B/C).
+    - For each leg (today→race[0], race[i-1]→race[i]) emits a phase
+      sequence based on priority:
+        A: Base/Build/Peak/Taper (full periodization, 2wk taper)
+        B: Maintenance + Build + Peak + 1wk mini-taper
+        C: Maintenance/Build + Race (no taper)
+    - Inserts recovery weeks AFTER each race: A=2, B=1, C=0 (Pyne 2009).
+    - Subsequent legs use 'Maintenance' instead of 'Base' (the athlete
+      already has aerobic foundation from the prior cycle).
+    - Each week emits: weekIdx, startISO (UTC), phase, legIdx,
+      daysToNextRace, tssMultiplier (1.0 Base / 1.1 Build / 1.15 Peak /
+      0.6 Taper / 0.5 Race / 0.4 Recovery / 0.85 Maintenance).
+
+  Warnings:
+    - `multiple-A-races` — Bompa 2009 says >1 A-race/season dilutes peak.
+    - `too-many-peaks` — Bompa 2009 says >4 race-peaks risks
+      under-recovery (need ≥6wk between true peaks).
+    - `leg-too-short` — buildup weeks below the minimum taper window
+      for the race priority.
+
+  Tests: input validation (6 reject paths) + single A-race sequencing +
+  A+B sequence Maintenance-vs-Base + recovery week counts per priority
+  + C-race no-taper-no-recovery + warning emission + weekIdx monotonic
+  + startISO 7-day advance + tssMultiplier per phase.
+
+  Test count: 10630 → 10650 (+20).
+
+  Citations: Issurin 2010 (block periodization for multi-event seasons);
+  Bompa 2009 (peak frequency limits); Mujika 2010 (taper magnitude
+  per priority); Pyne 2009 (post-race recovery duration).
+
+  Depends on: standalone (pure-fn library).
+
 ## v9.169.0 — 2026-05-16 — Injury return-to-sport ramp (EP-10)
 
   `comebackDetector.js` already flagged inactivity gaps and suggested
