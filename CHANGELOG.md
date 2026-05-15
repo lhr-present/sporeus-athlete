@@ -55,9 +55,16 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
   | Cohort                          | HR delta | Pace delta |
   |---------------------------------|----------|------------|
   | Elite-program + FIT             | ✓        | ✓          |
-  | Elite-program + manual          | ✓        | partial    |
+  | Elite-program + manual          | ✗        | ✗          |
   | Free-tier + FIT (threshold+max) | ✓        | ✓          |
-  | Free-tier + manual              | ✓        | partial    |
+  | Free-tier + manual              | ✗        | ✗          |
+
+  Manual-log rows are ✗ because the TrainingLog form captures only
+  `{ date, type, duration, rpe, notes }` — no avgHR field, no
+  distance field. The detector cannot synthesize what the form
+  doesn't collect. The reach gain from this ship is FIT-import
+  users, both tiers. Adding HR/distance inputs to the manual form
+  is a separate ship.
 
   Pure additive — no behavior change for elite users (their
   single-point paceTarget still wins; derived only fills nulls).
