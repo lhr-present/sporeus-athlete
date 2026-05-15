@@ -156,7 +156,7 @@ const hasTriData = useMemo(() =>
 
 ## Known Limitations
 - Strava OAuth: code is single-use + 5-min expiry (platform constraint). Transient 5xx / network failures retried automatically up to 3× with backoff (v9.173.0); 4xx errors are permanent (single-use code).
-- W' exhaustion check requires CP + W' saved in profile (from Protocols → CP Test)
+- W' exhaustion check uses CP + W' from profile if both are saved (CP Test); otherwise falls back to CP ≈ 0.95×FTP + W' = 15 kJ default (v9.174.0). Entries store `wPrimeMethod: 'measured'|'estimated'` so the UI can show precision level.
 - Push notifications: iOS requires iOS 16.4+ and PWA installed to home screen
 - Guest mode: all data in localStorage — lost on browser clear; nudge fires after 30d or 50 sessions
 

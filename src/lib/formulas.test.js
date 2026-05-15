@@ -6,6 +6,7 @@ import {
   parseTimeSec, fmtSec, fmtPace, mifflinBMR, navyBF,
   monotonyStrain, calcPRs, wingateStats, calcLoad,
   hrZones, powerZones,
+  estimateCPFromFTP, estimateWPrimeDefault, resolveCPWPrime,
 } from './formulas.js'
 
 // ── calcTSS ───────────────────────────────────────────────────────────────────
@@ -251,5 +252,75 @@ describe('zone builders', () => {
   })
   it('powerZones Z4 lower bound = 105% FTP', () => {
     expect(powerZones(200)[3].low).toBe(210)
+  })
+})
+
+// ── v9.174.0 — CP / W' estimators + resolver ───────────────────────────────
+describe('estimateCPFromFTP', () => {
+  it('returns 0 for invalid / zero FTP', () => {
+    expect(estimateCPFromFTP(0)).toBe(0)
+    expect(estimateCPFromFTP(-5)).toBe(0)
+    expect(estimateCPFromFTP(null)).toBe(0)
+    expect(estimateCPFromFTP('banana')).toBe(0)
+  })
+  it('returns 0.95 × FTP rounded for trained cyclists', () => {
+    expect(estimateCPFromFTP(200)).toBe(190)
+    expect(estimateCPFromFTP(280)).toBe(266)
+    expect(estimateCPFromFTP(350)).toBe(333)  // 332.5 → 333
+  })
+})
+
+describe('estimateWPrimeDefault', () => {
+  it('returns the population-mean trained-cyclist constant', () => {
+    expect(estimateWPrimeDefault()).toBe(15000)
+    expect(estimateWPrimeDefault(280)).toBe(15000) // ignores FTP for now
+  })
+})
+
+describe('resolveCPWPrime', () => {
+  it('returns null method when no signals present', () => {
+    expect(resolveCPWPrime({}).method).toBeNull()
+    expect(resolveCPWPrime({}).cp).toBe(0)
+    expect(resolveCPWPrime({}).wPrime).toBe(0)
+    expect(resolveCPWPrime(null).method).toBeNull()
+  })
+
+  it('returns "measured" when both cp + wPrime present', () => {
+    const r = resolveCPWPrime({ cp: 280, wPrime: 22000 })
+    expect(r.method).toBe('measured')
+    expect(r.cp).toBe(280)
+    expect(r.wPrime).toBe(22000)
+  })
+
+  it('returns "estimated" when only ftp present', () => {
+    const r = resolveCPWPrime({ ftp: 280 })
+    expect(r.method).toBe('estimated')
+    expect(r.cp).toBe(266)        // 0.95 × 280
+    expect(r.wPrime).toBe(15000)
+  })
+
+  it('measured wins when all three present (CP test data is canonical)', () => {
+    const r = resolveCPWPrime({ ftp: 280, cp: 270, wPrime: 22000 })
+    expect(r.method).toBe('measured')
+    expect(r.cp).toBe(270)        // not 0.95×280
+    expect(r.wPrime).toBe(22000)
+  })
+
+  it('partial measured (cp only, no wPrime) falls back to estimated', () => {
+    const r = resolveCPWPrime({ ftp: 280, cp: 270 })
+    expect(r.method).toBe('estimated')
+    expect(r.cp).toBe(266)
+  })
+
+  it('estimated method enables computeWPrime to compute (full round-trip)', () => {
+    const r = resolveCPWPrime({ ftp: 250 })
+    // Simulate a constant-power 400W effort over 30 seconds — well above CP
+    const powers = Array(30).fill(400)
+    const bal = computeWPrime(powers, r.cp, r.wPrime)
+    expect(bal).toHaveLength(30)
+    // 400 - 238 = 162 W/s drain; W'0 = 15000J → exhausted around sec 93;
+    // 30 s leaves remaining balance > 0
+    expect(bal[29]).toBeGreaterThan(0)
+    expect(bal[29]).toBeLessThan(15000)
   })
 })

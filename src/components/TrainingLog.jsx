@@ -4,7 +4,7 @@ import { useFocusTrap } from '../hooks/useFocusTrap.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { SESSION_TYPES_BY_DISCIPLINE, ZONE_COLORS, ZONE_NAMES, SPORT_CONFIG } from '../lib/constants.js'
-import { calcTSS, normalizedPower, computePowerTSS, computeWPrime } from '../lib/formulas.js'
+import { calcTSS, normalizedPower, computePowerTSS, computeWPrime, resolveCPWPrime } from '../lib/formulas.js'
 import { sanitizeLogEntry } from '../lib/validate.js'
 import { announce } from '../lib/a11y/announcer.js'
 import Calendar from './Calendar.jsx'
@@ -492,13 +492,16 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     const tss = powerTSS ?? importPreview.tssEstimate ?? calcTSS(importPreview.durationMin, importPreview.rpe || 5)
     const tssMethod = powerTSS ? 'power-based' : importPreview.tssEstimate ? 'HR-based' : 'RPE-based'
     const npStr = np ? ` · NP: ${np}W · IF: ${(np/ftp).toFixed(2)} · TSS: ${tss} (${tssMethod})` : ` · TSS: ${tss} (${tssMethod})`
-    // W' exhaustion check — requires CP + W' in profile
-    const cp       = parseInt(profileLS?.cp) || 0
-    const wPrimeCap = parseInt(profileLS?.wPrime) || 0
+    // v9.174.0 — W' exhaustion check now falls back to CP/W' estimated
+    // from FTP when the athlete hasn't run a full CP test. method tells
+    // downstream consumers the precision level: 'measured' | 'estimated'.
+    const cpwp = resolveCPWPrime(profileLS || {})
     let wPrimeExhausted = false
-    if (powers.length >= 30 && cp && wPrimeCap) {
-      const wbal = computeWPrime(powers, cp, wPrimeCap)
+    let wPrimeMethod = null
+    if (powers.length >= 30 && cpwp.cp && cpwp.wPrime) {
+      const wbal = computeWPrime(powers, cpwp.cp, cpwp.wPrime)
       wPrimeExhausted = wbal.some(v => v <= 0)
+      wPrimeMethod = cpwp.method
     }
 
     // Aerobic decoupling — requires HR + (power or speed) streams from FIT import
@@ -520,7 +523,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       tss,
       notes: importPreview.notes || `Imported ${importPreview.source?.toUpperCase()} · ${importPreview.distanceM ? (importPreview.distanceM/1000).toFixed(2)+'km' : ''}${npStr}`,
       source: importPreview.source,
-      ...(wPrimeExhausted  ? { wPrimeExhausted: true } : {}),
+      ...(wPrimeExhausted  ? { wPrimeExhausted: true, wPrimeMethod } : {}),
       ...(powers.length >= 30 ? { hasPower: true } : {}),
       ...(decouplingPct !== null ? { decouplingPct } : {}),
     }

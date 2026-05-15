@@ -14,6 +14,45 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.174.0 — 2026-05-16 — W' exhaustion check: CP/W' estimated from FTP fallback
+
+  Per the 2026-05-16 CLAUDE.md audit: claim 2 — "W' exhaustion check
+  requires CP + W' saved in profile (from Protocols → CP Test)" — was
+  verified as a strict gate at `src/components/TrainingLog.jsx:499`.
+  Athletes who'd only entered FTP (much more common than running a full
+  CP test) got NO W' exhaustion analysis. This was solvable: the lit
+  has well-established population estimators.
+
+  Adds three exports to `src/lib/formulas.js`:
+    - `estimateCPFromFTP(ftp)` → 0.95 × FTP, rounded
+      (Allen & Coggan 2010; Skiba 2014 — typical 0.93-0.97 for trained
+      cyclists)
+    - `estimateWPrimeDefault()` → 15000 J
+      (Skiba 2014 population mean for trained cyclists, Black 2017
+      reports 9-24 kJ range — 15 kJ is conservative)
+    - `resolveCPWPrime(profile)` → `{ cp, wPrime, method }` where
+      method ∈ 'measured' | 'estimated' | null. Priority: full CP+W'
+      from profile (measured) > FTP-derived (estimated) > nothing (null,
+      skip check).
+
+  `TrainingLog.jsx` import path now uses `resolveCPWPrime` and stores
+  `wPrimeMethod` on the entry when `wPrimeExhausted: true` so the UI
+  can label estimated calls as such (precision is lower than a real
+  CP test). Existing measured-path behaviour unchanged — CP test data
+  always wins over FTP estimate.
+
+  9 new tests cover: invalid-FTP returns 0, 0.95×FTP rounding,
+  W' constant, all 5 resolveCPWPrime branches (none / measured /
+  estimated / partial-measured-falls-back / measured-wins-when-all-
+  three), and a full round-trip where estimated CP/W' feed
+  `computeWPrime`. Test count 10708 → 10717 (+9).
+
+  CLAUDE.md "Known Limitations" entry updated to describe the new
+  fallback behaviour.
+
+  Citations: Allen & Coggan 2010 (Training and Racing with a Power
+  Meter); Skiba 2014 (The Critical Power Manual); Black 2017.
+
 ## v9.173.0 — 2026-05-16 — Strava OAuth transient-failure retry
 
   Per the 2026-05-16 audit of CLAUDE.md "Known Limitations" against

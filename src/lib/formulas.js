@@ -182,6 +182,51 @@ export function normalizedPower(powers) {
  * @param {number} wPrimeMax - W' capacity in joules
  * @returns {number[]} W' balance series in joules per second
  */
+// v9.174.0 — CP + W' estimators from FTP, used as fallback when the
+// athlete hasn't run a CP test. CP-from-FTP ratio per Allen & Coggan
+// 2010 (Training and Racing with a Power Meter, 2nd ed.) and Skiba
+// 2014: trained cyclists CP ≈ 0.95 × FTP (some sources 0.93-0.97).
+// W' default is the population mean for trained cyclists ≈ 15 kJ
+// (Skiba 2014; Black 2017 reports 9-24 kJ range).
+//
+// These estimators let the W' exhaustion check work for athletes who
+// only have FTP set, not a full CP/W' test. The UI should label the
+// computed values as "estimated" when these fallbacks fire so the
+// athlete knows the precision is lower than a real CP test.
+export function estimateCPFromFTP(ftp) {
+  const f = Number(ftp)
+  if (!Number.isFinite(f) || f <= 0) return 0
+  return Math.round(f * 0.95)
+}
+export function estimateWPrimeDefault(/* ftp */) {
+  // Pure constant for now; future expansion can scale by FTP / body mass
+  // when we have those signals. Conservative 15 kJ keeps false-positives
+  // for "exhausted" rare for typical efforts.
+  return 15000
+}
+
+/**
+ * Resolve the CP/W' values to use for an exhaustion check.
+ * Returns { cp, wPrime, method } where method ∈ 'measured' | 'estimated' | null.
+ *
+ * Priority:
+ *   1. Both cp and wPrime present in profile  → measured
+ *   2. Only ftp present                       → estimated from FTP
+ *   3. Nothing usable                          → null (skip check)
+ */
+export function resolveCPWPrime(profile) {
+  const cp     = parseInt(profile?.cp)     || 0
+  const wPrime = parseInt(profile?.wPrime) || 0
+  if (cp > 0 && wPrime > 0) {
+    return { cp, wPrime, method: 'measured' }
+  }
+  const ftp = parseInt(profile?.ftp) || 0
+  if (ftp > 0) {
+    return { cp: estimateCPFromFTP(ftp), wPrime: estimateWPrimeDefault(ftp), method: 'estimated' }
+  }
+  return { cp: 0, wPrime: 0, method: null }
+}
+
 export function computeWPrime(powers, cp, wPrimeMax) {
   if (!powers || !powers.length || !cp || !wPrimeMax) return []
   let w = wPrimeMax
