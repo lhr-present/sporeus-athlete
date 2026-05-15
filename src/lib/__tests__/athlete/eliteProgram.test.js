@@ -3149,3 +3149,63 @@ describe('reAnchorEliteProgram', () => {
     expect(r.reAnchored.fieldTest).toEqual(ft)
   })
 })
+
+// v9.164.0 (EP-5) — Polarization enforcement: Seiler 80/20 floor on
+// generated sample weeks. Previously the polarization narrative was
+// documented in code comments but never asserted, so any future refactor
+// to runSampleWeek/bikeSampleWeek/swimSampleWeek could silently drift the
+// hard-intensity ratio past safe thresholds without breaking tests.
+describe('polarization enforcement — sample-week Z3+ ratio', () => {
+  // Compute Z3+ minutes ÷ total active minutes for one sample-week phase.
+  function hardRatio(weekDays) {
+    let total = 0, hard = 0
+    for (const d of weekDays) {
+      if (!d.zones) continue
+      const z1 = +d.zones.Z1 || 0
+      const z2 = +d.zones.Z2 || 0
+      const z3 = +d.zones.Z3 || 0
+      const z4 = +d.zones.Z4 || 0
+      const z5 = +d.zones.Z5 || 0
+      total += z1 + z2 + z3 + z4 + z5
+      hard  += z3 + z4 + z5
+    }
+    return total > 0 ? hard / total : 0
+  }
+
+  function buildR() {
+    return buildEliteProgram({
+      sport: 'run',
+      raceDate: '2026-11-01',
+      currentPR: { distanceM: 10000, timeSec: 3000 },
+      targetPR:  { distanceM: 10000, timeSec: 2820 },
+      profile:   { currentCTL: 50 },
+      options:   { today: TODAY },
+    })
+  }
+
+  it('Base phase: hard ratio ≤ 8% (Seiler / Daniels: Base has effectively no hard work)', () => {
+    const r = buildR()
+    const ratio = hardRatio(r.sampleWeeks.Base.filter(d => !d.intent || !/strength/i.test(JSON.stringify(d.intent))))
+    expect(ratio).toBeLessThanOrEqual(0.08)
+  })
+
+  it('Build phase: hard ratio between 15% and 30% (polarized Build)', () => {
+    const r = buildR()
+    const ratio = hardRatio(r.sampleWeeks.Build.filter(d => !d.intent || !/strength/i.test(JSON.stringify(d.intent))))
+    expect(ratio).toBeGreaterThanOrEqual(0.15)
+    expect(ratio).toBeLessThanOrEqual(0.30)
+  })
+
+  it('Peak phase: hard ratio between 18% and 30% (intensified but still under 80/20 ceiling)', () => {
+    const r = buildR()
+    const ratio = hardRatio(r.sampleWeeks.Peak.filter(d => !d.intent || !/strength/i.test(JSON.stringify(d.intent))))
+    expect(ratio).toBeGreaterThanOrEqual(0.18)
+    expect(ratio).toBeLessThanOrEqual(0.30)
+  })
+
+  it('Taper phase: hard ratio kept above 10% (preserve race-pace neural priming)', () => {
+    const r = buildR()
+    const ratio = hardRatio(r.sampleWeeks.Taper.filter(d => !d.intent || !/strength/i.test(JSON.stringify(d.intent))))
+    expect(ratio).toBeGreaterThanOrEqual(0.10)
+  })
+})

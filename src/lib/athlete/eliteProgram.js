@@ -1517,7 +1517,10 @@ export function buildEliteProgram(input) {
   // v9.11.0 — pass currentLevel so cohort dose tables can specialize sessions.
   const keySessionLibrary = buildKeySessionLibrary({ sport, phases, currentLevel })
   const cohort = selectCohort(sport, currentLevel)
-  const strengthProgram   = buildStrengthProgram({ phases, sport })
+  // v9.164.0 (EP-5) — Strength program is now cohort-aware. Pre-fix it
+  // ignored cohort, applying the same 2× heavy lifts/wk at 60min regardless
+  // of training history.
+  const strengthProgram   = buildStrengthProgram({ phases, sport, cohort })
   const fuelingProgram    = buildFuelingProgram({
     phases,
     bodyMassKg: profileWithDefaults.bodyMassKg,

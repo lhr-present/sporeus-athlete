@@ -14,6 +14,57 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.164.0 — 2026-05-16 — Strength cohort overrides + polarization enforcement (EP-5)
+
+  Two related quality gaps from the elite-program audit:
+
+  - `eliteProgramStrength.js` was one-size-fits-all. Every athlete
+    got 2× heavy lifts/wk at 60min in Base regardless of training
+    history. Beattie 2016: novices need lower volume and longer
+    movement-quality runways; elites tolerate higher dose.
+  - Polarization was documented in code comments
+    (`runSampleWeek` etc.) but never asserted. Any future refactor
+    could silently push the hard-intensity ratio past Seiler's
+    80/20 ceiling.
+
+  Strength cohort overrides:
+  - `buildStrengthProgram` accepts `cohort:
+    'beginner'|'intermediate'|'elite'|null`.
+  - Multipliers per phase:
+      beginner:     frequency 0.5×, duration 0.60-0.75×
+      intermediate: 1.0× (unchanged template)
+      elite:        frequency 1.5×, duration 1.10-1.20×
+  - Bilingual `cohortNote` surfaced per phase ("movement quality
+    over load" for beginners; "85-95% 1RM heavy lifts" for elite).
+  - Frequency clamped [1, 4], duration clamped [15, 80] minutes.
+  - `null` cohort yields the legacy template unchanged.
+  - Wired through from `buildEliteProgram` via the existing
+    `selectCohort()` call.
+
+  Polarization enforcement:
+  - New test block asserts the Seiler 80/20 (Z3+ hard-intensity
+    ratio) on generated sample weeks:
+      Base   ≤ 8%   (effectively no hard work — Daniels 2014)
+      Build  15-30% (polarized intensification)
+      Peak   18-30% (intensified but under 80/20 ceiling)
+      Taper  ≥ 10%  (preserve race-pace neural priming)
+  - Catches any drift in future refactors before it ships.
+
+  Verified live ratios: Base 1.8% · Build 24.6% · Peak 25.5% ·
+  Taper 19.1% — comfortably inside the assertion bands.
+
+  Out of scope:
+  - Within-phase strength microcycle periodization
+    (hypertrophy→strength→power 2-week blocks)
+  - Polarization invariants for cycling/swim/rowing sample weeks
+    (this ship covers running; other sports' sample weeks need
+    their own assertions before any drift can be flagged)
+
+  Suite 10554 / 10554 green (+13 new tests).
+
+  Dependencies: existing `selectCohort()` from
+  `eliteProgramCohorts.js`; no schema changes.
+
 ## v9.163.0 — 2026-05-16 — Mid-plan field-test re-anchor for elite program (EP-3)
 
   `fieldTestGainRatio()` has had full test coverage since v9.8 but

@@ -86,3 +86,65 @@ describe('eliteProgramStrength', () => {
     expect(Object.keys(sp).length).toBe(0)
   })
 })
+
+// v9.164.0 (EP-5) — cohort overrides
+describe('buildStrengthProgram — cohort overrides', () => {
+  it('beginner: reduces Base frequency to 1×/wk (was 2×)', () => {
+    const sp = buildStrengthProgram({ phases: ALL_PHASES, sport: 'run', cohort: 'beginner' })
+    expect(sp.Base.frequencyPerWeek).toBe(1)
+  })
+
+  it('elite: increases Base frequency to 3×/wk (was 2×)', () => {
+    const sp = buildStrengthProgram({ phases: ALL_PHASES, sport: 'run', cohort: 'elite' })
+    expect(sp.Base.frequencyPerWeek).toBe(3)
+  })
+
+  it('intermediate: leaves the template at 2×/wk', () => {
+    const sp = buildStrengthProgram({ phases: ALL_PHASES, sport: 'run', cohort: 'intermediate' })
+    expect(sp.Base.frequencyPerWeek).toBe(2)
+  })
+
+  it('beginner Base session duration is shorter than intermediate', () => {
+    const beg = buildStrengthProgram({ phases: ALL_PHASES, sport: 'run', cohort: 'beginner' })
+    const int = buildStrengthProgram({ phases: ALL_PHASES, sport: 'run', cohort: 'intermediate' })
+    expect(beg.Base.sessionDurationMin).toBeLessThan(int.Base.sessionDurationMin)
+  })
+
+  it('elite Base session duration is longer than intermediate', () => {
+    const eli = buildStrengthProgram({ phases: ALL_PHASES, sport: 'run', cohort: 'elite' })
+    const int = buildStrengthProgram({ phases: ALL_PHASES, sport: 'run', cohort: 'intermediate' })
+    expect(eli.Base.sessionDurationMin).toBeGreaterThan(int.Base.sessionDurationMin)
+  })
+
+  it('cohortNote bilingual EN+TR present for every cohort', () => {
+    for (const cohort of ['beginner', 'intermediate', 'elite']) {
+      const sp = buildStrengthProgram({ phases: ALL_PHASES, sport: 'run', cohort })
+      expect(sp.Base.cohortNote.en).toBeTruthy()
+      expect(sp.Base.cohortNote.tr).toBeTruthy()
+      expect(sp.Base.cohort).toBe(cohort)
+    }
+  })
+
+  it('null cohort → output matches the untouched template (no cohort field)', () => {
+    const noC = buildStrengthProgram({ phases: ALL_PHASES, sport: 'run', cohort: null })
+    const def = buildStrengthProgram({ phases: ALL_PHASES, sport: 'run' })
+    expect(noC.Base.frequencyPerWeek).toBe(def.Base.frequencyPerWeek)
+    expect(noC.Base.sessionDurationMin).toBe(def.Base.sessionDurationMin)
+    expect(noC.Base.cohort).toBeUndefined()
+  })
+
+  it('frequency is clamped to [1, 4]', () => {
+    const sp = buildStrengthProgram({ phases: ALL_PHASES, sport: 'run', cohort: 'elite' })
+    for (const phase of ['Base', 'Build', 'Peak', 'Taper']) {
+      expect(sp[phase].frequencyPerWeek).toBeGreaterThanOrEqual(1)
+      expect(sp[phase].frequencyPerWeek).toBeLessThanOrEqual(4)
+    }
+  })
+
+  it('intermediate cohort with all sports yields stable defaults', () => {
+    for (const sport of ['run', 'bike', 'swim', 'rowing', 'triathlon']) {
+      const sp = buildStrengthProgram({ phases: ALL_PHASES, sport, cohort: 'intermediate' })
+      expect(sp.Base.frequencyPerWeek).toBe(2)
+    }
+  })
+})

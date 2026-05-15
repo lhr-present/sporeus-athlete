@@ -643,19 +643,74 @@ const TAPER_TEMPLATE = {
   citation: 'Mujika 2003; Rønnestad & Mujika 2014',
 }
 
+// v9.164.0 (EP-5) — Strength cohort overrides. Pre-fix the strength
+// program was one-size-fits-all: every athlete got 2× heavy lifts/wk at
+// 60min in Base regardless of training history. Beattie 2016 + general
+// S&C norms: novices need lower volume and longer movement-quality
+// runways before adding load; elite athletes tolerate (and require)
+// higher dose for adaptation.
+//
+// Overrides are MULTIPLICATIVE on the generic template (set in
+// makeBase/makeBuild/makePeak/makeTaper). Intensity notes are bilingual
+// strings appended to the phase plan so the UI can surface the
+// cohort-specific dose without recomputing the movement list.
+//
+// Frequency floor 1 / ceiling 4 — Rønnestad 2014 + Beattie 2014.
+// Duration floor 15 / ceiling 80 — practical session length.
+const STRENGTH_COHORT_FREQ_MULT = {
+  beginner:     { Base: 0.5, Build: 0.5, Peak: 1.0, Taper: 1.0 },
+  intermediate: { Base: 1.0, Build: 1.0, Peak: 1.0, Taper: 1.0 },
+  elite:        { Base: 1.5, Build: 1.5, Peak: 1.5, Taper: 1.5 },
+}
+const STRENGTH_COHORT_DUR_MULT = {
+  beginner:     { Base: 0.75, Build: 0.70, Peak: 0.70, Taper: 0.60 },
+  intermediate: { Base: 1.00, Build: 1.00, Peak: 1.00, Taper: 1.00 },
+  elite:        { Base: 1.20, Build: 1.10, Peak: 1.10, Taper: 1.00 },
+}
+const STRENGTH_COHORT_NOTES = {
+  beginner: {
+    en: 'Beginner: focus on movement quality over load. Skip plyometrics first 2 weeks. Stop short of failure.',
+    tr: 'Başlangıç: yük yerine hareket kalitesine odaklan. İlk 2 hafta plyometriği atla. Başarısızlığa varmadan dur.',
+  },
+  intermediate: {
+    en: 'Intermediate: standard dose. Heavy lifts 75-85% 1RM; explosive lifts 50-60% 1RM at speed.',
+    tr: 'Orta seviye: standart doz. Ağır kaldırışlar %75-85 1RM; patlayıcı kaldırışlar hızda %50-60 1RM.',
+  },
+  elite: {
+    en: 'Elite: high-volume periodized (hypertrophy→strength→power 2-week microcycles). Heavy lifts 85-95% 1RM.',
+    tr: 'Elit: yüksek-hacim periyodize (hipertrofi→kuvvet→güç 2-haftalık mikrosiklüsler). Ağır kaldırışlar %85-95 1RM.',
+  },
+}
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)) }
+
+function applyCohortToPhase(phasePlan, phase, cohort) {
+  if (!cohort || !STRENGTH_COHORT_FREQ_MULT[cohort]) return phasePlan
+  const fMult = STRENGTH_COHORT_FREQ_MULT[cohort][phase] ?? 1.0
+  const dMult = STRENGTH_COHORT_DUR_MULT[cohort][phase] ?? 1.0
+  return {
+    ...phasePlan,
+    frequencyPerWeek:   clamp(Math.round(phasePlan.frequencyPerWeek * fMult), 1, 4),
+    sessionDurationMin: clamp(Math.round(phasePlan.sessionDurationMin * dMult), 15, 80),
+    cohort,
+    cohortNote: STRENGTH_COHORT_NOTES[cohort],
+  }
+}
+
 /**
  * @public
- * @param {{ phases: Array<{phase:string}>, sport?: string }} input
+ * @param {{ phases: Array<{phase:string}>, sport?: string, cohort?: 'beginner'|'intermediate'|'elite'|null }} input
  * @returns {Record<string, StrengthPhasePlan>}
  */
 export function buildStrengthProgram(input) {
   const present = new Set((input?.phases || []).map(p => p.phase))
   const sport = input?.sport
+  const cohort = input?.cohort || null
   const out = {}
-  if (present.has('Base'))  out.Base  = makeBase(sport)
-  if (present.has('Build')) out.Build = makeBuild(sport)
-  if (present.has('Peak'))  out.Peak  = makePeak(sport)
-  if (present.has('Taper')) out.Taper = makeTaper(sport)
+  if (present.has('Base'))  out.Base  = applyCohortToPhase(makeBase(sport),  'Base',  cohort)
+  if (present.has('Build')) out.Build = applyCohortToPhase(makeBuild(sport), 'Build', cohort)
+  if (present.has('Peak'))  out.Peak  = applyCohortToPhase(makePeak(sport),  'Peak',  cohort)
+  if (present.has('Taper')) out.Taper = applyCohortToPhase(makeTaper(sport), 'Taper', cohort)
   return out
 }
 
