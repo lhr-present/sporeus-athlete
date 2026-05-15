@@ -18,6 +18,56 @@ export function isPushSupported() {
   return 'serviceWorker' in navigator && 'PushManager' in window
 }
 
+// ── v9.176.0 — iOS PWA-install detection ─────────────────────────────────────
+//
+// Web Push on iOS requires (a) iOS 16.4+ and (b) the site added to the home
+// screen as a PWA. Without the install step the subscribePush() call
+// silently fails or denies — confusing for users. These helpers surface an
+// explicit pre-flight check so the UI can show install instructions instead
+// of letting the user click "Enable" and get a silent failure.
+
+const _DEFAULT_UA = () => (typeof navigator !== 'undefined' ? navigator.userAgent || '' : '')
+
+export function isIOS(ua = _DEFAULT_UA()) {
+  // Covers iPhone, iPad (incl. iPadOS 13+ which reports as MacIntel with touch).
+  if (!ua) return false
+  if (/iPhone|iPad|iPod/i.test(ua)) return true
+  // iPadOS 13+ desktop-mode UA: Mac with multi-touch.
+  if (typeof navigator !== 'undefined'
+      && /Macintosh/i.test(ua)
+      && typeof navigator.maxTouchPoints === 'number'
+      && navigator.maxTouchPoints > 1) return true
+  return false
+}
+
+export function isPWAStandalone() {
+  if (typeof window === 'undefined') return false
+  // Modern: matchMedia display-mode. Legacy iOS: navigator.standalone.
+  if (typeof window.matchMedia === 'function') {
+    try {
+      if (window.matchMedia('(display-mode: standalone)').matches) return true
+    } catch { /* ignore */ }
+  }
+  if (typeof navigator !== 'undefined' && 'standalone' in navigator) {
+    return !!navigator.standalone
+  }
+  return false
+}
+
+// Returns null on platforms where push works without an install step.
+// Returns a bilingual hint object on iOS Safari (non-standalone) explaining
+// the install requirement.
+export function getIOSInstallHint() {
+  if (!isIOS()) return null
+  if (isPWAStandalone()) return null
+  return {
+    requiresInstall: true,
+    en: 'iOS push notifications require this app to be installed to your home screen first. In Safari, tap the Share icon → "Add to Home Screen", then reopen Sporeus from the home-screen icon and enable notifications.',
+    tr: 'iOS push bildirimleri için uygulamanın önce ana ekrana eklenmesi gerekir. Safari\'de Paylaş simgesine dokun → "Ana Ekrana Ekle", sonra Sporeus\'u ana ekrandan açıp bildirimleri etkinleştir.',
+    minIOSVersion: '16.4',
+  }
+}
+
 // Returns the browser's raw Notification.permission: 'default'|'granted'|'denied'|'unsupported'
 export function getPermissionStatus() {
   if (typeof Notification === 'undefined') return 'unsupported'

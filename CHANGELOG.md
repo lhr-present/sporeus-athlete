@@ -14,6 +14,41 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.176.0 — 2026-05-16 — iOS PWA-install detection for push notifications
+
+  Per the 2026-05-16 audit, "Known Limitations" item 3 — "Push
+  notifications: iOS requires iOS 16.4+ and PWA installed to home
+  screen" — is a true Apple platform constraint that can't be lifted
+  in code. But the user-experience side WAS solvable: when an iOS
+  Safari user (not in PWA standalone mode) clicked "Enable
+  notifications", they hit a silent failure with no explanation.
+  v9.176.0 surfaces an explicit pre-flight check + install
+  instructions before the failure mode can occur.
+
+  Adds three exports to `src/lib/pushNotify.js`:
+    - `isIOS(ua?)` — UA detection covering iPhone, iPad, iPod, AND
+      iPadOS 13+ desktop-spoofing UAs (Macintosh + multi-touch).
+    - `isPWAStandalone()` — `matchMedia('(display-mode: standalone)')`
+      with legacy `navigator.standalone` fallback for old iOS Safari.
+    - `getIOSInstallHint()` — returns null on platforms that don't
+      need install; returns `{ requiresInstall, en, tr, minIOSVersion:
+      '16.4' }` on iOS Safari NOT in standalone mode.
+
+  `NotificationSettings.jsx` now renders a bright-bordered
+  "iOS — INSTALL REQUIRED" notice above the toggle when the hint
+  fires. Bilingual EN string in the UI (component is English-only);
+  TR string available for callers that have LangCtx access.
+
+  15 new tests across `isIOS` (6 UA patterns), `isPWAStandalone`
+  (4 cases including SSR-safe no-window), `getIOSInstallHint`
+  (3 platform combinations). Test count 10717 → 10731 (+14).
+
+  CLAUDE.md "Known Limitations" item 3 updated to note the hint
+  helpers. The actual push-delivery constraint stays (Apple).
+
+  Citations: Apple WebKit blog 2023-03 (web push iOS 16.4 release);
+  W3C Service Worker spec.
+
 ## v9.175.0 — 2026-05-16 — Guest-mode "Download Backup" button + CLAUDE.md doc fix
 
   Per the 2026-05-16 audit, "Known Limitations" item 4 — "Guest mode:

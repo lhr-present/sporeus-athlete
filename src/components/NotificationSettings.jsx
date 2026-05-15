@@ -7,6 +7,7 @@ import {
   getReminderSettings,
   saveReminderSettings,
 } from '../lib/pushNotifications.js'
+import { getIOSInstallHint } from '../lib/pushNotify.js'
 
 const MONO = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -68,6 +69,7 @@ export default function NotificationSettings() {
   }
 
   const notSupported = typeof Notification === 'undefined' || permission === 'unsupported'
+  const iosHint = getIOSInstallHint()
 
   return (
     <div style={{ fontFamily: MONO, padding: '16px', background: '#0f0f0f', border: '1px solid #222', borderRadius: '6px', marginBottom: '16px' }}>
@@ -83,6 +85,14 @@ export default function NotificationSettings() {
         </div>
       </div>
 
+      {iosHint && (
+        <div style={{ marginBottom: '12px', padding: '10px 12px', background: '#1a1a1a', border: '1px solid #0064ff', borderRadius: '4px', fontSize: '10px', color: '#cce0ff', lineHeight: 1.5 }}>
+          <div style={{ fontWeight: 700, color: '#0064ff', marginBottom: '4px', letterSpacing: '0.06em' }}>
+            iOS — INSTALL REQUIRED
+          </div>
+          {iosHint.en}
+        </div>
+      )}
       {notSupported ? (
         <div style={{ fontSize: '10px', color: '#555' }}>
           Notifications not supported in this browser.

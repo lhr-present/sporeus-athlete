@@ -157,7 +157,7 @@ const hasTriData = useMemo(() =>
 ## Known Limitations
 - Strava OAuth: code is single-use + 5-min expiry (platform constraint). Transient 5xx / network failures retried automatically up to 3× with backoff (v9.173.0); 4xx errors are permanent (single-use code).
 - W' exhaustion check uses CP + W' from profile if both are saved (CP Test); otherwise falls back to CP ≈ 0.95×FTP + W' = 15 kJ default (v9.174.0). Entries store `wPrimeMethod: 'measured'|'estimated'` so the UI can show precision level.
-- Push notifications: iOS requires iOS 16.4+ and PWA installed to home screen
+- Push notifications: iOS requires iOS 16.4+ and PWA installed to home screen. v9.176.0 added `isIOS` / `isPWAStandalone` / `getIOSInstallHint` to `pushNotify.js`; NotificationSettings surfaces install instructions on iOS Safari pre-install instead of letting the user hit a silent push failure.
 - Guest mode: data lives in localStorage. On sign-up `detectLocalData` + `MigrationModal` auto-migrate to Supabase (`src/lib/dataMigration.js`, `src/components/MigrationModal.jsx`). Nudge fires after 30d or 50 sessions; v9.175.0 added a "Download Backup" button on the nudge so guests who don't want an account can self-backup before clearing the browser.
 
 ## Version System (two numbers, on purpose)

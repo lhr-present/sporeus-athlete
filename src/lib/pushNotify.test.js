@@ -5,6 +5,9 @@ import {
   getPushRateState,
   sendTestNotification,
   saveNotifPrefs,
+  isIOS,
+  isPWAStandalone,
+  getIOSInstallHint,
 } from './pushNotify.js'
 
 // ── localStorage stub (node env has no localStorage) ─────────────────────────
@@ -228,5 +231,91 @@ describe('Push notification dedupe key format', () => {
     const k1 = `test:user-abc:${Date.now()}`
     const k2 = `test:user-abc:${Date.now() + 1}`
     expect(k1).not.toBe(k2)
+  })
+})
+
+// ── v9.176.0 — iOS PWA-install detection ─────────────────────────────────────
+
+describe('isIOS', () => {
+  it('returns true for iPhone UA', () => {
+    expect(isIOS('Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15')).toBe(true)
+  })
+  it('returns true for iPad UA', () => {
+    expect(isIOS('Mozilla/5.0 (iPad; CPU OS 17_4 like Mac OS X) AppleWebKit/605.1.15')).toBe(true)
+  })
+  it('returns true for iPod UA', () => {
+    expect(isIOS('Mozilla/5.0 (iPod touch; CPU iPhone OS 16_4 like Mac OS X)')).toBe(true)
+  })
+  it('returns false for Android UA', () => {
+    expect(isIOS('Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36')).toBe(false)
+  })
+  it('returns false for desktop Chrome UA', () => {
+    expect(isIOS('Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 Chrome/120')).toBe(false)
+  })
+  it('returns false for plain Macintosh without touch (no iPad-spoof)', () => {
+    // navigator.maxTouchPoints not set in node; defaults to false
+    expect(isIOS('Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15')).toBe(false)
+  })
+  it('returns false for empty UA', () => {
+    expect(isIOS('')).toBe(false)
+  })
+})
+
+describe('isPWAStandalone', () => {
+  // In node test env there is no `window` — function should defend itself
+  it('returns false when window is not defined', () => {
+    // Save / restore for safety even though node doesn't set window
+    const orig = global.window
+    delete global.window
+    expect(isPWAStandalone()).toBe(false)
+    if (orig !== undefined) global.window = orig
+  })
+
+  it('detects matchMedia standalone', () => {
+    vi.stubGlobal('window', { matchMedia: q => ({ matches: q.includes('standalone') }) })
+    expect(isPWAStandalone()).toBe(true)
+    vi.unstubAllGlobals()
+  })
+
+  it('detects legacy navigator.standalone (iOS Safari)', () => {
+    vi.stubGlobal('window', { matchMedia: () => ({ matches: false }) })
+    vi.stubGlobal('navigator', { standalone: true, userAgent: '' })
+    expect(isPWAStandalone()).toBe(true)
+    vi.unstubAllGlobals()
+  })
+
+  it('returns false when neither display-mode nor navigator.standalone set', () => {
+    vi.stubGlobal('window', { matchMedia: () => ({ matches: false }) })
+    vi.stubGlobal('navigator', { userAgent: '' })
+    expect(isPWAStandalone()).toBe(false)
+    vi.unstubAllGlobals()
+  })
+})
+
+describe('getIOSInstallHint', () => {
+  it('returns null on non-iOS platforms', () => {
+    vi.stubGlobal('window', { matchMedia: () => ({ matches: false }) })
+    vi.stubGlobal('navigator', { userAgent: 'Mozilla/5.0 (Windows NT 10.0)' })
+    expect(getIOSInstallHint()).toBeNull()
+    vi.unstubAllGlobals()
+  })
+
+  it('returns null on iOS already running as PWA standalone', () => {
+    vi.stubGlobal('window', { matchMedia: q => ({ matches: q.includes('standalone') }) })
+    vi.stubGlobal('navigator', { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X)' })
+    expect(getIOSInstallHint()).toBeNull()
+    vi.unstubAllGlobals()
+  })
+
+  it('returns bilingual install hint on iOS Safari NOT in standalone mode', () => {
+    vi.stubGlobal('window', { matchMedia: () => ({ matches: false }) })
+    vi.stubGlobal('navigator', { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X)' })
+    const hint = getIOSInstallHint()
+    expect(hint).not.toBeNull()
+    expect(hint.requiresInstall).toBe(true)
+    expect(hint.en).toMatch(/Add to Home Screen/i)
+    expect(hint.tr).toMatch(/Ana Ekrana Ekle/i)
+    expect(hint.minIOSVersion).toBe('16.4')
+    vi.unstubAllGlobals()
   })
 })
