@@ -131,6 +131,7 @@ const RecoveryAdherenceCard      = lazy(() => import('./dashboard/RecoveryAdhere
 const TrainingDiversityCard      = lazy(() => import('./dashboard/TrainingDiversityCard.jsx'))
 const DeloadCadenceCard          = lazy(() => import('./dashboard/DeloadCadenceCard.jsx'))
 const EliteProgramCard           = lazy(() => import('./dashboard/EliteProgramCard.jsx'))
+const FieldTestHistoryCard       = lazy(() => import('./dashboard/FieldTestHistoryCard.jsx'))
 const MissionHeadline            = lazy(() => import('./dashboard/MissionHeadline.jsx'))
 const TodayProgrammedSessionCard = lazy(() => import('./dashboard/TodayProgrammedSessionCard.jsx'))
 const CoachingInsightsDigest     = lazy(() => import('./dashboard/CoachingInsightsDigest.jsx'))
@@ -367,6 +368,11 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
             </Suspense>
           </ErrorBoundary>
         </div>
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <FieldTestHistoryCard />
+          </Suspense>
+        </ErrorBoundary>
         <TodayStripCard log={log} isTR={lang === 'tr'} onLogSession={onLogSession} />
         <ErrorBoundary>
           <EliteMetricsStrip
@@ -538,6 +544,11 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
           </Suspense>
         </ErrorBoundary>
       </div>
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <FieldTestHistoryCard />
+        </Suspense>
+      </ErrorBoundary>
       <ErrorBoundary>
         <Suspense fallback={null}>
           <TodayProgrammedSessionCard log={log} />

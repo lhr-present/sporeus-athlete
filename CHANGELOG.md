@@ -14,6 +14,52 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.179.0 — 2026-05-17 — Field Test History card (final v9.177 follow-up #1)
+
+  Closes the final v9.177.0 follow-up — a read-only history surface
+  for every field test recorded via FieldTestModal. Without this card,
+  the modal's `sporeus-field-test-results` array was write-only from
+  the athlete's perspective: entries were created and stored but never
+  surfaced anywhere except for the within-session Undo.
+
+  Adds `src/components/dashboard/FieldTestHistoryCard.jsx` (lazy-loaded,
+  joins the 74→75 dashboard cards). Renders `null` when the results
+  array is empty, so non-tracking athletes see no UI noise.
+
+  ── Design decisions (delegated to Claude) ────────────────────────
+  - **Where**: standalone Dashboard card. Inserted after EliteProgramCard
+    in both onboarding-fresh and advanced dashboard layouts so the
+    history sits next to the program it modified.
+  - **Scope**: table + one-line trend summary per metric. No charts —
+    typical data density (3-6 tests) makes a sparkline information-
+    poor compared to a "VDOT 42 → 47 +5 over 17 weeks" line.
+  - **Multi-program**: ALL entries across all programs, grouped by
+    METRIC (vdot / ftp / cssSec / split2kSec), newest-first. A
+    triathlete sees three separate sections for run/bike/swim tests.
+    Cross-program visibility is the whole value of a history view.
+  - **Edit/delete**: read-only. Capture-time typos are handled by the
+    Undo button on FieldTestModal (v9.178.0). Editing historical
+    entries is physiologically nonsensical — the actual training has
+    already happened against the actual recorded number.
+
+  ── Delta semantics ────────────────────────────────────────────────
+  Per-row delta = `value - prevValue` (numerical). Color-coded by
+  "better direction" of the metric:
+    - VDOT, FTP   — higher is better → positive delta is green
+    - CSS, 2kSplit — lower is better → negative delta is green
+  An athlete who drops their CSS from 100 to 92 sees `-8` in green.
+  An athlete whose FTP regresses from 280 to 270 sees `-10` in red.
+
+  Bilingual EN/TR throughout. Tests cover empty/invalid input, single-
+  entry rendering, multi-entry sorting + delta computation, all four
+  metric color combinations (VDOT green / CSS green / FTP red), multi-
+  metric triathlete grouping, optional RPE/notes display, EN+TR
+  rendering. Test count 10755 → 10768 (+13). Lint + build green;
+  precache 264 → 265 entries.
+
+  Depends on: src/hooks/useLocalStorage.js (raw read path),
+              src/components/FieldTestModal.jsx (data producer).
+
 ## v9.178.0 — 2026-05-17 — FieldTestModal polish — profile + notes/RPE + Undo
 
   Three follow-ups from the v9.177.0 ship, addressing items 4 / 2 / 5
