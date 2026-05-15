@@ -14,6 +14,63 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.177.0 — 2026-05-17 — Field-test entry modal closes the v9.5.0 ⇄ v9.8.0 ⇄ EP-3 loop
+
+  The v9.5.0 field-test milestone has been rendered on ProgramCalendar
+  for months (📊 emoji on Wed of last Base week). The v9.8.0 orchestrator
+  shipped `input.actualFieldTestResults` rescaling for Peak+Taper TSS.
+  EP-3 (v9.163.0) shipped `reAnchorEliteProgram` for a cleaner full-
+  rebuild API. But there was no athlete-facing UI to actually RECORD
+  the test result and pipe it back through any of these. The marker
+  was decorative.
+
+  Adds `src/components/FieldTestModal.jsx` (lazy-loaded). Sport-
+  conditional input:
+    - run / triathlon → VDOT (30-85, step 0.1)
+    - bike            → FTP watts (50-500)
+    - swim            → CSS sec/100m (60-200, step 0.5)
+    - rowing          → 2k split sec/500m (70-180, step 0.1)
+
+  On submit, the modal calls `reAnchorEliteProgram(program, fieldTest,
+  todayISO, profile)` (the EP-3 API — newer + cleaner than the original
+  v9.8.0 `actualFieldTestResults` path which only rescaled TSS without
+  rebuilding physiology). Persists:
+    - Re-anchored program → `sporeus-eliteProgram`
+    - Raw field-test entry → `sporeus-field-test-results` array
+      (keyed by `sport+raceDate` programId)
+
+  Success state shows before/after Peak+Taper weekly-TSS sum with
+  delta + a synthesized bilingual note (e.g. "VDOT +2 — Peak/Taper
+  re-anchored." / "VDOT +2 — Peak/Taper yeniden hizalandı.").
+
+  `ProgramCalendar` wiring: the 📊 milestone span is now a button
+  (was a non-interactive span) that opens the modal. Other milestones
+  (🏁 race-day, 🛬 taper-start, ⚡ race-pace-primer) remain non-
+  interactive — only the field-test marker is actionable.
+
+  Tests cover all 4 sport-conditional inputs, validation (3 reject
+  paths), happy path (calls reAnchor with correct shape per sport,
+  shows before/after TSS, shows delta note), localStorage round-trip,
+  error display when reAnchor returns _rejected or null, EN/TR
+  bilingual rendering, and Cancel callback. Test count 10731 → 10749
+  (+18). Lint + build green.
+
+  ── Implementation notes ──────────────────────────────────────────
+  Prompt was written before EP-3 existed; chose `reAnchorEliteProgram`
+  over `buildEliteProgram(..., actualFieldTestResults)` because the
+  former rebuilds physiology (new currentLevel, predicted race time
+  re-anchored, paces re-derived) instead of only rescaling TSS by a
+  half-stepped clamped ratio. The athlete-facing UX claim ("Peak +
+  Taper re-anchored to new physiology baseline") matches what
+  reAnchorEliteProgram actually does.
+
+  Citations: Skiba 2014 (Daniels VDOT update cadence); Coggan & Allen
+  2010 (FTP test protocol); Wakayoshi 1992 (CSS test).
+
+  Depends on: src/lib/athlete/eliteProgram.js (reAnchorEliteProgram),
+              src/hooks/useLocalStorage.js,
+              src/components/dashboard/ProgramCalendar.jsx (wiring).
+
 ## v9.176.0 — 2026-05-16 — iOS PWA-install detection for push notifications
 
   Per the 2026-05-16 audit, "Known Limitations" item 3 — "Push

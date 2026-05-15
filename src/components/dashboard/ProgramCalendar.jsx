@@ -11,7 +11,7 @@
 //   2. eliteProgramToYearlyWeeks(program, programStart) — synthesized
 //      on the fly from the orchestrator output
 
-import { useContext, useMemo, useState } from 'react'
+import { lazy, Suspense, useContext, useMemo, useState } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useData } from '../../contexts/DataContext.jsx'
@@ -19,6 +19,9 @@ import { eliteProgramToYearlyWeeks } from '../../lib/athlete/eliteProgramToYearl
 import { buildCalendarProgress } from '../../lib/athlete/calendarProgress.js'
 import { buildPlanMilestones } from '../../lib/athlete/planMilestones.js'
 import { buildLogEntryFromSession } from '../../lib/athlete/quickLogFromSession.js'
+
+// v9.177.0 — Field-test modal triggered by 📊 milestone marker
+const FieldTestModal = lazy(() => import('../FieldTestModal.jsx'))
 
 const PHASE_COLOR = {
   Base:  '#0064ff',
@@ -99,6 +102,7 @@ export default function ProgramCalendar({ program, programStart, yearlyPlan, col
   const [expandedKey, setExpandedKey] = useState(null)
   const [allOpen, setAllOpen] = useState(!collapseDefault)
   const [logToast, setLogToast] = useState(null)
+  const [fieldTestOpen, setFieldTestOpen] = useState(false)
 
   const weeks = useMemo(() => {
     if (yearlyPlan && Array.isArray(yearlyPlan.weeks) && yearlyPlan.weeks.length > 0) {
@@ -292,14 +296,25 @@ export default function ProgramCalendar({ program, programStart, yearlyPlan, col
                           </span>
                         ) : null}
                         {milestone ? (
-                          <span aria-label={isTR ? milestone.label.tr : milestone.label.en}
-                            title={isTR ? milestone.label.tr : milestone.label.en}
-                            style={{ position: 'absolute', top: 2, left: 2, fontSize: 11 }}>
-                            {milestone.type === 'race-day' ? '🏁'
-                              : milestone.type === 'taper-start' ? '🛬'
-                              : milestone.type === 'race-pace-primer' ? '⚡'
-                              : '📊'}
-                          </span>
+                          milestone.type === 'field-test' ? (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setFieldTestOpen(true) }}
+                              aria-label={isTR ? `${milestone.label.tr} — kaydet` : `${milestone.label.en} — record`}
+                              title={isTR ? `${milestone.label.tr} — kaydetmek için tıkla` : `${milestone.label.en} — click to record`}
+                              style={{ position: 'absolute', top: 2, left: 2, fontSize: 11, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>
+                              📊
+                            </button>
+                          ) : (
+                            <span aria-label={isTR ? milestone.label.tr : milestone.label.en}
+                              title={isTR ? milestone.label.tr : milestone.label.en}
+                              style={{ position: 'absolute', top: 2, left: 2, fontSize: 11 }}>
+                              {milestone.type === 'race-day' ? '🏁'
+                                : milestone.type === 'taper-start' ? '🛬'
+                                : milestone.type === 'race-pace-primer' ? '⚡'
+                                : '📊'}
+                            </span>
+                          )
                         ) : null}
                         <span style={{ fontSize: 8, color: 'var(--muted)', letterSpacing: '0.05em', marginLeft: milestone ? 14 : 0 }}>
                           {isTR ? dk.toUpperCase() : dk.toUpperCase()} · {dayDate.getUTCDate()}
@@ -410,6 +425,17 @@ export default function ProgramCalendar({ program, programStart, yearlyPlan, col
           })}
         </div>
       ) : null}
+
+      {fieldTestOpen && (
+        <Suspense fallback={null}>
+          <FieldTestModal
+            program={program}
+            profile={null}
+            lang={lang}
+            onClose={() => setFieldTestOpen(false)}
+          />
+        </Suspense>
+      )}
     </div>
   )
 }
