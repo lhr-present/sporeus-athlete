@@ -14,6 +14,37 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.166.0 — 2026-05-16 — Triathlon daily-balance rules (EP-11)
+
+  `triSampleWeek` in eliteProgram.js hand-curates 4 phase weeks for
+  triathletes. The v9.20.0 + v9.27.0 audits previously caught
+  "3 consecutive hard days" (Lambert 1997 violation) by manual review.
+  Future edits to those hardcoded arrays — or any caller that
+  programmatically composes a tri week — had no automated invariant.
+
+  Adds `src/lib/athlete/triathlonWeekBalance.js` with three rules:
+    R1. No two HARD sessions on consecutive days (Lambert 1997).
+    R2. Long session (bike ≥150 min, run ≥120 min) anchored on Sat/Sun.
+    R3. Strength sessions precede the next HARD session by ≥24h.
+
+  Classifier `classifyTriSession` returns rest/hard/long/easy based on
+  (Z4+Z5) minutes ≥25 and discipline-aware duration thresholds.
+
+  `validateTriathlonWeek(week)` returns `{ valid, violations[], classes,
+  hardDays, longDays }` with EN/TR rule messages. `balanceTriathlonWeek`
+  attempts day-swap fixes for R1 adjacencies as a best-effort helper
+  (no auto-fix for R2 since it would need content choice, not just label
+  shuffle).
+
+  Tests cover all four `triSampleWeek` phases (Base/Build/Peak/Taper)
+  passing R1–R3 plus synthetic violations + day-swap rebalance. Locks in
+  the v9.20.0/v9.27.0 audit findings against future drift.
+
+  Citations: Lambert 1997; Seiler 2010; Mujika 2003.
+  Test count: 10565 → 10580 (+15).
+
+  Depends on: src/lib/athlete/eliteProgram.js (triSampleWeek + buildEliteProgram).
+
 ## v9.165.0 — 2026-05-16 — Physiology gap insight on EliteProgramCard (EP-6)
 
   Pre-fix the elite program already computed current → target VDOT
