@@ -14,6 +14,50 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.171.0 — 2026-05-16 — Menstrual-cycle phase gate, opt-in (EP-9)
+
+  Adds `src/lib/athlete/cyclePhaseGate.js` — an opt-in, female-only
+  layer that adjusts elite-program weekly TSS by predicted cycle phase
+  for the next N weeks.
+
+  ── Privacy + opt-in ────────────────────────────────────────────────
+  The gate returns null (no-op) unless BOTH conditions are met:
+    1. profile.gender === 'female'
+    2. profile.lastPeriodStart is set (athlete chose to track)
+
+  Callers MUST gate any cycle UI behind `isCycleGateAvailable(profile)`
+  — non-female users and female users who haven't opted in see nothing
+  cycle-related. `applyCyclePhaseGate(weeklyTSS, null)` is a pure no-op
+  that returns the same array reference unchanged.
+
+  ── Scientific framing ──────────────────────────────────────────────
+  McNulty 2020 meta-analysis (54 studies, n>5000) found small + uncertain
+  effects of cycle phase on endurance performance (<2% mean shift, high
+  inter-individual variability). So the gate emits GENTLE
+  recommendations (±5% TSS): menstruation 0.97×, follicular 1.03×,
+  ovulation 1.05×, luteal 0.97×. The athlete's own RPE always overrides.
+
+  ── API ─────────────────────────────────────────────────────────────
+  - `isCycleGateAvailable(profile) → boolean` — UI rendering gate
+  - `buildCyclePhaseGate(profile, options) → forecast | null` — 4-week
+    (default) per-week cycle-phase coverage + dominantPhase + tssMultiplier
+    + intensityRec + bilingual note + privacy note + citation
+  - `applyCyclePhaseGate(weeklyTSS, gate) → array` — adds
+    `cycleMultiplier`/`cyclePhase`/`cycleAdjustedTSS` to each week when
+    gate is non-null; pure no-op (same array reference) otherwise
+
+  Tests cover: privacy gating (6 false cases), build-time gating
+  rejections, happy-path output shape, coverage sums to 7, multipliers
+  within ±5% bounds, dominantPhase rotation over multiple cycles,
+  pure-no-op proof for null/male/non-opted-in inputs (no cycle fields
+  leak onto the output), and TSS round-trip math.
+
+  Test count: 10650 → 10677 (+27).
+
+  Citations: McNulty 2020; Sims 2018; Janse de Jonge 2003; Bruinvels 2017.
+
+  Depends on: src/lib/cycleUtils.js (existing phase utilities).
+
 ## v9.170.0 — 2026-05-16 — Multi-peak season skeleton (EP-4)
 
   `buildEliteProgram` targets a single race. Real seasons have an
