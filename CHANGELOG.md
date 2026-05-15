@@ -14,6 +14,47 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.169.0 — 2026-05-16 — Injury return-to-sport ramp (EP-10)
+
+  `comebackDetector.js` already flagged inactivity gaps and suggested
+  easing CTL ~50% of prior load — reactive ("you stopped, here's a
+  hint"). EP-10 is the prescriptive counterpart: given a known injury,
+  days off, pre-injury CTL, and body-region awareness, emit a week-by-
+  week ramp with intensity caps, volume targets, ACWR targets, red
+  flags, and return-to-sport criteria.
+
+  Adds `src/lib/athlete/injuryReturnRamp.js` with
+  `buildReturnToSportRamp({ sport, injuryType, bodyRegion, daysOff,
+  preInjuryCTL, returnDate })`.
+
+  Three base ramps:
+    - <14 days off:   3-week compressed ramp (50 → 75 → 100%)
+    - 14-30 days off: 5-week standard ramp (30 → 50 → 70 → 90 → 100%)
+    - >30 days off:   6-week stretched ramp (25 → 40 → 60 → 75 → 90 → 100%)
+
+  Impact injuries (`injuryType: 'impact'`) to load-bearing regions
+  (`lower-leg | knee | hip`) prepend a 2-week non-impact preamble
+  (swim / aqua-jog / stationary bike only) before the base ramp —
+  so a stress-fractured runner with 60 days off gets a 2 + 6 = 8 week
+  protocol.
+
+  Each week emits: volumePct, weeklyTSS (preInjuryCTL × 7 ×
+  volumePct/100), intensityCap (Z2-Z5 progression), maxQualitySessions
+  (0/1/2/3), acwrTarget (1.0 for weeks 1-2, then relaxed), bilingual
+  note. Plus 5 RTS criteria (Ardern 2016) and 4 red flags (clinician
+  triggers).
+
+  Tests: input validation (6 failure paths) + base/compressed/stretched
+  ramps + impact preamble + monotonic-volume invariant + ACWR week-1=1.0
+  + quality-sessions gating + TSS scales with CTL + bilingual coverage.
+
+  Test count: 10607 → 10630 (+23).
+
+  Citations: Soligard 2016 (BJSM load consensus); Gabbett 2016 (ACWR);
+  Mujika 2000 (detraining); Ardern 2016 (RTS framework); Bertelsen 2017.
+
+  Depends on: standalone (pure-fn library).
+
 ## v9.168.0 — 2026-05-16 — Full elite plan export — CSV + JSON (EP-8)
 
   The existing `eliteProgramToCSV` emits ONLY the daily grid (one row
