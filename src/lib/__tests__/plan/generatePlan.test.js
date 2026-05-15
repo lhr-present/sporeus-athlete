@@ -588,3 +588,135 @@ describe('generatePlan — weeklyTssGoal', () => {
     }
   })
 })
+
+// v9.157.0 (Prompt B) — Race-date-anchored phasing
+describe('generatePlan — raceDate phase anchoring', () => {
+  function isoDaysAhead(days) {
+    const d = new Date(); d.setUTCHours(12, 0, 0, 0); d.setUTCDate(d.getUTCDate() + days)
+    return d.toISOString().slice(0, 10)
+  }
+
+  it('stores raceDate on the returned plan when valid', () => {
+    const p = genWith({ raceDate: isoDaysAhead(84), weeksToRace: 12 })
+    expect(p.raceDate).toBe(isoDaysAhead(84))
+  })
+
+  it('omits raceDate when shape is invalid', () => {
+    expect(genWith({ raceDate: 'not-a-date', weeksToRace: 12 }).raceDate).toBeNull()
+    expect(genWith({ raceDate: '', weeksToRace: 12 }).raceDate).toBeNull()
+    expect(genWith({ raceDate: undefined, weeksToRace: 12 }).raceDate).toBeNull()
+  })
+
+  it('places Race phase on the week containing race day', () => {
+    // 12-week plan, race in 84 days → week 11 starts day 77, contains day 84
+    const p = genWith({ raceDate: isoDaysAhead(84), weeksToRace: 12 })
+    // Last week should be Race phase
+    expect(p.weeks[p.weeks.length - 1].phase).toBe('Race')
+  })
+
+  it('places Taper phase 7-14 days before race', () => {
+    const p = genWith({ raceDate: isoDaysAhead(84), weeksToRace: 12 })
+    // Week 10 starts day 70, daysToRace=14 → Taper
+    expect(p.weeks[10].phase).toBe('Taper')
+  })
+
+  it('places Peak phase 14-28 days before race', () => {
+    const p = genWith({ raceDate: isoDaysAhead(84), weeksToRace: 12 })
+    // Week 9 starts day 63, daysToRace=21 → Peak
+    expect(p.weeks[9].phase).toBe('Peak')
+  })
+
+  it('places Build phase 28-56 days before race', () => {
+    const p = genWith({ raceDate: isoDaysAhead(84), weeksToRace: 12 })
+    // Week 5 starts day 35, daysToRace=49 → Build
+    expect(p.weeks[5].phase).toBe('Build')
+  })
+
+  it('places Base phase >56 days before race', () => {
+    const p = genWith({ raceDate: isoDaysAhead(84), weeksToRace: 12 })
+    // Week 0 starts day 0, daysToRace=84 → Base
+    expect(p.weeks[0].phase).toBe('Base')
+  })
+
+  it('falls back to legacy plan-index phasing when raceDate is absent', () => {
+    const p = genWith({})  // no raceDate
+    // 12-week plan, legacy phaseForWeek: last week → Race
+    expect(p.weeks[p.weeks.length - 1].phase).toBe('Race')
+    expect(p.raceDate).toBeNull()
+  })
+
+  it('handles too-short race date (race already this week) — still races on last week', () => {
+    // 4-week plan with race 5 days away. Week 0 starts day 0, daysToRace=5 → Race.
+    // Subsequent weeks also Race (post-race). Plan still builds.
+    const p = generatePlan({ ...BASE_PARAMS, weeksToRace: 4, raceDate: isoDaysAhead(5) })
+    expect(p.weeks[0].phase).toBe('Race')
+  })
+})
+
+// v9.157.0 (Prompt C) — Race-relative deload cadence
+describe('generatePlan — race-relative deloads', () => {
+  function isoDaysAhead(days) {
+    const d = new Date(); d.setUTCHours(12, 0, 0, 0); d.setUTCDate(d.getUTCDate() + days)
+    return d.toISOString().slice(0, 10)
+  }
+
+  it('places deload at race-week minus 4 (8-week plan)', () => {
+    const p = genWith({ weeksToRace: 8, raceDate: isoDaysAhead(56) })
+    // Race week = 7. distFromRace=4 → week 3. Should be deload (and phase is Base, not Taper).
+    expect(p.weeks[3].isDeload).toBe(true)
+    // No deload in race or taper weeks
+    expect(p.weeks[6].isDeload).toBe(false)
+    expect(p.weeks[7].isDeload).toBe(false)
+  })
+
+  it('places deloads at race-week minus {4, 8} (12-week plan)', () => {
+    const p = genWith({ weeksToRace: 12, raceDate: isoDaysAhead(84) })
+    // Race week = 11. distFromRace=4 → wk 7. distFromRace=8 → wk 3.
+    expect(p.weeks[3].isDeload).toBe(true)
+    expect(p.weeks[7].isDeload).toBe(true)
+    // Other weeks should not be deload
+    expect(p.weeks[5].isDeload).toBe(false)
+    expect(p.weeks[9].isDeload).toBe(false)
+  })
+
+  it('skips deload entirely for plans with <6 weeks before race', () => {
+    const p = genWith({ weeksToRace: 5, raceDate: isoDaysAhead(35) })
+    for (const w of p.weeks) expect(w.isDeload).toBe(false)
+  })
+
+  it('never deloads week 0 even if it would otherwise be selected', () => {
+    // 4-week plan: race week = 3, distFromRace=4 → week -1 (no match).
+    // 5-week plan: race week = 4, distFromRace=4 → week 0 — must be skipped.
+    const p4 = genWith({ weeksToRace: 4, raceDate: isoDaysAhead(28) })
+    const p5 = genWith({ weeksToRace: 5, raceDate: isoDaysAhead(35) })
+    expect(p4.weeks[0].isDeload).toBe(false)
+    expect(p5.weeks[0].isDeload).toBe(false)
+  })
+
+  it('does not deload weeks where phase is Race or Taper even at the cadence', () => {
+    // 5-week plan with race in 35 days: race-aware Race=week 4, Taper=week 3.
+    // distFromRace=4 → week 0 (skipped by week-0 guard).
+    // 9-week plan: race=week 8, distFromRace=4 → wk 4 (Build, OK), 8→wk 0 (skip).
+    const p = genWith({ weeksToRace: 9, raceDate: isoDaysAhead(63) })
+    for (const w of p.weeks) {
+      if (w.isDeload) {
+        expect(w.phase).not.toBe('Race')
+        expect(w.phase).not.toBe('Taper')
+      }
+    }
+  })
+
+  it('reduces deload week weeklyTSS to ~60% of non-deload neighbors', () => {
+    const p = genWith({ weeksToRace: 12, raceDate: isoDaysAhead(84) })
+    const deload = p.weeks.find(w => w.isDeload && w.phase !== 'Race' && w.phase !== 'Taper')
+    expect(deload).toBeTruthy()
+    // Adjacent non-deload week should be substantially higher
+    const idx = p.weeks.indexOf(deload)
+    const neighbor = p.weeks[idx + 1] && !p.weeks[idx + 1].isDeload
+      ? p.weeks[idx + 1]
+      : (idx > 0 ? p.weeks[idx - 1] : null)
+    if (neighbor && !neighbor.isDeload) {
+      expect(deload.weeklyTSS).toBeLessThan(neighbor.weeklyTSS)
+    }
+  })
+})

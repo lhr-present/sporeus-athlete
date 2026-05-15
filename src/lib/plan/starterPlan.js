@@ -156,6 +156,10 @@ export function buildStarterPlan(onboardingData, todayISO, lang = 'en', log) {
     raceDistance:  data.goal,
     primarySport:  data.sport || data.primarySport || null,
     weeklyTssGoal: Number.isFinite(goalTss) && goalTss > 0 ? goalTss : null,
+    // v9.157.0 (Prompt B) — Pass raceDate through so phase placement is
+    // calendar-anchored. Pre-fix only `weeksToRace` (derived from raceDate)
+    // shaped the plan; the actual race date was lost on the way in.
+    raceDate:      data.raceDate || data.nextRaceDate || null,
   })
   if (!adaptive) return null
 

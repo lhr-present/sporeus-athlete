@@ -14,6 +14,57 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.157.0 — 2026-05-16 — Race-date anchoring + race-relative deloads (Prompts B+C)
+
+  The 2026-05-15 physiology audit flagged two date-handling bugs:
+
+  - `raceDate` was consumed ONLY to set `weeksToRace` (plan
+    duration) — never stored on the plan, never used to anchor
+    phase placement. Race / Taper / Peak phases sat at
+    `weeks[totalWeeks-N]` relative to plan length, not the
+    calendar. Regenerating mid-cycle drifted the race phase off
+    the actual race date.
+  - Deload weeks were hardcoded `(i+1) % 4 === 0` regardless of
+    race proximity. A 5-week plan deloaded week 4 — one week
+    before race day. A 9-week plan deloaded weeks 4 + 8 — but
+    week 8 might be Taper/Race, getting skipped, leaving the
+    plan without a single recovery week.
+
+  Prompt B — race-date anchoring:
+  - `generatePlan` accepts `raceDate` (ISO YYYY-MM-DD). Validated
+    against shape; malformed input falls back to legacy
+    plan-index phasing rather than rejecting the plan.
+  - New `raceAwarePhaseForWeek` computes phase from days between
+    week-start and race day:
+      > 56 → Base · > 28 → Build · > 14 → Peak · > 7 → Taper · ≤7 → Race
+  - Plan stores `raceDate` on the returned object so consumers
+    don't need to re-derive it from profile.
+  - `getTodayPlannedSession` returns null when today is more
+    than 1 day past `plan.raceDate`. Pre-fix the function
+    silently kept serving post-race sessions on plans that
+    extended past race day.
+
+  Prompt C — race-relative deload cadence:
+  - `applyDeloads` walks backwards from the race-phase week.
+    Deload placed every 4th week back through Build/Base.
+  - Skips Race + Taper phases (the existing guard, preserved).
+  - Skips week 0 (no preceding training to recover from).
+  - Skips deload entirely for plans with <6 weeks before race —
+    too short to safely deload pre-race.
+
+  Behavior preservation:
+  - Plans built without `raceDate` get legacy plan-index phasing
+    AND legacy deload cadence. No silent semantic shifts for
+    existing saved plans.
+  - When raceDate is present, deload placement uses the same
+    race-phase detection as phasing, so the two stay in sync.
+
+  Suite 10466 / 10466 green (+18 new tests).
+
+  Dependencies: `starterPlan.js` passes `data.raceDate ||
+  data.nextRaceDate` through; existing `getProfileRaceDate`
+  normalizer (v9.60.0) unchanged.
+
 ## v9.156.0 — 2026-05-16 — Honor `weeklyTssGoal` in plan generation (Prompt A)
 
   The Profile form has collected `weeklyTssGoal` since onboarding's

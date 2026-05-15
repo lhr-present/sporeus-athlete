@@ -211,6 +211,35 @@ function phaseForWeek(weekIdx, totalWeeks) {
   return 'Base'
 }
 
+// v9.157.0 (Prompt B) — Race-date-aware phasing. Computes phase from the
+// calendar days between week-start and race date, not from the plan-index
+// position. Falls back to the legacy `phaseForWeek` when raceDate or
+// generatedAt is unavailable. Thresholds match standard endurance
+// periodization (Bompa 2009 / Daniels 2014):
+//   > 56 days → Base
+//   > 28 days → Build
+//   > 14 days → Peak
+//   > 7 days  → Taper
+//   ≤ 7 days  → Race
+function raceAwarePhaseForWeek(weekIdx, totalWeeks, raceDate, generatedAt) {
+  if (!raceDate || !generatedAt) return phaseForWeek(weekIdx, totalWeeks)
+  const start = new Date(generatedAt + 'T12:00:00Z')
+  const race  = new Date(raceDate    + 'T12:00:00Z')
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(race.getTime())) {
+    return phaseForWeek(weekIdx, totalWeeks)
+  }
+  // Days from start-of-this-week to race day. Week i starts 7*i days after
+  // generatedAt. Use the START of the week to phase it — the athlete enters
+  // the week in this state.
+  const weekStartMs = start.getTime() + weekIdx * 7 * 86400000
+  const daysToRace = Math.floor((race.getTime() - weekStartMs) / 86400000)
+  if (daysToRace > 56) return 'Base'
+  if (daysToRace > 28) return 'Build'
+  if (daysToRace > 14) return 'Peak'
+  if (daysToRace > 7)  return 'Taper'
+  return 'Race'
+}
+
 // ── helper: weekly session intent template ───────────────────────────────────
 // Returns an array (length = availableDays) of intent strings for the week,
 // based on phase, periodization model, and (v9.92.0) race distance. Day 0 = Mon.
@@ -376,13 +405,35 @@ function clampWoWGrowth(weeks) {
   }
 }
 
-// ── helper: insert a deload every 4 weeks (drops weekly TSS to 60%) ──────────
+// ── helper: insert deload weeks (drops weekly TSS to 60%) ────────────────────
+// v9.157.0 (Prompt C) — Race-relative cadence. Pre-fix this was hardcoded
+// to plan-index `(i+1) % 4 === 0`, which deloaded "every 4 weeks from plan
+// start" — fine when plan length is divisible by 4, but a 5-week plan
+// deloaded week 4 (one week before race day) and a 9-week plan never
+// deloaded at all. Now walks backwards from the race-phase week, skipping
+// Race + Taper, and places a deload every 4 weeks behind the race. Also
+// guards against deloading the very first week (no preceding training to
+// recover from) and any plan with <6 weeks before race (too short to
+// safely deload pre-race).
 function applyDeloads(weeks) {
-  for (let i = 0; i < weeks.length; i++) {
-    if ((i + 1) % 4 !== 0) continue
+  // Find the race week — preferred: last week with phase==='Race'.
+  // Fallback: last week of the plan when no Race phase exists (legacy
+  // index-based phasing on >6-week plans always lands Race in the final week).
+  let raceWeekIdx = -1
+  for (let i = weeks.length - 1; i >= 0; i--) {
+    if (weeks[i].phase === 'Race') { raceWeekIdx = i; break }
+  }
+  if (raceWeekIdx === -1) raceWeekIdx = weeks.length - 1
+
+  // Plans with <6 weeks before race: skip deload entirely.
+  if (raceWeekIdx < 5) return
+
+  const factor = 0.60
+  for (let i = raceWeekIdx - 1; i > 0; i--) {
+    const distFromRace = raceWeekIdx - i
+    if (distFromRace % 4 !== 0) continue
     const phase = weeks[i].phase
     if (phase === 'Race' || phase === 'Taper') continue
-    const factor = 0.60
     weeks[i].isDeload  = true
     weeks[i].weeklyTSS = Math.round(weeks[i].weeklyTSS * factor)
     weeks[i].sessions  = weeks[i].sessions.map(s => ({
@@ -407,7 +458,8 @@ function applyDeloads(weeks) {
  * @param {string} [params.raceDistance]         - '5K' | '10K' | 'Half Marathon' | 'Marathon' | 'Cycling Event' | 'General Fitness' (v9.92.0 — biases peak/build intent emphasis)
  * @param {string} [params.primarySport]         - 'Running' | 'Cycling' | 'Swimming' | 'Triathlon' (v9.92.0 — pass-through for renderers; does not alter intent math)
  * @param {number} [params.weeklyTssGoal]        - Athlete's self-stated weekly TSS target. When within ±30% of the CTL-derived peakTSS, rescales the plan to honor it. Outside that band, ignored with a reason returned on the plan. (v9.156.0)
- * @returns {Object|null} { weeks, model, totalWeeks, generatedAt, weeklyTssGoalApplied } — null on bad input
+ * @param {string} [params.raceDate]             - ISO date 'YYYY-MM-DD' of target race. When provided, phase placement is calendar-aware: Build/Peak/Taper/Race land relative to days-to-race, not plan index. Deload weeks walk backwards from the race week. (v9.157.0)
+ * @returns {Object|null} { weeks, model, totalWeeks, generatedAt, weeklyTssGoalApplied, raceDate } — null on bad input
  * @source Daniels (2014), Seiler (2010), Issurin (2010), Mujika & Padilla (2003)
  * @example
  * generatePlan({ goal:'pr', currentCTL:50, weeksToRace:12, availableDays:5, model:'polarized', level:'intermediate' })
@@ -424,6 +476,7 @@ export function generatePlan(params) {
     raceDistance   = null,
     primarySport   = null,
     weeklyTssGoal  = null,
+    raceDate       = null,
   } = params
 
   // ── Input validation — return null on insufficient inputs ─────────────────
@@ -435,6 +488,15 @@ export function generatePlan(params) {
   const totalWeeks = Math.floor(+weeksToRace)
   const lvlFactor  = LEVEL_FACTOR[level]  ?? 1.00
   const goalFactor = GOAL_FACTOR[goal]    ?? 1.00
+
+  // v9.157.0 — Compute generatedAt up-front so race-aware phase placement
+  // and the returned plan agree on the calendar anchor. Validate raceDate
+  // shape; invalid input falls back to legacy plan-index phasing rather
+  // than rejecting the plan.
+  const generatedAtISO = new Date().toISOString()
+  const generatedAtDate = generatedAtISO.slice(0, 10)
+  const validRaceDate = typeof raceDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raceDate)
+    ? raceDate : null
 
   // Base & peak weekly TSS — derived from currentCTL with goal/level scaling
   let baseTSS = Math.max(150, Math.round(+currentCTL * 7 * lvlFactor))
@@ -448,7 +510,7 @@ export function generatePlan(params) {
   const buildWeeks = (baseT, peakT) => {
     const ws = []
     for (let w = 0; w < totalWeeks; w++) {
-      const phase   = phaseForWeek(w, totalWeeks)
+      const phase   = raceAwarePhaseForWeek(w, totalWeeks, validRaceDate, generatedAtDate)
       const intents = weeklyIntents(phase, model, +availableDays, raceDistance)
       const tssBud  = weeklyTSS({ weekIdx: w, totalWeeks, phase, baseTSS: baseT, peakTSS: peakT })
       const sessions = distributeSessionTSS(tssBud, intents)
@@ -516,7 +578,8 @@ export function generatePlan(params) {
     startCTL:    +currentCTL,
     targetCTL:   Math.round(peakTSS / 7 * 10) / 10,
     weeks,
-    generatedAt: new Date().toISOString(),
+    generatedAt: generatedAtISO,
+    raceDate:    validRaceDate,
     weeklyTssGoalApplied,
   }
 }

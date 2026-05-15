@@ -889,6 +889,46 @@ describe('getTodayPlannedSession', () => {
     expect(r.weekIdx).toBe(1)
     expect(r.weekPhase).toBe('Build')
   })
+
+  // v9.157.0 (Prompt B) — expire past raceDate
+  it('returns null when today is more than 1 day past plan.raceDate', () => {
+    const session = { type: 'Easy Run', duration: 45, rpe: 4 }
+    const week = { sessions: Array(7).fill(session), phase: 'Build' }
+    const plan = {
+      generatedAt: '2026-01-01T00:00:00Z',
+      raceDate:    '2026-01-15',
+      weeks:       [week, week, week],
+    }
+    // 1 day past race → still served (give athletes the day after to log)
+    expect(getTodayPlannedSession(plan, '2026-01-16')).not.toBeNull()
+    // 2 days past race → null
+    expect(getTodayPlannedSession(plan, '2026-01-17')).toBeNull()
+    // 1 week past race → null
+    expect(getTodayPlannedSession(plan, '2026-01-22')).toBeNull()
+  })
+
+  it('still serves sessions before raceDate even when plan extends past it', () => {
+    const session = { type: 'Easy Run', duration: 45, rpe: 4 }
+    const week = { sessions: Array(7).fill(session), phase: 'Build' }
+    const plan = {
+      generatedAt: '2026-01-01T00:00:00Z',
+      raceDate:    '2026-01-15',
+      weeks:       [week, week, week],
+    }
+    expect(getTodayPlannedSession(plan, '2026-01-08')).not.toBeNull()
+    expect(getTodayPlannedSession(plan, '2026-01-15')).not.toBeNull()
+  })
+
+  it('ignores malformed raceDate (falls back to legacy behavior)', () => {
+    const session = { type: 'Easy Run', duration: 45, rpe: 4 }
+    const week = { sessions: Array(7).fill(session), phase: 'Build' }
+    const plan = {
+      generatedAt: '2026-01-01T00:00:00Z',
+      raceDate:    'not-a-date',
+      weeks:       [week, week],
+    }
+    expect(getTodayPlannedSession(plan, '2026-01-08')).not.toBeNull()
+  })
 })
 
 // ─── 15. getSingleSuggestion ──────────────────────────────────────────────────

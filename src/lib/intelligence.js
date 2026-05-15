@@ -699,6 +699,9 @@ export function analyseSession(entry, recentLog = []) {
 
 // ─── v5.14: getTodayPlannedSession ────────────────────────────────────────────
 // Returns today's planned session from a saved plan, or null if rest/no plan.
+// v9.157.0 (Prompt B) — When the plan carries `raceDate` and today is past
+// raceDate + 1, return null. Pre-fix the function silently kept serving
+// post-race sessions when a too-long plan extended past the race day.
 export function getTodayPlannedSession(plan, today) {
   if (!plan || !Array.isArray(plan.weeks) || !plan.generatedAt) return null
   const todayDate = today || new Date().toISOString().slice(0, 10)
@@ -706,6 +709,11 @@ export function getTodayPlannedSession(plan, today) {
   const cur   = new Date(todayDate)
   const daysDiff = Math.floor((cur - start) / 86400000)
   if (daysDiff < 0) return null
+  if (typeof plan.raceDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(plan.raceDate)) {
+    const raceMs = new Date(plan.raceDate + 'T12:00:00Z').getTime()
+    const todMs  = new Date(todayDate     + 'T12:00:00Z').getTime()
+    if (todMs - raceMs > 86400000) return null  // past race + 1 day
+  }
   const weekIdx    = Math.floor(daysDiff / 7)
   if (weekIdx >= plan.weeks.length) return null
   const planDayIdx = (new Date(todayDate + 'T12:00:00Z').getDay() + 6) % 7  // Mon=0…Sun=6, noon UTC avoids TZ shift
