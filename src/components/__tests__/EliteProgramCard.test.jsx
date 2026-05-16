@@ -1674,4 +1674,39 @@ describe('EliteProgramCard — EP-12 race strategy block (picker + render)', () 
     expect(output.textContent).toMatch(/Tempolama:/)
     expect(output.textContent).toMatch(/Açılış:/)
   })
+
+  // v9.191.0 — race-day conditions ported to in-program block
+  it('conditions section collapsed by default in the in-program block', () => {
+    presetProgram()
+    renderCard()
+    expect(screen.queryByLabelText(/TEMP \(°C\)/i)).toBeNull()
+  })
+
+  it('conditions expand reveals 3 inputs and high temp fires Maughan warning', () => {
+    presetProgram()
+    renderCard()
+    fireEvent.change(screen.getByLabelText(/Select race format/i), { target: { value: 'road' } })
+    // Race-day conditions button — there are 2 on screen if RaceStrategyCard
+    // is also mounted via Dashboard, but here renderCard only mounts the
+    // EliteProgramCard so there's just one.
+    fireEvent.click(screen.getByRole('button', { name: /Race-day conditions/i }))
+    fireEvent.change(screen.getByLabelText(/TEMP \(°C\)/i), { target: { value: '32' } })
+    const output = document.querySelector('[data-race-strategy-output]')
+    expect(output.textContent).toMatch(/Race-day temperature 32°C/i)
+    expect(output.textContent).toMatch(/Maughan 2010/i)
+  })
+
+  it('uses the same conditions localStorage key as the standalone card (cross-surface)', () => {
+    // Pre-seed conditions storage as if the standalone card wrote them
+    localStorage.setItem('sporeus-raceConditions', JSON.stringify({
+      expanded: true, tempC: '30', windKph: '', altitudeM: '',
+    }))
+    presetProgram()
+    renderCard()
+    fireEvent.change(screen.getByLabelText(/Select race format/i), { target: { value: 'road' } })
+    // Without expanding/touching the conditions UI, the warning should
+    // already fire because the storage was pre-seeded.
+    const output = document.querySelector('[data-race-strategy-output]')
+    expect(output.textContent).toMatch(/Race-day temperature 30°C/i)
+  })
 })

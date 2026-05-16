@@ -14,6 +14,35 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.191.0 — 2026-05-17 — RaceStrategyBlock conditions port (cross-surface)
+
+  Follow-up to v9.190 (noted in that ship). Ported the optional
+  race-day conditions inputs (tempC / windKph / altitudeM) into the
+  in-program `RaceStrategyBlock` in `EliteProgramCard.jsx`.
+
+  Cross-surface contract — both surfaces use the SAME localStorage
+  key `sporeus-raceConditions`:
+  - An athlete who enters tempC=30 in the standalone card sees the
+    Maughan heat warning fire automatically in the in-program block.
+  - And vice-versa.
+  - Mirrors the format-picker cross-surface pattern (same
+    `sporeus-eliteProgram-raceStrategy` key for selection).
+  - Same shape, same defaults, same numeric guards as the standalone
+    card so no shape drift between surfaces.
+
+  Changes:
+  - `src/components/dashboard/EliteProgramCard.jsx`:
+    - new `RACE_CONDITIONS_KEY` constant
+    - `RaceStrategyBlock` reads + writes the same key
+    - collapsible inputs section under the format `<select>`,
+      identical layout to the standalone card
+  - `src/components/__tests__/EliteProgramCard.test.jsx`: +3 tests
+    cover collapsed-by-default, expand + hot temp fires warning,
+    cross-surface pre-seed (standalone wrote → in-program reads).
+
+  Test count 10830 → 10833 (+3). Lint + build green. Pre-existing
+  unrelated planRationale TSB-factor failure on main still present.
+
 ## v9.190.0 — 2026-05-17 — RaceStrategyCard race-day conditions inputs
 
   `buildRaceStrategy.js` (v9.172) was built with `conditions` support

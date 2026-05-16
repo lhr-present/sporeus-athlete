@@ -1230,6 +1230,11 @@ function CyclePhaseBlock({ program, profile, isTR }) {
 // warnings. Race format is persisted per-program in localStorage so the
 // athlete doesn't re-pick on every visit.
 const RACE_STRATEGY_STORAGE_KEY = 'sporeus-eliteProgram-raceStrategy'
+// v9.191.0 — Shared conditions key with the standalone RaceStrategyCard
+// (v9.190). Cross-surface: editing tempC here surfaces in the standalone
+// card and vice-versa. buildRaceStrategy guards each numeric field, so
+// empty inputs short-circuit to "no warnings".
+const RACE_CONDITIONS_KEY = 'sporeus-raceConditions'
 const RACE_TYPE_LABEL = {
   // run
   track: { en: 'Track', tr: 'Pist' },
@@ -1259,15 +1264,31 @@ function RaceStrategyBlock({ program, isTR }) {
   const sport = program?.sport
   const types = sport ? RACE_TYPES[sport] : null
   const [stored, setStored] = useLocalStorage(RACE_STRATEGY_STORAGE_KEY, {})
+  const [conditions, setConditions] = useLocalStorage(RACE_CONDITIONS_KEY, {
+    expanded: false, tempC: '', windKph: '', altitudeM: '',
+  })
   if (!sport || !Array.isArray(types) || types.length === 0) return null
 
   const raceType = stored?.[sport] || ''
-  const strategy = raceType ? buildRaceStrategy({ sport, raceType }) : null
+
+  const conditionsForStrategy = {}
+  const tempNum = Number(conditions?.tempC)
+  const windNum = Number(conditions?.windKph)
+  const altNum  = Number(conditions?.altitudeM)
+  if (conditions?.tempC !== '' && Number.isFinite(tempNum)) conditionsForStrategy.tempC = tempNum
+  if (conditions?.windKph !== '' && Number.isFinite(windNum)) conditionsForStrategy.windKph = windNum
+  if (conditions?.altitudeM !== '' && Number.isFinite(altNum)) conditionsForStrategy.altitudeM = altNum
+
+  const strategy = raceType
+    ? buildRaceStrategy({ sport, raceType, conditions: Object.keys(conditionsForStrategy).length ? conditionsForStrategy : null })
+    : null
   const valid = strategy && !strategy._rejected
 
   const aria = isTR ? 'Yarış stratejisi' : 'Race strategy'
   const accent = '#0064ff'
   const setRaceType = (rt) => setStored({ ...(stored || {}), [sport]: rt })
+  const updateConditions = (patch) => setConditions({ ...(conditions || {}), ...patch })
+  const conditionsExpanded = !!conditions?.expanded
 
   return (
     <div
@@ -1310,6 +1331,49 @@ function RaceStrategyBlock({ program, isTR }) {
             </option>
           ))}
         </select>
+      </div>
+      <div data-race-strategy-conditions style={{ marginBottom: 8 }}>
+        <button
+          type="button"
+          aria-expanded={conditionsExpanded}
+          onClick={() => updateConditions({ expanded: !conditionsExpanded })}
+          style={{
+            background: 'transparent', border: 'none', color: 'var(--muted)',
+            cursor: 'pointer', fontFamily: "'IBM Plex Mono', monospace",
+            fontSize: 10, padding: 0,
+          }}
+        >
+          {conditionsExpanded ? '▾' : '▸'} {isTR ? 'Yarış günü koşulları (isteğe bağlı)' : 'Race-day conditions (optional)'}
+        </button>
+        {conditionsExpanded ? (
+          <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+            {[
+              { id: 'rsb-tempc', key: 'tempC',    lblEn: 'TEMP (°C)',  lblTr: 'SICAKLIK (°C)',  ph: '22' },
+              { id: 'rsb-wind',  key: 'windKph',  lblEn: 'WIND (km/h)',lblTr: 'RÜZGAR (km/sa)', ph: '10' },
+              { id: 'rsb-alt',   key: 'altitudeM',lblEn: 'ALTITUDE (m)',lblTr: 'RAKIM (m)',     ph: '0' },
+            ].map(f => (
+              <div key={f.key} style={{ flex: '1 1 100px' }}>
+                <label htmlFor={f.id} style={{ display: 'block', fontSize: 9, color: 'var(--muted)', marginBottom: 2 }}>
+                  {isTR ? f.lblTr : f.lblEn}
+                </label>
+                <input
+                  id={f.id}
+                  type="number"
+                  inputMode="numeric"
+                  value={conditions?.[f.key] ?? ''}
+                  onChange={e => updateConditions({ [f.key]: e.target.value })}
+                  placeholder={f.ph}
+                  style={{
+                    fontFamily: "'IBM Plex Mono', monospace", fontSize: 11,
+                    padding: '4px 6px', background: 'var(--input-bg)',
+                    color: 'var(--text)', border: '1px solid var(--input-border)',
+                    borderRadius: 3, width: '100%', boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
       {valid ? (
         <div data-race-strategy-output style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
