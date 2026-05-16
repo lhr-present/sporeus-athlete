@@ -14,6 +14,39 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.187.0 — 2026-05-17 — standalone CyclePhaseCard (visible without a program)
+
+  Audit of v9.182.0 caught a discoverability gap: `CyclePhaseBlock`
+  lives inside `EliteProgramCard`, so opted-in female athletes only
+  see cycle guidance after generating a program. Newcomers, athletes
+  between programs, and athletes doing free training never reach it.
+
+  Fix — `CyclePhaseCard.jsx` is a standalone dashboard card that
+  renders the same `buildCyclePhaseGate` output independent of any
+  program state. Privacy contract is identical:
+
+    isCycleGateAvailable(profile) === false  →  returns null
+
+  Non-female / non-opted-in athletes see nothing in either surface.
+
+  Changes:
+  - new file: `src/components/dashboard/CyclePhaseCard.jsx`
+  - `src/components/Dashboard.jsx`: lazy import + render after
+    `MultiPeakSeasonCard`.
+
+  The in-EliteProgramCard `CyclePhaseBlock` is kept — it provides
+  in-context phase + multiplier alongside the program's weeklyTSS
+  chart. The new standalone card is the daily-flow surface for
+  athletes without an active program.
+
+  6 new render tests cover: empty profile → no DOM; male profile →
+  no DOM (even with cycle data filled); female no lastPeriodStart →
+  no DOM; opted-in female → region + McNulty citation + privacy
+  note; lang=tr labels; one forecast cell per gate week (W1..W4).
+
+  Test count 10805 → 10811 (+6). Lint + build green. Pre-existing
+  unrelated planRationale TSB-factor failure on main still present.
+
 ## v9.186.0 — 2026-05-17 — ltPace ↔ threshold mirror (closes a dead-input audit)
 
   Physiology pipeline audit (2026-05-15 memory) flagged `ltPace` as
