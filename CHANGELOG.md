@@ -14,6 +14,45 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.196.0 — 2026-05-17 — Recovery Protocols card now fires on low quick-tap readiness
+
+  Audit of the readiness-band code path caught a gap: the existing
+  Recovery Protocols Card (Leeder 2012 / Bleakley 2012 / Fullagar
+  2015 etc.) was gated behind `wellnessSaved` — the full wellness
+  form's submit flag. Athletes who quick-tapped 😴 (drained,
+  score=25) never saw protocol suggestions, even though that's
+  exactly the cohort who'd benefit most.
+
+  Now the card also fires when:
+  - `todayRec.source === 'quick-tap'` AND `todayRec.score ≤ 30`
+
+  The quick-tap stores readiness on a 0–100 scale (25 / 60 / 90),
+  but `getRecommendedProtocols` expects a 1–5 wellness score. The
+  card maps quick-tap → wellness scale before calling the protocol
+  builder: 25→1, 60→3, 90→5. This keeps the protocol rules
+  (Rule 2 fires on `wellnessScore < 3`, etc.) deterministic across
+  quick-tap and full-form sources.
+
+  Existing full-form gate (`wellnessSaved && todayRec.soreness < 3
+  || todayRec.energy < 3`) is unchanged — both gates OR together.
+
+  Changes:
+  - `src/components/TodayView.jsx`:
+    - Recovery Protocols Card gate now OR's full-form low-wellness
+      with quick-tap low-readiness.
+    - wellnessScore passed to `getRecommendedProtocols` is mapped
+      from quick-tap when source === 'quick-tap'.
+    - `data-recovery-protocols-card` attribute added for test
+      anchors.
+  - new file: `src/components/__tests__/TodayView.recoveryQuickTap.test.jsx`
+
+  6 new tests cover: no entry → no card; fresh tap (90) → no card;
+  okay tap (60) → no card; drained tap (25) → card renders;
+  boundary 30 fires; boundary 31 does not.
+
+  Test count 10854 → 10860 (+6). Lint + build green. Pre-existing
+  unrelated planRationale TSB-factor failure on main still present.
+
 ## v9.195.0 — 2026-05-17 — MultiPeakSeasonCard auto-seeds first race from profile
 
   v9.185 shipped MultiPeakSeasonCard as a blank slate — even when

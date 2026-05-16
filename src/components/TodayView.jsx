@@ -3423,7 +3423,20 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
       )}
 
       {/* ── Recovery Protocols Card ───────────────────────────────────────── */}
-      {wellnessSaved && todayRec && (todayRec.soreness < 3 || todayRec.energy < 3) && (() => {
+      {/* v9.196.0 — Also fire on low quick-tap readiness (😴, score ≤ 30).
+          Pre-fix, the card only surfaced after the full wellness form was
+          submitted (`wellnessSaved` flag). Athletes who quick-tapped
+          drained never saw the protocol suggestions — exactly the cohort
+          who'd most benefit from them. The quick-tap saves to recovery as
+          `{ source: 'quick-tap', score: 25|60|90 }`. Map score to the
+          1-5 wellness scale `getRecommendedProtocols` expects so rules
+          fire correctly: 25→1, 60→3, 90→5. */}
+      {(() => {
+        if (!todayRec) return false
+        const fullForm = wellnessSaved && (todayRec.soreness < 3 || todayRec.energy < 3)
+        const quickLow = todayRec.source === 'quick-tap' && (todayRec.score ?? 100) <= 30
+        return fullForm || quickLow
+      })() && (() => {
         const lastTSS = (log || []).length > 0
           ? [...(log || [])].sort((a, b) => b.date.localeCompare(a.date))[0]?.tss || 0
           : 0
@@ -3433,11 +3446,15 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
         const hoursSinceLastSession = lastEntry
           ? Math.max(0, (Date.now() - new Date(lastEntry.date + 'T12:00:00').getTime()) / 3600000)
           : 48
-        const protocols = getRecommendedProtocols(todayRec.score, lastTSS, hoursSinceLastSession)
+        // Map quick-tap 25/60/90 → 1/3/5 (1-5 wellness scale).
+        const wellnessScore = todayRec?.source === 'quick-tap'
+          ? (todayRec.score <= 30 ? 1 : todayRec.score <= 60 ? 3 : 5)
+          : todayRec.score
+        const protocols = getRecommendedProtocols(wellnessScore, lastTSS, hoursSinceLastSession)
         const evBadgeColor = lvl => lvl === 'strong' ? '#5bc25b' : lvl === 'moderate' ? '#ff6600' : '#888'
 
         return (
-          <div style={{ ...card, borderLeft: `4px solid #5bc25b` }}>
+          <div data-recovery-protocols-card style={{ ...card, borderLeft: `4px solid #5bc25b` }}>
             <div style={cardTitle}>◈ RECOVERY PROTOCOLS</div>
             {protocols.map(p => {
               const isExpanded = expandedProtocol === p.id
