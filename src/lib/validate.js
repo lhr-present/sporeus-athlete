@@ -180,6 +180,12 @@ export function sanitizeProfile(p) {
     hip:           numStr(p.hip, 30, 250),
     email:         str(p.email, 200),
     weeklyTssGoal: numStr(p.weeklyTssGoal, 0, 2000),
+    // v9.181.0 — Menstrual-cycle inputs (female-only, opt-in). Empty string
+    // = not tracking. cyclePhaseGate / cyclePlanner gate on gender='female'
+    // AND lastPeriodStart truthy, so non-female / non-opted-in users have
+    // zero behavioural impact even if these fields exist on the schema.
+    lastPeriodStart: typeof p.lastPeriodStart === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(p.lastPeriodStart) ? p.lastPeriodStart : '',
+    cycleLength:     p.cycleLength == null || p.cycleLength === '' ? '' : numStr(p.cycleLength, 21, 40),
     // v9.60.0 — Race date is read from two field names across 9+ call sites
     // (nextAction reads nextRaceDate; intelligence reads raceDate; etc.).
     // Normalize: accept either input, mirror to both outputs so downstream

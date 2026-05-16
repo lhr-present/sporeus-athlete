@@ -3,7 +3,7 @@ import { logger } from './logger.js'
 export const STORAGE_VERSION = 3
 
 export const SCHEMA = {
-  'sporeus-profile':      { version: 3, defaults: { name:'', sport:'Running', age:'', weight:'', height:'', gender:'male', ftp:'', vo2max:'', ltPace:'', goal:'', neck:'', waist:'', hip:'' } },
+  'sporeus-profile':      { version: 3, defaults: { name:'', sport:'Running', age:'', weight:'', height:'', gender:'male', ftp:'', vo2max:'', ltPace:'', goal:'', neck:'', waist:'', hip:'', lastPeriodStart:'', cycleLength:'' } },
   'sporeus_log':          { version: 3, defaults: [] },
   'sporeus-plan':         { version: 3, defaults: null },
   'sporeus-plan-status':  { version: 3, defaults: {} },

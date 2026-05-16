@@ -180,6 +180,49 @@ export default function Profile({ log, authUser }) {
             </div>
           ))}
         </div>
+
+        {/* v9.181.0 — Cycle inputs are female-only, opt-in. The privacy gate
+            (isCycleGateAvailable) requires gender='female' + lastPeriodStart
+            set; non-female users see nothing here, and female users who skip
+            the inputs see no behavioural change downstream. */}
+        {(local.gender || '').toLowerCase() === 'female' && (
+          <div style={{
+            marginTop: 16, padding: '14px 16px',
+            border: '1px solid #1a1a1a', borderRadius: 4,
+            fontFamily: "'IBM Plex Mono', monospace",
+          }}>
+            <div style={{ fontSize: 9, color: '#888', letterSpacing: '0.1em', marginBottom: 4 }}>
+              ◈ {t('cycleSectionTitle')}
+            </div>
+            <div style={{ fontSize: 10, color: '#666', marginBottom: 12, lineHeight: 1.5 }}>
+              {t('cycleSectionHint')}
+            </div>
+            <div style={S.row}>
+              <div style={{ flex: '1 1 200px' }}>
+                <label style={S.label}>{t('lastPeriodStartL')}</label>
+                <input
+                  style={S.input}
+                  type="date"
+                  value={local.lastPeriodStart || ''}
+                  onChange={e => setLocal({ ...local, lastPeriodStart: e.target.value })}
+                />
+              </div>
+              <div style={{ flex: '1 1 200px' }}>
+                <label style={S.label}>{t('cycleLengthL')}</label>
+                <input
+                  style={S.input}
+                  type="number"
+                  min={21}
+                  max={40}
+                  placeholder="28"
+                  value={local.cycleLength || ''}
+                  onChange={e => setLocal({ ...local, cycleLength: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         <SportSelector local={local} setLocal={setLocal}/>
         <div style={{ display:'flex', gap:'10px', marginTop:'20px' }}>
           <button style={S.btn} onClick={save}>{status==='saved'?t('savedMsg'):t('saveProfileBtn')}</button>

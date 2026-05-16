@@ -3209,3 +3209,61 @@ describe('polarization enforcement — sample-week Z3+ ratio', () => {
     expect(ratio).toBeGreaterThanOrEqual(0.10)
   })
 })
+
+// ── v9.181.0 — EP-9 cyclePhaseGate wiring ────────────────────────────────────
+describe('buildEliteProgram — cycle phase gate (v9.181.0 wiring)', () => {
+  const baseInput = {
+    sport: 'run',
+    raceDate: '2026-11-01',
+    currentPR: { distanceM: 10000, timeSec: 3000 },
+    targetPR:  { distanceM: 10000, timeSec: 2820 },
+    profile:   { currentCTL: 50 },
+    options:   { today: '2026-05-04' },
+  }
+
+  it('non-female profile → cycleGate is null and weeklyTSS unchanged', () => {
+    const p = buildEliteProgram({ ...baseInput, profile: { ...baseInput.profile, gender: 'male' } })
+    expect(p).not.toBeNull()
+    expect(p.cycleGate).toBeNull()
+    for (const w of p.weeklyTSS) {
+      expect(w.cycleMultiplier).toBeUndefined()
+      expect(w.cyclePhase).toBeUndefined()
+      expect(w.cycleAdjustedTSS).toBeUndefined()
+    }
+  })
+
+  it('female but no lastPeriodStart → cycleGate is null (no opt-in)', () => {
+    const p = buildEliteProgram({ ...baseInput, profile: { ...baseInput.profile, gender: 'female' } })
+    expect(p.cycleGate).toBeNull()
+    expect(p.weeklyTSS[0].cycleMultiplier).toBeUndefined()
+  })
+
+  it('female + lastPeriodStart → cycleGate is populated and weeklyTSS is annotated', () => {
+    const p = buildEliteProgram({
+      ...baseInput,
+      profile: { ...baseInput.profile, gender: 'female', lastPeriodStart: '2026-04-28', cycleLength: 28 },
+    })
+    expect(p.cycleGate).not.toBeNull()
+    expect(Array.isArray(p.cycleGate.weeks)).toBe(true)
+    const annotated = p.weeklyTSS.filter(w => w.cycleMultiplier != null)
+    expect(annotated.length).toBeGreaterThan(0)
+    for (const w of annotated) {
+      expect(w.cycleMultiplier).toBeGreaterThanOrEqual(0.95)
+      expect(w.cycleMultiplier).toBeLessThanOrEqual(1.05)
+      expect(['menstruation', 'follicular', 'ovulation', 'luteal']).toContain(w.cyclePhase)
+      // applyCyclePhaseGate guards w.tss with `|| 0`; match that for NaN-safe weeks
+      expect(w.cycleAdjustedTSS).toBe(Math.round((Number(w.tss) || 0) * w.cycleMultiplier))
+    }
+  })
+
+  it('original tss field is preserved when cycle gate is active (authoritative)', () => {
+    const female = buildEliteProgram({
+      ...baseInput,
+      profile: { ...baseInput.profile, gender: 'female', lastPeriodStart: '2026-04-28', cycleLength: 28 },
+    })
+    const male = buildEliteProgram({ ...baseInput, profile: { ...baseInput.profile, gender: 'male' } })
+    for (let i = 0; i < male.weeklyTSS.length; i++) {
+      expect(female.weeklyTSS[i].tss).toBe(male.weeklyTSS[i].tss)
+    }
+  })
+})

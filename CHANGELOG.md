@@ -14,6 +14,52 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.181.0 — 2026-05-17 — EP-9 cyclePhaseGate end-to-end wiring
+
+  Audit found `cyclePhaseGate.js` (shipped v9.171.0) had a complete
+  builder + applier + 17 unit tests but ZERO production call site. The
+  module returns null for non-female / non-opted-in athletes, so
+  wiring it into the canonical `buildEliteProgram` orchestrator is a
+  pure no-op for everyone except female athletes who opt in by entering
+  their last period start date.
+
+  Also added the two profile inputs (`lastPeriodStart` date picker +
+  `cycleLength` number 21–40) that the gate depends on. Inputs render
+  ONLY when `(local.gender || '').toLowerCase() === 'female'` —
+  non-female athletes see zero cycle UI.
+
+  Changes:
+  - `src/lib/storage.js` — `sporeus-profile` defaults extended with
+    `lastPeriodStart: ''`, `cycleLength: ''`.
+  - `src/lib/validate.js` — `sanitizeProfile` strips invalid input:
+    `lastPeriodStart` must match `^\d{4}-\d{2}-\d{2}$`; `cycleLength`
+    clamps to 21–40 days.
+  - `src/contexts/LangCtx.jsx` — bilingual labels for the new section
+    (`cycleSectionTitle`, `cycleSectionHint`, `lastPeriodStartL`,
+    `cycleLengthL`).
+  - `src/components/Profile.jsx` — female-gated cycle section appended
+    after the main FIELDS map (date input + cycle-length number input,
+    with privacy hint "Visible to you only").
+  - `src/lib/athlete/eliteProgram.js` — imports `buildCyclePhaseGate` +
+    `applyCyclePhaseGate`; after ACWR safety cap, builds gate and
+    layers `cycleMultiplier` / `cyclePhase` / `cycleAdjustedTSS`
+    fields on top of the canonical `tss` (which stays authoritative).
+    `cycleGate` exposed on the result object so UI consumers can
+    surface phase context.
+
+  4 new tests appended to `eliteProgram.test.js` covering the gate
+  semantics: non-female → null gate; female missing `lastPeriodStart`
+  → null gate; female + lastPeriodStart → annotated weeks; original
+  `tss` preserved alongside `cycleAdjustedTSS`. Test count 10770 →
+  10774 (+4). Lint + build green.
+
+  Pre-existing unrelated failure on main:
+  `planRationale.test.js > emits TSB factor when |tsb| >= 5` (verified
+  by stashing my edits — fails identically on clean main).
+
+  Source: McNulty et al. 2020 meta-analysis (Sports Med 50(10)
+  1813–1827) — gentle ±5% TSS modulation by phase.
+
 ## v9.180.0 — 2026-05-17 — FieldTestModal focus-trap + Escape-to-close (a11y)
 
   The weekly audit (`scripts/weekly-audit.sh`, no-cost grep+bash) caught

@@ -117,6 +117,7 @@ import { buildRecoveryProgram }     from './eliteProgramRecovery.js'
 import { buildRaceWeekProtocol }    from './eliteProgramRaceWeek.js'
 import { buildSubstitutionMap, buildContingencyMap } from './eliteProgramSubstitutions.js'
 import { buildDrillsLibrary }       from './eliteProgramDrills.js'
+import { buildCyclePhaseGate, applyCyclePhaseGate } from './cyclePhaseGate.js'
 
 const CITATION = 'Daniels 2014; Bompa 2009; Mujika 2003; Coggan 2010; Wakayoshi 1992; Seiler 2010'
 
@@ -1464,6 +1465,19 @@ export function buildEliteProgram(input) {
     feasibilityWarning = cap.warning
   }
 
+  // v9.181.0 — EP-9 wiring. buildCyclePhaseGate returns null unless
+  // profile.gender === 'female' AND profile.lastPeriodStart is set
+  // (athlete opted in). When null, applyCyclePhaseGate is a pure no-op —
+  // weeklyTSS is returned by reference unchanged. When non-null, each
+  // week gets `cycleMultiplier` / `cyclePhase` / `cycleAdjustedTSS`
+  // fields layered on TOP of the canonical `tss` value (which stays
+  // authoritative). UI consumers choose whether to surface the
+  // adjustment. Gentle ±5% per McNulty 2020 meta-analysis.
+  const cycleGate = buildCyclePhaseGate(profile, { today: options.today, weeks: weeklyTSS.length })
+  if (cycleGate) {
+    weeklyTSS = applyCyclePhaseGate(weeklyTSS, cycleGate)
+  }
+
   // Sample weeks per phase
   const sampleWeeks = { Base: [], Build: [], Peak: [], Taper: [] }
   const phasePresent = new Set(phases.map(p => p.phase))
@@ -1574,6 +1588,7 @@ export function buildEliteProgram(input) {
     citation: CITATION,
     reliable: band !== 'unrealistic',
     resolvedTargetPR: targetPR,
+    cycleGate,
   }
   if (synthetic.raceDate || synthetic.targetPR) {
     out.synthetic = { ...synthetic }
