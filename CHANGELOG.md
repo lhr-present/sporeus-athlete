@@ -14,6 +14,47 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.184.0 — 2026-05-17 — EP-10 injury-return ramp UI surface (test-only → wired)
+
+  `injuryReturnRamp.js` (shipped v9.169.0) had a full 3 / 5 / 7-week
+  return-to-sport ramp builder grounded in Soligard 2016 + Gabbett
+  2016 + Mujika 2000 + Ardern 2016 + Bertelsen 2017 — but zero
+  production call sites until now.
+
+  Surface design — new dashboard card `InjuryReturnCard.jsx`, lazy-
+  loaded after EliteProgramCard:
+  - Always rendered but starts collapsed. Athletes who aren't injured
+    see only a one-line "Returning from injury?" entry point.
+  - Expanded form: `daysOff` / `injuryType` (impact / soft-tissue /
+    overuse / illness / other) / `bodyRegion` (lower-leg / knee /
+    hip / lumbar / upper-body, optional) / `preInjuryCTL`.
+  - `preInjuryCTL` auto-derives from PMC: max past CTL in the last
+    120 days from `calculatePMC(log, 120, 0)`. Athlete can override.
+  - Sport derives from `profile.primarySport`.
+  - Output table: week-by-week (W1..W5 base; +2 preamble weeks for
+    impact injuries to load-bearing regions = W1..W7), with volume %,
+    target TSS, intensity cap, ACWR target, bilingual note. Preamble
+    weeks marked with ⓟ.
+  - Below the table: RTS criteria checklist (Ardern 2016 framework,
+    5 items), red-flag block (4 items in red callout), citation.
+  - Persisted to `sporeus-injuryReturnRamp` localStorage (expanded
+    state + all form inputs) so the athlete doesn't re-enter.
+
+  Changes:
+  - new file: `src/components/dashboard/InjuryReturnCard.jsx`
+  - `src/components/Dashboard.jsx`: lazy import + render in
+    ErrorBoundary + Suspense after EliteProgramCard.
+
+  8 new tests cover: collapsed/expanded state; form labels render
+  only when expanded; helper text shows pre-input; 5-week ramp
+  renders when daysOff + injuryType + CTL set; impact + lower-leg
+  triggers 7-week ramp with ⓟ preamble weeks; localStorage
+  persistence of all inputs + expanded flag; bilingual labels for
+  lang=tr.
+
+  Test count 10782 → 10790 (+8). Lint + build green. Pre-existing
+  unrelated planRationale TSB-factor failure on main still present.
+
 ## v9.183.0 — 2026-05-17 — EP-12 race-strategy UI surface (test-only → wired)
 
   `raceStrategy.js` (shipped v9.172.0) had a full bilingual pacing /

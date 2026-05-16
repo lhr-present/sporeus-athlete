@@ -69,6 +69,7 @@ const PolarizationComplianceCard = lazy(() => import('./dashboard/PolarizationCo
 const AerobicEfficiencyCard      = lazy(() => import('./dashboard/AerobicEfficiencyCard.jsx'))
 const RESTQTrendCard             = lazy(() => import('./dashboard/RESTQTrendCard.jsx'))
 const InjuryForecastCard         = lazy(() => import('./dashboard/InjuryForecastCard.jsx'))
+const InjuryReturnCard           = lazy(() => import('./dashboard/InjuryReturnCard.jsx'))
 const StrainHistoryCard          = lazy(() => import('./dashboard/StrainHistoryCard.jsx'))
 const ConsistencyTrendCard       = lazy(() => import('./dashboard/ConsistencyTrendCard.jsx'))
 const InsightFeedCard            = lazy(() => import('./dashboard/InsightFeedCard.jsx'))
@@ -368,6 +369,11 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
             </Suspense>
           </ErrorBoundary>
         </div>
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <InjuryReturnCard log={log} profile={profile} />
+          </Suspense>
+        </ErrorBoundary>
         <ErrorBoundary>
           <Suspense fallback={null}>
             <FieldTestHistoryCard />
