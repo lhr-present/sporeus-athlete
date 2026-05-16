@@ -1033,6 +1033,34 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
                 ? `${comeback.gapDays} günlük araya çıktın. Önceki kondisyonun ${comeback.priorCTL} CTL'di. Sakatlanmamak için ilk 1-2 hafta ~${comeback.easedCTL} CTL hedefiyle başla (önceki yükün %50'si).`
                 : `You've been away for ${comeback.gapDays} days. Your prior fitness was ${comeback.priorCTL} CTL. Start back at ~${comeback.easedCTL} CTL (50% of prior) for the first 1–2 weeks to avoid re-injury.`}
             </div>
+            {/* v9.194.0 — CTA to jump to InjuryReturnCard with pre-fill.
+                Writes the full ramp builder's localStorage shape so the
+                card mounts expanded with comeback values populated. */}
+            <button
+              type="button"
+              data-comeback-cta
+              onClick={() => {
+                try {
+                  localStorage.setItem('sporeus-injuryReturnRamp', JSON.stringify({
+                    expanded:           true,
+                    daysOff:            String(comeback.gapDays),
+                    injuryType:         '',
+                    bodyRegion:         '',
+                    preInjuryCTL:       String(comeback.priorCTL),
+                    dismissedComeback:  true,
+                  }))
+                } catch { /* fail open */ }
+                setTab('dashboard')
+              }}
+              style={{
+                fontFamily: MONO, fontSize: 10, padding: '6px 12px',
+                background: '#0064ff', color: '#fff', border: 'none',
+                borderRadius: 3, cursor: 'pointer', fontWeight: 700,
+                letterSpacing: '0.06em', marginBottom: 6,
+              }}
+            >
+              {lang === 'tr' ? 'DÖNÜŞ RAMPASINI GÖR →' : 'VIEW RETURN RAMP →'}
+            </button>
             <Citation text="Bompa & Buzzichelli 2018 (detraining principle — connective tissue de-adapts faster than aerobic capacity)" />
           </div>
         )

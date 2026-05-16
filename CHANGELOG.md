@@ -14,6 +14,46 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.194.0 — 2026-05-17 — TodayView comeback CTA closes the loop to InjuryReturnCard
+
+  TodayView already surfaced a `WELCOME BACK` diagnostic when
+  `detectComebackGap` fired (v9.110.0). It told the athlete the gap +
+  prior CTL + eased-CTL target — but was informational only. After
+  v9.184 / v9.189 InjuryReturnCard exists as a full Soligard 2016
+  ramp builder, the diagnostic should close the loop.
+
+  Added a "VIEW RETURN RAMP →" button at the bottom of the comeback
+  diagnostic block. One click:
+  - Writes `sporeus-injuryReturnRamp` with `expanded=true`, `daysOff`
+    = gap, `preInjuryCTL` = priorCTL, `dismissedComeback=true` (so
+    InjuryReturnCard doesn't re-fire its own banner — the athlete
+    already saw the equivalent banner here).
+  - Calls `setTab('dashboard')` to switch the visible tab to the
+    Dashboard where InjuryReturnCard is lazy-loaded.
+  - InjuryReturnCard mounts and reads the localStorage shape — its
+    `useLocalStorage` initializer respects the pre-populated values,
+    so the form appears already expanded with daysOff + preInjuryCTL
+    filled. Athlete just needs to pick `injuryType` (and optionally
+    `bodyRegion`) to see the ramp.
+
+  Two-step UX → one-tap UX. The athlete who just returned doesn't
+  hunt for a card; the diagnostic that already exists for them
+  becomes the funnel.
+
+  Changes:
+  - `src/components/TodayView.jsx`: button + `data-comeback-cta`
+    selector added inside the existing comeback diagnostic block.
+  - new file: `src/components/__tests__/TodayView.comebackCTA.test.jsx`
+    with the mutable-mock pattern (4 tests).
+
+  4 new tests cover: no CTA when log is recent (no gap); CTA
+  renders when comeback wins the diagnostic ranking; click pre-
+  fills localStorage with gap/CTL + dismissedComeback flag; click
+  calls setTab('dashboard').
+
+  Test count 10845 → 10849 (+4). Lint + build green. Pre-existing
+  unrelated planRationale TSB-factor failure on main still present.
+
 ## v9.193.0 — 2026-05-17 — TodayView race-week strategy peek
 
   Race-day strategy (v9.183/188/190/191) was reachable from
