@@ -14,6 +14,46 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.192.0 — 2026-05-17 — Cycle phase one-liner in TodayView readiness band
+
+  Cycle guidance has been available as a standalone dashboard card
+  (v9.187 `CyclePhaseCard`) + an in-program block (v9.182
+  `CyclePhaseBlock`). Both require the athlete to scroll past the
+  daily HQ to reach them. For opted-in female athletes, cycle phase
+  is a *daily-relevance* signal that belongs in the daily readiness
+  band alongside the readiness chip — not behind a card.
+
+  New compact one-liner rendered immediately below the readiness
+  emoji row in `TodayView.jsx`:
+
+      ◐ OVULATION · TSS +5%
+
+  Color-coded by phase (Menstruation pink, Follicular green,
+  Ovulation blue, Luteal lavender — same palette as the cards).
+  Privacy contract identical to all other cycle surfaces:
+  `isCycleGateAvailable(profile)` false → indicator absent. Non-
+  female / non-opted-in athletes see no cycle UI anywhere in TodayView.
+
+  Uses `buildCyclePhaseGate(profile, { weeks: 1 })` (only the current
+  week, not the 4-week forecast — TodayView is for today, not
+  planning).
+
+  Changes:
+  - `src/components/TodayView.jsx`:
+    - import `isCycleGateAvailable`, `buildCyclePhaseGate`
+    - `todayCycle` useMemo computes the one-week gate output
+    - inline indicator rendered after the readiness chip
+  - new file: `src/components/__tests__/TodayView.cyclePhase.test.jsx`
+    with a dedicated mock setup (uses a module-level mutable
+    `__mockProfile` since vi.mock is hoisted and shared).
+
+  5 new tests cover the privacy gate end-to-end: empty profile,
+  male profile, female-no-lastPeriodStart, opted-in female renders,
+  phase attribute is one of the 4 canonical keys.
+
+  Test count 10833 → 10838 (+5). Lint + build green. Pre-existing
+  unrelated planRationale TSB-factor failure on main still present.
+
 ## v9.191.0 — 2026-05-17 — RaceStrategyBlock conditions port (cross-surface)
 
   Follow-up to v9.190 (noted in that ship). Ported the optional

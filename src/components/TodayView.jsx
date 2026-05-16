@@ -31,6 +31,7 @@ import { computePlanDrift, detectStalePlan } from '../lib/athlete/planAdaptation
 import { detectGoalActivityMismatch } from '../lib/athlete/goalActivityMismatch.js'
 import { computeTrainingStreak, getStreakMilestone } from '../lib/athlete/trainingStreak.js'
 import { detectComebackGap } from '../lib/athlete/comebackDetector.js'
+import { isCycleGateAvailable, buildCyclePhaseGate } from '../lib/athlete/cyclePhaseGate.js'
 import { detectRaceRetrospective, retroLocalStorageKey } from '../lib/athlete/raceRetrospective.js'
 import { explainPlannedSession } from '../lib/athlete/planRationale.js'
 import { analyzeWellnessTrend } from '../lib/athlete/wellnessTrend.js'
@@ -234,6 +235,23 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
   const consistency  = useMemo(() => calculateConsistency(log), [log])
   const { ctl: todayCtl } = useMemo(() => calcLoad(log || []), [log])
   const K_CTL = BANISTER.K_CTL
+
+  // v9.192.0 — Compact cycle-phase indicator for the daily readiness band.
+  // Privacy contract identical to CyclePhaseCard / Block: returns null
+  // unless `isCycleGateAvailable(profile)` (gender='female' AND
+  // lastPeriodStart truthy). Reads only the first forecast week (the
+  // current one) since the readiness band needs a one-liner, not a
+  // 4-week strip.
+  const todayCycle = useMemo(() => {
+    if (!isCycleGateAvailable(profile)) return null
+    const gate = buildCyclePhaseGate(profile, { weeks: 1 })
+    if (!gate || !Array.isArray(gate.weeks) || gate.weeks.length === 0) return null
+    const w0 = gate.weeks[0]
+    return {
+      phase: w0.dominantPhase,
+      pct:   Math.round((w0.tssMultiplier - 1) * 100),
+    }
+  }, [profile])
 
   const todayRec = (recovery || []).find(e => e.date === today)
 
@@ -787,6 +805,31 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
                 ))}
               </div>
             ) : null}
+
+            {/* v9.192.0 — Cycle phase one-liner (privacy-gated). */}
+            {todayCycle ? (() => {
+              const labels = {
+                menstruation: { en: 'Menstruation', tr: 'Adet',       color: '#e0457b' },
+                follicular:   { en: 'Follicular',   tr: 'Foliküler', color: '#5bc25b' },
+                ovulation:    { en: 'Ovulation',    tr: 'Ovülasyon', color: '#0064ff' },
+                luteal:       { en: 'Luteal',       tr: 'Luteal',     color: '#b87bd8' },
+              }
+              const m = labels[todayCycle.phase]
+              if (!m) return null
+              const pctStr = todayCycle.pct > 0 ? `+${todayCycle.pct}%` : `${todayCycle.pct}%`
+              return (
+                <div
+                  data-today-cycle-phase={todayCycle.phase}
+                  style={{
+                    fontSize: '10px', color: m.color, marginTop: 4,
+                    marginBottom: criticalDx ? '8px' : 0,
+                    fontWeight: 700, letterSpacing: '0.04em',
+                  }}
+                >
+                  ◐ {(lang === 'tr' ? m.tr : m.en).toUpperCase()} · TSS {pctStr}
+                </div>
+              )
+            })() : null}
 
             {/* Line 3: critical diagnostic only */}
             {criticalDx && (
