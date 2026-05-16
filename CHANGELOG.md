@@ -14,6 +14,39 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.195.0 — 2026-05-17 — MultiPeakSeasonCard auto-seeds first race from profile
+
+  v9.185 shipped MultiPeakSeasonCard as a blank slate — even when
+  the athlete already had `profile.raceDate` set (via Profile.jsx),
+  they had to re-enter the date in the season planner. Friction.
+
+  When the card is first expanded AND races is empty AND profile
+  has a race date (read via the canonical `getProfileRaceDate`,
+  which handles the v9.60.0 `raceDate ↔ nextRaceDate` mirror), one
+  A-priority race row is auto-seeded. The athlete can edit / remove
+  / change priority freely.
+
+  Idempotency:
+  - `seededFromProfile` flag in localStorage prevents re-seeding
+    after the athlete removes the row on purpose.
+  - Skip when athlete already has manually-added races.
+  - Skip when profile has no race date.
+
+  Changes:
+  - `src/components/dashboard/MultiPeakSeasonCard.jsx`:
+    - import `useEffect` + `getProfileRaceDate`
+    - `seededFromProfile` field added to persisted state
+    - `useEffect` runs on expand to seed once
+  - `src/components/__tests__/MultiPeakSeasonCard.test.jsx`: +5 tests
+
+  5 new tests cover: seed from raceDate; seed from nextRaceDate
+  fallback; no seed when no profile race date; persistence flag
+  prevents re-seeding after manual removal; no seed when athlete
+  already has manual races.
+
+  Test count 10849 → 10854 (+5). Lint + build green. Pre-existing
+  unrelated planRationale TSB-factor failure on main still present.
+
 ## v9.194.0 — 2026-05-17 — TodayView comeback CTA closes the loop to InjuryReturnCard
 
   TodayView already surfaced a `WELCOME BACK` diagnostic when

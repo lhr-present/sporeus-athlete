@@ -21,10 +21,11 @@
 //     index, warnings (Bompa cap, leg-too-short), citation.
 //   - Persisted to `sporeus-multiPeakSeason` localStorage.
 
-import { useContext, useMemo } from 'react'
+import { useContext, useEffect, useMemo } from 'react'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { buildMultiPeakSeason } from '../../lib/athlete/multiPeakSeason.js'
+import { getProfileRaceDate } from '../../lib/validate.js'
 
 const STORAGE_KEY = 'sporeus-multiPeakSeason'
 const MONO = "'IBM Plex Mono', monospace"
@@ -69,12 +70,37 @@ export default function MultiPeakSeasonCard({ profile = {} }) {
   const [stored, setStored] = useLocalStorage(STORAGE_KEY, {
     expanded: false,
     races: [],
+    seededFromProfile: false,
   })
   const expanded = !!stored?.expanded
   const races = useMemo(() => (
     Array.isArray(stored?.races) ? stored.races : []
   ), [stored?.races])
   const update = (patch) => setStored({ ...(stored || {}), ...patch })
+
+  // v9.195.0 — One-time auto-seed from profile.raceDate / nextRaceDate.
+  // When the card is first expanded AND races is empty AND the athlete
+  // has a profile race date AND we haven't seeded yet → drop in one
+  // A-priority race row so the season builds immediately. The
+  // `seededFromProfile` flag in localStorage prevents re-seeding if the
+  // athlete later removes all races on purpose. They can still edit /
+  // remove the seeded row freely.
+  const profileRaceDate = getProfileRaceDate(profile)
+  useEffect(() => {
+    if (!expanded) return
+    if (stored?.seededFromProfile) return
+    if (races.length > 0) return
+    if (!profileRaceDate) return
+    setStored({
+      ...(stored || {}),
+      races: [{ date: profileRaceDate, label: '', priority: 'A' }],
+      seededFromProfile: true,
+    })
+  // We intentionally do not depend on `setStored` (stable identity from
+  // useLocalStorage) — including stored.races would cause the effect to
+  // re-fire after seeding and possibly stomp athlete edits.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded, profileRaceDate, races.length, stored?.seededFromProfile])
 
   const season = useMemo(() => {
     if (!expanded) return null

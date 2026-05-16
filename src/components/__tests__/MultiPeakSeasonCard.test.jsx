@@ -131,3 +131,60 @@ describe('MultiPeakSeasonCard — persistence + bilingual', () => {
     expect(screen.getByRole('button', { name: /YARIŞ EKLE/i })).toBeInTheDocument()
   })
 })
+
+// v9.195.0 — One-time auto-seed from profile.raceDate
+describe('MultiPeakSeasonCard — auto-seed from profile.raceDate', () => {
+  it('seeds the first race row with profile.raceDate when expanded with no races', () => {
+    renderCard({ profile: { primarySport: 'Running', raceDate: '2026-08-15' } })
+    fireEvent.click(screen.getByRole('button', { name: /Plan a multi-race season/i }))
+    // Auto-seed runs in a useEffect on expand
+    expect(screen.getByLabelText(/Race 1 date/i)).toHaveValue('2026-08-15')
+    // Priority defaults to A for the seeded row
+    const aBtn = screen.getByRole('button', { name: /^A$/ })
+    expect(aBtn.getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('accepts nextRaceDate as a fallback (canonical raceDate getter)', () => {
+    renderCard({ profile: { primarySport: 'Running', nextRaceDate: '2026-09-20' } })
+    fireEvent.click(screen.getByRole('button', { name: /Plan a multi-race season/i }))
+    expect(screen.getByLabelText(/Race 1 date/i)).toHaveValue('2026-09-20')
+  })
+
+  it('does NOT seed when profile has no race date', () => {
+    renderCard({ profile: { primarySport: 'Running' } })
+    fireEvent.click(screen.getByRole('button', { name: /Plan a multi-race season/i }))
+    expect(screen.queryByLabelText(/Race 1 date/i)).toBeNull()
+  })
+
+  it('persists seededFromProfile flag — does not re-seed after athlete removes the row', () => {
+    const profile = { primarySport: 'Running', raceDate: '2026-08-15' }
+    const { unmount } = renderCard({ profile })
+    fireEvent.click(screen.getByRole('button', { name: /Plan a multi-race season/i }))
+    // Seeded row appears
+    expect(screen.getByLabelText(/Race 1 date/i)).toHaveValue('2026-08-15')
+    // Athlete removes it
+    fireEvent.click(screen.getByRole('button', { name: /Remove race 1/i }))
+    expect(screen.queryByLabelText(/Race 1 date/i)).toBeNull()
+    // Re-render — seed must NOT fire again
+    unmount()
+    renderCard({ profile })
+    // Card stays expanded (persisted) but races stays empty
+    expect(screen.queryByLabelText(/Race 1 date/i)).toBeNull()
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
+    expect(stored.seededFromProfile).toBe(true)
+    expect(stored.races).toEqual([])
+  })
+
+  it('does NOT seed when athlete already has manually-added races', () => {
+    // Pre-seed localStorage as if the athlete already added a race manually
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      expanded: true,
+      seededFromProfile: false,
+      races: [{ date: '2026-10-01', label: 'manual', priority: 'B' }],
+    }))
+    renderCard({ profile: { primarySport: 'Running', raceDate: '2026-08-15' } })
+    // The athlete's existing race is intact; no profile-seed prepended
+    expect(screen.getByLabelText(/Race 1 date/i)).toHaveValue('2026-10-01')
+    expect(screen.queryByLabelText(/Race 2 date/i)).toBeNull()
+  })
+})
