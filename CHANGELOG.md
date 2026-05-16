@@ -14,6 +14,46 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.201.0 — 2026-05-17 — Season-phase peek in TodayView
+
+  Mirrors v9.199 (injury-ramp peek) — when the athlete has built a
+  multi-race season via MultiPeakSeasonCard (v9.185), TodayView
+  should surface this-week's phase + days-to-next-race without
+  forcing them to scroll to Dashboard.
+
+  Cross-surface — reads the same `sporeus-multiPeakSeason`
+  localStorage key. Recomputes via `buildMultiPeakSeason({ ..., today })`
+  so the first weeks[] entry is always *this* week. Shows:
+
+      ◢ SEASON · W3 / 24 · BUILD
+      Next race: Istanbul Half · A · 100d
+
+  Surfaces below the race-week strategy peek so the daily HQ now
+  shows a 4-level "context stack":
+    1. Injury ramp (immediate-week prescription)
+    2. Race-week strategy (≤7d acute)
+    3. Season-phase peek (medium-term context)
+    4. Today's planned session hero (granular)
+
+  Handles edge cases: unlabeled races render `unlabeled` placeholder;
+  past-dated races are rejected by the builder so the peek silently
+  disappears; empty races array → no peek.
+
+  Changes:
+  - `src/components/TodayView.jsx`:
+    - import `buildMultiPeakSeason`
+    - `seasonToday` useMemo gates on valid races + computes nextRace + days
+    - inline blue callout above the "MORE CONTEXT" details
+  - new file: `src/components/__tests__/TodayView.seasonPhase.test.jsx`
+
+  6 new tests cover: no season → no peek; empty races → no peek;
+  full peek with phase + next race + days countdown; unlabeled
+  race fallback; phase attribute is one of the 7 canonical keys;
+  past-dated race rejected by builder → no peek.
+
+  Test count 10883 → 10889 (+6). Lint + build green. Pre-existing
+  unrelated planRationale TSB-factor failure on main still present.
+
 ## v9.200.0 — 2026-05-17 — Interactive Return-to-Sport criteria checklist
 
   The Ardern 2016 RTS criteria (pain-free movements / full ROM /

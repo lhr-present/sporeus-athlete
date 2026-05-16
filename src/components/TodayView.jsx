@@ -34,6 +34,7 @@ import { detectComebackGap } from '../lib/athlete/comebackDetector.js'
 import { isCycleGateAvailable, buildCyclePhaseGate } from '../lib/athlete/cyclePhaseGate.js'
 import { buildRaceStrategy } from '../lib/athlete/raceStrategy.js'
 import { buildReturnToSportRamp } from '../lib/athlete/injuryReturnRamp.js'
+import { buildMultiPeakSeason } from '../lib/athlete/multiPeakSeason.js'
 import { detectRaceRetrospective, retroLocalStorageKey } from '../lib/athlete/raceRetrospective.js'
 import { explainPlannedSession } from '../lib/athlete/planRationale.js'
 import { analyzeWellnessTrend } from '../lib/athlete/wellnessTrend.js'
@@ -402,6 +403,50 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
     if (daysPastEnd > 0) return null
     return { currentWeek: current, currentWeekIdx: wk, totalRampWeeks: ramp.totalRampWeeks }
   }, [injuryRampStored, profile?.primarySport, profile?.sport])
+
+  // v9.201.0 — Multi-peak season peek. When the athlete has built a
+  // season (≥1 race in MultiPeakSeasonCard) AND today falls inside the
+  // season window, show the current phase + days to next race. Reuses
+  // the cross-surface storage key the season card writes to.
+  const [seasonStored] = useLocalStorage('sporeus-multiPeakSeason', {})
+  const seasonToday = useMemo(() => {
+    const races = Array.isArray(seasonStored?.races) ? seasonStored.races : []
+    const valid = races.filter(r => r?.date && r?.priority)
+    if (valid.length === 0) return null
+    const sportRaw = profile?.primarySport || profile?.sport
+    const SPORT_NORM = {
+      Running: 'run', running: 'run', run: 'run',
+      Cycling: 'bike', cycling: 'bike', bike: 'bike',
+      Swimming: 'swim', swimming: 'swim', swim: 'swim',
+      Triathlon: 'triathlon', triathlon: 'triathlon',
+      Rowing: 'rowing', rowing: 'rowing',
+    }
+    const sport = SPORT_NORM[sportRaw] || 'run'
+    const season = buildMultiPeakSeason({ sport, races: valid, options: { today } })
+    if (!season || season._rejected) return null
+    if (!Array.isArray(season.weeks) || season.weeks.length === 0) return null
+    // The season builder anchors week 1 at `today`. Index 0 IS this week
+    // unless cursorISO + startISO drift; we trust the builder's order.
+    const currentWeek = season.weeks[0]
+    if (!currentWeek) return null
+    // Find the next race (chronologically, with weekIdx > currentWeek)
+    const nextRace = season.races.find(r => r.weekIdx != null && r.weekIdx >= currentWeek.weekIdx)
+      || season.races[0] || null
+    let daysToNext = null
+    if (nextRace?.date) {
+      const dms = new Date(nextRace.date + 'T12:00:00Z').getTime()
+        - new Date(today + 'T12:00:00Z').getTime()
+      daysToNext = Math.max(0, Math.round(dms / 86400000))
+    }
+    return {
+      currentWeek,
+      currentWeekIdx: currentWeek.weekIdx,
+      totalWeeks: season.weeks.length,
+      nextRaceLabel: nextRace?.label || null,
+      nextRacePriority: nextRace?.priority || null,
+      daysToNext,
+    }
+  }, [seasonStored, profile?.primarySport, profile?.sport, today])
 
   // Coach message unread count (athlete reads from localStorage)
   // Coach sessions RSVP + announcements
@@ -1024,6 +1069,43 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
                   ⚠ {lang === 'tr' ? w.tr : w.en}
                 </div>
               ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* v9.201.0 — Season-phase peek. When the athlete has built a multi-
+          race season, show this-week's phase + days to next race. Bigger-
+          picture context: where am I in my season? Less acute than the
+          injury-ramp and race-week peeks above, so it sits after them. */}
+      {seasonToday ? (
+        <div
+          role="region"
+          aria-label={lang === 'tr' ? 'Sezon fazı bugün' : 'Season phase today'}
+          data-season-phase-peek
+          data-current-phase={seasonToday.currentWeek.phase}
+          style={{
+            marginBottom: 10, padding: 10,
+            background: '#0064ff14', border: '1px solid #0064ff55',
+            borderRadius: 5, fontFamily: MONO,
+          }}
+        >
+          <div style={{ fontSize: 10, letterSpacing: '0.08em', fontWeight: 700, color: '#0064ff', marginBottom: 4 }}>
+            ◢ {lang === 'tr'
+              ? `SEZON · H${seasonToday.currentWeekIdx} / ${seasonToday.totalWeeks}`
+              : `SEASON · W${seasonToday.currentWeekIdx} / ${seasonToday.totalWeeks}`}
+            {' '}· {seasonToday.currentWeek.phase.toUpperCase()}
+          </div>
+          {seasonToday.nextRaceLabel || seasonToday.daysToNext != null ? (
+            <div style={{ fontSize: 10, color: 'var(--text)', lineHeight: 1.5 }}>
+              {lang === 'tr' ? 'Sonraki yarış' : 'Next race'}:{' '}
+              <span style={{ fontWeight: 700 }}>
+                {seasonToday.nextRaceLabel || (lang === 'tr' ? 'isimsiz' : 'unlabeled')}
+              </span>
+              {seasonToday.nextRacePriority ? ` · ${seasonToday.nextRacePriority}` : ''}
+              {seasonToday.daysToNext != null
+                ? ` · ${seasonToday.daysToNext}${lang === 'tr' ? ' gün' : 'd'}`
+                : ''}
             </div>
           ) : null}
         </div>
