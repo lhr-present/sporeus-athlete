@@ -1546,3 +1546,62 @@ describe('EliteProgramCard — Mark Done button on sample-week rows', () => {
     expect(trButtons.length).toBeGreaterThan(0)
   })
 })
+
+// ── v9.182.0 — EP-9 cycle-phase UI surface ───────────────────────────────────
+// Privacy contract: non-female / non-opted-in athletes must see ZERO cycle UI.
+// The block reads `result.cycleGate` which is populated by buildEliteProgram
+// when isCycleGateAvailable(profile) is true. We render the card end-to-end
+// (form submit → buildEliteProgram → CyclePhaseBlock) with different profiles
+// to verify the privacy gate.
+describe('EliteProgramCard — EP-9 cycle phase block (privacy + render)', () => {
+  function presetProgram() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      input: {
+        sport: 'run',
+        currentPR: { distanceM: 10000, timeSec: 3000 },
+        targetPR: { distanceM: 10000, timeSec: 2820 },
+        raceDate: '2026-08-15',
+      },
+    }))
+  }
+
+  it('renders nothing cycle-related for male profile (privacy)', () => {
+    presetProgram()
+    renderCard({ profile: { gender: 'male', lastPeriodStart: '2026-05-01', cycleLength: '28' } })
+    expect(screen.queryByRole('region', { name: /Cycle phase guidance/i })).toBeNull()
+    expect(screen.queryByText(/THIS WEEK/i)).toBeNull()
+  })
+
+  it('renders nothing for female who has not entered lastPeriodStart (not opted in)', () => {
+    presetProgram()
+    renderCard({ profile: { gender: 'female' } })
+    expect(screen.queryByRole('region', { name: /Cycle phase guidance/i })).toBeNull()
+  })
+
+  it('renders the cycle-phase region when female + lastPeriodStart set', () => {
+    presetProgram()
+    renderCard({ profile: { gender: 'female', lastPeriodStart: '2026-04-15', cycleLength: '28' } })
+    const region = screen.getByRole('region', { name: /Cycle phase guidance/i })
+    expect(region).toBeInTheDocument()
+    // McNulty citation should appear inside
+    expect(region.textContent).toMatch(/McNulty/)
+    // Privacy reminder should appear inside (EN: "opt-in and visible only to you")
+    expect(region.textContent).toMatch(/opt-in and visible only to you/i)
+  })
+
+  it('renders Turkish labels + privacy reminder when lang=tr', () => {
+    presetProgram()
+    const value = { t: k => k, lang: 'tr', setLang: () => {} }
+    render(
+      <LangCtx.Provider value={value}>
+        <EliteProgramCard
+          log={[]}
+          profile={{ gender: 'female', lastPeriodStart: '2026-04-15', cycleLength: '28' }}
+        />
+      </LangCtx.Provider>
+    )
+    const region = screen.getByRole('region', { name: /Döngü fazı önerisi/i })
+    expect(region).toBeInTheDocument()
+    expect(region.textContent).toMatch(/yalnızca sana görünür/i)
+  })
+})

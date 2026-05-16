@@ -14,6 +14,43 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.182.0 — 2026-05-17 — EP-9 cycle phase UI surface (closes the v9.181 loop)
+
+  Audit on v9.181.0 caught a wiring gap: the orchestrator built and
+  exposed `result.cycleGate` correctly, but **no UI consumer read it**.
+  Opted-in female athletes saw no phase information at all.
+
+  Second gap caught during fix: the card was calling
+  `buildEliteProgram(persisted.input)` with cycle fields missing from
+  `input.profile`, so even rendered correctly the gate would have
+  returned null. The profile pass-through was incomplete.
+
+  Changes:
+  - `src/components/dashboard/EliteProgramCard.jsx`:
+    - New `CyclePhaseBlock` component rendered between `PhysiologyGapBlock`
+      and `PhaseSplitBar`. Gated by `isCycleGateAvailable(profile)` — hard
+      `return null` for non-female / non-opted-in athletes.
+    - Shows: current week phase + ±TSS multiplier badge, EN/TR phase note,
+      4-week forecast cards (colour-coded per phase), opt-in privacy
+      reminder, McNulty/Sims/Janse de Jonge/Bruinvels citation.
+    - `derivedProfile` now passes through `gender` / `lastPeriodStart` /
+      `cycleLength` so freshly-generated programs include the cycle gate.
+    - `evaluation` useMemo re-injects only the **live cycle fields** into
+      persisted `input.profile` so an athlete who enters their cycle
+      data AFTER generating a program picks up phase guidance without
+      regenerating. Snapshot fields (currentCTL, weeklyHours,
+      trainingDays) deliberately stay as-persisted — adherence
+      classification depends on that snapshot being stable.
+
+  4 new render tests verify the privacy gate end-to-end:
+  - male profile → zero cycle UI
+  - female + no lastPeriodStart → zero cycle UI
+  - female + lastPeriodStart → region renders with citation + privacy note
+  - lang=tr → Turkish privacy reminder ("yalnızca sana görünür")
+
+  Test count 10774 → 10778 (+4). Lint + build green. Pre-existing
+  unrelated planRationale TSB-factor failure on main still present.
+
 ## v9.181.0 — 2026-05-17 — EP-9 cyclePhaseGate end-to-end wiring
 
   Audit found `cyclePhaseGate.js` (shipped v9.171.0) had a complete

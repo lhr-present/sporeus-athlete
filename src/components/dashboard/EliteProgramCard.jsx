@@ -21,6 +21,7 @@ import CoachEditsBanner, { ATHLETE_EDITS_KEY } from './CoachEditsBanner.jsx'
 import { applyCoachEdits } from '../../lib/athlete/coachEditEngine.js'
 import { eliteProgramToYearlyWeeks } from '../../lib/athlete/eliteProgramToYearly.js'
 import { computePhysiologyGapInsight } from '../../lib/athlete/physiologyGapInsight.js'
+import { isCycleGateAvailable } from '../../lib/athlete/cyclePhaseGate.js'
 import { downloadEliteProgramCSV } from '../../lib/athlete/eliteProgramExport.js'
 import { calculatePMC } from '../../lib/trainingLoad.js'
 import { announce } from '../../lib/a11y/announcer.js'
@@ -1136,6 +1137,90 @@ function PhysiologyGapBlock({ program, isTR }) {
   )
 }
 
+// ── CyclePhaseBlock (v9.182.0, EP-9 UI surface) ──────────────────────────────
+// Renders the 4-week cycle-phase forecast from program.cycleGate. Privacy
+// gate: `isCycleGateAvailable(profile)` must be true (gender=female AND
+// lastPeriodStart set). Non-female / non-opted-in athletes get an early
+// `return null` — zero cycle UI is rendered for them.
+const CYCLE_PHASE_LABEL = {
+  menstruation: { en: 'Menstruation', tr: 'Adet' },
+  follicular:   { en: 'Follicular',   tr: 'Foliküler' },
+  ovulation:    { en: 'Ovulation',    tr: 'Ovülasyon' },
+  luteal:       { en: 'Luteal',       tr: 'Luteal' },
+}
+const CYCLE_PHASE_COLOR = {
+  menstruation: '#e0457b',
+  follicular:   '#5bc25b',
+  ovulation:    '#0064ff',
+  luteal:       '#b87bd8',
+}
+
+function CyclePhaseBlock({ program, profile, isTR }) {
+  if (!isCycleGateAvailable(profile)) return null
+  const gate = program?.cycleGate
+  if (!gate || !Array.isArray(gate.weeks) || gate.weeks.length === 0) return null
+  const wk0 = gate.weeks[0]
+  const phase0 = wk0.dominantPhase
+  const color = CYCLE_PHASE_COLOR[phase0] || '#888'
+  const phaseLbl = CYCLE_PHASE_LABEL[phase0]?.[isTR ? 'tr' : 'en'] || phase0
+  const mult = wk0.tssMultiplier
+  const multPct = Math.round((mult - 1) * 100)
+  const multStr = multPct > 0 ? `+${multPct}%` : `${multPct}%`
+  const aria = isTR ? 'Döngü fazı önerisi' : 'Cycle phase guidance'
+  return (
+    <div
+      role="region"
+      aria-label={aria}
+      data-cycle-phase={phase0}
+      style={{
+        marginBottom: 8, padding: 8,
+        background: `${color}14`,
+        border: `1px solid ${color}55`,
+        borderRadius: 4,
+        fontFamily: 'inherit',
+      }}
+    >
+      <div style={{ fontSize: 9, letterSpacing: '0.08em', fontWeight: 700, color, marginBottom: 4 }}>
+        ◐ {isTR ? 'BU HAFTA' : 'THIS WEEK'} · {phaseLbl.toUpperCase()} · TSS {multStr}
+      </div>
+      <div style={{ fontSize: 10, color: 'var(--text)', lineHeight: 1.55, marginBottom: 6 }}>
+        {isTR ? wk0.note.tr : wk0.note.en}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+        {gate.weeks.map((w, i) => {
+          const c = CYCLE_PHASE_COLOR[w.dominantPhase] || '#888'
+          const lbl = CYCLE_PHASE_LABEL[w.dominantPhase]?.[isTR ? 'tr' : 'en'] || w.dominantPhase
+          const pct = Math.round((w.tssMultiplier - 1) * 100)
+          return (
+            <div key={i} style={{
+              flex: '1 1 90px', minWidth: 90,
+              padding: '4px 6px',
+              background: `${c}22`,
+              border: `1px solid ${c}55`,
+              borderRadius: 3,
+              fontSize: 9,
+            }}>
+              <div style={{ color: c, fontWeight: 700, letterSpacing: '0.05em' }}>
+                {isTR ? `H${w.weekIdx}` : `W${w.weekIdx}`}
+              </div>
+              <div style={{ color: 'var(--text)', marginTop: 2 }}>{lbl}</div>
+              <div style={{ color: 'var(--muted)', marginTop: 1 }}>
+                {pct > 0 ? `+${pct}%` : `${pct}%`}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <div style={{ fontSize: 9, color: 'var(--muted)', fontStyle: 'italic', lineHeight: 1.5 }}>
+        {isTR ? gate.privacyNote.tr : gate.privacyNote.en}
+      </div>
+      <div style={{ marginTop: 4, fontSize: 9, color: '#555' }}>
+        {gate.citation}
+      </div>
+    </div>
+  )
+}
+
 // ── PhysiologyRow (v8.92.0) ──────────────────────────────────────────────────
 // Surfaces VDOT/FTP/CSS current → target plus a 5-row pace or zone mini-table
 // computed by the orchestrator. Sport-conditional: run/triathlon → paces,
@@ -1426,8 +1511,15 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
     if (typeof _profile?.trainingDays === 'number' && _profile.trainingDays >= 3) {
       out.trainingDays = _profile.trainingDays
     }
+    // v9.182.0 — EP-9 cycle gate consumes these from input.profile. Pass-through
+    // gender + lastPeriodStart + cycleLength so buildCyclePhaseGate can resolve.
+    // Privacy: buildCyclePhaseGate is a hard no-op for non-female / non-opted-in;
+    // pre-existing privacy contract is unchanged.
+    if (_profile?.gender) out.gender = _profile.gender
+    if (_profile?.lastPeriodStart) out.lastPeriodStart = _profile.lastPeriodStart
+    if (_profile?.cycleLength) out.cycleLength = _profile.cycleLength
     return out
-  }, [_log, _profile?.weeklyHours, _profile?.trainingDays])
+  }, [_log, _profile?.weeklyHours, _profile?.trainingDays, _profile?.gender, _profile?.lastPeriodStart, _profile?.cycleLength])
 
   // v8.95.0 — recent-best autofill chip + sport-default detection.
   const recentBest = useMemo(() => findRecentBest(_log, {
@@ -1442,7 +1534,21 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
   const evaluation = useMemo(() => {
     if (!persisted?.input) return { result: null, rejection: null }
     try {
-      const r = buildEliteProgram(persisted.input)
+      // v9.182.0 — Re-inject *live* cycle fields (gender / lastPeriodStart /
+      // cycleLength) so the cycle gate fires when an athlete enters tracking
+      // data after a program is already running, without forcing regeneration.
+      // Snapshot fields (currentCTL, weeklyHours, trainingDays) MUST remain
+      // as persisted — they reflect the athlete's state at generation time,
+      // and adherence calculations rely on that snapshot being stable.
+      const cycleLive = {}
+      if (_profile?.gender)          cycleLive.gender = _profile.gender
+      if (_profile?.lastPeriodStart) cycleLive.lastPeriodStart = _profile.lastPeriodStart
+      if (_profile?.cycleLength)     cycleLive.cycleLength = _profile.cycleLength
+      const inputWithProfile = {
+        ...persisted.input,
+        profile: { ...(persisted.input.profile || {}), ...cycleLive },
+      }
+      const r = buildEliteProgram(inputWithProfile)
       if (!r) return { result: null, rejection: null }
       if (r._rejected) return { result: null, rejection: r }
       if (!r.feasibility) return { result: null, rejection: null }
@@ -1450,7 +1556,7 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
     } catch {
       return { result: null, rejection: null }
     }
-  }, [persisted])
+  }, [persisted, _profile?.gender, _profile?.lastPeriodStart, _profile?.cycleLength])
   const baseResult = evaluation.result
   const rejection = evaluation.rejection
 
@@ -1968,6 +2074,9 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
 
       {/* v9.165.0 (EP-6) — physiology-specific feasibility verdict */}
       <PhysiologyGapBlock program={result} isTR={isTR} />
+
+      {/* v9.182.0 (EP-9 UI surface) — cycle-phase forecast; gated on profile */}
+      <CyclePhaseBlock program={result} profile={_profile} isTR={isTR} />
 
       {Array.isArray(result.phases) && result.phases.length > 0 ? <PhaseSplitBar phases={result.phases} isTR={isTR} /> : null}
       <WeeklyTSSChart weeklyTSS={result.weeklyTSS} phases={result.phases} isTR={isTR} />
