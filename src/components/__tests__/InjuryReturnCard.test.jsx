@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // ─── InjuryReturnCard.test.jsx — render tests for the EP-10 UI surface ──────
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
@@ -111,5 +111,87 @@ describe('InjuryReturnCard — persistence', () => {
     expect(stored.expanded).toBe(true)
     expect(stored.daysOff).toBe('14')
     expect(stored.injuryType).toBe('overuse')
+  })
+})
+
+// v9.189.0 — comebackDetector integration.
+// A log with ≥14 days of silence + prior CTL ≥10 triggers detectComebackGap.
+// The card surfaces a banner with the gap + prior CTL, plus accept/dismiss
+// buttons. Accept pre-fills the form. Dismiss persists so the banner
+// doesn't re-appear next visit.
+describe('InjuryReturnCard — v9.189.0 comeback banner', () => {
+  // Build a log that ends 21 days ago with enough TSS to push CTL above the
+  // 10 floor. CTL EMA with k = 1 - exp(-1/42); accumulating ~80 TSS daily
+  // for ~30 days lands CTL well above 10 by the last entry.
+  function buildComebackLog() {
+    vi.setSystemTime(new Date('2026-05-07T12:00:00Z'))
+    const lastDate = new Date('2026-04-16T12:00:00Z') // 21 days ago
+    const log = []
+    for (let i = 30; i >= 0; i--) {
+      const d = new Date(lastDate.getTime() - i * 86400000)
+      log.push({
+        date: d.toISOString().slice(0, 10),
+        tss: 80,
+        type: 'run',
+      })
+    }
+    return log
+  }
+
+  afterEach(() => { vi.setSystemTime(new Date()) })
+
+  it('shows the comeback banner with gap + prior CTL when detector fires', () => {
+    renderCard({ log: buildComebackLog() })
+    const banner = document.querySelector('[data-comeback-banner]')
+    expect(banner).not.toBeNull()
+    expect(banner.textContent).toMatch(/21 days since last training/i)
+    expect(banner.textContent).toMatch(/Prior CTL/i)
+    expect(screen.getByRole('button', { name: /USE SUGGESTION/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /DISMISS/i })).toBeInTheDocument()
+  })
+
+  it('does NOT show the banner when log has no comeback gap (last 7 days active)', () => {
+    vi.setSystemTime(new Date('2026-05-07T12:00:00Z'))
+    const recent = []
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(`2026-05-0${1 + i}T12:00:00Z`)
+      recent.push({ date: d.toISOString().slice(0, 10), tss: 80, type: 'run' })
+    }
+    renderCard({ log: recent })
+    expect(document.querySelector('[data-comeback-banner]')).toBeNull()
+  })
+
+  it('USE SUGGESTION pre-fills daysOff + preInjuryCTL and expands the card', () => {
+    renderCard({ log: buildComebackLog() })
+    fireEvent.click(screen.getByRole('button', { name: /USE SUGGESTION/i }))
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
+    expect(stored.expanded).toBe(true)
+    expect(stored.daysOff).toBe('21')
+    expect(Number(stored.preInjuryCTL)).toBeGreaterThan(10)
+    expect(stored.dismissedComeback).toBe(true)
+    // Banner should now be gone
+    expect(document.querySelector('[data-comeback-banner]')).toBeNull()
+    // Form should reflect the pre-filled values
+    expect(screen.getByLabelText(/DAYS OFF/i)).toHaveValue(21)
+  })
+
+  it('DISMISS persists across renders — banner stays hidden', () => {
+    const log = buildComebackLog()
+    const { unmount } = renderCard({ log })
+    fireEvent.click(screen.getByRole('button', { name: /DISMISS/i }))
+    expect(document.querySelector('[data-comeback-banner]')).toBeNull()
+    unmount()
+    renderCard({ log })
+    expect(document.querySelector('[data-comeback-banner]')).toBeNull()
+  })
+
+  it('hides the banner once the athlete starts filling the form manually', () => {
+    renderCard({ log: buildComebackLog() })
+    expect(document.querySelector('[data-comeback-banner]')).not.toBeNull()
+    // Expand the card via the toggle (don't accept the suggestion)
+    fireEvent.click(screen.getByRole('button', { name: /Returning from injury/i }))
+    // Type a value into the DAYS OFF input → form started
+    fireEvent.change(screen.getByLabelText(/DAYS OFF/i), { target: { value: '10' } })
+    expect(document.querySelector('[data-comeback-banner]')).toBeNull()
   })
 })

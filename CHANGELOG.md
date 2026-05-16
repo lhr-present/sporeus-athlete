@@ -14,6 +14,49 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.189.0 — 2026-05-17 — InjuryReturnCard auto-suggest via comebackDetector
+
+  v9.184 shipped `InjuryReturnCard` as opt-in: the athlete had to
+  notice they should fill it in. `comebackDetector.js` (v9.109.0)
+  already detects 14+ day training gaps with prior CTL ≥10 and
+  computes an evidence-based eased-CTL suggestion (~50% of prior).
+  Wiring the two together: the card now PROACTIVELY surfaces a
+  banner when the gap is detected.
+
+  Behavior:
+  - On render, runs `detectComebackGap(log)` (pure, no I/O).
+  - When `isComeback === true` AND athlete hasn't dismissed AND
+    hasn't started filling the form themselves → dismissible banner
+    appears above the toggle:
+        ⚠ 21 days since last training · Prior CTL 47
+        [USE SUGGESTION] [DISMISS]
+  - USE SUGGESTION → expands the card + pre-fills `daysOff` (gap)
+    + `preInjuryCTL` (priorCTL read at the last training date,
+    NOT the 120-day max — more honest after a long layoff).
+  - DISMISS → persists `dismissedComeback: true`; banner stays
+    hidden across renders.
+  - If athlete edits the form manually first (without clicking
+    USE SUGGESTION), banner auto-hides — don't second-guess them.
+
+  `derivePreInjuryCTL` now also prefers `comeback.priorCTL` over
+  the 120-day-max when the detector fires, so even an athlete who
+  expands the card manually without using the banner gets the more
+  realistic post-detraining baseline as the CTL placeholder.
+
+  Changes:
+  - `src/components/dashboard/InjuryReturnCard.jsx`:
+    - import `detectComebackGap`
+    - `derivedCTL` prefers `comeback.priorCTL` when isComeback
+    - `dismissedComeback` flag added to persisted state
+    - dismissible banner rendered above the toggle
+  - `src/components/__tests__/InjuryReturnCard.test.jsx`: +5 tests
+    cover banner appearance, USE SUGGESTION pre-fill, DISMISS
+    persistence across re-renders, banner auto-hide on manual
+    form entry, banner absence with recent activity.
+
+  Test count 10817 → 10822 (+5). Lint + build green. Pre-existing
+  unrelated planRationale TSB-factor failure on main still present.
+
 ## v9.188.0 — 2026-05-17 — standalone RaceStrategyCard (visible without a program)
 
   Parallel to v9.187: `RaceStrategyBlock` lives inside `EliteProgramCard`,

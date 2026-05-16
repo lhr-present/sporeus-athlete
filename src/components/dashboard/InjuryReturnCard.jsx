@@ -21,6 +21,7 @@ import { useContext, useMemo } from 'react'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { buildReturnToSportRamp } from '../../lib/athlete/injuryReturnRamp.js'
+import { detectComebackGap } from '../../lib/athlete/comebackDetector.js'
 import { calculatePMC } from '../../lib/trainingLoad.js'
 
 const STORAGE_KEY = 'sporeus-injuryReturnRamp'
@@ -71,7 +72,18 @@ export default function InjuryReturnCard({ log = [], profile = {} }) {
     return SPORT_FROM_PROFILE[raw] || 'run'
   }, [profile?.primarySport, profile?.sport])
 
-  const derivedCTL = useMemo(() => derivePreInjuryCTL(log), [log])
+  // v9.189.0 — comebackDetector integration. When ≥14 days of silence
+  // on the log AND the athlete had real prior CTL (≥10), the detector
+  // returns priorCTL read at the LAST training date — a more honest
+  // baseline than `derivePreInjuryCTL`'s 120-day max (which can be
+  // months stale after a long layoff). Prefer comeback.priorCTL when
+  // it fires.
+  const comeback = useMemo(() => detectComebackGap(log), [log])
+
+  const derivedCTL = useMemo(() => {
+    if (comeback?.isComeback && comeback.priorCTL > 0) return comeback.priorCTL
+    return derivePreInjuryCTL(log)
+  }, [log, comeback])
 
   const [stored, setStored] = useLocalStorage(STORAGE_KEY, {
     expanded: false,
@@ -79,10 +91,18 @@ export default function InjuryReturnCard({ log = [], profile = {} }) {
     injuryType: '',
     bodyRegion: '',
     preInjuryCTL: '',
+    dismissedComeback: false,
   })
 
   const expanded = !!stored?.expanded
   const update = (patch) => setStored({ ...(stored || {}), ...patch })
+
+  // Show the comeback banner when: detector fires, athlete hasn't already
+  // dismissed it, and they haven't started filling the form themselves
+  // (so we don't overwrite their judgement). Once they accept the
+  // suggestion or dismiss, the banner stays out.
+  const formStarted = !!(stored?.daysOff || stored?.injuryType || stored?.preInjuryCTL)
+  const showComebackBanner = !!comeback?.isComeback && !stored?.dismissedComeback && !formStarted
 
   const ctlForRamp = useMemo(() => {
     const overridden = Number(stored?.preInjuryCTL)
@@ -125,6 +145,54 @@ export default function InjuryReturnCard({ log = [], profile = {} }) {
         color: 'var(--text, #ccc)',
       }}
     >
+      {showComebackBanner ? (
+        <div
+          data-comeback-banner
+          role="status"
+          style={{
+            marginBottom: 12, padding: '8px 10px',
+            background: '#ff660014', border: '1px solid #ff660055',
+            borderRadius: 4, fontSize: 10, lineHeight: 1.5,
+            display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8,
+          }}
+        >
+          <span style={{ color: '#ff6600', fontWeight: 700 }}>
+            ⚠ {isTR
+              ? `${comeback.gapDays} gündür antrenman yok`
+              : `${comeback.gapDays} days since last training`}
+          </span>
+          <span style={{ color: 'var(--muted)' }}>
+            · {isTR ? `Önceki CTL ${comeback.priorCTL}` : `Prior CTL ${comeback.priorCTL}`}
+          </span>
+          <button
+            type="button"
+            onClick={() => update({
+              expanded: true,
+              daysOff: String(comeback.gapDays),
+              preInjuryCTL: String(comeback.priorCTL),
+              dismissedComeback: true,
+            })}
+            style={{
+              fontFamily: MONO, fontSize: 10, padding: '4px 10px',
+              background: '#ff6600', color: '#000',
+              border: 'none', borderRadius: 3, cursor: 'pointer', fontWeight: 700,
+            }}
+          >
+            {isTR ? 'ÖNERİYİ KULLAN' : 'USE SUGGESTION'}
+          </button>
+          <button
+            type="button"
+            onClick={() => update({ dismissedComeback: true })}
+            style={{
+              fontFamily: MONO, fontSize: 10, padding: '4px 8px',
+              background: 'transparent', color: 'var(--muted)',
+              border: '1px solid var(--border)', borderRadius: 3, cursor: 'pointer',
+            }}
+          >
+            {isTR ? 'GİZLE' : 'DISMISS'}
+          </button>
+        </div>
+      ) : null}
       <button
         type="button"
         aria-expanded={expanded}
