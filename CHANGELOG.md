@@ -14,6 +14,37 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.197.0 — 2026-05-17 — Race-week peek lines rotate by days-to-race
+
+  v9.193 surfaced 3 strategy lines (Pacing/Opener/Fueling) in
+  TodayView regardless of how many days out the athlete was. But
+  the "most actionable" strategy emphasis shifts through race week:
+
+      Days out          Best 3 lines
+      ────────         ─────────────────────────
+      4–7 days   →     gear / fueling / pacing      (logistics + carb plan)
+      1–3 days   →     fueling / pacing / opener    (carb load + rehearsal)
+        0 days   →     opener / pacing / closer     (race-day execution)
+
+  3 lines per phase keeps the surface the same height, so the
+  daily glance stays scannable. Athletes always see what's most
+  actionable for **today**, not generic race-week advice.
+
+  Changes:
+  - `src/components/TodayView.jsx`: line selection inside the
+    `[data-race-week-strategy]` block now reads `raceCountdown.days`
+    and picks one of the 3 line sets. Each line carries
+    `data-race-week-line=<key>` for test anchors.
+  - `src/components/__tests__/TodayView.raceWeek.test.jsx`: +5 tests
+    covering each phase + the 7d / 1d boundaries.
+
+  5 new tests cover: 5d → gear/fueling/pacing only;
+  3d → fueling/pacing/opener only; 0d → opener/pacing/closer only;
+  7d boundary stays in 4-7 bucket; 1d boundary stays in 1-3 bucket.
+
+  Test count 10860 → 10865 (+5). Lint + build green. Pre-existing
+  unrelated planRationale TSB-factor failure on main still present.
+
 ## v9.196.0 — 2026-05-17 — Recovery Protocols card now fires on low quick-tap readiness
 
   Audit of the readiness-band code path caught a gap: the existing

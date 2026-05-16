@@ -126,4 +126,55 @@ describe('TodayView — v9.193.0 race-week strategy peek', () => {
     expect(block.textContent).toMatch(/YARIŞ HAFTASI STRATEJİSİ/i)
     expect(block.textContent).toMatch(/Tempolama:/)
   })
+
+  // v9.197.0 — Day-sensitive line rotation
+  describe('day-sensitive line rotation', () => {
+    beforeEach(() => {
+      localStorage.setItem('sporeus-eliteProgram-raceStrategy', JSON.stringify({ run: 'road' }))
+    })
+
+    it('5 days out (4-7 bucket): gear / fueling / pacing — no opener / closer', () => {
+      __mockProfile = { primarySport: 'Running', raceDate: '2026-05-12' } // 5 days
+      renderWithLang(<TodayView log={[]} setTab={noop} setLogPrefill={noop} />)
+      expect(document.querySelector('[data-race-week-line="gear"]')).not.toBeNull()
+      expect(document.querySelector('[data-race-week-line="fueling"]')).not.toBeNull()
+      expect(document.querySelector('[data-race-week-line="pacing"]')).not.toBeNull()
+      expect(document.querySelector('[data-race-week-line="opener"]')).toBeNull()
+      expect(document.querySelector('[data-race-week-line="closer"]')).toBeNull()
+    })
+
+    it('3 days out (1-3 bucket): fueling / pacing / opener — no gear / closer', () => {
+      __mockProfile = { primarySport: 'Running', raceDate: '2026-05-10' } // 3 days
+      renderWithLang(<TodayView log={[]} setTab={noop} setLogPrefill={noop} />)
+      expect(document.querySelector('[data-race-week-line="fueling"]')).not.toBeNull()
+      expect(document.querySelector('[data-race-week-line="pacing"]')).not.toBeNull()
+      expect(document.querySelector('[data-race-week-line="opener"]')).not.toBeNull()
+      expect(document.querySelector('[data-race-week-line="gear"]')).toBeNull()
+      expect(document.querySelector('[data-race-week-line="closer"]')).toBeNull()
+    })
+
+    it('race day (0): opener / pacing / closer — no gear / fueling', () => {
+      __mockProfile = { primarySport: 'Running', raceDate: '2026-05-07' } // 0 days
+      renderWithLang(<TodayView log={[]} setTab={noop} setLogPrefill={noop} />)
+      expect(document.querySelector('[data-race-week-line="opener"]')).not.toBeNull()
+      expect(document.querySelector('[data-race-week-line="pacing"]')).not.toBeNull()
+      expect(document.querySelector('[data-race-week-line="closer"]')).not.toBeNull()
+      expect(document.querySelector('[data-race-week-line="gear"]')).toBeNull()
+      expect(document.querySelector('[data-race-week-line="fueling"]')).toBeNull()
+    })
+
+    it('7 days out is in the 4-7 bucket (boundary)', () => {
+      __mockProfile = { primarySport: 'Running', raceDate: '2026-05-14' } // 7 days
+      renderWithLang(<TodayView log={[]} setTab={noop} setLogPrefill={noop} />)
+      expect(document.querySelector('[data-race-week-line="gear"]')).not.toBeNull()
+    })
+
+    it('1 day out is in the 1-3 bucket (boundary)', () => {
+      __mockProfile = { primarySport: 'Running', raceDate: '2026-05-08' } // 1 day
+      renderWithLang(<TodayView log={[]} setTab={noop} setLogPrefill={noop} />)
+      expect(document.querySelector('[data-race-week-line="fueling"]')).not.toBeNull()
+      expect(document.querySelector('[data-race-week-line="opener"]')).not.toBeNull()
+      expect(document.querySelector('[data-race-week-line="gear"]')).toBeNull()
+    })
+  })
 })

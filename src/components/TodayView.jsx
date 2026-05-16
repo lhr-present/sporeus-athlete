@@ -908,16 +908,38 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
               ? (lang === 'tr' ? 'BUGÜN' : 'TODAY')
               : `${raceCountdown.days} ${lang === 'tr' ? 'GÜN' : 'D'}`}` : ''}
           </div>
-          {[
-            ['pacing', lang === 'tr' ? 'Tempolama' : 'Pacing'],
-            ['opener', lang === 'tr' ? 'Açılış'    : 'Opener'],
-            ['fueling',lang === 'tr' ? 'Beslenme'  : 'Fueling'],
-          ].map(([key, label]) => (
-            <div key={key} style={{ fontSize: 10, lineHeight: 1.55, marginBottom: 3, color: 'var(--text)' }}>
-              <span style={{ fontWeight: 700, color: '#e03030', marginRight: 6 }}>{label}:</span>
-              {lang === 'tr' ? raceWeekStrategy[key].tr : raceWeekStrategy[key].en}
-            </div>
-          ))}
+          {/* v9.197.0 — Day-sensitive line rotation. Different sub-phases
+              of race week have different "most actionable" content:
+                4-7 days: gear (logistics) / fueling (carb plan) / pacing
+                1-3 days: fueling (immediate) / pacing / opener (rehearsal)
+                  0 days: opener / pacing / closer (race day execution)
+              Each phase keeps 3 lines so the surface stays the same height. */}
+          {(() => {
+            const days = raceCountdown?.days ?? 7
+            const lineSet = days === 0
+              ? [
+                  ['opener',  lang === 'tr' ? 'Açılış'    : 'Opener'],
+                  ['pacing',  lang === 'tr' ? 'Tempolama' : 'Pacing'],
+                  ['closer',  lang === 'tr' ? 'Kapanış'   : 'Closer'],
+                ]
+              : days <= 3
+              ? [
+                  ['fueling', lang === 'tr' ? 'Beslenme'  : 'Fueling'],
+                  ['pacing',  lang === 'tr' ? 'Tempolama' : 'Pacing'],
+                  ['opener',  lang === 'tr' ? 'Açılış'    : 'Opener'],
+                ]
+              : [
+                  ['gear',    lang === 'tr' ? 'Ekipman'   : 'Gear'],
+                  ['fueling', lang === 'tr' ? 'Beslenme'  : 'Fueling'],
+                  ['pacing',  lang === 'tr' ? 'Tempolama' : 'Pacing'],
+                ]
+            return lineSet.map(([key, label]) => (
+              <div key={key} data-race-week-line={key} style={{ fontSize: 10, lineHeight: 1.55, marginBottom: 3, color: 'var(--text)' }}>
+                <span style={{ fontWeight: 700, color: '#e03030', marginRight: 6 }}>{label}:</span>
+                {lang === 'tr' ? raceWeekStrategy[key].tr : raceWeekStrategy[key].en}
+              </div>
+            ))
+          })()}
           {Array.isArray(raceWeekStrategy.warnings) && raceWeekStrategy.warnings.length > 0 ? (
             <div style={{ marginTop: 6, padding: 6, background: '#ff660014', border: '1px solid #ff660055', borderRadius: 3 }}>
               {raceWeekStrategy.warnings.map(w => (
