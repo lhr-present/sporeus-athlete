@@ -1605,3 +1605,73 @@ describe('EliteProgramCard — EP-9 cycle phase block (privacy + render)', () =>
     expect(region.textContent).toMatch(/yalnızca sana görünür/i)
   })
 })
+
+// ── v9.183.0 — EP-12 race-strategy UI surface ────────────────────────────────
+// Renders only when a program exists (sport derived from program.sport).
+// Pre-selection: shows the picker with "select" placeholder + helper text.
+// Post-selection: shows pacing/opener/closer/fueling/gear lines + citation.
+// Selection persists to localStorage keyed by sport.
+describe('EliteProgramCard — EP-12 race strategy block (picker + render)', () => {
+  function presetProgram() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      input: {
+        sport: 'run',
+        currentPR: { distanceM: 10000, timeSec: 3000 },
+        targetPR: { distanceM: 10000, timeSec: 2820 },
+        raceDate: '2026-08-15',
+      },
+    }))
+  }
+
+  it('renders the strategy region + race-format picker when a program exists', () => {
+    presetProgram()
+    renderCard()
+    const region = screen.getByRole('region', { name: /Race strategy/i })
+    expect(region).toBeInTheDocument()
+    expect(screen.getByLabelText(/Select race format/i)).toBeInTheDocument()
+    // Pre-selection: the helper text appears, output does not
+    expect(region.textContent).toMatch(/Select a race format/i)
+    expect(document.querySelector('[data-race-strategy-output]')).toBeNull()
+  })
+
+  it('shows pacing / opener / closer / fueling / gear when a race format is selected', () => {
+    presetProgram()
+    renderCard()
+    const picker = screen.getByLabelText(/Select race format/i)
+    fireEvent.change(picker, { target: { value: 'road' } })
+    const output = document.querySelector('[data-race-strategy-output]')
+    expect(output).not.toBeNull()
+    expect(output.textContent).toMatch(/Pacing:/)
+    expect(output.textContent).toMatch(/Opener:/)
+    expect(output.textContent).toMatch(/Closer:/)
+    expect(output.textContent).toMatch(/Fueling:/)
+    expect(output.textContent).toMatch(/Gear:/)
+    expect(output.textContent).toMatch(/Foster 1999/)
+  })
+
+  it('persists the race-format selection to localStorage keyed by sport', () => {
+    presetProgram()
+    renderCard()
+    const picker = screen.getByLabelText(/Select race format/i)
+    fireEvent.change(picker, { target: { value: 'trail' } })
+    const stored = JSON.parse(localStorage.getItem('sporeus-eliteProgram-raceStrategy') || '{}')
+    expect(stored.run).toBe('trail')
+  })
+
+  it('renders Turkish labels + Turkish strategy text when lang=tr', () => {
+    presetProgram()
+    const value = { t: k => k, lang: 'tr', setLang: () => {} }
+    render(
+      <LangCtx.Provider value={value}>
+        <EliteProgramCard log={[]} profile={{}} />
+      </LangCtx.Provider>
+    )
+    const region = screen.getByRole('region', { name: /Yarış stratejisi/i })
+    expect(region).toBeInTheDocument()
+    const picker = screen.getByLabelText(/Yarış formatı seç/i)
+    fireEvent.change(picker, { target: { value: 'road' } })
+    const output = document.querySelector('[data-race-strategy-output]')
+    expect(output.textContent).toMatch(/Tempolama:/)
+    expect(output.textContent).toMatch(/Açılış:/)
+  })
+})

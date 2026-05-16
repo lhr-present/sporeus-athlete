@@ -14,6 +14,48 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.183.0 — 2026-05-17 — EP-12 race-strategy UI surface (test-only → wired)
+
+  `raceStrategy.js` (shipped v9.172.0) had a full bilingual pacing /
+  opener / closer / fueling / gear builder for 18 race formats across
+  5 sports — but zero call sites outside its own test file. Wiring it
+  into the elite-program card.
+
+  Surface design — `RaceStrategyBlock` rendered after `BroaderPlanSections`
+  inside `EliteProgramCard`:
+  - Sport is auto-derived from `program.sport`; the picker lists exactly
+    the valid race types for that sport from `RACE_TYPES[sport]` (e.g.
+    track / road / trail / ultra / xc for run; sprint / olympic / 70.3
+    / ironman for triathlon).
+  - Selection persists per-sport to `sporeus-eliteProgram-raceStrategy`
+    via `useLocalStorage` so the athlete doesn't re-pick on each visit.
+  - When a format is selected: renders bilingual pacing / opener /
+    closer / fueling / gear lines + any condition warnings (heat / cold /
+    crosswind / altitude — surfaced from buildRaceStrategy when
+    conditions are supplied; this v1 doesn't yet pass conditions, so
+    the warning row is empty unless extended).
+  - Citation footer: Foster 1999; Coggan & Allen 2010; Skiba 2014;
+    Maughan 2010; Jeukendrup 2014; ITU; British Rowing.
+  - Bilingual `RACE_TYPE_LABEL` map for the 18 formats (EN+TR).
+
+  Changes:
+  - `src/components/dashboard/EliteProgramCard.jsx`:
+    - import `{ buildRaceStrategy, RACE_TYPES }`
+    - new `RaceStrategyBlock` component (picker + output + warnings)
+    - rendered between `BroaderPlanSections` and `AboutThisModel`.
+
+  4 new render tests cover: picker visible pre-selection with helper
+  text + no output; pacing/opener/closer/fueling/gear lines render
+  post-selection; localStorage persistence keyed by sport; lang=tr
+  surfaces Turkish labels + Turkish strategy strings.
+
+  Test count 10778 → 10782 (+4). Lint + build green. Pre-existing
+  unrelated planRationale TSB-factor failure on main still present.
+
+  Follow-up (not in this ship): pass `conditions` (weather) into
+  `buildRaceStrategy` once weather wiring is available, to surface
+  heat / cold / crosswind / altitude warnings automatically.
+
 ## v9.182.0 — 2026-05-17 — EP-9 cycle phase UI surface (closes the v9.181 loop)
 
   Audit on v9.181.0 caught a wiring gap: the orchestrator built and

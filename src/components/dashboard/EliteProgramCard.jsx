@@ -22,6 +22,7 @@ import { applyCoachEdits } from '../../lib/athlete/coachEditEngine.js'
 import { eliteProgramToYearlyWeeks } from '../../lib/athlete/eliteProgramToYearly.js'
 import { computePhysiologyGapInsight } from '../../lib/athlete/physiologyGapInsight.js'
 import { isCycleGateAvailable } from '../../lib/athlete/cyclePhaseGate.js'
+import { buildRaceStrategy, RACE_TYPES } from '../../lib/athlete/raceStrategy.js'
 import { downloadEliteProgramCSV } from '../../lib/athlete/eliteProgramExport.js'
 import { calculatePMC } from '../../lib/trainingLoad.js'
 import { announce } from '../../lib/a11y/announcer.js'
@@ -1221,6 +1222,133 @@ function CyclePhaseBlock({ program, profile, isTR }) {
   )
 }
 
+// ── RaceStrategyBlock (v9.183.0, EP-12 UI surface) ───────────────────────────
+// Surfaces buildRaceStrategy() for athletes whose program has a confirmed
+// race date. The athlete picks their race FORMAT (track / road / trail /
+// ultra / xc / tt / crit / 70.3 / etc.) and the block renders pacing /
+// opener / closer / fueling / gear bilingual guidance + any condition
+// warnings. Race format is persisted per-program in localStorage so the
+// athlete doesn't re-pick on every visit.
+const RACE_STRATEGY_STORAGE_KEY = 'sporeus-eliteProgram-raceStrategy'
+const RACE_TYPE_LABEL = {
+  // run
+  track: { en: 'Track', tr: 'Pist' },
+  road:  { en: 'Road',  tr: 'Yol' },
+  trail: { en: 'Trail', tr: 'Patika' },
+  ultra: { en: 'Ultra', tr: 'Ultra' },
+  xc:    { en: 'XC',    tr: 'XC' },
+  // bike
+  tt:           { en: 'Time Trial',  tr: 'Zaman Denemesi' },
+  crit:         { en: 'Criterium',   tr: 'Kriteryum' },
+  'gran-fondo': { en: 'Gran Fondo',  tr: 'Gran Fondo' },
+  mtb:          { en: 'MTB',         tr: 'MTB' },
+  // swim
+  pool:         { en: 'Pool',        tr: 'Havuz' },
+  'open-water': { en: 'Open Water',  tr: 'Açık Su' },
+  // triathlon
+  sprint:       { en: 'Sprint',      tr: 'Sprint' },
+  olympic:      { en: 'Olympic',     tr: 'Olimpik' },
+  '70.3':       { en: 'Half (70.3)', tr: 'Yarım (70.3)' },
+  ironman:      { en: 'Ironman',     tr: 'Ironman' },
+  // rowing
+  '2k':         { en: '2k',          tr: '2k' },
+  'head-race':  { en: 'Head Race',   tr: 'Head Race' },
+}
+
+function RaceStrategyBlock({ program, isTR }) {
+  const sport = program?.sport
+  const types = sport ? RACE_TYPES[sport] : null
+  const [stored, setStored] = useLocalStorage(RACE_STRATEGY_STORAGE_KEY, {})
+  if (!sport || !Array.isArray(types) || types.length === 0) return null
+
+  const raceType = stored?.[sport] || ''
+  const strategy = raceType ? buildRaceStrategy({ sport, raceType }) : null
+  const valid = strategy && !strategy._rejected
+
+  const aria = isTR ? 'Yarış stratejisi' : 'Race strategy'
+  const accent = '#0064ff'
+  const setRaceType = (rt) => setStored({ ...(stored || {}), [sport]: rt })
+
+  return (
+    <div
+      role="region"
+      aria-label={aria}
+      data-race-strategy={raceType || 'unselected'}
+      style={{
+        marginBottom: 8, padding: 8,
+        background: `${accent}10`,
+        border: `1px solid ${accent}44`,
+        borderRadius: 4,
+        fontFamily: 'inherit',
+      }}
+    >
+      <div style={{ fontSize: 9, letterSpacing: '0.08em', fontWeight: 700, color: accent, marginBottom: 6 }}>
+        ◇ {isTR ? 'YARIŞ GÜNÜ STRATEJİSİ' : 'RACE-DAY STRATEGY'} · {sport.toUpperCase()}
+      </div>
+      <div style={{ marginBottom: 8 }}>
+        <label style={{ fontSize: 10, color: 'var(--muted)', marginRight: 6 }}>
+          {isTR ? 'Yarış formatı:' : 'Race format:'}
+        </label>
+        <select
+          aria-label={isTR ? 'Yarış formatı seç' : 'Select race format'}
+          value={raceType}
+          onChange={e => setRaceType(e.target.value)}
+          style={{
+            fontFamily: "'IBM Plex Mono', monospace",
+            fontSize: 11,
+            padding: '4px 8px',
+            background: 'var(--input-bg)',
+            color: 'var(--text)',
+            border: '1px solid var(--input-border)',
+            borderRadius: 3,
+          }}
+        >
+          <option value="">{isTR ? '— seç —' : '— select —'}</option>
+          {types.map(rt => (
+            <option key={rt} value={rt}>
+              {RACE_TYPE_LABEL[rt]?.[isTR ? 'tr' : 'en'] || rt}
+            </option>
+          ))}
+        </select>
+      </div>
+      {valid ? (
+        <div data-race-strategy-output style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {[
+            ['pacing', isTR ? 'Tempolama'    : 'Pacing'],
+            ['opener', isTR ? 'Açılış'        : 'Opener'],
+            ['closer', isTR ? 'Kapanış'       : 'Closer'],
+            ['fueling',isTR ? 'Beslenme'      : 'Fueling'],
+            ['gear',   isTR ? 'Ekipman'       : 'Gear'],
+          ].map(([key, label]) => (
+            <div key={key} style={{ fontSize: 10, lineHeight: 1.55 }}>
+              <span style={{ fontWeight: 700, color: accent, marginRight: 6 }}>{label}:</span>
+              <span style={{ color: 'var(--text)' }}>{isTR ? strategy[key].tr : strategy[key].en}</span>
+            </div>
+          ))}
+          {Array.isArray(strategy.warnings) && strategy.warnings.length > 0 ? (
+            <div style={{ marginTop: 4, padding: 6, background: '#ff660014', border: '1px solid #ff660055', borderRadius: 3 }}>
+              {strategy.warnings.map(w => (
+                <div key={w.code} style={{ fontSize: 10, color: 'var(--text)', lineHeight: 1.5 }}>
+                  ⚠ {isTR ? w.tr : w.en}
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <div style={{ marginTop: 4, fontSize: 9, color: '#555', fontStyle: 'italic' }}>
+            {strategy.citation}
+          </div>
+        </div>
+      ) : (
+        <div style={{ fontSize: 10, color: 'var(--muted)', lineHeight: 1.5 }}>
+          {isTR
+            ? 'Yarış formatını seç — tempolama, açılış, kapanış, beslenme ve ekipman önerileri görünecek.'
+            : 'Select a race format — pacing, opener, closer, fueling, and gear guidance will appear.'}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── PhysiologyRow (v8.92.0) ──────────────────────────────────────────────────
 // Surfaces VDOT/FTP/CSS current → target plus a 5-row pace or zone mini-table
 // computed by the orchestrator. Sport-conditional: run/triathlon → paces,
@@ -2090,6 +2218,9 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
       ) : null}
 
       <BroaderPlanSections result={result} isTR={isTR} />
+
+      {/* v9.183.0 (EP-12 UI surface) — race-day strategy by format */}
+      <RaceStrategyBlock program={result} isTR={isTR} />
 
       <AboutThisModel isTR={isTR} />
 
