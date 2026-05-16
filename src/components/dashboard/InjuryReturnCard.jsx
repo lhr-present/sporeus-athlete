@@ -93,6 +93,7 @@ export default function InjuryReturnCard({ log = [], profile = {} }) {
     preInjuryCTL: '',
     dismissedComeback: false,
     rampStartDate: '',
+    rtsCriteriaMet: [],
   })
 
   const expanded = !!stored?.expanded
@@ -423,18 +424,74 @@ export default function InjuryReturnCard({ log = [], profile = {} }) {
                 </tbody>
               </table>
 
-              <div style={{ marginBottom: 10 }}>
-                <div style={{ fontSize: 9, color: 'var(--muted)', letterSpacing: '0.08em', marginBottom: 4 }}>
-                  {isTR ? 'DÖNÜŞ KRİTERLERİ (HEPSİ ✓ OLMALI)' : 'RETURN-TO-SPORT CRITERIA (ALL MUST ✓)'}
-                </div>
-                <ul style={{ margin: 0, paddingLeft: 16 }}>
-                  {ramp.criteria.map((c, i) => (
-                    <li key={i} style={{ fontSize: 10, lineHeight: 1.55, color: 'var(--text)' }}>
-                      {isTR ? c.tr : c.en}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              {/* v9.200.0 — Interactive RTS criteria checklist. Each
+                  Ardern 2016 criterion becomes a checkbox; state persists
+                  across sessions. When all 5 are checked, a "READY TO
+                  RETURN" badge appears (athletes get a tangible progress
+                  marker through the ramp). */}
+              {(() => {
+                const criteriaMet = Array.isArray(stored?.rtsCriteriaMet) ? stored.rtsCriteriaMet : []
+                const metCount = criteriaMet.filter(Boolean).length
+                const allMet = metCount === ramp.criteria.length
+                const toggleCriterion = (idx) => {
+                  const next = ramp.criteria.map((_, i) =>
+                    i === idx ? !criteriaMet[i] : !!criteriaMet[i])
+                  update({ rtsCriteriaMet: next })
+                }
+                return (
+                  <div style={{ marginBottom: 10 }} data-rts-criteria-block>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      marginBottom: 6, flexWrap: 'wrap',
+                    }}>
+                      <div style={{ fontSize: 9, color: 'var(--muted)', letterSpacing: '0.08em' }}>
+                        {isTR ? 'DÖNÜŞ KRİTERLERİ' : 'RETURN-TO-SPORT CRITERIA'}
+                        {' '}({metCount}/{ramp.criteria.length})
+                      </div>
+                      {allMet ? (
+                        <span
+                          data-rts-ready-badge
+                          style={{
+                            fontSize: 9, fontWeight: 700, letterSpacing: '0.08em',
+                            padding: '2px 8px', background: '#5bc25b',
+                            color: '#000', borderRadius: 3,
+                          }}
+                        >
+                          ✓ {isTR ? 'DÖNÜŞE HAZIR' : 'READY TO RETURN'}
+                        </span>
+                      ) : null}
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none' }}>
+                      {ramp.criteria.map((c, i) => {
+                        const checked = !!criteriaMet[i]
+                        return (
+                          <li key={i} style={{ fontSize: 10, lineHeight: 1.55, marginBottom: 3 }}>
+                            <label style={{
+                              display: 'flex', alignItems: 'flex-start', gap: 6,
+                              cursor: 'pointer',
+                              color: checked ? '#5bc25b' : 'var(--text)',
+                            }}>
+                              <input
+                                type="checkbox"
+                                data-rts-criterion={i}
+                                checked={checked}
+                                onChange={() => toggleCriterion(i)}
+                                style={{
+                                  marginTop: 2, accentColor: '#5bc25b',
+                                  cursor: 'pointer',
+                                }}
+                              />
+                              <span style={{ textDecoration: checked ? 'line-through' : 'none' }}>
+                                {isTR ? c.tr : c.en}
+                              </span>
+                            </label>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </div>
+                )
+              })()}
 
               <div style={{ padding: 8, background: '#e0303014', border: '1px solid #e0303055', borderRadius: 3, marginBottom: 8 }}>
                 <div style={{ fontSize: 9, color: '#e03030', letterSpacing: '0.08em', marginBottom: 4, fontWeight: 700 }}>

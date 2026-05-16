@@ -292,3 +292,98 @@ describe('InjuryReturnCard — v9.198.0 TODAY pointer', () => {
     expect(Number(today.getAttribute('data-current-week'))).toBeGreaterThanOrEqual(1)
   })
 })
+
+// v9.200.0 — Interactive RTS criteria checklist
+describe('InjuryReturnCard — v9.200.0 RTS criteria checkboxes', () => {
+  function fillValidRamp() {
+    fireEvent.click(screen.getByRole('button', { name: /Returning from injury/i }))
+    fireEvent.change(screen.getByLabelText(/DAYS OFF/i), { target: { value: '21' } })
+    fireEvent.change(screen.getByLabelText(/INJURY TYPE/i), { target: { value: 'soft-tissue' } })
+    fireEvent.change(screen.getByLabelText(/PRE-INJURY CTL/i), { target: { value: '60' } })
+  }
+
+  beforeEach(() => { vi.setSystemTime(new Date('2026-05-07T12:00:00Z')) })
+  afterEach(() => { vi.setSystemTime(new Date()) })
+
+  it('renders 5 unchecked checkboxes by default (Ardern 2016 framework)', () => {
+    renderCard()
+    fillValidRamp()
+    const boxes = document.querySelectorAll('[data-rts-criterion]')
+    expect(boxes.length).toBe(5)
+    boxes.forEach(b => expect(b.checked).toBe(false))
+  })
+
+  it('shows progress count "0/5" initially and updates as checkboxes are toggled', () => {
+    renderCard()
+    fillValidRamp()
+    const block = document.querySelector('[data-rts-criteria-block]')
+    expect(block.textContent).toMatch(/0\/5/)
+    fireEvent.click(document.querySelector('[data-rts-criterion="0"]'))
+    expect(block.textContent).toMatch(/1\/5/)
+    fireEvent.click(document.querySelector('[data-rts-criterion="1"]'))
+    expect(block.textContent).toMatch(/2\/5/)
+  })
+
+  it('checking all 5 criteria shows the READY TO RETURN badge', () => {
+    renderCard()
+    fillValidRamp()
+    expect(document.querySelector('[data-rts-ready-badge]')).toBeNull()
+    for (let i = 0; i < 5; i++) {
+      fireEvent.click(document.querySelector(`[data-rts-criterion="${i}"]`))
+    }
+    const badge = document.querySelector('[data-rts-ready-badge]')
+    expect(badge).not.toBeNull()
+    expect(badge.textContent).toMatch(/READY TO RETURN/i)
+  })
+
+  it('un-checking one criterion removes the READY badge', () => {
+    renderCard()
+    fillValidRamp()
+    for (let i = 0; i < 5; i++) {
+      fireEvent.click(document.querySelector(`[data-rts-criterion="${i}"]`))
+    }
+    expect(document.querySelector('[data-rts-ready-badge]')).not.toBeNull()
+    fireEvent.click(document.querySelector('[data-rts-criterion="2"]'))
+    expect(document.querySelector('[data-rts-ready-badge]')).toBeNull()
+  })
+
+  it('persists rtsCriteriaMet across reloads', () => {
+    const { unmount } = renderCard()
+    fillValidRamp()
+    fireEvent.click(document.querySelector('[data-rts-criterion="0"]'))
+    fireEvent.click(document.querySelector('[data-rts-criterion="3"]'))
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
+    expect(stored.rtsCriteriaMet).toEqual([true, false, false, true, false])
+    unmount()
+    renderCard()
+    // Card remounts; checkboxes reflect persisted state
+    expect(document.querySelector('[data-rts-criterion="0"]').checked).toBe(true)
+    expect(document.querySelector('[data-rts-criterion="1"]').checked).toBe(false)
+    expect(document.querySelector('[data-rts-criterion="3"]').checked).toBe(true)
+  })
+
+  it('TR labels show DÖNÜŞE HAZIR when all criteria met under lang=tr', () => {
+    cleanup()
+    localStorage.clear()
+    // Pre-seed all 5 met so we don't have to chase Turkish input labels
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      expanded: true,
+      daysOff: '21',
+      injuryType: 'soft-tissue',
+      bodyRegion: '',
+      preInjuryCTL: '60',
+      dismissedComeback: true,
+      rampStartDate: '2026-05-07',
+      rtsCriteriaMet: [true, true, true, true, true],
+    }))
+    const value = { t: k => k, lang: 'tr', setLang: () => {} }
+    render(
+      <LangCtx.Provider value={value}>
+        <InjuryReturnCard log={[]} profile={{ primarySport: 'Running' }} />
+      </LangCtx.Provider>
+    )
+    const badge = document.querySelector('[data-rts-ready-badge]')
+    expect(badge).not.toBeNull()
+    expect(badge.textContent).toMatch(/DÖNÜŞE HAZIR/i)
+  })
+})

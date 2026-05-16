@@ -14,6 +14,53 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.200.0 — 2026-05-17 — Interactive Return-to-Sport criteria checklist
+
+  The Ardern 2016 RTS criteria (pain-free movements / full ROM /
+  strength ≥90% / no swelling / psychological readiness) rendered
+  as a static bulleted list in InjuryReturnCard. Athletes had to
+  mentally track which they'd met — defeating the purpose of an
+  evidence-based checklist.
+
+  Now interactive:
+  - Each criterion is a checkbox; state persists to localStorage
+    as `rtsCriteriaMet: boolean[]`.
+  - Header shows progress count "(N/5)" that updates live.
+  - When all 5 are checked, a green `✓ READY TO RETURN` /
+    `✓ DÖNÜŞE HAZIR` badge appears next to the header.
+  - Checked items get green color + strikethrough for visual
+    reinforcement.
+
+  The full ramp protocol (volume / intensity caps / quality
+  sessions / ACWR targets) tells athletes what to DO. The
+  criteria checklist now tells them whether they're CLEAR to
+  graduate. Two complementary signals.
+
+  Changes:
+  - `src/components/dashboard/InjuryReturnCard.jsx`:
+    - `rtsCriteriaMet` field added to persisted state
+    - criteria list replaced with checkbox-driven render
+    - `toggleCriterion(i)` updates the array immutably
+    - badge appears when `metCount === ramp.criteria.length`
+    - data attributes: `data-rts-criteria-block`,
+      `data-rts-criterion=<idx>`, `data-rts-ready-badge`
+  - `src/components/__tests__/InjuryReturnCard.test.jsx`: +6 tests
+
+  6 new tests cover: 5 unchecked by default; progress count
+  updates on toggle; READY badge appears on full-check; un-
+  checking removes the badge; persistence across re-mount;
+  Turkish DÖNÜŞE HAZIR label.
+
+  Test count 10877 → 10883 (+6). Lint + build green. Pre-existing
+  unrelated planRationale TSB-factor failure on main still present.
+
+  Milestone: **v9.200.0** — 20-version session sprint complete.
+  Aggregate v9.181–200: +113 tests, 7 dashboard cards, 2 in-program
+  blocks, 4 TodayView indicators/CTAs, 1 dead-input mirror, 4
+  cross-surface ports, 4 dormant-feature unlocks, 1 proactive
+  banner, 1 friction-reducer auto-seed, 1 calendar pointer, 1
+  interactive checklist.
+
 ## v9.199.0 — 2026-05-17 — Injury ramp peek in TodayView
 
   v9.198 put the TODAY pointer on InjuryReturnCard (Dashboard).
