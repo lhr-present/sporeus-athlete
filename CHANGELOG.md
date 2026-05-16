@@ -14,6 +14,38 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.188.0 — 2026-05-17 — standalone RaceStrategyCard (visible without a program)
+
+  Parallel to v9.187: `RaceStrategyBlock` lives inside `EliteProgramCard`,
+  so athletes who haven't generated a program can't see race-day
+  pacing/opener/closer/fueling/gear guidance — even though they may
+  have a race coming up. Newcomers and athletes doing free training
+  are the affected cohort.
+
+  New standalone `RaceStrategyCard.jsx` mirrors the in-program block:
+  - Sport derives from `profile.primarySport`.
+  - Race-format picker lists valid types for that sport from
+    `RACE_TYPES[sport]` (the same 18 formats × 5 sports).
+  - Selection persists per-sport to the SAME localStorage key
+    (`sporeus-eliteProgram-raceStrategy`) the in-program block uses,
+    so an athlete who picks "road" here sees it pre-selected when
+    they later open the in-program block — and vice-versa.
+  - On selection: bilingual pacing / opener / closer / fueling / gear
+    lines + condition warnings + Foster/Coggan/Skiba/Maughan/
+    Jeukendrup/ITU/British Rowing citation.
+
+  Changes:
+  - new file: `src/components/dashboard/RaceStrategyCard.jsx`
+  - `src/components/Dashboard.jsx`: lazy import + render after
+    `CyclePhaseCard`.
+
+  6 new render tests cover: picker visible with helper text pre-
+  selection; sport name in title; full output post-selection;
+  cross-surface localStorage sharing (pre-seed reads back); bilingual.
+
+  Test count 10811 → 10817 (+6). Lint + build green. Pre-existing
+  unrelated planRationale TSB-factor failure on main still present.
+
 ## v9.187.0 — 2026-05-17 — standalone CyclePhaseCard (visible without a program)
 
   Audit of v9.182.0 caught a discoverability gap: `CyclePhaseBlock`

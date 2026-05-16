@@ -72,6 +72,7 @@ const InjuryForecastCard         = lazy(() => import('./dashboard/InjuryForecast
 const InjuryReturnCard           = lazy(() => import('./dashboard/InjuryReturnCard.jsx'))
 const MultiPeakSeasonCard        = lazy(() => import('./dashboard/MultiPeakSeasonCard.jsx'))
 const CyclePhaseCard             = lazy(() => import('./dashboard/CyclePhaseCard.jsx'))
+const RaceStrategyCard           = lazy(() => import('./dashboard/RaceStrategyCard.jsx'))
 const StrainHistoryCard          = lazy(() => import('./dashboard/StrainHistoryCard.jsx'))
 const ConsistencyTrendCard       = lazy(() => import('./dashboard/ConsistencyTrendCard.jsx'))
 const InsightFeedCard            = lazy(() => import('./dashboard/InsightFeedCard.jsx'))
@@ -384,6 +385,11 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
         <ErrorBoundary>
           <Suspense fallback={null}>
             <CyclePhaseCard profile={profile} />
+          </Suspense>
+        </ErrorBoundary>
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <RaceStrategyCard profile={profile} />
           </Suspense>
         </ErrorBoundary>
         <ErrorBoundary>
