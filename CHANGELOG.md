@@ -14,6 +14,56 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.186.0 — 2026-05-17 — ltPace ↔ threshold mirror (closes a dead-input audit)
+
+  Physiology pipeline audit (2026-05-15 memory) flagged `ltPace` as
+  potentially dead. Re-audit today confirmed a real wiring break:
+
+  - `profile.ltPace` is READ by 2 sites:
+    * `src/lib/intelligence.js predictRacePerformance` (line 854):
+      parses ltPace to derive race predictions from threshold pace.
+    * `src/components/dashboard/RacePredictionsCard.jsx` (lines 28+36):
+      gates render on `!profile.ftp && !profile.ltPace` and uses it
+      directly for Riegel race predictions.
+  - `profile.ltPace` is WRITTEN by ZERO UI inputs. The Profile FIELDS
+    array (line 91) collects `threshold`, which is what validate.js
+    persists. Name mismatch → the two read sites never fired for any
+    athlete who entered an LT pace.
+
+  Fix — `validate.js sanitizeProfile` now exposes a derived `ltPace`
+  field, mirrored from the canonical sources in priority order:
+    1. user-entered `threshold` (UI field)
+    2. `thresholdDerived` (v9.159.0 VO2max-derived fallback)
+    3. legacy `ltPace` input (preserves any old export imports)
+    4. empty string (so existing `!profile.ltPace` guards still
+       short-circuit cleanly for unset profiles).
+
+  This matches the established mirror pattern (sport ↔ primarySport
+  v9.62.0; raceDate ↔ nextRaceDate v9.60.0): one source of truth at
+  sanitization, any consumer read-name works.
+
+  Changes:
+  - `src/lib/validate.js`: compute `ltPace` from threshold +
+    thresholdDerived + legacy fallback; expose in returned shape.
+  - `src/lib/__tests__/validate.test.js`: +5 tests covering the
+    mirror priority, legacy fallback, and empty case.
+
+  No UI changes needed — both downstream read sites become live
+  automatically once an athlete enters `threshold` (or has VO2max
+  set for the derived path).
+
+  Test count 10800 → 10805 (+5). Lint + build green. Pre-existing
+  unrelated planRationale TSB-factor failure on main still present.
+
+  Punch list status: **all 5 EP-module wiring items closed** (EP-9
+  v9.181+182, EP-12 v9.183, EP-10 v9.184, EP-4 v9.185, dead-input
+  v9.186). The original 2026-05-15 physiology audit's `ltPace`
+  finding is the only one closed today — the audit's other items
+  (`vo2max`, `weeklyTssGoal`, `dragFactor`, body comp,
+  threshold-for-plan) are either already wired (vo2max →
+  thresholdDerived v9.159.0; weeklyTssGoal collected) or
+  intentionally collected-only.
+
 ## v9.185.0 — 2026-05-17 — EP-4 multi-peak season planner (test-only → wired)
 
   `multiPeakSeason.js` (shipped v9.170.0) had a full A/B/C-race

@@ -542,3 +542,36 @@ describe('sanitizeProfile — thresholdDerived from VO2max (v9.159.0)', () => {
     expect(slow.thresholdDerived > fast.thresholdDerived).toBe(true)
   })
 })
+
+// v9.186.0 — ltPace ↔ threshold mirror
+describe('sanitizeProfile — ltPace ↔ threshold mirror (v9.186.0)', () => {
+  it('mirrors user-entered threshold to ltPace', () => {
+    const p = sanitizeProfile({ threshold: '4:30' })
+    expect(p.threshold).toBe('4:30')
+    expect(p.ltPace).toBe('4:30')
+  })
+
+  it('falls back to thresholdDerived when threshold is empty (VO2max set)', () => {
+    const p = sanitizeProfile({ vo2max: 50 })
+    expect(p.threshold).toBe('')
+    expect(p.thresholdDerived).toBe('4:11')
+    expect(p.ltPace).toBe('4:11')
+  })
+
+  it('user-set threshold beats derivation in the mirror (same as canonical rule)', () => {
+    const p = sanitizeProfile({ vo2max: 50, threshold: '4:00' })
+    expect(p.ltPace).toBe('4:00')
+  })
+
+  it('accepts legacy ltPace input when neither threshold nor VO2max is present', () => {
+    const p = sanitizeProfile({ ltPace: '4:45' })
+    expect(p.threshold).toBe('')
+    expect(p.thresholdDerived).toBe('')
+    expect(p.ltPace).toBe('4:45')
+  })
+
+  it('empty ltPace when nothing is set (existing `!profile.ltPace` guards remain valid)', () => {
+    const p = sanitizeProfile({})
+    expect(p.ltPace).toBe('')
+  })
+})

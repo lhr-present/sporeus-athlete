@@ -141,6 +141,16 @@ export function sanitizeProfile(p) {
   const thresholdDerived = !userThreshold && Number.isFinite(vo2maxNum) && vo2maxNum > 0
     ? (vdotToThresholdStr(vo2maxNum) || '')
     : ''
+  // v9.186.0 — `ltPace` ↔ `threshold` mirror. Two read sites
+  // (intelligence.js predictRacePerformance, RacePredictionsCard) read
+  // `profile.ltPace`, but Profile.jsx writes ONLY `profile.threshold`,
+  // so an athlete who entered an LT pace got zero contribution from those
+  // sites. Mirror at sanitization (matches the sport↔primarySport and
+  // raceDate↔nextRaceDate patterns) so any read site wins. Accepts a
+  // legacy ltPace input as a last-resort fall-back. Empty string when
+  // nothing is set, so the existing `!profile.ltPace` guards still work.
+  const legacyLtPace = str(p.ltPace, 20)
+  const ltPace = userThreshold || thresholdDerived || legacyLtPace || ''
 
   return {
     name:          str(p.name),
@@ -163,6 +173,7 @@ export function sanitizeProfile(p) {
     maxhr:         numStr(p.maxhr, 60, 280),
     threshold:     userThreshold,
     thresholdDerived,
+    ltPace,
     // v9.100.0 — CSS (Critical Swim Speed) in sec/100m. Pre-fix, this field
     // was set by eliteProgram + onboarding but stripped on every Profile save
     // because the whitelist didn't include it. Stored as a string to match
