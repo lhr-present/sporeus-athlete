@@ -33,6 +33,7 @@ import { computeTrainingStreak, getStreakMilestone } from '../lib/athlete/traini
 import { detectComebackGap } from '../lib/athlete/comebackDetector.js'
 import { isCycleGateAvailable, buildCyclePhaseGate } from '../lib/athlete/cyclePhaseGate.js'
 import { buildRaceStrategy } from '../lib/athlete/raceStrategy.js'
+import { buildReturnToSportRamp } from '../lib/athlete/injuryReturnRamp.js'
 import { detectRaceRetrospective, retroLocalStorageKey } from '../lib/athlete/raceRetrospective.js'
 import { explainPlannedSession } from '../lib/athlete/planRationale.js'
 import { analyzeWellnessTrend } from '../lib/athlete/wellnessTrend.js'
@@ -356,6 +357,51 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
     if (!r || r._rejected) return null
     return r
   }, [raceCountdown, profile?.primarySport, profile?.sport, raceStrategyPick, raceConditions])
+
+  // v9.199.0 — Injury ramp peek. When the athlete has built a return-to-
+  // sport ramp via InjuryReturnCard AND it's been stamped to a calendar
+  // (rampStartDate), surface today's prescribed week here in TodayView.
+  // Same cross-surface shared-storage pattern used for race strategy:
+  // both reads + writes go through the same `sporeus-injuryReturnRamp`
+  // key. Today's pointer auto-advances as days pass.
+  const [injuryRampStored] = useLocalStorage('sporeus-injuryReturnRamp', {})
+  const injuryRampToday = useMemo(() => {
+    const start = injuryRampStored?.rampStartDate
+    if (!start) return null
+    const daysOff = Number(injuryRampStored?.daysOff)
+    if (!Number.isFinite(daysOff) || daysOff < 0) return null
+    if (!injuryRampStored?.injuryType) return null
+    const ctl = Number(injuryRampStored?.preInjuryCTL)
+    if (!Number.isFinite(ctl) || ctl <= 0) return null
+    const sportRaw = profile?.primarySport || profile?.sport
+    const SPORT_NORM = {
+      Running: 'run', running: 'run', run: 'run',
+      Cycling: 'bike', cycling: 'bike', bike: 'bike',
+      Swimming: 'swim', swimming: 'swim', swim: 'swim',
+      Triathlon: 'triathlon', triathlon: 'triathlon',
+      Rowing: 'rowing', rowing: 'rowing',
+    }
+    const sport = SPORT_NORM[sportRaw] || 'run'
+    const ramp = buildReturnToSportRamp({
+      sport,
+      injuryType: injuryRampStored.injuryType,
+      bodyRegion: injuryRampStored.bodyRegion || null,
+      daysOff,
+      preInjuryCTL: ctl,
+    })
+    if (!ramp || ramp._rejected) return null
+    const startMs = new Date(start + 'T12:00:00Z').getTime()
+    if (Number.isNaN(startMs)) return null
+    const days = Math.floor((Date.now() - startMs) / 86400000)
+    const wk = Math.max(1, Math.min(ramp.totalRampWeeks, Math.floor(days / 7) + 1))
+    const current = ramp.weeks.find(w => w.week === wk)
+    if (!current) return null
+    // Suppress once the ramp is past its final week — athletes have
+    // graduated; the InjuryReturnCard itself can still be re-anchored.
+    const daysPastEnd = days - (ramp.totalRampWeeks * 7 - 1)
+    if (daysPastEnd > 0) return null
+    return { currentWeek: current, currentWeekIdx: wk, totalRampWeeks: ramp.totalRampWeeks }
+  }, [injuryRampStored, profile?.primarySport, profile?.sport])
 
   // Coach message unread count (athlete reads from localStorage)
   // Coach sessions RSVP + announcements
@@ -887,6 +933,37 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
           </div>
         )
       })()}
+
+      {/* v9.199.0 — Injury-ramp TODAY peek. Mirrors the v9.198 callout
+          inside InjuryReturnCard but surfaces it in TodayView so an
+          athlete on a return ramp sees their current-week target without
+          scrolling to Dashboard. Cross-surface — same localStorage key. */}
+      {injuryRampToday ? (
+        <div
+          role="region"
+          aria-label={lang === 'tr' ? 'Yaralanma rampası bugün' : 'Injury ramp today'}
+          data-injury-ramp-today-peek
+          data-current-week={injuryRampToday.currentWeekIdx}
+          style={{
+            marginBottom: 10, padding: 10,
+            background: '#5bc25b14', border: '1px solid #5bc25b55',
+            borderRadius: 5, fontFamily: MONO,
+          }}
+        >
+          <div style={{ fontSize: 10, letterSpacing: '0.08em', fontWeight: 700, color: '#5bc25b', marginBottom: 4 }}>
+            🩹 {lang === 'tr'
+              ? `RAMPA · BUGÜN → H${injuryRampToday.currentWeekIdx} / ${injuryRampToday.totalRampWeeks}`
+              : `RAMP · TODAY → W${injuryRampToday.currentWeekIdx} / ${injuryRampToday.totalRampWeeks}`} ·
+            {' '}{injuryRampToday.currentWeek.volumePct}% · {injuryRampToday.currentWeek.intensityCap}
+            {injuryRampToday.currentWeek.maxQualitySessions > 0
+              ? (lang === 'tr' ? ` · ${injuryRampToday.currentWeek.maxQualitySessions} kalite` : ` · ${injuryRampToday.currentWeek.maxQualitySessions} quality`)
+              : (lang === 'tr' ? ' · kalite yok' : ' · no quality')}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--text)', lineHeight: 1.5 }}>
+            {lang === 'tr' ? injuryRampToday.currentWeek.note.tr : injuryRampToday.currentWeek.note.en}
+          </div>
+        </div>
+      ) : null}
 
       {/* v9.193.0 — Race-week strategy peek. Renders when raceDate is
           within 7 days AND athlete has picked a race format. Heat/cold/

@@ -14,6 +14,44 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.199.0 — 2026-05-17 — Injury ramp peek in TodayView
+
+  v9.198 put the TODAY pointer on InjuryReturnCard (Dashboard).
+  Athletes on a return ramp open TodayView every day — they need
+  today's prescribed week-target visible from the daily HQ, not
+  buried two-cards-down on Dashboard.
+
+  Cross-surface peek:
+  - Reads the same `sporeus-injuryReturnRamp` localStorage key
+    InjuryReturnCard writes (form inputs + rampStartDate stamp).
+  - Recomputes `currentWeekIdx` from rampStartDate same way the card
+    does (`floor((today − rampStartDate) / 7) + 1`, clamped).
+  - Renders a green `🩹 RAMP · TODAY → W2 / 5 · 50% · Z3 · 0 quality`
+    callout with the current week's bilingual note.
+  - Auto-suppresses once the ramp is past its final week — the
+    athlete has graduated; InjuryReturnCard itself can still be
+    re-anchored if they want a fresh restart.
+
+  Surfaces directly above the race-week peek (v9.193) so the daily
+  HQ shows a coherent "what to do today" stack:
+    1. Injury ramp (if active)
+    2. Race week strategy (if within 7 days)
+    3. Today's planned session (existing)
+
+  Changes:
+  - `src/components/TodayView.jsx`:
+    - import `buildReturnToSportRamp`
+    - `injuryRampToday` useMemo (gates + clamp + suppress-past-end)
+    - inline green callout above raceWeekStrategy
+  - new file: `src/components/__tests__/TodayView.injuryRamp.test.jsx`
+
+  6 new tests cover: no ramp data; missing rampStartDate; missing
+  injuryType; W1 prescription at start; W2 after 8 days; past-end
+  auto-suppression.
+
+  Test count 10871 → 10877 (+6). Lint + build green. Pre-existing
+  unrelated planRationale TSB-factor failure on main still present.
+
 ## v9.198.0 — 2026-05-17 — InjuryReturnCard "TODAY → Wn" calendar pointer
 
   v9.184 built the W1..W5/W7 ramp table; v9.189 wired the comeback
