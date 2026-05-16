@@ -195,3 +195,100 @@ describe('InjuryReturnCard — v9.189.0 comeback banner', () => {
     expect(document.querySelector('[data-comeback-banner]')).toBeNull()
   })
 })
+
+// v9.198.0 — Calendar-anchored "TODAY → Wn" pointer
+describe('InjuryReturnCard — v9.198.0 TODAY pointer', () => {
+  function fillValidRamp() {
+    fireEvent.click(screen.getByRole('button', { name: /Returning from injury/i }))
+    fireEvent.change(screen.getByLabelText(/DAYS OFF/i), { target: { value: '21' } })
+    fireEvent.change(screen.getByLabelText(/INJURY TYPE/i), { target: { value: 'soft-tissue' } })
+    fireEvent.change(screen.getByLabelText(/PRE-INJURY CTL/i), { target: { value: '60' } })
+  }
+
+  beforeEach(() => { vi.setSystemTime(new Date('2026-05-07T12:00:00Z')) })
+  afterEach(() => { vi.setSystemTime(new Date()) })
+
+  it('TODAY callout appears when the ramp first builds (stamped to current date)', () => {
+    renderCard()
+    fillValidRamp()
+    const today = document.querySelector('[data-injury-ramp-today]')
+    expect(today).not.toBeNull()
+    // First render: stamp = today → current week is 1
+    expect(today.getAttribute('data-current-week')).toBe('1')
+    expect(today.textContent).toMatch(/TODAY → W1/i)
+  })
+
+  it('current week row is visually highlighted with data-week-current="true"', () => {
+    renderCard()
+    fillValidRamp()
+    const w1 = document.querySelector('[data-week-row="1"]')
+    expect(w1).not.toBeNull()
+    expect(w1.getAttribute('data-week-current')).toBe('true')
+    // Other rows are not current
+    const w2 = document.querySelector('[data-week-row="2"]')
+    expect(w2.getAttribute('data-week-current')).toBe('false')
+  })
+
+  it('rampStartDate is persisted on first successful ramp build', () => {
+    renderCard()
+    fillValidRamp()
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
+    expect(stored.rampStartDate).toBe('2026-05-07')
+  })
+
+  it('current week advances as the calendar moves past rampStartDate', () => {
+    // Pre-seed a stamp 8 days ago so we land in week 2 (floor(8/7)+1=2)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      expanded: true,
+      daysOff: '21',
+      injuryType: 'soft-tissue',
+      bodyRegion: '',
+      preInjuryCTL: '60',
+      dismissedComeback: true,
+      rampStartDate: '2026-04-29', // 8 days before 2026-05-07
+    }))
+    renderCard()
+    const today = document.querySelector('[data-injury-ramp-today]')
+    expect(today.getAttribute('data-current-week')).toBe('2')
+    expect(today.textContent).toMatch(/TODAY → W2/i)
+    const w2 = document.querySelector('[data-week-row="2"]')
+    expect(w2.getAttribute('data-week-current')).toBe('true')
+  })
+
+  it('RE-ANCHOR button resets rampStartDate to today', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      expanded: true,
+      daysOff: '21',
+      injuryType: 'soft-tissue',
+      bodyRegion: '',
+      preInjuryCTL: '60',
+      dismissedComeback: true,
+      rampStartDate: '2026-04-29', // week 2
+    }))
+    renderCard()
+    expect(document.querySelector('[data-injury-ramp-today]').getAttribute('data-current-week')).toBe('2')
+    fireEvent.click(screen.getByRole('button', { name: /RE-ANCHOR/i }))
+    expect(document.querySelector('[data-injury-ramp-today]').getAttribute('data-current-week')).toBe('1')
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
+    expect(stored.rampStartDate).toBe('2026-05-07')
+  })
+
+  it('current week is clamped to totalRampWeeks (no overflow on stale stamp)', () => {
+    // Pre-seed a stamp 60 days ago — way past the 5-week ramp end
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      expanded: true,
+      daysOff: '21',
+      injuryType: 'soft-tissue',
+      bodyRegion: '',
+      preInjuryCTL: '60',
+      dismissedComeback: true,
+      rampStartDate: '2026-03-08',
+    }))
+    renderCard()
+    const today = document.querySelector('[data-injury-ramp-today]')
+    expect(today).not.toBeNull()
+    // Should clamp to the last ramp week (5 for a soft-tissue 21-day ramp)
+    expect(Number(today.getAttribute('data-current-week'))).toBeLessThanOrEqual(5)
+    expect(Number(today.getAttribute('data-current-week'))).toBeGreaterThanOrEqual(1)
+  })
+})

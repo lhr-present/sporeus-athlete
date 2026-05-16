@@ -17,7 +17,7 @@
 //   - Persists form state + collapsed/expanded to localStorage so the
 //     card retains the athlete's last input across sessions.
 
-import { useContext, useMemo } from 'react'
+import { useContext, useEffect, useMemo } from 'react'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { buildReturnToSportRamp } from '../../lib/athlete/injuryReturnRamp.js'
@@ -92,6 +92,7 @@ export default function InjuryReturnCard({ log = [], profile = {} }) {
     bodyRegion: '',
     preInjuryCTL: '',
     dismissedComeback: false,
+    rampStartDate: '',
   })
 
   const expanded = !!stored?.expanded
@@ -125,6 +126,37 @@ export default function InjuryReturnCard({ log = [], profile = {} }) {
     })
     return r && !r._rejected ? r : null
   }, [expanded, sport, stored?.daysOff, stored?.injuryType, stored?.bodyRegion, ctlForRamp])
+
+  // v9.198.0 — Calendar-anchor the ramp. Stamp `rampStartDate` the first
+  // moment the ramp builds successfully (athlete has filled enough form
+  // fields to produce a valid output). The stamp persists in localStorage
+  // so the "TODAY → Wn" pointer stays consistent across reloads even as
+  // the calendar advances. Athletes can re-anchor by clicking the
+  // re-anchor button below.
+  useEffect(() => {
+    if (!ramp) return
+    if (stored?.rampStartDate) return
+    const todayISO = new Date().toISOString().slice(0, 10)
+    setStored({ ...(stored || {}), rampStartDate: todayISO })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ramp, stored?.rampStartDate])
+
+  // Compute the current ramp week from the stamp. clamp so very stale
+  // stamps don't underflow into negatives or overflow past totalWeeks.
+  const currentWeekIdx = useMemo(() => {
+    if (!ramp || !stored?.rampStartDate) return null
+    const start = new Date(stored.rampStartDate + 'T12:00:00Z')
+    const today = new Date()
+    if (Number.isNaN(start.getTime())) return null
+    const days = Math.floor((today.getTime() - start.getTime()) / 86400000)
+    const wk = Math.floor(days / 7) + 1
+    return Math.max(1, Math.min(ramp.totalRampWeeks, wk))
+  }, [ramp, stored?.rampStartDate])
+
+  const reAnchorRamp = () => {
+    const todayISO = new Date().toISOString().slice(0, 10)
+    setStored({ ...(stored || {}), rampStartDate: todayISO })
+  }
 
   const title = isTR ? 'YARALANMA SONRASI DÖNÜŞ' : 'RETURNING FROM INJURY'
   const ariaLabel = isTR ? 'Yaralanmadan dönüş rampası' : 'Injury return ramp'
@@ -314,6 +346,45 @@ export default function InjuryReturnCard({ log = [], profile = {} }) {
                   ? `${ramp.totalRampWeeks} haftalık dönüş protokolü · sport: ${ramp.sport}`
                   : `${ramp.totalRampWeeks}-week return protocol · sport: ${ramp.sport}`}
               </div>
+              {/* v9.198.0 — TODAY pointer + current-week target callout */}
+              {currentWeekIdx ? (() => {
+                const currentWeek = ramp.weeks.find(w => w.week === currentWeekIdx)
+                if (!currentWeek) return null
+                return (
+                  <div
+                    data-injury-ramp-today
+                    data-current-week={currentWeekIdx}
+                    style={{
+                      marginBottom: 10, padding: 8,
+                      background: '#5bc25b14', border: '1px solid #5bc25b55',
+                      borderRadius: 3,
+                    }}
+                  >
+                    <div style={{ fontSize: 9, letterSpacing: '0.08em', fontWeight: 700, color: '#5bc25b', marginBottom: 4 }}>
+                      ● {isTR ? `BUGÜN → H${currentWeekIdx}` : `TODAY → W${currentWeekIdx}`} ·
+                      {' '}{currentWeek.volumePct}% · {currentWeek.intensityCap}
+                      {currentWeek.maxQualitySessions > 0
+                        ? (isTR ? ` · ${currentWeek.maxQualitySessions} kalite` : ` · ${currentWeek.maxQualitySessions} quality`)
+                        : (isTR ? ' · kalite yok' : ' · no quality')}
+                    </div>
+                    <div style={{ fontSize: 10, color: 'var(--text)', lineHeight: 1.5, marginBottom: 4 }}>
+                      {isTR ? currentWeek.note.tr : currentWeek.note.en}
+                    </div>
+                    <button
+                      type="button"
+                      data-injury-ramp-reanchor
+                      onClick={reAnchorRamp}
+                      style={{
+                        fontFamily: MONO, fontSize: 9, padding: '3px 8px',
+                        background: 'transparent', color: 'var(--muted)',
+                        border: '1px solid var(--border)', borderRadius: 3, cursor: 'pointer',
+                      }}
+                    >
+                      ↻ {isTR ? 'YENİDEN BAŞLAT' : 'RE-ANCHOR'}
+                    </button>
+                  </div>
+                )
+              })() : null}
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10, marginBottom: 12 }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border)' }}>
@@ -326,18 +397,29 @@ export default function InjuryReturnCard({ log = [], profile = {} }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {ramp.weeks.map(w => (
-                    <tr key={w.week} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '4px 6px', color: w.phase === 'preamble' ? '#ff6600' : 'var(--text)' }}>
-                        W{w.week}{w.phase === 'preamble' ? ' ⓟ' : ''}
-                      </td>
-                      <td style={{ textAlign: 'right', padding: '4px 6px' }}>{w.volumePct}%</td>
-                      <td style={{ textAlign: 'right', padding: '4px 6px' }}>{w.weeklyTSS}</td>
-                      <td style={{ textAlign: 'center', padding: '4px 6px' }}>{w.intensityCap}</td>
-                      <td style={{ textAlign: 'center', padding: '4px 6px' }}>{w.acwrTarget.toFixed(2)}</td>
-                      <td style={{ padding: '4px 6px', color: 'var(--muted)' }}>{isTR ? w.note.tr : w.note.en}</td>
-                    </tr>
-                  ))}
+                  {ramp.weeks.map(w => {
+                    const isCurrent = w.week === currentWeekIdx
+                    return (
+                      <tr
+                        key={w.week}
+                        data-week-row={w.week}
+                        data-week-current={isCurrent ? 'true' : 'false'}
+                        style={{
+                          borderBottom: '1px solid var(--border)',
+                          background: isCurrent ? '#5bc25b14' : 'transparent',
+                        }}
+                      >
+                        <td style={{ padding: '4px 6px', color: w.phase === 'preamble' ? '#ff6600' : 'var(--text)', fontWeight: isCurrent ? 700 : 400 }}>
+                          {isCurrent ? '● ' : ''}W{w.week}{w.phase === 'preamble' ? ' ⓟ' : ''}
+                        </td>
+                        <td style={{ textAlign: 'right', padding: '4px 6px' }}>{w.volumePct}%</td>
+                        <td style={{ textAlign: 'right', padding: '4px 6px' }}>{w.weeklyTSS}</td>
+                        <td style={{ textAlign: 'center', padding: '4px 6px' }}>{w.intensityCap}</td>
+                        <td style={{ textAlign: 'center', padding: '4px 6px' }}>{w.acwrTarget.toFixed(2)}</td>
+                        <td style={{ padding: '4px 6px', color: 'var(--muted)' }}>{isTR ? w.note.tr : w.note.en}</td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
 

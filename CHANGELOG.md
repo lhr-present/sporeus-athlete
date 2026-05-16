@@ -14,6 +14,48 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.198.0 — 2026-05-17 — InjuryReturnCard "TODAY → Wn" calendar pointer
+
+  v9.184 built the W1..W5/W7 ramp table; v9.189 wired the comeback
+  banner; v9.194 funneled the TodayView diagnostic into the card.
+  But the ramp was still a static reference table — athletes had to
+  mentally compute "I started 9 days ago, so I'm in week 2."
+
+  Calendar-anchored ramp:
+  - On first successful ramp build (athlete fills daysOff + injuryType
+    + preInjuryCTL), today's date is stamped to `rampStartDate` in
+    localStorage. The stamp persists; the pointer advances as days pass.
+  - `currentWeekIdx = clamp(floor((today − rampStartDate) / 7) + 1, 1, totalRampWeeks)`
+    so very stale stamps clamp to the final week rather than overflowing.
+  - "TODAY → Wn" green callout above the ramp table shows the
+    current week's volume %, intensity cap, and quality session
+    allowance + the bilingual note. Athletes get today's prescription
+    at a glance.
+  - The corresponding row in the ramp table is highlighted (green
+    tint, `● W2` prefix, `data-week-current="true"` for tests).
+  - `↻ RE-ANCHOR` button resets the stamp to today — for athletes
+    who tweaked form inputs and want a fresh restart.
+
+  Changes:
+  - `src/components/dashboard/InjuryReturnCard.jsx`:
+    - `rampStartDate` added to persisted state
+    - `useEffect` stamps on first successful ramp build
+    - `currentWeekIdx` useMemo computes + clamps
+    - `reAnchorRamp` button writes today's date back
+    - new TODAY callout block + highlighted row rendering
+    - data attributes: `data-injury-ramp-today`,
+      `data-current-week`, `data-week-row`, `data-week-current`,
+      `data-injury-ramp-reanchor`
+  - `src/components/__tests__/InjuryReturnCard.test.jsx`: +6 tests
+
+  6 new tests cover: TODAY callout on first build with W1 stamp;
+  row highlight via `data-week-current="true"`; rampStartDate
+  persistence; week advancement after 8 days → W2; RE-ANCHOR
+  resets to W1; stale stamp clamps to final ramp week.
+
+  Test count 10865 → 10871 (+6). Lint + build green. Pre-existing
+  unrelated planRationale TSB-factor failure on main still present.
+
 ## v9.197.0 — 2026-05-17 — Race-week peek lines rotate by days-to-race
 
   v9.193 surfaced 3 strategy lines (Pacing/Opener/Fueling) in
