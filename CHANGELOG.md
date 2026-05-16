@@ -14,6 +14,49 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.193.0 — 2026-05-17 — TodayView race-week strategy peek
+
+  Race-day strategy (v9.183/188/190/191) was reachable from
+  `EliteProgramCard` (via `RaceStrategyBlock`) and the standalone
+  `RaceStrategyCard` — but the most critical day for the strategy
+  (race morning) is when athletes typically open TodayView, not the
+  Dashboard. Adding a contextual peek directly in TodayView.
+
+  Gates:
+  - `raceCountdown.days ≤ 7` (already computed from
+    `profile.raceDate`)
+  - Athlete has a race-format pick in the cross-surface localStorage
+    key `sporeus-eliteProgram-raceStrategy`
+  - Sport derives from `profile.primarySport` → normalized via the
+    same SPORT_NORM map other surfaces use
+
+  When both gates pass, surfaces a compact RACE-WEEK STRATEGY block
+  above the "MORE CONTEXT" collapse:
+  - Header: `🏁 RACE-WEEK STRATEGY · 3 D` (or `TODAY` when days=0)
+  - 3 strategy lines: Pacing / Opener / Fueling (closer + gear are
+    one tap away in the full strategy card)
+  - Warnings row auto-surfaces from the cross-surface conditions
+    key (`sporeus-raceConditions`): heat / cold / crosswind /
+    altitude — same Maughan/Coggan/Foster citations.
+  - Red-tinted callout colors match race-day urgency.
+
+  Changes:
+  - `src/components/TodayView.jsx`:
+    - import `buildRaceStrategy`
+    - `raceWeekStrategy` useMemo reads cross-surface format + conditions
+    - inline block rendered between the readiness band and the
+      "MORE CONTEXT" details collapse.
+  - new file: `src/components/__tests__/TodayView.raceWeek.test.jsx`
+    with mutable `__mockProfile` mock pattern.
+
+  7 new tests cover: missing raceDate → no block; >7 days → no
+  block; format not picked → no block; full peek when within 7d
+  + format picked; TODAY suffix at 0 days; heat warning auto-
+  surface from conditions key; Turkish labels.
+
+  Test count 10838 → 10845 (+7). Lint + build green. Pre-existing
+  unrelated planRationale TSB-factor failure on main still present.
+
 ## v9.192.0 — 2026-05-17 — Cycle phase one-liner in TodayView readiness band
 
   Cycle guidance has been available as a standalone dashboard card

@@ -32,6 +32,7 @@ import { detectGoalActivityMismatch } from '../lib/athlete/goalActivityMismatch.
 import { computeTrainingStreak, getStreakMilestone } from '../lib/athlete/trainingStreak.js'
 import { detectComebackGap } from '../lib/athlete/comebackDetector.js'
 import { isCycleGateAvailable, buildCyclePhaseGate } from '../lib/athlete/cyclePhaseGate.js'
+import { buildRaceStrategy } from '../lib/athlete/raceStrategy.js'
 import { detectRaceRetrospective, retroLocalStorageKey } from '../lib/athlete/raceRetrospective.js'
 import { explainPlannedSession } from '../lib/athlete/planRationale.js'
 import { analyzeWellnessTrend } from '../lib/athlete/wellnessTrend.js'
@@ -316,6 +317,45 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
                    (lang === 'tr' ? 'YAPIM AŞAMASI'   : 'BUILD')
     return { days, phase, rd }
   }, [profile?.raceDate, today, lang])
+
+  // v9.193.0 — Race-week strategy peek. When raceDate is ≤7 days away AND
+  // the athlete has picked a race format (in either RaceStrategyBlock or
+  // RaceStrategyCard — they share localStorage), surface the canonical
+  // pacing/opener/fueling lines inline. Race-day conditions are read
+  // from the v9.190 cross-surface key, so heat/cold/wind/altitude
+  // warnings auto-surface.
+  const [raceStrategyPick] = useLocalStorage('sporeus-eliteProgram-raceStrategy', {})
+  const [raceConditions]   = useLocalStorage('sporeus-raceConditions', {})
+  const raceWeekStrategy = useMemo(() => {
+    if (!raceCountdown || raceCountdown.days > 7) return null
+    const sportRaw = profile?.primarySport || profile?.sport
+    const SPORT_NORM = {
+      Running: 'run', running: 'run', run: 'run',
+      Cycling: 'bike', cycling: 'bike', bike: 'bike',
+      Swimming: 'swim', swimming: 'swim', swim: 'swim',
+      Triathlon: 'triathlon', triathlon: 'triathlon',
+      Rowing: 'rowing', rowing: 'rowing',
+    }
+    const sport = SPORT_NORM[sportRaw] || null
+    if (!sport) return null
+    const raceType = raceStrategyPick?.[sport]
+    if (!raceType) return null
+
+    const conditions = {}
+    const tempNum = Number(raceConditions?.tempC)
+    const windNum = Number(raceConditions?.windKph)
+    const altNum  = Number(raceConditions?.altitudeM)
+    if (raceConditions?.tempC !== '' && Number.isFinite(tempNum)) conditions.tempC = tempNum
+    if (raceConditions?.windKph !== '' && Number.isFinite(windNum)) conditions.windKph = windNum
+    if (raceConditions?.altitudeM !== '' && Number.isFinite(altNum)) conditions.altitudeM = altNum
+
+    const r = buildRaceStrategy({
+      sport, raceType,
+      conditions: Object.keys(conditions).length ? conditions : null,
+    })
+    if (!r || r._rejected) return null
+    return r
+  }, [raceCountdown, profile?.primarySport, profile?.sport, raceStrategyPick, raceConditions])
 
   // Coach message unread count (athlete reads from localStorage)
   // Coach sessions RSVP + announcements
@@ -847,6 +887,48 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
           </div>
         )
       })()}
+
+      {/* v9.193.0 — Race-week strategy peek. Renders when raceDate is
+          within 7 days AND athlete has picked a race format. Heat/cold/
+          wind/altitude warnings auto-surface from conditions key. */}
+      {raceWeekStrategy ? (
+        <div
+          role="region"
+          aria-label={lang === 'tr' ? 'Yarış haftası stratejisi' : 'Race week strategy'}
+          data-race-week-strategy
+          style={{
+            marginBottom: 10, padding: 10,
+            background: '#e0303012', border: '1px solid #e0303055',
+            borderRadius: 5, fontFamily: MONO,
+          }}
+        >
+          <div style={{ fontSize: 10, letterSpacing: '0.08em', fontWeight: 700, color: '#e03030', marginBottom: 6 }}>
+            🏁 {lang === 'tr' ? 'YARIŞ HAFTASI STRATEJİSİ' : 'RACE-WEEK STRATEGY'}
+            {raceCountdown ? ` · ${raceCountdown.days === 0
+              ? (lang === 'tr' ? 'BUGÜN' : 'TODAY')
+              : `${raceCountdown.days} ${lang === 'tr' ? 'GÜN' : 'D'}`}` : ''}
+          </div>
+          {[
+            ['pacing', lang === 'tr' ? 'Tempolama' : 'Pacing'],
+            ['opener', lang === 'tr' ? 'Açılış'    : 'Opener'],
+            ['fueling',lang === 'tr' ? 'Beslenme'  : 'Fueling'],
+          ].map(([key, label]) => (
+            <div key={key} style={{ fontSize: 10, lineHeight: 1.55, marginBottom: 3, color: 'var(--text)' }}>
+              <span style={{ fontWeight: 700, color: '#e03030', marginRight: 6 }}>{label}:</span>
+              {lang === 'tr' ? raceWeekStrategy[key].tr : raceWeekStrategy[key].en}
+            </div>
+          ))}
+          {Array.isArray(raceWeekStrategy.warnings) && raceWeekStrategy.warnings.length > 0 ? (
+            <div style={{ marginTop: 6, padding: 6, background: '#ff660014', border: '1px solid #ff660055', borderRadius: 3 }}>
+              {raceWeekStrategy.warnings.map(w => (
+                <div key={w.code} style={{ fontSize: 10, color: 'var(--text)', lineHeight: 1.5 }}>
+                  ⚠ {lang === 'tr' ? w.tr : w.en}
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* ── v9.145.0 — Everything below collapses when something critical
           is active. Auto-open otherwise so first-time users see the full
