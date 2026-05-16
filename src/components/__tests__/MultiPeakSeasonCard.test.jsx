@@ -1,0 +1,133 @@
+// @vitest-environment jsdom
+// ─── MultiPeakSeasonCard.test.jsx — render tests for the EP-4 UI surface ────
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import '@testing-library/jest-dom'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
+import MultiPeakSeasonCard from '../dashboard/MultiPeakSeasonCard.jsx'
+
+const STORAGE_KEY = 'sporeus-multiPeakSeason'
+
+beforeEach(() => {
+  vi.setSystemTime(new Date('2026-05-07T12:00:00Z'))
+  localStorage.clear()
+})
+afterEach(() => {
+  cleanup()
+  localStorage.clear()
+  vi.setSystemTime(new Date())
+})
+
+function renderCard(props = {}, lang = 'en') {
+  const value = { t: k => k, lang, setLang: () => {} }
+  return render(
+    <LangCtx.Provider value={value}>
+      <MultiPeakSeasonCard profile={{ primarySport: 'Running' }} {...props} />
+    </LangCtx.Provider>
+  )
+}
+
+describe('MultiPeakSeasonCard — collapsed state', () => {
+  it('renders the toggle entry point collapsed by default', () => {
+    renderCard()
+    const region = screen.getByRole('region', { name: /Multi-race season planner/i })
+    expect(region).toBeInTheDocument()
+    expect(region.getAttribute('data-multi-peak-card')).toBe('collapsed')
+    expect(screen.getByRole('button', { name: /Plan a multi-race season/i })).toBeInTheDocument()
+  })
+
+  it('does NOT render race inputs while collapsed', () => {
+    renderCard()
+    expect(screen.queryByRole('button', { name: /ADD RACE/i })).toBeNull()
+  })
+})
+
+describe('MultiPeakSeasonCard — race entry', () => {
+  it('clicking expand → ADD RACE adds a draft race row', () => {
+    renderCard()
+    fireEvent.click(screen.getByRole('button', { name: /Plan a multi-race season/i }))
+    expect(screen.getByRole('button', { name: /ADD RACE/i })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /ADD RACE/i }))
+    expect(screen.getByLabelText(/Race 1 date/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Race 1 label/i)).toBeInTheDocument()
+  })
+
+  it('default priority is B', () => {
+    renderCard()
+    fireEvent.click(screen.getByRole('button', { name: /Plan a multi-race season/i }))
+    fireEvent.click(screen.getByRole('button', { name: /ADD RACE/i }))
+    const bBtn = screen.getByRole('button', { name: /^B$/ })
+    expect(bBtn.getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('removing a race drops the row', () => {
+    renderCard()
+    fireEvent.click(screen.getByRole('button', { name: /Plan a multi-race season/i }))
+    fireEvent.click(screen.getByRole('button', { name: /ADD RACE/i }))
+    expect(screen.getByLabelText(/Race 1 date/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Remove race 1/i }))
+    expect(screen.queryByLabelText(/Race 1 date/i)).toBeNull()
+  })
+})
+
+describe('MultiPeakSeasonCard — season output', () => {
+  it('renders the season skeleton once at least one race has a date + priority', () => {
+    renderCard()
+    fireEvent.click(screen.getByRole('button', { name: /Plan a multi-race season/i }))
+    fireEvent.click(screen.getByRole('button', { name: /ADD RACE/i }))
+    fireEvent.change(screen.getByLabelText(/Race 1 date/i), { target: { value: '2026-09-20' } })
+    fireEvent.change(screen.getByLabelText(/Race 1 label/i), { target: { value: 'Istanbul Half' } })
+    // priority defaults to B
+    const output = document.querySelector('[data-multi-peak-output]')
+    expect(output).not.toBeNull()
+    expect(output.textContent).toMatch(/Istanbul Half/)
+    expect(output.textContent).toMatch(/B/)
+    expect(output.textContent).toMatch(/Issurin 2010/)
+  })
+
+  it('multiple A-races emit the Bompa 2009 warning', () => {
+    renderCard()
+    fireEvent.click(screen.getByRole('button', { name: /Plan a multi-race season/i }))
+    fireEvent.click(screen.getByRole('button', { name: /ADD RACE/i }))
+    fireEvent.click(screen.getByRole('button', { name: /ADD RACE/i }))
+    fireEvent.change(screen.getByLabelText(/Race 1 date/i), { target: { value: '2026-08-15' } })
+    fireEvent.change(screen.getByLabelText(/Race 2 date/i), { target: { value: '2026-10-15' } })
+    // Promote both to A
+    const aBtns = screen.getAllByRole('button', { name: /^A$/ })
+    fireEvent.click(aBtns[0])
+    fireEvent.click(aBtns[1])
+    const output = document.querySelector('[data-multi-peak-output]')
+    expect(output.textContent).toMatch(/dilutes peak performance/i)
+  })
+
+  it('renders a phase cell for every week (Race week present)', () => {
+    renderCard()
+    fireEvent.click(screen.getByRole('button', { name: /Plan a multi-race season/i }))
+    fireEvent.click(screen.getByRole('button', { name: /ADD RACE/i }))
+    fireEvent.change(screen.getByLabelText(/Race 1 date/i), { target: { value: '2026-08-15' } })
+    const raceCells = document.querySelectorAll('[data-week-phase="Race"]')
+    expect(raceCells.length).toBeGreaterThan(0)
+  })
+})
+
+describe('MultiPeakSeasonCard — persistence + bilingual', () => {
+  it('persists expanded + races to localStorage', () => {
+    renderCard()
+    fireEvent.click(screen.getByRole('button', { name: /Plan a multi-race season/i }))
+    fireEvent.click(screen.getByRole('button', { name: /ADD RACE/i }))
+    fireEvent.change(screen.getByLabelText(/Race 1 date/i), { target: { value: '2026-09-20' } })
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
+    expect(stored.expanded).toBe(true)
+    expect(Array.isArray(stored.races)).toBe(true)
+    expect(stored.races[0]?.date).toBe('2026-09-20')
+    expect(stored.races[0]?.priority).toBe('B')
+  })
+
+  it('renders Turkish labels when lang=tr', () => {
+    renderCard({}, 'tr')
+    const region = screen.getByRole('region', { name: /Çoklu yarış sezon planlayıcısı/i })
+    expect(region).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Çoklu yarış sezonu planla/i }))
+    expect(screen.getByRole('button', { name: /YARIŞ EKLE/i })).toBeInTheDocument()
+  })
+})

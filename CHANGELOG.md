@@ -14,6 +14,50 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.185.0 — 2026-05-17 — EP-4 multi-peak season planner (test-only → wired)
+
+  `multiPeakSeason.js` (shipped v9.170.0) had a full A/B/C-race
+  periodization builder grounded in Issurin 2010 + Bompa 2009 +
+  Mujika 2010 + Pyne 2009 — but zero production call sites. Wiring it.
+
+  `EliteProgramCard` handles a SINGLE race. This card handles the
+  season: an A-race (full taper + recovery), B-races (mini-taper,
+  shorter recovery), and C-races (race as a training day, no taper).
+  Output: week-by-week Base/Build/Peak/Taper/Race/Recovery/Maintenance
+  skeleton for the whole calendar.
+
+  Surface design — new dashboard card `MultiPeakSeasonCard.jsx`,
+  lazy-loaded after InjuryReturnCard:
+  - Starts collapsed showing "Plan a multi-race season?" entry point.
+  - Expanded: per-race rows (date / label / A-B-C priority toggle /
+    remove button) + "ADD RACE" button.
+  - Auto-builds on every change. Output:
+    * Phase-cell strip — one colored cell per week, color-coded by
+      phase (Base grey / Build blue / Peak orange / Taper amber /
+      Race red / Recovery green / Maintenance grey).
+    * Race table with weekIdx annotation.
+    * Phase color legend.
+    * Warning callouts: ">1 A-race per season" (Bompa 2009 dilution),
+      ">4 race-peaks" (under-recovery risk), "leg too short" per
+      race when buildup falls below taper minimum.
+    * Citation: Issurin 2010 + Bompa 2009 + Mujika 2010 + Pyne 2009.
+  - Sport derives from `profile.primarySport`.
+  - State persists to `sporeus-multiPeakSeason` localStorage.
+
+  Changes:
+  - new file: `src/components/dashboard/MultiPeakSeasonCard.jsx`
+  - `src/components/Dashboard.jsx`: lazy import + render in
+    ErrorBoundary + Suspense between InjuryReturnCard and
+    FieldTestHistoryCard.
+
+  10 new tests: collapsed/expanded; ADD RACE flow; default-B priority
+  on new row; remove race; season output renders once date+priority
+  set; multiple A-races emits Bompa warning; Race-phase cell present
+  in strip; localStorage persistence; lang=tr labels.
+
+  Test count 10790 → 10800 (+10). Lint + build green. Pre-existing
+  unrelated planRationale TSB-factor failure on main still present.
+
 ## v9.184.0 — 2026-05-17 — EP-10 injury-return ramp UI surface (test-only → wired)
 
   `injuryReturnRamp.js` (shipped v9.169.0) had a full 3 / 5 / 7-week
