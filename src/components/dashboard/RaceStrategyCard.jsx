@@ -19,6 +19,11 @@ import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { buildRaceStrategy, RACE_TYPES } from '../../lib/athlete/raceStrategy.js'
 
 const STORAGE_KEY = 'sporeus-eliteProgram-raceStrategy'
+// v9.190.0 — conditions persisted separately so the legacy per-sport
+// race-format key keeps its flat `{ run: 'road', bike: 'tt' }` shape.
+// `buildRaceStrategy` accepts conditions optionally — empty conditions =
+// no warnings fired (same as omitting the conditions key entirely).
+const CONDITIONS_KEY = 'sporeus-raceConditions'
 const MONO = "'IBM Plex Mono', monospace"
 
 const SPORT_FROM_PROFILE = {
@@ -64,13 +69,32 @@ export default function RaceStrategyCard({ profile = {} }) {
   }, [profile?.primarySport, profile?.sport])
 
   const [stored, setStored] = useLocalStorage(STORAGE_KEY, {})
+  const [conditions, setConditions] = useLocalStorage(CONDITIONS_KEY, {
+    expanded: false, tempC: '', windKph: '', altitudeM: '',
+  })
   const types = sport ? RACE_TYPES[sport] : null
   if (!sport || !Array.isArray(types) || types.length === 0) return null
 
   const raceType = stored?.[sport] || ''
-  const strategy = raceType ? buildRaceStrategy({ sport, raceType }) : null
+
+  // Build conditions object — only include numeric fields, skip empties so
+  // buildRaceStrategy's per-field `Number.isFinite` guard short-circuits
+  // cleanly when the athlete leaves something blank.
+  const conditionsForStrategy = {}
+  const tempNum = Number(conditions?.tempC)
+  const windNum = Number(conditions?.windKph)
+  const altNum  = Number(conditions?.altitudeM)
+  if (conditions?.tempC !== '' && Number.isFinite(tempNum)) conditionsForStrategy.tempC = tempNum
+  if (conditions?.windKph !== '' && Number.isFinite(windNum)) conditionsForStrategy.windKph = windNum
+  if (conditions?.altitudeM !== '' && Number.isFinite(altNum)) conditionsForStrategy.altitudeM = altNum
+
+  const strategy = raceType
+    ? buildRaceStrategy({ sport, raceType, conditions: Object.keys(conditionsForStrategy).length ? conditionsForStrategy : null })
+    : null
   const valid = strategy && !strategy._rejected
   const setRaceType = (rt) => setStored({ ...(stored || {}), [sport]: rt })
+  const updateConditions = (patch) => setConditions({ ...(conditions || {}), ...patch })
+  const conditionsExpanded = !!conditions?.expanded
 
   const accent = '#0064ff'
   const title = isTR ? 'YARIŞ GÜNÜ STRATEJİSİ' : 'RACE-DAY STRATEGY'
@@ -116,6 +140,81 @@ export default function RaceStrategyCard({ profile = {} }) {
             </option>
           ))}
         </select>
+      </div>
+      <div data-race-conditions style={{ marginBottom: 10 }}>
+        <button
+          type="button"
+          aria-expanded={conditionsExpanded}
+          onClick={() => updateConditions({ expanded: !conditionsExpanded })}
+          style={{
+            background: 'transparent', border: 'none',
+            color: 'var(--muted)', cursor: 'pointer',
+            fontFamily: MONO, fontSize: 10, padding: 0,
+          }}
+        >
+          {conditionsExpanded ? '▾' : '▸'} {isTR ? 'Yarış günü koşulları (isteğe bağlı)' : 'Race-day conditions (optional)'}
+        </button>
+        {conditionsExpanded ? (
+          <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 100px' }}>
+              <label htmlFor="rsc-tempc" style={{ display: 'block', fontSize: 9, color: 'var(--muted)', marginBottom: 2 }}>
+                {isTR ? 'SICAKLIK (°C)' : 'TEMP (°C)'}
+              </label>
+              <input
+                id="rsc-tempc"
+                type="number"
+                inputMode="numeric"
+                value={conditions?.tempC ?? ''}
+                onChange={e => updateConditions({ tempC: e.target.value })}
+                placeholder="22"
+                style={{
+                  fontFamily: MONO, fontSize: 11, padding: '4px 6px',
+                  background: 'var(--input-bg)', color: 'var(--text)',
+                  border: '1px solid var(--input-border)', borderRadius: 3,
+                  width: '100%', boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            <div style={{ flex: '1 1 100px' }}>
+              <label htmlFor="rsc-windkph" style={{ display: 'block', fontSize: 9, color: 'var(--muted)', marginBottom: 2 }}>
+                {isTR ? 'RÜZGAR (km/sa)' : 'WIND (km/h)'}
+              </label>
+              <input
+                id="rsc-windkph"
+                type="number"
+                inputMode="numeric"
+                value={conditions?.windKph ?? ''}
+                onChange={e => updateConditions({ windKph: e.target.value })}
+                placeholder="10"
+                style={{
+                  fontFamily: MONO, fontSize: 11, padding: '4px 6px',
+                  background: 'var(--input-bg)', color: 'var(--text)',
+                  border: '1px solid var(--input-border)', borderRadius: 3,
+                  width: '100%', boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            <div style={{ flex: '1 1 100px' }}>
+              <label htmlFor="rsc-altm" style={{ display: 'block', fontSize: 9, color: 'var(--muted)', marginBottom: 2 }}>
+                {isTR ? 'RAKIM (m)' : 'ALTITUDE (m)'}
+              </label>
+              <input
+                id="rsc-altm"
+                type="number"
+                inputMode="numeric"
+                value={conditions?.altitudeM ?? ''}
+                onChange={e => updateConditions({ altitudeM: e.target.value })}
+                placeholder="0"
+                style={{
+                  fontFamily: MONO, fontSize: 11, padding: '4px 6px',
+                  background: 'var(--input-bg)', color: 'var(--text)',
+                  border: '1px solid var(--input-border)', borderRadius: 3,
+                  width: '100%', boxSizing: 'border-box',
+                }}
+              />
+            </div>
+          </div>
+        ) : null}
       </div>
       {valid ? (
         <div data-race-strategy-card-output style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

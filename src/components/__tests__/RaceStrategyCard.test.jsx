@@ -78,3 +78,85 @@ describe('RaceStrategyCard — bilingual', () => {
     expect(output.textContent).toMatch(/Açılış:/)
   })
 })
+
+// v9.190.0 — race-day conditions inputs unlock the heat/cold/wind/altitude
+// warning paths in buildRaceStrategy that previously had no UI feeding them.
+describe('RaceStrategyCard — v9.190.0 race-day conditions', () => {
+  it('conditions section collapsed by default; inputs hidden', () => {
+    renderCard()
+    expect(screen.queryByLabelText(/TEMP \(°C\)/i)).toBeNull()
+    expect(screen.queryByLabelText(/WIND \(km\/h\)/i)).toBeNull()
+    expect(screen.queryByLabelText(/ALTITUDE \(m\)/i)).toBeNull()
+  })
+
+  it('toggling expand reveals all three optional inputs', () => {
+    renderCard()
+    fireEvent.click(screen.getByRole('button', { name: /Race-day conditions/i }))
+    expect(screen.getByLabelText(/TEMP \(°C\)/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/WIND \(km\/h\)/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/ALTITUDE \(m\)/i)).toBeInTheDocument()
+  })
+
+  it('hot temperature fires the Maughan heat warning when format is selected', () => {
+    renderCard()
+    fireEvent.change(screen.getByLabelText(/Select race format/i), { target: { value: 'road' } })
+    fireEvent.click(screen.getByRole('button', { name: /Race-day conditions/i }))
+    fireEvent.change(screen.getByLabelText(/TEMP \(°C\)/i), { target: { value: '32' } })
+    const output = document.querySelector('[data-race-strategy-card-output]')
+    expect(output.textContent).toMatch(/Race-day temperature 32°C/i)
+    expect(output.textContent).toMatch(/Maughan 2010/i)
+  })
+
+  it('cold temperature fires the cold warning', () => {
+    renderCard()
+    fireEvent.change(screen.getByLabelText(/Select race format/i), { target: { value: 'road' } })
+    fireEvent.click(screen.getByRole('button', { name: /Race-day conditions/i }))
+    fireEvent.change(screen.getByLabelText(/TEMP \(°C\)/i), { target: { value: '2' } })
+    const output = document.querySelector('[data-race-strategy-card-output]')
+    expect(output.textContent).toMatch(/Cold race-day/i)
+    expect(output.textContent).toMatch(/extended warm-up/i)
+  })
+
+  it('high wind fires the crosswind warning (bike sport)', () => {
+    renderCard({ primarySport: 'Cycling' })
+    fireEvent.change(screen.getByLabelText(/Select race format/i), { target: { value: 'road' } })
+    fireEvent.click(screen.getByRole('button', { name: /Race-day conditions/i }))
+    fireEvent.change(screen.getByLabelText(/WIND \(km\/h\)/i), { target: { value: '35' } })
+    const output = document.querySelector('[data-race-strategy-card-output]')
+    expect(output.textContent).toMatch(/High wind/i)
+    expect(output.textContent).toMatch(/echelon positioning/i)
+  })
+
+  it('high altitude fires the altitude warning', () => {
+    renderCard()
+    fireEvent.change(screen.getByLabelText(/Select race format/i), { target: { value: 'road' } })
+    fireEvent.click(screen.getByRole('button', { name: /Race-day conditions/i }))
+    fireEvent.change(screen.getByLabelText(/ALTITUDE \(m\)/i), { target: { value: '2400' } })
+    const output = document.querySelector('[data-race-strategy-card-output]')
+    expect(output.textContent).toMatch(/Altitude 2400m/i)
+    expect(output.textContent).toMatch(/5-10% performance drop/i)
+  })
+
+  it('empty conditions inputs do NOT fire any warnings', () => {
+    renderCard()
+    fireEvent.change(screen.getByLabelText(/Select race format/i), { target: { value: 'road' } })
+    fireEvent.click(screen.getByRole('button', { name: /Race-day conditions/i }))
+    // Leave all conditions blank
+    const output = document.querySelector('[data-race-strategy-card-output]')
+    expect(output.textContent).not.toMatch(/temperature.*°C/i)
+    expect(output.textContent).not.toMatch(/Cold race-day/i)
+    expect(output.textContent).not.toMatch(/High wind/i)
+    expect(output.textContent).not.toMatch(/Altitude.*m/i)
+  })
+
+  it('conditions persist to localStorage independent of race-format key', () => {
+    renderCard()
+    fireEvent.click(screen.getByRole('button', { name: /Race-day conditions/i }))
+    fireEvent.change(screen.getByLabelText(/TEMP \(°C\)/i), { target: { value: '30' } })
+    const stored = JSON.parse(localStorage.getItem('sporeus-raceConditions') || '{}')
+    expect(stored.tempC).toBe('30')
+    expect(stored.expanded).toBe(true)
+    // race-format key remains untouched
+    expect(localStorage.getItem('sporeus-eliteProgram-raceStrategy')).toBeNull()
+  })
+})

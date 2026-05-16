@@ -14,6 +14,45 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.190.0 — 2026-05-17 — RaceStrategyCard race-day conditions inputs
+
+  `buildRaceStrategy.js` (v9.172) was built with `conditions` support
+  for heat / cold / crosswind / altitude warnings. The strategy
+  function already emits 4 evidence-based warning types (Maughan 2010
+  heat → fueling salt; cold → extended warm-up; crosswind → echelon
+  + deep-wheel reconsideration; altitude → 5-10% perf drop). But no
+  UI in v9.183 or v9.188 fed those conditions, so the warnings stayed
+  dormant.
+
+  Wiring optional inputs:
+  - Collapsible "Race-day conditions (optional)" section under the
+    format picker. Defaults collapsed so the card stays tight for
+    athletes who don't need it.
+  - 3 number inputs when expanded: TEMP (°C), WIND (km/h), ALTITUDE
+    (m). Empty values are not passed to `buildRaceStrategy` (the
+    pure-fn already guards each via `Number.isFinite`).
+  - Persists to `sporeus-raceConditions` localStorage (separate key
+    from the per-sport race-format selection so neither shape leaks
+    into the other).
+
+  Changes:
+  - `src/components/dashboard/RaceStrategyCard.jsx`: added
+    `CONDITIONS_KEY` + `conditionsForStrategy` builder + collapsible
+    inputs section.
+
+  +8 tests cover: section collapsed by default; expansion reveals
+  all 3 inputs; hot temp fires Maughan warning; cold temp fires
+  cold warning; high wind fires crosswind (bike sport); high
+  altitude fires altitude warning; empty conditions fire NO
+  warnings; persistence to the new dedicated key without
+  contaminating the format-selection key.
+
+  Test count 10822 → 10830 (+8). Lint + build green. Pre-existing
+  unrelated planRationale TSB-factor failure on main still present.
+
+  Follow-up: port the same inputs to in-program `RaceStrategyBlock`
+  (shared storage key for cross-surface consistency).
+
 ## v9.189.0 — 2026-05-17 — InjuryReturnCard auto-suggest via comebackDetector
 
   v9.184 shipped `InjuryReturnCard` as opt-in: the athlete had to
