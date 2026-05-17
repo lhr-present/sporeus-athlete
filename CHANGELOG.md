@@ -14,6 +14,29 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.215.0 — 2026-05-17 — EliteRaceWeekCard surfaces eliteProgramRaceWeek
+
+  Surfaces the existing `buildRaceWeekProtocol` pure-fn (Mujika 2003;
+  Bosquet 2007; Stellingwerff 2018; Burke 2017; McCormick 2018) as a
+  standalone Dashboard card. Distinct from the existing
+  `RaceWeekProtocolCard` (which uses `generateRaceWeekProtocol` from
+  `src/lib/race/raceWeekProtocol.js`) — this card surfaces the
+  athlete/elite-program library which provides a more detailed T-7→T-0
+  sport-specific schedule.
+
+  Race-week gated: renders only when next race is within 0–7 days
+  (via `getProfileRaceDate`). Outside that window: nothing. Shows an
+  8-row T-N taper schedule with bilingual day-of-week labels, race-day
+  warm-up tag, race-day fueling tag.
+
+  Wired next to the existing RaceWeekProtocolCard so race-week
+  guidance groups visually.
+
+- Depends on: existing `src/lib/athlete/eliteProgramRaceWeek.js`.
+- Files: new `src/components/dashboard/EliteRaceWeekCard.jsx` (248 lines),
+  new `src/components/__tests__/EliteRaceWeekCard.test.jsx` (7 tests),
+  `src/components/Dashboard.jsx` (lazy import + render line).
+
 ## v9.214.0 — 2026-05-17 — KeySessionsCard surfaces eliteProgramKeySessions
 
   Surfaces the existing `getKeySessionsBySport` / `buildKeySessionLibrary`
