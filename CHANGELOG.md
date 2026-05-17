@@ -14,6 +14,28 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.211.0 — 2026-05-17 — TriathlonWeekBalanceCard surfaces tri-week validator
+
+  Surfaces the existing `validateTriathlonWeek` pure-fn (Lambert 1997;
+  Seiler 2010; Mujika 2003) as a Dashboard card, gated to triathletes.
+  Validates the current week's session distribution (long bike on
+  weekend, no long-bike + long-run back-to-back, hard sessions spaced,
+  etc.) and surfaces any violations.
+
+  Sport gate: renders only when `hasTriData` is true
+  (`profile.primarySport === 'triathlon'` OR athlete logs ≥3 distinct
+  disciplines). Wired next to TriathlonLoadCard so the tri-only zone
+  groups cleanly.
+
+  Renders an amber alert region listing rule code + bilingual EN/TR
+  day-tagged explanations for each finding. Renders nothing on weeks
+  with <4 sessions or zero findings.
+
+- Depends on: existing `src/lib/athlete/triathlonWeekBalance.js` (already tested).
+- Files: new `src/components/dashboard/TriathlonWeekBalanceCard.jsx` (237 lines),
+  new `src/components/__tests__/TriathlonWeekBalanceCard.test.jsx` (6 tests),
+  `src/components/Dashboard.jsx` (lazy import + tri-gated render line).
+
 ## v9.210.0 — 2026-05-17 — HardDaySpacingCard surfaces hard-day-spacing detector
 
   Surfaces the existing `detectHardDaySpacing` pure-fn (Lambert 1997;

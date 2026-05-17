@@ -98,6 +98,7 @@ const TriathlonLoadCard          = lazy(() => import('./dashboard/TriathlonLoadC
 const RunningRaceReadinessCard   = lazy(() => import('./dashboard/RunningRaceReadinessCard.jsx'))
 const RaceWeekProtocolCard       = lazy(() => import('./dashboard/RaceWeekProtocolCard.jsx'))
 const HardDaySpacingCard         = lazy(() => import('./dashboard/HardDaySpacingCard.jsx'))
+const TriathlonWeekBalanceCard   = lazy(() => import('./dashboard/TriathlonWeekBalanceCard.jsx'))
 const PlanScoreCard              = lazy(() => import('./dashboard/PlanScoreCard.jsx'))
 const AthleteStatusSummaryCard   = lazy(() => import('./dashboard/AthleteStatusSummaryCard.jsx'))
 const SleepRestingHRCard         = lazy(() => import('./dashboard/SleepRestingHRCard.jsx'))
@@ -1086,6 +1087,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       <ErrorBoundary><Suspense fallback={null}><RunningRaceReadinessCard log={log} profile={profile} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><FitnessBatteryProgressCard /></Suspense></ErrorBoundary>
       {hasTriData     && <ErrorBoundary><Suspense fallback={null}><TriathlonLoadCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
+      {hasTriData     && <ErrorBoundary><Suspense fallback={null}><TriathlonWeekBalanceCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
       <LoadHeatmapCard log={log} dl={dl}/>
       <SeasonBestsCard log={log} dl={dl}/>
 
