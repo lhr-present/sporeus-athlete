@@ -317,8 +317,44 @@ export default function MultiPeakSeasonCard({ profile = {} }) {
               {season.warnings.length > 0 ? (
                 <div style={{ padding: 8, background: '#f5c54214', border: '1px solid #f5c54255', borderRadius: 3, marginBottom: 8 }}>
                   {season.warnings.map(w => (
-                    <div key={w.code} style={{ fontSize: 10, color: 'var(--text)', lineHeight: 1.5 }}>
-                      ⚠ {isTR ? w.tr : w.en}
+                    <div key={w.code} style={{ fontSize: 10, color: 'var(--text)', lineHeight: 1.5, marginBottom: 4 }}>
+                      <div>⚠ {isTR ? w.tr : w.en}</div>
+                      {/* v9.202.0 — One-tap Bompa fix: demote earlier A-races
+                          to B so only the latest A (chronologically) remains.
+                          Athletes typically race a season toward a single
+                          "main" event with prep races earlier; this collapses
+                          the multi-A warning to a single-A season aligned
+                          with the typical periodization pattern. */}
+                      {w.code === 'multiple-A-races' ? (
+                        <button
+                          type="button"
+                          data-bompa-demote-action
+                          onClick={() => {
+                            // Find the chronologically latest A by date
+                            const sorted = [...races]
+                              .map((r, idx) => ({ ...r, _idx: idx }))
+                              .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+                            const lastA = [...sorted].reverse().find(r => r.priority === 'A')
+                            if (!lastA) return
+                            const nextRaces = races.map((r, idx) => (
+                              r.priority === 'A' && idx !== lastA._idx
+                                ? { ...r, priority: 'B' }
+                                : r
+                            ))
+                            update({ races: nextRaces })
+                          }}
+                          style={{
+                            fontFamily: MONO, fontSize: 10, padding: '4px 10px',
+                            background: '#f5c542', color: '#000',
+                            border: 'none', borderRadius: 3, cursor: 'pointer',
+                            fontWeight: 700, letterSpacing: '0.05em', marginTop: 4,
+                          }}
+                        >
+                          {isTR
+                            ? '↳ EN SON A DIŞINDAKİLERİ B YAP'
+                            : '↳ DEMOTE EARLIER A-RACES TO B'}
+                        </button>
+                      ) : null}
                     </div>
                   ))}
                 </div>

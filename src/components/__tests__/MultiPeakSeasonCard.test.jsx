@@ -188,3 +188,87 @@ describe('MultiPeakSeasonCard — auto-seed from profile.raceDate', () => {
     expect(screen.queryByLabelText(/Race 2 date/i)).toBeNull()
   })
 })
+
+// v9.202.0 — Bompa demote action
+describe('MultiPeakSeasonCard — Bompa demote action', () => {
+  it('demote button is absent when only one A-race exists', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      expanded: true,
+      seededFromProfile: true,
+      races: [
+        { date: '2026-08-15', label: 'A', priority: 'A' },
+        { date: '2026-09-15', label: 'B', priority: 'B' },
+      ],
+    }))
+    renderCard()
+    expect(document.querySelector('[data-bompa-demote-action]')).toBeNull()
+  })
+
+  it('demote button appears when ≥2 A-races trigger the Bompa warning', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      expanded: true,
+      seededFromProfile: true,
+      races: [
+        { date: '2026-08-15', label: 'spring',  priority: 'A' },
+        { date: '2026-10-15', label: 'fall',    priority: 'A' },
+      ],
+    }))
+    renderCard()
+    const btn = document.querySelector('[data-bompa-demote-action]')
+    expect(btn).not.toBeNull()
+    expect(btn.textContent).toMatch(/DEMOTE EARLIER A-RACES TO B/i)
+  })
+
+  it('clicking demote keeps the chronologically latest A and turns earlier A-races to B', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      expanded: true,
+      seededFromProfile: true,
+      races: [
+        { date: '2026-08-15', label: 'spring', priority: 'A' },
+        { date: '2026-10-15', label: 'fall',   priority: 'A' },
+        { date: '2026-09-20', label: 'mid',    priority: 'A' },
+      ],
+    }))
+    renderCard()
+    fireEvent.click(document.querySelector('[data-bompa-demote-action]'))
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
+    // The 'fall' race (latest = 2026-10-15) keeps priority A
+    const fall   = stored.races.find(r => r.label === 'fall')
+    const spring = stored.races.find(r => r.label === 'spring')
+    const mid    = stored.races.find(r => r.label === 'mid')
+    expect(fall.priority).toBe('A')
+    expect(spring.priority).toBe('B')
+    expect(mid.priority).toBe('B')
+  })
+
+  it('demote action removes the warning + button after one click', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      expanded: true,
+      seededFromProfile: true,
+      races: [
+        { date: '2026-08-15', label: 'spring', priority: 'A' },
+        { date: '2026-10-15', label: 'fall',   priority: 'A' },
+      ],
+    }))
+    renderCard()
+    expect(document.querySelector('[data-bompa-demote-action]')).not.toBeNull()
+    fireEvent.click(document.querySelector('[data-bompa-demote-action]'))
+    // After demote, only 1 A-race remains → warning + button gone
+    expect(document.querySelector('[data-bompa-demote-action]')).toBeNull()
+  })
+
+  it('demote button renders Turkish label when lang=tr', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      expanded: true,
+      seededFromProfile: true,
+      races: [
+        { date: '2026-08-15', label: 'spring', priority: 'A' },
+        { date: '2026-10-15', label: 'fall',   priority: 'A' },
+      ],
+    }))
+    renderCard({}, 'tr')
+    const btn = document.querySelector('[data-bompa-demote-action]')
+    expect(btn).not.toBeNull()
+    expect(btn.textContent).toMatch(/EN SON A DIŞINDAKİLERİ B YAP/i)
+  })
+})

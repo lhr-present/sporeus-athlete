@@ -14,6 +14,52 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.202.0 — 2026-05-17 — Bompa "demote A → B" actionable button
+
+  v9.185's Bompa 2009 warning ("more than one A-race per season
+  usually dilutes peak performance — consider down-prioritizing one
+  to B") was advisory only. Athletes saw the warning text but had to
+  hunt for the per-race priority toggles to act on it.
+
+  Added a one-tap fix button inside the warning when
+  `code === 'multiple-A-races'`. Click logic:
+  - Sort races by date ascending
+  - Find the chronologically latest A-race
+  - Demote every OTHER A-race to B (preserve existing B/C unchanged)
+
+  Rationale: most multi-A seasons have a single "main goal" with
+  earlier As as prep races. The taper + peak periodization actually
+  *needs* the earlier races to be Bs (mini-taper, train-through)
+  for the main A to peak correctly. The button collapses the warning
+  to a single-A season aligned with the typical pattern.
+
+  If the athlete wants the FIRST A preserved instead, they can still
+  click the per-race priority toggles manually — the button is the
+  one-tap default, not a constraint.
+
+  After the click, the warning + button auto-disappear because
+  `buildMultiPeakSeason` no longer flags `multiple-A-races` (only
+  one A remains).
+
+  Side note: the pre-existing planRationale TSB-factor failure on
+  main is no longer present in the full-suite run. Either it was
+  timing-flaky or has been fixed since the last session. Test suite
+  is now fully clean (449/449 files, 10894/10894 tests).
+
+  Changes:
+  - `src/components/dashboard/MultiPeakSeasonCard.jsx`:
+    - per-warning render now checks `code === 'multiple-A-races'`
+    - inline demote button when the code matches
+    - click handler sorts by date + filters non-latest A's to B
+    - data attribute `data-bompa-demote-action` for tests
+  - `src/components/__tests__/MultiPeakSeasonCard.test.jsx`: +5 tests
+
+  5 new tests cover: button absent with 1 A-race; button appears
+  with ≥2 A's; click keeps latest A + demotes earlier; warning
+  auto-clears post-click; Turkish label rendered under lang=tr.
+
+  Test count 10889 → 10894 (+5). Lint + build green.
+
 ## v9.201.0 — 2026-05-17 — Season-phase peek in TodayView
 
   Mirrors v9.199 (injury-ramp peek) — when the athlete has built a
