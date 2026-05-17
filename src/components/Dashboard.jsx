@@ -97,6 +97,7 @@ const FitnessBatteryProgressCard = lazy(() => import('./dashboard/FitnessBattery
 const TriathlonLoadCard          = lazy(() => import('./dashboard/TriathlonLoadCard.jsx'))
 const RunningRaceReadinessCard   = lazy(() => import('./dashboard/RunningRaceReadinessCard.jsx'))
 const RaceWeekProtocolCard       = lazy(() => import('./dashboard/RaceWeekProtocolCard.jsx'))
+const HardDaySpacingCard         = lazy(() => import('./dashboard/HardDaySpacingCard.jsx'))
 const PlanScoreCard              = lazy(() => import('./dashboard/PlanScoreCard.jsx'))
 const AthleteStatusSummaryCard   = lazy(() => import('./dashboard/AthleteStatusSummaryCard.jsx'))
 const SleepRestingHRCard         = lazy(() => import('./dashboard/SleepRestingHRCard.jsx'))
@@ -731,6 +732,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
         <RaceReadinessCard log={log} recovery={recovery} injuries={injuries} profile={profile} plan={plan} planStatus={planStatus} lang={lang}/>
       </ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><RaceWeekProtocolCard profile={profile} log={log}/></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><HardDaySpacingCard log={log}/></Suspense></ErrorBoundary>
       <ProactiveInjuryAlert log={log} injuries={injuries} lang={lang}/>
       <LoadSpikeAlert/>
 

@@ -14,6 +14,25 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.210.0 — 2026-05-17 — HardDaySpacingCard surfaces hard-day-spacing detector
+
+  Surfaces the existing `detectHardDaySpacing` pure-fn (Lambert 1997;
+  Foster 1998; Seiler 2010) as a Dashboard card. The detector flags
+  back-to-back hard training days — a load-distribution mistake that
+  costs sleep and recovery quality without adding fitness.
+
+  The card renders nothing for an empty log or a clean week. When the
+  detector reports violations, it surfaces a compliance % with a band
+  (POOR/MODERATE/GOOD), a bilingual EN/TR recommendation, and a list
+  of recent back-to-back hard-day date pairs with relative labels.
+
+  Wired into Dashboard between RaceWeekProtocolCard and ProactiveInjuryAlert.
+
+- Depends on: existing `src/lib/athlete/hardDaySpacing.js` (already tested).
+- Files: new `src/components/dashboard/HardDaySpacingCard.jsx` (205 lines),
+  new `src/components/__tests__/HardDaySpacingCard.test.jsx` (13 tests),
+  `src/components/Dashboard.jsx` (lazy import + render line).
+
 ## v9.209.0 — 2026-05-17 — Unpublish ovulation/period tracker (code preserved)
 
   The menstrual-cycle / ovulation / period tracker (v9.181 → v9.207)
