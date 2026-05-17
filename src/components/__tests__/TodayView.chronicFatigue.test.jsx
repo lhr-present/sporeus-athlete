@@ -151,4 +151,58 @@ describe('TodayView — v9.203.0 chronic fatigue banner', () => {
     renderWithLang(<TodayView log={[]} setTab={noop} setLogPrefill={noop} />)
     expect(document.querySelector(SELECTOR)).not.toBeNull()
   })
+
+  // v9.208.0 — Trend arrow (worsening / improving / stable)
+  it('banner exposes trend direction data attribute (worsening)', () => {
+    __mockRecovery = [
+      // Current 7d window: 3 low days
+      { date: '2026-05-07', score: 25, source: 'quick-tap', id: 1 },
+      { date: '2026-05-06', score: 25, source: 'quick-tap', id: 2 },
+      { date: '2026-05-05', score: 25, source: 'quick-tap', id: 3 },
+      // Prior window (2026-04-24..2026-04-30): 1 low day
+      { date: '2026-04-28', score: 25, source: 'quick-tap', id: 4 },
+    ]
+    renderWithLang(<TodayView log={[]} setTab={noop} setLogPrefill={noop} />)
+    const banner = document.querySelector(SELECTOR)
+    expect(banner).not.toBeNull()
+    expect(banner.getAttribute('data-trend-direction')).toBe('worsening')
+    expect(banner.getAttribute('data-trend-delta')).toBe('2')
+    expect(banner.textContent).toMatch(/↑/)
+  })
+
+  it('banner exposes improving when current < prior', () => {
+    __mockRecovery = [
+      // Current: 3 low days (still chronic so banner shows)
+      { date: '2026-05-07', score: 25, source: 'quick-tap', id: 1 },
+      { date: '2026-05-06', score: 25, source: 'quick-tap', id: 2 },
+      { date: '2026-05-05', score: 25, source: 'quick-tap', id: 3 },
+      // Prior: 5 low days
+      { date: '2026-04-30', score: 25, source: 'quick-tap', id: 4 },
+      { date: '2026-04-29', score: 25, source: 'quick-tap', id: 5 },
+      { date: '2026-04-28', score: 25, source: 'quick-tap', id: 6 },
+      { date: '2026-04-27', score: 25, source: 'quick-tap', id: 7 },
+      { date: '2026-04-26', score: 25, source: 'quick-tap', id: 8 },
+    ]
+    renderWithLang(<TodayView log={[]} setTab={noop} setLogPrefill={noop} />)
+    const banner = document.querySelector(SELECTOR)
+    expect(banner.getAttribute('data-trend-direction')).toBe('improving')
+    expect(banner.textContent).toMatch(/↓/)
+  })
+
+  it('banner exposes stable when counts match across both windows', () => {
+    __mockRecovery = [
+      // Current: 3 low days
+      { date: '2026-05-07', score: 25, source: 'quick-tap', id: 1 },
+      { date: '2026-05-05', score: 25, source: 'quick-tap', id: 2 },
+      { date: '2026-05-03', score: 25, source: 'quick-tap', id: 3 },
+      // Prior: 3 low days
+      { date: '2026-04-30', score: 25, source: 'quick-tap', id: 4 },
+      { date: '2026-04-28', score: 25, source: 'quick-tap', id: 5 },
+      { date: '2026-04-26', score: 25, source: 'quick-tap', id: 6 },
+    ]
+    renderWithLang(<TodayView log={[]} setTab={noop} setLogPrefill={noop} />)
+    const banner = document.querySelector(SELECTOR)
+    expect(banner.getAttribute('data-trend-direction')).toBe('stable')
+    expect(banner.textContent).toMatch(/→/)
+  })
 })

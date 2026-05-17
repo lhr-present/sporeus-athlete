@@ -87,4 +87,45 @@ export function detectChronicFatiguePattern(recovery, today) {
   }
 }
 
+/**
+ * v9.208.0 — Trend wrapper.
+ *
+ * Compares the current 7-day window to the previous 7-day window (days
+ * 8–14 back). Returns the detector result for today plus a `delta`
+ * (currentLowDays − priorLowDays) and a `direction`:
+ *   'worsening' when delta > 0,
+ *   'improving' when delta < 0,
+ *   'stable'    when delta == 0.
+ *
+ * Lets the banner tell the athlete whether the pattern is escalating
+ * (act now — back off load) or de-escalating (recovery already
+ * working — stay the course).
+ *
+ * @param {Array} recovery
+ * @param {string} [today] - YYYY-MM-DD; defaults to today UTC
+ * @returns {{ isChronic: boolean, lowDayCount: number, daysExamined: number,
+ *             lastLowDate: string|null, prior: { lowDayCount: number },
+ *             delta: number, direction: 'worsening'|'improving'|'stable' }}
+ */
+export function detectChronicFatigueTrend(recovery, today) {
+  const tIso = today || new Date().toISOString().slice(0, 10)
+  const tKey = dayKey(tIso)
+  const current = detectChronicFatiguePattern(recovery, tIso)
+  if (tKey == null) {
+    return { ...current, prior: { lowDayCount: 0 }, delta: 0, direction: 'stable' }
+  }
+  // Prior window anchor: 7 days before today.
+  const priorKey = tKey - WINDOW_DAYS
+  const priorIso = new Date(priorKey * 86400000).toISOString().slice(0, 10)
+  const prior = detectChronicFatiguePattern(recovery, priorIso)
+  const delta = current.lowDayCount - prior.lowDayCount
+  const direction = delta > 0 ? 'worsening' : delta < 0 ? 'improving' : 'stable'
+  return {
+    ...current,
+    prior: { lowDayCount: prior.lowDayCount },
+    delta,
+    direction,
+  }
+}
+
 export { WINDOW_DAYS, LOW_DAY_THRESHOLD, LOW_SCORE_CUTOFF }

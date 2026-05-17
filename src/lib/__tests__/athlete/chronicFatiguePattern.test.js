@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   detectChronicFatiguePattern,
+  detectChronicFatigueTrend,
   CHRONIC_FATIGUE_CITATION,
   WINDOW_DAYS,
   LOW_DAY_THRESHOLD,
@@ -142,5 +143,56 @@ describe('detectChronicFatiguePattern', () => {
     const r = detectChronicFatiguePattern([])
     expect(r).toHaveProperty('isChronic')
     expect(r.isChronic).toBe(false)
+  })
+})
+
+// v9.208.0 — Trend wrapper compares current 7-day vs prior 7-day window.
+describe('detectChronicFatigueTrend', () => {
+  it('null/empty input → stable, delta 0', () => {
+    const r = detectChronicFatigueTrend([], TODAY)
+    expect(r.delta).toBe(0)
+    expect(r.direction).toBe('stable')
+    expect(r.lowDayCount).toBe(0)
+    expect(r.prior.lowDayCount).toBe(0)
+  })
+
+  it('worsening: more low days this week than prior week', () => {
+    const recovery = [
+      // Current window (2026-05-01..2026-05-07): 3 low days
+      entry('2026-05-07', 25), entry('2026-05-06', 25), entry('2026-05-05', 25),
+      // Prior window (2026-04-24..2026-04-30): 1 low day
+      entry('2026-04-28', 25),
+    ]
+    const r = detectChronicFatigueTrend(recovery, TODAY)
+    expect(r.lowDayCount).toBe(3)
+    expect(r.prior.lowDayCount).toBe(1)
+    expect(r.delta).toBe(2)
+    expect(r.direction).toBe('worsening')
+    expect(r.isChronic).toBe(true)
+  })
+
+  it('improving: fewer low days this week than prior week', () => {
+    const recovery = [
+      // Current window: 1 low day
+      entry('2026-05-07', 25),
+      // Prior window: 3 low days
+      entry('2026-04-30', 25), entry('2026-04-28', 25), entry('2026-04-26', 25),
+    ]
+    const r = detectChronicFatigueTrend(recovery, TODAY)
+    expect(r.lowDayCount).toBe(1)
+    expect(r.prior.lowDayCount).toBe(3)
+    expect(r.delta).toBe(-2)
+    expect(r.direction).toBe('improving')
+  })
+
+  it('stable: same count both windows', () => {
+    const recovery = [
+      entry('2026-05-07', 25), entry('2026-05-05', 25),
+      entry('2026-04-30', 25), entry('2026-04-28', 25),
+    ]
+    const r = detectChronicFatigueTrend(recovery, TODAY)
+    expect(r.lowDayCount).toBe(2)
+    expect(r.prior.lowDayCount).toBe(2)
+    expect(r.direction).toBe('stable')
   })
 })

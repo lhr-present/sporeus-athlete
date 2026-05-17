@@ -14,6 +14,32 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.208.0 — 2026-05-17 — Chronic fatigue banner trend arrow
+
+  v9.203 surfaces the chronic-fatigue banner when ≥3 low quick-tap
+  days fall in the last 7. But the banner alone tells the athlete the
+  pattern exists, not whether it's *escalating* or *de-escalating*.
+  An athlete acts differently in each case:
+  - Worsening (lowDays last-7 > lowDays previous-7) → back off load now.
+  - Improving (last-7 < previous-7) → recovery already working, stay
+    the course.
+
+  Added `detectChronicFatigueTrend(recovery, today)` — a wrapper that
+  calls the existing detector for the current 7-day window plus the
+  previous 7-day window (days 8–14 back) and returns
+  `{ ...current, prior, delta, direction }` where direction is
+  `'worsening' | 'improving' | 'stable'`. The banner appends a single
+  glyph (↑ ↓ →) after the low-day count with a bilingual tooltip
+  (Worsening / Improving / Stable · Kötüleşiyor / İyileşiyor / Sabit).
+  Two new data attributes anchor tests: `data-trend-direction`,
+  `data-trend-delta`.
+
+- Depends on: existing `detectChronicFatiguePattern` (v9.203).
+- Files: `src/lib/athlete/chronicFatiguePattern.js`,
+  `src/components/TodayView.jsx`, tests
+  `src/lib/__tests__/athlete/chronicFatiguePattern.test.js` (+4 trend tests, 18 total),
+  `src/components/__tests__/TodayView.chronicFatigue.test.jsx` (+3 banner tests, 10 total).
+
 ## v9.207.0 — 2026-05-17 — Cycle phase forward-look in TodayView
 
   The TodayView cycle one-liner shipped in v9.192 reads only TODAY's
