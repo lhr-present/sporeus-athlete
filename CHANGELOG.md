@@ -14,6 +14,28 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.222.0 — 2026-05-17 — RecoveryStreakCard — consecutive ≥70 readiness days
+
+  The app tracks daily recovery/readiness scores but never surfaced
+  the motivating consecutive-days-feeling-good streak. Per Halson 2014,
+  Foster 1998, Saw 2016: subjective wellness is a stronger predictor
+  of training tolerance than objective HRV/perf tests, and streak
+  visibility builds motivation + surfaces breaks as early warnings.
+
+  Pure-fn `computeRecoveryStreak({ recovery, today, threshold = 70,
+  lookbackDays = 90 })` returns currentStreak (ending today),
+  longestStreak90d, lastBreakDate. A missing day OR a day with score
+  < threshold breaks the streak.
+
+  Card shows big current-streak count + secondary "best 90d: N",
+  bilingual labels, orange flame badge at ≥14 days. Renders nothing
+  when both counts are 0 (no signal). Distinct from existing
+  trainingStreak (which counts workout days, not readiness).
+
+- Files: new `src/lib/athlete/recoveryStreak.js` (162 lines, 11 tests),
+  new `src/components/dashboard/RecoveryStreakCard.jsx` (129 lines, 9 tests),
+  `src/components/Dashboard.jsx` (lazy import + render line).
+
 ## v9.221.0 — 2026-05-17 — SleepCtlCorrelationCard — sleep × CTL Pearson r
 
   Athletes accumulate both training load (CTL) and sleep data but no
