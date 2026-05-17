@@ -14,6 +14,25 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.212.0 — 2026-05-17 — FuelingCard surfaces eliteProgramFueling
+
+  Surfaces the existing `buildFuelingProgram` pure-fn (Burke 2017;
+  Jeukendrup 2014; Hawley & Burke 2010; Areta 2014; Stellingwerff 2018;
+  Mountjoy 2018 RED-S) as a Dashboard card. The pure-fn computes
+  phase-specific daily carb (g/kg + g/day), daily protein, in-session
+  carb (g/h), fluid (mL/h), and sodium (mg/h) targets — all derived
+  from athlete bodyweight and current training phase.
+
+  Card renders one panel per Base/Build/Peak/Taper phase. Gates on
+  `profile.weight` (the pure-fn requires it); profiles without
+  bodyweight see nothing. Wired next to NutritionTimingCard so the
+  nutrition cards group cleanly.
+
+- Depends on: existing `src/lib/athlete/eliteProgramFueling.js` (already tested).
+- Files: new `src/components/dashboard/FuelingCard.jsx` (273 lines),
+  new `src/components/__tests__/FuelingCard.test.jsx` (13 tests),
+  `src/components/Dashboard.jsx` (lazy import + render block).
+
 ## v9.211.0 — 2026-05-17 — TriathlonWeekBalanceCard surfaces tri-week validator
 
   Surfaces the existing `validateTriathlonWeek` pure-fn (Lambert 1997;
