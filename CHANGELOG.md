@@ -14,6 +14,26 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.227.0 — 2026-05-18 — MonotonyTrendCard — 4-week monotony / strain trend
+
+  `computeMonotony` (Foster 1998; Foster 2001) is used in TodayView
+  only as a one-line warning text. No card surfaced the 4-week
+  MONOTONY TREND — a rising monotony score is a leading indicator of
+  overreaching BEFORE strain peaks.
+
+  Pure-fn `computeMonotonyTrend({ log, today, weeks = 4 })` thin-wraps
+  existing `computeMonotony`, computing the monotony value for each of
+  the last `weeks` weeks plus Foster's `strain = weekly_load × monotony`.
+  Bands: LOW (<1.5), MODERATE (1.5–1.99), HIGH (2.0–2.5), VERY_HIGH (>2.5).
+
+  Card shows the latest monotony value + colored band chip
+  (green/blue/orange/red) + four mini week-chips showing the value per
+  week, with a warning blurb for HIGH/VERY_HIGH. Bilingual EN/TR.
+
+- Files: new `src/lib/athlete/monotonyTrend.js` (148 lines, 17 tests),
+  new `src/components/dashboard/MonotonyTrendCard.jsx` (185 lines, 7 tests),
+  `src/components/Dashboard.jsx` (lazy import + render line).
+
 ## v9.226.0 — 2026-05-18 — WorkoutDeviationCard — 28d actual vs planned TSS
 
   Athletes with a plan (coach-pushed or self-built) had no rolling
