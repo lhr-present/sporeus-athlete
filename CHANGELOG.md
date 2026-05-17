@@ -14,6 +14,33 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.219.0 — 2026-05-17 — TodayView A-race countdown peek + taper window
+
+  An athlete with an A-race approaching had no inline reminder of how
+  close it is or whether they're in the taper window. The existing
+  `raceCountdown` helper only surfaced inside ChallengeWidget; this
+  ship adds the inline TodayView one-liner.
+
+  New pure-fn `computeARaceCountdown({ profile, multiPeakSeason, today })`
+  in `src/lib/athlete/aRaceCountdown.js` checks the multi-peak season
+  store first (picking the chronologically nearest future A-race),
+  falling back to `profile.raceDate`. Buckets the days-to-race into
+  taper windows: BUILD (15–28d), TAPER (8–14d), RACE_WEEK (1–7d),
+  RACE_DAY (0d). Returns null beyond 28 days. Bompa 2009 / Mujika
+  2003 / Issurin 2010.
+
+  Leaf component `ARaceCountdownPeek` renders the compact one-liner:
+  `🏁 A-RACE · [name] · 12d · TAPER` with taper-window color band
+  (red/orange/blue/muted). TR variant: `🏁 A-YARIŞ · [adı] · 12g · TAPER`.
+
+  Wired into TodayView readiness band, sibling to the CTL trajectory
+  peek. Reads `sporeus-multiPeakSeason` localStorage (already used by
+  the season-phase peek).
+
+- Files: new `src/lib/athlete/aRaceCountdown.js` (118 lines, 12 tests),
+  new `src/components/today/ARaceCountdownPeek.jsx` (99 lines, 7 tests),
+  `src/components/TodayView.jsx` (import + render line).
+
 ## v9.218.0 — 2026-05-17 — TodayView weekly CTL trajectory peek (Sunday forecast)
 
   The TodayView shows CTL/ATL/TSB *today* but not where they're headed

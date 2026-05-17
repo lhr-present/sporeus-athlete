@@ -81,6 +81,7 @@ import { getLoadTrendAlert, getMissedRestWarning, getMonotonyWarning } from '../
 import { interpretACWR, interpretCTL, interpretTSB } from '../lib/science/interpretations.js'
 import SessionTargetPeek from './today/SessionTargetPeek.jsx'
 import WeeklyCtlTrajectoryPeek from './today/WeeklyCtlTrajectoryPeek.jsx'
+import ARaceCountdownPeek from './today/ARaceCountdownPeek.jsx'
 
 const EMBED_MODE = new URLSearchParams(window.location.search).get('embed') === 'true'
 
@@ -1018,6 +1019,9 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
 
             {/* v9.218.0 — Weekly CTL trajectory (forecast Sunday CTL). Self-gates. */}
             <WeeklyCtlTrajectoryPeek log={log} plan={plan} today={today} />
+
+            {/* v9.219.0 — A-race countdown + taper-window status. Self-gates to <28d. */}
+            <ARaceCountdownPeek profile={profile} multiPeakSeason={seasonStored} today={today} />
 
             {/* Line 3: critical diagnostic only */}
             {criticalDx && (
