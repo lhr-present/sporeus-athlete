@@ -14,6 +14,28 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.221.0 — 2026-05-17 — SleepCtlCorrelationCard — sleep × CTL Pearson r
+
+  Athletes accumulate both training load (CTL) and sleep data but no
+  card answered the personal question: "do my CTL gains track my
+  sleep?" This ship surfaces a 28d Pearson r between daily sleep
+  hours and daily CTL — a personal correlation signal per Halson 2014,
+  Mah 2011, Walker 2017.
+
+  Pure-fn `computeSleepCtlCorrelation({ log, recovery, today, windowDays })`
+  pairs days by date, computes Pearson r clamped to [-1, 1], and buckets
+  the strength: strong (r ≥ 0.4), moderate (0.2 ≤ r < 0.4), weak/none
+  (otherwise). Negative r treated as weak with no "sleep less" framing
+  — multiple recovery factors dominate when the signal is weak.
+
+  Card renders r prominently with n paired days, mean sleep, mean
+  CTL, color-banded bilingual interpretation. Wired next to
+  SleepRestingHRCard in the recovery section.
+
+- Files: new `src/lib/athlete/sleepCtlCorrelation.js` (220 lines, 10 tests),
+  new `src/components/dashboard/SleepCtlCorrelationCard.jsx` (161 lines, 5 tests),
+  `src/components/Dashboard.jsx` (lazy import + render line).
+
 ## v9.220.0 — 2026-05-17 — HrvAutonomicBalanceCard surfaces autonomic stratification
 
   The app's existing HRV surfaces (HRVSummaryCard, HRVAlertCard,
