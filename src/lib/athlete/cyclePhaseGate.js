@@ -229,4 +229,32 @@ export function isCycleGateAvailable(profile) {
   return true
 }
 
+/**
+ * v9.209.0 — Publish gate for cycle/period tracker UI.
+ *
+ * The pure-fn library (buildCyclePhaseGate, applyCyclePhaseGate,
+ * isCycleGateAvailable) stays exported so the science remains
+ * reviewable + testable, but the consumer surfaces (TodayView
+ * one-liner, CyclePhaseCard, CycleTracker, Profile cycle inputs,
+ * EliteProgramCard CyclePhaseBlock) are dark in production.
+ *
+ * Flip to `true` to re-enable the entire feature in one place.
+ * UI surfaces gate on `isCycleSurfaceVisible(profile)` rather than
+ * `isCycleGateAvailable(profile)`; non-UI consumers (eliteProgram
+ * planner, cyclePlanner, etc.) keep using `isCycleGateAvailable`.
+ */
+export const CYCLE_FEATURE_PUBLISHED = false
+
+/**
+ * Combined UI gate: must be both published AND the athlete must satisfy
+ * the privacy contract.
+ *
+ * @param {object} profile
+ * @returns {boolean}
+ */
+export function isCycleSurfaceVisible(profile) {
+  if (!CYCLE_FEATURE_PUBLISHED) return false
+  return isCycleGateAvailable(profile)
+}
+
 export { PHASE_TSS_MULT, PHASE_INTENSITY_REC, PHASE_DURATION_DAYS }

@@ -12,6 +12,7 @@ import ErrorBoundary from './ErrorBoundary.jsx'
 import OSTRCQuestionnaire from './OSTRCQuestionnaire.jsx'
 import RTPProtocol from './RTPProtocol.jsx'
 import CycleTracker from './CycleTracker.jsx'
+import { CYCLE_FEATURE_PUBLISHED } from '../lib/athlete/cyclePhaseGate.js'
 import { predictInjuryRisk, analyzeRecoveryCorrelation } from '../lib/intelligence.js'
 import { findRecoveryPatterns } from '../lib/patterns.js'
 import { calcLoad } from '../lib/formulas.js'
@@ -547,7 +548,10 @@ export default function Recovery() {
       <ErrorBoundary inline name="RTP Protocol"><RTPProtocol /></ErrorBoundary>
       <ErrorBoundary inline name="HRV Dashboard"><Suspense fallback={null}><HRVDashboard recovery={entries} setRecovery={setEntries} /></Suspense></ErrorBoundary>
       <ErrorBoundary inline name="Injury Tracker"><InjuryTracker /></ErrorBoundary>
-      <ErrorBoundary inline name="Cycle Tracker"><CycleTracker /></ErrorBoundary>
+      {/* v9.209.0 — Cycle tracker is unpublished but code preserved. */}
+      {CYCLE_FEATURE_PUBLISHED ? (
+        <ErrorBoundary inline name="Cycle Tracker"><CycleTracker /></ErrorBoundary>
+      ) : null}
       <ErrorBoundary inline name="Mental Tools"><MentalTools /></ErrorBoundary>
     </div>
   )

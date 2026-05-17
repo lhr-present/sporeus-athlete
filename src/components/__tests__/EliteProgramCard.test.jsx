@@ -4,6 +4,20 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
+
+// v9.209.0 — Cycle (EP-9) feature is unpublished in production via
+// CYCLE_FEATURE_PUBLISHED=false. Bypass the publish gate so the cycle-render
+// tests in this file (EP-9 cycle block) document intended-when-republished
+// behavior. MUST come before the EliteProgramCard import.
+vi.mock('../../lib/athlete/cyclePhaseGate.js', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    CYCLE_FEATURE_PUBLISHED: true,
+    isCycleSurfaceVisible: actual.isCycleGateAvailable,
+  }
+})
+
 import EliteProgramCard from '../dashboard/EliteProgramCard.jsx'
 
 const STORAGE_KEY = 'sporeus-eliteProgram'

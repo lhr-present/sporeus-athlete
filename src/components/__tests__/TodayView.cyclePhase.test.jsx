@@ -43,6 +43,18 @@ vi.mock('../../lib/offlineQueue.js', () => ({
 vi.mock('../CoachMessage.jsx', () => ({ hasUnread: vi.fn(() => false) }))
 vi.mock('../QRScanner.jsx', () => ({ default: () => null }))
 
+// v9.209.0 — feature is unpublished in production via CYCLE_FEATURE_PUBLISHED=false.
+// These tests document the intended-when-republished behavior, so we mock the
+// flag back to true so the surface renders.
+vi.mock('../../lib/athlete/cyclePhaseGate.js', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    CYCLE_FEATURE_PUBLISHED: true,
+    isCycleSurfaceVisible: actual.isCycleGateAvailable,
+  }
+})
+
 import TodayView from '../TodayView.jsx'
 
 const noop = () => {}

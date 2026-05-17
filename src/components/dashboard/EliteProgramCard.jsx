@@ -21,7 +21,7 @@ import CoachEditsBanner, { ATHLETE_EDITS_KEY } from './CoachEditsBanner.jsx'
 import { applyCoachEdits } from '../../lib/athlete/coachEditEngine.js'
 import { eliteProgramToYearlyWeeks } from '../../lib/athlete/eliteProgramToYearly.js'
 import { computePhysiologyGapInsight } from '../../lib/athlete/physiologyGapInsight.js'
-import { isCycleGateAvailable } from '../../lib/athlete/cyclePhaseGate.js'
+import { isCycleSurfaceVisible } from '../../lib/athlete/cyclePhaseGate.js'
 import { buildRaceStrategy, RACE_TYPES } from '../../lib/athlete/raceStrategy.js'
 import { downloadEliteProgramCSV } from '../../lib/athlete/eliteProgramExport.js'
 import { calculatePMC } from '../../lib/trainingLoad.js'
@@ -1157,7 +1157,7 @@ const CYCLE_PHASE_COLOR = {
 }
 
 function CyclePhaseBlock({ program, profile, isTR }) {
-  if (!isCycleGateAvailable(profile)) return null
+  if (!isCycleSurfaceVisible(profile)) return null
   const gate = program?.cycleGate
   if (!gate || !Array.isArray(gate.weeks) || gate.weeks.length === 0) return null
   const wk0 = gate.weeks[0]

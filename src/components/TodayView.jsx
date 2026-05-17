@@ -31,7 +31,7 @@ import { computePlanDrift, detectStalePlan } from '../lib/athlete/planAdaptation
 import { detectGoalActivityMismatch } from '../lib/athlete/goalActivityMismatch.js'
 import { computeTrainingStreak, getStreakMilestone } from '../lib/athlete/trainingStreak.js'
 import { detectComebackGap } from '../lib/athlete/comebackDetector.js'
-import { isCycleGateAvailable, buildCyclePhaseGate } from '../lib/athlete/cyclePhaseGate.js'
+import { isCycleSurfaceVisible, buildCyclePhaseGate } from '../lib/athlete/cyclePhaseGate.js'
 import { daysUntilPhase } from '../lib/cycleUtils.js'
 import { buildRaceStrategy } from '../lib/athlete/raceStrategy.js'
 import { buildReturnToSportRamp } from '../lib/athlete/injuryReturnRamp.js'
@@ -248,7 +248,7 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
   // current one) since the readiness band needs a one-liner, not a
   // 4-week strip.
   const todayCycle = useMemo(() => {
-    if (!isCycleGateAvailable(profile)) return null
+    if (!isCycleSurfaceVisible(profile)) return null
     const gate = buildCyclePhaseGate(profile, { weeks: 1 })
     if (!gate || !Array.isArray(gate.weeks) || gate.weeks.length === 0) return null
     const w0 = gate.weeks[0]

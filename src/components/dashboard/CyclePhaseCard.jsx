@@ -17,7 +17,7 @@ import { useContext, useMemo } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import {
   buildCyclePhaseGate,
-  isCycleGateAvailable,
+  isCycleSurfaceVisible,
 } from '../../lib/athlete/cyclePhaseGate.js'
 
 const MONO = "'IBM Plex Mono', monospace"
@@ -43,7 +43,7 @@ export default function CyclePhaseCard({ profile = {} }) {
   // non-opted-in profiles never trigger any cycle math. Privacy contract
   // is preserved either way (gate returns null + we render null).
   const gate = useMemo(() => (
-    isCycleGateAvailable(profile) ? buildCyclePhaseGate(profile) : null
+    isCycleSurfaceVisible(profile) ? buildCyclePhaseGate(profile) : null
   ), [profile])
 
   if (!gate || !Array.isArray(gate.weeks) || gate.weeks.length === 0) return null

@@ -4,6 +4,19 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
+
+// v9.209.0 — feature is unpublished in production via CYCLE_FEATURE_PUBLISHED=false.
+// These tests document the intended-when-republished behavior, so we mock the
+// flag back to true so the card renders.
+vi.mock('../../lib/athlete/cyclePhaseGate.js', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    CYCLE_FEATURE_PUBLISHED: true,
+    isCycleSurfaceVisible: actual.isCycleGateAvailable,
+  }
+})
+
 import CyclePhaseCard from '../dashboard/CyclePhaseCard.jsx'
 
 beforeEach(() => { vi.setSystemTime(new Date('2026-05-07T12:00:00Z')) })

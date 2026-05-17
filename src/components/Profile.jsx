@@ -15,6 +15,7 @@ import { logConsent } from '../lib/db/consent.js'
 import { generateSeasonReport } from '../lib/pdfReport.js'
 import { getTierSync, isFeatureGated, getUpgradePrompt } from '../lib/subscription.js'
 import { isSupabaseReady } from '../lib/supabase.js'
+import { CYCLE_FEATURE_PUBLISHED } from '../lib/athlete/cyclePhaseGate.js'
 import NotificationSettings from './NotificationSettings.jsx'
 import DeviceSync from './DeviceSync.jsx'
 import MVHealth from './admin/MVHealth.jsx'
@@ -184,8 +185,10 @@ export default function Profile({ log, authUser }) {
         {/* v9.181.0 — Cycle inputs are female-only, opt-in. The privacy gate
             (isCycleGateAvailable) requires gender='female' + lastPeriodStart
             set; non-female users see nothing here, and female users who skip
-            the inputs see no behavioural change downstream. */}
-        {(local.gender || '').toLowerCase() === 'female' && (
+            the inputs see no behavioural change downstream.
+            v9.209.0 — Additionally gated on CYCLE_FEATURE_PUBLISHED; feature
+            is unpublished in production, code preserved for re-enablement. */}
+        {CYCLE_FEATURE_PUBLISHED && (local.gender || '').toLowerCase() === 'female' && (
           <div style={{
             marginTop: 16, padding: '14px 16px',
             border: '1px solid #1a1a1a', borderRadius: 4,

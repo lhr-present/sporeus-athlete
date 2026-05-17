@@ -14,6 +14,48 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.209.0 — 2026-05-17 — Unpublish ovulation/period tracker (code preserved)
+
+  The menstrual-cycle / ovulation / period tracker (v9.181 → v9.207)
+  ships dark in production. Code is preserved verbatim so the science
+  stays reviewable + testable and so re-publishing is a one-line flip.
+
+  Single flag added in `src/lib/athlete/cyclePhaseGate.js`:
+  ```
+  export const CYCLE_FEATURE_PUBLISHED = false
+  export function isCycleSurfaceVisible(profile) {
+    return CYCLE_FEATURE_PUBLISHED && isCycleGateAvailable(profile)
+  }
+  ```
+  Every consumer UI surface now gates on `isCycleSurfaceVisible(profile)`
+  rather than `isCycleGateAvailable(profile)`. Pure-fn callers
+  (eliteProgram planner, cyclePlanner) still use the original gate so
+  the science remains internally consistent — they just have no
+  observable effect since no athlete sees the inputs.
+
+  Surfaces gated:
+  - `TodayView.jsx` cycle one-liner (v9.192, v9.207 forward-look)
+  - `dashboard/CyclePhaseCard.jsx` (v9.187)
+  - `dashboard/EliteProgramCard.jsx` `CyclePhaseBlock` (EP-9, v9.182)
+  - `Profile.jsx` cycle inputs (lastPeriodStart, cycleLength)
+  - `Recovery.jsx` `CycleTracker` mount
+
+  Render tests for these surfaces document the intended-when-republished
+  behavior by mocking `cyclePhaseGate.js` to set `CYCLE_FEATURE_PUBLISHED:
+  true` + alias `isCycleSurfaceVisible` to `isCycleGateAvailable`. Pure
+  unit tests of `buildCyclePhaseGate` / `isCycleGateAvailable` are
+  unaffected.
+
+  Re-publish: set `CYCLE_FEATURE_PUBLISHED = true` in one place. The
+  surfaces flip back on automatically.
+
+- Files: `src/lib/athlete/cyclePhaseGate.js`, `src/components/TodayView.jsx`,
+  `src/components/Profile.jsx`, `src/components/Recovery.jsx`,
+  `src/components/dashboard/CyclePhaseCard.jsx`,
+  `src/components/dashboard/EliteProgramCard.jsx`,
+  3 affected test files updated with vi.mock helpers.
+- All 451 test files / 10934 tests still green. Lint clean, build clean.
+
 ## v9.208.0 — 2026-05-17 — Chronic fatigue banner trend arrow
 
   v9.203 surfaces the chronic-fatigue banner when ≥3 low quick-tap
