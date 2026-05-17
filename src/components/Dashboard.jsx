@@ -103,6 +103,7 @@ const FuelingCard                = lazy(() => import('./dashboard/FuelingCard.js
 const EliteRecoveryCard          = lazy(() => import('./dashboard/EliteRecoveryCard.jsx'))
 const KeySessionsCard            = lazy(() => import('./dashboard/KeySessionsCard.jsx'))
 const EliteRaceWeekCard          = lazy(() => import('./dashboard/EliteRaceWeekCard.jsx'))
+const DrillsLibraryCard          = lazy(() => import('./dashboard/DrillsLibraryCard.jsx'))
 const PlanScoreCard              = lazy(() => import('./dashboard/PlanScoreCard.jsx'))
 const AthleteStatusSummaryCard   = lazy(() => import('./dashboard/AthleteStatusSummaryCard.jsx'))
 const SleepRestingHRCard         = lazy(() => import('./dashboard/SleepRestingHRCard.jsx'))
@@ -443,6 +444,11 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
         <ErrorBoundary>
           <Suspense fallback={null}>
             <KeySessionsCard profile={profile} />
+          </Suspense>
+        </ErrorBoundary>
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <DrillsLibraryCard profile={profile} />
           </Suspense>
         </ErrorBoundary>
         <ErrorBoundary>

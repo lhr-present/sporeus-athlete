@@ -14,6 +14,28 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.216.0 — 2026-05-17 — DrillsLibraryCard surfaces eliteProgramDrills
+
+  Surfaces the existing `buildDrillsLibrary` pure-fn (Daniels 2014;
+  Pfitzinger 2014; Maglischo 2003; Counsilman 1968; Coggan & Allen
+  2010; Rønnestad 2017; Beattie 2014) as a Dashboard card. Provides
+  the sport-specific technique drill catalog grouped by training
+  phase, previously only available inside the EliteProgramCard
+  accordion.
+
+  Renders a collapsible region grouping run/bike/swim/rowing/triathlon
+  drills by Base/Build/Peak/Taper phase. Each row shows uppercase
+  drill name, purpose, dose (e.g. "3× 30m"), citation per drill, and
+  a discipline tag (for triathletes).
+
+  Wired next to KeySessionsCard so the "what to actually do" cards
+  group together.
+
+- Depends on: existing `src/lib/athlete/eliteProgramDrills.js`.
+- Files: new `src/components/dashboard/DrillsLibraryCard.jsx` (311 lines),
+  new `src/components/__tests__/DrillsLibraryCard.test.jsx` (9 tests),
+  `src/components/Dashboard.jsx` (lazy import + render block).
+
 ## v9.215.0 — 2026-05-17 — EliteRaceWeekCard surfaces eliteProgramRaceWeek
 
   Surfaces the existing `buildRaceWeekProtocol` pure-fn (Mujika 2003;
