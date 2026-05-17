@@ -85,7 +85,8 @@ export default function AerobicDecouplingTrendCard({ log }) {
   const color = BAND_COLOR[band]
   const hint = BAND_HINT[band]
   const bandLabel = isTR ? BAND_TR[band] : band
-  const title = isTR ? 'AEROBİK BOZULMA · 30G' : 'AEROBIC DECOUPLING · 30D'
+  // analyzeDecouplingTrend uses a 14-day window — label honors that.
+  const title = isTR ? 'AEROBİK BOZULMA · 14G' : 'AEROBIC DECOUPLING · 14D'
   const ariaLabel = isTR ? 'Aerobik bozulma trendi' : 'Aerobic decoupling trend'
   const avgLabel = isTR ? 'ORT.' : 'AVG'
   const sessionsLabel = isTR

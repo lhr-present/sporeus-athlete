@@ -14,6 +14,30 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.228.0 — 2026-05-18 — AerobicDecouplingTrendCard surfaces decouplingTrend.js
+
+  The pure-fn `analyzeDecouplingTrend` (Friel 2014; Coggan & Allen
+  2010) shipped earlier as the engine for a TrainingLog inline
+  explainer, but the trend itself had no Dashboard card. This ship
+  adds the standalone 14-day trend surface.
+
+  Aerobic decoupling = % drift of (power or pace)/HR across a steady
+  aerobic effort. Higher decoupling = poorer durability / hydration
+  / glycogen state. Bands per Friel: COUPLED (<5%) good, MILD (5–10%),
+  POOR (>10%).
+
+  Card shows the 14d average, the band chip (green/blue/orange),
+  per-session chips colored by their individual band, bilingual
+  interpretation hint. Renders nothing when fewer than 3 aerobic
+  sessions in window.
+
+  Window: matches the pure-fn (14d), not 30d as in the original spec
+  draft — heading was corrected at integration to honor the actual
+  computation.
+
+- Files: new `src/components/dashboard/AerobicDecouplingTrendCard.jsx` (231 lines, 9 tests),
+  `src/components/Dashboard.jsx` (lazy import + render line).
+
 ## v9.227.0 — 2026-05-18 — MonotonyTrendCard — 4-week monotony / strain trend
 
   `computeMonotony` (Foster 1998; Foster 2001) is used in TodayView

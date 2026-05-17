@@ -130,7 +130,7 @@ describe('AerobicDecouplingTrendCard — bilingual', () => {
     renderCard(log, 'tr')
     const region = screen.getByRole('region', { name: /Aerobik bozulma/i })
     expect(region).toBeInTheDocument()
-    expect(region.textContent).toMatch(/AEROBİK BOZULMA · 30G/)
+    expect(region.textContent).toMatch(/AEROBİK BOZULMA · 14G/)
     // Mild → Turkish band label "HAFİF"
     expect(region.textContent).toMatch(/HAFİF/)
     // Turkish interpretation hint for MILD band
