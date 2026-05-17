@@ -14,6 +14,28 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.233.0 — 2026-05-18 — VO2maxPlateauCard — Bompa/Issurin plateau detector
+
+  VO2max progression has had cards (VO2maxProgressionCard,
+  VO2maxCard, VO2GapCard) but no detector flagged a PLATEAU — the
+  signal per Bompa 2009 / Issurin 2010 / Daniels 2014 that the current
+  training stimulus has stopped producing fitness gains and the
+  regime needs to change.
+
+  New pure-fn `detectVO2maxPlateau({ testResults, today, minTests = 3,
+  plateauWeeks = 6, varianceThresholdPct = 2 })` returns
+  `{ isPlateau, varianceMlKgMin, variancePct, weekSpan, recommendation }`.
+  Plateau when: ≥3 VO2max tests AND week span ≥6 AND variance ≤2%.
+
+  Card renders only when plateau detected (orange warning region).
+  Shows variance + week span + a rotating regime-change hint
+  ('change-stimulus' / 'deload-restart' / 'add-hills'). Wired next
+  to VO2maxProgressionCard.
+
+- Files: new `src/lib/athlete/vo2maxPlateau.js` (100 lines, 12 tests),
+  new `src/components/dashboard/VO2maxPlateauCard.jsx` (164 lines, 7 tests),
+  `src/components/Dashboard.jsx` (lazy import + render line).
+
 ## v9.232.0 — 2026-05-18 — CaffeineDoseCard — Burke 2017 pre-session dose
 
   No card surfaced caffeine dose guidance for athletes preparing for

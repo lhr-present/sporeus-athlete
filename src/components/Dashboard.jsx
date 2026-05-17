@@ -100,6 +100,7 @@ const CtlRampRateCard            = lazy(() => import('./dashboard/CtlRampRateCar
 const TsbFreshnessBandCard       = lazy(() => import('./dashboard/TsbFreshnessBandCard.jsx'))
 const SleepDebtCard              = lazy(() => import('./dashboard/SleepDebtCard.jsx'))
 const CaffeineDoseCard           = lazy(() => import('./dashboard/CaffeineDoseCard.jsx'))
+const VO2maxPlateauCard          = lazy(() => import('./dashboard/VO2maxPlateauCard.jsx'))
 const TaperAdvisorCard           = lazy(() => import('./dashboard/TaperAdvisorCard.jsx'))
 const PriorityActionCard         = lazy(() => import('./dashboard/PriorityActionCard.jsx'))
 const CyclingZonesCard           = lazy(() => import('./dashboard/CyclingZonesCard.jsx'))
@@ -1110,6 +1111,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       <ErrorBoundary><Suspense fallback={null}><OSTRCMonitorCard /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><HRVSummaryCard recovery={recovery} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><VO2maxProgressionCard log={log} profile={profile} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><VO2maxPlateauCard testResults={testResults || []} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><RuleAlertsCard log={log} recovery={recovery} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><CyclePlannerCard profile={profile} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><PlanAdherenceCard plan={plan} planStatus={planStatus} log={log} /></Suspense></ErrorBoundary>
