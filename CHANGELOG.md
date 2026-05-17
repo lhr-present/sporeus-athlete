@@ -14,6 +14,28 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.230.0 — 2026-05-18 — TsbFreshnessBandCard — Banister TSB classification
+
+  TSB (Training Stress Balance = CTL − ATL, Banister 1975) is shown
+  as a raw number in multiple places, but no card classified it into
+  actionable freshness BANDS with a 28d trend. NMFreshnessCard covers
+  Skiba 2010 W' neuromuscular freshness — distinct from TSB.
+
+  New pure-fn `classifyTsbFreshness({ log, today, trendDays = 28 })`
+  returns `{ currentTsb, band, trend7d, tsbHistory }`. Bands:
+  - VERY_FRESH (>+25)
+  - FRESH (+5 to +25)
+  - NEUTRAL (−10 to +5)
+  - FATIGUED (−20 to −10)
+  - VERY_FATIGUED (<−20)
+
+  Card renders big currentTsb value + colored band badge + 7d trend
+  arrow (↑↓→) + 28d SVG sparkline with zero line. Bilingual EN/TR.
+
+- Files: new `src/lib/athlete/tsbFreshnessBand.js` (141 lines, 15 tests),
+  new `src/components/dashboard/TsbFreshnessBandCard.jsx` (186 lines, 9 tests),
+  `src/components/Dashboard.jsx` (lazy import + render line).
+
 ## v9.229.0 — 2026-05-18 — CtlRampRateCard — Gabbett 2016 CTL ramp detector
 
   ACWR is the canonical safety metric, but the simpler complement is
