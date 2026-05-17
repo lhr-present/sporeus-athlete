@@ -98,6 +98,7 @@ const MonotonyTrendCard          = lazy(() => import('./dashboard/MonotonyTrendC
 const AerobicDecouplingTrendCard = lazy(() => import('./dashboard/AerobicDecouplingTrendCard.jsx'))
 const CtlRampRateCard            = lazy(() => import('./dashboard/CtlRampRateCard.jsx'))
 const TsbFreshnessBandCard       = lazy(() => import('./dashboard/TsbFreshnessBandCard.jsx'))
+const SleepDebtCard              = lazy(() => import('./dashboard/SleepDebtCard.jsx'))
 const TaperAdvisorCard           = lazy(() => import('./dashboard/TaperAdvisorCard.jsx'))
 const PriorityActionCard         = lazy(() => import('./dashboard/PriorityActionCard.jsx'))
 const CyclingZonesCard           = lazy(() => import('./dashboard/CyclingZonesCard.jsx'))
@@ -1110,6 +1111,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       <ErrorBoundary><Suspense fallback={null}><AthleteStatusSummaryCard log={log} recovery={recovery} profile={profile} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><SleepRestingHRCard recovery={recovery} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><SleepCtlCorrelationCard log={log} recovery={recovery} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><SleepDebtCard recovery={recovery} profile={profile} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><RecoveryStreakCard recovery={recovery} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><RestingHrDriftCard recovery={recovery} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><SessionClassifierBreakdownCard log={log} /></Suspense></ErrorBoundary>

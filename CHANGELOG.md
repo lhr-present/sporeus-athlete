@@ -14,6 +14,32 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.231.0 — 2026-05-18 — SleepDebtCard — 7-day rolling sleep deficit
+
+  The app tracks daily sleep hours via SleepRestingHRCard but never
+  surfaced ROLLING SLEEP DEBT (cumulative shortfall vs target). Per
+  Walker 2017; Mah 2011; Halson 2014; Milewski 2014: 4h+ rolling
+  deficit correlates with impaired adaptation and elevated injury risk.
+
+  New pure-fn `computeSleepDebt({ recovery, profile, today, windowDays = 7 })`
+  uses `profile.sleepTargetHours` (defaults to 8h), sums daily
+  `max(0, target − actual)` over the past 7 days. Bands:
+  - NONE (≤1h)
+  - MINOR (1–4h)
+  - MODERATE (4–8h)
+  - SEVERE (>8h)
+
+  Surplus sleep doesn't subtract from prior debt (per Walker — debt
+  doesn't pay back symmetrically).
+
+  Card renders big debtHours value + colored band badge + target line
+  + 7-day deficit SVG sparkline + bilingual guidance. Renders nothing
+  for NONE band with zero debt (no signal).
+
+- Files: new `src/lib/athlete/sleepDebt.js` (142 lines, 16 tests),
+  new `src/components/dashboard/SleepDebtCard.jsx` (248 lines, 10 tests),
+  `src/components/Dashboard.jsx` (lazy import + render line).
+
 ## v9.230.0 — 2026-05-18 — TsbFreshnessBandCard — Banister TSB classification
 
   TSB (Training Stress Balance = CTL − ATL, Banister 1975) is shown
