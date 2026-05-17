@@ -32,6 +32,7 @@ import { detectGoalActivityMismatch } from '../lib/athlete/goalActivityMismatch.
 import { computeTrainingStreak, getStreakMilestone } from '../lib/athlete/trainingStreak.js'
 import { detectComebackGap } from '../lib/athlete/comebackDetector.js'
 import { isCycleGateAvailable, buildCyclePhaseGate } from '../lib/athlete/cyclePhaseGate.js'
+import { daysUntilPhase } from '../lib/cycleUtils.js'
 import { buildRaceStrategy } from '../lib/athlete/raceStrategy.js'
 import { buildReturnToSportRamp } from '../lib/athlete/injuryReturnRamp.js'
 import { buildMultiPeakSeason } from '../lib/athlete/multiPeakSeason.js'
@@ -251,9 +252,26 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
     const gate = buildCyclePhaseGate(profile, { weeks: 1 })
     if (!gate || !Array.isArray(gate.weeks) || gate.weeks.length === 0) return null
     const w0 = gate.weeks[0]
+    // v9.207.0 — Forward-look. The natural-next phase is the chronological
+    // successor in the menstrual cycle; computing daysUntilNextPhase from
+    // cycleUtils gives athletes planning context (e.g. "ovulation in 3d
+    // — schedule that key workout"). Cycle length defaults to 28.
+    const NEXT_PHASE = {
+      menstruation: 'follicular',
+      follicular:   'ovulation',
+      ovulation:    'luteal',
+      luteal:       'menstruation',
+    }
+    const nextPhase = NEXT_PHASE[w0.dominantPhase] || null
+    const cycleLengthNum = Number(profile?.cycleLength) || 28
+    const daysToNext = nextPhase
+      ? daysUntilPhase(profile.lastPeriodStart, cycleLengthNum, nextPhase)
+      : null
     return {
       phase: w0.dominantPhase,
       pct:   Math.round((w0.tssMultiplier - 1) * 100),
+      nextPhase,
+      daysToNext: Number.isFinite(daysToNext) ? daysToNext : null,
     }
   }, [profile])
 
@@ -963,16 +981,23 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
               const m = labels[todayCycle.phase]
               if (!m) return null
               const pctStr = todayCycle.pct > 0 ? `+${todayCycle.pct}%` : `${todayCycle.pct}%`
+              // v9.207.0 — Forward-look: next phase + days.
+              const nextLabel = todayCycle.nextPhase ? labels[todayCycle.nextPhase] : null
+              const nextStr = (nextLabel && todayCycle.daysToNext != null)
+                ? ` · ${lang === 'tr' ? 'sonraki' : 'next'}: ${(lang === 'tr' ? nextLabel.tr : nextLabel.en).toUpperCase()} ${todayCycle.daysToNext}${lang === 'tr' ? 'g' : 'd'}`
+                : ''
               return (
                 <div
                   data-today-cycle-phase={todayCycle.phase}
+                  data-cycle-next-phase={todayCycle.nextPhase || ''}
+                  data-cycle-days-to-next={todayCycle.daysToNext ?? ''}
                   style={{
                     fontSize: '10px', color: m.color, marginTop: 4,
                     marginBottom: criticalDx ? '8px' : 0,
                     fontWeight: 700, letterSpacing: '0.04em',
                   }}
                 >
-                  ◐ {(lang === 'tr' ? m.tr : m.en).toUpperCase()} · TSS {pctStr}
+                  ◐ {(lang === 'tr' ? m.tr : m.en).toUpperCase()} · TSS {pctStr}{nextStr}
                 </div>
               )
             })() : null}

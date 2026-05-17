@@ -89,4 +89,42 @@ describe('TodayView — v9.192.0 cycle phase one-liner', () => {
     const phase = el.getAttribute('data-today-cycle-phase')
     expect(['menstruation', 'follicular', 'ovulation', 'luteal']).toContain(phase)
   })
+
+  // v9.207.0 — Forward-look (next phase + days)
+  it('forward-look surfaces the chronologically next phase and a day count', () => {
+    // 2026-04-15 + 22 days = 2026-05-07 → cycleDay 23 → luteal
+    // Week-7 coverage from 2026-05-07: days 23..28,1 → dominant=luteal
+    // Next chronological phase = menstruation; daysUntilPhase → 6
+    __mockProfile = { gender: 'female', lastPeriodStart: '2026-04-15', cycleLength: 28 }
+    renderWithLang(<TodayView log={[]} setTab={noop} setLogPrefill={noop} />)
+    const el = document.querySelector('[data-today-cycle-phase]')
+    expect(el).not.toBeNull()
+    expect(el.getAttribute('data-today-cycle-phase')).toBe('luteal')
+    expect(el.getAttribute('data-cycle-next-phase')).toBe('menstruation')
+    expect(el.getAttribute('data-cycle-days-to-next')).toBe('6')
+    expect(el.textContent).toMatch(/next: MENSTRUATION 6d/i)
+  })
+
+  it('forward-look in follicular → ovulation with day count', () => {
+    // 2026-04-30 + 7 days = 2026-05-07 → cycleDay 8 → follicular
+    // Week coverage: days 8..14 → 6 follicular + 1 ovulation → dominant=follicular
+    // Next phase = ovulation; daysUntilPhase target=14 - day=8 = 6
+    __mockProfile = { gender: 'female', lastPeriodStart: '2026-04-30', cycleLength: 28 }
+    renderWithLang(<TodayView log={[]} setTab={noop} setLogPrefill={noop} />)
+    const el = document.querySelector('[data-today-cycle-phase]')
+    expect(el).not.toBeNull()
+    expect(el.getAttribute('data-today-cycle-phase')).toBe('follicular')
+    expect(el.getAttribute('data-cycle-next-phase')).toBe('ovulation')
+    expect(el.getAttribute('data-cycle-days-to-next')).toBe('6')
+    expect(el.textContent).toMatch(/next: OVULATION 6d/i)
+  })
+
+  it('forward-look attributes absent when profile is not cycle-opted-in', () => {
+    __mockProfile = { gender: 'male', lastPeriodStart: '2026-04-15', cycleLength: 28 }
+    renderWithLang(<TodayView log={[]} setTab={noop} setLogPrefill={noop} />)
+    // Whole element should be absent — no element means no forward-look either.
+    expect(document.querySelector('[data-today-cycle-phase]')).toBeNull()
+    expect(document.querySelector('[data-cycle-next-phase]')).toBeNull()
+    expect(document.querySelector('[data-cycle-days-to-next]')).toBeNull()
+  })
 })

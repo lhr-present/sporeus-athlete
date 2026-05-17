@@ -14,6 +14,33 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.207.0 — 2026-05-17 — Cycle phase forward-look in TodayView
+
+  The TodayView cycle one-liner shipped in v9.192 reads only TODAY's
+  phase + TSS multiplier. That's the *current* number — but the most
+  useful planning signal for a female athlete is *when* the next phase
+  starts. Knowing "ovulation in 3 days" lets her schedule a key
+  workout, "menstruation in 6 days" lets her front-load this week's
+  intensity, etc.
+
+  Forward-look: the cycle one-liner now appends ` · next: <PHASE> Nd`
+  (EN) / ` · sonraki: <PHASE> Ng` (TR). The next phase is the
+  chronological successor in the menstrual cycle
+  (menstruation → follicular → ovulation → luteal → menstruation) and
+  the day count comes from the existing `daysUntilPhase` helper in
+  `cycleUtils.js`. Two new data attributes anchor tests:
+  `data-cycle-next-phase` (phase key) and `data-cycle-days-to-next`
+  (integer day count).
+
+  Privacy contract unchanged: the entire indicator (including the
+  forward-look) is gated by `isCycleGateAvailable(profile)`. Non-female
+  / non-opted-in athletes see no cycle UI of any kind.
+
+- Depends on: `src/lib/athlete/cyclePhaseGate.js` `buildCyclePhaseGate`,
+  `src/lib/cycleUtils.js` `daysUntilPhase` (v8.x).
+- Files: `src/components/TodayView.jsx`, tests
+  `src/components/__tests__/TodayView.cyclePhase.test.jsx` (+3 tests, 8 total).
+
 ## v9.206.0 — 2026-05-17 — Chronic fatigue banner: per-day dismiss
 
   v9.203 surfaced the chronic-fatigue early-warning banner but it had
