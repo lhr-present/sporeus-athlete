@@ -80,6 +80,7 @@ import { getTrainingPaces } from '../lib/vdot.js'
 import { getLoadTrendAlert, getMissedRestWarning, getMonotonyWarning } from '../lib/ruleInsights.js'
 import { interpretACWR, interpretCTL, interpretTSB } from '../lib/science/interpretations.js'
 import SessionTargetPeek from './today/SessionTargetPeek.jsx'
+import WeeklyCtlTrajectoryPeek from './today/WeeklyCtlTrajectoryPeek.jsx'
 
 const EMBED_MODE = new URLSearchParams(window.location.search).get('embed') === 'true'
 
@@ -1014,6 +1015,9 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
 
             {/* v9.217.0 — Session target preview (pace/HR/power + IF). Self-gates. */}
             <SessionTargetPeek plannedSession={plannedSession} profile={profile} />
+
+            {/* v9.218.0 — Weekly CTL trajectory (forecast Sunday CTL). Self-gates. */}
+            <WeeklyCtlTrajectoryPeek log={log} plan={plan} today={today} />
 
             {/* Line 3: critical diagnostic only */}
             {criticalDx && (

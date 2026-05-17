@@ -14,6 +14,30 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.218.0 — 2026-05-17 — TodayView weekly CTL trajectory peek (Sunday forecast)
+
+  The TodayView shows CTL/ATL/TSB *today* but not where they're headed
+  given the planned remaining sessions this week. Athletes had to
+  manually integrate planned TSS to forecast Sunday's CTL.
+
+  New pure-fn `projectCtlTrajectory({ log, plan, today, k = 42 })` in
+  `src/lib/athlete/ctlTrajectory.js` walks remaining days of the week
+  applying the Banister exponential update day-by-day:
+  `ctl_next = ctl_today + (tss_today − ctl_today) / k`. Returns
+  `{ currentCtl, projectedCtl, delta, direction }` with direction
+  bucketed: rising / falling / stable (|delta| ≤ 0.5).
+  Banister 1975 / Coggan & Allen 2010.
+
+  Leaf component `WeeklyCtlTrajectoryPeek` renders the compact
+  one-liner: `📈 CTL · 58 → 61 by Sun (+3.2)` with a direction-colored
+  arrow (↑ green / ↓ red / → grey). TR variant: `Paz'a kadar`.
+
+  Wired into TodayView readiness band, sibling to session-target peek.
+
+- Files: new `src/lib/athlete/ctlTrajectory.js` (87 lines, 8 tests),
+  new `src/components/today/WeeklyCtlTrajectoryPeek.jsx` (86 lines, 6 tests),
+  `src/components/TodayView.jsx` (import + render line).
+
 ## v9.217.0 — 2026-05-17 — TodayView session-target peek (pace/HR/power)
 
   The TodayView readiness band already shows today's phase + cycle
