@@ -14,6 +14,46 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.203.0 — 2026-05-17 — Chronic fatigue pattern detector + TodayView banner
+
+  comebackDetector measures days WITHOUT training; the Recovery
+  Protocols Card surfaces for ACUTE low readiness (today). Neither
+  catches the muddier middle: athletes who *are* training but log
+  drained quick-taps for several days in a row — under-recovery /
+  sympathetic overload BEFORE HRV or performance crosses an OTRS
+  threshold.
+
+  New pure detector + TodayView surface:
+  - `src/lib/athlete/chronicFatiguePattern.js` — counts distinct
+    calendar days in the last 7 with score ≤ 30 (matches the v9.196
+    RP-card quick-tap gate). Returns `isChronic` when count ≥ 3.
+    Citations: Halson 2014; Saw 2016; Hooper & Mackinnon 1995.
+  - TodayView banner (orange, leftborder) appears above the injury-
+    ramp peek when `isChronic` is true:
+        ⚠ CHRONIC FATIGUE · 3 LOW DAYS IN LAST 7
+        Review your training load. A few days of lighter volume +
+        extra sleep typically restore recovery before HRV/performance
+        drop.
+
+  The detector reads `score` regardless of `source`, so quick-tap
+  AND full-wellness-form entries both feed the count. Future
+  surfaces using the same 0-100 score key wire automatically.
+
+  Defensive: same-day duplicates collapse to one calendar day;
+  future-dated entries skipped; non-finite scores skipped.
+
+  Changes:
+  - new file: `src/lib/athlete/chronicFatiguePattern.js`
+  - new file: `src/lib/__tests__/athlete/chronicFatiguePattern.test.js`
+  - `src/components/TodayView.jsx`: import + useMemo + banner
+  - new file: `src/components/__tests__/TodayView.chronicFatigue.test.jsx`
+
+  14 pure-fn tests + 5 TodayView render tests cover the gate +
+  boundary cases + window scope + dedup + non-finite scores.
+
+  Test count 10894 → 10913 (+19). Lint + build green. **Full suite
+  is 451/451 files, 10913/10913 tests passing.**
+
 ## v9.202.0 — 2026-05-17 — Bompa "demote A → B" actionable button
 
   v9.185's Bompa 2009 warning ("more than one A-race per season

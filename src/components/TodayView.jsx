@@ -35,6 +35,7 @@ import { isCycleGateAvailable, buildCyclePhaseGate } from '../lib/athlete/cycleP
 import { buildRaceStrategy } from '../lib/athlete/raceStrategy.js'
 import { buildReturnToSportRamp } from '../lib/athlete/injuryReturnRamp.js'
 import { buildMultiPeakSeason } from '../lib/athlete/multiPeakSeason.js'
+import { detectChronicFatiguePattern } from '../lib/athlete/chronicFatiguePattern.js'
 import { detectRaceRetrospective, retroLocalStorageKey } from '../lib/athlete/raceRetrospective.js'
 import { explainPlannedSession } from '../lib/athlete/planRationale.js'
 import { analyzeWellnessTrend } from '../lib/athlete/wellnessTrend.js'
@@ -306,6 +307,14 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
     const v = parseFloat(profile?.vo2max)
     return v > 0 ? getTrainingPaces(v) : null
   }, [profile?.vo2max])
+
+  // v9.203.0 — Chronic fatigue pattern: ≥3 low quick-tap / wellness days
+  // within the last 7. Surfaced as a TodayView banner so athletes get
+  // an early warning before HRV/perf decline crosses the OTRS threshold.
+  const chronicFatigue = useMemo(
+    () => detectChronicFatiguePattern(recovery || [], today),
+    [recovery, today]
+  )
 
   // L2 — Race countdown from profile.raceDate
   const raceCountdown = useMemo(() => {
@@ -978,6 +987,38 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
           </div>
         )
       })()}
+
+      {/* v9.203.0 — Chronic fatigue pattern banner. Fires when 3+ days
+          within the last 7 logged drained-tier readiness (≤30). Early
+          marker per Halson 2014 / Saw 2016 — subjective wellness
+          predicts under-recovery earlier than HRV or perf tests. */}
+      {chronicFatigue?.isChronic ? (
+        <div
+          role="status"
+          data-chronic-fatigue-banner
+          data-low-day-count={chronicFatigue.lowDayCount}
+          style={{
+            marginBottom: 10, padding: 10,
+            background: '#ff660014', border: '1px solid #ff660055',
+            borderLeft: '4px solid #ff6600', borderRadius: 4,
+            fontFamily: MONO,
+          }}
+        >
+          <div style={{ fontSize: 10, letterSpacing: '0.08em', fontWeight: 700, color: '#ff6600', marginBottom: 4 }}>
+            ⚠ {lang === 'tr'
+              ? `KRONİK YORGUNLUK · SON 7 GÜNDE ${chronicFatigue.lowDayCount} DÜŞÜK GÜN`
+              : `CHRONIC FATIGUE · ${chronicFatigue.lowDayCount} LOW DAYS IN LAST 7`}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--text)', lineHeight: 1.5 }}>
+            {lang === 'tr'
+              ? 'Antrenman yükünü gözden geçir. Birkaç günlük hafif hacim + ekstra uyku, HRV/performans düşmeden iyileşmeyi geri kazandırabilir.'
+              : 'Review your training load. A few days of lighter volume + extra sleep typically restore recovery before HRV/performance drop.'}
+          </div>
+          <div style={{ marginTop: 4, fontSize: 9, color: '#555', fontStyle: 'italic' }}>
+            Halson 2014; Saw 2016
+          </div>
+        </div>
+      ) : null}
 
       {/* v9.199.0 — Injury-ramp TODAY peek. Mirrors the v9.198 callout
           inside InjuryReturnCard but surfaces it in TodayView so an
