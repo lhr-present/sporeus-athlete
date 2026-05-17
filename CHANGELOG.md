@@ -14,6 +14,29 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.234.0 — 2026-05-18 — WeeklyVolumeRampCard — volume ramp (Gabbett/Bertelsen)
+
+  Companion to CtlRampRateCard (v9.229). CTL ramp tracks TSS
+  (intensity-weighted load); volume ramp tracks raw DURATION minutes.
+  In runners, injury risk scales more with volume ramp than TSS ramp
+  (Bertelsen 2017). Per Gabbett 2016 + Foster 2001, the "10% rule"
+  is the canonical cap on week-over-week volume increase.
+
+  New pure-fn `computeWeeklyVolumeRamp({ log, today, weeks = 4 })`
+  returns `{ rampPct, weeklyMinutes, weeklyDeltasPct, band }`. Bands:
+  - DECLINING (<0%)
+  - GENTLE (0–5%) — Base period typical
+  - PRODUCTIVE (5–10%)
+  - AGGRESSIVE (10–15%) — caution
+  - OVERSHOOT (>15%) — high injury risk
+
+  Card renders big rampPct + colored band label + 4-week sparkline of
+  weekly % deltas. Bilingual EN/TR. Wired next to CtlRampRateCard.
+
+- Files: new `src/lib/athlete/weeklyVolumeRamp.js` (187 lines, 14 tests),
+  new `src/components/dashboard/WeeklyVolumeRampCard.jsx` (205 lines, 5 tests),
+  `src/components/Dashboard.jsx` (lazy import + render line).
+
 ## v9.233.0 — 2026-05-18 — VO2maxPlateauCard — Bompa/Issurin plateau detector
 
   VO2max progression has had cards (VO2maxProgressionCard,
