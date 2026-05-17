@@ -14,6 +14,29 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.223.0 — 2026-05-17 — RestingHrDriftCard — early-overreaching RHR drift
+
+  The existing SleepRestingHRCard shows RHR alongside sleep, but no
+  card flagged when RHR was *creeping above its rolling baseline* —
+  an early sign of overreaching / illness / under-recovery per
+  Buchheit 2014, Plews & Buchheit 2017, Bouchard 1995.
+
+  Pure-fn `detectRestingHrDrift({ recovery, today, baselineDays = 14,
+  driftThresholdPct = 5, consecutiveDays = 3 })` computes a 14d baseline
+  excluding the most recent 3 days (so drift isn't self-cancelled),
+  then flags when the 3d mean is >5% above baseline AND ≥3 consecutive
+  days each individually exceed the threshold. Downward drift is NOT
+  flagged (parasympathetic dominance is generally good).
+
+  Card renders an orange warning banner only when drift is detected
+  (silent otherwise). Shows baseline, current 3d mean, +X.X% delta,
+  consecutive days, and a bilingual recommendation: "Easy days +
+  extra sleep; reassess in 3 days / Hafif günler + ekstra uyku".
+
+- Files: new `src/lib/athlete/restingHrDrift.js` (169 lines, 11 tests),
+  new `src/components/dashboard/RestingHrDriftCard.jsx` (182 lines, 9 tests),
+  `src/components/Dashboard.jsx` (lazy import + render line).
+
 ## v9.222.0 — 2026-05-17 — RecoveryStreakCard — consecutive ≥70 readiness days
 
   The app tracks daily recovery/readiness scores but never surfaced
