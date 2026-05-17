@@ -14,6 +14,31 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.235.0 — 2026-05-18 — WeekendVolumeShareCard — weekend-warrior detector
+
+  Many recreational athletes jam most weekly training into Sat-Sun
+  because they work weekdays. This concentrated load distribution
+  elevates illness/injury risk per Soligard 2016 (load distribution)
+  and Lambert 1997 (hard-day spacing).
+
+  New pure-fn `computeWeekendVolumeShare({ log, today, weeks = 4 })`
+  returns `{ sharePct, band, weekdayMin, weekendMin, sessionsPerWeek }`.
+  Bands:
+  - BALANCED (<40%) — silent in UI (no signal)
+  - WEEKEND_BIASED (40–55%) — typical for working athletes
+  - WEEKEND_WARRIOR (55–70%) — warning
+  - SEVERE (>70%) — high risk
+
+  Gates on ≥3 sessions/week average and ≥2 weeks of data.
+
+  Card renders only for non-BALANCED bands (silent on healthy
+  distribution). Shows big sharePct, weekday/weekend totals,
+  sessions/week, and a recommendation to spread load mid-week.
+
+- Files: new `src/lib/athlete/weekendVolumeShare.js` (146 lines, 13 tests),
+  new `src/components/dashboard/WeekendVolumeShareCard.jsx` (178 lines, 9 tests),
+  `src/components/Dashboard.jsx` (lazy import + render line).
+
 ## v9.234.0 — 2026-05-18 — WeeklyVolumeRampCard — volume ramp (Gabbett/Bertelsen)
 
   Companion to CtlRampRateCard (v9.229). CTL ramp tracks TSS
