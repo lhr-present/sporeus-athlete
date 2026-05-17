@@ -14,6 +14,37 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.205.0 — 2026-05-17 — RTS criteria progress in TodayView injury-ramp peek
+
+  v9.200 made InjuryReturnCard's Return-to-Sport criteria interactive
+  (5 checkboxes, persisted to localStorage). v9.199 ported the
+  TODAY-week-target callout into TodayView. This ship closes the
+  loop: surface the checklist progress in the TodayView peek too,
+  so athletes see "3/5 RTS criteria met" from the daily HQ.
+
+  Inside the existing `[data-injury-ramp-today-peek]` block:
+  - Reads the same `rtsCriteriaMet` array v9.200 writes
+  - Computes `met = filter(Boolean).length`
+  - When `met < 5`: small muted "RTS criteria: 3/5" footer line
+  - When `met === 5`: green `✓ READY TO RETURN` badge (parallel to
+    the in-card badge from v9.200)
+
+  Athletes get a one-glance signal:
+  - Has the ramp progressed? (current week shown above)
+  - Am I close to graduating? (criteria count shown below)
+
+  Changes:
+  - `src/components/TodayView.jsx`: extra footer inside the existing
+    injury-ramp peek block. Data attributes: `data-rts-progress-peek`,
+    `data-rts-met`.
+  - `src/components/__tests__/TodayView.injuryRamp.test.jsx`: +3 tests
+
+  3 new tests cover: 0/5 footer when no criteria met; 3/5 partial
+  count from a mixed array; READY TO RETURN badge when all 5.
+
+  Test count 10918 → 10921 (+3). Lint + build green. Full suite
+  451/451 files passing.
+
 ## v9.204.0 — 2026-05-17 — "Remove this race" actionable on leg-too-short
 
   Parallel to v9.202's Bompa demote-action. `leg-too-short` warning

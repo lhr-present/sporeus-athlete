@@ -124,4 +124,45 @@ describe('TodayView — v9.199.0 injury ramp peek', () => {
     renderWithLang(<TodayView log={[]} setTab={noop} setLogPrefill={noop} />)
     expect(document.querySelector(SELECTOR)).toBeNull()
   })
+
+  // v9.205.0 — RTS criteria progress mirror
+  it('RTS progress mirror shows 0/5 when no criteria are met', () => {
+    localStorage.setItem('sporeus-injuryReturnRamp', JSON.stringify({
+      expanded: true, daysOff: '21', injuryType: 'soft-tissue',
+      bodyRegion: '', preInjuryCTL: '60', dismissedComeback: true,
+      rampStartDate: '2026-05-07',
+      rtsCriteriaMet: [],
+    }))
+    renderWithLang(<TodayView log={[]} setTab={noop} setLogPrefill={noop} />)
+    const progress = document.querySelector('[data-rts-progress-peek]')
+    expect(progress).not.toBeNull()
+    expect(progress.getAttribute('data-rts-met')).toBe('0')
+    expect(progress.textContent).toMatch(/RTS criteria: 0\/5/i)
+  })
+
+  it('RTS progress mirror reflects partial checks (3/5)', () => {
+    localStorage.setItem('sporeus-injuryReturnRamp', JSON.stringify({
+      expanded: true, daysOff: '21', injuryType: 'soft-tissue',
+      bodyRegion: '', preInjuryCTL: '60', dismissedComeback: true,
+      rampStartDate: '2026-05-07',
+      rtsCriteriaMet: [true, false, true, true, false],
+    }))
+    renderWithLang(<TodayView log={[]} setTab={noop} setLogPrefill={noop} />)
+    const progress = document.querySelector('[data-rts-progress-peek]')
+    expect(progress.getAttribute('data-rts-met')).toBe('3')
+    expect(progress.textContent).toMatch(/3\/5/)
+  })
+
+  it('shows READY TO RETURN badge when all 5 are met', () => {
+    localStorage.setItem('sporeus-injuryReturnRamp', JSON.stringify({
+      expanded: true, daysOff: '21', injuryType: 'soft-tissue',
+      bodyRegion: '', preInjuryCTL: '60', dismissedComeback: true,
+      rampStartDate: '2026-05-07',
+      rtsCriteriaMet: [true, true, true, true, true],
+    }))
+    renderWithLang(<TodayView log={[]} setTab={noop} setLogPrefill={noop} />)
+    const progress = document.querySelector('[data-rts-progress-peek]')
+    expect(progress.getAttribute('data-rts-met')).toBe('5')
+    expect(progress.textContent).toMatch(/READY TO RETURN/i)
+  })
 })

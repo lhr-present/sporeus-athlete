@@ -1048,6 +1048,36 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
           <div style={{ fontSize: 10, color: 'var(--text)', lineHeight: 1.5 }}>
             {lang === 'tr' ? injuryRampToday.currentWeek.note.tr : injuryRampToday.currentWeek.note.en}
           </div>
+          {/* v9.205.0 — RTS criteria progress mirror. Reads the same
+              rtsCriteriaMet array v9.200 writes from InjuryReturnCard
+              checkboxes. 5/5 → green READY badge; otherwise count. */}
+          {(() => {
+            const TOTAL_CRITERIA = 5  // Ardern 2016 RTS framework — always 5
+            const met = Array.isArray(injuryRampStored?.rtsCriteriaMet)
+              ? injuryRampStored.rtsCriteriaMet.filter(Boolean).length
+              : 0
+            const allMet = met === TOTAL_CRITERIA
+            return (
+              <div
+                data-rts-progress-peek
+                data-rts-met={met}
+                style={{ fontSize: 9, color: 'var(--muted)', marginTop: 6, letterSpacing: '0.06em' }}
+              >
+                {allMet ? (
+                  <span style={{
+                    padding: '2px 6px', background: '#5bc25b', color: '#000',
+                    borderRadius: 3, fontWeight: 700,
+                  }}>
+                    ✓ {lang === 'tr' ? 'DÖNÜŞE HAZIR' : 'READY TO RETURN'}
+                  </span>
+                ) : (
+                  <span>
+                    {lang === 'tr' ? 'RTS kriterleri' : 'RTS criteria'}: {met}/{TOTAL_CRITERIA}
+                  </span>
+                )}
+              </div>
+            )
+          })()}
         </div>
       ) : null}
 
