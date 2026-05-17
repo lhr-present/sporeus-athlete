@@ -14,6 +14,25 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.224.0 — 2026-05-18 — SessionClassifierBreakdownCard — weekly type distribution
+
+  The pure-fn `classifySession` (in `src/lib/coach/classifySession.js`)
+  has comprehensive session-type classification but was only consumed
+  by coach-side tooling — no athlete-facing surface. This ship adds
+  the weekly type distribution as a Dashboard card.
+
+  Card shows the current Mon-Sun week's session-type distribution
+  (TYPE / COUNT / MIN) with bilingual EN/TR labels for each class
+  (Z2/Easy, VO2, Threshold/Eşik, Tempo, Long, Race, Recovery, Other).
+  Helps athletes spot polarization issues (too much Z3 grey-zone, not
+  enough true Z2, etc.) per Daniels 2014 / Coggan 2010 / Seiler 2010.
+
+  Renders nothing when the week has fewer than 2 sessions (no
+  meaningful distribution).
+
+- Files: new `src/components/dashboard/SessionClassifierBreakdownCard.jsx` (277 lines, 8 tests),
+  `src/components/Dashboard.jsx` (lazy import + render line).
+
 ## v9.223.0 — 2026-05-17 — RestingHrDriftCard — early-overreaching RHR drift
 
   The existing SleepRestingHRCard shows RHR alongside sleep, but no
