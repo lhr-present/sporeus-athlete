@@ -99,6 +99,7 @@ const AerobicDecouplingTrendCard = lazy(() => import('./dashboard/AerobicDecoupl
 const CtlRampRateCard            = lazy(() => import('./dashboard/CtlRampRateCard.jsx'))
 const TsbFreshnessBandCard       = lazy(() => import('./dashboard/TsbFreshnessBandCard.jsx'))
 const SleepDebtCard              = lazy(() => import('./dashboard/SleepDebtCard.jsx'))
+const CaffeineDoseCard           = lazy(() => import('./dashboard/CaffeineDoseCard.jsx'))
 const TaperAdvisorCard           = lazy(() => import('./dashboard/TaperAdvisorCard.jsx'))
 const PriorityActionCard         = lazy(() => import('./dashboard/PriorityActionCard.jsx'))
 const CyclingZonesCard           = lazy(() => import('./dashboard/CyclingZonesCard.jsx'))
@@ -445,6 +446,11 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
         <ErrorBoundary>
           <Suspense fallback={null}>
             <FuelingCard profile={profile} />
+          </Suspense>
+        </ErrorBoundary>
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <CaffeineDoseCard profile={profile} plan={plan} />
           </Suspense>
         </ErrorBoundary>
         <ErrorBoundary>

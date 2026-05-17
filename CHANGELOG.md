@@ -14,6 +14,30 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.232.0 — 2026-05-18 — CaffeineDoseCard — Burke 2017 pre-session dose
+
+  No card surfaced caffeine dose guidance for athletes preparing for
+  a hard session or race per Burke 2017; Stear 2010; IOC 2018.
+
+  New pure-fn `computeCaffeineDose({ profile, plannedSession, today })`
+  computes typical 5 mg/kg dose with min/max range (3–6 mg/kg), 45 min
+  pre-session timing, and a split-dose flag for sessions >90 min.
+  Respects `profile.caffeineSensitivity` ('high' caps typical at 3
+  mg/kg). Rounds to 25 mg increments.
+
+  Gates on: profile.weight present AND plannedSession is hard
+  (RPE ≥ 7 OR type contains interval/vo2/threshold/tempo/race). No
+  surface for easy sessions, recovery days, or no plan.
+
+  Card renders the typical dose prominently with range, timing, split
+  note, and a brief safety hint ("Skip if caffeine-sensitive or after
+  2 PM" / "Hassasiyetin varsa veya 14:00 sonrası alma"). Wired next
+  to FuelingCard in the nutrition group.
+
+- Files: new `src/lib/athlete/caffeineDose.js` (101 lines, 20 tests),
+  new `src/components/dashboard/CaffeineDoseCard.jsx` (139 lines, 10 tests),
+  `src/components/Dashboard.jsx` (lazy import + render block).
+
 ## v9.231.0 — 2026-05-18 — SleepDebtCard — 7-day rolling sleep deficit
 
   The app tracks daily sleep hours via SleepRestingHRCard but never
