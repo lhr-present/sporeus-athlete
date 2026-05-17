@@ -6,6 +6,7 @@
 // flows in via the mocked DataContext.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { fireEvent, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { renderWithLang } from './testUtils.jsx'
 
@@ -54,10 +55,11 @@ describe('TodayView — v9.203.0 chronic fatigue banner', () => {
   beforeEach(() => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.setSystemTime(new Date('2026-05-07T12:00:00Z'))
+    localStorage.clear()
     __mockProfile = {}
     __mockRecovery = []
   })
-  afterEach(() => { vi.setSystemTime(new Date()) })
+  afterEach(() => { vi.setSystemTime(new Date()); localStorage.clear() })
 
   it('does NOT render when recovery is empty', () => {
     __mockRecovery = []
@@ -109,5 +111,44 @@ describe('TodayView — v9.203.0 chronic fatigue banner', () => {
     ]
     renderWithLang(<TodayView log={[]} setTab={noop} setLogPrefill={noop} />)
     expect(document.querySelector(SELECTOR)).toBeNull()
+  })
+
+  // v9.206.0 — Per-day dismissal
+  it('DISMISS FOR TODAY button hides the banner', () => {
+    __mockRecovery = [
+      { date: '2026-05-07', score: 25, source: 'quick-tap', id: 1 },
+      { date: '2026-05-06', score: 25, source: 'quick-tap', id: 2 },
+      { date: '2026-05-05', score: 25, source: 'quick-tap', id: 3 },
+    ]
+    renderWithLang(<TodayView log={[]} setTab={noop} setLogPrefill={noop} />)
+    expect(document.querySelector(SELECTOR)).not.toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /DISMISS FOR TODAY/i }))
+    expect(document.querySelector(SELECTOR)).toBeNull()
+    // localStorage tracks today's ISO so tomorrow re-surfaces fresh
+    const raw = localStorage.getItem('sporeus-chronicFatigueDismissedDate')
+    expect(raw).toBe(JSON.stringify('2026-05-07'))
+  })
+
+  it('dismissed banner stays hidden across remount within the same day', () => {
+    __mockRecovery = [
+      { date: '2026-05-07', score: 25, source: 'quick-tap', id: 1 },
+      { date: '2026-05-06', score: 25, source: 'quick-tap', id: 2 },
+      { date: '2026-05-05', score: 25, source: 'quick-tap', id: 3 },
+    ]
+    // Pre-seed the dismissed date matching today
+    localStorage.setItem('sporeus-chronicFatigueDismissedDate', JSON.stringify('2026-05-07'))
+    renderWithLang(<TodayView log={[]} setTab={noop} setLogPrefill={noop} />)
+    expect(document.querySelector(SELECTOR)).toBeNull()
+  })
+
+  it('dismissal from YESTERDAY does not suppress today (per-day scope)', () => {
+    __mockRecovery = [
+      { date: '2026-05-07', score: 25, source: 'quick-tap', id: 1 },
+      { date: '2026-05-06', score: 25, source: 'quick-tap', id: 2 },
+      { date: '2026-05-05', score: 25, source: 'quick-tap', id: 3 },
+    ]
+    localStorage.setItem('sporeus-chronicFatigueDismissedDate', JSON.stringify('2026-05-06'))
+    renderWithLang(<TodayView log={[]} setTab={noop} setLogPrefill={noop} />)
+    expect(document.querySelector(SELECTOR)).not.toBeNull()
   })
 })

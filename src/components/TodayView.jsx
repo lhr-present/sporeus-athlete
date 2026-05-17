@@ -315,6 +315,12 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
     () => detectChronicFatiguePattern(recovery || [], today),
     [recovery, today]
   )
+  // v9.206.0 — Per-day dismissal so the banner doesn't pester an athlete
+  // who's already aware. Storing the ISO date the athlete dismissed (not
+  // a boolean) means tomorrow the banner re-evaluates fresh — a pattern
+  // that worsens or persists into tomorrow will re-surface.
+  const [chronicFatigueDismissedToday, setChronicFatigueDismissedToday] =
+    useLocalStorage('sporeus-chronicFatigueDismissedDate', null)
 
   // L2 — Race countdown from profile.raceDate
   const raceCountdown = useMemo(() => {
@@ -991,8 +997,10 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
       {/* v9.203.0 — Chronic fatigue pattern banner. Fires when 3+ days
           within the last 7 logged drained-tier readiness (≤30). Early
           marker per Halson 2014 / Saw 2016 — subjective wellness
-          predicts under-recovery earlier than HRV or perf tests. */}
-      {chronicFatigue?.isChronic ? (
+          predicts under-recovery earlier than HRV or perf tests.
+          v9.206.0 — dismissable for today so it doesn't become wallpaper.
+          Resets daily so a continuing/worsening pattern re-surfaces. */}
+      {chronicFatigue?.isChronic && chronicFatigueDismissedToday !== today ? (
         <div
           role="status"
           data-chronic-fatigue-banner
@@ -1014,8 +1022,23 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
               ? 'Antrenman yükünü gözden geçir. Birkaç günlük hafif hacim + ekstra uyku, HRV/performans düşmeden iyileşmeyi geri kazandırabilir.'
               : 'Review your training load. A few days of lighter volume + extra sleep typically restore recovery before HRV/performance drop.'}
           </div>
-          <div style={{ marginTop: 4, fontSize: 9, color: '#555', fontStyle: 'italic' }}>
-            Halson 2014; Saw 2016
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 9, color: '#555', fontStyle: 'italic' }}>
+              Halson 2014; Saw 2016
+            </span>
+            <button
+              type="button"
+              data-chronic-fatigue-dismiss
+              onClick={() => setChronicFatigueDismissedToday(today)}
+              style={{
+                fontFamily: MONO, fontSize: 9, padding: '3px 8px',
+                background: 'transparent', color: 'var(--muted)',
+                border: '1px solid var(--border)', borderRadius: 3, cursor: 'pointer',
+                letterSpacing: '0.06em',
+              }}
+            >
+              {lang === 'tr' ? 'BUGÜN GİZLE' : 'DISMISS FOR TODAY'}
+            </button>
           </div>
         </div>
       ) : null}

@@ -14,6 +14,42 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.206.0 — 2026-05-17 — Chronic fatigue banner: per-day dismiss
+
+  v9.203 surfaced the chronic-fatigue early-warning banner but it had
+  no action — risked becoming wallpaper that the athlete sees + ignores
+  every day, especially during a multi-week dip when the pattern
+  persists.
+
+  Per-day dismissal: a `DISMISS FOR TODAY` button in the banner
+  writes today's ISO date to `sporeus-chronicFatigueDismissedDate`.
+  The banner suppresses when `dismissed === today`. Tomorrow, the
+  detector re-evaluates fresh — if the pattern still trips, the
+  banner re-surfaces.
+
+  Why per-day and not "permanent dismiss":
+  - A *worsening* pattern (4-of-7 → 5-of-7 low days) is precisely
+    what an athlete in early under-recovery shouldn't ignore.
+  - Per-day matches the v9.189 comeback banner dismissal pattern
+    (single-scope dismissal flag).
+  - Halson 2014 framing — subjective wellness ratings are early
+    warnings, so giving athletes a "snooze for today" without
+    erasing tomorrow's signal preserves the diagnostic value.
+
+  Changes:
+  - `src/components/TodayView.jsx`:
+    - `useLocalStorage('sporeus-chronicFatigueDismissedDate', null)`
+    - gate banner on `chronicFatigueDismissedToday !== today`
+    - inline DISMISS FOR TODAY button next to the citation line
+  - `src/components/__tests__/TodayView.chronicFatigue.test.jsx`: +3 tests
+
+  3 new tests cover: click dismisses + writes today's ISO; remount
+  after dismissal keeps it hidden (same-day persistence); yesterday's
+  dismissal does NOT suppress today (per-day scope).
+
+  Test count 10921 → 10924 (+3). Lint + build green. Full suite
+  451/451 files passing.
+
 ## v9.205.0 — 2026-05-17 — RTS criteria progress in TodayView injury-ramp peek
 
   v9.200 made InjuryReturnCard's Return-to-Sport criteria interactive
