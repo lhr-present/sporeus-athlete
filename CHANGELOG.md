@@ -14,6 +14,29 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.226.0 — 2026-05-18 — WorkoutDeviationCard — 28d actual vs planned TSS
+
+  Athletes with a plan (coach-pushed or self-built) had no rolling
+  adherence card. PlanAdherenceCard exists but renders weekly bars;
+  this new card surfaces a single rolling-window adherence number
+  per Foster 2001; Hopkins 2002.
+
+  Pure-fn `computeWorkoutDeviation({ log, plan, today, windowDays = 28 })`
+  sums actual vs planned TSS over the past 28 days and returns
+  `{ actualTss, plannedTss, adherencePct, band }`. Bands:
+  - ≥90% EXCELLENT (green) — strong adherence
+  - 75–89% GOOD (blue)
+  - 60–74% MODERATE (orange) — worth flagging
+  - <60% POOR (red)
+  - >110% SURPLUS (orange) — overshoot, also risky
+
+  Card renders big adherence % + band badge + actual/planned TSS +
+  days counted, bilingual EN/TR ("28D ADHERENCE" / "28G UYUM").
+
+- Files: new `src/lib/athlete/workoutDeviation.js` (147 lines, 18 tests),
+  new `src/components/dashboard/WorkoutDeviationCard.jsx` (175 lines, 11 tests),
+  `src/components/Dashboard.jsx` (lazy import + render line).
+
 ## v9.225.0 — 2026-05-18 — TodayView phase-transition peek (Base→Build etc.)
 
   Athletes following a multi-phase plan didn't get a one-time reminder
