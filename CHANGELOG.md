@@ -14,6 +14,26 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.213.0 — 2026-05-17 — EliteRecoveryCard surfaces eliteProgramRecovery
+
+  Surfaces the existing `buildRecoveryProgram` pure-fn (Halson 2019;
+  Kellmann 2018; Walker 2017; Plews & Buchheit 2017; Huberman 2022) as
+  a Dashboard card. Where `RecoveryProtocolsCard` handles acute
+  quick-tap readiness, this card handles the STRUCTURED program:
+  sleep target (h/night), deload cadence, top modalities per phase.
+
+  Renders four phase blocks (Base/Build/Peak/Taper). Each shows:
+  - Sleep target derived from `computeRecoverySleepTarget` (age + load).
+  - Deload cadence ("every N weeks", "race week" for Taper).
+  - Top 3 modalities (e.g., contrast bath, breathwork, sauna) with frequency.
+
+  Wired next to FuelingCard so the "structured program" cards group.
+
+- Depends on: existing `src/lib/athlete/eliteProgramRecovery.js` (already tested).
+- Files: new `src/components/dashboard/EliteRecoveryCard.jsx` (206 lines),
+  new `src/components/__tests__/EliteRecoveryCard.test.jsx` (10 tests),
+  `src/components/Dashboard.jsx` (lazy import + render block).
+
 ## v9.212.0 — 2026-05-17 — FuelingCard surfaces eliteProgramFueling
 
   Surfaces the existing `buildFuelingProgram` pure-fn (Burke 2017;
