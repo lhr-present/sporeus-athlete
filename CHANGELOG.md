@@ -14,6 +14,29 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.217.0 — 2026-05-17 — TodayView session-target peek (pace/HR/power)
+
+  The TodayView readiness band already shows today's phase + cycle
+  one-liner, but not the actual target ranges for the planned
+  session. Athletes had to navigate to Plan or compute zones mentally.
+
+  New pure-fn `buildSessionTarget({ plannedSession, profile })` in
+  `src/lib/athlete/sessionTargets.js` returns sport-detected target
+  windows (pace, power, swim pace, HR) plus a target IF — wrapping the
+  existing zone helpers from `vdot.js` / `cyclingZones.js` /
+  `swimZones.js`. Daniels 2014 / Coggan & Allen 2010 / Wakayoshi 1992.
+
+  Leaf component `SessionTargetPeek` in `src/components/today/`
+  renders the compact one-liner: `🎯 TARGET · 4:35–4:45 /km · 145–155
+  BPM · IF 0.85` (EN) / `🎯 HEDEF · ...` (TR). Self-gates to null
+  when no plan or no physiology inputs.
+
+  Wired into TodayView readiness band, sibling to cycle-phase one-liner.
+
+- Files: new `src/lib/athlete/sessionTargets.js` (277 lines, 17 tests),
+  new `src/components/today/SessionTargetPeek.jsx` (107 lines, 6 tests),
+  `src/components/TodayView.jsx` (import + render line).
+
 ## v9.216.0 — 2026-05-17 — DrillsLibraryCard surfaces eliteProgramDrills
 
   Surfaces the existing `buildDrillsLibrary` pure-fn (Daniels 2014;
