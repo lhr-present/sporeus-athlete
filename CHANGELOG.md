@@ -14,6 +14,26 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.214.0 — 2026-05-17 — KeySessionsCard surfaces eliteProgramKeySessions
+
+  Surfaces the existing `getKeySessionsBySport` / `buildKeySessionLibrary`
+  pure-fn (Daniels 2014; Coggan 2010; Pfitzinger 2014; Maglischo 2003;
+  Rønnestad 2020; Mujika 2003; Billat 2001) as a standalone Dashboard
+  card. Previously only visible deep inside the EliteProgramCard
+  accordion once an athlete had built a plan; now accessible directly
+  from `profile.primarySport`.
+
+  Renders a phased library (Base/Build/Peak/Taper) of key sessions for
+  the athlete's primary sport. Each row shows the session name +
+  inferred type chip (threshold / VO2 / intervals / long / hill / brick
+  / race) + bilingual purpose + intensity. Triathlon merges
+  swim+bike+run sessions, each tagged with a discipline chip.
+
+- Depends on: existing `src/lib/athlete/eliteProgramKeySessions.js`.
+- Files: new `src/components/dashboard/KeySessionsCard.jsx` (335 lines),
+  new `src/components/__tests__/KeySessionsCard.test.jsx` (12 tests),
+  `src/components/Dashboard.jsx` (lazy import + render block).
+
 ## v9.213.0 — 2026-05-17 — EliteRecoveryCard surfaces eliteProgramRecovery
 
   Surfaces the existing `buildRecoveryProgram` pure-fn (Halson 2019;
