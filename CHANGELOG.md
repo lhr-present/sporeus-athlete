@@ -14,6 +14,30 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.225.0 — 2026-05-18 — TodayView phase-transition peek (Base→Build etc.)
+
+  Athletes following a multi-phase plan didn't get a one-time reminder
+  when CROSSING into a new phase (Base→Build, Build→Peak, Peak→Taper,
+  etc.) — these inflection points carry the biggest weekly TSS deltas
+  and risk profile shifts per Bompa 2009; Issurin 2010; Mujika 2003.
+
+  New pure-fn `detectPhaseTransition({ multiPeakSeason, today })`
+  compares the current week's phase to the previous week's. When they
+  differ, returns the pair + expected TSS delta from a hard-coded
+  transition map: Base→Build = '+15%', Build→Peak = '+10%',
+  Peak→Taper = '-30%', Taper→Race = 'race-day', etc.
+
+  Leaf component `PhaseTransitionPeek` renders a blue banner with a
+  DISMISS button that writes the from→to pair to
+  `sporeus-phaseTransitionDismissed`. Re-surfaces automatically on the
+  NEXT transition.
+
+  Wired into TodayView readiness band after the A-race countdown peek.
+
+- Files: new `src/lib/athlete/phaseTransition.js` (121 lines, 13 tests),
+  new `src/components/today/PhaseTransitionPeek.jsx` (163 lines, 8 tests),
+  `src/components/TodayView.jsx` (import + render line).
+
 ## v9.224.0 — 2026-05-18 — SessionClassifierBreakdownCard — weekly type distribution
 
   The pure-fn `classifySession` (in `src/lib/coach/classifySession.js`)

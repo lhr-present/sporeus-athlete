@@ -82,6 +82,7 @@ import { interpretACWR, interpretCTL, interpretTSB } from '../lib/science/interp
 import SessionTargetPeek from './today/SessionTargetPeek.jsx'
 import WeeklyCtlTrajectoryPeek from './today/WeeklyCtlTrajectoryPeek.jsx'
 import ARaceCountdownPeek from './today/ARaceCountdownPeek.jsx'
+import PhaseTransitionPeek from './today/PhaseTransitionPeek.jsx'
 
 const EMBED_MODE = new URLSearchParams(window.location.search).get('embed') === 'true'
 
@@ -1022,6 +1023,9 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
 
             {/* v9.219.0 — A-race countdown + taper-window status. Self-gates to <28d. */}
             <ARaceCountdownPeek profile={profile} multiPeakSeason={seasonStored} today={today} />
+
+            {/* v9.225.0 — Phase transition banner (Base→Build, Peak→Taper, etc.). Dismissable per-pair. */}
+            <PhaseTransitionPeek multiPeakSeason={seasonStored} today={today} />
 
             {/* Line 3: critical diagnostic only */}
             {criticalDx && (
