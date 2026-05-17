@@ -14,6 +14,26 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.220.0 — 2026-05-17 — HrvAutonomicBalanceCard surfaces autonomic stratification
+
+  The app's existing HRV surfaces (HRVSummaryCard, HRVAlertCard,
+  HRVDashboard) cover summary stats and acute alerts. This new card
+  adds the missing AUTONOMIC BALANCE stratification — bucketing recent
+  HRV trends into recovery state buckets per Plews & Buchheit 2017,
+  Stanley 2013, Buchheit 2014.
+
+  Pure-fn `stratifyAutonomicBalance(hrvEntries, today)` returns one of
+  `PARASYMPATHETIC_RECOVERED` / `BALANCED` / `SYMPATHETIC_STRAINED`
+  based on 7d-mean vs 28d-baseline ± 0.5·SD and CV thresholds. Card
+  renders a color-banded panel (green/blue/orange) with 7d ln-mean,
+  28d baseline, CV%, bilingual interpretation, citation.
+
+  Wired into Dashboard after HRVAlertCard in the recovery section.
+
+- Files: new `src/lib/athlete/hrvAutonomicBalance.js` (165 lines, 12 tests),
+  new `src/components/dashboard/HrvAutonomicBalanceCard.jsx` (171 lines, 7 tests),
+  `src/components/Dashboard.jsx` (lazy import + render line).
+
 ## v9.219.0 — 2026-05-17 — TodayView A-race countdown peek + taper window
 
   An athlete with an A-race approaching had no inline reminder of how

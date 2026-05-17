@@ -88,6 +88,7 @@ const LoadProjectorCard          = lazy(() => import('./dashboard/LoadProjectorC
 const InjuryPatternCard          = lazy(() => import('./dashboard/InjuryPatternCard.jsx'))
 const VDOTBenchmarkCard          = lazy(() => import('./dashboard/VDOTBenchmarkCard.jsx'))
 const HRVAlertCard               = lazy(() => import('./dashboard/HRVAlertCard.jsx'))
+const HrvAutonomicBalanceCard    = lazy(() => import('./dashboard/HrvAutonomicBalanceCard.jsx'))
 const TaperAdvisorCard           = lazy(() => import('./dashboard/TaperAdvisorCard.jsx'))
 const PriorityActionCard         = lazy(() => import('./dashboard/PriorityActionCard.jsx'))
 const CyclingZonesCard           = lazy(() => import('./dashboard/CyclingZonesCard.jsx'))
@@ -1104,6 +1105,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       <ErrorBoundary><Suspense fallback={null}><InjuryPatternCard log={log} injuries={injuries || []} recovery={recovery} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><VDOTBenchmarkCard log={log} testResults={testResults || []} profile={profile} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><HRVAlertCard recovery={recovery} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><HrvAutonomicBalanceCard recovery={recovery} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><TaperAdvisorCard plan={plan} profile={profile} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><PriorityActionCard log={log} recovery={recovery} profile={profile} /></Suspense></ErrorBoundary>
       {hasCyclingData && <ErrorBoundary><Suspense fallback={null}><CyclingZonesCard testResults={testResults || []} profile={profile} /></Suspense></ErrorBoundary>}
