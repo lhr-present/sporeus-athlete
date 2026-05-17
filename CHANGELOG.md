@@ -14,6 +14,44 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.204.0 — 2026-05-17 — "Remove this race" actionable on leg-too-short
+
+  Parallel to v9.202's Bompa demote-action. `leg-too-short` warning
+  fires when buildup weeks fall below the taper minimum for a race
+  priority. Pre-fix the warning was advisory only — race identity
+  was embedded in the user-facing string, not as structured data,
+  so UIs couldn't target the offending race.
+
+  Two changes:
+  1. Builder change — `multiPeakSeason.js` adds `raceDate` to the
+     warning object on `leg-too-short`. Backwards-compatible (new
+     field added, none removed).
+  2. UI change — `MultiPeakSeasonCard` renders a per-race "Remove
+     this race" button inside the warning that calls
+     `update({ races: races.filter(r => r.date !== w.raceDate) })`.
+
+  Athletes can also just push the race date later via the date
+  picker (already supported); the remove button is the one-tap
+  default for races they don't want in this season at all.
+
+  Self-healing: once the offending race is removed (or pushed past
+  the taper minimum), `buildMultiPeakSeason` stops flagging it.
+  Warning + button auto-disappear.
+
+  Changes:
+  - `src/lib/athlete/multiPeakSeason.js`: `raceDate` added to
+    leg-too-short warning shape
+  - `src/lib/__tests__/athlete/multiPeakSeason.test.js`: +1 test
+    pinning the new field
+  - `src/components/dashboard/MultiPeakSeasonCard.jsx`: per-race
+    button for `code === 'leg-too-short' && w.raceDate`
+  - `src/components/__tests__/MultiPeakSeasonCard.test.jsx`: +4 tests
+    (button absent without warning; button appears + targets right
+    race; click removes the race; TR label)
+
+  Test count 10913 → 10918 (+5). Lint + build green. Full suite
+  451/451 files passing.
+
 ## v9.203.0 — 2026-05-17 — Chronic fatigue pattern detector + TodayView banner
 
   comebackDetector measures days WITHOUT training; the Recovery

@@ -325,6 +325,26 @@ export default function MultiPeakSeasonCard({ profile = {} }) {
                           "main" event with prep races earlier; this collapses
                           the multi-A warning to a single-A season aligned
                           with the typical periodization pattern. */}
+                      {w.code === 'leg-too-short' && w.raceDate ? (
+                        <button
+                          type="button"
+                          data-leg-too-short-remove
+                          data-race-date={w.raceDate}
+                          onClick={() => {
+                            update({ races: races.filter(r => r.date !== w.raceDate) })
+                          }}
+                          style={{
+                            fontFamily: MONO, fontSize: 10, padding: '4px 10px',
+                            background: '#f5c542', color: '#000',
+                            border: 'none', borderRadius: 3, cursor: 'pointer',
+                            fontWeight: 700, letterSpacing: '0.05em', marginTop: 4,
+                          }}
+                        >
+                          {isTR
+                            ? '↳ BU YARIŞI KALDIR'
+                            : '↳ REMOVE THIS RACE'}
+                        </button>
+                      ) : null}
                       {w.code === 'multiple-A-races' ? (
                         <button
                           type="button"

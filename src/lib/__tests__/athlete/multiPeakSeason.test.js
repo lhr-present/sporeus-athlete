@@ -202,6 +202,23 @@ describe('buildMultiPeakSeason — warnings', () => {
     })
     expect(s.warnings.some(w => w.code === 'too-many-peaks')).toBe(true)
   })
+
+  // v9.204.0 — leg-too-short warnings now expose `raceDate`
+  it('leg-too-short warning includes raceDate for UI targeting', () => {
+    const TODAY_TEST = '2026-05-07'
+    const s = buildMultiPeakSeason({
+      sport: 'run',
+      races: [
+        // Only 1 week until this A-race, well below the 2-week taper minimum
+        { date: '2026-05-12', priority: 'A', label: 'too-close A' },
+      ],
+      options: { today: TODAY_TEST },
+    })
+    const w = s.warnings.find(x => x.code === 'leg-too-short')
+    expect(w).toBeTruthy()
+    expect(w.raceDate).toBe('2026-05-12')
+    expect(w.en).toMatch(/Only/)
+  })
 })
 
 describe('buildMultiPeakSeason — week chronology', () => {

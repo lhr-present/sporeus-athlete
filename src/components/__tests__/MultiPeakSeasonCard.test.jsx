@@ -272,3 +272,63 @@ describe('MultiPeakSeasonCard — Bompa demote action', () => {
     expect(btn.textContent).toMatch(/EN SON A DIŞINDAKİLERİ B YAP/i)
   })
 })
+
+// v9.204.0 — leg-too-short remove-race action
+describe('MultiPeakSeasonCard — leg-too-short remove action', () => {
+  it('button is absent when there are no leg-too-short warnings', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      expanded: true,
+      seededFromProfile: true,
+      races: [
+        { date: '2026-08-15', label: 'plenty-of-time', priority: 'A' },
+      ],
+    }))
+    renderCard()
+    expect(document.querySelector('[data-leg-too-short-remove]')).toBeNull()
+  })
+
+  it('button appears for a race that triggers leg-too-short', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      expanded: true,
+      seededFromProfile: true,
+      // 5 days out, A-race needs 2-week taper → too short
+      races: [
+        { date: '2026-05-12', label: 'imminent-A', priority: 'A' },
+      ],
+    }))
+    renderCard()
+    const btn = document.querySelector('[data-leg-too-short-remove]')
+    expect(btn).not.toBeNull()
+    expect(btn.getAttribute('data-race-date')).toBe('2026-05-12')
+    expect(btn.textContent).toMatch(/REMOVE THIS RACE/i)
+  })
+
+  it('clicking removes the offending race from the season', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      expanded: true,
+      seededFromProfile: true,
+      races: [
+        { date: '2026-05-12', label: 'imminent', priority: 'A' },
+        { date: '2026-09-15', label: 'main',     priority: 'A' },
+      ],
+    }))
+    renderCard()
+    const btn = document.querySelector('[data-leg-too-short-remove]')
+    fireEvent.click(btn)
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
+    expect(stored.races.find(r => r.label === 'imminent')).toBeUndefined()
+    expect(stored.races.find(r => r.label === 'main')).toBeTruthy()
+  })
+
+  it('button renders Turkish label when lang=tr', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      expanded: true,
+      seededFromProfile: true,
+      races: [{ date: '2026-05-12', label: 'imminent-A', priority: 'A' }],
+    }))
+    renderCard({}, 'tr')
+    const btn = document.querySelector('[data-leg-too-short-remove]')
+    expect(btn).not.toBeNull()
+    expect(btn.textContent).toMatch(/BU YARIŞI KALDIR/i)
+  })
+})

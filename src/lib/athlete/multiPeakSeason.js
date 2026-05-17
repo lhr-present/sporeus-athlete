@@ -223,6 +223,10 @@ export function buildMultiPeakSeason(input) {
     if (buildupWeeks < TAPER_WEEKS[race.priority]) {
       warnings.push({
         code: 'leg-too-short',
+        // v9.204.0 — Include `raceDate` so UIs can render a targeted action
+        // (e.g. "remove this race"). Pre-fix the race identity was only in
+        // the user-facing string, making it un-targetable from code.
+        raceDate: race.date,
         en: `Only ${buildupWeeks} weeks until "${race.label || race.date}" — below the ${TAPER_WEEKS[race.priority]}-week taper minimum for ${race.priority}-race.`,
         tr: `"${race.label || race.date}" yarışına sadece ${buildupWeeks} hafta — ${race.priority}-yarış için ${TAPER_WEEKS[race.priority]}-haftalık taper alt sınırının altında.`,
       })
