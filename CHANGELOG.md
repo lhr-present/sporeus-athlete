@@ -14,6 +14,26 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.229.0 — 2026-05-18 — CtlRampRateCard — Gabbett 2016 CTL ramp detector
+
+  ACWR is the canonical safety metric, but the simpler complement is
+  the week-over-week CTL delta. Gabbett 2016 + Banister 1975 give a
+  "sweet spot" of 3–8 TSS/week — below is undertrained, above 8–12
+  injury risk rises sharply.
+
+  New pure-fn `computeCtlRampRate({ log, today, weeks = 4 })` walks
+  back 4 weeks computing daily CTL via `calcLoad`, derives the mean
+  weekly delta, classifies into bands: UNDERTRAINED (<3), OPTIMAL
+  (3–8), AGGRESSIVE (8–12), HIGH_RISK (>12). Returns rampRate +
+  weeklyDeltas array + currentCtl + baselineCtl.
+
+  Card renders big rampRate value + colored band label + 4-week
+  sparkline of weekly deltas + recommendation strip. Bilingual EN/TR.
+
+- Files: new `src/lib/athlete/ctlRampRate.js` (166 lines, 13 tests),
+  new `src/components/dashboard/CtlRampRateCard.jsx` (213 lines, 7 tests),
+  `src/components/Dashboard.jsx` (lazy import + render line).
+
 ## v9.228.0 — 2026-05-18 — AerobicDecouplingTrendCard surfaces decouplingTrend.js
 
   The pure-fn `analyzeDecouplingTrend` (Friel 2014; Coggan & Allen
