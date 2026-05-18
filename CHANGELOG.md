@@ -14,6 +14,31 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.251.0 — 2026-05-18 — CrossSportRecoveryGapCard — Bompa 2018 multi-sport rotation
+
+  Surfaces "days since last X-sport session" per discipline with
+  sport-specific recovery-window targets. New pure-fn
+  `analyzeCrossSportRecoveryGap({ log, today })` classifies sport
+  spacing as:
+
+  - FRESH (green)  — daysSince ≤ ideal-max
+  - OK    (blue)   — between ideal-max and warn threshold
+  - STALE (orange) — past warn threshold
+
+  Sport windows (Bompa rule-of-thumb): run ideal 3d / warn 14d;
+  bike 2d / 21d; swim 4d / 14d; strength 4d / 14d. Renders null
+  unless ≥2 sports have been logged ever (no cross-sport to
+  compare). Per-sport row with sport label + days-since + status
+  chip + last date. Bilingual EN/TR.
+
+  Refs: Bompa 2018 (Periodization: Theory and Methodology of
+  Training); Hreljac 2004 (Impact and overuse injuries in runners).
+
+- Files: new `src/lib/athlete/crossSportRecoveryGap.js` (142 lines),
+  new `src/components/dashboard/CrossSportRecoveryGapCard.jsx` (196 lines),
+  30 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.250.0 — 2026-05-18 — SeasonalLoadDistributionCard — Issurin 2010 annual load pattern
 
   Surfaces monthly TSS over the last 12 calendar months with a
