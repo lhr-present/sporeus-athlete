@@ -7,7 +7,6 @@ import { analyzeAverageWeekShape, AVERAGE_WEEK_SHAPE_CITATION }
 // We anchor today to a Sunday so the trailing 8-week window aligns cleanly.
 // 2026-04-26 is a Sunday → window = 2026-03-02 (Mon) through 2026-04-26 (Sun)
 const TODAY = '2026-04-27' // Monday → previous completed Sunday = 2026-04-26
-const WINDOW_END = '2026-04-26' // Sun
 const WINDOW_START = '2026-03-02' // Mon, 56 days back inclusive
 
 function addDays(dateStr, days) {

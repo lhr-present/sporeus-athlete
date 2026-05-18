@@ -14,6 +14,35 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.255.0 — 2026-05-18 — AverageWeekShapeCard — Bompa 2018 typical-microcycle visualizer
+
+  Surfaces the athlete's typical Mon-Sun TSS rhythm across the last
+  8 completed weeks. New pure-fn `analyzeAverageWeekShape({ log,
+  today, windowWeeks })` sums TSS per weekday across the window,
+  divides by window count, and classifies the shape (priority order
+  EVENLY_DISTRIBUTED → WEEKEND_HEAVY → MIDWEEK_HEAVY → POLARIZED →
+  MIXED):
+
+  - EVENLY_DISTRIBUTED (green)  — stdev across 7 days < 30% of mean
+  - WEEKEND_HEAVY      (orange) — Sat+Sun > 1.5× weekday-avg
+  - MIDWEEK_HEAVY      (blue)   — Wed+Thu > 1.5× Mon+Tue avg
+  - POLARIZED          (purple) — ≥2 days >1.5× mean AND ≥2 days <0.3× mean
+  - MIXED              (muted)  — fallback
+
+  Renders null when fewer than 4 weeks in window have any sessions
+  OR total TSS = 0. Card shows pattern badge + 7-bar SVG Mon-Sun
+  chart (peak day highlighted) with bilingual day labels (MON-SUN
+  / PZT-PAZ). Excludes in-progress current week so the comparison
+  isn't biased by an incomplete week.
+
+  Refs: Bompa 2018 (Periodization: Theory and Methodology of
+  Training — microcycle design); Issurin 2010.
+
+- Files: new `src/lib/athlete/averageWeekShape.js` (195 lines),
+  new `src/components/dashboard/AverageWeekShapeCard.jsx` (194 lines),
+  46 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.254.0 — 2026-05-18 — CheckInQualityCard — Halson 2014 log-data-hygiene tracker
 
   Surfaces completeness of recent session log entries — the "data
