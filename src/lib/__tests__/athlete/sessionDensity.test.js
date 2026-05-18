@@ -1,5 +1,5 @@
 // ─── sessionDensity.test.js — analyzeSessionDensity unit tests ──────────────
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { analyzeSessionDensity, SESSION_DENSITY_CITATION } from '../../athlete/sessionDensity.js'
 
 // Reference date: Monday 2026-05-18

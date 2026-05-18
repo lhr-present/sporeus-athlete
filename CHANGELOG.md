@@ -14,6 +14,29 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.262.0 — 2026-05-19 — SessionDensityCard — Bompa 2018 double-session tracker
+
+  Surfaces 28-day "session density" = totalSessions / activeDays
+  (unique session-dates). Density > 1 means the athlete is doing
+  regular doubles (advanced training / triathlon hallmark). New
+  pure-fn `analyzeSessionDensity({ log, today, windowDays })` bands:
+
+  - SINGLE_FOCUSED (blue)   — density < 1.10
+  - MIXED_DENSITY  (green)  — 1.10 ≤ density < 1.40
+  - DOUBLE_HEAVY   (orange) — density ≥ 1.40
+
+  Renders null when activeDays < 5 or zero sessions. Card shows
+  density (2dp), sessions / active-days breakdown, doubleDays
+  count, doubleRate percentage. Bilingual EN/TR (TEK/KARIŞIK/ÇİFT).
+
+  Refs: Bompa 2018 (twice-daily training in advanced periodization);
+  Mujika 2014 (Olympic-distance triathlon distributions).
+
+- Files: new `src/lib/athlete/sessionDensity.js` (105 lines),
+  new `src/components/dashboard/SessionDensityCard.jsx` (180 lines),
+  37 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.261.0 — 2026-05-19 — WeeklyVolumeIntensityRatioCard — Foster 2001 intensity-creep detector
 
   Surfaces 8-week trend of weekly total minutes ÷ weekly total TSS.
