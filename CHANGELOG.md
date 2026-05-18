@@ -14,6 +14,32 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.250.0 — 2026-05-18 — SeasonalLoadDistributionCard — Issurin 2010 annual load pattern
+
+  Surfaces monthly TSS over the last 12 calendar months with a
+  periodization-pattern classifier. New pure-fn
+  `analyzeSeasonalLoadDistribution({ log, today })` returns the
+  ordered 12-month TSS array, peak/trough month, coefficient of
+  variation, and a band:
+
+  - BLOCK       (orange) — CV > 0.5 with one dominant peak (>1.8× avg)
+  - TRADITIONAL (green)  — ≥8 of 12 months within ±30% of the prior
+  - VOLATILE    (red)    — CV > 0.5 without a single peak
+  - FLAT        (muted)  — CV < 0.25 (low variation)
+
+  Renders null when fewer than 6 months have any sessions logged.
+  Card shows pattern badge + peak month + avg TSS + 12-bar mini
+  histogram (peak month highlighted) with TR month labels in TR
+  mode. Bilingual EN/TR.
+
+  Refs: Issurin 2010 ("New horizons for the methodology and
+  physiology of training periodization"); Bompa 2018.
+
+- Files: new `src/lib/athlete/seasonalLoadDistribution.js` (178 lines),
+  new `src/components/dashboard/SeasonalLoadDistributionCard.jsx` (240 lines),
+  28 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.249.0 — 2026-05-18 — PostHardSessionResponseCard — Plews 2013 next-day HR/HRV response
 
   Tracks the next-morning recovery response (sleep + restingHR + HRV

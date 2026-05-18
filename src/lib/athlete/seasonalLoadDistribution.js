@@ -66,12 +66,10 @@ function classifyPattern({ months, mean, cv }) {
   if (cv < 0.25) return 'FLAT'
 
   // Find peak (highest TSS) month
-  let peakIdx = 0
   let peakVal = -Infinity
   for (let i = 0; i < months.length; i++) {
     if (months[i].tss > peakVal) {
       peakVal = months[i].tss
-      peakIdx = i
     }
   }
 
