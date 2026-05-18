@@ -14,6 +14,34 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.263.0 — 2026-05-19 — SleepConsistencyCard — Walker 2017 sleep-regularity tracker
+
+  Surfaces 28-day variance of sleep duration (SD of `sleepHrs`).
+  Distinct from SleepDebtCard (cumulative shortfall vs target) and
+  PreRaceSleepBankingCard (race-week surplus protocol). This card
+  measures REGULARITY — even at an OK average, ERRATIC sleep
+  disrupts circadian rhythm and slows recovery.
+
+  New pure-fn `analyzeSleepConsistency({ recovery, today,
+  windowDays })` filters to entries with sleepHrs > 0, computes
+  population stdev across the window, and bands:
+
+  - TIGHT   (green)  — stdSleepHrs < 0.75h (within 45 min variation)
+  - LOOSE   (blue)   — 0.75 ≤ stdSleepHrs < 1.5h
+  - ERRATIC (orange) — stdSleepHrs ≥ 1.5h (90+ min variation)
+
+  Renders null when fewer than 7 valid entries. Card shows
+  ±X.XXh SD (big), avg as reference, range (shortest–longest),
+  sample count. Bilingual EN/TR.
+
+  Refs: Walker 2017 (Why We Sleep — sleep regularity chapter);
+  Lunsford-Avery 2018 (Validation of the Sleep Regularity Index).
+
+- Files: new `src/lib/athlete/sleepConsistency.js` (147 lines),
+  new `src/components/dashboard/SleepConsistencyCard.jsx` (193 lines),
+  30 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.262.0 — 2026-05-19 — SessionDensityCard — Bompa 2018 double-session tracker
 
   Surfaces 28-day "session density" = totalSessions / activeDays
