@@ -14,6 +14,34 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.261.0 — 2026-05-19 — WeeklyVolumeIntensityRatioCard — Foster 2001 intensity-creep detector
+
+  Surfaces 8-week trend of weekly total minutes ÷ weekly total TSS.
+  A falling ratio means TSS-per-minute is rising — the same hours
+  generate more strain (intensity creep). A rising ratio means
+  longer easier sessions (classic aerobic base building).
+
+  New pure-fn `analyzeWeeklyVolumeIntensityRatio({ log, today,
+  windowWeeks })` builds 8 ISO-week buckets, computes per-week
+  ratio = minutes/TSS (null when TSS = 0), and compares early-half
+  vs recent-half avg to band:
+
+  - CREEPING_INTENSITY (orange) — delta ≤ −0.10 (ratio shrinking)
+  - STABLE             (green)  — |delta| < 0.10
+  - VOLUME_GROWING     (blue)   — delta ≥ +0.10 (ratio expanding)
+
+  Renders null when fewer than 5 of 8 weeks have valid ratios.
+  8 mini bars per week (null-ratio weeks rendered as muted thin
+  bars). Bilingual EN/TR.
+
+  Refs: Foster 2001 (Monitoring training in athletes with reference
+  to overtraining syndrome); Seiler 2010.
+
+- Files: new `src/lib/athlete/weeklyVolumeIntensityRatio.js` (204 lines),
+  new `src/components/dashboard/WeeklyVolumeIntensityRatioCard.jsx` (223 lines),
+  26 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.260.0 — 2026-05-19 — LongestSessionTrendCard — Daniels 2014 long-session base tracker
 
   Surfaces the trend of "longest weekly session duration" over 12
