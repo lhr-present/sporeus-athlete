@@ -14,6 +14,28 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.236.0 — 2026-05-18 — HydrationTargetCard — Sawka 2007 ACSM hydration targets
+
+  No card surfaced athlete-specific hydration targets. FuelingCard
+  covers carbs/protein/electrolytes but not fluid-volume guidance.
+
+  New pure-fn `computeHydrationTarget({ profile, plannedSession,
+  today, climate = 'temperate' })` per Sawka 2007 ACSM Position
+  Stand + Casa 2000:
+  - Daily fluid: 40 mL/kg baseline
+  - Pre-session: 500 mL (2-3h before)
+  - Per-hour fluid during exercise: 500/600/800 mL for cool/temperate/hot
+  - Per-hour sodium: 500/700/1000 mg
+  - Post-session: 1.5L per kg of bodyweight lost
+
+  Gates on `profile.weight`. Always renders daily target; surfaces
+  per-hour values only when a session ≥60 min is planned. Wired
+  next to CaffeineDoseCard in the nutrition group.
+
+- Files: new `src/lib/athlete/hydrationTarget.js` (93 lines, 19 tests),
+  new `src/components/dashboard/HydrationTargetCard.jsx` (153 lines, 7 tests),
+  `src/components/Dashboard.jsx` (lazy import + render block).
+
 ## v9.235.0 — 2026-05-18 — WeekendVolumeShareCard — weekend-warrior detector
 
   Many recreational athletes jam most weekly training into Sat-Sun

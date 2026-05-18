@@ -100,6 +100,7 @@ const CtlRampRateCard            = lazy(() => import('./dashboard/CtlRampRateCar
 const TsbFreshnessBandCard       = lazy(() => import('./dashboard/TsbFreshnessBandCard.jsx'))
 const SleepDebtCard              = lazy(() => import('./dashboard/SleepDebtCard.jsx'))
 const CaffeineDoseCard           = lazy(() => import('./dashboard/CaffeineDoseCard.jsx'))
+const HydrationTargetCard        = lazy(() => import('./dashboard/HydrationTargetCard.jsx'))
 const VO2maxPlateauCard          = lazy(() => import('./dashboard/VO2maxPlateauCard.jsx'))
 const WeeklyVolumeRampCard       = lazy(() => import('./dashboard/WeeklyVolumeRampCard.jsx'))
 const WeekendVolumeShareCard     = lazy(() => import('./dashboard/WeekendVolumeShareCard.jsx'))
@@ -454,6 +455,11 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
         <ErrorBoundary>
           <Suspense fallback={null}>
             <CaffeineDoseCard profile={profile} plan={plan} />
+          </Suspense>
+        </ErrorBoundary>
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <HydrationTargetCard profile={profile} plan={plan} />
           </Suspense>
         </ErrorBoundary>
         <ErrorBoundary>
