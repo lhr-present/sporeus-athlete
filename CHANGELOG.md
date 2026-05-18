@@ -14,6 +14,30 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.238.0 — 2026-05-18 — TimeOfDayConsistencyCard — circadian training consistency
+
+  Athletes who train at consistent times benefit from circadian
+  alignment (Mah 2011, Walker 2017, Hammar 2007) — improved sleep
+  architecture, hormone timing, faster adaptation. No card surfaced
+  whether the athlete's training time was consistent or scattered.
+
+  New pure-fn `computeTimeOfDayConsistency({ log, today, weeks = 4 })`
+  parses entry start times (accepts `entry.startTime` / `entry.time`
+  / `entry.timeOfDay` HH:MM strings), computes mean hour and SD in
+  minutes. Bands:
+  - TIGHT (SD <60 min) — strong circadian alignment
+  - MODERATE (60–120 min)
+  - LOOSE (120–180 min)
+  - SCATTERED (>180 min) — try to anchor
+
+  Card renders `HH:MM ± N min` typical training time + colored band
+  pill + bilingual interpretation. Requires ≥6 timed entries in
+  window; renders null otherwise.
+
+- Files: new `src/lib/athlete/timeOfDayConsistency.js` (137 lines, 10 tests),
+  new `src/components/dashboard/TimeOfDayConsistencyCard.jsx` (155 lines, 6 tests),
+  `src/components/Dashboard.jsx` (lazy import + render line).
+
 ## v9.237.0 — 2026-05-18 — TaperComplianceCard — Mujika/Bosquet log-side detector
 
   TaperAdvisorCard already exists, surfacing what the PLAN says the
