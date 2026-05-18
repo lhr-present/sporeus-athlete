@@ -14,6 +14,31 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.260.0 — 2026-05-19 — LongestSessionTrendCard — Daniels 2014 long-session base tracker
+
+  Surfaces the trend of "longest weekly session duration" over 12
+  weeks. For endurance athletes building toward marathons / gran
+  fondos, the longest weekly session is the key base-building
+  indicator. New pure-fn `analyzeLongestSessionTrend({ log, today,
+  windowWeeks })` compares early-third (weeks 0–3) avg vs
+  recent-third (weeks 9–11) avg of longest-per-week:
+
+  - GROWING   (green)  — delta ≥ +0.10
+  - STABLE    (blue)   — |delta| < 0.10 (or fresh-base: earlyAvg=0, recentAvg>0)
+  - SHRINKING (orange) — delta ≤ −0.10
+
+  Renders null when fewer than 6 of 12 weeks active. Card shows
+  peak duration (Xh Ymin), band badge, delta percentage, 12 mini
+  bars per week with peak highlighted. Bilingual EN/TR.
+
+  Refs: Daniels 2014 (Daniels' Running Formula); Lydiard 1978;
+  Maffetone 2010.
+
+- Files: new `src/lib/athlete/longestSessionTrend.js` (182 lines),
+  new `src/components/dashboard/LongestSessionTrendCard.jsx` (253 lines),
+  35 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.259.0 — 2026-05-18 — PerseveranceCard — Duckworth 2007 weekly-rhythm grit tracker
 
   Measures long-term consistency in weekly training frequency over
