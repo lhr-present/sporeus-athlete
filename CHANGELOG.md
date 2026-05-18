@@ -14,6 +14,30 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.239.0 — 2026-05-18 — LongSessionShareCard — long-session distribution detector
+
+  Per Daniels 2014 / Coggan & Allen 2010 / Magness 2017, the long
+  session (longest single workout of the week) should be ~25–35% of
+  weekly volume. <20% means durability stays underdeveloped; >40%
+  means one session is overshooting relative to the weekly base.
+
+  New pure-fn `computeLongSessionShare({ log, today, weeks = 4 })`
+  computes per-week long/total ratios and averages across the window.
+  Bands:
+  - TOO_SHORT (<20%) — no real long session
+  - MODERATE (20–25%) — acceptable for sprint/middle-distance
+  - TARGET (25–35%) — canonical share
+  - OVERWEIGHTED (35–45%) — base too thin
+  - ISOLATED (>45%) — high injury risk
+
+  Card renders only when off-target (silent on TARGET band). Shows
+  avg share %, 4-week chips with date/share/longest/total minutes,
+  bilingual recommendation. Wired next to TimeOfDayConsistencyCard.
+
+- Files: new `src/lib/athlete/longSessionShare.js` (167 lines, 12 tests),
+  new `src/components/dashboard/LongSessionShareCard.jsx` (206 lines, 5 tests),
+  `src/components/Dashboard.jsx` (lazy import + render line).
+
 ## v9.238.0 — 2026-05-18 — TimeOfDayConsistencyCard — circadian training consistency
 
   Athletes who train at consistent times benefit from circadian
