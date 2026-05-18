@@ -106,6 +106,7 @@ const TimeOfDayConsistencyCard   = lazy(() => import('./dashboard/TimeOfDayConsi
 const LongSessionShareCard       = lazy(() => import('./dashboard/LongSessionShareCard.jsx'))
 const RunningCadenceTrendCard    = lazy(() => import('./dashboard/RunningCadenceTrendCard.jsx'))
 const SwimSwolfTrendCard         = lazy(() => import('./dashboard/SwimSwolfTrendCard.jsx'))
+const RowingSplitConsistencyCard = lazy(() => import('./dashboard/RowingSplitConsistencyCard.jsx'))
 const VO2maxPlateauCard          = lazy(() => import('./dashboard/VO2maxPlateauCard.jsx'))
 const WeeklyVolumeRampCard       = lazy(() => import('./dashboard/WeeklyVolumeRampCard.jsx'))
 const WeekendVolumeShareCard     = lazy(() => import('./dashboard/WeekendVolumeShareCard.jsx'))
@@ -1110,6 +1111,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       <ErrorBoundary><Suspense fallback={null}><SeasonStatsCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><CPDecayCard testResults={testResults || []} /></Suspense></ErrorBoundary>
       {hasRowingData && <ErrorBoundary><Suspense fallback={null}><RowingMetricsCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
+      {hasRowingData && <ErrorBoundary><Suspense fallback={null}><RowingSplitConsistencyCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
       <ErrorBoundary><Suspense fallback={null}><ChallengeWidget log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><NMFreshnessCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><PolarizationComplianceCard log={log} /></Suspense></ErrorBoundary>

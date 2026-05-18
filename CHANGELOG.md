@@ -14,6 +14,30 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.242.0 — 2026-05-18 — RowingSplitConsistencyCard — split CV across pieces
+
+  Rowers track 500m splits as their primary pace metric. Existing
+  `RowingMetricsCard` shows absolute values; no card surfaced
+  CONSISTENCY — how stable splits are across same-distance pieces,
+  a key technique signal per Foster 2001; Smith 2012; Steinacker 1993.
+
+  New pure-fn `computeRowingSplitConsistency({ log, today,
+  windowDays = 28 })` filters steady-state rowing sessions
+  (RPE 4–7), groups by distance bucket (500m, 1k, 2k, 5k, 10k with
+  ±5% tolerance), and computes coefficient of variation of
+  split-per-500m across pieces in each bucket. Bands:
+  - ELITE (<1% CV)
+  - COMPETITIVE (1–2%)
+  - DEVELOPING (2–4%)
+  - INCONSISTENT (>4%)
+
+  Card shows avgCvPct + band + per-bucket table (distance, n,
+  mean split, CV%). Gated on `hasRowingData`.
+
+- Files: new `src/lib/athlete/rowingSplitConsistency.js` (209 lines, 16 tests),
+  new `src/components/dashboard/RowingSplitConsistencyCard.jsx` (199 lines, 10 tests),
+  `src/components/Dashboard.jsx` (lazy import + gated render line).
+
 ## v9.241.0 — 2026-05-18 — SwimSwolfTrendCard — SWOLF efficiency trend
 
   SWOLF (strokes + seconds per length) is the canonical pool-swim
