@@ -14,6 +14,39 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.258.0 — 2026-05-18 — StressPatternCard — Selye 1956 stress × sleep coupling
+
+  Surfaces 28d perceived-stress trend AND the correlation with
+  sleep duration. New pure-fn `analyzeStressPattern({ recovery,
+  today, windowDays })` splits the window at the 14-day midpoint
+  by calendar date (not entry index — sporadic logging stays
+  honest), classifies the stress trend:
+
+  - CALMING   (green)  — stressDelta ≤ −0.3
+  - STEADY    (blue)   — |stressDelta| < 0.3
+  - MOUNTING  (orange) — stressDelta ≥ +0.3
+
+  Then computes Pearson correlation between stress and sleepHrs
+  (expected negative — stress up → sleep down) and overlays a
+  pattern:
+
+  - STRESS_DRIVEN (red)   — MOUNTING + correlation ≤ −0.3
+  - DECOUPLED     (muted) — |correlation| < 0.3
+  - PROTECTED     (green) — correlation > −0.3
+
+  Renders null when fewer than 7 entries with stress defined. Card
+  shows stress trend badge, pattern chip, stress gauge with delta,
+  correlation value, and pattern-specific guidance. Bilingual EN/TR.
+
+  Refs: Selye 1956 (general adaptation syndrome); Kallus & Kellmann
+  2016 (Recovery-stress questionnaire); Walker 2017 (Sleep & stress
+  reciprocity).
+
+- Files: new `src/lib/athlete/stressPattern.js` (223 lines),
+  new `src/components/dashboard/StressPatternCard.jsx` (329 lines),
+  39 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.257.0 — 2026-05-18 — RpeStabilityCard — Foster 2001 within-type RPE calibration
 
   Measures within-session-type RPE STABILITY — how consistently the
