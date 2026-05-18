@@ -14,6 +14,32 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.254.0 — 2026-05-18 — CheckInQualityCard — Halson 2014 log-data-hygiene tracker
+
+  Surfaces completeness of recent session log entries — the "data
+  hygiene" score that bounds the quality of every downstream
+  insight. New pure-fn `analyzeCheckInQuality({ log, today,
+  windowDays })` scores each session 0–1 across 4 fields
+  (rpe, tss, durationMin, heartRate, +0.25 each), averages across
+  the 14-day window, and bands:
+
+  - COMPLETE (green)  — avgQuality ≥ 0.80
+  - PARTIAL  (blue)   — 0.50 ≤ avgQuality < 0.80
+  - THIN     (orange) — avgQuality < 0.50
+
+  Returns null when fewer than 3 sessions in window. Card shows
+  big percentage, session count, and 4 field-fill mini bars
+  (RPE / TSS / DURATION-SÜRE / HR-KAH). PARTIAL hint interpolates
+  the weakest field (lowest fill rate). Bilingual EN/TR.
+
+  Refs: Halson 2014 (Monitoring training load to understand
+  fatigue in athletes).
+
+- Files: new `src/lib/athlete/checkInQuality.js` (185 lines),
+  new `src/components/dashboard/CheckInQualityCard.jsx` (226 lines),
+  36 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.253.0 — 2026-05-18 — WeeklyGoalVarianceCard — Locke 2002 goal-setting tracker
 
   Surfaces 8-week actual TSS vs the user's `profile.weeklyTssGoal`.
