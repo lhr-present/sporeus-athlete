@@ -14,6 +14,31 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.249.0 — 2026-05-18 — PostHardSessionResponseCard — Plews 2013 next-day HR/HRV response
+
+  Tracks the next-morning recovery response (sleep + restingHR + HRV
+  deltas vs 28d baseline median) after every HARD session (RPE ≥ 7).
+  New pure-fn `analyzePostHardSessionResponse({ log, recovery, today })`
+  pairs each hard session with the recovery entry for the next day,
+  averages the deltas, and bands:
+
+  - STRONG (green)  — sleep Δ ≥ +0.2h AND (RHR Δ ≤ -1 bpm OR HRV Δ ≥ +5 ms)
+  - WEAK   (orange) — RHR Δ ≥ +3 bpm OR sleep Δ ≤ -0.5h
+  - NORMAL (blue)   — otherwise
+
+  Per-field minimum of 3 valid pairs in at least one field;
+  per-delta missing-handling so a partial recovery log still
+  produces a useful band. Bilingual EN/TR.
+
+  Refs: Plews 2013 (HRV and training intensity distribution);
+  Buchheit 2014 (Monitoring training status with HR-derived
+  measures).
+
+- Files: new `src/lib/athlete/postHardSessionResponse.js` (191 lines),
+  new `src/components/dashboard/PostHardSessionResponseCard.jsx` (241 lines),
+  24 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.248.0 — 2026-05-18 — AltitudeStimulusCard — Lippl 2010 hypoxic-stimulus tracker
 
   Surfaces climbing-elevation accumulation as a hypoxic-stimulus
