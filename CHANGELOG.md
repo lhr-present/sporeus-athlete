@@ -14,6 +14,30 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.240.0 — 2026-05-18 — RunningCadenceTrendCard — Daniels/Heiderscheit cadence
+
+  Running cadence (steps per minute, spm) is a biomechanical efficiency
+  signal — most efficient runners cluster around 175–185 spm per
+  Daniels 2014; Heiderscheit 2011; Schubert 2014. Values <165 indicate
+  over-striding with elevated injury risk.
+
+  New pure-fn `computeRunningCadenceTrend({ log, today, windowDays = 28 })`
+  filters to running sessions with parseable cadence (`cadence`,
+  `spm`, or `avgCadence` field). Skips recovery/walks. Returns
+  `{ avgCadence, n, band, weeklyMeans }`. Bands:
+  - OVERSTRIDING (<165) — injury risk
+  - LONG_STRIDE (165–170)
+  - TARGET (170–185)
+  - SHORT_STRIDE (>185)
+
+  Card renders big spm value + colored band badge + 4-week sparkline
+  + metronome recommendation when off-target. Internal sport-gate
+  for runners.
+
+- Files: new `src/lib/athlete/runningCadence.js` (146 lines, 14 tests),
+  new `src/components/dashboard/RunningCadenceTrendCard.jsx` (203 lines, 5 tests),
+  `src/components/Dashboard.jsx` (lazy import + render line).
+
 ## v9.239.0 — 2026-05-18 — LongSessionShareCard — long-session distribution detector
 
   Per Daniels 2014 / Coggan & Allen 2010 / Magness 2017, the long
