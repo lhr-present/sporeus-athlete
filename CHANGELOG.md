@@ -14,6 +14,33 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.237.0 — 2026-05-18 — TaperComplianceCard — Mujika/Bosquet log-side detector
+
+  TaperAdvisorCard already exists, surfacing what the PLAN says the
+  athlete should do during a taper. This new card is its complement:
+  it inspects the actual LOG to detect whether the taper is being
+  executed correctly.
+
+  Per Mujika 2010 + Bosquet 2007 meta-analysis: optimal taper is
+  8–14 days with volume cut 40-60%, intensity MAINTAINED. Athletes
+  commonly fail by cutting intensity (losing fitness) instead of
+  volume (losing freshness).
+
+  New pure-fn `detectTaperCompliance({ log, profile, today })` reads
+  raceDate, sums the last 2 weeks of volume, compares to a baseline
+  from weeks N-3 to N-4. Classifications:
+  - ON_TARGET (within ±15% of expected cut) — silent
+  - UNDERCUT (actual cut < expected − 15%) — orange warning
+  - OVERCUT (actual cut > expected + 15%) — red warning
+
+  Card renders only when off-target. Bilingual recommendations:
+  UNDERCUT urges more volume cut; OVERCUT warns of detraining risk.
+  Wired next to TaperAdvisorCard.
+
+- Files: new `src/lib/athlete/taperCompliance.js` (130 lines, 9 tests),
+  new `src/components/dashboard/TaperComplianceCard.jsx` (141 lines, 5 tests),
+  `src/components/Dashboard.jsx` (lazy import + render line).
+
 ## v9.236.0 — 2026-05-18 — HydrationTargetCard — Sawka 2007 ACSM hydration targets
 
   No card surfaced athlete-specific hydration targets. FuelingCard
