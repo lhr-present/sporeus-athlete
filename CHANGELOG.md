@@ -14,6 +14,36 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.257.0 — 2026-05-18 — RpeStabilityCard — Foster 2001 within-type RPE calibration
+
+  Measures within-session-type RPE STABILITY — how consistently the
+  athlete rates the same kind of session. Distinct from
+  `sessionRPEDrift.js` which compares planned-intent vs actual; this
+  measures the variance of subjective effort within each type group
+  to surface calibration quality.
+
+  New pure-fn `analyzeRpeStability({ log, today, windowDays })`
+  groups sessions by normalized type (case-insensitive), requires
+  ≥3 sessions per group, computes per-group CV (stdRpe/meanRpe),
+  and a session-weighted aggregate CV. Bands:
+
+  - CALIBRATED    (green)  — weightedCv ≤ 0.15
+  - DEVELOPING    (blue)   — 0.15 < weightedCv ≤ 0.30
+  - MISCALIBRATED (orange) — weightedCv > 0.30
+
+  Renders null when fewer than 2 valid groups (need at least two
+  session types). Card lists per-type rows with mean ± stdev + a
+  group-band-colored CV chip. Bilingual EN/TR.
+
+  Refs: Foster 2001 (A new approach to monitoring exercise
+  testing); Borg 1982 (Psychophysical bases of perceived exertion);
+  Hampson 2001.
+
+- Files: new `src/lib/athlete/rpeStability.js` (185 lines),
+  new `src/components/dashboard/RpeStabilityCard.jsx` (202 lines),
+  33 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.256.0 — 2026-05-18 — MoodEnergyBalanceCard — Russell 1980 affect-circumplex tracker
 
   Surfaces 28-day trend of `mood` × `energy` Likert ratings from the
