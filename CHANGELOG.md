@@ -14,6 +14,24 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.245.0 — 2026-05-18 — RaceMentalRehearsalCard — Williams 2014 race-week protocol
+
+  Race-week psychological-prep protocol surfacing the unwired
+  `buildRaceMentalRehearsal({ profile, today })` pure-fn (Williams
+  2014; Behncke 2004; Cumming 2017). Returns 5 components:
+  imagery script, cue word, arousal regulation, contingency plan,
+  post-race reflection checklist. Race-week gated (≤7d to race).
+
+  Each component is a checkbox persisted to localStorage key
+  `sporeus-raceMentalRehearsalChecks` so the athlete can tick off
+  rehearsal items across the taper week without losing state on
+  reload. Bilingual EN/TR. Mono-terminal aesthetic; orange accent.
+
+- Files: new `src/lib/athlete/raceMentalRehearsal.js` (121 lines),
+  new `src/components/dashboard/RaceMentalRehearsalCard.jsx` (189 lines),
+  17 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.244.0 — 2026-05-18 — RaceDayFuelingTimelineCard — pre-race hourly schedule
 
   Existing FuelingCard (v9.212) covers phase-based daily targets;
