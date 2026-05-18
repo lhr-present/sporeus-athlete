@@ -14,6 +14,28 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.244.0 — 2026-05-18 — RaceDayFuelingTimelineCard — pre-race hourly schedule
+
+  Existing FuelingCard (v9.212) covers phase-based daily targets;
+  RaceStrategyCard gives in-race fueling RATES. No card surfaced the
+  HOURLY PRE-RACE timeline per Burke 2017; Jeukendrup 2014;
+  Hawley & Burke 2010.
+
+  New pure-fn `buildRaceDayFuelingTimeline({ profile, today,
+  raceStartTime })` returns the canonical T-72h → T-0 schedule:
+  - T-72h → T-24h: carb load 8 g/kg/day
+  - T-3h: pre-race meal 2 g/kg + 500 mL fluid
+  - T-60min: ~30 g gel + 250 mL fluid
+  - T-15min: 150 mL final sip
+  - T-0: begin in-race fueling (60-90 g/hr CHO for >90 min races)
+
+  Race-week gated (≤7d to race). Requires `profile.weight`. Wired
+  next to EliteRaceWeekCard.
+
+- Files: new `src/lib/athlete/raceDayFuelingTimeline.js` (161 lines, 11 tests),
+  new `src/components/dashboard/RaceDayFuelingTimelineCard.jsx` (164 lines, 5 tests),
+  `src/components/Dashboard.jsx` (lazy import + render line).
+
 ## v9.243.0 — 2026-05-18 — CyclingNpTrendCard — Coggan/Allen NP trend by duration
 
   Cyclists track Normalized Power per session but no card surfaced
