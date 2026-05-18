@@ -107,6 +107,7 @@ const LongSessionShareCard       = lazy(() => import('./dashboard/LongSessionSha
 const RunningCadenceTrendCard    = lazy(() => import('./dashboard/RunningCadenceTrendCard.jsx'))
 const SwimSwolfTrendCard         = lazy(() => import('./dashboard/SwimSwolfTrendCard.jsx'))
 const RowingSplitConsistencyCard = lazy(() => import('./dashboard/RowingSplitConsistencyCard.jsx'))
+const CyclingNpTrendCard         = lazy(() => import('./dashboard/CyclingNpTrendCard.jsx'))
 const VO2maxPlateauCard          = lazy(() => import('./dashboard/VO2maxPlateauCard.jsx'))
 const WeeklyVolumeRampCard       = lazy(() => import('./dashboard/WeeklyVolumeRampCard.jsx'))
 const WeekendVolumeShareCard     = lazy(() => import('./dashboard/WeekendVolumeShareCard.jsx'))
@@ -1158,6 +1159,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       <ErrorBoundary><Suspense fallback={null}><TaperComplianceCard log={log} profile={profile} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><PriorityActionCard log={log} recovery={recovery} profile={profile} /></Suspense></ErrorBoundary>
       {hasCyclingData && <ErrorBoundary><Suspense fallback={null}><CyclingZonesCard testResults={testResults || []} profile={profile} /></Suspense></ErrorBoundary>}
+      {hasCyclingData && <ErrorBoundary><Suspense fallback={null}><CyclingNpTrendCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
       {hasSwimData    && <ErrorBoundary><Suspense fallback={null}><SwimmingZonesCard log={log} /></Suspense></ErrorBoundary>}
       {hasSwimData    && <ErrorBoundary><Suspense fallback={null}><SwimSwolfTrendCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
       {/* RunningCVCard — no gating, useful for most users */}

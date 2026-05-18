@@ -14,6 +14,28 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.243.0 — 2026-05-18 — CyclingNpTrendCard — Coggan/Allen NP trend by duration
+
+  Cyclists track Normalized Power per session but no card surfaced
+  the TREND of best NP at given duration buckets over 90 days — the
+  canonical fitness-progression signal per Coggan & Allen 2010;
+  Allen & Coggan 2019; Skiba 2008.
+
+  New pure-fn `computeCyclingNpTrend({ log, today, windowDays = 90,
+  bucketMins = [5, 20, 60] })` filters bike sessions with NP, splits
+  the 90d window into early/mid/recent thirds, computes best NP per
+  bucket in each third. Per-bucket trend ('rising' / 'stable' /
+  'falling') when recent vs early differ by ≥3%. Overall trend =
+  majority across buckets.
+
+  Card shows latestBest NP + colored trend arrow + per-bucket rows
+  with rising-green / stable-blue / falling-orange chips. Gated on
+  `hasCyclingData`.
+
+- Files: new `src/lib/athlete/cyclingNpTrend.js` (153 lines, 12 tests),
+  new `src/components/dashboard/CyclingNpTrendCard.jsx` (155 lines, 7 tests),
+  `src/components/Dashboard.jsx` (lazy import + gated render line).
+
 ## v9.242.0 — 2026-05-18 — RowingSplitConsistencyCard — split CV across pieces
 
   Rowers track 500m splits as their primary pace metric. Existing
