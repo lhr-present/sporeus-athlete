@@ -14,6 +14,26 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.246.0 — 2026-05-18 — RaceEquipmentChecklistCard — race-week gear memory jogger
+
+  Sport-aware race-week equipment checklist. Surfaces
+  `buildRaceEquipmentChecklist({ profile, today })` (pure fn) ONLY when
+  the next race is within 0–7 days; outside that window the card
+  returns null. Items are grouped by category (essentials, clothing,
+  nutrition, weather, transition, recovery) and rendered with
+  bilingual labels + checkboxes. Check state persists to
+  `sporeus-raceEquipmentChecks` localStorage so the athlete can pack
+  across multiple sessions without losing progress.
+
+  No coaching logic — athletes already keep gear lists in their notes
+  apps. This is a sport-specific memory jogger anchored in Burke 2017 +
+  Mujika 2010 race-week behavioural-preparation principles.
+
+- Files: new `src/lib/athlete/raceEquipmentChecklist.js` (213 lines),
+  new `src/components/dashboard/RaceEquipmentChecklistCard.jsx` (199 lines),
+  21 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.245.0 — 2026-05-18 — RaceMentalRehearsalCard — Williams 2014 race-week protocol
 
   Race-week psychological-prep protocol surfacing the unwired
