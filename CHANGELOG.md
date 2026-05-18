@@ -14,6 +14,37 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.259.0 — 2026-05-18 — PerseveranceCard — Duckworth 2007 weekly-rhythm grit tracker
+
+  Measures long-term consistency in weekly training frequency over
+  the last 12 ISO weeks. Steady week-after-week showing up is what
+  compounds — not intensity, but presence. New pure-fn
+  `analyzePerseverance({ log, today, windowWeeks })` buckets
+  sessions by ISO week (Mon-Sun), computes mean + CV, and a
+  gritScore (0-100):
+
+      gritScore = max(0, 100 − 5·inactiveWeeks − min(40, 30·cv))
+
+  Bands:
+
+  - CONSISTENT (green)  — gritScore ≥ 75
+  - VARIABLE   (blue)   — 50 ≤ gritScore < 75
+  - SPORADIC   (orange) — gritScore < 50
+
+  Renders null when fewer than 6 of 12 weeks have any sessions
+  (too sparse to compute meaningful grit). Card shows the score
+  (big), band badge, mean+CV+active-week stats, 12 mini bars
+  (one per week, height proportional to sessionCount). Bilingual
+  EN/TR.
+
+  Refs: Duckworth 2007 (Grit: Perseverance and passion for long-
+  term goals); Duckworth 2016.
+
+- Files: new `src/lib/athlete/perseverance.js` (177 lines),
+  new `src/components/dashboard/PerseveranceCard.jsx` (245 lines),
+  28 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.258.0 — 2026-05-18 — StressPatternCard — Selye 1956 stress × sleep coupling
 
   Surfaces 28d perceived-stress trend AND the correlation with
