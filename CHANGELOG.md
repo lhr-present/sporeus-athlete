@@ -14,6 +14,29 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.252.0 — 2026-05-18 — MorningLogConsistencyCard — Wood 2013 habit-formation tracker
+
+  Surfaces 28-day morning-recovery-log completion rate. New pure-fn
+  `analyzeMorningLogConsistency({ recovery, today, windowDays })`
+  counts a day as "logged" if any one of `sleepHrs / hrv / restingHR`
+  is finite, then bands:
+
+  - HABITUATED (green)  — completionRate ≥ 0.80
+  - DEVELOPING (blue)   — 0.50 ≤ completionRate < 0.80
+  - SPORADIC   (orange) — completionRate < 0.50
+
+  Card shows completion percentage, days fraction, current + longest
+  streak chips, and a 28-cell mini grid (one cell per day; filled =
+  logged). Bilingual EN/TR.
+
+  Refs: Wood 2013 (Psychology of habit); Lally 2010 (How are habits
+  formed in the real world).
+
+- Files: new `src/lib/athlete/morningLogConsistency.js` (152 lines),
+  new `src/components/dashboard/MorningLogConsistencyCard.jsx` (292 lines),
+  40 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.251.0 — 2026-05-18 — CrossSportRecoveryGapCard — Bompa 2018 multi-sport rotation
 
   Surfaces "days since last X-sport session" per discipline with
