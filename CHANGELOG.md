@@ -14,6 +14,30 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.247.0 — 2026-05-18 — PreRaceSleepBankingCard — Mah 2011 sleep-extension protocol
+
+  Race-week sleep-banking detector. Surfaces `detectPreRaceSleepBanking
+  ({ recovery, profile, today })` (pure fn) ONLY when the next race is
+  within 0–7 days. Reads the recovery log's sleep hours over the prior
+  7 nights and classifies bank status against `profile.sleepTarget +
+  0.5h`:
+
+  - BANKED      (green) — ≥4 of 7 nights ≥ target+0.5h
+  - PARTIAL     (blue)  — 2–3 of 7 nights ≥ target+0.5h
+  - NEEDS_FOCUS (orange)— ≤1 of 7 nights ≥ target+0.5h
+
+  Companion to the chronic SleepDebtCard. Card renders null outside
+  the race window. Bilingual EN/TR. Per-night sleep bar strip with
+  band-colored chips for each of the prior 7 nights.
+
+  Refs: Mah 2011 (Sleep extension improves athletic performance, Sleep
+  34:943); Walker 2017; Halson 2014.
+
+- Files: new `src/lib/athlete/preRaceSleepBanking.js` (170 lines),
+  new `src/components/dashboard/PreRaceSleepBankingCard.jsx` (217 lines),
+  17 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.246.0 — 2026-05-18 — RaceEquipmentChecklistCard — race-week gear memory jogger
 
   Sport-aware race-week equipment checklist. Surfaces
