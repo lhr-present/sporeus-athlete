@@ -112,6 +112,7 @@ const RaceDayFuelingTimelineCard = lazy(() => import('./dashboard/RaceDayFueling
 const RaceMentalRehearsalCard    = lazy(() => import('./dashboard/RaceMentalRehearsalCard.jsx'))
 const RaceEquipmentChecklistCard = lazy(() => import('./dashboard/RaceEquipmentChecklistCard.jsx'))
 const PreRaceSleepBankingCard    = lazy(() => import('./dashboard/PreRaceSleepBankingCard.jsx'))
+const AltitudeStimulusCard       = lazy(() => import('./dashboard/AltitudeStimulusCard.jsx'))
 const VO2maxPlateauCard          = lazy(() => import('./dashboard/VO2maxPlateauCard.jsx'))
 const WeeklyVolumeRampCard       = lazy(() => import('./dashboard/WeeklyVolumeRampCard.jsx'))
 const WeekendVolumeShareCard     = lazy(() => import('./dashboard/WeekendVolumeShareCard.jsx'))
@@ -800,6 +801,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       <ErrorBoundary><Suspense fallback={null}><RaceMentalRehearsalCard profile={profile}/></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><RaceEquipmentChecklistCard profile={profile}/></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><PreRaceSleepBankingCard recovery={recovery} profile={profile}/></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><AltitudeStimulusCard log={log}/></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><HardDaySpacingCard log={log}/></Suspense></ErrorBoundary>
       <ProactiveInjuryAlert log={log} injuries={injuries} lang={lang}/>
       <LoadSpikeAlert/>

@@ -14,6 +14,29 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.248.0 — 2026-05-18 — AltitudeStimulusCard — Lippl 2010 hypoxic-stimulus tracker
+
+  Surfaces climbing-elevation accumulation as a hypoxic-stimulus
+  proxy over the last 28 days. New pure-fn
+  `detectAltitudeStimulus({ log, today })` sums per-session
+  `elevationGainM` into 4 weekly buckets and classifies the band:
+
+  - HYPOXIC_STIMULUS (green) — ≥3 of 4 weeks ≥1500m total ascent
+  - MODERATE        (blue)  — ≥2 weeks in the 500–1500m range
+  - NONE            (muted) — <2 weeks reaching 500m
+
+  Renders null when fewer than 7 sessions exist in window or no
+  positive elevation data found (cannot infer). Per-week chips
+  color-coded by their own threshold. Bilingual EN/TR.
+
+  Refs: Lippl 2010 (Hypobaric hypoxia); Levine & Stray-Gundersen
+  1997 ("Living high–training low"); Chapman 1998.
+
+- Files: new `src/lib/athlete/altitudeStimulus.js` (164 lines),
+  new `src/components/dashboard/AltitudeStimulusCard.jsx` (216 lines),
+  27 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.247.0 — 2026-05-18 — PreRaceSleepBankingCard — Mah 2011 sleep-extension protocol
 
   Race-week sleep-banking detector. Surfaces `detectPreRaceSleepBanking
