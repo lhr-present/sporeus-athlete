@@ -14,6 +14,30 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.253.0 — 2026-05-18 — WeeklyGoalVarianceCard — Locke 2002 goal-setting tracker
+
+  Surfaces 8-week actual TSS vs the user's `profile.weeklyTssGoal`.
+  New pure-fn `analyzeWeeklyGoalVariance({ log, profile, today })`
+  computes per-week variance = (actualTss − goal)/goal, then bands
+  the 8-week average:
+
+  - ON_TARGET (green)  — |avgVariance| ≤ 0.10
+  - UNDER     (blue)   — avgVariance < −0.10
+  - OVER      (orange) — avgVariance > +0.10
+
+  Renders null when `weeklyTssGoal` is missing/≤0 OR fewer than 4
+  of the 8 ISO weeks have any sessions. Card shows goal value as
+  reference, avgVariance as percentage, and 8 weekly SVG bars
+  against a dashed goal-line. Bilingual EN/TR.
+
+  Refs: Locke 2002 (Goal-setting theory and task motivation);
+  Latham 2002.
+
+- Files: new `src/lib/athlete/weeklyGoalVariance.js` (145 lines),
+  new `src/components/dashboard/WeeklyGoalVarianceCard.jsx` (220 lines),
+  31 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.252.0 — 2026-05-18 — MorningLogConsistencyCard — Wood 2013 habit-formation tracker
 
   Surfaces 28-day morning-recovery-log completion rate. New pure-fn
