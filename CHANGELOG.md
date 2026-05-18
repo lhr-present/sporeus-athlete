@@ -14,6 +14,31 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.241.0 — 2026-05-18 — SwimSwolfTrendCard — SWOLF efficiency trend
+
+  SWOLF (strokes + seconds per length) is the canonical pool-swim
+  efficiency metric per Maglischo 2003; Wakayoshi 1992. Lower SWOLF
+  = better technique. No card surfaced its TREND — only single-session
+  values existed before.
+
+  New pure-fn `computeSwimSwolfTrend({ log, today, windowDays = 28 })`
+  filters swim sessions and accepts either direct `entry.swolf` OR
+  derives it from `strokes + distance + duration + poolLength`.
+  Returns `{ avgSwolf, n, band, weeklyMeans, trend }`. Trend buckets:
+  - improving (last week ≥2 lower than first week)
+  - stable (within ±2)
+  - declining (last week ≥2 higher)
+
+  Bands: ELITE (<45), COMPETITIVE (45–55), TRAINED (55–65),
+  RECREATIONAL (65–80), BEGINNER (>80).
+
+  Card renders avg + band + colored trend arrow + 4-week sparkline.
+  Sport-gated via Dashboard's `hasSwimData`.
+
+- Files: new `src/lib/athlete/swimSwolfTrend.js` (172 lines, 14 tests),
+  new `src/components/dashboard/SwimSwolfTrendCard.jsx` (244 lines, 6 tests),
+  `src/components/Dashboard.jsx` (lazy import + gated render line).
+
 ## v9.240.0 — 2026-05-18 — RunningCadenceTrendCard — Daniels/Heiderscheit cadence
 
   Running cadence (steps per minute, spm) is a biomechanical efficiency
