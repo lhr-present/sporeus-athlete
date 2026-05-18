@@ -14,6 +14,32 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.256.0 — 2026-05-18 — MoodEnergyBalanceCard — Russell 1980 affect-circumplex tracker
+
+  Surfaces 28-day trend of `mood` × `energy` Likert ratings from the
+  recovery log. New pure-fn `analyzeMoodEnergyBalance({ recovery,
+  today, windowDays })` splits the window at the 14-day midpoint
+  and bands:
+
+  - RISING    (green)  — aggregate delta ≥ +0.3
+  - STABLE    (blue)   — |aggregate delta| < 0.3
+  - DECLINING (orange) — aggregate delta ≤ −0.3
+
+  Quadrant from current averages (Russell 1980 affect circumplex):
+  VIGOROUS (mood ≥ 3.5, energy ≥ 3.5), CONTENT, EDGY, FLAT.
+
+  Renders null when fewer than 7 entries with both fields filled.
+  Card shows trend badge, quadrant chip, mood + energy mini gauges
+  with deltas. Bilingual EN/TR.
+
+  Refs: Lane 2007 (Mood and exercise); McAuley 2005; Russell 1980
+  (Circumplex model of affect).
+
+- Files: new `src/lib/athlete/moodEnergyBalance.js` (200 lines),
+  new `src/components/dashboard/MoodEnergyBalanceCard.jsx` (308 lines),
+  34 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.255.0 — 2026-05-18 — AverageWeekShapeCard — Bompa 2018 typical-microcycle visualizer
 
   Surfaces the athlete's typical Mon-Sun TSS rhythm across the last
