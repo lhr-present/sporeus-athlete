@@ -14,6 +14,37 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.271.0 — 2026-05-19 — AnnualTssTargetCard — Hellard 2019 annual-TSS projection
+
+  Surfaces year-end projected total TSS via linear extrapolation
+  from YTD pace, then classifies against published annual-load
+  benchmarks. Distinct from YearOverYearCard (vs last year) and
+  SeasonStatsCard (annual snapshot) — this is forward projection.
+
+  New pure-fn `analyzeAnnualTssTarget({ log, today })` sums YTD
+  TSS, extrapolates: projected = ytd × (totalDaysInYear /
+  daysIntoYear). Handles leap years (incl. century rules: 2000
+  leap, 2100 not). Bands (Tønnessen 2014 reference ranges):
+
+  - ELITE_ENDURANCE — projectedAnnualTss ≥ 5000
+  - COMPETITIVE     — 3000–5000
+  - CONSISTENT      — 1500–3000
+  - DEVELOPING      — 500–1500
+  - CASUAL          — < 500
+
+  Renders null when daysIntoYear < 14 (too early to project) OR
+  YTD = 0. Card shows projected total (rounded to 10), YTD, weekly
+  avg, days-progress fraction. Bilingual EN/TR.
+
+  Refs: Hellard 2019 (training load vs performance); Tønnessen 2014
+  (Training Olympic-Level Elite Endurance Athletes — annual
+  distributions).
+
+- Files: new `src/lib/athlete/annualTssTarget.js` (119 lines),
+  new `src/components/dashboard/AnnualTssTargetCard.jsx` (222 lines),
+  31 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.270.0 — 2026-05-19 — VolumeAccelerationCard — Vetter 2019 ramp-acceleration tracker
 
   Surfaces the SECOND derivative of weekly TSS — the rate at which
