@@ -77,7 +77,8 @@ function isoMinusDays(iso, days) {
 // ─── Per-day aggregation ────────────────────────────────────────────────────
 
 function entryDurationMin(entry) {
-  const d = Number(entry?.duration_min)
+  const raw = entry?.durationMin ?? entry?.duration_min
+  const d = Number(raw)
   return Number.isFinite(d) && d > 0 ? d : 0
 }
 

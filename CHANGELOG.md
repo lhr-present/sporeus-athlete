@@ -14,6 +14,38 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.293.0 — 2026-05-19 — BackToBackLongDayCard — Issurin 2010 block-accumulation pattern
+
+  Counts pairs of consecutive calendar days where both days had a ≥90min
+  session in the last 12 ISO weeks. Issurin 2010 block accumulation +
+  Daniels 2014 marathon block-prep: back-to-back long days simulate
+  late-race fatigue. Skorski 2019: when not followed by recovery, these
+  pairs become overreaching risk.
+
+  Bands: NONE, OCCASIONAL (1-3 pairs), BLOCK_STYLE (4-8 pairs, recovery
+  followed >50%), EXCESSIVE (≥9 pairs OR >50% of pairs flagged for
+  no-recovery — followingTwoDaysTss > 100).
+
+  Distinct from HardDaySpacingCard (which tracks hard-day gaps) and
+  LongRunFrequencyCard (which counts single long sessions per week).
+  This catches the deliberate b2b PATTERN that defines a serious block.
+
+  Pure fn at `src/lib/athlete/backToBackLongDay.js`:
+  `analyzeBackToBackLongDay({ log, today, windowWeeks=12, longSessionMinThreshold=90 })`.
+  Accepts both `durationMin` (canonical) and `duration_min` for robustness.
+  Returns occurrence list with sport pair, durations, and post-pair
+  recovery TSS.
+
+  Card lazy-loaded in Dashboard. Up to 4 recent-pair chips with red dot
+  if flagged for no-recovery, flagged-count badge, EN/TR bilingual. 54
+  unit tests (38 pure-fn + 16 component).
+
+  Cite: Issurin 2010; Daniels 2014; Skorski 2019.
+
+  Depends on: log.date, log.durationMin, log.sport/type, log.tss.
+
+---
+
 ## v9.292.0 — 2026-05-19 — CalendarHolesCard — Foster 2017 multi-day gap counter
 
   Counts all gaps ≥3 consecutive zero-training days in the last 90 days,

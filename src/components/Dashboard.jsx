@@ -157,6 +157,7 @@ const MesocycleProgressionCard   = lazy(() => import('./dashboard/MesocycleProgr
 const VolumeIntensityScissorsCard= lazy(() => import('./dashboard/VolumeIntensityScissorsCard.jsx'))
 const LongRunConsistencyCard     = lazy(() => import('./dashboard/LongRunConsistencyCard.jsx'))
 const CalendarHolesCard          = lazy(() => import('./dashboard/CalendarHolesCard.jsx'))
+const BackToBackLongDayCard      = lazy(() => import('./dashboard/BackToBackLongDayCard.jsx'))
 const VO2maxPlateauCard          = lazy(() => import('./dashboard/VO2maxPlateauCard.jsx'))
 const WeeklyVolumeRampCard       = lazy(() => import('./dashboard/WeeklyVolumeRampCard.jsx'))
 const WeekendVolumeShareCard     = lazy(() => import('./dashboard/WeekendVolumeShareCard.jsx'))
@@ -890,6 +891,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       <ErrorBoundary><Suspense fallback={null}><VolumeIntensityScissorsCard log={log}/></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><LongRunConsistencyCard log={log}/></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><CalendarHolesCard log={log}/></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><BackToBackLongDayCard log={log}/></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><HardDaySpacingCard log={log}/></Suspense></ErrorBoundary>
       <ProactiveInjuryAlert log={log} injuries={injuries} lang={lang}/>
       <LoadSpikeAlert/>
