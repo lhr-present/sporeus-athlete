@@ -14,6 +14,33 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.284.0 — 2026-05-19 — WeeklyKmPerSportCard — Daniels 2014 per-sport km tracker
+
+  Surfaces per-sport weekly kilometers — this week's km vs the
+  12-week average — for each sport with logged sessions. Sport-
+  agnostic TSS/volume cards exist; this is the km-anchored view
+  ("I ran 60km this week") athletes actually narrate around.
+
+  New pure-fn `analyzeWeeklyKmPerSport({ log, today, windowWeeks })`
+  classifies sessions via type/sport regex (bike/swim/run/row/
+  other), aggregates per-week km, computes thisWeek vs 12-week
+  average. Per-sport delta chips:
+
+  - GREEN  — deltaPct > +0.10 (above avg)
+  - BLUE   — within ±0.10 (typical)
+  - ORANGE — deltaPct < −0.10 (below avg)
+  - MUTED  — no 12-week history yet
+
+  Renders null when no sport has any km in the 13-week range.
+  Sorted by avg km desc (biggest sports first). Bilingual EN/TR.
+
+  Refs: Daniels 2014; Bompa 2018.
+
+- Files: new `src/lib/athlete/weeklyKmPerSport.js` (136 lines),
+  new `src/components/dashboard/WeeklyKmPerSportCard.jsx` (224 lines),
+  27 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.283.0 — 2026-05-19 — CtlSlopeCard — Banister 1991 6w linear-regression CTL slope
 
   Surfaces the slope of CTL over the last 6 weeks via linear
