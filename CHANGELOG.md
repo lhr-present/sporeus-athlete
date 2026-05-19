@@ -14,6 +14,32 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.278.0 — 2026-05-19 — DayOfWeekAvailabilityCard — Bompa 2018 weekday availability
+
+  Surfaces % of each weekday trained over the last 12 ISO weeks.
+  Distinct from AverageWeekShapeCard (typical TSS per weekday);
+  this is training FREQUENCY per weekday (% of Mondays trained,
+  etc.) — reveals anchor days vs weak days.
+
+  New pure-fn `analyzeDayOfWeekAvailability({ log, today,
+  windowWeeks })` computes rate per weekday = sessions / weeksIn-
+  Window. Anchor days = rate ≥ 0.75; weak days = rate ≤ 0.25. Bands:
+
+  - STRUCTURED    (green) — ≥3 anchor days AND ≥1 weak day (clear pattern)
+  - OPPORTUNISTIC (blue)  — averageRate > 0 but no clear structure
+  - SPARSE        (muted) — averageRate < 0.30
+
+  Renders null when fewer than 6 of 12 weeks active. 7-bar Mon-Sun
+  chart with anchor days highlighted, weak days muted. Bilingual
+  EN/TR (PZT/SAL/ÇAR/PER/CUM/CMT/PAZ).
+
+  Refs: Bompa 2018 (microcycle availability); Issurin 2010.
+
+- Files: new `src/lib/athlete/dayOfWeekAvailability.js` (165 lines),
+  new `src/components/dashboard/DayOfWeekAvailabilityCard.jsx` (202 lines),
+  38 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.277.0 — 2026-05-19 — DataCoverageCard — Wood 2013 lifetime logging coverage
 
   Surfaces % of days since first log entry with at least one entry
