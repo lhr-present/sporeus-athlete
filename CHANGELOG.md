@@ -14,6 +14,34 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.275.0 — 2026-05-19 — EnergySorenessDivergenceCard — Hooper 1995 wellness quadrant
+
+  Detects the balance between perceived energy and muscle soreness
+  over 28 days. The 2×2 wellness quadrant clarifies what's driving
+  current recovery state: training stimulus vs life stress vs sleep.
+
+  New pure-fn `analyzeEnergySorenessDivergence({ recovery, today,
+  windowDays })` averages the 1–5 energy and soreness Likerts and
+  classifies (thresholds energy=3.5, soreness=2.5):
+
+  - THRIVING   (green)  — high energy, low soreness
+  - RECOVERING (blue)   — high energy, high soreness (body still processing stimulus)
+  - DRAINED    (orange) — low energy, low soreness (sleep / stress / undereating)
+  - STRUGGLING (red)    — low energy AND high soreness
+
+  Also computes avgIndex = mean(energy − soreness) as a single
+  daily wellness number. Renders null when fewer than 7 entries
+  with both fields filled. Two mini gauges (energy/soreness) +
+  quadrant badge + signed wellness index. Bilingual EN/TR.
+
+  Refs: Hooper 1995 (Markers for monitoring overtraining and
+  recovery); Saw 2016 (athlete self-report measures).
+
+- Files: new `src/lib/athlete/energySorenessDivergence.js` (164 lines),
+  new `src/components/dashboard/EnergySorenessDivergenceCard.jsx` (341 lines),
+  34 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.274.0 — 2026-05-19 — RestingHrFitnessTrendCard — Buchheit 2014 RHR fitness marker
 
   Surfaces 90-day average resting HR vs lifetime baseline. Falling
