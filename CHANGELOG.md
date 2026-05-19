@@ -14,6 +14,37 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.296.0 — 2026-05-19 — WeeklyEnduranceTimeCard — Maffetone/Seiler aerobic-base hour tracker
+
+  Tracks ABSOLUTE minutes/week spent in Z1+Z2 over the last 12 ISO weeks.
+  Maffetone MAF + Seiler 80/20 emphasise that aerobic adaptations
+  (mitochondrial density, capillarisation, fat-oxidation capacity) are
+  driven by absolute easy volume, not just *share*. A 30%-easy 4h week ≠
+  an 80%-easy 12h week.
+
+  Bands: BELOW_AMATEUR (<180 min/wk), AMATEUR_BAND (180-360),
+  INTERMEDIATE_BAND (360-600), ADVANCED_BAND (≥600).
+
+  Distinct from TimeInZoneCard (snapshot percentages),
+  PolarizationComplianceCard (distribution-shape adherence), and
+  IntensityBalanceCard (z-share balance) — none of those measure the
+  ABSOLUTE aerobic-stimulus DOSE.
+
+  Pure fn at `src/lib/athlete/weeklyEnduranceTime.js`:
+  `analyzeWeeklyEnduranceTime({ log, today, windowWeeks=12 })`. Zone
+  classification: `^z[12]$` → easy; `^z[3-9]\d*$` → hard; RPE fallback
+  (≤4 easy, ≥5 hard); unclassifiable entries skipped. Null until ≥6
+  weeks with totalMin > 0. Returns easyShare, trendPctPerWeek.
+
+  Card lazy-loaded in Dashboard. Stacked 12 weekly bars (filled = easy,
+  grey ceiling = total), EN/TR bilingual. 55 unit tests.
+
+  Cite: Maffetone 2010; Seiler 2010; Stöggl 2014.
+
+  Depends on: log.date, log.durationMin/duration_min, log.zone OR log.rpe.
+
+---
+
 ## v9.295.0 — 2026-05-19 — CumulativeFatigueWindowsCard — Halson 2014 overreach dose counter
 
   Counts how OFTEN in the last 90 days the athlete spent a day in the
