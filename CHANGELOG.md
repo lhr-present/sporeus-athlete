@@ -14,6 +14,37 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.297.0 — 2026-05-19 — TwoADaysCard — Cejuela 2013 brick / double-session frequency
+
+  Counts days in the last 60 days with ≥2 separate training sessions on
+  the same calendar date. Cejuela 2013 (triathlon training distribution)
+  + Issurin 2010 (block accumulation) — brick/double sessions are a
+  deliberate pattern signal, common in triathlon and well-developed
+  cycling/running build phases. Skorski 2019 — when frequent without
+  recovery context, they tip toward overreaching.
+
+  Bands: NONE, OCCASIONAL (1-5), ROUTINE (6-15, block training),
+  EXCESSIVE (≥16 in 60d).
+
+  Reports per-day session count + sports list + cross-sport flag +
+  total day TSS. Surfaces crossSportDoubleDays as a distinct badge —
+  cross-sport brick days are a triathlon-specific pattern.
+
+  Pure fn at `src/lib/athlete/twoADays.js`:
+  `analyzeTwoADays({ log, today, windowDays=60 })`. Empty log returns
+  populated NONE band. Qualifying entry = finite durationMin > 0 OR
+  finite tss > 0. Accepts both durationMin (canonical) and duration_min.
+
+  Card lazy-loaded in Dashboard. Last 5 double-day chips with sports
+  list + TSS sum, cross-sport badge, EN/TR bilingual. 63 unit tests
+  (50 pure-fn + 13 component).
+
+  Cite: Cejuela 2013; Issurin 2010; Skorski 2019.
+
+  Depends on: log.date, log.durationMin/tss, log.sport/type.
+
+---
+
 ## v9.296.0 — 2026-05-19 — WeeklyEnduranceTimeCard — Maffetone/Seiler aerobic-base hour tracker
 
   Tracks ABSOLUTE minutes/week spent in Z1+Z2 over the last 12 ISO weeks.
