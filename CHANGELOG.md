@@ -14,6 +14,37 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.287.0 — 2026-05-19 — RestDayDistributionCard — Bompa 2018 hard-easy placement tracker
+
+  Tracks not just HOW MANY rest days the athlete gets, but WHERE those rest
+  days land in the 28-day window. Bands: WELL_PLACED (≥60% post-hard rate +
+  ≥6 rest days), MIXED (one criterion met), TOO_FEW_REST (neither).
+
+  Why this exists: weekly rest-day count alone is a blunt metric — 2 rest
+  days clustered together on a low-load week is recovery waste, while 0
+  rest days after 3 consecutive high-TSS days is overreaching risk.
+  Bompa's hard-easy periodization (1965, formalised in Bompa 2018 6th ed)
+  is specifically about temporal placement of rest, not volume of rest.
+  Foster's monotony work (2001) makes the same point statistically.
+
+  Pure fn at `src/lib/athlete/restDayDistribution.js`:
+  `analyzeRestDayDistribution({ log, today, windowDays=28 })`. Computes
+  `postHardRestRate` (fraction of hard days followed by a rest day) and
+  `restDayCount`. Returns null when window has <14 days of any data.
+
+  Card at `src/components/dashboard/RestDayDistributionCard.jsx`:
+  bilingual EN/TR, 28-day calendar grid colouring hard / rest / other,
+  post-hard placement ratio, Bompa + Foster citation footer.
+
+  37 unit tests cover band gating, hard-day classification, post-hard
+  detection edges (no day after, no hard days at all), and bilingual UI.
+
+  Cite: Bompa 2018; Foster 2001 (monotony).
+
+  Depends on: existing log.tss + log.type for hard-day detection.
+
+---
+
 ## v9.286.0 — 2026-05-19 — TimeOnFeetCard — Bennell 2012 running-load safety tracker
 
   Tracks weekly running minutes against the Gabbett 0.8–1.1× safe-ramp zone
