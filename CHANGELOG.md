@@ -14,6 +14,39 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.291.0 — 2026-05-19 — LongRunConsistencyCard — Daniels 2014 long-run duration CV tracker
+
+  Tracks coefficient of variation of LONG-RUN durations (≥90min runs) over
+  the last 12 ISO weeks, plus a normalized linear regression slope of
+  longest-run duration vs week index. Bands: STEADY (cv<0.15),
+  PROGRESSIVE (cv≥0.15 + positive slope >3%/wk), EROSIVE (cv≥0.15 +
+  negative slope <-3%/wk), CHAOTIC (cv≥0.15 + flat slope), INSUFFICIENT
+  (3-5 long-run weeks → show "log more long runs"). Null when <3 long-run
+  weeks.
+
+  Why this exists distinct from LongRunFrequencyCard: that one counts HOW
+  MANY long runs per week (adherence); this one measures whether their
+  DURATION is consistent or wildly varying. Daniels 2014 + Pfitzinger 2014:
+  the long run is the cornerstone of marathon-distance preparation, and its
+  *predictability* (steady growth, then taper) matters more than just
+  showing up.
+
+  Pure fn at `src/lib/athlete/longRunConsistency.js`:
+  `analyzeLongRunConsistency({ log, today, windowWeeks=12, longRunMinThreshold=90 })`.
+  Accepts both `durationMin` and `duration_min`. Population stdev. Slope
+  normalized to %/week of overall 12w mean (zeros included so dropouts
+  pull slope negative).
+
+  Card lazy-loaded. 12 vertical bars showing each week's longest run.
+  EN/TR bilingual. CV %, mean min, slope %/wk + citation footer. 60 unit
+  tests (42 pure-fn + 18 component).
+
+  Cite: Daniels 2014; Pfitzinger 2014.
+
+  Depends on: log.type/sport (run filter), log.duration_min, log.date.
+
+---
+
 ## v9.290.0 — 2026-05-19 — VolumeIntensityScissorsCard — Issurin 2010 scissors-pattern detector
 
   Detects the "scissors" pattern in periodization over the last 8 weeks:
