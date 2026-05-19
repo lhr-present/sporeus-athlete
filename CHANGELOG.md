@@ -14,6 +14,33 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.281.0 — 2026-05-19 — LongRunFrequencyCard — Daniels 2014 long-session frequency
+
+  Surfaces count of long sessions (durationMin ≥ 90) per calendar
+  month across the last 6 months. Endurance base building needs
+  REPEATED long sessions, not occasional outliers.
+
+  New pure-fn `analyzeLongRunFrequency({ log, today, monthsWindow,
+  longMinThreshold })` buckets long sessions by YYYY-MM and bands
+  avgPerMonth:
+
+  - STRONG_BASE (green)  — avg ≥ 3.0/mo
+  - DEVELOPING  (blue)   — 1.5 ≤ avg < 3.0/mo
+  - THIN        (orange) — avg < 1.5/mo
+
+  Renders null when fewer than 3 of 6 months have any sessions
+  (sparse log). 6 monthly mini bars (oldest first) with TR month
+  labels (OCA ŞUB MAR…) in TR mode. Threshold tunable via prop.
+  Bilingual EN/TR.
+
+  Refs: Daniels 2014 (Daniels' Running Formula); Lydiard 1978;
+  Maffetone 2010.
+
+- Files: new `src/lib/athlete/longRunFrequency.js` (176 lines),
+  new `src/components/dashboard/LongRunFrequencyCard.jsx` (306 lines),
+  33 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.280.0 — 2026-05-19 — WeeklyTssVarianceCard — Foster 2001 between-week TSS variability
 
   Surfaces the coefficient of variation (CV) of weekly TSS across
