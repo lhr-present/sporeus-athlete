@@ -14,6 +14,40 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.289.0 — 2026-05-19 — MesocycleProgressionCard — Issurin 2010 3:1 block-period adherence
+
+  Detects adherence to Issurin 2010 block periodization 3:1 work:recovery
+  week pattern over the last 12 ISO weeks. A canonical mesocycle is 4
+  weeks: 3 progressive load weeks then 1 deload week (deload defined as
+  <0.75× mean of preceding 3 weeks).
+
+  Bands: ON_PATTERN (≥2 clean cycles), NO_DELOAD (0 cycles + 0 rolling
+  deloads + non-trivial volume), OVER_DELOADED (>40% weeks classify as
+  deload), CONTINUOUS_LOAD (sustained mean + only 1 deload), CHAOTIC
+  (fallback). Reports mesocyclesDetected count + deloadDepth (mean
+  deload-week TSS as % of preceding 3-week peak).
+
+  Why this exists: WeeklyTssVarianceCard measures between-week dispersion
+  (chaos), but a perfectly executed block periodization REQUIRES dispersion
+  (3 build + 1 deload = high CV by design). This card looks for the
+  STRUCTURED pattern within the dispersion: not just "swings", but the
+  *shape* of those swings.
+
+  Pure fn at `src/lib/athlete/mesocycleProgression.js`:
+  `analyzeMesocycleProgression({ log, today, windowWeeks=12 })` → null if
+  <8 non-zero weeks. Returns 12 weekly entries with per-week role tags
+  (BUILD/DELOAD/PEAK/UNKNOWN), citation Issurin 2010 + Bompa 2018.
+
+  Card lazy-loaded in Dashboard. 12 weekly bars coloured by role,
+  bilingual EN/TR, band-coloured strip, deloadDepth % footer. 49 unit
+  tests (36 analyzer + 13 component).
+
+  Cite: Issurin 2010; Bompa 2018.
+
+  Depends on: log.tss, log.date.
+
+---
+
 ## v9.288.0 — 2026-05-19 — NewSessionTypeIntroCard — Gabbett 2016 novel-stimulus risk flag
 
   Flags session types appearing in the last 14 days that weren't part of the
