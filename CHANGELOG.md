@@ -14,6 +14,31 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.277.0 — 2026-05-19 — DataCoverageCard — Wood 2013 lifetime logging coverage
+
+  Surfaces % of days since first log entry with at least one entry
+  (session OR recovery). Encourages consistent logging by quantifying
+  the gap between calendar days and logged days.
+
+  New pure-fn `analyzeDataCoverage({ log, recovery, today })` builds
+  a set of unique ISO dates from log + recovery, computes coverage =
+  daysWithAnyEntry / totalDays. Bands:
+
+  - HIGH   (green)  — coverage ≥ 0.70
+  - MEDIUM (blue)   — 0.40 ≤ coverage < 0.70
+  - LOW    (orange) — coverage < 0.40
+
+  Also reports breakdown: daysWithSession, daysWithRecovery, overlap.
+  Renders null when both log and recovery are empty. Bilingual EN/TR.
+
+  Refs: Wood 2013 (habit formation); Hellard 2019 (data fidelity for
+  training insights).
+
+- Files: new `src/lib/athlete/dataCoverage.js` (176 lines),
+  new `src/components/dashboard/DataCoverageCard.jsx` (252 lines),
+  34 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.276.0 — 2026-05-19 — LogStreakBreakerCard — Wood 2013 streak vs longest gap
 
   Surfaces the current active logging streak alongside the longest
