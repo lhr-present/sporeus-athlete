@@ -14,6 +14,40 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.290.0 — 2026-05-19 — VolumeIntensityScissorsCard — Issurin 2010 scissors-pattern detector
+
+  Detects the "scissors" pattern in periodization over the last 8 weeks:
+  as training transitions from accumulation → transmutation → realization,
+  volume should DECREASE while average intensity INCREASES (the two
+  curves cross like scissors). Card surfaces PROPER_SCISSORS, INVERTED
+  (volume up + intensity down — common but mis-periodized), BOTH_UP
+  (overreaching trajectory), BOTH_DOWN (taper or undertraining), or
+  NO_CHANGE.
+
+  Trends computed as half-window mean comparisons: volumeTrendPct =
+  (last4MeanMin - first4MeanMin) / first4MeanMin. Same for duration-
+  weighted intensity (TSS/hour). Bands gate at ±10% on each axis.
+
+  Why this exists: WeeklyVolumeRampCard tracks ACWR/ramp velocity (safety);
+  IntensityBalanceCard tracks polarization (Z1/Z2/Z3 split). Neither
+  detects the *coordinated counter-movement* of volume vs intensity that
+  defines a well-constructed Issurin block.
+
+  Pure fn at `src/lib/athlete/volumeIntensityScissors.js`:
+  `analyzeVolumeIntensityScissors({ log, today, windowWeeks=8 })` → null
+  if <6 volume-weeks or <4 intensity-weeks. Returns 8 weekly entries +
+  both trend percentages.
+
+  Card lazy-loaded. Twin SVG sparklines (blue volume + orange intensity)
+  crossing or diverging. EN/TR bilingual. 63 unit tests (47 pure-fn + 16
+  component).
+
+  Cite: Issurin 2010; Stöggl 2014 (polarized training periodization).
+
+  Depends on: log.duration_min, log.tss, log.date.
+
+---
+
 ## v9.289.0 — 2026-05-19 — MesocycleProgressionCard — Issurin 2010 3:1 block-period adherence
 
   Detects adherence to Issurin 2010 block periodization 3:1 work:recovery
