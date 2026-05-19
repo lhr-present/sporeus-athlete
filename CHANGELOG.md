@@ -14,6 +14,36 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.270.0 — 2026-05-19 — VolumeAccelerationCard — Vetter 2019 ramp-acceleration tracker
+
+  Surfaces the SECOND derivative of weekly TSS — the rate at which
+  the ramp itself is changing. Distinct from CtlRampRateCard /
+  WeeklyVolumeRampCard (first derivative). Acceleration reveals
+  whether the ramp is compounding (risk) or smoothing out (taper-
+  like).
+
+  New pure-fn `analyzeVolumeAcceleration({ log, today, windowWeeks })`
+  builds 8 ISO-week TSS sums, computes 7 weekly deltas, then 6
+  accelerations (delta of deltas), and compares mean-of-recent-3 vs
+  mean-of-older-3. Bands:
+
+  - COMPOUNDING_RAMP (red)   — currentAccel ≥ +30 (ramp accelerating)
+  - STEADY           (green) — |currentAccel| < 30
+  - DECELERATING     (blue)  — currentAccel ≤ −30 (ramp smoothing)
+
+  Renders null when fewer than 7 of 8 weeks have non-zero TSS.
+  Card shows current acceleration, prior comparison, and 8 weekly
+  TSS bars with delta dots overlaid. Bilingual EN/TR.
+
+  Refs: Vetter 2019 (resilience training in sport science); Bourdon
+  2017 (Monitoring athlete training loads — consensus statement);
+  Cross 2017.
+
+- Files: new `src/lib/athlete/volumeAcceleration.js` (167 lines),
+  new `src/components/dashboard/VolumeAccelerationCard.jsx` (224 lines),
+  28 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.269.0 — 2026-05-19 — PaceByRpeCard — Daniels 2014 pace × RPE calibration
 
   Surfaces the athlete's median running pace at each RPE band over
