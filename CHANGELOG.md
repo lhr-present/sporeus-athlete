@@ -14,6 +14,33 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.283.0 — 2026-05-19 — CtlSlopeCard — Banister 1991 6w linear-regression CTL slope
+
+  Surfaces the slope of CTL over the last 6 weeks via linear
+  regression. Smoother than ctlRampRate (week-over-week); more
+  interpretable than ctlTrajectory (forward projection). Tells the
+  athlete "how fast is fitness actually growing?"
+
+  New pure-fn `analyzeCtlSlope({ log, today, windowDays })` computes
+  daily CTL via canonical 42-day exponential weighting, then fits
+  OLS linear regression over the trailing window. Reports
+  slopePerWeek (TSS/week growth). Bands:
+
+  - CLIMBING  (orange) — slopePerWeek ≥ +3.0 (sharp build)
+  - STEADY_UP (green)  — +0.5 ≤ slopePerWeek < +3.0
+  - PLATEAU   (blue)   — |slopePerWeek| < 0.5
+  - DECLINING (muted)  — slopePerWeek ≤ −0.5
+
+  Renders null when fewer than 28 days of log history. Card shows
+  signed slope, current CTL, 6-week-ago CTL. Bilingual EN/TR.
+
+  Refs: Banister 1991 (TRIMP, CTL/ATL); Coggan 2010.
+
+- Files: new `src/lib/athlete/ctlSlope.js` (207 lines),
+  new `src/components/dashboard/CtlSlopeCard.jsx` (181 lines),
+  32 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.282.0 — 2026-05-19 — RecoveryQualityStreakCard — Walker 2017 + Buchheit 2014 dual-marker
 
   Surfaces consecutive days where BOTH sleep ≥ target AND restingHR
