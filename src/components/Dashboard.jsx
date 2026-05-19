@@ -140,6 +140,7 @@ const HrForRpeCard               = lazy(() => import('./dashboard/HrForRpeCard.j
 const BedtimeConsistencyCard     = lazy(() => import('./dashboard/BedtimeConsistencyCard.jsx'))
 const RestingHrFitnessTrendCard  = lazy(() => import('./dashboard/RestingHrFitnessTrendCard.jsx'))
 const EnergySorenessDivergenceCard = lazy(() => import('./dashboard/EnergySorenessDivergenceCard.jsx'))
+const LogStreakBreakerCard       = lazy(() => import('./dashboard/LogStreakBreakerCard.jsx'))
 const VO2maxPlateauCard          = lazy(() => import('./dashboard/VO2maxPlateauCard.jsx'))
 const WeeklyVolumeRampCard       = lazy(() => import('./dashboard/WeeklyVolumeRampCard.jsx'))
 const WeekendVolumeShareCard     = lazy(() => import('./dashboard/WeekendVolumeShareCard.jsx'))
@@ -856,6 +857,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       <ErrorBoundary><Suspense fallback={null}><BedtimeConsistencyCard recovery={recovery}/></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><RestingHrFitnessTrendCard recovery={recovery}/></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><EnergySorenessDivergenceCard recovery={recovery}/></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><LogStreakBreakerCard log={log} recovery={recovery}/></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><HardDaySpacingCard log={log}/></Suspense></ErrorBoundary>
       <ProactiveInjuryAlert log={log} injuries={injuries} lang={lang}/>
       <LoadSpikeAlert/>

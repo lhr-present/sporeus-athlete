@@ -14,6 +14,32 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.276.0 — 2026-05-19 — LogStreakBreakerCard — Wood 2013 streak vs longest gap
+
+  Surfaces the current active logging streak alongside the longest
+  break ever in the log. Frames consistency competition as "beat
+  your worst break". Different from streakDetector / recoveryStreak
+  / trainingStreak — this is the gap-vs-streak comparison.
+
+  New pure-fn `analyzeLogStreakBreaker({ log, recovery, today })`
+  combines log + recovery dates into one set, sorts ascending,
+  computes longest gap between consecutive entries (and its
+  endpoints), and the current streak (consecutive days back from
+  today). Bands:
+
+  - ACTIVE       (green)  — currentStreak ≥ 7 AND currentStreak > longestGap/2
+  - STEADY       (blue)   — currentStreak ≥ 3
+  - RECENT_BREAK (orange) — currentStreak < 3 (just lapsed)
+
+  Renders null when both log and recovery are empty. Bilingual EN/TR.
+
+  Refs: Wood 2013 (habit formation); Duckworth 2007.
+
+- Files: new `src/lib/athlete/logStreakBreaker.js` (172 lines),
+  new `src/components/dashboard/LogStreakBreakerCard.jsx` (213 lines),
+  26 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.275.0 — 2026-05-19 — EnergySorenessDivergenceCard — Hooper 1995 wellness quadrant
 
   Detects the balance between perceived energy and muscle soreness
