@@ -14,6 +14,34 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.273.0 — 2026-05-19 — BedtimeConsistencyCard — Walker 2017 circadian-phase regularity
+
+  Surfaces the variance of bedtime CLOCK TIME over 28 days — how
+  consistently the athlete goes to bed at the same hour. Different
+  from SleepConsistencyCard (v9.263) which measures SD of sleep
+  DURATION. This measures circadian phase regularity, not duration.
+
+  New pure-fn `analyzeBedtimeConsistency({ recovery, today,
+  windowDays })` parses HH:MM bedtimes, maps to minutes-from-18:00
+  (anchor-safe for post-midnight bedtimes), computes population
+  stdev. Bands:
+
+  - STEADY   (green)  — stdMinutes < 30 (within ½h variation)
+  - DRIFTING (blue)   — 30 ≤ stdMinutes < 60
+  - ERRATIC  (orange) — stdMinutes ≥ 60 (1+ hour swings)
+
+  Renders null when fewer than 7 valid bedtime entries. Card shows
+  average bedtime (`HH:MM`), band badge, ±X min stdev, range
+  (earliest–latest), sample count. Bilingual EN/TR.
+
+  Refs: Walker 2017 (chronotype + circadian phase regularity);
+  Lunsford-Avery 2018 (Sleep Regularity Index); Phillips 2017.
+
+- Files: new `src/lib/athlete/bedtimeConsistency.js` (175 lines),
+  new `src/components/dashboard/BedtimeConsistencyCard.jsx` (190 lines),
+  34 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.272.0 — 2026-05-19 — HrForRpeCard — Karvonen 1957 HR × RPE calibration
 
   Surfaces the athlete's median heart rate per RPE band over the
