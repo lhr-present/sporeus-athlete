@@ -14,6 +14,33 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.268.0 — 2026-05-19 — RaceTimeEstimatorCard — Riegel 1981 race-time projection
+
+  Surfaces projected race times across 5K/10K/HM/M using Riegel
+  1981 from the athlete's best recent running effort. New pure-fn
+  `estimateRaceTimes({ log, today, windowDays })` selects the best
+  pace (lowest min/km) among running sessions ≥3 km in the last
+  90 days as the reference effort, then applies T2 = T1 ×
+  (D2/D1)^1.06 to each target.
+
+  Per-target reliability:
+  - HIGH   — D2/D1 ≤ 2.0 OR a similar-distance effort (±20%) exists
+  - MEDIUM — 2.0 < D2/D1 ≤ 5.0
+  - LOW    — D2/D1 > 5.0
+
+  Renders null when no qualifying running session is found. Card
+  shows reference effort line + 4 projection rows (distance label,
+  projected time `H:MM:SS` / `MM:SS`, reliability chip). Bilingual
+  EN/TR.
+
+  Refs: Riegel 1981 (Athletic Records and Human Endurance,
+  American Scientist 69:285); Daniels 2014 (equivalent-time tables).
+
+- Files: new `src/lib/athlete/raceTimeEstimator.js` (199 lines),
+  new `src/components/dashboard/RaceTimeEstimatorCard.jsx` (268 lines),
+  41 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.267.0 — 2026-05-19 — WeeklyVolumeRecordCard — Hellard 2019 lifetime weekly-TSS rank
 
   Shows all-time peak weekly TSS and where the current week ranks
