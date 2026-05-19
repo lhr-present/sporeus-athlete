@@ -27,10 +27,6 @@ const ISO_RE = /^\d{4}-\d{2}-\d{2}$/
 const MIN_COMPLETED_WEEKS = 8
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-function isValidIso(s) {
-  return typeof s === 'string' && ISO_RE.test(s)
-}
-
 function toDate(input) {
   if (input instanceof Date) return new Date(input.getTime())
   if (typeof input === 'string') {

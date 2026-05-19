@@ -14,6 +14,38 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.267.0 — 2026-05-19 — WeeklyVolumeRecordCard — Hellard 2019 lifetime weekly-TSS rank
+
+  Shows all-time peak weekly TSS and where the current week ranks
+  against the athlete's lifetime weekly-TSS distribution. Different
+  from WeeklyVolumeRampCard (ramp-safety check) — this is
+  celebratory/contextual.
+
+  New pure-fn `analyzeWeeklyVolumeRecord({ log, today })` computes
+  per-ISO-week TSS for the full log (excluding the in-progress
+  current week from the lifetime distribution), identifies the
+  all-time peak, computes current week's rank and percentile, and
+  bands:
+
+  - NEW_RECORD     (orange) — currentWeekTss > peakWeekTss
+  - TOP_5          (green)  — rank within top 5 historical weeks
+  - TOP_20_PERCENT (blue)   — percentile ≥ 80 (not top 5)
+  - TYPICAL        (muted)  — percentile 20-80
+  - LOW            (muted)  — percentile < 20
+
+  Renders null when fewer than 8 completed weeks in lifetime
+  distribution. Tie-breaker: peak goes to the earliest Monday.
+  Card shows current TSS (big), band badge, all-time peak as ref,
+  rank, percentile. Bilingual EN/TR.
+
+  Refs: Hellard 2019 (Quantifying the relationship between training
+  load and performance); Issurin 2010.
+
+- Files: new `src/lib/athlete/weeklyVolumeRecord.js` (187 lines),
+  new `src/components/dashboard/WeeklyVolumeRecordCard.jsx` (262 lines),
+  45 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.266.0 — 2026-05-19 — TrainingAgeStageCard — Lloyd 2015 long-term athletic development
 
   Surfaces "training age" — cumulative ISO weeks of consistent
