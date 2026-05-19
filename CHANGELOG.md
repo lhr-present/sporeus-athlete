@@ -14,6 +14,34 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.265.0 — 2026-05-19 — YearOverYearCard — Issurin 2010 year-over-year YTD comparison
+
+  Compares this year's year-to-date training volume to last year's
+  YTD on the same calendar day. Different from SeasonStatsCard
+  (annual snapshot) and MonthlyProgressCard (month-over-month).
+  Surfaces longitudinal progression.
+
+  New pure-fn `analyzeYearOverYear({ log, today })` computes
+  Jan-1-to-today vs Jan-1-to-same-calendar-day-last-year. Aggregates
+  3 deltas (sessions/minutes/TSS) and bands:
+
+  - AHEAD    (green)  — aggregate trend ≥ +0.10
+  - MATCHING (blue)   — |aggregate trend| < 0.10
+  - BEHIND   (orange) — aggregate trend ≤ −0.10
+
+  Renders null when last year < 10 sessions OR this year = 0
+  sessions. Card shows aggregate-trend percentage + 3 stat-pair
+  rows (SESSIONS, HOURS, TSS) with thisYear · lastYear · delta.
+  Bilingual EN/TR.
+
+  Refs: Issurin 2010 (block periodization); Tønnessen 2014
+  (Training Olympic-Level Elite Endurance Athletes).
+
+- Files: new `src/lib/athlete/yearOverYear.js` (126 lines),
+  new `src/components/dashboard/YearOverYearCard.jsx` (219 lines),
+  19 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.264.0 — 2026-05-19 — LifetimeTotalsCard — Bandura 1997 training-capital summary
 
   Surfaces lifetime training totals across the entire log — no
