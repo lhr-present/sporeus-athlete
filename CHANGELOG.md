@@ -14,6 +14,43 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.295.0 — 2026-05-19 — CumulativeFatigueWindowsCard — Halson 2014 overreach dose counter
+
+  Counts how OFTEN in the last 90 days the athlete spent a day in the
+  overreaching zone, defined as (rolling-7d-mean-TSS / CTL) > 1.30
+  (Hulin 2016 ACWR-style ratio against same-day CTL). Halson 2014 +
+  Meeusen 2013: brief overreaching is adaptive; repeated chronic
+  overreaching exposure shifts toward non-functional overreaching /
+  overtraining risk.
+
+  Distinct from point-in-time ACWR cards: those answer "are you currently
+  overreaching?". This card answers "how MANY days in the last quarter
+  did you live in the overreaching zone?" — chronic exposure dose.
+
+  Bands: CONSERVATIVE (<3% of days), NORMAL (3-15%), ELEVATED_EXPOSURE
+  (15-30%), CHRONIC_OVERREACH (≥30%).
+
+  Implementation note: spec literal "rolling7TSS / CTL" would yield ~7
+  at steady state (sum vs mean), making 1.30 unreachable. Lib resolves
+  to ACWR convention (rolling7TSS / 7) / CTL — matches Hulin 2016 and
+  existing src/lib/intelligence.js ACWR usage.
+
+  Pure fn at `src/lib/athlete/cumulativeFatigueWindows.js`:
+  `analyzeCumulativeFatigueWindows({ log, today, windowDays=90, overreachRatio=1.30 })`.
+  CTL walked from earliest log date for warm baseline; days with
+  ctl<10 excluded from both numerator and denominator. Returns peak
+  ratio + date + exposure rate.
+
+  Card lazy-loaded in Dashboard. Daily-ratio sparkline with threshold
+  line + red dots on over-threshold days, large stat (days in zone),
+  EN/TR bilingual. 55 unit tests (38 pure-fn + 17 component).
+
+  Cite: Halson 2014; Meeusen 2013; Hulin 2016.
+
+  Depends on: log.date, log.tss.
+
+---
+
 ## v9.294.0 — 2026-05-19 — SeasonAnchorCard — Hägglund 2013 ramp-from-nadir tracker
 
   Identifies the athlete's "season anchor" — the lowest 4-week-rolling
