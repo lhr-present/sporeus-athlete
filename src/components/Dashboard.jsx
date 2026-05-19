@@ -133,6 +133,7 @@ const YearOverYearCard           = lazy(() => import('./dashboard/YearOverYearCa
 const TrainingAgeStageCard       = lazy(() => import('./dashboard/TrainingAgeStageCard.jsx'))
 const WeeklyVolumeRecordCard     = lazy(() => import('./dashboard/WeeklyVolumeRecordCard.jsx'))
 const RaceTimeEstimatorCard      = lazy(() => import('./dashboard/RaceTimeEstimatorCard.jsx'))
+const PaceByRpeCard              = lazy(() => import('./dashboard/PaceByRpeCard.jsx'))
 const VO2maxPlateauCard          = lazy(() => import('./dashboard/VO2maxPlateauCard.jsx'))
 const WeeklyVolumeRampCard       = lazy(() => import('./dashboard/WeeklyVolumeRampCard.jsx'))
 const WeekendVolumeShareCard     = lazy(() => import('./dashboard/WeekendVolumeShareCard.jsx'))
@@ -842,6 +843,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       <ErrorBoundary><Suspense fallback={null}><TrainingAgeStageCard log={log}/></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><WeeklyVolumeRecordCard log={log}/></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><RaceTimeEstimatorCard log={log}/></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><PaceByRpeCard log={log}/></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><HardDaySpacingCard log={log}/></Suspense></ErrorBoundary>
       <ProactiveInjuryAlert log={log} injuries={injuries} lang={lang}/>
       <LoadSpikeAlert/>

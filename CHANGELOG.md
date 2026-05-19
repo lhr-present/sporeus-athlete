@@ -14,6 +14,33 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.269.0 — 2026-05-19 — PaceByRpeCard — Daniels 2014 pace × RPE calibration
+
+  Surfaces the athlete's median running pace at each RPE band over
+  the last 90 days. Reveals what "Easy" vs "Tempo" vs "Hard"
+  actually mean in min/km terms for THIS athlete — calibrating
+  subjective effort against execution.
+
+  New pure-fn `analyzePaceByRpe({ log, today, windowDays })` groups
+  running sessions (type/sport ~ /run|jog/i) by RPE band:
+
+  - EASY      — RPE 1–4
+  - MODERATE  — RPE 5–6
+  - HARD      — RPE 7–8
+  - VERY_HARD — RPE 9–10
+
+  Computes median pace per band (robust to outliers). Renders null
+  when total samples < 6 OR fewer than 2 bands populated. Card
+  shows 4 band rows always (zero-sample bands show `0×` and `--`).
+  Bilingual EN/TR (KOLAY/ORTA/SERT/ÇOK SERT).
+
+  Refs: Daniels 2014 (VDOT pace tables); Borg 1982 (RPE).
+
+- Files: new `src/lib/athlete/paceByRpe.js` (193 lines),
+  new `src/components/dashboard/PaceByRpeCard.jsx` (179 lines),
+  38 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.268.0 — 2026-05-19 — RaceTimeEstimatorCard — Riegel 1981 race-time projection
 
   Surfaces projected race times across 5K/10K/HM/M using Riegel
