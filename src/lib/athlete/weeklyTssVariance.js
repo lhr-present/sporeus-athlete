@@ -37,10 +37,6 @@ const MIN_NON_ZERO_WEEKS = 8
 const STEADY_CEIL = 0.20
 const MODERATE_CEIL = 0.40
 
-function isValidIso(s) {
-  return typeof s === 'string' && ISO_RE.test(s)
-}
-
 // Resolve `today` (string YYYY-MM-DD or Date) to a YYYY-MM-DD UTC ISO key.
 function resolveTodayIso(today) {
   if (today instanceof Date && !Number.isNaN(today.getTime())) {

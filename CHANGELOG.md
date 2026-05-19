@@ -14,6 +14,30 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.280.0 — 2026-05-19 — WeeklyTssVarianceCard — Foster 2001 between-week TSS variability
+
+  Surfaces the coefficient of variation (CV) of weekly TSS across
+  the last 12 ISO weeks. Distinct from monotonyTrend.js (within-
+  week monotony); this is BETWEEN-week chaos vs steadiness.
+
+  New pure-fn `analyzeWeeklyTssVariance({ log, today, windowWeeks })`
+  computes weekly TSS sums and population stdev. Bands:
+
+  - STEADY   (green)  — cv < 0.20
+  - MODERATE (blue)   — 0.20 ≤ cv < 0.40
+  - CHAOTIC  (orange) — cv ≥ 0.40
+
+  Renders null when fewer than 8 of 12 weeks have non-zero TSS.
+  12 mini bars + cv percentage + mean ± stdev. Bilingual EN/TR.
+
+  Refs: Foster 2001 (sRPE & training-load monitoring); Bourdon 2017
+  (Monitoring athlete training loads — consensus statement).
+
+- Files: new `src/lib/athlete/weeklyTssVariance.js` (176 lines),
+  new `src/components/dashboard/WeeklyTssVarianceCard.jsx` (223 lines),
+  30 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.279.0 — 2026-05-19 — PerfectWeekCard — Hellard 2019 quality-structure week ratio
 
   Surfaces "perfect weeks" — weeks where the athlete hit all three

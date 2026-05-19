@@ -144,6 +144,7 @@ const LogStreakBreakerCard       = lazy(() => import('./dashboard/LogStreakBreak
 const DataCoverageCard           = lazy(() => import('./dashboard/DataCoverageCard.jsx'))
 const DayOfWeekAvailabilityCard  = lazy(() => import('./dashboard/DayOfWeekAvailabilityCard.jsx'))
 const PerfectWeekCard            = lazy(() => import('./dashboard/PerfectWeekCard.jsx'))
+const WeeklyTssVarianceCard      = lazy(() => import('./dashboard/WeeklyTssVarianceCard.jsx'))
 const VO2maxPlateauCard          = lazy(() => import('./dashboard/VO2maxPlateauCard.jsx'))
 const WeeklyVolumeRampCard       = lazy(() => import('./dashboard/WeeklyVolumeRampCard.jsx'))
 const WeekendVolumeShareCard     = lazy(() => import('./dashboard/WeekendVolumeShareCard.jsx'))
@@ -864,6 +865,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       <ErrorBoundary><Suspense fallback={null}><DataCoverageCard log={log} recovery={recovery}/></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><DayOfWeekAvailabilityCard log={log}/></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><PerfectWeekCard log={log}/></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><WeeklyTssVarianceCard log={log}/></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><HardDaySpacingCard log={log}/></Suspense></ErrorBoundary>
       <ProactiveInjuryAlert log={log} injuries={injuries} lang={lang}/>
       <LoadSpikeAlert/>
