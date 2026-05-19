@@ -14,6 +14,42 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.299.0 — 2026-05-19 — HardEasyAdherenceCard — Daniels 2014 hard-easy rule violation tracker
+
+  Tracks % of weeks in the last 12 with zero "hard-after-hard"
+  adjacencies. Daniels 2014 "Hard/Easy Rule": never schedule two
+  consecutive hard days. Foster 2001 — repeated hard-after-hard pattern
+  is the canonical overtraining setup.
+
+  Bands: STRICT (≥95% clean weeks AND ≥4 analyzed), GOOD (≥75%),
+  OCCASIONAL_VIOLATIONS (≥50%), CHRONIC_VIOLATIONS (otherwise).
+
+  Hard-day definition: day's max-session TSS ≥ max(60, CTL × 0.9). CTL
+  walked from earliest log entry with 42-day half-life. Max-not-sum so
+  multi-session days aren't artificially inflated.
+
+  Distinct from HardDaySpacingCard (mean spacing intervals); this
+  counts *adjacency violations* — the specific Daniels-rule breach.
+
+  Weeks with <2 hard days excluded from denominator entirely (they
+  can't earn the "clean" classification because they had no hard
+  decisions to make). Sunday-Monday violation belongs to Sunday's
+  week.
+
+  Pure fn at `src/lib/athlete/hardEasyAdherence.js`:
+  `analyzeHardEasyAdherence({ log, today, windowWeeks=12, ctlHalflifeDays=42 })`.
+  Returns weeks[] with hardDays + violations, cleanWeekRate, etc.
+
+  Card lazy-loaded in Dashboard. 12 mini-bars (bar height = hardDays,
+  dot colour = violations red/green), violation badge, EN/TR bilingual.
+  54 unit tests (37 pure-fn + 17 component).
+
+  Cite: Daniels 2014; Foster 2001.
+
+  Depends on: log.date, log.tss.
+
+---
+
 ## v9.298.0 — 2026-05-19 — SessionLengthDistributionCard — Issurin duration-variety histogram
 
   Shows the FULL DISTRIBUTION of session durations across the last 90
