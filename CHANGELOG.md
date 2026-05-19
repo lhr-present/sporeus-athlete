@@ -14,6 +14,33 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.282.0 — 2026-05-19 — RecoveryQualityStreakCard — Walker 2017 + Buchheit 2014 dual-marker
+
+  Surfaces consecutive days where BOTH sleep ≥ target AND restingHR
+  ≤ lifetime baseline. Combines two recovery signals into a "quality
+  streak". Distinct from recoveryStreak.js (single-threshold).
+
+  New pure-fn `analyzeRecoveryQualityStreak({ recovery, profile,
+  today })` uses `profile.sleepTarget` (or 8h default) for sleep
+  threshold and the lifetime mean of RHR > 0 entries as the freshness
+  threshold. Status bands:
+
+  - DEEP_RECOVERY (green)  — currentStreak ≥ 5
+  - STEADY        (blue)   — currentStreak ≥ 2
+  - INCONSISTENT  (orange) — currentStreak < 2
+
+  Renders null when fewer than 10 valid RHR entries (baseline can't
+  be computed reliably). Card shows current + longest streak +
+  28-day quality-day count + thresholds. Bilingual EN/TR.
+
+  Refs: Walker 2017 (sleep + cardiovascular recovery); Buchheit 2014
+  (RHR as recovery marker).
+
+- Files: new `src/lib/athlete/recoveryQualityStreak.js` (173 lines),
+  new `src/components/dashboard/RecoveryQualityStreakCard.jsx` (201 lines),
+  31 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.281.0 — 2026-05-19 — LongRunFrequencyCard — Daniels 2014 long-session frequency
 
   Surfaces count of long sessions (durationMin ≥ 90) per calendar
