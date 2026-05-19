@@ -14,6 +14,34 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.266.0 — 2026-05-19 — TrainingAgeStageCard — Lloyd 2015 long-term athletic development
+
+  Surfaces "training age" — cumulative ISO weeks of consistent
+  training (≥3 sessions/week) across the entire log — and the
+  athlete's Lloyd 2015 development stage. New pure-fn
+  `analyzeTrainingAge({ log, today })` returns stage:
+
+  - BEGINNER    (muted)  — < 26 consistent weeks (< 6 months)
+  - DEVELOPING  (blue)   — 26–103 weeks (6mo–2y)
+  - ESTABLISHED (green)  — 104–259 weeks (2–5y)
+  - VETERAN     (orange) — ≥ 260 weeks (5y+)
+
+  Distinct from the existing TrainingAgeCard which uses calendar
+  tenure; this measures CONSISTENT-training weeks specifically.
+  Renamed to TrainingAgeStageCard to coexist with the calendar
+  card. Shows stage badge, training age in `Xy Ymo` / `Xmo` form,
+  consistency rate, total log history. Bilingual EN/TR.
+
+  Refs: Bompa 2018 (training age, long-term athletic development);
+  Tønnessen 2014; Lloyd & Oliver 2015 (Long-Term Athletic
+  Development).
+
+- Files: new `src/lib/athlete/trainingAge.js` (174 lines),
+  new `src/components/dashboard/TrainingAgeStageCard.jsx` (282 lines),
+  46 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line). Existing TrainingAgeCard.jsx
+  preserved untouched.
+
 ## v9.265.0 — 2026-05-19 — YearOverYearCard — Issurin 2010 year-over-year YTD comparison
 
   Compares this year's year-to-date training volume to last year's

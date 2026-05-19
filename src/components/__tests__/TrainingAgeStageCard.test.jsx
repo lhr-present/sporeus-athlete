@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// ─── TrainingAgeCard.test.jsx — dashboard surface tests ──────────────────────
+// ─── TrainingAgeStageCard.test.jsx — dashboard surface tests ──────────────────────
 //
 // Covers: render-null guard, the four stage bands
 // (BEGINNER / DEVELOPING / ESTABLISHED / VETERAN), Turkish heading
@@ -10,7 +10,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
-import TrainingAgeCard from '../dashboard/TrainingAgeCard.jsx'
+import TrainingAgeStageCard from '../dashboard/TrainingAgeStageCard.jsx'
 
 // 2026-05-18 is a Monday — clean ISO-week anchor.
 const TODAY = '2026-05-18'
@@ -52,13 +52,13 @@ function renderCard(log, lang = 'en') {
   const value = { t: k => k, lang, setLang: () => {} }
   return render(
     <LangCtx.Provider value={value}>
-      <TrainingAgeCard log={log} />
+      <TrainingAgeStageCard log={log} />
     </LangCtx.Provider>
   )
 }
 
 // ─── Guards ──────────────────────────────────────────────────────────────────
-describe('TrainingAgeCard — guards', () => {
+describe('TrainingAgeStageCard — guards', () => {
   it('renders nothing for an empty log', () => {
     const { container } = renderCard([])
     expect(container.firstChild).toBeNull()
@@ -77,7 +77,7 @@ describe('TrainingAgeCard — guards', () => {
 })
 
 // ─── BEGINNER stage ──────────────────────────────────────────────────────────
-describe('TrainingAgeCard — BEGINNER stage', () => {
+describe('TrainingAgeStageCard — BEGINNER stage', () => {
   it('renders with BEGINNER stage for short consistent log', () => {
     // 10 weeks of 3 sessions → 10 consistent weeks → BEGINNER.
     const log = makeWeeklyLog(Array(10).fill(3))
@@ -119,7 +119,7 @@ describe('TrainingAgeCard — BEGINNER stage', () => {
 })
 
 // ─── DEVELOPING stage ────────────────────────────────────────────────────────
-describe('TrainingAgeCard — DEVELOPING stage', () => {
+describe('TrainingAgeStageCard — DEVELOPING stage', () => {
   it('renders with DEVELOPING stage for 60 consistent weeks', () => {
     const log = makeWeeklyLog(Array(60).fill(3))
     renderCard(log)
@@ -141,7 +141,7 @@ describe('TrainingAgeCard — DEVELOPING stage', () => {
 })
 
 // ─── ESTABLISHED stage ───────────────────────────────────────────────────────
-describe('TrainingAgeCard — ESTABLISHED stage', () => {
+describe('TrainingAgeStageCard — ESTABLISHED stage', () => {
   it('renders with ESTABLISHED stage for 150 consistent weeks', () => {
     const log = makeWeeklyLog(Array(150).fill(3))
     renderCard(log)
@@ -155,7 +155,7 @@ describe('TrainingAgeCard — ESTABLISHED stage', () => {
 })
 
 // ─── VETERAN stage ───────────────────────────────────────────────────────────
-describe('TrainingAgeCard — VETERAN stage', () => {
+describe('TrainingAgeStageCard — VETERAN stage', () => {
   it('renders with VETERAN stage for 300 consistent weeks', () => {
     const log = makeWeeklyLog(Array(300).fill(3))
     renderCard(log)
@@ -186,7 +186,7 @@ describe('TrainingAgeCard — VETERAN stage', () => {
 })
 
 // ─── Turkish ─────────────────────────────────────────────────────────────────
-describe('TrainingAgeCard — bilingual', () => {
+describe('TrainingAgeStageCard — bilingual', () => {
   it('renders the Turkish heading and stage label when lang=tr (BEGINNER)', () => {
     const log = makeWeeklyLog(Array(10).fill(3))
     renderCard(log, 'tr')
