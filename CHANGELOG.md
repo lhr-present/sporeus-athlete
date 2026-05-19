@@ -14,6 +14,34 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.288.0 — 2026-05-19 — NewSessionTypeIntroCard — Gabbett 2016 novel-stimulus risk flag
+
+  Flags session types appearing in the last 14 days that weren't part of the
+  athlete's training repertoire in the prior 90 days. Gabbett 2016 +
+  Hulin 2014 framework: a tissue load the body has NEVER experienced is more
+  risky than the same absolute load on familiar movement patterns — a runner
+  starting strength sessions, a cyclist starting hill repeats, etc. The
+  3-week window after first exposure is the highest-risk period.
+
+  Why this exists distinct from SessionVarietyCard: variety counts diversity
+  for adherence/fun; this card specifically isolates NOVEL types (in last
+  14d but NOT in prior 90d) for injury prevention. Bands: NO_NOVEL,
+  SINGLE_NOVEL, MULTIPLE_NOVEL.
+
+  Pure fn at `src/lib/athlete/newSessionTypeIntro.js`:
+  `analyzeNewSessionTypeIntro({ log, today, recentDays=14, baselineDays=90 })`
+  → null until ≥10 baseline sessions. Returns novel-type list with first-seen
+  date, count in recent window, and days-since-first.
+
+  Card lazy-loaded in Dashboard. EN/TR bilingual, badge list per novel
+  type, citation footer. 48 unit tests (32 pure-fn + 16 component).
+
+  Cite: Gabbett 2016; Hulin 2014.
+
+  Depends on: log.type, log.date.
+
+---
+
 ## v9.287.0 — 2026-05-19 — RestDayDistributionCard — Bompa 2018 hard-easy placement tracker
 
   Tracks not just HOW MANY rest days the athlete gets, but WHERE those rest
