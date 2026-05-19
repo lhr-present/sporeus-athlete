@@ -14,6 +14,33 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.274.0 — 2026-05-19 — RestingHrFitnessTrendCard — Buchheit 2014 RHR fitness marker
+
+  Surfaces 90-day average resting HR vs lifetime baseline. Falling
+  RHR over time is a canonical aerobic-fitness adaptation marker.
+  Distinct from RestingHrDriftCard (alert-style for sudden rises);
+  this is a long-term fitness-marker trend.
+
+  New pure-fn `analyzeRestingHrFitnessTrend({ recovery, today,
+  windowDays })` computes lifetime + recent means, delta in bpm.
+  Bands:
+
+  - IMPROVING (green)  — delta ≤ −2 bpm
+  - STABLE    (blue)   — |delta| < 2 bpm
+  - RISING    (orange) — delta ≥ +2 bpm
+
+  Renders null when fewer than 10 lifetime OR 5 recent entries.
+  Card shows recent avg (big), band, signed delta vs lifetime,
+  lifetime ref, sample counts. Bilingual EN/TR.
+
+  Refs: Buchheit 2014 (Monitoring training status with HR-derived
+  measures); Plews 2014; Karvonen 1957.
+
+- Files: new `src/lib/athlete/restingHrFitnessTrend.js` (131 lines),
+  new `src/components/dashboard/RestingHrFitnessTrendCard.jsx` (253 lines),
+  23 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.273.0 — 2026-05-19 — BedtimeConsistencyCard — Walker 2017 circadian-phase regularity
 
   Surfaces the variance of bedtime CLOCK TIME over 28 days — how
