@@ -14,6 +14,34 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.279.0 — 2026-05-19 — PerfectWeekCard — Hellard 2019 quality-structure week ratio
+
+  Surfaces "perfect weeks" — weeks where the athlete hit all three
+  quality criteria: ≥3 sessions, ≥1 hard session (RPE ≥ 7), ≥1 long
+  session (durationMin ≥ 90). Tracks STRUCTURE, not just volume.
+
+  New pure-fn `analyzePerfectWeek({ log, today, windowWeeks })`
+  evaluates each of the last 12 ISO weeks against the three criteria,
+  computes perfectRate = perfectWeeks / 12, and identifies the most
+  common missing element (sessions / hard / long; ties broken in
+  that order). Bands:
+
+  - HABITUAL_QUALITY (green)  — perfectRate ≥ 0.50
+  - OCCASIONAL       (blue)   — 0.20 ≤ perfectRate < 0.50
+  - SPORADIC         (orange) — perfectRate < 0.20
+
+  Renders null when fewer than 6 of 12 weeks have any sessions. 12
+  mini blocks (filled if perfect, hollow if imperfect) + "missing
+  most often: X" indicator. Bilingual EN/TR.
+
+  Refs: Hellard 2019 (quality of training structure); Seiler 2010
+  (polarized intensity distribution).
+
+- Files: new `src/lib/athlete/perfectWeek.js` (174 lines),
+  new `src/components/dashboard/PerfectWeekCard.jsx` (212 lines),
+  36 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.278.0 — 2026-05-19 — DayOfWeekAvailabilityCard — Bompa 2018 weekday availability
 
   Surfaces % of each weekday trained over the last 12 ISO weeks.
