@@ -14,6 +14,40 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.298.0 — 2026-05-19 — SessionLengthDistributionCard — Issurin duration-variety histogram
+
+  Shows the FULL DISTRIBUTION of session durations across the last 90
+  days as a 7-bin histogram: [<30, 30-44, 45-59, 60-89, 90-119,
+  120-179, 180+ min]. Reports q25/median/q75 quartiles + IQR + modal
+  bin. Issurin 2010 + Bompa 2018: a sustainable training base needs
+  duration variety — exclusively short (<45min) sessions cannot drive
+  endurance adaptation; exclusively long (>120min) sessions cannot
+  sustain weekly load.
+
+  Bands: INSUFFICIENT_DATA (<15 sessions), NARROW_SHORT (≥80% short),
+  NARROW_LONG (≥60% long), WIDE_RANGE (≥5 of 7 bins populated),
+  BALANCED (3-4 bins populated, not skewed).
+
+  Distinct from LongestSessionTrendCard (just the max),
+  LongSessionShareCard (just the long share), LongRunFrequencyCard /
+  LongRunConsistencyCard (run-specific). This is the full distribution
+  across all sports.
+
+  Pure fn at `src/lib/athlete/sessionLengthDistribution.js`:
+  `analyzeSessionLengthDistribution({ log, today, windowDays=90 })`.
+  Method-7 percentile interpolation. 30min → 30-44 (not <30). Returns
+  bins + quartiles + modeBinId.
+
+  Card lazy-loaded in Dashboard. Horizontal histogram with orange modal
+  bin highlight, median+IQR readout, EN/TR bilingual. 66 unit tests
+  (50 pure-fn + 16 component).
+
+  Cite: Issurin 2010; Bompa 2018.
+
+  Depends on: log.date, log.durationMin/duration_min.
+
+---
+
 ## v9.297.0 — 2026-05-19 — TwoADaysCard — Cejuela 2013 brick / double-session frequency
 
   Counts days in the last 60 days with ≥2 separate training sessions on
