@@ -14,6 +14,37 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.286.0 — 2026-05-19 — TimeOnFeetCard — Bennell 2012 running-load safety tracker
+
+  Tracks weekly running minutes against the Gabbett 0.8–1.1× safe-ramp zone
+  over the last 12 ISO weeks. Bands: SAFE_RAMP (current week within 0.8–1.1×
+  of 4-week mean), AGGRESSIVE (>1.1×), DETRAINING (<0.8× with adequate prior
+  load), BUILDING_BASE (insufficient prior load for ratio).
+
+  Why a new card distinct from WeeklyVolumeRampCard: this one is RUN-SPECIFIC
+  and uses MINUTES (not TSS) — running mechanical load is dictated by
+  ground-contact time, not metabolic stress. A cyclist's high-TSS week may
+  produce zero running impact load. The minutes axis directly captures
+  bone/tendon loading risk (Bennell 2012 stress-fracture epidemiology;
+  Hreljac 2004 impact-injury aetiology).
+
+  Pure fn at `src/lib/athlete/timeOnFeet.js`:
+  `analyzeTimeOnFeet({ log, today, windowWeeks=12 })` → null until ≥8
+  non-zero weeks. Returns 12 weekly minutes array + band + ratio.
+
+  Card at `src/components/dashboard/TimeOnFeetCard.jsx`:
+  bilingual EN/TR, 12 mini weekly bars, current ratio, band colour band,
+  Bennell + Hreljac citation footer. Lazy-loaded in Dashboard.jsx.
+
+  41 unit tests cover gating, ratio math, band thresholds, sport filtering,
+  ISO-week boundaries, and bilingual rendering.
+
+  Cite: Bennell 2012; Hreljac 2004; Gabbett 2016 ACWR.
+
+  Depends on: existing log.duration_min, log.type sport tagging.
+
+---
+
 ## v9.285.0 — 2026-05-19 — PaceRangeCard — Daniels 2014 28d pace-spread detector
 
   Surfaces the SPREAD of running paces used over the last 28 days —
