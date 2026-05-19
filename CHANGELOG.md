@@ -14,6 +14,37 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.292.0 — 2026-05-19 — CalendarHolesCard — Foster 2017 multi-day gap counter
+
+  Counts all gaps ≥3 consecutive zero-training days in the last 90 days,
+  reports the longest one, and surfaces the load context around each
+  (7d TSS before + 7d TSS after). Foster 2017 + Soligard 2016 emphasise
+  that gaps interact with load — a 5-day break followed by a heavy week is
+  the classic overuse setup.
+
+  Why this exists distinct from streak cards: StreakCard / RecoveryStreakCard
+  only track the *current* streak (resets at first gap). This card counts
+  the FREQUENCY and CHARACTER of historical breaks across the 90-day
+  window — a 3-day taper looks different from 5 separate 3-day gaps.
+
+  Bands: CLEAN (≤1 hole, longest ≤5 days), OCCASIONAL_HOLES (not CLEAN,
+  ≤3 holes, longest ≤7), FRAGMENTED (≥4 holes OR longest >7).
+
+  Pure fn at `src/lib/athlete/calendarHoles.js`:
+  `analyzeCalendarHoles({ log, today, windowDays=90, minGapDays=3 })`.
+  Day counted as active if any entry has tss/duration_min/distance_km
+  > 0. Returns hole list with preceded/followed 7d TSS sums.
+
+  Card lazy-loaded in Dashboard. 90-day strip (active=blue, inactive=grey,
+  in-hole=red), up to 3 most-recent hole chips, EN/TR bilingual. 58 unit
+  tests (43 pure-fn + 15 component).
+
+  Cite: Foster 2017; Soligard 2016.
+
+  Depends on: log.date, log.tss/duration_min/distance_km.
+
+---
+
 ## v9.291.0 — 2026-05-19 — LongRunConsistencyCard — Daniels 2014 long-run duration CV tracker
 
   Tracks coefficient of variation of LONG-RUN durations (≥90min runs) over
