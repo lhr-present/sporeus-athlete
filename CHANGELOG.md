@@ -14,6 +14,29 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.272.0 — 2026-05-19 — HrForRpeCard — Karvonen 1957 HR × RPE calibration
+
+  Surfaces the athlete's median heart rate per RPE band over the
+  last 90 days. HR cousin of PaceByRpeCard (v9.269). Together they
+  give a complete RPE calibration picture: what "Easy" / "Moderate"
+  / "Hard" / "Very Hard" actually mean in both pace and HR terms.
+
+  New pure-fn `analyzeHrForRpe({ log, today, windowDays })` filters
+  sessions with rpe defined AND heartRate > 0, groups into 4 bands
+  (RPE 1-4 / 5-6 / 7-8 / 9-10), computes median HR per group.
+
+  Returns null when overall samples < 6 OR fewer than 2 bands have
+  any data. Renders 4 band rows always (zero-sample bands show `0×`
+  / `--`). Bilingual EN/TR.
+
+  Refs: Karvonen 1957 (heart-rate reserve); Borg 1982 (RPE-HR
+  correlation); Buchheit 2014.
+
+- Files: new `src/lib/athlete/hrForRpe.js` (157 lines),
+  new `src/components/dashboard/HrForRpeCard.jsx` (183 lines),
+  32 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.271.0 — 2026-05-19 — AnnualTssTargetCard — Hellard 2019 annual-TSS projection
 
   Surfaces year-end projected total TSS via linear extrapolation
