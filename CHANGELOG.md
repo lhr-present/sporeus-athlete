@@ -14,6 +14,39 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.294.0 — 2026-05-19 — SeasonAnchorCard — Hägglund 2013 ramp-from-nadir tracker
+
+  Identifies the athlete's "season anchor" — the lowest 4-week-rolling
+  TSS sum in the last 6 months — and surfaces how far they've climbed
+  from it. Distinct framing from absolute fitness metrics: a 600-TSS week
+  feels different depending on whether the athlete just climbed from a
+  200-TSS nadir or just dropped from a 900-TSS peak.
+
+  Bands: AT_ANCHOR (ramp<1.10×), EARLY_RAMP (1.10-1.60), BUILDING
+  (1.60-2.50), PEAK_BLOCK (≥2.50× AND within 5% of all-time peak in
+  lookback), ABOVE_HISTORY (new lookback high).
+
+  Why this exists: Hägglund 2013 early-season ramp-from-baseline velocity
+  correlates with injury risk. Bompa 2018 — periodization is *relative*
+  to the macrocycle's starting baseline, not absolute volumes.
+
+  Pure fn at `src/lib/athlete/seasonAnchor.js`:
+  `analyzeSeasonAnchor({ log, today, lookbackDays=180 })` → null if
+  <56 days of warmup+data. Returns anchor4wTss + anchorDate +
+  currentLast4wTss + rampRatio + peak4wTss + peakDate. Earliest tie
+  wins for anchor (origin moment); latest tie wins for peak (most
+  recent achievement).
+
+  Card lazy-loaded. Anchor/Now stat pair, large ramp ratio, mini line
+  chart of rolling4wTss across lookback with anchor + peak markers,
+  EN/TR bilingual. 55 unit tests (36 pure-fn + 19 component).
+
+  Cite: Hägglund 2013; Bompa 2018.
+
+  Depends on: log.date, log.tss.
+
+---
+
 ## v9.293.0 — 2026-05-19 — BackToBackLongDayCard — Issurin 2010 block-accumulation pattern
 
   Counts pairs of consecutive calendar days where both days had a ≥90min
