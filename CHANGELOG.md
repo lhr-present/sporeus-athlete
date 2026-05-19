@@ -14,6 +14,30 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.264.0 — 2026-05-19 — LifetimeTotalsCard — Bandura 1997 training-capital summary
+
+  Surfaces lifetime training totals across the entire log — no
+  window. Different from SeasonStatsCard (annual snapshot) and
+  MonthlyProgressCard (month-over-month comparison). Self-efficacy
+  anchor + training-capital framing.
+
+  New pure-fn `analyzeLifetimeTotals({ log, today })` aggregates
+  totalSessions, totalMinutes/Hours, totalDistanceKm, totalTss,
+  firstSessionDate, lastSessionDate, tenureDays/Years/Months.
+
+  Card shows tenure headline (`Xy Ymo · since YYYY-MM-DD` ≥1y; `Xmo
+  · since YYYY-MM-DD` otherwise), then 4 stat rows (sessions, hours,
+  distance, TSS). No band — informational only. Orange #ff6600
+  accent. Bilingual EN/TR with mirrored tenure formatting
+  ("YYYY-MM-DD'den beri").
+
+  Refs: Bandura 1997 (Self-efficacy: The exercise of control).
+
+- Files: new `src/lib/athlete/lifetimeTotals.js` (120 lines),
+  new `src/components/dashboard/LifetimeTotalsCard.jsx` (210 lines),
+  25 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.263.0 — 2026-05-19 — SleepConsistencyCard — Walker 2017 sleep-regularity tracker
 
   Surfaces 28-day variance of sleep duration (SD of `sleepHrs`).
