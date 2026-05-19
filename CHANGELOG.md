@@ -14,6 +14,32 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.285.0 — 2026-05-19 — PaceRangeCard — Daniels 2014 28d pace-spread detector
+
+  Surfaces the SPREAD of running paces used over the last 28 days —
+  fastest minus slowest. Reveals whether the athlete uses varied
+  intensities (polarized) or essentially one pace (junk-mile
+  pattern). Distinct from PaceByRpeCard (median per RPE band); this
+  collapses to a single SPREAD metric.
+
+  New pure-fn `analyzePaceRange({ log, today, windowDays })` filters
+  running sessions with positive distance + duration, computes
+  pace per session, then min/max/median. Bands:
+
+  - WIDE_SPREAD     (green)  — spread ≥ 2.0 min/km (good polarization)
+  - MODERATE_SPREAD (blue)   — 1.0 ≤ spread < 2.0 min/km
+  - NARROW_SPREAD   (orange) — spread < 1.0 min/km (single-pace risk)
+
+  Renders null when fewer than 5 qualifying runs. Card shows
+  ±M:SS/km spread, fastest→slowest range, median ref. Bilingual EN/TR.
+
+  Refs: Daniels 2014 (pace variety); Seiler 2010 (polarized training).
+
+- Files: new `src/lib/athlete/paceRange.js` (190 lines),
+  new `src/components/dashboard/PaceRangeCard.jsx` (247 lines),
+  55 tests across both, `src/components/Dashboard.jsx`
+  (lazy import + render line).
+
 ## v9.284.0 — 2026-05-19 — WeeklyKmPerSportCard — Daniels 2014 per-sport km tracker
 
   Surfaces per-sport weekly kilometers — this week's km vs the
