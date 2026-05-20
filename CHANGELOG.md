@@ -14,6 +14,36 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.310.0 — 2026-05-21 — WeeklyVolumeStreakCard — Bompa 2018 above-own-mean weekly streak tracker
+
+  Tracks longest run of consecutive weeks where TSS ≥ athlete's own 26-week
+  mean. Bompa 2018 — periodization is about momentum, and consecutive
+  on-target weeks signal sustained training intent. Self-referenced
+  threshold (vs absolute) so "a lot" scales with the athlete's baseline.
+
+  Bands: NO_STREAK (≤1 longest), BUILDING (2-3), STRONG_MOMENTUM (4-6),
+  PEAK_BLOCK (>6 — sustained 6+ weeks above own average).
+
+  Also surfaces currentStreakWeeks (the streak ending in the most-recent
+  completed week — 0 if last week below baseline). Distinct from
+  PeakWeekFrequencyCard (near-LIFETIME-peak density) and StreakCard
+  (daily-session streak) — this measures self-paced volume momentum
+  across weeks.
+
+  Pure fn at `src/lib/athlete/weeklyVolumeStreak.js`:
+  `analyzeWeeklyVolumeStreak({ log, today, lookbackWeeks=26 })`. Current
+  partial week excluded from analysis. Null when baselineTss === 0.
+
+  Card lazy-loaded. 26 mini-bars with horizontal baseline line,
+  current-streak + best-streak headline stats, EN/TR bilingual. 59
+  unit tests (38 pure-fn + 21 component).
+
+  Cite: Bompa 2018; Issurin 2010.
+
+  Depends on: log.date, log.tss.
+
+---
+
 ## v9.309.0 — 2026-05-21 — DailyVolumeRangeCard — Foster 2001 day-level variability across 28d
 
   Measures DAY-level TSS swing over the last 28 days (recentMin/Max/Mean/
