@@ -14,6 +14,37 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.302.0 — 2026-05-20 — HardSessionTypePatternCard — Stöggl 2014 hard-session variety entropy
+
+  Measures Shannon entropy of session-TYPE distribution among HARD
+  sessions (Z3+ or rpe ≥ 7) over the last 90 days. Stöggl 2014 +
+  Tønnessen 2015: variety in hard-session structure (intervals, tempo,
+  threshold, hill-repeats, race-pace) drives orthogonal adaptations.
+  Relying on a single hard-session type produces ceiling effects.
+
+  Bands: INSUFFICIENT_HARD (<8 hard sessions in 90d), MONOLITHIC
+  (dominant type ≥80%), NARROW (60-80%), VARIED (≥5 types AND
+  normalized entropy ≥0.85), BALANCED (otherwise).
+
+  Distinct from SessionVarietyCard (variety across ALL sessions); this
+  isolates HARD-session-specific variety — the slot where adaptation
+  diversity actually matters.
+
+  Pure fn at `src/lib/athlete/hardSessionTypePattern.js`:
+  `analyzeHardSessionTypePattern({ log, today, windowDays=90 })`.
+  Returns Shannon entropy in bits + normalizedEntropy (0-1) + dominant
+  type + dominant share %.
+
+  Card lazy-loaded. Horizontal stacked bar (top 6 types + "other"),
+  entropy readout, EN/TR bilingual. 57 unit tests (38 pure-fn + 19
+  component).
+
+  Cite: Stöggl 2014; Tønnessen 2015.
+
+  Depends on: log.date, log.type, log.zone OR log.rpe.
+
+---
+
 ## v9.301.0 — 2026-05-20 — ZoneThreeBlackHoleCard — Seiler 2010 fitness-death-zone detector
 
   Detects the Seiler 2010 + Stöggl 2014 "fitness death zone" anti-pattern:
