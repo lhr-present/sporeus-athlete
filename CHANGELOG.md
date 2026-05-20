@@ -14,6 +14,42 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.303.0 — 2026-05-20 — RestDayEnergyTrendCard — Lemyre 2007 burnout signal via rest-day energy gap
+
+  Compares mean energy score on REST days vs TRAINING days over the
+  last 30 days, plus an 8-week ISO-weekly trend slope of the gap.
+  Lemyre 2007 + Kellmann 2018 burnout research: when athletes are
+  healthy, rest days SHOULD restore (energy higher on rest days). When
+  entering overtraining / burnout, rest no longer restores — energy
+  stays flat or DROPS on rest days.
+
+  Bands (applied in order):
+    BURNOUT_SIGNAL — energyGap < 0 OR trendDelta < -0.20/wk
+    WARNING — energyGap < 0.5 AND trendDelta < -0.05/wk
+    WELL_RESTORED — energyGap ≥ 1.5
+    NEUTRAL — fallback (0.5 ≤ gap < 1.5)
+
+  Distinct from MoodEnergyBalanceCard (mood/energy snapshot) and
+  EnergySorenessDivergenceCard (energy-vs-soreness divergence) — this
+  is specifically rest-day-vs-training-day comparison through the
+  Lemyre lens. Reads from BOTH log (to classify rest vs training days)
+  AND recovery (to read energy scores).
+
+  Pure fn at `src/lib/athlete/restDayEnergyTrend.js`:
+  `analyzeRestDayEnergyTrend({ log, recovery, today, windowDays=30, trendWindowDays=56 })`.
+  Requires ≥3 days each side for means; ≥4 valid weekly buckets for trend.
+
+  Card lazy-loaded with `log` + `recovery` props (only the second card
+  besides PostHardSessionResponseCard to take both). EN/TR bilingual.
+  53 unit tests (38 pure-fn + 15 component).
+
+  Cite: Lemyre 2007; Kellmann 2018.
+
+  Depends on: recovery.energy, log.tss/durationMin (for rest-vs-training
+  classification).
+
+---
+
 ## v9.302.0 — 2026-05-20 — HardSessionTypePatternCard — Stöggl 2014 hard-session variety entropy
 
   Measures Shannon entropy of session-TYPE distribution among HARD
