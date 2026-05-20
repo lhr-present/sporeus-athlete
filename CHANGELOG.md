@@ -14,6 +14,41 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.311.0 — 2026-05-21 — MicrocycleVarietyCard — Issurin 2010 within-week stimulus variety
+
+  Counts distinct session TYPES within each ISO week over the last 12
+  weeks and surfaces the trend. Issurin 2010 block periodization: within
+  each microcycle (week), an athlete should hit MULTIPLE stimuli (long
+  run + intervals + tempo + strength) to drive concurrent adaptations.
+  A monotonous microcycle ceiling-effects fast.
+
+  Bands keyed off meanUniqueTypesPerWeek (across weeks with ≥1 session):
+  INSUFFICIENT_DATA (<4 training weeks), MONOTONOUS (≤1.5), NARROW
+  (≤2.5), BALANCED (≤4), WIDE_VARIETY (>4).
+
+  Distinct from SessionVarietyCard (overall variety) and
+  HardSessionTypePatternCard (HARD-only variety entropy across 90d).
+  This card is week-level granular, surfacing whether each individual
+  microcycle covers enough stimuli.
+
+  Mean counts only weeks with ≥1 session; trendDeltaPerWeek uses ALL
+  windowWeeks including empty weeks treated as 0 (a rest week IS a
+  reduction in stimulus variety).
+
+  Pure fn at `src/lib/athlete/microcycleVariety.js`:
+  `analyzeMicrocycleVariety({ log, today, windowWeeks=12 })`. Empty/
+  whitespace-only types count toward sessionCount but NOT uniqueTypes.
+
+  Card lazy-loaded. 12 vertical mini-bars showing uniqueTypes height +
+  sessionCount label, EN/TR bilingual. 67 unit tests (46 pure-fn + 21
+  component).
+
+  Cite: Issurin 2010; Bompa 2018.
+
+  Depends on: log.date, log.type.
+
+---
+
 ## v9.310.0 — 2026-05-21 — WeeklyVolumeStreakCard — Bompa 2018 above-own-mean weekly streak tracker
 
   Tracks longest run of consecutive weeks where TSS ≥ athlete's own 26-week
