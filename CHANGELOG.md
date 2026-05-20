@@ -14,6 +14,41 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.300.0 — 2026-05-20 — PeakWeekFrequencyCard — Issurin 2010 block-density near-peak counter
+
+  Counts weeks in the last ~26 ISO weeks at ≥90% of the athlete's lifetime
+  peak weekly TSS. Issurin 2010 + Bompa 2018: a serious build phase shows
+  MULTIPLE near-peak weeks clustered together, not a single one-off peak.
+  Lifetime peak alone doesn't say whether the athlete sustained training
+  at that level or briefly touched it.
+
+  Bands: NO_BLOCK (0 near-peak weeks), SPARSE (1-2), BLOCK_DENSITY (3-6),
+  PEAK_PHASE (≥7).
+
+  Distinct from WeeklyVolumeRecordCard (single-point comparison of
+  current vs peak); this measures DENSITY of near-peak weeks across the
+  lookback.
+
+  Lifetime peak baseline EXCLUDES current week (which may be partial and
+  skew downward); lookback iteration also excludes current week. Earliest
+  tie wins for peak date (canonical first achievement).
+
+  Pure fn at `src/lib/athlete/peakWeekFrequency.js`:
+  `analyzePeakWeekFrequency({ log, today, lookbackWeeks=26, peakThresholdPct=0.90 })`.
+  Null if <8 distinct weeks of history. Returns weeks[] with isNearPeak
+  flags + lifetimePeak + nearPeakWeekCount + rate.
+
+  Card lazy-loaded. 26 mini bars with near-peak weeks highlighted, EN/TR
+  bilingual. 59 unit tests (37 pure-fn + 22 component).
+
+  Cite: Issurin 2010; Bompa 2018.
+
+  Depends on: log.date, log.tss.
+
+  Milestone: card #201 in Dashboard. 9-month track from v6.0 launch.
+
+---
+
 ## v9.299.0 — 2026-05-19 — HardEasyAdherenceCard — Daniels 2014 hard-easy rule violation tracker
 
   Tracks % of weeks in the last 12 with zero "hard-after-hard"
