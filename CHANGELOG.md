@@ -14,6 +14,44 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.307.0 — 2026-05-21 — ResetWeekEffectCard — Bompa 2018 post-deload supercompensation check
+
+  Finds the most-recent deload week in the last 13 ISO weeks and
+  evaluates the 2 weeks AFTER vs the 3 weeks BEFORE: did the rebound
+  show up? Bompa 2018 supercompensation theory — after a deload week,
+  the athlete should be able to handle MORE load than before the
+  deload. If they can't, the deload was either insufficient or the
+  athlete is genuinely fatigued.
+
+  Deload-week definition: a week whose TSS is <75% of the mean of the
+  prior 3 weeks (matches MesocycleProgressionCard convention) AND
+  TSS > 0 (a 0-TSS week is a break, not a deload).
+
+  Bands: STRONG_BOUNCE (post-mean ≥10% over pre-mean), MODEST_BOUNCE
+  (0 < bounce < 10%), NO_BOUNCE (flat/negative), NO_DELOAD_FOUND.
+
+  Distinct from MesocycleProgressionCard (detects 3:1 PATTERN
+  adherence), SupercompensationWindowCard (current TSB peak detection),
+  DeloadCadenceCard (frequency). This one asks: did your last deload
+  actually WORK?
+
+  Current partial week excluded from deload search. weeksAfterDeloadAvailable
+  tracks 0/1/2 — post mean adjusts.
+
+  Pure fn at `src/lib/athlete/resetWeekEffect.js`:
+  `analyzeResetWeekEffect({ log, today, lookbackWeeks=13 })`. Returns
+  deloadWeekStart, preMeanTss, postMeanTss, bouncePct.
+
+  Card lazy-loaded. Three-bar SVG (pre / deload / post), bouncePct as
+  ±X% headline, EN/TR bilingual. 64 unit tests (41 pure-fn + 23
+  component).
+
+  Cite: Bompa 2018; Issurin 2010.
+
+  Depends on: log.date, log.tss.
+
+---
+
 ## v9.306.0 — 2026-05-21 — MidweekHardDayFrequencyCard — Foster 2017 day-of-week hard-session distribution
 
   Tracks distribution of HARD sessions (day max-TSS ≥ 60) across Mon-Sun
