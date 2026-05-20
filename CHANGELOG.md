@@ -14,6 +14,40 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.301.0 — 2026-05-20 — ZoneThreeBlackHoleCard — Seiler 2010 fitness-death-zone detector
+
+  Detects the Seiler 2010 + Stöggl 2014 "fitness death zone" anti-pattern:
+  spending substantial time in moderate-intensity (Z3 / tempo) without
+  earning either the aerobic stimulus of Z1+Z2 or the threshold/VO2max
+  stimulus of Z4+Z5. The pure-polarized model says hard time should be
+  Z4-Z5 specifically; Z3 dominance is the canonical mistake of
+  self-coached athletes.
+
+  Tracks Z3 minutes vs (Z4+Z5) minutes over the last 8 ISO weeks.
+
+  Bands: POLARIZED (Z3 share <25% of non-easy time), BALANCED (25-60%),
+  BLACK_HOLE (≥60%), INSUFFICIENT_HARD_VOLUME (<60 min Z3+HARD total).
+
+  Distinct from TimeInZoneCard (all-zone share), IntensityBalanceCard
+  (z-share balance), PolarizationComplianceCard (distribution adherence)
+  — none of those specifically isolate Z3 vs Z4+Z5.
+
+  Zone classification: `entry.zone` matches /^z3$/i → Z3, /^z[45]$/i →
+  HARD. RPE fallback: 5-6 → Z3, ≥7 → HARD, ≤4 → skip (not counted).
+
+  Pure fn at `src/lib/athlete/zoneThreeBlackHole.js`:
+  `analyzeZoneThreeBlackHole({ log, today, windowWeeks=8 })`. z3ToHardRatio
+  is null when totalHardMin=0 (UI shows ∞).
+
+  Card lazy-loaded. Stacked totals + 8 weekly mini-bars (Z3 orange, HARD
+  red), EN/TR bilingual. 71 unit tests (53 pure-fn + 18 component).
+
+  Cite: Seiler 2010; Stöggl 2014.
+
+  Depends on: log.date, log.durationMin/duration_min, log.zone OR log.rpe.
+
+---
+
 ## v9.300.0 — 2026-05-20 — PeakWeekFrequencyCard — Issurin 2010 block-density near-peak counter
 
   Counts weeks in the last ~26 ISO weeks at ≥90% of the athlete's lifetime
