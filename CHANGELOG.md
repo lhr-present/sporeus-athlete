@@ -14,6 +14,39 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.305.0 — 2026-05-21 — PostLongRunNextDayCard — Daniels 2014 recovery-after-long-run pattern
+
+  Surfaces what kind of session follows each long run (≥90min run) over
+  the last 12 weeks: REST, EASY (<40 TSS), MODERATE (40-80), or HARD
+  (≥80). Daniels 2014 + Pfitzinger 2014 — the day after a long run
+  determines recovery quality. Running easy or resting allows protein
+  turnover and glycogen restoration. Hard work the day after a long run
+  accumulates fatigue without earning new adaptation, and is the
+  canonical pre-injury setup.
+
+  Bands: IDEAL_RECOVERY (≥75% rest+easy follow-ups), AGGRESSIVE_FOLLOWUP
+  (≥40% hard follow-ups), MIXED, INSUFFICIENT_LONG_RUNS (<4 long runs).
+
+  Distinct from LongRunFrequencyCard (count) and LongRunConsistencyCard
+  (duration CV) — this examines the WINDOW AROUND each long run, not the
+  long run itself.
+
+  Pure fn at `src/lib/athlete/postLongRunNextDay.js`:
+  `analyzePostLongRunNextDay({ log, today, windowWeeks=12, longRunMinThreshold=90 })`.
+  Returns null when no long runs in window. Long-run-on-window-edge
+  classifies the next-day even when that day falls one day past
+  window-end.
+
+  Card lazy-loaded. Stacked rest/easy/moderate/hard bar, 4 recent
+  followup chips, EN/TR bilingual. 65 unit tests (46 pure-fn + 19
+  component).
+
+  Cite: Daniels 2014; Pfitzinger 2014.
+
+  Depends on: log.date, log.durationMin, log.type/sport, log.tss.
+
+---
+
 ## v9.304.0 — 2026-05-21 — HighRpeBlockCard — Foster 2001 consecutive-high-RPE block detector
 
   Detects streaks of 3+ consecutive days where session RPE ≥ 8 over the
