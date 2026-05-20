@@ -14,6 +14,39 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.308.0 — 2026-05-21 — SeasonRestartCountCard — Hägglund 2013 comeback-frequency over 365d
+
+  Counts "restart events" — training sessions that follow a gap of ≥7
+  consecutive inactive days — over the last 365 days. Each restart is a
+  high-risk window (detrained tissue meeting renewed load — Gabbett 2016)
+  AND a life-context signal (multi-restart years often coincide with
+  travel/work disruption/recurring injury).
+
+  Per restart, surfaces:
+  - gapLengthDays preceding it
+  - streakAfterDays it lasted before the next gap (or until today)
+
+  Bands: CONSISTENT (≤1 restart AND longestGap ≤14d), OCCASIONAL_BREAKS
+  (≤3 restarts), FRAGMENTED (≤6), CHRONIC_RESTART (>6 OR longestGap >60).
+
+  Distinct from CalendarHolesCard (90d gap count); this is a 365d
+  long-range fragmentation pattern. The earliest active log day does
+  NOT count as a restart (it's just the start of available data).
+
+  Pure fn at `src/lib/athlete/seasonRestartCount.js`:
+  `analyzeSeasonRestartCount({ log, today, lookbackDays=365, minGapDays=7 })`.
+  Empty log returns CONSISTENT with empty restarts (no null).
+
+  Card lazy-loaded. 365-tile activity strip with restart-day markers,
+  up to 4 recent-restart chips, EN/TR bilingual. 64 unit tests (44
+  pure-fn + 20 component).
+
+  Cite: Hägglund 2013; Gabbett 2016.
+
+  Depends on: log.date, log.tss/durationMin/distanceKm.
+
+---
+
 ## v9.307.0 — 2026-05-21 — ResetWeekEffectCard — Bompa 2018 post-deload supercompensation check
 
   Finds the most-recent deload week in the last 13 ISO weeks and
