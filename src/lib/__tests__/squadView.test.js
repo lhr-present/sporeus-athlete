@@ -497,9 +497,10 @@ describe('getAthleteAttentionSignal', () => {
 
 describe('sortAthletes attention', () => {
   it('sorts urgent rows to the bottom when asc, top when desc', () => {
-    const urgentRow    = { display_name: 'A', acwr_status: 'danger',   last_session_date: '2026-05-13' }
-    const attentionRow = { display_name: 'B', acwr_status: 'caution',  last_session_date: '2026-05-13', adherence_pct: 80 }
-    const okRow        = { display_name: 'C', acwr_status: 'optimal',  last_session_date: '2026-05-13', adherence_pct: 90 }
+    const recent = new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10)
+    const urgentRow    = { display_name: 'A', acwr_status: 'danger',   last_session_date: recent }
+    const attentionRow = { display_name: 'B', acwr_status: 'caution',  last_session_date: recent, adherence_pct: 80 }
+    const okRow        = { display_name: 'C', acwr_status: 'optimal',  last_session_date: recent, adherence_pct: 90 }
     const asc  = sortAthletes([urgentRow, attentionRow, okRow], 'attention', 'asc')
     expect(asc.map(r => r.display_name)).toEqual(['C', 'B', 'A'])
     const desc = sortAthletes([urgentRow, attentionRow, okRow], 'attention', 'desc')
