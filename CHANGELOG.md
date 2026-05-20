@@ -14,6 +14,40 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.306.0 — 2026-05-21 — MidweekHardDayFrequencyCard — Foster 2017 day-of-week hard-session distribution
+
+  Tracks distribution of HARD sessions (day max-TSS ≥ 60) across Mon-Sun
+  over the last 8 weeks. Surfaces the midweek (Tue/Wed/Thu) vs weekend
+  (Sat/Sun) split. Foster 2017 + Bompa 2018 — distribution matters as
+  much as count: working athletes often skew hard sessions to weekends
+  (the "weekend warrior" pattern); serious athletes tend to fit hard
+  sessions midweek to preserve weekends for long aerobic sessions.
+
+  Bands: MIDWEEK_FOCUSED (≥50% midweek share), WEEKEND_WARRIOR (≥60%
+  weekend share), BALANCED, INSUFFICIENT_HARD (<6 hard days in window).
+
+  Distinct from HardDaySpacingCard (mean spacing), HardEasyAdherenceCard
+  (rule violations), WeekendVolumeShareCard (total volume share),
+  DayOfWeekAvailabilityCard (availability slots) — none of those isolate
+  *hard*-session weekday-vs-weekend bias.
+
+  Multi-session day uses max(TSS) for hard classification. Sunday
+  belongs to Sun key under ISO Mon-anchored week math.
+
+  Pure fn at `src/lib/athlete/midweekHardDayFrequency.js`:
+  `analyzeMidweekHardDayFrequency({ log, today, windowWeeks=8 })`.
+  Returns dayCounts {mon..sun} + midweekShare + dominantDay.
+
+  Card lazy-loaded. 7-bar Mon-Sun histogram (midweek blue, weekend red,
+  mon/fri grey), dominantDay label, EN/TR bilingual. 74 unit tests
+  (52 pure-fn + 22 component).
+
+  Cite: Foster 2017; Bompa 2018.
+
+  Depends on: log.date, log.tss.
+
+---
+
 ## v9.305.0 — 2026-05-21 — PostLongRunNextDayCard — Daniels 2014 recovery-after-long-run pattern
 
   Surfaces what kind of session follows each long run (≥90min run) over
