@@ -14,6 +14,38 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.309.0 — 2026-05-21 — DailyVolumeRangeCard — Foster 2001 day-level variability across 28d
+
+  Measures DAY-level TSS swing over the last 28 days (recentMin/Max/Mean/
+  StdDev + 28-day vertical histogram) plus a trend delta vs the prior
+  56-day window. Foster 2001 monotony was a weekly metric, but day-to-day
+  variability tells a different story: a clean hard-easy week (high day-
+  to-day swing, healthy) and a flat-all-week pattern (low swing,
+  monotonous) have very different recovery dynamics.
+
+  Bands keyed off `recentStdDev` (population stdev across ALL 28 days
+  including zeros): FLAT (<15 with at least some training), STEADY
+  (15-35), PULSED (35-70 — healthy hard-easy oscillation), EXTREME_SWING
+  (≥70 — potential cramming).
+
+  Distinct from MonotonyTrendCard / MonotonyStrainCard / WeeklyTssVariance
+  — all week-level metrics. This is the missing day-level lens.
+
+  Pure fn at `src/lib/athlete/dailyVolumeRange.js`:
+  `analyzeDailyVolumeRange({ log, today, windowDays=28, comparisonWindowDays=56 })`.
+  recentMin excludes zero days (swing magnitude); recentStdDev includes
+  them (monotony amplitude). Null when all 28 days zero.
+
+  Card lazy-loaded. 28-bar SVG (colour by absolute TSS), 5-stat grid,
+  trend arrow, rest-day count, EN/TR bilingual. 63 unit tests (50
+  pure-fn + 13 component).
+
+  Cite: Foster 2001; Halson 2014.
+
+  Depends on: log.date, log.tss.
+
+---
+
 ## v9.308.0 — 2026-05-21 — SeasonRestartCountCard — Hägglund 2013 comeback-frequency over 365d
 
   Counts "restart events" — training sessions that follow a gap of ≥7
