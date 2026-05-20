@@ -14,6 +14,38 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.304.0 — 2026-05-21 — HighRpeBlockCard — Foster 2001 consecutive-high-RPE block detector
+
+  Detects streaks of 3+ consecutive days where session RPE ≥ 8 over the
+  last 60 days. Foster 2001 + Halson 2014 — back-to-back high-RPE days
+  accumulate strain without recovery. Three or more consecutive high-RPE
+  training days approaches unintended overreaching (different from
+  intentional loading blocks which are followed by deload).
+
+  Bands: CLEAN (no blocks), OCCASIONAL_BLOCK (1), REPEAT_BLOCKS (2-3),
+  CHRONIC_STRAIN (≥4 blocks OR longest-block ≥6 days).
+
+  Distinct from RpeStabilityCard (RPE variability) and HardDaySpacingCard
+  (mean gap between hard days). This card specifically catches the
+  back-to-back-to-back STREAK pattern.
+
+  Multi-session day uses max(rpe) across that day's entries. NaN/missing
+  RPE never marks a day high.
+
+  Pure fn at `src/lib/athlete/highRpeBlock.js`:
+  `analyzeHighRpeBlock({ log, today, windowDays=60, highRpeThreshold=8, minBlockDays=3 })`.
+  Returns blocks[] with startDate, endDate, lengthDays, peakRpe.
+
+  Card lazy-loaded in Dashboard. 60-day strip (grey / orange isolated /
+  red in-block), up to 3 most-recent block chips, EN/TR bilingual. 64
+  unit tests (47 pure-fn + 17 component).
+
+  Cite: Foster 2001; Halson 2014.
+
+  Depends on: log.date, log.rpe.
+
+---
+
 ## v9.303.0 — 2026-05-20 — RestDayEnergyTrendCard — Lemyre 2007 burnout signal via rest-day energy gap
 
   Compares mean energy score on REST days vs TRAINING days over the
