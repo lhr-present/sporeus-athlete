@@ -14,6 +14,42 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.326.0 — 2026-05-22 — PostHardSessionSorenessCard — Kellmann 2018 day-after-hard soreness pattern
+
+  Tracks typical soreness score the morning AFTER each hard session
+  (max-per-session TSS ≥ 80) over the last 60 days. Kellmann 2018 +
+  Lemyre 2007: muscle soreness after hard sessions is normal; lack of
+  soreness signals adaptation or under-training; CHRONIC high soreness
+  post-hard signals incomplete recovery / accumulated fatigue.
+
+  Bands: PROLONGED_SORENESS (sorenessElevation ≥ 1.5), NORMAL (0.5-1.5),
+  FAST_RECOVERY (<0.5 — adapted or under-training),
+  INSUFFICIENT_HARD_DATA (<5 hard events with paired recovery score).
+
+  Elevation = mean(post-hard soreness) - mean(baseline soreness across
+  all recovery entries in window).
+
+  Distinct from PostHardSessionResponseCard (probably TSB-based),
+  EnergySorenessDivergenceCard (energy-vs-soreness divergence) — this
+  card specifically isolates SORENESS day-after-hard via direct
+  comparison to baseline.
+
+  Hard-day detection uses MAX-per-session TSS (not sum) — multi-session
+  days aren't artificially inflated into hard category.
+
+  Pure fn at `src/lib/athlete/postHardSessionSoreness.js`:
+  `analyzePostHardSessionSoreness({ log, recovery, today, windowDays=60, hardTssThreshold=80 })`.
+
+  Card lazy-loaded with `log` + `recovery` props (3rd card to take
+  both, after PostHardSessionResponseCard and RestDayEnergyTrendCard).
+  EN/TR bilingual. 70 unit tests (47 pure-fn + 23 component).
+
+  Cite: Kellmann 2018; Lemyre 2007.
+
+  Depends on: log.date, log.tss, recovery.date, recovery.soreness.
+
+---
+
 ## v9.325.0 — 2026-05-22 — ConsecutiveDeloadCountCard — Bompa 2018 back-to-back deload detection
 
   Counts back-to-back deload events (2+ consecutive deload weeks) in
