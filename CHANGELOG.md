@@ -14,6 +14,41 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.318.0 — 2026-05-21 — AlternatingWeekPatternCard — Issurin 2010 alternating easy/hard week rhythm
+
+  Detects pure alternating easy/hard week rhythm (no 3:1 anchor, just
+  oscillating high/low TSS week-by-week) over the last 8 ISO weeks.
+  Issurin 2010 — alternating weeks is a periodization variant common
+  with masters athletes and those balancing time-constrained schedules.
+
+  Tagging at ±10% of meanTss: HIGH (≥110% mean), LOW (≤90% mean),
+  NEUTRAL otherwise. alternationScore = fraction of adjacent-week pairs
+  that swap HIGH↔LOW (NEUTRAL pairs don't count).
+
+  Bands: STRONG_ALTERNATION (≥0.70 score), MODERATE_ALTERNATION
+  (0.40-0.69), NO_ALTERNATION (<0.40), INSUFFICIENT_DATA (<6 non-zero
+  weeks).
+
+  Distinct from MesocycleProgressionCard (3:1 build+deload pattern) and
+  ResetWeekEffectCard (post-deload bounce). This card detects the
+  bipolar week-by-week rhythm specifically.
+
+  Also reports amplitudeRatio = mean(HIGH) / mean(LOW) to characterise
+  oscillation depth.
+
+  Pure fn at `src/lib/athlete/alternatingWeekPattern.js`:
+  `analyzeAlternatingWeekPattern({ log, today, windowWeeks=8 })`.
+
+  Card lazy-loaded. 8 vertical bars colored by role (HIGH orange / LOW
+  green / NEUTRAL grey) with dashed mean line, EN/TR bilingual. 57 unit
+  tests (38 pure-fn + 19 component).
+
+  Cite: Issurin 2010; Mujika 2014.
+
+  Depends on: log.date, log.tss.
+
+---
+
 ## v9.317.0 — 2026-05-21 — VolumePerSessionTrendCard — Daniels 2014 mean session duration trend over 12w
 
   Tracks mean session duration trend over 12 ISO weeks via OLS
