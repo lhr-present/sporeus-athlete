@@ -14,6 +14,37 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.324.0 — 2026-05-22 — VeryEasyShareCard — Maffetone 2010 RPE-based aerobic base share
+
+  Tracks share of training MINUTES at RPE ≤3 ("very easy") over the
+  last 30 days. Maffetone MAF + Seiler 80/20 — extremely easy training
+  is what drives mitochondrial density and fat-oxidation capacity. Many
+  amateur athletes who think they're going "easy" are actually at
+  Z2-mid — not truly easy. RPE ≤3 is a stricter subjective gate.
+
+  Bands: INSUFFICIENT_BASE (<30% very-easy share), BUILDING_BASE
+  (30-55%), STRONG_BASE (55-80%), EXCESSIVE_EASY (>80% — likely
+  under-training), INSUFFICIENT_DATA (<60 totalRated min).
+
+  Distinct from WeeklyEnduranceTimeCard (Z1+Z2 absolute minutes by
+  zone) and TimeInZoneCard (zone snapshot) — this uses subjective RPE
+  rather than physiological zones, and tracks SHARE not absolute dose.
+
+  Pure fn at `src/lib/athlete/veryEasyShare.js`:
+  `analyzeVeryEasyShare({ log, today, windowDays=30, veryEasyRpeMax=3 })`.
+  Valid RPE = finite in [1..10]; invalid/missing → unratedSessionCount
+  (data hygiene signal).
+
+  Card lazy-loaded. Stacked bar (very-easy / rated-hard / unrated)
+  with unrated capped at 25% visual weight so single bad entry can't
+  dominate. EN/TR bilingual. 75 unit tests (56 pure-fn + 19 component).
+
+  Cite: Maffetone 2010; Seiler 2010.
+
+  Depends on: log.date, log.durationMin, log.rpe.
+
+---
+
 ## v9.323.0 — 2026-05-21 — AfterBigWeekRpeCard — Halson 2014 post-overreaching RPE elevation marker
 
   Compares mean session RPE in the week AFTER a big-volume week vs RPE
