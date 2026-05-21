@@ -14,6 +14,43 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.312.0 — 2026-05-21 — TrainRestTrainPatternCard — Issurin 2010 isolated-vs-extended rest detector
+
+  Counts isolated single rest days (train-rest-train sandwiches) vs
+  extended rest blocks (≥2 consecutive rest days) over the last 12 ISO
+  weeks. Issurin 2010 + Bompa 2018: a single rest day flanked by
+  training produces minimal supercompensation (the body barely begins
+  glycogen replenishment, let alone tissue remodeling). Extended rest
+  drives meaningful adaptation.
+
+  Bands: EXTENDED_REST_DOMINANT (isolated share ≤30% AND ≥2 extended
+  blocks), BALANCED, ISOLATED_REST_DOMINANT (≥70% of rest days are
+  single sandwiches), INSUFFICIENT_REST_DAYS (<6 rest days).
+
+  Edge-rest behaviour: length-1 rest at window-start or window-end is
+  NOT classified as isolated (cannot verify both neighbours active),
+  but still counts toward totalRestDays. Length-≥2 blocks count as
+  extended regardless of edge status.
+
+  Distinct from CalendarHolesCard (multi-day gaps overall),
+  HardDaySpacingCard (intervals between hard days), RestDayDistribution
+  (post-hard rate) — this card specifically catches isolated single
+  rest days as a recovery anti-pattern.
+
+  Pure fn at `src/lib/athlete/trainRestTrainPattern.js`:
+  `analyzeTrainRestTrainPattern({ log, today, windowWeeks=12 })`.
+  Active day: any entry with tss/durationMin/distanceKm > 0.
+
+  Card lazy-loaded. 84-cell 12×7 SVG strip (active blue, isolated
+  orange, extended green, future grey), EN/TR bilingual. 52 unit
+  tests (36 pure-fn + 16 component).
+
+  Cite: Issurin 2010; Bompa 2018.
+
+  Depends on: log.date, log.tss/durationMin/distanceKm.
+
+---
+
 ## v9.311.0 — 2026-05-21 — MicrocycleVarietyCard — Issurin 2010 within-week stimulus variety
 
   Counts distinct session TYPES within each ISO week over the last 12
