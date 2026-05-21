@@ -14,6 +14,41 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.325.0 — 2026-05-22 — ConsecutiveDeloadCountCard — Bompa 2018 back-to-back deload detection
+
+  Counts back-to-back deload events (2+ consecutive deload weeks) in
+  the last 16 ISO weeks. A single deload week is strategic recovery;
+  two+ consecutive deloads usually signal illness, injury, holiday, OR
+  unintended detraining drift. Mujika 2010 — detraining starts within
+  2 weeks of reduced load.
+
+  Bands: NO_RUNS (0 back-to-back events), OCCASIONAL_RUN (1),
+  EXTENDED_RUN (>1 OR longest >2 weeks), INSUFFICIENT_DATA (<6
+  classifiable weeks).
+
+  Deload-week definition: TSS < 75% of prior 3-week mean AND TSS > 0
+  (TSS = 0 = break, breaks a run rather than extending it).
+
+  Distinct from DeloadCadenceCard (overall frequency),
+  MesocycleProgressionCard (3:1 strategic pattern), ResetWeekEffectCard
+  (post-deload bounce). This card catches UNINTENDED back-to-back
+  light weeks.
+
+  Pure fn at `src/lib/athlete/consecutiveDeloadCount.js`:
+  `analyzeConsecutiveDeloadCount({ log, today, windowWeeks=16, deloadThresholdPct=0.75 })`.
+  `priorRefTss` taken from first week of run (cleanest reference before
+  the run depresses subsequent priors).
+
+  Card lazy-loaded. 16 mini bars (deload-in-run red, isolated-deload
+  orange, normal grey), up to 3 recent-run chips, EN/TR bilingual. 64
+  unit tests (40 pure-fn + 24 component).
+
+  Cite: Bompa 2018; Mujika 2010.
+
+  Depends on: log.date, log.tss.
+
+---
+
 ## v9.324.0 — 2026-05-22 — VeryEasyShareCard — Maffetone 2010 RPE-based aerobic base share
 
   Tracks share of training MINUTES at RPE ≤3 ("very easy") over the
