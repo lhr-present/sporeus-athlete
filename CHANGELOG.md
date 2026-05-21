@@ -14,6 +14,40 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.322.0 — 2026-05-21 — TrainAfterRestCard — Bompa 2018 post-rest-day rebound load tracker
+
+  Tracks mean TSS the day after rest days, compared to overall mean
+  training-day TSS, over the last 60 days. Common amateur pattern: feel
+  guilty after a rest day, smash a hard workout the next day, end up
+  over-stressed. Bompa 2018 — supercompensation is best harvested with
+  a MODERATE session post-rest, not a maximal one.
+
+  Bands: CONSERVATIVE_REBOUND (reboundRatio ≤0.85), BALANCED
+  (0.85-1.20), AGGRESSIVE_REBOUND (≥1.20 — rebound overcommit pattern),
+  INSUFFICIENT_REBOUND_DAYS (<4 post-rest training days).
+
+  Distinct from RestDayDistributionCard (post-hard rest rate),
+  HardDaySpacingCard (intervals), TrainRestTrainPatternCard (isolated
+  rest pattern) — this card focuses on the LOAD after each rest day.
+
+  Pre-window rest lookup: first day of window only qualifies as
+  post-rest when log has observed history strictly before window start
+  (prevents false post-rest claims for the user's first logged session).
+  `restDaysBefore` walks back bounded by observable history.
+
+  Pure fn at `src/lib/athlete/trainAfterRest.js`:
+  `analyzeTrainAfterRest({ log, today, windowDays=60 })`.
+
+  Card lazy-loaded. Big reboundRatio stat with band-coloured badge,
+  side-by-side TSS comparison rows, 3 recent post-rest chips,
+  EN/TR bilingual. 59 unit tests (47 pure-fn + 12 component).
+
+  Cite: Bompa 2018; Skorski 2019.
+
+  Depends on: log.date, log.tss.
+
+---
+
 ## v9.321.0 — 2026-05-21 — SessionGapVarianceCard — Foster 2017 inter-session interval rhythm
 
   Measures the standard deviation of inter-session gaps over the last
