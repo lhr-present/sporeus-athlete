@@ -14,6 +14,36 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.313.0 — 2026-05-21 — OverlookedSessionTypeCard — Bompa 2018 dropped-stimulus detector
+
+  Inverse of NewSessionTypeIntroCard. Surfaces session types that
+  appeared meaningfully in baseline (30-180 days ago) but are missing
+  from the last 30 days. Bompa 2018 + Issurin 2010: periodization
+  includes rotating session types in and out across the macrocycle.
+  Athletes can unconsciously DROP types (e.g., haven't done strength in
+  3 months without realizing it).
+
+  Bands: COMPLETE_REPERTOIRE (0 drops), MINOR_DROPS (1-2),
+  MULTIPLE_DROPS (≥3), INSUFFICIENT_HISTORY (<10 baseline sessions).
+
+  Per overlooked type, reports baselineCount + lastSeen + daysSinceLast.
+  lastSeen scans the FULL log (not just baseline window) so a recent
+  partial appearance still updates the timestamp.
+
+  Pure fn at `src/lib/athlete/overlookedSessionType.js`:
+  `analyzeOverlookedSessionType({ log, today, recentDays=30, baselineDays=180, minBaselineCount=3 })`.
+  Empty log returns INSUFFICIENT_HISTORY (not null).
+
+  Card lazy-loaded. Type chips sorted by daysSinceLast asc (most-
+  recently-missed first), EN/TR bilingual, positive message on
+  COMPLETE_REPERTOIRE. 58 unit tests (43 pure-fn + 15 component).
+
+  Cite: Bompa 2018; Issurin 2010.
+
+  Depends on: log.date, log.type.
+
+---
+
 ## v9.312.0 — 2026-05-21 — TrainRestTrainPatternCard — Issurin 2010 isolated-vs-extended rest detector
 
   Counts isolated single rest days (train-rest-train sandwiches) vs
