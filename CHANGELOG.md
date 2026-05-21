@@ -14,6 +14,40 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.317.0 — 2026-05-21 — VolumePerSessionTrendCard — Daniels 2014 mean session duration trend over 12w
+
+  Tracks mean session duration trend over 12 ISO weeks via OLS
+  regression slope. Daniels 2014 + Pfitzinger 2014: there are two ways
+  to grow training volume — more sessions, or longer sessions — and
+  they produce different adaptations. Card answers "are my typical
+  sessions getting longer or shorter?".
+
+  Bands: SHRINKING (slope <-2%/wk), STABLE (-2 to +2%/wk), GROWING
+  (2-5%/wk), AGGRESSIVE_GROWTH (≥5%/wk), INSUFFICIENT_DATA (<12
+  sessions in window).
+
+  Distinct from SessionLengthDistributionCard (snapshot histogram),
+  LongestSessionTrendCard (just the max), LongSessionShareCard (long-
+  vs-short share). This is the MEAN-DURATION TREND lens.
+
+  Weeks with 0 sessions contribute 0 to the mean → an off-week pulls
+  the regression line down, which is the correct signal.
+
+  Pure fn at `src/lib/athlete/volumePerSessionTrend.js`:
+  `analyzeVolumePerSessionTrend({ log, today, windowWeeks=12 })`.
+  Accepts both durationMin (canonical) and duration_min.
+
+  Card lazy-loaded. 12 weekly bars with dashed regression-line overlay,
+  EN/TR bilingual. 67 unit tests (44 pure-fn + 23 component).
+  AGGRESSIVE_GROWTH rendered magenta to visually distinguish from
+  healthy GROWING (green).
+
+  Cite: Daniels 2014; Pfitzinger 2014.
+
+  Depends on: log.date, log.durationMin.
+
+---
+
 ## v9.316.0 — 2026-05-21 — WeekendLongSessionShareCard — Foster 2017 long-session weekday-vs-weekend split
 
   Of all long sessions (≥90 min, any sport) over the last 12 weeks, what
