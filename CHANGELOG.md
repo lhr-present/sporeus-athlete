@@ -14,6 +14,38 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.321.0 — 2026-05-21 — SessionGapVarianceCard — Foster 2017 inter-session interval rhythm
+
+  Measures the standard deviation of inter-session gaps over the last
+  30 days. Foster 2017 + Halson 2014: training adapts best when stimulus
+  is rhythmic, not erratic. An athlete who trains on a predictable
+  cadence (every other day, say) accumulates more durable adaptation
+  than one who clusters 5 sessions in 3 days then takes 4 days off.
+
+  Bands keyed on coefficient of variation (stdGap / meanGap):
+  METRONOME (cv <0.30 — very regular), STEADY (0.30-0.70),
+  CHAOTIC (≥0.70 — very irregular), INSUFFICIENT_SESSIONS (<6
+  training days).
+
+  Distinct from HardDaySpacingCard (hard-only intervals),
+  CalendarHolesCard (multi-day gap blocks), SessionDensityCard (count
+  per period). This is RHYTHM REGULARITY across all sessions.
+
+  Pure fn at `src/lib/athlete/sessionGapVariance.js`:
+  `analyzeSessionGapVariance({ log, today, windowDays=30 })`. Training
+  day = any entry with tss/durationMin/distanceKm > 0. Multi-entry day
+  deduped. Population stdev.
+
+  Card lazy-loaded. 5-bucket histogram (1/2/3/4/5+ days) + 30-day
+  train-vs-rest strip, EN/TR bilingual. 55 unit tests (38 pure-fn +
+  17 component).
+
+  Cite: Foster 2017; Halson 2014.
+
+  Depends on: log.date, log.tss/durationMin/distanceKm.
+
+---
+
 ## v9.320.0 — 2026-05-21 — MaxTssDayPersonalRecordCard — Issurin 2010 single-day peak vs lifetime distribution
 
   Ranks the biggest single-day TSS in the last 90 days against the
