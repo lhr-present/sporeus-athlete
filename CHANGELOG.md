@@ -14,6 +14,42 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.319.0 — 2026-05-21 — HardWeekUnrestedCard — Foster 2001 unrested-overreaching event counter
+
+  Counts SPECIFIC overreaching events in the last 16 ISO weeks: weeks
+  where TSS was ≥120% of the prior 3-week mean AND were NOT followed by
+  a deload week (<80% of prior 3-week mean). Foster 2001 + Halson 2014 +
+  Bompa 2018: overreaching weeks are productive IF followed by recovery.
+  Without recovery, they accumulate into non-functional overreaching.
+
+  Bands: CLEAN (0 unrested), OCCASIONAL_UNRESTED (1), REPEATED_UNRESTED
+  (2-3), CHRONIC_UNRESTED (>3).
+
+  Per event, reports: hardWeekStart, hardWeekTss, priorMeanTss,
+  spikePct, followUpWeekTss, wasRested boolean.
+
+  Distinct from ResetWeekEffectCard (post-deload supercomp check),
+  MesocycleProgressionCard (3:1 pattern), CumulativeFatigueWindowsCard
+  (chronic exposure dose) — this card specifically COUNTS the events
+  that lacked recovery.
+
+  Current partial week excluded from follow-up evaluation (no data).
+  Missing follow-up data → wasRested=false (can't verify, count as
+  unrested).
+
+  Pure fn at `src/lib/athlete/hardWeekUnrested.js`:
+  `analyzeHardWeekUnrested({ log, today, windowWeeks=16, hardThresholdPct=1.20, deloadThresholdPct=0.80 })`.
+
+  Card lazy-loaded. 16 mini bars (rested green / unrested red /
+  ordinary grey), up to 3 recent-event chips, EN/TR bilingual. 62
+  unit tests (39 pure-fn + 23 component).
+
+  Cite: Foster 2001; Halson 2014; Bompa 2018.
+
+  Depends on: log.date, log.tss.
+
+---
+
 ## v9.318.0 — 2026-05-21 — AlternatingWeekPatternCard — Issurin 2010 alternating easy/hard week rhythm
 
   Detects pure alternating easy/hard week rhythm (no 3:1 anchor, just
