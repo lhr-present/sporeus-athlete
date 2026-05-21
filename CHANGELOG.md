@@ -14,6 +14,39 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.315.0 — 2026-05-21 — TrainingHourBudgetCard — Hellard 2019 lifestyle hours-per-week tracker
+
+  Tracks TOTAL weekly training hours (irrespective of zone, sport, or
+  intensity) over 12 ISO weeks — the lifestyle constraint perspective.
+  Hellard 2019 elite/sub-elite training-load research: 8-10 hours/week
+  is sustainable on top of work + family; 12+ hours/week is the upper
+  limit of amateur capacity. Knowing total hours (not TSS-normalized)
+  is the most practical "can I sustain this?" lens.
+
+  Bands: LIGHT (<4h/wk recreational), AMATEUR (4-8 typical), COMMITTED
+  (8-12 top of sustainable amateur), NEAR_PRO (≥12 verging on elite),
+  INSUFFICIENT_DATA (<6 weeks with hours).
+
+  Distinct from WeeklyEnduranceTimeCard (Z1+Z2 minutes only),
+  WeeklyTssGoalCard (TSS targets), WeeklyKmPerSportCard (km/sport) —
+  this is total hours across every session, irrespective of intensity
+  or sport.
+
+  Pure fn at `src/lib/athlete/trainingHourBudget.js`:
+  `analyzeTrainingHourBudget({ log, today, windowWeeks=12 })`. Mean
+  divides by full window size (zeros included). Accepts both
+  durationMin (canonical) and duration_min (fallback).
+
+  Card lazy-loaded. 12 weekly bars with dashed band-target line at
+  next-higher band's floor (4/8/12), EN/TR bilingual. 67 unit tests
+  (47 pure-fn + 20 component).
+
+  Cite: Hellard 2019; Mujika 2014.
+
+  Depends on: log.date, log.durationMin.
+
+---
+
 ## v9.314.0 — 2026-05-21 — HighRpeLowTssCard — Foster 2017 RPE-TSS mismatch fatigue detector
 
   Detects sessions where the athlete reported HIGH effort (RPE) for LOW
