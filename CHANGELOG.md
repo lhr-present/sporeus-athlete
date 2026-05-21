@@ -14,6 +14,36 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.316.0 — 2026-05-21 — WeekendLongSessionShareCard — Foster 2017 long-session weekday-vs-weekend split
+
+  Of all long sessions (≥90 min, any sport) over the last 12 weeks, what
+  fraction happen Sat/Sun vs Mon-Fri? Foster 2017 + Bompa 2018: most
+  amateur athletes back-load long sessions to weekends because life.
+  Surfaces flexibility risk (100% weekend = no flexibility if Saturday
+  is rained out) and unusual patterns (very low weekend share suggests
+  mid-week aerobic emphasis).
+
+  Bands: WEEKDAY_DOMINANT (≤30% weekend), MIXED, WEEKEND_DOMINANT
+  (≥70%), INSUFFICIENT_LONG_SESSIONS (<6 long sessions in 12w).
+
+  Distinct from WeekendVolumeShareCard (total weekend TSS share),
+  LongSessionShareCard (% of all sessions that are long),
+  LongRunFrequencyCard (run-only count) — this card isolates the
+  weekday-vs-weekend SPLIT of long sessions specifically.
+
+  Pure fn at `src/lib/athlete/weekendLongSessionShare.js`:
+  `analyzeWeekendLongSessionShare({ log, today, windowWeeks=12, longSessionMinThreshold=90 })`.
+  Accepts both durationMin (canonical) and duration_min.
+
+  Card lazy-loaded. 7-bar Mon-Sun histogram (weekend red, weekday grey),
+  EN/TR bilingual. 72 unit tests (51 pure-fn + 21 component).
+
+  Cite: Foster 2017; Bompa 2018.
+
+  Depends on: log.date, log.durationMin.
+
+---
+
 ## v9.315.0 — 2026-05-21 — TrainingHourBudgetCard — Hellard 2019 lifestyle hours-per-week tracker
 
   Tracks TOTAL weekly training hours (irrespective of zone, sport, or
