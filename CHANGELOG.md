@@ -14,6 +14,39 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.320.0 — 2026-05-21 — MaxTssDayPersonalRecordCard — Issurin 2010 single-day peak vs lifetime distribution
+
+  Ranks the biggest single-day TSS in the last 90 days against the
+  athlete's lifetime distribution of daily TSS (lifetime EXCLUDES the
+  recent window to avoid self-reference). Issurin 2010 + Daniels 2014 —
+  single-day peak intensity matters distinct from peak weekly volume.
+  A 280-TSS Saturday on top of a quiet week is a different physiological
+  event from spreading the same load across 3 days.
+
+  Bands: NEW_RECORD (recent peak > lifetime peak), TOP_5 (rank ≤5),
+  TOP_20_PERCENT (≥80th percentile), TYPICAL (20-80), BELOW_TYPICAL
+  (<20), INSUFFICIENT_HISTORY (<30 lifetime days).
+
+  Distinct from WeeklyVolumeRecordCard (weekly) and PeakWeekFrequencyCard
+  (weekly density). This card lives at the SINGLE-DAY scale — useful
+  for athletes whose weekly totals don't capture their peak days.
+
+  recentPeakDate: latest tie wins (most recent achievement).
+  lifetimePeakDate: earliest tie wins (original achievement).
+
+  Pure fn at `src/lib/athlete/maxTssDayPersonalRecord.js`:
+  `analyzeMaxTssDayPersonalRecord({ log, today, recentWindowDays=90 })`.
+  Returns null when recent window has no positive-TSS days.
+
+  Card lazy-loaded. Big stat + comparison + percentile, EN/TR
+  bilingual. 62 unit tests (41 pure-fn + 21 component).
+
+  Cite: Issurin 2010; Daniels 2014.
+
+  Depends on: log.date, log.tss.
+
+---
+
 ## v9.319.0 — 2026-05-21 — HardWeekUnrestedCard — Foster 2001 unrested-overreaching event counter
 
   Counts SPECIFIC overreaching events in the last 16 ISO weeks: weeks
