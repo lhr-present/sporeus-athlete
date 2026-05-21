@@ -14,6 +14,42 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.314.0 — 2026-05-21 — HighRpeLowTssCard — Foster 2017 RPE-TSS mismatch fatigue detector
+
+  Detects sessions where the athlete reported HIGH effort (RPE) for LOW
+  objective load (TSS), surfacing under-recovery / illness / fatigue
+  patterns. Foster 2017 + Halson 2014: when subjective effort exceeds
+  what the objective load predicts, that's a recovery signal. One
+  mismatch is noise; a pattern across multiple sessions is a real
+  fatigue marker.
+
+  Approach: ordinary least squares regression on baseline (90-270 days
+  ago) of TSS vs RPE → expectedTss model. For each recent session,
+  deviation = (expectedTss - tss) / expectedTss. "Mismatch" = deviation
+  ≥ 0.30 (actual TSS ≥30% below what RPE predicts).
+
+  Bands: WELL_MATCHED (<10% mismatch rate), OCCASIONAL_MISMATCH
+  (10-25%), PERSISTENT_FATIGUE (≥25%), INSUFFICIENT_DATA (<20 baseline
+  sessions).
+
+  Distinct from RpeStabilityCard (RPE variability), HrForRpeCard
+  (HR-vs-RPE coupling), SessionRPEDriftCard (RPE drift over time) —
+  none use the *personal* RPE↔TSS regression as a fatigue lens.
+
+  Pure fn at `src/lib/athlete/highRpeLowTss.js`:
+  `analyzeHighRpeLowTss({ log, today, windowDays=90, baselineWindowDays=180 })`.
+  expectedTss floored at max(1, …) so a negative regression line can't
+  produce false mismatches.
+
+  Card lazy-loaded. 3 recent mismatch chips with deviation %, EN/TR
+  bilingual. 60 unit tests (42 pure-fn + 18 component).
+
+  Cite: Foster 2017; Halson 2014.
+
+  Depends on: log.date, log.rpe (1-10), log.tss.
+
+---
+
 ## v9.313.0 — 2026-05-21 — OverlookedSessionTypeCard — Bompa 2018 dropped-stimulus detector
 
   Inverse of NewSessionTypeIntroCard. Surfaces session types that
