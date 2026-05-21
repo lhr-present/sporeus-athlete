@@ -14,6 +14,43 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.323.0 — 2026-05-21 — AfterBigWeekRpeCard — Halson 2014 post-overreaching RPE elevation marker
+
+  Compares mean session RPE in the week AFTER a big-volume week vs RPE
+  in the big week itself + 2 weeks out. Halson 2014 + Foster 2001:
+  after overreaching weeks, the same physiological work produces higher
+  subjective effort. If RPE is elevated week-1 then returns by week-2,
+  that's normal training response. If RPE STAYS elevated 2+ weeks out,
+  that's accumulating fatigue (non-functional overreaching).
+
+  Big-week threshold: TSS ≥ 120% of prior 3-week mean (matches
+  HardWeekUnrestedCard convention).
+
+  Bands: NORMAL_RECOVERY (week-1 elevated, week-2 returning),
+  PROLONGED_ELEVATION (week-2 elevation ≥ week-1 elevation — fatigue
+  not resolving), NO_RPE_RESPONSE (|elevation| <5% — robust or noise),
+  INSUFFICIENT_DATA (<3 big weeks).
+
+  Distinct from RpeStabilityCard (overall RPE variance),
+  HighRpeLowTssCard (RPE-TSS mismatch model), SessionRPEDriftCard (RPE
+  drift over time) — this card specifically tracks RPE *around big-week
+  events* as the fatigue lens.
+
+  Pure fn at `src/lib/athlete/afterBigWeekRpe.js`:
+  `analyzeAfterBigWeekRpe({ log, today, windowWeeks=16, bigWeekThresholdPct=1.20 })`.
+  Missing-RPE cascade: week with no rpe entries → meanRpe null →
+  elevation pct null → skipped from aggregate (no contamination).
+
+  Card lazy-loaded. Big-week count + dual elevation stat + 3 recent
+  big-week chips, EN/TR bilingual. 60 unit tests (35 pure-fn + 25
+  component).
+
+  Cite: Halson 2014; Foster 2001.
+
+  Depends on: log.date, log.tss, log.rpe.
+
+---
+
 ## v9.322.0 — 2026-05-21 — TrainAfterRestCard — Bompa 2018 post-rest-day rebound load tracker
 
   Tracks mean TSS the day after rest days, compared to overall mean
