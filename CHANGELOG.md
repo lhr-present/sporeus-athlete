@@ -14,6 +14,36 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## meta — 2026-05-25 — Dashboard card inventory + autopilot directives + CLAUDE.md version refresh
+
+  Docs-only meta-commit (no source / no migrations). Three additions:
+
+  1. `docs/dashboard_card_inventory.md` — full 236-card inventory bucketed
+     into 13 signal-domains (Patterns 39, Load 37, Recovery 36, Intensity
+     30, VDOT 27, Today **10**, etc.) with audit-flagged overlap groups.
+     Saved as a map for human-curated review. Verification of 3 sample
+     overlap groups (CTL slope trio, Recovery streak pair, double Dashboard
+     renders) found 3-of-3 false positives — cards were deliberately
+     distinct (different math, different citations, "Companion cards"
+     docblock comments). DO NOT delete cards based on this audit without
+     per-group source verification.
+
+  2. `docs/autopilot_directives.md` — guidance for the worktree autopilot:
+     prefer TodayView surface over new Dashboard cards (mission alignment),
+     cap net Dashboard additions ≤3/week, check bucket density before
+     creating, write "Companion cards" docblocks for adjacent signals.
+     Velocity audit: 305 dashboard-card commits since 2026-05-01 vs 67
+     TodayView commits (4.5× imbalance vs mission).
+
+  3. `CLAUDE.md` Version History — refreshed from stale v11.76.0 entry to
+     v11.326.0 / product v9.326.0: ~14.8k tests, 676 test files, 236
+     dashboard cards, 223 athlete libs, 31 edge fns, 99 migrations. Added
+     pointers to the two new docs.
+
+  Depends on: nothing (docs only).
+
+---
+
 ## v9.326.0 — 2026-05-22 — PostHardSessionSorenessCard — Kellmann 2018 day-after-hard soreness pattern
 
   Tracks typical soreness score the morning AFTER each hard session

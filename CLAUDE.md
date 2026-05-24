@@ -207,9 +207,12 @@ invalidate the precache.
 | `VITE_STRIPE_CHECKOUT_COACH` | Stripe checkout URL for Coach tier (international) |
 
 ## Version History
+- v11.326.0 / product v9.326.0 (2026-05-22): ~14.8k tests, 676 test files, 236 dashboard cards, 223 athlete libs, 31 edge fns, 99 migrations
 - v11.76.0 (2026-04-26): 3886 tests, 232 files, 74 dashboard cards, 30 athlete libs
 - v6.7.0 (2026-04-14): Launch-ready, 1084 tests, Supabase 25 tables
 - See CHANGELOG.md for full history
+- Card inventory + bucket analysis: `docs/dashboard_card_inventory.md`
+- Autopilot guidance: `docs/autopilot_directives.md`
 
 ## Weekly audit (no-cost)
 Pure bash + grep + node — **no LLM, no network**. Produces a markdown report
