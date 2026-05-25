@@ -112,6 +112,14 @@ SUPABASE_ACCESS_TOKEN=$(cat ~/.config/supabase/access-token) \
   < supabase/tests/rls/pentest/scenarios.sql
 ```
 
+## Known false positives in the pen test (as of 2026-05-25)
+
+These pen test results report FAIL but are NOT real prod issues. Investigate before fixing the schema — the test itself may be the wrong target.
+
+- **A3 / A4** (authenticated cannot REFRESH MV): `pentest_assert_error` is itself SECURITY DEFINER and executes its `p_sql` argument with postgres-owner privileges. The A3/A4 SQL string doesn't include `SET LOCAL ROLE authenticated`, so REFRESH runs as postgres (the MV owner) and succeeds. Verified the actual `relacl` on both MVs shows `authenticated=r/postgres` (SELECT only). **To fix the test**, prepend `SET LOCAL ROLE authenticated; ` to the REFRESH SQL string in the A3/A4 assertions. Don't bother with another REVOKE migration — the live permission is already correct.
+- **C3 / C4** (search_everything / match_sessions_for_user are SECURITY DEFINER): Both functions filter by `auth.uid()` in every WHERE clause; underlying tables have matching RLS. No actual leak. Migration `20260484_search_functions_invoker.sql` is drafted as the strict-INVOKER conversion but held pending GlobalSearch + SemanticSearch smoke-tests as a real authenticated user. To accept the DEFINER+filter pattern as canonical, update the C3/C4 assertions to check for the explicit `auth.uid()` filter in `pg_get_functiondef()` output instead of `prosecdef`.
+- **D1** (client_min_messages=notice may leak): Postgres-default verbosity; not relevant unless an attacker is reading raw NOTICE output. Defer.
+
 ## Incidents to escalate (do NOT auto-fix)
 
 Per [[project_sporeus_master_reference]] gate-before-E14:
