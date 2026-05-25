@@ -14,6 +14,38 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.333.0 — 2026-05-26 — InstallPrompt: bilingual + iOS share icon + 7d snooze (not forever)
+
+  Real-life UX Step 3 (mobile install nudge). Three concrete fixes:
+
+  1. **Bilingual EN/TR copy** via LangCtx. Pre-v9.333 the install prompt
+     was English-only — the rest of the app is bilingual, so Turkish
+     users were getting a jarring language switch.
+
+  2. **Visual SVG share icon for iOS**, inline with the instruction
+     text. Pre-v9.333 was text-only — "Tap the share icon below" — and
+     iOS doesn't expose the system glyph to web pages. Users couldn't
+     reliably find the share button. The inline SVG approximates
+     Safari's bottom-bar share icon close enough to make the analog
+     obvious.
+
+  3. **7-day snooze on dismiss**, not permanent forever-flag. Pre-v9.333
+     a single click on "Not now" set a boolean key and the prompt never
+     returned. Same trap as the v9.328 wizard "Skip all →" issue: one
+     mis-click silently killed a recurring nudge. New behavior: dismiss
+     records timestamp; prompt re-appears 7 days later.
+
+  Migration: pre-v9.333 boolean flag `sporeus-install-dismissed` is
+  detected on first run after upgrade, treated as "dismissed now"
+  (sets timestamp to current time, removes legacy key). Users who
+  already opted out will see the prompt again 7 days after upgrade —
+  not an immediate re-spam.
+
+  No new tests (component had none pre-v9.333; behavior is
+  timing/storage-dependent and best validated manually).
+
+---
+
 ## v9.332.0 — 2026-05-26 — TodayView shows GettingStartedCard when log is empty
 
   Real-life UX continuation. GettingStartedCard previously rendered
