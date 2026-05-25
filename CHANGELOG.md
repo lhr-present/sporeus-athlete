@@ -14,6 +14,27 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.332.0 — 2026-05-26 — TodayView shows GettingStartedCard when log is empty
+
+  Real-life UX continuation. GettingStartedCard previously rendered
+  only on the Dashboard tab. After v9.331's slim wizard fix, users
+  land on TODAY (with a starter plan), not Dashboard — so the
+  "log your first session" CTA was missing from the screen they
+  actually start on.
+
+  TodayView.jsx — added empty-state render at the top of the return
+  block: `{log.length === 0 && <GettingStartedCard ...>}`. Uses the
+  existing card unchanged (no styling drift). onLogSession wired to
+  `setLogPrefill({})` to open QuickAddModal blank.
+
+  Renders above the morning-glance block so it's the first thing a
+  brand-new user sees when they land on Today post-wizard.
+
+  No new tests (delegates to existing GettingStartedCard tests; this
+  is a render-site addition).
+
+---
+
 ## v9.331.0 — 2026-05-26 — Slim onboarding wizard: 9 screens → 7, goal in fast path
 
   Real-life UX continuation. Two structural changes:

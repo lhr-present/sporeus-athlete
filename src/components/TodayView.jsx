@@ -83,6 +83,11 @@ import SessionTargetPeek from './today/SessionTargetPeek.jsx'
 import WeeklyCtlTrajectoryPeek from './today/WeeklyCtlTrajectoryPeek.jsx'
 import ARaceCountdownPeek from './today/ARaceCountdownPeek.jsx'
 import PhaseTransitionPeek from './today/PhaseTransitionPeek.jsx'
+// v9.332.0 — TodayView empty-state CTA. GettingStartedCard previously
+// rendered only on Dashboard tab; after wizard completion users land on
+// Today, so the "log your first session" CTA was missing where they
+// actually start.
+import GettingStartedCard from './dashboard/GettingStartedCard.jsx'
 
 const EMBED_MODE = new URLSearchParams(window.location.search).get('embed') === 'true'
 
@@ -925,6 +930,16 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
 
   return (
     <div className="sp-fade">
+
+      {/* ── v9.332.0 — Empty-state CTA for first-session log ──────────────
+          When training log is empty, show GettingStartedCard above the
+          morning-glance block. This is the post-wizard landing screen;
+          without this card the user lands on a Today with no log, no CTA,
+          and the planned-session line (if any) is the only signal — easy
+          to miss. */}
+      {log.length === 0 && (
+        <GettingStartedCard isTR={lang === 'tr'} onLogSession={() => setLogPrefill({})} />
+      )}
 
       {/* ── v9.145.0 — Above-fold morning glance ──────────────────────────
           The TodayView surface has grown to 40+ conditional cards/banners
