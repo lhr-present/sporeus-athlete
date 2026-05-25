@@ -1,0 +1,19 @@
+To: tongelozgur1@gmail.com
+Subject: Sporeus kaydın için kısa bir düzeltme — yeniden denemek ister misin?
+
+Merhaba Özgür,
+
+Ben Hüseyin — Sporeus Athlete'i (https://app.sporeus.com) yapan kişi. 10 Mayıs'ta kaydolduğunu gördüm, ancak hesabında spor seçimi yok — bu da sana özel bir antrenman planı oluşmadığı anlamına geliyor. Bu senin hatan değil, bizim ilk kurulum akışımızda bir hata vardı.
+
+Sebebi: kurulum sihirbazımızdaki "Atla" düğmesi modal kapatma simgesinin tipik yerine yerleştirilmişti, ve bir kez kapatınca sihirbaz bir daha hiç açılmıyordu. Senin de dahil olduğun ilk kullanıcıların tamamı bu duvara çarptı.
+
+Bugün düzelttim. Sporeus'u tekrar açtığında üstte turuncu bir bant göreceksin:
+
+  ◈ KURULUMU TAMAMLA — Antrenman planını açmak için sporunu seç. [SPORU SEÇ →]
+
+Üzerine dokun, 3 kısa ekranlık kurulum yap, başlangıç planın hazır.
+
+Vakit ayırırsan ne düşündüğünü merak ederim — doğrudan bu adrese yaz, görelim.
+
+Tekrar denediğin için teşekkürler,
+Hüseyin Akbulut
