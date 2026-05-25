@@ -14,6 +14,39 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.328.0 — 2026-05-26 — Onboarding skip no longer permanently dismisses wizard
+
+  Real-life UX fix grounded in prod data: 4/4 actual users (plus dev
+  account) had `profiles.sport=null`. Funnel analysis showed 100% drop
+  at sport selection. Root cause: the "Skip all →" button in the
+  onboarding wizard called `finishOnboarding(null)`, which
+  unconditionally flipped `onboarded=true` in localStorage. A single
+  click permanently dismissed the wizard with an empty profile, and
+  the user never saw it again — so they never picked a sport, no
+  starter plan was generated, no dashboard cards rendered meaningful
+  output, and the mission ("what do I do today?") had nothing to
+  answer.
+
+  Fix:
+  - `useAppState.js` — added `wizardDismissed` sessionStorage-backed
+    state. `finishOnboarding`: if data provided → setOnboarded(true)
+    + seed plan + navigate (unchanged path). If null (skip) →
+    setWizardDismissed(true) only. `onboarded` stays false.
+  - `App.jsx` — wizard now renders on `!onboarded && !wizardDismissed`.
+    Skip closes for this session; tab close/reload re-shows the wizard.
+
+  Net effect: skip is now "close for now" instead of "dismiss
+  forever". Users who genuinely don't want to complete onboarding
+  will hit the wizard again next visit. Combined with Steps 2 (banner)
+  and 3 (de-emphasize skip) shipping next, this should rebuild the
+  funnel from sport=0 toward sport=most-users.
+
+  Depends on: existing `OnboardingWizard.onFinish(data|null)` contract.
+
+  91 onboarding-related tests still green.
+
+---
+
 ## v9.327.0 — 2026-05-25 — RLS pen test corrective (attribution_events + MV REFRESH + search INVOKER)
 
   Two-migration corrective for 2026-05-25 RLS Penetration Test failures.

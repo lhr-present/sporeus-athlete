@@ -112,7 +112,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
     handleConsentGrant,
     coachMode,
     logPrefill, setLogPrefill,
-    onboarded,
+    onboarded, wizardDismissed,
     toasts, dismissToast,
     syncStatus,
     badges, isGuest, isFirstSession,
@@ -252,7 +252,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
         </Suspense>
       )}
 
-      {!onboarded && <Suspense fallback={null}><OnboardingWizard onFinish={finishOnboarding} setLang={setLang} lang={lang}/></Suspense>}
+      {!onboarded && !wizardDismissed && <Suspense fallback={null}><OnboardingWizard onFinish={finishOnboarding} setLang={setLang} lang={lang}/></Suspense>}
 
       {/* ── KVKK / GDPR consent gate — must accept before health data is stored ── */}
       {onboarded && !hasCurrentConsent() && (

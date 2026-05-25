@@ -121,6 +121,12 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   // ── Core state ────────────────────────────────────────────────────────────────
   const [logPrefill, setLogPrefill] = useState(null)
   const [onboarded, setOnboarded] = useLocalStorage('sporeus-onboarded', false)
+  // v9.328.0 — Session-only dismissal flag for the onboarding wizard. Skip
+  // sets this; survives within-session navigation but resets on tab close,
+  // so the wizard re-shows next visit until the user actually completes it.
+  const [wizardDismissed, setWizardDismissed] = useState(() => {
+    try { return sessionStorage.getItem('sporeus-wizard-dismissed') === '1' } catch { return false }
+  })
   const [consentGiven, setConsentGiven] = useState(hasCurrentConsent)
   const [showSearch, setShowSearch] = useState(false)
   const [showQuickAdd, setShowQuickAdd] = useState(false)
@@ -380,8 +386,16 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
         logger.warn('starter plan seed failed:', e?.message)
       }
       handleTabClick(landingTab)
+      setOnboarded(true)
+    } else {
+      // v9.328.0 — Skip closes the wizard for this session only; do NOT
+      // flip onboarded permanently. Pre-v9.328 a single click on "Skip all →"
+      // permanently dismissed the wizard with an empty profile, leaving
+      // 100% of real prod users with sport=null. Now the wizard re-opens
+      // next visit until the user actually provides at least a sport.
+      setWizardDismissed(true)
+      try { sessionStorage.setItem('sporeus-wizard-dismissed', '1') } catch (_) {}
     }
-    setOnboarded(true)
   }
 
   const t = useCallback(key => {
@@ -462,7 +476,7 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
     flushQueue,
     // Computed booleans
     isGuest, isFirstSession, isProfileIncomplete, badges,
-    onboarded,
+    onboarded, wizardDismissed,
     // Callbacks
     finishOnboarding, t, handleExport, handleAddSession,
     // Pass-through (needed by render)
