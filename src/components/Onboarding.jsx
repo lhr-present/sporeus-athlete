@@ -78,7 +78,8 @@ const LABEL = { fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'
 const INPUT = { fontFamily:"'IBM Plex Mono',monospace", fontSize:'14px', padding:'8px 12px', border:'1px solid var(--border)', borderRadius:'4px', width:'100%', boxSizing:'border-box', background:'var(--input-bg,#fff)', color:'var(--text,#1a1a1a)' }
 const pill  = active => ({ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', padding:'8px 16px', borderRadius:'4px', border:`2px solid ${active?'#ff6600':'#e0e0e0'}`, background:active?'#ff6600':'transparent', color:active?'#fff':'#888', cursor:'pointer', fontWeight:active?600:400 })
 
-const PURPOSES = ['General fitness','A race','Weight goal','Rehabbing','Just exploring']
+// PURPOSES removed in v9.331 — purpose screen dropped from the wizard; field
+// wasn't consumed by any math or dashboard card, just contextual framing.
 const LOGGING_METHODS = [
   { id:'manual',     label:'Log manually',     desc:'Enter sessions by hand' },
   { id:'strava',     label:'Connect Strava',   desc:'Auto-import activities' },
@@ -141,8 +142,15 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
 
   const quickFinish = () => {
     clearDraft()
+    // v9.331.0 — Include goal + raceDate so the starter plan can actually
+    // seed (canSeedStarterPlan requires data.goal). Pre-v9.331 quickFinish
+    // wrote {sport, loggingMethod, purpose} only, so the user completed
+    // onboarding with no goal → buildStarterPlan returned null → TodayView
+    // mounted empty. With the slim wizard putting goal right after sport,
+    // goal is always populated by the time the user reaches quickFinish.
     onFinish({
       name:data.name || '', sport:data.sport, purpose:data.purpose,
+      goal:data.goal, raceDate:data.raceDate || '', weeks:data.weeks || '',
       loggingMethod:data.loggingMethod, quickStart:true,
     })
   }
@@ -163,28 +171,10 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
       </div>
     </div>,
 
-    // ── 1: What are you training for? (E9 fast-track Q1) ───────────────────
-    <div key="purpose">
-      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'12px' }}>
-        {lang === 'tr' ? '01 / NE İÇİN ANTRENMAN YAPIYORSUN?' : '01 / WHAT ARE YOU TRAINING FOR?'}
-      </div>
-      <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
-        {PURPOSES.map(p=>{
-          const PURPOSE_TR = { 'General fitness':'Genel fitness', 'A race':'Bir yarış', 'Weight goal':'Kilo hedefi', 'Rehabbing':'Rehabilitasyon', 'Just exploring':'Sadece keşfediyorum' }
-          return (
-            <button key={p} onClick={()=>set('purpose',p)}
-              style={{ textAlign:'left', padding:'12px 14px', borderRadius:'6px', border:`2px solid ${data.purpose===p?'#ff6600':'var(--border)'}`, background:data.purpose===p?'#fff3eb':'transparent', cursor:'pointer', fontFamily:"'IBM Plex Mono',monospace", fontSize:'13px', color:data.purpose===p?'#ff6600':'var(--text)', fontWeight:data.purpose===p?600:400 }}>
-              {lang === 'tr' ? (PURPOSE_TR[p] || p) : p}
-            </button>
-          )
-        })}
-      </div>
-    </div>,
-
-    // ── 2: Primary sport? (E9 fast-track Q2) ──────────────────────────────
+    // ── 1: Primary sport? (slim wizard v9.331 — was step 2) ───────────────
     <div key="sport_pick">
       <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'12px' }}>
-        {lang === 'tr' ? '02 / ANA SPOR' : '02 / PRIMARY SPORT'}
+        {lang === 'tr' ? '01 / ANA SPOR' : '01 / PRIMARY SPORT'}
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px' }}>
         {sports.map(s=>{
@@ -196,6 +186,83 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
             </button>
           )
         })}
+      </div>
+    </div>,
+
+    // ── 2: Goal + plan preview (slim wizard v9.331 — was step 7) ──────────
+    // Moved here so the mission-critical field (goal) is in the FAST PATH.
+    // Pre-v9.331 it was buried at step 7; quickFinish at step 3 fired without
+    // it, and the starter plan couldn't seed (canSeedStarterPlan needs goal).
+    <div key="goal">
+      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'16px' }}>
+        {lang === 'tr' ? '02 / HEDEFİN' : '02 / YOUR GOAL'}
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))', gap:'8px', marginBottom:'16px' }}>
+        {goalsForSport(data.sport).map(g=>(
+          <button key={g} onClick={()=>set('goal',g)}
+            style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', padding:'12px', borderRadius:'6px', border:`2px solid ${data.goal===g?'#ff6600':'#e0e0e0'}`, background:data.goal===g?'#fff3eb':'transparent', color:data.goal===g?'#ff6600':'#888', cursor:'pointer', textAlign:'center', fontWeight:data.goal===g?600:400 }}>
+            {g}
+          </button>
+        ))}
+      </div>
+      <div style={{ marginBottom:'12px' }}>
+        <label style={LABEL}>{lang === 'tr' ? 'YARIŞ TARİHİ (isteğe bağlı)' : 'RACE DATE (optional)'}</label>
+        <input
+          style={INPUT}
+          type="date"
+          value={data.raceDate}
+          min={new Date().toISOString().slice(0, 10)}
+          onChange={e => {
+            const v = e.target.value
+            set('raceDate', v)
+            if (v) {
+              const wks = Math.max(4, Math.min(52, Math.round((new Date(v) - new Date()) / (7 * 86400000))))
+              set('weeks', String(wks))
+            }
+          }}
+        />
+      </div>
+      <div style={{ marginBottom:'16px' }}>
+        <label style={LABEL}>{lang === 'tr' ? `ETKİNLİĞE KALAN HAFTA (isteğe bağlı): ${data.weeks||'—'}` : `WEEKS UNTIL EVENT (optional): ${data.weeks||'—'}`}</label>
+        <input type="range" min="4" max="52" value={data.weeks||12} onChange={e=>{
+          const wks = parseInt(e.target.value, 10)
+          set('weeks', e.target.value)
+          if (wks > 0) {
+            const d = new Date(); d.setDate(d.getDate() + wks * 7)
+            set('raceDate', d.toISOString().slice(0, 10))
+          }
+        }} style={{ width:'100%', accentColor:'#ff6600' }}/>
+      </div>
+      {/* ── Plan preview ── */}
+      {(() => {
+        const p = getPlanPreview(data, lang)
+        const labels = lang === 'tr'
+          ? [['Faz', p.phase],['TSS/hafta', p.weeklyTss],['Gün/hafta', p.daysPerWk]]
+          : [['Phase', p.phase],['TSS/wk', p.weeklyTss],['Days/wk', p.daysPerWk]]
+        return (
+          <div style={{ background:'#0a0a0a', borderRadius:'6px', padding:'14px', border:'1px solid #333' }}>
+            <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', color:'#888', letterSpacing:'0.1em', marginBottom:'10px' }}>
+              {lang === 'tr' ? 'BAŞLANGIÇ PLANIN' : 'YOUR STARTER PLAN'}
+            </div>
+            <div style={{ display:'flex', gap:'10px', flexWrap:'wrap', marginBottom:'10px' }}>
+              {labels.map(([lbl,val])=>(
+                <div key={lbl} style={{ flex:'1 1 80px', textAlign:'center' }}>
+                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'18px', fontWeight:600, color:'#ff6600' }}>{val}</div>
+                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'9px', color:'#888', letterSpacing:'0.08em', textTransform:'uppercase' }}>{lbl}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'#aaa', lineHeight:1.6 }}>{p.suggestion}</div>
+          </div>
+        )
+      })()}
+      {/* v9.66.0 — Surface the coach-invite path during onboarding so new
+          athletes know the feature exists. Previously hidden in Profile tab
+          with zero discoverability. */}
+      <div style={{ marginTop:'14px', padding:'10px 12px', background:'#0064ff08', border:'1px dashed #0064ff44', borderRadius:'6px', fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', color:'#888', lineHeight:1.6 }}>
+        {lang === 'tr'
+          ? '◆ Antrenörünüz var mı? Kayıt sonrası Profil sekmesinden SP-XXXXXXXX kodunu girebilir veya davet bağlantısını açabilirsiniz.'
+          : '◆ Have a coach? After signup you can enter their SP-XXXXXXXX code in the Profile tab, or open the invite link they sent you.'}
       </div>
     </div>,
 
@@ -357,79 +424,6 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
       </div>
     </div>,
 
-    // ── 7: Goal + plan preview ─────────────────────────────────────────────
-    <div key="goal">
-      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'16px' }}>
-        {lang === 'tr' ? '07 / HEDEFİN' : '07 / YOUR GOAL'}
-      </div>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))', gap:'8px', marginBottom:'16px' }}>
-        {goalsForSport(data.sport).map(g=>(
-          <button key={g} onClick={()=>set('goal',g)}
-            style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', padding:'12px', borderRadius:'6px', border:`2px solid ${data.goal===g?'#ff6600':'#e0e0e0'}`, background:data.goal===g?'#fff3eb':'transparent', color:data.goal===g?'#ff6600':'#888', cursor:'pointer', textAlign:'center', fontWeight:data.goal===g?600:400 }}>
-            {g}
-          </button>
-        ))}
-      </div>
-      <div style={{ marginBottom:'12px' }}>
-        <label style={LABEL}>{lang === 'tr' ? 'YARIŞ TARİHİ (isteğe bağlı)' : 'RACE DATE (optional)'}</label>
-        <input
-          style={INPUT}
-          type="date"
-          value={data.raceDate}
-          min={new Date().toISOString().slice(0, 10)}
-          onChange={e => {
-            const v = e.target.value
-            set('raceDate', v)
-            if (v) {
-              const wks = Math.max(4, Math.min(52, Math.round((new Date(v) - new Date()) / (7 * 86400000))))
-              set('weeks', String(wks))
-            }
-          }}
-        />
-      </div>
-      <div style={{ marginBottom:'16px' }}>
-        <label style={LABEL}>{lang === 'tr' ? `ETKİNLİĞE KALAN HAFTA (isteğe bağlı): ${data.weeks||'—'}` : `WEEKS UNTIL EVENT (optional): ${data.weeks||'—'}`}</label>
-        <input type="range" min="4" max="52" value={data.weeks||12} onChange={e=>{
-          const wks = parseInt(e.target.value, 10)
-          set('weeks', e.target.value)
-          if (wks > 0) {
-            const d = new Date(); d.setDate(d.getDate() + wks * 7)
-            set('raceDate', d.toISOString().slice(0, 10))
-          }
-        }} style={{ width:'100%', accentColor:'#ff6600' }}/>
-      </div>
-      {/* ── Plan preview ── */}
-      {(() => {
-        const p = getPlanPreview(data, lang)
-        const labels = lang === 'tr'
-          ? [['Faz', p.phase],['TSS/hafta', p.weeklyTss],['Gün/hafta', p.daysPerWk]]
-          : [['Phase', p.phase],['TSS/wk', p.weeklyTss],['Days/wk', p.daysPerWk]]
-        return (
-          <div style={{ background:'#0a0a0a', borderRadius:'6px', padding:'14px', border:'1px solid #333' }}>
-            <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', color:'#888', letterSpacing:'0.1em', marginBottom:'10px' }}>
-              {lang === 'tr' ? 'BAŞLANGIÇ PLANIN' : 'YOUR STARTER PLAN'}
-            </div>
-            <div style={{ display:'flex', gap:'10px', flexWrap:'wrap', marginBottom:'10px' }}>
-              {labels.map(([lbl,val])=>(
-                <div key={lbl} style={{ flex:'1 1 80px', textAlign:'center' }}>
-                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'18px', fontWeight:600, color:'#ff6600' }}>{val}</div>
-                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'9px', color:'#888', letterSpacing:'0.08em', textTransform:'uppercase' }}>{lbl}</div>
-                </div>
-              ))}
-            </div>
-            <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'#aaa', lineHeight:1.6 }}>{p.suggestion}</div>
-          </div>
-        )
-      })()}
-      {/* v9.66.0 — Surface the coach-invite path during onboarding so new
-          athletes know the feature exists. Previously hidden in Profile tab
-          with zero discoverability. */}
-      <div style={{ marginTop:'14px', padding:'10px 12px', background:'#0064ff08', border:'1px dashed #0064ff44', borderRadius:'6px', fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', color:'#888', lineHeight:1.6 }}>
-        {lang === 'tr'
-          ? '◆ Antrenörünüz var mı? Kayıt sonrası Profil sekmesinden SP-XXXXXXXX kodunu girebilir veya davet bağlantısını açabilirsiniz.'
-          : '◆ Have a coach? After signup you can enter their SP-XXXXXXXX code in the Profile tab, or open the invite link they sent you.'}
-      </div>
-    </div>,
   ]
 
   const TOTAL = steps.length

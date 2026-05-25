@@ -14,6 +14,43 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.331.0 — 2026-05-26 — Slim onboarding wizard: 9 screens → 7, goal in fast path
+
+  Real-life UX continuation. Two structural changes:
+
+  1. Dropped the "purpose" screen entirely. data.purpose wasn't
+     consumed by any math, plan generator, or dashboard card — only
+     contextual framing. Skipping a non-consequential question reduces
+     friction without losing capability.
+
+  2. Moved "goal" from step 7 to step 2 (right after sport). This is
+     the mission-critical move: `canSeedStarterPlan(data)` requires
+     ONLY `data.goal`. Pre-v9.331 the wizard's fast-track quickFinish
+     fired at step 3 with sport+loggingMethod but no goal — so the
+     starter plan returned null and TodayView mounted empty. Now goal
+     is populated by the time the user hits quickFinish.
+
+  3. quickFinish payload now includes goal + raceDate + weeks so the
+     starter plan actually seeds in the fast path.
+
+  New step order: 0 welcome → 1 sport → 2 goal → 3 log_method
+  (quickFinish here) → 4 basic → 5 level → 6 metrics.
+
+  Fast path: 4 screens (welcome → sport → goal → log_method).
+  Full path: 7 screens (was 9 pre-v9.331). Mission says 4 fields
+  minimum; the fast path now matches that intent for the first time
+  since wizard exists.
+
+  Tests updated for new step positions (Onboarding.test.jsx assertions
+  at steps 1 and 2 updated; quickFinish assertion now also verifies
+  payload includes goal). 127 of 128 onboarding-related tests green;
+  1 pre-existing failure in `starterPlan.test.js` ("log with recent
+  training raises weekly TSS baseline above 20-CTL plan") confirmed
+  not caused by this change — exists on main pre-edits. Flagged for
+  separate triage.
+
+---
+
 ## v9.330.0 — 2026-05-26 — De-emphasize wizard skip ("Skip all →" → "I'll continue later")
 
   Step 3 of real-life UX fix. The pre-v9.330 "Skip all →" button sat

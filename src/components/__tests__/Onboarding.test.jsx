@@ -30,32 +30,38 @@ describe('OnboardingWizard', () => {
     expect(screen.getByText('Next →')).toBeInTheDocument()
   })
 
-  it('advances to purpose question after clicking Next', () => {
+  // v9.331.0 — Slim wizard: purpose screen removed; goal moved up to step 2.
+  // New step order: 0 welcome → 1 sport → 2 goal → 3 log_method (quickFinish)
+  // → 4 basic → 5 level → 6 metrics.
+  it('advances to sport picker after clicking Next (slim wizard: step 1 is sport)', () => {
     render(<OnboardingWizard {...defaultProps} />)
     fireEvent.click(screen.getByText('Next →'))
-    // Step 1 is "What are you training for?"
-    expect(screen.getByText(/WHAT ARE YOU TRAINING FOR/i)).toBeInTheDocument()
-  })
-
-  it('shows sport picker on step 2', () => {
-    render(<OnboardingWizard {...defaultProps} />)
-    fireEvent.click(screen.getByText('Next →'))  // step 0 → 1
-    fireEvent.click(screen.getByText('Next →'))  // step 1 → 2
     expect(screen.getByText(/PRIMARY SPORT/i)).toBeInTheDocument()
   })
 
-  it('quick-start button calls onFinish at step 3', () => {
+  it('shows goal picker on step 2 (mission-critical position)', () => {
+    render(<OnboardingWizard {...defaultProps} />)
+    fireEvent.click(screen.getByText('Next →'))  // step 0 → 1 (sport)
+    fireEvent.click(screen.getByText('Next →'))  // step 1 → 2 (goal)
+    expect(screen.getByText(/YOUR GOAL/i)).toBeInTheDocument()
+  })
+
+  it('quick-start button calls onFinish at step 3 (log_method, with goal seeded)', () => {
     const onFinish = vi.fn()
     render(<OnboardingWizard onFinish={onFinish} setLang={vi.fn()} lang="en" />)
-    // Navigate to step 3
+    // Navigate to step 3: welcome → sport → goal → log_method
     for (let i = 0; i < 3; i++) {
       const btn = screen.queryByText('Next →')
       if (btn) fireEvent.click(btn)
     }
-    // Step 3 shows "Start logging →"
     const startBtn = screen.queryByText('Start logging →')
     if (startBtn) fireEvent.click(startBtn)
     expect(onFinish).toHaveBeenCalled()
+    // Critical for starter plan: quickFinish must include goal (auto-seeded
+    // from sport's first valid goal via the data.sport/data.goal effect)
+    const payload = onFinish.mock.calls[0][0]
+    expect(payload.goal).toBeTruthy()
+    expect(payload.sport).toBeTruthy()
   })
 
   it('calls onFinish after clicking through all steps via full-setup', () => {
