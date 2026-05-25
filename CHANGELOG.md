@@ -14,6 +14,46 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.327.0 — 2026-05-25 — RLS pen test corrective (attribution_events + MV REFRESH + search INVOKER)
+
+  Two-migration corrective for 2026-05-25 RLS Penetration Test failures.
+
+  Investigation found 50/99 repo migrations are tracked in prod's
+  schema_migrations (the rest were either applied via different naming
+  conventions or never recorded). Live schema is mostly correct — only
+  `attribution_events` was actually missing. Pen test failures C3/C4
+  (search_everything / match_sessions_for_user being SECURITY DEFINER)
+  are defense-in-depth concerns, NOT real leaks (both functions filter
+  by `auth.uid()` in every WHERE clause; underlying tables have
+  matching RLS).
+
+  `20260483_pentest_corrective.sql` (auto-applied this commit):
+    - CREATE TABLE IF NOT EXISTS public.attribution_events + indexes
+    - ENABLE RLS + 3 policies (own_read, own_write, service_write)
+    - profiles.first_touch column
+    - attribution_summary view (service_role only)
+    - REVOKE ALL on mv_squad_readiness/mv_ctl_atl_daily from
+      authenticated+anon, then GRANT SELECT back (no REFRESH path)
+    Idempotent. Addresses pen test D2, D3, A3, A4.
+
+  `20260484_search_functions_invoker.sql` (HELD — needs manual
+  smoke-test before apply):
+    - Converts search_everything + match_sessions_for_user to
+      SECURITY INVOKER while KEEPING explicit auth.uid() filters
+    - Belt-and-suspenders-and-parachute: INVOKER + explicit filter +
+      RLS-on-underlying-tables all enforce the same constraint
+    - Silent-empty-result is the failure mode; pre-apply smoke
+      requires testing GlobalSearch (Ctrl+Shift+F) and SemanticSearch
+      (Ctrl+Shift+K) as a real authenticated user on prod
+
+  Runbook: `docs/ops/migration_apply_runbook.md` — covers single-
+  migration apply, verification queries, full-sync risks.
+
+  Depends on: pg_class.attribution_events being absent, MVs existing,
+  underlying tables having SELECT RLS policies (verified).
+
+---
+
 ## meta — 2026-05-25 — Dashboard card inventory + autopilot directives + CLAUDE.md version refresh
 
   Docs-only meta-commit (no source / no migrations). Three additions:
