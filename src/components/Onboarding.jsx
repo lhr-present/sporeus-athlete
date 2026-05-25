@@ -480,9 +480,12 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
       <div style={{ background:'var(--card)', borderRadius:'12px', padding:'32px', width:'100%', maxWidth:'480px', position:'relative' }}>
-        <button onClick={()=>{ clearDraft(); onFinish(null) }} style={{ position:'absolute', top:'16px', right:'16px', background:'none', border:'none', color:'#ccc', cursor:'pointer', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px' }}>
-          Skip all →
-        </button>
+        {/* v9.330.0 — "Skip all →" button moved from upper-right (X-position,
+            highly misclickable as a modal-close) to a small text link at the
+            bottom of the modal. Copy reframed from "Skip all" (sounds final)
+            to "Continue later" (signals it's temporary — wizard re-shows
+            next session per v9.328 fix). Pre-v9.330: 100% of real prod
+            users skipped here and ended up with sport=null. */}
 
         {/* v9.103.0 (Prompt GG) — Resume banner. Only shown on welcome step
             when state was hydrated from draft. Lets athletes confirm they're
@@ -538,6 +541,20 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
           {step < TOTAL - 1
             ? <button onClick={()=>setStep(s=>s+1)} style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, padding:'8px 20px', borderRadius:'4px', background:'#ff6600', border:'none', color:'#fff', cursor:'pointer' }}>Next →</button>
             : <button onClick={finish} style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, padding:'8px 20px', borderRadius:'4px', background:'#ff6600', border:'none', color:'#fff', cursor:'pointer' }}>Let's go →</button>}
+        </div>
+
+        <div style={{ marginTop:'18px', textAlign:'center' }}>
+          <button
+            onClick={()=>{ clearDraft(); onFinish(null) }}
+            style={{
+              background:'none', border:'none', color:'#888', cursor:'pointer',
+              fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px',
+              textDecoration:'underline', letterSpacing:'0.04em', padding:'4px',
+            }}
+            aria-label={lang === 'tr' ? 'Daha sonra devam et (sihirbazı bu oturum için kapat)' : 'Continue later (close wizard for this session)'}
+          >
+            {lang === 'tr' ? 'Daha sonra devam edeceğim' : "I'll continue later"}
+          </button>
         </div>
       </div>
     </div>

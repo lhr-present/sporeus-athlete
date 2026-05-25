@@ -14,6 +14,27 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.330.0 — 2026-05-26 — De-emphasize wizard skip ("Skip all →" → "I'll continue later")
+
+  Step 3 of real-life UX fix. The pre-v9.330 "Skip all →" button sat
+  at position:absolute top:16px right:16px — exactly the X-position
+  users instinctively click to close a modal. Copy "Skip all" also
+  reads final. Two reframes:
+
+  1. Position: removed from upper-right; new small text link at the
+     bottom of the modal, after the Back/Next row. No longer in the
+     X-close affordance zone.
+  2. Copy: "Skip all →" → "I'll continue later" / "Daha sonra devam
+     edeceğim" (TR). Signals temporary, not final. Pairs with v9.328's
+     session-only dismissal — the user really IS just continuing later.
+
+  Plus aria-label explaining it closes the wizard for this session.
+
+  No behavior change (still calls clearDraft() + onFinish(null)).
+  38 onboarding tests still green.
+
+---
+
 ## v9.329.0 — 2026-05-26 — Persistent SetupBanner for sport=null users + reopenWizard
 
   Recovery path for the 4 legacy prod users who completed onboarding
