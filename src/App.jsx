@@ -64,6 +64,7 @@ const GlobalSearch      = lazy(() => import('./components/GlobalSearch.jsx'))
 const SemanticSearch    = lazy(() => import('./components/SemanticSearch.jsx'))
 const ChapterLanding = lazy(() => import('./pages/book/ChapterLanding.jsx'))
 import PastDueBanner from './components/PastDueBanner.jsx'
+import SetupBanner from './components/SetupBanner.jsx'
 import MobileBottomBar from './components/MobileBottomBar.jsx'
 import MobileFAB from './components/MobileFAB.jsx'
 
@@ -112,7 +113,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
     handleConsentGrant,
     coachMode,
     logPrefill, setLogPrefill,
-    onboarded, wizardDismissed,
+    onboarded, wizardDismissed, reopenWizard,
     toasts, dismissToast,
     syncStatus,
     badges, isGuest, isFirstSession,
@@ -187,6 +188,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
       <OfflineBanner lang={lang} />
       <ConnectionBanner lang={lang} />
       <PastDueBanner profile={authProfile} lang={lang} onUpgrade={() => openUpgrade(null)} />
+      {onboarded && <SetupBanner profile={profile} lang={lang} onPickSport={reopenWizard} />}
       <InstallPrompt />
       <ToastStack toasts={toasts} dismissToast={dismissToast} />
 

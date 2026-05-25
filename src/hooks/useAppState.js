@@ -398,6 +398,18 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
     }
   }
 
+  // v9.329.0 — Re-open the onboarding wizard from the persistent setup
+  // banner. Used for two cases: (1) the 4 legacy prod users who completed
+  // onboarding pre-v9.328 with sport=null, (2) any new user who closes
+  // their tab after Step 1 fix and decides on a later visit to actually
+  // complete setup. Flips both flags so the gate in App.jsx re-evaluates.
+  const reopenWizard = () => {
+    setOnboarded(false)
+    setWizardDismissed(false)
+    try { sessionStorage.removeItem('sporeus-wizard-dismissed') } catch (_) {}
+    emitEvent('wizard_reopened_from_banner', {})
+  }
+
   const t = useCallback(key => {
     const val = LABELS[lang]?.[key] ?? LABELS.en?.[key] ?? key
     if (!LABELS[lang]?.[key] && !LABELS.en?.[key]) {
@@ -478,7 +490,7 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
     isGuest, isFirstSession, isProfileIncomplete, badges,
     onboarded, wizardDismissed,
     // Callbacks
-    finishOnboarding, t, handleExport, handleAddSession,
+    finishOnboarding, reopenWizard, t, handleExport, handleAddSession,
     // Pass-through (needed by render)
     lang, setLang, dark, setDark, authUser, authProfile, signOut,
   }

@@ -14,6 +14,37 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.329.0 — 2026-05-26 — Persistent SetupBanner for sport=null users + reopenWizard
+
+  Recovery path for the 4 legacy prod users who completed onboarding
+  pre-v9.328 with sport=null (and any future user who closes their tab
+  after a Step 1 skip). Without this banner the user has no in-app
+  signal that anything is missing — the dashboard just renders empty
+  surfaces.
+
+  New `src/components/SetupBanner.jsx` (78 lines):
+    - Renders at App.jsx top-level when `onboarded && !profile?.sport
+      && !profile?.primarySport`
+    - Sticky-position, orange-themed, role="alert"
+    - Single CTA: "PICK SPORT →" / "SPORU SEÇ →"
+    - Returns null naturally once sport is set
+
+  `useAppState.js`:
+    - Added `reopenWizard()` callback: setOnboarded(false) +
+      setWizardDismissed(false) + clear sessionStorage flag + emit
+      'wizard_reopened_from_banner' attribution event
+
+  `App.jsx`:
+    - Banner mounts between PastDueBanner and InstallPrompt
+    - Wired to reopenWizard
+
+  7 SetupBanner unit tests (render gating EN/TR, CTA wiring, a11y).
+  All onboarding-related tests still green (98 total now).
+
+  Depends on: `profile.sport` field, `reopenWizard` from useAppState.
+
+---
+
 ## v9.328.0 — 2026-05-26 — Onboarding skip no longer permanently dismisses wizard
 
   Real-life UX fix grounded in prod data: 4/4 actual users (plus dev
