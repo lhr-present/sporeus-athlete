@@ -14,6 +14,34 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.334.0 — 2026-05-27 — Fix blocking starterPlan test premise (unblocks Deploy)
+
+  CRITICAL — every push since 2026-05-25 (v9.327+) has FAILED Deploy
+  on the same pre-existing test. Live app frozen at v9.326 era. None
+  of the v9.328-v9.333 onboarding fixes ever reached production.
+
+  Root cause: test "log with recent training raises weekly TSS
+  baseline above 20-CTL plan" used 14 days × 80 TSS as the strong
+  log, but Banister CTL EWMA with τ=42 only reaches ~28% of steady-
+  state at 14 days → CTL ≈ 22.6 (vs the 20 floor). The plan
+  generator rounded both baseline and withLog to the same weekly
+  TSS (150), so `expect(withLog > baseline)` failed on equality.
+
+  Fix: log strengthened to 35 days × 100 TSS, which gives CTL ≈ 56.
+  Test intent preserved — "real recent load should shift the plan" —
+  but now with a log magnitude that actually moves the EWMA past
+  rounding boundaries. Added a `seedCTL` assertion that verifies
+  the log was read (separate from whether the plan diverges).
+
+  30/30 starterPlan tests now green.
+
+  Impact: this single failing test has been blocking 5+ commits from
+  deploying (v9.327 / v9.328 / v9.329 / v9.330 / v9.331 / v9.332 /
+  v9.333 / outreach docs). Pushing this fix should unblock all of
+  them in one CI run. Live app should jump from v9.326 → v9.334.
+
+---
+
 ## v9.333.0 — 2026-05-26 — InstallPrompt: bilingual + iOS share icon + 7d snooze (not forever)
 
   Real-life UX Step 3 (mobile install nudge). Three concrete fixes:

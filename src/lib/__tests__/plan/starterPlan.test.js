@@ -161,17 +161,24 @@ describe('buildStarterPlan', () => {
   })
 
   it('log with recent training raises weekly TSS baseline above 20-CTL plan', () => {
-    // 14 days of 80 TSS → CTL settles ~30-35. Should produce a plan with
-    // strictly higher week-1 weeklyTSS than the empty-log baseline.
+    // v9.334.0 — Premise correction: original test used 14 days × 80 TSS which
+    // only raises EWMA CTL from 20 → ~22.6 (14/42 of steady-state). Plan
+    // generator rounded the resulting weekly TSS to the same value as the
+    // floor-20 baseline, so the assertion `>baseline` failed equality. The
+    // test's INTENT — "recent real load should produce a higher plan" — is
+    // valid, but needs a log strong enough to actually shift CTL noticeably.
+    // 35 days × 100 TSS gives CTL ≈ 56 (vs the 20 floor), large enough that
+    // the plan diverges measurably.
     const data = { goal: '10K', sport: 'Running' }
     const log = []
-    for (let i = 1; i <= 14; i++) {
+    for (let i = 1; i <= 35; i++) {
       const d = new Date(TODAY + 'T12:00:00Z')
       d.setUTCDate(d.getUTCDate() - i)
-      log.push({ date: d.toISOString().slice(0, 10), type: 'Easy run', tss: 80 })
+      log.push({ date: d.toISOString().slice(0, 10), type: 'Easy run', tss: 100 })
     }
     const baseline = buildStarterPlan(data, TODAY, 'en', [])
     const withLog  = buildStarterPlan(data, TODAY, 'en', log)
+    expect(withLog.seedCTL).toBeGreaterThan(baseline.seedCTL)
     expect(withLog.weeks[0].tss).toBeGreaterThan(baseline.weeks[0].tss)
   })
 
