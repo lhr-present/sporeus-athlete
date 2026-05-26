@@ -1,43 +1,31 @@
-# 2026-05-26 — Onboarding fix outreach drafts
+# 2026-05-26/27 — Onboarding outreach drafts
 
-Drafts for the 4 prod users who hit the pre-v9.328 "Skip all →" wizard trap and ended up with `profiles.sport=null`. Outreach explains the fix and invites them to re-engage.
+**Updated 2026-05-27**: Yesterday's draft set assumed 100% of users hit the "Skip all →" trap. Re-querying the correct column (`profile_data->>'sport'` in JSONB, not the top-level `profiles.sport`) shows **4 of 6 organic users completed sport pick on the old wizard**. The two users I previously drafted apology emails for (naghmeh, tongelozgur1) had sport set — drafts removed.
 
-## Background
+## Real funnel (2026-05-27)
 
-The four affected accounts:
+| User | Signup | Sport | Action |
+|---|---|---|---|
+| naghmeh.olapoor | 04-13 | Running ✓ | OK, no outreach needed |
+| tongelozgur1 | 05-10 | Other ✓ | OK, no outreach needed |
+| **turkyilmaztc** | **05-10** | **null** | needs outreach |
+| **turkyilmaz** | **05-11** | **null** | needs outreach |
+| sofia.swirska | 05-25 | Running ✓ | brand new — consider welcome email |
 
-| Email | Display name | Signed up |
-|---|---|---|
-| naghmeh.olapoor@gmail.com | naghmeh olapoor | 2026-04-13 |
-| tongelozgur1@gmail.com | tongelozgur1 | 2026-05-10 |
-| turkyilmaztc@gmail.com | turkyilmaztc | 2026-05-10 |
-| turkyilmaz@gmail.com | turkyilmaz | 2026-05-11 |
+The two `turkyilmaz` accounts may be the same person with two emails. If so, send only one.
 
-All four have `profiles.sport=null` and zero training_log entries. The wizard's "Skip all →" button at upper-right was the dismiss path; pre-v9.328 a single click permanently flipped `onboarded=true`. The v9.328 + v9.329 + v9.330 + v9.331 + v9.332 + v9.333 chain (this week) fixes the funnel forward, and v9.329's SetupBanner gives these legacy users a recovery path inside the app.
+## Drafts (sample-only, personalize before sending)
 
-## Why personal outreach in addition to the banner
-
-The banner only triggers when the user opens the app. Three of these users last signed in weeks ago and may not return on their own. A personal email is the lowest-friction nudge — and at this user count (4 affected), it's also feasible to send manually.
-
-## Drafts
-
-- `naghmeh-en.txt` — English; cross-cultural-safe default
-- `tongel-tr.txt` — Turkish, addressed to "Özgür"
-- `turkyilmaztc-tr.txt` — Turkish, generic salutation
+- `turkyilmaztc-tr.txt` — Turkish. Lighter framing now: "noticed you didn't finish setup, here's how the wizard's been improved"
 - `turkyilmaz-tr.txt` — Turkish, generic salutation
-
-(turkyilmaztc and turkyilmaz may be the same person with two addresses. If so, send only one.)
+- `sofia-welcome-en.txt` — Optional welcome email for the brand-new organic signup. She picked Running on the old wizard, which still works — but a personal welcome from the founder is a high-leverage retention nudge
 
 ## How to send
 
-1. Either:
-   - Re-authenticate the Claude Gmail connector with `gmail.compose` scope (the configured connector only has read permissions, so I couldn't create the drafts via MCP)
-   - Or copy each `.txt` into a new Gmail compose window manually
+1. Either re-auth Claude's Gmail connector with `gmail.compose` scope OR copy-paste manually into Gmail
+2. Personalize tone, add screenshots if helpful
+3. Send individually (no bcc)
 
-2. Personalize before sending — these are templates, not finished messages. Things you might want to adjust:
-   - Tone (more formal/casual)
-   - Add a screenshot of the new banner
-   - Localize the link
-   - Add unsubscribe / why-you're-getting-this footer if appropriate
+## Notes on previous claims
 
-3. Do not bcc the user list — send individually so replies are personal.
+The "4/4 users hit the skip trap" diagnosis in v9.328-v9.331 changelog entries was based on the wrong column read. The v9.328-v9.333 onboarding fixes are still valuable — `Skip all →` IS still placed in the X-position, the wizard IS still 9 screens by default, and the SetupBanner WILL help the 2 unfilled users when they next visit. But the urgency was overstated. Forward velocity remains good (4 of 5 organic signups completed); the fixes improve a working funnel rather than rescue a broken one.
