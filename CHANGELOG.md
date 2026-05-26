@@ -14,6 +14,45 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.335.0 — 2026-05-27 — One-tap "Log This" from TodayView (no tab switch)
+
+  Real-life UX continuation. Prod data shows 4 of 7 users picked sport
+  but 0 logged a session. The bottleneck is between "I have a plan" and
+  "I actually log a session." TodayView already had a "Log This" button
+  on the planned-session card, but clicking it switched tabs to Log,
+  unmounting Today and disorienting the user. Dashboard already opened
+  QuickAdd in place; Today was the outlier.
+
+  Three plumbing fixes:
+
+  1. **QuickAddModal.jsx** — accepts a new `prefill` prop. Form state
+     (date / type / duration / rpe / notes) initializes from prefill
+     when present, falling back to the existing day-pattern / sport-
+     default chain otherwise. Lazy useState initializers so prefill is
+     read only on first mount, no re-init mid-edit.
+
+  2. **App.jsx** — passes `logPrefill` into QuickAddModal as `prefill`,
+     and clears it in both onAdd + onClose so the next open is fresh.
+     Also threads `setShowQuickAdd` into TodayView.
+
+  3. **TodayView.jsx**:
+     - `logThisSession()` now calls `setShowQuickAdd(true)` instead of
+       `setTab('log')`. Modal opens in place on Today. Back-compat:
+       if setShowQuickAdd isn't passed, falls back to old setTab path.
+     - `GettingStartedCard` onLogSession callback (added in v9.332)
+       actually opens the modal now. Pre-v9.335 it only set an empty
+       prefill and never called setShowQuickAdd, so the CTA was dead.
+
+  Net UX: from "tap Log This → tab switch → form pre-filled → save"
+  (4 surfaces) to "tap Log This → modal pops up pre-filled → save"
+  (2 surfaces). One fewer context switch on the highest-leverage
+  conversion in the app.
+
+  47 component tests green (TodayView + Onboarding + SetupBanner +
+  starterPlan).
+
+---
+
 ## v9.334.0 — 2026-05-27 — Fix blocking starterPlan test premise (unblocks Deploy)
 
   CRITICAL — every push since 2026-05-25 (v9.327+) has FAILED Deploy

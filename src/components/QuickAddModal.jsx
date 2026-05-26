@@ -97,7 +97,7 @@ const SessionSchema = v.object({
   notes:    v.optional(v.pipe(v.string(), v.maxLength(500))),
 })
 
-export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
+export default function QuickAddModal({ onAdd, onClose, profile, isFirst, prefill }) {
   const { t, lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
   const { log } = useData()
@@ -107,11 +107,16 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst }) {
   const defaultType = dayPattern?.type || SPORT_DEFAULT_TYPE[profile?.sport] || 'Easy Run'
   const defaultDuration = dayPattern?.durationMin > 0 ? String(dayPattern.durationMin) : '45'
 
-  const [sessionDate, setSessionDate] = useState(today())
-  const [type, setType]               = useState(defaultType)
-  const [duration, setDuration]       = useState(defaultDuration)
-  const [rpe, setRpe]                 = useState(6)
-  const [notes, setNotes]             = useState('')
+  // v9.335.0 — Prefill from caller (e.g., TodayView's "Log This" button on
+  // a planned session). When prefill is present, its values seed the form
+  // INSTEAD of the day-pattern / sport-default chain. This lets one-tap
+  // "log my planned session" actually one-tap log rather than re-typing
+  // type+duration+rpe that the planned-session card already showed.
+  const [sessionDate, setSessionDate] = useState(() => prefill?.date || today())
+  const [type, setType]               = useState(() => prefill?.type || defaultType)
+  const [duration, setDuration]       = useState(() => prefill?.duration != null ? String(prefill.duration) : defaultDuration)
+  const [rpe, setRpe]                 = useState(() => Number.isFinite(prefill?.rpe) ? prefill.rpe : 6)
+  const [notes, setNotes]             = useState(() => prefill?.description || prefill?.notes || '')
   const [patternUsed, setPatternUsed] = useState(!!dayPattern)
   const [distanceKm, setDistanceKm]   = useState('')
   const [avgHr, setAvgHr]             = useState('')

@@ -514,7 +514,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
             </>
           )}
           {coachMode && authProfile?.role !== 'coach' && <AsyncBoundary name="Coach Mode"><CoachDashboard authUser={authUser}/></AsyncBoundary>}
-          {!coachMode && tab === 'today'        && <AsyncBoundary name="Today"><TodayView log={log} setTab={handleTabClick} setLogPrefill={setLogPrefill} authUser={authUser}/></AsyncBoundary>}
+          {!coachMode && tab === 'today'        && <AsyncBoundary name="Today"><TodayView log={log} setTab={handleTabClick} setLogPrefill={setLogPrefill} setShowQuickAdd={setShowQuickAdd} authUser={authUser}/></AsyncBoundary>}
           {!coachMode && tab === 'program'      && <AsyncBoundary name="Program"><ProgramView /></AsyncBoundary>}
           {!coachMode && tab === 'dashboard'    && <AsyncBoundary name="Dashboard"><Dashboard log={log} onLogSession={() => setShowQuickAdd(true)} onGoToProfile={() => handleTabClick('profile')}/></AsyncBoundary>}
           {tab === 'zones'        && <AsyncBoundary name="Zone Calc"><ZoneCalc/></AsyncBoundary>}
@@ -580,6 +580,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
           <QuickAddModal
             onAdd={(entry) => {
               handleAddSession(entry)
+              setLogPrefill(null)  // v9.335: clear prefill so next open is fresh
               const newLen = log.length + 1
               if (newLen === 3 &&
                   !localStorage.getItem('sporeus-strava-token') &&
@@ -587,9 +588,10 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
                 setShowStratvaNudge(true)
               }
             }}
-            onClose={() => setShowQuickAdd(false)}
+            onClose={() => { setShowQuickAdd(false); setLogPrefill(null) }}
             profile={profile}
             isFirst={isFirstSession}
+            prefill={logPrefill}
           />
         </Suspense>
       )}

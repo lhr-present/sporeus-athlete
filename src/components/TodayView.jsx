@@ -113,7 +113,7 @@ function calcConsecutiveDays(log, today) {
 
 const QUICK_FIELDS = WELLNESS_FIELDS.filter(f => ['sleep', 'energy', 'soreness'].includes(f.key))
 
-export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
+export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd, authUser }) {
   const { t, lang }   = useContext(LangCtx)
   const { recovery, setRecovery, profile, setLog } = useData()
 
@@ -806,10 +806,20 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
   }
 
   const logThisSession = () => {
+    // v9.335.0 — Open QuickAdd modal in place on Today tab instead of
+    // navigating to the Log tab. Pre-v9.335 this called setTab('log') which
+    // unmounted Today and switched the user's context — extra friction with
+    // no benefit since the QuickAdd modal is global. The pre-fill data
+    // still flows: setLogPrefill stages it, App.jsx passes logPrefill into
+    // QuickAddModal as `prefill`, which seeds the form fields.
     if (plannedSession) {
       setLogPrefill({ type: plannedSession.type, duration: plannedSession.duration, rpe: plannedSession.rpe || 6, date: today })
     }
-    setTab('log')
+    if (typeof setShowQuickAdd === 'function') {
+      setShowQuickAdd(true)
+    } else {
+      setTab('log')  // back-compat: if mounted in a context without the modal opener
+    }
   }
 
   const card = {
@@ -938,7 +948,18 @@ export default function TodayView({ log, setTab, setLogPrefill, authUser }) {
           and the planned-session line (if any) is the only signal — easy
           to miss. */}
       {log.length === 0 && (
-        <GettingStartedCard isTR={lang === 'tr'} onLogSession={() => setLogPrefill({})} />
+        <GettingStartedCard
+          isTR={lang === 'tr'}
+          onLogSession={() => {
+            // v9.335.0 — Actually open the modal. Pre-v9.335 (v9.332) the
+            // callback only staged an empty prefill and the modal never
+            // opened, so the CTA looked dead. Now: clear any planned-
+            // session prefill (this is "fresh log", not "planned log")
+            // and open QuickAdd directly.
+            setLogPrefill(null)
+            if (typeof setShowQuickAdd === 'function') setShowQuickAdd(true)
+          }}
+        />
       )}
 
       {/* ── v9.145.0 — Above-fold morning glance ──────────────────────────
