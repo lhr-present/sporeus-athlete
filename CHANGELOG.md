@@ -14,6 +14,34 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.338.0 — 2026-05-27 — Wizard "Connect Strava" pick now actually connects Strava
+
+  Real-life broken-promise fix. Pre-v9.338, the onboarding wizard's
+  step 3 ("How do you want to log?") offered Connect Strava as one of
+  three options. Picking it stored `loggingMethod = 'strava'` in the
+  profile and otherwise did NOTHING — the user finished onboarding,
+  landed on Today, no Strava connection. They had to navigate to
+  Profile, find StravaConnect, click again. The wizard pick was a lie.
+
+  useAppState.finishOnboarding now: if `data.loggingMethod === 'strava'`,
+  after plan seeding + landing tab navigation, calls initiateStravaOAuth()
+  via setTimeout(0) so state flushes first. Emits `wizard_strava_auto_
+  connect` attribution event for funnel tracking.
+
+  On Strava's redirect back, the existing exchangeStravaCode pipeline
+  (already in this hook) picks up the auth code and finalizes the
+  connection. Net flow: pick Strava in wizard → finish wizard → app
+  redirects to Strava → user approves → back to app with Strava
+  connected and backfill queued. Zero extra taps.
+
+  Misconfigured environment (no VITE_STRAVA_CLIENT_ID) logs a warn
+  and continues — wizard still completes, user just doesn't get
+  Strava (existing fallback in initiateStravaOAuth).
+
+  44 tests green (Onboarding + strava lib + onboardingToToday).
+
+---
+
 ## v9.337.0 — 2026-05-27 — Auto-mark today's planned session "done" when log entry exists
 
   Real-life UX redundancy fix. Pre-v9.337, after the user logged today's

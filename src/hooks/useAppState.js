@@ -7,7 +7,7 @@ import { useLocalStorage, STORAGE_WARN_KEY } from './useLocalStorage.js'
 import { LABELS } from '../contexts/LangCtx.jsx'
 import { calculateACWR } from '../lib/trainingLoad.js'
 import { addNotification } from '../lib/notificationCenter.js'
-import { exchangeStravaCode } from '../lib/strava.js'
+import { exchangeStravaCode, initiateStravaOAuth } from '../lib/strava.js'
 import { checkRaceCountdowns, checkSubscriptionExpiry } from '../lib/pushNotify.js'
 import { scheduleSessionReminder, getReminderSettings } from '../lib/pushNotifications.js'
 import { triggerSync } from '../lib/deviceSync.js'
@@ -387,6 +387,24 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
       }
       handleTabClick(landingTab)
       setOnboarded(true)
+      // v9.338.0 — Honor "Connect Strava" selection from the wizard. Pre-
+      // v9.338 picking Strava as logging method only saved the field;
+      // the app shrugged. The user explicitly said "I want Strava" and
+      // then had to find Profile tab to actually connect — broken
+      // promise. Now: if loggingMethod === 'strava', trigger OAuth
+      // redirect after plan is seeded and the landing tab is queued.
+      // The redirect leaves the app; on return, exchangeStravaCode
+      // (already wired in this hook's effect) finishes the connection.
+      // setTimeout(0) lets state writes flush before navigation.
+      if (data.loggingMethod === 'strava') {
+        try { emitEvent('wizard_strava_auto_connect', {}) } catch (_) {}
+        setTimeout(() => {
+          const res = initiateStravaOAuth()
+          if (!res?.ok) {
+            logger.warn('wizard strava auto-connect failed:', res?.error)
+          }
+        }, 0)
+      }
     } else {
       // v9.328.0 — Skip closes the wizard for this session only; do NOT
       // flip onboarded permanently. Pre-v9.328 a single click on "Skip all →"
