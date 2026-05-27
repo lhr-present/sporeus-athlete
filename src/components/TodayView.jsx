@@ -88,6 +88,9 @@ import PhaseTransitionPeek from './today/PhaseTransitionPeek.jsx'
 // Today, so the "log your first session" CTA was missing where they
 // actually start.
 import GettingStartedCard from './dashboard/GettingStartedCard.jsx'
+// v9.339.0 — Profile completeness nudge for post-first-session users
+// with missing key fields (max HR, threshold pace, FTP, age).
+import ProfileCompletenessNudge from './ProfileCompletenessNudge.jsx'
 
 const EMBED_MODE = new URLSearchParams(window.location.search).get('embed') === 'true'
 
@@ -990,6 +993,20 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
             setLogPrefill(null)
             if (typeof setShowQuickAdd === 'function') setShowQuickAdd(true)
           }}
+        />
+      )}
+
+      {/* ── v9.339.0 — Profile completeness nudge ─────────────────────────
+          For users past the first-session empty state who still have
+          missing key profile fields (max HR, threshold pace, FTP, age).
+          Without these, HR zones use Tanaka age-based fallback and pace/
+          power zones don't render — fixing them is a real value unlock.
+          Component returns null when no fields are missing. */}
+      {log.length >= 1 && (
+        <ProfileCompletenessNudge
+          profile={profile}
+          isTR={lang === 'tr'}
+          onGoToProfile={() => setTab('profile')}
         />
       )}
 

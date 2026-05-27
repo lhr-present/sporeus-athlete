@@ -14,6 +14,36 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.339.0 — 2026-05-27 — ProfileCompletenessNudge — surface missing key fields one tap from fix
+
+  Real-life unlock. Prod sample of sport-set users (2026-05-27):
+    huseyin:    sport+age+maxhr (zones personalized)
+    naghmeh:    sport+age, no maxhr (HR zones on Tanaka estimate only)
+    sofia:      sport only (no age, no maxhr — Tanaka can't even compute)
+    tongelozgur1: sport='Other' (no zone math applicable)
+    turkyilmaztc, turkyilmaz: no sport (covered by SetupBanner v9.329)
+
+  Without maxhr/age/ltpace/ftp the app silently falls back to defaults.
+  Profile tab exists with the inputs, but users never open it. New
+  `ProfileCompletenessNudge.jsx` renders on TodayView for users past
+  the first-session empty state (`log.length >= 1`) when any of:
+    - age missing
+    - maxhr missing
+    - ltpace/threshold missing (Running/Triathlon)
+    - ftp missing (Cycling/Triathlon)
+
+  Single CTA "PROFILE →" / "PROFİL →" routes to Profile tab. Returns
+  null when no fields are missing — disappears naturally as the user
+  fills in.
+
+  Bilingual EN/TR. Hardcoded uppercase headlines because JS
+  toUpperCase mangles Turkish dotted-İ on default locale.
+
+  9 unit tests (gating per-sport, EN/TR copy, CTA wiring, null/empty
+  profile robustness).
+
+---
+
 ## v9.338.0 — 2026-05-27 — Wizard "Connect Strava" pick now actually connects Strava
 
   Real-life broken-promise fix. Pre-v9.338, the onboarding wizard's
