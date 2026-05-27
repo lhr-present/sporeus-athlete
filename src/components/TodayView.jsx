@@ -44,7 +44,7 @@ import { analyzeDecouplingTrend } from '../lib/athlete/decouplingTrend.js'
 import { analyzePolarizedWeek } from '../lib/athlete/polarizedWeek.js'
 import { isBannerSnoozed, snoozeBanner } from '../lib/athlete/bannerSnooze.js'
 import { classifyStravaSync } from '../lib/athlete/stravaSyncHealth.js'
-import { getStravaConnection } from '../lib/strava.js'
+import { getStravaConnection, initiateStravaOAuth } from '../lib/strava.js'
 import { analyzeWeeklyBudget } from '../lib/athlete/weeklyBudget.js'
 import { rankDiagnostics } from '../lib/athlete/diagnosticPriority.js'
 import { buildStarterPlan } from '../lib/plan/starterPlan.js'
@@ -950,6 +950,22 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
       {log.length === 0 && (
         <GettingStartedCard
           isTR={lang === 'tr'}
+          // v9.336.0 — Wire Strava connect from Today's empty state.
+          // Pre-v9.336 the "Connect Strava" button rendered but onConnectStrava
+          // was undefined, so clicking did nothing. Now: one tap → Strava
+          // OAuth redirect. Same flow Dashboard's GettingStartedCard uses,
+          // but goes direct rather than via Profile-tab detour.
+          stravaConnected={(() => {
+            try { return !!localStorage.getItem('sporeus-strava-token') } catch { return false }
+          })()}
+          onConnectStrava={() => {
+            const res = initiateStravaOAuth()
+            if (!res.ok) {
+              // Misconfigured (no VITE_STRAVA_CLIENT_ID) — fall back to
+              // navigating Profile where the user gets a clearer error.
+              if (typeof setTab === 'function') setTab('profile')
+            }
+          }}
           onLogSession={() => {
             // v9.335.0 — Actually open the modal. Pre-v9.335 (v9.332) the
             // callback only staged an empty prefill and the modal never

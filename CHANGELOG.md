@@ -14,6 +14,32 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.336.0 — 2026-05-27 — TodayView GettingStartedCard "Connect Strava" actually works
+
+  Real-life UX fix. The v9.332 wire-up of GettingStartedCard in TodayView's
+  empty state omitted two props (`stravaConnected`, `onConnectStrava`) so
+  the "Connect Strava" button rendered but its click handler was undefined.
+  Pre-v9.336 the button looked clickable and did nothing.
+
+  Now:
+  - `stravaConnected` reads `localStorage['sporeus-strava-token']` (same
+    signal Dashboard uses)
+  - `onConnectStrava` calls `initiateStravaOAuth()` directly — one-tap
+    redirect to Strava authorization. Pre-v9.336 even Dashboard required
+    Profile-tab nav first (`onGoToProfile`), so this is also tighter than
+    Dashboard's current flow.
+  - Falls back to `setTab('profile')` if Strava is misconfigured (no
+    VITE_STRAVA_CLIENT_ID) so the user gets a clearer error there.
+
+  Prod context: 0 of 7 users have connected Strava (per strava_tokens
+  count 2026-05-27). Manual logging may be friction for athletes already
+  on Strava; this gives them a true one-tap entry point from the screen
+  where it matters (first-session empty state).
+
+  33 tests green (TodayView + strava lib).
+
+---
+
 ## v9.335.0 — 2026-05-27 — One-tap "Log This" from TodayView (no tab switch)
 
   Real-life UX continuation. Prod data shows 4 of 7 users picked sport
