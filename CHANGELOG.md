@@ -14,6 +14,25 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.337.0 — 2026-05-27 — Auto-mark today's planned session "done" when log entry exists
+
+  Real-life UX redundancy fix. Pre-v9.337, after the user logged today's
+  session via "Log This" → QuickAdd → save, the planned-session card on
+  Today still showed "Pending". They had to click "Mark Done" separately
+  to clear the status. Two taps for one event.
+
+  TodayView.jsx — new useEffect watches `log` for any entry with
+  `date === today`. If one exists AND the plan-day key isn't already
+  'done', flips `planStatus[todayKey] = 'done'`. Idempotent (skips
+  if already done) and source-agnostic (works for Log This / FAB /
+  Strava import alike). The existing manual `markDone()` button still
+  works as a fallback for users who logged via something the app can't
+  see (treadmill run paper-logged later, etc.).
+
+  16 TodayView tests still green.
+
+---
+
 ## v9.336.0 — 2026-05-27 — TodayView GettingStartedCard "Connect Strava" actually works
 
   Real-life UX fix. The v9.332 wire-up of GettingStartedCard in TodayView's

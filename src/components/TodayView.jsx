@@ -127,6 +127,21 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
   const todayKey       = plannedSession ? `${plannedSession.weekIdx}-${plannedSession.dayIdx}` : null
   const todayStatus    = todayKey ? planStatus[todayKey] : null
 
+  // v9.337.0 — Auto-mark today's planned session "done" once a real log
+  // entry exists for today's date. Pre-v9.337 the user had to log AND tap
+  // "Mark Done" separately — redundant: if they logged a session today,
+  // they clearly did today's training. The planned-session card now
+  // reflects reality without the extra tap. Idempotent: only flips if
+  // todayKey exists, current status isn't already 'done', and at least
+  // one log entry shares today's date.
+  useEffect(() => {
+    if (!todayKey || todayStatus === 'done') return
+    const hasTodayLog = (log || []).some(e => e?.date === today)
+    if (hasTodayLog) {
+      setPlanStatus(ps => ({ ...ps, [todayKey]: 'done' }))
+    }
+  }, [log, todayKey, todayStatus, today, setPlanStatus])
+
   // v9.85.0 — Tomorrow preview. Read tomorrow's planned session so the
   // athlete can gear up (e.g. set alarm earlier for long ride, prepare
   // intervals workout track). Uses the same helper as today; null if rest
