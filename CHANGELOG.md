@@ -14,6 +14,52 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.340.0 — 2026-05-28 — Fix latent guest→signup data-loss bug (training_log ON CONFLICT)
+
+  Data-motivated bug fix. Investigating the funnel (1 guest logged a
+  session, never converted) surfaced a latent data-loss bug:
+
+  `dataMigration.js` migrated guest localStorage logs into training_log
+  with `upsert(..., { onConflict: 'user_id,date,source' })`. Verified
+  2026-05-28: training_log has NO unique constraint matching those
+  columns (only PK(id) and unique(user_id,external_id)). Postgres
+  throws "no unique or exclusion constraint matching the ON CONFLICT
+  specification", which collected into errors[] → the whole migration
+  throws → EVERY guest who logged locally then signed up would lose
+  their entire training history.
+
+  Fix: training_log migration now uses plain insert(). Rationale:
+  - Migration runs once (MIGRATED_KEY guard) into a fresh account
+    with zero existing rows, so no conflict is possible.
+  - id auto-generates via gen_random_uuid() default.
+  - A unique(user_id,date,source) constraint is explicitly NOT the
+    fix: the app supports multiple sessions per day (two-a-days);
+    such a constraint would silently collapse them.
+
+  Also fixed the same broken onConflict in `db/sessions.js`
+  upsertSession (currently dead code — no live callers — but a
+  landmine for any future caller). Now upserts on PK(id).
+
+  NOT fixed here (flagged): `supabase/functions/device-sync/index.ts:160`
+  has the same broken onConflict. Edge-function change = separate deploy;
+  device-sync appears unused (0 connected devices in prod) but should be
+  corrected before it's relied on.
+
+  IMPORTANT scope note: this is a LATENT bug. It is NOT the reason
+  prod training_log is empty. The live authenticated QuickAdd save
+  path (useTrainingLogQuery → upsert with id present → PK conflict)
+  works correctly. The current 0 logged sessions is simply that no
+  signed-up user has logged yet at n=8 — a usage reality, not a code
+  defect. This fix prevents future data loss; it does not change
+  current numbers.
+
+  recovery migration unaffected (recovery DOES have unique(user_id,date)).
+  injuries/test_results/race_results unaffected (plain upsert on id).
+
+  23 tests green (dataMigration + sessions).
+
+---
+
 ## v9.339.0 — 2026-05-27 — ProfileCompletenessNudge — surface missing key fields one tap from fix
 
   Real-life unlock. Prod sample of sport-set users (2026-05-27):

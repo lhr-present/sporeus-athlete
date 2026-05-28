@@ -81,9 +81,20 @@ export async function migrateToSupabase(userId, onProgress) {
       notes:        e.notes || null,
       source:       'manual',
     }))
-    // Batch in chunks of 100
+    // v9.340.0 — Use insert(), not upsert(onConflict:'user_id,date,source').
+    // That conflict target has NO matching unique constraint on training_log
+    // (verified 2026-05-28: only unique indexes are PK(id) and
+    // (user_id,external_id)). Postgres throws "no unique or exclusion
+    // constraint matching the ON CONFLICT specification", which collected
+    // into errors[] and threw — so EVERY guest who logged locally then
+    // signed up had their entire migration fail and their training history
+    // silently dropped. A unique (user_id,date,source) constraint is NOT
+    // the fix because the app supports multiple sessions per day (two-a-days);
+    // such a constraint would collapse them. Migration runs once (MIGRATED_KEY
+    // guard) into a fresh account with no existing rows, so plain insert is
+    // correct — ids auto-generate via gen_random_uuid() default.
     for (let i = 0; i < rows.length; i += 100) {
-      const { error } = await supabase.from('training_log').upsert(rows.slice(i, i + 100), { onConflict: 'user_id,date,source' })
+      const { error } = await supabase.from('training_log').insert(rows.slice(i, i + 100))
       if (error) errors.push(`training_log: ${error.message}`)
     }
     onProgress?.(++step, steps)

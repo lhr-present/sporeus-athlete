@@ -28,10 +28,15 @@ export async function getSessionsForAthletes(userIds, sinceDate) {
     .gte('date', sinceDate)
 }
 
-/** Upsert a single session (conflict on user_id, date, source) */
+/** Upsert a single session (conflict on primary key `id`).
+ *  v9.340.0 — Was onConflict:'user_id,date,source', but no such unique
+ *  constraint exists on training_log and the app allows multiple sessions
+ *  per day (two-a-days), so that constraint must never be added. Default
+ *  conflict target (PK id) is correct: a session with an id updates, one
+ *  without inserts. */
 export async function upsertSession(session) {
   if (!ready()) return NOT_CONFIGURED
   return supabase
     .from('training_log')
-    .upsert(session, { onConflict: 'user_id,date,source' })
+    .upsert(session)
 }

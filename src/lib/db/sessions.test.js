@@ -112,7 +112,10 @@ describe('upsertSession', () => {
     expect(supabase.from).not.toHaveBeenCalled()
   })
 
-  it('upserts session with user_id,date,source conflict key', async () => {
+  it('upserts session on primary key (no user_id,date,source conflict)', async () => {
+    // v9.340 — onConflict:'user_id,date,source' removed: no such unique
+    // constraint exists and the app supports multiple sessions per day.
+    // Default conflict target is PK(id).
     const chain = makeQueryChain({ data: null, error: null })
     supabase.from.mockReturnValue(chain)
     const session = { user_id: 'u1', date: '2026-04-01', source: 'strava', tss: 120 }
@@ -120,6 +123,6 @@ describe('upsertSession', () => {
     await upsertSession(session)
 
     expect(supabase.from).toHaveBeenCalledWith('training_log')
-    expect(chain.upsert).toHaveBeenCalledWith(session, { onConflict: 'user_id,date,source' })
+    expect(chain.upsert).toHaveBeenCalledWith(session)
   })
 })

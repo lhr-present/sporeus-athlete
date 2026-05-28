@@ -15,12 +15,14 @@ const { mockChain } = vi.hoisted(() => {
   const chain = {
     from:   vi.fn(),
     upsert: vi.fn(),
+    insert: vi.fn(),   // v9.340 — training_log now uses insert(), not upsert()
     update: vi.fn(),
     eq:     vi.fn(),
   }
   chain.from.mockReturnValue(chain)
   chain.update.mockReturnValue(chain)
   chain.upsert.mockResolvedValue({ error: null })
+  chain.insert.mockResolvedValue({ error: null })
   chain.eq.mockResolvedValue({ error: null })
   return { mockChain: chain }
 })
@@ -42,6 +44,7 @@ beforeEach(() => {
   lsMock.clear()
   vi.clearAllMocks()
   mockChain.upsert.mockResolvedValue({ error: null })
+  mockChain.insert.mockResolvedValue({ error: null })
   mockChain.eq.mockResolvedValue({ error: null })
   mockChain.from.mockReturnValue(mockChain)
   mockChain.update.mockReturnValue(mockChain)
@@ -102,20 +105,20 @@ describe('migrateToSupabase', () => {
     const result = await migrateToSupabase('user1', progress)
     expect(result).toBe(true)
     expect(mockChain.from).toHaveBeenCalledWith('training_log')
-    expect(mockChain.upsert).toHaveBeenCalledTimes(1)  // 90 < 100 → 1 batch
-    const [rows] = mockChain.upsert.mock.calls[0]
+    expect(mockChain.insert).toHaveBeenCalledTimes(1)  // 90 < 100 → 1 batch
+    const [rows] = mockChain.insert.mock.calls[0]
     expect(rows).toHaveLength(90)
     expect(rows[0].user_id).toBe('user1')
     expect(progress).toHaveBeenCalled()
   })
 
-  it('batches 150 entries as two upsert calls (100 + 50)', async () => {
+  it('batches 150 entries as two insert calls (100 + 50)', async () => {
     localStorage.setItem('sporeus_log', JSON.stringify(makeDays(150)))
     await migrateToSupabase('user1', vi.fn())
-    // upsert called twice for training_log
-    expect(mockChain.upsert).toHaveBeenCalledTimes(2)
-    const firstBatch  = mockChain.upsert.mock.calls[0][0]
-    const secondBatch = mockChain.upsert.mock.calls[1][0]
+    // insert called twice for training_log (v9.340 — was upsert)
+    expect(mockChain.insert).toHaveBeenCalledTimes(2)
+    const firstBatch  = mockChain.insert.mock.calls[0][0]
+    const secondBatch = mockChain.insert.mock.calls[1][0]
     expect(firstBatch).toHaveLength(100)
     expect(secondBatch).toHaveLength(50)
   })
@@ -130,15 +133,15 @@ describe('migrateToSupabase', () => {
     localStorage.setItem('sporeus_log', JSON.stringify(entries))
     const result = await migrateToSupabase('user1', vi.fn())
     expect(result).toBe(true)
-    const [rows] = mockChain.upsert.mock.calls[0]
-    // Only 2 valid entries should be upserted
+    const [rows] = mockChain.insert.mock.calls[0]
+    // Only 2 valid entries should be inserted
     expect(rows).toHaveLength(2)
     expect(rows.every(r => r.date)).toBe(true)
   })
 
-  it('throws when supabase upsert returns an error', async () => {
+  it('throws when supabase insert returns an error', async () => {
     localStorage.setItem('sporeus_log', JSON.stringify(makeDays(3)))
-    mockChain.upsert.mockResolvedValueOnce({ error: { message: 'DB connection failed' } })
+    mockChain.insert.mockResolvedValueOnce({ error: { message: 'DB connection failed' } })
     await expect(migrateToSupabase('user1', vi.fn())).rejects.toThrow('DB connection failed')
   })
 
