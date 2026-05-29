@@ -14,6 +14,55 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.341.0 — 2026-05-29 — Deploy 5 missing tables to prod + fix 2 edge-fn ON CONFLICT bugs
+
+  Systemic correctness sweep (follow-up to v9.340). Audited every
+  `onConflict` / upsert target in src/ + edge functions against actual
+  prod constraints. Found the same migration-tracking gap that hid
+  attribution_events (v9.327): 22 migration-defined tables missing from
+  prod, 5 of them hit by LIVE code paths that would throw on use.
+
+  APPLIED TO PROD (4 idempotent migrations, recorded in schema_migrations):
+  - `20260425_message_reads` → message_reads table (read-tracking)
+  - `20260457_ai_feedback` → ai_feedback, prompt_versions, +summary view
+  - `20260458_privacy_lifecycle` → export_jobs, deletion_requests,
+    consent_purposes (+ audit trigger, + audit_log columns)
+  - `20260459_onboarding` → onboarding_state (+ training_log.is_demo,
+    profiles.peer_comparison_opt_in)
+
+  Fixes all 5 live bugs (code referenced a non-existent table → throw):
+  - ConsentCenter.jsx → consent_purposes  (GDPR/KVKK consent mgmt)
+  - DeleteAccount.jsx → deletion_requests (GDPR right-to-erasure)
+  - StravaConnectInContext.jsx → onboarding_state (in-context Strava)
+  - AiFeedbackButtons.jsx → ai_feedback (AI thumbs up/down)
+  - useMessageChannel.js → message_reads (read-tracking)
+
+  (ai_feedback's migration 20260457 wasn't in the 3 originally scoped but
+  is the same idempotent class; applied to avoid leaving 1 of 5 live paths
+  broken for no reason.)
+
+  EDGE FN ON CONFLICT FIXES (repo only — need separate `supabase
+  functions deploy`; both currently unreached so not yet deployed):
+  - `device-sync/index.ts` — was onConflict:'user_id,date,source' (no
+    such constraint). Now dedups on (user_id, external_id) using the
+    provider activity id, falls back to insert when id absent. Preserves
+    two-a-days; gives idempotent re-sync.
+  - `ai-batch-worker/index.ts` — batch_errors upsert onConflict:
+    'athlete_id,date' (no such constraint, only PK). Now plain insert
+    (append-only error log; dupes are fine).
+
+  STILL FLAGGED, NOT APPLIED: 17 other migration-defined tables remain
+  absent from prod, but most are dormant (not referenced by live code)
+  or intentionally dropped (coach_messages, killed in v9.134). Bulk
+  application is unsafe — see docs/ops/migration_apply_runbook.md. Full
+  reconciliation is a separate, deliberate task.
+
+  Verified post-apply: all 5 tables + training_log.is_demo +
+  profiles.peer_comparison_opt_in + consent_purposes unique(user_id,
+  purpose) present in prod.
+
+---
+
 ## v9.340.0 — 2026-05-28 — Fix latent guest→signup data-loss bug (training_log ON CONFLICT)
 
   Data-motivated bug fix. Investigating the funnel (1 guest logged a

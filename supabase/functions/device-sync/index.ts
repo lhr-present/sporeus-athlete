@@ -149,15 +149,30 @@ serve(withTelemetry('device-sync', async (req: Request) => {
         const tss      = estimateTSSFromOW(act.duration_seconds ?? 0, act.avg_heart_rate ?? null, act.max_heart_rate ?? null)
         const type     = mapOWActivityType(act.type ?? "")
 
-        await adminClient.from("training_log").upsert({
+        // v9.341.0 — Dedup on (user_id, external_id), the only training_log
+        // unique index that fits. Pre-v9.341 used onConflict:'user_id,date,
+        // source', which has NO matching constraint → upsert threw, so every
+        // device sync silently failed. A (user_id,date,source) constraint
+        // can't be added: the app allows multiple sessions per day. Using
+        // external_id (the provider's stable activity id) gives idempotent
+        // re-sync AND preserves two-a-days. When the provider omits an id,
+        // fall back to plain insert (can't dedup without a key anyway).
+        const externalId = act.id ? `ow:${device.provider}:${act.id}` : null
+        const row = {
           user_id:      user.id,
           date,
           type,
           duration_min: duration,
           tss,
           source:       `ow:${device.provider}`,
+          external_id:  externalId,
           notes:        act.notes ?? null,
-        }, { onConflict: "user_id,date,source" })
+        }
+        if (externalId) {
+          await adminClient.from("training_log").upsert(row, { onConflict: "user_id,external_id" })
+        } else {
+          await adminClient.from("training_log").insert(row)
+        }
         deviceResult.count++
       }
 

@@ -154,12 +154,16 @@ serve(async (req) => {
         p_payload: { ...payload, dlq_reason: "max_retries", moved_at: today, read_ct: readCt },
       })
       await sb.rpc("delete_ai_batch_msg", { p_msg_id: msgId })
-      await sb.from("batch_errors").upsert({
+      // v9.341.0 — Plain insert: batch_errors has no (athlete_id,date) unique
+      // constraint (only PK id), so the prior onConflict:'athlete_id,date'
+      // threw. It's an append-only error log; duplicate rows on repeat
+      // failures are fine and actually useful for counting retries.
+      await sb.from("batch_errors").insert({
         athlete_id: payload.coach_id,
         date:       today,
         error_code: "max_retries_exceeded",
         attempts:   retryCount,
-      }, { onConflict: "athlete_id,date" })
+      })
       dlq++
       continue
     }
