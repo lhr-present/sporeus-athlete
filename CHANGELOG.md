@@ -14,6 +14,36 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.344.0 — 2026-05-29 — Tests for two untested infra libs (realtimeStatus, orientation)
+
+  Coverage round (not UX). Picked the two untested top-level libs with
+  real, cleanly-testable logic (skipped the side-effect-heavy ones like
+  reportGenerator/activityUpload/supabase where tests would be mock
+  tautologies).
+
+  - `realtimeStatus.test.js` (11 tests) — the pub-sub registry behind
+    ConnectionBanner. Covers notify-all, unsubscribe, and snapshot
+    ISOLATION (mutating the snapshot handed to a listener must not
+    corrupt the registry — a real regression guard).
+
+  - `orientation.test.js` (13 tests) — getOrientationStep, which decides
+    the next new-athlete nudge (set_profile → log_first_session →
+    log_wellness → run_predictor → view_load). Covers priority order,
+    per-step dismissals cascading, the 3-day wellness recency window,
+    created_at fallback, and ORIENTATION_MESSAGES en/tr/tab completeness.
+    The localStorage stub models Object.keys semantics (own-enumerable
+    stored keys, non-enumerable methods) so the run_predictor
+    key-discovery path is exercised faithfully.
+
+  Also confirmed (no change shipped): the app's UTC-everywhere "today"
+  computation (268 sites) is DELIBERATE — densely commented as
+  intentional DST/timezone-boundary avoidance, no stored user timezone
+  exists. Not a bug; left untouched.
+
+  24 new tests green.
+
+---
+
 ## v9.343.0 — 2026-05-29 — Fix raw i18n key shown to user (currentStreak)
 
   i18n sweep. Diffed all literal `t('key')` calls against the full EN+TR
