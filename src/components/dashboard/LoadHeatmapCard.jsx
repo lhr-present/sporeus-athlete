@@ -116,11 +116,13 @@ export default function LoadHeatmapCard({ log, dl, onDayClick }) {
                 rx={2}
                 ry={2}
                 fill={isFuture ? '#111' : fill}
-                style={{ cursor: isFuture ? 'default' : 'pointer' }}
+                /* v9.342 — Only show the pointer cursor when onDayClick is
+                   actually wired. No caller passes it today, so pre-v9.342
+                   every cell looked clickable but did nothing — a false
+                   affordance. Cursor now honestly reflects interactivity. */
+                style={{ cursor: (!isFuture && typeof onDayClick === 'function') ? 'pointer' : 'default' }}
                 onClick={() => {
-                  if (!isFuture) {
-                    if (typeof onDayClick === 'function') onDayClick(date)
-                  }
+                  if (!isFuture && typeof onDayClick === 'function') onDayClick(date)
                 }}
               >
                 <title>{date}: TSS {tssMap[date] || 0}</title>

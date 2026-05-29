@@ -14,6 +14,33 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.342.0 — 2026-05-29 — Fix two dead UI interactions (check-in CTA + heatmap cells)
+
+  Dead-handler sweep (same bug class as v9.335/v9.336 found by accident).
+  Grepped optional-callback guards for handlers that no caller wires.
+  Two real "looks interactive, does nothing" defects:
+
+  1. **TodayReadinessCard "Tap to log morning check-in" CTA** (Dashboard).
+     The card's openCheckIn() calls onOpenCheckIn if passed, else dispatches
+     a `sporeus:open-morning-checkin` window event as fallback. Neither
+     Dashboard render site (lines 572, 753) passes the prop, and NO listener
+     existed — so on Dashboard the button was dead. A user with no check-in
+     logged today tapped it and nothing happened.
+     Fix: App.jsx now hosts MorningCheckIn globally + listens for the event
+     (mirrors how QuickAddModal is hosted). Wires the fallback the card was
+     designed around — works for every current/future render site.
+
+  2. **LoadHeatmapCard day cells** showed `cursor: pointer` (looked
+     clickable) but onClick → onDayClick, which no caller passes → nothing.
+     Fix: pointer cursor + click now gated on `typeof onDayClick ===
+     'function'`, so cells only look interactive when they are. (Making the
+     heatmap click-to-log would be a feature; this just removes the lie.)
+
+  9 TodayReadinessCard tests green. No LoadHeatmapCard test exists (pure
+  cursor/affordance change, no logic).
+
+---
+
 ## v9.341.0 — 2026-05-29 — Deploy 5 missing tables to prod + fix 2 edge-fn ON CONFLICT bugs
 
   Systemic correctness sweep (follow-up to v9.340). Audited every

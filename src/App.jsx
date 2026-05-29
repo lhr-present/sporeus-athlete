@@ -32,6 +32,7 @@ const Recovery      = lazy(() => import('./components/Recovery.jsx'))
 // Lazy-loaded overlays (only fetched when opened)
 const SearchPalette = lazy(() => import('./components/SearchPalette.jsx'))
 const QuickAddModal = lazy(() => import('./components/QuickAddModal.jsx'))
+const MorningCheckIn = lazy(() => import('./components/MorningCheckIn.jsx'))
 const MigrationModal     = lazy(() => import('./components/MigrationModal.jsx'))
 const OnboardingWizard   = lazy(() => import('./components/Onboarding.jsx'))
 const KeyboardShortcuts  = lazy(() => import('./components/KeyboardShortcuts.jsx'))
@@ -125,6 +126,18 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
   const [upgradeFeatureKey, setUpgradeFeatureKey] = useState(null)
   const [showSemanticSearch, setShowSemanticSearch] = useState(false)
   const [showStratvaNudge, setShowStratvaNudge]   = useState(false)
+  // v9.342.0 — Global MorningCheckIn host. TodayReadinessCard (rendered on
+  // Dashboard) has a "Tap to log morning check-in" CTA that, when its
+  // onOpenCheckIn prop is absent, dispatches a `sporeus:open-morning-checkin`
+  // window event as a fallback. No listener existed, so the button was dead
+  // on Dashboard. This global listener wires the fallback the card was
+  // designed around — works for every current/future render site.
+  const [showMorningCheckIn, setShowMorningCheckIn] = useState(false)
+  useEffect(() => {
+    const open = () => setShowMorningCheckIn(true)
+    window.addEventListener('sporeus:open-morning-checkin', open)
+    return () => window.removeEventListener('sporeus:open-morning-checkin', open)
+  }, [])
 
   // v9.118.0 (Prompt JJJ) — Mission 2 milestone telemetry. Runs at App
   // level so race_committed / first_month_completed / pr_logged /
@@ -593,6 +606,13 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
             isFirst={isFirstSession}
             prefill={logPrefill}
           />
+        </Suspense>
+      )}
+
+      {/* ── Morning Check-In modal (global host — v9.342) ─────────────────── */}
+      {showMorningCheckIn && (
+        <Suspense fallback={null}>
+          <MorningCheckIn onClose={() => setShowMorningCheckIn(false)} />
         </Suspense>
       )}
 
