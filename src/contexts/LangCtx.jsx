@@ -449,6 +449,7 @@ export const LABELS = {
     seasonTSS: 'TSS',
     seasonBestWeek: 'Best week',
     seasonStreak: 'Streak',
+    currentStreak: 'Current',
     seasonSportBreakdown: 'Sport Breakdown',
     // E19 — Critical Power Decay Index
     cpDecay: 'Critical Power Trend',
@@ -1145,6 +1146,7 @@ export const LABELS = {
     seasonTSS: 'TSS',
     seasonBestWeek: 'En iyi hafta',
     seasonStreak: 'Seri',
+    currentStreak: 'Güncel',
     seasonSportBreakdown: 'Spor Dağılımı',
     // E19 — Kritik Güç Bozunma Endeksi
     cpDecay: 'Kritik Güç Trendi',

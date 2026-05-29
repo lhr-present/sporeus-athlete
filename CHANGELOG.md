@@ -14,6 +14,31 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.343.0 — 2026-05-29 — Fix raw i18n key shown to user (currentStreak)
+
+  i18n sweep. Diffed all literal `t('key')` calls against the full EN+TR
+  key sets in LangCtx. Result: parity is excellent (827 EN / 829 TR keys),
+  and only ONE used key was missing from both languages: `currentStreak`.
+
+  SeasonStatsCard.jsx:217 renders `t('currentStreak') || 'Current'`. The
+  `|| 'Current'` fallback is DEAD: t() returns the raw key string for a
+  missing key (`LABELS[lang]?.[k] ?? LABELS.en?.[k] ?? key`), which is
+  truthy, so the fallback never fires. Users saw the literal text
+  "currentStreak" on the Season Stats card.
+
+  Fix: added `currentStreak` to LABELS (EN 'Current', TR 'Güncel').
+
+  Note for future: the `t('x') || 'fallback'` pattern (used in ~15 cards)
+  is misleading — the fallback only matters when the key is missing, but
+  in that case t() returns the truthy key so the fallback is skipped. It's
+  harmless where the key exists (resolves normally), but devs should not
+  rely on it as a safety net. All other `||`-fallback keys verified present
+  in LABELS, so currentStreak was the only live defect.
+
+  13 i18n + LangCtx-parity tests green.
+
+---
+
 ## v9.342.0 — 2026-05-29 — Fix two dead UI interactions (check-in CTA + heatmap cells)
 
   Dead-handler sweep (same bug class as v9.335/v9.336 found by accident).
