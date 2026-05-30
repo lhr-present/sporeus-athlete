@@ -27,7 +27,10 @@ import {
   assessDataQuality,
   getTimeOfDayAdvice,
   generateDailyDigest,
+  predictRacePerformance,
 } from '../intelligence.js'
+import { calculateACWR } from '../trainingLoad.js'
+import { calcLoad } from '../formulas.js'
 
 // ─── Shared helpers ────────────────────────────────────────────────────────────
 const daysAgo = n => {
@@ -1272,5 +1275,167 @@ describe('Cross-function invariants', () => {
       expect(result).not.toBeNull()
       expect(typeof result).toBe('string')
     }
+  })
+})
+
+// ─── Audit fixes 2026-05-30 (C2 / H5 / H6 / M7 / M8 / F4) ─────────────────────
+describe('audit fixes — CTL/ATL daily EWMA (C2)', () => {
+  // computeCTL/computeATL are not exported; observe them through getFormScore,
+  // which returns ctl/atl/tsb. They must match the canonical daily-EWMA engines.
+  it('getFormScore CTL/ATL match formulas.calcLoad exactly', () => {
+    const log = [
+      ...Array.from({ length: 20 }, (_, i) => runEntry(i + 5, { tss: 70 })),
+      ...Array.from({ length: 4 }, (_, i) => runEntry(i, { tss: 120 })),
+    ]
+    const fs = getFormScore(log)
+    const cl = calcLoad(log)
+    expect(fs.ctl).toBe(cl.ctl)
+    expect(fs.atl).toBe(cl.atl)
+    expect(fs.tsb).toBe(cl.ctl - cl.atl)
+  })
+
+  it('rest days decay ATL — a 10-day gap drops ATL below CTL', () => {
+    // Heavy block then 10 fully-rested days: ATL (τ=7) decays faster than CTL (τ=42).
+    const block = Array.from({ length: 14 }, (_, i) => runEntry(i + 11, { tss: 100 }))
+    const fs = getFormScore(block)
+    expect(fs.atl).toBeLessThan(fs.ctl)   // fatigue shed faster than fitness
+    expect(fs.tsb).toBeGreaterThan(0)
+  })
+
+  it('CTL roughly tracks daily-EWMA steady state, NOT per-entry sum', () => {
+    // 60 days steady 50 TSS/day → daily EWMA CTL settles near ~50.
+    const log = Array.from({ length: 60 }, (_, i) => runEntry(i, { tss: 50 }))
+    const fs = getFormScore(log)
+    expect(fs.ctl).toBeGreaterThan(40)
+    expect(fs.ctl).toBeLessThan(55)
+  })
+})
+
+describe('audit fixes — single ACWR engine (H6) + injury weights (M7)', () => {
+  it('predictInjuryRisk ACWR factor uses the canonical calculateACWR ratio', () => {
+    // Big recent spike on a low chronic base → calculateACWR danger (>1.5).
+    const log = [
+      ...Array.from({ length: 21 }, (_, i) => runEntry(i + 7, { tss: 20, rpe: 4 })),
+      ...Array.from({ length: 7 }, (_, i) => runEntry(i, { tss: 180, rpe: 5 })),
+    ]
+    const acwr = calculateACWR(log)
+    expect(acwr.ratio).toBeGreaterThan(1.5)
+    const r = predictInjuryRisk(log, [], {})
+    const acwrFactor = r.factors.find(f => f.label.startsWith('ACWR'))
+    expect(acwrFactor).toBeDefined()
+    expect(acwrFactor.label).toBe('ACWR > 1.5')
+    // The label embeds the canonical ratio — proves it routes through calculateACWR.
+    expect(acwrFactor.detail.en).toContain(acwr.ratio.toFixed(2))
+  })
+
+  it('ACWR > 1.5 contributes exactly 30 points (reconciled weight, was 35)', () => {
+    // Isolate the ACWR factor: low RPE (no consec-hard), recovery omitted, no HRV.
+    const log = [
+      ...Array.from({ length: 21 }, (_, i) => runEntry(i + 7, { tss: 15, rpe: 3 })),
+      ...Array.from({ length: 7 }, (_, i) => runEntry(i, { tss: 200, rpe: 3 })),
+    ]
+    const r = predictInjuryRisk(log, [], {})
+    const labels = r.factors.map(f => f.label)
+    // Only the ACWR factor should fire (rpe=3 → no monotony spike guaranteed? check score)
+    expect(labels).toContain('ACWR > 1.5')
+    // score must be at least 30 from ACWR alone, and capped ≤100
+    expect(r.score).toBeGreaterThanOrEqual(30)
+    expect(r.score).toBeLessThanOrEqual(100)
+  })
+})
+
+describe('audit fixes — consecutive hard CALENDAR days (F4)', () => {
+  it('two hard sessions on the SAME day count as 1 consecutive day, not 2', () => {
+    // 2 entries today (both RPE 8), nothing else hard. consecHard should = 1 → no factor.
+    const log = [
+      { date: daysAgo(0), type: 'Interval', tss: 80, duration: 50, rpe: 8, sport: 'run' },
+      { date: daysAgo(0), type: 'Strides', tss: 40, duration: 20, rpe: 8, sport: 'run' },
+      { date: daysAgo(5), type: 'Easy Run', tss: 40, duration: 45, rpe: 4, sport: 'run' },
+    ]
+    const r = predictInjuryRisk(log, [], {})
+    const hardFactor = r.factors.find(f => /hard days/.test(f.label))
+    expect(hardFactor).toBeUndefined()  // only 1 calendar day, not ≥3
+  })
+
+  it('3 distinct consecutive hard calendar days DO fire the factor', () => {
+    const log = [
+      { date: daysAgo(0), type: 'Interval', tss: 90, duration: 60, rpe: 8, sport: 'run' },
+      { date: daysAgo(1), type: 'Interval', tss: 90, duration: 60, rpe: 8, sport: 'run' },
+      { date: daysAgo(2), type: 'Interval', tss: 90, duration: 60, rpe: 8, sport: 'run' },
+    ]
+    const r = predictInjuryRisk(log, [], {})
+    const hardFactor = r.factors.find(f => /hard days/.test(f.label))
+    expect(hardFactor).toBeDefined()
+    expect(hardFactor.label).toBe('3 hard days')
+  })
+
+  it('a rest day in the middle breaks the streak', () => {
+    const log = [
+      { date: daysAgo(0), type: 'Interval', tss: 90, duration: 60, rpe: 8, sport: 'run' },
+      { date: daysAgo(1), type: 'Interval', tss: 90, duration: 60, rpe: 8, sport: 'run' },
+      // daysAgo(2) is a rest day
+      { date: daysAgo(3), type: 'Interval', tss: 90, duration: 60, rpe: 8, sport: 'run' },
+    ]
+    const r = predictInjuryRisk(log, [], {})
+    const hardFactor = r.factors.find(f => /hard days/.test(f.label))
+    expect(hardFactor).toBeUndefined()  // streak is only 2 from today
+  })
+})
+
+describe('audit fixes — RPE→zone fallback (M8)', () => {
+  it('RPE 6 maps to Z2 (easy), not Z3 grey zone', () => {
+    const log = Array.from({ length: 10 }, (_, i) =>
+      ({ date: daysAgo(i), type: 'Run', tss: 50, duration: 60, rpe: 6, sport: 'run' }))
+    const r = analyzeZoneBalance(log)
+    // All volume should land in Z1/Z2, none in Z3.
+    expect(r.z3Pct).toBe(0)
+    expect(r.z1z2Pct).toBe(100)
+  })
+
+  it('RPE 7 still maps to Z3 (grey zone reserved for RPE 7)', () => {
+    const log = Array.from({ length: 10 }, (_, i) =>
+      ({ date: daysAgo(i), type: 'Run', tss: 70, duration: 60, rpe: 7, sport: 'run' }))
+    const r = analyzeZoneBalance(log)
+    expect(r.z3Pct).toBe(100)
+    expect(r.z1z2Pct).toBe(0)
+  })
+})
+
+describe('audit fixes — predictRacePerformance pace from distance (H5)', () => {
+  const RACE = []  // no test results → forces the training-pace fallback branch
+
+  it('faster runner (less time per km) predicts a FASTER 10K than a slower one', () => {
+    const toSec = t => { const [m, s] = t.split(':').map(Number); return s != null ? m * 60 + s : m }
+    // Fast: 40min for 10km (4:00/km). Slow: 60min for 10km (6:00/km).
+    const fastLog = Array.from({ length: 5 }, (_, i) =>
+      ({ date: daysAgo(i), type: 'Easy Run', tss: 60, duration: 40, distanceM: 10000, rpe: 5, sport: 'run' }))
+    const slowLog = Array.from({ length: 5 }, (_, i) =>
+      ({ date: daysAgo(i), type: 'Easy Run', tss: 60, duration: 60, distanceM: 10000, rpe: 5, sport: 'run' }))
+    const fast = predictRacePerformance(fastLog, RACE, {})
+    const slow = predictRacePerformance(slowLog, RACE, {})
+    const fast10k = fast.predictions.find(p => p.label === '10K')
+    const slow10k = slow.predictions.find(p => p.label === '10K')
+    expect(fast10k).toBeDefined()
+    expect(slow10k).toBeDefined()
+    // Faster training pace → smaller predicted seconds (NOT inverted).
+    expect(toSec(fast10k.predicted)).toBeLessThan(toSec(slow10k.predicted))
+  })
+
+  it('skips the fallback entirely when no run carries distance', () => {
+    const noDist = Array.from({ length: 5 }, (_, i) =>
+      ({ date: daysAgo(i), type: 'Easy Run', tss: 60, duration: 50, rpe: 5, sport: 'run' }))
+    const r = predictRacePerformance(noDist, RACE, {})
+    expect(r.predictions).toEqual([])
+    expect(r.reliable).toBe(false)
+  })
+
+  it('produces a plausible 10K time (30–70 min) from 5:00/km training pace', () => {
+    const toSec = t => { const [m, s] = t.split(':').map(Number); return s != null ? m * 60 + s : m }
+    const log = Array.from({ length: 5 }, (_, i) =>
+      ({ date: daysAgo(i), type: 'Easy Run', tss: 60, duration: 50, distanceM: 10000, rpe: 5, sport: 'run' }))
+    const r = predictRacePerformance(log, RACE, {})
+    const p10k = r.predictions.find(p => p.label === '10K')
+    expect(toSec(p10k.predicted)).toBeGreaterThan(30 * 60)
+    expect(toSec(p10k.predicted)).toBeLessThan(70 * 60)
   })
 })

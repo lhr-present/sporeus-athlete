@@ -20,7 +20,7 @@ function _zonePct(sessions, zoneIndex) {
   sessions.forEach(e => {
     const dur = e.duration || 0
     if (e.zones && e.zones.some(z => z > 0)) e.zones.forEach((z, i) => { if (i < 5) totals[i] += z })
-    else { const r = e.rpe || 5; const zi = r <= 3 ? 0 : r <= 5 ? 1 : r <= 7 ? 2 : r === 8 ? 3 : 4; totals[zi] += dur }
+    else { const r = e.rpe || 5; const zi = r <= 3 ? 0 : r <= 6 ? 1 : r === 7 ? 2 : r === 8 ? 3 : 4; totals[zi] += dur }
   })
   const tot = totals.reduce((s, v) => s + v, 0) || 1
   return totals.map(v => Math.round(v / tot * 100))[zoneIndex]
@@ -272,8 +272,12 @@ export function mineInjuryPatterns(log, injuries, recovery) {
       const volumeSpike = prevTSS > 0 ? Math.round((tss14 - prevTSS) / prevTSS * 100) : 0
       const longRun = Math.max(...prev14.map(e => e.duration || 0), 0)
       const consecDays = (() => {
-        const sortedDesc = [...prev7].sort((a, b) => b.date > a.date ? 1 : -1)
-        let c = 0; for (const e of sortedDesc) { if ((e.rpe || 0) >= 7) c++; else break }
+        // Count consecutive HARD calendar days, not entries — two-a-days on one
+        // date must count once (matches intelligence.predictInjuryRisk fix).
+        const byDate = new Map()
+        for (const e of prev7) byDate.set(e.date, Math.max(byDate.get(e.date) || 0, e.rpe || 0))
+        const dates = [...byDate.keys()].sort((a, b) => b > a ? 1 : -1)
+        let c = 0; for (const d of dates) { if ((byDate.get(d) || 0) >= 7) c++; else break }
         return c
       })()
 

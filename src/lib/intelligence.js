@@ -6,6 +6,8 @@
 // v4.7: VDOT Daniels table integration, HRV injury factor
 
 import { estimateVDOT, getTrainingPaces, predictTime as _predictTime } from './vdot.js'
+import { calcLoad } from './formulas.js'
+import { calculateACWR } from './trainingLoad.js'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function daysAgoDate(n) {
@@ -14,19 +16,17 @@ function daysAgoDate(n) {
 function tssInWindow(log, startDate, endDate) {
   return log.filter(e => e.date >= startDate && e.date < endDate).reduce((s, e) => s + (e.tss || 0), 0)
 }
+// CTL/ATL via the single canonical daily-EWMA in formulas.calcLoad — steps over
+// every calendar day with zero-fill on rest days (matching trainingLoad.calculatePMC
+// convention). Previously these iterated per-ENTRY with no rest-day decay, which
+// inflated ATL ~2× and disagreed with the app's other PMC engines. (audit C2)
 function computeCTL(log) {
   if (!log?.length) return 0
-  const sorted = [...log].sort((a, b) => a.date > b.date ? 1 : -1)
-  let ctl = 0
-  for (const s of sorted) ctl = ctl + ((s.tss || 0) - ctl) / 42
-  return Math.round(ctl)
+  return calcLoad(log).ctl
 }
 function computeATL(log) {
   if (!log?.length) return 0
-  const sorted = [...log].sort((a, b) => a.date > b.date ? 1 : -1)
-  let atl = 0
-  for (const s of sorted) atl = atl + ((s.tss || 0) - atl) / 7
-  return Math.round(atl)
+  return calcLoad(log).atl
 }
 
 // ─── 1. analyzeLoadTrend ──────────────────────────────────────────────────────
@@ -159,7 +159,10 @@ export function analyzeZoneBalance(log) {
       e.zones.forEach((z, i) => { if (i < 5) zTotals[i] += z })
     } else {
       const r = e.rpe || 5
-      const zi = r <= 3 ? 0 : r <= 5 ? 1 : r <= 7 ? 2 : r === 8 ? 3 : 4
+      // RPE→zone fallback (audit M8): RPE ≤6 → Z2 (aerobic), reserve Z3 (grey
+      // zone) for RPE 7 only. Previously RPE 6 mapped to Z3, inflating the
+      // grey-zone bucket and biasing polarization analysis toward "threshold-heavy".
+      const zi = r <= 3 ? 0 : r <= 6 ? 1 : r <= 7 ? 2 : r === 8 ? 3 : 4
       zTotals[zi] += dur
     }
   })
@@ -201,8 +204,18 @@ export function analyzeZoneBalance(log) {
 }
 
 // ─── 4. predictInjuryRisk ─────────────────────────────────────────────────────
-// 5-factor injury risk: ACWR(25%) + Monotony(20%) + ConsecHard(20%) +
-// RecoveryDeficit(15%) + HRV(20% when available, redistributed when not).
+// Additive 0–100 risk model (capped at 100). Each factor contributes points by
+// severity tier; the comments below now match the code exactly (audit M7).
+//   Factor 1 ACWR (canonical EWMA via trainingLoad.calculateACWR — audit H6):
+//                  danger (>1.5) +30 · caution (1.3–1.5) +15
+//   Factor 2 Monotony (Foster):  above sport threshold +20
+//   Factor 3 Consecutive hard calendar days (≥3): +20
+//   Factor 4 Recovery deficit:   avg readiness <50 +25 (severe) · <65 +10
+//   Factor 5 HRV (rMSSD):        CV>10% +20 · single-day drop>15% +15
+// Level: HIGH ≥50 · MODERATE ≥25 · LOW <25.
+// ACWR spike carries the heaviest single tier because a >1.5 acute:chronic ratio
+// is the strongest documented injury predictor (Gabbett/Hulin 2016); the prior
+// "+35" had no documented basis, so it is reconciled to +30.
 /**
  * @param {Array} log - training log entries
  * @param {Array} recovery - recovery entries with date, score, hrv
@@ -217,16 +230,16 @@ export function predictInjuryRisk(log, recovery, profile) {
     return { level: 'unknown', score: 0, factors: [], advice: { en: 'Log sessions to assess injury risk.', tr: 'Yaralanma riskini değerlendirmek için antrenman kaydet.' } }
   }
 
-  const now = daysAgoDate(0)
-  const w1 = daysAgoDate(7), w4 = daysAgoDate(28)
+  const w1 = daysAgoDate(7)
 
-  // Factor 1: ACWR (weight 25 when HRV present, 30 without)
-  const acute = tssInWindow(log, w1, now)
-  const chronic28 = tssInWindow(log, w4, now) / 4
-  if (chronic28 > 0) {
-    const acwr = acute / chronic28
+  // Factor 1: ACWR — single canonical EWMA engine (trainingLoad.calculateACWR,
+  // Hulin/Williams). Previously a separate rolling-coupled ratio lived here and
+  // disagreed with the rest of the app by up to ~80% (audit H6).
+  const acwrResult = calculateACWR(log)
+  if (acwrResult && acwrResult.ratio !== null) {
+    const acwr = acwrResult.ratio
     if (acwr > 1.5) {
-      riskScore += 35; factors.push({ label: 'ACWR > 1.5', severity: 'high', detail: { en: `Load spike (ACWR ${acwr.toFixed(2)}) — classic injury predictor (Hulin 2016).`, tr: `Yük artışı (ACWR ${acwr.toFixed(2)}) — klasik yaralanma belirteci (Hulin 2016).` } })
+      riskScore += 30; factors.push({ label: 'ACWR > 1.5', severity: 'high', detail: { en: `Load spike (ACWR ${acwr.toFixed(2)}) — classic injury predictor (Hulin 2016).`, tr: `Yük artışı (ACWR ${acwr.toFixed(2)}) — klasik yaralanma belirteci (Hulin 2016).` } })
     } else if (acwr > 1.3) {
       riskScore += 15; factors.push({ label: 'ACWR 1.3–1.5', severity: 'moderate', detail: { en: `Elevated ACWR (${acwr.toFixed(2)}) — caution zone.`, tr: `Yüksek ACWR (${acwr.toFixed(2)}) — dikkat bölgesi.` } })
     }
@@ -250,11 +263,21 @@ export function predictInjuryRisk(log, recovery, profile) {
     riskScore += 20; factors.push({ label: `Monotony ${mono}`, severity: 'moderate', detail: { en: `High monotony index (${mono} > ${monoThreshold}) — vary intensity daily.`, tr: `Yüksek monotoni indeksi (${mono} > ${monoThreshold}) — günlük yoğunluğu değiştir.` } })
   }
 
-  // Factor 3: Consecutive hard days
-  const sortedDesc = [...log].sort((a, b) => b.date > a.date ? 1 : -1)
+  // Factor 3: Consecutive hard CALENDAR days (audit F4).
+  // Previously counted entries, so two hard sessions logged on the same day read
+  // as "2 consecutive days". Dedupe to one max-RPE value per date, then walk
+  // backward from today over actual calendar days — a rest day (or any day with
+  // max RPE < 7) breaks the streak.
+  const maxRpeByDate = {}
+  for (const e of log) {
+    if (!e.date) continue
+    const d = e.date.slice(0, 10)
+    maxRpeByDate[d] = Math.max(maxRpeByDate[d] || 0, e.rpe || 0)
+  }
   let consecHard = 0
-  for (const e of sortedDesc.slice(0, 7)) {
-    if ((e.rpe || 0) >= 7) consecHard++; else break
+  for (let i = 0; i < 14; i++) {
+    const d = daysAgoDate(i)
+    if ((maxRpeByDate[d] || 0) >= 7) consecHard++; else break
   }
   if (consecHard >= 3) {
     riskScore += 20; factors.push({ label: `${consecHard} hard days`, severity: 'moderate', detail: { en: `${consecHard} consecutive high-RPE sessions. Insert an easy day.`, tr: `${consecHard} ardışık yüksek ZY seansı. Kolay bir gün ekle.` } })
@@ -910,15 +933,28 @@ export function predictRacePerformance(log, testResults, profile) {
   }
 
   if (!baseTimeSec || !baseDist) {
-    // Fallback: estimate from training log paces
+    // Fallback: estimate from training log paces (audit H5).
+    // Pace MUST be derived from distance + duration (sec/km). The previous
+    // version computed "pace" from duration alone with no distance term, so a
+    // 90-min run produced a *faster* predicted 10K than a 45-min run (inverted).
+    // We now require real distance data per run and skip the fallback entirely
+    // when none of the recent runs carry distance.
     const runs = log.filter(e => (e.type || '').toLowerCase().includes('run') || (e.type || '').toLowerCase().includes('tempo'))
-    if (runs.length >= 3) {
-      const avgPace = runs.slice(-5).reduce((s, e) => {
-        const spd = e.duration ? e.duration / 60 : 0
-        return s + (spd > 0 ? 60 / spd : 0)
-      }, 0) / Math.min(5, runs.length) * 1.08  // +8% from easy→race pace
-      if (avgPace > 0) {
-        baseTimeSec = Math.round(avgPace * 600)  // 10K equiv
+    // distance in metres, accepting distanceM | distance (m) | distanceKm (km)
+    const distM = e => {
+      const m  = parseFloat(e.distanceM) || parseFloat(e.distance) || 0
+      const km = parseFloat(e.distanceKm) || 0
+      return m > 0 ? m : km > 0 ? km * 1000 : 0
+    }
+    const recentWithDist = runs.slice(-5).filter(e => distM(e) > 0 && (e.duration || 0) > 0)
+    if (recentWithDist.length >= 3) {
+      // mean training pace in sec/km, then +8% to convert easy→race effort
+      const racePaceSecKm = recentWithDist.reduce((s, e) => {
+        const durSec = (e.duration || 0) * 60
+        return s + durSec / (distM(e) / 1000)
+      }, 0) / recentWithDist.length / 1.08
+      if (racePaceSecKm > 0) {
+        baseTimeSec = Math.round(racePaceSecKm * 10)  // 10K equiv = pace × 10 km
         baseDist = 10000
         method = 'training_pace'
       }

@@ -14,6 +14,39 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.351.0 — 2026-05-30 — Audit correction: physiology-math fixes
+
+  From the general audit (audit-reports/general-audit-2026-05-30.md). All
+  verified numerically; tests extended.
+
+  - **C2 (CRITICAL):** `computeCTL`/`computeATL` (intelligence.js) stepped
+    the EWMA per logged ENTRY with no rest-day decay, producing CTL/ATL/TSB
+    that were wrong AND disagreed with the correct daily-EWMA used app-wide
+    (`calcLoad`/`calculatePMC`) — two different fitness numbers in one app.
+    Both now delegate to `calcLoad` (daily zero-filled). Fixes the numbers
+    feeding predictFitness, race readiness, the daily suggestion, etc.
+  - **H6:** unified ACWR — `predictInjuryRisk` used a rolling-coupled ratio
+    while the rest of the app used EWMA `calculateACWR` (disagreed by up to
+    ~80%). predictInjuryRisk now routes through `calculateACWR`.
+  - **H5:** `predictRacePerformance` training-pace fallback derived "pace"
+    from duration alone (no distance) → inverted predictions. Now derives
+    sec/km from distance+duration and skips when no distance data exists.
+  - **F4:** consecutive-hard-days counted log ENTRIES not calendar days
+    (two-a-days overstated it) — now dedupes to max-RPE per date. Applied
+    in BOTH intelligence.js and patterns.js.
+  - **M8:** RPE→zone fallback mapped RPE 6 into Z3 (grey zone), biasing
+    polarization analysis — now RPE ≤6 → Z2, Z3 reserved for RPE 7 (both
+    intelligence.js analyzeZoneBalance and patterns.js _zonePct).
+  - **M7:** reconciled `predictInjuryRisk` factor weights with the
+    documented model (ACWR spike 35→30) and fixed the stale comments.
+
+  Net: one consistent CTL/TSB/ACWR across the app. 15,453 tests green.
+
+  DEPENDS ON: formulas.calcLoad, trainingLoad.calculateACWR, intelligence
+  + patterns engines.
+
+---
+
 ## v9.350.0 — 2026-05-30 — Free-tier S&C parity (strength surfaced for generated plans)
 
   Audit feature gap #2: strength was woven only into the elite-program

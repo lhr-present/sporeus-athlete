@@ -321,10 +321,13 @@ import { getFormScore, getPeakWeekLoad, getConsistencyScore } from './intelligen
 
 describe('getFormScore', () => {
   it('returns Fatigued (red) when ATL >> CTL (high recent load)', () => {
-    // 4-week base then sudden spike: ATL >> CTL → TSB negative
-    const base = Array.from({ length: 28 }, (_, i) => entry(i + 1, 50))
-    const spike = Array.from({ length: 7 }, (_, i) => entry(35 + i, 200))
-    const { label } = getFormScore([...base, ...spike])
+    // Moderate older base then a RECENT 7-day spike → ATL >> CTL → TSB negative.
+    // (Daily-EWMA CTL/ATL with rest-day decay — audit C2. The spike must be
+    // recent; an old spike correctly decays away and reads Neutral.)
+    const base  = Array.from({ length: 28 }, (_, i) => entry(i + 8, 40))   // 8–35d ago
+    const spike = Array.from({ length: 7 },  (_, i) => entry(i + 1, 220))  // 1–7d ago
+    const { tsb, label } = getFormScore([...base, ...spike])
+    expect(tsb).toBeLessThan(-5)
     expect(label).toBe('Fatigued')
   })
 
