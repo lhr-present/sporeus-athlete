@@ -23,6 +23,9 @@ import { getRecommendedProtocols } from '../lib/recoveryProtocols.js'
 import { computeNextAction } from '../lib/nextAction.js'
 import { buildContingencyMap } from '../lib/athlete/eliteProgramSubstitutions.js'
 import { deriveSessionStructure } from '../lib/athlete/sessionStructure.js'
+import { computeNutritionTiming } from '../lib/athlete/nutritionTiming.js'
+import { buildSessionIcs, downloadIcsFile } from '../lib/integrations/icsExport.js'
+import { sessionToZwoWorkout, buildZwoWorkout, downloadZwoFile } from '../lib/integrations/zwoExport.js'
 import { computeSessionExecution, EXECUTION_STATUS_LABEL, EXECUTION_STATUS_COLOR, getExecutionImplication } from '../lib/athlete/sessionExecution.js'
 import { execLabel } from '../lib/athlete/executionLabels.js'
 import { deriveSessionTargets } from '../lib/athlete/derivedSessionTargets.js'
@@ -2786,6 +2789,25 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
               const cutoff = isCycling ? 75 : 90
               if (dur < cutoff) return null
               const veryLong = dur >= 150
+
+              // v9.349.0 — Personalize from body mass when weight is set:
+              // pre-fuel scales with kg (Burke 2014), and we surface concrete
+              // fluid/sodium-per-hour + whole-session totals from the existing
+              // nutritionTiming lib instead of generic ranges. Falls back to
+              // the generic text when weight is unknown.
+              const weightKg = Number(profile?.weight) || 0
+              const z = String(plannedSession.zone || '').toUpperCase()
+              const intent = /recovery|easy/.test(typeStr) ? 'recovery'
+                : z === 'Z5' ? 'intervals'
+                : (z === 'Z4' || z === 'Z3') ? 'tempo'
+                : z === 'Z2' ? 'steady'
+                : (/long/.test(typeStr) || dur >= 90) ? 'long'
+                : 'steady'
+              const fuel = weightKg > 0
+                ? computeNutritionTiming({ intent, durationMin: dur, weightKg, rpe: Number(plannedSession.rpe) || undefined })
+                : null
+              const during = fuel?.during
+
               return (
                 <div style={{
                   fontSize: '10px', color: '#5bc25b', marginBottom: '12px',
@@ -2796,14 +2818,94 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
                     {lang === 'tr' ? '◆ BESLENME · ' : '◆ FUELING · '}
                     {dur}{lang === 'tr' ? ' dk' : ' min'}
                   </div>
-                  <div style={{ color: '#aaa' }}>
-                    {lang === 'tr'
-                      ? `${veryLong ? '60-90' : '30-60'}g KH/saat, 30. dakikadan itibaren her 20-30 dk al. 500-750ml sıvı/saat (sıcakta 1L+). Uzun antrenmanda elektrolit ekle.`
-                      : `${veryLong ? '60-90' : '30-60'}g CHO/hr starting at min 30, every 20-30 min. Fluid 500-750ml/hr (1L+ in heat). Electrolytes on long sessions.`}
-                  </div>
+                  {during && during.carbGramsPerHour ? (
+                    <>
+                      <div style={{ color: '#aaa' }}>
+                        {lang === 'tr'
+                          ? `${during.carbGramsPerHour.low}-${during.carbGramsPerHour.high}g KH/saat · ${during.fluidMlPerHour}ml sıvı/saat · ${during.sodiumMgPerHour}mg Na/saat, 30. dk'dan itibaren her 20-30 dk.`
+                          : `${during.carbGramsPerHour.low}-${during.carbGramsPerHour.high}g CHO/hr · ${during.fluidMlPerHour}ml fluid/hr · ${during.sodiumMgPerHour}mg Na/hr, from min 30 every 20-30 min.`}
+                      </div>
+                      <div style={{ color: '#7a9a7a', marginTop: '2px' }}>
+                        {lang === 'tr'
+                          ? `Öncesi (2-3 sa): ~${fuel.pre.carbGrams.mid}g KH · Toplam ~${fuel.total.carbGrams}g KH, ~${fuel.total.fluidMl}ml sıvı.`
+                          : `Pre (2-3h): ~${fuel.pre.carbGrams.mid}g CHO · Session total ~${fuel.total.carbGrams}g CHO, ~${fuel.total.fluidMl}ml fluid.`}
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ color: '#aaa' }}>
+                      {lang === 'tr'
+                        ? `${veryLong ? '60-90' : '30-60'}g KH/saat, 30. dakikadan itibaren her 20-30 dk al. 500-750ml sıvı/saat (sıcakta 1L+). Uzun antrenmanda elektrolit ekle.`
+                        : `${veryLong ? '60-90' : '30-60'}g CHO/hr starting at min 30, every 20-30 min. Fluid 500-750ml/hr (1L+ in heat). Electrolytes on long sessions.`}
+                      {weightKg <= 0 && (
+                        <span style={{ color: '#666' }}>
+                          {lang === 'tr' ? ' Profilde kilonu gir → kişisel hedefler.' : ' Add weight in profile → personalized targets.'}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <div style={{ color: '#666', marginTop: '2px', fontSize: '9px' }}>
                     Burke 2017 · Jeukendrup 2014
                   </div>
+                </div>
+              )
+            })()}
+            {/* v9.350.0 — Push today's session to a watch / calendar. The
+                .ics is universal (any calendar → phone + watch, with a 30-min
+                alarm), works for every sport. The .zwo is for Zwift /
+                TrainerRoad / SYSTM (cycling structured ERG) and only shows for
+                cycling athletes. Closes the last mile: the daily answer is read
+                at 6am, then sent straight to the device. */}
+            {(() => {
+              const dur = Number(plannedSession.duration || 0)
+              if (dur <= 0) return null
+              const ftp = Number(profile?.ftp) || 0
+              const sportStr = String(profile?.primarySport || '').toLowerCase()
+              const typeStr  = String(plannedSession.type || '').toLowerCase()
+              const isCycling = sportStr.includes('cycl') || sportStr.includes('bike') || /bike|cycl|ride/.test(typeStr) || ftp > 0
+              const z = String(plannedSession.zone || '').toUpperCase()
+              const zwoIntent = /recovery|easy/.test(typeStr) ? 'recovery'
+                : z === 'Z5' ? 'intervals'
+                : (z === 'Z4' || z === 'Z3') ? 'tempo'
+                : (/long/.test(typeStr) || dur >= 90) ? 'long'
+                : 'steady'
+
+              const struct = deriveSessionStructure(plannedSession)
+              const structureLines = struct ? [
+                `${struct.blocks[0].durationMin}min WU`,
+                `${struct.blocks[1].count}x${struct.blocks[1].durationMin}min @${struct.blocks[1].zone}`,
+                `${struct.blocks[2].durationMin}min CD`,
+              ] : []
+
+              const exportBtn = {
+                padding: '5px 10px', fontFamily: MONO, fontSize: '10px',
+                color: '#0064ff', background: 'transparent',
+                border: '1px solid #0064ff44', borderRadius: '4px',
+                cursor: 'pointer', letterSpacing: '0.04em',
+              }
+              const exportIcs = () => {
+                const ics = buildSessionIcs(
+                  { type: plannedSession.type, duration: dur, zone: plannedSession.zone, rpe: plannedSession.rpe, structureLines },
+                  today, { lang })
+                if (ics) downloadIcsFile(ics, `sporeus-${today}.ics`)
+              }
+              const exportZwo = () => {
+                const workout = sessionToZwoWorkout({ intent: zwoIntent, duration: dur, name: plannedSession.type }, ftp)
+                const { xml, errors } = buildZwoWorkout(workout)
+                if (xml && (!errors || errors.length === 0)) downloadZwoFile(xml, `sporeus-${today}.zwo`)
+              }
+
+              return (
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                  <button type="button" onClick={exportIcs} style={exportBtn}
+                    title={lang === 'tr' ? 'Takvime ekle (telefon + saat)' : 'Add to calendar (phone + watch)'}>
+                    {lang === 'tr' ? '⤓ Takvim (.ics)' : '⤓ Calendar (.ics)'}
+                  </button>
+                  {isCycling && (
+                    <button type="button" onClick={exportZwo} style={exportBtn}
+                      title="Zwift / TrainerRoad / SYSTM">
+                      {lang === 'tr' ? '⤓ Antrenman (.zwo)' : '⤓ Workout (.zwo)'}
+                    </button>
+                  )}
                 </div>
               )
             })()}

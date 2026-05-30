@@ -14,6 +14,37 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.349.0 — 2026-05-30 — Daily session card: personalized fueling + push-to-watch export
+
+  Two daily-HQ (TodayView) features. Both close the gap between "here's
+  today's session" and actually executing it.
+
+  1. **Personalized in-session fueling.** The existing v9.85.0 fueling
+     block showed generic ranges ("30-60g CHO/hr"). Verified against code
+     (the auditor's "fueling not on daily card" was a false overlap — it
+     WAS there, just not personalized). Now, when the athlete's weight is
+     set, it drives `computeNutritionTiming` to surface: during-session
+     carbs/hr + concrete fluid/hr + sodium/hr, a weight-scaled pre-fuel
+     target (Burke 2014 g/kg), and whole-session totals. Falls back to the
+     generic text (now with an "add weight for personalized targets"
+     nudge) when weight is unknown. Intent inferred from the planned zone.
+
+  2. **Push today's session to a watch / calendar.** New universal `.ics`
+     export (`src/lib/integrations/icsExport.js`, +10 tests): any calendar
+     (Google/Apple/Outlook) → phone + watch, floating-local 06:00 event
+     for the session duration with a 30-min VALARM, RFC-5545 escaped,
+     deterministic. Plus a `.zwo` button (reusing zwoExport) for cycling
+     athletes (Zwift/TrainerRoad/SYSTM). Buttons render on the session
+     card; .zwo gates on cycling/FTP.
+
+  +10 tests. 15,396 green. Build clean.
+
+  DEPENDS ON: nutritionTiming.computeNutritionTiming, profile.weight,
+  new icsExport, zwoExport, deriveSessionStructure (for .ics structure
+  lines), TodayView session card.
+
+---
+
 ## v9.348.0 — 2026-05-30 — Fix Strava/device upsert: partial→full unique index (APPLIED TO PROD)
 
   Audit finding #5, escalated from "verify" to "confirmed live bug." A
