@@ -14,6 +14,32 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.350.0 — 2026-05-30 — Free-tier S&C parity (strength surfaced for generated plans)
+
+  Audit feature gap #2: strength was woven only into the elite-program
+  path (eliteProgramStrength.js / BroaderPlanSections); free-tier
+  generated plans had ZERO S&C prescription. Endurance plans without
+  maintenance strength are an incomplete prescription.
+
+  New pure helper `strengthProgramForPlan(plan, sport)` reads the distinct
+  phases present in a generated plan's weeks and builds the matching
+  Rønnestad/Beattie phase-periodized strength program via the existing
+  `buildStrengthProgram`. Race / Recovery weeks correctly get no strength
+  phase (no heavy lifting in race week). PlanGenerator now renders the
+  result through the SHARED `StrengthSection` component — so free-tier
+  athletes see the same heavy max-strength + plyo + prehab content,
+  phase-by-phase, that the elite tier gets (collapsed by default).
+
+  Same science engine, now surfaced for everyone — no plan-scheduler
+  rewrite, no new strength logic.
+
+  +3 tests. 15,396 green. Build clean.
+
+  DEPENDS ON: eliteProgramStrength.buildStrengthProgram, StrengthSection
+  (BroaderPlanSections), PlanGenerator plan render, plan.weeks[].phase.
+
+---
+
 ## v9.349.0 — 2026-05-30 — Daily session card: personalized fueling + push-to-watch export
 
   Two daily-HQ (TodayView) features. Both close the gap between "here's

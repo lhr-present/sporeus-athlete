@@ -17,6 +17,8 @@ import { explainPlannedWeek } from '../lib/athlete/weekRationale.js'
 import { readPlanHistory } from '../lib/plan/versionTracking.js'
 import { announce } from '../lib/a11y/announcer.js'
 import { buildZwoWorkout, sessionToZwoWorkout, downloadZwoFile } from '../lib/integrations/zwoExport.js'
+import { strengthProgramForPlan } from '../lib/athlete/eliteProgramStrength.js'
+import { StrengthSection } from './dashboard/BroaderPlanSections.jsx'
 import PlanTemplatePicker from './PlanTemplatePicker.jsx'
 
 // ─── Map a legacy week-card session.type → zwoExport intent keyword ───────────
@@ -884,6 +886,19 @@ export default function PlanGenerator({ onLogSession }) {
               </div>
             </div>
           )}
+          {/* v9.351.0 — Free-tier S&C parity. Same Rønnestad/Beattie
+              phase-periodized strength science the elite-program path surfaces,
+              derived from this plan's phases. Renders via the shared
+              StrengthSection (collapsed by default). */}
+          {(() => {
+            const sp = strengthProgramForPlan(plan, plan.primarySport || profile?.primarySport || null)
+            if (!sp || Object.keys(sp).length === 0) return null
+            return (
+              <div style={{ marginTop: '16px' }}>
+                <StrengthSection strengthProgram={sp} isTR={lang === 'tr'} />
+              </div>
+            )
+          })()}
         </>
       )}
 

@@ -715,3 +715,24 @@ export function buildStrengthProgram(input) {
 }
 
 export const STRENGTH_CITATION = 'Rønnestad & Mujika 2014; Beattie et al. 2014; Sáez de Villarreal et al. 2010; Page 2010; Cibulka 2008; Mujika 2003; Mendiguchia 2012; Brumitt 2010; Cools 2003; Wilson 2014'
+
+/**
+ * v9.351.0 — Derive a strength program for a FREE-TIER generated plan, giving
+ * free-tier athletes the same S&C science the elite-program path already gets
+ * (Rønnestad/Beattie max-strength + plyo, phase-periodized). Reads the distinct
+ * phases present in the plan's weeks and builds the matching strength phases.
+ * Race / Recovery weeks have no strength phase (buildStrengthProgram only emits
+ * Base/Build/Peak/Taper) — correct: don't add heavy lifting in race week.
+ *
+ * Pure. Returns {} when the plan has no usable phases.
+ *
+ * @param {{ weeks?: Array<{phase?: string}> }} plan
+ * @param {string} [sport]
+ * @returns {Record<string, object>} phase-keyed strength program (StrengthSection-ready)
+ */
+export function strengthProgramForPlan(plan, sport) {
+  if (!plan || !Array.isArray(plan.weeks)) return {}
+  const phases = [...new Set(plan.weeks.map(w => w && w.phase).filter(Boolean))]
+  if (phases.length === 0) return {}
+  return buildStrengthProgram({ phases: phases.map(phase => ({ phase })), sport })
+}

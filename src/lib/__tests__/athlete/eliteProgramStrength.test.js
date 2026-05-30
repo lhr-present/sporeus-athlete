@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildStrengthProgram, STRENGTH_CITATION } from '../../athlete/eliteProgramStrength.js'
+import { buildStrengthProgram, STRENGTH_CITATION, strengthProgramForPlan } from '../../athlete/eliteProgramStrength.js'
 
 const ALL_PHASES = [
   { phase: 'Base' }, { phase: 'Build' }, { phase: 'Peak' }, { phase: 'Taper' },
@@ -146,5 +146,29 @@ describe('buildStrengthProgram — cohort overrides', () => {
       const sp = buildStrengthProgram({ phases: ALL_PHASES, sport, cohort: 'intermediate' })
       expect(sp.Base.frequencyPerWeek).toBe(2)
     }
+  })
+})
+
+// v9.351.0 — free-tier S&C parity helper
+describe('strengthProgramForPlan', () => {
+  it('returns {} for an empty / malformed plan', () => {
+    expect(strengthProgramForPlan(null)).toEqual({})
+    expect(strengthProgramForPlan({})).toEqual({})
+    expect(strengthProgramForPlan({ weeks: [] })).toEqual({})
+  })
+
+  it('builds strength phases from the distinct phases present in the plan', () => {
+    const plan = { weeks: [
+      { phase: 'Base' }, { phase: 'Base' }, { phase: 'Build' }, { phase: 'Peak' },
+    ] }
+    const sp = strengthProgramForPlan(plan, 'run')
+    expect(Object.keys(sp).sort()).toEqual(['Base', 'Build', 'Peak'])
+    expect(sp.Base.frequencyPerWeek).toBeGreaterThanOrEqual(1)
+  })
+
+  it('ignores Race / Recovery weeks (no strength phase for them)', () => {
+    const plan = { weeks: [{ phase: 'Taper' }, { phase: 'Race' }, { phase: 'Recovery' }] }
+    const sp = strengthProgramForPlan(plan, 'bike')
+    expect(Object.keys(sp)).toEqual(['Taper'])
   })
 })
