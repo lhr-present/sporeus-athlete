@@ -14,6 +14,29 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.352.0 — 2026-05-30 — Audit correction: render-cascade + hydration perf
+
+  - **H7:** `DataContext` provider `value` was a fresh object literal each
+    render → every `useData()` consumer (Dashboard + dozens of cards)
+    re-rendered on any table change. Now `useMemo`'d. In Dashboard, the
+    unmemoized header reduces (totalTSS/min/avgRPE/srpeLoad) and
+    `assessDataQuality` are now `useMemo`'d, and `dl`/`toggleCard` are
+    stabilized so card memoization actually holds.
+  - **H8:** recovery/injuries/test/race hydration used `.select('*')` with
+    NO row cap (entire history on every login). Now capped to last 365 days
+    + a 1000-row ceiling with narrowed column lists. training_log
+    (paginated) untouched. Preserves the v9.345/v9.347 sync logic.
+  - Perf lows: replaced the O(n²) JSON.stringify diff with Map lookups; added
+    a cancellation guard to the hydrate effects.
+
+  Behavior-preserving except the deliberate 365-day hydration window (older
+  rows stay in the DB, just not eagerly pulled to localStorage). 15,453 green.
+
+  DEPENDS ON: DataContext provider, Dashboard derivations, useSupabaseData
+  hydration.
+
+---
+
 ## v9.351.0 — 2026-05-30 — Audit correction: physiology-math fixes
 
   From the general audit (audit-reports/general-audit-2026-05-30.md). All

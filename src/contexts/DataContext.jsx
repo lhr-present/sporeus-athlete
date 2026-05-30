@@ -3,7 +3,7 @@
 // Each [data, setter] pair has the same interface as useLocalStorage.
 // In Supabase mode: hydrates from DB on login, syncs mutations in background.
 
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useMemo } from 'react'
 import {
   useRecovery,
   useInjuries,
@@ -24,20 +24,36 @@ export function DataProvider({ userId, children }) {
   const [raceResults, setRaceResults] = useRaceResults(userId)
   const [profile,     setProfile]     = useProfileQuery(userId)
 
+  const { fetchNextPage, hasMore, isLoadingMore, refetch: refetchLog } = logResult
+
+  // Memoize the provider value so useData() consumers don't re-render on every
+  // render of the provider — only when one of the actual table values (or the
+  // pagination controls) changes. Setters from useState/useCallback-backed
+  // hooks are stable; we list them anyway for correctness.
+  const value = useMemo(() => ({
+    log,         setLog,
+    // Pagination controls for TrainingLog (E4)
+    fetchNextPage,
+    hasMore,
+    isLoadingMore,
+    refetchLog,
+    recovery,    setRecovery,
+    injuries,    setInjuries,
+    testResults, setTestResults,
+    raceResults, setRaceResults,
+    profile,     setProfile,
+  }), [
+    log, setLog,
+    fetchNextPage, hasMore, isLoadingMore, refetchLog,
+    recovery, setRecovery,
+    injuries, setInjuries,
+    testResults, setTestResults,
+    raceResults, setRaceResults,
+    profile, setProfile,
+  ])
+
   return (
-    <DataContext.Provider value={{
-      log,         setLog,
-      // Pagination controls for TrainingLog (E4)
-      fetchNextPage:   logResult.fetchNextPage,
-      hasMore:         logResult.hasMore,
-      isLoadingMore:   logResult.isLoadingMore,
-      refetchLog:      logResult.refetch,
-      recovery,    setRecovery,
-      injuries,    setInjuries,
-      testResults, setTestResults,
-      raceResults, setRaceResults,
-      profile,     setProfile,
-    }}>
+    <DataContext.Provider value={value}>
       {children}
     </DataContext.Provider>
   )

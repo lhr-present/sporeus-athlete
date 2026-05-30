@@ -1,5 +1,5 @@
 // ─── Dashboard.jsx — orchestrator, composes all dashboard cards ───────────────
-import { useContext, useState, useMemo, lazy, Suspense } from 'react'
+import { useContext, useState, useMemo, useCallback, lazy, Suspense } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { TSSChart, WeeklyVolChart, ZoneDonut, HelpTip } from './ui.jsx'
@@ -273,11 +273,16 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
   // get reset to simplified view on every refresh; that turns "explore deeper" into
   // a per-session toy. localStorage keeps the user's chosen depth.
   const [showAdvanced, setShowAdvanced] = useLocalStorage('sporeus-show-advanced', false)
-  const defaultLayout = Object.fromEntries(DASH_CARD_DEFS.map(c => [c.id, true]))
+  // DASH_CARD_DEFS is a module constant → defaultLayout never changes; memoize
+  // so the derived `dl`/`toggleCard` deps stay stable across renders.
+  const defaultLayout = useMemo(() => Object.fromEntries(DASH_CARD_DEFS.map(c => [c.id, true])), [])
   const [dashLayout, setDashLayout] = useLocalStorage('sporeus-dash-layout', defaultLayout)
   const [showCustomize, setShowCustomize] = useState(false)
-  const dl       = { ...defaultLayout, ...dashLayout }
-  const toggleCard = id => setDashLayout(prev => ({ ...defaultLayout, ...prev, [id]: !prev[id] }))
+  const dl       = useMemo(() => ({ ...defaultLayout, ...dashLayout }), [defaultLayout, dashLayout])
+  const toggleCard = useCallback(
+    id => setDashLayout(prev => ({ ...defaultLayout, ...prev, [id]: !prev[id] })),
+    [defaultLayout, setDashLayout]
+  )
 
   // ── Date range filter ─────────────────────────────────────────────────────────
   const [dateRange, setDateRange] = useLocalStorage('sporeus-dash-range', '28')
@@ -291,10 +296,10 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
   const rangeLabel    = dateRange === 'season' ? 'SEASON' : `LAST ${dateRange}D`
 
   // ── Derived metrics ────────────────────────────────────────────────────────────
-  const totalTSS   = filteredLog.reduce((s, e) => s + (e.tss || 0), 0)
-  const totalMin   = filteredLog.reduce((s, e) => s + (e.duration || 0), 0)
-  const avgRPE     = filteredLog.length ? (filteredLog.reduce((s, e) => s + (e.rpe || 0), 0) / filteredLog.length).toFixed(1) : '\u2014'
-  const srpeLoad   = filteredLog.reduce((s, e) => s + ((e.rpe || 0) * (e.duration || 0)), 0)
+  const totalTSS   = useMemo(() => filteredLog.reduce((s, e) => s + (e.tss || 0), 0), [filteredLog])
+  const totalMin   = useMemo(() => filteredLog.reduce((s, e) => s + (e.duration || 0), 0), [filteredLog])
+  const avgRPE     = useMemo(() => filteredLog.length ? (filteredLog.reduce((s, e) => s + (e.rpe || 0), 0) / filteredLog.length).toFixed(1) : '\u2014', [filteredLog])
+  const srpeLoad   = useMemo(() => filteredLog.reduce((s, e) => s + ((e.rpe || 0) * (e.duration || 0)), 0), [filteredLog])
   const { atl, ctl, tsb, daily } = useMemo(() => calcLoad(log), [log])
   const acwr        = useMemo(() => calculateACWR(log), [log])
   const consistency = useMemo(() => calculateConsistency(log), [log])
@@ -324,7 +329,10 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
     return `TSB ${tsb >= 0 ? '+' : ''}${tsb} · ${lang === 'tr' ? 'Yüksek yük — deload önerilir. Eşik → Z2 45dk.' : 'High load detected — deload recommended. Swap threshold → Z2 45min.'}`
   })()
 
-  const dqResult = assessDataQuality(log, recovery, testResults, profile)
+  const dqResult = useMemo(
+    () => assessDataQuality(log, recovery, testResults, profile),
+    [log, recovery, testResults, profile]
+  )
   const [showDQ, setShowDQ] = useState(false)
 
   const efSessions = useMemo(() => (log || []).map(e => ({

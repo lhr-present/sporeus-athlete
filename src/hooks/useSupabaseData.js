@@ -158,10 +158,24 @@ function raceEntryToRow(entry, userId) {
   }
 }
 
+// ─── Hydration bounds ───────────────────────────────────────────────────────────
+// History tables (recovery/injuries/test/race) used to hydrate with .select('*')
+// and NO row cap → entire account history fetched on every login. Cap the read to
+// the last ~year and a hard row ceiling so a long-lived account stays cheap to load.
+// (training_log is paginated separately in useTrainingLogQuery — not affected.)
+const HYDRATE_DAYS  = 365
+const HYDRATE_LIMIT = 1000
+
+function hydrateCutoff(days = HYDRATE_DAYS) {
+  const d = new Date()
+  d.setUTCDate(d.getUTCDate() - days)
+  return d.toISOString().slice(0, 10)
+}
+
 // ─── Core sync factory ────────────────────────────────────────────────────────
 // Shared logic for all 5 tables. Returns [data, setter] like useLocalStorage.
 
-function useSyncedTable({ lsKey, lsDefault, table, toEntry, toRow, userId, orderCol = 'date' }) {
+function useSyncedTable({ lsKey, lsDefault, table, toEntry, toRow, userId, orderCol = 'date', columns = '*' }) {
   const [data, setDataLS] = useLocalStorage(lsKey, lsDefault)
   const hydrating = useRef(false)
   const useSupabase = isSupabaseReady() && !!userId
@@ -169,13 +183,17 @@ function useSyncedTable({ lsKey, lsDefault, table, toEntry, toRow, userId, order
   // Hydrate from Supabase once per login
   useEffect(() => {
     if (!useSupabase) return
+    let cancelled = false
     hydrating.current = true
     supabase
       .from(table)
-      .select('*')
+      .select(columns)
       .eq('user_id', userId)
+      .gte(orderCol, hydrateCutoff())
       .order(orderCol, { ascending: false })
+      .limit(HYDRATE_LIMIT)
       .then(({ data: rows, error }) => {
+        if (cancelled) return
         if (!error && rows) {
           setDataLS(rows.map(toEntry))
           try { localStorage.removeItem('sporeus-offline-mode') } catch (e) { logger.warn('localStorage:', e.message) }
@@ -183,9 +201,11 @@ function useSyncedTable({ lsKey, lsDefault, table, toEntry, toRow, userId, order
         hydrating.current = false
       })
       .catch(() => {
+        if (cancelled) return
         try { localStorage.setItem('sporeus-offline-mode', '1') } catch (e) { logger.warn('localStorage:', e.message) }
         hydrating.current = false
       })
+    return () => { cancelled = true }
   }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const setData = useCallback((fnOrValue) => {
@@ -193,10 +213,13 @@ function useSyncedTable({ lsKey, lsDefault, table, toEntry, toRow, userId, order
       const next = typeof fnOrValue === 'function' ? fnOrValue(prev) : fnOrValue
 
       if (useSupabase && !hydrating.current) {
-        const added   = next.filter(n => !prev.find(o => o.id === n.id))
-        const removed = prev.filter(o => !next.find(n => n.id === o.id))
+        // Index by id once (O(n)) instead of .find() per element (O(n²)).
+        const prevById = new Map(prev.map(o => [o.id, o]))
+        const nextById = new Map(next.map(n => [n.id, n]))
+        const added   = next.filter(n => !prevById.has(n.id))
+        const removed = prev.filter(o => !nextById.has(o.id))
         const changed = next.filter(n => {
-          const old = prev.find(o => o.id === n.id)
+          const old = prevById.get(n.id)
           return old && JSON.stringify(old) !== JSON.stringify(n)
         })
 
@@ -243,22 +266,33 @@ export function useRecovery(userId) {
 
   useEffect(() => {
     if (!useSupabase) return
+    let cancelled = false
     hydrating.current = true
-    supabase.from('recovery').select('*').eq('user_id', userId).order('date', { ascending: false })
+    supabase.from('recovery')
+      .select('date,score,sleep_hrs,sleep,soreness,energy,stress,mood,hrv,notes')
+      .eq('user_id', userId)
+      .gte('date', hydrateCutoff())
+      .order('date', { ascending: false })
+      .limit(HYDRATE_LIMIT)
       .then(({ data: rows, error }) => {
+        if (cancelled) return
         if (!error && rows) setDataLS(rows.map(recRowToEntry))
         hydrating.current = false
       })
+    return () => { cancelled = true }
   }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const setData = useCallback((fnOrValue) => {
     setDataLS(prev => {
       const next = typeof fnOrValue === 'function' ? fnOrValue(prev) : fnOrValue
       if (useSupabase && !hydrating.current) {
-        const added   = next.filter(n => !prev.find(o => o.date === n.date))
-        const removed = prev.filter(o => !next.find(n => n.date === o.date))
+        // Index by date once (O(n)) instead of .find() per element (O(n²)).
+        const prevByDate = new Map(prev.map(o => [o.date, o]))
+        const nextByDate = new Map(next.map(n => [n.date, n]))
+        const added   = next.filter(n => !prevByDate.has(n.date))
+        const removed = prev.filter(o => !nextByDate.has(o.date))
         const changed = next.filter(n => {
-          const old = prev.find(o => o.date === n.date)
+          const old = prevByDate.get(n.date)
           return old && JSON.stringify(old) !== JSON.stringify(n)
         })
         Promise.resolve().then(async () => {
@@ -285,13 +319,13 @@ export function useRecovery(userId) {
 }
 
 export function useInjuries(userId) {
-  return useSyncedTable({ lsKey: 'sporeus-injuries', lsDefault: [], table: 'injuries', toEntry: injRowToEntry, toRow: injEntryToRow, userId })
+  return useSyncedTable({ lsKey: 'sporeus-injuries', lsDefault: [], table: 'injuries', toEntry: injRowToEntry, toRow: injEntryToRow, userId, columns: 'id,zone,date,level,type,notes' })
 }
 
 export function useTestResults(userId) {
-  return useSyncedTable({ lsKey: 'sporeus-test-results', lsDefault: [], table: 'test_results', toEntry: testRowToEntry, toRow: testEntryToRow, userId })
+  return useSyncedTable({ lsKey: 'sporeus-test-results', lsDefault: [], table: 'test_results', toEntry: testRowToEntry, toRow: testEntryToRow, userId, columns: 'id,date,test_id,value,unit' })
 }
 
 export function useRaceResults(userId) {
-  return useSyncedTable({ lsKey: 'sporeus-race-results', lsDefault: [], table: 'race_results', toEntry: raceRowToEntry, toRow: raceEntryToRow, userId })
+  return useSyncedTable({ lsKey: 'sporeus-race-results', lsDefault: [], table: 'race_results', toEntry: raceRowToEntry, toRow: raceEntryToRow, userId, columns: 'id,date,distance_m,predicted_s,actual_s,conditions,notes' })
 }
