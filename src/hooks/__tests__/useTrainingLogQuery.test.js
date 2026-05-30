@@ -20,11 +20,21 @@ vi.mock('../useLocalStorage.js', () => ({
 vi.mock('../useSupabaseData.js', () => ({
   logRowToEntry: vi.fn(r => r),
   logEntryToRow: vi.fn(e => e),
+  // tryWrite: real-ish — await the thenable, return true on no-error
+  tryWrite: vi.fn(async (_label, thenable, onFail) => {
+    try { const { error } = await thenable; if (error) { await onFail?.(error); return false } return true }
+    catch (e) { await onFail?.(e); return false }
+  }),
   useTrainingLog: vi.fn(() => [[], vi.fn()]),
   useRecovery:    vi.fn(() => [[], vi.fn()]),
   useInjuries:    vi.fn(() => [[], vi.fn()]),
   useTestResults: vi.fn(() => [[], vi.fn()]),
   useRaceResults: vi.fn(() => [[], vi.fn()]),
+}))
+
+vi.mock('../../lib/offlineQueue.js', () => ({
+  enqueuePendingLog: vi.fn(),
+  markSyncOffline:   vi.fn(),
 }))
 
 import { useLocalStorage } from '../useLocalStorage.js'

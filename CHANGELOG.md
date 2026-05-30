@@ -14,6 +14,44 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.347.0 — 2026-05-30 — Sync resilience: stop swallowing write failures
+
+  Audit finding #2 (+ #3, #4). The background-sync paths fired upserts /
+  updates / deletes fire-and-forget: a single failed write (RLS denial,
+  transient 5xx, validation) threw, aborted the rest of the batch, and the
+  rejection was unhandled/swallowed — local and server state diverged with
+  no signal and no recovery path.
+
+  - New `tryWrite(label, thenable, onFail)` helper in useSupabaseData.js:
+    inspects `{error}` per write, never throws, logs, and reports failure.
+    Applied across all sync paths (useSyncedTable, useRecovery,
+    useTrainingLogQuery). Batches now keep going past a failed row, failed
+    INSERT/UPDATE rows are enqueued for retry via the offline queue, and
+    any failure flips sync status to 'offline' (ConnectionBanner reflects
+    it). The whole batch is wrapped in `.catch`.
+
+  - **#3 — data loss on paginated edits.** `useTrainingLogQuery.setLog`
+    diffed `next` against `qc.getQueryData()`, which holds only page 1
+    (≤50 rows). Deleting a row from page 2+ wasn't in `prev`, so it was
+    never classified as `removed` and **the delete never reached the
+    server**. Now diffs against a ref to the full current list
+    (`entriesRef`), so edits/deletes on any page sync correctly.
+
+  - **#4 — offline queue wedge.** `flushQueue` upserted every row with
+    `onConflict:'id'`, but recovery rows have no id (key is user_id,date)
+    → unique_violation → the old `break` wedged the entire queue behind
+    one failed row. Now: per-table onConflict (recovery → 'user_id,date',
+    else 'id') and it drains past failures instead of aborting, leaving
+    only the failed rows queued.
+
+  +5 tests (resilience enqueue/offline, drain-past-failure, per-table
+  onConflict). 15,383 green.
+
+  DEPENDS ON: offlineQueue (enqueuePendingLog, markSyncOffline, db.js),
+  useSupabaseData sync paths, useTrainingLogQuery setLog.
+
+---
+
 ## v9.346.0 — 2026-05-30 — Free-tier hard sessions get a real rep prescription
 
   Feature (audit finding: highest-leverage gap aligned with the

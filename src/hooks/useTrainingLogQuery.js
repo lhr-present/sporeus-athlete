@@ -15,8 +15,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useRef, useState } from 'react'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
+import { logger } from '../lib/logger.js'
 import { useLocalStorage } from './useLocalStorage.js'
-import { logRowToEntry, logEntryToRow } from './useSupabaseData.js'
+import { logRowToEntry, logEntryToRow, tryWrite } from './useSupabaseData.js'
+import { enqueuePendingLog, markSyncOffline } from '../lib/offlineQueue.js'
 
 export const trainingLogKey = (userId) => ['training_log', userId ?? 'guest']
 
@@ -77,6 +79,12 @@ export function useTrainingLogQuery(arg) {
   // or the TQ cache / localStorage fallback
   const entries = allEntries ?? data ?? lsData
 
+  // Always-fresh handle on the FULL current list. setLog must diff against this,
+  // not the TQ cache (which holds only page 1) — otherwise editing/deleting a
+  // row from page 2+ is misclassified and the delete never reaches the server.
+  const entriesRef = useRef(entries)
+  entriesRef.current = entries
+
   const fetchNextPage = useCallback(async () => {
     if (!isSupabaseReady() || !userId || isLoadingMore || !hasMore) return
     setIsLoadingMore(true)
@@ -115,7 +123,9 @@ export function useTrainingLogQuery(arg) {
 
   const setLog = useCallback((fnOrValue) => {
     const qKey = trainingLogKey(userId)
-    const prev = qc.getQueryData(qKey) ?? []
+    // Diff against the FULL current list (incl. paginated pages), not the
+    // page-1-only TQ cache — see entriesRef above.
+    const prev = entriesRef.current ?? []
     const next = typeof fnOrValue === 'function' ? fnOrValue(prev) : fnOrValue
 
     // Optimistic update — both TQ cache and localStorage update instantly
@@ -132,17 +142,27 @@ export function useTrainingLogQuery(arg) {
       return old && JSON.stringify(old) !== JSON.stringify(n)
     })
 
+    // Resilient background sync (v9.347.0): per-write error checks, batch never
+    // aborts on one failure, failed insert/update rows are queued for retry.
     Promise.resolve().then(async () => {
-      try {
-        for (const e of added)   await supabase.from('training_log').upsert(logEntryToRow(e, userId))
-        for (const e of removed) await supabase.from('training_log').delete().eq('id', e.id).eq('user_id', userId)
-        for (const e of changed) await supabase.from('training_log').update(logEntryToRow(e, userId)).eq('id', e.id).eq('user_id', userId)
-        // Invalidate so TQ refetches server state, catching any server-side defaults
-        qc.invalidateQueries({ queryKey: qKey })
-      } catch (_) {
-        // Sync failure — optimistic state is retained; will sync on next refetch
+      let ok = true
+      for (const e of added) {
+        const row = logEntryToRow(e, userId)
+        ok = await tryWrite('training_log insert', supabase.from('training_log').upsert(row),
+          () => enqueuePendingLog({ ...row, _table: 'training_log' })) && ok
       }
-    })
+      for (const e of changed) {
+        const row = logEntryToRow(e, userId)
+        ok = await tryWrite('training_log update', supabase.from('training_log').update(row).eq('id', e.id).eq('user_id', userId),
+          () => enqueuePendingLog({ ...row, _table: 'training_log' })) && ok
+      }
+      for (const e of removed) {
+        ok = await tryWrite('training_log delete', supabase.from('training_log').delete().eq('id', e.id).eq('user_id', userId)) && ok
+      }
+      if (!ok) markSyncOffline()
+      // Invalidate so TQ refetches server state, catching any server-side defaults
+      qc.invalidateQueries({ queryKey: qKey })
+    }).catch(err => logger.warn('[sync] training_log batch:', err?.message))
   }, [userId, qc, setLsData]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Return a 2-element array for backward compat [entries, setLog]

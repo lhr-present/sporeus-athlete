@@ -7,6 +7,29 @@ import { useEffect, useCallback, useRef } from 'react'
 import { logger } from '../lib/logger.js'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { useLocalStorage } from './useLocalStorage.js'
+import { enqueuePendingLog, markSyncOffline } from '../lib/offlineQueue.js'
+
+// ─── Background-write helper ────────────────────────────────────────────────────
+// Pre-v9.347 these hooks fire-and-forgot every upsert/update/delete: a failed
+// write (RLS denial, transient 5xx, validation) threw, aborted the rest of the
+// batch, and the rejection was swallowed — local and server diverged silently.
+// tryWrite inspects {error} per write, never throws, and reports failure so the
+// caller can keep draining the batch + flip the sync status to 'offline'.
+export async function tryWrite(label, thenable, onFail) {
+  try {
+    const { error } = await thenable
+    if (error) {
+      logger.warn(`[sync] ${label} failed:`, error.message)
+      try { await onFail?.(error) } catch (e) { logger.warn('[sync] onFail:', e.message) }
+      return false
+    }
+    return true
+  } catch (e) {
+    logger.warn(`[sync] ${label} threw:`, e.message)
+    try { await onFail?.(e) } catch (err) { logger.warn('[sync] onFail:', err.message) }
+    return false
+  }
+}
 
 // ─── Field transformers ────────────────────────────────────────────────────────
 // Exported so TanStack Query hooks can reuse them without duplication.
@@ -177,18 +200,26 @@ function useSyncedTable({ lsKey, lsDefault, table, toEntry, toRow, userId, order
           return old && JSON.stringify(old) !== JSON.stringify(n)
         })
 
-        // Fire-and-forget background sync
+        // Background sync — resilient: per-write error checks, never aborts the
+        // batch on one failure, enqueues failed upserts for retry (v9.347.0).
         Promise.resolve().then(async () => {
+          let ok = true
           for (const e of added) {
-            await supabase.from(table).upsert(toRow(e, userId))
-          }
-          for (const e of removed) {
-            await supabase.from(table).delete().eq('id', e.id).eq('user_id', userId)
+            const row = toRow(e, userId)
+            ok = await tryWrite(`${table} insert`, supabase.from(table).upsert(row),
+              () => enqueuePendingLog({ ...row, _table: table })) && ok
           }
           for (const e of changed) {
-            await supabase.from(table).update(toRow(e, userId)).eq('id', e.id).eq('user_id', userId)
+            const row = toRow(e, userId)
+            ok = await tryWrite(`${table} update`, supabase.from(table).update(row).eq('id', e.id).eq('user_id', userId),
+              () => enqueuePendingLog({ ...row, _table: table })) && ok
           }
-        })
+          for (const e of removed) {
+            // Deletes can't be replayed by the upsert-based queue; just surface offline.
+            ok = await tryWrite(`${table} delete`, supabase.from(table).delete().eq('id', e.id).eq('user_id', userId)) && ok
+          }
+          if (!ok) markSyncOffline()
+        }).catch(err => logger.warn(`[sync] ${table} batch:`, err?.message))
       }
 
       return next
@@ -231,16 +262,20 @@ export function useRecovery(userId) {
           return old && JSON.stringify(old) !== JSON.stringify(n)
         })
         Promise.resolve().then(async () => {
+          let ok = true
           for (const e of [...added, ...changed]) {
-            await supabase.from('recovery').upsert(recEntryToRow(e, userId), { onConflict: 'user_id,date' })
+            const row = recEntryToRow(e, userId)
+            ok = await tryWrite('recovery upsert', supabase.from('recovery').upsert(row, { onConflict: 'user_id,date' }),
+              () => enqueuePendingLog({ ...row, _table: 'recovery' })) && ok
           }
           // Recovery rows have no `id`; the dedup key is (user_id, date), so
           // a delete must target the date — otherwise a removed wellness day
           // is never deleted server-side and re-hydrates on next load.
           for (const e of removed) {
-            await supabase.from('recovery').delete().eq('user_id', userId).eq('date', e.date)
+            ok = await tryWrite('recovery delete', supabase.from('recovery').delete().eq('user_id', userId).eq('date', e.date)) && ok
           }
-        })
+          if (!ok) markSyncOffline()
+        }).catch(err => logger.warn('[sync] recovery batch:', err?.message))
       }
       return next
     })

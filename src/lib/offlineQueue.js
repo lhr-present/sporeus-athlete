@@ -22,6 +22,18 @@ function setStatus(s) {
 
 export function getSyncStatus() { return _status }
 
+// Mark sync as offline from outside the queue (e.g. a background write in
+// useSupabaseData failed). Idempotent via setStatus's equality guard.
+export function markSyncOffline() { setStatus('offline') }
+
+// Dedup target per table. Recovery rows have no `id` — their unique key is
+// (user_id, date); everything else dedups on the row `id` PK. Replaying with
+// the wrong arbiter throws unique_violation and wedges the queue.
+const ONCONFLICT_BY_TABLE = {
+  recovery: 'user_id,date',
+}
+function conflictFor(table) { return ONCONFLICT_BY_TABLE[table] || 'id' }
+
 export function onSyncStatusChange(fn) {
   _listeners.push(fn)
   return () => { _listeners = _listeners.filter(l => l !== fn) }  // unsubscribe
@@ -56,16 +68,16 @@ export async function flushQueue() {
     try {
       const { error } = await supabase
         .from(table)
-        .upsert(entry, { onConflict: 'id' })
+        .upsert(entry, { onConflict: conflictFor(table) })
       if (!error) {
         await dequeue(id)
       } else {
+        // Leave this row queued for the next flush, but keep draining the
+        // rest — one poison/failed row must not block every other entry.
         allOk = false
-        break  // stop on first error — preserve order
       }
     } catch {
       allOk = false
-      break
     }
   }
 

@@ -57,17 +57,44 @@ it('flushQueue dequeues entries on successful Supabase upsert', async () => {
   expect(_store).toHaveLength(0)
 })
 
-// ─── Test 3: flushQueue stops on first Supabase error ─────────────────────────
-it('flushQueue stops processing on Supabase error, leaves remaining entries', async () => {
-  _store.push({ id: 1, date: '2026-04-12', tss: 80 })
-  _store.push({ id: 2, date: '2026-04-11', tss: 60 })
-  _upsertError = { message: 'network failure' }
+// ─── Test 3: flushQueue keeps draining past a failed entry (v9.347.0) ──────────
+// Pre-v9.347 this stopped on the first error, wedging every later entry behind
+// one poison/failed row. Now it drains the rest and leaves only the failures.
+it('flushQueue drains past a failed entry, leaving only the failed one queued', async () => {
+  const { supabase } = await import('./supabase.js')
+  supabase.from = vi.fn(() => ({
+    // entry with tss 80 fails; the other succeeds
+    upsert: vi.fn(async (entry) => ({ error: entry.tss === 80 ? { message: 'network failure' } : null })),
+  }))
+
+  _store.push({ id: 1, date: '2026-04-12', tss: 80 })  // fails
+  _store.push({ id: 2, date: '2026-04-11', tss: 60 })  // succeeds
 
   await flushQueue()
 
-  // No entries should have been dequeued — first one failed
-  expect(dequeue).not.toHaveBeenCalled()
-  expect(_store).toHaveLength(2)
+  // The successful entry is dequeued even though an earlier one failed
+  expect(dequeue).toHaveBeenCalledWith(2)
+  expect(dequeue).not.toHaveBeenCalledWith(1)
+  expect(_store).toHaveLength(1)
+  expect(_store[0].id).toBe(1)
+  expect(getSyncStatus()).toBe('offline')
+})
+
+// ─── Test 3b: per-table onConflict arbiter (v9.347.0 / audit #4) ──────────────
+it('flushQueue dedups recovery on (user_id,date) and other tables on id', async () => {
+  const conflicts = []
+  const { supabase } = await import('./supabase.js')
+  supabase.from = vi.fn((table) => ({
+    upsert: vi.fn(async (_entry, opts) => { conflicts.push([table, opts?.onConflict]); return { error: null } }),
+  }))
+
+  _store.push({ id: 1, _table: 'recovery',     date: '2026-04-13', score: 80 })
+  _store.push({ id: 2, _table: 'training_log', date: '2026-04-13', tss: 50 })
+
+  await flushQueue()
+
+  expect(conflicts).toContainEqual(['recovery', 'user_id,date'])
+  expect(conflicts).toContainEqual(['training_log', 'id'])
 })
 
 // ─── Test 4: flushQueue sets status 'synced' when queue empty ─────────────────
