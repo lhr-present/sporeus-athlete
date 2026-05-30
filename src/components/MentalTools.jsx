@@ -27,7 +27,7 @@ function today() {
 
 // ─── Journal sub-component ────────────────────────────────────────────────────
 function Journal() {
-  const { lang } = useContext(LangCtx)
+  const { lang, t } = useContext(LangCtx)
   const [entries, setEntries] = useLocalStorage('sporeus-confidence', [])
   const [text, setText] = useState('')
   const [boost, setBoost] = useState(null)
@@ -62,7 +62,7 @@ function Journal() {
       <textarea
         value={text}
         onChange={e => setText(e.target.value)}
-        placeholder="What went well today?"
+        placeholder={t('wentWellPlaceholder')}
         rows={3}
         style={{ ...S.input, resize: 'vertical', fontSize: '13px', marginBottom: '10px' }}
       />
@@ -113,7 +113,7 @@ function Journal() {
 
 // ─── Mantras sub-component ────────────────────────────────────────────────────
 function Mantras() {
-  const { lang } = useContext(LangCtx)
+  const { lang, t } = useContext(LangCtx)
   const [mantras, setMantras] = useLocalStorage('sporeus-mantras', [])
   const [input, setInput] = useState('')
   const [display, setDisplay] = useState(null)
@@ -144,7 +144,7 @@ function Mantras() {
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && add()}
-          placeholder="Enter a mantra..."
+          placeholder={t('enterMantraPlaceholder')}
           style={{ ...S.input, fontSize: '13px', flex: 1 }}
         />
         <button style={{ ...S.btn, fontSize: '11px', padding: '8px 14px', whiteSpace: 'nowrap' }} onClick={add}>

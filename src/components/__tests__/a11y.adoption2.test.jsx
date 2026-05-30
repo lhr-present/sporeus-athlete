@@ -42,6 +42,7 @@ vi.mock('../../lib/supabase.js', () => ({
 vi.mock('../../lib/logger.js', () => ({ logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() } }))
 
 // ── Imports under test ───────────────────────────────────────────────────────
+import { supabase, isSupabaseReady } from '../../lib/supabase.js'
 import OfflineBanner from '../OfflineBanner.jsx'
 import TrainingLog   from '../TrainingLog.jsx'
 import SbAthletePanel from '../coachDashboard/SbAthletePanel.jsx'
@@ -252,35 +253,42 @@ describe('a11y adoption 2 — icon-only button labels', () => {
     expect(screen.getByLabelText(/Şablonları kapat/i)).toBeInTheDocument()
   })
 
-  it('TrainingLog AI-insight × dismiss has aria-label after AI insight is shown', () => {
-    // Inject aiInsight via simulated hook — easiest path: use the empty-state render
-    // and verify the close button is queryable when present in DOM. We render
-    // a synthetic instance by exercising the public API: rendering the TL then
-    // forcing aiInsight via supabase mock isn't trivial. Instead, verify the
-    // pattern by checking existing rendered close button when the insight slot
-    // appears. We assert that *if* the button is in the DOM, it has the label.
+  it('TrainingLog AI-insight × dismiss has aria-label after AI insight is shown', async () => {
+    // Force the aiInsight state into the DOM: make Supabase "ready" and stub the
+    // analyse-session edge function to resolve with an insight. Logging a session
+    // via add() then triggers requestSessionAnalysis(), which renders the panel.
+    isSupabaseReady.mockReturnValue(true)
+    supabase.functions = {
+      invoke: vi.fn(() => Promise.resolve({ data: { insight: 'Solid threshold session — recovery looks good.' }, error: null })),
+    }
+    const setLog = vi.fn()
     renderWithLangValue(
-      <TrainingLog log={[ENTRY]} setLog={() => {}} prefill={null} clearPrefill={() => {}} />,
+      <TrainingLog log={[]} setLog={setLog} prefill={null} clearPrefill={() => {}} />,
       'en',
     )
-    // Without an AI insight active, the button isn't rendered — assertion guards
-    // future regressions where the markup is updated.
-    const all = screen.queryAllByLabelText(/Dismiss AI insight/i)
-    // either 0 (not rendered) or at least one (would carry our label)
-    all.forEach(btn => expect(btn).toHaveAttribute('aria-label'))
-    expect(true).toBe(true)
+    // Fill the duration field (required by add()) and submit.
+    const duration = screen.getByPlaceholderText('60')
+    fireEvent.change(duration, { target: { value: '60' } })
+    const addBtn = screen.getByText(LABELS.en.addBtn)
+    await act(async () => { fireEvent.click(addBtn) })
+
+    // The insight panel resolves asynchronously; its close button must carry the label.
+    const dismissBtn = await screen.findByLabelText('Dismiss AI insight')
+    expect(dismissBtn).toHaveAttribute('aria-label', 'Dismiss AI insight')
+
+    delete supabase.functions
   })
 
   it('SessionLogger draft-restored ✕ has aria-label after a draft is restored', () => {
-    // Seed a draft so the banner renders on mount.
-    const dayKey = 'bw_pushup'
-    try {
-      localStorage.setItem('sporeus-session-draft-v1', JSON.stringify({
-        dayKey,
-        rows: [{ exerciseId: 'bw_pushup', prescription: { reps_low: 8, reps_high: 12, rir: 2, rest_seconds: 90 }, sets: [{ set_number: 1, reps: '', load_kg: '', rir: '', is_warmup: false }] }],
-        dayLabel: 'A', rpe: '', notes: '', durationMin: '', at: Date.now(),
-      }))
-    } catch {}
+    // readDraft() reads localStorage key 'sporeus-gf-draft' and requires
+    // d.dayKey === preloadedExercises.map(e=>e.exercise_id).join('|') and a
+    // recent `at`. Seed a matching, non-empty-rows draft so the banner renders.
+    const dayKey = 'bw_pushup'   // single preloaded exercise → join('|') === 'bw_pushup'
+    localStorage.setItem('sporeus-gf-draft', JSON.stringify({
+      dayKey,
+      rows: [{ exerciseId: 'bw_pushup', prescription: { reps_low: 8, reps_high: 12, rir: 2, rest_seconds: 90 }, sets: [{ set_number: 1, reps: '', load_kg: '', rir: '', is_warmup: false }] }],
+      dayLabel: 'A', rpe: '', notes: '', durationMin: '', at: Date.now(),
+    }))
     render(
       <SessionLogger
         exercises={[{ id: 'bw_pushup', name_en: 'Push-Up', name_tr: 'Şınav', equipment: 'bw', primary_muscle: 'chest', secondary_muscles: [] }]}
@@ -291,14 +299,9 @@ describe('a11y adoption 2 — icon-only button labels', () => {
         onSave={() => {}}
       />,
     )
-    const dismissBtn = screen.queryByLabelText(/Dismiss draft restored notice/i)
-    // either rendered (with our label) or absent — the pattern holds
-    if (dismissBtn) {
-      expect(dismissBtn).toHaveAttribute('aria-label', 'Dismiss draft restored notice')
-    } else {
-      // Verify the matching TR label key exists on at least the source.
-      expect(true).toBe(true)
-    }
+    const dismissBtn = screen.getByLabelText('Dismiss draft restored notice')
+    expect(dismissBtn).toHaveAttribute('aria-label', 'Dismiss draft restored notice')
+    localStorage.removeItem('sporeus-gf-draft')
   })
 })
 

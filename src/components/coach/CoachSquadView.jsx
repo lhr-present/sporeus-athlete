@@ -345,7 +345,14 @@ export default function CoachSquadView({ coachId, coachName = '' }) {
           {/* Column headers */}
           <div style={{ display: 'flex', alignItems: 'center', padding: '4px 14px', borderBottom: '1px solid #1e1e1e', marginBottom: '4px' }}>
             {COLS.map(col => (
-              <div key={col.id} style={hdr(col.id, col.flex)} onClick={() => toggleSort(col.id)}>
+              <div
+                key={col.id}
+                style={hdr(col.id, col.flex)}
+                role="button"
+                tabIndex={0}
+                onClick={() => toggleSort(col.id)}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort(col.id) } }}
+              >
                 {col.label}{sortBy === col.id ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
               </div>
             ))}

@@ -1,5 +1,6 @@
-import { useRef, useState, useEffect, lazy, Suspense } from 'react'
+import { useRef, useState, useEffect, useContext, lazy, Suspense } from 'react'
 import { S } from '../styles.js'
+import { LangCtx } from '../contexts/LangCtx.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { FREE_ATHLETE_LIMIT } from '../lib/formulas.js'
@@ -36,6 +37,7 @@ import { getGeneralMembers, confirmGeneralProgram, getEnduranceMembers, verifyAt
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function CoachDashboard({ authUser }) {
+  const { t } = useContext(LangCtx)
   const [roster, setRoster] = useLocalStorage('sporeus-coach-athletes', [])
   const [coachOnboarded, setCoachOnboarded] = useLocalStorage('sporeus-coach-onboarded', false)
   const [clubOnboarded, setClubOnboarded]   = useLocalStorage('sporeus-club-onboarded', false)
@@ -355,7 +357,7 @@ export default function CoachDashboard({ authUser }) {
                     )}
                     {pendingVerify && (
                       <div style={{ ...S.mono, fontSize:'8px', color:'#ff6600', marginTop:'2px' }}>
-                        ● Session logged {doneAt?.slice(0, 10)} — awaiting your review
+                        ● {t('sessionLoggedAwaiting').replace('{date}', doneAt?.slice(0, 10) || '')}
                       </div>
                     )}
                   </div>
@@ -415,7 +417,7 @@ export default function CoachDashboard({ authUser }) {
                   <span style={{ ...S.mono, fontSize:'11px', color:'var(--text)', fontWeight:600 }}>{m.display_name || m.id.slice(0,8)}</span>
                   {doneAt ? (
                     <div style={{ ...S.mono, fontSize:'9px', color: pendingVerify ? '#ff6600' : '#888', marginTop:'2px' }}>
-                      {pendingVerify ? `● Session done ${doneAt.slice(0,10)} — pending review` : `Last done ${doneAt.slice(0,10)}`}
+                      {pendingVerify ? `● ${t('sessionDonePending').replace('{date}', doneAt.slice(0,10))}` : t('lastDone').replace('{date}', doneAt.slice(0,10))}
                       {!pendingVerify && verifiedAt ? ` · verified ${verifiedAt.slice(0,10)}` : ''}
                     </div>
                   ) : (

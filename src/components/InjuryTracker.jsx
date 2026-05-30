@@ -42,7 +42,7 @@ function countRecent(injuries, zoneId) {
 }
 
 export default function InjuryTracker() {
-  const { lang } = useContext(LangCtx)
+  const { lang, t } = useContext(LangCtx)
   const [expanded, setExpanded] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [selectedZone, setSelectedZone] = useState(null)
@@ -250,7 +250,7 @@ export default function InjuryTracker() {
                     type="text"
                     value={form.notes}
                     onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                    placeholder="Optional notes..."
+                    placeholder={t('optionalNotesPlaceholder')}
                     style={{ ...S.input, fontSize: '12px' }}
                   />
                 </div>

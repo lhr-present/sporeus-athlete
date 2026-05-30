@@ -53,7 +53,7 @@ export function canSendMessage(senderRole) {
  *   onClose  — close handler
  */
 export default function CoachMessage({ athlete, coachId, onClose }) {
-  const { lang } = useContext(LangCtx) || { lang: 'en' }
+  const { lang, t } = useContext(LangCtx) || { lang: 'en', t: k => k }
   const [msgs,          setMsgs]          = useState([])
   const [input,         setInput]         = useState('')
   const [sending,       setSending]       = useState(false)
@@ -286,7 +286,7 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
             onChange={handleInputChange}
             onKeyDown={handleKey}
             onBlur={sendTypingStop}
-            placeholder="Message… (Enter to send)"
+            placeholder={t('msgPlaceholder')}
             rows={1}
             style={{
               flex: 1, resize: 'none', fontFamily: MONO, fontSize: 11,
@@ -298,6 +298,7 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
           <button
             onClick={handleSend}
             disabled={!input.trim() || sending}
+            aria-label={t('sendMessage')}
             style={{
               fontFamily: MONO, fontSize: 10, fontWeight: 700,
               padding: '0 14px', borderRadius: 4, cursor: 'pointer',

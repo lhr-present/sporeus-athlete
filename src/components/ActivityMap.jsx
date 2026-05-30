@@ -1,5 +1,6 @@
 // ─── ActivityMap.jsx — GPX route visualization: Leaflet map + elevation profile ─
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useContext } from 'react'
+import { LangCtx } from '../contexts/LangCtx.jsx'
 
 const MONO = "'IBM Plex Mono', monospace"
 
@@ -102,6 +103,7 @@ function ElevationProfile({ trackpoints }) {
  * @param {function} props.onClose — () => void
  */
 export default function ActivityMap({ trackpoints, onClose: _onClose }) {
+  const { t } = useContext(LangCtx)
   const mapRef  = useRef(null)
   const leafRef = useRef(null)
   const [error, setError] = useState(null)
@@ -209,10 +211,10 @@ export default function ActivityMap({ trackpoints, onClose: _onClose }) {
 
       {/* Legend */}
       <div style={{ display: 'flex', gap: '12px', marginTop: '8px', flexWrap: 'wrap' }}>
-        <span style={{ fontFamily: MONO, fontSize: '8px', color: '#0064ff' }}>◼ Low elevation</span>
-        <span style={{ fontFamily: MONO, fontSize: '8px', color: '#e03030' }}>◼ High elevation</span>
-        <span style={{ fontFamily: MONO, fontSize: '8px', color: '#5bc25b' }}>● Start</span>
-        <span style={{ fontFamily: MONO, fontSize: '8px', color: '#ff6600' }}>● Finish</span>
+        <span style={{ fontFamily: MONO, fontSize: '8px', color: '#0064ff' }}>◼ {t('mapLowElevation')}</span>
+        <span style={{ fontFamily: MONO, fontSize: '8px', color: '#e03030' }}>◼ {t('mapHighElevation')}</span>
+        <span style={{ fontFamily: MONO, fontSize: '8px', color: '#5bc25b' }}>● {t('mapStart')}</span>
+        <span style={{ fontFamily: MONO, fontSize: '8px', color: '#ff6600' }}>● {t('mapFinish')}</span>
       </div>
     </div>
   )

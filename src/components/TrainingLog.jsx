@@ -591,7 +591,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
         </div>
         <div style={{ marginTop:'10px' }}>
           <label style={S.label}>{t('notesL')}</label>
-          <input style={S.input} type="text" placeholder="Felt strong at threshold pace\u2026" value={form.notes}
+          <input style={S.input} type="text" placeholder={t('notesPlaceholder')} value={form.notes}
             onChange={e=>setForm({...form,notes:e.target.value})}/>
         </div>
         <div style={{ marginTop:'10px' }}>

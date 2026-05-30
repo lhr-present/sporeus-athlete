@@ -2,9 +2,13 @@
 // Always in the thumb zone. Opens QuickAddModal. Hidden on desktop.
 // Positioned above the bottom tab bar.
 
+import { useContext } from 'react'
+import { LangCtx } from '../contexts/LangCtx.jsx'
+
 const MONO = "'IBM Plex Mono', monospace"
 
 export default function MobileFAB({ onClick }) {
+  const { t } = useContext(LangCtx)
   function handleClick() {
     // Haptic feedback on click (iOS + Android)
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
@@ -15,7 +19,7 @@ export default function MobileFAB({ onClick }) {
 
   return (
     <button
-      aria-label="Quick log session"
+      aria-label={t('quickLogSession')}
       onClick={handleClick}
       className="sp-mobile-fab"
       style={{

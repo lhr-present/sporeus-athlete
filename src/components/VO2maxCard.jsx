@@ -60,7 +60,7 @@ function fmtTime(sec) {
 }
 
 export default function VO2maxCard() {
-  const { lang } = useContext(LangCtx)
+  const { lang, t } = useContext(LangCtx)
   const { log, profile } = useData()
 
   const [showZones, setShowZones]     = useState(false)
@@ -208,9 +208,9 @@ export default function VO2maxCard() {
             </LineChart>
           </ResponsiveContainer>
           <div style={{ fontFamily: MONO, fontSize: '8px', color: '#444', marginTop: '4px' }}>
-            <span style={{ color: '#ff6600' }}>●</span> race-based ·{' '}
-            <span style={{ color: '#e0a030' }}>●</span> pace-based ·{' '}
-            <span style={{ color: '#555' }}>●</span> HR-based
+            <span style={{ color: '#ff6600' }}>●</span> {t('vo2RaceBased')} ·{' '}
+            <span style={{ color: '#e0a030' }}>●</span> {t('vo2PaceBased')} ·{' '}
+            <span style={{ color: '#555' }}>●</span> {t('vo2HrBased')}
           </div>
         </div>
       )}

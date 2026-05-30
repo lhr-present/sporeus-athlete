@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { S } from '../../styles.js'
 import { logger } from '../../lib/logger.js'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 
 const COACH_MSG_KEY = 'sporeus-coach-messages'
 function readCoachMsgs()   { try { return JSON.parse(localStorage.getItem(COACH_MSG_KEY)) || [] } catch { return [] } }
 function saveCoachMsgs(a)  { try { localStorage.setItem(COACH_MSG_KEY, JSON.stringify(a)) } catch (e) { logger.warn('localStorage:', e.message) } }
 
 export default function CoachMessagesCard() {
+  const { t } = useContext(LangCtx)
   const [messages, setMessages] = useState(() => readCoachMsgs())
   const [reply,    setReply]    = useState('')
 
@@ -49,13 +51,14 @@ export default function CoachMessagesCard() {
           value={reply}
           onChange={e => setReply(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply() } }}
-          placeholder="Reply to coach… (Enter to send)"
+          placeholder={t('replyToCoachPlaceholder')}
           rows={2}
           style={{ ...S.input, flex:1, fontSize:'11px', padding:'7px 9px', resize:'none', lineHeight:1.5 }}
         />
         <button
           onClick={sendReply}
           disabled={!reply.trim()}
+          aria-label={t('sendMessage')}
           style={{ ...S.mono, fontSize:'10px', fontWeight:700, padding:'6px 14px', background:'#0064ff', border:'none', color:'#fff', borderRadius:'4px', cursor:'pointer', opacity: reply.trim() ? 1 : 0.4, alignSelf:'flex-end' }}>
           SEND
         </button>

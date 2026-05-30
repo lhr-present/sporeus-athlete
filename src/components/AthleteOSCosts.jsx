@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useContext } from 'react'
 import { S } from '../styles.js'
+import { LangCtx } from '../contexts/LangCtx.jsx'
 
 // ─── AthleteOSCosts ────────────────────────────────────────────────────────────
 // Developer reference: MVP infrastructure cost breakdown + Claude prompt library.
@@ -155,6 +156,7 @@ Return ONLY valid JSON:
 
 // ── Component ──────────────────────────────────────────────────────────────────
 export default function AthleteOSCosts() {
+  const { t } = useContext(LangCtx)
   const [costsOpen,   setCostsOpen]   = useState(true)
   const [promptsOpen, setPromptsOpen] = useState(true)
   const [expandedIdx, setExpandedIdx] = useState(null)
@@ -196,7 +198,12 @@ export default function AthleteOSCosts() {
           ? <span style={{ fontFamily: MONO, fontSize: '9px', color: GREEN }}>✓ COPIED</span>
           : <button style={{ ...S.btnSec, fontSize: '9px', padding: '2px 8px' }} onClick={onCopyAll}>⎘ COPY ALL</button>
         }
-        <button style={{ ...S.btnSec, fontSize: '9px', padding: '2px 8px' }} onClick={toggle}>
+        <button
+          style={{ ...S.btnSec, fontSize: '9px', padding: '2px 8px' }}
+          onClick={toggle}
+          aria-label={open ? t('collapseSection') : t('expandSection')}
+          aria-expanded={open}
+        >
           {open ? '▲' : '▼'}
         </button>
       </div>
@@ -298,7 +305,11 @@ export default function AthleteOSCosts() {
                         onClick={e => { e.stopPropagation(); copy(p.template, `prompt-${i}`) }}>
                         {copied === `prompt-${i}` ? '✓ COPIED' : '⎘ COPY'}
                       </button>
-                      <button style={{ ...S.btnSec, fontSize: '9px', padding: '2px 6px' }}>
+                      <button
+                        style={{ ...S.btnSec, fontSize: '9px', padding: '2px 6px' }}
+                        aria-label={isOpen ? t('collapseSection') : t('expandSection')}
+                        aria-expanded={isOpen}
+                      >
                         {isOpen ? '▲' : '▼'}
                       </button>
                     </div>

@@ -14,6 +14,34 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.355.0 — 2026-05-30 — Audit correction: a11y/i18n + test coverage
+
+  **a11y/i18n** (21 new EN+TR LangCtx keys):
+  - Accessible names on icon-only controls: CoachMessage/CoachMessagesCard
+    send button, MobileFAB, AthleteOSCosts collapse toggles (+aria-expanded).
+  - Untranslated placeholders routed through t(): TrainingLog, MentalTools,
+    InjuryTracker, CoachMessage, CoachMessagesCard.
+  - Hardcoded EN status strings → t(): VO2maxCard, Periodization,
+    CoachDashboard, ActivityMap.
+  - Keyboard access on CoachSquadView sortable headers (role/tabIndex/
+    Enter+Space).
+  - (Deferred as too-broad: ~203 unlabeled inputs, app-wide #555/#444
+    contrast.)
+
+  **test coverage** (closing false-confidence gaps):
+  - getTier() (paid-tier resolution, was untested) — RPC→table→cache paths.
+  - useAdaptivePlan (untested) — adherence-band + week-index boundaries.
+  - activityUpload (untested) — path/bucket/audit-row + non-fatal contract.
+  - Fixed two `expect(true).toBe(true)` tautologies (a11y.adoption2,
+    banisterProof) to assert real behavior.
+
+  15,453 tests green.
+
+  DEPENDS ON: LangCtx LABELS, subscription.getTier, useAdaptivePlan,
+  activityUpload.
+
+---
+
 ## v9.354.0 — 2026-05-30 — Audit correction: edge-function security ⚠️ NOT YET DEPLOYED
 
   ⚠️ CODE ONLY — these edge functions are NOT deployed by CI (deploy.yml

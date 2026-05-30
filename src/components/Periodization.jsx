@@ -422,7 +422,7 @@ function CoachPlansCard({ authUser }) {
                 )}
                 {isUpdated && (
                   <span style={{ ...S.mono, fontSize:'9px', color:'#0064ff', background:'#0064ff22', border:'1px solid #0064ff44', borderRadius:'3px', padding:'1px 6px', animation:'pulse 1.5s infinite' }}>
-                    ● COACH UPDATED
+                    ● {t('coachUpdated')}
                   </span>
                 )}
                 {/* v9.105.0 (Prompt BB) — Response status pill */}

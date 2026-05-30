@@ -17,6 +17,7 @@ import {
   simulateBanister,
   dualBanister,
 } from './simulation.js'
+import { riegel } from '../formulas.js'
 
 // ── Test 1 — Steady-state convergence (120 days) ──────────────────────────────
 // After many days at constant TSS, both CTL and ATL approach the load asymptote.
@@ -160,12 +161,18 @@ describe('Banister Proof Test 5 — dualBanister swim ATL decay rate', () => {
 // SKIPPED: paulsLaw not present in simulation.js.
 // (Riegel formula verified separately in formulas.test.js)
 describe('Banister Proof Test 6 — Paul\'s Law identity', () => {
-  it('NOTE: paulsLaw not exported from simulation.js — verified in formulas.test.js', () => {
-    // This test documents the expected identity:
-    // paulsLaw(t, d, d) = t  (predicting same distance returns same time)
-    // Import from formulas.js to confirm:
-    // import { riegel } from '../formulas.js'
-    // expect(riegel(3600, 10000, 10000)).toBeCloseTo(3600, 0)
-    expect(true).toBe(true)  // placeholder — see formulas.test.js for Riegel coverage
+  // riegel(t1, d1, d2) = t1 * (d2/d1)^1.06. Paul's Law is the Riegel generalization.
+  it('riegel identity: predicting the same distance returns the same time', () => {
+    expect(riegel(3600, 10000, 10000)).toBeCloseTo(3600, 6)
+  })
+
+  it('riegel scales up with the 1.06 fatigue exponent for a longer distance', () => {
+    // 10k in 36:00 → predicted half-marathon (21097.5 m) time.
+    const predicted = riegel(2160, 10000, 21097.5)
+    // ratio^1.06 where ratio = 21097.5/10000
+    const expected = 2160 * Math.pow(21097.5 / 10000, 1.06)
+    expect(predicted).toBeCloseTo(expected, 6)
+    // Sanity: slower than a flat 2.11x linear scale (fatigue penalty applies).
+    expect(predicted).toBeGreaterThan(2160 * 2.10)
   })
 })

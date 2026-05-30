@@ -1,13 +1,19 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   TIERS, canAddAthlete, canUseAI, getRemainingAICalls,
   isFeatureGated, getUpgradePrompt, canUploadFile, FREE_UPLOAD_LIMIT,
   isOnTrial, isPastDue, isCancelled, isExpired, daysUntilExpiry, getEffectiveTier,
+  getTier,
 } from './subscription.js'
+import { supabase, isSupabaseReady } from './supabase.js'
 
 vi.mock('./supabase.js', () => ({
-  supabase: { from: vi.fn(() => ({ select: vi.fn(), eq: vi.fn(), maybeSingle: vi.fn() })) },
+  supabase: { from: vi.fn(), rpc: vi.fn() },
   isSupabaseReady: vi.fn(() => false),
+}))
+
+vi.mock('./logger.js', () => ({
+  logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
 }))
 
 // ── TIERS shape ───────────────────────────────────────────────────────────────
@@ -148,4 +154,106 @@ describe('getEffectiveTier', () => {
   it('defaults: free tier active → free', () => expect(getEffectiveTier()).toBe('free'))
   it('club active → club', () => expect(getEffectiveTier('club', 'active')).toBe('club'))
   it('club expired → free', () => expect(getEffectiveTier('club', 'expired')).toBe('free'))
+})
+
+// ── getTier (async 3-tier resolution: RPC → table → localStorage cache) ────────
+describe('getTier', () => {
+  const AUTH_USER = { id: 'user-123' }
+  let store
+
+  // Minimal localStorage stub (node env has no DOM). Backed by a Map so we can
+  // assert cache writes and seed stale values.
+  beforeEach(() => {
+    vi.clearAllMocks()
+    store = new Map()
+    globalThis.localStorage = {
+      getItem: vi.fn(k => (store.has(k) ? store.get(k) : null)),
+      setItem: vi.fn((k, v) => { store.set(k, String(v)) }),
+      removeItem: vi.fn(k => { store.delete(k) }),
+    }
+    isSupabaseReady.mockReturnValue(true)
+  })
+
+  afterEach(() => { delete globalThis.localStorage })
+
+  // Helper: a chainable .from().select().eq().maybeSingle() that resolves to result.
+  function mockProfilesRead(result) {
+    const chain = {
+      select: vi.fn().mockReturnThis(),
+      eq:     vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue(result),
+    }
+    supabase.from.mockReturnValue(chain)
+    return chain
+  }
+
+  it('RPC success: returns tier and writes it to the cache', async () => {
+    supabase.rpc.mockResolvedValue({ data: 'club', error: null })
+    const tier = await getTier(AUTH_USER)
+    expect(tier).toBe('club')
+    expect(supabase.rpc).toHaveBeenCalledWith('get_my_tier')
+    // Successful read caches the value.
+    expect(localStorage.setItem).toHaveBeenCalledWith('sporeus-tier', 'club')
+    expect(store.get('sporeus-tier')).toBe('club')
+    // RPC succeeded → no table fallback needed.
+    expect(supabase.from).not.toHaveBeenCalled()
+  })
+
+  it('RPC error → falls back to profiles-table read and caches result', async () => {
+    supabase.rpc.mockResolvedValue({ data: null, error: { message: 'rpc missing' } })
+    mockProfilesRead({ data: { subscription_tier: 'coach' }, error: null })
+    const tier = await getTier(AUTH_USER)
+    expect(tier).toBe('coach')
+    expect(supabase.from).toHaveBeenCalledWith('profiles')
+    expect(store.get('sporeus-tier')).toBe('coach')
+  })
+
+  it('RPC throws → still falls through to table read', async () => {
+    supabase.rpc.mockRejectedValue(new Error('network'))
+    mockProfilesRead({ data: { subscription_tier: 'coach' }, error: null })
+    const tier = await getTier(AUTH_USER)
+    expect(tier).toBe('coach')
+  })
+
+  it('RPC + table both fail → returns stale localStorage cache', async () => {
+    store.set('sporeus-tier', 'club')   // stale cached value
+    supabase.rpc.mockResolvedValue({ data: null, error: { message: 'rpc err' } })
+    // table read throws → caught, falls through to cache
+    supabase.from.mockReturnValue({
+      select: vi.fn().mockReturnThis(),
+      eq:     vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockRejectedValue(new Error('db down')),
+    })
+    const tier = await getTier(AUTH_USER)
+    expect(tier).toBe('club')
+  })
+
+  it('table returns no row → falls through to cache (or free default)', async () => {
+    supabase.rpc.mockResolvedValue({ data: null, error: { message: 'rpc err' } })
+    mockProfilesRead({ data: null, error: null })
+    const tier = await getTier(AUTH_USER)
+    expect(tier).toBe('free')   // empty cache → 'free' fallback
+  })
+
+  it('no auth user → skips network, reads cache directly', async () => {
+    store.set('sporeus-tier', 'coach')
+    const tier = await getTier(null)
+    expect(tier).toBe('coach')
+    expect(supabase.rpc).not.toHaveBeenCalled()
+    expect(supabase.from).not.toHaveBeenCalled()
+  })
+
+  it('Supabase not ready → skips network, reads cache directly', async () => {
+    isSupabaseReady.mockReturnValue(false)
+    store.set('sporeus-tier', 'club')
+    const tier = await getTier(AUTH_USER)
+    expect(tier).toBe('club')
+    expect(supabase.rpc).not.toHaveBeenCalled()
+  })
+
+  it('empty cache + offline → defaults to free', async () => {
+    isSupabaseReady.mockReturnValue(false)
+    const tier = await getTier(AUTH_USER)
+    expect(tier).toBe('free')
+  })
 })
