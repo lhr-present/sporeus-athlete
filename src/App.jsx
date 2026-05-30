@@ -520,7 +520,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
               </AsyncBoundary>
               <div style={{ height: '16px' }}/>
               <AsyncBoundary name="Coach Overview">
-                <CoachOverview coachId={authUser?.id} onSelectAthlete={() => {}} />
+                <CoachOverview coachId={authUser?.id} />
               </AsyncBoundary>
               <div style={{ height: '24px' }}/>
               <AsyncBoundary name="Coach Mode"><CoachDashboard authUser={authUser}/></AsyncBoundary>

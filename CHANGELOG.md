@@ -14,6 +14,57 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.345.0 — 2026-05-30 — Correctness sweep: recovery delete sync + two dead handlers
+
+  Audit-driven sweep (3 parallel auditors over data-layer, dead-UI, and
+  feature gaps). Three confirmed defects fixed; same bug classes as
+  v9.340–342.
+
+  1. **Recovery/wellness deletes never reached Supabase** (HIGH — silent
+     data resurrection). `useRecovery`'s background sync
+     (`useSupabaseData.js`) computed only `added` + `changed`, with no
+     `removed` branch — unlike `useSyncedTable`, which deletes. So
+     deleting a wellness day updated localStorage but never issued a
+     server delete; on the next hydration (refresh / other device) the
+     row was re-pulled and the deleted day **reappeared**. Recovery's
+     `UNIQUE(user_id,date)` meant the orphan persisted indefinitely.
+     Fix: added a `removed` diff that calls
+     `.delete().eq('user_id',…).eq('date', e.date)` (recovery rows have
+     no `id`; the dedup key is the date). New `useSupabaseData.test.js`
+     (2 tests) asserts the delete fires on removal and does NOT fire on a
+     pure add.
+
+  2. **CoachOverview athlete cards were dead** (HIGH). Each card rendered
+     `cursor:pointer` + blue hover border + `onClick → onSelectAthlete?.()`,
+     but the only render site (`App.jsx`) passed
+     `onSelectAthlete={() => {}}` — an explicit no-op. A coach hovered a
+     card (it highlighted), clicked, nothing happened. There is no
+     shared athlete-detail route to wire it to (CoachSquadView expands
+     athletes via its own internal state), so the honest fix removes the
+     false affordance: App.jsx no longer passes the no-op, and
+     CoachOverview now gates cursor/hover/onClick on a real
+     `onSelectAthlete` (same rule as v9.342's LoadHeatmapCard).
+
+  3. **GettingStartedCard "Connect Strava" dead in advanced Dashboard
+     view** (MEDIUM). The simple-view render (`Dashboard.jsx:614`) wired
+     `stravaConnected` + `onConnectStrava`; the advanced-view render
+     (`:757`) dropped both, so a new athlete who tapped "SHOW ADVANCED
+     ANALYTICS" then "Connect Strava" got nothing. Fix: pass the same two
+     props at the advanced-view site.
+
+  Auditors also confirmed (no change shipped): i18n parity is clean (0
+  missing keys after v9.343); all routes/anchors/forms resolve; the
+  physiology→plan link is largely intact (deriveSessionTargets); the
+  partial-index Strava upsert is flagged for a prod re-sync check, not
+  yet changed.
+
+  15,375 tests green (+2).
+
+  DEPENDS ON: useSupabaseData recovery sync path, CoachOverview render in
+  App.jsx coach mode, GettingStartedCard props.
+
+---
+
 ## v9.344.0 — 2026-05-29 — Tests for two untested infra libs (realtimeStatus, orientation)
 
   Coverage round (not UX). Picked the two untested top-level libs with

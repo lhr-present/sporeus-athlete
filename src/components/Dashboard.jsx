@@ -754,7 +754,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
         </Suspense>
       </ErrorBoundary>
       {log.length === 0 && (
-        <GettingStartedCard isTR={lang === 'tr'} onLogSession={onLogSession}/>
+        <GettingStartedCard isTR={lang === 'tr'} onLogSession={onLogSession} stravaConnected={!!stravaToken} onConnectStrava={onGoToProfile}/>
       )}
       <ErrorBoundary>
         <Suspense fallback={null}>

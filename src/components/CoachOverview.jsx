@@ -173,12 +173,15 @@ export default function CoachOverview({ coachId, onSelectAthlete }) {
               background: 'var(--surface)',
               border: `1px solid ${needsAttention ? RED + '66' : 'var(--border)'}`,
               borderRadius: '8px', padding: '16px',
-              cursor: 'pointer',
+              // Only present the card as clickable when a real handler is wired.
+              // Otherwise pointer + hover-highlight would imply an action that
+              // does nothing (same "no false affordance" rule as v9.342).
+              cursor: onSelectAthlete ? 'pointer' : 'default',
               transition: 'border-color 0.15s',
             }}
-            onClick={() => onSelectAthlete?.(link.athlete_id)}
-            onMouseOver={e => e.currentTarget.style.borderColor = BLUE}
-            onMouseOut={e => e.currentTarget.style.borderColor = needsAttention ? RED + '66' : 'var(--border)'}
+            onClick={onSelectAthlete ? () => onSelectAthlete(link.athlete_id) : undefined}
+            onMouseOver={onSelectAthlete ? (e => e.currentTarget.style.borderColor = BLUE) : undefined}
+            onMouseOut={onSelectAthlete ? (e => e.currentTarget.style.borderColor = needsAttention ? RED + '66' : 'var(--border)') : undefined}
           >
             {/* Name row */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>

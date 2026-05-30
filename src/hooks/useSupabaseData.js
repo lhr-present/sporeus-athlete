@@ -225,6 +225,7 @@ export function useRecovery(userId) {
       const next = typeof fnOrValue === 'function' ? fnOrValue(prev) : fnOrValue
       if (useSupabase && !hydrating.current) {
         const added   = next.filter(n => !prev.find(o => o.date === n.date))
+        const removed = prev.filter(o => !next.find(n => n.date === o.date))
         const changed = next.filter(n => {
           const old = prev.find(o => o.date === n.date)
           return old && JSON.stringify(old) !== JSON.stringify(n)
@@ -232,6 +233,12 @@ export function useRecovery(userId) {
         Promise.resolve().then(async () => {
           for (const e of [...added, ...changed]) {
             await supabase.from('recovery').upsert(recEntryToRow(e, userId), { onConflict: 'user_id,date' })
+          }
+          // Recovery rows have no `id`; the dedup key is (user_id, date), so
+          // a delete must target the date — otherwise a removed wellness day
+          // is never deleted server-side and re-hydrates on next load.
+          for (const e of removed) {
+            await supabase.from('recovery').delete().eq('user_id', userId).eq('date', e.date)
           }
         })
       }
