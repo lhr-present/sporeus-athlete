@@ -7,6 +7,7 @@
 // Requires Deno 1.30+ for npm: imports (Supabase runtime satisfies this)
 import webPush from "npm:web-push@3.6.7"
 import { withTelemetry } from '../_shared/telemetry.ts'
+import { isVerifiedServiceCall } from '../_shared/serviceAuth.ts'
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
@@ -37,17 +38,6 @@ const VALID_KINDS = new Set<string>([
   'missed_checkin','test','race_countdown','injury_alert','system','message',
 ])
 
-// Decode a JWT and return the `role` claim without signature verification.
-// Used to detect service_role callers (cron, edge-to-edge). Signature verification
-// is handled by the Supabase gateway; we only need the claim here.
-function jwtRole(authHeader: string): string | null {
-  try {
-    const token = authHeader.replace(/^Bearer\s+/i, "")
-    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")))
-    return payload.role || null
-  } catch { return null }
-}
-
 serve(withTelemetry('send-push', async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders })
 
@@ -63,8 +53,12 @@ serve(withTelemetry('send-push', async (req: Request) => {
 
   if (!vapidPublic || !vapidPrivate) return fail(500, "VAPID keys not configured")
 
-  // ── Auth: service_role JWT (cron/edge calls) or user JWT ─────────────────────
-  const isSystemCall = jwtRole(authHeader) === "service_role"
+  // ── Auth: verified system call (cron/edge) or user JWT ───────────────────────
+  // H1 fix: a "system" caller bypasses the self/coach authorization check below and
+  // may push to any user_id, so it must be gated on a constant-time shared secret
+  // (x-sporeus-webhook-secret) — NOT the forgeable unsigned-JWT role claim.
+  // Internal callers (push-worker, comment-notification) forward this header.
+  const isSystemCall = isVerifiedServiceCall(req)
   const admin = createClient(supabaseUrl, serviceKey)
 
   let callerUserId: string | null = null

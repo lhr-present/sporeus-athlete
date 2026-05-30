@@ -5,15 +5,8 @@
 
 import { serve }        from "https://deno.land/std@0.177.0/http/server.ts"
 import { withTelemetry } from '../_shared/telemetry.ts'
+import { isVerifiedServiceCall } from '../_shared/serviceAuth.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-
-function jwtRole(h: string | null): string | null {
-  try {
-    if (!h) return null
-    const p = JSON.parse(atob(h.replace(/^Bearer\s+/i, "").split(".")[1].replace(/-/g, "+").replace(/_/g, "/")))
-    return p.role || null
-  } catch { return null }
-}
 
 function getWeekStart(dateStr: string): string {
   const d    = new Date(dateStr + "T12:00:00Z")
@@ -30,7 +23,9 @@ serve(withTelemetry('enqueue-ai-batch', async (req) => {
     return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 })
   }
 
-  if (jwtRole(req.headers.get("authorization")) !== "service_role") {
+  // H1 fix: authorize via constant-time shared-secret, NOT the unsigned JWT role
+  // claim (forgeable when verify_jwt=false). DB cron must send x-sporeus-webhook-secret.
+  if (!isVerifiedServiceCall(req)) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
   }
 

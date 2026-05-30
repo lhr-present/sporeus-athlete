@@ -6,6 +6,7 @@
 
 import { serve }        from 'https://deno.land/std@0.177.0/http/server.ts'
 import { withTelemetry } from '../_shared/telemetry.ts'
+import { isVerifiedServiceCall } from '../_shared/serviceAuth.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const CORS = {
@@ -15,13 +16,6 @@ const CORS = {
 
 function ok(body: unknown)         { return new Response(JSON.stringify(body), { headers: { ...CORS, 'Content-Type': 'application/json' } }) }
 function err(msg: string, s = 400) { return new Response(JSON.stringify({ error: msg }), { status: s, headers: { ...CORS, 'Content-Type': 'application/json' } }) }
-
-function jwtPayload(header: string) {
-  try {
-    const seg = header.replace('Bearer ', '').split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
-    return JSON.parse(atob(seg))
-  } catch { return null }
-}
 
 // Severity → volume cut %: level 1–2 = mild (20%), level 3 = moderate (30%), level 4–5 = severe (40%)
 function cutPct(level: number): number {
@@ -58,9 +52,12 @@ serve(withTelemetry('adjust-coach-plan', async (req) => {
   if (req.method === 'OPTIONS') return ok('ok')
   if (req.method !== 'POST')   return err('Method not allowed', 405)
 
-  const authHeader = req.headers.get('authorization') || ''
-  const payload    = jwtPayload(authHeader)
-  if (!payload || payload.role !== 'service_role') return err('Unauthorized — service role only', 401)
+  // H1 fix: this fn is invoked only by the injuries AFTER-INSERT DB webhook and
+  // performs service-role writes (coach_plans, coach_notes) keyed by a body-supplied
+  // user_id. The old unsigned-JWT role check was forgeable when verify_jwt=false,
+  // allowing IDOR plan tampering. Require a constant-time shared secret instead.
+  // The DB webhook must send the x-sporeus-webhook-secret header.
+  if (!isVerifiedServiceCall(req)) return err('Unauthorized — service role only', 401)
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const serviceKey  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!

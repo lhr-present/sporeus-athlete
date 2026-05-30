@@ -6,18 +6,11 @@
 
 import { serve }        from "https://deno.land/std@0.177.0/http/server.ts"
 import { withTelemetry, telemetryHeartbeat } from '../_shared/telemetry.ts'
+import { isVerifiedServiceCall } from '../_shared/serviceAuth.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const RATE_WINDOW_MS = 15 * 60 * 1000   // 15 minutes
 const MAX_REQUESTS   = 600
-
-function jwtRole(h: string | null): string | null {
-  try {
-    if (!h) return null
-    const p = JSON.parse(atob(h.replace(/^Bearer\s+/i, "").split(".")[1].replace(/-/g, "+").replace(/_/g, "/")))
-    return p.role || null
-  } catch { return null }
-}
 
 function mapStravaType(sportType: string): string {
   const m: Record<string, string> = {
@@ -89,7 +82,10 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { status: 200 })
   if (req.method !== "POST") return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 })
 
-  if (jwtRole(req.headers.get("authorization")) !== "service_role") {
+  // H1 fix: cron-only consumer with service-role token writes. Authorize via
+  // constant-time shared secret instead of the forgeable unsigned-JWT role claim.
+  // The cron net.http_post must send the x-sporeus-webhook-secret header.
+  if (!isVerifiedServiceCall(req)) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
   }
 

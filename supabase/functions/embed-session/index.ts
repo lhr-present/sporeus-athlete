@@ -15,6 +15,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { isVerifiedServiceCall } from '../_shared/serviceAuth.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -54,12 +55,12 @@ serve(async (req) => {
 
     let resolvedUserId: string
 
-    const [_h, payloadB64] = jwt.split('.')
-    let isServiceRole = false
-    try {
-      const payload = JSON.parse(atob(payloadB64.replace(/-/g,'+').replace(/_/g,'/')))
-      isServiceRole = payload?.role === 'service_role'
-    } catch { /* ignore */ }
+    // H1 fix: this fn is deployed verify_jwt=false (see CHANGELOG). The service-role
+    // path skips RLS and trusts a body-supplied user_id, so it must be gated on a
+    // constant-time shared secret (x-sporeus-webhook-secret) rather than the
+    // forgeable unsigned-JWT role claim. The user-JWT path below is unaffected —
+    // it still verifies the token via getUser() and checks row ownership.
+    const isServiceRole = isVerifiedServiceCall(req)
 
     if (isServiceRole) {
       if (!bodyUserId) return jsonErr('Missing user_id for webhook call', 400)

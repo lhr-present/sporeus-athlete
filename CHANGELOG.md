@@ -14,6 +14,44 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.354.0 — 2026-05-30 — Audit correction: edge-function security ⚠️ NOT YET DEPLOYED
+
+  ⚠️ CODE ONLY — these edge functions are NOT deployed by CI (deploy.yml
+  ships only the frontend). Committing is safe; DEPLOYING requires the
+  coordinated rollout below or background crons/webhooks BREAK.
+
+  - **H1:** several edge functions authorized via an UNSIGNED JWT decode
+    (`JSON.parse(atob(token)).role === 'service_role'`). `embed-session`
+    and `ai-batch-worker` are confirmed `verify_jwt=false`, so the role
+    claim was forgeable → IDOR with service-role DB writes. New
+    `_shared/serviceAuth.ts` does a constant-time shared-secret check
+    (`x-sporeus-webhook-secret` vs env `WEBHOOK_SECRET`), failing closed.
+    Applied to the service/webhook paths of ai-batch-worker,
+    enqueue-ai-batch, push-worker, trigger-checkin-reminders,
+    strava-backfill-worker, adjust-coach-plan, and the service branch of
+    analyse-session/embed-session/send-push/generate-report (their
+    user-JWT + ownership paths are unchanged). Edge-to-edge callers
+    (analyse-session→embed-session, push-worker→send-push,
+    comment-notification→send-push) forward the secret.
+  - **M2:** device-sync SSRF — `base_url` is now validated (https,
+    no embedded creds, blocks private/loopback/link-local/metadata IPs,
+    optional DEVICE_SYNC_ALLOWED_HOSTS allow-list) before any fetch.
+  - **M3:** crypto.js coach-message key is derived from the public coach_id
+    → documented as obfuscation-only (RLS+TLS are the real controls); not
+    weakened. No functional change.
+
+  ⚠️ ROLLOUT BEFORE DEPLOYING THESE FUNCTIONS:
+  1. `supabase secrets set WEBHOOK_SECRET=<long-random>`
+  2. Add header `x-sporeus-webhook-secret: <same>` to every pg_cron
+     net.http_post / DB webhook that targets the hardened functions
+     (defined in migration SQL — NOT yet edited).
+  3. Then `supabase functions deploy`. Until 1–2 are done, the hardened
+     paths fail closed (user-facing JWT paths keep working).
+
+  DEPENDS ON: _shared/serviceAuth.ts, WEBHOOK_SECRET env (unset = fail-closed).
+
+---
+
 ## v9.353.0 — 2026-05-30 — Audit correction: data-rights + schema (APPLIED TO PROD)
 
   Eight migrations (20260531, 20260533–20260539) authored AND applied to

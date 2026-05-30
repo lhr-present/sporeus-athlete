@@ -45,6 +45,8 @@ serve(withTelemetry('comment-notification', async (req: Request) => {
   // DB webhook delivers a hardcoded service_role JWT in Authorization; forward it
   // directly to send-push so edge-to-edge auth never depends on SUPABASE_SERVICE_ROLE_KEY.
   const webhookAuth  = req.headers.get('Authorization') || `Bearer ${serviceKey}`
+  // H1 fix: send-push now gates its system path on a constant-time shared secret.
+  const webhookSecret = Deno.env.get('WEBHOOK_SECRET') || ''
 
   // Database Webhook sends the row as JSON body
   const body = await req.json().catch(() => null)
@@ -116,7 +118,7 @@ serve(withTelemetry('comment-notification', async (req: Request) => {
     recipients.map(userId =>
       fetch(fnUrl, {
         method:  'POST',
-        headers: { ...CORS, Authorization: authHeader, 'Content-Type': 'application/json' },
+        headers: { ...CORS, Authorization: authHeader, 'x-sporeus-webhook-secret': webhookSecret, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id:    userId,
           kind:       'message',

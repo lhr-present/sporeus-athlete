@@ -1,7 +1,28 @@
-// ─── src/lib/crypto.js — AES-GCM 256-bit message encryption ─────────────────
+// ─── src/lib/crypto.js — AES-GCM 256-bit message OBFUSCATION ────────────────
 // Uses Web Crypto API (browser) or node:crypto.webcrypto (Node/Vitest).
 // Key derivation: PBKDF2(orgId, 'sporeus-v1', 100_000, SHA-256) → AES-GCM 256.
 // Ciphertext format: base64(<12-byte IV> || <ciphertext bytes>)
+//
+// ⚠️ SECURITY MODEL — THIS IS OBFUSCATION, NOT END-TO-END ENCRYPTION (audit M3)
+// The key is derived from `orgId` (the coach_id), which is a PUBLIC identifier
+// shared by coach and athlete and exposed throughout the app/API — combined with
+// a hardcoded static salt ('sporeus-v1'). Anyone who knows the coach_id (i.e.
+// both legitimate parties, and anyone who can read it from the DB/network) can
+// re-derive the key and decrypt. There is NO secret input here, so this provides
+// NO confidentiality against a party with DB or service-role access.
+//
+// What it IS good for: it keeps message bodies from sitting as plaintext in the
+// `messages` table and in logs/backups (defence-in-depth obfuscation), and the
+// random per-message IV (line ~53) is correct so identical plaintexts don't
+// produce identical ciphertexts.
+//
+// The REAL access controls for message confidentiality are server-side:
+//   • Supabase RLS on the `messages` table (only the coach/athlete pair can read)
+//   • TLS in transit
+// Do NOT advertise this as E2E/zero-knowledge encryption. To make it genuine
+// confidentiality you would need a per-conversation secret that the server
+// never sees (e.g. a key exchanged out-of-band or derived from a user-only
+// passphrase) — that is a backend/UX change, intentionally out of scope here.
 
 const SALT = new TextEncoder().encode('sporeus-v1')
 const ITERATIONS = 100_000

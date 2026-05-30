@@ -6,6 +6,7 @@
 
 import { serve }        from "https://deno.land/std@0.177.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { isVerifiedServiceCall } from "../_shared/serviceAuth.ts"
 
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
 const MODEL_HAIKU       = "claude-haiku-4-5-20251001"
@@ -14,14 +15,6 @@ const EMBED_MODEL       = "text-embedding-3-small"
 
 const MAX_RETRIES  = 3
 const RETRY_DELAYS = [30, 120, 480]  // seconds indexed by current retry_count
-
-function jwtRole(h: string | null): string | null {
-  try {
-    if (!h) return null
-    const p = JSON.parse(atob(h.replace(/^Bearer\s+/i, "").split(".")[1].replace(/-/g, "+").replace(/_/g, "/")))
-    return p.role || null
-  } catch { return null }
-}
 
 async function retryWithBackoff<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
   let lastErr: unknown
@@ -122,7 +115,10 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { status: 200 })
   if (req.method !== "POST") return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 })
 
-  if (jwtRole(req.headers.get("authorization")) !== "service_role") {
+  // H1 fix: this fn is deployed verify_jwt=false (see CHANGELOG), so the old
+  // unsigned-JWT role check was forgeable. Require a constant-time shared secret.
+  // DB cron must send x-sporeus-webhook-secret.
+  if (!isVerifiedServiceCall(req)) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
   }
 

@@ -23,6 +23,64 @@ function fail(status: number, message: string) {
   })
 }
 
+// ─── SSRF guard (audit M2) ───────────────────────────────────────────────────
+// base_url is user-supplied at device registration and is fetched server-side
+// with a DECRYPTED provider token attached. Without validation an attacker can
+// point it at internal/cloud-metadata endpoints (169.254.169.254, localhost,
+// RFC-1918 ranges, link-local) to exfiltrate the bearer token or use this
+// function as an SSRF proxy. Enforce https + block private/loopback/link-local
+// IP literals + reject embedded credentials. An optional env allow-list
+// (DEVICE_SYNC_ALLOWED_HOSTS, comma-separated hostnames) narrows it further.
+//
+// NOTE: this blocks IP *literals* in the URL. DNS-rebinding (a public hostname
+// that resolves to a private IP) is out of scope for this layer — Deno's fetch
+// does not expose the resolved address pre-connect. The allow-list env is the
+// hard control for high-security deployments; the IP-literal + https checks are
+// the baseline that closes the obvious metadata/loopback vectors.
+
+function isBlockedIPv4(host: string): boolean {
+  const m = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
+  if (!m) return false
+  const [a, b] = [Number(m[1]), Number(m[2])]
+  if (a === 10) return true                       // 10.0.0.0/8
+  if (a === 127) return true                      // loopback
+  if (a === 0) return true                        // 0.0.0.0/8
+  if (a === 169 && b === 254) return true         // link-local + cloud metadata
+  if (a === 172 && b >= 16 && b <= 31) return true // 172.16.0.0/12
+  if (a === 192 && b === 168) return true         // 192.168.0.0/16
+  if (a === 100 && b >= 64 && b <= 127) return true // CGNAT 100.64.0.0/10
+  if (a >= 224) return true                       // multicast / reserved
+  return false
+}
+
+function validateBaseUrl(raw: string): { ok: true; url: URL } | { ok: false; reason: string } {
+  let url: URL
+  try { url = new URL(raw) } catch { return { ok: false, reason: "malformed_url" } }
+
+  if (url.protocol !== "https:")        return { ok: false, reason: "not_https" }
+  if (url.username || url.password)     return { ok: false, reason: "embedded_credentials" }
+
+  const host = url.hostname.toLowerCase()
+  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || host.endsWith(".internal")) {
+    return { ok: false, reason: "internal_host" }
+  }
+  // Block IPv6 loopback / link-local / unique-local literals
+  if (host.includes(":")) {
+    if (host === "::1" || host.startsWith("fe80") || host.startsWith("fc") || host.startsWith("fd") || host === "::") {
+      return { ok: false, reason: "blocked_ipv6" }
+    }
+  }
+  if (isBlockedIPv4(host)) return { ok: false, reason: "blocked_ip" }
+
+  const allow = (Deno.env.get("DEVICE_SYNC_ALLOWED_HOSTS") || "")
+    .split(",").map(s => s.trim().toLowerCase()).filter(Boolean)
+  if (allow.length > 0 && !allow.includes(host)) {
+    return { ok: false, reason: "host_not_allowed" }
+  }
+
+  return { ok: true, url }
+}
+
 // ─── Schema mappers ────────────────────────────────────────────────────────────
 
 function mapOWActivityType(owType: string): string {
@@ -99,6 +157,16 @@ serve(withTelemetry('device-sync', async (req: Request) => {
   for (const device of devices) {
     const deviceResult = { deviceId: device.id, provider: device.provider, status: "ok", count: 0 }
     try {
+      // M2 fix: validate the user-supplied base_url BEFORE attaching the token /
+      // making any server-side request, to prevent SSRF / token exfiltration.
+      const urlCheck = validateBaseUrl(String(device.base_url || ""))
+      if (!urlCheck.ok) {
+        deviceResult.status = "error"
+        ;(deviceResult as { error?: string }).error = `invalid_base_url:${urlCheck.reason}`
+        results.push(deviceResult)
+        continue
+      }
+
       // Decrypt token
       let token: string | null = null
       if (device.token_enc) {
@@ -110,7 +178,8 @@ serve(withTelemetry('device-sync', async (req: Request) => {
       const headers: Record<string, string> = { "Content-Type": "application/json" }
       if (token) headers["Authorization"] = `Bearer ${token}`
 
-      const baseUrl = device.base_url.replace(/\/$/, "")
+      // Use the parsed/validated URL (origin + path), not the raw string.
+      const baseUrl = (urlCheck.url.origin + urlCheck.url.pathname).replace(/\/$/, "")
       const since   = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
       // Fetch activities with 8s timeout

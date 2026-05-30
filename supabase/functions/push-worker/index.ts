@@ -5,15 +5,8 @@
 
 import { serve }        from "https://deno.land/std@0.177.0/http/server.ts"
 import { withTelemetry, telemetryHeartbeat } from '../_shared/telemetry.ts'
+import { isVerifiedServiceCall } from '../_shared/serviceAuth.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-
-function jwtRole(h: string | null): string | null {
-  try {
-    if (!h) return null
-    const p = JSON.parse(atob(h.replace(/^Bearer\s+/i, "").split(".")[1].replace(/-/g, "+").replace(/_/g, "/")))
-    return p.role || null
-  } catch { return null }
-}
 
 serve(withTelemetry('push-worker', async (req) => {
 
@@ -23,12 +16,15 @@ serve(withTelemetry('push-worker', async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { status: 200 })
   if (req.method !== "POST") return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 })
 
-  if (jwtRole(req.headers.get("authorization")) !== "service_role") {
+  // H1 fix: authorize via constant-time shared-secret, NOT the unsigned JWT role
+  // claim (forgeable when verify_jwt=false). DB cron must send x-sporeus-webhook-secret.
+  if (!isVerifiedServiceCall(req)) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!
   const serviceKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  const webhookSecret = Deno.env.get("WEBHOOK_SECRET") || ""
   const sb          = createClient(supabaseUrl, serviceKey)
 
   // Read up to 50 messages with VT=30s
@@ -55,6 +51,8 @@ serve(withTelemetry('push-worker', async (req) => {
           headers: {
             "Authorization": `Bearer ${serviceKey}`,
             "Content-Type": "application/json",
+            // H1 fix: send-push now gates its system path on this shared secret.
+            "x-sporeus-webhook-secret": webhookSecret,
           },
           body: JSON.stringify(payload),
         })

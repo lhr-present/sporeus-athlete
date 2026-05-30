@@ -9,6 +9,7 @@
 
 import { serve }        from 'https://deno.land/std@0.177.0/http/server.ts'
 import { withTelemetry } from '../_shared/telemetry.ts'
+import { isVerifiedServiceCall } from '../_shared/serviceAuth.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const CORS = {
@@ -25,14 +26,6 @@ const TIER_ELIGIBLE = new Set(['coach', 'club'])
 
 function ok(body: unknown)         { return new Response(JSON.stringify(body), { headers: { ...CORS, 'Content-Type': 'application/json' } }) }
 function err(msg: string, s = 400) { return new Response(JSON.stringify({ error: msg }), { status: s, headers: { ...CORS, 'Content-Type': 'application/json' } }) }
-
-function jwtPayload(header: string) {
-  try {
-    const token = header.replace('Bearer ', '')
-    const seg   = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
-    return JSON.parse(atob(seg))
-  } catch { return null }
-}
 
 // ── EWMA-based CTL/ATL from sorted log rows ────────────────────────────────────
 
@@ -77,8 +70,11 @@ serve(withTelemetry('analyse-session', async (req) => {
   const svc = createClient(supabaseUrl, serviceKey)
 
   // ── Auth: service role (DB webhook) or user JWT ───────────────────────────────
-  const payload  = jwtPayload(authHeader)
-  const isWebhook = payload?.role === 'service_role'
+  // H1 fix: the webhook branch does service-role writes for a body-supplied user_id,
+  // so it must NOT be entered on an unsigned/forgeable role claim. Gate it on a
+  // constant-time shared secret (x-sporeus-webhook-secret). The user-JWT path below
+  // is unaffected — it still verifies the token via anon-client getUser().
+  const isWebhook = isVerifiedServiceCall(req)
 
   let userId: string
   let sessionRow: Record<string, unknown> | null = null
@@ -224,7 +220,13 @@ Return plain text only. Max 75 words. Be direct and evidence-based.`
   if (!insertErr) {
     fetch(`${supabaseUrl}/functions/v1/embed-session`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${serviceKey}`, 'Content-Type': 'application/json' },
+      headers: {
+        'Authorization': `Bearer ${serviceKey}`,
+        'Content-Type': 'application/json',
+        // H1 fix: embed-session now gates its service-role path on this shared
+        // secret; forward it so this internal edge-to-edge call still authorizes.
+        'x-sporeus-webhook-secret': Deno.env.get('WEBHOOK_SECRET') || '',
+      },
       body: JSON.stringify({ session_id: sessionId, user_id: userId, insight_only: true }),
     }).catch(() => {})  // fire-and-forget; failure is acceptable
   }

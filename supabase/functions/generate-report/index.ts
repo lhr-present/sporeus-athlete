@@ -8,6 +8,7 @@
 
 import { serve }        from "https://deno.land/std@0.177.0/http/server.ts"
 import { withTelemetry } from '../_shared/telemetry.ts'
+import { isVerifiedServiceCall } from '../_shared/serviceAuth.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import React            from "https://esm.sh/react@18.2.0"
 import { pdf }          from "https://esm.sh/@react-pdf/renderer@3.4.4?deps=react@18.2.0"
@@ -40,16 +41,6 @@ function err(msg: string, status = 400) {
   return json({ error: msg }, status)
 }
 
-// ── Auth helper ───────────────────────────────────────────────────────────────
-function isServiceRole(authHeader: string | null): boolean {
-  if (!authHeader) return false
-  try {
-    const token = authHeader.replace("Bearer ", "")
-    const [, payloadB64] = token.split(".")
-    const payload = JSON.parse(atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/")))
-    return payload?.role === "service_role"
-  } catch { return false }
-}
 
 // ── Riegel race time predictor ────────────────────────────────────────────────
 function riegel(t1Secs: number, d1: number, d2: number): number {
@@ -474,7 +465,11 @@ serve(withTelemetry('generate-report', async (req) => {
   if (req.method !== "POST")    return err("Method not allowed", 405)
 
   const authHeader = req.headers.get("authorization")
-  const serviceRole = isServiceRole(authHeader)
+  // H1 fix: "serviceRole" enables pg_cron batch mode AND lets params.user_id pick an
+  // arbitrary athlete (IDOR). Gate it on a constant-time shared secret
+  // (x-sporeus-webhook-secret) instead of the forgeable unsigned-JWT role claim.
+  // The user-JWT path below still verifies via getUser() + tier check.
+  const serviceRole = isVerifiedServiceCall(req)
 
   const sb = createClient(SUPABASE_URL, SERVICE_KEY)  // always service for storage access
 

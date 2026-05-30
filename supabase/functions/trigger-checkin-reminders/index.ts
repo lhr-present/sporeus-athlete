@@ -15,6 +15,7 @@
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { withTelemetry } from '../_shared/telemetry.ts'
+import { isVerifiedServiceCall } from '../_shared/serviceAuth.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const corsHeaders = {
@@ -71,25 +72,16 @@ function getLocalDateStr(timezone: string): string {
   }
 }
 
-// Decode a JWT and return the `role` claim without signature verification.
-function jwtRole(authHeader: string | null): string | null {
-  if (!authHeader) return null
-  try {
-    const token = authHeader.replace(/^Bearer\s+/i, "")
-    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")))
-    return payload.role || null
-  } catch { return null }
-}
-
 serve(withTelemetry('trigger-checkin-reminders', async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders })
 
-  const authHeader = req.headers.get("Authorization")
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!
 
-  // Only accept calls from the service role (cron or manual trigger)
-  if (jwtRole(authHeader) !== "service_role") return fail(401, "Unauthorized")
+  // H1 fix: cron-only fn. Authorize via constant-time shared secret instead of
+  // the forgeable unsigned-JWT role claim. The cron net.http_post must send the
+  // x-sporeus-webhook-secret header.
+  if (!isVerifiedServiceCall(req)) return fail(401, "Unauthorized")
 
   const admin = createClient(supabaseUrl, serviceKey)
 
