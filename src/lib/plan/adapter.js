@@ -78,20 +78,33 @@ export function adaptE13PlanToLegacy(adaptivePlan, lang = 'en', primarySport = n
   return adaptivePlan.weeks.map(wk => {
     const sessions = (wk.sessions || []).map((s) => {
       const typeName = sportSpecificLabel(s.intent, sport, lang)
-      // Approximate duration from targetTSS using the RPE midpoint (Banister-like)
+      // s.rpeLow/rpeHigh are on the Borg 6–20 scale (generatePlan RPE_BANDS).
       const rpeMid = (s.rpeLow + s.rpeHigh) / 2
-      const intensityFactor = Math.max(0.5, rpeMid / 10)
+      // v9.358.0 — Convert Borg RPE → a real intensity factor (~0.5–1.05) for
+      // the TSS→duration formula (duration = TSS / IF² · 0.6). The old
+      // `rpeMid / 10` yielded IF 1.0–1.8 (physically impossible; IF ≤ ~1.05),
+      // so duration was divided 1.2–3.6× too much and every low-TSS onboarding
+      // session collapsed to the Math.max(20, …) floor. Mapping: 6→0.40,
+      // 20→1.10, clamped [0.5, 1.05] → endurance(11)≈0.65, vo2(17)≈0.95.
+      const intensityFactor = Math.min(1.05, Math.max(0.5, 0.40 + (rpeMid - 6) / 14 * 0.70))
       const rawDuration = s.intent === 'rest'
         ? 0
         : s.targetTSS / (intensityFactor * intensityFactor) * 0.6
       const duration = s.intent === 'rest'
         ? 0
         : Math.max(20, Math.round(rawDuration * durationScale))
+      // Store RPE on the app-wide 1–10 scale (Borg 6→1, 20→10). Logged sessions,
+      // TodayView's `rpe >= 7` "hard today" check, the QuickAdd prefill slider
+      // (validated 1–10), and the execution comparison all assume 1–10 — storing
+      // Borg here mislabeled EVERY session "hard" and overflowed log validation.
+      const rpe10 = s.intent === 'rest'
+        ? 0
+        : Math.min(10, Math.max(1, Math.round(1 + (rpeMid - 6) * 9 / 14)))
       return {
         day:         DAY_NAMES_EN[(s.day - 1) % 7] || DAY_NAMES_EN[0],
         type:        typeName,
         duration,
-        rpe:         rpeMid,
+        rpe:         rpe10,
         tss:         s.targetTSS,
         zone:        s.zone === 'Z0' ? '—' : s.zone,
         color:       E13_ZONE_COLOR(s.zone),

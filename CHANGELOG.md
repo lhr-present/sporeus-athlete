@@ -14,6 +14,37 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.358.0 — 2026-05-31 — CRITICAL: plan adapter RPE-scale bug (daily answer broken for generated plans)
+
+  Found by a deeper audit pass over the core user flows (the earlier sweeps had
+  capped at ~10 findings/dimension and never traced onboarding→daily-answer).
+
+  `adaptE13PlanToLegacy` (the shared path behind buildStarterPlan, PlanGenerator,
+  and PlanTemplatePicker) mis-handled the **Borg 6–20** RPE that generatePlan's
+  RPE_BANDS emit:
+  - `intensityFactor = rpeMid / 10` → IF of 1.0–1.8 (impossible; IF ≤ ~1.05).
+    Since duration = TSS / IF² · 0.6, durations were divided 1.2–3.6× too much,
+    so every low-TSS onboarding session **collapsed to the `Math.max(20, …)`
+    floor** — the daily answer read "Long run · 20 min" for every session.
+  - `rpe: rpeMid` stored Borg on the session, but the whole app uses **1–10**:
+    TodayView's `rpe >= 7` "hard today" check flagged EVERY session (incl.
+    recovery@9, endurance@11) as hard; the planned RPE rendered as "RPE 11"; and
+    the QuickAdd prefill fed Borg into a slider validated 1–10.
+
+  Fix: convert Borg→IF (`0.40 + (rpeMid−6)/14·0.70`, clamped [0.5, 1.05]) for the
+  duration math, and store rpe on the 1–10 scale (Borg 6→1, 20→10). Result:
+  realistic, varied session durations and correct hard/easy classification.
+
+  Why it survived: the only duration test asserted `>= 20` — which a floored-to-20
+  plan passes. Added guards: durations don't all collapse to the floor, rpe ∈
+  [1,10], at least one session reads non-hard, and higher-intensity intents cost
+  fewer minutes per TSS. 15,460 tests green.
+
+  DEPENDS ON: generatePlan RPE_BANDS (Borg), adapter.js, TodayView rpe checks,
+  QuickAdd prefill, sessionExecution comparison.
+
+---
+
 ## v9.357.0 — 2026-05-31 — Audit list: close bounded test/config gaps
 
   Stepping the audit list end-to-end; closing the remaining BOUNDED items.

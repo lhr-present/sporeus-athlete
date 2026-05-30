@@ -94,6 +94,44 @@ describe('adaptE13PlanToLegacy', () => {
     }
   })
 
+  // v9.358.0 — guards the Borg-RPE scale bug: durations must NOT all collapse to
+  // the 20-min floor, and rpe must be stored on the 1–10 scale (not Borg 6–20).
+  it('does not collapse every session to the 20-min floor', () => {
+    const out = adaptE13PlanToLegacy(baseInputs({ currentCTL: 60 }))
+    const durs = out.flatMap(wk => wk.sessions.filter(s => s.type !== 'Rest' && s.tss > 0).map(s => s.duration))
+    expect(durs.length).toBeGreaterThan(0)
+    // a healthy plan has real spread + sessions well above the floor
+    expect(Math.max(...durs)).toBeGreaterThan(40)
+    expect(new Set(durs).size).toBeGreaterThan(1)
+  })
+
+  it('stores rpe on the 1–10 scale, not Borg 6–20', () => {
+    const out = adaptE13PlanToLegacy(baseInputs())
+    for (const wk of out) {
+      for (const s of wk.sessions) {
+        if (s.type === 'Rest') continue
+        expect(s.rpe).toBeGreaterThanOrEqual(1)
+        expect(s.rpe).toBeLessThanOrEqual(10)
+      }
+    }
+    // and at least one easy session must read as NOT "hard" (rpe < 7) — under
+    // the old Borg bug every session was ≥ 7 and flagged hard in TodayView.
+    const allRpe = out.flatMap(wk => wk.sessions.filter(s => s.type !== 'Rest').map(s => s.rpe))
+    expect(allRpe.some(r => r < 7)).toBe(true)
+  })
+
+  it('higher-intensity intents yield shorter duration per unit TSS', () => {
+    // IF must rise with RPE → duration (TSS/IF²) must fall. Build a plan and
+    // compare the per-TSS minute cost of the easiest vs hardest non-rest session.
+    const out = adaptE13PlanToLegacy(baseInputs({ currentCTL: 60 }))
+    const ss = out.flatMap(wk => wk.sessions).filter(s => s.type !== 'Rest' && s.tss > 0)
+    const byRpe = [...ss].sort((a, b) => a.rpe - b.rpe)
+    const easy = byRpe[0], hard = byRpe[byRpe.length - 1]
+    if (easy && hard && hard.rpe > easy.rpe) {
+      expect(hard.duration / hard.tss).toBeLessThan(easy.duration / easy.tss)
+    }
+  })
+
   it('zonePct sums to within rounding error of 100', () => {
     const adaptive = baseInputs()
     const out = adaptE13PlanToLegacy(adaptive)
