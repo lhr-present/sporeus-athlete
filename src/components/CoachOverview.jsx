@@ -1,5 +1,5 @@
 // ─── CoachOverview.jsx — Coach's bird's-eye view of all connected athletes ────
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { logger } from '../lib/logger.js'
 import { predictInjuryRisk, computeRaceReadiness } from '../lib/intelligence.js'
@@ -46,6 +46,7 @@ export default function CoachOverview({ coachId, onSelectAthlete }) {
   const [loading, setLoading]   = useState(true)
   const [notes, setNotes]       = useState({})   // {[athlete_id]: text}
   const [savingNote, setSavingNote] = useState(null)
+  const loadedNotes = useRef({})                 // last-persisted note per athlete (change detection)
 
   const load = useCallback(async () => {
     if (!supabase || !coachId) { setLoading(false); return }
@@ -72,7 +73,7 @@ export default function CoachOverview({ coachId, onSelectAthlete }) {
       const [{ data: allLog }, { data: allRecovery }, { data: allNotes }] = await Promise.all([
         supabase.from('training_log').select('*').in('user_id', ids).gte('date', daysBefore(90)),
         supabase.from('recovery').select('*').in('user_id', ids).gte('date', daysBefore(30)),
-        supabase.from('coach_notes').select('*').eq('coach_id', coachId).in('athlete_id', ids),
+        supabase.from('coach_notes').select('*').eq('coach_id', coachId).in('athlete_id', ids).order('created_at', { ascending: false }),
       ])
 
     // 3. Group by athlete
@@ -99,8 +100,11 @@ export default function CoachOverview({ coachId, onSelectAthlete }) {
     setAthletes(enriched)
 
     // Load notes
+    // coach_notes is an append log (shared with NotePanel). Notes are ordered
+    // newest-first, so keep the FIRST seen per athlete = the latest note.
     const noteMap = {}
-    ;(allNotes || []).forEach(n => { noteMap[n.athlete_id] = n.note })
+    ;(allNotes || []).forEach(n => { if (!(n.athlete_id in noteMap)) noteMap[n.athlete_id] = n.note })
+    loadedNotes.current = { ...noteMap }
     setNotes(noteMap)
     } catch (err) {
       // Log and drop the spinner so the user isn't stuck in "Loading..."
@@ -113,11 +117,19 @@ export default function CoachOverview({ coachId, onSelectAthlete }) {
   useEffect(() => { load() }, [load])
 
   async function saveNote(athleteId, text) {
-    if (!supabase) return
+    // coach_notes is an append log shared with NotePanel — there is NO unique
+    // (coach_id, athlete_id) constraint, so the old upsert(onConflict) threw
+    // 42P10 and notes never saved (and `updated_at` isn't even a column).
+    // Append a new note row instead, and only when the text actually changed
+    // (onBlur fires on every focus-out) so we don't spam duplicate rows.
+    const trimmed = (text || '').trim()
+    if (!supabase || !trimmed || trimmed === (loadedNotes.current[athleteId] ?? '')) return
     setSavingNote(athleteId)
-    await supabase.from('coach_notes').upsert({
-      coach_id: coachId, athlete_id: athleteId, note: text, updated_at: new Date().toISOString(),
-    }, { onConflict: 'coach_id,athlete_id' })
+    const { error } = await supabase.from('coach_notes').insert({
+      coach_id: coachId, athlete_id: athleteId, note: trimmed,
+    })
+    if (!error) loadedNotes.current[athleteId] = trimmed
+    else logger.warn('[CoachOverview] saveNote:', error.message)
     setSavingNote(null)
   }
 

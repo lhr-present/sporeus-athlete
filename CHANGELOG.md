@@ -14,6 +14,43 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.353.0 — 2026-05-30 — Audit correction: data-rights + schema (APPLIED TO PROD)
+
+  Eight migrations (20260531, 20260533–20260539) authored AND applied to
+  prod this session (each verified live; recorded in schema_migrations).
+
+  - **C1 (CRITICAL, KVKK/GDPR):** `build_user_export`/`purge_user`
+    (20260531) rewritten — the originals referenced a nonexistent table
+    (`goals`), the dropped `coach_messages`, and wrong columns
+    (ai_insights.user_id→athlete_id, client_events.user_id→user_id_hash,
+    coach_plans.user_id→coach_id/athlete_id). Result was: EVERY account
+    deletion silently failed (purge rolled back → cron never called
+    auth.admin.deleteUser) and export threw. Now every table ref is
+    `to_regclass`-guarded and uses real columns. Verified by calling both
+    (build_user_export → 23 sections; purge_user → ok:true).
+  - **C3:** `coach_notes` upsert(onConflict:'coach_id,athlete_id') threw
+    42P10 (no matching unique constraint). The audit's proposed unique
+    index was REJECTED on review — coach_notes is an append log shared with
+    NotePanel (loads last 5, inserts); an index would delete history +
+    break NotePanel. Fixed in CODE instead: `CoachOverview.saveNote` now
+    appends (reads latest-first, change-detected) like NotePanel, and drops
+    the nonexistent `updated_at` write.
+  - **H2:** team_announcements SELECT policy was `using(true)` (cross-tenant
+    read) → scoped to owner-coach or active-linked athlete.
+  - **H3:** system_status — added latency_ms + widened status CHECK to 'ok'.
+  - **H4:** client_events TTL cron repointed from nonexistent `ts` to
+    `created_at` (TTL was never running → unbounded growth).
+  - **M1:** referral_codes UPDATE tamper-guard (BEFORE-UPDATE trigger freezes
+    coach_id/code/created_at; non-owners can only bump uses_count).
+  - **M4:** created `teams` (referenced by squadUtils, never existed → 42P01).
+  - **M5:** created `gdpr_erasure_log` (referenced by gdprExport, never existed).
+  - **M6:** insight_embeddings.insight_id UUID→bigint reconcile (guarded:
+    only rebuilds if empty; warns otherwise).
+
+  DEPENDS ON: prod schema (applied); CoachOverview coach_notes append.
+
+---
+
 ## v9.352.0 — 2026-05-30 — Audit correction: render-cascade + hydration perf
 
   - **H7:** `DataContext` provider `value` was a fresh object literal each
