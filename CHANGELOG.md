@@ -14,6 +14,39 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.348.0 — 2026-05-30 — Fix Strava/device upsert: partial→full unique index (APPLIED TO PROD)
+
+  Audit finding #5, escalated from "verify" to "confirmed live bug." A
+  BEGIN/ROLLBACK probe against prod proved that
+  `INSERT … ON CONFLICT (user_id, external_id)` on training_log threw
+  `42P10: there is no unique or exclusion constraint matching the ON
+  CONFLICT specification`.
+
+  Root cause: the only matching index was PARTIAL —
+  `… (user_id, external_id) where external_id is not null`. PostgREST's
+  `onConflict` parameter names columns only and can't supply the index
+  predicate, so Postgres could not infer the partial index as an arbiter.
+  Every activity upsert in `strava-oauth` (LIVE), `strava-backfill-worker`,
+  and `device-sync` threw — Strava/device activity sync silently failed.
+
+  Fix (DB only — no edge-fn redeploy; they already pass the right
+  onConflict): migration `20260530_training_log_external_full_unique.sql`
+  drops the partial index and creates a FULL unique index on
+  (user_id, external_id). A full index is inferable as an arbiter without
+  a predicate. Manual sessions store external_id IS NULL; under PG17's
+  default NULLS DISTINCT each NULL is distinct, so two-a-days never
+  collide. Pre-checked: zero duplicate non-null pairs existed.
+
+  APPLIED TO PROD 2026-05-30 and recorded in schema_migrations (version
+  20260530). Re-probe after apply returned 23503 (FK error on the dummy
+  user_id) instead of 42P10 — i.e. ON CONFLICT inference now succeeds and
+  real upserts with valid user_ids work.
+
+  DEPENDS ON: training_log table, strava-oauth / strava-backfill-worker /
+  device-sync edge functions (unchanged).
+
+---
+
 ## v9.347.0 — 2026-05-30 — Sync resilience: stop swallowing write failures
 
   Audit finding #2 (+ #3, #4). The background-sync paths fired upserts /
