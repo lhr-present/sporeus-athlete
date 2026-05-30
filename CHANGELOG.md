@@ -14,6 +14,37 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.357.0 — 2026-05-31 — Audit list: close bounded test/config gaps
+
+  Stepping the audit list end-to-end; closing the remaining BOUNDED items.
+
+  - **H9c (test-tautology):** `dataMigration.test.js` mocked upsert to always
+    succeed, so it couldn't catch a wrong onConflict target — the exact class
+    behind the training_log/guest-migration data loss. Added an assertion that
+    recovery migrates with `onConflict:'user_id,date'` (locks the string so a
+    regression to id/bare target is caught).
+  - **test-L (useAuth untested):** new `useAuth.test.js` locks two deliberate
+    invariants — `upsertProfile` never writes `display_name` (trigger owns it),
+    and `TOKEN_REFRESHED` does NOT trigger a profile upsert (auth-lock deadlock
+    guard). Only `SIGNED_IN` upserts.
+  - **perf-L (no byte budgets):** `.lighthouserc.json` now has `warn`-level
+    `resource-summary:script:size` (350 KB) + `total-byte-weight` (6 MB)
+    budgets so bundle drift surfaces before it drags the perf score.
+
+  15,456 tests green. eslint clean.
+
+  STILL DEFERRED (deliberate, noted for the record): H1 edge-fn deploy
+  (WEBHOOK_SECRET + cron headers — op step); H9b e2e tier-flip DB assertion
+  (covered at unit level by getTier; e2e is credential/flaky-infra gated);
+  a11y app-wide #555/#444 contrast + ~203 unlabeled inputs (broad sweep);
+  FIT power-blob sync localStorage write + unused react-virtuoso dep
+  (low-value); L1 garmin_tokens (un-wired prototype); L2 non-idempotent
+  001–003 (replay-only risk).
+
+  DEPENDS ON: dataMigration test, useAuth, .lighthouserc.json.
+
+---
+
 ## v9.356.0 — 2026-05-30 — Close last-audit residuals (SSRF, distanceKm, i18n)
 
   The three residuals flagged by the verification (last-audit) pass.

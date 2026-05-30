@@ -150,6 +150,21 @@ describe('migrateToSupabase', () => {
     await migrateToSupabase('user1', vi.fn())
     expect(localStorage.getItem('sporeus-migrated')).toBe('1')
   })
+
+  // v9.357.0 — lock the upsert conflict-target per table. The mock always
+  // succeeds, so this can't catch a missing DB constraint, but it DOES catch a
+  // regression of the onConflict STRING (the exact failure mode behind the
+  // training_log 42P10 / guest-migration data loss). recovery dedups on
+  // (user_id,date) — NOT id — and must not regress to a bare/ id-based target.
+  it('migrates recovery with onConflict (user_id,date), not id', async () => {
+    localStorage.setItem('sporeus-recovery', JSON.stringify([
+      { date: '2026-01-01', score: 70 }, { date: '2026-01-02', score: 65 },
+    ]))
+    await migrateToSupabase('user1', vi.fn())
+    expect(mockChain.from).toHaveBeenCalledWith('recovery')
+    const recUpsert = mockChain.upsert.mock.calls.find(c => c[1] && c[1].onConflict === 'user_id,date')
+    expect(recUpsert, 'recovery upsert must target onConflict user_id,date').toBeTruthy()
+  })
 })
 
 // ── isMigrated ────────────────────────────────────────────────────────────────
