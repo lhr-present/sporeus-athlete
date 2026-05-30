@@ -96,9 +96,36 @@ harmless to leave in place (the extra header is ignored by un-hardened functions
 
 ---
 
-## ⚠️ Related finding discovered during prep (separate from H1)
-Several SQL callers embed a **hardcoded `service_role` JWT** in their headers
-(e.g. `20260424_add_push_worker_cron.sql`, `on_training_log_embed`). That key is
-in the git history. Recommend, as a follow-up: **rotate the service_role key**,
-move all SQL callers to `current_setting('app.service_role_key')`, and scrub the
-literal from future migrations. Not required for H1, but it's a real exposure.
+## 🔴 CRITICAL — committed `service_role` key (PUBLIC repo) — ROTATE NOW
+
+Discovered during H1 prep, then confirmed: a **valid `service_role` JWT**
+(`role: service_role`, `ref: pvicqwapvvfempjdgwbm`, `exp` ~2036) is hardcoded in
+committed SQL — `20260424_add_push_worker_cron.sql`,
+`20260424_enhancements_embed_trigger_mv_revoke.sql`,
+`20260424_fix_purge_cron_hardcode_jwt.sql`, `20260424_missing_crons_and_fns.sql`
+(and `supabase/tests/rls/pentest/personas.ts`). The GitHub repo is **public**, so
+this key — which **bypasses all RLS** — is exposed to the world. This is more
+urgent than H1 itself.
+
+### Step A — ROTATE immediately (do this first, before anything else)
+Supabase Dashboard → Project Settings → API → **roll/reset the `service_role`
+key**. This instantly invalidates the leaked JWT. Scrubbing git history does NOT
+substitute for rotation (the key is already public/clonable/indexed).
+
+### Step B — expect these to recover differently
+- **Edge functions** read `SUPABASE_SERVICE_ROLE_KEY` from env (Supabase
+  auto-provides the new value) → recover automatically after redeploy/restart.
+- **Cron jobs + `on_training_log_embed`** hardcode the OLD JWT in their headers →
+  they will **401 after rotation** until updated. Fix by moving them to the GUC:
+  ```sql
+  ALTER DATABASE postgres SET app.service_role_key = '<NEW service_role key>';
+  ```
+  then re-author each affected cron/trigger header to
+  `'Bearer ' || current_setting('app.service_role_key')` (no literal key). This
+  is the same set of callers patched in `20260601`; do both in one window.
+
+### Step C — prevent recurrence
+- Never put a `service_role` key in SQL or any committed file. Source it from the
+  GUC (DB) or `Deno.env` (edge) only.
+- Consider making the repo private, and/or `git filter-repo` to purge the literal
+  from history *after* rotation (defense-in-depth, not a substitute for Step A).
