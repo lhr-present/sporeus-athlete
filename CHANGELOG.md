@@ -14,6 +14,47 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.346.0 — 2026-05-30 — Free-tier hard sessions get a real rep prescription
+
+  Feature (audit finding: highest-leverage gap aligned with the
+  daily-answer mission). The session-structure renderer in TodayView
+  (v9.88.0) only fired when the planned session's `type` string carried
+  an explicit "NxM" token (e.g. elite-program "VO2max 6x800m"). The
+  free-tier plan generator emits sport LABELS with no rep prescription —
+  "Interval run", "Power intervals", "Interval swim", "AT pieces" — so
+  `deriveSessionStructure` returned null and the daily answer on a hard
+  day was "Interval run · 45min · Z5" with **no executable workout**.
+  That's the exact moment the app is supposed to win (target → today's
+  session), and it was blank for everyone on a generated plan.
+
+  Fix is at the RENDER layer (no plan regeneration; benefits existing +
+  future plans, every sport): `deriveSessionStructure` now has a second
+  path. When there's no "NxM" token, it reads the planned **zone** rather
+  than the label wording — the generator sets `INTENT_ZONE.vo2 === 'Z5'`,
+  so Z5 ⟺ a VO2max interval session regardless of sport label. It then
+  synthesizes a defensible prescription:
+
+  - 3-min reps at 1:1 recovery (Billat / Laursen 2002 polarized recovery)
+  - rep count scaled from duration after reserving ~18 min WU+CD, clamped
+    to a physiologically sane 3–8 (Buchheit & Laursen 2013)
+  - renders via the existing STRUCTURE block, e.g.
+    "12min WU + 5×3min @Z5 VO2max (3min recovery) + CD"
+
+  Deliberately scoped to Z5 ONLY — Z1–Z4 (easy / endurance / tempo /
+  field-test) stay continuous/one-off and are never broken into reps, so
+  a tempo run or a CV test is not misrepresented. Path A (explicit NxM)
+  is unchanged and still wins when present.
+
+  +6 tests (zone-fallback synthesis, all-sport label coverage, rep-count
+  clamping, non-Z5 rejection, <25-min rejection, NxM precedence).
+  15,381 tests green.
+
+  DEPENDS ON: deriveSessionStructure (sessionStructure.js), planned
+  session `zone` field from adapter.js / getTodayPlannedSession,
+  STRUCTURE block render in TodayView.jsx.
+
+---
+
 ## v9.345.0 — 2026-05-30 — Correctness sweep: recovery delete sync + two dead handlers
 
   Audit-driven sweep (3 parallel auditors over data-layer, dead-UI, and

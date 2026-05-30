@@ -140,3 +140,58 @@ describe('deriveSessionStructure', () => {
     expect(out.blocks[1].zone).toBe('Z4')
   })
 })
+
+// v9.346.0 — Path B: zone-based VO2max synthesis for free-tier labels that
+// carry no explicit "NxM" (e.g. "Interval run", "Power intervals").
+describe('deriveSessionStructure — Z5 zone fallback (no NxM in label)', () => {
+  it('synthesizes a VO2max prescription for a Z5 session with no NxM token', () => {
+    // Free-tier running label — has no NxM and no recognized keyword.
+    const out = deriveSessionStructure({ type: 'Interval run', zone: 'Z5', duration: 45 })
+    expect(out).not.toBeNull()
+    expect(out.estimate).toBe(true)
+    const [wu, rep, cd] = out.blocks
+    expect(rep.kind).toBe('rep')
+    expect(rep.durationMin).toBe(3)        // classic 3-min VO2max reps
+    expect(rep.recoveryMin).toBe(3)        // 1:1 recovery
+    expect(rep.zone).toBe('Z5')
+    expect(rep.label.en).toBe('VO2max')
+    // reps clamped 3–8, scaled from duration
+    expect(rep.count).toBeGreaterThanOrEqual(3)
+    expect(rep.count).toBeLessThanOrEqual(8)
+    // blocks sum to the session duration
+    expect(wu.durationMin + rep.count * rep.durationMin + (rep.count - 1) * rep.recoveryMin + cd.durationMin).toBeCloseTo(45, 0)
+  })
+
+  it('works for any sport label as long as zone is Z5 (cycling/swim/rowing/tri)', () => {
+    for (const type of ['Power intervals', 'Interval swim', 'AT pieces', 'Intervals']) {
+      const out = deriveSessionStructure({ type, zone: 'Z5', duration: 50 })
+      expect(out, type).not.toBeNull()
+      expect(out.blocks[1].zone).toBe('Z5')
+    }
+  })
+
+  it('scales rep count with duration and clamps to 3–8', () => {
+    expect(deriveSessionStructure({ type: 'Interval run', zone: 'Z5', duration: 30 }).blocks[1].count).toBe(3)   // floor
+    expect(deriveSessionStructure({ type: 'Interval run', zone: 'Z5', duration: 120 }).blocks[1].count).toBe(8)  // ceiling
+    const mid = deriveSessionStructure({ type: 'Interval run', zone: 'Z5', duration: 60 }).blocks[1].count
+    expect(mid).toBeGreaterThan(3)
+    expect(mid).toBeLessThan(8)
+  })
+
+  it('does NOT synthesize reps for non-Z5 zones (easy/endurance/tempo/test)', () => {
+    expect(deriveSessionStructure({ type: 'Tempo run',   zone: 'Z3', duration: 50 })).toBeNull()
+    expect(deriveSessionStructure({ type: 'Run test',    zone: 'Z4', duration: 40 })).toBeNull()
+    expect(deriveSessionStructure({ type: 'Long run',    zone: 'Z1', duration: 90 })).toBeNull()
+    expect(deriveSessionStructure({ type: 'Recovery jog', zone: 'Z1', duration: 30 })).toBeNull()
+  })
+
+  it('does NOT synthesize for very short Z5 sessions (<25 min)', () => {
+    expect(deriveSessionStructure({ type: 'Interval run', zone: 'Z5', duration: 20 })).toBeNull()
+  })
+
+  it('still prefers an explicit NxM token over the zone fallback', () => {
+    // Even with zone Z5 present, an explicit "6x800m" must win (Path A).
+    const out = deriveSessionStructure({ type: 'VO2max 6x800m', zone: 'Z5', duration: 60 })
+    expect(out.blocks[1].count).toBe(6)
+  })
+})

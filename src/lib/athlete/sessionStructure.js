@@ -65,38 +65,64 @@ export function deriveSessionStructure(plannedSession) {
   if (!plannedSession || typeof plannedSession.type !== 'string') return null
   const typeStr = plannedSession.type.toLowerCase()
 
+  let reps, repMin, zone, recoveryMin
+
   // Match "NxM" or "N x M" with optional unit (min, m, km, s).
   // Examples matched: "2x20", "5 x 3min", "6x800m", "4x1km"
   const m = typeStr.match(/(\d+)\s*x\s*(\d+)\s*(min|km|m|s)?/i)
-  if (!m) return null
 
-  const reps     = parseInt(m[1], 10)
-  const repValue = parseInt(m[2], 10)
-  const repUnit  = m[3] || 'min'
+  if (m) {
+    // ── Path A: the type string already carries an explicit rep prescription
+    // (e.g. elite-program "VO2max 6x800m"). Parse it verbatim. ──────────────
+    reps           = parseInt(m[1], 10)
+    const repValue = parseInt(m[2], 10)
+    const repUnit  = m[3] || 'min'
 
-  if (!Number.isFinite(reps) || reps < 1 || reps > 30) return null
+    if (!Number.isFinite(reps) || reps < 1 || reps > 30) return null
 
-  // 's' (seconds) — only honor if value is reasonable (15-180s typical for strides/short reps)
-  let repMin
-  if (repUnit.toLowerCase() === 's') {
-    if (repValue < 10 || repValue > 300) return null
-    repMin = Math.max(0.25, repValue / 60)
+    // 's' (seconds) — only honor if value is reasonable (15-180s typical for strides/short reps)
+    if (repUnit.toLowerCase() === 's') {
+      if (repValue < 10 || repValue > 300) return null
+      repMin = Math.max(0.25, repValue / 60)
+    } else {
+      repMin = repMinFromValueUnit(repValue, repUnit)
+      if (repMin == null) return null
+    }
+
+    // Find matching zone keyword. Order matters: longer keys first so
+    // 'vo2max' matches before 'vo2' and 'cruise' before nothing.
+    for (const k of Object.keys(ZONE_FOR_KEYWORD)) {
+      if (typeStr.includes(k)) { zone = ZONE_FOR_KEYWORD[k]; break }
+    }
+    if (!zone) return null
+
+    // Recovery duration: null in the zone map = equal to rep duration
+    // (VO2max / interval default — Laursen 2002 polarized recovery).
+    recoveryMin = zone.recoveryMin == null ? repMin : zone.recoveryMin
   } else {
-    repMin = repMinFromValueUnit(repValue, repUnit)
-    if (repMin == null) return null
-  }
+    // ── Path B (v9.346.0): no explicit "NxM" in the label. The free-tier
+    // plan generator emits sport labels ("Interval run", "Power intervals")
+    // that carry no rep prescription, so Path A returned null and the
+    // athlete saw a zone + duration but no executable workout.
+    //
+    // The reliable signal is the planned ZONE, not the label wording: the
+    // generator sets INTENT_ZONE.vo2 === 'Z5', so Z5 ⟺ a VO2max interval
+    // session for every sport. Synthesize a defensible VO2max prescription
+    // from zone + duration. Deliberately scoped to Z5 only — Z1–Z4 sessions
+    // (easy / endurance / tempo / field-test) are continuous or one-off and
+    // must NOT be broken into reps. ──────────────────────────────────────
+    const zoneTag = String(plannedSession.zone || '').toUpperCase()
+    const total0  = Number(plannedSession.duration || 0)
+    if (zoneTag !== 'Z5' || total0 < 25) return null
 
-  // Find matching zone keyword. Order matters: longer keys first so
-  // 'vo2max' matches before 'vo2' and 'cruise' before nothing.
-  let zone = null
-  for (const k of Object.keys(ZONE_FOR_KEYWORD)) {
-    if (typeStr.includes(k)) { zone = ZONE_FOR_KEYWORD[k]; break }
+    // Classic VO2max work: 3-min reps at 1:1 recovery (Billat / Laursen 2002).
+    // Reps scale with the session length after reserving ~18 min for WU+CD,
+    // clamped to a physiologically sane 3–8 (Buchheit & Laursen 2013).
+    repMin      = 3
+    recoveryMin = repMin
+    reps        = Math.max(3, Math.min(8, Math.round((total0 - 18) / (repMin * 2))))
+    zone        = ZONE_FOR_KEYWORD.vo2max
   }
-  if (!zone) return null
-
-  // Recovery duration: null in the zone map = equal to rep duration
-  // (VO2max / interval default — Laursen 2002 polarized recovery).
-  const recoveryMin = zone.recoveryMin == null ? repMin : zone.recoveryMin
 
   // Budget WU + CD from the remaining duration after reps + inter-rep
   // recovery. WU gets ~60% of remaining, capped at [10, 20] minutes;
