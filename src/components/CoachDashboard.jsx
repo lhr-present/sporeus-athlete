@@ -391,7 +391,7 @@ export default function CoachDashboard({ authUser }) {
                       </button>
                     )}
                     {!pendingVerify && verifiedAt && (
-                      <span style={{ ...S.mono, fontSize:'8px', color:'#555' }}>verified {verifiedAt.slice(0,10)}</span>
+                      <span style={{ ...S.mono, fontSize:'8px', color:'#555' }}>{t('verifiedOn').replace('{date}', verifiedAt.slice(0,10))}</span>
                     )}
                   </div>
                 </div>
@@ -418,7 +418,7 @@ export default function CoachDashboard({ authUser }) {
                   {doneAt ? (
                     <div style={{ ...S.mono, fontSize:'9px', color: pendingVerify ? '#ff6600' : '#888', marginTop:'2px' }}>
                       {pendingVerify ? `● ${t('sessionDonePending').replace('{date}', doneAt.slice(0,10))}` : t('lastDone').replace('{date}', doneAt.slice(0,10))}
-                      {!pendingVerify && verifiedAt ? ` · verified ${verifiedAt.slice(0,10)}` : ''}
+                      {!pendingVerify && verifiedAt ? ` · ${t('verifiedOn').replace('{date}', verifiedAt.slice(0,10))}` : ''}
                     </div>
                   ) : (
                     <div style={{ ...S.mono, fontSize:'9px', color:'#555', marginTop:'2px' }}>No sessions confirmed yet</div>
@@ -438,7 +438,7 @@ export default function CoachDashboard({ authUser }) {
                   </button>
                 ) : (
                   <span style={{ ...S.mono, fontSize:'9px', color:'#555', flexShrink:0, marginLeft:8 }}>
-                    {verifiedAt ? '✓ seen' : '—'}
+                    {verifiedAt ? t('seenLabel') : '—'}
                   </span>
                 )}
               </div>

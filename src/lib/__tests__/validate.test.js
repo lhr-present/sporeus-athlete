@@ -240,6 +240,12 @@ describe('sanitizeLogEntry', () => {
     expect(sanitizeLogEntry({ ...validEntry, distanceM: -100 }).distanceM).toBeUndefined()
   })
 
+  it('preserves distanceKm so manual run logging feeds the race predictor (v9.356.0)', () => {
+    expect(sanitizeLogEntry({ ...validEntry, distanceKm: '10' }).distanceKm).toBe(10)
+    expect(sanitizeLogEntry({ ...validEntry, distanceKm: 'abc' }).distanceKm).toBeUndefined()
+    expect(sanitizeLogEntry({ ...validEntry, distanceKm: 0 }).distanceKm).toBeUndefined()
+  })
+
   it('parses and preserves avgHR when positive integer', () => {
     const result = sanitizeLogEntry({ ...validEntry, avgHR: '155' })
     expect(result.avgHR).toBe(155)

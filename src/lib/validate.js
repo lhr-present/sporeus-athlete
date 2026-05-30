@@ -98,6 +98,10 @@ export function sanitizeLogEntry(e) {
   // Fields required by vo2max.js estimateVO2maxTrend — must survive sanitization
   const distM = parseFloat(e.distanceM); if (!isNaN(distM) && distM > 0) result.distanceM = distM
   const dist  = parseFloat(e.distance);  if (!isNaN(dist)  && dist  > 0) result.distance  = dist
+  // distanceKm survives sanitization too — QuickAddModal writes it for manual
+  // run logging, and predictRacePerformance's fallback reads it (km). Without
+  // this it was stripped, leaving the race predictor dead for manual entries.
+  const distKm = parseFloat(e.distanceKm); if (!isNaN(distKm) && distKm > 0) result.distanceKm = distKm
   const durSec = parseFloat(e.durationSec); if (!isNaN(durSec) && durSec > 0) result.durationSec = durSec
   const avgHR = parseInt(e.avgHR);  if (!isNaN(avgHR) && avgHR > 0) result.avgHR = avgHR
   const cadence = parseInt(e.avgCadence); if (!isNaN(cadence) && cadence > 0) result.avgCadence = cadence

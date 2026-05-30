@@ -14,6 +14,33 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.356.0 — 2026-05-30 — Close last-audit residuals (SSRF, distanceKm, i18n)
+
+  The three residuals flagged by the verification (last-audit) pass.
+
+  1. **device-sync SSRF hardening** (edge fn — still in the NOT-deployed
+     v9.354 set). The M2 baseline only blocked dotted-quad IPs. Added:
+     reject obfuscated IP literals (decimal `2130706433`, hex `0x7f000001`,
+     octal/leading-zero or non-4-octet dotted forms) that resolve to internal
+     addresses, and `redirect: "manual"` on both provider fetches so a 3xx to
+     an internal host yields an opaque redirect (dropped by the existing
+     `resp.ok` guard) instead of re-sending the device Bearer token to the
+     redirect target.
+  2. **distanceKm survives sanitization** (`validate.js`). QuickAddModal
+     writes `distanceKm` for manual runs and `predictRacePerformance`'s
+     fallback reads it, but `sanitizeLogEntry` stripped it — leaving the race
+     predictor dead for manually-logged runs. Now preserved (+test).
+  3. **i18n** (`CoachDashboard.jsx`): the `verified {date}` (×2) and `✓ seen`
+     status strings were hardcoded English → routed through new LangCtx keys
+     `verifiedOn` / `seenLabel` (en + tr).
+
+  15,453 tests green. eslint clean.
+
+  DEPENDS ON: device-sync validateBaseUrl, validate.sanitizeLogEntry,
+  CoachDashboard + LangCtx.
+
+---
+
 ## v9.355.0 — 2026-05-30 — Audit correction: a11y/i18n + test coverage
 
   **a11y/i18n** (21 new EN+TR LangCtx keys):

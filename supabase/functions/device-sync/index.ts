@@ -69,6 +69,20 @@ function validateBaseUrl(raw: string): { ok: true; url: URL } | { ok: false; rea
     if (host === "::1" || host.startsWith("fe80") || host.startsWith("fc") || host.startsWith("fd") || host === "::") {
       return { ok: false, reason: "blocked_ipv6" }
     }
+  } else {
+    // Reject obfuscated IP literals that bypass the dotted-quad check but
+    // resolve to internal addresses (e.g. 2130706433 or 0x7f000001 = 127.0.0.1).
+    if (/^0x[0-9a-f]+$/i.test(host) || /^\d+$/.test(host)) {
+      return { ok: false, reason: "obfuscated_ip" }
+    }
+    // A purely numeric+dotted host must be a clean 4-octet dotted-quad (no
+    // leading-zero/octal octets, each 0-255) before the private-range check.
+    if (/^[0-9.]+$/.test(host)) {
+      const parts = host.split(".")
+      const clean = parts.length === 4 &&
+        parts.every(p => /^\d{1,3}$/.test(p) && String(Number(p)) === p && Number(p) <= 255)
+      if (!clean) return { ok: false, reason: "malformed_ip" }
+    }
   }
   if (isBlockedIPv4(host)) return { ok: false, reason: "blocked_ip" }
 
@@ -187,7 +201,10 @@ serve(withTelemetry('device-sync', async (req: Request) => {
       const actTimer = setTimeout(() => actCtrl.abort(), 8000)
       let activities: OWActivity[] = []
       try {
-        const resp = await fetch(`${baseUrl}/api/v1/activities?since=${since}`, { headers, signal: actCtrl.signal })
+        // redirect:"manual" — a 3xx to an internal host yields an opaque
+        // redirect (resp.ok=false, skipped below) instead of re-sending the
+        // device Bearer token to the redirect target.
+        const resp = await fetch(`${baseUrl}/api/v1/activities?since=${since}`, { headers, signal: actCtrl.signal, redirect: "manual" })
         if (resp.ok) {
           const json = await resp.json()
           activities = Array.isArray(json) ? json : (json.activities ?? [])
@@ -201,7 +218,7 @@ serve(withTelemetry('device-sync', async (req: Request) => {
       const recTimer = setTimeout(() => recCtrl.abort(), 8000)
       let recoveries: OWRecovery[] = []
       try {
-        const resp = await fetch(`${baseUrl}/api/v1/recovery?since=${since}`, { headers, signal: recCtrl.signal })
+        const resp = await fetch(`${baseUrl}/api/v1/recovery?since=${since}`, { headers, signal: recCtrl.signal, redirect: "manual" })
         if (resp.ok) {
           const json = await resp.json()
           recoveries = Array.isArray(json) ? json : (json.recovery ?? [])
