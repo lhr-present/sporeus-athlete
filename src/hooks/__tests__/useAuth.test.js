@@ -11,6 +11,8 @@ const h = vi.hoisted(() => ({
   authCb: null,
   upsert: vi.fn(() => Promise.resolve({ error: null })),
   single: vi.fn(() => Promise.resolve({ data: null, error: { code: 'PGRST116' } })),
+  clearAllAppData: vi.fn(),
+  clearOfflineQueue: vi.fn(() => Promise.resolve()),
 }))
 
 vi.mock('../../lib/supabase.js', () => ({
@@ -33,6 +35,8 @@ vi.mock('../../lib/supabase.js', () => ({
 }))
 vi.mock('../../lib/sentry.js', () => ({ setUser: vi.fn(), clearUser: vi.fn() }))
 vi.mock('../../lib/logger.js', () => ({ logger: { warn: vi.fn(), error: vi.fn() } }))
+vi.mock('../../lib/storage/local.js', () => ({ clearAllAppData: h.clearAllAppData }))
+vi.mock('../../lib/db.js', () => ({ clearAll: h.clearOfflineQueue }))
 
 import { useAuth } from '../useAuth.js'
 
@@ -64,5 +68,22 @@ describe('useAuth', () => {
     // give any (incorrect) async upsert a chance to fire
     await new Promise(r => setTimeout(r, 20))
     expect(h.upsert).not.toHaveBeenCalled()
+  })
+
+  it('clears local data + offline queue on SIGNED_OUT (preserving language)', async () => {
+    renderHook(() => useAuth())
+    await waitFor(() => expect(h.authCb).toBeTypeOf('function'))
+
+    await act(async () => { h.authCb('SIGNED_OUT', { user: null }) })
+    expect(h.clearAllAppData).toHaveBeenCalledWith(['sporeus-lang'])
+    expect(h.clearOfflineQueue).toHaveBeenCalled()
+  })
+
+  it('does NOT clear data on a guest INITIAL_SESSION with no user', async () => {
+    renderHook(() => useAuth())
+    await waitFor(() => expect(h.authCb).toBeTypeOf('function'))
+
+    await act(async () => { h.authCb('INITIAL_SESSION', { user: null }) })
+    expect(h.clearAllAppData).not.toHaveBeenCalled()  // guest localStorage must survive
   })
 })

@@ -349,6 +349,9 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
 
   const confirmBulkDeleteAction = () => {
     setConfirmBulkDelete(false)
+    // v9.359.0 — also drop the per-entry power blobs so they don't orphan in
+    // localStorage forever (they're ~50-80KB each and creep toward the quota).
+    for (const e of log) if (selected.has(e.id)) { try { localStorage.removeItem('sporeus-power-' + e.id) } catch { /* noop */ } }
     setLog(log.filter(e => !selected.has(e.id)))
     setSelected(new Set())
     setBulkMode(false)
@@ -874,6 +877,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                             </span>
                             <button
                               onClick={() => {
+                                try { localStorage.removeItem('sporeus-power-' + s.id) } catch { /* noop */ }
                                 setLog(log.filter(e => e.id !== s.id))
                                 setDeleteConfirmId(null)
                                 announce(lang === 'tr' ? 'Antrenman silindi' : 'Session deleted', 'polite')

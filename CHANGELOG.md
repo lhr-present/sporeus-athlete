@@ -14,6 +14,37 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.359.0 — 2026-05-31 — Local-data hygiene: shared-device leak, GDPR-delete completeness, power-blob cleanup
+
+  More deeper-audit findings (PWA/state dimension).
+
+  - **HIGH — shared-device data leak.** Sign-out cleared only the Supabase
+    session + Strava token; `sporeus_log`/`sporeus_profile`/`sporeus-recovery`
+    and the IndexedDB offline queue persisted. On a shared device, the next
+    user (or a guest) could see the prior user's training data, and a queued
+    offline write stamped with user A's id would wedge user B's sync forever.
+    Fix: `useAuth` now wipes local data + the offline queue on the
+    `SIGNED_OUT` event — gated STRICTLY on that event so a guest's
+    `INITIAL_SESSION` (no user) never wipes their localStorage-only data; the
+    language pref is preserved. (+2 useAuth tests, incl. the guest-not-wiped guard.)
+  - **MED — GDPR delete was incomplete.** `clearAllAppData` only iterated the
+    static key set, leaving dynamic keys (`sporeus-power-*`, `-week-*`, `-ai-*`,
+    `-plan`, consent + dismissal flags) behind after "delete my data" / reset.
+    Now sweeps every `sporeus*` key via `length`/`key(i)` (browser + jsdom
+    safe) plus the static set, with a `keep`-list for non-PII prefs. (+1 test;
+    test stub upgraded to enumerate like real Storage.)
+  - **MED — per-entry power blobs never freed.** Deleting a session (single or
+    bulk) in TrainingLog left its `sporeus-power-${id}` blob (~50–80 KB each)
+    orphaned forever, creeping toward the localStorage quota. Both delete
+    handlers now `removeItem` the blob.
+
+  15,463 tests green; build clean.
+
+  DEPENDS ON: useAuth onAuthStateChange, storage/local.clearAllAppData,
+  db.clearAll, TrainingLog delete handlers.
+
+---
+
 ## v9.358.0 — 2026-05-31 — CRITICAL: plan adapter RPE-scale bug (daily answer broken for generated plans)
 
   Found by a deeper audit pass over the core user flows (the earlier sweeps had

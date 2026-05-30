@@ -39,10 +39,27 @@ export function removeLocal(key) {
 }
 
 // ── clearAllAppData ───────────────────────────────────────────────────────────
-// Removes every known app key from localStorage.
-// Called by GDPR deleteAthleteData() and "Reset app" in Profile.
-export function clearAllAppData() {
-  for (const key of ALL_STATIC_KEYS) {
-    removeLocal(key)
-  }
+// Removes app keys from localStorage. Called by GDPR deleteAthleteData(),
+// "Reset app" in Profile, and sign-out (shared-device data hygiene).
+// v9.359.0 — sweep EVERY `sporeus*` key, not just the static set: dynamic keys
+// (sporeus-power-*, sporeus-week-*, sporeus-ai-*, sporeus-plan, consent flags,
+// tab-visited/dismissed flags, …) were previously left behind, so GDPR delete
+// was incomplete and a signed-out user's data could linger on a shared device.
+// `keep` lets callers preserve non-PII UI prefs (e.g. language) on sign-out.
+export function clearAllAppData(keep = []) {
+  const keepSet = new Set(keep)
+  // 1) the known static set (covers any key not `sporeus`-prefixed)
+  for (const key of ALL_STATIC_KEYS) if (!keepSet.has(key)) removeLocal(key)
+  // 2) plus every dynamic `sporeus*` key (power blobs, week/ai caches, plan,
+  //    consent + tab-visited/dismissed flags) the static set doesn't enumerate.
+  //    Use length/key(i) (works in browsers AND jsdom, unlike Object.keys);
+  //    collect first, then remove (removing mid-iteration shifts indices).
+  try {
+    const dynamic = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && key.startsWith('sporeus') && !keepSet.has(key)) dynamic.push(key)
+    }
+    for (const key of dynamic) removeLocal(key)
+  } catch { /* enumeration unavailable — static set above already handled */ }
 }

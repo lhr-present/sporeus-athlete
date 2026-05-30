@@ -3,6 +3,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase, sbQuery } from '../lib/supabase.js'
 import { logger } from '../lib/logger.js'
 import { setUser as sentrySetUser, clearUser as sentryClearUser } from '../lib/sentry.js'
+import { clearAllAppData } from '../lib/storage/local.js'
+import { clearAll as clearOfflineQueue } from '../lib/db.js'
 
 export function useAuth() {
   const [user, setUser]       = useState(null)
@@ -51,6 +53,15 @@ export function useAuth() {
       if (u) sentrySetUser(u.id)
       else   sentryClearUser()
       if (event === 'SIGNED_IN') setNeedsUpsert(true)
+      // v9.359.0 — Shared-device hygiene: on an explicit sign-out, wipe the prior
+      // user's local data + offline queue so the next user/guest can't see it
+      // (RLS protects the server; localStorage did not). Gated STRICTLY on
+      // SIGNED_OUT — a guest's INITIAL_SESSION (no user) must NOT wipe their
+      // localStorage-only data. Preserve only the non-PII language pref.
+      if (event === 'SIGNED_OUT') {
+        try { clearAllAppData(['sporeus-lang']) } catch { /* noop */ }
+        clearOfflineQueue().catch(() => {})
+      }
       if (!u) {
         setProfile(null)
         setLoading(false)

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { getLocal, setLocal, removeLocal, clearAllAppData } from './local.js'
 import { ALL_STATIC_KEYS } from './keys.js'
 
-// Minimal localStorage stub
+// Minimal localStorage stub (supports enumeration like the real Storage API)
 function makeLs() {
   const store = {}
   return {
@@ -10,6 +10,8 @@ function makeLs() {
     setItem:    (k, v) => { store[k] = v },
     removeItem: k => { delete store[k] },
     clear:      () => { for (const k in store) delete store[k] },
+    key:        i => Object.keys(store)[i] ?? null,
+    get length() { return Object.keys(store).length },
     _store:     store,
   }
 }
@@ -90,5 +92,16 @@ describe('clearAllAppData', () => {
 
   it('does not throw even when keys are absent', () => {
     expect(() => clearAllAppData()).not.toThrow()
+  })
+
+  // v9.359.0 — also sweeps DYNAMIC sporeus* keys + honors the keep-list
+  it('removes dynamic sporeus* keys and honors keep', () => {
+    localStorage.setItem('sporeus-power-abc123', '"blob"')
+    localStorage.setItem('sporeus-plan', '"x"')
+    localStorage.setItem('sporeus-lang', '"tr"')
+    clearAllAppData(['sporeus-lang'])
+    expect(localStorage.getItem('sporeus-power-abc123')).toBeNull()
+    expect(localStorage.getItem('sporeus-plan')).toBeNull()
+    expect(localStorage.getItem('sporeus-lang')).toBe('"tr"')  // preserved
   })
 })
