@@ -132,8 +132,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const [selected, setSelected]           = useState(new Set())
   const [filterText, setFilterText]       = useState('')  // v9.47.0 — inline keyword filter
   // v9.63.0 — Paginated reveal. TrainingLog rendered every log entry as a DOM
-  // row (no Virtuoso integration despite package.json having react-virtuoso),
-  // costing 80–150ms paint time for users with 500+ entries. Capping the
+  // row, costing 80–150ms paint time for users with 500+ entries. Capping the
   // initial render at 200 + a "Show older" button gives the common-case 5x
   // speedup without changing the search/edit/expand UX.
   const PAGE_SIZE = 200
