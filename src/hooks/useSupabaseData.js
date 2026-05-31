@@ -238,8 +238,10 @@ function useSyncedTable({ lsKey, lsDefault, table, toEntry, toRow, userId, order
               () => enqueuePendingLog({ ...row, _table: table })) && ok
           }
           for (const e of removed) {
-            // Deletes can't be replayed by the upsert-based queue; just surface offline.
-            ok = await tryWrite(`${table} delete`, supabase.from(table).delete().eq('id', e.id).eq('user_id', userId)) && ok
+            // v9.361.0 — queue a delete tombstone on failure so an offline
+            // delete reaches the server on reconnect (else the row resurrects).
+            ok = await tryWrite(`${table} delete`, supabase.from(table).delete().eq('id', e.id).eq('user_id', userId),
+              () => enqueuePendingLog({ _op: 'delete', _table: table, _key: { id: e.id, user_id: userId } })) && ok
           }
           if (!ok) markSyncOffline()
         }).catch(err => logger.warn(`[sync] ${table} batch:`, err?.message))
@@ -306,7 +308,8 @@ export function useRecovery(userId) {
           // a delete must target the date — otherwise a removed wellness day
           // is never deleted server-side and re-hydrates on next load.
           for (const e of removed) {
-            ok = await tryWrite('recovery delete', supabase.from('recovery').delete().eq('user_id', userId).eq('date', e.date)) && ok
+            ok = await tryWrite('recovery delete', supabase.from('recovery').delete().eq('user_id', userId).eq('date', e.date),
+              () => enqueuePendingLog({ _op: 'delete', _table: 'recovery', _key: { user_id: userId, date: e.date } })) && ok
           }
           if (!ok) markSyncOffline()
         }).catch(err => logger.warn('[sync] recovery batch:', err?.message))

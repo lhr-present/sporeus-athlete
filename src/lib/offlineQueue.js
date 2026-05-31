@@ -63,12 +63,16 @@ export async function flushQueue() {
 
   let allOk = true
   for (const row of pending) {
-    const { id, _queuedAt, _table, ...entry } = row  // strip internal queue metadata
+    const { id, _queuedAt, _table, _op, _key, ...entry } = row  // strip internal queue metadata
     const table = _table || 'recovery'
     try {
-      const { error } = await supabase
-        .from(table)
-        .upsert(entry, { onConflict: conflictFor(table) })
+      // v9.361.0 — delete tombstones: a delete made while offline is queued as
+      // { _op:'delete', _table, _key } so it actually reaches the server on
+      // reconnect (previously deletes were dropped → the row resurrected on the
+      // next hydration).
+      const { error } = _op === 'delete'
+        ? await supabase.from(table).delete().match(_key || {})
+        : await supabase.from(table).upsert(entry, { onConflict: conflictFor(table) })
       if (!error) {
         await dequeue(id)
       } else {

@@ -157,7 +157,9 @@ export function useTrainingLogQuery(arg) {
           () => enqueuePendingLog({ ...row, _table: 'training_log' })) && ok
       }
       for (const e of removed) {
-        ok = await tryWrite('training_log delete', supabase.from('training_log').delete().eq('id', e.id).eq('user_id', userId)) && ok
+        // v9.361.0 — tombstone offline deletes so they aren't lost on reconnect.
+        ok = await tryWrite('training_log delete', supabase.from('training_log').delete().eq('id', e.id).eq('user_id', userId),
+          () => enqueuePendingLog({ _op: 'delete', _table: 'training_log', _key: { id: e.id, user_id: userId } })) && ok
       }
       if (!ok) markSyncOffline()
       // Invalidate so TQ refetches server state, catching any server-side defaults

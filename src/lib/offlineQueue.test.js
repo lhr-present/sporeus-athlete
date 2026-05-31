@@ -97,6 +97,23 @@ it('flushQueue dedups recovery on (user_id,date) and other tables on id', async 
   expect(conflicts).toContainEqual(['training_log', 'id'])
 })
 
+// ─── Test 3c: delete tombstones replayed via delete().match() (v9.361.0) ──────
+it('flushQueue replays a delete tombstone via delete().match() and dequeues', async () => {
+  const calls = []
+  const { supabase } = await import('./supabase.js')
+  supabase.from = vi.fn((table) => ({
+    delete: () => ({ match: async (key) => { calls.push([table, key]); return { error: null } } }),
+    upsert: vi.fn(async () => ({ error: null })),
+  }))
+
+  _store.push({ id: 1, _queuedAt: Date.now(), _op: 'delete', _table: 'training_log', _key: { id: 'abc', user_id: 'u1' } })
+  await flushQueue()
+
+  expect(calls).toContainEqual(['training_log', { id: 'abc', user_id: 'u1' }])
+  expect(dequeue).toHaveBeenCalledWith(1)
+  expect(_store).toHaveLength(0)
+})
+
 // ─── Test 4: flushQueue sets status 'synced' when queue empty ─────────────────
 it('flushQueue resolves synced status when nothing queued', async () => {
   const statuses = []

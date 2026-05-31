@@ -14,6 +14,27 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.361.0 — 2026-05-31 — Offline deletes no longer lost (delete tombstones)
+
+  Deeper-audit finding (PWA/state). `tryWrite(delete)` in useSyncedTable /
+  useRecovery / useTrainingLogQuery had no offline fallback (the comment even
+  said "deletes can't be replayed"): deleting a session/wellness row while
+  offline updated localStorage but never reached the server, so the row
+  **resurrected on the next hydration** — the delete silently undid itself.
+
+  Fix: on a failed delete, enqueue a tombstone
+  `{ _op:'delete', _table, _key }` (id+user_id, or user_id+date for recovery).
+  `flushQueue` now branches on `_op`: a tombstone replays as
+  `delete().match(_key)` (and dequeues), alongside the existing upsert replay.
+  So an offline delete reaches the server on reconnect like any other change.
+  +1 queue test; existing delete-sync + drain/onConflict tests still green.
+
+  15,466 tests green; build clean.
+
+  DEPENDS ON: offlineQueue.flushQueue, enqueuePendingLog, the three sync hooks.
+
+---
+
 ## v9.360.0 — 2026-05-31 — HIGH: guest→signup migration duplicated training log on retry
 
   Deeper-audit core-flow finding. `migrateToSupabase` collects per-step errors
