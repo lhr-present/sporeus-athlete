@@ -14,6 +14,30 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.360.0 — 2026-05-31 — HIGH: guest→signup migration duplicated training log on retry
+
+  Deeper-audit core-flow finding. `migrateToSupabase` collects per-step errors
+  and throws at the end; `MIGRATED_KEY` is set only on full success. So if ANY
+  step errors after training_log inserted (a transient 5xx, RLS hiccup), the
+  function throws, the flag stays unset, and the user's **Retry re-inserts the
+  whole training log** — training_log has no dedup constraint and migrated rows
+  get fresh `gen_random_uuid` ids, so the history **doubles** (corrupting
+  CTL/ATL/ACWR and therefore the daily answer). recovery/injuries/test/race were
+  already idempotent (upsert); only training_log used plain insert.
+
+  Fix: before the insert batches, clear this migration's own row class
+  (`delete().match({ user_id, source: 'manual' })`) — the post-signup account is
+  fresh (MigrationModal blocks other input), so those rows can only be from a
+  prior aborted attempt. If the cleanup itself fails, the insert is skipped that
+  run (retry redoes both) so we never insert on top of un-cleared rows. Now
+  fully idempotent across retries. +2 tests.
+
+  15,465 tests green.
+
+  DEPENDS ON: dataMigration.migrateToSupabase, training_log (no dedup constraint).
+
+---
+
 ## v9.359.0 — 2026-05-31 — Local-data hygiene: shared-device leak, GDPR-delete completeness, power-blob cleanup
 
   More deeper-audit findings (PWA/state dimension).

@@ -81,21 +81,28 @@ export async function migrateToSupabase(userId, onProgress) {
       notes:        e.notes || null,
       source:       'manual',
     }))
-    // v9.340.0 — Use insert(), not upsert(onConflict:'user_id,date,source').
-    // That conflict target has NO matching unique constraint on training_log
-    // (verified 2026-05-28: only unique indexes are PK(id) and
-    // (user_id,external_id)). Postgres throws "no unique or exclusion
-    // constraint matching the ON CONFLICT specification", which collected
-    // into errors[] and threw — so EVERY guest who logged locally then
-    // signed up had their entire migration fail and their training history
-    // silently dropped. A unique (user_id,date,source) constraint is NOT
-    // the fix because the app supports multiple sessions per day (two-a-days);
-    // such a constraint would collapse them. Migration runs once (MIGRATED_KEY
-    // guard) into a fresh account with no existing rows, so plain insert is
-    // correct — ids auto-generate via gen_random_uuid() default.
-    for (let i = 0; i < rows.length; i += 100) {
-      const { error } = await supabase.from('training_log').insert(rows.slice(i, i + 100))
-      if (error) errors.push(`training_log: ${error.message}`)
+    // v9.340.0 — Use insert(), not upsert(onConflict:'user_id,date,source'):
+    // no matching unique constraint exists (only PK(id) + (user_id,external_id)),
+    // and a (user_id,date,source) constraint would collapse two-a-days. Migrated
+    // rows have no id (gen_random_uuid default).
+    //
+    // v9.360.0 — Idempotency guard for RETRIES. Errors are collected and thrown
+    // at the end; if any step fails after training_log inserted, MIGRATED_KEY is
+    // never set and the user's Retry re-inserts the log → DOUBLED history (no
+    // dedup constraint; fresh ids each time). Clear this migration's own row
+    // class first. The account is fresh post-signup (MigrationModal blocks other
+    // input), so source='manual' rows can only be from a prior aborted attempt.
+    // If the cleanup fails, skip the insert this run (retry will redo both) so we
+    // never insert on top of un-cleared rows.
+    const { error: cleanupErr } = await supabase.from('training_log')
+      .delete().match({ user_id: userId, source: 'manual' })
+    if (cleanupErr) {
+      errors.push(`training_log cleanup: ${cleanupErr.message}`)
+    } else {
+      for (let i = 0; i < rows.length; i += 100) {
+        const { error } = await supabase.from('training_log').insert(rows.slice(i, i + 100))
+        if (error) errors.push(`training_log: ${error.message}`)
+      }
     }
     onProgress?.(++step, steps)
   }

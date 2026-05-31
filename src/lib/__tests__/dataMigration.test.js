@@ -17,12 +17,16 @@ const { mockChain } = vi.hoisted(() => {
     upsert: vi.fn(),
     insert: vi.fn(),   // v9.340 — training_log now uses insert(), not upsert()
     update: vi.fn(),
+    delete: vi.fn(),   // v9.360 — idempotency cleanup before training_log insert
+    match:  vi.fn(),
     eq:     vi.fn(),
   }
   chain.from.mockReturnValue(chain)
   chain.update.mockReturnValue(chain)
+  chain.delete.mockReturnValue(chain)
   chain.upsert.mockResolvedValue({ error: null })
   chain.insert.mockResolvedValue({ error: null })
+  chain.match.mockResolvedValue({ error: null })
   chain.eq.mockResolvedValue({ error: null })
   return { mockChain: chain }
 })
@@ -46,8 +50,10 @@ beforeEach(() => {
   mockChain.upsert.mockResolvedValue({ error: null })
   mockChain.insert.mockResolvedValue({ error: null })
   mockChain.eq.mockResolvedValue({ error: null })
+  mockChain.match.mockResolvedValue({ error: null })
   mockChain.from.mockReturnValue(mockChain)
   mockChain.update.mockReturnValue(mockChain)
+  mockChain.delete.mockReturnValue(mockChain)
 })
 
 // ── detectLocalData ───────────────────────────────────────────────────────────
@@ -143,6 +149,23 @@ describe('migrateToSupabase', () => {
     localStorage.setItem('sporeus_log', JSON.stringify(makeDays(3)))
     mockChain.insert.mockResolvedValueOnce({ error: { message: 'DB connection failed' } })
     await expect(migrateToSupabase('user1', vi.fn())).rejects.toThrow('DB connection failed')
+  })
+
+  // v9.360.0 — retry-safety: a prior aborted migration must not double the log.
+  it('clears prior migration rows before re-inserting training_log', async () => {
+    localStorage.setItem('sporeus_log', JSON.stringify(makeDays(3)))
+    await migrateToSupabase('user1', vi.fn())
+    expect(mockChain.from).toHaveBeenCalledWith('training_log')
+    expect(mockChain.delete).toHaveBeenCalled()
+    expect(mockChain.match).toHaveBeenCalledWith({ user_id: 'user1', source: 'manual' })
+    expect(mockChain.insert).toHaveBeenCalled()
+  })
+
+  it('skips the training_log insert when the cleanup delete fails (no insert on top of un-cleared rows)', async () => {
+    localStorage.setItem('sporeus_log', JSON.stringify(makeDays(3)))
+    mockChain.match.mockResolvedValueOnce({ error: { message: 'cleanup failed' } })
+    await expect(migrateToSupabase('user1', vi.fn())).rejects.toThrow('cleanup failed')
+    expect(mockChain.insert).not.toHaveBeenCalled()
   })
 
   it('sets sporeus-migrated=1 only after all tables succeed', async () => {
