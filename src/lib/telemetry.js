@@ -49,6 +49,7 @@ async function hashUserId(userId) {
 // ── Flush: POST buffered events to ingest-telemetry ──────────────────────────
 let _flushing       = false
 let _flushTimer     = null
+let _visibilityBound = false  // v9.362.0 — bind the visibilitychange listener once
 let _userId         = null  // set by initTelemetryFlush()
 let _userIdHash     = null
 let _appVersion     = null
@@ -124,12 +125,18 @@ export async function initTelemetryFlush({ userId, appVersion } = {}) {
   if (_flushTimer) clearInterval(_flushTimer)
   _flushTimer = setInterval(doFlush, FLUSH_INTERVAL)
 
-  // Flush on tab close / navigate away
-  if (typeof window !== 'undefined') {
-    window.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') doFlush()
-    }, { once: false })
+  // Flush on tab close / navigate away. Bind ONCE — initTelemetryFlush is
+  // called from an effect keyed on user id, so without this guard every
+  // login/logout/token-refresh stacked another listener (unbounded leak +
+  // N redundant flushes per tab-hide).
+  if (typeof window !== 'undefined' && !_visibilityBound) {
+    window.addEventListener('visibilitychange', _onVisibility)
+    _visibilityBound = true
   }
+}
+
+function _onVisibility() {
+  if (typeof document !== 'undefined' && document.visibilityState === 'hidden') doFlush()
 }
 
 /**
@@ -138,6 +145,10 @@ export async function initTelemetryFlush({ userId, appVersion } = {}) {
 export function stopTelemetryFlush() {
   if (_flushTimer) clearInterval(_flushTimer)
   _flushTimer = null
+  if (typeof window !== 'undefined' && _visibilityBound) {
+    window.removeEventListener('visibilitychange', _onVisibility)
+    _visibilityBound = false
+  }
 }
 
 // ─── trackEvent ──────────────────────────────────────────────────────────────

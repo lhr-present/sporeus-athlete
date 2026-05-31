@@ -30,6 +30,8 @@ export function useRealtimeSquadFeed({ coachId, athletes = [], enabled = true })
   const timerRef      = useRef(null)
   const pollTimerRef  = useRef(null)
   const pollActiveRef = useRef(false)
+  const pollTriggerRef = useRef(null)   // v9.362.0 — track the poll-fallback timer for cleanup
+  const statusRef     = useRef('disconnected')  // live status (avoids stale closure)
   const channelName   = coachId ? `squad-feed-${coachId}` : null
 
   // Stable string key for athlete list — avoids inline expression in dep array
@@ -124,6 +126,7 @@ export function useRealtimeSquadFeed({ coachId, athletes = [], enabled = true })
     }
 
     function updateStatus(status) {
+      statusRef.current = status
       setFeedStatus(status)
       reportStatus(channelName, status)
     }
@@ -161,9 +164,12 @@ export function useRealtimeSquadFeed({ coachId, athletes = [], enabled = true })
             updateStatus('reconnecting')
             const delay = computeBackoff(retryRef.current++)
             timerRef.current = setTimeout(connect, delay)
-            // Activate polling fallback if reconnecting for too long
-            setTimeout(() => {
-              if (active && feedStatus !== 'live') startPolling()
+            // Activate polling fallback if reconnecting for too long. Track the
+            // timer (so cleanup clears it) and read LIVE status via statusRef —
+            // the captured `feedStatus` here is stale (subscribe-time closure).
+            clearTimeout(pollTriggerRef.current)
+            pollTriggerRef.current = setTimeout(() => {
+              if (active && statusRef.current !== 'live') startPolling()
             }, POLL_TRIGGER_MS)
           } else if (status === 'CLOSED') {
             updateStatus('disconnected')
@@ -178,6 +184,7 @@ export function useRealtimeSquadFeed({ coachId, athletes = [], enabled = true })
     return () => {
       active = false
       clearTimeout(timerRef.current)
+      clearTimeout(pollTriggerRef.current)
       stopPolling()
       if (channelRef.current) supabase.removeChannel(channelRef.current)
       removeStatus(channelName)

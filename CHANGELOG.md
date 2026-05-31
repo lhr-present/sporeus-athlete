@@ -14,6 +14,31 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.362.0 — 2026-05-31 — Lifecycle/leak fixes (telemetry listener, unmount setState, realtime timer)
+
+  Deeper-audit lifecycle MED tranche.
+
+  - **telemetry `visibilitychange` listener stacked.** `initTelemetryFlush` is
+    called from an effect keyed on user id, and re-added a listener every
+    login/logout/token-refresh (unbounded leak + N redundant flushes per
+    tab-hide). Now bound ONCE via a module flag + named handler, removed in
+    `stopTelemetryFlush`.
+  - **setState-after-unmount + unhandled rejection** on coach loads: CoachMessage
+    history (slow PBKDF2/AES decrypt — unmounts while clicking through athletes)
+    and CoachDashboard member/athlete loads. All now use an `alive` guard +
+    `.catch(logger.warn)`.
+  - **useRealtimeSquadFeed** poll-fallback `setTimeout` (CHANNEL_ERROR branch)
+    was untracked (leaked on a flapping connection) and read a stale
+    `feedStatus` closure. Now tracked in a ref (cleared on cleanup) and reads
+    live status via `statusRef`.
+
+  Behavior-preserving (leak/correctness only). 15,466 tests green; build clean.
+
+  DEPENDS ON: telemetry init/stop, CoachMessage/CoachDashboard load effects,
+  useRealtimeSquadFeed.
+
+---
+
 ## v9.361.0 — 2026-05-31 — Offline deletes no longer lost (delete tombstones)
 
   Deeper-audit finding (PWA/state). `tryWrite(delete)` in useSyncedTable /

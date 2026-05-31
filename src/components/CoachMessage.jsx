@@ -9,6 +9,7 @@ export { buildChannelId } from '../lib/db/messages.js'
 import { logAction } from '../lib/db/auditLog.js'
 import { useMessageChannel } from '../hooks/useMessageChannel.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
+import { logger } from '../lib/logger.js'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -83,17 +84,23 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
   // ── Load history ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!coachId || !athleteId) return
+    // v9.362.0 — guard setState-after-unmount (decryptMessage is slow PBKDF2/AES;
+    // a coach clicking through athletes unmounts mid-decrypt) + catch the
+    // fetch/decrypt rejection so it isn't unhandled on a flaky network.
+    let alive = true
     getMessages(coachId, athleteId).then(async ({ data, error: e }) => {
       if (!e && data) {
         const decrypted = await Promise.all(
           data.map(async m => ({ ...m, body: await decryptMessage(m.body, coachId) || m.body }))
         )
+        if (!alive) return
         setMsgs(decrypted)
         markRead(decrypted)
         sendRead()  // broadcast + persist that coach has read the thread
         logAction('read', 'messages', athleteId, ['body'])
       }
-    })
+    }).catch(err => logger.warn('[CoachMessage] history load:', err?.message))
+    return () => { alive = false }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [coachId, athleteId])
 

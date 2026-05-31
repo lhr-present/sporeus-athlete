@@ -3,6 +3,7 @@ import { S } from '../styles.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
+import { logger } from '../lib/logger.js'
 import { FREE_ATHLETE_LIMIT } from '../lib/formulas.js'
 import { generateAthleteReportCard } from '../lib/digestEmail.js'
 import ErrorBoundary from './ErrorBoundary.jsx'
@@ -71,20 +72,28 @@ export default function CoachDashboard({ authUser }) {
 
   useEffect(() => {
     if (!sbCoachId || !isSupabaseReady()) return
+    // v9.362.0 — guard setState-after-unmount + catch rejections on these loads.
+    let alive = true
     supabase
       .from('coach_athletes')
       .select('athlete_id')
       .eq('coach_id', sbCoachId)
       .eq('status', 'active')
       .then(({ data }) => {
-        if (data) setSbAthleteIds(data.map(r => r.athlete_id))
+        if (alive && data) setSbAthleteIds(data.map(r => r.athlete_id))
       })
+      .catch(err => logger.warn('[CoachDashboard] coach_athletes:', err?.message))
+    return () => { alive = false }
   }, [sbCoachId])
 
   useEffect(() => {
     if (!sbCoachId) return
-    getGeneralMembers(sbCoachId).then(setGfMembers)
-    getEnduranceMembers(sbCoachId).then(setEnduranceAthletes)
+    let alive = true
+    getGeneralMembers(sbCoachId).then(m => { if (alive) setGfMembers(m) })
+      .catch(err => logger.warn('[CoachDashboard] general members:', err?.message))
+    getEnduranceMembers(sbCoachId).then(m => { if (alive) setEnduranceAthletes(m) })
+      .catch(err => logger.warn('[CoachDashboard] endurance members:', err?.message))
+    return () => { alive = false }
   }, [sbCoachId])
 
   // E9 — Coach Onboarding Wizard: show when no athletes and not already onboarded
