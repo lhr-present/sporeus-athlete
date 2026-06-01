@@ -110,31 +110,21 @@ serve(async (req) => {
     const limit = TIER_LIMITS[tier] ?? 0
     if (limit === 0) return err('AI features require a Coach or Club plan. Upgrade at sporeus.com.', 403)
 
-    // ── Daily usage check ─────────────────────────────────────────────────────
-    const today = new Date().toISOString().slice(0, 10)
-    const { count: dailyCount } = await supabase
-      .from('ai_insights')
-      .select('*', { count: 'exact', head: true })
-      .eq('athlete_id', user.id)
-      .eq('date', today)
-
-    if ((dailyCount ?? 0) >= limit) {
-      return err(`Daily AI limit reached (${limit} calls/${tier} plan). Resets at midnight.`, 429)
-    }
-
-    // ── Monthly cap ───────────────────────────────────────────────────────────
-    const monthStart = today.slice(0, 7) + '-01'
-    const { count: monthCount } = await supabase
-      .from('ai_insights')
-      .select('*', { count: 'exact', head: true })
-      .eq('athlete_id', user.id)
-      .gte('date', monthStart)
-
-    // Per-tier monthly cap: Coach = 300, Club = 1500 (flat 1500 allowed Sonnet abuse)
+    // ── Usage cap (atomic check-and-increment at the proxy chokepoint) ─────────
+    // v9.364.0 — count THIS proxy's calls in ai_proxy_usage, not ai_insights:
+    // the old ai_insights count missed the "Why"/coach-chat paths (they never
+    // insert a row) and was a non-atomic check-then-call (burst bypass). The
+    // RPC serializes per-athlete and records the call only when under both caps.
     const MONTHLY_CAPS: Record<string, number> = { free: 0, coach: 300, club: 1500 }
     const monthlyCap = MONTHLY_CAPS[tier] ?? 0
-    if ((monthCount ?? 0) >= monthlyCap) {
-      return err(`Monthly AI quota reached (${monthlyCap} calls/${tier} plan). Resets on the 1st.`, 429)
+    const { data: usage, error: usageErr } = await supabase.rpc('check_and_increment_ai_usage', {
+      p_athlete: user.id, p_daily_limit: limit, p_monthly_cap: monthlyCap,
+    })
+    if (usageErr) return err('Usage check failed', 500)
+    if (!usage?.allowed) {
+      return usage?.scope === 'monthly'
+        ? err(`Monthly AI quota reached (${monthlyCap} calls/${tier} plan). Resets on the 1st.`, 429)
+        : err(`Daily AI limit reached (${limit} calls/${tier} plan). Resets at midnight.`, 429)
     }
 
     // ── RAG: retrieve grounding context ───────────────────────────────────────

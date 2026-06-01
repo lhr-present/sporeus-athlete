@@ -14,6 +14,38 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.364.0 — 2026-06-02 — Edge-fn HIGH fixes ⚠️ NOT YET DEPLOYED (round-4)
+
+  ⚠️ CODE ONLY — CI does not deploy edge functions. After the H1 deploy
+  prerequisites, run: `supabase functions deploy generate-report ai-proxy
+  redeem-invite`. The ai_proxy_usage migration (below) is ALREADY APPLIED to prod.
+
+  - **generate-report — weekly report always showed CTL/ATL/TSB = 0.**
+    `fetchWeeklyData` selected `ctl, atl, tsb, tss` from `mv_ctl_atl_daily`, but
+    the matview only has `ctl_42d, atl_7d, daily_tss` (verified live) → the
+    select 400'd → all metrics defaulted to 0 on every paid-user weekly report.
+    Now selects `ctl_42d, atl_7d` (the reads already used those, as the monthly
+    path does).
+  - **ai-proxy — AI cost cap bypass.** ai-proxy is the sole Claude chokepoint,
+    but its quota counted `ai_insights` rows — which the "Why/explain" path and
+    coach-chat never insert → those Claude calls were UNCOUNTED; the count was
+    also a non-atomic check-then-call (burst bypass). New `ai_proxy_usage`
+    ledger + `check_and_increment_ai_usage` RPC (per-athlete advisory lock,
+    records only when under both caps) — APPLIED TO PROD (migration 20260602,
+    recorded; inert until ai-proxy is deployed). ai-proxy now calls the RPC.
+  - **redeem-invite — athlete-count limit had ZERO server enforcement.** The cap
+    lived only in client React/localStorage, so a coach's invite link could be
+    redeemed by unlimited athletes → the paid coach product was effectively free
+    server-side. Now counts active coach_athletes vs the coach's tier limit
+    (free 3 / coach 15 / club 999, the advertised values) and returns 403
+    ROSTER_FULL when full. (The free 1-vs-3 mismatch between subscription.js and
+    formulas.js is still open — reconcile separately.)
+
+  DEPENDS ON: generate-report, ai-proxy, redeem-invite (deploy needed);
+  ai_proxy_usage table + RPC (applied).
+
+---
+
 ## v9.363.0 — 2026-06-02 — File-import robustness (round-4 deep dive)
 
   Clear, safe client-side fixes from the round-4 deep dive over the file-import

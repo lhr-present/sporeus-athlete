@@ -67,7 +67,10 @@ async function fetchWeeklyData(sb: ReturnType<typeof createClient>, userId: stri
       .gte("date", weekStart).lte("date", weekEnd)
       .order("date", { ascending: true }),
     sb.from("mv_ctl_atl_daily")
-      .select("ctl, atl, tsb, tss, date")
+      // v9.364.0 — the matview columns are ctl_42d/atl_7d (no ctl/atl/tsb/tss);
+      // the old select 400'd → every weekly report showed fitness/fatigue/form
+      // = 0. The reads below already use ctl_42d/atl_7d (as the monthly path does).
+      .select("ctl_42d, atl_7d, date")
       .eq("user_id", userId)
       .lte("date", weekEnd)
       .order("date", { ascending: false })

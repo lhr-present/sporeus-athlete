@@ -93,14 +93,34 @@ serve(withTelemetry('redeem-invite', async (req: Request) => {
     if (existing)
       return fail(409, "You are already linked to this coach", "ALREADY_LINKED")
 
-    // ── 4. Fetch coach name ────────────────────────────────────────────────────
+    // ── 4. Fetch coach name + tier ─────────────────────────────────────────────
     const { data: coachProfile } = await admin
       .from("profiles")
-      .select("display_name, email")
+      .select("display_name, email, subscription_tier")
       .eq("id", invite.coach_id)
       .maybeSingle()
     const coachName  = coachProfile?.display_name || "Coach"
     const coachEmail = coachProfile?.email || ""
+
+    // ── 4b. Enforce the coach's athlete-count limit SERVER-SIDE (v9.364.0) ──────
+    // Previously the cap lived only in client React/localStorage, so an invite
+    // link could be redeemed by unlimited athletes → the paid coach product was
+    // effectively free. (Limits match the advertised UI values; the free 1-vs-3
+    // mismatch between subscription.js TIERS and formulas.js FREE_ATHLETE_LIMIT
+    // is a separate reconciliation — using the advertised 3 here so we never
+    // wrongly reject a free coach who was told "3 athletes".)
+    const ATHLETE_LIMITS: Record<string, number> = { free: 3, coach: 15, club: 999 }
+    const coachTier    = coachProfile?.subscription_tier || "free"
+    const athleteLimit = ATHLETE_LIMITS[coachTier] ?? 3
+    const { count: activeCount } = await admin
+      .from("coach_athletes")
+      .select("athlete_id", { count: "exact", head: true })
+      .eq("coach_id", invite.coach_id)
+      .eq("status", "active")
+      .neq("athlete_id", athleteId)   // don't count this athlete (idempotent re-redeem)
+    if ((activeCount ?? 0) >= athleteLimit) {
+      return fail(403, `This coach's roster is full (${athleteLimit} athletes on the ${coachTier} plan).`, "ROSTER_FULL")
+    }
 
     // ── 5. Link athlete → coach ────────────────────────────────────────────────
     const now = new Date().toISOString()
