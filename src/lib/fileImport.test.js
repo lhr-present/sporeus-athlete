@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseBulkCSV, deduplicateByDate } from './fileImport.js'
+import { parseBulkCSV, deduplicateByDate, parseConcept2CSV } from './fileImport.js'
 
 // ── parseBulkCSV ──────────────────────────────────────────────────────────────
 
@@ -130,5 +130,22 @@ describe('deduplicateByDate — keeps same-date different-type entries', () => {
     ]
     expect(deduplicateByDate([], incoming)).toHaveLength(2)
     expect(deduplicateByDate(null, incoming)).toHaveLength(2)
+  })
+})
+
+// v9.363.0 — Concept2 parser must skip (not NaN-leak) malformed time cells
+describe('parseConcept2CSV — malformed time', () => {
+  const header = 'Date,Description,Total Time,Total Distance,Avg Pace,Stroke Rate'
+  it('skips a row whose time is non-numeric (DNF) instead of logging NaN duration', () => {
+    const csv = [header,
+      '2026-04-01,2k test,7:30.0,2000,1:52.5,30',   // valid
+      '2026-04-02,bad row,DNF,2000,1:52.5,30',        // malformed time → skip
+    ].join('\n')
+    const out = parseConcept2CSV(csv)
+    expect(out).toHaveLength(1)
+    expect(out[0].date).toBe('2026-04-01')
+    expect(Number.isFinite(out[0].duration)).toBe(true)
+    // no row with NaN duration leaks through
+    expect(out.every(r => Number.isFinite(r.duration) && r.duration > 0)).toBe(true)
   })
 })

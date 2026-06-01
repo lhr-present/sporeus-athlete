@@ -52,7 +52,9 @@ export function parseFIT(arrayBuffer, profileMaxHR, profileFTP = null) {
         // Extract heart rate samples
         const hrSamples = records.filter(r => r.heart_rate > 0).map(r => r.heart_rate)
         const avgHR = hrSamples.length ? Math.round(hrSamples.reduce((s,v) => s+v, 0) / hrSamples.length) : null
-        const maxHR_rec = hrSamples.length ? Math.max(...hrSamples) : null
+        // reduce, not Math.max(...spread): a long activity (>~125k 1Hz samples)
+        // overflows the call stack on argument spread.
+        const maxHR_rec = hrSamples.length ? hrSamples.reduce((m,v) => v > m ? v : m, 0) : null
 
         const maxHR = profileMaxHR || maxHR_rec || 180
         const durationMin = session?.total_elapsed_time
@@ -173,7 +175,7 @@ export function parseGPX(xmlString, profileMaxHR) {
     : null
 
   const avgHR = hrSamples.length ? Math.round(hrSamples.reduce((s,v)=>s+v,0)/hrSamples.length) : null
-  const maxHR = hrSamples.length ? Math.max(...hrSamples) : null
+  const maxHR = hrSamples.length ? hrSamples.reduce((m,v)=>v>m?v:m,0) : null   // reduce, not spread (stack overflow on long files)
   const tssEstimate = estimateTSS(durationMin, avgHR, profileMaxHR || maxHR || 180, null)
 
   const date = times[0] ? times[0].toISOString().slice(0,10) : new Date().toISOString().slice(0,10)
@@ -332,14 +334,13 @@ export function parseConcept2CSV(text) {
     if (!str) return 0
     const s = String(str).trim().replace(/['"]/g, '')
     // HH:MM:SS.t  or  MM:SS.t  or  SS.t  or  bare seconds
-    const parts = s.split(':')
-    if (parts.length === 3) {
-      return parseFloat(parts[0]) * 3600 + parseFloat(parts[1]) * 60 + parseFloat(parts[2])
-    }
-    if (parts.length === 2) {
-      return parseFloat(parts[0]) * 60 + parseFloat(parts[1])
-    }
-    return parseFloat(s) || 0
+    const parts = s.split(':').map(p => parseFloat(p))
+    // Any non-numeric component (e.g. "DNF", "--") → 0, so the row is skipped
+    // by the durationSec guard instead of leaking NaN into the log.
+    if (parts.some(p => !Number.isFinite(p))) return 0
+    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2]
+    if (parts.length === 2) return parts[0] * 60 + parts[1]
+    return parts[0] || 0
   }
 
   const parseDate = (str) => {
@@ -367,7 +368,7 @@ export function parseConcept2CSV(text) {
 
     const durationSec = parseTime(get(totalTimeIdx))
     const distance = parseFloat(get(totalDistIdx)) || 0
-    if (durationSec <= 0 || distance <= 0) {
+    if (!(durationSec > 0) || !(distance > 0)) {   // !(x>0) also rejects NaN
       logger.warn(`[parseConcept2CSV] Row ${i + 1}: missing time/distance — skipped`)
       continue
     }

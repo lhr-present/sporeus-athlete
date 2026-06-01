@@ -409,7 +409,9 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
 
   const confirmCSVImport = () => {
     if (!csvPreview) return
-    setLog(prev => [...prev, ...csvPreview.entries])
+    // v9.363.0 — sanitize like the FIT/external paths do (this bulk path was the
+    // only import that skipped it → uncapped notes/type, unclamped tss/duration).
+    setLog(prev => [...prev, ...csvPreview.entries.map(sanitizeLogEntry)])
     setCsvPreview(null)
   }
 
@@ -493,7 +495,9 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     const powerTSS = (np && ftp) ? computePowerTSS(np, durationSec, ftp) : null
     const tss = powerTSS ?? importPreview.tssEstimate ?? calcTSS(importPreview.durationMin, importPreview.rpe || 5)
     const tssMethod = powerTSS ? 'power-based' : importPreview.tssEstimate ? 'HR-based' : 'RPE-based'
-    const npStr = np ? ` · NP: ${np}W · IF: ${(np/ftp).toFixed(2)} · TSS: ${tss} (${tssMethod})` : ` · TSS: ${tss} (${tssMethod})`
+    // Only show IF when FTP is set — otherwise np/ftp = Infinity wrote "IF: Infinity" into notes.
+    const ifStr = (np && ftp) ? ` · IF: ${(np/ftp).toFixed(2)}` : ''
+    const npStr = np ? ` · NP: ${np}W${ifStr} · TSS: ${tss} (${tssMethod})` : ` · TSS: ${tss} (${tssMethod})`
     // v9.174.0 — W' exhaustion check now falls back to CP/W' estimated
     // from FTP when the athlete hasn't run a full CP test. method tells
     // downstream consumers the precision level: 'measured' | 'estimated'.

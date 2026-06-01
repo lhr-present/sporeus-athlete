@@ -14,6 +14,36 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.363.0 — 2026-06-02 — File-import robustness (round-4 deep dive)
+
+  Clear, safe client-side fixes from the round-4 deep dive over the file-import
+  path. (The FIT/GPX timezone flag was DEFERRED — the app is UTC-everywhere by
+  deliberate design (268 sites, no stored tz); changing only the parser to local
+  would create a UTC/local mismatch. The T-pace-table-vs-running.js divergence
+  and the taper-depth findings are sport-science judgment calls left for the
+  founder — see deep-audit memory.)
+
+  - **Crash on long activities.** `Math.max(...hrSamples)` in the FIT + GPX
+    parsers overflowed the call stack on a >~125k-sample file (a long/ultra
+    activity or an adversarial file). Switched to a reduce.
+  - **Concept2 NaN time.** `parseTime` returned NaN on a non-numeric cell
+    (`DNF`, `--`); the `durationSec <= 0` guard let NaN through (`NaN <= 0` is
+    false) → a NaN-duration row in the log. Now parseTime returns 0 on any
+    non-finite component and the guard uses `!(x > 0)` (rejects NaN). +1 test.
+  - **CSV bulk import skipped sanitization.** `confirmCSVImport` pushed parsed
+    rows straight to the log — the only import path that bypassed
+    `sanitizeLogEntry` (uncapped notes/type, unclamped tss/duration). Now mapped
+    through it like the FIT/external paths.
+  - **`IF: Infinity` in notes.** A powered FIT imported with FTP unset wrote
+    `IF: Infinity` (np/0) into the session notes. IF segment now gated on FTP.
+
+  15,467 tests green; build clean.
+
+  DEPENDS ON: fileImport.parseFIT/parseGPX/parseConcept2CSV, TrainingLog import
+  handlers, validate.sanitizeLogEntry.
+
+---
+
 ## v9.362.0 — 2026-05-31 — Lifecycle/leak fixes (telemetry listener, unmount setState, realtime timer)
 
   Deeper-audit lifecycle MED tranche.
