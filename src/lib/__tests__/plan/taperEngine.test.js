@@ -102,12 +102,14 @@ describe('applyTaper — output shape', () => {
 
 // ── Mujika & Padilla compliance ──────────────────────────────────────────────
 describe('applyTaper — Mujika & Padilla compliance', () => {
-  it('CTL drop is between 5% and 10% across realistic CTL range', () => {
+  it('CTL drop is between 5% and 12% across realistic CTL range', () => {
+    // v9.365.0 — upper bound 10→12%: monotonic longer-is-fresher tapers erode
+    // a bit more fitness (matches the engine's widened "optimal" ceiling).
     for (const ctl of [30, 40, 50, 60, 70]) {
       for (const tw of [2, 3]) {
         const t = applyTaper(plan({ currentCTL: ctl }), '2026-08-01', tw)
         expect(t.ctlDropPct).toBeGreaterThanOrEqual(5)
-        expect(t.ctlDropPct).toBeLessThanOrEqual(10)
+        expect(t.ctlDropPct).toBeLessThanOrEqual(12)
       }
     }
   })
@@ -140,6 +142,17 @@ describe('applyTaper — Mujika & Padilla compliance', () => {
         const t = applyTaper(plan({ currentCTL: ctl }), '2026-08-01', tw)
         expect(t.recommendation).toBe('optimal')
       }
+    }
+  })
+
+  // v9.365.0 — a LONGER taper must leave the athlete at least as fresh (was
+  // inverted: 3-week left LOWER race-day TSB than 2-week before the monotonic
+  // profile fix).
+  it('a 3-week taper is at least as fresh as a 2-week taper (no inversion)', () => {
+    for (const ctl of [40, 50, 60]) {
+      const t2 = applyTaper(plan({ currentCTL: ctl }), '2026-08-01', 2)
+      const t3 = applyTaper(plan({ currentCTL: ctl }), '2026-08-01', 3)
+      expect(t3.raceDayTSB).toBeGreaterThanOrEqual(t2.raceDayTSB)
     }
   })
 

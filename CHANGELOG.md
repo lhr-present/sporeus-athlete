@@ -14,6 +14,38 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.365.0 — 2026-06-02 — Sport-science corrections (founder decisions)
+
+  Three round-4 sport-science findings, resolved per the founder's calls (their
+  domain — I surfaced the options, they decided).
+
+  - **Taper volume cut → ~50% flat.** `taperAdvisor` reused planAdjust's
+    INJURY-severity table (recreational 20% → elite 40%) for taper — too shallow
+    (Mujika 2003 / Bosquet 2007: optimal is 41–60%, level-independent) and
+    conceptually wrong. Now a flat `TAPER_VOLUME_CUT_PCT = 50`, intensity held;
+    the injury table (planAdjust) is untouched.
+  - **Taper profiles → monotonic-decreasing, longer-is-fresher.** `taperEngine`
+    profiles both started week 1 at 1.00× → a 3-week taper left the athlete LESS
+    fresh than a 2-week (inverted). Now 2wk [0.95,0.78], 3wk [0.99,0.93,0.66] —
+    monotonic, with the 3-week's deeper race week genuinely dropping ATL more
+    (fresher). The engine's "optimal" CTL-drop ceiling widened 10→12% to match
+    (a fresher longer taper necessarily erodes a touch more fitness). +1 test
+    locks "3-week ≥ 2-week freshness" (no inversion). (Multipliers are tunable.)
+  - **Threshold pace → vo2maxToPace TABLE is canonical.** It and
+    `running.js trainingPaces().T` diverged up to 21 s/km; per the founder the
+    table is the Daniels reference, so trainingPaces().T now defers to
+    `vdotToThresholdSec` (computed value kept only as out-of-range fallback).
+
+  (T-pace is clamped strictly between I and M so the E>M>T>I ordering invariant
+  holds where the Daniels-lookup and predictRaceTime models cross at VDOT
+  extremes — caught by a property test.)
+  15,468 tests green; build clean.
+
+  DEPENDS ON: taperAdvisor (TAPER_VOLUME_CUT_PCT), taperEngine TAPER_PROFILES +
+  recommendation band, running.js trainingPaces ← vo2maxToPace table.
+
+---
+
 ## v9.364.0 — 2026-06-02 — Edge-fn HIGH fixes ⚠️ NOT YET DEPLOYED (round-4)
 
   ⚠️ CODE ONLY — CI does not deploy edge functions. After the H1 deploy

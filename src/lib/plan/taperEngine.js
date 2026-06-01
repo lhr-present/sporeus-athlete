@@ -22,9 +22,14 @@ const K_CTL = 2 / (42 + 1)   // ≈ 0.0465
 // Index 0 is the week furthest from race; last index is race week. Calibrated
 // against the EWMA model (K_CTL=2/43, K_ATL=2/8) so that ATL drops fast while
 // CTL is preserved (Mujika & Padilla 2003 reverse-linear taper).
+// v9.365.0 (founder decision) — monotonic-decreasing from the FIRST taper week.
+// Pre-fix both profiles started at 1.00× (week 1 wasn't a taper), so a 3-week
+// taper left the athlete LESS fresh than a 2-week one (verified inverted). Now a
+// longer taper genuinely sheds more cumulative load. Index 0 = furthest from
+// race; last = race week. (Tune these multipliers freely — shape is what matters.)
 const TAPER_PROFILES = {
-  2: [1.00, 0.75],
-  3: [1.00, 0.92, 0.78],
+  2: [0.95, 0.78],
+  3: [0.99, 0.93, 0.66],
 }
 
 // ── helper: clone a plan deeply enough to mutate week sessions safely ────────
@@ -144,7 +149,11 @@ export function applyTaper(plan, raceDate, taperWeeks) {
     : 0
 
   let recommendation
-  if (raceState.tsb >= 5 && raceState.tsb <= 15 && ctlDropPct <= 10 && ctlDropPct >= 3) {
+  // v9.365.0 — "optimal" CTL-drop ceiling raised 10→12%: the founder's
+  // monotonic, longer-is-fresher taper profiles necessarily erode a bit more
+  // fitness (a genuinely-fresher 3-week taper lands ~11%). The old 10% cap was
+  // calibrated for the shallower (inverted) profiles.
+  if (raceState.tsb >= 5 && raceState.tsb <= 15 && ctlDropPct <= 12 && ctlDropPct >= 3) {
     recommendation = 'optimal'
   } else if (raceState.tsb < 5 || ctlDropPct < 3) {
     recommendation = 'under_tapered'
@@ -181,10 +190,11 @@ export function suggestTaper(plan, raceDate) {
     .map(w => applyTaper(plan, raceDate, w))
     .filter(Boolean)
   if (!opts.length) return null
-  // Score by distance from TSB=10, penalize CTL drop > 10%
+  // Score by distance from TSB=10, penalize CTL drop > 12% (see recommendation
+  // threshold note — raised with the v9.365.0 deeper taper profiles).
   const scored = opts.map(o => {
     const tsbDist = Math.abs(o.raceDayTSB - 10)
-    const dropPenalty = o.ctlDropPct > 10 ? (o.ctlDropPct - 10) * 2 : 0
+    const dropPenalty = o.ctlDropPct > 12 ? (o.ctlDropPct - 12) * 2 : 0
     return { o, score: tsbDist + dropPenalty }
   })
   scored.sort((a, b) => a.score - b.score)

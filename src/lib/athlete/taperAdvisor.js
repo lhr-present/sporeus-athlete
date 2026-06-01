@@ -3,7 +3,15 @@
 // Uses volumeCutPct + applyVolumeReduction from planAdjust.js.
 // References: Mujika & Padilla 2003, Bosquet 2007.
 
-import { volumeCutPct, applyVolumeReduction, VOLUME_CUT_BY_LEVEL } from '../planAdjust.js'
+import { applyVolumeReduction, VOLUME_CUT_BY_LEVEL } from '../planAdjust.js'
+
+// v9.365.0 (founder decision) — taper volume cut is ~50% FLAT (the Mujika 2003 /
+// Bosquet 2007 performance-optimal 41–60% band), held independent of athlete
+// level. Previously this reused planAdjust's INJURY-severity table (recreational
+// 20% → elite 40%) — too shallow to shed accumulated fatigue, and conceptually
+// wrong (taper depth isn't a function of training level). Intensity stays high;
+// only volume drops.
+const TAPER_VOLUME_CUT_PCT = 50
 
 /**
  * Returns days until a 'YYYY-MM-DD' date from today.
@@ -18,21 +26,6 @@ export function daysUntil(dateStr, today = new Date().toISOString().slice(0, 10)
   const base   = new Date(today   + 'T00:00:00Z')
   const diff   = Math.round((target - base) / (1000 * 60 * 60 * 24))
   return diff
-}
-
-/**
- * Map an athlete level string to a numeric injury severity proxy (1–5)
- * for use with volumeCutPct. For taper use:
- *   elite         → level 4 (40% cut — aggressive taper)
- *   trained       → level 3 (30% cut — standard taper)
- *   recreational  → level 2 (20% cut — conservative taper)
- *   (default)     → level 2 (20% cut)
- */
-function levelToIndex(level = '') {
-  const l = String(level).toLowerCase()
-  if (l === 'elite')        return 4
-  if (l === 'trained' || l === 'competitive' || l === 'advanced') return 3
-  return 2
 }
 
 /**
@@ -62,8 +55,7 @@ export function computeTaperAdvice(plan, profile = {}, today = new Date().toISOS
   if (daysUntilRace > 90) return null    // too far out
 
   const level    = profile?.level || profile?.athleteLevel || 'recreational'
-  const lvlIndex = levelToIndex(level)
-  const cutPct   = volumeCutPct(lvlIndex)
+  const cutPct   = TAPER_VOLUME_CUT_PCT   // ~50% flat (see top); level kept for display only
 
   // Taper start = 14 days before race
   const taperStartDate = (() => {

@@ -3,6 +3,10 @@
 // critical velocity, and race readiness scoring.
 
 import { DANIELS } from './constants.js'
+// v9.365.0 (founder decision) — the vo2maxToPace lookup TABLE is the canonical
+// Daniels threshold-pace reference; trainingPaces().T defers to it so the two
+// no longer diverge (was up to 21 s/km apart). Standalone table → no import cycle.
+import { vdotToThresholdSec } from '../athlete/vo2maxToPace.js'
 
 // ── Jack Daniels VDOT model ───────────────────────────────────────────────────
 // pctVO2: fraction of VO2max sustainable at a given duration (t in minutes)
@@ -93,10 +97,15 @@ export function trainingPaces(vdot) {
   // I (Interval): ~5K to 3K race pace (~VO2max intensity)
   // R (Repetition): faster than 5K pace
   const mPaceSecKm  = marathon / 42.195
-  const tPaceSecKm  = (half / 21.097 + t10k / 10) / 2 * 0.95  // weighted T pace
   const iPaceSecKm  = t5k / 5 * 0.98
   const rPaceSecKm  = t5k / 5 * 0.93
   const ePaceSecKm  = mPaceSecKm * 1.18  // easy = ~18% slower than marathon
+  // T defers to the canonical vo2maxToPace table (fallback: computed weighted
+  // value when vdot is outside the table's [30,85] range). Clamp strictly
+  // between I and M so the E>M>T>I ordering invariant holds even where the
+  // Daniels-lookup and predictRaceTime models cross at the VDOT extremes.
+  const tTable      = vdotToThresholdSec(vdot) ?? ((half / 21.097 + t10k / 10) / 2 * 0.95)
+  const tPaceSecKm  = Math.min(mPaceSecKm - 1, Math.max(iPaceSecKm + 1, tTable))
 
   return {
     E: Math.round(ePaceSecKm),   // Easy (sec/km)
