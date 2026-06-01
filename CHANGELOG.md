@@ -14,6 +14,26 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.366.0 — 2026-06-02 — Two HIGH edge-fn wrong-column bugs ⚠️ NOT YET DEPLOYED (round-5)
+
+  ⚠️ CODE ONLY — deploy with the H1 bundle:
+  `supabase functions deploy public-api alert-monitor`. Same wrong-column class
+  as v9.364's generate-report fix.
+
+  - **public-api `/api/v1/squad` 500'd on every call** — selected
+    display_name/acwr_ratio/wellness_avg/acwr_status directly from
+    `coach_athletes`, but those are produced by `get_squad_overview()` (not
+    columns on that table). The entire Club-tier public REST endpoint was
+    broken. Now calls the RPC (as squad-sync does).
+  - **alert-monitor push-failure alert could never fire** — filtered
+    `notification_log` on `created_at`, but the column is `sent_at`; the 400
+    made `pushFailCount` always null, so the "push delivery failure spike"
+    alarm never triggered. Fixed the column.
+
+  DEPENDS ON: public-api, alert-monitor (deploy needed); get_squad_overview RPC.
+
+---
+
 ## v9.365.0 — 2026-06-02 — Sport-science corrections (founder decisions)
 
   Three round-4 sport-science findings, resolved per the founder's calls (their

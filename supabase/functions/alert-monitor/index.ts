@@ -129,7 +129,9 @@ serve(withTelemetry('alert-monitor', async (req: Request) => {
     .from('notification_log')
     .select('*', { count: 'exact', head: true })
     .eq('delivery_status', 'failed')
-    .gte('created_at', new Date(Date.now() - 10 * 60_000).toISOString())
+    // v9.366.0 — column is sent_at, not created_at; the wrong filter 400'd so
+    // the push-failure-spike alert could never fire.
+    .gte('sent_at', new Date(Date.now() - 10 * 60_000).toISOString())
 
   if ((pushFailCount ?? 0) > 20) {
     await fire(supa, 'push_failure_spike', 'warning',

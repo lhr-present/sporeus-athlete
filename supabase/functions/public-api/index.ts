@@ -95,10 +95,11 @@ async function validateApiKey(db: ReturnType<typeof createClient>, rawHeader: st
 // ── Endpoint handlers ─────────────────────────────────────────────────────────
 
 async function handleSquad(db: ReturnType<typeof createClient>, orgId: string) {
-  const { data, error } = await db
-    .from("coach_athletes")
-    .select("athlete_id, display_name, acwr_ratio, wellness_avg, acwr_status")
-    .eq("coach_id", orgId)
+  // v9.366.0 — display_name/acwr_ratio/wellness_avg/acwr_status are NOT columns
+  // on coach_athletes; they're produced by get_squad_overview() (as squad-sync
+  // uses). The old direct select 400'd → the public /squad endpoint 500'd on
+  // every call. Use the RPC instead.
+  const { data, error } = await db.rpc("get_squad_overview", { p_coach_id: orgId })
 
   if (error) return err(500, error.message)
 
