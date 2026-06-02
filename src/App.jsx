@@ -197,11 +197,18 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
     <LangCtx.Provider value={{ t, lang, setLang }}>
       <style>{ANIM_CSS}</style>
 
-      <StatusBanner />
-      <OfflineBanner lang={lang} />
-      <ConnectionBanner lang={lang} />
-      <PastDueBanner profile={authProfile} lang={lang} onUpgrade={() => openUpgrade(null)} />
-      {onboarded && <SetupBanner profile={profile} lang={lang} onPickSport={reopenWizard} />}
+      {/* v9.370.0 — single fixed stack for all top banners. Each banner used to
+          be position:fixed top:0 with its own z-index, so when more than one was
+          active (e.g. offline + realtime-degraded) they painted on top of each
+          other. They're now position:relative and stack vertically in this flex
+          column. Empty/zero-height when no banner is active (the common case). */}
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 10005, display: 'flex', flexDirection: 'column' }}>
+        <StatusBanner />
+        <OfflineBanner lang={lang} />
+        <ConnectionBanner lang={lang} />
+        <PastDueBanner profile={authProfile} lang={lang} onUpgrade={() => openUpgrade(null)} />
+        {onboarded && <SetupBanner profile={profile} lang={lang} onPickSport={reopenWizard} />}
+      </div>
       <InstallPrompt />
       <ToastStack toasts={toasts} dismissToast={dismissToast} />
 

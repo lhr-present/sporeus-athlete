@@ -28,7 +28,7 @@ export default function ConnectionBanner({ lang = 'en' }) {
 
   return (
     <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0,
+      position: 'relative',  // v9.370.0 — App banner stack positions it (was fixed top:0)
       zIndex: 9990,
       background: '#1a1000',
       borderBottom: '1px solid #f5c54255',

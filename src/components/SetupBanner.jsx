@@ -33,8 +33,7 @@ export default function SetupBanner({ profile, lang = 'en', onPickSport }) {
         fontFamily: MONO,
         fontSize: '12px',
         color: '#333',
-        position: 'sticky',
-        top: 0,
+        position: 'relative',  // v9.370.0 — App banner stack positions it (was sticky top:0)
         zIndex: 10003,
       }}
     >

@@ -80,10 +80,9 @@ export default function StatusBanner() {
       data-testid="status-banner"
       data-status={worstStatus}
       style={{
-        position:   'fixed',
-        top:        0,
-        left:       0,
-        right:      0,
+        // v9.370.0 — relative inside the App-level banner stack (was fixed
+        // top:0 → overlapped the other top banners). The wrapper positions it.
+        position:   'relative',
         zIndex:     10004,
         fontFamily: MONO,
         fontSize:   '10px',

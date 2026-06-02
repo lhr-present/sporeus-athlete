@@ -2,6 +2,20 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.370.0 — 2026-06-03 — Top banners stack instead of piling up
+
+DEPENDS ON: `App.jsx` banner render block; `StatusBanner`/`OfflineBanner`/`ConnectionBanner`/`PastDueBanner`/`SetupBanner`.
+
+- **Mobile/responsive fix** — the five top banners each set their own
+  `position:fixed; top:0` with differing z-indexes, so when more than one was
+  active at once (e.g. offline + realtime-degraded, or past-due + setup) they
+  painted on top of each other and the lower ones were unreadable. They're now
+  `position:relative` and live inside a single App-level `position:fixed`
+  flex-column wrapper, so they stack vertically in a deterministic order. The
+  wrapper is empty / zero-height when no banner is active (the common case), so
+  there's no layout change to the normal app. 39 banner tests + full suite
+  (15,468) green. Single-batch, CI-deployable (frontend only).
+
 ## v9.369.0 — 2026-06-03 — CoachMessage rises above mobile keyboard
 
 DEPENDS ON: `CoachMessage.jsx` panel (position:fixed bottom:0); `window.visualViewport`.

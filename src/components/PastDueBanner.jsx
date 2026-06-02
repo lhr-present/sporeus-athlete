@@ -101,8 +101,8 @@ export default function PastDueBanner({ profile, lang = 'tr', onUpgrade }) {
       role="alert"
       aria-live="polite"
       style={{
-        position: 'fixed', top: 0, left: 0, right: 0,
-        zIndex: 10004,   // above status/offline banners (10001–10003), below consent (10010)
+        position: 'relative',  // v9.370.0 — App banner stack positions it (was fixed top:0)
+        zIndex: 10004,   // below consent (10010)
         background: config.bg,
         borderBottom: `2px solid ${config.border}`,
         color: config.color,

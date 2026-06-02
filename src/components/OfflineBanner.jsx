@@ -30,7 +30,7 @@ export default function OfflineBanner({ lang = 'en' } = {}) {
 
   return (
     <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, zIndex: 10005,
+      position: 'relative', zIndex: 10005,  // v9.370.0 — App banner stack positions it (was fixed top:0)
       background: '#7a5c00', borderBottom: '1px solid #e0a030',
       color: '#f5c542', fontFamily: MONO, fontSize: '10px',
       padding: '6px 20px', textAlign: 'center', letterSpacing: '0.1em',
