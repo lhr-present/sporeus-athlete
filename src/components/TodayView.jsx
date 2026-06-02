@@ -33,6 +33,7 @@ import { buildDailyRecommendation } from '../lib/athlete/dailyRecommendation.js'
 import { computePlanDrift, detectStalePlan } from '../lib/athlete/planAdaptation.js'
 import { detectGoalActivityMismatch } from '../lib/athlete/goalActivityMismatch.js'
 import { computeTrainingStreak, getStreakMilestone } from '../lib/athlete/trainingStreak.js'
+import { announce } from '../lib/a11y/announcer.js'
 import { detectComebackGap } from '../lib/athlete/comebackDetector.js'
 import { isCycleSurfaceVisible, buildCyclePhaseGate } from '../lib/athlete/cyclePhaseGate.js'
 import { daysUntilPhase } from '../lib/cycleUtils.js'
@@ -611,6 +612,9 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
     setRecovery(prev => [...(prev || []).filter(e => e.date !== today), entry].slice(-90))
     setQuickReadinessSaved(true)
     setQuickReadinessLogged(true)
+    // v9.368.0 — announce the core daily action to screen readers (was a
+    // silent visual-only "Logged ✓"; the recommendation also recomputes).
+    announce(lang === 'tr' ? 'Hazırlık kaydedildi' : 'Readiness logged', 'polite')
     setTimeout(() => setQuickReadinessLogged(false), 2000)
     // v9.142.0 — Quick readiness satisfies the log_wellness orientation
     // step (the step only requires *any* wellness entry within 3 days).

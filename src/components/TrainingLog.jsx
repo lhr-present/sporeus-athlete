@@ -602,7 +602,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
         </div>
         <div style={{ marginTop:'10px' }}>
           <label style={{ display:'flex', alignItems:'center', gap:'8px', cursor:'pointer', ...S.mono, fontSize:'11px', color:'#888' }}>
-            <input type="checkbox" checked={showZones} onChange={e=>setShowZones(e.target.checked)} style={{ accentColor:'#ff6600' }}/>
+            <input type="checkbox" checked={showZones} onChange={e=>setShowZones(e.target.checked)} style={{ accentColor:'#ff6600', width:'18px', height:'18px' }}/>
             {t('addZoneBreakdown')}
           </label>
           {showZones && (
@@ -824,7 +824,8 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                                 return next
                               })
                             }}
-                            style={{ accentColor:'#ff6600', cursor:'pointer' }}
+                            style={{ accentColor:'#ff6600', cursor:'pointer', width:'20px', height:'20px' }}
+                            aria-label={lang === 'tr' ? 'Seç' : 'Select session'}
                           />
                         </td>
                       )}

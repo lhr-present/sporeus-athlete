@@ -37,7 +37,7 @@ export const ANIM_CSS = `
   @media (max-width: 640px) {
     .sp-content { padding: 12px !important; }
     .sp-nav-btn { padding: 10px 10px !important; font-size: 9px !important; }
-    .sp-header { padding: 8px 12px !important; padding-top: max(8px, var(--safe-top)) !important; }
+    .sp-header { padding: 8px 12px !important; padding-top: max(8px, var(--safe-top)) !important; flex-wrap: wrap !important; row-gap: 6px !important; }  /* v9.368.0 — wrap the ~9 controls instead of clipping on 320–375px */
     /* Show mobile bottom bar and FAB */
     .sp-mobile-bottom-bar { display: block !important; }
     .sp-mobile-fab { display: flex !important; }

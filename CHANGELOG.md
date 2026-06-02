@@ -14,6 +14,33 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.368.0 — 2026-06-02 — a11y + mobile batch 2 (round-5 remainder)
+
+  Next slice of the recorded round-5 list (CI-deployable, no operator dep).
+
+  - **Daily readiness tap now announces to screen readers.** The highest-traffic
+    daily action (the readiness tap that drives the daily answer) showed a
+    visual-only "Logged ✓"; SR users got nothing. Now `announce()`s it.
+  - **Header no longer clips on small phones.** `.sp-header` gets `flex-wrap`
+    (≤640px) so the ~9 controls wrap instead of overflowing/clipping at 320–375px.
+  - **Checkbox touch targets.** Bulk-select (now 20px + aria-label) and
+    show-zones (18px) checkboxes were sub-44px native boxes — bumped for
+    one-handed mobile use.
+  - **De-flaked charts.a11y.** `getChartSvg` queried recharts' svg synchronously
+    right after render; recharts mounts the svg async (ResizeObserver/rAF), so it
+    intermittently failed under parallel CPU load (3 full runs running). Now an
+    async `waitFor` poll — fixes the recurring red.
+
+  Still deferred (need viewport/multi-component plumbing — recorded): banner
+  stacking pileup, CoachMessage input-behind-keyboard, full daily-answer
+  aria-live. 15,468 tests green (full suite now stable — the chart flake is gone);
+  build clean.
+
+  DEPENDS ON: TodayView readiness handler, styles.js .sp-header, TrainingLog
+  checkboxes.
+
+---
+
 ## v9.367.0 — 2026-06-02 — a11y + mobile batch (round-5 client HIGHs)
 
   CI-deployable client fixes from the round-5 sweep (no operator dependency).

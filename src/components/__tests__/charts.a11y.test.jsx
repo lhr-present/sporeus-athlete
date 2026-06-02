@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi, beforeAll } from 'vitest'
 import { Children, cloneElement, isValidElement } from 'react'
-import { render } from '@testing-library/react'
+import { render, waitFor } from '@testing-library/react'
 import { LangCtx, LABELS } from '../../contexts/LangCtx.jsx'
 
 // Provide a no-op ResizeObserver — recharts internally references it.
@@ -82,8 +82,15 @@ function buildRecovery(days = 30, hrvBase = 65) {
 
 // Find the main chart svg (the one with role="img" — legend uses Surface too but
 // without role="img", so this filters reliably).
+// v9.368.0 — async + waitFor: recharts renders its <svg> asynchronously
+// (ResizeObserver/rAF), so a synchronous query was flaky under parallel CPU
+// load (svg not yet in the DOM → null). Poll until it appears.
 function getChartSvg(container) {
-  return container.querySelector('svg.recharts-surface[role="img"]')
+  return waitFor(() => {
+    const svg = container.querySelector('svg.recharts-surface[role="img"]')
+    if (!svg) throw new Error('chart svg not yet rendered')
+    return svg
+  })
 }
 
 // Lazy import after mocks are in place
@@ -94,7 +101,7 @@ describe('chart a11y attributes', () => {
     const CTLChart = await importChart('CTLChart')
     const log = buildLog(90)
     const { container } = renderWithLang(<CTLChart log={log} days={90} />)
-    const svg = getChartSvg(container)
+    const svg = await getChartSvg(container)
     expect(svg).not.toBeNull()
     expect(svg.getAttribute('role')).toBe('img')
     expect(svg.getAttribute('aria-label')).toMatch(/CTL|TSB|performance/i)
@@ -104,7 +111,7 @@ describe('chart a11y attributes', () => {
     const CTLChart = await importChart('CTLChart')
     const log = buildLog(90)
     const { container } = renderWithLang(<CTLChart log={log} days={90} />)
-    const svg = getChartSvg(container)
+    const svg = await getChartSvg(container)
     const title = svg.querySelector('title')
     const desc = svg.querySelector('desc')
     expect(title).not.toBeNull()
@@ -118,7 +125,7 @@ describe('chart a11y attributes', () => {
     const CTLChart = await importChart('CTLChart')
     const log = buildLog(90)
     const { container } = renderWithLang(<CTLChart log={log} days={90} />, 'tr')
-    const svg = getChartSvg(container)
+    const svg = await getChartSvg(container)
     expect(svg.getAttribute('aria-label')).toMatch(/performans|grafiği/i)
     const desc = svg.querySelector('desc')
     expect(desc.textContent).toMatch(/Güncel CTL|son \d+ günde/i)
@@ -128,7 +135,7 @@ describe('chart a11y attributes', () => {
     const HRVChart = await importChart('HRVChart')
     const recovery = buildRecovery(30)
     const { container } = renderWithLang(<HRVChart recovery={recovery} days={30} />)
-    const svg = getChartSvg(container)
+    const svg = await getChartSvg(container)
     expect(svg).not.toBeNull()
     expect(svg.getAttribute('role')).toBe('img')
     expect(svg.getAttribute('aria-label')).toMatch(/HRV/i)
@@ -142,7 +149,7 @@ describe('chart a11y attributes', () => {
     const HRVChart = await importChart('HRVChart')
     const recovery = buildRecovery(30)
     const { container } = renderWithLang(<HRVChart recovery={recovery} days={30} />, 'tr')
-    const svg = getChartSvg(container)
+    const svg = await getChartSvg(container)
     expect(svg.getAttribute('aria-label')).toMatch(/eğilim|HRV/i)
     expect(svg.querySelector('desc').textContent).toMatch(/Son ölçüm|arasında/i)
   })
@@ -151,7 +158,7 @@ describe('chart a11y attributes', () => {
     const LoadChart = await importChart('LoadChart')
     const log = buildLog(70)
     const { container } = renderWithLang(<LoadChart log={log} weeks={10} />)
-    const svg = getChartSvg(container)
+    const svg = await getChartSvg(container)
     expect(svg).not.toBeNull()
     expect(svg.getAttribute('role')).toBe('img')
     expect(svg.getAttribute('aria-label')).toMatch(/TSS|load/i)
@@ -165,7 +172,7 @@ describe('chart a11y attributes', () => {
     const LoadChart = await importChart('LoadChart')
     const log = buildLog(70)
     const { container } = renderWithLang(<LoadChart log={log} weeks={10} />, 'tr')
-    const svg = getChartSvg(container)
+    const svg = await getChartSvg(container)
     expect(svg.getAttribute('aria-label')).toMatch(/yük|grafiği/i)
     expect(svg.querySelector('desc').textContent).toMatch(/Bu hafta|TSS/i)
   })
@@ -174,7 +181,7 @@ describe('chart a11y attributes', () => {
     const ZoneChart = await importChart('ZoneChart')
     const log = buildLog(56).map(e => ({ ...e, zones: [30, 20, 5, 3, 2] }))
     const { container } = renderWithLang(<ZoneChart log={log} weeks={8} />)
-    const svg = getChartSvg(container)
+    const svg = await getChartSvg(container)
     expect(svg).not.toBeNull()
     expect(svg.getAttribute('role')).toBe('img')
     expect(svg.getAttribute('aria-label')).toMatch(/zone/i)
@@ -187,7 +194,7 @@ describe('chart a11y attributes', () => {
     const ZoneChart = await importChart('ZoneChart')
     const log = buildLog(56).map(e => ({ ...e, zones: [30, 20, 5, 3, 2] }))
     const { container } = renderWithLang(<ZoneChart log={log} weeks={8} />, 'tr')
-    const svg = getChartSvg(container)
+    const svg = await getChartSvg(container)
     expect(svg.getAttribute('aria-label')).toMatch(/zon|grafiği/i)
     expect(svg.querySelector('desc').textContent).toMatch(/kolay|hafta/i)
   })
@@ -196,7 +203,7 @@ describe('chart a11y attributes', () => {
     const WellnessSparkline = await importChart('WellnessSparkline')
     const recovery = buildRecovery(14)
     const { container } = renderWithLang(<WellnessSparkline recovery={recovery} />)
-    const svg = getChartSvg(container)
+    const svg = await getChartSvg(container)
     expect(svg).not.toBeNull()
     expect(svg.getAttribute('role')).toBe('img')
     const ariaLabel = svg.getAttribute('aria-label')
@@ -208,7 +215,7 @@ describe('chart a11y attributes', () => {
     const WellnessSparkline = await importChart('WellnessSparkline')
     const recovery = buildRecovery(14)
     const { container } = renderWithLang(<WellnessSparkline recovery={recovery} />, 'tr')
-    const svg = getChartSvg(container)
+    const svg = await getChartSvg(container)
     expect(svg.getAttribute('aria-label')).toMatch(/iyilik|hali|grafiği/i)
   })
 
