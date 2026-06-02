@@ -1039,7 +1039,13 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
           : todayReadiness >= 50 ? '😐'
           : '😴'
         return (
-          <div style={{
+          // v9.371.0 — daily-answer hero is a polite live region: when the
+          // readiness value or the critical-diagnostic recommendation changes
+          // (after a quick-tap, sync, or plan update) screen readers announce
+          // the updated answer. aria-live="polite" (NOT role="status") so the
+          // default aria-atomic=false speaks only the changed lines, not the
+          // whole card (session glance + every peek) on each change.
+          <div aria-live="polite" style={{
             padding: '12px 16px', marginBottom: '10px',
             background: 'var(--card-bg)', border: '1px solid var(--border)',
             borderLeft: `4px solid ${criticalDx ? RED : ORANGE}`,

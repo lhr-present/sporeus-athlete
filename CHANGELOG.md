@@ -2,6 +2,20 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.371.0 — 2026-06-03 — Daily-answer hero is a polite live region
+
+DEPENDS ON: `TodayView.jsx` daily-answer hero card (~1041).
+
+- **a11y fix** — the morning daily-answer block (session glance + readiness +
+  critical diagnostic) had no `aria-live`, so when the readiness value or the
+  critical recommendation changed (after a quick-tap, a sync, or a plan update)
+  the new answer was silent to screen-reader users. Marked the hero
+  `aria-live="polite"`. Deliberately NOT `role="status"` — its implicit
+  `aria-atomic="true"` would re-read the entire card (glance + every peek +
+  diagnostic) on each change; plain `aria-live` keeps `aria-atomic=false` so
+  only the changed lines are spoken. Complements the v9.368 readiness-tap
+  `announce()`. 60 TodayView tests + build green. CI-deployable (frontend).
+
 ## v9.370.0 — 2026-06-03 — Top banners stack instead of piling up
 
 DEPENDS ON: `App.jsx` banner render block; `StatusBanner`/`OfflineBanner`/`ConnectionBanner`/`PastDueBanner`/`SetupBanner`.
