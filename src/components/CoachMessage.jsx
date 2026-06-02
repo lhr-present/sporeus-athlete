@@ -68,6 +68,21 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
   // inaccessible: no trap, no Escape, mouse-only backdrop).
   useFocusTrap(panelRef, { onEscape: onClose })
 
+  // v9.369.0 — lift the bottom-anchored panel above the mobile keyboard. The
+  // panel is position:fixed bottom:0, so the on-screen keyboard covered the
+  // compose input. Track the keyboard inset via visualViewport and offset
+  // `bottom` by it (no-op on desktop / browsers without visualViewport).
+  const [kbInset, setKbInset] = useState(0)
+  useEffect(() => {
+    const vv = typeof window !== 'undefined' ? window.visualViewport : null
+    if (!vv) return
+    const onResize = () => setKbInset(Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)))
+    vv.addEventListener('resize', onResize)
+    vv.addEventListener('scroll', onResize)
+    onResize()
+    return () => { vv.removeEventListener('resize', onResize); vv.removeEventListener('scroll', onResize) }
+  }, [])
+
   const athleteId = athlete?.athlete_id
 
   // ── Broadcast channel: typing indicators + read receipts ─────────────────────
@@ -193,9 +208,10 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
       <div ref={panelRef} role="dialog" aria-modal="true"
         aria-label={`${lang === 'tr' ? 'Mesajlar' : 'Messages'} — ${athlete.display_name || ''}`}
         style={{
-        position: 'fixed', bottom: 0, right: 0,
+        position: 'fixed', bottom: kbInset, right: 0,
         width: Math.min(420, window.innerWidth),
         height: Math.min(520, window.innerHeight * 0.8),
+        maxHeight: `calc(100vh - ${kbInset + 8}px)`,  // fit above the keyboard
         background: '#0d0d0d',
         border: '1px solid #2a2a2a',
         borderTopLeftRadius: 6,

@@ -2,6 +2,18 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.369.0 — 2026-06-03 — CoachMessage rises above mobile keyboard
+
+DEPENDS ON: `CoachMessage.jsx` panel (position:fixed bottom:0); `window.visualViewport`.
+
+- **Mobile fix** — the coach↔athlete message panel is bottom-anchored, so on
+  phones the on-screen keyboard covered the compose textarea (you couldn't see
+  what you typed). Added a `visualViewport` resize/scroll listener that measures
+  the keyboard inset and offsets the panel's `bottom` by it, plus a
+  `maxHeight: calc(100vh - inset)` so the panel fits in the visible area above
+  the keyboard. No-op on desktop and on browsers without `visualViewport`
+  (inset stays 0 → unchanged behavior). Single-component, CI-deployable.
+
 <!--
   VERSION CONVENTION (see CLAUDE.md → "Version System")
   - This file's headings use the PRODUCT version: v9.X.Y
