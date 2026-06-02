@@ -14,6 +14,34 @@ All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
 ---
 
+## v9.367.0 — 2026-06-02 — a11y + mobile batch (round-5 client HIGHs)
+
+  CI-deployable client fixes from the round-5 sweep (no operator dependency).
+
+  - **Onboarding wizard focus-trap.** The first-run wizard (every new user) was
+    a plain overlay div — no focus trap, no focus-on-open, no Escape, background
+    in the tab order. Now wraps the panel in `useFocusTrap` (the proven hook 5
+    other modals use) + `role="dialog" aria-modal aria-label`; Esc = continue-later.
+  - **CoachMessage focus-trap + Esc.** Same: panel had no trap/role/Escape and a
+    mouse-only backdrop. Now trapped + `role=dialog` + Esc-to-close.
+  - **TrainingLog rows keyboard-operable.** The click-to-expand `<tr>` had no
+    keyboard path; added `role=button`/`tabIndex`/`aria-expanded` + Enter/Space
+    (only outside bulk-select mode).
+  - **Mobile: guest banner no longer covers the bottom nav.** The fixed
+    `bottom:0` guest banner sat on top of MobileBottomBar (≤640px) → TODAY/
+    PROGRAM/LOG/PROFILE were untappable for the default guest state. New
+    `.sp-guest-banner` media rule lifts it above the 56px bar (+ safe-area).
+
+  Deferred (recorded): banner-stacking pileup, header overflow, CoachMessage
+  input-behind-keyboard, sub-44px checkboxes, daily-answer aria-live, MED
+  edge-fns. 15,468 tests green (charts.a11y CTLChart is flaky under parallel
+  load — passes 12/12 in isolation; unrelated to this change); build clean.
+
+  DEPENDS ON: useFocusTrap, Onboarding/CoachMessage/TrainingLog, styles.js media
+  query, App.jsx guest banner.
+
+---
+
 ## v9.366.0 — 2026-06-02 — Two HIGH edge-fn wrong-column bugs ⚠️ NOT YET DEPLOYED (round-5)
 
   ⚠️ CODE ONLY — deploy with the H1 bundle:

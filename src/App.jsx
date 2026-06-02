@@ -404,7 +404,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
 
       {/* Guest mode banner */}
       {isGuest && (
-        <div style={{ position:'fixed', bottom:0, left:0, right:0, zIndex:10001, background:'#111', borderTop:'1px solid #333', color:'#888', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'8px 20px', display:'flex', justifyContent:'space-between', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
+        <div className="sp-guest-banner" style={{ position:'fixed', bottom:0, left:0, right:0, zIndex:10001, background:'#111', borderTop:'1px solid #333', color:'#888', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'8px 20px', display:'flex', justifyContent:'space-between', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
           <span>
             <span style={{ color:'var(--brand-primary,#ff6600)', fontWeight:600 }}>GUEST MODE</span>
             {' · '}{lang === 'en' ? 'Data saves to this device only.' : 'Veri yalnızca bu cihaza kaydedilir.'}

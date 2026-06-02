@@ -10,6 +10,7 @@ import { logAction } from '../lib/db/auditLog.js'
 import { useMessageChannel } from '../hooks/useMessageChannel.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { logger } from '../lib/logger.js'
+import { useFocusTrap } from '../hooks/useFocusTrap.js'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -62,6 +63,10 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
   const [partnerTyping, setPartnerTyping] = useState(false)
   const channelRef = useRef(null)
   const threadRef  = useRef(null)
+  const panelRef   = useRef(null)
+  // v9.367.0 — focus-trap the message panel + Esc-to-close (was keyboard-
+  // inaccessible: no trap, no Escape, mouse-only backdrop).
+  useFocusTrap(panelRef, { onEscape: onClose })
 
   const athleteId = athlete?.athlete_id
 
@@ -185,7 +190,9 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
       />
 
       {/* Panel */}
-      <div style={{
+      <div ref={panelRef} role="dialog" aria-modal="true"
+        aria-label={`${lang === 'tr' ? 'Mesajlar' : 'Messages'} — ${athlete.display_name || ''}`}
+        style={{
         position: 'fixed', bottom: 0, right: 0,
         width: Math.min(420, window.innerWidth),
         height: Math.min(520, window.innerHeight * 0.8),

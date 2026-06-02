@@ -43,6 +43,9 @@ export const ANIM_CSS = `
     .sp-mobile-fab { display: flex !important; }
     /* Pad main content so it doesn't hide behind the bottom bar */
     .sp-main-content { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important; }
+    /* v9.367.0 — lift the guest banner ABOVE the bottom nav (was bottom:0,
+       covering the tab bar → nav untappable for the default guest state). */
+    .sp-guest-banner { bottom: calc(56px + env(safe-area-inset-bottom, 0px)) !important; }
     /* Prevent iOS zoom on input focus — minimum 16px */
     input, select, textarea { font-size: max(16px, 1em) !important; }
   }

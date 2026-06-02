@@ -806,7 +806,12 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                   return (
                     <Fragment key={s.id}>
                     <tr style={{ borderBottom: isExpanded ? 'none' : '1px solid var(--border)', background: bulkMode && selected.has(s.id) ? '#ff660011' : isExpanded ? '#0f0f0f' : undefined, cursor: bulkMode ? undefined : 'pointer' }}
-                      onClick={bulkMode ? undefined : () => setExpandedId(isExpanded ? null : s.id)}>
+                      onClick={bulkMode ? undefined : () => setExpandedId(isExpanded ? null : s.id)}
+                      {...(bulkMode ? {} : {
+                        role: 'button', tabIndex: 0, 'aria-expanded': isExpanded,
+                        // v9.367.0 — keyboard-operable expand (was mouse-only)
+                        onKeyDown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedId(isExpanded ? null : s.id) } },
+                      })}>
                       {bulkMode && (
                         <td style={{ padding:'6px 6px 6px 0' }} onClick={e => e.stopPropagation()}>
                           <input

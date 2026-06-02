@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { goalsForSport } from '../lib/constants.js'
 import { autoFormatMmSs } from '../lib/format/mmss.js'
 import { emitEvent } from '../lib/attribution.js'
 import { logger } from '../lib/logger.js'
+import { useFocusTrap } from '../hooks/useFocusTrap.js'
 
 // v9.103.0 (Prompt GG) — Bail recovery. Save partial state every step so
 // an athlete who closes the browser at step 4 of 7 doesn't have to
@@ -471,9 +472,16 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
     })
   }
 
+  // v9.367.0 — focus-trap the wizard (every new user passes through it): traps
+  // Tab, moves focus in on open, restores on close, Esc = continue-later.
+  const panelRef = useRef(null)
+  useFocusTrap(panelRef, { onEscape: () => { clearDraft(); onFinish(null) } })
+
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
-      <div style={{ background:'var(--card)', borderRadius:'12px', padding:'32px', width:'100%', maxWidth:'480px', position:'relative' }}>
+      <div ref={panelRef} role="dialog" aria-modal="true"
+        aria-label={lang === 'tr' ? 'Kurulum sihirbazı' : 'Setup wizard'}
+        style={{ background:'var(--card)', borderRadius:'12px', padding:'32px', width:'100%', maxWidth:'480px', position:'relative' }}>
         {/* v9.330.0 — "Skip all →" button moved from upper-right (X-position,
             highly misclickable as a modal-close) to a small text link at the
             bottom of the modal. Copy reframed from "Skip all" (sounds final)
