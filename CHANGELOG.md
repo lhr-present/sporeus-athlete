@@ -2,6 +2,29 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.372.0 — 2026-06-04 — MED edge-fn correctness (operator-digest + adjust-coach-plan)
+
+DEPENDS ON: `operator-digest/index.ts`, `adjust-coach-plan/index.ts`.
+⛔ **DEPLOY-PENDING** — edge functions ship only via `supabase functions deploy`,
+NOT via CI. This joins the undeployed bundle (H1 + v9.364 + v9.366); zero user
+value until deployed. See `docs/ops/h1_security_deploy_runbook.md`.
+
+- **operator-digest** — (1) MAU/DAU counted `training_log` *rows* via
+  `count:'exact'`, so one athlete's many sessions inflated the metric; now selects
+  `user_id` and dedupes with a `Set` → distinct active users. (2) The post-email
+  "mark notified" used `.update().eq('kind',…).order().limit(1)` — supabase-js
+  `.update()` ignores `.order()/.limit()`, so it flipped `notified` on EVERY
+  weekly_digest row; now captures the inserted row id (`.select('id').single()`)
+  and updates that exact PK.
+- **adjust-coach-plan** — made idempotent. It writes a per-week `volume_adjusted`
+  marker but never read it, so webhook retries / repeated injuries re-multiplied
+  the volume cut and re-prepended the `[AUTO-ADJUSTED]` note. Added a guard that
+  skips already-marked weeks (first-run weeks still adjust + mark in the same
+  pass). Also gated the `coach_notes` insert on `changed` — it previously ran
+  unconditionally, spamming a duplicate AUTO-ADJUSTMENT note on every retry.
+- Reviewed via two parallel agents; diffs hand-verified. No `src/` changes →
+  frontend suite (15,468) unaffected. Deno not available locally for `deno check`.
+
 ## v9.371.0 — 2026-06-03 — Daily-answer hero is a polite live region
 
 DEPENDS ON: `TodayView.jsx` daily-answer hero card (~1041).

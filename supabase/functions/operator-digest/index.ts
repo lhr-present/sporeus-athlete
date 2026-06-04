@@ -32,15 +32,21 @@ serve(withTelemetry('operator-digest', async (req: Request) => {
   const today   = now.toISOString().slice(0, 10)
 
   // ── MAU/DAU ────────────────────────────────────────────────────────────────
-  const { count: mau } = await supa
+  // v9.372.0 fix: previously these did `count: 'exact'` on training_log rows,
+  // which counts SESSIONS, not people — one athlete logging many sessions
+  // inflated MAU/DAU. Now we select the user_id column and dedupe with a Set
+  // so we report DISTINCT active users.
+  const { data: mauRows } = await supa
     .from('training_log')
-    .select('*', { count: 'exact', head: true })
+    .select('user_id')
     .gte('date', new Date(now.getTime() - 30 * 86_400_000).toISOString().slice(0, 10))
+  const mau = new Set((mauRows ?? []).map((r: { user_id: string }) => r.user_id)).size
 
-  const { count: dau } = await supa
+  const { data: dauRows } = await supa
     .from('training_log')
-    .select('*', { count: 'exact', head: true })
+    .select('user_id')
     .eq('date', today)
+  const dau = new Set((dauRows ?? []).map((r: { user_id: string }) => r.user_id)).size
 
   // ── New signups (last 7 days) ──────────────────────────────────────────────
   // Proxy: profiles rows created in last 7 days
@@ -165,13 +171,15 @@ ALERTS (7d)  Total=${fmt(alertCount)}  Critical=${fmt(criticalAlerts)}
 `
 
   // Persist to operator_alerts (always)
-  await supa.from('operator_alerts').insert({
+  // v9.372.0 fix: capture the inserted row's id so the post-email
+  // `notified` update can target exactly THIS digest row (see below).
+  const { data: digestRow } = await supa.from('operator_alerts').insert({
     kind:     'weekly_digest',
     severity: 'warning',
     title:    `Weekly digest ${weekStr}`,
     body:     textBody.slice(0, 4000),
     notified: false,
-  })
+  }).select('id').single()
 
   // Send email via Resend (if configured)
   const resendKey = Deno.env.get('RESEND_API_KEY')
@@ -192,11 +200,15 @@ ALERTS (7d)  Total=${fmt(alertCount)}  Critical=${fmt(criticalAlerts)}
 
     if (res?.ok) {
       emailSent = true
-      await supa.from('operator_alerts')
-        .update({ notified: true })
-        .eq('kind', 'weekly_digest')
-        .order('fired_at', { ascending: false })
-        .limit(1)
+      // v9.372.0 fix: the old chain `.update().eq('kind',…).order().limit(1)`
+      // was invalid — supabase-js `.update()` ignores `.order()/.limit()`, so
+      // this marked EVERY weekly_digest row notified, not just the one we just
+      // emailed. Target the exact row we inserted above via its primary key.
+      if (digestRow?.id != null) {
+        await supa.from('operator_alerts')
+          .update({ notified: true })
+          .eq('id', digestRow.id)
+      }
     }
   }
 

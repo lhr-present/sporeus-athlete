@@ -33,6 +33,14 @@ function applyVolumeCut(weeks: Record<string, unknown>[], fromDate: string, toDa
     const wd = new Date((week.start_date || week.date || week.weekStart || week.week_start) as string).getTime()
     if (isNaN(wd) || wd < from || wd >= to) return week
 
+    // v9.372.0 idempotency guard: this fn can run more than once for the same plan
+    // (webhook retries, multiple injury events). The per-week `volume_adjusted` marker
+    // (written below on first adjustment) is now READ here first — if a week was already
+    // adjusted, skip it so we don't re-multiply its session volume or re-prepend the
+    // [AUTO-ADJUSTED] note. First-run weeks are unmarked → they fall through and get
+    // adjusted (and marked) in this same pass.
+    if (week.volume_adjusted) return week
+
     const sessions = (week.sessions || []) as Record<string, unknown>[]
     return {
       ...week,
@@ -93,18 +101,21 @@ serve(withTelemetry('adjust-coach-plan', async (req) => {
 
   if (changed) {
     await svc.from('coach_plans').update({ weeks: newWeeks }).eq('id', planRow.id)
+
+    // ── Write coach_notes entry for transparency ──────────────────────────────────
+    // v9.372.0 — gated on `changed`: previously this insert ran UNCONDITIONALLY, so a
+    // webhook retry / repeated injury event spammed a duplicate AUTO-ADJUSTMENT note
+    // even when the per-week idempotency guard skipped every week (no real change).
+    const noteBody = `⚠ AUTO-ADJUSTMENT: Injury reported (${zone || 'unknown zone'}, severity L${injuryLevel}). ` +
+      `Plan volume reduced ${cut}% for next 7 days. Review and confirm this adjustment is appropriate.`
+
+    await svc.from('coach_notes').insert({
+      coach_id:   planRow.coach_id,
+      athlete_id: user_id,
+      note:       noteBody,
+      category:   'injury',
+    })
   }
-
-  // ── Write coach_notes entry for transparency ──────────────────────────────────
-  const noteBody = `⚠ AUTO-ADJUSTMENT: Injury reported (${zone || 'unknown zone'}, severity L${injuryLevel}). ` +
-    `Plan volume reduced ${cut}% for next 7 days. Review and confirm this adjustment is appropriate.`
-
-  await svc.from('coach_notes').insert({
-    coach_id:   planRow.coach_id,
-    athlete_id: user_id,
-    note:       noteBody,
-    category:   'injury',
-  })
 
   return ok({ adjusted: changed, cut_pct: cut, plan_id: planRow.id, athlete_id: user_id, injury_id })
 }))
