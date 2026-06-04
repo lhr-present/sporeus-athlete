@@ -64,11 +64,22 @@ ORDER BY 1;
 The migration RAISEs a WARNING for any job it could not pattern-match — if you
 see one, patch that job's `cron.schedule(...)` header by hand before continuing.
 
-## Step 3 — deploy the hardened functions
+## Step 3 — deploy the hardened functions **plus the later-changed ones**
+The H1-hardened set is the first line. The second line is functions that were
+**fixed after H1 but never deployed** (CI deploys only the frontend, never edge
+functions) — leave them off and those fixes stay stranded:
+- v9.364 — `ai-proxy` (atomic AI-usage quota), `redeem-invite` (server-side athlete-limit)
+- v9.366 — `public-api` (squad RPC), `alert-monitor` (sent_at column)
+- v9.372 — `operator-digest` (distinct-user MAU/DAU + notified-by-id)
+
+> Note: `operator-digest` is **not** H1-hardened (no webhook-secret gate), so it's
+> safe to deploy in any order — it just needs to ship to pick up the v9.372 fix.
+
 ```bash
 supabase functions deploy ai-batch-worker enqueue-ai-batch push-worker \
   trigger-checkin-reminders strava-backfill-worker adjust-coach-plan \
-  analyse-session embed-session send-push generate-report comment-notification
+  analyse-session embed-session send-push generate-report comment-notification \
+  ai-proxy redeem-invite public-api alert-monitor operator-digest
 ```
 
 ## Step 4 — verify (within a few minutes)
