@@ -8,6 +8,7 @@
 import { estimateVDOT, getTrainingPaces, predictTime as _predictTime } from './vdot.js'
 import { calcLoad } from './formulas.js'
 import { calculateACWR } from './trainingLoad.js'
+import { normalizeTrainingDow, sessionOrdinalForDay } from './plan/trainingDays.js'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function daysAgoDate(n) {
@@ -739,12 +740,19 @@ export function getTodayPlannedSession(plan, today) {
   }
   const weekIdx    = Math.floor(daysDiff / 7)
   if (weekIdx >= plan.weeks.length) return null
-  const planDayIdx = (new Date(todayDate + 'T12:00:00Z').getDay() + 6) % 7  // Mon=0…Sun=6, noon UTC avoids TZ shift
+  const isoDow = (new Date(todayDate + 'T12:00:00Z').getDay() + 6) % 7  // Mon=0…Sun=6, noon UTC avoids TZ shift
   const week = plan.weeks[weekIdx]
   if (!week || !Array.isArray(week.sessions)) return null
-  const session = week.sessions[planDayIdx]
+  // Sessions are packed by training-day ordinal (Mon-first). When the plan carries
+  // an explicit training-day set (user chose their weekdays), map today's weekday
+  // to its ordinal so weekend-training athletes get the right session instead of
+  // always-rest. Absent trainingDow → legacy weekday-index behavior. (audit MED)
+  const dow = normalizeTrainingDow(plan.trainingDow)
+  const dayIdx = dow ? sessionOrdinalForDay(isoDow, dow) : isoDow
+  if (dayIdx < 0) return null  // today is a rest day in the user's chosen set
+  const session = week.sessions[dayIdx]
   if (!session || session.type === 'Rest' || (session.duration || 0) <= 0) return null
-  return { ...session, weekIdx, dayIdx: planDayIdx, weekPhase: week.phase || '' }
+  return { ...session, weekIdx, dayIdx, weekPhase: week.phase || '' }
 }
 
 // ─── v6.1: getSingleSuggestion ────────────────────────────────────────────────

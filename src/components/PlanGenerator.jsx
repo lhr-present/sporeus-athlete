@@ -11,6 +11,7 @@ import { BLOCK_PHASES, generateBlockPlan } from '../lib/sport/blockPeriodization
 import { MiniDonut } from './ui.jsx'
 import { findOptimalWeekStructure } from '../lib/patterns.js'
 import { generatePlan as generateAdaptivePlan } from '../lib/plan/generatePlan.js'
+import { normalizeTrainingDow, defaultDowForCount } from '../lib/plan/trainingDays.js'
 import { applyTaper, suggestTaper } from '../lib/plan/taperEngine.js'
 import { validatePlan } from '../lib/plan/planValidators.js'
 import { explainPlannedWeek } from '../lib/athlete/weekRationale.js'
@@ -278,13 +279,20 @@ export default function PlanGenerator({ onLogSession }) {
       const ctlNow = calcLoad(log)?.ctl ?? 0
       // Floor CTL so generator has a workable baseline even for new athletes
       const currentCTL = Math.max(20, ctlNow)
+      // Honor the athlete's chosen training weekdays (Profile → trainingDow): the
+      // session COUNT follows the chosen days, and the set is stored on the plan so
+      // getTodayPlannedSession maps weekday → session (no forced weekend rest).
+      const trainingDow = normalizeTrainingDow(profile?.trainingDow) || defaultDowForCount(advAvailableDays)
+      const effAvailableDays = trainingDow
+        ? Math.max(2, Math.min(7, trainingDow.length))
+        : advAvailableDays
       // v9.92.0 — Mission 1 PLAN link: pass race distance + primary sport
       // through so 5K ≠ Marathon and cyclist plans show "Long ride" not "Long run"
       const adaptive = generateAdaptivePlan({
         goal:          goalKey,
         currentCTL,
         weeksToRace:   weeks,
-        availableDays: advAvailableDays,
+        availableDays: effAvailableDays,
         model:         advModel,
         level:         levelKey,
         raceDistance:  goal,
@@ -312,6 +320,7 @@ export default function PlanGenerator({ onLogSession }) {
         goal,
         weeks: legacyWeeks,
         generatedAt: today,
+        trainingDow,
         level,
         hoursPerWeek: hours,
         isAdaptive: true,

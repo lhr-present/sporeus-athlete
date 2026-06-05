@@ -18,6 +18,7 @@ import { generatePlan } from './generatePlan.js'
 import { adaptE13PlanToLegacy } from './adapter.js'
 import { calcLoad } from '../formulas.js'
 import { makeVersionTag } from './versionTracking.js'
+import { normalizeTrainingDow, defaultDowForCount } from './trainingDays.js'
 
 // ── Map onboarding goal strings → E13 generatePlan goal keys ─────────────────
 // Mirrors the (lossy) mapping that PlanGenerator.jsx:308 already does.
@@ -121,9 +122,16 @@ export function buildStarterPlan(onboardingData, todayISO, lang = 'en', log) {
   const goalKey      = ONBOARDING_GOAL_TO_E13[data.goal] || 'pr'
   const levelKey     = LEVEL_TO_E13[String(data.athleteLevel || data.level || '').toLowerCase()] || 'intermediate'
   const weeksToRace  = deriveWeeksToRace(data, today)
-  const availableDays = Number(data.trainDays) >= 2 && Number(data.trainDays) <= 7
-    ? Math.floor(Number(data.trainDays))
-    : DEFAULT_AVAILABLE_DAYS
+  // Prefer an explicit training-day-of-week set (user picked their weekdays); the
+  // session COUNT then follows the chosen days. Otherwise fall back to the
+  // trainDays count and a default Mon-first set. (weekend-rest fix)
+  const explicitDow = normalizeTrainingDow(data.trainingDow)
+  const availableDays = explicitDow
+    ? Math.max(2, Math.min(7, explicitDow.length))
+    : (Number(data.trainDays) >= 2 && Number(data.trainDays) <= 7
+        ? Math.floor(Number(data.trainDays))
+        : DEFAULT_AVAILABLE_DAYS)
+  const trainingDow = explicitDow || defaultDowForCount(availableDays)
 
   // v9.97.0 (Prompt I): currentCTL from log when available. Pre-v9.97 this
   // was hardcoded to 20 — fine for blank-slate users, but if Strava history
@@ -181,6 +189,10 @@ export function buildStarterPlan(onboardingData, todayISO, lang = 'en', log) {
     primarySport:  data.sport || data.primarySport || null,
     weeks:         legacyWeeks,
     generatedAt:   today,
+    // Training day-of-week set (Mon=0…Sun=6). getTodayPlannedSession maps today's
+    // weekday → session ordinal through this, so weekend-training athletes aren't
+    // forced to rest Sat/Sun. (weekend-rest fix)
+    trainingDow,
     // v9.103.0 (Prompt AA): persist the CTL the plan was budgeted on so a
     // stale-plan detector can compare it against current CTL. Without
     // seedCTL the only signal we had was age, which underweighted athletes

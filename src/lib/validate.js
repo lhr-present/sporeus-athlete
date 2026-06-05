@@ -1,6 +1,7 @@
 // ─── Input validation / sanitization ──────────────────────────────────────────
 import { normalizeAthleteLevel, normalizeSport } from './constants.js'
 import { vdotToThresholdStr } from './athlete/vo2maxToPace.js'
+import { normalizeTrainingDow } from './plan/trainingDays.js'
 
 /**
  * @typedef {Object} LogEntry
@@ -207,6 +208,10 @@ export function sanitizeProfile(p) {
     // readers see consistent state regardless of which field they check.
     raceDate:     normalizeRaceDate(p.raceDate, p.nextRaceDate),
     nextRaceDate: normalizeRaceDate(p.raceDate, p.nextRaceDate),
+    // Training day-of-week preference (ISO Mon=0…Sun=6), sorted+deduped, or []
+    // when not set. Drives plan generation (which weekdays carry sessions) so
+    // weekend-training athletes aren't forced to rest Sat/Sun. (weekend-rest fix)
+    trainingDow:   normalizeTrainingDow(p.trainingDow) || [],
   }
 }
 

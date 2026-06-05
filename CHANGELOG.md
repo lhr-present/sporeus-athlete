@@ -2,6 +2,39 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.379.0 — 2026-06-06 — Training days of week (no more forced weekend rest)
+
+DEPENDS ON: new `src/lib/plan/trainingDays.js`, `src/lib/intelligence.js`
+(getTodayPlannedSession), `src/lib/plan/starterPlan.js`,
+`src/components/PlanGenerator.jsx`, `src/components/Profile.jsx`,
+`src/lib/validate.js` (sanitizeProfile), `src/contexts/LangCtx.jsx`.
+✅ **CI-deployable** (frontend).
+
+- **Problem.** The plan generator emits N sessions packed onto consecutive days
+  (Mon-first), and `getTodayPlannedSession` indexed a week by *weekday* — so a
+  5-day plan left Sat/Sun (index ≥ N) undefined → "weekend always rest". An athlete
+  whose long run is Sunday got rest on the one day they train hardest, and there was
+  no way to pick training days.
+- **Fix (low-risk, additive).** Introduced an explicit training-day-of-week set
+  (ISO Mon=0…Sun=6) stored on the plan as `plan.trainingDow`. `getTodayPlannedSession`
+  now maps today's weekday → the session ordinal through that set; a weekday not in
+  the set is rest. **Absent `trainingDow` → unchanged legacy weekday-index behavior**,
+  so existing saved plans and the sessions-array shape are untouched (no change to
+  the plan renderer).
+- **New `src/lib/plan/trainingDays.js`** — pure: `normalizeTrainingDow` (sort/dedupe/
+  range-guard, rejects null→Monday coercion), `defaultDowForCount` (legacy Mon-first
+  set), `sessionOrdinalForDay`, bilingual `DOW_LABELS`.
+- **Profile UI** — a 7-button Mon–Sun picker (44px touch targets, `aria-pressed`,
+  bilingual EN/TR). Empty = let the plan choose (legacy). Persisted via
+  `sanitizeProfile` (`trainingDow: number[]`).
+- **Generation** — `buildStarterPlan` (onboarding) and `PlanGenerator` (regenerate)
+  read the chosen set; the session COUNT follows it (`availableDays = dow.length`)
+  and the set is stored on the plan. Onboarding without a picker still defaults to
+  Mon-first (backward compatible); a user sets days in Profile and regenerates.
+- Tests: new `trainingDays.test.js` (helper) + getTodayPlannedSession cases (Sunday
+  athlete gets the session; non-training weekday → rest). Suite **15,469 → 15,480
+  green**; build clean.
+
 ## v9.378.0 — 2026-06-06 — Billing alignment: free limit = 1, revoke paid tier at expiry
 
 DEPENDS ON: `src/lib/formulas.js` (FREE_ATHLETE_LIMIT), new

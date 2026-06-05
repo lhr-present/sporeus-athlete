@@ -872,6 +872,37 @@ describe('getTodayPlannedSession', () => {
     expect(r.weekPhase).toBe('Base')
   })
 
+  it('maps weekday → session ordinal via plan.trainingDow (weekend athlete not forced to rest)', () => {
+    // Sunday 2026-06-07 (isoDow 6). Athlete trains Mon/Wed/Fri/Sun → 4 packed sessions.
+    const today = '2026-06-07'
+    expect((new Date(today + 'T12:00:00Z').getDay() + 6) % 7).toBe(6) // guard: Sunday
+    const sessions = [
+      { type: 'Easy Run',  duration: 40,  tss: 40 },  // Mon → ordinal 0
+      { type: 'Tempo Run', duration: 50,  tss: 70 },  // Wed → ordinal 1
+      { type: 'Intervals', duration: 55,  tss: 85 },  // Fri → ordinal 2
+      { type: 'Long Run',  duration: 110, tss: 130 }, // Sun → ordinal 3
+    ]
+    const plan = { generatedAt: today, trainingDow: [0, 2, 4, 6], weeks: [{ sessions, phase: 'Base' }] }
+    const r = getTodayPlannedSession(plan, today)
+    expect(r).not.toBeNull()
+    expect(r.type).toBe('Long Run')
+    expect(r.dayIdx).toBe(3)
+  })
+
+  it('returns null on a non-training weekday when plan.trainingDow is set', () => {
+    // Saturday 2026-06-13 (isoDow 5) is NOT in [0,2,4,6] → rest day.
+    const today = '2026-06-13'
+    expect((new Date(today + 'T12:00:00Z').getDay() + 6) % 7).toBe(5) // guard: Saturday
+    const sessions = [
+      { type: 'Easy Run',  duration: 40,  tss: 40 },
+      { type: 'Tempo Run', duration: 50,  tss: 70 },
+      { type: 'Intervals', duration: 55,  tss: 85 },
+      { type: 'Long Run',  duration: 110, tss: 130 },
+    ]
+    const plan = { generatedAt: today, trainingDow: [0, 2, 4, 6], weeks: [{ sessions, phase: 'Base' }] }
+    expect(getTodayPlannedSession(plan, today)).toBeNull()
+  })
+
   it('selects correct week from multi-week plan', () => {
     const planStart = daysAgo(7) // plan started 7 days ago → we're in week index 1
     const today = daysAgo(0)
