@@ -64,7 +64,10 @@ SELECT cron.schedule(
   '*/5 * * * *',
   $$SELECT net.http_post(
     url     := 'https://pvicqwapvvfempjdgwbm.supabase.co/functions/v1/check-dependencies',
-    headers := '{"Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2aWNxd2FwdnZmZW1wamRnd2JtIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTg0Njk5NywiZXhwIjoyMDkxNDIyOTk3fQ.SSHPDRLiu0VUXlG8CIXrzPOqXPRFspxMgQOHDflX4n0", "Content-Type": "application/json"}'::jsonb,
+    headers := jsonb_build_object(
+      'Authorization', 'Bearer ' || current_setting('app.service_role_key', true),
+      'Content-Type',  'application/json'
+    ),
     body    := '{}'::jsonb
   ) AS request_id;$$
 );
@@ -75,7 +78,10 @@ SELECT cron.schedule(
   '* * * * *',
   $$SELECT net.http_post(
     url     := 'https://pvicqwapvvfempjdgwbm.supabase.co/functions/v1/alert-monitor',
-    headers := '{"Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2aWNxd2FwdnZmZW1wamRnd2JtIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTg0Njk5NywiZXhwIjoyMDkxNDIyOTk3fQ.SSHPDRLiu0VUXlG8CIXrzPOqXPRFspxMgQOHDflX4n0", "Content-Type": "application/json"}'::jsonb,
+    headers := jsonb_build_object(
+      'Authorization', 'Bearer ' || current_setting('app.service_role_key', true),
+      'Content-Type',  'application/json'
+    ),
     body    := '{}'::jsonb
   ) AS request_id;$$
 );
@@ -87,7 +93,10 @@ SELECT cron.schedule(
   '0 5 * * 1',
   $$SELECT net.http_post(
     url     := 'https://pvicqwapvvfempjdgwbm.supabase.co/functions/v1/operator-digest',
-    headers := '{"Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2aWNxd2FwdnZmZW1wamRnd2JtIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTg0Njk5NywiZXhwIjoyMDkxNDIyOTk3fQ.SSHPDRLiu0VUXlG8CIXrzPOqXPRFspxMgQOHDflX4n0", "Content-Type": "application/json"}'::jsonb,
+    headers := jsonb_build_object(
+      'Authorization', 'Bearer ' || current_setting('app.service_role_key', true),
+      'Content-Type',  'application/json'
+    ),
     body    := '{}'::jsonb
   ) AS request_id;$$
 );
@@ -114,7 +123,10 @@ SELECT cron.schedule(
   '30 3 * * 1',
   $$SELECT net.http_post(
     url     := 'https://pvicqwapvvfempjdgwbm.supabase.co/functions/v1/generate-report',
-    headers := '{"Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2aWNxd2FwdnZmZW1wamRnd2JtIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTg0Njk5NywiZXhwIjoyMDkxNDIyOTk3fQ.SSHPDRLiu0VUXlG8CIXrzPOqXPRFspxMgQOHDflX4n0", "Content-Type": "application/json"}'::jsonb,
+    headers := jsonb_build_object(
+      'Authorization', 'Bearer ' || current_setting('app.service_role_key', true),
+      'Content-Type',  'application/json'
+    ),
     body    := '{"source":"pg_cron","batch":"weekly"}'::jsonb
   ) AS request_id;$$
 );
@@ -126,7 +138,10 @@ SELECT cron.schedule(
   '0 4 1 * *',
   $$SELECT net.http_post(
     url     := 'https://pvicqwapvvfempjdgwbm.supabase.co/functions/v1/generate-report',
-    headers := '{"Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2aWNxd2FwdnZmZW1wamRnd2JtIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTg0Njk5NywiZXhwIjoyMDkxNDIyOTk3fQ.SSHPDRLiu0VUXlG8CIXrzPOqXPRFspxMgQOHDflX4n0", "Content-Type": "application/json"}'::jsonb,
+    headers := jsonb_build_object(
+      'Authorization', 'Bearer ' || current_setting('app.service_role_key', true),
+      'Content-Type',  'application/json'
+    ),
     body    := '{"source":"pg_cron","batch":"monthly_squad"}'::jsonb
   ) AS request_id;$$
 );

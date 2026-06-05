@@ -1,5 +1,8 @@
--- Fix purge-deleted-accounts cron: replace current_setting('app.service_role_key')
--- with hardcoded service_role JWT (GUC was never set; same pattern as ai-batch-worker cron).
+-- purge-deleted-accounts cron: Authorization bearer is sourced at run time from
+-- the `app.service_role_key` database GUC (set via `ALTER DATABASE ... SET ...`).
+-- (Historical note: an earlier revision hardcoded the JWT here because the GUC
+-- was unset; that leaked the service_role key into the public repo — reverted to
+-- the GUC pattern. Operator must `ALTER DATABASE postgres SET app.service_role_key`.)
 
 SELECT cron.unschedule('purge-deleted-accounts');
 
@@ -8,7 +11,10 @@ SELECT cron.schedule(
   '0 4 * * *',
   $$SELECT net.http_post(
     url     := 'https://pvicqwapvvfempjdgwbm.supabase.co/functions/v1/purge-deleted-accounts',
-    headers := '{"Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2aWNxd2FwdnZmZW1wamRnd2JtIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTg0Njk5NywiZXhwIjoyMDkxNDIyOTk3fQ.SSHPDRLiu0VUXlG8CIXrzPOqXPRFspxMgQOHDflX4n0", "Content-Type": "application/json"}'::jsonb,
+    headers := jsonb_build_object(
+      'Authorization', 'Bearer ' || current_setting('app.service_role_key', true),
+      'Content-Type',  'application/json'
+    ),
     body    := '{}'::jsonb
   ) AS request_id;$$
 );

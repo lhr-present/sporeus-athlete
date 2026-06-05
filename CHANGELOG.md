@@ -2,6 +2,40 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.373.0 — 2026-06-05 — Scrub leaked service_role JWT from SQL → GUC pattern
+
+DEPENDS ON: `20260424_add_push_worker_cron.sql`,
+`20260424_enhancements_embed_trigger_mv_revoke.sql`,
+`20260424_fix_purge_cron_hardcode_jwt.sql`, `20260424_missing_crons_and_fns.sql`,
+new `20260603_service_role_key_from_guc.sql`, `docs/ops/h1_security_deploy_runbook.md`.
+
+🔴 **OPERATOR ACTION STILL REQUIRED — this commit does NOT close the leak by itself.**
+The only thing that invalidates the exposed key is **rotation** in the Supabase
+dashboard (runbook Step A). This commit is the code-side groundwork.
+
+- **Source scrub** — a valid `service_role` JWT (full RLS bypass, `ref` pvicqw…,
+  `exp` ~2036) was hardcoded in 9 spots across the 4 migrations above. Replaced
+  every literal with `'Bearer ' || current_setting('app.service_role_key', true)`
+  — the same GUC pattern `20260427_pgmq_queues` already uses for ai-batch-worker /
+  enqueue-ai-batch / strava-backfill-worker. The `fix_purge_cron_hardcode_jwt`
+  file (which had *replaced* the GUC with the literal because the GUC was unset)
+  is reverted to the GUC. **Scope note:** this changes only the working tree — not
+  the live DB (those migrations are already applied with the literal) and not git
+  history (only rotation invalidates the exposed key).
+- **`personas.ts` correction** — earlier reports listed it as a 5th leak site. It
+  is NOT: it only constructs the *public* JWT header + deliberately **forged**
+  payloads with invalid signatures to assert forged service_role tokens are
+  rejected. Left untouched.
+- **New migration `20260603`** (rotation-window, NOT auto-applied) — dynamically
+  rewrites every live pg_cron job + SECURITY DEFINER function still carrying a
+  literal `Bearer eyJ…` onto the GUC. Idempotent; guards with a `RAISE EXCEPTION`
+  if `app.service_role_key` is empty (would otherwise brick callers with an empty
+  bearer). Mirrors the proven `20260601` regexp approach.
+- **Runbook** — Step B now scripts the GUC-set → apply-`20260603` → verify flow
+  (expect 0 rows from `SELECT jobname FROM cron.job WHERE command ILIKE '%Bearer eyJ%'`).
+- No `src/` changes → frontend suite unaffected. SQL not exercisable locally
+  (no Postgres); PL/pgSQL modeled on the verified `20260601` migration.
+
 ## v9.372.0 — 2026-06-04 — MED edge-fn correctness (operator-digest + adjust-coach-plan)
 
 DEPENDS ON: `operator-digest/index.ts`, `adjust-coach-plan/index.ts`.

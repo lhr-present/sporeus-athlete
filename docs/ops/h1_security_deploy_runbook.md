@@ -110,30 +110,63 @@ harmless to leave in place (the extra header is ignored by un-hardened functions
 ## 🔴 CRITICAL — committed `service_role` key (PUBLIC repo) — ROTATE NOW
 
 Discovered during H1 prep, then confirmed: a **valid `service_role` JWT**
-(`role: service_role`, `ref: pvicqwapvvfempjdgwbm`, `exp` ~2036) is hardcoded in
+(`role: service_role`, `ref: pvicqwapvvfempjdgwbm`, `exp` ~2036) was hardcoded in
 committed SQL — `20260424_add_push_worker_cron.sql`,
 `20260424_enhancements_embed_trigger_mv_revoke.sql`,
-`20260424_fix_purge_cron_hardcode_jwt.sql`, `20260424_missing_crons_and_fns.sql`
-(and `supabase/tests/rls/pentest/personas.ts`). The GitHub repo is **public**, so
-this key — which **bypasses all RLS** — is exposed to the world. This is more
-urgent than H1 itself.
+`20260424_fix_purge_cron_hardcode_jwt.sql`, `20260424_missing_crons_and_fns.sql`.
+The GitHub repo is **public**, so this key — which **bypasses all RLS** — is/was
+exposed to the world. This is more urgent than H1 itself.
+
+> **Source status (working tree):** all four files have been **scrubbed** — the
+> literal JWT is replaced with `'Bearer ' || current_setting('app.service_role_key', true)`
+> (matching the GUC pattern `20260427_pgmq_queues` already uses). Note this does
+> NOT change the **live** database (those crons/functions were already applied with
+> the literal); Step B's migration handles the live side. It also does NOT remove
+> the key from **git history** — only rotation does (Step A).
+>
+> **`personas.ts` is NOT a leak** (earlier reports listed it): it only builds the
+> *public* JWT header `{"alg":"HS256","typ":"JWT"}` plus deliberately **forged**
+> payloads with invalid signatures (`.INVALIDSIGNATURE_tampered`) to assert that
+> forged service_role tokens are rejected. The real key never appears there.
 
 ### Step A — ROTATE immediately (do this first, before anything else)
 Supabase Dashboard → Project Settings → API → **roll/reset the `service_role`
 key**. This instantly invalidates the leaked JWT. Scrubbing git history does NOT
 substitute for rotation (the key is already public/clonable/indexed).
 
-### Step B — expect these to recover differently
+### Step B — recover the live callers
 - **Edge functions** read `SUPABASE_SERVICE_ROLE_KEY` from env (Supabase
   auto-provides the new value) → recover automatically after redeploy/restart.
-- **Cron jobs + `on_training_log_embed`** hardcode the OLD JWT in their headers →
-  they will **401 after rotation** until updated. Fix by moving them to the GUC:
-  ```sql
-  ALTER DATABASE postgres SET app.service_role_key = '<NEW service_role key>';
+- **Cron jobs + the two embed functions** (`on_training_log_embed`,
+  `embed_backfill_batch`) hardcode the OLD JWT in their LIVE headers → they will
+  **401 after rotation** until rewritten onto the GUC. Set the GUC to the new key,
+  then apply `20260603_service_role_key_from_guc.sql`, which dynamically rewrites
+  every cron/function still carrying a literal `Bearer eyJ…` (idempotent; refuses
+  to run if the GUC is empty):
+  ```bash
+  # 1. point the GUC at the NEW key (new sessions; pg_cron picks it up next tick)
+  SUPABASE_ACCESS_TOKEN=$(cat ~/.config/supabase/access-token) \
+    npx supabase db query --linked \
+    "ALTER DATABASE postgres SET app.service_role_key = '<NEW service_role key>';"
+
+  # 2. rewrite the live hardcoded callers onto the GUC
+  SUPABASE_ACCESS_TOKEN=$(cat ~/.config/supabase/access-token) \
+    npx supabase db query --linked \
+    < supabase/migrations/20260603_service_role_key_from_guc.sql
+
+  # 3. record it
+  SUPABASE_ACCESS_TOKEN=$(cat ~/.config/supabase/access-token) \
+    npx supabase db query --linked \
+    "INSERT INTO supabase_migrations.schema_migrations (version,name,statements)
+       VALUES ('20260603','service_role_key_from_guc',NULL) ON CONFLICT (version) DO NOTHING;"
   ```
-  then re-author each affected cron/trigger header to
-  `'Bearer ' || current_setting('app.service_role_key')` (no literal key). This
-  is the same set of callers patched in `20260601`; do both in one window.
+  **Verify** no caller still carries a literal bearer (expect 0 rows):
+  ```sql
+  SELECT jobname FROM cron.job WHERE command ILIKE '%Bearer eyJ%';
+  ```
+  Do this in the same window as the `20260601` webhook-secret patch (the two are
+  orthogonal: `20260601` adds the shared-secret header, `20260603` fixes the
+  Authorization bearer).
 
 ### Step C — prevent recurrence
 - Never put a `service_role` key in SQL or any committed file. Source it from the

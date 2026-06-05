@@ -19,7 +19,10 @@ AS $$
 BEGIN
   PERFORM net.http_post(
     url     := 'https://pvicqwapvvfempjdgwbm.supabase.co/functions/v1/embed-session',
-    headers := '{"Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2aWNxd2FwdnZmZW1wamRnd2JtIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTg0Njk5NywiZXhwIjoyMDkxNDIyOTk3fQ.SSHPDRLiu0VUXlG8CIXrzPOqXPRFspxMgQOHDflX4n0", "Content-Type": "application/json"}'::jsonb,
+    headers := jsonb_build_object(
+      'Authorization', 'Bearer ' || current_setting('app.service_role_key', true),
+      'Content-Type',  'application/json'
+    ),
     body    := jsonb_build_object(
                  'session_id', NEW.id::text,
                  'user_id',    NEW.user_id::text,
@@ -73,7 +76,10 @@ BEGIN
   LOOP
     PERFORM net.http_post(
       url     := 'https://pvicqwapvvfempjdgwbm.supabase.co/functions/v1/embed-session',
-      headers := '{"Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2aWNxd2FwdnZmZW1wamRnd2JtIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTg0Njk5NywiZXhwIjoyMDkxNDIyOTk3fQ.SSHPDRLiu0VUXlG8CIXrzPOqXPRFspxMgQOHDflX4n0", "Content-Type": "application/json"}'::jsonb,
+      headers := jsonb_build_object(
+        'Authorization', 'Bearer ' || current_setting('app.service_role_key', true),
+        'Content-Type',  'application/json'
+      ),
       body    := jsonb_build_object(
                    'session_id', rec.id::text,
                    'user_id',    rec.user_id::text,
