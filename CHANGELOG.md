@@ -2,6 +2,35 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.374.0 — 2026-06-05 — Edge-fn correctness: analyse-session daily-EWMA + parse-activity atomic claim
+
+DEPENDS ON: `supabase/functions/analyse-session/index.ts`,
+`supabase/functions/parse-activity/index.ts`.
+⛔ **DEPLOY-PENDING** — edge functions ship only via `supabase functions deploy`,
+NOT via CI. Joins the undeployed bundle (H1 + v9.364/366/372). Zero user value
+until deployed. See `docs/ops/h1_security_deploy_runbook.md`.
+
+- **analyse-session — CTL/ATL was inflated (false overreach flags).** `computeCtlAtl`
+  ran the EWMA **per training_log row** with divisors `1/42` and `1/7` — no rest-day
+  decay and the wrong smoothing constants. Replaced with the canonical daily engine
+  (mirrors `src/lib/formulas.calcLoad`): aggregate TSS by date, step over every
+  calendar day from the first session to today zero-filling rest days, EWMA with
+  `kA=2/8, kC=2/43`. Same bug class as the v9.351 `intelligence.js` fix. Added `date`
+  to the 90-day `longLogs` select + updated the cast. **Verified by Node parity check
+  vs `calcLoad`: identical output** (a realistic 4×/week 90-day log → ctl 39.9 / atl
+  42.7 on both); the OLD code gave atl 70.0 → **ACWR 1.40, which tripped the
+  `overreach_risk` flag (>1.35)**; canonical ACWR is 1.07 (no false flag). The AI
+  coaching prompt was being fed inflated load + spurious overreach for normal weeks.
+- **parse-activity — double-insert under concurrent invoke.** The job guard was a
+  non-atomic read-then-update (`SELECT status` → check → `UPDATE status='parsing'`),
+  so two concurrent calls could both pass the check and parse+insert the same file
+  twice (`external_id` is NULL → the unique index can't dedup). Replaced with an
+  atomic conditional claim: `UPDATE … SET status='parsing' WHERE id=? AND status NOT
+  IN ('parsing','done') RETURNING id`; if no row is claimed → 409. The ownership
+  SELECT (RLS-scoped, `user_id` match) is kept for 404 + file metadata.
+- No `src/` changes → frontend suite unaffected. Deno unavailable locally for
+  `deno check`; analyse-session math validated by the Node parity harness above.
+
 ## v9.373.0 — 2026-06-05 — Scrub leaked service_role JWT from SQL → GUC pattern
 
 DEPENDS ON: `20260424_add_push_worker_cron.sql`,

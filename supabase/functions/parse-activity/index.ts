@@ -251,12 +251,22 @@ serve(withTelemetry('parse-activity', async (req) => {
     if (jobErr || !job) {
       return new Response(JSON.stringify({ error: 'job not found' }), { status: 404, headers: corsHeaders })
     }
-    if (job.status === 'done' || job.status === 'parsing') {
+    // Atomically claim the job: flip → 'parsing' only if it is not already
+    // parsing/done. This conditional UPDATE is the single source of truth. The
+    // previous check-then-update let two concurrent invocations both pass a status
+    // read and double-insert the session (external_id is NULL so the unique index
+    // can't dedup it). (round-4 audit MED)
+    const { data: claimed } = await svc
+      .from('activity_upload_jobs')
+      .update({ status: 'parsing' })
+      .eq('id', jobId)
+      .not('status', 'in', '("parsing","done")')
+      .select('id')
+      .maybeSingle()
+
+    if (!claimed) {
       return new Response(JSON.stringify({ error: 'already processed' }), { status: 409, headers: corsHeaders })
     }
-
-    // Mark as parsing
-    await svc.from('activity_upload_jobs').update({ status: 'parsing' }).eq('id', jobId)
 
     // Fetch profile for FTP / maxHR
     const { data: profile } = await svc
