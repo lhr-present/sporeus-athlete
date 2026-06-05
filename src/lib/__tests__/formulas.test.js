@@ -711,8 +711,8 @@ describe('normTR — Turkish string normalizer', () => {
 
 // ─── FREE_ATHLETE_LIMIT ───────────────────────────────────────────────────────
 describe('FREE_ATHLETE_LIMIT', () => {
-  it('is numeric value 3', () => {
-    expect(FREE_ATHLETE_LIMIT).toBe(3)
+  it('is numeric value 1 (matches server-enforced free limit)', () => {
+    expect(FREE_ATHLETE_LIMIT).toBe(1)
   })
 })
 

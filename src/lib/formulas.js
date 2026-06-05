@@ -452,7 +452,10 @@ export const normTR = s => (s||'').toLowerCase()
 // ─── Coach invite system ───────────────────────────────────────────────────────
 const SPOREUS_SALT = 'sporeus-coach-salt-2026'
 const MASTER_SALT  = 'sporeus-master-2026'
-export const FREE_ATHLETE_LIMIT = 3
+// Must match the server-enforced limit (subscription.js TIERS.free.athletes and
+// redeem-invite's count check) — a free coach told "3" while the server caps at 1
+// breaks the 2nd invite. Single source of truth for the client-side display/gate.
+export const FREE_ATHLETE_LIMIT = 1
 
 export async function generateCoachId(name, email) {
   const raw = (name||'').trim().toLowerCase() + (email||'').trim().toLowerCase() + SPOREUS_SALT

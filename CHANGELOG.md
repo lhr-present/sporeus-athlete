@@ -2,6 +2,26 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.378.0 — 2026-06-06 — Billing alignment: free limit = 1, revoke paid tier at expiry
+
+DEPENDS ON: `src/lib/formulas.js` (FREE_ATHLETE_LIMIT), new
+`20260605_get_my_tier_status_aware.sql`. Founder decisions (2026-06-06).
+
+- **FREE_ATHLETE_LIMIT 3 → 1 (CI-deployable).** The client showed/gated on 3 while
+  the server (`subscription.js` TIERS.free.athletes=1 + redeem-invite's count check)
+  caps at 1 — a free coach was told "3 athletes" but the 2nd invite was rejected
+  server-side. Aligned the client constant down to the server's real limit (no
+  pricing change). All UI reads the constant; test updated (`toBe(1)`).
+- **get_my_tier() now status-aware — revoke at expiry (migration, applies
+  independently).** It returned the stored `subscription_tier` and ignored
+  `subscription_status`, so cancelled/expired/past-due accounts kept paid access
+  until the daily reconcile cron flipped the column (cron lag/failure = free paid
+  access). Now derived at read time: active/trialing → tier; past_due → tier only
+  within `grace_period_ends_at`; cancelled/expired → tier only until the period-end
+  date (`subscription_end_date`/`expires_at`/`current_period_end`); else 'free'
+  (fail safe). The reconcile cron still tidies the stored column; enforcement no
+  longer depends on it.
+
 ## v9.377.0 — 2026-06-06 — Presence leave marks the wrong athlete offline (CI-deployable)
 
 DEPENDS ON: `src/hooks/useSquadPresence.js` coach `presence:leave` handler.
