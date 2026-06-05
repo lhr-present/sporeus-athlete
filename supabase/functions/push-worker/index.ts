@@ -34,15 +34,21 @@ serve(withTelemetry('push-worker', async (req) => {
     return new Response(JSON.stringify({ sent: 0 }), { headers: { "Content-Type": "application/json" } })
   }
 
-  let sent = 0, failed = 0
+  let sent = 0, failed = 0, poisoned = 0
   const pushUrl = `${supabaseUrl}/functions/v1/send-push`
 
   // Process in parallel batches of 10 (~50/sec with 20ms gap)
   const BATCH = 10
+  // Poison-message cap: a permanently-failing payload would otherwise retry every
+  // minute forever (failures were left in-queue with no read_ct ceiling). After
+  // this many deliveries, drop it — push payloads are ephemeral. Mirrors the
+  // retry ceiling ai-batch-worker enforces via its DLQ. (round-4 audit MED)
+  const MAX_READ = 5
   for (let i = 0; i < msgs.length; i += BATCH) {
     const chunk = msgs.slice(i, i + BATCH)
     await Promise.allSettled(chunk.map(async (row) => {
       const msgId   = row.msg_id as bigint
+      const readCt  = row.read_ct as number
       const payload = row.message as Record<string, unknown>
 
       try {
@@ -63,9 +69,15 @@ serve(withTelemetry('push-worker', async (req) => {
         await sb.rpc("delete_push_fanout_msg", { p_msg_id: msgId })
         sent++
       } catch (e) {
-        // Leave in queue for VT-based retry
         console.error(`push-worker: msg ${msgId} failed: ${e instanceof Error ? e.message : String(e)}`)
-        failed++
+        if (readCt > MAX_READ) {
+          // Poison: drop it so the queue can drain instead of retrying forever.
+          await sb.rpc("delete_push_fanout_msg", { p_msg_id: msgId })
+          console.warn(`push-worker: msg ${msgId} dropped as poison after ${readCt} reads`)
+          poisoned++
+        } else {
+          failed++  // leave in queue for VT-based retry
+        }
       }
     }))
 
@@ -73,9 +85,9 @@ serve(withTelemetry('push-worker', async (req) => {
     if (i + BATCH < msgs.length) await new Promise(r => setTimeout(r, 20))
   }
 
-  console.log(`push-worker: sent=${sent} failed=${failed} total=${msgs.length}`)
+  console.log(`push-worker: sent=${sent} failed=${failed} poisoned=${poisoned} total=${msgs.length}`)
   return new Response(
-    JSON.stringify({ sent, failed, total: msgs.length }),
+    JSON.stringify({ sent, failed, poisoned, total: msgs.length }),
     { headers: { "Content-Type": "application/json" } },
   )
 }))

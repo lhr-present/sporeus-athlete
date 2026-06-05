@@ -57,18 +57,17 @@ function getLocalHour(timezone: string): number {
 }
 
 // Get today's date string in a given timezone.
-function getLocalDateStr(timezone: string): string {
+function getLocalDateStr(timezone: string, date: Date = new Date()): string {
   try {
-    const now = new Date()
     const formatter = new Intl.DateTimeFormat("en-CA", {
       timeZone: timezone,
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
     })
-    return formatter.format(now) // en-CA gives YYYY-MM-DD
+    return formatter.format(date) // en-CA gives YYYY-MM-DD
   } catch {
-    return new Date().toISOString().slice(0, 10)
+    return date.toISOString().slice(0, 10)
   }
 }
 
@@ -123,19 +122,26 @@ serve(withTelemetry('trigger-checkin-reminders', async (req: Request) => {
       const localToday = getLocalDateStr(timezone)
       const dedupeKey  = `checkin_reminder:${row.id}:${localToday}`
 
-      // Check notification_log — already sent today?
-      const dayStart = new Date(utcNow)
-      dayStart.setUTCHours(0, 0, 0, 0)
-      const { data: dup } = await admin
+      // Check notification_log — already sent on the user's LOCAL calendar day?
+      // A UTC-midnight window mis-fired for non-UTC users near the date boundary
+      // (computed localToday but deduped on UTC dayStart → double or suppressed
+      // reminder). Fetch the most recent reminder (bounded to 48h for index
+      // efficiency) and compare its sent_at, rendered in the user's timezone, to
+      // localToday. (round-4 audit MED)
+      const { data: lastSent } = await admin
         .from("notification_log")
-        .select("id")
+        .select("sent_at")
         .eq("user_id", row.id)
         .eq("kind", "checkin_reminder")
-        .gte("sent_at", dayStart.toISOString())
         .not("delivery_status", "eq", "failed")
+        .gte("sent_at", new Date(utcNow.getTime() - 48 * 3600 * 1000).toISOString())
+        .order("sent_at", { ascending: false })
+        .limit(1)
         .maybeSingle()
 
-      if (dup) return  // already sent today
+      if (lastSent?.sent_at && getLocalDateStr(timezone, new Date(lastSent.sent_at)) === localToday) {
+        return  // already sent today (user's local calendar day)
+      }
 
       // Check if user has any push subscriptions
       const { data: subs } = await admin

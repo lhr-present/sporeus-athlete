@@ -2,6 +2,47 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.375.0 — 2026-06-05 — Billing-integrity + queue hardening (webhook, check-in dedup, push poison)
+
+DEPENDS ON: new `20260604_subscription_event_hardening.sql`,
+`supabase/functions/dodo-webhook/index.ts`,
+`supabase/functions/trigger-checkin-reminders/index.ts`,
+`supabase/functions/push-worker/index.ts`.
+
+- **dodo-webhook / `apply_subscription_event` — billing integrity (HIGH-ish).** Three
+  fixes in a forward `CREATE OR REPLACE` migration (`20260604`, plain DDL — applies
+  independently, takes effect on next webhook, NOT deploy-gated):
+  1. **id-less events were given a fabricated random `event_id`** (`'evt_'||uuid`),
+     defeating the `UNIQUE(event_id)` replay guard → an id-less event replayed N
+     times processed N times. Now rejected (`reason: no_event_id`).
+  2. **`payment.succeeded` with no tier metadata defaulted to granting `'coach'`**
+     (a paid tier) for free. Default removed.
+  3. **No tier whitelist** — any string flowed into `apply_tier_change`. Tier must
+     now be `∈ ('coach','club')` or the grant is refused (`invalid_tier`); the event
+     is still logged first (audit + idempotency).
+  The edge handler (deploy-pending) now surfaces `ok:false` rejections: logs the
+  reason + returns an honest `{ok:false,reason}` 200 (200 so the provider doesn't
+  retry-storm a malformed event), instead of masquerading every result as success.
+- **trigger-checkin-reminders — local-day dedup (MED, deploy-pending).** The "already
+  sent today?" guard filtered a **UTC** midnight window while the dedupe_key was
+  local-day → non-UTC users near the date boundary got a double or suppressed
+  reminder. Now fetches the latest reminder (bounded 48h for index efficiency) and
+  compares its `sent_at` *rendered in the user's timezone* to `localToday`.
+  Generalized `getLocalDateStr(tz, date?)` to format an arbitrary instant.
+- **push-worker — poison-message cap (MED, deploy-pending).** Failed sends were left
+  in-queue with no `read_ct` ceiling → a permanently-bad payload retried every
+  minute forever (burning send-push calls + log noise). After `MAX_READ=5`
+  deliveries a failing message is dropped (push payloads are ephemeral) and counted
+  as `poisoned`. Mirrors the retry ceiling ai-batch-worker enforces via its DLQ.
+- **Deferred (deliberate):** send-push parallel-drain dedup needs a unique-index
+  model that accommodates both `sent` and `deduped` rows sharing a key + an
+  insert-ordering rework + a duplicate-key backfill — too risky for a drive-by; the
+  24h dedup window already covers sequential redelivery. Billing-policy MEDs
+  (`get_my_tier` ignoring `subscription_status`, `FREE_ATHLETE_LIMIT` 1-vs-3,
+  client-only feature gates) are founder decisions, untouched.
+- No `src/` changes → frontend suite unaffected. Deno unavailable locally for
+  `deno check`; SQL function reproduced verbatim from `20260424` except the 3 fixes.
+
 ## v9.374.0 — 2026-06-05 — Edge-fn correctness: analyse-session daily-EWMA + parse-activity atomic claim
 
 DEPENDS ON: `supabase/functions/analyse-session/index.ts`,
