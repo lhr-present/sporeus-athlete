@@ -55,14 +55,15 @@ export function useSquadPresence({ coachId, role, athleteId, showOnlineStatus = 
 
       ch.on('presence', { event: 'leave' }, ({ leftPresences }) => {
         leftPresences.forEach(p => {
+          // Only the tracked user_id reliably identifies who left. If it is absent
+          // (corrupt/edge-case payload) DO NOT guess: the old fallback marked the
+          // FIRST online athlete offline — the wrong one. Skip instead; the next
+          // `sync` event rebuilds the full map from presenceState(). (audit LOW→MED)
+          const key = p.user_id
+          if (!key) return
           setPresenceMap(prev => {
-            const next = { ...prev }
-            // Try to look up by presence key (the athleteId)
-            const key = p.user_id || Object.keys(next).find(k => prev[k])
-            if (key && next[key]) {
-              next[key] = { online: false, last_seen: new Date().toISOString() }
-            }
-            return next
+            if (!prev[key]) return prev
+            return { ...prev, [key]: { online: false, last_seen: new Date().toISOString() } }
           })
         })
       })

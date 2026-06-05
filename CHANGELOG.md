@@ -2,6 +2,21 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.377.0 — 2026-06-06 — Presence leave marks the wrong athlete offline (CI-deployable)
+
+DEPENDS ON: `src/hooks/useSquadPresence.js` coach `presence:leave` handler.
+✅ **CI-deployable** (frontend) — ships on push, unlike the pending edge bundle.
+
+- **Coach squad feed — wrong athlete shown offline.** The `presence:leave` handler
+  identified who left via `p.user_id || Object.keys(next).find(k => prev[k])`. When
+  a leave payload lacked `user_id`, the fallback marked the **first online athlete**
+  offline — an arbitrary, usually-wrong athlete. Removed the guess: trust only
+  `user_id`; if absent, skip — the `presence:sync` handler (which rebuilds the full
+  map from `presenceState()`) reconciles on the next tick, so nothing is lost. Also
+  returns `prev` unchanged when the athlete isn't in the map (no needless re-render).
+- Regression test added (`useSquadPresence.test.js`): a leave with no `user_id` must
+  leave both online athletes online. Suite 15,468 → **15,469 green**.
+
 ## v9.376.0 — 2026-06-06 — Edge-fn LOW cleanup (attribution-log maybeSingle, public-api route-before-quota)
 
 DEPENDS ON: `supabase/functions/attribution-log/index.ts`,
