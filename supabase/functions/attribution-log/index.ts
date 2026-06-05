@@ -112,7 +112,9 @@ serve(withTelemetry('attribution-log', async (req) => {
         .from('profiles')
         .select('first_touch')
         .eq('id', userId)
-        .single()
+        // maybeSingle, not single: a user can fire an attribution event before
+        // their profiles row exists → single() returns a spurious 406. (audit LOW)
+        .maybeSingle()
 
       if (existing && existing.first_touch === null) {
         await supabase

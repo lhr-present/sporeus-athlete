@@ -206,19 +206,22 @@ serve(withTelemetry('public-api', async (req) => {
   const url = new URL(req.url)
   const path = url.pathname.replace(/\/functions\/v1\/public-api/, "")
 
-  // Rate limit
+  // Match the route BEFORE rate-limiting/logging so unknown-path probes can't burn
+  // the caller's 100/hr quota or fill request_counts with junk. (round-4 audit LOW)
+  const isAthleteLoad = /^\/api\/v1\/athlete\/[^/]+\/load$/.test(path)
+  if (path !== "/api/v1/squad" && path !== "/api/v1/squad/export" && !isAthleteLoad) {
+    return err(404, "Unknown endpoint. See function header for available endpoints.")
+  }
+
+  // Rate limit (known routes only)
   const apiKey = (authHeader ?? "").slice(7).trim()
   const allowed = await checkRateLimit(db, apiKey)
   if (!allowed) return err(429, "Rate limit exceeded — 100 req/hour per key")
   await logRequest(db, apiKey, orgId, path)
 
-  // Route
-  if (path === "/api/v1/squad")         return handleSquad(db, orgId)
-  if (path === "/api/v1/squad/export")  return handleSquadExport(db, orgId)
-  if (/^\/api\/v1\/athlete\/[^/]+\/load$/.test(path)) {
-    const athleteId = path.split("/")[4]
-    return handleAthletLoad(db, athleteId, orgId)
-  }
-
-  return err(404, "Unknown endpoint. See function header for available endpoints.")
+  // Dispatch (path is now guaranteed to be one of the three known routes)
+  if (path === "/api/v1/squad")        return handleSquad(db, orgId)
+  if (path === "/api/v1/squad/export") return handleSquadExport(db, orgId)
+  const athleteId = path.split("/")[4]
+  return handleAthletLoad(db, athleteId, orgId)
 }))

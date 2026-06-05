@@ -2,6 +2,20 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.376.0 — 2026-06-06 — Edge-fn LOW cleanup (attribution-log maybeSingle, public-api route-before-quota)
+
+DEPENDS ON: `supabase/functions/attribution-log/index.ts`,
+`supabase/functions/public-api/index.ts`. ⛔ DEPLOY-PENDING (edge bundle).
+
+- **attribution-log** — the `profiles.first_touch` lookup used `.single()`, which
+  emits a spurious 406 when a user fires an attribution event before their profiles
+  row exists (it degraded gracefully but logged noise). → `.maybeSingle()`.
+- **public-api** — rate-limit + `logRequest` ran BEFORE route matching, so unknown-
+  path probes (with a valid key) burned the caller's 100/hr quota and filled
+  `request_counts` with junk. Now the route is matched first; unknown paths 404
+  without touching the quota. Auth (401) still precedes everything.
+- No `src/` changes. Deno unavailable locally for `deno check`.
+
 ## v9.375.0 — 2026-06-05 — Billing-integrity + queue hardening (webhook, check-in dedup, push poison)
 
 DEPENDS ON: new `20260604_subscription_event_hardening.sql`,
