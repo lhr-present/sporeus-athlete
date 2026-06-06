@@ -132,7 +132,6 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   const [showQuickAdd, setShowQuickAdd] = useState(false)
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
   const [syncStatus, setSyncStatus] = useState(() => getSyncStatus())
-  const [coachUnreadBadge, setCoachUnreadBadge] = useState(0)
 
   const prevLogLen = useRef(log.length)
 
@@ -152,7 +151,7 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   const showBadges = appAge >= 1 || Object.keys(visitedTabs).length > 3
   const badges = {
     recovery: showBadges && !hasRecoveryToday && !visitedTabs.recovery_today,
-    profile:  (onboarded && isProfileIncomplete) || coachUnreadBadge > 0,
+    profile:  (onboarded && isProfileIncomplete),
     log:      false,
   }
 
@@ -161,13 +160,6 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   useEffect(() => {
     if (!onboarded && profile?.name) setOnboarded(true)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    try {
-      const msgs = JSON.parse(localStorage.getItem('sporeus-coach-messages')) || []
-      setCoachUnreadBadge(msgs.filter(m => m.from === 'coach' && !m.read).length)
-    } catch { logger.warn('Failed to read coach messages') }
-  }, [tab])
 
   useEffect(() => {
     if (!visitedTabs._firstVisit) {

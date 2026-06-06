@@ -28,7 +28,6 @@ import NotifReminders from './profile/NotifReminders.jsx'
 import WeightHydration from './profile/WeightHydration.jsx'
 import BodyComp from './profile/BodyComp.jsx'
 import AthleteCard from './profile/AthleteCard.jsx'
-import CoachMessagesCard from './profile/CoachMessagesCard.jsx'
 import MissionTimeline from './profile/MissionTimeline.jsx'
 import MissionTwoTimeline from './profile/MissionTwoTimeline.jsx'
 import Achievements from './Achievements.jsx'
@@ -455,8 +454,6 @@ export default function Profile({ log, authUser }) {
             : <>Import athlete JSON exports and view their dashboards, create plans, track compliance.<br/>File-based · No server · No API keys · Zero tracking</>}
         </div>
       </div>
-
-      <CoachMessagesCard/>
 
       <div className="sp-card" style={{ ...S.card, animationDelay:'110ms' }}>
         <div style={S.cardTitle}>DATA MANAGEMENT</div>

@@ -29,22 +29,6 @@ export function formatMsgTime(isoStr) {
   return d.toTimeString().slice(0, 5)
 }
 
-/**
- * Count messages the viewer hasn't read yet.
- * viewerRole = 'coach' → messages sent by athlete without read_at
- * viewerRole = 'athlete' → messages sent by coach without read_at
- */
-export function hasUnread(msgs, viewerRole) {
-  if (!Array.isArray(msgs)) return 0
-  const otherRole = viewerRole === 'coach' ? 'athlete' : 'coach'
-  return msgs.filter(m => m.sender_role === otherRole && !m.read_at).length
-}
-
-/** True if senderRole is a valid participant */
-export function canSendMessage(senderRole) {
-  return senderRole === 'coach' || senderRole === 'athlete'
-}
-
 // ── Main component ─────────────────────────────────────────────────────────────
 
 /**

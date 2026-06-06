@@ -13,16 +13,10 @@ vi.mock('../components/CoachMessage.jsx', async () => {
       if (isNaN(d)) return ''
       return d.toTimeString().slice(0, 5)
     },
-    hasUnread: (msgs, viewerRole) => {
-      if (!Array.isArray(msgs)) return 0
-      const otherRole = viewerRole === 'coach' ? 'athlete' : 'coach'
-      return msgs.filter(m => m.sender_role === otherRole && !m.read_at).length
-    },
-    canSendMessage: (senderRole) => senderRole === 'coach' || senderRole === 'athlete',
   }
 })
 
-import { buildChannelId, formatMsgTime, hasUnread, canSendMessage } from '../components/CoachMessage.jsx'
+import { buildChannelId, formatMsgTime } from '../components/CoachMessage.jsx'
 
 describe('buildChannelId', () => {
   it('produces deterministic channel name', () => {
@@ -41,32 +35,5 @@ describe('formatMsgTime', () => {
   it('returns empty string for falsy input', () => {
     expect(formatMsgTime(null)).toBe('')
     expect(formatMsgTime('')).toBe('')
-  })
-})
-
-describe('hasUnread', () => {
-  it('counts unread coach messages for athlete viewer', () => {
-    const msgs = [
-      { sender_role: 'coach',   read_at: null },         // unread from coach → counts
-      { sender_role: 'coach',   read_at: '2026-04-13' }, // read → skip
-      { sender_role: 'athlete', read_at: null },          // own message → skip
-    ]
-    expect(hasUnread(msgs, 'athlete')).toBe(1)
-  })
-
-  it('returns 0 for empty array', () => {
-    expect(hasUnread([], 'coach')).toBe(0)
-  })
-})
-
-describe('canSendMessage', () => {
-  it('allows coach and athlete roles', () => {
-    expect(canSendMessage('coach')).toBe(true)
-    expect(canSendMessage('athlete')).toBe(true)
-  })
-
-  it('rejects unknown roles', () => {
-    expect(canSendMessage('admin')).toBe(false)
-    expect(canSendMessage('')).toBe(false)
   })
 })

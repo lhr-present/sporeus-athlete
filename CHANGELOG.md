@@ -2,6 +2,40 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.380.0 — 2026-06-06 — Remove dead athlete→coach messaging (localStorage-only)
+
+DEPENDS ON: deleted `src/components/profile/CoachMessagesCard.jsx`; edits to
+`Profile.jsx`, `TodayView.jsx`, `CoachMessage.jsx`, `useAppState.js`,
+`storage.js`, `LangCtx.jsx`, + tests. ✅ CI-deployable (frontend).
+
+The athlete side of messaging was entirely localStorage-based and disconnected
+from the DB `messages` table — athlete "replies" wrote to `sporeus-coach-messages`
+in localStorage and never inserted to the table (the RLS athlete-insert policy was
+unreachable; `insertMessage` hardcodes `sender_role:'coach'`). The unread badges
+that read that key could therefore never reflect a real coach message. All dead.
+
+Removed:
+- `CoachMessagesCard` (athlete reply UI) + its Profile.jsx mount.
+- TodayView coach-unread badge + `coachUnread` state + the now-unused `hasUnread`
+  import.
+- `useAppState` `coachUnreadBadge` state + effect + the Profile-tab badge condition.
+- `CoachMessage.jsx` dead exports `hasUnread` / `canSendMessage` (no live caller).
+- `storage.js` `importPlanData` coachMessages→localStorage merge.
+- `todayCoachMsg(s)` labels (EN/TR); 6 dead tests.
+
+KEPT (working coach→athlete path, untouched): `CoachMessage.jsx` component +
+CoachSquadView usage, `messages`/`message_reads` tables, `useMessageChannel`,
+crypto, `insertMessage/getMessages/subscribeToMessages`. The inert
+`STORAGE_KEYS.COACH_MESSAGES` registry entry is left (documents a legacy key that
+may still hold data in users' browsers; removing it would churn the key-registry
+completeness test for no gain).
+
+NOTE (separate product gap, not addressed here): coaches can send via the DB but
+there is no athlete-facing DB reader, so coach→athlete is currently write-only in
+-app. Wiring an athlete inbox is "implement", not "remove dead code".
+
+Suite 15,480 → 15,474 green (−6 dead tests); build clean.
+
 ## v9.379.0 — 2026-06-06 — Training days of week (no more forced weekend rest)
 
 DEPENDS ON: new `src/lib/plan/trainingDays.js`, `src/lib/intelligence.js`

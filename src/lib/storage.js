@@ -69,15 +69,6 @@ export function importPlanData(json) {
     if (!plan || !plan.weeks) return false
     saveStorage('sporeus-plan', plan)
     saveStorage('sporeus-plan-status', {})
-    // Merge any coach messages embedded in the plan export
-    if (Array.isArray(plan.coachMessages) && plan.coachMessages.length) {
-      const key = 'sporeus-coach-messages'
-      let existing = []
-      try { existing = JSON.parse(localStorage.getItem(key)) || [] } catch (e) { logger.warn('localStorage:', e.message) }
-      const ids = new Set(existing.map(m => m.id))
-      const merged = [...existing, ...plan.coachMessages.filter(m => !ids.has(m.id))]
-      try { localStorage.setItem(key, JSON.stringify(merged)) } catch (e) { logger.warn('localStorage:', e.message) }
-    }
     return true
   } catch (e) { logger.warn('localStorage:', e.message); return false }
 }

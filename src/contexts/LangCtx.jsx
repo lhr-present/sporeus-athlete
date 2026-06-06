@@ -126,7 +126,6 @@ export const LABELS = {
     todayYesterday: 'YESTERDAY', todayThisWeek: 'THIS WEEK', todayConsec: 'CONSEC.',
     todaySuggestion: 'SMART SUGGESTION', todayLogYesterday: '+ Log Yesterday',
     // TodayView — coach badge + rings + share (STRUCTURE-S5)
-    todayCoachMsg: 'unread message from your coach', todayCoachMsgs: 'unread messages from your coach',
     todayDismiss: 'DISMISS',
     shareProgress: 'Share Progress →',
     weeklyRings: 'WEEKLY RINGS', weekTSS: 'WEEK TSS', wellness: 'WELLNESS',
@@ -849,7 +848,6 @@ export const LABELS = {
     todayYesterday: 'DÜN', todayThisWeek: 'BU HAFTA', todayConsec: 'SERİ',
     todaySuggestion: 'AKILLI ÖNERİ', todayLogYesterday: '+ Dünü Kaydet',
     // TodayView — coach badge + rings + share
-    todayCoachMsg: 'antrenörden okunmamış mesaj', todayCoachMsgs: 'antrenörden okunmamış mesajlar',
     todayDismiss: 'KAPAT',
     shareProgress: 'İlerlemeyi Paylaş →',
     weeklyRings: 'HAFTALIK HALKALAR', weekTSS: 'HAFTALIK TSS', wellness: 'SAĞLIK',

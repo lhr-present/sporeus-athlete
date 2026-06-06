@@ -157,24 +157,4 @@ describe('importPlanData', () => {
     expect(loadStorage('sporeus-plan-status')).toEqual({})
   })
 
-  it('merges coachMessages into sporeus-coach-messages key', () => {
-    const msgs = [{ id: 'msg-1', text: 'Hello athlete' }, { id: 'msg-2', text: 'Good work' }]
-    const plan = JSON.stringify({ weeks: [{ week: 1 }], generatedAt: '2025-01-01', coachMessages: msgs })
-    importPlanData(plan)
-    const raw = localStorage.getItem('sporeus-coach-messages')
-    const stored = JSON.parse(raw)
-    expect(Array.isArray(stored)).toBe(true)
-    expect(stored.some(m => m.id === 'msg-1')).toBe(true)
-    expect(stored.some(m => m.id === 'msg-2')).toBe(true)
-  })
-
-  it('deduplicates coachMessages by id on repeated import', () => {
-    const msgs = [{ id: 'msg-1', text: 'Hello' }]
-    const plan = JSON.stringify({ weeks: [{ week: 1 }], generatedAt: '2025-01-01', coachMessages: msgs })
-    importPlanData(plan)
-    importPlanData(plan) // second import — same msg id
-    const stored = JSON.parse(localStorage.getItem('sporeus-coach-messages'))
-    const count = stored.filter(m => m.id === 'msg-1').length
-    expect(count).toBe(1)
-  })
 })
