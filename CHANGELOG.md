@@ -2,6 +2,30 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.382.0 — 2026-06-06 — Athlete coach-message inbox (read-only, DB-backed)
+
+DEPENDS ON: new `src/components/profile/CoachInbox.jsx`, `Profile.jsx` mount,
+`LangCtx.jsx` labels. Reuses `db/messages.js` + `crypto.js` + `inviteUtils.getMyCoach`.
+✅ CI-deployable (frontend).
+
+- **Closes the gap left by v9.380.** Coaches send messages to the DB `messages`
+  table (CoachMessage/CoachSquadView), but after the dead localStorage card was
+  removed, athletes had no in-app way to READ them — coach→athlete was write-only.
+- **CoachInbox** (athlete-facing, read-only): resolves the athlete's coach via
+  `getMyCoach`, loads messages with `getMessages(coachId, athleteId)`, decrypts
+  with the coach_id-derived key (identical to the coach UI), renders newest-last
+  with timestamps, marks unread coach messages read (`markReadMany` — permitted by
+  the athlete UPDATE RLS), and subscribes via `subscribeToMessages` for live
+  arrivals (alive-guarded, channel cleaned up on unmount). Renders nothing for
+  athletes with no coach / no messages (no empty-card clutter).
+- **Read-only by design:** athlete→coach replies stay removed (v9.380); the card
+  notes "reply through your coach's preferred channel." Bilingual EN/TR.
+- Tests: `CoachInbox.test.jsx` (decrypt+render, unread→read, coachId decryption
+  key, live subscription, no-coach / no-messages render-null). Suite 15,480 green;
+  build clean.
+- Follow-up (not built): a DB-sourced unread nav badge (the old one was localStorage
+  and was removed in v9.380) — deferred to avoid scope creep.
+
 ## v9.381.0 — 2026-06-06 — Server-enforce tier-gated features (export_pdf, white_label)
 
 DEPENDS ON: new `20260606_tier_for_user_and_gates.sql`,

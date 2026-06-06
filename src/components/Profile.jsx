@@ -6,6 +6,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { sanitizeProfile } from '../lib/validate.js'
 import { DOW_LABELS, normalizeTrainingDow } from '../lib/plan/trainingDays.js'
+import CoachInbox from './profile/CoachInbox.jsx'
 import { deriveAllMetrics } from '../lib/profileDerivedMetrics.js'
 import { assessDataQuality } from '../lib/intelligence.js'
 import { exportAllData, importAllData } from '../lib/storage.js'
@@ -454,6 +455,8 @@ export default function Profile({ log, authUser }) {
             : <>Import athlete JSON exports and view their dashboards, create plans, track compliance.<br/>File-based · No server · No API keys · Zero tracking</>}
         </div>
       </div>
+
+      <CoachInbox/>
 
       <div className="sp-card" style={{ ...S.card, animationDelay:'110ms' }}>
         <div style={S.cardTitle}>DATA MANAGEMENT</div>
