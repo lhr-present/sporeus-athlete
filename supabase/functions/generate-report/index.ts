@@ -517,11 +517,14 @@ serve(withTelemetry('generate-report', async (req) => {
     if (authErr || !user) return err("Unauthorized", 401)
     userId = user.id
 
-    // Tier check for squad/race reports
-    if (kind !== "weekly") {
-      const { data: profile } = await sb.from("profiles").select("subscription_tier").eq("id", userId).single()
-      const tier = profile?.subscription_tier || "free"
-      if (tier === "free") return err("Coach or Club plan required for this report type", 403)
+    // export_pdf is a paid (Coach+) feature — enforce server-side for ALL
+    // on-demand report kinds (the client gate is bypassable). Previously only
+    // squad/race were gated (free users could still export weekly PDFs) and the
+    // check read subscription_tier directly (a cancelled coach still passed).
+    // tier_for_user mirrors get_my_tier (status-aware → cancelled/expired = free).
+    const { data: tier } = await sb.rpc("tier_for_user", { p_user_id: userId })
+    if (!tier || tier === "free") {
+      return err("PDF report export requires a Coach or Club plan", 403)
     }
   }
 

@@ -2,6 +2,35 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.381.0 — 2026-06-06 — Server-enforce tier-gated features (export_pdf, white_label)
+
+DEPENDS ON: new `20260606_tier_for_user_and_gates.sql`,
+`supabase/functions/generate-report/index.ts`. Migration applies independently;
+the generate-report change is deploy-pending (edge bundle).
+
+- **`tier_for_user(uuid)` — one status-aware tier source.** `get_my_tier()` relies
+  on `auth.uid()`, which is NULL when an edge function calls it via the
+  service-role client. Extracted the status-aware CASE (from 20260605) into a
+  uuid-parameterized `tier_for_user(p_user_id)`; `get_my_tier()` now delegates to
+  `tier_for_user(auth.uid())`. RLS behavior identical; edge functions can now ask
+  "what tier is this user, right now" (granted to service_role).
+- **export_pdf (generate-report) — was partially open.** The on-demand path gated
+  only squad/race reports (free users could still export **weekly** PDFs) and read
+  `subscription_tier` directly (a cancelled coach still passed). Now ALL on-demand
+  kinds require ≥Coach via `tier_for_user` (status-aware). The pg_cron batch path
+  and the trusted service-role `params.user_id` path are unaffected.
+- **white_label (org_branding) — RLS write-gate.** The policy only checked
+  ownership (`org_id = auth.uid()`), so a downgraded/free org owner could still
+  upsert branding by bypassing the client gate. WITH CHECK now also requires
+  `get_my_tier() = 'club'`; USING stays ownership-only so a downgraded org can
+  still view/clear existing branding.
+- **Already enforced (verified, no change):** multi_team (redeem-invite athlete
+  limit, v9.364), squad_pattern_search (embed-query tier check). **Client-only by
+  design:** realtime_dashboard — a Realtime `subscribe()` can't be gated server-
+  side (RLS only filters returned rows, which it already does); the client gate is
+  the pragmatic control. Documented, not "fixed".
+- No `src/` changes → suite unaffected (15,474). Deno unavailable locally.
+
 ## v9.380.0 — 2026-06-06 — Remove dead athlete→coach messaging (localStorage-only)
 
 DEPENDS ON: deleted `src/components/profile/CoachMessagesCard.jsx`; edits to
