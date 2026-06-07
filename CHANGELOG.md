@@ -2,6 +2,40 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.386.0 — 2026-06-07 — Fresh-apply migration fixes found via replay harness (real bugs)
+
+DEPENDS ON: `20260423_pgvector.sql`, `20260449_system_status.sql`,
+`20260450_client_events.sql`, performance_indexes/security_fixes moved.
+
+Built a fresh-apply harness (reset a disposable Supabase branch via the Management
+API → replay all 117 migrations in order → report the first failure) and fixed
+each REAL bug it surfaced — bugs that only manifest on a clean provision, which is
+why the live app (built incrementally) never hit them:
+
+- **`CREATE POLICY IF NOT EXISTS` (×7)** — invalid SQL (Postgres has never
+  supported `IF NOT EXISTS` on `CREATE POLICY`). In `20260449_system_status`,
+  `20260450_client_events`, `performance_indexes`. → `DROP POLICY IF EXISTS …;
+  CREATE POLICY …` (idempotent).
+- **performance_indexes mis-ordered** — indexed `coach_sessions` /
+  `session_attendance` / `audit_log` (created in the 20260416 group) but ran at
+  20260415. Moved to `2026041607` (after that group). File had drifted (main has it).
+- **security_fixes mis-ordered** — tightened `team_announcements` RLS (table created
+  at `2026041705`) but ran at 20260416. Moved to `2026041709`. Guarding was unsafe
+  (would leave the insecure `USING(true)` policy on fresh DBs), so it must run after.
+- **`insight_embeddings.insight_id` FK type** — declared `UUID` but
+  `ai_insights.id` is `BIGSERIAL`; an invalid FK. Production has it as `bigint`
+  (verified). → `BIGINT`. Makes the later `20260539` realign a no-op.
+
+⚠️ **Not fully resolved — deeper systemic drift remains.** The harness shows the
+117-migration history accumulated months of drift (files edited after main applied
+them; main also records 14-digit-timestamp versions and is 50 migrations behind
+local). Replaying it cleanly will surface more cases, each needing production
+cross-referencing to avoid diverging a fresh DB's schema from prod. The robust
+complete fix is a **squash to a production-matching baseline** (Supabase's
+recommended path) — needs production-schema access + operator sign-off. The
+fixes above + v9.385 unblock the *primary* failure (the version-PK collision that
+froze every branch at 4 migrations) and are correct/safe on their own.
+
 ## v9.385.0 — 2026-06-07 — Fix fresh-DB provisioning (MIGRATIONS_FAILED): unique versions + enable extensions
 
 DEPENDS ON: new `20260411_enable_extensions.sql`; 52 migration files renamed to

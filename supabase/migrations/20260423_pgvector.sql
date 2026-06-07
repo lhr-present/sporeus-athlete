@@ -50,7 +50,7 @@ CREATE INDEX IF NOT EXISTS idx_session_embeddings_user
 
 -- ── 3. insight_embeddings ────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS insight_embeddings (
-  insight_id   UUID        PRIMARY KEY REFERENCES ai_insights(id) ON DELETE CASCADE,
+  insight_id   BIGINT      PRIMARY KEY REFERENCES ai_insights(id) ON DELETE CASCADE,  -- bigint: ai_insights.id is BIGSERIAL (was wrongly UUID; matches prod + 20260539)
   user_id      UUID        NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   embedding    vector(1536),
   content_hash TEXT        NOT NULL DEFAULT '',
