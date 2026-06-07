@@ -104,5 +104,32 @@ App-level smoke (a few minutes after deploy):
 - A coach weekly/monthly report still generates.
 - Background workers (push-worker, ai-batch-worker) show no 401s in logs.
 
+## CI troubleshooting (PR #4 — the "deploy issues")
+Two distinct CI failure classes were diagnosed 2026-06-07:
+
+1. **PR-comment `403 Resource not accessible by integration`** — FIXED in v9.384.
+   Every check (Bundle, E2E, RLS, Lighthouse) was *passing its real work* then dying
+   on its "Comment PR" step because the workflows lacked a `permissions:` block.
+   Adding `pull-requests: write` turned 5 checks green (verified). If they regress,
+   also set repo **Settings → Actions → Workflow permissions → Read and write**.
+
+2. **Supabase `409 Failed to provision branch project`** (contract-smoke,
+   db-branch-preview, Supabase Preview) — **operator / Supabase-side, NOT a repo or
+   migration-code bug.** `supabase branches list` shows EVERY branch — including
+   `main` (created 2026-04-10, long before this PR) — stuck in `MIGRATIONS_FAILED`.
+   So the full migration history does not provision a clean fresh branch, and this
+   predates all v9.373+ work. To investigate (needs network to the DB, which CI has):
+   ```bash
+   export SUPABASE_ACCESS_TOKEN=$(cat ~/.config/supabase/access-token)
+   npx supabase branches list                          # see MIGRATIONS_FAILED states
+   npx supabase branches delete contract-smoke-4       # clear stale preview branches
+   npx supabase branches delete preview-pr-4
+   # Then find which migration fails on a fresh branch — likely an extension not
+   # enabled at branch-create (pg_cron / pgmq / vector / pg_net) or a non-idempotent
+   # early migration (see memory: "L2 non-idempotent 001-003"). Reproduce with:
+   npx supabase db push --db-url "<fresh-branch-db-url>"   # shows the failing statement
+   ```
+   The PR's actual code is otherwise validated: 15,483 local tests + 5 green CI checks.
+
 ## Rollback
 If background jobs 401 after deploy: edge `WEBHOOK_SECRET` ≠ DB `app.webhook_secret` (re-set both, no stray whitespace). To revert a function: `git show <prev>:supabase/functions/<fn>/index.ts` and redeploy. Migrations are forward-only; leaving them applied is harmless.
