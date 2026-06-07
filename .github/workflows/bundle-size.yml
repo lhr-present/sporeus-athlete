@@ -1,5 +1,11 @@
 name: Bundle Size Guard
 
+# Required for the "Comment PR" step to post results (default token is read-only
+# without this → github.rest.issues.createComment 403 "Resource not accessible").
+permissions:
+  contents: read
+  pull-requests: write
+
 on:
   pull_request:
     paths:

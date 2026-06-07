@@ -2,6 +2,29 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.384.0 — 2026-06-07 — CI: fix PR-comment 403 failing all checks (add permissions)
+
+DEPENDS ON: `.github/workflows/{bundle-size,rls-harness,e2e-critical-paths,contract-smoke,db-branch-preview,perf-regression,rls-pentest}.yml`.
+
+- **Root cause found via CI logs:** every "failing" PR check was actually PASSING
+  its real work — Bundle Size "✅ All budgets met", E2E "✅ All 5 passed", RLS "✅
+  All tests passed" — then dying on its final **"Comment PR" step** with
+  `403 Resource not accessible by integration`. None of these workflows declared a
+  `permissions:` block, so the GITHUB_TOKEN was read-only and `issues.createComment`
+  was forbidden, which red-failed each job.
+- **Fix:** added `permissions: { contents: read, pull-requests: write }` to the 7
+  PR-commenting workflows. Pass/fail is gated by *separate* steps (e.g. bundle's
+  "Fail if budget exceeded", e2e/perf `process.exit(1)`), so this only un-breaks
+  the cosmetic comment — it does NOT mask real failures.
+- **NOT fixed here (operator / infra):** `contract-smoke`, `db-branch-preview`, and
+  the Supabase Preview check fail on Supabase `409 Failed to provision branch
+  project` (stale `preview-pr-4` / `contract-smoke-4` / `e2e-pr-4` branches from 13
+  prior pushes, or branching quota) → `BRANCH_DB_URL` is null → migrations never
+  run. Clear the stale preview branches in the Supabase dashboard (Branches), or the
+  repo's "Workflow permissions" may also need to be set to read/write if an org
+  policy caps the token. These can't be fixed from the repo.
+- No app/`src` changes.
+
 ## v9.383.0 — 2026-06-07 — Profile-tab unread badge for coach messages (DB-sourced)
 
 DEPENDS ON: `src/lib/db/messages.js` (countUnreadCoachMessages), `useAppState.js`
