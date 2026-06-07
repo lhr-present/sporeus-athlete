@@ -2,6 +2,25 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.383.0 — 2026-06-07 — Profile-tab unread badge for coach messages (DB-sourced)
+
+DEPENDS ON: `src/lib/db/messages.js` (countUnreadCoachMessages), `useAppState.js`
+(badges.profile). ✅ CI-deployable (frontend). Completes the v9.382 inbox.
+
+- Finishes the inbox: athletes now get a **Profile-tab badge** when a coach message
+  is unread, so they know to open the inbox without checking manually. (The old
+  badge, removed in v9.380, read a localStorage key no real message populated.)
+- **`countUnreadCoachMessages(coachId, athleteId)`** — head-only count of
+  `sender_role='coach' AND read_at IS NULL` for the pair (no row payload). Returns
+  `{count:0}` when ids are missing or Supabase isn't configured.
+- **useAppState** resolves the athlete's coach once (cached in a ref) and recounts
+  on every tab change, feeding `badges.profile`. Recount-on-navigation means the
+  badge self-clears: opening the inbox marks messages read, and the next tab switch
+  re-counts to 0 (tabs are conditionally mounted, so this is cheap). No global
+  Realtime subscription added (badge refreshes on navigation — sufficient).
+- Tests: 3 for `countUnreadCoachMessages` (filters + head count, missing-ids,
+  not-configured). Suite 15,483 green; build clean.
+
 ## v9.382.0 — 2026-06-06 — Athlete coach-message inbox (read-only, DB-backed)
 
 DEPENDS ON: new `src/components/profile/CoachInbox.jsx`, `Profile.jsx` mount,

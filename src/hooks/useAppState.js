@@ -13,7 +13,9 @@ import { scheduleSessionReminder, getReminderSettings } from '../lib/pushNotific
 import { triggerSync } from '../lib/deviceSync.js'
 import { initOfflineSync, onSyncStatusChange, getSyncStatus, flushQueue } from '../lib/offlineQueue.js'
 import { exportAllData } from '../lib/storage.js'
-import { isSupabaseReady } from '../lib/supabase.js'
+import { isSupabaseReady, supabase } from '../lib/supabase.js'
+import { getMyCoach } from '../lib/inviteUtils.js'
+import { countUnreadCoachMessages } from '../lib/db/messages.js'
 import { sanitizeLogEntry } from '../lib/validate.js'
 import { hasCurrentConsent, grantConsent } from '../lib/db/consentVersion.js'
 import { logConsent } from '../lib/db/consent.js'
@@ -132,6 +134,8 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   const [showQuickAdd, setShowQuickAdd] = useState(false)
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
   const [syncStatus, setSyncStatus] = useState(() => getSyncStatus())
+  const [coachUnreadBadge, setCoachUnreadBadge] = useState(0)
+  const coachIdRef = useRef(null)
 
   const prevLogLen = useRef(log.length)
 
@@ -151,7 +155,7 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   const showBadges = appAge >= 1 || Object.keys(visitedTabs).length > 3
   const badges = {
     recovery: showBadges && !hasRecoveryToday && !visitedTabs.recovery_today,
-    profile:  (onboarded && isProfileIncomplete),
+    profile:  (onboarded && isProfileIncomplete) || coachUnreadBadge > 0,
     log:      false,
   }
 
@@ -160,6 +164,25 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   useEffect(() => {
     if (!onboarded && profile?.name) setOnboarded(true)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Profile-tab badge: count unread coach→athlete messages from the DB. (The
+  // localStorage source removed in v9.380 never reflected real coach messages.)
+  // Recounts on tab change so it clears after the athlete opens the inbox (which
+  // marks them read). coachId is resolved once, then cached in a ref.
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      if (!authUser?.id || !isSupabaseReady() || !supabase) return
+      try {
+        if (!coachIdRef.current) coachIdRef.current = await getMyCoach(supabase, authUser.id)
+        const coachId = coachIdRef.current
+        if (!coachId) return
+        const { count } = await countUnreadCoachMessages(coachId, authUser.id)
+        if (alive) setCoachUnreadBadge(count || 0)
+      } catch (e) { logger.warn('[coachUnread]', e?.message || e) }
+    })()
+    return () => { alive = false }
+  }, [tab, authUser])
 
   useEffect(() => {
     if (!visitedTabs._firstVisit) {
