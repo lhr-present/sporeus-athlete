@@ -2,6 +2,40 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.385.0 — 2026-06-07 — Fix fresh-DB provisioning (MIGRATIONS_FAILED): unique versions + enable extensions
+
+DEPENDS ON: new `20260411_enable_extensions.sql`; 52 migration files renamed to
+unique version prefixes (content unchanged). Solves the Supabase `409 Failed to
+provision branch project` that blocked contract-smoke / db-branch-preview / Supabase Preview.
+
+**Root-caused via the Supabase Management API** (HTTPS — the branch DB itself is
+IPv6-only/unreachable). Two blockers, both confirmed and fixed; both verified on a
+live preview branch:
+
+1. **Duplicate migration version prefixes.** `schema_migrations.version` is the
+   PRIMARY KEY, and the current Supabase CLI derives `version` from the filename's
+   numeric prefix only. The repo had **52 files sharing a `YYYYMMDD` prefix with
+   another** (20260424 ×9, 20260417 ×8, …), so on a fresh `db push` the 2nd file of
+   each day collided on the version PK → the branch stopped after migration #5
+   (`20260412_org_branding`, exactly where the live branch was stuck at 4 applied).
+   Fix: renamed every colliding file to a unique `YYYYMMDDNN_` prefix (e.g.
+   `20260412_org_branding.sql` → `2026041202_org_branding.sql`). Order is provably
+   preserved (verified: the post-rename sort equals the prior sort) and content is
+   byte-identical. NOTE: production `main` recorded versions as full filename stems
+   via an older CLI and is applied manually (DEPLOY_NOW.md), so the rename does not
+   affect prod deploys; it fixes fresh branches/clones.
+2. **pg_cron / pg_net never enabled.** Prod had them enabled manually via the
+   dashboard, but no migration creates them; a fresh branch only runs migrations,
+   so the first top-level `cron.unschedule … FROM cron.job` (20260420) failed. Added
+   `20260411_enable_extensions.sql` (`CREATE EXTENSION IF NOT EXISTS pg_net; pg_cron;`)
+   before that use. Verified on the branch: both install as the postgres role and
+   `cron.job` then resolves. (pgmq/vector self-enable in their own migrations.)
+
+No `src`/test/CI references to the renamed files; frontend suite unaffected. The
+end-to-end proof (a clean fresh provision) runs when the preview branch is
+re-created — direct `db push` wasn't possible from the dev sandbox (IPv6 + the
+shared pooler rejects branch tenants), so each blocker was verified independently.
+
 ## v9.384.0 — 2026-06-07 — CI: fix PR-comment 403 failing all checks (add permissions)
 
 DEPENDS ON: `.github/workflows/{bundle-size,rls-harness,e2e-critical-paths,contract-smoke,db-branch-preview,perf-regression,rls-pentest}.yml`.
