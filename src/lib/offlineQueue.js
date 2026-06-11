@@ -9,6 +9,7 @@
 import { enqueue, dequeue, getAll } from './db.js'
 import { supabase, isSupabaseReady } from './supabase.js'
 import { logger } from './logger.js'
+import { replayWrites, pendingWriteCount } from './offline/writeQueue.js'
 
 let _status    = 'synced'
 let _listeners = []
@@ -50,14 +51,23 @@ export async function enqueuePendingLog(entry) {
 }
 
 // ─── Flush queue (retry all pending entries in insertion order) ────────────────
-// Each entry may carry a `_table` field specifying its target table.
-// Defaults to 'recovery' (the primary use case — daily wellness check-ins).
+// Drains BOTH offline stores in the shared 'sporeus-offline' DB:
+//   • pending_logs (db.js)     — recovery / training_log / profiles upserts + delete tombstones
+//   • write_queue  (writeQueue.js) — session-comment insert/update/delete (replayWrites)
+// Each pending_logs entry may carry a `_table` field specifying its target table
+// (defaults to 'recovery' — daily wellness check-ins). Both are flushed by every
+// trigger (online event, startup, OfflineBanner, TodayView) so queued comment
+// edits/deletes actually reach the server — previously replayWrites was never
+// called outside tests, so those writes stayed in IndexedDB forever (v9.388 fix).
 export async function flushQueue() {
   if (!isSupabaseReady()) return
   if (typeof navigator !== 'undefined' && !navigator.onLine) { setStatus('offline'); return }
 
   const pending = await getAll()
-  if (pending.length === 0) { setStatus('synced'); return }
+  // Both stores must be empty before we can call it synced — a queued comment
+  // write must not be skipped just because the pending_logs store is empty.
+  const queuedWrites = await pendingWriteCount().catch(() => 0)
+  if (pending.length === 0 && queuedWrites === 0) { setStatus('synced'); return }
 
   setStatus('syncing')
 
@@ -81,6 +91,21 @@ export async function flushQueue() {
         allOk = false
       }
     } catch {
+      allOk = false
+    }
+  }
+
+  // Replay the write_queue (comment mutations). Only reached when online +
+  // supabase-ready (guarded above), so replayWrites never burns its retry
+  // budget against an offline backend. Transient failures keep status 'offline'
+  // so the next trigger retries; entries past MAX_ATTEMPTS are skipped by
+  // replayWrites itself and don't wedge the indicator.
+  if (queuedWrites > 0) {
+    try {
+      const { failed } = await replayWrites(supabase)
+      if (failed > 0) allOk = false
+    } catch (e) {
+      logger.warn('[offlineQueue] replayWrites failed:', e?.message)
       allOk = false
     }
   }

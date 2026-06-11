@@ -2,6 +2,32 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.389.0 — 2026-06-12 — Wire replayWrites() into online sync (offline comment writes now replay)
+
+DEPENDS ON: `src/lib/offline/writeQueue.js` (replayWrites, pendingWriteCount),
+the v9.388 IndexedDB v2 alignment (so the write_queue store exists).
+
+Completes the offline-comment path. `commentActions` has queued comment
+insert/edit/delete into the `write_queue` store since v9.387, but `replayWrites()`
+was only ever called from tests — so those mutations sat in IndexedDB forever and
+never reached the server. `flushQueue()` (offlineQueue.js) now also drains the
+`write_queue` on every trigger (online event, startup, OfflineBanner "sync",
+TodayView):
+
+- `flushQueue` counts `pendingWriteCount()` alongside `pending_logs`, so it no
+  longer early-returns "synced" while comment writes are still queued.
+- After draining `pending_logs` it calls `replayWrites(supabase)`; a transient
+  `failed > 0` keeps status `offline` so the next trigger retries. replayWrites is
+  only reached after the online + supabase-ready guards, so it never burns its
+  per-entry retry budget against an offline backend. Entries past MAX_ATTEMPTS are
+  skipped by replayWrites itself and don't wedge the sync indicator.
+- The two stores stay independent (`pending_logs` ↔ recovery/training_log/profiles;
+  `write_queue` ↔ session-comment mutations) — no double-replay.
+
+Tests: +3 offlineQueue cases (replays comment writes when pending_logs is empty;
+stays offline on replay failure; does not call replayWrites when nothing queued).
+Full suite green.
+
 ## v9.388.0 — 2026-06-12 — Deep-dive round 2 (offline-queue integrity, lifecycle leaks, observability, a11y)
 
 DEPENDS ON: nothing new at runtime. NOTE: bumps the shared IndexedDB
