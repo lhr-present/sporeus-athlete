@@ -2,6 +2,7 @@
 // generateReferralCode is pure (no deps). apply/getStats require Supabase.
 
 import { supabase, isSupabaseReady } from './supabase.js'
+import { logger } from './logger.js'
 
 // djb2 hash — deterministic, same as aiPrompts.js
 function djb2(str) {
@@ -41,14 +42,21 @@ export async function applyReferralCode(code, _newOrgId) {
 
   const newCount = (data.uses_count ?? 0) + 1
 
-  await supabase.from('referral_codes').update({ uses_count: newCount }).eq('code', code)
+  // If the increment write fails, the referral was NOT recorded — surface it
+  // instead of reporting success (previously the error was swallowed and the
+  // count silently never moved).
+  const { error: updateErr } = await supabase
+    .from('referral_codes').update({ uses_count: newCount }).eq('code', code)
+  if (updateErr) return { success: false, error: updateErr.message }
 
-  // Reward milestone: every 3 referrals
+  // Reward milestone: every 3 referrals. A failed reward insert is logged but
+  // does not fail the referral itself (the use was already recorded above).
   if (newCount % 3 === 0) {
-    await supabase.from('referral_rewards').insert({
+    const { error: rewardErr } = await supabase.from('referral_rewards').insert({
       coach_id:    data.coach_id,
       reward_type: '1_month_free',
     })
+    if (rewardErr) logger.warn('[referral] reward insert failed:', rewardErr.message)
   }
 
   return { success: true, coach_id: data.coach_id }
@@ -65,9 +73,10 @@ export async function getReferralStats(coachId) {
   if (!isSupabaseReady() || !supabase || !coachId) return empty
 
   // Ensure the row exists (ignore conflict if already there)
-  await supabase
+  const { error: upsertErr } = await supabase
     .from('referral_codes')
     .upsert({ code, coach_id: coachId }, { onConflict: 'code', ignoreDuplicates: true })
+  if (upsertErr) logger.warn('[referral] ensure-row upsert failed:', upsertErr.message)
 
   const [{ data: codeRow }, { data: rewardsRow }] = await Promise.all([
     supabase.from('referral_codes').select('uses_count').eq('code', code).maybeSingle(),

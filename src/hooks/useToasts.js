@@ -1,5 +1,5 @@
 // ─── useToasts — unified toast queue (replaces 5 scattered toast states) ─────
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 
 /**
  * @typedef {Object} Toast
@@ -24,6 +24,15 @@ const TYPE_BG = {
  */
 export function useToasts() {
   const [toasts, setToasts] = useState([])
+  // Track pending auto-dismiss timers so they can be cleared on unmount —
+  // otherwise a timer scheduled just before sign-out fires setToasts on an
+  // unmounted component.
+  const timersRef = useRef(new Set())
+
+  useEffect(() => () => {
+    timersRef.current.forEach(clearTimeout)
+    timersRef.current.clear()
+  }, [])
 
   const dismissToast = useCallback((id) => {
     setToasts(prev => {
@@ -41,7 +50,11 @@ export function useToasts() {
       return [...without, t]
     })
     if (t.duration > 0) {
-      setTimeout(() => dismissToast(t.id), t.duration)
+      const tid = setTimeout(() => {
+        timersRef.current.delete(tid)
+        dismissToast(t.id)
+      }, t.duration)
+      timersRef.current.add(tid)
     }
   }, [dismissToast])
 

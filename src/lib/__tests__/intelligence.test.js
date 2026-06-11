@@ -451,6 +451,15 @@ describe('generateWeeklyNarrative', () => {
     expect(r.n).toBe(3)
   })
 
+  it('excludes future-dated entries from the weekly window', () => {
+    const log = [
+      runEntry(1), runEntry(2),                 // within past 7 days
+      { date: daysFrom(2), type: 'Easy Run', tss: 60, duration: 45, rpe: 5 }, // future typo/skew
+    ]
+    const r = generateWeeklyNarrative(log, [], {})
+    expect(r.n).toBe(2) // future entry not counted
+  })
+
   it('en string is non-empty for a real log', () => {
     const r = generateWeeklyNarrative(steadyLog(7), recoveryEntries(), { name: 'Ali' })
     expect(r.en.length).toBeGreaterThan(0)

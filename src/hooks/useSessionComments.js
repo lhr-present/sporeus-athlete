@@ -48,7 +48,15 @@ export function useSessionComments(sessionId, currentUserId) {
   const channelRef  = useRef(null)
   const retryRef    = useRef(0)
   const timerRef    = useRef(null)
+  const mountedRef  = useRef(true)
   const statusKey   = sessionId ? `session-comments-${sessionId}` : null
+
+  // Track mount status so the async fetchComments (esp. the v9.387 reconnect
+  // re-fetch) doesn't setState after the component has unmounted.
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
+  }, [])
 
   // ── Apply a realtime payload to local comments state ─────────────────────────
 
@@ -82,7 +90,7 @@ export function useSessionComments(sessionId, currentUserId) {
       .select('*')
       .eq('session_id', sessionId)
       .order('created_at', { ascending: true })
-    if (data) {
+    if (data && mountedRef.current) {
       setComments(data)
       qc.setQueryData(qKey, data)   // seed TQ cache for cross-component dedup
     }

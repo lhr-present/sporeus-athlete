@@ -2,6 +2,66 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.388.0 — 2026-06-12 — Deep-dive round 2 (offline-queue integrity, lifecycle leaks, observability, a11y)
+
+DEPENDS ON: nothing new at runtime. NOTE: bumps the shared IndexedDB
+`sporeus-offline` schema to version 2 (see db.js) — idempotent upgrade.
+
+Second multi-agent deep-dive (8 fresh/deeper lenses, 59 raw → 41 verified → 33
+ranked), explicitly excluding everything shipped in v9.387. Applied the
+auto-apply-safe set after re-reading each site; **5 flagged-safe findings were
+rejected on inspection** and reported instead (see "Held / rejected" below).
+
+**Offline / storage integrity**
+- **IndexedDB version mismatch (data-loss class).** `db.js` opened the shared
+  `sporeus-offline` DB at version 1 while `writeQueue.js` opened it at version 2;
+  whichever opened second hit a `VersionError`, silently breaking the offline
+  queue. Aligned both to version 2 — and (beyond the finding's one-liner, which
+  was unsafe) `db.js`'s `onupgradeneeded` now creates BOTH stores (`pending_logs`
+  + `write_queue`), since whichever module opens first at a new version runs the
+  only upgrade transaction.
+
+**Correctness / silent failures**
+- `referral.js` — three Supabase mutations (uses_count update, reward insert,
+  ensure-row upsert) swallowed errors and reported success, so referral counts
+  silently never incremented. The increment failure now returns `{success:false}`;
+  reward/upsert failures are logged. (+tests)
+- `intelligence.js generateWeeklyNarrative` — the weekly window had no upper bound,
+  so future-dated entries (typos / timezone skew) inflated "this week." Now bounded
+  at today. (+test) (The sibling "excludes today" window-shift was HELD — it changes
+  a displayed metric's semantics and the finder's fix broke the steady-state test.)
+
+**React lifecycle leaks (setState-after-unmount / leaked timers)**
+- `useToasts` auto-dismiss timers tracked + cleared on unmount. `useAppState`
+  first-session tab-switch timer tracked + cleared. `useSessionComments` reconnect
+  re-fetch now guarded by a mounted ref. `useMessageChannel` broadcast handlers
+  guarded by an active ref so an in-flight broadcast can't schedule work post-unmount.
+
+**Observability**
+- `CoachMessage` `markReadById`/`markReadMany` promise chains get `.catch()` (no more
+  unhandled rejections on RLS/network failure). `telemetry.js` flush no longer fully
+  silent (dev-warns). `generalFitnessSync` uses `logger` not `console`. `dataMigration`
+  logs per-table errors as they occur (Sentry context) while keeping the end-of-run throw.
+
+**Accessibility / forms**
+- `sw.js` Supabase route asserts GET-only (defensive; mutations never hit the
+  cache/3s-timeout strategy). `CoachOverview` notes textarea gets an `aria-label`.
+  `InviteManager` inputs get `htmlFor`/`id` + `name`/`autoComplete`. `QuickAddModal`
+  form inputs get semantic `name` attributes.
+
+**Held / rejected (reported, not applied):** efficiencyFactor odd-n "drop" (false
+positive — divisor matches slice length); `parseFloat('0')` fallback (marginal, the
+downstream `m>0` guard already neutralizes it); lactate `linearSSR` single-pass
+(non-measurable on 5–10-element arrays); math-utils consolidation (54+ sites — a
+refactor, not a fix); useRealtimeSquadFeed poll guard (already present). Also HELD for
+your review: **replayWrites() is never wired into online sync** — queued offline
+comment edits/deletes currently never replay (medium-effort, needs dedup verification
+vs the pendingLogs flow); realtime-filter UUID validation; ScienceReference link XSS;
+global `unhandledrejection` listener; the i18n cluster (InviteManager/DeviceSync/
+Glossary untranslated — high value for the TR market but needs wording review).
+
+Tests: +referral mutation-failure cases, +future-date narrative case. Full suite green.
+
 ## v9.387.0 — 2026-06-11 — Deep-dive enhancement block (correctness, perf, offline, a11y, edge-fn, security)
 
 DEPENDS ON: nothing new at runtime (back-compat throughout). New files:

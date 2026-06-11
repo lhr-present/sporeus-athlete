@@ -30,6 +30,7 @@ export function useMessageChannel({ coachId, athleteId, userId, onTyping, onRead
   const onReadRef       = useRef(onRead)
   const typingTimerRef  = useRef(null)
   const lastTypingRef   = useRef(0)
+  const activeRef       = useRef(true)
 
   // Keep callback refs fresh without re-subscribing
   useEffect(() => { onTypingRef.current = onTyping },  [onTyping])
@@ -38,24 +39,25 @@ export function useMessageChannel({ coachId, athleteId, userId, onTyping, onRead
   useEffect(() => {
     if (!coachId || !athleteId || !userId || !isSupabaseReady()) return
 
+    activeRef.current = true
     const channelName = `thread:${buildChannelId(coachId, athleteId)}`
     const ch = supabase.channel(channelName)
 
     ch.on('broadcast', { event: 'typing_start' }, ({ payload }) => {
-      if (payload?.user_id === userId) return  // ignore own events
+      if (!activeRef.current || payload?.user_id === userId) return  // ignore own / post-unmount events
       clearTimeout(typingTimerRef.current)
       onTypingRef.current?.(true)
       typingTimerRef.current = setTimeout(() => onTypingRef.current?.(false), TYPING_EXPIRE_MS)
     })
 
     ch.on('broadcast', { event: 'typing_stop' }, ({ payload }) => {
-      if (payload?.user_id === userId) return
+      if (!activeRef.current || payload?.user_id === userId) return
       clearTimeout(typingTimerRef.current)
       onTypingRef.current?.(false)
     })
 
     ch.on('broadcast', { event: 'read' }, ({ payload }) => {
-      if (payload?.user_id === userId) return
+      if (!activeRef.current || payload?.user_id === userId) return
       onReadRef.current?.()
     })
 
@@ -68,6 +70,7 @@ export function useMessageChannel({ coachId, athleteId, userId, onTyping, onRead
     chRef.current = ch
 
     return () => {
+      activeRef.current = false  // stop in-flight broadcasts from scheduling new work
       clearTimeout(typingTimerRef.current)
       if (chRef.current) {
         supabase.removeChannel(chRef.current)

@@ -441,8 +441,11 @@ export function scoreSession(entry, log, profile) {
 // Produces a 3-5 sentence narrative of the past week's training in EN + TR.
 export function generateWeeklyNarrative(log, recovery, profile, _lang) {
   const w1Start = daysAgoDate(7)
-  const week    = (log || []).filter(e => e.date >= w1Start)
-  const recWeek = (recovery || []).filter(e => e.date >= w1Start)
+  const today   = daysAgoDate(0)
+  // Upper-bound the window at today so future-dated entries (data-entry typos /
+  // timezone skew) don't inflate the "past week" narrative.
+  const week    = (log || []).filter(e => e.date >= w1Start && e.date <= today)
+  const recWeek = (recovery || []).filter(e => e.date >= w1Start && e.date <= today)
   const name    = profile?.name ? profile.name.split(' ')[0] : null
 
   const n = week.length

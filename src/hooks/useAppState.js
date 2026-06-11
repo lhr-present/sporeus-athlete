@@ -138,6 +138,10 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   const coachIdRef = useRef(null)
 
   const prevLogLen = useRef(log.length)
+  // Tab-switch timer scheduled after the first logged session — tracked so it
+  // can be cleared on unmount (mirrors useRealtimeSquad's timer-ref pattern).
+  const addSessionTimeoutRef = useRef(null)
+  useEffect(() => () => { if (addSessionTimeoutRef.current) clearTimeout(addSessionTimeoutRef.current) }, [])
 
   const [visitedTabs, setVisitedTabs] = useLocalStorage('sporeus-visited-tabs', {})
 
@@ -474,7 +478,11 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
     })
     // After first session, navigate to Today so the orientation card updates
     if (wasFirst) {
-      setTimeout(() => handleTabClick('today'), 2400)
+      if (addSessionTimeoutRef.current) clearTimeout(addSessionTimeoutRef.current)
+      addSessionTimeoutRef.current = setTimeout(() => {
+        addSessionTimeoutRef.current = null
+        handleTabClick('today')
+      }, 2400)
     }
   }
 

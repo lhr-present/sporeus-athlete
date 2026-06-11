@@ -102,8 +102,10 @@ async function doFlush() {
       signal:  ctrl.signal,
     })
     clearTimeout(timer)
-  } catch {
-    // Silently swallowed — telemetry must never break the app
+  } catch (err) {
+    // Telemetry must never break the app, but a totally silent catch hid
+    // ingest-telemetry outages. Keep it non-fatal; surface in dev only.
+    if (import.meta.env?.DEV) console.warn('[telemetry] flush failed:', err?.message)
   } finally {
     _flushing = false
   }

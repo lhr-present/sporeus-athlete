@@ -121,7 +121,7 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
         return [...prev, row]
       })
       if (row.sender_role === 'athlete') {
-        markReadById(row.id).then(() => {})
+        markReadById(row.id).catch(err => logger.warn('[CoachMessage] markReadById:', err?.message))
       }
     })
 
@@ -146,7 +146,7 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
       setMsgs(prev => prev.map(m =>
         unreadIds.includes(m.id) ? { ...m, read_at: new Date().toISOString() } : m
       ))
-    })
+    }).catch(err => logger.warn('[CoachMessage] markReadMany:', err?.message))
   }
 
   // ── Send ─────────────────────────────────────────────────────────────────────
