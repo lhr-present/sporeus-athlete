@@ -16,6 +16,7 @@
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { withTelemetry } from '../_shared/telemetry.ts'
+import { fetchWithTimeout } from '../_shared/fetchWithTimeout.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 // v7.43.0: per-session analysis moved to DB webhook → analyse-session edge fn.
@@ -74,7 +75,7 @@ async function callHaiku(system: string, user: string): Promise<string> {
   const key = Deno.env.get("ANTHROPIC_API_KEY") ?? ""
   if (!key) throw new Error("ANTHROPIC_API_KEY not set")
 
-  const res = await fetch(ANTHROPIC_API_URL, {
+  const res = await fetchWithTimeout(ANTHROPIC_API_URL, {
     method: "POST",
     headers: {
       "Content-Type":      "application/json",
@@ -87,7 +88,7 @@ async function callHaiku(system: string, user: string): Promise<string> {
       system,
       messages: [{ role: "user", content: user }],
     }),
-  })
+  }, 30_000)
 
   if (!res.ok) {
     const errText = await res.text().catch(() => res.statusText)
@@ -124,11 +125,11 @@ async function embedText(text: string): Promise<number[] | null> {
   const key = Deno.env.get("EMBEDDING_API_KEY")
   if (!key) return null
   try {
-    const res = await fetch(OPENAI_EMBED_URL, {
+    const res = await fetchWithTimeout(OPENAI_EMBED_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
       body: JSON.stringify({ model: EMBED_MODEL, input: text.slice(0, 8192) }),
-    })
+    }, 15_000)
     if (!res.ok) return null
     const data = await res.json()
     const emb = data?.data?.[0]?.embedding

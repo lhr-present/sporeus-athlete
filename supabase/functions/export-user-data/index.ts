@@ -84,9 +84,18 @@ serve(async (req) => {
   const path    = `user-${userId}/${ts}.json`
   const bytes   = new TextEncoder().encode(JSON.stringify(exportData, null, 2))
 
-  const { error: uploadErr } = await svc.storage
-    .from(EXPORT_BUCKET)
-    .upload(path, bytes, { contentType: 'application/json', upsert: true })
+  // Bound the upload — a hung storage backend would otherwise pin the function
+  // until the platform wall-clock limit. The SDK upload takes no AbortSignal, so
+  // race it against a 10s timeout and surface a clean error on timeout.
+  let uploadTimer: number | undefined
+  const uploadTimeout = new Promise<{ error: { message: string } }>((resolve) => {
+    uploadTimer = setTimeout(() => resolve({ error: { message: 'storage upload timed out after 10s' } }), 10_000)
+  })
+  const { error: uploadErr } = await Promise.race([
+    svc.storage.from(EXPORT_BUCKET).upload(path, bytes, { contentType: 'application/json', upsert: true }),
+    uploadTimeout,
+  ])
+  clearTimeout(uploadTimer)
 
   if (uploadErr) {
     await svc.from('data_rights_requests').update({

@@ -13,6 +13,8 @@ import { useCallback } from 'react'
 import { logger } from '../lib/logger.js'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { useLocalStorage } from './useLocalStorage.js'
+import { tryWrite } from './useSupabaseData.js'
+import { enqueuePendingLog } from '../lib/offlineQueue.js'
 
 const LS_KEY     = 'sporeus_profile'
 const SYNCED_KEY = 'sporeus-profile-synced'
@@ -53,14 +55,16 @@ export function useProfileQuery(userId) {
         try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}') } catch { return {} }
       })()
       if (Object.keys(localRaw).length > 0 && localStorage.getItem(SYNCED_KEY) !== userId) {
-        supabase
-          .from('profiles')
-          .update({ profile_data: localRaw, updated_at: new Date().toISOString() })
-          .eq('id', userId)
-          .then(({ error: e }) => {
-            if (e) logger.warn('[useProfileQuery] initial push error:', e.message)
-            else try { localStorage.setItem(SYNCED_KEY, userId) } catch (_) {}
-          })
+        const updatedAt = new Date().toISOString()
+        tryWrite(
+          '[useProfileQuery] initial push',
+          supabase.from('profiles').update({ profile_data: localRaw, updated_at: updatedAt }).eq('id', userId),
+          // On failure (e.g. offline first-login) queue the push so it isn't lost;
+          // flushQueue replays it as an upsert on profiles (onConflict 'id').
+          () => enqueuePendingLog({ id: userId, profile_data: localRaw, updated_at: updatedAt, _table: 'profiles' }),
+        ).then(ok => {
+          if (ok) try { localStorage.setItem(SYNCED_KEY, userId) } catch (_) {}
+        })
       }
 
       return lsData
@@ -84,15 +88,13 @@ export function useProfileQuery(userId) {
     if (!isSupabaseReady() || !userId) return
 
     Promise.resolve().then(async () => {
-      try {
-        await supabase
-          .from('profiles')
-          .update({ profile_data: next, updated_at: new Date().toISOString() })
-          .eq('id', userId)
-        qc.invalidateQueries({ queryKey: qKey })
-      } catch (e) {
-        logger.warn('[useProfileQuery] save error:', e.message)
-      }
+      const updatedAt = new Date().toISOString()
+      const ok = await tryWrite(
+        '[useProfileQuery] save',
+        supabase.from('profiles').update({ profile_data: next, updated_at: updatedAt }).eq('id', userId),
+        () => enqueuePendingLog({ id: userId, profile_data: next, updated_at: updatedAt, _table: 'profiles' }),
+      )
+      if (ok) qc.invalidateQueries({ queryKey: qKey })
     })
   }, [userId, qc, setLsData]) // eslint-disable-line react-hooks/exhaustive-deps
 

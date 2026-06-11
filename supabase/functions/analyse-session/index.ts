@@ -10,6 +10,7 @@
 import { serve }        from 'https://deno.land/std@0.177.0/http/server.ts'
 import { withTelemetry } from '../_shared/telemetry.ts'
 import { isVerifiedServiceCall } from '../_shared/serviceAuth.ts'
+import { fetchWithTimeout } from '../_shared/fetchWithTimeout.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const CORS = {
@@ -186,14 +187,14 @@ Return plain text only. Max 75 words. Be direct and evidence-based.`
   // ── Call Anthropic ─────────────────────────────────────────────────────────────
   let insightText: string
   try {
-    const resp = await fetch(ANTHROPIC_API, {
+    const resp = await fetchWithTimeout(ANTHROPIC_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': anthropicKey, 'anthropic-version': ANTHR_VER },
       body: JSON.stringify({
         model: MODEL, max_tokens: MAX_TOKENS, system: systemPrompt,
         messages: [{ role: 'user', content: `Session:\n${sessionSummary}\n\nContext:\n${loadContext}` }],
       }),
-    })
+    }, 30_000)
     if (!resp.ok) return err('AI service error', 502)
     const aiResp = await resp.json()
     insightText  = aiResp?.content?.[0]?.text?.trim() || ''
@@ -238,7 +239,11 @@ Return plain text only. Max 75 words. Be direct and evidence-based.`
         'x-sporeus-webhook-secret': Deno.env.get('WEBHOOK_SECRET') || '',
       },
       body: JSON.stringify({ session_id: sessionId, user_id: userId, insight_only: true }),
-    }).catch(() => {})  // fire-and-forget; failure is acceptable
+    }).catch((e) => {
+      // Fire-and-forget; failure is acceptable but should be observable so a
+      // persistently broken embed chain doesn't fail silently in production.
+      console.error('[analyse-session] insight embed re-trigger failed:', e?.message || e)
+    })
   }
 
   // ── Coach mirror: insert kind='coach_session_flag' when flags present ─────────

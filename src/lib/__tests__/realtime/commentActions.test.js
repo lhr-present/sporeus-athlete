@@ -130,6 +130,17 @@ describe('editComment', () => {
     expect(updatePayload).toMatchObject({ body: 'updated text' })
     expect(updatePayload.edited_at).toBeTruthy()
   })
+
+  it('queues an update write when offline', async () => {
+    mockEnqueue.mockClear()
+    const sb = makeChain({ data: null, error: new Error('Failed to fetch') })
+    const { queued, error } = await editComment(sb, 'c1', 'updated text')
+    expect(queued).toBe(true)
+    expect(error).toBeNull()
+    expect(mockEnqueue).toHaveBeenCalledWith('update', 'session_comments', expect.objectContaining({
+      id: 'c1', body: 'updated text',
+    }))
+  })
 })
 
 // ── deleteComment ─────────────────────────────────────────────────────────────
@@ -157,6 +168,21 @@ describe('deleteComment', () => {
     }
     await deleteComment(sb, 'c1')
     expect(deleteFn).not.toHaveBeenCalled()
+  })
+
+  it('queues a soft-delete update when offline', async () => {
+    mockEnqueue.mockClear()
+    const sb = {
+      from:   vi.fn(() => sb),
+      update: vi.fn(() => sb),
+      eq:     vi.fn(() => Promise.resolve({ error: new Error('Failed to fetch') })),
+    }
+    const { queued, error } = await deleteComment(sb, 'c1')
+    expect(queued).toBe(true)
+    expect(error).toBeNull()
+    expect(mockEnqueue).toHaveBeenCalledWith('update', 'session_comments', expect.objectContaining({
+      id: 'c1',
+    }))
   })
 })
 

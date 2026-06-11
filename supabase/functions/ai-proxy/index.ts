@@ -13,6 +13,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { fetchWithTimeout } from '../_shared/fetchWithTimeout.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -136,7 +137,7 @@ serve(async (req) => {
       if (embeddingKey) {
         try {
           // 1. Embed the user query
-          const embedRes = await fetch(OPENAI_EMBED_URL, {
+          const embedRes = await fetchWithTimeout(OPENAI_EMBED_URL, {
             method: 'POST',
             headers: {
               'Content-Type':  'application/json',
@@ -186,7 +187,7 @@ serve(async (req) => {
     const model     = MODEL_MAP[model_alias] || MODEL_MAP.haiku
     const fullSystem = ragContext ? ragContext + system : system
 
-    const anthRes = await fetch(ANTHROPIC_API, {
+    const anthRes = await fetchWithTimeout(ANTHROPIC_API, {
       method: 'POST',
       headers: {
         'Content-Type':      'application/json',
@@ -199,7 +200,7 @@ serve(async (req) => {
         system: fullSystem,
         messages: [{ role: 'user', content: user_msg }],
       }),
-    })
+    }, 30_000)
 
     if (!anthRes.ok) {
       const e = await anthRes.json().catch(() => ({}))

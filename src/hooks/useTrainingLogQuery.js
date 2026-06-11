@@ -18,6 +18,7 @@ import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { logger } from '../lib/logger.js'
 import { useLocalStorage } from './useLocalStorage.js'
 import { logRowToEntry, logEntryToRow, tryWrite } from './useSupabaseData.js'
+import { deepEqual } from '../lib/deepEqual.js'
 import { enqueuePendingLog, markSyncOffline } from '../lib/offlineQueue.js'
 
 export const trainingLogKey = (userId) => ['training_log', userId ?? 'guest']
@@ -135,11 +136,15 @@ export function useTrainingLogQuery(arg) {
 
     if (!isSupabaseReady() || !userId) return
 
-    const added   = next.filter(n => !prev.find(o => o.id === n.id))
-    const removed = prev.filter(o => !next.find(n => n.id === o.id))
+    // O(n) diff via id-indexed maps (was O(n²) nested .find). deepEqual is
+    // order-independent so reordered keys don't fire spurious updates.
+    const prevById = new Map(prev.map(o => [o.id, o]))
+    const nextById = new Map(next.map(n => [n.id, n]))
+    const added   = next.filter(n => !prevById.has(n.id))
+    const removed = prev.filter(o => !nextById.has(o.id))
     const changed = next.filter(n => {
-      const old = prev.find(o => o.id === n.id)
-      return old && JSON.stringify(old) !== JSON.stringify(n)
+      const old = prevById.get(n.id)
+      return old && !deepEqual(old, n)
     })
 
     // Resilient background sync (v9.347.0): per-write error checks, batch never

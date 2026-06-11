@@ -8,6 +8,7 @@ import { logger } from '../lib/logger.js'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { useLocalStorage } from './useLocalStorage.js'
 import { enqueuePendingLog, markSyncOffline } from '../lib/offlineQueue.js'
+import { deepEqual } from '../lib/deepEqual.js'
 
 // ─── Background-write helper ────────────────────────────────────────────────────
 // Pre-v9.347 these hooks fire-and-forgot every upsert/update/delete: a failed
@@ -220,7 +221,7 @@ function useSyncedTable({ lsKey, lsDefault, table, toEntry, toRow, userId, order
         const removed = prev.filter(o => !nextById.has(o.id))
         const changed = next.filter(n => {
           const old = prevById.get(n.id)
-          return old && JSON.stringify(old) !== JSON.stringify(n)
+          return old && !deepEqual(old, n)
         })
 
         // Background sync — resilient: per-write error checks, never aborts the
@@ -295,7 +296,7 @@ export function useRecovery(userId) {
         const removed = prev.filter(o => !nextByDate.has(o.date))
         const changed = next.filter(n => {
           const old = prevByDate.get(n.date)
-          return old && JSON.stringify(old) !== JSON.stringify(n)
+          return old && !deepEqual(old, n)
         })
         Promise.resolve().then(async () => {
           let ok = true

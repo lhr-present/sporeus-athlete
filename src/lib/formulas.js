@@ -284,11 +284,18 @@ export function fmtPace(totalSec, distM) {
  * @param {LogEntry[]} log - training log entries
  * @returns {Object} {ctl, atl, tsb, daily} load metrics
  */
-export function calcLoad(log) {
+export function calcLoad(log, todayISO) {
   if (!log.length) return { atl:0, ctl:0, tsb:0, daily:[] }
   const byDate = {}
   log.forEach(e => { byDate[e.date] = (byDate[e.date]||0)+(e.tss||0) })
-  const dates=[], start=new Date(Object.keys(byDate).sort()[0]), today=new Date()
+  // Window ends at a reference "today". Defaults to the real current day
+  // (production behavior) but accepts an explicit todayISO so callers that
+  // generate load "as of" a fixed date (e.g. buildStarterPlan) get a result
+  // anchored to that date instead of drifting with wall-clock. Guard against
+  // a malformed todayISO collapsing the window.
+  const dates=[], start=new Date(Object.keys(byDate).sort()[0])
+  const ref = todayISO ? new Date(todayISO + 'T00:00:00Z') : new Date()
+  const today = Number.isNaN(ref.getTime()) ? new Date() : ref
   today.setUTCHours(0,0,0,0)
   for (let d=new Date(start); d<=today; d.setUTCDate(d.getUTCDate()+1)) {
     const ds=d.toISOString().slice(0,10)

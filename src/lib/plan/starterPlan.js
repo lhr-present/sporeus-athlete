@@ -144,7 +144,7 @@ export function buildStarterPlan(onboardingData, todayISO, lang = 'en', log) {
   // Defensive Number() coerces NaN from malformed log entries back to 0 so
   // the Math.max floor still produces a finite currentCTL.
   const rawCtl = Array.isArray(log) && log.length > 0
-    ? Number(calcLoad(log)?.ctl)
+    ? Number(calcLoad(log, today)?.ctl)
     : 0
   const ctlFromLog = Number.isFinite(rawCtl) ? rawCtl : 0
   const currentCTL = Math.max(20, ctlFromLog)

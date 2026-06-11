@@ -78,7 +78,6 @@ export function correlateTrainingToResults(log, testResults) {
     const topHalf   = sortedByPerf.slice(0, Math.ceil(sortedByPerf.length / 2))
     const botHalf   = sortedByPerf.slice(Math.ceil(sortedByPerf.length / 2))
 
-    const _avg = _arr => _arr => _arr.reduce((s, v) => s + v, 0) / _arr.length
     const mean = (arr, key) => arr.reduce((s, x) => s + x[key], 0) / arr.length
 
     const vars = ['weeklyTSS', 'weeklySessions', 'z2Hrs', 'avgRPE']
@@ -515,7 +514,10 @@ export function findSeasonalPatterns(log, recovery) {
   })
 
   recovery?.forEach(e => {
-    const m = new Date(e.date).getMonth()
+    // UTC-anchored to match the training-log loop above (v9.62.0). Local
+    // .getMonth() misplaced recovery scores into the wrong month bucket for
+    // negative-UTC users at month boundaries.
+    const m = new Date(e.date + 'T12:00:00Z').getUTCMonth()
     if (!byMonth[m].recScores) byMonth[m].recScores = []
     byMonth[m].recScores.push(e.score || 0)
   })

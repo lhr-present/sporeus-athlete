@@ -313,6 +313,7 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
             onClick={handleSend}
             disabled={!input.trim() || sending}
             aria-label={t('sendMessage')}
+            aria-busy={sending}
             style={{
               fontFamily: MONO, fontSize: 10, fontWeight: 700,
               padding: '0 14px', borderRadius: 4, cursor: 'pointer',

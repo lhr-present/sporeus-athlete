@@ -70,6 +70,17 @@ describe('safeFetch', () => {
     ).rejects.toThrow(/aborted/i)
   })
 
+  it('does not retry when the caller aborts (opts.signal already aborted)', async () => {
+    const ctrl = new AbortController()
+    ctrl.abort()
+    mockFetch.mockRejectedValue(Object.assign(new Error('The operation was aborted.'), { name: 'AbortError' }))
+    await expect(
+      safeFetch('https://api.test/data', { signal: ctrl.signal }, { retries: 2 })
+    ).rejects.toThrow(/aborted/i)
+    // Caller cancelled → bail immediately, no retry storm.
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+  })
+
   it('default retries=2 results in 3 total fetch calls on total failure', async () => {
     mockFetch.mockResolvedValue(errResponse(500))
     await expect(

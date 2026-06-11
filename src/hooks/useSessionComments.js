@@ -123,9 +123,14 @@ export function useSessionComments(sessionId, currentUserId) {
         .subscribe(s => {
           if (!active) return
           if (s === 'SUBSCRIBED') {
+            // A non-zero retry counter means this is a reconnect after a drop —
+            // re-fetch so comments posted during the offline window aren't missed
+            // (postgres_changes only delivers events while subscribed).
+            const wasReconnect = retryRef.current > 0
             retryRef.current = 0
             reportStatus(statusKey, 'live')
             setStatus('live')
+            if (wasReconnect) fetchComments()
           } else if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') {
             reportStatus(statusKey, 'reconnecting')
             setStatus('reconnecting')

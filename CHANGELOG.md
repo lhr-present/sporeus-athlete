@@ -2,6 +2,73 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.387.0 — 2026-06-11 — Deep-dive enhancement block (correctness, perf, offline, a11y, edge-fn, security)
+
+DEPENDS ON: nothing new at runtime (back-compat throughout). New files:
+`src/lib/deepEqual.js`, `supabase/functions/_shared/fetchWithTimeout.ts`,
+`supabase/migrations/20260611_harden_definer_search_path.sql` (operator-applied).
+
+Outcome of a multi-agent deep-dive audit across 8 target dimensions (edge
+functions, RLS/DB, client UX/a11y, perf, data-sync/offline, tier/billing, tests,
+lib-correctness): 68 raw findings → 45 verified → applied the high-leverage,
+low-risk set below. Every finding was re-read against current code before applying;
+two adversarially-"verified" findings were rejected as false positives on close
+read (`weekOf()` was already UTC-anchored; the real bug was its sibling loop).
+
+**Correctness (lib)**
+- **`calcLoad(log, todayISO?)`** — accepts an optional reference date for the EWMA
+  window end (defaults to wall-clock = unchanged production behavior). Previously
+  the window always ran to `new Date()`, so a plan seeded "as of" a fixed date drifted
+  as the calendar advanced — trailing zero days decayed CTL below the 20-floor and
+  broke `buildStarterPlan` seed-CTL (caught by a red baseline test). `buildStarterPlan`
+  now passes its `today` through. Back-compat: all other callers keep wall-clock.
+- **`patterns.js` recovery month bucketing** — the recovery loop in `findSeasonalPatterns`
+  still used local `.getMonth()` while its sibling training-log loop was UTC-anchored
+  in v9.62.0; recovery scores landed in the wrong month bucket for negative-UTC users
+  at month boundaries. Now UTC-anchored to match. Removed a dead, shadowed `_avg` arrow.
+- **`safeFetch`** — combine the caller's `opts.signal` with the timeout controller
+  (previously `{ signal, ...opts }` let a caller signal silently override — disabling
+  the timeout), and bail without retrying when the caller aborts (component unmount no
+  longer triggers a retry storm).
+
+**Performance (Dashboard.jsx)**
+- Memoized `profileMetrics`; hoisted the 5 sport-gate regexes to module scope (no
+  per-render re-creation); removed a dead `useCountUp(totalTSS)` hook call.
+
+**Data-sync / offline robustness**
+- New order-independent `deepEqual` replaces `JSON.stringify` change-detection in
+  `useTrainingLogQuery` + `useSupabaseData` (×2) — reordered object keys no longer fire
+  spurious Supabase writes. `useTrainingLogQuery` diff is now O(n) (id-indexed maps).
+- `useProfileQuery` — initial push **and** ordinary saves now route failures through the
+  offline queue (`tryWrite` → `enqueuePendingLog({ _table: 'profiles' })`) instead of
+  silently dropping; flushQueue replays as a profiles upsert.
+- `commentActions` — `editComment`/`deleteComment` now queue offline (like `postComment`)
+  via the write queue's `update` op; `recordSessionView` surfaces genuine server errors
+  instead of masking all thrown errors as success.
+- `useSessionComments` — re-fetches comments on Realtime **reconnect** so messages posted
+  during a drop aren't missed.
+
+**Accessibility**
+- `AuthGate` email/password inputs: `autoComplete` (mode-aware new/current-password),
+  `name`, `autoCapitalize`/`spellCheck` off. `DeviceSync` config inputs: `autoComplete="off"`.
+- `QuickAddModal` blurs the active input on submit (dismisses the mobile soft keyboard
+  before the saved-state UI renders). `CoachMessage` send button: `aria-busy` while sending.
+
+**Edge functions (deploy-pending — operator runs `supabase functions deploy`)**
+- New `_shared/fetchWithTimeout.ts`; adopted across `ai-proxy`, `analyse-session`,
+  `embed-session`, `nightly-batch` (LLM 30s / embeddings 15–20s) so a hung upstream
+  can't pin an invocation. `export-user-data` storage upload is bounded by a 10s race.
+  `analyse-session`'s fire-and-forget insight re-embed now logs failures.
+
+**Security (DB — operator-applied migration)**
+- `20260611_harden_definer_search_path.sql` pins `SET search_path = public` on three
+  SECURITY DEFINER RPCs that lacked it (`get_system_status`, `get_funnel_today`,
+  `get_recent_client_errors`), closing a schema-shadowing vector. The other two definer
+  RPCs (20260476/20260477) were already pinned.
+
+Tests: +new `deepEqual` suite, `safeFetch` caller-abort case, `calcLoad` todayISO cases,
+`editComment`/`deleteComment` offline-queue cases. Full suite green.
+
 ## v9.386.0 — 2026-06-07 — Fresh-apply migration fixes found via replay harness (real bugs)
 
 DEPENDS ON: `20260423_pgvector.sql`, `20260449_system_status.sql`,

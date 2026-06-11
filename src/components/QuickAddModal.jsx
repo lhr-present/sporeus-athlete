@@ -187,6 +187,12 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst, prefil
     }
     setErrors({})
 
+    // Dismiss the mobile soft keyboard on submit — otherwise it keeps covering
+    // the saved-state confirmation / PR results that render next.
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
+
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
       try { navigator.vibrate(10) } catch (_) {}
     }

@@ -156,6 +156,7 @@ export default function DeviceSync({ userId }) {
             <div style={{ fontSize: '9px', color: '#555', marginBottom: '4px' }}>OPEN-WEARABLES INSTANCE URL</div>
             <input value={form.baseUrl} onChange={e => setForm(f => ({ ...f, baseUrl: e.target.value }))}
               placeholder="https://ow.yourdomain.com"
+              type="url" inputMode="url" autoComplete="off" autoCapitalize="none" spellCheck={false}
               required
               style={{ width: '100%', boxSizing: 'border-box', background: '#1a1a1a', border: '1px solid #333', borderRadius: '3px', color: '#ccc', fontFamily: MONO, fontSize: '11px', padding: '6px 8px' }} />
           </div>
@@ -164,6 +165,7 @@ export default function DeviceSync({ userId }) {
             <div style={{ fontSize: '9px', color: '#555', marginBottom: '4px' }}>API TOKEN (optional)</div>
             <input type="password" value={form.token} onChange={e => setForm(f => ({ ...f, token: e.target.value }))}
               placeholder="Leave blank if no auth required"
+              autoComplete="off" autoCapitalize="none" spellCheck={false}
               style={{ width: '100%', boxSizing: 'border-box', background: '#1a1a1a', border: '1px solid #333', borderRadius: '3px', color: '#ccc', fontFamily: MONO, fontSize: '11px', padding: '6px 8px' }} />
             <div style={{ fontSize: '9px', color: '#444', marginTop: '4px' }}>Token is encrypted before storage and never returned.</div>
           </div>

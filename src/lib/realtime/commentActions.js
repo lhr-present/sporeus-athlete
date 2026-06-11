@@ -82,17 +82,30 @@ export async function postComment(supabase, sessionId, authorId, body, parentId 
 export async function editComment(supabase, commentId, body) {
   const trimmed = (body || '').trim()
   if (!trimmed || trimmed.length > 2000) {
-    return { data: null, error: new Error('body must be 1–2000 characters') }
+    return { data: null, error: new Error('body must be 1–2000 characters'), queued: false }
   }
 
-  const { data, error } = await supabase
-    .from(TABLE_COMMENTS)
-    .update({ body: trimmed, edited_at: new Date().toISOString() })
-    .eq('id', commentId)
-    .select()
-    .single()
+  const patch = { id: commentId, body: trimmed, edited_at: new Date().toISOString() }
+  try {
+    const { data, error } = await supabase
+      .from(TABLE_COMMENTS)
+      .update({ body: patch.body, edited_at: patch.edited_at })
+      .eq('id', commentId)
+      .select()
+      .single()
 
-  return { data, error }
+    if (error && isOfflineError(error)) {
+      await enqueueWrite('update', TABLE_COMMENTS, patch)
+      return { data: null, error: null, queued: true }
+    }
+    return { data, error, queued: false }
+  } catch (err) {
+    if (isOfflineError(err)) {
+      await enqueueWrite('update', TABLE_COMMENTS, patch)
+      return { data: null, error: null, queued: true }
+    }
+    return { data: null, error: err, queued: false }
+  }
 }
 
 /**
@@ -104,12 +117,26 @@ export async function editComment(supabase, commentId, body) {
  * @returns {Promise<{ error }>}
  */
 export async function deleteComment(supabase, commentId) {
-  const { error } = await supabase
-    .from(TABLE_COMMENTS)
-    .update({ deleted_at: new Date().toISOString() })
-    .eq('id', commentId)
+  // Soft-delete is an UPDATE, so it replays through the queue's 'update' op.
+  const patch = { id: commentId, deleted_at: new Date().toISOString() }
+  try {
+    const { error } = await supabase
+      .from(TABLE_COMMENTS)
+      .update({ deleted_at: patch.deleted_at })
+      .eq('id', commentId)
 
-  return { error }
+    if (error && isOfflineError(error)) {
+      await enqueueWrite('update', TABLE_COMMENTS, patch)
+      return { error: null, queued: true }
+    }
+    return { error, queued: false }
+  } catch (err) {
+    if (isOfflineError(err)) {
+      await enqueueWrite('update', TABLE_COMMENTS, patch)
+      return { error: null, queued: true }
+    }
+    return { error: err, queued: false }
+  }
 }
 
 // ── Session view tracking ─────────────────────────────────────────────────────
@@ -135,9 +162,10 @@ export async function recordSessionView(supabase, sessionId, userId) {
       )
 
     return { error }
-  } catch {
-    // Silently ignore network errors — view tracking is best-effort
-    return { error: null }
+  } catch (err) {
+    // View tracking is best-effort: swallow offline errors, but surface a
+    // genuine (thrown) server error instead of masking it as success.
+    return { error: isOfflineError(err) ? null : err }
   }
 }
 
