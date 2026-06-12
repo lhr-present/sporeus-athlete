@@ -173,6 +173,10 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   // localStorage source removed in v9.380 never reflected real coach messages.)
   // Recounts on tab change so it clears after the athlete opens the inbox (which
   // marks them read). coachId is resolved once, then cached in a ref.
+  // Invalidate the cached coachId whenever the signed-in user changes — otherwise
+  // after sign-out / switching accounts the badge keeps counting against the
+  // previous athlete's coach. Declared before the badge effect so it runs first.
+  useEffect(() => { coachIdRef.current = null }, [authUser])
   useEffect(() => {
     let alive = true
     ;(async () => {

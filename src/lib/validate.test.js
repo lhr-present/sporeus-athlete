@@ -82,6 +82,15 @@ describe('sanitizeLogEntry', () => {
     expect(out.distanceM).toBeUndefined()
     expect(out.avgHR).toBeUndefined()
   })
+  it('rejects Infinity numeric fields (isNaN lets Infinity through; Number.isFinite does not)', () => {
+    const e = { date:'2025-01-01', type:'run', duration:60, rpe:5, tss:50,
+      distanceM: Infinity, distance: '1e999', distanceKm: Infinity, durationSec: Infinity }
+    const out = sanitizeLogEntry(e)
+    expect(out.distanceM).toBeUndefined()
+    expect(out.distance).toBeUndefined()
+    expect(out.distanceKm).toBeUndefined()
+    expect(out.durationSec).toBeUndefined()
+  })
 })
 
 describe('sanitizeProfile', () => {

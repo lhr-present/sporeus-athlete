@@ -2,6 +2,50 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.390.0 — 2026-06-12 — Deep-dive round 3 (partial): UTC week key, Infinity guard, upload + badge correctness
+
+DEPENDS ON: nothing new at runtime.
+
+Round 3 (8 not-yet-mined lenses) was interrupted mid-run by an account session
+limit — the finder phase completed (44 raw findings) but most verifier agents and
+the synthesis never ran. The findings were recovered from the workflow journal and
+**verified by reading the code directly** (no subagents). Applied the four
+high-confidence, well-scoped fixes below; the rest are triaged as a backlog (see
+end) to verify properly once the limit resets.
+
+- **`ostrc.js isoWeekKey` UTC bug** — mixed `setUTCHours` (UTC) with
+  `getDate`/`getDay`/`getFullYear` + a local `new Date(y,0,4)` constructor, so
+  non-UTC users got the wrong ISO week near week/year boundaries. Rewritten fully
+  UTC-anchored. (Tests run in UTC where local==UTC, so they stay green while real
+  users are fixed.)
+- **`validate.js` Infinity leak** — `sanitizeLogEntry` gated numeric fields with
+  `!isNaN(x) && x > 0`, but `isNaN(Infinity)` is false, so `parseFloat('1e999')`
+  /`'Infinity'` leaked `Infinity` into stored distance/duration and corrupted
+  downstream load/pace/VO₂max math. Switched to `Number.isFinite`. (+test)
+- **`UploadActivity` double-submit** — `processFile` relied on the `status` state
+  (which lags a render) to gate the dropzone, so two files dropped in one tick both
+  ran. Added a synchronous `inFlightRef` guard released in `finally`.
+- **`useAppState` stale coach badge** — the cached `coachIdRef` (resolved once,
+  reused across tab switches) was never invalidated on auth change, so after
+  sign-out / account switch the Profile-tab unread badge counted against the
+  previous athlete's coach. Added a `useEffect(... , [authUser])` that nulls the
+  ref (declared before the badge effect so it runs first).
+
+Verified-false on inspection (not applied): `deloadDetector` "setUTCDate TypeError"
+(`new Date(d.setUTCDate(...))` is the valid number→Date idiom).
+
+Backlog from round 3 (recovered, NOT yet verified — pending next session): more
+date/time candidates (periodization race-date, nextAction, Onboarding, formulas
+window); CSV/Garmin import bounds (schemaMapper, trainingPeaks notes length);
+billing state-machine items (mostly SQL migrations — operator territory: cron
+tier-state, apply_tier_change retry storms, expires_at sync, billing_events audit,
+dodo amount/currency); deeper a11y (focus restoration, heading h1, reduced-motion,
+token contrast); perf (LangCtx.Provider value memo, IndexedDB connection close,
+inline-arrow props). Plus the still-open v9.388 held items (UUID validation, link
+XSS, global unhandledrejection, i18n cluster).
+
+Tests: +validate Infinity case. Full suite green.
+
 ## v9.389.0 — 2026-06-12 — Wire replayWrites() into online sync (offline comment writes now replay)
 
 DEPENDS ON: `src/lib/offline/writeQueue.js` (replayWrites, pendingWriteCount),

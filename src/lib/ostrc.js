@@ -26,12 +26,16 @@ export function ostrcRisk(score) {
  * Monday = start of week. Handles year boundary correctly.
  */
 export function isoWeekKey(date = new Date()) {
+  // Fully UTC-anchored. Previously this mixed setUTCHours (UTC) with getDate/
+  // getDay/getFullYear + a local Date(y,0,4) constructor — for non-UTC users that
+  // produced the wrong ISO week near week/year boundaries (the local getters read
+  // a different calendar day than the UTC-zeroed instant).
   const d = new Date(date)
   d.setUTCHours(0, 0, 0, 0)
-  d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7)
-  const week1 = new Date(d.getFullYear(), 0, 4)
+  d.setUTCDate(d.getUTCDate() + 3 - (d.getUTCDay() + 6) % 7)
+  const week1 = new Date(Date.UTC(d.getUTCFullYear(), 0, 4))
   const weekNum = 1 + Math.round(
-    ((d.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7
+    ((d.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getUTCDay() + 6) % 7) / 7
   )
-  return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`
+  return `${d.getUTCFullYear()}-W${String(weekNum).padStart(2, '0')}`
 }

@@ -96,16 +96,19 @@ export function sanitizeLogEntry(e) {
   if (e.correctiveRest === true) result.correctiveRest = true
   if (e.improvisedSession === true) result.improvisedSession = true
   if (typeof e.plannedType === 'string' && e.plannedType) result.plannedType = e.plannedType.slice(0, 50)
-  // Fields required by vo2max.js estimateVO2maxTrend — must survive sanitization
-  const distM = parseFloat(e.distanceM); if (!isNaN(distM) && distM > 0) result.distanceM = distM
-  const dist  = parseFloat(e.distance);  if (!isNaN(dist)  && dist  > 0) result.distance  = dist
+  // Fields required by vo2max.js estimateVO2maxTrend — must survive sanitization.
+  // Number.isFinite (not !isNaN) so Infinity from a bad import (parseFloat of
+  // '1e999' / 'Infinity') can't leak into stored numeric fields — isNaN() returns
+  // false for Infinity, which would corrupt downstream load/pace/VO2max math.
+  const distM = parseFloat(e.distanceM); if (Number.isFinite(distM) && distM > 0) result.distanceM = distM
+  const dist  = parseFloat(e.distance);  if (Number.isFinite(dist)  && dist  > 0) result.distance  = dist
   // distanceKm survives sanitization too — QuickAddModal writes it for manual
   // run logging, and predictRacePerformance's fallback reads it (km). Without
   // this it was stripped, leaving the race predictor dead for manual entries.
-  const distKm = parseFloat(e.distanceKm); if (!isNaN(distKm) && distKm > 0) result.distanceKm = distKm
-  const durSec = parseFloat(e.durationSec); if (!isNaN(durSec) && durSec > 0) result.durationSec = durSec
-  const avgHR = parseInt(e.avgHR);  if (!isNaN(avgHR) && avgHR > 0) result.avgHR = avgHR
-  const cadence = parseInt(e.avgCadence); if (!isNaN(cadence) && cadence > 0) result.avgCadence = cadence
+  const distKm = parseFloat(e.distanceKm); if (Number.isFinite(distKm) && distKm > 0) result.distanceKm = distKm
+  const durSec = parseFloat(e.durationSec); if (Number.isFinite(durSec) && durSec > 0) result.durationSec = durSec
+  const avgHR = parseInt(e.avgHR);  if (Number.isFinite(avgHR) && avgHR > 0) result.avgHR = avgHR
+  const cadence = parseInt(e.avgCadence); if (Number.isFinite(cadence) && cadence > 0) result.avgCadence = cadence
   return result
 }
 

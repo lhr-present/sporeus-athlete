@@ -40,6 +40,7 @@ export default function UploadActivity({ authUser, onSuccess, onClose }) {
   const [progress, setProgress] = useState('')
   const [tierBlocked, setTierBlocked] = useState(false)
   const channelRef = useRef(null)
+  const inFlightRef = useRef(false)  // synchronous double-submit guard (status state lags a render)
 
   // Check free-tier quota on mount
   useEffect(() => {
@@ -67,6 +68,10 @@ export default function UploadActivity({ authUser, onSuccess, onClose }) {
   }, [])
 
   const processFile = useCallback(async (file) => {
+    // Two files dropped in the same tick both see status==='idle' (state lags a
+    // render), so the dropzone's disabled prop can't prevent a duplicate upload.
+    // This ref blocks the second call synchronously.
+    if (inFlightRef.current) return
     if (!authUser || !isSupabaseReady()) {
       setErrMsg('Sign in to upload activities.'); return
     }
@@ -80,6 +85,7 @@ export default function UploadActivity({ authUser, onSuccess, onClose }) {
       setErrMsg('Only .fit and .gpx files are supported.'); return
     }
 
+    inFlightRef.current = true
     setErrMsg('')
     setStatus('uploading')
     setProgress('Uploading…')
@@ -154,6 +160,10 @@ export default function UploadActivity({ authUser, onSuccess, onClose }) {
       logger.error('UploadActivity:', e.message)
       setStatus('error')
       setErrMsg(e.message)
+    } finally {
+      // Release the guard once the synchronous upload+invoke completes; by now
+      // status is 'parsing'/'error'/'done' so the dropzone's disabled prop holds.
+      inFlightRef.current = false
     }
   }, [authUser, tierBlocked, onSuccess])
 
