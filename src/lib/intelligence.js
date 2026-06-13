@@ -732,9 +732,15 @@ export function analyseSession(entry, recentLog = []) {
 export function getTodayPlannedSession(plan, today) {
   if (!plan || !Array.isArray(plan.weeks) || !plan.generatedAt) return null
   const todayDate = today || new Date().toISOString().slice(0, 10)
-  const start = new Date(plan.generatedAt)
-  const cur   = new Date(todayDate)
-  const daysDiff = Math.floor((cur - start) / 86400000)
+  // Anchor both at noon-UTC on the DATE portion so daysDiff is an exact integer
+  // even when generatedAt is a full ISO timestamp (generatePlan emits
+  // new Date().toISOString()) rather than a bare 'YYYY-MM-DD'. Without the slice,
+  // a time component made Math.floor off-by-one at week boundaries, blanking
+  // today's session — the core daily-answer screen. Mirrors the noon-UTC anchor
+  // already used for raceDate/isoDow below.
+  const start = new Date(String(plan.generatedAt).slice(0, 10) + 'T12:00:00Z')
+  const cur   = new Date(String(todayDate).slice(0, 10) + 'T12:00:00Z')
+  const daysDiff = Math.round((cur - start) / 86400000)
   if (daysDiff < 0) return null
   if (typeof plan.raceDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(plan.raceDate)) {
     const raceMs = new Date(plan.raceDate + 'T12:00:00Z').getTime()

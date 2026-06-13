@@ -2,6 +2,47 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.392.0 — 2026-06-14 — Round 4 (intellectual): plan-session off-by-one + weeklyTssGoal plumbing; system review
+
+DEPENDS ON: nothing new at runtime.
+
+A high-altitude analytical review (6 reasoning lenses → adversarial critique →
+synthesis, 36 theses → 34 survived). Headline insight: the recurring "plan
+generator ignores physiology" flag is NOT a bug — periodization shape correctly
+comes from currentCTL + weeks-to-race (Daniels/Seiler), with pace/power/HR targets
+derived at render time from threshold/FTP/maxHR. The real system-level themes are
+silent defaults/decoupling, computation fragmentation (4+ CTL engines with
+different decay constants → different fitness numbers per card), confidence
+reported without an uncertainty envelope, and coach-plan blind-overwrite. Those are
+recommendations for the founder (see PR #4 comment), not auto-applied.
+
+Two grounded code fixes applied after verifying each against the source (and
+rejecting the two date-TZ items whose premise was the date-only-is-local
+misconception again):
+- **`getTodayPlannedSession` off-by-one (intelligence.js).** `generatePlan` emits
+  `generatedAt: new Date().toISOString()` (a full timestamp), so
+  `Math.floor((todayMidnight − HH:MM)/day)` went off-by-one / negative at week
+  boundaries and could blank today's session — the core daily-answer screen. Now
+  anchors both `start` and `cur` at noon-UTC on the date portion (mirrors the
+  existing raceDate/isoDow anchors); robust whether `generatedAt` is date-only or a
+  full timestamp. (+regression test with a full-ISO generatedAt.)
+- **`weeklyTssGoalApplied` plumbing (starterPlan.js).** `generatePlan` computes the
+  weeklyTssGoal honor/reject decision but `buildStarterPlan` dropped it, so no UI
+  could ever explain a silent override. Now carried on the returned plan (data only;
+  the user-facing banner is a founder/product decision).
+
+Deferred to founder (recommendations, see PR comment): consolidate the 4+ CTL/ATL
+engines behind one PMC module; add a data-quality confidence envelope to race
+readiness / ACWR / injury (all default missing factors to 50 and read identically
+on day 14 and day 180); reconcile coach-pushed plans with a diff + ACWR safety gate
+instead of blind-overwrite; decide whether physiology should feed plan GENERATION
+(not just execution); replace additive injury scoring with severity-graded logic;
+a canonical week-key utility (~21 implementations). Plus 5 sport-science method
+questions (EWMA-ACWR threshold calibration, VO2max in readiness, sport-specific
+ACWR lines, weeklyTssGoal band scaling, n-threshold for correlation "findings").
+
+Tests: +full-ISO generatedAt regression. Full suite green.
+
 ## v9.391.0 — 2026-06-13 — Round-3 backlog verification + apply (import guards, perf, double-submit)
 
 DEPENDS ON: nothing new at runtime.

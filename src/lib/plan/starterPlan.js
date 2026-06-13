@@ -204,6 +204,11 @@ export function buildStarterPlan(onboardingData, todayISO, lang = 'en', log) {
     isAdaptive:    true,
     fromOnboarding: true,
     adaptiveMeta:  { model: adaptive.model },
+    // v9.392.0 — carry the weeklyTssGoal decision through so the UI can later
+    // explain a silent override (generatePlan computes it but buildStarterPlan
+    // previously dropped it, so no consumer could ever read it). Data-only; the
+    // user-facing banner is a separate product decision.
+    weeklyTssGoalApplied: adaptive.weeklyTssGoalApplied ?? null,
     // v9.104.0 (Prompt FF): default version tag. Mutators (regen, deload,
     // recalibrate) override this via recordPlanVersion(plan, kind) after
     // they've built / mutated their plan, so the tag always reflects the

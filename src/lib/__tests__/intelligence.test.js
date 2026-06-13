@@ -881,6 +881,24 @@ describe('getTodayPlannedSession', () => {
     expect(r.weekPhase).toBe('Base')
   })
 
+  it('handles a full-ISO generatedAt timestamp without off-by-one (week 0 not blanked)', () => {
+    // generatePlan emits generatedAt = new Date().toISOString() (full timestamp).
+    // Before the noon-UTC anchor, Math.floor((midnight − HH:MM timestamp)/day) went
+    // negative/off-by-one and blanked today's session.
+    const today = daysAgo(0)
+    const planDayIdx = (new Date(today + 'T12:00:00Z').getDay() + 6) % 7
+    const sessions = Array(7).fill({ type: 'Rest', duration: 0 })
+    sessions[planDayIdx] = { type: 'Easy Run', duration: 45, tss: 55, rpe: 4 }
+    const plan = {
+      generatedAt: new Date(today + 'T20:00:00Z').toISOString(),  // full ISO, late in the day
+      weeks: [{ sessions, phase: 'Base' }],
+    }
+    const r = getTodayPlannedSession(plan, today)
+    expect(r).not.toBeNull()
+    expect(r.weekIdx).toBe(0)
+    expect(r.type).toBe('Easy Run')
+  })
+
   it('maps weekday → session ordinal via plan.trainingDow (weekend athlete not forced to rest)', () => {
     // Sunday 2026-06-07 (isoDow 6). Athlete trains Mon/Wed/Fri/Sun → 4 packed sessions.
     const today = '2026-06-07'
