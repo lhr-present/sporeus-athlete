@@ -82,6 +82,14 @@ describe('sanitizeLogEntry', () => {
     expect(out.distanceM).toBeUndefined()
     expect(out.avgHR).toBeUndefined()
   })
+  it('rejects out-of-range avgHR / avgCadence (physiological bounds)', () => {
+    const out = sanitizeLogEntry({ date:'2025-01-01', type:'run', duration:60, rpe:5, tss:50, avgHR:300, avgCadence:5000 })
+    expect(out.avgHR).toBeUndefined()
+    expect(out.avgCadence).toBeUndefined()
+    const ok = sanitizeLogEntry({ date:'2025-01-01', type:'run', duration:60, rpe:5, tss:50, avgHR:155, avgCadence:85 })
+    expect(ok.avgHR).toBe(155)
+    expect(ok.avgCadence).toBe(85)
+  })
   it('rejects Infinity numeric fields (isNaN lets Infinity through; Number.isFinite does not)', () => {
     const e = { date:'2025-01-01', type:'run', duration:60, rpe:5, tss:50,
       distanceM: Infinity, distance: '1e999', distanceKm: Infinity, durationSec: Infinity }

@@ -150,6 +150,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const [extPreview,  setExtPreview]  = useState(null) // { toImport, duplicates, errors, summary, formatId, formatLabel }
   const [extErrorsExpanded, setExtErrorsExpanded] = useState(false)
   const extPreviewPanelRef = useRef(null)
+  const submittingRef   = useRef(false)  // guards add() against double-click before form state clears
   useFocusTrap(extPreviewPanelRef, { active: !!extPreview, onEscape: () => setExtPreview(null) })
 
   // ── Pagination controls from DataContext (E4) ────────────────────────────
@@ -281,7 +282,12 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const [tssPreview, setTssPreview] = useState(null)
 
   const add = () => {
-    if (!form.duration) return
+    if (submittingRef.current || !form.duration) return
+    // New entries use id: Date.now() and the form clears only on the next render,
+    // so a double-click would append two rows. Block re-entry until the next frame
+    // (edits are idempotent via editingId, so this only matters for new entries).
+    submittingRef.current = true
+    requestAnimationFrame(() => { submittingRef.current = false })
     const tss = calcTSS(parseInt(form.duration), parseInt(form.rpe))
     const zones = showZones ? zoneMins.map(v=>parseInt(v)||0) : null
     const raw = {

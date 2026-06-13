@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState, useMemo } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 const TQDevtools = import.meta.env.DEV
   ? lazy(() => import('@tanstack/react-query-devtools').then(m => ({ default: m.ReactQueryDevtools })))
@@ -182,9 +182,14 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
   const timeStr = now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', hour12: false })
   const dateStr = now.toLocaleDateString(lang === 'tr' ? 'tr-TR' : 'en-GB', { day:'2-digit', month:'short', year:'numeric' }).toUpperCase()
 
+  // Stable LangCtx value — AppInner re-renders every clock tick (now), and a fresh
+  // {t,lang,setLang} object each render re-renders every LangCtx consumer. t is
+  // useCallback([lang])-stable, so this only changes when lang actually changes.
+  const langContextValue = useMemo(() => ({ t, lang, setLang }), [t, lang, setLang])
+
   if (EMBED_MODE) {
     return (
-      <LangCtx.Provider value={{ t, lang, setLang }}>
+      <LangCtx.Provider value={langContextValue}>
         <style>{ANIM_CSS}</style>
         <AsyncBoundary name="Today">
           <TodayView log={log} setTab={() => {}} setLogPrefill={() => {}} />
@@ -194,7 +199,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
   }
 
   return (
-    <LangCtx.Provider value={{ t, lang, setLang }}>
+    <LangCtx.Provider value={langContextValue}>
       <style>{ANIM_CSS}</style>
 
       {/* v9.370.0 — single fixed stack for all top banners. Each banner used to
@@ -364,7 +369,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
       {/* Guest mode upgrade nudge — after 30 days or 50 sessions */}
       {isGuest && (() => {
         const sessCount = log?.length || 0
-        const firstDate = log?.length ? [...log].sort((a,b) => a.date > b.date ? 1 : -1)[0]?.date : null
+        const firstDate = log?.length ? log.reduce((min, e) => !min || e.date < min ? e.date : min, null) : null
         const daysSince = firstDate ? Math.floor((Date.now() - new Date(firstDate).getTime()) / 86400000) : 0
         if (sessCount < 50 && daysSince < 30) return null
         const NUDGE_KEY = 'sporeus-guest-nudge-dismissed'

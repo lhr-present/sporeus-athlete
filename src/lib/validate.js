@@ -107,8 +107,10 @@ export function sanitizeLogEntry(e) {
   // this it was stripped, leaving the race predictor dead for manual entries.
   const distKm = parseFloat(e.distanceKm); if (Number.isFinite(distKm) && distKm > 0) result.distanceKm = distKm
   const durSec = parseFloat(e.durationSec); if (Number.isFinite(durSec) && durSec > 0) result.durationSec = durSec
-  const avgHR = parseInt(e.avgHR);  if (Number.isFinite(avgHR) && avgHR > 0) result.avgHR = avgHR
-  const cadence = parseInt(e.avgCadence); if (Number.isFinite(cadence) && cadence > 0) result.avgCadence = cadence
+  // Physiological bounds so a bad import can't store an implausible HR/cadence
+  // that then skews EF / HR-fraction / cadence-band math.
+  const avgHR = parseInt(e.avgHR);  if (Number.isFinite(avgHR) && avgHR >= 30 && avgHR <= 250) result.avgHR = avgHR
+  const cadence = parseInt(e.avgCadence); if (Number.isFinite(cadence) && cadence >= 0 && cadence <= 200) result.avgCadence = cadence
   return result
 }
 

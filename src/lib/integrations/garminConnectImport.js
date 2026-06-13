@@ -222,7 +222,10 @@ export function parseDistance(raw) {
     meters = num * 1000
   }
 
-  return Math.round(meters * 100) / 100
+  const result = Math.round(meters * 100) / 100
+  // Guard against Infinity/NaN from pathological CSV values (e.g. '1e999') so a
+  // bad import row can't poison stored distance + downstream pace/VO2max math.
+  return Number.isFinite(result) ? result : null
 }
 
 // ── Map a parsed Garmin row → Sporeus training_log session ───────────────────

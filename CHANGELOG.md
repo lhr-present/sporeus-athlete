@@ -2,6 +2,51 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.391.0 — 2026-06-13 — Round-3 backlog verification + apply (import guards, perf, double-submit)
+
+DEPENDS ON: nothing new at runtime.
+
+Re-ran the round-3 backlog (30 findings) through a verification workflow against
+current v9.390 code, then re-checked each survivor by reading the source myself.
+**Verifier discipline mattered again:** two "safe" date fixes were rejected because
+date-only strings (`'YYYY-MM-DD'`) already parse as UTC per spec — confirmed
+empirically in `TZ=America/New_York` — so appending `'T00:00:00Z'` fixes nothing
+and would produce `Invalid Date` if a time-bearing string ever appeared (same
+class as the v9.387 `weekOf` false positive). One more (`Recovery.save`) was
+rejected because it is idempotent by date (`filter(e=>e.date!==today)` then add).
+
+Applied (6):
+- **`garminConnectImport.parseDistance`** — `Number.isFinite` guard so a
+  pathological CSV distance (`'1e999'`→Infinity) returns null instead of poisoning
+  stored distance + pace/VO₂max math. (production importer; `schemaMapper` sibling
+  was confirmed dead/test-only and left alone.)
+- **`validate.js`** — physiological bounds on `avgHR` (30–250) and `avgCadence`
+  (0–200) in `sanitizeLogEntry`, on top of the v9.390 `Number.isFinite` guard. (+test)
+- **`App.jsx` LangCtx perf** — `AppInner` re-renders every clock tick; the inline
+  `{t,lang,setLang}` provider value re-rendered every consumer each tick. Memoized
+  (`t` is `useCallback([lang])`-stable). Also replaced an `O(n log n)` sort with an
+  `O(n)` reduce for the guest-nudge first-log date.
+- **`TrainingLog.add()`** — double-click on a NEW entry appended two rows
+  (`id: Date.now()`, form clears only on re-render). Added a `submittingRef` guard
+  released next frame; edits stay idempotent via `editingId`.
+- **`Onboarding.jsx`** — race-date offset uses `setUTCDate` (consistency with the
+  `toISOString()` UTC output; differs from `setDate` only across DST).
+
+Rejected as false-positive / already-done (verified): calcLoad + periodization
+"UTC parse" (date-only already UTC), Recovery double-submit (idempotent), useAuth
+tier-clear (already cleared via STORAGE_KEYS.TIER), useAuth/useSubscription dep
+"gaps" (module-const / closure-guarded), CoachMessage send (disabled pre-paint),
+nextAction UTC (already swept v8.46), IndexedDB close (browser-managed), schemaMapper
+bounds (dead code), useTrainingLogQuery Map (premature opt).
+
+Deferred to needs-judgment (NOT applied — founder/design/operator): all subscription
+SQL migrations (cron tier-state COALESCE, apply_tier_change soft-fail, expires_at
+sync, billing_events audit), dodo-webhook amount/currency, tokens.js WCAG-AA
+contrast (design-system), h1 landmark + tab focus-move (a11y wiring), useProfileQuery
+genRef race guard + useRealtimeSquad async-tier (cross-cutting), IndexedDB singleton.
+
+Tests: +validate bounds case. Full suite green.
+
 ## v9.390.0 — 2026-06-12 — Deep-dive round 3 (partial): UTC week key, Infinity guard, upload + badge correctness
 
 DEPENDS ON: nothing new at runtime.
