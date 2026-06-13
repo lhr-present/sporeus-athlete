@@ -48,15 +48,13 @@ serve(async (req) => {
     if (authErr || !user) return jsonErr('Unauthorized', 401)
 
     // ── Squad mode: verify coach tier ─────────────────────────────────────────
+    // Use the status-aware tier_for_user RPC (matches generate-report + the
+    // v9.381/20260606 pattern) rather than the raw subscription_tier column, so a
+    // cancelled/expired coach loses squad search immediately instead of retaining
+    // it until the downgrade cron runs.
     if (squad) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('subscription_tier')
-        .eq('id', user.id)
-        .maybeSingle()
-
-      const tier = profile?.subscription_tier || 'free'
-      if (tier === 'free') {
+      const { data: tier } = await supabase.rpc('tier_for_user', { p_user_id: user.id })
+      if (!tier || tier === 'free') {
         return jsonErr('Squad pattern search requires a Coach or Club plan.', 403)
       }
     }

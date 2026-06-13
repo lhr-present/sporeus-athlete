@@ -2,6 +2,46 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.393.0 — 2026-06-14 — Round 5 (systems): RLS drift + tier-gate consistency (deploy-pending)
+
+DEPENDS ON: `coach_athletes` (link_status), `tier_for_user` RPC (20260606).
+Both changes are OPERATOR-DEPLOYED: apply the migration + `supabase functions deploy embed-query`.
+
+Round 5 reviewed six not-yet-examined subsystems (security/trust model, edge-fn
+fleet, DB/RLS design, AI-coaching layer, test meta-quality, growth). 43 theses →
+25 survived critique. The trust model is mostly sound (RLS is correctly the
+perimeter; client validation + the localStorage tier cache + message "encryption"
+are honestly documented as cosmetic). The defects are the few places that DON'T
+call through that perimeter — two verified ones fixed here:
+
+- **coach_notes RLS drift** (new migration `20260614_coach_notes_active_link_rls`).
+  The athlete-read branch was `auth.uid() = athlete_id` with NO active-link check,
+  while every sibling coach-scoped table requires `coach_athletes.status='active'`.
+  A revoked athlete could read every clinical note a coach wrote about them via the
+  REST API. Re-created the policy mirroring the coach_sessions pattern; coach write
+  access unchanged.
+- **embed-query squad tier gate** now uses the status-aware `tier_for_user` RPC
+  instead of the raw `subscription_tier` column, so a cancelled/expired coach loses
+  squad semantic-search immediately rather than until the downgrade cron (matches
+  generate-report + the v9.381 pattern).
+
+Deferred to founder (verified but judgment/decision required, see PR comment):
+- embed-query NON-squad path has no tier gate — but it searches the user's OWN
+  sessions, so whether personal semantic search is a paid feature is a PRODUCT
+  decision, not a clear bypass.
+- session_comments soft-delete: enforcing `deleted_at IS NULL` in RLS would also
+  hide the intended "[deleted]" tombstone — enforce-vs-cosmetic is a UX decision.
+- GDPR purge_user/build_user_export omit message_reads / ctl_daily_cache /
+  generated_reports. Nuance: message_reads already has ON DELETE CASCADE from
+  auth.users (covered iff purge deletes the auth row), and ctl_daily_cache is a
+  regenerable cache — needs a read of purge_user's body + a schema-drift CI test
+  before authoring, so not done blind.
+- ai-proxy Anthropic prompt caching (cost win, needs careful stable/volatile
+  ordering); wire edge workers to system_status health + strava-backfill MAX_READ;
+  explicit billing reconciliation cron; funnel-cohort RPC for activation metrics.
+
+No app-code (JS) changed; full suite unchanged/green.
+
 ## v9.392.0 — 2026-06-14 — Round 4 (intellectual): plan-session off-by-one + weeklyTssGoal plumbing; system review
 
 DEPENDS ON: nothing new at runtime.
