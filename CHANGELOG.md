@@ -2,6 +2,29 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.402.0 — 2026-06-14 — Tier-1/2 advisor cleanup: RLS initplan perf + index/search_path hygiene
+
+DEPENDS ON: migration `20260619_tier1_2_advisor_cleanup.sql` (applied to prod via MCP).
+
+Cleared all WARN-level `get_advisors` performance lints (semantics-preserving, verified
+against pg_policies/pg_indexes):
+- **`auth_rls_initplan` ×13 → 0:** wrapped `auth.uid()` / `get_my_tier()` in `(select …)`
+  across 11 policies (attribution_events, message_reads, export_jobs, deletion_requests,
+  consent_purposes, onboarding_state, ai_feedback, org_branding) so they evaluate once per
+  query instead of per row.
+- **`multiple_permissive_policies` ×6 → 0:** dropped `ta_athlete_read` (byte-identical to
+  `team_announcements: select`).
+- **`duplicate_index` → 0:** dropped `idx_client_events_ttl_col` (== `idx_client_events_created_at`).
+- **`unindexed_foreign_keys` ×2 → 0:** added covering indexes on
+  `deletion_requests.purge_audit_id` + `message_reads.user_id`.
+- **`function_search_path_mutable` ×2 → 0:** pinned `search_path='public'` on
+  `log_consent_change` + `search_everything`.
+
+Deliberately NOT changed (documented): `ai_proxy_usage` RLS deny-all (intentional —
+service_role metering table; a policy would OPEN it); 11 "unused" indexes (false positive
+at n=8 users — keep for scale); extensions in public + leaked-password protection
+(risky / Dashboard-only — operator follow-ups).
+
 ## v9.401.0 — 2026-06-14 — Tier-0 security (2nd pass): caller guards on the 4 held RPCs/policy
 
 DEPENDS ON: migration `20260618_tier0_held_item_guards.sql` (applied to prod via MCP).
