@@ -120,11 +120,31 @@ export function deduplicateByStravaId(existing, incoming) {
 }
 
 const STRAVA_CLIENT_ID = import.meta.env.VITE_STRAVA_CLIENT_ID || ''
+// Single source of truth for the OAuth redirect — MUST exactly match the
+// "Authorization Callback Domain" + path registered in the Strava app settings.
+// Strava rejects the whole flow with redirect_uri mismatch if it differs at all.
+const STRAVA_REDIRECT_URI = import.meta.env.VITE_STRAVA_REDIRECT_URI || ''
 
-// Redirect URI must match exactly what's registered in Strava app settings
-// For GitHub Pages: https://lhr-present.github.io/sporeus-athlete/
+// Prefer the configured redirect URI; fall back to a normalized current-URL value
+// (query/hash stripped, index.html removed, trailing slash forced) so a deep route
+// or a stray ?param can't silently change the redirect_uri and break the exchange.
 function getRedirectUri() {
-  return window.location.origin + window.location.pathname.replace(/\/$/, '') + '/'
+  let dynamic = ''
+  try {
+    const url = new URL(window.location.href)
+    url.search = ''; url.hash = ''
+    dynamic = url.origin + url.pathname.replace(/\/index\.html$/, '')
+    if (!dynamic.endsWith('/')) dynamic += '/'
+  } catch { /* non-browser context */ }
+
+  if (!STRAVA_REDIRECT_URI) {
+    if (typeof console !== 'undefined') console.warn('[strava] VITE_STRAVA_REDIRECT_URI not set — using current URL; OAuth may fail on redirect_uri mismatch')
+    return dynamic
+  }
+  if (dynamic && dynamic !== STRAVA_REDIRECT_URI && typeof console !== 'undefined') {
+    console.warn(`[strava] current URL (${dynamic}) != registered redirect_uri (${STRAVA_REDIRECT_URI}); using the configured value`)
+  }
+  return STRAVA_REDIRECT_URI
 }
 
 // Redirect user to Strava OAuth authorization page.

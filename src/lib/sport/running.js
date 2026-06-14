@@ -177,7 +177,11 @@ export function raceReadiness({ recentLog = [], targetDistanceM = 10000, peakWee
   const recent4w = recentLog.filter(e => {
     const d = new Date(e.date)
     const cutoff = new Date(); cutoff.setUTCDate(cutoff.getUTCDate() - 28)
-    return d >= cutoff && (e.type === 'Run' || e.source === 'strava')
+    // Match any running variant case-insensitively ('Run', 'run' from Strava,
+    // 'Easy Run', 'Trail Run', 'VirtualRun'). The old `e.type === 'Run'` missed
+    // manual run labels AND lowercase Strava rows, while `|| e.source === 'strava'`
+    // wrongly counted Strava bikes/swims as run volume.
+    return d >= cutoff && /run/i.test(e.type || '')
   })
   const totalRecentM = recent4w.reduce((s, e) => s + (e.distanceM || 0), 0)
   const avgWeeklyM = totalRecentM / 4

@@ -7,7 +7,7 @@ import { useLocalStorage, STORAGE_WARN_KEY } from './useLocalStorage.js'
 import { LABELS } from '../contexts/LangCtx.jsx'
 import { calculateACWR } from '../lib/trainingLoad.js'
 import { addNotification } from '../lib/notificationCenter.js'
-import { exchangeStravaCode, initiateStravaOAuth } from '../lib/strava.js'
+import { exchangeStravaCode, initiateStravaOAuth, triggerStravaSync } from '../lib/strava.js'
 import { checkRaceCountdowns, checkSubscriptionExpiry } from '../lib/pushNotify.js'
 import { scheduleSessionReminder, getReminderSettings } from '../lib/pushNotifications.js'
 import { triggerSync } from '../lib/deviceSync.js'
@@ -110,6 +110,11 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
           addToast({ id: 'strava', message: `⚠ Strava connection failed: ${(error.message || 'Unknown error').slice(0, 200)}`, type: 'error', duration: 6000 })
         } else {
           addToast({ id: 'strava', message: `✓ Strava connected${data?.athlete ? ' — ' + data.athlete : ''}`, type: 'success', duration: 6000 })
+          // Fire an immediate 30-day sync so recent activities appear in ~1-2s.
+          // The connect handler only enqueues a 90-day backfill processed by a
+          // 2-min cron worker, so without this the athlete sees "Connected" but an
+          // empty log for minutes — the top "I connected but nothing happened" bug.
+          triggerStravaSync().catch(syncErr => logger.warn('[strava] post-connect sync:', syncErr?.message || syncErr))
         }
       })
       .catch(err => {

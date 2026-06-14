@@ -1294,7 +1294,10 @@ export function detectPersonalBests(newEntry, existingLog) {
 
   // 1. Highest TSS for this session type
   if (newEntry.tss > 0 && newEntry.type) {
-    const sameType = existingLog.filter(e => e.type === newEntry.type && e.tss > 0)
+    // Case-insensitive so a Strava-synced 'run' and a manual 'Run' are treated as
+    // the same session type for PB comparison (Strava writes lowercase types).
+    const _ntype = String(newEntry.type).toLowerCase()
+    const sameType = existingLog.filter(e => String(e.type).toLowerCase() === _ntype && e.tss > 0)
     const prevMax = sameType.length > 0 ? Math.max(...sameType.map(e => e.tss)) : 0
     if (prevMax > 0 && newEntry.tss > prevMax) {
       results.push(`Highest TSS for a ${newEntry.type} session (prev: ${prevMax}, now: ${newEntry.tss})`)

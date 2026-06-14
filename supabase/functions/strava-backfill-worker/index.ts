@@ -62,8 +62,16 @@ async function refreshIfExpired(
       grant_type:    "refresh_token",
     }),
   })
-  const refreshed = await resp.json()
-  if (!refreshed.access_token) return null
+  // Throw on a real refresh failure (vs the early `return null` = not yet expired),
+  // so the caller can record last_error and stop retrying a revoked token forever.
+  const refreshed = await resp.json().catch(() => ({} as Record<string, unknown>))
+  if (!resp.ok || !refreshed.access_token) {
+    const blob = JSON.stringify(refreshed)
+    if (resp.status === 400 || /invalid_grant|revoked|invalid/i.test(blob)) {
+      throw new Error("Strava authorization revoked — please reconnect Strava")
+    }
+    throw new Error(`Strava token refresh failed (${resp.status})`)
+  }
 
   await sb.from("strava_tokens").update({
     access_token:  refreshed.access_token,
@@ -168,8 +176,21 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
         continue
       }
 
-      const freshToken = await refreshIfExpired(sb, tokenRow, stravaId, stravaSecret)
-      const accessToken = freshToken || tokenRow.access_token
+      let accessToken: string
+      try {
+        const freshToken = await refreshIfExpired(sb, tokenRow, stravaId, stravaSecret)
+        accessToken = freshToken || tokenRow.access_token
+      } catch (refreshErr) {
+        // Revoked / failed refresh: record last_error so the UI can prompt a
+        // reconnect (was previously silent — sync health still read "healthy"),
+        // and drop the message since retrying a revoked token can never succeed.
+        const rmsg = refreshErr instanceof Error ? refreshErr.message : String(refreshErr)
+        await sb.from("strava_tokens").update({
+          sync_status: "error", last_error: rmsg, updated_at: new Date().toISOString(),
+        }).eq("user_id", userId)
+        await sb.rpc("delete_strava_backfill_msg", { p_msg_id: msgId })
+        continue
+      }
 
       const resp = await fetch(
         `https://www.strava.com/api/v3/athlete/activities?after=${after}&per_page=100&page=${page}`,
@@ -184,7 +205,16 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
       }
 
       if (!resp.ok) {
-        // Non-retryable error — discard
+        // Auth failures must be surfaced (not silently discarded) so sync-health
+        // stops reporting "healthy" while imports die — write last_error before
+        // dropping the message.
+        if (resp.status === 401 || resp.status === 403) {
+          await sb.from("strava_tokens").update({
+            sync_status: "error",
+            last_error: "Strava authorization rejected — please reconnect Strava",
+            updated_at: new Date().toISOString(),
+          }).eq("user_id", userId)
+        }
         await sb.rpc("delete_strava_backfill_msg", { p_msg_id: msgId })
         continue
       }

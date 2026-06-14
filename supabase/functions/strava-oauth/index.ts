@@ -78,8 +78,18 @@ async function refreshIfExpired(
       grant_type: "refresh_token",
     }),
   })
-  const refreshed = await resp.json()
-  if (!refreshed.access_token) return null
+  // Distinguish "refresh failed" (throw) from "not expired" (the early `return null`
+  // above). Previously a failed refresh also returned null, so the caller silently
+  // fell back to the stale token → 401 with no signal. A 400 / invalid_grant means
+  // the refresh token was revoked → the user must reconnect.
+  const refreshed = await resp.json().catch(() => ({} as Record<string, unknown>))
+  if (!resp.ok || !refreshed.access_token) {
+    const blob = JSON.stringify(refreshed)
+    if (resp.status === 400 || /invalid_grant|revoked|invalid/i.test(blob)) {
+      throw new Error("Strava authorization revoked — please reconnect Strava")
+    }
+    throw new Error(`Strava token refresh failed (${resp.status})`)
+  }
 
   await adminClient.from("strava_tokens").update({
     access_token: refreshed.access_token,

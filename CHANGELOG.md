@@ -2,6 +2,50 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.395.0 — 2026-06-15 — Strava audit fixes: connect→sync, type case-mismatch, redirect URI, silent token failure
+
+DEPENDS ON: edge fixes require `supabase functions deploy strava-oauth strava-backfill-worker`.
+
+A 5-facet Strava audit (33 confirmed findings). Root causes of "so many issues",
+fixed by bucket. Each fix verified against code — the audit's `running.js` case-fix
+was incomplete (it would still miss manual 'Easy Run'), and its edge type-normalize
+suggestion would have BROKEN the lowercase-matching triLoad/sessionTargets consumers,
+so both were corrected.
+
+Client (tested):
+- **No data after connect** (#1 root cause) — the connect handler only enqueues a
+  90-day backfill processed by a 2-min cron, so the athlete saw "Connected" + an
+  empty log for minutes. `useAppState` now fires an immediate `triggerStravaSync()`
+  (30 days) on OAuth success; backfill continues in the background.
+- **Sport-type case mismatch** — Strava writes lowercase `run/bike/swim`; some
+  consumers exact-matched title-case. `running.js` volume now uses `/run/i` (also
+  fixes manual 'Easy Run' being missed AND stops counting Strava bikes as run
+  volume); `detectPersonalBests` compares type case-insensitively. (+regression test)
+- **OAuth redirect_uri fragility** — `getRedirectUri()` was derived from the live
+  URL (a deep route or stray `?param` could change it → redirect_uri mismatch). Now
+  prefers `VITE_STRAVA_REDIRECT_URI` (added to `.env.example`), with a normalized,
+  query/hash-stripped fallback and a divergence warning.
+
+Edge (deploy-pending — operator deploys):
+- **Silent revoked/expired-token failure** (#2 root cause) — `refreshIfExpired` in
+  both strava-oauth and strava-backfill-worker returned `null` on a failed refresh
+  (indistinguishable from "not expired"), so the caller fell back to the stale token
+  → 401, and the worker discarded the message WITHOUT writing `last_error` (sync
+  health kept reporting "healthy" while imports died). Now it throws a clear
+  "authorization revoked — please reconnect" on real failure; the worker records
+  `last_error` + dead-letters, and surfaces 401/403 the same way.
+
+Deliberately NOT changed (verified would regress / founder): edge type title-casing
+(would break triLoad/sessionTargets/triathlon consumers that match lowercase);
+RPE estimate on Strava rows (founder/science — rows already carry estimated zones);
+dead `importStravaActivities`/`stravaToEntry` (heavily tested, low value). Follow-ups
+for the operator/founder: StravaConnect stale badge + reconnect CTA (depends on the
+deployed `last_error`), Strava cadence capture (schema), route-map persistence.
+
+Tests: +2 regression (lowercase Strava 'run' counts as run volume / not a bike).
+Full suite green. Also: `docs/ops/open-items-prompts.md` — runnable prompts for the
+remaining founder/operator items (service_role rotation, deploy queue, GDPR purge, etc.).
+
 ## v9.394.0 — 2026-06-15 — Round 6: apply deferred backlog (week-key util, readiness data-completeness, funnel RPC, strava poison ceiling)
 
 DEPENDS ON: `profiles.created_at`, `training_log.created_at/user_id` (funnel RPC);
