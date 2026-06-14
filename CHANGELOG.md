@@ -2,6 +2,38 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.400.0 — 2026-06-14 — Tier-0 security: SECURITY DEFINER RPC lockdown + view/MV exposure
+
+DEPENDS ON: migration `20260617_security_definer_rpc_lockdown.sql` (applied to prod
+`pvicqwapvvfempjdgwbm` via MCP 2026-06-14).
+
+`get_advisors` flagged ~87 SECURITY DEFINER functions EXECUTE-grantable by `anon`/
+`authenticated` via `/rest/v1/rpc/*`, running as definer (RLS bypassed). A multi-agent
+audit (6 classifiers + adversarial verify per revoke candidate + 3 specialists)
+verified call sites against `src/` (client) vs `supabase/functions/` (edge, service_role):
+
+- **Revoked EXECUTE from `public, anon, authenticated`** on 28 privileged/internal fns
+  (queue ops, billing/tier writers — `apply_tier_change`, `apply_subscription_event`,
+  `tier_for_user`; privacy — `build_user_export`, `purge_user`, `decrypt_device_token`;
+  usage counters; maintenance) + 4 trigger fns; re-granted `service_role` so edge/cron
+  keep working. Verified zero genuine client `supabase.rpc()` callers.
+- **Auth hook** `inject_tier_jwt_claim`: stripped to `supabase_auth_admin` + `service_role`
+  only (was anon-executable — claim-tampering surface).
+- **Self-guarded read fns** (`get_load_timeline`, `get_squad_readiness`,
+  `get_weekly_summary`): stripped `anon`, kept `authenticated` (they scope via `auth.uid()`).
+- **View** `ai_feedback_summary`: `security_invoker = true` (fixes the only ERROR-level
+  lint — was bypassing `ai_feedback` RLS) + revoked `anon` SELECT.
+- **Materialized views** `mv_ctl_atl_daily`, `mv_squad_readiness`: revoked anon/authenticated
+  SELECT (no RLS → cross-tenant read). Not read directly by the client.
+
+Net: anon-executable SECURITY DEFINER fns 44 → 8 (remaining 8 are intentional keeps or
+the 3 client-facing fns held for a guard). Edge health post-apply: 0×401/0×5xx.
+
+NOT in this change (tracked follow-ups, need a code-level guard not a blind revoke):
+`generate_api_key`, `get_squad_overview`, `get_recent_client_errors` (real client callers,
+unguarded); `referral_codes` always-true UPDATE policy (client updates `uses_count`
+directly → needs a column-scoped policy).
+
 ## v9.399.0 — 2026-06-16 — PROD DEPLOY + verify_jwt regression fix + drift roll-forward
 
 DEPENDS ON: `supabase/config.toml` now pins per-function `verify_jwt`.
