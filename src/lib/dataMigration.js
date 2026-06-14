@@ -58,7 +58,6 @@ export async function migrateToSupabase(userId, onProgress) {
   const injuries    = readLS('sporeus-injuries', [])
   const testResults = readLS('sporeus-test-results', [])
   const raceResults = readLS('sporeus-race-results', [])
-  const trainingAge = localStorage.getItem('sporeus-training-age')
 
   let step = 0
   const profileData  = readLS('sporeus_profile', {})
@@ -70,7 +69,6 @@ export async function migrateToSupabase(userId, onProgress) {
     injuries.length > 0,
     testResults.length > 0,
     raceResults.length > 0,
-    !!trainingAge,
     hasProfile,
   ].filter(Boolean).length || 1
 
@@ -178,15 +176,6 @@ export async function migrateToSupabase(userId, onProgress) {
     }))
     const { error } = await supabase.from('race_results').upsert(rows)
     if (error) recordErr(errors, 'race_results', error)
-    onProgress?.(++step, steps)
-  }
-
-  // ── profile fields ────────────────────────────────────────────────────────
-  if (trainingAge) {
-    const { error } = await supabase.from('profiles')
-      .update({ training_age: trainingAge, updated_at: new Date().toISOString() })
-      .eq('id', userId)
-    if (error) recordErr(errors, 'profiles.training_age', error)
     onProgress?.(++step, steps)
   }
 

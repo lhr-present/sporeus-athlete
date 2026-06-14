@@ -2,6 +2,18 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.405.0 — 2026-06-14 — Drop orphaned profiles.training_age column
+
+DEPENDS ON: migration `20260620_drop_orphan_profiles_training_age.sql` (applied to prod via MCP).
+
+Removed the dead `profiles.training_age` column + its only writer. It was write-only: the
+app's training age lives in localStorage `sporeus-training-age` (TrainingAgeCard /
+levelFromTrainingAge) and nothing read the column. Verified before dropping — no client/edge
+read, no DB function/view/policy/index reference, 0/8 prod rows populated (no data loss).
+`dataMigration.js` no longer writes it (removed the `if (trainingAge)` profile-update block +
+its `steps` entry); guest→account training-age detection/preview is unchanged (stays in
+localStorage). Historical `001_initial_schema.sql` left intact (forward-consistent: create→drop).
+
 ## v9.404.0 — 2026-06-14 — Wire training_age → plan level
 
 The plan generator's level no longer defaults to a flat "Intermediate" — it now derives
