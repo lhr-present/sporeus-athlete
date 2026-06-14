@@ -22,6 +22,18 @@ vi.mock('./supabase.js', () => ({
   isSupabaseReady: () => true,
 }))
 
+// ─── Mock write_queue (comment offline store) ─────────────────────────────────
+// flushQueue now also drains this store via replayWrites (v9.388 wiring).
+const wq = vi.hoisted(() => ({
+  queuedWrites: 0,
+  replayResult: { replayed: 0, failed: 0, skipped: 0 },
+  replayWrites: vi.fn(),
+}))
+vi.mock('./offline/writeQueue.js', () => ({
+  pendingWriteCount: vi.fn(async () => wq.queuedWrites),
+  replayWrites: wq.replayWrites,
+}))
+
 import { enqueuePendingLog, flushQueue, getSyncStatus, onSyncStatusChange, isNetworkError } from './offlineQueue.js'
 import { enqueue, dequeue, getAll } from './db.js'
 
@@ -30,6 +42,9 @@ beforeEach(() => {
   _idSeq = 1
   _upsertError = null
   vi.clearAllMocks()
+  wq.queuedWrites = 0
+  wq.replayResult = { replayed: 0, failed: 0, skipped: 0 }
+  wq.replayWrites.mockImplementation(async () => wq.replayResult)
   // patch getAll mock to return fresh _store reference
   getAll.mockImplementation(async () => [..._store])
   enqueue.mockImplementation(async entry => { const id = _idSeq++; _store.push({ id, ...entry }); return id })
@@ -124,6 +139,28 @@ it('flushQueue resolves synced status when nothing queued', async () => {
   unsub()
   // No 'syncing' event — jumped straight to synced (or stayed synced)
   expect(statuses.filter(s => s === 'syncing')).toHaveLength(0)
+})
+
+// ─── write_queue replay wiring (v9.388) ───────────────────────────────────────
+it('flushQueue replays queued comment writes even when pending_logs is empty', async () => {
+  wq.queuedWrites = 2
+  wq.replayResult = { replayed: 2, failed: 0, skipped: 0 }
+  await flushQueue()
+  expect(wq.replayWrites).toHaveBeenCalledTimes(1)
+  expect(getSyncStatus()).toBe('synced')
+})
+
+it('flushQueue stays offline when a comment write fails to replay', async () => {
+  wq.queuedWrites = 1
+  wq.replayResult = { replayed: 0, failed: 1, skipped: 0 }
+  await flushQueue()
+  expect(getSyncStatus()).toBe('offline')
+})
+
+it('flushQueue does NOT call replayWrites when no comment writes are queued', async () => {
+  await enqueuePendingLog({ date: '2026-04-12', tss: 80, _table: 'recovery' })
+  await flushQueue()
+  expect(wq.replayWrites).not.toHaveBeenCalled()
 })
 
 // ─── Test 5: onSyncStatusChange unsubscribe works ─────────────────────────────

@@ -147,18 +147,18 @@ export default function InviteManager({ coachId }) {
       <div style={{ background: '#0a0a0a', border: '1px solid #1e1e1e', borderRadius: '6px', padding: '16px', marginBottom: '16px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '10px', alignItems: 'end' }}>
           <div>
-            <label style={label_s}>LABEL (optional)</label>
-            <input style={input_s} placeholder="e.g. Rowing squad 2026" value={label}
+            <label style={label_s} htmlFor="invite-label">LABEL (optional)</label>
+            <input id="invite-label" name="invite-label" autoComplete="off" style={input_s} placeholder="e.g. Rowing squad 2026" value={label}
               onChange={e => setLabel(e.target.value)} maxLength={80} />
           </div>
           <div style={{ minWidth: '80px' }}>
-            <label style={label_s}>MAX USES</label>
-            <input style={input_s} type="number" inputMode="numeric" placeholder="∞" value={maxUses}
+            <label style={label_s} htmlFor="invite-max-uses">MAX USES</label>
+            <input id="invite-max-uses" name="invite-max-uses" autoComplete="off" style={input_s} type="number" inputMode="numeric" placeholder="∞" value={maxUses}
               onChange={e => setMaxUses(e.target.value)} min="1" max="999" />
           </div>
           <div style={{ minWidth: '80px' }}>
-            <label style={label_s}>EXPIRES (days)</label>
-            <input style={input_s} type="number" inputMode="numeric" placeholder="7" value={days}
+            <label style={label_s} htmlFor="invite-expiry-days">EXPIRES (days)</label>
+            <input id="invite-expiry-days" name="invite-expiry-days" autoComplete="off" style={input_s} type="number" inputMode="numeric" placeholder="7" value={days}
               onChange={e => setDays(e.target.value)} min="1" max="365" />
           </div>
         </div>

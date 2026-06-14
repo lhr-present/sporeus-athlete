@@ -34,3 +34,69 @@ enabled = true
 client_id = "env(GOOGLE_CLIENT_ID)"
 secret = "env(GOOGLE_CLIENT_SECRET)"
 redirect_uri = ""
+
+# ── Edge function auth (verify_jwt) ───────────────────────────────────────────
+# WITHOUT these, `supabase functions deploy` defaults verify_jwt=true and silently
+# breaks the cron/trigger/webhook workers that authenticate internally (they get a
+# platform 401). 2026-06-16: a deploy did exactly that to strava-backfill-worker
+# et al. Pin every function's intended setting here so deploys are reproducible.
+
+# verify_jwt = false (cron / trigger / webhook / public — auth internally or are public)
+[functions.send-push]
+verify_jwt = false
+[functions.trigger-checkin-reminders]
+verify_jwt = false
+[functions.attribution-log]
+verify_jwt = false
+[functions.comment-notification]
+verify_jwt = false
+[functions.dodo-webhook]
+verify_jwt = false
+[functions.purge-deleted-accounts]
+verify_jwt = false
+[functions.push-worker]
+verify_jwt = false
+[functions.parse-activity]
+verify_jwt = false
+[functions.alert-monitor]
+verify_jwt = false
+[functions.ingest-telemetry]
+verify_jwt = false
+[functions.check-dependencies]
+verify_jwt = false
+[functions.operator-digest]
+verify_jwt = false
+[functions.public-api]
+verify_jwt = false
+[functions.adjust-coach-plan]
+verify_jwt = false
+[functions.generate-report]
+verify_jwt = false
+[functions.enqueue-ai-batch]
+verify_jwt = false
+[functions.strava-backfill-worker]
+verify_jwt = false
+[functions.analyse-session]
+verify_jwt = false
+[functions.embed-session]
+verify_jwt = false
+[functions.nightly-batch]
+verify_jwt = false
+[functions.export-user-data]
+verify_jwt = false
+
+# verify_jwt = true (called by the client with a user JWT)
+[functions.strava-oauth]
+verify_jwt = true
+[functions.redeem-invite]
+verify_jwt = true
+[functions.device-sync]
+verify_jwt = true
+[functions.embed-query]
+verify_jwt = true
+[functions.ai-batch-worker]
+verify_jwt = true
+[functions.ai-proxy]
+verify_jwt = true
+[functions.squad-sync]
+verify_jwt = true

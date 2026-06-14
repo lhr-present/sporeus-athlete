@@ -13,7 +13,6 @@ import Citation from './ui/Citation.jsx'
 import Banner from './ui/Banner.jsx'
 import { calcLoad } from '../lib/formulas.js'
 import { WELLNESS_FIELDS } from '../lib/constants.js'
-import { hasUnread } from './CoachMessage.jsx'
 import { getMyCoach } from '../lib/inviteUtils.js'
 import { getUpcomingSessions, upsertAttendance } from '../lib/db/coachSessions.js'
 import TeamAnnouncements from './TeamAnnouncements.jsx'
@@ -579,13 +578,6 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
       }
     }
   }
-
-  const [coachUnread, setCoachUnread] = useState(() => {
-    try {
-      const msgs = JSON.parse(localStorage.getItem('sporeus-coach-messages') || '[]')
-      return hasUnread(msgs, 'athlete')
-    } catch (e) { logger.warn('localStorage:', e.message); return 0 }
-  })
 
   // E66 — quick readiness tap state
   const todayReadiness = useMemo(() => {
@@ -2311,28 +2303,6 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
         }
         return null
       })()}
-
-      {/* ── Coach message unread badge ────────────────────────────────────── */}
-      {coachUnread > 0 && (
-        <div style={{
-          ...card, borderLeft: `4px solid #0064ff`,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '10px 18px',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 13 }}>✉</span>
-            <span style={{ fontFamily: MONO, fontSize: 11, color: '#0064ff' }}>
-              {coachUnread} {coachUnread > 1 ? t('todayCoachMsgs') : t('todayCoachMsg')}
-            </span>
-          </div>
-          <button
-            onClick={() => setCoachUnread(0)}
-            style={S.ghostBtn}
-          >
-            {t('todayDismiss')}
-          </button>
-        </div>
-      )}
 
       {/* ── E66 — Quick readiness check-in (shown only when no entry for today) ── */}
       {todayReadiness == null && !quickReadinessSaved && (

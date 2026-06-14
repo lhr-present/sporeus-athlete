@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   importStravaActivities, deduplicateByStravaId, decodePolyline,
   getStravaConnection, disconnectStrava, exchangeStravaCode,
+  getRecentStravaActivities,
 } from './strava.js'
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
@@ -241,6 +242,39 @@ describe('getStravaConnection', () => {
     expect(data.sync_status).toBe('idle')
     expect(data.provider_athlete_name).toBe('Jane Doe')
     expect(data.strava_athlete_id).toBe(12345)
+  })
+})
+
+// ── getRecentStravaActivities ─────────────────────────────────────────────────
+describe('getRecentStravaActivities', () => {
+  it('returns [] without a userId', async () => {
+    expect(await getRecentStravaActivities('')).toEqual([])
+  })
+
+  it('maps training_log rows (duration_min → duration) from the DB', async () => {
+    const limit = vi.fn().mockResolvedValue({ data: [
+      { date: '2026-06-15', type: 'run', duration_min: 45, tss: 60 },
+      { date: '2026-06-14', type: 'bike', duration_min: 90, tss: 120 },
+    ] })
+    const order = vi.fn().mockReturnValue({ limit })
+    const eq2   = vi.fn().mockReturnValue({ order })
+    const eq1   = vi.fn().mockReturnValue({ eq: eq2 })
+    const select = vi.fn().mockReturnValue({ eq: eq1 })
+    supabase.from.mockReturnValue({ select })
+
+    const recent = await getRecentStravaActivities('user-abc')
+    expect(supabase.from).toHaveBeenCalledWith('training_log')
+    expect(recent).toHaveLength(2)
+    expect(recent[0]).toEqual({ date: '2026-06-15', type: 'run', duration: 45, tss: 60 })
+  })
+
+  it('returns [] when the query yields no data', async () => {
+    const limit = vi.fn().mockResolvedValue({ data: null })
+    const order = vi.fn().mockReturnValue({ limit })
+    const eq2   = vi.fn().mockReturnValue({ order })
+    const eq1   = vi.fn().mockReturnValue({ eq: eq2 })
+    supabase.from.mockReturnValue({ select: vi.fn().mockReturnValue({ eq: eq1 }) })
+    expect(await getRecentStravaActivities('u1')).toEqual([])
   })
 })
 

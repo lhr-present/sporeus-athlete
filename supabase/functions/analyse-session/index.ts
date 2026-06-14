@@ -10,6 +10,7 @@
 import { serve }        from 'https://deno.land/std@0.177.0/http/server.ts'
 import { withTelemetry } from '../_shared/telemetry.ts'
 import { isVerifiedServiceCall } from '../_shared/serviceAuth.ts'
+import { fetchWithTimeout } from '../_shared/fetchWithTimeout.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const CORS = {
@@ -27,14 +28,24 @@ const TIER_ELIGIBLE = new Set(['coach', 'club'])
 function ok(body: unknown)         { return new Response(JSON.stringify(body), { headers: { ...CORS, 'Content-Type': 'application/json' } }) }
 function err(msg: string, s = 400) { return new Response(JSON.stringify({ error: msg }), { status: s, headers: { ...CORS, 'Content-Type': 'application/json' } }) }
 
-// ── EWMA-based CTL/ATL from sorted log rows ────────────────────────────────────
-
-function computeCtlAtl(rows: { tss: number }[]): { ctl: number; atl: number; tsb: number; acwr: number | null } {
+// ── Daily-EWMA CTL/ATL — canonical engine (mirrors src/lib/formulas.calcLoad) ───
+// Step over EVERY calendar day from the first session to today, zero-filling rest
+// days, so ATL/CTL decay on non-training days. The old code iterated per-ROW with
+// no rest-day decay (and divisors 1/42, 1/7 instead of 2/(N+1)) → ATL inflated
+// ~2× → spurious `overreach_risk` flags + bad AI advice. Same class as the v9.351
+// intelligence.js fix. Keep kA/kC in sync with formulas.js. (round-4 audit MED)
+function computeCtlAtl(rows: { date: string; tss: number }[]): { ctl: number; atl: number; tsb: number; acwr: number | null } {
+  if (!rows.length) return { ctl: 0, atl: 0, tsb: 0, acwr: null }
+  const byDate: Record<string, number> = {}
+  for (const r of rows) byDate[r.date] = (byDate[r.date] ?? 0) + (r.tss ?? 0)
+  const start = new Date(Object.keys(byDate).sort()[0] + "T00:00:00Z")
+  const today = new Date(); today.setUTCHours(0, 0, 0, 0)
+  const kA = 2 / (7 + 1), kC = 2 / (42 + 1)
   let ctl = 0, atl = 0
-  for (const r of rows) {
-    const tss = r.tss ?? 0
-    ctl = ctl + (tss - ctl) / 42
-    atl = atl + (tss - atl) / 7
+  for (let d = new Date(start); d <= today; d.setUTCDate(d.getUTCDate() + 1)) {
+    const tss = byDate[d.toISOString().slice(0, 10)] ?? 0
+    atl = tss * kA + atl * (1 - kA)
+    ctl = tss * kC + ctl * (1 - kC)
   }
   const tsb  = Math.round((ctl - atl) * 10) / 10
   const acwr = ctl > 0 ? Math.round((atl / ctl) * 100) / 100 : null
@@ -139,12 +150,12 @@ serve(withTelemetry('analyse-session', async (req) => {
 
   const [{ data: recentLogs }, { data: longLogs }, { data: activeInjuries }, { data: planRow }] = await Promise.all([
     svc.from('training_log').select('date, type, tss, rpe, duration_min').eq('user_id', userId).gte('date', now14).order('date'),
-    svc.from('training_log').select('tss').eq('user_id', userId).gte('date', now90).order('date'),
+    svc.from('training_log').select('date, tss').eq('user_id', userId).gte('date', now90).order('date'),
     svc.from('injuries').select('zone, level, type').eq('user_id', userId).is('resolved_date', null),
     svc.from('coach_plans').select('goal, weeks').eq('athlete_id', userId).eq('status', 'active').maybeSingle(),
   ])
 
-  const { ctl, atl, tsb, acwr } = computeCtlAtl((longLogs || []) as { tss: number }[])
+  const { ctl, atl, tsb, acwr } = computeCtlAtl((longLogs || []) as { date: string; tss: number }[])
   const injuries = (activeInjuries || []) as { zone: string; level: number }[]
   const flags    = detectFlags(sessionRow!, acwr, injuries)
 
@@ -176,14 +187,14 @@ Return plain text only. Max 75 words. Be direct and evidence-based.`
   // ── Call Anthropic ─────────────────────────────────────────────────────────────
   let insightText: string
   try {
-    const resp = await fetch(ANTHROPIC_API, {
+    const resp = await fetchWithTimeout(ANTHROPIC_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': anthropicKey, 'anthropic-version': ANTHR_VER },
       body: JSON.stringify({
         model: MODEL, max_tokens: MAX_TOKENS, system: systemPrompt,
         messages: [{ role: 'user', content: `Session:\n${sessionSummary}\n\nContext:\n${loadContext}` }],
       }),
-    })
+    }, 30_000)
     if (!resp.ok) return err('AI service error', 502)
     const aiResp = await resp.json()
     insightText  = aiResp?.content?.[0]?.text?.trim() || ''
@@ -228,7 +239,11 @@ Return plain text only. Max 75 words. Be direct and evidence-based.`
         'x-sporeus-webhook-secret': Deno.env.get('WEBHOOK_SECRET') || '',
       },
       body: JSON.stringify({ session_id: sessionId, user_id: userId, insight_only: true }),
-    }).catch(() => {})  // fire-and-forget; failure is acceptable
+    }).catch((e) => {
+      // Fire-and-forget; failure is acceptable but should be observable so a
+      // persistently broken embed chain doesn't fail silently in production.
+      console.error('[analyse-session] insight embed re-trigger failed:', e?.message || e)
+    })
   }
 
   // ── Coach mirror: insert kind='coach_session_flag' when flags present ─────────

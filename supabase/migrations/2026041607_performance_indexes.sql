@@ -40,7 +40,8 @@ CREATE INDEX IF NOT EXISTS idx_audit_log_user_created
 -- This table is written/read exclusively by the edge function via the service key,
 -- which bypasses RLS. The deny-all policy below makes the intent explicit and
 -- ensures no anon/authenticated role can read rate-limit data directly.
-CREATE POLICY IF NOT EXISTS request_counts_deny_all ON request_counts
+DROP POLICY IF EXISTS request_counts_deny_all ON request_counts;
+CREATE POLICY request_counts_deny_all ON request_counts
   AS RESTRICTIVE
   FOR ALL
   USING (false);

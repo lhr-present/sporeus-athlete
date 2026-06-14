@@ -7,13 +7,15 @@ import { useLocalStorage, STORAGE_WARN_KEY } from './useLocalStorage.js'
 import { LABELS } from '../contexts/LangCtx.jsx'
 import { calculateACWR } from '../lib/trainingLoad.js'
 import { addNotification } from '../lib/notificationCenter.js'
-import { exchangeStravaCode, initiateStravaOAuth } from '../lib/strava.js'
+import { exchangeStravaCode, initiateStravaOAuth, triggerStravaSync } from '../lib/strava.js'
 import { checkRaceCountdowns, checkSubscriptionExpiry } from '../lib/pushNotify.js'
 import { scheduleSessionReminder, getReminderSettings } from '../lib/pushNotifications.js'
 import { triggerSync } from '../lib/deviceSync.js'
 import { initOfflineSync, onSyncStatusChange, getSyncStatus, flushQueue } from '../lib/offlineQueue.js'
 import { exportAllData } from '../lib/storage.js'
-import { isSupabaseReady } from '../lib/supabase.js'
+import { isSupabaseReady, supabase } from '../lib/supabase.js'
+import { getMyCoach } from '../lib/inviteUtils.js'
+import { countUnreadCoachMessages } from '../lib/db/messages.js'
 import { sanitizeLogEntry } from '../lib/validate.js'
 import { hasCurrentConsent, grantConsent } from '../lib/db/consentVersion.js'
 import { logConsent } from '../lib/db/consent.js'
@@ -108,6 +110,11 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
           addToast({ id: 'strava', message: `⚠ Strava connection failed: ${(error.message || 'Unknown error').slice(0, 200)}`, type: 'error', duration: 6000 })
         } else {
           addToast({ id: 'strava', message: `✓ Strava connected${data?.athlete ? ' — ' + data.athlete : ''}`, type: 'success', duration: 6000 })
+          // Fire an immediate 30-day sync so recent activities appear in ~1-2s.
+          // The connect handler only enqueues a 90-day backfill processed by a
+          // 2-min cron worker, so without this the athlete sees "Connected" but an
+          // empty log for minutes — the top "I connected but nothing happened" bug.
+          triggerStravaSync().catch(syncErr => logger.warn('[strava] post-connect sync:', syncErr?.message || syncErr))
         }
       })
       .catch(err => {
@@ -133,8 +140,13 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
   const [syncStatus, setSyncStatus] = useState(() => getSyncStatus())
   const [coachUnreadBadge, setCoachUnreadBadge] = useState(0)
+  const coachIdRef = useRef(null)
 
   const prevLogLen = useRef(log.length)
+  // Tab-switch timer scheduled after the first logged session — tracked so it
+  // can be cleared on unmount (mirrors useRealtimeSquad's timer-ref pattern).
+  const addSessionTimeoutRef = useRef(null)
+  useEffect(() => () => { if (addSessionTimeoutRef.current) clearTimeout(addSessionTimeoutRef.current) }, [])
 
   const [visitedTabs, setVisitedTabs] = useLocalStorage('sporeus-visited-tabs', {})
 
@@ -162,12 +174,28 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
     if (!onboarded && profile?.name) setOnboarded(true)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Profile-tab badge: count unread coach→athlete messages from the DB. (The
+  // localStorage source removed in v9.380 never reflected real coach messages.)
+  // Recounts on tab change so it clears after the athlete opens the inbox (which
+  // marks them read). coachId is resolved once, then cached in a ref.
+  // Invalidate the cached coachId whenever the signed-in user changes — otherwise
+  // after sign-out / switching accounts the badge keeps counting against the
+  // previous athlete's coach. Declared before the badge effect so it runs first.
+  useEffect(() => { coachIdRef.current = null }, [authUser])
   useEffect(() => {
-    try {
-      const msgs = JSON.parse(localStorage.getItem('sporeus-coach-messages')) || []
-      setCoachUnreadBadge(msgs.filter(m => m.from === 'coach' && !m.read).length)
-    } catch { logger.warn('Failed to read coach messages') }
-  }, [tab])
+    let alive = true
+    ;(async () => {
+      if (!authUser?.id || !isSupabaseReady() || !supabase) return
+      try {
+        if (!coachIdRef.current) coachIdRef.current = await getMyCoach(supabase, authUser.id)
+        const coachId = coachIdRef.current
+        if (!coachId) return
+        const { count } = await countUnreadCoachMessages(coachId, authUser.id)
+        if (alive) setCoachUnreadBadge(count || 0)
+      } catch (e) { logger.warn('[coachUnread]', e?.message || e) }
+    })()
+    return () => { alive = false }
+  }, [tab, authUser])
 
   useEffect(() => {
     if (!visitedTabs._firstVisit) {
@@ -459,7 +487,11 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
     })
     // After first session, navigate to Today so the orientation card updates
     if (wasFirst) {
-      setTimeout(() => handleTabClick('today'), 2400)
+      if (addSessionTimeoutRef.current) clearTimeout(addSessionTimeoutRef.current)
+      addSessionTimeoutRef.current = setTimeout(() => {
+        addSessionTimeoutRef.current = null
+        handleTabClick('today')
+      }, 2400)
     }
   }
 

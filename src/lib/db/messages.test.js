@@ -18,6 +18,7 @@ import {
   markReadMany,
   insertMessage,
   subscribeToMessages,
+  countUnreadCoachMessages,
 } from './messages.js'
 
 // ── Chain builder ──────────────────────────────────────────────────────────────
@@ -26,7 +27,7 @@ import {
 // `await chain` resolves with `result` because of the .then() implementation.
 function makeQueryChain(result = { data: null, error: null }) {
   const chain = {}
-  for (const m of ['select','eq','in','order','limit','update','insert','upsert']) {
+  for (const m of ['select','eq','in','is','order','limit','update','insert','upsert']) {
     chain[m] = vi.fn().mockReturnValue(chain)
   }
   chain.then = (res, rej) => Promise.resolve(result).then(res, rej)
@@ -198,5 +199,32 @@ describe('subscribeToMessages', () => {
     )
     expect(chan.subscribe).toHaveBeenCalledOnce()
     expect(result).toBe('sub-handle')
+  })
+})
+
+describe('countUnreadCoachMessages', () => {
+  it('head-counts unread coach-sent messages for the pair', async () => {
+    const chain = makeQueryChain({ count: 3, error: null })
+    supabase.from.mockReturnValue(chain)
+    const res = await countUnreadCoachMessages('c1', 'a1')
+    expect(supabase.from).toHaveBeenCalledWith('messages')
+    expect(chain.select).toHaveBeenCalledWith('id', { count: 'exact', head: true })
+    expect(chain.eq).toHaveBeenCalledWith('coach_id', 'c1')
+    expect(chain.eq).toHaveBeenCalledWith('athlete_id', 'a1')
+    expect(chain.eq).toHaveBeenCalledWith('sender_role', 'coach')
+    expect(chain.is).toHaveBeenCalledWith('read_at', null)
+    expect(res.count).toBe(3)
+  })
+
+  it('returns count 0 without querying when ids are missing', async () => {
+    const res = await countUnreadCoachMessages(null, 'a1')
+    expect(res).toEqual({ count: 0, error: null })
+    expect(supabase.from).not.toHaveBeenCalled()
+  })
+
+  it('returns count 0 when Supabase is not configured', async () => {
+    isSupabaseReady.mockReturnValue(false)
+    const res = await countUnreadCoachMessages('c1', 'a1')
+    expect(res).toEqual({ count: 0, error: null })
   })
 })

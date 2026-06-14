@@ -95,6 +95,17 @@ serve(async (req) => {
     return json({ error: 'Internal error' }, 500)
   }
 
+  // Event was malformed or refused by the state machine (no_event_id / no_user_id
+  // / invalid_tier). Ack with 200 so the provider doesn't retry-storm an event a
+  // retry can't fix, but log the reason and don't masquerade as success.
+  if (data && data.ok === false) {
+    console.warn(JSON.stringify({
+      fn: 'dodo-webhook', provider, type: event['type'],
+      event_id: event['id'] ?? 'unknown', rejected: data.reason,
+    }))
+    return json({ ok: false, reason: data.reason }, 200)
+  }
+
   console.log(JSON.stringify({
     fn: 'dodo-webhook', provider, type: event['type'],
     event_id:    event['id'] ?? 'unknown',

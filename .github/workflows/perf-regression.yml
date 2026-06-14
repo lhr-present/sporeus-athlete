@@ -1,5 +1,11 @@
 name: Perf Regression
 
+# Required for the PR-comment step (default token is read-only without this →
+# createComment 403 "Resource not accessible by integration").
+permissions:
+  contents: read
+  pull-requests: write
+
 on:
   schedule:
     # Nightly at 03:30 UTC (after nightly-batch at 03:00)

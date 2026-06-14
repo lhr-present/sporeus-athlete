@@ -33,11 +33,13 @@ CREATE INDEX IF NOT EXISTS idx_client_events_category_action
 ALTER TABLE client_events ENABLE ROW LEVEL SECURITY;
 
 -- Only service_role writes (ingest-telemetry edge function)
-CREATE POLICY IF NOT EXISTS "client_events_service_write"
+DROP POLICY IF EXISTS "client_events_service_write" ON client_events;
+CREATE POLICY "client_events_service_write"
   ON client_events FOR INSERT TO service_role WITH CHECK (true);
 
 -- Admin reads all
-CREATE POLICY IF NOT EXISTS "client_events_admin_read"
+DROP POLICY IF EXISTS "client_events_admin_read" ON client_events;
+CREATE POLICY "client_events_admin_read"
   ON client_events FOR SELECT
   USING ( (auth.jwt()->'app_metadata'->>'role') = 'admin' );
 

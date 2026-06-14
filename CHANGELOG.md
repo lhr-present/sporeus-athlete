@@ -2,6 +2,877 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.399.0 — 2026-06-16 — PROD DEPLOY + verify_jwt regression fix + drift roll-forward
+
+DEPENDS ON: `supabase/config.toml` now pins per-function `verify_jwt`.
+
+Deployed the v9.387–v9.398 queue to **production** (`pvicqwapvvfempjdgwbm`) via
+Supabase MCP (migrations) + CLI `--use-api` (edge):
+- **Migrations:** training_log metric columns; `get_funnel_cohort_summary`;
+  `coach_notes` active-link RLS; `search_path` on `get_recent_client_errors`;
+  `tier_for_user` + status-aware `get_my_tier` + org_branding white-label gate
+  (20260606 roll-forward — unblocked embed-query AND generate-report).
+- **Edge functions:** all deep-dive changes (strava-oauth, strava-backfill-worker,
+  ai-proxy, analyse-session, embed-session, nightly-batch, export-user-data, embed-query).
+
+**Regression caught via post-deploy log check + fixed:** the CLI deploy defaulted
+`verify_jwt=true` (config.toml had no `[functions]` entries), flipping 5 internal-auth
+workers (strava-backfill-worker, analyse-session, embed-session, nightly-batch,
+export-user-data) false→true → **platform 401 on every cron/trigger invocation**
+(Strava backfill 401'd every 2 min). Redeployed the 5 with `--no-verify-jwt`, and
+**pinned every function's `verify_jwt` in `config.toml`** so deploys can't re-break
+the workers.
+
+NOT done (env-blocked / operator): literal migration squash needs a Docker/pg_dump
+prod schema dump (`docs/ops/migration-squash-runbook.md`); service_role rotation;
+PR #4 merge.
+
+## v9.398.0 — 2026-06-16 — StravaConnect: read post-sync activity list from the DB (fix "no activities" after a successful sync)
+
+DEPENDS ON: nothing new (uses training_log, which the edge sync writes synchronously).
+
+After a successful sync, `StravaConnect.handleSync` read `getRecentStravaLocal()`
+from localStorage — but the DB→localStorage hydration hadn't run yet, so the panel
+showed "No Strava activities found in last 30 days" immediately after a sync that
+just succeeded (the toast said "Synced N"). New `getRecentStravaActivities(userId)`
+reads the most-recent Strava rows straight from `training_log` (the source of truth
+the edge just wrote, now with full metrics per v9.397); falls back to the local read
+on query error. +3 tests.
+
+## v9.397.0 — 2026-06-16 — Persist activity metrics (distance/HR/cadence) to training_log — cross-device data-loss fix
+
+DEPENDS ON: new migration `20260616_training_log_metric_columns.sql` (operator
+applies) + `supabase functions deploy strava-oauth strava-backfill-worker` for the
+Strava-side writes.
+
+VERIFIED BUG: `training_log` only had `duration_min/tss/rpe/zones/notes`.
+`logEntryToRow` dropped `distanceM/avgHR/avgCadence/durationSec` and the Strava sync
+put distance+HR into the notes TEXT only — so distance, HR and cadence were LOST on
+the Supabase round-trip (survived only in the originating device's localStorage).
+Any second device, and all analytics reading `e.distanceM`/`e.avgHR`/`e.avgCadence`
+(VO₂max trend, efficiency factor, running CV, cadence) silently got nothing.
+
+- **Schema:** `training_log` gains `distance_m`, `avg_hr`, `avg_cadence`
+  (nullable, idempotent `ADD COLUMN IF NOT EXISTS`).
+- **Client mappers (useSupabaseData.js):** `logEntryToRow` now writes the three
+  columns (with a `distanceKm → distance_m ×1000` fallback for manual QuickAdd
+  entries); `logRowToEntry` surfaces them back, omitting keys when null so the entry
+  shape still matches a localStorage-only entry. (+round-trip tests)
+- **Strava edge (strava-oauth + strava-backfill-worker):** both now write
+  `distance_m`, `avg_hr`, `avg_cadence` — **running cadence doubled** (`*2` when the
+  mapped type matches `/run/i`) because Strava reports run cadence per-leg; cycling
+  rpm is left as-is.
+
+Tests: +9 mapper/round-trip cases. The run-cadence doubling runs in the Deno edge
+(no JS-suite gate) — covered by the explicit `/run/i` guard + reviewed inline.
+Full suite green.
+
+## v9.396.0 — 2026-06-15 — StravaConnect: STALE badge + RECONNECT CTA (completes the v9.395 Strava audit)
+
+DEPENDS ON: the v9.395 edge fix that writes `last_error` "please reconnect" on a
+revoked/failed token (still deploy-pending) — this is the UI half that surfaces it.
+
+- `StravaConnect` (Profile → connections) now classifies the connection via the
+  existing `classifyStravaSync` helper: shows an amber **STALE** status when idle
+  but not synced in ≥2 days, and a **RECONNECT** button (+ surfaces `last_error`)
+  whenever the connection is failing — previously the only options were SYNC NOW /
+  DISCONNECT, so a revoked athlete had no in-place recovery path. Reconnect reuses
+  the same `initiateStravaOAuth()` flow as first connect.
+
+Full suite green.
+
+## v9.395.0 — 2026-06-15 — Strava audit fixes: connect→sync, type case-mismatch, redirect URI, silent token failure
+
+DEPENDS ON: edge fixes require `supabase functions deploy strava-oauth strava-backfill-worker`.
+
+A 5-facet Strava audit (33 confirmed findings). Root causes of "so many issues",
+fixed by bucket. Each fix verified against code — the audit's `running.js` case-fix
+was incomplete (it would still miss manual 'Easy Run'), and its edge type-normalize
+suggestion would have BROKEN the lowercase-matching triLoad/sessionTargets consumers,
+so both were corrected.
+
+Client (tested):
+- **No data after connect** (#1 root cause) — the connect handler only enqueues a
+  90-day backfill processed by a 2-min cron, so the athlete saw "Connected" + an
+  empty log for minutes. `useAppState` now fires an immediate `triggerStravaSync()`
+  (30 days) on OAuth success; backfill continues in the background.
+- **Sport-type case mismatch** — Strava writes lowercase `run/bike/swim`; some
+  consumers exact-matched title-case. `running.js` volume now uses `/run/i` (also
+  fixes manual 'Easy Run' being missed AND stops counting Strava bikes as run
+  volume); `detectPersonalBests` compares type case-insensitively. (+regression test)
+- **OAuth redirect_uri fragility** — `getRedirectUri()` was derived from the live
+  URL (a deep route or stray `?param` could change it → redirect_uri mismatch). Now
+  prefers `VITE_STRAVA_REDIRECT_URI` (added to `.env.example`), with a normalized,
+  query/hash-stripped fallback and a divergence warning.
+
+Edge (deploy-pending — operator deploys):
+- **Silent revoked/expired-token failure** (#2 root cause) — `refreshIfExpired` in
+  both strava-oauth and strava-backfill-worker returned `null` on a failed refresh
+  (indistinguishable from "not expired"), so the caller fell back to the stale token
+  → 401, and the worker discarded the message WITHOUT writing `last_error` (sync
+  health kept reporting "healthy" while imports died). Now it throws a clear
+  "authorization revoked — please reconnect" on real failure; the worker records
+  `last_error` + dead-letters, and surfaces 401/403 the same way.
+
+Deliberately NOT changed (verified would regress / founder): edge type title-casing
+(would break triLoad/sessionTargets/triathlon consumers that match lowercase);
+RPE estimate on Strava rows (founder/science — rows already carry estimated zones);
+dead `importStravaActivities`/`stravaToEntry` (heavily tested, low value). Follow-ups
+for the operator/founder: StravaConnect stale badge + reconnect CTA (depends on the
+deployed `last_error`), Strava cadence capture (schema), route-map persistence.
+
+Tests: +2 regression (lowercase Strava 'run' counts as run volume / not a bike).
+Full suite green. Also: `docs/ops/open-items-prompts.md` — runnable prompts for the
+remaining founder/operator items (service_role rotation, deploy queue, GDPR purge, etc.).
+
+## v9.394.0 — 2026-06-15 — Round 6: apply deferred backlog (week-key util, readiness data-completeness, funnel RPC, strava poison ceiling)
+
+DEPENDS ON: `profiles.created_at`, `training_log.created_at/user_id` (funnel RPC);
+pgmq `read_ct` on strava_backfill (poison ceiling). The migration + edge change
+are OPERATOR-DEPLOYED.
+
+Implementing the deferred backlog ("apply your suggestions"). Each item was
+re-verified against current code first; one SQL bug in the drafted funnel RPC was
+corrected (date−date is an integer in Postgres, not an interval — the spec's
+`EXTRACT(day FROM ...)` would have errored). Two categories were deliberately NOT
+auto-applied: sport-science (CTL/ACWR/injury thresholds) and revenue/product
+(personal-search gate, soft-delete tombstone) — those remain founder calls.
+
+Applied (testable):
+- **`src/lib/dateKeys.js`** — canonical UTC-anchored `isoMondayOf` + `weekKey` (the
+  ~20 ad-hoc week-Monday implementations can migrate to this incrementally; no mass
+  migration in this change since some sites are intentionally Sunday-start). +13 tests.
+- **`computeRaceReadiness` dataCompleteness** — additive field (0..1) counting present
+  input signals (history/recovery/sleep/plan/race) so a future UI can honestly caveat
+  a grade built largely on the neutral 50-defaults. Does NOT change score/grade. +3 tests.
+
+Applied (deploy-pending — operator applies/deploys):
+- **`get_funnel_cohort_summary(start,end)` RPC** (new migration) — per-cohort-day
+  signed_up / first_session / first_week / activation_rate / avg_days_to_first
+  (first-session = training_log.created_at, so backfilled entries don't count as
+  activation). Read-only, service_role only, net-new (no regression surface).
+- **strava-backfill-worker poison ceiling** — `MAX_READ=10`; a message that keeps
+  failing (revoked token / persistent 5xx / deleted user) now dead-letters after
+  ~20 min instead of re-reading forever and blocking consumer capacity.
+
+Deferred (verified, specs ready — NOT shipped):
+- GDPR purge backfill (message_reads/ctl_daily_cache/generated_reports) — requires a
+  wholesale `CREATE OR REPLACE` of the large `purge_user` function; too risky to ship
+  untested into the migration history. Operator/founder should apply from the spec.
+- ai-batch-worker system_status pre-check + ai-proxy Anthropic prompt-cache — involved
+  edge changes (prompt-cache is ordering-sensitive); deferred for careful authoring.
+- Founder calls: soft-delete enforce-vs-cosmetic, embed-query non-squad gate (revenue),
+  CTL-engine consolidation — DROPPED (nextAction λ=0.067 is the intentional Hulin ACWR
+  decay model, not the accidental copy round 4 suspected).
+
+Full suite green (+16 new tests).
+
+## v9.393.0 — 2026-06-14 — Round 5 (systems): RLS drift + tier-gate consistency (deploy-pending)
+
+DEPENDS ON: `coach_athletes` (link_status), `tier_for_user` RPC (20260606).
+Both changes are OPERATOR-DEPLOYED: apply the migration + `supabase functions deploy embed-query`.
+
+Round 5 reviewed six not-yet-examined subsystems (security/trust model, edge-fn
+fleet, DB/RLS design, AI-coaching layer, test meta-quality, growth). 43 theses →
+25 survived critique. The trust model is mostly sound (RLS is correctly the
+perimeter; client validation + the localStorage tier cache + message "encryption"
+are honestly documented as cosmetic). The defects are the few places that DON'T
+call through that perimeter — two verified ones fixed here:
+
+- **coach_notes RLS drift** (new migration `20260614_coach_notes_active_link_rls`).
+  The athlete-read branch was `auth.uid() = athlete_id` with NO active-link check,
+  while every sibling coach-scoped table requires `coach_athletes.status='active'`.
+  A revoked athlete could read every clinical note a coach wrote about them via the
+  REST API. Re-created the policy mirroring the coach_sessions pattern; coach write
+  access unchanged.
+- **embed-query squad tier gate** now uses the status-aware `tier_for_user` RPC
+  instead of the raw `subscription_tier` column, so a cancelled/expired coach loses
+  squad semantic-search immediately rather than until the downgrade cron (matches
+  generate-report + the v9.381 pattern).
+
+Deferred to founder (verified but judgment/decision required, see PR comment):
+- embed-query NON-squad path has no tier gate — but it searches the user's OWN
+  sessions, so whether personal semantic search is a paid feature is a PRODUCT
+  decision, not a clear bypass.
+- session_comments soft-delete: enforcing `deleted_at IS NULL` in RLS would also
+  hide the intended "[deleted]" tombstone — enforce-vs-cosmetic is a UX decision.
+- GDPR purge_user/build_user_export omit message_reads / ctl_daily_cache /
+  generated_reports. Nuance: message_reads already has ON DELETE CASCADE from
+  auth.users (covered iff purge deletes the auth row), and ctl_daily_cache is a
+  regenerable cache — needs a read of purge_user's body + a schema-drift CI test
+  before authoring, so not done blind.
+- ai-proxy Anthropic prompt caching (cost win, needs careful stable/volatile
+  ordering); wire edge workers to system_status health + strava-backfill MAX_READ;
+  explicit billing reconciliation cron; funnel-cohort RPC for activation metrics.
+
+No app-code (JS) changed; full suite unchanged/green.
+
+## v9.392.0 — 2026-06-14 — Round 4 (intellectual): plan-session off-by-one + weeklyTssGoal plumbing; system review
+
+DEPENDS ON: nothing new at runtime.
+
+A high-altitude analytical review (6 reasoning lenses → adversarial critique →
+synthesis, 36 theses → 34 survived). Headline insight: the recurring "plan
+generator ignores physiology" flag is NOT a bug — periodization shape correctly
+comes from currentCTL + weeks-to-race (Daniels/Seiler), with pace/power/HR targets
+derived at render time from threshold/FTP/maxHR. The real system-level themes are
+silent defaults/decoupling, computation fragmentation (4+ CTL engines with
+different decay constants → different fitness numbers per card), confidence
+reported without an uncertainty envelope, and coach-plan blind-overwrite. Those are
+recommendations for the founder (see PR #4 comment), not auto-applied.
+
+Two grounded code fixes applied after verifying each against the source (and
+rejecting the two date-TZ items whose premise was the date-only-is-local
+misconception again):
+- **`getTodayPlannedSession` off-by-one (intelligence.js).** `generatePlan` emits
+  `generatedAt: new Date().toISOString()` (a full timestamp), so
+  `Math.floor((todayMidnight − HH:MM)/day)` went off-by-one / negative at week
+  boundaries and could blank today's session — the core daily-answer screen. Now
+  anchors both `start` and `cur` at noon-UTC on the date portion (mirrors the
+  existing raceDate/isoDow anchors); robust whether `generatedAt` is date-only or a
+  full timestamp. (+regression test with a full-ISO generatedAt.)
+- **`weeklyTssGoalApplied` plumbing (starterPlan.js).** `generatePlan` computes the
+  weeklyTssGoal honor/reject decision but `buildStarterPlan` dropped it, so no UI
+  could ever explain a silent override. Now carried on the returned plan (data only;
+  the user-facing banner is a founder/product decision).
+
+Deferred to founder (recommendations, see PR comment): consolidate the 4+ CTL/ATL
+engines behind one PMC module; add a data-quality confidence envelope to race
+readiness / ACWR / injury (all default missing factors to 50 and read identically
+on day 14 and day 180); reconcile coach-pushed plans with a diff + ACWR safety gate
+instead of blind-overwrite; decide whether physiology should feed plan GENERATION
+(not just execution); replace additive injury scoring with severity-graded logic;
+a canonical week-key utility (~21 implementations). Plus 5 sport-science method
+questions (EWMA-ACWR threshold calibration, VO2max in readiness, sport-specific
+ACWR lines, weeklyTssGoal band scaling, n-threshold for correlation "findings").
+
+Tests: +full-ISO generatedAt regression. Full suite green.
+
+## v9.391.0 — 2026-06-13 — Round-3 backlog verification + apply (import guards, perf, double-submit)
+
+DEPENDS ON: nothing new at runtime.
+
+Re-ran the round-3 backlog (30 findings) through a verification workflow against
+current v9.390 code, then re-checked each survivor by reading the source myself.
+**Verifier discipline mattered again:** two "safe" date fixes were rejected because
+date-only strings (`'YYYY-MM-DD'`) already parse as UTC per spec — confirmed
+empirically in `TZ=America/New_York` — so appending `'T00:00:00Z'` fixes nothing
+and would produce `Invalid Date` if a time-bearing string ever appeared (same
+class as the v9.387 `weekOf` false positive). One more (`Recovery.save`) was
+rejected because it is idempotent by date (`filter(e=>e.date!==today)` then add).
+
+Applied (6):
+- **`garminConnectImport.parseDistance`** — `Number.isFinite` guard so a
+  pathological CSV distance (`'1e999'`→Infinity) returns null instead of poisoning
+  stored distance + pace/VO₂max math. (production importer; `schemaMapper` sibling
+  was confirmed dead/test-only and left alone.)
+- **`validate.js`** — physiological bounds on `avgHR` (30–250) and `avgCadence`
+  (0–200) in `sanitizeLogEntry`, on top of the v9.390 `Number.isFinite` guard. (+test)
+- **`App.jsx` LangCtx perf** — `AppInner` re-renders every clock tick; the inline
+  `{t,lang,setLang}` provider value re-rendered every consumer each tick. Memoized
+  (`t` is `useCallback([lang])`-stable). Also replaced an `O(n log n)` sort with an
+  `O(n)` reduce for the guest-nudge first-log date.
+- **`TrainingLog.add()`** — double-click on a NEW entry appended two rows
+  (`id: Date.now()`, form clears only on re-render). Added a `submittingRef` guard
+  released next frame; edits stay idempotent via `editingId`.
+- **`Onboarding.jsx`** — race-date offset uses `setUTCDate` (consistency with the
+  `toISOString()` UTC output; differs from `setDate` only across DST).
+
+Rejected as false-positive / already-done (verified): calcLoad + periodization
+"UTC parse" (date-only already UTC), Recovery double-submit (idempotent), useAuth
+tier-clear (already cleared via STORAGE_KEYS.TIER), useAuth/useSubscription dep
+"gaps" (module-const / closure-guarded), CoachMessage send (disabled pre-paint),
+nextAction UTC (already swept v8.46), IndexedDB close (browser-managed), schemaMapper
+bounds (dead code), useTrainingLogQuery Map (premature opt).
+
+Deferred to needs-judgment (NOT applied — founder/design/operator): all subscription
+SQL migrations (cron tier-state COALESCE, apply_tier_change soft-fail, expires_at
+sync, billing_events audit), dodo-webhook amount/currency, tokens.js WCAG-AA
+contrast (design-system), h1 landmark + tab focus-move (a11y wiring), useProfileQuery
+genRef race guard + useRealtimeSquad async-tier (cross-cutting), IndexedDB singleton.
+
+Tests: +validate bounds case. Full suite green.
+
+## v9.390.0 — 2026-06-12 — Deep-dive round 3 (partial): UTC week key, Infinity guard, upload + badge correctness
+
+DEPENDS ON: nothing new at runtime.
+
+Round 3 (8 not-yet-mined lenses) was interrupted mid-run by an account session
+limit — the finder phase completed (44 raw findings) but most verifier agents and
+the synthesis never ran. The findings were recovered from the workflow journal and
+**verified by reading the code directly** (no subagents). Applied the four
+high-confidence, well-scoped fixes below; the rest are triaged as a backlog (see
+end) to verify properly once the limit resets.
+
+- **`ostrc.js isoWeekKey` UTC bug** — mixed `setUTCHours` (UTC) with
+  `getDate`/`getDay`/`getFullYear` + a local `new Date(y,0,4)` constructor, so
+  non-UTC users got the wrong ISO week near week/year boundaries. Rewritten fully
+  UTC-anchored. (Tests run in UTC where local==UTC, so they stay green while real
+  users are fixed.)
+- **`validate.js` Infinity leak** — `sanitizeLogEntry` gated numeric fields with
+  `!isNaN(x) && x > 0`, but `isNaN(Infinity)` is false, so `parseFloat('1e999')`
+  /`'Infinity'` leaked `Infinity` into stored distance/duration and corrupted
+  downstream load/pace/VO₂max math. Switched to `Number.isFinite`. (+test)
+- **`UploadActivity` double-submit** — `processFile` relied on the `status` state
+  (which lags a render) to gate the dropzone, so two files dropped in one tick both
+  ran. Added a synchronous `inFlightRef` guard released in `finally`.
+- **`useAppState` stale coach badge** — the cached `coachIdRef` (resolved once,
+  reused across tab switches) was never invalidated on auth change, so after
+  sign-out / account switch the Profile-tab unread badge counted against the
+  previous athlete's coach. Added a `useEffect(... , [authUser])` that nulls the
+  ref (declared before the badge effect so it runs first).
+
+Verified-false on inspection (not applied): `deloadDetector` "setUTCDate TypeError"
+(`new Date(d.setUTCDate(...))` is the valid number→Date idiom).
+
+Backlog from round 3 (recovered, NOT yet verified — pending next session): more
+date/time candidates (periodization race-date, nextAction, Onboarding, formulas
+window); CSV/Garmin import bounds (schemaMapper, trainingPeaks notes length);
+billing state-machine items (mostly SQL migrations — operator territory: cron
+tier-state, apply_tier_change retry storms, expires_at sync, billing_events audit,
+dodo amount/currency); deeper a11y (focus restoration, heading h1, reduced-motion,
+token contrast); perf (LangCtx.Provider value memo, IndexedDB connection close,
+inline-arrow props). Plus the still-open v9.388 held items (UUID validation, link
+XSS, global unhandledrejection, i18n cluster).
+
+Tests: +validate Infinity case. Full suite green.
+
+## v9.389.0 — 2026-06-12 — Wire replayWrites() into online sync (offline comment writes now replay)
+
+DEPENDS ON: `src/lib/offline/writeQueue.js` (replayWrites, pendingWriteCount),
+the v9.388 IndexedDB v2 alignment (so the write_queue store exists).
+
+Completes the offline-comment path. `commentActions` has queued comment
+insert/edit/delete into the `write_queue` store since v9.387, but `replayWrites()`
+was only ever called from tests — so those mutations sat in IndexedDB forever and
+never reached the server. `flushQueue()` (offlineQueue.js) now also drains the
+`write_queue` on every trigger (online event, startup, OfflineBanner "sync",
+TodayView):
+
+- `flushQueue` counts `pendingWriteCount()` alongside `pending_logs`, so it no
+  longer early-returns "synced" while comment writes are still queued.
+- After draining `pending_logs` it calls `replayWrites(supabase)`; a transient
+  `failed > 0` keeps status `offline` so the next trigger retries. replayWrites is
+  only reached after the online + supabase-ready guards, so it never burns its
+  per-entry retry budget against an offline backend. Entries past MAX_ATTEMPTS are
+  skipped by replayWrites itself and don't wedge the sync indicator.
+- The two stores stay independent (`pending_logs` ↔ recovery/training_log/profiles;
+  `write_queue` ↔ session-comment mutations) — no double-replay.
+
+Tests: +3 offlineQueue cases (replays comment writes when pending_logs is empty;
+stays offline on replay failure; does not call replayWrites when nothing queued).
+Full suite green.
+
+## v9.388.0 — 2026-06-12 — Deep-dive round 2 (offline-queue integrity, lifecycle leaks, observability, a11y)
+
+DEPENDS ON: nothing new at runtime. NOTE: bumps the shared IndexedDB
+`sporeus-offline` schema to version 2 (see db.js) — idempotent upgrade.
+
+Second multi-agent deep-dive (8 fresh/deeper lenses, 59 raw → 41 verified → 33
+ranked), explicitly excluding everything shipped in v9.387. Applied the
+auto-apply-safe set after re-reading each site; **5 flagged-safe findings were
+rejected on inspection** and reported instead (see "Held / rejected" below).
+
+**Offline / storage integrity**
+- **IndexedDB version mismatch (data-loss class).** `db.js` opened the shared
+  `sporeus-offline` DB at version 1 while `writeQueue.js` opened it at version 2;
+  whichever opened second hit a `VersionError`, silently breaking the offline
+  queue. Aligned both to version 2 — and (beyond the finding's one-liner, which
+  was unsafe) `db.js`'s `onupgradeneeded` now creates BOTH stores (`pending_logs`
+  + `write_queue`), since whichever module opens first at a new version runs the
+  only upgrade transaction.
+
+**Correctness / silent failures**
+- `referral.js` — three Supabase mutations (uses_count update, reward insert,
+  ensure-row upsert) swallowed errors and reported success, so referral counts
+  silently never incremented. The increment failure now returns `{success:false}`;
+  reward/upsert failures are logged. (+tests)
+- `intelligence.js generateWeeklyNarrative` — the weekly window had no upper bound,
+  so future-dated entries (typos / timezone skew) inflated "this week." Now bounded
+  at today. (+test) (The sibling "excludes today" window-shift was HELD — it changes
+  a displayed metric's semantics and the finder's fix broke the steady-state test.)
+
+**React lifecycle leaks (setState-after-unmount / leaked timers)**
+- `useToasts` auto-dismiss timers tracked + cleared on unmount. `useAppState`
+  first-session tab-switch timer tracked + cleared. `useSessionComments` reconnect
+  re-fetch now guarded by a mounted ref. `useMessageChannel` broadcast handlers
+  guarded by an active ref so an in-flight broadcast can't schedule work post-unmount.
+
+**Observability**
+- `CoachMessage` `markReadById`/`markReadMany` promise chains get `.catch()` (no more
+  unhandled rejections on RLS/network failure). `telemetry.js` flush no longer fully
+  silent (dev-warns). `generalFitnessSync` uses `logger` not `console`. `dataMigration`
+  logs per-table errors as they occur (Sentry context) while keeping the end-of-run throw.
+
+**Accessibility / forms**
+- `sw.js` Supabase route asserts GET-only (defensive; mutations never hit the
+  cache/3s-timeout strategy). `CoachOverview` notes textarea gets an `aria-label`.
+  `InviteManager` inputs get `htmlFor`/`id` + `name`/`autoComplete`. `QuickAddModal`
+  form inputs get semantic `name` attributes.
+
+**Held / rejected (reported, not applied):** efficiencyFactor odd-n "drop" (false
+positive — divisor matches slice length); `parseFloat('0')` fallback (marginal, the
+downstream `m>0` guard already neutralizes it); lactate `linearSSR` single-pass
+(non-measurable on 5–10-element arrays); math-utils consolidation (54+ sites — a
+refactor, not a fix); useRealtimeSquadFeed poll guard (already present). Also HELD for
+your review: **replayWrites() is never wired into online sync** — queued offline
+comment edits/deletes currently never replay (medium-effort, needs dedup verification
+vs the pendingLogs flow); realtime-filter UUID validation; ScienceReference link XSS;
+global `unhandledrejection` listener; the i18n cluster (InviteManager/DeviceSync/
+Glossary untranslated — high value for the TR market but needs wording review).
+
+Tests: +referral mutation-failure cases, +future-date narrative case. Full suite green.
+
+## v9.387.0 — 2026-06-11 — Deep-dive enhancement block (correctness, perf, offline, a11y, edge-fn, security)
+
+DEPENDS ON: nothing new at runtime (back-compat throughout). New files:
+`src/lib/deepEqual.js`, `supabase/functions/_shared/fetchWithTimeout.ts`,
+`supabase/migrations/20260611_harden_definer_search_path.sql` (operator-applied).
+
+Outcome of a multi-agent deep-dive audit across 8 target dimensions (edge
+functions, RLS/DB, client UX/a11y, perf, data-sync/offline, tier/billing, tests,
+lib-correctness): 68 raw findings → 45 verified → applied the high-leverage,
+low-risk set below. Every finding was re-read against current code before applying;
+two adversarially-"verified" findings were rejected as false positives on close
+read (`weekOf()` was already UTC-anchored; the real bug was its sibling loop).
+
+**Correctness (lib)**
+- **`calcLoad(log, todayISO?)`** — accepts an optional reference date for the EWMA
+  window end (defaults to wall-clock = unchanged production behavior). Previously
+  the window always ran to `new Date()`, so a plan seeded "as of" a fixed date drifted
+  as the calendar advanced — trailing zero days decayed CTL below the 20-floor and
+  broke `buildStarterPlan` seed-CTL (caught by a red baseline test). `buildStarterPlan`
+  now passes its `today` through. Back-compat: all other callers keep wall-clock.
+- **`patterns.js` recovery month bucketing** — the recovery loop in `findSeasonalPatterns`
+  still used local `.getMonth()` while its sibling training-log loop was UTC-anchored
+  in v9.62.0; recovery scores landed in the wrong month bucket for negative-UTC users
+  at month boundaries. Now UTC-anchored to match. Removed a dead, shadowed `_avg` arrow.
+- **`safeFetch`** — combine the caller's `opts.signal` with the timeout controller
+  (previously `{ signal, ...opts }` let a caller signal silently override — disabling
+  the timeout), and bail without retrying when the caller aborts (component unmount no
+  longer triggers a retry storm).
+
+**Performance (Dashboard.jsx)**
+- Memoized `profileMetrics`; hoisted the 5 sport-gate regexes to module scope (no
+  per-render re-creation); removed a dead `useCountUp(totalTSS)` hook call.
+
+**Data-sync / offline robustness**
+- New order-independent `deepEqual` replaces `JSON.stringify` change-detection in
+  `useTrainingLogQuery` + `useSupabaseData` (×2) — reordered object keys no longer fire
+  spurious Supabase writes. `useTrainingLogQuery` diff is now O(n) (id-indexed maps).
+- `useProfileQuery` — initial push **and** ordinary saves now route failures through the
+  offline queue (`tryWrite` → `enqueuePendingLog({ _table: 'profiles' })`) instead of
+  silently dropping; flushQueue replays as a profiles upsert.
+- `commentActions` — `editComment`/`deleteComment` now queue offline (like `postComment`)
+  via the write queue's `update` op; `recordSessionView` surfaces genuine server errors
+  instead of masking all thrown errors as success.
+- `useSessionComments` — re-fetches comments on Realtime **reconnect** so messages posted
+  during a drop aren't missed.
+
+**Accessibility**
+- `AuthGate` email/password inputs: `autoComplete` (mode-aware new/current-password),
+  `name`, `autoCapitalize`/`spellCheck` off. `DeviceSync` config inputs: `autoComplete="off"`.
+- `QuickAddModal` blurs the active input on submit (dismisses the mobile soft keyboard
+  before the saved-state UI renders). `CoachMessage` send button: `aria-busy` while sending.
+
+**Edge functions (deploy-pending — operator runs `supabase functions deploy`)**
+- New `_shared/fetchWithTimeout.ts`; adopted across `ai-proxy`, `analyse-session`,
+  `embed-session`, `nightly-batch` (LLM 30s / embeddings 15–20s) so a hung upstream
+  can't pin an invocation. `export-user-data` storage upload is bounded by a 10s race.
+  `analyse-session`'s fire-and-forget insight re-embed now logs failures.
+
+**Security (DB — operator-applied migration)**
+- `20260611_harden_definer_search_path.sql` pins `SET search_path = public` on three
+  SECURITY DEFINER RPCs that lacked it (`get_system_status`, `get_funnel_today`,
+  `get_recent_client_errors`), closing a schema-shadowing vector. The other two definer
+  RPCs (20260476/20260477) were already pinned.
+
+Tests: +new `deepEqual` suite, `safeFetch` caller-abort case, `calcLoad` todayISO cases,
+`editComment`/`deleteComment` offline-queue cases. Full suite green.
+
+## v9.386.0 — 2026-06-07 — Fresh-apply migration fixes found via replay harness (real bugs)
+
+DEPENDS ON: `20260423_pgvector.sql`, `20260449_system_status.sql`,
+`20260450_client_events.sql`, performance_indexes/security_fixes moved.
+
+Built a fresh-apply harness (reset a disposable Supabase branch via the Management
+API → replay all 117 migrations in order → report the first failure) and fixed
+each REAL bug it surfaced — bugs that only manifest on a clean provision, which is
+why the live app (built incrementally) never hit them:
+
+- **`CREATE POLICY IF NOT EXISTS` (×7)** — invalid SQL (Postgres has never
+  supported `IF NOT EXISTS` on `CREATE POLICY`). In `20260449_system_status`,
+  `20260450_client_events`, `performance_indexes`. → `DROP POLICY IF EXISTS …;
+  CREATE POLICY …` (idempotent).
+- **performance_indexes mis-ordered** — indexed `coach_sessions` /
+  `session_attendance` / `audit_log` (created in the 20260416 group) but ran at
+  20260415. Moved to `2026041607` (after that group). File had drifted (main has it).
+- **security_fixes mis-ordered** — tightened `team_announcements` RLS (table created
+  at `2026041705`) but ran at 20260416. Moved to `2026041709`. Guarding was unsafe
+  (would leave the insecure `USING(true)` policy on fresh DBs), so it must run after.
+- **`insight_embeddings.insight_id` FK type** — declared `UUID` but
+  `ai_insights.id` is `BIGSERIAL`; an invalid FK. Production has it as `bigint`
+  (verified). → `BIGINT`. Makes the later `20260539` realign a no-op.
+
+⚠️ **Not fully resolved — deeper systemic drift remains.** The harness shows the
+117-migration history accumulated months of drift (files edited after main applied
+them; main also records 14-digit-timestamp versions and is 50 migrations behind
+local). Replaying it cleanly will surface more cases, each needing production
+cross-referencing to avoid diverging a fresh DB's schema from prod. The robust
+complete fix is a **squash to a production-matching baseline** (Supabase's
+recommended path) — needs production-schema access + operator sign-off. The
+fixes above + v9.385 unblock the *primary* failure (the version-PK collision that
+froze every branch at 4 migrations) and are correct/safe on their own.
+
+## v9.385.0 — 2026-06-07 — Fix fresh-DB provisioning (MIGRATIONS_FAILED): unique versions + enable extensions
+
+DEPENDS ON: new `20260411_enable_extensions.sql`; 52 migration files renamed to
+unique version prefixes (content unchanged). Solves the Supabase `409 Failed to
+provision branch project` that blocked contract-smoke / db-branch-preview / Supabase Preview.
+
+**Root-caused via the Supabase Management API** (HTTPS — the branch DB itself is
+IPv6-only/unreachable). Two blockers, both confirmed and fixed; both verified on a
+live preview branch:
+
+1. **Duplicate migration version prefixes.** `schema_migrations.version` is the
+   PRIMARY KEY, and the current Supabase CLI derives `version` from the filename's
+   numeric prefix only. The repo had **52 files sharing a `YYYYMMDD` prefix with
+   another** (20260424 ×9, 20260417 ×8, …), so on a fresh `db push` the 2nd file of
+   each day collided on the version PK → the branch stopped after migration #5
+   (`20260412_org_branding`, exactly where the live branch was stuck at 4 applied).
+   Fix: renamed every colliding file to a unique `YYYYMMDDNN_` prefix (e.g.
+   `20260412_org_branding.sql` → `2026041202_org_branding.sql`). Order is provably
+   preserved (verified: the post-rename sort equals the prior sort) and content is
+   byte-identical. NOTE: production `main` recorded versions as full filename stems
+   via an older CLI and is applied manually (DEPLOY_NOW.md), so the rename does not
+   affect prod deploys; it fixes fresh branches/clones.
+2. **pg_cron / pg_net never enabled.** Prod had them enabled manually via the
+   dashboard, but no migration creates them; a fresh branch only runs migrations,
+   so the first top-level `cron.unschedule … FROM cron.job` (20260420) failed. Added
+   `20260411_enable_extensions.sql` (`CREATE EXTENSION IF NOT EXISTS pg_net; pg_cron;`)
+   before that use. Verified on the branch: both install as the postgres role and
+   `cron.job` then resolves. (pgmq/vector self-enable in their own migrations.)
+
+No `src`/test/CI references to the renamed files; frontend suite unaffected. The
+end-to-end proof (a clean fresh provision) runs when the preview branch is
+re-created — direct `db push` wasn't possible from the dev sandbox (IPv6 + the
+shared pooler rejects branch tenants), so each blocker was verified independently.
+
+## v9.384.0 — 2026-06-07 — CI: fix PR-comment 403 failing all checks (add permissions)
+
+DEPENDS ON: `.github/workflows/{bundle-size,rls-harness,e2e-critical-paths,contract-smoke,db-branch-preview,perf-regression,rls-pentest}.yml`.
+
+- **Root cause found via CI logs:** every "failing" PR check was actually PASSING
+  its real work — Bundle Size "✅ All budgets met", E2E "✅ All 5 passed", RLS "✅
+  All tests passed" — then dying on its final **"Comment PR" step** with
+  `403 Resource not accessible by integration`. None of these workflows declared a
+  `permissions:` block, so the GITHUB_TOKEN was read-only and `issues.createComment`
+  was forbidden, which red-failed each job.
+- **Fix:** added `permissions: { contents: read, pull-requests: write }` to the 7
+  PR-commenting workflows. Pass/fail is gated by *separate* steps (e.g. bundle's
+  "Fail if budget exceeded", e2e/perf `process.exit(1)`), so this only un-breaks
+  the cosmetic comment — it does NOT mask real failures.
+- **NOT fixed here (operator / infra):** `contract-smoke`, `db-branch-preview`, and
+  the Supabase Preview check fail on Supabase `409 Failed to provision branch
+  project` (stale `preview-pr-4` / `contract-smoke-4` / `e2e-pr-4` branches from 13
+  prior pushes, or branching quota) → `BRANCH_DB_URL` is null → migrations never
+  run. Clear the stale preview branches in the Supabase dashboard (Branches), or the
+  repo's "Workflow permissions" may also need to be set to read/write if an org
+  policy caps the token. These can't be fixed from the repo.
+- No app/`src` changes.
+
+## v9.383.0 — 2026-06-07 — Profile-tab unread badge for coach messages (DB-sourced)
+
+DEPENDS ON: `src/lib/db/messages.js` (countUnreadCoachMessages), `useAppState.js`
+(badges.profile). ✅ CI-deployable (frontend). Completes the v9.382 inbox.
+
+- Finishes the inbox: athletes now get a **Profile-tab badge** when a coach message
+  is unread, so they know to open the inbox without checking manually. (The old
+  badge, removed in v9.380, read a localStorage key no real message populated.)
+- **`countUnreadCoachMessages(coachId, athleteId)`** — head-only count of
+  `sender_role='coach' AND read_at IS NULL` for the pair (no row payload). Returns
+  `{count:0}` when ids are missing or Supabase isn't configured.
+- **useAppState** resolves the athlete's coach once (cached in a ref) and recounts
+  on every tab change, feeding `badges.profile`. Recount-on-navigation means the
+  badge self-clears: opening the inbox marks messages read, and the next tab switch
+  re-counts to 0 (tabs are conditionally mounted, so this is cheap). No global
+  Realtime subscription added (badge refreshes on navigation — sufficient).
+- Tests: 3 for `countUnreadCoachMessages` (filters + head count, missing-ids,
+  not-configured). Suite 15,483 green; build clean.
+
+## v9.382.0 — 2026-06-06 — Athlete coach-message inbox (read-only, DB-backed)
+
+DEPENDS ON: new `src/components/profile/CoachInbox.jsx`, `Profile.jsx` mount,
+`LangCtx.jsx` labels. Reuses `db/messages.js` + `crypto.js` + `inviteUtils.getMyCoach`.
+✅ CI-deployable (frontend).
+
+- **Closes the gap left by v9.380.** Coaches send messages to the DB `messages`
+  table (CoachMessage/CoachSquadView), but after the dead localStorage card was
+  removed, athletes had no in-app way to READ them — coach→athlete was write-only.
+- **CoachInbox** (athlete-facing, read-only): resolves the athlete's coach via
+  `getMyCoach`, loads messages with `getMessages(coachId, athleteId)`, decrypts
+  with the coach_id-derived key (identical to the coach UI), renders newest-last
+  with timestamps, marks unread coach messages read (`markReadMany` — permitted by
+  the athlete UPDATE RLS), and subscribes via `subscribeToMessages` for live
+  arrivals (alive-guarded, channel cleaned up on unmount). Renders nothing for
+  athletes with no coach / no messages (no empty-card clutter).
+- **Read-only by design:** athlete→coach replies stay removed (v9.380); the card
+  notes "reply through your coach's preferred channel." Bilingual EN/TR.
+- Tests: `CoachInbox.test.jsx` (decrypt+render, unread→read, coachId decryption
+  key, live subscription, no-coach / no-messages render-null). Suite 15,480 green;
+  build clean.
+- Follow-up (not built): a DB-sourced unread nav badge (the old one was localStorage
+  and was removed in v9.380) — deferred to avoid scope creep.
+
+## v9.381.0 — 2026-06-06 — Server-enforce tier-gated features (export_pdf, white_label)
+
+DEPENDS ON: new `20260606_tier_for_user_and_gates.sql`,
+`supabase/functions/generate-report/index.ts`. Migration applies independently;
+the generate-report change is deploy-pending (edge bundle).
+
+- **`tier_for_user(uuid)` — one status-aware tier source.** `get_my_tier()` relies
+  on `auth.uid()`, which is NULL when an edge function calls it via the
+  service-role client. Extracted the status-aware CASE (from 20260605) into a
+  uuid-parameterized `tier_for_user(p_user_id)`; `get_my_tier()` now delegates to
+  `tier_for_user(auth.uid())`. RLS behavior identical; edge functions can now ask
+  "what tier is this user, right now" (granted to service_role).
+- **export_pdf (generate-report) — was partially open.** The on-demand path gated
+  only squad/race reports (free users could still export **weekly** PDFs) and read
+  `subscription_tier` directly (a cancelled coach still passed). Now ALL on-demand
+  kinds require ≥Coach via `tier_for_user` (status-aware). The pg_cron batch path
+  and the trusted service-role `params.user_id` path are unaffected.
+- **white_label (org_branding) — RLS write-gate.** The policy only checked
+  ownership (`org_id = auth.uid()`), so a downgraded/free org owner could still
+  upsert branding by bypassing the client gate. WITH CHECK now also requires
+  `get_my_tier() = 'club'`; USING stays ownership-only so a downgraded org can
+  still view/clear existing branding.
+- **Already enforced (verified, no change):** multi_team (redeem-invite athlete
+  limit, v9.364), squad_pattern_search (embed-query tier check). **Client-only by
+  design:** realtime_dashboard — a Realtime `subscribe()` can't be gated server-
+  side (RLS only filters returned rows, which it already does); the client gate is
+  the pragmatic control. Documented, not "fixed".
+- No `src/` changes → suite unaffected (15,474). Deno unavailable locally.
+
+## v9.380.0 — 2026-06-06 — Remove dead athlete→coach messaging (localStorage-only)
+
+DEPENDS ON: deleted `src/components/profile/CoachMessagesCard.jsx`; edits to
+`Profile.jsx`, `TodayView.jsx`, `CoachMessage.jsx`, `useAppState.js`,
+`storage.js`, `LangCtx.jsx`, + tests. ✅ CI-deployable (frontend).
+
+The athlete side of messaging was entirely localStorage-based and disconnected
+from the DB `messages` table — athlete "replies" wrote to `sporeus-coach-messages`
+in localStorage and never inserted to the table (the RLS athlete-insert policy was
+unreachable; `insertMessage` hardcodes `sender_role:'coach'`). The unread badges
+that read that key could therefore never reflect a real coach message. All dead.
+
+Removed:
+- `CoachMessagesCard` (athlete reply UI) + its Profile.jsx mount.
+- TodayView coach-unread badge + `coachUnread` state + the now-unused `hasUnread`
+  import.
+- `useAppState` `coachUnreadBadge` state + effect + the Profile-tab badge condition.
+- `CoachMessage.jsx` dead exports `hasUnread` / `canSendMessage` (no live caller).
+- `storage.js` `importPlanData` coachMessages→localStorage merge.
+- `todayCoachMsg(s)` labels (EN/TR); 6 dead tests.
+
+KEPT (working coach→athlete path, untouched): `CoachMessage.jsx` component +
+CoachSquadView usage, `messages`/`message_reads` tables, `useMessageChannel`,
+crypto, `insertMessage/getMessages/subscribeToMessages`. The inert
+`STORAGE_KEYS.COACH_MESSAGES` registry entry is left (documents a legacy key that
+may still hold data in users' browsers; removing it would churn the key-registry
+completeness test for no gain).
+
+NOTE (separate product gap, not addressed here): coaches can send via the DB but
+there is no athlete-facing DB reader, so coach→athlete is currently write-only in
+-app. Wiring an athlete inbox is "implement", not "remove dead code".
+
+Suite 15,480 → 15,474 green (−6 dead tests); build clean.
+
+## v9.379.0 — 2026-06-06 — Training days of week (no more forced weekend rest)
+
+DEPENDS ON: new `src/lib/plan/trainingDays.js`, `src/lib/intelligence.js`
+(getTodayPlannedSession), `src/lib/plan/starterPlan.js`,
+`src/components/PlanGenerator.jsx`, `src/components/Profile.jsx`,
+`src/lib/validate.js` (sanitizeProfile), `src/contexts/LangCtx.jsx`.
+✅ **CI-deployable** (frontend).
+
+- **Problem.** The plan generator emits N sessions packed onto consecutive days
+  (Mon-first), and `getTodayPlannedSession` indexed a week by *weekday* — so a
+  5-day plan left Sat/Sun (index ≥ N) undefined → "weekend always rest". An athlete
+  whose long run is Sunday got rest on the one day they train hardest, and there was
+  no way to pick training days.
+- **Fix (low-risk, additive).** Introduced an explicit training-day-of-week set
+  (ISO Mon=0…Sun=6) stored on the plan as `plan.trainingDow`. `getTodayPlannedSession`
+  now maps today's weekday → the session ordinal through that set; a weekday not in
+  the set is rest. **Absent `trainingDow` → unchanged legacy weekday-index behavior**,
+  so existing saved plans and the sessions-array shape are untouched (no change to
+  the plan renderer).
+- **New `src/lib/plan/trainingDays.js`** — pure: `normalizeTrainingDow` (sort/dedupe/
+  range-guard, rejects null→Monday coercion), `defaultDowForCount` (legacy Mon-first
+  set), `sessionOrdinalForDay`, bilingual `DOW_LABELS`.
+- **Profile UI** — a 7-button Mon–Sun picker (44px touch targets, `aria-pressed`,
+  bilingual EN/TR). Empty = let the plan choose (legacy). Persisted via
+  `sanitizeProfile` (`trainingDow: number[]`).
+- **Generation** — `buildStarterPlan` (onboarding) and `PlanGenerator` (regenerate)
+  read the chosen set; the session COUNT follows it (`availableDays = dow.length`)
+  and the set is stored on the plan. Onboarding without a picker still defaults to
+  Mon-first (backward compatible); a user sets days in Profile and regenerates.
+- Tests: new `trainingDays.test.js` (helper) + getTodayPlannedSession cases (Sunday
+  athlete gets the session; non-training weekday → rest). Suite **15,469 → 15,480
+  green**; build clean.
+
+## v9.378.0 — 2026-06-06 — Billing alignment: free limit = 1, revoke paid tier at expiry
+
+DEPENDS ON: `src/lib/formulas.js` (FREE_ATHLETE_LIMIT), new
+`20260605_get_my_tier_status_aware.sql`. Founder decisions (2026-06-06).
+
+- **FREE_ATHLETE_LIMIT 3 → 1 (CI-deployable).** The client showed/gated on 3 while
+  the server (`subscription.js` TIERS.free.athletes=1 + redeem-invite's count check)
+  caps at 1 — a free coach was told "3 athletes" but the 2nd invite was rejected
+  server-side. Aligned the client constant down to the server's real limit (no
+  pricing change). All UI reads the constant; test updated (`toBe(1)`).
+- **get_my_tier() now status-aware — revoke at expiry (migration, applies
+  independently).** It returned the stored `subscription_tier` and ignored
+  `subscription_status`, so cancelled/expired/past-due accounts kept paid access
+  until the daily reconcile cron flipped the column (cron lag/failure = free paid
+  access). Now derived at read time: active/trialing → tier; past_due → tier only
+  within `grace_period_ends_at`; cancelled/expired → tier only until the period-end
+  date (`subscription_end_date`/`expires_at`/`current_period_end`); else 'free'
+  (fail safe). The reconcile cron still tidies the stored column; enforcement no
+  longer depends on it.
+
+## v9.377.0 — 2026-06-06 — Presence leave marks the wrong athlete offline (CI-deployable)
+
+DEPENDS ON: `src/hooks/useSquadPresence.js` coach `presence:leave` handler.
+✅ **CI-deployable** (frontend) — ships on push, unlike the pending edge bundle.
+
+- **Coach squad feed — wrong athlete shown offline.** The `presence:leave` handler
+  identified who left via `p.user_id || Object.keys(next).find(k => prev[k])`. When
+  a leave payload lacked `user_id`, the fallback marked the **first online athlete**
+  offline — an arbitrary, usually-wrong athlete. Removed the guess: trust only
+  `user_id`; if absent, skip — the `presence:sync` handler (which rebuilds the full
+  map from `presenceState()`) reconciles on the next tick, so nothing is lost. Also
+  returns `prev` unchanged when the athlete isn't in the map (no needless re-render).
+- Regression test added (`useSquadPresence.test.js`): a leave with no `user_id` must
+  leave both online athletes online. Suite 15,468 → **15,469 green**.
+
+## v9.376.0 — 2026-06-06 — Edge-fn LOW cleanup (attribution-log maybeSingle, public-api route-before-quota)
+
+DEPENDS ON: `supabase/functions/attribution-log/index.ts`,
+`supabase/functions/public-api/index.ts`. ⛔ DEPLOY-PENDING (edge bundle).
+
+- **attribution-log** — the `profiles.first_touch` lookup used `.single()`, which
+  emits a spurious 406 when a user fires an attribution event before their profiles
+  row exists (it degraded gracefully but logged noise). → `.maybeSingle()`.
+- **public-api** — rate-limit + `logRequest` ran BEFORE route matching, so unknown-
+  path probes (with a valid key) burned the caller's 100/hr quota and filled
+  `request_counts` with junk. Now the route is matched first; unknown paths 404
+  without touching the quota. Auth (401) still precedes everything.
+- No `src/` changes. Deno unavailable locally for `deno check`.
+
+## v9.375.0 — 2026-06-05 — Billing-integrity + queue hardening (webhook, check-in dedup, push poison)
+
+DEPENDS ON: new `20260604_subscription_event_hardening.sql`,
+`supabase/functions/dodo-webhook/index.ts`,
+`supabase/functions/trigger-checkin-reminders/index.ts`,
+`supabase/functions/push-worker/index.ts`.
+
+- **dodo-webhook / `apply_subscription_event` — billing integrity (HIGH-ish).** Three
+  fixes in a forward `CREATE OR REPLACE` migration (`20260604`, plain DDL — applies
+  independently, takes effect on next webhook, NOT deploy-gated):
+  1. **id-less events were given a fabricated random `event_id`** (`'evt_'||uuid`),
+     defeating the `UNIQUE(event_id)` replay guard → an id-less event replayed N
+     times processed N times. Now rejected (`reason: no_event_id`).
+  2. **`payment.succeeded` with no tier metadata defaulted to granting `'coach'`**
+     (a paid tier) for free. Default removed.
+  3. **No tier whitelist** — any string flowed into `apply_tier_change`. Tier must
+     now be `∈ ('coach','club')` or the grant is refused (`invalid_tier`); the event
+     is still logged first (audit + idempotency).
+  The edge handler (deploy-pending) now surfaces `ok:false` rejections: logs the
+  reason + returns an honest `{ok:false,reason}` 200 (200 so the provider doesn't
+  retry-storm a malformed event), instead of masquerading every result as success.
+- **trigger-checkin-reminders — local-day dedup (MED, deploy-pending).** The "already
+  sent today?" guard filtered a **UTC** midnight window while the dedupe_key was
+  local-day → non-UTC users near the date boundary got a double or suppressed
+  reminder. Now fetches the latest reminder (bounded 48h for index efficiency) and
+  compares its `sent_at` *rendered in the user's timezone* to `localToday`.
+  Generalized `getLocalDateStr(tz, date?)` to format an arbitrary instant.
+- **push-worker — poison-message cap (MED, deploy-pending).** Failed sends were left
+  in-queue with no `read_ct` ceiling → a permanently-bad payload retried every
+  minute forever (burning send-push calls + log noise). After `MAX_READ=5`
+  deliveries a failing message is dropped (push payloads are ephemeral) and counted
+  as `poisoned`. Mirrors the retry ceiling ai-batch-worker enforces via its DLQ.
+- **Deferred (deliberate):** send-push parallel-drain dedup needs a unique-index
+  model that accommodates both `sent` and `deduped` rows sharing a key + an
+  insert-ordering rework + a duplicate-key backfill — too risky for a drive-by; the
+  24h dedup window already covers sequential redelivery. Billing-policy MEDs
+  (`get_my_tier` ignoring `subscription_status`, `FREE_ATHLETE_LIMIT` 1-vs-3,
+  client-only feature gates) are founder decisions, untouched.
+- No `src/` changes → frontend suite unaffected. Deno unavailable locally for
+  `deno check`; SQL function reproduced verbatim from `20260424` except the 3 fixes.
+
+## v9.374.0 — 2026-06-05 — Edge-fn correctness: analyse-session daily-EWMA + parse-activity atomic claim
+
+DEPENDS ON: `supabase/functions/analyse-session/index.ts`,
+`supabase/functions/parse-activity/index.ts`.
+⛔ **DEPLOY-PENDING** — edge functions ship only via `supabase functions deploy`,
+NOT via CI. Joins the undeployed bundle (H1 + v9.364/366/372). Zero user value
+until deployed. See `docs/ops/h1_security_deploy_runbook.md`.
+
+- **analyse-session — CTL/ATL was inflated (false overreach flags).** `computeCtlAtl`
+  ran the EWMA **per training_log row** with divisors `1/42` and `1/7` — no rest-day
+  decay and the wrong smoothing constants. Replaced with the canonical daily engine
+  (mirrors `src/lib/formulas.calcLoad`): aggregate TSS by date, step over every
+  calendar day from the first session to today zero-filling rest days, EWMA with
+  `kA=2/8, kC=2/43`. Same bug class as the v9.351 `intelligence.js` fix. Added `date`
+  to the 90-day `longLogs` select + updated the cast. **Verified by Node parity check
+  vs `calcLoad`: identical output** (a realistic 4×/week 90-day log → ctl 39.9 / atl
+  42.7 on both); the OLD code gave atl 70.0 → **ACWR 1.40, which tripped the
+  `overreach_risk` flag (>1.35)**; canonical ACWR is 1.07 (no false flag). The AI
+  coaching prompt was being fed inflated load + spurious overreach for normal weeks.
+- **parse-activity — double-insert under concurrent invoke.** The job guard was a
+  non-atomic read-then-update (`SELECT status` → check → `UPDATE status='parsing'`),
+  so two concurrent calls could both pass the check and parse+insert the same file
+  twice (`external_id` is NULL → the unique index can't dedup). Replaced with an
+  atomic conditional claim: `UPDATE … SET status='parsing' WHERE id=? AND status NOT
+  IN ('parsing','done') RETURNING id`; if no row is claimed → 409. The ownership
+  SELECT (RLS-scoped, `user_id` match) is kept for 404 + file metadata.
+- No `src/` changes → frontend suite unaffected. Deno unavailable locally for
+  `deno check`; analyse-session math validated by the Node parity harness above.
+
+## v9.373.0 — 2026-06-05 — Scrub leaked service_role JWT from SQL → GUC pattern
+
+DEPENDS ON: `20260424_add_push_worker_cron.sql`,
+`20260424_enhancements_embed_trigger_mv_revoke.sql`,
+`20260424_fix_purge_cron_hardcode_jwt.sql`, `20260424_missing_crons_and_fns.sql`,
+new `20260603_service_role_key_from_guc.sql`, `docs/ops/h1_security_deploy_runbook.md`.
+
+🔴 **OPERATOR ACTION STILL REQUIRED — this commit does NOT close the leak by itself.**
+The only thing that invalidates the exposed key is **rotation** in the Supabase
+dashboard (runbook Step A). This commit is the code-side groundwork.
+
+- **Source scrub** — a valid `service_role` JWT (full RLS bypass, `ref` pvicqw…,
+  `exp` ~2036) was hardcoded in 9 spots across the 4 migrations above. Replaced
+  every literal with `'Bearer ' || current_setting('app.service_role_key', true)`
+  — the same GUC pattern `20260427_pgmq_queues` already uses for ai-batch-worker /
+  enqueue-ai-batch / strava-backfill-worker. The `fix_purge_cron_hardcode_jwt`
+  file (which had *replaced* the GUC with the literal because the GUC was unset)
+  is reverted to the GUC. **Scope note:** this changes only the working tree — not
+  the live DB (those migrations are already applied with the literal) and not git
+  history (only rotation invalidates the exposed key).
+- **`personas.ts` correction** — earlier reports listed it as a 5th leak site. It
+  is NOT: it only constructs the *public* JWT header + deliberately **forged**
+  payloads with invalid signatures to assert forged service_role tokens are
+  rejected. Left untouched.
+- **New migration `20260603`** (rotation-window, NOT auto-applied) — dynamically
+  rewrites every live pg_cron job + SECURITY DEFINER function still carrying a
+  literal `Bearer eyJ…` onto the GUC. Idempotent; guards with a `RAISE EXCEPTION`
+  if `app.service_role_key` is empty (would otherwise brick callers with an empty
+  bearer). Mirrors the proven `20260601` regexp approach.
+- **Runbook** — Step B now scripts the GUC-set → apply-`20260603` → verify flow
+  (expect 0 rows from `SELECT jobname FROM cron.job WHERE command ILIKE '%Bearer eyJ%'`).
+- No `src/` changes → frontend suite unaffected. SQL not exercisable locally
+  (no Postgres); PL/pgSQL modeled on the verified `20260601` migration.
+
 ## v9.372.0 — 2026-06-04 — MED edge-fn correctness (operator-digest + adjust-coach-plan)
 
 DEPENDS ON: `operator-digest/index.ts`, `adjust-coach-plan/index.ts`.

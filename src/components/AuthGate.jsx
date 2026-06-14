@@ -212,6 +212,11 @@ export default function AuthGate({ lang }) {
           <label style={label}>{isTR ? 'E-POSTA' : 'EMAIL'}</label>
           <input
             type="email"
+            name="email"
+            autoComplete="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             value={email}
             onChange={e => setEmail(e.target.value)}
             placeholder={isTR ? 'siz@ornek.com' : 'you@example.com'}
@@ -224,6 +229,8 @@ export default function AuthGate({ lang }) {
               <label style={label}>{isTR ? 'ŞİFRE' : 'PASSWORD'}</label>
               <input
                 type="password"
+                name="password"
+                autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                 value={pass}
                 onChange={e => setPass(e.target.value)}
                 placeholder={mode === 'signup' ? (isTR ? 'Min. 8 karakter' : 'Min. 8 characters') : '••••••••'}

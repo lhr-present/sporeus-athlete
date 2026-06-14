@@ -451,6 +451,15 @@ describe('generateWeeklyNarrative', () => {
     expect(r.n).toBe(3)
   })
 
+  it('excludes future-dated entries from the weekly window', () => {
+    const log = [
+      runEntry(1), runEntry(2),                 // within past 7 days
+      { date: daysFrom(2), type: 'Easy Run', tss: 60, duration: 45, rpe: 5 }, // future typo/skew
+    ]
+    const r = generateWeeklyNarrative(log, [], {})
+    expect(r.n).toBe(2) // future entry not counted
+  })
+
   it('en string is non-empty for a real log', () => {
     const r = generateWeeklyNarrative(steadyLog(7), recoveryEntries(), { name: 'Ali' })
     expect(r.en.length).toBeGreaterThan(0)
@@ -870,6 +879,55 @@ describe('getTodayPlannedSession', () => {
     expect(r.weekIdx).toBe(0)
     expect(r.dayIdx).toBe(planDayIdx)
     expect(r.weekPhase).toBe('Base')
+  })
+
+  it('handles a full-ISO generatedAt timestamp without off-by-one (week 0 not blanked)', () => {
+    // generatePlan emits generatedAt = new Date().toISOString() (full timestamp).
+    // Before the noon-UTC anchor, Math.floor((midnight − HH:MM timestamp)/day) went
+    // negative/off-by-one and blanked today's session.
+    const today = daysAgo(0)
+    const planDayIdx = (new Date(today + 'T12:00:00Z').getDay() + 6) % 7
+    const sessions = Array(7).fill({ type: 'Rest', duration: 0 })
+    sessions[planDayIdx] = { type: 'Easy Run', duration: 45, tss: 55, rpe: 4 }
+    const plan = {
+      generatedAt: new Date(today + 'T20:00:00Z').toISOString(),  // full ISO, late in the day
+      weeks: [{ sessions, phase: 'Base' }],
+    }
+    const r = getTodayPlannedSession(plan, today)
+    expect(r).not.toBeNull()
+    expect(r.weekIdx).toBe(0)
+    expect(r.type).toBe('Easy Run')
+  })
+
+  it('maps weekday → session ordinal via plan.trainingDow (weekend athlete not forced to rest)', () => {
+    // Sunday 2026-06-07 (isoDow 6). Athlete trains Mon/Wed/Fri/Sun → 4 packed sessions.
+    const today = '2026-06-07'
+    expect((new Date(today + 'T12:00:00Z').getDay() + 6) % 7).toBe(6) // guard: Sunday
+    const sessions = [
+      { type: 'Easy Run',  duration: 40,  tss: 40 },  // Mon → ordinal 0
+      { type: 'Tempo Run', duration: 50,  tss: 70 },  // Wed → ordinal 1
+      { type: 'Intervals', duration: 55,  tss: 85 },  // Fri → ordinal 2
+      { type: 'Long Run',  duration: 110, tss: 130 }, // Sun → ordinal 3
+    ]
+    const plan = { generatedAt: today, trainingDow: [0, 2, 4, 6], weeks: [{ sessions, phase: 'Base' }] }
+    const r = getTodayPlannedSession(plan, today)
+    expect(r).not.toBeNull()
+    expect(r.type).toBe('Long Run')
+    expect(r.dayIdx).toBe(3)
+  })
+
+  it('returns null on a non-training weekday when plan.trainingDow is set', () => {
+    // Saturday 2026-06-13 (isoDow 5) is NOT in [0,2,4,6] → rest day.
+    const today = '2026-06-13'
+    expect((new Date(today + 'T12:00:00Z').getDay() + 6) % 7).toBe(5) // guard: Saturday
+    const sessions = [
+      { type: 'Easy Run',  duration: 40,  tss: 40 },
+      { type: 'Tempo Run', duration: 50,  tss: 70 },
+      { type: 'Intervals', duration: 55,  tss: 85 },
+      { type: 'Long Run',  duration: 110, tss: 130 },
+    ]
+    const plan = { generatedAt: today, trainingDow: [0, 2, 4, 6], weeks: [{ sessions, phase: 'Base' }] }
+    expect(getTodayPlannedSession(plan, today)).toBeNull()
   })
 
   it('selects correct week from multi-week plan', () => {

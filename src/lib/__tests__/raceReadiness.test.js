@@ -179,3 +179,32 @@ describe('computeRaceReadiness — injury suppression', () => {
     expect(result.factors.find(f => f.name === 'INJURY').score).toBe(100)
   })
 })
+
+describe('computeRaceReadiness — dataCompleteness (additive, does not change grade)', () => {
+  it('full data (history + recovery w/ sleep + plan + race) → completeness 1.0', () => {
+    const log = logForCTL(55)
+    const recovery = Array.from({ length: 10 }, (_, i) => ({ date: daysAgo(i), score: 78, sleepHrs: 7.5 }))
+    const plan = { weeks: [{ sessions: [] }], generatedAt: daysAgo(20) }
+    const profile = { goal: 'marathon', raceDate: daysFrom(20) }
+    const r = computeRaceReadiness(log, recovery, [], profile, plan, {})
+    expect(r.dataCompleteness).toBe(1)
+    expect(r.presentSignals).toBe(5)
+  })
+
+  it('bare log only → low completeness, and the grade is unaffected by the new field', () => {
+    const log = logForCTL(50)
+    const r = computeRaceReadiness(log, [], [], {}, null, {})
+    expect(r.dataCompleteness).toBeLessThan(0.5)
+    // grade still computed from the 10 factors, independent of completeness
+    expect(r).toHaveProperty('grade')
+    expect(typeof r.score).toBe('number')
+  })
+
+  it('recovery without sleep does not count the sleep signal', () => {
+    const log = logForCTL(50)
+    const recovery = Array.from({ length: 7 }, (_, i) => ({ date: daysAgo(i), score: 75 })) // no sleepHrs
+    const r = computeRaceReadiness(log, recovery, [], {}, null, {})
+    // history + recovery present (2), but not sleep/plan/race → 2/5
+    expect(r.dataCompleteness).toBe(0.4)
+  })
+})

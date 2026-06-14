@@ -41,6 +41,18 @@ export async function markReadMany(ids) {
     .in('id', ids)
 }
 
+/** Count unread coach→athlete messages, for the Profile-tab badge (head-only). */
+export async function countUnreadCoachMessages(coachId, athleteId) {
+  if (!ready() || !coachId || !athleteId) return { count: 0, error: null }
+  return supabase
+    .from('messages')
+    .select('id', { count: 'exact', head: true })
+    .eq('coach_id', coachId)
+    .eq('athlete_id', athleteId)
+    .eq('sender_role', 'coach')
+    .is('read_at', null)
+}
+
 /** Insert a new message (coach → athlete) */
 export async function insertMessage({ coachId, athleteId, encryptedBody }) {
   if (!ready()) return NOT_CONFIGURED

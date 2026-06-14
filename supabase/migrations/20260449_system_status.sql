@@ -28,12 +28,14 @@ ON CONFLICT (service) DO NOTHING;
 ALTER TABLE system_status ENABLE ROW LEVEL SECURITY;
 
 -- Public read — StatusBanner needs it without auth
-CREATE POLICY IF NOT EXISTS "system_status_public_read"
+DROP POLICY IF EXISTS "system_status_public_read" ON system_status;
+CREATE POLICY "system_status_public_read"
   ON system_status FOR SELECT
   USING (true);
 
 -- Only service_role can write (check-dependencies edge function)
-CREATE POLICY IF NOT EXISTS "system_status_service_write"
+DROP POLICY IF EXISTS "system_status_service_write" ON system_status;
+CREATE POLICY "system_status_service_write"
   ON system_status FOR ALL
   TO service_role
   USING (true)
@@ -57,11 +59,13 @@ CREATE INDEX IF NOT EXISTS idx_operator_alerts_fired
 ALTER TABLE operator_alerts ENABLE ROW LEVEL SECURITY;
 
 -- Only service_role reads/writes alerts
-CREATE POLICY IF NOT EXISTS "operator_alerts_service"
+DROP POLICY IF EXISTS "operator_alerts_service" ON operator_alerts;
+CREATE POLICY "operator_alerts_service"
   ON operator_alerts FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- Admin can read
-CREATE POLICY IF NOT EXISTS "operator_alerts_admin_read"
+DROP POLICY IF EXISTS "operator_alerts_admin_read" ON operator_alerts;
+CREATE POLICY "operator_alerts_admin_read"
   ON operator_alerts FOR SELECT
   USING ( (auth.jwt()->'app_metadata'->>'role') = 'admin' );
 

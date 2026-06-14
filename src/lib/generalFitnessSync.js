@@ -1,6 +1,7 @@
 // src/lib/generalFitnessSync.js — Supabase sync for general-fitness track
 // Called only when user is authenticated. All functions are no-op when not authed.
 import { supabase, isSupabaseReady } from './supabase.js'
+import { logger } from './logger.js'
 
 /**
  * Push current program state to profiles.general_program so the coach can see it.
@@ -31,7 +32,7 @@ export async function syncGeneralProgram(userId, program, templateName, sessionS
     update.last_workout_done_at = new Date().toISOString()
   }
   const { error } = await supabase.from('profiles').update(update).eq('id', userId)
-  if (error) console.warn('syncGeneralProgram failed:', error.message)
+  if (error) logger.warn('[generalFitnessSync] syncGeneralProgram failed:', error.message)
 }
 
 // ── Coach queries ─────────────────────────────────────────────────────────────

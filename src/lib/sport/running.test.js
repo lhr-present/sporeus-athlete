@@ -137,6 +137,16 @@ describe('raceReadiness', () => {
     expect(Array.isArray(r.flags)).toBe(true)
   })
 
+  it('counts lowercase Strava "run" toward volume but not a Strava "bike"', () => {
+    const d = new Date().toISOString().slice(0, 10)
+    const runs  = Array.from({ length: 6 }, () => ({ date: d, type: 'run',  source: 'strava', rpe: 6, distanceM: 12000 }))
+    const bikes = Array.from({ length: 6 }, () => ({ date: d, type: 'bike', source: 'strava', rpe: 6, distanceM: 12000 }))
+    const withRuns  = raceReadiness({ recentLog: runs,  targetDistanceM: 10000, peakWeeklyVolM: 60000, daysToRace: 14 })
+    const withBikes = raceReadiness({ recentLog: bikes, targetDistanceM: 10000, peakWeeklyVolM: 60000, daysToRace: 14 })
+    // lowercase 'run' must register as run volume; a Strava 'bike' must not.
+    expect(withRuns.score).toBeGreaterThan(withBikes.score)
+  })
+
   it('higher score with quality sessions present', () => {
     const today = new Date().toISOString().slice(0, 10)
     const makeEntry = (rpe, distM = 10000) => ({

@@ -255,6 +255,14 @@ const CoachingInsightsDigest     = lazy(() => import('./dashboard/CoachingInsigh
 const CoachingSummaryScoreCard   = lazy(() => import('./dashboard/CoachingSummaryScoreCard.jsx'))
 const RecoveryHub                = lazy(() => import('./RecoveryHub.jsx'))
 
+// Sport-gate matchers — hoisted to module scope so they aren't re-created on
+// every render. Stateless (.test without /g) so reuse across calls is safe.
+const RE_CYCLE_TYPE  = /bike|cycl|ride/i
+const RE_CYCLE_SPORT = /cycl/i
+const RE_SWIM        = /swim/i
+const RE_ROW_TYPE    = /row|erg|2k\s*test/i
+const RE_ROW_SPORT   = /row/i
+
 export default function Dashboard({ log, onLogSession, onGoToProfile }) {
   const [lang]       = useLocalStorage('sporeus-lang', 'en')
   const [plan]       = useLocalStorage('sporeus-plan', null)
@@ -355,13 +363,13 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
   )
 
   // N5 — Key profile metrics
-  const profileMetrics = [
+  const profileMetrics = useMemo(() => [
     profile?.ftp      && { label: 'FTP',    val: `${profile.ftp}W`,           color: '#ff6600' },
     profile?.maxhr    && { label: 'MAX HR', val: `${profile.maxhr}bpm`,        color: '#e03030' },
     profile?.vo2max   && { label: 'VO₂max', val: `${profile.vo2max}`,          color: '#5bc25b' },
     profile?.weight   && { label: 'WEIGHT', val: `${profile.weight}kg`,         color: '#888'    },
     profile?.threshold && { label: 'LT2',   val: `${profile.threshold}W`,      color: '#0064ff' },
-  ].filter(Boolean)
+  ].filter(Boolean), [profile?.ftp, profile?.maxhr, profile?.vo2max, profile?.weight, profile?.threshold])
 
   // K4 — Monotony daily TSS bars (computeMonotony Foster 1998)
   const weekLoadDetail = useMemo(() => computeMonotony(log), [log])
@@ -401,11 +409,11 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
 
   // Compute once — sport-specific render gates
   const hasCyclingData  = useMemo(() => parseFloat(profile?.ftp || 0) > 0 ||
-    log.some(e => /bike|cycl|ride/i.test(e.type || '') || /cycl/i.test(e.sport || '')),
+    log.some(e => RE_CYCLE_TYPE.test(e.type || '') || RE_CYCLE_SPORT.test(e.sport || '')),
     [log, profile])
 
   const hasSwimData     = useMemo(() =>
-    log.some(e => /swim/i.test(e.type || '') || /swim/i.test(e.sport || '')),
+    log.some(e => RE_SWIM.test(e.type || '') || RE_SWIM.test(e.sport || '')),
     [log])
 
   const hasTriData      = useMemo(() =>
@@ -418,7 +426,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
   // as a row/erg/2k test session OR sport='rowing' literal.
   const hasRowingData   = useMemo(() =>
     profile?.primarySport === 'rowing' ||
-    log.some(e => /row|erg|2k\s*test/i.test(e.type || '') || /row/i.test(e.sport || '')),
+    log.some(e => RE_ROW_TYPE.test(e.type || '') || RE_ROW_SPORT.test(e.sport || '')),
     [log, profile])
 
   // ── Header badges (sport, level, coach, data quality) ─────────────────────────
@@ -477,7 +485,6 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
   )
 
   // ── Beginner simplified dashboard ─────────────────────────────────────────────
-  const _countTSS = useCountUp(totalTSS)
   if (lc.dashSimple && !showAdvanced) {
     return (
       <div className="sp-fade">

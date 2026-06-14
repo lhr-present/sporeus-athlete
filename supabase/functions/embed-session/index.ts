@@ -16,6 +16,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { isVerifiedServiceCall } from '../_shared/serviceAuth.ts'
+import { fetchWithTimeout } from '../_shared/fetchWithTimeout.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -176,7 +177,7 @@ serve(async (req) => {
     }
 
     // ── Call OpenAI text-embedding-3-small ────────────────────────────────────
-    const embedRes = await fetch(OPENAI_EMBED_URL, {
+    const embedRes = await fetchWithTimeout(OPENAI_EMBED_URL, {
       method: 'POST',
       headers: {
         'Content-Type':  'application/json',
@@ -308,7 +309,7 @@ async function embedInsight(
 
   if (existing?.content_hash === hashHex) return  // unchanged — skip
 
-  const embedRes = await fetch(OPENAI_EMBED_URL, {
+  const embedRes = await fetchWithTimeout(OPENAI_EMBED_URL, {
     method: 'POST',
     headers: {
       'Content-Type':  'application/json',

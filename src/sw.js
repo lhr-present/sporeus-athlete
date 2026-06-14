@@ -24,8 +24,11 @@ const handler = createHandlerBoundToURL('/index.html')
 registerRoute(new NavigationRoute(handler, { denylist: DENYLIST }))
 
 // ── Supabase — network first, 5-min cache, 3s timeout ────────────────────────
+// GET-only: never let the cache/3s-timeout strategy touch Supabase mutations
+// (POST/PUT/PATCH/DELETE). Workbox routes default to GET, but we assert it
+// explicitly so the intent is unmistakable and robust to config changes.
 registerRoute(
-  ({ url }) => url.hostname.includes('supabase.co'),
+  ({ url, request }) => url.hostname.includes('supabase.co') && request.method === 'GET',
   new NetworkFirst({
     cacheName: `sporeus-supabase-${CACHE_VERSION}`,
     networkTimeoutSeconds: 3,

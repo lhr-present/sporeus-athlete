@@ -229,7 +229,7 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
           const wks = parseInt(e.target.value, 10)
           set('weeks', e.target.value)
           if (wks > 0) {
-            const d = new Date(); d.setDate(d.getDate() + wks * 7)
+            const d = new Date(); d.setUTCDate(d.getUTCDate() + wks * 7)
             set('raceDate', d.toISOString().slice(0, 10))
           }
         }} style={{ width:'100%', accentColor:'#ff6600' }}/>

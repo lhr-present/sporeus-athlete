@@ -483,6 +483,41 @@ describe('calcLoad — CTL/ATL/TSB/daily from log', () => {
     expect(r1.atl).toBe(r2.atl)
   })
 
+  // Regression: calcLoad must honour an explicit reference date so callers that
+  // compute load "as of" a fixed day (e.g. buildStarterPlan) are deterministic
+  // and don't drift with wall-clock. Pre-fix the window always ran to new Date(),
+  // so trailing zero days decayed CTL once the real calendar moved past the
+  // log — breaking plan seeding.
+  describe('todayISO reference date (hermetic window end)', () => {
+    it('anchors the window end on todayISO instead of wall-clock', () => {
+      // A fixed past date with 35 consecutive 100-TSS days ending the day before.
+      const anchor = '2026-05-13'
+      const log = []
+      for (let i = 1; i <= 35; i++) {
+        const d = new Date(anchor + 'T12:00:00Z')
+        d.setUTCDate(d.getUTCDate() - i)
+        log.push({ date: d.toISOString().slice(0, 10), tss: 100 })
+      }
+      // Anchored to the fixed date: CTL reflects the recent block (well above 20).
+      const anchored = calcLoad(log, anchor)
+      expect(anchored.ctl).toBeGreaterThan(40)
+    })
+
+    it('is deterministic across calls for the same anchor', () => {
+      const log = [{ date: '2026-03-01', tss: 90 }, { date: '2026-03-02', tss: 90 }]
+      const a = calcLoad(log, '2026-03-03')
+      const b = calcLoad(log, '2026-03-03')
+      expect(a.ctl).toBe(b.ctl)
+    })
+
+    it('falls back to wall-clock when todayISO is malformed', () => {
+      const today = new Date().toISOString().slice(0, 10)
+      const log = [{ date: today, tss: 80 }]
+      const r = calcLoad(log, 'not-a-date')
+      expect(Number.isFinite(r.ctl)).toBe(true)
+    })
+  })
+
   it('entries without tss field → treated as 0', () => {
     const today = new Date().toISOString().slice(0, 10)
     const log = [{ date: today }]
@@ -711,8 +746,8 @@ describe('normTR — Turkish string normalizer', () => {
 
 // ─── FREE_ATHLETE_LIMIT ───────────────────────────────────────────────────────
 describe('FREE_ATHLETE_LIMIT', () => {
-  it('is numeric value 3', () => {
-    expect(FREE_ATHLETE_LIMIT).toBe(3)
+  it('is numeric value 1 (matches server-enforced free limit)', () => {
+    expect(FREE_ATHLETE_LIMIT).toBe(1)
   })
 })
 

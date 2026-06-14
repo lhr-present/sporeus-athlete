@@ -5,6 +5,8 @@ import { S } from '../styles.js'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { sanitizeProfile } from '../lib/validate.js'
+import { DOW_LABELS, normalizeTrainingDow } from '../lib/plan/trainingDays.js'
+import CoachInbox from './profile/CoachInbox.jsx'
 import { deriveAllMetrics } from '../lib/profileDerivedMetrics.js'
 import { assessDataQuality } from '../lib/intelligence.js'
 import { exportAllData, importAllData } from '../lib/storage.js'
@@ -27,7 +29,6 @@ import NotifReminders from './profile/NotifReminders.jsx'
 import WeightHydration from './profile/WeightHydration.jsx'
 import BodyComp from './profile/BodyComp.jsx'
 import AthleteCard from './profile/AthleteCard.jsx'
-import CoachMessagesCard from './profile/CoachMessagesCard.jsx'
 import MissionTimeline from './profile/MissionTimeline.jsx'
 import MissionTwoTimeline from './profile/MissionTwoTimeline.jsx'
 import Achievements from './Achievements.jsx'
@@ -180,6 +181,43 @@ export default function Profile({ log, authUser }) {
                 value={local[f.k]||''} onChange={e=>setLocal({...local,[f.k]:e.target.value})}/>
             </div>
           ))}
+        </div>
+
+        {/* Training days of week — which weekdays the athlete trains. Drives plan
+            generation so weekend-long-run athletes aren't forced to rest Sat/Sun.
+            Empty set = legacy behavior (plan packs sessions from Monday). */}
+        <div style={{ marginTop: 16 }}>
+          <label style={S.label}>{t('trainingDaysL')}</label>
+          <div style={{ fontSize: 10, color: 'var(--muted)', margin: '4px 0 8px', lineHeight: 1.5 }}>
+            {t('trainingDaysHint')}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }} role="group" aria-label={t('trainingDaysL')}>
+            {DOW_LABELS[lang === 'tr' ? 'tr' : 'en'].map((dayLabel, idx) => {
+              const selected = (normalizeTrainingDow(local.trainingDow) || []).includes(idx)
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => {
+                    const cur = normalizeTrainingDow(local.trainingDow) || []
+                    const next = selected ? cur.filter(d => d !== idx) : [...cur, idx]
+                    setLocal({ ...local, trainingDow: next.sort((a, b) => a - b) })
+                  }}
+                  style={{
+                    minWidth: 44, minHeight: 44, padding: '6px 10px',
+                    fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, cursor: 'pointer',
+                    borderRadius: 4,
+                    border: `1px solid ${selected ? '#ff6600' : 'var(--border)'}`,
+                    background: selected ? '#ff6600' : 'var(--input-bg)',
+                    color: selected ? '#0a0a0a' : 'var(--text)',
+                  }}
+                >
+                  {dayLabel}
+                </button>
+              )
+            })}
+          </div>
         </div>
 
         {/* v9.181.0 — Cycle inputs are female-only, opt-in. The privacy gate
@@ -418,7 +456,7 @@ export default function Profile({ log, authUser }) {
         </div>
       </div>
 
-      <CoachMessagesCard/>
+      <CoachInbox/>
 
       <div className="sp-card" style={{ ...S.card, animationDelay:'110ms' }}>
         <div style={S.cardTitle}>DATA MANAGEMENT</div>

@@ -8,6 +8,7 @@ import { logger } from '../lib/logger.js'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { useLocalStorage } from './useLocalStorage.js'
 import { enqueuePendingLog, markSyncOffline } from '../lib/offlineQueue.js'
+import { deepEqual } from '../lib/deepEqual.js'
 
 // ─── Background-write helper ────────────────────────────────────────────────────
 // Pre-v9.347 these hooks fire-and-forgot every upsert/update/delete: a failed
@@ -34,6 +35,16 @@ export async function tryWrite(label, thenable, onFail) {
 // ─── Field transformers ────────────────────────────────────────────────────────
 // Exported so TanStack Query hooks can reuse them without duplication.
 
+// Activity distance in meters: prefer distanceM, else convert distanceKm (manual
+// QuickAdd writes km). null when neither is a positive finite number.
+function logDistanceM(entry) {
+  const m = Number(entry.distanceM)
+  if (Number.isFinite(m) && m > 0) return m
+  const km = Number(entry.distanceKm)
+  if (Number.isFinite(km) && km > 0) return Math.round(km * 1000)
+  return null
+}
+
 export function logRowToEntry(row) {
   return {
     id:       row.id,
@@ -45,6 +56,11 @@ export function logRowToEntry(row) {
     zones:    Array.isArray(row.zones) ? row.zones : [],
     notes:    row.notes    || '',
     source:   row.source   || 'manual',
+    // v9.397.0 — metric columns (distance/HR/cadence). Only surface when present so
+    // the entry shape matches a localStorage-only entry; analytics guard for absence.
+    ...(row.distance_m  != null ? { distanceM:  Number(row.distance_m) }  : {}),
+    ...(row.avg_hr      != null ? { avgHR:      Number(row.avg_hr) }      : {}),
+    ...(row.avg_cadence != null ? { avgCadence: Number(row.avg_cadence) } : {}),
   }
 }
 export function logEntryToRow(entry, userId) {
@@ -59,6 +75,11 @@ export function logEntryToRow(entry, userId) {
     zones:        Array.isArray(entry.zones) && entry.zones.some(z => z > 0) ? entry.zones : null,
     notes:        entry.notes || null,
     source:       'manual',
+    // v9.397.0 — persist activity metrics (were dropped → lost cross-device).
+    // distanceM wins; fall back to distanceKm (manual QuickAdd writes km).
+    distance_m:   logDistanceM(entry),
+    avg_hr:       Number.isFinite(Number(entry.avgHR)) && Number(entry.avgHR) > 0 ? Math.round(Number(entry.avgHR)) : null,
+    avg_cadence:  Number.isFinite(Number(entry.avgCadence)) && Number(entry.avgCadence) > 0 ? Math.round(Number(entry.avgCadence)) : null,
   }
 }
 
@@ -220,7 +241,7 @@ function useSyncedTable({ lsKey, lsDefault, table, toEntry, toRow, userId, order
         const removed = prev.filter(o => !nextById.has(o.id))
         const changed = next.filter(n => {
           const old = prevById.get(n.id)
-          return old && JSON.stringify(old) !== JSON.stringify(n)
+          return old && !deepEqual(old, n)
         })
 
         // Background sync — resilient: per-write error checks, never aborts the
@@ -295,7 +316,7 @@ export function useRecovery(userId) {
         const removed = prev.filter(o => !nextByDate.has(o.date))
         const changed = next.filter(n => {
           const old = prevByDate.get(n.date)
-          return old && JSON.stringify(old) !== JSON.stringify(n)
+          return old && !deepEqual(old, n)
         })
         Promise.resolve().then(async () => {
           let ok = true

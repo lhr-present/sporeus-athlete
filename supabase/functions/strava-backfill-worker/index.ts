@@ -11,6 +11,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const RATE_WINDOW_MS = 15 * 60 * 1000   // 15 minutes
 const MAX_REQUESTS   = 600
+const MAX_READ       = 10  // poison ceiling: dead-letter a message after N reads (VT=120s → ~20min)
 
 function mapStravaType(sportType: string): string {
   const m: Record<string, string> = {
@@ -61,8 +62,16 @@ async function refreshIfExpired(
       grant_type:    "refresh_token",
     }),
   })
-  const refreshed = await resp.json()
-  if (!refreshed.access_token) return null
+  // Throw on a real refresh failure (vs the early `return null` = not yet expired),
+  // so the caller can record last_error and stop retrying a revoked token forever.
+  const refreshed = await resp.json().catch(() => ({} as Record<string, unknown>))
+  if (!resp.ok || !refreshed.access_token) {
+    const blob = JSON.stringify(refreshed)
+    if (resp.status === 400 || /invalid_grant|revoked|invalid/i.test(blob)) {
+      throw new Error("Strava authorization revoked — please reconnect Strava")
+    }
+    throw new Error(`Strava token refresh failed (${resp.status})`)
+  }
 
   await sb.from("strava_tokens").update({
     access_token:  refreshed.access_token,
@@ -126,7 +135,17 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
 
   for (const row of msgs) {
     const msgId   = row.msg_id as bigint
+    const readCt  = (row.read_ct as number) ?? 0
     const payload = row.message as Record<string, unknown>
+
+    // Poison ceiling: a message that keeps failing (revoked token, persistent 5xx,
+    // deleted user) would otherwise be re-read forever, blocking consumer capacity.
+    // Dead-letter it after MAX_READ reads instead of indefinitely.
+    if (readCt >= MAX_READ) {
+      console.warn(`strava-backfill-worker: msg ${msgId} read_ct=${readCt} >= MAX_READ — dead-lettering`)
+      await sb.rpc("delete_strava_backfill_msg", { p_msg_id: msgId })
+      continue
+    }
 
     const userId = payload.user_id as string
     const page   = (payload.page as number) || 1
@@ -157,8 +176,21 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
         continue
       }
 
-      const freshToken = await refreshIfExpired(sb, tokenRow, stravaId, stravaSecret)
-      const accessToken = freshToken || tokenRow.access_token
+      let accessToken: string
+      try {
+        const freshToken = await refreshIfExpired(sb, tokenRow, stravaId, stravaSecret)
+        accessToken = freshToken || tokenRow.access_token
+      } catch (refreshErr) {
+        // Revoked / failed refresh: record last_error so the UI can prompt a
+        // reconnect (was previously silent — sync health still read "healthy"),
+        // and drop the message since retrying a revoked token can never succeed.
+        const rmsg = refreshErr instanceof Error ? refreshErr.message : String(refreshErr)
+        await sb.from("strava_tokens").update({
+          sync_status: "error", last_error: rmsg, updated_at: new Date().toISOString(),
+        }).eq("user_id", userId)
+        await sb.rpc("delete_strava_backfill_msg", { p_msg_id: msgId })
+        continue
+      }
 
       const resp = await fetch(
         `https://www.strava.com/api/v3/athlete/activities?after=${after}&per_page=100&page=${page}`,
@@ -173,7 +205,16 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
       }
 
       if (!resp.ok) {
-        // Non-retryable error — discard
+        // Auth failures must be surfaced (not silently discarded) so sync-health
+        // stops reporting "healthy" while imports die — write last_error before
+        // dropping the message.
+        if (resp.status === 401 || resp.status === 403) {
+          await sb.from("strava_tokens").update({
+            sync_status: "error",
+            last_error: "Strava authorization rejected — please reconnect Strava",
+            updated_at: new Date().toISOString(),
+          }).eq("user_id", userId)
+        }
         await sb.rpc("delete_strava_backfill_msg", { p_msg_id: msgId })
         continue
       }
@@ -196,7 +237,12 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
         const maxHR  = a.max_heartrate     ? Math.round(a.max_heartrate as number)     : 190
         const tss    = estimateTSS((a.moving_time as number) || 0, avgHR, maxHR)
         const zones  = estimateZones(avgHR, maxHR)
-        const distKm = a.distance ? ((a.distance as number) / 1000).toFixed(2) : null
+        const sType  = mapStravaType((a.sport_type as string) || (a.type as string) || "")
+        const distM  = typeof a.distance === "number" && a.distance > 0 ? a.distance : null
+        const distKm = distM ? (distM / 1000).toFixed(2) : null
+        // Running cadence is per-leg in Strava → double to full steps/min; bikes (rpm) unchanged.
+        const rawCad = typeof a.average_cadence === "number" && a.average_cadence > 0 ? a.average_cadence : null
+        const avgCadence = rawCad != null ? Math.round(rawCad * (/run/i.test(sType) ? 2 : 1)) : null
         const noteParts = [(a.name as string) || "Strava Activity"]
         if (distKm) noteParts.push(`${distKm} km`)
         if (avgHR)  noteParts.push(`avg HR ${avgHR}`)
@@ -204,9 +250,12 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
         const { error: upsertErr } = await sb.from("training_log").upsert({
           user_id:      userId,
           date:         ((a.start_date_local as string) || (a.start_date as string)).slice(0, 10),
-          type:         mapStravaType((a.sport_type as string) || (a.type as string) || ""),
+          type:         sType,
           duration_min: durationMin,
           tss, rpe: null, zones,
+          distance_m:   distM,
+          avg_hr:       avgHR,
+          avg_cadence:  avgCadence,
           notes:        noteParts.join(" · "),
           source:       "strava",
           external_id:  String(a.id),

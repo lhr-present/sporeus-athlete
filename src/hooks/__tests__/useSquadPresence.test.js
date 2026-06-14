@@ -124,6 +124,25 @@ describe('useSquadPresence — coach role', () => {
     expect(result.current.presenceMap['athlete-1']?.online).toBe(false)
   })
 
+  it('does NOT mark the wrong athlete offline when leave payload has no user_id', async () => {
+    // Two athletes online
+    mocks.channelObj.presenceState.mockReturnValue({
+      'athlete-1': [{ online_at: '2026-04-17T10:00:00Z' }],
+      'athlete-2': [{ online_at: '2026-04-17T10:00:00Z' }],
+    })
+    const { result } = renderHook(() => useSquadPresence({ coachId: 'c1', role: 'coach' }))
+    await act(async () => { await mocks.subscribeCb.current?.('SUBSCRIBED') })
+    act(() => { mocks.presenceCbs.sync[0]?.() })
+
+    // Leave event with NO user_id — must be ignored, NOT applied to an arbitrary
+    // athlete (the old fallback marked the first online athlete offline).
+    act(() => {
+      mocks.presenceCbs.leave[0]?.({ leftPresences: [{ online_at: '2026-04-17T10:05:00Z' }] })
+    })
+    expect(result.current.presenceMap['athlete-1']?.online).toBe(true)
+    expect(result.current.presenceMap['athlete-2']?.online).toBe(true)
+  })
+
   it('removes channel on unmount', () => {
     const { unmount } = renderHook(() => useSquadPresence({ coachId: 'c1', role: 'coach' }))
     unmount()

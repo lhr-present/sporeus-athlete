@@ -18,6 +18,7 @@ import { generatePlan } from './generatePlan.js'
 import { adaptE13PlanToLegacy } from './adapter.js'
 import { calcLoad } from '../formulas.js'
 import { makeVersionTag } from './versionTracking.js'
+import { normalizeTrainingDow, defaultDowForCount } from './trainingDays.js'
 
 // ── Map onboarding goal strings → E13 generatePlan goal keys ─────────────────
 // Mirrors the (lossy) mapping that PlanGenerator.jsx:308 already does.
@@ -121,9 +122,16 @@ export function buildStarterPlan(onboardingData, todayISO, lang = 'en', log) {
   const goalKey      = ONBOARDING_GOAL_TO_E13[data.goal] || 'pr'
   const levelKey     = LEVEL_TO_E13[String(data.athleteLevel || data.level || '').toLowerCase()] || 'intermediate'
   const weeksToRace  = deriveWeeksToRace(data, today)
-  const availableDays = Number(data.trainDays) >= 2 && Number(data.trainDays) <= 7
-    ? Math.floor(Number(data.trainDays))
-    : DEFAULT_AVAILABLE_DAYS
+  // Prefer an explicit training-day-of-week set (user picked their weekdays); the
+  // session COUNT then follows the chosen days. Otherwise fall back to the
+  // trainDays count and a default Mon-first set. (weekend-rest fix)
+  const explicitDow = normalizeTrainingDow(data.trainingDow)
+  const availableDays = explicitDow
+    ? Math.max(2, Math.min(7, explicitDow.length))
+    : (Number(data.trainDays) >= 2 && Number(data.trainDays) <= 7
+        ? Math.floor(Number(data.trainDays))
+        : DEFAULT_AVAILABLE_DAYS)
+  const trainingDow = explicitDow || defaultDowForCount(availableDays)
 
   // v9.97.0 (Prompt I): currentCTL from log when available. Pre-v9.97 this
   // was hardcoded to 20 — fine for blank-slate users, but if Strava history
@@ -136,7 +144,7 @@ export function buildStarterPlan(onboardingData, todayISO, lang = 'en', log) {
   // Defensive Number() coerces NaN from malformed log entries back to 0 so
   // the Math.max floor still produces a finite currentCTL.
   const rawCtl = Array.isArray(log) && log.length > 0
-    ? Number(calcLoad(log)?.ctl)
+    ? Number(calcLoad(log, today)?.ctl)
     : 0
   const ctlFromLog = Number.isFinite(rawCtl) ? rawCtl : 0
   const currentCTL = Math.max(20, ctlFromLog)
@@ -181,6 +189,10 @@ export function buildStarterPlan(onboardingData, todayISO, lang = 'en', log) {
     primarySport:  data.sport || data.primarySport || null,
     weeks:         legacyWeeks,
     generatedAt:   today,
+    // Training day-of-week set (Mon=0…Sun=6). getTodayPlannedSession maps today's
+    // weekday → session ordinal through this, so weekend-training athletes aren't
+    // forced to rest Sat/Sun. (weekend-rest fix)
+    trainingDow,
     // v9.103.0 (Prompt AA): persist the CTL the plan was budgeted on so a
     // stale-plan detector can compare it against current CTL. Without
     // seedCTL the only signal we had was age, which underweighted athletes
@@ -192,6 +204,11 @@ export function buildStarterPlan(onboardingData, todayISO, lang = 'en', log) {
     isAdaptive:    true,
     fromOnboarding: true,
     adaptiveMeta:  { model: adaptive.model },
+    // v9.392.0 — carry the weeklyTssGoal decision through so the UI can later
+    // explain a silent override (generatePlan computes it but buildStarterPlan
+    // previously dropped it, so no consumer could ever read it). Data-only; the
+    // user-facing banner is a separate product decision.
+    weeklyTssGoalApplied: adaptive.weeklyTssGoalApplied ?? null,
     // v9.104.0 (Prompt FF): default version tag. Mutators (regen, deload,
     // recalibrate) override this via recordPlanVersion(plan, kind) after
     // they've built / mutated their plan, so the tag always reflects the

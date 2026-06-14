@@ -3,12 +3,20 @@
 // Safe to call multiple times; uses 'sporeus-migrated' flag to skip if done.
 
 import { supabase } from './supabase.js'
+import { logger } from './logger.js'
 
 const MIGRATED_KEY = 'sporeus-migrated'
 
 function readLS(key, fallback = []) {
   try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? fallback }
   catch { return fallback }
+}
+
+// Record a per-table migration error: log it (so Sentry gets per-table context
+// as it happens) AND collect it for the single end-of-run throw the UI reads.
+function recordErr(errors, label, error) {
+  logger.warn(`[dataMigration] ${label}:`, error.message)
+  errors.push(`${label}: ${error.message}`)
 }
 
 // ─── detectLocalData ─────────────────────────────────────────────────────────
@@ -97,11 +105,11 @@ export async function migrateToSupabase(userId, onProgress) {
     const { error: cleanupErr } = await supabase.from('training_log')
       .delete().match({ user_id: userId, source: 'manual' })
     if (cleanupErr) {
-      errors.push(`training_log cleanup: ${cleanupErr.message}`)
+      recordErr(errors, 'training_log cleanup', cleanupErr)
     } else {
       for (let i = 0; i < rows.length; i += 100) {
         const { error } = await supabase.from('training_log').insert(rows.slice(i, i + 100))
-        if (error) errors.push(`training_log: ${error.message}`)
+        if (error) recordErr(errors, `training_log batch ${i / 100}`, error)
       }
     }
     onProgress?.(++step, steps)
@@ -124,7 +132,7 @@ export async function migrateToSupabase(userId, onProgress) {
     }))
     for (let i = 0; i < rows.length; i += 100) {
       const { error } = await supabase.from('recovery').upsert(rows.slice(i, i + 100), { onConflict: 'user_id,date' })
-      if (error) errors.push(`recovery: ${error.message}`)
+      if (error) recordErr(errors, `recovery batch ${i / 100}`, error)
     }
     onProgress?.(++step, steps)
   }
@@ -140,7 +148,7 @@ export async function migrateToSupabase(userId, onProgress) {
       notes:   e.notes || null,
     }))
     const { error } = await supabase.from('injuries').upsert(rows)
-    if (error) errors.push(`injuries: ${error.message}`)
+    if (error) recordErr(errors, 'injuries', error)
     onProgress?.(++step, steps)
   }
 
@@ -154,7 +162,7 @@ export async function migrateToSupabase(userId, onProgress) {
       unit:    e.unit || null,
     }))
     const { error } = await supabase.from('test_results').upsert(rows)
-    if (error) errors.push(`test_results: ${error.message}`)
+    if (error) recordErr(errors, 'test_results', error)
     onProgress?.(++step, steps)
   }
 
@@ -169,7 +177,7 @@ export async function migrateToSupabase(userId, onProgress) {
       notes:       e.notes || null,
     }))
     const { error } = await supabase.from('race_results').upsert(rows)
-    if (error) errors.push(`race_results: ${error.message}`)
+    if (error) recordErr(errors, 'race_results', error)
     onProgress?.(++step, steps)
   }
 
@@ -178,7 +186,7 @@ export async function migrateToSupabase(userId, onProgress) {
     const { error } = await supabase.from('profiles')
       .update({ training_age: trainingAge, updated_at: new Date().toISOString() })
       .eq('id', userId)
-    if (error) errors.push(`profiles.training_age: ${error.message}`)
+    if (error) recordErr(errors, 'profiles.training_age', error)
     onProgress?.(++step, steps)
   }
 
@@ -187,7 +195,7 @@ export async function migrateToSupabase(userId, onProgress) {
     const { error } = await supabase.from('profiles')
       .update({ profile_data: profileData, updated_at: new Date().toISOString() })
       .eq('id', userId)
-    if (error) errors.push(`profiles.profile_data: ${error.message}`)
+    if (error) recordErr(errors, 'profiles.profile_data', error)
     onProgress?.(++step, steps)
   }
 

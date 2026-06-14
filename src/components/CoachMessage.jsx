@@ -29,22 +29,6 @@ export function formatMsgTime(isoStr) {
   return d.toTimeString().slice(0, 5)
 }
 
-/**
- * Count messages the viewer hasn't read yet.
- * viewerRole = 'coach' → messages sent by athlete without read_at
- * viewerRole = 'athlete' → messages sent by coach without read_at
- */
-export function hasUnread(msgs, viewerRole) {
-  if (!Array.isArray(msgs)) return 0
-  const otherRole = viewerRole === 'coach' ? 'athlete' : 'coach'
-  return msgs.filter(m => m.sender_role === otherRole && !m.read_at).length
-}
-
-/** True if senderRole is a valid participant */
-export function canSendMessage(senderRole) {
-  return senderRole === 'coach' || senderRole === 'athlete'
-}
-
 // ── Main component ─────────────────────────────────────────────────────────────
 
 /**
@@ -137,7 +121,7 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
         return [...prev, row]
       })
       if (row.sender_role === 'athlete') {
-        markReadById(row.id).then(() => {})
+        markReadById(row.id).catch(err => logger.warn('[CoachMessage] markReadById:', err?.message))
       }
     })
 
@@ -162,7 +146,7 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
       setMsgs(prev => prev.map(m =>
         unreadIds.includes(m.id) ? { ...m, read_at: new Date().toISOString() } : m
       ))
-    })
+    }).catch(err => logger.warn('[CoachMessage] markReadMany:', err?.message))
   }
 
   // ── Send ─────────────────────────────────────────────────────────────────────
@@ -329,6 +313,7 @@ export default function CoachMessage({ athlete, coachId, onClose }) {
             onClick={handleSend}
             disabled={!input.trim() || sending}
             aria-label={t('sendMessage')}
+            aria-busy={sending}
             style={{
               fontFamily: MONO, fontSize: 10, fontWeight: 700,
               padding: '0 14px', borderRadius: 4, cursor: 'pointer',

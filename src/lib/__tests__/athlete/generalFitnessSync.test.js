@@ -87,11 +87,14 @@ describe('syncGeneralProgram', () => {
     expect(payload.general_program.last_session_duration_minutes).toBeNull()
   })
 
-  it('logs a console.warn when Supabase returns an error (v8.16.0)', async () => {
+  it('logs a warning via logger when Supabase returns an error (v8.16.0; logger prefix v9.388)', async () => {
     mockUpdateResult = { error: { message: 'row not found' } }
     await syncGeneralProgram('user-1', BASE_PROGRAM, 'Test')
+    // v9.388: routed through logger.warn (which delegates to console.warn) with a
+    // module-prefixed message so it reaches Sentry in prod.
     expect(console.warn).toHaveBeenCalledWith(
-      'syncGeneralProgram failed:',
+      '[sporeus]',
+      '[generalFitnessSync] syncGeneralProgram failed:',
       'row not found',
     )
     mockUpdateResult = { error: null }

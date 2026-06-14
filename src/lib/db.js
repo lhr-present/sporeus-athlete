@@ -1,9 +1,19 @@
 // ─── db.js — Minimal IndexedDB wrapper (~40 lines, no Dexie) ─────────────────
 // Store: pending_logs — offline wellness log inserts queued for retry.
+//
+// IMPORTANT: this module and src/lib/offline/writeQueue.js BOTH open the same
+// 'sporeus-offline' database. They must declare the SAME DB_VERSION, and every
+// onupgradeneeded handler must create EVERY store — because whichever module
+// opens the DB first at a new version runs the only upgrade transaction; if it
+// knows about fewer stores than the other, the missing store is never created
+// and the other module throws on access. (Previously db.js was v1 / writeQueue
+// v2, so opening order decided whether you hit a VersionError and the offline
+// queue silently broke.) Keep this handler in sync with writeQueue.js.
 
-const DB_NAME    = 'sporeus-offline'
-const DB_VERSION = 1
-const STORE      = 'pending_logs'
+const DB_NAME      = 'sporeus-offline'
+const DB_VERSION   = 2
+const STORE        = 'pending_logs'
+const QUEUE_STORE  = 'write_queue'   // owned by writeQueue.js — created here too so order can't matter
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -12,6 +22,11 @@ function openDB() {
       const db = e.target.result
       if (!db.objectStoreNames.contains(STORE)) {
         db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true })
+      }
+      if (!db.objectStoreNames.contains(QUEUE_STORE)) {
+        const store = db.createObjectStore(QUEUE_STORE, { keyPath: 'id', autoIncrement: true })
+        store.createIndex('by_table', 'table', { unique: false })
+        store.createIndex('by_queued', '_queuedAt', { unique: false })
       }
     }
     req.onsuccess = e => resolve(e.target.result)

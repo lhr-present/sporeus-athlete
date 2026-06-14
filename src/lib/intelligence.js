@@ -8,6 +8,7 @@
 import { estimateVDOT, getTrainingPaces, predictTime as _predictTime } from './vdot.js'
 import { calcLoad } from './formulas.js'
 import { calculateACWR } from './trainingLoad.js'
+import { normalizeTrainingDow, sessionOrdinalForDay } from './plan/trainingDays.js'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function daysAgoDate(n) {
@@ -440,8 +441,11 @@ export function scoreSession(entry, log, profile) {
 // Produces a 3-5 sentence narrative of the past week's training in EN + TR.
 export function generateWeeklyNarrative(log, recovery, profile, _lang) {
   const w1Start = daysAgoDate(7)
-  const week    = (log || []).filter(e => e.date >= w1Start)
-  const recWeek = (recovery || []).filter(e => e.date >= w1Start)
+  const today   = daysAgoDate(0)
+  // Upper-bound the window at today so future-dated entries (data-entry typos /
+  // timezone skew) don't inflate the "past week" narrative.
+  const week    = (log || []).filter(e => e.date >= w1Start && e.date <= today)
+  const recWeek = (recovery || []).filter(e => e.date >= w1Start && e.date <= today)
   const name    = profile?.name ? profile.name.split(' ')[0] : null
 
   const n = week.length
@@ -646,7 +650,23 @@ export function computeRaceReadiness(log, recovery, injuries, profile, plan, pla
 
   const confidence = log.length >= 28 && recovery?.length >= 14 ? 'high' : log.length >= 14 ? 'moderate' : 'low'
 
-  return { score: composite, grade, factors, verdict: verdicts[grade], confidence, daysToRace }
+  // Data completeness (0..1): how much of this grade rests on real data vs the
+  // neutral 50-defaults each factor falls back to when its input is missing.
+  // Counted from unambiguous INPUT presence signals (not internal score values),
+  // so a UI can honestly caveat a grade built largely on estimates. Additive —
+  // does not change the score/grade. (injuries absence = healthy = truthful, so
+  // it is intentionally not a completeness signal.)
+  const dataSignals = [
+    log.length >= 14,                                   // enough training history
+    (recovery?.length || 0) > 0,                        // any recovery data
+    Array.isArray(recovery) && recovery.some(r => r?.sleepHrs != null), // sleep logged
+    !!plan,                                             // has a plan to comply with
+    daysToRace !== null,                                // race actually scheduled
+  ]
+  const presentSignals = dataSignals.filter(Boolean).length
+  const dataCompleteness = Math.round(presentSignals / dataSignals.length * 100) / 100
+
+  return { score: composite, grade, factors, verdict: verdicts[grade], confidence, daysToRace, dataCompleteness, presentSignals }
 }
 
 // ── analyseSession ────────────────────────────────────────────────────────────
@@ -728,9 +748,15 @@ export function analyseSession(entry, recentLog = []) {
 export function getTodayPlannedSession(plan, today) {
   if (!plan || !Array.isArray(plan.weeks) || !plan.generatedAt) return null
   const todayDate = today || new Date().toISOString().slice(0, 10)
-  const start = new Date(plan.generatedAt)
-  const cur   = new Date(todayDate)
-  const daysDiff = Math.floor((cur - start) / 86400000)
+  // Anchor both at noon-UTC on the DATE portion so daysDiff is an exact integer
+  // even when generatedAt is a full ISO timestamp (generatePlan emits
+  // new Date().toISOString()) rather than a bare 'YYYY-MM-DD'. Without the slice,
+  // a time component made Math.floor off-by-one at week boundaries, blanking
+  // today's session — the core daily-answer screen. Mirrors the noon-UTC anchor
+  // already used for raceDate/isoDow below.
+  const start = new Date(String(plan.generatedAt).slice(0, 10) + 'T12:00:00Z')
+  const cur   = new Date(String(todayDate).slice(0, 10) + 'T12:00:00Z')
+  const daysDiff = Math.round((cur - start) / 86400000)
   if (daysDiff < 0) return null
   if (typeof plan.raceDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(plan.raceDate)) {
     const raceMs = new Date(plan.raceDate + 'T12:00:00Z').getTime()
@@ -739,12 +765,19 @@ export function getTodayPlannedSession(plan, today) {
   }
   const weekIdx    = Math.floor(daysDiff / 7)
   if (weekIdx >= plan.weeks.length) return null
-  const planDayIdx = (new Date(todayDate + 'T12:00:00Z').getDay() + 6) % 7  // Mon=0…Sun=6, noon UTC avoids TZ shift
+  const isoDow = (new Date(todayDate + 'T12:00:00Z').getDay() + 6) % 7  // Mon=0…Sun=6, noon UTC avoids TZ shift
   const week = plan.weeks[weekIdx]
   if (!week || !Array.isArray(week.sessions)) return null
-  const session = week.sessions[planDayIdx]
+  // Sessions are packed by training-day ordinal (Mon-first). When the plan carries
+  // an explicit training-day set (user chose their weekdays), map today's weekday
+  // to its ordinal so weekend-training athletes get the right session instead of
+  // always-rest. Absent trainingDow → legacy weekday-index behavior. (audit MED)
+  const dow = normalizeTrainingDow(plan.trainingDow)
+  const dayIdx = dow ? sessionOrdinalForDay(isoDow, dow) : isoDow
+  if (dayIdx < 0) return null  // today is a rest day in the user's chosen set
+  const session = week.sessions[dayIdx]
   if (!session || session.type === 'Rest' || (session.duration || 0) <= 0) return null
-  return { ...session, weekIdx, dayIdx: planDayIdx, weekPhase: week.phase || '' }
+  return { ...session, weekIdx, dayIdx, weekPhase: week.phase || '' }
 }
 
 // ─── v6.1: getSingleSuggestion ────────────────────────────────────────────────
@@ -1261,7 +1294,10 @@ export function detectPersonalBests(newEntry, existingLog) {
 
   // 1. Highest TSS for this session type
   if (newEntry.tss > 0 && newEntry.type) {
-    const sameType = existingLog.filter(e => e.type === newEntry.type && e.tss > 0)
+    // Case-insensitive so a Strava-synced 'run' and a manual 'Run' are treated as
+    // the same session type for PB comparison (Strava writes lowercase types).
+    const _ntype = String(newEntry.type).toLowerCase()
+    const sameType = existingLog.filter(e => String(e.type).toLowerCase() === _ntype && e.tss > 0)
     const prevMax = sameType.length > 0 ? Math.max(...sameType.map(e => e.tss)) : 0
     if (prevMax > 0 && newEntry.tss > prevMax) {
       results.push(`Highest TSS for a ${newEntry.type} session (prev: ${prevMax}, now: ${newEntry.tss})`)

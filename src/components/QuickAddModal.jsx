@@ -187,6 +187,12 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst, prefil
     }
     setErrors({})
 
+    // Dismiss the mobile soft keyboard on submit — otherwise it keeps covering
+    // the saved-state confirmation / PR results that render next.
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
+
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
       try { navigator.vibrate(10) } catch (_) {}
     }
@@ -381,6 +387,7 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst, prefil
                 </label>
                 <input
                   type="date"
+                  name="session-date"
                   value={sessionDate}
                   max={today()}
                   onChange={e => setSessionDate(e.target.value)}
@@ -401,6 +408,7 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst, prefil
                 </label>
                 <select
                   ref={firstRef}
+                  name="session-type"
                   value={type}
                   onChange={e => { setType(e.target.value); setPatternUsed(false) }}
                   style={{ ...S.input, width: '100%' }}
@@ -420,6 +428,7 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst, prefil
                 </label>
                 <input
                   type="number"
+                  name="session-duration"
                   inputMode="numeric"
                   min={1}
                   max={600}
@@ -448,7 +457,7 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst, prefil
                       {isTR ? 'isteğe bağlı' : 'optional'}
                     </span>
                   </label>
-                  <input type="number" inputMode="decimal" min={0} max={300} step={0.1}
+                  <input type="number" name="session-distance" inputMode="decimal" min={0} max={300} step={0.1}
                     value={distanceKm}
                     onChange={e => setDistanceKm(e.target.value)}
                     placeholder="0.0"
@@ -462,7 +471,7 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst, prefil
                       {isTR ? 'isteğe bağlı' : 'optional'}
                     </span>
                   </label>
-                  <input type="number" inputMode="numeric" min={30} max={250}
+                  <input type="number" name="session-avg-hr" inputMode="numeric" min={30} max={250}
                     value={avgHr}
                     onChange={e => setAvgHr(e.target.value)}
                     placeholder="—"
@@ -541,6 +550,7 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst, prefil
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                   <input
                     type="text"
+                    name="session-notes"
                     value={notes}
                     onChange={e => setNotes(e.target.value)}
                     maxLength={200}

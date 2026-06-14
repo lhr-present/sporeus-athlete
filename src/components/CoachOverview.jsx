@@ -221,6 +221,7 @@ export default function CoachOverview({ coachId, onSelectAthlete }) {
             {/* Coach note */}
             <textarea
               placeholder="Coach note…"
+              aria-label={`Coach note for ${profile?.display_name || 'athlete'}`}
               value={notes[link.athlete_id] ?? ''}
               onChange={e => setNotes(prev => ({ ...prev, [link.athlete_id]: e.target.value }))}
               onBlur={e => saveNote(link.athlete_id, e.target.value)}
