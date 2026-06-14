@@ -2,6 +2,48 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.394.0 — 2026-06-15 — Round 6: apply deferred backlog (week-key util, readiness data-completeness, funnel RPC, strava poison ceiling)
+
+DEPENDS ON: `profiles.created_at`, `training_log.created_at/user_id` (funnel RPC);
+pgmq `read_ct` on strava_backfill (poison ceiling). The migration + edge change
+are OPERATOR-DEPLOYED.
+
+Implementing the deferred backlog ("apply your suggestions"). Each item was
+re-verified against current code first; one SQL bug in the drafted funnel RPC was
+corrected (date−date is an integer in Postgres, not an interval — the spec's
+`EXTRACT(day FROM ...)` would have errored). Two categories were deliberately NOT
+auto-applied: sport-science (CTL/ACWR/injury thresholds) and revenue/product
+(personal-search gate, soft-delete tombstone) — those remain founder calls.
+
+Applied (testable):
+- **`src/lib/dateKeys.js`** — canonical UTC-anchored `isoMondayOf` + `weekKey` (the
+  ~20 ad-hoc week-Monday implementations can migrate to this incrementally; no mass
+  migration in this change since some sites are intentionally Sunday-start). +13 tests.
+- **`computeRaceReadiness` dataCompleteness** — additive field (0..1) counting present
+  input signals (history/recovery/sleep/plan/race) so a future UI can honestly caveat
+  a grade built largely on the neutral 50-defaults. Does NOT change score/grade. +3 tests.
+
+Applied (deploy-pending — operator applies/deploys):
+- **`get_funnel_cohort_summary(start,end)` RPC** (new migration) — per-cohort-day
+  signed_up / first_session / first_week / activation_rate / avg_days_to_first
+  (first-session = training_log.created_at, so backfilled entries don't count as
+  activation). Read-only, service_role only, net-new (no regression surface).
+- **strava-backfill-worker poison ceiling** — `MAX_READ=10`; a message that keeps
+  failing (revoked token / persistent 5xx / deleted user) now dead-letters after
+  ~20 min instead of re-reading forever and blocking consumer capacity.
+
+Deferred (verified, specs ready — NOT shipped):
+- GDPR purge backfill (message_reads/ctl_daily_cache/generated_reports) — requires a
+  wholesale `CREATE OR REPLACE` of the large `purge_user` function; too risky to ship
+  untested into the migration history. Operator/founder should apply from the spec.
+- ai-batch-worker system_status pre-check + ai-proxy Anthropic prompt-cache — involved
+  edge changes (prompt-cache is ordering-sensitive); deferred for careful authoring.
+- Founder calls: soft-delete enforce-vs-cosmetic, embed-query non-squad gate (revenue),
+  CTL-engine consolidation — DROPPED (nextAction λ=0.067 is the intentional Hulin ACWR
+  decay model, not the accidental copy round 4 suspected).
+
+Full suite green (+16 new tests).
+
 ## v9.393.0 — 2026-06-14 — Round 5 (systems): RLS drift + tier-gate consistency (deploy-pending)
 
 DEPENDS ON: `coach_athletes` (link_status), `tier_for_user` RPC (20260606).

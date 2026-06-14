@@ -650,7 +650,23 @@ export function computeRaceReadiness(log, recovery, injuries, profile, plan, pla
 
   const confidence = log.length >= 28 && recovery?.length >= 14 ? 'high' : log.length >= 14 ? 'moderate' : 'low'
 
-  return { score: composite, grade, factors, verdict: verdicts[grade], confidence, daysToRace }
+  // Data completeness (0..1): how much of this grade rests on real data vs the
+  // neutral 50-defaults each factor falls back to when its input is missing.
+  // Counted from unambiguous INPUT presence signals (not internal score values),
+  // so a UI can honestly caveat a grade built largely on estimates. Additive —
+  // does not change the score/grade. (injuries absence = healthy = truthful, so
+  // it is intentionally not a completeness signal.)
+  const dataSignals = [
+    log.length >= 14,                                   // enough training history
+    (recovery?.length || 0) > 0,                        // any recovery data
+    Array.isArray(recovery) && recovery.some(r => r?.sleepHrs != null), // sleep logged
+    !!plan,                                             // has a plan to comply with
+    daysToRace !== null,                                // race actually scheduled
+  ]
+  const presentSignals = dataSignals.filter(Boolean).length
+  const dataCompleteness = Math.round(presentSignals / dataSignals.length * 100) / 100
+
+  return { score: composite, grade, factors, verdict: verdicts[grade], confidence, daysToRace, dataCompleteness, presentSignals }
 }
 
 // ── analyseSession ────────────────────────────────────────────────────────────

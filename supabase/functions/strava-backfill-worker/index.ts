@@ -11,6 +11,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const RATE_WINDOW_MS = 15 * 60 * 1000   // 15 minutes
 const MAX_REQUESTS   = 600
+const MAX_READ       = 10  // poison ceiling: dead-letter a message after N reads (VT=120s → ~20min)
 
 function mapStravaType(sportType: string): string {
   const m: Record<string, string> = {
@@ -126,7 +127,17 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
 
   for (const row of msgs) {
     const msgId   = row.msg_id as bigint
+    const readCt  = (row.read_ct as number) ?? 0
     const payload = row.message as Record<string, unknown>
+
+    // Poison ceiling: a message that keeps failing (revoked token, persistent 5xx,
+    // deleted user) would otherwise be re-read forever, blocking consumer capacity.
+    // Dead-letter it after MAX_READ reads instead of indefinitely.
+    if (readCt >= MAX_READ) {
+      console.warn(`strava-backfill-worker: msg ${msgId} read_ct=${readCt} >= MAX_READ — dead-lettering`)
+      await sb.rpc("delete_strava_backfill_msg", { p_msg_id: msgId })
+      continue
+    }
 
     const userId = payload.user_id as string
     const page   = (payload.page as number) || 1
