@@ -2,6 +2,34 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.397.0 — 2026-06-16 — Persist activity metrics (distance/HR/cadence) to training_log — cross-device data-loss fix
+
+DEPENDS ON: new migration `20260616_training_log_metric_columns.sql` (operator
+applies) + `supabase functions deploy strava-oauth strava-backfill-worker` for the
+Strava-side writes.
+
+VERIFIED BUG: `training_log` only had `duration_min/tss/rpe/zones/notes`.
+`logEntryToRow` dropped `distanceM/avgHR/avgCadence/durationSec` and the Strava sync
+put distance+HR into the notes TEXT only — so distance, HR and cadence were LOST on
+the Supabase round-trip (survived only in the originating device's localStorage).
+Any second device, and all analytics reading `e.distanceM`/`e.avgHR`/`e.avgCadence`
+(VO₂max trend, efficiency factor, running CV, cadence) silently got nothing.
+
+- **Schema:** `training_log` gains `distance_m`, `avg_hr`, `avg_cadence`
+  (nullable, idempotent `ADD COLUMN IF NOT EXISTS`).
+- **Client mappers (useSupabaseData.js):** `logEntryToRow` now writes the three
+  columns (with a `distanceKm → distance_m ×1000` fallback for manual QuickAdd
+  entries); `logRowToEntry` surfaces them back, omitting keys when null so the entry
+  shape still matches a localStorage-only entry. (+round-trip tests)
+- **Strava edge (strava-oauth + strava-backfill-worker):** both now write
+  `distance_m`, `avg_hr`, `avg_cadence` — **running cadence doubled** (`*2` when the
+  mapped type matches `/run/i`) because Strava reports run cadence per-leg; cycling
+  rpm is left as-is.
+
+Tests: +9 mapper/round-trip cases. The run-cadence doubling runs in the Deno edge
+(no JS-suite gate) — covered by the explicit `/run/i` guard + reviewed inline.
+Full suite green.
+
 ## v9.396.0 — 2026-06-15 — StravaConnect: STALE badge + RECONNECT CTA (completes the v9.395 Strava audit)
 
 DEPENDS ON: the v9.395 edge fix that writes `last_error` "please reconnect" on a

@@ -237,7 +237,12 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
         const maxHR  = a.max_heartrate     ? Math.round(a.max_heartrate as number)     : 190
         const tss    = estimateTSS((a.moving_time as number) || 0, avgHR, maxHR)
         const zones  = estimateZones(avgHR, maxHR)
-        const distKm = a.distance ? ((a.distance as number) / 1000).toFixed(2) : null
+        const sType  = mapStravaType((a.sport_type as string) || (a.type as string) || "")
+        const distM  = typeof a.distance === "number" && a.distance > 0 ? a.distance : null
+        const distKm = distM ? (distM / 1000).toFixed(2) : null
+        // Running cadence is per-leg in Strava → double to full steps/min; bikes (rpm) unchanged.
+        const rawCad = typeof a.average_cadence === "number" && a.average_cadence > 0 ? a.average_cadence : null
+        const avgCadence = rawCad != null ? Math.round(rawCad * (/run/i.test(sType) ? 2 : 1)) : null
         const noteParts = [(a.name as string) || "Strava Activity"]
         if (distKm) noteParts.push(`${distKm} km`)
         if (avgHR)  noteParts.push(`avg HR ${avgHR}`)
@@ -245,9 +250,12 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
         const { error: upsertErr } = await sb.from("training_log").upsert({
           user_id:      userId,
           date:         ((a.start_date_local as string) || (a.start_date as string)).slice(0, 10),
-          type:         mapStravaType((a.sport_type as string) || (a.type as string) || ""),
+          type:         sType,
           duration_min: durationMin,
           tss, rpe: null, zones,
+          distance_m:   distM,
+          avg_hr:       avgHR,
+          avg_cadence:  avgCadence,
           notes:        noteParts.join(" · "),
           source:       "strava",
           external_id:  String(a.id),
