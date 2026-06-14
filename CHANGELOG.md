@@ -2,6 +2,25 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.404.0 — 2026-06-14 — Wire training_age → plan level
+
+The plan generator's level no longer defaults to a flat "Intermediate" — it now derives
+from the athlete's training age via new `src/lib/plan/levelFromTrainingAge.js`:
+- priority 1: the user-declared bucket from TrainingAgeCard (`sporeus-training-age`):
+  `< 1 year`→Beginner, `1–2 years`→Intermediate, `3–5/6–10/10+ years`→Advanced;
+- priority 2: log-derived `analyzeTrainingAge().stage` (BEGINNER→Beginner, DEVELOPING→
+  Intermediate, ESTABLISHED/VETERAN→Advanced);
+- fallback: Intermediate.
+`PlanGenerator` initializes `level` from this and shows a hint ("Set from your training
+age" / "Training-age suggestion: X"); the level buttons still override. New unit test
+(`levelFromTrainingAge.test.js`).
+
+NOTE — body-comp fields are NOT removed (reversal of the Tier-3 "dead" note): `neck`/
+`waist`/`hip` ARE consumed by `navyBF()` → `dashboard/BodyCompositionCard.jsx` (mounted
+Dashboard.jsx:1252) + `profile/BodyComp.jsx` (mounted Profile.jsx:414), i.e. they power a
+live Navy body-fat % estimate. They don't feed the plan, but removing them would delete a
+working feature. Left intact; see report.
+
 ## v9.403.0 — 2026-06-14 — Plan personalization: wire raceDate into the main adaptive generator
 
 DEPENDS ON: existing `raceAwarePhaseForWeek` (v9.157) in `src/lib/plan/generatePlan.js`.

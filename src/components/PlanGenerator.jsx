@@ -12,6 +12,7 @@ import { MiniDonut } from './ui.jsx'
 import { findOptimalWeekStructure } from '../lib/patterns.js'
 import { generatePlan as generateAdaptivePlan } from '../lib/plan/generatePlan.js'
 import { normalizeTrainingDow, defaultDowForCount } from '../lib/plan/trainingDays.js'
+import { levelFromTrainingAge } from '../lib/plan/levelFromTrainingAge.js'
 import { applyTaper, suggestTaper } from '../lib/plan/taperEngine.js'
 import { validatePlan } from '../lib/plan/planValidators.js'
 import { explainPlannedWeek } from '../lib/athlete/weekRationale.js'
@@ -181,7 +182,12 @@ export default function PlanGenerator({ onLogSession }) {
     return 12
   })
   const [hours, setHours] = useState(8)
-  const [level, setLevel] = useState('Intermediate')
+  // v9.404 — default the plan level from the athlete's training age (declared bucket
+  // from TrainingAgeCard, else log-derived stage) instead of a flat "Intermediate".
+  // Still overridable via the level buttons below.
+  const [declaredTrainingAge] = useLocalStorage('sporeus-training-age', '')
+  const [level, setLevel] = useState(() => levelFromTrainingAge(declaredTrainingAge, log))
+  const levelFromAge = levelFromTrainingAge(declaredTrainingAge, log)
   const [plan,  setPlan]  = useLocalStorage('sporeus-plan', null)
   const [planStatus, setPlanStatus] = useLocalStorage('sporeus-plan-status', {})
   const [lang] = useLocalStorage('sporeus-lang', 'en')
@@ -521,6 +527,13 @@ export default function PlanGenerator({ onLogSession }) {
                 style={{ ...S.navBtn(level===lv), borderRadius:'4px', fontSize:'11px', padding:'6px 14px' }}>{lv}</button>
             ))}
           </div>
+          {(declaredTrainingAge || levelFromAge !== 'Intermediate') && (
+            <div style={{ ...S.mono, fontSize:'9px', color:'var(--muted)', marginTop:'5px' }}>
+              {level === levelFromAge
+                ? (lang === 'tr' ? '◈ Antrenman yaşınızdan ayarlandı' : '◈ Set from your training age')
+                : (lang === 'tr' ? `◈ Antrenman yaşı önerisi: ${levelFromAge}` : `◈ Training-age suggestion: ${levelFromAge}`)}
+            </div>
+          )}
         </div>
         <div style={{ marginTop:'14px' }}>
           <label style={S.label}>{t('blockPeriodization')}</label>
