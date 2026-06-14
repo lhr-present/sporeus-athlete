@@ -67,3 +67,54 @@ paste into a Claude Code session in this repo. Order is rough priority.
 > that calls it and renders signed_up → first_session → first_week → activation_rate so
 > n=8 becomes legible. Optional: a billing-reconciliation cron auditing subscription_status
 > vs subscription_events + an Axiom alert on dodo-webhook failure rate.
+
+---
+---
+
+# Grounded follow-ups (verified against code 2026-06-15)
+
+## 8. 🔴 Operator: deploy the v9.387–v9.396 queue (exact list)
+> These are committed but inert until deployed. SEQUENCE: (1) rotate the service_role key
+> first (item #1). (2) Apply the 3 new migrations in order: `20260611_harden_definer_search_path.sql`,
+> `20260614_coach_notes_active_link_rls.sql`, `20260615_funnel_cohort_rpc.sql`. (3) Deploy the
+> changed edge functions: `supabase functions deploy strava-oauth strava-backfill-worker ai-proxy
+> analyse-session embed-session embed-query nightly-batch export-user-data` (the `_shared/fetchWithTimeout.ts`
+> helper ships with whichever functions import it). Smoke-test after each: connect Strava → expect
+> activities within ~2s (immediate sync); revoke at strava.com → next sync writes `last_error`
+> "please reconnect" and the Profile panel shows RECONNECT. NOTE: branch CI cannot provision a
+> fresh Supabase branch (chronic `MIGRATIONS_FAILED` from history drift) — apply against the live
+> project, not a preview branch.
+
+## 9. Strava + manual: persist activity METRICS to training_log (distance / HR / cadence)
+> VERIFIED GAP: `training_log` has only `duration_min, tss, rpe, zones, notes` columns — NO
+> distance/HR/cadence. `logEntryToRow` (src/hooks/useSupabaseData.js) drops `distanceM/avgHR/
+> avgCadence/durationSec`, and the Strava edge sync only puts distance+HR into the notes *text*.
+> So on any second device these metrics are gone, and vo2max/EF/runningCV/cadence analytics that
+> read `e.distanceM`/`e.avgHR`/`e.avgCadence` silently get nothing once data round-trips through
+> Supabase. FIX: (a) migration adding `distance_m numeric, avg_hr int, avg_cadence int` to
+> training_log (idempotent `ADD COLUMN IF NOT EXISTS`); (b) wire `logEntryToRow`/`logRowToEntry`
+> to write+read them; (c) Strava edge (strava-oauth sync + strava-backfill-worker) to write
+> `distance_m: a.distance`, `avg_hr: Math.round(a.average_heartrate)`, and `avg_cadence` —
+> DOUBLING running cadence (`/run/i.test(type) ? a.average_cadence*2 : a.average_cadence`) since
+> Strava reports run cadence per-leg. Add tests for the round-trip + the run-cadence doubling.
+> Deploy-pending (migration + edge). This is the highest-value Strava follow-up — it's a real
+> cross-device data-loss bug, not just a nicety.
+
+## 10. Strava: route-map / trackpoint persistence (scope decision first)
+> VERIFIED: `decodePolyline()` exists in src/lib/strava.js and the dead `stravaToEntry` built a
+> `trackpoints` array, but NO table or column persists them and no import path writes them. Decide
+> scope BEFORE building: route maps are storage-heavy (a 1h run ≈ thousands of points). Options:
+> (a) skip entirely (recommended unless maps are a product goal); (b) store a downsampled polyline
+> string on a new `training_log.route_polyline text` column (cheap, ~1KB); (c) a separate
+> `activity_tracks` table with JSONB points (heavy). If (b): add the column, persist
+> `a.map.summary_polyline` from the Strava edge, render with a lightweight map component. Don't
+> store full trackpoints in localStorage (quota risk).
+
+## 11. Strava: RPE on synced rows — founder/science decision
+> VERIFIED: both Strava sync paths write `rpe: null`. Strava rows DO carry estimated `zones[]`, so
+> zone-based analysis still works; the gap is anything that falls back to `e.rpe || 5` (which the
+> v9.387 round flagged as a fabricated-default smell). DECIDE: (a) leave null (honest — no RPE was
+> logged), and instead fix the consumers to treat missing RPE as missing rather than 5; or (b)
+> estimate RPE from HR (the dead client used `min(10,max(1,round(avgHR/20)))`) and store it,
+> accepting a fabricated effort value. (a) is more defensible. This is your call as the sport-science
+> owner — tell me which and I'll implement.
