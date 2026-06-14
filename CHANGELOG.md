@@ -2,6 +2,31 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.401.0 — 2026-06-14 — Tier-0 security (2nd pass): caller guards on the 4 held RPCs/policy
+
+DEPENDS ON: migration `20260618_tier0_held_item_guards.sql` (applied to prod via MCP).
+
+The 4 items from v9.400 that had real client callers (so couldn't be blind-revoked) now
+have proper authorization. Designed + adversarially verified by a multi-agent pass, then
+corrected against the LIVE DB (the agents' rewrites had bugs — hallucinated columns,
+invalid `CREATE POLICY ... FOR UPDATE(col)` syntax, a false `search_path=''` claim, and a
+self-contradictory revoke; none were applied verbatim):
+
+- `generate_api_key(text,uuid)`: guard `p_org_id = auth.uid()` (only the org owner mints
+  keys; client passes `authProfile.id`). Revoke anon; keep authenticated + service_role.
+- `get_squad_overview(uuid)`: guard `auth.uid() IS NULL OR p_coach_id = auth.uid()` — a
+  coach reads only their own squad; the `public-api` service_role path (no `auth.uid()`)
+  still works. Revoke anon.
+- `get_recent_client_errors(int)`: gate to `profiles.role='admin'` (service_role allowed);
+  aggregate-only telemetry. Revoke anon, keep authenticated for the admin dashboard.
+- `referral_codes`: column-scoped UPDATE — `REVOKE UPDATE … FROM authenticated` +
+  `GRANT UPDATE (uses_count)` (redeemers can only increment the counter, not rewrite
+  `coach_id`/`code`/`reward_granted`). Existing BEFORE-UPDATE freeze trigger kept.
+
+Verified live: all guards present, anon revoked, authenticated/service_role retained,
+referral UPDATE scoped to `uses_count`; edge 0×401/0×5xx. Note: `auth.uid()` is
+schema-qualified so it resolves under `search_path=''` (matches live get_my_tier).
+
 ## v9.400.0 — 2026-06-14 — Tier-0 security: SECURITY DEFINER RPC lockdown + view/MV exposure
 
 DEPENDS ON: migration `20260617_security_definer_rpc_lockdown.sql` (applied to prod
