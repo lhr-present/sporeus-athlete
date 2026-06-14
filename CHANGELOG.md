@@ -2,6 +2,20 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.396.0 — 2026-06-15 — StravaConnect: STALE badge + RECONNECT CTA (completes the v9.395 Strava audit)
+
+DEPENDS ON: the v9.395 edge fix that writes `last_error` "please reconnect" on a
+revoked/failed token (still deploy-pending) — this is the UI half that surfaces it.
+
+- `StravaConnect` (Profile → connections) now classifies the connection via the
+  existing `classifyStravaSync` helper: shows an amber **STALE** status when idle
+  but not synced in ≥2 days, and a **RECONNECT** button (+ surfaces `last_error`)
+  whenever the connection is failing — previously the only options were SYNC NOW /
+  DISCONNECT, so a revoked athlete had no in-place recovery path. Reconnect reuses
+  the same `initiateStravaOAuth()` flow as first connect.
+
+Full suite green.
+
 ## v9.395.0 — 2026-06-15 — Strava audit fixes: connect→sync, type case-mismatch, redirect URI, silent token failure
 
 DEPENDS ON: edge fixes require `supabase functions deploy strava-oauth strava-backfill-worker`.

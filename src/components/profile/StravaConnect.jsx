@@ -10,6 +10,7 @@ import {
   // alongside the localStorage-token-fallback disable in handleSync. The
   // functions still live in src/lib/strava.js for future revival.
 } from '../../lib/strava.js'
+import { classifyStravaSync } from '../../lib/athlete/stravaSyncHealth.js'
 
 const SYNC_COLOR = { idle: '#5bc25b', syncing: '#0064ff', error: '#e03030', paused: '#ffa500' }
 const SYNC_LABEL = { idle: 'CONNECTED', syncing: 'SYNCING', error: 'ERROR', paused: 'PAUSED' }
@@ -108,6 +109,13 @@ export default function StravaConnect({ userId }) {
   if (loading) return <div style={{ ...S.mono, fontSize: '11px', color: '#888' }}>Checking connection...</div>
 
   const displayStatus = busy ? 'syncing' : (conn?.sync_status || 'idle')
+  // Surface a STALE badge (idle but not synced in days) and a RECONNECT CTA when
+  // the connection is failing (e.g. the edge wrote "authorization revoked").
+  const health    = conn ? classifyStravaSync(conn) : null
+  const isStale   = health?.state === 'stale' && displayStatus !== 'syncing' && displayStatus !== 'error'
+  const isFailing = health?.state === 'failing' || displayStatus === 'error'
+  const statusLabel = isStale ? 'STALE' : (SYNC_LABEL[displayStatus] || 'CONNECTED')
+  const statusColor = isStale ? '#ffa500' : (SYNC_COLOR[displayStatus] || '#5bc25b')
 
   return (
     <div>
@@ -115,7 +123,7 @@ export default function StravaConnect({ userId }) {
         <>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
             {[
-              { lbl: 'STATUS',           val: SYNC_LABEL[displayStatus] || 'CONNECTED', color: SYNC_COLOR[displayStatus] || '#5bc25b' },
+              { lbl: 'STATUS',           val: statusLabel, color: statusColor },
               { lbl: 'ATHLETE',          val: conn.provider_athlete_name || conn.strava_athlete_id, color: '#ff6600' },
               { lbl: 'LAST SYNC',        val: conn.last_sync_at
                 ? new Date(conn.last_sync_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -132,7 +140,7 @@ export default function StravaConnect({ userId }) {
             ))}
           </div>
 
-          {displayStatus === 'error' && conn.last_error && (
+          {isFailing && conn.last_error && (
             <div style={{
               ...S.mono, fontSize: '10px', color: '#e03030',
               background: '#1a0808', border: '1px solid #3a1010',
@@ -147,6 +155,15 @@ export default function StravaConnect({ userId }) {
           </div>
 
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: syncResult ? '12px' : '0', alignItems: 'center' }}>
+            {isFailing && (
+              <button
+                style={{ ...S.btn, background: '#fc4c02', borderColor: '#fc4c02' }}
+                onClick={() => { const res = initiateStravaOAuth(); if (res && res.ok === false) flash(`⚠ ${res.error}`, 6000) }}
+                disabled={busy}
+              >
+                ↻ RECONNECT
+              </button>
+            )}
             <button style={S.btn} onClick={handleSync} disabled={busy}>
               {busy ? 'SYNCING...' : '↻ SYNC NOW'}
             </button>
