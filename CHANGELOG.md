@@ -2,6 +2,18 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.398.0 — 2026-06-16 — StravaConnect: read post-sync activity list from the DB (fix "no activities" after a successful sync)
+
+DEPENDS ON: nothing new (uses training_log, which the edge sync writes synchronously).
+
+After a successful sync, `StravaConnect.handleSync` read `getRecentStravaLocal()`
+from localStorage — but the DB→localStorage hydration hadn't run yet, so the panel
+showed "No Strava activities found in last 30 days" immediately after a sync that
+just succeeded (the toast said "Synced N"). New `getRecentStravaActivities(userId)`
+reads the most-recent Strava rows straight from `training_log` (the source of truth
+the edge just wrote, now with full metrics per v9.397); falls back to the local read
+on query error. +3 tests.
+
 ## v9.397.0 — 2026-06-16 — Persist activity metrics (distance/HR/cadence) to training_log — cross-device data-loss fix
 
 DEPENDS ON: new migration `20260616_training_log_metric_columns.sql` (operator

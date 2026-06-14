@@ -245,3 +245,19 @@ export async function getStravaConnection(userId) {
     .maybeSingle()
   return { data, error }
 }
+
+// Most-recent synced Strava activities straight from training_log (the source of
+// truth the edge just wrote to). Used by StravaConnect after a sync: reading
+// localStorage there showed "no activities" right after a successful sync because
+// the DB→localStorage hydration hadn't run yet.
+export async function getRecentStravaActivities(userId, limit = 3) {
+  if (!userId) return []
+  const { data } = await supabase
+    .from('training_log')
+    .select('date, type, duration_min, tss')
+    .eq('user_id', userId)
+    .eq('source', 'strava')
+    .order('date', { ascending: false })
+    .limit(limit)
+  return (data || []).map(r => ({ date: r.date, type: r.type, duration: r.duration_min, tss: r.tss }))
+}

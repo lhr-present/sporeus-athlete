@@ -5,7 +5,7 @@ import { S } from '../../styles.js'
 import { isSupabaseReady } from '../../lib/supabase.js'
 import {
   getStravaConnection, initiateStravaOAuth, triggerStravaSync,
-  disconnectStrava,
+  disconnectStrava, getRecentStravaActivities,
   // v9.90.0 — importStravaActivities + deduplicateByStravaId imports removed
   // alongside the localStorage-token-fallback disable in handleSync. The
   // functions still live in src/lib/strava.js for future revival.
@@ -83,7 +83,11 @@ export default function StravaConnect({ userId }) {
     if (error) {
       flash(`⚠ Sync failed: ${(error.message || 'Unknown error').slice(0, 200)}`)
     } else {
-      const recent = getRecentStravaLocal()
+      // Read from training_log (what the edge just wrote) rather than localStorage,
+      // which hasn't been re-hydrated yet — otherwise a successful sync showed
+      // "No Strava activities found". Falls back to the local read on query error.
+      let recent = await getRecentStravaActivities(userId).catch(() => [])
+      if (!recent.length) recent = getRecentStravaLocal()
       setSyncResult({ synced: data?.synced ?? 0, total: data?.total ?? 0, recent })
       flash(`✓ Synced ${data?.synced ?? 0} of ${data?.total ?? 0} activities`, 6000)
       getStravaConnection(userId).then(({ data: d }) => setConn(d || null))
