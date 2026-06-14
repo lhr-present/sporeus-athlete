@@ -12,6 +12,7 @@ import { MiniDonut } from './ui.jsx'
 import { findOptimalWeekStructure } from '../lib/patterns.js'
 import { generatePlan as generateAdaptivePlan } from '../lib/plan/generatePlan.js'
 import { normalizeTrainingDow, defaultDowForCount } from '../lib/plan/trainingDays.js'
+import { levelFromTrainingAge } from '../lib/plan/levelFromTrainingAge.js'
 import { applyTaper, suggestTaper } from '../lib/plan/taperEngine.js'
 import { validatePlan } from '../lib/plan/planValidators.js'
 import { explainPlannedWeek } from '../lib/athlete/weekRationale.js'
@@ -181,7 +182,12 @@ export default function PlanGenerator({ onLogSession }) {
     return 12
   })
   const [hours, setHours] = useState(8)
-  const [level, setLevel] = useState('Intermediate')
+  // v9.404 — default the plan level from the athlete's training age (declared bucket
+  // from TrainingAgeCard, else log-derived stage) instead of a flat "Intermediate".
+  // Still overridable via the level buttons below.
+  const [declaredTrainingAge] = useLocalStorage('sporeus-training-age', '')
+  const [level, setLevel] = useState(() => levelFromTrainingAge(declaredTrainingAge, log))
+  const levelFromAge = levelFromTrainingAge(declaredTrainingAge, log)
   const [plan,  setPlan]  = useLocalStorage('sporeus-plan', null)
   const [planStatus, setPlanStatus] = useLocalStorage('sporeus-plan-status', {})
   const [lang] = useLocalStorage('sporeus-lang', 'en')
@@ -288,6 +294,10 @@ export default function PlanGenerator({ onLogSession }) {
         : advAvailableDays
       // v9.92.0 — Mission 1 PLAN link: pass race distance + primary sport
       // through so 5K ≠ Marathon and cyclist plans show "Long ride" not "Long run"
+      // v9.403 — pass the athlete's race date so calendar-aware phasing (v9.157
+      // raceAwarePhaseForWeek) anchors the taper/peak to the real race day. Without
+      // this the generator silently fell back to index-based phasing on this path
+      // (onboarding already passes raceDate via starterPlan — parity fix, not a model change).
       const adaptive = generateAdaptivePlan({
         goal:          goalKey,
         currentCTL,
@@ -297,6 +307,7 @@ export default function PlanGenerator({ onLogSession }) {
         level:         levelKey,
         raceDistance:  goal,
         primarySport:  profile?.primarySport || null,
+        raceDate:      advRaceDate || profile?.raceDate || null,
       })
       let finalPlan = adaptive
       if (finalPlan && advAutoTaper && advRaceDate) {
@@ -516,6 +527,13 @@ export default function PlanGenerator({ onLogSession }) {
                 style={{ ...S.navBtn(level===lv), borderRadius:'4px', fontSize:'11px', padding:'6px 14px' }}>{lv}</button>
             ))}
           </div>
+          {(declaredTrainingAge || levelFromAge !== 'Intermediate') && (
+            <div style={{ ...S.mono, fontSize:'9px', color:'var(--muted)', marginTop:'5px' }}>
+              {level === levelFromAge
+                ? (lang === 'tr' ? '◈ Antrenman yaşınızdan ayarlandı' : '◈ Set from your training age')
+                : (lang === 'tr' ? `◈ Antrenman yaşı önerisi: ${levelFromAge}` : `◈ Training-age suggestion: ${levelFromAge}`)}
+            </div>
+          )}
         </div>
         <div style={{ marginTop:'14px' }}>
           <label style={S.label}>{t('blockPeriodization')}</label>

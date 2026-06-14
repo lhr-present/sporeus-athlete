@@ -2,6 +2,134 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.405.0 — 2026-06-14 — Drop orphaned profiles.training_age column
+
+DEPENDS ON: migration `20260620_drop_orphan_profiles_training_age.sql` (applied to prod via MCP).
+
+Removed the dead `profiles.training_age` column + its only writer. It was write-only: the
+app's training age lives in localStorage `sporeus-training-age` (TrainingAgeCard /
+levelFromTrainingAge) and nothing read the column. Verified before dropping — no client/edge
+read, no DB function/view/policy/index reference, 0/8 prod rows populated (no data loss).
+`dataMigration.js` no longer writes it (removed the `if (trainingAge)` profile-update block +
+its `steps` entry); guest→account training-age detection/preview is unchanged (stays in
+localStorage). Historical `001_initial_schema.sql` left intact (forward-consistent: create→drop).
+
+## v9.404.0 — 2026-06-14 — Wire training_age → plan level
+
+The plan generator's level no longer defaults to a flat "Intermediate" — it now derives
+from the athlete's training age via new `src/lib/plan/levelFromTrainingAge.js`:
+- priority 1: the user-declared bucket from TrainingAgeCard (`sporeus-training-age`):
+  `< 1 year`→Beginner, `1–2 years`→Intermediate, `3–5/6–10/10+ years`→Advanced;
+- priority 2: log-derived `analyzeTrainingAge().stage` (BEGINNER→Beginner, DEVELOPING→
+  Intermediate, ESTABLISHED/VETERAN→Advanced);
+- fallback: Intermediate.
+`PlanGenerator` initializes `level` from this and shows a hint ("Set from your training
+age" / "Training-age suggestion: X"); the level buttons still override. New unit test
+(`levelFromTrainingAge.test.js`).
+
+NOTE — body-comp fields are NOT removed (reversal of the Tier-3 "dead" note): `neck`/
+`waist`/`hip` ARE consumed by `navyBF()` → `dashboard/BodyCompositionCard.jsx` (mounted
+Dashboard.jsx:1252) + `profile/BodyComp.jsx` (mounted Profile.jsx:414), i.e. they power a
+live Navy body-fat % estimate. They don't feed the plan, but removing them would delete a
+working feature. Left intact; see report.
+
+## v9.403.0 — 2026-06-14 — Plan personalization: wire raceDate into the main adaptive generator
+
+DEPENDS ON: existing `raceAwarePhaseForWeek` (v9.157) in `src/lib/plan/generatePlan.js`.
+
+Tier-3 product deep-dive (target→physiology→plan) found the adaptive generator personalizes
+by training-log CTL + race-distance intent templates, but the main `PlanGenerator` advanced
+UI never passed `raceDate` into `generateAdaptivePlan` — so calendar-aware phasing (which
+anchors taper/peak to the real race day) silently fell back to index-based phasing on that
+path, while onboarding (`starterPlan.js`) already passed it. Parity wiring fix (not a model
+change): `PlanGenerator.jsx` now passes `raceDate: advRaceDate || profile?.raceDate || null`.
+
+Documented (NOT changed — see deep-dive notes): the generator math intentionally uses
+log-derived CTL rather than saved physiology (vo2max/ftp/maxHR/threshold); feeding measured
+physiology into TSS/phase math, athlete-relative intensity prescriptions, training_age→level,
+and body-comp usage are sport-science design decisions left to the founder. `training_age`
+profile field + neck/waist/hip/bodyFat remain orphaned (candidates for wiring or removal).
+
+## v9.402.0 — 2026-06-14 — Tier-1/2 advisor cleanup: RLS initplan perf + index/search_path hygiene
+
+DEPENDS ON: migration `20260619_tier1_2_advisor_cleanup.sql` (applied to prod via MCP).
+
+Cleared all WARN-level `get_advisors` performance lints (semantics-preserving, verified
+against pg_policies/pg_indexes):
+- **`auth_rls_initplan` ×13 → 0:** wrapped `auth.uid()` / `get_my_tier()` in `(select …)`
+  across 11 policies (attribution_events, message_reads, export_jobs, deletion_requests,
+  consent_purposes, onboarding_state, ai_feedback, org_branding) so they evaluate once per
+  query instead of per row.
+- **`multiple_permissive_policies` ×6 → 0:** dropped `ta_athlete_read` (byte-identical to
+  `team_announcements: select`).
+- **`duplicate_index` → 0:** dropped `idx_client_events_ttl_col` (== `idx_client_events_created_at`).
+- **`unindexed_foreign_keys` ×2 → 0:** added covering indexes on
+  `deletion_requests.purge_audit_id` + `message_reads.user_id`.
+- **`function_search_path_mutable` ×2 → 0:** pinned `search_path='public'` on
+  `log_consent_change` + `search_everything`.
+
+Deliberately NOT changed (documented): `ai_proxy_usage` RLS deny-all (intentional —
+service_role metering table; a policy would OPEN it); 11 "unused" indexes (false positive
+at n=8 users — keep for scale); extensions in public + leaked-password protection
+(risky / Dashboard-only — operator follow-ups).
+
+## v9.401.0 — 2026-06-14 — Tier-0 security (2nd pass): caller guards on the 4 held RPCs/policy
+
+DEPENDS ON: migration `20260618_tier0_held_item_guards.sql` (applied to prod via MCP).
+
+The 4 items from v9.400 that had real client callers (so couldn't be blind-revoked) now
+have proper authorization. Designed + adversarially verified by a multi-agent pass, then
+corrected against the LIVE DB (the agents' rewrites had bugs — hallucinated columns,
+invalid `CREATE POLICY ... FOR UPDATE(col)` syntax, a false `search_path=''` claim, and a
+self-contradictory revoke; none were applied verbatim):
+
+- `generate_api_key(text,uuid)`: guard `p_org_id = auth.uid()` (only the org owner mints
+  keys; client passes `authProfile.id`). Revoke anon; keep authenticated + service_role.
+- `get_squad_overview(uuid)`: guard `auth.uid() IS NULL OR p_coach_id = auth.uid()` — a
+  coach reads only their own squad; the `public-api` service_role path (no `auth.uid()`)
+  still works. Revoke anon.
+- `get_recent_client_errors(int)`: gate to `profiles.role='admin'` (service_role allowed);
+  aggregate-only telemetry. Revoke anon, keep authenticated for the admin dashboard.
+- `referral_codes`: column-scoped UPDATE — `REVOKE UPDATE … FROM authenticated` +
+  `GRANT UPDATE (uses_count)` (redeemers can only increment the counter, not rewrite
+  `coach_id`/`code`/`reward_granted`). Existing BEFORE-UPDATE freeze trigger kept.
+
+Verified live: all guards present, anon revoked, authenticated/service_role retained,
+referral UPDATE scoped to `uses_count`; edge 0×401/0×5xx. Note: `auth.uid()` is
+schema-qualified so it resolves under `search_path=''` (matches live get_my_tier).
+
+## v9.400.0 — 2026-06-14 — Tier-0 security: SECURITY DEFINER RPC lockdown + view/MV exposure
+
+DEPENDS ON: migration `20260617_security_definer_rpc_lockdown.sql` (applied to prod
+`pvicqwapvvfempjdgwbm` via MCP 2026-06-14).
+
+`get_advisors` flagged ~87 SECURITY DEFINER functions EXECUTE-grantable by `anon`/
+`authenticated` via `/rest/v1/rpc/*`, running as definer (RLS bypassed). A multi-agent
+audit (6 classifiers + adversarial verify per revoke candidate + 3 specialists)
+verified call sites against `src/` (client) vs `supabase/functions/` (edge, service_role):
+
+- **Revoked EXECUTE from `public, anon, authenticated`** on 28 privileged/internal fns
+  (queue ops, billing/tier writers — `apply_tier_change`, `apply_subscription_event`,
+  `tier_for_user`; privacy — `build_user_export`, `purge_user`, `decrypt_device_token`;
+  usage counters; maintenance) + 4 trigger fns; re-granted `service_role` so edge/cron
+  keep working. Verified zero genuine client `supabase.rpc()` callers.
+- **Auth hook** `inject_tier_jwt_claim`: stripped to `supabase_auth_admin` + `service_role`
+  only (was anon-executable — claim-tampering surface).
+- **Self-guarded read fns** (`get_load_timeline`, `get_squad_readiness`,
+  `get_weekly_summary`): stripped `anon`, kept `authenticated` (they scope via `auth.uid()`).
+- **View** `ai_feedback_summary`: `security_invoker = true` (fixes the only ERROR-level
+  lint — was bypassing `ai_feedback` RLS) + revoked `anon` SELECT.
+- **Materialized views** `mv_ctl_atl_daily`, `mv_squad_readiness`: revoked anon/authenticated
+  SELECT (no RLS → cross-tenant read). Not read directly by the client.
+
+Net: anon-executable SECURITY DEFINER fns 44 → 8 (remaining 8 are intentional keeps or
+the 3 client-facing fns held for a guard). Edge health post-apply: 0×401/0×5xx.
+
+NOT in this change (tracked follow-ups, need a code-level guard not a blind revoke):
+`generate_api_key`, `get_squad_overview`, `get_recent_client_errors` (real client callers,
+unguarded); `referral_codes` always-true UPDATE policy (client updates `uses_count`
+directly → needs a column-scoped policy).
+
 ## v9.399.0 — 2026-06-16 — PROD DEPLOY + verify_jwt regression fix + drift roll-forward
 
 DEPENDS ON: `supabase/config.toml` now pins per-function `verify_jwt`.
