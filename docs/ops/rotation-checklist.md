@@ -21,9 +21,8 @@ legacy JWT, baked into the client build).
    the secret → regenerates `anon` + `service_role`).
    - ⚠️ This **invalidates every existing user session** (athletes/coaches get logged
      out) and the old `anon`/`service_role` JWTs. Do it in a low-traffic window.
-2. **Client:** the new `anon` key must go into `VITE_SUPABASE_ANON_KEY` and the app
-   **rebuilt + redeployed** (GitHub Pages) — the anon key is baked into the bundle.
-   Update the GitHub Actions secret / `.env`, then re-run the deploy workflow.
+2. **Client (turnkey anon-key swap) — see §1b below.** The new `anon` key is baked
+   into the bundle at build time, so the client must be rebuilt + redeployed.
 3. **Edge functions:** `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_ANON_KEY` envs are
    Supabase-managed and update automatically — but redeploy the functions afterward to
    be safe and confirm via a smoke test (the workers don't depend on the bearer JWT
@@ -33,6 +32,43 @@ legacy JWT, baked into the client build).
    or apply `20260603_service_role_key_from_guc.sql` which sources it from a GUC).
 5. **Verify:** `select status_code, count(*) from net._http_response where created >
    now() - interval '10 min' group by 1;` → expect 200s, no 401.
+
+### 1b. Turnkey anon-key swap (post-rotation)
+⏱️ **Sequencing matters:** the moment you regenerate the JWT secret, the OLD anon key
+is invalid → the live client (built with the old anon) **can't authenticate** until you
+redeploy. Have the new key ready and do steps 1→3 back-to-back to minimize the window.
+
+The prod anon key lives in **two** GitHub Actions repo secrets (the test project uses
+separate `SUPABASE_TEST_*` secrets):
+- `VITE_SUPABASE_ANON_KEY` — baked into the client build (deploy.yml) ← matters for prod
+- `SUPABASE_ANON_KEY` — used by CI harnesses (lighthouse/bundle/e2e/rls)
+
+**1. Copy the new anon key:** Dashboard → Settings → API → Project API keys → `anon` `public` (the `eyJ…` JWT).
+
+**2. Update both secrets** (repo `lhr-present/sporeus-athlete`):
+```bash
+gh secret set VITE_SUPABASE_ANON_KEY --repo lhr-present/sporeus-athlete --body "<NEW_ANON_JWT>"
+gh secret set SUPABASE_ANON_KEY      --repo lhr-present/sporeus-athlete --body "<NEW_ANON_JWT>"
+```
+(or UI: repo → Settings → Secrets and variables → Actions → update each.)
+
+**3. Rebuild + redeploy** (no code change — the secret is read at build time):
+```bash
+gh workflow run deploy.yml --repo lhr-present/sporeus-athlete --ref main
+gh run watch --repo lhr-present/sporeus-athlete    # or: gh run list --workflow=deploy.yml
+```
+(Equivalently, push any commit to `main`.) The job runs lint+test+version-sync+build+e2e and
+publishes to Pages only if green (version-sync passes at v9.399). **Merge PR #4 first** if you
+want the new client features in this same deploy.
+
+**4. Verify:** workflow green → hard-refresh `https://lhr-present.github.io/sporeus-athlete/`,
+sign in fresh (everyone was logged out by the rotation), confirm auth + a Supabase read work.
+Browser 401s show in Dashboard → Logs → API (the `net._http_response` query covers cron/pg_net, not browser).
+
+**service_role after rotation:** edge `SUPABASE_SERVICE_ROLE_KEY` is Supabase-managed and
+auto-updates; the stale old service_role JWT in the cron `Bearer` headers is **ignored**
+(workers auth on `WEBHOOK_SECRET`, `verify_jwt=false`) so crons keep working — clean those
+headers per §1.4 / §2 at leisure.
 
 ## 2. (Optional, cleanliness) Move the webhook secret from literal → GUC
 The literal-in-cron secret works and is no worse-exposed than the JWT was, but the
