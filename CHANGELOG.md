@@ -2,6 +2,31 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.399.0 — 2026-06-16 — PROD DEPLOY + verify_jwt regression fix + drift roll-forward
+
+DEPENDS ON: `supabase/config.toml` now pins per-function `verify_jwt`.
+
+Deployed the v9.387–v9.398 queue to **production** (`pvicqwapvvfempjdgwbm`) via
+Supabase MCP (migrations) + CLI `--use-api` (edge):
+- **Migrations:** training_log metric columns; `get_funnel_cohort_summary`;
+  `coach_notes` active-link RLS; `search_path` on `get_recent_client_errors`;
+  `tier_for_user` + status-aware `get_my_tier` + org_branding white-label gate
+  (20260606 roll-forward — unblocked embed-query AND generate-report).
+- **Edge functions:** all deep-dive changes (strava-oauth, strava-backfill-worker,
+  ai-proxy, analyse-session, embed-session, nightly-batch, export-user-data, embed-query).
+
+**Regression caught via post-deploy log check + fixed:** the CLI deploy defaulted
+`verify_jwt=true` (config.toml had no `[functions]` entries), flipping 5 internal-auth
+workers (strava-backfill-worker, analyse-session, embed-session, nightly-batch,
+export-user-data) false→true → **platform 401 on every cron/trigger invocation**
+(Strava backfill 401'd every 2 min). Redeployed the 5 with `--no-verify-jwt`, and
+**pinned every function's `verify_jwt` in `config.toml`** so deploys can't re-break
+the workers.
+
+NOT done (env-blocked / operator): literal migration squash needs a Docker/pg_dump
+prod schema dump (`docs/ops/migration-squash-runbook.md`); service_role rotation;
+PR #4 merge.
+
 ## v9.398.0 — 2026-06-16 — StravaConnect: read post-sync activity list from the DB (fix "no activities" after a successful sync)
 
 DEPENDS ON: nothing new (uses training_log, which the edge sync writes synchronously).
