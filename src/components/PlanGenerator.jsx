@@ -288,6 +288,10 @@ export default function PlanGenerator({ onLogSession }) {
         : advAvailableDays
       // v9.92.0 — Mission 1 PLAN link: pass race distance + primary sport
       // through so 5K ≠ Marathon and cyclist plans show "Long ride" not "Long run"
+      // v9.403 — pass the athlete's race date so calendar-aware phasing (v9.157
+      // raceAwarePhaseForWeek) anchors the taper/peak to the real race day. Without
+      // this the generator silently fell back to index-based phasing on this path
+      // (onboarding already passes raceDate via starterPlan — parity fix, not a model change).
       const adaptive = generateAdaptivePlan({
         goal:          goalKey,
         currentCTL,
@@ -297,6 +301,7 @@ export default function PlanGenerator({ onLogSession }) {
         level:         levelKey,
         raceDistance:  goal,
         primarySport:  profile?.primarySport || null,
+        raceDate:      advRaceDate || profile?.raceDate || null,
       })
       let finalPlan = adaptive
       if (finalPlan && advAutoTaper && advRaceDate) {

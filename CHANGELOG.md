@@ -2,6 +2,23 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.403.0 — 2026-06-14 — Plan personalization: wire raceDate into the main adaptive generator
+
+DEPENDS ON: existing `raceAwarePhaseForWeek` (v9.157) in `src/lib/plan/generatePlan.js`.
+
+Tier-3 product deep-dive (target→physiology→plan) found the adaptive generator personalizes
+by training-log CTL + race-distance intent templates, but the main `PlanGenerator` advanced
+UI never passed `raceDate` into `generateAdaptivePlan` — so calendar-aware phasing (which
+anchors taper/peak to the real race day) silently fell back to index-based phasing on that
+path, while onboarding (`starterPlan.js`) already passed it. Parity wiring fix (not a model
+change): `PlanGenerator.jsx` now passes `raceDate: advRaceDate || profile?.raceDate || null`.
+
+Documented (NOT changed — see deep-dive notes): the generator math intentionally uses
+log-derived CTL rather than saved physiology (vo2max/ftp/maxHR/threshold); feeding measured
+physiology into TSS/phase math, athlete-relative intensity prescriptions, training_age→level,
+and body-comp usage are sport-science design decisions left to the founder. `training_age`
+profile field + neck/waist/hip/bodyFat remain orphaned (candidates for wiring or removal).
+
 ## v9.402.0 — 2026-06-14 — Tier-1/2 advisor cleanup: RLS initplan perf + index/search_path hygiene
 
 DEPENDS ON: migration `20260619_tier1_2_advisor_cleanup.sql` (applied to prod via MCP).
