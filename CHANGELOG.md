@@ -2,6 +2,24 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.407.0 — 2026-06-15 — 🔴 Edge-function auth hardening (red flag from 2026-06-15 audit)
+
+Closed the top audit red flag: five internal edge functions ran with `verify_jwt=false`
+(open URL) but had no shared-secret check, so they were invocable unauthenticated —
+including **`purge-deleted-accounts`** (cron GDPR deletion) and **`operator-digest`**
+(metrics). Added `isVerifiedServiceCall` (constant-time `x-sporeus-webhook-secret`,
+fail-closed) to: purge-deleted-accounts, operator-digest, nightly-batch (replaced its
+weaker `Bearer==service_role` compare), alert-monitor, check-dependencies.
+
+Coordinated rollout (H1 pattern, no 401 window): (1) patched the 5 pg_cron jobs to send
+`x-sporeus-webhook-secret` via `cron.alter_job` on prod FIRST (literal value lives in the
+DB only — NOT committed; no secret in repo), then (2) deployed the 5 functions via the
+Management API. Verified: `check-dependencies` returns **401 without** the secret / **200
+with** it. config.toml already pins these `verify_jwt=false` (no regression).
+
+Operator follow-up unchanged: rotate the leaked service_role key; optionally move the
+webhook secret literal→GUC.
+
 ## v9.406.0 — 2026-06-15 — Audit safe-fix batch (client/data-integrity/a11y)
 
 Applied the verified, low-risk findings from the 2026-06-15 general audit (49-agent,
