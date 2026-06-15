@@ -297,6 +297,7 @@ export default function HRVDashboard({ recovery, setRecovery }) {
             <input
               style={{ ...S.input, width: '88px' }}
               type="number" inputMode="numeric" min="5" max="300" placeholder="RMSSD ms"
+              aria-label={_t('rmssdInputLabel')}
               value={manualRMSSD}
               onChange={e => setManualRMSSD(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleManualSave()}

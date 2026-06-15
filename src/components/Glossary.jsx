@@ -121,7 +121,7 @@ export default function Glossary() {
     <div className="sp-fade">
       <div className="sp-card" style={{ ...S.card, animationDelay:'0ms' }}>
         <div style={S.cardTitle}>{t('glossTitle')}</div>
-        <input style={S.input} type="text" placeholder={t('searchPlaceholder')} value={q}
+        <input style={S.input} type="text" aria-label={t('searchPlaceholder')} placeholder={t('searchPlaceholder')} value={q}
           onChange={e=>{ setQ(e.target.value); setSelLetter(''); setPage(1) }}/>
         <div style={{ display:'flex', flexWrap:'wrap', gap:'3px', marginTop:'10px' }}>
           {letters.map(l=>(
