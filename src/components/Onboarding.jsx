@@ -245,6 +245,13 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
             <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', color:'#888', letterSpacing:'0.1em', marginBottom:'10px' }}>
               {lang === 'tr' ? 'BAŞLANGIÇ PLANIN' : 'YOUR STARTER PLAN'}
             </div>
+            {data?.goal && (
+              <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', color:'#aaa', marginBottom:'10px', lineHeight:1.5 }}>
+                {lang === 'tr'
+                  ? `"${data.goal}" hedefin ve seviyene göre hesaplandı:`
+                  : `Computed from your "${data.goal}" goal and fitness level:`}
+              </div>
+            )}
             <div style={{ display:'flex', gap:'10px', flexWrap:'wrap', marginBottom:'10px' }}>
               {labels.map(([lbl,val])=>(
                 <div key={lbl} style={{ flex:'1 1 80px', textAlign:'center' }}>

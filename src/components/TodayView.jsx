@@ -125,6 +125,7 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
 
   const [plan]       = useLocalStorage('sporeus-plan',        null)
   const [planStatus, setPlanStatus] = useLocalStorage('sporeus-plan-status', {})
+  const [coreIdeaSeen, setCoreIdeaSeen] = useLocalStorage('sporeus-core-idea-seen', '')
 
   const today     = new Date().toISOString().slice(0, 10)
   const yesterday = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10) })()
@@ -1007,6 +1008,29 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
           isTR={lang === 'tr'}
           onGoToProfile={() => setTab('profile')}
         />
+      )}
+
+      {/* v9.408 — core-idea framing: anchors the mission at the daily-answer
+          moment for new users; dismissible, shown once. "The idea lives." */}
+      {!coreIdeaSeen && (
+        <div style={{
+          padding: '8px 14px', marginBottom: '10px',
+          background: 'linear-gradient(135deg, #ff66060e, #0064ff0e)',
+          border: '1px dashed var(--border)', borderRadius: '6px',
+          fontFamily: MONO, fontSize: '10px', color: 'var(--muted)',
+          display: 'flex', alignItems: 'center', gap: '10px',
+        }}>
+          <span style={{ flex: 1, lineHeight: 1.5 }}>
+            {lang === 'tr'
+              ? '◆ Hedefin → fizyolojin → bilim temelli plan → bugünün cevabı'
+              : '◆ Your target → physiology → science-based plan → today’s answer'}
+          </span>
+          <button
+            onClick={() => setCoreIdeaSeen('1')}
+            aria-label={lang === 'tr' ? 'Kapat' : 'Dismiss'}
+            style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '12px', lineHeight: 1 }}
+          >✕</button>
+        </div>
       )}
 
       {/* ── v9.145.0 — Above-fold morning glance ──────────────────────────

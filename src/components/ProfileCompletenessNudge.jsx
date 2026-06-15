@@ -46,8 +46,8 @@ export default function ProfileCompletenessNudge({ profile, isTR, onGoToProfile 
   // Show all missing fields, comma-separated. Capped at 4 in practice
   // (age + maxhr + ltpace OR ftp; Triathlon hits both = 4 max).
   const body = isTR
-    ? `${missing.join(', ')} eklenirse antrenman bölgeleri sana özel olur.`
-    : `Add ${missing.join(', ')} so your training zones reflect you, not a default.`
+    ? `${missing.join(', ')} eklenirse kişisel bölgeler ve tempo önerileri açılır.`
+    : `Add ${missing.join(', ')} to unlock personalized zones & session pacing — tuned to you, not a default.`
 
   return (
     <div

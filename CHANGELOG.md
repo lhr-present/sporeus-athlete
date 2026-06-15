@@ -2,6 +2,30 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.408.0 — 2026-06-15 — "Make the idea live": clarity copy at every entry point
+
+From the 2026-06-15 UX/idea audit (verdict: the science chain is computed correctly but
+under-narrated — "the plumbing lives, the storytelling doesn't"). Safe copy/markup wins
+that surface target → physiology → science-based plan → today's answer where users actually
+look. No logic/layout risk; all bilingual.
+
+- **TodayView**: dismissible one-line mission framing at the daily-answer hero
+  (localStorage `sporeus-core-idea-seen`) — anchors the core idea at the moment of highest
+  receptivity for new users.
+- **Onboarding**: one-line goal→plan causation under "YOUR STARTER PLAN"
+  (`Computed from your "<goal>" goal and fitness level:`) — grounds the abstract starter
+  numbers in the choices the user just made.
+- **GettingStartedCard** step 2: reframed task→outcome ("Today's recommendation — based on
+  your form, fatigue, and race goal").
+- **ProfileCompletenessNudge**: body now names the payoff ("unlock personalized zones &
+  session pacing").
+
+Deferred to a coordinated design pass (audit "needs approved pattern" — would touch 245+
+components, applying piecemeal would worsen consistency): semantic banner/shadow CSS vars +
+softer shadow alphas, RADIUS/SPACE token codemod, hover/disabled-state standard,
+parametric S.btnColor/S.badgeFilled. Also product decisions: "HOW WE COMPUTED YOUR
+READINESS" disclosure, first-recommendation aha card, science-term scaffolding placement.
+
 ## v9.407.0 — 2026-06-15 — 🔴 Edge-function auth hardening (red flag from 2026-06-15 audit)
 
 Closed the top audit red flag: five internal edge functions ran with `verify_jwt=false`
