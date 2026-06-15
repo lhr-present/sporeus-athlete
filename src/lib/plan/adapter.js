@@ -14,6 +14,7 @@
 
 import { ZONE_COLORS } from '../constants.js'
 import { sportSpecificLabel } from './generatePlan.js'
+import { buildSessionTarget } from '../athlete/sessionTargets.js'
 
 const E13_ZONE_INDEX = { Z1: 0, Z2: 1, Z3: 2, Z4: 3, Z5: 4 }
 const E13_ZONE_COLOR = (z) => ZONE_COLORS[E13_ZONE_INDEX[z] ?? 1]
@@ -75,6 +76,12 @@ export function adaptE13PlanToLegacy(adaptivePlan, lang = 'en', primarySport = n
     ? Math.sqrt(thresholdSec / THRESHOLD_BASELINE_SEC_PER_KM)
     : 1
 
+  // v9.412 — physiology-driven intensity targets (flag-gated). When on + a profile is
+  // supplied, attach athlete-relative pace/power/HR targets to each session via the cited
+  // buildSessionTarget engine. Default off → output is byte-identical (no `target` key).
+  const profile = options.profile || null
+  const withTargets = !!options.physiologyTargets && !!profile
+
   return adaptivePlan.weeks.map(wk => {
     const sessions = (wk.sessions || []).map((s) => {
       const typeName = sportSpecificLabel(s.intent, sport, lang)
@@ -100,7 +107,7 @@ export function adaptE13PlanToLegacy(adaptivePlan, lang = 'en', primarySport = n
       const rpe10 = s.intent === 'rest'
         ? 0
         : Math.min(10, Math.max(1, Math.round(1 + (rpeMid - 6) * 9 / 14)))
-      return {
+      const session = {
         day:         DAY_NAMES_EN[(s.day - 1) % 7] || DAY_NAMES_EN[0],
         type:        typeName,
         duration,
@@ -110,6 +117,19 @@ export function adaptE13PlanToLegacy(adaptivePlan, lang = 'en', primarySport = n
         color:       E13_ZONE_COLOR(s.zone),
         description: '',
       }
+      if (withTargets && s.intent !== 'rest') {
+        const t = buildSessionTarget({ plannedSession: session, profile })
+        if (t && (t.paceTarget || t.powerTarget || t.hrTarget)) {
+          session.target = {
+            pace:   t.paceTarget  || null,
+            power:  t.powerTarget || null,
+            hr:     t.hrTarget    || null,
+            if:     t.ifTarget ?? null,
+            source: t.sourceLabel || null,
+          }
+        }
+      }
+      return session
     })
     const zd = wk.zoneDistribution || {}
     const zonePct = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'].map(z => Math.round((zd[z] || 0) * 100))
