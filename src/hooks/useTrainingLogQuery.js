@@ -100,15 +100,17 @@ export function useTrainingLogQuery(arg) {
         .order('created_at', { ascending: false })
         .range(from, to)
       if (qErr) throw qErr
-      const newEntries = rows.map(logRowToEntry)
-      pageRef.current = page + 1
+      const safeRows = rows ?? []   // Supabase returns null (not []) for an empty page
+      const newEntries = safeRows.map(logRowToEntry)
       setAllEntries(prev => {
         const merged = [...(prev ?? []), ...newEntries]
         setLsData(merged)
         return merged
       })
-      setHasMore(rows.length >= pageSize)
-    } catch (_) {
+      setHasMore(safeRows.length >= pageSize)
+      pageRef.current = page + 1   // advance the cursor only after a successful append
+    } catch (err) {
+      logger.warn('useTrainingLogQuery: fetchNextPage failed', err)
       // Network failure — keep current state, user can retry
     } finally {
       setIsLoadingMore(false)

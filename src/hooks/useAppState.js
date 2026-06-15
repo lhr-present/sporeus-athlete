@@ -11,7 +11,7 @@ import { exchangeStravaCode, initiateStravaOAuth, triggerStravaSync } from '../l
 import { checkRaceCountdowns, checkSubscriptionExpiry } from '../lib/pushNotify.js'
 import { scheduleSessionReminder, getReminderSettings } from '../lib/pushNotifications.js'
 import { triggerSync } from '../lib/deviceSync.js'
-import { initOfflineSync, onSyncStatusChange, getSyncStatus, flushQueue } from '../lib/offlineQueue.js'
+import { initOfflineSync, stopOfflineSync, onSyncStatusChange, getSyncStatus, flushQueue } from '../lib/offlineQueue.js'
 import { exportAllData } from '../lib/storage.js'
 import { isSupabaseReady, supabase } from '../lib/supabase.js'
 import { getMyCoach } from '../lib/inviteUtils.js'
@@ -228,7 +228,7 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   useEffect(() => {
     initOfflineSync()
     const unsub = onSyncStatusChange(setSyncStatus)
-    return unsub
+    return () => { unsub(); stopOfflineSync() }
   }, [])
 
   useEffect(() => {

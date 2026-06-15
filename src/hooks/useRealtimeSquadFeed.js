@@ -147,11 +147,11 @@ export function useRealtimeSquadFeed({ coachId, athletes = [], enabled = true })
         .on('postgres_changes', {
           event: 'INSERT', schema: 'public', table: 'training_log',
           filter: `user_id=in.(${ids})`,
-        }, ({ new: row }) => appendEvent('session', row, athleteMap))
+        }, ({ new: row }) => { if (active) appendEvent('session', row, athleteMap) })
         .on('postgres_changes', {
           event: 'INSERT', schema: 'public', table: 'recovery',
           filter: `user_id=in.(${ids})`,
-        }, ({ new: row }) => appendEvent('recovery', row, athleteMap))
+        }, ({ new: row }) => { if (active) appendEvent('recovery', row, athleteMap) })
         .subscribe((status, err) => {
           if (!active) return
           if (status === 'SUBSCRIBED') {

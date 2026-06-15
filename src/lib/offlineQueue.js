@@ -125,17 +125,30 @@ export function isNetworkError(error) {
 }
 
 // ─── Wire navigator.onLine events (call once on app start) ────────────────────
+let _onlineHandler = null
+let _offlineHandler = null
+
 export function initOfflineSync() {
   if (typeof window === 'undefined') return
+  if (_onlineHandler) return   // already initialised — don't stack duplicate listeners
 
-  const handleOnline  = () => flushQueue()
-  const handleOffline = () => setStatus('offline')
+  _onlineHandler  = () => flushQueue()
+  _offlineHandler = () => setStatus('offline')
 
-  window.addEventListener('online',  handleOnline)
-  window.addEventListener('offline', handleOffline)
+  window.addEventListener('online',  _onlineHandler)
+  window.addEventListener('offline', _offlineHandler)
 
   if (!navigator.onLine) setStatus('offline')
 
   // Flush on startup in case there are queued entries from a prior session
   flushQueue()
+}
+
+// Remove the navigator.onLine listeners — call from the cleanup of the effect that ran initOfflineSync().
+export function stopOfflineSync() {
+  if (typeof window === 'undefined') return
+  if (_onlineHandler)  window.removeEventListener('online',  _onlineHandler)
+  if (_offlineHandler) window.removeEventListener('offline', _offlineHandler)
+  _onlineHandler = null
+  _offlineHandler = null
 }

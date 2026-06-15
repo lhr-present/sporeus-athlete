@@ -622,7 +622,7 @@ export default function PlanGenerator({ onLogSession }) {
         </div>
         <div style={{ display:'flex', gap:'8px', marginTop:'16px', flexWrap:'wrap', alignItems:'center' }}>
           <button style={S.btn} onClick={generate}>{t('genPlanBtn')}</button>
-          <button style={{ ...S.btnSec, fontSize:'11px' }} onClick={sharePlan}>⤴ Share Config</button>
+          <button style={{ ...S.btnSec, fontSize:'11px' }} onClick={sharePlan} aria-label={lang==='tr' ? 'Plan yapılandırmasını paylaş' : 'Share plan configuration'}>⤴ {lang==='tr' ? 'Paylaş' : 'Share Config'}</button>
           {shareMsg && <span style={{ ...S.mono, fontSize:'11px', color:'#5bc25b' }}>{shareMsg}</span>}
         </div>
         {planValidationErrors.length > 0 && (
@@ -686,7 +686,7 @@ export default function PlanGenerator({ onLogSession }) {
                     </span>
                   )}
                 </div>
-                <button onClick={printPlan} style={{ ...S.mono, fontSize:'9px', fontWeight:600, padding:'3px 8px', borderRadius:'3px', cursor:'pointer', border:'1px solid var(--border)', background:'transparent', color:'var(--muted)' }}>⎙ Print/PDF</button>
+                <button onClick={printPlan} aria-label={lang==='tr' ? 'PDF olarak yazdır' : 'Print or export as PDF'} style={{ ...S.mono, fontSize:'9px', fontWeight:600, padding:'3px 8px', borderRadius:'3px', cursor:'pointer', border:'1px solid var(--border)', background:'transparent', color:'var(--muted)' }}>⎙ {lang==='tr' ? 'Yazdır' : 'Print/PDF'}</button>
                 <button
                   onClick={exportPlanCSV}
                   aria-label={lang==='tr' ? 'CSV olarak indir' : 'Export plan as CSV'}
@@ -697,7 +697,7 @@ export default function PlanGenerator({ onLogSession }) {
               </div>
               {planCompliance() !== null && (
                 <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-                  <div style={{ ...S.mono, fontSize:'10px', color:'#888' }}>PLAN COMPLIANCE</div>
+                  <div style={{ ...S.mono, fontSize:'10px', color:'#888' }}>{lang==='tr' ? 'PLAN UYUMU' : 'PLAN COMPLIANCE'}</div>
                   <div style={{ display:'flex', alignItems:'center', gap:'4px' }}>
                     <div style={{ width:'80px', height:'6px', background:'var(--border)', borderRadius:'3px', overflow:'hidden' }}>
                       <div style={{ width:`${planCompliance()}%`, height:'100%', background: planCompliance()>=80?'#5bc25b':planCompliance()>=50?'#f5c542':'#e03030', borderRadius:'3px', transition:'width 0.3s' }}/>
@@ -733,7 +733,7 @@ export default function PlanGenerator({ onLogSession }) {
                           </span>
                           {isCurrent && (
                             <span style={{ ...S.mono, fontSize:'8px', color:'#ff6600', background:'#ff660022', border:'1px solid #ff660044', borderRadius:'2px', padding:'1px 4px', letterSpacing:'0.06em' }}>
-                              CURRENT
+                              {lang==='tr' ? 'GÜNCEL' : 'CURRENT'}
                             </span>
                           )}
                           <span style={{ ...S.mono, fontSize:'9px', color:'#666' }}>
@@ -756,7 +756,11 @@ export default function PlanGenerator({ onLogSession }) {
                 const phaseColor = { Base:'#4a90d9', Build:'#f5c542', Peak:'#e03030', Peak2:'#e03030', Taper:'#888', Recovery:'#5bc25b', 'Race Week':'#ff6600', accumulation:'#4a90d9', transmutation:'#f5c542', realization:'#ff6600' }[w.phase] || '#888'
                 const wc = weekCompliance(i)
                 return (
-                  <button key={i} onClick={()=>setSelWeek(i)} style={{
+                  <button key={i} onClick={()=>setSelWeek(i)}
+                    aria-label={lang==='tr'
+                      ? `Hafta ${w.week}, ${w.phase} fazı${wc !== null ? `, %${wc} tamamlandı` : ''}`
+                      : `Week ${w.week}, ${w.phase} phase${wc !== null ? `, ${wc}% complete` : ''}`}
+                    style={{
                     ...S.mono, fontSize:'10px', fontWeight:600, padding:'5px 9px', borderRadius:'4px', cursor:'pointer',
                     background: isSel ? phaseColor : 'var(--card-bg)',
                     color: isSel ? '#fff' : 'var(--sub)',
