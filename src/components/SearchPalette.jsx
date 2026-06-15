@@ -229,7 +229,7 @@ export default function SearchPalette({ onNavigate, onToggleDark, onToggleLang, 
         position:'fixed', top:'12vh', left:'50%', transform:'translateX(-50%)',
         width:'min(640px, 94vw)', zIndex:10101,
         background:'#0d0d0d', border:'1px solid #333', borderRadius:'8px',
-        overflow:'hidden', boxShadow:'0 24px 80px rgba(0,0,0,0.9)',
+        overflow:'hidden', boxShadow:'0 24px 80px rgba(0,0,0,0.4)',
       }}>
         {/* Input row */}
         <div style={{ display:'flex', alignItems:'center', gap:'10px', padding:'12px 16px', borderBottom:'1px solid #1e1e1e' }}>

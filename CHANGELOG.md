@@ -2,6 +2,27 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.409.0 — 2026-06-15 — Readiness explainer + soft-look shadows + embed origin guard
+
+Resolves the remaining actionable items from the 2026-06-15 UX/idea + general audits.
+
+- **"HOW WE COMPUTED THIS" disclosure** (TodayView daily-answer hero): a collapsed,
+  bilingual `<details>` that maps the athlete's real physiology — Fitness (CTL), Fatigue
+  (ATL), Form (TSB = CTL−ATL) with live values — to today's answer, and restates the
+  target→physiology→plan→answer chain. The audit's single biggest trust/clarity unlock;
+  turns the acronym hero into an explanation. Uses `calcLoad(log)` (real values, not
+  placeholders); only renders when a readiness exists.
+- **Soft look**: line-scoped codemod softened 17 harsh modal/dropdown `boxShadow` alphas
+  (rgba(0,0,0,0.6–0.95) → 0.3–0.4) across 17 overlays for the soft Bloomberg minimalism;
+  backdrop backgrounds deliberately untouched.
+- **Security**: embed widget receiver (`public/widget/embed.js`) now validates
+  `e.origin === 'https://lhr-present.github.io'` before trusting `postMessage` — closes the
+  wildcard-origin trust gap (a host-page script could previously forge a checkin message).
+
+Still deferred (genuine product/design decisions): first-recommendation "aha" card;
+RADIUS/SPACE token codemod + semantic banner-bg vars (low-value/high-churn — shadows were
+the visible win). Operator-only: rotate the leaked service_role key.
+
 ## v9.408.0 — 2026-06-15 — "Make the idea live": clarity copy at every entry point
 
 From the 2026-06-15 UX/idea audit (verdict: the science chain is computed correctly but

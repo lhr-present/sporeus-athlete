@@ -164,7 +164,7 @@ export default function MorningCheckIn({ onClose }) {
           width: '100%',
           maxWidth: '360px',
           fontFamily: MONO,
-          boxShadow: '0 8px 40px rgba(0,0,0,0.6)',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
         }}
       >
         {/* ── Header ─────────────────────────────────────────────────────── */}

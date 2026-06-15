@@ -235,7 +235,7 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst, prefil
         style={{
           background: 'var(--card-bg, #111)', border: '1px solid var(--border)',
           borderRadius: '4px', padding: '20px 24px', width: '100%', maxWidth: '380px',
-          fontFamily: MONO, boxShadow: '0 8px 40px rgba(0,0,0,0.6)',
+          fontFamily: MONO, boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
         }}
       >
         {/* ── Saved confirmation ─────────────────────────────────────────── */}

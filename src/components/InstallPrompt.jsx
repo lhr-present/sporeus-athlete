@@ -134,7 +134,7 @@ export default function InstallPrompt() {
         position: 'fixed', bottom: '60px', left: '50%', transform: 'translateX(-50%)',
         zIndex: 10004, background: '#1a1a1a', border: '1px solid #ff6600',
         borderRadius: '8px', padding: '14px 20px', maxWidth: '380px', width: '90%',
-        fontFamily: MONO, boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+        fontFamily: MONO, boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
         display: 'flex', flexDirection: 'column', gap: '10px',
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>

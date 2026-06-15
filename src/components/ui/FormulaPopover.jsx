@@ -43,7 +43,7 @@ export function FormulaPopover({ metricKey, lang = 'en' }) {
             position: 'absolute', left: 0, top: '100%', zIndex: 9999,
             background: '#111', border: '1px solid #2a2a2a',
             borderRadius: '4px', padding: '10px 12px', width: '260px',
-            fontFamily: MONO, boxShadow: '0 6px 24px rgba(0,0,0,0.7)',
+            fontFamily: MONO, boxShadow: '0 6px 24px rgba(0,0,0,0.35)',
           }}
         >
           <button

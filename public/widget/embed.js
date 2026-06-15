@@ -66,7 +66,7 @@
       background:   '#0a0a0a',
       borderRadius: '8px',
       overflow:     'hidden',
-      boxShadow:    '0 24px 80px rgba(0,0,0,0.85)',
+      boxShadow:    '0 24px 80px rgba(0,0,0,0.4)',
       border:       '1px solid #2a2a2a',
     });
 
@@ -126,6 +126,8 @@
 
   /* ── Listen for check-in completion from the iframe ─────────────────────── */
   window.addEventListener('message', function (e) {
+    /* Only trust messages from the Sporeus iframe origin — not arbitrary scripts on the host page. */
+    if (e.origin !== 'https://lhr-present.github.io') return;
     if (!e.data || e.data.type !== 'sporeus-checkin-complete') return;
     closeOverlay();
     var score = e.data.score;
