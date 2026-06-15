@@ -30,7 +30,7 @@ serve(withTelemetry('enqueue-ai-batch', async (req) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!
-  const serviceKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  const serviceKey  = (Deno.env.get("SPOREUS_SERVICE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"))!
   const sb          = createClient(supabaseUrl, serviceKey)
 
   const today    = new Date().toISOString().slice(0, 10)

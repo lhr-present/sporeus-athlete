@@ -16,7 +16,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } })
   }
   const supabaseUrl = Deno.env.get('SUPABASE_URL')              ?? ''
-  const serviceKey  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  const serviceKey  = (Deno.env.get('SPOREUS_SERVICE_KEY') ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')) ?? ''
   const resendKey   = Deno.env.get('RESEND_API_KEY')            ?? ''
   const svc         = createClient(supabaseUrl, serviceKey)
 

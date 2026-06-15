@@ -68,7 +68,7 @@ serve(withTelemetry('adjust-coach-plan', async (req) => {
   if (!isVerifiedServiceCall(req)) return err('Unauthorized — service role only', 401)
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-  const serviceKey  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  const serviceKey  = (Deno.env.get('SPOREUS_SERVICE_KEY') ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'))!
   const svc         = createClient(supabaseUrl, serviceKey)
 
   let body: Record<string, unknown>

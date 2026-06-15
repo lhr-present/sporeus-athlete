@@ -59,7 +59,7 @@ serve(withTelemetry('alert-monitor', async (req: Request) => {
 
   const supa = createClient(
     Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    (Deno.env.get('SPOREUS_SERVICE_KEY') ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'))!,
     { auth: { persistSession: false } },
   )
 

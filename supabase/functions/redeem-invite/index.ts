@@ -35,7 +35,7 @@ serve(withTelemetry('redeem-invite', async (req: Request) => {
   if (!authHeader) return fail(401, "Authentication required", "UNAUTHENTICATED")
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!
-  const serviceKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  const serviceKey  = (Deno.env.get("SPOREUS_SERVICE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"))!
   const anonKey     = Deno.env.get("SUPABASE_ANON_KEY")!
 
   // ── Verify caller via JWT — athlete_id comes ONLY from here ─────────────────

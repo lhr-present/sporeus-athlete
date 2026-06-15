@@ -101,7 +101,7 @@ serve(withTelemetry('check-dependencies', async (req: Request) => {
   if (!isVerifiedServiceCall(req)) return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { ...CORS, 'Content-Type': 'application/json' } })
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-  const serviceKey  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  const serviceKey  = (Deno.env.get('SPOREUS_SERVICE_KEY') ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'))!
   const anonKey     = Deno.env.get('SUPABASE_ANON_KEY')!
 
   const supa = createClient(supabaseUrl, serviceKey, {

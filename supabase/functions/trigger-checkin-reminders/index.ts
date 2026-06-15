@@ -74,7 +74,7 @@ function getLocalDateStr(timezone: string, date: Date = new Date()): string {
 serve(withTelemetry('trigger-checkin-reminders', async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders })
 
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  const serviceKey = (Deno.env.get("SPOREUS_SERVICE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"))!
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!
 
   // H1 fix: cron-only fn. Authorize via constant-time shared secret instead of
