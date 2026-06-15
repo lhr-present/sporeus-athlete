@@ -206,6 +206,52 @@ function ErrorsPanel({ lang }) {
   )
 }
 
+// ── Panel: Acquisition by source (v9.411) ────────────────────────────────────
+function AcquisitionPanel({ lang }) {
+  const [rows, setRows]       = useState([])
+  const [loading, setLoading] = useState(false)
+  const tr = (en, tr2) => lang === 'tr' ? tr2 : en
+
+  const load = useCallback(async () => {
+    if (!isSupabaseReady()) return
+    setLoading(true)
+    const end   = new Date().toISOString().slice(0, 10)
+    const start = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
+    const { data } = await supabase.rpc('get_acquisition_by_source', { p_start: start, p_end: end })
+    setRows(data ?? [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  return (
+    <div style={{ ...S.card, marginBottom: '16px' }}>
+      <SectionHeader title={tr('ACQUISITION BY SOURCE (30d)', 'KAYNAĞA GÖRE EDİNİM (30g)')} onRefresh={load} loading={loading} />
+      {rows.length === 0 && !loading && (
+        <div style={{ ...S.mono, fontSize: '10px', color: '#444' }}>{tr('No signups in window', 'Bu aralıkta kayıt yok')}</div>
+      )}
+      {rows.length > 0 && (
+        <div style={{ display: 'flex', ...S.mono, fontSize: '9px', color: '#555', padding: '2px 0', borderBottom: '1px solid #1a1a1a', letterSpacing: '0.04em' }}>
+          <span style={{ flex: 1 }}>{tr('SOURCE', 'KAYNAK')}</span>
+          <span style={{ width: '54px', textAlign: 'right' }}>{tr('SIGNUPS', 'KAYIT')}</span>
+          <span style={{ width: '78px', textAlign: 'right' }}>{tr('ACTIVATED', 'AKTİF')}</span>
+          <span style={{ width: '48px', textAlign: 'right' }}>{tr('DAYS', 'GÜN')}</span>
+        </div>
+      )}
+      {rows.map((r, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '3px 0', borderBottom: '1px solid #1a1a1a' }}>
+          <span style={{ ...S.mono, fontSize: '10px', color: '#ccc', flex: 1 }}>{r.source}</span>
+          <span style={{ ...S.mono, fontSize: '10px', color: '#aaa', width: '54px', textAlign: 'right' }}>{r.signed_up}</span>
+          <span style={{ ...S.mono, fontSize: '10px', color: (Number(r.activation_rate) >= 50 ? '#22cc66' : Number(r.activation_rate) >= 20 ? '#ffaa00' : '#ff6600'), width: '78px', textAlign: 'right' }}>
+            {r.first_session} · {r.activation_rate ?? 0}%
+          </span>
+          <span style={{ ...S.mono, fontSize: '10px', color: '#777', width: '48px', textAlign: 'right' }}>{r.avg_days_to_first ?? '—'}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── Panel: Queue Health ───────────────────────────────────────────────────────
 const QUEUE_HEALTH_NAMES = [
   'ai_batch', 'push_fanout', 'strava_backfill', 'embed_session',
@@ -569,6 +615,7 @@ export default function ObservabilityDashboard({ authProfile, lang = 'en' }) {
       <QueuePanel        lang={lang} />
       <QueueHealthPanel  lang={lang} />
       <FunnelPanel       lang={lang} />
+      <AcquisitionPanel  lang={lang} />
       <ErrorsPanel       lang={lang} />
       <AlertsPanel       lang={lang} />
       <ApiKeysPanel      lang={lang} authProfile={authProfile} />
