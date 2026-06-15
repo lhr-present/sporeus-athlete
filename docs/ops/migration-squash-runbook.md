@@ -1,8 +1,11 @@
 # Migration-drift squash — runbook (needs a Docker- or pg_dump-equipped machine)
 
 ## Why this exists
-The local `supabase/migrations/` history (121 files) does NOT match prod
-(`pvicqwapvvfempjdgwbm`). Prod's `schema_migrations` skips many repo migrations
+The local `supabase/migrations/` history (**127 files** as of 2026-06-15) does NOT match
+prod (`pvicqwapvvfempjdgwbm`, **77 applied versions**, `001` → `20260615143936`). The two
+diverge in both COUNT (127 vs 77) and NAMING (repo uses `YYYYMMDD[NN]_name`; prod
+`schema_migrations` mixes `001`-style, 14-digit timestamps, and MCP-generated versions).
+Prod's `schema_migrations` skips many repo migrations
 (e.g. `20260449/450/460/476/477`, `20260603/604/605`) and uses divergent naming.
 Symptom: CI's branch-provisioning checks (`contract-smoke`, `db-branch-preview`,
 `perf-regression`, `rls-pentest`) all run `supabase db push` against a FRESH branch
@@ -64,12 +67,29 @@ and make the repo match prod — it does not change prod's actual schema.
 
 5. **Future migrations** go on top of the baseline as normal `supabase/migrations/<ts>_*.sql`.
 
-## What the agent already applied to prod (so the baseline will include them)
+## What the agent already applied to prod (so the baseline WILL include them)
+v9.387–v9.399 round:
 - `training_log` metric columns (distance_m/avg_hr/avg_cadence)
 - `get_funnel_cohort_summary(date,date)` RPC
 - `coach_notes` active-link RLS
 - `search_path` on `get_recent_client_errors`
 - `tier_for_user(uuid)` + status-aware `get_my_tier()` + org_branding white-label gate (20260606)
+
+v9.400–v9.412 round (2026-06-14/15) — ALL applied via MCP, so a fresh `db dump` baseline captures them:
+- **SECURITY DEFINER RPC lockdown** — EXECUTE revoked from public/anon/authenticated on ~32 internal
+  fns + 4 triggers (re-granted service_role); `inject_tier_jwt_claim` → supabase_auth_admin only.
+- **Held-item guards** — `generate_api_key` (org-owner), `get_squad_overview` (coach-self),
+  `get_recent_client_errors` (admin-gate), `referral_codes` column-scoped UPDATE.
+- **Advisor cleanup** — 11 RLS policies wrapped `(select auth.uid())`; dup policy/index dropped;
+  2 FK covering indexes; `search_path` on `search_everything`/`log_consent_change`.
+- **view** `ai_feedback_summary` → `security_invoker`; **MVs** `mv_ctl_atl_daily`/`mv_squad_readiness`
+  SELECT revoked from anon/authenticated.
+- **Dropped** `profiles.training_age` column.
+- **`get_acquisition_by_source(date,date)`** RPC (admin-gated).
+- **enum-cast fix** — `role::text` in `get_acquisition_by_source` + `get_recent_client_errors`.
+
+Sanity-check the dumped baseline includes the above (esp. the revoked grants + the dropped
+training_age column + the two new analytics RPCs) before archiving the old history.
 
 ## Still NOT applied to prod (decide per item)
 - `20260603` service_role_key_from_guc — tied to the 🔴 service_role key ROTATION +
