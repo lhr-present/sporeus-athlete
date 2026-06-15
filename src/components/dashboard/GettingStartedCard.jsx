@@ -5,11 +5,11 @@ const ORANGE = '#ff6600'
 export default function GettingStartedCard({ isTR, onLogSession, stravaConnected = false, onConnectStrava }) {
   const steps = isTR ? [
     { n: '01', title: 'İlk antrenmanını kaydet', desc: 'Süre ve RPE ile hızlı kayıt — 10 saniye sürer.' },
-    { n: '02', title: 'Bugün sekmesini kontrol et', desc: 'Günlük antrenman önerileri ve hazırlık puanın.' },
+    { n: '02', title: 'Bugün sekmesini kontrol et', desc: 'Bugünün tavsiyesi — formun, yorgunluğun ve yarış hedefine göre.' },
     { n: '03', title: 'Profili doldur', desc: 'Spor dalı, FTP veya VDOT ekle → akıllı analiz açılır.' },
   ] : [
     { n: '01', title: 'Log your first session', desc: 'Just duration + RPE — takes 10 seconds.' },
-    { n: '02', title: 'Check the Today tab', desc: 'Daily training suggestions and readiness score.' },
+    { n: '02', title: 'Check the Today tab', desc: "Today's recommendation — based on your form, fatigue, and race goal." },
     { n: '03', title: 'Complete your profile', desc: 'Add sport, FTP or VDOT → smart analysis unlocks.' },
   ]
 
