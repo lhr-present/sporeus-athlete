@@ -29,7 +29,7 @@ import YourPatternsCard     from './dashboard/YourPatternsCard.jsx'
 import ProactiveInjuryAlert from './dashboard/ProactiveInjuryAlert.jsx'
 import RaceReadinessCard    from './dashboard/RaceReadinessCard.jsx'
 import LoadTrendChart       from './dashboard/LoadTrendChart.jsx'
-import TriDashboard         from './dashboard/TriDashboard.jsx'
+const TriDashboard         = lazy(() => import('./dashboard/TriDashboard.jsx'))
 import ACWRCard             from './dashboard/ACWRCard.jsx'
 import WeeklyReportCard     from './dashboard/WeeklyReportCard.jsx'
 import VO2maxCard           from './dashboard/VO2maxCard.jsx'
@@ -47,13 +47,14 @@ import ReadinessCard       from './dashboard/ReadinessCard.jsx'
 import RecentSessionsCard  from './dashboard/RecentSessionsCard.jsx'
 import ZoneDistributorCard from './dashboard/ZoneDistributorCard.jsx'
 import PersonalRecordsCard from './dashboard/PersonalRecordsCard.jsx'
-import BodyCompositionCard from './dashboard/BodyCompositionCard.jsx'
-import RacePredictionsCard from './dashboard/RacePredictionsCard.jsx'
-import BanisterModelCard   from './dashboard/BanisterModelCard.jsx'
-import DurabilityCard      from './dashboard/DurabilityCard.jsx'
-import MacroPlanCountdown  from './dashboard/MacroPlanCountdown.jsx'
-import NormativeSection    from './dashboard/NormativeSection.jsx'
-import AICoachInsights    from './dashboard/AICoachInsights.jsx'
+const BodyCompositionCard = lazy(() => import('./dashboard/BodyCompositionCard.jsx'))
+const RacePredictionsCard = lazy(() => import('./dashboard/RacePredictionsCard.jsx'))
+const BanisterModelCard   = lazy(() => import('./dashboard/BanisterModelCard.jsx'))
+const DurabilityCard      = lazy(() => import('./dashboard/DurabilityCard.jsx'))
+const MacroPlanCountdown  = lazy(() => import('./dashboard/MacroPlanCountdown.jsx'))
+const NormativeSection    = lazy(() => import('./dashboard/NormativeSection.jsx'))
+const AICoachInsights     = lazy(() => import('./dashboard/AICoachInsights.jsx'))
+const EFDecouplingCard    = lazy(() => import('./dashboard/EFDecouplingCard.jsx'))
 import WeeklyRetroCard    from './dashboard/WeeklyRetroCard.jsx'
 import PhaseAnalyticsCard from './dashboard/PhaseAnalyticsCard.jsx'
 import FuelGuidanceCard   from './dashboard/FuelGuidanceCard.jsx'
@@ -1024,7 +1025,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
         </div>
       )}
 
-      <AICoachInsights dl={dl}/>
+      <ErrorBoundary><Suspense fallback={null}><AICoachInsights dl={dl}/></Suspense></ErrorBoundary>
       <InsightsPanel log={log} recovery={recovery} profile={profile} lang={lang}/>
       <ErrorBoundary inline name="EF Trend">
         <Suspense fallback={null}>
@@ -1244,21 +1245,21 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
 
       <PersonalRecordsCard dl={dl}/>
 
-      {hasTriData && <TriDashboard log={log} lang={lang}/>}
+      {hasTriData && <ErrorBoundary><Suspense fallback={null}><TriDashboard log={log} lang={lang}/></Suspense></ErrorBoundary>}
       <LoadTrendChart log={log} acwr={acwr} ctlChartDays={ctlChartDays} raceResults={raceResults} plan={plan} dl={dl} lc={lc}/>
 
-      <BanisterModelCard/>
-      <DurabilityCard log={log} lang={lang}/>
-      <BodyCompositionCard dl={dl}/>
-      <RacePredictionsCard dl={dl}/>
+      <ErrorBoundary><Suspense fallback={null}><BanisterModelCard/></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><DurabilityCard log={log} lang={lang}/></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><BodyCompositionCard dl={dl}/></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><RacePredictionsCard dl={dl}/></Suspense></ErrorBoundary>
 
       {dl.achievements !== false && (() => {
         const ra = getRecentAchievement(7)
         return ra ? <div style={{ ...S.mono, fontSize: '10px', color: '#555', marginBottom: '12px' }}>◈ {ra.name} — {ra.desc}</div> : null
       })()}
 
-      <NormativeSection/>
-      <MacroPlanCountdown dl={dl} lc={lc}/>
+      <ErrorBoundary><Suspense fallback={null}><NormativeSection/></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><MacroPlanCountdown dl={dl} lc={lc}/></Suspense></ErrorBoundary>
 
       <WeeklyReportCard
         last7={filteredLog} totalMin={totalMin} totalTSS={totalTSS} avgRPE={avgRPE}
@@ -1323,6 +1324,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       <ErrorBoundary><Suspense fallback={null}><WorkoutDeviationCard log={log} plan={plan} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><MonotonyTrendCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><AerobicDecouplingTrendCard log={log} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><EFDecouplingCard log={log} lang={lang} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><CtlRampRateCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><WeeklyVolumeRampCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><WeekendVolumeShareCard log={log} /></Suspense></ErrorBoundary>

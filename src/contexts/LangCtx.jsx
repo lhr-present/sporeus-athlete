@@ -472,6 +472,7 @@ export const LABELS = {
     efDeclining: 'DECLINING',
     efWeeksNeeded: 'Need 3+ weeks with HR data',
     efWeeklyGain: 'weekly gain',
+    efDecoupleTitle: 'EF × DECOUPLING',
     // E21 — RESTQ Stress Trend Card
     restqTitle: 'RESTQ STRESS TRACKER',
     restqDanger: 'OVERTRAINING RISK',
@@ -1197,6 +1198,7 @@ export const LABELS = {
     efDeclining: 'DÜŞÜYOR',
     efWeeksNeeded: '3+ hafta HR verisi gerekli',
     efWeeklyGain: 'haftalık kazanım',
+    efDecoupleTitle: 'EF × KAYMA',
     // E21 — RESTQ Stres Trend Kartı
     restqTitle: 'RESTQ STRES TAKİBİ',
     restqDanger: 'AŞIRI ANTRENMAN RİSKİ',

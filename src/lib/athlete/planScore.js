@@ -30,10 +30,35 @@ export function peakFormDate(plan, peakDay) {
 }
 
 /**
+ * Downsample a daily Banister trace into a light TSB series for sparkline display.
+ * Keeps the peak-day point and caps the total at ~maxPoints evenly-spaced samples
+ * so the form SHAPE (dip during build → rebuild into peak) survives without
+ * shipping a 100+ element array to the UI.
+ * @param {Array<{day:number, TSB:number}>|undefined} trace - full daily Banister trace
+ * @param {number|null} peakDay - 1-indexed peak day to guarantee in the output
+ * @param {number} [maxPoints=30] - cap on number of returned points
+ * @returns {Array<{day:number, tsb:number}>} downsampled TSB series (chronological)
+ */
+export function downsampleTSB(trace, peakDay, maxPoints = 30) {
+  if (!Array.isArray(trace) || trace.length === 0) return []
+  if (trace.length <= maxPoints) {
+    return trace.map(d => ({ day: d.day, tsb: d.TSB }))
+  }
+  const step = (trace.length - 1) / (maxPoints - 1)
+  const idx = new Set()
+  for (let i = 0; i < maxPoints; i++) idx.add(Math.round(i * step))
+  if (peakDay) idx.add(peakDay - 1)  // guarantee the peak point survives
+  return [...idx]
+    .filter(i => i >= 0 && i < trace.length)
+    .sort((a, b) => a - b)
+    .map(i => ({ day: trace[i].day, tsb: trace[i].TSB }))
+}
+
+/**
  * Compute the full plan score result from a plan and training log.
  * @param {object|null} plan
  * @param {Array} log - training log entries (passed to calcLoad)
- * @returns {{score:number, peakDay:number|null, peakTSB:number|null, peakDate:string|null, weekCount:number, totalTSS:number}|null}
+ * @returns {{score:number, peakDay:number|null, peakTSB:number|null, peakDate:string|null, weekCount:number, totalTSS:number, tsbTrace:Array<{day:number,tsb:number}>}|null}
  */
 export function computePlanScore(plan, log) {
   const weeklyTSS = extractWeeklyTSS(plan)
@@ -49,5 +74,8 @@ export function computePlanScore(plan, log) {
     peakDate:  peakFormDate(plan, peak?.peakDay),
     weekCount: weeklyTSS.length,
     totalTSS:  Math.round(weeklyTSS.reduce((s, v) => s + v, 0)),
+    // Light TSB trajectory (≤30 points) so PlanScoreCard can draw the taper
+    // SHAPE — when form dips during the build and rebuilds into the peak.
+    tsbTrace:  downsampleTSB(peak?.trace, peak?.peakDay),
   }
 }

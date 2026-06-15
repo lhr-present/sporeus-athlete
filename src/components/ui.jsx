@@ -32,6 +32,38 @@ export function Sparkline({ data, w=120, h=30 }) {
   )
 }
 
+// ─── TSB Sparkline (signed, zero-baseline) ──────────────────────────────────────
+// Plots a Banister TSB (form) trajectory so the taper SHAPE is visible: form dips
+// during the build (negative) and rebuilds into the peak (positive). Unlike the
+// magnitude-only Sparkline, this draws a zero baseline and a peak marker.
+// data: Array<{ day:number, tsb:number }>; peakDay: 1-indexed day to mark.
+export function TSBSparkline({ data, peakDay, w=120, h=34 }) {
+  if (!Array.isArray(data) || data.length < 2)
+    return <span style={{ ...S.mono, fontSize:'10px', color:'var(--muted)' }}>&mdash;</span>
+  const vals = data.map(d => d.tsb)
+  const min = Math.min(...vals), max = Math.max(...vals)
+  const span = (max - min) || 1
+  const pad = 2
+  const x = i => (i / (data.length - 1)) * w
+  const y = v => h - pad - ((v - min) / span) * (h - 2 * pad)
+  const pts = data.map((d, i) => `${x(i).toFixed(1)},${y(d.tsb).toFixed(1)}`).join(' ')
+  const zeroInRange = min <= 0 && max >= 0
+  const zeroY = y(0)
+  const peakIdx = peakDay != null ? data.findIndex(d => d.day === peakDay) : -1
+  return (
+    <svg role="img" aria-label="Plan form (TSB) trajectory" viewBox={`0 0 ${w} ${h}`} style={{ width:'100%', height:'auto' }}>
+      {zeroInRange && (
+        <line x1="0" y1={zeroY.toFixed(1)} x2={w} y2={zeroY.toFixed(1)}
+          stroke="var(--border)" strokeWidth="0.75" strokeDasharray="2 2" />
+      )}
+      <polyline points={pts} fill="none" stroke="#0064ff" strokeWidth="1.5" strokeLinejoin="round" />
+      {peakIdx >= 0 && (
+        <circle cx={x(peakIdx).toFixed(1)} cy={y(data[peakIdx].tsb).toFixed(1)} r="2.5" fill="#5bc25b" />
+      )}
+    </svg>
+  )
+}
+
 // ─── TSS Chart (30-day SVG) ────────────────────────────────────────────────────
 export function TSSChart({ daily, t }) {
   if (!daily.length) return (

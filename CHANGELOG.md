@@ -2,6 +2,36 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.418.0 — 2026-06-16 — Dashboard batch: cross-read card, taper curve, lazy-load, SW opt-in
+
+Second audit-driven batch (deferred items from the v9.417 discovery pass). Two new
+insight surfaces from already-computed signal + two reliability/perf wins.
+
+- NEW card "EF × Decoupling" (`efDecouplingMismatch.js` + `EFDecouplingCard.jsx`):
+  cross-reads aerobic efficiency trend (Coggan EF) against Pw:Hr decoupling trend
+  (Friel) into a 4-quadrant coaching read (e.g. "engine improving but drifting/
+  under-fueling on long efforts — hold steady-state Z2"). Self-hides when either
+  signal lacks data. Lazy-loaded next to the aerobic cards. +13 tests.
+- PlanScoreCard: the Banister form trace (`peakFormWindow` → daily CTL/ATL/TSB) was
+  computed then discarded by the `computePlanScore` wrapper. Now returns a
+  downsampled `tsbTrace` (≤30 pts, peak forced in) rendered as a TSB sparkline
+  (new `TSBSparkline` ui.jsx primitive — zero baseline + peak dot) so the athlete
+  sees WHEN form dips and rebuilds into the peak. Existing scalars unchanged.
+- Perf: lazy-loaded 8 conditionally-rendered eager dashboard cards (TriDashboard,
+  BodyCompositionCard, RacePredictionsCard, DurabilityCard, MacroPlanCountdown,
+  BanisterModelCard, NormativeSection, AICoachInsights) — they shipped to every
+  user but render only behind a gate. Always-rendered/above-fold cards left eager
+  (fallback-flash risk > chunk win).
+- PWA reliability: the SW no longer auto-activates a waiting worker mid-session.
+  Removed the unconditional SKIP_WAITING in main.jsx AND the install-time
+  self.skipWaiting() in sw.js (the dominant auto-swap); the update toast's RELOAD
+  button is now the sole activation trigger, wired to the standard controllerchange
+  reload pattern (useAppState.js). CACHE_VERSION untouched.
+
+DEPENDS ON: analyzeDecouplingTrend (decouplingTrend.js), computeAerobicEfficiencyTrend
+(aerobicEfficiency.js), peakFormWindow/simulateBanister (sport/simulation.js),
+vite-plugin-pwa SKIP_WAITING message channel.
+
 ## v9.417.0 — 2026-06-16 — Make the science chain visible + the daily answer actionable
 
 Audit-driven narration batch — the recurring "plumbing lives, storytelling doesn't"
