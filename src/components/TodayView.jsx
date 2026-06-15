@@ -9,6 +9,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { getTodayPlannedSession, getSingleSuggestion, generateDailyDigest, getTimeOfDayAdvice, predictFitness } from '../lib/intelligence.js'
 import { buildGlanceLine } from '../lib/athlete/morningGlance.js'
+import { computeReadinessScore } from '../lib/recovery/readinessScore.js'
 import Citation from './ui/Citation.jsx'
 import Banner from './ui/Banner.jsx'
 import { calcLoad } from '../lib/formulas.js'
@@ -586,6 +587,46 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
     return entry?.readiness != null ? entry.readiness : entry?.score != null ? entry.score : null
   }, [recovery, today])
 
+  // Hero "WHY THIS NUMBER" — compute the physiological drivers behind the
+  // readiness number using the SAME wiring shape as TodayReadinessCard /
+  // MorningCheckIn.handleSave. The bare 3-tap (😴/😐/⚡) path has no HRV/sleep
+  // history → drivers is empty + reliability 'low'; we render nothing then.
+  const heroReadiness = useMemo(() => {
+    const base = Array.isArray(recovery) ? recovery : []
+    const todayEntry = base.find(e => e && e.date === today)
+    if (!todayEntry) return null
+    // History excludes today (re-appended below — same as the card).
+    const history = base.filter(e => e && e.date !== today)
+
+    const hrvHistory = history
+      .filter(e => parseFloat(e.hrv) > 0)
+      .map(e => ({ date: e.date, hrv: parseFloat(e.hrv) }))
+    if (parseFloat(todayEntry.hrv) > 0) hrvHistory.push({ date: today, hrv: parseFloat(todayEntry.hrv) })
+
+    const sleepHistory = history
+      .filter(e => parseFloat(e.sleepHrs) > 0)
+      .map(e => ({ date: e.date, sleepHrs: parseFloat(e.sleepHrs) }))
+    if (parseFloat(todayEntry.sleepHrs) > 0) sleepHistory.push({ date: today, sleepHrs: parseFloat(todayEntry.sleepHrs) })
+
+    // Soreness 1–5 (MorningCheckIn) → 1–10 (lib); mood proxy = energy slider.
+    const sorenessRaw = parseFloat(todayEntry.soreness)
+    const soreness = !isNaN(sorenessRaw) ? (sorenessRaw - 1) * (9 / 4) + 1 : null
+    const moodVal = parseFloat(todayEntry.energy)
+    const mood = !isNaN(moodVal) ? moodVal : null
+
+    return computeReadinessScore({ hrvHistory, sleepHistory, soreness, mood, asOf: today })
+  }, [recovery, today])
+
+  // #1 driver line shown under the hero readiness number. Only surfaced when a
+  // full check-in actually produced drivers — the quick 3-tap path returns
+  // empty drivers / reliability 'low' and must keep current behavior.
+  const heroDriver = useMemo(() => {
+    if (!heroReadiness) return null
+    if (heroReadiness.reliability === 'low') return null
+    const d = Array.isArray(heroReadiness.drivers) ? heroReadiness.drivers[0] : null
+    return d || null
+  }, [heroReadiness])
+
   // v9.102.0 (Prompt T) — When today's plan calls for a hard session AND
   // readiness < 50 (or any hrv/tsb/injury rule fires via sessionSwapFlag),
   // compute an evidence-based easy/recovery recommendation that replaces
@@ -1080,9 +1121,29 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
 
             {/* Line 2: readiness — chip when logged, 3-tap when null */}
             {todayReadiness != null ? (
-              <div style={{ fontSize: '10px', color: readinessColor, marginBottom: criticalDx ? '8px' : 0, fontWeight: 700, letterSpacing: '0.04em' }}>
-                {readinessEmoji} {todayReadiness}/100 · {lang === 'tr' ? 'HAZIRLIK' : 'READINESS'}
-              </div>
+              <>
+                <div style={{ fontSize: '10px', color: readinessColor, marginBottom: heroDriver ? '4px' : (criticalDx ? '8px' : 0), fontWeight: 700, letterSpacing: '0.04em' }}>
+                  {readinessEmoji} {todayReadiness}/100 · {lang === 'tr' ? 'HAZIRLIK' : 'READINESS'}
+                </div>
+                {/* WHY THIS NUMBER — the #1 physiological driver behind the
+                    readiness, in the lib's own EN+TR words. Only shown when a
+                    full check-in produced drivers (quick 3-tap path renders
+                    nothing here). */}
+                {heroDriver && (
+                  <div
+                    data-testid="hero-readiness-driver"
+                    data-driver-factor={heroDriver.factor}
+                    style={{
+                      fontSize: '9px', color: 'var(--muted)', lineHeight: 1.5,
+                      marginBottom: criticalDx ? '8px' : 0,
+                      paddingLeft: '8px',
+                      borderLeft: `2px solid ${heroDriver.delta < 0 ? RED : GREEN}`,
+                    }}
+                  >
+                    {heroDriver.reason[lang] || heroDriver.reason.en}
+                  </div>
+                )}
+              </>
             ) : !quickReadinessSaved ? (
               <div style={{ display: 'flex', gap: '6px', marginBottom: criticalDx ? '8px' : 0 }}>
                 {[{ e: '😴', v: 25 }, { e: '😐', v: 60 }, { e: '⚡', v: 90 }].map(({ e, v }) => (
@@ -2444,18 +2505,60 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
         {plannedSession ? (
           <>
             {/* E66 — Low readiness warning banner */}
-            {todayReadiness != null && todayReadiness < 50 && (
-              <div style={{
-                padding: '7px 10px', marginBottom: '12px',
-                background: '#f5c54218', border: '1px solid #f5c54266',
-                borderRadius: '4px', fontFamily: MONO, fontSize: '10px', color: '#f5c542',
-                lineHeight: 1.5,
-              }}>
-                {lang === 'tr'
-                  ? `⚠ Hazırlık DÜŞÜK (${todayReadiness}/100) — bugün %20 daha az yoğunluk dene`
-                  : `⚠ Readiness LOW (${todayReadiness}/100) — consider -20% intensity today`}
-              </div>
-            )}
+            {todayReadiness != null && todayReadiness < 50 && (() => {
+              // One-tap action: prefill a 20%-reduced version of today's planned
+              // session and open QuickAdd — mirrors the taper-conflict button's
+              // mechanism. Gated to avoid doubling up with the hard-day
+              // downgradeRec path (which has its own button) and to hide once
+              // today is logged. Reduced-duration math matches the taper formula.
+              const reducedDuration = Math.max(20, Math.floor((plannedSession.duration || 60) * 0.8))
+              const showAction = !todayLogEntry && !downgradeRec
+              return (
+                <div style={{
+                  padding: '7px 10px', marginBottom: '12px',
+                  background: '#f5c54218', border: '1px solid #f5c54266',
+                  borderRadius: '4px', fontFamily: MONO, fontSize: '10px', color: '#f5c542',
+                  lineHeight: 1.5,
+                }}>
+                  {lang === 'tr'
+                    ? `⚠ Hazırlık DÜŞÜK (${todayReadiness}/100) — bugün %20 daha az yoğunluk dene`
+                    : `⚠ Readiness LOW (${todayReadiness}/100) — consider -20% intensity today`}
+                  {showAction && (
+                    <>
+                      <div style={{ color: '#888', marginTop: '4px', fontSize: '9px' }}>
+                        {lang === 'tr'
+                          ? `Hazırlık ${todayReadiness}/100 — hacmi azalt, kolay tut.`
+                          : `Readiness ${todayReadiness}/100 — trim volume, keep it easy.`}
+                      </div>
+                      <button
+                        onClick={() => {
+                          setLogPrefill({
+                            type: plannedSession.type,
+                            duration: reducedDuration,
+                            rpe: plannedSession.rpe || 6,
+                            date: today,
+                          })
+                          try {
+                            emitEvent('low_readiness_action', {
+                              readiness:         todayReadiness,
+                              planned_type:      plannedSession.type,
+                              planned_duration:  plannedSession.duration,
+                              reduced_duration:  reducedDuration,
+                            })
+                          } catch { /* fail open */ }
+                          if (typeof setShowQuickAdd === 'function') setShowQuickAdd(true)
+                        }}
+                        style={{ ...btn('#f5c542', '#000'), marginTop: '8px' }}
+                      >
+                        {lang === 'tr'
+                          ? `↓ -%20 İLE KAYDET (${reducedDuration} dk)`
+                          : `↓ LOG AT -20% (${reducedDuration} min)`}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )
+            })()}
             {/* v9.84.0 — Positive readiness signal. Previously athletes saw only
                 a negative banner when score < 50. With this, a "go signal"
                 surfaces when readiness ≥75 so the athlete opens the app and

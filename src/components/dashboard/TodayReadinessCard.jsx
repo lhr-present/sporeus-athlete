@@ -260,6 +260,34 @@ export default function TodayReadinessCard({
               </span>
             </div>
           )}
+
+          {/* Recommendation reason — the WHY behind the pill (incl. the
+              high-readiness-on-recovery-day special case, which flows through
+              the same `reason` field). */}
+          {recommendation?.reason?.[lang] || recommendation?.reason?.en ? (
+            <div
+              data-testid="rec-reason"
+              style={{
+                fontFamily: MONO, fontSize: '10px', color: '#aaa',
+                lineHeight: 1.5, marginTop: '6px',
+              }}
+            >
+              {recommendation.reason[lang] || recommendation.reason.en}
+            </div>
+          ) : null}
+
+          {/* Citation — muted italic, matching the card-fleet citation style. */}
+          {recommendation?.citation ? (
+            <div
+              data-testid="rec-citation"
+              style={{
+                fontFamily: MONO, fontSize: '9px', color: '#666',
+                fontStyle: 'italic', marginTop: '4px',
+              }}
+            >
+              {recommendation.citation}
+            </div>
+          ) : null}
         </>
       )}
     </div>

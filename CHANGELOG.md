@@ -2,6 +2,30 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.417.0 — 2026-06-16 — Make the science chain visible + the daily answer actionable
+
+Audit-driven narration batch — the recurring "plumbing lives, storytelling doesn't"
+finding. All powered by ALREADY-computed signal; no new science, training/workout-only.
+
+- TodayReadinessCard: now renders the recommendation `reason` + `citation` from
+  `recommendSession()` (previously computed then dropped on the floor) — the
+  "your physiology changed your plan" moment is no longer a one-word pill.
+- TodayView hero: added a "readiness driver" line ("WHY THIS NUMBER") from
+  `computeReadinessScore().drivers` (HRV/sleep/soreness), reusing the lib's verbatim
+  EN/TR reason strings. Gated on a full check-in — the 3-tap quick path (no drivers /
+  low reliability) renders nothing new. Closes the deferred readiness-explanation item.
+- TodayView low-readiness banner: on MODERATE days it was vague advice ("consider -20%")
+  with no button. Now offers a one-tap "↓ LOG AT -20% (N min)" that prefills a reduced
+  session and opens QuickAdd (mirrors the taper-conflict button). Gated
+  `!todayLogEntry && !downgradeRec` so it doesn't double up with the hard-day downgrade.
+- a11y: added `aria-label` to the Glossary search input + HRVDashboard manual RMSSD
+  input (placeholder-only → screen-reader labelled). New LABELS key `rmssdInputLabel`.
+
+Added 8 tests (TodayReadinessCard reason/citation EN+TR; TodayView hero-driver shown
+on full check-in / hidden on quick-tap; -20% prefill + QuickAdd open; button hidden once
+logged). DEPENDS ON: recommendSession (sessionRecommendation.js), computeReadinessScore
+(recovery/readinessScore.js), setLogPrefill/setShowQuickAdd in TodayView.
+
 ## v9.416.0 — 2026-06-16 — Leaked-password protection enabled (HIBP) + bilingual rejection
 
 Enabled Supabase Auth's HaveIBeenPwned leaked-password check on prod via Management

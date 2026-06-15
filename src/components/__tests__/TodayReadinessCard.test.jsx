@@ -160,6 +160,28 @@ describe('TodayReadinessCard — persistent dashboard readiness', () => {
     expect(screen.getByTestId('open-checkin-btn')).toBeInTheDocument()
   })
 
+  it('renders the recommendation reason sentence and citation under the pill', () => {
+    const recovery = buildRecovery({ todayHrv: 65 })
+    renderCard({ recovery })
+    const reason = screen.getByTestId('rec-reason')
+    expect(reason).toBeInTheDocument()
+    // reason is a full sentence from the lib (not just the bucket label)
+    expect(reason.textContent.length).toBeGreaterThan(15)
+    // citation rendered in the muted-italic style used elsewhere
+    const cite = screen.getByTestId('rec-citation')
+    expect(cite).toBeInTheDocument()
+    expect(cite.textContent).toMatch(/Plews 2013/)
+  })
+
+  it('renders the recommendation reason in Turkish under lang=tr', () => {
+    const recovery = buildRecovery({ todayHrv: 65 })
+    renderCard({ lang: 'tr', recovery })
+    const reason = screen.getByTestId('rec-reason')
+    expect(reason).toBeInTheDocument()
+    // TR reason strings all contain "Hazır olma"
+    expect(reason.textContent).toMatch(/Hazır olma/)
+  })
+
   it('exposes role=region with aria-label on the card', () => {
     const recovery = buildRecovery({ todayHrv: 65 })
     renderCard({ recovery })
