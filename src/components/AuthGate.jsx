@@ -121,7 +121,21 @@ export default function AuthGate({ lang }) {
           setBusy(false); return
         }
       }
-      if (error) setMsg({ type: 'error', text: error.message })
+      if (error) {
+        // Leaked/weak-password rejection (Supabase HIBP check, error.code 'weak_password').
+        // Surface a bilingual message instead of the raw English string.
+        const reasons = error.weakPassword?.reasons || []
+        const text = error.code === 'weak_password'
+          ? (reasons.includes('pwned')
+              ? (lang === 'tr'
+                  ? 'Bu şifre bilinen bir veri sızıntısında bulundu. Lütfen farklı, benzersiz bir şifre seç.'
+                  : 'This password has appeared in a known data breach. Please choose a different, unique password.')
+              : (lang === 'tr'
+                  ? 'Şifre çok zayıf. Daha uzun veya daha karmaşık bir şifre dene.'
+                  : 'Password is too weak. Try a longer or more complex one.'))
+          : error.message
+        setMsg({ type: 'error', text })
+      }
     } catch (e) {
       setMsg({ type: 'error', text: e.message })
     }
