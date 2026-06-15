@@ -18,6 +18,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { withTelemetry } from '../_shared/telemetry.ts'
 import { fetchWithTimeout } from '../_shared/fetchWithTimeout.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { isVerifiedServiceCall } from '../_shared/serviceAuth.ts'
 
 // v7.43.0: per-session analysis moved to DB webhook → analyse-session edge fn.
 // nightly-batch now handles only Sunday weekly squad digests.
@@ -196,11 +197,9 @@ function getWeekStart(dateStr: string): string {
 
 // ── Main handler ──────────────────────────────────────────────────────────────
 serve(withTelemetry('nightly-batch', async (req) => {
-  // Auth guard: only accept requests signed with the service role key.
-  // pg_cron sends this in the Authorization header; reject anything else.
-  const authHeader = req.headers.get("Authorization") ?? ""
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-  if (!serviceKey || authHeader !== `Bearer ${serviceKey}`) {
+  // Auth guard: require the shared webhook secret (constant-time; survives service_role
+  // rotation; safe regardless of verify_jwt). pg_cron sends x-sporeus-webhook-secret.
+  if (!isVerifiedServiceCall(req)) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } })
   }
 
