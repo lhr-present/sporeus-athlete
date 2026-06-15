@@ -2,6 +2,20 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.414.0 — 2026-06-16 — Final-audit residual: revoke anon on enqueue_push_fanout
+
+Post-rotation final audit (security advisor) found `enqueue_push_fanout` still anon-executable
+(SECURITY DEFINER) — a push-queue abuse vector held back in the v9.400 lockdown. No genuine
+client caller (only `trigger-checkin-reminders` via service_role). Revoked from public/anon/
+authenticated, granted service_role (migration `20260623`, applied to prod via MCP). Anon-
+executable SECURITY DEFINER fns now 4 (all self-guarded or client-needed: coach_verify_athlete,
+encrypt_device_token, get_my_tier, match_sessions_for_coach).
+
+Final state verified: no ERROR/critical advisors; 🔴 service_role leak DEAD (revoked HS256
+signing key → old JWT 401); client (publishable) + edge (SPOREUS_SERVICE_KEY) + crons all 200.
+Remaining residuals are deferred/operator: referral_codes always-true UPDATE (mitigated by
+column-grant), extensions-in-public, leaked-password protection, migration-drift squash.
+
 ## v9.413.0 — 2026-06-16 — Key rotation: edge fns prefer the new secret key (legacy-disable safe)
 
 Part of the service_role rotation onto Supabase's **new API key system**. Client already
