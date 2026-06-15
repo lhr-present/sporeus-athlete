@@ -2,6 +2,26 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.411.0 — 2026-06-15 — Funnel attribution: source-segmented analytics (dist-1, in-app)
+
+The attribution CAPTURE pipeline already existed (attribution.js → attribution-log →
+attribution_events + profiles.first_touch). This adds the missing SEGMENTATION + visibility.
+(Finding: 514 attribution rows, 0 with a utm_source — all traffic untagged; tagging the
+surfaces is what turns this on.)
+
+- **`get_acquisition_by_source(start,end)` RPC** — activation funnel by first-touch
+  `utm_source` (signups · first-session · first-week · activation% · avg days-to-first).
+  Admin-gated (profiles.role='admin') + service_role; SECURITY DEFINER, read-only, no new PII.
+- **ObservabilityDashboard "ACQUISITION BY SOURCE (30d)" card** — admin-only, mirrors the
+  errors/funnel panels.
+- **`docs/growth/utm-taxonomy.md`** — canonical UTM scheme + surface→params table +
+  ready-to-paste tagged URLs for the 6 surfaces (book QR is already wired in-app; the other
+  five live in WordPress/IG/book — handoff).
+- **Bug fix found while building:** `profiles.role` is enum `user_role`; `coalesce(role,'')`
+  is an invalid enum cast that throws for any authenticated admin caller. Fixed with
+  `role::text` here AND in `get_recent_client_errors` (latent since v9.401) — migration
+  `20260622_fix_admin_role_enum_cast.sql`. Both applied to prod via MCP.
+
 ## v9.410.0 — 2026-06-15 — Final-audit MEDIUM hygiene fixes
 
 The final verification audit returned ship-confident (no critical/high, no regressions).
