@@ -39,9 +39,13 @@ export async function enqueue(entry) {
   const tx   = db.transaction(STORE, 'readwrite')
   const store = tx.objectStore(STORE)
   return new Promise((resolve, reject) => {
+    let newKey
     const req = store.add({ ...entry, _queuedAt: Date.now() })
-    req.onsuccess = () => resolve(req.result)
-    req.onerror   = () => reject(req.error)
+    req.onsuccess = () => { newKey = req.result }
+    // Resolve only when the transaction durably commits (a later abort must not look like success).
+    tx.oncomplete = () => resolve(newKey)
+    tx.onerror    = () => reject(tx.error)
+    tx.onabort    = () => reject(tx.error)
   })
 }
 
@@ -50,9 +54,11 @@ export async function dequeue(id) {
   const tx   = db.transaction(STORE, 'readwrite')
   const store = tx.objectStore(STORE)
   return new Promise((resolve, reject) => {
-    const req = store.delete(id)
-    req.onsuccess = () => resolve()
-    req.onerror   = () => reject(req.error)
+    store.delete(id)
+    // Resolve only when the delete durably commits — otherwise a flushed item could reappear.
+    tx.oncomplete = () => resolve()
+    tx.onerror    = () => reject(tx.error)
+    tx.onabort    = () => reject(tx.error)
   })
 }
 
