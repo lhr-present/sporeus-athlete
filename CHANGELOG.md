@@ -2,6 +2,32 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.406.0 — 2026-06-15 — Audit safe-fix batch (client/data-integrity/a11y)
+
+Applied the verified, low-risk findings from the 2026-06-15 general audit (49-agent,
+adversarially verified). Edge-function auth gaps deferred (cron-coupled — see audit notes).
+
+- **useTrainingLogQuery** pagination: `fetchNextPage` now null-guards `rows` (Supabase
+  returns null for an empty page → was a TypeError), advances `pageRef` only after a
+  successful append, and logs failures via `logger.warn`.
+- **generatePlan** `raceAwarePhaseForWeek`: guards a past/stale race date (`daysToRace < 0`)
+  → falls back to index-based phasing instead of collapsing every week to 'Race' (hardens
+  the v9.403 raceDate wiring).
+- **useRealtimeSquadFeed**: postgres_changes INSERT handlers now check `active` before
+  `appendEvent` (no setState-after-unmount).
+- **offlineQueue**: `initOfflineSync` is idempotent + new `stopOfflineSync` removes the
+  window online/offline listeners; `useAppState` calls it in the effect cleanup.
+- **useSupabaseData**: `logRowToEntry` returns `zones: null` (not `[]`) for empty zones —
+  symmetric with `logEntryToRow` (`[]`→null), eliminating false `deepEqual` change
+  detection on round-trip. All consumers already guard truthiness.
+- **Glossary**: both fetch effects guard setState with an `alive` flag + cleanup.
+- **PlanGenerator a11y/i18n**: aria-labels on Share/Print/week buttons; `PLAN COMPLIANCE`,
+  `CURRENT`, Share/Print visible text now bilingual.
+
+Deferred (need decision / coordination): edge-fn `isVerifiedServiceCall` cluster
+(cron-header coupled), localStorage-quota toast, dataMigration cleanup-retry dedupe,
+postMessage origin, TaperCalculator full i18n, light-mode contrast tokens.
+
 ## v9.405.0 — 2026-06-14 — Drop orphaned profiles.training_age column
 
 DEPENDS ON: migration `20260620_drop_orphan_profiles_training_age.sql` (applied to prod via MCP).

@@ -233,6 +233,9 @@ function raceAwarePhaseForWeek(weekIdx, totalWeeks, raceDate, generatedAt) {
   // the week in this state.
   const weekStartMs = start.getTime() + weekIdx * 7 * 86400000
   const daysToRace = Math.floor((race.getTime() - weekStartMs) / 86400000)
+  // Race already passed (stale raceDate): don't collapse every week to 'Race' —
+  // fall back to index-based phasing.
+  if (daysToRace < 0) return phaseForWeek(weekIdx, totalWeeks)
   if (daysToRace > 56) return 'Base'
   if (daysToRace > 28) return 'Build'
   if (daysToRace > 14) return 'Peak'

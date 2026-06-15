@@ -42,6 +42,7 @@ export default function Glossary() {
   const PER_PAGE = 20
 
   useEffect(() => {
+    let alive = true
     const cached = getApiCache()
     if (cached) { setApiTerms(cached); return }
     if (!canFetchApi()) return
@@ -55,14 +56,16 @@ export default function Glossary() {
           excerpt:(p.excerpt.rendered||'').replace(/<[^>]+>/g,'').trim().slice(0,200),
           link:p.link
         }))
-        setApiCache(terms); setApiTerms(terms)
+        setApiCache(terms); if (alive) setApiTerms(terms)
       })
       .catch(()=>{})
-      .finally(()=>setLoading(false))
+      .finally(()=>{ if (alive) setLoading(false) })
+    return () => { alive = false }
   }, [])
 
   // Fetch recent articles from sporeus.com (separate from glossary terms)
   useEffect(() => {
+    let alive = true
     const cached = getArticlesCache()
     if (cached) { setArticles(cached); return }
     if (!canFetchApi()) return
@@ -78,10 +81,11 @@ export default function Glossary() {
           date:p.date?.slice(0,10)||'',
           categories:p.categories||[],
         }))
-        setArticlesCache(arts); setArticles(arts)
+        setArticlesCache(arts); if (alive) setArticles(arts)
       })
       .catch(()=>{})
-      .finally(()=>setArticlesLoading(false))
+      .finally(()=>{ if (alive) setArticlesLoading(false) })
+    return () => { alive = false }
   }, [])
 
   const allTerms = [...apiTerms, ...GLOSSARY_TERMS]

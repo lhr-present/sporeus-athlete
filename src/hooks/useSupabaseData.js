@@ -53,7 +53,7 @@ export function logRowToEntry(row) {
     duration: row.duration_min != null ? Number(row.duration_min) : 0,
     tss:      row.tss      != null ? Number(row.tss)  : 0,
     rpe:      row.rpe      != null ? Number(row.rpe)  : 5,
-    zones:    Array.isArray(row.zones) ? row.zones : [],
+    zones:    Array.isArray(row.zones) ? row.zones : null,
     notes:    row.notes    || '',
     source:   row.source   || 'manual',
     // v9.397.0 — metric columns (distance/HR/cadence). Only surface when present so
