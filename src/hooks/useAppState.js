@@ -277,13 +277,32 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   // Service worker update detection
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return
+    // The new SW now stays "waiting" until the user acts (we removed the
+    // auto-skipWaiting on install in sw.js and the auto-SKIP_WAITING-on-load
+    // in main.jsx). The RELOAD button is the ONLY path that activates it:
+    // it posts SKIP_WAITING to the waiting worker, then reloads once that
+    // worker takes control (controllerchange). This is the standard
+    // vite-plugin-pwa updateSW pattern, just wired through our own toast.
+    let reloading = false
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloading) return
+      reloading = true
+      window.location.reload()
+    })
     navigator.serviceWorker.ready.then(reg => {
       reg.addEventListener('updatefound', () => {
         const nw = reg.installing
         if (!nw) return
         nw.addEventListener('statechange', () => {
           if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-            addToast({ id: 'sw-update', message: LABELS[lang]?.toastSwUpdate ?? LABELS.en.toastSwUpdate, type: 'update', duration: 0, action: { label: LABELS[lang]?.toastSwUpdateAction ?? LABELS.en.toastSwUpdateAction, onClick: () => window.location.reload() } })
+            addToast({ id: 'sw-update', message: LABELS[lang]?.toastSwUpdate ?? LABELS.en.toastSwUpdate, type: 'update', duration: 0, action: { label: LABELS[lang]?.toastSwUpdateAction ?? LABELS.en.toastSwUpdateAction, onClick: () => {
+              // Activate the waiting SW; the controllerchange listener above
+              // reloads the page once it takes control. Fall back to a direct
+              // reload if there's no waiting worker (e.g. it already activated).
+              const waiting = reg.waiting
+              if (waiting) waiting.postMessage({ type: 'SKIP_WAITING' })
+              else window.location.reload()
+            } } })
           }
         })
       })

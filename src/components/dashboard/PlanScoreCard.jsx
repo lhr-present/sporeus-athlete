@@ -5,6 +5,7 @@ import { memo, useMemo, useContext } from 'react'
 import { S } from '../../styles.js'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { computePlanScore } from '../../lib/athlete/planScore.js'
+import { TSBSparkline } from '../ui.jsx'
 
 const SCORE_COLOR = score =>
   score >= 75 ? '#5bc25b' : score >= 50 ? '#f5c542' : '#e03030'
@@ -32,7 +33,8 @@ function PlanScoreCard({ plan, log }) {
     </div>
   )
 
-  const { score, peakDay, peakTSB, peakDate, weekCount, totalTSS } = result
+  const { score, peakDay, peakTSB, peakDate, weekCount, totalTSS, tsbTrace } = result
+  const hasTrace = Array.isArray(tsbTrace) && tsbTrace.length >= 2
   const scoreColor = score != null ? SCORE_COLOR(score) : '#555'
   const grade      = score != null ? gradeLabel(score, lang) : '—'
   const title      = lang === 'tr' ? 'ANTRENMAN PLAN PUANI' : 'TRAINING PLAN SCORE'
@@ -81,6 +83,16 @@ function PlanScoreCard({ plan, log }) {
           <div style={{ ...S.mono, fontSize: '11px', color: 'var(--text)', letterSpacing: '0.04em' }}>
             {lang === 'tr' ? 'Gün' : 'Day'} {peakDay} · {peakDate} · TSB {peakTSB}
           </div>
+          {hasTrace && (
+            <div style={{ marginTop: '8px' }}>
+              <TSBSparkline data={tsbTrace} peakDay={peakDay} />
+              <div style={{ ...S.mono, fontSize: '9px', color: 'var(--muted)', letterSpacing: '0.04em', marginTop: '2px', opacity: 0.8 }}>
+                {lang === 'tr'
+                  ? 'Form (TSB) eğrisi — antrenmanda düşer, doruğa yükselir'
+                  : 'Form (TSB) curve — dips in the build, rebuilds into the peak'}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

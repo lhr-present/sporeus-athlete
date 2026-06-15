@@ -50,7 +50,10 @@ registerRoute(
 )
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────────
-self.addEventListener('install', () => self.skipWaiting())
+// Note: we deliberately do NOT call self.skipWaiting() on install. A new SW
+// stays in the "waiting" state until the user clicks RELOAD on the update
+// toast, which posts { type: 'SKIP_WAITING' } (handled below). This avoids a
+// redundant mid-session SW swap before the user acknowledges the new version.
 self.addEventListener('activate', event => {
   // Clean up caches from old cache versions
   event.waitUntil(

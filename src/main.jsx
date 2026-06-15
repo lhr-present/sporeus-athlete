@@ -16,15 +16,16 @@ import '@fontsource/ibm-plex-sans/latin-700.css'
 import '@fontsource/ibm-plex-sans/latin-ext-400.css'
 import '@fontsource/ibm-plex-sans/latin-ext-600.css'
 
-// Force any stale service worker to update immediately.
-// Runs before React mounts so old SWs don't intercept the first auth requests.
+// Check for service-worker updates on load so a new version is *detected*
+// early (this drives the "new version available" toast in useAppState).
+// We deliberately do NOT auto-activate a waiting SW here: posting
+// SKIP_WAITING on every load swaps the SW mid-session before the user
+// acknowledges the toast. Activation is now user-controlled — only the
+// toast's RELOAD button posts SKIP_WAITING (see useAppState.js).
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then(registrations => {
     registrations.forEach(reg => {
       reg.update()
-      if (reg.waiting) {
-        reg.waiting.postMessage({ type: 'SKIP_WAITING' })
-      }
     })
   })
 }
