@@ -1,0 +1,21 @@
+# Sporeus secret-scanning config (gitleaks v8+).
+# Goal: block NEW secrets from being committed. CI scans the commit range of each
+# push/PR (not full history), so the now-rotated historical service_role JWT does not
+# perpetually fail the gate. Never allowlist a real secret VALUE here (this file is public).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Sporeus — test fixtures and non-secret patterns"
+# Paths where JWT-shaped strings are test fixtures, not real secrets.
+paths = [
+  '''.*\.test\.(js|jsx|ts|tsx)$''',
+  '''.*/__tests__/.*''',
+  '''.*/__mocks__/.*''',
+  '''(^|/)tests?/.*''',
+  '''(^|/)e2e/.*''',
+]
+# jwt.io example tokens used as fixtures (payloads {"sub":"123"} / {"sub":"1234567890"}).
+regexes = [
+  '''eyJhbGciOiJIUzI1NiJ9\.eyJzdWIiOiIxMjM[A-Za-z0-9._-]*''',
+]
