@@ -2,6 +2,21 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.413.0 — 2026-06-16 — Key rotation: edge fns prefer the new secret key (legacy-disable safe)
+
+Part of the service_role rotation onto Supabase's **new API key system**. Client already
+moved to the publishable key (v-secrets swap). This makes the **28 edge functions**
+independent of Supabase's legacy-disable behavior: each now reads
+`(Deno.env.get('SPOREUS_SERVICE_KEY') ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'))` for its
+service-role client — preferring the new `sb_secret_…` key (set as the **edge secret**
+`SPOREUS_SERVICE_KEY`, not committed) and falling back to the legacy env until it's disabled.
+No auth logic touched (workers still auth on `WEBHOOK_SECRET`); only the createClient key
+source changed. Redeployed all 28 via the Management API.
+
+After this, **disabling the legacy API keys** (operator, Dashboard) revokes the leaked
+service_role WITHOUT breaking edge DB writes. CI `SUPABASE_SERVICE_ROLE_KEY` also updated to
+the new secret key. NO secret values are committed (gitleaks gate enforces this).
+
 ## v9.412.0 — 2026-06-15 — Physiology drives the plan (Track 3, behind a flag)
 
 Closes the "physiology-driven" gap. Behind feature flag `sporeus-flag-physio-targets`

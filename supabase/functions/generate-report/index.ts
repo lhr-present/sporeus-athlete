@@ -21,7 +21,7 @@ import type { MonthlySquadData }   from "./templates/MonthlySquadReport.tsx"
 import type { RaceReadinessData }  from "./templates/RaceReadinessReport.tsx"
 
 const SUPABASE_URL    = Deno.env.get("SUPABASE_URL")!
-const SERVICE_KEY     = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+const SERVICE_KEY     = (Deno.env.get("SPOREUS_SERVICE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"))!
 const SIGNED_URL_TTL  = 604800    // 7 days in seconds
 const REPORT_TTL_DAYS = 30
 

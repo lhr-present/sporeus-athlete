@@ -40,7 +40,7 @@ serve(withTelemetry('comment-notification', async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   const supabaseUrl  = Deno.env.get('SUPABASE_URL')!
-  const serviceKey   = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  const serviceKey   = (Deno.env.get('SPOREUS_SERVICE_KEY') ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'))!
   const fnUrl        = `${supabaseUrl}/functions/v1/send-push`
   // DB webhook delivers a hardcoded service_role JWT in Authorization; forward it
   // directly to send-push so edge-to-edge auth never depends on SUPABASE_SERVICE_ROLE_KEY.

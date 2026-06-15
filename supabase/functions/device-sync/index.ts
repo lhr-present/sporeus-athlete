@@ -145,7 +145,7 @@ serve(withTelemetry('device-sync', async (req: Request) => {
   if (!authHeader) return fail(401, "Missing Authorization header")
 
   const supabaseUrl     = Deno.env.get("SUPABASE_URL")!
-  const serviceRoleKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  const serviceRoleKey  = (Deno.env.get("SPOREUS_SERVICE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"))!
 
   // Verify JWT and get user
   const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
