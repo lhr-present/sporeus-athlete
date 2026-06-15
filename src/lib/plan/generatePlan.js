@@ -480,6 +480,8 @@ export function generatePlan(params) {
     primarySport   = null,
     weeklyTssGoal  = null,
     raceDate       = null,
+    vo2max         = null,    // v9.412 — measured VO2max (ml/kg/min); informs trainable ceiling
+    physiologyTargets = false, // v9.412 — feature flag: physiology-driven intensity + ramp (default off)
   } = params
 
   // ── Input validation — return null on insufficient inputs ─────────────────
@@ -504,6 +506,16 @@ export function generatePlan(params) {
   // Base & peak weekly TSS — derived from currentCTL with goal/level scaling
   let baseTSS = Math.max(150, Math.round(+currentCTL * 7 * lvlFactor))
   let peakTSS = Math.max(baseTSS + 80, Math.round(+currentCTL * 8.5 * lvlFactor * goalFactor))
+  // v9.412 — VO2max trainability nudge (founder-approved 2026-06-15; behind the
+  // physiologyTargets flag, default OFF → peak volume is byte-identical otherwise).
+  // Principle: higher relative VO2max supports a higher trainable ceiling
+  // (Midgley et al. 2007, Sports Med; Billat 2001 vVO2max). The bound below is a
+  // CONSERVATIVE product parameter (ref VO2max 50, ±, capped 0.97–1.10), not a
+  // published coefficient — gated + approved, never applied without the flag.
+  if (physiologyTargets && Number.isFinite(+vo2max) && +vo2max > 0) {
+    const vo2Trainability = Math.max(0.97, Math.min(1.10, 1 + ((+vo2max) - 50) / 50 * 0.12))
+    peakTSS = Math.max(baseTSS + 80, Math.round(peakTSS * vo2Trainability))
+  }
 
   // Build a full set of weeks (with deload + ACWR clamp post-processing) for
   // a given base/peak pair. Extracted as an inner helper so the v9.156 goal

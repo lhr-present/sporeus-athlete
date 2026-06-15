@@ -191,6 +191,10 @@ export default function PlanGenerator({ onLogSession }) {
   const [plan,  setPlan]  = useLocalStorage('sporeus-plan', null)
   const [planStatus, setPlanStatus] = useLocalStorage('sporeus-plan-status', {})
   const [lang] = useLocalStorage('sporeus-lang', 'en')
+  // v9.412 — physiology-driven plan targets feature flag (ship dark; default off).
+  // Set localStorage 'sporeus-flag-physio-targets' = '1' to enable.
+  const [physioTargetsFlag] = useLocalStorage('sporeus-flag-physio-targets', '')
+  const physiologyTargets = physioTargetsFlag === '1'
   const [selWeek, setSelWeek] = useState(0)
   const [blockMode, setBlockMode] = useState(false)
   // ── E13 Advanced (adaptive) mode state ─────────────────────────────────────
@@ -308,6 +312,8 @@ export default function PlanGenerator({ onLogSession }) {
         raceDistance:  goal,
         primarySport:  profile?.primarySport || null,
         raceDate:      advRaceDate || profile?.raceDate || null,
+        vo2max:        profile?.vo2max || null,
+        physiologyTargets,
       })
       let finalPlan = adaptive
       if (finalPlan && advAutoTaper && advRaceDate) {
@@ -325,7 +331,7 @@ export default function PlanGenerator({ onLogSession }) {
         finalPlan,
         lang,
         profile?.primarySport || null,
-        { threshold: profile?.threshold || null },
+        { threshold: profile?.threshold || null, profile, physiologyTargets },
       ) || []
       setPlan({
         goal,
@@ -883,6 +889,11 @@ export default function PlanGenerator({ onLogSession }) {
                     </div>
                     <div style={{ ...S.mono, fontSize:'12px', fontWeight:600, color:ses.type==='Rest'?'var(--border)':ses.color, marginBottom:'4px' }}>{ses.type}</div>
                     {ses.zone !== '—' && <span style={{ ...S.tag(ses.color), fontSize:'9px', marginBottom:'6px', display:'inline-block' }}>{ses.zone}</span>}
+                    {ses.target && (ses.target.pace || ses.target.power || ses.target.hr) && (
+                      <div style={{ ...S.mono, fontSize:'9px', color:'var(--muted)', marginTop:'2px' }}>
+                        🎯 {[ses.target.pace, ses.target.power, ses.target.hr].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
                     <div style={{ fontSize:'11px', color:'var(--sub)', lineHeight:1.6, marginTop:'4px' }}>{ses.description}</div>
                     {ses.type !== 'Rest' && ses.duration > 0 && (
                       <>

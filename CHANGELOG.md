@@ -2,6 +2,26 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.412.0 — 2026-06-15 — Physiology drives the plan (Track 3, behind a flag)
+
+Closes the "physiology-driven" gap. Behind feature flag `sporeus-flag-physio-targets`
+(default OFF → ships dark; volume byte-identical when off — covered by a test).
+
+- **Intensity targets baked into the whole plan** — `adaptE13PlanToLegacy` now attaches
+  athlete-relative pace/power/HR targets to every session via the existing **cited**
+  `buildSessionTarget` engine (Coggan power zones; Daniels VDOT paces; CSS swim; Friel HR).
+  Previously these existed only at display time for *today's* session; now they're in the
+  plan object + rendered in the week view. No new uncited math.
+- **VO2max informs the trainable ceiling** — `generatePlan` nudges the `peakTSS` anchor by a
+  bounded VO2max trainability factor (ref 50, capped 0.97–1.10; principle: Midgley 2007,
+  Billat 2001). **Deliberately subordinate to the ACWR injury-safety clamp** — it widens the
+  ramp only within ACWR-safe headroom and never overrides it (high VO2max ≠ injury-proof;
+  ACWR risk is rate-of-change). A stronger effect would mean relaxing the safety ceiling —
+  left as an explicit, separate founder decision.
+
+Volume engine (CTL-driven) otherwise unchanged. New tests cover: flag-off volume identity,
+ACWR-subordinate bounded ramp, and per-sport target attachment. Migration-free (code only).
+
 ## v9.411.0 — 2026-06-15 — Funnel attribution: source-segmented analytics (dist-1, in-app)
 
 The attribution CAPTURE pipeline already existed (attribution.js → attribution-log →
