@@ -12,6 +12,9 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     strictPort: true,
+    // Never watch Claude Code's agent worktrees / scratch dirs — they balloon
+    // the inotify watch count and crash the dev server (ENOSPC).
+    watch: { ignored: ['**/.claude/**', '**/dist/**'] },
   },
   test: {
     environment: 'node',

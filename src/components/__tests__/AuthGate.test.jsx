@@ -85,6 +85,34 @@ describe('AuthGate', () => {
     )
   })
 
+  it('SIGN UP surfaces a bilingual breach message on a weak_password (pwned) rejection', async () => {
+    const { supabase } = await import('../../lib/supabase.js')
+    supabase.auth.signUp.mockResolvedValueOnce({
+      error: { code: 'weak_password', message: 'Password is known to be weak.', weakPassword: { reasons: ['pwned'] } },
+    })
+    renderWithLang(<AuthGate lang="en" />)
+    fireEvent.click(screen.getByText('SIGN UP'))
+    const emailInput = screen.getByPlaceholderText('you@example.com')
+    fireEvent.change(emailInput, { target: { value: 'user@test.com' } })
+    fireEvent.change(screen.getByPlaceholderText(/min\. 8 characters/i), { target: { value: 'password123' } })
+    fireEvent.submit(emailInput.closest('form'))
+    expect(await screen.findByText(/appeared in a known data breach/i)).toBeInTheDocument()
+  })
+
+  it('breach message is Turkish when lang=tr', async () => {
+    const { supabase } = await import('../../lib/supabase.js')
+    supabase.auth.signUp.mockResolvedValueOnce({
+      error: { code: 'weak_password', message: 'weak', weakPassword: { reasons: ['pwned'] } },
+    })
+    renderWithLang(<AuthGate lang="tr" />)
+    fireEvent.click(screen.getByText('KAYIT'))
+    const emailInput = screen.getByPlaceholderText('siz@ornek.com')
+    fireEvent.change(emailInput, { target: { value: 'user@test.com' } })
+    fireEvent.change(screen.getByPlaceholderText(/min\. 8 karakter/i), { target: { value: 'password123' } })
+    fireEvent.submit(emailInput.closest('form'))
+    expect(await screen.findByText(/veri sızıntısında bulundu/i)).toBeInTheDocument()
+  })
+
   it('Google OAuth redirectTo is origin + base URL, not hardcoded', async () => {
     const { supabase } = await import('../../lib/supabase.js')
     renderWithLang(<AuthGate lang="en" />)

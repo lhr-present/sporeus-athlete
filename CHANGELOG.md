@@ -2,6 +2,31 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.416.0 — 2026-06-16 — Leaked-password protection enabled (HIBP) + bilingual rejection
+
+Enabled Supabase Auth's HaveIBeenPwned leaked-password check on prod via Management
+API (`PATCH /v1/projects/{ref}/config/auth {"password_hibp_enabled": true}`, verified
+`true`). Previously the only account-password write path (signup, `AuthGate.jsx`) would
+surface the rejection as a raw English `error.message`; now `weak_password` errors map to
+a bilingual EN/TR message (breach-specific when `weakPassword.reasons` includes `pwned`).
+Fixed a stale/wrong API payload in `docs/ops/security-checklist.md` (was the unrelated
+`refresh_token_rotation_enabled` field). Added 2 AuthGate tests (EN breach message, TR
+breach message). OAuth/magic-link users are unaffected (no password set).
+DEPENDS ON: @supabase/auth-js `weak_password` error code + `weakPassword.reasons`.
+
+## v9.415.0 — 2026-06-16 — referral_codes: row-scoped UPDATE + revoke over-broad anon grant
+
+Closed the deferred "always-true UPDATE" residual on `referral_codes`. Migration
+`20260624` replaces the `USING(true)/WITH CHECK(true)` policy with
+`coach_id <> auth.uid()` (legitimate updater is the redeeming user, never the owner —
+`src/lib/referral.js:49`), killing the owner self-inflation vector. Also revoked an
+unused over-broad `anon` UPDATE column-grant on all 5 columns (RLS already blocked anon,
+so no behavior change — pure least-privilege). Applied to prod via MCP and verified
+(policy + grants). Redemption flow / service_role unaffected. Residual still open:
+true per-redemption row-scoping needs a `referral_redemptions` schema addition (no
+redeemer-id is persisted today) — out of scope for a policy swap.
+DEPENDS ON: freeze trigger + column-grant from 20260536 / 20260618.
+
 ## v9.414.0 — 2026-06-16 — Final-audit residual: revoke anon on enqueue_push_fanout
 
 Post-rotation final audit (security advisor) found `enqueue_push_fanout` still anon-executable

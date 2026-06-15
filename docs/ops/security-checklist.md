@@ -4,9 +4,9 @@
 
 ### Leaked Password Protection
 - **Location:** Supabase Dashboard → Authentication → Providers → Email → Enable "Prevent use of leaked passwords"
-- **Status:** Disabled (not toggleable via SQL; requires dashboard or Management API)
-- **Action:** Enable before public launch. Supabase checks against HaveIBeenPwned on sign-up/password change.
-- **API toggle:** `PATCH /v1/projects/{ref}/config/auth` with `{"security": {"refresh_token_rotation_enabled": true}}`
+- **Status:** ENABLED 2026-06-16 (v9.416.0) via Management API. Client surfaces a bilingual rejection (AuthGate.jsx).
+- **Action:** (done) Supabase checks against HaveIBeenPwned on sign-up/password change.
+- **API toggle:** `PATCH /v1/projects/{ref}/config/auth` with `{"password_hibp_enabled": true}`
 
 ### MFA Enforcement for Admin Users
 - Admin users (profiles.role = 'admin') cannot be MFA-enforced via RLS alone.
@@ -31,10 +31,22 @@ supabase secrets set KEY_NAME=new_value --project-ref pvicqwapvvfempjdgwbm
 
 ## Accepted Risks (documented, not fixable)
 
-### Extensions in Public Schema
-- `pg_net` and `pgtap` are installed in the `public` schema (Supabase-managed placement).
-- Advisors flag this; cannot be moved without Supabase support ticket.
-- Risk: low — extensions are not SECURITY DEFINER, no attack surface unless attacker has DB write access.
+### Extensions in Public Schema  (reviewed 2026-06-16 — DEFERRED, deliberate)
+- Extensions created in `public`: `pgcrypto`, `pg_net`, `pg_cron`, `pgmq`, `vector`.
+- Advisors flag this; it is a hardening lint, **not** an exploitable hole — extensions
+  here are not anon-reachable SECURITY DEFINER surfaces.
+- Move-safety audit:
+  - `pg_net`, `vector` — relocatable, but `vector` requires recreating the 2
+    `search_path=''` search RPCs (`2026042408_semantic_search_rpc`,
+    `20260484_search_functions_invoker`), and `pg_net` may need DROP/CREATE.
+  - `pg_cron`, `pgmq`, `pgcrypto` — **do NOT move.** pg_cron/pgmq don't `ALTER
+    SET SCHEMA` cleanly and would jeopardize the 14 crons / 9 queues; pgcrypto
+    relocation silently breaks `encrypt_device_token`/`decrypt_device_token`
+    (bare `pgp_sym_*` on default search_path, `2026041501_device_sync.sql`).
+- Decision: stay deferred. Consistent with the prior choice to make callers
+  schema-agnostic (see `digest()` resolution in `20260531_fix_data_rights_functions`)
+  rather than relocate extensions. Net benefit now = clearing one lint at non-trivial
+  blast radius. Revisit only if ever moving to `db push`-provisioned branches.
 
 ### Materialized Views in API Schema
 - `mv_ctl_atl_daily`, `mv_weekly_load_summary`, `mv_squad_readiness` are exposed via PostgREST.
