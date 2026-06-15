@@ -85,9 +85,11 @@ export function useTrainingLogQuery(arg) {
   // row from page 2+ is misclassified and the delete never reaches the server.
   const entriesRef = useRef(entries)
   entriesRef.current = entries
+  const loadingRef = useRef(false)   // synchronous guard — async isLoadingMore can't gate rapid double-calls
 
   const fetchNextPage = useCallback(async () => {
-    if (!isSupabaseReady() || !userId || isLoadingMore || !hasMore) return
+    if (!isSupabaseReady() || !userId || loadingRef.current || !hasMore) return
+    loadingRef.current = true
     setIsLoadingMore(true)
     try {
       const page = pageRef.current
@@ -113,9 +115,10 @@ export function useTrainingLogQuery(arg) {
       logger.warn('useTrainingLogQuery: fetchNextPage failed', err)
       // Network failure — keep current state, user can retry
     } finally {
+      loadingRef.current = false
       setIsLoadingMore(false)
     }
-  }, [userId, pageSize, isLoadingMore, hasMore, setLsData])
+  }, [userId, pageSize, hasMore, setLsData])
 
   const refetch = useCallback(() => {
     pageRef.current = 1

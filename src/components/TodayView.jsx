@@ -665,7 +665,7 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
   // UUID idempotency key — generated once on mount, reset when today changes
   const idempotencyKey = useRef(null)
   useEffect(() => {
-    idempotencyKey.current = `${today}-${Math.random().toString(36).slice(2, 10)}`
+    idempotencyKey.current = globalThis.crypto?.randomUUID?.() || `${today}-${Math.random().toString(36).slice(2, 16)}`
     setIsSubmitting(false)
     setAlreadySubmitted(false)
   }, [today])

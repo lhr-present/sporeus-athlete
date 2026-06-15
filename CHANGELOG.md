@@ -2,6 +2,27 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.410.0 — 2026-06-15 — Final-audit MEDIUM hygiene fixes
+
+The final verification audit returned ship-confident (no critical/high, no regressions).
+Cleared 4 of the 6 MEDIUM hygiene items it surfaced (the other 2 are deferred decisions):
+
+- **CSV formula injection** (`public-api` /squad export): athlete `display_name` is
+  user-controlled and was written raw into CSV cells — now neutralized (prefix `=+-@`/tab/CR
+  with `'`) + quote-escaped via a `csvCell` helper.
+- **Weak idempotency key** (TodayView readiness check-in): `Math.random().slice(2,10)` →
+  `crypto.randomUUID()` (with a longer Math.random fallback) — collision-safe across tabs.
+- **fetchNextPage race** (`useTrainingLogQuery`): added a synchronous `loadingRef` guard so
+  two rapid calls can't both pass the async-state gate and duplicate a page.
+- **IndexedDB durability** (`db.js` enqueue/dequeue): resolve on `tx.oncomplete` (not
+  `req.onsuccess`) so a transaction abort after the request can't look like success —
+  prevents a dequeued offline item from silently reappearing / a queued write from being lost.
+
+Deferred (genuine decisions): profile failed-write handling (reverting the optimistic value
+would LOSE the user's edit — needs a retry/error-toast design, not a blind invalidate);
+EliteProgramCard causal-chain copy (low-payoff, fold into the design pass). Operator-only:
+rotate the leaked service_role key.
+
 ## v9.409.0 — 2026-06-15 — Readiness explainer + soft-look shadows + embed origin guard
 
 Resolves the remaining actionable items from the 2026-06-15 UX/idea + general audits.

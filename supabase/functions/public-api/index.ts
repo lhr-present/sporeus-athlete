@@ -177,11 +177,17 @@ async function handleSquadExport(db: ReturnType<typeof createClient>, orgId: str
     weeks[key].sessions++
   }
 
+  // Neutralize CSV formula injection (athlete display_name is user-controlled) + escape quotes.
+  const csvCell = (s: unknown) => {
+    let val = String(s ?? "")
+    if (/^[=+\-@\t\r]/.test(val)) val = "'" + val
+    return `"${val.replace(/"/g, '""')}"`
+  }
   const lines = ["athlete,week,total_tss,avg_rpe,sessions"]
   for (const [key, v] of Object.entries(weeks)) {
     const [athlete, week] = key.split("___")
     const avgRpe = v.rpe.length ? Math.round(v.rpe.reduce((a, b) => a + b, 0) / v.rpe.length * 10) / 10 : ""
-    lines.push(`"${athlete}","${week}",${Math.round(v.tss)},${avgRpe},${v.sessions}`)
+    lines.push(`${csvCell(athlete)},${csvCell(week)},${Math.round(v.tss)},${avgRpe},${v.sessions}`)
   }
 
   return csv(lines.join("\n"))
