@@ -62,7 +62,7 @@ export default function KeyboardShortcuts({ open, onClose, lang = 'en' }) {
           padding: '20px 24px',
           width: 'min(400px, 94vw)',
           fontFamily: MONO,
-          boxShadow: '0 24px 80px rgba(0,0,0,0.7)',
+          boxShadow: '0 24px 80px rgba(0,0,0,0.35)',
         }}
       >
         {/* Header */}

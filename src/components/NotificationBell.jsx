@@ -137,7 +137,7 @@ export default function NotificationBell({ onNavigate, lang = 'en' }) {
           background: '#111',
           border: '1px solid #2a2a2a',
           borderRadius: '5px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
           zIndex: 9000,
           fontFamily: MONO,
         }}>

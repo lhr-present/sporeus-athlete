@@ -232,7 +232,7 @@ export default function GlobalSearch({ onNavigate, tier: _tier = 'free' }) {
           borderRadius: 6,
           overflow: 'hidden',
           fontFamily: "'IBM Plex Mono', monospace",
-          boxShadow: '0 32px 96px rgba(0,0,0,0.72)',
+          boxShadow: '0 32px 96px rgba(0,0,0,0.35)',
         }}
       >
         {/* ── Input row ── */}

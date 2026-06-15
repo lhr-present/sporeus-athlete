@@ -149,7 +149,7 @@ export default function QRScanner({ onScan, onClose, lang = 'en' }) {
           width: 'min(360px, 94vw)', zIndex: 10401,
           background: '#0a0a0a', border: '1px solid #ff660044',
           borderRadius: '8px', overflow: 'hidden',
-          fontFamily: MONO, boxShadow: '0 24px 80px rgba(0,0,0,0.8)',
+          fontFamily: MONO, boxShadow: '0 24px 80px rgba(0,0,0,0.35)',
         }}
       >
         {/* Header */}

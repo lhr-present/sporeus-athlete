@@ -269,7 +269,7 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
 
   const acwrRatio    = useMemo(() => calculateACWR(log).ratio, [log])
   const consistency  = useMemo(() => calculateConsistency(log), [log])
-  const { ctl: todayCtl } = useMemo(() => calcLoad(log || []), [log])
+  const { ctl: todayCtl, atl: todayAtl, tsb: todayTsb } = useMemo(() => calcLoad(log || []), [log])
   const K_CTL = BANISTER.K_CTL
 
   // v9.192.0 — Compact cycle-phase indicator for the daily readiness band.
@@ -1095,6 +1095,32 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
                 ))}
               </div>
             ) : null}
+
+            {/* v9.409 — "How we computed this": maps the athlete's physiology
+                (CTL/ATL/TSB) → today's answer in plain language. The UX audit's
+                top trust/clarity unlock — turns the acronym hero into an explanation.
+                Native <details>, collapsed by default; only when there's a readiness. */}
+            {todayReadiness != null && todayCtl > 0 && (
+              <details style={{ marginBottom: criticalDx ? '8px' : 0 }}>
+                <summary style={{ fontSize: '9px', color: 'var(--muted)', cursor: 'pointer', letterSpacing: '0.04em' }}>
+                  {lang === 'tr' ? '▸ BU NASIL HESAPLANDI' : '▸ HOW WE COMPUTED THIS'}
+                </summary>
+                <div style={{ fontSize: '9px', color: 'var(--muted)', lineHeight: 1.7, marginTop: '6px' }}>
+                  <div>{lang === 'tr'
+                    ? `Fitness (CTL) ${Math.round(todayCtl)} — 42 günlük yük; birikmiş formun.`
+                    : `Fitness (CTL) ${Math.round(todayCtl)} — your 42-day load; built-up fitness.`}</div>
+                  <div>{lang === 'tr'
+                    ? `Yorgunluk (ATL) ${Math.round(todayAtl)} — son 7 günün yükü.`
+                    : `Fatigue (ATL) ${Math.round(todayAtl)} — your last 7 days' load.`}</div>
+                  <div>{lang === 'tr'
+                    ? `Form (TSB) ${todayTsb >= 0 ? '+' : ''}${Math.round(todayTsb)} = CTL − ATL → ${todayTsb >= 0 ? 'taze' : 'yorgun'}.`
+                    : `Form (TSB) ${todayTsb >= 0 ? '+' : ''}${Math.round(todayTsb)} = CTL − ATL → ${todayTsb >= 0 ? 'fresh' : 'fatigued'}.`}</div>
+                  <div style={{ marginTop: '5px', color: 'var(--sub)' }}>{lang === 'tr'
+                    ? '◆ Hedefin → fizyolojin → plan → bugünün cevabı.'
+                    : '◆ Your target → physiology → plan → today’s answer.'}</div>
+                </div>
+              </details>
+            )}
 
             {/* v9.192.0 — Cycle phase one-liner (privacy-gated). */}
             {todayCycle ? (() => {

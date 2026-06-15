@@ -62,7 +62,7 @@ export default function NotePanel({ athlete, coachId = null, onClose }) {
     <div style={{
       position: 'fixed', top: 0, right: 0, bottom: 0, width: 'min(320px, 100vw)',
       background: '#111', borderLeft: '1px solid #2a2a2a', zIndex: 300,
-      display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 20px rgba(0,0,0,0.6)',
+      display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 20px rgba(0,0,0,0.3)',
     }}>
       <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid #2a2a2a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: ORANGE }}>

@@ -73,7 +73,7 @@ export default function SessionQRModal({ session, onClose, lang = 'en' }) {
           width: 'min(320px, 92vw)', zIndex: 10401,
           background: 'var(--card-bg, #111)', border: '1px solid #ff660044',
           borderRadius: '8px', padding: '24px', textAlign: 'center',
-          fontFamily: MONO, boxShadow: '0 24px 80px rgba(0,0,0,0.7)',
+          fontFamily: MONO, boxShadow: '0 24px 80px rgba(0,0,0,0.35)',
         }}
       >
         {/* Header */}

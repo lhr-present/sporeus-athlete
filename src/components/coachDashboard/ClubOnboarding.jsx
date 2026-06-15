@@ -184,7 +184,7 @@ export default function ClubOnboarding({ onDone, authUserId, inviteUrl, lang = '
           position: 'fixed', top: '10vh', left: '50%', transform: 'translateX(-50%)',
           width: 'min(500px, 94vw)', background: 'var(--card-bg)',
           border: `1px solid ${ORANGE}44`, borderRadius: '8px',
-          zIndex: 10201, padding: '28px', boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+          zIndex: 10201, padding: '28px', boxShadow: '0 24px 80px rgba(0,0,0,0.3)',
           fontFamily: MONO,
         }}
       >

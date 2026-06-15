@@ -98,7 +98,7 @@ export default function UpgradeModal({ open, onClose, featureKey = null, lang = 
           width: 'min(720px, 95vw)', maxHeight: '90vh', overflowY: 'auto',
           zIndex: 10201,
           background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '10px',
-          boxShadow: '0 32px 96px rgba(0,0,0,0.95)',
+          boxShadow: '0 32px 96px rgba(0,0,0,0.4)',
           fontFamily: "'IBM Plex Mono', monospace",
         }}
       >
