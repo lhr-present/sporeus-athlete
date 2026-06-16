@@ -1009,6 +1009,7 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
       {log.length === 0 && (
         <GettingStartedCard
           isTR={lang === 'tr'}
+          goal={profile?.goal}
           // v9.336.0 — Wire Strava connect from Today's empty state.
           // Pre-v9.336 the "Connect Strava" button rendered but onConnectStrava
           // was undefined, so clicking did nothing. Now: one tap → Strava
@@ -1028,10 +1029,17 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
           onLogSession={() => {
             // v9.335.0 — Actually open the modal. Pre-v9.335 (v9.332) the
             // callback only staged an empty prefill and the modal never
-            // opened, so the CTA looked dead. Now: clear any planned-
-            // session prefill (this is "fresh log", not "planned log")
-            // and open QuickAdd directly.
-            setLogPrefill(null)
+            // opened, so the CTA looked dead.
+            // Now: a freshly-onboarded athlete usually has a goal-aware
+            // plannedSession. Prefill it (same shape as logThisSession) so
+            // the first log starts from their plan, not a blank form —
+            // fewer taps, and the log already matches today's prescription.
+            // Fall back to blank when there is no plan.
+            if (plannedSession) {
+              setLogPrefill({ type: plannedSession.type, duration: plannedSession.duration, rpe: plannedSession.rpe || 6, date: today })
+            } else {
+              setLogPrefill(null)
+            }
             if (typeof setShowQuickAdd === 'function') setShowQuickAdd(true)
           }}
         />
@@ -3357,7 +3365,11 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
                             const reducedDuration = Math.max(20, Math.floor((plannedSession.duration || 60) / 2))
                             setLogPrefill({ type: 'Easy', duration: reducedDuration, rpe: 3, date: today })
                             try { emitEvent('sick_day_action', { severity: 'above_neck', planned_type: plannedSession.type, reduced_duration: reducedDuration }) } catch { /* fail open */ }
-                            setTab('log')
+                            // Open QuickAdd in place rather than navigating to
+                            // the Log tab — consistent with every other log path
+                            // on this screen (logThisSession etc.).
+                            if (typeof setShowQuickAdd === 'function') setShowQuickAdd(true)
+                            else setTab('log')
                           }}
                           style={btn('#5bc25b')}
                         >
@@ -3573,7 +3585,11 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
                           <button
                             onClick={() => {
                               setLogPrefill({ type: rec.type, duration: rec.duration, rpe: rec.rpe, date: today })
-                              setTab('log')
+                              // Open QuickAdd in place rather than navigating to
+                              // the Log tab — consistent with every other log
+                              // path on this screen (logThisSession etc.).
+                              if (typeof setShowQuickAdd === 'function') setShowQuickAdd(true)
+                              else setTab('log')
                             }}
                             style={btn(ORANGE)}
                           >

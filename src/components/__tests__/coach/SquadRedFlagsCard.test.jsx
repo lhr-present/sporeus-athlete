@@ -94,14 +94,14 @@ describe('SquadRedFlagsCard render', () => {
 
   it('renders "all clear" when no athletes are flagged', () => {
     renderCard([
-      { athlete_id: '1', athlete_name: 'Alice', acwr_ratio: 1.1, today_tsb: -5, last_session_date: '2026-05-09' },
+      { athlete_id: '1', display_name: 'Alice', acwr_ratio: 1.1, today_tsb: -5, last_session_date: '2026-05-09' },
     ])
     expect(screen.getByText(/all clear/i)).toBeInTheDocument()
   })
 
   it('renders flagged athlete with INJURY-RISK badge when ACWR > 1.5', () => {
     renderCard([
-      { athlete_id: '2', athlete_name: 'Bob', acwr_ratio: 1.7, today_tsb: 0, last_session_date: '2026-05-09' },
+      { athlete_id: '2', display_name: 'Bob', acwr_ratio: 1.7, today_tsb: 0, last_session_date: '2026-05-09' },
     ])
     expect(screen.getByText('Bob')).toBeInTheDocument()
     expect(screen.getByText('INJURY-RISK')).toBeInTheDocument()
@@ -110,9 +110,9 @@ describe('SquadRedFlagsCard render', () => {
   it('sorts high-severity athletes before moderate', () => {
     renderCard([
       // Carol has only SILENT (moderate)
-      { athlete_id: '3', athlete_name: 'Carol', acwr_ratio: 1.0, today_tsb: 0, last_session_date: '2026-05-04' },
+      { athlete_id: '3', display_name: 'Carol', acwr_ratio: 1.0, today_tsb: 0, last_session_date: '2026-05-04' },
       // Bob has INJURY-RISK (high)
-      { athlete_id: '2', athlete_name: 'Bob', acwr_ratio: 1.7, today_tsb: 0, last_session_date: '2026-05-09' },
+      { athlete_id: '2', display_name: 'Bob', acwr_ratio: 1.7, today_tsb: 0, last_session_date: '2026-05-09' },
     ])
     const buttons = screen.getAllByRole('button')
     const athleteButtons = buttons.filter(b => /Bob|Carol/.test(b.textContent))
@@ -122,7 +122,7 @@ describe('SquadRedFlagsCard render', () => {
 
   it('TR mode renders Turkish title', () => {
     renderCard(
-      [{ athlete_id: '1', athlete_name: 'Alice', acwr_ratio: 1.0, today_tsb: 0, last_session_date: '2026-05-09' }],
+      [{ athlete_id: '1', display_name: 'Alice', acwr_ratio: 1.0, today_tsb: 0, last_session_date: '2026-05-09' }],
       'tr'
     )
     expect(screen.getByText(/BUGÜNÜN UYARI BAYRAKLARI/)).toBeInTheDocument()

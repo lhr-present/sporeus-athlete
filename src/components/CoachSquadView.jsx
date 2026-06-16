@@ -40,7 +40,7 @@ function defaultSort(a, b) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function CoachSquadView({ authUser }) {
-  const { t } = useContext(LangCtx)
+  const { t, lang } = useContext(LangCtx)
   const [athletes,     setAthletes]    = useState([])
   const [isDemo,       setIsDemo]      = useState(false)
   const [loading,      setLoading]     = useState(true)
@@ -206,6 +206,8 @@ export default function CoachSquadView({ authUser }) {
   )
 
   const comparisonSelected = sorted.filter(a => compareIds.has(a.athlete_id))
+  const needsCheckIn = sorted.filter(missedCheckIn).length
+  const isTR = lang === 'tr'
 
   return (
     <div className="sp-card" style={{ ...S.card, animationDelay: '0ms' }}>
@@ -223,6 +225,13 @@ export default function CoachSquadView({ authUser }) {
           {connectedCount !== null && (
             <span style={{ fontFamily:MONO, fontSize:9, color:'#555', letterSpacing:'0.08em' }}>
               {connectedCount} {t('connected')}
+            </span>
+          )}
+          {pastCutoff && needsCheckIn > 0 && (
+            <span
+              title={isTR ? 'Kesim saati geçti, bugün seans kaydı yok' : 'Past cutoff and no session logged today'}
+              style={{ fontFamily:MONO, fontSize:9, color:YELLOW, letterSpacing:'0.08em', padding:'2px 7px', border:`1px solid ${YELLOW}44`, borderRadius:2, whiteSpace:'nowrap' }}>
+              ⚠ {needsCheckIn} {isTR ? 'bugün giriş yok' : 'no check-in today'}
             </span>
           )}
         </div>

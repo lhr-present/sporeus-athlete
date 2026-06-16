@@ -2,14 +2,26 @@
 const MONO = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
 
-export default function GettingStartedCard({ isTR, onLogSession, stravaConnected = false, onConnectStrava }) {
+export default function GettingStartedCard({ isTR, onLogSession, stravaConnected = false, onConnectStrava, goal }) {
+  // Step 02 is goal-anchored: this card renders inside the Today screen, so
+  // "check the Today tab" was dead advice (you're already there). Instead it
+  // states the outcome of logging — the recommendation the user is looking at
+  // sharpens once it has data. Falls back to a generic training-focused line
+  // when no goal is set.
+  const step02 = isTR
+    ? (goal
+        ? { n: '02', title: 'Tavsiyen keskinleşsin', desc: `${goal} cevabın keskinleşir — ilk kaydın bugünün tavsiyesini besler.` }
+        : { n: '02', title: 'Tavsiyen keskinleşsin', desc: 'İlk kaydın bugünün tavsiyesini besler — formun ve yorgunluğun hesaba katılır.' })
+    : (goal
+        ? { n: '02', title: 'Sharpen your recommendation', desc: `Your ${goal} answer sharpens — your first log feeds today's recommendation.` }
+        : { n: '02', title: 'Sharpen your recommendation', desc: "Your first log feeds today's recommendation — your form and fatigue get factored in." })
   const steps = isTR ? [
     { n: '01', title: 'İlk antrenmanını kaydet', desc: 'Süre ve RPE ile hızlı kayıt — 10 saniye sürer.' },
-    { n: '02', title: 'Bugün sekmesini kontrol et', desc: 'Bugünün tavsiyesi — formun, yorgunluğun ve yarış hedefine göre.' },
+    step02,
     { n: '03', title: 'Profili doldur', desc: 'Spor dalı, FTP veya VDOT ekle → akıllı analiz açılır.' },
   ] : [
     { n: '01', title: 'Log your first session', desc: 'Just duration + RPE — takes 10 seconds.' },
-    { n: '02', title: 'Check the Today tab', desc: "Today's recommendation — based on your form, fatigue, and race goal." },
+    step02,
     { n: '03', title: 'Complete your profile', desc: 'Add sport, FTP or VDOT → smart analysis unlocks.' },
   ]
 

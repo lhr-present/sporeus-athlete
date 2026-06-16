@@ -55,6 +55,7 @@ const MacroPlanCountdown  = lazy(() => import('./dashboard/MacroPlanCountdown.js
 const NormativeSection    = lazy(() => import('./dashboard/NormativeSection.jsx'))
 const AICoachInsights     = lazy(() => import('./dashboard/AICoachInsights.jsx'))
 const EFDecouplingCard    = lazy(() => import('./dashboard/EFDecouplingCard.jsx'))
+const OverreachWatchCard  = lazy(() => import('./dashboard/OverreachWatchCard.jsx'))
 import WeeklyRetroCard    from './dashboard/WeeklyRetroCard.jsx'
 import PhaseAnalyticsCard from './dashboard/PhaseAnalyticsCard.jsx'
 import FuelGuidanceCard   from './dashboard/FuelGuidanceCard.jsx'
@@ -1325,6 +1326,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       <ErrorBoundary><Suspense fallback={null}><MonotonyTrendCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><AerobicDecouplingTrendCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><EFDecouplingCard log={log} lang={lang} /></Suspense></ErrorBoundary>
+      <ErrorBoundary><Suspense fallback={null}><OverreachWatchCard log={log} lang={lang} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><CtlRampRateCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><WeeklyVolumeRampCard log={log} /></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><WeekendVolumeShareCard log={log} /></Suspense></ErrorBoundary>

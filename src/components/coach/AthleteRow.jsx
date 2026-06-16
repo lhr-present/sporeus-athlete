@@ -1,8 +1,10 @@
 // ─── coach/AthleteRow.jsx — Single athlete row (mobile card + desktop table) ───
 // Extracted from CoachSquadView.jsx. Renders in two layouts via `isMobile` prop.
 
+import { useContext } from 'react'
 import { wellnessAvg } from '../../lib/coachDigest.js'
 import { getReadinessLabel, getAthleteInsights } from '../../lib/ruleInsights.js'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 
 const MONO   = "'IBM Plex Mono', monospace"
@@ -65,10 +67,17 @@ function ReadinessCircle({ score, size = 26 }) {
   )
 }
 
+// Top (highest-severity) active alert for an athlete, or null. getAthleteInsights
+// returns alerts sorted by severity ascending, so the first flagged non-readiness
+// entry is the most severe.
+function topAlert(ath) {
+  const alerts = getAthleteInsights({ acwr: ath.acwr_ratio, wellnessAvg: wellnessAvg(ath) })
+  return alerts.find(a => a.flag && a.key !== 'readiness') || null
+}
+
 function AthleteBadges({ ath, noCheckIn }) {
   const rl = getReadinessLabel(ath.acwr_ratio, wellnessAvg(ath))
-  const alerts = getAthleteInsights({ acwr: ath.acwr_ratio, wellnessAvg: wellnessAvg(ath) })
-  const hasAlert = alerts.some(a => a.flag && a.key !== 'readiness')
+  const hasAlert = topAlert(ath) !== null
   return (
     <>
       <span style={{ ...S.badgeOutline(rl.color), fontWeight: 700 }}>
@@ -81,6 +90,20 @@ function AthleteBadges({ ath, noCheckIn }) {
         </span>
       )}
     </>
+  )
+}
+
+// One-line prescriptive caption for the top active alert (reuses .action/.actionTr
+// from ruleInsights verbatim). Renders nothing when there is no active alert.
+function AlertCaption({ ath }) {
+  const { lang } = useContext(LangCtx)
+  const alert = topAlert(ath)
+  const action = lang === 'tr' ? alert?.actionTr : alert?.action
+  if (!action) return null
+  return (
+    <div style={{ fontFamily: MONO, fontSize: 9, color: RED, marginTop: 3, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={action}>
+      → {action}
+    </div>
   )
 }
 
@@ -130,6 +153,7 @@ export default function AthleteRow({
               <span style={{ fontFamily: MONO, fontSize: 9, color: acwrColor(ath.acwr_status) }}>ACWR {ath.acwr_ratio ?? '—'}</span>
               <TsbBar value={ath.today_tsb} />
             </div>
+            <AlertCaption ath={ath} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
             <button aria-label={isFlagged ? 'Unflag athlete' : 'Flag athlete'} onClick={e => { e.stopPropagation(); onFlag() }} style={{ ...S.ghostBtn, fontSize: 14, color: isFlagged ? ORANGE : '#333', padding: '10px 8px' }}>★</button>
@@ -165,6 +189,7 @@ export default function AthleteRow({
           <AthleteBadges ath={ath} noCheckIn={noCheckIn} />
         </div>
         <span style={S.dimText}>{fmtDate(ath.last_session_date)}</span>
+        <AlertCaption ath={ath} />
       </td>
       {/* Readiness */}
       <td style={{ padding: '8px', textAlign: 'center' }}><ReadinessCircle score={readiness} /></td>
@@ -202,3 +227,6 @@ export default function AthleteRow({
     ),
   ]
 }
+
+// Exported for unit tests
+export { topAlert, AlertCaption }

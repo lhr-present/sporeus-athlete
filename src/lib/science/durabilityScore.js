@@ -126,3 +126,104 @@ export function classifyDurability(pct) {
   if (pct >= DURABILITY_THRESHOLDS.low)      return 'low'
   return 'very_low'
 }
+
+// ── interpretDurability ─────────────────────────────────────────────────────────
+
+/**
+ * Derive a trend direction from a list of computed durability results
+ * (oldest → newest, as the card builds them). Compares the latest score to the
+ * mean of the earlier scores so a single late session doesn't read as a trend.
+ *
+ * @param {Array<{durabilityPct:number}>} scores
+ * @returns {'rising'|'falling'|'flat'}
+ */
+function _trendOf(scores) {
+  if (!Array.isArray(scores) || scores.length < 2) return 'flat'
+  const pcts = scores.map(s => s && s.durabilityPct).filter(p => Number.isFinite(p))
+  if (pcts.length < 2) return 'flat'
+  const latest = pcts[pcts.length - 1]
+  const priors = pcts.slice(0, -1)
+  const priorMean = priors.reduce((a, b) => a + b, 0) / priors.length
+  const delta = latest - priorMean
+  if (delta >= 1.5) return 'rising'
+  if (delta <= -1.5) return 'falling'
+  return 'flat'
+}
+
+/**
+ * "So what" interpretation for a durability tier + trend. Turns the bare
+ * percentage/tier into a one-line action read, the way ACWRCard renders an
+ * interpretation rather than just the ratio.
+ *
+ * @param {'high'|'moderate'|'low'|'very_low'} tier
+ * @param {Array<{durabilityPct:number}>} [scores]  - oldest→newest, for trend
+ * @returns {{ en: string, tr: string, trend: 'rising'|'falling'|'flat' }}
+ */
+export function interpretDurability(tier, scores = []) {
+  const trend = _trendOf(scores)
+
+  // Trend-specific reads take priority where they meaningfully change the
+  // advice; otherwise fall back to the tier's neutral read.
+  const TIER = {
+    high: {
+      rising: {
+        en: 'Fatigue resistance is improving — your long-effort fueling is working. Hold the current approach.',
+        tr: 'Yorgunluk direncin gelişiyor — uzun çaba beslenmen işe yarıyor. Mevcut yaklaşımı koru.',
+      },
+      falling: {
+        en: 'Durability is elite but slipping lately — keep an eye on fueling and sleep before the next long block.',
+        tr: 'Dayanıklılık elit ama son dönemde geriliyor — sonraki uzun bloktan önce beslenme ve uykuyu gözden geçir.',
+      },
+      flat: {
+        en: 'Elite fatigue resistance — you hold high-end power deep into long efforts. Maintain volume and fueling.',
+        tr: 'Elit yorgunluk direnci — uzun çabaların derininde yüksek gücü koruyorsun. Hacmi ve beslenmeyi sürdür.',
+      },
+    },
+    moderate: {
+      rising: {
+        en: 'Durability is trending up — the long Z2 work is paying off. Keep building volume steadily.',
+        tr: 'Dayanıklılık yükselişte — uzun Z2 çalışması karşılığını veriyor. Hacmi istikrarlı artırmaya devam et.',
+      },
+      falling: {
+        en: 'Durability is slipping — guard your long-ride fueling and add easy aerobic volume before it drops further.',
+        tr: 'Dayanıklılık geriliyor — uzun antrenman beslenmeni koru ve daha fazla düşmeden kolay aerobik hacim ekle.',
+      },
+      flat: {
+        en: 'Solid durability — you fade only a little late in long efforts. More long Z2 volume will push it toward elite.',
+        tr: 'Sağlam dayanıklılık — uzun çabalarda sona doğru çok az soluyorsun. Daha fazla uzun Z2 hacmi seni elite taşır.',
+      },
+    },
+    low: {
+      rising: {
+        en: 'Durability is improving off a low base — stay with the long aerobic work and dial in mid-effort fueling.',
+        tr: 'Dayanıklılık düşük bir temelden gelişiyor — uzun aerobik çalışmayı sürdür ve çaba-ortası beslenmeyi ayarla.',
+      },
+      falling: {
+        en: 'You are fading in the last hour and it is getting worse — prioritise long Z2 volume and test mid-effort fueling now.',
+        tr: 'Son saatte soluyorsun ve durum kötüleşiyor — uzun Z2 hacmine öncelik ver ve çaba-ortası beslenmeyi şimdi test et.',
+      },
+      flat: {
+        en: 'Power drops noticeably late in long efforts — add long Z2 volume and rehearse race-day fueling on long rides.',
+        tr: 'Uzun çabalarda güç sona doğru belirgin düşüyor — uzun Z2 hacmi ekle ve uzun antrenmanlarda yarış-günü beslenmesini prova et.',
+      },
+    },
+    very_low: {
+      rising: {
+        en: 'Durability is very low but recovering — keep stacking long easy volume and consistent mid-ride fueling.',
+        tr: 'Dayanıklılık çok düşük ama toparlıyor — uzun kolay hacim ve düzenli antrenman-içi beslenmeyi üst üste koymaya devam et.',
+      },
+      falling: {
+        en: 'Fading hard in the last hour and trending down — add long Z2 volume and test mid-ride fueling; this is the biggest limiter.',
+        tr: 'Son saatte ciddi soluyorsun ve trend aşağı — uzun Z2 hacmi ekle ve antrenman-içi beslenmeyi test et; en büyük sınırlayıcı bu.',
+      },
+      flat: {
+        en: 'Significant late-effort power loss — your ceiling is fine but you cannot hold it. Build long Z2 volume and fix fueling.',
+        tr: 'Belirgin geç-çaba güç kaybı — tavanın iyi ama koruyamıyorsun. Uzun Z2 hacmi inşa et ve beslenmeyi düzelt.',
+      },
+    },
+  }
+
+  const tierReads = TIER[tier] || TIER.very_low
+  const read = tierReads[trend] || tierReads.flat
+  return { en: read.en, tr: read.tr, trend }
+}

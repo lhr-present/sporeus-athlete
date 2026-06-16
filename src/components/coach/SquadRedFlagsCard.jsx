@@ -90,7 +90,7 @@ export default function SquadRedFlagsCard({ athletes, onSelectAthlete }) {
         const aHi = a.flags.some(f => f.severity === 'high') ? 0 : 1
         const bHi = b.flags.some(f => f.severity === 'high') ? 0 : 1
         if (aHi !== bHi) return aHi - bHi
-        return (a.ath.athlete_name || '').localeCompare(b.ath.athlete_name || '')
+        return (a.ath.display_name || '').localeCompare(b.ath.display_name || '')
       })
   }, [athletes, isTR])
 
@@ -168,7 +168,7 @@ export default function SquadRedFlagsCard({ athletes, onSelectAthlete }) {
                 }}
               >
                 <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 2 }}>
-                  {ath.athlete_name || (isTR ? 'İsimsiz sporcu' : 'Unnamed athlete')}
+                  {ath.display_name || (isTR ? 'İsimsiz sporcu' : 'Unnamed athlete')}
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                   {flags.map((f, i) => (
