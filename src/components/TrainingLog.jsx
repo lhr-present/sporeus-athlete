@@ -153,8 +153,12 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const [extPreview,  setExtPreview]  = useState(null) // { toImport, duplicates, errors, summary, formatId, formatLabel }
   const [extErrorsExpanded, setExtErrorsExpanded] = useState(false)
   const extPreviewPanelRef = useRef(null)
+  const importPreviewPanelRef = useRef(null)
+  const csvPreviewPanelRef = useRef(null)
   const submittingRef   = useRef(false)  // guards add() against double-click before form state clears
   useFocusTrap(extPreviewPanelRef, { active: !!extPreview, onEscape: () => setExtPreview(null) })
+  useFocusTrap(importPreviewPanelRef, { active: !!importPreview, onEscape: () => setImportPreview(null) })
+  useFocusTrap(csvPreviewPanelRef, { active: !!csvPreview, onEscape: () => setCsvPreview(null) })
 
   // ── Pagination controls from DataContext (E4) ────────────────────────────
   const { fetchNextPage, hasMore, isLoadingMore } = useData()
@@ -586,12 +590,12 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
         <div style={S.cardTitle}>{t('logTitle')}</div>
         <div style={S.row}>
           <div style={{ flex:'1 1 130px' }}>
-            <label style={S.label}>{t('dateL')}</label>
-            <input style={S.input} type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/>
+            <label style={S.label} htmlFor="tl-date">{t('dateL')}</label>
+            <input id="tl-date" style={S.input} type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/>
           </div>
           <div style={{ flex:'1 1 150px' }}>
-            <label style={S.label}>{t('typeL')}</label>
-            <select style={S.select} value={form.type} onChange={e=>setForm({...form,type:e.target.value})}>
+            <label style={S.label} htmlFor="tl-type">{t('typeL')}</label>
+            <select id="tl-type" style={S.select} value={form.type} onChange={e=>setForm({...form,type:e.target.value})}>
               {Object.entries(SESSION_TYPES_BY_DISCIPLINE).map(([group,types])=>(
                 <optgroup key={group} label={group}>
                   {types.map(x=><option key={x}>{x}</option>)}
@@ -600,21 +604,21 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
             </select>
           </div>
           <div style={{ flex:'1 1 110px' }}>
-            <label style={S.label}>{t('durL')}</label>
-            <input style={S.input} type="number" placeholder="60" value={form.duration}
+            <label style={S.label} htmlFor="tl-duration">{t('durL')}</label>
+            <input id="tl-duration" style={S.input} type="number" placeholder="60" value={form.duration}
               onChange={e=>{setForm({...form,duration:e.target.value});setTssPreview(null)}}/>
           </div>
           <div style={{ flex:'1 1 120px' }}>
-            <label style={S.label}>{t('rpeL')}</label>
-            <select style={S.select} value={form.rpe}
+            <label style={S.label} htmlFor="tl-rpe">{t('rpeL')}</label>
+            <select id="tl-rpe" style={S.select} value={form.rpe}
               onChange={e=>{setForm({...form,rpe:e.target.value});setTssPreview(null)}}>
               {[1,2,3,4,5,6,7,8,9,10].map(n=><option key={n} value={n}>{n}</option>)}
             </select>
           </div>
         </div>
         <div style={{ marginTop:'10px' }}>
-          <label style={S.label}>{t('notesL')}</label>
-          <input style={S.input} type="text" placeholder={t('notesPlaceholder')} value={form.notes}
+          <label style={S.label} htmlFor="tl-notes">{t('notesL')}</label>
+          <input id="tl-notes" style={S.input} type="text" placeholder={t('notesPlaceholder')} value={form.notes}
             onChange={e=>setForm({...form,notes:e.target.value})}/>
         </div>
         <div style={{ marginTop:'10px' }}>
@@ -627,8 +631,8 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
               <div style={S.row}>
                 {ZONE_NAMES.map((n,i)=>(
                   <div key={i} style={{ flex:'1 1 70px' }}>
-                    <label style={{ ...S.label, color:ZONE_COLORS[i] }}>{n.split(' ')[0]} (min)</label>
-                    <input style={{ ...S.input, borderColor:ZONE_COLORS[i]+'66' }} type="number" placeholder="0"
+                    <label style={{ ...S.label, color:ZONE_COLORS[i] }} htmlFor={`tl-zone-${i}`}>{n.split(' ')[0]} (min)</label>
+                    <input id={`tl-zone-${i}`} aria-label={`${n} (min)`} style={{ ...S.input, borderColor:ZONE_COLORS[i]+'66' }} type="number" placeholder="0"
                       value={zoneMins[i]} onChange={e=>{ const z=[...zoneMins]; z[i]=e.target.value; setZoneMins(z) }}/>
                   </div>
                 ))}
@@ -1085,7 +1089,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       {/* Import preview modal */}
       {importPreview && (
         <div style={{ position:'fixed', inset:0, zIndex:20000, background:'rgba(0,0,0,0.85)', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px', fontFamily:"'IBM Plex Mono',monospace" }}>
-          <div style={{ background:'#111', border:'1px solid #2a2a2a', borderRadius:'8px', padding:'32px', width:'100%', maxWidth:'420px' }}>
+          <div ref={importPreviewPanelRef} role="dialog" aria-modal="true" aria-label="Import preview" style={{ background:'#111', border:'1px solid #2a2a2a', borderRadius:'8px', padding:'32px', width:'100%', maxWidth:'420px' }}>
             <div style={{ fontSize:'13px', fontWeight:700, color:'#ff6600', letterSpacing:'0.1em', marginBottom:'20px' }}>
               ↑ IMPORT PREVIEW · {importPreview.source?.toUpperCase()}
             </div>
@@ -1136,8 +1140,8 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
               )
             })()}
             <div style={{ marginBottom:'16px' }}>
-              <label style={{ fontSize:'9px', color:'#666', letterSpacing:'0.1em', display:'block', marginBottom:'4px' }}>SESSION TYPE</label>
-              <select value={importPreview.type} onChange={e => setImportPreview(p => ({...p, type: e.target.value}))}
+              <label htmlFor="import-preview-type" style={{ fontSize:'9px', color:'#666', letterSpacing:'0.1em', display:'block', marginBottom:'4px' }}>SESSION TYPE</label>
+              <select id="import-preview-type" value={importPreview.type} onChange={e => setImportPreview(p => ({...p, type: e.target.value}))}
                 style={{ ...S.input, width:'100%', boxSizing:'border-box' }}>
                 {(SESSION_TYPES_BY_DISCIPLINE[SPORT_CONFIG[profileLS?.primarySport]?.sessionGroup] || SESSION_TYPES_BY_DISCIPLINE.run || []).map(t2 => (
                   <option key={t2} value={t2}>{t2}</option>
@@ -1145,8 +1149,8 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
               </select>
             </div>
             <div style={{ marginBottom:'20px' }}>
-              <label style={{ fontSize:'9px', color:'#666', letterSpacing:'0.1em', display:'block', marginBottom:'4px' }}>RPE (1-10)</label>
-              <input type="number" min="1" max="10" value={importPreview.rpe}
+              <label htmlFor="import-preview-rpe" style={{ fontSize:'9px', color:'#666', letterSpacing:'0.1em', display:'block', marginBottom:'4px' }}>RPE (1-10)</label>
+              <input id="import-preview-rpe" type="number" min="1" max="10" value={importPreview.rpe}
                 onChange={e => setImportPreview(p => ({...p, rpe: parseInt(e.target.value)||5}))}
                 style={{ ...S.input, width:'60px' }}/>
             </div>
@@ -1165,7 +1169,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       {/* CSV bulk import preview modal */}
       {csvPreview && (
         <div style={{ position:'fixed', inset:0, zIndex:20500, background:'rgba(0,0,0,0.88)', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px', fontFamily:"'IBM Plex Mono',monospace" }}>
-          <div style={{ background:'#111', border:'1px solid #2a2a2a', borderRadius:'8px', padding:'28px', width:'100%', maxWidth:'560px', maxHeight:'90vh', overflowY:'auto' }}>
+          <div ref={csvPreviewPanelRef} role="dialog" aria-modal="true" aria-label={t('bulkImportCsv')} style={{ background:'#111', border:'1px solid #2a2a2a', borderRadius:'8px', padding:'28px', width:'100%', maxWidth:'560px', maxHeight:'90vh', overflowY:'auto' }}>
             <div style={{ fontSize:'12px', fontWeight:700, color:'#ff6600', letterSpacing:'0.1em', marginBottom:'18px' }}>
               {t('bulkImportCsv')}
             </div>
@@ -1238,7 +1242,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       {/* External-service CSV import preview modal */}
       {extPreview && (
         <div style={{ position:'fixed', inset:0, zIndex:20600, background:'rgba(0,0,0,0.88)', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px', fontFamily:"'IBM Plex Mono',monospace" }}>
-          <div ref={extPreviewPanelRef} role="dialog" aria-label={t('importExternalTitle')} style={{ background:'#111', border:'1px solid #2a2a2a', borderRadius:'8px', padding:'28px', width:'100%', maxWidth:'560px', maxHeight:'90vh', overflowY:'auto' }}>
+          <div ref={extPreviewPanelRef} role="dialog" aria-modal="true" aria-label={t('importExternalTitle')} style={{ background:'#111', border:'1px solid #2a2a2a', borderRadius:'8px', padding:'28px', width:'100%', maxWidth:'560px', maxHeight:'90vh', overflowY:'auto' }}>
             <div style={{ fontSize:'12px', fontWeight:700, color:'#5bc25b', letterSpacing:'0.1em', marginBottom:'4px' }}>
               {t('importExternalTitle')}
             </div>

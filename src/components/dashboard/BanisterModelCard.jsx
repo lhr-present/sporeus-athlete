@@ -46,6 +46,16 @@ export default function BanisterModelCard() {
   const todayX  = px(today)
   const projPath = proj.map((p, i) => `${i === 0 ? 'M' : 'L'}${px(p.date).toFixed(1)},${py(p.predicted).toFixed(1)}`).join(' ')
 
+  // Accessible summary: projection direction + magnitude over the 60-day window.
+  const projStart = proj.length ? proj[0].predicted : null
+  const projEnd   = proj.length ? proj[proj.length - 1].predicted : null
+  const projDelta = (projStart != null && projEnd != null) ? Math.round(projEnd - projStart) : 0
+  const dirEN = projDelta > 0 ? 'rising' : projDelta < 0 ? 'declining' : 'flat'
+  const dirTR = projDelta > 0 ? 'yükseliyor' : projDelta < 0 ? 'düşüyor' : 'sabit'
+  const svgLabel = lang === 'tr'
+    ? `Banister fitness-yorgunluk projeksiyonu — performans ${dirTR}, 60 günde ${projDelta >= 0 ? '+' : ''}${projDelta} puan (R² ${fit.r2}).`
+    : `Banister fitness-fatigue projection — performance ${dirEN}, ${projDelta >= 0 ? '+' : ''}${projDelta} points over 60 days (R² ${fit.r2}).`
+
   return (
     <div className="sp-card" style={{ ...S.card, animationDelay: '196ms' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
@@ -56,7 +66,7 @@ export default function BanisterModelCard() {
           <span style={{ ...S.mono, fontSize: 9, color: '#e03030' }}>k₂ {fit.k2.toFixed(3)}</span>
         </div>
       </div>
-      <svg width={W} height={H} style={{ display: 'block', overflow: 'visible', width: '100%', maxWidth: W }}>
+      <svg width={W} height={H} role="img" aria-label={svgLabel} style={{ display: 'block', overflow: 'visible', width: '100%', maxWidth: W }}>
         <line x1={todayX} y1={padT} x2={todayX} y2={padT + iH} stroke="#333" strokeWidth="1" strokeDasharray="3,3"/>
         <text x={todayX + 3} y={padT + 8} fontFamily="'IBM Plex Mono',monospace" fontSize={7} fill="#555">TODAY</text>
         {proj.length > 1 && <path d={projPath} fill="none" stroke="#ff6600" strokeWidth="2" strokeLinejoin="round"/>}

@@ -159,7 +159,7 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
   const steps = [
     // ── 0: Welcome ─────────────────────────────────────────────────────────
     <div key="welcome" style={{ textAlign:'center', padding:'20px 0' }}>
-      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'22px', fontWeight:600, color:'#ff6600', letterSpacing:'0.1em', marginBottom:'8px' }}>◈ SPOREUS</div>
+      <div data-step-heading tabIndex={-1} role="heading" aria-level={2} style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'22px', fontWeight:600, color:'#ff6600', letterSpacing:'0.1em', marginBottom:'8px', outline:'none' }}>◈ SPOREUS</div>
       <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'13px', color:'#888', marginBottom:'24px' }}>
         {lang === 'tr' ? 'Vücudunun Bloomberg Terminali' : 'Bloomberg Terminal for your body'}
       </div>
@@ -174,14 +174,14 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
 
     // ── 1: Primary sport? (slim wizard v9.331 — was step 2) ───────────────
     <div key="sport_pick">
-      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'12px' }}>
+      <div data-step-heading tabIndex={-1} role="heading" aria-level={2} style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'12px', outline:'none' }}>
         {lang === 'tr' ? '01 / ANA SPOR' : '01 / PRIMARY SPORT'}
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px' }}>
         {sports.map(s=>{
           const SPORT_TR = { Running:'Koşu', Cycling:'Bisiklet', Triathlon:'Triatlon', Swimming:'Yüzme', Rowing:'Kürek', Other:'Diğer' }
           return (
-            <button key={s} onClick={()=>set('sport',s)}
+            <button key={s} type="button" aria-pressed={data.sport===s} onClick={()=>set('sport',s)}
               style={{ padding:'14px 8px', borderRadius:'6px', border:`2px solid ${data.sport===s?'#ff6600':'var(--border)'}`, background:data.sport===s?'#fff3eb':'transparent', cursor:'pointer', fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', color:data.sport===s?'#ff6600':'var(--text)', fontWeight:data.sport===s?600:400, textAlign:'center' }}>
               {s === 'Running' ? '🏃' : s === 'Cycling' ? '🚴' : s === 'Triathlon' ? '🏊' : s === 'Swimming' ? '🏊' : s === 'Rowing' ? '🚣' : '⚡'}<br/>{lang === 'tr' ? (SPORT_TR[s] || s) : s}
             </button>
@@ -195,20 +195,21 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
     // Pre-v9.331 it was buried at step 7; quickFinish at step 3 fired without
     // it, and the starter plan couldn't seed (canSeedStarterPlan needs goal).
     <div key="goal">
-      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'16px' }}>
+      <div data-step-heading tabIndex={-1} role="heading" aria-level={2} style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'16px', outline:'none' }}>
         {lang === 'tr' ? '02 / HEDEFİN' : '02 / YOUR GOAL'}
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))', gap:'8px', marginBottom:'16px' }}>
         {goalsForSport(data.sport).map(g=>(
-          <button key={g} onClick={()=>set('goal',g)}
+          <button key={g} type="button" aria-pressed={data.goal===g} onClick={()=>set('goal',g)}
             style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', padding:'12px', borderRadius:'6px', border:`2px solid ${data.goal===g?'#ff6600':'#e0e0e0'}`, background:data.goal===g?'#fff3eb':'transparent', color:data.goal===g?'#ff6600':'#888', cursor:'pointer', textAlign:'center', fontWeight:data.goal===g?600:400 }}>
             {g}
           </button>
         ))}
       </div>
       <div style={{ marginBottom:'12px' }}>
-        <label style={LABEL}>{lang === 'tr' ? 'YARIŞ TARİHİ (isteğe bağlı)' : 'RACE DATE (optional)'}</label>
+        <label style={LABEL} htmlFor="onb-raceDate">{lang === 'tr' ? 'YARIŞ TARİHİ (isteğe bağlı)' : 'RACE DATE (optional)'}</label>
         <input
+          id="onb-raceDate"
           style={INPUT}
           type="date"
           value={data.raceDate}
@@ -224,8 +225,8 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
         />
       </div>
       <div style={{ marginBottom:'16px' }}>
-        <label style={LABEL}>{lang === 'tr' ? `ETKİNLİĞE KALAN HAFTA (isteğe bağlı): ${data.weeks||'—'}` : `WEEKS UNTIL EVENT (optional): ${data.weeks||'—'}`}</label>
-        <input type="range" min="4" max="52" value={data.weeks||12} onChange={e=>{
+        <label style={LABEL} htmlFor="onb-weeks">{lang === 'tr' ? `ETKİNLİĞE KALAN HAFTA (isteğe bağlı): ${data.weeks||'—'}` : `WEEKS UNTIL EVENT (optional): ${data.weeks||'—'}`}</label>
+        <input id="onb-weeks" type="range" min="4" max="52" value={data.weeks||12} onChange={e=>{
           const wks = parseInt(e.target.value, 10)
           set('weeks', e.target.value)
           if (wks > 0) {
@@ -276,7 +277,7 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
 
     // ── 3: How do you want to log? (E9 fast-track Q3) ─────────────────────
     <div key="log_method">
-      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'12px' }}>
+      <div data-step-heading tabIndex={-1} role="heading" aria-level={2} style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'12px', outline:'none' }}>
         {lang === 'tr' ? '03 / NASIL KAYIT YAPMAK İSTİYORSUN?' : '03 / HOW DO YOU WANT TO LOG?'}
       </div>
       <div style={{ display:'flex', flexDirection:'column', gap:'8px', marginBottom:'20px' }}>
@@ -289,7 +290,7 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
           const labelTxt = lang === 'tr' && LM_TR[m.id] ? LM_TR[m.id].label : m.label
           const descTxt  = lang === 'tr' && LM_TR[m.id] ? LM_TR[m.id].desc  : m.desc
           return (
-            <button key={m.id} onClick={()=>set('loggingMethod',m.id)}
+            <button key={m.id} type="button" aria-pressed={data.loggingMethod===m.id} onClick={()=>set('loggingMethod',m.id)}
               style={{ textAlign:'left', padding:'12px 14px', borderRadius:'6px', border:`2px solid ${data.loggingMethod===m.id?'#ff6600':'var(--border)'}`, background:data.loggingMethod===m.id?'#fff3eb':'transparent', cursor:'pointer', fontFamily:"'IBM Plex Mono',monospace" }}>
               <div style={{ fontSize:'13px', color:data.loggingMethod===m.id?'#ff6600':'var(--text)', fontWeight:data.loggingMethod===m.id?600:400, marginBottom:'2px' }}>{labelTxt}</div>
               <div style={{ fontSize:'11px', color:'#888' }}>{descTxt}</div>
@@ -309,14 +310,14 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
 
     // ── 4: Basic info (optional full-setup) ────────────────────────────────
     <div key="basic">
-      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'16px' }}>
+      <div data-step-heading tabIndex={-1} role="heading" aria-level={2} style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'16px', outline:'none' }}>
         {lang === 'tr' ? '04 / TEMEL BİLGİ' : '04 / BASIC INFO'}
       </div>
       <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
         {[{l:'Name', lTR:'İsim', k:'name', ph:'Athlete name', phTR:'Sporcu adı'}, {l:'Age', lTR:'Yaş', k:'age', ph:'32', type:'number'}].map(f=>(
           <div key={f.k}>
-            <label style={LABEL}>{(lang === 'tr' ? (f.lTR || f.l) : f.l).toUpperCase()}</label>
-            <input style={INPUT} type={f.type||'text'} placeholder={lang === 'tr' && f.phTR ? f.phTR : f.ph} value={data[f.k]} onChange={e=>set(f.k,e.target.value)}/>
+            <label style={LABEL} htmlFor={`onb-${f.k}`}>{(lang === 'tr' ? (f.lTR || f.l) : f.l).toUpperCase()}</label>
+            <input id={`onb-${f.k}`} style={INPUT} type={f.type||'text'} placeholder={lang === 'tr' && f.phTR ? f.phTR : f.ph} value={data[f.k]} onChange={e=>set(f.k,e.target.value)}/>
           </div>
         ))}
         <div>
@@ -325,7 +326,7 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
             {['male','female'].map(g=>{
               const GENDER_TR = { male:'Erkek', female:'Kadın' }
               return (
-                <button key={g} onClick={()=>set('gender',g)} style={pill(data.gender===g)}>
+                <button key={g} type="button" aria-pressed={data.gender===g} onClick={()=>set('gender',g)} style={pill(data.gender===g)}>
                   {lang === 'tr' ? GENDER_TR[g] : g.charAt(0).toUpperCase()+g.slice(1)}
                 </button>
               )
@@ -338,7 +339,7 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
             {sports.map(s=>{
               const SPORT_TR = { Running:'Koşu', Cycling:'Bisiklet', Triathlon:'Triatlon', Swimming:'Yüzme', Rowing:'Kürek', Other:'Diğer' }
               return (
-                <button key={s} onClick={()=>set('sport',s)} style={{ ...pill(data.sport===s), fontSize:'11px', padding:'5px 12px' }}>
+                <button key={s} type="button" aria-pressed={data.sport===s} onClick={()=>set('sport',s)} style={{ ...pill(data.sport===s), fontSize:'11px', padding:'5px 12px' }}>
                   {lang === 'tr' ? (SPORT_TR[s] || s) : s}
                 </button>
               )
@@ -350,7 +351,7 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
 
     // ── 5: Fitness level ───────────────────────────────────────────────────
     <div key="level">
-      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'16px' }}>
+      <div data-step-heading tabIndex={-1} role="heading" aria-level={2} style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'16px', outline:'none' }}>
         {lang === 'tr' ? '05 / KONDİSYON SEVİYESİ' : '05 / FITNESS LEVEL'}
       </div>
       <div style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
@@ -364,7 +365,7 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
               { id:'Advanced',     desc:'7+ yr · top 10% finisher',     labelTR:'İleri',       descTR:'7+ yıl · ilk %10 bitirici' },
               { id:'Elite',        desc:'National / international level', labelTR:'Elit',     descTR:'Ulusal / uluslararası seviye' },
             ].map(({ id, desc, labelTR, descTR })=>(
-              <button key={id} onClick={()=>set('level',id)}
+              <button key={id} type="button" aria-pressed={data.level===id} onClick={()=>set('level',id)}
                 style={{ flex:'1 1 130px', textAlign:'left', padding:'12px', borderRadius:'6px', border:`2px solid ${data.level===id?'#ff6600':'var(--border)'}`, background:data.level===id?'#fff3eb':'transparent', cursor:'pointer' }}>
                 <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'13px', fontWeight:600, color:data.level===id?'#ff6600':'var(--text)', marginBottom:'4px' }}>{lang === 'tr' ? labelTR : id}</div>
                 <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', color:'#888', lineHeight:1.5 }}>{lang === 'tr' ? descTR : desc}</div>
@@ -376,7 +377,9 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
           <label style={LABEL}>{lang === 'tr' ? 'HAFTALIK ANTRENMAN GÜNLERİ (mevcut)' : 'TRAINING DAYS PER WEEK (current)'}</label>
           <div style={{ display:'flex', gap:'6px' }}>
             {[2,3,4,5,6,7].map(n=>(
-              <button key={n} onClick={()=>set('trainDays',n)}
+              <button key={n} type="button" aria-pressed={data.trainDays===n}
+                aria-label={lang === 'tr' ? `Haftada ${n} gün` : `${n} days per week`}
+                onClick={()=>set('trainDays',n)}
                 style={{ ...pill(data.trainDays===n), flex:'1', padding:'8px 4px' }}>
                 {n}
               </button>
@@ -388,14 +391,14 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
 
     // ── 6: Key metrics ─────────────────────────────────────────────────────
     <div key="metrics">
-      <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'16px' }}>
+      <div data-step-heading tabIndex={-1} role="heading" aria-level={2} style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'12px', fontWeight:600, color:'#ff6600', marginBottom:'16px', outline:'none' }}>
         {lang === 'tr' ? '06 / TEMEL METRİKLER' : '06 / KEY METRICS'}
       </div>
       <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
         <div>
-          <label style={LABEL}>{lang === 'tr' ? 'MAKS KALP ATIŞI (atım/dk)' : 'MAX HEART RATE (bpm)'}</label>
+          <label style={LABEL} htmlFor="onb-maxhr">{lang === 'tr' ? 'MAKS KALP ATIŞI (atım/dk)' : 'MAX HEART RATE (bpm)'}</label>
           <div style={{ display:'flex', gap:'8px' }}>
-            <input style={{ ...INPUT, flex:1 }} type="number" inputMode="numeric" placeholder="185" value={data.maxhr} onChange={e=>set('maxhr',e.target.value)}/>
+            <input id="onb-maxhr" style={{ ...INPUT, flex:1 }} type="number" inputMode="numeric" placeholder="185" value={data.maxhr} onChange={e=>set('maxhr',e.target.value)}/>
             {data.age && (
               <button onClick={()=>set('maxhr',String(Math.round(208-0.7*parseInt(data.age))))}
                 style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'8px 12px', borderRadius:'4px', border:'1px solid #ff6600', background:'transparent', color:'#ff6600', cursor:'pointer', whiteSpace:'nowrap' }}>
@@ -409,24 +412,24 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
           // FTP is meaningless for pool swimmers; CSS is the canonical pace
           // metric (sec/100m) that the v9.98 swim-pace chain reads.
           <div>
-            <label style={LABEL}>{lang === 'tr' ? 'CSS TEMPOSU (DD:SS /100m)' : 'CSS PACE (MM:SS /100m)'}</label>
-            <input style={INPUT} type="text" inputMode="numeric" placeholder="1:30" value={data.cssPace}
+            <label style={LABEL} htmlFor="onb-cssPace">{lang === 'tr' ? 'CSS TEMPOSU (DD:SS /100m)' : 'CSS PACE (MM:SS /100m)'}</label>
+            <input id="onb-cssPace" style={INPUT} type="text" inputMode="numeric" placeholder="1:30" value={data.cssPace}
               onChange={e=>set('cssPace', autoFormatMmSs(e.target.value))}
               onBlur={e=>set('cssPace', autoFormatMmSs(e.target.value, { padOnBlur: true }))}
             />
           </div>
         ) : ['Running','Triathlon','Rowing'].includes(data.sport) ? (
           <div>
-            <label style={LABEL}>{lang === 'tr' ? 'EŞİK TEMPOSU (DD:SS /km)' : 'THRESHOLD PACE (MM:SS /km)'}</label>
-            <input style={INPUT} type="text" inputMode="numeric" placeholder="4:45" value={data.ltpace}
+            <label style={LABEL} htmlFor="onb-ltpace">{lang === 'tr' ? 'EŞİK TEMPOSU (DD:SS /km)' : 'THRESHOLD PACE (MM:SS /km)'}</label>
+            <input id="onb-ltpace" style={INPUT} type="text" inputMode="numeric" placeholder="4:45" value={data.ltpace}
               onChange={e=>set('ltpace', autoFormatMmSs(e.target.value))}
               onBlur={e=>set('ltpace', autoFormatMmSs(e.target.value, { padOnBlur: true }))}
             />
           </div>
         ) : (
           <div>
-            <label style={LABEL}>{lang === 'tr' ? 'FTP (watt)' : 'FTP (watts)'}</label>
-            <input style={INPUT} type="number" inputMode="numeric" placeholder="240" value={data.ftp} onChange={e=>set('ftp',e.target.value)}/>
+            <label style={LABEL} htmlFor="onb-ftp">{lang === 'tr' ? 'FTP (watt)' : 'FTP (watts)'}</label>
+            <input id="onb-ftp" style={INPUT} type="number" inputMode="numeric" placeholder="240" value={data.ftp} onChange={e=>set('ftp',e.target.value)}/>
           </div>
         )}
       </div>
@@ -484,6 +487,16 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
   const panelRef = useRef(null)
   useFocusTrap(panelRef, { onEscape: () => { clearDraft(); onFinish(null) } })
 
+  // a11y — on each step change move focus to the new step's heading so screen
+  // readers announce the step instead of leaving focus on the stale Next button.
+  const stepContentRef = useRef(null)
+  const isFirstRender = useRef(true)
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return }
+    const heading = stepContentRef.current?.querySelector('[data-step-heading]')
+    heading?.focus()
+  }, [step])
+
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
       <div ref={panelRef} role="dialog" aria-modal="true"
@@ -536,12 +549,18 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
             <span style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'9px', color:'#888', letterSpacing:'0.1em' }}>STEP {step + 1} / {TOTAL}</span>
             <span style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'9px', color:'#ff6600' }}>{pct}%</span>
           </div>
-          <div style={{ height:'3px', background:'#e0e0e0', borderRadius:'2px', overflow:'hidden' }}>
+          <div
+            role="progressbar"
+            aria-valuenow={step + 1}
+            aria-valuemin={1}
+            aria-valuemax={TOTAL}
+            aria-label={lang === 'tr' ? `Kurulum ilerlemesi: adım ${step + 1} / ${TOTAL}` : `Setup progress: step ${step + 1} of ${TOTAL}`}
+            style={{ height:'3px', background:'#e0e0e0', borderRadius:'2px', overflow:'hidden' }}>
             <div style={{ height:'100%', width:`${pct}%`, background:'#ff6600', borderRadius:'2px', transition:'width 0.3s ease' }}/>
           </div>
         </div>
 
-        {steps[step]}
+        <div ref={stepContentRef}>{steps[step]}</div>
 
         <div style={{ display:'flex', justifyContent:'space-between', marginTop:'24px' }}>
           {step > 0

@@ -1154,8 +1154,13 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
               </>
             ) : !quickReadinessSaved ? (
               <div style={{ display: 'flex', gap: '6px', marginBottom: criticalDx ? '8px' : 0 }}>
-                {[{ e: '😴', v: 25 }, { e: '😐', v: 60 }, { e: '⚡', v: 90 }].map(({ e, v }) => (
-                  <button key={v} onClick={() => handleQuickReadiness(v)} style={{
+                {[
+                  { e: '😴', v: 25, en: 'Low readiness', tr: 'Düşük hazırlık' },
+                  { e: '😐', v: 60, en: 'Moderate readiness', tr: 'Orta hazırlık' },
+                  { e: '⚡', v: 90, en: 'High readiness', tr: 'Yüksek hazırlık' },
+                ].map(({ e, v, en, tr }) => (
+                  <button key={v} onClick={() => handleQuickReadiness(v)}
+                    aria-label={lang === 'tr' ? tr : en} style={{
                     fontFamily: MONO, fontSize: '14px',
                     padding: '4px 14px', borderRadius: '4px',
                     border: '1px solid var(--border)', background: 'var(--surface)',
@@ -2033,7 +2038,8 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
       {/* ── Orientation nudge (disappears once oriented) ──────────────────── */}
       {orientationStep && (
         <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', color: '#555', marginBottom: '12px' }}>
-          <span
+          <button
+            type="button"
             onClick={() => {
               // v9.142.0 — log_wellness routes to today (the current tab),
               // making the click a no-op while the actual "Morning Check-In"
@@ -2047,20 +2053,22 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
                 setTab(ORIENTATION_MESSAGES[orientationStep].tab)
               }
             }}
-            style={{ cursor: 'pointer', color: '#0064ff', textDecoration: 'none' }}
+            style={{ cursor: 'pointer', color: '#0064ff', textDecoration: 'none', background: 'none', border: 'none', padding: 0, font: 'inherit' }}
           >
             {ORIENTATION_MESSAGES[orientationStep][lang] || ORIENTATION_MESSAGES[orientationStep].en}
-          </span>
+          </button>
           {' '}
-          <span
+          <button
+            type="button"
+            aria-label={lang === 'tr' ? 'Bu ipucunu kapat' : 'Dismiss this tip'}
             onClick={() => {
               try { localStorage.setItem(`sporeus-oriented-${orientationStep}`, '1') } catch (e) { logger.warn('localStorage:', e.message) }
               setOrientationStep(getOrientationStep(log, profile, recovery))
             }}
-            style={{ cursor: 'pointer', color: '#444', fontSize: '9px' }}
+            style={{ cursor: 'pointer', color: 'var(--muted)', fontSize: '9px', background: 'none', border: 'none', padding: 0, font: 'inherit' }}
           >
             [done]
-          </span>
+          </button>
         </div>
       )}
 

@@ -215,6 +215,8 @@ describe('TrainingLog — external CSV import (UI)', () => {
     // Modal should render
     const dlg = await screen.findByRole('dialog')
     expect(dlg).toBeInTheDocument()
+    // a11y deep-dive: import preview is a modal dialog (focus-trapped)
+    expect(dlg).toHaveAttribute('aria-modal', 'true')
     // Format label appears inside the dialog header
     expect(dlg.textContent).toContain('TrainingPeaks')
     // Summary cards (READY, PARSED, DUPLICATES, ERRORS)

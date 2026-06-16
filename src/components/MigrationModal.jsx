@@ -12,7 +12,10 @@ const RED    = '#e03030'
 
 export default function MigrationModal({ userId, localData, onComplete, lang }) {
   const panelRef = useRef(null)
-  useFocusTrap(panelRef, { onEscape: () => phase === 'done' && onComplete() })
+  // Allow Escape to dismiss (Skip/Continue) in every non-blocking phase so a
+  // keyboard user is never trapped. Only 'running' ignores Escape — we don't
+  // interrupt an in-flight migration mid-write.
+  useFocusTrap(panelRef, { onEscape: () => phase !== 'running' && onComplete() })
   const [phase, setPhase]       = useState('prompt')  // 'prompt' | 'running' | 'done' | 'error'
   const [progress, setProgress] = useState(0)
   const [total, setTotal]       = useState(0)
