@@ -110,6 +110,13 @@ serve(withTelemetry('redeem-invite', async (req: Request) => {
     // the founder's v9.378 decision). The old `free: 3` over-entitled free coaches:
     // a free coach could fill a 3-athlete roster via invite links that bypass the
     // client gate. Aligned to 1.
+    // SOFT CAP (best-effort, NOT atomic): this count→compare→link is itself a
+    // TOCTOU — two athletes redeeming concurrently can both pass the cap and both
+    // link, overshooting the roster by one. Making it fully atomic requires a
+    // row-locking RPC over coach_athletes (out of scope for this LOW de-risk pass).
+    // Acceptable: overshoot is bounded (at most a few seats) and self-heals — the
+    // client gate + next redemption read see the true count. The single-use invite
+    // cap, by contrast, IS made atomic below via increment_invite_use().
     const ATHLETE_LIMITS: Record<string, number> = { free: 1, coach: 15, club: 999 }
     const coachTier    = coachProfile?.subscription_tier || "free"
     const athleteLimit = ATHLETE_LIMITS[coachTier] ?? 3
@@ -123,7 +130,22 @@ serve(withTelemetry('redeem-invite', async (req: Request) => {
       return fail(403, `This coach's roster is full (${athleteLimit} athletes on the ${coachTier} plan).`, "ROSTER_FULL")
     }
 
-    // ── 5. Link athlete → coach ────────────────────────────────────────────────
+    // ── 5. Atomically consume one invite use (TOCTOU fix) ──────────────────────
+    // The line-78 max_uses check above is a fast-fail for UX only — it reads a
+    // stale uses_count, so two concurrent redemptions of a single-use invite can
+    // both pass it. The AUTHORITATIVE gate is this atomic conditional UPDATE
+    // (increment_invite_use): it increments uses_count AND re-checks
+    // max_uses/expiry/revoked in one row-locked statement. The first concurrent
+    // caller wins the row and gets an id back; the loser updates 0 rows, returns a
+    // NULL id, and we reject with MAX_USES_REACHED — so the cap holds under races.
+    // We consume the use BEFORE linking so a lost race never links without a seat.
+    const { data: consumedId, error: incErr } = await admin
+      .rpc("increment_invite_use", { p_code: code.trim().toUpperCase() })
+    if (incErr) return fail(500, incErr.message, "DB_ERROR")
+    if (!consumedId)
+      return fail(409, "This invite has reached its usage limit", "MAX_USES_REACHED")
+
+    // ── 6. Link athlete → coach ────────────────────────────────────────────────
     const now = new Date().toISOString()
 
     const { error: linkErr } = await admin
@@ -134,17 +156,11 @@ serve(withTelemetry('redeem-invite', async (req: Request) => {
       )
     if (linkErr) return fail(500, linkErr.message, "LINK_ERROR")
 
-    // ── 6. Update profiles.coach_id for fast lookup ────────────────────────────
+    // ── 7. Update profiles.coach_id for fast lookup ────────────────────────────
     await admin
       .from("profiles")
       .update({ coach_id: invite.coach_id, linked_via_code: code.trim().toUpperCase(), linked_at: now })
       .eq("id", athleteId)
-
-    // ── 7. Increment uses_count atomically ────────────────────────────────────
-    await admin
-      .from("coach_invites")
-      .update({ uses_count: invite.uses_count + 1 })
-      .eq("id", invite.id)
 
     return ok({
       success:     true,

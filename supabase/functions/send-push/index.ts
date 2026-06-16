@@ -110,6 +110,17 @@ serve(withTelemetry('send-push', async (req: Request) => {
   }
 
   // ── Dedupe check ──────────────────────────────────────────────────────────────
+  // NOTE on the race: this is check-then-act (SELECT a recent non-failed row, then
+  // INSERT below). It is NOT fully atomic — two concurrent calls with the same
+  // dedupe_key can both miss the SELECT and both send. We do NOT use a permanent
+  // UNIQUE index on dedupe_key because both callers use WINDOWED dedupe (comment:id
+  // window 1h, checkin window 20h) and the same key legitimately recurs across
+  // windows; a permanent unique index would change those semantics. Instead we
+  // INSERT the log row IMMEDIATELY after the check passes (before the send loop) to
+  // NARROW the race window from "check → send all subs → insert" down to
+  // "check → insert". This narrows but does NOT fully close the race — full
+  // atomicity would need an advisory lock keyed on the dedupe_key, or switching to
+  // permanent per-key dedupe. Acceptable for a LOW windowed-dedupe path.
   const dedupeKey   = reqBody.dedupe_key
   const windowHours = reqBody.dedupe_window_hours ?? 24
 
@@ -135,6 +146,27 @@ serve(withTelemetry('send-push', async (req: Request) => {
     }
   }
 
+  // ── Reserve the dedupe slot EARLY (narrows the windowed-dedupe race) ───────────
+  // Insert the log row now (status 'pending') so a concurrent same-key call that
+  // runs its dedupe SELECT after this commit sees it and short-circuits. The final
+  // delivery_status is patched onto THIS row after the send loop — we do NOT insert
+  // a second row at the end.
+  let logRowId: string | number | null = null
+  {
+    const { data: logRow } = await admin
+      .from("notification_log")
+      .insert({
+        user_id:         targetId,
+        kind,
+        dedupe_key:      dedupeKey ?? null,
+        payload:         { title, body: msgBody },
+        delivery_status: "pending",
+      })
+      .select("id")
+      .maybeSingle()
+    logRowId = logRow?.id ?? null
+  }
+
   // ── Load subscriptions ────────────────────────────────────────────────────────
   const { data: subs } = await admin
     .from("push_subscriptions")
@@ -142,6 +174,14 @@ serve(withTelemetry('send-push', async (req: Request) => {
     .eq("user_id", targetId)
 
   if (!subs?.length) {
+    // No devices to push to — finalize the reserved log row so it doesn't linger
+    // as 'pending'. The dedupe reservation still stands (windowed), which is fine:
+    // re-sending the same key to a user with no subs is a no-op anyway.
+    if (logRowId !== null) {
+      await admin.from("notification_log")
+        .update({ delivery_status: "no_subscription" })
+        .eq("id", logRowId)
+    }
     return ok({ sent: 0, total: 0, message: "No subscriptions for user" })
   }
 
@@ -196,15 +236,24 @@ serve(withTelemetry('send-push', async (req: Request) => {
   }
   if (sent > 0) deliveryStatus = "delivered"
 
-  // ── Insert notification_log row ───────────────────────────────────────────────
-  await admin.from("notification_log").insert({
-    user_id:         targetId,
-    kind,
-    dedupe_key:      dedupeKey ?? null,
-    payload:         { title, body: msgBody },
-    delivery_status: deliveryStatus,
-    error:           errorMsg ?? null,
-  })
+  // ── Finalize the reserved notification_log row ─────────────────────────────────
+  // We do NOT insert a second row here — the row was reserved early (status
+  // 'pending') to narrow the dedupe race. Patch its final delivery_status/error.
+  // Fallback to an insert only if the early reservation somehow failed.
+  if (logRowId !== null) {
+    await admin.from("notification_log")
+      .update({ delivery_status: deliveryStatus, error: errorMsg ?? null })
+      .eq("id", logRowId)
+  } else {
+    await admin.from("notification_log").insert({
+      user_id:         targetId,
+      kind,
+      dedupe_key:      dedupeKey ?? null,
+      payload:         { title, body: msgBody },
+      delivery_status: deliveryStatus,
+      error:           errorMsg ?? null,
+    })
+  }
 
   return ok({
     sent,

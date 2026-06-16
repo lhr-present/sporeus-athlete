@@ -2,6 +2,30 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.428.0 — 2026-06-16 — Edge-fn de-risk + PWA WebView guard (+ branching cost fix)
+
+PWA (client, ships now):
+- Push toggle no longer fails SILENTLY in an embedded WebView / non-PWA context.
+  pushNotify.js gained isEmbeddedWebView() + getPushUnsupportedReason() (NO_PUSH_API /
+  WEBVIEW); subscribePush throws a clear bilingual message, and NotifReminders shows an
+  "unavailable here" block instead of a dead Enable button. (App is PWA-only.)
+
+Edge fns (in repo, DEPLOY-GATED — operator `supabase functions deploy`):
+- redeem-invite: single-use TOCTOU fixed — uses_count now incremented via the atomic
+  SECURITY DEFINER RPC increment_invite_use (migration 20260631, APPLIED to prod) which
+  enforces max_uses/expiry/revoked in one row-locked UPDATE; "no row" → MAX_USES_REACHED.
+  (Roster-count cap left as a documented best-effort soft cap.) DEPLOY: apply the migration
+  (done) BEFORE deploying redeem-invite or the RPC 404s.
+- dodo-webhook: added ±300s Stripe-signature timestamp tolerance (replay hardening;
+  state already protected by event_id idempotency).
+- send-push: narrowed the dedupe race (reserve the notification_log row right after the
+  dedupe check, finalize at the end) without changing the windowed-dedupe semantics.
+
+Ops (already shipped in the prior chore PR, noted here for the record): deleted 23 dead
+Supabase preview branches + disabled the failing per-PR/nightly branch CI → stops the
+Branching Compute Hours overage. See docs/ops/cost-surface.md.
+DEPENDS ON: increment_invite_use RPC (service_role-only); coach_invites schema.
+
 ## v9.427.0 — 2026-06-16 — Deferred backlog: billing capture, contract-test integrity, offline polish
 
 Working through the deferred backlog (in order). All feasible-from-here items; the rest
