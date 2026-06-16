@@ -32,10 +32,16 @@ export default function Calendar({ log, setLog, onEdit }) {
 
   const planByDate = {}
   if (plan?.weeks && plan.generatedAt) {
+    // v9.x — Place each planned session on its real weekday (ses.day = Mon..Sun).
+    // Adaptive/preset plans compress to N active sessions, so positioning by array
+    // index rendered sessions on the wrong days. Fall back to the array index only
+    // when ses.day is absent/unrecognized.
+    const DAY_OFFSET = { Mon:0, Tue:1, Wed:2, Thu:3, Fri:4, Sat:5, Sun:6 }
     const base = new Date(plan.generatedAt)
     plan.weeks.forEach((w, wi) => {
       w.sessions.forEach((ses, di) => {
-        const d = new Date(base); d.setUTCDate(d.getUTCDate() + wi * 7 + di)
+        const off = DAY_OFFSET[ses.day] != null ? DAY_OFFSET[ses.day] : di
+        const d = new Date(base); d.setUTCDate(d.getUTCDate() + wi * 7 + off)
         planByDate[d.toISOString().slice(0,10)] = ses
       })
     })

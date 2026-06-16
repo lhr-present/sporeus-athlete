@@ -738,12 +738,18 @@ function Step5({ form, result, onRestart, log: _log, setLog }) {
         </button>
         {showCompare && (() => {
           const planA = bestPlan
+          // v9.x — optimizer destructures minWeeklyTSS/maxWeeklyTSS (simulation.js);
+          // the old minTSS/maxTSS keys were ignored → Plan B used 30..600 defaults.
+          // Mirror Step 4's real generator (same key names + recoveryWeeks).
+          const weeksB = form.weeks || 8
+          const recoveryWeeksB = Array.from({ length: Math.floor(weeksB / 4) }, (_, i) => (i + 1) * 4 - 1)
           const resultB = monteCarloOptimizer({
-            weeks:       form.weeks || 8,
-            minTSS:      form.currentTSS || 200,
-            maxTSS:      form.peakTSS || 500,
-            startCTL:    form.startCTL || 0,
-            startATL:    form.startATL || 0,
+            weeks:        weeksB,
+            minWeeklyTSS: form.currentTSS || 200,
+            maxWeeklyTSS: form.peakTSS || 500,
+            recoveryWeeks: recoveryWeeksB,
+            startCTL:     form.startCTL || 0,
+            startATL:     form.startATL || 0,
           }, 100)
           const planB = resultB.bestPlan
 

@@ -172,6 +172,22 @@ export default function SessionLogger({
       }
       return next
     })
+    // v9.x — cuesOpen and restTimer are also keyed by rowIdx; without the same
+    // index-shift they pointed at the wrong card after deleting an earlier exercise.
+    setCuesOpen(prev => {
+      const next = {}
+      for (const key of Object.keys(prev)) {
+        const ri = Number(key)
+        if (ri === rowIdx) continue          // deleted row — drop
+        next[ri > rowIdx ? ri - 1 : ri] = prev[key]
+      }
+      return next
+    })
+    setRestTimer(prev => {
+      if (!prev) return prev
+      if (prev.rowIdx === rowIdx) return null                 // timer was on deleted row
+      return prev.rowIdx > rowIdx ? { ...prev, rowIdx: prev.rowIdx - 1 } : prev
+    })
   }
 
   function handleSave() {

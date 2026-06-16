@@ -62,7 +62,9 @@ export default function InjuryTracker() {
   const saveEntry = () => {
     if (!selectedZone) return
     const entry = {
-      id: Date.now(),
+      // v9.x — Date.now() collides on same-ms saves → deleteEntry removes both +
+      // duplicate React keys. Use a unique id.
+      id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
       date: today,
       zone: selectedZone.id,
       level: form.level,

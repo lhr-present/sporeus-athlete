@@ -30,10 +30,21 @@ export default function Recovery() {
   const [form, setForm] = useState(todayEntry ? { ...defVals, ...todayEntry } : { ...defVals })
 
   useEffect(() => {
-    const e = entries.find(x=>x.date===today)
-    setForm(e ? { ...defVals, ...e } : { ...defVals })
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- runs on date change only; defVals and entries are stable refs
-  }, [today])
+    // v9.x — On a signed-in cold load `entries` is empty, so the form starts at
+    // defaults; `useRecovery` then hydrates today's entry async. The effect must
+    // re-run when todayEntry appears so the form reflects the real data instead of
+    // staying blank (Save would otherwise clobber the entry with defaults).
+    // Guard: only re-init from a freshly-arrived entry while the form is still at
+    // defaults (user hasn't started editing) so we never discard an in-progress edit.
+    if (todayEntry) {
+      const atDefaults = WELLNESS_FIELDS.every(f => form[f.key] === defVals[f.key]) &&
+        !form.sleepHrs && !form.bedtime && !form.wake && !form.lactate && !form.restingHR && !form.hrv
+      if (atDefaults) setForm({ ...defVals, ...todayEntry })
+    } else {
+      setForm({ ...defVals })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- re-init on date change or when today's entry hydrates; form intentionally read (not a dep) to avoid clobbering edits
+  }, [today, todayEntry])
 
   // Auto-calculate sleep hours from bed/wake times
   const calcSleepHrs = (bed, wk) => {

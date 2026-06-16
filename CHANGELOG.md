@@ -2,6 +2,46 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.421.0 — 2026-06-16 — Deep-dive round 2: component/i18n/billing/edge fixes
+
+Second 6-dimension deep dive (edge-fn logic, billing/tier, i18n, component fleet, plan
+generator, live RLS). Fixes below; full ledger + deferred items:
+docs/audits/deep_dive_2026_06_16_round2.md.
+
+CRITICAL/HIGH (client):
+- TrainingLog: edit pencil corrupted the WRONG session when the filter box was active
+  (reverse-index vs filtered list). Now edits the actual row. +tests.
+- Recovery: async hydration left the form blank, so Save clobbered today's real
+  wellness entry with defaults (data loss). Re-inits from the hydrated entry. +tests.
+- Calendar: planned sessions placed by array index → adaptive/preset plans showed on
+  the wrong weekdays. Now placed by ses.day. +tests.
+
+MED/LOW (client): InjuryTracker id collision (UUID); ZoneCalc pace empty-input bogus
+0:00 zones; SessionHistory expand-by-id; SportProgramBuilder compare param names
+(minWeeklyTSS); ReportsTab null expires_at; SessionLogger cue/timer reindex;
+CoachSquadView compare-set prune.
+
+i18n: the entire PLAN tab (YearlyPlan + WeekBuilder) was English regardless of language
+— fully localized; +3 EN-only strings (ZoneCalc/Protocols/Profile). LABELS table itself
+verified clean (854/854 EN/TR parity).
+
+Server (applied + verified on prod):
+- teams: added the missing tier gate — multi_team was creatable by free coaches via
+  direct REST insert (mig 20260626; WITH CHECK get_my_tier() IN coach/club).
+- apply_subscription_event: subscription.updated now handles Stripe's
+  customer.subscription.updated + nested data.object period-end (mig 20260627) —
+  Stripe renewals previously never advanced the period end.
+
+Edge fns (in repo, DEPLOY-GATED): ai-proxy uses status-aware tier_for_user (was raw
+column → ~24h stale paid access); redeem-invite free roster limit 3→1 (matched the
+client/founder source of truth); nightly-batch undefined serviceKey (daily ReferenceError).
+
+DEFERRED — founder decision (changes generated plans): default generatePlan ignores goal
+(5K==marathon); adaptive deload-heavier-than-prior; taper-exceeds-peak; legacy plan
+length off-by-one. Plus: redeem-invite TOCTOU, send-push dedupe, dodo replay window,
+pgtap-in-public. See audit doc.
+DEPENDS ON: get_my_tier/tier_for_user RPCs; _shared/serviceAuth.
+
 ## v9.420.0 — 2026-06-16 — Close coach_invites enumeration leak (preview RPC)
 
 Resolves the v9.419 deferred security item. The coach_invites SELECT policy's

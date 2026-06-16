@@ -81,6 +81,7 @@ function HeatModule() {
 }
 
 function AltitudeModule() {
+  const { lang } = useContext(LangCtx)
   const [alt, setAlt] = useState('2000')
   const [days, setDays] = useState('0')
   const [vo2max, setVo2max] = useState('55')
@@ -135,7 +136,7 @@ function AltitudeModule() {
         <div style={{ flex:'1 1 100px', background:'var(--card-bg)', border:'1px solid var(--border)', borderLeft:'3px solid #f5c542', borderRadius:'5px', padding:'10px 12px' }}>
           <div style={{ ...S.mono, fontSize:'9px', color:'#888' }}>PACE PENALTY</div>
           <div style={{ ...S.mono, fontSize:'22px', fontWeight:600, color:'#f5c542' }}>+{paceAdj}%</div>
-          <div style={{ ...S.mono, fontSize:'9px', color:'#aaa' }}>Slow down at altitude</div>
+          <div style={{ ...S.mono, fontSize:'9px', color:'#aaa' }}>{lang === 'tr' ? 'Yükseklikte yavaşla' : 'Slow down at altitude'}</div>
         </div>
       </div>
       <div style={{ ...S.mono, fontSize:'11px', color:'#5bc25b', marginTop:'12px', padding:'8px 10px', background:'#5bc25b11', borderRadius:'4px', lineHeight:1.6 }}>
@@ -231,8 +232,10 @@ export default function ZoneCalc() {
     } else if (mode==='row') {
       setZones(rowZones(rowT2k))
     } else {
-      const [m,s]=threshPace.split(':').map(Number)
-      if (!isNaN(m)) setZones(paceZones(m+(s||0)/60))
+      // v9.x — empty/garbage input parsed to 0 → five bogus "0:00 /km" zones.
+      // Use the same parseTimeSec helper as swim/row and require a real value.
+      const sec = parseTimeSec(threshPace)
+      if (!isNaN(sec) && sec > 0) setZones(paceZones(sec/60))
     }
   }
 

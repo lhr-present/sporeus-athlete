@@ -92,6 +92,61 @@ describe('TrainingLog — delete confirm', () => {
   })
 })
 
+// ── Edit while filtered (CRITICAL: edit the clicked row, not a reverse-mapped one) ──
+describe('TrainingLog — edit respects active filter', () => {
+  // Production log ids are numbers (Date.now()); sanitizeLogEntry only preserves
+  // numeric ids, so use numeric ids here to mirror real data.
+  it('editing a filtered row loads THAT row into the form (not an index-mapped one)', () => {
+    const log = [
+      { id: 1001, date: '2026-04-01', type: 'Easy Run', duration: 30, tss: 40, rpe: 4, zones: [], notes: 'alpha', source: 'manual' },
+      { id: 1002, date: '2026-04-02', type: 'Tempo',    duration: 45, tss: 70, rpe: 7, zones: [], notes: 'bravo', source: 'manual' },
+      { id: 1003, date: '2026-04-03', type: 'Long Run', duration: 90, tss: 120, rpe: 6, zones: [], notes: 'charlie', source: 'manual' },
+    ]
+    const setLog = vi.fn()
+    const { container } = renderWithLang(
+      <TrainingLog log={log} setLog={setLog} prefill={null} clearPrefill={noop} />
+    )
+
+    // Filter to a single row that is NOT the most recent — index-reverse-mapping
+    // would have loaded the wrong session here.
+    const filter = screen.getByLabelText(/Filter training log/i)
+    fireEvent.change(filter, { target: { value: 'bravo' } })
+    expect(screen.getByText('2026-04-02')).toBeInTheDocument()
+    expect(screen.queryByText('2026-04-01')).toBeNull()
+    expect(screen.queryByText('2026-04-03')).toBeNull()
+
+    // Click the (single) edit button in the filtered list.
+    fireEvent.click(screen.getByLabelText('Edit session'))
+
+    // The date input (form.date) must reflect the clicked row 'b', not row 'a' or 'c'.
+    const dateInput = container.querySelector('input[type="date"]')
+    expect(dateInput.value).toBe('2026-04-02')
+  })
+
+  it('updating a filtered row saves to THAT row id', () => {
+    const log = [
+      { id: 1001, date: '2026-04-01', type: 'Easy Run', duration: 30, tss: 40, rpe: 4, zones: [], notes: 'alpha', source: 'manual' },
+      { id: 1002, date: '2026-04-02', type: 'Tempo',    duration: 45, tss: 70, rpe: 7, zones: [], notes: 'bravo', source: 'manual' },
+    ]
+    const setLog = vi.fn()
+    renderWithLang(<TrainingLog log={log} setLog={setLog} prefill={null} clearPrefill={noop} />)
+
+    fireEvent.change(screen.getByLabelText(/Filter training log/i), { target: { value: 'bravo' } })
+    fireEvent.click(screen.getByLabelText('Edit session'))
+
+    // Save (button becomes "Update session" while editing).
+    fireEvent.click(screen.getByText(/Update session/i))
+    expect(setLog).toHaveBeenCalled()
+    const updated = setLog.mock.calls[setLog.mock.calls.length - 1][0]
+    // Row 1001 must be untouched; the edited row (1002) must be the one replaced.
+    const a = updated.find(e => e.id === 1001)
+    const b = updated.find(e => e.id === 1002)
+    expect(a.notes).toBe('alpha')
+    expect(b).toBeTruthy()
+    expect(b.date).toBe('2026-04-02')
+  })
+})
+
 // ── LIST / CAL toggle ─────────────────────────────────────────────────────────
 describe('TrainingLog — LIST/CAL toggle', () => {
   it('≡ LIST and ⊞ CAL buttons are present with entries', () => {
