@@ -5,7 +5,7 @@ import { useData } from '../../contexts/DataContext.jsx'
 import { isSupabaseReady, supabase } from '../../lib/supabase.js'
 import {
   getPushState, subscribePush, unsubscribePush, sendTestNotification,
-  checkRaceCountdowns,
+  checkRaceCountdowns, getPushUnsupportedReason,
 } from '../../lib/pushNotify.js'
 
 const DEFAULT_NOTIF_PREFS = {
@@ -35,6 +35,10 @@ export default function NotifReminders({ authUser }) {
   const [showRecent, setShowRecent]   = useState(false)
 
   const supported = typeof window !== 'undefined' && 'Notification' in window
+  // Push may be unavailable even when Notification exists (e.g. opened inside an
+  // in-app/WebView browser where web push silently fails). Surface a clear reason
+  // instead of showing an "Enable" toggle that does nothing.
+  const unsupportedReason = getPushUnsupportedReason()
 
   // ── Notification preferences from profile ──────────────────────────────────
   const notifPrefs     = profile?.notifications       || DEFAULT_NOTIF_PREFS
@@ -132,8 +136,20 @@ export default function NotifReminders({ authUser }) {
 
   return (
     <div>
+      {/* ── Unsupported context (WebView / no push API) ───────────────────────── */}
+      {(pushState === 'unsupported' || unsupportedReason) && (
+        <div style={{ marginBottom: '16px', padding: '10px 12px', background: 'var(--surface)', borderRadius: '4px', borderLeft: '3px solid #ffa500' }}>
+          <div style={{ ...S.mono, fontSize: '11px', fontWeight: 600, color: '#ffa500', marginBottom: '4px' }}>
+            Push notifications unavailable here
+          </div>
+          <div style={{ ...S.mono, fontSize: '10px', color: '#888', lineHeight: 1.6 }}>
+            {unsupportedReason?.en || 'This browser does not support web push notifications.'}
+          </div>
+        </div>
+      )}
+
       {/* ── Push on/off toggle ─────────────────────────────────────────────── */}
-      {pushState !== 'unsupported' && (
+      {pushState !== 'unsupported' && !unsupportedReason && (
         <div style={{ marginBottom: '16px', padding: '10px 12px', background: 'var(--surface)', borderRadius: '4px', borderLeft: `3px solid ${pushActive ? '#5bc25b' : '#444'}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
             <button

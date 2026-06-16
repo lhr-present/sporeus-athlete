@@ -18,6 +18,49 @@ export function isPushSupported() {
   return 'serviceWorker' in navigator && 'PushManager' in window
 }
 
+// ── WebView / native-shell guard (PWA-only de-risk) ───────────────────────────
+// Sporeus ships as a PWA only — there is no native (Capacitor/Cordova) shell.
+// But if the page is loaded inside an embedded WebView (a Capacitor/Cordova
+// wrapper, an in-app browser like the Instagram/Facebook/LinkedIn WebView, etc.)
+// the standalone display-mode check can read as "installed" while Web Push does
+// NOT actually work there — getServiceWorkerRegistration().pushManager.subscribe()
+// either rejects or silently no-ops. Detect that context so the UI can say
+// "unsupported here" instead of showing "Enable" and failing silently.
+export function isEmbeddedWebView(ua = _DEFAULT_UA()) {
+  if (!ua) return false
+  // Capacitor/Cordova native shells.
+  if (typeof window !== 'undefined' && (window.Capacitor || window.cordova)) return true
+  // Common in-app browser / WebView UA markers.
+  // Android System WebView: "; wv)". iOS in-app browsers lack "Safari" token.
+  if (/; wv\)/.test(ua)) return true
+  if (/\b(FBAN|FBAV|FB_IAB|Instagram|Line|MicroMessenger|GSA)\b/i.test(ua)) return true
+  // iOS WKWebView in-app browsers report iPhone/iPad but omit the Safari token
+  // (real Mobile Safari always includes it). Don't flag desktop or Android.
+  if (/iPhone|iPad|iPod/i.test(ua) && /AppleWebKit/i.test(ua) && !/Safari/i.test(ua)) return true
+  return false
+}
+
+// Returns null when push is usable in this context, or a code+bilingual-message
+// object explaining why it is not. The UI toggle + subscribePush both consult
+// this so an unsupported context shows a clear message instead of silently failing.
+export function getPushUnsupportedReason() {
+  if (!isPushSupported()) {
+    return {
+      code: 'NO_PUSH_API',
+      en: 'This browser does not support web push notifications.',
+      tr: 'Bu tarayıcı web push bildirimlerini desteklemiyor.',
+    }
+  }
+  if (isEmbeddedWebView()) {
+    return {
+      code: 'WEBVIEW',
+      en: 'Push notifications don\'t work inside an in-app browser. Open Sporeus in your normal browser (Safari/Chrome) — or add it to your home screen — and enable notifications there.',
+      tr: 'Push bildirimleri uygulama içi tarayıcıda çalışmaz. Sporeus\'u normal tarayıcında (Safari/Chrome) aç — veya ana ekrana ekle — ve bildirimleri oradan etkinleştir.',
+    }
+  }
+  return null
+}
+
 // ── v9.176.0 — iOS PWA-install detection ─────────────────────────────────────
 //
 // Web Push on iOS requires (a) iOS 16.4+ and (b) the site added to the home
@@ -75,7 +118,7 @@ export function getPermissionStatus() {
 }
 
 export async function getPushState() {
-  if (!isPushSupported()) return 'unsupported'
+  if (getPushUnsupportedReason()) return 'unsupported'
   const perm = Notification.permission
   if (perm === 'denied') return 'denied'
   const reg = await navigator.serviceWorker.ready
@@ -84,7 +127,8 @@ export async function getPushState() {
 }
 
 export async function subscribePush(userId) {
-  if (!isPushSupported()) throw new Error('Push not supported')
+  const unsupported = getPushUnsupportedReason()
+  if (unsupported) throw new Error(unsupported.en)
   if (!VAPID_PUBLIC_KEY) throw new Error('VITE_VAPID_PUBLIC_KEY not set')
 
   const perm = await Notification.requestPermission()

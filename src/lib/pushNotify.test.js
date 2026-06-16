@@ -8,6 +8,8 @@ import {
   isIOS,
   isPWAStandalone,
   getIOSInstallHint,
+  isEmbeddedWebView,
+  getPushUnsupportedReason,
 } from './pushNotify.js'
 
 // ── localStorage stub (node env has no localStorage) ─────────────────────────
@@ -289,6 +291,67 @@ describe('isPWAStandalone', () => {
     vi.stubGlobal('navigator', { userAgent: '' })
     expect(isPWAStandalone()).toBe(false)
     vi.unstubAllGlobals()
+  })
+})
+
+// ── WebView / unsupported-context guard ──────────────────────────────────────
+
+describe('isEmbeddedWebView', () => {
+  afterEach(() => { vi.unstubAllGlobals(); vi.stubGlobal('localStorage', lsMock) })
+
+  it('returns false for normal Mobile Safari', () => {
+    expect(isEmbeddedWebView('Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1')).toBe(false)
+  })
+  it('returns false for desktop Chrome', () => {
+    expect(isEmbeddedWebView('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36')).toBe(false)
+  })
+  it('detects Android System WebView ("; wv)")', () => {
+    expect(isEmbeddedWebView('Mozilla/5.0 (Linux; Android 14; Pixel 8; wv) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36')).toBe(true)
+  })
+  it('detects Facebook in-app browser (FBAN)', () => {
+    expect(isEmbeddedWebView('Mozilla/5.0 (iPhone; CPU iPhone OS 17_4) AppleWebKit/605.1.15 FBAN/FBIOS;FBAV/450')).toBe(true)
+  })
+  it('detects Instagram in-app browser', () => {
+    expect(isEmbeddedWebView('Mozilla/5.0 (iPhone; CPU iPhone OS 17_4) AppleWebKit/605.1.15 Instagram 300.0')).toBe(true)
+  })
+  it('detects iOS WKWebView (iPhone UA missing Safari token)', () => {
+    expect(isEmbeddedWebView('Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148')).toBe(true)
+  })
+  it('detects Capacitor native shell via window.Capacitor', () => {
+    vi.stubGlobal('window', { Capacitor: {} })
+    expect(isEmbeddedWebView('Mozilla/5.0 (Linux; Android 14)')).toBe(true)
+  })
+  it('returns false for empty UA', () => {
+    expect(isEmbeddedWebView('')).toBe(false)
+  })
+})
+
+describe('getPushUnsupportedReason', () => {
+  afterEach(() => { vi.unstubAllGlobals(); vi.stubGlobal('localStorage', lsMock) })
+
+  it('returns NO_PUSH_API when the push API is missing', () => {
+    vi.stubGlobal('navigator', {})
+    vi.stubGlobal('window', {})
+    const r = getPushUnsupportedReason()
+    expect(r).not.toBeNull()
+    expect(r.code).toBe('NO_PUSH_API')
+    expect(r.tr).toBeTruthy()
+  })
+
+  it('returns WEBVIEW when push API exists but context is an in-app browser', () => {
+    vi.stubGlobal('navigator', { serviceWorker: {}, userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8; wv) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36' })
+    vi.stubGlobal('window', { PushManager: function PushManager() {} })
+    const r = getPushUnsupportedReason()
+    expect(r).not.toBeNull()
+    expect(r.code).toBe('WEBVIEW')
+    expect(r.en).toMatch(/in-app browser/i)
+    expect(r.tr).toBeTruthy()
+  })
+
+  it('returns null in a normal browser with push support', () => {
+    vi.stubGlobal('navigator', { serviceWorker: {}, userAgent: 'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 Chrome/120 Safari/537.36' })
+    vi.stubGlobal('window', { PushManager: function PushManager() {}, Capacitor: undefined, cordova: undefined })
+    expect(getPushUnsupportedReason()).toBeNull()
   })
 })
 

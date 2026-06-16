@@ -71,6 +71,17 @@ serve(async (req) => {
     const stripeSig = req.headers.get('stripe-signature') ?? ''
     const sigHash   = stripeSig.split(',').find(s => s.startsWith('v1='))?.slice(3) ?? ''
     const tsStr     = stripeSig.split(',').find(s => s.startsWith('t='))?.slice(2) ?? ''
+
+    // Replay hardening (defense-in-depth): reject signatures whose timestamp is
+    // outside a ±5-minute tolerance. event_id idempotency already prevents state
+    // corruption from replays, so this is belt-and-suspenders — but it stops an
+    // attacker from re-submitting an old, still-validly-signed body indefinitely.
+    const ts = parseInt(tsStr, 10)
+    if (!Number.isFinite(ts) || Math.abs(Math.floor(Date.now() / 1000) - ts) > 300) {
+      console.warn(JSON.stringify({ fn: 'dodo-webhook', status: 'stale_sig', provider: 'stripe' }))
+      return json({ error: 'stale signature' }, 400)
+    }
+
     valid    = await verifyHMAC(`${tsStr}.${body}`, sigHash, STRIPE_SECRET)
     provider = 'stripe'
   }
