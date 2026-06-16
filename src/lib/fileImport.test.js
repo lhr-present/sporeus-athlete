@@ -1,6 +1,28 @@
 import { describe, it, expect } from 'vitest'
 import { parseBulkCSV, deduplicateByDate, parseConcept2CSV } from './fileImport.js'
 
+// ── splitCSVLine (via parseBulkCSV) — escaped-quote `""` handling ──────────────
+describe('parseBulkCSV — RFC4180 escaped quotes in notes', () => {
+  it('round-trips a doubled-quote `""` to a single literal `"`', () => {
+    const csv = [
+      'date,type,duration_min,notes',
+      '2026-04-01,Run,60,"he said ""hi"" today"',
+    ].join('\n')
+    const result = parseBulkCSV(csv)
+    expect(result).toHaveLength(1)
+    expect(result[0].notes).toBe('he said "hi" today')
+  })
+
+  it('keeps embedded commas inside quoted fields', () => {
+    const csv = [
+      'date,type,duration_min,notes',
+      '2026-04-01,Run,60,"long, steady, aerobic"',
+    ].join('\n')
+    const result = parseBulkCSV(csv)
+    expect(result[0].notes).toBe('long, steady, aerobic')
+  })
+})
+
 // ── parseBulkCSV ──────────────────────────────────────────────────────────────
 
 describe('parseBulkCSV — valid rows', () => {
@@ -99,10 +121,10 @@ describe('parseBulkCSV — handles BOM prefix (Excel exports)', () => {
 // ── deduplicateByDate ─────────────────────────────────────────────────────────
 
 describe('deduplicateByDate — skips duplicates', () => {
-  it('skips incoming entry if existing has same date AND type', () => {
-    const existing = [{ date:'2026-04-01', type:'Run' }]
+  it('skips incoming entry if existing has same date AND type AND duration within ±5min', () => {
+    const existing = [{ date:'2026-04-01', type:'Run', durationMin:60 }]
     const incoming = [
-      { date:'2026-04-01', type:'Run', durationMin:60 },
+      { date:'2026-04-01', type:'Run', durationMin:62 },  // within tolerance — same activity, skip
       { date:'2026-04-02', type:'Run', durationMin:45 },
     ]
     const result = deduplicateByDate(existing, incoming)
@@ -113,10 +135,10 @@ describe('deduplicateByDate — skips duplicates', () => {
 
 describe('deduplicateByDate — keeps same-date different-type entries', () => {
   it('allows two different sessions on same date', () => {
-    const existing = [{ date:'2026-04-01', type:'Run' }]
+    const existing = [{ date:'2026-04-01', type:'Run', durationMin:60 }]
     const incoming = [
       { date:'2026-04-01', type:'Ride', durationMin:90 },  // different type — keep
-      { date:'2026-04-01', type:'Run',  durationMin:60 },  // same type — skip
+      { date:'2026-04-01', type:'Run',  durationMin:60 },  // same type+duration — skip
     ]
     const result = deduplicateByDate(existing, incoming)
     expect(result).toHaveLength(1)
@@ -130,6 +152,48 @@ describe('deduplicateByDate — keeps same-date different-type entries', () => {
     ]
     expect(deduplicateByDate([], incoming)).toHaveLength(2)
     expect(deduplicateByDate(null, incoming)).toHaveLength(2)
+  })
+})
+
+// HIGH — data-loss regression: two distinct same-day SAME-type sessions (e.g.
+// AM intervals + PM recovery run) must both survive. The old `date|type` key
+// collapsed them into one, silently dropping the genuinely-new 2nd session.
+describe('deduplicateByDate — keeps two distinct same-day same-type sessions', () => {
+  it('keeps an AM intervals run and a PM recovery run on the same day (different durations)', () => {
+    const existing = []
+    const incoming = [
+      { date:'2026-04-01', type:'Run', durationMin:75, tss:90 },  // AM intervals
+      { date:'2026-04-01', type:'Run', durationMin:35, tss:30 },  // PM recovery
+    ]
+    const result = deduplicateByDate(existing, incoming)
+    expect(result).toHaveLength(2)
+  })
+
+  it('keeps a distinct 2nd same-type session against an existing logged one', () => {
+    const existing = [{ date:'2026-04-01', type:'Run', durationMin:75 }]  // already-logged AM
+    const incoming = [
+      { date:'2026-04-01', type:'Run', durationMin:75 },  // re-import of AM — skip
+      { date:'2026-04-01', type:'Run', durationMin:35 },  // genuinely new PM — keep
+    ]
+    const result = deduplicateByDate(existing, incoming)
+    expect(result).toHaveLength(1)
+    expect(result[0].durationMin).toBe(35)
+  })
+
+  it('still dedups a true re-import of the same activity (duration within tolerance)', () => {
+    const existing = [{ date:'2026-04-01', type:'Ride', durationMin:120 }]
+    const incoming = [{ date:'2026-04-01', type:'Ride', durationMin:121 }]  // ±1min — same activity
+    const result = deduplicateByDate(existing, incoming)
+    expect(result).toHaveLength(0)
+  })
+
+  it('de-duplicates near-identical rows within a single incoming batch', () => {
+    const incoming = [
+      { date:'2026-04-01', type:'Swim', durationMin:45 },
+      { date:'2026-04-01', type:'Swim', durationMin:46 },  // within tolerance of the first — drop
+    ]
+    const result = deduplicateByDate([], incoming)
+    expect(result).toHaveLength(1)
   })
 })
 

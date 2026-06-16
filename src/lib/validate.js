@@ -122,6 +122,98 @@ export function sanitizeLogEntry(e) {
   return result
 }
 
+/**
+ * @typedef {Object} RecoveryEntry
+ * @property {string} date - ISO date YYYY-MM-DD
+ * @property {number} [score] - readiness score 0–100
+ * @property {number} [hrv] - rMSSD (ms), numeric (DB column numeric(6,2))
+ * @property {number} [restingHR] - resting heart rate bpm
+ * @property {number} [sleepHrs] - sleep duration hours
+ * @property {number} [lactate] - blood lactate mmol/L
+ * @property {number} [sleep] - sleep quality 1–5
+ * @property {number} [energy] - energy 1–5
+ * @property {number} [soreness] - soreness 1–5
+ * @property {number} [mood] - mood 1–5
+ * @property {number} [stress] - stress 1–5
+ */
+
+/**
+ * Sanitize a recovery / wellness entry before persistence.
+ *
+ * The recovery write path historically bypassed sanitization, so HRV was
+ * stored as a STRING (`String(Math.round(rmssd))`) and numeric fields were
+ * unclamped. Three HRV dashboard cards (HRVAlertCard, HRVSummaryCard,
+ * hrvAutonomicBalance) gate on `typeof e.hrv === 'number'`, so a string hrv
+ * silently killed them for local/guest users. This mirrors the
+ * sanitizeLogEntry style and makes "hrv is a NUMBER" the storage contract
+ * (the DB column is numeric(6,2); dataMigration.js reads it via parseFloat).
+ *
+ * Number.isFinite (NOT isNaN) so Infinity from a bad import can't leak.
+ * Unknown fields (rmssd, lnRMSSD, dfaAlpha1, bedtime, wake, source,
+ * idempotency_key, hrv_factor, readiness, …) pass through untouched.
+ *
+ * @param {Object} e - raw recovery entry
+ * @returns {RecoveryEntry} sanitized + clamped recovery entry
+ */
+export function sanitizeRecovery(e) {
+  if (!e || typeof e !== 'object') return { date: sanitizeDate(null) }
+  // Pass through every field as-is, then overwrite the validated ones below.
+  // This preserves rmssd/lnRMSSD/dfaAlpha1/source/bedtime/etc. that other
+  // consumers read, without an explicit whitelist that would silently drop
+  // new fields.
+  const result = { ...e }
+  result.date = sanitizeDate(e.date)
+
+  const num = (v, lo, hi) => { const n = parseFloat(v); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : null }
+  const intIn = (v, lo, hi) => { const n = parseInt(v, 10); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : null }
+
+  // hrv: coerce to NUMBER, clamp 10–200, drop if not finite/>0.
+  if ('hrv' in e) {
+    const hrv = num(e.hrv, 10, 200)
+    if (hrv != null && hrv > 0) result.hrv = hrv
+    else delete result.hrv
+  }
+  // restingHR: number, clamp 30–120.
+  if ('restingHR' in e) {
+    const rhr = num(e.restingHR, 30, 120)
+    if (rhr != null) result.restingHR = rhr
+    else delete result.restingHR
+  }
+  // sleepHrs: number, clamp 0–24.
+  if ('sleepHrs' in e) {
+    const sh = num(e.sleepHrs, 0, 24)
+    if (sh != null) result.sleepHrs = sh
+    else delete result.sleepHrs
+  }
+  // lactate: number, clamp 0–20 (optional/advanced-only).
+  if ('lactate' in e) {
+    const lac = num(e.lactate, 0, 20)
+    if (lac != null) result.lactate = lac
+    else delete result.lactate
+  }
+  // 1–5 wellness sliders — coerce to int, clamp, only when present.
+  for (const k of ['sleep', 'energy', 'soreness', 'mood', 'stress']) {
+    if (k in e) {
+      const v = intIn(e[k], 1, 5)
+      if (v != null) result[k] = v
+      else delete result[k]
+    }
+  }
+  // readiness (TodayView quick-tap): 0–100 if present.
+  if ('readiness' in e) {
+    const r = intIn(e.readiness, 0, 100)
+    if (r != null) result.readiness = r
+    else delete result.readiness
+  }
+  // score: 0–100 if present.
+  if ('score' in e) {
+    const s = intIn(e.score, 0, 100)
+    if (s != null) result.score = s
+    else delete result.score
+  }
+  return result
+}
+
 // Profile: keeps numeric fields as strings (form inputs expect strings)
 /**
  * @param {Object} p - raw profile object

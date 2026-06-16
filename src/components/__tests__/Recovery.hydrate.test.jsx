@@ -94,7 +94,9 @@ describe('Recovery — hydrate-after-mount', () => {
     const persisted = saved.find(e => e.date === today)
     // Real values survive — Save did NOT clobber the entry with defaults (sleep 3).
     expect(persisted.sleep).toBe(5)
-    expect(persisted.sleepHrs).toBe('8')
+    // sleepHrs is now stored as a NUMBER (form input '8' → 8): the save path
+    // routes through sanitizeRecovery, which clamps/types numeric fields.
+    expect(persisted.sleepHrs).toBe(8)
     expect(persisted.score).toBe(100)
   })
 })

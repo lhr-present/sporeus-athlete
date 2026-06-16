@@ -13,6 +13,7 @@ import { computeReadinessScore } from '../lib/recovery/readinessScore.js'
 import Citation from './ui/Citation.jsx'
 import Banner from './ui/Banner.jsx'
 import { calcLoad } from '../lib/formulas.js'
+import { sanitizeRecovery } from '../lib/validate.js'
 import { WELLNESS_FIELDS } from '../lib/constants.js'
 import { getMyCoach } from '../lib/inviteUtils.js'
 import { getUpcomingSessions, upsertAttendance } from '../lib/db/coachSessions.js'
@@ -642,7 +643,7 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
   const [quickReadinessLogged, setQuickReadinessLogged] = useState(false)
 
   const handleQuickReadiness = (value) => {
-    const entry = { date: today, readiness: value, score: value, source: 'quick-tap', id: Date.now() }
+    const entry = sanitizeRecovery({ date: today, readiness: value, score: value, source: 'quick-tap', id: Date.now() })
     setRecovery(prev => [...(prev || []).filter(e => e.date !== today), entry].slice(-90))
     setQuickReadinessSaved(true)
     setQuickReadinessLogged(true)
@@ -817,12 +818,12 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
       ? (hrvTrend.trend === 'unstable' ? 0.75 : hrvTrend.trend === 'warning' ? 0.90 : 1.0)
       : 1.0
     const score = Math.min(100, Math.round((wellness.sleep + wellness.energy + (6 - wellness.soreness)) / 3 * 20 * hrvFactor))
-    const entry = {
+    const entry = sanitizeRecovery({
       date: today, sleep: wellness.sleep, energy: wellness.energy,
       soreness: wellness.soreness, mood: 3, stress: 3, score,
       hrv_factor: hrvFactor !== 1.0 ? hrvFactor : undefined,
       id: Date.now(), idempotency_key: idempotencyKey.current,
-    }
+    })
 
     // setRecovery triggers Supabase sync via useRecovery hook (DataContext).
     // The hook handles both online upsert and localStorage persistence.

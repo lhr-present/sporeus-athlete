@@ -2,6 +2,35 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.431.0 — 2026-06-17 — Perf + import robustness + recovery validation (deep-dive round 5)
+
+Three fresh dimensions, all client-side, verified + fixed.
+
+Runtime perf (Dashboard was the hot re-render surface under the 30s clock):
+- memoized the raw monotonyStrain(log) (O(7n)/render) call; swapped WeeklyVolChart/ZoneDonut
+  to the existing *Memo variants; wrapped Dashboard in React.memo + useCallback'd its
+  callback props in App.jsx (kills the clock-tick re-render class); gated GlobalSearch's
+  lazy chunk (was fetched on first paint); useDeferredValue on the TrainingLog filter.
+
+Import robustness:
+- HIGH: dedup data-loss — deduplicateByDate keyed only date|type, collapsing two same-day
+  same-type sessions; now date+type+duration±5min (a true re-import still dedups, AM+PM
+  sessions both survive).
+- FIT/GPX imports now PERSIST distanceM/avgHR (+pace) to the entry (were dropped → EF/pace/
+  distance cards starved); GPX skips NaN lat/lon points (was poisoning distanceM); CSV splitter
+  handles "" escaped quotes; client FIT import now has a 25 MiB cap + series-length cap.
+
+Recovery/wellness validation (the one write path with no sanitizer):
+- HIGH: manual HRV was stored as a STRING → HRVAlertCard (the overtraining alert that got
+  role="alert" in v9.430), HRVSummaryCard, and autonomic-balance were DEAD for local/guest
+  users (consumers require typeof === 'number'). Added sanitizeRecovery() (number-coerce +
+  clamp hrv 10–200 / restingHR 30–120 / sleepHrs 0–24 / lactate 0–20 / sliders 1–5 /
+  score 0–100, Number.isFinite-guarded); routed Recovery/HRVDashboard/TodayView writes through
+  it. Those HRV cards now work for local users.
+
+Full suite 15,883 green. DEPENDS ON: ui.jsx *Memo exports; sanitizeLogEntry distanceM/avgHR
+whitelist; HRV-card numeric consumers.
+
 ## v9.430.0 — 2026-06-17 — Accessibility batch (deep-dive CRITICAL + HIGH)
 
 First dedicated a11y pass. 4 CRITICAL + 9 HIGH defects on primary athlete surfaces, all

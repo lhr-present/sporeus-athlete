@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState, useMemo } from 'react'
+import { lazy, Suspense, useEffect, useState, useMemo, useCallback } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 const TQDevtools = import.meta.env.DEV
   ? lazy(() => import('@tanstack/react-query-devtools').then(m => ({ default: m.ReactQueryDevtools })))
@@ -125,6 +125,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
   const [showUpgrade, setShowUpgrade]             = useState(false)
   const [upgradeFeatureKey, setUpgradeFeatureKey] = useState(null)
   const [showSemanticSearch, setShowSemanticSearch] = useState(false)
+  const [showGlobalSearch, setShowGlobalSearch] = useState(false)
   const [showStratvaNudge, setShowStratvaNudge]   = useState(false)
   // v9.342.0 — Global MorningCheckIn host. TodayReadinessCard (rendered on
   // Dashboard) has a "Tap to log morning check-in" CTA that, when its
@@ -159,6 +160,28 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
     return () => window.removeEventListener('keydown', onKey)
   }, [authProfile?.subscription_tier])
 
+  // Ctrl/Cmd+Shift+F — global search. Gate the lazy chunk so it isn't fetched
+  // on first paint. The first trigger mounts GlobalSearch (this listener then
+  // detaches via the guard); once mounted, GlobalSearch's own Ctrl+Shift+F
+  // listener owns open/close toggling, so we don't double-handle the key here.
+  useEffect(() => {
+    if (showGlobalSearch) return
+    function onKey(e) {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        setShowGlobalSearch(true)
+        // Re-emit the shortcut once GlobalSearch has mounted so a single
+        // keypress both loads the chunk and opens the palette.
+        const replay = () => window.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'f', ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: true })
+        )
+        setTimeout(replay, 120)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showGlobalSearch])
+
   // Auto-dismiss Strava nudge after 8s
   useEffect(() => {
     if (!showStratvaNudge) return
@@ -173,6 +196,11 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
     setUpgradeFeatureKey(featureKey)
     setShowUpgrade(true)
   }
+
+  // Stable Dashboard callback props so React.memo(Dashboard) isn't defeated by
+  // fresh inline arrows on every 30s clock tick.
+  const handleDashLogSession  = useCallback(() => setShowQuickAdd(true), [setShowQuickAdd])
+  const handleDashGoToProfile = useCallback(() => handleTabClick('profile'), [handleTabClick])
 
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
@@ -233,18 +261,22 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
         </Suspense>
       )}
 
-      {/* GlobalSearch — FTS across sessions/notes/messages/announcements; Ctrl+Shift+F */}
-      <Suspense fallback={null}>
-        <GlobalSearch
-          onNavigate={(tabId, sessionId) => {
-            handleTabClick(tabId)
-            if (sessionId) {
-              window.dispatchEvent(new CustomEvent('sporeus:jump-to-session', { detail: { sessionId } }))
-            }
-          }}
-          tier={authProfile?.subscription_tier || 'free'}
-        />
-      </Suspense>
+      {/* GlobalSearch — FTS across sessions/notes/messages/announcements; Ctrl+Shift+F.
+          Gated so the lazy chunk isn't fetched on first paint (mirrors the
+          UpgradeModal / SemanticSearch sibling gates). */}
+      {showGlobalSearch && (
+        <Suspense fallback={null}>
+          <GlobalSearch
+            onNavigate={(tabId, sessionId) => {
+              handleTabClick(tabId)
+              if (sessionId) {
+                window.dispatchEvent(new CustomEvent('sporeus:jump-to-session', { detail: { sessionId } }))
+              }
+            }}
+            tier={authProfile?.subscription_tier || 'free'}
+          />
+        </Suspense>
+      )}
 
       {/* SemanticSearch — pgvector cosine search; Ctrl+Shift+K; coach/club only */}
       {showSemanticSearch && (
@@ -541,7 +573,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
           {coachMode && authProfile?.role !== 'coach' && <AsyncBoundary name="Coach Mode"><CoachDashboard authUser={authUser}/></AsyncBoundary>}
           {!coachMode && tab === 'today'        && <AsyncBoundary name="Today"><TodayView log={log} setTab={handleTabClick} setLogPrefill={setLogPrefill} setShowQuickAdd={setShowQuickAdd} authUser={authUser}/></AsyncBoundary>}
           {!coachMode && tab === 'program'      && <AsyncBoundary name="Program"><ProgramView /></AsyncBoundary>}
-          {!coachMode && tab === 'dashboard'    && <AsyncBoundary name="Dashboard"><Dashboard log={log} onLogSession={() => setShowQuickAdd(true)} onGoToProfile={() => handleTabClick('profile')}/></AsyncBoundary>}
+          {!coachMode && tab === 'dashboard'    && <AsyncBoundary name="Dashboard"><Dashboard log={log} onLogSession={handleDashLogSession} onGoToProfile={handleDashGoToProfile}/></AsyncBoundary>}
           {tab === 'zones'        && <AsyncBoundary name="Zone Calc"><ZoneCalc/></AsyncBoundary>}
           {tab === 'tests'        && <AsyncBoundary name="Protocols"><TestProtocols/></AsyncBoundary>}
           {tab === 'log'          && <AsyncBoundary name="Training Log"><TrainingLog log={log} setLog={setLog} prefill={logPrefill} clearPrefill={() => setLogPrefill(null)}/></AsyncBoundary>}

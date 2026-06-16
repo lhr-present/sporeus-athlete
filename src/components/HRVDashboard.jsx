@@ -15,6 +15,7 @@ import {
   parsePolarHRM,
 } from '../lib/hrv.js'
 import ScienceTooltip from './ScienceTooltip.jsx'
+import { sanitizeRecovery } from '../lib/validate.js'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const TOOLTIP = {
@@ -204,10 +205,12 @@ export default function HRVDashboard({ recovery, setRecovery }) {
       const idx = (prev || []).findIndex(e => e.date === today)
       if (idx >= 0) {
         const updated = [...prev]
-        updated[idx] = { ...updated[idx], ...fields }
+        // sanitizeRecovery so hrv lands as a clamped NUMBER (not a string),
+        // keeping HRVAlertCard/HRVSummaryCard/hrvAutonomicBalance alive.
+        updated[idx] = sanitizeRecovery({ ...updated[idx], ...fields })
         return updated
       }
-      return [...(prev || []), { date: today, ...fields }]
+      return [...(prev || []), sanitizeRecovery({ date: today, ...fields })]
     })
   }
 
@@ -229,7 +232,7 @@ export default function HRVDashboard({ recovery, setRecovery }) {
       const dfaAlpha1  = cleaned.length >= 300 ? calculateDFAAlpha1(cleaned) : null
       const result     = { rmssd, lnRMSSD: lnRMSSD_v, dfaAlpha1, ectopicPct, ectopicCount, source: 'polar' }
       setFileResult(result)
-      saveToEntry({ rmssd, lnRMSSD: lnRMSSD_v, dfaAlpha1, ectopicPct, source: 'polar', hrv: String(Math.round(rmssd)) })
+      saveToEntry({ rmssd, lnRMSSD: lnRMSSD_v, dfaAlpha1, ectopicPct, source: 'polar', hrv: Math.round(rmssd) })
     } catch (err) {
       setUploadError(err.message || 'Failed to parse file')
     } finally {
@@ -243,7 +246,7 @@ export default function HRVDashboard({ recovery, setRecovery }) {
     const v = parseFloat(manualRMSSD)
     if (!v || v < 5 || v > 300) return
     const lnRMSSD_v = calculateLnRMSSD(v)
-    saveToEntry({ rmssd: v, lnRMSSD: lnRMSSD_v, source: 'manual', hrv: String(Math.round(v)) })
+    saveToEntry({ rmssd: v, lnRMSSD: lnRMSSD_v, source: 'manual', hrv: Math.round(v) })
     setManualRMSSD('')
   }
 

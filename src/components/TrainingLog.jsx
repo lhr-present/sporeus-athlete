@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, useRef, useMemo, Fragment } from 'react'
+import { useState, useEffect, useContext, useRef, useMemo, useDeferredValue, Fragment } from 'react'
 import { logger } from '../lib/logger.js'
 import { useFocusTrap } from '../hooks/useFocusTrap.js'
 import { LangCtx } from '../contexts/LangCtx.jsx'
@@ -167,9 +167,14 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   // v9.47.0 — inline keyword filter (substring match across date, type, sport,
   // notes, tags). Empty filter → full log. Solves "find my long run from 3
   // weeks ago" without paywalled SemanticSearch.
+  // v9.x — Defer the filter value before it feeds the (whole-log) reverse+
+  // filter memo. The <input> stays controlled on the raw `filterText` so typing
+  // is responsive; the expensive [...log].reverse().filter() only re-runs on
+  // the deferred value, so fast keystrokes don't block on a large log.
+  const deferredFilter = useDeferredValue(filterText)
   const reversedLog = useMemo(() => {
     const all = [...log].reverse()
-    const q = filterText.trim().toLowerCase()
+    const q = deferredFilter.trim().toLowerCase()
     if (!q) return all
     return all.filter(s => {
       const hay = [
@@ -178,10 +183,10 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       ].filter(Boolean).join(' ').toLowerCase()
       return hay.includes(q)
     })
-  }, [log, filterText])
+  }, [log, deferredFilter])
   // v9.63.0 — Reset paginated reveal whenever the filter changes so the user
   // doesn't see an unrelated old `visibleCount` window of the new filter result.
-  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [filterText])
+  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [deferredFilter])
   const visibleLog = useMemo(() => reversedLog.slice(0, visibleCount), [reversedLog, visibleCount])
   // Distinct from the `hasMore` destructured above for server-side pagination
   // (more entries available on the server). `hasMoreVisible` means we have
@@ -381,6 +386,14 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     const file = e.target.files[0]
     e.target.value = ''
     if (!file) return
+    // Mirror the server upload cap (parse-activity MAX_FILE_BYTES = 25 MB) so an
+    // oversized FIT can't build full power/HR/speed series client-side before
+    // ever reaching the server's reject. 26_214_400 bytes = 25 MiB.
+    const MAX_BYTES = 26_214_400
+    if (typeof file.size === 'number' && file.size > MAX_BYTES) {
+      setImportError(`File too large (${(file.size / 1048576).toFixed(1)} MB). Max ${(MAX_BYTES / 1048576).toFixed(0)} MB.`)
+      return
+    }
     importFileRef.current = file
     setImportError(null); setImportBusy(true)
     const kind = detectFileType(file)
@@ -545,6 +558,13 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       tss,
       notes: importPreview.notes || `Imported ${importPreview.source?.toUpperCase()} · ${importPreview.distanceM ? (importPreview.distanceM/1000).toFixed(2)+'km' : ''}${npStr}`,
       source: importPreview.source,
+      // Persist the parsed FIT/GPX metrics so EF / pace / distance cards get
+      // real data from file imports. Pre-fix the saved entry dropped these
+      // (only date/type/duration/rpe/tss/notes/np survived) — sanitizeLogEntry
+      // already whitelists distanceM/avgHR, so passing them through is enough.
+      ...(Number(importPreview.distanceM) > 0 ? { distanceM: importPreview.distanceM } : {}),
+      ...(Number(importPreview.avgHR) > 0 ? { avgHR: importPreview.avgHR } : {}),
+      ...(Number(importPreview.avgPaceSecKm) > 0 ? { avgPaceSecKm: importPreview.avgPaceSecKm } : {}),
       // Persist Normalized Power on the entry (sanitizer now whitelists `np`)
       // so cyclingNpTrend.js can build the NP-by-duration trend from the log
       // without re-reading the raw power stream. Was previously only used for

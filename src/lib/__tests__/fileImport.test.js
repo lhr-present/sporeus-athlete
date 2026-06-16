@@ -82,6 +82,17 @@ class MockDOMParser {
       ]
       return { querySelector: () => null, querySelectorAll: () => pts }
     }
+    if (xml === 'GPX_NAN_POINT') {
+      // 4 points, the 3rd has a garbage lat/lon (parseFloat → NaN). The distance
+      // sum must stay finite (the NaN point's two adjacent legs are skipped).
+      const pts = [
+        makeTrkpt(48.0,    11.0,    500, '2026-01-15T07:00:00Z', 140),
+        makeTrkpt(48.01,   11.01,   510, '2026-01-15T07:15:00Z', 150),
+        makeTrkpt('xxx',   'yyy',   505, '2026-01-15T07:30:00Z', 155),  // garbage coords
+        makeTrkpt(48.02,   11.02,   505, '2026-01-15T07:45:00Z', 160),
+      ]
+      return { querySelector: () => null, querySelectorAll: () => pts }
+    }
     // Default valid GPX — 3 pts with HR + ele
     const pts = [
       makeTrkpt(48.0,  11.0,  500, '2026-01-15T07:00:00Z', 140),
@@ -166,5 +177,15 @@ describe('parseGPX', () => {
 
   it('throws "No track points found" when GPX has no trkpt elements', () => {
     expect(() => parseGPX('NO_TRKPTS', 180)).toThrow('No track points found in GPX')
+  })
+
+  // MEDIUM — a trackpoint with garbage lat/lon must not poison the distance sum.
+  it('yields a finite distance (and pace) when a trackpoint has NaN coordinates', () => {
+    const result = parseGPX('GPX_NAN_POINT', 180)
+    expect(Number.isFinite(result.distanceM)).toBe(true)
+    expect(result.distanceM).toBeGreaterThan(0)
+    // avgPaceSecKm is derived from distanceM — must also be finite, not NaN
+    expect(result.avgPaceSecKm == null || Number.isFinite(result.avgPaceSecKm)).toBe(true)
+    expect(result.avgPaceSecKm).toBeGreaterThan(0)
   })
 })

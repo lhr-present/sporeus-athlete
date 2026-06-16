@@ -18,6 +18,7 @@ import { findRecoveryPatterns } from '../lib/patterns.js'
 import { calcLoad } from '../lib/formulas.js'
 import { classifyTSB, calculateACWR } from '../lib/trainingLoad.js'
 import { getFatigueAccumulation, getReadinessLabel } from '../lib/ruleInsights.js'
+import { sanitizeRecovery } from '../lib/validate.js'
 
 export default function Recovery() {
   const { t } = useContext(LangCtx)
@@ -69,7 +70,11 @@ export default function Recovery() {
   const readiness = score>=75?{label:t('goLabel'),color:'#5bc25b'}:score>=50?{label:t('monitorLabel'),color:'#f5c542'}:{label:t('restLabel'),color:'#e03030'}
 
   const save = () => {
-    const entry = { date:today, ...form, score }
+    // Route through sanitizeRecovery so hrv/restingHR/sleepHrs/lactate are
+    // stored as clamped NUMBERS (form inputs are strings). A string hrv kills
+    // HRVAlertCard/HRVSummaryCard/hrvAutonomicBalance (they gate on
+    // typeof e.hrv === 'number'); the DB column is numeric(6,2).
+    const entry = sanitizeRecovery({ date:today, ...form, score })
     const updated = entries.filter(e=>e.date!==today)
     setEntries([...updated, entry].slice(-90))
   }

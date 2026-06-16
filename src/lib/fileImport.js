@@ -6,6 +6,11 @@ import { localToday } from './dateKeys.js'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// Cap on second-by-second series length built at FIT parse time. 10800s = 3h
+// at 1Hz, matching the localStorage persistence slice. Bounds memory/CPU for
+// pathologically long files instead of materialising the full multi-hour array.
+const MAX_SERIES_LEN = 10800
+
 function _toKmh(ms) { return ms * 3.6 }
 function hav(lat1, lon1, lat2, lon2) {
   const R = 6371000
@@ -79,18 +84,21 @@ export function parseFIT(arrayBuffer, profileMaxHR, profileFTP = null) {
         const date = startTime ? localToday(new Date(startTime))
           : localToday()
 
-        // Second-by-second power series (for W' balance + decoupling analysis)
-        const powerSeries = records
+        // Second-by-second series (for W' balance + decoupling analysis).
+        // Cap length at parse time so a pathologically long file can't build a
+        // multi-hour array per stream (power/HR/speed) before being sliced.
+        const capRecords = records.length > MAX_SERIES_LEN ? records.slice(0, MAX_SERIES_LEN) : records
+        const powerSeries = capRecords
           .map(r => (typeof r.power === 'number' ? r.power : (typeof r.power_watts === 'number' ? r.power_watts : 0)))
           .filter((_, i, a) => a.length > 0)
         const hasPower = powerSeries.some(p => p > 0)
 
         // Second-by-second HR series (for aerobic decoupling)
-        const hrSeries = records.map(r => r.heart_rate || 0)
+        const hrSeries = capRecords.map(r => r.heart_rate || 0)
         const hasHR = hrSeries.some(h => h > 0)
 
         // Second-by-second speed series (for running decoupling when no power)
-        const speedSeries = records.map(r => (typeof r.speed === 'number' ? r.speed : 0))
+        const speedSeries = capRecords.map(r => (typeof r.speed === 'number' ? r.speed : 0))
         const hasSpeed = speedSeries.some(s => s > 0)
 
         // Persist to localStorage so Protocols tab can load it without re-upload
@@ -164,7 +172,14 @@ export function parseGPX(xmlString, profileMaxHR) {
     if (timeStr) times.push(new Date(timeStr))
     if (i > 0) {
       const prev = trkpts[i-1]
-      distanceM += hav(parseFloat(prev.getAttribute('lat')), parseFloat(prev.getAttribute('lon')), lat, lon)
+      const prevLat = parseFloat(prev.getAttribute('lat'))
+      const prevLon = parseFloat(prev.getAttribute('lon'))
+      // Skip points with missing/garbage coordinates — a single NaN lat/lon
+      // would poison the whole distance sum (and avgPaceSecKm) via hav()=NaN.
+      // Mirrors the NaN filter applied to the `trackpoints` array below.
+      if (!isNaN(prevLat) && !isNaN(prevLon) && !isNaN(lat) && !isNaN(lon)) {
+        distanceM += hav(prevLat, prevLon, lat, lon)
+      }
       const prevEle = parseFloat(prev.querySelector('ele')?.textContent || '0')
       if (ele > prevEle) elevGain += (ele - prevEle)
     }
@@ -422,31 +437,82 @@ export function isConcept2CSV(text) {
   return false
 }
 
-/** Split one CSV line, respecting quoted fields. */
+/**
+ * Split one CSV line, respecting quoted fields and the `""` escaped-quote
+ * convention (RFC 4180). A doubled quote inside a quoted field emits a single
+ * literal `"`. Ported from the integration importers' parseCSVLine so the
+ * generic/Concept2 CSV path round-trips `he said ""hi""` → `he said "hi"`.
+ */
 function splitCSVLine(line) {
   const cells = []
   let cur = '', inQ = false
-  for (let i = 0; i < line.length; i++) {
+  let i = 0
+  while (i < line.length) {
     const c = line[i]
-    if (c === '"') { inQ = !inQ }
-    else if (c === ',' && !inQ) { cells.push(cur); cur = '' }
-    else { cur += c }
+    if (inQ) {
+      if (c === '"') {
+        if (line[i + 1] === '"') { cur += '"'; i += 2; continue }  // escaped quote
+        inQ = false; i++; continue
+      }
+      cur += c; i++; continue
+    }
+    if (c === '"') { inQ = true; i++; continue }
+    if (c === ',') { cells.push(cur); cur = ''; i++; continue }
+    cur += c; i++
   }
   cells.push(cur)
   return cells
 }
 
+// Duration tolerance (minutes) for treating two same-date/same-type sessions
+// as the SAME activity. Matches the integration importers' dedupAgainstLog.
+const DEDUP_DURATION_TOLERANCE_MIN = 5
+
+/** Minutes for a log/CSV entry, tolerant of the various field names. */
+function _entryDurationMin(e) {
+  return Number(e?.durationMin) || Number(e?.duration) || 0
+}
+
 /**
- * Deduplicate incoming entries against existing log.
- * Skips incoming entries where existing already has same date AND type.
- * Entries on same date but different type are kept (two sessions per day).
+ * Deduplicate incoming entries against the existing log.
+ *
+ * An incoming entry is a duplicate of an existing one only when they share the
+ * same date AND type AND their durations are within ±5 min (tolerance-based,
+ * mirroring the integration importers' `dedupAgainstLog`). Two genuinely
+ * distinct same-day/same-type sessions — e.g. AM intervals + PM recovery run —
+ * differ in duration (and/or TSS), so both survive instead of collapsing into
+ * one (the previous `date|type` key silently dropped the second session on
+ * re-import). Incoming entries are also de-duplicated against each other so a
+ * single CSV containing two near-identical rows doesn't double-log.
+ *
  * @param {Array} existing — current log entries
  * @param {Array} incoming — new entries from CSV
  * @returns {Array} — filtered incoming entries
  */
 export function deduplicateByDate(existing, incoming) {
-  const occupied = new Set((existing || []).map(e => `${e.date}|${e.type}`))
-  return (incoming || []).filter(e => !occupied.has(`${e.date}|${e.type}`))
+  // Group existing entries by date so each candidate match is O(same-day count).
+  const byDate = new Map()
+  for (const e of (existing || [])) {
+    if (!e || !e.date) continue
+    if (!byDate.has(e.date)) byDate.set(e.date, [])
+    byDate.get(e.date).push(e)
+  }
+
+  const isDupOf = (candidate, e) => {
+    if ((candidate.type || '') !== (e.type || '')) return false
+    return Math.abs(_entryDurationMin(candidate) - _entryDurationMin(e)) <= DEDUP_DURATION_TOLERANCE_MIN
+  }
+
+  const kept = []
+  for (const e of (incoming || [])) {
+    if (!e || !e.date) { kept.push(e); continue }
+    const sameDay = byDate.get(e.date) || []
+    // Dup against the existing log OR against an already-kept incoming entry.
+    if (sameDay.some(c => isDupOf(c, e))) continue
+    if (kept.some(k => k.date === e.date && isDupOf(k, e))) continue
+    kept.push(e)
+  }
+  return kept
 }
 
 /**
