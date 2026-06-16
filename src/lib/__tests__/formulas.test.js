@@ -665,6 +665,31 @@ describe('generatePlan — training plan generator', () => {
       })
     })
   })
+
+  // v9.422 — goal-aware: a 5K plan must differ from a Marathon plan (was identical).
+  it('5K and Marathon plans differ in Build/Peak intensity (goal-aware)', () => {
+    const fiveK    = generatePlan('5K', 12, 8, 'intermediate')
+    const marathon = generatePlan('Marathon', 12, 8, 'intermediate')
+    const buildPeakTypes = (plan) => plan
+      .filter(w => w.phase === 'Build' || w.phase === 'Peak')
+      .flatMap(w => w.sessions.map(s => s.type))
+    const fiveKTypes = buildPeakTypes(fiveK)
+    const marTypes   = buildPeakTypes(marathon)
+    // 5K emphasizes VO2 intervals; Marathon drops them for tempo/endurance.
+    expect(fiveKTypes.filter(t => t === 'interval').length)
+      .toBeGreaterThan(marTypes.filter(t => t === 'interval').length)
+    // The two plans must not be byte-identical (the bug was: they were).
+    expect(JSON.stringify(fiveK)).not.toBe(JSON.stringify(marathon))
+    // Shape invariants still hold.
+    expect(fiveK).toHaveLength(12)
+    expect(fiveK.every(w => w.sessions.length === 7)).toBe(true)
+  })
+
+  it('General Fitness applies no goal emphasis (valid plan, base pattern)', () => {
+    const gen = generatePlan('General Fitness', 10, 6, 'beginner')
+    expect(gen).toHaveLength(10)
+    expect(gen.every(w => w.sessions.length === 7)).toBe(true)
+  })
 })
 
 // ─── validatePlanRamp (v9.59.0) ──────────────────────────────────────────────
