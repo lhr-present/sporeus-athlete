@@ -205,7 +205,10 @@ serve(withTelemetry('nightly-batch', async (req) => {
 
   const start = Date.now()
 
-  // Service-role client — bypasses RLS
+  // Service-role client — bypasses RLS.
+  // (Fix: `serviceKey` was undefined in this scope → ReferenceError on every cron
+  //  run, before the no-op return. Declare it like the other functions do.)
+  const serviceKey = (Deno.env.get("SPOREUS_SERVICE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"))!
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     serviceKey,

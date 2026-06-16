@@ -57,13 +57,16 @@ export default function SessionHistory({ sessions = [], exercises = [], lang = '
         const sid      = s.id || String(i)
         const exList   = s.exercises ?? []
         const workSets = exList.flatMap(ex => (ex.sets ?? []).filter(set => !set.is_warmup))
-        const isOpen   = expanded === i
+        // v9.x — key `expanded` by session id, not the sorted-array index. The sort
+        // re-derives whenever sessions change, so an index-keyed expansion pointed at
+        // the wrong session after adding/deleting.
+        const isOpen   = expanded === sid
         const isDel    = confirmDel === sid
         const isToday  = s.session_date === today
 
         return (
           <div key={sid} style={{ ...card, borderColor: isOpen ? '#ff660044' : 'var(--border)' }}
-            onClick={e => { if (!e.target.closest('button')) setExpanded(isOpen ? null : i) }}>
+            onClick={e => { if (!e.target.closest('button')) setExpanded(isOpen ? null : sid) }}>
 
             {/* Row header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>

@@ -105,11 +105,12 @@ serve(withTelemetry('redeem-invite', async (req: Request) => {
     // ── 4b. Enforce the coach's athlete-count limit SERVER-SIDE (v9.364.0) ──────
     // Previously the cap lived only in client React/localStorage, so an invite
     // link could be redeemed by unlimited athletes → the paid coach product was
-    // effectively free. (Limits match the advertised UI values; the free 1-vs-3
-    // mismatch between subscription.js TIERS and formulas.js FREE_ATHLETE_LIMIT
-    // is a separate reconciliation — using the advertised 3 here so we never
-    // wrongly reject a free coach who was told "3 athletes".)
-    const ATHLETE_LIMITS: Record<string, number> = { free: 3, coach: 15, club: 999 }
+    // effectively free. Limits MUST match the client source of truth
+    // (subscription.js TIERS.free.athletes = 1, formulas.js FREE_ATHLETE_LIMIT = 1 —
+    // the founder's v9.378 decision). The old `free: 3` over-entitled free coaches:
+    // a free coach could fill a 3-athlete roster via invite links that bypass the
+    // client gate. Aligned to 1.
+    const ATHLETE_LIMITS: Record<string, number> = { free: 1, coach: 15, club: 999 }
     const coachTier    = coachProfile?.subscription_tier || "free"
     const athleteLimit = ATHLETE_LIMITS[coachTier] ?? 3
     const { count: activeCount } = await admin

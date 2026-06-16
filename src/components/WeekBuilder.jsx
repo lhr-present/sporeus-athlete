@@ -6,7 +6,8 @@ import { logger } from '../lib/logger.js'
 
 const MONO = "'IBM Plex Mono', monospace"
 
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const DAYS    = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const DAYS_TR = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz']
 
 const SESSION_TEMPLATES = [
   { id: 'long-run',       label: 'Long Run',         type: 'run',  duration: 90,  tss: 90,  zone: 'Z2' },
@@ -20,6 +21,33 @@ const SESSION_TEMPLATES = [
   { id: 'strength',       label: 'Strength',          type: 'str',  duration: 50,  tss: 35,  zone: 'Z3' },
   { id: 'rest',           label: 'Rest Day',          type: 'rest', duration: 0,   tss: 0,   zone: '—'  },
 ]
+
+// Turkish display labels keyed by template id — internal `label` values stay English
+const SESSION_LABELS_TR = {
+  'long-run':      'Uzun Koşu',
+  'threshold-run': 'Eşik Koşusu',
+  'easy-run':      'Kolay Koşu',
+  'vo2max':        'VO₂max Aralıkları',
+  'long-ride':     'Uzun Bisiklet',
+  'tempo-ride':    'Tempo Bisiklet',
+  'recovery-ride': 'Toparlanma Bisikleti',
+  'swim':          'Yüzme',
+  'strength':      'Kuvvet',
+  'rest':          'Dinlenme Günü',
+}
+function sessionLabel(session, lang) {
+  return lang === 'tr' ? (SESSION_LABELS_TR[session.id] || session.label) : session.label
+}
+
+// Turkish display labels for phases — internal phase keys stay English
+const PHASE_LABELS_TR = {
+  Base: 'Temel', Build: 'Geliştirme', Peak: 'Zirve',
+  Race: 'Yarış', Recovery: 'Toparlanma', Transition: 'Geçiş',
+}
+function phaseDisplay(phase, lang) {
+  const p = phase || 'Base'
+  return lang === 'tr' ? (PHASE_LABELS_TR[p] || p) : p
+}
 
 const TYPE_ICONS  = { run: '🏃', bike: '🚴', swim: '🏊', str: '💪', rest: '😴' }
 const ZONE_COLORS = { Z1:'#5bc25b', Z2:'#4a9eff', Z3:'#ff6600', Z4:'#e0a030', Z5:'#e03030', '—':'#555' }
@@ -46,23 +74,23 @@ function SessionCard({ session, draggable, onDragStart, onRemove, compact, lang 
         </span>
         <div style={{ flex: 1 }}>
           <div style={{ fontFamily: MONO, fontSize: compact ? 9 : 10, fontWeight: 700, color: '#ccc' }}>
-            {session.label}
+            {sessionLabel(session, lang)}
           </div>
           {!compact && (
             <div style={{ fontFamily: MONO, fontSize: 8, color: '#555', marginTop: 2 }}>
-              {session.duration > 0 ? `${session.duration}min · ${session.tss} TSS` : 'Rest'}
+              {session.duration > 0 ? `${session.duration}${lang === 'tr' ? 'dk' : 'min'} · ${session.tss} TSS` : (lang === 'tr' ? 'Dinlenme' : 'Rest')}
               {' · '}
               <span style={{ color: ZONE_COLORS[session.zone] || '#555' }}>{session.zone}</span>
             </div>
           )}
           {compact && session.duration > 0 && (
             <div style={{ fontFamily: MONO, fontSize: 8, color: '#555' }}>
-              {session.duration}min · {session.tss}TSS
+              {session.duration}{lang === 'tr' ? 'dk' : 'min'} · {session.tss}TSS
             </div>
           )}
         </div>
         {onRemove && (
-          <button onClick={onRemove} aria-label={lang === 'tr' ? `${session.label} antrenmanını kaldır` : `Remove ${session.label} session`} style={{
+          <button onClick={onRemove} aria-label={lang === 'tr' ? `${sessionLabel(session, lang)} antrenmanını kaldır` : `Remove ${session.label} session`} style={{
             fontFamily: MONO, fontSize: 11, background: 'transparent',
             border: 'none', color: '#444', cursor: 'pointer', lineHeight: 1, flexShrink: 0,
           }}>✕</button>
@@ -177,10 +205,10 @@ export default function WeekBuilder({ week, onClose }) {
       }}>
         <div>
           <div style={{ fontSize: 12, fontWeight: 700, color: '#ff6600', letterSpacing: '0.08em' }}>
-            WEEK BUILDER
+            {lang === 'tr' ? 'HAFTA OLUŞTURUCU' : 'WEEK BUILDER'}
           </div>
           <div style={{ fontSize: 9, color: '#555', marginTop: 2 }}>
-            WEEK {week.weekNum} — {(week.phase || 'BASE').toUpperCase()} — {week.weekStart} · Target: {week.targetTSS} TSS
+            {lang === 'tr' ? 'HAFTA' : 'WEEK'} {week.weekNum} — {phaseDisplay(week.phase, lang).toUpperCase()} — {week.weekStart} · {lang === 'tr' ? 'Hedef' : 'Target'}: {week.targetTSS} TSS
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -189,13 +217,13 @@ export default function WeekBuilder({ week, onClose }) {
             padding: '7px 16px', background: saved ? '#2d6a2d' : '#0064ff',
             border: 'none', color: '#fff', borderRadius: 4, cursor: 'pointer',
           }}>
-            {saved ? '✓ SAVED' : '↓ SAVE WEEK'}
+            {saved ? (lang === 'tr' ? '✓ KAYDEDİLDİ' : '✓ SAVED') : (lang === 'tr' ? '↓ HAFTAYI KAYDET' : '↓ SAVE WEEK')}
           </button>
           <button onClick={onClose} style={{
             fontFamily: MONO, fontSize: 10, padding: '7px 12px',
             background: 'transparent', border: '1px solid #333',
             color: '#888', borderRadius: 4, cursor: 'pointer',
-          }}>CLOSE</button>
+          }}>{lang === 'tr' ? 'KAPAT' : 'CLOSE'}</button>
         </div>
       </div>
 
@@ -210,10 +238,10 @@ export default function WeekBuilder({ week, onClose }) {
           background: '#080808',
         }}>
           <div style={{ fontSize: 9, color: '#555', letterSpacing: '0.1em', marginBottom: 10 }}>
-            SESSION LIBRARY
+            {lang === 'tr' ? 'ANTRENMAN KÜTÜPHANESİ' : 'SESSION LIBRARY'}
           </div>
           <div style={{ fontSize: 8, color: '#333', marginBottom: 8 }}>
-            Drag sessions onto the days →
+            {lang === 'tr' ? 'Antrenmanları günlere sürükleyin →' : 'Drag sessions onto the days →'}
           </div>
           {SESSION_TEMPLATES.map(t => (
             <div
@@ -221,7 +249,7 @@ export default function WeekBuilder({ week, onClose }) {
               draggable
               onDragStart={e => handleLibraryDragStart(e, t)}
             >
-              <SessionCard session={t} draggable={false} />
+              <SessionCard session={t} draggable={false} lang={lang} />
             </div>
           ))}
         </div>
@@ -238,7 +266,7 @@ export default function WeekBuilder({ week, onClose }) {
                 letterSpacing: '0.08em', textAlign: 'center',
                 borderRight: i < 6 ? '1px solid #111' : 'none',
               }}>
-                {day}
+                {lang === 'tr' ? DAYS_TR[i] : day}
               </div>
             ))}
           </div>
@@ -287,7 +315,7 @@ export default function WeekBuilder({ week, onClose }) {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontFamily: MONO, fontSize: 8, color: '#2a2a2a',
                   }}>
-                    drop here
+                    {lang === 'tr' ? 'buraya bırak' : 'drop here'}
                   </div>
                 )}
               </div>
@@ -309,17 +337,17 @@ export default function WeekBuilder({ week, onClose }) {
               <span style={{ color: overTarget ? '#e03030' : '#ff6600', fontWeight: 700, fontSize: 13 }}>
                 {totalTSS}
               </span>
-              <span style={{ color: '#444' }}> / {week.targetTSS} TSS target</span>
+              <span style={{ color: '#444' }}> / {week.targetTSS} TSS {lang === 'tr' ? 'hedef' : 'target'}</span>
             </div>
             <div style={{ fontSize: 10, color: '#666' }}>
-              <span style={{ fontWeight: 700 }}>{totalSess}</span> sessions
+              <span style={{ fontWeight: 700 }}>{totalSess}</span> {lang === 'tr' ? 'antrenman' : 'sessions'}
             </div>
             <div style={{ fontSize: 10, color: '#666' }}>
-              <span style={{ fontWeight: 700 }}>{totalHours}h</span> planned
+              <span style={{ fontWeight: 700 }}>{totalHours}{lang === 'tr' ? 'sa' : 'h'}</span> {lang === 'tr' ? 'planlandı' : 'planned'}
             </div>
             {overTarget && (
               <div style={{ fontSize: 10, color: '#e03030' }}>
-                ⚠ Over target by {totalTSS - week.targetTSS} TSS
+                {lang === 'tr' ? `⚠ Hedefin ${totalTSS - week.targetTSS} TSS üzerinde` : `⚠ Over target by ${totalTSS - week.targetTSS} TSS`}
               </div>
             )}
           </div>

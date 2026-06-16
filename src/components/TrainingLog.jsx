@@ -331,12 +331,15 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     setZoneMins(['','','','','']); setShowZones(false); setTssPreview(null)
   }
 
-  const startEdit = (s, idx) => {
-    const found = log.find((_,i)=>i===log.length-1-idx)
-    if (!found) return
-    const entry = { ...found }
+  const startEdit = (s) => {
+    if (!s) return
+    // v9.x — Edit the exact row that was clicked. The list can be filtered
+    // (filterText) and paginated (visibleLog slice), so reverse-mapping by index
+    // loaded/overwrote a different session. Use the passed row directly.
+    const entry = { ...s }
     setForm({ date:entry.date, type:entry.type, duration:String(entry.duration), rpe:String(entry.rpe), notes:entry.notes||'' })
-    if (entry.zones) { setZoneMins(entry.zones.map(String)); setShowZones(true) }
+    if (entry.zones && entry.zones.length) { setZoneMins(entry.zones.map(String)); setShowZones(true) }
+    else { setZoneMins(['','','','','']); setShowZones(false) }
     setEditingId(entry.id||null)
     setDeleteConfirmId(null)
     window.scrollTo({ top:0, behavior:'smooth' })
@@ -862,7 +865,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                             aria-label={lang === 'tr' ? 'Rotayı görüntüle' : 'View route'}
                             style={{ background:'none', border:'none', color:'#0064ff', cursor:'pointer', ...S.mono, fontSize:'11px', marginRight:'4px' }}>⌖</button>
                         )}
-                        <button onClick={()=>startEdit(s,i)}
+                        <button onClick={()=>startEdit(s)}
                           aria-label={lang === 'tr' ? 'Seansı düzenle' : 'Edit session'}
                           title={lang === 'tr' ? 'Seansı düzenle' : 'Edit session'}
                           style={{ background:'none', border:'none', color:'#aaa', cursor:'pointer', ...S.mono, fontSize:'12px', marginRight:'4px' }}>✎</button>

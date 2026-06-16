@@ -101,13 +101,12 @@ serve(async (req) => {
     if (authErr || !user) return err('Unauthorized', 401)
 
     // ── Tier check ────────────────────────────────────────────────────────────
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('subscription_tier')
-      .eq('id', user.id)
-      .maybeSingle()
-
-    const tier  = profile?.subscription_tier || 'free'
+    // Use the status-aware tier_for_user RPC (matches embed-query + generate-report)
+    // so a cancelled/expired coach loses AI access immediately. The raw
+    // profiles.subscription_tier column only flips on the daily reconcile cron, which
+    // left up to ~24h of paid AI access after entitlement ended.
+    const { data: tierResult } = await supabase.rpc('tier_for_user', { p_user_id: user.id })
+    const tier  = tierResult || 'free'
     const limit = TIER_LIMITS[tier] ?? 0
     if (limit === 0) return err('AI features require a Coach or Club plan. Upgrade at sporeus.com.', 403)
 

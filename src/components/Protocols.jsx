@@ -319,7 +319,7 @@ export default function TestProtocols() {
           </div>
         )}
         {(active==='conconi'||active==='lactate') && (
-          <div style={{ ...S.mono, fontSize:'11px', color:'var(--sub)', marginBottom:'8px' }}>Click below to view the full protocol.</div>
+          <div style={{ ...S.mono, fontSize:'11px', color:'var(--sub)', marginBottom:'8px' }}>{isTR ? 'Protokolün tamamını görmek için aşağıya tıklayın.' : 'Click below to view the full protocol.'}</div>
         )}
 
         {active==='wprime' && (

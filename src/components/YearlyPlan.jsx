@@ -26,6 +26,20 @@ const PHASE_COLORS = {
 }
 
 const MODEL_LABELS = { traditional: 'Traditional', polarized: 'Polarized', block: 'Block' }
+const MODEL_LABELS_TR = { traditional: 'Geleneksel', polarized: 'Polarize', block: 'Blok' }
+
+// Display labels for phases — internal keys/values stay English (Base/Build/…)
+const PHASE_LABELS_TR = {
+  Base:       'Temel',
+  Build:      'Geliştirme',
+  Peak:       'Zirve',
+  Race:       'Yarış',
+  Recovery:   'Toparlanma',
+  Transition: 'Geçiş',
+}
+function phaseLabel(phase, lang) {
+  return lang === 'tr' ? (PHASE_LABELS_TR[phase] || phase) : phase
+}
 const COL_W_DESKTOP = 56
 const COL_W_MOBILE  = 44
 const BAR_MAX_H     = 52
@@ -54,7 +68,7 @@ function currentWeekIndex(weeks) {
 }
 
 // ── WeekColumn ─────────────────────────────────────────────────────────────────
-function WeekColumn({ week, selected, isCurrent, onClick, colW, maxTSS }) {
+function WeekColumn({ week, selected, isCurrent, onClick, colW, maxTSS, lang }) {
   const barH  = maxTSS > 0 ? Math.round((week.targetTSS / maxTSS) * BAR_MAX_H) : 0
   const isRace = week.phase === 'Race'
 
@@ -66,7 +80,7 @@ function WeekColumn({ week, selected, isCurrent, onClick, colW, maxTSS }) {
   return (
     <div
       onClick={onClick}
-      title={`W${week.weekNum} ${week.phase} — TSS ${week.targetTSS}${week.raceName ? ' ◉ ' + week.raceName : ''}`}
+      title={`${lang === 'tr' ? 'H' : 'W'}${week.weekNum} ${phaseLabel(week.phase, lang)} — TSS ${week.targetTSS}${week.raceName ? ' ◉ ' + week.raceName : ''}`}
       style={{
         width:          colW,
         flexShrink:     0,
@@ -117,7 +131,7 @@ function WeekColumn({ week, selected, isCurrent, onClick, colW, maxTSS }) {
         marginTop: 2, height: 18, display: 'flex', alignItems: 'center',
         flexShrink: 0,
       }}>
-        {isRace ? '◉' : `W${week.weekNum}`}
+        {isRace ? '◉' : `${lang === 'tr' ? 'H' : 'W'}${week.weekNum}`}
       </div>
 
       {/* Current week marker dot */}
@@ -132,7 +146,8 @@ function WeekColumn({ week, selected, isCurrent, onClick, colW, maxTSS }) {
 }
 
 // ── WeekDetailPanel ────────────────────────────────────────────────────────────
-function WeekDetailPanel({ week, weekIndex, allWeeks, onUpdateTSS, onOpenBuilder }) {
+function WeekDetailPanel({ week, weekIndex, allWeeks, onUpdateTSS, onOpenBuilder, lang }) {
+  const isTR = lang === 'tr'
   const [tssInput, setTssInput] = useState(String(week.targetTSS))
   const [copyN, setCopyN]       = useState(2)
 
@@ -163,16 +178,16 @@ function WeekDetailPanel({ week, weekIndex, allWeeks, onUpdateTSS, onOpenBuilder
       borderRadius: 6, padding: '14px 16px', marginTop: 12,
     }}>
       <div style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: '#ccc', marginBottom: 10 }}>
-        WEEK {week.weekNum} — <span style={{ color: PHASE_COLORS[week.phase] || '#888' }}>{week.phase.toUpperCase()}</span>
-        {' '}— w/o {week.weekStart}
-        {week.isDeload && <span style={{ color: '#555', marginLeft: 8 }}>DELOAD</span>}
+        {isTR ? 'HAFTA' : 'WEEK'} {week.weekNum} — <span style={{ color: PHASE_COLORS[week.phase] || '#888' }}>{phaseLabel(week.phase, lang).toUpperCase()}</span>
+        {' '}— {isTR ? 'hafta' : 'w/o'} {week.weekStart}
+        {week.isDeload && <span style={{ color: '#555', marginLeft: 8 }}>{isTR ? 'BOŞALTMA' : 'DELOAD'}</span>}
       </div>
 
       <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 12 }}>
         {/* TSS editor */}
         <div>
           <div style={{ fontFamily: MONO, fontSize: 9, color: '#555', letterSpacing: '0.08em', marginBottom: 4 }}>
-            TARGET TSS
+            {isTR ? 'HEDEF TSS' : 'TARGET TSS'}
           </div>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             <input
@@ -187,14 +202,14 @@ function WeekDetailPanel({ week, weekIndex, allWeeks, onUpdateTSS, onOpenBuilder
               fontFamily: MONO, fontSize: 9, padding: '6px 10px',
               background: '#ff6600', border: 'none', color: '#fff',
               borderRadius: 3, cursor: 'pointer',
-            }}>APPLY</button>
+            }}>{isTR ? 'UYGULA' : 'APPLY'}</button>
           </div>
         </div>
 
         {/* Hours (derived) */}
         <div>
           <div style={{ fontFamily: MONO, fontSize: 9, color: '#555', letterSpacing: '0.08em', marginBottom: 4 }}>
-            PLANNED HOURS
+            {isTR ? 'PLANLANAN SAAT' : 'PLANNED HOURS'}
           </div>
           <div style={{ fontFamily: MONO, fontSize: 20, fontWeight: 700, color: '#888' }}>
             {week.plannedHours}h
@@ -205,7 +220,7 @@ function WeekDetailPanel({ week, weekIndex, allWeeks, onUpdateTSS, onOpenBuilder
         {week.raceName && (
           <div>
             <div style={{ fontFamily: MONO, fontSize: 9, color: '#555', letterSpacing: '0.08em', marginBottom: 4 }}>
-              RACE
+              {isTR ? 'YARIŞ' : 'RACE'}
             </div>
             <div style={{ fontFamily: MONO, fontSize: 11, color: '#e03030' }}>
               [R] {week.raceName}
@@ -215,7 +230,7 @@ function WeekDetailPanel({ week, weekIndex, allWeeks, onUpdateTSS, onOpenBuilder
                   background: week.priority === 'A' ? '#8b0000' : week.priority === 'B' ? '#4a3a00' : '#1a1a3a',
                   color: '#eee', fontSize: 9,
                 }}>
-                  Priority {week.priority}
+                  {isTR ? 'Öncelik' : 'Priority'} {week.priority}
                 </span>
               )}
             </div>
@@ -226,7 +241,7 @@ function WeekDetailPanel({ week, weekIndex, allWeeks, onUpdateTSS, onOpenBuilder
       {/* Zone bars */}
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontFamily: MONO, fontSize: 9, color: '#555', letterSpacing: '0.08em', marginBottom: 6 }}>
-          ZONE DISTRIBUTION
+          {isTR ? 'BÖLGE DAĞILIMI' : 'ZONE DISTRIBUTION'}
         </div>
         {['Z1','Z2','Z3','Z4','Z5'].map(zk => {
           const pct = Math.round((z[zk] || 0) * 100)
@@ -244,7 +259,7 @@ function WeekDetailPanel({ week, weekIndex, allWeeks, onUpdateTSS, onOpenBuilder
 
       {/* Copy forward */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <div style={{ fontFamily: MONO, fontSize: 9, color: '#555' }}>Apply this TSS to next</div>
+        <div style={{ fontFamily: MONO, fontSize: 9, color: '#555' }}>{isTR ? 'Bu TSS’yi' : 'Apply this TSS to'}</div>
         <select
           value={copyN}
           onChange={e => setCopyN(parseInt(e.target.value))}
@@ -252,12 +267,12 @@ function WeekDetailPanel({ week, weekIndex, allWeeks, onUpdateTSS, onOpenBuilder
         >
           {[1,2,3,4,5,6,7,8].map(n => <option key={n} value={n}>{n}</option>)}
         </select>
-        <div style={{ fontFamily: MONO, fontSize: 9, color: '#555' }}>weeks</div>
+        <div style={{ fontFamily: MONO, fontSize: 9, color: '#555' }}>{isTR ? 'haftaya uygula (bu hafta dahil)' : 'weeks (incl. current)'}</div>
         <button onClick={applyForward} style={{
           fontFamily: MONO, fontSize: 9, padding: '5px 10px',
           background: 'transparent', border: '1px solid #2a2a2a',
           color: '#888', borderRadius: 3, cursor: 'pointer',
-        }}>APPLY</button>
+        }}>{isTR ? 'UYGULA' : 'APPLY'}</button>
       </div>
 
       {/* Build sessions button */}
@@ -267,7 +282,7 @@ function WeekDetailPanel({ week, weekIndex, allWeeks, onUpdateTSS, onOpenBuilder
         background: '#0064ff', border: 'none', color: '#fff',
         borderRadius: 4, cursor: 'pointer', letterSpacing: '0.06em',
       }}>
-        ⊞ BUILD SESSIONS
+        {isTR ? '⊞ ANTRENMAN OLUŞTUR' : '⊞ BUILD SESSIONS'}
       </button>
     </div>
   )
@@ -466,7 +481,7 @@ export default function YearlyPlan() {
   if (!plan) {
     return (
       <div style={{ fontFamily: MONO, padding: '40px 20px', textAlign: 'center', color: '#555' }}>
-        BUILDING PLAN...
+        {lang === 'tr' ? 'PLAN OLUŞTURULUYOR...' : 'BUILDING PLAN...'}
       </div>
     )
   }
@@ -486,14 +501,14 @@ export default function YearlyPlan() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
           {/* Model buttons */}
           <div style={{ display: 'flex', gap: 4 }}>
-            {Object.entries(MODEL_LABELS).map(([m, label]) => (
+            {Object.keys(MODEL_LABELS).map((m) => (
               <button key={m} onClick={() => handleModelChange(m)} style={{
                 fontFamily: MONO, fontSize: 10, fontWeight: 700, padding: '5px 12px',
                 background: model === m ? '#ff6600' : '#1a1a1a',
                 color: model === m ? '#fff' : '#666',
                 border: 'none', borderRadius: 3, cursor: 'pointer', letterSpacing: '0.06em',
               }}>
-                {label.toUpperCase()}
+                {(lang === 'tr' ? MODEL_LABELS_TR[m] : MODEL_LABELS[m]).toUpperCase()}
               </button>
             ))}
           </div>
@@ -504,26 +519,26 @@ export default function YearlyPlan() {
               fontFamily: MONO, fontSize: 9, padding: '5px 10px',
               background: 'transparent', border: '1px solid #333',
               color: '#888', borderRadius: 3, cursor: 'pointer',
-            }}>↺ REGENERATE</button>
+            }}>{lang === 'tr' ? '↺ YENİDEN OLUŞTUR' : '↺ REGENERATE'}</button>
             <button onClick={handleExportCSV} style={{
               fontFamily: MONO, fontSize: 9, padding: '5px 10px',
               background: 'transparent', border: '1px solid #333',
               color: '#888', borderRadius: 3, cursor: 'pointer',
-            }}>↓ EXPORT CSV</button>
+            }}>{lang === 'tr' ? '↓ CSV DIŞA AKTAR' : '↓ EXPORT CSV'}</button>
             <button onClick={() => setShowRaceManager(v => !v)} style={{
               fontFamily: MONO, fontSize: 9, padding: '5px 10px',
               background: showRaceManager ? '#ff6600' : 'transparent',
               border: `1px solid ${showRaceManager ? '#ff6600' : '#333'}`,
               color: showRaceManager ? '#fff' : '#888',
               borderRadius: 3, cursor: 'pointer',
-            }}>+ ADD RACE</button>
+            }}>{lang === 'tr' ? '+ YARIŞ EKLE' : '+ ADD RACE'}</button>
           </div>
         </div>
 
         {/* Projected CTL badge */}
         {plan.projectedCTL > 0 && (
           <div style={{ fontFamily: MONO, fontSize: 9, color: '#555' }}>
-            Projected peak CTL: <span style={{ color: '#ff6600', fontWeight: 700 }}>{plan.projectedCTL}</span>
+            {lang === 'tr' ? 'Öngörülen zirve CTL:' : 'Projected peak CTL:'} <span style={{ color: '#ff6600', fontWeight: 700 }}>{plan.projectedCTL}</span>
           </div>
         )}
 
@@ -549,25 +564,25 @@ export default function YearlyPlan() {
         {showRaceManager && (
           <div style={{ borderTop: '1px solid #1a1a1a', marginTop: 12, paddingTop: 12 }}>
             <div style={{ fontFamily: MONO, fontSize: 9, color: '#555', letterSpacing: '0.1em', marginBottom: 8 }}>
-              RACE CALENDAR
+              {lang === 'tr' ? 'YARIŞ TAKVİMİ' : 'RACE CALENDAR'}
             </div>
 
             {/* Add race row */}
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 10 }}>
               <div>
-                <label style={S.label}>DATE</label>
+                <label style={S.label}>{lang === 'tr' ? 'TARİH' : 'DATE'}</label>
                 <input type="date" value={raceForm.date}
                   onChange={e => setRaceForm(p => ({ ...p, date: e.target.value }))}
                   style={{ ...S.input, maxWidth: 140 }} />
               </div>
               <div>
-                <label style={S.label}>NAME</label>
-                <input type="text" value={raceForm.name} placeholder="Race name"
+                <label style={S.label}>{lang === 'tr' ? 'AD' : 'NAME'}</label>
+                <input type="text" value={raceForm.name} placeholder={lang === 'tr' ? 'Yarış adı' : 'Race name'}
                   onChange={e => setRaceForm(p => ({ ...p, name: e.target.value }))}
                   style={{ ...S.input, maxWidth: 160 }} />
               </div>
               <div>
-                <label style={S.label}>PRIORITY</label>
+                <label style={S.label}>{lang === 'tr' ? 'ÖNCELİK' : 'PRIORITY'}</label>
                 <div style={{ display: 'flex', gap: 3 }}>
                   {['A','B','C'].map(p => (
                     <button key={p} onClick={() => setRaceForm(prev => ({ ...prev, priority: p }))} style={{
@@ -583,12 +598,12 @@ export default function YearlyPlan() {
                 fontFamily: MONO, fontSize: 10, fontWeight: 700,
                 padding: '7px 14px', background: '#0064ff', border: 'none',
                 color: '#fff', borderRadius: 3, cursor: 'pointer', marginBottom: 14,
-              }}>ADD</button>
+              }}>{lang === 'tr' ? 'EKLE' : 'ADD'}</button>
             </div>
 
             {/* Existing races */}
             {races.length === 0 && (
-              <div style={{ fontFamily: MONO, fontSize: 10, color: '#444' }}>No races added yet.</div>
+              <div style={{ fontFamily: MONO, fontSize: 10, color: '#444' }}>{lang === 'tr' ? 'Henüz yarış eklenmedi.' : 'No races added yet.'}</div>
             )}
             {races.map((r, i) => (
               <div key={i} style={{
@@ -618,7 +633,7 @@ export default function YearlyPlan() {
       {/* ── 52-week calendar ── */}
       <div className="sp-card" style={{ ...S.card, padding: '12px 0' }}>
         <div style={{ fontFamily: MONO, fontSize: 9, color: '#555', letterSpacing: '0.1em', marginBottom: 8, paddingLeft: 16 }}>
-          52-WEEK PLAN — click a week to edit
+          {lang === 'tr' ? '52 HAFTALIK PLAN — düzenlemek için bir haftaya tıklayın' : '52-WEEK PLAN — click a week to edit'}
         </div>
 
         {/* Phase legend */}
@@ -626,7 +641,7 @@ export default function YearlyPlan() {
           {Object.entries(PHASE_COLORS).map(([phase, color]) => (
             <div key={phase} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <div style={{ width: 8, height: 8, background: color, borderRadius: 1 }} />
-              <span style={{ fontFamily: MONO, fontSize: 8, color: '#555' }}>{phase}</span>
+              <span style={{ fontFamily: MONO, fontSize: 8, color: '#555' }}>{phaseLabel(phase, lang)}</span>
             </div>
           ))}
         </div>
@@ -675,6 +690,7 @@ export default function YearlyPlan() {
                   onClick={() => setSelectedWeek(selectedWeek === i ? null : i)}
                   colW={colW}
                   maxTSS={maxTSS}
+                  lang={lang}
                 />
               ))}
             </div>
@@ -690,6 +706,7 @@ export default function YearlyPlan() {
           allWeeks={plan.weeks}
           onUpdateTSS={handleUpdateTSS}
           onOpenBuilder={() => setBuilderWeek(plan.weeks[selectedWeek])}
+          lang={lang}
         />
       )}
     </div>

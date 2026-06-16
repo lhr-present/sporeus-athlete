@@ -256,7 +256,9 @@ export default function ReportsTab({ authUser, authProfile, lang = 'en' }) {
                   {/* Rows */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     {groupRows.map(r => {
-                      const expired = new Date(r.expires_at) < new Date()
+                      // v9.x — null expires_at parsed to epoch → always "expired" →
+                      // Download hidden. Treat a missing expiry as never-expiring.
+                      const expired = r.expires_at ? new Date(r.expires_at) < new Date() : false
                       return (
                         <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', borderBottom: '1px solid #1a1a1a' }}>
                           <div style={{ ...S.mono, fontSize: '9px', color: '#666', flex: 1 }}>

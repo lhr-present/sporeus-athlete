@@ -427,10 +427,10 @@ export default function Profile({ log, authUser }) {
       <div className="sp-card" style={{ ...S.card, background:'#0a0a0a', animationDelay:'100ms' }}>
         <div style={{ ...S.cardTitle, color:'#ff6600', borderColor:'#333' }}>{t('installTitle')}</div>
         <div style={{ ...S.mono, fontSize:'12px', lineHeight:1.9, color:'#ccc' }}>
-          <div>📱 <strong style={{ color:'#fff' }}>iOS:</strong> Safari \u2192 Share \u2192 Add to Home Screen</div>
-          <div>🤖 <strong style={{ color:'#fff' }}>Android:</strong> Chrome menu \u2192 Install App</div>
-          <div>💻 <strong style={{ color:'#fff' }}>Desktop:</strong> Address bar \u2192 Install icon</div>
-          <div style={{ color:'var(--sub)', fontSize:'10px', marginTop:'6px' }}>Works fully offline once installed.</div>
+          <div>📱 <strong style={{ color:'#fff' }}>iOS:</strong> {isTR ? 'Safari → Paylaş → Ana Ekrana Ekle' : 'Safari → Share → Add to Home Screen'}</div>
+          <div>🤖 <strong style={{ color:'#fff' }}>Android:</strong> {isTR ? 'Chrome menüsü → Uygulamayı Yükle' : 'Chrome menu → Install App'}</div>
+          <div>💻 <strong style={{ color:'#fff' }}>Desktop:</strong> {isTR ? 'Adres çubuğu → Yükle simgesi' : 'Address bar → Install icon'}</div>
+          <div style={{ color:'var(--sub)', fontSize:'10px', marginTop:'6px' }}>{isTR ? 'Kurulduktan sonra tamamen çevrimdışı çalışır.' : 'Works fully offline once installed.'}</div>
         </div>
       </div>
 

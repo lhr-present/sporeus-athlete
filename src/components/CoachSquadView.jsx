@@ -127,6 +127,21 @@ export default function CoachSquadView({ authUser }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- SORT_FNS is a module-level constant
   }, [athletes, sort, activeTeamId, teams])
 
+  // v9.x — Prune compareIds when the active team changes so ids for athletes no
+  // longer visible in this team aren't stranded (the comparison block keys off
+  // comparisonSelected.length, so stale ids would otherwise occupy the 5-athlete
+  // cap while contributing nothing). Must sit above the early `loading` return so
+  // the hook order stays stable.
+  useEffect(() => {
+    setCompareIds(prev => {
+      if (prev.size === 0) return prev
+      const visible = new Set(sorted.map(a => a.athlete_id))
+      const next = new Set([...prev].filter(id => visible.has(id)))
+      return next.size === prev.size ? prev : next
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- prune on team switch; `sorted` re-derives from activeTeamId
+  }, [activeTeamId])
+
   const handleSort = col => setSort(prev => prev.col === col ? { col, dir: -prev.dir } : { col, dir: 1 })
   const sortArrow  = col => sort.col === col ? (sort.dir === 1 ? ' ↓' : ' ↑') : ''
 
@@ -258,7 +273,7 @@ export default function CoachSquadView({ authUser }) {
       )}
 
       {/* Athlete Comparison */}
-      {compareIds.size >= 2 && comparisonSelected.length >= 2 && (() => {
+      {comparisonSelected.length >= 2 && (() => {
         const maxCTL = Math.max(...comparisonSelected.map(a => a.today_ctl || 0), 1)
         const maxACWR = Math.max(...comparisonSelected.map(a => a.acwr_ratio || 0), 0.1)
         const metrics = [
