@@ -82,6 +82,44 @@ describe('postComment — offline queue', () => {
   })
 })
 
+describe('postComment — stable client id (offline edit/delete relink)', () => {
+  beforeEach(() => { mockEnqueue.mockClear() })
+
+  it('includes a client-generated id in the inserted payload', async () => {
+    let captured = null
+    const sb = {
+      from: vi.fn(() => sb),
+      insert: vi.fn(p => { captured = p; return sb }),
+      select: vi.fn(() => sb),
+      single: vi.fn(() => Promise.resolve({ data: { ...captured }, error: null })),
+    }
+    await postComment(sb, 's1', 'u1', 'hello')
+    expect(captured.id).toBeTruthy()
+    // UUID-shaped, NOT a client tempId
+    expect(captured.id).not.toMatch(/^opt-/)
+  })
+
+  it('an offline-created comment edited while still offline replays against the SAME id (no silent drop)', async () => {
+    // 1. Create offline: the optimistic id is carried into the queued insert payload.
+    const sb = makeChain({ data: null, error: new Error('Failed to fetch') })
+    const optimisticId = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'
+    const { queued } = await postComment(sb, 's1', 'u1', 'first', null, optimisticId)
+    expect(queued).toBe(true)
+    expect(mockEnqueue).toHaveBeenCalledWith('insert', 'session_comments', expect.objectContaining({
+      id: optimisticId,
+    }))
+
+    // 2. Edit it while STILL offline: the update is keyed on the SAME stable id,
+    //    so on replay it matches the inserted server row instead of a dead tempId.
+    mockEnqueue.mockClear()
+    const { queued: editQueued } = await editComment(sb, optimisticId, 'edited')
+    expect(editQueued).toBe(true)
+    expect(mockEnqueue).toHaveBeenCalledWith('update', 'session_comments', expect.objectContaining({
+      id: optimisticId, body: 'edited',
+    }))
+  })
+})
+
 describe('postComment — parentId', () => {
   it('includes parent_id when provided', async () => {
     let captured = null

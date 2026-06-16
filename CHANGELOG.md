@@ -2,6 +2,38 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.427.0 — 2026-06-16 — Deferred backlog: billing capture, contract-test integrity, offline polish
+
+Working through the deferred backlog (in order). All feasible-from-here items; the rest
+(native mobile push/OAuth, edge-fn deploys, pgtap-in-public, swimSwolf capture) remain
+operator/product-gated — see audit docs.
+
+Billing (migration 20260630, applied + verified on prod):
+- billing_events.amount_cents/currency were always NULL — apply_subscription_event
+  delegated to apply_tier_change WITHOUT forwarding amount. Now extracts amount/currency
+  from the payload (Dodo metadata.amount major-unit string → cents; Stripe data.object.amount
+  minor units; currency upper, default TRY) and forwards them. Regex-guarded so a malformed
+  amount can never throw / break tier provisioning (falls to NULL). Verified: 299.00→29900/TRY,
+  900/eur→900/EUR, "abc"→NULL. (No live subscriptions yet — safest time to fix.)
+
+Contract-test integrity (continues the round-3 theme — tests now assert REALITY, not copies):
+- dodoWebhook: asserts the 20260630 SQL forwards amount/currency; idempotency corrected to
+  UNIQUE(event_id) alone; tautology removed.
+- mvSquadReadiness: ACWR thresholds now PARSED from migration 20260628 (was a drifted replica:
+  caution 1.35 vs 1.3, Peaking tsb vs ctl-atl, missing Detraining).
+- analyseSession: kind allow-list narrowed to the 2 kinds the edge fn emits.
+- aiProxy: RAG-context replica corrected to the real edge-fn format.
+- coachMessage / useAsync: stopped mocking/reimplementing the unit under test — now import the
+  real buildChannelId/formatMsgTime + the real retry wrapper (extracted as withNetworkRetry).
+
+Offline-queue polish (LOW):
+- Comments now use a client-supplied UUID PK (session_comments.id accepts it) so an
+  offline-created comment edited/deleted while still offline relinks on replay (was silently
+  dropped). 
+- Poison writes (>= MAX_ATTEMPTS) move to a new dead_letter IndexedDB store (DB v2→v3,
+  additive) + getDeadLetterCount(), so the active queue can drain to 'synced'.
+DEPENDS ON: apply_tier_change p_amount_cents/p_currency; session_comments client-UUID PK.
+
 ## v9.426.0 — 2026-06-16 — Restore coach search arms (accidental v9.327 regression)
 
 Investigated whether search_everything dropping the `athlete_session`/`athlete` kinds was

@@ -12,6 +12,26 @@ const TABLE_VIEWS    = 'session_views'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/**
+ * Generate a stable client-side UUID for a new comment's primary key.
+ * The session_comments PK is `uuid DEFAULT gen_random_uuid()` — a DEFAULT only
+ * applies when no value is supplied, so supplying our own UUID is accepted and
+ * the row keeps a stable id across the offline → online boundary. This lets an
+ * edit/delete made while still offline replay against a real id instead of a
+ * client tempId that matches zero server rows (round-3 fix). Falls back to a
+ * v4-shaped string when crypto.randomUUID is unavailable (older webviews/tests).
+ */
+export function newCommentId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}
+
 function isOfflineError(error) {
   if (!error) return false
   const msg = error.message || ''
@@ -32,16 +52,20 @@ function isOfflineError(error) {
  * @param {string} authorId      - profiles.id of the poster
  * @param {string} body          - comment text (1–2000 chars)
  * @param {string|null} parentId - null for top-level; comment id for reply
+ * @param {string} [id]          - client-supplied PK (UUID). Defaults to a fresh
+ *   UUID so the row id is stable across the offline → online boundary; pass the
+ *   optimistic row's id so edit/delete on an un-synced comment replays correctly.
  * @returns {Promise<{ data, error, queued }>}
  *   queued=true when the write was stored offline
  */
-export async function postComment(supabase, sessionId, authorId, body, parentId = null) {
+export async function postComment(supabase, sessionId, authorId, body, parentId = null, id = newCommentId()) {
   const trimmed = (body || '').trim()
   if (!trimmed || trimmed.length > 2000) {
     return { data: null, error: new Error('body must be 1–2000 characters'), queued: false }
   }
 
   const payload = {
+    id,
     session_id: sessionId,
     author_id:  authorId,
     body:       trimmed,

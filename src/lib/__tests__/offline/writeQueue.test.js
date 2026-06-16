@@ -1,7 +1,7 @@
 // src/lib/__tests__/offline/writeQueue.test.js — E4
 // Write queue: enqueue, count, replay, dequeue, mark-failed
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { enqueueWrite, getPendingWrites, pendingWriteCount, replayWrites } from '../../offline/writeQueue.js'
+import { enqueueWrite, getPendingWrites, pendingWriteCount, replayWrites, getDeadLetterCount } from '../../offline/writeQueue.js'
 
 // ─── Minimal IDB mock ─────────────────────────────────────────────────────────
 // Uses Object.defineProperty setters so onsuccess fires after assignment (mimics
@@ -38,11 +38,25 @@ function makeStore(records) {
 function mockIDB() {
   const pending_logs = []
   const write_queue = []
+  const dead_letter = []
+  const tables = { pending_logs, write_queue, dead_letter }
   const db = {
-    objectStoreNames: { contains: (n) => ['pending_logs', 'write_queue'].includes(n) },
+    objectStoreNames: { contains: (n) => ['pending_logs', 'write_queue', 'dead_letter'].includes(n) },
     transaction(store, _mode) {
-      const s = store === 'write_queue' ? makeStore(write_queue) : makeStore(pending_logs)
-      return { objectStore: () => s }
+      // store may be a single name or an array of names (multi-store tx).
+      const names = Array.isArray(store) ? store : [store]
+      const stores = {}
+      for (const n of names) stores[n] = makeStore(tables[n] || pending_logs)
+      const tx = {
+        objectStore: (name) => stores[name] || makeStore(tables[name] || pending_logs),
+      }
+      // Fire oncomplete on the next tick so callers awaiting tx.oncomplete resolve.
+      Object.defineProperty(tx, 'oncomplete', {
+        set(fn) { if (fn) setTimeout(fn, 0) }, get() { return null }, configurable: true,
+      })
+      Object.defineProperty(tx, 'onerror', { set() {}, get() { return null }, configurable: true })
+      Object.defineProperty(tx, 'onabort', { set() {}, get() { return null }, configurable: true })
+      return tx
     }
   }
   vi.stubGlobal('indexedDB', {
@@ -58,7 +72,7 @@ function mockIDB() {
       return r
     }
   })
-  return { write_queue }
+  return { write_queue, dead_letter }
 }
 
 describe('writeQueue', () => {
@@ -131,12 +145,37 @@ describe('writeQueue', () => {
     expect(storeRef.write_queue[0]._lastError).toBe('network error')
   })
 
-  it('replayWrites skips entries that exceeded MAX_ATTEMPTS', async () => {
+  it('replayWrites dead-letters entries that exceeded MAX_ATTEMPTS and drains the active queue', async () => {
     storeRef.write_queue.push({ id: 77, op: 'insert', table: 'training_log', payload: {}, _queuedAt: 1000, _attempts: 3, _lastError: 'prior error' })
     const mockSupabase = { from: vi.fn() }
     const result = await replayWrites(mockSupabase)
     expect(result.skipped).toBe(1)
     expect(mockSupabase.from).not.toHaveBeenCalled()
+    // Poison entry must be removed from the active queue so it can drain to synced …
+    expect(storeRef.write_queue).toHaveLength(0)
+    // … and parked in the dead-letter store with a timestamp.
+    expect(storeRef.dead_letter).toHaveLength(1)
+    expect(storeRef.dead_letter[0].id).toBe(77)
+    expect(typeof storeRef.dead_letter[0]._deadLetteredAt).toBe('number')
+    // getDeadLetterCount surfaces it for the UI.
+    const dlCount = await getDeadLetterCount()
+    expect(dlCount).toBe(1)
+  })
+
+  it('a poison entry does not block a healthy entry from replaying, leaving the active queue empty', async () => {
+    storeRef.write_queue.push({ id: 77, op: 'insert', table: 'training_log', payload: {}, _queuedAt: 1000, _attempts: 3, _lastError: 'prior error' })
+    storeRef.write_queue.push({ id: 78, op: 'insert', table: 'training_log', payload: { id: 'good' }, _queuedAt: 2000, _attempts: 0, _lastError: null })
+    const mockSupabase = {
+      from: vi.fn(() => ({
+        insert: vi.fn(() => Promise.resolve({ error: null })),
+      }))
+    }
+    const result = await replayWrites(mockSupabase)
+    expect(result.replayed).toBe(1)
+    expect(result.skipped).toBe(1)
+    // Active queue fully drained: healthy replayed, poison dead-lettered.
+    expect(storeRef.write_queue).toHaveLength(0)
+    expect(storeRef.dead_letter).toHaveLength(1)
   })
 
   it('replayWrites calls onProgress callback', async () => {

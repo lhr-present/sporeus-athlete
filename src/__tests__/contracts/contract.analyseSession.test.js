@@ -17,27 +17,43 @@ function isValidWebhookPayload(p) {
   )
 }
 
-/** Shape analyse-session upserts into ai_insights */
+/**
+ * Shape analyse-session upserts into ai_insights.
+ * Real producer (supabase/functions/analyse-session/index.ts) writes EXACTLY two
+ * kinds: 'session_analysis' (upsert, line 214) and 'coach_session_flag' (coach
+ * mirror, line 262). It NEVER writes 'weekly_digest', 'hrv', 'ftp', or 'daily' —
+ * the old allow-list accepted kinds this producer can't emit (round-3 drift).
+ * Narrowed to the kinds analyse-session actually emits.
+ */
+const ANALYSE_SESSION_KINDS = ['session_analysis', 'coach_session_flag']
+
 function isValidInsightRow(row) {
   return (
     typeof row === 'object' && row !== null &&
     typeof row.athlete_id   === 'string' &&
     typeof row.date         === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row.date) &&
     typeof row.data_hash    === 'string' && row.data_hash.length > 0 &&
-    ['session_analysis', 'coach_session_flag', 'weekly_digest', 'hrv', 'ftp', 'daily'].includes(row.kind) &&
+    ANALYSE_SESSION_KINDS.includes(row.kind) &&
     typeof row.insight_json === 'object' && row.insight_json !== null &&
     typeof row.model        === 'string'
   )
 }
 
-/** Shape of insight_json for kind='session_analysis' (from analyse-session) */
+/**
+ * Shape of insight_json for kind='session_analysis' (from analyse-session, line 220):
+ *   { text, flags, session: { id, type, tss }, acwr, ctl, tsb }
+ * `acwr` is part of the real shape (number | null when CTL=0) and downstream
+ * consumers read it, so the contract must assert it — not just text/flags/ctl/tsb.
+ */
 function isValidSessionAnalysisJson(json) {
   return (
     typeof json === 'object' && json !== null &&
     typeof json.text === 'string' && json.text.length > 0 &&
     Array.isArray(json.flags) &&
     typeof json.ctl  === 'number' &&
-    typeof json.tsb  === 'number'
+    typeof json.tsb  === 'number' &&
+    (json.acwr === null || typeof json.acwr === 'number') &&
+    typeof json.session === 'object' && json.session !== null
   )
 }
 
@@ -86,10 +102,18 @@ describe('C1 — analyse-session webhook payload contract', () => {
       expect(isValidInsightRow({ ...validRow, date: '' })).toBe(false)
     })
 
-    it('kind must be one of the allowed values', () => {
+    it('kind must be one analyse-session actually emits', () => {
       expect(isValidInsightRow({ ...validRow, kind: 'session_analysis' })).toBe(true)
       expect(isValidInsightRow({ ...validRow, kind: 'coach_session_flag' })).toBe(true)
       expect(isValidInsightRow({ ...validRow, kind: 'unknown_kind' })).toBe(false)
+    })
+
+    it('rejects kinds analyse-session never writes', () => {
+      // These were accepted by the old over-broad allow-list but this producer
+      // never emits them (they come from other edge fns / consumers).
+      for (const kind of ['weekly_digest', 'hrv', 'ftp', 'daily']) {
+        expect(isValidInsightRow({ ...validRow, kind })).toBe(false)
+      }
     })
   })
 
@@ -119,6 +143,17 @@ describe('C1 — analyse-session webhook payload contract', () => {
 
     it('flags can be empty (no issues detected)', () => {
       expect(isValidSessionAnalysisJson({ ...validJson, flags: [] })).toBe(true)
+    })
+
+    it('acwr is part of the real shape (number, or null when CTL=0)', () => {
+      expect(validJson.acwr).toBeDefined()
+      expect(isValidSessionAnalysisJson({ ...validJson, acwr: 1.42 })).toBe(true)
+      expect(isValidSessionAnalysisJson({ ...validJson, acwr: null })).toBe(true)  // CTL=0 → acwr null in producer
+      expect(isValidSessionAnalysisJson({ ...validJson, acwr: '1.1' })).toBe(false)
+    })
+
+    it('session sub-object is required (producer always writes session:{id,type,tss})', () => {
+      expect(isValidSessionAnalysisJson({ ...validJson, session: undefined })).toBe(false)
     })
   })
 })

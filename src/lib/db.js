@@ -9,11 +9,13 @@
 // and the other module throws on access. (Previously db.js was v1 / writeQueue
 // v2, so opening order decided whether you hit a VersionError and the offline
 // queue silently broke.) Keep this handler in sync with writeQueue.js.
+// v3 added the 'dead_letter' store (poison writes parked out of the active queue).
 
-const DB_NAME      = 'sporeus-offline'
-const DB_VERSION   = 2
-const STORE        = 'pending_logs'
-const QUEUE_STORE  = 'write_queue'   // owned by writeQueue.js — created here too so order can't matter
+const DB_NAME            = 'sporeus-offline'
+const DB_VERSION         = 3
+const STORE              = 'pending_logs'
+const QUEUE_STORE        = 'write_queue'   // owned by writeQueue.js — created here too so order can't matter
+const DEAD_LETTER_STORE  = 'dead_letter'   // owned by writeQueue.js — created here too so order can't matter
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -27,6 +29,9 @@ function openDB() {
         const store = db.createObjectStore(QUEUE_STORE, { keyPath: 'id', autoIncrement: true })
         store.createIndex('by_table', 'table', { unique: false })
         store.createIndex('by_queued', '_queuedAt', { unique: false })
+      }
+      if (!db.objectStoreNames.contains(DEAD_LETTER_STORE)) {
+        db.createObjectStore(DEAD_LETTER_STORE, { keyPath: 'id', autoIncrement: true })
       }
     }
     req.onsuccess = e => resolve(e.target.result)

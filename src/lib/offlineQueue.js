@@ -99,9 +99,11 @@ export async function flushQueue() {
   // supabase-ready (guarded above), so replayWrites never burns its retry
   // budget against an offline backend. Transient `failed` writes keep status
   // 'offline' so the next trigger retries. `skipped` entries have exhausted
-  // their retry budget (poison writes left in IndexedDB forever) — they must
-  // ALSO keep the indicator out of 'synced', otherwise the UI shows green while
-  // those writes are silently dead.
+  // their retry budget and are moved to the dead_letter store (removed from the
+  // active queue) inside replayWrites — they still flip allOk=false for THIS
+  // flush, but the next flush sees an empty active queue and reaches 'synced'.
+  // The dead-letter count (getDeadLetterCount) is the channel for surfacing
+  // permanently-failed writes to the user.
   if (queuedWrites > 0) {
     try {
       const { failed, skipped } = await replayWrites(supabase)

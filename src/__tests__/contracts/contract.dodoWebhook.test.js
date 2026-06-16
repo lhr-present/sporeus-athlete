@@ -5,6 +5,19 @@
 // Deno runtime; this tests the contracts our front-end + DB code depend on.
 
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, resolve } from 'node:path'
+
+// Pin the contract to the REAL producer: parse the migration SQL that defines
+// apply_subscription_event so these assertions can't drift from what the DB
+// function actually does. (round-3 test-integrity finding: contract tests must
+// assert against the real producer, not a hand-copied replica.)
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const MIGRATION_SQL = readFileSync(
+  resolve(__dirname, '../../../supabase/migrations/20260630_subscription_event_capture_amount.sql'),
+  'utf8',
+)
 
 // ── Fixture payloads (canonical shapes from Dodo + Stripe docs) ────────────────
 
@@ -81,6 +94,11 @@ function extractStripeUid(event) {
 }
 
 // ── Helper: determine apply_tier_change params from Dodo payment.succeeded ───
+// This mirrors the SQL extraction in apply_subscription_event (migration
+// 20260630): Dodo metadata.amount is a major-unit decimal string (299.00 →
+// 29900 cents) and currency is uppercased, defaulting to TRY. The SQL is the
+// source of truth; the `forwards p_amount_cents/p_currency to apply_tier_change`
+// describe block below asserts the replica stays consistent with the SQL body.
 function deriveUpgradeParams(event) {
   const uid    = extractDodoUid(event)
   const tier   = event.metadata?.tier || 'coach'
@@ -113,6 +131,42 @@ describe('Dodo webhook — payload contracts', () => {
     it('defaults to coach tier when metadata.tier absent', () => {
       const evt = { ...DODO_PAYMENT_SUCCEEDED, metadata: { ...DODO_PAYMENT_SUCCEEDED.metadata, tier: undefined } }
       expect(deriveUpgradeParams(evt).tier).toBe('coach')
+    })
+  })
+
+  // Assert the REAL producer (the SQL) actually forwards amount/currency.
+  // Before migration 20260630 apply_subscription_event delegated to
+  // apply_tier_change WITHOUT p_amount_cents/p_currency, so billing_events.amount
+  // was always NULL — this contract test passed anyway because it only checked
+  // the JS replica. These assertions read the live migration so a regression that
+  // drops the forwarding would fail the contract.
+  describe('apply_subscription_event SQL — forwards p_amount_cents/p_currency', () => {
+    it('PERFORMs apply_tier_change with both p_amount_cents and p_currency', () => {
+      const callMatch = MIGRATION_SQL.match(/PERFORM\s+public\.apply_tier_change\(([\s\S]*?)\);/i)
+      expect(callMatch).toBeTruthy()
+      const callArgs = callMatch[1]
+      expect(callArgs).toMatch(/p_amount_cents\s*:=\s*v_amount_cents/)
+      expect(callArgs).toMatch(/p_currency\s*:=\s*v_currency/)
+    })
+    it('derives Dodo cents from metadata.amount (major units × 100)', () => {
+      // round(... ::numeric * 100)::int over metadata.amount — matches deriveUpgradeParams
+      expect(MIGRATION_SQL).toMatch(/round\(\(p_event->'metadata'->>'amount'\)::numeric\s*\*\s*100\)::int/)
+      expect(deriveUpgradeParams(DODO_PAYMENT_SUCCEEDED).amountCents).toBe(29900)
+    })
+    it('derives Stripe cents from data.object.amount (already minor units)', () => {
+      expect(MIGRATION_SQL).toMatch(/\(p_event->'data'->'object'->>'amount'\)::int/)
+    })
+    it('uppercases currency and defaults to TRY', () => {
+      expect(MIGRATION_SQL).toMatch(/v_currency\s*:=\s*upper\(COALESCE\([\s\S]*?'TRY'\s*\)\)/)
+      expect(deriveUpgradeParams(DODO_PAYMENT_SUCCEEDED).currency).toBe('TRY')
+      const noCurrency = { ...DODO_PAYMENT_SUCCEEDED, metadata: { ...DODO_PAYMENT_SUCCEEDED.metadata, currency: undefined } }
+      expect(deriveUpgradeParams(noCurrency).currency).toBe('TRY')
+    })
+    it('amount extraction is regex-guarded (malformed amount → NULL, never throws)', () => {
+      expect(MIGRATION_SQL).toMatch(/~\s*'\^\[0-9\]\+\(\\\.\[0-9\]\+\)\?\$'/)
+      const bad = { ...DODO_PAYMENT_SUCCEEDED, metadata: { ...DODO_PAYMENT_SUCCEEDED.metadata, amount: 'abc' } }
+      // parseFloat('abc') → NaN → Math.round(NaN) → NaN; the SQL guard yields NULL.
+      expect(Number.isNaN(deriveUpgradeParams(bad).amountCents)).toBe(true)
     })
   })
 
@@ -186,29 +240,33 @@ describe('Stripe webhook — payload contracts', () => {
   })
 })
 
-describe('Idempotency — processed_webhooks contract', () => {
+describe('Idempotency — subscription_events contract', () => {
   it('Dodo event_id is the event.id field', () => {
     expect(DODO_PAYMENT_SUCCEEDED.id).toBe('dodo_evt_test_001')
   })
   it('Stripe event_id is the top-level id field', () => {
     expect(STRIPE_PAYMENT_INTENT_SUCCEEDED.id).toBe('pi_test_001')
   })
-  it('(webhook_source, event_id) pair uniquely identifies a processed event', () => {
-    // Two events with same source+id should be deduped
-    const pairs = [
-      { source: 'dodo',   id: 'dodo_evt_test_001' },
-      { source: 'dodo',   id: 'dodo_evt_test_001' },  // replay
-      { source: 'stripe', id: 'dodo_evt_test_001' },  // different source — not a dupe
+  it('the UNIQUE constraint is on event_id ALONE (not source+event_id)', () => {
+    // Real producer: subscription_events declares UNIQUE (event_id) — provider is a
+    // separate NON-unique column (2026042409_subscription_state.sql), and
+    // apply_subscription_event inserts (event_id, provider, ...) catching
+    // unique_violation on event_id. So event_id is the sole dedup key: two events
+    // sharing an id collide REGARDLESS of provider. (The old test asserted a
+    // (source,event_id) composite key, which does not exist — drift.)
+    const events = [
+      { provider: 'dodo',   event_id: 'evt_shared_001' },
+      { provider: 'dodo',   event_id: 'evt_shared_001' },  // replay — deduped
+      { provider: 'stripe', event_id: 'evt_shared_001' },  // SAME id — also deduped
+      { provider: 'dodo',   event_id: 'evt_other_002' },   // distinct id
     ]
-    const unique = new Set(pairs.map(p => `${p.source}:${p.id}`))
-    expect(unique.size).toBe(2)  // dodo:id is deduped, stripe:id is distinct
+    const uniqueByEventId = new Set(events.map(e => e.event_id))
+    expect(uniqueByEventId.size).toBe(2)  // only 'evt_shared_001' + 'evt_other_002'
   })
-  it('tampered event cannot forge a new processed_webhooks row (different id)', () => {
-    // If an attacker changes the event_id in the payload, the UNIQUE constraint
-    // would allow insertion (different key), but HMAC check prevents reaching this.
-    // This test documents the defense-in-depth assumption.
-    const tampered = { ...DODO_PAYMENT_SUCCEEDED, id: 'attacker_forged_id' }
-    expect(tampered.id).not.toBe(DODO_PAYMENT_SUCCEEDED.id)
+  it('duplicate event_id short-circuits to {ok:true, duplicate:true} in the SQL', () => {
+    // Assert against the real producer: the unique_violation handler returns a
+    // duplicate ack rather than re-processing or throwing.
+    expect(MIGRATION_SQL).toMatch(/EXCEPTION WHEN unique_violation THEN[\s\S]*?'duplicate',\s*true/)
   })
 })
 

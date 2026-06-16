@@ -9,10 +9,17 @@
 // ops: 'insert' | 'update' | 'delete'
 
 const DB_NAME    = 'sporeus-offline'
-const DB_VERSION = 2          // bump from v1 (adds write_queue store)
+const DB_VERSION = 3          // v2 added write_queue; v3 adds dead_letter store
 const QUEUE_STORE = 'write_queue'
 const PENDING_STORE = 'pending_logs'   // existing store — keep for compatibility
+const DEAD_LETTER_STORE = 'dead_letter' // poison writes (>= MAX_ATTEMPTS) parked here
 
+// IMPORTANT: src/lib/db.js opens the SAME 'sporeus-offline' DB and MUST declare
+// the same DB_VERSION and create every store in its onupgradeneeded — whichever
+// module opens the DB first at a new version runs the only upgrade transaction.
+// onupgradeneeded is additive (createObjectStore is a no-op when the store
+// already exists), so upgrading v2 → v3 preserves pending_logs + write_queue and
+// only adds dead_letter. Keep both handlers in sync.
 function openDB() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION)
@@ -22,11 +29,15 @@ function openDB() {
       if (!db.objectStoreNames.contains(PENDING_STORE)) {
         db.createObjectStore(PENDING_STORE, { keyPath: 'id', autoIncrement: true })
       }
-      // New write queue store
+      // Write queue store
       if (!db.objectStoreNames.contains(QUEUE_STORE)) {
         const store = db.createObjectStore(QUEUE_STORE, { keyPath: 'id', autoIncrement: true })
         store.createIndex('by_table', 'table', { unique: false })
         store.createIndex('by_queued', '_queuedAt', { unique: false })
+      }
+      // Dead-letter store for poison writes
+      if (!db.objectStoreNames.contains(DEAD_LETTER_STORE)) {
+        db.createObjectStore(DEAD_LETTER_STORE, { keyPath: 'id', autoIncrement: true })
       }
     }
     req.onsuccess  = e => resolve(e.target.result)
@@ -73,6 +84,41 @@ export async function getPendingWrites() {
   return new Promise((resolve, reject) => {
     const req = store.getAll()
     req.onsuccess = () => resolve((req.result || []).sort((a, b) => a._queuedAt - b._queuedAt))
+    req.onerror   = () => reject(req.error)
+  })
+}
+
+/**
+ * Move a poison entry (exhausted MAX_ATTEMPTS) from the active queue into the
+ * dead-letter store and remove it from the active queue, in a single atomic
+ * transaction so it can't be lost or duplicated. Without this, poison entries
+ * sat in the active queue forever and held the sync indicator out of 'synced'.
+ */
+async function moveToDeadLetter(entry) {
+  const db = await openDB()
+  const tx = db.transaction([QUEUE_STORE, DEAD_LETTER_STORE], 'readwrite')
+  return new Promise((resolve, reject) => {
+    const dl = tx.objectStore(DEAD_LETTER_STORE)
+    dl.put({ ...entry, _deadLetteredAt: Date.now() })
+    tx.objectStore(QUEUE_STORE).delete(entry.id)
+    tx.oncomplete = () => resolve()
+    tx.onerror    = () => reject(tx.error)
+    tx.onabort    = () => reject(tx.error)
+  })
+}
+
+/**
+ * Count dead-lettered (permanently failed) writes. Surfaced so the UI can show
+ * "N writes failed" — kept minimal; no UI is wired here.
+ * @returns {Promise<number>}
+ */
+export async function getDeadLetterCount() {
+  const db = await openDB()
+  const tx = db.transaction(DEAD_LETTER_STORE, 'readonly')
+  const store = tx.objectStore(DEAD_LETTER_STORE)
+  return new Promise((resolve, reject) => {
+    const req = store.count()
+    req.onsuccess = () => resolve(req.result)
     req.onerror   = () => reject(req.error)
   })
 }
@@ -139,6 +185,10 @@ export async function replayWrites(supabase, onProgress) {
 
   for (const entry of pending) {
     if (entry._attempts >= MAX_ATTEMPTS) {
+      // Poison write: park it in the dead-letter store and drop it from the
+      // active queue so the queue can drain to 'synced'. The dead-letter count
+      // (getDeadLetterCount) lets the UI surface these separately.
+      await moveToDeadLetter(entry)
       skipped++
       onProgress?.({ replayed, failed, skipped })
       continue

@@ -6,7 +6,7 @@
 //   • Stale-while-revalidate timestamp logic
 // ─────────────────────────────────────────────────────────────────────────────
 import { describe, it, expect, vi } from 'vitest'
-import { isNetworkError, NETWORK_PATTERNS } from './useSupabaseQuery.js'
+import { isNetworkError, NETWORK_PATTERNS, withNetworkRetry } from './useSupabaseQuery.js'
 
 // ── isNetworkError ────────────────────────────────────────────────────────────
 
@@ -40,24 +40,15 @@ describe('isNetworkError', () => {
   })
 })
 
-// ── Retry wrapper (extracted logic mirroring useSupabaseQuery's wrappedFn) ───
+// ── Retry wrapper — tests the REAL withNetworkRetry from useSupabaseQuery.js ──
+// (round-3 fix: was a local reimplementation that drifted from the real wrapper —
+// e.g. it omitted the pre-retry delay. delayMs:0 keeps tests fast while exercising
+// the real code path that useSupabaseQuery's wrappedFn uses.)
 
-async function withSingleRetry(fn, signal) {
-  try {
-    return await fn(signal)
-  } catch (err) {
-    if (isNetworkError(err)) {
-      if (signal?.aborted) throw err
-      return await fn(signal)
-    }
-    throw err
-  }
-}
-
-describe('Retry logic', () => {
+describe('withNetworkRetry (real useSupabaseQuery wrapper)', () => {
   it('returns value on first success (no retry needed)', async () => {
     const fn = vi.fn().mockResolvedValue(42)
-    expect(await withSingleRetry(fn)).toBe(42)
+    expect(await withNetworkRetry(fn, undefined, 0)).toBe(42)
     expect(fn).toHaveBeenCalledTimes(1)
   })
 
@@ -67,14 +58,39 @@ describe('Retry logic', () => {
       if (++attempts === 1) throw new TypeError('Failed to fetch')
       return 'ok'
     })
-    expect(await withSingleRetry(fn)).toBe('ok')
+    expect(await withNetworkRetry(fn, undefined, 0)).toBe('ok')
     expect(fn).toHaveBeenCalledTimes(2)
   })
 
   it('does NOT retry on non-network errors', async () => {
     const fn = vi.fn().mockRejectedValue(new Error('Server Error'))
-    await expect(withSingleRetry(fn)).rejects.toThrow('Server Error')
+    await expect(withNetworkRetry(fn, undefined, 0)).rejects.toThrow('Server Error')
     expect(fn).toHaveBeenCalledTimes(1)
+  })
+
+  it('does NOT retry when the signal is already aborted before the retry', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const fn = vi.fn(async () => { throw new TypeError('Failed to fetch') })
+    await expect(withNetworkRetry(fn, controller.signal, 0)).rejects.toThrow('Failed to fetch')
+    expect(fn).toHaveBeenCalledTimes(1)  // aborted → bail before second call
+  })
+
+  it('waits the configured delay before retrying', async () => {
+    vi.useFakeTimers()
+    try {
+      let attempts = 0
+      const fn = vi.fn(async () => {
+        if (++attempts === 1) throw new TypeError('Failed to fetch')
+        return 'ok'
+      })
+      const p = withNetworkRetry(fn, undefined, 800)
+      await vi.advanceTimersByTimeAsync(800)
+      expect(await p).toBe('ok')
+      expect(fn).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 
