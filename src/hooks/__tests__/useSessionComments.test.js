@@ -82,6 +82,7 @@ vi.mock('../../lib/realtime/commentActions.js', () => ({
   editComment:       mocks.editComment,
   deleteComment:     mocks.deleteComment,
   recordSessionView: mocks.recordView,
+  newCommentId:      () => 'test-uuid-0000-4000-8000-000000000000',
 }))
 
 const { useSessionComments } = await import('../useSessionComments.js')

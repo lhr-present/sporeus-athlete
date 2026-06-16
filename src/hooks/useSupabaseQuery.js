@@ -18,25 +18,41 @@ export function isNetworkError(err) {
   return err instanceof TypeError || NETWORK_PATTERNS.some(p => msg.includes(p))
 }
 
+// Default backoff before the single network-error retry (ms). Exported so tests
+// can override it (e.g. 0) without faking timers.
+export const RETRY_DELAY_MS = 800
+
+/**
+ * Run `queryFn(signal)`, retrying ONCE on a network error after `delayMs`.
+ * This is the real wrapper used by useSupabaseQuery (wrappedFn) — extracted so
+ * its retry semantics are tested against the real implementation, not a replica.
+ *  • non-network errors: rethrow immediately (no retry)
+ *  • network errors: wait delayMs, bail if the signal aborted, else retry once
+ */
+export async function withNetworkRetry(queryFn, signal, delayMs = RETRY_DELAY_MS) {
+  try {
+    return await queryFn(signal)
+  } catch (err) {
+    if (isNetworkError(err)) {
+      if (delayMs > 0) await new Promise(res => setTimeout(res, delayMs))
+      if (signal?.aborted) throw err
+      return await queryFn(signal)
+    }
+    throw err
+  }
+}
+
 export function useSupabaseQuery(queryFn, deps = [], options = {}) {
   const { staleTimeMs = 30000, onError } = options
 
   const cacheRef    = useRef(null) // { data, timestamp }
   const [stale, setStale] = useState(null) // stale data shown during refetch
 
-  const wrappedFn = useCallback(async (signal) => {
-    try {
-      return await queryFn(signal)
-    } catch (err) {
-      // Auto-retry once on network error
-      if (isNetworkError(err)) {
-        await new Promise(res => setTimeout(res, 800))
-        if (signal.aborted) throw err
-        return await queryFn(signal)
-      }
-      throw err
-    }
-  }, deps) // eslint-disable-line react-hooks/exhaustive-deps
+  // Auto-retry once on network error (real wrapper extracted as withNetworkRetry)
+  const wrappedFn = useCallback(
+    (signal) => withNetworkRetry(queryFn, signal),
+    deps,
+  ) // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data, loading, error, execute, reset } = useAsync(wrappedFn, deps, { immediate: false, onError })
 

@@ -4,18 +4,32 @@
 
 import { describe, it, expect } from 'vitest'
 
-// ── Pure replicas of ai-proxy logic (for shape verification) ───────────────────
-
+// ── Replica of ai-proxy buildRagContext — kept byte-for-byte in sync with the ──
+// real edge fn (supabase/functions/ai-proxy/index.ts, buildRagContext lines 60–81).
+// The .ts can't be imported into vitest (Deno std imports), so this mirrors the
+// REAL output format documented from source. round-3 drift: the old replica used
+// `duration:60min`, `tss:78`, `rpe:7` (lowercase, prefixed) and emitted NO
+// wrapper. The real fn emits `60min`, `TSS:78`, `RPE:7` and wraps the lines in
+// "=== ATHLETE SESSION CONTEXT ... ===" / "=== END CONTEXT ... ===" markers plus a
+// trailing blank line. Corrected below to match the producer exactly.
 function buildRagContext(sessions) {
-  return sessions.map((s, i) => [
+  if (!sessions.length) return ''
+  const lines = sessions.map((s, i) => [
     `[S${i + 1}]`,
     `date:${s.date}`,
     `type:${s.type || 'unknown'}`,
-    s.duration_min ? `duration:${s.duration_min}min` : null,
-    s.tss          ? `tss:${s.tss}` : null,
-    s.rpe          ? `rpe:${s.rpe}` : null,
+    s.duration_min ? `${s.duration_min}min` : null,
+    s.tss          ? `TSS:${s.tss}` : null,
+    s.rpe          ? `RPE:${s.rpe}` : null,
     s.notes        ? `notes:"${s.notes.slice(0, 200)}"` : null,
-  ].filter(Boolean).join(' ')).join('\n')
+  ].filter(Boolean).join(' '))
+
+  return [
+    '=== ATHLETE SESSION CONTEXT (most relevant to this query) ===',
+    ...lines,
+    '=== END CONTEXT — cite sources as [S1] etc. when relevant ===',
+    '',
+  ].join('\n')
 }
 
 function buildCitations(sessions) {
@@ -64,6 +78,12 @@ describe('C3 — ai-proxy RAG retrieval contract', () => {
   })
 
   describe('RAG context format', () => {
+    it('wraps output in the ATHLETE SESSION CONTEXT markers', () => {
+      const ctx = buildRagContext(SAMPLE_SESSIONS)
+      expect(ctx).toContain('=== ATHLETE SESSION CONTEXT (most relevant to this query) ===')
+      expect(ctx).toContain('=== END CONTEXT — cite sources as [S1] etc. when relevant ===')
+    })
+
     it('formats sessions as [S1]..[SN] markers', () => {
       const ctx = buildRagContext(SAMPLE_SESSIONS)
       expect(ctx).toContain('[S1]')
@@ -71,13 +91,17 @@ describe('C3 — ai-proxy RAG retrieval contract', () => {
       expect(ctx).toContain('[S3]')
     })
 
-    it('includes date, type, duration, tss, rpe when present', () => {
+    it('includes date, type, duration, TSS, RPE in the real format', () => {
       const ctx = buildRagContext([SAMPLE_SESSIONS[0]])
       expect(ctx).toContain('date:2026-04-18')
       expect(ctx).toContain('type:Run')
-      expect(ctx).toContain('duration:60min')
-      expect(ctx).toContain('tss:78')
-      expect(ctx).toContain('rpe:7')
+      // Real producer emits "60min" (no "duration:" prefix) and uppercase TSS:/RPE:
+      expect(ctx).toContain('60min')
+      expect(ctx).not.toContain('duration:')
+      expect(ctx).toContain('TSS:78')
+      expect(ctx).toContain('RPE:7')
+      expect(ctx).not.toMatch(/\btss:\d/)   // not lowercase
+      expect(ctx).not.toMatch(/\brpe:\d/)
     })
 
     it('includes notes when present', () => {
@@ -85,14 +109,14 @@ describe('C3 — ai-proxy RAG retrieval contract', () => {
       expect(ctx).toContain('notes:"felt strong on hills"')
     })
 
-    it('omits notes line when null', () => {
+    it('omits notes token when null', () => {
       const ctx = buildRagContext([SAMPLE_SESSIONS[1]])
       expect(ctx).not.toContain('notes:')
     })
 
-    it('omits tss line when null', () => {
+    it('omits TSS token when null', () => {
       const ctx = buildRagContext([SAMPLE_SESSIONS[2]])
-      expect(ctx).not.toContain('tss:')
+      expect(ctx).not.toContain('TSS:')
     })
 
     it('produces empty string for empty session list', () => {

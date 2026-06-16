@@ -19,6 +19,7 @@ import {
   editComment   as dbEditComment,
   deleteComment as dbDeleteComment,
   recordSessionView,
+  newCommentId,
 } from '../lib/realtime/commentActions.js'
 
 const MAX_RETRY = 6
@@ -63,10 +64,13 @@ export function useSessionComments(sessionId, currentUserId) {
   const applyPayload = useCallback(({ eventType, new: next, old }) => {
     if (eventType === 'INSERT') {
       setComments(prev => {
-        // Reconcile optimistic row by tempId stored in body (not ideal) or just append
-        const exists = prev.some(c => c.id === next.id)
-        if (exists) return prev
-        // Remove matching optimistic row (same session_id + author_id + body)
+        // The optimistic row now carries the real server id (client-generated
+        // UUID passed through the insert), so the echo matches by id — replace
+        // the optimistic placeholder with the server-authoritative row.
+        const byId = prev.some(c => c.id === next.id)
+        if (byId) return prev.map(c => c.id === next.id ? next : c).sort(byCreatedAt)
+        // Fallback: legacy optimistic rows keyed by content (same session_id +
+        // author_id + body) — drop them and append the confirmed row.
         const withoutOptimistic = prev.filter(c =>
           !(c._optimistic && c.session_id === next.session_id &&
             c.author_id === next.author_id && c.body === next.body)
@@ -189,9 +193,13 @@ export function useSessionComments(sessionId, currentUserId) {
   const postComment = useCallback(async (body, parentId = null) => {
     if (!sessionId || !currentUserId) return { queued: false }
 
-    const tempId = `opt-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    // Use a stable client-generated UUID as the row PK (not a throwaway tempId).
+    // It's carried through to the server insert, so the optimistic id === the
+    // server row id — and an edit/delete made while STILL offline replays against
+    // this real id instead of a tempId that matches zero server rows (round-3 fix).
+    const newId = newCommentId()
     const optimistic = {
-      id:         tempId,
+      id:         newId,
       session_id: sessionId,
       author_id:  currentUserId,
       parent_id:  parentId,
@@ -202,15 +210,15 @@ export function useSessionComments(sessionId, currentUserId) {
 
     setComments(prev => [...prev, optimistic].sort(byCreatedAt))
 
-    const { data, error, queued } = await dbPostComment(supabase, sessionId, currentUserId, body, parentId)
+    const { data, error, queued } = await dbPostComment(supabase, sessionId, currentUserId, body, parentId, newId)
 
     if (error) {
       // Roll back optimistic row
-      setComments(prev => prev.filter(c => c.id !== tempId))
+      setComments(prev => prev.filter(c => c.id !== newId))
     } else if (data && !queued) {
-      // Replace optimistic with confirmed row
+      // Replace optimistic with confirmed row (same id, now server-authoritative)
       setComments(prev =>
-        prev.map(c => c.id === tempId ? data : c).sort(byCreatedAt)
+        prev.map(c => c.id === newId ? data : c).sort(byCreatedAt)
       )
     }
     // queued=true: leave optimistic row; it'll be reconciled when Realtime echoes the insert
