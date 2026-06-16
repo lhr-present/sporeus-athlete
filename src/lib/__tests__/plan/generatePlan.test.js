@@ -338,6 +338,79 @@ describe('generatePlan — property: WoW growth ≤ 10%', () => {
   )
 })
 
+// ── v9.422 — load-shaping invariants (deload descent + taper descent) ────────
+// Founder-greenlit fixes to two plan-math bugs:
+//   BUG 1 — a flagged deload week could carry MORE TSS than the week before it
+//           (Build ramp computed from plan-index math diverging from the
+//           calendar-aware phase assignment).
+//   BUG 2 — the taper (esp. the no-raceDate index path) could ramp UP and
+//           exceed the achieved peak (fracs anchored to raw peakTSS).
+describe('generatePlan — v9.422 load-shaping invariants', () => {
+  function isoDaysAhead(days) {
+    const d = new Date(); d.setUTCHours(12, 0, 0, 0); d.setUTCDate(d.getUTCDate() + days)
+    return d.toISOString().slice(0, 10)
+  }
+
+  // Cover several horizons × both phasing paths (raceDate present / absent).
+  const horizons = [8, 12, 16, 20]
+  const matrix = []
+  for (const w of horizons) {
+    for (const ctl of [25, 50, 80]) {
+      for (const m of ['traditional', 'polarized', 'block']) {
+        matrix.push({ w, ctl, m, raceDate: false })
+        matrix.push({ w, ctl, m, raceDate: true })
+      }
+    }
+  }
+
+  it.each(matrix)(
+    'BUG 1 — no deload week exceeds its predecessor (weeks=$w ctl=$ctl model=$m raceDate=$raceDate)',
+    ({ w, ctl, m, raceDate }) => {
+      const overrides = { weeksToRace: w, currentCTL: ctl, model: m }
+      if (raceDate) overrides.raceDate = isoDaysAhead(w * 7)
+      const p = genWith(overrides)
+      expect(p).not.toBeNull()
+      for (let i = 1; i < p.weeks.length; i++) {
+        if (!p.weeks[i].isDeload) continue
+        // The deload must never carry more load than the immediately prior week.
+        expect(p.weeks[i].weeklyTSS).toBeLessThanOrEqual(p.weeks[i - 1].weeklyTSS)
+      }
+    },
+  )
+
+  it.each(matrix)(
+    'BUG 2 — taper weeks descend & never exceed the peak (weeks=$w ctl=$ctl model=$m raceDate=$raceDate)',
+    ({ w, ctl, m, raceDate }) => {
+      const overrides = { weeksToRace: w, currentCTL: ctl, model: m }
+      if (raceDate) overrides.raceDate = isoDaysAhead(w * 7)
+      const p = genWith(overrides)
+      expect(p).not.toBeNull()
+      const peakWeeks = p.weeks.filter(x => x.phase === 'Peak' && !x.isDeload).map(x => x.weeklyTSS)
+      const peakMax = peakWeeks.length ? Math.max(...peakWeeks) : Math.max(...p.weeks.map(x => x.weeklyTSS))
+      let prev = Infinity
+      for (const wk of p.weeks) {
+        if (wk.phase !== 'Taper' && wk.phase !== 'Race') continue
+        // Monotonic (non-strict) descent across Taper → Race.
+        expect(wk.weeklyTSS).toBeLessThanOrEqual(prev + 0.5)
+        // Never exceeds the achieved/visible peak week.
+        expect(wk.weeklyTSS).toBeLessThanOrEqual(peakMax + 0.5)
+        prev = wk.weeklyTSS
+      }
+    },
+  )
+
+  it('BUG 2 — no-raceDate index path taper does not ramp UP (12-week, regression)', () => {
+    // Pre-fix this path anchored taper fracs to raw peakTSS, letting the first
+    // taper week land ABOVE the achieved peak. Lock the descent in explicitly.
+    const p = genWith({ weeksToRace: 12 })  // no raceDate → index phasing
+    const taper = p.weeks.filter(w => w.phase === 'Taper' || w.phase === 'Race')
+    expect(taper.length).toBeGreaterThanOrEqual(2)
+    for (let i = 1; i < taper.length; i++) {
+      expect(taper[i].weeklyTSS).toBeLessThanOrEqual(taper[i - 1].weeklyTSS + 0.5)
+    }
+  })
+})
+
 // ── flattenPlanSessions ──────────────────────────────────────────────────────
 describe('flattenPlanSessions', () => {
   it('returns empty array for null/empty plan', () => {

@@ -67,11 +67,54 @@ function ReadinessCircle({ score, size = 26 }) {
   )
 }
 
+// Build the per-athlete payload for getAthleteInsights. The squad RPC
+// (get_squad_overview, migration 20260628) returns `loads7days` (last 7 days'
+// daily TSS, oldest→newest) and `consecutive_training_days` so the load-trend,
+// monotony and missed-rest rules can fire under real squad data — coaches don't
+// hold each athlete's per-session log on the client, so these must come from the
+// RPC. The demo squad carries an internal `_log` instead, so derive the same two
+// signals from it as a fallback. Any signal that is absent stays undefined and the
+// corresponding rule simply does not fire (getAthleteInsights guards each input).
+function buildInsightInput(ath) {
+  let loads7days = Array.isArray(ath.loads7days) ? ath.loads7days : undefined
+  let consecutiveTrainingDays = typeof ath.consecutive_training_days === 'number'
+    ? ath.consecutive_training_days
+    : undefined
+
+  if ((loads7days === undefined || consecutiveTrainingDays === undefined) && Array.isArray(ath._log)) {
+    const today = new Date()
+    const dayStr = offset => {
+      const d = new Date(today)
+      d.setUTCDate(d.getUTCDate() - offset)
+      return d.toISOString().slice(0, 10)
+    }
+    const tssOn = ds => ath._log
+      .filter(e => e.date === ds)
+      .reduce((s, e) => s + (Number(e.tss) || 0), 0)
+
+    if (loads7days === undefined) {
+      // oldest→newest: index 0 = 6 days ago, index 6 = today
+      loads7days = [6, 5, 4, 3, 2, 1, 0].map(o => tssOn(dayStr(o)))
+    }
+    if (consecutiveTrainingDays === undefined) {
+      // Trailing run of consecutive days with ≥1 logged session (scan back ≤60d).
+      let run = 0
+      for (let o = 0; o < 60; o++) {
+        if (tssOn(dayStr(o)) > 0) run++
+        else if (run > 0) break
+      }
+      consecutiveTrainingDays = run
+    }
+  }
+
+  return { acwr: ath.acwr_ratio, wellnessAvg: wellnessAvg(ath), loads7days, consecutiveTrainingDays }
+}
+
 // Top (highest-severity) active alert for an athlete, or null. getAthleteInsights
 // returns alerts sorted by severity ascending, so the first flagged non-readiness
 // entry is the most severe.
 function topAlert(ath) {
-  const alerts = getAthleteInsights({ acwr: ath.acwr_ratio, wellnessAvg: wellnessAvg(ath) })
+  const alerts = getAthleteInsights(buildInsightInput(ath))
   return alerts.find(a => a.flag && a.key !== 'readiness') || null
 }
 
@@ -229,4 +272,4 @@ export default function AthleteRow({
 }
 
 // Exported for unit tests
-export { topAlert, AlertCaption }
+export { topAlert, AlertCaption, buildInsightInput }

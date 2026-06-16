@@ -346,24 +346,51 @@ function weeklyIntents(phase, model, availableDays, raceDistance) {
   return out
 }
 
+// Fraction of peakTSS rendered on a (non-deloaded) Peak week. The achieved
+// visible peak the athlete actually sees is peakTSS * PEAK_FRAC (before any
+// clampWoWGrowth dampening). The taper anchors to this — not the raw peakTSS —
+// so taper weeks can never ramp ABOVE the week the plan calls its peak.
+const PEAK_FRAC = 0.92
+
 // ── helper: TSS budget for a week (Phase × goal × level) ─────────────────────
-function weeklyTSS({ weekIdx, totalWeeks, phase, baseTSS, peakTSS }) {
+// v9.422 (founder decision) — `phaseCtx` carries phase-derived position info so
+// the Build ramp and Taper descent are anchored to the SAME phase source the
+// plan actually uses (raceAwarePhaseForWeek), not a standalone plan-index window.
+//   phaseCtx.buildIdx   — 0-based ordinal of this week within the Build run
+//   phaseCtx.buildCount — total number of Build weeks in the plan
+//   phaseCtx.taperIdx   — 0-based ordinal within the Taper run (0 = first taper week)
+//   phaseCtx.taperCount — total number of Taper weeks in the plan
+function weeklyTSS({ phase, baseTSS, peakTSS, phaseCtx }) {
   if (phase === 'Race')     return Math.round(peakTSS * 0.40)
   if (phase === 'Taper') {
-    // Linear ramp-down across taper weeks (≤3)
-    const taperRemaining = totalWeeks - weekIdx - 1   // 0..2
-    const fracs = [0.50, 0.65, 0.80]
-    return Math.round(peakTSS * (fracs[Math.max(0, Math.min(2, taperRemaining))] || 0.65))
+    // Monotonic load REDUCTION across the taper (Mujika & Padilla 2003): each
+    // taper week sheds load relative to the achieved peak. The first taper week
+    // (taperIdx 0, furthest from race) carries the most; the last carries the
+    // least. Anchored to the VISIBLE peak (peakTSS * PEAK_FRAC) so taper can
+    // never exceed the peak week. clampWoWGrowth + enforceTaperDescent below
+    // guarantee the final monotonic descent after per-session rounding.
+    const visiblePeak = peakTSS * PEAK_FRAC
+    const taperCount  = Math.max(1, phaseCtx?.taperCount ?? 1)
+    const taperIdx    = Math.max(0, Math.min(taperCount - 1, phaseCtx?.taperIdx ?? 0))
+    // Descending fracs of the visible peak: first taper week ≈ 0.80, ramping
+    // down to ≈ 0.55 at the last taper week before Race. Single-week taper → 0.65.
+    const TAPER_TOP = 0.80
+    const TAPER_BOT = 0.55
+    const frac = taperCount === 1
+      ? 0.65
+      : TAPER_TOP - (TAPER_TOP - TAPER_BOT) * (taperIdx / (taperCount - 1))
+    return Math.round(visiblePeak * frac)
   }
-  if (phase === 'Peak') return Math.round(peakTSS * 0.92)
+  if (phase === 'Peak') return Math.round(peakTSS * PEAK_FRAC)
   if (phase === 'Build') {
-    // Build progression from baseTSS toward peakTSS over ~weekIdx slot
-    // Find normalized position in build phase
-    const buildEnd = totalWeeks - 6
-    const buildLen = Math.max(2, Math.floor(totalWeeks * 0.40))
-    const buildStart = Math.max(0, buildEnd - buildLen)
-    const denom = Math.max(1, buildEnd - buildStart - 1)
-    const frac = Math.max(0, Math.min(1, (weekIdx - buildStart) / denom))
+    // Build progression from baseTSS toward peakTSS across the Build run.
+    // Position is the ordinal WITHIN the assigned Build phase (phaseCtx), which
+    // comes from the same phase function the plan uses — so the ramp can never
+    // diverge from the calendar-aware phase placement (the v9.422 deload fix).
+    const buildCount = Math.max(1, phaseCtx?.buildCount ?? 1)
+    const buildIdx   = Math.max(0, Math.min(buildCount - 1, phaseCtx?.buildIdx ?? 0))
+    const denom = Math.max(1, buildCount - 1)
+    const frac  = buildIdx / denom
     return Math.round(baseTSS + (peakTSS - baseTSS) * frac)
   }
   // Base — slight ramp from baseTSS to baseTSS*1.05
@@ -405,6 +432,72 @@ function clampWoWGrowth(weeks) {
       // Sum the floored sessions for the authoritative weeklyTSS.
       weeks[i].weeklyTSS = weeks[i].sessions.reduce((s, x) => s + x.targetTSS, 0)
     }
+  }
+}
+
+// ── helper: build per-week phase context (ordinals within Build/Taper runs) ──
+// v9.422 — derives Build/Taper position from the ACTUAL assigned phase array so
+// weeklyTSS's ramp/descent never diverges from raceAwarePhaseForWeek. Returns a
+// parallel array of { buildIdx, buildCount, taperIdx, taperCount } per week.
+function buildPhaseContext(phases) {
+  const buildCount = phases.filter(p => p === 'Build').length
+  const taperCount = phases.filter(p => p === 'Taper').length
+  let bSeen = 0
+  let tSeen = 0
+  return phases.map(p => {
+    const ctx = { buildIdx: 0, buildCount, taperIdx: 0, taperCount }
+    if (p === 'Build') ctx.buildIdx = bSeen++
+    if (p === 'Taper') ctx.taperIdx = tSeen++
+    return ctx
+  })
+}
+
+// ── helper: guarantee no deload week exceeds the immediately preceding week ───
+// v9.422 (founder decision, BUG 1) — a flagged deload must never carry MORE TSS
+// than the week before it. Calendar-aware phasing + the Build ramp can otherwise
+// hand a deload a budget above its (non-deloaded) predecessor. Floor the deload
+// (and its sessions) down to the prior week's TSS when it would exceed it.
+function enforceDeloadDescent(weeks) {
+  for (let i = 1; i < weeks.length; i++) {
+    if (!weeks[i].isDeload) continue
+    const prev = weeks[i - 1].weeklyTSS
+    const curr = weeks[i].weeklyTSS
+    if (prev > 0 && curr > prev) {
+      const ratio = prev / curr
+      weeks[i].sessions = weeks[i].sessions.map(s => ({
+        ...s,
+        targetTSS: Math.floor(s.targetTSS * ratio),
+      }))
+      weeks[i].weeklyTSS = weeks[i].sessions.reduce((s, x) => s + x.targetTSS, 0)
+    }
+  }
+}
+
+// ── helper: enforce monotonic taper descent (Mujika & Padilla 2003) ──────────
+// v9.422 (founder decision, BUG 2) — the taper is a monotonic load REDUCTION.
+// Each Taper week (and the Race week) must be ≤ the previous week AND ≤ the
+// achieved peak-week TSS. Per-session rounding or an upstream deload can leave a
+// taper week fractionally above its predecessor; clamp it down here so the
+// descent is strict-or-equal across Taper → Race.
+function enforceTaperDescent(weeks) {
+  // Ceiling = the highest non-deloaded Peak-week TSS (the achieved/visible peak).
+  // Falls back to the global max when no Peak phase exists (short plans).
+  const peakWeeks = weeks.filter(w => w.phase === 'Peak' && !w.isDeload).map(w => w.weeklyTSS)
+  const peakCeil  = peakWeeks.length ? Math.max(...peakWeeks) : Math.max(...weeks.map(w => w.weeklyTSS))
+  let cap = peakCeil
+  for (let i = 0; i < weeks.length; i++) {
+    const w = weeks[i]
+    if (w.phase !== 'Taper' && w.phase !== 'Race') continue
+    if (w.weeklyTSS > cap && cap >= 0 && w.weeklyTSS > 0) {
+      const ratio = cap / w.weeklyTSS
+      w.sessions = w.sessions.map(s => ({
+        ...s,
+        targetTSS: Math.floor(s.targetTSS * ratio),
+      }))
+      w.weeklyTSS = w.sessions.reduce((s, x) => s + x.targetTSS, 0)
+    }
+    // Next taper/race week can be no higher than this one (monotonic descent).
+    cap = w.weeklyTSS
   }
 }
 
@@ -523,11 +616,21 @@ export function generatePlan(params) {
   // and rebuild — without that two-pass the goal would compare against the
   // raw peakTSS anchor instead of the weekly TSS the athlete actually sees.
   const buildWeeks = (baseT, peakT) => {
+    // Pass 1 — assign the calendar-aware phase for every week, then derive each
+    // week's ordinal position within its Build/Taper run. weeklyTSS reads this
+    // context so the Build ramp and Taper descent stay locked to the SAME phase
+    // source the plan uses (the v9.422 deload/taper fixes).
+    const phases  = []
+    for (let w = 0; w < totalWeeks; w++) {
+      phases.push(raceAwarePhaseForWeek(w, totalWeeks, validRaceDate, generatedAtDate))
+    }
+    const phaseCtxs = buildPhaseContext(phases)
+
     const ws = []
     for (let w = 0; w < totalWeeks; w++) {
-      const phase   = raceAwarePhaseForWeek(w, totalWeeks, validRaceDate, generatedAtDate)
+      const phase   = phases[w]
       const intents = weeklyIntents(phase, model, +availableDays, raceDistance)
-      const tssBud  = weeklyTSS({ weekIdx: w, totalWeeks, phase, baseTSS: baseT, peakTSS: peakT })
+      const tssBud  = weeklyTSS({ phase, baseTSS: baseT, peakTSS: peakT, phaseCtx: phaseCtxs[w] })
       const sessions = distributeSessionTSS(tssBud, intents)
       ws.push({
         weekNum:          w + 1,
@@ -539,7 +642,19 @@ export function generatePlan(params) {
       })
     }
     applyDeloads(ws)
-    clampWoWGrowth(ws)
+    // Finalize the load shape. clampWoWGrowth (caps ≤10% rebound) and the two
+    // descent enforcers (taper ≤ peak & monotonic; deload ≤ predecessor) all
+    // only ever LOWER weeks, but they constrain different neighbours, so a single
+    // ordering can leave one freshly violated (e.g. clamp lowers a deload's
+    // predecessor below the deload). Iterate to a fixpoint — converges in a few
+    // passes since every pass is monotone-decreasing and bounded below by 0.
+    for (let pass = 0; pass < 8; pass++) {
+      const before = ws.map(w => w.weeklyTSS)
+      clampWoWGrowth(ws)
+      enforceTaperDescent(ws)
+      enforceDeloadDescent(ws)
+      if (ws.every((w, i) => w.weeklyTSS === before[i])) break
+    }
     return ws
   }
 

@@ -2,6 +2,38 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.424.0 — 2026-06-16 — Adaptive plan-math fixes + squad load-signal wiring
+
+Two formerly-deferred items, now done.
+
+PLAN MATH (src/lib/plan/generatePlan.js + planValidators.js) — fixes the two adaptive
+load-shaping bugs from the round-2 deep dive:
+- Deload week could carry MORE TSS than the week before it: the Build ramp position was
+  derived from plan-index math (totalWeeks-6) that diverged from the calendar-aware phase
+  assignment. Now derived from the actual assigned Build run (ordinal position), so a
+  deload is never heavier than its predecessor.
+- Taper could ramp UP / exceed the peak: taper fracs anchored to the raw internal peakTSS
+  and the validator exempted taper from week-over-week checks. Now anchored to the achieved
+  visible peak with enforced monotonic descent (Mujika & Padilla 2003), and a new
+  TAPER_RAMP_UP validator rule ASSERTS the descent + peak ceiling.
+- Added a fixpoint finalize loop (clamp + deload-descent + taper-descent to convergence;
+  all only ever lower weeks). Invariants brute-forced across CTL × horizon × days × model ×
+  raceDate paths. Public plan shape/API unchanged; no prior assertions weakened.
+
+SQUAD WIRING — lights up the v9.423 coach inline-action caption for REAL squads:
+- get_squad_overview RPC now returns `loads7days` (7-day daily-TSS array) + 
+  `consecutive_training_days` (migration 20260628, applied to prod). Rebuilt from the live
+  20260618 definition — DROP+CREATE (return-type change) — preserving search_path='', the
+  coach-only auth.uid() guard, and REVOKE-from-anon hardening. Only derived aggregates added,
+  same coach-scoped data.
+- AthleteRow now feeds those signals into getAthleteInsights so load-trend / monotony /
+  missed-rest alerts fire under real data (no-harm when a signal is absent). fatigue stays
+  unwired (no clean per-day recovery score). squad-sync edge fn passes new cols through (no
+  edge deploy needed).
+
+Tests: +72-case plan invariant matrix, +TAPER_RAMP_UP validator tests, AthleteRow firing-path
+tests. 15800+ suite green. DEPENDS ON: get_squad_overview RPC; ruleInsights getAthleteInsights.
+
 ## v9.423.0 — 2026-06-16 — Enhancement batch: activation, science cards, coach triage
 
 Agent-discovered, scope-clean (training/workout only), all from already-computed data.

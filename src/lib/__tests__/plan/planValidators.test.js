@@ -234,6 +234,120 @@ describe('validatePlan — back-to-back Z5 rule', () => {
   })
 })
 
+// ── Rule 4: Taper → Race monotonic descent (v9.422) ──────────────────────────
+describe('validatePlan — taper descent rule', () => {
+  it('flags a taper week that ramps UP vs the prior taper week', () => {
+    const bad = {
+      weeks: [
+        {
+          weekNum: 1, phase: 'Peak', weeklyTSS: 300, isDeload: false,
+          sessions: [
+            { day: 1, intent: 'vo2',      targetTSS: 200, zone: 'Z5' },
+            { day: 2, intent: 'recovery', targetTSS: 100, zone: 'Z1' },
+          ],
+        },
+        {
+          weekNum: 2, phase: 'Taper', weeklyTSS: 200, isDeload: false,
+          sessions: [
+            { day: 1, intent: 'tempo',    targetTSS: 120, zone: 'Z3' },
+            { day: 2, intent: 'recovery', targetTSS:  80, zone: 'Z1' },
+          ],
+        },
+        {
+          weekNum: 3, phase: 'Taper', weeklyTSS: 260, isDeload: false,  // ramps UP
+          sessions: [
+            { day: 1, intent: 'tempo',    targetTSS: 160, zone: 'Z3' },
+            { day: 2, intent: 'recovery', targetTSS: 100, zone: 'Z1' },
+          ],
+        },
+      ],
+    }
+    const r = validatePlan(bad)
+    expect(r.valid).toBe(false)
+    expect(r.errors.some(e => e.code === VALIDATION_CODES.TAPER_RAMP_UP && e.weekNum === 3)).toBe(true)
+  })
+
+  it('flags a later taper week that climbs back above the achieved peak', () => {
+    // First taper week descends below peak (250→180); the next then climbs to
+    // 300 — both a ramp-up vs the prior taper week AND above the peak week.
+    const bad = {
+      weeks: [
+        {
+          weekNum: 1, phase: 'Peak', weeklyTSS: 250, isDeload: false,
+          sessions: [
+            { day: 1, intent: 'vo2',      targetTSS: 150, zone: 'Z5' },
+            { day: 2, intent: 'recovery', targetTSS: 100, zone: 'Z1' },
+          ],
+        },
+        {
+          weekNum: 2, phase: 'Taper', weeklyTSS: 180, isDeload: false,
+          sessions: [
+            { day: 1, intent: 'tempo',    targetTSS: 110, zone: 'Z3' },
+            { day: 2, intent: 'recovery', targetTSS:  70, zone: 'Z1' },
+          ],
+        },
+        {
+          weekNum: 3, phase: 'Taper', weeklyTSS: 300, isDeload: false,  // > peak (250)
+          sessions: [
+            { day: 1, intent: 'tempo',    targetTSS: 200, zone: 'Z3' },
+            { day: 2, intent: 'recovery', targetTSS: 100, zone: 'Z1' },
+          ],
+        },
+      ],
+    }
+    const r = validatePlan(bad)
+    expect(r.valid).toBe(false)
+    // Reported both as a ramp-up and as exceeding the peak ceiling.
+    const wk3Errs = r.errors.filter(e => e.code === VALIDATION_CODES.TAPER_RAMP_UP && e.weekNum === 3)
+    expect(wk3Errs.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('accepts a monotonically descending taper', () => {
+    const ok = {
+      weeks: [
+        {
+          weekNum: 1, phase: 'Peak', weeklyTSS: 300, isDeload: false,
+          sessions: [
+            { day: 1, intent: 'vo2',      targetTSS: 200, zone: 'Z5' },
+            { day: 2, intent: 'recovery', targetTSS: 100, zone: 'Z1' },
+          ],
+        },
+        {
+          weekNum: 2, phase: 'Taper', weeklyTSS: 220, isDeload: false,
+          sessions: [
+            { day: 1, intent: 'tempo',    targetTSS: 140, zone: 'Z3' },
+            { day: 2, intent: 'recovery', targetTSS:  80, zone: 'Z1' },
+          ],
+        },
+        {
+          weekNum: 3, phase: 'Race', weeklyTSS: 120, isDeload: false,
+          sessions: [
+            { day: 1, intent: 'tempo',    targetTSS:  80, zone: 'Z3' },
+            { day: 2, intent: 'recovery', targetTSS:  40, zone: 'Z1' },
+          ],
+        },
+      ],
+    }
+    const r = validatePlan(ok)
+    expect(r.errors.filter(e => e.code === VALIDATION_CODES.TAPER_RAMP_UP)).toEqual([])
+  })
+
+  it('every generated plan satisfies the taper descent rule (both phasing paths)', () => {
+    const isoDaysAhead = (days) => {
+      const d = new Date(); d.setUTCHours(12, 0, 0, 0); d.setUTCDate(d.getUTCDate() + days)
+      return d.toISOString().slice(0, 10)
+    }
+    for (const w of [8, 12, 16, 20]) {
+      for (const useRaceDate of [false, true]) {
+        const overrides = { weeksToRace: w }
+        if (useRaceDate) overrides.raceDate = isoDaysAhead(w * 7)
+        const r = validatePlan(plan(overrides))
+        expect(r.errors.filter(e => e.code === VALIDATION_CODES.TAPER_RAMP_UP)).toEqual([])
+      }
+    }
+  })
+})
+
 // ── Structural checks ────────────────────────────────────────────────────────
 describe('validatePlan — structural checks', () => {
   it('flags an empty week (no sessions)', () => {
@@ -329,6 +443,7 @@ describe('VALIDATION_CODES', () => {
     const expected = [
       'EMPTY_PLAN', 'INVALID_PLAN', 'TSS_SPIKE',
       'NO_RECOVERY', 'BACK_TO_BACK_Z5', 'NEGATIVE_TSS', 'EMPTY_WEEK',
+      'TAPER_RAMP_UP',
     ]
     for (const k of expected) expect(VALIDATION_CODES).toHaveProperty(k)
   })
