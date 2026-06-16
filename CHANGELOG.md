@@ -2,6 +2,27 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.422.0 — 2026-06-16 — Goal-aware training plans (5K ≠ Marathon)
+
+Closes the round-2 deferred core-promise gap: the default `generatePlan` (manual
+"Regenerate" + coach "Send Plan" paths) ignored `goal`, so a 5K plan and a marathon plan
+came out byte-identical. (Onboarding already used the goal-aware adaptive generator.)
+
+Fix — Approach B (lowest risk, ~0 test churn, avoids the deferred adaptive deload/taper
+bugs): a level-aware `GOAL_EMPHASIS` overlay (constants.js) shifts ONLY Build/Peak
+intensity by race distance — 5K → VO2 intervals; Half/Marathon/Cycling → tempo/endurance
+with VO2 dropped; 10K balanced; General Fitness unchanged. Reuses the adaptive
+DISTANCE_INTENT_TEMPLATES philosophy in the legacy session vocabulary, applied on top of
+each level's base DAY_PATTERN so level-appropriate volume/structure is preserved and the
+7-session week shape is unchanged. Base/Taper/Recovery/Race Week stay shared.
++2 tests (5K vs Marathon differs in Build/Peak intensity + isn't byte-identical;
+General Fitness no-emphasis). 15k+ suite green.
+
+Also: docs/ops/cost-surface.md — billable-surface audit. Supabase has NO paid add-ons
+(base plan only); external LLM/embedding APIs (OpenAI/Anthropic via crons + ai-proxy)
+are wired but DORMANT at $0 (no data/usage). Levers documented to keep external spend at
+zero. DEPENDS ON: PLAN_GOALS canonical strings; DAY_PATTERNS/DUR_FRAC/SES_RPE.
+
 ## v9.421.0 — 2026-06-16 — Deep-dive round 2: component/i18n/billing/edge fixes
 
 Second 6-dimension deep dive (edge-fn logic, billing/tier, i18n, component fleet, plan

@@ -1,7 +1,7 @@
 // ─── Pure math functions (no React imports) ──────────────────────────────────
 import {
   ZONE_COLORS, ZONE_NAMES, DAY_PATTERNS, DUR_FRAC, SES_RPE,
-  ZONE_BY_TYPE, DAYS7, ZLABEL, ZIDX, ZCOL, SESSION_DESCRIPTIONS,
+  ZONE_BY_TYPE, DAYS7, ZLABEL, ZIDX, ZCOL, SESSION_DESCRIPTIONS, GOAL_EMPHASIS,
 } from './constants.js'
 import { logger } from './logger.js'
 
@@ -392,7 +392,11 @@ export function generatePlan(goal, totalWeeks, weeklyHours, level) {
     const wHours = h * (isRecovery ? 0.6 : (volByPhase[phase]||1))
     const totalMins = wHours * 60
     const pats = DAY_PATTERNS[lk] || DAY_PATTERNS.intermediate
-    const pattern = pats[effPhase] || pats.Base
+    const basePattern = pats[effPhase] || pats.Base
+    // Goal-aware: shift Build/Peak intensity mix by race distance (5K ≠ Marathon).
+    // Build/Peak only; Base/Taper/Recovery/Race Week stay shared across goals.
+    const emphasis = (effPhase === 'Build' || effPhase === 'Peak') ? GOAL_EMPHASIS[goal] : null
+    const pattern = emphasis ? basePattern.map(t => emphasis[t] || t) : basePattern
     let weekTSS = 0
     const zoneMins = [0,0,0,0,0]
     const sessions = pattern.map((type, di) => {

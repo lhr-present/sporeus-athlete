@@ -275,6 +275,21 @@ export const ZONE_BY_TYPE = {
 }
 export const DAYS7 = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
 
+// ── Goal/distance emphasis for the legacy plan generator ─────────────────────
+// Makes generatePlan() honor the race target: a 5K plan ≠ a marathon plan.
+// Applied ONLY to Build & Peak weeks as per-session-type substitutions on top of
+// the level's base DAY_PATTERN, so level-appropriate volume/structure is kept.
+// Same philosophy as the adaptive DISTANCE_INTENT_TEMPLATES (5K = VO2-dominant;
+// marathon = endurance/tempo, minimal VO2). A goal with no entry (e.g. General
+// Fitness) or an unknown goal → no shift (base level pattern unchanged).
+export const GOAL_EMPHASIS = {
+  '5K':            { tempo: 'interval' }, // speed: threshold days → VO2 intervals
+  '10K':           {},                    // balanced: keep the level's mix
+  'Half Marathon': { interval: 'tempo' }, // threshold focus: VO2 → tempo
+  'Marathon':      { interval: 'tempo' }, // endurance: drop VO2 for tempo (long stays)
+  'Cycling Event': { interval: 'tempo' }, // sweet-spot / threshold
+}
+
 // ─── Search index ──────────────────────────────────────────────────────────────
 export const SEARCH_INDEX = [
   { id:'zone-hr',      name:'HR Zone Calculator',   desc:'Heart rate zones from max HR',        tab:'zones'          },

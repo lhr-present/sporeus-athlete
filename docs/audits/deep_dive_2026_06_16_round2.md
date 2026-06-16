@@ -61,12 +61,14 @@ generator, and full live-schema RLS coverage. Adversarially verified.
 These are real but change user-facing plan output and/or are founder-owned sport-science
 design. NOT safe drop-ins — flagged for an explicit decision + careful re-baselining.
 
-- **HIGH — default `generatePlan` (formulas.js) ignores `goal`**: a 5K plan and a
-  marathon plan come out byte-identical (sessions + weekly TSS). The distance/physiology-
-  aware logic lives only in the adaptive generator behind the "Advanced" toggle, so the
-  default athlete path doesn't honor target→physiology→plan. Fix = route the default
-  through the adaptive generator (or branch DAY_PATTERNS on goal) — a behavior change
-  for every user + many test baselines.
+- **HIGH — default `generatePlan` (formulas.js) ignores `goal`**: ✅ RESOLVED in v9.422.
+  Chose Approach B (lowest risk): a level-aware `GOAL_EMPHASIS` overlay (constants.js)
+  shifts Build/Peak intensity by race distance (5K → VO2 intervals; Marathon → tempo/
+  endurance, no VO2), reusing the adaptive DISTANCE_INTENT_TEMPLATES philosophy in the
+  legacy session vocabulary. Keeps the 7-session shape (no Calendar/test-shape churn) and
+  does NOT route users through the buggy adaptive generator. 5K ≠ Marathon now (test
+  locks it in). NOTE: onboarding already used the goal-aware adaptive path; this fixed
+  the manual-regenerate + coach-push paths.
 - **HIGH — adaptive deload week can carry MORE load than the prior week**: `weeklyTSS`
   computes its Build ramp window from plan-index math (`totalWeeks-6`) that diverges
   from the calendar-aware `raceAwarePhaseForWeek`, so a flagged deload can exceed the
