@@ -13,7 +13,7 @@ function tssColor(tss) {
   return '#ff6600'
 }
 
-export default function LoadHeatmapCard({ log, dl, onDayClick }) {
+export default function LoadHeatmapCard({ log, dl, onDayClick, lang = 'en' }) {
   const { tssMap, weeks, monthLabels } = useMemo(() => {
     // Build TSS lookup: { 'YYYY-MM-DD': tss }
     const map = {}
@@ -63,12 +63,26 @@ export default function LoadHeatmapCard({ log, dl, onDayClick }) {
   const SVG_W   = DAY_W + 52 * STEP
   const SVG_H   = LABEL_H + 7 * STEP
 
+  // Accessible summary of the heatmap — total sessions, peak-load day.
+  // Per-cell <title> isn't surfaced as the SVG's accessible name, so we
+  // build a single aria-label that announces the gist of the year.
+  const sessionCount = Object.keys(tssMap).length
+  const peakDate = Object.entries(tssMap).reduce(
+    (best, [d, v]) => (v > best.tss ? { date: d, tss: v } : best),
+    { date: null, tss: 0 }
+  )
+  const heatmapLabel = lang === 'tr'
+    ? `Antrenman yükü ısı haritası — son bir yılda ${sessionCount} antrenman günü${peakDate.date ? `, en yüksek yük ${peakDate.date} (TSS ${Math.round(peakDate.tss)})` : ''}.`
+    : `Training load heatmap — ${sessionCount} training days over the last year${peakDate.date ? `, peak load ${peakDate.date} (TSS ${Math.round(peakDate.tss)})` : ''}.`
+
   return (
     <div className="sp-card" style={{ ...S.card, animationDelay: '0ms', overflowX: 'auto' }}>
       <div style={S.cardTitle}>LOAD HEATMAP · LAST 12 MONTHS</div>
       <svg
         width={SVG_W}
         height={SVG_H}
+        role="img"
+        aria-label={heatmapLabel}
         style={{ display: 'block', fontFamily: 'IBM Plex Mono, monospace' }}
       >
         {/* Month labels */}

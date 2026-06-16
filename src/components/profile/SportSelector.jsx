@@ -34,7 +34,7 @@ export default function SportSelector({ local, setLocal }) {
       <label style={S.label}>{t('primarySportL')}</label>
       <div style={{display:'flex',flexWrap:'wrap',gap:'6px',marginBottom:'12px'}}>
         {SPORT_BRANCHES.map(b=>(
-          <button key={b.id} style={pillStyle(primary===b.id)} onClick={()=>setPrimary(b.id)}>
+          <button key={b.id} type="button" aria-pressed={primary===b.id} style={pillStyle(primary===b.id)} onClick={()=>setPrimary(b.id)}>
             {b.icon} {b.label}
           </button>
         ))}
@@ -45,7 +45,7 @@ export default function SportSelector({ local, setLocal }) {
           <label style={S.label}>{t('triathlonTypeL')}</label>
           <div style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>
             {TRIATHLON_TYPES.map(tt=>(
-              <button key={tt.id} style={pillStyle(triType===tt.id,'#0064ff')} onClick={()=>setTriType(tt.id)}>
+              <button key={tt.id} type="button" aria-pressed={triType===tt.id} style={pillStyle(triType===tt.id,'#0064ff')} onClick={()=>setTriType(tt.id)}>
                 {tt.label}
               </button>
             ))}
@@ -58,7 +58,7 @@ export default function SportSelector({ local, setLocal }) {
           <label style={S.label}>{t('secondarySportsL')}</label>
           <div style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>
             {SPORT_BRANCHES.filter(b=>b.id!==primary&&b.id!=='hybrid'&&b.id!=='other').map(b=>(
-              <button key={b.id} style={pillStyle(secondary.includes(b.id),'#5bc25b')} onClick={()=>toggleSec(b.id)}>
+              <button key={b.id} type="button" aria-pressed={secondary.includes(b.id)} style={pillStyle(secondary.includes(b.id),'#5bc25b')} onClick={()=>toggleSec(b.id)}>
                 {b.icon} {b.label}
               </button>
             ))}
@@ -69,7 +69,7 @@ export default function SportSelector({ local, setLocal }) {
       <label style={S.label}>{t('athleteLevelL')}</label>
       <div style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>
         {ATHLETE_LEVELS.map(lv=>(
-          <button key={lv.id} style={pillStyle(level===lv.id,'#4a90d9')} onClick={()=>setLevel(lv.id)}>
+          <button key={lv.id} type="button" aria-pressed={level===lv.id} style={pillStyle(level===lv.id,'#4a90d9')} onClick={()=>setLevel(lv.id)}>
             {lv.label}
             <span style={{color:'#777',fontSize:'9px',marginLeft:'5px'}}>{lv.sub}</span>
           </button>

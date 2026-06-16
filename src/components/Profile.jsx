@@ -175,8 +175,8 @@ export default function Profile({ log, authUser }) {
         <div style={S.row}>
           {FIELDS.map(f=>(
             <div key={f.k} style={{ flex:'1 1 200px' }} id={f.k === 'goal' ? 'goal-editor' : undefined}>
-              <label style={S.label}>{t(f.lk)}</label>
-              <input style={S.input} type={f.type||'text'} placeholder={f.ph}
+              <label style={S.label} htmlFor={`profile-${f.k}`}>{t(f.lk)}</label>
+              <input id={`profile-${f.k}`} style={S.input} type={f.type||'text'} placeholder={f.ph}
                 title={f.title}
                 value={local[f.k]||''} onChange={e=>setLocal({...local,[f.k]:e.target.value})}/>
             </div>
@@ -240,8 +240,9 @@ export default function Profile({ log, authUser }) {
             </div>
             <div style={S.row}>
               <div style={{ flex: '1 1 200px' }}>
-                <label style={S.label}>{t('lastPeriodStartL')}</label>
+                <label style={S.label} htmlFor="profile-lastPeriodStart">{t('lastPeriodStartL')}</label>
                 <input
+                  id="profile-lastPeriodStart"
                   style={S.input}
                   type="date"
                   value={local.lastPeriodStart || ''}
@@ -249,8 +250,9 @@ export default function Profile({ log, authUser }) {
                 />
               </div>
               <div style={{ flex: '1 1 200px' }}>
-                <label style={S.label}>{t('cycleLengthL')}</label>
+                <label style={S.label} htmlFor="profile-cycleLength">{t('cycleLengthL')}</label>
                 <input
+                  id="profile-cycleLength"
                   style={S.input}
                   type="number"
                   min={21}
@@ -268,6 +270,11 @@ export default function Profile({ log, authUser }) {
         <div style={{ display:'flex', gap:'10px', marginTop:'20px' }}>
           <button style={S.btn} onClick={save}>{status==='saved'?t('savedMsg'):t('saveProfileBtn')}</button>
           <button style={S.btnSec} onClick={share}>{status==='copied'?t('copiedMsg'):t('shareBtn')}</button>
+        </div>
+        {/* Visually-hidden live region so screen readers announce the
+            save/share confirmation (the buttons only flip their label). */}
+        <div aria-live="polite" style={{ position:'absolute', width:'1px', height:'1px', padding:0, margin:'-1px', overflow:'hidden', clip:'rect(0,0,0,0)', whiteSpace:'nowrap', border:0 }}>
+          {status==='saved' ? t('savedMsg') : status==='copied' ? t('copiedMsg') : ''}
         </div>
 
         {/* Profile Completeness */}

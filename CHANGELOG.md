@@ -2,6 +2,31 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.430.0 — 2026-06-17 — Accessibility batch (deep-dive CRITICAL + HIGH)
+
+First dedicated a11y pass. 4 CRITICAL + 9 HIGH defects on primary athlete surfaces, all
+additive (roles/aria/labels), no layout/behavior change.
+
+CRITICAL — were invisible/silent to screen readers:
+- ProactiveInjuryAlert + HRVAlertCard: added role="alert" (safety warnings were silent).
+- LoadHeatmapCard + BanisterModelCard SVGs: role="img" + summary aria-label.
+
+HIGH:
+- TodayView 3-tap readiness buttons (😴/😐/⚡) got bilingual aria-labels; orientation nudge
+  + dismiss converted from <span onClick> to real keyboard-reachable <button>s (+ contrast).
+- Profile: id/htmlFor on all main + cycle fields; aria-live save/share confirmation.
+- Onboarding: focus moves to step heading on step change; role=progressbar; aria-pressed on
+  all color-only pickers; input labels associated.
+- SportSelector: aria-pressed on pickers.
+- TrainingLog: id/htmlFor on the add-session form + zone inputs; FIT/GPX + CSV import-preview
+  overlays now role=dialog + aria-modal + focus-trap + Escape.
+- MigrationModal: Escape dismisses in all non-blocking phases (was 'done' only).
+- InsightFeedCard: sr-only category label (was color-only); HRVDashboard chart role=img+label.
+
++a11y.deepdive tests. Full suite 15,860 green. MEDIUM/LOW a11y items deferred (documented in
+docs/audits — app-wide contrast/label sweep, dialog-render tests).
+DEPENDS ON: useFocusTrap; inline bilingual strings.
+
 ## v9.429.0 — 2026-06-17 — Date/timezone edge fixes + GDPR deletion/export completeness
 
 Deep-dive round 4 fixes (date/TZ + data-rights). Edge functions for the v9.428 batch were

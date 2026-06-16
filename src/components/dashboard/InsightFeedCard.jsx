@@ -20,6 +20,27 @@ function accentColor(type) {
   return TYPE_COLOR[type] || '#555'
 }
 
+// Category label so the colored accent bar isn't the only cue (color-only
+// information fails WCAG 1.4.1). Surfaced via an sr-only span per row.
+const TYPE_LABEL = {
+  milestone:        { en: 'Milestone',   tr: 'Dönüm noktası' },
+  weekly_fitness:   { en: 'Fitness',     tr: 'Kondisyon' },
+  fitness:          { en: 'Fitness',     tr: 'Kondisyon' },
+  consistency:      { en: 'Consistency', tr: 'Süreklilik' },
+  workload_pattern: { en: 'Workload',    tr: 'İş yükü' },
+  workload:         { en: 'Workload',    tr: 'İş yükü' },
+}
+
+const SR_ONLY = {
+  position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px',
+  overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0,
+}
+
+function categoryLabel(type, lang) {
+  const l = TYPE_LABEL[type]
+  return l ? (lang === 'tr' ? l.tr : l.en) : (lang === 'tr' ? 'Bilgi' : 'Insight')
+}
+
 export default function InsightFeedCard({ log = [] }) {
   const { t, lang } = useContext(LangCtx)
 
@@ -74,6 +95,7 @@ export default function InsightFeedCard({ log = [] }) {
                   flex: 1,
                 }}
               >
+                <span style={SR_ONLY}>{categoryLabel(card.type, lang)}: </span>
                 {card[lang] || card.en}
               </div>
             </div>

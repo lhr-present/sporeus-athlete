@@ -52,9 +52,16 @@ function ReadinessScore({ readiness }) {
 }
 
 // ── lnRMSSD 30-day trend chart ───────────────────────────────────────────────
-function LnRMSSDChart({ data, baseline, band }) {
+function LnRMSSDChart({ data, baseline, band, lang = 'en' }) {
+  const first = data.length ? data[0].lnRMSSD : null
+  const last  = data.length ? data[data.length - 1].lnRMSSD : null
+  const dirEN = (first != null && last != null) ? (last > first ? 'trending up' : last < first ? 'trending down' : 'flat') : 'flat'
+  const dirTR = (first != null && last != null) ? (last > first ? 'yükseliyor' : last < first ? 'düşüyor' : 'sabit') : 'sabit'
+  const chartLabel = lang === 'tr'
+    ? `lnRMSSD 30 günlük trend grafiği — ${data.length} gün, ${dirTR}. Turuncu çizgi günlük lnRMSSD, mavi kesik çizgi 7 günlük ortalama. Başlangıç ${baseline ? baseline.toFixed(2) : '—'}.`
+    : `lnRMSSD 30-day trend chart — ${data.length} days, ${dirEN}. Orange line is daily lnRMSSD, blue dashed line is the 7-day average. Baseline ${baseline ? baseline.toFixed(2) : '—'}.`
   return (
-    <div>
+    <div role="img" aria-label={chartLabel}>
       <div style={{ fontFamily: MONO, fontSize: 9, color: '#555', marginBottom: 4 }}>
         <ScienceTooltip anchor="4-rmssd--heart-rate-variability" label="RMSSD" short="Root Mean Square of Successive Differences — parasympathetic tone marker.">lnRMSSD</ScienceTooltip> (30d) · baseline {baseline ? baseline.toFixed(2) : '—'} · ±1σ band
       </div>
@@ -132,7 +139,7 @@ function DFABadge({ alpha1, ectopicPct }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function HRVDashboard({ recovery, setRecovery }) {
-  const { t: _t } = useContext(LangCtx)
+  const { t: _t, lang } = useContext(LangCtx)
   const [fileResult, setFileResult]   = useState(null)
   const [uploadError, setUploadError] = useState(null)
   const [manualRMSSD, setManualRMSSD] = useState('')
@@ -261,7 +268,7 @@ export default function HRVDashboard({ recovery, setRecovery }) {
 
       {/* lnRMSSD trend chart */}
       {lnSeries.length >= 3 && (
-        <LnRMSSDChart data={lnSeries} baseline={baseline7} band={baselineBand} />
+        <LnRMSSDChart data={lnSeries} baseline={baseline7} band={baselineBand} lang={lang} />
       )}
 
       {/* DFA-α1 badge */}

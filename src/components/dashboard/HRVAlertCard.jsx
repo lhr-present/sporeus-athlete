@@ -28,7 +28,7 @@ export default function HRVAlertCard({ recovery }) {
   const actionText   = lang === 'tr' ? t('hrvAlertAction_tr') : t('hrvAlertAction')
 
   return (
-    <div className="sp-card" style={{
+    <div className="sp-card" role="alert" style={{
       ...S.card,
       borderLeft: `4px solid ${badgeColor}`,
       marginBottom: '12px',

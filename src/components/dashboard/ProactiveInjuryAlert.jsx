@@ -32,7 +32,7 @@ export default function ProactiveInjuryAlert({ log, injuries, lang }) {
 
   const zoneStr = active.map(p => p.zone).join(', ')
   return (
-    <div className="sp-card" style={{ ...S.card, borderLeft:'4px solid #e03030', animationDelay:'0ms', background:'#e0303011' }}>
+    <div className="sp-card" role="alert" style={{ ...S.card, borderLeft:'4px solid #e03030', animationDelay:'0ms', background:'#e0303011' }}>
       <div style={{ ...S.mono, fontSize:'10px', color:'#e03030', letterSpacing:'0.08em', fontWeight:600, marginBottom:'6px' }}>
         ⚠ {lang==='tr'?'PROAKTİF YARALANMA UYARISI':'PROACTIVE INJURY RISK'}
       </div>

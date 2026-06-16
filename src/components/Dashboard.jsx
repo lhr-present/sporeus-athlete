@@ -1353,7 +1353,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       <ErrorBoundary><Suspense fallback={null}><FitnessBatteryProgressCard /></Suspense></ErrorBoundary>
       {hasTriData     && <ErrorBoundary><Suspense fallback={null}><TriathlonLoadCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
       {hasTriData     && <ErrorBoundary><Suspense fallback={null}><TriathlonWeekBalanceCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
-      <LoadHeatmapCard log={log} dl={dl}/>
+      <LoadHeatmapCard log={log} dl={dl} lang={lang}/>
       <SeasonBestsCard log={log} dl={dl}/>
 
       <ShareCard log={log} profile={profile} filteredLog={filteredLog}/>
