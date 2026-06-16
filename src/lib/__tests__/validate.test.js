@@ -10,8 +10,10 @@ import {
   sanitizeDate,
   sanitizeLogEntry,
   sanitizeProfile,
+  sanitizeRecovery,
   getProfileRaceDate,
 } from '../validate.js'
+import { computeHRVAlertState, extractHRVSeries } from '../athlete/hrvAlertSummary.js'
 
 // ─── sanitizeString ───────────────────────────────────────────────────────────
 describe('sanitizeString', () => {
@@ -579,5 +581,119 @@ describe('sanitizeProfile — ltPace ↔ threshold mirror (v9.186.0)', () => {
   it('empty ltPace when nothing is set (existing `!profile.ltPace` guards remain valid)', () => {
     const p = sanitizeProfile({})
     expect(p.ltPace).toBe('')
+  })
+})
+
+// ─── sanitizeRecovery ─────────────────────────────────────────────────────────
+describe('sanitizeRecovery', () => {
+  it('coerces a STRING hrv to a NUMBER (the bug that killed 3 HRV cards)', () => {
+    const r = sanitizeRecovery({ date: '2026-06-17', hrv: '65' })
+    expect(r.hrv).toBe(65)
+    expect(typeof r.hrv).toBe('number')
+  })
+
+  it('clamps hrv to 10–200', () => {
+    expect(sanitizeRecovery({ hrv: 5 }).hrv).toBe(10)
+    expect(sanitizeRecovery({ hrv: 500 }).hrv).toBe(200)
+    expect(sanitizeRecovery({ hrv: 65 }).hrv).toBe(65)
+  })
+
+  it('drops hrv when not finite / not parseable', () => {
+    expect('hrv' in sanitizeRecovery({ hrv: 'abc' })).toBe(false)
+    expect('hrv' in sanitizeRecovery({ hrv: '' })).toBe(false)
+    expect('hrv' in sanitizeRecovery({ hrv: null })).toBe(false)
+  })
+
+  it('rejects Infinity for hrv (Number.isFinite, not isNaN)', () => {
+    expect('hrv' in sanitizeRecovery({ hrv: Infinity })).toBe(false)
+    expect('hrv' in sanitizeRecovery({ hrv: '1e999' })).toBe(false)
+  })
+
+  it('clamps restingHR to 30–120', () => {
+    expect(sanitizeRecovery({ restingHR: '5' }).restingHR).toBe(30)
+    expect(sanitizeRecovery({ restingHR: '200' }).restingHR).toBe(120)
+    expect(sanitizeRecovery({ restingHR: '48' }).restingHR).toBe(48)
+    expect(typeof sanitizeRecovery({ restingHR: '48' }).restingHR).toBe('number')
+  })
+
+  it('clamps sleepHrs to 0–24', () => {
+    expect(sanitizeRecovery({ sleepHrs: '50' }).sleepHrs).toBe(24)
+    expect(sanitizeRecovery({ sleepHrs: '7.5' }).sleepHrs).toBe(7.5)
+    expect(sanitizeRecovery({ sleepHrs: '-3' }).sleepHrs).toBe(0)
+  })
+
+  it('clamps lactate to 0–20 and only when present', () => {
+    expect(sanitizeRecovery({ lactate: '1.8' }).lactate).toBe(1.8)
+    expect(sanitizeRecovery({ lactate: '99' }).lactate).toBe(20)
+    expect('lactate' in sanitizeRecovery({ date: '2026-06-17' })).toBe(false)
+  })
+
+  it('coerces 1–5 wellness sliders to clamped ints, only when present', () => {
+    const r = sanitizeRecovery({ sleep: '3', energy: 7, soreness: 0, mood: 4, stress: 2 })
+    expect(r.sleep).toBe(3)
+    expect(r.energy).toBe(5)    // clamped down to 5
+    expect(r.soreness).toBe(1)  // clamped up to 1
+    expect(r.mood).toBe(4)
+    expect(r.stress).toBe(2)
+    expect('sleep' in sanitizeRecovery({ date: '2026-06-17' })).toBe(false)
+  })
+
+  it('clamps score and readiness to 0–100', () => {
+    expect(sanitizeRecovery({ score: 200 }).score).toBe(100)
+    expect(sanitizeRecovery({ readiness: -5 }).readiness).toBe(0)
+    expect(sanitizeRecovery({ score: 73 }).score).toBe(73)
+  })
+
+  it('preserves date via the date sanitizer', () => {
+    expect(sanitizeRecovery({ date: '2026-06-17' }).date).toBe('2026-06-17')
+    // unparseable / missing → today (sanitizeDate convention)
+    expect(sanitizeRecovery({}).date).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+
+  it('passes through unknown fields (rmssd, lnRMSSD, source, id, hrv_factor)', () => {
+    const r = sanitizeRecovery({
+      date: '2026-06-17', rmssd: 65, lnRMSSD: 4.17, dfaAlpha1: 0.9,
+      source: 'polar', id: 123, hrv_factor: 0.9, idempotency_key: 'k',
+    })
+    expect(r.rmssd).toBe(65)
+    expect(r.lnRMSSD).toBe(4.17)
+    expect(r.dfaAlpha1).toBe(0.9)
+    expect(r.source).toBe('polar')
+    expect(r.id).toBe(123)
+    expect(r.hrv_factor).toBe(0.9)
+    expect(r.idempotency_key).toBe('k')
+  })
+
+  it('returns a date-only object for non-object input', () => {
+    const r = sanitizeRecovery(null)
+    expect(r.date).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+
+  // Simulates Recovery.jsx save(): a raw form (string inputs) round-tripped
+  // through sanitizeRecovery must store hrv as a NUMBER.
+  it('round-trips a Recovery save() entry with hrv as a NUMBER', () => {
+    const form = { sleep: 4, soreness: 2, energy: 4, mood: 4, stress: 2, sleepHrs: '7.5', hrv: '72', restingHR: '50' }
+    const entry = sanitizeRecovery({ date: '2026-06-17', ...form, score: 80 })
+    expect(typeof entry.hrv).toBe('number')
+    expect(entry.hrv).toBe(72)
+    expect(entry.restingHR).toBe(50)
+    expect(entry.sleepHrs).toBe(7.5)
+    expect(entry.score).toBe(80)
+  })
+
+  // The whole point: hrvAlertSummary requires typeof e.hrv === 'number'.
+  it('sanitized entries feed the (previously dead) HRV alert consumer', () => {
+    // Build 8 days of string-hrv form entries, sanitize each, then run the
+    // consumer that gated on typeof hrv === 'number'.
+    const raw = ['80', '78', '82', '79', '81', '77', '80', '40'].map((h, i) => ({
+      date: `2026-06-0${i + 1}`, hrv: h,
+    }))
+    const sanitized = raw.map(sanitizeRecovery)
+    // extractHRVSeries would return [] for string hrv pre-fix.
+    expect(extractHRVSeries(sanitized).length).toBe(8)
+    const state = computeHRVAlertState(sanitized)
+    expect(state).not.toBeNull()
+    expect(typeof state.current).toBe('number')
+    expect(state.current).toBe(40)  // the big drop
   })
 })

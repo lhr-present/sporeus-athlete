@@ -1,8 +1,8 @@
 // ─── Dashboard.jsx — orchestrator, composes all dashboard cards ───────────────
-import { useContext, useState, useMemo, useCallback, lazy, Suspense } from 'react'
+import { useContext, useState, useMemo, useCallback, lazy, Suspense, memo } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
-import { TSSChart, WeeklyVolChart, ZoneDonut, HelpTip } from './ui.jsx'
+import { TSSChart, WeeklyVolChartMemo, ZoneDonutMemo, HelpTip } from './ui.jsx'
 import ErrorBoundary from './ErrorBoundary.jsx'
 const HRVChart = lazy(() => import('./charts/HRVChart.jsx'))
 import { monotonyStrain, calcLoad } from '../lib/formulas.js'
@@ -265,7 +265,7 @@ const RE_SWIM        = /swim/i
 const RE_ROW_TYPE    = /row|erg|2k\s*test/i
 const RE_ROW_SPORT   = /row/i
 
-export default function Dashboard({ log, onLogSession, onGoToProfile }) {
+function Dashboard({ log, onLogSession, onGoToProfile }) {
   const [lang]       = useLocalStorage('sporeus-lang', 'en')
   const [plan]       = useLocalStorage('sporeus-plan', null)
   const [planStatus] = useLocalStorage('sporeus-plan-status', {})
@@ -313,6 +313,7 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
   const { atl, ctl, tsb, daily } = useMemo(() => calcLoad(log), [log])
   const acwr        = useMemo(() => calculateACWR(log), [log])
   const consistency = useMemo(() => calculateConsistency(log), [log])
+  const monoStrain  = useMemo(() => monotonyStrain(log), [log])
 
   const tsbColor  = tsb > 5 ? '#5bc25b' : tsb < -10 ? '#e03030' : '#f5c542'
   const countSess = useCountUp(filteredLog.length)
@@ -1136,20 +1137,20 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
       {dl.weekly && log.length > 0 && (
         <div className="sp-card" style={{ ...S.card, animationDelay: '170ms' }}>
           <div style={S.cardTitle}>WEEKLY VOLUME — LAST 8 WEEKS</div>
-          <WeeklyVolChart log={log}/>
+          <WeeklyVolChartMemo log={log}/>
         </div>
       )}
 
       {/* Zone distribution (donut + monotony) */}
       {dl.zones && lc.showZoneDonut && log.length > 0 && (() => {
-        const { mono, strain } = monotonyStrain(log)
+        const { mono, strain } = monoStrain
         const monoRed   = mono > 2.0
         const strainRed = strain > 6000
         return (
           <div className="sp-card" style={{ ...S.row, marginBottom: '16px', animationDelay: '180ms' }}>
             <div style={{ ...S.card, flex: '1 1 200px', marginBottom: 0 }}>
               <div style={S.cardTitle}>ZONE DISTRIBUTION</div>
-              <ZoneDonut log={log}/>
+              <ZoneDonutMemo log={log}/>
             </div>
             {lc.showMonotony && (
               <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1372,3 +1373,5 @@ export default function Dashboard({ log, onLogSession, onGoToProfile }) {
     </div>
   )
 }
+
+export default memo(Dashboard)
