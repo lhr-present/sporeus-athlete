@@ -138,7 +138,7 @@ export function analyzePaceByRpe({
     const distNum = Number(entry.distanceKm)
     if (!Number.isFinite(distNum) || distNum <= 0) continue
 
-    const durNum = Number(entry.durationMin)
+    const durNum = Number(entry.duration ?? entry.durationMin ?? (entry.durationSec ? entry.durationSec / 60 : 0))
     if (!Number.isFinite(durNum) || durNum <= 0) continue
 
     const band = rpeToBand(rpeNum)

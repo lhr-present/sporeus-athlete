@@ -56,20 +56,23 @@ export function computeCPDecayIndex(testResults = [], windowWeeks = 12) {
     }
   }
 
-  // OLS for CP slope (days since first entry → W/day, then ×7 → W/week)
-  const t0 = new Date(history[0].date).getTime()
-  const xs  = history.map(h => (new Date(h.date).getTime() - t0) / 86400000)
-  const ys  = history.map(h => h.cp)
-  const slopePerDay  = _olsSlope(xs, ys)
-  const slope_w_per_week = slopePerDay !== null ? slopePerDay * 7 : null
-
   // Current CP = most recent entry
   const cpCurrent = history[history.length - 1].cp
 
-  // 12-week window peak
+  // 12-week window — slope and decayPct must both use this window so a long
+  // history doesn't dilute a recent decline.
   const windowMs  = windowWeeks * 7 * 86400000
   const cutoff    = new Date(history[history.length - 1].date).getTime() - windowMs
   const windowEntries = history.filter(h => new Date(h.date).getTime() >= cutoff)
+
+  // OLS for CP slope over the same 12-week window (days → W/day, then ×7 → W/week)
+  const slopeEntries = windowEntries.length >= 2 ? windowEntries : history
+  const t0 = new Date(slopeEntries[0].date).getTime()
+  const xs  = slopeEntries.map(h => (new Date(h.date).getTime() - t0) / 86400000)
+  const ys  = slopeEntries.map(h => h.cp)
+  const slopePerDay  = _olsSlope(xs, ys)
+  const slope_w_per_week = slopePerDay !== null ? slopePerDay * 7 : null
+
   const cpPeak12w = windowEntries.length >= 1
     ? Math.max(...windowEntries.map(h => h.cp))
     : cpCurrent

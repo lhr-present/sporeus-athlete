@@ -7,6 +7,8 @@ import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { isFeatureGated } from '../lib/subscription.js'
 import { computeBackoff } from '../lib/realtimeBackoff.js'
 
+const MAX_RETRY = 8
+
 /**
  * @param {object}   options
  * @param {object}   options.authUser  — Supabase auth user object
@@ -22,6 +24,7 @@ export function useRealtimeSquad({ authUser, isDemo, athletes, onUpdate }) {
   const channelRef = useRef(null)
   const retryRef   = useRef(0)
   const timerRef   = useRef(null)
+  const toastTimerRef = useRef(null)
 
   useEffect(() => {
     const tier   = (() => { try { return localStorage.getItem('sporeus-tier') || 'free' } catch { return 'free' } })()
@@ -54,7 +57,8 @@ export function useRealtimeSquad({ authUser, isDemo, athletes, onUpdate }) {
           const name = ath?.display_name || 'Athlete'
           const toast = `${name} just checked in — Fatigue ${row.soreness ?? '—'}/5`
           setRtToast(toast)
-          setTimeout(() => setRtToast(''), 6000)
+          clearTimeout(toastTimerRef.current)
+          toastTimerRef.current = setTimeout(() => { if (active) setRtToast('') }, 6000)
           if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(40)
           setLastUpdated(new Date().toLocaleTimeString())
         })
@@ -70,12 +74,25 @@ export function useRealtimeSquad({ authUser, isDemo, athletes, onUpdate }) {
             setRtStatus('live')
             retryRef.current = 0
             setLastUpdated(new Date().toLocaleTimeString())
-          } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
-            setRtStatus('reconnecting')
-            const delay = computeBackoff(retryRef.current)
-            retryRef.current++
-            clearTimeout(timerRef.current)
-            timerRef.current = setTimeout(() => { if (active) connect() }, delay)
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            if (retryRef.current < MAX_RETRY) {
+              setRtStatus('reconnecting')
+              const delay = computeBackoff(retryRef.current)
+              retryRef.current++
+              clearTimeout(timerRef.current)
+              timerRef.current = setTimeout(() => { if (active) connect() }, delay)
+            } else {
+              // Retry budget exhausted — release the channel so the coach's
+              // Realtime slot isn't held by an endlessly-cycling subscription.
+              if (channelRef.current) {
+                supabase.removeChannel(channelRef.current)
+                channelRef.current = null
+              }
+              setRtStatus('disconnected')
+            }
+          } else if (status === 'CLOSED') {
+            // Clean close (e.g. our own removeChannel) — don't auto-reconnect.
+            setRtStatus('disconnected')
           }
         })
 
@@ -87,6 +104,7 @@ export function useRealtimeSquad({ authUser, isDemo, athletes, onUpdate }) {
     return () => {
       active = false
       clearTimeout(timerRef.current)
+      clearTimeout(toastTimerRef.current)
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current)
         channelRef.current = null

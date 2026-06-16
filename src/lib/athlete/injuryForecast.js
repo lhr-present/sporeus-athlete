@@ -78,9 +78,10 @@ function toDateStr(date) {
 /**
  * Compute rolling 8-week injury risk history.
  *
- * For each of the last `weeks` ISO weeks ending on `today`, slice the log up to
- * that week's Sunday (inclusive) and call predictInjuryRisk with that slice and
- * the full recovery array. Extract the numeric risk score from the result.
+ * For each of the last `weeks` ISO weeks ending on `today`, slice the log AND
+ * the recovery array up to that week's Sunday (inclusive) and call
+ * predictInjuryRisk with both slices (causal — no future data leaks into past
+ * points). Extract the numeric risk score from the result.
  *
  * @param {Array}  log      - training log entries ({ date, tss, rpe, type, … })
  * @param {Array}  recovery - recovery entries
@@ -114,7 +115,13 @@ export function injuryRiskHistory(
       continue
     }
 
-    const result = predictInjuryRisk(slicedLog, recovery)
+    // Slice recovery the same way — passing the full recovery array would leak
+    // future recovery data into past points (non-causal historical scoring).
+    const slicedRecovery = Array.isArray(recovery)
+      ? recovery.filter(e => e && e.date <= cutoffStr)
+      : recovery
+
+    const result = predictInjuryRisk(slicedLog, slicedRecovery)
     const score = result.score ?? 0
     results.push({ isoWeek, score, band: riskBand(score) })
   }

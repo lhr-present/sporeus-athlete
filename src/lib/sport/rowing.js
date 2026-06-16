@@ -217,6 +217,24 @@ export function fitCP(efforts) {
  * predict2000mFromMultipleTests([{distanceM:1000,timeSec:200},{distanceM:5000,timeSec:1100}])
  * // => { predicted2000Sec: ..., confidenceInterval95: [...], stdDevSec: ... }
  */
+// Two-tailed Student's t critical values at the 95% confidence level, keyed by
+// degrees of freedom. For df > 30 the distribution is close enough to normal
+// that we fall back to the z value (1.96).
+const T_CRIT_95 = {
+  1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571,
+  6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228,
+  11: 2.201, 12: 2.179, 13: 2.160, 14: 2.145, 15: 2.131,
+  16: 2.120, 17: 2.110, 18: 2.101, 19: 2.093, 20: 2.086,
+  21: 2.080, 22: 2.074, 23: 2.069, 24: 2.064, 25: 2.060,
+  26: 2.056, 27: 2.052, 28: 2.048, 29: 2.045, 30: 2.042,
+}
+
+function tCritical95(df) {
+  if (df < 1) return T_CRIT_95[1]
+  if (df > 30) return 1.96
+  return T_CRIT_95[df]
+}
+
 export function predict2000mFromMultipleTests(tests) {
   // tests: [{ distanceM, timeSec }, ...]
   if (!tests || tests.length === 0) return null
@@ -230,7 +248,7 @@ export function predict2000mFromMultipleTests(tests) {
   }
   const variance = predictions.reduce((a, p) => a + (p - mean) ** 2, 0) / (predictions.length - 1)
   const std = Math.sqrt(variance)
-  const tCrit = 2.776  // t-value for 95% CI, df=4 (conservative for small n)
+  const tCrit = tCritical95(predictions.length - 1)  // df = n - 1
   const margin = tCrit * std / Math.sqrt(predictions.length)
   return {
     predicted2000Sec: Math.round(mean),
@@ -276,7 +294,7 @@ export function formatSplit(splitSec) {
  * @returns {number|null} metres per stroke, or null if totalStrokes falsy
  */
 export function strokeEfficiency(distanceM, totalStrokes) {
-  if (!totalStrokes) return null
+  if (!totalStrokes || !distanceM) return null
   return distanceM / totalStrokes
 }
 
@@ -311,7 +329,7 @@ export function classifyStrokeRate(spm) {
  * @returns {number|null} m/s per bpm (null if avgHR falsy)
  */
 export function rowingEfficiencyFactor(distanceM, durationSec, avgHR) {
-  if (!avgHR || !durationSec) return null
+  if (!avgHR || !durationSec || !distanceM) return null
   const avgVelocity = distanceM / durationSec  // m/s
   return Math.round((avgVelocity / avgHR) * 10000) / 10000
 }

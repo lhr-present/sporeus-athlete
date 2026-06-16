@@ -191,6 +191,24 @@ describe('computeCPDecayIndex', () => {
     expect(r.decayPct).toBe(0)
   })
 
+  it('slope is fit on the 12-week window, so old rises do not mask recent decline', () => {
+    // Old rising history (outside the 12-week window) followed by a recent
+    // declining trend inside it. Window cutoff = last date − 12 weeks.
+    // Slope must reflect the recent decline (negative) → detraining, not the
+    // big early rise.
+    const results = [
+      makeEntry('2023-10-01', 240), // outside window
+      makeEntry('2023-12-01', 280), // outside window — steep early rise
+      makeEntry('2024-03-15', 300), // inside window
+      makeEntry('2024-05-01', 285), // inside window
+      makeEntry('2024-06-01', 270), // inside window (current)
+    ]
+    const r = computeCPDecayIndex(results)
+    expect(r.slope_w_per_week).toBeLessThan(0)
+    expect(r.classification).toBe('detraining')
+    expect(r.decayPct).toBeGreaterThan(5)
+  })
+
   it('wPrimeStatus expanding when W prime slope > 100 J/week', () => {
     // W' increases 2000J over 7 days → slope = 2000/7*7 = 2000 J/wk >> 100
     const results = [

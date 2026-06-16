@@ -276,3 +276,25 @@ describe('computeInjuryForecast', () => {
     expect(INJURY_RISK_CITATION.length).toBeGreaterThan(0)
   })
 })
+
+// ─── causal recovery slicing (regression) ───────────────────────────────────
+// injuryRiskHistory must slice the recovery array per week the same way it
+// slices the log — recovery rows dated after a week's cutoff must NOT leak into
+// that past week's risk score (non-causal data leakage bug).
+describe('injuryRiskHistory — recovery is sliced causally', () => {
+  it('future-dated recovery rows do not change historical risk scores', () => {
+    const today = '2026-04-25'
+    const log = makeLog(60, today)
+    // Recovery rows ALL dated in the future relative to every history week's
+    // Sunday cutoff. With causal slicing these are filtered out of every past
+    // point, so the history must equal the no-recovery baseline.
+    const futureRecovery = [
+      { date: '2026-12-01', score: 95, hrv: 80, sleepHours: 9 },
+      { date: '2026-12-02', score: 96, hrv: 82, sleepHours: 9 },
+      { date: '2026-12-03', score: 94, hrv: 81, sleepHours: 9 },
+    ]
+    const withFuture = injuryRiskHistory(log, futureRecovery, 8, today)
+    const withNone   = injuryRiskHistory(log, [], 8, today)
+    expect(withFuture.map(w => w.score)).toEqual(withNone.map(w => w.score))
+  })
+})

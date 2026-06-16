@@ -35,6 +35,12 @@ describe('strokeEfficiency', () => {
   it('returns null for zero strokes', () => {
     expect(strokeEfficiency(2000, 0)).toBeNull()
   })
+
+  it('returns null when distanceM is missing (avoids NaN render)', () => {
+    expect(strokeEfficiency(0, 200)).toBeNull()
+    expect(strokeEfficiency(undefined, 200)).toBeNull()
+    expect(strokeEfficiency(null, 200)).toBeNull()
+  })
 })
 
 describe('classifyStrokeRate', () => {
@@ -54,5 +60,11 @@ describe('rowingEfficiencyFactor', () => {
   it('returns null when avgHR is falsy', () => {
     expect(rowingEfficiencyFactor(2000, 420, 0)).toBeNull()
     expect(rowingEfficiencyFactor(2000, 420, null)).toBeNull()
+  })
+
+  it('returns null when distanceM is missing (avoids NaN render)', () => {
+    expect(rowingEfficiencyFactor(0, 420, 155)).toBeNull()
+    expect(rowingEfficiencyFactor(undefined, 420, 155)).toBeNull()
+    expect(rowingEfficiencyFactor(null, 420, 155)).toBeNull()
   })
 })

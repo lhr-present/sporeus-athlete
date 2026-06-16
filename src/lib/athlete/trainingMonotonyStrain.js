@@ -127,7 +127,9 @@ export function detectMonotonyStrain(log, today = new Date().toISOString().slice
       const diff = v - mean
       sqSum += diff * diff
     }
-    const variance = sqSum / (n - 1)
+    // Foster (2001) monotony uses the population stdev (/n), matching the
+    // app's canonical computeMonotony in src/lib/trainingLoad.js.
+    const variance = sqSum / n
     const stdev = Math.sqrt(variance)
     if (stdev > 0) monotony = mean / stdev
   }

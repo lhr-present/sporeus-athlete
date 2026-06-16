@@ -182,4 +182,23 @@ describe('predict2000mFromMultipleTests', () => {
     expect(predict2000mFromMultipleTests([])).toBeNull()
     expect(predict2000mFromMultipleTests(null)).toBeNull()
   })
+
+  it('CI margin uses the df-keyed t-critical (df = n-1), not a fixed 2.776', () => {
+    const tests = [
+      { distanceM: 2000, timeSec: 6 * 60 },
+      { distanceM: 4000, timeSec: 14 * 60 },
+      { distanceM: 6000, timeSec: 22 * 60 },
+    ]
+    // Reconstruct the same prediction vector + sample stats the fn uses.
+    const preds = tests.map(t => predict2000m(t.timeSec, t.distanceM)).filter(p => p !== null)
+    const mean = preds.reduce((a, b) => a + b, 0) / preds.length
+    const variance = preds.reduce((a, p) => a + (p - mean) ** 2, 0) / (preds.length - 1)
+    const std = Math.sqrt(variance)
+    const tCrit2 = 4.303 // two-tailed 95% for df = n-1 = 2 (not the old 2.776)
+    const expectedMargin = tCrit2 * std / Math.sqrt(preds.length)
+    const r = predict2000mFromMultipleTests(tests)
+    const actualMargin = (r.confidenceInterval95[1] - r.confidenceInterval95[0]) / 2
+    // CI bounds are integer-rounded → allow ±1s.
+    expect(Math.abs(actualMargin - expectedMargin)).toBeLessThanOrEqual(1)
+  })
 })

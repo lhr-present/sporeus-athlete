@@ -3,14 +3,16 @@
 // Shows progress stages: idle → uploading → pending → parsing → done | error
 // Free tier: 5 uploads/month enforced client-side (server also enforces).
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useContext, useEffect, useRef } from 'react'
 import { useDropzone } from 'react-dropzone'
+import { LangCtx } from '../contexts/LangCtx.jsx'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { canUploadFile, FREE_UPLOAD_LIMIT, getTierSync, getUpgradePrompt } from '../lib/subscription.js'
 import { logger } from '../lib/logger.js'
 import { S } from '../styles.js'
 
 const MAX_BYTES  = 26_214_400          // 25 MB (must match edge fn + bucket)
+const PARSE_TIMEOUT_MS = 90_000        // watchdog: edge fn 200s but no terminal status written
 const BUCKET     = 'activity-uploads'
 const ACCEPT_EXT = { 'application/octet-stream': ['.fit'], 'text/xml': ['.gpx'], 'application/xml': ['.gpx'] }
 
@@ -35,11 +37,13 @@ const STATUS_COLOR = {
  * @param {function}    props.onClose       — called when user dismisses
  */
 export default function UploadActivity({ authUser, onSuccess, onClose }) {
+  const { lang } = useContext(LangCtx)
   const [status,   setStatus]  = useState('idle')
   const [errMsg,   setErrMsg]  = useState('')
   const [progress, setProgress] = useState('')
   const [tierBlocked, setTierBlocked] = useState(false)
   const channelRef = useRef(null)
+  const watchdogRef = useRef(null)  // flips 'parsing' → 'error' if no terminal status arrives
   const inFlightRef = useRef(false)  // synchronous double-submit guard (status state lags a render)
 
   // Check free-tier quota on mount
@@ -60,10 +64,11 @@ export default function UploadActivity({ authUser, onSuccess, onClose }) {
       })
   }, [authUser])
 
-  // Cleanup realtime on unmount
+  // Cleanup realtime + watchdog on unmount
   useEffect(() => {
     return () => {
       if (channelRef.current) supabase.removeChannel(channelRef.current)
+      clearTimeout(watchdogRef.current)
     }
   }, [])
 
@@ -124,15 +129,18 @@ export default function UploadActivity({ authUser, onSuccess, onClose }) {
           event: 'UPDATE', schema: 'public', table: 'activity_upload_jobs',
           filter: `id=eq.${jobId}`,
         }, ({ new: updated }) => {
+          if (!updated) return  // malformed payload (absent `new`) — ignore, don't throw
           if (updated.status === 'parsing') {
             setStatus('parsing')
             setProgress('Edge function parsing…')
           } else if (updated.status === 'done') {
+            clearTimeout(watchdogRef.current)
             setStatus('done')
             setProgress('Session logged successfully!')
             if (channelRef.current) supabase.removeChannel(channelRef.current)
             if (onSuccess) onSuccess(updated.parsed_session_id)
           } else if (updated.status === 'error') {
+            clearTimeout(watchdogRef.current)
             setStatus('error')
             setErrMsg(updated.error || 'Parse error')
             if (channelRef.current) supabase.removeChannel(channelRef.current)
@@ -144,6 +152,22 @@ export default function UploadActivity({ authUser, onSuccess, onClose }) {
       setStatus('parsing')
       setProgress('Invoking parse-activity…')
 
+      // Watchdog: if the edge fn returns 200 but dies before writing a terminal
+      // status (done/error) to the job row, no realtime UPDATE arrives and the UI
+      // is stuck on "Parsing…" forever. After PARSE_TIMEOUT_MS, flip to error so
+      // the "Try again" button appears.
+      clearTimeout(watchdogRef.current)
+      watchdogRef.current = setTimeout(() => {
+        setStatus(prev => {
+          if (prev !== 'parsing') return prev
+          setErrMsg(lang === 'tr'
+            ? 'Ayrıştırma zaman aşımına uğradı — tekrar deneyin'
+            : 'Parse timed out — try again')
+          if (channelRef.current) supabase.removeChannel(channelRef.current)
+          return 'error'
+        })
+      }, PARSE_TIMEOUT_MS)
+
       // 4. Invoke parse-activity edge function
       const { error: fnErr } = await supabase.functions.invoke('parse-activity', {
         body: { jobId, fileType: ext },
@@ -151,12 +175,14 @@ export default function UploadActivity({ authUser, onSuccess, onClose }) {
 
       if (fnErr) {
         // Edge fn returned an error — job row will already be updated to 'error'
+        clearTimeout(watchdogRef.current)
         logger.warn('parse-activity:', fnErr.message)
         setStatus('error')
         setErrMsg('Parse failed: ' + fnErr.message)
         if (channelRef.current) supabase.removeChannel(channelRef.current)
       }
     } catch (e) {
+      clearTimeout(watchdogRef.current)
       logger.error('UploadActivity:', e.message)
       setStatus('error')
       setErrMsg(e.message)
@@ -165,7 +191,7 @@ export default function UploadActivity({ authUser, onSuccess, onClose }) {
       // status is 'parsing'/'error'/'done' so the dropzone's disabled prop holds.
       inFlightRef.current = false
     }
-  }, [authUser, tierBlocked, onSuccess])
+  }, [authUser, tierBlocked, onSuccess, lang])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop:   accepted => accepted[0] && processFile(accepted[0]),

@@ -42,24 +42,51 @@ export function saveStorage(key, data) {
 }
 
 export function exportAllData() {
+  // Enumerate EVERY `sporeus`-prefixed localStorage key — not just Object.keys(SCHEMA).
+  // SCHEMA omits keys that dataMigration.js / detectLocalData handle (injuries,
+  // race-results, training-age, …); iterating SCHEMA silently dropped them from
+  // the backup. Mirror importAllData's filter + Profile.jsx doReset's prefix sweep
+  // so this can't drift again when a new key is added.
   const out = {}
-  Object.keys(SCHEMA).forEach(key => {
-    try { out[key] = JSON.parse(localStorage.getItem(key)) } catch (e) { logger.warn('localStorage:', e.message) }
-  })
+  try {
+    Object.keys(localStorage)
+      .filter(key => key.startsWith('sporeus'))
+      .forEach(key => {
+        try { out[key] = JSON.parse(localStorage.getItem(key)) } catch (e) { logger.warn('localStorage:', e.message) }
+      })
+  } catch (e) { logger.warn('localStorage:', e.message) }
   return JSON.stringify({ _export: true, version: STORAGE_VERSION, ts: Date.now(), data: out }, null, 2)
 }
 
 export function importAllData(json) {
+  let src
   try {
     const parsed = JSON.parse(json)
-    const src = parsed._export ? parsed.data : parsed
-    Object.entries(src).forEach(([key, val]) => {
-      if (key.startsWith('sporeus')) {
-        try { localStorage.setItem(key, JSON.stringify(val)) } catch (e) { logger.warn('localStorage:', e.message) }
-      }
-    })
-    return true
+    src = parsed && parsed._export ? parsed.data : parsed
   } catch (e) { logger.warn('localStorage:', e.message); return false }
+
+  // Reject anything that isn't a plain object of key→value (e.g. "5", [1,2], null).
+  // Previously these returned true and the caller reloaded into a broken state.
+  if (!src || typeof src !== 'object' || Array.isArray(src)) {
+    logger.warn('localStorage: importAllData expected an object payload')
+    return false
+  }
+
+  // Non-atomic by nature (localStorage has no transactions), so surface partial
+  // failure: if ANY key fails to write (e.g. QuotaExceededError mid-restore),
+  // return false so the caller shows an error instead of reloading into a
+  // half-restored, corrupted state.
+  let allOk = true
+  Object.entries(src).forEach(([key, val]) => {
+    if (!key.startsWith('sporeus')) return
+    try {
+      localStorage.setItem(key, JSON.stringify(val))
+    } catch (e) {
+      logger.warn('localStorage:', e.message)
+      allOk = false
+    }
+  })
+  return allOk
 }
 
 // Import just a plan JSON (exported from coach plan builder)

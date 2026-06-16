@@ -163,11 +163,19 @@ describe('getGoalProgress', () => {
     expect(result).toHaveProperty('status')
   })
 
-  it('pct is a number between -Infinity and 100 (clamped at 100)', () => {
+  it('pct is a number clamped to [0, 100]', () => {
     const goal = { current: 50, target: 60, deadline: daysFromNow(30) }
     const result = getGoalProgress(goal, 55)
     expect(typeof result.pct).toBe('number')
     expect(result.pct).toBeLessThanOrEqual(100)
+    expect(result.pct).toBeGreaterThanOrEqual(0)
+  })
+
+  it('returns pct=0 (not negative) for a regressing goal below the start value', () => {
+    // Athlete regressed below where they started (current=50, now 45) → clamp to 0.
+    const goal = { current: 50, target: 60, deadline: daysFromNow(30) }
+    const result = getGoalProgress(goal, 45)
+    expect(result.pct).toBe(0)
   })
 
   it('returns pct=50 when halfway to target', () => {

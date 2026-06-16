@@ -97,13 +97,15 @@ export async function flushQueue() {
 
   // Replay the write_queue (comment mutations). Only reached when online +
   // supabase-ready (guarded above), so replayWrites never burns its retry
-  // budget against an offline backend. Transient failures keep status 'offline'
-  // so the next trigger retries; entries past MAX_ATTEMPTS are skipped by
-  // replayWrites itself and don't wedge the indicator.
+  // budget against an offline backend. Transient `failed` writes keep status
+  // 'offline' so the next trigger retries. `skipped` entries have exhausted
+  // their retry budget (poison writes left in IndexedDB forever) — they must
+  // ALSO keep the indicator out of 'synced', otherwise the UI shows green while
+  // those writes are silently dead.
   if (queuedWrites > 0) {
     try {
-      const { failed } = await replayWrites(supabase)
-      if (failed > 0) allOk = false
+      const { failed, skipped } = await replayWrites(supabase)
+      if (failed > 0 || skipped > 0) allOk = false
     } catch (e) {
       logger.warn('[offlineQueue] replayWrites failed:', e?.message)
       allOk = false

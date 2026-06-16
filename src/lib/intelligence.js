@@ -814,24 +814,9 @@ export function getSingleSuggestion(log, recovery, _profile) {
   const atl = computeATL(safeLog)
   const tsb = ctl - atl
 
-  // ── ACWR via 28-day EWMA (λ_acute=0.25, λ_chronic=0.067) ─────────────────
-  const acwr = (() => {
-    const now = new Date(); now.setUTCHours(0, 0, 0, 0)
-    const tssMap = {}
-    for (const e of safeLog) {
-      if (!e.date) continue
-      const d = e.date.slice(0, 10)
-      tssMap[d] = Math.min((tssMap[d] || 0) + (e.tss || 0), 300)
-    }
-    let a = 0, c = 0
-    for (let i = 27; i >= 0; i--) {
-      const d = new Date(now); d.setUTCDate(d.getUTCDate() - i)
-      const tss = tssMap[d.toISOString().slice(0, 10)] || 0
-      a = 0.25 * tss + 0.75 * a
-      c = 0.067 * tss + 0.933 * c
-    }
-    return c > 0 ? Math.round((a / c) * 100) / 100 : null
-  })()
+  // ── ACWR — single canonical EWMA engine (trainingLoad.calculateACWR) so
+  // every surface agrees (audit H6: inline duplicate diverged by ~80%).
+  const acwr = calculateACWR(safeLog)?.ratio ?? null
 
   // ── Rule 1: wellness_poor ─────────────────────────────────────────────────
   if (wellnessScore5 !== null && wellnessScore5 <= 2) {

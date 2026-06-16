@@ -280,3 +280,20 @@ describe('nmFatigueHistory — null score for sparse weeks', () => {
     expect(history[history.length - 1].score).toBeNull()
   })
 })
+
+// ── Window boundaries are EXACTLY 7 / 28 days (off-by-one regression) ────────
+describe('computeNMFatigue — exact window boundaries', () => {
+  it('7-day window spans exactly 7 days: day -6 counts, day -7 does not', () => {
+    const inWindow = computeNMFatigue([makeZoneEntry(_offset(TODAY, -6), 30, 0)], TODAY)
+    expect(inWindow.nmLoad7d).toBe(30)
+    const outWindow = computeNMFatigue([makeZoneEntry(_offset(TODAY, -7), 30, 0)], TODAY)
+    expect(outWindow.nmLoad7d).toBe(0)
+  })
+
+  it('28-day window spans exactly 28 days: day -27 counts, day -28 does not', () => {
+    const inWindow = computeNMFatigue([makeZoneEntry(_offset(TODAY, -27), 40, 0)], TODAY)
+    expect(inWindow.nmLoad28dWeeklyMean).toBeGreaterThan(0)
+    const outWindow = computeNMFatigue([makeZoneEntry(_offset(TODAY, -28), 40, 0)], TODAY)
+    expect(outWindow.nmLoad28dWeeklyMean).toBe(0)
+  })
+})

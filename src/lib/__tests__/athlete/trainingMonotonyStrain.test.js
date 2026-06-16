@@ -113,18 +113,18 @@ describe('detectMonotonyStrain — monotony calculation', () => {
     expect(r.band).toBe('low')
   })
 
-  it('flat schedule with 2 rest days → monotony just under 1.5, low band', () => {
-    // (100,100,100,100,100,0,0): monotony ≈ 1.46
-    const log = makeWeekLog([100, 100, 100, 100, 100, 0, 0])
+  it('declining schedule with rest days → monotony just under 1.5, low band', () => {
+    // population stdev (/n): (100,80,60,40,20,0,0) → monotony ≈ 1.19
+    const log = makeWeekLog([100, 80, 60, 40, 20, 0, 0])
     const r = detectMonotonyStrain(log, TODAY)
     expect(r.monotony).toBeLessThan(1.5)
-    expect(r.monotony).toBeGreaterThan(1.4)
+    expect(r.monotony).toBeGreaterThan(1.0)
     expect(r.band).toBe('low')
   })
 
   it('moderate-monotony pattern → moderate band', () => {
-    // (100,30,100,30,100,30,100): mean=70, stdev≈37.42, monotony≈1.87
-    const log = makeWeekLog([100, 30, 100, 30, 100, 30, 100])
+    // population stdev (/n): (100,100,100,100,100,0,0) → monotony ≈ 1.58
+    const log = makeWeekLog([100, 100, 100, 100, 100, 0, 0])
     const r = detectMonotonyStrain(log, TODAY)
     expect(r.monotony).toBeGreaterThanOrEqual(1.5)
     expect(r.monotony).toBeLessThan(2.0)
@@ -173,14 +173,19 @@ describe('detectMonotonyStrain — strain calculation', () => {
 // ─── Band boundaries ────────────────────────────────────────────────────────
 describe('detectMonotonyStrain — band boundaries', () => {
   it('monotony just below 1.5 → low', () => {
-    const log = makeWeekLog([100, 100, 100, 100, 100, 0, 0])
+    // population stdev (Foster 2001 /n): spread week → monotony ≈ 1.19
+    const log = makeWeekLog([100, 80, 60, 40, 20, 0, 0])
     const r = detectMonotonyStrain(log, TODAY)
+    expect(r.monotony).toBeLessThan(1.5)
     expect(r.band).toBe('low')
   })
 
   it('monotony in [1.5, 2.0) → moderate', () => {
-    const log = makeWeekLog([100, 30, 100, 30, 100, 30, 100])
+    // population stdev → monotony ≈ 1.58
+    const log = makeWeekLog([100, 100, 100, 100, 100, 0, 0])
     const r = detectMonotonyStrain(log, TODAY)
+    expect(r.monotony).toBeGreaterThanOrEqual(1.5)
+    expect(r.monotony).toBeLessThan(2.0)
     expect(r.band).toBe('moderate')
   })
 
@@ -268,7 +273,8 @@ describe('detectMonotonyStrain — bilingual messages', () => {
   })
 
   it('moderate band has EN + TR messages and recommendation', () => {
-    const log = makeWeekLog([100, 30, 100, 30, 100, 30, 100])
+    // population stdev → monotony ≈ 1.58 (moderate band)
+    const log = makeWeekLog([100, 100, 100, 100, 100, 0, 0])
     const r = detectMonotonyStrain(log, TODAY)
     expect(r.band).toBe('moderate')
     expect(r.message.en).toMatch(/Monotony rising/)

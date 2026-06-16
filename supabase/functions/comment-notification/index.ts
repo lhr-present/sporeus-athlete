@@ -13,9 +13,10 @@
 //
 // Privacy: never include raw comment body in push title — only summary.
 
-import { withTelemetry } from '../_shared/telemetry.ts'
-import { serve }          from 'https://deno.land/std@0.177.0/http/server.ts'
-import { createClient }   from 'https://esm.sh/@supabase/supabase-js@2'
+import { withTelemetry }        from '../_shared/telemetry.ts'
+import { isVerifiedServiceCall } from '../_shared/serviceAuth.ts'
+import { serve }                 from 'https://deno.land/std@0.177.0/http/server.ts'
+import { createClient }          from 'https://esm.sh/@supabase/supabase-js@2'
 
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
@@ -38,6 +39,14 @@ function fail(status: number, msg: string) {
 
 serve(withTelemetry('comment-notification', async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
+
+  // Auth gate (deep-dive 2026-06-16): this fn is verify_jwt=false and ran its
+  // service-role queries + send-push relay for ANY anonymous caller (push spam).
+  // Require the shared webhook secret like every other system fn.
+  // DEPLOY ORDER (fail-closed): the session_comments INSERT DB webhook must send
+  //   x-sporeus-webhook-secret: <WEBHOOK_SECRET>  BEFORE this is deployed, or
+  //   comment notifications stop. See docs/audits/deep_dive_2026_06_16.md.
+  if (!isVerifiedServiceCall(req)) return fail(401, 'unauthorized')
 
   const supabaseUrl  = Deno.env.get('SUPABASE_URL')!
   const serviceKey   = (Deno.env.get('SPOREUS_SERVICE_KEY') ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'))!

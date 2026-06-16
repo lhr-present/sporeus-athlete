@@ -2,6 +2,43 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.419.0 — 2026-06-16 — Deep-dive bug fixes (6-dimension multi-agent audit)
+
+20 verified bugs fixed from a 6-dimension deep dive (correctness, data-integrity,
+hooks/realtime, security, sport-science, robustness) + adversarial verification.
+Full finding ledger + deferred items: docs/audits/deep_dive_2026_06_16.md.
+
+CRITICAL:
+- raceGoalProjection: spurious ×42 in projected-CTL EWMA made race readiness report
+  "on_track" for nearly everyone. Fixed (converges to dailyTSS).
+- durationMin field mismatch: 6 dashboard libs (longRunConsistency, longestSessionTrend,
+  longRunFrequency, paceByRpe, paceRange, lifetimeTotals) read a field the sanitizer
+  never stores → silently dead for all real users. Added `duration` fallback.
+
+HIGH:
+- injuryForecast: history chart leaked future recovery into past points (non-causal).
+- runningCV: dropped manual runs stored as distanceKm.
+- storage.exportAllData: "Download Backup" silently omitted injuries / race-results /
+  training-age. Now enumerates all sporeus-prefixed keys.
+
+MED: rowing.js NaN guards (RowingMetricsCard rendered "NaN"); trainingMonotonyStrain
+population stdev (was n-1, +8%); cpDecay slope window aligned to 12-week decay window;
+storage.importAllData atomicity/validation (was reload-into-corruption); offlineQueue
+surfaces skipped poison writes (was false "synced"); useRealtimeSquad toast-timer leak +
+reconnect MAX_RETRY cap; UploadActivity parse watchdog (was infinite spinner);
+comment-notification edge fn auth gate (was anon-callable service-role relay —
+DEPLOY: webhook must send x-sporeus-webhook-secret first, fail-closed).
+
+LOW: neuromuscularFreshness off-by-one windows; getSingleSuggestion → canonical
+calculateACWR; goalTracker floor pct at 0; rowing t-critical df-keyed; afterBigWeekRpe
+elevation guard; useSessionAttendance reconnect cap.
+
+DEFERRED (see audit doc): coach_invites RLS leak (needs RPC, empty table — naive policy
+drop would break redemption); calcLoad EWMA constants (founder/engine decision);
+hydration-vs-mutation race; Strava CSRF state; attribution-log JWT verify.
+DEPENDS ON: sanitizeLogEntry field names; canonical calculateACWR/computeMonotony;
+_shared/serviceAuth isVerifiedServiceCall.
+
 ## v9.418.0 — 2026-06-16 — Dashboard batch: cross-read card, taper curve, lazy-load, SW opt-in
 
 Second audit-driven batch (deferred items from the v9.417 discovery pass). Two new
