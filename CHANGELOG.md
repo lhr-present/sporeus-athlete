@@ -2,6 +2,27 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.420.0 — 2026-06-16 — Close coach_invites enumeration leak (preview RPC)
+
+Resolves the v9.419 deferred security item. The coach_invites SELECT policy's
+athlete branch `(used_by IS NULL AND expires_at > now())` let ANY authenticated user
+`select code from coach_invites` and enumerate every unused invite code, then redeem
+into a coach's roster they were never invited to (table empty in prod → not exploited).
+
+The naive fix (drop the branch) would have broken redemption: the athlete-side flow
+(MyCoach InviteModal + JoinCoachInput) read the table BY CODE client-side. Instead:
+- NEW `preview_coach_invite(code)` SECURITY DEFINER RPC (migration 20260625) — returns
+  coach name + validity for a code the caller ALREADY HOLDS (no enumeration;
+  authenticated-only, anon revoked). Validates revoked/expired/max-uses/self-invite.
+- Routed InviteModal + JoinCoachInput ACCEPT through the existing redeem-invite edge fn
+  (service role — also gains roster-limit / max-uses / already-linked enforcement the
+  old client upsert lacked). The old athlete `used_by` write was already a silent RLS
+  no-op (UPDATE policy is coach-only).
+- Restricted the SELECT policy to `coach_id = auth.uid()`.
+Applied + verified on prod (policy coach-only; RPC returns INVALID_CODE for bogus codes;
+exec granted to authenticated, not anon). MyCoach tests updated to the RPC + edge-fn flow.
+DEPENDS ON: redeem-invite edge fn; profiles.display_name.
+
 ## v9.419.0 — 2026-06-16 — Deep-dive bug fixes (6-dimension multi-agent audit)
 
 20 verified bugs fixed from a 6-dimension deep dive (correctness, data-integrity,
