@@ -422,3 +422,20 @@ describe('analyzePaceByRpe — result shape', () => {
     expect(r.overallSampleCount).toBe(6)
   })
 })
+
+// ─── sanitized `duration` field fallback (regression) ───────────────────────
+describe('analyzePaceByRpe — duration field fallback', () => {
+  it('computes pace from sanitized `duration` (minutes) when durationMin absent', () => {
+    const log = [
+      { date: isoMinusDays(TODAY, 2),  type: 'run', rpe: 3, distanceKm: 10, duration: 60 },
+      { date: isoMinusDays(TODAY, 4),  type: 'run', rpe: 3, distanceKm: 10, duration: 58 },
+      { date: isoMinusDays(TODAY, 6),  type: 'run', rpe: 4, distanceKm: 10, duration: 56 },
+      { date: isoMinusDays(TODAY, 8),  type: 'run', rpe: 7, distanceKm: 8,  duration: 40 },
+      { date: isoMinusDays(TODAY, 10), type: 'run', rpe: 7, distanceKm: 8,  duration: 41 },
+      { date: isoMinusDays(TODAY, 12), type: 'run', rpe: 8, distanceKm: 5,  duration: 24 },
+    ]
+    const r = analyzePaceByRpe({ log, today: TODAY })
+    expect(r).not.toBe(null)
+    expect(r.overallSampleCount).toBe(6)
+  })
+})

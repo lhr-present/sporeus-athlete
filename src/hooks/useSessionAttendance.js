@@ -10,6 +10,7 @@ import { computeBackoff } from '../lib/realtimeBackoff.js'
 import { logger } from '../lib/logger.js'
 
 const POP_DURATION_MS = 600  // how long popAnim stays true
+const MAX_RETRY = 8
 
 /**
  * @param {object}  opts
@@ -77,8 +78,17 @@ export function useSessionAttendance({ sessionId, enabled = true }) {
             retryRef.current = 0
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
             logger.warn('session-attendance:', status, err?.message)
-            const delay = computeBackoff(retryRef.current++)
-            timerRef.current = setTimeout(connect, delay)
+            if (retryRef.current < MAX_RETRY) {
+              const delay = computeBackoff(retryRef.current++)
+              timerRef.current = setTimeout(connect, delay)
+            } else {
+              // Retry budget exhausted — release the channel so a failing
+              // endpoint doesn't keep one Realtime slot cycling indefinitely.
+              if (channelRef.current) {
+                supabase.removeChannel(channelRef.current)
+                channelRef.current = null
+              }
+            }
           }
         })
 

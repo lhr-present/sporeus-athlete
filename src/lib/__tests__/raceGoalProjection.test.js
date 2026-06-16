@@ -14,6 +14,19 @@ describe('raceGoalProjection', () => {
     expect(projectCTLAtRace(0, 700, 42)).toBeGreaterThan(0)
   })
 
+  it('projectCTLAtRace magnitude: daily EWMA converges toward dailyTSS, not dailyTSS×42', () => {
+    // dailyTSS = 700/7 = 100. After 42 days from CTL=50, the daily EWMA blends
+    // toward 100 → ~81.6 (NOT ~2673 from the old spurious ×TAU term).
+    const v = projectCTLAtRace(50, 700, 42)
+    expect(v).toBeCloseTo(81.6, 1)
+    expect(v).toBeLessThan(100) // can never exceed the steady-state dailyTSS=100
+  })
+
+  it('projectCTLAtRace converges to dailyTSS over long horizon', () => {
+    // 700/7 = 100 dailyTSS; over a very long horizon CTL → ~100, not 4200.
+    expect(projectCTLAtRace(0, 700, 1000)).toBeCloseTo(100, 0)
+  })
+
   it('assessRaceReadiness(95, 100) returns on_track', () => {
     expect(assessRaceReadiness(95, 100).status).toBe('on_track')
   })

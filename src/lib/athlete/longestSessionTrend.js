@@ -67,7 +67,10 @@ function mondayOf(dateStr) {
 }
 
 function entryDurationMin(entry) {
-  const d = Number(entry?.durationMin)
+  // Sanitizer stores duration in minutes as `duration`; accept that first.
+  const raw = entry?.duration ?? entry?.durationMin ??
+    (entry?.durationSec ? entry.durationSec / 60 : undefined)
+  const d = Number(raw)
   return Number.isFinite(d) && d > 0 ? d : 0
 }
 

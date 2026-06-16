@@ -152,3 +152,23 @@ describe('classifyCV', () => {
     expect(classifyCV(500)).toBe('recreational')
   })
 })
+
+// ─── distanceKm normalization (regression) ──────────────────────────────────
+// Manual runs store distanceKm (not distanceM). extractRunEfforts must
+// normalize distance so these are not silently dropped.
+describe('extractRunEfforts — distanceKm normalization', () => {
+  it('accepts a run that only has distanceKm (5K in 20 min)', () => {
+    const kmRun = { type: 'run', distanceKm: 5, duration: 20, date: '2026-04-10' }
+    const efforts = extractRunEfforts([kmRun])
+    expect(efforts).toHaveLength(1)
+    expect(efforts[0].distanceM).toBe(5000)
+    expect(efforts[0].timeSec).toBe(1200)
+  })
+
+  it('accepts heuristic `distance` field (>1000 = meters, else km)', () => {
+    const kmRun = { type: 'run', distance: 10, duration: 48, date: '2026-04-15' } // 10 km
+    const efforts = extractRunEfforts([kmRun])
+    expect(efforts).toHaveLength(1)
+    expect(efforts[0].distanceM).toBe(10000)
+  })
+})

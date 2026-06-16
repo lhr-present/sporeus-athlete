@@ -159,5 +159,28 @@ describe('useSessionAttendance', () => {
       act(() => mocks.fireStatus('TIMED_OUT'))
       await waitFor(() => expect(computeBackoffMock).toHaveBeenCalled())
     })
+
+    it('stops reconnecting and releases the channel after MAX_RETRY (8) failures', async () => {
+      vi.useFakeTimers()
+      try {
+        renderHook(() => useSessionAttendance({ sessionId: SESSION_ID }))
+        // Initial connect happens synchronously inside the effect.
+        // Drive 8 error→reconnect cycles; each scheduled connect re-subscribes
+        // (subscribeCb is captured by the latest connect()).
+        for (let i = 0; i < 8; i++) {
+          act(() => mocks.fireStatus('CHANNEL_ERROR', new Error('ws fail')))
+          act(() => { vi.advanceTimersByTime(50) })  // run the scheduled connect()
+        }
+        mocks.remove.mockClear()
+        computeBackoffMock.mockClear()
+
+        // 9th failure: budget exhausted → no new backoff, channel released.
+        act(() => mocks.fireStatus('CHANNEL_ERROR', new Error('ws fail')))
+        expect(computeBackoffMock).not.toHaveBeenCalled()
+        expect(mocks.remove).toHaveBeenCalled()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
   })
 })

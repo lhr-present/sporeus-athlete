@@ -104,9 +104,10 @@ function _classify(score) {
 export function computeNMFatigue(log, today = new Date().toISOString().slice(0, 10)) {
   const safeLog = Array.isArray(log) ? log : []
 
-  // Window boundaries
-  const day7Start  = _offsetDate(today, -7)   // today-7d inclusive
-  const day28Start = _offsetDate(today, -28)  // today-28d inclusive
+  // Window boundaries (inclusive of `today`, so -6 spans exactly 7 days and
+  // -27 spans exactly 28 days).
+  const day7Start  = _offsetDate(today, -6)   // 7-day window inclusive
+  const day28Start = _offsetDate(today, -27)  // 28-day window inclusive
 
   // ── 7-day Z4/Z5 load ──────────────────────────────────────────────────────
   let nmLoad7d = 0

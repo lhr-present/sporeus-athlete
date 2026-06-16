@@ -86,7 +86,7 @@ export function analyzeLifetimeTotals({ log, today } = {}) {
     if (!dateISO) continue
 
     totalSessions += 1
-    totalMinutes    += toNum(entry.durationMin)
+    totalMinutes    += toNum(entry.duration ?? entry.durationMin ?? (entry.durationSec ? entry.durationSec / 60 : 0))
     totalDistanceKm += toNum(entry.distanceKm)
     totalTss        += toNum(entry.tss)
 

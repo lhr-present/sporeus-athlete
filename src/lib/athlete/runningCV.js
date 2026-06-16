@@ -23,6 +23,23 @@ function assignBucket(distanceM) {
 }
 
 /**
+ * Normalize a session's distance to meters, or null if unavailable.
+ * Mirrors recentBest.getDistanceM so manual runs that store distanceKm
+ * (or a heuristic `distance`) are not silently dropped.
+ * @param {object} entry
+ * @returns {number|null}
+ */
+function getDistanceM(entry) {
+  const dm = Number(entry?.distanceM)
+  if (Number.isFinite(dm) && dm > 0) return dm
+  const dk = Number(entry?.distanceKm)
+  if (Number.isFinite(dk) && dk > 0) return dk * 1000
+  const d = Number(entry?.distance)
+  if (Number.isFinite(d) && d > 0) return d > 1000 ? d : d * 1000
+  return null
+}
+
+/**
  * Returns true when a session is a run session.
  * @param {object} session
  * @returns {boolean}
@@ -51,7 +68,7 @@ export function extractRunEfforts(log) {
 
   for (const session of log) {
     if (!isRunSession(session)) continue
-    const dist = session.distanceM
+    const dist = getDistanceM(session)
     const dur  = session.duration   // minutes
     if (!dist || dist <= 0) continue
     if (!dur  || dur  <= 0) continue

@@ -14,7 +14,7 @@ export function getGoalProgress(goal, currentValue) {
   const range = goal.target - goal.current
   const pct = range === 0
     ? 100
-    : Math.min(100, Math.round((currentValue - goal.current) / range * 100))
+    : Math.max(0, Math.min(100, Math.round((currentValue - goal.current) / range * 100)))
 
   const daysLeft = Math.ceil((new Date(goal.deadline) - new Date()) / 86400000)
 

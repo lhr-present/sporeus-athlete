@@ -475,3 +475,21 @@ describe('analyzePaceRange — result shape', () => {
     expect(r.slowestPace).toBeCloseTo(6.0, 5)
   })
 })
+
+// ─── sanitized `duration` field fallback (regression) ───────────────────────
+describe('analyzePaceRange — duration field fallback', () => {
+  it('computes pace from sanitized `duration` (minutes) when durationMin absent', () => {
+    const log = [
+      { date: isoMinusDays(TODAY, 1),  type: 'run', distanceKm: 10, duration: 40 }, // 4.0
+      { date: isoMinusDays(TODAY, 3),  type: 'run', distanceKm: 10, duration: 45 },
+      { date: isoMinusDays(TODAY, 5),  type: 'run', distanceKm: 10, duration: 50 },
+      { date: isoMinusDays(TODAY, 7),  type: 'run', distanceKm: 10, duration: 55 },
+      { date: isoMinusDays(TODAY, 9),  type: 'run', distanceKm: 10, duration: 60 }, // 6.0
+    ]
+    const r = analyzePaceRange({ log, today: TODAY })
+    expect(r).not.toBe(null)
+    expect(r.sampleCount).toBe(5)
+    expect(r.fastestPace).toBeCloseTo(4.0, 5)
+    expect(r.slowestPace).toBeCloseTo(6.0, 5)
+  })
+})

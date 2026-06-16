@@ -157,6 +157,17 @@ it('flushQueue stays offline when a comment write fails to replay', async () => 
   expect(getSyncStatus()).toBe('offline')
 })
 
+// A poison entry that has exhausted MAX_ATTEMPTS is `skipped` by replayWrites and
+// left in IndexedDB forever. flushQueue must NOT report 'synced' (green) while such
+// dead writes exist — skipped surfaces as not-fully-synced.
+it('flushQueue does NOT show synced when a comment write is skipped (exhausted attempts)', async () => {
+  wq.queuedWrites = 1
+  wq.replayResult = { replayed: 0, failed: 0, skipped: 1 }
+  await flushQueue()
+  expect(getSyncStatus()).not.toBe('synced')
+  expect(getSyncStatus()).toBe('offline')
+})
+
 it('flushQueue does NOT call replayWrites when no comment writes are queued', async () => {
   await enqueuePendingLog({ date: '2026-04-12', tss: 80, _table: 'recovery' })
   await flushQueue()

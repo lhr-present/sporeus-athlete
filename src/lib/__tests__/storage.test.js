@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // ── storage.test.js — Unit tests for src/lib/storage.js ──────────────────────
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   STORAGE_VERSION,
   SCHEMA,
@@ -96,6 +96,45 @@ describe('exportAllData', () => {
     expect(typeof parsed.ts).toBe('number')
     expect(parsed.ts).toBeGreaterThan(0)
   })
+
+  // ── regression: non-SCHEMA sporeus keys must be backed up too ────────────────
+  // injuries / race-results / training-age are migrated by dataMigration.js and
+  // counted by detectLocalData, but are NOT in SCHEMA — they were silently
+  // dropped from "Download Backup" when export iterated Object.keys(SCHEMA).
+  it('includes sporeus keys that are not in SCHEMA (injuries, race-results, training-age)', () => {
+    localStorage.setItem('sporeus-injuries',     JSON.stringify([{ type: 'hamstring' }]))
+    localStorage.setItem('sporeus-race-results', JSON.stringify([{ race: '10k', time: 2400 }]))
+    localStorage.setItem('sporeus-training-age', JSON.stringify(5))
+
+    const { data } = JSON.parse(exportAllData())
+
+    expect(data).toHaveProperty('sporeus-injuries')
+    expect(data).toHaveProperty('sporeus-race-results')
+    expect(data).toHaveProperty('sporeus-training-age')
+    expect(data['sporeus-injuries']).toEqual([{ type: 'hamstring' }])
+    expect(data['sporeus-race-results']).toEqual([{ race: '10k', time: 2400 }])
+    expect(data['sporeus-training-age']).toBe(5)
+  })
+
+  it('still exports the standard SCHEMA keys', () => {
+    saveStorage('sporeus_log', [{ date: '2025-03-01', tss: 50 }])
+    const { data } = JSON.parse(exportAllData())
+    expect(data).toHaveProperty('sporeus_log')
+  })
+
+  it('does NOT export non-sporeus keys', () => {
+    localStorage.setItem('unrelated-key', JSON.stringify({ secret: 1 }))
+    const { data } = JSON.parse(exportAllData())
+    expect(data).not.toHaveProperty('unrelated-key')
+  })
+
+  it('round-trips non-SCHEMA keys through export → import', () => {
+    localStorage.setItem('sporeus-injuries', JSON.stringify([{ type: 'achilles' }]))
+    const exported = exportAllData()
+    localStorage.clear()
+    expect(importAllData(exported)).toBe(true)
+    expect(JSON.parse(localStorage.getItem('sporeus-injuries'))).toEqual([{ type: 'achilles' }])
+  })
 })
 
 // ── importAllData ─────────────────────────────────────────────────────────────
@@ -122,6 +161,49 @@ describe('importAllData', () => {
     importAllData(exported)
     const restored = loadStorage('sporeus_log')
     expect(Array.isArray(restored)).toBe(true)
+  })
+
+  // ── malformed payloads must be rejected (not silently "succeed") ──────────────
+  it('returns false for a JSON array payload', () => {
+    expect(importAllData('[1,2,3]')).toBe(false)
+  })
+
+  it('returns false for a JSON primitive payload (number)', () => {
+    expect(importAllData('5')).toBe(false)
+  })
+
+  it('returns false for a JSON string payload', () => {
+    expect(importAllData('"hello"')).toBe(false)
+  })
+
+  it('returns false for a JSON null payload', () => {
+    expect(importAllData('null')).toBe(false)
+  })
+
+  // ── non-atomic write failure must surface as false ───────────────────────────
+  it('returns false when a key fails to write (e.g. QuotaExceededError)', () => {
+    const original = localStorage.setItem.bind(localStorage)
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation((k, v) => {
+      if (k === 'sporeus-plan') { const err = new Error('quota'); err.name = 'QuotaExceededError'; throw err }
+      return original(k, v)
+    })
+    try {
+      const payload = JSON.stringify({
+        _export: true,
+        data: { 'sporeus_log': [{ tss: 10 }], 'sporeus-plan': { weeks: [] } },
+      })
+      expect(importAllData(payload)).toBe(false)
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  it('returns true when all keys write successfully', () => {
+    const payload = JSON.stringify({
+      _export: true,
+      data: { 'sporeus_log': [{ tss: 10 }], 'sporeus-injuries': [] },
+    })
+    expect(importAllData(payload)).toBe(true)
   })
 })
 

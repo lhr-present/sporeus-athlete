@@ -231,6 +231,32 @@ describe('analyzeAfterBigWeekRpe — PROLONGED_ELEVATION', () => {
   })
 })
 
+// ─── RPE DROPPED (regression: must NOT be PROLONGED_ELEVATION) ─────────────
+
+describe('analyzeAfterBigWeekRpe — RPE dropped after big weeks', () => {
+  it('does not classify a recovery (RPE fell) as PROLONGED_ELEVATION', () => {
+    // Big weeks at idx 3, 7, 11. Big-week RPE high (8); week+1 and week+2 RPE
+    // fall to 6 → elevation AND return are both negative (-0.25). The old code
+    // returned PROLONGED_ELEVATION because return >= elevation held for two
+    // negatives; the fix requires positive elevation first → NO_RPE_RESPONSE.
+    const tssArr = [
+      200, 200, 200, 280, 200, 200, 200, 280,
+      200, 200, 200, 280, 200, 200, 200, 0,
+    ]
+    const rpeArr = [
+      6, 6, 6, 8, 6, 6, 8, 8,
+      6, 6, 8, 8, 6, 6, 8, null,
+    ]
+    const log = logFromWeekly({ tssArr, rpeArr })
+    const r = analyzeAfterBigWeekRpe({ log, today: TODAY })
+    expect(r.bigWeekCount).toBeGreaterThanOrEqual(3)
+    expect(r.meanRpeElevationPct).toBeLessThan(0)         // RPE actually fell
+    expect(r.meanRpeReturnAtWeek2).toBeLessThan(0)
+    expect(r.band).not.toBe('PROLONGED_ELEVATION')
+    expect(r.band).toBe('NO_RPE_RESPONSE')
+  })
+})
+
 // ─── NO_RPE_RESPONSE ──────────────────────────────────────────────────────
 
 describe('analyzeAfterBigWeekRpe — NO_RPE_RESPONSE', () => {

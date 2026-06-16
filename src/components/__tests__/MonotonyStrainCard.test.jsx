@@ -47,8 +47,8 @@ function makeSparseLog(pairs) {
 
 // Low band: high variability, monotony < 1.5
 const LOW_FIXTURE   = [20, 200, 30, 180, 40, 220, 50]
-// Moderate band: monotony in [1.5, 2.0)
-const MOD_FIXTURE   = [50, 100, 30, 80, 150, 40, 90]
+// Moderate band: monotony in [1.5, 2.0) under population stdev (÷n, Foster 2001)
+const MOD_FIXTURE   = [40, 120, 20, 90, 160, 30, 80]
 // High band by monotony: near-uniform daily TSS, monotony >> 2
 const HIGH_MONO_FIX = [70, 70, 70, 70, 70, 70, 75]
 // High band by strain only: strain > 6000 with monotony < 2
@@ -138,7 +138,7 @@ describe('MonotonyStrainCard — a11y + structure', () => {
 describe('MonotonyStrainCard — numeric rendering', () => {
   it('monotony renders to 2 decimals', () => {
     renderCard({ log: makeWeekLog(MOD_FIXTURE) })
-    // moderate fixture monotony ≈ 1.86
+    // moderate fixture monotony ≈ 1.63 (population stdev, Foster 2001)
     expect(screen.getByText(/^1\.\d{2}$/)).toBeInTheDocument()
   })
 

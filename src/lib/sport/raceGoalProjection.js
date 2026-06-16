@@ -11,11 +11,11 @@
 export function projectCTLAtRace(currentCTL, avgWeeklyTSS, daysUntilRace) {
   // CTL response: each day adds (dailyTSS / 42) * (1 - e^(-1/42)) to CTL
   // over daysUntilRace, assuming constant daily TSS = avgWeeklyTSS / 7
-  // CTL(t) = CTL(0) * e^(-t/42) + (dailyTSS * 42) * (1 - e^(-t/42))
+  // CTL(t) = CTL(0) * e^(-t/42) + dailyTSS * (1 - e^(-t/42))
   const TAU = 42
   const dailyTSS = avgWeeklyTSS / 7
   const decay = Math.exp(-daysUntilRace / TAU)
-  const projected = currentCTL * decay + dailyTSS * TAU * (1 - decay)
+  const projected = currentCTL * decay + dailyTSS * (1 - decay)
   return Math.round(projected * 10) / 10
 }
 

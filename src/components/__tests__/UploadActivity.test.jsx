@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { screen, fireEvent, waitFor } from '@testing-library/react'
+import { screen, fireEvent, waitFor, act } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { renderWithLang } from './testUtils.jsx'
 
@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   removeCh:   vi.fn(),
   profileSel: vi.fn(),
   canUpload:  vi.fn(() => true),
+  pgHandler:  { current: null },  // captures the postgres_changes UPDATE callback
 }))
 
 vi.mock('../../lib/supabase.js', () => ({
@@ -29,7 +30,10 @@ vi.mock('../../lib/supabase.js', () => ({
     },
     functions: { invoke: mocks.invoke },
     channel:   (name) => {
-      const ch = { on: vi.fn().mockReturnThis(), subscribe: mocks.subscribe.mockReturnThis() }
+      const ch = {
+        on: vi.fn((_type, _filter, cb) => { mocks.pgHandler.current = cb; return ch }),
+        subscribe: mocks.subscribe.mockReturnThis(),
+      }
       mocks.channel(name)
       return ch
     },
@@ -75,6 +79,7 @@ function setupHappyPath() {
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.canUpload.mockReturnValue(true)
+  mocks.pgHandler.current = null
 })
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -120,6 +125,53 @@ describe('UploadActivity', () => {
       'parse-activity',
       expect.objectContaining({ body: expect.objectContaining({ jobId: 'job-1', fileType: 'fit' }) }),
     ))
+  })
+
+  it('flips to error via watchdog when no terminal status arrives after invoke', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      setupHappyPath()
+      // Edge fn returns 200 but never writes done/error to the job row.
+      mocks.invoke.mockResolvedValue({ data: { ok: true }, error: null })
+      renderWithLang(<UploadActivity authUser={authUser} onSuccess={vi.fn()} />)
+      const file  = makeFile('activity.fit', 500 * 1024)
+      const input = document.querySelector('input[type="file"]')
+      Object.defineProperty(input, 'files', { configurable: true, value: [file] })
+      fireEvent.change(input)
+
+      // Wait for invoke (watchdog is armed right before it).
+      await vi.waitFor(() => expect(mocks.invoke).toHaveBeenCalled())
+      // Still parsing — no error yet.
+      expect(screen.queryByText(/timed out/i)).toBeNull()
+
+      // Advance past the 90s watchdog.
+      await act(async () => { vi.advanceTimersByTime(90_001) })
+      await vi.waitFor(() => expect(screen.getByText(/timed out/i)).toBeInTheDocument())
+      // "Try again" button affordance appears (status === 'error').
+      expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('ignores a realtime payload with absent `new` without throwing', async () => {
+    setupHappyPath()
+    mocks.invoke.mockResolvedValue({ data: { ok: true }, error: null })
+    renderWithLang(<UploadActivity authUser={authUser} onSuccess={vi.fn()} />)
+    const file  = makeFile('activity.fit', 500 * 1024)
+    const input = document.querySelector('input[type="file"]')
+    Object.defineProperty(input, 'files', { configurable: true, value: [file] })
+    fireEvent.change(input)
+
+    await waitFor(() => expect(mocks.pgHandler.current).toBeTypeOf('function'))
+    // Malformed payload (absent `new`) must be ignored, not throw.
+    expect(() => act(() => { mocks.pgHandler.current({}) })).not.toThrow()
+    // A well-formed 'done' payload still drives success afterward.
+    const onDone = vi.fn()
+    expect(() => act(() => {
+      mocks.pgHandler.current({ new: { status: 'done', parsed_session_id: 'log-9' } })
+    })).not.toThrow()
+    await waitFor(() => expect(screen.getByText(/logged/i)).toBeInTheDocument())
   })
 
   it('rejects > 25 MB file without calling storage', async () => {

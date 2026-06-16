@@ -553,3 +553,22 @@ describe('analyzeLongRunConsistency — weeks shape', () => {
     }
   })
 })
+
+// ─── sanitized `duration` field fallback (regression) ───────────────────────
+// The sanitizer (src/lib/validate.js) stores duration in minutes as `duration`,
+// not `durationMin`. Entries with only `duration` must still be counted.
+describe('analyzeLongRunConsistency — duration field fallback', () => {
+  it('counts long runs that use sanitized `duration` (minutes) instead of durationMin', () => {
+    const log = [
+      { date: '2026-02-28', duration: 100, type: 'run' },
+      { date: '2026-03-07', duration: 100, type: 'run' },
+      { date: '2026-03-14', duration: 100, type: 'run' },
+      { date: '2026-03-21', duration: 100, type: 'run' },
+      { date: '2026-03-28', duration: 100, type: 'run' },
+      { date: '2026-04-04', duration: 100, type: 'run' },
+    ]
+    const r = analyzeLongRunConsistency({ log, today: TODAY })
+    expect(r).not.toBeNull()
+    expect(r.longRunCount).toBe(6)
+  })
+})

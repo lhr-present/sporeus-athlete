@@ -115,7 +115,15 @@ function classifyBand(bigWeekCount, meanRpeElevationPct, meanRpeReturnAtWeek2) {
   ) {
     return 'NORMAL_RECOVERY'
   }
-  if (meanRpeReturnAtWeek2 >= meanRpeElevationPct) return 'PROLONGED_ELEVATION'
+  // PROLONGED_ELEVATION only applies when RPE actually rose after the big week
+  // (positive elevation) and stayed up — not when both values are negative
+  // (RPE fell), which is a recovery signal, not prolonged elevation.
+  if (
+    meanRpeElevationPct > NO_RESPONSE_BAND &&
+    meanRpeReturnAtWeek2 >= meanRpeElevationPct
+  ) {
+    return 'PROLONGED_ELEVATION'
+  }
   return 'NO_RPE_RESPONSE'
 }
 

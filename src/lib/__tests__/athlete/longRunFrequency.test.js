@@ -291,3 +291,17 @@ describe('analyzeLongRunFrequency — citation', () => {
     expect(r.citation).toMatch(/Maffetone 2010/)
   })
 })
+
+// ─── sanitized `duration` field fallback (regression) ───────────────────────
+describe('analyzeLongRunFrequency — duration field fallback', () => {
+  it('counts long sessions stored as sanitized `duration` (minutes)', () => {
+    const log = [
+      { date: '2026-05-01', duration: 120 },
+      { date: '2026-04-15', duration: 100 },
+      { date: '2026-03-20', duration: 95 },
+    ]
+    const r = analyzeLongRunFrequency({ log, today: TODAY })
+    expect(r).not.toBeNull()
+    expect(r.totalLongSessions).toBe(3)
+  })
+})

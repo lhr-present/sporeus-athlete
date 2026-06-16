@@ -90,8 +90,10 @@ function todayString(today) {
 }
 
 function entryDurationMin(entry) {
-  // Prefer durationMin (canonical sporeus field); fall back to duration_min.
-  const raw = entry?.durationMin ?? entry?.duration_min
+  // Sanitizer stores duration in minutes as `duration`; accept that first,
+  // then legacy/imported `durationMin`/`duration_min`, then `durationSec`.
+  const raw = entry?.duration ?? entry?.durationMin ?? entry?.duration_min ??
+    (entry?.durationSec ? entry.durationSec / 60 : undefined)
   const d = Number(raw)
   return Number.isFinite(d) && d > 0 ? d : 0
 }

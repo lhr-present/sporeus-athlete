@@ -182,3 +182,17 @@ describe('analyzeLifetimeTotals — edge cases', () => {
     expect(out.firstSessionDate).toBe('2026-01-01')
   })
 })
+
+// ─── sanitized `duration` field fallback (regression) ───────────────────────
+describe('analyzeLifetimeTotals — duration field fallback', () => {
+  it('sums sanitized `duration` (minutes) into totalMinutes / totalHours', () => {
+    const log = [
+      { date: addDays(TODAY, -1), duration: 60, distanceKm: 10, tss: 50 },
+      { date: addDays(TODAY, -8), duration: 90, distanceKm: 15, tss: 80 },
+      { date: addDays(TODAY, -15), duration: 30, distanceKm: 5, tss: 25 },
+    ]
+    const out = analyzeLifetimeTotals({ log, today: TODAY })
+    expect(out.totalMinutes).toBe(180)
+    expect(out.totalHours).toBeCloseTo(3, 5)
+  })
+})

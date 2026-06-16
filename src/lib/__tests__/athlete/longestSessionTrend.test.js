@@ -259,3 +259,21 @@ describe('analyzeLongestSessionTrend — shape contract', () => {
     expect(r.citation).toBe('Daniels 2014; Lydiard 1978')
   })
 })
+
+// ─── sanitized `duration` field fallback (regression) ───────────────────────
+describe('analyzeLongestSessionTrend — duration field fallback', () => {
+  it('reads sanitized `duration` (minutes) when durationMin is absent', () => {
+    // 6 active weeks (coverage gate), peak = 120 in the last week.
+    const log = [
+      { date: daysAgo(7 * 6), duration: 60,  type: 'Long Run' },
+      { date: daysAgo(7 * 5), duration: 70,  type: 'Long Run' },
+      { date: daysAgo(7 * 4), duration: 80,  type: 'Long Run' },
+      { date: daysAgo(7 * 3), duration: 90,  type: 'Long Run' },
+      { date: daysAgo(7 * 2), duration: 100, type: 'Long Run' },
+      { date: daysAgo(7 * 1), duration: 120, type: 'Long Run' },
+    ]
+    const r = analyzeLongestSessionTrend({ log, today: TODAY })
+    expect(r).not.toBeNull()
+    expect(r.peakMin).toBe(120)
+  })
+})
