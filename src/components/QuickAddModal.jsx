@@ -18,9 +18,12 @@ import { calculateACWR } from '../lib/trainingLoad.js'
 import { useWorkoutTemplates } from '../hooks/useWorkoutTemplates.js'
 import { deriveAllMetrics } from '../lib/profileDerivedMetrics.js'
 import { dailyPrescription } from '../lib/dailyPrescription.js'
+import { localToday } from '../lib/dateKeys.js'
 
 const MONO = "'IBM Plex Mono', monospace"
-const today = () => new Date().toISOString().slice(0, 10)
+// Manual-log default: the human's LOCAL training day (not UTC). A session
+// logged just after local midnight must default to today, not yesterday.
+const today = () => localToday()
 
 // Sport → sensible default session type
 const SPORT_DEFAULT_TYPE = {

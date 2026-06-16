@@ -765,7 +765,7 @@ export function getTodayPlannedSession(plan, today) {
   }
   const weekIdx    = Math.floor(daysDiff / 7)
   if (weekIdx >= plan.weeks.length) return null
-  const isoDow = (new Date(todayDate + 'T12:00:00Z').getDay() + 6) % 7  // Mon=0…Sun=6, noon UTC avoids TZ shift
+  const isoDow = (new Date(todayDate + 'T12:00:00Z').getUTCDay() + 6) % 7  // Mon=0…Sun=6; getUTCDay on the noon-UTC anchor (matches patterns.js)
   const week = plan.weeks[weekIdx]
   if (!week || !Array.isArray(week.sessions)) return null
   // Sessions are packed by training-day ordinal (Mon-first). When the plan carries

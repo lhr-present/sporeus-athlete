@@ -29,6 +29,25 @@ const ENTRY = {
   zones: [], notes: 'Easy run', source: 'manual',
 }
 
+describe('TrainingLog — add-form default date uses the LOCAL training day', () => {
+  it('defaults the new-entry date to the local day just after midnight (UTC+3)', () => {
+    // 00:30 local on 2026-06-17. In a positive-offset zone the UTC date is
+    // still 2026-06-16; the default must follow the human (local), not UTC.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 5, 17, 0, 30, 0))
+    try {
+      const { container } = renderWithLang(
+        <TrainingLog log={[]} setLog={noop} prefill={null} clearPrefill={noop} />
+      )
+      const dateInput = container.querySelector('input[type="date"]')
+      expect(dateInput).not.toBeNull()
+      expect(dateInput.value).toBe('2026-06-17')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
+
 describe('TrainingLog', () => {
   it('renders SESSION HISTORY heading when log is empty', () => {
     renderWithLang(<TrainingLog log={[]} setLog={noop} prefill={null} clearPrefill={noop} />)

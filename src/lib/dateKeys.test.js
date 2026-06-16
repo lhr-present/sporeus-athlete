@@ -1,5 +1,42 @@
-import { describe, it, expect } from 'vitest'
-import { isoMondayOf, weekKey } from './dateKeys.js'
+import { describe, it, expect, vi } from 'vitest'
+import { isoMondayOf, weekKey, localToday } from './dateKeys.js'
+
+const RealDate = Date
+
+describe('localToday', () => {
+  it('formats as zero-padded YYYY-MM-DD', () => {
+    // Use a Date with single-digit month + day to prove the padding.
+    expect(localToday(new Date(2026, 0, 5, 14, 0, 0))).toBe('2026-01-05')
+  })
+  it('uses LOCAL calendar fields, not toISOString (UTC)', () => {
+    // A Date constructed from local Y/M/D parts is unambiguous: localToday must
+    // echo those parts regardless of host TZ. toISOString would shift them.
+    const d = new Date(2026, 5, 17, 1, 30, 0) // local June 17 01:30
+    expect(localToday(d)).toBe('2026-06-17')
+    // The local day must equal the local fields, never the UTC-rendered slice
+    // (which can differ when the host is in a negative offset).
+    expect(localToday(d)).toBe(
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    )
+  })
+  it('defaults to the current local day (mocked clock)', () => {
+    // Fake only Date (not the timers vitest's own runner relies on).
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new RealDate(2026, 2, 9, 23, 0, 0)) // local Mar 9 23:00
+    try {
+      expect(localToday()).toBe('2026-03-09')
+    } finally { vi.useRealTimers() }
+  })
+  it('reflects the LOCAL day just after midnight (the post-midnight bug case)', () => {
+    // 00:30 local on June 17 — the human is on June 17; a UTC slice in a
+    // positive-offset zone would still say June 16.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new RealDate(2026, 5, 17, 0, 30, 0))
+    try {
+      expect(localToday()).toBe('2026-06-17')
+    } finally { vi.useRealTimers() }
+  })
+})
 
 describe('isoMondayOf', () => {
   it('returns the Monday for a mid-week date', () => {
