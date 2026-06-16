@@ -12,6 +12,7 @@ import {
   analyzeVolumePerSessionTrend,
   VOLUME_PER_SESSION_TREND_CITATION,
 } from '../../athlete/volumePerSessionTrend.js'
+import { sanitizeLogEntry } from '../../validate.js'
 
 const TODAY = '2026-05-18'  // Monday
 
@@ -519,5 +520,26 @@ describe('analyzeVolumePerSessionTrend — output shape', () => {
     const starts = r.weeks.map(w => w.weekStart)
     const sorted = [...starts].sort()
     expect(starts).toEqual(sorted)
+  })
+})
+
+// ─── Round-trip through sanitizeLogEntry (dead-card regression guard) ────────
+// The sanitizer renames `durationMin` → `duration`. Pre-fix this card read
+// `e.durationMin`, so meanSessionMin was 0 on every real (sanitized) entry
+// while raw-field tests passed. Round-tripping the log proves the card reads
+// the emitted `duration`.
+describe('analyzeVolumePerSessionTrend — sanitized round-trip', () => {
+  it('computes meanSessionMin from sanitizer-emitted `duration` (not raw durationMin)', () => {
+    // The app stores `duration`; remap the helper's legacy `durationMin` to it
+    // before sanitizing so the log matches what is actually persisted.
+    const raw = buildWeeklyLog(Array(12).fill(60))
+      .map(({ durationMin, ...rest }) => ({ ...rest, duration: durationMin }))
+    const log = raw.map(sanitizeLogEntry)
+    expect(log[0].durationMin).toBeUndefined()
+    expect(log[0].duration).toBe(60)
+    const r = analyzeVolumePerSessionTrend({ log, today: TODAY })
+    expect(r).not.toBeNull()
+    expect(r.band).not.toBe('INSUFFICIENT_DATA')
+    expect(r.weeks[11].meanSessionMin).toBe(60)
   })
 })

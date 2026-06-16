@@ -115,7 +115,9 @@ export function buildCalendarProgress(weeks, log, opts = {}) {
 
       const actualTSS = matchedLogs.reduce((acc, e) => acc + safeNum(e.tss), 0)
       const actualDuration = matchedLogs.reduce((acc, e) =>
-        acc + safeNum(e.durationMin || e.durationMinutes || 0), 0)
+        // sanitizeLogEntry emits `duration` (minutes); read it first, fall
+        // back to the legacy raw names for unsanitized/imported entries.
+        acc + safeNum(e.duration ?? e.durationMin ?? e.durationMinutes ?? 0), 0)
       const logged = matchedLogs.length > 0
       const sportMatched = programSport
         ? matchedLogs.some(e => logEntrySport(e) === programSport)

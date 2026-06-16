@@ -13,6 +13,7 @@ import {
   analyzeWeekendLongSessionShare,
   WEEKEND_LONG_SESSION_SHARE_CITATION,
 } from '../../athlete/weekendLongSessionShare.js'
+import { sanitizeLogEntry } from '../../validate.js'
 
 // 2026-05-17 is a Sunday → current ISO week = 2026-05-11..2026-05-17.
 // 12-week window = 2026-02-23 (Mon) .. 2026-05-17 (Sun) inclusive.
@@ -561,5 +562,29 @@ describe('analyzeWeekendLongSessionShare — return shape + citation', () => {
   it('dateForDow helper sanity check', () => {
     expect(dateForDow(0, 0)).toBe('2026-05-11') // Mon of current week
     expect(dateForDow(6, 0)).toBe('2026-05-17') // Sun of current week
+  })
+})
+
+// ─── Round-trip through sanitizeLogEntry (dead-card regression guard) ────────
+// The sanitizer renames `durationMin` → `duration`. Pre-fix entryDurationMin
+// only read `durationMin`/`duration_min`, so every real (sanitized) entry
+// looked like a 0-minute session and no long sessions were counted, while
+// raw-field tests passed. Round-tripping proves the card reads `duration`.
+describe('analyzeWeekendLongSessionShare — sanitized round-trip', () => {
+  it('counts long sessions from sanitizer-emitted `duration` (not raw durationMin)', () => {
+    // The app stores `duration`; remap the helper's legacy `durationMin` to it
+    // before sanitizing so the log matches what is actually persisted.
+    const raw = []
+    for (let w = 0; w < 6; w++) {
+      const { durationMin, ...rest } = longEntry(dateForDow(5, w)) // Sat, 120min
+      raw.push({ ...rest, duration: durationMin })
+    }
+    const log = raw.map(sanitizeLogEntry)
+    expect(log[0].durationMin).toBeUndefined()
+    expect(log[0].duration).toBe(120)
+    const out = analyzeWeekendLongSessionShare({ log, today: TODAY })
+    expect(out).not.toBeNull()
+    expect(out.longSessions).toBe(6)
+    expect(out.band).not.toBe('INSUFFICIENT_LONG_SESSIONS')
   })
 })

@@ -4,6 +4,7 @@ import {
   analyzeTwoADays,
   TWO_A_DAYS_CITATION,
 } from '../../athlete/twoADays.js'
+import { sanitizeLogEntry } from '../../validate.js'
 
 const TODAY = '2026-05-18'
 
@@ -499,5 +500,29 @@ describe('analyzeTwoADays — sport-field precedence', () => {
     // empty-string sports filtered out → sports list stays empty.
     expect(r.doubleDays[0].sports).toEqual([])
     expect(r.doubleDays[0].isCrossSport).toBe(false)
+  })
+})
+
+// ─── Round-trip through sanitizeLogEntry (dead-card regression guard) ────────
+// A session "qualifies" if it has a positive duration. The sanitizer renames
+// `durationMin` → `duration`; pre-fix isQualifyingSession only read
+// `durationMin`/`duration_min`, so two real (sanitized) sessions on one day
+// weren't recognized as qualifying and the double-day went uncounted (it only
+// survived via the `tss` fallback). Round-tripping proves the duration path.
+describe('analyzeTwoADays — sanitized round-trip', () => {
+  it('counts a double day from sanitizer-emitted `duration` (no tss present)', () => {
+    // The app stores the canonical `duration` field; sanitizeLogEntry reads it
+    // (the legacy `durationMin` is ignored on input).
+    const log = [
+      sanitizeLogEntry({ date: TODAY, type: 'run',  duration: 30 }),
+      sanitizeLogEntry({ date: TODAY, type: 'bike', duration: 30 }),
+    ]
+    // Confirm the only qualifying signal is the renamed duration field.
+    expect(log[0].durationMin).toBeUndefined()
+    expect(log[0].duration).toBe(30)
+    expect(log[0].tss).toBe(0)
+    const r = analyzeTwoADays({ log, today: TODAY })
+    expect(r.totalDoubleDays).toBe(1)
+    expect(r.band).toBe('OCCASIONAL')
   })
 })

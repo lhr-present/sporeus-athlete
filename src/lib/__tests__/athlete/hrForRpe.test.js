@@ -5,6 +5,7 @@ import {
   rpeToBand,
   HR_FOR_RPE_CITATION,
 } from '../../athlete/hrForRpe.js'
+import { sanitizeLogEntry } from '../../validate.js'
 
 const TODAY = '2026-05-18'
 
@@ -14,13 +15,17 @@ function isoMinusDays(iso, days) {
   return d.toISOString().slice(0, 10)
 }
 
+// Round-trip through sanitizeLogEntry so the test exercises the SAME field
+// names the app stores (sanitizer renames the raw `heartRate` → `avgHR`).
+// Pre-fix, the card read `heartRate` and got null on every sanitized entry
+// while tests injected the raw field and passed — this helper closes that gap.
 function sess(daysAgo, rpe, heartRate, overrides = {}) {
-  return {
+  return sanitizeLogEntry({
     date: isoMinusDays(TODAY, daysAgo),
     rpe,
-    heartRate,
+    avgHR: heartRate,
     ...overrides,
-  }
+  })
 }
 
 // ─── rpeToBand ──────────────────────────────────────────────────────────────
@@ -282,8 +287,8 @@ describe('analyzeHrForRpe — windowing', () => {
 
   it('skips sessions with invalid dates', () => {
     const log = [
-      { date: 'not-a-date', rpe: 3, heartRate: 130 },
-      { date: '',           rpe: 3, heartRate: 130 },
+      sanitizeLogEntry({ date: 'not-a-date', rpe: 3, avgHR: 130 }),
+      sanitizeLogEntry({ date: '',           rpe: 3, avgHR: 130 }),
       sess(1, 3, 130),
       sess(3, 3, 130),
       sess(5, 3, 130),
@@ -328,14 +333,14 @@ describe('analyzeHrForRpe — result shape', () => {
     expect(r.citation).toBe('Karvonen 1957; Borg 1982; Buchheit 2014')
   })
 
-  it('coerces numeric-string fields (rpe, heartRate)', () => {
+  it('coerces numeric-string fields (rpe, avgHR)', () => {
     const log = [
-      { date: isoMinusDays(TODAY, 1), rpe: '3', heartRate: '130' },
-      { date: isoMinusDays(TODAY, 3), rpe: '3', heartRate: '130' },
-      { date: isoMinusDays(TODAY, 5), rpe: '3', heartRate: '130' },
-      { date: isoMinusDays(TODAY, 7), rpe: '7', heartRate: '162' },
-      { date: isoMinusDays(TODAY, 9), rpe: '7', heartRate: '162' },
-      { date: isoMinusDays(TODAY, 11), rpe: '7', heartRate: '162' },
+      sanitizeLogEntry({ date: isoMinusDays(TODAY, 1), rpe: '3', avgHR: '130' }),
+      sanitizeLogEntry({ date: isoMinusDays(TODAY, 3), rpe: '3', avgHR: '130' }),
+      sanitizeLogEntry({ date: isoMinusDays(TODAY, 5), rpe: '3', avgHR: '130' }),
+      sanitizeLogEntry({ date: isoMinusDays(TODAY, 7), rpe: '7', avgHR: '162' }),
+      sanitizeLogEntry({ date: isoMinusDays(TODAY, 9), rpe: '7', avgHR: '162' }),
+      sanitizeLogEntry({ date: isoMinusDays(TODAY, 11), rpe: '7', avgHR: '162' }),
     ]
     const r = analyzeHrForRpe({ log, today: TODAY })
     expect(r).not.toBe(null)
@@ -345,7 +350,11 @@ describe('analyzeHrForRpe — result shape', () => {
     expect(easy.medianHR).toBeCloseTo(130, 5)
   })
 
-  it('skips entries with out-of-range RPE (0, 11)', () => {
+  it('handles out-of-range RPE via the sanitizer clamp (0→dropped, 11→clamped to 10)', () => {
+    // sanitizeLogEntry clamps rpe into [0,10]: an rpe of 0 maps to no band
+    // (rpeToBand(0) === null → dropped), while 11 is clamped to 10 → VERY_HARD.
+    // This documents the real stored behaviour rather than the pre-sanitizer
+    // assumption that both rows are discarded.
     const log = [
       sess(1, 3, 130),
       sess(3, 3, 130),
@@ -353,11 +362,13 @@ describe('analyzeHrForRpe — result shape', () => {
       sess(7, 7, 162),
       sess(9, 7, 162),
       sess(11, 7, 162),
-      sess(13, 11, 162),  // invalid
-      sess(15, 0, 130),   // invalid
+      sess(13, 11, 162),  // clamped to rpe 10 → VERY_HARD
+      sess(15, 0, 130),   // rpe 0 → no band → dropped
     ]
     const r = analyzeHrForRpe({ log, today: TODAY })
     expect(r).not.toBe(null)
-    expect(r.overallSampleCount).toBe(6)
+    expect(r.overallSampleCount).toBe(7)
+    const veryHard = r.bands.find((b) => b.name === 'VERY_HARD')
+    expect(veryHard.count).toBe(1)
   })
 })

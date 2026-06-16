@@ -152,7 +152,9 @@ export function analyzeVolumePerSessionTrend({ log, today, windowWeeks = WINDOW_
       const wkStart = isoMondayOf(key)
       const idx = idxByWeekStart[wkStart]
       if (idx == null) continue
-      const raw = e.durationMin != null ? e.durationMin : e.duration_min
+      // sanitizeLogEntry emits `duration` (minutes); prefer it, then fall back
+      // to the legacy raw names for unsanitized entries.
+      const raw = e.duration ?? e.durationMin ?? e.duration_min
       const min = Number(raw)
       if (!Number.isFinite(min) || min <= 0) continue
       weeks[idx].sumMin += min

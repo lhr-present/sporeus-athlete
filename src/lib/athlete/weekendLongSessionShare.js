@@ -97,13 +97,12 @@ function round4(v) {
   return Math.round(v * 10000) / 10000
 }
 
-// Read the entry's duration in minutes. Accept both camelCase `durationMin`
-// and snake_case `duration_min`. Prefer camelCase when both are present.
+// Read the entry's duration in minutes. sanitizeLogEntry emits `duration`, so
+// prefer it; fall back to the legacy raw names (`durationMin`/`duration_min`)
+// for unsanitized/imported entries.
 function entryDurationMin(entry) {
   if (!entry) return 0
-  const raw = entry.durationMin !== undefined && entry.durationMin !== null
-    ? entry.durationMin
-    : entry.duration_min
+  const raw = entry.duration ?? entry.durationMin ?? entry.duration_min
   const n = Number(raw)
   return Number.isFinite(n) && n > 0 ? n : 0
 }

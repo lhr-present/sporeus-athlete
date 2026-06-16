@@ -172,7 +172,9 @@ export function analyzeTrainingHourBudget({
       if (key < earliestWeekStart) continue
       if (key >= exclusiveEnd) continue
 
-      const raw = e.durationMin ?? e.duration_min
+      // sanitizeLogEntry emits `duration` (minutes); prefer it, then fall back
+      // to the legacy raw names for unsanitized entries.
+      const raw = e.duration ?? e.durationMin ?? e.duration_min
       const dur = Number(raw)
       if (!Number.isFinite(dur) || dur <= 0) continue
 

@@ -538,6 +538,11 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       tss,
       notes: importPreview.notes || `Imported ${importPreview.source?.toUpperCase()} · ${importPreview.distanceM ? (importPreview.distanceM/1000).toFixed(2)+'km' : ''}${npStr}`,
       source: importPreview.source,
+      // Persist Normalized Power on the entry (sanitizer now whitelists `np`)
+      // so cyclingNpTrend.js can build the NP-by-duration trend from the log
+      // without re-reading the raw power stream. Was previously only used for
+      // the notes string + power-TSS, never stored on the entry → card was dead.
+      ...(np > 0 ? { np: Math.round(np) } : {}),
       ...(wPrimeExhausted  ? { wPrimeExhausted: true, wPrimeMethod } : {}),
       ...(powers.length >= 30 ? { hasPower: true } : {}),
       ...(decouplingPct !== null ? { decouplingPct } : {}),
