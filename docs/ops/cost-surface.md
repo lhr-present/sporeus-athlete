@@ -25,6 +25,16 @@ Actions taken (2026-06-16):
    migration drift (so one shared branch works) or by the operator disabling the
    Supabase↔GitHub branching integration in the dashboard.
 
+### Residual: Supabase↔GitHub integration auto-preview branch (OPERATOR — dashboard only)
+Separate from the CI workflows, the **Supabase GitHub App** auto-creates a preview branch
+per PR (the `Supabase Preview` check; e.g. ref `qqjcjopdkvwnyeqhuxzi`). It auto-deletes on
+PR close, so it's a small transient cost — but it still bills a short-lived Micro branch
+per PR and always fails (`MIGRATIONS_FAILED`). There is **no Management API to disable it**
+(endpoints 404) — turn it off in the **Supabase Dashboard → Branches / Project Settings →
+Integrations (GitHub) → disable automatic preview branches** (or disconnect the repo from
+branching). After that, branch spend is fully $0 until branching is re-enabled (do that
+only once the migration-squash lets a fresh branch provision cleanly).
+
 > Branch-based PR checks (`contract-smoke`, `Supabase Preview`, `db-branch-preview`) will
 > stop appearing — if any are REQUIRED status checks in branch protection, remove them
 > there or non-admin merges will block waiting on a check that no longer runs.
