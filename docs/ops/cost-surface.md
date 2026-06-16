@@ -18,19 +18,39 @@ Goal: stay on the base Supabase plan; avoid surprise external spend.
 | **Resend** (`api.resend.com/emails`) | `purge-deleted-accounts`, `dodo-webhook`, `operator-digest` | per email above free tier (~3k/mo) | negligible at current scale |
 | **Dodo / Stripe** | billing webhooks | transaction % only (no fixed cost) | n/a |
 
-## The thing to watch
-`embed-backfill` (every 10 min) and `ai-batch-worker` (every min) will call **OpenAI/
-Anthropic automatically once real athlete data flows** — not gated behind a paid tier for
-embeddings. Today there's no data so they no-op at $0.
+## AI/embedding crons — DISABLED 2026-06-16 (external spend locked at $0)
+The 5 crons that call paid external APIs are now `active = false` on prod (per the
+"keep spend at $0" decision). The internal-ops crons (push-worker, purge-*, refresh-mv,
+strava-backfill, trigger-checkin-reminders, reconcile-subscriptions, operator-digest,
+etc.) stay active — none of them call paid external APIs.
 
-### Levers to guarantee zero external spend (if desired)
-1. **Don't set** the `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` edge-fn secrets → those
-   functions fail closed at $0 (semantic search / AI reports simply stay off).
-2. Or disable the AI/embedding crons:
-   `SELECT cron.alter_job((SELECT jobid FROM cron.job WHERE jobname='embed-backfill'), active:=false);`
-   (same for `ai-batch-worker`, `enqueue-ai-batch`, `generate-report-weekly`,
-   `generate-report-monthly-squad`). Reversible (`active:=true`).
-3. AI usage is otherwise capped per tier (`ai_proxy_usage` metering, `TIER_LIMITS`).
+| Cron | Was | External cost |
+|---|---|---|
+| `embed-backfill` (*/10 min) | active | OpenAI embeddings |
+| `ai-batch-worker` (*/1 min) | active | Anthropic + OpenAI |
+| `enqueue-ai-batch` (weekly) | active | (enqueues AI work) |
+| `generate-report-weekly` (Mon) | active | Anthropic |
+| `generate-report-monthly-squad` (monthly) | active | Anthropic |
+
+Disabled with:
+```sql
+SELECT cron.alter_job(jobid, active := false) FROM cron.job
+ WHERE jobname IN ('embed-backfill','ai-batch-worker','enqueue-ai-batch',
+                   'generate-report-weekly','generate-report-monthly-squad');
+```
+**Re-enable** (when you want AI features / are OK paying OpenAI+Anthropic per token):
+```sql
+SELECT cron.alter_job(jobid, active := true) FROM cron.job
+ WHERE jobname IN ('embed-backfill','ai-batch-worker','enqueue-ai-batch',
+                   'generate-report-weekly','generate-report-monthly-squad');
+```
+Effect of disabling: no auto session-embeddings (semantic search won't populate), no
+scheduled AI reports. `ai-proxy` (user-triggered, Coach/Club only) is unaffected by the
+crons but is dormant anyway (no paid coaches); it also fails closed if the API keys are
+unset. Belt-and-suspenders option: also leave `ANTHROPIC_API_KEY` / `OPENAI_API_KEY`
+edge secrets unset → every AI path is $0 regardless of crons.
+
+AI usage (if ever re-enabled) is capped per tier via `ai_proxy_usage` metering + `TIER_LIMITS`.
 
 Edge invocations / cron ticks themselves are within the Supabase plan (cheap); the cost
 risk is the external LLM/embedding API calls, which are **currently zero**.
