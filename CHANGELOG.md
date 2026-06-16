@@ -2,6 +2,31 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.429.0 — 2026-06-17 — Date/timezone edge fixes + GDPR deletion/export completeness
+
+Deep-dive round 4 fixes (date/TZ + data-rights). Edge functions for the v9.428 batch were
+DEPLOYED to prod this round (redeem-invite, ai-proxy, send-push, nightly-batch verified 401;
+dodo-webhook deployed but boot-fails until DODO_WEBHOOK_SECRET/STRIPE_WEBHOOK_SECRET are set —
+operator). comment-notification held (its webhook doesn't send the secret yet).
+
+Date/timezone (client) — analytics stay UTC; the I/O EDGES were wrongly UTC for the UTC+3 user:
+- NEW localToday() in dateKeys.js (local Y/M/D, not toISOString). Manual-log default date +
+  date-picker max in QuickAddModal/TrainingLog now use it → a session logged 00:00–03:00 local
+  no longer defaults to YESTERDAY.
+- FIT/GPX importer now files activities on the LOCAL day (matching the Garmin importer) — the
+  two no longer disagree on the calendar day for the same early-morning activity.
+- Weekly-digest weekday gate uses getUTCDay() to match its UTC window; getTodayPlannedSession
+  weekday switched to getUTCDay() (matches patterns.js).
+
+GDPR / data-rights (SQL, applied + verified on prod):
+- purge_user (mig 20260632): cleared the coach_invites.used_by NO-ACTION FK that could make a
+  redeemer's account deletion PERMANENTLY un-completable (HIGH); also purges the ai_proxy_usage
+  orphan + processed_webhooks row.
+- build_user_export (mig 20260633): added 7 omitted sections of the subject's own data
+  (training_plans, onboarding_state, notification_log, generated_reports, billing_events,
+  audit_log, coach_notes_about_me) — right-of-access completeness. Column-safe to_jsonb(*).
+DEPENDS ON: dateKeys.localToday; live purge_user/build_user_export bodies.
+
 ## v9.428.0 — 2026-06-16 — Edge-fn de-risk + PWA WebView guard (+ branching cost fix)
 
 PWA (client, ships now):

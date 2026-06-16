@@ -52,6 +52,28 @@ describe('QuickAddModal — defaults', () => {
   })
 })
 
+describe('QuickAddModal — default date uses the LOCAL training day', () => {
+  it('defaults the date field to the local day just after midnight (UTC+3)', () => {
+    // 00:30 local on 2026-06-17. In a positive-offset zone the UTC date is
+    // still 2026-06-16; the default must follow the human (local), not UTC.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 5, 17, 0, 30, 0))
+    try {
+      const { container } = renderWithLang(<QuickAddModal {...defaultProps} />)
+      const dateInput = container.querySelector('input[name="session-date"]')
+      expect(dateInput).not.toBeNull()
+      const y  = 2026
+      const m  = '06'
+      const d  = '17'
+      expect(dateInput.value).toBe(`${y}-${m}-${d}`)
+      // And the max (cannot pick a future day) matches the same local day.
+      expect(dateInput.getAttribute('max')).toBe(`${y}-${m}-${d}`)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
+
 describe('QuickAddModal — TSS label', () => {
   it('shows "Training Load" label, not "Est. TSS"', () => {
     renderWithLang(<QuickAddModal {...defaultProps} />)

@@ -20,3 +20,4 @@ audit-reports/
 # Playwright artifacts (regenerated on every test run)
 playwright-report/
 test-results/
+supabase/.temp/

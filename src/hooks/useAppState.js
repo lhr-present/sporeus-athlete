@@ -343,7 +343,11 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   useEffect(() => {
     if (!log || log.length < 5) return
     const now = new Date()
-    if (now.getDay() !== 0) return // 0 = Sunday
+    // Gate the weekday off the SAME clock the window/dedupe key uses (UTC),
+    // so the digest fires on the day its 7-day UTC window actually ends. Mixing
+    // local getDay() with a UTC todayStr can fire it a day early/late near
+    // local midnight. (date/TZ-edge fix)
+    if (now.getUTCDay() !== 0) return // 0 = Sunday (UTC)
     const todayStr = now.toISOString().slice(0, 10)
     const FLAG_KEY = `sporeus-weekly-digest-notif-${todayStr}`
     try {

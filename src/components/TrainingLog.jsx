@@ -14,6 +14,7 @@ import { BANISTER } from '../lib/sport/constants.js'
 import { computeDecoupling } from '../lib/decoupling.js'
 import { interpretDecoupling } from '../lib/science/interpretations.js'
 import { emitEvent } from '../lib/attribution.js'
+import { localToday } from '../lib/dateKeys.js'
 import ScienceTooltip from './ScienceTooltip.jsx'
 
 // 2-char Bloomberg-style type prefix
@@ -101,7 +102,9 @@ function detectExternalFormat(csvText) {
 export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   const { t, lang } = useContext(LangCtx)
   const { profile: profileLS } = useData()
-  const today = new Date().toISOString().slice(0,10)
+  // Manual-log default: the human's LOCAL training day (not UTC), so a session
+  // logged just after local midnight defaults to today, not yesterday.
+  const today = localToday()
   const defaultType = (() => {
     const sc = SPORT_CONFIG[profileLS?.primarySport]
     if (!sc) return 'Easy Run'

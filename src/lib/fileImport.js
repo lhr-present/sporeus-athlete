@@ -2,6 +2,7 @@
 import FitParser from 'fit-file-parser'
 import { logger } from './logger.js'
 import { normalizedPower, computePowerTSS } from './formulas.js'
+import { localToday } from './dateKeys.js'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -70,10 +71,13 @@ export function parseFIT(arrayBuffer, profileMaxHR, profileFTP = null) {
         const totalZone = zoneCounts.reduce((s,v)=>s+v,0) || 1
         const zones = zoneCounts.map(c => Math.round(c/totalZone*100))
 
-        // Date from first record or session start
+        // Date from first record or session start. File the activity under the
+        // athlete's LOCAL training day (same convention as the Garmin importer's
+        // garminDateToLocal) — NOT the UTC date, which lands a 01:00-local
+        // (UTC+3) ride on the previous calendar day and disagrees with Garmin.
         const startTime = session?.start_time || records[0]?.timestamp
-        const date = startTime ? new Date(startTime).toISOString().slice(0,10)
-          : new Date().toISOString().slice(0,10)
+        const date = startTime ? localToday(new Date(startTime))
+          : localToday()
 
         // Second-by-second power series (for W' balance + decoupling analysis)
         const powerSeries = records
@@ -178,7 +182,9 @@ export function parseGPX(xmlString, profileMaxHR) {
   const maxHR = hrSamples.length ? hrSamples.reduce((m,v)=>v>m?v:m,0) : null   // reduce, not spread (stack overflow on long files)
   const tssEstimate = estimateTSS(durationMin, avgHR, profileMaxHR || maxHR || 180, null)
 
-  const date = times[0] ? times[0].toISOString().slice(0,10) : new Date().toISOString().slice(0,10)
+  // File under the athlete's LOCAL training day (consistent with the FIT/Garmin
+  // importers), not the UTC date.
+  const date = times[0] ? localToday(times[0]) : localToday()
 
   // Build lightweight trackpoints array for route visualization
   const trackpoints = trkpts.map(pt => ({

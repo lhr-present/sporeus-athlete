@@ -18,6 +18,28 @@ function toUtcMidnight(dateOrStr) {
 }
 
 /**
+ * The HUMAN's local training day as 'YYYY-MM-DD'.
+ *
+ * This is deliberately the OPPOSITE convention from the rollup helpers in this
+ * file: the week/key math above is UTC-anchored so it's timezone-stable, but a
+ * "training day" is the calendar date a human picks (or that an activity is
+ * filed under) in THEIR timezone. For a user in UTC+3, a session logged at
+ * 01:30 local belongs to today, not to yesterday (which is what a UTC date
+ * key would say, since UTC is still on the previous day until 03:00 local).
+ *
+ * Uses the local getFullYear/getMonth/getDate (NOT toISOString, which is UTC).
+ *
+ * @param {Date} [date] — defaults to now.
+ * @returns {string} 'YYYY-MM-DD' in the local calendar.
+ */
+export function localToday(date = new Date()) {
+  const y  = date.getFullYear()
+  const m  = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${dd}`
+}
+
+/**
  * ISO 'YYYY-MM-DD' for the Monday of the ISO week containing the input.
  * Monday = start of week (ISO 8601). Returns null on unparseable input.
  */
