@@ -2,6 +2,26 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.432.0 — 2026-06-17 — Realtime / multi-tab / multi-device correctness (deep-dive round 6)
+
+Concurrency-correctness fixes for the offline-first multi-device PWA.
+- HIGH: no cross-tab sync — useLocalStorage now listens for `storage` events, so a second
+  tab adopts another tab's `sporeus-*` write instead of later clobbering it with stale data
+  (broad fix for log/profile/all keys; writer-tab safe, no loop).
+- HIGH: profile cross-device whole-object clobber — setProfile persisted `update({profile_data:next})`
+  replacing the entire JSONB, so a concurrent field edit from another device was permanently
+  lost. Now re-reads + shallow-merges (`{...server, ...next}`) before the write (optimistic
+  local UI unchanged; offline falls back to next).
+- MED: useRealtimeSquad re-subscribed with a STALE athlete-id filter on a same-length roster
+  swap (deps used athletes.length) — now keyed on a sorted athleteIdsKey, so membership churn
+  re-subscribes with the correct filter (coach no longer misses a swapped-in athlete's events).
+- LOW: comment UPDATE echo now drops a stale-edited_at event (no transient revert under
+  concurrent edits).
+
+Also confirmed comment-notification deploy is OPERATOR-gated: app.webhook_secret GUC is unset
+and matching it needs the WEBHOOK_SECRET plaintext (edge secret, not visible here).
+Full suite green. DEPENDS ON: useRealtimeSquadFeed athleteIdsKey pattern.
+
 ## v9.431.0 — 2026-06-17 — Perf + import robustness + recovery validation (deep-dive round 5)
 
 Three fresh dimensions, all client-side, verified + fixed.

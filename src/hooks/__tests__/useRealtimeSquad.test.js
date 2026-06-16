@@ -227,6 +227,61 @@ describe('useRealtimeSquad', () => {
     })
   })
 
+  describe('roster membership changes (athleteIdsKey)', () => {
+    // Capture the recovery-table filter string passed to channel.on().
+    function lastRecoveryFilter() {
+      const calls = mocks.channelStub.on.mock.calls.filter(
+        ([, f]) => f && f.table === 'recovery'
+      )
+      return calls.length ? calls[calls.length - 1][1].filter : null
+    }
+
+    it('re-subscribes with the new filter on a same-length roster SWAP', () => {
+      const initial = [
+        { athlete_id: 'a1', display_name: 'Alice' },
+        { athlete_id: 'b1', display_name: 'Bob' },
+      ]
+      const { rerender } = renderHook(
+        ({ athletes }) => useRealtimeSquad({ authUser: AUTH_USER, isDemo: false, athletes }),
+        { initialProps: { athletes: initial } }
+      )
+      expect(lastRecoveryFilter()).toBe('user_id=in.(a1,b1)')
+      const channelCallsBefore = mocks.channel.mock.calls.length
+
+      // Swap B → C: SAME length, different membership.
+      const swapped = [
+        { athlete_id: 'a1', display_name: 'Alice' },
+        { athlete_id: 'c1', display_name: 'Carol' },
+      ]
+      act(() => { rerender({ athletes: swapped }) })
+
+      // Effect re-ran (new channel) with the corrected id filter.
+      expect(mocks.channel.mock.calls.length).toBeGreaterThan(channelCallsBefore)
+      expect(lastRecoveryFilter()).toBe('user_id=in.(a1,c1)')
+    })
+
+    it('does NOT re-subscribe when the roster is unchanged (only re-ordered)', () => {
+      const initial = [
+        { athlete_id: 'a1', display_name: 'Alice' },
+        { athlete_id: 'b1', display_name: 'Bob' },
+      ]
+      const { rerender } = renderHook(
+        ({ athletes }) => useRealtimeSquad({ authUser: AUTH_USER, isDemo: false, athletes }),
+        { initialProps: { athletes: initial } }
+      )
+      const channelCallsBefore = mocks.channel.mock.calls.length
+
+      // New array, same members, different order → sorted key is identical.
+      const reordered = [
+        { athlete_id: 'b1', display_name: 'Bob' },
+        { athlete_id: 'a1', display_name: 'Alice' },
+      ]
+      act(() => { rerender({ athletes: reordered }) })
+
+      expect(mocks.channel.mock.calls.length).toBe(channelCallsBefore)
+    })
+  })
+
   it('removes the channel on unmount', () => {
     const { unmount } = renderHook(() =>
       useRealtimeSquad({ authUser: AUTH_USER, isDemo: false, athletes: ATHLETES }))

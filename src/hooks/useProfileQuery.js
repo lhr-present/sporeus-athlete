@@ -89,10 +89,30 @@ export function useProfileQuery(userId) {
 
     Promise.resolve().then(async () => {
       const updatedAt = new Date().toISOString()
+
+      // Cross-device concurrency guard: profile_data is one JSONB blob, so a
+      // blind `update({ profile_data: next })` replaces the WHOLE object and
+      // silently drops fields another device wrote in the meantime (Device A
+      // sets ftp:300; Device B with a stale snapshot would re-write its old
+      // ftp). Re-read the current server blob and shallow-merge `next` over it
+      // so only the fields we actually changed are persisted. If the read fails
+      // (e.g. offline), fall back to writing `next` so the save isn't lost.
+      let toWrite = next
+      try {
+        const { data: row, error } = await supabase
+          .from('profiles')
+          .select('profile_data')
+          .eq('id', userId)
+          .maybeSingle()
+        if (!error && row?.profile_data && typeof row.profile_data === 'object') {
+          toWrite = { ...row.profile_data, ...next }
+        }
+      } catch (_) { /* offline / read failure → write `next` as-is */ }
+
       const ok = await tryWrite(
         '[useProfileQuery] save',
-        supabase.from('profiles').update({ profile_data: next, updated_at: updatedAt }).eq('id', userId),
-        () => enqueuePendingLog({ id: userId, profile_data: next, updated_at: updatedAt, _table: 'profiles' }),
+        supabase.from('profiles').update({ profile_data: toWrite, updated_at: updatedAt }).eq('id', userId),
+        () => enqueuePendingLog({ id: userId, profile_data: toWrite, updated_at: updatedAt, _table: 'profiles' }),
       )
       if (ok) qc.invalidateQueries({ queryKey: qKey })
     })

@@ -78,7 +78,17 @@ export function useSessionComments(sessionId, currentUserId) {
         return [...withoutOptimistic, next].sort(byCreatedAt)
       })
     } else if (eventType === 'UPDATE') {
-      setComments(prev => prev.map(c => c.id === next.id ? { ...c, ...next } : c))
+      setComments(prev => prev.map(c => {
+        if (c.id !== next.id) return c
+        // Drop a delayed/older echo: if both rows carry edited_at and the
+        // incoming one is OLDER, keep the newer local edit (otherwise a
+        // late-arriving stale UPDATE momentarily reverts a fresher edit).
+        if (c.edited_at && next.edited_at &&
+            new Date(next.edited_at) < new Date(c.edited_at)) {
+          return c
+        }
+        return { ...c, ...next }
+      }))
     } else if (eventType === 'DELETE') {
       // soft-delete: UPDATE sets deleted_at — hard DELETE shouldn't happen via RLS
       setComments(prev => prev.filter(c => c.id !== old.id))
