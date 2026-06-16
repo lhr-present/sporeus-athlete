@@ -2,6 +2,38 @@
 
 Goal: stay on the base Supabase plan; avoid surprise external spend.
 
+## Branching Compute Hours — the one real overage (FIXED 2026-06-16)
+The Jun 14–Jul 13 invoice showed **$8.36 of "Branching Compute Hours"** beyond the $25 Pro
+plan (everything else — Compute, Egress, Function Invocations 62.7k/2M, MAU 100/100k,
+Realtime 1 conn — netted to $0 under free allowances).
+
+Root cause: CI workflows created a Supabase **preview branch per PR**, and those branches
+**chronically failed to provision** (`MIGRATIONS_FAILED`, from the migration drift) yet
+still billed compute. `contract-smoke.yml` never cleaned up → **23 dead branches** had
+accrued ongoing hours.
+
+Actions taken (2026-06-16):
+1. **Deleted all 23 stale branches** via Management API (kept only the `main` default
+   branch). `GET /v1/projects/{ref}/branches` → `DELETE /v1/branches/{id}` for each non-default.
+2. **Disabled the wasteful branch workflows** (switched to `workflow_dispatch`-only):
+   `contract-smoke` (per-PR, lingering — its JS contract tests run in `npm test` now),
+   `db-branch-preview` (per-PR preview), and `perf-regression`'s **nightly cron** (1
+   branch/night; Lighthouse covers perf). Reversible — re-enable the triggers after the
+   migration-squash lets a fresh branch provision cleanly.
+3. **Left** `e2e-critical-paths` (per-PR, passes — real value) and `rls-pentest` (weekly,
+   security) creating branches — residual minor cost; eliminate fully by fixing the
+   migration drift (so one shared branch works) or by the operator disabling the
+   Supabase↔GitHub branching integration in the dashboard.
+
+> Branch-based PR checks (`contract-smoke`, `Supabase Preview`, `db-branch-preview`) will
+> stop appearing — if any are REQUIRED status checks in branch protection, remove them
+> there or non-admin merges will block waiting on a check that no longer runs.
+
+### Unpaid invoice
+`GLQJDI-00005` — **$36.33, due Jun 14, payment FAILED**. This is an account/payment-method
+issue (operator): update the card + pay it, or the project risks restriction. Not fixable
+from code.
+
 ## Supabase — NO paid add-ons
 - `selected_addons: []` — no Custom Domain, no Compute upgrade (default compute),
   no PITR, no Read Replica, no extra storage add-on. (Verified via Management API

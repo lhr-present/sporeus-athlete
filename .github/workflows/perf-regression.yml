@@ -7,9 +7,10 @@ permissions:
   pull-requests: write
 
 on:
-  schedule:
-    # Nightly at 03:30 UTC (after nightly-batch at 03:00)
-    - cron: '30 3 * * *'
+  # Nightly cron DISABLED (2026-06-16, cost): it created a Supabase preview branch
+  # EVERY NIGHT that failed to provision (MIGRATIONS_FAILED) — ongoing Branching
+  # Compute Hours ($) for no result. Lighthouse CI already covers perf budgets.
+  # Re-enable the cron after the migration-squash. Manual + labeled-PR still work.
   pull_request:
     types: [labeled]
   workflow_dispatch:
