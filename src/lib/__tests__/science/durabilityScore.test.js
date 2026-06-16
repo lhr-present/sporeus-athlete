@@ -17,6 +17,7 @@ import { describe, it, expect } from 'vitest'
 import {
   computeDurability,
   classifyDurability,
+  interpretDurability,
   DURABILITY_THRESHOLDS,
 } from '../../science/durabilityScore.js'
 
@@ -178,5 +179,63 @@ describe('DURABILITY_THRESHOLDS constant — Maunder et al. (2021)', () => {
 
   it('is frozen', () => {
     expect(Object.isFrozen(DURABILITY_THRESHOLDS)).toBe(true)
+  })
+})
+
+// ── interpretDurability ─────────────────────────────────────────────────────────
+
+describe('interpretDurability', () => {
+  // scores: oldest→newest list of { durabilityPct }
+  const rising = [{ durabilityPct: 88 }, { durabilityPct: 89 }, { durabilityPct: 94 }]
+  const falling = [{ durabilityPct: 94 }, { durabilityPct: 92 }, { durabilityPct: 86 }]
+  const flat = [{ durabilityPct: 90 }, { durabilityPct: 90.5 }, { durabilityPct: 90 }]
+
+  it('returns a bilingual one-liner + trend for every tier', () => {
+    for (const tier of ['high', 'moderate', 'low', 'very_low']) {
+      const r = interpretDurability(tier, flat)
+      expect(typeof r.en).toBe('string')
+      expect(typeof r.tr).toBe('string')
+      expect(r.en.length).toBeGreaterThan(10)
+      expect(r.tr.length).toBeGreaterThan(10)
+      expect(['rising', 'falling', 'flat']).toContain(r.trend)
+    }
+  })
+
+  it('detects a rising trend (latest well above prior mean)', () => {
+    expect(interpretDurability('high', rising).trend).toBe('rising')
+    expect(interpretDurability('high', rising).en).toMatch(/improving|working/i)
+  })
+
+  it('detects a falling trend (latest well below prior mean)', () => {
+    expect(interpretDurability('very_low', falling).trend).toBe('falling')
+    const r = interpretDurability('very_low', falling)
+    expect(r.en).toMatch(/long Z2|fueling/i)
+    expect(r.tr).toMatch(/Z2|beslen/i)
+  })
+
+  it('reads flat when scores barely move', () => {
+    expect(interpretDurability('moderate', flat).trend).toBe('flat')
+  })
+
+  it('treats <2 scores as flat (no trend)', () => {
+    expect(interpretDurability('high', []).trend).toBe('flat')
+    expect(interpretDurability('high', [{ durabilityPct: 96 }]).trend).toBe('flat')
+  })
+
+  it('high + rising emphasises fueling is working / hold', () => {
+    const r = interpretDurability('high', rising)
+    expect(r.en).toMatch(/fueling is working|Hold/i)
+  })
+
+  it('very_low + falling pushes long Z2 volume + mid-ride fueling', () => {
+    const r = interpretDurability('very_low', falling)
+    expect(r.en).toMatch(/Z2 volume/i)
+    expect(r.en).toMatch(/fueling/i)
+  })
+
+  it('falls back gracefully for an unknown tier', () => {
+    const r = interpretDurability('bogus', flat)
+    expect(typeof r.en).toBe('string')
+    expect(r.en.length).toBeGreaterThan(10)
   })
 })

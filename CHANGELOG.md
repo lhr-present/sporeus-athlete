@@ -2,6 +2,37 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.423.0 — 2026-06-16 — Enhancement batch: activation, science cards, coach triage
+
+Agent-discovered, scope-clean (training/workout only), all from already-computed data.
+
+Activation (the lever — prod has 0 logged sessions):
+- Empty-state "Getting Started" CTA now PREFILLS today's goal-aware planned session
+  (was a blank QuickAdd) → one tap logs the prescribed first session.
+- Plan-less "LOG THIS →" + sick-day "log reduced" buttons now open QuickAdd IN PLACE
+  (were navigating away to the log tab — inconsistent, higher friction).
+- GettingStartedCard step 02 replaced its dead "check the Today tab" advice (the card
+  IS on Today) with a goal-anchored line ("Your {goal} answer sharpens…").
+
+Science cards (reuse existing validated signal; clone the v9.418 cross-read pattern):
+- NEW "Overreach Watch" card — NMF × ACWR cross-read (computeNMFatigue × calculateACWR),
+  distinguishes true systemic overreach (rest) from an aerobic-volume spike with fresh
+  legs (cap volume) from a hidden-intensity cost the load ratio misses. Self-hides w/o data.
+- DurabilityCard gained a "so what" interpretation (interpretDurability) — tier × trend
+  one-liner (was a bare number, unlike ACWR/EF cards).
+
+Coach triage:
+- BUG FIX: SquadRedFlagsCard read `athlete_name` (RPC returns `display_name`) → every
+  flagged athlete showed "Unnamed athlete" in prod (test was green against a wrong
+  fixture). Fixed + test corrected to the real RPC field.
+- AthleteRow surfaces the top insight's prescriptive action inline (mobile + desktop)
+  — gated like the existing alert dot. (Note: squad RPC doesn't yet supply load arrays,
+  so most non-readiness alerts only fire once that data is wired — caption is no-harm.)
+- CoachSquadView header shows a "{n} no check-in today" triage count (was per-row only).
+
++~30 tests. 15k+ suite green. DEPENDS ON: plannedSession/setShowQuickAdd in TodayView;
+computeNMFatigue/calculateACWR; get_squad_overview display_name; getAthleteInsights.
+
 ## v9.422.0 — 2026-06-16 — Goal-aware training plans (5K ≠ Marathon)
 
 Closes the round-2 deferred core-promise gap: the default `generatePlan` (manual

@@ -5,7 +5,7 @@
 //
 // Reference: Maunder E. et al. (2021) Sports Med 51:1523–1550
 import { memo, useMemo } from 'react'
-import { computeDurability } from '../../lib/science/durabilityScore.js'
+import { computeDurability, interpretDurability } from '../../lib/science/durabilityScore.js'
 import { S } from '../../styles.js'
 
 const TIER_COLOR = { high: '#5bc25b', moderate: '#ff6600', low: '#f5c542', very_low: '#e03030' }
@@ -63,6 +63,8 @@ function DurabilityCard({ log, lang }) {
   const latest = scores[scores.length - 1]
   const color  = TIER_COLOR[latest.tier]
   const label  = lang === 'tr' ? TIER_TR[latest.tier] : TIER_EN[latest.tier]
+  const interp = interpretDurability(latest.tier, scores)
+  const interpText = lang === 'tr' ? interp.tr : interp.en
 
   return (
     <div className="sp-card" style={{ ...S.card, animationDelay: '193ms', borderLeft: `3px solid ${color}` }}>
@@ -113,6 +115,21 @@ function DurabilityCard({ log, lang }) {
             <div style={{ ...S.mono, fontSize: '7px', color: '#555' }}>{t.text}</div>
           </div>
         ))}
+      </div>
+
+      {/* "So what" interpretation */}
+      <div style={{
+        ...S.mono,
+        fontSize: '11px',
+        color: 'var(--text)',
+        lineHeight: 1.6,
+        padding: '8px',
+        background: `${color}10`,
+        border: `1px solid ${color}40`,
+        borderRadius: '3px',
+        marginBottom: '8px',
+      }}>
+        {interpText}
       </div>
 
       {/* Session trend bars */}
