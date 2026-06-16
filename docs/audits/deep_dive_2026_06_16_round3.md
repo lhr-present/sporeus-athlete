@@ -38,10 +38,17 @@ the real producer output. Both let real bugs ship green. (This session already h
   adding dead weight to the sanitizer. Code comment left. To make it live: add a
   swim-detail capture path (FIT length messages, or manual swim fields) then whitelist
   those fields. Needs a product decision + capture work.
-- **search_everything dropped `athlete_session`/`athlete` kinds** (test-integrity find):
-  a later `CREATE OR REPLACE` (20260484) silently dropped the coach "find athlete
-  sessions" search arms; the regression-guard test only checks its own array so it never
-  caught it. Needs a feature decision (was it intentional?) + migration reconciliation.
+- **search_everything dropped `athlete_session`/`athlete` kinds** — ✅ RESOLVED in v9.426.
+  Investigated: ACCIDENTAL regression in v9.327.0 (20260484), not intentional — that
+  migration flipped DEFINER→INVOKER, CLAIMED "body unchanged", but rebuilt from a stale
+  4-arm body, silently reverting the coach arms (the client kept full UI for both kinds;
+  the changelog mentions only the security flip). Restored via migration 20260629
+  (applied to prod): both arms re-added under INVOKER (RLS on training_log + profiles
+  already grants coach read of active athletes — verified — so no DEFINER needed),
+  profiles.name_tsv (re)created (it was never applied to prod — separate 20260428 drift).
+  Contract test now PARSES the migration's emitted kinds vs the client KNOWN_KINDS (was
+  blind), and GlobalSearch handles athlete_session. The pentest's INVOKER hardening is
+  preserved.
 - **Capacitor native shell gaps** (mobile build, not the web PWA): web-push path
   (`pushNotify.js`) fails silently in the iOS WKWebView (no `@capacitor/push-notifications`
   bridging exists); Strava/Supabase OAuth `redirect_uri` is origin-derived and breaks in

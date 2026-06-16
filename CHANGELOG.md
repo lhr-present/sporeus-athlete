@@ -2,6 +2,30 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.426.0 — 2026-06-16 — Restore coach search arms (accidental v9.327 regression)
+
+Investigated whether search_everything dropping the `athlete_session`/`athlete` kinds was
+intentional → it was an ACCIDENTAL regression in v9.327.0 (migration 20260484): that
+migration flipped DEFINER→INVOKER for pentest hardening, CLAIMED "body unchanged", but
+rebuilt from a stale 4-arm body, silently reverting the coach arms added in 20260428/
+20260432. Evidence: the changelog mentions only the security flip; the client kept full
+UI for both kinds (SearchPalette KIND_LABEL/COLOR/TAB); the guard test only checked its
+own array so it never caught it.
+
+Restored (migration 20260629, applied + verified on prod):
+- Re-added both arms to the live INVOKER search_everything from its VERBATIM body (two
+  RETURN QUERY arms injected). RLS on training_log + profiles already grants coaches read
+  of their active athletes (verified live), so both arms are INVOKER-safe — no SECURITY
+  DEFINER needed, pentest hardening preserved.
+- (Re)created profiles.name_tsv (+ GIN index) — it had never applied to prod (separate
+  20260428 drift); defined as plain to_tsvector('simple', display_name) to match the live
+  notes_tsv/content_tsv generation + the arms' plainto_tsquery('simple', q).
+- Contract test now PARSES the latest migration's emitted kinds and asserts they equal the
+  client KNOWN_KINDS (was structurally blind — the root cause it failed to catch).
+- GlobalSearch now handles athlete_session (KIND_ORDER + log-tab routing); SearchPalette
+  already did.
+DEPENDS ON: coach-read RLS on training_log/profiles; search_everything INVOKER body.
+
 ## v9.425.0 — 2026-06-16 — Deep-dive round 3: dead-card field bugs + SW first-install reload
 
 Test-integrity + PWA deep dive. Full ledger: docs/audits/deep_dive_2026_06_16_round3.md.
