@@ -73,7 +73,7 @@ function median(values) {
  * Compute heart-rate × RPE distribution across sessions in the window.
  *
  * Filtering: sessions within `windowDays`, with `rpe` defined + finite in
- *   [1, 10] and `heartRate` > 0 (finite).
+ *   [1, 10] and `avgHR` (sanitizer-emitted) > 0 (finite).
  * Grouping by RPE band (EASY 1-4, MODERATE 5-6, HARD 7-8, VERY_HARD 9-10).
  * Per-band: count, medianHR (median bpm).
  *
@@ -84,7 +84,7 @@ function median(values) {
  *   log: Array<{
  *     date?: string,
  *     rpe?: number,
- *     heartRate?: number,
+ *     avgHR?: number,
  *   }>,
  *   today?: string,
  *   windowDays?: number,
@@ -120,7 +120,11 @@ export function analyzeHrForRpe({
     const rpeNum = typeof entry.rpe === 'number' ? entry.rpe : Number(entry.rpe)
     if (!Number.isFinite(rpeNum)) continue
 
-    const hrNum = Number(entry.heartRate)
+    // Stored entries carry average HR as `avgHR` (the FIT/GPX importer writes
+    // `avgHR`; sanitizeLogEntry whitelists only `avgHR`). Read it first, with
+    // fallbacks to the raw `heartRate`/`avg_hr` names for safety. Pre-fix this
+    // read only `heartRate`, which no capture path produces → card was dead.
+    const hrNum = Number(entry.avgHR ?? entry.heartRate ?? entry.avg_hr)
     if (!Number.isFinite(hrNum) || hrNum <= 0) continue
 
     const band = rpeToBand(rpeNum)

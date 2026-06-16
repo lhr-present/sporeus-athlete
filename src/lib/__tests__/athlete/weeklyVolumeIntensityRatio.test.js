@@ -7,6 +7,7 @@ import {
   analyzeWeeklyVolumeIntensityRatio,
   WEEKLY_VOL_INT_RATIO_CITATION,
 } from '../../athlete/weeklyVolumeIntensityRatio.js'
+import { sanitizeLogEntry } from '../../validate.js'
 
 // 2026-05-18 is a Monday — so the ISO week containing TODAY starts on
 // 2026-05-18 itself, and 8 weeks back oldest week starts 2026-03-30.
@@ -257,5 +258,28 @@ describe('analyzeWeeklyVolumeIntensityRatio — band classification', () => {
     expect(r).not.toBeNull()
     expect(r.delta).toBeLessThanOrEqual(-0.10)
     expect(r.band).toBe('CREEPING_INTENSITY')
+  })
+})
+
+// ─── Round-trip through sanitizeLogEntry (dead-card regression guard) ────────
+// The sanitizer renames `durationMin` → `duration`. Pre-fix this card summed
+// `e.durationMin`, so totalMinutes was 0 on every real (sanitized) entry while
+// raw-field tests passed. Round-tripping the log proves the card reads the
+// emitted `duration`.
+describe('analyzeWeeklyVolumeIntensityRatio — sanitized round-trip', () => {
+  it('aggregates volume from sanitizer-emitted `duration` (not raw durationMin)', () => {
+    // The app stores `duration`; remap the helper's legacy `durationMin` to it
+    // before sanitizing so the log matches what is actually persisted.
+    const raw = buildWeeklyLog(Array(8).fill({ durationMin: 60, tss: 50 }))
+      .map(({ durationMin, ...rest }) => ({ ...rest, duration: durationMin }))
+    const log = raw.map(sanitizeLogEntry)
+    expect(log[0].durationMin).toBeUndefined()
+    expect(log[0].duration).toBe(60)
+    const r = analyzeWeeklyVolumeIntensityRatio({ log, today: TODAY })
+    expect(r).not.toBeNull()
+    for (const w of r.weeks) {
+      expect(w.totalMinutes).toBe(60)
+      expect(w.ratio).toBeCloseTo(1.2, 6)
+    }
   })
 })

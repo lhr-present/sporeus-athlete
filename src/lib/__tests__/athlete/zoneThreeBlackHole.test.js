@@ -7,6 +7,7 @@ import {
   analyzeZoneThreeBlackHole,
   ZONE_THREE_BLACK_HOLE_CITATION,
 } from '../../athlete/zoneThreeBlackHole.js'
+import { sanitizeLogEntry } from '../../validate.js'
 
 const TODAY = '2026-04-30'
 const OLDEST_MONDAY = '2026-03-09'
@@ -560,5 +561,34 @@ describe('analyzeZoneThreeBlackHole — per-week aggregation', () => {
     expect(r.weeks[1].hardMin).toBe(60)
     expect(r.weeks[2].z3Min).toBe(0)
     expect(r.weeks[2].hardMin).toBe(60)
+  })
+})
+
+// ─── Round-trip through sanitizeLogEntry (dead-card regression guard) ────────
+// The sanitizer strips `zone` and renames `durationMin` → `duration`. Pre-fix
+// the card summed `e.durationMin`, so it counted 0 minutes on every real
+// (sanitized) entry while raw-field tests passed. After sanitization the entry
+// has no `zone`, so classification falls back to `rpe` (preserved) and reads
+// the emitted `duration`. This proves the card produces real non-null buckets.
+describe('analyzeZoneThreeBlackHole — sanitized round-trip', () => {
+  it('counts z3/hard minutes from sanitizer-emitted duration + rpe (zone stripped)', () => {
+    // The app stores `duration`; build entries with it directly (the `entry()`
+    // helper uses the legacy `durationMin`, which the sanitizer ignores). zone
+    // is intentionally omitted because the sanitizer would strip it anyway, so
+    // classification falls back to rpe (Z3 = rpe 5-6, HARD = rpe ≥7).
+    const raw = [
+      { date: OLDEST_MONDAY,               duration: 60, rpe: 5 }, // Z3
+      { date: addDaysStr(OLDEST_MONDAY, 1), duration: 60, rpe: 6 }, // Z3
+      { date: addDaysStr(OLDEST_MONDAY, 2), duration: 60, rpe: 8 }, // HARD
+    ]
+    const log = raw.map(sanitizeLogEntry)
+    expect(log[0].zone).toBeUndefined()
+    expect(log[0].durationMin).toBeUndefined()
+    expect(log[0].duration).toBe(60)
+    const r = analyzeZoneThreeBlackHole({ log, today: TODAY })
+    expect(r).not.toBeNull()
+    expect(r.totalZ3Min).toBe(120)
+    expect(r.totalHardMin).toBe(60)
+    expect(r.band).not.toBe('INSUFFICIENT_HARD_VOLUME')
   })
 })

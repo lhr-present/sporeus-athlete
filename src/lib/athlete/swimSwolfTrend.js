@@ -34,6 +34,17 @@ function isoMinusDays(today, days) {
  *   seconds_per_length = (duration * 60) / (distance / poolLength)
  *   SWOLF = strokes_per_length + seconds_per_length
  */
+// NOTE (dead-card audit 2026-06-16): SWOLF derivation needs `swolf` directly,
+// OR `strokes` + `poolLength` (+ distance + duration). As of this writing NO
+// capture path produces any of those three fields: parseFIT/parseGPX/
+// parseBulkCSV/parseConcept2CSV (fileImport.js) emit none, QuickAddModal has no
+// swim-stroke inputs, and sanitizeLogEntry would strip them anyway. So this
+// card returns null on every real entry. It reads the sanitizer-emitted
+// `duration`/`distance`/`distanceM` below, but those alone can't yield SWOLF.
+// To make this card live we need a swim-detail capture path that records
+// strokes-per-length + pool length (FIT length messages, or manual swim fields
+// in QuickAddModal), then whitelist `swolf`/`strokes`/`poolLength` in
+// validate.js. Until then the card is intentionally inert — not faked.
 function deriveSwolf(e) {
   if (!e) return null
 

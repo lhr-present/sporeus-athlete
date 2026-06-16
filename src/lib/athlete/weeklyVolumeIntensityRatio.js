@@ -146,7 +146,8 @@ export function analyzeWeeklyVolumeIntensityRatio({
     const monday = toIsoUtc(mondayStartingWeek(parseIsoUtc(key)))
     const idx = startToIdx.get(monday)
     if (idx === undefined) continue
-    weeks[idx].totalMinutes += num(e.durationMin)
+    // sanitizeLogEntry emits `duration` (minutes); prefer it, fall back to raw.
+    weeks[idx].totalMinutes += num(e.duration ?? e.durationMin ?? e.duration_min)
     weeks[idx].totalTss     += num(e.tss)
   }
 

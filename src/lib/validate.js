@@ -111,6 +111,14 @@ export function sanitizeLogEntry(e) {
   // that then skews EF / HR-fraction / cadence-band math.
   const avgHR = parseInt(e.avgHR);  if (Number.isFinite(avgHR) && avgHR >= 30 && avgHR <= 250) result.avgHR = avgHR
   const cadence = parseInt(e.avgCadence); if (Number.isFinite(cadence) && cadence >= 0 && cadence <= 200) result.avgCadence = cadence
+  // Normalized Power (Coggan 2003) — computed by the FIT importer (fileImport.js
+  // parseFIT) when a ride carries a ≥30s power series. Pre-fix it was stripped
+  // here, so cyclingNpTrend.js read `np`/`normalizedPower` on every sanitized
+  // entry and got null → the NP-by-duration trend card was dead for all real
+  // (sanitized) rides. Accept either field name (FIT writes `np`; Garmin maps
+  // `normalizedPower`); clamp to a plausible cycling-power range so a bad import
+  // can't skew the duration-bucketed bests. Number.isFinite guards Infinity.
+  const np = parseInt(e.np ?? e.normalizedPower); if (Number.isFinite(np) && np > 0 && np <= 2500) result.np = np
   return result
 }
 

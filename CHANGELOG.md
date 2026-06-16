@@ -2,6 +2,32 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.425.0 — 2026-06-16 — Deep-dive round 3: dead-card field bugs + SW first-install reload
+
+Test-integrity + PWA deep dive. Full ledger: docs/audits/deep_dive_2026_06_16_round3.md.
+
+Dead dashboard cards — silently null for ALL real users while their tests passed on
+phantom data (libs read raw-import field names the sanitizer renames/strips):
+- hrForRpe (CRITICAL): read `heartRate`; sanitizer emits `avgHR`. Reader fixed.
+- cyclingNpTrend: `np` was stripped by the sanitizer AND never written on FIT import →
+  added `np` to the sanitizeLogEntry whitelist (clamped) + TrainingLog now writes it.
+- 7 volume cards (calendarProgress, twoADays, weekendLongSessionShare,
+  volumePerSessionTrend, weeklyVolumeIntensityRatio, trainingHourBudget,
+  zoneThreeBlackHole): read `durationMin`; stored entries use `duration`. Readers fixed.
+- STRUCTURAL FIX: each fixed card's test now constructs entries through sanitizeLogEntry,
+  so the regression class is caught going forward.
+
+PWA:
+- First-ever SW install fired a spurious full-page reload (controllerchange on
+  clients.claim) → every new visitor got a mid-interaction reload + lost in-memory form
+  state. Now gated on hadController (reload only on a genuine update activation).
+
+DEFERRED (documented in the audit doc): swimSwolfTrend (no swim-detail capture path);
+search_everything dropped coach athlete-session kinds (feature/migration decision);
+Capacitor native push/OAuth (mobile-build work); contract-test drift backlog (incl. a real
+billing_events amount-not-captured gap); offline comment temp-id relink; poison dead-letter.
+DEPENDS ON: sanitizeLogEntry field set; SW controllerchange flow.
+
 ## v9.424.0 — 2026-06-16 — Adaptive plan-math fixes + squad load-signal wiring
 
 Two formerly-deferred items, now done.

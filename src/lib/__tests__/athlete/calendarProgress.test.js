@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { buildCalendarProgress, CALENDAR_PROGRESS_CITATION } from '../../athlete/calendarProgress.js'
+import { sanitizeLogEntry } from '../../validate.js'
 
 const SIMPLE_WEEKS = [
   {
@@ -143,5 +144,22 @@ describe('calendarProgress', () => {
     ]
     const p = buildCalendarProgress(SIMPLE_WEEKS, log, { sport: 'run' })
     expect(p.byDay['2026-04-29'].complianceRatio).toBe(2)
+  })
+
+  // ─── Round-trip through sanitizeLogEntry (dead-card regression guard) ──────
+  // The sanitizer renames `durationMin` → `duration` (and strips `sport`).
+  // Pre-fix actualDuration summed `e.durationMin || e.durationMinutes`, so it
+  // was 0 on every real (sanitized) entry while raw-field tests passed. Sport
+  // matching still works via `type` (logEntrySport falls back to it). This
+  // proves the card reports the logged minutes it gets from a stored entry.
+  it('actualDuration comes from sanitizer-emitted `duration` (not raw durationMin)', () => {
+    const entry = sanitizeLogEntry(
+      { date: '2026-04-29', type: 'Threshold Run', sport: 'run', tss: 70, duration: 60 }
+    )
+    expect(entry.durationMin).toBeUndefined()
+    expect(entry.duration).toBe(60)
+    const p = buildCalendarProgress(SIMPLE_WEEKS, [entry], { sport: 'run' })
+    expect(p.byDay['2026-04-29'].logged).toBe(true)
+    expect(p.byDay['2026-04-29'].actualDuration).toBe(60)
   })
 })

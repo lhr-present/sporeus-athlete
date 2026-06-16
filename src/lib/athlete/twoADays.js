@@ -57,7 +57,9 @@ function isoMinusDays(iso, days) {
  */
 function isQualifyingSession(entry) {
   if (!entry || typeof entry !== 'object') return false
-  const durRaw = entry.durationMin != null ? entry.durationMin : entry.duration_min
+  // sanitizeLogEntry emits `duration` (minutes); prefer it, then fall back to
+  // the legacy raw names for unsanitized entries.
+  const durRaw = entry.duration ?? entry.durationMin ?? entry.duration_min
   const dur = Number(durRaw)
   if (Number.isFinite(dur) && dur > 0) return true
   const tss = Number(entry.tss)

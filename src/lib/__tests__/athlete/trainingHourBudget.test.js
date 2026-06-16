@@ -8,6 +8,7 @@ import {
   analyzeTrainingHourBudget,
   TRAINING_HOUR_BUDGET_CITATION,
 } from '../../athlete/trainingHourBudget.js'
+import { sanitizeLogEntry } from '../../validate.js'
 
 // Wednesday — mondayOf('2026-05-13') = '2026-05-11'.
 // 12 ISO weeks ending in the week containing today:
@@ -536,6 +537,27 @@ describe('analyzeTrainingHourBudget — stat correctness', () => {
   it('reports totalHours = sum of weekly hours', () => {
     const log = logFromDurations(Array(12).fill(360)) // 6h × 12 = 72h
     const r = analyzeTrainingHourBudget({ log, today: TODAY })
+    expect(r.totalHours).toBe(72)
+  })
+})
+
+// ─── Round-trip through sanitizeLogEntry (dead-card regression guard) ────────
+// The sanitizer renames `durationMin` → `duration`. Pre-fix this card only
+// read `durationMin`/`duration_min`, so it computed 0 hours on every real
+// (sanitized) entry while raw-field tests passed. Building the log THROUGH the
+// sanitizer proves the card reads the emitted `duration` and would catch a
+// future regression that renames/strips it.
+describe('analyzeTrainingHourBudget — sanitized round-trip', () => {
+  it('computes hours from sanitizer-emitted `duration` (not raw durationMin)', () => {
+    // The app stores the canonical `duration` field; sanitizeLogEntry reads it
+    // and ignores the legacy `durationMin`. Build the log with `duration`.
+    const raw = logFromDurations(Array(12).fill(360), 'duration')
+    const log = raw.map(sanitizeLogEntry)
+    // Sanity: only `duration` survives; legacy durationMin is absent.
+    expect(log[0].durationMin).toBeUndefined()
+    expect(log[0].duration).toBe(360)
+    const r = analyzeTrainingHourBudget({ log, today: TODAY })
+    expect(r).not.toBeNull()
     expect(r.totalHours).toBe(72)
   })
 })

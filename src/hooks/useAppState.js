@@ -284,8 +284,14 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
     // worker takes control (controllerchange). This is the standard
     // vite-plugin-pwa updateSW pattern, just wired through our own toast.
     let reloading = false
+    // On a first-ever visit there is no controller; the SW's clients.claim() on
+    // activate fires controllerchange too. Reloading then is spurious (visible
+    // flash + loses in-memory form state, e.g. a half-filled QuickAdd/onboarding).
+    // Only reload when a controller ALREADY existed — i.e. a genuine waiting-SW
+    // activation (the RELOAD-button update path), not first install.
+    const hadController = !!navigator.serviceWorker.controller
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (reloading) return
+      if (reloading || !hadController) return
       reloading = true
       window.location.reload()
     })
