@@ -24,7 +24,7 @@ const MAX_RECENT   = 10
 const STORAGE_KEY  = 'sporeus-recent-searches'
 
 // Display order for grouped results
-const KIND_ORDER = ['session', 'note', 'message', 'announcement', 'athlete']
+const KIND_ORDER = ['session', 'athlete_session', 'note', 'message', 'announcement', 'athlete']
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
 function loadRecent() {
@@ -175,8 +175,10 @@ export default function GlobalSearch({ onNavigate, tier: _tier = 'free' }) {
     if (!row) return
     setRecent(prev => saveRecent(query, prev))
     setOpen(false)
-    // Route to the right tab; session records open their expanded row in Log
-    const tab = row.kind === 'session' ? 'log' : 'coach'
+    // Route to the right tab; own session records open their expanded row in Log.
+    // athlete_session is an athlete's session (coach view) → Log tab, but not the
+    // coach's own row, so no record_id to expand (matches SearchPalette KIND_TAB).
+    const tab = (row.kind === 'session' || row.kind === 'athlete_session') ? 'log' : 'coach'
     onNavigate?.(tab, row.kind === 'session' ? row.record_id : null)
   }
 

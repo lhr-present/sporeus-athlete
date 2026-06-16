@@ -7,6 +7,8 @@
 // This contract covers the data contract (shapes and mappings) only.
 
 import { describe, it, expect } from 'vitest'
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
 
 // ── Kind constants (mirrored from SearchPalette.jsx) ──────────────────────────
 const KNOWN_KINDS = ['session', 'athlete_session', 'note', 'message', 'announcement', 'athlete']
@@ -86,6 +88,43 @@ describe('C6 — search_everything contract', () => {
       // Regression guard: this kind must remain in KNOWN_KINDS forever
       expect(KNOWN_KINDS).toContain('athlete_session')
       expect(EXPECTED_TABS.athlete_session).toBe('log')
+    })
+  })
+
+  // ── SQL ↔ client contract (the real regression guard) ───────────────────────
+  // The blocks above only check client constants; that is exactly why v9.327.0
+  // silently dropped athlete_session/athlete from the RPC while these stayed green.
+  // This block parses the LATEST migration that (re)defines search_everything and
+  // asserts the kinds the SQL actually emits == KNOWN_KINDS. A future migration that
+  // drops or adds an arm now fails here.
+  describe('SQL emitted kinds match the client KNOWN_KINDS', () => {
+    function latestSearchEverythingKinds() {
+      const dir = join(process.cwd(), 'supabase', 'migrations')
+      const files = readdirSync(dir).filter(f => f.endsWith('.sql')).sort()
+      let body = null
+      for (const f of files) {
+        const sql = readFileSync(join(dir, f), 'utf8')
+        // Only consider migrations that define the FUNCTION BODY (not bare GRANT/REVOKE).
+        if (/function\s+public\.search_everything/i.test(sql) && /RETURN QUERY|UNION ALL/i.test(sql)) {
+          body = sql // keep the last (highest-sorted) one
+        }
+      }
+      if (!body) throw new Error('no search_everything function-body migration found')
+      // The kind is the first projected column of each arm: SELECT 'x'::text, ...
+      const kinds = new Set()
+      for (const m of body.matchAll(/SELECT\s+'([a-z_]+)'::text/gi)) kinds.add(m[1])
+      return kinds
+    }
+
+    it('emits exactly the 6 known kinds (no silent drop/add)', () => {
+      const sqlKinds = latestSearchEverythingKinds()
+      expect([...sqlKinds].sort()).toEqual([...KNOWN_KINDS].sort())
+    })
+
+    it('SQL includes the coach arms (athlete_session + athlete)', () => {
+      const sqlKinds = latestSearchEverythingKinds()
+      expect(sqlKinds.has('athlete_session')).toBe(true)
+      expect(sqlKinds.has('athlete')).toBe(true)
     })
   })
 
