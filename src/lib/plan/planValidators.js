@@ -5,6 +5,7 @@
 //   1. No week-over-week TSS jump > 10% (ACWR safe)
 //   2. ≥ 1 recovery (or rest) day per week
 //   3. No back-to-back Z5 (VO2 / test) days
+//   4. Taper → Race is a monotonic load REDUCTION (Mujika & Padilla 2003)
 //
 // Returns { valid: bool, errors: [{code, message: {en,tr}, weekNum?}] }
 // Pure — never throws, never logs, never mutates input.
@@ -17,6 +18,7 @@ const CODES = {
   BACK_TO_BACK_Z5: 'BACK_TO_BACK_Z5',
   NEGATIVE_TSS:    'NEGATIVE_TSS',
   EMPTY_WEEK:      'EMPTY_WEEK',
+  TAPER_RAMP_UP:   'TAPER_RAMP_UP',
 }
 
 // ── helper: bilingual message factory ────────────────────────────────────────
@@ -145,6 +147,47 @@ export function validatePlan(plan) {
         weekNum: curr.weekNum,
       })
     }
+  }
+
+  // ── Rule 4: Taper → Race monotonic descent (Mujika & Padilla 2003) ──────
+  // The taper is a load REDUCTION. Each Taper/Race week must be ≤ the previous
+  // Taper/Race week (strict-or-equal monotonic descent) AND must not exceed the
+  // load the athlete enters the taper carrying — i.e. the achieved peak-week TSS
+  // OR, for standalone taper models (applyTaper, which rebuilds the tail from a
+  // "fully-loaded" pre-taper anchor), the first taper week's own value. Tiny
+  // per-session rounding is absorbed with +0.5. Pre-v9.422 the taper was exempt
+  // from WoW checks entirely and could ramp UP / exceed the peak; now asserted.
+  const peakWeeks = weeks
+    .filter(w => w && w.phase === 'Peak' && !w.isDeload && typeof w.weeklyTSS === 'number')
+    .map(w => w.weeklyTSS)
+  const taperRun = weeks.filter(w => w && (w.phase === 'Taper' || w.phase === 'Race'))
+  const firstTaperTSS = taperRun.length ? (taperRun[0].weeklyTSS ?? 0) : 0
+  // Ceiling: the higher of the achieved peak and the taper's own loaded start.
+  const peakCeil = Math.max(peakWeeks.length ? Math.max(...peakWeeks) : 0, firstTaperTSS)
+  let prevTaperTSS = Infinity
+  for (const wk of taperRun) {
+    const tss = wk.weeklyTSS ?? 0
+    if (tss > prevTaperTSS + 0.5) {
+      errors.push({
+        code: CODES.TAPER_RAMP_UP,
+        message: msg(
+          `Week ${wk.weekNum}: taper TSS rises vs prior taper week (must monotonically reduce).`,
+          `Hafta ${wk.weekNum}: azaltma haftası TSS önceki haftaya göre arttı (azalmalı).`,
+        ),
+        weekNum: wk.weekNum,
+      })
+    }
+    if (tss > peakCeil + 0.5) {
+      errors.push({
+        code: CODES.TAPER_RAMP_UP,
+        message: msg(
+          `Week ${wk.weekNum}: taper TSS (${tss}) exceeds the peak week (${peakCeil}).`,
+          `Hafta ${wk.weekNum}: azaltma haftası TSS (${tss}) zirve haftasını (${peakCeil}) aşıyor.`,
+        ),
+        weekNum: wk.weekNum,
+      })
+    }
+    prevTaperTSS = tss
   }
 
   return { valid: errors.length === 0, errors }
