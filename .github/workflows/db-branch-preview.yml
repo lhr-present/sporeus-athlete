@@ -6,15 +6,12 @@ permissions:
   contents: read
   pull-requests: write
 
+# DISABLED on PRs (2026-06-16, cost): created a Supabase preview branch per PR
+# (`preview-pr-N`) that chronically failed to provision (MIGRATIONS_FAILED) — pure
+# Branching Compute Hours ($) with no working output. Re-enable only after the
+# migration-squash lets a fresh branch provision cleanly. Still runnable manually.
 on:
-  pull_request:
-    paths:
-      - 'supabase/migrations/**'
-    types:
-      - opened
-      - synchronize
-      - reopened
-      - closed
+  workflow_dispatch:
 
 concurrency:
   group: "db-preview-${{ github.event.number }}"
