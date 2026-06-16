@@ -10,11 +10,14 @@ import { renderHook, act } from '@testing-library/react'
 const mocks = vi.hoisted(() => {
   let subscribeCb = null
   let broadcastCbs = {}
+  let pgChangesCb = null
 
   const channelStub = {
     on: vi.fn((_type, filter, cb) => {
       if (_type === 'broadcast' && filter?.event) {
         broadcastCbs[filter.event] = cb
+      } else if (_type === 'postgres_changes') {
+        pgChangesCb = cb
       }
       return channelStub
     }),
@@ -48,9 +51,11 @@ const mocks = vi.hoisted(() => {
     recordView:    vi.fn(() => Promise.resolve({ error: null })),
     get subscribeCb() { return subscribeCb },
     get broadcastCbs() { return broadcastCbs },
+    get pgChangesCb() { return pgChangesCb },
     reset() {
       subscribeCb = null
       broadcastCbs = {}
+      pgChangesCb = null
     },
   }
 })
@@ -95,6 +100,8 @@ beforeEach(() => {
   mocks.channelStub.on.mockImplementation((_type, filter, cb) => {
     if (_type === 'broadcast' && filter?.event) {
       mocks.broadcastCbs[filter.event] = cb
+    } else if (_type === 'postgres_changes') {
+      mocks._pgCb = cb
     }
     return mocks.channelStub
   })
@@ -249,6 +256,46 @@ describe('useSessionComments — editComment', () => {
 
     await act(async () => { await result.current.editComment('c1', 'updated') })
     expect(result.current.comments.find(c => c.id === 'c1')?.body).toBe('updated')
+  })
+})
+
+describe('useSessionComments — UPDATE echo ordering', () => {
+  const NEWER = '2026-06-17T12:00:05.000Z'
+  const OLDER = '2026-06-17T12:00:01.000Z'
+
+  it('drops a stale-edited_at UPDATE echo (keeps the newer edit)', async () => {
+    mocks.chainMock.order.mockResolvedValue({
+      data: [{
+        id: 'c1', body: 'newer edit', edited_at: NEWER,
+        session_id: 'sess-1', author_id: 'user-1', created_at: '2026-06-17T12:00:00.000Z',
+      }],
+      error: null,
+    })
+    const { result } = renderHook(() => useSessionComments('sess-1', 'user-1'))
+    await act(async () => {})   // wait for initial fetch
+
+    // A delayed/older echo arrives — must NOT revert the fresher local body.
+    act(() => {
+      mocks._pgCb?.({ eventType: 'UPDATE', new: { id: 'c1', body: 'older edit', edited_at: OLDER }, old: {} })
+    })
+    expect(result.current.comments.find(c => c.id === 'c1')?.body).toBe('newer edit')
+  })
+
+  it('applies a newer UPDATE echo over an older local row', async () => {
+    mocks.chainMock.order.mockResolvedValue({
+      data: [{
+        id: 'c1', body: 'older edit', edited_at: OLDER,
+        session_id: 'sess-1', author_id: 'user-1', created_at: '2026-06-17T12:00:00.000Z',
+      }],
+      error: null,
+    })
+    const { result } = renderHook(() => useSessionComments('sess-1', 'user-1'))
+    await act(async () => {})
+
+    act(() => {
+      mocks._pgCb?.({ eventType: 'UPDATE', new: { id: 'c1', body: 'newer edit', edited_at: NEWER }, old: {} })
+    })
+    expect(result.current.comments.find(c => c.id === 'c1')?.body).toBe('newer edit')
   })
 })
 

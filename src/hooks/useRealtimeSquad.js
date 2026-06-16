@@ -2,7 +2,7 @@
 // Returns { rtStatus, lastUpdated, rtToast } and patches athlete state live.
 // Extracted from CoachSquadView.jsx (was 75 inline lines).
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { isFeatureGated } from '../lib/subscription.js'
 import { computeBackoff } from '../lib/realtimeBackoff.js'
@@ -25,6 +25,15 @@ export function useRealtimeSquad({ authUser, isDemo, athletes, onUpdate }) {
   const retryRef   = useRef(0)
   const timerRef   = useRef(null)
   const toastTimerRef = useRef(null)
+
+  // Stable, membership-sensitive key (sorted so order doesn't matter). Keying
+  // the effect on this instead of `athletes.length` catches a same-length
+  // roster SWAP (B out, C in) — otherwise the channel stays filtered on the
+  // old ids and the coach misses C's live check-ins while still listening for B.
+  const athleteIdsKey = useMemo(
+    () => athletes.map(a => a.athlete_id).sort().join(','),
+    [athletes]
+  )
 
   useEffect(() => {
     const tier   = (() => { try { return localStorage.getItem('sporeus-tier') || 'free' } catch { return 'free' } })()
@@ -111,8 +120,8 @@ export function useRealtimeSquad({ authUser, isDemo, athletes, onUpdate }) {
       }
       setRtStatus('disconnected')
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- athletes and onUpdate intentionally excluded to avoid reconnect loops
-  }, [authUser?.id, isDemo, athletes.length])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- athletes/onUpdate read via closure; re-subscribe is driven by athleteIdsKey (membership), not array identity
+  }, [authUser?.id, isDemo, athleteIdsKey])
 
   return { rtStatus, lastUpdated, rtToast }
 }

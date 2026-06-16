@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { logger } from '../lib/logger.js'
 
 export const STORAGE_WARN_KEY = 'sporeus-quota-warned'
@@ -17,5 +17,25 @@ export function useLocalStorage(key, def) {
       }
     }
   }, [key])
+
+  // Cross-tab sync: the `storage` event fires ONLY in *other* tabs (not the
+  // writer), so adopting the new value here can't create a write-loop. Without
+  // this, two tabs on the same device diverge silently — Tab B never sees Tab
+  // A's write, then clobbers it with its own stale snapshot on its next write.
+  useEffect(() => {
+    function onStorage(e) {
+      if (e.key !== key || e.storageArea !== localStorage || e.newValue == null) return
+      let parsed
+      try { parsed = JSON.parse(e.newValue) } catch { return }
+      setVal(prev => {
+        // Ignore unchanged values to avoid spurious re-renders.
+        try { if (JSON.stringify(prev) === e.newValue) return prev } catch { /* prev not serializable — fall through */ }
+        return parsed
+      })
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [key])
+
   return [val, set]
 }
