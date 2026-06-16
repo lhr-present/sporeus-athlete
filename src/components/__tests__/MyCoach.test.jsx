@@ -43,6 +43,14 @@ const { mockOutcomes, supabaseMock } = vi.hoisted(() => {
         )),
       })),
     })),
+    // RPC (preview_coach_invite) — configured via mockOutcomes.__rpc[name]
+    rpc: vi.fn((name, params) =>
+      Promise.resolve(mockOutcomes.__rpc?.[name]?.(params) ?? { data: null, error: null })),
+    // Edge functions (redeem-invite via redeemInvite) — mockOutcomes.__fn[name]
+    functions: {
+      invoke: vi.fn((name, opts) =>
+        Promise.resolve(mockOutcomes.__fn?.[name]?.(opts) ?? { data: null, error: null })),
+    },
   }
 
   return { mockOutcomes, supabaseMock }
@@ -118,10 +126,13 @@ describe('MyCoach connection components', () => {
 
   // ── JoinCoachInput input → confirm → done flow ─────────────────────────────
 
+  // Helper: configure the preview_coach_invite RPC outcome for a code.
+  function setPreview(row) {
+    mockOutcomes.__rpc = { preview_coach_invite: () => ({ data: [row], error: null }) }
+  }
+
   it('JoinCoachInput rejects when invite code is not found', async () => {
-    mockOutcomes.coach_invites = {
-      select: () => ({ data: null, error: { message: 'no rows' } }),
-    }
+    setPreview({ valid: false, reason: 'INVALID_CODE', coach_id: null, coach_name: null })
     renderWithLang(<JoinCoachInput userId="a-1" onJoined={vi.fn()} />)
     const input = screen.getByPlaceholderText(/SP-/)
     fireEvent.change(input, { target: { value: 'SP-BADCODE1' } })
@@ -133,46 +144,27 @@ describe('MyCoach connection components', () => {
   })
 
   it('JoinCoachInput rejects when invite is revoked', async () => {
-    mockOutcomes.coach_invites = {
-      select: () => ({
-        data: { coach_id: 'coach-1', code: 'SP-REVOKED1', revoked_at: '2026-01-01T00:00:00Z', expires_at: null },
-        error: null,
-      }),
-    }
+    setPreview({ valid: false, reason: 'REVOKED', coach_id: null, coach_name: null })
     renderWithLang(<JoinCoachInput userId="a-1" onJoined={vi.fn()} />)
     fireEvent.change(screen.getByPlaceholderText(/SP-/), { target: { value: 'sp-revoked1' } })
     await act(async () => { fireEvent.click(screen.getByText(/LOOK UP/i)) })
     await waitFor(() => {
-      expect(screen.getByText(/Invite revoked/i)).toBeInTheDocument()
+      expect(screen.getByText(/revoked/i)).toBeInTheDocument()
     })
   })
 
   it('JoinCoachInput rejects when invite has expired', async () => {
-    const past = new Date(Date.now() - 86400000).toISOString()
-    mockOutcomes.coach_invites = {
-      select: () => ({
-        data: { coach_id: 'coach-1', code: 'SP-EXPIRED1', revoked_at: null, expires_at: past },
-        error: null,
-      }),
-    }
+    setPreview({ valid: false, reason: 'EXPIRED', coach_id: null, coach_name: null })
     renderWithLang(<JoinCoachInput userId="a-1" onJoined={vi.fn()} />)
     fireEvent.change(screen.getByPlaceholderText(/SP-/), { target: { value: 'SP-EXPIRED1' } })
     await act(async () => { fireEvent.click(screen.getByText(/LOOK UP/i)) })
     await waitFor(() => {
-      expect(screen.getByText(/Invite expired/i)).toBeInTheDocument()
+      expect(screen.getByText(/expired/i)).toBeInTheDocument()
     })
   })
 
   it('JoinCoachInput shows confirm stage with coach name on valid lookup', async () => {
-    mockOutcomes.coach_invites = {
-      select: () => ({
-        data: { coach_id: 'coach-1', code: 'SP-VALID0001', revoked_at: null, expires_at: null },
-        error: null,
-      }),
-    }
-    mockOutcomes.profiles = {
-      select: () => ({ data: { display_name: 'Coach Anna' }, error: null }),
-    }
+    setPreview({ valid: true, reason: 'OK', coach_id: 'coach-1', coach_name: 'Coach Anna' })
     renderWithLang(<JoinCoachInput userId="a-1" onJoined={vi.fn()} />)
     fireEvent.change(screen.getByPlaceholderText(/SP-/), { target: { value: 'SP-VALID0001' } })
     await act(async () => { fireEvent.click(screen.getByText(/LOOK UP/i)) })
@@ -184,25 +176,13 @@ describe('MyCoach connection components', () => {
     expect(screen.getByText(/CANCEL/i)).toBeInTheDocument()
   })
 
-  it('JoinCoachInput accepts → upserts coach_athletes → reaches done stage', async () => {
-    mockOutcomes.coach_invites = {
-      select: () => ({
-        data: { coach_id: 'coach-1', code: 'SP-VALID0002', revoked_at: null, expires_at: null },
-        error: null,
-      }),
-      update: () => ({ data: null, error: null }),
-    }
-    mockOutcomes.profiles = {
-      select: () => ({ data: { display_name: 'Coach Anna' }, error: null }),
-    }
-    let upsertCalled = false
-    mockOutcomes.coach_athletes = {
-      upsert: ({ payload }) => {
-        upsertCalled = true
-        expect(payload.coach_id).toBe('coach-1')
-        expect(payload.athlete_id).toBe('athlete-7')
-        expect(payload.status).toBe('active')
-        return { data: null, error: null }
+  it('JoinCoachInput accepts → redeem-invite edge fn → reaches done stage', async () => {
+    setPreview({ valid: true, reason: 'OK', coach_id: 'coach-1', coach_name: 'Coach Anna' })
+    let redeemArgs = null
+    mockOutcomes.__fn = {
+      'redeem-invite': (opts) => {
+        redeemArgs = opts
+        return { data: { coach_id: 'coach-1', coach_name: 'Coach Anna' }, error: null }
       },
     }
     const onJoined = vi.fn()
@@ -214,13 +194,13 @@ describe('MyCoach connection components', () => {
     await waitFor(() => {
       expect(screen.getByText(/Connected to Coach Anna/i)).toBeInTheDocument()
     })
-    expect(upsertCalled).toBe(true)
+    // redemption went through the edge fn with the entered code (no direct table write)
+    expect(redeemArgs?.body?.code).toBe('SP-VALID0002')
   })
 
   // ── Touch target compliance (Apple HIG 44pt) ───────────────────────────────
 
   it('JoinCoachInput input + LOOK UP button meet 44pt minimum touch target', () => {
-    mockOutcomes.coach_invites = { select: () => ({ data: null, error: null }) }
     renderWithLang(<JoinCoachInput userId="a-1" onJoined={vi.fn()} />)
     const input = screen.getByPlaceholderText(/SP-/)
     const btn = screen.getByText(/LOOK UP/i)

@@ -1,7 +1,21 @@
 // ─── MyCoach.jsx — Athlete-side coach connection (invite accept + status) ─────
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
+import { redeemInvite } from '../lib/inviteUtils.js'
 import { useFocusTrap } from '../hooks/useFocusTrap.js'
+
+// Map a preview_coach_invite RPC reason code to a user-facing message.
+function inviteReasonMsg(reason, isTR) {
+  switch (reason) {
+    case 'INVALID_CODE': return isTR ? 'Davet kodu bulunamadı.' : 'Invite code not found.'
+    case 'REVOKED':      return isTR ? 'Bu davet iptal edilmiş.' : 'This invite has been revoked.'
+    case 'EXPIRED':      return isTR ? 'Bu davetin süresi dolmuş.' : 'This invite has expired.'
+    case 'MAX_USES_REACHED': return isTR ? 'Bu davet kullanım sınırına ulaşmış.' : 'This invite has reached its usage limit.'
+    case 'SELF_INVITE':  return isTR ? 'Kendi davetini kullanamazsın.' : 'You cannot redeem your own invite.'
+    case 'MISSING_CODE': return isTR ? 'Davet kodu girilmedi.' : 'No invite code provided.'
+    default:             return isTR ? 'Davet doğrulanamadı.' : 'Invite could not be validated.'
+  }
+}
 
 const MONO  = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -21,45 +35,35 @@ export function InviteModal({ inviteCode, userId, onDone }) {
 
   useEffect(() => {
     if (!supabase || !inviteCode) { setStatus('error'); setMsg('Invalid invite.'); return }
+    let cancelled = false
+    // Preview via SECURITY DEFINER RPC (keyed by the code we already hold) — the
+    // coach_invites table is no longer athlete-readable (enumeration leak fix).
     supabase
-      .from('coach_invites')
-      .select('*')
-      .eq('code', inviteCode)
-      .single()
-      .then(async ({ data, error }) => {
-        if (error || !data) { setStatus('error'); setMsg('Invite not found or expired.'); return }
-        setInvite(data)
-        const { data: coachProfile } = await supabase
-          .from('profiles')
-          .select('display_name, email')
-          .eq('id', data.coach_id)
-          .single()
-        setCoach(coachProfile)
+      .rpc('preview_coach_invite', { p_code: inviteCode })
+      .then(({ data, error }) => {
+        if (cancelled) return
+        const row = Array.isArray(data) ? data[0] : data
+        if (error || !row) { setStatus('error'); setMsg('Invite not found or expired.'); return }
+        if (!row.valid) { setStatus('error'); setMsg(inviteReasonMsg(row.reason, false)); return }
+        setInvite({ coach_id: row.coach_id, code: inviteCode })
+        setCoach({ display_name: row.coach_name })
         setStatus('ready')
       })
+    return () => { cancelled = true }
   }, [inviteCode])
 
   const accept = useCallback(async () => {
     if (!invite || !userId || busy) return
     setBusy(true)
-    try {
-      // Create coach-athlete link
-      const { error: linkErr } = await supabase.from('coach_athletes').upsert({
-        coach_id:   invite.coach_id,
-        athlete_id: userId,
-        status:     'active',
-      }, { onConflict: 'coach_id,athlete_id' })
-      if (linkErr) throw linkErr
-
-      // Mark invite as used
-      await supabase.from('coach_invites')
-        .update({ used_by: userId })
-        .eq('code', invite.code)
-
+    // Redeem server-side (redeem-invite edge fn): derives athlete_id from the JWT,
+    // enforces roster limits / max-uses / already-linked, links + increments uses.
+    const res = await redeemInvite(supabase, invite.code)
+    if (res.success) {
+      if (res.coach_name) setCoach({ display_name: res.coach_name })
       setStatus('done')
       setTimeout(onDone, 2000)
-    } catch (e) {
-      setMsg(e.message)
+    } else {
+      setMsg(res.error || inviteReasonMsg(res.code, false))
       setBusy(false)
     }
   }, [invite, userId, busy, onDone])
@@ -251,24 +255,14 @@ export function JoinCoachInput({ userId, onJoined }) {
     setBusy(true); setMsg('')
     const trimmed = code.trim().toUpperCase()
     try {
-      const { data: invite, error } = await supabase
-        .from('coach_invites')
-        .select('coach_id, code, revoked_at, expires_at')
-        .eq('code', trimmed)
-        .single()
-      if (error || !invite) {
-        setMsg('Invite code not found.'); setBusy(false); return
-      }
-      if (invite.revoked_at) { setMsg('Invite revoked.'); setBusy(false); return }
-      if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
-        setMsg('Invite expired.'); setBusy(false); return
-      }
-      const { data: cp } = await supabase
-        .from('profiles')
-        .select('display_name, email')
-        .eq('id', invite.coach_id)
-        .single()
-      setCoachName(cp?.display_name || cp?.email || 'A coach')
+      // Preview via SECURITY DEFINER RPC — coach_invites is no longer
+      // athlete-readable (enumeration leak fix). Returns coach name for a code
+      // the caller already holds; no enumeration.
+      const { data, error } = await supabase.rpc('preview_coach_invite', { p_code: trimmed })
+      const row = Array.isArray(data) ? data[0] : data
+      if (error || !row) { setMsg('Invite code not found.'); setBusy(false); return }
+      if (!row.valid) { setMsg(inviteReasonMsg(row.reason, false)); setBusy(false); return }
+      setCoachName(row.coach_name || 'A coach')
       setStage('confirm')
       setBusy(false)
     } catch (e) {
@@ -280,26 +274,15 @@ export function JoinCoachInput({ userId, onJoined }) {
     if (!supabase || !userId || busy) return
     setBusy(true); setMsg('')
     const trimmed = code.trim().toUpperCase()
-    try {
-      const { data: invite } = await supabase
-        .from('coach_invites')
-        .select('coach_id, code')
-        .eq('code', trimmed)
-        .single()
-      if (!invite) { setMsg('Invite vanished.'); setBusy(false); return }
-      const { error: linkErr } = await supabase.from('coach_athletes').upsert({
-        coach_id:   invite.coach_id,
-        athlete_id: userId,
-        status:     'active',
-      }, { onConflict: 'coach_id,athlete_id' })
-      if (linkErr) throw linkErr
-      await supabase.from('coach_invites')
-        .update({ used_by: userId })
-        .eq('code', invite.code)
+    // Redeem server-side (redeem-invite edge fn): athlete_id from JWT, enforces
+    // roster limits / max-uses / already-linked, links + increments uses.
+    const res = await redeemInvite(supabase, trimmed)
+    if (res.success) {
+      if (res.coach_name) setCoachName(res.coach_name)
       setStage('done')
       setTimeout(() => onJoined && onJoined(), 1500)
-    } catch (e) {
-      setMsg(e?.message || 'Connect failed'); setBusy(false)
+    } else {
+      setMsg(res.error || inviteReasonMsg(res.code, false)); setBusy(false)
     }
   }
 
