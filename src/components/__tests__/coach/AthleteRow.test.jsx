@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // ─── AthleteRow.test.jsx — top-alert prescriptive caption ─────────────────────
 import { describe, it, expect, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, cleanup } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { LangCtx } from '../../../contexts/LangCtx.jsx'
 import { topAlert, AlertCaption, buildInsightInput } from '../../coach/AthleteRow.jsx'

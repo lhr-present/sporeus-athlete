@@ -2,6 +2,25 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.435.0 — 2026-06-18 — Unblock deploy pipeline (lint gate) + Strava redirect secret
+
+🔴 CRITICAL ops fix: the **deploy workflow had been failing since 2026-06-16** (last 8+ runs
+red), so the live site was STALE — everything merged since ~v9.421 (deep-dive fixes, GDPR,
+date/TZ, a11y, perf, realtime, Strava client fixes + self-test) was on `main` but NOT on
+app.sporeus.com. (Prod migrations + edge fns pushed via Management API/CLI were live; the
+client bundle was not.) Root cause: `npm run lint` runs `--max-warnings 0` ONLY in the
+post-merge deploy job (not PR checks), and 4 warnings had accumulated unnoticed:
+- useSupabaseQuery.js: the v9.431 `withNetworkRetry` reformat left the `eslint-disable-line`
+  on the wrong line, re-exposing the `useCallback(deps)` warnings → moved the disable onto
+  the `deps,` line.
+- AthleteRow.test.jsx: removed unused `screen` import.
+- UploadActivity.test.jsx: unused `onDone` → `_onDone`.
+Lint now clean (0 warnings); deploys can succeed again, shipping v9.421→435 to prod.
+
+Also: set the GitHub `VITE_STRAVA_REDIRECT_URI` secret (= https://app.sporeus.com/) so the
+build bakes an explicit Strava redirect (was falling back to the dynamic origin). Process
+lesson: run `npm run lint` (not just test+build) before relying on a deploy.
+
 ## v9.434.0 — 2026-06-17 — Strava connection self-test
 
 Added a self-diagnostic to the Profile → Strava panel so the user (and support) can see
