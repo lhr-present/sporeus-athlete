@@ -2,7 +2,8 @@
 // Cron: every 2 minutes (*/2 * * * *)
 // Reads strava_backfill messages (one per activity page fetch), fetches from Strava API,
 // upserts to training_log, enqueues next page if full (100 activities).
-// Checks rolling rate counter: max 600 requests per 15-minute window.
+// Checks rolling rate counter: max 90 requests per 15-minute window (Strava's
+// documented default app limit is 100 req/15min — stay under it with headroom).
 
 import { serve }        from "https://deno.land/std@0.177.0/http/server.ts"
 import { withTelemetry, telemetryHeartbeat } from '../_shared/telemetry.ts'
@@ -10,7 +11,7 @@ import { isVerifiedServiceCall } from '../_shared/serviceAuth.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const RATE_WINDOW_MS = 15 * 60 * 1000   // 15 minutes
-const MAX_REQUESTS   = 600
+const MAX_REQUESTS   = 90               // < Strava's 100/15min app limit (was 600 → 429 risk)
 const MAX_READ       = 10  // poison ceiling: dead-letter a message after N reads (VT=120s → ~20min)
 
 function mapStravaType(sportType: string): string {

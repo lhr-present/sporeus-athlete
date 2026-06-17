@@ -4,6 +4,7 @@
 
 import { useState } from 'react'
 import { supabase, isSupabaseReady } from '../../lib/supabase.js'
+import { initiateStravaOAuth } from '../../lib/strava.js'
 
 export default function StravaConnectInContext({ sessionCount, lang = 'en', userId }) {
   const [dismissed, setDismissed] = useState(false)
@@ -18,22 +19,22 @@ export default function StravaConnectInContext({ sessionCount, lang = 'en', user
     if (!isSupabaseReady()) return
     setConnecting(true)
     try {
-      // Mark Strava prompt shown in onboarding_state
+      // Mark the Strava prompt shown in onboarding_state (best-effort).
       if (userId) {
         await supabase
           .from('onboarding_state')
           .upsert({ user_id: userId, strava_prompted: true }, { onConflict: 'user_id' })
+          .then(null, () => {})
       }
-      // Redirect to Strava OAuth via edge function.
-      // v9.61.0 — Removed getSession() pre-check; functions.invoke auto-handles
-      // auth and the userId prop above already gates the code path.
-      const res = await supabase.functions.invoke('strava-oauth', {
-        body: { action: 'connect' },
-      })
-      if (res.data?.url) {
-        window.location.href = res.data.url
-      }
-    } finally {
+      // Browser-redirect to Strava's OAuth authorize page — the SAME path the
+      // working Profile connect button uses. (Fix: the old code invoked
+      // strava-oauth with no `code` and expected a `res.data.url` the edge fn
+      // never returns — so this button did nothing. The edge fn's `connect`
+      // action exchanges the code AFTER Strava redirects back.)
+      const r = initiateStravaOAuth()
+      if (!r.ok) { setConnecting(false) /* leaves the prompt visible with no redirect */ }
+      // On success the browser navigates away to Strava; no further work here.
+    } catch {
       setConnecting(false)
     }
   }
