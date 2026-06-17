@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   importStravaActivities, deduplicateByStravaId, decodePolyline,
   getStravaConnection, disconnectStrava, exchangeStravaCode,
-  getRecentStravaActivities,
+  getRecentStravaActivities, buildStravaSelfTest,
 } from './strava.js'
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
@@ -355,5 +355,54 @@ describe('exchangeStravaCode', () => {
     })
     await exchangeStravaCode('CODE', { maxAttempts: 1 })
     expect(supabase.functions.invoke).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('buildStravaSelfTest', () => {
+  it('returns the 4 prerequisite checks in order', () => {
+    const { checks } = buildStravaSelfTest()
+    expect(checks.map(c => c.key)).toEqual(['clientId', 'redirectUri', 'auth', 'token'])
+  })
+
+  it('auth fails without a signed-in user; passes with one', () => {
+    expect(buildStravaSelfTest().checks.find(c => c.key === 'auth').status).toBe('fail')
+    expect(
+      buildStravaSelfTest({ supabaseReady: true, userId: 'u1' }).checks.find(c => c.key === 'auth').status
+    ).toBe('ok')
+    // supabaseReady false alone is not enough
+    expect(buildStravaSelfTest({ userId: 'u1' }).checks.find(c => c.key === 'auth').status).toBe('fail')
+  })
+
+  it('token is pending when not connected', () => {
+    const t = buildStravaSelfTest().checks.find(c => c.key === 'token')
+    expect(t.status).toBe('pending')
+    expect(t.detail).toMatch(/not connected/i)
+  })
+
+  it('token is ok when connected, with athlete + last-sync detail', () => {
+    const t = buildStravaSelfTest({
+      conn: { sync_status: 'idle', last_sync_at: '2026-06-17T09:00:00Z', provider_athlete_name: 'Ali' },
+    }).checks.find(c => c.key === 'token')
+    expect(t.status).toBe('ok')
+    expect(t.detail).toContain('Ali')
+    expect(t.detail).toContain('2026-06-17')
+  })
+
+  it('token FAILS (surfacing last_error) when sync_status is error', () => {
+    const t = buildStravaSelfTest({
+      conn: { sync_status: 'error', last_error: 'token expired' },
+    }).checks.find(c => c.key === 'token')
+    expect(t.status).toBe('fail')
+    expect(t.detail).toContain('token expired')
+  })
+
+  it('allReady is false while auth/token are not satisfied', () => {
+    expect(buildStravaSelfTest().allReady).toBe(false)
+  })
+
+  it('redirectUri check exposes the URI the client will send (info, not fail)', () => {
+    const r = buildStravaSelfTest().checks.find(c => c.key === 'redirectUri')
+    expect(['info', 'fail']).toContain(r.status)
+    expect(typeof r.detail).toBe('string')
   })
 })

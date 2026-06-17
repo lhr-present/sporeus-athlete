@@ -2,6 +2,22 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.434.0 — 2026-06-17 — Strava connection self-test
+
+Added a self-diagnostic to the Profile → Strava panel so the user (and support) can see
+exactly which prerequisite is missing instead of a generic "not configured":
+- NEW pure `buildStravaSelfTest({ supabaseReady, userId, conn })` in strava.js — no network;
+  returns 4 status'd checks: **Client ID** (VITE_STRAVA_CLIENT_ID set?), **Redirect URI** (shows
+  the exact URI the client will send — must match the Strava app callback domain), **Signed in**
+  (needed for the secure exchange), **Strava connected** (token row; surfaces last sync + last_error
+  on a failed sync). `allReady` true only when all pass.
+- StravaConnect.jsx renders it as a collapsible "CONNECTION SELF-TEST — ready / needs setup"
+  `<details>` (bilingual; ✓/✗/ℹ/○ per check + a remediation hint for anything not OK), shown in
+  both connected and disconnected states.
+- +7 tests covering each check's status logic.
+Pairs with the v9.433 audit (docs/audits/strava_audit_2026_06_17.md): once the operator sets the
+two Strava secrets/registration, the self-test flips to "ready".
+
 ## v9.433.0 — 2026-06-17 — Strava connection audit + fixes
 
 Full Strava audit (client OAuth flow + server edge/token/sync/backfill). Verdict: the core
