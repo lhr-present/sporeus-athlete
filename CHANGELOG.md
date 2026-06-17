@@ -2,6 +2,30 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.433.0 — 2026-06-17 — Strava connection audit + fixes
+
+Full Strava audit (client OAuth flow + server edge/token/sync/backfill). Verdict: the core
+path is sound and fully provisioned in prod (strava-oauth + strava-backfill-worker deployed;
+strava_tokens RLS owner-policy; training_log UNIQUE(user_id,external_id) dedup; token refresh;
+rate guard; pgmq backfill queue + service-role-only RPCs; edge secrets set; callback wired via
+useAppState → exchangeStravaCode → edge connect → sync). The blockers were config/wiring:
+- deploy.yml now injects VITE_STRAVA_REDIRECT_URI at build (was omitted → prod fell back to the
+  dynamic origin; deployed host is app.sporeus.com via CNAME so it matched, but this makes the
+  redirect_uri deterministic + must equal the Strava app's Authorization Callback Domain).
+- StravaConnectInContext: the in-context connect button invoked strava-oauth with NO code and
+  expected a res.data.url the edge fn never returns (dead). Now routes through
+  initiateStravaOAuth() like the working Profile button. (Component is currently unmounted, but
+  the trap is removed.)
+- strava-backfill-worker: MAX_REQUESTS 600 → 90 (Strava's documented app limit is 100/15min;
+  600 risked 429s at scale). Deployed to prod.
+
+OPERATOR to fully enable (the connection works once these are set — they're external/secret):
+set GitHub secret VITE_STRAVA_REDIRECT_URI=https://app.sporeus.com/ (+ verify VITE_STRAVA_CLIENT_ID);
+register `app.sporeus.com` as the Strava app's Authorization Callback Domain with scope
+activity:read_all. Edge secrets STRAVA_CLIENT_ID/SECRET already set. Full audit in
+docs/audits/strava_audit_2026_06_17.md.
+DEPENDS ON: VITE_STRAVA_* build env; strava-oauth/backfill edge fns.
+
 ## v9.432.0 — 2026-06-17 — Realtime / multi-tab / multi-device correctness (deep-dive round 6)
 
 Concurrency-correctness fixes for the offline-first multi-device PWA.
