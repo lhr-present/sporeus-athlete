@@ -5,7 +5,7 @@ import { S } from '../../styles.js'
 import { isSupabaseReady } from '../../lib/supabase.js'
 import {
   getStravaConnection, initiateStravaOAuth, triggerStravaSync,
-  disconnectStrava, getRecentStravaActivities,
+  disconnectStrava, getRecentStravaActivities, buildStravaSelfTest,
   // v9.90.0 — importStravaActivities + deduplicateByStravaId imports removed
   // alongside the localStorage-token-fallback disable in handleSync. The
   // functions still live in src/lib/strava.js for future revival.
@@ -246,6 +246,51 @@ export default function StravaConnect({ userId }) {
           {msg}
         </div>
       )}
+
+      {/* Connection self-test — surfaces exactly which prerequisite is missing. */}
+      {(() => {
+        const isTR = lang === 'tr'
+        const ST_LABEL = {
+          clientId:    isTR ? 'Strava Client ID'   : 'Strava Client ID',
+          redirectUri: isTR ? 'Yönlendirme URI'     : 'Redirect URI',
+          auth:        isTR ? 'Giriş yapıldı'        : 'Signed in',
+          token:       isTR ? 'Strava bağlı'         : 'Strava connected',
+        }
+        const ST_HINT = {
+          clientId:    isTR ? 'VITE_STRAVA_CLIENT_ID derleme gizli anahtarını ayarla.' : 'Set the VITE_STRAVA_CLIENT_ID build secret.',
+          redirectUri: isTR ? 'Strava uygulamanın "Authorization Callback Domain" değeriyle eşleşmeli.' : "Must match your Strava app's Authorization Callback Domain.",
+          auth:        isTR ? 'Güvenli token değişimi için giriş yap.' : 'Sign in — required for the secure token exchange.',
+          token:       isTR ? "Yukarıdan Strava'ya bağlan." : 'Connect Strava above.',
+        }
+        const ICON = { ok: ['✓', '#5bc25b'], fail: ['✗', '#e03030'], info: ['ℹ', '#0064ff'], pending: ['○', '#888'] }
+        const { checks, allReady } = buildStravaSelfTest({ supabaseReady: isSupabaseReady(), userId, conn })
+        return (
+          <details style={{ marginTop: '14px' }}>
+            <summary style={{ ...S.mono, fontSize: '10px', color: '#888', cursor: 'pointer', letterSpacing: '0.05em' }}>
+              {allReady
+                ? (isTR ? '▸ BAĞLANTI KENDİ-TESTİ — hazır' : '▸ CONNECTION SELF-TEST — ready')
+                : (isTR ? '▸ BAĞLANTI KENDİ-TESTİ — eksik var' : '▸ CONNECTION SELF-TEST — needs setup')}
+            </summary>
+            <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {checks.map(c => {
+                const [glyph, color] = ICON[c.status] || ICON.pending
+                return (
+                  <div key={c.key} style={{ ...S.mono, fontSize: '10px', lineHeight: 1.5 }}>
+                    <span style={{ color, fontWeight: 700, marginRight: '6px' }}>{glyph}</span>
+                    <span style={{ color: '#ccc' }}>{ST_LABEL[c.key]}:</span>{' '}
+                    <span style={{ color: '#888', wordBreak: 'break-all' }}>{c.detail}</span>
+                    {c.status !== 'ok' && (
+                      <div style={{ color: c.status === 'fail' ? '#e03030' : '#888', marginLeft: '18px', marginTop: '2px' }}>
+                        {ST_HINT[c.key]}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </details>
+        )
+      })()}
     </div>
   )
 }

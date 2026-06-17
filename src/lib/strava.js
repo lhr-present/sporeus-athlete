@@ -167,6 +167,50 @@ export function initiateStravaOAuth() {
   return { ok: true }
 }
 
+// ─── Connection self-test ────────────────────────────────────────────────────
+// Pure diagnostic over the client-side prerequisites so the user (and support)
+// can see EXACTLY which Strava prerequisite is missing without guessing. No
+// network calls — reads the build-time config + the passed auth/connection state.
+// Returns { checks: [{ key, status, detail }], allReady, redirectUri }.
+//   status: 'ok' | 'fail' | 'info' | 'pending'.  The UI owns the bilingual
+//   label/hint per `key`; `detail` is the dynamic value to show.
+export function buildStravaSelfTest({ supabaseReady = false, userId = null, conn = null } = {}) {
+  const clientId    = STRAVA_CLIENT_ID
+  const redirectUri = getRedirectUri()
+  const checks = []
+
+  checks.push({
+    key: 'clientId',
+    status: clientId ? 'ok' : 'fail',
+    detail: clientId ? `set (…${String(clientId).slice(-4)})` : 'missing',
+  })
+
+  // Always shown (info): the exact redirect_uri the client will send — must match
+  // the Strava app's Authorization Callback Domain. 'fail' only if we couldn't derive one.
+  checks.push({
+    key: 'redirectUri',
+    status: redirectUri ? 'info' : 'fail',
+    detail: redirectUri || '(none)',
+  })
+
+  const signedIn = !!(supabaseReady && userId)
+  checks.push({ key: 'auth', status: signedIn ? 'ok' : 'fail', detail: signedIn ? 'yes' : 'no' })
+
+  if (conn) {
+    const errored = conn.sync_status === 'error'
+    const parts = []
+    if (conn.provider_athlete_name) parts.push(conn.provider_athlete_name)
+    parts.push(conn.last_sync_at ? `last sync ${String(conn.last_sync_at).slice(0, 10)}` : 'not yet synced')
+    if (errored && conn.last_error) parts.push(conn.last_error)
+    checks.push({ key: 'token', status: errored ? 'fail' : 'ok', detail: parts.join(' · ') })
+  } else {
+    checks.push({ key: 'token', status: 'pending', detail: 'not connected' })
+  }
+
+  const allReady = checks.every(c => c.status === 'ok' || c.status === 'info')
+  return { checks, allReady, redirectUri, clientId: !!clientId }
+}
+
 // Exchange authorization code for tokens via Supabase edge function.
 //
 // v9.173.0 — Transient-failure retry (was: manual retry only).
