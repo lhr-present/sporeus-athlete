@@ -51,8 +51,8 @@ export function useSupabaseQuery(queryFn, deps = [], options = {}) {
   // Auto-retry once on network error (real wrapper extracted as withNetworkRetry)
   const wrappedFn = useCallback(
     (signal) => withNetworkRetry(queryFn, signal),
-    deps,
-  ) // eslint-disable-line react-hooks/exhaustive-deps
+    deps, // eslint-disable-line react-hooks/exhaustive-deps -- caller owns deps (mirrors useAsync below)
+  )
 
   const { data, loading, error, execute, reset } = useAsync(wrappedFn, deps, { immediate: false, onError })
 

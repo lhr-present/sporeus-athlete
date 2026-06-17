@@ -167,7 +167,7 @@ describe('UploadActivity', () => {
     // Malformed payload (absent `new`) must be ignored, not throw.
     expect(() => act(() => { mocks.pgHandler.current({}) })).not.toThrow()
     // A well-formed 'done' payload still drives success afterward.
-    const onDone = vi.fn()
+    const _onDone = vi.fn()
     expect(() => act(() => {
       mocks.pgHandler.current({ new: { status: 'done', parsed_session_id: 'log-9' } })
     })).not.toThrow()
