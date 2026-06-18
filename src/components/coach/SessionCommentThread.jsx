@@ -29,9 +29,9 @@ export default function SessionCommentThread({
   authorNames = {},
   maxHeight = '320px',
 }) {
-  const { t } = useContext(LangCtx)
+  const { t, lang } = useContext(LangCtx)
   const {
-    comments, status, typingUsers,
+    comments, status, typingUsers, views,
     postComment, editComment, deleteComment,
   } = useSessionComments(sessionId, currentUserId)
 
@@ -90,6 +90,19 @@ export default function SessionCommentThread({
   const topLevel = comments.filter(c => !c.parent_id)
   const replies  = id => comments.filter(c => c.parent_id === id)
 
+  // "Viewed by" summary — additive, one-shot views from the hook. Shows up to
+  // two resolvable names then "+N". Renders nothing when there are no views.
+  const viewerList = Array.isArray(views) ? views : []
+  const viewerCount = viewerList.length
+  const namedViewers = viewerList
+    .map(v => authorNames[v?.user_id])
+    .filter(Boolean)
+  const shownNames = namedViewers.slice(0, 2)
+  const extraCount = viewerCount - shownNames.length
+  const viewerSummary = shownNames.length
+    ? [...shownNames, ...(extraCount > 0 ? [`+${extraCount}`] : [])].join(', ')
+    : ''
+
   return (
     <div style={{ fontFamily: FONT.mono }}>
       {/* Header */}
@@ -104,6 +117,18 @@ export default function SessionCommentThread({
           </span>
         )}
       </div>
+
+      {/* Viewed-by summary — only when there are recorded views */}
+      {viewerCount > 0 && (
+        <div
+          data-testid="session-viewed-by"
+          style={{ fontSize: FONT.size.xs, color: COLOR.dim, marginBottom: '10px' }}
+        >
+          {lang === 'tr'
+            ? `${viewerCount} kişi görüntüledi${viewerSummary ? ` · ${viewerSummary}` : ''}`
+            : `Viewed by ${viewerCount}${viewerSummary ? ` · ${viewerSummary}` : ''}`}
+        </div>
+      )}
 
       {/* Comment list */}
       <div style={{ maxHeight, overflowY: 'auto', marginBottom: '12px' }}>

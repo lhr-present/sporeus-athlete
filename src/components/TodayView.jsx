@@ -2207,6 +2207,19 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
                 ].filter(Boolean).join(' · ')}
               </div>
             )}
+            {/* U4b — Plain-language TSB reading. Reuses interpretTSB (Coggan)
+                so the dim PMC strip's "today" number gets one readable, actionable
+                sentence in the athlete's language. Renders nothing without TSB. */}
+            {!digest.empty && digest.ctl > 0 && digest.tsb !== undefined && digest.tsb !== null && (() => {
+              const insight = interpretTSB(digest.tsb, !!(raceCountdown && raceCountdown.days >= 0 && raceCountdown.days <= 7))
+              const sentence = (lang === 'tr' ? insight.tr : insight.en).split('. ')[0]
+              if (!sentence) return null
+              return (
+                <div style={{ fontFamily: MONO, fontSize: '10px', color: '#888', marginTop: '4px', letterSpacing: '0.02em' }}>
+                  {sentence}.
+                </div>
+              )
+            })()}
             {/* L5 — Goal-context line */}
             {profile?.goal && todayCtl > 0 && (
               <div style={{ fontFamily: MONO, fontSize: '10px', color: '#0064ff', marginTop: '6px', letterSpacing: '0.04em' }}>

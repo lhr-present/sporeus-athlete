@@ -49,6 +49,7 @@ const mocks = vi.hoisted(() => {
     editComment:   vi.fn(),
     deleteComment: vi.fn(),
     recordView:    vi.fn(() => Promise.resolve({ error: null })),
+    getViews:      vi.fn(() => Promise.resolve({ data: [], error: null })),
     get subscribeCb() { return subscribeCb },
     get broadcastCbs() { return broadcastCbs },
     get pgChangesCb() { return pgChangesCb },
@@ -87,6 +88,7 @@ vi.mock('../../lib/realtime/commentActions.js', () => ({
   editComment:       mocks.editComment,
   deleteComment:     mocks.deleteComment,
   recordSessionView: mocks.recordView,
+  getSessionViews:   mocks.getViews,
   newCommentId:      () => 'test-uuid-0000-4000-8000-000000000000',
 }))
 
@@ -110,6 +112,7 @@ beforeEach(() => {
     return mocks.channelStub
   })
   mocks.recordView.mockResolvedValue({ error: null })
+  mocks.getViews.mockResolvedValue({ data: [], error: null })
   // Default: no existing comments
   mocks.chainMock.order.mockResolvedValue({ data: [], error: null })
 })
@@ -312,5 +315,28 @@ describe('useSessionComments — deleteComment', () => {
 
     await act(async () => { await result.current.deleteComment('c1') })
     expect(result.current.comments.find(c => c.id === 'c1')?.deleted_at).toBeTruthy()
+  })
+})
+
+describe('useSessionComments — session views', () => {
+  it('exposes views fetched one-shot on open', async () => {
+    mocks.getViews.mockResolvedValue({
+      data: [
+        { user_id: 'u1', viewed_at: '2026-06-17T12:00:00.000Z' },
+        { user_id: 'u2', viewed_at: '2026-06-17T11:00:00.000Z' },
+      ],
+      error: null,
+    })
+    const { result } = renderHook(() => useSessionComments('sess-1', 'user-1'))
+    await act(async () => {})
+    expect(mocks.getViews).toHaveBeenCalledWith(expect.anything(), 'sess-1')
+    expect(result.current.views).toHaveLength(2)
+  })
+
+  it('leaves views empty when the fetch errors', async () => {
+    mocks.getViews.mockResolvedValue({ data: [], error: new Error('offline') })
+    const { result } = renderHook(() => useSessionComments('sess-1', 'user-1'))
+    await act(async () => {})
+    expect(result.current.views).toEqual([])
   })
 })
