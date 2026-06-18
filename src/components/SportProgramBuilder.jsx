@@ -202,8 +202,8 @@ function Step1({ form, setForm, onNext }) {
         </div>
       </div>
       <div style={{ marginBottom: '20px' }}>
-        <label style={S.label}>{t('spb_raceDate')}</label>
-        <input type="date" style={{ ...S.input, width: '200px' }} value={form.raceDate || ''}
+        <label htmlFor="spb-race-date" style={S.label}>{t('spb_raceDate')}</label>
+        <input id="spb-race-date" type="date" style={{ ...S.input, width: '200px' }} value={form.raceDate || ''}
           onChange={e => setForm(f => ({ ...f, raceDate: e.target.value }))} />
         {form.raceDate && daysUntil(form.raceDate) != null && (
           <div style={{ ...DIM, marginTop: '6px', color: ORANGE }}>
@@ -226,8 +226,8 @@ function Step2({ form, setForm, onNext, onBack }) {
       {sport === 'rowing' && (
         <div style={S.row}>
           <div style={{ flex: '1 1 160px' }}>
-            <label style={S.label}>2000m Time (mm:ss)</label>
-            <input style={S.input} type="text" inputMode="numeric" placeholder="6:30" value={form.baseline?.time2k || ''}
+            <label htmlFor="spb-2000m-time" style={S.label}>2000m Time (mm:ss)</label>
+            <input id="spb-2000m-time" style={S.input} type="text" inputMode="numeric" placeholder="6:30" value={form.baseline?.time2k || ''}
               onChange={e => setForm(f => ({ ...f, baseline: { ...f.baseline, time2k: autoFormatMmSs(e.target.value) } }))}
               onBlur={e => setForm(f => ({ ...f, baseline: { ...f.baseline, time2k: autoFormatMmSs(e.target.value, { padOnBlur: true }) } }))} />
             {form.baseline?._time2kFromLog && (
@@ -235,8 +235,8 @@ function Step2({ form, setForm, onNext, onBack }) {
             )}
           </div>
           <div style={{ flex: '1 1 120px' }}>
-            <label style={S.label}>Body Weight (kg)</label>
-            <input style={S.input} type="number" placeholder="75" value={form.baseline?.weight || ''}
+            <label htmlFor="spb-rowing-weight" style={S.label}>Body Weight (kg)</label>
+            <input id="spb-rowing-weight" style={S.input} type="number" placeholder="75" value={form.baseline?.weight || ''}
               onChange={e => setForm(f => ({ ...f, baseline: { ...f.baseline, weight: e.target.value } }))} />
           </div>
         </div>
@@ -244,8 +244,8 @@ function Step2({ form, setForm, onNext, onBack }) {
       {sport === 'running' && (
         <div style={S.row}>
           <div style={{ flex: '1 1 160px' }}>
-            <label style={S.label}>Recent Race Distance</label>
-            <select style={S.select} value={form.baseline?.raceDist || '5000'}
+            <label htmlFor="spb-race-dist" style={S.label}>Recent Race Distance</label>
+            <select id="spb-race-dist" style={S.select} value={form.baseline?.raceDist || '5000'}
               onChange={e => setForm(f => ({ ...f, baseline: { ...f.baseline, raceDist: e.target.value } }))}>
               <option value="1500">1500m</option>
               <option value="5000">5K</option>
@@ -255,8 +255,8 @@ function Step2({ form, setForm, onNext, onBack }) {
             </select>
           </div>
           <div style={{ flex: '1 1 160px' }}>
-            <label style={S.label}>Race Time (mm:ss)</label>
-            <input style={S.input} type="text" inputMode="numeric" placeholder="20:00" value={form.baseline?.raceTime || ''}
+            <label htmlFor="spb-race-time" style={S.label}>Race Time (mm:ss)</label>
+            <input id="spb-race-time" style={S.input} type="text" inputMode="numeric" placeholder="20:00" value={form.baseline?.raceTime || ''}
               onChange={e => setForm(f => ({ ...f, baseline: { ...f.baseline, raceTime: autoFormatMmSs(e.target.value) } }))}
               onBlur={e => setForm(f => ({ ...f, baseline: { ...f.baseline, raceTime: autoFormatMmSs(e.target.value, { padOnBlur: true }) } }))} />
             {form.baseline?._raceFromLog && (
@@ -268,13 +268,13 @@ function Step2({ form, setForm, onNext, onBack }) {
       {sport === 'cycling' && (
         <div style={S.row}>
           <div style={{ flex: '1 1 160px' }}>
-            <label style={S.label} title="Functional Threshold Power — max 1-hour sustainable watts">FTP (watts)</label>
-            <input style={S.input} type="number" placeholder="250" value={form.baseline?.ftp || ''}
+            <label htmlFor="spb-cycling-ftp" style={S.label} title="Functional Threshold Power — max 1-hour sustainable watts">FTP (watts)</label>
+            <input id="spb-cycling-ftp" style={S.input} type="number" placeholder="250" value={form.baseline?.ftp || ''}
               onChange={e => setForm(f => ({ ...f, baseline: { ...f.baseline, ftp: e.target.value } }))} />
           </div>
           <div style={{ flex: '1 1 120px' }}>
-            <label style={S.label}>Body Weight (kg)</label>
-            <input style={S.input} type="number" placeholder="70" value={form.baseline?.weight || ''}
+            <label htmlFor="spb-cycling-weight" style={S.label}>Body Weight (kg)</label>
+            <input id="spb-cycling-weight" style={S.input} type="number" placeholder="70" value={form.baseline?.weight || ''}
               onChange={e => setForm(f => ({ ...f, baseline: { ...f.baseline, weight: e.target.value } }))} />
           </div>
         </div>
@@ -282,14 +282,14 @@ function Step2({ form, setForm, onNext, onBack }) {
       {sport === 'swimming' && (
         <div style={S.row}>
           <div style={{ flex: '1 1 160px' }}>
-            <label style={S.label}>400m TT Time (mm:ss)</label>
-            <input style={S.input} type="text" inputMode="numeric" placeholder="5:30" value={form.baseline?.tt400 || ''}
+            <label htmlFor="spb-tt400" style={S.label}>400m TT Time (mm:ss)</label>
+            <input id="spb-tt400" style={S.input} type="text" inputMode="numeric" placeholder="5:30" value={form.baseline?.tt400 || ''}
               onChange={e => setForm(f => ({ ...f, baseline: { ...f.baseline, tt400: autoFormatMmSs(e.target.value) } }))}
               onBlur={e => setForm(f => ({ ...f, baseline: { ...f.baseline, tt400: autoFormatMmSs(e.target.value, { padOnBlur: true }) } }))} />
           </div>
           <div style={{ flex: '1 1 160px' }}>
-            <label style={S.label}>200m TT Time (mm:ss)</label>
-            <input style={S.input} type="text" inputMode="numeric" placeholder="2:30" value={form.baseline?.tt200 || ''}
+            <label htmlFor="spb-tt200" style={S.label}>200m TT Time (mm:ss)</label>
+            <input id="spb-tt200" style={S.input} type="text" inputMode="numeric" placeholder="2:30" value={form.baseline?.tt200 || ''}
               onChange={e => setForm(f => ({ ...f, baseline: { ...f.baseline, tt200: autoFormatMmSs(e.target.value) } }))}
               onBlur={e => setForm(f => ({ ...f, baseline: { ...f.baseline, tt200: autoFormatMmSs(e.target.value, { padOnBlur: true }) } }))} />
           </div>
@@ -298,18 +298,18 @@ function Step2({ form, setForm, onNext, onBack }) {
       {sport === 'triathlon' && (
         <div style={S.row}>
           <div style={{ flex: '1 1 140px' }}>
-            <label style={S.label} title="Functional Threshold Power — max 1-hour sustainable watts">FTP (watts)</label>
-            <input style={S.input} type="number" placeholder="230" value={form.baseline?.ftp || ''}
+            <label htmlFor="spb-tri-ftp" style={S.label} title="Functional Threshold Power — max 1-hour sustainable watts">FTP (watts)</label>
+            <input id="spb-tri-ftp" style={S.input} type="number" placeholder="230" value={form.baseline?.ftp || ''}
               onChange={e => setForm(f => ({ ...f, baseline: { ...f.baseline, ftp: e.target.value } }))} />
           </div>
           <div style={{ flex: '1 1 140px' }}>
-            <label style={S.label}>Run HR Threshold</label>
-            <input style={S.input} type="number" placeholder="165" value={form.baseline?.hrThresh || ''}
+            <label htmlFor="spb-hr-thresh" style={S.label}>Run HR Threshold</label>
+            <input id="spb-hr-thresh" style={S.input} type="number" placeholder="165" value={form.baseline?.hrThresh || ''}
               onChange={e => setForm(f => ({ ...f, baseline: { ...f.baseline, hrThresh: e.target.value } }))} />
           </div>
           <div style={{ flex: '1 1 140px' }}>
-            <label style={S.label}>CSS pace (sec/100m)</label>
-            <input style={S.input} type="number" placeholder="85" value={form.baseline?.css || ''}
+            <label htmlFor="spb-css" style={S.label}>CSS pace (sec/100m)</label>
+            <input id="spb-css" style={S.input} type="number" placeholder="85" value={form.baseline?.css || ''}
               onChange={e => setForm(f => ({ ...f, baseline: { ...f.baseline, css: e.target.value } }))} />
           </div>
         </div>
@@ -330,8 +330,8 @@ function Step3({ form, setForm, onNext, onBack }) {
       <div style={S.cardTitle}>{t('spb_step3Title')}</div>
       <div style={S.row}>
         <div style={{ flex: '1 1 140px' }}>
-          <label style={S.label}>{t('spb_planDuration')}</label>
-          <select style={S.select} value={form.weeks || 8}
+          <label htmlFor="spb-weeks" style={S.label}>{t('spb_planDuration')}</label>
+          <select id="spb-weeks" style={S.select} value={form.weeks || 8}
             onChange={e => setForm(f => ({ ...f, weeks: +e.target.value }))}>
             {[4, 6, 8, 10, 12, 16, 20, 24].map(w => (
               <option key={w} value={w}>{w} weeks</option>
@@ -339,34 +339,34 @@ function Step3({ form, setForm, onNext, onBack }) {
           </select>
         </div>
         <div style={{ flex: '1 1 140px' }}>
-          <label style={S.label}>{t('spb_currentTSSLabel')}</label>
-          <input style={S.input} type="number" placeholder="250" value={form.currentTSS || ''}
+          <label htmlFor="spb-current-tss" style={S.label}>{t('spb_currentTSSLabel')}</label>
+          <input id="spb-current-tss" style={S.input} type="number" placeholder="250" value={form.currentTSS || ''}
             onChange={e => setForm(f => ({ ...f, currentTSS: +e.target.value }))} />
         </div>
         <div style={{ flex: '1 1 140px' }}>
-          <label style={S.label}>{t('spb_peakTSSLabel')}</label>
-          <input style={S.input} type="number" placeholder="500" value={form.peakTSS || ''}
+          <label htmlFor="spb-peak-tss" style={S.label}>{t('spb_peakTSSLabel')}</label>
+          <input id="spb-peak-tss" style={S.input} type="number" placeholder="500" value={form.peakTSS || ''}
             onChange={e => setForm(f => ({ ...f, peakTSS: +e.target.value }))} />
         </div>
       </div>
       <div style={S.row}>
         <div style={{ flex: '1 1 180px' }}>
-          <label style={S.label}>{t('spb_currentCTL')}</label>
-          <input style={S.input} type="number" placeholder="45"
+          <label htmlFor="spb-start-ctl" style={S.label}>{t('spb_currentCTL')}</label>
+          <input id="spb-start-ctl" style={S.input} type="number" placeholder="45"
             value={form.startCTL !== undefined ? form.startCTL : ''}
             onChange={e => setForm(f => ({ ...f, startCTL: +e.target.value }))} />
           {form._ctlFromLog && <div style={{ ...DIM, marginTop: '4px', color: '#00c853' }}>{t('spb_fromTrainingData')}</div>}
         </div>
         <div style={{ flex: '1 1 180px' }}>
-          <label style={S.label}>{t('spb_currentATL')}</label>
-          <input style={S.input} type="number" placeholder="55"
+          <label htmlFor="spb-start-atl" style={S.label}>{t('spb_currentATL')}</label>
+          <input id="spb-start-atl" style={S.input} type="number" placeholder="55"
             value={form.startATL !== undefined ? form.startATL : ''}
             onChange={e => setForm(f => ({ ...f, startATL: +e.target.value }))} />
           {form._ctlFromLog && <div style={{ ...DIM, marginTop: '4px', color: '#00c853' }}>{t('spb_fromTrainingData')}</div>}
         </div>
         <div style={{ flex: '1 1 140px' }}>
-          <label style={S.label}>{t('spb_sessionsPerWeek')}</label>
-          <input style={S.input} type="number" placeholder="5" value={form.sessionsPerWeek || ''}
+          <label htmlFor="spb-sessions-per-week" style={S.label}>{t('spb_sessionsPerWeek')}</label>
+          <input id="spb-sessions-per-week" style={S.input} type="number" placeholder="5" value={form.sessionsPerWeek || ''}
             onChange={e => setForm(f => ({ ...f, sessionsPerWeek: +e.target.value }))} />
           {form._sessionsFromLog && <div style={{ ...DIM, marginTop: '4px', color: '#00c853' }}>{t('spb_fromLastWeeks')}</div>}
         </div>

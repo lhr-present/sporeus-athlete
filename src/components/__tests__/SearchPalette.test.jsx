@@ -84,6 +84,14 @@ describe('SearchPalette — render', () => {
     renderPalette()
     expect(screen.getByText('ESC close')).toBeInTheDocument()
   })
+
+  it('marks the click-to-close backdrop aria-hidden so it is not an unnamed AT node', () => {
+    const { container } = renderPalette()
+    const hidden = container.querySelectorAll('[aria-hidden="true"]')
+    // The backdrop is a full-screen fixed overlay
+    const backdrop = Array.from(hidden).find(el => /position:\s*fixed/i.test(el.getAttribute('style') || ''))
+    expect(backdrop).toBeTruthy()
+  })
 })
 
 // ── FTS results ───────────────────────────────────────────────────────────────

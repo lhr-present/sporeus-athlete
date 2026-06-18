@@ -2428,7 +2428,7 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
 
       {/* ── Consecutive rest day warning ──────────────────────────────────── */}
       {(() => {
-        const { ctl } = calcLoad(log || [])
+        const ctl = todayCtl  // v9: reuse memoized calcLoad(log||[]) from line ~274 instead of recomputing every render (30s tick)
         const last3 = [-1, -2, -3].map(n => {
           const d = new Date(); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10)
         })

@@ -71,6 +71,16 @@ export default function CoachSquadView({ authUser }) {
     return () => window.removeEventListener('resize', h)
   }, [])
 
+  // a11y — NotePanel has no focus trap/Escape handler of its own; close it on
+  // Escape so keyboard users aren't trapped (only the ✕ button + backdrop click
+  // dismissed it before).
+  useEffect(() => {
+    if (!noteFor) return
+    const onKey = e => { if (e.key === 'Escape') setNoteFor(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [noteFor])
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
@@ -423,7 +433,7 @@ export default function CoachSquadView({ authUser }) {
       {/* Note panel overlay */}
       {noteFor && (
         <>
-          <div onClick={() => setNoteFor(null)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:299 }} />
+          <div aria-hidden="true" onClick={() => setNoteFor(null)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:299 }} />
           <NotePanel athlete={noteFor} coachId={coachId} onClose={() => setNoteFor(null)} />
         </>
       )}

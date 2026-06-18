@@ -27,7 +27,7 @@ export default function ConnectionBanner({ lang = 'en' }) {
   if (!show) return null
 
   return (
-    <div style={{
+    <div role="status" aria-live="polite" style={{
       position: 'relative',  // v9.370.0 — App banner stack positions it (was fixed top:0)
       zIndex: 9990,
       background: '#1a1000',
