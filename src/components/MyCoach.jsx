@@ -1,19 +1,20 @@
 // ─── MyCoach.jsx — Athlete-side coach connection (invite accept + status) ─────
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useContext } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { redeemInvite } from '../lib/inviteUtils.js'
 import { useFocusTrap } from '../hooks/useFocusTrap.js'
+import { LangCtx } from '../contexts/LangCtx.jsx'
 
-// Map a preview_coach_invite RPC reason code to a user-facing message.
-function inviteReasonMsg(reason, isTR) {
+// Map a preview_coach_invite RPC reason code to a user-facing message via t().
+function inviteReasonMsg(reason, t) {
   switch (reason) {
-    case 'INVALID_CODE': return isTR ? 'Davet kodu bulunamadı.' : 'Invite code not found.'
-    case 'REVOKED':      return isTR ? 'Bu davet iptal edilmiş.' : 'This invite has been revoked.'
-    case 'EXPIRED':      return isTR ? 'Bu davetin süresi dolmuş.' : 'This invite has expired.'
-    case 'MAX_USES_REACHED': return isTR ? 'Bu davet kullanım sınırına ulaşmış.' : 'This invite has reached its usage limit.'
-    case 'SELF_INVITE':  return isTR ? 'Kendi davetini kullanamazsın.' : 'You cannot redeem your own invite.'
-    case 'MISSING_CODE': return isTR ? 'Davet kodu girilmedi.' : 'No invite code provided.'
-    default:             return isTR ? 'Davet doğrulanamadı.' : 'Invite could not be validated.'
+    case 'INVALID_CODE':     return t('myCoach_reasonInvalidCode')
+    case 'REVOKED':          return t('myCoach_reasonRevoked')
+    case 'EXPIRED':          return t('myCoach_reasonExpired')
+    case 'MAX_USES_REACHED': return t('myCoach_reasonMaxUses')
+    case 'SELF_INVITE':      return t('myCoach_reasonSelfInvite')
+    case 'MISSING_CODE':     return t('myCoach_reasonMissingCode')
+    default:                 return t('myCoach_reasonDefault')
   }
 }
 
@@ -27,6 +28,7 @@ const RED    = '#e03030'
 // Shown when ?invite=CODE is in the URL. Resolves coach name, lets athlete
 // accept or decline.
 export function InviteModal({ inviteCode, userId, onDone }) {
+  const { t } = useContext(LangCtx)
   const [invite, setInvite]   = useState(null)  // { coach_id, code, ... }
   const [coach, setCoach]     = useState(null)  // profile row of the coach
   const [status, setStatus]   = useState('loading')  // loading|ready|error|done
@@ -34,7 +36,7 @@ export function InviteModal({ inviteCode, userId, onDone }) {
   const [busy, setBusy]       = useState(false)
 
   useEffect(() => {
-    if (!supabase || !inviteCode) { setStatus('error'); setMsg('Invalid invite.'); return }
+    if (!supabase || !inviteCode) { setStatus('error'); setMsg(t('myCoach_invalidInvite')); return }
     let cancelled = false
     // Preview via SECURITY DEFINER RPC (keyed by the code we already hold) — the
     // coach_invites table is no longer athlete-readable (enumeration leak fix).
@@ -43,14 +45,14 @@ export function InviteModal({ inviteCode, userId, onDone }) {
       .then(({ data, error }) => {
         if (cancelled) return
         const row = Array.isArray(data) ? data[0] : data
-        if (error || !row) { setStatus('error'); setMsg('Invite not found or expired.'); return }
-        if (!row.valid) { setStatus('error'); setMsg(inviteReasonMsg(row.reason, false)); return }
+        if (error || !row) { setStatus('error'); setMsg(t('myCoach_inviteNotFound')); return }
+        if (!row.valid) { setStatus('error'); setMsg(inviteReasonMsg(row.reason, t)); return }
         setInvite({ coach_id: row.coach_id, code: inviteCode })
         setCoach({ display_name: row.coach_name })
         setStatus('ready')
       })
     return () => { cancelled = true }
-  }, [inviteCode])
+  }, [inviteCode, t])
 
   const accept = useCallback(async () => {
     if (!invite || !userId || busy) return
@@ -63,10 +65,10 @@ export function InviteModal({ inviteCode, userId, onDone }) {
       setStatus('done')
       setTimeout(onDone, 2000)
     } else {
-      setMsg(res.error || inviteReasonMsg(res.code, false))
+      setMsg(res.error || inviteReasonMsg(res.code, t))
       setBusy(false)
     }
-  }, [invite, userId, busy, onDone])
+  }, [invite, userId, busy, onDone, t])
 
   const decline = useCallback(() => {
     onDone()
@@ -79,7 +81,7 @@ export function InviteModal({ inviteCode, userId, onDone }) {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Coach invite"
+      aria-label={t('myCoach_inviteDialogAria')}
       style={{
         position: 'fixed', inset: 0, zIndex: 20000,
         background: 'rgba(0,0,0,0.85)',
@@ -93,17 +95,17 @@ export function InviteModal({ inviteCode, userId, onDone }) {
         padding: '36px 32px', width: '100%', maxWidth: '380px', textAlign: 'center',
       }}>
         <div style={{ fontSize: '20px', fontWeight: 700, color: BLUE, letterSpacing: '0.08em', marginBottom: '8px' }}>
-          ◈ COACH INVITE
+          {t('myCoach_inviteHeading')}
         </div>
 
         {status === 'loading' && (
-          <div style={{ fontSize: '11px', color: '#555', marginTop: '24px' }}>Looking up invite…</div>
+          <div style={{ fontSize: '11px', color: '#555', marginTop: '24px' }}>{t('myCoach_lookingUp')}</div>
         )}
 
         {status === 'error' && (
           <>
             <div style={{ fontSize: '11px', color: RED, marginTop: '24px', lineHeight: 1.6 }}>{msg}</div>
-            <button onClick={decline} style={btnStyle('#333', '#ccc')}>CLOSE</button>
+            <button onClick={decline} style={btnStyle('#333', '#ccc')}>{t('myCoach_close')}</button>
           </>
         )}
 
@@ -111,20 +113,20 @@ export function InviteModal({ inviteCode, userId, onDone }) {
           <>
             <div style={{ fontSize: '11px', color: '#888', marginTop: '16px', lineHeight: 1.8 }}>
               <span style={{ color: ORANGE, fontWeight: 700 }}>
-                {coach?.display_name || 'A coach'}
+                {coach?.display_name || t('myCoach_aCoach')}
               </span>
-              {' '}wants to connect with you as your coach.
+              {' '}{t('myCoach_wantsToConnect')}
             </div>
             <div style={{ fontSize: '10px', color: '#555', marginBottom: '28px', marginTop: '4px' }}>
-              They will be able to view your training data and send plans.
+              {t('myCoach_canViewSendPlans')}
             </div>
             {msg && <div style={{ fontSize: '11px', color: RED, marginBottom: '12px' }}>{msg}</div>}
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={accept} disabled={busy} style={btnStyle(BLUE, '#fff', busy)}>
-                {busy ? '…' : 'ACCEPT'}
+                {busy ? '…' : t('myCoach_accept')}
               </button>
               <button onClick={decline} disabled={busy} style={btnStyle('#1a1a1a', '#888')}>
-                DECLINE
+                {t('myCoach_decline')}
               </button>
             </div>
           </>
@@ -132,7 +134,7 @@ export function InviteModal({ inviteCode, userId, onDone }) {
 
         {status === 'done' && (
           <div style={{ fontSize: '13px', color: GREEN, marginTop: '24px', fontWeight: 700 }}>
-            ✓ Connected! Your coach can now see your data.
+            {t('myCoach_connectedDone')}
           </div>
         )}
       </div>
@@ -145,6 +147,7 @@ export function InviteModal({ inviteCode, userId, onDone }) {
 // v9.23.0 — added onDisconnect callback so parent (CoachConnectionPanel) can
 // flip back to JoinCoachInput when the athlete severs the link.
 export function MyCoachStatus({ userId, onDisconnect }) {
+  const { t } = useContext(LangCtx)
   const [link, setLink]     = useState(null)   // coach_athletes row
   const [coach, setCoach]   = useState(null)   // coach profile
   const [loading, setLoading] = useState(true)
@@ -191,19 +194,32 @@ export function MyCoachStatus({ userId, onDisconnect }) {
       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
     }}>
       <div>
-        <div style={{ fontSize: '9px', color: '#0064ff88', letterSpacing: '0.1em', marginBottom: '2px' }}>MY COACH</div>
+        <div style={{ fontSize: '9px', color: '#0064ff88', letterSpacing: '0.1em', marginBottom: '2px' }}>{t('myCoach_myCoachLabel')}</div>
         <div style={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 700 }}>
-          {coach?.display_name || 'Coach'}
+          {coach?.display_name || t('myCoach_coachFallback')}
         </div>
         <div style={{ fontSize: '9px', color: '#555', marginTop: '2px' }}>{coach?.email || ''}</div>
       </div>
       <button onClick={disconnect} disabled={busy} style={{
         ...btnStyle('#1a1a1a', RED), padding: '5px 12px', fontSize: '9px',
       }}>
-        {busy ? '…' : 'DISCONNECT'}
+        {busy ? '…' : t('myCoach_disconnect')}
       </button>
     </div>
   )
+}
+
+// Render the "Got a coach invite code…" prompt, interleaving the two styled
+// <code> samples into the translated template at its {sample} / {link} markers.
+function renderJoinPrompt(t, sampleNode, linkNode) {
+  const template = t('myCoach_gotCodePrompt')
+  // Split into ordered text/placeholder segments, preserving the placeholders.
+  const parts = template.split(/(\{sample\}|\{link\})/)
+  return parts.map((seg, i) => {
+    if (seg === '{sample}') return <span key={i}>{sampleNode}</span>
+    if (seg === '{link}')   return <span key={i}>{linkNode}</span>
+    return seg
+  })
 }
 
 function btnStyle(bg, color, disabled) {
@@ -244,6 +260,7 @@ export function CoachConnectionPanel({ userId }) {
 // when athlete has no coach connection. On accept, calls the same upsert logic
 // as InviteModal so both paths converge on coach_athletes.
 export function JoinCoachInput({ userId, onJoined }) {
+  const { t } = useContext(LangCtx)
   const [code, setCode]     = useState('')
   const [busy, setBusy]     = useState(false)
   const [msg, setMsg]       = useState('')
@@ -260,13 +277,13 @@ export function JoinCoachInput({ userId, onJoined }) {
       // the caller already holds; no enumeration.
       const { data, error } = await supabase.rpc('preview_coach_invite', { p_code: trimmed })
       const row = Array.isArray(data) ? data[0] : data
-      if (error || !row) { setMsg('Invite code not found.'); setBusy(false); return }
-      if (!row.valid) { setMsg(inviteReasonMsg(row.reason, false)); setBusy(false); return }
-      setCoachName(row.coach_name || 'A coach')
+      if (error || !row) { setMsg(t('myCoach_codeNotFound')); setBusy(false); return }
+      if (!row.valid) { setMsg(inviteReasonMsg(row.reason, t)); setBusy(false); return }
+      setCoachName(row.coach_name || t('myCoach_aCoach'))
       setStage('confirm')
       setBusy(false)
     } catch (e) {
-      setMsg(e?.message || 'Lookup failed'); setBusy(false)
+      setMsg(e?.message || t('myCoach_lookupFailed')); setBusy(false)
     }
   }
 
@@ -282,14 +299,14 @@ export function JoinCoachInput({ userId, onJoined }) {
       setStage('done')
       setTimeout(() => onJoined && onJoined(), 1500)
     } else {
-      setMsg(res.error || inviteReasonMsg(res.code, false)); setBusy(false)
+      setMsg(res.error || inviteReasonMsg(res.code, t)); setBusy(false)
     }
   }
 
   if (stage === 'done') {
     return (
       <div style={{ background: '#5bc25b11', border: '1px solid #5bc25b33', borderRadius: 6, padding: '12px 16px', marginBottom: 16, fontFamily: MONO, fontSize: 12, color: GREEN, fontWeight: 700 }}>
-        ✓ Connected to {coachName}
+        {t('myCoach_connectedTo').replace('{name}', coachName)}
       </div>
     )
   }
@@ -299,50 +316,51 @@ export function JoinCoachInput({ userId, onJoined }) {
       background: '#0064ff08', border: '1px dashed #0064ff44', borderRadius: 6,
       padding: '14px 16px', marginBottom: 16, fontFamily: MONO,
     }}>
-      <div style={{ fontSize: '9px', color: '#0064ff88', letterSpacing: '0.1em', marginBottom: 8 }}>JOIN A COACH</div>
+      <div style={{ fontSize: '9px', color: '#0064ff88', letterSpacing: '0.1em', marginBottom: 8 }}>{t('myCoach_joinHeading')}</div>
       {stage === 'input' && (
         <>
           <div style={{ fontSize: 11, color: '#888', marginBottom: 10, lineHeight: 1.5 }}>
-            Got a coach invite code (e.g. <code style={{ color: '#0064ff' }}>SP-XXXXXXXX</code>)?
-            Paste the code below, or open the full invite link your coach sent
-            (e.g. <code style={{ color: '#0064ff' }}>app.sporeus.com/?invite=SP-XXXXXXXX</code>).
+            {renderJoinPrompt(t,
+              <code style={{ color: '#0064ff' }}>SP-XXXXXXXX</code>,
+              <code style={{ color: '#0064ff' }}>app.sporeus.com/?invite=SP-XXXXXXXX</code>,
+            )}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <input
               type="text"
               value={code}
               onChange={e => setCode(e.target.value.toUpperCase())}
-              placeholder="SP-XXXXXXXX"
+              placeholder={t('myCoach_codePlaceholder')}
               style={{
                 flex: 1, fontFamily: MONO, fontSize: 12, padding: '10px 12px',
                 minHeight: 44, border: '1px solid #2a2a2a', borderRadius: 4,
                 background: '#0a0a0a', color: '#e0e0e0', letterSpacing: '0.06em',
               }}
-              aria-label="Coach invite code"
+              aria-label={t('myCoach_codeInputAria')}
             />
             <button onClick={lookup} disabled={!code.trim() || busy} style={{
               padding: '10px 16px', minHeight: 44, border: 'none', borderRadius: 4,
               background: BLUE, color: '#fff', fontFamily: MONO, fontSize: 11,
               fontWeight: 700, letterSpacing: '0.1em', cursor: busy ? 'not-allowed' : 'pointer',
               opacity: busy ? 0.5 : 1,
-            }}>{busy ? '…' : 'LOOK UP'}</button>
+            }}>{busy ? '…' : t('myCoach_lookUp')}</button>
           </div>
         </>
       )}
       {stage === 'confirm' && (
         <>
           <div style={{ fontSize: 12, color: '#e0e0e0', marginBottom: 10, lineHeight: 1.6 }}>
-            <span style={{ color: ORANGE, fontWeight: 700 }}>{coachName}</span> wants to be your coach.
+            <span style={{ color: ORANGE, fontWeight: 700 }}>{coachName}</span> {t('myCoach_wantsToBeCoach')}
           </div>
           <div style={{ fontSize: 10, color: '#666', marginBottom: 14, lineHeight: 1.5 }}>
-            They will be able to view your training data, send program edits, and post comments.
+            {t('myCoach_canViewSendEdits')}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={accept} disabled={busy} style={btnStyle(BLUE, '#fff', busy)}>
-              {busy ? '…' : 'ACCEPT'}
+              {busy ? '…' : t('myCoach_accept')}
             </button>
             <button onClick={() => { setStage('input'); setCode(''); setCoachName(null) }} disabled={busy} style={btnStyle('#1a1a1a', '#888')}>
-              CANCEL
+              {t('myCoach_cancel')}
             </button>
           </div>
         </>
