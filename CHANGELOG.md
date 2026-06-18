@@ -2,6 +2,40 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.439.0 — 2026-06-19 — 🔴 Fix silent data loss: numeric session ids rejected by uuid PK
+
+CRITICAL data-integrity fix. `training_log.id` (and injuries/test_results/race_results) is a
+`uuid` column, but the ongoing sync built rows with `id: Date.now()` (a NUMBER). Postgres rejects
+`int → uuid` with `22P02`; `tryWrite` swallowed it and enqueued an endless-failing retry. Net
+effect: **every session a signed-in user logged after signup never persisted to Supabase** — it
+lived only in localStorage and vanished on a new device / cache clear. Confirmed against live prod:
+`training_log` had **0 rows** (the path had never once succeeded). The guest→auth migration worked
+only because it omits id (DB default fills the uuid); the per-session sync did not.
+
+Fix:
+- New `src/lib/newId.js` (`newId()` = `crypto.randomUUID()` with a fallback; `isUuid()`).
+- All session-creation sites now mint a real uuid (`newId()`) instead of `Date.now()`
+  (TrainingLog new + import + FIT-import, QuickAddModal, quickLogFromSession).
+- `sanitizeLogEntry` no longer clobbers a valid string (uuid) id back to a number — that bug also
+  meant editing a synced entry deleted-then-failed-to-reinsert it. Falls back to `newId()`.
+- `logEntryToRow` defensively omits a non-uuid id so the DB default fills it (no more 22P02).
+- One-time local migration (`migrateLogIdsToUuid`, flag-guarded) upgrades any legacy numeric ids in
+  `sporeus_log` to uuids and rekeys their `sporeus-power-<id>` blobs; no-op on synced accounts
+  (hydration already supplies uuid rows) and never alters hydration/guest-migration logic.
+
+Bundled related data-integrity fixes (same files):
+- **Avg HR silently dropped** — QuickAddModal emitted `avgHr` but the sanitizer only read `avgHR`;
+  now accepts both, so manually-entered Avg HR finally flows through to EF/HR-RPE cards.
+- **Bulk-tag overwrote tags** — `handleBulkTag`/`applyTag` set `tags:[tag]`, discarding existing
+  tags; now append + dedupe.
+- **Calendar delete leaked power blobs** — calendar delete now removes `sporeus-power-<id>` like the
+  log views do (was a slow localStorage-quota leak).
+- **CTL perf cliff** — added a `min` (today−10y) to the date inputs so a stray ancient date can't
+  make `calcLoad`'s day-by-day loop run tens of thousands of iterations.
+
++18 tests (newId, sanitize id preservation, logEntryToRow id omission, avgHr flow, migrateLogIdsToUuid).
+15,930 tests green (710 files), lint + build clean.
+
 ## v9.438.0 — 2026-06-18 — Fix two visible-but-broken features (Glossary chips + Apply Template)
 
 Two features users could see but that silently did nothing — now real. Both bilingual, +5 tests.

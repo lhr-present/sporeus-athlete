@@ -47,3 +47,26 @@ describe('metric round-trip entry → row → entry', () => {
     expect(back.avgCadence).toBe(172)
   })
 })
+
+describe('logEntryToRow — id handling (uuid column safety)', () => {
+  it('includes id when it is a valid uuid', () => {
+    const uuid = '0f8fad5b-d9cb-469f-a165-70867728950e'
+    const row = logEntryToRow({ id: uuid, date: '2026-06-15', type: 'Run', duration: 30 }, 'u1')
+    expect(row.id).toBe(uuid)
+  })
+
+  it('omits id for a legacy numeric id (DB default fills gen_random_uuid)', () => {
+    const row = logEntryToRow({ id: 1700000000000, date: '2026-06-15', type: 'Run', duration: 30 }, 'u1')
+    expect('id' in row).toBe(false)
+  })
+
+  it('omits id for a non-uuid string id', () => {
+    const row = logEntryToRow({ id: 'not-a-uuid', date: '2026-06-15', type: 'Run', duration: 30 }, 'u1')
+    expect('id' in row).toBe(false)
+  })
+
+  it('omits id when absent', () => {
+    const row = logEntryToRow({ date: '2026-06-15', type: 'Run', duration: 30 }, 'u1')
+    expect('id' in row).toBe(false)
+  })
+})

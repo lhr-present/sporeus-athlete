@@ -126,7 +126,12 @@ export default function Calendar({ log, setLog, onEdit }) {
                 </div>
                 <div style={{ display:'flex', gap:'4px' }}>
                   {onEdit && <button onClick={()=>{ onEdit(ses); setSel(null) }} aria-label="Edit session" style={{ ...S.mono, fontSize:'12px', background:'none', border:'none', color:'#aaa', cursor:'pointer' }}>✎</button>}
-                  <button onClick={()=>setLog(log.filter(e=>e.id!==ses.id))} aria-label="Delete session" style={{ ...S.mono, fontSize:'12px', background:'none', border:'none', color:'#ccc', cursor:'pointer' }}>✕</button>
+                  <button onClick={()=>{
+                    // Drop the per-entry power blob so it doesn't orphan in
+                    // localStorage forever (TrainingLog's delete does the same).
+                    try { localStorage.removeItem('sporeus-power-' + ses.id) } catch { /* noop */ }
+                    setLog(log.filter(e=>e.id!==ses.id))
+                  }} aria-label="Delete session" style={{ ...S.mono, fontSize:'12px', background:'none', border:'none', color:'#ccc', cursor:'pointer' }}>✕</button>
                 </div>
               </div>
             ))}

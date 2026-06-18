@@ -6,6 +6,7 @@ import { S } from '../styles.js'
 import { SESSION_TYPES_BY_DISCIPLINE, ZONE_COLORS, ZONE_NAMES, SPORT_CONFIG } from '../lib/constants.js'
 import { calcTSS, normalizedPower, computePowerTSS, computeWPrime, resolveCPWPrime } from '../lib/formulas.js'
 import { sanitizeLogEntry } from '../lib/validate.js'
+import { newId } from '../lib/newId.js'
 import { announce } from '../lib/a11y/announcer.js'
 import Calendar from './Calendar.jsx'
 import { useData } from '../contexts/DataContext.jsx'
@@ -105,6 +106,9 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   // Manual-log default: the human's LOCAL training day (not UTC), so a session
   // logged just after local midnight defaults to today, not yesterday.
   const today = localToday()
+  // Floor for the date picker: a stray ancient date makes calcLoad's day-by-day
+  // CTL loop run tens of thousands of iterations. Cap at ~10 years ago.
+  const minDate = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 10); return d.toISOString().slice(0, 10) })()
   const defaultType = (() => {
     const sc = SPORT_CONFIG[profileLS?.primarySport]
     if (!sc) return 'Easy Run'
@@ -295,7 +299,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
 
   const add = () => {
     if (submittingRef.current || !form.duration) return
-    // New entries use id: Date.now() and the form clears only on the next render,
+    // New entries use id: newId() and the form clears only on the next render,
     // so a double-click would append two rows. Block re-entry until the next frame
     // (edits are idempotent via editingId, so this only matters for new entries).
     submittingRef.current = true
@@ -303,7 +307,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     const tss = calcTSS(parseInt(form.duration), parseInt(form.rpe))
     const zones = showZones ? zoneMins.map(v=>parseInt(v)||0) : null
     const raw = {
-      id: editingId !== null ? editingId : Date.now(),
+      id: editingId !== null ? editingId : newId(),
       ...form,
       duration: parseInt(form.duration),
       rpe: parseInt(form.rpe),
@@ -360,7 +364,8 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
 
   const handleBulkTag = (tag) => {
     if (!tag) return
-    setLog(log.map(e => selected.has(e.id) ? { ...e, tags: [tag] } : e))
+    // Append + dedupe so an existing tag set isn't clobbered by a single tag.
+    setLog(log.map(e => selected.has(e.id) ? { ...e, tags: Array.from(new Set([...(e.tags || []), tag])) } : e))
   }
 
   const handleBulkDelete = () => {
@@ -379,7 +384,8 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
   }
 
   const applyTag = (entry, tag) => {
-    setLog(log.map(e => e.id === entry.id ? { ...e, tags: [tag] } : e))
+    // Append + dedupe so an existing tag set isn't clobbered by a single tag.
+    setLog(log.map(e => e.id === entry.id ? { ...e, tags: Array.from(new Set([...(e.tags || []), tag])) } : e))
   }
 
   const handleFileImport = async (e) => {
@@ -502,7 +508,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       return
     }
     const toAdd = extPreview.toImport.map(s => sanitizeLogEntry({
-      id: Date.now() + Math.floor(Math.random() * 100000),
+      id: newId(),
       ...s,
     }))
     setLog(prev => [...prev, ...toAdd])
@@ -548,7 +554,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       if (dcResult.valid) decouplingPct = dcResult.decouplingPct
     }
 
-    const entryId = Date.now()
+    const entryId = newId()
     const raw = {
       id: entryId,
       date: importPreview.date,
@@ -611,7 +617,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
         <div style={S.row}>
           <div style={{ flex:'1 1 130px' }}>
             <label style={S.label} htmlFor="tl-date">{t('dateL')}</label>
-            <input id="tl-date" style={S.input} type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/>
+            <input id="tl-date" style={S.input} type="date" max={today} min={minDate} value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/>
           </div>
           <div style={{ flex:'1 1 150px' }}>
             <label style={S.label} htmlFor="tl-type">{t('typeL')}</label>

@@ -12,6 +12,7 @@ import {
   sanitizeProfile,
   sanitizeRecovery,
   getProfileRaceDate,
+  migrateLogIdsToUuid,
 } from '../validate.js'
 import { computeHRVAlertState, extractHRVSeries } from '../athlete/hrvAlertSummary.js'
 
@@ -195,18 +196,42 @@ describe('sanitizeLogEntry', () => {
     expect(result.notes).toHaveLength(500)
   })
 
-  it('non-positive id → id is replaced with Date.now() (a large positive number)', () => {
-    const before = Date.now()
+  it('non-positive numeric id → id replaced with a generated id', () => {
     const result = sanitizeLogEntry({ ...validEntry, id: -1 })
-    const after  = Date.now()
-    expect(result.id).toBeGreaterThanOrEqual(before)
-    expect(result.id).toBeLessThanOrEqual(after)
+    // Generated ids are uuids (or a non-empty fallback string); never the
+    // invalid input.
+    expect(result.id).not.toBe(-1)
+    expect(result.id).toBeTruthy()
   })
 
-  it('non-numeric id → id replaced with Date.now()', () => {
-    const result = sanitizeLogEntry({ ...validEntry, id: 'string-id' })
-    expect(typeof result.id).toBe('number')
-    expect(result.id).toBeGreaterThan(0)
+  it('preserves a non-empty string id (server uuid / freshly minted uuid)', () => {
+    const uuid = '0f8fad5b-d9cb-469f-a165-70867728950e'
+    const result = sanitizeLogEntry({ ...validEntry, id: uuid })
+    expect(result.id).toBe(uuid)
+  })
+
+  it('keeps a positive numeric (legacy local) id in place', () => {
+    const result = sanitizeLogEntry({ ...validEntry, id: 1700000000000 })
+    expect(result.id).toBe(1700000000000)
+  })
+
+  it('generates a stable string id when id is missing', () => {
+    const { id: _omit, ...noId } = validEntry
+    const result = sanitizeLogEntry(noId)
+    // newId() yields a uuid where crypto.randomUUID exists, else a
+    // timestamp+random fallback string — both are non-empty strings.
+    expect(typeof result.id).toBe('string')
+    expect(result.id.length).toBeGreaterThan(0)
+  })
+
+  it('accepts lowercase avgHr (QuickAddModal) and surfaces it as avgHR', () => {
+    const result = sanitizeLogEntry({ ...validEntry, avgHr: 142 })
+    expect(result.avgHR).toBe(142)
+  })
+
+  it('still accepts uppercase avgHR', () => {
+    const result = sanitizeLogEntry({ ...validEntry, avgHR: 150 })
+    expect(result.avgHR).toBe(150)
   })
 
   it('sanitizes zones array: clamps each to [0, 1440], max 5 elements', () => {
@@ -266,6 +291,55 @@ describe('sanitizeLogEntry', () => {
   it('non-numeric duration string → clamped to 0', () => {
     const result = sanitizeLogEntry({ ...validEntry, duration: 'abc' })
     expect(result.duration).toBe(0)
+  })
+})
+
+// ─── migrateLogIdsToUuid ──────────────────────────────────────────────────────
+describe('migrateLogIdsToUuid', () => {
+  // newId() yields a uuid where crypto.randomUUID exists, else a
+  // timestamp+random fallback — assert "stable non-numeric string", not format.
+  const isStableStringId = (id) => typeof id === 'string' && id.length > 0
+
+  it('converts numeric ids to string ids and reports the remap', () => {
+    const log = [
+      { id: 1700000000000, date: '2026-01-01', type: 'Easy Run' },
+      { id: 1700000000001, date: '2026-01-02', type: 'Tempo' },
+    ]
+    const { log: out, remap } = migrateLogIdsToUuid(log)
+    expect(out).toHaveLength(2)
+    expect(isStableStringId(out[0].id)).toBe(true)
+    expect(isStableStringId(out[1].id)).toBe(true)
+    // remap keyed by old (numeric) id → new id
+    expect(remap[1700000000000]).toBe(out[0].id)
+    expect(remap[1700000000001]).toBe(out[1].id)
+    // other fields preserved
+    expect(out[0].date).toBe('2026-01-01')
+    expect(out[0].type).toBe('Easy Run')
+  })
+
+  it('leaves existing uuid (string) ids untouched and out of the remap', () => {
+    const uuid = '0f8fad5b-d9cb-469f-a165-70867728950e'
+    const log = [{ id: uuid, date: '2026-01-01', type: 'Easy Run' }]
+    const { log: out, remap } = migrateLogIdsToUuid(log)
+    expect(out[0].id).toBe(uuid)
+    expect(Object.keys(remap)).toHaveLength(0)
+  })
+
+  it('mints an id for an entry with no id (no remap key)', () => {
+    const log = [{ date: '2026-01-01', type: 'Easy Run' }]
+    const { log: out, remap } = migrateLogIdsToUuid(log)
+    expect(isStableStringId(out[0].id)).toBe(true)
+    expect(Object.keys(remap)).toHaveLength(0)
+  })
+
+  it('returns an empty result for a non-array input', () => {
+    expect(migrateLogIdsToUuid(null)).toEqual({ log: [], remap: {} })
+  })
+
+  it('does not mutate the input log', () => {
+    const log = [{ id: 42, date: '2026-01-01' }]
+    migrateLogIdsToUuid(log)
+    expect(log[0].id).toBe(42)
   })
 })
 
