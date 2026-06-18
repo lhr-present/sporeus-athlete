@@ -38,7 +38,7 @@ export default function ReadinessCard({
   trendCTL, trendATL, trendTSB, prev7,
   consistency, dqResult, coachingMsg, totalTSS,
 }) {
-  const { t } = useContext(LangCtx)
+  const { t, lang } = useContext(LangCtx)
   const countTSS = useCountUp(totalTSS)
 
   if (!dl.readiness) return null
@@ -52,9 +52,9 @@ export default function ReadinessCard({
           {lc.showCTL && (
             <div style={{ display: 'flex', gap: '16px', marginTop: '10px', flexWrap: 'wrap' }}>
               {[
-                { lbl: t('ctlLabel'), v: fmtLoad(ctl), c: '#0064ff', delta: trendCTL, tip: 'Chronic Training Load — your fitness. Higher = fitter. 42-day average of daily TSS.' },
-                { lbl: t('atlLabel'), v: fmtLoad(atl), c: '#ef4444', delta: trendATL, tip: 'Acute Training Load — your fatigue. 7-day average. Drops after rest days.' },
-                { lbl: t('tsbLabel'), v: (tsb >= 0 ? '+' : '') + fmtLoad(Math.abs(tsb)), c: tsbColor, delta: trendTSB, tip: 'Training Stress Balance = CTL − ATL. Positive = fresh, ready to race. Negative = fatigued.' },
+                { lbl: t('ctlLabel'), v: fmtLoad(ctl), c: '#0064ff', delta: trendCTL, tip: lang === 'tr' ? 'Kronik Antrenman Yükü — kondisyonun; 42 günlük TSS ortalaması. Yüksek = daha fit.' : 'Chronic Training Load — your fitness. Higher = fitter. 42-day average of daily TSS.' },
+                { lbl: t('atlLabel'), v: fmtLoad(atl), c: '#ef4444', delta: trendATL, tip: lang === 'tr' ? 'Akut Antrenman Yükü — son ~7 günün yorgunluğu.' : 'Acute Training Load — your fatigue. 7-day average. Drops after rest days.' },
+                { lbl: t('tsbLabel'), v: (tsb >= 0 ? '+' : '') + fmtLoad(Math.abs(tsb)), c: tsbColor, delta: trendTSB, tip: lang === 'tr' ? 'Antrenman Dengesi (form) — CTL eksi ATL; pozitif = taze, negatif = yorgun.' : 'Training Stress Balance = CTL − ATL. Positive = fresh, ready to race. Negative = fatigued.' },
               ].map(({ lbl, v, c, delta, tip }) => (
                 <div key={lbl}>
                   <div style={{ ...S.mono, fontSize: '9px', color: '#888', letterSpacing: '0.08em', display: 'flex', alignItems: 'center' }}>

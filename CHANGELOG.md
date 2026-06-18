@@ -2,6 +2,30 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.436.0 — 2026-06-18 — Make the computed science legible (+ complete session-views)
+
+Theme: the app already computes sophisticated sport-science but under-narrates it, and some
+interpretations rendered English-only to TR users. All changes additive, low-risk, client-only,
+and reuse the existing tested bilingual interpretation lib (`src/lib/science/interpretations.js`):
+
+- **TodayView Morning Brief** — the near-invisible PMC strip (`CTL · TSB · ACWR`) now gets one
+  readable, actionable plain-language TSB line beneath it (reuses `interpretTSB`, bilingual).
+- **ReadinessCard** — the CTL/ATL/TSB HelpTip glosses were hardcoded English → now bilingual
+  (TR users no longer see English tooltips on the primary status card).
+- **PlanScoreCard** — added the missing "so what" interpretation box (banded ≥75 / 50-74 / <50),
+  matching the sibling-card pattern (DurabilityCard/ACWRCard); the 0-100 score now says what to do.
+- **Dashboard CTL/TSB interp** — athletes with 7-13 logs (below the 14-session interp gate) now
+  get an honest "interpretation sharpens after ~2 weeks" line instead of bare, meaningless numbers
+  (chose a fallback over lowering the gate: EWMA values are genuinely under-settled <2 weeks).
+- **TodayReadinessCard** — the "limited data" reliability badge now carries an actionable hint
+  ("log HRV and sleep for a few days and this sharpens") in the low-confidence band.
+- **Session-views completed (built-but-dark feature)** — `recordSessionView` was writing view
+  data that nothing ever read. Added a cost-safe one-shot `getSessionViews` fetch on comment-panel
+  open (no new realtime subscription) and a bilingual "Viewed by N · names" line in
+  SessionCommentThread. +2 hook tests.
+
+15,907 tests green, lint + build clean.
+
 ## v9.435.0 — 2026-06-18 — Unblock deploy pipeline (lint gate) + Strava redirect secret
 
 🔴 CRITICAL ops fix: the **deploy workflow had been failing since 2026-06-16** (last 8+ runs

@@ -862,6 +862,13 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
           <div style={{ color: '#2a2a2a', fontSize: '9px', marginTop: '3px' }}>{ctlInterp.citation}</div>
         </div>
       )}
+      {lc.showCTL && log.length >= 7 && log.length < 14 && (
+        <div style={{ ...S.mono, fontSize: '10px', color: '#555', lineHeight: 1.7, padding: '8px 12px', marginBottom: '10px', borderLeft: '2px solid #0064ff44', background: 'var(--surface)' }}>
+          {lang === 'tr'
+            ? 'Yorum ~2 haftalık kayıttan sonra keskinleşir — kondisyon (CTL) ve form (TSB) değerleri hâlâ yerleşiyor.'
+            : 'Interpretation sharpens after ~2 weeks of logs — your fitness (CTL) and form (TSB) values are still settling.'}
+        </div>
+      )}
 
       {/* L3 — Fitness projection 4w/8w */}
       {lc.showCTL && fitProj && (() => {

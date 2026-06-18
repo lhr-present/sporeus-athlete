@@ -19,6 +19,7 @@ import {
   editComment   as dbEditComment,
   deleteComment as dbDeleteComment,
   recordSessionView,
+  getSessionViews,
   newCommentId,
 } from '../lib/realtime/commentActions.js'
 
@@ -45,6 +46,7 @@ export function useSessionComments(sessionId, currentUserId) {
   const [comments,    setComments]    = useState([])
   const [status,      setStatus]      = useState('disconnected')
   const [typingUsers, setTypingUsers] = useState([])
+  const [views,       setViews]       = useState([])   // session_views — one-shot fetch on open
 
   const channelRef  = useRef(null)
   const retryRef    = useRef(0)
@@ -117,6 +119,15 @@ export function useSessionComments(sessionId, currentUserId) {
 
     fetchComments()
     recordSessionView(supabase, sessionId, currentUserId)
+
+    // One-shot "who viewed this session" fetch — no subscription, so it adds
+    // no ongoing realtime cost. Best-effort: any error leaves views empty.
+    ;(async () => {
+      try {
+        const { data, error } = await getSessionViews(supabase, sessionId)
+        if (!error && Array.isArray(data) && mountedRef.current) setViews(data)
+      } catch { /* offline / transient — leave views empty */ }
+    })()
 
     let active = true
     retryRef.current = 0
@@ -264,7 +275,7 @@ export function useSessionComments(sessionId, currentUserId) {
     }
   }, [qc, qKey])
 
-  return { comments, status, typingUsers, postComment, editComment, deleteComment }
+  return { comments, status, typingUsers, views, postComment, editComment, deleteComment }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

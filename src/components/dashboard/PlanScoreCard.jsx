@@ -74,6 +74,33 @@ function PlanScoreCard({ plan, log }) {
         {weekCount} {lang === 'tr' ? 'hafta' : 'weeks'} · Total TSS: {totalTSS}
       </div>
 
+      {/* "So what" interpretation */}
+      {score != null && (
+        <div style={{
+          ...S.mono,
+          fontSize: '11px',
+          color: 'var(--text)',
+          lineHeight: 1.6,
+          padding: '8px',
+          background: `${scoreColor}10`,
+          border: `1px solid ${scoreColor}40`,
+          borderRadius: '3px',
+          marginBottom: '10px',
+        }}>
+          {score >= 75
+            ? (lang === 'tr'
+                ? 'Güçlü plan — kademeli yük ve doruğa temiz bir konik. Devam et.'
+                : 'Strong plan — progressive load with a clean taper into your peak. Stick with it.')
+            : score >= 50
+            ? (lang === 'tr'
+                ? 'Sağlam plan, ince ayar mümkün — sert haftaları toparlanma haftalarının izlediğinden emin ol.'
+                : 'Solid plan with room to tune — make sure hard weeks are followed by recovery weeks.')
+            : (lang === 'tr'
+                ? 'Plan geliştirilmeli — yük çok hızlı artıyor olabilir veya konik temiz bir doruk için uygun değil.'
+                : 'Plan needs work — load may ramp too fast or the taper is off for a clean peak.')}
+        </div>
+      )}
+
       {/* Peak form section */}
       {peakDate && (
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: '8px', marginTop: '4px' }}>

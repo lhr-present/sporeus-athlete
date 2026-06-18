@@ -192,6 +192,22 @@ export default function TodayReadinessCard({
         </span>
       </div>
 
+      {/* Low-reliability hint — tells the user what's thin and that the score
+          sharpens with a few days of data. Additive; only in the low band. */}
+      {reliKey === 'low' && (
+        <div
+          data-testid="reliability-hint"
+          style={{
+            fontFamily: MONO, fontSize: '9px', color: '#888',
+            lineHeight: 1.5, marginBottom: '8px',
+          }}
+        >
+          {isTR
+            ? 'Sınırlı veriye dayalı — birkaç gün HRV ve uykunu kaydet, bu keskinleşir.'
+            : 'Based on limited data — log HRV and sleep for a few days and this sharpens.'}
+        </div>
+      )}
+
       {score == null ? (
         <>
           <div
