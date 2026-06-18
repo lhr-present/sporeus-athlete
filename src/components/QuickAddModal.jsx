@@ -24,6 +24,10 @@ const MONO = "'IBM Plex Mono', monospace"
 // Manual-log default: the human's LOCAL training day (not UTC). A session
 // logged just after local midnight must default to today, not yesterday.
 const today = () => localToday()
+// Floor for the date picker: an ancient stray date (e.g. year 0001) makes
+// calcLoad's day-by-day CTL loop run tens of thousands of iterations. Cap the
+// earliest selectable date at ~10 years ago.
+const minDate = () => { const d = new Date(); d.setFullYear(d.getFullYear() - 10); return d.toISOString().slice(0, 10) }
 
 // Sport → sensible default session type
 const SPORT_DEFAULT_TYPE = {
@@ -393,6 +397,7 @@ export default function QuickAddModal({ onAdd, onClose, profile, isFirst, prefil
                   name="session-date"
                   value={sessionDate}
                   max={today()}
+                  min={minDate()}
                   onChange={e => setSessionDate(e.target.value)}
                   style={{ ...S.input, width: '100%', fontSize: 'max(16px, 14px)' }}
                 />

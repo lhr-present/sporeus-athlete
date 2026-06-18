@@ -2,6 +2,7 @@
 import { normalizeAthleteLevel, normalizeSport } from './constants.js'
 import { vdotToThresholdStr } from './athlete/vo2maxToPace.js'
 import { normalizeTrainingDow } from './plan/trainingDays.js'
+import { newId } from './newId.js'
 
 /**
  * @typedef {Object} LogEntry
@@ -73,7 +74,15 @@ export function sanitizeDate(d) {
 export function sanitizeLogEntry(e) {
   const clamp = (v, lo, hi) => { const n = parseFloat(v); return isNaN(n) ? 0 : Math.max(lo, Math.min(hi, n)) }
   const result = {
-    id: (typeof e.id === 'number' && e.id > 0) ? e.id : Date.now(),
+    // Preserve a valid string id (the server uuid hydrated by logRowToEntry, or
+    // a freshly minted newId()). Keep a legacy positive number id so existing
+    // local-only entries still edit/delete in place (the one-time
+    // migrateLogIdsToUuid pass upgrades those to uuids). Else mint a uuid.
+    // Pre-fix this CLOBBERED a valid uuid back to Date.now(), corrupting synced
+    // entries on every edit and breaking the diff-by-id sync.
+    id: (typeof e.id === 'string' && e.id)
+      ? e.id
+      : (typeof e.id === 'number' && e.id > 0) ? e.id : newId(),
     date: sanitizeDate(e.date),
     type: sanitizeString(e.type, 50) || 'Easy Run',
     duration: clamp(e.duration, 0, 1440),
@@ -109,7 +118,10 @@ export function sanitizeLogEntry(e) {
   const durSec = parseFloat(e.durationSec); if (Number.isFinite(durSec) && durSec > 0) result.durationSec = durSec
   // Physiological bounds so a bad import can't store an implausible HR/cadence
   // that then skews EF / HR-fraction / cadence-band math.
-  const avgHR = parseInt(e.avgHR);  if (Number.isFinite(avgHR) && avgHR >= 30 && avgHR <= 250) result.avgHR = avgHR
+  // Accept both casings: QuickAddModal emits `avgHr` (lowercase), the FIT
+  // importer + storage contract use `avgHR` (uppercase). Pre-fix only avgHR was
+  // read, so a manually-entered Avg HR was silently dropped. Canonical out = avgHR.
+  const avgHR = parseInt(e.avgHR ?? e.avgHr);  if (Number.isFinite(avgHR) && avgHR >= 30 && avgHR <= 250) result.avgHR = avgHR
   const cadence = parseInt(e.avgCadence); if (Number.isFinite(cadence) && cadence >= 0 && cadence <= 200) result.avgCadence = cadence
   // Normalized Power (Coggan 2003) — computed by the FIT importer (fileImport.js
   // parseFIT) when a ride carries a ≥30s power series. Pre-fix it was stripped
@@ -120,6 +132,35 @@ export function sanitizeLogEntry(e) {
   // can't skew the duration-bucketed bests. Number.isFinite guards Infinity.
   const np = parseInt(e.np ?? e.normalizedPower); if (Number.isFinite(np) && np > 0 && np <= 2500) result.np = np
   return result
+}
+
+/**
+ * One-time migration: convert any log entry whose `id` is a legacy NUMBER (or
+ * otherwise non-uuid) to a fresh uuid, so it matches the server's uuid column
+ * and the diff-by-id sync can persist it. Returns the rewritten log plus a
+ * remap {oldId -> newId} so the caller can rekey side-channel data (the
+ * per-entry `sporeus-power-<id>` localStorage blobs).
+ *
+ * Pure: does not touch localStorage. Entries that already have a uuid id (or a
+ * non-empty string id) are left untouched. Only applies to LOCAL-ONLY / guest
+ * entries — server hydration replaces local rows with uuid-keyed rows, so this
+ * is a no-op for synced accounts.
+ *
+ * @param {Array<Object>} log
+ * @returns {{ log: Array<Object>, remap: Record<string|number, string> }}
+ */
+export function migrateLogIdsToUuid(log) {
+  if (!Array.isArray(log)) return { log: [], remap: {} }
+  const remap = {}
+  const out = log.map(e => {
+    if (!e || typeof e !== 'object') return e
+    // Keep any non-empty string id (uuid or otherwise-stable string).
+    if (typeof e.id === 'string' && e.id) return e
+    const fresh = newId()
+    if (e.id != null) remap[e.id] = fresh
+    return { ...e, id: fresh }
+  })
+  return { log: out, remap }
 }
 
 /**

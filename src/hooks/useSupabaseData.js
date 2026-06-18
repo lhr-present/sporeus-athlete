@@ -9,6 +9,8 @@ import { supabase, isSupabaseReady } from '../lib/supabase.js'
 import { useLocalStorage } from './useLocalStorage.js'
 import { enqueuePendingLog, markSyncOffline } from '../lib/offlineQueue.js'
 import { deepEqual } from '../lib/deepEqual.js'
+import { isUuid } from '../lib/newId.js'
+import { migrateLogIdsToUuid } from '../lib/validate.js'
 
 // ─── Background-write helper ────────────────────────────────────────────────────
 // Pre-v9.347 these hooks fire-and-forgot every upsert/update/delete: a failed
@@ -65,7 +67,13 @@ export function logRowToEntry(row) {
 }
 export function logEntryToRow(entry, userId) {
   return {
-    id:           entry.id,
+    // Only send `id` when it's a valid uuid. A legacy numeric / non-uuid id
+    // would make Postgres reject the insert (22P02) against the uuid column —
+    // omitting it lets the `gen_random_uuid()` default fill a real uuid. (The
+    // one-time migrateLogIdsToUuid pass converts local numeric ids so later
+    // edits still match; this is the defensive belt-and-suspenders for any
+    // that slip through.)
+    ...(isUuid(entry.id) ? { id: entry.id } : {}),
     user_id:      userId,
     date:         entry.date,
     type:         entry.type  || 'Training',
@@ -277,8 +285,54 @@ function useSyncedTable({ lsKey, lsDefault, table, toEntry, toRow, userId, order
 
 // ─── Public hooks ─────────────────────────────────────────────────────────────
 
+// One-time local migration flag — see migrateLogIdsToUuid below.
+const ID_MIGRATION_FLAG = 'sporeus-id-uuid-migrated'
+
 export function useTrainingLog(userId) {
-  return useSyncedTable({ lsKey: 'sporeus_log', lsDefault: [], table: 'training_log', toEntry: logRowToEntry, toRow: logEntryToRow, userId })
+  const [log, setLog] = useSyncedTable({ lsKey: 'sporeus_log', lsDefault: [], table: 'training_log', toEntry: logRowToEntry, toRow: logEntryToRow, userId })
+
+  // One-time: upgrade any legacy NUMERIC entry id to a uuid so it matches the
+  // server's uuid column and the diff-by-id sync can persist it (training_log
+  // had 0 rows because numeric ids were rejected with 22P02). This only matters
+  // for LOCAL-ONLY / guest entries: for a synced account, hydration replaces
+  // local rows with uuid-keyed server rows before the next mutation, so the
+  // migration is a harmless no-op there. Guarded by a flag so it runs once.
+  // Runs through setLog (not setDataLS) — but setLog's diff treats the rewritten
+  // entries as "added" (new id) + "removed" (old id); the removed delete targets
+  // the old numeric id which never existed server-side (no-op), and the added
+  // upsert now carries a uuid → first real write of these entries. That is the
+  // intended outcome (they finally reach the server).
+  useEffect(() => {
+    let migrated
+    try { migrated = localStorage.getItem(ID_MIGRATION_FLAG) } catch { migrated = '1' }
+    if (migrated) return
+    setLog(prev => {
+      if (!Array.isArray(prev) || prev.length === 0) {
+        try { localStorage.setItem(ID_MIGRATION_FLAG, '1') } catch { /* noop */ }
+        return prev
+      }
+      const needs = prev.some(e => e && typeof e === 'object' && !(typeof e.id === 'string' && e.id))
+      if (!needs) {
+        try { localStorage.setItem(ID_MIGRATION_FLAG, '1') } catch { /* noop */ }
+        return prev
+      }
+      const { log: next, remap } = migrateLogIdsToUuid(prev)
+      // Rekey per-entry power blobs (sporeus-power-<id>) to the new uuids.
+      for (const [oldId, freshId] of Object.entries(remap)) {
+        try {
+          const blob = localStorage.getItem('sporeus-power-' + oldId)
+          if (blob != null) {
+            localStorage.setItem('sporeus-power-' + freshId, blob)
+            localStorage.removeItem('sporeus-power-' + oldId)
+          }
+        } catch { /* noop */ }
+      }
+      try { localStorage.setItem(ID_MIGRATION_FLAG, '1') } catch { /* noop */ }
+      return next
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return [log, setLog]
 }
 
 export function useRecovery(userId) {

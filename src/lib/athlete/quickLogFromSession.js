@@ -13,6 +13,8 @@
  *   { day, intent: Bilingual, durationMin, zones, paceTarget, notes }
  */
 
+import { newId } from '../newId.js'
+
 const SPORT_TYPE_PREFIX = {
   run:       'Easy Run',
   bike:      'Easy Bike',
@@ -116,7 +118,7 @@ export function buildLogEntryFromSession(session, dateISO, sport, _profile = nul
     : ''
 
   const out = {
-    id: Date.now(),
+    id: newId(),
     date: dateISO,
     type,
     sport: sportLower,
