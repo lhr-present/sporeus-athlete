@@ -1,5 +1,6 @@
 // ─── NotificationSettings.jsx — Push/local notification toggle (v6.9.3) ─────
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
+import { LangCtx } from '../contexts/LangCtx.jsx'
 import {
   requestPermission,
   scheduleSessionReminder,
@@ -25,6 +26,7 @@ function permLabel(p) {
 }
 
 export default function NotificationSettings() {
+  const { lang } = useContext(LangCtx)
   const [permission, setPermission] = useState(() =>
     typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
   )
@@ -102,6 +104,9 @@ export default function NotificationSettings() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
             <button
               onClick={handleToggle}
+              role="switch"
+              aria-checked={enabled}
+              aria-label={lang === 'tr' ? 'Günlük hatırlatıcı' : 'Daily reminder'}
               style={{
                 width: '38px', height: '20px', borderRadius: '10px', border: 'none', cursor: 'pointer',
                 background: enabled ? ORANGE : '#333', position: 'relative', transition: 'background 0.2s',
@@ -123,6 +128,7 @@ export default function NotificationSettings() {
               <select
                 value={hour}
                 onChange={handleHourChange}
+                aria-label={lang === 'tr' ? 'Hatırlatma saati' : 'Reminder time'}
                 style={{
                   background: '#1a1a1a', border: '1px solid #333', borderRadius: '4px',
                   color: '#ccc', fontFamily: MONO, fontSize: '11px', padding: '4px 8px', cursor: 'pointer',

@@ -145,6 +145,32 @@ describe('SportProgramBuilder — i18n', () => {
     })
   })
 
+  describe('label/control association (a11y)', () => {
+    it('step 1 race-date input is associated with its label via htmlFor/id', () => {
+      const { container } = renderWithLang('en')
+      const label = screen.getByText(LABELS.en.spb_raceDate)
+      const forId = label.getAttribute('for')
+      expect(forId).toBe('spb-race-date')
+      const input = container.querySelector(`#${forId}`)
+      expect(input).toBeTruthy()
+      expect(input.tagName).toBe('INPUT')
+      expect(input).toHaveAttribute('type', 'date')
+    })
+
+    it('step 3 constraint inputs are all associated to a label by id', () => {
+      renderWithLang('en')
+      fireEvent.click(screen.getByText(new RegExp(LABELS.en.spb_sport_running)))
+      fireEvent.click(screen.getByText(LABELS.en.spb_goal_base))
+      fireEvent.click(screen.getByText(LABELS.en.spb_btnNext)) // → step 2
+      fireEvent.click(screen.getByText(LABELS.en.spb_btnNext)) // → step 3
+      // getByLabelText throws if no label is associated with the control
+      expect(screen.getByLabelText(LABELS.en.spb_planDuration)).toBeInTheDocument()
+      expect(screen.getByLabelText(LABELS.en.spb_currentTSSLabel)).toBeInTheDocument()
+      expect(screen.getByLabelText(LABELS.en.spb_peakTSSLabel)).toBeInTheDocument()
+      expect(screen.getByLabelText(LABELS.en.spb_sessionsPerWeek)).toBeInTheDocument()
+    })
+  })
+
   describe('LABELS completeness', () => {
     const SPB_KEYS = [
       'spb_title', 'spb_sub', 'spb_step1Title', 'spb_selectSport', 'spb_primaryGoal',

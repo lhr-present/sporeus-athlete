@@ -35,7 +35,9 @@ export default function OfflineBanner({ lang = 'en' } = {}) {
       color: '#f5c542', fontFamily: MONO, fontSize: '10px',
       padding: '6px 20px', textAlign: 'center', letterSpacing: '0.1em',
     }}>
-      ◈ OFFLINE — data saves locally and syncs when reconnected
+      ◈ {lang === 'tr'
+        ? 'ÇEVRİMDIŞI — veriler yerel olarak kaydedilir ve yeniden bağlanınca senkronize olur'
+        : 'OFFLINE — data saves locally and syncs when reconnected'}
     </div>
   )
 }

@@ -222,7 +222,7 @@ export default function SearchPalette({ onNavigate, onToggleDark, onToggleLang, 
   return (
     <>
       {/* Backdrop */}
-      <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.65)', zIndex:10100 }}/>
+      <div aria-hidden="true" onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.65)', zIndex:10100 }}/>
 
       {/* Palette */}
       <div ref={palRef} role="dialog" aria-modal="true" aria-label="Search" style={{

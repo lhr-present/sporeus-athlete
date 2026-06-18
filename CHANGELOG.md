@@ -2,6 +2,35 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.440.0 — 2026-06-19 — Accessibility batch + TodayView per-tick recompute fix
+
+Verified a11y fixes (all additive attributes/markup, bilingual) + one safe perf fix. From the
+discovery-agent sweep.
+
+Accessibility:
+- **NotificationSettings** — daily-reminder toggle had no name/state → `role="switch"` +
+  `aria-checked` + bilingual `aria-label`; reminder-hour `<select>` got an `aria-label`.
+- **ConnectionBanner** — realtime-drop banner now `role="status" aria-live="polite"` (was silent
+  to screen readers).
+- **OfflineBanner** — the visible banner text was hardcoded English despite the bilingual
+  announce(); visible text now follows `lang`.
+- **SportProgramBuilder** — all 18 form labels now associated with their control via
+  `htmlFor`/`id` (clicking a label focuses its field; reliable SR labelling).
+- **Backdrops** — click-to-close overlays in SearchPalette / CoachSquadView / GatingOverlay /
+  CoachOnboarding marked `aria-hidden="true"` so they're not unnamed clickables in the AT tree.
+  Found + fixed a real keyboard trap: CoachSquadView's note panel had no Escape handler → added one.
+  (FieldTestModal's backdrop *wraps* its dialog, so aria-hidden was correctly NOT applied there —
+  noted as a follow-up needing a structural change.)
+
+Performance:
+- **TodayView** — the "consecutive rest day" block re-ran `calcLoad(log)` (a day-by-day walk,
+  1000+ iterations) on every render, i.e. every 30s clock tick + every state change. Now reuses the
+  already-memoized `todayCtl` (identical function/input). `React.memo` on TodayView was evaluated
+  and deliberately skipped (it consumes contexts that churn, so memo wouldn't block the tick).
+- Deleted orphaned `AiFeedbackButtons.jsx` (zero importers).
+
++3 tests. 15,933 green (710 files), lint + build clean.
+
 ## v9.439.0 — 2026-06-19 — 🔴 Fix silent data loss: numeric session ids rejected by uuid PK
 
 CRITICAL data-integrity fix. `training_log.id` (and injuries/test_results/race_results) is a
