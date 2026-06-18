@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { S } from '../../styles.js'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { daysBefore, computeLoad, generateCoachPlan, SPORT_GOALS, ComplianceBar, escHtml, TODAY } from './helpers.jsx'
 import { analyzeLoadTrend, analyzeZoneBalance, predictInjuryRisk, predictFitness, analyzeRecoveryCorrelation, computeRaceReadiness, predictRacePerformance } from '../../lib/intelligence.js'
 import { correlateTrainingToResults, findRecoveryPatterns, mineInjuryPatterns, findOptimalWeekStructure } from '../../lib/patterns.js'
@@ -7,7 +8,8 @@ import ConfirmModal from '../ui/ConfirmModal.jsx'
 
 // ─── Athlete Detail ───────────────────────────────────────────────────────────
 
-export default function AthleteDetailPanel({ athlete, onUpdate, onClose: _onClose, templates: _templates, setTemplates }) {
+export default function AthleteDetailPanel({ athlete, onUpdate, onClose: _onClose, templates: _templates, setTemplates, appliedTemplate, onTemplateApplied }) {
+  const { lang } = useContext(LangCtx) || { lang: 'en' }
   const log = athlete.log || []
   const recovery = athlete.recovery || []
   const { ctl, atl, tsb } = computeLoad(log)
@@ -30,6 +32,20 @@ export default function AthleteDetailPanel({ athlete, onUpdate, onClose: _onClos
   const [planHours, setPlanHours] = useState('8')
   const [planLevel, setPlanLevel] = useState('Intermediate')
   const [planSaved, setPlanSaved] = useState(false)
+  const [appliedName, setAppliedName] = useState(null) // name of a template applied to this panel
+
+  // Consume a template applied from the dashboard's PLAN TEMPLATES list: pre-fill the plan
+  // generator, then signal the parent to clear it so it applies exactly once.
+  useEffect(() => {
+    if (!appliedTemplate) return
+    if (appliedTemplate.goal && goalOptions.includes(appliedTemplate.goal)) setPlanGoal(appliedTemplate.goal)
+    if (appliedTemplate.weeks) setPlanWeeks(String(appliedTemplate.weeks))
+    if (appliedTemplate.hours) setPlanHours(String(appliedTemplate.hours))
+    if (appliedTemplate.level) setPlanLevel(appliedTemplate.level)
+    setAppliedName(appliedTemplate.name)
+    onTemplateApplied?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot consume keyed on appliedTemplate identity
+  }, [appliedTemplate])
   // v9.86.0 — alert modal (replaces window.alert)
   const [alertOpen, setAlertOpen] = useState(false)
   const [alertText, setAlertText] = useState('')
@@ -172,6 +188,11 @@ export default function AthleteDetailPanel({ athlete, onUpdate, onClose: _onClos
       <div style={{ ...S.card, background:'var(--surface)', marginBottom:'12px' }}>
         <div style={S.cardTitle}>CREATE PLAN — {athlete.name.toUpperCase()}</div>
         <div style={{ ...S.mono, fontSize:'9px', color:'#0064ff', marginBottom:'8px' }}>SPORT: {athleteSport.toUpperCase()}</div>
+        {appliedName && (
+          <div role="status" style={{ ...S.mono, fontSize:'9px', color:'#5bc25b', marginBottom:'8px' }}>
+            {lang === 'tr' ? `✓ Şablondan dolduruldu: ${appliedName}` : `✓ Filled from template: ${appliedName}`}
+          </div>
+        )}
         <div style={{ ...S.row, marginBottom:'10px' }}>
           <div style={{ flex:'1 1 130px' }}>
             <label style={S.label}>GOAL</label>

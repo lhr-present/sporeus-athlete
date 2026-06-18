@@ -7,7 +7,7 @@ import AthleteDetailPanel from './AthleteDetailPanel.jsx'
 
 // ─── Athlete Status Card ──────────────────────────────────────────────────────
 
-export default function AthleteCard({ athlete, isOpen, onToggle, onRemove, onUpdate, templates, setTemplates, onQuickNote, myCoachId }) {
+export default function AthleteCard({ athlete, isOpen, onToggle, onRemove, onUpdate, templates, setTemplates, appliedTemplate, onTemplateApplied, onQuickNote, myCoachId }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const metrics = computeAthleteMetrics(athlete)
   const load = computeLoad(athlete.log || [])
@@ -85,6 +85,8 @@ export default function AthleteCard({ athlete, isOpen, onToggle, onRemove, onUpd
             onClose={() => {}}
             templates={templates}
             setTemplates={setTemplates}
+            appliedTemplate={appliedTemplate}
+            onTemplateApplied={onTemplateApplied}
           />
         </div>
       )}

@@ -38,7 +38,7 @@ import { getGeneralMembers, confirmGeneralProgram, getEnduranceMembers, verifyAt
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function CoachDashboard({ authUser }) {
-  const { t } = useContext(LangCtx)
+  const { t, lang } = useContext(LangCtx)
   const [roster, setRoster] = useLocalStorage('sporeus-coach-athletes', [])
   const [coachOnboarded, setCoachOnboarded] = useLocalStorage('sporeus-coach-onboarded', false)
   const [clubOnboarded, setClubOnboarded]   = useLocalStorage('sporeus-club-onboarded', false)
@@ -46,6 +46,8 @@ export default function CoachDashboard({ authUser }) {
   const [coachProfile, setCoachProfile] = useLocalStorage('sporeus-coach-profile', null)
   const [templates, setTemplates] = useLocalStorage('sporeus-coach-templates', [])
   const [expanded, setExpanded] = useLocalStorage('sporeus-coach-last-athlete', null)
+  const [appliedTemplate, setAppliedTemplate] = useState(null) // staged for the detail panel to consume once
+  const [templateMsg, setTemplateMsg] = useState('')           // transient "applied to X" feedback
   const [showMyAthletes, setShowMyAthletes] = useState(false)
   const [squadBenchmarkOpen, setSquadBenchmarkOpen] = useState(false)
   const [sortBy, setSortBy] = useState('attention')
@@ -251,9 +253,29 @@ export default function CoachDashboard({ authUser }) {
     setPendingAthlete(null)
   }
 
-  function applyTemplate(_tmpl) {
-    // Templates just auto-expand the appropriate athlete and populate plan fields
-    // We store it in session state for AthleteDetailPanel — for now just a future hook
+  // Apply a saved plan template: open the most relevant athlete and pre-fill their
+  // plan generator with the template's goal/weeks/hours/level. The detail panel consumes
+  // `appliedTemplate` once (then clears it via onTemplateApplied), so re-opening another
+  // athlete later does not re-apply a stale template.
+  function applyTemplate(tmpl) {
+    if (!tmpl) return
+    const sportOf = a => (a.sport || a.profile?.sport || '').toLowerCase()
+    // Prefer an athlete whose sport matches the template; else the open one; else the first.
+    const target =
+      roster.find(a => sportOf(a) === (tmpl.sport || '').toLowerCase()) ||
+      roster.find(a => a.id === expanded) ||
+      roster[0]
+    if (!target) {
+      setTemplateMsg(lang === 'tr'
+        ? 'Şablonu uygulamak için önce bir sporcu ekleyin.'
+        : 'Add an athlete first to apply a template.')
+      return
+    }
+    setExpanded(target.id)
+    setAppliedTemplate({ ...tmpl, _targetId: target.id })
+    setTemplateMsg(lang === 'tr'
+      ? `"${tmpl.name}" → ${target.name}`
+      : `"${tmpl.name}" → ${target.name}`)
   }
 
   const SORT_CHIPS = [
@@ -500,6 +522,11 @@ export default function CoachDashboard({ authUser }) {
 
       {/* Plan Templates */}
       <PlanDistribution templates={templates} setTemplates={setTemplates} onApply={applyTemplate}/>
+      {templateMsg && (
+        <div role="status" style={{ ...S.mono, fontSize:'10px', color:'#0064ff', margin:'-8px 0 12px', textAlign:'right' }}>
+          {lang === 'tr' ? 'Şablon uygulandı: ' : 'Template applied: '}{templateMsg}
+        </div>
+      )}
 
       {/* Squad Benchmark */}
       <div style={{ ...S.card, marginBottom:'16px' }}>
@@ -600,6 +627,8 @@ export default function CoachDashboard({ authUser }) {
               onUpdate={handleUpdateAthlete}
               templates={templates}
               setTemplates={setTemplates}
+              appliedTemplate={appliedTemplate && appliedTemplate._targetId === athlete.id ? appliedTemplate : null}
+              onTemplateApplied={() => setAppliedTemplate(null)}
               onQuickNote={() => { setQuickNoteId(id => id === athlete.id ? null : athlete.id); setQuickNoteText('') }}
               myCoachId={myCoachId}
             />

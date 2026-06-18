@@ -2,6 +2,26 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.438.0 — 2026-06-18 — Fix two visible-but-broken features (Glossary chips + Apply Template)
+
+Two features users could see but that silently did nothing — now real. Both bilingual, +5 tests.
+
+- **Glossary "Latest from sporeus.com" category chips** — the ALL/TRAINING/SCIENCE chips set
+  state but never filtered the list (purely cosmetic). Replaced the hardcoded chips with
+  **dynamic** ones derived from the categories actually present in the fetched articles (top 4 by
+  frequency, resolved to real names via the WP categories endpoint). The list now filters by the
+  selected category. Graceful fallback: if category names can't be resolved, the chip row stays
+  hidden (never shown broken) and articles render unfiltered. Chips show only when ≥2 categories
+  resolve (so filtering is meaningful). +2 render tests.
+- **CoachDashboard "Apply Template"** — `applyTemplate` was an empty stub: clicking a saved plan
+  template did nothing. It now opens the most relevant athlete (sport match → open one → first)
+  and pre-fills their plan generator (goal/weeks/hours/level) from the template, with a "Filled
+  from template" confirmation and a dashboard "applied to X" line. The detail panel consumes the
+  template once (then clears it), so re-opening another athlete later won't re-apply a stale one.
+  Invalid cross-sport goals are skipped so the goal <select> stays valid. +3 render tests.
+
+15,912 tests green (709 files), lint + build clean.
+
 ## v9.437.0 — 2026-06-18 — i18n sweep: 3 English-only components → bilingual (TR)
 
 Three user-facing components rendered hardcoded ENGLISH to Turkish users despite the app being
