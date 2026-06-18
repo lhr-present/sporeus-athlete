@@ -34,6 +34,8 @@ describe('i18n parity — LABELS', () => {
       'seasonTSS',       // 'TSS' — technical acronym, same in EN and TR
       'cyclingWperKg',   // 'W/kg' — universal power-to-weight unit, identical in Turkish
       't_program',       // 'PROGRAM' — loanword identical in Turkish
+      'myCoach_codePlaceholder', // 'SP-XXXXXXXX' — literal invite-code format example
+      'deviceSync_headingNote',  // '(open-wearables)' — protocol/project proper noun
     ])
     const gaps = []
     for (const [key, enVal] of Object.entries(EN)) {

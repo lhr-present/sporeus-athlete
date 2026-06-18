@@ -16,13 +16,13 @@ const PARSE_TIMEOUT_MS = 90_000        // watchdog: edge fn 200s but no terminal
 const BUCKET     = 'activity-uploads'
 const ACCEPT_EXT = { 'application/octet-stream': ['.fit'], 'text/xml': ['.gpx'], 'application/xml': ['.gpx'] }
 
-const STATUS_LABEL = {
-  idle:      '',
-  uploading: 'Uploading to storage…',
-  pending:   'Queued for parse…',
-  parsing:   'Parsing activity…',
-  done:      'Done — session logged!',
-  error:     'Parse failed.',
+const STATUS_LABEL_KEY = {
+  idle:      null,
+  uploading: 'upload_statusUploading',
+  pending:   'upload_statusPending',
+  parsing:   'upload_statusParsing',
+  done:      'upload_statusDone',
+  error:     'upload_statusError',
 }
 
 const STATUS_COLOR = {
@@ -37,7 +37,7 @@ const STATUS_COLOR = {
  * @param {function}    props.onClose       — called when user dismisses
  */
 export default function UploadActivity({ authUser, onSuccess, onClose }) {
-  const { lang } = useContext(LangCtx)
+  const { t } = useContext(LangCtx)
   const [status,   setStatus]  = useState('idle')
   const [errMsg,   setErrMsg]  = useState('')
   const [progress, setProgress] = useState('')
@@ -78,32 +78,32 @@ export default function UploadActivity({ authUser, onSuccess, onClose }) {
     // This ref blocks the second call synchronously.
     if (inFlightRef.current) return
     if (!authUser || !isSupabaseReady()) {
-      setErrMsg('Sign in to upload activities.'); return
+      setErrMsg(t('upload_errSignIn')); return
     }
     if (file.size > MAX_BYTES) {
-      setErrMsg(`File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max is 25 MB.`); return
+      setErrMsg(t('upload_errTooLarge').replace('{mb}', (file.size / 1024 / 1024).toFixed(1))); return
     }
     if (tierBlocked) return
 
     const ext = file.name.split('.').pop().toLowerCase()
     if (!['fit', 'gpx'].includes(ext)) {
-      setErrMsg('Only .fit and .gpx files are supported.'); return
+      setErrMsg(t('upload_errUnsupported')); return
     }
 
     inFlightRef.current = true
     setErrMsg('')
     setStatus('uploading')
-    setProgress('Uploading…')
+    setProgress(t('upload_progUploading'))
 
     try {
       // 1. Upload raw file to Storage
       const ts   = Date.now()
       const path = `${authUser.id}/${ts}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
       const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, { cacheControl: '3600', upsert: false })
-      if (upErr) throw new Error('Upload failed: ' + upErr.message)
+      if (upErr) throw new Error(t('upload_errUploadFailed').replace('{msg}', upErr.message))
 
       setStatus('pending')
-      setProgress('Creating job…')
+      setProgress(t('upload_progCreatingJob'))
 
       // 2. Insert job row (status='pending')
       const { data: jobRow, error: jobErr } = await supabase
@@ -118,7 +118,7 @@ export default function UploadActivity({ authUser, onSuccess, onClose }) {
         })
         .select('id')
         .maybeSingle()
-      if (jobErr || !jobRow) throw new Error('Job creation failed: ' + (jobErr?.message || 'unknown'))
+      if (jobErr || !jobRow) throw new Error(t('upload_errJobFailed').replace('{msg}', jobErr?.message || t('upload_errUnknown')))
 
       const jobId = jobRow.id
 
@@ -132,17 +132,17 @@ export default function UploadActivity({ authUser, onSuccess, onClose }) {
           if (!updated) return  // malformed payload (absent `new`) — ignore, don't throw
           if (updated.status === 'parsing') {
             setStatus('parsing')
-            setProgress('Edge function parsing…')
+            setProgress(t('upload_progParsing'))
           } else if (updated.status === 'done') {
             clearTimeout(watchdogRef.current)
             setStatus('done')
-            setProgress('Session logged successfully!')
+            setProgress(t('upload_progLogged'))
             if (channelRef.current) supabase.removeChannel(channelRef.current)
             if (onSuccess) onSuccess(updated.parsed_session_id)
           } else if (updated.status === 'error') {
             clearTimeout(watchdogRef.current)
             setStatus('error')
-            setErrMsg(updated.error || 'Parse error')
+            setErrMsg(updated.error || t('upload_errParseError'))
             if (channelRef.current) supabase.removeChannel(channelRef.current)
           }
         })
@@ -150,7 +150,7 @@ export default function UploadActivity({ authUser, onSuccess, onClose }) {
       channelRef.current = ch
 
       setStatus('parsing')
-      setProgress('Invoking parse-activity…')
+      setProgress(t('upload_progInvoking'))
 
       // Watchdog: if the edge fn returns 200 but dies before writing a terminal
       // status (done/error) to the job row, no realtime UPDATE arrives and the UI
@@ -160,9 +160,7 @@ export default function UploadActivity({ authUser, onSuccess, onClose }) {
       watchdogRef.current = setTimeout(() => {
         setStatus(prev => {
           if (prev !== 'parsing') return prev
-          setErrMsg(lang === 'tr'
-            ? 'Ayrıştırma zaman aşımına uğradı — tekrar deneyin'
-            : 'Parse timed out — try again')
+          setErrMsg(t('upload_errTimedOut'))
           if (channelRef.current) supabase.removeChannel(channelRef.current)
           return 'error'
         })
@@ -178,7 +176,7 @@ export default function UploadActivity({ authUser, onSuccess, onClose }) {
         clearTimeout(watchdogRef.current)
         logger.warn('parse-activity:', fnErr.message)
         setStatus('error')
-        setErrMsg('Parse failed: ' + fnErr.message)
+        setErrMsg(t('upload_errParseFailed').replace('{msg}', fnErr.message))
         if (channelRef.current) supabase.removeChannel(channelRef.current)
       }
     } catch (e) {
@@ -191,7 +189,7 @@ export default function UploadActivity({ authUser, onSuccess, onClose }) {
       // status is 'parsing'/'error'/'done' so the dropzone's disabled prop holds.
       inFlightRef.current = false
     }
-  }, [authUser, tierBlocked, onSuccess, lang])
+  }, [authUser, tierBlocked, onSuccess, t])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop:   accepted => accepted[0] && processFile(accepted[0]),
@@ -201,33 +199,33 @@ export default function UploadActivity({ authUser, onSuccess, onClose }) {
     disabled: status !== 'idle' && status !== 'error' && status !== 'done',
     onDropRejected: rejected => {
       const reason = rejected[0]?.errors?.[0]?.code
-      setErrMsg(reason === 'file-too-large' ? 'File too large (max 25 MB).' : 'Only .fit and .gpx files are supported.')
+      setErrMsg(reason === 'file-too-large' ? t('upload_errTooLargeShort') : t('upload_errUnsupported'))
     },
   })
 
   return (
     <div style={{ ...S.card, maxWidth: '480px', margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', ...S.cardTitle }}>
-        <span>↑ UPLOAD ACTIVITY</span>
+        <span>{t('upload_title')}</span>
         {onClose && (
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '18px', lineHeight: 1, padding: 0 }}
-            aria-label="Close upload panel">×</button>
+            aria-label={t('upload_closeAria')}>×</button>
         )}
       </div>
 
       {tierBlocked ? (
         <div style={{ ...S.mono, fontSize: '12px', color: '#ff6600', lineHeight: 1.6, padding: '8px 0' }}>
-          <div style={{ fontWeight: 600, marginBottom: '4px' }}>Upload limit reached</div>
+          <div style={{ fontWeight: 600, marginBottom: '4px' }}>{t('upload_limitReached')}</div>
           <div>{errMsg}</div>
           <div style={{ marginTop: '8px', color: 'var(--muted)', fontSize: '11px' }}>
-            Free plan: {FREE_UPLOAD_LIMIT} uploads / month
+            {t('upload_freePlan').replace('{n}', String(FREE_UPLOAD_LIMIT))}
           </div>
         </div>
       ) : (
         <>
           <div
             {...getRootProps()}
-            aria-label="File drop zone — drop a .fit or .gpx file, or press Enter to browse"
+            aria-label={t('upload_dropzoneAria')}
             style={{
               border: `2px dashed ${isDragActive ? '#ff6600' : 'var(--border)'}`,
               borderRadius: '8px',
@@ -238,13 +236,13 @@ export default function UploadActivity({ authUser, onSuccess, onClose }) {
               transition: 'border-color 200ms, background 200ms',
             }}
           >
-            <input {...getInputProps()} aria-label="Upload .fit or .gpx activity file" />
+            <input {...getInputProps()} aria-label={t('upload_inputAria')} />
             <div style={{ ...S.mono, fontSize: '28px', marginBottom: '8px', color: 'var(--muted)' }}>↑</div>
             <div style={{ ...S.mono, fontSize: '13px', fontWeight: 600, color: 'var(--text)', marginBottom: '4px' }}>
-              {isDragActive ? 'Drop here' : 'Drop .fit or .gpx file'}
+              {isDragActive ? t('upload_dropHere') : t('upload_dropPrompt')}
             </div>
             <div style={{ ...S.mono, fontSize: '10px', color: 'var(--muted)' }}>
-              or click to browse · max 25 MB
+              {t('upload_browseHint')}
             </div>
           </div>
 
@@ -256,7 +254,7 @@ export default function UploadActivity({ authUser, onSuccess, onClose }) {
                   borderRadius: '50%', background: STATUS_COLOR[status], flexShrink: 0,
                 }} />
                 <span style={{ color: STATUS_COLOR[status], fontWeight: 600 }}>
-                  {STATUS_LABEL[status]}
+                  {STATUS_LABEL_KEY[status] ? t(STATUS_LABEL_KEY[status]) : ''}
                 </span>
               </div>
               {progress && status !== 'done' && status !== 'error' && (
@@ -279,11 +277,11 @@ export default function UploadActivity({ authUser, onSuccess, onClose }) {
                 onClick={() => { setStatus('idle'); setErrMsg(''); setProgress('') }}
                 style={{ ...S.btnSec, fontSize: '11px', padding: '6px 12px' }}
               >
-                Upload another
+                {t('upload_uploadAnother')}
               </button>
               {onClose && (
                 <button onClick={onClose} style={{ ...S.btn, fontSize: '11px', padding: '6px 12px' }}>
-                  View log
+                  {t('upload_viewLog')}
                 </button>
               )}
             </div>
@@ -294,7 +292,7 @@ export default function UploadActivity({ authUser, onSuccess, onClose }) {
               onClick={() => { setStatus('idle'); setErrMsg(''); setProgress('') }}
               style={{ ...S.btnSec, fontSize: '11px', padding: '6px 12px', marginTop: '8px' }}
             >
-              Try again
+              {t('upload_tryAgain')}
             </button>
           )}
         </>

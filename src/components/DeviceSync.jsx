@@ -1,13 +1,16 @@
 // ─── DeviceSync.jsx — Open Wearables device management UI (v5.12.0) ──────────
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useContext } from 'react'
 import { getDevices, addDevice, removeDevice, triggerSync } from '../lib/deviceSync.js'
 import ConfirmModal from './ui/ConfirmModal.jsx'
+import { LangCtx } from '../contexts/LangCtx.jsx'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
 const GREEN  = '#5bc25b'
 const RED    = '#e03030'
 
+// Provider brand names are proper nouns (kept as-is); only the generic "Other"
+// entry is translated. labelKey is resolved via t() at render time.
 const PROVIDERS = [
   { value: 'garmin',  label: 'Garmin' },
   { value: 'polar',   label: 'Polar' },
@@ -16,10 +19,11 @@ const PROVIDERS = [
   { value: 'wahoo',   label: 'Wahoo' },
   { value: 'oura',    label: 'Oura' },
   { value: 'whoop',   label: 'Whoop' },
-  { value: 'other',   label: 'Other' },
+  { value: 'other',   labelKey: 'deviceSync_provOther' },
 ]
 
 export default function DeviceSync({ userId }) {
+  const { t } = useContext(LangCtx)
   const [devices, setDevices]     = useState([])
   const [syncing, setSyncing]     = useState(false)
   const [syncMsg, setSyncMsg]     = useState(null)   // { type: 'ok'|'err', text }
@@ -49,14 +53,14 @@ export default function DeviceSync({ userId }) {
     const { results, synced, error } = await triggerSync()
     setSyncing(false)
     if (error) {
-      setSyncMsg({ type: 'err', text: `Sync failed: ${error.message}` })
+      setSyncMsg({ type: 'err', text: t('deviceSync_syncFailed').replace('{msg}', error.message) })
     } else {
       const safeResults = Array.isArray(results) ? results : []
       const failed = safeResults.filter(r => r.status === 'error')
       if (failed.length > 0) {
-        setSyncMsg({ type: 'err', text: `${synced} activities synced. ${failed.length} device(s) failed.` })
+        setSyncMsg({ type: 'err', text: t('deviceSync_syncPartial').replace('{synced}', synced).replace('{failed}', failed.length) })
       } else {
-        setSyncMsg({ type: 'ok', text: `Synced ${synced} activities from ${safeResults.length} device(s).` })
+        setSyncMsg({ type: 'ok', text: t('deviceSync_syncOk').replace('{synced}', synced).replace('{count}', safeResults.length) })
       }
       loadDevices()
     }
@@ -66,12 +70,12 @@ export default function DeviceSync({ userId }) {
   async function handleAdd(e) {
     e.preventDefault()
     setFormErr('')
-    if (!form.baseUrl) { setFormErr('Instance URL is required.'); return }
+    if (!form.baseUrl) { setFormErr(t('deviceSync_errInstanceUrl')); return }
     try {
       const u = new URL(form.baseUrl)
-      if (!['https:', 'http:'].includes(u.protocol)) { setFormErr('URL must start with https:// or http://'); return }
+      if (!['https:', 'http:'].includes(u.protocol)) { setFormErr(t('deviceSync_errProtocol')); return }
     } catch {
-      setFormErr('Invalid URL.'); return
+      setFormErr(t('deviceSync_errInvalidUrl')); return
     }
     setAdding(true)
     const { error } = await addDevice({ userId, ...form })
@@ -98,7 +102,7 @@ export default function DeviceSync({ userId }) {
   }
 
   function fmtDate(iso) {
-    if (!iso) return 'never'
+    if (!iso) return t('deviceSync_never')
     return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
   }
 
@@ -107,19 +111,19 @@ export default function DeviceSync({ userId }) {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
         <div style={{ fontSize: '11px', fontWeight: 700, color: '#ccc', letterSpacing: '0.08em' }}>
-          WEARABLE DEVICES <span style={{ color: '#444', fontWeight: 400 }}>(open-wearables)</span>
+          {t('deviceSync_heading')} <span style={{ color: '#444', fontWeight: 400 }}>{t('deviceSync_headingNote')}</span>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
             onClick={handleSync}
             disabled={syncing || devices.length === 0}
             style={{ fontSize: '10px', padding: '5px 12px', background: ORANGE, border: 'none', borderRadius: '3px', color: '#fff', fontFamily: MONO, fontWeight: 700, cursor: devices.length === 0 ? 'not-allowed' : 'pointer', opacity: syncing ? 0.6 : 1 }}>
-            {syncing ? 'SYNCING...' : '↓ SYNC NOW'}
+            {syncing ? t('deviceSync_syncing') : t('deviceSync_syncNow')}
           </button>
           <button
             onClick={() => setShowAdd(v => !v)}
             style={{ fontSize: '10px', padding: '5px 12px', background: 'transparent', border: `1px solid ${ORANGE}`, borderRadius: '3px', color: ORANGE, fontFamily: MONO, cursor: 'pointer' }}>
-            {showAdd ? '✕ Cancel' : '+ Add Device'}
+            {showAdd ? t('deviceSync_cancel') : t('deviceSync_addDevice')}
           </button>
         </div>
       </div>
@@ -134,26 +138,26 @@ export default function DeviceSync({ userId }) {
       {/* Add device form */}
       {showAdd && (
         <form onSubmit={handleAdd} style={{ background: '#141414', border: '1px solid #2a2a2a', borderRadius: '4px', padding: '14px', marginBottom: '12px' }}>
-          <div style={{ fontSize: '10px', color: '#888', marginBottom: '10px', letterSpacing: '0.06em' }}>ADD OPEN-WEARABLES DEVICE</div>
+          <div style={{ fontSize: '10px', color: '#888', marginBottom: '10px', letterSpacing: '0.06em' }}>{t('deviceSync_addFormHeading')}</div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
             <div>
-              <div style={{ fontSize: '9px', color: '#555', marginBottom: '4px' }}>PROVIDER</div>
+              <div style={{ fontSize: '9px', color: '#555', marginBottom: '4px' }}>{t('deviceSync_provider')}</div>
               <select value={form.provider} onChange={e => setForm(f => ({ ...f, provider: e.target.value }))}
                 style={{ width: '100%', background: '#1a1a1a', border: '1px solid #333', borderRadius: '3px', color: '#ccc', fontFamily: MONO, fontSize: '11px', padding: '6px 8px' }}>
-                {PROVIDERS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                {PROVIDERS.map(p => <option key={p.value} value={p.value}>{p.labelKey ? t(p.labelKey) : p.label}</option>)}
               </select>
             </div>
             <div>
-              <div style={{ fontSize: '9px', color: '#555', marginBottom: '4px' }}>NICKNAME</div>
+              <div style={{ fontSize: '9px', color: '#555', marginBottom: '4px' }}>{t('deviceSync_nickname')}</div>
               <input value={form.label} onChange={e => setForm(f => ({ ...f, label: e.target.value }))}
-                placeholder="My Garmin"
+                placeholder={t('deviceSync_nicknamePlaceholder')}
                 style={{ width: '100%', boxSizing: 'border-box', background: '#1a1a1a', border: '1px solid #333', borderRadius: '3px', color: '#ccc', fontFamily: MONO, fontSize: '11px', padding: '6px 8px' }} />
             </div>
           </div>
 
           <div style={{ marginBottom: '8px' }}>
-            <div style={{ fontSize: '9px', color: '#555', marginBottom: '4px' }}>OPEN-WEARABLES INSTANCE URL</div>
+            <div style={{ fontSize: '9px', color: '#555', marginBottom: '4px' }}>{t('deviceSync_instanceUrl')}</div>
             <input value={form.baseUrl} onChange={e => setForm(f => ({ ...f, baseUrl: e.target.value }))}
               placeholder="https://ow.yourdomain.com"
               type="url" inputMode="url" autoComplete="off" autoCapitalize="none" spellCheck={false}
@@ -162,30 +166,30 @@ export default function DeviceSync({ userId }) {
           </div>
 
           <div style={{ marginBottom: '12px' }}>
-            <div style={{ fontSize: '9px', color: '#555', marginBottom: '4px' }}>API TOKEN (optional)</div>
+            <div style={{ fontSize: '9px', color: '#555', marginBottom: '4px' }}>{t('deviceSync_apiToken')}</div>
             <input type="password" value={form.token} onChange={e => setForm(f => ({ ...f, token: e.target.value }))}
-              placeholder="Leave blank if no auth required"
+              placeholder={t('deviceSync_tokenPlaceholder')}
               autoComplete="off" autoCapitalize="none" spellCheck={false}
               style={{ width: '100%', boxSizing: 'border-box', background: '#1a1a1a', border: '1px solid #333', borderRadius: '3px', color: '#ccc', fontFamily: MONO, fontSize: '11px', padding: '6px 8px' }} />
-            <div style={{ fontSize: '9px', color: '#444', marginTop: '4px' }}>Token is encrypted before storage and never returned.</div>
+            <div style={{ fontSize: '9px', color: '#444', marginTop: '4px' }}>{t('deviceSync_tokenNote')}</div>
           </div>
 
           {formErr && <div style={{ fontSize: '10px', color: RED, marginBottom: '8px' }}>{formErr}</div>}
 
           <button type="submit" disabled={adding}
             style={{ padding: '8px 20px', background: ORANGE, border: 'none', borderRadius: '3px', color: '#fff', fontFamily: MONO, fontSize: '11px', fontWeight: 700, cursor: 'pointer', opacity: adding ? 0.6 : 1 }}>
-            {adding ? 'ADDING...' : 'ADD DEVICE'}
+            {adding ? t('deviceSync_adding') : t('deviceSync_addDeviceBtn')}
           </button>
         </form>
       )}
 
       {/* Device list */}
       {loading ? (
-        <div style={{ fontSize: '10px', color: '#444' }}>Loading devices...</div>
+        <div style={{ fontSize: '10px', color: '#444' }}>{t('deviceSync_loadingDevices')}</div>
       ) : devices.length === 0 ? (
         <div style={{ fontSize: '10px', color: '#444', lineHeight: 1.6 }}>
-          No devices connected. Add a self-hosted{' '}
-          <span style={{ color: '#666' }}>open-wearables</span> instance to sync activities automatically.
+          {t('deviceSync_noDevicesPre')}{' '}
+          <span style={{ color: '#666' }}>open-wearables</span> {t('deviceSync_noDevicesPost')}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -196,12 +200,12 @@ export default function DeviceSync({ userId }) {
                   {d.label || d.provider} <span style={{ fontSize: '9px', color: '#555', fontWeight: 400 }}>{d.provider}</span>
                 </div>
                 <div style={{ fontSize: '9px', color: '#444', marginTop: '3px' }}>
-                  {d.base_url} · last sync: {fmtDate(d.last_sync_at)}
+                  {d.base_url} · {t('deviceSync_lastSync')} {fmtDate(d.last_sync_at)}
                 </div>
               </div>
               <button onClick={() => handleRemove(d.id)}
                 style={{ background: 'transparent', border: '1px solid #333', borderRadius: '3px', color: '#555', fontFamily: MONO, fontSize: '10px', padding: '4px 8px', cursor: 'pointer' }}>
-                Remove
+                {t('deviceSync_remove')}
               </button>
             </div>
           ))}
@@ -210,10 +214,10 @@ export default function DeviceSync({ userId }) {
 
       <ConfirmModal
         open={confirmRemoveOpen}
-        title="Remove device?"
-        body="Existing synced data is kept."
-        confirmLabel="Remove"
-        cancelLabel="Cancel"
+        title={t('deviceSync_removeTitle')}
+        body={t('deviceSync_removeBody')}
+        confirmLabel={t('deviceSync_remove')}
+        cancelLabel={t('deviceSync_cancelPlain')}
         dangerous
         onConfirm={doRemove}
         onCancel={() => { setConfirmRemoveOpen(false); setPendingRemoveId(null) }}

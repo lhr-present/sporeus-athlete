@@ -2,6 +2,23 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.437.0 — 2026-06-18 — i18n sweep: 3 English-only components → bilingual (TR)
+
+Three user-facing components rendered hardcoded ENGLISH to Turkish users despite the app being
+bilingual. Strings-only change (no logic/layout/behavior), all via `t()` + LABELS per convention:
+
+- **UploadActivity** — FIT/GPX upload panel (status labels, progress, all error messages, aria).
+- **MyCoach** — coach invite/accept/join flows. Also fixed a real bug: `inviteReasonMsg` was a
+  bilingual helper but **always called with `isTR=false`**, so TR users got English invite-error
+  reasons regardless of language. Now resolves via `t()`.
+- **DeviceSync** — wearables sync panel (headings, sync states, add-device form, confirm dialog).
+
+97 new LABELS keys, EN+TR parity verified (32/33/32), proper Turkish UTF-8 + sport terminology.
+Brand/proper nouns (Strava, Garmin, open-wearables, .fit/.gpx) and literal code-format examples
+(`SP-XXXXXXXX`) intentionally kept identical (added to the i18n parity test allowlist).
+
+15,907 tests green, lint + build clean.
+
 ## v9.436.0 — 2026-06-18 — Make the computed science legible (+ complete session-views)
 
 Theme: the app already computes sophisticated sport-science but under-narrates it, and some
