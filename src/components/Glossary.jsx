@@ -63,7 +63,9 @@ export default function Glossary() {
     return () => { alive = false }
   }, [])
 
-  // Fetch recent articles from sporeus.com (separate from glossary terms)
+  // Fetch recent articles from sporeus.com (separate from glossary terms). Also resolves the
+  // articles' category names so the filter chips below are real (best-effort: if the category
+  // lookup fails, articles still render and the chips simply stay hidden \u2014 never broken).
   useEffect(() => {
     let alive = true
     const cached = getArticlesCache()
@@ -71,20 +73,34 @@ export default function Glossary() {
     if (!canFetchApi()) return
     setArticlesLoading(true)
     markApiFetched()
-    fetchJson('https://sporeus.com/wp-json/wp/v2/posts?per_page=10&_fields=id,title,excerpt,link,date,categories')
-      .then(data=>{
-        const arts=data.map(p=>({
+    ;(async () => {
+      try {
+        const data = await fetchJson('https://sporeus.com/wp-json/wp/v2/posts?per_page=10&_fields=id,title,excerpt,link,date,categories')
+        const arts = data.map(p=>({
           id:p.id,
           title:p.title.rendered.replace(/<[^>]+>/g,'').replace(/&amp;/g,'&').replace(/&#8220;/g,'\u201c').replace(/&#8221;/g,'\u201d'),
           excerpt:(p.excerpt.rendered||'').replace(/<[^>]+>/g,'').trim().slice(0,120),
           link:p.link,
           date:p.date?.slice(0,10)||'',
           categories:p.categories||[],
+          cats:[], // [{id,name}] \u2014 filled below when category names resolve
         }))
+        const ids = [...new Set(arts.flatMap(a=>a.categories))]
+        if (ids.length) {
+          try {
+            const cats = await fetchJson(`https://sporeus.com/wp-json/wp/v2/categories?include=${ids.join(',')}&per_page=100&_fields=id,name`)
+            const nameById = {}
+            cats.forEach(c=>{ nameById[c.id] = (c.name||'').replace(/&amp;/g,'&') })
+            arts.forEach(a=>{ a.cats = a.categories.map(id=>nameById[id] ? { id, name:nameById[id] } : null).filter(Boolean) })
+          } catch (e) { logger.warn('article categories:', e.message) } // names optional
+        }
         setArticlesCache(arts); if (alive) setArticles(arts)
-      })
-      .catch(()=>{})
-      .finally(()=>{ if (alive) setArticlesLoading(false) })
+      } catch (e) {
+        logger.warn('articles fetch:', e.message)
+      } finally {
+        if (alive) setArticlesLoading(false)
+      }
+    })()
     return () => { alive = false }
   }, [])
 
@@ -114,6 +130,22 @@ export default function Glossary() {
 
   const paginated = filtered.slice(0, page * PER_PAGE)
   const hasMore = filtered.length > paginated.length
+
+  // Real, dynamic category chips for "Latest from sporeus.com" — derived from the categories
+  // that actually appear in the fetched articles (top 4 by frequency). Empty unless ≥2 distinct
+  // categories resolve, so the chip row only shows when filtering is meaningful.
+  const articleCats = useMemo(() => {
+    const m = new Map() // id -> { id, name, count }
+    articles.forEach(a => (a.cats||[]).forEach(c => {
+      const e = m.get(c.id) || { id:c.id, name:c.name, count:0 }
+      e.count++; m.set(c.id, e)
+    }))
+    return [...m.values()].sort((a,b)=>b.count-a.count).slice(0,4)
+  }, [articles])
+
+  const shownArticles = useMemo(() =>
+    articleFilter==='all' ? articles : articles.filter(a => (a.cats||[]).some(c=>c.id===articleFilter)),
+    [articles, articleFilter])
 
   const resetFilters = () => { setQ(''); setSelLetter(''); setPage(1) }
 
@@ -179,17 +211,19 @@ export default function Glossary() {
         <div style={{ marginTop:'8px' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', ...S.card, marginBottom:'8px' }}>
             <div style={S.cardTitle}>LATEST FROM SPOREUS.COM</div>
-            <div style={{ display:'flex', gap:'4px' }}>
-              {['all','training','science'].map(f=>(
-                <button key={f} onClick={()=>setArticleFilter(f)}
-                  style={{ ...S.mono, fontSize:'9px', fontWeight:600, padding:'3px 7px', borderRadius:'3px', cursor:'pointer', border:`1px solid ${articleFilter===f?'#0064ff':'var(--border)'}`, background:articleFilter===f?'#0064ff22':'transparent', color:articleFilter===f?'#0064ff':'var(--muted)' }}>
-                  {f.toUpperCase()}
-                </button>
-              ))}
-            </div>
+            {articleCats.length >= 2 && (
+              <div style={{ display:'flex', gap:'4px', flexWrap:'wrap', justifyContent:'flex-end' }}>
+                {[{ id:'all', name: lang==='tr'?'TÜMÜ':'ALL' }, ...articleCats].map(c=>(
+                  <button key={c.id} onClick={()=>setArticleFilter(c.id)}
+                    style={{ ...S.mono, fontSize:'9px', fontWeight:600, padding:'3px 7px', borderRadius:'3px', cursor:'pointer', border:`1px solid ${articleFilter===c.id?'#0064ff':'var(--border)'}`, background:articleFilter===c.id?'#0064ff22':'transparent', color:articleFilter===c.id?'#0064ff':'var(--muted)' }}>
+                    {c.name.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           {articlesLoading && <div style={{ ...S.mono, fontSize:'11px', color:'#aaa', textAlign:'center', padding:'16px' }}>Loading…</div>}
-          {articles.map((art,i)=>(
+          {shownArticles.map((art,i)=>(
             <div key={art.id} className="sp-card" style={{ ...S.card, marginBottom:'8px', animationDelay:`${i*30}ms` }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'8px' }}>
                 <a href={art.link} target="_blank" rel="noreferrer" style={{ ...S.mono, fontSize:'13px', fontWeight:600, color:'#0064ff', textDecoration:'none', flex:1 }}>{art.title}</a>
