@@ -2,6 +2,22 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.442.0 — 2026-06-20 — Customize panel: grouped, collapsible, bilingual
+
+Follow-up to v9.441, which made all ~234 dashboard cards toggleable but left the Customize panel
+a flat list of 234 English-only checkboxes. Now grouped + bilingual:
+- `DASH_CARD_DEFS` (all 234 entries) gained a `tr` (Turkish label) and a `group` field — ids and
+  English labels unchanged. Accurate sport-science Turkish; technical acronyms (ACWR/TSS/CTL/TSB/
+  VO2max/FTP/HRV/VDOT/SWOLF…) kept as-is. New exported `DASH_CARD_GROUPS` (10 ordered, bilingual
+  categories: Core, Load & Fitness, Readiness & Recovery, Sessions & Plan, Nutrition & Fueling,
+  Sport-Specific, Goals & Races, Elite & Programs, Analysis & Trends, Other).
+- Customize panel now renders **collapsible category sections** (keyboard-accessible `<button>`
+  headers with `aria-expanded`, count per group, first group expanded by default) + a Show all /
+  Hide all pair. Labels + headings are bilingual (`KARTLARI GÖSTER / GİZLE`, etc.). Toggle
+  behavior + all-visible defaults unchanged.
+
++3 tests. 15,939 green (712 files), lint + build clean.
+
 ## v9.441.0 — 2026-06-19 — Dashboard: card visibility gating + leaf-card memoization (perf)
 
 Two performance/UX wins from the discovery sweep (two file-disjoint agents).
