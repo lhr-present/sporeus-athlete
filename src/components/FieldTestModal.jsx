@@ -329,13 +329,20 @@ export default function FieldTestModal({ program, profile, onClose, lang = 'en' 
 function Backdrop({ children, onClose }) {
   return (
     <div
-      onClick={onClose}
       style={{
         position: 'fixed', inset: 0, zIndex: 10010,
-        background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: 20, fontFamily: MONO,
       }}>
-      <div onClick={e => e.stopPropagation()}>{children}</div>
+      {/* Dimmed backdrop is a SIBLING behind the dialog (aria-hidden) so it isn't an
+          unnamed clickable in the AT tree, and doesn't hide the dialog it used to wrap.
+          Click-to-close preserved; keyboard close is handled by the dialog focus-trap onEscape. */}
+      <div
+        aria-hidden="true"
+        onClick={onClose}
+        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)' }}
+      />
+      <div onClick={e => e.stopPropagation()} style={{ position: 'relative', zIndex: 1 }}>{children}</div>
     </div>
   )
 }
