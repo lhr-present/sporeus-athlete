@@ -8,7 +8,7 @@ import { S } from '../../styles.js'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 
 const STATUS_COLOR = { live: '#5bc25b', connecting: '#f5c542', reconnecting: '#f5c542', disconnected: '#555' }
-const STATUS_LABEL = { live: '● LIVE', connecting: '○ connecting…', reconnecting: '○ reconnecting…', disconnected: '○ offline' }
+const STATUS_LABEL_KEY = { live: 'liveFeed_statusLive', connecting: 'liveFeed_statusConnecting', reconnecting: 'liveFeed_statusReconnecting', disconnected: 'liveFeed_statusOffline' }
 const KIND_COLOR   = { session: '#5bc25b', recovery: '#0064ff', comment: '#ff6600' }
 
 /**
@@ -53,7 +53,7 @@ export default function LiveSquadFeed({
         }}
       >
         <span style={{ ...S.mono, fontSize: '10px', color: STATUS_COLOR[feedStatus] || '#555', letterSpacing: '0.05em' }}>
-          {STATUS_LABEL[feedStatus] || '○ offline'}
+          {t(STATUS_LABEL_KEY[feedStatus] || 'liveFeed_statusOffline')}
         </span>
         <span style={{ ...S.mono, fontSize: '10px', color: '#444' }}>{t('feedSquadLabel')}</span>
         {onlineCount > 0 && (
@@ -67,7 +67,7 @@ export default function LiveSquadFeed({
             {athletes.slice(0, 12).map(a => (
               <span
                 key={a.athlete_id}
-                title={`${a.display_name}: ${presenceMap[a.athlete_id]?.online ? 'online' : 'offline'}`}
+                title={`${a.display_name}: ${presenceMap[a.athlete_id]?.online ? t('liveFeed_online') : t('liveFeed_offline')}`}
                 style={{
                   width: '7px', height: '7px', borderRadius: '50%',
                   background: presenceMap[a.athlete_id]?.online ? '#5bc25b' : '#333',
@@ -125,7 +125,7 @@ export default function LiveSquadFeed({
                   {ev.label}
                 </span>
                 <span style={{ ...S.mono, fontSize: '9px', color: '#444', flexShrink: 0 }}>
-                  {relTime(ev.timestamp)}
+                  {relTime(ev.timestamp, t)}
                 </span>
               </div>
             ))
@@ -136,12 +136,12 @@ export default function LiveSquadFeed({
   )
 }
 
-function relTime(iso) {
+function relTime(iso, t) {
   try {
     const secs = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
-    if (secs < 60) return 'just now'
-    if (secs < 3600) return `${Math.floor(secs / 60)}m ago`
-    if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`
-    return `${Math.floor(secs / 86400)}d ago`
+    if (secs < 60) return t('liveFeed_justNow')
+    if (secs < 3600) return t('liveFeed_minAgo').replace('{n}', Math.floor(secs / 60))
+    if (secs < 86400) return t('liveFeed_hourAgo').replace('{n}', Math.floor(secs / 3600))
+    return t('liveFeed_dayAgo').replace('{n}', Math.floor(secs / 86400))
   } catch { return '' }
 }

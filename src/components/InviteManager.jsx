@@ -2,7 +2,8 @@
 // Lists active invites, generates new ones with label/limit/expiry options,
 // lets coach revoke with 5-second undo toast. Only shown to role coach/both.
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useContext } from 'react'
+import { LangCtx } from '../contexts/LangCtx.jsx'
 import { supabase } from '../lib/supabase.js'
 import { createInvite, listInvites, revokeInvite, buildInviteUrl } from '../lib/inviteUtils.js'
 import { logger } from '../lib/logger.js'
@@ -27,19 +28,24 @@ function copyToClipboard(text) {
   }
 }
 
-function formatExpiry(isoStr) {
-  if (!isoStr) return '∞'
+// v9.x i18n — `expired`/`isExpired` returned separately so the caller can both
+// render a localized label and still detect the expired state regardless of
+// translation. Date locale follows lang (tr-TR for Turkish, else en-GB).
+function formatExpiry(isoStr, t, lang) {
+  if (!isoStr) return { label: '∞', isExpired: false }
   const d = new Date(isoStr)
   const now = new Date()
   const days = Math.ceil((d - now) / 86400000)
-  if (days < 0)  return 'EXPIRED'
-  if (days === 0) return 'Today'
-  if (days === 1) return '1d'
-  if (days < 30)  return `${days}d`
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  if (days < 0)  return { label: t('invite_expired'), isExpired: true }
+  if (days === 0) return { label: t('invite_today'), isExpired: false }
+  if (days === 1) return { label: '1d', isExpired: false }
+  if (days < 30)  return { label: `${days}d`, isExpired: false }
+  const locale = lang === 'tr' ? 'tr-TR' : 'en-GB'
+  return { label: d.toLocaleDateString(locale, { day: 'numeric', month: 'short' }), isExpired: false }
 }
 
 export default function InviteManager({ coachId }) {
+  const { t, lang } = useContext(LangCtx)
   const [invites, setInvites]         = useState([])
   const [loading, setLoading]         = useState(true)
   const [generating, setGenerating]   = useState(false)
@@ -80,8 +86,8 @@ export default function InviteManager({ coachId }) {
       expiresAt,
     })
     setGenerating(false)
-    if (error) { showToast(`Failed: ${error}`, 'error'); return }
-    showToast(`Created ${code}`, 'success')
+    if (error) { showToast(`${t('invite_failedPrefix')}${error}`, 'error'); return }
+    showToast(`${t('invite_createdPrefix')}${code}`, 'success')
     copyToClipboard(inviteUrl)
     setLabel(''); setMaxUses('')
     load()
@@ -108,12 +114,12 @@ export default function InviteManager({ coachId }) {
         logger.warn('[InviteManager] revoke failed:', error)
         setInvites(prev => [invite, ...prev].sort((a, b) =>
           new Date(b.created_at) - new Date(a.created_at)))
-        showToast('Revoke failed — invite restored', 'error')
+        showToast(t('invite_revokeFailed'), 'error')
       }
     }, 5000)
 
     setPendingRevoke({ id: invite.id, timer, invite })
-    showToast('Invite removed — undo?', 'undo', invite)
+    showToast(t('invite_removedUndo'), 'undo', invite)
   }
 
   function handleUndo() {
@@ -140,48 +146,49 @@ export default function InviteManager({ coachId }) {
     <div style={{ fontFamily: MONO }}>
       {/* ── Header ── */}
       <div style={{ fontSize: '10px', color: ORANGE, letterSpacing: '0.12em', fontWeight: 700, marginBottom: '16px' }}>
-        INVITE LINKS
+        {t('invite_links')}
       </div>
 
       {/* ── Generate form ── */}
       <div style={{ background: '#0a0a0a', border: '1px solid #1e1e1e', borderRadius: '6px', padding: '16px', marginBottom: '16px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '10px', alignItems: 'end' }}>
           <div>
-            <label style={label_s} htmlFor="invite-label">LABEL (optional)</label>
-            <input id="invite-label" name="invite-label" autoComplete="off" style={input_s} placeholder="e.g. Rowing squad 2026" value={label}
+            <label style={label_s} htmlFor="invite-label">{t('invite_labelOptional')}</label>
+            <input id="invite-label" name="invite-label" autoComplete="off" style={input_s} placeholder={t('invite_labelPlaceholder')} value={label}
               onChange={e => setLabel(e.target.value)} maxLength={80} />
           </div>
           <div style={{ minWidth: '80px' }}>
-            <label style={label_s} htmlFor="invite-max-uses">MAX USES</label>
+            <label style={label_s} htmlFor="invite-max-uses">{t('invite_maxUses')}</label>
             <input id="invite-max-uses" name="invite-max-uses" autoComplete="off" style={input_s} type="number" inputMode="numeric" placeholder="∞" value={maxUses}
               onChange={e => setMaxUses(e.target.value)} min="1" max="999" />
           </div>
           <div style={{ minWidth: '80px' }}>
-            <label style={label_s} htmlFor="invite-expiry-days">EXPIRES (days)</label>
+            <label style={label_s} htmlFor="invite-expiry-days">{t('invite_expiresDays')}</label>
             <input id="invite-expiry-days" name="invite-expiry-days" autoComplete="off" style={input_s} type="number" inputMode="numeric" placeholder="7" value={days}
               onChange={e => setDays(e.target.value)} min="1" max="365" />
           </div>
         </div>
         <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end' }}>
           <button onClick={handleGenerate} disabled={generating} style={btn(ORANGE, '#fff', generating)}>
-            {generating ? '…' : '+ GENERATE INVITE'}
+            {generating ? '…' : t('invite_generate')}
           </button>
         </div>
       </div>
 
       {/* ── Invite list ── */}
       {loading ? (
-        <div style={{ fontSize: '10px', color: DIM, padding: '12px 0' }}>Loading…</div>
+        <div style={{ fontSize: '10px', color: DIM, padding: '12px 0' }}>{t('invite_loading')}</div>
       ) : invites.length === 0 ? (
         <div style={{ fontSize: '10px', color: DIM, padding: '12px 0', lineHeight: 1.8 }}>
-          No active invites. Generate one above and share the link.
+          {t('invite_noneActive')}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {invites.map(inv => {
             const isUsed = inv.max_uses !== null && inv.uses_count >= inv.max_uses
-            const expLabel = formatExpiry(inv.expires_at)
-            const expired  = expLabel === 'EXPIRED'
+            const exp      = formatExpiry(inv.expires_at, t, lang)
+            const expLabel = exp.label
+            const expired  = exp.isExpired
 
             return (
               <div key={inv.id} style={{
@@ -203,13 +210,13 @@ export default function InviteManager({ coachId }) {
                 {/* Stats */}
                 <div style={{ flex: '1 1 100px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                   <div>
-                    <div style={{ fontSize: '9px', color: DIM }}>USES</div>
+                    <div style={{ fontSize: '9px', color: DIM }}>{t('invite_uses')}</div>
                     <div style={{ fontSize: '11px', color: '#ccc' }}>
                       {inv.uses_count}{inv.max_uses !== null ? `/${inv.max_uses}` : ''}
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '9px', color: DIM }}>EXPIRES</div>
+                    <div style={{ fontSize: '9px', color: DIM }}>{t('invite_expires')}</div>
                     <div style={{ fontSize: '11px', color: expired ? RED : '#ccc' }}>{expLabel}</div>
                   </div>
                 </div>
@@ -217,10 +224,10 @@ export default function InviteManager({ coachId }) {
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: '6px', flex: '0 0 auto' }}>
                   <button onClick={() => handleCopy(inv.code)} style={btn(BLUE, '#fff', false)}>
-                    {copied === inv.code ? '✓ COPIED' : 'COPY LINK'}
+                    {copied === inv.code ? t('invite_copied') : t('invite_copyLink')}
                   </button>
                   <button onClick={() => handleRevoke(inv)} style={btn('#1a1a1a', RED, false)}>
-                    REVOKE
+                    {t('invite_revoke')}
                   </button>
                 </div>
               </div>
@@ -241,7 +248,7 @@ export default function InviteManager({ coachId }) {
           <span>{toast.msg}</span>
           {toast.type === 'undo' && (
             <button onClick={handleUndo} style={{ ...btn(ORANGE, '#fff', false), padding: '10px 14px', minHeight: '44px' }}>
-              UNDO
+              {t('invite_undo')}
             </button>
           )}
         </div>

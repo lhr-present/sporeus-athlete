@@ -2,6 +2,28 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.445.0 — 2026-06-20 — Coach surface i18n sweep (high-traffic surfaces → bilingual)
+
+The coach console rendered hardcoded English to Turkish coaches. Internationalized the high-traffic
+surfaces via `t()` + LABELS (mirrors the v9.437 athlete sweep). Strings-only, no logic/layout change.
+~110 new LABELS keys (EN+TR parity verified: coachDash_ 51, squad_ 22, invite_ 20, gating_ 11,
+liveFeed_ 10), proper Turkish sport/coaching terminology; technical acronyms (ACWR/TSS/CTL/TSB) kept.
+
+- **CoachDashboard** — banner, summary stats (Total/Connected/Needs Attention/Injury Flags), invite
+  block + Copy Link, sort chips, roster + empty states, quick-note, ConfirmModals, file-error alerts.
+- **coach/CoachSquadView** — squad/plan summary strips, filters, search, empty states, and the
+  attention tooltips/top-reasons that previously rendered `.en` only (now use `lang`).
+- **InviteManager** — full UI + all toasts; `formatExpiry` no longer hardcodes `en-GB` (locale by lang).
+- **GatingOverlay** — added the missing LangCtx import; all free-limit copy bilingual.
+- **LiveSquadFeed** — `STATUS_LABEL` + `relTime()` ("just now"/"m ago"…) now bilingual.
+- **SessionCommentThread** — "typing…" + its relTime bilingual.
+- SquadRedFlagsCard intentionally untouched (already bilingual via isTR).
+
+Follow-up (long tail, not in this pass): ChatPanel, SquadBenchmarkTable, SessionManager,
+WeeklyDigestCard, AthleteComparison, CoachOnboarding/ClubOnboarding/CoachRegistration, etc.
+
+15,947 green (713 files), i18n parity test green, lint + build clean.
+
 ## v9.444.0 — 2026-06-20 — Error-handling & observability hardening
 
 From a fresh discovery sweep (error/observability + coach-side dimensions). All additive/safe,
