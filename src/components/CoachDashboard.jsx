@@ -38,7 +38,7 @@ import { getGeneralMembers, confirmGeneralProgram, getEnduranceMembers, verifyAt
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function CoachDashboard({ authUser }) {
-  const { t, lang } = useContext(LangCtx)
+  const { t } = useContext(LangCtx)
   const [roster, setRoster] = useLocalStorage('sporeus-coach-athletes', [])
   const [coachOnboarded, setCoachOnboarded] = useLocalStorage('sporeus-coach-onboarded', false)
   const [clubOnboarded, setClubOnboarded]   = useLocalStorage('sporeus-club-onboarded', false)
@@ -168,7 +168,7 @@ export default function CoachDashboard({ authUser }) {
   function handleFileSelect(e) {
     const file = e.target.files[0]
     if (!file) return
-    if (file.size > 10 * 1024 * 1024) { showAlert('File too large (max 10MB).'); e.target.value = ''; return }
+    if (file.size > 10 * 1024 * 1024) { showAlert(t('coachDash_fileTooLarge')); e.target.value = ''; return }
     const reader = new FileReader()
     reader.onload = ev => {
       try {
@@ -206,7 +206,7 @@ export default function CoachDashboard({ authUser }) {
           setRoster(prev => [...prev, entry])
           setExpanded(entry.id)
         }
-      } catch { showAlert('Could not parse JSON. Make sure it is a valid Sporeus export.') }
+      } catch { showAlert(t('coachDash_parseError')) }
     }
     reader.readAsText(file); e.target.value = ''
   }
@@ -266,24 +266,20 @@ export default function CoachDashboard({ authUser }) {
       roster.find(a => a.id === expanded) ||
       roster[0]
     if (!target) {
-      setTemplateMsg(lang === 'tr'
-        ? 'Şablonu uygulamak için önce bir sporcu ekleyin.'
-        : 'Add an athlete first to apply a template.')
+      setTemplateMsg(t('coachDash_addAthleteFirst'))
       return
     }
     setExpanded(target.id)
     setAppliedTemplate({ ...tmpl, _targetId: target.id })
-    setTemplateMsg(lang === 'tr'
-      ? `"${tmpl.name}" → ${target.name}`
-      : `"${tmpl.name}" → ${target.name}`)
+    setTemplateMsg(`"${tmpl.name}" → ${target.name}`)
   }
 
   const SORT_CHIPS = [
-    { id:'attention', label:'Attention' },
-    { id:'acwr',      label:'ACWR' },
-    { id:'readiness', label:'Readiness' },
-    { id:'lastActive',label:'Last Active' },
-    { id:'name',      label:'Name' },
+    { id:'attention', label: t('coachDash_sortAttention') },
+    { id:'acwr',      label: t('coachDash_sortAcwr') },
+    { id:'readiness', label: t('coachDash_sortReadiness') },
+    { id:'lastActive',label: t('coachDash_sortLastActive') },
+    { id:'name',      label: t('coachDash_sortName') },
   ]
 
   return (
@@ -315,15 +311,15 @@ export default function CoachDashboard({ authUser }) {
       {/* Coach Mode Banner */}
       <div style={{ background:'#0064ff11', border:'1px solid #0064ff44', borderRadius:'6px', padding:'10px 16px', marginBottom:'16px', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'6px' }}>
         <div style={{ ...S.mono, fontSize:'14px', fontWeight:700, color:'#0064ff', letterSpacing:'0.1em' }}>
-          ◈ COACH MODE · {(coachProfile.name || 'COACH').toUpperCase()}
+          {t('coachDash_modeBanner')} · {(coachProfile.name || 'COACH').toUpperCase()}
         </div>
         <div style={{ ...S.mono, fontSize:'9px', color:'#0064ff88', letterSpacing:'0.08em' }}>
           ID: {myCoachId}
         </div>
         <div style={{ display:'flex', gap:'8px', alignItems:'center' }}>
-          <div style={{ ...S.mono, fontSize:'10px', color:'var(--muted)' }}>File-based | Zero server</div>
+          <div style={{ ...S.mono, fontSize:'10px', color:'var(--muted)' }}>{t('coachDash_fileBased')}</div>
           <button style={{ ...S.mono, fontSize:'9px', color:'#0064ff', background:'transparent', border:'1px solid #0064ff44', borderRadius:'3px', padding:'2px 8px', cursor:'pointer' }} onClick={() => setCoachOnboarded(false)}>
-            ? How it works
+            {t('coachDash_howItWorks')}
           </button>
         </div>
       </div>
@@ -359,7 +355,7 @@ export default function CoachDashboard({ authUser }) {
       {isSupabaseReady() && sbCoachId && gfMembers.length > 0 && (
         <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'6px', padding:'16px', marginBottom:'16px' }}>
           <div style={{ ...S.mono, fontSize:'10px', color:'#ff6600', letterSpacing:'0.1em', marginBottom:'12px' }}>
-            GYM MEMBERS ({gfMembers.length})
+            {t('coachDash_gymMembers')} ({gfMembers.length})
           </div>
           {gfMembers.map(m => {
             const gp        = m.general_program
@@ -374,16 +370,16 @@ export default function CoachDashboard({ authUser }) {
                     <span style={{ ...S.mono, fontSize:'11px', color:'var(--text)', fontWeight:600 }}>{m.display_name}</span>
                     {gp ? (
                       <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginTop:'2px' }}>
-                        {gp.template_name ?? gp.template_id} · {gp.sessions_completed ?? 0} sessions
-                        {gp.last_session_date ? ` · last ${gp.last_session_date}` : ''}
+                        {gp.template_name ?? gp.template_id} · {gp.sessions_completed ?? 0} {t('coachDash_sessionsCount')}
+                        {gp.last_session_date ? ` · ${t('coachDash_lastPrefix')} ${gp.last_session_date}` : ''}
                       </div>
                     ) : (
-                      <div style={{ ...S.mono, fontSize:'9px', color:'#555', marginTop:'2px' }}>No program synced yet</div>
+                      <div style={{ ...S.mono, fontSize:'9px', color:'#555', marginTop:'2px' }}>{t('coachDash_noProgramSynced')}</div>
                     )}
                     {gp?.last_session_label && (
                       <div style={{ ...S.mono, fontSize:'9px', color:'#aaa', marginTop:'1px' }}>
-                        Last session: {gp.last_session_label}
-                        {gp.last_session_exercise_count ? ` · ${gp.last_session_exercise_count} exercises` : ''}
+                        {t('coachDash_lastSession')} {gp.last_session_label}
+                        {gp.last_session_exercise_count ? ` · ${gp.last_session_exercise_count} ${t('coachDash_exercises')}` : ''}
                       </div>
                     )}
                     {pendingVerify && (
@@ -394,7 +390,7 @@ export default function CoachDashboard({ authUser }) {
                   </div>
                   <div style={{ display:'flex', flexDirection:'column', gap:4, alignItems:'flex-end', flexShrink:0, marginLeft:8 }}>
                     {confirmed ? (
-                      <span style={{ ...S.mono, fontSize:'9px', color:'#22aa44', padding:'2px 8px', border:'1px solid #22aa4433', borderRadius:3 }}>✓ PLAN OK</span>
+                      <span style={{ ...S.mono, fontSize:'9px', color:'#22aa44', padding:'2px 8px', border:'1px solid #22aa4433', borderRadius:3 }}>{t('coachDash_planOk')}</span>
                     ) : (
                       <button
                         disabled={confirmingId === m.id}
@@ -405,7 +401,7 @@ export default function CoachDashboard({ authUser }) {
                           setConfirmingId(null)
                         }}
                         style={{ ...S.mono, fontSize:'9px', padding:'4px 10px', border:'1px solid #ff660066', background:'transparent', color:'#ff6600', borderRadius:3, cursor:'pointer' }}>
-                        {confirmingId === m.id ? '…' : 'CONFIRM PLAN'}
+                        {confirmingId === m.id ? '…' : t('coachDash_confirmPlan')}
                       </button>
                     )}
                     {pendingVerify && (
@@ -418,7 +414,7 @@ export default function CoachDashboard({ authUser }) {
                           setVerifyingId(null)
                         }}
                         style={{ ...S.mono, fontSize:'9px', padding:'4px 10px', border:'1px solid #22aa4466', background:'transparent', color:'#22aa44', borderRadius:3, cursor:'pointer' }}>
-                        {verifyingId === m.id ? '…' : 'VERIFY SESSION ✓'}
+                        {verifyingId === m.id ? '…' : t('coachDash_verifySession')}
                       </button>
                     )}
                     {!pendingVerify && verifiedAt && (
@@ -436,7 +432,7 @@ export default function CoachDashboard({ authUser }) {
       {isSupabaseReady() && sbCoachId && enduranceAthletes.length > 0 && (
         <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'6px', padding:'16px', marginBottom:'16px' }}>
           <div style={{ ...S.mono, fontSize:'10px', color:'#0064ff', letterSpacing:'0.1em', marginBottom:'12px' }}>
-            ATHLETES — SESSION LOG ({enduranceAthletes.length})
+            {t('coachDash_athletesSessionLog')} ({enduranceAthletes.length})
           </div>
           {enduranceAthletes.map(m => {
             const doneAt     = m.last_workout_done_at
@@ -452,7 +448,7 @@ export default function CoachDashboard({ authUser }) {
                       {!pendingVerify && verifiedAt ? ` · ${t('verifiedOn').replace('{date}', verifiedAt.slice(0,10))}` : ''}
                     </div>
                   ) : (
-                    <div style={{ ...S.mono, fontSize:'9px', color:'#555', marginTop:'2px' }}>No sessions confirmed yet</div>
+                    <div style={{ ...S.mono, fontSize:'9px', color:'#555', marginTop:'2px' }}>{t('coachDash_noSessionsConfirmed')}</div>
                   )}
                 </div>
                 {pendingVerify ? (
@@ -465,7 +461,7 @@ export default function CoachDashboard({ authUser }) {
                       setVerifyingId(null)
                     }}
                     style={{ ...S.mono, fontSize:'9px', padding:'4px 12px', border:'1px solid #22aa4466', background:'transparent', color:'#22aa44', borderRadius:3, cursor:'pointer', flexShrink:0, marginLeft:8 }}>
-                    {verifyingId === m.id ? '…' : 'VERIFY ✓'}
+                    {verifyingId === m.id ? '…' : t('coachDash_verify')}
                   </button>
                 ) : (
                   <span style={{ ...S.mono, fontSize:'9px', color:'#555', flexShrink:0, marginLeft:8 }}>
@@ -481,10 +477,10 @@ export default function CoachDashboard({ authUser }) {
       {/* Summary Stats */}
       <div style={{ ...S.row, marginBottom:'16px' }}>
         {[
-          { lbl:'TOTAL ATHLETES', val: roster.length, color:'#e0e0e0' },
-          { lbl:'CONNECTED', val: `${connected}/${athleteLimit}`, color: connected >= athleteLimit ? '#f5c542' : '#0064ff' },
-          { lbl:'NEEDS ATTENTION', val: needsAttn, color: needsAttn > 0 ? '#f5c542' : '#5bc25b' },
-          { lbl:'INJURY FLAGS', val: injuredCnt, color: injuredCnt > 0 ? '#e03030' : '#5bc25b' },
+          { lbl: t('coachDash_statTotalAthletes'), val: roster.length, color:'#e0e0e0' },
+          { lbl: t('coachDash_statConnected'), val: `${connected}/${athleteLimit}`, color: connected >= athleteLimit ? '#f5c542' : '#0064ff' },
+          { lbl: t('coachDash_statNeedsAttention'), val: needsAttn, color: needsAttn > 0 ? '#f5c542' : '#5bc25b' },
+          { lbl: t('coachDash_statInjuryFlags'), val: injuredCnt, color: injuredCnt > 0 ? '#e03030' : '#5bc25b' },
         ].map(({ lbl, val, color }) => (
           <div key={lbl} style={{ flex:'1 1 90px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'6px', padding:'10px', textAlign:'center' }}>
             <div style={{ ...S.mono, fontSize:'22px', fontWeight:700, color }}>{val}</div>
@@ -498,14 +494,14 @@ export default function CoachDashboard({ authUser }) {
 
       {/* Invite Link */}
       <div style={{ ...S.card, marginBottom:'16px' }}>
-        <div style={S.cardTitle}>INVITE ATHLETES</div>
+        <div style={S.cardTitle}>{t('coachDash_inviteAthletes')}</div>
         <div style={{ ...S.mono, fontSize:'10px', color:'var(--muted)', marginBottom:'8px' }}>
-          Athletes auto-connect when they open this link:
+          {t('coachDash_inviteAutoConnect')}
         </div>
         <div style={{ display:'flex', gap:'8px', alignItems:'center', flexWrap:'wrap' }}>
           <input style={{ ...S.input, flex:'1 1 200px', color:'#0064ff', fontSize:'11px' }} readOnly value={inviteUrl} onFocus={e => e.target.select()}/>
           <button style={{ ...S.btnSec, whiteSpace:'nowrap', borderColor:'#0064ff', color: copyToast ? '#5bc25b' : '#0064ff' }} onClick={handleCopyInvite}>
-            {copyToast ? '✓ Copied!' : 'Copy Link'}
+            {copyToast ? t('coachDash_copiedLink') : t('coachDash_copyLink')}
           </button>
         </div>
       </div>
@@ -524,7 +520,7 @@ export default function CoachDashboard({ authUser }) {
       <PlanDistribution templates={templates} setTemplates={setTemplates} onApply={applyTemplate}/>
       {templateMsg && (
         <div role="status" style={{ ...S.mono, fontSize:'10px', color:'#0064ff', margin:'-8px 0 12px', textAlign:'right' }}>
-          {lang === 'tr' ? 'Şablon uygulandı: ' : 'Template applied: '}{templateMsg}
+          {t('coachDash_templateApplied')}{templateMsg}
         </div>
       )}
 
@@ -534,7 +530,7 @@ export default function CoachDashboard({ authUser }) {
           onClick={() => setSquadBenchmarkOpen(o => !o)}
           style={{ ...S.mono, width:'100%', textAlign:'left', background:'transparent', border:'none', cursor:'pointer', padding:0, display:'flex', alignItems:'center', justifyContent:'space-between' }}
         >
-          <div style={{ ...S.cardTitle, margin:0 }}>SQUAD BENCHMARK</div>
+          <div style={{ ...S.cardTitle, margin:0 }}>{t('coachDash_squadBenchmark')}</div>
           <span style={{ ...S.mono, fontSize:'12px', color:'#ff6600' }}>{squadBenchmarkOpen ? '▴' : '▾'}</span>
         </button>
         {squadBenchmarkOpen && (() => {
@@ -569,18 +565,18 @@ export default function CoachDashboard({ authUser }) {
       <div style={S.card}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'12px', flexWrap:'wrap', gap:'8px' }}>
           <div style={S.cardTitle}>
-            ROSTER ({sortedRoster.length}{showMyAthletes ? ' connected' : ` of ${roster.length}`})
+            {t('coachDash_roster')} ({sortedRoster.length}{showMyAthletes ? ` ${t('coachDash_rosterConnected')}` : ` ${t('coachDash_rosterOf')} ${roster.length}`})
           </div>
           <div style={{ display:'flex', gap:'6px', alignItems:'center', flexWrap:'wrap' }}>
-            <button onClick={() => setShowMyAthletes(false)} style={{ ...S.mono, fontSize:'9px', fontWeight:600, padding:'3px 8px', borderRadius:'3px', cursor:'pointer', border:`1px solid ${!showMyAthletes?'#0064ff':'var(--border)'}`, background:!showMyAthletes?'#0064ff22':'transparent', color:!showMyAthletes?'#0064ff':'var(--muted)' }}>ALL</button>
-            <button onClick={() => setShowMyAthletes(true)}  style={{ ...S.mono, fontSize:'9px', fontWeight:600, padding:'3px 8px', borderRadius:'3px', cursor:'pointer', border:`1px solid ${showMyAthletes?'#0064ff':'var(--border)'}`, background:showMyAthletes?'#0064ff22':'transparent', color:showMyAthletes?'#0064ff':'var(--muted)' }}>◉ CONNECTED</button>
-            <button style={S.btn} onClick={() => fileRef.current?.click()}>+ Import</button>
+            <button onClick={() => setShowMyAthletes(false)} style={{ ...S.mono, fontSize:'9px', fontWeight:600, padding:'3px 8px', borderRadius:'3px', cursor:'pointer', border:`1px solid ${!showMyAthletes?'#0064ff':'var(--border)'}`, background:!showMyAthletes?'#0064ff22':'transparent', color:!showMyAthletes?'#0064ff':'var(--muted)' }}>{t('coachDash_filterAll')}</button>
+            <button onClick={() => setShowMyAthletes(true)}  style={{ ...S.mono, fontSize:'9px', fontWeight:600, padding:'3px 8px', borderRadius:'3px', cursor:'pointer', border:`1px solid ${showMyAthletes?'#0064ff':'var(--border)'}`, background:showMyAthletes?'#0064ff22':'transparent', color:showMyAthletes?'#0064ff':'var(--muted)' }}>{t('coachDash_filterConnected')}</button>
+            <button style={S.btn} onClick={() => fileRef.current?.click()}>{t('coachDash_import')}</button>
           </div>
         </div>
 
         {/* Sort chips */}
         <div style={{ display:'flex', gap:'6px', flexWrap:'wrap', marginBottom:'12px' }}>
-          <span style={{ ...S.mono, fontSize:'9px', color:'var(--muted)', alignSelf:'center' }}>SORT:</span>
+          <span style={{ ...S.mono, fontSize:'9px', color:'var(--muted)', alignSelf:'center' }}>{t('coachDash_sort')}</span>
           {SORT_CHIPS.map(chip => (
             <button key={chip.id} onClick={() => toggleSort(chip.id)} style={{ ...S.mono, fontSize:'9px', padding:'3px 8px', borderRadius:'3px', cursor:'pointer', border:`1px solid ${sortBy===chip.id?'#ff6600':'var(--border)'}`, background:sortBy===chip.id?'#ff660022':'transparent', color:sortBy===chip.id?'#ff6600':'var(--muted)' }}>
               {chip.label}{sortBy===chip.id ? (sortDir==='desc'?' ↓':' ↑') : ''}
@@ -592,7 +588,7 @@ export default function CoachDashboard({ authUser }) {
 
         {sortedRoster.length === 0 && (
           <div style={{ ...S.mono, fontSize:'12px', color:'var(--muted)', textAlign:'center', padding:'24px 0' }}>
-            {showMyAthletes ? 'No connected athletes yet. Share your invite link.' : 'No athletes imported. Export athlete data from the Sporeus app, then import here.'}
+            {showMyAthletes ? t('coachDash_noConnectedAthletes') : t('coachDash_noAthletesImported')}
           </div>
         )}
 
@@ -603,20 +599,20 @@ export default function CoachDashboard({ authUser }) {
               <div style={{ display:'flex', gap:'8px', marginBottom:'8px', padding:'8px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'5px' }}>
                 <input
                   style={{ ...S.input, flex:1, fontSize:'12px' }}
-                  placeholder={`Quick note for ${athlete.name}...`}
+                  placeholder={t('coachDash_quickNotePlaceholder').replace('{name}', athlete.name || '')}
                   value={quickNoteText}
                   onChange={e => setQuickNoteText(e.target.value)}
                   onKeyDown={e => { if (e.key==='Enter') handleQuickNoteSubmit(athlete.id); if (e.key==='Escape') { setQuickNoteId(null); setQuickNoteText('') } }}
                   autoFocus
                 />
-                <button style={{ ...S.btn, padding:'6px 12px', fontSize:'11px' }} onClick={() => handleQuickNoteSubmit(athlete.id)}>Save</button>
-                <button style={{ ...S.btnSec, padding:'6px 10px', fontSize:'11px' }} aria-label="Cancel note" onClick={() => { setQuickNoteId(null); setQuickNoteText('') }}>✕</button>
-                <button style={{ ...S.btnSec, fontSize:'9px', padding:'2px 7px' }} onClick={() => handleReport(athlete)}>Report</button>
+                <button style={{ ...S.btn, padding:'6px 12px', fontSize:'11px' }} onClick={() => handleQuickNoteSubmit(athlete.id)}>{t('coachDash_save')}</button>
+                <button style={{ ...S.btnSec, padding:'6px 10px', fontSize:'11px' }} aria-label={t('coachDash_cancelNoteAria')} onClick={() => { setQuickNoteId(null); setQuickNoteText('') }}>✕</button>
+                <button style={{ ...S.btnSec, fontSize:'9px', padding:'2px 7px' }} onClick={() => handleReport(athlete)}>{t('coachDash_report')}</button>
               </div>
             )}
             {quickNoteId !== athlete.id && (
               <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:'4px' }}>
-                <button style={{ ...S.btnSec, fontSize:'9px', padding:'2px 7px' }} onClick={() => handleReport(athlete)}>Report</button>
+                <button style={{ ...S.btnSec, fontSize:'9px', padding:'2px 7px' }} onClick={() => handleReport(athlete)}>{t('coachDash_report')}</button>
               </div>
             )}
             <AthleteCard
@@ -650,10 +646,10 @@ export default function CoachDashboard({ authUser }) {
 
       <ConfirmModal
         open={confirmRemoveOpen}
-        title="Remove athlete?"
-        body="This cannot be undone."
-        confirmLabel="Remove"
-        cancelLabel="Cancel"
+        title={t('coachDash_removeAthlete')}
+        body={t('coachDash_removeAthleteBody')}
+        confirmLabel={t('coachDash_remove')}
+        cancelLabel={t('coachDash_cancel')}
         dangerous
         onConfirm={doRemove}
         onCancel={() => { setConfirmRemoveOpen(false); setPendingRemoveId(null) }}
@@ -662,7 +658,7 @@ export default function CoachDashboard({ authUser }) {
       <ConfirmModal
         open={alertOpen}
         title={alertText}
-        confirmLabel="OK"
+        confirmLabel={t('coachDash_ok')}
         alertOnly
         onConfirm={() => setAlertOpen(false)}
         onCancel={() => setAlertOpen(false)}

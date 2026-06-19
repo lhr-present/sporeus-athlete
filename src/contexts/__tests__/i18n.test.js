@@ -36,6 +36,7 @@ describe('i18n parity — LABELS', () => {
       't_program',       // 'PROGRAM' — loanword identical in Turkish
       'myCoach_codePlaceholder', // 'SP-XXXXXXXX' — literal invite-code format example
       'deviceSync_headingNote',  // '(open-wearables)' — protocol/project proper noun
+      'coachDash_sortAcwr',      // 'ACWR' — technical acronym, identical in Turkish
     ])
     const gaps = []
     for (const [key, enVal] of Object.entries(EN)) {

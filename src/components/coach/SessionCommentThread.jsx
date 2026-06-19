@@ -127,7 +127,7 @@ export default function SessionCommentThread({
         <span style={{ fontSize: FONT.size.sm, color: dot.color }}>{dot.label}</span>
         {typingUsers.length > 0 && (
           <span style={{ fontSize: FONT.size.xs, color: COLOR.dim }}>
-            {authorLabel(typingUsers[0])} typing…
+            {authorLabel(typingUsers[0])} {t('commentTyping')}
           </span>
         )}
       </div>
@@ -280,7 +280,7 @@ function CommentRow({
           {authorLabel(comment.author_id)}
         </span>
         <span style={{ fontSize: FONT.size.xs, color: COLOR.dim }}>
-          {relTime(comment.created_at)}
+          {relTime(comment.created_at, t)}
         </span>
         {comment.edited_at && !isDeleted && (
           <span style={{ fontSize: FONT.size.xs, color: COLOR.dim }}>{t('commentEdited')}</span>
@@ -335,12 +335,12 @@ function CommentRow({
   )
 }
 
-function relTime(iso) {
+function relTime(iso, t) {
   try {
     const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
-    if (s < 60)    return 'just now'
-    if (s < 3600)  return `${Math.floor(s / 60)}m ago`
-    if (s < 86400) return `${Math.floor(s / 3600)}h ago`
-    return `${Math.floor(s / 86400)}d ago`
+    if (s < 60)    return t('liveFeed_justNow')
+    if (s < 3600)  return t('liveFeed_minAgo').replace('{n}', Math.floor(s / 60))
+    if (s < 86400) return t('liveFeed_hourAgo').replace('{n}', Math.floor(s / 3600))
+    return t('liveFeed_dayAgo').replace('{n}', Math.floor(s / 86400))
   } catch { return '' }
 }

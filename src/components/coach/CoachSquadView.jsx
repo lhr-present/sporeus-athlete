@@ -3,7 +3,8 @@
 // Calls get_squad_overview() RPC for CTL/ATL/TSB/ACWR/HRV/status.
 // Subscribes to coach_athletes realtime channel — new athlete joins instantly.
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useContext } from 'react'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { supabase, isSupabaseReady, sbQuery } from '../../lib/supabase.js'
 import { logger } from '../../lib/logger.js'
 import { predictInjuryRisk } from '../../lib/intelligence.js'
@@ -35,13 +36,14 @@ const COLS = [
 ]
 
 const FILTER_CHIPS = [
-  { id: 'all',         label: 'All'        },
-  { id: 'danger',      label: 'Danger'     },
-  { id: 'caution',     label: 'Caution'    },
-  { id: 'detraining',  label: 'Detraining' },
+  { id: 'all',         labelKey: 'squad_filterAll'        },
+  { id: 'danger',      labelKey: 'squad_filterDanger'     },
+  { id: 'caution',     labelKey: 'squad_filterCaution'    },
+  { id: 'detraining',  labelKey: 'squad_filterDetraining' },
 ]
 
 export default function CoachSquadView({ coachId, coachName = '' }) {
+  const { t, lang } = useContext(LangCtx)
   const [athletes, setAthletes]         = useState([])
   const [loading, setLoading]           = useState(true)
   const [search, setSearch]             = useState('')
@@ -157,6 +159,12 @@ export default function CoachSquadView({ coachId, coachName = '' }) {
 
   const visible = filterAthletes(sortAthletes(athletes, sortBy, sortDir), search, chip)
 
+  // Column headers: translate the prose ones, keep acronyms/abbreviations
+  // (ATTN, CTL, TSB, ACWR, LAST, ADH%) identical across languages — they are
+  // universal technical labels in the terminal-style table.
+  const COL_LABEL_KEY = { name: 'squadColAthlete', status: 'squadColStatus' }
+  const colLabel = col => COL_LABEL_KEY[col.id] ? t(COL_LABEL_KEY[col.id]) : col.label
+
   const hdr = (colId, flex) => ({
     fontFamily: MONO, fontSize: '8px', letterSpacing: '0.1em',
     color: sortBy === colId ? '#ff6600' : DIM,
@@ -176,10 +184,10 @@ export default function CoachSquadView({ coachId, coachName = '' }) {
 
       {/* ── Section header ── */}
       <div style={{ fontSize: '11px', fontWeight: 700, color: '#0064ff', letterSpacing: '0.1em', marginBottom: '12px' }}>
-        MY ATHLETES (LIVE)
+        {t('squad_myAthletesLive')}
         {!loading && (
           <span style={{ color: DIM, fontWeight: 400, marginLeft: '8px', fontSize: '10px' }}>
-            {athletes.length} connected
+            {athletes.length} {t('squad_connected')}
           </span>
         )}
       </div>
@@ -203,36 +211,36 @@ export default function CoachSquadView({ coachId, coachName = '' }) {
           }}>
             <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap', alignItems: 'baseline', marginBottom: topReasons.length > 0 ? '8px' : 0 }}>
               <div style={{ fontSize: '9px', color: '#0064ff', letterSpacing: '0.12em', fontWeight: 700 }}>
-                ◆ SQUAD
+                {t('squad_summary')}
               </div>
               {counts.urgent > 0 && (
                 <div style={{ fontSize: '11px' }}>
                   <span style={{ color: urgentColor, fontWeight: 700 }}>{counts.urgent}</span>
-                  <span style={{ color: DIM, marginLeft: '4px' }}>urgent</span>
+                  <span style={{ color: DIM, marginLeft: '4px' }}>{t('squad_urgent')}</span>
                 </div>
               )}
               {counts.attention > 0 && (
                 <div style={{ fontSize: '11px' }}>
                   <span style={{ color: attentionColor, fontWeight: 700 }}>{counts.attention}</span>
-                  <span style={{ color: DIM, marginLeft: '4px' }}>attention</span>
+                  <span style={{ color: DIM, marginLeft: '4px' }}>{t('squad_attention')}</span>
                 </div>
               )}
               <div style={{ fontSize: '11px' }}>
                 <span style={{ color: okColor, fontWeight: 700 }}>{counts.ok}</span>
-                <span style={{ color: DIM, marginLeft: '4px' }}>ok</span>
+                <span style={{ color: DIM, marginLeft: '4px' }}>{t('squad_ok')}</span>
               </div>
               <div style={{ flex: 1 }}/>
               <div style={{ fontSize: '10px', color: '#aaa' }}>
-                {activity.activeLast7d}/{summary.total} <span style={{ color: DIM }}>active 7d</span>
+                {activity.activeLast7d}/{summary.total} <span style={{ color: DIM }}>{t('squad_active7d')}</span>
               </div>
               {activity.zeroSessionsThisWeek > 0 && (
                 <div style={{ fontSize: '10px', color: '#aaa' }}>
-                  {activity.zeroSessionsThisWeek} <span style={{ color: DIM }}>idle this wk</span>
+                  {activity.zeroSessionsThisWeek} <span style={{ color: DIM }}>{t('squad_idleThisWk')}</span>
                 </div>
               )}
               {activity.avgAdherencePct != null && (
                 <div style={{ fontSize: '10px', color: '#aaa' }}>
-                  {activity.avgAdherencePct}% <span style={{ color: DIM }}>avg adh</span>
+                  {activity.avgAdherencePct}% <span style={{ color: DIM }}>{t('squad_avgAdh')}</span>
                 </div>
               )}
             </div>
@@ -244,7 +252,7 @@ export default function CoachSquadView({ coachId, coachName = '' }) {
                     border: '1px solid var(--border)', borderRadius: '3px',
                     padding: '2px 7px', letterSpacing: '0.04em',
                   }}>
-                    {r.count}× <span style={{ color: '#888' }}>{r.label?.en || r.key}</span>
+                    {r.count}× <span style={{ color: '#888' }}>{r.label?.[lang] || r.label?.en || r.key}</span>
                   </span>
                 ))}
               </div>
@@ -266,23 +274,23 @@ export default function CoachSquadView({ coachId, coachName = '' }) {
             display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap',
             fontSize: '10px',
           }}>
-            <span style={{ color: DIM, letterSpacing: '0.08em' }}>PLANS SENT</span>
+            <span style={{ color: DIM, letterSpacing: '0.08em' }}>{t('squad_plansSent')}</span>
             <span style={{ color: '#e0e0e0', fontWeight: 700 }}>{planStats.total}</span>
             <span style={{ color: '#5bc25b' }}>
-              ✓ {planStats.accepted} <span style={{ color: DIM, fontWeight: 400 }}>accepted</span>
+              ✓ {planStats.accepted} <span style={{ color: DIM, fontWeight: 400 }}>{t('squad_accepted')}</span>
             </span>
             {planStats.declined > 0 && (
               <span style={{ color: '#e03030' }}>
-                ✕ {planStats.declined} <span style={{ color: DIM, fontWeight: 400 }}>declined</span>
+                ✕ {planStats.declined} <span style={{ color: DIM, fontWeight: 400 }}>{t('squad_declined')}</span>
               </span>
             )}
             {planStats.pending > 0 && (
               <span style={{ color: '#f5c542' }}>
-                ⏱ {planStats.pending} <span style={{ color: DIM, fontWeight: 400 }}>pending</span>
+                ⏱ {planStats.pending} <span style={{ color: DIM, fontWeight: 400 }}>{t('squad_pending')}</span>
               </span>
             )}
             <span style={{ marginLeft: 'auto', color: acceptPct >= 70 ? '#5bc25b' : acceptPct >= 40 ? '#f5c542' : '#e03030', fontWeight: 700 }}>
-              {acceptPct}% accept rate
+              {acceptPct}% {t('squad_acceptRate')}
             </span>
           </div>
         )
@@ -303,7 +311,7 @@ export default function CoachSquadView({ coachId, coachName = '' }) {
       {/* ── Nothing connected yet ── */}
       {!loading && athletes.length === 0 && (
         <div style={{ fontSize: '10px', color: DIM, fontStyle: 'italic', padding: '4px 0' }}>
-          No connected athletes yet — generate an invite link above.
+          {t('squad_noConnectedYet')}
         </div>
       )}
 
@@ -319,7 +327,7 @@ export default function CoachSquadView({ coachId, coachName = '' }) {
                 background: '#111', color: '#e0e0e0',
                 flex: '1 1 140px', boxSizing: 'border-box',
               }}
-              placeholder="Search athlete…"
+              placeholder={t('squad_searchPlaceholder')}
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
@@ -336,7 +344,7 @@ export default function CoachSquadView({ coachId, coachName = '' }) {
                     color: chip === fc.id ? '#ff6600' : DIM,
                   }}
                 >
-                  {fc.label}
+                  {t(fc.labelKey)}
                 </button>
               ))}
             </div>
@@ -353,7 +361,7 @@ export default function CoachSquadView({ coachId, coachName = '' }) {
                 onClick={() => toggleSort(col.id)}
                 onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort(col.id) } }}
               >
-                {col.label}{sortBy === col.id ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
+                {colLabel(col)}{sortBy === col.id ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
               </div>
             ))}
           </div>
@@ -369,7 +377,7 @@ export default function CoachSquadView({ coachId, coachName = '' }) {
           {/* No results after filter */}
           {!loading && visible.length === 0 && athletes.length > 0 && (
             <div style={{ fontSize: '10px', color: DIM, padding: '12px 0' }}>
-              No athletes match this filter.
+              {t('squad_noMatchFilter')}
             </div>
           )}
 
@@ -401,8 +409,8 @@ export default function CoachSquadView({ coachId, coachName = '' }) {
                     const attn = getAthleteAttentionSignal(ath)
                     const color = ATTENTION_COLORS[attn.level] || ATTENTION_COLORS.ok
                     const tip = attn.reasons.length === 0
-                      ? 'OK · no flagged signals'
-                      : attn.reasons.map(r => '• ' + (r.label?.en || r.key)).join('\n')
+                      ? t('squad_attnOk')
+                      : attn.reasons.map(r => '• ' + (r.label?.[lang] || r.label?.en || r.key)).join('\n')
                     const visible = attn.level !== 'ok'
                     return (
                       <div style={cell(COLS[0].flex, { textAlign: 'center', fontSize: '11px' })} title={tip}>
