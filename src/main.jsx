@@ -1,6 +1,6 @@
 import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
-import { initSentry } from './lib/observability/sentry.js'
+import { initSentry, captureException } from './lib/observability/sentry.js'
 import { initWebVitals } from './lib/observability/webVitals.js'
 import { init as initA11yAnnouncer } from './lib/a11y/announcer.js'
 // Self-hosted fonts — latin + latin-ext only (covers EN + TR characters)
@@ -29,6 +29,23 @@ if ('serviceWorker' in navigator) {
     })
   })
 }
+
+// Global runtime error handlers — additive observability net.
+// React's ErrorBoundary only catches *render* errors; rejected promises in
+// event handlers / async code and non-React runtime errors otherwise reach
+// Sentry only by luck. These forward both classes to captureException (a no-op
+// until initSentry runs, and self-guarded so the handlers can never throw).
+window.addEventListener('unhandledrejection', e => {
+  try {
+    const reason = e?.reason
+    captureException(reason instanceof Error ? reason : new Error(String(reason)), { source: 'unhandledrejection' })
+  } catch { /* never let the error handler throw */ }
+})
+window.addEventListener('error', e => {
+  try {
+    if (e?.error) captureException(e.error, { source: 'window.onerror' })
+  } catch { /* never let the error handler throw */ }
+})
 
 // Initialise the a11y live-region announcer once, before React mounts.
 // Subsequent calls to announce() can rely on the regions already existing.

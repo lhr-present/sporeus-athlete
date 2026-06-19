@@ -40,6 +40,7 @@ export default function SessionCommentThread({
   const [editingId,   setEditingId]   = useState(null)
   const [editBody,    setEditBody]    = useState('')
   const [offlineNote, setOfflineNote] = useState(false)
+  const [actionErr,   setActionErr]   = useState('')
   const textareaRef = useRef(null)
 
   const dot = STATUS_DOT[status] || STATUS_DOT.disconnected
@@ -69,7 +70,14 @@ export default function SessionCommentThread({
 
   async function saveEdit(e) {
     e.preventDefault()
-    await editComment(editingId, editBody.trim())
+    setActionErr('')
+    const { error } = await editComment(editingId, editBody.trim())
+    if (error) {
+      // Genuine server failure (RLS / 4xx-5xx) — keep the editor open so the
+      // edit isn't silently lost; the offline-queued path returns no error.
+      setActionErr(t('commentActionFailed'))
+      return
+    }
     setEditingId(null)
     setEditBody('')
   }
@@ -77,7 +85,13 @@ export default function SessionCommentThread({
   // ── Delete ───────────────────────────────────────────────────────────────────
 
   async function handleDelete(commentId) {
-    await deleteComment(commentId)
+    setActionErr('')
+    const { error } = await deleteComment(commentId)
+    if (error) {
+      // Keep the comment present on a genuine server failure rather than
+      // showing it as deleted when the server rejected the soft-delete.
+      setActionErr(t('commentActionFailed'))
+    }
   }
 
   // ── Render helpers ───────────────────────────────────────────────────────────
@@ -225,6 +239,16 @@ export default function SessionCommentThread({
           fontFamily: FONT.mono,
         }}>
           {t('commentOffline')}
+        </div>
+      )}
+
+      {/* Action error (edit/delete genuine server failure) */}
+      {actionErr && (
+        <div role="alert" style={{
+          marginTop: '8px', fontSize: FONT.size.xs, color: COLOR.red,
+          fontFamily: FONT.mono,
+        }}>
+          {actionErr}
         </div>
       )}
     </div>

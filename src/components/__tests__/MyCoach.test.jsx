@@ -124,6 +124,27 @@ describe('MyCoach connection components', () => {
     await waitFor(() => expect(onDisconnect).toHaveBeenCalledTimes(1))
   })
 
+  it('MyCoachStatus keeps the coach card + shows error when revoke fails (F3)', async () => {
+    mockOutcomes.coach_athletes = {
+      select: () => ({ data: { id: 'link-1', coach_id: 'coach-1', athlete_id: 'a-1', status: 'active' }, error: null }),
+      // RLS rejection / network failure — row stays active server-side.
+      update: () => ({ data: null, error: { message: 'permission denied' } }),
+    }
+    mockOutcomes.profiles = {
+      select: () => ({ data: { display_name: 'Coach Linus' }, error: null }),
+    }
+    const onDisconnect = vi.fn()
+    renderWithLang(<MyCoachStatus userId="a-1" onDisconnect={onDisconnect} />)
+    const btn = await screen.findByText(/DISCONNECT/i)
+    await act(async () => { fireEvent.click(btn) })
+    // Error surfaced, callback NOT fired, coach card still present.
+    await waitFor(() => {
+      expect(screen.getByText(/Couldn't disconnect/i)).toBeInTheDocument()
+    })
+    expect(onDisconnect).not.toHaveBeenCalled()
+    expect(screen.getByText(/Coach Linus/)).toBeInTheDocument()
+  })
+
   // ── JoinCoachInput input → confirm → done flow ─────────────────────────────
 
   // Helper: configure the preview_coach_invite RPC outcome for a code.

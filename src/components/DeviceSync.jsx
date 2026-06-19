@@ -96,7 +96,15 @@ export default function DeviceSync({ userId }) {
     setConfirmRemoveOpen(false)
     setPendingRemoveId(null)
     if (id != null) {
-      await removeDevice(id)
+      setSyncMsg(null)
+      // Inspect the delete result: on failure the device + its API token stay
+      // server-side; surface it via the existing syncMsg banner rather than
+      // silently re-listing (which made it look removed).
+      const { error } = await removeDevice(id)
+      if (error) {
+        setSyncMsg({ type: 'err', text: t('deviceSync_removeFailed') })
+        return
+      }
       loadDevices()
     }
   }

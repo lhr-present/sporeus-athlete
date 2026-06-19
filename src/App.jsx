@@ -117,6 +117,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
     onboarded, wizardDismissed, reopenWizard,
     toasts, dismissToast,
     syncStatus,
+    deadLetterCount,
     badges, isGuest, isFirstSession,
     finishOnboarding, t, handleExport, handleAddSession,
     profile,
@@ -239,6 +240,19 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
         <StatusBanner />
         <OfflineBanner lang={lang} />
         <ConnectionBanner lang={lang} />
+        {/* Dead-letter notice — surfaces writes that exhausted MAX_ATTEMPTS and
+            were parked permanently (getDeadLetterCount). Previously silent: the
+            user was never told their change didn't save. Stacks in the same fixed
+            column as the other top banners (position:relative). */}
+        {deadLetterCount > 0 && (
+          <div
+            role="alert"
+            style={{ background:'#2a0a0a', borderBottom:'2px solid #e03030', color:'#f0c0c0', fontFamily:"'IBM Plex Mono',monospace", fontSize:'11px', padding:'8px 20px', display:'flex', alignItems:'center', gap:'8px' }}
+          >
+            <span style={{ color:'#e03030', fontWeight:700 }}>⚠</span>
+            <span>{lang === 'tr' ? 'Bazı değişiklikler kaydedilemedi.' : "Some changes couldn't be saved."}</span>
+          </div>
+        )}
         <PastDueBanner profile={authProfile} lang={lang} onUpgrade={() => openUpgrade(null)} />
         {onboarded && <SetupBanner profile={profile} lang={lang} onPickSport={reopenWizard} />}
       </div>

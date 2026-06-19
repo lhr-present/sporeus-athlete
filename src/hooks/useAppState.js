@@ -12,6 +12,8 @@ import { checkRaceCountdowns, checkSubscriptionExpiry } from '../lib/pushNotify.
 import { scheduleSessionReminder, getReminderSettings } from '../lib/pushNotifications.js'
 import { triggerSync } from '../lib/deviceSync.js'
 import { initOfflineSync, stopOfflineSync, onSyncStatusChange, getSyncStatus, flushQueue } from '../lib/offlineQueue.js'
+import { getDeadLetterCount } from '../lib/offline/writeQueue.js'
+import { captureException } from '../lib/observability/sentry.js'
 import { exportAllData } from '../lib/storage.js'
 import { isSupabaseReady, supabase } from '../lib/supabase.js'
 import { getMyCoach } from '../lib/inviteUtils.js'
@@ -142,6 +144,13 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   const [coachUnreadBadge, setCoachUnreadBadge] = useState(0)
   const coachIdRef = useRef(null)
 
+  // Dead-letter (permanently-failed) writes. `getDeadLetterCount()` had ZERO
+  // callers — writes that exhausted MAX_ATTEMPTS were parked in IndexedDB
+  // forever with no user/operator signal. We surface the count via a banner
+  // (App.jsx) and report it to Sentry exactly once per session.
+  const [deadLetterCount, setDeadLetterCount] = useState(0)
+  const deadLetterReportedRef = useRef(false)
+
   const prevLogLen = useRef(log.length)
   // Tab-switch timer scheduled after the first logged session — tracked so it
   // can be cleared on unmount (mirrors useRealtimeSquad's timer-ref pattern).
@@ -230,6 +239,29 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
     const unsub = onSyncStatusChange(setSyncStatus)
     return () => { unsub(); stopOfflineSync() }
   }, [])
+
+  // Dead-letter surface: refresh the count on mount, whenever the sync status
+  // changes (replayWrites parks poison entries during a sync cycle, so the
+  // count can only grow at a sync boundary), and on the `online` event. We
+  // reuse the existing syncStatus tick rather than adding a new interval.
+  // Reports to Sentry once per session the first time any dead-letter is seen.
+  useEffect(() => {
+    let alive = true
+    const refresh = async () => {
+      try {
+        const n = await getDeadLetterCount()
+        if (!alive) return
+        setDeadLetterCount(n)
+        if (n > 0 && !deadLetterReportedRef.current) {
+          deadLetterReportedRef.current = true
+          captureException(new Error('dead-letter writes present'), { count: n })
+        }
+      } catch (e) { logger.warn('[deadLetter]', e?.message || e) }
+    }
+    refresh()
+    window.addEventListener('online', refresh)
+    return () => { alive = false; window.removeEventListener('online', refresh) }
+  }, [syncStatus])
 
   useEffect(() => {
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
@@ -324,20 +356,35 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
     prevLogLen.current = log.length
   }, [log.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Quota warn toast — fires once on mount if flag was set by useLocalStorage
+  // Quota warn toast — shared by the mount check and the live mid-session
+  // listener so both surface identical bilingual copy. addToast de-dupes on the
+  // stable `id: 'quota'`, so firing this repeatedly never stacks toasts.
+  const showQuotaToast = useCallback(() => {
+    addToast({
+      id: 'quota',
+      message: LABELS[lang]?.toastStorageFull ?? LABELS.en.toastStorageFull,
+      type: 'error',
+      duration: 0,
+      onDismiss: () => { try { localStorage.removeItem(STORAGE_WARN_KEY) } catch (e) { logger.warn('localStorage:', e.message) } },
+    })
+  }, [addToast, lang])
+
+  // Fires once on mount if the flag was set by useLocalStorage before this hook
+  // mounted (e.g. a quota failure during initial hydration).
   useEffect(() => {
     try {
-      if (localStorage.getItem(STORAGE_WARN_KEY) === '1') {
-        addToast({
-          id: 'quota',
-          message: LABELS[lang]?.toastStorageFull ?? LABELS.en.toastStorageFull,
-          type: 'error',
-          duration: 0,
-          onDismiss: () => { try { localStorage.removeItem(STORAGE_WARN_KEY) } catch (e) { logger.warn('localStorage:', e.message) } },
-        })
-      }
+      if (localStorage.getItem(STORAGE_WARN_KEY) === '1') showQuotaToast()
     } catch (e) { logger.warn('localStorage:', e.message) }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Mid-session quota: useLocalStorage dispatches `sporeus-quota-exceeded` the
+  // moment a write hits QuotaExceededError, so the user is warned immediately
+  // rather than only on the next cold load.
+  useEffect(() => {
+    const onQuota = () => showQuotaToast()
+    window.addEventListener('sporeus-quota-exceeded', onQuota)
+    return () => window.removeEventListener('sporeus-quota-exceeded', onQuota)
+  }, [showQuotaToast])
 
   // Sunday weekly digest notification
   useEffect(() => {
@@ -565,6 +612,7 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
     // Sync
     syncStatus,
     flushQueue,
+    deadLetterCount,
     // Computed booleans
     isGuest, isFirstSession, isProfileIncomplete, badges,
     onboarded, wizardDismissed,

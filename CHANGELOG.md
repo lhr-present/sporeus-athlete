@@ -2,6 +2,39 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.444.0 — 2026-06-20 — Error-handling & observability hardening
+
+From a fresh discovery sweep (error/observability + coach-side dimensions). All additive/safe,
+bilingual. Two file-disjoint agents.
+
+App-shell observability:
+- **Global error handlers** — added `window` `unhandledrejection` + `error` listeners in main.jsx
+  → `captureException` (React ErrorBoundary only catches render errors, so a whole class of async
+  rejections/runtime errors was invisible to Sentry).
+- **Dead-letter writes surfaced** — `getDeadLetterCount()` had zero callers, so writes that
+  exhausted retries were silently parked forever. Now a bilingual `role="alert"` banner shows when
+  count > 0 (refreshed at sync-status boundaries + `online`), and it's reported to Sentry once/session.
+- **QuotaExceeded mid-session** — useLocalStorage now dispatches a `sporeus-quota-exceeded` event on
+  QuotaExceededError; useAppState listens and shows the existing quota toast (previously only fired
+  on mount, so a mid-session quota hit was silent).
+
+Swallowed action-error surfacing (user thought it worked; it didn't):
+- **MyCoach disconnect** (privacy) — the `coach_athletes` revoke result was never checked; UI cleared
+  regardless, so on failure the coach kept access while the athlete believed they'd disconnected. Now
+  keeps the card + shows an inline error on failure; clears only on success.
+- **Comment edit/delete** — `editComment`/`deleteComment` applied optimistically with no error branch;
+  genuine server errors (e.g. RLS denial) were lost. Now propagate `{error,queued}` (mirroring
+  postComment); SessionCommentThread keeps the editor open / item present + shows an inline error.
+  Offline-queue path preserved.
+- **DeviceSync remove** — delete failure was ignored (device + API token silently reappeared); now
+  surfaced via the existing syncMsg banner.
+- **Coach report founder-name** — the Print report hardcoded `COACH: HÜSEYIN IŞIK` for every coach;
+  now uses the actual coach's name (from `sporeus-coach-profile`), with a neutral COACH/ANTRENÖR fallback.
+
+Deferred (need a founder decision / larger scope): duplicate squad-view render in App.jsx
+(two CoachSquadView components stacked — needs founder to pick the canonical one); broad coach-surface
+i18n sweep. +8 tests. 15,947 green (713 files), lint + build clean.
+
 ## v9.443.0 — 2026-06-20 — FieldTestModal backdrop a11y (structural fix)
 
 Completes the v9.440 a11y backdrop pass. FieldTestModal's dimmed backdrop *wrapped* the dialog,
