@@ -2,6 +2,15 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.443.0 — 2026-06-20 — FieldTestModal backdrop a11y (structural fix)
+
+Completes the v9.440 a11y backdrop pass. FieldTestModal's dimmed backdrop *wrapped* the dialog,
+so `aria-hidden` couldn't be applied (it would hide the dialog). Restructured the backdrop to be
+a **sibling behind** the dialog: the dimmed `aria-hidden="true"` overlay (click-to-close) now sits
+under a `position:relative` content layer holding the `role="dialog"` Container. Click-to-close +
+focus-trap Escape preserved; the backdrop is no longer an unnamed clickable in the AT tree.
+No behavior/layout change. 15,939 green (712 files), lint + build clean.
+
 ## v9.442.0 — 2026-06-20 — Customize panel: grouped, collapsible, bilingual
 
 Follow-up to v9.441, which made all ~234 dashboard cards toggleable but left the Customize panel
