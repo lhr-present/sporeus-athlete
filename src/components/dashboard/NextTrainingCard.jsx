@@ -8,7 +8,7 @@
 // chip, countdown ("today" / "tomorrow" / "in 3 days"). When the next
 // training is today, shows the full session detail; otherwise compact.
 
-import { useContext, useMemo, useState } from 'react'
+import { memo, useContext, useMemo, useState  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
@@ -51,7 +51,7 @@ function relativeDay(daysAhead, isTR) {
   return isTR ? `${daysAhead} GÜN SONRA` : `IN ${daysAhead} DAYS`
 }
 
-export default function NextTrainingCard({ defaultProgram, defaultProgramStart }) {
+function NextTrainingCard({ defaultProgram, defaultProgramStart }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
   const { log, setLog, profile: _profile } = useData()
@@ -251,3 +251,5 @@ export default function NextTrainingCard({ defaultProgram, defaultProgramStart }
     </div>
   )
 }
+
+export default memo(NextTrainingCard)

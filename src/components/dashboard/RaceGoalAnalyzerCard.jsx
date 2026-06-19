@@ -3,7 +3,7 @@
 // Enter current 10K time + goal 10K time → VDOT gap, training paces,
 // predicted HR/LTHR, phase plan, VDOT checkpoints.
 // All non-measured values labeled: PREDICTED / CALCULATED / DERIVED.
-import { useState, useMemo } from 'react'
+import { memo, useState, useMemo  } from 'react'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { analyzeRaceGoal, parseMmSs } from '../../lib/athlete/raceGoalEngine.js'
 import { S } from '../../styles.js'
@@ -62,7 +62,7 @@ function PaceRow({ zone, paceStr, isTR }) {
   )
 }
 
-export default function RaceGoalAnalyzerCard({ profile, log, isTR }) {
+function RaceGoalAnalyzerCard({ profile, log, isTR }) {
   const [saved, setSaved] = useLocalStorage('sporeus-race-goal-v2', null)
   const [editing, setEditing] = useState(!saved)
 
@@ -354,3 +354,5 @@ export default function RaceGoalAnalyzerCard({ profile, log, isTR }) {
     </div>
   )
 }
+
+export default memo(RaceGoalAnalyzerCard)

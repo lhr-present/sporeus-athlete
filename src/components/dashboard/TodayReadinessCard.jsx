@@ -11,7 +11,7 @@
 //   • No recovery entry today → CTA to open MorningCheckIn
 //   • Score null              → "Insufficient data" + CTA
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { computeReadinessScore } from '../../lib/recovery/readinessScore.js'
@@ -53,7 +53,7 @@ const SESSION_LABEL = {
  *        empty-state button dispatches a `sporeus:open-morning-checkin` window
  *        event so any listener (e.g. TodayView) may pop the modal.
  */
-export default function TodayReadinessCard({
+function TodayReadinessCard({
   recovery = [],
   log = [],            // eslint-disable-line no-unused-vars
   profile = {},        // eslint-disable-line no-unused-vars
@@ -309,3 +309,5 @@ export default function TodayReadinessCard({
     </div>
   )
 }
+
+export default memo(TodayReadinessCard)

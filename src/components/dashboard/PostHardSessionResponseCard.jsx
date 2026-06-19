@@ -16,7 +16,7 @@
 //   distribution; Buchheit M. (2014) Monitoring training status with
 //   HR-derived measures.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzePostHardSessionResponse } from '../../lib/athlete/postHardSessionResponse.js'
 
@@ -64,7 +64,7 @@ function formatDelta(value, unit, digits = 1) {
  *   response band over the last 28 days.
  * @param {{ log: Array, recovery: Array }} props
  */
-export default function PostHardSessionResponseCard({ log, recovery }) {
+function PostHardSessionResponseCard({ log, recovery }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -239,3 +239,5 @@ export default function PostHardSessionResponseCard({ log, recovery }) {
     </div>
   )
 }
+
+export default memo(PostHardSessionResponseCard)

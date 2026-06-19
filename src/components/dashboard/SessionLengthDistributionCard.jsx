@@ -25,7 +25,7 @@
 //   Issurin V.B. (2010). Sports Med 40(3):189-206.
 //   Bompa T.O., Buzzichelli C.A. (2018). Periodization, 6th ed.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeSessionLengthDistribution } from '../../lib/athlete/sessionLengthDistribution.js'
 
@@ -81,7 +81,7 @@ function formatMin(min) {
  *
  * @param {{ log: Array }} props
  */
-export default function SessionLengthDistributionCard({ log }) {
+function SessionLengthDistributionCard({ log }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -295,3 +295,5 @@ export default function SessionLengthDistributionCard({ log }) {
     </div>
   )
 }
+
+export default memo(SessionLengthDistributionCard)

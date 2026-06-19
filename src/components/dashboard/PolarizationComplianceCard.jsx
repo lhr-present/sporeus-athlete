@@ -1,6 +1,6 @@
 // src/components/dashboard/PolarizationComplianceCard.jsx
 // E16 — Week-by-Week Polarization Compliance dashboard card
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import {
@@ -36,7 +36,7 @@ function _scoreColor(score) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function PolarizationComplianceCard({ log }) {
+function PolarizationComplianceCard({ log }) {
   const { t, lang } = useContext(LangCtx)
 
   const safeLog = useMemo(() => Array.isArray(log) ? log : [], [log])
@@ -246,3 +246,5 @@ export default function PolarizationComplianceCard({ log }) {
     </div>
   )
 }
+
+export default memo(PolarizationComplianceCard)

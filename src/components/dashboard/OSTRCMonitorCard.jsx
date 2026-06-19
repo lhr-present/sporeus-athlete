@@ -3,7 +3,7 @@
 // Returns null if computeOSTRCSummary returns null (< 2 entries).
 // Reference: Clarsen et al. (2013) Br J Sports Med
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { parseOSTRCHistory, computeOSTRCSummary } from '../../lib/athlete/ostrcSummary.js'
 
@@ -21,7 +21,7 @@ const RISK_KEYS = {
   substantial: 'ostrcSubstantial',
 }
 
-export default function OSTRCMonitorCard() {
+function OSTRCMonitorCard() {
   const { t, lang } = useContext(LangCtx)
 
   const history = parseOSTRCHistory()
@@ -167,3 +167,5 @@ export default function OSTRCMonitorCard() {
     </div>
   )
 }
+
+export default memo(OSTRCMonitorCard)

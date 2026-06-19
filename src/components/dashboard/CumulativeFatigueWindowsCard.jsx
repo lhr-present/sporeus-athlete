@@ -17,7 +17,7 @@
 //   data-overreach-band, data-windows-above-threshold, data-total-days,
 //   data-exposure-rate, data-peak-ratio, data-peak-ratio-date.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeCumulativeFatigueWindows } from '../../lib/athlete/cumulativeFatigueWindows.js'
 
@@ -153,7 +153,7 @@ function Sparkline({ dailyRatios, overreachRatio, color }) {
   )
 }
 
-export default function CumulativeFatigueWindowsCard({ log = [] }) {
+function CumulativeFatigueWindowsCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -313,3 +313,5 @@ export default function CumulativeFatigueWindowsCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(CumulativeFatigueWindowsCard)

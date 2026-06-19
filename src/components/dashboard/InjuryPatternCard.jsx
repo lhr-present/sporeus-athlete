@@ -1,10 +1,10 @@
 // ── dashboard/InjuryPatternCard.jsx — E35 Injury Pattern Mining Card ──────────
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { computeInjuryPatterns, confidenceColor } from '../../lib/athlete/injuryPatterns.js'
 
-export default function InjuryPatternCard({ log, injuries, recovery }) {
+function InjuryPatternCard({ log, injuries, recovery }) {
   const { t, lang } = useContext(LangCtx)
   const result = computeInjuryPatterns(log || [], injuries || [], recovery || [])
 
@@ -114,3 +114,5 @@ export default function InjuryPatternCard({ log, injuries, recovery }) {
     </div>
   )
 }
+
+export default memo(InjuryPatternCard)

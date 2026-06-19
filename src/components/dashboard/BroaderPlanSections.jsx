@@ -6,7 +6,7 @@
 // All bilingual via the `isTR` prop. Pure presentational — no orchestrator
 // calls, just renders fields off `result` from buildEliteProgram.
 
-import React, { useState } from 'react'
+import React, { useState, memo } from 'react'
 import { S } from '../../styles.js'
 
 // ── Visual tokens (v9.4.0) — phase + intensity color coding ──────────────────
@@ -849,7 +849,7 @@ export function ContingencySection({ contingencyMap, isTR, defaultOpen = false }
  * Renders all broader-plan content sections in a single container.
  * Pass the full `result` object from buildEliteProgram.
  */
-export default function BroaderPlanSections({ result, isTR }) {
+function BroaderPlanSections({ result, isTR }) {
   if (!result) return null
   return (
     <div style={{ marginBottom: 16 }}>
@@ -867,3 +867,5 @@ export default function BroaderPlanSections({ result, isTR }) {
     </div>
   )
 }
+
+export default memo(BroaderPlanSections)

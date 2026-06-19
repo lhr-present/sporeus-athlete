@@ -4,7 +4,7 @@
 // Bands: fresh, maintaining, building, fatigued, overreached. Closes the
 // lib→card loop for v8.77.0.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { detectRecoveryDebt } from '../../lib/athlete/recoveryDebt.js'
@@ -31,7 +31,7 @@ function fmtSigned1(v) {
   return n > 0 ? `+${s}` : s
 }
 
-export default function RecoveryDebtCard({ log = [] }) {
+function RecoveryDebtCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -230,3 +230,5 @@ export default function RecoveryDebtCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(RecoveryDebtCard)

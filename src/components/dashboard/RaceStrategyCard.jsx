@@ -13,7 +13,7 @@
 // who picks "road" here sees it pre-selected when they later open the
 // in-program block — and vice-versa.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { buildRaceStrategy, RACE_TYPES } from '../../lib/athlete/raceStrategy.js'
@@ -59,7 +59,7 @@ const RACE_TYPE_LABEL = {
   'head-race':  { en: 'Head Race',   tr: 'Head Race' },
 }
 
-export default function RaceStrategyCard({ profile = {} }) {
+function RaceStrategyCard({ profile = {} }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -253,3 +253,5 @@ export default function RaceStrategyCard({ profile = {} }) {
     </div>
   )
 }
+
+export default memo(RaceStrategyCard)

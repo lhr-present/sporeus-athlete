@@ -6,7 +6,7 @@
 // chaotic.
 // Cite: Banister 1991; Coggan PMC; Fitz-Clarke 1991 model stability.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { detectFitnessConsistency } from '../../lib/athlete/fitnessConsistency.js'
@@ -25,7 +25,7 @@ const BAND_LABEL = {
   chaotic:      { en: 'CHAOTIC',     tr: 'KAOTİK' },
 }
 
-export default function FitnessConsistencyCard({ log = [] }) {
+function FitnessConsistencyCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -219,3 +219,5 @@ export default function FitnessConsistencyCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(FitnessConsistencyCard)

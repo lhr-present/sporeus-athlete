@@ -13,7 +13,7 @@
 // Bilingual via LangCtx. Mono terminal aesthetic. Renders null when the
 // analyzer returns null (<6 active weeks of 12).
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeLongestSessionTrend } from '../../lib/athlete/longestSessionTrend.js'
 
@@ -69,7 +69,7 @@ function formatDelta(delta) {
  *
  * @param {{ log: Array }} props
  */
-export default function LongestSessionTrendCard({ log }) {
+function LongestSessionTrendCard({ log }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -251,3 +251,5 @@ export default function LongestSessionTrendCard({ log }) {
     </div>
   )
 }
+
+export default memo(LongestSessionTrendCard)

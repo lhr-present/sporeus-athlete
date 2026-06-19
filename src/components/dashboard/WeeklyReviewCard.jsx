@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { memo, useMemo  } from 'react'
 import { S } from '../../styles.js'
 import { generateWeeklyNarrative } from '../../lib/intelligence.js'
 import { FormulaPopover } from '../ui/FormulaPopover.jsx'
@@ -29,7 +29,7 @@ function getISOWeekBounds(offsetWeeks = 0) {
   }
 }
 
-export default function WeeklyReviewCard({ log, profile, isTR }) {
+function WeeklyReviewCard({ log, profile, isTR }) {
   const { thisWeek, lastWeek } = useMemo(() => {
     if (!log || log.length === 0) return { thisWeek: [], lastWeek: [] }
     const { monISO: thisMon, sunISO: thisSun } = getISOWeekBounds(0)
@@ -173,3 +173,5 @@ export default function WeeklyReviewCard({ log, profile, isTR }) {
     </div>
   )
 }
+
+export default memo(WeeklyReviewCard)

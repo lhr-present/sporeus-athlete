@@ -15,7 +15,7 @@
 //   STEADY       blue  #0064ff  SABİT
 //   RECENT_BREAK orange #ff6600 ARA
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeLogStreakBreaker } from '../../lib/athlete/logStreakBreaker.js'
 
@@ -48,7 +48,7 @@ const HINT = {
   },
 }
 
-export default function LogStreakBreakerCard({ log, recovery }) {
+function LogStreakBreakerCard({ log, recovery }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -211,3 +211,5 @@ export default function LogStreakBreakerCard({ log, recovery }) {
     </div>
   )
 }
+
+export default memo(LogStreakBreakerCard)

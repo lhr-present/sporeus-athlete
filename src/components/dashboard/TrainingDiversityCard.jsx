@@ -4,7 +4,7 @@
 // a triathlete may have rich intent mix yet train one sport, or vice versa.
 // Cite: Bompa & Haff 2009 multi-sport; Tonnessen 2014 polarized + variety.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { detectTrainingDiversity } from '../../lib/athlete/trainingDiversity.js'
@@ -41,7 +41,7 @@ const SPORT_LABEL = {
   other:    { en: 'Other',    tr: 'Diğer' },
 }
 
-export default function TrainingDiversityCard({ log = [] }) {
+function TrainingDiversityCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -260,3 +260,5 @@ export default function TrainingDiversityCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(TrainingDiversityCard)

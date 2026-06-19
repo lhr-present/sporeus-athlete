@@ -13,7 +13,7 @@
 //   data-ctl-slope-card, data-slope-band, data-slope,
 //   data-slope-per-week, data-recent-ctl, data-intercept.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeCtlSlope } from '../../lib/athlete/ctlSlope.js'
 
@@ -73,7 +73,7 @@ function signed(n, digits = 1) {
   return v > 0 ? `+${fixed}` : fixed
 }
 
-export default function CtlSlopeCard({ log = [] }) {
+function CtlSlopeCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -179,3 +179,5 @@ export default function CtlSlopeCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(CtlSlopeCard)

@@ -18,7 +18,7 @@
 //   data-card="volume-intensity-scissors",
 //   data-scissors-band, data-volume-trend, data-intensity-trend.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeVolumeIntensityScissors } from '../../lib/athlete/volumeIntensityScissors.js'
 
@@ -127,7 +127,7 @@ function Sparkline({ values, color, ariaLabel, dataKey }) {
   )
 }
 
-export default function VolumeIntensityScissorsCard({ log = [] }) {
+function VolumeIntensityScissorsCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -299,3 +299,5 @@ export default function VolumeIntensityScissorsCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(VolumeIntensityScissorsCard)

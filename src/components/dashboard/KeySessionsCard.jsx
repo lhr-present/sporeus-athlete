@@ -16,7 +16,7 @@
 //
 // Pure presentation — no localStorage, no side effects.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import {
   getKeySessionsBySport,
@@ -146,7 +146,7 @@ function isSupported(sportKey) {
     || sportKey === 'triathlon' || sportKey === 'rowing'
 }
 
-export default function KeySessionsCard({ profile }) {
+function KeySessionsCard({ profile }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -333,3 +333,5 @@ export default function KeySessionsCard({ profile }) {
     </div>
   )
 }
+
+export default memo(KeySessionsCard)

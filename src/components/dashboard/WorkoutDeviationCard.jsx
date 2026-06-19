@@ -8,7 +8,7 @@
 //
 // Renders nothing when the pure-fn returns null (no plan, no log in window,
 // or planned TSS = 0).
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { computeWorkoutDeviation } from '../../lib/athlete/workoutDeviation.js'
 
@@ -44,7 +44,7 @@ function todayISO() {
     .toISOString().slice(0, 10)
 }
 
-export default function WorkoutDeviationCard({ log, plan }) {
+function WorkoutDeviationCard({ log, plan }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -173,3 +173,5 @@ export default function WorkoutDeviationCard({ log, plan }) {
     </div>
   )
 }
+
+export default memo(WorkoutDeviationCard)

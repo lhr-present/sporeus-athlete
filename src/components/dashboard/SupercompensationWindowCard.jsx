@@ -4,7 +4,7 @@
 // and TSB rises sharply. Bands: peak, opportunity, available, closed,
 // building. Cite: Foster 1996; Costill 1991; Mujika 2010.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { detectSupercompensation } from '../../lib/athlete/supercompensationWindow.js'
@@ -31,7 +31,7 @@ function fmtSigned1(v) {
   return n > 0 ? `+${s}` : s
 }
 
-export default function SupercompensationWindowCard({ log = [] }) {
+function SupercompensationWindowCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -285,3 +285,5 @@ export default function SupercompensationWindowCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(SupercompensationWindowCard)

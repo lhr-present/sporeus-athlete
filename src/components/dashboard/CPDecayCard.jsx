@@ -6,7 +6,7 @@
 //   Poole D.C. et al. (2016) Med Sci Sports Exerc 48(11):2320–2334
 //   Vanhatalo A., Jones A.M., Burnley M. (2011) IJSPP 6(1):128–136
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { computeCPDecayIndex, cpTrendSparkline } from '../../lib/science/cpDecay.js'
@@ -24,7 +24,7 @@ const WPRIME_COLOR = {
   contracting: '#e03030',
 }
 
-export default function CPDecayCard({ testResults = [] }) {
+function CPDecayCard({ testResults = [] }) {
   const { t, lang } = useContext(LangCtx)
 
   const result = useMemo(
@@ -210,3 +210,5 @@ export default function CPDecayCard({ testResults = [] }) {
     </div>
   )
 }
+
+export default memo(CPDecayCard)

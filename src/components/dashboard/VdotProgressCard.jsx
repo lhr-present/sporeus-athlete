@@ -1,7 +1,7 @@
 // src/components/dashboard/VdotProgressCard.jsx — E89
 // SVG VDOT trend chart from training log. On-track/ahead/behind status vs goal trajectory.
 // Suggests next 5K time trial every 12 weeks (Daniels 2014 calibration recommendation).
-import { useMemo } from 'react'
+import { memo, useMemo  } from 'react'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { detectVdotFromLog } from '../../lib/athlete/vdotTracker.js'
 import { analyzeRaceGoal, parseMmSs } from '../../lib/athlete/raceGoalEngine.js'
@@ -147,7 +147,7 @@ function daysSinceLastRealEffort(trend, today) {
   return daysSinceEpoch(today) - daysSinceEpoch(last.date)
 }
 
-export default function VdotProgressCard({ log = [], profile = {}, isTR }) {
+function VdotProgressCard({ log = [], profile = {}, isTR }) {
   const [saved] = useLocalStorage('sporeus-race-goal-v2', null)
   const today   = new Date().toISOString().slice(0, 10)
 
@@ -298,3 +298,5 @@ export default function VdotProgressCard({ log = [], profile = {}, isTR }) {
     </div>
   )
 }
+
+export default memo(VdotProgressCard)

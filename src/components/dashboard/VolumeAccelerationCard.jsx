@@ -14,7 +14,7 @@
 //               data-current-acceleration, data-prior-acceleration,
 //               data-week-bar + data-week-start/tss/delta per bar.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeVolumeAcceleration } from '../../lib/athlete/volumeAcceleration.js'
 
@@ -59,7 +59,7 @@ function fmtSigned(v, digits = 0) {
   return `${sign}${v.toFixed(digits)}`
 }
 
-export default function VolumeAccelerationCard({ log = [] }) {
+function VolumeAccelerationCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -222,3 +222,5 @@ export default function VolumeAccelerationCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(VolumeAccelerationCard)

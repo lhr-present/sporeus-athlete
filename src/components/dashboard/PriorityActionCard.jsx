@@ -3,7 +3,7 @@
 // Shows only when an action is triggered (computeNextAction always returns an
 // object, but rules with id='default' use muted color — we show all results
 // since even default is informative).
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { computeNextAction } from '../../lib/nextAction.js'
@@ -20,7 +20,7 @@ const COLOR_MAP = {
 /**
  * @param {{ log: object[], recovery: object[], profile: object }} props
  */
-export default function PriorityActionCard({ log, recovery, profile }) {
+function PriorityActionCard({ log, recovery, profile }) {
   const { t: _t, lang } = useContext(LangCtx)
 
   const action = computeNextAction(log, recovery, profile)
@@ -100,3 +100,5 @@ export default function PriorityActionCard({ log, recovery, profile }) {
     </div>
   )
 }
+
+export default memo(PriorityActionCard)

@@ -11,7 +11,7 @@
 // Test anchors: data-weekly-goal-variance-card, data-goal-band,
 // data-avg-variance, data-weekly-goal, data-week-bar (on each weekly bar).
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeWeeklyGoalVariance } from '../../lib/athlete/weeklyGoalVariance.js'
 
@@ -58,7 +58,7 @@ function formatPct(v) {
   return `${sign}${Math.round(Math.abs(v) * 100)}%`
 }
 
-export default function WeeklyGoalVarianceCard({ log = [], profile = null }) {
+function WeeklyGoalVarianceCard({ log = [], profile = null }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -218,3 +218,5 @@ export default function WeeklyGoalVarianceCard({ log = [], profile = null }) {
     </div>
   )
 }
+
+export default memo(WeeklyGoalVarianceCard)

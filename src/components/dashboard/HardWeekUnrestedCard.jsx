@@ -17,7 +17,7 @@
 // Test anchors: data-card="hard-week-unrested", data-band,
 //   data-total-hard-weeks, data-unrested-count, data-unrested-rate.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeHardWeekUnrested } from '../../lib/athlete/hardWeekUnrested.js'
 
@@ -143,7 +143,7 @@ function MiniBars({ weekClassifications }) {
  *
  * @param {{ log: Array }} props
  */
-export default function HardWeekUnrestedCard({ log = [] }) {
+function HardWeekUnrestedCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -342,3 +342,5 @@ export default function HardWeekUnrestedCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(HardWeekUnrestedCard)

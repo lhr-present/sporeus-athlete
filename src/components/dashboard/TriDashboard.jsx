@@ -1,6 +1,6 @@
 // ─── dashboard/TriDashboard.jsx — Dual CTL chart for triathletes ───────────────
 // Shows three PMC lines: swim CTL (teal), bike/run CTL (blue), combined load (grey).
-import { useMemo } from 'react'
+import { memo, useMemo  } from 'react'
 import { S } from '../../styles.js'
 import { dualBanister, splitDisciplineLogs } from '../../lib/sport/simulation.js'
 import ErrorBoundary from '../ErrorBoundary.jsx'
@@ -42,7 +42,7 @@ function MiniCTLChart({ data }) {
  * @param {Array}  props.log  — full training log
  * @param {string} [props.lang='en']
  */
-export default function TriDashboard({ log, lang = 'en' }) {
+function TriDashboard({ log, lang = 'en' }) {
   const { swimLog, bikeRunLog } = useMemo(() => splitDisciplineLogs(log || []), [log])
 
   // Build dual Banister trace for last 90 days
@@ -105,3 +105,5 @@ export default function TriDashboard({ log, lang = 'en' }) {
     </div>
   )
 }
+
+export default memo(TriDashboard)

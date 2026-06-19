@@ -7,7 +7,7 @@
 //
 // Renders nothing when the pure-fn returns null.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeYearOverYear } from '../../lib/athlete/yearOverYear.js'
 
@@ -61,7 +61,7 @@ function rowDeltaColor(d) {
   return '#0064ff'
 }
 
-export default function YearOverYearCard({ log = [] }) {
+function YearOverYearCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -217,3 +217,5 @@ export default function YearOverYearCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(YearOverYearCard)

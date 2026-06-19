@@ -22,7 +22,7 @@
 // Citation: Daniels J. (2014) Daniels' Running Formula; Bompa T. (2018)
 // Periodization.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeWeeklyKmPerSport } from '../../lib/athlete/weeklyKmPerSport.js'
 
@@ -69,7 +69,7 @@ function fmtDelta(deltaPct, isTR) {
  *
  * @param {{ log: Array }} props
  */
-export default function WeeklyKmPerSportCard({ log }) {
+function WeeklyKmPerSportCard({ log }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -222,3 +222,5 @@ export default function WeeklyKmPerSportCard({ log }) {
     </div>
   )
 }
+
+export default memo(WeeklyKmPerSportCard)

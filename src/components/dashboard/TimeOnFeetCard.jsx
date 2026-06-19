@@ -17,7 +17,7 @@
 //   data-avg-12w-min, data-delta-pct, plus per-bar
 //   data-week-bar / data-week-start / data-week-minutes.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeTimeOnFeet } from '../../lib/athlete/timeOnFeet.js'
 
@@ -92,7 +92,7 @@ function signedPct(n) {
   return pct > 0 ? `+${pct}%` : `${pct}%`
 }
 
-export default function TimeOnFeetCard({ log = [] }) {
+function TimeOnFeetCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -229,3 +229,5 @@ export default function TimeOnFeetCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(TimeOnFeetCard)

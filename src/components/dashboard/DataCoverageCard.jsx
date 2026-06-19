@@ -12,7 +12,7 @@
 //
 // Citations: Wood 2013; Hellard 2019.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeDataCoverage } from '../../lib/athlete/dataCoverage.js'
 
@@ -49,7 +49,7 @@ const BAND_HINT = {
  *
  * @param {{ log?: Array, recovery?: Array }} props
  */
-export default function DataCoverageCard({ log, recovery }) {
+function DataCoverageCard({ log, recovery }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -250,3 +250,5 @@ export default function DataCoverageCard({ log, recovery }) {
     </div>
   )
 }
+
+export default memo(DataCoverageCard)

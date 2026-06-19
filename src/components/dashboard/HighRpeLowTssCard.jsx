@@ -10,7 +10,7 @@
 //
 // Cite: Foster 2017; Halson 2014.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { analyzeHighRpeLowTss } from '../../lib/athlete/highRpeLowTss.js'
@@ -61,7 +61,7 @@ function fmtDateShort(iso, isTR) {
   return `${md.slice(3)}/${md.slice(0, 2)}`
 }
 
-export default function HighRpeLowTssCard({ log = [] }) {
+function HighRpeLowTssCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -319,3 +319,5 @@ export default function HighRpeLowTssCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(HighRpeLowTssCard)

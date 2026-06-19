@@ -14,7 +14,7 @@
 //
 // Citation: Hooper 1995; Saw 2016.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeEnergySorenessDivergence } from '../../lib/athlete/energySorenessDivergence.js'
 
@@ -169,7 +169,7 @@ function fmtIndex(v) {
  *
  * @param {{ recovery: Array }} props
  */
-export default function EnergySorenessDivergenceCard({ recovery }) {
+function EnergySorenessDivergenceCard({ recovery }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -339,3 +339,5 @@ export default function EnergySorenessDivergenceCard({ recovery }) {
     </div>
   )
 }
+
+export default memo(EnergySorenessDivergenceCard)

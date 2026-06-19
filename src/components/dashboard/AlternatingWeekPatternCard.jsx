@@ -10,7 +10,7 @@
 // Cite: Issurin 2010; Mujika 2014.
 // ─────────────────────────────────────────────────────────────────────────
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { analyzeAlternatingWeekPattern } from '../../lib/athlete/alternatingWeekPattern.js'
@@ -80,7 +80,7 @@ function formatAmpRatio(x) {
  *
  * @param {{ log: Array }} props
  */
-export default function AlternatingWeekPatternCard({ log }) {
+function AlternatingWeekPatternCard({ log }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -359,3 +359,5 @@ export default function AlternatingWeekPatternCard({ log }) {
     </div>
   )
 }
+
+export default memo(AlternatingWeekPatternCard)

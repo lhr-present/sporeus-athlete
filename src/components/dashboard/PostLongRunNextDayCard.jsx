@@ -19,7 +19,7 @@
 //
 // Bilingual EN/TR via LangCtx. Mono terminal aesthetic.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzePostLongRunNextDay } from '../../lib/athlete/postLongRunNextDay.js'
 
@@ -99,7 +99,7 @@ function formatDate(iso, isTR) {
  *
  * @param {{ log: Array }} props
  */
-export default function PostLongRunNextDayCard({ log }) {
+function PostLongRunNextDayCard({ log }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -394,3 +394,5 @@ export default function PostLongRunNextDayCard({ log }) {
     </div>
   )
 }
+
+export default memo(PostLongRunNextDayCard)

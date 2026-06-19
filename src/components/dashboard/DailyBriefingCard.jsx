@@ -1,7 +1,7 @@
 // src/components/dashboard/DailyBriefingCard.jsx
 // The "6am answer" card — top of Dashboard.
 // Tells the athlete exactly what to do today based on their actual data.
-import { useMemo } from 'react'
+import { memo, useMemo  } from 'react'
 import { deriveAllMetrics } from '../../lib/profileDerivedMetrics.js'
 import { dailyPrescription } from '../../lib/dailyPrescription.js'
 import { classifyTrainingPhase } from '../../lib/athlete/trainingPhase.js'
@@ -20,7 +20,7 @@ const STATUS_COLOR = {
 }
 const ZONE_COLORS = ['#888', '#5bc25b', '#f5c542', '#ff8c00', '#e03030']
 
-export default function DailyBriefingCard({ profile, log, plan, planStatus, recovery, isTR }) {
+function DailyBriefingCard({ profile, log, plan, planStatus, recovery, isTR }) {
   const metrics  = useMemo(() => deriveAllMetrics(profile, log || [], []), [profile, log])
   const rx       = useMemo(
     () => dailyPrescription(profile, log, plan, planStatus, recovery, metrics),
@@ -172,3 +172,5 @@ export default function DailyBriefingCard({ profile, log, plan, planStatus, reco
     </div>
   )
 }
+
+export default memo(DailyBriefingCard)

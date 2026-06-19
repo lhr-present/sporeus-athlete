@@ -9,7 +9,7 @@
 // the card gates itself: render NULL when the athlete is clearly not a runner
 // (no `primarySport` containing "run" AND no running entries in the log).
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { computeRunningCadenceTrend } from '../../lib/athlete/runningCadence.js'
 
@@ -69,7 +69,7 @@ function Sparkline({ values, color }) {
   )
 }
 
-export default function RunningCadenceTrendCard({ log = [], profile = {} }) {
+function RunningCadenceTrendCard({ log = [], profile = {} }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -201,3 +201,5 @@ export default function RunningCadenceTrendCard({ log = [], profile = {} }) {
     </div>
   )
 }
+
+export default memo(RunningCadenceTrendCard)

@@ -1,13 +1,13 @@
 // src/components/dashboard/IntensityBalanceCard.jsx — E76
 // Shows 4-week easy vs hard session split and polarization compliance.
 // Seiler (2010): ~80% easy / 20% hard by duration = polarized.
-import { useMemo } from 'react'
+import { memo, useMemo  } from 'react'
 import { S } from '../../styles.js'
 import { computeIntensityBalance } from '../../lib/athlete/intensityBalance.js'
 
 const MONO = "'IBM Plex Mono', monospace"
 
-export default function IntensityBalanceCard({ log, isTR }) {
+function IntensityBalanceCard({ log, isTR }) {
   const data = useMemo(() => computeIntensityBalance(log), [log])
 
   if (!data || data.status === 'insufficient') return (
@@ -70,3 +70,5 @@ export default function IntensityBalanceCard({ log, isTR }) {
     </div>
   )
 }
+
+export default memo(IntensityBalanceCard)

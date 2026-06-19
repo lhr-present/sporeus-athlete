@@ -1,9 +1,10 @@
+import { memo } from 'react'
 // ─── dashboard/BackupReminder.jsx — periodic export reminder ─────────────────
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { S } from '../../styles.js'
 import { exportAllData } from '../../lib/storage.js'
 
-export default function BackupReminder({ log }) {
+function BackupReminder({ log }) {
   const [lastBackup, setLastBackup] = useLocalStorage('sporeus-last-backup', null)
   const today = new Date().toISOString().slice(0, 10)
   const daysSince = lastBackup
@@ -40,3 +41,5 @@ export default function BackupReminder({ log }) {
     </div>
   )
 }
+
+export default memo(BackupReminder)

@@ -7,7 +7,7 @@
 // Renders nothing when the pure-fn returns null (too early in the year, or no
 // TSS logged yet).
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeAnnualTssTarget } from '../../lib/athlete/annualTssTarget.js'
 
@@ -61,7 +61,7 @@ function roundToTen(n) {
   return Math.round(n / 10) * 10
 }
 
-export default function AnnualTssTargetCard({ log = [] }) {
+function AnnualTssTargetCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -220,3 +220,5 @@ export default function AnnualTssTargetCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(AnnualTssTargetCard)

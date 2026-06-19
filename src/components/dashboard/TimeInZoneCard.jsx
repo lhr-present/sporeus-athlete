@@ -4,7 +4,7 @@
 // StaleZones (28d share %) — this surface targets minute-prescription athletes.
 // Cite: Seiler 2010 polarized; Stöggl & Sperlich 2014.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { detectTimeInZone } from '../../lib/athlete/timeInZone.js'
@@ -42,7 +42,7 @@ const DIRECTION_LABEL = {
   under: { en: 'under', tr: 'altında' },
 }
 
-export default function TimeInZoneCard({ log = [] }) {
+function TimeInZoneCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -248,3 +248,5 @@ export default function TimeInZoneCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(TimeInZoneCard)

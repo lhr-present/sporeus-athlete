@@ -1,9 +1,9 @@
-import { useContext, useState } from 'react'
+import { memo, useContext, useState  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { monotonyStrain } from '../../lib/formulas.js'
 
-export default function WeeklyReportCard({ last7, totalMin, totalTSS, avgRPE, recovery, plan, planStatus, rangeLabel }) {
+function WeeklyReportCard({ last7, totalMin, totalTSS, avgRPE, recovery, plan, planStatus, rangeLabel }) {
   const { lang } = useContext(LangCtx)
   const [reportVisible, setReportVisible] = useState(false)
 
@@ -93,3 +93,5 @@ ${complianceStr ? `<div>Plan: <strong>${complianceStr}</strong></div>` : ''}
     </div>
   )
 }
+
+export default memo(WeeklyReportCard)

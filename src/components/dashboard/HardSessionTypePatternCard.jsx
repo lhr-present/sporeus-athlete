@@ -17,7 +17,7 @@
 //   Stöggl T., Sperlich B. (2014). Front Physiol 5:33.
 //   Tønnessen E. et al. (2015). Int J Sports Physiol Perform 10:29-38.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeHardSessionTypePattern } from '../../lib/athlete/hardSessionTypePattern.js'
 
@@ -98,7 +98,7 @@ function buildSegments(typeCounts) {
  *
  * @param {{ log: Array }} props
  */
-export default function HardSessionTypePatternCard({ log }) {
+function HardSessionTypePatternCard({ log }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -391,3 +391,5 @@ export default function HardSessionTypePatternCard({ log }) {
     </div>
   )
 }
+
+export default memo(HardSessionTypePatternCard)

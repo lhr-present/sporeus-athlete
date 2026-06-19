@@ -9,7 +9,7 @@
 //
 // Cite: Karvonen 1957; Borg 1982; Buchheit 2014.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { analyzeHrForRpe } from '../../lib/athlete/hrForRpe.js'
@@ -38,7 +38,7 @@ function formatHR(bpm) {
   return `${Math.round(bpm)} bpm`
 }
 
-export default function HrForRpeCard({ log = [] }) {
+function HrForRpeCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -181,3 +181,5 @@ export default function HrForRpeCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(HrForRpeCard)

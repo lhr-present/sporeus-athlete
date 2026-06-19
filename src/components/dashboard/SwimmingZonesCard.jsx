@@ -1,5 +1,5 @@
 // ─── SwimmingZonesCard.jsx — Wakayoshi 1992 CSS T-pace + 6-zone table (E41) ───
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
@@ -15,7 +15,7 @@ const ZONE_COLORS = [
   '#e03030', // Z6 Anaerobic
 ]
 
-export default function SwimmingZonesCard({ log = [] }) {
+function SwimmingZonesCard({ log = [] }) {
   const [lang] = useLocalStorage('sporeus-lang', 'en')
   const { t }  = useContext(LangCtx)
 
@@ -153,3 +153,5 @@ export default function SwimmingZonesCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(SwimmingZonesCard)

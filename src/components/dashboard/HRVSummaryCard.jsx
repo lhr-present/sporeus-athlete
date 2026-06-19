@@ -2,7 +2,7 @@
 // Compact card: 28-day lnRMSSD baseline, current deviation, suppression alert,
 // 14-dot SVG chart. References: Plews 2012, Kiviniemi 2007.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { computeHRVSummary } from '../../lib/athlete/hrvSummary.js'
 
@@ -15,7 +15,7 @@ function dotColor(hrv, baseline) {
   return '#e03030'
 }
 
-export default function HRVSummaryCard({ recovery = [] }) {
+function HRVSummaryCard({ recovery = [] }) {
   const { t, lang } = useContext(LangCtx)
 
   const summary = computeHRVSummary(recovery)
@@ -173,3 +173,5 @@ export default function HRVSummaryCard({ recovery = [] }) {
     </div>
   )
 }
+
+export default memo(HRVSummaryCard)

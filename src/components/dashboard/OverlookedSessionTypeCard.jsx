@@ -5,7 +5,7 @@
 // — silently abandoned stimuli are flagged so the athlete can decide whether
 // the drop is purposeful (block-periodised) or accidental.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { analyzeOverlookedSessionType } from '../../lib/athlete/overlookedSessionType.js'
@@ -58,7 +58,7 @@ function fmtBaselineCount(n, isTR) {
   return `${n} session${n === 1 ? '' : 's'}`
 }
 
-export default function OverlookedSessionTypeCard({ log = [] }) {
+function OverlookedSessionTypeCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -256,3 +256,5 @@ export default function OverlookedSessionTypeCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(OverlookedSessionTypeCard)

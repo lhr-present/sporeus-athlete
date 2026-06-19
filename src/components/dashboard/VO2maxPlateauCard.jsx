@@ -11,7 +11,7 @@
 // Pure presentational wrapper around `detectVO2maxPlateau` from
 // src/lib/athlete/vo2maxPlateau.js.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { detectVO2maxPlateau } from '../../lib/athlete/vo2maxPlateau.js'
 
@@ -35,7 +35,7 @@ const REC_LABEL = {
   },
 }
 
-export default function VO2maxPlateauCard({ testResults = [] }) {
+function VO2maxPlateauCard({ testResults = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -162,3 +162,5 @@ export default function VO2maxPlateauCard({ testResults = [] }) {
     </div>
   )
 }
+
+export default memo(VO2maxPlateauCard)

@@ -5,7 +5,7 @@
 // coaching-insights cluster.
 // Citation: Banister 1991; Coggan PMC.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { detectFitnessGainRate } from '../../lib/athlete/fitnessGainRate.js'
@@ -30,7 +30,7 @@ function fmtSlope(v) {
   return v > 0 ? `+${n}` : n
 }
 
-export default function FitnessGainRateCard({ log = [] }) {
+function FitnessGainRateCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -158,3 +158,5 @@ export default function FitnessGainRateCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(FitnessGainRateCard)

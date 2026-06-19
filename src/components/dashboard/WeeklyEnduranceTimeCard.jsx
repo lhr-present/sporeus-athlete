@@ -16,7 +16,7 @@
 //
 // Citations: Maffetone 2010; Seiler 2010; Stöggl 2014.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeWeeklyEnduranceTime } from '../../lib/athlete/weeklyEnduranceTime.js'
 
@@ -107,7 +107,7 @@ function formatPctUnsigned(frac) {
  *
  * @param {{ log: Array }} props
  */
-export default function WeeklyEnduranceTimeCard({ log = [] }) {
+function WeeklyEnduranceTimeCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -344,3 +344,5 @@ export default function WeeklyEnduranceTimeCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(WeeklyEnduranceTimeCard)

@@ -2,7 +2,7 @@
 // Reads today's pre-generated insight from ai_insights (written by nightly-batch).
 // Falls back to on-demand generation via ai-proxy if nightly batch hasn't run yet.
 // Tier-gated server-side (free → 403); opt-in toggle client-side.
-import { useState, useEffect, useCallback, useContext } from 'react'
+import { memo, useState, useEffect, useCallback, useContext  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useData } from '../../contexts/DataContext.jsx'
@@ -28,7 +28,7 @@ Last 7 sessions:\n${recent || '(none)'}`
 /**
  * @param {{ dl: object }} props
  */
-export default function AICoachInsights({ dl }) {
+function AICoachInsights({ dl }) {
   const { lang }                 = useContext(LangCtx)
   const { log, profile }         = useData()
   const { user }                 = useAuth()
@@ -228,3 +228,5 @@ export default function AICoachInsights({ dl }) {
     </div>
   )
 }
+
+export default memo(AICoachInsights)

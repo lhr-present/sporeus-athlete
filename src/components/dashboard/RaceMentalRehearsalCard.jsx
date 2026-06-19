@@ -9,7 +9,7 @@
 // the race-week PROTOCOL — imagery + cue word + arousal regulation +
 // contingency plan + post-race reflection.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { buildRaceMentalRehearsal } from '../../lib/athlete/raceMentalRehearsal.js'
@@ -21,7 +21,7 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10)
 }
 
-export default function RaceMentalRehearsalCard({ profile = {} }) {
+function RaceMentalRehearsalCard({ profile = {} }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -187,3 +187,5 @@ export default function RaceMentalRehearsalCard({ profile = {} }) {
     </div>
   )
 }
+
+export default memo(RaceMentalRehearsalCard)

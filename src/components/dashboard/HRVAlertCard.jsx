@@ -1,7 +1,7 @@
 // ─── HRVAlertCard.jsx — E37: HRV Drop Alert ───────────────────────────────────
 // Shows only when HRV is clinically suppressed (>2σ drop) or notably suppressed.
 // Uses detectHRVAlert logic via computeHRVAlertState from hrvAlertSummary.js.
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { computeHRVAlertState } from '../../lib/athlete/hrvAlertSummary.js'
@@ -9,7 +9,7 @@ import { computeHRVAlertState } from '../../lib/athlete/hrvAlertSummary.js'
 /**
  * @param {{ recovery: object[] }} props
  */
-export default function HRVAlertCard({ recovery }) {
+function HRVAlertCard({ recovery }) {
   const { t, lang } = useContext(LangCtx)
 
   const state = computeHRVAlertState(recovery)
@@ -99,3 +99,5 @@ export default function HRVAlertCard({ recovery }) {
     </div>
   )
 }
+
+export default memo(HRVAlertCard)

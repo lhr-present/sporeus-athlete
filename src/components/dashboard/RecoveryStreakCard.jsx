@@ -13,13 +13,13 @@
 // both current and longest are zero) so the dashboard doesn't render a
 // "0 days · best: 0" placeholder.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { computeRecoveryStreak } from '../../lib/athlete/recoveryStreak.js'
 
 const MONO = "'IBM Plex Mono', monospace"
 
-export default function RecoveryStreakCard({ recovery }) {
+function RecoveryStreakCard({ recovery }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -127,3 +127,5 @@ export default function RecoveryStreakCard({ recovery }) {
     </div>
   )
 }
+
+export default memo(RecoveryStreakCard)

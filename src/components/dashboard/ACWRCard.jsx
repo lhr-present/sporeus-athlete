@@ -1,10 +1,10 @@
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { HelpTip } from '../ui.jsx'
 import { interpretACWR } from '../../lib/science/interpretations.js'
 
-export default function ACWRCard({ log = [], lc, dl }) {
+function ACWRCard({ log = [], lc, dl }) {
   const { t, lang } = useContext(LangCtx)
 
   const MONO = "'IBM Plex Mono', monospace"
@@ -122,3 +122,5 @@ export default function ACWRCard({ log = [], lc, dl }) {
     </div>
   )
 }
+
+export default memo(ACWRCard)

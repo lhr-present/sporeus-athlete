@@ -1,5 +1,5 @@
 // ─── dashboard/RacePredictionsCard.jsx — Riegel race time predictor ──────────
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { S } from '../../styles.js'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { useData } from '../../contexts/DataContext.jsx'
@@ -14,7 +14,7 @@ const TARGETS = [
   { label: 'Marathon', m: 42195 },
 ]
 
-export default function RacePredictionsCard({ dl }) {
+function RacePredictionsCard({ dl }) {
   const { profile } = useData()
   const { lang } = useContext(LangCtx)
 
@@ -61,3 +61,5 @@ export default function RacePredictionsCard({ dl }) {
     </div>
   )
 }
+
+export default memo(RacePredictionsCard)

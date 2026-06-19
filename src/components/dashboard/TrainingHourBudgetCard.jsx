@@ -16,7 +16,7 @@
 //
 // Citations: Hellard 2019; Mujika 2014.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeTrainingHourBudget } from '../../lib/athlete/trainingHourBudget.js'
 
@@ -114,7 +114,7 @@ function targetHoursFor(band) {
  *
  * @param {{ log: Array }} props
  */
-export default function TrainingHourBudgetCard({ log = [] }) {
+function TrainingHourBudgetCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -353,3 +353,5 @@ export default function TrainingHourBudgetCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(TrainingHourBudgetCard)

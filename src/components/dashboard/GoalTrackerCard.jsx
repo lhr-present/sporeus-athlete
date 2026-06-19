@@ -1,4 +1,4 @@
-import { useMemo, useState, useContext } from 'react'
+import { memo, useMemo, useState, useContext  } from 'react'
 import { S } from '../../styles.js'
 import { getGoalProgress, getGoalStatus, calcWeeklyRate } from '../../lib/sport/goalTracker.js'
 import { projectCTLAtRace, assessRaceReadiness, avgWeeklyTSSFromLog } from '../../lib/sport/raceGoalProjection.js'
@@ -15,7 +15,7 @@ const RACE_STATUS_COLOR = {
   needs_attention: '#e03030',
 }
 
-export default function GoalTrackerCard({ log, profile: _profile, dl }) {
+function GoalTrackerCard({ log, profile: _profile, dl }) {
   const { t } = useContext(LangCtx)
 
   const goals = useMemo(() => {
@@ -368,3 +368,5 @@ function RaceGoalSection({
     </div>
   )
 }
+
+export default memo(GoalTrackerCard)

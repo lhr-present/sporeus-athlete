@@ -1,10 +1,10 @@
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { S } from '../../styles.js'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { findBestVO2maxSession } from '../../lib/sport/vo2max.js'
 import { getVO2maxNorm } from '../../lib/sport/normativeTables.js'
 
-export default function VO2maxCard({ log, profile, dl }) {
+function VO2maxCard({ log, profile, dl }) {
   const { lang } = useContext(LangCtx)
   const result = useMemo(() => {
     if (!dl.vo2max) return null
@@ -74,3 +74,5 @@ export default function VO2maxCard({ log, profile, dl }) {
     </div>
   )
 }
+
+export default memo(VO2maxCard)

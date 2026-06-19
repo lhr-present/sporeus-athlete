@@ -5,7 +5,7 @@
 // template shape and reports the polarization index.
 // Cite: Esteve-Lanao 2007; Seiler 2010; Stöggl & Sperlich 2014.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { detectTrainingPolarization } from '../../lib/athlete/trainingPolarization.js'
@@ -33,7 +33,7 @@ const ZONE_COLORS = {
   Z5: '#dc3545',
 }
 
-export default function TrainingPolarizationCard({ log = [] }) {
+function TrainingPolarizationCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -221,3 +221,5 @@ export default function TrainingPolarizationCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(TrainingPolarizationCard)

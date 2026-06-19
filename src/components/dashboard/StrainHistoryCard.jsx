@@ -1,5 +1,5 @@
 // ─── StrainHistoryCard.jsx — E23: 8-week monotony+strain history (Foster 1998) ─
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import {
@@ -25,7 +25,7 @@ const STATUS_COLOR = {
   low_load:      '#333',
 }
 
-export default function StrainHistoryCard({ log = [] }) {
+function StrainHistoryCard({ log = [] }) {
   const { t, lang: _lang } = useContext(LangCtx)
 
   const report = computeStrainReport(log)
@@ -178,3 +178,5 @@ export default function StrainHistoryCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(StrainHistoryCard)

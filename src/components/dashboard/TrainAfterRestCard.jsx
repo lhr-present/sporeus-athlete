@@ -4,7 +4,7 @@
 // Catches the classic amateur rebound pattern — feeling guilty after rest and
 // crushing a hard workout the next day (Bompa 2018; Skorski 2019).
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { analyzeTrainAfterRest } from '../../lib/athlete/trainAfterRest.js'
@@ -56,7 +56,7 @@ function formatChipDate(iso, isTR) {
   return isTR ? `${d} ${mon}` : `${mon} ${d}`
 }
 
-export default function TrainAfterRestCard({ log = [] }) {
+function TrainAfterRestCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -300,3 +300,5 @@ export default function TrainAfterRestCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(TrainAfterRestCard)

@@ -4,7 +4,7 @@
 // recovery, broken. Positive-framed; risk band escalates only when streak
 // ≥22d or ≥15d without rest. Cite: Habit-formation; Foster 2001 monotony
 // ───────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { detectStreak } from '../../lib/athlete/streakDetector.js'
@@ -27,7 +27,7 @@ const BAND_LABEL = {
   broken:      { en: 'BROKEN',      tr: 'KIRILDI' },
 }
 
-export default function StreakCard({ log = [] }) {
+function StreakCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -215,3 +215,5 @@ export default function StreakCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(StreakCard)

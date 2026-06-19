@@ -11,7 +11,7 @@
 //   2. eliteProgramToYearlyWeeks(program, programStart) — synthesized
 //      on the fly from the orchestrator output
 
-import { lazy, Suspense, useContext, useMemo, useState } from 'react'
+import { memo, lazy, Suspense, useContext, useMemo, useState  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useData } from '../../contexts/DataContext.jsx'
@@ -96,7 +96,7 @@ function shortDate(d, isTR) {
  * @param {object} [props.yearlyPlan]   { weeks: [...] } — preferred data source
  * @param {boolean} [props.collapseDefault]
  */
-export default function ProgramCalendar({ program, programStart, yearlyPlan, collapseDefault = false }) {
+function ProgramCalendar({ program, programStart, yearlyPlan, collapseDefault = false }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
   const { log, setLog } = useData()
@@ -443,3 +443,5 @@ export default function ProgramCalendar({ program, programStart, yearlyPlan, col
 
 // ── helpers exported for tests ──────────────────────────────────────────────
 export const _internal = { intentColor, parseISO, daysBetween, ymd }
+
+export default memo(ProgramCalendar)

@@ -1,12 +1,12 @@
 // ─── dashboard/NormativeSection.jsx — FTP & CTL percentile vs peer groups ─────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useData } from '../../contexts/DataContext.jsx'
 import NormativeCard from '../NormativeCard.jsx'
 import { getFTPNorm, getCTLNorm } from '../../lib/sport/normativeTables.js'
 
-export default function NormativeSection() {
+function NormativeSection() {
   const { lang } = useContext(LangCtx)
   const { log, profile } = useData()
 
@@ -82,3 +82,5 @@ export default function NormativeSection() {
     </div>
   )
 }
+
+export default memo(NormativeSection)

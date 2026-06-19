@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { S } from '../../styles.js'
 import { FormulaPopover } from '../ui/FormulaPopover.jsx'
 
@@ -45,7 +46,7 @@ function getStatus(n, isTR) {
   return { label: isTR ? 'Veri toplanıyor…' : 'Gathering data…', color: '#888' }
 }
 
-export default function ConsistencyDepthCard({ log, isTR }) {
+function ConsistencyDepthCard({ log, isTR }) {
   const MONO = "'IBM Plex Mono', monospace"
   const n = (log || []).length
   if (n === 0) return (
@@ -123,3 +124,5 @@ export default function ConsistencyDepthCard({ log, isTR }) {
     </div>
   )
 }
+
+export default memo(ConsistencyDepthCard)

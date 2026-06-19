@@ -8,7 +8,7 @@
 // Cite: Halson 2014 "Monitoring training load to understand fatigue in
 //       athletes" — data-quality framing.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { analyzeCheckInQuality } from '../../lib/athlete/checkInQuality.js'
@@ -56,7 +56,7 @@ function fmtPct(value) {
   return `${Math.round(value * 100)}%`
 }
 
-export default function CheckInQualityCard({ log = [] }) {
+function CheckInQualityCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -224,3 +224,5 @@ export default function CheckInQualityCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(CheckInQualityCard)

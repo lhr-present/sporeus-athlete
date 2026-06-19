@@ -18,7 +18,7 @@
 // INSUFFICIENT_LONG_SESSIONS — surfacing "you don't have enough long
 // sessions to read a pattern" is itself useful feedback.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import {
@@ -88,7 +88,7 @@ function todayIso() {
     .toISOString().slice(0, 10)
 }
 
-export default function WeekendLongSessionShareCard({ log = [] }) {
+function WeekendLongSessionShareCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -255,3 +255,5 @@ export default function WeekendLongSessionShareCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(WeekendLongSessionShareCard)

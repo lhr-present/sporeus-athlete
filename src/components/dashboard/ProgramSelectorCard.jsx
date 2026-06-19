@@ -2,7 +2,7 @@
 // Browse curated static programs matched to athlete's current VDOT and goal distance.
 // Submits selected program for coach review (or self-confirms in solo mode).
 // HARDCODED RULE: every plan must pass through this card before becoming active.
-import { useMemo, useState } from 'react'
+import { memo, useMemo, useState  } from 'react'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { PROGRAMS } from '../../lib/athlete/trainingPrograms.js'
 import { detectVdotFromLog } from '../../lib/athlete/vdotTracker.js'
@@ -31,7 +31,7 @@ function programScore(prog, vdot, goalDistM) {
   return 100 - Math.abs(vdot - midVdot)
 }
 
-export default function ProgramSelectorCard({ log = [], profile = {}, isTR }) {
+function ProgramSelectorCard({ log = [], profile = {}, isTR }) {
   const [saved]           = useLocalStorage('sporeus-race-goal-v2', null)
   const [confirmRecord, setConfirmRecord] = useLocalStorage(LS_KEY, null)
   const [selected, setSelected] = useState(null)
@@ -196,3 +196,5 @@ export default function ProgramSelectorCard({ log = [], profile = {}, isTR }) {
     </div>
   )
 }
+
+export default memo(ProgramSelectorCard)

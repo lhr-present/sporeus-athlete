@@ -1,6 +1,6 @@
 // src/components/dashboard/NMFreshnessCard.jsx
 // E15 — Neuromuscular Freshness Index dashboard card
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { computeNMFatigue, nmFatigueHistory } from '../../lib/science/neuromuscularFreshness.js'
@@ -26,7 +26,7 @@ const BAR_H = 40
 const BAR_W = 24
 const BAR_GAP = 4
 
-export default function NMFreshnessCard({ log }) {
+function NMFreshnessCard({ log }) {
   const { t, lang } = useContext(LangCtx)
 
   // Return placeholder if log is too short (< 14 sessions minimum context)
@@ -181,3 +181,5 @@ export default function NMFreshnessCard({ log }) {
     </div>
   )
 }
+
+export default memo(NMFreshnessCard)

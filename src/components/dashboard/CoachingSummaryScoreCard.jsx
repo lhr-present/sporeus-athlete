@@ -6,7 +6,7 @@
 // Citations: Seiler 2010; Foster 2001; Gabbett 2016; Banister 1991;
 //            Stöggl & Sperlich 2014.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { computeCoachingSummaryScore } from '../../lib/athlete/coachingSummaryScore.js'
@@ -60,7 +60,7 @@ function dotColor(score) {
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
-export default function CoachingSummaryScoreCard({ log = [] }) {
+function CoachingSummaryScoreCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -277,3 +277,5 @@ export default function CoachingSummaryScoreCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(CoachingSummaryScoreCard)

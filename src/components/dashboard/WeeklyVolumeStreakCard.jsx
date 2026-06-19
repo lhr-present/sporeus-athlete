@@ -10,7 +10,7 @@
 // Bands: NO_STREAK, BUILDING, STRONG_MOMENTUM, PEAK_BLOCK.
 // Bilingual EN/TR via LangCtx.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { analyzeWeeklyVolumeStreak } from '../../lib/athlete/weeklyVolumeStreak.js'
@@ -70,7 +70,7 @@ function fmtTss(v) {
   return v.toFixed(1)
 }
 
-export default function WeeklyVolumeStreakCard({ log = [] }) {
+function WeeklyVolumeStreakCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -306,3 +306,5 @@ export default function WeeklyVolumeStreakCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(WeeklyVolumeStreakCard)

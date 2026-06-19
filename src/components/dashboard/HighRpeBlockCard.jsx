@@ -6,7 +6,7 @@
 // Distinct from RpeStability (rpe variability within type) and HardDaySpacing
 // (mean spacing between hard sessions). This card targets clustering.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { analyzeHighRpeBlock } from '../../lib/athlete/highRpeBlock.js'
@@ -62,7 +62,7 @@ function compactDate(iso, isTR) {
   return isTR ? `${dd} ${MONTH_TR[mo]}` : `${MONTH_EN[mo]} ${dd}`
 }
 
-export default function HighRpeBlockCard({ log = [] }) {
+function HighRpeBlockCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -332,3 +332,5 @@ export default function HighRpeBlockCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(HighRpeBlockCard)

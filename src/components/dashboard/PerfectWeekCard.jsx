@@ -14,7 +14,7 @@
 // Tests: src/components/__tests__/PerfectWeekCard.test.jsx
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzePerfectWeek } from '../../lib/athlete/perfectWeek.js'
 
@@ -62,7 +62,7 @@ const HINT_TR = {
   SPORADIC:         'Kaliteli yapı nadiren oluşuyor. Eksik bir öğeyi seç (seans / sert / uzun) ve 4 hafta sabitle.',
 }
 
-export default function PerfectWeekCard({ log }) {
+function PerfectWeekCard({ log }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -210,3 +210,5 @@ export default function PerfectWeekCard({ log }) {
     </div>
   )
 }
+
+export default memo(PerfectWeekCard)

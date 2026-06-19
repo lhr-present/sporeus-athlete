@@ -7,7 +7,7 @@
 // Renders an at-a-glance "days between sessions on average" stat, a small
 // histogram of gap-day buckets, and a 30-day strip of train/no-train days.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { analyzeSessionGapVariance } from '../../lib/athlete/sessionGapVariance.js'
@@ -60,7 +60,7 @@ function bucketGap(g) {
 
 const BUCKET_LABELS = ['1', '2', '3', '4', '5+']
 
-export default function SessionGapVarianceCard({ log = [] }) {
+function SessionGapVarianceCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -352,3 +352,5 @@ export default function SessionGapVarianceCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(SessionGapVarianceCard)

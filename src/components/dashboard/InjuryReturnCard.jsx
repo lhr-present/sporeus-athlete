@@ -17,7 +17,7 @@
 //   - Persists form state + collapsed/expanded to localStorage so the
 //     card retains the athlete's last input across sessions.
 
-import { useContext, useEffect, useMemo } from 'react'
+import { memo, useContext, useEffect, useMemo  } from 'react'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { buildReturnToSportRamp } from '../../lib/athlete/injuryReturnRamp.js'
@@ -63,7 +63,7 @@ function derivePreInjuryCTL(log) {
   } catch { return null }
 }
 
-export default function InjuryReturnCard({ log = [], profile = {} }) {
+function InjuryReturnCard({ log = [], profile = {} }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -520,3 +520,5 @@ export default function InjuryReturnCard({ log = [], profile = {} }) {
     </div>
   )
 }
+
+export default memo(InjuryReturnCard)

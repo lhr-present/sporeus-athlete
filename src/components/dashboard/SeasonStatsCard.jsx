@@ -1,4 +1,4 @@
-import { useContext, useMemo, useState } from 'react'
+import { memo, useContext, useMemo, useState  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { computeSeasonStats } from '../../lib/athlete/seasonStats.js'
@@ -16,7 +16,7 @@ function sportColor(sport, index) {
   return SPORT_COLORS[sport?.toLowerCase()] || EXTRA_COLORS[index % EXTRA_COLORS.length]
 }
 
-export default function SeasonStatsCard({ log = [] }) {
+function SeasonStatsCard({ log = [] }) {
   const { t, lang } = useContext(LangCtx)
   const currentYear = new Date().getFullYear()
   const [selectedYear, setSelectedYear] = useState(currentYear)
@@ -219,3 +219,5 @@ export default function SeasonStatsCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(SeasonStatsCard)

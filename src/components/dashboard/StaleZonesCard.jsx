@@ -3,7 +3,7 @@
 // zones from detectStaleZones() so athletes can rebalance training distribution.
 // Citation: Seiler 2010 polarized; Foster 2001.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { detectStaleZones } from '../../lib/athlete/staleZones.js'
@@ -20,7 +20,7 @@ const STATUS_LABEL = {
   dropped: { en: 'dropped', tr: 'düşmüş' },
 }
 
-export default function StaleZonesCard({ log = [] }) {
+function StaleZonesCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -156,3 +156,5 @@ export default function StaleZonesCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(StaleZonesCard)

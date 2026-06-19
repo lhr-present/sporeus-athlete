@@ -9,7 +9,7 @@
 // All bilingual via LangCtx. Reads from props (program + programStart) so
 // the parent can pass either persisted plan or live result.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import {
@@ -37,7 +37,7 @@ function parseISO(s) {
   return new Date(Date.UTC(y, m - 1, d))
 }
 
-export default function RaceCountdownBanner({ program, programStart }) {
+function RaceCountdownBanner({ program, programStart }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -178,3 +178,5 @@ export default function RaceCountdownBanner({ program, programStart }) {
     </div>
   )
 }
+
+export default memo(RaceCountdownBanner)

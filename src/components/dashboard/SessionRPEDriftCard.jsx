@@ -4,7 +4,7 @@
 // only) — this watches every type and flags systematic over-execution.
 // Cite: Foster 2001 session RPE; Seiler 2010 polarized.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { detectSessionRPEDrift } from '../../lib/athlete/sessionRPEDrift.js'
@@ -31,7 +31,7 @@ const TYPE_LABEL = {
 
 const TYPE_ORDER = ['easy', 'long', 'steady', 'threshold', 'intervals']
 
-export default function SessionRPEDriftCard({ log = [] }) {
+function SessionRPEDriftCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -270,3 +270,5 @@ export default function SessionRPEDriftCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(SessionRPEDriftCard)

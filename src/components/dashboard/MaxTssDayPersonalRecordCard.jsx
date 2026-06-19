@@ -12,7 +12,7 @@
 //        INSUFFICIENT_HISTORY.
 // Bilingual EN/TR via LangCtx.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { analyzeMaxTssDayPersonalRecord } from '../../lib/athlete/maxTssDayPersonalRecord.js'
@@ -98,7 +98,7 @@ function ordinalEn(n) {
   }
 }
 
-export default function MaxTssDayPersonalRecordCard({ log = [] }) {
+function MaxTssDayPersonalRecordCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -296,3 +296,5 @@ export default function MaxTssDayPersonalRecordCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(MaxTssDayPersonalRecordCard)

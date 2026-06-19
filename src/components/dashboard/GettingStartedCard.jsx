@@ -1,8 +1,9 @@
+import { memo } from 'react'
 // ─── GettingStartedCard.jsx — empty-state onboarding card for new athletes ────
 const MONO = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
 
-export default function GettingStartedCard({ isTR, onLogSession, stravaConnected = false, onConnectStrava, goal }) {
+function GettingStartedCard({ isTR, onLogSession, stravaConnected = false, onConnectStrava, goal }) {
   // Step 02 is goal-anchored: this card renders inside the Today screen, so
   // "check the Today tab" was dead advice (you're already there). Instead it
   // states the outcome of logging — the recommendation the user is looking at
@@ -82,3 +83,5 @@ export default function GettingStartedCard({ isTR, onLogSession, stravaConnected
     </div>
   )
 }
+
+export default memo(GettingStartedCard)

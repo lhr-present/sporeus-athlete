@@ -21,7 +21,7 @@
 //   Bompa T., Buzzichelli C. (2018). Periodization: Theory and Methodology
 //     of Training, 6th ed.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeMicrocycleVariety } from '../../lib/athlete/microcycleVariety.js'
 
@@ -79,7 +79,7 @@ function trendArrow(delta) {
  *
  * @param {{ log: Array }} props
  */
-export default function MicrocycleVarietyCard({ log }) {
+function MicrocycleVarietyCard({ log }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -343,3 +343,5 @@ export default function MicrocycleVarietyCard({ log }) {
     </div>
   )
 }
+
+export default memo(MicrocycleVarietyCard)

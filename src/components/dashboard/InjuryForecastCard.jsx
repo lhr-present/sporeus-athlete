@@ -1,7 +1,7 @@
 // ─── InjuryForecastCard.jsx — 8-week rolling injury risk + 4-week projection ──
 // E22: Malone 2017, Gabbett 2016, Hulin 2016
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { computeInjuryForecast } from '../../lib/athlete/injuryForecast.js'
 
@@ -18,7 +18,7 @@ const BAR_GAP = 6
 const _TOTAL_BARS = 12
 const PAD_LEFT   = 8
 
-export default function InjuryForecastCard({ log = [], recovery = [] }) {
+function InjuryForecastCard({ log = [], recovery = [] }) {
   const { t } = useContext(LangCtx)
 
   const data = computeInjuryForecast(log, recovery)
@@ -175,3 +175,5 @@ export default function InjuryForecastCard({ log = [], recovery = [] }) {
     </div>
   )
 }
+
+export default memo(InjuryForecastCard)

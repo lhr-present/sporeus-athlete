@@ -8,7 +8,7 @@
 // Bilingual EN/TR via LangCtx.
 // Cite: Hellard 2019; Issurin 2010.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { analyzeWeeklyVolumeRecord } from '../../lib/athlete/weeklyVolumeRecord.js'
@@ -79,7 +79,7 @@ function ordinalEn(n) {
   }
 }
 
-export default function WeeklyVolumeRecordCard({ log = [] }) {
+function WeeklyVolumeRecordCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -260,3 +260,5 @@ export default function WeeklyVolumeRecordCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(WeeklyVolumeRecordCard)

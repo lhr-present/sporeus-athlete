@@ -12,7 +12,7 @@
 // References: Plews & Buchheit 2017 · Stanley 2013 · Buchheit 2014
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import {
   stratifyAutonomicBalance,
@@ -54,7 +54,7 @@ const STATE_DESC_TR = {
 /**
  * @param {{ recovery?: Array }} props
  */
-export default function HrvAutonomicBalanceCard({ recovery }) {
+function HrvAutonomicBalanceCard({ recovery }) {
   const ctx  = useContext(LangCtx) || { lang: 'en' }
   const lang = ctx.lang || 'en'
   const isTR = lang === 'tr'
@@ -169,3 +169,5 @@ export default function HrvAutonomicBalanceCard({ recovery }) {
     </div>
   )
 }
+
+export default memo(HrvAutonomicBalanceCard)

@@ -4,7 +4,7 @@
 // hard-easy structure — Bompa 2018) or are scattered randomly (monotony risk
 // — Foster 2001). Mono terminal aesthetic.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { analyzeRestDayDistribution } from '../../lib/athlete/restDayDistribution.js'
@@ -37,7 +37,7 @@ const PATTERN_HINT = {
   },
 }
 
-export default function RestDayDistributionCard({ log = [] }) {
+function RestDayDistributionCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -178,3 +178,5 @@ export default function RestDayDistributionCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(RestDayDistributionCard)

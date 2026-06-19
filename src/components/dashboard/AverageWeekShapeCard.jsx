@@ -4,7 +4,7 @@
 // mini chart + bilingual interpretation hint.
 // Cite: Bompa 2018 microcycle design; Issurin 2010 within-week distribution.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { analyzeAverageWeekShape } from '../../lib/athlete/averageWeekShape.js'
@@ -58,7 +58,7 @@ const BAR_GAP = 4
 const BAR_W = Math.floor(((SVG_W - 2 * PAD_X) - BAR_GAP * 6) / 7)
 const CHART_H = SVG_H
 
-export default function AverageWeekShapeCard({ log = [] }) {
+function AverageWeekShapeCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -192,3 +192,5 @@ export default function AverageWeekShapeCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(AverageWeekShapeCard)

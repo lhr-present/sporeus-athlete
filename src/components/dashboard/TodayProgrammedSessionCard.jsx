@@ -3,7 +3,7 @@
 // session at the top of the dashboard. The "what should I do today?" card.
 // Source: getTodayProgrammedSession() — Daniels 2014; Bompa 2009; Mujika 2003.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
@@ -118,7 +118,7 @@ function ZonesLegend({ zones, isTR }) {
   )
 }
 
-export default function TodayProgrammedSessionCard({ log = [] } = {}) {
+function TodayProgrammedSessionCard({ log = [] } = {}) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
   const [persisted, setPersisted] = useLocalStorage(PROGRAM_KEY, null)
@@ -457,3 +457,5 @@ export default function TodayProgrammedSessionCard({ log = [] } = {}) {
     </div>
   )
 }
+
+export default memo(TodayProgrammedSessionCard)

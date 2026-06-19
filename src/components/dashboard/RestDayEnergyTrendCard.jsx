@@ -18,7 +18,7 @@
 //
 // Citation: Lemyre 2007; Kellmann 2018.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeRestDayEnergyTrend } from '../../lib/athlete/restDayEnergyTrend.js'
 
@@ -98,7 +98,7 @@ function fmtMean(v) {
  *
  * @param {{ log: Array, recovery: Array }} props
  */
-export default function RestDayEnergyTrendCard({ log, recovery }) {
+function RestDayEnergyTrendCard({ log, recovery }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -352,3 +352,5 @@ export default function RestDayEnergyTrendCard({ log, recovery }) {
     </div>
   )
 }
+
+export default memo(RestDayEnergyTrendCard)

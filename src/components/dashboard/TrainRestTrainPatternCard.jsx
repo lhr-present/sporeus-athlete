@@ -14,7 +14,7 @@
 //   extended rest → green  (#5bc25b)
 //   edge length-1 rest (unclassified) → grey (#444)
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { analyzeTrainRestTrainPattern } from '../../lib/athlete/trainRestTrainPattern.js'
@@ -82,7 +82,7 @@ function isActive(e) {
   return false
 }
 
-export default function TrainRestTrainPatternCard({ log = [] }) {
+function TrainRestTrainPatternCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -337,3 +337,5 @@ export default function TrainRestTrainPatternCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(TrainRestTrainPatternCard)

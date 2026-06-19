@@ -6,7 +6,7 @@
 // Cite: Bompa 2018 "Periodization: Theory and Methodology of Training";
 //       Hreljac 2004 "Impact and overuse injuries in runners".
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { analyzeCrossSportRecoveryGap } from '../../lib/athlete/crossSportRecoveryGap.js'
@@ -45,7 +45,7 @@ const HINT = {
   },
 }
 
-export default function CrossSportRecoveryGapCard({ log = [] }) {
+function CrossSportRecoveryGapCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -194,3 +194,5 @@ export default function CrossSportRecoveryGapCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(CrossSportRecoveryGapCard)

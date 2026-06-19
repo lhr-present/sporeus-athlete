@@ -5,7 +5,7 @@
 // value; this card trends the 28-day rolling mean so falling = improving
 // technique and rising = fatigue-driven breakdown.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { computeSwimSwolfTrend } from '../../lib/athlete/swimSwolfTrend.js'
 
@@ -41,7 +41,7 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10)
 }
 
-export default function SwimSwolfTrendCard({ log = [], profile = {} }) {
+function SwimSwolfTrendCard({ log = [], profile = {} }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -242,3 +242,5 @@ export default function SwimSwolfTrendCard({ log = [], profile = {} }) {
     </div>
   )
 }
+
+export default memo(SwimSwolfTrendCard)

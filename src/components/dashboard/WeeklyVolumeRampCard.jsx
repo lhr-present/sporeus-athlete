@@ -16,7 +16,7 @@
 // Bilingual EN/TR via LangCtx.
 // Test anchors: data-weekly-volume-ramp-card, data-ramp-band.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { computeWeeklyVolumeRamp } from '../../lib/athlete/weeklyVolumeRamp.js'
 
@@ -66,7 +66,7 @@ function todayIso() {
     .toISOString().slice(0, 10)
 }
 
-export default function WeeklyVolumeRampCard({ log = [] }) {
+function WeeklyVolumeRampCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -203,3 +203,5 @@ export default function WeeklyVolumeRampCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(WeeklyVolumeRampCard)

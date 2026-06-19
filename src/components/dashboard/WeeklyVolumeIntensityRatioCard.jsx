@@ -15,7 +15,7 @@
 // Test anchors: data-weekly-volume-intensity-ratio-card, data-intensity-band,
 //               data-delta, data-avg-ratio, data-week-bar.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeWeeklyVolumeIntensityRatio } from '../../lib/athlete/weeklyVolumeIntensityRatio.js'
 
@@ -55,7 +55,7 @@ function todayIso() {
     .toISOString().slice(0, 10)
 }
 
-export default function WeeklyVolumeIntensityRatioCard({ log = [] }) {
+function WeeklyVolumeIntensityRatioCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -221,3 +221,5 @@ export default function WeeklyVolumeIntensityRatioCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(WeeklyVolumeIntensityRatioCard)

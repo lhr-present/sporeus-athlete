@@ -10,7 +10,7 @@
 //
 // Cite: Daniels 2014; Borg 1982.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { analyzePaceByRpe, formatPace } from '../../lib/athlete/paceByRpe.js'
@@ -34,7 +34,7 @@ const HINT = {
   tr: 'Her efor seviyesindeki tipik temponu gösterir. Kolay tempolar Tempo\'ya göre beklenenden hızlıysa, kolay günleri çok sert koşuyor olabilirsin.',
 }
 
-export default function PaceByRpeCard({ log = [] }) {
+function PaceByRpeCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -177,3 +177,5 @@ export default function PaceByRpeCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(PaceByRpeCard)

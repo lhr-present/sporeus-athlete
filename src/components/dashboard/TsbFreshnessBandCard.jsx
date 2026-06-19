@@ -8,7 +8,7 @@
 //
 // Renders nothing when the log is empty (pure-fn returns null).
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { classifyTsbFreshness } from '../../lib/athlete/tsbFreshnessBand.js'
 
@@ -42,7 +42,7 @@ const SPARK_W = 200
 const SPARK_H = 36
 const SPARK_PAD = 2
 
-export default function TsbFreshnessBandCard({ log }) {
+function TsbFreshnessBandCard({ log }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -184,3 +184,5 @@ export default function TsbFreshnessBandCard({ log }) {
     </div>
   )
 }
+
+export default memo(TsbFreshnessBandCard)

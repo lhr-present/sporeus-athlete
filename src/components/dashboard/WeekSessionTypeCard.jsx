@@ -1,7 +1,7 @@
 // src/components/dashboard/WeekSessionTypeCard.jsx — E79
 // Shows this week's session breakdown: easy / moderate / hard counts + total minutes.
 // Gives athlete instant visibility into weekly composition.
-import { useMemo } from 'react'
+import { memo, useMemo  } from 'react'
 import { S } from '../../styles.js'
 
 const MONO = "'IBM Plex Mono', monospace"
@@ -20,7 +20,7 @@ function classifyRpe(rpe) {
   return 'hard'
 }
 
-export default function WeekSessionTypeCard({ log, isTR }) {
+function WeekSessionTypeCard({ log, isTR }) {
   const { easy, moderate, hard, totalMin, sessions } = useMemo(() => {
     const mon = getISOWeekMon()
     const week = (log || []).filter(e => e.date && e.date >= mon)
@@ -92,3 +92,5 @@ export default function WeekSessionTypeCard({ log, isTR }) {
     </div>
   )
 }
+
+export default memo(WeekSessionTypeCard)

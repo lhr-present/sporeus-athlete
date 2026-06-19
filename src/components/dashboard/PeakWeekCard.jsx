@@ -1,9 +1,9 @@
-import { useMemo } from 'react'
+import { memo, useMemo  } from 'react'
 import { S } from '../../styles.js'
 import { simulateBanister } from '../../lib/sport/simulation.js'
 import { calcLoad } from '../../lib/formulas.js'
 
-export default function PeakWeekCard({ log, dl }) {
+function PeakWeekCard({ log, dl }) {
   const result = useMemo(() => {
     if (!dl.peakweek || log.length < 14) return null
 
@@ -76,3 +76,5 @@ export default function PeakWeekCard({ log, dl }) {
     </div>
   )
 }
+
+export default memo(PeakWeekCard)

@@ -2,7 +2,7 @@
 // Female-gated dashboard card: phase badge, intensity rec, 4-phase mini timeline
 // Returns null if computeCyclePlan returns null (not female or no period start)
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { computeCyclePlan, phaseTrainingRec } from '../../lib/athlete/cyclePlanner.js'
@@ -23,7 +23,7 @@ const INTENSITY_COLORS = {
   low:      '#888',
 }
 
-export default function CyclePlannerCard({ profile }) {
+function CyclePlannerCard({ profile }) {
   const [lang] = useLocalStorage('sporeus-lang', 'en')
   const { t }  = useContext(LangCtx)
 
@@ -170,3 +170,5 @@ export default function CyclePlannerCard({ profile }) {
     </div>
   )
 }
+
+export default memo(CyclePlannerCard)

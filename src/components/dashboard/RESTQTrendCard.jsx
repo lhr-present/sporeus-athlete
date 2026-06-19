@@ -2,7 +2,7 @@
 // Reads history from localStorage 'sporeus-restq-history'; no props needed.
 // Based on Kellmann & Kallus (2001) and Nederhof et al. (2008)
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { parseRESTQHistory, computeRESTQTrend } from '../../lib/athlete/restqTrend.js'
 
@@ -19,7 +19,7 @@ const TREND_ARROW = {
   declining: '↓',
 }
 
-export default function RESTQTrendCard() {
+function RESTQTrendCard() {
   const { t, lang } = useContext(LangCtx)
 
   const history  = parseRESTQHistory()
@@ -172,3 +172,5 @@ export default function RESTQTrendCard() {
     </div>
   )
 }
+
+export default memo(RESTQTrendCard)

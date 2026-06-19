@@ -5,7 +5,7 @@
 //
 // Citation: Bompa 2018; Mujika 2014.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeSessionDensity } from '../../lib/athlete/sessionDensity.js'
 
@@ -41,7 +41,7 @@ const BAND_HINTS = {
   },
 }
 
-export default function SessionDensityCard({ log = [] }) {
+function SessionDensityCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -178,3 +178,5 @@ export default function SessionDensityCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(SessionDensityCard)

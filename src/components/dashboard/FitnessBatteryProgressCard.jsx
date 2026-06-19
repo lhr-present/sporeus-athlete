@@ -3,7 +3,7 @@
 // Compares last 2 sessions to show per-test delta %.
 // References: Cooper (1968) · Kasch & Boyer (1970)
 // ─────────────────────────────────────────────────────────────────────────────
-import { useState, useMemo, useContext } from 'react'
+import { memo, useState, useMemo, useContext  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { useData } from '../../contexts/DataContext.jsx'
@@ -122,7 +122,7 @@ function DeltaBadge({ delta_pct }) {
   )
 }
 
-export default function FitnessBatteryProgressCard() {
+function FitnessBatteryProgressCard() {
   const { t }         = useContext(LangCtx)
   const [lang]        = useLocalStorage('sporeus-lang', 'en')
   const { profile }   = useData()
@@ -200,3 +200,5 @@ export default function FitnessBatteryProgressCard() {
     </div>
   )
 }
+
+export default memo(FitnessBatteryProgressCard)

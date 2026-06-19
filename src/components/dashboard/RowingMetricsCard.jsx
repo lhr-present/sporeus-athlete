@@ -1,5 +1,5 @@
 // RowingMetricsCard — renders for sessions with sport_type='rowing' (last 30 days)
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import {
@@ -18,7 +18,7 @@ const ZONE_COLORS = {
   sprint:    '#9c27b0',
 }
 
-export default function RowingMetricsCard({ log = [], profile = {} }) {
+function RowingMetricsCard({ log = [], profile = {} }) {
   const { lang, t } = useContext(LangCtx)
 
   const rowingData = useMemo(() => {
@@ -313,3 +313,5 @@ export default function RowingMetricsCard({ log = [], profile = {} }) {
     </div>
   )
 }
+
+export default memo(RowingMetricsCard)

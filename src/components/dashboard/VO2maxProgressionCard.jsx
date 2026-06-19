@@ -2,14 +2,14 @@
 // E29: 8-week VO2max trend from running sessions with HR data.
 // Daniels 2013 · Lucia 2002
 
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { computeVO2maxProgression } from '../../lib/athlete/vo2maxProgression.js'
 
 const FONT = 'IBM Plex Mono, monospace'
 
-export default function VO2maxProgressionCard({ log, profile }) {
+function VO2maxProgressionCard({ log, profile }) {
   const { t, lang: _lang } = useContext(LangCtx)
 
   const result = computeVO2maxProgression(log, profile)
@@ -138,3 +138,5 @@ export default function VO2maxProgressionCard({ log, profile }) {
     </div>
   )
 }
+
+export default memo(VO2maxProgressionCard)

@@ -2,7 +2,7 @@
 // Renders up to 3 insight cards (milestone / fitness / consistency / workload).
 // Returns null when log is too short (< 5 entries).
 // Shows "No active insights" state when log is long enough but no cards fire.
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { getInsightFeed } from '../../lib/athlete/insightFeed.js'
@@ -41,7 +41,7 @@ function categoryLabel(type, lang) {
   return l ? (lang === 'tr' ? l.tr : l.en) : (lang === 'tr' ? 'Bilgi' : 'Insight')
 }
 
-export default function InsightFeedCard({ log = [] }) {
+function InsightFeedCard({ log = [] }) {
   const { t, lang } = useContext(LangCtx)
 
   // Log too short — render nothing at all
@@ -105,3 +105,5 @@ export default function InsightFeedCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(InsightFeedCard)

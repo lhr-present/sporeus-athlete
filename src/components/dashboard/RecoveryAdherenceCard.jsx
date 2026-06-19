@@ -4,7 +4,7 @@
 // and DetrainingDetector (full inactivity gaps).
 // Cite: Halson 2014 recovery; Foster 2001 monotony.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { detectRecoveryAdherence } from '../../lib/athlete/recoveryAdherence.js'
@@ -21,7 +21,7 @@ const BAND_LABEL = {
   poor:     { en: 'POOR',     tr: 'ZAYIF' },
 }
 
-export default function RecoveryAdherenceCard({ log = [] }) {
+function RecoveryAdherenceCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -234,3 +234,5 @@ export default function RecoveryAdherenceCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(RecoveryAdherenceCard)

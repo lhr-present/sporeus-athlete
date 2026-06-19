@@ -1,7 +1,7 @@
 // src/components/dashboard/CoachGateCard.jsx — E93
 // Mandatory plan-status gate — always rendered above training cards.
 // HARDCODED RULE: training cards stay hidden until plan is CONFIRMED or ACTIVE.
-import { useMemo } from 'react'
+import { memo, useMemo  } from 'react'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import {
   LS_KEY, STATUS, activatePlan,
@@ -15,7 +15,7 @@ const AMBER  = '#f5c542'
 const BLUE   = '#4a90d9'
 const DIM    = '#444'
 
-export default function CoachGateCard({ isTR }) {
+function CoachGateCard({ isTR }) {
   const [confirmRecord, setConfirmRecord] = useLocalStorage(LS_KEY, null)
   const today = new Date().toISOString().slice(0, 10)
 
@@ -156,3 +156,5 @@ export default function CoachGateCard({ isTR }) {
     </div>
   )
 }
+
+export default memo(CoachGateCard)
