@@ -9,7 +9,7 @@
 // Also accepts an `onIngestV2` prop that the parent uses to wire the
 // "PASTE COACH v=2 ENVELOPE" textarea into the same store.
 
-import { useContext, useState } from 'react'
+import { memo, useContext, useState  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
@@ -31,7 +31,7 @@ function bil(field, isTR) {
   return isTR ? (field.tr || field.en || '') : (field.en || '')
 }
 
-export default function CoachEditsBanner({ defaultOpen = false }) {
+function CoachEditsBanner({ defaultOpen = false }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
   const [stored, setStored] = useLocalStorage(ATHLETE_EDITS_KEY, null)
@@ -221,3 +221,5 @@ export default function CoachEditsBanner({ defaultOpen = false }) {
     </div>
   )
 }
+
+export default memo(CoachEditsBanner)

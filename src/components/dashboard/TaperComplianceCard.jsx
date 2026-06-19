@@ -4,7 +4,7 @@
 // happening. Silent on success (ON_TARGET → renders null) — only fires as
 // a warning when volume drop diverges from Mujika 2010 / Bosquet 2007
 // expectations.
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { detectTaperCompliance } from '../../lib/athlete/taperCompliance.js'
 
@@ -29,7 +29,7 @@ const RECOMMENDATION = {
 /**
  * @param {{ log: Array, profile: object }} props
  */
-export default function TaperComplianceCard({ log, profile }) {
+function TaperComplianceCard({ log, profile }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -139,3 +139,5 @@ export default function TaperComplianceCard({ log, profile }) {
     </div>
   )
 }
+
+export default memo(TaperComplianceCard)

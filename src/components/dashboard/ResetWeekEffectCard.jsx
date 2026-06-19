@@ -12,7 +12,7 @@
 // Cite: Bompa 2018; Issurin 2010.
 // ─────────────────────────────────────────────────────────────────────────
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeResetWeekEffect } from '../../lib/athlete/resetWeekEffect.js'
 
@@ -144,7 +144,7 @@ function ThreeBarChart({ pre, deload, post, postAvailable, color, isTR }) {
  *
  * @param {{ log: Array }} props
  */
-export default function ResetWeekEffectCard({ log = [] }) {
+function ResetWeekEffectCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -334,3 +334,5 @@ export default function ResetWeekEffectCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(ResetWeekEffectCard)

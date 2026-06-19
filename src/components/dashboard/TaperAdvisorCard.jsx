@@ -1,7 +1,7 @@
 // ─── TaperAdvisorCard.jsx — E38: Plan Taper Advisor ──────────────────────────
 // Shows when a race is within 90 days. Status: taper_active / taper_soon / pre_taper.
 // Wires volumeCutPct + applyVolumeReduction from planAdjust.js via taperAdvisor.js.
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { computeTaperAdvice } from '../../lib/athlete/taperAdvisor.js'
@@ -9,7 +9,7 @@ import { computeTaperAdvice } from '../../lib/athlete/taperAdvisor.js'
 /**
  * @param {{ plan: object|null, profile: object }} props
  */
-export default function TaperAdvisorCard({ plan, profile }) {
+function TaperAdvisorCard({ plan, profile }) {
   const { t, lang } = useContext(LangCtx)
 
   const advice = computeTaperAdvice(plan, profile)
@@ -104,3 +104,5 @@ export default function TaperAdvisorCard({ plan, profile }) {
     </div>
   )
 }
+
+export default memo(TaperAdvisorCard)

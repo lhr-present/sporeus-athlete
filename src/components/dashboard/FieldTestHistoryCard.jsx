@@ -19,7 +19,7 @@
 // number). The Undo button on FieldTestModal handles capture-time typos
 // within the same session.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 
@@ -56,7 +56,7 @@ function weeksBetween(aISO, bISO) {
   } catch { return null }
 }
 
-export default function FieldTestHistoryCard() {
+function FieldTestHistoryCard() {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
   const [entries] = useLocalStorage(STORAGE, [])
@@ -167,3 +167,5 @@ export default function FieldTestHistoryCard() {
 
 const cellHead = { padding: '4px 6px', fontWeight: 600, letterSpacing: '0.05em' }
 const cell     = { padding: '5px 6px' }
+
+export default memo(FieldTestHistoryCard)

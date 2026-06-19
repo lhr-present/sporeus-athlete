@@ -4,7 +4,7 @@
 // coaching-insight cluster by giving a longer-window perspective.
 // Citation: Seiler 2010; Stöggl & Sperlich 2014.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { detectTrainingDistribution } from '../../lib/athlete/trainingDistribution.js'
@@ -39,7 +39,7 @@ const INTENT_LABEL = {
   intervals: { en: 'Intervals', tr: 'İntervaller' },
 }
 
-export default function TrainingDistributionCard({ log = [] }) {
+function TrainingDistributionCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -253,3 +253,5 @@ export default function TrainingDistributionCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(TrainingDistributionCard)

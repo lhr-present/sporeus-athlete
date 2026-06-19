@@ -1,5 +1,5 @@
 // ─── RunningRaceReadinessCard.jsx — raceReadiness() (Daniels 1979) wired to UI (E45) ─
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
@@ -32,7 +32,7 @@ function fmtDistanceLabel(m) {
   return `${(m / 1000).toFixed(1)}K`
 }
 
-export default function RunningRaceReadinessCard({ log = [], profile = {} }) {
+function RunningRaceReadinessCard({ log = [], profile = {} }) {
   const [lang] = useLocalStorage('sporeus-lang', 'en')
   const { t }  = useContext(LangCtx)
 
@@ -112,3 +112,5 @@ export default function RunningRaceReadinessCard({ log = [], profile = {} }) {
     </div>
   )
 }
+
+export default memo(RunningRaceReadinessCard)

@@ -4,7 +4,7 @@
 // flags overall load uniformity) and staleZones (which compares all zones)
 // by zooming in on Z5 recency + dose. Cite: Stöggl & Sperlich 2014; Seiler 2010
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { detectVO2Gap } from '../../lib/athlete/vo2GapDetector.js'
@@ -25,7 +25,7 @@ const BAND_LABEL = {
   never:    { en: 'NEVER',     tr: 'YOK' },
 }
 
-export default function VO2GapCard({ log = [] }) {
+function VO2GapCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -212,3 +212,5 @@ export default function VO2GapCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(VO2GapCard)

@@ -13,7 +13,7 @@
 //
 // Pure presentation; the pure-fn does all the science.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import {
   buildRecoveryProgram,
@@ -59,7 +59,7 @@ function weeklyTSSFromProfile(profile) {
   return []
 }
 
-export default function EliteRecoveryCard({ profile = {}, log = [] }) {
+function EliteRecoveryCard({ profile = {}, log = [] }) {
   // log is accepted for API parity with other dashboard cards; not used here
   void log
   const { lang } = useContext(LangCtx) || { lang: 'en' }
@@ -204,3 +204,5 @@ export default function EliteRecoveryCard({ profile = {}, log = [] }) {
     </div>
   )
 }
+
+export default memo(EliteRecoveryCard)

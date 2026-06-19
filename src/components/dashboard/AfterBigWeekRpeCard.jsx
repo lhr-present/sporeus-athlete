@@ -19,7 +19,7 @@
 // Test anchors: data-card="after-big-week-rpe", data-band,
 //   data-big-week-count, data-mean-rpe-elevation, data-mean-rpe-week2.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeAfterBigWeekRpe } from '../../lib/athlete/afterBigWeekRpe.js'
 
@@ -106,7 +106,7 @@ function fmtOne(value) {
  *
  * @param {{ log: Array }} props
  */
-export default function AfterBigWeekRpeCard({ log = [] }) {
+function AfterBigWeekRpeCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -299,3 +299,5 @@ export default function AfterBigWeekRpeCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(AfterBigWeekRpeCard)

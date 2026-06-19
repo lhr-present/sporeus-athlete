@@ -1,11 +1,11 @@
-import { useMemo } from 'react'
+import { memo, useMemo  } from 'react'
 
 const MONO  = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
 const GREEN  = '#5bc25b'
 const AMBER  = '#f5c542'
 
-export default function TodayStripCard({ log, isTR, onLogSession }) {
+function TodayStripCard({ log, isTR, onLogSession }) {
   const todayISO = new Date().toISOString().slice(0, 10)
 
   const dayName = new Date().toLocaleDateString(isTR ? 'tr-TR' : 'en-US', { weekday: 'short' }).toUpperCase()
@@ -109,3 +109,5 @@ export default function TodayStripCard({ log, isTR, onLogSession }) {
     </div>
   )
 }
+
+export default memo(TodayStripCard)

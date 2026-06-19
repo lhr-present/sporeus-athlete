@@ -22,7 +22,7 @@
 //   - data-items-checked / data-items-total
 //   - data-item-id (per checkbox row)
 
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { buildRaceEquipmentChecklist } from '../../lib/athlete/raceEquipmentChecklist.js'
@@ -42,7 +42,7 @@ const CATEGORY_LABEL = {
 const ACCENT = '#0064ff'
 const SUCCESS = '#5bc25b'
 
-export default function RaceEquipmentChecklistCard({ profile = {} }) {
+function RaceEquipmentChecklistCard({ profile = {} }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -197,3 +197,5 @@ export default function RaceEquipmentChecklistCard({ profile = {} }) {
     </div>
   )
 }
+
+export default memo(RaceEquipmentChecklistCard)

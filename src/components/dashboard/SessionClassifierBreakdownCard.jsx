@@ -8,7 +8,7 @@
 // too-much-grey-zone / not-enough-true-Z2 / missed-planned-sessions, per
 // Daniels 2014; Coggan 2010; Seiler 2010 polarized training.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import {
   classifySession,
@@ -76,7 +76,7 @@ function getMonSunWeek(today) {
   }
 }
 
-export default function SessionClassifierBreakdownCard({ log = [] }) {
+function SessionClassifierBreakdownCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -275,3 +275,5 @@ export default function SessionClassifierBreakdownCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(SessionClassifierBreakdownCard)

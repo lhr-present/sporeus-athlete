@@ -2,7 +2,7 @@
 // E63 — Complete training zone reference for all sports in one card.
 // Returns null if no derivable data — safe to always render.
 
-import { useMemo } from 'react'
+import { memo, useMemo  } from 'react'
 import { deriveAllMetrics } from '../../lib/profileDerivedMetrics.js'
 import { FormulaPopover } from '../ui/FormulaPopover.jsx'
 
@@ -25,7 +25,7 @@ function fmtPace(val) {
   return '—'
 }
 
-export default function AllZonesCard({ profile, log, testResults, isTR }) {
+function AllZonesCard({ profile, log, testResults, isTR }) {
   const lang = isTR ? 'tr' : 'en'
   const metrics = useMemo(
     () => deriveAllMetrics(profile, log || [], testResults || []),
@@ -166,3 +166,5 @@ export default function AllZonesCard({ profile, log, testResults, isTR }) {
     </div>
   )
 }
+
+export default memo(AllZonesCard)

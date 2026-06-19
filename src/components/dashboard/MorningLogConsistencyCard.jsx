@@ -16,7 +16,7 @@
 //   - analyzer returns null (empty/invalid recovery array, bad window)
 //   - daysLogged === 0 (no point shouting "0% logged" — onboarding job)
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeMorningLogConsistency } from '../../lib/athlete/morningLogConsistency.js'
 
@@ -71,7 +71,7 @@ function todayUTCms() {
  * @description Surface `analyzeMorningLogConsistency` as a Dashboard card.
  * @param {{ recovery: Array }} props
  */
-export default function MorningLogConsistencyCard({ recovery }) {
+function MorningLogConsistencyCard({ recovery }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -290,3 +290,5 @@ export default function MorningLogConsistencyCard({ recovery }) {
     </div>
   )
 }
+
+export default memo(MorningLogConsistencyCard)

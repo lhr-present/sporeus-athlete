@@ -2,7 +2,7 @@
 // Week grid with full multi-modal day expansion: run prescription (WU/MAIN/CD) +
 // drills, strength, and preventive exercise tables. All paces from sessionLibrary VDOT.
 // todayDow fixed: (getUTCDay()+6)%7 for Mon-first indexing.
-import { useMemo, useState } from 'react'
+import { memo, useMemo, useState  } from 'react'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { analyzeRaceGoal, parseMmSs } from '../../lib/athlete/raceGoalEngine.js'
 import { buildTrainingPlan, getCurrentPlanWeek } from '../../lib/athlete/trainingBridge.js'
@@ -233,7 +233,7 @@ function DayDetail({ sess, isTR, onClose }) {
   )
 }
 
-export default function TrainingBridgeCard({ profile, log = [], isTR }) {
+function TrainingBridgeCard({ profile, log = [], isTR }) {
   const [saved] = useLocalStorage('sporeus-race-goal-v2', null)
   const [expandedDay, setExpandedDay] = useState(null)
   const [displayWeekIdx, setDisplayWeekIdx] = useState(null)
@@ -483,3 +483,5 @@ export default function TrainingBridgeCard({ profile, log = [], isTR }) {
     </div>
   )
 }
+
+export default memo(TrainingBridgeCard)

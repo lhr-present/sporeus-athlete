@@ -1,3 +1,4 @@
+import { memo } from 'react'
 // ─── dashboard/ZoneDistributorCard.jsx — zone balance + training model badge ──
 import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
@@ -9,7 +10,7 @@ const ZONE_LABELS = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5']
 /**
  * @param {{ filteredLog: object[], rangeLabel: string }} props
  */
-export default function ZoneDistributorCard({ filteredLog, rangeLabel }) {
+function ZoneDistributorCard({ filteredLog, rangeLabel }) {
   const [lang] = useLocalStorage('sporeus-lang', 'en')
 
   const MONO = "'IBM Plex Mono', monospace"
@@ -59,3 +60,5 @@ export default function ZoneDistributorCard({ filteredLog, rangeLabel }) {
     </div>
   )
 }
+
+export default memo(ZoneDistributorCard)

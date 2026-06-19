@@ -3,7 +3,7 @@
 // periodized scientific yearly program. Two render modes: form / plan.
 // Source: buildEliteProgram() — see src/lib/athlete/eliteProgram.js spec.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useContext, useEffect, useMemo, useRef, useState  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
@@ -1674,7 +1674,7 @@ function AdherenceSection({ adherence, reprojection, onReproject, isTR }) {
   )
 }
 
-export default function EliteProgramCard({ log: _log = [], profile: _profile = {}, setLog }) {
+function EliteProgramCard({ log: _log = [], profile: _profile = {}, setLog }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
   const [persisted, setPersisted] = useLocalStorage(STORAGE_KEY, null)
@@ -2333,3 +2333,5 @@ export default function EliteProgramCard({ log: _log = [], profile: _profile = {
     </div>
   )
 }
+
+export default memo(EliteProgramCard)

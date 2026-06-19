@@ -1,5 +1,5 @@
 // ─── dashboard/ReadinessCard.jsx — CTL / ATL / TSB status + coaching note ─────
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { HelpTip } from '../ui.jsx'
@@ -32,7 +32,7 @@ function fmtDelta(delta) {
  *   totalTSS: number,
  * }} props
  */
-export default function ReadinessCard({
+function ReadinessCard({
   dl, lc,
   readiness, ctl, atl, tsb, tsbColor,
   trendCTL, trendATL, trendTSB, prev7,
@@ -99,3 +99,5 @@ export default function ReadinessCard({
     </div>
   )
 }
+
+export default memo(ReadinessCard)

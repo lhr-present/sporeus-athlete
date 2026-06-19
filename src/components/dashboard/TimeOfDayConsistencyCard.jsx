@@ -13,7 +13,7 @@
 // Citations: Mah 2011 (sleep+performance); Walker 2017 (circadian
 // alignment); Hammar 2007 (Eur J Appl Physiol).
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import {
   computeTimeOfDayConsistency,
@@ -64,7 +64,7 @@ function formatHourToHHMM(decimalHour) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
-export default function TimeOfDayConsistencyCard({ log = [] }) {
+function TimeOfDayConsistencyCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -153,3 +153,5 @@ export default function TimeOfDayConsistencyCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(TimeOfDayConsistencyCard)

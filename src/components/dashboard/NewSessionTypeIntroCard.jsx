@@ -3,7 +3,7 @@
 // the last 14 days that weren't part of the athlete's repertoire in the prior
 // 90 days. Gabbett 2016 / Hulin 2014 novel-stimulus injury risk window.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { analyzeNewSessionTypeIntro } from '../../lib/athlete/newSessionTypeIntro.js'
@@ -50,7 +50,7 @@ function fmtCount(n, isTR) {
   return `${n} session${n === 1 ? '' : 's'}`
 }
 
-export default function NewSessionTypeIntroCard({ log = [] }) {
+function NewSessionTypeIntroCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -206,3 +206,5 @@ export default function NewSessionTypeIntroCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(NewSessionTypeIntroCard)

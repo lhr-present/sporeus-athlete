@@ -20,7 +20,7 @@
 // Citation: Friel J. (2014) The Cyclist's Training Bible, 4th ed.;
 // Coggan A.R. & Allen H. (2010) Training & Racing with a Power Meter.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeDecouplingTrend } from '../../lib/athlete/decouplingTrend.js'
 
@@ -67,7 +67,7 @@ const BAND_HINT = {
  *
  * @param {{ log: Array }} props
  */
-export default function AerobicDecouplingTrendCard({ log }) {
+function AerobicDecouplingTrendCard({ log }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -230,3 +230,5 @@ export default function AerobicDecouplingTrendCard({ log }) {
     </div>
   )
 }
+
+export default memo(AerobicDecouplingTrendCard)

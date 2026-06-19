@@ -8,7 +8,7 @@
 // CPDecayCard covers Critical Power / W' bioenergetic decay. This card
 // covers duration-bucketed fitness ceiling — independent signal.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { computeCyclingNpTrend } from '../../lib/athlete/cyclingNpTrend.js'
 
@@ -35,7 +35,7 @@ const TREND_LABEL_TR = {
   falling: 'düşüyor',
 }
 
-export default function CyclingNpTrendCard({ log = [], profile = {} }) {
+function CyclingNpTrendCard({ log = [], profile = {} }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -153,3 +153,5 @@ export default function CyclingNpTrendCard({ log = [], profile = {} }) {
     </div>
   )
 }
+
+export default memo(CyclingNpTrendCard)

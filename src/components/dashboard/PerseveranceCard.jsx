@@ -16,7 +16,7 @@
 // passion for long-term goals"; Duckworth A.L. (2016) "Grit: The
 // power of passion and perseverance".
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzePerseverance } from '../../lib/athlete/perseverance.js'
 
@@ -57,7 +57,7 @@ const BAR_AREA_HEIGHT = 38
  *
  * @param {{ log: Array }} props
  */
-export default function PerseveranceCard({ log }) {
+function PerseveranceCard({ log }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -243,3 +243,5 @@ export default function PerseveranceCard({ log }) {
     </div>
   )
 }
+
+export default memo(PerseveranceCard)

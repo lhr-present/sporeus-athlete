@@ -16,7 +16,7 @@
 // weight reduction in obese subjects"; Levine B.D. & Stray-Gundersen
 // J. (1997) "Living high–training low".
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { detectAltitudeStimulus } from '../../lib/athlete/altitudeStimulus.js'
 
@@ -53,7 +53,7 @@ const BAND_HINT = {
  *
  * @param {{ log: Array }} props
  */
-export default function AltitudeStimulusCard({ log }) {
+function AltitudeStimulusCard({ log }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -214,3 +214,5 @@ export default function AltitudeStimulusCard({ log }) {
     </div>
   )
 }
+
+export default memo(AltitudeStimulusCard)

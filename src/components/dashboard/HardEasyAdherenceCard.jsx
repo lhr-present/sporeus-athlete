@@ -11,7 +11,7 @@
 //
 // Bilingual EN/TR via LangCtx.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import {
   analyzeHardEasyAdherence,
@@ -74,7 +74,7 @@ function formatPct(rate) {
   return `${Math.round(v * 100)}%`
 }
 
-export default function HardEasyAdherenceCard({ log = [] }) {
+function HardEasyAdherenceCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -280,3 +280,5 @@ export default function HardEasyAdherenceCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(HardEasyAdherenceCard)

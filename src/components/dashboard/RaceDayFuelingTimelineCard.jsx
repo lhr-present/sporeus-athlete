@@ -13,7 +13,7 @@
 // Heading: "RACE FUELING · T-N DAYS" / "YARIŞ BESLENME · T-N GÜN".
 // Color: blue (#0064ff) — informational.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import {
   buildRaceDayFuelingTimeline,
@@ -23,7 +23,7 @@ import { getProfileRaceDate } from '../../lib/validate.js'
 const MONO = "'IBM Plex Mono', monospace"
 const BLUE = '#0064ff'
 
-export default function RaceDayFuelingTimelineCard({ profile }) {
+function RaceDayFuelingTimelineCard({ profile }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -162,3 +162,5 @@ export default function RaceDayFuelingTimelineCard({ profile }) {
     </div>
   )
 }
+
+export default memo(RaceDayFuelingTimelineCard)

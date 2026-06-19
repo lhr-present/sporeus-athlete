@@ -9,7 +9,7 @@
 //
 // Cite: Daniels 2014; Seiler 2010.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import {
@@ -45,7 +45,7 @@ const HINT = {
   },
 }
 
-export default function PaceRangeCard({ log = [] }) {
+function PaceRangeCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -245,3 +245,5 @@ export default function PaceRangeCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(PaceRangeCard)

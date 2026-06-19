@@ -8,7 +8,7 @@
 // always renders — a clean 90 days is still useful information ("0 holes,
 // 100% active days").
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { analyzeCalendarHoles } from '../../lib/athlete/calendarHoles.js'
@@ -57,7 +57,7 @@ function compactDate(iso, isTR) {
     : `${MONTH_EN[mo]} ${dd}`
 }
 
-export default function CalendarHolesCard({ log = [] }) {
+function CalendarHolesCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -325,3 +325,5 @@ export default function CalendarHolesCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(CalendarHolesCard)

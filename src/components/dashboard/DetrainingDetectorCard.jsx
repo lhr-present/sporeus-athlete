@@ -3,7 +3,7 @@
 // outputs a return-to-training recommendation per Mujika & Padilla 2000.
 // Severity bands: minor 7-13d, moderate 14-21d, major 22-42d, severe >42d.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { detectDetraining } from '../../lib/athlete/detrainingDetector.js'
@@ -55,7 +55,7 @@ const RAMP_GUIDANCE = {
   },
 }
 
-export default function DetrainingDetectorCard({ log = [] }) {
+function DetrainingDetectorCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -279,3 +279,5 @@ export default function DetrainingDetectorCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(DetrainingDetectorCard)

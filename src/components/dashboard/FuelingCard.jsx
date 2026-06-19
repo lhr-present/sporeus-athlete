@@ -13,7 +13,7 @@
 //         fluid (mL/h), sodium (mg/h), per-phase rationale + notes,
 //         citation footer.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import {
   buildFuelingProgram,
@@ -60,7 +60,7 @@ const T = {
 const tr = (key, lang) => (T[key] ? T[key][lang] || T[key].en : key)
 const fmtRange = (r, unit) => (Array.isArray(r) ? `${r[0]}–${r[1]} ${unit}` : '—')
 
-export default function FuelingCard({ profile }) {
+function FuelingCard({ profile }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -271,3 +271,5 @@ function Metric({ label, primary, secondary, ...rest }) {
     </div>
   )
 }
+
+export default memo(FuelingCard)

@@ -1,8 +1,9 @@
+import { memo } from 'react'
 // ─── dashboard/ProactiveInjuryAlert.jsx — Proactive injury risk alert ─────────
 import { S } from '../../styles.js'
 import { mineInjuryPatterns } from '../../lib/patterns.js'
 
-export default function ProactiveInjuryAlert({ log, injuries, lang }) {
+function ProactiveInjuryAlert({ log, injuries, lang }) {
   const injPatterns      = mineInjuryPatterns(log, injuries, [])
   const highConf         = injPatterns.patterns.filter(p => p.confidence === 'high')
   const vulnerableZones  = injPatterns.vulnerableZones || []
@@ -63,3 +64,5 @@ export default function ProactiveInjuryAlert({ log, injuries, lang }) {
     </div>
   )
 }
+
+export default memo(ProactiveInjuryAlert)

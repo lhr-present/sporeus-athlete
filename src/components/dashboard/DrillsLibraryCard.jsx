@@ -19,7 +19,7 @@
 //     screens; the first drill row is always present in the DOM so tests
 //     and screen readers can inspect it without expanding.
 
-import { useContext, useMemo, useState } from 'react'
+import { memo, useContext, useMemo, useState  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import {
   buildDrillsLibrary,
@@ -66,7 +66,7 @@ const DISCIPLINE_COLOR = {
   tri:  '#e03030',
 }
 
-export default function DrillsLibraryCard({ profile = {} }) {
+function DrillsLibraryCard({ profile = {} }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -309,3 +309,5 @@ export default function DrillsLibraryCard({ profile = {} }) {
     </div>
   )
 }
+
+export default memo(DrillsLibraryCard)

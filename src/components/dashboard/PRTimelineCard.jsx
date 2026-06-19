@@ -1,11 +1,11 @@
 // src/components/dashboard/PRTimelineCard.jsx — E33: Personal Best Timeline Card
 // Shows the timeline of when PRs were set and recent PR streaks.
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { S } from '../../styles.js'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { computePRTimeline } from '../../lib/athlete/prTimeline.js'
 
-export default function PRTimelineCard({ log }) {
+function PRTimelineCard({ log }) {
   const { t, lang } = useContext(LangCtx)
 
   const timeline = useMemo(
@@ -146,3 +146,5 @@ function PREventRow({ ev, lang, t }) {
     </div>
   )
 }
+
+export default memo(PRTimelineCard)

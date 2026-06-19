@@ -10,7 +10,7 @@
 // Cite: Issurin 2010; Bompa 2018.
 // ─────────────────────────────────────────────────────────────────────────
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { analyzeMesocycleProgression } from '../../lib/athlete/mesocycleProgression.js'
@@ -74,7 +74,7 @@ function formatPct(x) {
  *
  * @param {{ log: Array }} props
  */
-export default function MesocycleProgressionCard({ log }) {
+function MesocycleProgressionCard({ log }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -271,3 +271,5 @@ export default function MesocycleProgressionCard({ log }) {
     </div>
   )
 }
+
+export default memo(MesocycleProgressionCard)

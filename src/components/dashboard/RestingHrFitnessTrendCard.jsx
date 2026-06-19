@@ -16,7 +16,7 @@
 //
 // Renders null when the analyzer returns null (insufficient samples).
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeRestingHrFitnessTrend } from '../../lib/athlete/restingHrFitnessTrend.js'
 
@@ -55,7 +55,7 @@ const BAND_HINT = {
  *
  * @param {{ recovery: Array }} props
  */
-export default function RestingHrFitnessTrendCard({ recovery }) {
+function RestingHrFitnessTrendCard({ recovery }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -251,3 +251,5 @@ export default function RestingHrFitnessTrendCard({ recovery }) {
     </div>
   )
 }
+
+export default memo(RestingHrFitnessTrendCard)

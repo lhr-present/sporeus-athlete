@@ -11,7 +11,7 @@
 // data (the pure fn returns null), so the card hides instead of showing an
 // empty shell. Mirrors EFDecouplingCard structure.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { overreachWatch } from '../../lib/athlete/overreachWatch.js'
@@ -33,7 +33,7 @@ const NM_TR = { fresh: 'Taze', normal: 'Normal', accumulated: 'Birikmiş', overr
 const ACWR_EN = { optimal: 'Optimal', caution: 'Caution', danger: 'Danger', undertraining: 'Undertraining' }
 const ACWR_TR = { optimal: 'Optimal', caution: 'Dikkat', danger: 'Tehlike', undertraining: 'Az antrenman' }
 
-export default function OverreachWatchCard({ log = [], lang: langProp }) {
+function OverreachWatchCard({ log = [], lang: langProp }) {
   const ctx = useContext(LangCtx) || {}
   const lang = langProp || ctx.lang || 'en'
   const isTR = lang === 'tr'
@@ -123,3 +123,5 @@ export default function OverreachWatchCard({ log = [], lang: langProp }) {
     </div>
   )
 }
+
+export default memo(OverreachWatchCard)

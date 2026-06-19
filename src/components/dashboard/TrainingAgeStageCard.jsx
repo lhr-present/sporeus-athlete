@@ -17,7 +17,7 @@
 // Olympic-Level Elite Endurance Athletes"; Lloyd & Oliver (2015)
 // "The Long-Term Athletic Development model".
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeTrainingAge } from '../../lib/athlete/trainingAge.js'
 
@@ -79,7 +79,7 @@ function formatTenure(trainingAgeYears, trainingAgeMonths) {
  *
  * @param {{ log: Array }} props
  */
-export default function TrainingAgeStageCard({ log }) {
+function TrainingAgeStageCard({ log }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -228,3 +228,5 @@ export default function TrainingAgeStageCard({ log }) {
     </div>
   )
 }
+
+export default memo(TrainingAgeStageCard)

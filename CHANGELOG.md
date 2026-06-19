@@ -2,6 +2,32 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.441.0 — 2026-06-19 — Dashboard: card visibility gating + leaf-card memoization (perf)
+
+Two performance/UX wins from the discovery sweep (two file-disjoint agents).
+
+- **Card visibility gating** — the advanced dashboard renders ~214 cards but the
+  "⚙ Customize Dashboard → Show/Hide" panel only listed the 20 in `DASH_CARD_DEFS`, so most
+  cards couldn't be hidden. Added all 214 previously-ungated advanced-view cards to the toggle:
+  each wrapped with the existing safe-default-visible pattern `{dl['id'] !== false && (...)}`
+  (NOT `dl[id] &&`), so **defaults are unchanged — every card stays visible unless the user
+  explicitly hides it**, and nothing can vanish even if defs/gates drift. Sport-/data-gating
+  (`hasCyclingData`, `log.length`, etc.) preserved by AND-ing the dl gate before the existing
+  condition. Simple/beginner view left untouched (it has no customize panel). `DASH_CARD_DEFS`
+  grew 20 → 234 (no duplicate ids; every gate id present in defs). Lets users declutter the
+  fleet and skip mounting hidden cards.
+- **Leaf-card `React.memo`** — wrapped 216 dashboard card components in `React.memo` (238 total
+  now memo'd incl. 22 pre-existing). Dashboard is already `memo`'d + memoizes its computed
+  values; this stops the ~200-card fleet from reconciling on every Dashboard-local interaction
+  (date-range toggle, customize toggle). memo is correctness-safe (stable props → bail out;
+  new-identity props → harmless no-op; context updates unaffected). Pure export wrap, no logic
+  change.
+
+Known follow-up (pre-existing, not fixed here): the customize panel renders card labels
+English-only.
+
++3 tests. 15,936 green (711 files), lint + build clean.
+
 ## v9.440.0 — 2026-06-19 — Accessibility batch + TodayView per-tick recompute fix
 
 Verified a11y fixes (all additive attributes/markup, bilingual) + one safe perf fix. From the

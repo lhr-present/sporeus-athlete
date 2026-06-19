@@ -1,5 +1,5 @@
 // ─── dashboard/BanisterModelCard.jsx — Banister fitness-fatigue model SVG ─────
-import { useMemo } from 'react'
+import { memo, useMemo  } from 'react'
 import { S } from '../../styles.js'
 import { useData } from '../../contexts/DataContext.jsx'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
@@ -7,7 +7,7 @@ import { fitBanister, predictBanister } from '../../lib/trainingLoad.js'
 
 const W = 280, H = 80, padL = 4, padR = 4, padT = 6, padB = 16
 
-export default function BanisterModelCard() {
+function BanisterModelCard() {
   const { log, testResults } = useData()
   const [lang] = useLocalStorage('sporeus-lang', 'en')
 
@@ -86,3 +86,5 @@ export default function BanisterModelCard() {
     </div>
   )
 }
+
+export default memo(BanisterModelCard)

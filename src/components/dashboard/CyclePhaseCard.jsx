@@ -13,7 +13,7 @@
 // false → this card returns null. Non-female / non-opted-in athletes
 // see NO cycle UI anywhere.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import {
   buildCyclePhaseGate,
@@ -35,7 +35,7 @@ const CYCLE_PHASE_COLOR = {
   luteal:       '#b87bd8',
 }
 
-export default function CyclePhaseCard({ profile = {} }) {
+function CyclePhaseCard({ profile = {} }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -113,3 +113,5 @@ export default function CyclePhaseCard({ profile = {} }) {
     </div>
   )
 }
+
+export default memo(CyclePhaseCard)

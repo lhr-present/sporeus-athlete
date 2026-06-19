@@ -9,7 +9,7 @@
 // Distinct from CalendarHolesCard (90d gap-detail) and Streak/RecoveryStreak
 // cards (current streak only).
 // ────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { analyzeSeasonRestartCount } from '../../lib/athlete/seasonRestartCount.js'
@@ -63,7 +63,7 @@ function compactDate(iso, isTR) {
     : `${MONTH_EN[mo]} ${dd}`
 }
 
-export default function SeasonRestartCountCard({ log = [] }) {
+function SeasonRestartCountCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -308,3 +308,5 @@ export default function SeasonRestartCountCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(SeasonRestartCountCard)

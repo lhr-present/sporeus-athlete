@@ -1,14 +1,14 @@
 // src/components/dashboard/EliteMetricsStrip.jsx
 // Compact horizontal strip showing derived elite metrics (W/kg, VDOT, MaxHR, LTHR).
 // Returns null if fewer than 2 metrics are available.
-import { useMemo } from 'react'
+import { memo, useMemo  } from 'react'
 import { deriveAllMetrics } from '../../lib/profileDerivedMetrics.js'
 import { FormulaPopover } from '../ui/FormulaPopover.jsx'
 
 const MONO = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
 
-export default function EliteMetricsStrip({ profile, log, testResults, isTR, onGoToProfile }) {
+function EliteMetricsStrip({ profile, log, testResults, isTR, onGoToProfile }) {
   const metrics = useMemo(
     () => deriveAllMetrics(profile, log || [], testResults || []),
     [profile, log, testResults]
@@ -72,3 +72,5 @@ export default function EliteMetricsStrip({ profile, log, testResults, isTR, onG
     </div>
   )
 }
+
+export default memo(EliteMetricsStrip)

@@ -1,5 +1,5 @@
 // ─── ChallengeWidget.jsx — Athlete-side Squad Challenge widget (E11) ───────────
-import { useContext, useState, useEffect } from 'react'
+import { memo, useContext, useState, useEffect  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { computeAthleteProgress, rankAthletes } from '../../lib/squadChallenge.js'
 
@@ -16,7 +16,7 @@ function readEntries() {
 /**
  * @param {{ log: Array<Object> }} props
  */
-export default function ChallengeWidget({ log }) {
+function ChallengeWidget({ log }) {
   const { t } = useContext(LangCtx)
   const [challenge, setChallenge] = useState(readChallenge)
   const [entries,   setEntries]   = useState(readEntries)
@@ -101,3 +101,5 @@ export default function ChallengeWidget({ log }) {
     </div>
   )
 }
+
+export default memo(ChallengeWidget)

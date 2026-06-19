@@ -6,14 +6,14 @@
 //
 // Citations: Daniels 2014 · Bompa 2009 · Mujika 2003.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 
 const STORAGE_KEY = 'sporeus-eliteProgram'
 
-export default function MissionHeadline() {
+function MissionHeadline() {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
   const [persisted] = useLocalStorage(STORAGE_KEY, null)
@@ -135,3 +135,5 @@ export default function MissionHeadline() {
     </div>
   )
 }
+
+export default memo(MissionHeadline)

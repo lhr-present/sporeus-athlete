@@ -1,7 +1,7 @@
 // src/components/dashboard/RaceGoalDashCard.jsx — E87 v2
 // Olympic-coach daily training card: phase context, readiness, full multi-modal
 // prescription (run + drills + strength + preventive) with zone-coded visual hierarchy.
-import { useMemo } from 'react'
+import { memo, useMemo  } from 'react'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { detectVdotFromLog } from '../../lib/athlete/vdotTracker.js'
 import { translateAllZones } from '../../lib/athlete/paceZoneTranslator.js'
@@ -121,7 +121,7 @@ function Divider() {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function RaceGoalDashCard({ log = [], profile = {}, isTR, onLogSession }) {
+function RaceGoalDashCard({ log = [], profile = {}, isTR, onLogSession }) {
   const [saved] = useLocalStorage('sporeus-race-goal-v2', null)
   const today    = new Date().toISOString().slice(0, 10)
 
@@ -675,3 +675,5 @@ export default function RaceGoalDashCard({ log = [], profile = {}, isTR, onLogSe
     </div>
   )
 }
+
+export default memo(RaceGoalDashCard)

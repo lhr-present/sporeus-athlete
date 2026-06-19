@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { memo, useMemo  } from 'react'
 import { S } from '../../styles.js'
 
 const SEASON_DAYS = 365
@@ -37,7 +37,7 @@ function fmtDateShort(dateStr) {
   return `${m} '${String(d.getUTCFullYear()).slice(2)}`
 }
 
-export default function SeasonBestsCard({ log = [], dl = {} }) {
+function SeasonBestsCard({ log = [], dl = {} }) {
   const { bests, hasEnough } = useMemo(() => {
     if (log.length < 2) return { bests: [], hasEnough: false }
 
@@ -180,3 +180,5 @@ export default function SeasonBestsCard({ log = [], dl = {} }) {
     </div>
   )
 }
+
+export default memo(SeasonBestsCard)

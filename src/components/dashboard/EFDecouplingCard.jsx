@@ -10,7 +10,7 @@
 // citation footer. Returns null when either signal lacks enough data (the
 // pure fn returns null), so the card hides instead of showing an empty shell.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { efDecouplingMismatch } from '../../lib/athlete/efDecouplingMismatch.js'
@@ -24,7 +24,7 @@ const QUADRANT_COLOR = {
   flat_flat:        '#888888', // holding steady — neutral
 }
 
-export default function EFDecouplingCard({ log = [], lang: langProp }) {
+function EFDecouplingCard({ log = [], lang: langProp }) {
   const ctx = useContext(LangCtx) || {}
   const lang = langProp || ctx.lang || 'en'
   const t = ctx.t
@@ -113,3 +113,5 @@ export default function EFDecouplingCard({ log = [], lang: langProp }) {
     </div>
   )
 }
+
+export default memo(EFDecouplingCard)

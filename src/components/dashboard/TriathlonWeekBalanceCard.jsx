@@ -18,7 +18,7 @@
 // Citations: Lambert 1997; Seiler 2010; Mujika 2003 (re-exported from the
 // pure-fn module as TRI_WEEK_BALANCE_CITATION).
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import {
   validateTriathlonWeek,
@@ -109,7 +109,7 @@ function distinctDisciplineCount(log) {
   return set.size
 }
 
-export default function TriathlonWeekBalanceCard({ log = [], profile = {} }) {
+function TriathlonWeekBalanceCard({ log = [], profile = {} }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -235,3 +235,5 @@ export default function TriathlonWeekBalanceCard({ log = [], profile = {} }) {
     </div>
   )
 }
+
+export default memo(TriathlonWeekBalanceCard)

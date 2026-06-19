@@ -19,7 +19,7 @@
 //
 // Citations: Maffetone 2010; Seiler 2010.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeVeryEasyShare } from '../../lib/athlete/veryEasyShare.js'
 
@@ -109,7 +109,7 @@ function formatPct(frac) {
  *
  * @param {{ log: Array }} props
  */
-export default function VeryEasyShareCard({ log = [] }) {
+function VeryEasyShareCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -365,3 +365,5 @@ export default function VeryEasyShareCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(VeryEasyShareCard)

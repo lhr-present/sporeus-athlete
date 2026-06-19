@@ -3,14 +3,14 @@
 // readiness (ACWR+wellness), load trend, monotony, fatigue accumulation, rest.
 // Returns null when no actionable alerts exist.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { computeRuleAlerts } from '../../lib/athlete/ruleAlerts.js'
 
 const MONO = "'IBM Plex Mono', monospace"
 
-export default function RuleAlertsCard({ log = [], recovery = [] }) {
+function RuleAlertsCard({ log = [], recovery = [] }) {
   const { t }    = useContext(LangCtx)
   const [lang]   = useLocalStorage('sporeus-lang', 'en')
 
@@ -99,3 +99,5 @@ export default function RuleAlertsCard({ log = [], recovery = [] }) {
     </div>
   )
 }
+
+export default memo(RuleAlertsCard)

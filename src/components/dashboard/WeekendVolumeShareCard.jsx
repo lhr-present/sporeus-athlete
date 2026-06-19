@@ -13,7 +13,7 @@
 //
 // Tests: src/components/__tests__/WeekendVolumeShareCard.test.jsx
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { computeWeekendVolumeShare } from '../../lib/athlete/weekendVolumeShare.js'
 
@@ -40,7 +40,7 @@ const BAND_LABEL_TR = {
   SEVERE:          'AĞIR',
 }
 
-export default function WeekendVolumeShareCard({ log }) {
+function WeekendVolumeShareCard({ log }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -176,3 +176,5 @@ export default function WeekendVolumeShareCard({ log }) {
     </div>
   )
 }
+
+export default memo(WeekendVolumeShareCard)

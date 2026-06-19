@@ -10,7 +10,7 @@
 //            Stöggl & Sperlich 2014; Mujika & Padilla 2000;
 //            Bompa & Haff 2009; Issurin 2010; Tonnessen 2014.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { detectStaleZones } from '../../lib/athlete/staleZones.js'
@@ -515,7 +515,7 @@ function buildInsights(
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
-export default function CoachingInsightsDigest({ log = [] }) {
+function CoachingInsightsDigest({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -749,3 +749,5 @@ export default function CoachingInsightsDigest({ log = [] }) {
     </div>
   )
 }
+
+export default memo(CoachingInsightsDigest)

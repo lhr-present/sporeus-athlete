@@ -4,7 +4,7 @@
 // as the second coaching insight in the dashboard.
 // Citation: Gabbett 2016; Hulin 2016.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { detectWorkoutDensity } from '../../lib/athlete/workoutDensity.js'
@@ -19,7 +19,7 @@ const BAR_FLAGGED   = '#e03030'
 const BAR_HEALTHY   = '#5bc25b'
 const BAR_MAX_HEIGHT = 7   // logical 0–7 scale (days of week)
 
-export default function WorkoutDensityCard({ log = [] }) {
+function WorkoutDensityCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -185,3 +185,5 @@ export default function WorkoutDensityCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(WorkoutDensityCard)

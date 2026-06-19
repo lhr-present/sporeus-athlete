@@ -19,7 +19,7 @@
 //   data-hard-event-count, data-mean-next-day-soreness,
 //   data-baseline-mean-soreness, data-soreness-elevation.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzePostHardSessionSoreness } from '../../lib/athlete/postHardSessionSoreness.js'
 
@@ -107,7 +107,7 @@ function fmtElevation(value) {
  *
  * @param {{ log: Array, recovery: Array }} props
  */
-export default function PostHardSessionSorenessCard({ log = [], recovery = [] }) {
+function PostHardSessionSorenessCard({ log = [], recovery = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -326,3 +326,5 @@ export default function PostHardSessionSorenessCard({ log = [], recovery = [] })
     </div>
   )
 }
+
+export default memo(PostHardSessionSorenessCard)

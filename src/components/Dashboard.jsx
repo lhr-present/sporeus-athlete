@@ -717,11 +717,14 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
   // ── Advanced dashboard ─────────────────────────────────────────────────────────
   return (
     <div className="sp-fade">
+      {dl['missionHeadline'] !== false && (
       <ErrorBoundary>
         <Suspense fallback={null}>
           <MissionHeadline />
         </Suspense>
       </ErrorBoundary>
+      )}
+      {dl['eliteProgram'] !== false && (
       <div data-elite-program-card>
         <ErrorBoundary>
           <Suspense fallback={null}>
@@ -729,17 +732,25 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
           </Suspense>
         </ErrorBoundary>
       </div>
+      )}
+      {dl['fieldTestHistory'] !== false && (
       <ErrorBoundary>
         <Suspense fallback={null}>
           <FieldTestHistoryCard />
         </Suspense>
       </ErrorBoundary>
+      )}
+      {dl['todayProgrammedSession'] !== false && (
       <ErrorBoundary>
         <Suspense fallback={null}>
           <TodayProgrammedSessionCard log={log} />
         </Suspense>
       </ErrorBoundary>
+      )}
+      {dl['todayStrip'] !== false && (
       <TodayStripCard log={log} isTR={lang === 'tr'} onLogSession={onLogSession} />
+      )}
+      {dl['eliteMetrics'] !== false && (
       <ErrorBoundary>
         <EliteMetricsStrip
           profile={profile}
@@ -749,6 +760,8 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
           onGoToProfile={undefined}
         />
       </ErrorBoundary>
+      )}
+      {dl['dailyBriefing'] !== false && (
       <ErrorBoundary>
         <Suspense fallback={null}>
           <DailyBriefingCard
@@ -761,53 +774,70 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
           />
         </Suspense>
       </ErrorBoundary>
+      )}
+      {dl['nutritionTiming'] !== false && (
       <ErrorBoundary>
         <Suspense fallback={null}>
           <NutritionTimingCard profile={profile} plan={plan} log={log} />
         </Suspense>
       </ErrorBoundary>
+      )}
+      {dl['todayReadiness'] !== false && (
       <ErrorBoundary>
         <Suspense fallback={null}>
           <TodayReadinessCard log={log} recovery={recovery} profile={profile} />
         </Suspense>
       </ErrorBoundary>
+      )}
       {log.length === 0 && (
         <GettingStartedCard isTR={lang === 'tr'} onLogSession={onLogSession} stravaConnected={!!stravaToken} onConnectStrava={onGoToProfile}/>
       )}
+      {dl['raceGoalAnalyzer'] !== false && (
       <ErrorBoundary>
         <Suspense fallback={null}>
           <RaceGoalAnalyzerCard profile={profile} log={log} isTR={lang === 'tr'} />
         </Suspense>
       </ErrorBoundary>
+      )}
+      {dl['programSelector'] !== false && (
       <ErrorBoundary>
         <Suspense fallback={null}>
           <ProgramSelectorCard profile={profile} log={log} isTR={lang === 'tr'} />
         </Suspense>
       </ErrorBoundary>
+      )}
+      {dl['coachGate'] !== false && (
       <ErrorBoundary>
         <Suspense fallback={null}>
           <CoachGateCard isTR={lang === 'tr'} />
         </Suspense>
       </ErrorBoundary>
+      )}
+      {dl['trainingBridge'] !== false && (
       <ErrorBoundary>
         <Suspense fallback={null}>
           <TrainingBridgeCard profile={profile} log={log} isTR={lang === 'tr'} />
         </Suspense>
       </ErrorBoundary>
+      )}
+      {dl['raceGoalDash'] !== false && (
       <ErrorBoundary>
         <Suspense fallback={null}>
           <RaceGoalDashCard profile={profile} log={log} isTR={lang === 'tr'} onLogSession={onLogSession} />
         </Suspense>
       </ErrorBoundary>
+      )}
+      {dl['vdotProgress'] !== false && (
       <ErrorBoundary>
         <Suspense fallback={null}>
           <VdotProgressCard profile={profile} log={log} isTR={lang === 'tr'} />
         </Suspense>
       </ErrorBoundary>
-      <MilestonesList log={log} profile={profile}/>
-      <BackupReminder log={log}/>
-      <WeeklyRetroCard log={log} recovery={recovery} plan={plan} lang={lang}/>
-      <PhaseAnalyticsCard log={log} plan={plan} lang={lang}/>
+      )}
+      {dl['milestones'] !== false && <MilestonesList log={log} profile={profile}/>}
+      {dl['backupReminder'] !== false && <BackupReminder log={log}/>}
+      {dl['weeklyRetro'] !== false && <WeeklyRetroCard log={log} recovery={recovery} plan={plan} lang={lang}/>}
+      {dl['phaseAnalytics'] !== false && <PhaseAnalyticsCard log={log} plan={plan} lang={lang}/>}
 
       {/* Header */}
       <div style={{ marginBottom: '16px' }}>
@@ -895,127 +925,142 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
         )
       })()}
 
+      {dl['raceReadiness'] !== false && (
       <ErrorBoundary inline name="Race Readiness">
         <RaceReadinessCard log={log} recovery={recovery} injuries={injuries} profile={profile} plan={plan} planStatus={planStatus} lang={lang}/>
       </ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><RaceWeekProtocolCard profile={profile} log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><EliteRaceWeekCard profile={profile}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><RaceDayFuelingTimelineCard profile={profile}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><RaceMentalRehearsalCard profile={profile}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><RaceEquipmentChecklistCard profile={profile}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><PreRaceSleepBankingCard recovery={recovery} profile={profile}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><AltitudeStimulusCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><PostHardSessionResponseCard log={log} recovery={recovery}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><SeasonalLoadDistributionCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><CrossSportRecoveryGapCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><MorningLogConsistencyCard recovery={recovery}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><WeeklyGoalVarianceCard log={log} profile={profile}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><CheckInQualityCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><AverageWeekShapeCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><MoodEnergyBalanceCard recovery={recovery}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><RpeStabilityCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><StressPatternCard recovery={recovery}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><PerseveranceCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><LongestSessionTrendCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><WeeklyVolumeIntensityRatioCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><SessionDensityCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><SleepConsistencyCard recovery={recovery}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><LifetimeTotalsCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><YearOverYearCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><TrainingAgeStageCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><WeeklyVolumeRecordCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><RaceTimeEstimatorCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><PaceByRpeCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><VolumeAccelerationCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><AnnualTssTargetCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><HrForRpeCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><BedtimeConsistencyCard recovery={recovery}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><RestingHrFitnessTrendCard recovery={recovery}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><EnergySorenessDivergenceCard recovery={recovery}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><LogStreakBreakerCard log={log} recovery={recovery}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><DataCoverageCard log={log} recovery={recovery}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><DayOfWeekAvailabilityCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><PerfectWeekCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><WeeklyTssVarianceCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><LongRunFrequencyCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><RecoveryQualityStreakCard recovery={recovery} profile={profile}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><CtlSlopeCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><WeeklyKmPerSportCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><PaceRangeCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><TimeOnFeetCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><RestDayDistributionCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><NewSessionTypeIntroCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><MesocycleProgressionCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><VolumeIntensityScissorsCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><LongRunConsistencyCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><CalendarHolesCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><BackToBackLongDayCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><SeasonAnchorCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><CumulativeFatigueWindowsCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><WeeklyEnduranceTimeCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><TwoADaysCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><SessionLengthDistributionCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><HardEasyAdherenceCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><PeakWeekFrequencyCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><ZoneThreeBlackHoleCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><HardSessionTypePatternCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><RestDayEnergyTrendCard log={log} recovery={recovery}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><HighRpeBlockCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><PostLongRunNextDayCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><MidweekHardDayFrequencyCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><ResetWeekEffectCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><SeasonRestartCountCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><DailyVolumeRangeCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><WeeklyVolumeStreakCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><MicrocycleVarietyCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><TrainRestTrainPatternCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><OverlookedSessionTypeCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><HighRpeLowTssCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><TrainingHourBudgetCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><WeekendLongSessionShareCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><VolumePerSessionTrendCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><AlternatingWeekPatternCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><HardWeekUnrestedCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><MaxTssDayPersonalRecordCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><SessionGapVarianceCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><TrainAfterRestCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><AfterBigWeekRpeCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><VeryEasyShareCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><ConsecutiveDeloadCountCard log={log}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><PostHardSessionSorenessCard log={log} recovery={recovery}/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><HardDaySpacingCard log={log}/></Suspense></ErrorBoundary>
-      <ProactiveInjuryAlert log={log} injuries={injuries} lang={lang}/>
-      <LoadSpikeAlert/>
+      )}
+      {dl['raceWeekProtocol'] !== false && <ErrorBoundary><Suspense fallback={null}><RaceWeekProtocolCard profile={profile} log={log}/></Suspense></ErrorBoundary>}
+      {dl['eliteRaceWeek'] !== false && <ErrorBoundary><Suspense fallback={null}><EliteRaceWeekCard profile={profile}/></Suspense></ErrorBoundary>}
+      {dl['raceDayFuelingTimeline'] !== false && <ErrorBoundary><Suspense fallback={null}><RaceDayFuelingTimelineCard profile={profile}/></Suspense></ErrorBoundary>}
+      {dl['raceMentalRehearsal'] !== false && <ErrorBoundary><Suspense fallback={null}><RaceMentalRehearsalCard profile={profile}/></Suspense></ErrorBoundary>}
+      {dl['raceEquipmentChecklist'] !== false && <ErrorBoundary><Suspense fallback={null}><RaceEquipmentChecklistCard profile={profile}/></Suspense></ErrorBoundary>}
+      {dl['preRaceSleepBanking'] !== false && <ErrorBoundary><Suspense fallback={null}><PreRaceSleepBankingCard recovery={recovery} profile={profile}/></Suspense></ErrorBoundary>}
+      {dl['altitudeStimulus'] !== false && <ErrorBoundary><Suspense fallback={null}><AltitudeStimulusCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['postHardSessionResponse'] !== false && <ErrorBoundary><Suspense fallback={null}><PostHardSessionResponseCard log={log} recovery={recovery}/></Suspense></ErrorBoundary>}
+      {dl['seasonalLoadDistribution'] !== false && <ErrorBoundary><Suspense fallback={null}><SeasonalLoadDistributionCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['crossSportRecoveryGap'] !== false && <ErrorBoundary><Suspense fallback={null}><CrossSportRecoveryGapCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['morningLogConsistency'] !== false && <ErrorBoundary><Suspense fallback={null}><MorningLogConsistencyCard recovery={recovery}/></Suspense></ErrorBoundary>}
+      {dl['weeklyGoalVariance'] !== false && <ErrorBoundary><Suspense fallback={null}><WeeklyGoalVarianceCard log={log} profile={profile}/></Suspense></ErrorBoundary>}
+      {dl['checkInQuality'] !== false && <ErrorBoundary><Suspense fallback={null}><CheckInQualityCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['averageWeekShape'] !== false && <ErrorBoundary><Suspense fallback={null}><AverageWeekShapeCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['moodEnergyBalance'] !== false && <ErrorBoundary><Suspense fallback={null}><MoodEnergyBalanceCard recovery={recovery}/></Suspense></ErrorBoundary>}
+      {dl['rpeStability'] !== false && <ErrorBoundary><Suspense fallback={null}><RpeStabilityCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['stressPattern'] !== false && <ErrorBoundary><Suspense fallback={null}><StressPatternCard recovery={recovery}/></Suspense></ErrorBoundary>}
+      {dl['perseverance'] !== false && <ErrorBoundary><Suspense fallback={null}><PerseveranceCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['longestSessionTrend'] !== false && <ErrorBoundary><Suspense fallback={null}><LongestSessionTrendCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['weeklyVolumeIntensityRatio'] !== false && <ErrorBoundary><Suspense fallback={null}><WeeklyVolumeIntensityRatioCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['sessionDensity'] !== false && <ErrorBoundary><Suspense fallback={null}><SessionDensityCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['sleepConsistency'] !== false && <ErrorBoundary><Suspense fallback={null}><SleepConsistencyCard recovery={recovery}/></Suspense></ErrorBoundary>}
+      {dl['lifetimeTotals'] !== false && <ErrorBoundary><Suspense fallback={null}><LifetimeTotalsCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['yearOverYear'] !== false && <ErrorBoundary><Suspense fallback={null}><YearOverYearCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['trainingAgeStage'] !== false && <ErrorBoundary><Suspense fallback={null}><TrainingAgeStageCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['weeklyVolumeRecord'] !== false && <ErrorBoundary><Suspense fallback={null}><WeeklyVolumeRecordCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['raceTimeEstimator'] !== false && <ErrorBoundary><Suspense fallback={null}><RaceTimeEstimatorCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['paceByRpe'] !== false && <ErrorBoundary><Suspense fallback={null}><PaceByRpeCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['volumeAcceleration'] !== false && <ErrorBoundary><Suspense fallback={null}><VolumeAccelerationCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['annualTssTarget'] !== false && <ErrorBoundary><Suspense fallback={null}><AnnualTssTargetCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['hrForRpe'] !== false && <ErrorBoundary><Suspense fallback={null}><HrForRpeCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['bedtimeConsistency'] !== false && <ErrorBoundary><Suspense fallback={null}><BedtimeConsistencyCard recovery={recovery}/></Suspense></ErrorBoundary>}
+      {dl['restingHrFitnessTrend'] !== false && <ErrorBoundary><Suspense fallback={null}><RestingHrFitnessTrendCard recovery={recovery}/></Suspense></ErrorBoundary>}
+      {dl['energySorenessDivergence'] !== false && <ErrorBoundary><Suspense fallback={null}><EnergySorenessDivergenceCard recovery={recovery}/></Suspense></ErrorBoundary>}
+      {dl['logStreakBreaker'] !== false && <ErrorBoundary><Suspense fallback={null}><LogStreakBreakerCard log={log} recovery={recovery}/></Suspense></ErrorBoundary>}
+      {dl['dataCoverage'] !== false && <ErrorBoundary><Suspense fallback={null}><DataCoverageCard log={log} recovery={recovery}/></Suspense></ErrorBoundary>}
+      {dl['dayOfWeekAvailability'] !== false && <ErrorBoundary><Suspense fallback={null}><DayOfWeekAvailabilityCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['perfectWeek'] !== false && <ErrorBoundary><Suspense fallback={null}><PerfectWeekCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['weeklyTssVariance'] !== false && <ErrorBoundary><Suspense fallback={null}><WeeklyTssVarianceCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['longRunFrequency'] !== false && <ErrorBoundary><Suspense fallback={null}><LongRunFrequencyCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['recoveryQualityStreak'] !== false && <ErrorBoundary><Suspense fallback={null}><RecoveryQualityStreakCard recovery={recovery} profile={profile}/></Suspense></ErrorBoundary>}
+      {dl['ctlSlope'] !== false && <ErrorBoundary><Suspense fallback={null}><CtlSlopeCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['weeklyKmPerSport'] !== false && <ErrorBoundary><Suspense fallback={null}><WeeklyKmPerSportCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['paceRange'] !== false && <ErrorBoundary><Suspense fallback={null}><PaceRangeCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['timeOnFeet'] !== false && <ErrorBoundary><Suspense fallback={null}><TimeOnFeetCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['restDayDistribution'] !== false && <ErrorBoundary><Suspense fallback={null}><RestDayDistributionCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['newSessionTypeIntro'] !== false && <ErrorBoundary><Suspense fallback={null}><NewSessionTypeIntroCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['mesocycleProgression'] !== false && <ErrorBoundary><Suspense fallback={null}><MesocycleProgressionCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['volumeIntensityScissors'] !== false && <ErrorBoundary><Suspense fallback={null}><VolumeIntensityScissorsCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['longRunConsistency'] !== false && <ErrorBoundary><Suspense fallback={null}><LongRunConsistencyCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['calendarHoles'] !== false && <ErrorBoundary><Suspense fallback={null}><CalendarHolesCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['backToBackLongDay'] !== false && <ErrorBoundary><Suspense fallback={null}><BackToBackLongDayCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['seasonAnchor'] !== false && <ErrorBoundary><Suspense fallback={null}><SeasonAnchorCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['cumulativeFatigueWindows'] !== false && <ErrorBoundary><Suspense fallback={null}><CumulativeFatigueWindowsCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['weeklyEnduranceTime'] !== false && <ErrorBoundary><Suspense fallback={null}><WeeklyEnduranceTimeCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['twoADays'] !== false && <ErrorBoundary><Suspense fallback={null}><TwoADaysCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['sessionLengthDistribution'] !== false && <ErrorBoundary><Suspense fallback={null}><SessionLengthDistributionCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['hardEasyAdherence'] !== false && <ErrorBoundary><Suspense fallback={null}><HardEasyAdherenceCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['peakWeekFrequency'] !== false && <ErrorBoundary><Suspense fallback={null}><PeakWeekFrequencyCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['zoneThreeBlackHole'] !== false && <ErrorBoundary><Suspense fallback={null}><ZoneThreeBlackHoleCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['hardSessionTypePattern'] !== false && <ErrorBoundary><Suspense fallback={null}><HardSessionTypePatternCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['restDayEnergyTrend'] !== false && <ErrorBoundary><Suspense fallback={null}><RestDayEnergyTrendCard log={log} recovery={recovery}/></Suspense></ErrorBoundary>}
+      {dl['highRpeBlock'] !== false && <ErrorBoundary><Suspense fallback={null}><HighRpeBlockCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['postLongRunNextDay'] !== false && <ErrorBoundary><Suspense fallback={null}><PostLongRunNextDayCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['midweekHardDayFrequency'] !== false && <ErrorBoundary><Suspense fallback={null}><MidweekHardDayFrequencyCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['resetWeekEffect'] !== false && <ErrorBoundary><Suspense fallback={null}><ResetWeekEffectCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['seasonRestartCount'] !== false && <ErrorBoundary><Suspense fallback={null}><SeasonRestartCountCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['dailyVolumeRange'] !== false && <ErrorBoundary><Suspense fallback={null}><DailyVolumeRangeCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['weeklyVolumeStreak'] !== false && <ErrorBoundary><Suspense fallback={null}><WeeklyVolumeStreakCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['microcycleVariety'] !== false && <ErrorBoundary><Suspense fallback={null}><MicrocycleVarietyCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['trainRestTrainPattern'] !== false && <ErrorBoundary><Suspense fallback={null}><TrainRestTrainPatternCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['overlookedSessionType'] !== false && <ErrorBoundary><Suspense fallback={null}><OverlookedSessionTypeCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['highRpeLowTss'] !== false && <ErrorBoundary><Suspense fallback={null}><HighRpeLowTssCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['trainingHourBudget'] !== false && <ErrorBoundary><Suspense fallback={null}><TrainingHourBudgetCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['weekendLongSessionShare'] !== false && <ErrorBoundary><Suspense fallback={null}><WeekendLongSessionShareCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['volumePerSessionTrend'] !== false && <ErrorBoundary><Suspense fallback={null}><VolumePerSessionTrendCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['alternatingWeekPattern'] !== false && <ErrorBoundary><Suspense fallback={null}><AlternatingWeekPatternCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['hardWeekUnrested'] !== false && <ErrorBoundary><Suspense fallback={null}><HardWeekUnrestedCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['maxTssDayPersonalRecord'] !== false && <ErrorBoundary><Suspense fallback={null}><MaxTssDayPersonalRecordCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['sessionGapVariance'] !== false && <ErrorBoundary><Suspense fallback={null}><SessionGapVarianceCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['trainAfterRest'] !== false && <ErrorBoundary><Suspense fallback={null}><TrainAfterRestCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['afterBigWeekRpe'] !== false && <ErrorBoundary><Suspense fallback={null}><AfterBigWeekRpeCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['veryEasyShare'] !== false && <ErrorBoundary><Suspense fallback={null}><VeryEasyShareCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['consecutiveDeloadCount'] !== false && <ErrorBoundary><Suspense fallback={null}><ConsecutiveDeloadCountCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['postHardSessionSoreness'] !== false && <ErrorBoundary><Suspense fallback={null}><PostHardSessionSorenessCard log={log} recovery={recovery}/></Suspense></ErrorBoundary>}
+      {dl['hardDaySpacing'] !== false && <ErrorBoundary><Suspense fallback={null}><HardDaySpacingCard log={log}/></Suspense></ErrorBoundary>}
+      {dl['proactiveInjuryAlert'] !== false && <ProactiveInjuryAlert log={log} injuries={injuries} lang={lang}/>}
+      {dl['loadSpikeAlert'] !== false && <LoadSpikeAlert/>}
 
+      {dl['weeklyTssGoal'] !== false && (
       <ErrorBoundary>
         <WeeklyTssGoalCard log={log} profile={profile} isTR={lang === 'tr'} />
       </ErrorBoundary>
+      )}
+      {dl['weeklyReview'] !== false && (
       <ErrorBoundary>
         <Suspense fallback={null}>
           <WeeklyReviewCard log={log} profile={profile} isTR={lang === 'tr'} />
         </Suspense>
       </ErrorBoundary>
+      )}
+      {dl['consistencyDepth'] !== false && (
       <ErrorBoundary>
         <Suspense fallback={null}>
           <ConsistencyDepthCard log={log} isTR={lang === 'tr'} />
         </Suspense>
       </ErrorBoundary>
+      )}
+      {dl['monthlyProgress'] !== false && (
       <ErrorBoundary>
         <Suspense fallback={null}>
           <MonthlyProgressCard log={log} profile={profile} isTR={lang === 'tr'} />
         </Suspense>
       </ErrorBoundary>
+      )}
+      {dl['weekSessionType'] !== false && (
       <ErrorBoundary>
         <Suspense fallback={null}>
           <WeekSessionTypeCard log={log} isTR={lang === 'tr'} />
         </Suspense>
       </ErrorBoundary>
+      )}
+      {dl['intensityBalance'] !== false && (
       <ErrorBoundary>
         <Suspense fallback={null}>
           <IntensityBalanceCard log={log} isTR={lang === 'tr'} />
         </Suspense>
       </ErrorBoundary>
+      )}
 
+      {dl['allZones'] !== false && (
       <ErrorBoundary>
         <Suspense fallback={null}>
           <AllZonesCard
@@ -1026,8 +1071,9 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
           />
         </Suspense>
       </ErrorBoundary>
+      )}
 
-      {recovery.some(e => parseFloat(e.hrv) > 0) && (
+      {dl['hrvTrend'] !== false && recovery.some(e => parseFloat(e.hrv) > 0) && (
         <div className="sp-card" style={{ ...S.card, animationDelay: '20ms' }}>
           <div style={S.cardTitle}>HRV TREND</div>
           <Suspense fallback={null}><HRVChart recovery={recovery} days={30}/></Suspense>
@@ -1035,16 +1081,18 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
       )}
 
       <ErrorBoundary><Suspense fallback={null}><AICoachInsights dl={dl}/></Suspense></ErrorBoundary>
-      <InsightsPanel log={log} recovery={recovery} profile={profile} lang={lang}/>
+      {dl['insightsPanel'] !== false && <InsightsPanel log={log} recovery={recovery} profile={profile} lang={lang}/>}
+      {dl['efTrend'] !== false && (
       <ErrorBoundary inline name="EF Trend">
         <Suspense fallback={null}>
           <EFTrendCard sessions={efSessions} />
         </Suspense>
       </ErrorBoundary>
-      <YourPatternsCard log={log} recovery={recovery} injuries={injuries} profile={profile} lang={lang}/>
-      <WeekStoryCard log={log} recovery={recovery} profile={profile} lang={lang}/>
-      <FuelGuidanceCard log={log} plan={plan} profile={profile} lang={lang}/>
-      <DidYouKnowCard log={log} recovery={recovery} profile={profile} lang={lang}/>
+      )}
+      {dl['yourPatterns'] !== false && <YourPatternsCard log={log} recovery={recovery} injuries={injuries} profile={profile} lang={lang}/>}
+      {dl['weekStory'] !== false && <WeekStoryCard log={log} recovery={recovery} profile={profile} lang={lang}/>}
+      {dl['fuelGuidance'] !== false && <FuelGuidanceCard log={log} plan={plan} profile={profile} lang={lang}/>}
+      {dl['didYouKnow'] !== false && <DidYouKnowCard log={log} recovery={recovery} profile={profile} lang={lang}/>}
 
       {/* Stats row */}
       {dl.stats && (
@@ -1088,7 +1136,7 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
       <RecentSessionsCard filteredLog={filteredLog} rangeLabel={rangeLabel} dl={dl}/>
 
       {/* M4 — Recent session notes */}
-      {(() => {
+      {dl['sessionNotes'] !== false && (() => {
         const withNotes = [...(filteredLog || [])].reverse().filter(e => e.notes?.trim()).slice(0, 3)
         if (withNotes.length === 0) return null
         return (
@@ -1109,7 +1157,7 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
       })()}
 
       {/* N4 — Cadence trend */}
-      {cadenceEntries.length >= 5 && (() => {
+      {dl['cadenceTrend'] !== false && cadenceEntries.length >= 5 && (() => {
         const vals = cadenceEntries.map(e => e.avgCadence)
         const avg  = Math.round(vals.reduce((s,v)=>s+v,0)/vals.length)
         const min  = Math.min(...vals), max = Math.max(...vals)
@@ -1209,7 +1257,7 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
       })()}
 
       {/* J5 — Sub-threshold 8-week trend (Seiler 2010) */}
-      {subZones && subTrend.some(w => w.minutes !== null) && (() => {
+      {dl['subThresholdTrend'] !== false && subZones && subTrend.some(w => w.minutes !== null) && (() => {
         const maxMin = Math.max(...subTrend.map(w => w.minutes ?? 0), 1)
         const thisWk = subTrend[subTrend.length - 1]
         return (
@@ -1250,15 +1298,15 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
         )
       })()}
 
-      <ZoneDistributorCard filteredLog={filteredLog} rangeLabel={rangeLabel}/>
+      {dl['zoneDistributor'] !== false && <ZoneDistributorCard filteredLog={filteredLog} rangeLabel={rangeLabel}/>}
 
       <PersonalRecordsCard dl={dl}/>
 
-      {hasTriData && <ErrorBoundary><Suspense fallback={null}><TriDashboard log={log} lang={lang}/></Suspense></ErrorBoundary>}
+      {dl['triDashboard'] !== false && hasTriData && <ErrorBoundary><Suspense fallback={null}><TriDashboard log={log} lang={lang}/></Suspense></ErrorBoundary>}
       <LoadTrendChart log={log} acwr={acwr} ctlChartDays={ctlChartDays} raceResults={raceResults} plan={plan} dl={dl} lc={lc}/>
 
-      <ErrorBoundary><Suspense fallback={null}><BanisterModelCard/></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><DurabilityCard log={log} lang={lang}/></Suspense></ErrorBoundary>
+      {dl['banisterModel'] !== false && <ErrorBoundary><Suspense fallback={null}><BanisterModelCard/></Suspense></ErrorBoundary>}
+      {dl['durability'] !== false && <ErrorBoundary><Suspense fallback={null}><DurabilityCard log={log} lang={lang}/></Suspense></ErrorBoundary>}
       <ErrorBoundary><Suspense fallback={null}><BodyCompositionCard dl={dl}/></Suspense></ErrorBoundary>
       <ErrorBoundary><Suspense fallback={null}><RacePredictionsCard dl={dl}/></Suspense></ErrorBoundary>
 
@@ -1267,105 +1315,107 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
         return ra ? <div style={{ ...S.mono, fontSize: '10px', color: '#555', marginBottom: '12px' }}>◈ {ra.name} — {ra.desc}</div> : null
       })()}
 
-      <ErrorBoundary><Suspense fallback={null}><NormativeSection/></Suspense></ErrorBoundary>
+      {dl['normative'] !== false && <ErrorBoundary><Suspense fallback={null}><NormativeSection/></Suspense></ErrorBoundary>}
       <ErrorBoundary><Suspense fallback={null}><MacroPlanCountdown dl={dl} lc={lc}/></Suspense></ErrorBoundary>
 
+      {dl['weeklyReport'] !== false && (
       <WeeklyReportCard
         last7={filteredLog} totalMin={totalMin} totalTSS={totalTSS} avgRPE={avgRPE}
         recovery={recovery} plan={plan} planStatus={planStatus} rangeLabel={rangeLabel}
       />
+      )}
       <ACWRCard log={log} lc={lc} dl={dl}/>
-      <ErrorBoundary><Suspense fallback={null}><CoachingSummaryScoreCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><CoachingInsightsDigest log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><StaleZonesCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><WorkoutDensityCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><SessionVarietyCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><FitnessGainRateCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><EasyDayComplianceCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><TrainingDistributionCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><DetrainingDetectorCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><MonotonyStrainCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><VO2GapCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><StreakCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><SessionRPEDriftCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><RecoveryDebtCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><TimeInZoneCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><SupercompensationWindowCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><TrainingPolarizationCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><FitnessConsistencyCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><RecoveryAdherenceCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><TrainingDiversityCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><DeloadCadenceCard log={log} /></Suspense></ErrorBoundary>
+      {dl['coachingSummaryScore'] !== false && <ErrorBoundary><Suspense fallback={null}><CoachingSummaryScoreCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['coachingInsightsDigest'] !== false && <ErrorBoundary><Suspense fallback={null}><CoachingInsightsDigest log={log} /></Suspense></ErrorBoundary>}
+      {dl['staleZones'] !== false && <ErrorBoundary><Suspense fallback={null}><StaleZonesCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['workoutDensity'] !== false && <ErrorBoundary><Suspense fallback={null}><WorkoutDensityCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['sessionVariety'] !== false && <ErrorBoundary><Suspense fallback={null}><SessionVarietyCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['fitnessGainRate'] !== false && <ErrorBoundary><Suspense fallback={null}><FitnessGainRateCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['easyDayCompliance'] !== false && <ErrorBoundary><Suspense fallback={null}><EasyDayComplianceCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['trainingDistribution'] !== false && <ErrorBoundary><Suspense fallback={null}><TrainingDistributionCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['detrainingDetector'] !== false && <ErrorBoundary><Suspense fallback={null}><DetrainingDetectorCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['monotonyStrain'] !== false && <ErrorBoundary><Suspense fallback={null}><MonotonyStrainCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['vo2Gap'] !== false && <ErrorBoundary><Suspense fallback={null}><VO2GapCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['streak'] !== false && <ErrorBoundary><Suspense fallback={null}><StreakCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['sessionRpeDrift'] !== false && <ErrorBoundary><Suspense fallback={null}><SessionRPEDriftCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['recoveryDebt'] !== false && <ErrorBoundary><Suspense fallback={null}><RecoveryDebtCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['timeInZone'] !== false && <ErrorBoundary><Suspense fallback={null}><TimeInZoneCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['supercompensationWindow'] !== false && <ErrorBoundary><Suspense fallback={null}><SupercompensationWindowCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['trainingPolarization'] !== false && <ErrorBoundary><Suspense fallback={null}><TrainingPolarizationCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['fitnessConsistency'] !== false && <ErrorBoundary><Suspense fallback={null}><FitnessConsistencyCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['recoveryAdherence'] !== false && <ErrorBoundary><Suspense fallback={null}><RecoveryAdherenceCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['trainingDiversity'] !== false && <ErrorBoundary><Suspense fallback={null}><TrainingDiversityCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['deloadCadence'] !== false && <ErrorBoundary><Suspense fallback={null}><DeloadCadenceCard log={log} /></Suspense></ErrorBoundary>}
       <VO2maxCard log={log} profile={profile} dl={dl}/>
       <PeakWeekCard log={log} dl={dl}/>
       <TrainingAgeCard log={log} dl={dl}/>
       <GoalTrackerCard log={log} profile={profile} dl={dl}/>
-      <ErrorBoundary><Suspense fallback={null}><SeasonStatsCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><CPDecayCard testResults={testResults || []} /></Suspense></ErrorBoundary>
-      {hasRowingData && <ErrorBoundary><Suspense fallback={null}><RowingMetricsCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
-      {hasRowingData && <ErrorBoundary><Suspense fallback={null}><RowingSplitConsistencyCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
-      <ErrorBoundary><Suspense fallback={null}><ChallengeWidget log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><NMFreshnessCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><PolarizationComplianceCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><AerobicEfficiencyCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><RESTQTrendCard /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><InjuryForecastCard log={log} recovery={recovery} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><StrainHistoryCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><ConsistencyTrendCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><InsightFeedCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><RecoveryProtocolCard log={log} recovery={recovery} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><RecoveryHub /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><OSTRCMonitorCard /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><HRVSummaryCard recovery={recovery} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><VO2maxProgressionCard log={log} profile={profile} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><VO2maxPlateauCard testResults={testResults || []} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><RuleAlertsCard log={log} recovery={recovery} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><CyclePlannerCard profile={profile} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><PlanAdherenceCard plan={plan} planStatus={planStatus} log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><PlanScoreCard plan={plan} log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><AthleteStatusSummaryCard log={log} recovery={recovery} profile={profile} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><SleepRestingHRCard recovery={recovery} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><SleepCtlCorrelationCard log={log} recovery={recovery} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><SleepDebtCard recovery={recovery} profile={profile} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><RecoveryStreakCard recovery={recovery} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><RestingHrDriftCard recovery={recovery} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><SessionClassifierBreakdownCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><WorkoutDeviationCard log={log} plan={plan} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><MonotonyTrendCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><AerobicDecouplingTrendCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><EFDecouplingCard log={log} lang={lang} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><OverreachWatchCard log={log} lang={lang} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><CtlRampRateCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><WeeklyVolumeRampCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><WeekendVolumeShareCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><TimeOfDayConsistencyCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><LongSessionShareCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><RunningCadenceTrendCard log={log} profile={profile} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><TsbFreshnessBandCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><PRTimelineCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><LoadProjectorCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><InjuryPatternCard log={log} injuries={injuries || []} recovery={recovery} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><VDOTBenchmarkCard log={log} testResults={testResults || []} profile={profile} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><HRVAlertCard recovery={recovery} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><HrvAutonomicBalanceCard recovery={recovery} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><TaperAdvisorCard plan={plan} profile={profile} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><TaperComplianceCard log={log} profile={profile} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><PriorityActionCard log={log} recovery={recovery} profile={profile} /></Suspense></ErrorBoundary>
-      {hasCyclingData && <ErrorBoundary><Suspense fallback={null}><CyclingZonesCard testResults={testResults || []} profile={profile} /></Suspense></ErrorBoundary>}
-      {hasCyclingData && <ErrorBoundary><Suspense fallback={null}><CyclingNpTrendCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
-      {hasSwimData    && <ErrorBoundary><Suspense fallback={null}><SwimmingZonesCard log={log} /></Suspense></ErrorBoundary>}
-      {hasSwimData    && <ErrorBoundary><Suspense fallback={null}><SwimSwolfTrendCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
-      {/* RunningCVCard — no gating, useful for most users */}
-      <ErrorBoundary><Suspense fallback={null}><RunningCVCard log={log} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><RunningRaceReadinessCard log={log} profile={profile} /></Suspense></ErrorBoundary>
-      <ErrorBoundary><Suspense fallback={null}><FitnessBatteryProgressCard /></Suspense></ErrorBoundary>
-      {hasTriData     && <ErrorBoundary><Suspense fallback={null}><TriathlonLoadCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
-      {hasTriData     && <ErrorBoundary><Suspense fallback={null}><TriathlonWeekBalanceCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
+      {dl['seasonStats'] !== false && <ErrorBoundary><Suspense fallback={null}><SeasonStatsCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['cpDecay'] !== false && <ErrorBoundary><Suspense fallback={null}><CPDecayCard testResults={testResults || []} /></Suspense></ErrorBoundary>}
+      {dl['rowingMetrics'] !== false && hasRowingData && <ErrorBoundary><Suspense fallback={null}><RowingMetricsCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
+      {dl['rowingSplitConsistency'] !== false && hasRowingData && <ErrorBoundary><Suspense fallback={null}><RowingSplitConsistencyCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
+      {dl['challenge'] !== false && <ErrorBoundary><Suspense fallback={null}><ChallengeWidget log={log} /></Suspense></ErrorBoundary>}
+      {dl['nmFreshness'] !== false && <ErrorBoundary><Suspense fallback={null}><NMFreshnessCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['polarizationCompliance'] !== false && <ErrorBoundary><Suspense fallback={null}><PolarizationComplianceCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['aerobicEfficiency'] !== false && <ErrorBoundary><Suspense fallback={null}><AerobicEfficiencyCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['restqTrend'] !== false && <ErrorBoundary><Suspense fallback={null}><RESTQTrendCard /></Suspense></ErrorBoundary>}
+      {dl['injuryForecast'] !== false && <ErrorBoundary><Suspense fallback={null}><InjuryForecastCard log={log} recovery={recovery} /></Suspense></ErrorBoundary>}
+      {dl['strainHistory'] !== false && <ErrorBoundary><Suspense fallback={null}><StrainHistoryCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['consistencyTrend'] !== false && <ErrorBoundary><Suspense fallback={null}><ConsistencyTrendCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['insightFeed'] !== false && <ErrorBoundary><Suspense fallback={null}><InsightFeedCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['recoveryProtocol'] !== false && <ErrorBoundary><Suspense fallback={null}><RecoveryProtocolCard log={log} recovery={recovery} /></Suspense></ErrorBoundary>}
+      {dl['recoveryHub'] !== false && <ErrorBoundary><Suspense fallback={null}><RecoveryHub /></Suspense></ErrorBoundary>}
+      {dl['ostrcMonitor'] !== false && <ErrorBoundary><Suspense fallback={null}><OSTRCMonitorCard /></Suspense></ErrorBoundary>}
+      {dl['hrvSummary'] !== false && <ErrorBoundary><Suspense fallback={null}><HRVSummaryCard recovery={recovery} /></Suspense></ErrorBoundary>}
+      {dl['vo2maxProgression'] !== false && <ErrorBoundary><Suspense fallback={null}><VO2maxProgressionCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
+      {dl['vo2maxPlateau'] !== false && <ErrorBoundary><Suspense fallback={null}><VO2maxPlateauCard testResults={testResults || []} /></Suspense></ErrorBoundary>}
+      {dl['ruleAlerts'] !== false && <ErrorBoundary><Suspense fallback={null}><RuleAlertsCard log={log} recovery={recovery} /></Suspense></ErrorBoundary>}
+      {dl['cyclePlanner'] !== false && <ErrorBoundary><Suspense fallback={null}><CyclePlannerCard profile={profile} /></Suspense></ErrorBoundary>}
+      {dl['planAdherence'] !== false && <ErrorBoundary><Suspense fallback={null}><PlanAdherenceCard plan={plan} planStatus={planStatus} log={log} /></Suspense></ErrorBoundary>}
+      {dl['planScore'] !== false && <ErrorBoundary><Suspense fallback={null}><PlanScoreCard plan={plan} log={log} /></Suspense></ErrorBoundary>}
+      {dl['athleteStatusSummary'] !== false && <ErrorBoundary><Suspense fallback={null}><AthleteStatusSummaryCard log={log} recovery={recovery} profile={profile} /></Suspense></ErrorBoundary>}
+      {dl['sleepRestingHr'] !== false && <ErrorBoundary><Suspense fallback={null}><SleepRestingHRCard recovery={recovery} /></Suspense></ErrorBoundary>}
+      {dl['sleepCtlCorrelation'] !== false && <ErrorBoundary><Suspense fallback={null}><SleepCtlCorrelationCard log={log} recovery={recovery} /></Suspense></ErrorBoundary>}
+      {dl['sleepDebt'] !== false && <ErrorBoundary><Suspense fallback={null}><SleepDebtCard recovery={recovery} profile={profile} /></Suspense></ErrorBoundary>}
+      {dl['recoveryStreak'] !== false && <ErrorBoundary><Suspense fallback={null}><RecoveryStreakCard recovery={recovery} /></Suspense></ErrorBoundary>}
+      {dl['restingHrDrift'] !== false && <ErrorBoundary><Suspense fallback={null}><RestingHrDriftCard recovery={recovery} /></Suspense></ErrorBoundary>}
+      {dl['sessionClassifierBreakdown'] !== false && <ErrorBoundary><Suspense fallback={null}><SessionClassifierBreakdownCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['workoutDeviation'] !== false && <ErrorBoundary><Suspense fallback={null}><WorkoutDeviationCard log={log} plan={plan} /></Suspense></ErrorBoundary>}
+      {dl['monotonyTrend'] !== false && <ErrorBoundary><Suspense fallback={null}><MonotonyTrendCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['aerobicDecouplingTrend'] !== false && <ErrorBoundary><Suspense fallback={null}><AerobicDecouplingTrendCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['efDecoupling'] !== false && <ErrorBoundary><Suspense fallback={null}><EFDecouplingCard log={log} lang={lang} /></Suspense></ErrorBoundary>}
+      {dl['overreachWatch'] !== false && <ErrorBoundary><Suspense fallback={null}><OverreachWatchCard log={log} lang={lang} /></Suspense></ErrorBoundary>}
+      {dl['ctlRampRate'] !== false && <ErrorBoundary><Suspense fallback={null}><CtlRampRateCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['weeklyVolumeRamp'] !== false && <ErrorBoundary><Suspense fallback={null}><WeeklyVolumeRampCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['weekendVolumeShare'] !== false && <ErrorBoundary><Suspense fallback={null}><WeekendVolumeShareCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['timeOfDayConsistency'] !== false && <ErrorBoundary><Suspense fallback={null}><TimeOfDayConsistencyCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['longSessionShare'] !== false && <ErrorBoundary><Suspense fallback={null}><LongSessionShareCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['runningCadenceTrend'] !== false && <ErrorBoundary><Suspense fallback={null}><RunningCadenceTrendCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
+      {dl['tsbFreshnessBand'] !== false && <ErrorBoundary><Suspense fallback={null}><TsbFreshnessBandCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['prTimeline'] !== false && <ErrorBoundary><Suspense fallback={null}><PRTimelineCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['loadProjector'] !== false && <ErrorBoundary><Suspense fallback={null}><LoadProjectorCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['injuryPattern'] !== false && <ErrorBoundary><Suspense fallback={null}><InjuryPatternCard log={log} injuries={injuries || []} recovery={recovery} /></Suspense></ErrorBoundary>}
+      {dl['vdotBenchmark'] !== false && <ErrorBoundary><Suspense fallback={null}><VDOTBenchmarkCard log={log} testResults={testResults || []} profile={profile} /></Suspense></ErrorBoundary>}
+      {dl['hrvAlert'] !== false && <ErrorBoundary><Suspense fallback={null}><HRVAlertCard recovery={recovery} /></Suspense></ErrorBoundary>}
+      {dl['hrvAutonomicBalance'] !== false && <ErrorBoundary><Suspense fallback={null}><HrvAutonomicBalanceCard recovery={recovery} /></Suspense></ErrorBoundary>}
+      {dl['taperAdvisor'] !== false && <ErrorBoundary><Suspense fallback={null}><TaperAdvisorCard plan={plan} profile={profile} /></Suspense></ErrorBoundary>}
+      {dl['taperCompliance'] !== false && <ErrorBoundary><Suspense fallback={null}><TaperComplianceCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
+      {dl['priorityAction'] !== false && <ErrorBoundary><Suspense fallback={null}><PriorityActionCard log={log} recovery={recovery} profile={profile} /></Suspense></ErrorBoundary>}
+      {dl['cyclingZones'] !== false && hasCyclingData && <ErrorBoundary><Suspense fallback={null}><CyclingZonesCard testResults={testResults || []} profile={profile} /></Suspense></ErrorBoundary>}
+      {dl['cyclingNpTrend'] !== false && hasCyclingData && <ErrorBoundary><Suspense fallback={null}><CyclingNpTrendCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
+      {dl['swimmingZones'] !== false && hasSwimData    && <ErrorBoundary><Suspense fallback={null}><SwimmingZonesCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['swimSwolfTrend'] !== false && hasSwimData    && <ErrorBoundary><Suspense fallback={null}><SwimSwolfTrendCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
+      {dl['runningCv'] !== false && <ErrorBoundary><Suspense fallback={null}><RunningCVCard log={log} /></Suspense></ErrorBoundary>}
+      {dl['runningRaceReadiness'] !== false && <ErrorBoundary><Suspense fallback={null}><RunningRaceReadinessCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
+      {dl['fitnessBatteryProgress'] !== false && <ErrorBoundary><Suspense fallback={null}><FitnessBatteryProgressCard /></Suspense></ErrorBoundary>}
+      {dl['triathlonLoad'] !== false && hasTriData     && <ErrorBoundary><Suspense fallback={null}><TriathlonLoadCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
+      {dl['triathlonWeekBalance'] !== false && hasTriData     && <ErrorBoundary><Suspense fallback={null}><TriathlonWeekBalanceCard log={log} profile={profile} /></Suspense></ErrorBoundary>}
       <LoadHeatmapCard log={log} dl={dl} lang={lang}/>
       <SeasonBestsCard log={log} dl={dl}/>
 
-      <ShareCard log={log} profile={profile} filteredLog={filteredLog}/>
+      {dl['shareCard'] !== false && <ShareCard log={log} profile={profile} filteredLog={filteredLog}/>}
 
+      {dl['quickLinks'] !== false && (
       <div className="sp-card" style={{ ...S.card, animationDelay: '200ms' }}>
         <div style={S.cardTitle}>{t('quickLinks')}</div>
         <div style={S.row}>
@@ -1377,6 +1427,7 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
           ))}
         </div>
       </div>
+      )}
     </div>
   )
 }

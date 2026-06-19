@@ -5,7 +5,7 @@
 // coaching-insight card.
 // Citation: Seiler 2010; Foster 2001.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { detectSessionVariety } from '../../lib/athlete/sessionVariety.js'
@@ -29,7 +29,7 @@ const INTENT_LABELS = {
   intervals: { en: 'Intervals', tr: 'İntervaller' },
 }
 
-export default function SessionVarietyCard({ log = [] }) {
+function SessionVarietyCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -208,3 +208,5 @@ export default function SessionVarietyCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(SessionVarietyCard)

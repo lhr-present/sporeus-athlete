@@ -8,7 +8,7 @@
 // A clean microcycle does not deserve a banner — the card only surfaces
 // actionable load-distribution mistakes.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { detectHardDaySpacing } from '../../lib/athlete/hardDaySpacing.js'
@@ -44,7 +44,7 @@ function relativeLabel(dateStr, isTR) {
   return isTR ? `${n} gün önce` : `${n} days ago`
 }
 
-export default function HardDaySpacingCard({ log = [] }) {
+function HardDaySpacingCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -203,3 +203,5 @@ export default function HardDaySpacingCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(HardDaySpacingCard)

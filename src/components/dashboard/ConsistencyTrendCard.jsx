@@ -1,5 +1,5 @@
 // ─── ConsistencyTrendCard.jsx — E24: 8-week rolling consistency trend ─────────
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { computeConsistencyTrend } from '../../lib/athlete/consistencyTrend.js'
@@ -19,7 +19,7 @@ const PAD_B   = 0
 const CHART_H = SVG_H - PAD_B
 const _MAX_BARS = 8
 
-export default function ConsistencyTrendCard({ log = [] }) {
+function ConsistencyTrendCard({ log = [] }) {
   const { t } = useContext(LangCtx)
 
   const trend = computeConsistencyTrend(log)
@@ -177,3 +177,5 @@ export default function ConsistencyTrendCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(ConsistencyTrendCard)

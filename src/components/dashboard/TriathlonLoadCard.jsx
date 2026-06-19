@@ -3,7 +3,7 @@
 // brickFatigueAdjustment, TRIATHLON_DISTANCES from triathlon.js).
 // Banister & Calvert (1980) · Wakayoshi et al. (1992)
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
@@ -24,7 +24,7 @@ const DIST_LABELS = {
   full:    { en: 'Full',    tr: 'Full IM' },
 }
 
-export default function TriathlonLoadCard({ log = [], profile = {} }) {
+function TriathlonLoadCard({ log = [], profile = {} }) {
   const [lang] = useLocalStorage('sporeus-lang', 'en')
   const { t }  = useContext(LangCtx)
 
@@ -308,3 +308,5 @@ export default function TriathlonLoadCard({ log = [], profile = {} }) {
     </div>
   )
 }
+
+export default memo(TriathlonLoadCard)

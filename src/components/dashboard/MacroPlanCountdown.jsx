@@ -1,5 +1,5 @@
 // ─── dashboard/MacroPlanCountdown.jsx — days-to-race countdown from macro plan ─
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
@@ -7,7 +7,7 @@ import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 /**
  * @param {{ dl: object, lc: object }} props
  */
-export default function MacroPlanCountdown({ dl, lc }) {
+function MacroPlanCountdown({ dl, lc }) {
   const { lang } = useContext(LangCtx)
   const [plan]       = useLocalStorage('sporeus-plan', null)
 
@@ -82,3 +82,5 @@ export default function MacroPlanCountdown({ dl, lc }) {
     </div>
   )
 }
+
+export default memo(MacroPlanCountdown)

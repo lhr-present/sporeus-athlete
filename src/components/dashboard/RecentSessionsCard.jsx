@@ -1,12 +1,12 @@
 // ─── dashboard/RecentSessionsCard.jsx — filtered session history table ────────
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 
 /**
  * @param {{ filteredLog: object[], rangeLabel: string, dl: object }} props
  */
-export default function RecentSessionsCard({ filteredLog, rangeLabel, dl }) {
+function RecentSessionsCard({ filteredLog, rangeLabel, dl }) {
   const { t, lang } = useContext(LangCtx)
 
   if (!dl.sessions) return null
@@ -52,3 +52,5 @@ export default function RecentSessionsCard({ filteredLog, rangeLabel, dl }) {
     </div>
   )
 }
+
+export default memo(RecentSessionsCard)

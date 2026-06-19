@@ -1,5 +1,5 @@
 // ─── dashboard/BodyCompositionCard.jsx — body fat / BMI / BMR panel ──────────
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { S } from '../../styles.js'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { useData } from '../../contexts/DataContext.jsx'
@@ -7,7 +7,7 @@ import { navyBF, mifflinBMR } from '../../lib/formulas.js'
 
 const MONO = "'IBM Plex Mono', monospace"
 
-export default function BodyCompositionCard({ dl }) {
+function BodyCompositionCard({ dl }) {
   const { profile } = useData()
   const { lang } = useContext(LangCtx)
 
@@ -64,3 +64,5 @@ export default function BodyCompositionCard({ dl }) {
     </div>
   )
 }
+
+export default memo(BodyCompositionCard)

@@ -16,7 +16,7 @@
 // least 7 entries with BOTH mood and energy in the last 28 days. Below
 // that floor the analyzer returns null and the card renders nothing.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeMoodEnergyBalance } from '../../lib/athlete/moodEnergyBalance.js'
 
@@ -153,7 +153,7 @@ function MiniGauge({ name, label, value, delta, color }) {
  *
  * @param {{ recovery: Array }} props
  */
-export default function MoodEnergyBalanceCard({ recovery }) {
+function MoodEnergyBalanceCard({ recovery }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -306,3 +306,5 @@ export default function MoodEnergyBalanceCard({ recovery }) {
     </div>
   )
 }
+
+export default memo(MoodEnergyBalanceCard)

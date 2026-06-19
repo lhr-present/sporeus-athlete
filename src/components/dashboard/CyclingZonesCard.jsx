@@ -1,5 +1,5 @@
 // ─── CyclingZonesCard.jsx — Coggan 7-zone power table (E40) ───────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
@@ -23,7 +23,7 @@ const METHOD_LABELS = {
   cp:      { en: 'CP TEST',       tr: 'CP TESTİ' },
 }
 
-export default function CyclingZonesCard({ testResults = [], profile = {} }) {
+function CyclingZonesCard({ testResults = [], profile = {} }) {
   const [lang]  = useLocalStorage('sporeus-lang', 'en')
   const { t }   = useContext(LangCtx)
 
@@ -163,3 +163,5 @@ export default function CyclingZonesCard({ testResults = [], profile = {} }) {
     </div>
   )
 }
+
+export default memo(CyclingZonesCard)

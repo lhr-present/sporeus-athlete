@@ -1,8 +1,8 @@
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 
-export default function TrainingAgeCard({ log, dl }) {
+function TrainingAgeCard({ log, dl }) {
   const { lang } = useContext(LangCtx)
   const result = useMemo(() => {
     if (!dl.trainingage || log.length === 0) return null
@@ -78,3 +78,5 @@ export default function TrainingAgeCard({ log, dl }) {
     </div>
   )
 }
+
+export default memo(TrainingAgeCard)

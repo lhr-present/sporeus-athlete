@@ -14,7 +14,7 @@
 //
 // Bilingual EN/TR, inline styles, MONO font, citation footer.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { getTodayPlannedSession } from '../../lib/intelligence.js'
 import { computeHydrationTarget } from '../../lib/athlete/hydrationTarget.js'
@@ -22,7 +22,7 @@ import { computeHydrationTarget } from '../../lib/athlete/hydrationTarget.js'
 const MONO = "'IBM Plex Mono', monospace"
 const ACCENT = '#0064ff'  // blue — informational, matches Caffeine + Fueling
 
-export default function HydrationTargetCard({ profile = {}, plan = null }) {
+function HydrationTargetCard({ profile = {}, plan = null }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -151,3 +151,5 @@ export default function HydrationTargetCard({ profile = {}, plan = null }) {
     </div>
   )
 }
+
+export default memo(HydrationTargetCard)

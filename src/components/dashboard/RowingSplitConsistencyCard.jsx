@@ -14,7 +14,7 @@
 //   • Renders avgCvPct + band + per-bucket rows (distance, n, mean split,
 //     CV %). Bilingual EN/TR. Citation footer.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import {
   computeRowingSplitConsistency,
@@ -51,7 +51,7 @@ function isRower(profile, log) {
   return log.some(e => /row/i.test(e?.type || '') || /row/i.test(e?.sport || ''))
 }
 
-export default function RowingSplitConsistencyCard({ log = [], profile = {} }) {
+function RowingSplitConsistencyCard({ log = [], profile = {} }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -197,3 +197,5 @@ export default function RowingSplitConsistencyCard({ log = [], profile = {} }) {
     </div>
   )
 }
+
+export default memo(RowingSplitConsistencyCard)

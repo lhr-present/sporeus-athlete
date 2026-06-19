@@ -23,7 +23,7 @@
 // Test anchors: data-card="consecutive-deload-count", data-band,
 //   data-total-runs, data-longest-run, data-deload-weeks-total.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeConsecutiveDeloadCount } from '../../lib/athlete/consecutiveDeloadCount.js'
 
@@ -143,7 +143,7 @@ function MiniBars({ weekClassifications }) {
  *
  * @param {{ log: Array }} props
  */
-export default function ConsecutiveDeloadCountCard({ log = [] }) {
+function ConsecutiveDeloadCountCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -402,3 +402,5 @@ export default function ConsecutiveDeloadCountCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(ConsecutiveDeloadCountCard)

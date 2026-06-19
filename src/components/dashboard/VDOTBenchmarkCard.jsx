@@ -1,12 +1,12 @@
 // ── dashboard/VDOTBenchmarkCard.jsx — E36 VDOT age/gender percentile card ─────
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { computeVDOTBenchmark } from '../../lib/athlete/vdotBenchmark.js'
 
 const BAR_W = 220
 
-export default function VDOTBenchmarkCard({ log, testResults, profile }) {
+function VDOTBenchmarkCard({ log, testResults, profile }) {
   const { t, lang } = useContext(LangCtx)
 
   const result = computeVDOTBenchmark(log || [], testResults || [], profile || {})
@@ -132,3 +132,5 @@ export default function VDOTBenchmarkCard({ log, testResults, profile }) {
     </div>
   )
 }
+
+export default memo(VDOTBenchmarkCard)

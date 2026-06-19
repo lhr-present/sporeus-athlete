@@ -13,7 +13,7 @@
 //   data-seasonal-load-card, data-load-pattern, data-peak-month,
 //   data-avg-tss, data-cv, data-month-bar, data-month-label, data-month-tss.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeSeasonalLoadDistribution } from '../../lib/athlete/seasonalLoadDistribution.js'
 
@@ -69,7 +69,7 @@ function trMonthLabel(monthKey) {
   return MONTH_LABEL_TR[m]
 }
 
-export default function SeasonalLoadDistributionCard({ log = [] }) {
+function SeasonalLoadDistributionCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -238,3 +238,5 @@ export default function SeasonalLoadDistributionCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(SeasonalLoadDistributionCard)

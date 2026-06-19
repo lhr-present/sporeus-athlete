@@ -12,7 +12,7 @@
 // Bilingual EN/TR via LangCtx.
 // Test anchors: data-ctl-ramp-rate-card, data-ramp-band.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { computeCtlRampRate } from '../../lib/athlete/ctlRampRate.js'
 
@@ -58,7 +58,7 @@ function todayIso() {
     .toISOString().slice(0, 10)
 }
 
-export default function CtlRampRateCard({ log = [] }) {
+function CtlRampRateCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -211,3 +211,5 @@ export default function CtlRampRateCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(CtlRampRateCard)

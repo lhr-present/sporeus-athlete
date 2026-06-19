@@ -1,5 +1,5 @@
 // ─── RunningCVCard.jsx — Critical Velocity + D' from multi-distance log (E42) ─
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
@@ -21,7 +21,7 @@ const CLASS_LABELS = {
   recreational: { en: 'RECREATIONAL', tr: 'REKREASYONEL' },
 }
 
-export default function RunningCVCard({ log = [] }) {
+function RunningCVCard({ log = [] }) {
   const [lang] = useLocalStorage('sporeus-lang', 'en')
   const { t }  = useContext(LangCtx)
 
@@ -183,3 +183,5 @@ export default function RunningCVCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(RunningCVCard)

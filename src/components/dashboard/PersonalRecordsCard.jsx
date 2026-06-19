@@ -1,11 +1,11 @@
 // ─── dashboard/PersonalRecordsCard.jsx — all-time personal records ────────────
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useData } from '../../contexts/DataContext.jsx'
 import { calcPRs } from '../../lib/formulas.js'
 
-export default function PersonalRecordsCard({ dl }) {
+function PersonalRecordsCard({ dl }) {
   const { lang } = useContext(LangCtx)
   const { log } = useData()
 
@@ -47,3 +47,5 @@ export default function PersonalRecordsCard({ dl }) {
     </div>
   )
 }
+
+export default memo(PersonalRecordsCard)

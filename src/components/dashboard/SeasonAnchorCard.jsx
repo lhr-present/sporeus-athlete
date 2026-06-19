@@ -14,7 +14,7 @@
 //   data-current-last-4w-tss, data-ramp-ratio, data-days-since-anchor,
 //   data-peak-4w-tss, data-anchor-date, data-peak-date.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeSeasonAnchor } from '../../lib/athlete/seasonAnchor.js'
 
@@ -188,7 +188,7 @@ function MiniSeriesChart({ series, anchorDate, peakDate, color }) {
   )
 }
 
-export default function SeasonAnchorCard({ log = [] }) {
+function SeasonAnchorCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -358,3 +358,5 @@ export default function SeasonAnchorCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(SeasonAnchorCard)

@@ -1,10 +1,10 @@
 // ─── dashboard/LoadSpikeAlert.jsx — week-on-week load spike warning ───────────
-import { useMemo } from 'react'
+import { memo, useMemo  } from 'react'
 import { S } from '../../styles.js'
 import { useData } from '../../contexts/DataContext.jsx'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 
-export default function LoadSpikeAlert() {
+function LoadSpikeAlert() {
   const { log } = useData()
   const [lang]  = useLocalStorage('sporeus-lang', 'en')
 
@@ -36,3 +36,5 @@ export default function LoadSpikeAlert() {
     </div>
   )
 }
+
+export default memo(LoadSpikeAlert)

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { memo, useMemo  } from 'react'
 import { S } from '../../styles.js'
 
 // ─── WeeklyTssGoalCard — E54 ──────────────────────────────────────────────────
@@ -37,7 +37,7 @@ function progressBarColor(pct) {
   return '#444'
 }
 
-export default function WeeklyTssGoalCard({ log, profile, isTR }) {
+function WeeklyTssGoalCard({ log, profile, isTR }) {
   const mondayISO = useMemo(() => getMondayISO(), [])
   const weekDates = useMemo(() => getWeekDates(mondayISO), [mondayISO])
 
@@ -184,3 +184,5 @@ export default function WeeklyTssGoalCard({ log, profile, isTR }) {
     </div>
   )
 }
+
+export default memo(WeeklyTssGoalCard)

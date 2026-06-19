@@ -21,7 +21,7 @@
 //     index, warnings (Bompa cap, leg-too-short), citation.
 //   - Persisted to `sporeus-multiPeakSeason` localStorage.
 
-import { useContext, useEffect, useMemo } from 'react'
+import { memo, useContext, useEffect, useMemo  } from 'react'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { buildMultiPeakSeason } from '../../lib/athlete/multiPeakSeason.js'
@@ -58,7 +58,7 @@ const PHASE_LABEL_TR = {
   Maintenance:  'Koruma',
 }
 
-export default function MultiPeakSeasonCard({ profile = {} }) {
+function MultiPeakSeasonCard({ profile = {} }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -396,3 +396,5 @@ export default function MultiPeakSeasonCard({ profile = {} }) {
     </div>
   )
 }
+
+export default memo(MultiPeakSeasonCard)

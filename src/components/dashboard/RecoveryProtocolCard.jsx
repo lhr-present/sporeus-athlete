@@ -1,5 +1,5 @@
 // ─── RecoveryProtocolCard.jsx — E26 Recovery Protocol Recommender ────────────
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { getTopRecoveryProtocols } from '../../lib/athlete/recoveryRecommender.js'
@@ -21,7 +21,7 @@ function wellnessColor(score) {
  * RecoveryProtocolCard
  * Props: { log, recovery }
  */
-export default function RecoveryProtocolCard({ log = [], recovery = [] }) {
+function RecoveryProtocolCard({ log = [], recovery = [] }) {
   const { t, lang } = useContext(LangCtx)
 
   // Derive latest entries (sorted ascending by date, take last)
@@ -127,3 +127,5 @@ export default function RecoveryProtocolCard({ log = [], recovery = [] }) {
     </div>
   )
 }
+
+export default memo(RecoveryProtocolCard)

@@ -4,7 +4,7 @@
 // 80/20 rule and lose adaptation. 5th card in the coaching-insight cluster.
 // Citation: Seiler 2010; Stöggl & Sperlich 2014.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { detectEasyDayCompliance } from '../../lib/athlete/easyDayCompliance.js'
@@ -40,7 +40,7 @@ function relativeLabel(dateStr, isTR) {
   return isTR ? `${n} gün önce` : `${n} days ago`
 }
 
-export default function EasyDayComplianceCard({ log = [] }) {
+function EasyDayComplianceCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -203,3 +203,5 @@ export default function EasyDayComplianceCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(EasyDayComplianceCard)

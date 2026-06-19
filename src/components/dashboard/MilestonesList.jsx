@@ -1,6 +1,6 @@
 // ─── dashboard/MilestonesList.jsx — Milestone achievement overlay ─────────────
 // Auto-fires when new milestones are detected; dismisses after 3.5s or on tap.
-import { useContext, useState, useEffect } from 'react'
+import { memo, useContext, useState, useEffect  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { detectMilestones } from '../../lib/intelligence.js'
@@ -11,7 +11,7 @@ import { useLocalStorage } from '../../hooks/useLocalStorage.js'
  * @param {Array}  props.log     — training log entries
  * @param {object} props.profile — athlete profile
  */
-export default function MilestonesList({ log, profile }) {
+function MilestonesList({ log, profile }) {
   const { t } = useContext(LangCtx)
   const [lang] = useLocalStorage('sporeus-lang', 'en')
   const [seenMilestones, setSeenMilestones] = useLocalStorage('sporeus-milestones', [])
@@ -45,3 +45,5 @@ export default function MilestonesList({ log, profile }) {
     </div>
   )
 }
+
+export default memo(MilestonesList)

@@ -12,7 +12,7 @@
 // renders for all four bands (POLARIZED / BALANCED / BLACK_HOLE /
 // INSUFFICIENT_HARD_VOLUME).
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import {
   analyzeZoneThreeBlackHole,
@@ -78,7 +78,7 @@ function formatRatio(ratio, totalHardMin) {
   return `${v.toFixed(1)}×`
 }
 
-export default function ZoneThreeBlackHoleCard({ log = [] }) {
+function ZoneThreeBlackHoleCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -343,3 +343,5 @@ export default function ZoneThreeBlackHoleCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(ZoneThreeBlackHoleCard)

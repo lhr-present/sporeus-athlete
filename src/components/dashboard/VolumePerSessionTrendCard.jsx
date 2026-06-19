@@ -21,7 +21,7 @@
 // Bilingual via LangCtx. Mono terminal aesthetic. Renders null when the
 // analyzer returns null (today unresolvable).
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeVolumePerSessionTrend } from '../../lib/athlete/volumePerSessionTrend.js'
 
@@ -104,7 +104,7 @@ function trendArrow(pct) {
  *
  * @param {{ log: Array }} props
  */
-export default function VolumePerSessionTrendCard({ log }) {
+function VolumePerSessionTrendCard({ log }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -394,3 +394,5 @@ export default function VolumePerSessionTrendCard({ log }) {
     </div>
   )
 }
+
+export default memo(VolumePerSessionTrendCard)

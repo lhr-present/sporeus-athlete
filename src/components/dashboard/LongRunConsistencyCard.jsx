@@ -23,7 +23,7 @@
 //
 // Citations: Daniels 2014; Pfitzinger 2014.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeLongRunConsistency } from '../../lib/athlete/longRunConsistency.js'
 
@@ -120,7 +120,7 @@ function formatMinutes(min) {
  *
  * @param {{ log: Array }} props
  */
-export default function LongRunConsistencyCard({ log = [] }) {
+function LongRunConsistencyCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -316,3 +316,5 @@ export default function LongRunConsistencyCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(LongRunConsistencyCard)

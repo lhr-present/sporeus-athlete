@@ -9,7 +9,7 @@
 //
 // Cite: Foster 2001; Borg 1982.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { analyzeRpeStability, classifyStabilityBand } from '../../lib/athlete/rpeStability.js'
@@ -51,7 +51,7 @@ function fmtOne(value) {
   return value.toFixed(1)
 }
 
-export default function RpeStabilityCard({ log = [] }) {
+function RpeStabilityCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -200,3 +200,5 @@ export default function RpeStabilityCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(RpeStabilityCard)

@@ -17,7 +17,7 @@
 //   American Scientist 69:285; Daniels J. (2014) Daniels' Running
 //   Formula equivalent-time tables.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { estimateRaceTimes } from '../../lib/athlete/raceTimeEstimator.js'
 
@@ -84,7 +84,7 @@ function formatRefDist(km) {
   return km.toFixed(1)
 }
 
-export default function RaceTimeEstimatorCard({ log }) {
+function RaceTimeEstimatorCard({ log }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -266,3 +266,5 @@ export default function RaceTimeEstimatorCard({ log }) {
     </div>
   )
 }
+
+export default memo(RaceTimeEstimatorCard)

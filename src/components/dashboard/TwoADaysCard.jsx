@@ -7,7 +7,7 @@
 //       Issurin 2010 (block accumulation patterns);
 //       Skorski 2019 (repeated high-density days as overreaching risk).
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeTwoADays } from '../../lib/athlete/twoADays.js'
 
@@ -62,7 +62,7 @@ function formatDateLabel(iso, isTR) {
   return `${monthName} ${d}`
 }
 
-export default function TwoADaysCard({ log = [] }) {
+function TwoADaysCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -286,3 +286,5 @@ export default function TwoADaysCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(TwoADaysCard)

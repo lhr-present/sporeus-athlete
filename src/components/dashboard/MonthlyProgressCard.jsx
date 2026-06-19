@@ -1,14 +1,14 @@
 // src/components/dashboard/MonthlyProgressCard.jsx — E72
 // Shows previous month summary on the 1st–7th of each month.
 // Returns null outside that window or when insufficient data.
-import { useMemo } from 'react'
+import { memo, useMemo  } from 'react'
 import { S } from '../../styles.js'
 import { computeMonthlyProgress } from '../../lib/athlete/monthlyProgress.js'
 
 const MONO = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
 
-export default function MonthlyProgressCard({ log, profile, isTR }) {
+function MonthlyProgressCard({ log, profile, isTR }) {
   const data = useMemo(
     () => computeMonthlyProgress(log, profile),
     [log, profile]
@@ -86,3 +86,5 @@ export default function MonthlyProgressCard({ log, profile, isTR }) {
     </div>
   )
 }
+
+export default memo(MonthlyProgressCard)

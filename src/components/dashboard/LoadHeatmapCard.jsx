@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { memo, useMemo  } from 'react'
 import { S } from '../../styles.js'
 
 const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
@@ -13,7 +13,7 @@ function tssColor(tss) {
   return '#ff6600'
 }
 
-export default function LoadHeatmapCard({ log, dl, onDayClick, lang = 'en' }) {
+function LoadHeatmapCard({ log, dl, onDayClick, lang = 'en' }) {
   const { tssMap, weeks, monthLabels } = useMemo(() => {
     // Build TSS lookup: { 'YYYY-MM-DD': tss }
     const map = {}
@@ -157,3 +157,5 @@ export default function LoadHeatmapCard({ log, dl, onDayClick, lang = 'en' }) {
     </div>
   )
 }
+
+export default memo(LoadHeatmapCard)

@@ -5,7 +5,7 @@
 // fitnessConsistency (CTL CV stability).
 // Cite: Bompa & Haff 2009 periodization; Issurin 2010 block periodization.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { detectDeloadCadence } from '../../lib/athlete/deloadCadence.js'
@@ -24,7 +24,7 @@ const BAND_LABEL = {
   'no-pattern':   { en: 'NO PATTERN',   tr: 'RİTİM YOK' },
 }
 
-export default function DeloadCadenceCard({ log = [] }) {
+function DeloadCadenceCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -239,3 +239,5 @@ export default function DeloadCadenceCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(DeloadCadenceCard)

@@ -17,7 +17,7 @@
 //   HIGH      (2.0–2.5)     — orange, early warning band
 //   VERY_HIGH (>2.5)        — red,   recovery day required
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { computeMonotonyTrend } from '../../lib/athlete/monotonyTrend.js'
 
@@ -44,7 +44,7 @@ const BAND_LABEL_TR = {
   VERY_HIGH: 'ÇOK YÜKSEK',
 }
 
-export default function MonotonyTrendCard({ log }) {
+function MonotonyTrendCard({ log }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -183,3 +183,5 @@ export default function MonotonyTrendCard({ log }) {
     </div>
   )
 }
+
+export default memo(MonotonyTrendCard)

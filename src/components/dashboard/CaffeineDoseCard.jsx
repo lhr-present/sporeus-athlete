@@ -7,7 +7,7 @@
 //
 // Reference: Burke 2017; Stear 2010; IOC 2018 consensus.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { getTodayPlannedSession } from '../../lib/intelligence.js'
 import { computeCaffeineDose } from '../../lib/athlete/caffeineDose.js'
@@ -15,7 +15,7 @@ import { computeCaffeineDose } from '../../lib/athlete/caffeineDose.js'
 const MONO = "'IBM Plex Mono', monospace"
 const ACCENT = '#0064ff'  // blue — informational
 
-export default function CaffeineDoseCard({ profile = {}, plan = null }) {
+function CaffeineDoseCard({ profile = {}, plan = null }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -137,3 +137,5 @@ export default function CaffeineDoseCard({ profile = {}, plan = null }) {
     </div>
   )
 }
+
+export default memo(CaffeineDoseCard)

@@ -11,7 +11,7 @@
 // Bands: NO_BLOCK, SPARSE, BLOCK_DENSITY, PEAK_PHASE.
 // Bilingual EN/TR via LangCtx.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { analyzePeakWeekFrequency } from '../../lib/athlete/peakWeekFrequency.js'
@@ -71,7 +71,7 @@ function fmtTss(v) {
   return v.toFixed(1)
 }
 
-export default function PeakWeekFrequencyCard({ log = [] }) {
+function PeakWeekFrequencyCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -281,3 +281,5 @@ export default function PeakWeekFrequencyCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(PeakWeekFrequencyCard)

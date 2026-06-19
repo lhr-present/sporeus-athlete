@@ -18,7 +18,7 @@
 //   data-recent-stddev, data-recent-range, data-trend-range-delta,
 //   data-zero-day-count.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeDailyVolumeRange } from '../../lib/athlete/dailyVolumeRange.js'
 
@@ -129,7 +129,7 @@ function BarChart({ dailyTss }) {
   )
 }
 
-export default function DailyVolumeRangeCard({ log = [] }) {
+function DailyVolumeRangeCard({ log = [] }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -341,3 +341,5 @@ export default function DailyVolumeRangeCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(DailyVolumeRangeCard)

@@ -5,7 +5,7 @@
 // Distinct from AverageWeekShapeCard (which measures typical TSS per weekday).
 // Cite: Bompa 2018 microcycle availability; Issurin 2010 block scheduling.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { analyzeDayOfWeekAvailability } from '../../lib/athlete/dayOfWeekAvailability.js'
@@ -49,7 +49,7 @@ const BAR_GAP = 4
 const BAR_W = Math.floor(((SVG_W - 2 * PAD_X) - BAR_GAP * 6) / 7)
 const CHART_H = SVG_H
 
-export default function DayOfWeekAvailabilityCard({ log = [] }) {
+function DayOfWeekAvailabilityCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -200,3 +200,5 @@ export default function DayOfWeekAvailabilityCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(DayOfWeekAvailabilityCard)

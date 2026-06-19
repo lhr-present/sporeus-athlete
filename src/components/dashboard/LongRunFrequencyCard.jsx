@@ -21,7 +21,7 @@
 //
 // Citations: Daniels 2014; Lydiard 1978; Maffetone 2010.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeLongRunFrequency } from '../../lib/athlete/longRunFrequency.js'
 
@@ -80,7 +80,7 @@ function monthLabelTR(monthStr) {
  *
  * @param {{ log: Array }} props
  */
-export default function LongRunFrequencyCard({ log }) {
+function LongRunFrequencyCard({ log }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -304,3 +304,5 @@ export default function LongRunFrequencyCard({ log }) {
     </div>
   )
 }
+
+export default memo(LongRunFrequencyCard)

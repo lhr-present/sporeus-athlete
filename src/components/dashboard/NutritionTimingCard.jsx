@@ -5,7 +5,7 @@
 // before / during / after this specific session?"
 // Citation: Burke 2014; Jeukendrup 2014.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { computeNutritionTiming } from '../../lib/athlete/nutritionTiming.js'
@@ -42,7 +42,7 @@ function pickSession(plan, log) {
   return null
 }
 
-export default function NutritionTimingCard({ profile = {}, plan = null, log = [] }) {
+function NutritionTimingCard({ profile = {}, plan = null, log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -205,3 +205,5 @@ export default function NutritionTimingCard({ profile = {}, plan = null, log = [
     </div>
   )
 }
+
+export default memo(NutritionTimingCard)

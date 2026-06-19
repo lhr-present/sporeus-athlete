@@ -4,7 +4,7 @@
 // moderate, high. Complements ACWR — uniform high loads with low day-to-day
 // variation predict overuse injury and illness.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { detectMonotonyStrain } from '../../lib/athlete/trainingMonotonyStrain.js'
@@ -21,7 +21,7 @@ const BAND_LABEL = {
   high:     { en: 'HIGH',     tr: 'YÜKSEK' },
 }
 
-export default function MonotonyStrainCard({ log = [] }) {
+function MonotonyStrainCard({ log = [] }) {
   const { lang } = useContext(LangCtx)
   const isTR = lang === 'tr'
 
@@ -191,3 +191,5 @@ export default function MonotonyStrainCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(MonotonyStrainCard)

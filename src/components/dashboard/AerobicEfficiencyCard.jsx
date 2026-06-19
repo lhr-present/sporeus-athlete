@@ -6,7 +6,7 @@
 //   Coggan A.R. (2003). Training and Racing with a Power Meter. VeloPress.
 //   Allen H. & Coggan A.R. (2010). Training and Racing with a Power Meter (2nd ed.).
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { computeAerobicEfficiencyTrend } from '../../lib/science/aerobicEfficiency.js'
@@ -23,7 +23,7 @@ const CLASS_KEY = {
   declining: 'efDeclining',
 }
 
-export default function AerobicEfficiencyCard({ log = [] }) {
+function AerobicEfficiencyCard({ log = [] }) {
   const { t, lang } = useContext(LangCtx)
 
   const result = useMemo(
@@ -183,3 +183,5 @@ export default function AerobicEfficiencyCard({ log = [] }) {
     </div>
   )
 }
+
+export default memo(AerobicEfficiencyCard)

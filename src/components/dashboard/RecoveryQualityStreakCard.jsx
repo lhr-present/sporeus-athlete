@@ -13,7 +13,7 @@
 //   STEADY        (blue)   — currentStreak ≥ 2
 //   INCONSISTENT  (orange) — currentStreak < 2
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeRecoveryQualityStreak } from '../../lib/athlete/recoveryQualityStreak.js'
 
@@ -51,7 +51,7 @@ const HINTS = {
   },
 }
 
-export default function RecoveryQualityStreakCard({ recovery, profile }) {
+function RecoveryQualityStreakCard({ recovery, profile }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -199,3 +199,5 @@ export default function RecoveryQualityStreakCard({ recovery, profile }) {
     </div>
   )
 }
+
+export default memo(RecoveryQualityStreakCard)

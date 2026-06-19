@@ -2,7 +2,7 @@
 // Dual SVG line chart: baseline (current load) vs elevated (+10% load)
 // CTL line solid #0064ff, elevated CTL dashed, TSB dotted color-by-zone.
 // Reference: Banister 1991 · Coggan PMC
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { S } from '../../styles.js'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { computeLoadProjection } from '../../lib/athlete/loadProjector.js'
@@ -20,7 +20,7 @@ function tsbZoneLabel(tsb, t) {
   return t('loadProjNeutral')
 }
 
-export default function LoadProjectorCard({ log }) {
+function LoadProjectorCard({ log }) {
   const { t, lang } = useContext(LangCtx)
 
   const proj = useMemo(
@@ -228,3 +228,5 @@ export default function LoadProjectorCard({ log }) {
     </div>
   )
 }
+
+export default memo(LoadProjectorCard)

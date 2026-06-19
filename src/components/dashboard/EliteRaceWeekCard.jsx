@@ -15,7 +15,7 @@
 // Sources: Mujika 2003 (taper) · Bosquet et al. 2007 (taper meta) ·
 // Stellingwerff 2018 (race-week fueling) · Burke 2017 (CHO loading).
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import {
@@ -66,7 +66,7 @@ function addDaysISO(iso, n) {
   return d.toISOString().slice(0, 10)
 }
 
-export default function EliteRaceWeekCard({ profile = {} }) {
+function EliteRaceWeekCard({ profile = {} }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -246,3 +246,5 @@ export default function EliteRaceWeekCard({ profile = {} }) {
     </div>
   )
 }
+
+export default memo(EliteRaceWeekCard)

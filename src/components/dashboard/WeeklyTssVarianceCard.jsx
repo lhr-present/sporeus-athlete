@@ -10,7 +10,7 @@
 //   MODERATE (0.20 ≤ cv < 0.40) — blue,  normal training swings
 //   CHAOTIC  (cv ≥ 0.40)        — orange, large week-to-week swings
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeWeeklyTssVariance } from '../../lib/athlete/weeklyTssVariance.js'
 
@@ -52,7 +52,7 @@ function todayIso() {
   return new Date().toISOString().slice(0, 10)
 }
 
-export default function WeeklyTssVarianceCard({ log }) {
+function WeeklyTssVarianceCard({ log }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -221,3 +221,5 @@ export default function WeeklyTssVarianceCard({ log }) {
     </div>
   )
 }
+
+export default memo(WeeklyTssVarianceCard)

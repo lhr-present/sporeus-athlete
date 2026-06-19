@@ -19,7 +19,7 @@
 //   Coggan A.R., Allen H. (2010). Training and Racing with a Power Meter, 2nd ed.
 //   Magness S. (2017). The Science of Running.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { computeLongSessionShare } from '../../lib/athlete/longSessionShare.js'
 
@@ -63,7 +63,7 @@ const RECOMMENDATION_TR = {
   ISOLATED:     'Tek büyük antrenman, zayıf taban — yaralanma riski',
 }
 
-export default function LongSessionShareCard({ log }) {
+function LongSessionShareCard({ log }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -204,3 +204,5 @@ export default function LongSessionShareCard({ log }) {
     </div>
   )
 }
+
+export default memo(LongSessionShareCard)

@@ -1,6 +1,6 @@
 // ─── dashboard/PerformanceMetrics.jsx — Form / Peak / Consistency tiles ────────
 // Extracted from Dashboard.jsx inline PMC block.
-import { useContext } from 'react'
+import { memo, useContext  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { getFormScore, getPeakWeekLoad, getConsistencyScore } from '../../lib/intelligence.js'
 import { classifyTSB } from '../../lib/trainingLoad.js'
@@ -11,7 +11,7 @@ const MONO = "'IBM Plex Mono', monospace"
  * @param {object} props
  * @param {Array}  props.log — full training log entries
  */
-export default function PerformanceMetrics({ log }) {
+function PerformanceMetrics({ log }) {
   const { lang } = useContext(LangCtx)
 
   if (!log || log.length === 0) return (
@@ -48,3 +48,5 @@ export default function PerformanceMetrics({ log }) {
     </div>
   )
 }
+
+export default memo(PerformanceMetrics)

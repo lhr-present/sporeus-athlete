@@ -20,7 +20,7 @@
 //
 // Bilingual EN/TR via LangCtx. Mono terminal aesthetic.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeBackToBackLongDay } from '../../lib/athlete/backToBackLongDay.js'
 
@@ -96,7 +96,7 @@ function shortSport(s) {
  *
  * @param {{ log: Array }} props
  */
-export default function BackToBackLongDayCard({ log }) {
+function BackToBackLongDayCard({ log }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -349,3 +349,5 @@ export default function BackToBackLongDayCard({ log }) {
     </div>
   )
 }
+
+export default memo(BackToBackLongDayCard)

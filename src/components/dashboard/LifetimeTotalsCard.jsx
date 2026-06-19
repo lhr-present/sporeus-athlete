@@ -12,7 +12,7 @@
 //
 // Citation: Bandura A. (1997). Self-efficacy: The exercise of control.
 
-import { useContext, useMemo } from 'react'
+import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { analyzeLifetimeTotals } from '../../lib/athlete/lifetimeTotals.js'
 
@@ -42,7 +42,7 @@ function formatTenure(years, months, firstDate, isTR) {
  *
  * @param {{ log: Array }} props
  */
-export default function LifetimeTotalsCard({ log }) {
+function LifetimeTotalsCard({ log }) {
   const { lang } = useContext(LangCtx) || { lang: 'en' }
   const isTR = lang === 'tr'
 
@@ -208,3 +208,5 @@ export default function LifetimeTotalsCard({ log }) {
     </div>
   )
 }
+
+export default memo(LifetimeTotalsCard)
