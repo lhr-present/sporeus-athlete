@@ -11,7 +11,7 @@ import ShareCard from './ShareCard.jsx'
 import { useCountUp } from '../hooks/useCountUp.js'
 import { getRecentAchievement } from './Achievements.jsx'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
-import { SPORT_BRANCHES, ATHLETE_LEVELS, LEVEL_CONFIG, DASH_CARD_DEFS } from '../lib/constants.js'
+import { SPORT_BRANCHES, ATHLETE_LEVELS, LEVEL_CONFIG, DASH_CARD_DEFS, DASH_CARD_GROUPS } from '../lib/constants.js'
 import { assessDataQuality, predictFitness } from '../lib/intelligence.js'
 import { interpretCTL, interpretTSB, interpretMonotony } from '../lib/science/interpretations.js'
 import { subThresholdTrend, } from '../lib/science/subThresholdTime.js'
@@ -288,10 +288,17 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
   const defaultLayout = useMemo(() => Object.fromEntries(DASH_CARD_DEFS.map(c => [c.id, true])), [])
   const [dashLayout, setDashLayout] = useLocalStorage('sporeus-dash-layout', defaultLayout)
   const [showCustomize, setShowCustomize] = useState(false)
+  // Customize panel groups default collapsed (234 cards); 'core' opens first.
+  const [openGroups, setOpenGroups] = useState(() => ({ core: true }))
+  const toggleGroup = useCallback(key => setOpenGroups(p => ({ ...p, [key]: !p[key] })), [])
   const dl       = useMemo(() => ({ ...defaultLayout, ...dashLayout }), [defaultLayout, dashLayout])
   const toggleCard = useCallback(
     id => setDashLayout(prev => ({ ...defaultLayout, ...prev, [id]: !prev[id] })),
     [defaultLayout, setDashLayout]
+  )
+  const setAllCards = useCallback(
+    val => setDashLayout(Object.fromEntries(DASH_CARD_DEFS.map(c => [c.id, val]))),
+    [setDashLayout]
   )
 
   // ── Date range filter ─────────────────────────────────────────────────────────
@@ -863,15 +870,47 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
         </button>
         {showCustomize && (
           <div style={{ marginTop: '10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '6px', padding: '12px' }}>
-            <div style={{ ...S.mono, fontSize: '10px', color: 'var(--muted)', marginBottom: '8px', letterSpacing: '0.06em' }}>SHOW / HIDE CARDS</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {DASH_CARD_DEFS.map(card => (
-                <label key={card.id} style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', ...S.mono, fontSize: '11px', color: dl[card.id] ? 'var(--text)' : 'var(--muted)' }}>
-                  <input type="checkbox" checked={!!dl[card.id]} onChange={() => toggleCard(card.id)} style={{ accentColor: '#ff6600' }}/>
-                  {card.label}
-                </label>
-              ))}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '6px' }}>
+              <div style={{ ...S.mono, fontSize: '10px', color: 'var(--muted)', letterSpacing: '0.06em' }}>
+                {lang === 'tr' ? 'KARTLARI GÖSTER / GİZLE' : 'SHOW / HIDE CARDS'}
+              </div>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button onClick={() => setAllCards(true)} style={{ ...S.mono, fontSize: '9px', color: 'var(--muted)', background: 'transparent', border: '1px solid var(--border)', borderRadius: '3px', padding: '4px 8px', cursor: 'pointer' }}>
+                  {lang === 'tr' ? 'Tümünü Göster' : 'Show all'}
+                </button>
+                <button onClick={() => setAllCards(false)} style={{ ...S.mono, fontSize: '9px', color: 'var(--muted)', background: 'transparent', border: '1px solid var(--border)', borderRadius: '3px', padding: '4px 8px', cursor: 'pointer' }}>
+                  {lang === 'tr' ? 'Tümünü Gizle' : 'Hide all'}
+                </button>
+              </div>
             </div>
+            {DASH_CARD_GROUPS.map(g => {
+              const cards = DASH_CARD_DEFS.filter(c => c.group === g.key)
+              if (cards.length === 0) return null
+              const open = !!openGroups[g.key]
+              return (
+                <div key={g.key} style={{ marginBottom: '6px', border: '1px solid var(--border)', borderRadius: '4px', overflow: 'hidden' }}>
+                  <button
+                    type="button"
+                    aria-expanded={open}
+                    onClick={() => toggleGroup(g.key)}
+                    style={{ ...S.mono, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', fontSize: '11px', fontWeight: 600, color: 'var(--text)', background: 'var(--card-bg)', border: 'none', padding: '8px 10px', cursor: 'pointer', textAlign: 'left' }}
+                  >
+                    <span>{open ? '▾' : '▸'} {lang === 'tr' ? g.tr : g.en}</span>
+                    <span style={{ color: 'var(--muted)', fontWeight: 400 }}>{cards.length}</span>
+                  </button>
+                  {open && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '8px 10px' }}>
+                      {cards.map(card => (
+                        <label key={card.id} style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', ...S.mono, fontSize: '11px', color: dl[card.id] ? 'var(--text)' : 'var(--muted)' }}>
+                          <input type="checkbox" checked={!!dl[card.id]} onChange={() => toggleCard(card.id)} style={{ accentColor: '#ff6600' }}/>
+                          {lang === 'tr' ? (card.tr || card.label) : card.label}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
