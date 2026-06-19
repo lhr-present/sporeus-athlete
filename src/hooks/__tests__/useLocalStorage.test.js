@@ -40,6 +40,42 @@ describe('useLocalStorage — basic r/w', () => {
   })
 })
 
+describe('useLocalStorage — QuotaExceededError mid-session signal', () => {
+  it('sets the warn flag and dispatches sporeus-quota-exceeded on quota error', () => {
+    const orig = Storage.prototype.setItem
+    const onQuota = vi.fn()
+    window.addEventListener('sporeus-quota-exceeded', onQuota)
+
+    const { result } = renderHook(() => useLocalStorage('sporeus-x', []))
+
+    // Make every subsequent disk write throw QuotaExceededError, EXCEPT the
+    // warn-flag write (so the flag still lands, mirroring real behaviour).
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (k, v) {
+      if (k === 'sporeus-quota-warned') return orig.call(this, k, v)
+      const err = new Error('quota'); err.name = 'QuotaExceededError'; throw err
+    })
+
+    act(() => { result.current[1]([1, 2, 3]) })
+
+    expect(onQuota).toHaveBeenCalledTimes(1)
+    expect(localStorage.getItem('sporeus-quota-warned')).toBe('1')
+    // In-memory value is still updated even though the disk write failed.
+    expect(result.current[0]).toEqual([1, 2, 3])
+
+    spy.mockRestore()
+    window.removeEventListener('sporeus-quota-exceeded', onQuota)
+  })
+
+  it('does NOT dispatch the quota event on a successful write', () => {
+    const onQuota = vi.fn()
+    window.addEventListener('sporeus-quota-exceeded', onQuota)
+    const { result } = renderHook(() => useLocalStorage('sporeus-x', []))
+    act(() => { result.current[1]([9]) })
+    expect(onQuota).not.toHaveBeenCalled()
+    window.removeEventListener('sporeus-quota-exceeded', onQuota)
+  })
+})
+
 describe('useLocalStorage — cross-tab storage sync', () => {
   it('adopts a value written by another tab', () => {
     const { result } = renderHook(() => useLocalStorage('sporeus-log', []))

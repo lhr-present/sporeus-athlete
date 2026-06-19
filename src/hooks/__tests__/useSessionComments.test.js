@@ -260,6 +260,39 @@ describe('useSessionComments — editComment', () => {
     await act(async () => { await result.current.editComment('c1', 'updated') })
     expect(result.current.comments.find(c => c.id === 'c1')?.body).toBe('updated')
   })
+
+  it('does NOT apply edit and propagates error on genuine server failure (F4)', async () => {
+    mocks.chainMock.order.mockResolvedValue({
+      data: [{ id: 'c1', body: 'original', session_id: 'sess-1', author_id: 'user-1', created_at: new Date().toISOString() }],
+      error: null,
+    })
+    mocks.editComment.mockResolvedValue({ data: null, error: new Error('RLS denied'), queued: false })
+
+    const { result } = renderHook(() => useSessionComments('sess-1', 'user-1'))
+    await act(async () => {})
+
+    let ret
+    await act(async () => { ret = await result.current.editComment('c1', 'updated') })
+    expect(ret.error).toBeTruthy()
+    expect(result.current.comments.find(c => c.id === 'c1')?.body).toBe('original')
+  })
+
+  it('applies edit optimistically when offline-queued (F4 — preserve offline path)', async () => {
+    mocks.chainMock.order.mockResolvedValue({
+      data: [{ id: 'c1', body: 'original', session_id: 'sess-1', author_id: 'user-1', created_at: new Date().toISOString() }],
+      error: null,
+    })
+    mocks.editComment.mockResolvedValue({ data: null, error: null, queued: true })
+
+    const { result } = renderHook(() => useSessionComments('sess-1', 'user-1'))
+    await act(async () => {})
+
+    let ret
+    await act(async () => { ret = await result.current.editComment('c1', 'updated') })
+    expect(ret.error).toBeFalsy()
+    expect(ret.queued).toBe(true)
+    expect(result.current.comments.find(c => c.id === 'c1')?.body).toBe('updated')
+  })
 })
 
 describe('useSessionComments — UPDATE echo ordering', () => {
@@ -315,6 +348,22 @@ describe('useSessionComments — deleteComment', () => {
 
     await act(async () => { await result.current.deleteComment('c1') })
     expect(result.current.comments.find(c => c.id === 'c1')?.deleted_at).toBeTruthy()
+  })
+
+  it('does NOT soft-delete and propagates error on genuine server failure (F4)', async () => {
+    mocks.chainMock.order.mockResolvedValue({
+      data: [{ id: 'c1', body: 'text', session_id: 'sess-1', author_id: 'user-1', created_at: new Date().toISOString() }],
+      error: null,
+    })
+    mocks.deleteComment.mockResolvedValue({ error: new Error('RLS denied'), queued: false })
+
+    const { result } = renderHook(() => useSessionComments('sess-1', 'user-1'))
+    await act(async () => {})
+
+    let ret
+    await act(async () => { ret = await result.current.deleteComment('c1') })
+    expect(ret.error).toBeTruthy()
+    expect(result.current.comments.find(c => c.id === 'c1')?.deleted_at).toBeFalsy()
   })
 })
 

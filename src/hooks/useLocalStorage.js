@@ -14,6 +14,11 @@ export function useLocalStorage(key, def) {
     } catch (e) {
       if (e && (e.name==='QuotaExceededError' || e.code===22)) {
         try { localStorage.setItem(STORAGE_WARN_KEY,'1') } catch (e) { logger.warn('localStorage:', e.message) }
+        // The mount-time quota toast (useAppState) reads STORAGE_WARN_KEY only
+        // once on mount, so a user who hits quota *mid-session* would never be
+        // warned. Broadcast a window event so the live listener can fire the
+        // same toast immediately. Self-guarded — never let the warn path throw.
+        try { window.dispatchEvent(new CustomEvent('sporeus-quota-exceeded')) } catch (_) { /* non-browser env */ }
       }
     }
   }, [key])

@@ -152,6 +152,7 @@ export function MyCoachStatus({ userId, onDisconnect }) {
   const [coach, setCoach]   = useState(null)   // coach profile
   const [loading, setLoading] = useState(true)
   const [busy, setBusy]     = useState(false)
+  const [err, setErr]       = useState('')
 
   const load = useCallback(async () => {
     if (!supabase || !userId) { setLoading(false); return }
@@ -176,10 +177,18 @@ export function MyCoachStatus({ userId, onDisconnect }) {
 
   async function disconnect() {
     if (!link || busy) return
-    setBusy(true)
-    await supabase.from('coach_athletes')
+    setBusy(true); setErr('')
+    // Inspect the result: on RLS rejection / network failure the row stays
+    // 'active' and the coach keeps data access. Only clear the UI on success —
+    // otherwise the athlete would believe they're disconnected while they're not.
+    const { error } = await supabase.from('coach_athletes')
       .update({ status: 'revoked' })
       .eq('id', link.id)
+    if (error) {
+      setErr(t('myCoach_disconnectFailed'))
+      setBusy(false)
+      return
+    }
     setLink(null); setCoach(null); setBusy(false)
     if (onDisconnect) onDisconnect()
   }
@@ -191,20 +200,24 @@ export function MyCoachStatus({ userId, onDisconnect }) {
     <div style={{
       background: '#0064ff11', border: '1px solid #0064ff33', borderRadius: '6px',
       padding: '12px 16px', marginBottom: '16px', fontFamily: MONO,
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
     }}>
-      <div>
-        <div style={{ fontSize: '9px', color: '#0064ff88', letterSpacing: '0.1em', marginBottom: '2px' }}>{t('myCoach_myCoachLabel')}</div>
-        <div style={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 700 }}>
-          {coach?.display_name || t('myCoach_coachFallback')}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+        <div>
+          <div style={{ fontSize: '9px', color: '#0064ff88', letterSpacing: '0.1em', marginBottom: '2px' }}>{t('myCoach_myCoachLabel')}</div>
+          <div style={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 700 }}>
+            {coach?.display_name || t('myCoach_coachFallback')}
+          </div>
+          <div style={{ fontSize: '9px', color: '#555', marginTop: '2px' }}>{coach?.email || ''}</div>
         </div>
-        <div style={{ fontSize: '9px', color: '#555', marginTop: '2px' }}>{coach?.email || ''}</div>
+        <button onClick={disconnect} disabled={busy} style={{
+          ...btnStyle('#1a1a1a', RED), padding: '5px 12px', fontSize: '9px',
+        }}>
+          {busy ? '…' : t('myCoach_disconnect')}
+        </button>
       </div>
-      <button onClick={disconnect} disabled={busy} style={{
-        ...btnStyle('#1a1a1a', RED), padding: '5px 12px', fontSize: '9px',
-      }}>
-        {busy ? '…' : t('myCoach_disconnect')}
-      </button>
+      {err && (
+        <div role="alert" style={{ fontSize: '10px', color: RED, marginTop: '8px' }}>{err}</div>
+      )}
     </div>
   )
 }

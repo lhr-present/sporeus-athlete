@@ -250,7 +250,11 @@ export function useSessionComments(sessionId, currentUserId) {
   }, [sessionId, currentUserId])
 
   const editComment = useCallback(async (commentId, body) => {
-    const { error } = await dbEditComment(supabase, commentId, body)
+    const { error, queued } = await dbEditComment(supabase, commentId, body)
+    // A genuine server error (RLS denial, 4xx/5xx) returns error truthy and
+    // queued=false — surface it so the UI can keep the editor open. The offline
+    // path returns error=null, queued=true and IS applied optimistically (it'll
+    // replay from the write queue), mirroring postComment.
     if (!error) {
       setComments(prev =>
         prev.map(c => c.id === commentId
@@ -260,10 +264,11 @@ export function useSessionComments(sessionId, currentUserId) {
       )
       qc.invalidateQueries({ queryKey: qKey })
     }
+    return { error, queued }
   }, [qc, qKey])
 
   const deleteComment = useCallback(async (commentId) => {
-    const { error } = await dbDeleteComment(supabase, commentId)
+    const { error, queued } = await dbDeleteComment(supabase, commentId)
     if (!error) {
       setComments(prev =>
         prev.map(c => c.id === commentId
@@ -273,6 +278,7 @@ export function useSessionComments(sessionId, currentUserId) {
       )
       qc.invalidateQueries({ queryKey: qKey })
     }
+    return { error, queued }
   }, [qc, qKey])
 
   return { comments, status, typingUsers, views, postComment, editComment, deleteComment }

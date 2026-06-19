@@ -92,15 +92,33 @@ export default function AthleteDetailPanel({ athlete, onUpdate, onClose: _onClos
     navigator.clipboard.writeText(lines.join('\n')).catch(() => {})
   }
 
+  // Resolve the actual coach's name for the printed report. AthleteDetailPanel is
+  // rendered via AthleteCard (not a prop-threading point we can edit), so read the
+  // coach profile from the same localStorage key CoachDashboard persists it under
+  // ('sporeus-coach-profile'.name). Falls back to a neutral label — never the
+  // hardcoded founder name.
+  function resolveCoachName() {
+    try {
+      const raw = localStorage.getItem('sporeus-coach-profile')
+      if (raw) {
+        const cp = JSON.parse(raw)
+        const n = (cp?.name || '').trim()
+        if (n) return n
+      }
+    } catch { /* malformed / unavailable — fall through to neutral label */ }
+    return lang === 'tr' ? 'ANTRENÖR' : 'COACH'
+  }
+
   function handlePrintReport() {
     const p = athlete.profile || {}
     const load = computeLoad(log)
+    const coachName = resolveCoachName()
     const totalActual = complianceWeeks.reduce((s, c) => s + c.actual, 0)
     const totalPct = Math.round((totalActual / 16) * 100)
     const avgRec = recovery.length ? Math.round(recovery.slice(-7).reduce((s, r) => s + (r.score || 0), 0) / Math.min(7, recovery.length)) : null
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Sporeus — ${escHtml(athlete.name)}</title>
 <style>body{font-family:'IBM Plex Mono','Courier New',monospace;background:#0a0a0a;color:#e0e0e0;margin:0;padding:24px;font-size:12px}.h{border-bottom:2px solid #ff6600;padding-bottom:12px;margin-bottom:20px}.ht{font-size:20px;font-weight:700;color:#ff6600;letter-spacing:.1em}.sec{margin-bottom:18px;border:1px solid #222;border-radius:4px;padding:14px}.st{font-size:10px;font-weight:700;color:#0064ff;letter-spacing:.1em;margin-bottom:10px}.row{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:8px}.sv{font-size:22px;font-weight:700}.sl{font-size:9px;color:#888;letter-spacing:.06em;margin-top:3px}table{width:100%;border-collapse:collapse;font-size:11px}th{text-align:left;padding:4px 8px;color:#888;font-size:9px;border-bottom:1px solid #333}td{padding:5px 8px;border-bottom:1px solid #1a1a1a}.o{color:#ff6600}.b{color:#0064ff}.g{color:#5bc25b}.r{color:#e03030}.y{color:#f5c542}.tag{display:inline-block;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:700}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
-<div class="h"><div class="ht">◈ SPOREUS ATHLETE REPORT</div><div style="font-size:10px;color:#888;margin-top:4px">COACH: HÜSEYIN IŞIK · ${escHtml(TODAY)}</div></div>
+<div class="h"><div class="ht">◈ SPOREUS ATHLETE REPORT</div><div style="font-size:10px;color:#888;margin-top:4px">COACH: ${escHtml(coachName)} · ${escHtml(TODAY)}</div></div>
 <div class="sec"><div class="st">01 / ATHLETE PROFILE</div><div class="row"><div><span style="color:#888;font-size:9px">NAME</span><br/><strong style="font-size:14px">${escHtml(athlete.name)}</strong></div><div><span style="color:#888;font-size:9px">SPORT</span><br/>${escHtml(athlete.sport||'—')}</div><div><span style="color:#888;font-size:9px">AGE</span><br/>${escHtml(p.age||'—')}</div><div><span style="color:#888;font-size:9px">WEIGHT</span><br/>${escHtml(p.weight?p.weight+' kg':'—')}</div><div><span style="color:#888;font-size:9px">FTP</span><br/>${escHtml(p.ftp?p.ftp+' W':'—')}</div><div><span style="color:#888;font-size:9px">VO2MAX</span><br/>${escHtml(p.vo2max||'—')}</div><div><span style="color:#888;font-size:9px">GOAL</span><br/>${escHtml(p.goal||'—')}</div></div></div>
 <div class="sec"><div class="st">02 / TRAINING LOAD</div><div class="row"><div class="sv b">${load.ctl}<div class="sl">CTL (FITNESS)</div></div><div class="sv r">${load.atl}<div class="sl">ATL (FATIGUE)</div></div><div class="sv ${load.tsb>5?'g':load.tsb<-10?'r':'y'}">${load.tsb>=0?'+':''}${load.tsb}<div class="sl">TSB (FORM)</div></div><div class="sv o">${log.reduce((s,e)=>s+(e.tss||0),0)}<div class="sl">TOTAL TSS</div></div><div class="sv">${log.length}<div class="sl">SESSIONS</div></div></div></div>
 <div class="sec"><div class="st">03 / LAST 5 SESSIONS</div>${last5.length?'<table><thead><tr><th>DATE</th><th>TYPE</th><th>DUR</th><th>RPE</th><th>TSS</th></tr></thead><tbody>'+last5.map(s=>`<tr><td style="color:#888">${escHtml(s.date||'—')}</td><td>${escHtml(s.type||'—')}</td><td class="o">${s.duration?s.duration+'m':'—'}</td><td>${s.rpe||'—'}</td><td class="b">${s.tss||'—'}</td></tr>`).join('')+'</tbody></table>':'<div style="color:#888">No sessions.</div>'}</div>
