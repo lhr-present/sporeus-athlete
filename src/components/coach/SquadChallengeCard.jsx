@@ -139,7 +139,7 @@ export default function SquadChallengeCard() {
               type="text"
               value={form.title}
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-              placeholder="e.g. Run 200km in May"
+              placeholder={lang === 'tr' ? 'örn. Mayısta 200km koş' : 'e.g. Run 200km in May'}
             />
           </div>
           <div>
@@ -169,7 +169,7 @@ export default function SquadChallengeCard() {
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <div style={{ flex: 1 }}>
-              <span style={label}>Start</span>
+              <span style={label}>{lang === 'tr' ? 'Başlangıç' : 'Start'}</span>
               <input
                 style={input}
                 type="date"
@@ -178,7 +178,7 @@ export default function SquadChallengeCard() {
               />
             </div>
             <div style={{ flex: 1 }}>
-              <span style={label}>End</span>
+              <span style={label}>{lang === 'tr' ? 'Bitiş' : 'End'}</span>
               <input
                 style={input}
                 type="date"
@@ -188,8 +188,8 @@ export default function SquadChallengeCard() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-            <button style={btn} onClick={handleSave}>Save</button>
-            <button style={btnGhost} onClick={() => setShowForm(false)}>Cancel</button>
+            <button style={btn} onClick={handleSave}>{lang === 'tr' ? 'Kaydet' : 'Save'}</button>
+            <button style={btnGhost} onClick={() => setShowForm(false)}>{lang === 'tr' ? 'İptal' : 'Cancel'}</button>
           </div>
         </div>
       )}
@@ -230,7 +230,7 @@ export default function SquadChallengeCard() {
             </div>
           ) : (
             <div style={{ fontSize: '10px', color: 'var(--muted, #666)', marginBottom: '12px' }}>
-              No athlete entries yet.
+              {lang === 'tr' ? 'Henüz sporcu kaydı yok.' : 'No athlete entries yet.'}
             </div>
           )}
 

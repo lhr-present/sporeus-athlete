@@ -20,8 +20,25 @@ import { calcLoad } from '../../lib/formulas.js'
 
 // ─── SbAthletePanel — expanded detail for a live (Supabase) athlete ──────────
 const PLAN_GOALS_COACH = ['5K','10K','Half Marathon','Marathon','Cycling Event','General Fitness','Triathlon']
+const GOAL_LABELS = {
+  '5K':              { en: '5K',              tr: '5K' },
+  '10K':             { en: '10K',             tr: '10K' },
+  'Half Marathon':   { en: 'Half Marathon',   tr: 'Yarı Maraton' },
+  'Marathon':        { en: 'Marathon',        tr: 'Maraton' },
+  'Cycling Event':   { en: 'Cycling Event',   tr: 'Bisiklet Yarışı' },
+  'General Fitness': { en: 'General Fitness',  tr: 'Genel Kondisyon' },
+  'Triathlon':       { en: 'Triathlon',       tr: 'Triatlon' },
+}
 const PLAN_LEVELS_COACH = ['Beginner','Intermediate','Advanced']
 const LEVEL_OVERRIDE_OPTS = ['', 'Beginner', 'Recreational', 'Competitive', 'Advanced', 'Elite']
+const LEVEL_LABELS = {
+  Beginner:     { en: 'Beginner',     tr: 'Başlangıç' },
+  Intermediate: { en: 'Intermediate', tr: 'Orta' },
+  Recreational: { en: 'Recreational', tr: 'Hobi' },
+  Competitive:  { en: 'Competitive',  tr: 'Yarışmacı' },
+  Advanced:     { en: 'Advanced',     tr: 'İleri' },
+  Elite:        { en: 'Elite',        tr: 'Elit' },
+}
 const COACH_OVERRIDES_KEY = 'sporeus-coach-overrides'
 
 function readOverrides() { try { return JSON.parse(localStorage.getItem(COACH_OVERRIDES_KEY)) || {} } catch { return {} } }
@@ -30,7 +47,7 @@ function saveOverrides(obj) { try { localStorage.setItem(COACH_OVERRIDES_KEY, JS
 export default function SbAthletePanel({ athleteId, athleteName, data, metrics, injRisk, loading, coachId, coachName }) {
   const langCtx = useContext(LangCtx)
   const lang = langCtx?.lang ?? 'en'
-  const [planName,   setPlanName]   = useState(`${athleteName} — Training Plan`)
+  const [planName,   setPlanName]   = useState(`${athleteName} — ${lang === 'tr' ? 'Antrenman Planı' : 'Training Plan'}`)
   const [planGoal,   setPlanGoal]   = useState('Half Marathon')
   const [planWeeks,  setPlanWeeks]  = useState('12')
   const [planHours,  setPlanHours]  = useState('8')
@@ -194,7 +211,7 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
       setSendMsg(errMsg)
       announce(lang === 'tr' ? `Plan gönderimi başarısız: ${error.message}` : `Plan send failed: ${error.message}`, 'assertive')
     } else {
-      setSendMsg(`✓ Plan sent to ${athleteName}`)
+      setSendMsg(lang === 'tr' ? `✓ Plan ${athleteName} sporcusuna gönderildi` : `✓ Plan sent to ${athleteName}`)
       setShowForm(false)
       announce(lang === 'tr' ? 'Plan sporcuya gönderildi' : 'Plan sent to athlete', 'polite')
     }
@@ -213,7 +230,7 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
     if (!error) {
       setActivePlan(p => ({ ...p, weeks }))
       setEditingWeek(null); setWeekNoteDraft('')
-      setNoteMsg('✓ Note saved'); setTimeout(() => setNoteMsg(''), 3000)
+      setNoteMsg(lang === 'tr' ? '✓ Not kaydedildi' : '✓ Note saved'); setTimeout(() => setNoteMsg(''), 3000)
     } else {
       setNoteMsg(`⚠ ${error.message}`); setTimeout(() => setNoteMsg(''), 4000)
     }
@@ -222,7 +239,7 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
   return (
     <div style={{ background:'#0a0a0a', border:'1px solid #0064ff33', borderTop:'none', borderRadius:'0 0 5px 5px', padding:'12px 14px' }}>
       {loading ? (
-        <div style={{ ...S.mono, fontSize:'10px', color:'#555' }}>Loading…</div>
+        <div style={{ ...S.mono, fontSize:'10px', color:'#555' }}>{lang === 'tr' ? 'Yükleniyor…' : 'Loading…'}</div>
       ) : (
         <>
           {/* v9.56.0 — Athlete profile header. Pre-fix coaches couldn't see
@@ -432,11 +449,11 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
           {/* Metrics row */}
           <div style={{ display:'flex', gap:'16px', flexWrap:'wrap', marginBottom:'12px' }}>
             {[
-              { lbl:'SESSIONS', val: data?.log?.length ?? 0 },
+              { lbl: lang === 'tr' ? 'ANTRENMAN' : 'SESSIONS', val: data?.log?.length ?? 0 },
               { lbl:'CTL',      val: metrics?.ctl ?? '—', color:'#ff6600' },
               { lbl:'ATL',      val: metrics?.atl ?? '—', color:'#0064ff' },
               { lbl:'TSB',      val: metrics?.tsb ?? '—', color: (metrics?.tsb ?? 0) >= 0 ? '#5bc25b' : '#f5c542' },
-              { lbl:'INJURY RISK', val: injRisk?.level ?? '—', color: injRisk?.level === 'HIGH' ? '#e03030' : injRisk?.level === 'MODERATE' ? '#f5c542' : '#5bc25b' },
+              { lbl: lang === 'tr' ? 'YARALANMA RİSKİ' : 'INJURY RISK', val: injRisk?.level ?? '—', color: injRisk?.level === 'HIGH' ? '#e03030' : injRisk?.level === 'MODERATE' ? '#f5c542' : '#5bc25b' },
             ].map(({ lbl, val, color }) => (
               <div key={lbl} style={{ textAlign:'center' }}>
                 <div style={{ ...S.mono, fontSize:'16px', fontWeight:700, color: color || '#e0e0e0' }}>{val}</div>
@@ -586,7 +603,7 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
               <button
                 onClick={() => setShowCompli(s => !s)}
                 style={{ display:'flex', alignItems:'center', gap:'8px', background:'transparent', border:'none', cursor:'pointer', padding:0 }}>
-                <div style={{ ...S.mono, fontSize:'9px', color:'#555', letterSpacing:'0.08em' }}>SESSIONS</div>
+                <div style={{ ...S.mono, fontSize:'9px', color:'#555', letterSpacing:'0.08em' }}>{lang === 'tr' ? 'ANTRENMAN' : 'SESSIONS'}</div>
                 <div style={{ ...S.mono, fontSize:'13px', fontWeight:700, color: compliance.color }}>{compliance.pct}%</div>
                 <div style={{ flex:1, height:'5px', background:'#1a1a1a', borderRadius:'2px', minWidth:'60px', overflow:'hidden' }}>
                   <div style={{ height:'100%', width:`${compliance.pct}%`, background: compliance.color, borderRadius:'2px', transition:'width 0.4s' }}/>
@@ -611,7 +628,7 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
                     </div>
                   ))}
                   <div style={{ ...S.mono, fontSize:'9px', color:'#555', marginTop:'6px', borderTop:'1px solid #1e1e1e', paddingTop:'6px' }}>
-                    {compliance.totalLogged}/{compliance.totalPlanned} sessions · {compliance.pct}% overall
+                    {compliance.totalLogged}/{compliance.totalPlanned} {lang === 'tr' ? 'antrenman · genel %' : 'sessions · '}{compliance.pct}{lang === 'tr' ? '' : '% overall'}
                   </div>
                 </div>
               )}
@@ -624,7 +641,7 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
               <button
                 onClick={() => setShowWeekNotes(s => !s)}
                 style={{ display:'flex', alignItems:'center', gap:'8px', background:'transparent', border:'none', cursor:'pointer', padding:0 }}>
-                <div style={{ ...S.mono, fontSize:'9px', color:'#555', letterSpacing:'0.08em' }}>WEEK NOTES</div>
+                <div style={{ ...S.mono, fontSize:'9px', color:'#555', letterSpacing:'0.08em' }}>{lang === 'tr' ? 'HAFTA NOTLARI' : 'WEEK NOTES'}</div>
                 <div style={{ ...S.mono, fontSize:'10px', color:'#ff6600' }}>{activePlan.name}</div>
                 {activePlan.versionTag && (
                   <span style={{ ...S.mono, fontSize:'9px', color:'#666', letterSpacing:'0.04em' }}>
@@ -638,7 +655,7 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
                   if (activePlan.accepted_at) {
                     return (
                       <span style={{ ...S.mono, fontSize:'9px', color:'#5bc25b', background:'#5bc25b22', border:'1px solid #5bc25b66', borderRadius:'3px', padding:'1px 6px', letterSpacing:'0.06em' }}>
-                        ✓ ACCEPTED
+                        {lang === 'tr' ? '✓ KABUL EDİLDİ' : '✓ ACCEPTED'}
                       </span>
                     )
                   }
@@ -661,14 +678,14 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
                     return (
                       <span style={{ ...S.mono, fontSize:'9px', color:'#888', background:'#88888822', border:'1px solid #88888866', borderRadius:'3px', padding:'1px 6px', letterSpacing:'0.06em' }}
                         title={activePlan.decline_note || ''}>
-                        ✕ DECLINED{reasonLabel ? ` · ${reasonLabel}` : ''}
+                        {lang === 'tr' ? '✕ REDDEDİLDİ' : '✕ DECLINED'}{reasonLabel ? ` · ${reasonLabel}` : ''}
                         {activePlan.decline_note && <span style={{ color:'#aaa' }}>{' ✎'}</span>}
                       </span>
                     )
                   }
                   return (
                     <span style={{ ...S.mono, fontSize:'9px', color:'#f5c542', background:'#f5c54222', border:'1px solid #f5c54266', borderRadius:'3px', padding:'1px 6px', letterSpacing:'0.06em' }}>
-                      PENDING
+                      {lang === 'tr' ? 'BEKLİYOR' : 'PENDING'}
                     </span>
                   )
                 })()}
@@ -683,12 +700,12 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
                         <span style={{ ...S.mono, fontSize:'9px', color:'#ff6600', width:'24px' }}>W{wk.week ?? i + 1}</span>
                         <span style={{ ...S.mono, fontSize:'9px', color:'#888', flex:1 }}>{wk.phase}</span>
                         {wk.coachNote && editingWeek !== i && (
-                          <span style={{ ...S.mono, fontSize:'9px', color:'#5bc25b' }}>✓ note</span>
+                          <span style={{ ...S.mono, fontSize:'9px', color:'#5bc25b' }}>{lang === 'tr' ? '✓ not' : '✓ note'}</span>
                         )}
                         <button
                           onClick={() => { setEditingWeek(editingWeek === i ? null : i); setWeekNoteDraft(wk.coachNote || '') }}
                           style={{ ...S.mono, fontSize:'8px', color:'#0064ff', background:'transparent', border:'1px solid #0064ff33', borderRadius:'3px', padding:'2px 6px', cursor:'pointer' }}>
-                          {editingWeek === i ? 'cancel' : wk.coachNote ? 'edit' : '+ note'}
+                          {editingWeek === i ? (lang === 'tr' ? 'iptal' : 'cancel') : wk.coachNote ? (lang === 'tr' ? 'düzenle' : 'edit') : (lang === 'tr' ? '+ not' : '+ note')}
                         </button>
                       </div>
                       {wk.coachNote && editingWeek !== i && (
@@ -700,14 +717,14 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
                             value={weekNoteDraft}
                             onChange={e => setWeekNoteDraft(e.target.value)}
                             rows={2}
-                            placeholder={`Note for Week ${wk.week ?? i + 1}…`}
+                            placeholder={lang === 'tr' ? `${wk.week ?? i + 1}. Hafta için not…` : `Note for Week ${wk.week ?? i + 1}…`}
                             style={{ ...S.input, flex:1, fontSize:'10px', padding:'5px 7px', resize:'none', lineHeight:1.5 }}
                           />
                           <button
                             onClick={() => saveWeekNote(i)}
                             disabled={savingNote}
                             style={{ ...S.mono, fontSize:'9px', fontWeight:700, padding:'4px 10px', background:'#0064ff', border:'none', color:'#fff', borderRadius:'3px', cursor:'pointer', alignSelf:'flex-start', opacity: savingNote ? 0.5 : 1 }}>
-                            {savingNote ? '…' : 'SAVE'}
+                            {savingNote ? '…' : (lang === 'tr' ? 'KAYDET' : 'SAVE')}
                           </button>
                         </div>
                       )}
@@ -720,17 +737,17 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
 
           {/* Coach level override */}
           <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'12px', flexWrap:'wrap' }}>
-            <div style={{ ...S.mono, fontSize:'9px', color:'#555', letterSpacing:'0.08em', whiteSpace:'nowrap' }}>ATHLETE LEVEL</div>
+            <div style={{ ...S.mono, fontSize:'9px', color:'#555', letterSpacing:'0.08em', whiteSpace:'nowrap' }}>{lang === 'tr' ? 'SPORCU SEVİYESİ' : 'ATHLETE LEVEL'}</div>
             <select
               value={levelOverride}
               onChange={e => handleLevelOverride(e.target.value)}
               style={{ ...S.select, fontSize:'10px', padding:'4px 8px', flex:'0 0 auto', minWidth:'200px' }}>
-              <option value="">Use athlete's self-report ({data?.profile?.athleteLevel || '?'})</option>
-              {LEVEL_OVERRIDE_OPTS.filter(Boolean).map(l => <option key={l} value={l}>{l}</option>)}
+              <option value="">{lang === 'tr' ? `Sporcunun beyanını kullan (${data?.profile?.athleteLevel || '?'})` : `Use athlete's self-report (${data?.profile?.athleteLevel || '?'})`}</option>
+              {LEVEL_OVERRIDE_OPTS.filter(Boolean).map(l => <option key={l} value={l}>{LEVEL_LABELS[l]?.[lang] || l}</option>)}
             </select>
             {levelOverride && (
               <span style={{ ...S.mono, fontSize:'9px', color:'#ff6600', letterSpacing:'0.06em' }}>
-                ▲ COACH OVERRIDE
+                ▲ {lang === 'tr' ? 'KOÇ GEÇERSİZ KILDI' : 'COACH OVERRIDE'}
               </span>
             )}
           </div>
@@ -740,12 +757,12 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
             <button
               onClick={() => data && openAthleteReport({ name: athleteName, log: data.log, recovery: data.recovery, coachNotes: [], coachName })}
               style={{ ...S.mono, fontSize:'10px', fontWeight:600, padding:'5px 12px', background:'#ff6600', border:'none', color:'#fff', borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em' }}>
-              ↓ PDF REPORT
+              {lang === 'tr' ? '↓ PDF RAPOR' : '↓ PDF REPORT'}
             </button>
             <button
               onClick={() => setShowForm(f => !f)}
               style={{ ...S.mono, fontSize:'10px', fontWeight:600, padding:'5px 12px', background: showForm ? '#0064ff22' : 'transparent', border:'1px solid #0064ff44', color:'#0064ff', borderRadius:'3px', cursor:'pointer', letterSpacing:'0.06em' }}>
-              {showForm ? '✕ CANCEL' : '↑ SEND PLAN'}
+              {showForm ? (lang === 'tr' ? '✕ İPTAL' : '✕ CANCEL') : (lang === 'tr' ? '↑ PLAN GÖNDER' : '↑ SEND PLAN')}
             </button>
           </div>
 
@@ -753,37 +770,37 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
           {showForm && (
             <div style={{ marginTop:'12px', padding:'12px', background:'#0a1520', border:'1px solid #0064ff22', borderRadius:'5px' }}>
               <div style={{ ...S.mono, fontSize:'10px', color:'#0064ff', fontWeight:600, letterSpacing:'0.1em', marginBottom:'10px' }}>
-                SEND TRAINING PLAN TO {athleteName.toUpperCase()}
+                {lang === 'tr' ? `${athleteName.toUpperCase()} SPORCUSUNA ANTRENMAN PLANI GÖNDER` : `SEND TRAINING PLAN TO ${athleteName.toUpperCase()}`}
               </div>
               <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', marginBottom:'8px' }}>
                 <div style={{ flex:'2 1 200px' }}>
-                  <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginBottom:'3px' }}>PLAN NAME</div>
+                  <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginBottom:'3px' }}>{lang === 'tr' ? 'PLAN ADI' : 'PLAN NAME'}</div>
                   <input style={{ ...S.input, fontSize:'11px', padding:'6px 8px' }} value={planName} onChange={e => setPlanName(e.target.value)}/>
                 </div>
                 <div style={{ flex:'1 1 120px' }}>
-                  <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginBottom:'3px' }}>START DATE</div>
+                  <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginBottom:'3px' }}>{lang === 'tr' ? 'BAŞLANGIÇ TARİHİ' : 'START DATE'}</div>
                   <input style={{ ...S.input, fontSize:'11px', padding:'6px 8px' }} type="date" value={startDate} onChange={e => setStartDate(e.target.value)}/>
                 </div>
               </div>
               <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', marginBottom:'10px' }}>
                 <div style={{ flex:'1 1 120px' }}>
-                  <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginBottom:'3px' }}>GOAL</div>
+                  <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginBottom:'3px' }}>{lang === 'tr' ? 'HEDEF' : 'GOAL'}</div>
                   <select style={{ ...S.select, fontSize:'11px', padding:'6px 8px' }} value={planGoal} onChange={e => setPlanGoal(e.target.value)}>
-                    {PLAN_GOALS_COACH.map(g => <option key={g}>{g}</option>)}
+                    {PLAN_GOALS_COACH.map(g => <option key={g} value={g}>{GOAL_LABELS[g]?.[lang] || g}</option>)}
                   </select>
                 </div>
                 <div style={{ flex:'1 1 80px' }}>
-                  <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginBottom:'3px' }}>WEEKS</div>
+                  <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginBottom:'3px' }}>{lang === 'tr' ? 'HAFTA' : 'WEEKS'}</div>
                   <input style={{ ...S.input, fontSize:'11px', padding:'6px 8px' }} type="number" min="4" max="24" value={planWeeks} onChange={e => setPlanWeeks(e.target.value)}/>
                 </div>
                 <div style={{ flex:'1 1 80px' }}>
-                  <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginBottom:'3px' }}>HRS/WK</div>
+                  <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginBottom:'3px' }}>{lang === 'tr' ? 'SAAT/HAFTA' : 'HRS/WK'}</div>
                   <input style={{ ...S.input, fontSize:'11px', padding:'6px 8px' }} type="number" min="3" max="30" step="0.5" value={planHours} onChange={e => setPlanHours(e.target.value)}/>
                 </div>
                 <div style={{ flex:'1 1 100px' }}>
-                  <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginBottom:'3px' }}>LEVEL</div>
+                  <div style={{ ...S.mono, fontSize:'9px', color:'#888', marginBottom:'3px' }}>{lang === 'tr' ? 'SEVİYE' : 'LEVEL'}</div>
                   <select style={{ ...S.select, fontSize:'11px', padding:'6px 8px' }} value={planLevel} onChange={e => setPlanLevel(e.target.value)}>
-                    {PLAN_LEVELS_COACH.map(l => <option key={l}>{l}</option>)}
+                    {PLAN_LEVELS_COACH.map(l => <option key={l} value={l}>{LEVEL_LABELS[l]?.[lang] || l}</option>)}
                   </select>
                 </div>
               </div>
@@ -791,7 +808,7 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
                 onClick={handleSendPlan}
                 disabled={sending}
                 style={{ ...S.mono, fontSize:'11px', fontWeight:700, padding:'7px 18px', background:'#0064ff', border:'none', color:'#fff', borderRadius:'4px', cursor:'pointer', letterSpacing:'0.08em', opacity: sending ? 0.6 : 1 }}>
-                {sending ? 'SENDING...' : `↑ SEND PLAN (${planWeeks}wk ${planGoal})`}
+                {sending ? (lang === 'tr' ? 'GÖNDERİLİYOR...' : 'SENDING...') : (lang === 'tr' ? `↑ PLAN GÖNDER (${planWeeks}hf ${GOAL_LABELS[planGoal]?.tr || planGoal})` : `↑ SEND PLAN (${planWeeks}wk ${planGoal})`)}
               </button>
               {sendMsg && (
                 <div style={{ ...S.mono, fontSize:'10px', marginTop:'8px', color: sendMsg.startsWith('⚠') ? '#e03030' : '#5bc25b' }}>
@@ -805,7 +822,7 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
             <button
               onClick={toggleMessages}
               style={{ display:'flex', alignItems:'center', gap:'8px', background:'transparent', border:'1px solid #0064ff33', borderRadius:'4px', padding:'5px 10px', cursor:'pointer' }}>
-              <span style={{ ...S.mono, fontSize:'9px', color:'#0064ff', letterSpacing:'0.08em' }}>✉ MESSAGES</span>
+              <span style={{ ...S.mono, fontSize:'9px', color:'#0064ff', letterSpacing:'0.08em' }}>✉ {lang === 'tr' ? 'MESAJLAR' : 'MESSAGES'}</span>
               {unreadFromAthlete > 0 && (
                 <span style={{ background:'#0064ff', color:'#fff', borderRadius:'8px', fontSize:'9px', padding:'1px 6px', ...S.mono, fontWeight:700 }}>{unreadFromAthlete}</span>
               )}
@@ -819,7 +836,7 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
                 {/* Thread */}
                 <div style={{ maxHeight:'200px', overflowY:'auto', padding:'10px 12px', display:'flex', flexDirection:'column', gap:'8px' }}>
                   {messages.length === 0 ? (
-                    <div style={{ ...S.mono, fontSize:'10px', color:'#555', textAlign:'center', padding:'16px 0' }}>No messages yet. Write below to start.</div>
+                    <div style={{ ...S.mono, fontSize:'10px', color:'#555', textAlign:'center', padding:'16px 0' }}>{lang === 'tr' ? 'Henüz mesaj yok. Başlamak için aşağıya yazın.' : 'No messages yet. Write below to start.'}</div>
                   ) : messages.map(m => (
                     <div key={m.id} style={{ display:'flex', flexDirection:'column', alignItems: m.from === 'coach' ? 'flex-end' : 'flex-start' }}>
                       <div style={{ maxWidth:'80%', padding:'6px 10px', borderRadius:'8px', background: m.from === 'coach' ? '#ff660022' : '#0064ff22', border:`1px solid ${m.from === 'coach' ? '#ff660044' : '#0064ff44'}` }}>
@@ -835,7 +852,7 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
                     value={msgDraft}
                     onChange={e => setMsgDraft(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
-                    placeholder="Write to athlete… (Enter to send)"
+                    placeholder={lang === 'tr' ? 'Sporcuya yazın… (göndermek için Enter)' : 'Write to athlete… (Enter to send)'}
                     rows={2}
                     style={{ ...S.input, flex:1, fontSize:'11px', padding:'6px 8px', resize:'none', fontFamily:'inherit', lineHeight:1.5 }}
                   />
@@ -843,11 +860,11 @@ export default function SbAthletePanel({ athleteId, athleteName, data, metrics, 
                     onClick={sendMessage}
                     disabled={!msgDraft.trim()}
                     style={{ ...S.mono, fontSize:'10px', fontWeight:700, padding:'6px 12px', background:'#0064ff', border:'none', color:'#fff', borderRadius:'4px', cursor:'pointer', opacity: msgDraft.trim() ? 1 : 0.4, alignSelf:'flex-end' }}>
-                    SEND
+                    {lang === 'tr' ? 'GÖNDER' : 'SEND'}
                   </button>
                 </div>
                 <div style={{ ...S.mono, fontSize:'8px', color:'#444', padding:'4px 10px 6px', borderTop:'1px solid #0a1a20' }}>
-                  Messages are stored locally. Export athlete JSON to share with athlete.
+                  {lang === 'tr' ? 'Mesajlar cihazda saklanır. Sporcuyla paylaşmak için sporcu JSON dosyasını dışa aktarın.' : 'Messages are stored locally. Export athlete JSON to share with athlete.'}
                 </div>
               </div>
             )}

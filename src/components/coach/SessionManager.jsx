@@ -55,14 +55,15 @@ export default function SessionManager({ coachId, lang = 'en' }) {
   }
 
   const handleCreate = async () => {
+    const tr = lang === 'tr'
     setErr('')
-    if (!form.title.trim()) { setErr('Title is required'); return }
-    if (!form.session_date) { setErr('Date is required'); return }
-    if (form.session_date < today) { setErr('Date must be today or future'); return }
+    if (!form.title.trim()) { setErr(tr ? 'Başlık zorunlu' : 'Title is required'); return }
+    if (!form.session_date) { setErr(tr ? 'Tarih zorunlu' : 'Date is required'); return }
+    if (form.session_date < today) { setErr(tr ? 'Tarih bugün veya gelecekte olmalı' : 'Date must be today or future'); return }
     setCreating(true)
     const { error } = await createSession(coachId, form)
     setCreating(false)
-    if (error) { setErr(error.message || 'Failed to create session'); return }
+    if (error) { setErr(error.message || (tr ? 'Oturum oluşturulamadı' : 'Failed to create session')); return }
     setForm({ title: '', session_date: '', session_time: '', notes: '', meeting_url: '' })
     setShowForm(false)
     await loadSessions()

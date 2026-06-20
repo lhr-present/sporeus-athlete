@@ -20,7 +20,7 @@ function fmtDate(d) { return d ? d.slice(5) : '—' }
 export default function ExpandedRow({ athlete, coachId = null, onNote }) {
   const [liveLog, setLiveLog] = useState(null)
   const [loading, setLoading] = useState(false)
-  const { t } = useContext(LangCtx)
+  const { t, lang } = useContext(LangCtx)
 
   useEffect(() => {
     if (athlete._log) { setLiveLog(athlete._log); return }
@@ -41,7 +41,7 @@ export default function ExpandedRow({ athlete, coachId = null, onNote }) {
     <div style={{ padding: '10px 14px 14px', background: 'var(--surface)', borderTop: '1px solid #1e1e1e' }}>
       <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
         <div style={{ flex: '1 1 260px', minWidth: 0 }}>
-          {loading && <div style={{ fontFamily: MONO, fontSize: 9, color: '#444' }}>Loading…</div>}
+          {loading && <div style={{ fontFamily: MONO, fontSize: 9, color: '#444' }}>{lang === 'tr' ? 'Yükleniyor…' : 'Loading…'}</div>}
           {liveLog && liveLog.length >= 5 && <CTLChart log={liveLog} days={30} raceResults={[]} />}
           {liveLog && liveLog.length < 5 && (
             <div style={{ fontFamily: MONO, fontSize: 10, color: '#444' }}>
