@@ -2,6 +2,24 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.446.0 — 2026-06-20 — Coach i18n long-tail (lower-traffic surfaces → bilingual)
+
+Completes the coach i18n started in v9.445. Lower-traffic coach files internationalized via inline
+bilingual (`lang === 'tr' ? … : …` / `isTR`), matching the coach dir's existing idiom (no LangCtx
+LABELS changes; two parallel file-disjoint agents). Strings-only.
+
+- Translated: CoachOnboarding, CoachRegistration, AthleteComparison, TeamMetrics (incl. the WhatsApp
+  export text), PlanDistribution, SbAthletePanel (~35 strings; option *values* kept English so
+  generatePlan/planSignature/override logic is untouched, only labels translated), AthleteCard
+  tooltips; SquadBenchmarkTable, SessionManager validation toasts, WeeklyDigestCard, ChatPanel
+  (UI only — AI prompt text left as-is), SquadChallengeCard, ExpandedRow.
+- Verified already-bilingual (no change): ClubOnboarding, SquadCompareStrip, TeamAnnouncement,
+  MessageTemplates, CoachEditPanel, CoachAthleteProgramCard.
+- Kept identical: technical acronyms (ACWR/TSS/CTL/ATL/TSB/VO2max/HRV/FTP/SWOLF), proper nouns,
+  stored enum values, AI model prompts. Proper Turkish UTF-8 (no mojibake).
+
+15,947 green (713 files), lint + build clean.
+
 ## v9.445.0 — 2026-06-20 — Coach surface i18n sweep (high-traffic surfaces → bilingual)
 
 The coach console rendered hardcoded English to Turkish coaches. Internationalized the high-traffic

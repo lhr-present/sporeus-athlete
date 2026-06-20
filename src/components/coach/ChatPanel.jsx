@@ -40,7 +40,7 @@ export default function ChatPanel({ squad, isDemo: _isDemo }) {
     setMsgs(prev => [...prev, { role: 'ai', text: '' }])
 
     try {
-      if (!isSupabaseReady()) throw new Error('Not connected — sign in to use AI chat')
+      if (!isSupabaseReady()) throw new Error(isTR ? 'Bağlı değil — yapay zeka sohbetini kullanmak için giriş yap' : 'Not connected — sign in to use AI chat')
 
       const system = 'You are an expert endurance coach assistant. Answer questions about the squad data provided. Be concise and practical. Under 150 words unless more detail is clearly needed.'
       const user_msg = `Squad (${squad.length} athletes):\n${squad.map(a =>
@@ -51,10 +51,10 @@ export default function ChatPanel({ squad, isDemo: _isDemo }) {
         body: { model_alias: 'haiku', system, user_msg, max_tokens: 512 },
       })
 
-      if (error) throw new Error(error.message || 'AI proxy error')
+      if (error) throw new Error(error.message || (isTR ? 'Yapay zeka proxy hatası' : 'AI proxy error'))
       if (data?.error) throw new Error(data.error)
 
-      const reply = data?.content || '(no response)'
+      const reply = data?.content || (isTR ? '(yanıt yok)' : '(no response)')
       setMsgs(prev => {
         const copy = [...prev]
         const last = copy[copy.length - 1]
@@ -81,7 +81,7 @@ export default function ChatPanel({ squad, isDemo: _isDemo }) {
           onClick={() => setOpen(true)}
           style={S.smBtn}
         >
-          ◈ ASK AI
+          ◈ {isTR ? 'YAPAY ZEKAYA SOR' : 'ASK AI'}
         </button>
       </div>
     )
@@ -91,10 +91,10 @@ export default function ChatPanel({ squad, isDemo: _isDemo }) {
     <div style={{ marginTop: 14, border: `1px solid ${ORANGE}44`, borderRadius: 4, overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#0d0d0d', borderBottom: '1px solid #1e1e1e' }}>
-        <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, color: ORANGE, letterSpacing: '0.1em' }}>◈ AI COACH</span>
+        <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, color: ORANGE, letterSpacing: '0.1em' }}>◈ {isTR ? 'YAPAY ZEKA KOÇ' : 'AI COACH'}</span>
         <div style={{ display: 'flex', gap: 6 }}>
           {msgs.length > 0 && (
-            <button onClick={() => setMsgs([])} style={S.ghostBtn}>CLEAR</button>
+            <button onClick={() => setMsgs([])} style={S.ghostBtn}>{isTR ? 'TEMİZLE' : 'CLEAR'}</button>
           )}
           <button onClick={() => setOpen(false)} aria-label={isTR ? 'AI koç panelini kapat' : 'Collapse AI coach panel'} style={{ ...S.ghostBtn, fontSize: 10 }}>▼</button>
         </div>
@@ -104,7 +104,9 @@ export default function ChatPanel({ squad, isDemo: _isDemo }) {
       <div ref={threadRef} style={{ maxHeight: 280, overflowY: 'auto', padding: '10px 12px', background: '#070707', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {msgs.length === 0 && (
           <div style={{ ...S.dimText, fontSize: 10, textAlign: 'center', marginTop: 20 }}>
-            Ask about your squad — readiness, load, who to push, who to rest.
+            {isTR
+              ? 'Kadron hakkında sor — hazırbulunuşluk, yük, kimi zorlamalı, kimi dinlendirmeli.'
+              : 'Ask about your squad — readiness, load, who to push, who to rest.'}
           </div>
         )}
         {msgs.map((m, i) => (
@@ -127,7 +129,7 @@ export default function ChatPanel({ squad, isDemo: _isDemo }) {
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
-          placeholder="Ask about your squad..."
+          placeholder={isTR ? 'Kadron hakkında sor...' : 'Ask about your squad...'}
           disabled={busy}
           style={{ flex: 1, fontFamily: MONO, fontSize: 11, background: 'transparent', border: 'none', outline: 'none', padding: '10px 12px', color: '#e0e0e0' }}
         />

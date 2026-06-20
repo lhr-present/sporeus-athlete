@@ -42,10 +42,10 @@ export default function AthleteCard({ athlete, isOpen, onToggle, onRemove, onUpd
           </div>
           {/* Quick action buttons */}
           <div style={{ display:'flex', gap:'4px', flexShrink:0 }}>
-            <button onClick={handleQuickReport} title="Copy quick report" aria-label={lang === 'tr' ? 'Hızlı rapor kopyala' : 'Copy quick report'} style={{ ...S.mono, fontSize:'11px', padding:'4px 7px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'3px', cursor:'pointer', color:'var(--muted)' }}>
+            <button onClick={handleQuickReport} title={lang === 'tr' ? 'Hızlı rapor kopyala' : 'Copy quick report'} aria-label={lang === 'tr' ? 'Hızlı rapor kopyala' : 'Copy quick report'} style={{ ...S.mono, fontSize:'11px', padding:'4px 7px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'3px', cursor:'pointer', color:'var(--muted)' }}>
               📋
             </button>
-            <button onClick={onQuickNote} title="Add quick note" aria-label={lang === 'tr' ? 'Hızlı not ekle' : 'Add quick note'} style={{ ...S.mono, fontSize:'11px', padding:'4px 7px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'3px', cursor:'pointer', color:'var(--muted)' }}>
+            <button onClick={onQuickNote} title={lang === 'tr' ? 'Hızlı not ekle' : 'Add quick note'} aria-label={lang === 'tr' ? 'Hızlı not ekle' : 'Add quick note'} style={{ ...S.mono, fontSize:'11px', padding:'4px 7px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'3px', cursor:'pointer', color:'var(--muted)' }}>
               📝
             </button>
             <button
@@ -55,7 +55,7 @@ export default function AthleteCard({ athlete, isOpen, onToggle, onRemove, onUpd
               style={{ ...S.btnSec, fontSize:'11px', padding:'5px 10px', background: isOpen?'#0064ff':'transparent', color: isOpen?'#fff':'#0064ff', borderColor:'#0064ff' }}>
               {isOpen ? '▲' : '▼'}
             </button>
-            <button onClick={onRemove} aria-label="Remove athlete" style={{ ...S.btnSec, fontSize:'11px', padding:'5px 8px', color:'#e03030', borderColor:'#e03030' }}>✕</button>
+            <button onClick={onRemove} aria-label={lang === 'tr' ? 'Sporcuyu kaldır' : 'Remove athlete'} style={{ ...S.btnSec, fontSize:'11px', padding:'5px 8px', color:'#e03030', borderColor:'#e03030' }}>✕</button>
           </div>
         </div>
 

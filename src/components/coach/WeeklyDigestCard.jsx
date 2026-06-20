@@ -2,14 +2,17 @@
 // Reads the latest row from weekly_digests for the signed-in coach.
 // digest_json shape: { headline, highlights[], alerts[], recommendation, citations[] }
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import { supabase, isSupabaseReady } from '../../lib/supabase.js'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
 const BLUE   = '#0064ff'
 
 export default function WeeklyDigestCard({ coachId }) {
+  const { lang } = useContext(LangCtx)
+  const isTR = lang === 'tr'
   const [digest,  setDigest]  = useState(null)
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState(null)
@@ -40,7 +43,7 @@ export default function WeeklyDigestCard({ coachId }) {
         style={{ width:'100%', background:'transparent', border:'none', cursor:'pointer', padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'space-between' }}
       >
         <span style={{ fontFamily:MONO, fontSize:'11px', fontWeight:700, color:ORANGE, letterSpacing:'0.1em' }}>
-          ◈ WEEKLY AI DIGEST
+          ◈ {isTR ? 'HAFTALIK YAPAY ZEKA ÖZETİ' : 'WEEKLY AI DIGEST'}
         </span>
         <span style={{ fontFamily:MONO, fontSize:'11px', color:ORANGE }}>{open ? '▴' : '▾'}</span>
       </button>
@@ -48,7 +51,7 @@ export default function WeeklyDigestCard({ coachId }) {
       {open && (
         <div style={{ padding:'0 14px 14px' }}>
           {loading && (
-            <div style={{ fontFamily:MONO, fontSize:'11px', color:'var(--muted)', padding:'8px 0' }}>Loading…</div>
+            <div style={{ fontFamily:MONO, fontSize:'11px', color:'var(--muted)', padding:'8px 0' }}>{isTR ? 'Yükleniyor…' : 'Loading…'}</div>
           )}
 
           {error && (
@@ -57,7 +60,7 @@ export default function WeeklyDigestCard({ coachId }) {
 
           {empty && (
             <div style={{ fontFamily:MONO, fontSize:'11px', color:'var(--muted)', padding:'8px 0' }}>
-              No digest yet — runs Sunday night
+              {isTR ? 'Henüz özet yok — Pazar gecesi çalışır' : 'No digest yet — runs Sunday night'}
             </div>
           )}
 
@@ -69,7 +72,7 @@ export default function WeeklyDigestCard({ coachId }) {
             return (
               <div>
                 <div style={{ fontFamily:MONO, fontSize:'9px', color:'var(--muted)', marginBottom:'8px', letterSpacing:'0.06em' }}>
-                  WEEK OF {digest.week_start}
+                  {isTR ? 'HAFTA' : 'WEEK OF'} {digest.week_start}
                 </div>
 
                 {d.headline && (
@@ -80,7 +83,7 @@ export default function WeeklyDigestCard({ coachId }) {
 
                 {highlights.length > 0 && (
                   <div style={{ marginBottom:'10px' }}>
-                    <div style={{ fontFamily:MONO, fontSize:'9px', color:BLUE, letterSpacing:'0.1em', marginBottom:'4px' }}>HIGHLIGHTS</div>
+                    <div style={{ fontFamily:MONO, fontSize:'9px', color:BLUE, letterSpacing:'0.1em', marginBottom:'4px' }}>{isTR ? 'ÖNE ÇIKANLAR' : 'HIGHLIGHTS'}</div>
                     {highlights.map((h, i) => (
                       <div key={i} style={{ fontFamily:MONO, fontSize:'11px', color:'var(--text)', lineHeight:1.5, paddingLeft:'10px', position:'relative' }}>
                         <span style={{ position:'absolute', left:0, color:BLUE }}>·</span>{h}
@@ -91,7 +94,7 @@ export default function WeeklyDigestCard({ coachId }) {
 
                 {alerts.length > 0 && (
                   <div style={{ marginBottom:'10px' }}>
-                    <div style={{ fontFamily:MONO, fontSize:'9px', color:'#f5c542', letterSpacing:'0.1em', marginBottom:'4px' }}>ALERTS</div>
+                    <div style={{ fontFamily:MONO, fontSize:'9px', color:'#f5c542', letterSpacing:'0.1em', marginBottom:'4px' }}>{isTR ? 'UYARILAR' : 'ALERTS'}</div>
                     {alerts.map((a, i) => (
                       <div key={i} style={{ fontFamily:MONO, fontSize:'11px', color:'#f5c542', lineHeight:1.5, paddingLeft:'10px', position:'relative' }}>
                         <span style={{ position:'absolute', left:0 }}>⚠</span>{a}
@@ -102,14 +105,14 @@ export default function WeeklyDigestCard({ coachId }) {
 
                 {d.recommendation && (
                   <div style={{ background:'#ff660011', border:'1px solid #ff660033', borderRadius:'4px', padding:'8px 10px', marginBottom:'10px' }}>
-                    <div style={{ fontFamily:MONO, fontSize:'9px', color:ORANGE, letterSpacing:'0.1em', marginBottom:'4px' }}>RECOMMENDATION</div>
+                    <div style={{ fontFamily:MONO, fontSize:'9px', color:ORANGE, letterSpacing:'0.1em', marginBottom:'4px' }}>{isTR ? 'ÖNERİ' : 'RECOMMENDATION'}</div>
                     <div style={{ fontFamily:MONO, fontSize:'11px', color:'var(--text)', lineHeight:1.5 }}>{d.recommendation}</div>
                   </div>
                 )}
 
                 {citations.length > 0 && (
                   <div>
-                    <div style={{ fontFamily:MONO, fontSize:'9px', color:'var(--muted)', letterSpacing:'0.06em', marginBottom:'4px' }}>SOURCES</div>
+                    <div style={{ fontFamily:MONO, fontSize:'9px', color:'var(--muted)', letterSpacing:'0.06em', marginBottom:'4px' }}>{isTR ? 'KAYNAKLAR' : 'SOURCES'}</div>
                     {citations.map((c, i) => (
                       <div key={i} style={{ fontFamily:MONO, fontSize:'9px', color:'var(--muted)', lineHeight:1.5 }}>
                         [{i + 1}] {typeof c === 'string' ? c : (c.title || c.session_id || JSON.stringify(c))}

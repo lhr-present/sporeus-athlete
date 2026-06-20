@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useContext } from 'react'
 import { rankSquad, exportSquadCSV, limitSelection } from '../../lib/sport/squadBenchmark.js'
+import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 
 // ─── Color helpers ────────────────────────────────────────────────────────────
@@ -62,20 +63,20 @@ function Sparkline({ ctl, atl }) {
 
 // ─── AthleteComparisonPanel ───────────────────────────────────────────────────
 
-function AthleteComparisonPanel({ athletes, selectedIds, onReset }) {
+function AthleteComparisonPanel({ athletes, selectedIds, onReset, isTR }) {
   const selected = athletes.filter(a => selectedIds.has(a.id))
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <div style={{ ...S.mono, fontSize: '11px', fontWeight: 700, color: '#ff6600', letterSpacing: '0.1em' }}>
-          ATHLETE COMPARISON — {selected.length} SELECTED
+          {isTR ? 'SPORCU KARŞILAŞTIRMASI' : 'ATHLETE COMPARISON'} — {selected.length} {isTR ? 'SEÇİLİ' : 'SELECTED'}
         </div>
         <button
           onClick={onReset}
           style={{ ...S.mono, fontSize: '10px', padding: '4px 12px', background: 'transparent', border: '1px solid #ff6600', color: '#ff6600', borderRadius: '3px', cursor: 'pointer' }}
         >
-          ← RESET COMPARISON
+          ← {isTR ? 'KARŞILAŞTIRMAYI SIFIRLA' : 'RESET COMPARISON'}
         </button>
       </div>
 
@@ -106,7 +107,7 @@ function AthleteComparisonPanel({ athletes, selectedIds, onReset }) {
               {/* 28-day CTL/ATL/TSB sparkline */}
               <div style={{ marginBottom: '8px' }}>
                 <div style={{ ...S.mono, fontSize: '8px', color: '#555', marginBottom: '4px', letterSpacing: '0.07em' }}>
-                  28D CTL / ATL / TSB
+                  {isTR ? '28G' : '28D'} CTL / ATL / TSB
                 </div>
                 <Sparkline ctl={ctl} atl={atl} />
                 <div style={{ display: 'flex', gap: '8px', marginTop: '3px' }}>
@@ -119,7 +120,7 @@ function AthleteComparisonPanel({ athletes, selectedIds, onReset }) {
               {/* Wellness bar */}
               <div style={{ marginBottom: '8px' }}>
                 <div style={{ ...S.mono, fontSize: '8px', color: '#555', marginBottom: '3px', letterSpacing: '0.07em' }}>
-                  WELLNESS {athlete.wellness_avg != null ? athlete.wellness_avg.toFixed(1) : '—'}/10
+                  {isTR ? 'İYİLİK HALİ' : 'WELLNESS'} {athlete.wellness_avg != null ? athlete.wellness_avg.toFixed(1) : '—'}/10
                 </div>
                 <div style={{ height: '6px', background: '#1a1a1a', borderRadius: '3px', overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${wellnessPct}%`, background: wColor, borderRadius: '3px', transition: 'width 0.3s' }} />
@@ -140,18 +141,23 @@ function AthleteComparisonPanel({ athletes, selectedIds, onReset }) {
 
 // ─── Column definitions ───────────────────────────────────────────────────────
 
-const COLS = [
-  { id: 'select',         label: '☐',    sortable: false, width: '32px'  },
-  { id: 'name',           label: 'Name', sortable: true,  width: '1fr'   },
-  { id: 'ctl',            label: 'CTL',  title: 'Chronic Training Load — 42-day fitness base', sortable: true,  width: '64px'  },
-  { id: 'acwr',           label: 'ACWR', title: 'Acute:Chronic Workload Ratio — injury risk indicator', sortable: true,  width: '72px'  },
-  { id: 'compliance_pct', label: 'Comp%',title: 'Plan compliance percentage', sortable: true,  width: '72px'  },
-  { id: 'wellness_avg',   label: 'WEL',  title: 'Average wellness score (1–10)', sortable: true,  width: '64px'  },
-]
+function buildCols(isTR) {
+  return [
+    { id: 'select',         label: '☐',                       sortable: false, width: '32px'  },
+    { id: 'name',           label: isTR ? 'İsim' : 'Name',    sortable: true,  width: '1fr'   },
+    { id: 'ctl',            label: 'CTL',  title: isTR ? 'Kronik Antrenman Yükü — 42 günlük kondisyon temeli' : 'Chronic Training Load — 42-day fitness base', sortable: true,  width: '64px'  },
+    { id: 'acwr',           label: 'ACWR', title: isTR ? 'Akut:Kronik İş Yükü Oranı — sakatlık riski göstergesi' : 'Acute:Chronic Workload Ratio — injury risk indicator', sortable: true,  width: '72px'  },
+    { id: 'compliance_pct', label: isTR ? 'Uyum%' : 'Comp%', title: isTR ? 'Plan uyum yüzdesi' : 'Plan compliance percentage', sortable: true,  width: '72px'  },
+    { id: 'wellness_avg',   label: isTR ? 'İYİ' : 'WEL',     title: isTR ? 'Ortalama iyilik hali skoru (1–10)' : 'Average wellness score (1–10)', sortable: true,  width: '64px'  },
+  ]
+}
 
 // ─── SquadBenchmarkTable ──────────────────────────────────────────────────────
 
 export default function SquadBenchmarkTable({ athletes }) {
+  const { lang } = useContext(LangCtx)
+  const isTR = lang === 'tr'
+  const COLS = buildCols(isTR)
   const [sortBy, setSortBy] = useState('ctl')
   const [selectedIds, setSelectedIds] = useState(new Set())
   const [compareMode, setCompareMode] = useState(false)
@@ -225,6 +231,7 @@ export default function SquadBenchmarkTable({ athletes }) {
           athletes={athletes}
           selectedIds={selectedIds}
           onReset={() => { setCompareMode(false); setSelectedIds(new Set()) }}
+          isTR={isTR}
         />
       </div>
     )
@@ -250,17 +257,17 @@ export default function SquadBenchmarkTable({ athletes }) {
               cursor: selectedIds.size >= 2 ? 'pointer' : 'not-allowed',
             }}
           >
-            COMPARE ({selectedIds.size})
+            {isTR ? 'KARŞILAŞTIR' : 'COMPARE'} ({selectedIds.size})
           </button>
         )}
         <button
           onClick={handleExport}
           style={{ ...S.mono, fontSize: '10px', padding: '5px 12px', background: 'transparent', border: '1px solid #333', color: '#888', borderRadius: '3px', cursor: 'pointer' }}
         >
-          EXPORT CSV
+          {isTR ? 'CSV DIŞA AKTAR' : 'EXPORT CSV'}
         </button>
         {selectedIds.size === 5 && (
-          <span style={{ ...S.mono, fontSize: '9px', color: '#ff6600' }}>MAX 5 SELECTED</span>
+          <span style={{ ...S.mono, fontSize: '9px', color: '#ff6600' }}>{isTR ? 'EN FAZLA 5 SEÇİLİ' : 'MAX 5 SELECTED'}</span>
         )}
       </div>
 
@@ -293,7 +300,7 @@ export default function SquadBenchmarkTable({ athletes }) {
             {sorted.length === 0 && (
               <tr>
                 <td colSpan={6} style={{ ...cellStyle, color: '#444', fontStyle: 'italic', textAlign: 'center', padding: '20px' }}>
-                  No athletes to display.
+                  {isTR ? 'Gösterilecek sporcu yok.' : 'No athletes to display.'}
                 </td>
               </tr>
             )}
