@@ -12,6 +12,7 @@ vi.mock('../../lib/supabase.js', () => ({
       signInWithPassword: vi.fn(() => Promise.resolve({ error: null })),
       signUp:             vi.fn(() => Promise.resolve({ error: null })),
       signInWithOtp:      vi.fn(() => Promise.resolve({ error: null })),
+      resend:             vi.fn(() => Promise.resolve({ error: null })),
     },
   },
   isSupabaseReady: vi.fn(() => true),
@@ -111,6 +112,39 @@ describe('AuthGate', () => {
     fireEvent.change(screen.getByPlaceholderText(/min\. 8 karakter/i), { target: { value: 'password123' } })
     fireEvent.submit(emailInput.closest('form'))
     expect(await screen.findByText(/veri sızıntısında bulundu/i)).toBeInTheDocument()
+  })
+
+  it('SIGN UP success shows a resend-confirmation affordance that calls auth.resend', async () => {
+    const { supabase } = await import('../../lib/supabase.js')
+    renderWithLang(<AuthGate lang="en" />)
+    fireEvent.click(screen.getByText('SIGN UP'))
+    const emailInput = screen.getByPlaceholderText('you@example.com')
+    fireEvent.change(emailInput, { target: { value: 'newuser@test.com' } })
+    fireEvent.change(screen.getByPlaceholderText(/min\. 8 characters/i), { target: { value: 'secret99x' } })
+    fireEvent.submit(emailInput.closest('form'))
+    const resendBtn = await screen.findByText(/resend confirmation email/i)
+    expect(resendBtn).toBeInTheDocument()
+    // already-registered hint present
+    expect(screen.getByText(/already registered/i)).toBeInTheDocument()
+    fireEvent.click(resendBtn)
+    await vi.waitFor(() =>
+      expect(supabase.auth.resend).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'signup', email: 'newuser@test.com' })
+      )
+    )
+  })
+
+  it('resend affordance is Turkish when lang=tr and hidden after switching modes', async () => {
+    renderWithLang(<AuthGate lang="tr" />)
+    fireEvent.click(screen.getByText('KAYIT'))
+    const emailInput = screen.getByPlaceholderText('siz@ornek.com')
+    fireEvent.change(emailInput, { target: { value: 'tr@test.com' } })
+    fireEvent.change(screen.getByPlaceholderText(/min\. 8 karakter/i), { target: { value: 'secret99x' } })
+    fireEvent.submit(emailInput.closest('form'))
+    expect(await screen.findByText(/yeniden gönder/i)).toBeInTheDocument()
+    // switching modes clears the affordance
+    fireEvent.click(screen.getByText('GİRİŞ'))
+    expect(screen.queryByText(/yeniden gönder/i)).not.toBeInTheDocument()
   })
 
   it('Google OAuth redirectTo is origin + base URL, not hardcoded', async () => {

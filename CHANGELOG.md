@@ -2,6 +2,24 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.449.0 — 2026-06-22 — Auth: resend-verification recovery for stranded users
+
+From the onboarding-funnel sweep. The signup flow showed "Confirmation email sent — check your inbox"
+and stopped — a user whose verification mail was lost/spam-filtered (or who is already registered, where
+Supabase returns a success-shaped response to prevent enumeration) had **no in-app recovery**. Added (in
+AuthGate, inline bilingual to match the file's existing idiom — no LangCtx churn since AuthGate is already
+fully bilingual):
+- A **"Resend confirmation email"** button after a successful signup (`supabase.auth.resend({type:'signup'})`),
+  with its own busy state and success/error feedback.
+- An **already-registered hint** ("check spam; if already registered you won't get one — try SIGN IN or
+  MAGIC"), since Supabase can't distinguish the two cases for the client.
+- The affordance clears when switching auth tabs. +2 tests.
+
+(Skipped the suggested AuthGate→LABELS i18n refactor: the strings are already fully bilingual inline, so
+it would be churn on the auth entry point with no user benefit.)
+
+15,960 green (713 files), lint + build clean.
+
 ## v9.448.0 — 2026-06-22 — Onboarding→activation: data integrity, day-0 payoff, funnel visibility
 
 From an onboarding-funnel discovery sweep (two agents). All additive/safe.
