@@ -27,12 +27,20 @@ describe('goalsForSport', () => {
     expect(goalsForSport('Rowing')).toEqual(['General Fitness'])
   })
 
-  it('falls through to full PLAN_GOALS for Triathlon (mixed sport)', () => {
-    expect(goalsForSport('Triathlon')).toEqual(PLAN_GOALS)
+  it('returns a triathlon-distance subset for Triathlon (not the running list)', () => {
+    const out = goalsForSport('Triathlon')
+    expect(out).toEqual(['Sprint Triathlon', 'Olympic Triathlon', '70.3 / Half Ironman', 'Ironman', 'General Fitness'])
+    // No running-only distances mis-seeding a triathlete's first plan.
+    expect(out).not.toContain('Marathon')
+    expect(out).not.toContain('5K')
+    expect(out).toContain('General Fitness')
   })
 
-  it('falls through to full PLAN_GOALS for Other / Hybrid / unknown sports', () => {
-    expect(goalsForSport('Other')).toEqual(PLAN_GOALS)
+  it('returns only General Fitness for Other', () => {
+    expect(goalsForSport('Other')).toEqual(['General Fitness'])
+  })
+
+  it('falls through to full PLAN_GOALS for Hybrid / unknown sports', () => {
     expect(goalsForSport('Hybrid')).toEqual(PLAN_GOALS)
     expect(goalsForSport('UnknownSport')).toEqual(PLAN_GOALS)
   })

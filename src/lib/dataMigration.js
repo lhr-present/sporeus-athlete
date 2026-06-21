@@ -145,8 +145,20 @@ export async function migrateToSupabase(userId, onProgress) {
       type:    e.type  || null,
       notes:   e.notes || null,
     }))
-    const { error } = await supabase.from('injuries').upsert(rows)
-    if (error) recordErr(errors, 'injuries', error)
+    // v9.434.0 — Idempotency guard for RETRIES (mirrors training_log :103). These
+    // rows omit `id` and the upsert has no onConflict (PK is gen_random_uuid), so
+    // it behaves as a plain INSERT — a partial-migration Retry would DOUBLE the
+    // user's injury history. The account is fresh post-signup (MigrationModal
+    // blocks other input), so clearing this user's own rows first is safe +
+    // idempotent. If cleanup fails, skip the insert so we never insert on top of
+    // un-cleared rows (the retry redoes both).
+    const { error: cleanupErr } = await supabase.from('injuries').delete().match({ user_id: userId })
+    if (cleanupErr) {
+      recordErr(errors, 'injuries cleanup', cleanupErr)
+    } else {
+      const { error } = await supabase.from('injuries').upsert(rows)
+      if (error) recordErr(errors, 'injuries', error)
+    }
     onProgress?.(++step, steps)
   }
 
@@ -159,8 +171,15 @@ export async function migrateToSupabase(userId, onProgress) {
       value:   String(e.value),
       unit:    e.unit || null,
     }))
-    const { error } = await supabase.from('test_results').upsert(rows)
-    if (error) recordErr(errors, 'test_results', error)
+    // v9.434.0 — Idempotency guard for RETRIES (see injuries above; no onConflict
+    // + id-less rows = plain INSERT → doubled history on Retry).
+    const { error: cleanupErr } = await supabase.from('test_results').delete().match({ user_id: userId })
+    if (cleanupErr) {
+      recordErr(errors, 'test_results cleanup', cleanupErr)
+    } else {
+      const { error } = await supabase.from('test_results').upsert(rows)
+      if (error) recordErr(errors, 'test_results', error)
+    }
     onProgress?.(++step, steps)
   }
 
@@ -174,8 +193,15 @@ export async function migrateToSupabase(userId, onProgress) {
       actual_s:    parseInt(e.actual)     || null,
       notes:       e.notes || null,
     }))
-    const { error } = await supabase.from('race_results').upsert(rows)
-    if (error) recordErr(errors, 'race_results', error)
+    // v9.434.0 — Idempotency guard for RETRIES (see injuries above; no onConflict
+    // + id-less rows = plain INSERT → doubled history on Retry).
+    const { error: cleanupErr } = await supabase.from('race_results').delete().match({ user_id: userId })
+    if (cleanupErr) {
+      recordErr(errors, 'race_results cleanup', cleanupErr)
+    } else {
+      const { error } = await supabase.from('race_results').upsert(rows)
+      if (error) recordErr(errors, 'race_results', error)
+    }
     onProgress?.(++step, steps)
   }
 

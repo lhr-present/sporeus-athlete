@@ -18,7 +18,7 @@ import { exportAllData } from '../lib/storage.js'
 import { isSupabaseReady, supabase } from '../lib/supabase.js'
 import { getMyCoach } from '../lib/inviteUtils.js'
 import { countUnreadCoachMessages } from '../lib/db/messages.js'
-import { sanitizeLogEntry } from '../lib/validate.js'
+import { sanitizeLogEntry, sanitizeProfile } from '../lib/validate.js'
 import { hasCurrentConsent, grantConsent } from '../lib/db/consentVersion.js'
 import { logConsent } from '../lib/db/consent.js'
 import { useInsightNotifier } from './useInsightNotifier.js'
@@ -467,7 +467,17 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
 
   const finishOnboarding = (data) => {
     if (data) {
-      setProfile(prev => ({ ...prev, ...data }))
+      // v9.434.0 — Sanitize/clamp the merged profile before persisting. Pre-fix
+      // `{...prev, ...data}` wrote raw onboarding values (out-of-range maxhr/ftp/
+      // age) straight to localStorage/Supabase/plan-math until a later Profile
+      // save normalised them. sanitizeProfile is the canonical profile shape
+      // (already run on every Profile save), so applying it here just makes the
+      // FIRST write clean. NOTE: onboarding-only fields (loggingMethod, weeks,
+      // level, quickStart) are intentionally NOT profile fields — they're read
+      // from the raw `data` below (loggingMethod) and by buildStarterPlan(data)
+      // which needs `data.weeks`/`data.level`, so we pass raw `data`, not the
+      // sanitized profile, to the plan seeder.
+      setProfile(prev => sanitizeProfile({ ...prev, ...data }))
       // v9.95.0 — Mission 1 ONBOARDING → TARGET. Seed a starter plan from the
       // data the user just entered so they land on a populated TodayView
       // instead of an empty "no plan" surface. Pre-v9.95 the flow asked
@@ -491,6 +501,11 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
       }
       handleTabClick(landingTab)
       setOnboarded(true)
+      // v9.434.0 — Funnel visibility: emit completion UNCONDITIONALLY. Pre-fix the
+      // only onboarding-finish event was `starter_plan_seeded`, fired solely inside
+      // the `if (starter)` branch — so any completion that didn't seed a plan
+      // (no goal, seed threw) emitted nothing and was invisible in the funnel.
+      try { emitEvent('onboarding_completed', { sport: data.sport, goal: data.goal, has_plan: !!localStorage.getItem('sporeus-plan') }) } catch (_) { /* fail open */ }
       // v9.338.0 — Honor "Connect Strava" selection from the wizard. Pre-
       // v9.338 picking Strava as logging method only saved the field;
       // the app shrugged. The user explicitly said "I want Strava" and
@@ -542,7 +557,10 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
 
   const handleExport = () => {
     try {
-      const blob = new Blob([JSON.stringify(exportAllData(), null, 2)], { type: 'application/json' })
+      // v9.434.0 — exportAllData() ALREADY returns a JSON string (storage.js:58).
+      // The prior JSON.stringify() re-encoded it → a quoted/escaped, unusable
+      // backup. App.jsx + MigrationModal call exportAllData() directly; match them.
+      const blob = new Blob([exportAllData()], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url

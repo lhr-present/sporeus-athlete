@@ -2,6 +2,45 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.448.0 — 2026-06-22 — Onboarding→activation: data integrity, day-0 payoff, funnel visibility
+
+From an onboarding-funnel discovery sweep (two agents). All additive/safe.
+
+Data integrity & loss:
+- **Partial-migration doubling fixed** — guest→auth migration upserted injuries/test_results/race_results
+  with no conflict key + no id, so a mid-migration failure + Retry re-inserted them → doubled history.
+  Now each clears the user's own rows first (mirrors the training_log pattern). (Analogue of the v9.439 class.)
+- **`trainDays` no longer dropped** by `sanitizeProfile` — a user who picked e.g. 3 days/week lost it on
+  first Profile save (plans silently reverted to 5/wk). Now preserved (clamped 1–7).
+- **Onboarding write now sanitized** — `finishOnboarding` ran `setProfile` with no clamp, so out-of-range
+  maxhr/ftp/age reached storage/plan-math until a later save. Now `sanitizeProfile`'d (verified no needed
+  onboarding field is stripped — buildStarterPlan reads raw data).
+- **Backup export double-stringify fixed** — `handleExport` re-stringified an already-JSON string → broken
+  backup file. Now uses `exportAllData()` directly.
+- **Post-migration local truncation** — first authed load overwrote `sporeus_log` with only 50 rows for
+  heavy guests; now keeps the larger local cache on the initial page (DB stays source of truth).
+
+Activation value:
+- **Day-0 science insight wired in** — `day0Insight` (Seiler/Banister/Daniels-cited "what your first
+  sessions mean") was fully built but had zero importers. New `FirstRunInsightCard` renders it on the
+  Dashboard the moment the first session lands (log.length ≥ 1), bilingual, graceful-empty. (TodayView is
+  a noted follow-up for the strongest placement.)
+- **Triathlon/Other goal mismatch fixed** — `GOALS_BY_SPORT` had no Triathlon/Other key, so they fell back
+  to running/cycling goals (a triathlete's "Marathon" → running-marathon plan). Added proper goal lists
+  (tri distances resolve to safe plan fallbacks; not full tri periodization — that's a larger effort).
+
+Funnel visibility:
+- **`onboarding_completed` event** now emitted unconditionally (was only inside the starter-plan branch),
+  so the key activation step is no longer a telemetry blind spot.
+
+Cleanup: removed the dead `purpose` onboarding field.
+
+Deferred (need a decision / edge coordination): consolidate the two parallel telemetry systems
+(`trackFunnel` vs `emitEvent` — `get_funnel_today()` is near-empty); dedupe `signup_completed`/`landing`
+events; in-app resend-verification; AuthGate i18n.
+
++11 tests. 15,958 green (713 files), lint + build clean.
+
 ## v9.447.0 — 2026-06-21 — Consolidate duplicate coach squad view (perf/UX)
 
 Every coach was rendered TWO squad views stacked (double squad table + double data fetch on load):

@@ -65,8 +65,21 @@ export function useTrainingLogQuery(arg) {
       // Reset pagination cursor on fresh load
       pageRef.current = 1
       setAllEntries(entries)
-      setHasMore(safeRows.length >= pageSize)
-      setLsData(entries)
+      const more = safeRows.length >= pageSize
+      setHasMore(more)
+      // v9.434.0 — Don't TRUNCATE the local cache to the first page. Right after a
+      // guest migrates >pageSize sessions, this initial load fetched only the most
+      // recent `pageSize` rows; overwriting `sporeus_log` with them shrank the
+      // local copy from N to pageSize (friction: the user sees only 50 until they
+      // paginate; rows are safe in the DB). When there are MORE pages and the
+      // existing local cache is already larger than this page, keep the longer
+      // copy. The normal small-log path (fetched all rows, or local was smaller)
+      // overwrites as before so edits/deletes still reflect server truth.
+      if (more && Array.isArray(lsData) && lsData.length > entries.length) {
+        // leave the larger local cache intact; visible list comes from allEntries
+      } else {
+        setLsData(entries)
+      }
       return entries
     },
     initialData: lsData,

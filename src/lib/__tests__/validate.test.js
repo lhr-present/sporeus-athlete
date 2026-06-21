@@ -508,6 +508,23 @@ describe('sanitizeProfile', () => {
     expect(p.raceDate).toBeUndefined()
     expect(p.nextRaceDate).toBeUndefined()
   })
+
+  // ─── v9.434.0: trainDays preserved + clamped (F2 — was silently dropped) ─────
+  it('preserves trainDays through sanitization (was dropped pre-v9.434)', () => {
+    expect(sanitizeProfile({ ...validProfile, trainDays: 3 }).trainDays).toBe('3')
+  })
+
+  it('clamps trainDays to [1, 7]', () => {
+    expect(sanitizeProfile({ ...validProfile, trainDays: 0 }).trainDays).toBe('1')
+    expect(sanitizeProfile({ ...validProfile, trainDays: 9 }).trainDays).toBe('7')
+    expect(sanitizeProfile({ ...validProfile, trainDays: 5 }).trainDays).toBe('5')
+  })
+
+  it('trainDays unset → empty string so the `|| 5` fallback fires', () => {
+    expect(sanitizeProfile({ ...validProfile }).trainDays).toBe('')
+    expect(sanitizeProfile({ ...validProfile, trainDays: '' }).trainDays).toBe('')
+    expect(sanitizeProfile({ ...validProfile, trainDays: null }).trainDays).toBe('')
+  })
 })
 
 // ─── v9.60.0: getProfileRaceDate helper ───────────────────────────────────────
