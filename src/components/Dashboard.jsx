@@ -15,6 +15,7 @@ import { SPORT_BRANCHES, ATHLETE_LEVELS, LEVEL_CONFIG, DASH_CARD_DEFS, DASH_CARD
 import { assessDataQuality, predictFitness } from '../lib/intelligence.js'
 import { interpretCTL, interpretTSB, interpretMonotony } from '../lib/science/interpretations.js'
 import { subThresholdTrend, } from '../lib/science/subThresholdTime.js'
+import { selectInsight } from '../lib/onboarding/day0Insight.js'
 import { computeMonotony } from '../lib/trainingLoad.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { isGated as _isGated, LS_KEY as CONFIRM_LS_KEY } from '../lib/athlete/coachConfirmFlow.js'
@@ -265,6 +266,36 @@ const RE_SWIM        = /swim/i
 const RE_ROW_TYPE    = /row|erg|2k\s*test/i
 const RE_ROW_SPORT   = /row/i
 
+// First-run activation payoff card. Renders a science-anchored insight
+// (Seiler/Banister/Daniels-cited, from day0Insight.selectInsight) once the
+// athlete logs their first session. Renders nothing if the insight is null —
+// purely additive, never replaces the empty-state / GettingStartedCard.
+export const FirstRunInsightCard = memo(function FirstRunInsightCard({ insight, isTR }) {
+  if (!insight || !insight.headline) return null
+  return (
+    <div
+      className="sp-card"
+      style={{ ...S.card, marginBottom: '16px', borderLeft: '4px solid #ff6600' }}
+      data-first-run-insight
+    >
+      <div style={{ ...S.mono, fontSize: '10px', fontWeight: 700, color: '#ff6600', letterSpacing: '0.1em', marginBottom: '6px' }}>
+        ◈ {isTR ? 'İLK BİLGİ' : 'WHAT THIS MEANS'}
+      </div>
+      <div style={{ ...S.mono, fontSize: '13px', fontWeight: 600, color: 'var(--text)', marginBottom: '6px' }}>
+        {insight.headline}
+      </div>
+      <div style={{ ...S.mono, fontSize: '11px', lineHeight: 1.7, color: 'var(--text)' }}>
+        {insight.body}
+      </div>
+      {insight.science && (
+        <div style={{ ...S.mono, fontSize: '9px', lineHeight: 1.6, color: '#888', marginTop: '8px' }}>
+          {insight.science}
+        </div>
+      )}
+    </div>
+  )
+})
+
 function Dashboard({ log, onLogSession, onGoToProfile }) {
   const [lang]       = useLocalStorage('sporeus-lang', 'en')
   const [plan]       = useLocalStorage('sporeus-plan', null)
@@ -318,6 +349,13 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
   const avgRPE     = useMemo(() => filteredLog.length ? (filteredLog.reduce((s, e) => s + (e.rpe || 0), 0) / filteredLog.length).toFixed(1) : '\u2014', [filteredLog])
   const srpeLoad   = useMemo(() => filteredLog.reduce((s, e) => s + ((e.rpe || 0) * (e.duration || 0)), 0), [filteredLog])
   const { atl, ctl, tsb, daily } = useMemo(() => calcLoad(log), [log])
+  // First-run activation payoff: science-anchored Day-0/early-trend/first-CTL
+  // insight. Renders only once the athlete has ≥1 session (selectInsight returns
+  // null at 0). log is already oldest-first (display reverses it elsewhere).
+  const firstRunInsight = useMemo(
+    () => selectInsight(log, ctl, lang === 'tr' ? 'tr' : 'en'),
+    [log, ctl, lang],
+  )
   const acwr        = useMemo(() => calculateACWR(log), [log])
   const consistency = useMemo(() => calculateConsistency(log), [log])
   const monoStrain  = useMemo(() => monotonyStrain(log), [log])
@@ -638,6 +676,7 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
         {log.length === 0 && (
           <GettingStartedCard isTR={lang === 'tr'} onLogSession={onLogSession} stravaConnected={!!stravaToken} onConnectStrava={onGoToProfile}/>
         )}
+        {log.length > 0 && <FirstRunInsightCard insight={firstRunInsight} isTR={lang === 'tr'} />}
         <div className="sp-card" style={{ ...S.row, marginBottom: '16px', animationDelay: '0ms' }}>
           {[
             { val: countSess, lbl: t('sessions') },
@@ -799,6 +838,7 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
       {log.length === 0 && (
         <GettingStartedCard isTR={lang === 'tr'} onLogSession={onLogSession} stravaConnected={!!stravaToken} onConnectStrava={onGoToProfile}/>
       )}
+      {log.length > 0 && <FirstRunInsightCard insight={firstRunInsight} isTR={lang === 'tr'} />}
       {dl['raceGoalAnalyzer'] !== false && (
       <ErrorBoundary>
         <Suspense fallback={null}>

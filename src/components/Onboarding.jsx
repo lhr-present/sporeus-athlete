@@ -95,7 +95,7 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
   const [step, setStep] = useState(initialDraft?.step ?? 0)
   const [data, setData] = useState(initialDraft?.data ?? {
     // New fast-track fields
-    purpose:'', loggingMethod:'manual',
+    loggingMethod:'manual',
     // Original detailed fields
     name:'', sport:'Running', age:'', gender:'male',
     level:'Competitive', maxhr:'', ftp:'', ltpace:'',
@@ -150,7 +150,7 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
     // mounted empty. With the slim wizard putting goal right after sport,
     // goal is always populated by the time the user reaches quickFinish.
     onFinish({
-      name:data.name || '', sport:data.sport, purpose:data.purpose,
+      name:data.name || '', sport:data.sport,
       goal:data.goal, raceDate:data.raceDate || '', weeks:data.weeks || '',
       loggingMethod:data.loggingMethod, quickStart:true,
     })
@@ -471,7 +471,7 @@ export default function OnboardingWizard({ onFinish, setLang, lang }) {
     clearDraft()
     onFinish({
       name:data.name, age:data.age, gender:data.gender, sport:data.sport,
-      purpose:data.purpose, loggingMethod:data.loggingMethod,
+      loggingMethod:data.loggingMethod,
       athleteLevel: LEVEL_MAP[data.level] || data.level, trainDays: data.trainDays,
       maxhr:data.maxhr, ftp:data.ftp, threshold:data.ltpace, goal:data.goal,
       cssSec,

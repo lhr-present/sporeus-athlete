@@ -168,6 +168,41 @@ describe('migrateToSupabase', () => {
     expect(mockChain.insert).not.toHaveBeenCalled()
   })
 
+  // v9.434.0 (F1) — retry-safety for injuries/test_results/race_results. These
+  // upserts have no onConflict and id-less rows = plain INSERT, so a partial-
+  // migration Retry would DOUBLE the history. Each must delete the user's own
+  // rows (match { user_id }) before upserting — mirrors the training_log guard.
+  it('clears prior injuries rows before upserting (retry-safe)', async () => {
+    localStorage.setItem('sporeus-injuries', JSON.stringify([{ zone: 'knee', date: '2026-01-01', level: 3 }]))
+    await migrateToSupabase('user1', vi.fn())
+    expect(mockChain.from).toHaveBeenCalledWith('injuries')
+    expect(mockChain.match).toHaveBeenCalledWith({ user_id: 'user1' })
+    expect(mockChain.upsert).toHaveBeenCalled()
+  })
+
+  it('clears prior test_results rows before upserting (retry-safe)', async () => {
+    localStorage.setItem('sporeus-test-results', JSON.stringify([{ date: '2026-01-01', testId: 'cooper', value: 3000 }]))
+    await migrateToSupabase('user1', vi.fn())
+    expect(mockChain.from).toHaveBeenCalledWith('test_results')
+    expect(mockChain.match).toHaveBeenCalledWith({ user_id: 'user1' })
+    expect(mockChain.upsert).toHaveBeenCalled()
+  })
+
+  it('clears prior race_results rows before upserting (retry-safe)', async () => {
+    localStorage.setItem('sporeus-race-results', JSON.stringify([{ date: '2026-01-01', distance: 10000, actual: 2400 }]))
+    await migrateToSupabase('user1', vi.fn())
+    expect(mockChain.from).toHaveBeenCalledWith('race_results')
+    expect(mockChain.match).toHaveBeenCalledWith({ user_id: 'user1' })
+    expect(mockChain.upsert).toHaveBeenCalled()
+  })
+
+  it('skips injuries upsert when cleanup delete fails (no insert on un-cleared rows)', async () => {
+    localStorage.setItem('sporeus-injuries', JSON.stringify([{ zone: 'knee', date: '2026-01-01' }]))
+    mockChain.match.mockResolvedValueOnce({ error: { message: 'injuries cleanup failed' } })
+    await expect(migrateToSupabase('user1', vi.fn())).rejects.toThrow('injuries cleanup failed')
+    expect(mockChain.upsert).not.toHaveBeenCalled()
+  })
+
   it('sets sporeus-migrated=1 only after all tables succeed', async () => {
     localStorage.setItem('sporeus_log', JSON.stringify(makeDays(2)))
     await migrateToSupabase('user1', vi.fn())

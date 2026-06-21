@@ -358,6 +358,13 @@ export function sanitizeProfile(p) {
     // when not set. Drives plan generation (which weekdays carry sessions) so
     // weekend-training athletes aren't forced to rest Sat/Sun. (weekend-rest fix)
     trainingDow:   normalizeTrainingDow(p.trainingDow) || [],
+    // v9.434.0 — trainDays (sessions/week COUNT, distinct from trainingDow which
+    // names specific weekdays). The onboarding wizard collects it (step 5) and
+    // plan regen reads `Number(profile.trainDays) || 5` (TodayView, starterPlan).
+    // Pre-fix it was omitted from the whitelist, so the FIRST Profile save dropped
+    // it → a 3-day athlete silently reverted to 5 days/week. Clamp 1–7. Empty
+    // string when unset so the `|| 5` fallback still fires.
+    trainDays:     p.trainDays == null || p.trainDays === '' ? '' : numStr(p.trainDays, 1, 7),
   }
 }
 

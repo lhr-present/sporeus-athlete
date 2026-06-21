@@ -199,14 +199,29 @@ export const PLAN_GOALS = ['5K','10K','Half Marathon','Marathon','General Fitnes
 // most were irrelevant. The list of canonical goals stays in PLAN_GOALS
 // for back-compat and tests; the filter is render-side only.
 //
-// Triathlon / Other / Hybrid / unknown sports fall through to the full
-// list — they may legitimately train for any of them (a triathlete who
-// also pursues a standalone 10K is common).
+// v9.96.0 originally let Triathlon / Other fall through to the full running
+// list. That mis-seeded the first plan: a triathlete picking "Marathon" got
+// pure running-marathon periodization (Onboarding step 1 offers Triathlon +
+// Other, but they had no goal subset of their own). v9.41x — give them
+// sport-appropriate goal subsets so the starter plan is constrained sensibly.
+//
+// Triathlon distances + "Other" goals are intentionally NOT in PLAN_GOALS:
+// PLAN_GOALS drives the sport-agnostic PlanGenerator dropdown, which would then
+// show tri distances to runners. They flow through the goal→plan lookups safely
+// anyway: generatePlan reads GOAL_EMPHASIS[goal] (no entry → base pattern, no
+// shift) and starterPlan reads ONBOARDING_GOAL_TO_E13[goal] || 'pr' (unknown →
+// 'pr'). 'General Fitness' is the canonical label and maps to 'fitness'.
+// Real triathlon periodization is out of scope here — this only constrains the
+// goal picker; it does not build tri-specific plan structure.
+//
+// Hybrid / unknown / null sports still fall through to the full list.
 const GOALS_BY_SPORT = {
-  Running:  ['5K', '10K', 'Half Marathon', 'Marathon', 'General Fitness'],
-  Cycling:  ['Cycling Event', 'General Fitness'],
-  Swimming: ['General Fitness'],
-  Rowing:   ['General Fitness'],
+  Running:   ['5K', '10K', 'Half Marathon', 'Marathon', 'General Fitness'],
+  Cycling:   ['Cycling Event', 'General Fitness'],
+  Swimming:  ['General Fitness'],
+  Rowing:    ['General Fitness'],
+  Triathlon: ['Sprint Triathlon', 'Olympic Triathlon', '70.3 / Half Ironman', 'Ironman', 'General Fitness'],
+  Other:     ['General Fitness'],
 }
 
 /**
