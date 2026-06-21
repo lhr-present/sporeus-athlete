@@ -23,6 +23,8 @@ import { useRealtimeSquad }       from '../hooks/useRealtimeSquad.js'
 import { useRealtimeSquadFeed }    from '../hooks/useRealtimeSquadFeed.js'
 import { useSquadPresence }        from '../hooks/useSquadPresence.js'
 import LiveSquadFeed               from './coach/LiveSquadFeed.jsx'
+import SquadRedFlagsCard           from './coach/SquadRedFlagsCard.jsx'
+import InviteManager               from './InviteManager.jsx'
 import EmptyState from './ui/EmptyState.jsx'
 import ScienceTooltip from './ScienceTooltip.jsx'
 
@@ -283,6 +285,16 @@ export default function CoachSquadView({ authUser }) {
         onSelect={id => { setActiveTeamId(id); try { localStorage.setItem('sporeus-active-team', id) } catch (e) { logger.warn('localStorage:', e.message) } }}
         gated={teamGated && teams.length > 0} upgradeMsg={getUpgradePrompt('multi_team')}
       />
+
+      {/* Squad red-flags summary — consolidated from the former nested squad view (v9.447).
+          Same athlete shape (today_tsb/acwr_ratio/last_session_date), so deriveFlags works as-is.
+          Selecting a flagged athlete expands their row. */}
+      {!isDemo && athletes.length > 0 && (
+        <SquadRedFlagsCard athletes={athletes} onSelectAthlete={id => setExpanded(id)} />
+      )}
+
+      {/* Invite link manager — consolidated here so it survives removing the nested squad view (v9.447) */}
+      {!isDemo && coachId && <InviteManager coachId={coachId} />}
 
       {/* Empty state */}
       {!isDemo && athletes.length === 0 && inviteCode && !inviteBlocked && (

@@ -2,6 +2,24 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.447.0 — 2026-06-21 — Consolidate duplicate coach squad view (perf/UX)
+
+Every coach was rendered TWO squad views stacked (double squad table + double data fetch on load):
+the outer `src/components/CoachSquadView.jsx` (real-time live-activity feed) AND a nested
+`coach/CoachSquadView.jsx` inside CoachDashboard (invite manager + squad red-flags). Founder chose the
+outer (live-feed) as canonical.
+- Folded **InviteManager** + **SquadRedFlagsCard** into the outer CoachSquadView. Verified data-shape
+  compatibility first: the outer's athletes (from `squad-sync`) carry `today_tsb`/`acwr_ratio`/
+  `adherence_pct`/`last_session_date`/`display_name` — exactly what `SquadRedFlagsCard.deriveFlags`
+  reads — so it works unchanged. Selecting a flagged athlete expands their row.
+- Removed the nested `<CoachSquadView>` render from CoachDashboard (its unique tools — SquadPatternSearch,
+  ChatPanel, WeeklyDigestCard — kept) and **deleted the now-orphaned `coach/CoachSquadView.jsx`**
+  (zero importers).
+- Net: one squad table instead of two, one fewer squad data fetch per coach dashboard load, no feature
+  lost (live feed + invites + red-flags all present in the canonical view).
+
+15,947 green (713 files), lint + build clean.
+
 ## v9.446.0 — 2026-06-20 — Coach i18n long-tail (lower-traffic surfaces → bilingual)
 
 Completes the coach i18n started in v9.445. Lower-traffic coach files internationalized via inline

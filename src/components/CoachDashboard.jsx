@@ -23,7 +23,6 @@ import CoachRegistration from './coachDashboard/CoachRegistration.jsx'
 import GatingOverlay from './coachDashboard/GatingOverlay.jsx'
 import SessionManager from './coach/SessionManager.jsx'
 import SquadBenchmarkTable from './coach/SquadBenchmarkTable.jsx'
-import CoachSquadView from './coach/CoachSquadView.jsx'
 import { calcCompliancePct } from '../lib/sport/squadBenchmark.js'
 import { getTierSync } from '../lib/subscription.js'
 import TeamAnnouncements from './TeamAnnouncements.jsx'
@@ -334,8 +333,9 @@ export default function CoachDashboard({ authUser }) {
       {/* ── Supabase Live Athletes ──────────────────────────────────────────── */}
       {isSupabaseReady() && sbCoachId && (
         <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'6px', padding:'16px', marginBottom:'16px' }}>
-          <CoachSquadView coachId={sbCoachId} coachName={coachProfile?.name || ''} />
-          <div style={{ marginTop:'16px' }}>
+          {/* v9.447 — squad table/feed + invites + red-flags consolidated into the canonical
+              outer CoachSquadView (App.jsx). This block keeps only its unique tools below. */}
+          <div style={{ marginTop:'0' }}>
             <SquadPatternSearch
               athleteIds={sbAthleteIds}
               tier={getTierSync()}
