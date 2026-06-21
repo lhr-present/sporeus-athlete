@@ -79,6 +79,8 @@ export default function AuthGate({ lang }) {
   const [pass, setPass]     = useState('')
   const [busy, setBusy]     = useState(false)
   const [msg, setMsg]       = useState(null)       // { type: 'error'|'success', text }
+  const [awaitingConfirm, setAwaitingConfirm] = useState(false) // signup email sent → show resend affordance
+  const [resendBusy, setResendBusy] = useState(false)
 
   const clearMsg = () => setMsg(null)
 
@@ -112,6 +114,7 @@ export default function AuthGate({ lang }) {
         ({ error } = await supabase.auth.signUp({ email, password: pass, options: { emailRedirectTo: redirectTo } }))
         if (!error) {
           setMsg({ type: 'success', text: lang === 'tr' ? 'Kayıt e-postası gönderildi — gelen kutunu kontrol et.' : 'Confirmation email sent — check your inbox.' })
+          setAwaitingConfirm(true)
           setBusy(false); return
         }
       } else {
@@ -141,6 +144,24 @@ export default function AuthGate({ lang }) {
     }
     setBusy(false)
   }, [email, pass, mode, lang])
+
+  // Resend the signup confirmation email — recovers a user whose verification mail was
+  // lost/spam-filtered. Note: Supabase returns success-shaped responses for already-registered
+  // emails (enumeration guard), so the hint below points such users to Sign In / Magic.
+  const handleResend = useCallback(async () => {
+    if (!supabase || !email || resendBusy) return
+    setResendBusy(true)
+    try {
+      const redirectTo = window.location.origin + import.meta.env.BASE_URL
+      const { error } = await supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo: redirectTo } })
+      setMsg(error
+        ? { type: 'error', text: error.message }
+        : { type: 'success', text: lang === 'tr' ? 'Doğrulama e-postası yeniden gönderildi.' : 'Verification email resent.' })
+    } catch (e) {
+      setMsg({ type: 'error', text: e.message })
+    }
+    setResendBusy(false)
+  }, [email, resendBusy, lang])
 
   const isTR = lang === 'tr'
 
@@ -210,7 +231,7 @@ export default function AuthGate({ lang }) {
             ['signup', isTR ? 'KAYIT'    : 'SIGN UP'],
             ['magic',  isTR ? 'MAGİC'    : 'MAGIC'],
           ].map(([m, label2]) => (
-            <button key={m} onClick={() => { setMode(m); clearMsg() }} style={{
+            <button key={m} onClick={() => { setMode(m); clearMsg(); setAwaitingConfirm(false) }} style={{
               flex: 1, padding: '6px 4px', border: 'none', borderRadius: '3px', cursor: 'pointer',
               fontFamily: MONO, fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em',
               background: mode === m ? ORANGE : '#1a1a1a',
@@ -270,6 +291,21 @@ export default function AuthGate({ lang }) {
               lineHeight: 1.5,
             }}>
               {msg.text}
+            </div>
+          )}
+
+          {/* Resend-verification recovery for stranded users (v9.449) */}
+          {awaitingConfirm && (
+            <div style={{ fontSize: '10px', fontFamily: MONO, color: '#888', marginBottom: '14px', lineHeight: 1.6 }}>
+              <button type="button" onClick={handleResend} disabled={resendBusy}
+                style={{ background: 'none', border: 'none', padding: 0, color: resendBusy ? '#555' : '#0064ff', cursor: resendBusy ? 'default' : 'pointer', fontFamily: MONO, fontSize: '10px', textDecoration: 'underline' }}>
+                {resendBusy ? '…' : (isTR ? 'Doğrulama e-postasını yeniden gönder' : 'Resend confirmation email')}
+              </button>
+              <div style={{ marginTop: '6px' }}>
+                {isTR
+                  ? 'E-posta gelmediyse spam klasörüne bak. Bu adres zaten kayıtlıysa e-posta gelmez — GİRİŞ veya MAGİC ile dene.'
+                  : "No email? Check spam. If this address is already registered you won't get one — try SIGN IN or MAGIC instead."}
+              </div>
             </div>
           )}
 
