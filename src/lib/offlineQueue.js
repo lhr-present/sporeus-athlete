@@ -131,6 +131,21 @@ export function isNetworkError(error) {
 // ─── Wire navigator.onLine events (call once on app start) ────────────────────
 let _onlineHandler = null
 let _offlineHandler = null
+let _visibilityHandler = null
+let _focusHandler = null
+let _flushTimer = null
+
+// Low-frequency safety-net retry. On flaky mobile / Wi-Fi handoff the network
+// can degrade then recover WITHOUT firing a navigator.onLine transition, so a
+// transiently-failed flush would otherwise sit until the next 'online' edge.
+const FLUSH_INTERVAL_MS = 60000
+
+// Flush only when actually online — flushQueue is idempotent + cheap when the
+// queues are empty, so calling it on visibility/focus/interval is safe.
+function flushIfOnline() {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return
+  flushQueue()
+}
 
 export function initOfflineSync() {
   if (typeof window === 'undefined') return
@@ -138,9 +153,19 @@ export function initOfflineSync() {
 
   _onlineHandler  = () => flushQueue()
   _offlineHandler = () => setStatus('offline')
+  // Returning to a backgrounded tab (mobile app-switch / lock-screen) is the
+  // most common recovery point that does NOT emit an 'online' event.
+  _visibilityHandler = () => { if (document.visibilityState === 'visible') flushIfOnline() }
+  _focusHandler = () => flushIfOnline()
 
   window.addEventListener('online',  _onlineHandler)
   window.addEventListener('offline', _offlineHandler)
+  document.addEventListener('visibilitychange', _visibilityHandler)
+  window.addEventListener('focus', _focusHandler)
+
+  // Safety-net poll for the degrade-without-edge case. setInterval id is tracked
+  // so stopOfflineSync clears it (no leak / double-registration guarded above).
+  _flushTimer = setInterval(flushIfOnline, FLUSH_INTERVAL_MS)
 
   if (!navigator.onLine) setStatus('offline')
 
@@ -148,11 +173,18 @@ export function initOfflineSync() {
   flushQueue()
 }
 
-// Remove the navigator.onLine listeners — call from the cleanup of the effect that ran initOfflineSync().
+// Remove all flush listeners + the interval — call from the cleanup of the
+// effect that ran initOfflineSync().
 export function stopOfflineSync() {
   if (typeof window === 'undefined') return
-  if (_onlineHandler)  window.removeEventListener('online',  _onlineHandler)
-  if (_offlineHandler) window.removeEventListener('offline', _offlineHandler)
+  if (_onlineHandler)     window.removeEventListener('online',  _onlineHandler)
+  if (_offlineHandler)    window.removeEventListener('offline', _offlineHandler)
+  if (_visibilityHandler) document.removeEventListener('visibilitychange', _visibilityHandler)
+  if (_focusHandler)      window.removeEventListener('focus', _focusHandler)
+  if (_flushTimer)        clearInterval(_flushTimer)
   _onlineHandler = null
   _offlineHandler = null
+  _visibilityHandler = null
+  _focusHandler = null
+  _flushTimer = null
 }

@@ -24,6 +24,11 @@ const MAX_RETRY = 8
  * @property {(payload: object) => void} [onView]         - session_views change
  * @property {(state: object) => void}   [onPresenceSync] - presence state update
  * @property {(status: string) => void}  [onStatusChange] - 'connecting'|'live'|'reconnecting'|'disconnected'
+ * @property {() => void}                 [onResubscribe]  - fired on SUBSCRIBED after a reconnect (NOT the
+ *                                                           initial subscribe). postgres_changes only delivers
+ *                                                           events while subscribed, so the consumer should
+ *                                                           re-fetch the feed to backfill rows missed during the
+ *                                                           offline window. Mirrors useSessionComments' wasReconnect.
  */
 
 /**
@@ -42,7 +47,7 @@ export function createSquadChannel(supabase, coachId, callbacks = {}) {
   let   channel      = null
   let   destroyed    = false
 
-  const { onTrainingLog, onComment, onView, onPresenceSync, onStatusChange } = callbacks
+  const { onTrainingLog, onComment, onView, onPresenceSync, onStatusChange, onResubscribe } = callbacks
 
   function setStatus(s) {
     reportStatus(statusKey, s)
@@ -91,8 +96,14 @@ export function createSquadChannel(supabase, coachId, callbacks = {}) {
       if (destroyed) return
 
       if (status === 'SUBSCRIBED') {
+        // A non-zero retryCount means this is a reconnect after a drop — fire
+        // onResubscribe so the consumer re-fetches the feed to backfill rows
+        // created during the offline window (postgres_changes only delivers
+        // events while subscribed). Initial subscribe has retryCount === 0.
+        const wasReconnect = retryCount > 0
         retryCount = 0
         setStatus('live')
+        if (wasReconnect) onResubscribe?.()
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
         setStatus('reconnecting')
         if (retryCount < MAX_RETRY) {

@@ -2,6 +2,38 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.451.0 — 2026-06-23 — PWA/offline hardening
+
+From a PWA/offline discovery sweep (two agents). The SW update/install flow verified textbook-correct
+(content-hashed index precache defends the stale-deploy trap; the update toast correctly skipWaiting+reloads
+with guarded controllerchange) — so fixes here are the real offline-data gaps. All additive/safe.
+
+Offline reliability:
+- **Comment writes no longer silently lost when IndexedDB is unavailable** (Safari private mode): the offline
+  enqueue could throw an uncaught rejection and strand the optimistic row. Now routed through a non-throwing
+  helper that returns `{queued:false, error}`; the hook rolls back / surfaces the error instead of losing it.
+- **Queue now replays on more than the `online` edge** — added `visibilitychange`/`focus` + a 60s online-gated
+  interval to `initOfflineSync` (with teardown + double-register guard). Previously a transient flush failure on
+  flaky mobile (no `online` transition) left writes queued indefinitely.
+- **Replay no longer creates phantom failures** — `replayWrites` inserts now `upsert(onConflict:id,
+  ignoreDuplicates)` for id-bearing rows, so a write that committed server-side but failed to dequeue is a no-op
+  success instead of a unique-violation → dead-letter → phantom "failed" in the UI.
+- **Sync dot stops lying** — it showed green "Synced" even when the dead-letter store was non-empty; now shows a
+  red warning dot + bilingual "N change(s) failed to sync" when deadLetterCount > 0.
+- **Squad live feed re-fetches on reconnect** — `createSquadChannel` gained an `onResubscribe` callback (the poll
+  fallback only kicks in after 30s of reconnecting, so a normal drop→resubscribe previously dropped events).
+
+SW / install:
+- Removed a **dead, misleading SW denylist entry** (`/#access_token=/` — Workbox matches pathname+search only, so
+  it never matched; hash-based implicit-OAuth returns are handled client-side).
+- Added `id: '/'` to the generated **manifest** (future-proofs app identity if start_url changes) and deleted the
+  dead/shadowed `public/manifest.webmanifest` (the plugin generates + links its own; the public one was never used).
+
+Deferred (more involved / low value): replayed `profiles` write merges-on-replay (multi-device blob clobber);
+iOS `appinstalled` attribution (already mitigated by standalone detection).
+
++17 tests. 15,979 green (714 files), lint + build clean.
+
 ## v9.450.0 — 2026-06-22 — Telemetry: single source of truth (attribution) + 2 fixes
 
 Founder decision: consolidate the conversion funnel onto **attribution** (`emitEvent` → attribution-log),

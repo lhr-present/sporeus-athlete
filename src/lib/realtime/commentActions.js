@@ -42,6 +42,28 @@ function isOfflineError(error) {
   )
 }
 
+/**
+ * Enqueue an offline write without letting an IndexedDB failure escape.
+ *
+ * When IndexedDB is unavailable (Safari private mode, quota exhausted, blocked
+ * upgrade) `enqueueWrite` rejects. If that rejection propagated out of the
+ * mutation it would (a) leave the function returning a rejected promise the
+ * callers don't await-catch, and (b) strand the optimistic row with the write
+ * silently lost. Mirror enqueuePendingLog's swallow-and-report contract:
+ * resolve `true` on success, `false` (plus the captured error) on failure so
+ * the caller can roll back / surface an inline error instead of throwing.
+ *
+ * @returns {Promise<{ ok: boolean, error: Error|null }>}
+ */
+async function safeEnqueueWrite(op, table, payload) {
+  try {
+    await enqueueWrite(op, table, payload)
+    return { ok: true, error: null }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err : new Error(String(err)) }
+  }
+}
+
 // ── Comment mutations ─────────────────────────────────────────────────────────
 
 /**
@@ -80,15 +102,17 @@ export async function postComment(supabase, sessionId, authorId, body, parentId 
       .single()
 
     if (error && isOfflineError(error)) {
-      await enqueueWrite('insert', TABLE_COMMENTS, payload)
-      return { data: null, error: null, queued: true }
+      const { ok, error: enqErr } = await safeEnqueueWrite('insert', TABLE_COMMENTS, payload)
+      // IDB unavailable (Safari private mode / quota): can't queue → report the
+      // failure so the caller rolls back the optimistic row instead of stranding it.
+      return ok ? { data: null, error: null, queued: true } : { data: null, error: enqErr, queued: false }
     }
 
     return { data, error, queued: false }
   } catch (err) {
     if (isOfflineError(err)) {
-      await enqueueWrite('insert', TABLE_COMMENTS, payload)
-      return { data: null, error: null, queued: true }
+      const { ok, error: enqErr } = await safeEnqueueWrite('insert', TABLE_COMMENTS, payload)
+      return ok ? { data: null, error: null, queued: true } : { data: null, error: enqErr, queued: false }
     }
     return { data: null, error: err, queued: false }
   }
@@ -119,14 +143,14 @@ export async function editComment(supabase, commentId, body) {
       .single()
 
     if (error && isOfflineError(error)) {
-      await enqueueWrite('update', TABLE_COMMENTS, patch)
-      return { data: null, error: null, queued: true }
+      const { ok, error: enqErr } = await safeEnqueueWrite('update', TABLE_COMMENTS, patch)
+      return ok ? { data: null, error: null, queued: true } : { data: null, error: enqErr, queued: false }
     }
     return { data, error, queued: false }
   } catch (err) {
     if (isOfflineError(err)) {
-      await enqueueWrite('update', TABLE_COMMENTS, patch)
-      return { data: null, error: null, queued: true }
+      const { ok, error: enqErr } = await safeEnqueueWrite('update', TABLE_COMMENTS, patch)
+      return ok ? { data: null, error: null, queued: true } : { data: null, error: enqErr, queued: false }
     }
     return { data: null, error: err, queued: false }
   }
@@ -150,14 +174,14 @@ export async function deleteComment(supabase, commentId) {
       .eq('id', commentId)
 
     if (error && isOfflineError(error)) {
-      await enqueueWrite('update', TABLE_COMMENTS, patch)
-      return { error: null, queued: true }
+      const { ok, error: enqErr } = await safeEnqueueWrite('update', TABLE_COMMENTS, patch)
+      return ok ? { error: null, queued: true } : { error: enqErr, queued: false }
     }
     return { error, queued: false }
   } catch (err) {
     if (isOfflineError(err)) {
-      await enqueueWrite('update', TABLE_COMMENTS, patch)
-      return { error: null, queued: true }
+      const { ok, error: enqErr } = await safeEnqueueWrite('update', TABLE_COMMENTS, patch)
+      return ok ? { error: null, queued: true } : { error: enqErr, queued: false }
     }
     return { error: err, queued: false }
   }

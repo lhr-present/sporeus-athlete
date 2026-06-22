@@ -34,7 +34,7 @@ vi.mock('./offline/writeQueue.js', () => ({
   replayWrites: wq.replayWrites,
 }))
 
-import { enqueuePendingLog, flushQueue, getSyncStatus, onSyncStatusChange, isNetworkError } from './offlineQueue.js'
+import { enqueuePendingLog, flushQueue, getSyncStatus, onSyncStatusChange, isNetworkError, initOfflineSync, stopOfflineSync } from './offlineQueue.js'
 import { enqueue, dequeue, getAll } from './db.js'
 
 beforeEach(() => {
@@ -215,6 +215,117 @@ it('flushQueue uses _table field to route to correct Supabase table', async () =
   await flushQueue()
 
   expect(calledTables).toContain('wellness_logs')
+})
+
+// ─── F2: additional flush triggers (visibilitychange / focus / interval) ──────
+// flushQueue only replayed on the 'online' event + startup, so a transiently
+// failed flush sat until the next online edge. initOfflineSync now also flushes
+// on visibilitychange (visible), focus, and a low-frequency interval — all gated
+// on navigator.onLine — and stopOfflineSync tears every one down.
+// This test file runs in the 'node' environment (no DOM), so synthesise minimal
+// EventTarget-backed window/document/navigator stubs for the F2 listener tests.
+describe('initOfflineSync — extra flush triggers (F2)', () => {
+  let winTarget, docTarget
+
+  beforeEach(() => {
+    winTarget = new EventTarget()
+    docTarget = new EventTarget()
+    docTarget.visibilityState = 'visible'
+    vi.stubGlobal('window', winTarget)
+    vi.stubGlobal('document', docTarget)
+    vi.stubGlobal('navigator', { onLine: true })
+  })
+
+  afterEach(() => {
+    stopOfflineSync()   // always tear down so listeners/intervals don't leak across tests
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
+
+  it('flushes on visibilitychange when the tab becomes visible (online)', async () => {
+    initOfflineSync()                       // startup flush happens here
+    await Promise.resolve()
+    getAll.mockClear()
+
+    // jsdom: visibilityState defaults to 'visible'
+    document.dispatchEvent(new Event('visibilitychange'))
+    await Promise.resolve(); await Promise.resolve()
+
+    expect(getAll).toHaveBeenCalled()
+  })
+
+  it('flushes on window focus (online)', async () => {
+    initOfflineSync()
+    await Promise.resolve()
+    getAll.mockClear()
+
+    window.dispatchEvent(new Event('focus'))
+    await Promise.resolve(); await Promise.resolve()
+
+    expect(getAll).toHaveBeenCalled()
+  })
+
+  it('registers a low-frequency interval and flushes when its callback runs (online)', async () => {
+    const setSpy = vi.spyOn(globalThis, 'setInterval')
+    initOfflineSync()
+    await Promise.resolve()
+
+    // An interval was registered…
+    expect(setSpy).toHaveBeenCalled()
+    const [cb, ms] = setSpy.mock.calls[setSpy.mock.calls.length - 1]
+    expect(ms).toBe(60000)
+
+    // …and firing its callback (online) triggers a flush.
+    getAll.mockClear()
+    cb()
+    await Promise.resolve(); await Promise.resolve()
+    expect(getAll).toHaveBeenCalled()
+    setSpy.mockRestore()
+  })
+
+  it('the interval callback does NOT flush when offline', async () => {
+    const setSpy = vi.spyOn(globalThis, 'setInterval')
+    initOfflineSync()
+    await Promise.resolve()
+    const [cb] = setSpy.mock.calls[setSpy.mock.calls.length - 1]
+
+    vi.stubGlobal('navigator', { onLine: false })
+    getAll.mockClear()
+    cb()
+    await Promise.resolve(); await Promise.resolve()
+    expect(getAll).not.toHaveBeenCalled()
+    setSpy.mockRestore()
+  })
+
+  it('stopOfflineSync clears the interval and removes visibility/focus listeners (no leak)', async () => {
+    const clearSpy = vi.spyOn(globalThis, 'clearInterval')
+    initOfflineSync()
+    await Promise.resolve()
+    stopOfflineSync()
+    expect(clearSpy).toHaveBeenCalled()
+    getAll.mockClear()
+
+    // After teardown the DOM triggers no longer reach flushQueue.
+    document.dispatchEvent(new Event('visibilitychange'))
+    window.dispatchEvent(new Event('focus'))
+    await Promise.resolve(); await Promise.resolve()
+    expect(getAll).not.toHaveBeenCalled()
+    clearSpy.mockRestore()
+  })
+
+  it('does not stack duplicate listeners on a second initOfflineSync', async () => {
+    initOfflineSync()
+    initOfflineSync()   // guarded — should be a no-op
+    await Promise.resolve()
+    getAll.mockClear()
+
+    window.dispatchEvent(new Event('focus'))
+    await Promise.resolve(); await Promise.resolve()
+
+    // Single registration → flushQueue runs, getAll called (idempotency means
+    // the count just needs to be the single-trigger amount, not doubled).
+    expect(getAll).toHaveBeenCalledTimes(1)
+  })
 })
 
 // Test 8: isNetworkError — network vs validation error discrimination
