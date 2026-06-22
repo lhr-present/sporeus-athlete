@@ -301,6 +301,7 @@ export function predictInjuryRisk(log, recovery, profile) {
   if (recovery?.length >= 3) {
     const recHRV = recovery
       .filter(e => e.date >= w1 && parseFloat(e.hrv) > 0)
+      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)) // date order, so `latest` is truly the newest (was array-order)
       .map(e => parseFloat(e.hrv))
     if (recHRV.length >= 3) {
       const hrvMean = recHRV.reduce((s,v)=>s+v,0) / recHRV.length
