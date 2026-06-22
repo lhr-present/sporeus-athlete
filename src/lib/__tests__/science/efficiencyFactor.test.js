@@ -118,6 +118,17 @@ describe('efTrend — Coggan (2003)', () => {
     expect(result).toHaveProperty('citation')
   })
 
+  it('includes the middle session in the second half on odd counts (no off-center drop)', () => {
+    // 9 sessions: first 4 EF=10, middle EF=4, last 4 EF=9.9. With a contiguous
+    // [0,half)/[half,n) split the low middle joins the second half → declining.
+    // The prior slice(n-half) dropped the middle and reported ~stable.
+    const np = [1000, 1000, 1000, 1000, 400, 990, 990, 990, 990]
+    const sessions = np.map((p, i) => ({
+      date: `2026-04-0${i + 1}`, avgHR: 100, np: p, sport: 'cycling',
+    }))
+    expect(efTrend(sessions, 30).trend).toBe('declining')
+  })
+
   it('detects "stable" when EF is constant across sessions', () => {
     const sessions = Array.from({ length: 10 }, (_, i) => ({
       date: `2026-04-${String(i + 1).padStart(2, '0')}`,

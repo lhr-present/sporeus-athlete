@@ -137,10 +137,15 @@ export function efTrend(sessions, windowDays = 30) {
   const variance = efValues.reduce((s, v) => s + (v - mean) ** 2, 0) / n
   const cv = mean > 0 ? Math.sqrt(variance) / mean : 0
 
-  // Trend: compare first-half mean vs second-half mean
+  // Trend: compare first-half mean vs second-half mean. Use contiguous slices
+  // [0,half) and [half,n) with each mean divided by its own length — the prior
+  // `slice(n-half)` overlapped/dropped the middle element on odd n and used the
+  // wrong denominator, skewing the displayed adaptation %.
   const half      = Math.floor(n / 2)
-  const firstMean = efValues.slice(0, half).reduce((s, v) => s + v, 0) / half
-  const lastMean  = efValues.slice(n - half).reduce((s, v) => s + v, 0) / half
+  const firstArr  = efValues.slice(0, half)
+  const lastArr   = efValues.slice(half)
+  const firstMean = firstArr.reduce((s, v) => s + v, 0) / firstArr.length
+  const lastMean  = lastArr.reduce((s, v) => s + v, 0) / lastArr.length
 
   const changePercent = firstMean > 0
     ? Math.round(((lastMean - firstMean) / firstMean) * 100 * 10) / 10

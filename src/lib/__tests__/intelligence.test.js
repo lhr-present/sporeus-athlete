@@ -239,6 +239,21 @@ describe('predictInjuryRisk', () => {
     expectBilingual(r.advice)
   })
 
+  it('uses the latest-by-DATE HRV (not array order) for the single-day drop factor', () => {
+    // Recovery array is intentionally NOT in date order: the true newest date (1d ago)
+    // carries a >15% drop, but it is NOT the last array element. mean=57, CV≈0.09 (<10%
+    // so the CV branch stays quiet); latest-by-date=48 → drop≈16% → drop factor must fire.
+    const recovery = [
+      { date: daysAgo(1), hrv: 48 }, // newest date — the drop
+      { date: daysAgo(2), hrv: 60 },
+      { date: daysAgo(4), hrv: 60 }, // last array element — older, normal
+      { date: daysAgo(3), hrv: 60 },
+    ]
+    const log = [runEntry(1), runEntry(2), runEntry(3)]
+    const r = predictInjuryRisk(log, recovery, {})
+    expect(r.factors.some(f => /HRV drop/i.test(f.label))).toBe(true)
+  })
+
   it('returns array of factors', () => {
     const r = predictInjuryRisk(steadyLog(14), recoveryEntries(), {})
     expect(Array.isArray(r.factors)).toBe(true)

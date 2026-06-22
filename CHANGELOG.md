@@ -2,6 +2,25 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.452.0 — 2026-06-23 — Sport-science math: two objective code-bug fixes
+
+From a deep multi-agent correctness audit of the science/plan math. These two are objective
+implementation bugs (the code didn't do what its own JSDoc/intent stated) — NOT model changes:
+- **efTrend (efficiencyFactor.js)** — the "first-half vs second-half mean" used `slice(0,half)` vs
+  `slice(n-half)`, which on odd counts dropped the middle session AND divided by the wrong length,
+  skewing the displayed aerobic-adaptation %. Now uses contiguous `[0,half)` / `[half,n)` slices each
+  divided by its own length.
+- **predictInjuryRisk HRV factor (intelligence.js)** — the "single-day HRV drop" compared array-order
+  "latest" instead of latest-by-date, so an out-of-order / post-sync recovery array compared the wrong
+  day (the sibling computeHRVTrend already sorts). Now sorts by date first.
+- +2 tests that fail on the old code.
+
+NOTE: the audit also surfaced higher-stakes findings in the periodization engine and one
+performance-model formula that touch the founder's MODEL choices — deliberately NOT changed here;
+reported separately for founder review (see commit/PR notes).
+
+15,981 green (714 files), lint + build clean.
+
 ## v9.451.0 — 2026-06-23 — PWA/offline hardening
 
 From a PWA/offline discovery sweep (two agents). The SW update/install flow verified textbook-correct
