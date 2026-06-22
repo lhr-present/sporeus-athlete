@@ -488,13 +488,23 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
               <div style={{ ...S.mono, fontSize:'10px', color:'#888' }}>{timeStr}</div>
               <div style={{ ...S.mono, fontSize:'10px', color:'var(--sub)', letterSpacing:'0.06em' }}>{dateStr}</div>
             </div>
-            {/* Sync status dot */}
+            {/* Sync status dot. When deadLetterCount > 0 some writes have
+                permanently failed (exhausted MAX_ATTEMPTS) — override the green
+                "synced" state with a red warning dot so the dot never lies about
+                a clean sync while parked dead-letter writes exist. The
+                offline/syncing states are unaffected. */}
             <span
-              title={syncStatus === 'offline' ? (lang === 'tr' ? 'Çevrimdışı — değişiklikler kuyruğa alındı' : 'Offline — changes queued') : syncStatus === 'syncing' ? (lang === 'tr' ? 'Senkronize ediliyor…' : 'Syncing…') : (lang === 'tr' ? 'Senkronize edildi' : 'Synced')}
+              title={
+                deadLetterCount > 0
+                  ? (lang === 'tr' ? `${deadLetterCount} değişiklik senkronize edilemedi` : `${deadLetterCount} change${deadLetterCount === 1 ? '' : 's'} failed to sync`)
+                  : syncStatus === 'offline' ? (lang === 'tr' ? 'Çevrimdışı — değişiklikler kuyruğa alındı' : 'Offline — changes queued')
+                  : syncStatus === 'syncing' ? (lang === 'tr' ? 'Senkronize ediliyor…' : 'Syncing…')
+                  : (lang === 'tr' ? 'Senkronize edildi' : 'Synced')
+              }
               style={{
                 width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-                background: syncStatus === 'offline' ? '#555' : syncStatus === 'syncing' ? '#f5c542' : '#5bc25b',
-                boxShadow: syncStatus === 'syncing' ? '0 0 6px #f5c54299' : 'none',
+                background: deadLetterCount > 0 ? '#e03030' : syncStatus === 'offline' ? '#555' : syncStatus === 'syncing' ? '#f5c542' : '#5bc25b',
+                boxShadow: deadLetterCount > 0 ? '0 0 6px #e0303099' : syncStatus === 'syncing' ? '0 0 6px #f5c54299' : 'none',
               }}
             />
             <NotificationBell onNavigate={handleTabClick} lang={lang} />

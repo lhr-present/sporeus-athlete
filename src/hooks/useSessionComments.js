@@ -234,7 +234,10 @@ export function useSessionComments(sessionId, currentUserId) {
     const { data, error, queued } = await dbPostComment(supabase, sessionId, currentUserId, body, parentId, newId)
 
     if (error) {
-      // Roll back optimistic row
+      // Roll back optimistic row. `error` is also truthy when IndexedDB is
+      // unavailable and the offline enqueue failed (queued=false): the write
+      // couldn't be persisted anywhere, so the optimistic row must not linger
+      // as a phantom "sent" comment — drop it and surface the error.
       setComments(prev => prev.filter(c => c.id !== newId))
     } else if (data && !queued) {
       // Replace optimistic with confirmed row (same id, now server-authoritative)
@@ -245,7 +248,7 @@ export function useSessionComments(sessionId, currentUserId) {
     // queued=true: leave optimistic row; it'll be reconciled when Realtime echoes the insert
     if (!queued) qc.invalidateQueries({ queryKey: qKey })
 
-    return { queued }
+    return { queued, error }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- qKey/qc are stable singleton refs
   }, [sessionId, currentUserId])
 

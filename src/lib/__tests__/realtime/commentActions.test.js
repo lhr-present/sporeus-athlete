@@ -82,6 +82,61 @@ describe('postComment — offline queue', () => {
   })
 })
 
+// ── F1: IndexedDB unavailable (Safari private mode) — enqueue rejects ──────────
+// The offline enqueue must NOT throw out of the mutation. Pre-fix the catch
+// branch re-called enqueueWrite whose rejection was uncaught → the function
+// returned a rejected promise and the optimistic row was stranded / silently
+// lost. Now an IDB failure resolves to { queued: false, error } so the caller
+// can roll back the optimistic row.
+
+describe('comment mutations — enqueue failure (IDB unavailable) does not throw', () => {
+  beforeEach(() => { mockEnqueue.mockClear() })
+
+  it('postComment resolves { queued: false, error } when enqueueWrite rejects', async () => {
+    mockEnqueue.mockRejectedValueOnce(new Error('QuotaExceededError'))
+    const sb = makeChain({ data: null, error: new Error('Failed to fetch') })
+    let result
+    await expect((async () => { result = await postComment(sb, 's1', 'u1', 'hello') })()).resolves.toBeUndefined()
+    expect(result.queued).toBe(false)
+    expect(result.error).toBeTruthy()
+    expect(result.data).toBeNull()
+  })
+
+  it('postComment does not reject when the thrown (catch-branch) path hits an enqueue failure', async () => {
+    mockEnqueue.mockRejectedValueOnce(new Error('IDB blocked'))
+    // single() throws an offline error → catch branch → safeEnqueueWrite fails
+    const sb = {
+      from:   vi.fn(() => sb),
+      insert: vi.fn(() => sb),
+      select: vi.fn(() => sb),
+      single: vi.fn(() => Promise.reject(new Error('Failed to fetch'))),
+    }
+    const result = await postComment(sb, 's1', 'u1', 'hello')
+    expect(result.queued).toBe(false)
+    expect(result.error).toBeTruthy()
+  })
+
+  it('editComment resolves { queued: false, error } when enqueueWrite rejects', async () => {
+    mockEnqueue.mockRejectedValueOnce(new Error('QuotaExceededError'))
+    const sb = makeChain({ data: null, error: new Error('Failed to fetch') })
+    const result = await editComment(sb, 'c1', 'updated text')
+    expect(result.queued).toBe(false)
+    expect(result.error).toBeTruthy()
+  })
+
+  it('deleteComment resolves { queued: false, error } when enqueueWrite rejects', async () => {
+    mockEnqueue.mockRejectedValueOnce(new Error('QuotaExceededError'))
+    const sb = {
+      from:   vi.fn(() => sb),
+      update: vi.fn(() => sb),
+      eq:     vi.fn(() => Promise.resolve({ error: new Error('Failed to fetch') })),
+    }
+    const result = await deleteComment(sb, 'c1')
+    expect(result.queued).toBe(false)
+    expect(result.error).toBeTruthy()
+  })
+})
+
 describe('postComment — stable client id (offline edit/delete relink)', () => {
   beforeEach(() => { mockEnqueue.mockClear() })
 

@@ -117,6 +117,8 @@ describe('writeQueue', () => {
     storeRef.write_queue.push({ id: 99, op: 'insert', table: 'training_log', payload: { id: 'row1', tss: 80 }, _queuedAt: 1000, _attempts: 0, _lastError: null })
     const mockSupabase = {
       from: vi.fn(() => ({
+        // payload carries an id → replay routes through upsert (F3 idempotent insert)
+        upsert: vi.fn(() => Promise.resolve({ error: null })),
         insert: vi.fn(() => Promise.resolve({ error: null })),
         update: vi.fn(() => ({ eq: vi.fn(() => Promise.resolve({ error: null })) })),
         delete: vi.fn(() => ({ eq: vi.fn(() => Promise.resolve({ error: null })) })),
@@ -132,6 +134,7 @@ describe('writeQueue', () => {
     storeRef.write_queue.push({ id: 88, op: 'insert', table: 'training_log', payload: { id: 'row2' }, _queuedAt: 1000, _attempts: 0, _lastError: null })
     const mockSupabase = {
       from: vi.fn(() => ({
+        upsert: vi.fn(() => Promise.resolve({ error: { message: 'network error' } })),
         insert: vi.fn(() => Promise.resolve({ error: { message: 'network error' } })),
         update: vi.fn(() => ({ eq: vi.fn(() => Promise.resolve({ error: null })) })),
         delete: vi.fn(() => ({ eq: vi.fn(() => Promise.resolve({ error: null })) })),
@@ -167,6 +170,7 @@ describe('writeQueue', () => {
     storeRef.write_queue.push({ id: 78, op: 'insert', table: 'training_log', payload: { id: 'good' }, _queuedAt: 2000, _attempts: 0, _lastError: null })
     const mockSupabase = {
       from: vi.fn(() => ({
+        upsert: vi.fn(() => Promise.resolve({ error: null })),
         insert: vi.fn(() => Promise.resolve({ error: null })),
       }))
     }
@@ -176,6 +180,55 @@ describe('writeQueue', () => {
     // Active queue fully drained: healthy replayed, poison dead-lettered.
     expect(storeRef.write_queue).toHaveLength(0)
     expect(storeRef.dead_letter).toHaveLength(1)
+  })
+
+  // ─── F3: idempotent insert replay (upsert-on-id) ────────────────────────────
+  it('replayWrites uses upsert(onConflict:id, ignoreDuplicates) for an insert WITH an id', async () => {
+    storeRef.write_queue.push({ id: 42, op: 'insert', table: 'session_comments', payload: { id: 'uuid-1', body: 'hi' }, _queuedAt: 1000, _attempts: 0, _lastError: null })
+    let upsertArgs = null
+    const insertFn = vi.fn(() => Promise.resolve({ error: null }))
+    const mockSupabase = {
+      from: vi.fn(() => ({
+        upsert: vi.fn((payload, opts) => { upsertArgs = { payload, opts }; return Promise.resolve({ error: null }) }),
+        insert: insertFn,
+      }))
+    }
+    const result = await replayWrites(mockSupabase)
+    expect(result.replayed).toBe(1)
+    expect(insertFn).not.toHaveBeenCalled()
+    expect(upsertArgs.opts).toMatchObject({ onConflict: 'id', ignoreDuplicates: true })
+    expect(storeRef.write_queue).toHaveLength(0)
+  })
+
+  it('replayWrites: a re-applied insert is a no-op success when the row already committed (no phantom failure)', async () => {
+    // Row landed server-side but local dequeue failed → entry still queued.
+    // ignoreDuplicates upsert returns no error → dequeued, not dead-lettered.
+    storeRef.write_queue.push({ id: 43, op: 'insert', table: 'session_comments', payload: { id: 'dup-uuid', body: 'already there' }, _queuedAt: 1000, _attempts: 0, _lastError: null })
+    const mockSupabase = {
+      from: vi.fn(() => ({
+        // Postgres returns no rows + no error for ignoreDuplicates on conflict.
+        upsert: vi.fn(() => Promise.resolve({ data: [], error: null })),
+        insert: vi.fn(() => Promise.resolve({ error: { message: 'duplicate key value violates unique constraint' } })),
+      }))
+    }
+    const result = await replayWrites(mockSupabase)
+    expect(result.replayed).toBe(1)
+    expect(result.failed).toBe(0)
+    expect(storeRef.write_queue).toHaveLength(0)
+    expect(storeRef.dead_letter).toHaveLength(0)
+  })
+
+  it('replayWrites keeps plain .insert() for an insert WITHOUT an id', async () => {
+    storeRef.write_queue.push({ id: 44, op: 'insert', table: 'training_log', payload: { tss: 80 }, _queuedAt: 1000, _attempts: 0, _lastError: null })
+    const upsertFn = vi.fn(() => Promise.resolve({ error: null }))
+    const insertFn = vi.fn(() => Promise.resolve({ error: null }))
+    const mockSupabase = {
+      from: vi.fn(() => ({ upsert: upsertFn, insert: insertFn }))
+    }
+    const result = await replayWrites(mockSupabase)
+    expect(result.replayed).toBe(1)
+    expect(insertFn).toHaveBeenCalledTimes(1)
+    expect(upsertFn).not.toHaveBeenCalled()
   })
 
   it('replayWrites calls onProgress callback', async () => {

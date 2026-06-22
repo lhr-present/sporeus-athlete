@@ -198,7 +198,18 @@ export async function replayWrites(supabase, onProgress) {
       let error = null
 
       if (entry.op === 'insert') {
-        const res = await supabase.from(entry.table).insert(entry.payload)
+        // Idempotent replay: if the row already committed server-side but the
+        // local dequeue/ack failed, a plain .insert() hits a unique/PK violation
+        // → counted failed → burns retry budget → dead-lettered, and the UI
+        // reports a phantom failure for a write that actually succeeded.
+        // Upsert-on-id with ignoreDuplicates makes a re-applied insert a no-op
+        // success. Only when the payload carries an id (comments use a
+        // client-generated UUID PK); inserts without an id keep plain .insert().
+        const hasId = entry.payload != null &&
+          entry.payload.id !== undefined && entry.payload.id !== null
+        const res = hasId
+          ? await supabase.from(entry.table).upsert(entry.payload, { onConflict: 'id', ignoreDuplicates: true })
+          : await supabase.from(entry.table).insert(entry.payload)
         error = res.error
       } else if (entry.op === 'update') {
         const { id, ...rest } = entry.payload

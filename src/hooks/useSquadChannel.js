@@ -38,6 +38,7 @@ export function useSquadChannel(coachId, callbacks = {}) {
         callbacksRef.current.onPresenceSync?.(state)
       },
       onStatusChange: s => setStatus(s),
+      onResubscribe:  () => callbacksRef.current.onResubscribe?.(),
     })
 
     channelRef.current = ch

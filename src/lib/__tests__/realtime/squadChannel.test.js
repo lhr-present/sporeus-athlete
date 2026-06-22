@@ -150,6 +150,33 @@ describe('createSquadChannel — status callbacks', () => {
   })
 })
 
+// ── Reconnect re-fetch (onResubscribe) ────────────────────────────────────────
+
+describe('createSquadChannel — onResubscribe', () => {
+  it('does NOT fire onResubscribe on the initial SUBSCRIBED', () => {
+    const onResubscribe = vi.fn()
+    const { unsubscribe } = createSquadChannel(supabaseMock, 'coach-1', { onResubscribe })
+    mocks._subscribeCb?.('SUBSCRIBED')
+    expect(onResubscribe).not.toHaveBeenCalled()
+    unsubscribe()
+  })
+
+  it('fires onResubscribe on SUBSCRIBED after a reconnect (drop → retry → resubscribe)', () => {
+    vi.useFakeTimers()
+    const onResubscribe = vi.fn()
+    const { unsubscribe } = createSquadChannel(supabaseMock, 'coach-1', { onResubscribe })
+    // Drop the connection — bumps retryCount and schedules a reconnect timer.
+    mocks._subscribeCb?.('CHANNEL_ERROR')
+    // Advance past the backoff so subscribe() runs again (re-registers _subscribeCb).
+    vi.advanceTimersByTime(100)
+    // The new subscription comes up — this is a reconnect, so onResubscribe fires.
+    mocks._subscribeCb?.('SUBSCRIBED')
+    expect(onResubscribe).toHaveBeenCalledTimes(1)
+    vi.useRealTimers()
+    unsubscribe()
+  })
+})
+
 // ── postgres_changes callbacks ────────────────────────────────────────────────
 
 describe('createSquadChannel — change callbacks', () => {

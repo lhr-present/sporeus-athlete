@@ -18,8 +18,12 @@ precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 
 // ── Navigation fallback ────────────────────────────────────────────────────────
-// Denylist: OAuth callbacks must hit network to avoid serving cached index.html
-const DENYLIST = [/^\/auth/, /\?code=/, /\?error=/, /#access_token=/, /\?state=strava/]
+// Denylist: OAuth callbacks must hit network to avoid serving cached index.html.
+// NOTE: Workbox matches denylist regexes against pathname + search ONLY — the URL
+// HASH is excluded. Hash-based auth returns (implicit OAuth: #access_token=...) are
+// handled entirely client-side, so do NOT add a /#access_token=/ entry here: it can
+// never match and would be misleading dead code.
+const DENYLIST = [/^\/auth/, /\?code=/, /\?error=/, /\?state=strava/]
 const handler = createHandlerBoundToURL('/index.html')
 registerRoute(new NavigationRoute(handler, { denylist: DENYLIST }))
 
