@@ -12,7 +12,8 @@
 
 import { useEffect, useRef } from 'react'
 import { getCheckoutUrl, getUpgradePrompt } from '../lib/subscription.js'
-import { trackEvent, trackFunnel } from '../lib/telemetry.js'
+import { trackEvent } from '../lib/telemetry.js'
+import { emitEvent } from '../lib/attribution.js'
 import { useFocusTrap } from '../hooks/useFocusTrap.js'
 import { S } from '../styles.js'
 
@@ -66,7 +67,7 @@ export default function UpgradeModal({ open, onClose, featureKey = null, lang = 
   function handleCheckout(tier) {
     const url = getCheckoutUrl(tier, lang)
     trackEvent('upgrade', 'checkout_started', tier, { event_type: 'conversion' })
-    trackFunnel('tier_upgrade')
+    emitEvent('tier_upgrade', { tier })
     if (url) {
       window.open(url, '_blank', 'noopener,noreferrer')
     } else {

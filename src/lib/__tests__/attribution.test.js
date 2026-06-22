@@ -8,6 +8,7 @@ import {
   emitEvent,
   hasSignupFired,
   markSignupFired,
+  markLandingIfNew,
 } from '../attribution.js'
 
 // ── localStorage mock ─────────────────────────────────────────────────────────
@@ -206,5 +207,20 @@ describe('hasSignupFired / markSignupFired', () => {
   it('hasSignupFired returns true after markSignupFired', () => {
     markSignupFired()
     expect(hasSignupFired()).toBe(true)
+  })
+})
+
+describe('markLandingIfNew', () => {
+  it('returns true on first call and false on subsequent calls (deduped)', () => {
+    expect(markLandingIfNew()).toBe(true)
+    expect(markLandingIfNew()).toBe(false)
+    expect(markLandingIfNew()).toBe(false)
+  })
+
+  it('returns true again once the stored window has expired', () => {
+    expect(markLandingIfNew()).toBe(true)
+    // expire the flag by rewinding it to the past
+    localStorage.setItem('spa_landing_fired', String(Date.now() - 1))
+    expect(markLandingIfNew()).toBe(true)
   })
 })

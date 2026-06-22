@@ -141,7 +141,9 @@ export function explainPlannedSession({ session, log, recovery, profile: _profil
   }
 
   // ── TSB factor ──
-  const load = calcLoad(Array.isArray(log) ? log : [])
+  // Anchor the load window to the passed `today` (not wall-clock) — otherwise TSB
+  // drifts toward 0 as real time advances past the log dates (stale/missing rationale).
+  const load = calcLoad(Array.isArray(log) ? log : [], today)
   const tsb = load?.tsb ?? 0
   if (Math.abs(tsb) >= 5) {
     if (tsb >= 10) {
