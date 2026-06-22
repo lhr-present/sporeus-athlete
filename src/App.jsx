@@ -41,7 +41,7 @@ import ErrorBoundary from './components/ErrorBoundary.jsx'
 import DebugRealtimeStats from './components/DebugRealtimeStats.jsx'
 import { flushQueue } from './lib/offlineQueue.js'
 import ToastStack from './components/ToastStack.jsx'
-import { parseUtmFromLocation, recordFirstTouch, emitEvent, hasSignupFired, markSignupFired } from './lib/attribution.js'
+import { parseUtmFromLocation, recordFirstTouch, emitEvent, hasSignupFired, markSignupFired, markLandingIfNew } from './lib/attribution.js'
 import { initTelemetryFlush } from './lib/telemetry.js'
 const ScienceReference = lazy(() => import('./components/ScienceReference.jsx'))
 const PrivacyPolicy    = lazy(() => import('./components/PrivacyPolicy.jsx'))
@@ -706,7 +706,9 @@ export default function App() {
   useEffect(() => {
     const utm = parseUtmFromLocation()
     recordFirstTouch(utm)
-    emitEvent('landing', { version: APP_VERSION })
+    // Dedupe: emit 'landing' at most once per 30d acquisition window per browser,
+    // not on every reload/PWA reopen (which inflated the funnel denominator).
+    if (markLandingIfNew()) emitEvent('landing', { version: APP_VERSION })
   }, [])  // runs once per page load
 
   // ── Telemetry flush: activate server-side flush after auth resolves ─────────

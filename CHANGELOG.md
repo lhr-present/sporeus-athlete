@@ -2,6 +2,29 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.450.0 — 2026-06-22 — Telemetry: single source of truth (attribution) + 2 fixes
+
+Founder decision: consolidate the conversion funnel onto **attribution** (`emitEvent` → attribution-log),
+which already carried every funnel step (~37 events). The parallel `trackFunnel` → `get_funnel_today()`
+path was vestigial (only `tier_upgrade` wired), so any dashboard on that RPC was near-empty.
+- **Moved `tier_upgrade`** from `trackFunnel` to `emitEvent('tier_upgrade', { tier })` (UpgradeModal) — upgrades
+  now join the one funnel stream.
+- **Retired `trackFunnel`** (telemetry.js) — it had no other caller. `telemetry.js` stays for general feature
+  analytics (`trackEvent`, 15 callers) + perf marks + error logging; only the funnel role moved out. The
+  `get_funnel_today()`/ingest-telemetry funnel path is no longer client-fed — query the funnel from
+  attribution-log rows. (Backend RPC drop is an operator follow-up.)
+- **Deduped `landing`** — it fired on every cold mount (each reload/PWA reopen inflated the funnel
+  denominator). New `markLandingIfNew()` gates it to once per 30d acquisition window per browser.
+  (signup_completed already had a per-browser guard; true cross-device dedupe needs the edge fn and is left
+  as a noted follow-up.)
+
+Also fixed (surfaced by the date rolling over, was failing the suite + a real prod bug): **plan-rationale
+TSB factor drifted with wall-clock** — `explainPlannedSession` called `calcLoad(log)` without the `today`
+arg, so TSB decayed toward 0 as real time advanced past the log dates (stale/missing TSB rationale for any
+athlete whose last log was weeks old). Now passes `today` through.
+
++4 tests. 15,962 green (713 files), lint + build clean.
+
 ## v9.449.0 — 2026-06-22 — Auth: resend-verification recovery for stranded users
 
 From the onboarding-funnel sweep. The signup flow showed "Confirmation email sent — check your inbox"

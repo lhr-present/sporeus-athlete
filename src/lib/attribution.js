@@ -85,6 +85,23 @@ export function recordFirstTouch(utmContext = {}) {
   }
 }
 
+// ── markLandingIfNew — dedupe the 'landing' acquisition event ────────────────
+// 'landing' previously fired on every cold mount (each reload/PWA reopen inflated
+// top-of-funnel counts). This gates it to once per first-touch window (30d) per
+// browser, matching acquisition semantics: returns true (and marks) only when no
+// unexpired landing flag exists, so the caller emits 'landing' at most once/window.
+const LANDING_KEY = 'spa_landing_fired'
+export function markLandingIfNew() {
+  try {
+    const stored = localStorage.getItem(LANDING_KEY)
+    if (stored && Number(stored) > Date.now()) return false
+    localStorage.setItem(LANDING_KEY, String(Date.now() + FIRST_TOUCH_TTL))
+    return true
+  } catch {
+    return true  // storage blocked — fail open (emit) rather than lose the signal
+  }
+}
+
 // ── getFirstTouch — read stored first-touch (may be expired) ─────────────────
 export function getFirstTouch() {
   try {

@@ -3,10 +3,10 @@
 // Phase 2 (new): flush events to ingest-telemetry edge function every 30s
 //   and on page unload. Falls back silently if the edge function is unreachable.
 //
-// Funnel events to instrument conversion steps:
-//   trackFunnel('signup_complete') | trackFunnel('first_session') |
-//   trackFunnel('strava_connected') | trackFunnel('first_ai_insight') |
-//   trackFunnel('tier_upgrade')
+// Scope: general FEATURE analytics (trackEvent) + perf marks + error logging.
+// The conversion FUNNEL is NOT tracked here — it lives in attribution
+// (emitEvent → attribution-log), the single source of truth (v9.450). trackFunnel
+// was retired.
 
 const TELEMETRY_KEY  = 'sporeus-telemetry'
 const MAX_EVENTS     = 100
@@ -180,15 +180,12 @@ export function trackEvent(category, action, label = '', { event_type = 'feature
   }
 }
 
-// ─── trackFunnel ─────────────────────────────────────────────────────────────
-// Records a conversion funnel step. Stored as event_type='funnel' for server
-// aggregation via get_funnel_today() RPC.
-//
-// @param {string} step — 'signup_complete'|'first_session'|'strava_connected'|
-//                         'first_ai_insight'|'tier_upgrade'
-export function trackFunnel(step) {
-  trackEvent('funnel', step, '', { event_type: 'funnel' })
-}
+// NOTE (v9.450): trackFunnel was retired. The conversion funnel is now a single
+// source of truth in attribution (emitEvent → attribution-log), which already
+// carries every step (signup_completed, onboarding_completed, first_session_logged,
+// tier_upgrade, etc.). The get_funnel_today() RPC / ingest-telemetry funnel path is
+// no longer fed by the client; query the funnel from attribution-log rows instead.
+// (telemetry.js remains for general feature analytics via trackEvent + error logging.)
 
 // ─── trackPerf ───────────────────────────────────────────────────────────────
 // Records a performance mark with duration_ms.
