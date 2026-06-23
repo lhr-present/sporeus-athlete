@@ -137,17 +137,79 @@ describe('buildDailyRecommendation', () => {
     expect(out.load).toBe('easy')
   })
 
-  it('recent isolated spike → recovery / Z1 / easy', () => {
-    // Single big TSS day after empty chronic window → high ACWR
-    const log = [
-      { date: (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10) })(),
-        type: 'Race', tss: 250 },
-    ]
+  it('recent isolated spike WITH ≥14 days chronic base → recovery / Z1 / easy', () => {
+    // INV-3: acwr_high only fires once a real chronic base exists (≥14 distinct
+    // days). Provide a light 15-day base + a heavy acute spike so ACWR > 1.3.
+    const log = []
+    for (let i = 27; i >= 13; i--) {  // 15 distinct light days
+      const d = new Date(); d.setUTCDate(d.getUTCDate() - i)
+      log.push({ date: d.toISOString().slice(0, 10), type: 'Easy run', tss: 10 })
+    }
+    for (let i = 5; i >= 0; i--) {    // 6-day heavy acute spike
+      const d = new Date(); d.setUTCDate(d.getUTCDate() - i)
+      log.push({ date: d.toISOString().slice(0, 10), type: 'Race', tss: 200 })
+    }
     const out = buildDailyRecommendation({ log, recovery: [], profile: {} })
     expect(out.source).toBe('acwr_high')
     expect(out.intent).toBe('recovery')
     expect(out.zone).toBe('Z1')
     expect(out.load).toBe('easy')
+  })
+
+  it('INV-3: cold-start single hard session (<14 days) does NOT yield mandatory-rest acwr_high', () => {
+    const log = [
+      { date: (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10) })(),
+        type: 'Race', tss: 250 },
+    ]
+    const out = buildDailyRecommendation({ log, recovery: [], profile: {} })
+    expect(out.source).not.toBe('acwr_high')
+  })
+
+  // ── SAFETY INV-1: downgrade floor (forceEasy) ──────────────────────────────
+  it('INV-1: forceEasy floors a tsb_high hard rec to easy Z1–Z2 recovery', () => {
+    // tsb_high fires when TSB > 15: heavy chronic base, very light recent.
+    const log = []
+    for (let i = 70; i >= 11; i--) {  // 60-day heavy chronic base
+      const d = new Date(); d.setUTCDate(d.getUTCDate() - i)
+      log.push({ date: d.toISOString().slice(0, 10), type: 'Tempo', tss: 100 })
+    }
+    for (let i = 4; i >= 0; i--) {    // 5 very light recent days → TSB rises
+      const d = new Date(); d.setUTCDate(d.getUTCDate() - i)
+      log.push({ date: d.toISOString().slice(0, 10), type: 'Easy', tss: 5 })
+    }
+    // Without forceEasy this is a hard Z5 session.
+    const hard = buildDailyRecommendation({ log, recovery: [], profile: {} })
+    expect(hard.source).toBe('tsb_high')
+    expect(hard.load).toBe('hard')
+    // With forceEasy (the downgrade path) it must NEVER be hard.
+    const easy = buildDailyRecommendation({ log, recovery: [], profile: {}, forceEasy: true })
+    expect(easy.load).not.toBe('hard')
+    expect(easy.load).toBe('easy')
+    expect(easy.intent).toBe('recovery')
+    expect(easy.rpe).toBeLessThanOrEqual(4)
+    expect(easy.zone).toMatch(/^Z[12]$/)
+  })
+
+  it('INV-1: forceEasy leaves a non-hard rec unchanged (no spurious downgrade)', () => {
+    // Default rule → moderate; forceEasy should not alter it.
+    const plain = buildDailyRecommendation({ log: [], recovery: [], profile: {} })
+    const forced = buildDailyRecommendation({ log: [], recovery: [], profile: {}, forceEasy: true })
+    expect(plain.load).not.toBe('hard')
+    expect(forced.load).toBe(plain.load)
+    expect(forced.zone).toBe(plain.zone)
+    expect(forced.rpe).toBe(plain.rpe)
+  })
+
+  it('INV-1: forceEasy downgrade is never harder than easy across rule paths', () => {
+    const variants = [
+      { log: [], recovery: [] },                                   // default → moderate
+      { log: tssDays(28, 100), recovery: [] },                     // heavy chronic
+      { log: [], recovery: [rec(today(), 25)] },                   // wellness_poor
+    ]
+    for (const v of variants) {
+      const out = buildDailyRecommendation({ ...v, profile: {}, forceEasy: true })
+      expect(out.load).not.toBe('hard')
+    }
   })
 
   it('returns numeric duration for all sources', () => {

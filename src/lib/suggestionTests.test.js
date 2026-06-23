@@ -39,10 +39,21 @@ function lowAcwrLog() {
   return [...old, ...recent]
 }
 
-// Produces ACWR > 1.3 (acwr_high) — heavy acute spike, no chronic base
+// Produces ACWR > 1.3 (acwr_high) WITH ≥14 distinct days of chronic coverage so
+// the INV-3 cold-start guard (≥14 distinct days) is satisfied. A light, steady
+// chronic base (days 27→13 ago) keeps CTL non-trivial; a heavy acute block
+// (last 6 days) drives ATL/CTL = ACWR above 1.3.
 function highAcwrLog() {
-  // All load crammed into last 5 days with no prior chronic base
-  return uniformLog(5, 150, 4)
+  const base   = uniformLog(15, 10, 27)  // days 27→13 ago, light steady base
+  const recent = uniformLog(6, 200, 5)   // last 6 days, heavy acute spike
+  return [...base, ...recent]
+}
+
+// Cold-start: a single hard/long FIRST session, no chronic base (<14 distinct
+// days). ACWR explodes mathematically, but the INV-3 guard must suppress the
+// acwr_high rest/spike advice and fall through to the gentler default.
+function coldStartSpikeLog() {
+  return uniformLog(1, 250, 1)  // one big day yesterday, 1 distinct day total
 }
 
 // Produces ACWR roughly in 0.8–1.3 range and TSB normal — hits 'default'
@@ -99,12 +110,29 @@ describe('getSingleSuggestion — structured return', () => {
     expect(result.source).not.toBe('acwr_high')
   })
 
-  it('ACWR > 1.3 (heavy acute spike, no base) → source === acwr_high', () => {
+  it('ACWR > 1.3 with ≥14 distinct days of chronic base → source === acwr_high', () => {
     const log = highAcwrLog()
     const result = getSingleSuggestion(log, [], {})
     expect(result.source).toBe('acwr_high')
     expect(result.load).toBe('easy')
     expect(result.duration).toBe(30)
+  })
+
+  // ── SAFETY INV-3: ACWR cold-start guard ────────────────────────────────────
+  it('cold-start single hard session (<14 distinct days) → does NOT fire acwr_high mandatory rest', () => {
+    const log = coldStartSpikeLog()  // ACWR is mathematically huge but base is ~1 day
+    const result = getSingleSuggestion(log, [], {})
+    // Must NOT prescribe rest/active-recovery off a meaningless chronic base.
+    expect(result.source).not.toBe('acwr_high')
+    expect(result.action).not.toMatch(/rest|recovery/i)
+    // Falls through to the gentler default (or tsb-driven) advice.
+    expect(['default', 'tsb_high', 'tsb_low', 'acwr_low']).toContain(result.source)
+  })
+
+  it('acwr_high stays gated until exactly 14 distinct logged days', () => {
+    // 13 distinct days with a spike → still suppressed
+    const log13 = [...uniformLog(7, 10, 13), ...uniformLog(6, 200, 5)]  // 13 distinct days
+    expect(getSingleSuggestion(log13, [], {}).source).not.toBe('acwr_high')
   })
 
   it('wellness score 1/5 → source === wellness_poor (overrides ACWR)', () => {

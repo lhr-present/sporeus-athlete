@@ -92,6 +92,30 @@ describe('buildYearlyPlan', () => {
     }
   })
 
+  it('never deloads a Peak week (apex must not be recovery-weeked)', () => {
+    const { weeks } = defaultPlan()
+    const peakWeeks = weeks.filter(w => w.phase === 'Peak')
+    expect(peakWeeks.length).toBeGreaterThan(0)
+    expect(peakWeeks.every(w => !w.isDeload)).toBe(true)
+  })
+
+  it('Peak weeks hold their intended Peak TSS (peakTSS * 0.85), not a deload value', () => {
+    const { weeks } = defaultPlan()
+    const peakTSS = Math.min(55 * 7, 10 * 65)
+    const expectedPeak = Math.round(peakTSS * 0.85)
+    const peakWeeks = weeks.filter(w => w.phase === 'Peak')
+    expect(peakWeeks.length).toBeGreaterThan(0)
+    for (const w of peakWeeks) {
+      expect(w.targetTSS).toBe(expectedPeak)
+    }
+  })
+
+  it('updateWeekTSS never flags a Peak week as deload', () => {
+    const peakWeek = { weekNum: 24, targetTSS: 300, phase: 'Peak', isDeload: false, plannedHours: 5.0 }
+    const result = updateWeekTSS([peakWeek], 0, 320)
+    expect(result[0].isDeload).toBe(false)
+  })
+
   it('race week TSS is 40–50% of peak TSS', () => {
     const { weeks } = defaultPlan()
     const raceWeek = weeks.find(w => w.phase === 'Race')

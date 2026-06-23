@@ -76,6 +76,15 @@ const RATIONALE_TR = {
  * @param {Array}    args.recovery  - recovery / wellness entries
  * @param {object}   args.profile   - athlete profile (threshold, ftp, primarySport)
  * @param {string}   [args.lang='en'] - 'en' | 'tr'
+ * @param {boolean}  [args.forceEasy=false] - SAFETY INV-1: when this rec is
+ *                   consumed as a DOWNGRADE (the swap path floors a hard
+ *                   planned session to recovery), a derived `hard` rec must
+ *                   never slip through. `getSingleSuggestion`'s tsb_high rule
+ *                   returns load:'hard'/Z5/RPE8 whenever TSB >15 (e.g. an
+ *                   injury/HRV swap on a fresh-but-tapered athlete), which would
+ *                   render a HARDER session under a "downgrade to easy" banner.
+ *                   With forceEasy, any `hard` rec is replaced by an easy
+ *                   Z1–Z2 recovery target (RPE 4) before shaping.
  * @returns {object|null} renderable session OR null if heuristic returns null
  *
  * Shape:
@@ -90,35 +99,50 @@ const RATIONALE_TR = {
  *     source:    string                — getSingleSuggestion rule id
  *   }
  */
-export function buildDailyRecommendation({ log, recovery, profile, lang = 'en' } = {}) {
+export function buildDailyRecommendation({ log, recovery, profile, lang = 'en', forceEasy = false } = {}) {
   const sug = getSingleSuggestion(log, recovery, profile)
   if (!sug) return null
 
-  const source = sug.source || 'default'
-  const intent = SOURCE_TO_INTENT[source] || 'endurance'
-  const zone   = SOURCE_TO_ZONE[source]   || 'Z2'
-  const rpe    = SOURCE_TO_RPE[source]    || 5
-
-  const sport     = profile?.primarySport || null
-  const title     = sportSpecificLabel(intent, sport, lang)
-  const rationale = lang === 'tr'
+  let source = sug.source || 'default'
+  let intent = SOURCE_TO_INTENT[source] || 'endurance'
+  let zone   = SOURCE_TO_ZONE[source]   || 'Z2'
+  let rpe    = SOURCE_TO_RPE[source]    || 5
+  let load   = sug.load
+  let baseDuration = Number(sug.duration) > 0
+    ? Math.round(sug.duration)
+    : (source === 'wellness_poor' ? 0 : 45)
+  let baseRationale = lang === 'tr'
     ? (RATIONALE_TR[source] || sug.rationale)
     : sug.rationale
 
-  // Default duration when getSingleSuggestion returns null (wellness_poor → rest)
-  // and when the heuristic gave no duration at all.
-  const duration = Number(sug.duration) > 0
-    ? Math.round(sug.duration)
-    : (source === 'wellness_poor' ? 0 : 45)
+  // ── SAFETY INV-1: downgrade floor ─────────────────────────────────────────
+  // When this rec is being used as a downgrade (forceEasy), a `hard` load is a
+  // contradiction — it would prescribe a harder session under an
+  // "auto-downgraded · evidence-based" banner. Floor it to an easy Z1–Z2
+  // recovery target. We keep the underlying source for telemetry but override
+  // the prescribed load/zone/intent/RPE and shorten the duration.
+  if (forceEasy && load === 'hard') {
+    intent = 'recovery'
+    zone   = 'Z2'
+    rpe    = 4
+    load   = 'easy'
+    baseDuration = Math.min(baseDuration || 45, 45)
+    baseRationale = lang === 'tr'
+      ? 'İndirgeme: tazelik var ama bugün sert seans önerilmiyor — kolay Z1–Z2 toparlanma'
+      : 'Downgrade: freshness is present, but a hard session is not advised here — easy Z1–Z2 recovery'
+  }
+
+  const sport = profile?.primarySport || null
+  const title = sportSpecificLabel(intent, sport, lang)
 
   return {
     intent,
     type:      title,
     zone,
-    duration,
+    duration:  baseDuration,
     rpe,
-    rationale,
-    load:      sug.load,
+    rationale: baseRationale,
+    load,
     source,
   }
 }

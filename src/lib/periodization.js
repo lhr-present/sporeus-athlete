@@ -194,8 +194,9 @@ export function buildYearlyPlan(params) {
     else if (phase === 'Transition')   { tss = baseTSS * 0.40 }
     else                               { tss = baseTSS }  // Base
 
-    // Deload every 4th week (not Race / Recovery / Transition)
-    const canDeload = !['Race', 'Recovery', 'Transition'].includes(phase)
+    // Deload every 4th week (not Peak / Race / Recovery / Transition).
+    // Peak is the sharpening apex before a race — never recovery-week the apex.
+    const canDeload = !['Peak', 'Race', 'Recovery', 'Transition'].includes(phase)
     if (canDeload && weekNum % 4 === 0) {
       tss = prevTSS * 0.6
       weeks[w].isDeload = true
@@ -282,7 +283,7 @@ export function updateWeekTSS(weeks, weekIndex, newTSS) {
   return weeks.map((w, i) => {
     if (i !== weekIndex) return w
     const tss        = Math.max(0, Math.round(newTSS))
-    const canDeload  = !['Race', 'Recovery', 'Transition'].includes(w.phase)
+    const canDeload  = !['Peak', 'Race', 'Recovery', 'Transition'].includes(w.phase)
     const isDeload   = canDeload && w.weekNum % 4 === 0
     return {
       ...w,

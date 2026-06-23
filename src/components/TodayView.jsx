@@ -637,7 +637,12 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
     if (!plannedSession || !isHardToday) return null
     const lowReadiness = todayReadiness != null && todayReadiness < 50
     if (!lowReadiness && !sessionSwapFlag) return null
-    return buildDailyRecommendation({ log, recovery, profile, lang })
+    // SAFETY INV-1: this rec renders under "✓ AUTO-DOWNGRADED" with a LOG
+    // button. forceEasy guarantees a `hard` getSingleSuggestion result
+    // (tsb_high → load:'hard'/Z5/RPE8, which fires for injury/HRV swaps on a
+    // fresh-but-tapered athlete) is floored to an easy Z1–Z2 recovery target
+    // instead of prescribing a harder session than planned.
+    return buildDailyRecommendation({ log, recovery, profile, lang, forceEasy: true })
   }, [plannedSession, isHardToday, todayReadiness, sessionSwapFlag, log, recovery, profile, lang])
   const [quickReadinessSaved, setQuickReadinessSaved] = useState(false)
   const [quickReadinessLogged, setQuickReadinessLogged] = useState(false)
@@ -2498,6 +2503,15 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
         const recRpe = Number(rec.rpe) || 0
         if (Math.abs(plannedRpe - recRpe) < 2) return null
         const direction = recRpe < plannedRpe ? 'easier' : 'harder'
+        // SAFETY INV-2: never suggest INCREASING load during the taper/race
+        // window. Inside ~2 weeks TSB naturally climbs (freshness), so
+        // getSingleSuggestion's tsb_high rule pushes a hard VO2/threshold
+        // session right next to the taper-conflict banner that says the
+        // opposite. The nextAction.js engine already orders race_taper above
+        // tsb_high; this brings the getSingleSuggestion-derived signal tile in
+        // line. Suppress the "go harder" signal in the taper window (the
+        // "easier" direction still surfaces — backing off is always safe).
+        if (direction === 'harder' && raceCountdown?.days != null && raceCountdown.days <= 14) return null
         const arrow = direction === 'easier' ? '↓' : '↑'
         const dotColor = direction === 'easier' ? AMBER : '#0064ff'
         return (
@@ -3536,7 +3550,15 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
                   // only "No plan active — generate one." Now they get a real
                   // recommendation derived from wellness/ACWR/TSB (getSingleSuggestion)
                   // shaped into a session via sport-aware labels + pace/power.
-                  const rec = buildDailyRecommendation({ log, recovery, profile, lang })
+                  // SAFETY INV-2: in the taper/race window (daysToRace ≤14) TSB
+                  // climbs naturally, so a plan-less athlete's daily answer
+                  // would read "Hard training session (Z5)" via tsb_high — the
+                  // opposite of taper guidance. Floor the rec to easy when in
+                  // the window so no surface recommends INCREASING load near a
+                  // race. (forceEasy reuses the dailyRecommendation downgrade
+                  // floor; the source/telemetry is preserved.)
+                  const inTaperWindow = raceCountdown?.days != null && raceCountdown.days <= 14
+                  const rec = buildDailyRecommendation({ log, recovery, profile, lang, forceEasy: inTaperWindow })
                   if (!rec) {
                     return (
                       <>
@@ -4450,17 +4472,42 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
       })()}
 
       {/* ── Card 4: Smart Suggestion ───────────────────────────────────────── */}
+      {(() => {
+      // SAFETY INV-2: getSingleSuggestion has no race awareness, so its
+      // tsb_high rule recommends a "Hard training session (Z4-Z5)" whenever
+      // TSB >15 — which is the *normal* state during a taper. Surfacing that
+      // here next to the taper-conflict banner contradicts the taper guidance.
+      // In the taper/race window (daysToRace ≤14) replace a hard tsb_high
+      // suggestion with the taper-appropriate "keep intensity sharp, cut
+      // volume" message instead of "go harder". Done at the consumption point
+      // so getSingleSuggestion's founder rule order is untouched.
+      const inTaperWindow = raceCountdown?.days != null && raceCountdown.days <= 14
+      const suggestionView = (suggestion && inTaperWindow && suggestion.source === 'tsb_high')
+        ? {
+            ...suggestion,
+            action:   lang === 'tr'
+              ? 'Konik: yoğunluğu koru, volümü azalt'
+              : 'Taper: keep intensity sharp, cut volume',
+            rationale: lang === 'tr'
+              ? `Konik penceresi (yarışa ${raceCountdown.days} gün) — TSB doğal olarak yükselir; tazeliği yarışa sakla, yük artırma.`
+              : `Taper window (${raceCountdown.days}d to race) — TSB rises naturally; save the freshness for race day, don't add load.`,
+            load:     'easy',
+            duration: Math.min(suggestion.duration || 45, 45),
+            source:   'tsb_high',
+          }
+        : suggestion
+      return (
       <div style={{ ...card }}>
         <div style={cardTitle}>{t('todaySuggestion')}</div>
-        {!suggestion && (
+        {!suggestionView && (
           <div style={{ fontSize: '11px', color: '#555', fontFamily: MONO }}>
             {lang === 'tr' ? 'Öneri oluşturmak için daha fazla antrenman kaydı gerekiyor.' : 'Log a few sessions to receive a smart suggestion.'}
           </div>
         )}
-        {suggestion && (
+        {suggestionView && (
           <div style={{ marginBottom: '16px' }}>
             {/* O2 — suggestion source badge */}
-            {suggestion.source && suggestion.source !== 'default' && (() => {
+            {suggestionView.source && suggestionView.source !== 'default' && (() => {
               const SRC = {
                 wellness_poor:   { label: lang==='tr' ? '⚠ TOPARLANMA DÜŞÜK' : '⚠ WELLNESS LOW',      color: RED   },
                 acwr_high:       { label: '↑ ACWR HIGH',                                               color: AMBER },
@@ -4469,7 +4516,7 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
                 tsb_high:        { label: lang==='tr' ? '↑ FORM YÜKSEK' : '↑ TSB HIGH',               color: GREEN },
                 tsb_low:         { label: lang==='tr' ? '↓ FORM DÜŞÜK'  : '↓ TSB LOW',                color: AMBER },
               }
-              const s = SRC[suggestion.source]
+              const s = SRC[suggestionView.source]
               if (!s) return null
               return (
                 <div style={{ display:'inline-flex', marginBottom:'6px', padding:'2px 7px', background:`${s.color}11`, border:`1px solid ${s.color}33`, borderRadius:'3px', fontFamily:MONO, fontSize:'9px', color:s.color, letterSpacing:'0.06em' }}>
@@ -4478,19 +4525,21 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
               )
             })()}
             <div style={{ fontSize: '11px', color: 'var(--text)', fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600 }}>
-              {suggestion.action}
+              {suggestionView.action}
             </div>
             <div style={{ fontSize: '10px', color: '#555', fontFamily: "'IBM Plex Mono', monospace", marginTop: '3px' }}>
-              {suggestion.rationale}
+              {suggestionView.rationale}
             </div>
-            {suggestion.duration && (
+            {suggestionView.duration && (
               <div style={{ fontSize: '9px', color: '#444', fontFamily: "'IBM Plex Mono', monospace", marginTop: '2px' }}>
-                → {suggestion.duration}min · {suggestion.load}
+                → {suggestionView.duration}min · {suggestionView.load}
               </div>
             )}
           </div>
         )}
       </div>
+      )
+      })()}
 
       {/* ── E6 — Science Insights (interpretACWR / interpretCTL / interpretTSB) ── */}
       {scienceInsights.length > 0 && (
