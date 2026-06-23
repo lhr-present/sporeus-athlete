@@ -7,7 +7,7 @@
 
 import { estimateVDOT, getTrainingPaces, predictTime as _predictTime } from './vdot.js'
 import { calcLoad } from './formulas.js'
-import { calculateACWR } from './trainingLoad.js'
+import { calculateACWR, computeMonotony } from './trainingLoad.js'
 import { normalizeTrainingDow, sessionOrdinalForDay } from './plan/trainingDays.js'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -252,15 +252,12 @@ export function predictInjuryRisk(log, recovery, profile) {
   const monoThreshold = sport.includes('cycl') || sport.includes('bike') ? 2.4
     : sport.includes('tri') ? 1.8
     : 2.0
-  const last7tss = []
-  for (let i = 6; i >= 0; i--) {
-    const d = daysAgoDate(i)
-    last7tss.push(log.filter(e => e.date === d).reduce((s, e) => s + (e.tss || 0), 0))
-  }
-  const mean7 = last7tss.reduce((s, v) => s + v, 0) / 7
-  const std7  = Math.sqrt(last7tss.reduce((s, v) => s + (v - mean7) ** 2, 0) / 7)
-  const mono  = std7 > 0 ? Math.round(mean7 / std7 * 10) / 10 : 0
-  if (mono > monoThreshold) {
+  // Use the canonical computeMonotony (single source of truth) instead of a divergent
+  // inline copy. It returns null when variance is insufficient (stdev < 1) or the week is
+  // empty — which avoids the prior inline version's absurd unbounded mean/std blow-up on
+  // near-constant daily load wrongly adding +20 risk.
+  const mono = computeMonotony(log, daysAgoDate(0)).monotony
+  if (mono != null && mono > monoThreshold) {
     riskScore += 20; factors.push({ label: `Monotony ${mono}`, severity: 'moderate', detail: { en: `High monotony index (${mono} > ${monoThreshold}) — vary intensity daily.`, tr: `Yüksek monotoni indeksi (${mono} > ${monoThreshold}) — günlük yoğunluğu değiştir.` } })
   }
 

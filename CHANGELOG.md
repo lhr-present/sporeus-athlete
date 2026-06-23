@@ -2,6 +2,22 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.453.0 — 2026-06-23 — Science math: VO₂max coefficient + monotony consolidation
+
+Two objective math fixes from the deep audit (the periodization fix follows separately):
+- **`astrandVO2` (formulas.js)** — the Åstrand cycle-ergometer VO₂max dropped the ACSM ×1.8
+  coefficient and used +3.5 instead of +7, returning **~half** the physiological value (150 W/70 kg
+  male showed ~16.6 instead of ~30.6). Now matches the ACSM leg-cycling equation
+  `1.8 × (watts × 6.12/5.88) / bw + 7`. Shown to athletes via the bike-test protocol.
+- **Monotony consolidation (intelligence.js)** — `predictInjuryRisk` had a third, divergent inline
+  monotony calc (population SD, guard `std>0`) that blew up to an absurd unbounded value on
+  near-constant daily load (e.g. 50,50,…,51 → ~143) and wrongly added +20 to injury risk. Now routes
+  through the canonical `computeMonotony` (same 7-day window/definition; returns null when stdev<1 or
+  the week is empty), so degenerate data no longer spikes risk. Genuine high-monotony weeks still flag.
+- +3 tests (worked-value VO₂max; near-constant week doesn't flag; genuine monotony still flags).
+
+15,984 green (714 files), lint + build clean.
+
 ## v9.452.0 — 2026-06-23 — Sport-science math: two objective code-bug fixes
 
 From a deep multi-agent correctness audit of the science/plan math. These two are objective
