@@ -2,6 +2,31 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.455.0 — 2026-06-23 — Daily-answer safety + yearly-plan periodization
+
+From a deep audit of the recommendation engine + a test-quality audit. Safety-critical fixes to the
+app's daily output; objective bugs only (founder thresholds untouched).
+
+Daily-answer engine (`getSingleSuggestion` is load-only and was reused as the full answer → contradictions):
+- **A "downgrade" can no longer prescribe a HARD session.** When an injury/HRV swap fired with TSB>15,
+  the "✓ AUTO-DOWNGRADED" card (with a one-tap LOG button) rendered a hard Z4–Z5 session right under a
+  red "downgrade to easy" banner. `buildDailyRecommendation` gained a `forceEasy` option (floors a hard
+  rec to Z2/RPE4 recovery); the downgrade path uses it.
+- **No surface recommends going HARDER during the taper/race window** (daysToRace ≤ 14): the "Today's
+  Signal" tile, the smart-suggestion card, and the no-plan answer no longer suggest a hard VO2/threshold
+  session next to the taper-conflict banner (TSB is naturally high in a taper).
+- **ACWR cold-start guard:** a brand-new user whose first session is hard no longer gets "Mandatory rest"
+  as their 2nd-ever daily answer — the `acwr_high` rule is gated on ≥14 distinct log days (aligning with
+  the existing `interpretACWR` chronic gate); ACWR is meaningless on a near-empty base.
+
+Yearly plan:
+- **Deloads no longer land on Peak weeks** in `periodization.js` (`buildYearlyPlan` + `updateWeekTSS`) —
+  the same inverted-periodization class fixed in generatePlan.js v9.454, in the yearly-plan module
+  (a deload was cutting the apex right before the race).
+
++9 tests (downgrade-never-hard; no harder-in-taper; cold-start no mandatory-rest; no Peak deload).
+15,996 green (714 files), lint + build clean.
+
 ## v9.454.0 — 2026-06-23 — Fix inverted plan periodization (progressive-overload invariants)
 
 🔴 CORE-PRODUCT FIX. The deep audit hand-traced that generated plans were INVERTED: for a

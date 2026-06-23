@@ -816,6 +816,20 @@ export function getSingleSuggestion(log, recovery, _profile) {
   // every surface agrees (audit H6: inline duplicate diverged by ~80%).
   const acwr = calculateACWR(safeLog)?.ratio ?? null
 
+  // ── ACWR cold-start guard (SAFETY INV-3) ──────────────────────────────────
+  // ACWR is a ratio against a 28-day chronic base. With only a handful of
+  // logged days the chronic denominator is near-empty, so a single hard/long
+  // first session reads as an "explosion" (>1.3) and the acwr_high rule below
+  // would prescribe mandatory rest as a brand-new athlete's 2nd-ever daily
+  // answer — meaningless and demoralizing. Mirror the existing chronic-coverage
+  // gate used on interpretACWR in TodayView (log.length >= 7): require ≥14
+  // distinct logged days before any ACWR-driven rest/spike advice fires.
+  // Below the threshold we fall through to the gentler default rule.
+  const distinctLogDays = new Set(
+    safeLog.filter(e => e && e.date).map(e => e.date.slice(0, 10))
+  ).size
+  const acwrCoverageOk = distinctLogDays >= 14
+
   // ── Rule 1: wellness_poor ─────────────────────────────────────────────────
   if (wellnessScore5 !== null && wellnessScore5 <= 2) {
     const score = wellnessScore5
@@ -829,7 +843,8 @@ export function getSingleSuggestion(log, recovery, _profile) {
   }
 
   // ── Rule 2: acwr_high ─────────────────────────────────────────────────────
-  if (acwr !== null && acwr > 1.3) {
+  // Gated on acwrCoverageOk (INV-3): only fire on a real chronic base.
+  if (acwr !== null && acwr > 1.3 && acwrCoverageOk) {
     const ratio = acwr
     return {
       action: 'Active recovery or rest',
