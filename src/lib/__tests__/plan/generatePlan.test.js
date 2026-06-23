@@ -116,9 +116,15 @@ describe('generatePlan — output shape', () => {
     p.weeks.forEach((wk, i) => expect(wk.weekNum).toBe(i + 1))
   })
 
-  it('targetCTL is greater than startCTL', () => {
+  it('targetCTL reflects the ACHIEVED peak (max non-deload Peak week / 7), not an overstated internal value', () => {
+    // v9.454: was peakTSS/7 (an internal anchor the plan never reaches → overstated, e.g.
+    // CTL50/12wk reported ~61 while the plan tops out at maintenance). Now honest: the
+    // achieved peak / 7. NOT guaranteed > startCTL (a short/conservative plan can be maintenance).
     const p = genWith()
-    expect(p.targetCTL).toBeGreaterThan(p.startCTL)
+    const peakWeeks = p.weeks.filter(w => w.phase === 'Peak' && !w.isDeload).map(w => w.weeklyTSS)
+    const achievedPeak = peakWeeks.length ? Math.max(...peakWeeks) : Math.max(...p.weeks.map(w => w.weeklyTSS))
+    expect(p.targetCTL).toBeCloseTo(achievedPeak / 7, 1)
+    expect(p.targetCTL).toBeGreaterThan(0)
   })
 })
 
@@ -289,15 +295,43 @@ describe('generatePlan — TSS progression & deloads', () => {
     }
   })
 
-  it('inserts a deload every 4th week (when phase allows)', () => {
+  it('inserts deloads on the 4-week cadence but NEVER on a Peak/Race/Taper week (v9.454)', () => {
     const p = genWith({ weeksToRace: 24 })
-    // Week 4, 8, 12, etc — but only flag those not in Race/Taper
+    // A long plan must contain at least one deload…
+    expect(p.weeks.some(w => w.isDeload)).toBe(true)
+    // …and a deload must never fall on a Peak, Race, or Taper week (you don't
+    // recover-week your apex — that previously capped the achieved peak below Base).
+    for (const w of p.weeks) {
+      if (w.isDeload) expect(['Race', 'Taper', 'Peak']).not.toContain(w.phase)
+    }
+    // Cadence: every 4th week back from race that lands in a deload-eligible phase is flagged.
     for (let i = 3; i < p.weeks.length; i += 4) {
       const wk = p.weeks[i]
-      if (wk.phase !== 'Race' && wk.phase !== 'Taper') {
-        expect(wk.isDeload).toBe(true)
-      }
+      if (!['Race', 'Taper', 'Peak'].includes(wk.phase)) expect(wk.isDeload).toBe(true)
     }
+  })
+
+  it('progressive overload — peak-phase load exceeds base-phase load (v9.454 I1)', () => {
+    const p = genWith({ weeksToRace: 16 })
+    const baseMax = Math.max(...p.weeks.filter(w => w.phase === 'Base').map(w => w.weeklyTSS), 0)
+    const peakMax = Math.max(...p.weeks.filter(w => w.phase === 'Peak' && !w.isDeload).map(w => w.weeklyTSS), 0)
+    expect(baseMax).toBeGreaterThan(0)
+    expect(peakMax).toBeGreaterThan(0)
+    expect(peakMax).toBeGreaterThan(baseMax)
+  })
+
+  it('base phase ramps up — first base week < last base week (v9.454 I2)', () => {
+    const p = genWith({ weeksToRace: 16 })
+    const base = p.weeks.filter(w => w.phase === 'Base' && !w.isDeload)
+    expect(base.length).toBeGreaterThan(1)
+    expect(base[base.length - 1].weeklyTSS).toBeGreaterThan(base[0].weeklyTSS)
+  })
+
+  it('first taper week does not exceed the immediately preceding training week (v9.454 I4)', () => {
+    const p = genWith({ weeksToRace: 16 })
+    const ti = p.weeks.findIndex(w => w.phase === 'Taper')
+    expect(ti).toBeGreaterThan(0)
+    expect(p.weeks[ti].weeklyTSS).toBeLessThanOrEqual(p.weeks[ti - 1].weeklyTSS)
   })
 
   it('weeklyTSS never negative', () => {
