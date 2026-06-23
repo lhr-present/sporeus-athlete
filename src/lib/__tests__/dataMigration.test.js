@@ -225,6 +225,178 @@ describe('migrateToSupabase', () => {
   })
 })
 
+// ── T1: retry-doubling OUTCOME proof (stateful array-backed server) ───────────
+// The existing retry-safety tests above assert call-shape (delete was called /
+// match args). They pass even against the PRE-FIX code, because the pre-fix code
+// still INSERTED — the bug was that a partial-migration retry DOUBLED the rows.
+// This block backs the supabase mock with real per-table arrays so insert
+// appends, delete-by-match removes, and upsert appends (id-less rows = plain
+// INSERT, exactly as Postgres treats them with no onConflict). We then run a
+// migration that FAILS after the training_log insert (so MIGRATED_KEY never
+// sets), re-run it, and assert the server ends with N rows — not 2N. Without the
+// v9.448/v9.434 cleanup-before-(insert|upsert) guards, the re-run would double.
+describe('migrateToSupabase — retry does not double rows (stateful server)', () => {
+  // Build a fake server: { [table]: rows[] }. Returns a chain compatible with
+  // the call patterns in dataMigration.js. `failAfterInsertOn` lets a test inject
+  // a post-insert failure (mid-run abort) for a given table so MIGRATED_KEY never
+  // gets set and the user "Retries".
+  function installStatefulServer() {
+    const server = {}
+    const table = (name) => (server[name] ||= [])
+
+    // matches a row against a Supabase `.match()` filter object
+    const rowMatches = (row, filter) =>
+      Object.entries(filter).every(([k, v]) => row[k] === v)
+
+    function chainFor(name) {
+      // Each .from(name) call returns a fresh chain bound to that table so we
+      // never cross-contaminate match/insert state between tables.
+      const rows = table(name)
+      const chain = {
+        // insert(rows): append (fresh ids each call — models gen_random_uuid)
+        insert: vi.fn(async (newRows) => {
+          for (const r of (Array.isArray(newRows) ? newRows : [newRows])) {
+            rows.push({ ...r, _gen_id: Math.random() })
+          }
+          return { error: null }
+        }),
+        // upsert(rows, opts): if onConflict given, dedup on those columns;
+        // otherwise behave as plain INSERT (id-less migrated rows → append).
+        upsert: vi.fn(async (newRows, options) => {
+          const conflict = options?.onConflict?.split(',')
+          for (const r of (Array.isArray(newRows) ? newRows : [newRows])) {
+            if (conflict) {
+              const idx = rows.findIndex(x => conflict.every(c => x[c] === r[c]))
+              if (idx >= 0) { rows[idx] = { ...rows[idx], ...r }; continue }
+            }
+            rows.push({ ...r, _gen_id: Math.random() })
+          }
+          return { error: null }
+        }),
+        update: vi.fn(() => chain),
+        eq: vi.fn(async () => ({ error: null })),
+        // delete().match(filter): remove matching rows (awaited as a thenable)
+        delete: vi.fn(() => {
+          const del = {
+            match: vi.fn(async (filter) => {
+              for (let i = rows.length - 1; i >= 0; i--) {
+                if (rowMatches(rows[i], filter)) rows.splice(i, 1)
+              }
+              return { error: null }
+            }),
+          }
+          return del
+        }),
+      }
+      return chain
+    }
+
+    mockChain.from.mockImplementation((name) => chainFor(name))
+    return server
+  }
+
+  it('training_log: a retry after a mid-run failure yields N rows, not 2N', async () => {
+    localStorage.setItem('sporeus_log', JSON.stringify(makeDays(5)))
+    // Make the FIRST run fail on profiles (a table that runs AFTER training_log),
+    // so training_log has been inserted but MIGRATED_KEY is never set.
+    localStorage.setItem('sporeus_profile', JSON.stringify({ ftp: 250 }))
+
+    const server = installStatefulServer()
+    // profiles uses update().eq() (no insert); force its eq() to error to abort.
+    // Re-implement profiles chain to return an erroring eq.
+    const baseFrom = mockChain.from.getMockImplementation()
+    mockChain.from.mockImplementation((name) => {
+      const chain = baseFrom(name)
+      if (name === 'profiles') chain.eq = vi.fn(async () => ({ error: { message: 'profiles update failed mid-run' } }))
+      return chain
+    })
+
+    // First run: aborts at profiles → throws, MIGRATED_KEY not set
+    await expect(migrateToSupabase('user1', vi.fn())).rejects.toThrow(/profiles update failed/)
+    expect(localStorage.getItem('sporeus-migrated')).not.toBe('1')
+    expect(server.training_log).toHaveLength(5)
+
+    // Second run (user clicks Retry): profiles now succeeds.
+    const server2 = installStatefulServer()
+    // carry over the rows already inserted in run 1 so we test ON-TOP-OF behaviour
+    server2.training_log = server.training_log
+    await migrateToSupabase('user1', vi.fn())
+
+    // OUTCOME: still 5 rows, NOT 10. The cleanup-delete (match user_id+source)
+    // wiped run-1's rows before re-inserting. Pre-fix this would be 10.
+    expect(server2.training_log).toHaveLength(5)
+    expect(localStorage.getItem('sporeus-migrated')).toBe('1')
+  })
+
+  it('injuries/test_results/race_results: retry yields N rows each, not 2N', async () => {
+    localStorage.setItem('sporeus-injuries', JSON.stringify([
+      { zone: 'knee', date: '2026-01-01', level: 3 },
+      { zone: 'ankle', date: '2026-01-02', level: 2 },
+    ]))
+    localStorage.setItem('sporeus-test-results', JSON.stringify([
+      { date: '2026-01-01', testId: 'cooper', value: 3000 },
+    ]))
+    localStorage.setItem('sporeus-race-results', JSON.stringify([
+      { date: '2026-01-01', distance: 10000, actual: 2400 },
+      { date: '2026-02-01', distance: 21097, actual: 5400 },
+      { date: '2026-03-01', distance: 5000, actual: 1100 },
+    ]))
+
+    // Run 1: succeeds for these tables but aborts overall via a profiles failure
+    // so MIGRATED_KEY never sets and the user retries.
+    localStorage.setItem('sporeus_profile', JSON.stringify({ ftp: 250 }))
+    const server = installStatefulServer()
+    const baseFrom = mockChain.from.getMockImplementation()
+    mockChain.from.mockImplementation((name) => {
+      const chain = baseFrom(name)
+      if (name === 'profiles') chain.eq = vi.fn(async () => ({ error: { message: 'profiles failed' } }))
+      return chain
+    })
+    await expect(migrateToSupabase('user1', vi.fn())).rejects.toThrow(/profiles failed/)
+    expect(localStorage.getItem('sporeus-migrated')).not.toBe('1')
+    expect(server.injuries).toHaveLength(2)
+    expect(server.test_results).toHaveLength(1)
+    expect(server.race_results).toHaveLength(3)
+
+    // Run 2 (Retry): profiles succeeds, prior rows carried over.
+    const server2 = installStatefulServer()
+    server2.injuries     = server.injuries
+    server2.test_results = server.test_results
+    server2.race_results = server.race_results
+    await migrateToSupabase('user1', vi.fn())
+
+    // OUTCOME: no doubling — each table holds its original count.
+    expect(server2.injuries).toHaveLength(2)
+    expect(server2.test_results).toHaveLength(1)
+    expect(server2.race_results).toHaveLength(3)
+    expect(localStorage.getItem('sporeus-migrated')).toBe('1')
+  })
+
+  it('recovery: retry yields N rows (onConflict user_id,date dedups, no doubling)', async () => {
+    localStorage.setItem('sporeus-recovery', JSON.stringify([
+      { date: '2026-01-01', score: 70 },
+      { date: '2026-01-02', score: 65 },
+    ]))
+    localStorage.setItem('sporeus_profile', JSON.stringify({ ftp: 250 }))
+
+    const server = installStatefulServer()
+    const baseFrom = mockChain.from.getMockImplementation()
+    mockChain.from.mockImplementation((name) => {
+      const chain = baseFrom(name)
+      if (name === 'profiles') chain.eq = vi.fn(async () => ({ error: { message: 'profiles failed' } }))
+      return chain
+    })
+    await expect(migrateToSupabase('user1', vi.fn())).rejects.toThrow(/profiles failed/)
+    expect(server.recovery).toHaveLength(2)
+
+    const server2 = installStatefulServer()
+    server2.recovery = server.recovery
+    await migrateToSupabase('user1', vi.fn())
+    // recovery has a real (user_id,date) unique constraint → upsert dedups.
+    expect(server2.recovery).toHaveLength(2)
+  })
+})
+
 // ── isMigrated ────────────────────────────────────────────────────────────────
 describe('isMigrated', () => {
   it('returns false before migration', () => {

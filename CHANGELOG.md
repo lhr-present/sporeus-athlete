@@ -2,6 +2,37 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.456.0 — 2026-06-23 — GDPR completeness + gate hardening + outcome-based data-loss tests
+
+From a test-quality / compliance audit. Three areas:
+
+**GDPR (real compliance bug + completeness):**
+- **Two wrong-key bugs fixed:** `gdprExport` filtered `profiles` by `user_id` (PK is `id`) and `ai_insights`
+  by `user_id` (key is `athlete_id`) — so a user's **profile and AI insights were silently absent from
+  their data export** (Art. 15/20 gap) and never deleted on erasure. Keys verified against the live schema.
+- **Export now thorough:** all user-owned tables with their correct per-table key (incl. strava_tokens,
+  athlete_devices, billing/subscription events, two-party coach_notes/coach_plans/messages where the user
+  is coach or athlete).
+- **Erasure now removes the user's own single-party data** (incl. previously-retained profile + OAuth/device
+  tokens — a real privacy gap) via the correct key, with `profiles` deleted LAST (FK parent → children first).
+  Conservatively RETAINED (export-only): billing/subscription/audit/data-rights/deletion logs + **consent
+  records** (proof-of-consent), and two-party coach_notes/coach_plans/messages — these need a founder
+  decision on erasure scope (flagged).
+- Stateful two-user isolation test (seeds A+B; proves export/delete touch only A's rows via each correct key;
+  verified non-vacuous).
+
+**Feature-gate hardening:** `isFeatureGated` failed OPEN on an unknown key (a typo/rename would grant a paid
+feature to free users). All 7 call sites verified to use known keys, so flipped to fail-CLOSED + full
+`it.each` coverage of every FEATURE_TIERS entry. (Documented — not changed — the known client/server
+`getEffectiveTier` date-blindness for founder review.)
+
+**Outcome-based data-loss tests** (were asserting call-shape, giving false confidence): migration
+retry-no-doubling (stateful, proves N not 2N), replayWrites idempotency (double-replay → 1 row), recovery
+delete-tombstone key shape, and a new IndexedDB version-contract test (db.js ↔ writeQueue.js same version +
+stores). Each verified to FAIL against its pre-fix bug.
+
+16,031 green (715 files), lint + build clean.
+
 ## v9.455.0 — 2026-06-23 — Daily-answer safety + yearly-plan periodization
 
 From a deep audit of the recommendation engine + a test-quality audit. Safety-critical fixes to the

@@ -5,6 +5,22 @@ import {
   isOnTrial, isPastDue, isCancelled, isExpired, daysUntilExpiry, getEffectiveTier,
   getTier,
 } from './subscription.js'
+
+// FEATURE_TIERS is module-private; mirror it here as the truth table for the
+// exhaustive gate coverage below. Kept in sync with subscription.js manually —
+// the `every key gated for free` / `entitled tier ungates` assertions below
+// will fail loudly if a feature is added to subscription.js but not here.
+const FEATURE_TIERS = {
+  multi_team:            'coach',
+  export_pdf:            'coach',
+  api_access:            'club',
+  white_label:           'club',
+  realtime_dashboard:    'coach',
+  semantic_search:       'coach',
+  squad_pattern_search:  'coach',
+  debug_realtime_stats:  'coach',
+}
+const TIER_RANK = { free: 0, coach: 1, club: 2 }
 import { supabase, isSupabaseReady } from './supabase.js'
 
 vi.mock('./supabase.js', () => ({
@@ -55,7 +71,36 @@ describe('isFeatureGated', () => {
   it('multi_team open for coach', () => expect(isFeatureGated('multi_team', 'coach')).toBe(false))
   it('api_access gated for coach', () => expect(isFeatureGated('api_access', 'coach')).toBe(true))
   it('api_access open for club', () => expect(isFeatureGated('api_access', 'club')).toBe(false))
-  it('unknown feature is open', () => expect(isFeatureGated('nonexistent', 'free')).toBe(false))
+
+  // Explicit boundary checks for the four billing-load-bearing features.
+  it('white_label gated for coach', () => expect(isFeatureGated('white_label', 'coach')).toBe(true))
+  it('white_label open for club', () => expect(isFeatureGated('white_label', 'club')).toBe(false))
+  it('export_pdf gated for free', () => expect(isFeatureGated('export_pdf', 'free')).toBe(true))
+  it('export_pdf open for coach', () => expect(isFeatureGated('export_pdf', 'coach')).toBe(false))
+  it('multi_team gated for free (boundary)', () => expect(isFeatureGated('multi_team', 'free')).toBe(true))
+  it('multi_team open for club too (rank above required)', () => expect(isFeatureGated('multi_team', 'club')).toBe(false))
+
+  // Exhaustive: every gated feature is blocked for free, and ungated at its
+  // entitled tier (and any higher tier).
+  it.each(Object.keys(FEATURE_TIERS))('%s is gated for free tier', (feature) => {
+    expect(isFeatureGated(feature, 'free')).toBe(true)
+  })
+  it.each(Object.entries(FEATURE_TIERS))('%s is ungated at its entitled tier (%s)', (feature, required) => {
+    expect(isFeatureGated(feature, required)).toBe(false)
+    // Any tier ranked at or above the requirement is entitled.
+    for (const [tier, rank] of Object.entries(TIER_RANK)) {
+      expect(isFeatureGated(feature, tier)).toBe(rank < TIER_RANK[required])
+    }
+  })
+
+  // FIX 1: unknown / renamed feature keys now fail CLOSED (gated) so a typo or
+  // a future rename can't silently grant a paid feature to a free user.
+  it('unknown feature is GATED (fail-closed)', () => {
+    expect(isFeatureGated('nonexistent', 'free')).toBe(true)
+  })
+  it('unknown feature is gated even for the top (club) tier', () => {
+    expect(isFeatureGated('totally_made_up_key', 'club')).toBe(true)
+  })
 })
 
 // ── getUpgradePrompt ──────────────────────────────────────────────────────────
@@ -154,6 +199,34 @@ describe('getEffectiveTier', () => {
   it('defaults: free tier active → free', () => expect(getEffectiveTier()).toBe('free'))
   it('club active → club', () => expect(getEffectiveTier('club', 'active')).toBe('club'))
   it('club expired → free', () => expect(getEffectiveTier('club', 'expired')).toBe('free'))
+})
+
+// ── KNOWN DIVERGENCE vs server get_my_tier (founder decision) ──────────────────
+// getEffectiveTier(tier, status) is DATE-BLIND: it decides purely on the status
+// string and never inspects grace-period / paid-period end dates. The server-side
+// get_my_tier() RPC IS date-keyed. These tests PIN the current client behavior so
+// a future fix has a baseline. They document the divergence — they do NOT assert
+// the client behavior is "correct".
+describe('getEffectiveTier — KNOWN DIVERGENCE vs server get_my_tier (founder decision)', () => {
+  // FLAG: past_due ALWAYS keeps full tier on the client, regardless of whether the
+  //       3-day grace window has actually expired. The server get_my_tier() only
+  //       keeps the paid tier while WITHIN grace (grace_period_ends_at > now) and
+  //       reverts to free once grace lapses. So a client whose grace expired can
+  //       still see paid caps until the next server-authoritative getTier() read.
+  it('past_due keeps full tier even though server would revert after grace expiry', () => {
+    expect(getEffectiveTier('coach', 'past_due')).toBe('coach')
+    expect(getEffectiveTier('club', 'past_due')).toBe('club')
+  })
+
+  // FLAG: cancelled ALWAYS collapses to 'free' on the client, regardless of whether
+  //       the already-paid period is still active. The server get_my_tier() KEEPS the
+  //       paid tier until subscription_end_date (the user paid through period end).
+  //       So a still-paid cancelled user is OVER-restricted on the client until a
+  //       server-authoritative read corrects it.
+  it('cancelled collapses to free even though server keeps access until period end', () => {
+    expect(getEffectiveTier('coach', 'cancelled')).toBe('free')
+    expect(getEffectiveTier('club', 'cancelled')).toBe('free')
+  })
 })
 
 // ── getTier (async 3-tier resolution: RPC → table → localStorage cache) ────────

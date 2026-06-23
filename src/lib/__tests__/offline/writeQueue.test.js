@@ -231,6 +231,82 @@ describe('writeQueue', () => {
     expect(upsertFn).not.toHaveBeenCalled()
   })
 
+  // ─── T2: idempotency across TWO replays (committed-but-ack-failed) ──────────
+  // The single-shot tests above prove one replay dequeues on success. They do
+  // NOT prove the real v9.451 invariant: if a row committed server-side but the
+  // local ack/dequeue failed, the entry is still in the queue and a SECOND
+  // replay must be a no-op success — exactly one row server-side, empty
+  // dead-letter — NOT a duplicate insert or a phantom dead-lettered failure.
+  //
+  // We model a real Postgres table with a unique PK on `id`: a plain .insert()
+  // of a duplicate id errors; .upsert(onConflict:id, ignoreDuplicates:true)
+  // silently no-ops. The first replay leaves the entry queued (ack lost), so the
+  // SAME entry replays a second time against a server that already holds the row.
+  function makeStatefulSupabase() {
+    const serverRows = []           // committed rows, keyed by id (unique PK)
+    const client = {
+      _rows: serverRows,
+      from: vi.fn(() => ({
+        insert: vi.fn(async (payload) => {
+          const rows = Array.isArray(payload) ? payload : [payload]
+          for (const r of rows) {
+            if (r.id != null && serverRows.some(x => x.id === r.id)) {
+              return { error: { message: 'duplicate key value violates unique constraint "pkey"' } }
+            }
+          }
+          serverRows.push(...rows)
+          return { error: null }
+        }),
+        upsert: vi.fn(async (payload, opts) => {
+          const rows = Array.isArray(payload) ? payload : [payload]
+          for (const r of rows) {
+            const idx = serverRows.findIndex(x => x.id === r.id)
+            if (idx >= 0) {
+              // onConflict:id with ignoreDuplicates → leave existing row, no error
+              if (!opts?.ignoreDuplicates) serverRows[idx] = { ...serverRows[idx], ...r }
+            } else {
+              serverRows.push(r)
+            }
+          }
+          return { error: null }
+        }),
+      })),
+    }
+    return client
+  }
+
+  it('replaying an insert-with-id TWICE (ack lost after commit) leaves exactly 1 row + empty dead-letter', async () => {
+    // enqueue a real insert-with-id (comment-style client UUID PK)
+    await enqueueWrite('insert', 'session_comments', { id: 'uuid-T2', body: 'hello' })
+    expect(storeRef.write_queue).toHaveLength(1)
+
+    const supa = makeStatefulSupabase()
+
+    // Replay #1: commits the row server-side. Simulate the ack/dequeue being
+    // lost by re-inserting the SAME entry back into the active queue afterwards
+    // (the replay itself dequeues on success, so we re-stage it).
+    const stagedEntry = { ...storeRef.write_queue[0] }
+    const r1 = await replayWrites(supa)
+    expect(r1.replayed).toBe(1)
+    expect(supa._rows).toHaveLength(1)          // row committed once
+    // "ack failed" → entry is still queued for the next reconnect
+    storeRef.write_queue.push(stagedEntry)
+
+    // Replay #2: the row already exists server-side. upsert(ignoreDuplicates)
+    // must make this a no-op SUCCESS — not a duplicate, not a dead-letter.
+    const r2 = await replayWrites(supa)
+    expect(r2.replayed).toBe(1)
+    expect(r2.failed).toBe(0)
+    expect(r2.skipped).toBe(0)
+
+    // OUTCOME: still exactly one row; queue drained; nothing dead-lettered.
+    expect(supa._rows).toHaveLength(1)
+    expect(supa._rows[0].id).toBe('uuid-T2')
+    expect(storeRef.write_queue).toHaveLength(0)
+    expect(storeRef.dead_letter).toHaveLength(0)
+    expect(await getDeadLetterCount()).toBe(0)
+  })
+
   it('replayWrites calls onProgress callback', async () => {
     storeRef.write_queue.push({ id: 55, op: 'delete', table: 'training_log', payload: { id: 'del1' }, _queuedAt: 1000, _attempts: 0, _lastError: null })
     const mockSupabase = {

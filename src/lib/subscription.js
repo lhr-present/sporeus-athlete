@@ -83,7 +83,15 @@ export function getRemainingAICalls(used, tier = 'free') {
 // ── isFeatureGated(feature, tier) → boolean (true = gated/blocked) ────────────
 export function isFeatureGated(feature, tier = 'free') {
   const required = FEATURE_TIERS[feature]
-  if (!required) return false   // unknown feature = open
+  if (!required) {
+    // Unknown/renamed feature key → fail CLOSED (gated). A typo or future
+    // rename must never silently grant a paid feature to free users. The safe
+    // direction for a gate is to block. All known callers pass keys present in
+    // FEATURE_TIERS, so this only fires on a regression — log it so it's
+    // diagnosable in dev without breaking a real feature.
+    logger.warn(`isFeatureGated: unknown feature key "${feature}" — failing closed (gated)`)
+    return true
+  }
   return tierRank(tier) < tierRank(required)
 }
 
