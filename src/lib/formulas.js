@@ -116,7 +116,10 @@ export const epley1RM   = (w,r) => (w*(1+r/30)).toFixed(1)
  * @param {string} gender - 'male' | 'female'
  * @returns {string} VO₂max estimate mL/kg/min
  */
-export const astrandVO2 = (watts, bw, gender) => ((watts*(gender==='female'?5.88:6.12)/bw)+3.5).toFixed(1)
+// ACSM leg-cycling metabolic equation: VO2 (mL/kg/min) = 1.8 × (work_rate kg·m/min)/bw + 7,
+// where work_rate kg·m/min = watts × 6.12 (♂ factor; 5.88 used for ♀). Prior code dropped the
+// 1.8 mL·O₂/(kg·m/min) coefficient and used +3.5, returning ~half the physiological VO₂max.
+export const astrandVO2 = (watts, bw, gender) => ((1.8*watts*(gender==='female'?5.88:6.12)/bw)+7).toFixed(1)
 /**
  * @param {number} lv - final level reached in Yo-Yo IR1
  * @param {number} sh - final shuttle number within that level

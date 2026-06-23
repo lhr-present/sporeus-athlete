@@ -293,6 +293,11 @@ describe('astrandVO2 — Åstrand-Ryhming cycle ergometer VO2max', () => {
     const high = parseFloat(astrandVO2(200, 70, 'male'))
     expect(high).toBeGreaterThan(low)
   })
+
+  it('matches the ACSM leg-cycling equation (1.8×workrate/bw + 7), not the half-value', () => {
+    // 150 W, 70 kg male: 1.8 × (150×6.12) / 70 + 7 ≈ 30.6 (prior bug returned ~16.6).
+    expect(parseFloat(astrandVO2(150, 70, 'male'))).toBeCloseTo(30.6, 1)
+  })
 })
 
 // ─── yyir1VO2 ────────────────────────────────────────────────────────────────

@@ -239,6 +239,22 @@ describe('predictInjuryRisk', () => {
     expectBilingual(r.advice)
   })
 
+  it('does NOT flag monotony on near-constant daily load (stdev<1 → computeMonotony null)', () => {
+    // 7 days at ~50 TSS with a single +1 — the old inline mean/std gave an absurd ~143
+    // monotony and wrongly added +20 risk; canonical computeMonotony returns null (<1 stdev).
+    const tss = [50, 50, 50, 50, 50, 50, 51]
+    const log = tss.map((t, i) => runEntry(6 - i, { tss: t, rpe: 4 }))
+    const r = predictInjuryRisk(log, [], {})
+    expect(r.factors.some(f => /Monotony/i.test(f.label))).toBe(false)
+  })
+
+  it('still flags genuine high monotony (varied-but-monotonous week, stdev≥1)', () => {
+    const tss = [50, 52, 48, 51, 49, 53, 50] // stdev ≈1.6 (>1), mean/stdev ≈31 ≫ 2.0 threshold
+    const log = tss.map((t, i) => runEntry(6 - i, { tss: t, rpe: 5 }))
+    const r = predictInjuryRisk(log, [], {})
+    expect(r.factors.some(f => /Monotony/i.test(f.label))).toBe(true)
+  })
+
   it('uses the latest-by-DATE HRV (not array order) for the single-day drop factor', () => {
     // Recovery array is intentionally NOT in date order: the true newest date (1d ago)
     // carries a >15% drop, but it is NOT the last array element. mean=57, CV≈0.09 (<10%
