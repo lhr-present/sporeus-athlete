@@ -351,6 +351,10 @@ function weeklyIntents(phase, model, availableDays, raceDistance) {
 // clampWoWGrowth dampening). The taper anchors to this — not the raw peakTSS —
 // so taper weeks can never ramp ABOVE the week the plan calls its peak.
 const PEAK_FRAC = 0.92
+// Base phase ramps from BASE_FLOOR_FRAC×baseTSS (first Base week) up to baseTSS
+// (last Base week), so Base is genuinely the lowest TRAINING phase — progressive
+// overload, not a flat ceiling. Tunable.
+const BASE_FLOOR_FRAC = 0.85
 
 // ── helper: TSS budget for a week (Phase × goal × level) ─────────────────────
 // v9.422 (founder decision) — `phaseCtx` carries phase-derived position info so
@@ -393,8 +397,13 @@ function weeklyTSS({ phase, baseTSS, peakTSS, phaseCtx }) {
     const frac  = buildIdx / denom
     return Math.round(baseTSS + (peakTSS - baseTSS) * frac)
   }
-  // Base — slight ramp from baseTSS to baseTSS*1.05
-  return Math.round(baseTSS)
+  // Base — ramp from BASE_FLOOR_FRAC×baseTSS up to baseTSS across the Base run so
+  // Base is the lowest training phase (was a flat baseTSS, which — being near
+  // peakTSS — made week 1 the hardest week and left "Peak" below the start).
+  const baseCount = Math.max(1, phaseCtx?.baseCount ?? 1)
+  const baseIdx   = Math.max(0, Math.min(baseCount - 1, phaseCtx?.baseIdx ?? 0))
+  const baseFrac  = baseCount > 1 ? baseIdx / (baseCount - 1) : 1
+  return Math.round(baseTSS * (BASE_FLOOR_FRAC + (1 - BASE_FLOOR_FRAC) * baseFrac))
 }
 
 // ── helper: distribute weekly TSS across session intents ─────────────────────
@@ -442,12 +451,15 @@ function clampWoWGrowth(weeks) {
 function buildPhaseContext(phases) {
   const buildCount = phases.filter(p => p === 'Build').length
   const taperCount = phases.filter(p => p === 'Taper').length
+  const baseCount  = phases.filter(p => p === 'Base').length
   let bSeen = 0
   let tSeen = 0
+  let baseSeen = 0
   return phases.map(p => {
-    const ctx = { buildIdx: 0, buildCount, taperIdx: 0, taperCount }
+    const ctx = { buildIdx: 0, buildCount, taperIdx: 0, taperCount, baseIdx: 0, baseCount }
     if (p === 'Build') ctx.buildIdx = bSeen++
     if (p === 'Taper') ctx.taperIdx = tSeen++
+    if (p === 'Base')  ctx.baseIdx  = baseSeen++
     return ctx
   })
 }
@@ -485,9 +497,18 @@ function enforceTaperDescent(weeks) {
   const peakWeeks = weeks.filter(w => w.phase === 'Peak' && !w.isDeload).map(w => w.weeklyTSS)
   const peakCeil  = peakWeeks.length ? Math.max(...peakWeeks) : Math.max(...weeks.map(w => w.weeklyTSS))
   let cap = peakCeil
+  let started = false
   for (let i = 0; i < weeks.length; i++) {
     const w = weeks[i]
     if (w.phase !== 'Taper' && w.phase !== 'Race') continue
+    if (!started) {
+      // The FIRST taper week must also not exceed the immediately preceding training
+      // week (a taper is a reduction from where you actually were, not from the peak
+      // ceiling — which a preceding deload could have left below that ceiling).
+      const prevTSS = i > 0 ? weeks[i - 1].weeklyTSS : cap
+      cap = Math.min(cap, prevTSS)
+      started = true
+    }
     if (w.weeklyTSS > cap && cap >= 0 && w.weeklyTSS > 0) {
       const ratio = cap / w.weeklyTSS
       w.sessions = w.sessions.map(s => ({
@@ -529,7 +550,10 @@ function applyDeloads(weeks) {
     const distFromRace = raceWeekIdx - i
     if (distFromRace % 4 !== 0) continue
     const phase = weeks[i].phase
-    if (phase === 'Race' || phase === 'Taper') continue
+    // Never deload the Race, Taper, or PEAK phase — you don't recover-week your
+    // apex. Deloading a Peak week + the ≤10%/wk rebound clamp previously capped the
+    // achieved peak BELOW the Base weeks (inverted periodization).
+    if (phase === 'Race' || phase === 'Taper' || phase === 'Peak') continue
     weeks[i].isDeload  = true
     weeks[i].weeklyTSS = Math.round(weeks[i].weeklyTSS * factor)
     weeks[i].sessions  = weeks[i].sessions.map(s => ({
@@ -706,7 +730,10 @@ export function generatePlan(params) {
     primarySport,
     totalWeeks,
     startCTL:    +currentCTL,
-    targetCTL:   Math.round(peakTSS / 7 * 10) / 10,
+    // Reflect the ACHIEVED peak (max non-deload Peak week after clamps/descents),
+    // not the raw internal peakTSS the plan may never reach — so the promised CTL
+    // is one the plan can actually deliver.
+    targetCTL:   Math.round(visiblePeak(weeks) / 7 * 10) / 10,
     weeks,
     generatedAt: generatedAtISO,
     raceDate:    validRaceDate,

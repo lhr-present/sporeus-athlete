@@ -2,6 +2,33 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.454.0 — 2026-06-23 — Fix inverted plan periodization (progressive-overload invariants)
+
+🔴 CORE-PRODUCT FIX. The deep audit hand-traced that generated plans were INVERTED: for a
+marathon / 16wk / CTL50 athlete, week 1 (Base) ≈ 350 TSS was the *hardest* week and the "Peak"
+≈ 316 was ~10% *below* the start — the plan de-trained. Root causes + fixes (textbook invariants
+enforced; founder's multipliers/deload-depth/taper-fractions/clamp all preserved):
+- **I3 — deloads no longer fall on Peak weeks** (`applyDeloads` now skips Peak like Race/Taper).
+  This was THE cause: a deload landed in Peak and the ≤10%/wk rebound clamp could never climb back,
+  capping the achieved peak below Base. With it fixed, the `peakTSS ≥ baseTSS+80` floor × `PEAK_FRAC`
+  guarantees Peak > Base.
+- **I2 — Base phase now ramps up** (BASE_FLOOR_FRAC 0.85×baseTSS → baseTSS across the Base run),
+  matching its own comment; was a flat `baseTSS` that sat near peak. New tunable constant.
+- **I4 — first taper week ≤ the immediately preceding training week** (`enforceTaperDescent` seeds the
+  cap with the prior week, not just the peak ceiling) — a taper can no longer ramp up.
+- **I5 — `targetCTL` now reflects the ACHIEVED peak** (max non-deload Peak week / 7), not the raw
+  internal `peakTSS` the plan never reaches (was overstated, e.g. ~61 promised vs ~50 maintenance).
+
+Verified by hand-trace: marathon/16wk/CTL50 now ramps Base 298→333, Peak 318→376 (apex), taper
+328→226 (descends) — a correct progressive plan. +4 regression tests (Peak>Base; Base ramps; no
+deload in Peak; first taper ≤ preceding); 2 tests that locked the old wrong behavior updated.
+
+NOTE (founder model-tuning, not a bug): for a CTL50/12wk plan the achieved peak is ~maintenance
+(targetCTL ≈ startCTL) because deload depth (0.60) + 10%/wk clamp + phase lengths cap the realizable
+gain. Raising net CTL gain is a parameter choice (peak multiplier / deload depth) — left to you.
+
+15,987 green (714 files), lint + build clean.
+
 ## v9.453.0 — 2026-06-23 — Science math: VO₂max coefficient + monotony consolidation
 
 Two objective math fixes from the deep audit (the periodization fix follows separately):
