@@ -2,6 +2,30 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.458.0 — 2026-06-24 — 🔴 Restore billing-webhook hardening (regression in prod)
+
+An edge-function audit found the billing webhook's security guards had been **silently reverted**:
+migration `20260604` hardened `apply_subscription_event` (reject events with no top-level `id`;
+require `tier ∈ coach/club`), but two later `CREATE OR REPLACE` migrations (`20260627`, `20260630`)
+rebuilt the function from the *pre-hardening* body and dropped both. Confirmed live in prod:
+- An event with no `id` got a **fabricated random `event_id` per delivery** → the `subscription_events
+  UNIQUE(event_id)` replay guard was defeated → a replayed `payment.succeeded` would **re-grant tier /
+  double-insert billing_events**.
+- `tier` **defaulted to `coach`** with no whitelist → a malformed/odd event silently granted a paid tier.
+
+New migration `20260634` re-applies both guards on the current body (reject `no_event_id`; require an
+explicit `tier IN ('coach','club')` or return `invalid_tier`). **Applied to prod via Management API and
+verified** (live def now carries both guards, no fabrication). Confirmed **0 subscription_events / 0
+billing_events / 0 paid profiles**, so no replay or wrong grant occurred under the regression — caught
+before the first real charge.
+
+NOTE (repo drift, prod healthy — flagged): the 5 hardened crons (purge/operator-digest/alert-monitor/
+check-dependencies/nightly-batch) DO carry `x-sporeus-webhook-secret` in the LIVE cron jobs (verified),
+but the committed migrations don't wire it — a rebuild-from-migrations would resurrect a 401 outage. A
+codifying migration is a follow-up; prod is fine.
+
+DDL-only (no client change); 16,037 tests unaffected, lint + build clean.
+
 ## v9.457.0 — 2026-06-24 — XSS regression guard for the search-snippet sink
 
 `renderSnippet` (GlobalSearch.jsx) is the app's only `dangerouslySetInnerHTML` sink — it renders
