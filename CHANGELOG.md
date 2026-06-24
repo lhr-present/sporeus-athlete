@@ -2,6 +2,23 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.459.0 — 2026-06-24 — parse-activity edge fn: verify JWT + dedup file uploads
+
+From the integration edge-fn audit. Two fixes to `supabase/functions/parse-activity` (FIT/GPX → training_log),
+deployed to prod via the Supabase CLI:
+- **F1 (auth hardening):** it decoded the JWT **unsigned** (`atob` of the payload) and trusted `sub` as the
+  user id for **service-role** writes to training_log/profiles. Replaced with `auth.getUser()` (signature-
+  verified) — identity now comes from the verified user, not a forgeable token. (Was only incidentally
+  blocked by an anon re-fetch; this removes the latent impersonation.)
+- **F2 (duplicate sessions):** `external_id` was left NULL, so the `(user_id, external_id)` unique index
+  couldn't dedup — a watchdog-retry or re-drop of the same file **double-inserted the session** (inflating
+  CTL/TSS). Now sets a content-stable `external_id` = `upload:<sha256(file bytes)>` and guards with an explicit
+  lookup (returns the existing row as `duplicate:true`); the unique index backstops any concurrent race.
+
+Edge-only (no client change); deployed via `supabase functions deploy parse-activity`. JS suite unaffected,
+lint + build clean. (Other edge-audit findings — outbound-fetch timeouts F3, anon rate-limit hardening
+F6 — noted for a follow-up.)
+
 ## v9.458.0 — 2026-06-24 — 🔴 Restore billing-webhook hardening (regression in prod)
 
 An edge-function audit found the billing webhook's security guards had been **silently reverted**:

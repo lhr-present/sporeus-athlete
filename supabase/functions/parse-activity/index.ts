@@ -19,15 +19,6 @@ const corsHeaders = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function jwtPayload(authHeader: string | null) {
-  try {
-    const token   = (authHeader || '').replace('Bearer ', '')
-    const segment = token.split('.')[1]
-    const padded  = segment.replace(/-/g, '+').replace(/_/g, '/')
-    return JSON.parse(atob(padded))
-  } catch { return null }
-}
-
 function hrZone(hr: number, maxHR: number): number {
   const pct = hr / maxHR
   if (pct < 0.60) return 0
@@ -221,11 +212,9 @@ serve(withTelemetry('parse-activity', async (req) => {
 
   try {
     const authHeader = req.headers.get('authorization')
-    const payload    = jwtPayload(authHeader)
-    if (!payload?.sub) {
+    if (!authHeader) {
       return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: corsHeaders })
     }
-    const userId = payload.sub as string
 
     const body = await req.json() as { jobId: string; fileType?: string }
     const { jobId } = body
@@ -235,13 +224,20 @@ serve(withTelemetry('parse-activity', async (req) => {
 
     // Service client for privileged ops
     const svc = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-    // Anon client to verify caller owns the job
-    const anon = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { authorization: authHeader! } },
+    // User-scoped client — VERIFY the JWT signature via auth.getUser() instead of
+    // decoding the token unsigned. Identity comes from the verified user, never a
+    // forgeable token payload — the service-role writes below depend on this. (edge audit F1)
+    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { authorization: authHeader } },
     })
+    const { data: { user }, error: authErr } = await userClient.auth.getUser()
+    if (authErr || !user) {
+      return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: corsHeaders })
+    }
+    const userId = user.id
 
-    // Fetch job (user's own row only)
-    const { data: job, error: jobErr } = await anon
+    // Fetch job (user's own row only) via the verified user client
+    const { data: job, error: jobErr } = await userClient
       .from('activity_upload_jobs')
       .select('id, user_id, file_path, file_type, status')
       .eq('id', jobId)
@@ -313,11 +309,36 @@ serve(withTelemetry('parse-activity', async (req) => {
     // Determine session type from sport/file context (default Run)
     const sessionType = fileType === 'gpx' ? 'Run' : 'Ride'
 
+    // Content-stable idempotency key (sha256 of the file bytes). external_id was NULL,
+    // so the `(user_id, external_id) WHERE external_id IS NOT NULL` unique index could
+    // not dedup — a watchdog-retry or re-drop of the same file created a duplicate
+    // session (inflating CTL/TSS). The index is PARTIAL, so PostgREST upsert can't use
+    // it as an arbiter; guard with an explicit lookup instead. (edge audit F2)
+    const hashBuf    = await crypto.subtle.digest('SHA-256', bytes)
+    const externalId = 'upload:' + Array.from(new Uint8Array(hashBuf)).map((b) => b.toString(16).padStart(2, '0')).join('')
+
+    const { data: existing } = await svc
+      .from('training_log')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('external_id', externalId)
+      .maybeSingle()
+    if (existing) {
+      // Same file already imported — mark the job done idempotently, don't re-insert.
+      await svc.from('activity_upload_jobs').update({
+        status: 'done', parsed_session_id: existing.id, parsed_at: new Date().toISOString(),
+      }).eq('id', jobId)
+      return new Response(JSON.stringify({ ok: true, logEntryId: existing.id, duplicate: true }), {
+        headers: { ...corsHeaders, 'content-type': 'application/json' },
+      })
+    }
+
     // Insert training_log row
     const { data: logRow, error: logErr } = await svc
       .from('training_log')
       .insert({
         user_id:          userId,
+        external_id:      externalId,
         date:             parsed.date,
         type:             sessionType,
         duration_min:     parsed.durationMin,
