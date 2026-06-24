@@ -2,6 +2,17 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.457.0 — 2026-06-24 — XSS regression guard for the search-snippet sink
+
+`renderSnippet` (GlobalSearch.jsx) is the app's only `dangerouslySetInnerHTML` sink — it renders
+Postgres `ts_headline` snippets (which can contain coach/athlete-authored text). It is already safe
+(escapes `& < >` FIRST, then restores ONLY `<b>…</b>` → `<mark>`), but was untested, so a future
+reorder or broadened restore regex could silently re-open an injection hole. Exported it and added 6
+injection-guard tests (onerror `<img>`, `<script>`, mixed legit-`<b>`+payload, pre-escaped-entity
+double-decode, empty input) — each would FAIL if the escape-first contract regressed.
+
+16,037 green (716 files), lint + build clean.
+
 ## v9.456.0 — 2026-06-23 — GDPR completeness + gate hardening + outcome-based data-loss tests
 
 From a test-quality / compliance audit. Three areas:
