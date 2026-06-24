@@ -37,7 +37,9 @@ function saveRecent(query, prev) {
 }
 
 // ── snippet sanitiser — ts_headline emits <b>…</b>; map to safe mark spans ───
-function renderSnippet(raw) {
+// Exported for the XSS regression test. MUST escape (&<>) FIRST, then restore ONLY
+// the <b>/<\/b> markers — any reorder or broadened restore re-opens an injection hole.
+export function renderSnippet(raw) {
   if (!raw) return null
   const safe = raw
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
