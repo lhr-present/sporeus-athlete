@@ -2,6 +2,24 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.461.0 — 2026-07-02 — Strava webhook: near-real-time ongoing sync (founder chose push)
+
+Closes the last Strava gap (v9.460 flagged it): after the one-time 90-day backfill, NEW activities
+never auto-imported. Founder chose the webhook (push) approach. New `supabase/functions/strava-webhook`:
+- **GET** = Strava subscription validation handshake (echoes `hub.challenge` when `verify_token` matches
+  the `STRAVA_WEBHOOK_VERIFY_TOKEN` edge secret).
+- **POST** = activity create/update → maps `owner_id` → `user_id` via `strava_tokens.strava_athlete_id`
+  → enqueues a 2-day-window import through the existing (idempotent, rate-limited) backfill pipeline, so
+  the new activity lands in ~1 min. Athlete deauthorization events set a clear reconnect error.
+- PUBLIC endpoint (deployed `--no-verify-jwt`; Strava webhooks are unsigned — guarded by the verify_token
+  handshake + the owner_id→known-user lookup; no attacker-controlled data reaches the DB).
+
+Deployed to prod + **registered the Strava push subscription (id 359639)** for app 223686; verified the
+handshake + the event→enqueue path end-to-end (test event drove queue 0→1). The verify token lives only in
+the edge secret (not the repo).
+
+Edge-only (no client change); lint + build clean; JS suite unaffected (16,055).
+
 ## v9.460.0 — 2026-07-02 — Strava connect→import reliability + mapping quality
 
 From a 2-agent Strava integration audit, prompted by a real prod bug: a user connected Strava
