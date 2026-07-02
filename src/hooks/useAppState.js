@@ -7,7 +7,7 @@ import { useLocalStorage, STORAGE_WARN_KEY } from './useLocalStorage.js'
 import { LABELS } from '../contexts/LangCtx.jsx'
 import { calculateACWR } from '../lib/trainingLoad.js'
 import { addNotification } from '../lib/notificationCenter.js'
-import { exchangeStravaCode, initiateStravaOAuth, triggerStravaSync } from '../lib/strava.js'
+import { exchangeStravaCode, initiateStravaOAuth, triggerStravaSyncWithRetry, hasActivityReadScope } from '../lib/strava.js'
 import { checkRaceCountdowns, checkSubscriptionExpiry } from '../lib/pushNotify.js'
 import { scheduleSessionReminder, getReminderSettings } from '../lib/pushNotifications.js'
 import { triggerSync } from '../lib/deviceSync.js'
@@ -81,10 +81,16 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
   }, [authUser]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Strava OAuth callback ─────────────────────────────────────────────────────
+  // Capture the returned `scope` alongside the code (F5b): Strava echoes the
+  // scope the user actually granted. If it lacks activity:read_all we can't read
+  // activities → we warn + re-initiate with approval_prompt:'force' rather than
+  // let the import come back empty with no explanation.
+  const stravaCallbackScopeRef = useRef(null)
   const [stravaCallbackCode, setStravaCallbackCode] = useState(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('state') === 'strava' && params.get('code')) {
       const oauthCode = params.get('code')
+      stravaCallbackScopeRef.current = params.get('scope')
       const url = new URL(window.location.href)
       url.searchParams.delete('state')
       url.searchParams.delete('code')
@@ -104,19 +110,58 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
     // The bare `.then()` previously had no `.catch()`, so a network
     // rejection became an unhandled promise rejection (Sentry noise).
     let cancelled = false
+    const isTR = lang === 'tr'
     exchangeStravaCode(stravaCallbackCode)
-      .then(({ data, error }) => {
+      .then(async ({ data, error }) => {
         if (cancelled) return
         setStravaCallbackCode(null)
         if (error) {
           addToast({ id: 'strava', message: `⚠ Strava connection failed: ${(error.message || 'Unknown error').slice(0, 200)}`, type: 'error', duration: 6000 })
-        } else {
-          addToast({ id: 'strava', message: `✓ Strava connected${data?.athlete ? ' — ' + data.athlete : ''}`, type: 'success', duration: 6000 })
-          // Fire an immediate 30-day sync so recent activities appear in ~1-2s.
-          // The connect handler only enqueues a 90-day backfill processed by a
-          // 2-min cron worker, so without this the athlete sees "Connected" but an
-          // empty log for minutes — the top "I connected but nothing happened" bug.
-          triggerStravaSync().catch(syncErr => logger.warn('[strava] post-connect sync:', syncErr?.message || syncErr))
+          return
+        }
+        // F5b — Strava silently reuses a previously-granted narrower scope on
+        // approval_prompt:'auto'. If activity:read_all wasn't granted the import
+        // will be empty with no error → warn + re-initiate with force so the
+        // user re-sees (and grants) the permission screen.
+        const grantedScope = stravaCallbackScopeRef.current
+        stravaCallbackScopeRef.current = null
+        if (grantedScope != null && !hasActivityReadScope(grantedScope)) {
+          addToast({
+            id: 'strava',
+            message: isTR
+              ? '⚠ Strava "aktivite okuma" izni verilmedi — aktiviteler içe aktarılamaz. İzin ekranını yeniden açıyoruz…'
+              : "⚠ Strava didn't grant activity-read access — activities can't import. Re-opening the permission screen…",
+            type: 'error', duration: 6000,
+          })
+          setTimeout(() => { if (!cancelled) initiateStravaOAuth({ force: true }) }, 1200)
+          return
+        }
+        // F2 — surface that the import is running, then AWAIT it. Fire an
+        // immediate 30-day sync so recent activities appear in ~1-2s (the connect
+        // handler only enqueues a 90-day backfill processed by a 2-min cron
+        // worker). The awaited retry guards the session/timing race: right after
+        // the OAuth redirect reload the auth session may not be committed yet, so
+        // the first sync 401s — triggerStravaSyncWithRetry retries 401 with
+        // backoff instead of swallowing it (the top "connected but nothing
+        // happened" prod bug).
+        addToast({
+          id: 'strava',
+          message: isTR
+            ? `✓ Strava bağlandı${data?.athlete ? ' — ' + data.athlete : ''} — aktivitelerin içe aktarılıyor…`
+            : `✓ Strava connected${data?.athlete ? ' — ' + data.athlete : ''} — importing your activities…`,
+          type: 'success', duration: 6000,
+        })
+        const { error: syncErr } = await triggerStravaSyncWithRetry()
+        if (cancelled) return
+        if (syncErr) {
+          logger.warn('[strava] post-connect sync:', syncErr?.message || syncErr)
+          addToast({
+            id: 'strava',
+            message: isTR
+              ? '⚠ Strava bağlandı ama ilk içe aktarım çalışmadı — Profil → Senkron\'dan tekrar dene.'
+              : "⚠ Strava connected, but the first import didn't run — open Profile → Sync to retry.",
+            type: 'error', duration: 8000,
+          })
         }
       })
       .catch(err => {

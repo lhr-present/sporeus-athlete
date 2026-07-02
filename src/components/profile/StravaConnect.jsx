@@ -6,6 +6,7 @@ import { isSupabaseReady } from '../../lib/supabase.js'
 import {
   getStravaConnection, initiateStravaOAuth, triggerStravaSync,
   disconnectStrava, getRecentStravaActivities, buildStravaSelfTest,
+  getStravaActivityCount,
   // v9.90.0 — importStravaActivities + deduplicateByStravaId imports removed
   // alongside the localStorage-token-fallback disable in handleSync. The
   // functions still live in src/lib/strava.js for future revival.
@@ -23,6 +24,15 @@ export default function StravaConnect({ userId }) {
   const [msg, setMsg]               = useState('')
   const [syncResult, setSyncResult] = useState(null) // { synced, total, recent }
   const [confirmDisc, setConfirmDisc] = useState(false)
+  // F5a — DB-backed Strava activity count (training_log). The old tile read
+  // localStorage `sporeus_log`, which is 0 for a signed-in user whose imports
+  // live in training_log until hydration runs — a misleading "0" after a good
+  // import. null = unknown/loading (fall back to the local count).
+  const [dbActivityCount, setDbActivityCount] = useState(null)
+  // F5b — when a disconnect happens in-session, the next reconnect must force
+  // the Strava permission screen (approval_prompt:'force'). Otherwise Strava
+  // silently reuses the prior grant, which may be a too-narrow scope.
+  const [forceReconnect, setForceReconnect] = useState(false)
 
   useEffect(() => {
     if (!userId || !isSupabaseReady()) { setLoading(false); return }
@@ -31,6 +41,14 @@ export default function StravaConnect({ userId }) {
       setLoading(false)
     })
   }, [userId])
+
+  // F5a — load the DB-backed strava count whenever we have a live connection.
+  useEffect(() => {
+    let alive = true
+    if (!userId || !conn?.strava_athlete_id) { setDbActivityCount(null); return }
+    getStravaActivityCount(userId).then(n => { if (alive) setDbActivityCount(n) }).catch(() => {})
+    return () => { alive = false }
+  }, [userId, conn?.strava_athlete_id, conn?.last_sync_at])
 
   const getRecentStravaLocal = () => {
     try {
@@ -91,6 +109,7 @@ export default function StravaConnect({ userId }) {
       setSyncResult({ synced: data?.synced ?? 0, total: data?.total ?? 0, recent })
       flash(`✓ Synced ${data?.synced ?? 0} of ${data?.total ?? 0} activities`, 6000)
       getStravaConnection(userId).then(({ data: d }) => setConn(d || null))
+      getStravaActivityCount(userId).then(n => setDbActivityCount(n)).catch(() => {})
     }
   }
 
@@ -100,6 +119,10 @@ export default function StravaConnect({ userId }) {
     await disconnectStrava()
     setConn(null)
     setSyncResult(null)
+    setDbActivityCount(null)
+    // F5b — a reconnect after this in-session disconnect must force the Strava
+    // permission screen so a stale/too-narrow prior grant isn't silently reused.
+    setForceReconnect(true)
     setBusy(false)
     flash('Strava disconnected')
   }
@@ -115,11 +138,13 @@ export default function StravaConnect({ userId }) {
   const displayStatus = busy ? 'syncing' : (conn?.sync_status || 'idle')
   // Surface a STALE badge (idle but not synced in days) and a RECONNECT CTA when
   // the connection is failing (e.g. the edge wrote "authorization revoked").
-  const health    = conn ? classifyStravaSync(conn) : null
-  const isStale   = health?.state === 'stale' && displayStatus !== 'syncing' && displayStatus !== 'error'
-  const isFailing = health?.state === 'failing' || displayStatus === 'error'
-  const statusLabel = isStale ? 'STALE' : (SYNC_LABEL[displayStatus] || 'CONNECTED')
-  const statusColor = isStale ? '#ffa500' : (SYNC_COLOR[displayStatus] || '#5bc25b')
+  const health       = conn ? classifyStravaSync(conn) : null
+  const isStale      = health?.state === 'stale' && displayStatus !== 'syncing' && displayStatus !== 'error'
+  const isNeverSynced = health?.state === 'never_synced' && displayStatus !== 'syncing' && displayStatus !== 'error'
+  const isFailing    = health?.state === 'failing' || displayStatus === 'error'
+  // F3 — distinct NOT SYNCED pill for a freshly-connected token with no imports yet.
+  const statusLabel = isNeverSynced ? 'NOT SYNCED' : isStale ? 'STALE' : (SYNC_LABEL[displayStatus] || 'CONNECTED')
+  const statusColor = isNeverSynced ? '#fc4c02' : isStale ? '#ffa500' : (SYNC_COLOR[displayStatus] || '#5bc25b')
 
   return (
     <div>
@@ -132,10 +157,12 @@ export default function StravaConnect({ userId }) {
               { lbl: 'LAST SYNC',        val: conn.last_sync_at
                 ? new Date(conn.last_sync_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
                 : 'Never',                                               color: '#e0e0e0' },
-              { lbl: 'LOCAL ACTIVITIES', val: (() => {
+              // F5a — prefer the DB-backed count (training_log, the sync target).
+              // Fall back to the local count only until the DB count resolves.
+              { lbl: 'STRAVA ACTIVITIES', val: (dbActivityCount != null ? dbActivityCount : (() => {
                   try { return JSON.parse(localStorage.getItem('sporeus_log') || '[]').filter(e => e.source === 'strava').length }
                   catch { return 0 }
-                })(),                                                    color: '#e0e0e0' },
+                })()),                                                   color: '#e0e0e0' },
             ].map(({ lbl, val, color }) => (
               <div key={lbl} style={{ background: '#0a0a0a', borderRadius: '4px', padding: '8px 10px' }}>
                 <div style={{ ...S.mono, fontSize: '8px', color: '#555', letterSpacing: '0.08em', marginBottom: '3px' }}>{lbl}</div>
@@ -154,6 +181,19 @@ export default function StravaConnect({ userId }) {
             </div>
           )}
 
+          {/* F3 — never_synced: connected but no import landed yet. Prompt SYNC NOW. */}
+          {isNeverSynced && (
+            <div style={{
+              ...S.mono, fontSize: '10px', color: '#fc4c02',
+              background: '#1a0d05', border: '1px solid #3a2010',
+              borderRadius: '4px', padding: '6px 10px', marginBottom: '10px', lineHeight: 1.5,
+            }}>
+              {lang === 'tr'
+                ? '↻ Strava bağlı ama henüz aktivite içe aktarılmadı — içe aktarmak için "SYNC NOW".'
+                : '↻ Strava connected but no activities imported yet — tap "SYNC NOW" to import.'}
+            </div>
+          )}
+
           <div style={{ ...S.mono, fontSize: '10px', color: '#666', marginBottom: '12px', lineHeight: 1.6 }}>
             Syncs last 30 days · runs, rides, swims · distance + HR in notes · auto-deduplicates
           </div>
@@ -162,7 +202,7 @@ export default function StravaConnect({ userId }) {
             {isFailing && (
               <button
                 style={{ ...S.btn, background: '#fc4c02', borderColor: '#fc4c02' }}
-                onClick={() => { const res = initiateStravaOAuth(); if (res && res.ok === false) flash(`⚠ ${res.error}`, 6000) }}
+                onClick={() => { const res = initiateStravaOAuth({ force: true }); if (res && res.ok === false) flash(`⚠ ${res.error}`, 6000) }}
                 disabled={busy}
               >
                 ↻ RECONNECT
@@ -233,7 +273,7 @@ export default function StravaConnect({ userId }) {
               : <>Connect your Strava account to automatically import activities. Runs and rides sync with distance, HR data, and estimated TSS.<br/>Only reads your activity data — never posts on your behalf.</>}
           </div>
           <button style={{ ...S.btn, background: '#fc4c02', borderColor: '#fc4c02' }} onClick={() => {
-            const res = initiateStravaOAuth()
+            const res = initiateStravaOAuth({ force: forceReconnect })
             if (res && res.ok === false) flash(`⚠ ${res.error}`, 6000)
           }}>
             Connect Strava

@@ -12,6 +12,11 @@
 // This module classifies the strava_tokens row into a health state
 // the daily view can act on:
 //   - healthy: synced within last 2 days, sync_status='idle'/'syncing'
+//   - never_synced: connected but last_sync_at is null AND the token was
+//              created recently (updated_at within the fresh window) — the
+//              "connected but zero activities imported yet" state. Distinct
+//              from generic 'stale' so the UI can prompt an import rather than
+//              imply a broken/old sync.
 //   - stale:   no error but last_sync_at is >=2 days old
 //   - failing: sync_status='error' OR last_error present within
 //              the most recent updated_at window
@@ -41,12 +46,20 @@ function daysSinceSync(lastSyncAt, refMs) {
 export const STRAVA_STALE_DAYS = 2
 
 /**
+ * @description Window (days) after the token's `updated_at` in which a
+ *   never-synced connection is classified as 'never_synced' (freshly connected,
+ *   first import hasn't landed) rather than generic 'stale'. Covers the 90-day
+ *   backfill worker's cadence + the immediate 30-day sync latency.
+ */
+export const STRAVA_NEVER_SYNCED_FRESH_DAYS = 3
+
+/**
  * @description Classify a Strava connection row.
  *
  * @param {Object|null} conn   - row from getStravaConnection or null
  * @param {string}      [now]  - 'YYYY-MM-DD' or ISO timestamp; defaults to now
  * @returns {{
- *   state:               'healthy' | 'stale' | 'failing' | 'disconnected',
+ *   state:               'healthy' | 'never_synced' | 'stale' | 'failing' | 'disconnected',
  *   daysSinceLastSync:   number | null,
  *   lastError:           string | null,
  *   actionable:          boolean,
@@ -80,6 +93,26 @@ export function classifyStravaSync(conn, now) {
         en: `Strava sync is failing${lastError ? ` (${lastError.slice(0, 80)})` : ''}. Re-authenticate or trigger a manual sync from Profile.`,
         tr: `Strava senkronu hata veriyor${lastError ? ` (${lastError.slice(0, 80)})` : ''}. Profil'den yeniden bağlan veya manuel senkron çalıştır.`,
       },
+    }
+  }
+
+  // Never synced — connected but no last_sync_at yet. Only treat as the
+  // distinct "connected but nothing imported" state when the token is fresh
+  // (updated_at recent); an OLD never-synced token is a genuinely stale/broken
+  // sync and falls through to 'stale' below.
+  if (!conn.last_sync_at) {
+    const dSinceUpdate = daysSinceSync(conn.updated_at, refMs)
+    if (dSinceUpdate <= STRAVA_NEVER_SYNCED_FRESH_DAYS) {
+      return {
+        state: 'never_synced',
+        daysSinceLastSync: null,
+        lastError: null,
+        actionable: true,
+        summary: {
+          en: 'Strava connected but no activities imported yet — tap to import.',
+          tr: 'Strava bağlı ama henüz aktivite içe aktarılmadı — içe aktarmak için dokun.',
+        },
+      }
     }
   }
 

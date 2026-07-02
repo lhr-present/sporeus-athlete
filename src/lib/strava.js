@@ -14,6 +14,18 @@ const SPORT_TYPE_MAP = {
   WeightTraining: 'Strength', Workout: 'Strength', Yoga: 'Other',
 }
 
+// ─── NOT WIRED — edge is the source of truth ─────────────────────────────────
+// The three functions below (stravaToEntry / importStravaActivities /
+// deduplicateByStravaId) implemented a CLIENT-SIDE direct-import path that wrote
+// activities straight to localStorage. It was DISABLED in v9.90.0 (see the long
+// comment in StravaConnect.jsx handleSync): the edge function `strava-oauth`
+// (action:'sync') is now the ONLY sync path — it owns server-side token refresh,
+// revocation handling, and per-user ownership via JWT, and upserts into
+// training_log. These are kept (not deleted) only because strava.test.js still
+// exercises the pure transform + dedup logic. DO NOT re-wire them into the app
+// without adding token-ownership validation + refresh first.
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Convert a raw Strava activity object to a sporeus log entry
 function stravaToEntry(act) {
   const durationSec = act.moving_time || act.elapsed_time || 0
@@ -147,11 +159,30 @@ function getRedirectUri() {
   return STRAVA_REDIRECT_URI
 }
 
+// The scope we MUST have to import activities. Strava will silently reuse a
+// previously-granted narrower scope (e.g. plain `read`) on approval_prompt:'auto'
+// — so a returning user can "reconnect" and end up with an empty import and no
+// error. hasActivityReadScope() inspects the `scope` param Strava returns on the
+// callback so callers can detect + recover from this.
+export const STRAVA_REQUIRED_SCOPE = 'activity:read_all'
+
+// True when the granted scope string (comma-separated, as Strava returns it on
+// the OAuth callback) includes activity:read_all. Null/empty scope → false.
+export function hasActivityReadScope(scope) {
+  if (!scope) return false
+  return String(scope).split(',').map(s => s.trim()).includes(STRAVA_REQUIRED_SCOPE)
+}
+
 // Redirect user to Strava OAuth authorization page.
 // Returns { ok: true } on success / redirect, or { ok: false, error: '...' }
 // when misconfigured (so callers can render the message in-app rather than
 // using the browser alert dialog).
-export function initiateStravaOAuth() {
+//
+// options.force (default false): sets approval_prompt:'force' so Strava ALWAYS
+// re-shows the permission screen. Use it when a prior grant may have been too
+// narrow (missing activity:read_all) or on a reconnect after an in-session
+// disconnect — otherwise 'auto' silently reuses the old (possibly wrong) scope.
+export function initiateStravaOAuth(options = {}) {
   if (!STRAVA_CLIENT_ID) {
     return { ok: false, error: 'Strava integration not configured. Set VITE_STRAVA_CLIENT_ID in .env.' }
   }
@@ -159,8 +190,8 @@ export function initiateStravaOAuth() {
     client_id:     STRAVA_CLIENT_ID,
     redirect_uri:  getRedirectUri(),
     response_type: 'code',
-    approval_prompt: 'auto',
-    scope:         'activity:read_all',
+    approval_prompt: options.force ? 'force' : 'auto',
+    scope:         STRAVA_REQUIRED_SCOPE,
     state:         'strava',
   })
   window.location.href = `https://www.strava.com/oauth/authorize?${params}`
@@ -271,6 +302,52 @@ export async function triggerStravaSync() {
   return _syncPromise
 }
 
+// F1 — pure predicate for the self-healing reconcile-on-load. True only when a
+// connection exists (strava_athlete_id present) BUT it has never synced
+// (last_sync_at null) AND the log has no strava-sourced entries yet — the exact
+// "connected but zero activities imported" prod state. Extracted as a pure fn so
+// the reconcile decision is unit-testable independent of TodayView. The CALLER
+// owns the once-per-session guard (a ref) so the sync can't loop/double-import.
+export function shouldReconcileStrava(conn, log) {
+  if (!conn || !conn.strava_athlete_id) return false
+  if (conn.last_sync_at) return false
+  return !(Array.isArray(log) && log.some(e => e && e.source === 'strava'))
+}
+
+// Post-connect sync with a small bounded retry for the auth-session race.
+// Immediately after the OAuth redirect reload, the Supabase auth session may
+// not be committed yet when the sync fires → the edge function 401s. That 401
+// was previously swallowed by a fire-and-forget `.catch`, leaving the user
+// "Connected" with an empty log (the top prod bug). Here we retry a 401 up to
+// `maxAttempts` times with backoff (default ~1s then ~3s), mirroring the
+// transient-retry infra exchangeStravaCode already has. Non-401 errors are
+// returned immediately (real failures shouldn't be masked by retries).
+// Reuses the _syncPromise mutex via triggerStravaSync, so it can't double-fire
+// with the Profile / banner "Sync now" buttons.
+const POST_CONNECT_SYNC_ATTEMPTS = 3
+const POST_CONNECT_BACKOFF_MS = [1000, 3000]
+
+function isUnauthorized(error) {
+  if (!error) return false
+  const status = error?.context?.status ?? error?.status
+  if (status === 401 || status === 403) return true
+  const msg = String(error?.message || '').toLowerCase()
+  return msg.includes('401') || msg.includes('unauthorized') || msg.includes('jwt')
+}
+
+export async function triggerStravaSyncWithRetry(options = {}) {
+  const maxAttempts = options.maxAttempts ?? POST_CONNECT_SYNC_ATTEMPTS
+  let last = { data: null, error: null }
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    last = await triggerStravaSync()
+    if (!last.error) return last
+    if (!isUnauthorized(last.error) || attempt >= maxAttempts) return last
+    const backoff = POST_CONNECT_BACKOFF_MS[attempt - 1] ?? POST_CONNECT_BACKOFF_MS[POST_CONNECT_BACKOFF_MS.length - 1]
+    await sleep(backoff)
+  }
+  return last
+}
+
 // Disconnect Strava (removes tokens, keeps synced activities)
 export async function disconnectStrava() {
   const { data, error } = await supabase.functions.invoke('strava-oauth', {
@@ -288,6 +365,22 @@ export async function getStravaConnection(userId) {
     .eq('user_id', userId)
     .maybeSingle()
   return { data, error }
+}
+
+// Count of Strava-sourced activities in training_log (the DB source of truth).
+// StravaConnect's "LOCAL ACTIVITIES" tile read localStorage (`sporeus_log`),
+// which is 0 for a signed-in user whose imports live in training_log until the
+// DB→localStorage hydration runs — showing a misleading "0" right after a good
+// import. Returns null on error/no-user so the UI can fall back.
+export async function getStravaActivityCount(userId) {
+  if (!userId) return null
+  const { count, error } = await supabase
+    .from('training_log')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('source', 'strava')
+  if (error) return null
+  return count ?? 0
 }
 
 // Most-recent synced Strava activities straight from training_log (the source of

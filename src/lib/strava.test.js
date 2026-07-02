@@ -4,6 +4,8 @@ import {
   importStravaActivities, deduplicateByStravaId, decodePolyline,
   getStravaConnection, disconnectStrava, exchangeStravaCode,
   getRecentStravaActivities, buildStravaSelfTest,
+  hasActivityReadScope, triggerStravaSyncWithRetry, getStravaActivityCount,
+  shouldReconcileStrava,
 } from './strava.js'
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
@@ -275,6 +277,102 @@ describe('getRecentStravaActivities', () => {
     const eq1   = vi.fn().mockReturnValue({ eq: eq2 })
     supabase.from.mockReturnValue({ select: vi.fn().mockReturnValue({ eq: eq1 }) })
     expect(await getRecentStravaActivities('u1')).toEqual([])
+  })
+})
+
+// ── shouldReconcileStrava (F1) ────────────────────────────────────────────────
+describe('shouldReconcileStrava', () => {
+  const connected = { strava_athlete_id: '123', last_sync_at: null }
+  it('true when connected, never synced, and log has no strava entries', () => {
+    expect(shouldReconcileStrava(connected, [])).toBe(true)
+    expect(shouldReconcileStrava(connected, [{ source: 'manual' }])).toBe(true)
+    expect(shouldReconcileStrava(connected, null)).toBe(true)
+  })
+  it('false when there is no connection / no athlete id', () => {
+    expect(shouldReconcileStrava(null, [])).toBe(false)
+    expect(shouldReconcileStrava({ last_sync_at: null }, [])).toBe(false)
+  })
+  it('false when already synced at least once', () => {
+    expect(shouldReconcileStrava({ strava_athlete_id: '123', last_sync_at: '2026-06-01T00:00:00Z' }, [])).toBe(false)
+  })
+  it('false when a strava-sourced entry already exists (no double-import)', () => {
+    expect(shouldReconcileStrava(connected, [{ source: 'strava' }])).toBe(false)
+    expect(shouldReconcileStrava(connected, [{ source: 'manual' }, { source: 'strava' }])).toBe(false)
+  })
+})
+
+// ── hasActivityReadScope (F5b) ────────────────────────────────────────────────
+describe('hasActivityReadScope', () => {
+  it('true when activity:read_all is present', () => {
+    expect(hasActivityReadScope('read,activity:read_all')).toBe(true)
+    expect(hasActivityReadScope('activity:read_all')).toBe(true)
+    expect(hasActivityReadScope(' activity:read_all , read ')).toBe(true)
+  })
+  it('false when only a narrower scope was granted', () => {
+    expect(hasActivityReadScope('read')).toBe(false)
+    expect(hasActivityReadScope('read,activity:read')).toBe(false)
+  })
+  it('false for null/empty', () => {
+    expect(hasActivityReadScope(null)).toBe(false)
+    expect(hasActivityReadScope('')).toBe(false)
+    expect(hasActivityReadScope(undefined)).toBe(false)
+  })
+})
+
+// ── triggerStravaSyncWithRetry (F2) ───────────────────────────────────────────
+describe('triggerStravaSyncWithRetry', () => {
+  it('returns immediately on success (single attempt)', async () => {
+    supabase.functions.invoke.mockResolvedValue({ data: { synced: 5 }, error: null })
+    const { data, error } = await triggerStravaSyncWithRetry()
+    expect(error).toBeNull()
+    expect(data).toEqual({ synced: 5 })
+    expect(supabase.functions.invoke).toHaveBeenCalledTimes(1)
+  })
+
+  it('retries a 401 (auth-session race) then succeeds', async () => {
+    supabase.functions.invoke
+      .mockResolvedValueOnce({ data: null, error: { context: { status: 401 }, message: '401 Unauthorized' } })
+      .mockResolvedValueOnce({ data: { synced: 3 }, error: null })
+    const { data, error } = await triggerStravaSyncWithRetry({ maxAttempts: 2 })
+    expect(error).toBeNull()
+    expect(data).toEqual({ synced: 3 })
+    expect(supabase.functions.invoke).toHaveBeenCalledTimes(2)
+  })
+
+  it('does NOT retry a non-401 error (real failure surfaced immediately)', async () => {
+    supabase.functions.invoke.mockResolvedValue({ data: null, error: { context: { status: 500 }, message: 'server error' } })
+    const { error } = await triggerStravaSyncWithRetry({ maxAttempts: 3 })
+    expect(error).toBeTruthy()
+    expect(supabase.functions.invoke).toHaveBeenCalledTimes(1)
+  })
+
+  it('gives up after maxAttempts of persistent 401', async () => {
+    supabase.functions.invoke.mockResolvedValue({ data: null, error: { context: { status: 401 }, message: '401' } })
+    const { error } = await triggerStravaSyncWithRetry({ maxAttempts: 2 })
+    expect(error).toBeTruthy()
+    expect(supabase.functions.invoke).toHaveBeenCalledTimes(2)
+  })
+})
+
+// ── getStravaActivityCount (F5a) ──────────────────────────────────────────────
+describe('getStravaActivityCount', () => {
+  it('returns null without a userId', async () => {
+    expect(await getStravaActivityCount('')).toBeNull()
+  })
+  it('returns the DB count for source=strava rows', async () => {
+    const eq2 = vi.fn().mockResolvedValue({ count: 42, error: null })
+    const eq1 = vi.fn().mockReturnValue({ eq: eq2 })
+    const select = vi.fn().mockReturnValue({ eq: eq1 })
+    supabase.from.mockReturnValue({ select })
+    const n = await getStravaActivityCount('user-abc')
+    expect(supabase.from).toHaveBeenCalledWith('training_log')
+    expect(n).toBe(42)
+  })
+  it('returns null on query error', async () => {
+    const eq2 = vi.fn().mockResolvedValue({ count: null, error: { message: 'boom' } })
+    const eq1 = vi.fn().mockReturnValue({ eq: eq2 })
+    supabase.from.mockReturnValue({ select: vi.fn().mockReturnValue({ eq: eq1 }) })
+    expect(await getStravaActivityCount('u1')).toBeNull()
   })
 })
 
