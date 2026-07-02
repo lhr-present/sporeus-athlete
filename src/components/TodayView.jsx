@@ -49,7 +49,7 @@ import { analyzeDecouplingTrend } from '../lib/athlete/decouplingTrend.js'
 import { analyzePolarizedWeek } from '../lib/athlete/polarizedWeek.js'
 import { isBannerSnoozed, snoozeBanner } from '../lib/athlete/bannerSnooze.js'
 import { classifyStravaSync } from '../lib/athlete/stravaSyncHealth.js'
-import { getStravaConnection, initiateStravaOAuth } from '../lib/strava.js'
+import { getStravaConnection, initiateStravaOAuth, triggerStravaSync, shouldReconcileStrava } from '../lib/strava.js'
 import { analyzeWeeklyBudget } from '../lib/athlete/weeklyBudget.js'
 import { rankDiagnostics } from '../lib/athlete/diagnosticPriority.js'
 import { buildStarterPlan } from '../lib/plan/starterPlan.js'
@@ -693,6 +693,11 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
   // is available; null when no Strava connection exists (silent — not
   // every athlete uses Strava). Re-fetches if authUser.id changes.
   const [stravaConn, setStravaConn] = useState(null)
+  // F1 — self-healing reconcile guard. Fires at most once per session (survives
+  // remounts) so the empty-log bug can't loop or double-import.
+  const stravaReconciledRef = useRef(false)
+  const [stravaSyncBusy, setStravaSyncBusy] = useState(false)
+  const [stravaSyncMsg, setStravaSyncMsg] = useState('')
   useEffect(() => {
     let cancelled = false
     if (!authUser?.id) { setStravaConn(null); return }
@@ -700,10 +705,30 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
       .then(({ data, error }) => {
         if (cancelled || error) return
         setStravaConn(data || null)
+        // F1 — Self-healing reconcile. A prod user connected Strava (token
+        // stored) but ZERO activities imported because both auto-import paths
+        // silently failed. Heal it on the next visit: if the connection exists
+        // (strava_athlete_id/token present) BUT last_sync_at is null AND no
+        // strava-sourced entries are in the log yet → fire one idempotent sync.
+        // triggerStravaSync's _syncPromise mutex + the edge's upsert on
+        // (user_id, external_id) make this safe to re-run. Guarded to at most
+        // once per session so it never loops.
+        if (!stravaReconciledRef.current && shouldReconcileStrava(data, log)) {
+          stravaReconciledRef.current = true
+          triggerStravaSync()
+            .then(() => {
+              if (cancelled) return
+              // Refresh the connection so the banner clears once last_sync_at lands.
+              getStravaConnection(authUser.id)
+                .then(({ data: d, error: e2 }) => { if (!cancelled && !e2) setStravaConn(d || null) })
+                .catch(() => {})
+            })
+            .catch(() => { /* silent — best-effort heal; banner still offers manual retry */ })
+        }
       })
       .catch(() => { /* silent — Strava is optional */ })
     return () => { cancelled = true }
-  }, [authUser?.id])
+  }, [authUser?.id]) // eslint-disable-line react-hooks/exhaustive-deps -- log read once at connect-time; reconcile is session-guarded
 
   const [weeklyRecap] = useState(() => generateWeeklyRecap(log))
   const [recapDismissed, setRecapDismissed] = useState(() => weeklyRecap ? !!localStorage.getItem(`sporeus-recap-seen-${weeklyRecap?.weekLabel}`) : true)
@@ -1686,7 +1711,41 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
         if (isBannerSnoozed('strava-sync')) return null
         if (criticalPrimaryActive) return null
         void snoozeBump
-        const color = health.state === 'failing' ? '#e03030' : '#f5c542'
+        // F3 — never_synced gets its own colour/icon vs failing (red) / stale (amber).
+        const color = health.state === 'failing' ? '#e03030'
+          : health.state === 'never_synced' ? '#fc4c02'  // Strava orange — "import now"
+          : '#f5c542'
+        const bannerTitle = health.state === 'failing'
+          ? (lang === 'tr' ? 'STRAVA SENKRON' : 'STRAVA SYNC')
+          : health.state === 'never_synced'
+          ? (lang === 'tr' ? 'STRAVA — İÇE AKTARILMADI' : 'STRAVA — NOT IMPORTED')
+          : (lang === 'tr' ? 'STRAVA SENKRON' : 'STRAVA SYNC')
+        const bannerIcon = health.state === 'failing' ? '⚠' : '↻'
+        // F4 — in-place "Sync now" from the banner. Reuses triggerStravaSync's
+        // _syncPromise mutex so it can't double-fire with the Profile button or
+        // the F1 reconcile. Refreshes the connection so the banner self-clears.
+        const handleBannerSync = () => {
+          if (stravaSyncBusy) return
+          setStravaSyncBusy(true)
+          setStravaSyncMsg(lang === 'tr' ? 'Senkronize ediliyor…' : 'Syncing…')
+          triggerStravaSync()
+            .then(({ error }) => {
+              if (error) {
+                setStravaSyncMsg(lang === 'tr'
+                  ? '⚠ Senkron başarısız — Profil\'den tekrar dene.'
+                  : "⚠ Sync failed — try again from Profile.")
+              } else {
+                setStravaSyncMsg(lang === 'tr' ? '✓ Senkronize edildi' : '✓ Synced')
+                if (authUser?.id) {
+                  getStravaConnection(authUser.id)
+                    .then(({ data: d, error: e2 }) => { if (!e2) setStravaConn(d || null) })
+                    .catch(() => {})
+                }
+              }
+            })
+            .catch(() => setStravaSyncMsg(lang === 'tr' ? '⚠ Senkron başarısız' : '⚠ Sync failed'))
+            .finally(() => setStravaSyncBusy(false))
+        }
         return (
           <div role="status" style={{
             marginBottom: '14px', padding: '10px 14px',
@@ -1704,7 +1763,7 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
               ×
             </button>
             <div style={{ fontSize: '10px', fontWeight: 700, color, letterSpacing: '0.08em', marginBottom: '6px', paddingRight: '20px' }}>
-              {health.state === 'failing' ? '⚠' : '↻'} {lang === 'tr' ? 'STRAVA SENKRON' : 'STRAVA SYNC'}
+              {bannerIcon} {bannerTitle}
               {health.daysSinceLastSync != null && (
                 <span style={{ color: '#888', fontWeight: 400, marginLeft: '8px' }}>
                   · {health.daysSinceLastSync}{lang === 'tr' ? ' gün önce' : 'd ago'}
@@ -1714,16 +1773,36 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
             <div style={{ fontSize: '10px', color: '#ccc', lineHeight: 1.55, marginBottom: '6px' }}>
               {health.summary[lang] || health.summary.en}
             </div>
-            <button
-              onClick={() => setTab('profile')}
-              style={{
-                fontFamily: MONO, fontSize: '9px', fontWeight: 700,
-                letterSpacing: '0.06em', padding: '4px 10px',
-                background: 'transparent', border: `1px solid ${color}88`,
-                color, borderRadius: '3px', cursor: 'pointer',
-              }}>
-              → {lang === 'tr' ? 'PROFİL\'E GİT' : 'OPEN PROFILE'}
-            </button>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              {/* F4 — primary in-place SYNC NOW; Open Profile stays secondary */}
+              <button
+                onClick={handleBannerSync}
+                disabled={stravaSyncBusy}
+                style={{
+                  fontFamily: MONO, fontSize: '9px', fontWeight: 700,
+                  letterSpacing: '0.06em', padding: '4px 10px',
+                  background: color, border: `1px solid ${color}`,
+                  color: '#000', borderRadius: '3px',
+                  cursor: stravaSyncBusy ? 'default' : 'pointer', opacity: stravaSyncBusy ? 0.6 : 1,
+                }}>
+                {stravaSyncBusy ? (lang === 'tr' ? 'SENKRON…' : 'SYNCING…') : (lang === 'tr' ? '↻ ŞİMDİ SENKRONLA' : '↻ SYNC NOW')}
+              </button>
+              <button
+                onClick={() => setTab('profile')}
+                style={{
+                  fontFamily: MONO, fontSize: '9px', fontWeight: 700,
+                  letterSpacing: '0.06em', padding: '4px 10px',
+                  background: 'transparent', border: `1px solid ${color}88`,
+                  color, borderRadius: '3px', cursor: 'pointer',
+                }}>
+                → {lang === 'tr' ? 'PROFİL\'E GİT' : 'OPEN PROFILE'}
+              </button>
+            </div>
+            {stravaSyncMsg && (
+              <div style={{ fontSize: '9px', marginTop: '6px', color: stravaSyncMsg.startsWith('⚠') ? '#e03030' : '#5bc25b' }}>
+                {stravaSyncMsg}
+              </div>
+            )}
           </div>
         )
       })()}

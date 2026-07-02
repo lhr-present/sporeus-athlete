@@ -81,12 +81,19 @@ describe('Calendar — planned sessions placed by weekday', () => {
 })
 
 // Navigate the calendar (← / → buttons) to a target year+month (1-indexed month).
+// Direction-aware: the calendar opens on the CURRENT real month, so a fixed target
+// month can be in the past (e.g. once the wall clock rolls past it) — go backward
+// then, forward otherwise. (Was Next-only, which broke after the target month passed.)
 function goToMonth(year, month) {
   const target = `${monthName(month)} ${year}`.toUpperCase()
-  for (let i = 0; i < 240; i++) {
+  const now = new Date()
+  const diff = (year * 12 + (month - 1)) - (now.getFullYear() * 12 + now.getMonth())
+  const label = diff >= 0 ? 'Next month' : 'Previous month'
+  for (let i = 0; i < Math.abs(diff) + 2; i++) {
     if (screen.queryByText(target)) return
-    fireEvent.click(screen.getByLabelText('Next month'))
+    fireEvent.click(screen.getByLabelText(label))
   }
+  if (screen.queryByText(target)) return
   throw new Error(`could not reach ${target}`)
 }
 

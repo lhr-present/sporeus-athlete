@@ -33,21 +33,28 @@ function mapStravaType(sportType: string): string {
     Swim: "swim", OpenWaterSwim: "swim",
     Walk: "walk", Hike: "walk",
     WeightTraining: "strength", Yoga: "other", Workout: "other",
-    Rowing: "other", Kayaking: "other", Crossfit: "strength",
+    // "row" matches the app's rowing vocabulary: /row/i is what the sport-gating
+    // detectors test on entry.type (rowingSplitConsistency, derivedSessionTargets,
+    // goalActivityMismatch) and normalizeSport maps row→Rowing. Was "other" → the
+    // rowing analysis cards never fired for imported activities (prod user is a rower).
+    Rowing: "row", Kayaking: "row", Canoeing: "row",
+    Crossfit: "strength",
   }
   return m[sportType] || "other"
 }
 
-// TRIMP-based TSS estimate — no LTHR needed, uses max HR
-function estimateTSS(durationS: number, avgHR: number | null, maxHR: number): number {
+// TRIMP-based TSS estimate — no LTHR needed, uses max HR.
+// maxHR may be null (no real activity max + no profile max) → duration-only fallback.
+function estimateTSS(durationS: number, avgHR: number | null, maxHR: number | null): number {
   if (!avgHR || !maxHR || maxHR <= 0) return Math.round(durationS / 3600 * 50)
   const hrFrac = Math.min(avgHR / maxHR, 1)
   const trimp = (durationS / 60) * hrFrac * 0.64 * Math.exp(1.92 * hrFrac)
   return Math.round(trimp * 1.2)
 }
 
-// Estimate zone distribution from HR fraction
-function estimateZones(sportType: string, avgHR: number | null, maxHR: number): number[] | null {
+// Estimate zone distribution from HR fraction. maxHR null → return null (honest
+// "unknown") rather than a fabricated distribution off a made-up max.
+function estimateZones(sportType: string, avgHR: number | null, maxHR: number | null): number[] | null {
   if (!avgHR || !maxHR) return null
   const pct = avgHR / maxHR
   if (pct < 0.70) return [60, 35, 5, 0, 0]
@@ -55,6 +62,30 @@ function estimateZones(sportType: string, avgHR: number | null, maxHR: number): 
   if (pct < 0.88) return [5, 20, 45, 25, 5]
   if (pct < 0.94) return [0, 5, 15, 55, 25]
   return [0, 0, 5, 25, 70]
+}
+
+// F6: read the athlete's max HR from their profile so no-maxHR activities don't get
+// scored against a fabricated 190. profiles.profile_data JSONB holds flat maxhr/age.
+// Returns a real max HR, or null when neither an explicit maxhr nor an age exists.
+async function resolveProfileMaxHR(
+  adminClient: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<number | null> {
+  try {
+    const { data: prof } = await adminClient
+      .from("profiles")
+      .select("profile_data")
+      .eq("id", userId)
+      .maybeSingle()
+    const pd = (prof?.profile_data ?? {}) as Record<string, unknown>
+    const rawMax = Number(pd.maxhr)
+    if (Number.isFinite(rawMax) && rawMax >= 60 && rawMax <= 280) return Math.round(rawMax)
+    const age = Number(pd.age)
+    if (Number.isFinite(age) && age >= 5 && age <= 120) return Math.round(220 - age)
+    return null
+  } catch {
+    return null
+  }
 }
 
 async function refreshIfExpired(
@@ -177,6 +208,20 @@ serve(withTelemetry('strava-oauth', async (req: Request) => {
       ? `${tokens.athlete.firstname || ""} ${tokens.athlete.lastname || ""}`.trim()
       : null
 
+    // F4: validate granted scope. Strava returns the granted scopes on the token
+    // exchange (e.g. "read,activity:read_all"). A reused "read"-only grant returns
+    // ZERO activities → a silent empty import. Record it (don't hard-fail — keep the
+    // token) so the client can prompt a re-consent.
+    const grantedScope = typeof tokens.scope === "string" ? tokens.scope : ""
+    const hasActivityRead = /(^|,)\s*activity:read_all\s*(,|$)/.test(grantedScope)
+    const scopeError = grantedScope && !hasActivityRead
+      ? 'Strava granted read-only — reconnect and allow "View data about your activities"'
+      : null
+
+    // F2: mark the row "syncing" at connect so a never-completed first import is
+    // visibly not-done rather than looking like a healthy idle. The first successful
+    // sync/backfill page flips it to idle + sets last_sync_at. If scope is bad we
+    // record 'error' instead so sync-health surfaces the re-consent prompt.
     const { error: upsertErr } = await admin.from("strava_tokens").upsert({
       user_id:               user.id,
       access_token:          tokens.access_token,
@@ -184,28 +229,66 @@ serve(withTelemetry('strava-oauth', async (req: Request) => {
       expires_at:            new Date(tokens.expires_at * 1000).toISOString(),
       strava_athlete_id:     tokens.athlete?.id ?? null,
       provider_athlete_name: athleteName,
-      sync_status:           "idle",
-      last_error:            null,
+      sync_status:           scopeError ? "error" : "syncing",
+      last_error:            scopeError,
+      last_sync_at:          null,
       updated_at:            new Date().toISOString(),
     })
     if (upsertErr) return fail(500, upsertErr.message)
 
+    // Read-only grant → no point enqueuing a backfill that will import nothing.
+    // Surface the scope error to the client so it can re-prompt consent.
+    if (scopeError) {
+      return ok({ athlete: athleteName, strava_id: tokens.athlete?.id, scope_error: scopeError })
+    }
+
     // v7.48.0: enqueue historical backfill (last 90 days) via strava_backfill queue.
     // strava-backfill-worker processes these pages in the background every 2 minutes.
+    // F1: PostgREST RPC errors come back as { error } in the response body — they do
+    // NOT reject, so a bare .catch() ignored them and returned ok() as if the backfill
+    // was queued. Capture the returned { error }, retry with small backoff, and if it
+    // still fails set a durable error state so the client/reconciler can recover.
     const backfillAfter = Math.floor(Date.now() / 1000) - 90 * 24 * 3600
-    await admin.rpc("enqueue_strava_backfill", {
-      p_payload: {
-        user_id:     user.id,
-        page:        1,
-        after:       backfillAfter,
-        enqueued_at: new Date().toISOString(),
-      },
-    }).catch((e: Error) => {
-      // Non-fatal — sync still worked; backfill will not run
-      console.error("strava-oauth: backfill enqueue failed:", e.message)
-    })
+    let enqueued = false
+    let lastEnqueueErr = ""
+    for (let attempt = 1; attempt <= 3 && !enqueued; attempt++) {
+      try {
+        const { error: rpcErr } = await admin.rpc("enqueue_strava_backfill", {
+          p_payload: {
+            user_id:     user.id,
+            page:        1,
+            after:       backfillAfter,
+            enqueued_at: new Date().toISOString(),
+          },
+        })
+        if (!rpcErr) { enqueued = true; break }
+        lastEnqueueErr = rpcErr.message || String(rpcErr)
+      } catch (e) {
+        lastEnqueueErr = e instanceof Error ? e.message : String(e)
+      }
+      if (!enqueued && attempt < 3) {
+        await new Promise((r) => setTimeout(r, attempt * 300))
+      }
+    }
 
-    return ok({ athlete: athleteName, strava_id: tokens.athlete?.id })
+    if (!enqueued) {
+      // Durable state so the never-run backfill is recoverable — client/reconciler
+      // sees sync_status='error' and can prompt a reconnect or manual Sync tap.
+      console.error("strava-oauth: backfill enqueue failed after retries:", lastEnqueueErr)
+      await admin.from("strava_tokens").update({
+        sync_status: "error",
+        last_error:  "backfill_pending — reconnect or tap Sync",
+        updated_at:  new Date().toISOString(),
+      }).eq("user_id", user.id)
+      return ok({
+        athlete:   athleteName,
+        strava_id: tokens.athlete?.id,
+        backfill_enqueued: false,
+        backfill_error: "backfill_pending — reconnect or tap Sync",
+      })
+    }
+
+    return ok({ athlete: athleteName, strava_id: tokens.athlete?.id, backfill_enqueued: true })
   }
 
   // ── SYNC: import recent Strava activities ────────────────────────────────────
@@ -217,6 +300,11 @@ serve(withTelemetry('strava-oauth', async (req: Request) => {
       .maybeSingle()
 
     if (fetchErr || !tokenRow) return fail(404, "Strava not connected")
+
+    // F6: prefer the athlete's real max HR over the fabricated 190 constant so TSS/
+    // zones aren't distorted (esp. for older athletes). profiles.profile_data holds
+    // flat { maxhr, age }. Falls back to 220-age, then null (honest "unknown").
+    const profileMaxHR = await resolveProfileMaxHR(admin, user.id)
 
     // Mark syncing
     await admin.from("strava_tokens").update({ sync_status: "syncing" }).eq("user_id", user.id)
@@ -269,12 +357,17 @@ serve(withTelemetry('strava-oauth', async (req: Request) => {
     let synced = 0
     for (const a of allActivities as Record<string, unknown>[]) {
       if (!a.id || !a.start_date) continue
-      const durationMin = Math.round(((a.moving_time as number) || 0) / 60)
+      // F7: some activities have moving_time=0 but a real elapsed_time — mirror the
+      // client stravaToEntry fallback so they aren't silently dropped by the <3min gate.
+      const durationS = (a.moving_time as number) || (a.elapsed_time as number) || 0
+      const durationMin = Math.round(durationS / 60)
       if (durationMin < 3) continue
 
       const avgHR = a.average_heartrate ? Math.round(a.average_heartrate as number) : null
-      const maxHR = a.max_heartrate ? Math.round(a.max_heartrate as number) : 190
-      const tss   = estimateTSS((a.moving_time as number) || 0, avgHR, maxHR)
+      // F6: real activity max HR → else the athlete's profile max → else null
+      // (estimateTSS uses its duration-only fallback, estimateZones returns null).
+      const maxHR = a.max_heartrate ? Math.round(a.max_heartrate as number) : profileMaxHR
+      const tss   = estimateTSS(durationS, avgHR, maxHR)
       const zones = estimateZones((a.sport_type as string) || (a.type as string) || "", avgHR, maxHR)
 
       const sType  = mapStravaType((a.sport_type as string) || (a.type as string) || "")

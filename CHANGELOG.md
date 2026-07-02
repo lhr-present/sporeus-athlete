@@ -2,6 +2,43 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.460.0 — 2026-07-02 — Strava connect→import reliability + mapping quality
+
+From a 2-agent Strava integration audit, prompted by a real prod bug: a user connected Strava
+successfully but ZERO activities imported — both auto-import paths silently failed on connect (the
+immediate sync 401'd on a post-redirect session race and was swallowed; the 90-day backfill enqueue
+also failed silently), and nothing surfaced it. Client + edge fixes (edge deployed via CLI):
+
+Client:
+- **Self-healing reconcile-on-load** — if Strava is connected but `last_sync_at` is null and no strava
+  activities exist, fire one idempotent sync (guarded once/session). The empty-log bug now self-heals.
+- **Post-connect result surfaced** — "importing your activities…" then the sync is awaited; failure shows
+  a retryable toast (was a swallowed `.catch`). Added a bounded 401-retry (1s/3s) for the post-redirect
+  session race.
+- **`never_synced` health state** — distinct from generic "stale"; the pill/banner show "connected but
+  nothing imported yet — tap to import", and the TodayView banner gets an in-place **SYNC NOW** button.
+- **Scope hardening** — inspects the returned OAuth scope; if `activity:read_all` is missing (silent
+  `read`-only reuse), warns + re-consents with `approval_prompt=force`. Activity count now DB-backed.
+
+Edge (strava-oauth + strava-backfill-worker, deployed):
+- **Enqueue reliability** — captures the RPC's returned `{error}` (not just thrown), retries, and records
+  a `backfill_pending` state instead of silently returning success.
+- **Import-state trace** — connect sets `sync_status='syncing'` (not a healthy-looking idle); the worker
+  now sets `last_sync_at` + clears status on a successful page (fixes perpetual-STALE for backfill-only
+  imports).
+- **Scope validation** — connect records a clear error if the granted scope lacks `activity:read_all`.
+- **Mapping quality** — **Rowing/Kayaking → "row"** (was "other" — recognized by the app's rowing
+  analysis); maxHR falls back to profile maxHR / `220−age` (else null → honest unknown zones) instead of a
+  hardcoded 190; duration falls back to `elapsed_time` when `moving_time` is 0. Retroactively re-ran the
+  affected user's backfill → 9 rowing rows corrected + status healthy.
+
+Also fixed a date-drift test (`Calendar.plannedDay` — `goToMonth` was Next-only; broke once the target
+month passed → made it direction-aware).
+
++18 tests. 16,055 green (716 files), lint + build clean. Remaining Strava gap (flagged for founder):
+NO ongoing sync for NEW activities after the one-time backfill (needs a Strava webhook or a periodic
+pull cron — an architectural + API-budget decision).
+
 ## v9.459.0 — 2026-06-24 — parse-activity edge fn: verify JWT + dedup file uploads
 
 From the integration edge-fn audit. Two fixes to `supabase/functions/parse-activity` (FIT/GPX → training_log),

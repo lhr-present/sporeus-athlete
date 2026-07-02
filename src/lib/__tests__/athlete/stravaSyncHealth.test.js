@@ -4,6 +4,7 @@ import { describe, it, expect } from 'vitest'
 import {
   classifyStravaSync,
   STRAVA_STALE_DAYS,
+  STRAVA_NEVER_SYNCED_FRESH_DAYS,
 } from '../../athlete/stravaSyncHealth.js'
 
 const NOW = '2026-05-14T12:00:00Z'
@@ -95,6 +96,41 @@ describe('classifyStravaSync — stale', () => {
     }, NOW)
     expect(out.summary.en).toContain('5')
     expect(out.summary.tr).toContain('5')
+  })
+})
+
+describe('classifyStravaSync — never_synced (F3)', () => {
+  it('never_synced when connected, no last_sync_at, and updated_at is fresh', () => {
+    const out = classifyStravaSync({
+      strava_athlete_id: '123', sync_status: 'idle',
+      last_sync_at: null, updated_at: daysAgoISO(0),
+    }, NOW)
+    expect(out.state).toBe('never_synced')
+    expect(out.actionable).toBe(true)
+    expect(out.daysSinceLastSync).toBeNull()
+    expect(out.summary.en).toContain('no activities imported yet')
+    expect(out.summary.tr).toContain('henüz aktivite')
+  })
+  it('never_synced at the edge of the fresh window', () => {
+    const out = classifyStravaSync({
+      sync_status: 'idle', last_sync_at: null,
+      updated_at: daysAgoISO(STRAVA_NEVER_SYNCED_FRESH_DAYS),
+    }, NOW)
+    expect(out.state).toBe('never_synced')
+  })
+  it('falls back to stale when never-synced token is OLD (past fresh window)', () => {
+    const out = classifyStravaSync({
+      sync_status: 'idle', last_sync_at: null,
+      updated_at: daysAgoISO(STRAVA_NEVER_SYNCED_FRESH_DAYS + 5),
+    }, NOW)
+    expect(out.state).toBe('stale')
+  })
+  it('failing still takes precedence over never_synced', () => {
+    const out = classifyStravaSync({
+      sync_status: 'error', last_sync_at: null,
+      updated_at: daysAgoISO(0), last_error: 'token_revoked',
+    }, NOW)
+    expect(out.state).toBe('failing')
   })
 })
 

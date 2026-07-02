@@ -21,19 +21,26 @@ function mapStravaType(sportType: string): string {
     Swim: "swim", OpenWaterSwim: "swim",
     Walk: "walk", Hike: "walk",
     WeightTraining: "strength", Yoga: "other", Workout: "other",
-    Rowing: "other", Kayaking: "other", Crossfit: "strength",
+    // "row" matches the app's rowing vocabulary: /row/i is what the sport-gating
+    // detectors test on entry.type (rowingSplitConsistency, derivedSessionTargets,
+    // goalActivityMismatch) and normalizeSport maps row→Rowing. Was "other" → the
+    // rowing analysis cards never fired for imported activities (prod user is a rower).
+    Rowing: "row", Kayaking: "row", Canoeing: "row",
+    Crossfit: "strength",
   }
   return m[sportType] || "other"
 }
 
-function estimateTSS(durationS: number, avgHR: number | null, maxHR: number): number {
+// maxHR may be null → duration-only fallback (no fabricated 190).
+function estimateTSS(durationS: number, avgHR: number | null, maxHR: number | null): number {
   if (!avgHR || !maxHR || maxHR <= 0) return Math.round(durationS / 3600 * 50)
   const hrFrac = Math.min(avgHR / maxHR, 1)
   const trimp  = (durationS / 60) * hrFrac * 0.64 * Math.exp(1.92 * hrFrac)
   return Math.round(trimp * 1.2)
 }
 
-function estimateZones(avgHR: number | null, maxHR: number): number[] | null {
+// maxHR null → return null (honest "unknown") rather than a fabricated distribution.
+function estimateZones(avgHR: number | null, maxHR: number | null): number[] | null {
   if (!avgHR || !maxHR) return null
   const pct = avgHR / maxHR
   if (pct < 0.70) return [60, 35, 5, 0, 0]
@@ -41,6 +48,29 @@ function estimateZones(avgHR: number | null, maxHR: number): number[] | null {
   if (pct < 0.88) return [5, 20, 45, 25, 5]
   if (pct < 0.94) return [0, 5, 15, 55, 25]
   return [0, 0, 5, 25, 70]
+}
+
+// F6: read athlete's max HR from profiles.profile_data JSONB { maxhr, age }.
+// Returns real max HR, or null when neither exists.
+async function resolveProfileMaxHR(
+  sb: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<number | null> {
+  try {
+    const { data: prof } = await sb
+      .from("profiles")
+      .select("profile_data")
+      .eq("id", userId)
+      .maybeSingle()
+    const pd = (prof?.profile_data ?? {}) as Record<string, unknown>
+    const rawMax = Number(pd.maxhr)
+    if (Number.isFinite(rawMax) && rawMax >= 60 && rawMax <= 280) return Math.round(rawMax)
+    const age = Number(pd.age)
+    if (Number.isFinite(age) && age >= 5 && age <= 120) return Math.round(220 - age)
+    return null
+  } catch {
+    return null
+  }
 }
 
 async function refreshIfExpired(
@@ -222,21 +252,33 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
 
       const activities = await resp.json()
       if (!Array.isArray(activities) || activities.length === 0) {
-        // Empty page — backfill complete for this user
+        // Empty page — backfill complete for this user. F3: flip the row to a healthy
+        // idle with a real last_sync_at so a backfill-only import stops showing STALE.
+        await sb.from("strava_tokens").update({
+          sync_status:  "idle",
+          last_error:   null,
+          last_sync_at: new Date().toISOString(),
+          updated_at:   new Date().toISOString(),
+        }).eq("user_id", userId)
         await sb.rpc("delete_strava_backfill_msg", { p_msg_id: msgId })
         continue
       }
+
+      // F6: prefer real activity max HR → athlete profile max → null (no fabricated 190).
+      const profileMaxHR = await resolveProfileMaxHR(sb, userId)
 
       // Upsert activities
       let synced = 0
       for (const a of activities as Record<string, unknown>[]) {
         if (!a.id || !a.start_date) continue
-        const durationMin = Math.round(((a.moving_time as number) || 0) / 60)
+        // F7: fall back to elapsed_time so moving_time=0 activities aren't dropped.
+        const durationS = (a.moving_time as number) || (a.elapsed_time as number) || 0
+        const durationMin = Math.round(durationS / 60)
         if (durationMin < 3) continue
 
         const avgHR  = a.average_heartrate ? Math.round(a.average_heartrate as number) : null
-        const maxHR  = a.max_heartrate     ? Math.round(a.max_heartrate as number)     : 190
-        const tss    = estimateTSS((a.moving_time as number) || 0, avgHR, maxHR)
+        const maxHR  = a.max_heartrate     ? Math.round(a.max_heartrate as number)     : profileMaxHR
+        const tss    = estimateTSS(durationS, avgHR, maxHR)
         const zones  = estimateZones(avgHR, maxHR)
         const sType  = mapStravaType((a.sport_type as string) || (a.type as string) || "")
         const distM  = typeof a.distance === "number" && a.distance > 0 ? a.distance : null
@@ -266,6 +308,19 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
       }
 
       totalSynced += synced
+
+      // F3: a successful page that imported activities must set last_sync_at and clear
+      // the status — otherwise a backfill-only import (no client Sync) left the row at
+      // sync_status='idle', last_sync_at=null forever → the UI showed perpetual STALE
+      // despite N imported activities. More pages may follow (re-runs are idempotent).
+      if (synced > 0) {
+        await sb.from("strava_tokens").update({
+          sync_status:  "idle",
+          last_error:   null,
+          last_sync_at: new Date().toISOString(),
+          updated_at:   new Date().toISOString(),
+        }).eq("user_id", userId)
+      }
 
       // Enqueue next page if this one was full
       if (activities.length === 100) {
