@@ -2,6 +2,32 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.463.0 — 2026-07-03 — 🔴 strava-webhook hardening (flood-DoS throttle + spoofed-deauth no-op)
+
+Fixes the HIGH + MED findings from today's v9.450–461 audit (`docs/audits/audit_2026_07_03_v9450_461.md`)
+against the PUBLIC, unsigned `strava-webhook` endpoint (deployed to prod):
+
+- **HIGH-1 — per-user enqueue throttle** (was: any forged event for an enumerable connected
+  athlete id enqueued an unthrottled backfill → unbounded pgmq growth + the shared
+  `strava_rate_state` API budget burned on attacker work, starving every real user's sync).
+  Now at most ONE webhook-driven enqueue per user per 120s, claimed via a single atomic
+  conditional UPDATE on new column `strava_tokens.webhook_last_enqueue_at` (migration
+  `20260636`, applied to prod). Coalescing is lossless: the worker runs every 2 min and each
+  enqueue imports a 2-day window, so suppressed events are covered by any later enqueue (or
+  client reconcile-on-load / manual sync).
+- **MED-1 — deauth events are advisory-only** (was: an unsigned forged
+  `athlete/updates.authorized=false` event flipped the victim's connection into an error state —
+  attacker-chosen DB write). No DB write on deauth anymore; real revocations are detected
+  authoritatively by the worker/oauth token-refresh path.
+- **LOW-1 — constant-time verify_token compare** on the GET handshake (SHA-256 digest compare).
+
+Live-verified on prod post-deploy: forged create event → 1 enqueue + claim stamped; immediate
+second event → suppressed (queue unchanged); forged deauth → `sync_status` untouched; wrong-token
+handshake → 403.
+
+DEPENDS ON: `strava_tokens.webhook_last_enqueue_at` (migration 20260636); PostgREST `.or()`
+conditional-update semantics in the throttle claim; backfill worker 2-min cron + 2-day import window.
+
 ## v9.462.0 — 2026-07-03 — Strava residuals: client Row mapping parity + cron-secret drift migration
 
 Two small residuals flagged at the end of the v9.460/461 Strava work:
