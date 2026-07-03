@@ -63,6 +63,10 @@ export function logRowToEntry(row) {
     ...(row.distance_m  != null ? { distanceM:  Number(row.distance_m) }  : {}),
     ...(row.avg_hr      != null ? { avgHR:      Number(row.avg_hr) }      : {}),
     ...(row.avg_cadence != null ? { avgCadence: Number(row.avg_cadence) } : {}),
+    // v9.464.0 — decoupling_pct is written by the parse-activity edge fn (and by
+    // client FIT imports via logEntryToRow) but was dropped here, so decouplingTrend
+    // never fired cross-device. Negative values are legit (HR drift downward).
+    ...(row.decoupling_pct != null ? { decouplingPct: Number(row.decoupling_pct) } : {}),
   }
 }
 export function logEntryToRow(entry, userId) {
@@ -88,6 +92,9 @@ export function logEntryToRow(entry, userId) {
     distance_m:   logDistanceM(entry),
     avg_hr:       Number.isFinite(Number(entry.avgHR)) && Number(entry.avgHR) > 0 ? Math.round(Number(entry.avgHR)) : null,
     avg_cadence:  Number.isFinite(Number(entry.avgCadence)) && Number(entry.avgCadence) > 0 ? Math.round(Number(entry.avgCadence)) : null,
+    // v9.464.0 — persist Friel decoupling from client FIT imports (was dropped →
+    // lost cross-device). 0 and negatives are valid; only non-finite becomes null.
+    decoupling_pct: Number.isFinite(Number(entry.decouplingPct)) ? Number(entry.decouplingPct) : null,
   }
 }
 
