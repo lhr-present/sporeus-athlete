@@ -2,6 +2,46 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.465.0 — 2026-07-03 — Strava P0 data enrichment (power/elevation/honest-RPE/clock) + shared edge mapper
+
+P0 of `docs/audits/strava_data_enhancements_2026_07_03.md` — all from summary fields Strava already
+sends that the mappers dropped (zero extra API calls):
+
+- **Shared mapper** `supabase/functions/_shared/stravaActivity.ts` — strava-oauth (sync) and
+  strava-backfill-worker previously carried duplicated, already-drifting copies of the activity→row
+  logic (every mapping bug had to be fixed twice). One `buildTrainingLogRow()` now feeds both.
+- **QW1 power** (gated on `device_watts === true` — Strava-estimated power is never persisted):
+  `np` (weighted_average_watts), `avg_power`, `kilojoules`. When NP + profile FTP are known, headline
+  `tss` = **Coggan power-TSS** (mirrors the FIT path, fileImport.js v9.58); TRIMP HR estimate otherwise.
+  NOTE: the prod founder has no FTP set, so no existing TSS values change on re-import — the switch
+  activates per-athlete only once FTP exists (no silent CTL step today).
+- **QW3 honest RPE**: `rpe` derived from %HRmax bands (else suffer-score/h bands, else null) with
+  `rpe_method` = `derived_hr`/`derived_suffer` persisted (wPrimeMethod lesson: estimates must be
+  distinguishable from athlete-reported effort). Kills the integrity bug where every Strava row's
+  `rpe: null` hydrated into a FABRICATED neutral 5 that silently passed all RPE-gated science
+  (rowingSplitConsistency 4–7 gate, decouplingTrend rpe≤6, classifySession, monotony). Also persists
+  the activity's real `max_hr`. suffer_score stored raw.
+- **QW2 elevation**: `elevation_gain_m` → hydrates as `elevationGainM` → `altitudeStimulus` card now
+  fires for Strava athletes.
+- **QW4 clock time**: `start_time` (HH:MM from start_date_local) → `startTime` → `timeOfDayConsistency`.
+  (workout_type race-flag DEFERRED: session_tag has a fixed classifySession vocabulary — no 'race'.)
+- **Client**: `logRowToEntry`/`logEntryToRow` round-trip all 8 new columns onto the exact keys the
+  cards read (np, avgPower, maxHR, elevationGainM, kilojoules, sufferScore, startTime, rpeMethod).
+- **Sanitizer fix (real pre-existing bug)**: `sanitizeLogEntry` is a WHITELIST and runs on the FIT
+  import path (TrainingLog.jsx sanitizes before setLog) — it was STRIPPING `decouplingPct` and
+  `wPrimeMethod`, so same-device FIT imports lost the locally computed decoupling (v9.464 fixed only
+  the DB hydration side). Both + all 8 enrichment fields now whitelisted with plausibility bounds.
+- Migration `20260637` (8 columns, applied to prod); both edge fns deployed; founder's 90-day
+  backfill re-run to enrich existing rows (TSS values unchanged — see QW1 note).
+
+KNOWN GAPS (deferred, documented): rows with no HR + no suffer_score still hydrate rpe null→5
+client-side; `dataMigration.js` builds its own minimal row and drops metric/enrichment fields for
+migrating guests (pre-existing since v9.397).
+
+DEPENDS ON: migration 20260637 columns; profiles.profile_data { maxhr, age, ftp }; device_watts
+gating (guardrail — never relax); card consumer keys (cyclingNpTrend `np`, triLoad `avgPower`,
+altitudeStimulus `elevationGainM`, timeOfDayConsistency `startTime`).
+
 ## v9.464.0 — 2026-07-03 — decoupling_pct round-trip (decouplingTrend was cross-device dead)
 
 QW0 from `docs/audits/strava_data_enhancements_2026_07_03.md`: the `training_log.decoupling_pct`

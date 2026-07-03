@@ -99,6 +99,40 @@ describe('sanitizeLogEntry', () => {
     expect(out.distanceKm).toBeUndefined()
     expect(out.durationSec).toBeUndefined()
   })
+  it('preserves decouplingPct (incl. 0 and negatives) and wPrimeMethod — FIT import sanitizes before setLog', () => {
+    const base = { date:'2025-01-01', type:'Ride', duration:90, rpe:5, tss:80 }
+    expect(sanitizeLogEntry({ ...base, decouplingPct: 7.5 }).decouplingPct).toBe(7.5)
+    expect(sanitizeLogEntry({ ...base, decouplingPct: 0 }).decouplingPct).toBe(0)
+    expect(sanitizeLogEntry({ ...base, decouplingPct: -3.2 }).decouplingPct).toBe(-3.2)
+    expect(sanitizeLogEntry({ ...base, decouplingPct: 999 }).decouplingPct).toBeUndefined()
+    expect(sanitizeLogEntry({ ...base, wPrimeMethod: 'measured' }).wPrimeMethod).toBe('measured')
+    expect(sanitizeLogEntry({ ...base, wPrimeMethod: 'estimated' }).wPrimeMethod).toBe('estimated')
+    expect(sanitizeLogEntry({ ...base, wPrimeMethod: 'guessed' }).wPrimeMethod).toBeUndefined()
+  })
+  it('preserves v9.465 Strava enrichment fields within plausibility bounds', () => {
+    const base = { date:'2025-01-01', type:'row', duration:60, rpe:6, tss:70 }
+    const out = sanitizeLogEntry({ ...base, avgPower: 185, maxHR: 178, elevationGainM: 240,
+      kilojoules: 660, sufferScore: 55, startTime: '06:15', rpeMethod: 'derived_hr' })
+    expect(out.avgPower).toBe(185)
+    expect(out.maxHR).toBe(178)
+    expect(out.elevationGainM).toBe(240)
+    expect(out.kilojoules).toBe(660)
+    expect(out.sufferScore).toBe(55)
+    expect(out.startTime).toBe('06:15')
+    expect(out.rpeMethod).toBe('derived_hr')
+  })
+  it('drops out-of-bounds enrichment values and malformed startTime', () => {
+    const base = { date:'2025-01-01', type:'row', duration:60, rpe:6, tss:70 }
+    const out = sanitizeLogEntry({ ...base, avgPower: 9000, maxHR: 300, elevationGainM: -4,
+      kilojoules: Infinity, sufferScore: 5000, startTime: '25:99', rpeMethod: '' })
+    expect(out.avgPower).toBeUndefined()
+    expect(out.maxHR).toBeUndefined()
+    expect(out.elevationGainM).toBeUndefined()
+    expect(out.kilojoules).toBeUndefined()
+    expect(out.sufferScore).toBeUndefined()
+    expect(out.startTime).toBeUndefined()
+    expect(out.rpeMethod).toBeUndefined()
+  })
 })
 
 describe('sanitizeProfile', () => {

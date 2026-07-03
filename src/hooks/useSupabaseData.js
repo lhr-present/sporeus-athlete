@@ -47,6 +47,12 @@ function logDistanceM(entry) {
   return null
 }
 
+// Positive integer or null — column shape for the v9.465 enrichment metrics.
+function posInt(v) {
+  const n = Number(v)
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : null
+}
+
 export function logRowToEntry(row) {
   return {
     id:       row.id,
@@ -67,6 +73,17 @@ export function logRowToEntry(row) {
     // client FIT imports via logEntryToRow) but was dropped here, so decouplingTrend
     // never fired cross-device. Negative values are legit (HR drift downward).
     ...(row.decoupling_pct != null ? { decouplingPct: Number(row.decoupling_pct) } : {}),
+    // v9.465.0 — Strava enrichment columns (migration 20260637). Keys match the
+    // card consumers: cyclingNpTrend reads np, triLoad reads avgPower,
+    // altitudeStimulus reads elevationGainM, timeOfDayConsistency reads startTime.
+    ...(row.np               != null ? { np:             Number(row.np) }               : {}),
+    ...(row.avg_power        != null ? { avgPower:       Number(row.avg_power) }        : {}),
+    ...(row.max_hr           != null ? { maxHR:          Number(row.max_hr) }           : {}),
+    ...(row.elevation_gain_m != null ? { elevationGainM: Number(row.elevation_gain_m) } : {}),
+    ...(row.kilojoules       != null ? { kilojoules:     Number(row.kilojoules) }       : {}),
+    ...(row.suffer_score     != null ? { sufferScore:    Number(row.suffer_score) }     : {}),
+    ...(row.start_time       != null ? { startTime:      String(row.start_time) }       : {}),
+    ...(row.rpe_method       != null ? { rpeMethod:      String(row.rpe_method) }       : {}),
   }
 }
 export function logEntryToRow(entry, userId) {
@@ -95,6 +112,16 @@ export function logEntryToRow(entry, userId) {
     // v9.464.0 — persist Friel decoupling from client FIT imports (was dropped →
     // lost cross-device). 0 and negatives are valid; only non-finite becomes null.
     decoupling_pct: Number.isFinite(Number(entry.decouplingPct)) ? Number(entry.decouplingPct) : null,
+    // v9.465.0 — round-trip the enrichment columns so an edited Strava/FIT entry
+    // doesn't wipe them on the diff-by-id sync upsert.
+    np:               posInt(entry.np ?? entry.normalizedPower),
+    avg_power:        posInt(entry.avgPower),
+    max_hr:           posInt(entry.maxHR),
+    elevation_gain_m: posInt(entry.elevationGainM),
+    kilojoules:       posInt(entry.kilojoules),
+    suffer_score:     posInt(entry.sufferScore),
+    start_time:       typeof entry.startTime === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(entry.startTime) ? entry.startTime : null,
+    rpe_method:       typeof entry.rpeMethod === 'string' && entry.rpeMethod ? entry.rpeMethod.slice(0, 20) : null,
   }
 }
 
