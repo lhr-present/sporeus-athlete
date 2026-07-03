@@ -12,6 +12,10 @@ const SPORT_TYPE_MAP = {
   Swim: 'Swim', OpenWaterSwim: 'Swim',
   Walk: 'Walk', Hike: 'Walk',
   WeightTraining: 'Strength', Workout: 'Strength', Yoga: 'Other',
+  // "Row" matches /row/i — same vocabulary the sport-gating detectors test on
+  // entry.type; mirrors the edge mapStravaType (Rowing was falling to 'Other')
+  Rowing: 'Row', Kayaking: 'Row', Canoeing: 'Row',
+  Crossfit: 'Strength',
 }
 
 // ─── NOT WIRED — edge is the source of truth ─────────────────────────────────
