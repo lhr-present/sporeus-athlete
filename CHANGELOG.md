@@ -2,6 +2,42 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.466.0 — 2026-07-04 — Strava P1 streams enrichment + P2 detail fetch (FIT-parity scalars)
+
+P1+P2 of `docs/audits/strava_data_enhancements_2026_07_03.md`. The backfill worker now processes a
+second queue-message kind, `enrich` (one per qualifying activity), fetching that activity's
+**streams** (`time,heartrate,watts,velocity_smooth,cadence,altitude`) + **DetailedActivity** —
+2 API calls/activity, rate-budgeted through the same `strava_rate_state` counter (batch of 5 msgs
+per 2-min cron ≈ ≤75 calls/15 min, under the 90 cap by construction).
+
+- **Qualification** (`qualifiesForStreamEnrichment`): non-manual AND (has_heartrate OR device_watts) —
+  manual entries have no streams; metric-less activities can't yield anything. Idempotence via new
+  `stream_enriched_at` marker (set even when streams turn out empty) so webhook re-imports don't
+  re-enqueue forever. Enqueued after page upserts in BOTH the worker and the oauth sync path.
+- **New `_shared/streamScience.ts`** — pure ports of already-tested implementations (sources noted
+  in-file; do not diverge): `normalizedPower` (Coggan 30s rolling, O(n) sliding sum),
+  `decouplingPct` (Friel, 10% warmup, ≥120 samples — parse-activity port), `zonesFromHR` (true
+  5-zone distribution, replaces the single-band estimate), `wPrimeExhausted` (Skiba 2012
+  differential, exhaustion flag only). Compute-and-discard: raw series are never persisted.
+- **What each enrich pass writes**: real `np` from the watts stream (+ headline power-TSS when FTP
+  known), `decoupling_pct` (Pw:Hr when powered, else Pa:Hr), true `zones`, `w_prime_exhausted` +
+  `w_prime_method` (CP/W′ from profile via extended `resolveProfilePhysiology` — measured CP-test
+  values, else 0.95×FTP + 15 kJ, mirroring `resolveCPWPrime`), stream-true `max_hr`/`avg_hr` when
+  the summary lacked them, and from the detail fetch: **`perceived_exertion` → authoritative `rpe`**
+  (`rpe_method='athlete'`, overrides the derived value) + `calories`.
+- **Client**: `wPrimeExhausted`/`wPrimeMethod`/`calories` now hydrate + round-trip — the ⚡W'0 log
+  badge previously NEVER survived a DB round-trip (no column existed). Sanitizer whitelists calories.
+- Migration `20260638` (4 columns, applied to prod); both edge fns deployed.
+
+DEFERRED (needs raw-series storage or card changes): durability score (DurabilityCard reads
+`powerStream` on sessions), MMP/power-curve history from streams. Enrich `rpe` write can overwrite
+an in-app manual RPE edit made in the minutes between import and enrichment (rare; athlete-entered
+Strava value is considered authoritative).
+
+DEPENDS ON: migration 20260638; enrich messages ride the strava_backfill pgmq queue (payload
+`kind:'enrich'` — messages without `kind` are page fetches, backward compatible); shared
+strava_rate_state budget; profiles.profile_data { cp, wPrime, ftp, maxhr, age }.
+
 ## v9.465.0 — 2026-07-03 — Strava P0 data enrichment (power/elevation/honest-RPE/clock) + shared edge mapper
 
 P0 of `docs/audits/strava_data_enhancements_2026_07_03.md` — all from summary fields Strava already

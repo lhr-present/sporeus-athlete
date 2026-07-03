@@ -8,7 +8,7 @@ import { withTelemetry } from '../_shared/telemetry.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 // v9.465: activity→row mapping is shared with strava-backfill-worker (was
 // duplicated + drifting). Enrichment (power/elevation/RPE/clock) lives there.
-import { buildTrainingLogRow, resolveProfilePhysiology } from '../_shared/stravaActivity.ts'
+import { buildTrainingLogRow, resolveProfilePhysiology, enqueueStreamEnrichment } from '../_shared/stravaActivity.ts'
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -305,6 +305,10 @@ serve(withTelemetry('strava-oauth', async (req: Request) => {
         .upsert(row, { onConflict: "user_id,external_id" })
       if (!insertErr) synced++
     }
+
+    // v9.466 P1: queue streams+detail enrichment (processed by the backfill
+    // worker cron, rate-budgeted there — no extra API calls on this request).
+    await enqueueStreamEnrichment(admin, user.id, allActivities as Record<string, unknown>[])
 
     await setSyncDone()
     return ok({ synced, total: allActivities.length })
