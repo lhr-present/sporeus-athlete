@@ -48,6 +48,30 @@ describe('metric round-trip entry → row → entry', () => {
   })
 })
 
+describe('decoupling_pct mapping (v9.464)', () => {
+  it('surfaces decoupling_pct as decouplingPct, including 0 and negatives', () => {
+    expect(logRowToEntry({ id: 'r1', date: '2026-06-15', decoupling_pct: 7.5 }).decouplingPct).toBe(7.5)
+    expect(logRowToEntry({ id: 'r1', date: '2026-06-15', decoupling_pct: 0 }).decouplingPct).toBe(0)
+    expect(logRowToEntry({ id: 'r1', date: '2026-06-15', decoupling_pct: -2 }).decouplingPct).toBe(-2)
+  })
+
+  it('omits decouplingPct when column is null (matches localStorage-only shape)', () => {
+    expect('decouplingPct' in logRowToEntry({ id: 'r1', date: '2026-06-15', decoupling_pct: null })).toBe(false)
+  })
+
+  it('persists decouplingPct to decoupling_pct on write; non-finite → null', () => {
+    expect(logEntryToRow({ date: '2026-06-15', type: 'Ride', decouplingPct: 4.2 }, 'u1').decoupling_pct).toBe(4.2)
+    expect(logEntryToRow({ date: '2026-06-15', type: 'Ride', decouplingPct: 0 }, 'u1').decoupling_pct).toBe(0)
+    expect(logEntryToRow({ date: '2026-06-15', type: 'Ride' }, 'u1').decoupling_pct).toBeNull()
+    expect(logEntryToRow({ date: '2026-06-15', type: 'Ride', decouplingPct: 'x' }, 'u1').decoupling_pct).toBeNull()
+  })
+
+  it('survives a full round-trip (decouplingTrend reads entry.decouplingPct)', () => {
+    const back = logRowToEntry({ ...logEntryToRow({ date: '2026-06-15', type: 'Ride', decouplingPct: 6.1 }, 'u1'), id: 'r1' })
+    expect(back.decouplingPct).toBe(6.1)
+  })
+})
+
 describe('logEntryToRow — id handling (uuid column safety)', () => {
   it('includes id when it is a valid uuid', () => {
     const uuid = '0f8fad5b-d9cb-469f-a165-70867728950e'

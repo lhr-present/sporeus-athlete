@@ -2,6 +2,19 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.464.0 — 2026-07-03 — decoupling_pct round-trip (decouplingTrend was cross-device dead)
+
+QW0 from `docs/audits/strava_data_enhancements_2026_07_03.md`: the `training_log.decoupling_pct`
+column is computed + written by the `parse-activity` edge fn (FIT/GPX uploads), but BOTH client
+mappers in `src/hooks/useSupabaseData.js` dropped it — `logRowToEntry` never surfaced it (so the
+`decouplingTrend` card only ever saw locally-imported sessions on the same device) and
+`logEntryToRow` never persisted client-computed `decouplingPct` (lost cross-device on sync).
+Both directions now map `decoupling_pct ↔ decouplingPct`; 0 and negative values are valid
+(downward HR drift), only non-finite becomes null. Both read paths use `select('*')` so no
+query changes needed; sanitizers pass unknown fields through. +5 tests.
+
+DEPENDS ON: `training_log.decoupling_pct` column; `decouplingTrend` reads `entry.decouplingPct`.
+
 ## v9.463.0 — 2026-07-03 — 🔴 strava-webhook hardening (flood-DoS throttle + spoofed-deauth no-op)
 
 Fixes the HIGH + MED findings from today's v9.450–461 audit (`docs/audits/audit_2026_07_03_v9450_461.md`)
