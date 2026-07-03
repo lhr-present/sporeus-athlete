@@ -9,69 +9,13 @@ import { serve }        from "https://deno.land/std@0.177.0/http/server.ts"
 import { withTelemetry, telemetryHeartbeat } from '../_shared/telemetry.ts'
 import { isVerifiedServiceCall } from '../_shared/serviceAuth.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+// v9.465: activity→row mapping is shared with strava-oauth (was duplicated +
+// drifting). Enrichment (power/elevation/RPE/clock) lives in the shared mapper.
+import { buildTrainingLogRow, resolveProfilePhysiology } from '../_shared/stravaActivity.ts'
 
 const RATE_WINDOW_MS = 15 * 60 * 1000   // 15 minutes
 const MAX_REQUESTS   = 90               // < Strava's 100/15min app limit (was 600 → 429 risk)
 const MAX_READ       = 10  // poison ceiling: dead-letter a message after N reads (VT=120s → ~20min)
-
-function mapStravaType(sportType: string): string {
-  const m: Record<string, string> = {
-    Run: "run", TrailRun: "run", VirtualRun: "run",
-    Ride: "bike", EBikeRide: "bike", VirtualRide: "bike", MountainBikeRide: "bike",
-    Swim: "swim", OpenWaterSwim: "swim",
-    Walk: "walk", Hike: "walk",
-    WeightTraining: "strength", Yoga: "other", Workout: "other",
-    // "row" matches the app's rowing vocabulary: /row/i is what the sport-gating
-    // detectors test on entry.type (rowingSplitConsistency, derivedSessionTargets,
-    // goalActivityMismatch) and normalizeSport maps row→Rowing. Was "other" → the
-    // rowing analysis cards never fired for imported activities (prod user is a rower).
-    Rowing: "row", Kayaking: "row", Canoeing: "row",
-    Crossfit: "strength",
-  }
-  return m[sportType] || "other"
-}
-
-// maxHR may be null → duration-only fallback (no fabricated 190).
-function estimateTSS(durationS: number, avgHR: number | null, maxHR: number | null): number {
-  if (!avgHR || !maxHR || maxHR <= 0) return Math.round(durationS / 3600 * 50)
-  const hrFrac = Math.min(avgHR / maxHR, 1)
-  const trimp  = (durationS / 60) * hrFrac * 0.64 * Math.exp(1.92 * hrFrac)
-  return Math.round(trimp * 1.2)
-}
-
-// maxHR null → return null (honest "unknown") rather than a fabricated distribution.
-function estimateZones(avgHR: number | null, maxHR: number | null): number[] | null {
-  if (!avgHR || !maxHR) return null
-  const pct = avgHR / maxHR
-  if (pct < 0.70) return [60, 35, 5, 0, 0]
-  if (pct < 0.80) return [20, 55, 20, 5, 0]
-  if (pct < 0.88) return [5, 20, 45, 25, 5]
-  if (pct < 0.94) return [0, 5, 15, 55, 25]
-  return [0, 0, 5, 25, 70]
-}
-
-// F6: read athlete's max HR from profiles.profile_data JSONB { maxhr, age }.
-// Returns real max HR, or null when neither exists.
-async function resolveProfileMaxHR(
-  sb: ReturnType<typeof createClient>,
-  userId: string,
-): Promise<number | null> {
-  try {
-    const { data: prof } = await sb
-      .from("profiles")
-      .select("profile_data")
-      .eq("id", userId)
-      .maybeSingle()
-    const pd = (prof?.profile_data ?? {}) as Record<string, unknown>
-    const rawMax = Number(pd.maxhr)
-    if (Number.isFinite(rawMax) && rawMax >= 60 && rawMax <= 280) return Math.round(rawMax)
-    const age = Number(pd.age)
-    if (Number.isFinite(age) && age >= 5 && age <= 120) return Math.round(220 - age)
-    return null
-  } catch {
-    return null
-  }
-}
 
 async function refreshIfExpired(
   sb: ReturnType<typeof createClient>,
@@ -264,45 +208,17 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
         continue
       }
 
-      // F6: prefer real activity max HR → athlete profile max → null (no fabricated 190).
-      const profileMaxHR = await resolveProfileMaxHR(sb, userId)
+      // Athlete physiology: max HR (real → 220−age → null) + FTP for power-TSS.
+      const physio = await resolveProfilePhysiology(sb, userId)
 
       // Upsert activities
       let synced = 0
       for (const a of activities as Record<string, unknown>[]) {
-        if (!a.id || !a.start_date) continue
-        // F7: fall back to elapsed_time so moving_time=0 activities aren't dropped.
-        const durationS = (a.moving_time as number) || (a.elapsed_time as number) || 0
-        const durationMin = Math.round(durationS / 60)
-        if (durationMin < 3) continue
+        const row = buildTrainingLogRow(a, userId, physio)
+        if (!row) continue
 
-        const avgHR  = a.average_heartrate ? Math.round(a.average_heartrate as number) : null
-        const maxHR  = a.max_heartrate     ? Math.round(a.max_heartrate as number)     : profileMaxHR
-        const tss    = estimateTSS(durationS, avgHR, maxHR)
-        const zones  = estimateZones(avgHR, maxHR)
-        const sType  = mapStravaType((a.sport_type as string) || (a.type as string) || "")
-        const distM  = typeof a.distance === "number" && a.distance > 0 ? a.distance : null
-        const distKm = distM ? (distM / 1000).toFixed(2) : null
-        // Running cadence is per-leg in Strava → double to full steps/min; bikes (rpm) unchanged.
-        const rawCad = typeof a.average_cadence === "number" && a.average_cadence > 0 ? a.average_cadence : null
-        const avgCadence = rawCad != null ? Math.round(rawCad * (/run/i.test(sType) ? 2 : 1)) : null
-        const noteParts = [(a.name as string) || "Strava Activity"]
-        if (distKm) noteParts.push(`${distKm} km`)
-        if (avgHR)  noteParts.push(`avg HR ${avgHR}`)
-
-        const { error: upsertErr } = await sb.from("training_log").upsert({
-          user_id:      userId,
-          date:         ((a.start_date_local as string) || (a.start_date as string)).slice(0, 10),
-          type:         sType,
-          duration_min: durationMin,
-          tss, rpe: null, zones,
-          distance_m:   distM,
-          avg_hr:       avgHR,
-          avg_cadence:  avgCadence,
-          notes:        noteParts.join(" · "),
-          source:       "strava",
-          external_id:  String(a.id),
-        }, { onConflict: "user_id,external_id" })
+        const { error: upsertErr } = await sb.from("training_log")
+          .upsert(row, { onConflict: "user_id,external_id" })
 
         if (!upsertErr) synced++
       }

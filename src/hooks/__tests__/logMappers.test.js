@@ -72,6 +72,63 @@ describe('decoupling_pct mapping (v9.464)', () => {
   })
 })
 
+describe('v9.465 enrichment columns (Strava P0)', () => {
+  const enriched = {
+    date: '2026-07-01', type: 'row', duration: 62, tss: 68, rpe: 6,
+    np: 182, avgPower: 175, maxHR: 176, elevationGainM: 12,
+    kilojoules: 640, sufferScore: 58, startTime: '06:15', rpeMethod: 'derived_hr',
+  }
+
+  it('hydrates all enrichment columns onto consumer-facing keys', () => {
+    const e = logRowToEntry({ id: 'r1', date: '2026-07-01', np: 182, avg_power: 175, max_hr: 176,
+      elevation_gain_m: 12, kilojoules: 640, suffer_score: 58, start_time: '06:15', rpe_method: 'derived_hr' })
+    expect(e.np).toBe(182)
+    expect(e.avgPower).toBe(175)
+    expect(e.maxHR).toBe(176)
+    expect(e.elevationGainM).toBe(12)
+    expect(e.kilojoules).toBe(640)
+    expect(e.sufferScore).toBe(58)
+    expect(e.startTime).toBe('06:15')
+    expect(e.rpeMethod).toBe('derived_hr')
+  })
+
+  it('omits enrichment keys when columns are null (localStorage-only shape parity)', () => {
+    const e = logRowToEntry({ id: 'r1', date: '2026-07-01', np: null, avg_power: null, max_hr: null,
+      elevation_gain_m: null, kilojoules: null, suffer_score: null, start_time: null, rpe_method: null })
+    for (const k of ['np', 'avgPower', 'maxHR', 'elevationGainM', 'kilojoules', 'sufferScore', 'startTime', 'rpeMethod']) {
+      expect(k in e).toBe(false)
+    }
+  })
+
+  it('survives a full entry → row → entry round-trip (edited entries must not wipe columns)', () => {
+    const back = logRowToEntry({ ...logEntryToRow(enriched, 'u1'), id: 'r1' })
+    expect(back.np).toBe(182)
+    expect(back.avgPower).toBe(175)
+    expect(back.maxHR).toBe(176)
+    expect(back.elevationGainM).toBe(12)
+    expect(back.kilojoules).toBe(640)
+    expect(back.sufferScore).toBe(58)
+    expect(back.startTime).toBe('06:15')
+    expect(back.rpeMethod).toBe('derived_hr')
+  })
+
+  it('writes null (not garbage) for absent/invalid enrichment values', () => {
+    const row = logEntryToRow({ date: '2026-07-01', type: 'Run', duration: 30, startTime: '9am', rpeMethod: 7 }, 'u1')
+    expect(row.np).toBeNull()
+    expect(row.avg_power).toBeNull()
+    expect(row.max_hr).toBeNull()
+    expect(row.elevation_gain_m).toBeNull()
+    expect(row.kilojoules).toBeNull()
+    expect(row.suffer_score).toBeNull()
+    expect(row.start_time).toBeNull()
+    expect(row.rpe_method).toBeNull()
+  })
+
+  it('accepts normalizedPower as an np alias on write (Garmin mapper emits it)', () => {
+    expect(logEntryToRow({ date: '2026-07-01', type: 'Ride', normalizedPower: 210 }, 'u1').np).toBe(210)
+  })
+})
+
 describe('logEntryToRow — id handling (uuid column safety)', () => {
   it('includes id when it is a valid uuid', () => {
     const uuid = '0f8fad5b-d9cb-469f-a165-70867728950e'

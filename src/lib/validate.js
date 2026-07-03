@@ -131,6 +131,22 @@ export function sanitizeLogEntry(e) {
   // `normalizedPower`); clamp to a plausible cycling-power range so a bad import
   // can't skew the duration-bucketed bests. Number.isFinite guards Infinity.
   const np = parseInt(e.np ?? e.normalizedPower); if (Number.isFinite(np) && np > 0 && np <= 2500) result.np = np
+  // v9.465.0 — decouplingPct + wPrimeMethod were being STRIPPED here: the FIT
+  // import path (TrainingLog.jsx) sanitizes before setLog, so the locally
+  // computed Friel decoupling never reached the log (decouplingTrend dead for
+  // same-device imports) and the measured/estimated W′ label was lost.
+  const dc = parseFloat(e.decouplingPct); if (Number.isFinite(dc) && dc >= -100 && dc <= 100) result.decouplingPct = dc
+  if (e.wPrimeMethod === 'measured' || e.wPrimeMethod === 'estimated') result.wPrimeMethod = e.wPrimeMethod
+  // v9.465.0 — Strava enrichment fields (hydrated by logRowToEntry; consumers:
+  // triLoad avgPower, altitudeStimulus elevationGainM, timeOfDayConsistency
+  // startTime). Physiological/plausibility bounds mirror avgHR/np above.
+  const avgPower = parseInt(e.avgPower); if (Number.isFinite(avgPower) && avgPower > 0 && avgPower <= 2500) result.avgPower = avgPower
+  const maxHR = parseInt(e.maxHR ?? e.maxHr); if (Number.isFinite(maxHR) && maxHR >= 30 && maxHR <= 250) result.maxHR = maxHR
+  const elev = parseInt(e.elevationGainM); if (Number.isFinite(elev) && elev > 0 && elev <= 15000) result.elevationGainM = elev
+  const kj = parseInt(e.kilojoules); if (Number.isFinite(kj) && kj > 0 && kj <= 30000) result.kilojoules = kj
+  const ss = parseInt(e.sufferScore); if (Number.isFinite(ss) && ss > 0 && ss <= 1000) result.sufferScore = ss
+  if (typeof e.startTime === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(e.startTime)) result.startTime = e.startTime
+  if (typeof e.rpeMethod === 'string' && e.rpeMethod) result.rpeMethod = e.rpeMethod.slice(0, 20)
   return result
 }
 
