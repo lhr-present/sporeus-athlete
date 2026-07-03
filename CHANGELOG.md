@@ -2,6 +2,27 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.462.0 — 2026-07-03 — Strava residuals: client Row mapping parity + cron-secret drift migration
+
+Two small residuals flagged at the end of the v9.460/461 Strava work:
+
+- **Client `SPORT_TYPE_MAP` parity** (`src/lib/strava.js`) — the client-side transform (deliberately
+  unwired since v9.90; kept for the pure-logic tests) still mapped Rowing/Kayaking to `'Other'`. Added
+  `Rowing/Kayaking/Canoeing → 'Row'` + `Crossfit → 'Strength'`, mirroring the edge `mapStravaType`
+  (v9.460) so the two transforms agree if the path is ever re-wired. `'Row'` matches the `/row/i`
+  sport-gating detectors. +2 tests.
+- **Cron-secret repo-drift closed** (`supabase/migrations/20260635_webhook_secret_headers_round2.sql`) —
+  v9.407 hardened 5 more edge fns (nightly-batch, purge-deleted-accounts, operator-digest, alert-monitor,
+  check-dependencies) and patched their pg_cron jobs LIVE via `cron.alter_job` to send
+  `x-sporeus-webhook-secret`, but no migration recorded it — a fresh branch would provision those crons
+  headerless and every call would 401. New migration replays the patch with the same idempotent
+  wrap-and-merge method as `20260601`. Regex verified against both repo cron shapes (read-only SQL);
+  DO block executed on prod = confirmed NO-OP (all 12 `net.http_post` crons already carry the header —
+  this also re-verifies the v9.461 open question that `strava-backfill-worker`'s cron kept its secret
+  post-deploy).
+
+DEPENDS ON: `app.webhook_secret` GUC (same as 20260601); edge mapStravaType vocabulary (row/strength).
+
 ## v9.461.0 — 2026-07-02 — Strava webhook: near-real-time ongoing sync (founder chose push)
 
 Closes the last Strava gap (v9.460 flagged it): after the one-time 90-day backfill, NEW activities

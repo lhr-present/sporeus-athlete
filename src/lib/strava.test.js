@@ -137,6 +137,21 @@ describe('importStravaActivities', () => {
     const { entries } = await importStravaActivities('tok')
     expect(entries[0].type).toBe('Swim')
   })
+
+  it('maps Rowing/Kayaking/Canoeing sport_type to Row (recognized by /row/i detectors)', async () => {
+    for (const sport of ['Rowing', 'Kayaking', 'Canoeing']) {
+      mockStravaResponse([fakeAct({ sport_type: sport })])
+      const { entries } = await importStravaActivities('tok')
+      expect(entries[0].type).toBe('Row')
+      expect(entries[0].type).toMatch(/row/i)
+    }
+  })
+
+  it('maps Crossfit sport_type to Strength', async () => {
+    mockStravaResponse([fakeAct({ sport_type: 'Crossfit' })])
+    const { entries } = await importStravaActivities('tok')
+    expect(entries[0].type).toBe('Strength')
+  })
 })
 
 // ── deduplicateByStravaId ─────────────────────────────────────────────────────
