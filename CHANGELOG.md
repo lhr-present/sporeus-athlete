@@ -2,6 +2,23 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.471.0 — 2026-07-04 — "New max HR detected" one-tap profile nudge (E5a)
+
+Per-session `max_hr` has been stored + hydrated since v9.465, but nothing compared it to
+`profile.maxhr` — the number every HR zone and TRIMP-TSS calc runs on. An athlete whose profile
+says 185 while sessions hit 195 has every zone and load number skewed low.
+
+- New pure detector `src/lib/athlete/maxHrNudge.js`: fires when a REAL HR session (entry must also
+  carry avgHR — a lone maxHR spike is noise) exceeds profile max by ≥2 bpm; implausible values
+  (maxHR < avgHR, > 250) ignored; null when profile.maxhr is empty (ProfileCompletenessNudge owns
+  that case).
+- New `MaxHrNudge` TodayView card (ProfileCompletenessNudge pattern, EN+TR): one-tap
+  "UPDATE TO N" writes `profile.maxhr` — the athlete decides, never an automatic overwrite.
+  Dismissal persists per observed value (`sporeus-maxhr-nudge-dismissed-<N>`), so a NEW higher
+  max re-nudges. +8 tests.
+
+DEPENDS ON: entry.maxHR hydration (v9.465); useData().setProfile.
+
 ## v9.470.0 — 2026-07-04 — Scope/revoked Strava failures route to RECONNECT (E5b, audit LOW-2)
 
 A Strava failure caused by a revoked/rejected token or a read-only scope grant can NEVER be fixed
