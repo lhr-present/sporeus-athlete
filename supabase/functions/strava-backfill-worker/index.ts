@@ -201,9 +201,31 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
         )
         apiCallsUsed++
         if (sResp.status === 429) { console.warn("strava-backfill-worker: 429 on streams"); break }
-        // 404 = no streams (manual/very old) — still run the detail fetch below.
+        // v9.468 — a non-definitive failure must NOT mark the row enriched
+        // (pre-fix: a revoked token or a 5xx blip fell through to streams={} and
+        // stamped stream_enriched_at → enrichment permanently lost for that row).
+        if (sResp.status === 401 || sResp.status === 403) {
+          // Revoked/rejected auth: surface it (mirrors the page branch) and drop
+          // the message WITHOUT the marker — a reconnect re-backfills and the
+          // still-null marker re-enqueues enrichment.
+          await sb.from("strava_tokens").update({
+            sync_status: "error",
+            last_error: "Strava authorization rejected — please reconnect Strava",
+            updated_at: new Date().toISOString(),
+          }).eq("user_id", userId)
+          await sb.rpc("delete_strava_backfill_msg", { p_msg_id: msgId })
+          continue
+        }
+        if (!sResp.ok && sResp.status !== 404) {
+          // Transient (5xx) — leave the message for the VT retry / poison ceiling.
+          console.warn(`strava-backfill-worker: streams fetch ${sResp.status} for ${externalId} — retrying later`)
+          continue
+        }
+        // 404 = definitively no streams (manual/very old) — still worth the detail fetch.
         const streams = sResp.ok ? await sResp.json().catch(() => ({})) : {}
 
+        // Detail failure is NON-fatal (perceived_exertion/calories are bonus data;
+        // retrying would re-spend the streams call too).
         const dResp = await fetch(`https://www.strava.com/api/v3/activities/${externalId}`, auth)
         apiCallsUsed++
         if (dResp.status === 429) { console.warn("strava-backfill-worker: 429 on detail"); break }

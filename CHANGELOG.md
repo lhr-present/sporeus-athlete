@@ -2,6 +2,30 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.468.0 — 2026-07-04 — Enrich-fetch resilience + guest-migration parity (E2)
+
+Two fixes — one from the manual audit pass (the audit agent died on a session limit; its critical
+questions were covered by hand: NP port fuzz-verified sample-exact vs formulas.js, webhook `.or()`
+throttle semantics already proven by the live suppression test, history-table schema parity swept
+clean), one from the enhancement designs:
+
+- **Enrich fetch resilience (MED, strava-backfill-worker, deployed)** — a non-definitive streams
+  fetch failure permanently lost enrichment: 401 (revoked token mid-queue) or a 5xx blip fell
+  through to `streams={}` and stamped `stream_enriched_at`, so the row could never be enriched
+  again. Now: 401/403 → surface reconnect error + drop the message WITHOUT the marker (reconnect →
+  re-backfill → re-enqueue); other non-ok/non-404 → leave the message for the VT retry/poison
+  ceiling; 404 stays definitive (no streams). Detail-fetch failure remains non-fatal (bonus data;
+  retrying would re-spend the streams call).
+- **Guest migration parity (E2, dataMigration.js)** — migrated training_log rows were a hand-built
+  subset that DROPPED distanceM/avgHR/avgCadence/np/decouplingPct and every enrichment field (gap
+  since v9.397). Now maps through the canonical `logEntryToRow` (verified cycle-free; hardcoded
+  `source:'manual'` matches the v9.360 idempotency cleanup; uuid local ids pass through, numeric
+  ids fall back to gen_random_uuid). Also: migrated race_results now keep `conditions` (was
+  dropped; `raceEntryToRow` persists it). +2 tests.
+
+DEPENDS ON: logEntryToRow column set == prod training_log schema (see v9.466 drift incident —
+verify information_schema before extending); stream_enriched_at null ⇒ re-enqueue semantics.
+
 ## v9.467.0 — 2026-07-04 — Surface the enrichment data in the UI (E1 of enhancement_designs_2026_07_04)
 
 The v9.465/466 columns were stored but almost invisible. Three zero-new-data surfaces:
