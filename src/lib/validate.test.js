@@ -121,6 +121,12 @@ describe('sanitizeLogEntry', () => {
     expect(out.startTime).toBe('06:15')
     expect(out.rpeMethod).toBe('derived_hr')
   })
+  it('preserves calories within bounds, drops implausible values (v9.466)', () => {
+    const base = { date:'2025-01-01', type:'Ride', duration:120, rpe:6, tss:90 }
+    expect(sanitizeLogEntry({ ...base, calories: 950 }).calories).toBe(950)
+    expect(sanitizeLogEntry({ ...base, calories: 0 }).calories).toBeUndefined()
+    expect(sanitizeLogEntry({ ...base, calories: 50000 }).calories).toBeUndefined()
+  })
   it('drops out-of-bounds enrichment values and malformed startTime', () => {
     const base = { date:'2025-01-01', type:'row', duration:60, rpe:6, tss:70 }
     const out = sanitizeLogEntry({ ...base, avgPower: 9000, maxHR: 300, elevationGainM: -4,

@@ -11,7 +11,9 @@ import { isVerifiedServiceCall } from '../_shared/serviceAuth.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 // v9.465: activity→row mapping is shared with strava-oauth (was duplicated +
 // drifting). Enrichment (power/elevation/RPE/clock) lives in the shared mapper.
-import { buildTrainingLogRow, resolveProfilePhysiology } from '../_shared/stravaActivity.ts'
+import { buildTrainingLogRow, resolveProfilePhysiology, enqueueStreamEnrichment, computePowerTSS } from '../_shared/stravaActivity.ts'
+// v9.466 P1: per-activity streams + detail enrichment (FIT-parity scalars).
+import { normalizedPower, decouplingPct, zonesFromHR, wPrimeExhausted } from '../_shared/streamScience.ts'
 
 const RATE_WINDOW_MS = 15 * 60 * 1000   // 15 minutes
 const MAX_REQUESTS   = 90               // < Strava's 100/15min app limit (was 600 → 429 risk)
@@ -106,6 +108,7 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
   }
 
   let totalSynced = 0
+  let totalEnriched = 0
   let apiCallsUsed = 0
 
   for (const row of msgs) {
@@ -167,6 +170,104 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
         continue
       }
 
+      // ── v9.466 P1: 'enrich' message — streams + detail for ONE activity ─────
+      if (payload.kind === "enrich") {
+        const externalId = String(payload.external_id || "")
+        if (!externalId) {
+          await sb.rpc("delete_strava_backfill_msg", { p_msg_id: msgId })
+          continue
+        }
+        // Costs 2 API calls — need both within budget or leave for next run.
+        if (currentReqs + apiCallsUsed + 2 > MAX_REQUESTS) {
+          console.warn("strava-backfill-worker: budget < 2 calls — deferring enrich messages")
+          break
+        }
+        // Row must still exist (user may have deleted the entry — respect that).
+        const { data: logRow } = await sb
+          .from("training_log")
+          .select("id, duration_min, avg_hr, max_hr")
+          .eq("user_id", userId)
+          .eq("external_id", externalId)
+          .maybeSingle()
+        if (!logRow) {
+          await sb.rpc("delete_strava_backfill_msg", { p_msg_id: msgId })
+          continue
+        }
+
+        const auth = { headers: { Authorization: `Bearer ${accessToken}` } }
+        const sResp = await fetch(
+          `https://www.strava.com/api/v3/activities/${externalId}/streams?keys=time,heartrate,watts,velocity_smooth,cadence,altitude&key_by_type=true`,
+          auth,
+        )
+        apiCallsUsed++
+        if (sResp.status === 429) { console.warn("strava-backfill-worker: 429 on streams"); break }
+        // 404 = no streams (manual/very old) — still run the detail fetch below.
+        const streams = sResp.ok ? await sResp.json().catch(() => ({})) : {}
+
+        const dResp = await fetch(`https://www.strava.com/api/v3/activities/${externalId}`, auth)
+        apiCallsUsed++
+        if (dResp.status === 429) { console.warn("strava-backfill-worker: 429 on detail"); break }
+        const detail = dResp.ok ? await dResp.json().catch(() => null) : null
+
+        // Cap at 3h of 1-Hz samples (matches the FIT importer's 10,800 cap).
+        const asSeries = (s: unknown): number[] => {
+          const d = (s as { data?: unknown[] })?.data
+          return Array.isArray(d) ? (d as number[]).filter((v) => typeof v === "number").slice(0, 10800) : []
+        }
+        const hr    = asSeries((streams as Record<string, unknown>).heartrate)
+        const watts = asSeries((streams as Record<string, unknown>).watts)
+        const vel   = asSeries((streams as Record<string, unknown>).velocity_smooth)
+
+        const physio = await resolveProfilePhysiology(sb, userId)
+        const upd: Record<string, unknown> = { stream_enriched_at: new Date().toISOString() }
+
+        // Real per-session HR facts the summary lacked.
+        const maxFromStream = hr.length ? Math.round(Math.max(...hr)) : null
+        if (!logRow.max_hr && maxFromStream) upd.max_hr = maxFromStream
+        if (!logRow.avg_hr && hr.length) upd.avg_hr = Math.round(hr.reduce((s, v) => s + v, 0) / hr.length)
+        const effMaxHR = (logRow.max_hr as number) ?? maxFromStream ?? physio.maxHR
+
+        // True 5-zone distribution (replaces the single-band estimate).
+        const zones = zonesFromHR(hr, effMaxHR)
+        if (zones) upd.zones = zones
+
+        // Real NP from the watts stream (more accurate than weighted_average_watts
+        // on variable rides) → headline power-TSS when FTP known.
+        if (watts.length >= 30) {
+          const np = normalizedPower(watts)
+          if (np > 0) {
+            upd.np = np
+            if (physio.ftp) {
+              const durS = (Number(logRow.duration_min) || 0) * 60
+              const t = computePowerTSS(np, durS, physio.ftp)
+              if (t != null && t > 0) upd.tss = t
+            }
+          }
+          if (physio.cp && physio.wPrime && wPrimeExhausted(watts, physio.cp, physio.wPrime)) {
+            upd.w_prime_exhausted = true
+            upd.w_prime_method = physio.wPrimeMethod
+          }
+        }
+
+        // Friel decoupling: Pw:Hr when powered, else Pa:Hr (velocity).
+        const dc = watts.length >= 120 ? decouplingPct(hr, watts) : decouplingPct(hr, vel)
+        if (dc != null) upd.decoupling_pct = dc
+
+        // P2 detail: athlete-entered RPE is the authoritative effort signal.
+        const pe = Number((detail as Record<string, unknown>)?.perceived_exertion)
+        if (Number.isFinite(pe) && pe > 0) {
+          upd.rpe = Math.min(10, Math.max(1, Math.round(pe)))
+          upd.rpe_method = "athlete"
+        }
+        const cal = Number((detail as Record<string, unknown>)?.calories)
+        if (Number.isFinite(cal) && cal > 0) upd.calories = Math.round(cal)
+
+        await sb.from("training_log").update(upd).eq("id", logRow.id)
+        await sb.rpc("delete_strava_backfill_msg", { p_msg_id: msgId })
+        totalEnriched++
+        continue
+      }
+
       const resp = await fetch(
         `https://www.strava.com/api/v3/athlete/activities?after=${after}&per_page=100&page=${page}`,
         { headers: { Authorization: `Bearer ${accessToken}` } },
@@ -225,6 +326,11 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
 
       totalSynced += synced
 
+      // v9.466 P1: queue streams+detail enrichment for qualifying activities
+      // (has_heartrate/device_watts, non-manual, not yet enriched).
+      const enrichable = await enqueueStreamEnrichment(sb, userId, activities as Record<string, unknown>[])
+      if (enrichable > 0) console.log(`strava-backfill-worker: enqueued ${enrichable} enrich msgs for user ${userId}`)
+
       // F3: a successful page that imported activities must set last_sync_at and clear
       // the status — otherwise a backfill-only import (no client Sync) left the row at
       // sync_status='idle', last_sync_at=null forever → the UI showed perpetual STALE
@@ -268,9 +374,9 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
     }).eq("id", 1)
   }
 
-  console.log(`strava-backfill-worker: synced=${totalSynced} api_calls=${apiCallsUsed}`)
+  console.log(`strava-backfill-worker: synced=${totalSynced} enriched=${totalEnriched} api_calls=${apiCallsUsed}`)
   return new Response(
-    JSON.stringify({ synced: totalSynced, api_calls: apiCallsUsed }),
+    JSON.stringify({ synced: totalSynced, enriched: totalEnriched, api_calls: apiCallsUsed }),
     { headers: { "Content-Type": "application/json" } },
   )
 }))

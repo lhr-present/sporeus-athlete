@@ -88,19 +88,26 @@ export function deriveRPE(
 }
 
 export interface ProfilePhysiology {
-  maxHR: number | null
-  ftp:   number | null
+  maxHR:  number | null
+  ftp:    number | null
+  // Critical Power + W′ for the exhaustion check (v9.466 streams enrichment).
+  // Mirrors src/lib/formulas.js resolveCPWPrime: measured CP test values win,
+  // else estimated from FTP (0.95×FTP + 15 kJ default), else null.
+  cp:            number | null
+  wPrime:        number | null
+  wPrimeMethod:  "measured" | "estimated" | null
 }
 
-// Read the athlete's max HR + FTP from profiles.profile_data JSONB (flat
-// { maxhr, age, ftp }). maxHR falls back to 220−age, then null (honest
-// "unknown" — estimateTSS uses its duration-only fallback, estimateZones/
-// deriveRPE return null). FTP null ⇒ power-TSS never computed (guardrail:
-// stored watts alone must not fabricate a load number).
+// Read the athlete's max HR + FTP + CP/W′ from profiles.profile_data JSONB
+// (flat { maxhr, age, ftp, cp, wPrime }). maxHR falls back to 220−age, then
+// null (honest "unknown" — estimateTSS uses its duration-only fallback,
+// estimateZones/deriveRPE return null). FTP null ⇒ power-TSS never computed
+// (guardrail: stored watts alone must not fabricate a load number).
 export async function resolveProfilePhysiology(
   sb: ReturnType<typeof createClient>,
   userId: string,
 ): Promise<ProfilePhysiology> {
+  const none: ProfilePhysiology = { maxHR: null, ftp: null, cp: null, wPrime: null, wPrimeMethod: null }
   try {
     const { data: prof } = await sb
       .from("profiles")
@@ -120,10 +127,64 @@ export async function resolveProfilePhysiology(
     const rawFtp = Number(pd.ftp)
     const ftp = Number.isFinite(rawFtp) && rawFtp >= 30 && rawFtp <= 2000 ? Math.round(rawFtp) : null
 
-    return { maxHR, ftp }
+    const rawCp = Number(pd.cp)
+    const rawWp = Number(pd.wPrime)
+    let cp: number | null = null, wPrime: number | null = null
+    let wPrimeMethod: ProfilePhysiology["wPrimeMethod"] = null
+    if (Number.isFinite(rawCp) && rawCp > 0 && Number.isFinite(rawWp) && rawWp > 0) {
+      cp = Math.round(rawCp); wPrime = Math.round(rawWp); wPrimeMethod = "measured"
+    } else if (ftp) {
+      cp = Math.round(ftp * 0.95); wPrime = 15000; wPrimeMethod = "estimated"
+    }
+
+    return { maxHR, ftp, cp, wPrime, wPrimeMethod }
   } catch {
-    return { maxHR: null, ftp: null }
+    return none
   }
+}
+
+// ── Streams-enrichment qualification (v9.466 P1) ─────────────────────────────
+// An activity is worth 2 extra API calls (streams + detail) only when it can
+// yield something: an HR stream (zones/decoupling) or real power (NP/W′).
+// Manual entries have NO streams — skip. The caller must also check that the
+// row's stream_enriched_at is still null (idempotence across webhook re-imports).
+export function qualifiesForStreamEnrichment(a: Record<string, unknown>): boolean {
+  if (a.manual === true) return false
+  return a.has_heartrate === true || a.device_watts === true
+}
+
+// After a page of activities upserts, enqueue one 'enrich' message per
+// qualifying activity whose row hasn't been stream-enriched yet. Rows skipped
+// by buildTrainingLogRow (<3 min) don't exist in training_log, so the .in()
+// filter drops them automatically. A pending-but-unprocessed enrich message can
+// be duplicated by a webhook re-import inside the same window — harmless
+// (recompute is deterministic) and bounded by the webhook per-user throttle.
+export async function enqueueStreamEnrichment(
+  sb: ReturnType<typeof createClient>,
+  userId: string,
+  activities: Record<string, unknown>[],
+): Promise<number> {
+  const candidates = activities.filter(qualifiesForStreamEnrichment).map((a) => String(a.id))
+  if (!candidates.length) return 0
+  const { data: rows } = await sb
+    .from("training_log")
+    .select("external_id")
+    .eq("user_id", userId)
+    .in("external_id", candidates)
+    .is("stream_enriched_at", null)
+  let enqueued = 0
+  for (const r of (rows ?? []) as { external_id: string }[]) {
+    const { error } = await sb.rpc("enqueue_strava_backfill", {
+      p_payload: {
+        kind:        "enrich",
+        user_id:     userId,
+        external_id: r.external_id,
+        enqueued_at: new Date().toISOString(),
+      },
+    })
+    if (!error) enqueued++
+  }
+  return enqueued
 }
 
 const posNum = (v: unknown): number | null =>

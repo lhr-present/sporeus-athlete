@@ -145,6 +145,7 @@ export function sanitizeLogEntry(e) {
   const elev = parseInt(e.elevationGainM); if (Number.isFinite(elev) && elev > 0 && elev <= 15000) result.elevationGainM = elev
   const kj = parseInt(e.kilojoules); if (Number.isFinite(kj) && kj > 0 && kj <= 30000) result.kilojoules = kj
   const ss = parseInt(e.sufferScore); if (Number.isFinite(ss) && ss > 0 && ss <= 1000) result.sufferScore = ss
+  const cal = parseInt(e.calories); if (Number.isFinite(cal) && cal > 0 && cal <= 20000) result.calories = cal
   if (typeof e.startTime === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(e.startTime)) result.startTime = e.startTime
   if (typeof e.rpeMethod === 'string' && e.rpeMethod) result.rpeMethod = e.rpeMethod.slice(0, 20)
   return result

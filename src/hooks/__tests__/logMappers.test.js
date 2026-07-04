@@ -129,6 +129,31 @@ describe('v9.465 enrichment columns (Strava P0)', () => {
   })
 })
 
+describe('v9.466 streams-enrichment columns (Strava P1)', () => {
+  it('hydrates wPrimeExhausted/wPrimeMethod/calories (⚡W\'0 badge survives DB round-trip)', () => {
+    const e = logRowToEntry({ id: 'r1', date: '2026-07-01', w_prime_exhausted: true, w_prime_method: 'estimated', calories: 540 })
+    expect(e.wPrimeExhausted).toBe(true)
+    expect(e.wPrimeMethod).toBe('estimated')
+    expect(e.calories).toBe(540)
+  })
+
+  it('omits keys when columns null/false (badge only renders on true)', () => {
+    const e = logRowToEntry({ id: 'r1', date: '2026-07-01', w_prime_exhausted: null, w_prime_method: null, calories: null })
+    expect('wPrimeExhausted' in e).toBe(false)
+    expect('wPrimeMethod' in e).toBe(false)
+    expect('calories' in e).toBe(false)
+    expect('wPrimeExhausted' in logRowToEntry({ id: 'r1', date: '2026-07-01', w_prime_exhausted: false })).toBe(false)
+  })
+
+  it('round-trips W′ fields; rejects an unknown wPrimeMethod on write', () => {
+    const back = logRowToEntry({ ...logEntryToRow({ date: '2026-07-01', type: 'Ride', wPrimeExhausted: true, wPrimeMethod: 'measured', calories: 900 }, 'u1'), id: 'r1' })
+    expect(back.wPrimeExhausted).toBe(true)
+    expect(back.wPrimeMethod).toBe('measured')
+    expect(back.calories).toBe(900)
+    expect(logEntryToRow({ date: '2026-07-01', type: 'Ride', wPrimeMethod: 'guessed' }, 'u1').w_prime_method).toBeNull()
+  })
+})
+
 describe('logEntryToRow — id handling (uuid column safety)', () => {
   it('includes id when it is a valid uuid', () => {
     const uuid = '0f8fad5b-d9cb-469f-a165-70867728950e'

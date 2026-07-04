@@ -84,6 +84,12 @@ export function logRowToEntry(row) {
     ...(row.suffer_score     != null ? { sufferScore:    Number(row.suffer_score) }     : {}),
     ...(row.start_time       != null ? { startTime:      String(row.start_time) }       : {}),
     ...(row.rpe_method       != null ? { rpeMethod:      String(row.rpe_method) }       : {}),
+    // v9.466.0 — streams-enrichment columns (migration 20260638). The ⚡W'0 log
+    // badge reads entry.wPrimeExhausted — it previously never survived a DB
+    // round-trip (no column existed).
+    ...(row.w_prime_exhausted === true ? { wPrimeExhausted: true }                      : {}),
+    ...(row.w_prime_method   != null ? { wPrimeMethod:   String(row.w_prime_method) }   : {}),
+    ...(row.calories         != null ? { calories:       Number(row.calories) }         : {}),
   }
 }
 export function logEntryToRow(entry, userId) {
@@ -122,6 +128,10 @@ export function logEntryToRow(entry, userId) {
     suffer_score:     posInt(entry.sufferScore),
     start_time:       typeof entry.startTime === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(entry.startTime) ? entry.startTime : null,
     rpe_method:       typeof entry.rpeMethod === 'string' && entry.rpeMethod ? entry.rpeMethod.slice(0, 20) : null,
+    // v9.466.0 — streams-enrichment fields (W′ badge + calories) round-trip.
+    w_prime_exhausted: entry.wPrimeExhausted === true ? true : null,
+    w_prime_method:    entry.wPrimeMethod === 'measured' || entry.wPrimeMethod === 'estimated' ? entry.wPrimeMethod : null,
+    calories:          posInt(entry.calories),
   }
 }
 
