@@ -38,6 +38,18 @@ DEPENDS ON: migration 20260638; enrich messages ride the strava_backfill pgmq qu
 `kind:'enrich'` — messages without `kind` are page fetches, backward compatible); shared
 strava_rate_state budget; profiles.profile_data { cp, wPrime, ftp, maxhr, age }.
 
+**🔴 PROD SCHEMA DRIFT FOUND + FIXED during live verification:** prod `training_log` was MISSING
+`decoupling_pct` (repo migration `2026041602` never applied — the known repo↔prod migration drift),
+plus `source_file_path` (2026042102) and `session_tag`/`session_tag_reason` (20260455). Consequences:
+(1) `parse-activity` FIT uploads have been failing on insert in prod since deployment (writes
+`decoupling_pct` + `source_file_path`); (2) the v9.464 client `logEntryToRow` (live ~24 h) included
+`decoupling_pct` in every log write → client log-sync writes would have been rejected — verified NO
+rows were attempted/lost in the window (zero training_log writes in 36 h). All 4 columns + the two
+session_tag indexes applied to prod via Management API exactly as the repo migrations define them;
+prod training_log now matches all repo-defined columns (33). LESSON: a column existing in a repo
+migration ≠ existing in prod — verify `information_schema.columns` BEFORE shipping any mapper that
+writes new columns. (Nobody writes `session_tag` yet — the classifySession→DB wiring never existed.)
+
 ## v9.465.0 — 2026-07-03 — Strava P0 data enrichment (power/elevation/honest-RPE/clock) + shared edge mapper
 
 P0 of `docs/audits/strava_data_enhancements_2026_07_03.md` — all from summary fields Strava already
