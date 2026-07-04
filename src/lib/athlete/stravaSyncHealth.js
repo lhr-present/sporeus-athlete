@@ -60,6 +60,7 @@ export const STRAVA_NEVER_SYNCED_FRESH_DAYS = 3
  * @param {string}      [now]  - 'YYYY-MM-DD' or ISO timestamp; defaults to now
  * @returns {{
  *   state:               'healthy' | 'never_synced' | 'stale' | 'failing' | 'disconnected',
+ *   needsReconnect:      boolean | undefined,  // only set on 'failing': true = sync retry can never fix it
  *   daysSinceLastSync:   number | null,
  *   lastError:           string | null,
  *   actionable:          boolean,
@@ -84,12 +85,23 @@ export function classifyStravaSync(conn, now) {
 
   // Failing — explicit error state takes precedence over staleness
   if (status === 'error' || (lastError && status !== 'syncing')) {
+    // v9.470 — non-retryable auth failures need a RECONNECT, not a sync retry:
+    // a revoked/rejected token or a read-only scope grant can never sync. The
+    // edge fns' strings: "authorization revoked/rejected — please reconnect",
+    // 'granted read-only — reconnect and allow …'. Deliberately NOT matching
+    // plain "reconnect": "backfill_pending — reconnect or tap Sync" IS
+    // sync-retryable.
+    const needsReconnect = /revoked|rejected|read-only/i.test(lastError || '')
     return {
       state: 'failing',
+      needsReconnect,
       daysSinceLastSync: Number.isFinite(dSince) ? dSince : null,
       lastError,
       actionable: true,
-      summary: {
+      summary: needsReconnect ? {
+        en: `Strava access is broken${lastError ? ` (${lastError.slice(0, 80)})` : ''}. Reconnect from Profile — a sync retry cannot fix this.`,
+        tr: `Strava erişimi bozuk${lastError ? ` (${lastError.slice(0, 80)})` : ''}. Profil'den yeniden bağlan — senkron denemesi bunu düzeltemez.`,
+      } : {
         en: `Strava sync is failing${lastError ? ` (${lastError.slice(0, 80)})` : ''}. Re-authenticate or trigger a manual sync from Profile.`,
         tr: `Strava senkronu hata veriyor${lastError ? ` (${lastError.slice(0, 80)})` : ''}. Profil'den yeniden bağlan veya manuel senkron çalıştır.`,
       },

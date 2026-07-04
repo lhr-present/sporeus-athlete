@@ -134,6 +134,33 @@ describe('classifyStravaSync — never_synced (F3)', () => {
   })
 })
 
+describe('classifyStravaSync — needsReconnect (v9.470)', () => {
+  const failing = (last_error) => classifyStravaSync({
+    sync_status: 'error', last_sync_at: daysAgoISO(1), updated_at: daysAgoISO(0), last_error,
+  }, NOW)
+
+  it('true for revoked / rejected / read-only-scope errors (sync retry can never fix)', () => {
+    expect(failing('Strava authorization revoked — please reconnect Strava').needsReconnect).toBe(true)
+    expect(failing('Strava authorization rejected — please reconnect Strava').needsReconnect).toBe(true)
+    expect(failing('Strava granted read-only — reconnect and allow "View data about your activities"').needsReconnect).toBe(true)
+  })
+  it('false for retryable errors — incl. backfill_pending which mentions "reconnect"', () => {
+    expect(failing('backfill_pending — reconnect or tap Sync').needsReconnect).toBe(false)
+    expect(failing('Rate limit hit — retry after 300s').needsReconnect).toBe(false)
+    expect(failing(null).needsReconnect).toBe(false)
+  })
+  it('reconnect summary tells the athlete a retry cannot fix it', () => {
+    const out = failing('Strava authorization revoked — please reconnect Strava')
+    expect(out.summary.en).toMatch(/Reconnect/i)
+    expect(out.summary.en).toMatch(/cannot fix/i)
+    expect(out.summary.tr).toMatch(/yeniden bağlan/i)
+  })
+  it('not set on healthy/stale/never_synced states', () => {
+    expect(classifyStravaSync({ sync_status: 'idle', last_sync_at: daysAgoISO(0) }, NOW).needsReconnect).toBeUndefined()
+    expect(classifyStravaSync({ sync_status: 'idle', last_sync_at: daysAgoISO(5) }, NOW).needsReconnect).toBeUndefined()
+  })
+})
+
 describe('classifyStravaSync — malformed inputs', () => {
   it('treats invalid last_sync_at as stale', () => {
     const out = classifyStravaSync({
