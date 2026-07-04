@@ -66,7 +66,9 @@ export function correlateTrainingToResults(log, testResults) {
         const isZ2 = e.zones ? (e.zones[1] || 0) / (e.duration || 1) > 0.4 : (e.rpe || 5) <= 5 && (e.rpe || 5) >= 4
         return s + (isZ2 ? dur : 0)
       }, 0) / 60 / 4
-      const avgRPE = prior.reduce((s, e) => s + (e.rpe || 0), 0) / prior.length
+      // v9.469 — present-only denominator (null-rpe sessions no longer dilute)
+      const priorRpe = prior.filter(e => Number.isFinite(Number(e.rpe)) && Number(e.rpe) > 0)
+      const avgRPE = priorRpe.length ? priorRpe.reduce((s, e) => s + Number(e.rpe), 0) / priorRpe.length : 0
       return { value: r.value, weeklyTSS, weeklySessions, z2Hrs, avgRPE, sessions }
     }).filter(Boolean)
 

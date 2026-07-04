@@ -346,7 +346,12 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
   // ── Derived metrics ────────────────────────────────────────────────────────────
   const totalTSS   = useMemo(() => filteredLog.reduce((s, e) => s + (e.tss || 0), 0), [filteredLog])
   const totalMin   = useMemo(() => filteredLog.reduce((s, e) => s + (e.duration || 0), 0), [filteredLog])
-  const avgRPE     = useMemo(() => filteredLog.length ? (filteredLog.reduce((s, e) => s + (e.rpe || 0), 0) / filteredLog.length).toFixed(1) : '\u2014', [filteredLog])
+  // v9.469 \u2014 average over sessions that HAVE an rpe (null-rpe entries used to
+  // drag the average down via `|| 0`).
+  const avgRPE     = useMemo(() => {
+    const withRpe = filteredLog.filter(e => Number.isFinite(Number(e.rpe)) && Number(e.rpe) > 0)
+    return withRpe.length ? (withRpe.reduce((s, e) => s + Number(e.rpe), 0) / withRpe.length).toFixed(1) : '\u2014'
+  }, [filteredLog])
   const srpeLoad   = useMemo(() => filteredLog.reduce((s, e) => s + ((e.rpe || 0) * (e.duration || 0)), 0), [filteredLog])
   const { atl, ctl, tsb, daily } = useMemo(() => calcLoad(log), [log])
   // First-run activation payoff: science-anchored Day-0/early-trend/first-CTL

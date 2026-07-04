@@ -2,6 +2,30 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.469.0 — 2026-07-04 — Honest RPE: null stays null (E3)
+
+Kills BOTH rpe fabrications (design: enhancement_designs_2026_07_04.md §E3, full consumer census
+there — zero crashers, ~30 athlete libs already null-guard, threshold gates correctly exclude null):
+
+- `logRowToEntry` hydrated `rpe null → 5` — a metric-less session became "athlete said 5" and
+  silently passed every RPE-gated science check. Now null stays null (post-v9.465 the edge derives
+  an honest rpe whenever HR/suffer data exists, so remaining nulls are genuinely signal-less).
+- `sanitizeLogEntry` had a SECOND, conflicting fabrication: `clamp(null)→0`, so any edit/import
+  turned missing rpe into 0. Now null/'' stay null; numeric clamping unchanged.
+- The 4 averages that `||0`-diluted (Dashboard avgRPE, patterns findRecoveryPatterns, intelligence
+  weekly narrative, AthleteCard avgRPE28) now divide by count-of-present-rpe (pattern already used
+  by trainingLoad/injuryForecast). srpeLoad/ruleAlerts 0-contributions are numerically identical to
+  exclusion — untouched.
+
+⚠️ BEHAVIOR CHANGE (intended): displayed avg-RPE RISES for athletes with metric-less entries — it
+was being dragged toward 5 (hydration) and 0 (post-edit). KNOWN FOLLOW-UP (deliberate, per design):
+the self-defaulting `||5` zone-bucketing group (timeInZone, polarization, ZoneChart, …) re-fabricates
+a moderate zone locally for no-RPE sessions — whether to exclude instead is a per-card modeling
+question, partly founder-domain. +6 tests (mapper null round-trip, sanitizer null/''/garbage).
+
+DEPENDS ON: v9.465 edge deriveRPE (keeps most Strava rows honest-valued); consumers' existing
+null-guards (census in the design doc).
+
 ## v9.468.0 — 2026-07-04 — Enrich-fetch resilience + guest-migration parity (E2)
 
 Two fixes — one from the manual audit pass (the audit agent died on a session limit; its critical

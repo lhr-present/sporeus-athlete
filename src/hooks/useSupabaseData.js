@@ -60,7 +60,11 @@ export function logRowToEntry(row) {
     type:     row.type     || '',
     duration: row.duration_min != null ? Number(row.duration_min) : 0,
     tss:      row.tss      != null ? Number(row.tss)  : 0,
-    rpe:      row.rpe      != null ? Number(row.rpe)  : 5,
+    // v9.469 — null stays null (was fabricated into a neutral 5, silently
+    // passing every RPE-gated science check). Post-v9.465 the edge derives an
+    // honest rpe when HR/suffer data exists; a remaining null means the
+    // session genuinely has no effort signal.
+    rpe:      row.rpe      != null ? Number(row.rpe)  : null,
     zones:    Array.isArray(row.zones) ? row.zones : null,
     notes:    row.notes    || '',
     source:   row.source   || 'manual',

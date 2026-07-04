@@ -449,7 +449,9 @@ export function generateWeeklyNarrative(log, recovery, profile, _lang) {
   const n = week.length
   const totalMin = week.reduce((s, e) => s + (e.duration || 0), 0)
   const totalTSS = week.reduce((s, e) => s + (e.tss || 0), 0)
-  const avgRPE   = n ? Math.round(week.reduce((s, e) => s + (e.rpe || 0), 0) / n * 10) / 10 : 0
+  // v9.469 — present-only denominator (null-rpe sessions no longer dilute)
+  const weekRpe  = week.filter(e => Number.isFinite(Number(e.rpe)) && Number(e.rpe) > 0)
+  const avgRPE   = weekRpe.length ? Math.round(weekRpe.reduce((s, e) => s + Number(e.rpe), 0) / weekRpe.length * 10) / 10 : 0
   const avgRec   = recWeek.length ? Math.round(recWeek.reduce((s, e) => s + (e.score || 0), 0) / recWeek.length) : null
 
   const { trend, change: _change } = analyzeLoadTrend(log)

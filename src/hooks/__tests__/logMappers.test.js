@@ -129,6 +129,19 @@ describe('v9.465 enrichment columns (Strava P0)', () => {
   })
 })
 
+describe('v9.469 honest rpe hydration', () => {
+  it('null rpe stays null (was fabricated into a neutral 5)', () => {
+    expect(logRowToEntry({ id: 'r1', date: '2026-07-01', rpe: null }).rpe).toBeNull()
+  })
+  it('real rpe values still hydrate as numbers (0 is a stored value, kept)', () => {
+    expect(logRowToEntry({ id: 'r1', date: '2026-07-01', rpe: 7 }).rpe).toBe(7)
+    expect(logRowToEntry({ id: 'r1', date: '2026-07-01', rpe: 0 }).rpe).toBe(0)
+  })
+  it('null rpe round-trips as null (write side already mapped ||null)', () => {
+    expect(logEntryToRow({ date: '2026-07-01', type: 'Run', rpe: null }, 'u1').rpe).toBeNull()
+  })
+})
+
 describe('v9.466 streams-enrichment columns (Strava P1)', () => {
   it('hydrates wPrimeExhausted/wPrimeMethod/calories (⚡W\'0 badge survives DB round-trip)', () => {
     const e = logRowToEntry({ id: 'r1', date: '2026-07-01', w_prime_exhausted: true, w_prime_method: 'estimated', calories: 540 })
