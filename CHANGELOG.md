@@ -2,6 +2,25 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.470.0 — 2026-07-04 — Scope/revoked Strava failures route to RECONNECT (E5b, audit LOW-2)
+
+A Strava failure caused by a revoked/rejected token or a read-only scope grant can NEVER be fixed
+by a sync retry — but the TodayView banner's primary action was SYNC NOW, sending the athlete
+through a guaranteed-failure loop. Now:
+
+- `classifyStravaSync` (stravaSyncHealth.js) sets `needsReconnect: true` on failing states whose
+  `last_error` matches `revoked|rejected|read-only` (the edge fns' exact strings). Deliberately NOT
+  matching plain "reconnect": `backfill_pending — reconnect or tap Sync` IS sync-retryable. The
+  failing summary for these states says a retry cannot fix it (EN+TR).
+- TodayView banner: when `needsReconnect`, the primary action becomes **→ RECONNECT** (routes to
+  Profile → Strava, where the forced re-consent flow lives) and the can't-succeed SYNC NOW button
+  is not rendered.
+
++4 tests. Closes audit_2026_07_03 LOW-2.
+
+DEPENDS ON: edge last_error strings (strava-oauth scope validation, backfill-worker
+revoked/rejected writers) — if those strings change, the regex in stravaSyncHealth.js must follow.
+
 ## v9.469.0 — 2026-07-04 — Honest RPE: null stays null (E3)
 
 Kills BOTH rpe fabrications (design: enhancement_designs_2026_07_04.md §E3, full consumer census

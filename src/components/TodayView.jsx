@@ -1774,29 +1774,47 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
               {health.summary[lang] || health.summary.en}
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-              {/* F4 — primary in-place SYNC NOW; Open Profile stays secondary */}
-              <button
-                onClick={handleBannerSync}
-                disabled={stravaSyncBusy}
-                style={{
-                  fontFamily: MONO, fontSize: '9px', fontWeight: 700,
-                  letterSpacing: '0.06em', padding: '4px 10px',
-                  background: color, border: `1px solid ${color}`,
-                  color: '#000', borderRadius: '3px',
-                  cursor: stravaSyncBusy ? 'default' : 'pointer', opacity: stravaSyncBusy ? 0.6 : 1,
-                }}>
-                {stravaSyncBusy ? (lang === 'tr' ? 'SENKRON…' : 'SYNCING…') : (lang === 'tr' ? '↻ ŞİMDİ SENKRONLA' : '↻ SYNC NOW')}
-              </button>
-              <button
-                onClick={() => setTab('profile')}
-                style={{
-                  fontFamily: MONO, fontSize: '9px', fontWeight: 700,
-                  letterSpacing: '0.06em', padding: '4px 10px',
-                  background: 'transparent', border: `1px solid ${color}88`,
-                  color, borderRadius: '3px', cursor: 'pointer',
-                }}>
-                → {lang === 'tr' ? 'PROFİL\'E GİT' : 'OPEN PROFILE'}
-              </button>
+              {/* F4 — primary in-place SYNC NOW; Open Profile stays secondary.
+                  v9.470 — needsReconnect (revoked/rejected/read-only scope):
+                  a sync retry can NEVER succeed, so the primary action routes
+                  to Profile→Strava to reconnect instead of offering SYNC NOW. */}
+              {health.needsReconnect ? (
+                <button
+                  onClick={() => setTab('profile')}
+                  style={{
+                    fontFamily: MONO, fontSize: '9px', fontWeight: 700,
+                    letterSpacing: '0.06em', padding: '4px 10px',
+                    background: color, border: `1px solid ${color}`,
+                    color: '#000', borderRadius: '3px', cursor: 'pointer',
+                  }}>
+                  → {lang === 'tr' ? 'YENİDEN BAĞLAN' : 'RECONNECT'}
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={handleBannerSync}
+                    disabled={stravaSyncBusy}
+                    style={{
+                      fontFamily: MONO, fontSize: '9px', fontWeight: 700,
+                      letterSpacing: '0.06em', padding: '4px 10px',
+                      background: color, border: `1px solid ${color}`,
+                      color: '#000', borderRadius: '3px',
+                      cursor: stravaSyncBusy ? 'default' : 'pointer', opacity: stravaSyncBusy ? 0.6 : 1,
+                    }}>
+                    {stravaSyncBusy ? (lang === 'tr' ? 'SENKRON…' : 'SYNCING…') : (lang === 'tr' ? '↻ ŞİMDİ SENKRONLA' : '↻ SYNC NOW')}
+                  </button>
+                  <button
+                    onClick={() => setTab('profile')}
+                    style={{
+                      fontFamily: MONO, fontSize: '9px', fontWeight: 700,
+                      letterSpacing: '0.06em', padding: '4px 10px',
+                      background: 'transparent', border: `1px solid ${color}88`,
+                      color, borderRadius: '3px', cursor: 'pointer',
+                    }}>
+                    → {lang === 'tr' ? 'PROFİL\'E GİT' : 'OPEN PROFILE'}
+                  </button>
+                </>
+              )}
             </div>
             {stravaSyncMsg && (
               <div style={{ fontSize: '9px', marginTop: '6px', color: stravaSyncMsg.startsWith('⚠') ? '#e03030' : '#5bc25b' }}>
