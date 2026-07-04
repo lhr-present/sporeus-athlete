@@ -96,6 +96,8 @@ import GettingStartedCard from './dashboard/GettingStartedCard.jsx'
 // v9.339.0 — Profile completeness nudge for post-first-session users
 // with missing key fields (max HR, threshold pace, FTP, age).
 import ProfileCompletenessNudge from './ProfileCompletenessNudge.jsx'
+// v9.471.0 — one-tap "new max HR detected" profile nudge (E5a).
+import MaxHrNudge from './MaxHrNudge.jsx'
 
 const EMBED_MODE = new URLSearchParams(window.location.search).get('embed') === 'true'
 
@@ -123,7 +125,7 @@ const QUICK_FIELDS = WELLNESS_FIELDS.filter(f => ['sleep', 'energy', 'soreness']
 
 export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd, authUser }) {
   const { t, lang }   = useContext(LangCtx)
-  const { recovery, setRecovery, profile, setLog } = useData()
+  const { recovery, setRecovery, profile, setProfile, setLog } = useData()
 
   const [plan]       = useLocalStorage('sporeus-plan',        null)
   const [planStatus, setPlanStatus] = useLocalStorage('sporeus-plan-status', {})
@@ -1089,6 +1091,10 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
           onGoToProfile={() => setTab('profile')}
         />
       )}
+
+      {/* v9.471 — a recorded session max HR above profile.maxhr skews every
+          HR zone + TRIMP-TSS low. One-tap update, per-value dismissal. */}
+      <MaxHrNudge log={log} profile={profile} setProfile={setProfile} isTR={lang === 'tr'} />
 
       {/* v9.408 — core-idea framing: anchors the mission at the daily-answer
           moment for new users; dismissible, shown once. "The idea lives." */}
