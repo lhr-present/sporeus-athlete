@@ -62,6 +62,14 @@ function FuelGuidanceCard({ log, plan, profile, lang }) {
     const todayCHO     = getCHO(todayTSS)
     const tomorrowCHO  = getCHO(tomorrowPlannedTSS)
 
+    // v9.467 — display-only measured energy from device-reported calories
+    // (Strava detail enrichment). Context line only: the g/kg prescription
+    // logic is untouched, and there is deliberately NO kJ→kcal conversion
+    // (efficiency assumption = sport-science, founder-domain).
+    const todayKcal = (log || [])
+      .filter(e => e.date === today)
+      .reduce((s, e) => s + (Number(e.calories) || 0), 0)
+
     // Protein target: always 1.6–2.2g/kg, higher on hard days
     const proteinLow  = Math.round(bw * 1.6)
     const proteinHigh = Math.round(bw * 2.2)
@@ -70,7 +78,7 @@ function FuelGuidanceCard({ log, plan, profile, lang }) {
     const todayHours  = (log || []).filter(e => e.date === today).reduce((s, e) => s + (e.duration || 0), 0) / 60
     const hydrationL  = todayHours > 0.5 ? Math.round(2.0 + todayHours * 0.625) : null
 
-    return { bw, todayTSS, tomorrowPlannedTSS, todayCHO, tomorrowCHO, proteinLow, proteinHigh, hydrationL }
+    return { bw, todayTSS, tomorrowPlannedTSS, todayCHO, tomorrowCHO, proteinLow, proteinHigh, hydrationL, todayKcal }
   }, [log, plan, profile?.weight])
 
   // Only show if we have some data to display (plan or at least a recent session)
@@ -151,6 +159,12 @@ function FuelGuidanceCard({ log, plan, profile, lang }) {
           </div>
         )}
       </div>
+
+      {data.todayKcal > 0 && (
+        <div style={{ ...S.mono, fontSize: '9px', color: '#888', marginBottom: '6px' }}>
+          {lang === 'tr' ? 'ÖLÇÜLEN YAKIM' : 'MEASURED BURN'}: <span style={{ color: '#f5c542', fontWeight: 700 }}>{data.todayKcal} kcal</span> {lang === 'tr' ? '(cihaz)' : '(device)'}
+        </div>
+      )}
 
       <div style={{ ...S.mono, fontSize: '9px', color: '#333', lineHeight: 1.5 }}>
         {lang === 'tr'
