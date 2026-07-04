@@ -4,6 +4,11 @@
 
 import { supabase } from './supabase.js'
 import { logger } from './logger.js'
+// v9.468 — reuse the canonical training_log mapper so migrated guest entries
+// keep their metric/enrichment fields (distanceM/avgHR/avgCadence/np/
+// decouplingPct/…). The old hand-built row silently dropped all of them.
+// Cycle-free: nothing in useSupabaseData's import graph imports this file.
+import { logEntryToRow } from '../hooks/useSupabaseData.js'
 
 const MIGRATED_KEY = 'sporeus-migrated'
 
@@ -76,17 +81,13 @@ export async function migrateToSupabase(userId, onProgress) {
 
   // ── training_log ─────────────────────────────────────────────────────────
   if (log.length > 0) {
-    const rows = log.filter(e => e && typeof e === 'object' && e.date).map(e => ({
-      user_id:      userId,
-      date:         e.date,
-      type:         e.type || 'Training',
-      duration_min: parseFloat(e.duration) || null,
-      tss:          parseFloat(e.tss)      || null,
-      rpe:          parseFloat(e.rpe)      || null,
-      zones:        Array.isArray(e.zones) ? e.zones : null,
-      notes:        e.notes || null,
-      source:       'manual',
-    }))
+    // v9.468 — canonical mapper (was a hand-built subset that dropped
+    // distance/HR/cadence/np/decoupling/enrichment fields for migrating
+    // guests). logEntryToRow hardcodes source:'manual', which is exactly what
+    // the v9.360 idempotency cleanup below matches; uuid entry ids pass
+    // through (server keeps the local id — strictly better for later edits),
+    // legacy numeric ids are omitted so gen_random_uuid() fills them.
+    const rows = log.filter(e => e && typeof e === 'object' && e.date).map(e => logEntryToRow(e, userId))
     // v9.340.0 — Use insert(), not upsert(onConflict:'user_id,date,source'):
     // no matching unique constraint exists (only PK(id) + (user_id,external_id)),
     // and a (user_id,date,source) constraint would collapse two-a-days. Migrated
@@ -191,6 +192,8 @@ export async function migrateToSupabase(userId, onProgress) {
       distance_m:  parseFloat(e.distance) || null,
       predicted_s: parseInt(e.predicted)  || null,
       actual_s:    parseInt(e.actual)     || null,
+      // v9.468 — was dropped on migration (raceEntryToRow persists it)
+      conditions:  e.conditions || null,
       notes:       e.notes || null,
     }))
     // v9.434.0 — Idempotency guard for RETRIES (see injuries above; no onConflict

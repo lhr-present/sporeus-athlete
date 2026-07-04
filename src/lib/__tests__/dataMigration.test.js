@@ -118,6 +118,33 @@ describe('migrateToSupabase', () => {
     expect(progress).toHaveBeenCalled()
   })
 
+  it('v9.468 — migrated log rows keep metric/enrichment fields (canonical mapper parity)', async () => {
+    localStorage.setItem('sporeus_log', JSON.stringify([{
+      date: '2026-06-15', type: 'Ride', duration: 90, tss: 110, rpe: 7, notes: 'long ride',
+      distanceM: 42000, avgHR: 148, avgCadence: 88, np: 205, decouplingPct: 4.5,
+      elevationGainM: 620, kilojoules: 1500, startTime: '07:10', rpeMethod: 'derived_hr',
+      wPrimeExhausted: true, wPrimeMethod: 'estimated', calories: 1450,
+    }]))
+    await migrateToSupabase('user1', vi.fn())
+    const [rows] = mockChain.insert.mock.calls[0]
+    expect(rows[0]).toMatchObject({
+      user_id: 'user1', source: 'manual', distance_m: 42000, avg_hr: 148, avg_cadence: 88,
+      np: 205, decoupling_pct: 4.5, elevation_gain_m: 620, kilojoules: 1500,
+      start_time: '07:10', rpe_method: 'derived_hr', w_prime_exhausted: true,
+      w_prime_method: 'estimated', calories: 1450,
+    })
+    expect('id' in rows[0]).toBe(false)  // non-uuid local id → gen_random_uuid fills
+  })
+
+  it('v9.468 — migrated race_results keep conditions', async () => {
+    localStorage.setItem('sporeus-race-results', JSON.stringify([
+      { date: '2026-05-01', distance: 10000, predicted: 2400, actual: 2350, conditions: 'hot, headwind', notes: '10k' },
+    ]))
+    await migrateToSupabase('user1', vi.fn())
+    const raceUpsert = mockChain.upsert.mock.calls.find(([rows]) => Array.isArray(rows) && rows[0]?.actual_s !== undefined)
+    expect(raceUpsert[0][0].conditions).toBe('hot, headwind')
+  })
+
   it('batches 150 entries as two insert calls (100 + 50)', async () => {
     localStorage.setItem('sporeus_log', JSON.stringify(makeDays(150)))
     await migrateToSupabase('user1', vi.fn())
