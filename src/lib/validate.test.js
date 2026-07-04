@@ -55,6 +55,14 @@ describe('sanitizeLogEntry', () => {
     const e = { date:'2025-01-01', type:'run', duration:60, rpe:15, tss:50 }
     expect(sanitizeLogEntry(e).rpe).toBe(10)
   })
+  it('v9.469 — missing rpe stays null (clamp(null)→0 was a second fabrication)', () => {
+    const base = { date:'2025-01-01', type:'run', duration:60, tss:50 }
+    expect(sanitizeLogEntry({ ...base }).rpe).toBeNull()
+    expect(sanitizeLogEntry({ ...base, rpe: null }).rpe).toBeNull()
+    expect(sanitizeLogEntry({ ...base, rpe: '' }).rpe).toBeNull()
+    expect(sanitizeLogEntry({ ...base, rpe: 6 }).rpe).toBe(6)
+    expect(sanitizeLogEntry({ ...base, rpe: 'x' }).rpe).toBe(0)  // garbage still clamps (unchanged)
+  })
   it('clamps duration to 0+', () => {
     const e = { date:'2025-01-01', type:'run', duration:-5, rpe:5, tss:50 }
     expect(sanitizeLogEntry(e).duration).toBe(0)

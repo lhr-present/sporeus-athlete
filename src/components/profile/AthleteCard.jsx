@@ -10,7 +10,9 @@ export default function AthleteCard({ profile, log }) {
   const last28 = log.slice(-28)
   const totalH = Math.round(last28.reduce((s,e)=>s+(e.duration||0),0)/60)
   const sessions28 = last28.length
-  const avgRPE28 = sessions28 ? (last28.reduce((s,e)=>s+(e.rpe||0),0)/sessions28).toFixed(1) : '—'
+  // v9.469 — present-only denominator (null-rpe sessions no longer dilute)
+  const rpe28 = last28.filter(e => Number.isFinite(Number(e.rpe)) && Number(e.rpe) > 0)
+  const avgRPE28 = rpe28.length ? (rpe28.reduce((s,e)=>s+Number(e.rpe),0)/rpe28.length).toFixed(1) : '—'
   const { tsb } = calcLoad(log)
 
   const downloadCard = async () => {

@@ -86,7 +86,9 @@ export function sanitizeLogEntry(e) {
     date: sanitizeDate(e.date),
     type: sanitizeString(e.type, 50) || 'Easy Run',
     duration: clamp(e.duration, 0, 1440),
-    rpe: clamp(e.rpe, 0, 10),
+    // v9.469 — missing rpe stays null (clamp(null)→0 was a SECOND, conflicting
+    // fabrication: hydration said 5, an edit/import through here said 0).
+    rpe: e.rpe == null || e.rpe === '' ? null : clamp(e.rpe, 0, 10),
     tss: clamp(e.tss, 0, 2000),
     notes: sanitizeString(e.notes, 500),
   }
