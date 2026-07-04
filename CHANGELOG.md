@@ -2,6 +2,27 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.467.0 — 2026-07-04 — Surface the enrichment data in the UI (E1 of enhancement_designs_2026_07_04)
+
+The v9.465/466 columns were stored but almost invisible. Three zero-new-data surfaces:
+
+- **TrainingLog expanded-entry metric chips** — the RAW METRICS pill row now also renders NP,
+  MAX HR, ELEV, WORK (kJ), KCAL, SUFFER, and START (clock time) when present; outer guard
+  simplified to `metrics.length > 0` (the hand-listed field guard was already out of sync).
+- **Derived-RPE honesty marker** — the log's RPE cell renders `6~` with a bilingual tooltip
+  ("Derived from HR (estimated)" / "Nabızdan türetildi (tahmini)") when `rpeMethod` starts with
+  `derived`. Athlete-reported values (`rpe_method='athlete'` from Strava perceived_exertion, or
+  in-app entries) stay unmarked. `rpeMethod` was stored but read nowhere.
+- **FuelGuidanceCard measured burn** — display-only "MEASURED BURN: N kcal (device)" line when
+  today's entries carry device calories. The g/kg CHO prescription logic is untouched, and there is
+  deliberately NO kJ→kcal conversion (efficiency assumption = sport-science, founder-domain).
+
+Display-only (no data/logic change); per repo convention card JSX has no render tests — suite,
+lint, build green.
+
+DEPENDS ON: entry keys hydrated by useSupabaseData.js logRowToEntry (np, maxHR, elevationGainM,
+kilojoules, calories, sufferScore, startTime, rpeMethod).
+
 ## v9.466.0 — 2026-07-04 — Strava P1 streams enrichment + P2 detail fetch (FIT-parity scalars)
 
 P1+P2 of `docs/audits/strava_data_enhancements_2026_07_03.md`. The backfill worker now processes a

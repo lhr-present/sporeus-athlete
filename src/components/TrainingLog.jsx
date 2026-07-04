@@ -880,7 +880,10 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                       <td style={{ padding:'6px 6px 6px 0', color:'var(--sub)' }}>{s.date}</td>
                       <td style={{ padding:'6px 6px 6px 0' }}>{s.type}</td>
                       <td style={{ textAlign:'right', padding:'6px 6px 6px 0' }}>{s.duration}</td>
-                      <td style={{ textAlign:'right', padding:'6px 6px 6px 0', color:s.rpe>=8?'#e03030':s.rpe>=6?'#f5c542':'#5bc25b' }}>{s.rpe}</td>
+                      <td
+                        style={{ textAlign:'right', padding:'6px 6px 6px 0', color:s.rpe>=8?'#e03030':s.rpe>=6?'#f5c542':'#5bc25b' }}
+                        title={s.rpeMethod?.startsWith('derived') ? (lang==='tr' ? 'Nabızdan türetildi (tahmini)' : 'Derived from HR (estimated)') : undefined}
+                      >{s.rpe}{s.rpeMethod?.startsWith('derived') ? '~' : ''}</td>
                       <td style={{ textAlign:'right', padding:'6px 6px 6px 0', color:'#ff6600', fontWeight:600 }}>{s.tss}</td>
                       <td style={{ textAlign:'right', padding:'6px 6px 6px 0', color: tssBandColor(s.tss), fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', letterSpacing:'0.04em' }}>{tssBand(s.tss)}</td>
                       <td style={{ padding:'6px 6px 6px 0', color:'#888', maxWidth:'160px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
@@ -968,14 +971,22 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                                   CTL: {expandedCtlInfo.ctlBefore} → {expandedCtlInfo.ctlAfter} ({expandedCtlInfo.delta >= 0 ? '+' : ''}{expandedCtlInfo.delta} this session)
                                 </div>
                               )}
-                              {/* P1 — RAW METRICS from FIT/Strava (avgPower, avgHR, avgCadence, distanceM) */}
-                              {(expandedEntry?.avgPower || expandedEntry?.avgHR || expandedEntry?.avgCadence || expandedEntry?.distanceM) && (() => {
+                              {/* P1 — RAW METRICS from FIT/Strava (v9.467: + enrichment fields NP/maxHR/elev/kJ/kcal/suffer/start) */}
+                              {expandedEntry && (() => {
                                 const metrics = [
-                                  expandedEntry.avgPower   && { lbl:'AVG PWR',  val:`${expandedEntry.avgPower}W`,                              color:'#ff6600' },
-                                  expandedEntry.avgHR      && { lbl:'AVG HR',   val:`${expandedEntry.avgHR}bpm`,                               color:'#e03030' },
-                                  expandedEntry.avgCadence && { lbl:'CADENCE',  val:`${expandedEntry.avgCadence}rpm`,                          color:'#0064ff' },
-                                  expandedEntry.distanceM  && { lbl:'DIST',     val:`${(expandedEntry.distanceM/1000).toFixed(2)}km`,           color:'#888'    },
+                                  expandedEntry.avgPower       && { lbl:'AVG PWR',  val:`${expandedEntry.avgPower}W`,                              color:'#ff6600' },
+                                  expandedEntry.np             && { lbl:'NP',       val:`${expandedEntry.np}W`,                                    color:'#ff6600' },
+                                  expandedEntry.avgHR          && { lbl:'AVG HR',   val:`${expandedEntry.avgHR}bpm`,                               color:'#e03030' },
+                                  expandedEntry.maxHR          && { lbl:'MAX HR',   val:`${expandedEntry.maxHR}bpm`,                               color:'#e03030' },
+                                  expandedEntry.avgCadence     && { lbl:'CADENCE',  val:`${expandedEntry.avgCadence}rpm`,                          color:'#0064ff' },
+                                  expandedEntry.distanceM      && { lbl:'DIST',     val:`${(expandedEntry.distanceM/1000).toFixed(2)}km`,           color:'#888'    },
+                                  expandedEntry.elevationGainM && { lbl:'ELEV',     val:`${expandedEntry.elevationGainM}m`,                        color:'#5bc25b' },
+                                  expandedEntry.kilojoules     && { lbl:'WORK',     val:`${expandedEntry.kilojoules}kJ`,                           color:'#0064ff' },
+                                  expandedEntry.calories       && { lbl:'KCAL',     val:`${expandedEntry.calories}`,                               color:'#888'    },
+                                  expandedEntry.sufferScore    && { lbl:'SUFFER',   val:`${expandedEntry.sufferScore}`,                            color:'#e03030' },
+                                  expandedEntry.startTime      && { lbl:'START',    val:expandedEntry.startTime,                                   color:'#888'    },
                                 ].filter(Boolean)
+                                if (!metrics.length) return null
                                 return (
                                   <div style={{ display:'flex', gap:'6px', flexWrap:'wrap', marginBottom:'10px', paddingBottom:'8px', borderBottom:'1px solid #1e1e1e' }}>
                                     {metrics.map(m => (
