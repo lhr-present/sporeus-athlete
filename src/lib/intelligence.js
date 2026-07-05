@@ -103,7 +103,10 @@ export function analyzeRecoveryCorrelation(log, recovery) {
     nextDay.setUTCDate(nextDay.getUTCDate() + 1)
     const nextStr = nextDay.toISOString().slice(0, 10)
     if (recMap[nextStr] !== undefined) {
-      pairs.push({ tss: e.tss || 0, rpe: e.rpe || 5, nextRec: recMap[nextStr] })
+      // v9.472 (audit LOW-2) — skip null-rpe sessions instead of fabricating 5
+      // into the load→recovery correlation.
+      if (e.rpe == null) return
+      pairs.push({ tss: e.tss || 0, rpe: e.rpe, nextRec: recMap[nextStr] })
     }
   })
 

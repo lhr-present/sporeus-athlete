@@ -129,6 +129,14 @@ describe('v9.465 enrichment columns (Strava P0)', () => {
   })
 })
 
+describe('v9.472 source preservation (audit HIGH-2)', () => {
+  it('preserves strava/fit source on write; defaults manual when absent', () => {
+    expect(logEntryToRow({ date: '2026-07-01', type: 'row', source: 'strava' }, 'u1').source).toBe('strava')
+    expect(logEntryToRow({ date: '2026-07-01', type: 'row', source: 'fit' }, 'u1').source).toBe('fit')
+    expect(logEntryToRow({ date: '2026-07-01', type: 'row' }, 'u1').source).toBe('manual')
+  })
+})
+
 describe('v9.469 honest rpe hydration', () => {
   it('null rpe stays null (was fabricated into a neutral 5)', () => {
     expect(logRowToEntry({ id: 'r1', date: '2026-07-01', rpe: null }).rpe).toBeNull()

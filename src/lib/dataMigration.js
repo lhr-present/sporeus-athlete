@@ -87,7 +87,20 @@ export async function migrateToSupabase(userId, onProgress) {
     // the v9.360 idempotency cleanup below matches; uuid entry ids pass
     // through (server keeps the local id — strictly better for later edits),
     // legacy numeric ids are omitted so gen_random_uuid() fills them.
-    const rows = log.filter(e => e && typeof e === 'object' && e.date).map(e => logEntryToRow(e, userId))
+    const mapped = log.filter(e => e && typeof e === 'object' && e.date).map(e => ({
+      ...logEntryToRow(e, userId),
+      // Force 'manual' regardless of the entry's origin: the v9.360 retry-
+      // cleanup guard deletes source='manual' rows before re-inserting — a
+      // preserved 'fit'/'strava' source would escape it and double on Retry.
+      source: 'manual',
+    }))
+    // v9.472 (audit MED-4) — PostgREST builds the INSERT column list from the
+    // union of keys; logEntryToRow includes `id` only for uuid ids, so a batch
+    // mixing uuid and non-uuid entry ids would send id=null for the latter →
+    // 23502, whole batch fails, migration permanently stuck. Uniform keys:
+    // drop `id` from every row unless ALL rows have one.
+    const allHaveId = mapped.every(r => 'id' in r)
+    const rows = allHaveId ? mapped : mapped.map(({ id: _id, ...rest }) => rest)
     // v9.340.0 — Use insert(), not upsert(onConflict:'user_id,date,source'):
     // no matching unique constraint exists (only PK(id) + (user_id,external_id)),
     // and a (user_id,date,source) constraint would collapse two-a-days. Migrated

@@ -113,7 +113,11 @@ export function logEntryToRow(entry, userId) {
     rpe:          Number(entry.rpe)      || null,
     zones:        Array.isArray(entry.zones) && entry.zones.some(z => z > 0) ? entry.zones : null,
     notes:        entry.notes || null,
-    source:       'manual',
+    // v9.472 (audit HIGH-2) — preserve the entry's origin: the hardcoded
+    // 'manual' flipped an edited Strava/FIT row's source (STR badge lost,
+    // and analytics lost the import provenance). dataMigration forces
+    // 'manual' at its call site (its retry-cleanup guard matches on it).
+    source:       entry.source || 'manual',
     // v9.397.0 — persist activity metrics (were dropped → lost cross-device).
     // distanceM wins; fall back to distanceKm (manual QuickAdd writes km).
     distance_m:   logDistanceM(entry),

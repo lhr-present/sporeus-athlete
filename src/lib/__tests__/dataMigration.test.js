@@ -136,6 +136,37 @@ describe('migrateToSupabase', () => {
     expect('id' in rows[0]).toBe(false)  // non-uuid local id → gen_random_uuid fills
   })
 
+  it('v9.472 — mixed uuid/non-uuid ids produce uniform key sets (audit MED-4: no id=null batch failure)', async () => {
+    localStorage.setItem('sporeus_log', JSON.stringify([
+      { id: '0f8fad5b-d9cb-469f-a165-70867728950e', date: '2026-06-15', type: 'Run', duration: 45, tss: 60 },
+      { id: '1751234567890-abc123', date: '2026-06-16', type: 'Ride', duration: 60, tss: 70 },
+    ]))
+    await migrateToSupabase('user1', vi.fn())
+    const [rows] = mockChain.insert.mock.calls[0]
+    expect(rows).toHaveLength(2)
+    for (const r of rows) expect('id' in r).toBe(false)  // any non-uuid → strip from ALL
+    for (const r of rows) expect(r.source).toBe('manual')
+  })
+
+  it('v9.472 — all-uuid batches keep their ids (uniform keys, ids preserved)', async () => {
+    localStorage.setItem('sporeus_log', JSON.stringify([
+      { id: '0f8fad5b-d9cb-469f-a165-70867728950e', date: '2026-06-15', type: 'Run', duration: 45, tss: 60 },
+      { id: '7c9e6679-7425-40de-944b-e07fc1f90ae7', date: '2026-06-16', type: 'Ride', duration: 60, tss: 70 },
+    ]))
+    await migrateToSupabase('user1', vi.fn())
+    const [rows] = mockChain.insert.mock.calls[0]
+    expect(rows.every(r => typeof r.id === 'string')).toBe(true)
+  })
+
+  it('v9.472 — migration forces source=manual even for fit/strava-origin guest entries (retry-cleanup contract)', async () => {
+    localStorage.setItem('sporeus_log', JSON.stringify([
+      { date: '2026-06-15', type: 'Ride', duration: 45, tss: 60, source: 'fit' },
+    ]))
+    await migrateToSupabase('user1', vi.fn())
+    const [rows] = mockChain.insert.mock.calls[0]
+    expect(rows[0].source).toBe('manual')
+  })
+
   it('v9.468 — migrated race_results keep conditions', async () => {
     localStorage.setItem('sporeus-race-results', JSON.stringify([
       { date: '2026-05-01', distance: 10000, predicted: 2400, actual: 2350, conditions: 'hot, headwind', notes: '10k' },
