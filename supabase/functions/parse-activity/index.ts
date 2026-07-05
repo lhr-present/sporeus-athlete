@@ -47,8 +47,10 @@ function computeTSS(np: number, durationSec: number, ftp: number): number {
   return Math.round((durationSec * np * IF) / (ftp * 3600) * 100)
 }
 
+// v9.477 — kept in sync with src/lib/fileImport.js estimateTSS and the edge
+// _shared/stravaActivity.ts estimateTSS (unified TSS scale across import paths).
 function estimateTSSFromHR(durationMin: number, avgHR: number, maxHR: number): number {
-  if (!avgHR || !maxHR) return Math.round(durationMin * 0.5)
+  if (!avgHR || !maxHR) return Math.round(durationMin * (50 / 60))  // 50 TSS/h unified fallback
   const lthr = maxHR * 0.87
   const hrr  = (avgHR - 50) / (maxHR - 50)
   const lhrr = (lthr - 50)  / (maxHR - 50)
