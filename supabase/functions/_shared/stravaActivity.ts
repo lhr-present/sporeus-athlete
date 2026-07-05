@@ -32,13 +32,23 @@ export function mapStravaType(sportType: string): string {
   return m[sportType] || "other"
 }
 
-// TRIMP-based TSS estimate — no LTHR needed, uses max HR.
-// maxHR may be null (no real activity max + no profile max) → duration-only fallback.
+// v9.477 — UNIFIED TSS estimate. The Strava path used its own TRIMP×1.2 scale
+// while parse-activity + client fileImport used an LTHR-normalized TRIMP —
+// the same session scored differently depending on import path. This is now
+// the ONE formula (mirror of src/lib/fileImport.js estimateTSS and
+// parse-activity estimateTSSFromHR — keep all three in sync):
+//   LTHR ≈ 0.87×maxHR; TSS = TRIMP(session)/TRIMP(1h@LTHR) × 100, cap 400.
+// No-HR fallback: 50 TSS/h (unified; matches the historical Strava-path value,
+// so existing no-HR imports don't step CTL).
 export function estimateTSS(durationS: number, avgHR: number | null, maxHR: number | null): number {
-  if (!avgHR || !maxHR || maxHR <= 0) return Math.round(durationS / 3600 * 50)
-  const hrFrac = Math.min(avgHR / maxHR, 1)
-  const trimp  = (durationS / 60) * hrFrac * 0.64 * Math.exp(1.92 * hrFrac)
-  return Math.round(trimp * 1.2)
+  const durationMin = durationS / 60
+  if (!avgHR || !maxHR || maxHR <= 0) return Math.round(durationMin * (50 / 60))
+  const lthr = maxHR * 0.87
+  const hrr  = (avgHR - 50) / (maxHR - 50)
+  const lhrr = (lthr - 50) / (maxHR - 50)
+  const trimp   = (durationMin / 60) * hrr * 0.64 * Math.exp(1.92 * hrr)
+  const ltTrimp = (1) * lhrr * 0.64 * Math.exp(1.92 * lhrr)
+  return Math.min(400, Math.round((trimp / (ltTrimp || 0.001)) * 100))
 }
 
 // Coggan 2003 power TSS — mirrors computePowerTSS in src/lib/formulas.js:153.

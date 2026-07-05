@@ -213,3 +213,34 @@ describe('parseConcept2CSV — malformed time', () => {
     expect(out.every(r => Number.isFinite(r.duration) && r.duration > 0)).toBe(true)
   })
 })
+
+// ─── v9.477 — unified TSS estimator (kept in sync with edge stravaActivity +
+// parse-activity; these values are the cross-path contract) ───────────────────
+import { estimateTSS } from './fileImport.js'
+
+describe('estimateTSS — unified scale (v9.477)', () => {
+  it('1h at LTHR (0.87×max) scores ~100 by definition', () => {
+    const maxHR = 200
+    const tss = estimateTSS(60, Math.round(maxHR * 0.87), maxHR, null)
+    expect(tss).toBeGreaterThanOrEqual(97)
+    expect(tss).toBeLessThanOrEqual(103)
+  })
+  it('no-HR fallback is 50 TSS/h (was 30/h against its own comment)', () => {
+    expect(estimateTSS(60, null, null, null)).toBe(50)
+    expect(estimateTSS(90, null, null, null)).toBe(75)
+    expect(estimateTSS(30, 0, 200, null)).toBe(25)
+  })
+  it('caps at 400 and scales with intensity', () => {
+    const easy = estimateTSS(60, 130, 200, null)
+    const hard = estimateTSS(60, 180, 200, null)
+    expect(hard).toBeGreaterThan(easy)
+    expect(estimateTSS(600, 195, 200, null)).toBe(400)
+  })
+  it('explicit LTHR overrides the 0.87×max default', () => {
+    const withDefault = estimateTSS(60, 160, 200, null)      // lthr 174
+    const withLower   = estimateTSS(60, 160, 200, 160)       // 1h AT lthr → ~100
+    expect(withLower).toBeGreaterThan(withDefault)
+    expect(withLower).toBeGreaterThanOrEqual(97)
+    expect(withLower).toBeLessThanOrEqual(103)
+  })
+})

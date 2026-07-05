@@ -30,15 +30,20 @@ function hrZones(hr, maxHR) {
   return 5
 }
 
-function estimateTSS(durationMin, avgHR, maxHR, lthr) {
-  if (!avgHR || !maxHR) return Math.round(durationMin * 0.5)  // ~50 TSS/hr baseline
+// v9.477 — TSS estimators UNIFIED across all import paths (this fn, the edge
+// _shared/stravaActivity.ts estimateTSS, and parse-activity's estimateTSSFromHR
+// — keep in sync). The no-HR fallback was 0.5/min = 30 TSS/h while its own
+// comment claimed "~50 TSS/hr" and the Strava path used 50/h — now 50/h
+// everywhere (the comment's intent + the common moderate-hour heuristic).
+export function estimateTSS(durationMin, avgHR, maxHR, lthr) {
+  if (!avgHR || !maxHR) return Math.round(durationMin * (50 / 60))  // 50 TSS/hr baseline (unified)
   const _lthr = lthr || maxHR * 0.87
   const hrr = (avgHR - 50) / (maxHR - 50)
   const lhrr = (_lthr - 50) / (maxHR - 50)
   // TRIMP-based: duration × HR ratio × exp factor, scaled to TSS-like value
   const trimp = (durationMin / 60) * hrr * 0.64 * Math.exp(1.92 * hrr)
   const ltTrimp = (1) * lhrr * 0.64 * Math.exp(1.92 * lhrr)  // 1-hour at LT
-  return Math.min(400, Math.round((trimp / ltTrimp) * 100))
+  return Math.min(400, Math.round((trimp / (ltTrimp || 0.001)) * 100))
 }
 
 // ── FIT parser ────────────────────────────────────────────────────────────────

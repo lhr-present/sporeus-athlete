@@ -2,6 +2,29 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.477.0 — 2026-07-05 — TSS estimator UNIFIED across import paths (founder-approved)
+
+The same session scored differently by import path: Strava edge used its own TRIMP×1.2 scale with
+a 50 TSS/h no-HR fallback, while parse-activity + client fileImport used an LTHR-normalized TRIMP
+with a 30/h fallback — whose own comment claimed "~50 TSS/hr" (comment-code mismatch). Unified,
+per the recommendation the founder accepted:
+
+- **HR sessions**: ONE formula everywhere — LTHR ≈ 0.87×maxHR (explicit LTHR wins when known);
+  TSS = TRIMP(session)/TRIMP(1h@LTHR) × 100; cap 400. Only the Strava edge path changes (it
+  adopts the formula parse-activity/fileImport already had). 1h at LTHR ≡ ~100 by definition.
+- **No-HR fallback**: 50 TSS/h everywhere — the fileImport comment's stated intent, the common
+  moderate-hour heuristic, and the historical Strava-path value, so **existing no-HR imports
+  (all 28 prod rows) don't move — zero CTL step today**. parse-activity/fileImport no-HR uploads
+  (rare) rise from 30/h.
+- Three copies kept in sync by cross-referencing comments (edge _shared/stravaActivity.ts,
+  parse-activity, src/lib/fileImport.js — fileImport's now exported + value-tested as the
+  cross-path contract: LTHR-hour ≈ 100, fallback 50/h, cap 400).
+- Live-verified: founder's 90-day re-import → TSS fingerprint byte-identical (no step, as
+  designed). Future HR-strap sessions score on the principled scale from day one.
+
+DEPENDS ON: the three-copy sync contract (change one → change all three; fileImport tests are
+the executable spec); maxHR resolution chain (activity → profile → 220−age → null→fallback).
+
 ## v9.476.0 — 2026-07-05 — Plan-aware EXECUTION PROFILE (planned_match / unplanned_low / planned_miss)
 
 Completes E4's parked plan-context tags — reader-side, which dissolves the "which plan is
