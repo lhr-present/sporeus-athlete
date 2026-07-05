@@ -9,7 +9,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { getTodayPlannedSession, getSingleSuggestion, generateDailyDigest, getTimeOfDayAdvice, predictFitness } from '../lib/intelligence.js'
 import { buildGlanceLine } from '../lib/athlete/morningGlance.js'
-import { computeReadinessScore } from '../lib/recovery/readinessScore.js'
+import { computeReadinessScore, READINESS_WEIGHTS } from '../lib/recovery/readinessScore.js'
 import Citation from './ui/Citation.jsx'
 import Banner from './ui/Banner.jsx'
 import { calcLoad } from '../lib/formulas.js'
@@ -648,6 +648,8 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
   }, [plannedSession, isHardToday, todayReadiness, sessionSwapFlag, log, recovery, profile, lang])
   const [quickReadinessSaved, setQuickReadinessSaved] = useState(false)
   const [quickReadinessLogged, setQuickReadinessLogged] = useState(false)
+  // v9.478 — readiness-explanation disclosure (collapsed by default)
+  const [showReadinessWhy, setShowReadinessWhy] = useState(false)
 
   const handleQuickReadiness = (value) => {
     const entry = sanitizeRecovery({ date: today, readiness: value, score: value, source: 'quick-tap', id: Date.now() })
@@ -1186,6 +1188,53 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
                     }}
                   >
                     {heroDriver.reason[lang] || heroDriver.reason.en}
+                    {/* v9.478 — deferred UX-audit item: full readiness disclosure.
+                        The lib already returns every component score, all driver
+                        reasons, the reliability grade and the citation — shown
+                        on demand so the daily answer stays one glance. */}
+                    <button
+                      onClick={() => setShowReadinessWhy(v => !v)}
+                      aria-expanded={showReadinessWhy}
+                      style={{ background: 'transparent', border: 'none', color: '#0064ff', fontFamily: MONO, fontSize: '9px', cursor: 'pointer', padding: '0 4px', letterSpacing: '0.04em' }}
+                    >
+                      {showReadinessWhy ? '▾' : '▸'} {lang === 'tr' ? 'NEDEN?' : 'WHY?'}
+                    </button>
+                    {showReadinessWhy && (
+                      <div style={{ marginTop: '6px', paddingTop: '6px', borderTop: '1px solid var(--border)' }}>
+                        {[
+                          { key: 'hrv',      en: 'HRV',            tr: 'HRV' },
+                          { key: 'sleep',    en: 'SLEEP',          tr: 'UYKU' },
+                          { key: 'soreness', en: 'SORENESS',       tr: 'KAS AĞRISI' },
+                          { key: 'mood',     en: 'MOOD (energy)',  tr: 'ENERJİ' },
+                        ].map(({ key, en, tr }) => {
+                          const v = heroReadiness.components?.[key]
+                          const w = Math.round((READINESS_WEIGHTS[key] || 0) * 100)
+                          return (
+                            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
+                              <span style={{ fontFamily: MONO, fontSize: '8px', color: '#666', width: '92px', letterSpacing: '0.04em' }}>{lang === 'tr' ? tr : en} · {w}%</span>
+                              {v != null ? (
+                                <>
+                                  <div style={{ flex: '0 0 70px', height: '4px', background: 'var(--surface)', borderRadius: '2px', overflow: 'hidden' }}>
+                                    <div style={{ width: `${Math.max(0, Math.min(100, v))}%`, height: '100%', background: v >= 75 ? GREEN : v >= 50 ? '#f5c542' : RED }} />
+                                  </div>
+                                  <span style={{ fontFamily: MONO, fontSize: '8px', color: '#888' }}>{Math.round(v)}</span>
+                                </>
+                              ) : (
+                                <span style={{ fontFamily: MONO, fontSize: '8px', color: '#444' }}>{lang === 'tr' ? 'veri yok — ağırlık dağıtıldı' : 'no data — weight redistributed'}</span>
+                              )}
+                            </div>
+                          )
+                        })}
+                        {(heroReadiness.drivers || []).slice(1).map((d, i) => (
+                          <div key={i} style={{ fontFamily: MONO, fontSize: '8px', color: '#666', marginTop: '4px', lineHeight: 1.5 }}>
+                            · {d.reason[lang] || d.reason.en}
+                          </div>
+                        ))}
+                        <div style={{ fontFamily: MONO, fontSize: '8px', color: '#444', marginTop: '5px' }}>
+                          {lang === 'tr' ? 'GÜVENİLİRLİK' : 'RELIABILITY'}: {heroReadiness.reliability === 'full' ? (lang === 'tr' ? 'TAM (HRV dahil 3+ bileşen)' : 'FULL (3+ components incl. HRV)') : (lang === 'tr' ? 'KISMİ (eksik bileşen var)' : 'PARTIAL (some components missing)')} · {heroReadiness.citation}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </>
