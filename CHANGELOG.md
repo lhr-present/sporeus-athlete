@@ -2,6 +2,46 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.472.0 — 2026-07-05 — 🔴 Audit fixes: enrichment-clobber + edit data-loss (2 HIGH, 4 MED, 5 LOW)
+
+All from `docs/audits/audit_2026_07_04_v9462_471.md` (agent report; its findings verified before
+applying). Edge fns redeployed.
+
+- **HIGH-1 — summary re-import clobbered streams enrichment, permanently.** Any webhook update
+  event or SYNC NOW tap re-upserted the summary payload over enriched rows: true `zones` reverted
+  to the single-band smear, stream `np`/power-`tss` to summary estimates, athlete-entered `rpe`
+  (`rpe_method='athlete'`) to a derived guess — and `stream_enriched_at` stayed set, so the row was
+  NEVER re-enriched. Fix: both import paths fetch the page's enriched id-set and strip the contested
+  columns (`zones,np,tss,rpe,rpe_method`) from those rows' payloads (`fetchStreamEnrichedIds` +
+  `stripStreamDerived` in the shared mapper).
+- **HIGH-2 — inline edit wiped every metric/enrichment field, locally and in the DB.** The edit form
+  rebuilt the entry from date/type/duration/rpe/notes only; the diff-by-id sync then mapped every
+  absent field to explicit null and flipped `source` to 'manual' (STR badge lost). Fixing a notes
+  typo on an enriched ride nulled 15 columns. Fix: edits merge over the original entry; TSS is
+  recomputed ONLY when duration/rpe changed (notes edits keep measured power/HR TSS); the mapper
+  preserves `entry.source` (dataMigration forces 'manual' at its call site — its retry-cleanup
+  guard depends on it).
+- **MED-1** — token revoked while unexpired → sync wrote raw `"Strava API 401: …"`, which matched
+  no needsReconnect pattern → the v9.470 RECONNECT routing never fired on the most-visible path.
+  Sync now writes the canonical "authorization rejected — please reconnect" string.
+- **MED-2** — enrich streams: per-stream null-FILTERING desynced hr[i]/watts[i] alignment →
+  garbage `decoupling_pct` (±100%) on gappy streams. Now 0-fills in place (exact parse-activity
+  semantics). The 1-Hz sample assumption stays (FIT-path parity, documented).
+- **MED-3** — edge `mapStravaType` was missing `GravelRide` → typed 'other', excluded from all
+  cycling gates. Added (client map already had it).
+- **MED-4** — migration batches mixing uuid/non-uuid entry ids sent heterogeneous key sets →
+  PostgREST id=null → 23502 → whole batch fails, migration permanently stuck. Now uniform: `id`
+  dropped from all rows unless every row has one.
+- **LOWs**: editing a null-rpe entry no longer resurrects rpe-0 (startEdit ''-mapping + sanitizer
+  treats non-numeric as null + '—' select option); 3 census-missed rpe sites fixed (patterns
+  optimal-week ||5 average, intelligence correlation pairs, decouplingTrend ≤-gate that null passed
+  as 0); enrich avg_hr excludes dropout zeros; MaxHrNudge uses functional setProfile (cross-device
+  clobber); dead-letter warn names kind/external_id; CSV null-rpe renders ''; walk cadence doubled
+  like run (per-leg) + cadence chip says spm for run/walk.
+
+DEPENDS ON: stream_enriched_at as the strip-decision marker (HIGH-1); canonical reconnect strings
+(MED-1 ties to the v9.470 regex contract); dataMigration's source='manual' retry-cleanup invariant.
+
 ## v9.471.0 — 2026-07-04 — "New max HR detected" one-tap profile nudge (E5a)
 
 Per-session `max_hr` has been stored + hydrated since v9.465, but nothing compared it to

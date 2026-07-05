@@ -8,7 +8,7 @@ import { withTelemetry } from '../_shared/telemetry.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 // v9.465: activity→row mapping is shared with strava-backfill-worker (was
 // duplicated + drifting). Enrichment (power/elevation/RPE/clock) lives there.
-import { buildTrainingLogRow, resolveProfilePhysiology, enqueueStreamEnrichment } from '../_shared/stravaActivity.ts'
+import { buildTrainingLogRow, resolveProfilePhysiology, enqueueStreamEnrichment, fetchStreamEnrichedIds, stripStreamDerived } from '../_shared/stravaActivity.ts'
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -279,7 +279,15 @@ serve(withTelemetry('strava-oauth', async (req: Request) => {
       try {
         pageResult = await fetchActivitiesPage(accessToken, after, page)
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
+        const raw = err instanceof Error ? err.message : String(err)
+        // Audit MED-1: a 401/403 here means the token was revoked/rejected while
+        // still unexpired (refreshIfExpired's early return skipped the refresh).
+        // Write the CANONICAL reconnect string (same as the worker) so the
+        // client's needsReconnect routing fires — the raw "Strava API 401: …"
+        // string matched nothing and left the athlete in the SYNC NOW loop.
+        const msg = /^Strava API 40[13]:/.test(raw)
+          ? "Strava authorization rejected — please reconnect Strava"
+          : raw
         await setSyncDone(msg)
         return fail(502, msg)
       }
@@ -294,15 +302,20 @@ serve(withTelemetry('strava-oauth', async (req: Request) => {
       if (pageResult.activities.length < 100) break
     }
 
-    // Upsert activities into training_log (shared enriched mapper)
+    // Upsert activities into training_log (shared enriched mapper).
+    // HIGH-1 fix: a summary re-import must not clobber streams-derived values
+    // on already-enriched rows (SYNC NOW covers a 30-day window — pre-fix every
+    // tap reverted zones/np/tss/rpe to summary estimates, permanently).
+    const enrichedIds = await fetchStreamEnrichedIds(admin, user.id, allActivities as Record<string, unknown>[])
     let synced = 0
     for (const a of allActivities as Record<string, unknown>[]) {
       const row = buildTrainingLogRow(a, user.id, physio)
       if (!row) continue
 
+      const payload = enrichedIds.has(String(row.external_id)) ? stripStreamDerived(row) : row
       const { error: insertErr } = await admin
         .from("training_log")
-        .upsert(row, { onConflict: "user_id,external_id" })
+        .upsert(payload, { onConflict: "user_id,external_id" })
       if (!insertErr) synced++
     }
 

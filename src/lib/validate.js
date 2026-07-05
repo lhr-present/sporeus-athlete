@@ -88,7 +88,9 @@ export function sanitizeLogEntry(e) {
     duration: clamp(e.duration, 0, 1440),
     // v9.469 — missing rpe stays null (clamp(null)→0 was a SECOND, conflicting
     // fabrication: hydration said 5, an edit/import through here said 0).
-    rpe: e.rpe == null || e.rpe === '' ? null : clamp(e.rpe, 0, 10),
+    // v9.472 (audit LOW-1) — non-numeric garbage (NaN from parseInt('null'),
+    // 'x' imports) is also treated as "no signal", not clamped to 0.
+    rpe: e.rpe == null || e.rpe === '' || isNaN(parseFloat(e.rpe)) ? null : clamp(e.rpe, 0, 10),
     tss: clamp(e.tss, 0, 2000),
     notes: sanitizeString(e.notes, 500),
   }

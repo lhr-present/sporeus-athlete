@@ -61,7 +61,13 @@ describe('sanitizeLogEntry', () => {
     expect(sanitizeLogEntry({ ...base, rpe: null }).rpe).toBeNull()
     expect(sanitizeLogEntry({ ...base, rpe: '' }).rpe).toBeNull()
     expect(sanitizeLogEntry({ ...base, rpe: 6 }).rpe).toBe(6)
-    expect(sanitizeLogEntry({ ...base, rpe: 'x' }).rpe).toBe(0)  // garbage still clamps (unchanged)
+  })
+  it('v9.472 — non-numeric rpe garbage is also null, not 0 (audit LOW-1: parseInt("null")→NaN path)', () => {
+    const base = { date:'2025-01-01', type:'run', duration:60, tss:50 }
+    expect(sanitizeLogEntry({ ...base, rpe: 'x' }).rpe).toBeNull()
+    expect(sanitizeLogEntry({ ...base, rpe: NaN }).rpe).toBeNull()
+    expect(sanitizeLogEntry({ ...base, rpe: 'null' }).rpe).toBeNull()
+    expect(sanitizeLogEntry({ ...base, rpe: '7' }).rpe).toBe(7)
   })
   it('clamps duration to 0+', () => {
     const e = { date:'2025-01-01', type:'run', duration:-5, rpe:5, tss:50 }

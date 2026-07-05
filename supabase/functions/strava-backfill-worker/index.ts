@@ -11,7 +11,7 @@ import { isVerifiedServiceCall } from '../_shared/serviceAuth.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 // v9.465: activity→row mapping is shared with strava-oauth (was duplicated +
 // drifting). Enrichment (power/elevation/RPE/clock) lives in the shared mapper.
-import { buildTrainingLogRow, resolveProfilePhysiology, enqueueStreamEnrichment, computePowerTSS } from '../_shared/stravaActivity.ts'
+import { buildTrainingLogRow, resolveProfilePhysiology, enqueueStreamEnrichment, computePowerTSS, fetchStreamEnrichedIds, stripStreamDerived } from '../_shared/stravaActivity.ts'
 // v9.466 P1: per-activity streams + detail enrichment (FIT-parity scalars).
 import { normalizedPower, decouplingPct, zonesFromHR, wPrimeExhausted } from '../_shared/streamScience.ts'
 
@@ -120,7 +120,9 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
     // deleted user) would otherwise be re-read forever, blocking consumer capacity.
     // Dead-letter it after MAX_READ reads instead of indefinitely.
     if (readCt >= MAX_READ) {
-      console.warn(`strava-backfill-worker: msg ${msgId} read_ct=${readCt} >= MAX_READ — dead-lettering`)
+      // Include kind/external_id so a dead-lettered ENRICH is visible in logs
+      // (its stream_enriched_at stays null; only a window re-import re-enqueues).
+      console.warn(`strava-backfill-worker: msg ${msgId} read_ct=${readCt} >= MAX_READ — dead-lettering (kind=${payload.kind ?? "page"}${payload.external_id ? ` external_id=${payload.external_id}` : ""})`)
       await sb.rpc("delete_strava_backfill_msg", { p_msg_id: msgId })
       continue
     }
@@ -232,9 +234,15 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
         const detail = dResp.ok ? await dResp.json().catch(() => null) : null
 
         // Cap at 3h of 1-Hz samples (matches the FIT importer's 10,800 cap).
+        // Gap samples (null) become 0 — NOT filtered out — so hr[i]/watts[i]
+        // stay index-aligned across streams (audit MED-2: independent
+        // compaction desynced the halves-split in decouplingPct → garbage
+        // values; 0-fill is the exact parse-activity semantics).
         const asSeries = (s: unknown): number[] => {
           const d = (s as { data?: unknown[] })?.data
-          return Array.isArray(d) ? (d as number[]).filter((v) => typeof v === "number").slice(0, 10800) : []
+          return Array.isArray(d)
+            ? (d as unknown[]).map((v) => (typeof v === "number" && Number.isFinite(v) ? v : 0)).slice(0, 10800)
+            : []
         }
         const hr    = asSeries((streams as Record<string, unknown>).heartrate)
         const watts = asSeries((streams as Record<string, unknown>).watts)
@@ -244,9 +252,11 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
         const upd: Record<string, unknown> = { stream_enriched_at: new Date().toISOString() }
 
         // Real per-session HR facts the summary lacked.
-        const maxFromStream = hr.length ? Math.round(Math.max(...hr)) : null
+        // Dropout zeros excluded from avg (audit LOW-3, parse-activity parity).
+        const hrValid = hr.filter((h) => h > 0)
+        const maxFromStream = hrValid.length ? Math.round(Math.max(...hrValid)) : null
         if (!logRow.max_hr && maxFromStream) upd.max_hr = maxFromStream
-        if (!logRow.avg_hr && hr.length) upd.avg_hr = Math.round(hr.reduce((s, v) => s + v, 0) / hr.length)
+        if (!logRow.avg_hr && hrValid.length) upd.avg_hr = Math.round(hrValid.reduce((s, v) => s + v, 0) / hrValid.length)
         const effMaxHR = (logRow.max_hr as number) ?? maxFromStream ?? physio.maxHR
 
         // True 5-zone distribution (replaces the single-band estimate).
@@ -334,14 +344,18 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
       // Athlete physiology: max HR (real → 220−age → null) + FTP for power-TSS.
       const physio = await resolveProfilePhysiology(sb, userId)
 
+      // HIGH-1 fix: don't let a summary re-import clobber streams-derived values.
+      const enrichedIds = await fetchStreamEnrichedIds(sb, userId, activities as Record<string, unknown>[])
+
       // Upsert activities
       let synced = 0
       for (const a of activities as Record<string, unknown>[]) {
         const row = buildTrainingLogRow(a, userId, physio)
         if (!row) continue
 
+        const payload = enrichedIds.has(String(row.external_id)) ? stripStreamDerived(row) : row
         const { error: upsertErr } = await sb.from("training_log")
-          .upsert(row, { onConflict: "user_id,external_id" })
+          .upsert(payload, { onConflict: "user_id,external_id" })
 
         if (!upsertErr) synced++
       }

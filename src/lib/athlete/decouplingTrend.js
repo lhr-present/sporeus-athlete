@@ -95,6 +95,9 @@ export function analyzeDecouplingTrend(log, today) {
     if (dMs == null || dMs < cutoffMs || dMs > todayMs) continue
     const dc = Number(e?.decouplingPct)
     if (!Number.isFinite(dc)) continue
+    // v9.472 (audit LOW-2) — null rpe must not pass the ≤-gate as 0 (a session
+    // with no effort signal can't be certified aerobic).
+    if (e?.rpe == null) continue
     const rpe = Number(e?.rpe)
     if (!Number.isFinite(rpe) || rpe > AEROBIC_RPE_CAP) continue
     samples.push({ date: String(e.date).slice(0, 10), decouplingPct: dc, rpe })

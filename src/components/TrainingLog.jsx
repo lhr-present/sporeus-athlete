@@ -304,13 +304,28 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     // (edits are idempotent via editingId, so this only matters for new entries).
     submittingRef.current = true
     requestAnimationFrame(() => { submittingRef.current = false })
-    const tss = calcTSS(parseInt(form.duration), parseInt(form.rpe))
+    // v9.472 (audit HIGH-2) — when EDITING, merge over the original entry:
+    // the form only carries date/type/duration/rpe/notes, so building the
+    // replacement from the form alone stripped every metric/enrichment field
+    // (avgHR, np, decouplingPct, calories, source, …) locally AND — via the
+    // diff-by-id sync mapping absent→null — in the DB. A notes typo-fix on an
+    // enriched Strava ride nulled all its enrichment columns.
+    const orig = editingId !== null ? log.find(e => e.id === editingId) : null
+    const formRpe = form.rpe === '' || form.rpe == null ? null : parseInt(form.rpe)
+    // Recompute TSS only when the inputs that drive it changed (or it's a new
+    // entry) — editing the notes of a power/HR-derived-TSS session must not
+    // replace the measured value with the RPE formula.
+    const inputsChanged = !orig || String(orig.duration) !== String(form.duration) || String(orig.rpe ?? '') !== String(form.rpe ?? '')
+    const tss = inputsChanged
+      ? calcTSS(parseInt(form.duration), formRpe != null ? formRpe : 5)
+      : orig.tss
     const zones = showZones ? zoneMins.map(v=>parseInt(v)||0) : null
     const raw = {
+      ...(orig || {}),
       id: editingId !== null ? editingId : newId(),
       ...form,
       duration: parseInt(form.duration),
-      rpe: parseInt(form.rpe),
+      rpe: formRpe,
       tss,
       ...(zones ? { zones } : {}),
       // v9.152.0 — Pull improvised-session metadata from prefill (Prompt 10).
@@ -353,7 +368,9 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     // (filterText) and paginated (visibleLog slice), so reverse-mapping by index
     // loaded/overwrote a different session. Use the passed row directly.
     const entry = { ...s }
-    setForm({ date:entry.date, type:entry.type, duration:String(entry.duration), rpe:String(entry.rpe), notes:entry.notes||'' })
+    // v9.472 (audit LOW-1) — null rpe must not become the string "null"
+    // (parseInt("null") → NaN → the sanitizer used to clamp it to 0).
+    setForm({ date:entry.date, type:entry.type, duration:String(entry.duration), rpe:entry.rpe == null ? '' : String(entry.rpe), notes:entry.notes||'' })
     if (entry.zones && entry.zones.length) { setZoneMins(entry.zones.map(String)); setShowZones(true) }
     else { setZoneMins(['','','','','']); setShowZones(false) }
     setEditingId(entry.id||null)
@@ -602,7 +619,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
 
   const exportCSV = () => {
     const header = 'Date,Type,Duration (min),RPE,TSS,Notes'
-    const rows = log.map(e=>`${e.date},${e.type},${e.duration},${e.rpe},${e.tss},"${(e.notes||'').replace(/"/g,'""')}"`)
+    const rows = log.map(e=>`${e.date},${e.type},${e.duration},${e.rpe ?? ''},${e.tss},"${(e.notes||'').replace(/"/g,'""')}"`)
     const csv = [header,...rows].join('\n')
     const blob = new Blob([csv],{type:'text/csv'})
     const url = URL.createObjectURL(blob)
@@ -638,6 +655,8 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
             <label style={S.label} htmlFor="tl-rpe">{t('rpeL')}</label>
             <select id="tl-rpe" style={S.select} value={form.rpe}
               onChange={e=>{setForm({...form,rpe:e.target.value});setTssPreview(null)}}>
+              {/* v9.472 — '' = no effort signal (editing a null-rpe import keeps it honest-null) */}
+              {form.rpe === '' && <option value="">—</option>}
               {[1,2,3,4,5,6,7,8,9,10].map(n=><option key={n} value={n}>{n}</option>)}
             </select>
           </div>
@@ -978,7 +997,7 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                                   expandedEntry.np             && { lbl:'NP',       val:`${expandedEntry.np}W`,                                    color:'#ff6600' },
                                   expandedEntry.avgHR          && { lbl:'AVG HR',   val:`${expandedEntry.avgHR}bpm`,                               color:'#e03030' },
                                   expandedEntry.maxHR          && { lbl:'MAX HR',   val:`${expandedEntry.maxHR}bpm`,                               color:'#e03030' },
-                                  expandedEntry.avgCadence     && { lbl:'CADENCE',  val:`${expandedEntry.avgCadence}rpm`,                          color:'#0064ff' },
+                                  expandedEntry.avgCadence     && { lbl:'CADENCE',  val:`${expandedEntry.avgCadence}${/run|walk/i.test(expandedEntry.type||'') ? 'spm' : 'rpm'}`, color:'#0064ff' },
                                   expandedEntry.distanceM      && { lbl:'DIST',     val:`${(expandedEntry.distanceM/1000).toFixed(2)}km`,           color:'#888'    },
                                   expandedEntry.elevationGainM && { lbl:'ELEV',     val:`${expandedEntry.elevationGainM}m`,                        color:'#5bc25b' },
                                   expandedEntry.kilojoules     && { lbl:'WORK',     val:`${expandedEntry.kilojoules}kJ`,                           color:'#0064ff' },

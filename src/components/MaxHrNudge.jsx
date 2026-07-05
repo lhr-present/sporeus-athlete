@@ -20,7 +20,10 @@ export default function MaxHrNudge({ log, profile, setProfile, isTR }) {
   const profileMax = Number(profile?.maxhr)
 
   const applyUpdate = () => {
-    setProfile({ ...profile, maxhr: String(hit.observedMax) })
+    // Functional form (audit LOW-4): merges over the query cache instead of a
+    // render-time snapshot, so a concurrent cross-device profile edit of any
+    // OTHER key isn't clobbered with stale values.
+    setProfile(p => ({ ...p, maxhr: String(hit.observedMax) }))
     dismissMaxHrNudge(hit.observedMax)
     setBump(b => b + 1)
   }

@@ -17,7 +17,9 @@ import type { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 export function mapStravaType(sportType: string): string {
   const m: Record<string, string> = {
     Run: "run", TrailRun: "run", VirtualRun: "run",
-    Ride: "bike", EBikeRide: "bike", VirtualRide: "bike", MountainBikeRide: "bike",
+    // GravelRide was in the client map but missing here (audit 2026-07-04 MED-3)
+    // → gravel rides typed 'other', excluded from every cycling gate/card.
+    Ride: "bike", EBikeRide: "bike", VirtualRide: "bike", MountainBikeRide: "bike", GravelRide: "bike",
     Swim: "swim", OpenWaterSwim: "swim",
     Walk: "walk", Hike: "walk",
     WeightTraining: "strength", Yoga: "other", Workout: "other",
@@ -153,6 +155,37 @@ export function qualifiesForStreamEnrichment(a: Record<string, unknown>): boolea
   return a.has_heartrate === true || a.device_watts === true
 }
 
+// ── HIGH-1 (audit 2026-07-04): summary upserts must not clobber streams-derived
+// values. Once an enrich pass ran, zones/np/tss/rpe/rpe_method on the row came
+// from the STREAMS payload (true zone distribution, stream NP, athlete-entered
+// perceived_exertion) — a later summary re-import (webhook update event, SYNC
+// NOW's 30-day window) cannot re-derive them, and stream_enriched_at stays set
+// so the row would never be re-enriched. Callers fetch the enriched id-set for
+// the page and strip the contested columns from those rows' payloads.
+const STREAM_DERIVED_COLS = ["zones", "np", "tss", "rpe", "rpe_method"] as const
+
+export async function fetchStreamEnrichedIds(
+  sb: ReturnType<typeof createClient>,
+  userId: string,
+  activities: Record<string, unknown>[],
+): Promise<Set<string>> {
+  const ids = activities.filter((a) => a?.id).map((a) => String(a.id))
+  if (!ids.length) return new Set()
+  const { data } = await sb
+    .from("training_log")
+    .select("external_id")
+    .eq("user_id", userId)
+    .in("external_id", ids)
+    .not("stream_enriched_at", "is", null)
+  return new Set(((data ?? []) as { external_id: string }[]).map((r) => r.external_id))
+}
+
+export function stripStreamDerived(row: Record<string, unknown>): Record<string, unknown> {
+  const out = { ...row }
+  for (const c of STREAM_DERIVED_COLS) delete out[c]
+  return out
+}
+
 // After a page of activities upserts, enqueue one 'enrich' message per
 // qualifying activity whose row hasn't been stream-enriched yet. Rows skipped
 // by buildTrainingLogRow (<3 min) don't exist in training_log, so the .in()
@@ -214,9 +247,10 @@ export function buildTrainingLogRow(
   const sType  = mapStravaType((a.sport_type as string) || (a.type as string) || "")
   const distM  = posNum(a.distance)
   const distKm = distM ? (distM / 1000).toFixed(2) : null
-  // Running cadence is per-leg in Strava → double to full steps/min; bikes (rpm) unchanged.
+  // Running AND walking cadence are per-leg in Strava → double to full steps/min;
+  // bikes (rpm) unchanged. (walk added per audit 2026-07-04 LOW-7.)
   const rawCad = posNum(a.average_cadence)
-  const avgCadence = rawCad != null ? Math.round(rawCad * (/run/i.test(sType) ? 2 : 1)) : null
+  const avgCadence = rawCad != null ? Math.round(rawCad * (/run|walk/i.test(sType) ? 2 : 1)) : null
 
   // ── Power (QW1) — device_watts=false means Strava-ESTIMATED power: never
   // persist or score it (guardrail #2 of the enrichment proposal).

@@ -372,7 +372,9 @@ export function findOptimalWeekStructure(log, recovery) {
     const totalTSS = sessions.reduce((s, e) => s + (e.tss || 0), 0)
     const n = sessions.length
     const hrs = sessions.reduce((s, e) => s + (e.duration || 0), 0) / 60
-    const avgRPE = sessions.reduce((s, e) => s + (e.rpe || 5), 0) / n
+    // v9.472 (audit LOW-2) — present-only denominator (was ||5-diluted)
+    const withRpe = sessions.filter(e => Number.isFinite(Number(e.rpe)) && Number(e.rpe) > 0)
+    const avgRPE = withRpe.length ? withRpe.reduce((s, e) => s + Number(e.rpe), 0) / withRpe.length : 0
     const recScores = sessions.map(s => {
       // v9.62.0 — UTC-anchored to keep "next-day recovery" lookup consistent
       const d = new Date(s.date + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + 1)
