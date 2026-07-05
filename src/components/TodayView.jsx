@@ -130,6 +130,10 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
   const [plan]       = useLocalStorage('sporeus-plan',        null)
   const [planStatus, setPlanStatus] = useLocalStorage('sporeus-plan-status', {})
   const [coreIdeaSeen, setCoreIdeaSeen] = useLocalStorage('sporeus-core-idea-seen', '')
+  // v9.479 — first-rec "aha" moment (deferred UX-audit product item): marks the
+  // first time a PERSONALIZED daily answer exists, with the athlete's own data
+  // in the causation line. Dismiss persists forever.
+  const [firstRecSeen, setFirstRecSeen] = useLocalStorage('sporeus-first-rec-seen', '')
 
   const today     = new Date().toISOString().slice(0, 10)
   const yesterday = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10) })()
@@ -1115,6 +1119,37 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
           </span>
           <button
             onClick={() => setCoreIdeaSeen('1')}
+            aria-label={lang === 'tr' ? 'Kapat' : 'Dismiss'}
+            style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '12px', lineHeight: 1 }}
+          >✕</button>
+        </div>
+      )}
+
+      {/* v9.479 — the "aha" card: the athlete's FIRST personalized daily answer,
+          framed as the payoff of the whole chain with THEIR data plugged in
+          (goal, logged history, readiness). Fires when a planned session from
+          their own plan exists + ≥1 logged session; one-time dismiss. */}
+      {/* Upper gate: established athletes (>20 sessions) never see a "first
+          answer" claim — this is for the early-journey moment only. */}
+      {!firstRecSeen && plannedSession && log.length >= 1 && log.length <= 20 && (
+        <div role="status" style={{
+          padding: '12px 14px', marginBottom: '10px',
+          background: 'linear-gradient(135deg, #ff660014, #0064ff14)',
+          border: '1px solid #ff660055', borderLeft: '3px solid #ff6600', borderRadius: '6px',
+          fontFamily: MONO, display: 'flex', alignItems: 'flex-start', gap: '10px',
+        }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '10px', fontWeight: 700, color: '#ff6600', letterSpacing: '0.08em', marginBottom: '4px' }}>
+              ⚡ {lang === 'tr' ? 'İLK GÜNLÜK CEVABIN' : 'YOUR FIRST DAILY ANSWER'}
+            </div>
+            <div style={{ fontSize: '10px', color: 'var(--text)', lineHeight: 1.6 }}>
+              {lang === 'tr'
+                ? <>Bu genel bir tavsiye değil — {profile?.goal ? <><b>{profile.goal}</b> hedefinden, </> : 'hedefinden, '}kaydettiğin <b>{log.length}</b> seanstan{todayReadiness != null ? <> ve bugünkü hazırlığından (<b>{todayReadiness}/100</b>)</> : ''} hesaplandı. Bundan sonra her sabah bu satır "bugün ne yapmalıyım?" sorusunun cevabı.</>
+                : <>This isn't generic advice — it's computed from {profile?.goal ? <>your goal (<b>{profile.goal}</b>), </> : 'your goal, '}your <b>{log.length}</b> logged session{log.length === 1 ? '' : 's'}{todayReadiness != null ? <> and today's readiness (<b>{todayReadiness}/100</b>)</> : ''}. From now on, this line answers "what should I do today?" every morning.</>}
+            </div>
+          </div>
+          <button
+            onClick={() => setFirstRecSeen('1')}
             aria-label={lang === 'tr' ? 'Kapat' : 'Dismiss'}
             style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '12px', lineHeight: 1 }}
           >✕</button>

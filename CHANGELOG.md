@@ -2,6 +2,28 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.479.0 — 2026-07-05 — First-recommendation "aha" card (last deferred UX-audit product item)
+
+Closes the 2026-06-15 UX audit's deferred product list. The moment a new athlete's FIRST
+personalized daily answer appears was indistinguishable from any other row — the exact "payoff
+under-narrated" gap the audit named. Now a one-time TodayView card marks it, with the athlete's
+OWN data plugged into the causation line:
+
+- "⚡ YOUR FIRST DAILY ANSWER — computed from your goal (X), your N logged sessions and today's
+  readiness (R/100). From now on, this line answers 'what should I do today?' every morning." EN+TR;
+  goal/readiness fragments degrade gracefully when absent.
+- Fires when a planned session from the athlete's own plan exists AND 1–20 sessions are logged —
+  the upper gate means established athletes (incl. the prod founder at 30+ entries) never see a
+  "first" claim. One-time dismiss persists (`sporeus-first-rec-seen`), mirroring the v9.408
+  core-idea banner pattern.
+
+Display-only. With this, the June UX audit is fully closed (idea-clarity copy v9.408, readiness
+disclosure v9.478, aha card v9.479); its only remaining thread is the soft-look design-token
+refactor (245+ files, needs an approved visual pattern — founder-domain).
+
+DEPENDS ON: getTodayPlannedSession (plannedSession presence = "a real personalized answer exists");
+localStorage flag sporeus-first-rec-seen.
+
 ## v9.478.0 — 2026-07-05 — Readiness-explanation disclosure (deferred UX-audit product item)
 
 From the 2026-06-15 UX audit's deferred list ("plumbing lives, storytelling doesn't"): the hero
