@@ -2,6 +2,26 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.475.0 — 2026-07-05 — One-tap RPE for signal-less imports + session tag in expanded view
+
+Completes the v9.474 rowing flow: the split-CV card tells athletes to "add RPE from the log", but
+that meant an edit-form round-trip per session (9 for the prod founder). Now:
+
+- **Inline RPE quick-set** — null-RPE log rows render a small dashed select in the RPE cell
+  (1–10, a11y-labeled, EN/TR); one tap sets the effort. Sets ONLY `rpe` + a re-derived
+  `sessionTag` (kept locally consistent with what logEntryToRow stamps on sync): `tss` is
+  deliberately untouched (measured/duration-estimated TSS must not flip to the RPE formula —
+  the v9.472 HIGH-2 lesson) and `rpeMethod` is dropped (athlete-entered = no method, so the `~`
+  marker clears). Rows with an existing RPE are unchanged (edit via the form as before).
+- **Expanded SESSION ANALYSIS shows the classification** — `sessionTag` (+ reason) stamped at
+  write/import time renders above the RAW METRICS chips. Zero new data; the E4 column finally
+  visible to the athlete too.
+
+Display/interaction only; no science change. Suite green.
+
+DEPENDS ON: classifySession as the single tag source (quick-set re-derives with it);
+honest-null rpe contract (the select renders ONLY for rpe == null).
+
 ## v9.474.0 — 2026-07-05 — 🚣 Rowing works: three shape bugs killed every rowing surface
 
 Manual rowing-experience pass (founder directive: "be sure the app works good on rowing"; the

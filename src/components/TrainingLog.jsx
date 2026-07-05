@@ -7,6 +7,9 @@ import { SESSION_TYPES_BY_DISCIPLINE, ZONE_COLORS, ZONE_NAMES, SPORT_CONFIG } fr
 import { calcTSS, normalizedPower, computePowerTSS, computeWPrime, resolveCPWPrime } from '../lib/formulas.js'
 import { sanitizeLogEntry } from '../lib/validate.js'
 import { newId } from '../lib/newId.js'
+// v9.475 — keep the local sessionTag consistent when quick-setting RPE
+// (logEntryToRow re-classifies on sync; this avoids a stale local tag).
+import { classifySession } from '../lib/coach/classifySession.js'
 import { announce } from '../lib/a11y/announcer.js'
 import Calendar from './Calendar.jsx'
 import { useData } from '../contexts/DataContext.jsx'
@@ -378,6 +381,21 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     window.scrollTo({ top:0, behavior:'smooth' })
   }
   const cancelEdit = () => { setEditingId(null); setForm({ date:today, type:'Easy Run', duration:'', rpe:'5', notes:'' }); setZoneMins(['','','','','']); setShowZones(false); setLastPBs(null) }
+
+  // v9.475 — one-tap RPE for signal-less imports (rpe === null rows). Sets
+  // ONLY the effort + re-derived sessionTag: tss stays untouched (measured /
+  // duration-estimated TSS must not flip to the RPE formula — the v9.472
+  // HIGH-2 lesson) and rpeMethod is dropped (athlete-entered = no method).
+  const quickSetRpe = (s, rpe) => {
+    if (!Number.isFinite(rpe) || rpe < 1 || rpe > 10) return
+    setLog(log.map(e => {
+      if (e.id !== s.id) return e
+      const { rpeMethod: _m, ...rest } = e
+      const { tag, reason } = classifySession({ ...rest, rpe })
+      return { ...rest, rpe, sessionTag: tag, sessionTagReason: String(reason || '').slice(0, 200) }
+    }))
+    announce(lang === 'tr' ? `RPE ${rpe} kaydedildi` : `RPE ${rpe} saved`, 'polite')
+  }
 
   const handleBulkTag = (tag) => {
     if (!tag) return
@@ -902,7 +920,22 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                       <td
                         style={{ textAlign:'right', padding:'6px 6px 6px 0', color:s.rpe>=8?'#e03030':s.rpe>=6?'#f5c542':'#5bc25b' }}
                         title={s.rpeMethod?.startsWith('derived') ? (lang==='tr' ? 'Nabızdan türetildi (tahmini)' : 'Derived from HR (estimated)') : undefined}
-                      >{s.rpe}{s.rpeMethod?.startsWith('derived') ? '~' : ''}</td>
+                      >{s.rpe == null ? (
+                        /* v9.475 — one-tap RPE for signal-less imports (the split-CV
+                           card sends athletes here; 9 sessions shouldn't need 9
+                           edit-form round-trips). Athlete-entered → no rpeMethod. */
+                        <select
+                          aria-label={lang === 'tr' ? 'RPE gir' : 'Set RPE'}
+                          title={lang === 'tr' ? 'Bu seansın eforunu gir (RPE 1–10)' : 'Set this session\'s effort (RPE 1–10)'}
+                          value=""
+                          onClick={e => e.stopPropagation()}
+                          onChange={e => { e.stopPropagation(); quickSetRpe(s, parseInt(e.target.value)) }}
+                          style={{ background:'transparent', color:'#666', border:'1px dashed #444', borderRadius:'2px', fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', padding:'0 2px', cursor:'pointer' }}
+                        >
+                          <option value="" disabled>—</option>
+                          {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
+                        </select>
+                      ) : <>{s.rpe}{s.rpeMethod?.startsWith('derived') ? '~' : ''}</>}</td>
                       <td style={{ textAlign:'right', padding:'6px 6px 6px 0', color:'#ff6600', fontWeight:600 }}>{s.tss}</td>
                       <td style={{ textAlign:'right', padding:'6px 6px 6px 0', color: tssBandColor(s.tss), fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', letterSpacing:'0.04em' }}>{tssBand(s.tss)}</td>
                       <td style={{ padding:'6px 6px 6px 0', color:'#888', maxWidth:'160px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
@@ -988,6 +1021,15 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
                               {expandedCtlInfo && (
                                 <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', color:'#666', marginBottom:'10px' }}>
                                   CTL: {expandedCtlInfo.ctlBefore} → {expandedCtlInfo.ctlAfter} ({expandedCtlInfo.delta >= 0 ? '+' : ''}{expandedCtlInfo.delta} this session)
+                                </div>
+                              )}
+                              {/* v9.475 — classification stamped at write/import time (E4) */}
+                              {expandedEntry?.sessionTag && (
+                                <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:'10px', color:'#666', marginBottom:'10px' }}>
+                                  <span style={{ color:'#0064ff', fontWeight:700, letterSpacing:'0.06em' }}>
+                                    {expandedEntry.sessionTag.replace('_', ' ').toUpperCase()}
+                                  </span>
+                                  {expandedEntry.sessionTagReason ? <span> · {expandedEntry.sessionTagReason}</span> : null}
                                 </div>
                               )}
                               {/* P1 — RAW METRICS from FIT/Strava (v9.467: + enrichment fields NP/maxHR/elev/kJ/kcal/suffer/start) */}
