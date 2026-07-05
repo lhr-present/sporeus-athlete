@@ -159,3 +159,20 @@ describe('classifySession — guard cases', () => {
     expect(result.tag).toBe('unplanned_high')
   })
 })
+
+// ─── v9.473 — honest-null rpe (rpe-dependent rules require a real rpe) ────────
+describe('classifySession — null rpe (v9.473)', () => {
+  it('short null-rpe session is NOT junk/recovery (no effort signal ≠ easy)', () => {
+    expect(classifySession(session({ duration: 15, rpe: null })).tag).toBe('moderate')
+    expect(classifySession(session({ duration: 40, rpe: null })).tag).toBe('moderate')
+    expect(classifySession(session({ duration: 40, rpe: undefined })).tag).toBe('moderate')
+  })
+  it('real low rpe still classifies junk/recovery', () => {
+    expect(classifySession(session({ duration: 15, rpe: 2 })).tag).toBe('junk')
+    expect(classifySession(session({ duration: 40, rpe: 3 })).tag).toBe('recovery')
+  })
+  it('long null-rpe session needs TSS>=150 for unplanned_high (rpe branch gated)', () => {
+    expect(classifySession(session({ duration: 150, rpe: null, tss: 100 })).tag).toBe('moderate')
+    expect(classifySession(session({ duration: 150, rpe: null, tss: 160 })).tag).toBe('unplanned_high')
+  })
+})

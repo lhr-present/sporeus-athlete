@@ -55,7 +55,11 @@ export function classifySession(session, plan = null) {
   }
 
   const dur = Number(session.duration) || 0
-  const rpe = Number(session.rpe) || 0
+  // v9.473 — honest-null rpe (v9.469): a session with NO effort signal must not
+  // be certified "easy" — Number(null)||0 made every metric-less import short
+  // enough classify as junk/recovery. rpe-dependent rules require a real rpe.
+  const hasRpe = session.rpe != null && Number.isFinite(Number(session.rpe))
+  const rpe = hasRpe ? Number(session.rpe) : 0
   const tss = Number(session.tss) || 0
   const type = session.type || ''
 
@@ -65,12 +69,12 @@ export function classifySession(session, plan = null) {
   }
 
   // 2. Junk — too brief and too easy to produce any adaptation
-  if (dur < 20 && rpe < 4) {
+  if (hasRpe && dur < 20 && rpe < 4) {
     return { tag: 'junk', reason: `${dur}min at RPE ${rpe} is below adaptation threshold (20min / RPE 4)` }
   }
 
   // 3. Active recovery — easy and short
-  if (dur < 45 && rpe <= 4) {
+  if (hasRpe && dur < 45 && rpe <= 4) {
     return { tag: 'recovery', reason: `${dur}min at RPE ${rpe} — active recovery intensity` }
   }
 
@@ -95,7 +99,7 @@ export function classifySession(session, plan = null) {
   }
 
   // 5. No plan context — classify by absolute load
-  if (tss >= 150 || (dur >= 120 && rpe >= 7)) {
+  if (tss >= 150 || (dur >= 120 && hasRpe && rpe >= 7)) {
     return { tag: 'unplanned_high', reason: `High load session (TSS ${tss}, ${dur}min) without plan context` }
   }
 

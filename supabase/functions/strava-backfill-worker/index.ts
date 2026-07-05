@@ -11,7 +11,7 @@ import { isVerifiedServiceCall } from '../_shared/serviceAuth.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 // v9.465: activity→row mapping is shared with strava-oauth (was duplicated +
 // drifting). Enrichment (power/elevation/RPE/clock) lives in the shared mapper.
-import { buildTrainingLogRow, resolveProfilePhysiology, enqueueStreamEnrichment, computePowerTSS, fetchStreamEnrichedIds, stripStreamDerived } from '../_shared/stravaActivity.ts'
+import { buildTrainingLogRow, resolveProfilePhysiology, enqueueStreamEnrichment, computePowerTSS, fetchStreamEnrichedIds, stripStreamDerived, classifySessionTag } from '../_shared/stravaActivity.ts'
 // v9.466 P1: per-activity streams + detail enrichment (FIT-parity scalars).
 import { normalizedPower, decouplingPct, zonesFromHR, wPrimeExhausted } from '../_shared/streamScience.ts'
 
@@ -187,7 +187,7 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
         // Row must still exist (user may have deleted the entry — respect that).
         const { data: logRow } = await sb
           .from("training_log")
-          .select("id, duration_min, avg_hr, max_hr")
+          .select("id, duration_min, avg_hr, max_hr, tss, rpe")
           .eq("user_id", userId)
           .eq("external_id", externalId)
           .maybeSingle()
@@ -293,6 +293,16 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
         }
         const cal = Number((detail as Record<string, unknown>)?.calories)
         if (Number.isFinite(cal) && cal > 0) upd.calories = Math.round(cal)
+
+        // v9.473 — re-tag with the post-enrich effective values (athlete rpe /
+        // stream power-TSS); the summary tag was computed from derived rpe.
+        if (upd.rpe !== undefined || upd.tss !== undefined) {
+          const effRpe = (upd.rpe as number | undefined) ?? (logRow.rpe as number | null)
+          const effTss = Number((upd.tss as number | undefined) ?? logRow.tss) || 0
+          const { tag, reason } = classifySessionTag(Number(logRow.duration_min) || 0, effRpe ?? null, effTss)
+          upd.session_tag = tag
+          upd.session_tag_reason = reason.slice(0, 200)
+        }
 
         await sb.from("training_log").update(upd).eq("id", logRow.id)
         await sb.rpc("delete_strava_backfill_msg", { p_msg_id: msgId })
