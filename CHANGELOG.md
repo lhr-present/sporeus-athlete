@@ -2,6 +2,40 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.473.0 — 2026-07-05 — Session-tag writer + coach EXECUTION PROFILE (E4, founder-approved build)
+
+The `session_tag` column (v9.455 vocabulary, in prod since the drift fix) finally gets its
+writer AND its first reader, shipped together per the E4 design:
+
+- **Classifier honesty fix first** (`classifySession.js`): `Number(null)||0` made every metric-less
+  import short enough classify as junk/recovery — post-v9.469 blast radius the census missed (it
+  also skewed the athlete-facing SessionClassifierBreakdownCard). rpe-dependent rules (junk,
+  recovery, the duration+rpe unplanned_high branch) now require a REAL rpe.
+- **Writer, client**: `logEntryToRow` classifies plan-less at write time (single choke point —
+  QuickAdd, edits, offline replay, guest migration) → `session_tag`/`session_tag_reason`.
+  Deterministic over {type,duration,rpe,tss}, so re-upserts stay idempotent. Hydrates as
+  `sessionTag`/`sessionTagReason`; sanitizer whitelists both.
+- **Writer, edge**: `classifySessionTag()` in the shared mapper (port of the plan-less absolute
+  rules, do-not-diverge header; test-type rule omitted — mapStravaType can't emit test names).
+  The enrich pass RE-tags when it updates rpe (athlete perceived_exertion) or tss (stream
+  power-TSS); `session_tag(+reason)` joined STREAM_DERIVED_COLS so summary re-imports don't
+  regress an athlete-rpe-based tag (extends the v9.472 HIGH-1 strip).
+- **Reader**: new `src/lib/coach/sessionTagSummary.js` (pure) aggregates a tag distribution +
+  coach-attention flags (junk-heavy window, unplanned high-load pattern, easy-window info) —
+  DESCRIPTIVE only, prescriptions stay with the coach. Stored tags win; untagged pre-wiring
+  history is classified on the fly, so the panel works day one. Surfaced as **EXECUTION PROFILE**
+  in the coach's ExpandedRow (distribution bar + chips + flags, EN/TR), riding the existing
+  30-session fetch (+`duration_min, session_tag` columns).
+- `SessionClassifierBreakdownCard` prefers the stored `sessionTag` (may reflect athlete-entered
+  Strava RPE the local recompute can't see); recomputes only for untagged history.
+
+Plan-context tags (planned_match/miss/unplanned_low) stay parked — they need the
+coach_plans-vs-local-plan shape decision (per E4 design). +14 tests.
+
+DEPENDS ON: session_tag/session_tag_reason columns + indexes (20260455, in prod);
+classifySession as single source of truth (edge port must not diverge); STREAM_DERIVED_COLS
+strip list (HIGH-1 mechanism).
+
 ## v9.472.0 — 2026-07-05 — 🔴 Audit fixes: enrichment-clobber + edit data-loss (2 HIGH, 4 MED, 5 LOW)
 
 All from `docs/audits/audit_2026_07_04_v9462_471.md` (agent report; its findings verified before

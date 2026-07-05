@@ -152,6 +152,9 @@ export function sanitizeLogEntry(e) {
   const cal = parseInt(e.calories); if (Number.isFinite(cal) && cal > 0 && cal <= 20000) result.calories = cal
   if (typeof e.startTime === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(e.startTime)) result.startTime = e.startTime
   if (typeof e.rpeMethod === 'string' && e.rpeMethod) result.rpeMethod = e.rpeMethod.slice(0, 20)
+  // v9.473 (E4) — session classification survives sanitization (whitelist).
+  if (typeof e.sessionTag === 'string' && e.sessionTag) result.sessionTag = e.sessionTag.slice(0, 30)
+  if (typeof e.sessionTagReason === 'string' && e.sessionTagReason) result.sessionTagReason = e.sessionTagReason.slice(0, 200)
   return result
 }
 

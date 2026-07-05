@@ -96,8 +96,13 @@ function SessionClassifierBreakdownCard({ log = [] }) {
     // and tally minutes ourselves (the helper only exposes counts).
     const classified = thisWeek.map(s => {
       // Allow synthetic test sessions to pre-declare a tag.
+      // v9.473 (E4) — prefer the stored sessionTag (stamped at write time /
+      // import; may reflect athlete-entered Strava RPE the local recompute
+      // can't see); recompute only for untagged pre-wiring history.
       const tag = (typeof s?.tag === 'string' && s.tag)
         ? s.tag
+        : (typeof s?.sessionTag === 'string' && s.sessionTag)
+        ? s.sessionTag
         : classifySession(s).tag
       return { ...s, tag }
     })

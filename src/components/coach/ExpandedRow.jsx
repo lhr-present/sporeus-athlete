@@ -3,6 +3,9 @@ import { useState, useEffect, useContext } from 'react'
 import { supabase } from '../../lib/supabase.js'
 import CTLChart from '../charts/CTLChart.jsx'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
+// v9.472.0 (E4) — execution profile: session_tag distribution over the fetched
+// window; untagged history rows are classified on the fly by the same rules.
+import { summarizeSessionTags, TAG_ORDER, TAG_COLORS } from '../../lib/coach/sessionTagSummary.js'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -28,7 +31,7 @@ export default function ExpandedRow({ athlete, coachId = null, onNote }) {
     setLoading(true)
     supabase
       .from('training_log')
-      .select('date, tss, type, rpe')
+      .select('date, tss, type, rpe, duration_min, session_tag')
       .eq('user_id', athlete.athlete_id)
       .order('date', { ascending: false })
       .limit(30)
@@ -36,6 +39,7 @@ export default function ExpandedRow({ athlete, coachId = null, onNote }) {
   }, [athlete.athlete_id, athlete._log, coachId])
 
   const recent3 = (liveLog || []).slice(0, 3)
+  const exec = liveLog && liveLog.length >= 3 ? summarizeSessionTags(liveLog) : null
 
   return (
     <div style={{ padding: '10px 14px 14px', background: 'var(--surface)', borderTop: '1px solid #1e1e1e' }}>
@@ -62,6 +66,32 @@ export default function ExpandedRow({ athlete, coachId = null, onNote }) {
           ))}
         </div>
       </div>
+      {/* v9.472 — EXECUTION PROFILE: tag distribution over the fetched window.
+          Descriptive only (what the athlete DID); prescriptions stay with the coach. */}
+      {exec && exec.total > 0 && (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontFamily: MONO, fontSize: 9, color: '#555', letterSpacing: '0.1em', marginBottom: 6 }}>
+            {lang === 'tr' ? 'UYGULAMA PROFİLİ' : 'EXECUTION PROFILE'} · {exec.total} {lang === 'tr' ? 'seans' : 'sessions'}
+          </div>
+          <div style={{ display: 'flex', height: 8, borderRadius: 2, overflow: 'hidden', marginBottom: 6, maxWidth: 420 }}>
+            {TAG_ORDER.filter(tg => exec.counts[tg] > 0).map(tg => (
+              <div key={tg} title={`${tg} ${exec.share[tg]}%`} style={{ width: `${exec.share[tg]}%`, background: TAG_COLORS[tg] }} />
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: exec.flags.length ? 6 : 0 }}>
+            {TAG_ORDER.filter(tg => exec.counts[tg] > 0).map(tg => (
+              <span key={tg} style={{ fontFamily: MONO, fontSize: 8, color: TAG_COLORS[tg], letterSpacing: '0.04em' }}>
+                ■ {tg.replace('_', ' ').toUpperCase()} {exec.counts[tg]}
+              </span>
+            ))}
+          </div>
+          {exec.flags.map((f, i) => (
+            <div key={i} style={{ fontFamily: MONO, fontSize: 9, color: f.level === 'warn' ? '#e03030' : '#888', marginTop: 2 }}>
+              {f.level === 'warn' ? '⚠ ' : '· '}{lang === 'tr' ? f.tr : f.en}
+            </div>
+          ))}
+        </div>
+      )}
       <button
         onClick={() => onNote(athlete)}
         style={{ marginTop: 10, fontFamily: MONO, fontSize: 9, letterSpacing: '0.08em', padding: '4px 10px', background: 'transparent', border: '1px solid #333', borderRadius: '2px', color: '#888', cursor: 'pointer' }}

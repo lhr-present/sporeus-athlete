@@ -162,7 +162,9 @@ export function qualifiesForStreamEnrichment(a: Record<string, unknown>): boolea
 // NOW's 30-day window) cannot re-derive them, and stream_enriched_at stays set
 // so the row would never be re-enriched. Callers fetch the enriched id-set for
 // the page and strip the contested columns from those rows' payloads.
-const STREAM_DERIVED_COLS = ["zones", "np", "tss", "rpe", "rpe_method"] as const
+// session_tag(+reason) included: post-enrich the tag reflects the athlete's
+// perceived_exertion rpe — a summary re-tag from the derived rpe would drift.
+const STREAM_DERIVED_COLS = ["zones", "np", "tss", "rpe", "rpe_method", "session_tag", "session_tag_reason"] as const
 
 export async function fetchStreamEnrichedIds(
   sb: ReturnType<typeof createClient>,
@@ -222,6 +224,30 @@ export async function enqueueStreamEnrichment(
 
 const posNum = (v: unknown): number | null =>
   typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null
+
+// ── Session classification (v9.473 E4) ──────────────────────────────────────
+// Port of the PLAN-LESS absolute rules of src/lib/coach/classifySession.js —
+// do NOT diverge; the client is the source of truth. The formal-test-type rule
+// is omitted only because mapStravaType can never emit a test type name.
+// rpe-dependent rules require a real rpe (honest-null: no effort signal must
+// not certify a session "easy"). Plan-context tags are client/coach territory.
+export function classifySessionTag(
+  durationMin: number,
+  rpe: number | null,
+  tss: number,
+): { tag: string; reason: string } {
+  const hasRpe = rpe != null && Number.isFinite(rpe)
+  if (hasRpe && durationMin < 20 && (rpe as number) < 4) {
+    return { tag: "junk", reason: `${durationMin}min at RPE ${rpe} is below adaptation threshold (20min / RPE 4)` }
+  }
+  if (hasRpe && durationMin < 45 && (rpe as number) <= 4) {
+    return { tag: "recovery", reason: `${durationMin}min at RPE ${rpe} — active recovery intensity` }
+  }
+  if (tss >= 150 || (durationMin >= 120 && hasRpe && (rpe as number) >= 7)) {
+    return { tag: "unplanned_high", reason: `High load session (TSS ${tss}, ${durationMin}min) without plan context` }
+  }
+  return { tag: "moderate", reason: "Normal training session" }
+}
 
 // Map one Strava SummaryActivity to a training_log row. Returns null for
 // unusable activities (no id/date, <3 min). Deterministic in the payload +
@@ -295,6 +321,11 @@ export function buildTrainingLogRow(
     notes:        noteParts.join(" · "),
     source:       "strava",
     external_id:  String(a.id),
+    // v9.473 (E4) — plan-less classification (coach execution profile reads it)
+    ...(() => {
+      const { tag, reason } = classifySessionTag(durationMin, rpe, tss)
+      return { session_tag: tag, session_tag_reason: reason.slice(0, 200) }
+    })(),
     // v9.465 enrichment columns (migration 20260637)
     max_hr:           actMaxHR,
     avg_power:        avgPower,

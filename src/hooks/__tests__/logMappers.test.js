@@ -129,6 +129,25 @@ describe('v9.465 enrichment columns (Strava P0)', () => {
   })
 })
 
+describe('v9.473 session_tag writer + hydration (E4)', () => {
+  it('stamps session_tag/reason at write time (plan-less rules)', () => {
+    const row = logEntryToRow({ date: '2026-07-01', type: 'row', duration: 60, rpe: 6, tss: 60 }, 'u1')
+    expect(row.session_tag).toBe('moderate')
+    expect(typeof row.session_tag_reason).toBe('string')
+    expect(logEntryToRow({ date: '2026-07-01', type: 'Run', duration: 15, rpe: 2, tss: 10 }, 'u1').session_tag).toBe('junk')
+    expect(logEntryToRow({ date: '2026-07-01', type: 'Ride', duration: 90, rpe: 8, tss: 170 }, 'u1').session_tag).toBe('unplanned_high')
+  })
+  it('null-rpe entries never tag junk/recovery (honest-null contract)', () => {
+    expect(logEntryToRow({ date: '2026-07-01', type: 'row', duration: 30, rpe: null, tss: 25 }, 'u1').session_tag).toBe('moderate')
+  })
+  it('hydrates sessionTag/sessionTagReason; round-trips (re-tag is deterministic)', () => {
+    const e = logRowToEntry({ id: 'r1', date: '2026-07-01', session_tag: 'recovery', session_tag_reason: '30min at RPE 3' })
+    expect(e.sessionTag).toBe('recovery')
+    expect(e.sessionTagReason).toBe('30min at RPE 3')
+    expect('sessionTag' in logRowToEntry({ id: 'r1', date: '2026-07-01', session_tag: null })).toBe(false)
+  })
+})
+
 describe('v9.472 source preservation (audit HIGH-2)', () => {
   it('preserves strava/fit source on write; defaults manual when absent', () => {
     expect(logEntryToRow({ date: '2026-07-01', type: 'row', source: 'strava' }, 'u1').source).toBe('strava')

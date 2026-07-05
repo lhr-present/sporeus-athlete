@@ -10,6 +10,8 @@ import { useLocalStorage } from './useLocalStorage.js'
 import { enqueuePendingLog, markSyncOffline } from '../lib/offlineQueue.js'
 import { deepEqual } from '../lib/deepEqual.js'
 import { isUuid } from '../lib/newId.js'
+// v9.473 (E4) — plan-less session classification at write time (pure, cycle-free).
+import { classifySession } from '../lib/coach/classifySession.js'
 import { migrateLogIdsToUuid } from '../lib/validate.js'
 
 // ─── Background-write helper ────────────────────────────────────────────────────
@@ -94,6 +96,9 @@ export function logRowToEntry(row) {
     ...(row.w_prime_exhausted === true ? { wPrimeExhausted: true }                      : {}),
     ...(row.w_prime_method   != null ? { wPrimeMethod:   String(row.w_prime_method) }   : {}),
     ...(row.calories         != null ? { calories:       Number(row.calories) }         : {}),
+    // v9.473.0 (E4) — session classification (coach execution profile reads it).
+    ...(row.session_tag        != null ? { sessionTag:       String(row.session_tag) }        : {}),
+    ...(row.session_tag_reason != null ? { sessionTagReason: String(row.session_tag_reason) } : {}),
   }
 }
 export function logEntryToRow(entry, userId) {
@@ -140,6 +145,15 @@ export function logEntryToRow(entry, userId) {
     w_prime_exhausted: entry.wPrimeExhausted === true ? true : null,
     w_prime_method:    entry.wPrimeMethod === 'measured' || entry.wPrimeMethod === 'estimated' ? entry.wPrimeMethod : null,
     calories:          posInt(entry.calories),
+    // v9.473.0 (E4) — classify at write time, plan-less (single choke point:
+    // QuickAdd, TrainingLog edit, offline replay, guest migration all pass
+    // through here). Deterministic over {type,duration,rpe,tss,date}, so
+    // repeated upserts/edits stay idempotent. Plan-context tags
+    // (planned_match/miss) are parked with the coach-plan-shape work.
+    ...(() => {
+      const { tag, reason } = classifySession(entry)
+      return { session_tag: tag, session_tag_reason: String(reason || '').slice(0, 200) }
+    })(),
   }
 }
 
