@@ -68,12 +68,15 @@ export default function PowerCurve() {
     [log]
   )
 
-  // Season-best MMP: max per duration across all power entries (last 365 days)
+  // Season-best MMP: max per duration across all power entries (last 365 days).
+  // v9.481 — synced sessions contribute their powerPeaks vector (5 fixed
+  // durations) so the envelope works for Strava-enriched and cross-device FIT
+  // sessions, not just this browser's localStorage streams. lh300 is excluded
+  // (it's the last-hour fatigue measure, not a session-max point).
   const seasonBest = useMemo(() => {
-    if (powerEntries.length === 0) return []
     const cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 1)
-    const recent = powerEntries.filter(e => new Date(e.date) >= cutoff).slice(-30)
     const best = {}
+    const recent = powerEntries.filter(e => new Date(e.date) >= cutoff).slice(-30)
     for (const entry of recent) {
       const stream = loadStream(entry.id)
       if (!stream) continue
@@ -81,10 +84,18 @@ export default function PowerCurve() {
         if (!best[pt.duration] || pt.power > best[pt.duration]) best[pt.duration] = pt.power
       }
     }
+    const PEAK_DUR = { p5: 5, p60: 60, p300: 300, p1200: 1200, p3600: 3600 }
+    for (const entry of log) {
+      if (!entry?.powerPeaks || new Date(entry.date) < cutoff) continue
+      for (const [key, dur] of Object.entries(PEAK_DUR)) {
+        const w = Number(entry.powerPeaks[key])
+        if (Number.isFinite(w) && w > 0 && (!best[dur] || w > best[dur])) best[dur] = w
+      }
+    }
     return Object.entries(best)
       .map(([d, p]) => ({ duration: parseInt(d), power: p }))
       .sort((a, b) => a.duration - b.duration)
-  }, [powerEntries])
+  }, [powerEntries, log])
 
   // Selected activity MMP
   const activityData = useMemo(() => {
@@ -134,7 +145,9 @@ export default function PowerCurve() {
       }))
   }, [seasonBest, activityData.mmp, modelFit])
 
-  const hasSomeData = powerEntries.length > 0
+  // v9.481 — peaks-only athletes (Strava-enriched / cross-device FIT) count as
+  // having data: the season envelope renders from their powerPeaks points.
+  const hasSomeData = powerEntries.length > 0 || seasonBest.length > 0
 
   return (
     <div className="sp-card" style={{ ...S.card, animationDelay: '120ms' }}>

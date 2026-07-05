@@ -2,6 +2,27 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.481.0 — 2026-07-06 — Power curve consumes powerPeaks + manual audit of v9.480 (clean)
+
+- **PowerCurve season-best envelope** now merges per-session `powerPeaks` points (the 5 fixed
+  window durations; `lh300` excluded — a last-hour fatigue measure, not a session max) alongside
+  this browser's localStorage streams. Strava-enriched and cross-device FIT sessions finally feed
+  the envelope, the fitted CP model and the estimated FTP; peaks-only athletes now count as
+  "having data" (the card no longer hides on them).
+- **Manual audit of v9.480** (audit agents still die on session limits — done by hand, again):
+  checked clean — sliding-sum/naive rolling-mean equivalence, all-zero-tail lh300 honesty, Deno
+  port line fidelity, worker HIGH-1 interplay (summary payloads never carry `power_peaks`, so
+  re-imports cannot clobber it — safe by construction, unlike zones/np which needed the strip),
+  DurabilityCard baseline excludes lh300, coverage-guard shapes, prod health (34 cols, queue
+  drained, 0 peaks rows = correct for a no-watts athlete). One residual DOCUMENTED (not new):
+  an entry edited from a stale pre-v9.480 cache nulls server peaks on the diff-sync — the same
+  narrow accepted window every enrichment field has had since v9.465; self-heals on rehydration
+  before edit, unrecoverable after (enrich won't re-run). Fix-class = per-column merge RPC,
+  parked with the migration-squash-era work.
+
+DEPENDS ON: entry.powerPeaks hydration (v9.480); KEY_DURATIONS containing 5/60/300/1200/3600
+(it does); fitCriticalPower ≥3-point requirement.
+
 ## v9.480.0 — 2026-07-06 — Power peaks (raw-series storage delivered as scalars) + planned_miss coverage fix
 
 **The founder-approved raw-series feature**, implemented as a compact per-session MMP vector
