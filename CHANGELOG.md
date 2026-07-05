@@ -2,6 +2,34 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.476.0 — 2026-07-05 — Plan-aware EXECUTION PROFILE (planned_match / unplanned_low / planned_miss)
+
+Completes E4's parked plan-context tags — reader-side, which dissolves the "which plan is
+authoritative" question: in the COACH's panel, the coach's own pushed plan is trivially the
+authority. No writer/DB change.
+
+- **`adaptCoachPlan()`** — bridges the real coach_plans shape (generatePlan weeks carry
+  `{week, phase, tss}` with `start_date` TOP-LEVEL on the row) to `classifySession`'s
+  `findPlanWeek` contract (`weeks[].startDate/tssEst`). Finding along the way: the classifier's
+  plan branch was DEAD against every real coach plan — the shapes never matched, so
+  planned_match/unplanned_low could never fire anywhere until this adapter.
+- **`summarizeSessionTags(rows, {plan, today})`** — plan-aware mode reclassifies EVERY session
+  against the plan (plan context refines; stored plan-less tags superseded) and counts
+  **planned_miss**: fully-elapsed plan weeks inside the 28d window with a TSS target and ZERO
+  logged sessions. Misses show as chip + red flag but are excluded from `total`/`share` (absent
+  sessions aren't sessions — the distribution bar stays honest). Single-arg calls unchanged
+  (plan-less, stored tags win).
+- **ExpandedRow** fetches this coach's latest ACTIVE plan for the athlete (RLS-scoped,
+  best-effort) and the panel header gains **· vs PLAN** when plan-aware; the unplanned_high flag
+  copy switches to "far above the plan target" in that mode.
+
++7 tests. Prod health checked before building: queue drained, sync idle, 27 tagged rows, 12
+secured crons.
+
+DEPENDS ON: coach_plans { start_date, weeks[].tss } shape (generatePlan output — if its week
+shape changes, adaptCoachPlan must follow); classifySession plan branch (±40%/60%/140% ratio
+bands, per-session target = weekly tssEst / 5).
+
 ## v9.475.0 — 2026-07-05 — One-tap RPE for signal-less imports + session tag in expanded view
 
 Completes the v9.474 rowing flow: the split-CV card tells athletes to "add RPE from the log", but

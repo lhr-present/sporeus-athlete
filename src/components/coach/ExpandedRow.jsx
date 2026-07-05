@@ -5,7 +5,9 @@ import CTLChart from '../charts/CTLChart.jsx'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 // v9.472.0 (E4) — execution profile: session_tag distribution over the fetched
 // window; untagged history rows are classified on the fly by the same rules.
-import { summarizeSessionTags, TAG_ORDER, TAG_COLORS } from '../../lib/coach/sessionTagSummary.js'
+// v9.476.0 — plan-aware: when this coach has an active plan for the athlete,
+// sessions classify AGAINST it (planned_match/unplanned_low/planned_miss).
+import { summarizeSessionTags, adaptCoachPlan, TAG_ORDER, TAG_COLORS } from '../../lib/coach/sessionTagSummary.js'
 
 const MONO   = "'IBM Plex Mono', monospace"
 const ORANGE = '#ff6600'
@@ -22,6 +24,7 @@ function fmtDate(d) { return d ? d.slice(5) : '—' }
  */
 export default function ExpandedRow({ athlete, coachId = null, onNote }) {
   const [liveLog, setLiveLog] = useState(null)
+  const [coachPlan, setCoachPlan] = useState(null)
   const [loading, setLoading] = useState(false)
   const { t, lang } = useContext(LangCtx)
 
@@ -36,10 +39,24 @@ export default function ExpandedRow({ athlete, coachId = null, onNote }) {
       .order('date', { ascending: false })
       .limit(30)
       .then(({ data }) => { setLiveLog(data || []); setLoading(false) })
+    // v9.476 — this coach's latest ACTIVE plan for the athlete (RLS-scoped to
+    // the coach's own rows). Best-effort: no plan → plan-less profile.
+    supabase
+      .from('coach_plans')
+      .select('start_date, weeks')
+      .eq('athlete_id', athlete.athlete_id)
+      .eq('coach_id', coachId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .then(({ data }) => setCoachPlan(adaptCoachPlan(data?.[0] || null)))
+      .catch(() => setCoachPlan(null))
   }, [athlete.athlete_id, athlete._log, coachId])
 
   const recent3 = (liveLog || []).slice(0, 3)
-  const exec = liveLog && liveLog.length >= 3 ? summarizeSessionTags(liveLog) : null
+  const exec = liveLog && liveLog.length >= 3
+    ? summarizeSessionTags(liveLog, { plan: coachPlan, today: new Date().toISOString().slice(0, 10) })
+    : null
 
   return (
     <div style={{ padding: '10px 14px 14px', background: 'var(--surface)', borderTop: '1px solid #1e1e1e' }}>
@@ -71,7 +88,7 @@ export default function ExpandedRow({ athlete, coachId = null, onNote }) {
       {exec && exec.total > 0 && (
         <div style={{ marginTop: 12 }}>
           <div style={{ fontFamily: MONO, fontSize: 9, color: '#555', letterSpacing: '0.1em', marginBottom: 6 }}>
-            {lang === 'tr' ? 'UYGULAMA PROFİLİ' : 'EXECUTION PROFILE'} · {exec.total} {lang === 'tr' ? 'seans' : 'sessions'}
+            {lang === 'tr' ? 'UYGULAMA PROFİLİ' : 'EXECUTION PROFILE'}{exec.planAware ? (lang === 'tr' ? ' · PLANA GÖRE' : ' · vs PLAN') : ''} · {exec.total} {lang === 'tr' ? 'seans' : 'sessions'}
           </div>
           <div style={{ display: 'flex', height: 8, borderRadius: 2, overflow: 'hidden', marginBottom: 6, maxWidth: 420 }}>
             {TAG_ORDER.filter(tg => exec.counts[tg] > 0).map(tg => (
