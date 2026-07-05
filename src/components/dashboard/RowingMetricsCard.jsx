@@ -23,8 +23,28 @@ function RowingMetricsCard({ log = [], profile = {} }) {
 
   const rowingData = useMemo(() => {
     const cutoff = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
+    // v9.474 — the card matched only `sport_type === 'rowing'`, a shape NO real
+    // path produces post-sanitize (Strava entries carry type='row'; even the
+    // Concept2 CSV import lost sport_type to the sanitizer whitelist) — so it
+    // showed "no rowing sessions" forever, for everyone. Match the canonical
+    // entry shape and normalize to the field names/units the card math expects:
+    // duration SECONDS (entries store minutes; durationSec wins when present),
+    // distance (distanceM fallback), avg_hr (avgHR), avg_spm — Strava rowing
+    // cadence IS strokes/min — with strokes derived when absent.
     const sessions = log
-      .filter(s => s && s.sport_type === 'rowing' && s.date >= cutoff)
+      .filter(s => s && (s.sport_type === 'rowing' || /row/i.test(s.type || '') || /row/i.test(s.sport || '')) && s.date >= cutoff)
+      .map(s => {
+        const durationSec = Number(s.durationSec) > 0 ? Number(s.durationSec) : (Number(s.duration) || 0) * 60
+        const avg_spm = s.avg_spm ?? (Number(s.avgCadence) > 0 ? Number(s.avgCadence) : null)
+        return {
+          ...s,
+          duration: durationSec,
+          distance: s.distance ?? s.distanceM ?? null,
+          avg_hr:   s.avg_hr ?? s.avgHR ?? null,
+          avg_spm,
+          strokes:  s.strokes ?? (avg_spm && durationSec ? Math.round(avg_spm * (durationSec / 60)) : null),
+        }
+      })
       .sort((a, b) => b.date.localeCompare(a.date))
     return sessions
   }, [log])

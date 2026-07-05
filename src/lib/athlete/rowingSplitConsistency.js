@@ -152,10 +152,20 @@ export function computeRowingSplitConsistency({ log, today, windowDays = 28 } = 
   const qualifying = []
   for (const e of log) {
     if (!isRowingSession(e)) continue
-    const dist = Number(e.distance)
-    const dur  = Number(e.duration)
+    // v9.474 — distanceM fallback: Strava/FIT entries carry distanceM only,
+    // so imported rows never qualified even when everything else matched.
+    const dist = Number(e.distance ?? e.distanceM)
+    // v9.474 — SECONDS for splitPer500m: entries store duration in MINUTES
+    // (durationSec wins when present, e.g. Concept2 CSV imports). CV% was
+    // scale-invariant so bands were right, but the card's formatted
+    // meanSplitSec was minutes-valued — 60× off.
+    const durMin = Number(e.duration)
+    const dur = Number(e.durationSec) > 0 ? Number(e.durationSec) : (Number.isFinite(durMin) ? durMin * 60 : NaN)
     if (!Number.isFinite(dist) || dist <= 0) continue
     if (!Number.isFinite(dur)  || dur  <= 0) continue
+    // v9.474 — explicit honest-null: no effort signal ≠ steady-state
+    // (Number(null)=0 already failed the band, but make the contract explicit).
+    if (e.rpe == null) continue
     const rpe = Number(e.rpe)
     if (!Number.isFinite(rpe)) continue
     if (rpe < RPE_MIN || rpe > RPE_MAX) continue
@@ -206,4 +216,38 @@ export function computeRowingSplitConsistency({ log, today, windowDays = 28 } = 
     band: classifyCv(avgCvPct),
     citation: ROWING_SPLIT_CONSISTENCY_CITATION,
   }
+}
+
+/**
+ * v9.474 — honesty helper for the card's empty state. True when rowing
+ * sessions WITH distance+duration exist in the window but NONE carry an RPE
+ * in the steady-state band — i.e. the analysis is blocked ONLY by missing
+ * effort signals (post-v9.469 honest-null imports), not by missing training.
+ * The card uses this to show "add RPE to unlock" instead of silently
+ * disappearing.
+ *
+ * @param {{ log: Array, today: string, windowDays?: number }} args
+ * @returns {boolean}
+ */
+export function rowingConsistencyBlockedByRpe({ log, today, windowDays = 28 } = {}) {
+  if (!Array.isArray(log) || !today) return false
+  let nullRpeCandidates = 0
+  for (const e of log) {
+    if (!isRowingSession(e)) continue
+    const dist = Number(e.distance ?? e.distanceM)
+    const dur  = Number(e.duration)
+    if (!Number.isFinite(dist) || dist <= 0) continue
+    if (!Number.isFinite(dur)  || dur  <= 0) continue
+    const ago = daysAgo(today, e.date)
+    if (ago == null || ago < 0 || ago > windowDays) continue
+    if (assignBucket(dist) == null) continue
+    const rpe = e.rpe == null ? null : Number(e.rpe)
+    // Any in-band real RPE → the analysis path owns it (not blocked).
+    if (rpe != null && Number.isFinite(rpe) && rpe >= RPE_MIN && rpe <= RPE_MAX) return false
+    // Only MISSING effort signals count as "blocked" — a real out-of-band RPE
+    // (recovery paddle, all-out test) is an athlete-entered fact, and the
+    // card's silence for those is the correct, existing behavior.
+    if (rpe == null) nullRpeCandidates++
+  }
+  return nullRpeCandidates > 0
 }

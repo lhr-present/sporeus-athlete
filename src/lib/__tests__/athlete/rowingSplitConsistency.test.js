@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   computeRowingSplitConsistency,
+  rowingConsistencyBlockedByRpe,
   ROWING_SPLIT_CONSISTENCY_CITATION,
 } from '../../athlete/rowingSplitConsistency.js'
 
@@ -10,9 +11,11 @@ const TODAY = '2026-05-17'
 /**
  * Build a steady-state rowing session. distance in metres, duration in seconds.
  * RPE defaults to 5 → inside the steady-state UT/AT window.
+ * v9.474 — real entries store `duration` in MINUTES; the seconds value rides
+ * `durationSec` (the lib prefers it), matching the Concept2-import shape.
  */
 const mkRow = (date, distance, duration, rpe = 5) => ({
-  date, type: 'row', sport: 'rowing', distance, duration, rpe,
+  date, type: 'row', sport: 'rowing', distance, durationSec: duration, duration: Math.round(duration / 60), rpe,
 })
 
 describe('computeRowingSplitConsistency — null cases', () => {
@@ -193,5 +196,59 @@ describe('computeRowingSplitConsistency — band classification', () => {
     ]
     const r = computeRowingSplitConsistency({ log, today: TODAY })
     expect(r.citation).toBe(ROWING_SPLIT_CONSISTENCY_CITATION)
+  })
+})
+
+// ─── v9.474 — entry-shape compat + honest RPE-blocked empty state ─────────────
+describe('v9.474 entry-shape fixes', () => {
+  it('accepts Strava/FIT shape: distanceM + minutes duration (no distance/durationSec keys)', () => {
+    const stravaRow = (date, distanceM, durationMin, rpe = 5) => ({ date, type: 'row', distanceM, duration: durationMin, rpe })
+    const log = [
+      stravaRow('2026-05-10', 2000, 8),
+      stravaRow('2026-05-12', 2000, 8),
+      stravaRow('2026-05-14', 2000, 8),
+    ]
+    const r = computeRowingSplitConsistency({ log, today: TODAY })
+    expect(r).not.toBeNull()
+    expect(r.bucketResults[0].distance).toBe(2000)
+    // 8 min over 2000m → 480s → 120s/500m (seconds, not minutes)
+    expect(r.bucketResults[0].meanSplitSec).toBe(120)
+  })
+
+  it('null-rpe rowing pieces do not qualify (honest-null)', () => {
+    const log = [
+      { date: '2026-05-10', type: 'row', distanceM: 2000, duration: 8, rpe: null },
+      { date: '2026-05-12', type: 'row', distanceM: 2000, duration: 8, rpe: null },
+      { date: '2026-05-14', type: 'row', distanceM: 2000, duration: 8, rpe: null },
+    ]
+    expect(computeRowingSplitConsistency({ log, today: TODAY })).toBeNull()
+  })
+})
+
+describe('rowingConsistencyBlockedByRpe (v9.474)', () => {
+  const nullRpeRow = (date) => ({ date, type: 'row', distanceM: 2000, duration: 8, rpe: null })
+  it('true when rowing pieces exist but none carry a steady-state RPE', () => {
+    expect(rowingConsistencyBlockedByRpe({ log: [nullRpeRow('2026-05-10'), nullRpeRow('2026-05-12')], today: TODAY })).toBe(true)
+  })
+  it('false when at least one piece has a steady-state RPE (analysis path owns it)', () => {
+    expect(rowingConsistencyBlockedByRpe({ log: [nullRpeRow('2026-05-10'), mkRow('2026-05-12', 2000, 480)], today: TODAY })).toBe(false)
+  })
+  it('false when there are no rowing pieces at all', () => {
+    expect(rowingConsistencyBlockedByRpe({ log: [], today: TODAY })).toBe(false)
+    expect(rowingConsistencyBlockedByRpe({ log: [{ date: '2026-05-10', type: 'run', distanceM: 10000, duration: 50, rpe: null }], today: TODAY })).toBe(false)
+  })
+  it('false for out-of-window or non-bucket distances', () => {
+    expect(rowingConsistencyBlockedByRpe({ log: [{ ...nullRpeRow('2026-01-01') }], today: TODAY })).toBe(false)
+    expect(rowingConsistencyBlockedByRpe({ log: [{ date: '2026-05-10', type: 'row', distanceM: 3456, duration: 15, rpe: null }], today: TODAY })).toBe(false)
+  })
+})
+
+describe('rowingConsistencyBlockedByRpe — real out-of-band rpe is NOT "blocked" (v9.474)', () => {
+  it('false when all pieces carry real out-of-band RPE (recovery/test — silence is correct)', () => {
+    const log = [
+      { date: '2026-05-10', type: 'row', distanceM: 2000, duration: 8, rpe: 3 },
+      { date: '2026-05-12', type: 'row', distanceM: 2000, duration: 8, rpe: 9 },
+    ]
+    expect(rowingConsistencyBlockedByRpe({ log, today: TODAY })).toBe(false)
   })
 })

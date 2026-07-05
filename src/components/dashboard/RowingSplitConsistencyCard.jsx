@@ -18,6 +18,7 @@ import { memo, useContext, useMemo  } from 'react'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import {
   computeRowingSplitConsistency,
+  rowingConsistencyBlockedByRpe,
 } from '../../lib/athlete/rowingSplitConsistency.js'
 import { formatSplit } from '../../lib/sport/rowing.js'
 
@@ -64,7 +65,30 @@ function RowingSplitConsistencyCard({ log = [], profile = {} }) {
     return computeRowingSplitConsistency({ log, today })
   }, [rower, log, today])
 
+  // v9.474 — honest empty state: rowing pieces exist but NONE carry a
+  // steady-state RPE (post-v9.469 imports are honest-null), so the analysis
+  // is blocked only by a missing effort signal. Tell the athlete instead of
+  // silently disappearing.
+  const rpeBlocked = useMemo(() => {
+    if (!rower || result) return false
+    return rowingConsistencyBlockedByRpe({ log, today })
+  }, [rower, result, log, today])
+
   if (!rower) return null
+  if (!result && rpeBlocked) {
+    return (
+      <div role="status" style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '14px 16px', marginBottom: 16 }}>
+        <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: "'IBM Plex Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+          {isTR ? 'KÜREK SPLIT CV · 28G' : 'ROWING SPLIT CV · 28D'}
+        </div>
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: 'var(--muted)', lineHeight: 1.55 }}>
+          {isTR
+            ? 'Kürek parçaların var ama RPE girilmemiş. Split tutarlılığı analizi sabit-tempo seansları (RPE 4–7) gerektirir — logdan seansa RPE ekle.'
+            : 'Rowing pieces found, but none carry an RPE. Split-consistency analysis needs steady-state sessions (RPE 4–7) — add RPE to your sessions from the log.'}
+        </div>
+      </div>
+    )
+  }
   if (!result) return null
 
   const color    = BAND_COLOR[result.band] || '#888'
