@@ -10,6 +10,8 @@ import { newId } from '../lib/newId.js'
 // v9.475 — keep the local sessionTag consistent when quick-setting RPE
 // (logEntryToRow re-classifies on sync; this avoids a stale local tag).
 import { classifySession } from '../lib/coach/classifySession.js'
+// v9.480 — MMP vector stamped at FIT import (sync-portable power data).
+import { computePowerPeaks } from '../lib/athlete/powerPeaks.js'
 import { announce } from '../lib/a11y/announcer.js'
 import Calendar from './Calendar.jsx'
 import { useData } from '../contexts/DataContext.jsx'
@@ -614,6 +616,12 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
       ...(wPrimeExhausted  ? { wPrimeExhausted: true, wPrimeMethod } : {}),
       ...(powers.length >= 30 ? { hasPower: true } : {}),
       ...(decouplingPct !== null ? { decouplingPct } : {}),
+      // v9.480 — MMP vector on the entry: FIT power data becomes SYNC-PORTABLE
+      // (the raw series stays a localStorage side-channel; the peaks travel).
+      ...(() => {
+        const pk = powers.length >= 30 ? computePowerPeaks(powers) : null
+        return pk ? { powerPeaks: pk } : {}
+      })(),
     }
     setLog([...log, sanitizeLogEntry(raw)])
     // Store power stream keyed by entry ID for Power Curve analysis

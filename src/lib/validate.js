@@ -3,6 +3,8 @@ import { normalizeAthleteLevel, normalizeSport } from './constants.js'
 import { vdotToThresholdStr } from './athlete/vo2maxToPace.js'
 import { normalizeTrainingDow } from './plan/trainingDays.js'
 import { newId } from './newId.js'
+// v9.480 — MMP-vector shape validation (pure, cycle-free)
+import { sanitizePowerPeaks } from './athlete/powerPeaks.js'
 
 /**
  * @typedef {Object} LogEntry
@@ -155,6 +157,11 @@ export function sanitizeLogEntry(e) {
   // v9.473 (E4) — session classification survives sanitization (whitelist).
   if (typeof e.sessionTag === 'string' && e.sessionTag) result.sessionTag = e.sessionTag.slice(0, 30)
   if (typeof e.sessionTagReason === 'string' && e.sessionTagReason) result.sessionTagReason = e.sessionTagReason.slice(0, 200)
+  // v9.480 — MMP vector survives sanitization (validated shape, bounded watts).
+  if (e.powerPeaks != null) {
+    const pk = sanitizePowerPeaks(e.powerPeaks)
+    if (pk) result.powerPeaks = pk
+  }
   // v9.474 — Concept2 CSV rowing fields (fileImport.js parseC2CSV) were being
   // STRIPPED here, which killed RowingMetricsCard's stroke-rate/drag analysis
   // even for erg imports. Plausibility bounds per Concept2 conventions.

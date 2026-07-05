@@ -2,6 +2,41 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.480.0 — 2026-07-06 — Power peaks (raw-series storage delivered as scalars) + planned_miss coverage fix
+
+**The founder-approved raw-series feature**, implemented as a compact per-session MMP vector
+instead of literal watt blobs — `power_peaks` jsonb `{p5,p60,p300,p1200,p3600,lh300}` (integer
+watts; lh300 = best 5-min inside the final hour = the Maunder-2021 durability numerator). Zero
+blob storage, no per-session fetch weight, same feature intent (durability + power-curve/CP
+history from synced data).
+
+- **Finding: DurabilityCard was DEAD for all real data since E12** — it read `entry.powerStream`,
+  a field NOTHING ever produced (same class as the v9.474 RowingMetricsCard bug). It now runs on
+  the scalar path: baseline = max p300 across sessions (peaks ∪ any raw-stream entries),
+  per-session score = lh300/baseline via new `computeDurabilityFromPeaks` (thresholds shared with
+  the stream path).
+- Writers: the streams-enrichment worker stamps `power_peaks` from the watts stream; client FIT
+  imports stamp `entry.powerPeaks` — **FIT power data is finally sync-portable** (the raw series
+  stays a localStorage side-channel; the peaks travel). Source of truth
+  `src/lib/athlete/powerPeaks.js` (+`sanitizePowerPeaks`), Deno port in streamScience.ts
+  (do-not-diverge), its vitest suite is the executable contract. Mappers round-trip; sanitizer
+  validates shape/bounds. Migration `20260639` (applied to prod); worker deployed.
+
+**Manual audit of v9.472–479** (the audit agent died on session limits a 4th time — its scope
+run by hand): one real bug found + fixed — **planned_miss false-positives for high-volume
+athletes** (the coach panel fetches last-30-SESSIONS, not a date window; an athlete logging
+10/week — the founder's squad template — exceeds 30 rows in the 28d miss window, so plan weeks
+older than the oldest fetched row were judged "no sessions" falsely). Now a data-coverage guard
+only judges weeks fully inside the fetched range; empty fetch judges nothing. Checked clean by
+hand: v9.472 edit-merge semantics (zones/tags survive, TSS-recompute comparisons incl. the ''
+rpe option), quickSetRpe/new-entry '' interplay, enrich re-tag sentinel semantics, adaptCoachPlan
+UTC math, hooks-order for the v9.478/479 additions.
+
++14 tests. LESSON (3rd occurrence): schedule audit agents right after the session-limit reset.
+
+DEPENDS ON: power_peaks column (20260639); powerPeaks.js as source of truth for the Deno port;
+DurabilityCard baseline semantics (max across peaks+streams, 365d window).
+
 ## v9.479.0 — 2026-07-05 — First-recommendation "aha" card (last deferred UX-audit product item)
 
 Closes the 2026-06-15 UX audit's deferred product list. The moment a new athlete's FIRST

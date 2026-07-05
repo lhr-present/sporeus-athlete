@@ -27,6 +27,41 @@
 export const DURABILITY_CITATION =
   'Maunder E. et al. (2021) Sports Med 51:1523–1550; Rønnestad & Vikmoen (2019) Sports Med.'
 
+// v9.480 — scalar path: sessions synced from Strava (or FIT cross-device)
+// carry a compact powerPeaks vector instead of a raw stream. lh300 IS the
+// durability numerator (best 5-min in the final hour), so the score computes
+// from two scalars. NOTE: entry.powerStream was a field NOTHING produced —
+// this card was dead for all real data until the peaks path existed.
+/**
+ * @param {Object} session - { powerPeaks: { lh300 }, durationSec?|duration? (min) }
+ * @param {number} baselineMMP5min
+ * @returns same shape as computeDurability, or null
+ */
+export function computeDurabilityFromPeaks(session, baselineMMP5min) {
+  if (!session || !baselineMMP5min || baselineMMP5min <= 0) return null
+  const lh300 = Number(session.powerPeaks?.lh300)
+  if (!Number.isFinite(lh300) || lh300 <= 0) return null
+  const durationSec = Number(session.durationSec) > 0
+    ? Number(session.durationSec)
+    : (Number(session.duration) || 0) * 60
+  if (durationSec < MIN_DURATION_SEC) return null
+
+  const durabilityPct = Math.round((lh300 / baselineMMP5min) * 100 * 10) / 10
+  const tier =
+    durabilityPct >= DURABILITY_THRESHOLDS.high     ? 'high' :
+    durabilityPct >= DURABILITY_THRESHOLDS.moderate ? 'moderate' :
+    durabilityPct >= DURABILITY_THRESHOLDS.low      ? 'low' :
+                                                      'very_low'
+  return {
+    durabilityPct,
+    lastHour5minPeak: lh300,
+    baselineMMP5min,
+    tier,
+    durationSec,
+    citation: DURABILITY_CITATION,
+  }
+}
+
 // ── Thresholds ────────────────────────────────────────────────────────────────
 
 export const DURABILITY_THRESHOLDS = Object.freeze({

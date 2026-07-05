@@ -135,6 +135,12 @@ describe('sanitizeLogEntry', () => {
     expect(out.startTime).toBe('06:15')
     expect(out.rpeMethod).toBe('derived_hr')
   })
+  it('v9.480 — powerPeaks survives sanitization (validated shape), garbage dropped', () => {
+    const base = { date:'2025-01-01', type:'Ride', duration:120, rpe:6, tss:90 }
+    expect(sanitizeLogEntry({ ...base, powerPeaks: { p300: 310, lh300: 295 } }).powerPeaks).toEqual({ p300: 310, lh300: 295 })
+    expect(sanitizeLogEntry({ ...base, powerPeaks: { p300: 9000 } }).powerPeaks).toBeUndefined()
+    expect(sanitizeLogEntry({ ...base }).powerPeaks).toBeUndefined()
+  })
   it('v9.474 — preserves Concept2 rowing fields (avg_spm, drag_factor, strokes, sport_type, avg_hr alias)', () => {
     const base = { date:'2025-01-01', type:'Row', duration:32, rpe:5, tss:55 }
     const out = sanitizeLogEntry({ ...base, sport_type: 'rowing', avg_spm: 22, drag_factor: 128, strokes: 704, avg_hr: 152 })
