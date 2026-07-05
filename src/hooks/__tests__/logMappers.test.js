@@ -129,6 +129,20 @@ describe('v9.465 enrichment columns (Strava P0)', () => {
   })
 })
 
+describe('v9.480 power_peaks round-trip', () => {
+  const peaks = { p5: 520, p60: 380, p300: 310, p1200: 265, p3600: 240, lh300: 295 }
+  it('hydrates power_peaks → powerPeaks (sanitized), omits when null/garbage', () => {
+    expect(logRowToEntry({ id: 'r1', date: '2026-07-06', power_peaks: peaks }).powerPeaks).toEqual(peaks)
+    expect('powerPeaks' in logRowToEntry({ id: 'r1', date: '2026-07-06', power_peaks: null })).toBe(false)
+    expect('powerPeaks' in logRowToEntry({ id: 'r1', date: '2026-07-06', power_peaks: { junk: 1 } })).toBe(false)
+  })
+  it('survives entry → row → entry (edits must not wipe it)', () => {
+    const back = logRowToEntry({ ...logEntryToRow({ date: '2026-07-06', type: 'Ride', powerPeaks: peaks }, 'u1'), id: 'r1' })
+    expect(back.powerPeaks).toEqual(peaks)
+    expect(logEntryToRow({ date: '2026-07-06', type: 'Ride' }, 'u1').power_peaks).toBeNull()
+  })
+})
+
 describe('v9.473 session_tag writer + hydration (E4)', () => {
   it('stamps session_tag/reason at write time (plan-less rules)', () => {
     const row = logEntryToRow({ date: '2026-07-01', type: 'row', duration: 60, rpe: 6, tss: 60 }, 'u1')

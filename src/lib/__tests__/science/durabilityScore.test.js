@@ -239,3 +239,31 @@ describe('interpretDurability', () => {
     expect(r.en.length).toBeGreaterThan(10)
   })
 })
+
+// ─── v9.480 — scalar (powerPeaks) path ────────────────────────────────────────
+import { computeDurabilityFromPeaks } from '../../science/durabilityScore.js'
+
+describe('computeDurabilityFromPeaks (v9.480)', () => {
+  it('computes from lh300 + baseline; matches the stream-path formula', () => {
+    const r = computeDurabilityFromPeaks({ powerPeaks: { lh300: 285 }, duration: 120 }, 300)
+    expect(r.durabilityPct).toBe(95)
+    expect(r.tier).toBe('high')
+    expect(r.lastHour5minPeak).toBe(285)
+  })
+  it('tiers match the stream path thresholds', () => {
+    const at = (lh) => computeDurabilityFromPeaks({ powerPeaks: { lh300: lh }, duration: 120 }, 300).tier
+    expect(at(285)).toBe('high')       // 95%
+    expect(at(272)).toBe('moderate')   // 90.7%
+    expect(at(258)).toBe('low')        // 86%
+    expect(at(240)).toBe('very_low')   // 80%
+  })
+  it('null under 90 min, missing lh300, or no baseline', () => {
+    expect(computeDurabilityFromPeaks({ powerPeaks: { lh300: 285 }, duration: 60 }, 300)).toBeNull()
+    expect(computeDurabilityFromPeaks({ powerPeaks: { p300: 300 }, duration: 120 }, 300)).toBeNull()
+    expect(computeDurabilityFromPeaks({ powerPeaks: { lh300: 285 }, duration: 120 }, 0)).toBeNull()
+    expect(computeDurabilityFromPeaks(null, 300)).toBeNull()
+  })
+  it('durationSec wins over minutes when present', () => {
+    expect(computeDurabilityFromPeaks({ powerPeaks: { lh300: 285 }, durationSec: 5400, duration: 1 }, 300)).not.toBeNull()
+  })
+})

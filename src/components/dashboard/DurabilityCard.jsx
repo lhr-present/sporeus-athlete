@@ -5,7 +5,7 @@
 //
 // Reference: Maunder E. et al. (2021) Sports Med 51:1523–1550
 import { memo, useMemo } from 'react'
-import { computeDurability, interpretDurability } from '../../lib/science/durabilityScore.js'
+import { computeDurability, computeDurabilityFromPeaks, interpretDurability } from '../../lib/science/durabilityScore.js'
 import { S } from '../../styles.js'
 
 const TIER_COLOR = { high: '#5bc25b', moderate: '#ff6600', low: '#f5c542', very_low: '#e03030' }
@@ -17,8 +17,11 @@ function baselineMMP5(log) {
   const cutoff = Date.now() - 365 * 86400_000
   let best = 0
   for (const s of (log || [])) {
-    if (!Array.isArray(s.powerStream) || s.powerStream.length < 300) continue
     if (new Date(s.date).getTime() < cutoff) continue
+    // v9.480 — synced sessions carry the peaks vector instead of a raw stream.
+    const peak300 = Number(s.powerPeaks?.p300)
+    if (Number.isFinite(peak300) && peak300 > best) best = peak300
+    if (!Array.isArray(s.powerStream) || s.powerStream.length < 300) continue
     const ps = s.powerStream
     let sum = 0
     for (let j = 0; j < 300; j++) sum += ps[j]
@@ -37,7 +40,8 @@ function DurabilityCard({ log, lang }) {
   // Sessions ≥90 min with power stream, newest first, capped at 8 for history
   const qualifying = useMemo(() =>
     (log || [])
-      .filter(s => Array.isArray(s.powerStream) && s.powerStream.length > 0 &&
+      .filter(s => ((Array.isArray(s.powerStream) && s.powerStream.length > 0) ||
+                    Number(s.powerPeaks?.lh300) > 0) &&
                    ((s.durationSec ?? (s.duration != null ? s.duration * 60 : 0)) >= 5400))
       .sort((a, b) => b.date.localeCompare(a.date))
       .slice(0, 8),
@@ -46,7 +50,9 @@ function DurabilityCard({ log, lang }) {
   const scores = useMemo(() => {
     if (!baseline) return []
     return qualifying
-      .map(s => computeDurability(s, baseline))
+      .map(s => (Array.isArray(s.powerStream) && s.powerStream.length > 0)
+        ? computeDurability(s, baseline)
+        : computeDurabilityFromPeaks(s, baseline))
       .filter(Boolean)
       .reverse() // oldest→newest for the trend bar
   }, [qualifying, baseline])

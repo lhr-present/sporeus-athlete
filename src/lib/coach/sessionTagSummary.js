@@ -118,13 +118,19 @@ export function summarizeSessionTags(rows, { plan = null, today = null, missWind
       const cutD = new Date(todayD)
       cutD.setUTCDate(cutD.getUTCDate() - missWindowDays)
       const cutoff = cutD.toISOString().slice(0, 10)
+      // v9.480 (manual-audit fix) — data-coverage guard: `rows` is a last-N-
+      // SESSIONS fetch, not a date window. A high-volume athlete (>30 sessions
+      // in the miss window) would have plan weeks older than the OLDEST fetched
+      // row judged "no sessions" falsely. Only judge weeks the data fully covers.
+      const oldestRow = list.reduce((min, r) => (r?.date && (!min || r.date < min) ? r.date : min), null)
       for (const w of plan.weeks) {
         if (!w?.startDate || !(Number(w.tssEst) > 0)) continue
         const endD = new Date(w.startDate + 'T00:00:00Z')
         endD.setUTCDate(endD.getUTCDate() + 7)
         const weekEnd = endD.toISOString().slice(0, 10)
-        if (weekEnd > today) continue          // week not finished yet
-        if (w.startDate < cutoff) continue     // outside the window
+        if (weekEnd > today) continue                      // week not finished yet
+        if (w.startDate < cutoff) continue                 // outside the window
+        if (!oldestRow || w.startDate < oldestRow) continue // coverage unverifiable
         const hasSession = list.some(r => r?.date && r.date >= w.startDate && r.date < weekEnd)
         if (!hasSession) counts.planned_miss++
       }

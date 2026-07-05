@@ -65,6 +65,38 @@ export function zonesFromHR(hrSeries: number[], maxHR: number | null): number[] 
   return zoneCounts.map((c) => Math.round((c / total) * 100))
 }
 
+// v9.480 — compact power-peaks vector. PORT of src/lib/athlete/powerPeaks.js
+// (the source of truth; its vitest suite is the executable contract — do not
+// diverge). {p5,p60,p300,p1200,p3600} = best rolling means; lh300 = best 5-min
+// inside the final hour (durability numerator, Maunder 2021).
+const PEAK_WINDOWS: Record<string, number> = { p5: 5, p60: 60, p300: 300, p1200: 1200, p3600: 3600 }
+
+function bestRollingMean(arr: number[], windowSize: number): number | null {
+  if (!Array.isArray(arr) || arr.length < windowSize) return null
+  let sum = 0
+  for (let i = 0; i < windowSize; i++) sum += arr[i]
+  let best = sum
+  for (let i = windowSize; i < arr.length; i++) {
+    sum += arr[i] - arr[i - windowSize]
+    if (sum > best) best = sum
+  }
+  return best / windowSize
+}
+
+export function computePowerPeaks(powers: number[]): Record<string, number> | null {
+  if (!Array.isArray(powers) || powers.length < 30) return null
+  if (!powers.some((p) => p > 0)) return null
+  const peaks: Record<string, number> = {}
+  for (const [key, win] of Object.entries(PEAK_WINDOWS)) {
+    const v = bestRollingMean(powers, win)
+    if (v != null && v > 0) peaks[key] = Math.round(v)
+  }
+  const lastHour = powers.slice(Math.max(0, powers.length - 3600))
+  const lh = bestRollingMean(lastHour, 300)
+  if (lh != null && lh > 0) peaks.lh300 = Math.round(lh)
+  return Object.keys(peaks).length ? peaks : null
+}
+
 // Skiba 2012 differential W′-balance — exhaustion flag only (the badge is the
 // consumer; the full series is never stored). Port of formulas.js computeWPrime.
 export function wPrimeExhausted(powers: number[], cp: number, wPrimeMax: number): boolean {

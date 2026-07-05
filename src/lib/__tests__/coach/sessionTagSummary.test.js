@@ -132,4 +132,14 @@ describe('summarizeSessionTags — plan-aware (v9.476)', () => {
     expect(out.planAware).toBe(false)
     expect(out.counts.recovery).toBe(1)
   })
+
+  it('v9.480 — coverage guard: weeks older than the oldest fetched row are not judged (last-N fetch ≠ date window)', () => {
+    // High-volume athlete: fetch coverage starts 06-10; week 1 (06-01..06-08)
+    // is OLDER than coverage → must NOT count as a miss despite no rows in it.
+    const rows = [db({ date: '2026-06-10', tss: 60 }), db({ date: '2026-06-12', tss: 60 })]
+    const out = summarizeSessionTags(rows, { plan, today: '2026-06-16' })
+    expect(out.counts.planned_miss).toBe(0)
+    // Empty fetch → nothing judgeable → zero misses (conservative).
+    expect(summarizeSessionTags([], { plan, today: '2026-06-16' }).counts.planned_miss).toBe(0)
+  })
 })

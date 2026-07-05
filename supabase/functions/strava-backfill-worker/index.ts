@@ -13,7 +13,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 // drifting). Enrichment (power/elevation/RPE/clock) lives in the shared mapper.
 import { buildTrainingLogRow, resolveProfilePhysiology, enqueueStreamEnrichment, computePowerTSS, fetchStreamEnrichedIds, stripStreamDerived, classifySessionTag } from '../_shared/stravaActivity.ts'
 // v9.466 P1: per-activity streams + detail enrichment (FIT-parity scalars).
-import { normalizedPower, decouplingPct, zonesFromHR, wPrimeExhausted } from '../_shared/streamScience.ts'
+import { normalizedPower, decouplingPct, zonesFromHR, wPrimeExhausted, computePowerPeaks } from '../_shared/streamScience.ts'
 
 const RATE_WINDOW_MS = 15 * 60 * 1000   // 15 minutes
 const MAX_REQUESTS   = 90               // < Strava's 100/15min app limit (was 600 → 429 risk)
@@ -279,6 +279,11 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
             upd.w_prime_exhausted = true
             upd.w_prime_method = physio.wPrimeMethod
           }
+          // v9.480 — compact MMP vector (the raw-series-storage feature as
+          // scalars): unlocks DurabilityCard + power-curve history without
+          // persisting watt blobs.
+          const peaks = computePowerPeaks(watts)
+          if (peaks) upd.power_peaks = peaks
         }
 
         // Friel decoupling: Pw:Hr when powered, else Pa:Hr (velocity).

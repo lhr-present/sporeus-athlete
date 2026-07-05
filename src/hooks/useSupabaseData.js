@@ -12,6 +12,8 @@ import { deepEqual } from '../lib/deepEqual.js'
 import { isUuid } from '../lib/newId.js'
 // v9.473 (E4) — plan-less session classification at write time (pure, cycle-free).
 import { classifySession } from '../lib/coach/classifySession.js'
+// v9.480 — per-session MMP vector round-trip (DurabilityCard scalar path).
+import { sanitizePowerPeaks } from '../lib/athlete/powerPeaks.js'
 import { migrateLogIdsToUuid } from '../lib/validate.js'
 
 // ─── Background-write helper ────────────────────────────────────────────────────
@@ -99,6 +101,11 @@ export function logRowToEntry(row) {
     // v9.473.0 (E4) — session classification (coach execution profile reads it).
     ...(row.session_tag        != null ? { sessionTag:       String(row.session_tag) }        : {}),
     ...(row.session_tag_reason != null ? { sessionTagReason: String(row.session_tag_reason) } : {}),
+    // v9.480.0 — MMP vector (sanitized on hydration; DurabilityCard reads it).
+    ...(() => {
+      const pk = sanitizePowerPeaks(row.power_peaks)
+      return pk ? { powerPeaks: pk } : {}
+    })(),
   }
 }
 export function logEntryToRow(entry, userId) {
@@ -145,6 +152,8 @@ export function logEntryToRow(entry, userId) {
     w_prime_exhausted: entry.wPrimeExhausted === true ? true : null,
     w_prime_method:    entry.wPrimeMethod === 'measured' || entry.wPrimeMethod === 'estimated' ? entry.wPrimeMethod : null,
     calories:          posInt(entry.calories),
+    // v9.480.0 — MMP vector round-trip (edited entries must not wipe it).
+    power_peaks: sanitizePowerPeaks(entry.powerPeaks),
     // v9.473.0 (E4) — classify at write time, plan-less (single choke point:
     // QuickAdd, TrainingLog edit, offline replay, guest migration all pass
     // through here). Deterministic over {type,duration,rpe,tss,date}, so
