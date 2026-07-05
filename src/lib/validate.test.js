@@ -135,6 +135,19 @@ describe('sanitizeLogEntry', () => {
     expect(out.startTime).toBe('06:15')
     expect(out.rpeMethod).toBe('derived_hr')
   })
+  it('v9.474 — preserves Concept2 rowing fields (avg_spm, drag_factor, strokes, sport_type, avg_hr alias)', () => {
+    const base = { date:'2025-01-01', type:'Row', duration:32, rpe:5, tss:55 }
+    const out = sanitizeLogEntry({ ...base, sport_type: 'rowing', avg_spm: 22, drag_factor: 128, strokes: 704, avg_hr: 152 })
+    expect(out.sport_type).toBe('rowing')
+    expect(out.avg_spm).toBe(22)
+    expect(out.drag_factor).toBe(128)
+    expect(out.strokes).toBe(704)
+    expect(out.avgHR).toBe(152)  // avg_hr alias → canonical avgHR
+    const bad = sanitizeLogEntry({ ...base, avg_spm: 99, drag_factor: 400, strokes: -5 })
+    expect(bad.avg_spm).toBeUndefined()
+    expect(bad.drag_factor).toBeUndefined()
+    expect(bad.strokes).toBeUndefined()
+  })
   it('preserves calories within bounds, drops implausible values (v9.466)', () => {
     const base = { date:'2025-01-01', type:'Ride', duration:120, rpe:6, tss:90 }
     expect(sanitizeLogEntry({ ...base, calories: 950 }).calories).toBe(950)

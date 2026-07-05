@@ -125,7 +125,7 @@ export function sanitizeLogEntry(e) {
   // Accept both casings: QuickAddModal emits `avgHr` (lowercase), the FIT
   // importer + storage contract use `avgHR` (uppercase). Pre-fix only avgHR was
   // read, so a manually-entered Avg HR was silently dropped. Canonical out = avgHR.
-  const avgHR = parseInt(e.avgHR ?? e.avgHr);  if (Number.isFinite(avgHR) && avgHR >= 30 && avgHR <= 250) result.avgHR = avgHR
+  const avgHR = parseInt(e.avgHR ?? e.avgHr ?? e.avg_hr);  if (Number.isFinite(avgHR) && avgHR >= 30 && avgHR <= 250) result.avgHR = avgHR
   const cadence = parseInt(e.avgCadence); if (Number.isFinite(cadence) && cadence >= 0 && cadence <= 200) result.avgCadence = cadence
   // Normalized Power (Coggan 2003) — computed by the FIT importer (fileImport.js
   // parseFIT) when a ride carries a ≥30s power series. Pre-fix it was stripped
@@ -155,6 +155,13 @@ export function sanitizeLogEntry(e) {
   // v9.473 (E4) — session classification survives sanitization (whitelist).
   if (typeof e.sessionTag === 'string' && e.sessionTag) result.sessionTag = e.sessionTag.slice(0, 30)
   if (typeof e.sessionTagReason === 'string' && e.sessionTagReason) result.sessionTagReason = e.sessionTagReason.slice(0, 200)
+  // v9.474 — Concept2 CSV rowing fields (fileImport.js parseC2CSV) were being
+  // STRIPPED here, which killed RowingMetricsCard's stroke-rate/drag analysis
+  // even for erg imports. Plausibility bounds per Concept2 conventions.
+  if ((e.sport_type || '').toLowerCase() === 'rowing') result.sport_type = 'rowing'
+  const spm = parseInt(e.avg_spm); if (Number.isFinite(spm) && spm >= 10 && spm <= 60) result.avg_spm = spm
+  const df = parseInt(e.drag_factor); if (Number.isFinite(df) && df >= 50 && df <= 250) result.drag_factor = df
+  const strokes = parseInt(e.strokes); if (Number.isFinite(strokes) && strokes > 0 && strokes <= 50000) result.strokes = strokes
   return result
 }
 

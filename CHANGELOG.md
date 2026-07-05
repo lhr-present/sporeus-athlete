@@ -2,6 +2,36 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.474.0 — 2026-07-05 — 🚣 Rowing works: three shape bugs killed every rowing surface
+
+Manual rowing-experience pass (founder directive: "be sure the app works good on rowing"; the
+audit agent for this died on session limits — done by hand against the founder's exact data
+shape: type='row', distanceM, minutes duration, no HR/power, null rpe). Three compounding
+entry-shape bugs meant the flagship rowing analysis NEVER ran for any real data path:
+
+- **RowingMetricsCard was dead for everyone.** It filtered `sport_type === 'rowing'` — a key no
+  post-sanitize entry ever has (Strava rows carry type='row'; even Concept2 CSV imports lost
+  sport_type to the whitelist) — and read `distance/strokes/avg_hr` + seconds-duration (entries:
+  distanceM/avgHR + MINUTES → its math was also 60× off). It showed "no rowing sessions in the
+  last 30 days" forever. Now matches the canonical shape and normalizes units; Strava rowing
+  cadence (which IS strokes/min) feeds avg_spm, with strokes derived when absent.
+- **rowingSplitConsistency never qualified imported rows**: it read `e.distance` (Strava/FIT
+  entries carry distanceM only) and fed MINUTES to splitPer500m — CV% is scale-invariant so
+  bands were right, but the card's formatted mean split was minutes-valued. distanceM fallback +
+  durationSec-first seconds conversion; explicit honest-null rpe skip.
+- **Sanitizer stripped the Concept2 rowing fields** (sport_type/avg_spm/drag_factor/strokes;
+  avg_hr now aliases into canonical avgHR) — erg CSV imports lost their stroke-rate/drag data.
+- **Honest empty state**: when rowing pieces exist but NONE carry a steady-state RPE (the
+  founder's exact post-v9.469 state), RowingSplitConsistencyCard now says "add RPE (4–7) to
+  unlock" (EN/TR) instead of silently vanishing (`rowingConsistencyBlockedByRpe` helper).
+  The RPE 4–7 science gate itself is UNCHANGED (Steinacker steady-state window, founder-domain).
+
+Test fixture corrected to the real entry convention (minutes + durationSec). +7 tests.
+
+DEPENDS ON: entry canonical shape (type/distanceM/duration-minutes/avgHR/avgCadence);
+splitPer500m(distanceM, durationSec) seconds contract; RPE_MIN/MAX gate (do not relax without
+founder sign-off).
+
 ## v9.473.0 — 2026-07-05 — Session-tag writer + coach EXECUTION PROFILE (E4, founder-approved build)
 
 The `session_tag` column (v9.455 vocabulary, in prod since the drift fix) finally gets its
