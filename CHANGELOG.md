@@ -2,6 +2,27 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.478.0 — 2026-07-05 — Readiness-explanation disclosure (deferred UX-audit product item)
+
+From the 2026-06-15 UX audit's deferred list ("plumbing lives, storytelling doesn't"): the hero
+readiness number showed only the single top driver line — while `computeReadinessScore` already
+returns every component score, all driver reasons, the reliability grade and the citation. Now a
+**▸ WHY?** toggle on the driver line expands (collapsed by default — the daily answer stays one
+glance):
+
+- Per-component rows: HRV · 40%, SLEEP · 25%, SORENESS · 20%, MOOD (energy) · 15% — score /100
+  with a color mini-bar; absent components say "no data — weight redistributed" (honest about the
+  reweighting the lib actually does).
+- The #2 driver reason (the #1 already shows inline), the reliability grade (FULL = 3+ components
+  incl. HRV / PARTIAL) and the citation (Plews 2013 · Lastella 2018 · Foster 1998). EN+TR.
+- Renders only where the driver line renders (full check-in path); the quick 3-tap path is
+  unchanged (reliability 'low' → no drivers → no disclosure).
+
+Zero new data — pure surfacing of the lib's existing return value (same pattern as v9.467/475).
+
+DEPENDS ON: computeReadinessScore return shape (components/drivers/reliability/citation) +
+READINESS_WEIGHTS export; heroDriver gating in TodayView.
+
 ## v9.477.0 — 2026-07-05 — TSS estimator UNIFIED across import paths (founder-approved)
 
 The same session scored differently by import path: Strava edge used its own TRIMP×1.2 scale with
