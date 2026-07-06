@@ -49,6 +49,18 @@ serve(withTelemetry('ingest-telemetry', async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   if (req.method !== 'POST')    return fail(405, 'POST only')
 
+  // v9.486 (backend sweep F5) — this fn did UNAUTHENTICATED service-role
+  // inserts: 50 events/request but UNLIMITED requests from anyone with the
+  // URL. Two cheap gates: (1) the project anon key must be presented (public
+  // in the bundle, but blocks drive-by URL abuse), (2) a per-session hourly
+  // cap enforced below after parsing.
+  // Supabase clients always send the anon key in the `apikey` header
+  // (Authorization may carry a user JWT instead — that's fine).
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
+  const apikey  = req.headers.get('apikey')
+    || (req.headers.get('authorization') || '').replace('Bearer ', '')
+  if (!anonKey || apikey !== anonKey) return fail(401, 'apikey required')
+
   let body: IngestBody
   try {
     body = await req.json()
@@ -94,6 +106,16 @@ serve(withTelemetry('ingest-telemetry', async (req: Request) => {
     (Deno.env.get('SPOREUS_SERVICE_KEY') ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'))!,
     { auth: { persistSession: false } },
   )
+
+  // v9.486 — per-session hourly cap: 500 events/session/hour (a legit client
+  // flush is ~50/session/day). Fail CLOSED on count error.
+  const { count, error: cntErr } = await supa
+    .from('client_events')
+    .select('*', { count: 'exact', head: true })
+    .eq('session_id', session_id)
+    .gte('created_at', new Date(Date.now() - 3600_000).toISOString())
+  if (cntErr) return fail(500, 'rate check failed')
+  if ((count ?? 0) + rows.length > 500) return fail(429, 'session event budget exceeded')
 
   const { error } = await supa.from('client_events').insert(rows)
   if (error) {
