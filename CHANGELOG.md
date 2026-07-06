@@ -2,6 +2,41 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.483.0 — 2026-07-07 — 🔴 Client HIGH fixes (3-agent audit, part 2): 8 dead cards + data-loss paths
+
+From docs/audits/contract_sweep + contract_blast_radius (2026-07-06):
+
+- **The `durationMin` dead-card cluster (A1)** — 8 athlete libs read `entry.durationMin ??
+  entry.duration_min`, keys that exist only on FIT-preview/DB-row shapes; canonical entries store
+  minutes under `duration` → ALL 8 CARDS RENDERED NOTHING, FOREVER: weeklyEnduranceTime,
+  veryEasyShare, sessionLengthDistribution, postLongRunNextDay, backToBackLongDay, timeOnFeet,
+  raceTimeEstimator (+distanceM fallback), volumeIntensityScissors. Canonical fallback added to
+  every read.
+- **checkInQuality scored ghost keys (A2)** — `durationMin`/`heartRate` fill-rates permanently 0%,
+  quality capped at 50% for everyone, "duration+HR never logged" always shown. Field-source map
+  added (duration/avgHR canonical).
+- **EF trend was silently cycling-only (A3)** — Dashboard mapped `avgPaceMPerMin`/`sport`, neither
+  produced → computeEF's pace/HR branch could never fire for runners. Pace now derived from
+  distanceM + duration; sport falls back to type.
+- **detectPRs distance/pace categories dead + UNIT BUG (A4)** — QuickAdd's `distanceKm` was never
+  read (categories 5–6 dead for manual entries) AND the first-read `distance`-as-km key's only
+  producer (C2 CSV) emits METERS: a 2000m erg would have scored a "2000 km" forever-PR. Canonical
+  entryKm() read both categories; fixtures migrated; regression tests added.
+- **sanitizeProfile WIPED CP-test results (A5)** — Protocols writes cp/wPrime/powerZones, none
+  whitelisted → any later Profile save deleted them (W′ badge silently downgraded
+  measured→estimated; PowerCurve lost profile CP). Whitelisted with bounds. Same for notification
+  prefs (A6): notifications/preferred_checkin_time/timezone reset on every save.
+- **Calendar edit path zeroed TSS on null-rpe entries (B-HIGH-1)** — the second edit entry point
+  (Calendar onEdit) still stringified null rpe to "null", defeating the v9.472 protections:
+  parseInt('null')→NaN→calcTSS→clamp(NaN)→0 silently zeroed measured TSS locally AND in DB on a
+  notes-only edit. Mirrors the startEdit null-mapping.
+
+Remaining A/B MED+LOW items (recovery round-trip columns, sessionExecution/afterBigWeekRpe,
+adherence-flag persistence, seasonStats, cosmetics) → part 3.
+
+DEPENDS ON: canonical entry shape (duration minutes / distanceKm / avgHR); sanitizeProfile output
+now including cp/wPrime/powerZones/notifications/preferred_checkin_time/timezone (do not remove).
+
 ## v9.482.0 — 2026-07-07 — 🔴 Backend sweep fixes (3-agent full-app audit, part 1 of 3)
 
 A 3-agent full-app sweep (all three survived by writing reports incrementally) produced

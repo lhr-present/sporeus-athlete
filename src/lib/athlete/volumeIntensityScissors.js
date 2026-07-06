@@ -151,7 +151,7 @@ export function analyzeVolumeIntensityScissors({
       const idx = idxByWeekStart[wkStart]
       if (idx == null) continue
 
-      const duration = Number(e.duration_min)
+      const duration = Number(e.duration_min ?? e.duration)  // v9.483: canonical key fallback (contract sweep A1)
       if (Number.isFinite(duration) && duration > 0) {
         buckets[idx].totalMinutes += duration
 

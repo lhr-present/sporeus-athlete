@@ -139,8 +139,8 @@ export function estimateRaceTimes(opts) {
     if (!isRunning(e)) continue
     const dMs = dayMs(e?.date)
     if (dMs == null || dMs < cutoffMs || dMs > todayMs) continue
-    const dist = Number(e?.distanceKm)
-    const dur  = Number(e?.durationMin)
+    const dist = Number(e?.distanceKm ?? (Number(e?.distanceM) > 0 ? Number(e.distanceM) / 1000 : NaN))  // v9.483: distanceM fallback (contract sweep A1)
+    const dur  = Number(e?.durationMin ?? e?.duration)  // v9.483: canonical key fallback (contract sweep A1)
     if (!Number.isFinite(dist) || dist <= 0) continue
     if (!Number.isFinite(dur)  || dur  <= 0) continue
     runs.push({

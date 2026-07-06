@@ -348,8 +348,8 @@ describe('formatPRSummary', () => {
 // ── v9.108.0 (Prompt QQ) — distance + pace categories ─────────────────────
 describe('detectPRs — longest_distance', () => {
   it('flags new distance PR vs prior', () => {
-    const prior = [{ date: '2026-05-01', duration: 60, distance: 12 }]
-    const out = detectPRs({ date: '2026-05-14', duration: 90, distance: 18 }, prior)
+    const prior = [{ date: '2026-05-01', duration: 60, distanceKm: 12 }]
+    const out = detectPRs({ date: '2026-05-14', duration: 90, distanceKm: 18 }, prior)
     const dr = out.find(p => p.category === 'longest_distance')
     expect(dr).toBeTruthy()
     expect(dr.value).toBe(18)
@@ -358,8 +358,8 @@ describe('detectPRs — longest_distance', () => {
   })
 
   it('does not flag when distance is lower', () => {
-    const prior = [{ date: '2026-05-01', duration: 90, distance: 18 }]
-    const out = detectPRs({ date: '2026-05-14', duration: 60, distance: 10 }, prior)
+    const prior = [{ date: '2026-05-01', duration: 90, distanceKm: 18 }]
+    const out = detectPRs({ date: '2026-05-14', duration: 60, distanceKm: 10 }, prior)
     expect(out.find(p => p.category === 'longest_distance')).toBeUndefined()
   })
 
@@ -369,7 +369,7 @@ describe('detectPRs — longest_distance', () => {
   })
 
   it('first-distance message reads "first of this distance"', () => {
-    const out = detectPRs({ date: '2026-05-14', duration: 60, distance: 5 }, [])
+    const out = detectPRs({ date: '2026-05-14', duration: 60, distanceKm: 5 }, [])
     const dr = out.find(p => p.category === 'longest_distance')
     expect(dr.prev).toBeNull()
     expect(dr.en).toMatch(/first of this distance/)
@@ -380,8 +380,8 @@ describe('detectPRs — fastest_pace', () => {
   it('flags new fastest pace when duration >= 20min and km > prior', () => {
     // prior: 30min for 5km = 6:00/km
     // new: 30min for 7km = ~4:17/km — faster
-    const prior = [{ date: '2026-05-01', duration: 30, distance: 5 }]
-    const out = detectPRs({ date: '2026-05-14', duration: 30, distance: 7 }, prior)
+    const prior = [{ date: '2026-05-01', duration: 30, distanceKm: 5 }]
+    const out = detectPRs({ date: '2026-05-14', duration: 30, distanceKm: 7 }, prior)
     const pr = out.find(p => p.category === 'fastest_pace')
     expect(pr).toBeTruthy()
     expect(pr.value).toBeLessThan(pr.prev)
@@ -389,14 +389,14 @@ describe('detectPRs — fastest_pace', () => {
   })
 
   it('does NOT flag when duration < 20min (interval rep filter)', () => {
-    const prior = [{ date: '2026-05-01', duration: 30, distance: 5 }]
-    const out = detectPRs({ date: '2026-05-14', duration: 10, distance: 4 }, prior)  // 2:30/km but only 10min
+    const prior = [{ date: '2026-05-01', duration: 30, distanceKm: 5 }]
+    const out = detectPRs({ date: '2026-05-14', duration: 10, distanceKm: 4 }, prior)  // 2:30/km but only 10min
     expect(out.find(p => p.category === 'fastest_pace')).toBeUndefined()
   })
 
   it('does NOT flag when slower than prior', () => {
-    const prior = [{ date: '2026-05-01', duration: 30, distance: 7 }]
-    const out = detectPRs({ date: '2026-05-14', duration: 30, distance: 5 }, prior)
+    const prior = [{ date: '2026-05-01', duration: 30, distanceKm: 7 }]
+    const out = detectPRs({ date: '2026-05-14', duration: 30, distanceKm: 5 }, prior)
     expect(out.find(p => p.category === 'fastest_pace')).toBeUndefined()
   })
 
@@ -404,10 +404,10 @@ describe('detectPRs — fastest_pace', () => {
     // prior has a 5min/2km rep (2:30/km) but should NOT be the baseline
     // because duration filter excludes it.
     const prior = [
-      { date: '2026-05-01', duration: 5, distance: 2 },     // ignored
-      { date: '2026-05-02', duration: 30, distance: 5 },    // 6:00/km baseline
+      { date: '2026-05-01', duration: 5, distanceKm: 2 },     // ignored
+      { date: '2026-05-02', duration: 30, distanceKm: 5 },    // 6:00/km baseline
     ]
-    const out = detectPRs({ date: '2026-05-14', duration: 30, distance: 6 }, prior)  // 5:00/km
+    const out = detectPRs({ date: '2026-05-14', duration: 30, distanceKm: 6 }, prior)  // 5:00/km
     const pr = out.find(p => p.category === 'fastest_pace')
     expect(pr).toBeTruthy()
     expect(pr.prev).toBeCloseTo(360, 0)  // 6:00/km = 360 sec
@@ -417,5 +417,22 @@ describe('detectPRs — fastest_pace', () => {
     const out = detectPRs({ date: '2026-05-14', duration: 30 }, [])
     expect(out.find(p => p.category === 'fastest_pace')).toBeUndefined()
     expect(out.find(p => p.category === 'longest_distance')).toBeUndefined()
+  })
+})
+
+// v9.483 (contract sweep A4) — unit-bug regression: C2 entries carry `distance`
+// in METERS (plus distanceM); the old distance-as-km read scored a 2000m erg
+// as a "2000 km" forever-PR. The raw `distance` key must be ignored.
+describe('detectPRs — v9.483 canonical distance reads', () => {
+  it('ignores the meters-valued `distance` key (C2 shape); uses distanceM', () => {
+    const prior = [{ date: '2026-05-01', duration: 60, distanceKm: 12 }]
+    const out = detectPRs({ date: '2026-05-14', duration: 8, distance: 2000, distanceM: 2000 }, prior)
+    const dr = out.find(p => p.category === 'longest_distance')
+    expect(dr).toBeUndefined()  // 2 km < 12 km — no PR (old code: 2000 "km" PR)
+  })
+  it('QuickAdd distanceKm entries can PR (were dead — key never read)', () => {
+    const prior = [{ date: '2026-05-01', duration: 60, distanceKm: 12 }]
+    const out = detectPRs({ date: '2026-05-14', duration: 90, distanceKm: 18 }, prior)
+    expect(out.find(p => p.category === 'longest_distance')).toBeTruthy()
   })
 })

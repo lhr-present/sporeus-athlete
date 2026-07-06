@@ -403,6 +403,18 @@ export function sanitizeProfile(p) {
     // it → a 3-day athlete silently reverted to 5 days/week. Clamp 1–7. Empty
     // string when unset so the `|| 5` fallback still fires.
     trainDays:     p.trainDays == null || p.trainDays === '' ? '' : numStr(p.trainDays, 1, 7),
+    // v9.483 (contract sweep A5) — CP-test results were WIPED on every Profile
+    // save: Protocols.jsx writes cp/wPrime/powerZones, none whitelisted → the
+    // W′ badge silently downgraded measured→estimated and PowerCurve lost the
+    // profile CP the next time the athlete touched any profile field.
+    cp:            p.cp == null || p.cp === '' ? '' : numStr(p.cp, 30, 2000),
+    wPrime:        p.wPrime == null || p.wPrime === '' ? '' : numStr(p.wPrime, 1000, 60000),
+    ...(Array.isArray(p.powerZones) ? { powerZones: p.powerZones.slice(0, 8) } : {}),
+    // v9.483 (contract sweep A6) — notification prefs reset on any Profile save
+    // (written by NotificationSettings/reminders, read by push scheduling).
+    ...(p.notifications && typeof p.notifications === 'object' && !Array.isArray(p.notifications) ? { notifications: p.notifications } : {}),
+    preferred_checkin_time: typeof p.preferred_checkin_time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(p.preferred_checkin_time) ? p.preferred_checkin_time : '',
+    timezone:      str(p.timezone, 60),
   }
 }
 

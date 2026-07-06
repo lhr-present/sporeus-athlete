@@ -840,7 +840,10 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
         </div>
         {calView ? (
           <Calendar log={log} setLog={setLog} onEdit={ses=>{
-            setForm({ date:ses.date, type:ses.type, duration:String(ses.duration), rpe:String(ses.rpe), notes:ses.notes||'' })
+            // v9.483 (blast-radius HIGH-1): null rpe must not become the string
+            // "null" — it defeated the v9.472 notes-edit TSS protection and
+            // calcTSS(dur, NaN)→clamp(NaN)→0 silently ZEROED the entry's TSS.
+            setForm({ date:ses.date, type:ses.type, duration:String(ses.duration), rpe:ses.rpe == null ? '' : String(ses.rpe), notes:ses.notes||'' })
             if (ses.zones) { setZoneMins(ses.zones.map(String)); setShowZones(true) }
             setEditingId(ses.id||null)
             window.scrollTo({ top:0, behavior:'smooth' })
