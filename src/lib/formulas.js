@@ -344,7 +344,9 @@ export function calcPRs(log) {
   const sorted = [...log].sort((a,b) => new Date(a.date) - new Date(b.date))
   const highTSS = sorted.reduce((best,e)=>(!best||e.tss>best.tss)?e:best, null)
   const longDur  = sorted.reduce((best,e)=>(!best||e.duration>best.duration)?e:best, null)
-  const highRPE  = sorted.reduce((best,e)=>(!best||e.rpe>best.rpe)?e:best, null)
+  // v9.484: exclude null-rpe entries — an all-null log rendered "RPE null".
+  const withRpe  = sorted.filter(e => e.rpe != null)
+  const highRPE  = withRpe.reduce((best,e)=>(!best||e.rpe>best.rpe)?e:best, null)
   const dates = [...new Set(sorted.map(e=>e.date))].sort()
   let longestBlock=1, cur=1
   for (let i=1;i<dates.length;i++) {

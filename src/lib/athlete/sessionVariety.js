@@ -86,7 +86,9 @@ function entryZoneShares(entry) {
  * then intervals (RPE >= 7 requires zone evidence), then tempo, then steady.
  */
 function classifyIntent(entry) {
-  const rpeRaw = Number(entry?.rpe)
+  // v9.484: null rpe must not read as 0 (short null-rpe sessions classified
+  // as intent 'recovery') — no effort signal, no intent classification.
+  const rpeRaw = entry?.rpe == null ? NaN : Number(entry.rpe)
   const dur = Number(entry?.duration)
   if (!Number.isFinite(rpeRaw) || !Number.isFinite(dur) || dur <= 0) return null
 

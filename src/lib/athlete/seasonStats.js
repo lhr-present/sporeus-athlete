@@ -43,8 +43,11 @@ export function computeSeasonStats(log = [], year = new Date().getFullYear()) {
 
   // Normalize entries
   const normalized = entries.map(e => {
-    const sport = e.sport_type || e.sport || 'general'
-    const distanceKm = e.distance > 0 ? e.distance / 1000 : 0
+    // v9.484 (contract sweep): canonical entries carry `type` (not sport_type/
+    // sport) and `distanceM` — the breakdown collapsed to 'general' with ~0 km.
+    const sport = e.sport_type || e.sport || e.type || 'general'
+    const distM = Number(e.distanceM) > 0 ? Number(e.distanceM) : (e.distance > 0 ? e.distance : 0)
+    const distanceKm = distM > 0 ? distM / 1000 : 0
     const raw = e.duration || 0
     const durationMin = raw > 600 ? raw / 60 : raw
     const tss = e.tss || 0

@@ -178,6 +178,12 @@ function recRowToEntry(row) {
     mood:      row.mood      != null ? Number(row.mood)     : 0,
     hrv:       row.hrv       != null ? Number(row.hrv)      : null,
     notes:     row.notes     || '',
+    // v9.484 (contract sweep A7) — these were produced + read by five cards
+    // but never round-tripped; hydration REPLACED the local array and wiped
+    // them for signed-in users on every reload.
+    ...(row.resting_hr != null ? { restingHR: Number(row.resting_hr) } : {}),
+    ...(row.bedtime    != null ? { bedtime:   String(row.bedtime) }    : {}),
+    ...(row.rmssd      != null ? { rmssd:     Number(row.rmssd) }      : {}),
   }
 }
 function recEntryToRow(entry, userId) {
@@ -193,6 +199,10 @@ function recEntryToRow(entry, userId) {
     mood:      Number(entry.mood)     || null,
     hrv:       entry.hrv ? Number(entry.hrv) : null,
     notes:     entry.notes || null,
+    // v9.484 (A7) — persist the fields the recovery cards read.
+    resting_hr: Number(entry.restingHR) > 0 ? Number(entry.restingHR) : null,
+    bedtime:    typeof entry.bedtime === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(entry.bedtime) ? entry.bedtime : null,
+    rmssd:      Number(entry.rmssd) > 0 ? Number(entry.rmssd) : null,
   }
 }
 
@@ -421,7 +431,7 @@ export function useRecovery(userId) {
     let cancelled = false
     hydrating.current = true
     supabase.from('recovery')
-      .select('date,score,sleep_hrs,sleep,soreness,energy,stress,mood,hrv,notes')
+      .select('date,score,sleep_hrs,sleep,soreness,energy,stress,mood,hrv,notes,resting_hr,bedtime,rmssd')
       .eq('user_id', userId)
       .gte('date', hydrateCutoff())
       .order('date', { ascending: false })

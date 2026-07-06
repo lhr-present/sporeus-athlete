@@ -42,7 +42,7 @@ function RecentSessionsCard({ filteredLog, rangeLabel, dl }) {
                 <td style={{ padding: '6px 6px 6px 0', color: 'var(--sub)' }}>{s.date}</td>
                 <td style={{ padding: '6px 6px 6px 0' }}>{s.type}</td>
                 <td style={{ textAlign: 'right', padding: '6px 6px 6px 0' }}>{s.duration}</td>
-                <td style={{ textAlign: 'right', padding: '6px 6px 6px 0', color: s.rpe >= 8 ? '#e03030' : s.rpe >= 6 ? '#f5c542' : '#5bc25b' }}>{s.rpe}</td>
+                <td style={{ textAlign: 'right', padding: '6px 6px 6px 0', color: s.rpe >= 8 ? '#e03030' : s.rpe >= 6 ? '#f5c542' : '#5bc25b' }}>{s.rpe ?? '—'}</td>
                 <td style={{ textAlign: 'right', padding: '6px 0', color: '#ff6600', fontWeight: 600 }}>{s.tss}</td>
               </tr>
             ))}

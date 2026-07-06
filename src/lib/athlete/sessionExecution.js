@@ -33,6 +33,10 @@ const ON_TARGET_RPE_TOL          = 1
 const ON_TARGET_TSS_TOL_PCT      = 0.20  // wider — TSS varies with route/HR
 
 function num(v) {
+  // v9.484 (blast-radius MED-1): Number(null) is 0 (finite!) — a null-rpe
+  // import matched to a plan day rendered "RPE 0 (-6)" and flipped the
+  // execution verdict to 'under'. Missing means missing, for every field.
+  if (v == null || v === '') return null
   const n = Number(v)
   return Number.isFinite(n) ? n : null
 }

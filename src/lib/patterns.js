@@ -164,7 +164,9 @@ export function findRecoveryPatterns(log, recovery) {
   // Score each session: RPE-appropriate (lower RPE after low readiness = good session quality signal)
   const scored = pairs.map(p => {
     const readiness = p.rec.score || 50
-    const rpe = p.session.rpe || 5
+    // v9.484: explicit neutral prior for no-signal sessions (was ||5 which
+    // also caught a legit rpe left falsy — same treatment as scoreSession).
+    const rpe = p.session.rpe == null ? 5 : (p.session.rpe || 5)
     const type = (p.session.type || '').toLowerCase()
     const isEasy = type.includes('easy') || type.includes('recovery')
     // Quality: easy sessions with RPE ≤5 or hard sessions with RPE 7-9

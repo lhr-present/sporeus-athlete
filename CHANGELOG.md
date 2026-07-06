@@ -2,6 +2,35 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.484.0 — 2026-07-07 — Part 3 of the 3-agent audit: null-rpe MED/LOWs + recovery round-trip
+
+- **sessionExecution `num()` root fix (B-MED-1)** — `Number(null)` is 0 (finite!), so a null-rpe
+  import matched to a plan day rendered "RPE 0 (-6)" and flipped the verdict to 'under'; the same
+  coercer served tss/duration deltas. Missing now means missing for every field.
+- **afterBigWeekRpe (B-MED-2)** — null entries no longer dilute the post-big-week mean with zeros.
+- **Null-passes-as-0 gates**: swimSwolfTrend + runningCadence (<3 "known recovery" exclusion),
+  sessionVariety (intent 'recovery' for short null-rpe sessions) — no signal ⇒ no classification.
+- **Render/scoring LOWs**: planRationale "RPE 0", calcPRs "RPE null", CoachDashboard share-code
+  ingest re-fabricating rpe-0, scoreSession/patterns quality scoring now use an EXPLICIT neutral
+  prior (5) for no-signal sessions instead of `||5` that also caught real falsy values. Cosmetic
+  null renders fixed in Calendar, Dashboard recent-table, RecentSessionsCard, FieldTestHistory,
+  and the AICoachInsights prompt ("RPEnull").
+- **Recovery round-trip (A7, effectively HIGH)** — restingHR/bedtime/rmssd were produced and read
+  by five cards (restingHrDrift, restingHrFitnessTrend, postHardSessionResponse,
+  recoveryQualityStreak, bedtimeConsistency) but never persisted; login hydration REPLACED the
+  local array, wiping them for signed-in users on every reload (guests unaffected — why it
+  survived testing). New columns (mig 20260641, applied to prod) + both mappers + hydration select.
+- **seasonStats** sport/distance canonical fallbacks (breakdown collapsed to 'general' at ~0 km);
+  **yearOverYear** minutes row (durationMin→duration fallback).
+
+STILL DEFERRED (documented, needs individual design): EliteProgramCard weeklyHours/trainingDays/
+vdot/split2k phantom reads; adherence-flag cross-device persistence (restDayMarked etc. — needs a
+column decision); backend: alert-monitor cron-failure alerting RPC, Garmin go/no-go (founder),
+ingest-telemetry hardening; `||5` zone-bucketing group (founder-approved status quo).
+
+DEPENDS ON: recovery.resting_hr/bedtime/rmssd columns (20260641); the explicit-neutral-prior
+convention in scoring (5 = documented prior, not fabricated athlete input).
+
 ## v9.483.0 — 2026-07-07 — 🔴 Client HIGH fixes (3-agent audit, part 2): 8 dead cards + data-loss paths
 
 From docs/audits/contract_sweep + contract_blast_radius (2026-07-06):

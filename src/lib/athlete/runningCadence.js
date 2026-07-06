@@ -52,7 +52,8 @@ function isExcludedEffort(entry) {
   if (/recovery/.test(type)) return true
   if (/walk/.test(type))     return true
   if (/very[-_\s]?easy/.test(type)) return true
-  const rpe = Number(entry?.rpe)
+  // v9.484: null rpe must not read as 0 and classify the run as recovery
+  const rpe = entry?.rpe == null ? NaN : Number(entry.rpe)
   if (Number.isFinite(rpe) && rpe < 3) return true
   return false
 }

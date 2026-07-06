@@ -207,6 +207,9 @@ export function analyzeAfterBigWeekRpe({
       if (Number.isFinite(tss) && tss > 0) {
         weeks[idx].tss += tss
       }
+      // v9.484 (blast-radius MED-2): Number(null)=0 passed the finite check
+      // and diluted the post-big-week mean RPE with zeros. Null = skip.
+      if (e.rpe == null) continue
       const rpe = Number(e.rpe)
       if (Number.isFinite(rpe)) {
         weeks[idx].rpeSum += rpe

@@ -18,7 +18,7 @@ Plain language. Under 80 words. Supportive but evidence-based tone.`
 
 function buildUserMsg(log, profile, ctl, atl, tsb, acwr) {
   const recent = log.slice(-7)
-    .map(e => `${e.date} ${e.type} ${e.duration}min RPE${e.rpe} TSS${e.tss}`)
+    .map(e => `${e.date} ${e.type} ${e.duration}min RPE${e.rpe ?? '?'} TSS${e.tss}`)
     .join('\n')
   return `Athlete: ${profile.sport || 'endurance'}, ${profile.athleteLevel || 'recreational'}
 CTL=${Math.round(ctl)} ATL=${Math.round(atl)} TSB=${Math.round(tsb)} ACWR=${acwr ? acwr.toFixed(2) : '—'}
