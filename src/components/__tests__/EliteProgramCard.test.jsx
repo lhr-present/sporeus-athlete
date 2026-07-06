@@ -304,12 +304,15 @@ describe('EliteProgramCard — v8.91.0 personalization & rejection surface', () 
     expect(JSON.parse(localStorage.getItem('sporeus-eliteProgramStart'))).toBeNull()
   })
 
-  it('passes profile.weeklyHours and trainingDays through to the orchestrator input', () => {
-    renderCard({ profile: { weeklyHours: 12, trainingDays: 4 } })
+  it('v9.485 — trainDays (real, string-valued field) drives trainingDays + derived weeklyHours', () => {
+    // The old test asserted the PHANTOM contract (profile.weeklyHours /
+    // trainingDays as numbers) — fields nothing produces; sanitizeProfile
+    // stores numerics as strings, so the typeof-number guards never passed.
+    renderCard({ profile: { trainDays: '4' } })
     fillFormAndSubmit({ curTime: '50:00', tgtTime: '40:00', raceDate: '2026-08-15' })
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY))
-    expect(stored.input.profile.weeklyHours).toBe(12)
     expect(stored.input.profile.trainingDays).toBe(4)
+    expect(stored.input.profile.weeklyHours).toBe(4)  // availability-derived
   })
 
   it('derives currentCTL from log via PMC and passes it through', () => {
