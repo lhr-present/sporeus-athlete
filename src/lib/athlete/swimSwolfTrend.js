@@ -118,7 +118,8 @@ export function computeSwimSwolfTrend({ log, today, windowDays = 28 } = {}) {
     if (!isSwimEntry(e)) continue
     if (!e.date) continue
     if (e.date < cutoff || e.date > today) continue
-    const rpe = Number(e.rpe)
+    // v9.484: null rpe must not read as 0 and get excluded as "known recovery"
+    const rpe = e.rpe == null ? NaN : Number(e.rpe)
     if (Number.isFinite(rpe) && rpe < 3) continue
     const swolf = deriveSwolf(e)
     if (swolf == null) continue

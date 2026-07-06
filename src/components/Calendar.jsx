@@ -121,7 +121,7 @@ export default function Calendar({ log, setLog, onEdit }) {
               <div key={si} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'7px 10px', background:'var(--surface)', borderRadius:'4px', marginBottom:'4px', borderLeft:`3px solid ${TYPE_COLORS[ses.type]||'#d4d4d4'}` }}>
                 <div>
                   <span style={{ ...S.mono, fontSize:'12px', fontWeight:600, color:TYPE_COLORS[ses.type]||'var(--text)' }}>{ses.type}</span>
-                  <span style={{ ...S.mono, fontSize:'10px', color:'#888', marginLeft:'8px' }}>{ses.duration}min · RPE {ses.rpe} · TSS {ses.tss}</span>
+                  <span style={{ ...S.mono, fontSize:'10px', color:'#888', marginLeft:'8px' }}>{ses.duration}min · RPE {ses.rpe ?? '—'} · TSS {ses.tss}</span>
                   {ses.notes && <div style={{ ...S.mono, fontSize:'10px', color:'var(--sub)', marginTop:'2px' }}>{ses.notes}</div>}
                 </div>
                 <div style={{ display:'flex', gap:'4px' }}>

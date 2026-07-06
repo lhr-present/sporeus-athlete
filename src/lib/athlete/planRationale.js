@@ -110,7 +110,9 @@ export function explainPlannedSession({ session, log, recovery, profile: _profil
   // ── Yesterday's load factor ──
   const yEntry = yesterdayEntry(log, today)
   if (yEntry) {
-    const yRPE = Number(yEntry.rpe) || 0
+    // v9.484: null rpe renders as "RPE 0" — treat no-signal as not-hard, and
+    // the render site skips the RPE fragment when yRPE is 0 (falsy).
+    const yRPE = yEntry.rpe == null ? 0 : (Number(yEntry.rpe) || 0)
     const yHard = yRPE >= HARD_RPE
     const todayRPE = Number(session.rpe) || 0
     const todayHard = todayRPE >= HARD_RPE

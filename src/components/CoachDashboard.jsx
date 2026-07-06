@@ -186,7 +186,7 @@ export default function CoachDashboard({ authUser }) {
           threshold: sanitizeStr(rawProfile.threshold), goal: sanitizeStr(rawProfile.goal),
         }
         const coachId = sanitizeStr(raw.coachId || data.coachId || '')
-        const toLog = v => Array.isArray(v) ? v.slice(0, 5000).map(e => ({ id:sanitizeNum(e.id), date:sanitizeStr(e.date), type:sanitizeStr(e.type), duration:sanitizeNum(e.duration), rpe:sanitizeNum(e.rpe), tss:sanitizeNum(e.tss), notes:sanitizeStr(e.notes) })) : []
+        const toLog = v => Array.isArray(v) ? v.slice(0, 5000).map(e => ({ id:sanitizeNum(e.id), date:sanitizeStr(e.date), type:sanitizeStr(e.type), duration:sanitizeNum(e.duration), rpe:e.rpe == null ? null : sanitizeNum(e.rpe),  /* v9.484: no re-fabricated rpe-0 */ tss:sanitizeNum(e.tss), notes:sanitizeStr(e.notes) })) : []
         const toRec = v => Array.isArray(v) ? v.slice(0, 2000).map(e => ({ date:sanitizeStr(e.date), score:sanitizeNum(e.score), sleep:sanitizeNum(e.sleep), sleepHrs:sanitizeStr(e.sleepHrs) })) : []
         const entry = {
           id: Date.now(), name: profile.name || 'Athlete', sport: profile.sport || '—',

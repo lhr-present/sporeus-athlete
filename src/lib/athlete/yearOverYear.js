@@ -29,7 +29,7 @@ function summarize(entries) {
   let tss = 0
   for (const e of entries) {
     sessions += 1
-    minutes += Number(e?.durationMin) || 0
+    minutes += Number(e?.durationMin ?? e?.duration) || 0  // v9.484: canonical key
     tss += Number(e?.tss) || 0
   }
   return {

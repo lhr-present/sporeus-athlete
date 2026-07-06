@@ -380,7 +380,11 @@ export function scoreSession(entry, log, profile) {
   if (!entry) return { score: 50, grade: 'B', feedback: { en: 'Session logged.', tr: 'Seans kaydedildi.' } }
 
   let score = 50
-  const rpe   = parseFloat(entry.rpe)   || 5
+  // v9.484: parseFloat(null)=NaN||5 fabricated "athlete said 5" into the
+  // session score. Keep 5 as the NEUTRAL SCORING PRIOR for no-signal sessions
+  // (a score needs some effort assumption), but via an explicit null-check so
+  // a real rpe 0-4 is never confused with the prior.
+  const rpe   = entry.rpe == null ? 5 : (parseFloat(entry.rpe) || 5)
   const dur   = parseFloat(entry.duration) || 0
   const tss   = parseFloat(entry.tss)   || 0
   const type  = (entry.type || '').toLowerCase()
