@@ -94,8 +94,11 @@ verify_jwt = true
 verify_jwt = true
 [functions.embed-query]
 verify_jwt = true
+# v9.482 (backend sweep F15): ai-batch-worker is a pgmq CRON consumer gated by
+# isVerifiedServiceCall — gateway JWT verification would 401 the cron's header
+# before the fn runs when the digest pipeline is re-enabled.
 [functions.ai-batch-worker]
-verify_jwt = true
+verify_jwt = false
 [functions.ai-proxy]
 verify_jwt = true
 [functions.squad-sync]

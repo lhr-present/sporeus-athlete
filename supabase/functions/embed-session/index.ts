@@ -91,7 +91,9 @@ serve(async (req) => {
           .from('ai_insights')
           .select('id, insight_json, kind, date')
           .eq('athlete_id', resolvedUserId)
-          .eq('session_id', session_id)
+          // v9.482 F8: prod column is source_id (session_id never existed) —
+          // this filter 400'd (swallowed) and killed the insight-embed chain.
+          .eq('source_id', session_id)
           .not('insight_json', 'is', null)
         if (insights && insights.length > 0) {
           for (const ins of insights) {
@@ -165,7 +167,9 @@ serve(async (req) => {
           .from('ai_insights')
           .select('id, insight_json, kind, date')
           .eq('athlete_id', resolvedUserId)
-          .eq('session_id', session_id)
+          // v9.482 F8: prod column is source_id (session_id never existed) —
+          // this filter 400'd (swallowed) and killed the insight-embed chain.
+          .eq('source_id', session_id)
           .not('insight_json', 'is', null)
         if (insights && insights.length > 0) {
           for (const insight of insights) {

@@ -119,7 +119,9 @@ serve(withTelemetry('redeem-invite', async (req: Request) => {
     // cap, by contrast, IS made atomic below via increment_invite_use().
     const ATHLETE_LIMITS: Record<string, number> = { free: 1, coach: 15, club: 999 }
     const coachTier    = coachProfile?.subscription_tier || "free"
-    const athleteLimit = ATHLETE_LIMITS[coachTier] ?? 3
+    // v9.482 (backend sweep): unknown tier falls back to the FREE limit (1),
+    // not 3 — an unrecognized tier string must not grant more seats than free.
+    const athleteLimit = ATHLETE_LIMITS[coachTier] ?? ATHLETE_LIMITS.free
     const { count: activeCount } = await admin
       .from("coach_athletes")
       .select("athlete_id", { count: "exact", head: true })
