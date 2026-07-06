@@ -1038,11 +1038,17 @@ function SamplePhase({ phase, days, isTR, defaultOpen, sport, log, setLog, profi
 // No render when computePlanStaleness returns null.
 function PlanStalenessBanner({ result, profile, isTR }) {
   if (!result || !profile) return null
+  // v9.485 (contract sweep B5): vdot/split2k(+Sec)/css were phantom keys (no
+  // producer, not whitelisted) — staleness detection was dead for run/row
+  // athletes. vdot ≈ vo2max is the app's own convention (v9.159 derives
+  // threshold from vo2max via vdotToThresholdStr); rowing split derives from
+  // the 2000m prediction stored via profile threshold — absent, run/row simply
+  // don't gate (same as before), but the working keys now actually work.
   const profileLevel = {
-    vdot:        profile.vdot,
+    vdot:        Number(profile.vo2max) > 0 ? Number(profile.vo2max) : undefined,
     ftp:         profile.ftp,
-    cssSec:      profile.cssSec ?? profile.css,
-    split2kSec:  profile.split2kSec ?? profile.split2k,
+    cssSec:      profile.cssSec,
+    split2kSec:  undefined,
   }
   const report = computePlanStaleness(result, profileLevel)
   if (!report) return null
@@ -1697,11 +1703,16 @@ function EliteProgramCard({ log: _log = [], profile: _profile = {}, setLog }) {
       const last = (Array.isArray(pmc) ? pmc : []).filter(p => !p.isFuture).pop()
       if (last && typeof last.ctl === 'number' && last.ctl > 0) out.currentCTL = last.ctl
     } catch { /* keep defaults */ }
-    if (typeof _profile?.weeklyHours === 'number' && _profile.weeklyHours > 0) {
-      out.weeklyHours = _profile.weeklyHours
-    }
-    if (typeof _profile?.trainingDays === 'number' && _profile.trainingDays >= 3) {
-      out.trainingDays = _profile.trainingDays
+    // v9.485 (contract sweep B4): the old reads were PHANTOMS — nothing writes
+    // profile.weeklyHours/trainingDays, the real field is trainDays, and
+    // sanitizeProfile stores numerics as STRINGS (the typeof-number guard could
+    // never pass). Personalization silently fell to defaults for everyone.
+    const tDays = Number(_profile?.trainDays)
+    if (Number.isFinite(tDays) && tDays >= 3) {
+      out.trainingDays = tDays
+      // Derive weekly hours from availability: sessions/wk × ~1h is the same
+      // default-density assumption generatePlan uses; no fabricated precision.
+      out.weeklyHours = tDays
     }
     // v9.182.0 — EP-9 cycle gate consumes these from input.profile. Pass-through
     // gender + lastPeriodStart + cycleLength so buildCyclePhaseGate can resolve.
@@ -1711,7 +1722,7 @@ function EliteProgramCard({ log: _log = [], profile: _profile = {}, setLog }) {
     if (_profile?.lastPeriodStart) out.lastPeriodStart = _profile.lastPeriodStart
     if (_profile?.cycleLength) out.cycleLength = _profile.cycleLength
     return out
-  }, [_log, _profile?.weeklyHours, _profile?.trainingDays, _profile?.gender, _profile?.lastPeriodStart, _profile?.cycleLength])
+  }, [_log, _profile?.trainDays, _profile?.gender, _profile?.lastPeriodStart, _profile?.cycleLength])
 
   // v8.95.0 — recent-best autofill chip + sport-default detection.
   const recentBest = useMemo(() => findRecentBest(_log, {

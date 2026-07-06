@@ -39,8 +39,8 @@ function extractLnEntries(entries, todayISO) {
     if (todayISO && e.date > todayISO) continue   // filter future dates
 
     let ln = null
-    if (typeof e.lnRmssd === 'number' && e.lnRmssd > 0) {
-      ln = e.lnRmssd
+    if (typeof (e.lnRmssd ?? e.lnRMSSD) === 'number' && (e.lnRmssd ?? e.lnRMSSD) > 0) {
+      ln = (e.lnRmssd ?? e.lnRMSSD)
     } else if (typeof e.rmssd === 'number' && e.rmssd > 0) {
       ln = Math.log(e.rmssd)
     } else if (typeof e.hrv === 'number' && e.hrv > 0) {
