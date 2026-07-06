@@ -2,6 +2,31 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.486.0 — 2026-07-07 — Backend closeout: cron-failure alerting + telemetry hardening
+
+The final two items from the 3-agent sweep. Both deployed + live-verified.
+
+- **Cron-failure alerting (F14)** — the F2 cron failed 10,080 times in 7 days with ZERO alerts:
+  alert-monitor had no view into cron.job_run_details (not exposed via PostgREST). New DEFINER RPC
+  `get_failing_crons(window, min_failures)` (service-role-only EXECUTE — the explicit grant is
+  load-bearing) + a new check #0 in alert-monitor: ≥5 failures in 30 min fires a critical
+  operator alert (dedup'd via the existing fire() pattern). VERIFIED: run against the 7-day
+  history, the RPC surfaces the old maybe-refresh-squad-mv failure (9,614 rows in retention) with
+  the exact error text — F2 would have alerted within 5 minutes instead of festering for a week.
+- **ingest-telemetry hardened (F5)** — was UNAUTHENTICATED unlimited service-role inserts into
+  client_events (50/request cap, unlimited requests, CORS *). Now: (1) the project anon key must
+  be presented (matches exactly what the client flush already sends — `apikey` header; public in
+  the bundle, but blocks drive-by URL abuse), (2) a per-session hourly cap (500 events — a legit
+  flush is ~50/day) that fails CLOSED on count error. VERIFIED live: 401 without the key, insert
+  succeeds with it.
+
+With this, EVERY finding from the 3-agent full-app sweep is either applied or explicitly
+founder-decided (Garmin quarantine, zone-bucketing status quo). Remaining work on the project is
+the operator list (migration squash first) and training data.
+
+DEPENDS ON: get_failing_crons RPC (20260643, service_role EXECUTE grant); client telemetry.js
+sending the anon key in the `apikey` header (it does — verified before shipping the gate).
+
 ## v9.485.0 — 2026-07-07 — Design-list closeout: EliteProgram phantoms, adherence flags, Garmin quarantine
 
 The last design-needing items from the 3-agent sweep:

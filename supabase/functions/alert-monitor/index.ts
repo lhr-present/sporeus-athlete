@@ -65,6 +65,25 @@ serve(withTelemetry('alert-monitor', async (req: Request) => {
 
   const alerts: string[] = []
 
+  // ── 0. Failing cron jobs (v9.486, backend sweep F14) ────────────────────────
+  // The squad-MV cron failed 10,080× in 7 days with ZERO alerts — this monitor
+  // had no view into cron.job_run_details. get_failing_crons (DEFINER RPC,
+  // service-role-only) surfaces jobs with ≥5 failures in the last 30 min.
+  try {
+    const { data: failingCrons } = await supa.rpc('get_failing_crons', {
+      p_window_minutes: 30,
+      p_min_failures: 5,
+    })
+    for (const c of (failingCrons ?? []) as { jobname: string; failures: number; last_message: string | null }[]) {
+      await fire(supa, `cron_failing_${c.jobname}`, 'critical',
+        `Cron ${c.jobname} failing`,
+        `${c.failures} failures in the last 30 min. Last error: ${(c.last_message || '').slice(0, 300)}`)
+      alerts.push(`cron_failing_${c.jobname}`)
+    }
+  } catch (e) {
+    console.error('alert-monitor: get_failing_crons check failed:', e instanceof Error ? e.message : String(e))
+  }
+
   // ── 1. Queue depth SLOs ────────────────────────────────────────────────────
   const { data: queueRows } = await supa
     .from('queue_metrics')
