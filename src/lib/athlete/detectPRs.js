@@ -146,21 +146,21 @@ export function detectPRs(newSession, priorLog = []) {
   }
 
   // ── 5. Longest distance (v9.108.0 Prompt QQ) ─────────────────────────────
-  // Reads `distance` (km) first; falls back to `distanceM` / 1000 for FIT
-  // importers. Skipped on entries without distance — strength/swim drills
-  // typically have none.
-  const distKm = (() => {
-    const d = Number(newSession.distance)
-    if (Number.isFinite(d) && d > 0) return d
-    const m = Number(newSession.distanceM)
+  // v9.483 (contract sweep A4) — reads distanceKm (QuickAdd manual entries,
+  // previously NEVER matched → categories 5–6 dead) then distanceM/1000
+  // (imports). The old first-read `distance`-as-km was also a UNIT BUG: its
+  // only producer (C2 CSV) emits METERS (alongside distanceM, so nothing is
+  // lost by dropping it) — a 2000m erg would have scored as a "2000 km" PR.
+  const entryKm = (s) => {
+    const km = Number(s?.distanceKm)
+    if (Number.isFinite(km) && km > 0) return km
+    const m = Number(s?.distanceM)
     if (Number.isFinite(m) && m > 0) return m / 1000
     return 0
-  })()
+  }
+  const distKm = entryKm(newSession)
   if (distKm > 0) {
-    const prevMax = prior.reduce((m, s) => {
-      const k = Number(s.distance) || (Number(s.distanceM) ? Number(s.distanceM) / 1000 : 0)
-      return Math.max(m, k || 0)
-    }, 0)
+    const prevMax = prior.reduce((m, s) => Math.max(m, entryKm(s)), 0)
     if (distKm > prevMax) {
       const dKm = Math.round(distKm * 10) / 10
       const pKm = prevMax > 0 ? Math.round(prevMax * 10) / 10 : null
@@ -183,7 +183,7 @@ export function detectPRs(newSession, priorLog = []) {
     let prevBest = Infinity
     for (const s of prior) {
       const sDur = Number(s.duration) || 0
-      const sKm = Number(s.distance) || (Number(s.distanceM) ? Number(s.distanceM) / 1000 : 0)
+      const sKm = entryKm(s)  // v9.483 A4: same canonical read as category 5
       if (sDur >= MIN_PACE_DURATION && sKm > 0) {
         const p = (sDur * 60) / sKm
         if (p < prevBest) prevBest = p

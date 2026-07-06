@@ -57,11 +57,21 @@ export function isFieldPresent(field, value) {
  * @param {object} entry
  * @returns {{ score: number, present: Record<string, boolean> }}
  */
+// v9.483 (contract sweep A2) — canonical entries store minutes under `duration`
+// and HR under `avgHR`; scoring `entry.durationMin`/`entry.heartRate` meant
+// those fill-rates were PERMANENTLY 0% and quality capped at 50% for everyone.
+const FIELD_SOURCES = {
+  rpe:         (e) => e?.rpe,
+  tss:         (e) => e?.tss,
+  durationMin: (e) => e?.durationMin ?? e?.duration,
+  heartRate:   (e) => e?.heartRate ?? e?.avgHR,
+}
+
 export function scoreSessionCompleteness(entry) {
   const present = {}
   let hits = 0
   for (const field of QUALITY_FIELDS) {
-    const ok = isFieldPresent(field, entry?.[field])
+    const ok = isFieldPresent(field, FIELD_SOURCES[field](entry))
     present[field] = ok
     if (ok) hits += 1
   }

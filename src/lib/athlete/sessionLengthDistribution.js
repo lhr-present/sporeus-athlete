@@ -74,7 +74,7 @@ function addDaysStr(dateStr, days) {
 }
 
 function entryDurationMin(entry) {
-  const raw = entry?.durationMin ?? entry?.duration_min
+  const raw = entry?.durationMin ?? entry?.duration_min ?? entry?.duration  // v9.483: canonical entries store minutes under `duration` (contract sweep A1 — card was dead without this)
   const d = Number(raw)
   return Number.isFinite(d) && d > 0 ? d : 0
 }

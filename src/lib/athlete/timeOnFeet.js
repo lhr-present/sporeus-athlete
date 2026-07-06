@@ -71,7 +71,7 @@ function mondayOf(dateStr) {
 }
 
 function entryDurationMin(entry) {
-  const d = Number(entry?.durationMin)
+  const d = Number(entry?.durationMin ?? entry?.duration)  // v9.483: canonical key fallback (contract sweep A1)
   return Number.isFinite(d) && d > 0 ? d : 0
 }
 

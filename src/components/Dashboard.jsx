@@ -396,10 +396,22 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
   )
   const [showDQ, setShowDQ] = useState(false)
 
-  const efSessions = useMemo(() => (log || []).map(e => ({
-    date: e.date, avgHR: e.avgHR, np: e.np, avgPower: e.avgPower,
-    avgPaceMPerMin: e.avgPaceMPerMin, sport: e.sport,
-  })), [log])
+  // v9.483 (contract sweep A3) — entries carry neither avgPaceMPerMin nor
+  // sport, so computeEF's pace/HR branch could NEVER fire: the EF trend was
+  // silently cycling-only. Derive pace from the canonical distanceM +
+  // duration(min) and sport from the entry type.
+  const efSessions = useMemo(() => (log || []).map(e => {
+    const distM = Number(e.distanceM)
+    const durMin = Number(e.duration)
+    const avgPaceMPerMin = Number.isFinite(distM) && distM > 0 && Number.isFinite(durMin) && durMin > 0
+      ? distM / durMin
+      : undefined
+    return {
+      date: e.date, avgHR: e.avgHR, np: e.np, avgPower: e.avgPower,
+      avgPaceMPerMin,
+      sport: e.sport || e.type,
+    }
+  }), [log])
 
   // J2/J3 — CTL + TSB interpretations (Banister/Coggan citations)
   const prev28CTL  = daily.length >= 29 ? (daily[daily.length - 29]?.ctl ?? null) : null
