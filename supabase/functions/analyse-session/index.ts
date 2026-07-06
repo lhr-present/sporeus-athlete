@@ -215,7 +215,9 @@ Return plain text only. Max 75 words. Be direct and evidence-based.`
       date:         String(sessionRow!.date || today),
       data_hash:    dataHash,
       kind:         'session_analysis',
-      session_id:   sessionId,
+      // v9.482 (backend sweep F8): prod ai_insights has NO session_id column —
+      // every upsert PGRST204'd, ai_insights had 0 rows EVER. source_id carries
+      // the session id (do not re-add session_id without a migration).
       source_id:    sessionId,
       insight_json: { text: insightText, flags, session: { id: sessionId, type: sessionRow!.type, tss: sessionRow!.tss }, acwr, ctl, tsb },
       model:        MODEL,
@@ -261,8 +263,7 @@ Return plain text only. Max 75 words. Be direct and evidence-based.`
         date:         String(sessionRow!.date || today),
         data_hash:    `coach_flag-${sessionId}`,
         kind:         'coach_session_flag',
-        session_id:   sessionId,
-        source_id:    sessionId,
+        source_id:    sessionId,  // v9.482 F8: session_id column doesn't exist in prod
         insight_json: { athlete_id: userId, flags, acwr, ctl, tsb, session_type: sessionRow!.type },
         model:        MODEL,
       }, { onConflict: 'athlete_id,date,data_hash' })

@@ -59,11 +59,14 @@ function err(status: number, message: string) {
 // ── Rate limit check (100 req/hour per key) ────────────────────────────────────
 async function checkRateLimit(db: ReturnType<typeof createClient>, apiKey: string): Promise<boolean> {
   const windowStart = new Date(Date.now() - 3600000).toISOString()
-  const { count } = await db
+  const { count, error } = await db
     .from("request_counts")
     .select("*", { count: "exact", head: true })
     .eq("api_key", apiKey)
     .gte("created_at", windowStart)
+  // v9.482 (backend sweep): fail CLOSED — a count-query error must not read as
+  // "0 requests this hour" and wave the caller through.
+  if (error) return false
   return (count ?? 0) < 100
 }
 

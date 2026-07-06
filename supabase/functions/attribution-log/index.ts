@@ -67,16 +67,18 @@ serve(withTelemetry('attribution-log', async (req) => {
     )
 
     // ── Resolve authenticated user (if JWT present) ────────────────────────
+    // v9.482 (backend sweep F3): identity from a SIGNATURE-VERIFIED lookup, not
+    // an unverified atob() of the payload — a forged JWT could attribute events
+    // to any user and stamp their profiles.first_touch (same latent-
+    // impersonation class fixed in parse-activity, v9.459). Guests (no/invalid
+    // token) stay anonymous — unchanged behavior.
     let userId: string | null = null
     const authHeader = req.headers.get('authorization') || ''
     const jwt = authHeader.replace('Bearer ', '')
     if (jwt) {
       try {
-        const [, payloadB64] = jwt.split('.')
-        const payload = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')))
-        if (payload?.sub && payload?.role !== 'service_role') {
-          userId = payload.sub
-        }
+        const { data: { user } } = await supabase.auth.getUser(jwt)
+        if (user?.id) userId = user.id
       } catch { /* non-JWT token or guest */ }
     }
 

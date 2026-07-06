@@ -2,6 +2,44 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.482.0 — 2026-07-07 — 🔴 Backend sweep fixes (3-agent full-app audit, part 1 of 3)
+
+A 3-agent full-app sweep (all three survived by writing reports incrementally) produced
+docs/audits/{contract_sweep,contract_blast_radius,backend_sweep}_2026_07_06.md. This version
+applies the BACKEND findings; client batches follow.
+
+- **F2 (HIGH, was failing every minute for 7 DAYS — 10,080/10,080)**: `maybe_refresh_squad_mv()`
+  filters `training_log.updated_at`, a column that never existed → the coach squad MV never
+  refreshed via cron. Added `updated_at` + touch trigger (mig 20260640, applied) — VERIFIED live:
+  10/10 runs succeeded post-fix.
+- **F8 (HIGH, active since forever)**: analyse-session upserted `ai_insights.session_id` — no such
+  column in prod → EVERY session analysis failed to persist (`stored:false`, table 0 rows) and the
+  insight-embedding chain died with it (embed-session filtered the same ghost column, 400 swallowed
+  ×2 sites). Both fns now use `source_id` (which already carried the value). Deployed.
+- **F1 (HIGH, latent)**: prod `activity_upload_jobs` predates repo migration 2026042101 — missing
+  `parsed_session_id/error/parsed_at` AND a 3-value status CHECK that rejects
+  'parsing'/'done'/'error' → the first real FIT upload would wedge at 'parsing' forever. Prod
+  aligned (columns + CHECK, mig 20260640) — the training_log drift class again.
+- **F10 (HIGH, latent)**: the session_comments → comment-notification trigger carried NO webhook
+  secret AND the REVOKED legacy HS256 JWT as its static Bearer — dead twice over. Rebuilt as a
+  plpgsql trigger (net.http_post, Bearer from Vault, secret from the app.webhook_secret GUC —
+  correct the moment the operator sets the GUC; no worse until then).
+- **F3 (MED, security)**: attribution-log trusted an UNVERIFIED atob() JWT decode for user identity
+  (forgeable sub → attribution poisoning + first_touch stamping of any user). Now
+  `auth.getUser()` — the same fix parse-activity got in v9.459. Deployed.
+- **LOWs**: redeem-invite unknown-tier fallback now grants the FREE limit (1), not 3; public-api
+  rate limit fails CLOSED on query error; cron.job_run_details gets a 7-day purge cron (was 498k
+  rows, no cleanup); config.toml ai-batch-worker pin corrected to verify_jwt=false (cron consumer).
+- DEFERRED with notes: alert-monitor cron-failure alerting (needs an RPC exposing cron.job_run_details
+  — F2 failed 10k times with zero alerts, worth building); Garmin cluster (garmin_tokens table +
+  training_log.garmin_activity_id don't exist — product decision whether Garmin lives);
+  ingest-telemetry hardening; push-pipeline never-delivered investigation (needs real subscribers);
+  duplicate client_events TTL crons left alone (documented deliberate, 20260535).
+
+DEPENDS ON: mig 20260640 (updated_at touch trigger; upload-jobs CHECK; notify_session_comment
+trigger fn reads Vault + app.webhook_secret GUC); ai_insights.source_id as the session link
+(session_id must not be reintroduced without a migration).
+
 ## v9.481.0 — 2026-07-06 — Power curve consumes powerPeaks + manual audit of v9.480 (clean)
 
 - **PowerCurve season-best envelope** now merges per-session `powerPeaks` points (the 5 fixed
