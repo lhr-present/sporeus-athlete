@@ -129,6 +129,26 @@ describe('v9.465 enrichment columns (Strava P0)', () => {
   })
 })
 
+describe('v9.485 adherence flags round-trip', () => {
+  it('packs truthy flags + plannedType; null when none', () => {
+    const row = logEntryToRow({ date: '2026-07-07', type: 'Rest', restDayMarked: true, sickDay: true, plannedType: 'Long Run' }, 'u1')
+    expect(row.flags).toEqual({ restDayMarked: true, sickDay: true, plannedType: 'Long Run' })
+    expect(logEntryToRow({ date: '2026-07-07', type: 'Run' }, 'u1').flags).toBeNull()
+  })
+  it('hydrates flags back to top-level entry keys (v9.152 consumers read them there)', () => {
+    const e = logRowToEntry({ id: 'r1', date: '2026-07-07', flags: { correctiveRest: true, improvisedSession: true, plannedType: 'Tempo', junk: 'x', restDayMarked: 'yes' } })
+    expect(e.correctiveRest).toBe(true)
+    expect(e.improvisedSession).toBe(true)
+    expect(e.plannedType).toBe('Tempo')
+    expect('junk' in e).toBe(false)
+    expect('restDayMarked' in e).toBe(false)  // non-boolean-true dropped
+  })
+  it('survives a full round-trip', () => {
+    const back = logRowToEntry({ ...logEntryToRow({ date: '2026-07-07', type: 'Rest', restDayMarked: true }, 'u1'), id: 'r1' })
+    expect(back.restDayMarked).toBe(true)
+  })
+})
+
 describe('v9.480 power_peaks round-trip', () => {
   const peaks = { p5: 520, p60: 380, p300: 310, p1200: 265, p3600: 240, lh300: 295 }
   it('hydrates power_peaks → powerPeaks (sanitized), omits when null/garbage', () => {

@@ -1,3 +1,9 @@
+// ⚠️ PROTOTYPE — NOT WIRED (founder decision 2026-07-07: keep, quarantined).
+// The garmin_tokens table and training_log.garmin_activity_id column DO NOT
+// exist in prod; no UI invokes this function (the client Garmin surface is the
+// CSV importer + interest survey). Do NOT wire this without: (1) a migration
+// creating garmin_tokens + the activity-id column, (2) pinning verify_jwt in
+// config.toml, (3) a fresh review of this code (backend sweep F4/F12).
 // supabase/functions/garmin-sync/index.ts — E10: Garmin spike (PROTOTYPE)
 // Pulls last 30 days of activities from Garmin Health API and inserts to training_log.
 //

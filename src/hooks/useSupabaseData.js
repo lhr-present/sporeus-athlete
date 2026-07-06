@@ -106,6 +106,18 @@ export function logRowToEntry(row) {
       const pk = sanitizePowerPeaks(row.power_peaks)
       return pk ? { powerPeaks: pk } : {}
     })(),
+    // v9.485.0 — adherence flags (v9.152 signals, previously localStorage-only:
+    // signed-in users lost them on every reload).
+    ...(() => {
+      const f = row.flags
+      if (!f || typeof f !== 'object' || Array.isArray(f)) return {}
+      const out = {}
+      for (const k of ['restDayMarked', 'sickDay', 'correctiveRest', 'improvisedSession']) {
+        if (f[k] === true) out[k] = true
+      }
+      if (typeof f.plannedType === 'string' && f.plannedType) out.plannedType = f.plannedType.slice(0, 50)
+      return out
+    })(),
   }
 }
 export function logEntryToRow(entry, userId) {
@@ -154,6 +166,15 @@ export function logEntryToRow(entry, userId) {
     calories:          posInt(entry.calories),
     // v9.480.0 — MMP vector round-trip (edited entries must not wipe it).
     power_peaks: sanitizePowerPeaks(entry.powerPeaks),
+    // v9.485.0 — adherence flags packed (only truthy members; null when none).
+    flags: (() => {
+      const out = {}
+      for (const k of ['restDayMarked', 'sickDay', 'correctiveRest', 'improvisedSession']) {
+        if (entry[k] === true) out[k] = true
+      }
+      if (typeof entry.plannedType === 'string' && entry.plannedType) out.plannedType = entry.plannedType.slice(0, 50)
+      return Object.keys(out).length ? out : null
+    })(),
     // v9.473.0 (E4) — classify at write time, plan-less (single choke point:
     // QuickAdd, TrainingLog edit, offline replay, guest migration all pass
     // through here). Deterministic over {type,duration,rpe,tss,date}, so

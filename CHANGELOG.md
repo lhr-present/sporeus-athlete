@@ -2,6 +2,36 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.485.0 — 2026-07-07 — Design-list closeout: EliteProgram phantoms, adherence flags, Garmin quarantine
+
+The last design-needing items from the 3-agent sweep:
+
+- **EliteProgramCard personalization was phantom (B4)** — read `profile.weeklyHours`/`trainingDays`
+  (nothing writes them; real field is `trainDays`, stored as a STRING so the typeof-number guard
+  could never pass) → the elite program ignored the athlete's actual availability for everyone.
+  Now reads `Number(profile.trainDays)`; weekly hours derive from availability (sessions/wk × ~1h,
+  the same default-density assumption generatePlan uses — no fabricated precision).
+- **Plan-staleness detection was dead for run/row athletes (B5)** — `vdot/split2k(+Sec)/css` were
+  phantom keys. vdot now derives from `vo2max` (the app's own v9.159 convention); the dead keys
+  are dropped rather than pretended at.
+- **Adherence flags persist cross-device (E1)** — restDayMarked/sickDay/correctiveRest/
+  improvisedSession/plannedType (v9.152 signals) were localStorage-only; signed-in users lost them
+  on every reload. Packed into one `flags` jsonb (mig 20260642, applied to prod), round-tripped by
+  both mappers, unpacked to the top-level keys consumers read. +3 tests.
+- **B7**: `lnRmssd` vs `lnRMSSD` casing — consumer accepts both (producer writes capital).
+- **Garmin: KEEP, QUARANTINED (decision delegated + taken)** — no UI invokes the dead edge fns
+  (the client Garmin surface is the CSV importer + interest survey, both working); zero user
+  exposure means deleting buys nothing. Both fns now carry a PROTOTYPE — NOT WIRED header listing
+  what a real wiring needs (garmin_tokens migration, activity-id column, config pin, review).
+
+REMAINING (backend, deploy-cycle sized, documented): alert-monitor cron-failure alerting (needs an
+RPC over cron.job_run_details — F2 failed 10k× with zero alerts); ingest-telemetry hardening
+(unauthenticated service-role inserts, capped per request but unlimited requests). Both parked
+with clear specs in docs/audits/backend_sweep_2026_07_06.md.
+
+DEPENDS ON: training_log.flags jsonb (20260642); trainDays as the availability source
+(string-valued per sanitizeProfile); vo2max≈vdot convention.
+
 ## v9.484.0 — 2026-07-07 — Part 3 of the 3-agent audit: null-rpe MED/LOWs + recovery round-trip
 
 - **sessionExecution `num()` root fix (B-MED-1)** — `Number(null)` is 0 (finite!), so a null-rpe
