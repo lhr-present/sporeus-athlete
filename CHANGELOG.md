@@ -2,6 +2,36 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.488.0 — 2026-07-07 — 🚴 Cycling deep-dive fixes (part 1: HIGHs + pipeline integrity)
+
+From docs/audits/cycling_deep_dive_2026_07_07.md (math checked clean throughout — Coggan zones,
+CP fit, MMP, protocols all verified to sources; the theme was consumer-side contract mismatches):
+
+- **HIGH-1 — PowerCurve activity view dead for every UUID entry**: `parseInt(selectedId)` turned
+  uuid ids into 9/NaN, so the localStorage power-blob key never matched — selecting an activity
+  silently rendered nothing since the uuid migration. parseInt dropped.
+- **HIGH-2 — EF Trend permanently empty**: Dashboard passed 'bike'/'Easy Ride' but computeEF
+  branches on exact 'cycling'/'running' — neither matched, so the trend never accumulated
+  sessions. Sport normalized to computeEF's vocabulary (regex → cycling/running/autodetect).
+- **HIGH-3 — triLoad blind to manual/FIT sessions**: exact 'bike'/'run'/'swim' matches missed the
+  app's own vocabulary ('Easy Ride', 'Long Run') — only Strava rows counted toward tri TSS/bricks.
+  Substring matching.
+- **lh300 tail-cap bug (mine, v9.480)**: the worker capped streams at the FIRST 3 h, so the
+  "best 5-min in the LAST hour" durability numerator was computed on the first 3 h of >3 h rides —
+  overstating durability on exactly the rides it exists for. Cap now keeps the TAIL.
+- **device_watts gate on the STREAMS path (mine, v9.466)**: the enrich pass ingested watts streams
+  without the device_watts gate the summary path enforces — Strava-ESTIMATED power on HR-only
+  rides could feed NP/power-TSS/W′/peaks. The flag now rides the enrich payload from enqueue;
+  ungated legacy messages honor pre-v9.488 behavior for one cycle. Worker deployed.
+
+MEDs deferred to part 2 (recorded): estimateFTP priority→max(), CP-fit range vs peaks-only
+envelopes (300/1200 only in 120–1800s), envelope monotonicity, predictCyclingTime ignoring
+FTP/weight, DurabilityCard gate mismatch, hasTriData first-word counting, npTrend bucket labeling,
+triLoad dead s.ftp branch. QUESTIONS for founder: EBikeRide→'bike' feeding FTP/CP/PB surfaces.
+
+DEPENDS ON: enrich payload device_watts flag (enqueueStreamEnrichment → worker); computeEF
+vocabulary ('cycling'/'running'/null).
+
 ## v9.487.0 — 2026-07-07 — 🚣 Rowing deep-dive fixes (agent audit: 16 findings, math verified to sources)
 
 From docs/audits/rowing_deep_dive_2026_07_07.md (my own v9.474 fixes came back verified clean —
