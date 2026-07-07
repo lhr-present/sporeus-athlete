@@ -62,7 +62,11 @@ function sumTSS(weeklyTSS, phases, phaseNames) {
   for (const ph of phases) {
     if (!phaseNames.includes(ph.phase)) continue
     for (const wkNum of (ph.weeks || [])) {
-      const wk = weeklyTSS.find(w => w.week === wkNum)
+      // v9.489 (program-content F6): weeklyTSS is an array of NUMBERS indexed
+      // by week-1 — .find(w => w.week === n) on numbers never matched, so the
+      // before/after TSS comparison always showed 0 → 0.
+      const wk = weeklyTSS[wkNum - 1]
+      if (typeof wk === 'number') { total += wk; continue }
       if (wk) total += Number(wk.tss) || 0
     }
   }

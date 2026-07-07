@@ -205,11 +205,17 @@ export function applyCyclePhaseGate(weeklyTSS, gate) {
   return weeklyTSS.map((w, i) => {
     const g = gate.weeks[i]
     if (!g) return w  // beyond the forecast horizon — leave unchanged
+    // v9.489 (program-content HIGH F3): buildEliteProgram passes weeklyTSS as
+    // an array of NUMBERS — spreading a number yields {}, so every opted-in
+    // female athlete's program collapsed to cycleAdjustedTSS=0 across run/row/
+    // bike. Accept both shapes; number weeks come back as annotated objects
+    // with `tss` preserved.
+    const base = typeof w === 'number' ? { tss: w } : w
     return {
-      ...w,
+      ...base,
       cycleMultiplier:   g.tssMultiplier,
       cyclePhase:        g.dominantPhase,
-      cycleAdjustedTSS:  Math.round((Number(w.tss) || 0) * g.tssMultiplier),
+      cycleAdjustedTSS:  Math.round((Number(base.tss) || 0) * g.tssMultiplier),
     }
   })
 }

@@ -20,8 +20,9 @@ const DISTANCE_LABELS = {
 
 function fmtPaceStr(secPerKm) {
   if (!secPerKm || secPerKm <= 0) return '—'
-  const m = Math.floor(secPerKm / 60)
-  const s = Math.round(secPerKm % 60)
+  const _t1 = Math.round(secPerKm)  // v9.489 F11: total-first, no ':60'
+  const m = Math.floor(_t1 / 60)
+  const s = _t1 % 60
   return `${m}:${String(s).padStart(2, '0')}/km`
 }
 

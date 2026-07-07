@@ -3256,14 +3256,21 @@ describe('buildEliteProgram — cycle phase gate (v9.181.0 wiring)', () => {
     }
   })
 
-  it('original tss field is preserved when cycle gate is active (authoritative)', () => {
+  it('original tss is preserved when cycle gate is active (authoritative)', () => {
+    // v9.489 (program-content HIGH F3): this test previously passed VACUOUSLY —
+    // both sides were undefined (the gate spread numbers into {} and destroyed
+    // the tss; male numbers have no .tss). Now: male weeks stay raw numbers,
+    // female weeks inside the gate horizon are annotated objects whose `tss`
+    // preserves the ungated value.
     const female = buildEliteProgram({
       ...baseInput,
       profile: { ...baseInput.profile, gender: 'female', lastPeriodStart: '2026-04-28', cycleLength: 28 },
     })
     const male = buildEliteProgram({ ...baseInput, profile: { ...baseInput.profile, gender: 'male' } })
+    const tssOf = (w) => (typeof w === 'number' ? w : Number(w.tss))
     for (let i = 0; i < male.weeklyTSS.length; i++) {
-      expect(female.weeklyTSS[i].tss).toBe(male.weeklyTSS[i].tss)
+      expect(tssOf(female.weeklyTSS[i])).toBe(tssOf(male.weeklyTSS[i]))
+      expect(tssOf(female.weeklyTSS[i])).toBeGreaterThan(0)  // the real regression guard
     }
   })
 })

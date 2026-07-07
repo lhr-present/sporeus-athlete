@@ -194,3 +194,17 @@ describe('applyCyclePhaseGate — opted-in female athlete', () => {
     expect(out[2].cycleAdjustedTSS).toBeUndefined()
   })
 })
+
+// v9.489 (program-content HIGH F3) — buildEliteProgram passes weeklyTSS as
+// NUMBERS; spreading a number yielded {} and zeroed every opted-in female
+// athlete's program targets.
+describe('applyCyclePhaseGate — number-array weeks (v9.489)', () => {
+  it('annotates number weeks without destroying the tss', () => {
+    const gate = { weeks: [{ tssMultiplier: 0.9, dominantPhase: 'luteal' }, { tssMultiplier: 1.0, dominantPhase: 'follicular' }] }
+    const out = applyCyclePhaseGate([350, 365, 380], gate)
+    expect(out[0].tss).toBe(350)
+    expect(out[0].cycleAdjustedTSS).toBe(315)
+    expect(out[1].cycleAdjustedTSS).toBe(365)
+    expect(out[2]).toBe(380)  // beyond horizon — unchanged
+  })
+})
