@@ -167,6 +167,11 @@ export function deriveSessionPace(session, profile) {
   if (!session || !profile) return null
   if (isCyclingSession(session, profile)) return null  // power, not pace
   if (isSwimSession(session, profile)) return null     // swim CSS handled separately
+  // v9.491 (program-dataflow F10): rowers got Daniels RUN-zone /km paces on
+  // erg sessions (and sessionExecution then scored their /500m splits ~2×
+  // "slow" against them). Rowing splits come from the rowing zone system —
+  // no run pace target here.
+  if (isRowingSession(session, profile)) return null
   const tSec = parsePaceToSec(profile.threshold) ?? parsePaceToSec(profile.thresholdDerived)
   if (tSec == null) return null
   const zone = dominantZone(session)

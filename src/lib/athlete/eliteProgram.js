@@ -249,8 +249,16 @@ export function fieldTestGainRatio(sport, currentLevel, actualResults, baseWeeks
   if (sport === 'rowing') {
     const start = currentLevel?.split2kSec
     if (!start) return 1
-    const expected = rowingGainPerBlock(start) * blockFraction
-    const actual = start - (Number(actualResults.split2kSec) || start)
+    // v9.491 (program-content F1): `split2kSec` means 2k TIME (~330-600s) in
+    // currentLevel/cohorts/staleness but sec/500m (~70-180s) in the
+    // FieldTestModal/reAnchor world — the two halves of the same feature
+    // disagreed, and a raw comparison would clamp Peak/Taper TSS to +30%
+    // unconditionally. The ranges are DISJOINT, so normalize by plausibility:
+    // any value < 200 is a 500m split → ×4 to 2k time.
+    const to2kTime = (v) => (Number(v) > 0 && Number(v) < 200 ? Number(v) * 4 : Number(v))
+    const startT = to2kTime(start)
+    const expected = rowingGainPerBlock(startT) * blockFraction
+    const actual = startT - (to2kTime(actualResults.split2kSec) || startT)
     return expected > 0 ? actual / expected : 1
   }
   return 1

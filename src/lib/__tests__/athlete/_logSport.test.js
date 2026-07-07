@@ -78,9 +78,11 @@ describe('logEntrySport — precedence rules', () => {
     expect(logEntrySport({ type: 'yoga' })).toBeNull()
   })
 
-  it('returns null for unrecognized type like "rowing"', () => {
-    // rowing is not currently in the keyword set
-    expect(logEntrySport({ type: 'rowing' })).toBeNull()
+  it('classifies rowing (v9.491 F6 — was null via the passthrough accident)', () => {
+    expect(logEntrySport({ type: 'rowing' })).toBe('rowing')
+    expect(logEntrySport({ type: 'row' })).toBe('rowing')
+    expect(logEntrySport({ type: 'Erg 2x20' })).toBe('rowing')
+    expect(logEntrySport({ type: 'Tempo row' })).toBe('rowing')  // row before run
   })
 
   it('does not throw for numeric sport field (truthy non-string)', () => {

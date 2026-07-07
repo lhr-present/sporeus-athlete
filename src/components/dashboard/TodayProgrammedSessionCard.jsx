@@ -32,10 +32,16 @@ function makeupKeyIntent(intentLabel) {
 }
 function logIntentKey(entry) {
   if (!entry || typeof entry !== 'object') return null
-  const blob = `${entry.type || ''} ${entry.intent || ''} ${entry.notes || ''} ${entry.session || ''}`.toLowerCase()
+  // v9.491 (program-dataflow F2): entry.session was a phantom field; sessionTag
+  // is the real classifier output. Imported Strava entries ("Afternoon Rowing ·
+  // 12.00 km · avg HR 152") carry none of the English jargon below — see the
+  // load-based fallback at the match site.
+  const blob = `${entry.type || ''} ${entry.intent || ''} ${entry.notes || ''} ${entry.sessionTag || ''}`.toLowerCase()
   if (/long/.test(blob)) return 'long'
   if (/threshold|tempo|cruise/.test(blob)) return 'threshold'
   if (/interval|vo2|race-pace|repetition/.test(blob)) return 'intervals'
+  // Duration alone identifies a long session regardless of naming vocabulary.
+  if (Number(entry.duration) >= 90) return 'long'
   return null
 }
 
@@ -198,7 +204,14 @@ function TodayProgrammedSessionCard({ log = [] } = {}) {
         const d = new Date(`${ds}T00:00:00Z`)
         if (isNaN(d.getTime())) return false
         if (Math.abs(d.getTime() - targetMs) > tolMs) return false
-        return logIntentKey(e) === ki
+        if (logIntentKey(e) === ki) return true
+        // v9.491 (F2): a SUBSTANTIAL session with unclassifiable intent (the
+        // shape of every Strava import) counts as matching — this nudge exists
+        // to catch skipped days, not to accuse athletes who demonstrably
+        // trained of missing the workout because the note wasn't in English.
+        const dur = Number(e.duration) || 0
+        const tss = Number(e.tss) || 0
+        return logIntentKey(e) == null && (dur >= 45 || tss >= 50)
       })
       if (!matched) {
         return {
