@@ -203,7 +203,8 @@ export default function ZoneCalc() {
   ]
   const fmtSplit = (s) => {
     if (s == null) return '—'
-    const m = Math.floor(s / 60), sec = Math.round(s % 60)
+    const total = Math.round(s)  // v9.487 (F5): total-first — no "1:60"
+    const m = Math.floor(total / 60), sec = total % 60
     return `${m}:${String(sec).padStart(2, '0')}`
   }
   const rowZones = (t2kStr) => {
@@ -217,7 +218,8 @@ export default function ZoneCalc() {
       let pace
       if (z.splitMin == null) pace = `≤ ${fmtSplit(z.splitMax)} /500m`
       else if (z.splitMax == null) pace = `≥ ${fmtSplit(z.splitMin)} /500m`
-      else pace = `${fmtSplit(z.splitMax)}–${fmtSplit(z.splitMin)} /500m`
+      // v9.487 (F15): fast–slow (min–max), matching the comment + convention
+      else pace = `${fmtSplit(z.splitMin)}–${fmtSplit(z.splitMax)} /500m`
       return { name: `Z${z.id} ${z.name}`, pace, color: ROW_ZONE_COLORS[i] }
     })
   }

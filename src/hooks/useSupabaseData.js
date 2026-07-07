@@ -106,6 +106,11 @@ export function logRowToEntry(row) {
       const pk = sanitizePowerPeaks(row.power_peaks)
       return pk ? { powerPeaks: pk } : {}
     })(),
+    // v9.487.0 (rowing F3) — Concept2 fields round-trip (were guest-only).
+    ...(row.duration_sec != null ? { durationSec: Number(row.duration_sec) } : {}),
+    ...(row.avg_spm      != null ? { avg_spm:     Number(row.avg_spm) }      : {}),
+    ...(row.drag_factor  != null ? { drag_factor: Number(row.drag_factor) }  : {}),
+    ...(row.strokes      != null ? { strokes:     Number(row.strokes) }      : {}),
     // v9.485.0 — adherence flags (v9.152 signals, previously localStorage-only:
     // signed-in users lost them on every reload).
     ...(() => {
@@ -166,6 +171,11 @@ export function logEntryToRow(entry, userId) {
     calories:          posInt(entry.calories),
     // v9.480.0 — MMP vector round-trip (edited entries must not wipe it).
     power_peaks: sanitizePowerPeaks(entry.powerPeaks),
+    // v9.487.0 (rowing F3) — Concept2 fields persist.
+    duration_sec: posInt(entry.durationSec),
+    avg_spm:      posInt(entry.avg_spm),
+    drag_factor:  posInt(entry.drag_factor),
+    strokes:      posInt(entry.strokes),
     // v9.485.0 — adherence flags packed (only truthy members; null when none).
     flags: (() => {
       const out = {}

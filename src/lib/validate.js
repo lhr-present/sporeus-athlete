@@ -146,7 +146,8 @@ export function sanitizeLogEntry(e) {
   // v9.465.0 — Strava enrichment fields (hydrated by logRowToEntry; consumers:
   // triLoad avgPower, altitudeStimulus elevationGainM, timeOfDayConsistency
   // startTime). Physiological/plausibility bounds mirror avgHR/np above.
-  const avgPower = parseInt(e.avgPower); if (Number.isFinite(avgPower) && avgPower > 0 && avgPower <= 2500) result.avgPower = avgPower
+  // v9.487: avg_power = C2 CSV snake alias
+  const avgPower = parseInt(e.avgPower ?? e.avg_power); if (Number.isFinite(avgPower) && avgPower > 0 && avgPower <= 2500) result.avgPower = avgPower
   const maxHR = parseInt(e.maxHR ?? e.maxHr); if (Number.isFinite(maxHR) && maxHR >= 30 && maxHR <= 250) result.maxHR = maxHR
   const elev = parseInt(e.elevationGainM); if (Number.isFinite(elev) && elev > 0 && elev <= 15000) result.elevationGainM = elev
   const kj = parseInt(e.kilojoules); if (Number.isFinite(kj) && kj > 0 && kj <= 30000) result.kilojoules = kj

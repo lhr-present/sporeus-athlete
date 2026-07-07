@@ -3,6 +3,7 @@ import {
   paulsLaw, predict2000m, secToSplit, splitToVelocity, velocityToSplit, fmtSplit,
   concept2VO2max, rowingZone, rowingZones, fitCP,
   predict2000mFromMultipleTests,
+  classifyStrokeRate, splitPer500m,
 } from './rowing.js'
 
 // ── Paul's Law ────────────────────────────────────────────────────────────────
@@ -200,5 +201,30 @@ describe('predict2000mFromMultipleTests', () => {
     const actualMargin = (r.confidenceInterval95[1] - r.confidenceInterval95[0]) / 2
     // CI bounds are integer-rounded → allow ±1s.
     expect(Math.abs(actualMargin - expectedMargin)).toBeLessThanOrEqual(1)
+  })
+})
+
+// ─── v9.487 rowing deep-dive fixes ────────────────────────────────────────────
+describe('v9.487 deep-dive fixes', () => {
+  it('concept2VO2max uses the published C2 Y-branches (male HW trained: Y=15.7−1.5t)', () => {
+    // 7:00 2k, 80 kg male trained: Y = 15.7 − 1.5×7 = 5.2 → 5200/80 = 65.0
+    expect(concept2VO2max(420, 80, { gender: 'male', trained: true })).toBe(65)
+    // female LW trained: Y = 14.9 − 1.5×8 = 2.9 → 2900/58 = 50.0
+    expect(concept2VO2max(480, 58, { gender: 'female', trained: true })).toBe(50)
+    // untrained male: Y = 10.7 − 0.9×8 = 3.5 → 3500/70 = 50.0
+    expect(concept2VO2max(480, 70, { gender: 'male', trained: false })).toBe(50)
+  })
+  it('fmtSplit rounds the total first (119.6s → 2:00, not 1:60)', () => {
+    expect(fmtSplit(119.6)).toBe('2:00')
+    expect(fmtSplit(105)).toBe('1:45')
+  })
+  it('classifyStrokeRate returns null for garbage (was: sprint)', () => {
+    expect(classifyStrokeRate(NaN)).toBeNull()
+    expect(classifyStrokeRate(0)).toBeNull()
+    expect(classifyStrokeRate(20).zone).toBe('steady')
+  })
+  it('splitPer500m returns null (not NaN) without a duration', () => {
+    expect(splitPer500m(2000, undefined)).toBeNull()
+    expect(splitPer500m(2000, 0)).toBeNull()
   })
 })

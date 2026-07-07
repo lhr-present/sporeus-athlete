@@ -89,8 +89,11 @@ export function velocityToSplit(velocityMs) {
  */
 export function fmtSplit(splitSec500m) {
   if (!splitSec500m || splitSec500m <= 0) return '--:--'
-  const m = Math.floor(splitSec500m / 60)
-  const s = Math.round(splitSec500m % 60)
+  // v9.487 (F5): round the TOTAL first — rounding the remainder alone rendered
+  // "1:60" for 119.6 s (formatSplit below is the correct model).
+  const total = Math.round(splitSec500m)
+  const m = Math.floor(total / 60)
+  const s = total % 60
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
@@ -105,20 +108,32 @@ export function fmtSplit(splitSec500m) {
  * @param {number} time2000Sec - 2000 m time in seconds
  * @param {number} bodyWeightKg - Athlete body mass in kg (defaults to 75 if ≤ 0)
  * @returns {number|null} VO2max in mL/kg/min rounded to 1 decimal, or null on invalid input
- * @source Paul (1969) — International rowing performance prediction; Hagerman (1984) ergometer calibration
+ * @source Paul's Law (rowing community / Concept2 convention, exponent ≈1.07); Hagerman — ergometer physiology
  * @example
  * concept2VO2max(420, 80) // => ~56.2 mL/kg/min
  */
-export function concept2VO2max(time2000Sec, bodyWeightKg) {
+export function concept2VO2max(time2000Sec, bodyWeightKg, { gender = 'male', trained = true } = {}) {
   if (!time2000Sec || time2000Sec <= 0) return null
-  const splitSec = time2000Sec / 4  // seconds per 500m
-  // Concept2 power formula: P (W) = 2.80 / (split_sec/500)^3
-  const powerW = 2.80 / Math.pow(splitSec / 500, 3)
-  // VO2max from ergometer power (Hagerman 1984, linear cost model):
-  //   VO2 (mL/kg/min) = (14.7 × P_watts + 250) / bodyWeightKg
-  //   250 mL/min accounts for basal metabolic + unloaded rowing cost
-  const bw  = bodyWeightKg > 0 ? bodyWeightKg : 75
-  const vo2 = (14.7 * powerW + 250) / bw
+  // v9.487 (rowing deep-dive F2) — this now IS the published Concept2/Hagerman
+  // calculator it was always cited as. The old body used a generic economy
+  // model ((14.7·W+250)/kg) that diverged ±10% from the C2 calculator and
+  // crossed it around 6:30. Published form: Y = a + b·t (t = 2k time in
+  // MINUTES), VO2max = Y × 1000 / weightKg, with Y-branches by sex, weight
+  // class and training status (concept2.com VO2max calculator; Hagerman).
+  const bw = bodyWeightKg > 0 ? bodyWeightKg : 75
+  const tMin = time2000Sec / 60
+  const heavyweight = gender === 'female' ? bw > 61.36 : bw > 75
+  let y
+  if (gender === 'female') {
+    y = trained
+      ? (heavyweight ? 14.6 - 1.5 * tMin : 14.9 - 1.5 * tMin)
+      : 10.26 - 0.93 * tMin
+  } else {
+    y = trained
+      ? (heavyweight ? 15.7 - 1.5 * tMin : 15.1 - 1.5 * tMin)
+      : 10.7 - 0.9 * tMin
+  }
+  const vo2 = (y * 1000) / bw
   return Math.max(0, Math.round(vo2 * 10) / 10)
 }
 
@@ -266,7 +281,9 @@ export function predict2000mFromMultipleTests(tests) {
  * @returns {number|null} split in seconds per 500m, or null if distanceM is falsy
  */
 export function splitPer500m(distanceM, durationSec) {
-  if (!distanceM) return null
+  // v9.487 (F8): a missing/zero duration propagated NaN instead of the
+  // documented null contract.
+  if (!distanceM || !Number.isFinite(Number(durationSec)) || durationSec <= 0) return null
   return (durationSec / distanceM) * 500
 }
 
@@ -305,6 +322,8 @@ export function strokeEfficiency(distanceM, totalStrokes) {
  * @returns {{ zone: string, label: { en: string, tr: string } }}
  */
 export function classifyStrokeRate(spm) {
+  // v9.487 (F7): NaN/garbage fell through every band to 'sprint'.
+  if (!Number.isFinite(Number(spm)) || spm <= 0) return null
   if (spm < 18) {
     return { zone: 'recovery', label: { en: 'Recovery / Technical', tr: 'Toparlanma / Teknik' } }
   }

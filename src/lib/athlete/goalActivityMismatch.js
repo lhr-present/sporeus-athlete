@@ -22,8 +22,10 @@
 const SPORT_PATTERNS = [
   { bucket: 'swim',     re: /swim/i },
   { bucket: 'bike',     re: /cycl|bike|ride|spin/i },
-  { bucket: 'run',      re: /run|jog|tempo|interval|track/i },
+  // v9.487 (F14): 'row' must precede 'run' — the run bucket's generic words
+  // (tempo/interval/track) shadowed free-form names like "Tempo row".
   { bucket: 'row',      re: /row|erg/i },
+  { bucket: 'run',      re: /run|jog|tempo|interval|track/i },
   { bucket: 'strength', re: /strength|lift|weight|gym|squat|deadlift|press/i },
   { bucket: 'walk',     re: /walk|hike/i },
 ]
