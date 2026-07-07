@@ -2,6 +2,38 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.490.0 — 2026-07-08 — Program↔history data-flow HIGHs: the adaptation channel revived
+
+From docs/audits/program_dataflow_2026_07_08.md (core answers: CTL-from-imports works on all
+generator paths; compliance credits Strava sessions — date+TSS-based; ADAPTATION was the broken
+axis). All four HIGHs fixed:
+
+- **F1 — rowing was invisible to USE MY RECENT BEST**: recentBest.js knew run/bike/swim only —
+  the founder's entire imported 'row' history never surfaced, and defaultSport fell to 'run' for
+  a rower. Rowing bucket (500/1k/2k/5k/6k/10k), classifier (row-before-run, the v9.487 F14
+  lesson), counters and fallback order added. +2 tests.
+- **F7 — storage-shape cluster**: `sporeus-eliteProgram` stores `{input, form}`, but ProgramView
+  passed the raw blob AS a built program → NextTrainingCard said "no quality session in the next
+  14 days" forever, the calendar limped on the yearly fallback, and buildPlanMilestones=[] made
+  the FieldTestModal adaptation channel UNREACHABLE. ProgramView now builds from input (same
+  pattern + live cycle-field re-injection as EliteProgramCard's evaluation); NextTrainingCard's
+  prop-less TodayView mount got the same normalization; legacy built-shape stores pass through.
+- **F4 — recording a field test WIPED the program**: the modal persisted the raw built program
+  where every reader requires `.input`. Non-destructive persist now ({input, form} preserved,
+  re-anchored build stashed under `.reAnchored` + timestamp). NOTE: evaluation deliberately does
+  not consume `.reAnchored` yet — wiring it requires the split2kSec unit normalization first
+  (program_content F1) — so a recorded test no longer corrupts anything, and full re-anchor
+  consumption is the next step.
+- **F8 — staleness banner dead for bike + swim**: typeof-number guards vs sanitizeProfile's
+  string storage (v9.485 fixed only vdot). A retested FTP/CSS now fires "PLAN OUT OF DATE".
+
+QUEUED next (data-flow MEDs): make-up nudge can't see imported sessions (F2), _logSport rowing
+class + compliance polarity (F6), rowing targets frozen — needs a profile 2k field (F9, design),
+deriveSessionPace rowing gate + /500m units (F10); LOWs F3/F5/F11.
+
+DEPENDS ON: {input, form} as THE storage contract (built programs derived, never persisted);
+.reAnchored as inert until unit-normalized consumption lands.
+
 ## v9.489.0 — 2026-07-08 — Program-content fixes (part 1): cycle-gate HIGH + rowing template TSS
 
 From docs/audits/program_content_2026_07_08.md (elite-program deep dive; Daniels/Coggan/British-

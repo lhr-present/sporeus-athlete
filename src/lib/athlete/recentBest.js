@@ -18,11 +18,15 @@
 const RUN_RE   = /run|jog/i
 const BIKE_RE  = /bike|cycl|ride/i
 const SWIM_RE  = /swim/i
+// v9.490 (program-dataflow F1): rowing existed everywhere EXCEPT here — the
+// founder's entire imported 'row' history was invisible to USE MY RECENT BEST.
+const ROW_RE   = /row|erg|kayak|canoe/i
 
 const BUCKETS = {
   run:  [5000, 10000, 15000, 21097, 42195],
   bike: [20000, 40000, 100000],
   swim: [400, 800, 1500, 3000],
+  rowing: [500, 1000, 2000, 5000, 6000, 10000],
 }
 
 const TOL = 0.15
@@ -30,6 +34,10 @@ const TOL = 0.15
 /** Classify an entry's sport from its `type` (preferred) or `sport` field. */
 function classifySport(entry) {
   const s = `${entry?.type || ''} ${entry?.sport || ''}`
+  // Row first: 'row' would otherwise be shadowed by nothing here, but keep it
+  // ahead of run so free-form names like "Tempo row" classify as rowing
+  // (v9.487 F14 lesson).
+  if (ROW_RE.test(s))  return 'rowing'
   if (RUN_RE.test(s))  return 'run'
   if (BIKE_RE.test(s)) return 'bike'
   if (SWIM_RE.test(s)) return 'swim'
@@ -111,9 +119,9 @@ export function findRecentBest(log, options = {}) {
   const primarySport = options.primarySport || null
 
   // bestPerBucket: { [sport]: Map<bucketM, { timeSec, sessionDate, daysAgo }> }
-  const bestPerBucket = { run: new Map(), bike: new Map(), swim: new Map() }
-  const sportCount    = { run: 0, bike: 0, swim: 0 }
-  const lastDate      = { run: null, bike: null, swim: null }
+  const bestPerBucket = { run: new Map(), bike: new Map(), swim: new Map(), rowing: new Map() }
+  const sportCount    = { run: 0, bike: 0, swim: 0, rowing: 0 }  // v9.490 F1
+  const lastDate      = { run: null, bike: null, swim: null, rowing: null }
 
   for (const e of log) {
     if (!e || typeof e !== 'object') continue
@@ -179,7 +187,7 @@ export function findRecentBest(log, options = {}) {
   }
 
   // 2. Otherwise pick the most-trained sport (tiebreak: most recent activity).
-  const order = ['run', 'bike', 'swim']
+  const order = ['run', 'bike', 'swim', 'rowing']  // v9.490 F1
     .filter(s => sportCount[s] > 0)
     .sort((a, b) => {
       if (sportCount[b] !== sportCount[a]) return sportCount[b] - sportCount[a]

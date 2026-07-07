@@ -9,6 +9,7 @@
 // training is today, shows the full session detail; otherwise compact.
 
 import { memo, useContext, useMemo, useState  } from 'react'
+import { buildEliteProgram } from '../../lib/athlete/eliteProgram.js'
 import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
@@ -59,7 +60,18 @@ function NextTrainingCard({ defaultProgram, defaultProgramStart }) {
   const [storedStart] = useLocalStorage('sporeus-eliteProgramStart', null)
   const [logState, setLogState] = useState(null)
 
-  const program = defaultProgram || persisted
+  // v9.490 (F7 companion): the prop-less mount (TodayView) fell back to the
+  // raw stored {input, form} blob — build from input like ProgramView does.
+  const fallbackProgram = useMemo(() => {
+    if (!persisted) return null
+    if (!persisted.input) return persisted  // legacy built shape
+    try {
+      const r = buildEliteProgram(persisted.input)
+      if (!r || r._rejected || !r.feasibility) return null
+      return r
+    } catch { return null }
+  }, [persisted])
+  const program = defaultProgram || fallbackProgram
   const programStart = defaultProgramStart || storedStart
 
   const session = useMemo(() => {

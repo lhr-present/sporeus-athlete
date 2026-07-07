@@ -159,8 +159,12 @@ describe('FieldTestModal — happy path', () => {
     fireEvent.click(screen.getByText(/Re-anchor program/))
 
     // useLocalStorage stores values raw (no _v/data wrapper)
+    // v9.490 (F4): the persist is non-destructive now — the re-anchored build
+    // lives under .reAnchored (the {input, form} storage contract is never
+    // overwritten by a raw built program).
     const program = JSON.parse(localStorage.getItem('sporeus-eliteProgram'))
-    expect(program?.currentLevel?.vdot).toBe(47)
+    expect(program?.reAnchored?.currentLevel?.vdot).toBe(47)
+    expect(typeof program?.reAnchoredAt).toBe('string')
 
     const results = JSON.parse(localStorage.getItem('sporeus-field-test-results'))
     expect(Array.isArray(results)).toBe(true)
@@ -280,8 +284,9 @@ describe('FieldTestModal — Undo (v9.178.0)', () => {
     fireEvent.change(screen.getByLabelText(/VDOT/i), { target: { value: '47' } })
     fireEvent.click(screen.getByText(/Re-anchor program/))
 
-    // After submit: re-anchored program is persisted, results has 1 entry
-    expect(JSON.parse(localStorage.getItem('sporeus-eliteProgram')).currentLevel.vdot).toBe(47)
+    // After submit: re-anchored build stashed under .reAnchored (v9.490 F4 —
+    // non-destructive), results has 1 entry
+    expect(JSON.parse(localStorage.getItem('sporeus-eliteProgram')).reAnchored.currentLevel.vdot).toBe(47)
     expect(JSON.parse(localStorage.getItem('sporeus-field-test-results')).length).toBe(1)
 
     fireEvent.click(screen.getByText(/Undo/i))

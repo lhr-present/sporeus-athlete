@@ -8,6 +8,8 @@ import ErrorBoundary from './ErrorBoundary.jsx'
 const MissionHeadline   = lazy(() => import('./dashboard/MissionHeadline.jsx'))
 const EliteProgramCard  = lazy(() => import('./dashboard/EliteProgramCard.jsx'))
 const TodayProgrammedSessionCard = lazy(() => import('./dashboard/TodayProgrammedSessionCard.jsx'))
+import { useMemo } from 'react'
+import { buildEliteProgram } from '../lib/athlete/eliteProgram.js'
 const NextTrainingCard  = lazy(() => import('./dashboard/NextTrainingCard.jsx'))
 const ProgramCalendar   = lazy(() => import('./dashboard/ProgramCalendar.jsx'))
 const RaceCountdownBanner = lazy(() => import('./dashboard/RaceCountdownBanner.jsx'))
@@ -20,7 +22,31 @@ export default function ProgramView() {
   const [persistedProgram] = useLocalStorage('sporeus-eliteProgram', null)
   const [programStart] = useLocalStorage('sporeus-eliteProgramStart', null)
   const [yearlyPlan] = useLocalStorage('sporeus-yearly-plan', null)
-  const hasPlan = !!persistedProgram && !!programStart
+  // v9.490 (program-dataflow HIGH F7): sporeus-eliteProgram stores {input, form}
+  // — NOT a built program — but this view passed the raw blob straight into
+  // NextTrainingCard/ProgramCalendar/RaceCountdownBanner. Result: "no quality
+  // session in the next 14 days" forever, the calendar limping on the yearly-
+  // plan fallback, and buildPlanMilestones=[] leaving the FieldTestModal
+  // adaptation channel unreachable. Build from input (same pattern + live
+  // cycle-field re-injection as EliteProgramCard's evaluation); legacy stores
+  // holding a built program pass through unchanged.
+  const builtProgram = useMemo(() => {
+    if (!persistedProgram) return null
+    if (!persistedProgram.input) return persistedProgram  // legacy built shape
+    try {
+      const cycleLive = {}
+      if (profile?.gender)          cycleLive.gender = profile.gender
+      if (profile?.lastPeriodStart) cycleLive.lastPeriodStart = profile.lastPeriodStart
+      if (profile?.cycleLength)     cycleLive.cycleLength = profile.cycleLength
+      const r = buildEliteProgram({
+        ...persistedProgram.input,
+        profile: { ...(persistedProgram.input.profile || {}), ...cycleLive },
+      })
+      if (!r || r._rejected || !r.feasibility) return null
+      return r
+    } catch { return null }
+  }, [persistedProgram, profile])
+  const hasPlan = !!builtProgram && !!programStart
 
   return (
     <div className="sp-fade" style={{ maxWidth: 720, margin: '0 auto' }}>
@@ -38,7 +64,7 @@ export default function ProgramView() {
         <ErrorBoundary>
           <Suspense fallback={null}>
             <RaceCountdownBanner
-              program={persistedProgram}
+              program={builtProgram}
               programStart={programStart}
             />
           </Suspense>
@@ -50,7 +76,7 @@ export default function ProgramView() {
         <ErrorBoundary>
           <Suspense fallback={null}>
             <NextTrainingCard
-              defaultProgram={persistedProgram}
+              defaultProgram={builtProgram}
               defaultProgramStart={programStart}
             />
           </Suspense>
@@ -68,7 +94,7 @@ export default function ProgramView() {
         <ErrorBoundary>
           <Suspense fallback={null}>
             <ProgramCalendar
-              program={persistedProgram}
+              program={builtProgram}
               programStart={programStart}
               yearlyPlan={yearlyPlan}
             />

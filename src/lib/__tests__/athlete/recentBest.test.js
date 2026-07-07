@@ -167,3 +167,23 @@ describe('findRecentBest — v8.95.0', () => {
     expect(r).toBeNull()
   })
 })
+
+// v9.490 (program-dataflow F1) — rowing existed everywhere except here.
+describe('recentBest — rowing (v9.490)', () => {
+  it('classifies imported row entries and buckets a 2k', () => {
+    const log = [
+      { date: '2026-07-01', type: 'row', distanceM: 2000, durationSec: 460 },
+      { date: '2026-07-03', type: 'row', distanceM: 2050, durationSec: 470 },
+    ]
+    const rb = findRecentBest(log, { today: '2026-07-05', primarySport: 'rowing' })
+    expect(rb).not.toBeNull()
+    expect(rb.sport).toBe('rowing')
+    expect(rb.distanceM).toBe(2000)
+    expect(rb.timeSec).toBe(460)
+  })
+  it("'Tempo row' classifies as rowing (F14 lesson) and surfaces without primarySport", () => {
+    const log = [{ date: '2026-07-01', type: 'Tempo row', distanceM: 5000, durationSec: 1200 }]
+    const rb = findRecentBest(log, { today: '2026-07-05' })
+    expect(rb?.sport).toBe('rowing')
+  })
+})
