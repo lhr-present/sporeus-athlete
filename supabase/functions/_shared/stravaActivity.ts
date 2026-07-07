@@ -209,8 +209,10 @@ export async function enqueueStreamEnrichment(
   userId: string,
   activities: Record<string, unknown>[],
 ): Promise<number> {
-  const candidates = activities.filter(qualifiesForStreamEnrichment).map((a) => String(a.id))
+  const qualifying = activities.filter(qualifiesForStreamEnrichment)
+  const candidates = qualifying.map((a) => String(a.id))
   if (!candidates.length) return 0
+  const deviceWattsById = new Map(qualifying.map((a) => [String(a.id), a.device_watts === true]))
   const { data: rows } = await sb
     .from("training_log")
     .select("external_id")
@@ -224,6 +226,10 @@ export async function enqueueStreamEnrichment(
         kind:        "enrich",
         user_id:     userId,
         external_id: r.external_id,
+        // v9.488 — the STREAMS path must honor the same device_watts gate as
+        // the summary path: without this the enrich pass ingested (possibly
+        // Strava-ESTIMATED) watts streams into NP/peaks/W′ for HR-only rides.
+        device_watts: deviceWattsById.get(r.external_id) === true,
         enqueued_at: new Date().toISOString(),
       },
     })

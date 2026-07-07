@@ -238,14 +238,23 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
         // stay index-aligned across streams (audit MED-2: independent
         // compaction desynced the halves-split in decouplingPct → garbage
         // values; 0-fill is the exact parse-activity semantics).
+        // v9.488 (cycling deep-dive): keep the TAIL when capping — the old
+        // slice(0, 10800) dropped the FINAL hour of >3h rides, so lh300 (the
+        // durability numerator, "best 5-min in the LAST hour") was computed on
+        // the first 3 h — overstating durability on exactly the rides it's for.
         const asSeries = (s: unknown): number[] => {
           const d = (s as { data?: unknown[] })?.data
           return Array.isArray(d)
-            ? (d as unknown[]).map((v) => (typeof v === "number" && Number.isFinite(v) ? v : 0)).slice(0, 10800)
+            ? (d as unknown[]).map((v) => (typeof v === "number" && Number.isFinite(v) ? v : 0)).slice(-10800)
             : []
         }
         const hr    = asSeries((streams as Record<string, unknown>).heartrate)
-        const watts = asSeries((streams as Record<string, unknown>).watts)
+        // v9.488 — device_watts gate (same guardrail as the summary path):
+        // a watts stream on a non-power-meter ride is Strava-ESTIMATED and
+        // must not feed NP/power-TSS/W′/peaks. Older queued messages without
+        // the flag are treated as ungated (pre-v9.488 behavior) for one cycle.
+        const deviceWatts = payload.device_watts === undefined ? true : payload.device_watts === true
+        const watts = deviceWatts ? asSeries((streams as Record<string, unknown>).watts) : []
         const vel   = asSeries((streams as Record<string, unknown>).velocity_smooth)
 
         const physio = await resolveProfilePhysiology(sb, userId)

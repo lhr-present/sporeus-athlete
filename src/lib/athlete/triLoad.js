@@ -21,9 +21,12 @@ function sessionSport(s) {
   const type  = (s.type  || '').toLowerCase()
   const sport = (s.sport || '').toLowerCase()
 
-  if (type === 'swim'  || sport.includes('swim'))                    return 'swim'
-  if (type === 'bike'  || type === 'cycling' || sport.includes('cycl')) return 'bike'
-  if (type === 'run'   || sport === 'running')                       return 'run'
+  // v9.488 (cycling deep-dive HIGH-3): exact matches missed the app's own
+  // session vocabulary ('Easy Ride', 'Long Run', 'Easy Swim') — only Strava
+  // rows ('bike'/'run'/'swim') counted toward tri load. Substring-match both.
+  if (/swim/.test(type)          || sport.includes('swim')) return 'swim'
+  if (/bike|cycl|ride/.test(type) || sport.includes('cycl')) return 'bike'
+  if (/run/.test(type)           || sport.includes('run'))  return 'run'
   return null
 }
 

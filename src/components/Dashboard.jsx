@@ -406,10 +406,15 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
     const avgPaceMPerMin = Number.isFinite(distM) && distM > 0 && Number.isFinite(durMin) && durMin > 0
       ? distM / durMin
       : undefined
+    // v9.488 (cycling deep-dive HIGH-2): computeEF branches on the exact
+    // strings 'cycling'/'running' (or null = autodetect) — 'bike'/'Easy Ride'
+    // matched neither branch, so the EF trend NEVER accumulated sessions.
+    const t = `${e.sport || ''} ${e.type || ''}`
+    const sport = /bike|cycl|ride/i.test(t) ? 'cycling' : /run/i.test(t) ? 'running' : undefined
     return {
       date: e.date, avgHR: e.avgHR, np: e.np, avgPower: e.avgPower,
       avgPaceMPerMin,
-      sport: e.sport || e.type,
+      sport,
     }
   }), [log])
 

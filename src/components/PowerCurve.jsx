@@ -100,7 +100,10 @@ export default function PowerCurve() {
   // Selected activity MMP
   const activityData = useMemo(() => {
     if (!selectedId) return { mmp: null, stream: null }
-    const stream = loadStream(parseInt(selectedId))
+    // v9.488 (cycling deep-dive HIGH-1): ids are UUIDs since the uuid
+    // migration — parseInt turned them into 9/NaN and the localStorage key
+    // never matched, so selecting an activity silently rendered nothing.
+    const stream = loadStream(selectedId)
     if (!stream) return { mmp: null, stream: null }
     return { mmp: calculateMMP(stream), stream }
   }, [selectedId])
