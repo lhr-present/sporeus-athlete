@@ -15,6 +15,10 @@
 export function logEntrySport(e) {
   if (!e || typeof e !== 'object') return null
   const t = (e.sport || e.type || '').toString().toLowerCase()
+  // v9.491 (program-dataflow F6): rowing had no class — rows worked only via
+  // the null-passthrough accident. Row before run so "Tempo row" classifies
+  // as rowing (v9.487 F14 lesson).
+  if (/row|erg/.test(t)) return 'rowing'
   if (/swim/.test(t)) return 'swim'
   if (/bike|cycl|ride/.test(t)) return 'bike'
   if (/tri/.test(t)) return 'triathlon'
@@ -41,5 +45,10 @@ export function entryMatchesProgramSport(entry, programSport) {
   if (programSport === 'triathlon') {
     return sp === 'run' || sp === 'bike' || sp === 'swim' || sp === 'triathlon'
   }
+  // v9.491 (F6): the elite ROWING program prescribes run/bike cross-train days
+  // — excluding those entries from its own compliance was the worst-possible
+  // polarity (the athlete follows the plan and gets penalized). A rowing
+  // program accepts all endurance work.
+  if (programSport === 'rowing') return true
   return sp === programSport
 }

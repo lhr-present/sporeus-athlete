@@ -2,6 +2,35 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.491.0 — 2026-07-08 — Program data-flow MEDs: imports credited, rowing classified, units normalized
+
+- **F2 — make-up nudge no longer accuses athletes who trained**: `logIntentKey` matched only
+  English workout jargon, so a Strava-imported "Afternoon Rowing · 12.00 km" never matched the
+  planned intent → false "you missed your threshold session". Fixes: phantom `entry.session` →
+  real `sessionTag`; duration ≥ 90min infers 'long' regardless of naming; and a SUBSTANTIAL
+  session (≥45min or ≥50 TSS) with unclassifiable intent on the target day counts as matching —
+  the nudge exists to catch skipped days, not to police note vocabulary.
+- **F6 — `_logSport` rowing class + compliance polarity**: rows classified only via the
+  null-passthrough accident; and the elite ROWING program's own prescribed run/bike cross-train
+  days were EXCLUDED from its compliance (athlete follows the plan, gets penalized). Rowing class
+  added (row-before-run, F14 lesson); a rowing program accepts all endurance work. Side effect
+  (correct): rows no longer count toward a RUN program's compliance.
+- **F10 — rowers no longer get Daniels run paces**: deriveSessionPace had cycling/swim gates but
+  none for rowing (isRowingSession existed, unused here) — erg sessions showed /km pace targets
+  and sessionExecution scored /500m splits ~2× "slow" against them. Gated at the source.
+- **content-F1 — split2kSec range-normalizer**: 2k TIME (330–600s) vs sec/500m (70–180s) are
+  disjoint ranges; fieldTestGainRatio now coerces any <200s value ×4, so the latent unit collision
+  can't clamp Peak/Taper TSS when the field-test channel gets wired (.reAnchored consumption is
+  the remaining step).
+
+STILL QUEUED: F9 rowing targets frozen (needs a profile 2k field — design decision); .reAnchored
+consumption in evaluation; LOWs F3/F5/F11 (data-flow) + F8 zone-tag one-offs (content); deferred
+F4/F5/F7/F10 (content: validators/sample-weeks/TT-v³/trainingDays); cycling MEDs; founder Qs
+(e-bike, kayak→row).
+
+DEPENDS ON: _logSport rowing vocabulary (/row|erg/ before run); the make-up nudge's
+substantial-session fallback thresholds (45min/50 TSS); the <200s split heuristic.
+
 ## v9.490.0 — 2026-07-08 — Program↔history data-flow HIGHs: the adaptation channel revived
 
 From docs/audits/program_dataflow_2026_07_08.md (core answers: CTL-from-imports works on all
