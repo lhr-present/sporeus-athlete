@@ -13,8 +13,9 @@ function fmtPace(minPerKm) {
 
 function fmtDuration(min) {
   if (!min || !isFinite(min)) return '—'
-  const h = Math.floor(min / 60)
-  const m = Math.round(min % 60)
+  const total = Math.round(min)  // v9.487 (F5): total-first — no "1h 60m"
+  const h = Math.floor(total / 60)
+  const m = total % 60
   return h > 0 ? `${h}h ${m}m` : `${m}m`
 }
 
@@ -95,13 +96,21 @@ function SeasonBestsCard({ log = [], dl = {} }) {
     let bestErg     = null
     let bestErgDate = null
     season.forEach(e => {
-      const isRow = e.sessionType?.toLowerCase().includes('row') ||
+      // v9.487 (rowing deep-dive F11) — this metric was DEAD for every real
+      // producer: entries carry `type` (never sessionType/discipline) and
+      // distance lives in distanceM (Strava/FIT) or distanceKm (manual) or
+      // metres-valued `distance` (C2 CSV) — the km-valued read matched nothing.
+      const isRow = /row/i.test(e.type || '') ||
+                    e.sessionType?.toLowerCase().includes('row') ||
                     e.sport?.toLowerCase() === 'rowing' ||
                     e.discipline?.toLowerCase() === 'rowing'
       if (!isRow) return
       if (!e.duration || e.duration <= 0) return
-      const dist = e.distance || 0
-      if (dist < 1.8 || dist > 2.2) return   // approx 2000m (km)
+      const distKm = Number(e.distanceKm) > 0 ? Number(e.distanceKm)
+        : Number(e.distanceM) > 0 ? Number(e.distanceM) / 1000
+        : Number(e.distance) > 100 ? Number(e.distance) / 1000  // C2 metres
+        : Number(e.distance) || 0
+      if (distKm < 1.8 || distKm > 2.2) return   // approx 2000m
       if (bestErg === null || e.duration < bestErg) {
         bestErg = e.duration
         bestErgDate = e.date

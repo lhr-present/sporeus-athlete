@@ -81,18 +81,31 @@ function RowingMetricsCard({ log = [], profile = {} }) {
   }, [profile])
 
   // 2000m prediction and VO2max — hoisted before early return to satisfy Rules of Hooks
+  // v9.487 (rowing deep-dive F1) — Paul's Law is a MAXIMAL-effort scaling law;
+  // running it on the most recent session of any kind painted a pessimistic
+  // "2k prediction" from every steady UT2 paddle and overwrote real test
+  // results. Gate to maximal-ish sessions (RPE ≥ 8, a test tag, or a
+  // test-looking name) and pick the FASTEST qualifying split in the window,
+  // not merely the newest session. No qualifying effort → no prediction.
+  const isMaximalish = (s) =>
+    (s.rpe != null && Number(s.rpe) >= 8) ||
+    s.sessionTag === 'test' ||
+    /\b(2k|2000m?)\b.*test|test.*\b(2k|2000m?)\b|time.?trial|\btt\b/i.test(`${s.type || ''} ${s.notes || ''}`)
   const pred2k = useMemo(() => {
-    if (!last) return null
-    // If session is already ~2000m, use directly; otherwise predict
-    const timeSec = last.duration
-    const distM   = last.distance
-    if (!timeSec || !distM) return null
+    const candidates = rowingData.filter(s => isMaximalish(s) && s.duration > 0 && s.distance > 0)
+    if (!candidates.length) return null
+    // Fastest split wins (best maximal effort in the window)
+    const best = candidates.reduce((a, b) =>
+      (a.duration / a.distance) <= (b.duration / b.distance) ? a : b)
+    const timeSec = best.duration
+    const distM   = best.distance
     const predicted = Math.abs(distM - 2000) < 200
       ? timeSec                              // close enough to 2000m
       : predict2000m(timeSec, distM)         // Paul's Law projection
     if (!predicted) return null
     const bw = parseFloat(profile?.weight_kg || profile?.weight || 0)
-    const vo2 = bw > 0 ? concept2VO2max(predicted, bw) : null
+    const trained = ['competitive', 'elite'].includes((profile?.athleteLevel || '').toLowerCase())
+    const vo2 = bw > 0 ? concept2VO2max(predicted, bw, { gender: profile?.gender || 'male', trained }) : null
     // v9.51.0 — W/kg from predicted 2k split.
     // Concept2 power formula: P (W) = 2.80 / (split_sec / 500)^3
     // Benchmarks (Mikulic 2008, Kerr 2007 AIS rowing):
@@ -112,10 +125,11 @@ function RowingMetricsCard({ log = [], profile = {} }) {
     // Note: ratio is WR/predicted so faster=higher percent (WR-grade).
     const wrRef = getReference('rowing', 2000)
     const pctWR = wrRef ? Math.round((wrRef.wr / predicted) * 1000) / 10 : null
-    const mm = Math.floor(predicted / 60)
-    const ss = String(Math.round(predicted % 60)).padStart(2, '0')
+    const predTotal = Math.round(predicted)  // v9.487 (F5): total-first — no "6:60"
+    const mm = Math.floor(predTotal / 60)
+    const ss = String(predTotal % 60).padStart(2, '0')
     return { timeStr: `${mm}:${ss}`, isProjection: Math.abs(distM - 2000) >= 200, vo2, wkg, wkgBand, pctWR }
-  }, [last, profile])
+  }, [rowingData, profile])
 
   if (!last) return (
     <div style={{ ...S.card, marginBottom: 16, padding: '16px 20px' }}>

@@ -2,6 +2,36 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.487.0 — 2026-07-07 — 🚣 Rowing deep-dive fixes (agent audit: 16 findings, math verified to sources)
+
+From docs/audits/rowing_deep_dive_2026_07_07.md (my own v9.474 fixes came back verified clean —
+durationSec-first normalization, cadence-is-spm, W/kg bands all correct):
+
+- **F1 (HIGH) — 2k prediction ran Paul's Law on submaximal rows.** A maximal-effort scaling law
+  fired on the most recent session of ANY kind: every steady UT2 paddle repainted a pessimistic
+  2k/VO2max/W-per-kg/%WR block and overwrote real tests. Now effort-gated (RPE ≥ 8, test tag, or
+  test-looking name) and the FASTEST qualifying split in the window wins; no qualifying effort →
+  no prediction (honest silence).
+- **F2 (MED) — concept2VO2max now IS the published Concept2/Hagerman calculator** it was always
+  cited as (Y-branched by sex/weight-class/training; the old generic economy model diverged ±10%
+  and crossed sign near 6:30). Gender + athleteLevel threaded from the profile. Value-tested.
+- **F3 (MED) — C2 fields survive sync**: duration_sec/avg_spm/drag_factor/strokes columns (mig
+  20260644, applied) + mapper round-trip; avg_power snake-alias in sanitize. Signed-in users keep
+  stroke/drag/DPS analysis after reload (the recovery-fields pattern again).
+- **F11 (MED) — SeasonBests "2000m Erg Split" was dead for every producer** (never checked
+  e.type; km-valued read vs distanceM/metres). Canonical reads added.
+- **LOWs**: four ":60" time formatters (round-total-first — no more "1:60" splits);
+  classifyStrokeRate null for garbage (was 'sprint'); splitPer500m honors its null contract;
+  'row' bucket now precedes 'run' in goalActivityMismatch ("Tempo row" bucketed as running);
+  ZoneCalc pace ranges display fast–slow per convention; fabricated "Paul (1969)" citation
+  corrected (the 1.07 exponent itself verified fine).
+- **DOCUMENTED for founder**: F4 Kayaking/Canoeing→'row' feeds rowing science (largely defused by
+  the F1 effort gate); F12 split2kSec means 2k-TIME in three sites but sec/500m in the
+  applyFieldTest contract (latent — no live caller; normalize before wiring).
+
+DEPENDS ON: concept2VO2max(t, kg, {gender, trained}) signature; mig 20260644 columns; the F1
+effort-gate vocabulary (rpe≥8 / sessionTag 'test' / test-name regex).
+
 ## v9.486.0 — 2026-07-07 — Backend closeout: cron-failure alerting + telemetry hardening
 
 The final two items from the 3-agent sweep. Both deployed + live-verified.
