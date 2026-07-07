@@ -65,26 +65,31 @@ export function computePlanStaleness(plan, profile) {
   }
 
   // FTP (bike / triathlon)
-  if (typeof cl.ftp === 'number' && typeof profile.ftp === 'number' && profile.ftp > 0) {
-    const delta = profile.ftp - cl.ftp
+  // v9.490 (program-dataflow F8): sanitizeProfile stores numerics as STRINGS —
+  // the typeof-number guard meant a retested FTP never fired "PLAN OUT OF
+  // DATE" (v9.485 fixed only vdot). Coerce like every other profile consumer.
+  const profFtp = Number(profile.ftp)
+  if (typeof cl.ftp === 'number' && Number.isFinite(profFtp) && profFtp > 0) {
+    const delta = profFtp - cl.ftp
     if (Math.abs(delta) >= FTP_DRIFT_THRESHOLD_W) {
       drifted.push({
         metric: 'ftp',
         planValue: cl.ftp,
-        currentValue: profile.ftp,
+        currentValue: profFtp,
         deltaPct: delta / cl.ftp,
       })
     }
   }
 
   // CSS (swim / triathlon) — note: lower is faster
-  if (typeof cl.css === 'number' && typeof profile.cssSec === 'number' && profile.cssSec > 0) {
-    const delta = profile.cssSec - cl.css
+  const profCss = Number(profile.cssSec)
+  if (typeof cl.css === 'number' && Number.isFinite(profCss) && profCss > 0) {
+    const delta = profCss - cl.css
     if (Math.abs(delta) >= CSS_DRIFT_THRESHOLD_SEC) {
       drifted.push({
         metric: 'css',
         planValue: cl.css,
-        currentValue: profile.cssSec,
+        currentValue: profCss,
         deltaPct: delta / cl.css,
       })
     }

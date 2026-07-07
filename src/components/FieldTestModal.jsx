@@ -173,7 +173,21 @@ export default function FieldTestModal({ program, profile, onClose, lang = 'en' 
 
     // Capture previous program for undo BEFORE overwriting
     const previousProgram = persistedProgram || program
-    try { setPersistedProgram(reAnchored) }
+    // v9.490 (program-dataflow HIGH F4): persisting the raw BUILT program here
+    // destroyed the {input, form} storage contract — every reader requires
+    // .input, so recording a field test WIPED the program (card fell back to
+    // the empty form). Persist non-destructively: keep {input, form}, stash
+    // the re-anchored build under .reAnchored. NOTE: evaluation does not yet
+    // consume .reAnchored — wiring it requires the split2kSec unit
+    // normalization first (program_content F1); until then the test is
+    // recorded + shown without silently corrupting the program.
+    try {
+      setPersistedProgram({
+        ...(persistedProgram && persistedProgram.input ? persistedProgram : { input: program?.input, form: persistedProgram?.form }),
+        reAnchored,
+        reAnchoredAt: todayISO(),
+      })
+    }
     catch (e) { logger.warn('field-test program save:', e?.message) }
 
     setSubmitted({
