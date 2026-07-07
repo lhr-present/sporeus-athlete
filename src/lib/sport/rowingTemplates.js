@@ -184,7 +184,13 @@ export function instantiateTemplate(templateId, split2000Sec) {
 
   // Estimate TSS: TSS ≈ tssMultiplier × 100 × (work_duration_hr)
   const totalWorkM = tmpl.distanceM || intervals.reduce((s, iv) => s + (iv.distanceM || 0), 0)
-  const avgSplitSec = split2000Sec  // approximation for total session time
+  // v9.489 (program-content F2): session time must use the PRESCRIBED zone
+  // splits, not 2k race pace — assuming 2k pace under-estimated UT2 session
+  // duration/TSS by ~17% (a 1:45 athlete rows UT2 at ~2:06, not 1:45).
+  // Distance-weighted mean of the interval target splits; race-pace fallback.
+  const splitNum = intervals.reduce((s, iv) => s + (iv.targetSplitSec || split2000Sec) * (iv.distanceM || 0), 0)
+  const splitDen = intervals.reduce((s, iv) => s + (iv.distanceM || 0), 0)
+  const avgSplitSec = splitDen > 0 && splitNum > 0 ? splitNum / splitDen : split2000Sec
   const totalSec = totalWorkM > 0 ? (totalWorkM / 500) * avgSplitSec : 60 * 60
   const estimatedTSS = Math.round(tmpl.tssMultiplier * 100 * (totalSec / 3600) * 10) / 10
 

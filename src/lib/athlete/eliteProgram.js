@@ -569,16 +569,18 @@ function buildWeeklyTSS(phasesArr, currentCTL) {
 /** @public */
 export function fmtPaceStr(secPerKm) {
   if (!secPerKm || secPerKm <= 0) return null
-  const m = Math.floor(secPerKm / 60)
-  const s = Math.round(secPerKm % 60)
+  const _t1 = Math.round(secPerKm)  // v9.489 F11: total-first, no ':60'
+  const m = Math.floor(_t1 / 60)
+  const s = _t1 % 60
   return `${m}:${String(s).padStart(2, '0')}/km`
 }
 
 /** @public */
 export function fmtSwimPace(secPer100) {
   if (!secPer100 || secPer100 <= 0) return null
-  const m = Math.floor(secPer100 / 60)
-  const s = Math.round(secPer100 % 60)
+  const _t2 = Math.round(secPer100)  // v9.489 F11: total-first, no ':60'
+  const m = Math.floor(_t2 / 60)
+  const s = _t2 % 60
   return `${m}:${String(s).padStart(2, '0')}/100m`
 }
 

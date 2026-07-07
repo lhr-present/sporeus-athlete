@@ -2,6 +2,34 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.489.0 — 2026-07-08 — Program-content fixes (part 1): cycle-gate HIGH + rowing template TSS
+
+From docs/audits/program_content_2026_07_08.md (elite-program deep dive; Daniels/Coggan/British-
+Rowing math all verified clean — findings were contract/derivation bugs):
+
+- **F3 (HIGH, live, execution-verified)** — `applyCyclePhaseGate` spread NUMBER weeks into `{}`,
+  collapsing every opted-in female athlete's program to targetTSS=0 across run/row/bike
+  (buildEliteProgram passes weeklyTSS as numbers; the gate expected objects). The gate now accepts
+  both shapes, preserving `tss`. The existing "tss preserved" test had been passing VACUOUSLY
+  (undefined===undefined on both broken sides) — rewritten to assert the real contract including
+  a >0 guard.
+- **F2 (MED)** — rowing template session TSS assumed 2k RACE pace for every zone → UT2 sessions
+  under-estimated ~17% (a 1:45 athlete rows UT2 at ~2:06), base weeks ~12% light. Session time now
+  uses the distance-weighted mean of the PRESCRIBED interval splits.
+- **F6 (MED)** — FieldTestModal's before/after TSS comparison did `.find(w => w.week===n)` on a
+  number array → always 0→0. Indexes numbers directly now.
+- **F11 (LOW)** — three more ":60" pace formatters (eliteProgram ×2, raceGoalEngine) fixed
+  total-first, same as v9.487.
+
+QUEUED for part 2 (after the program↔history data-flow agent lands; its files): F1 split2kSec
+unit normalizer (2k-time 330–600s vs split 70–180s are disjoint ranges — range-based coercion at
+fieldTestGainRatio), F8 rowing zone-tag one-offs. DEFERRED with notes: F4 validators vs deload
+rebounds (validator design), F5 static sample weeks ~40% under Build targets (program content —
+founder), F7 bike TT v³ heuristic, F10 run trainingDays positional contract.
+
+DEPENDS ON: applyCyclePhaseGate dual-shape contract (numbers stay numbers outside the gate
+horizon); rowingTemplates interval targetSplitSec as the session-time source.
+
 ## v9.488.0 — 2026-07-07 — 🚴 Cycling deep-dive fixes (part 1: HIGHs + pipeline integrity)
 
 From docs/audits/cycling_deep_dive_2026_07_07.md (math checked clean throughout — Coggan zones,
