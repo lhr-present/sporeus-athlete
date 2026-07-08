@@ -2,6 +2,45 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.493.0 — 2026-07-09 — 🚀 Publish blockers + general-check regressions
+
+Two agent reports applied (docs/audits/publish_readiness_2026_07_09.md + general_check_2026_07_09.md).
+
+**Publish readiness (BLOCKER + 2 HIGHs):**
+- **GDPR/KVKK data rights are REACHABLE (F1 BLOCKER)** — download-my-data and delete-my-account
+  handlers existed but were wired to NO button while the privacy policy promised both ("Profile →
+  Privacy → ..."). Now in the Privacy Dashboard, bilingual, with status feedback. (Operator: verify
+  the deletion purge cron once first used.)
+- **Password reset exists (F2)** — "Forgot password?" in AuthGate (enumeration-guard phrasing) +
+  new PasswordResetModal catching the PASSWORD_RECOVERY implicit-flow event with weak-password
+  handling. Strangers are no longer stranded.
+- **Social shares unbroken (F3)** — og:image pointed at a 404 (verified live); now the self-hosted
+  512 icon + twitter: card tags. (og:image asset verified 200 before shipping.)
+
+**General-check regressions in MY recent fixes (the reason fresh eyes get sent):**
+- **F1 (HIGH)** — v9.490's "non-destructive" field-test persist was destructive for LEGACY stores
+  (built programs have no .input; the fallback synthesized {input: undefined}). Spread-what-exists.
+- **F2 (HIGH)** — v9.489 preserved tss inside gate-annotated OBJECT weeks but four number-consuming
+  readers still zeroed/NaN'd for opted-in female athletes: planAdherence plannedTSS,
+  eliteProgramToYearly targetTSS+deload (lifecycle stuck 'draft'), WeeklyTSSChart SVG NaN,
+  eliteProgramRecovery peak. All four coerce {tss} now.
+- **F11 (HIGH)** — the revived EF trend pooled cycling EF (~2.0) and running EF (~1.0) in ONE
+  mean/CV series. Dominant-sport filter + rows/ergs excluded (own convention).
+- **F4/F5 (MED)** — make-up nudge: substantial sessions match regardless of inferred intent
+  (v9.491's null-only fallback penalized 95-min imports vs 50-min ones); planAdherence's DUPLICATED
+  intent matcher still read phantom entry.session → "Behind 0%" for import-only athletes.
+- **F3/F12** — NextTrainingCard fallback re-injects live cycle fields (parity with ProgramView);
+  SeasonBests run-pace + longest-ride rows were on the same phantom keys as the erg row.
+
+QUEUED: general-check F6 same-tab localStorage staleness (design), F13 classifier vocabulary
+harmonization, LOWs; publish MEDs (Sentry/telemetry disclosure in privacy policy, consent-before-
+sync ordering, ToS/medical disclaimer, html lang, robots/sitemap, SW precache size); design items
+(profile 2k field, .reAnchored consumption). OPERATOR (publish): Strava athlete cap, custom SMTP,
+auth redirect allowlist, DODO/STRIPE webhook secrets, deletion purge cron.
+
+DEPENDS ON: PasswordResetModal's own onAuthStateChange subscription; the dominant-sport EF
+convention; {tss}-coercing readers accepting BOTH week shapes.
+
 ## v9.492.0 — 2026-07-09 — Cycling MEDs + program-content tags (queue burn-down)
 
 From the cycling deep-dive (2026-07-07) + program-content F8:

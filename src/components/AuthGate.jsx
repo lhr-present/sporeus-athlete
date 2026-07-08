@@ -101,6 +101,26 @@ export default function AuthGate({ lang }) {
     }
   }, [])
 
+  // v9.493 (publish-readiness F2): there was NO password reset path anywhere.
+  const handleForgot = useCallback(async () => {
+    if (!supabase || !email) {
+      setMsg({ type: 'error', text: lang === 'tr' ? 'Önce e-posta adresini gir.' : 'Enter your email first.' })
+      return
+    }
+    setBusy(true); clearMsg()
+    try {
+      const redirectTo = window.location.origin + import.meta.env.BASE_URL
+      await supabase.auth.resetPasswordForEmail(email, { redirectTo })
+      // Success-shaped regardless of registration (enumeration guard) — phrase accordingly.
+      setMsg({ type: 'success', text: lang === 'tr'
+        ? 'Bu adres kayıtlıysa sıfırlama bağlantısı gönderildi — gelen kutunu kontrol et.'
+        : 'If this address is registered, a reset link was sent — check your inbox.' })
+    } catch (e) {
+      setMsg({ type: 'error', text: e.message })
+    }
+    setBusy(false)
+  }, [email, lang])
+
   const handleEmail = useCallback(async (e) => {
     e.preventDefault()
     if (!supabase || !email) return
@@ -271,8 +291,18 @@ export default function AuthGate({ lang }) {
                 placeholder={mode === 'signup' ? (isTR ? 'Min. 8 karakter' : 'Min. 8 characters') : '••••••••'}
                 required
                 minLength={8}
-                style={{ ...inputStyle, marginBottom: '20px' }}
+                style={{ ...inputStyle, marginBottom: mode === 'login' ? '6px' : '20px' }}
               />
+              {mode === 'login' && (
+                <button
+                  type="button"
+                  onClick={handleForgot}
+                  disabled={busy}
+                  style={{ background: 'none', border: 'none', padding: 0, marginBottom: '14px', cursor: 'pointer', fontSize: '10px', color: '#888', textDecoration: 'underline', textAlign: 'left' }}
+                >
+                  {isTR ? 'Şifreni mi unuttun?' : 'Forgot password?'}
+                </button>
+              )}
             </>
           )}
 

@@ -401,23 +401,38 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
   // sport, so computeEF's pace/HR branch could NEVER fire: the EF trend was
   // silently cycling-only. Derive pace from the canonical distanceM +
   // duration(min) and sport from the entry type.
-  const efSessions = useMemo(() => (log || []).map(e => {
-    const distM = Number(e.distanceM)
-    const durMin = Number(e.duration)
-    const avgPaceMPerMin = Number.isFinite(distM) && distM > 0 && Number.isFinite(durMin) && durMin > 0
-      ? distM / durMin
-      : undefined
-    // v9.488 (cycling deep-dive HIGH-2): computeEF branches on the exact
-    // strings 'cycling'/'running' (or null = autodetect) — 'bike'/'Easy Ride'
-    // matched neither branch, so the EF trend NEVER accumulated sessions.
-    const t = `${e.sport || ''} ${e.type || ''}`
-    const sport = /bike|cycl|ride/i.test(t) ? 'cycling' : /run/i.test(t) ? 'running' : undefined
-    return {
-      date: e.date, avgHR: e.avgHR, np: e.np, avgPower: e.avgPower,
-      avgPaceMPerMin,
-      sport,
+  const efSessions = useMemo(() => {
+    const mapped = (log || []).map(e => {
+      const distM = Number(e.distanceM)
+      const durMin = Number(e.duration)
+      const avgPaceMPerMin = Number.isFinite(distM) && distM > 0 && Number.isFinite(durMin) && durMin > 0
+        ? distM / durMin
+        : undefined
+      // v9.488 (cycling deep-dive HIGH-2): computeEF branches on the exact
+      // strings 'cycling'/'running' (or null = autodetect) — 'bike'/'Easy Ride'
+      // matched neither branch, so the EF trend NEVER accumulated sessions.
+      // v9.493 (general-check F11): rows/ergs are EXCLUDED (rowing EF has its
+      // own card + convention) instead of leaking in as pace-"running".
+      const t = `${e.sport || ''} ${e.type || ''}`
+      if (/row|erg/i.test(t)) return null
+      const sport = /bike|cycl|ride/i.test(t) ? 'cycling' : /run/i.test(t) ? 'running' : undefined
+      return {
+        date: e.date, avgHR: e.avgHR, np: e.np, avgPower: e.avgPower,
+        avgPaceMPerMin,
+        sport,
+      }
+    }).filter(Boolean)
+    // v9.493 (F11): cycling EF (NP/HR ≈ 1.5-2.5) and running EF (pace/HR ≈
+    // 0.8-1.3) live on DIFFERENT scales — pooling them made the trend's
+    // mean/CV meaningless. Keep only the athlete's dominant EF sport.
+    const counts = { cycling: 0, running: 0 }
+    for (const m of mapped) {
+      if (m.sport === 'cycling' && (m.np || m.avgPower)) counts.cycling++
+      else if (m.sport === 'running' && m.avgPaceMPerMin) counts.running++
     }
-  }), [log])
+    const dominant = counts.cycling >= counts.running ? 'cycling' : 'running'
+    return mapped.filter(m => m.sport === dominant || m.sport === undefined)
+  }, [log])
 
   // J2/J3 — CTL + TSB interpretations (Banister/Coggan citations)
   const prev28CTL  = daily.length >= 29 ? (daily[daily.length - 29]?.ctl ?? null) : null

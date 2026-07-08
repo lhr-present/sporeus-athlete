@@ -129,7 +129,7 @@ export default function Profile({ log, authUser }) {
     window.location.reload()
   }
 
-  const [_gdprStatus, setGdprStatus] = useState(null)
+  const [gdprStatus, setGdprStatus] = useState(null)
   const [auditLog, setAuditLog]     = useState(null) // null=not loaded, []|[...]=loaded
   const [aiTone, setAiTone] = useState(() => { try { return localStorage.getItem('sporeus-ai-tone') || 'motivating' } catch { return 'motivating' } })
   const [marketingConsent, setMarketingConsent] = useState(() => { try { return localStorage.getItem('sporeus-marketing-consent') === '1' } catch { return false } })
@@ -137,7 +137,7 @@ export default function Profile({ log, authUser }) {
   const [showErrorLog, setShowErrorLog] = useState(false)
   const [dqOpen, setDqOpen] = useState(false)
 
-  const _handleGdprDownload = async () => {
+  const handleGdprDownload = async () => {
     setGdprStatus('exporting')
     try {
       const data = await exportAthleteData(authUser?.id || 'local')
@@ -150,7 +150,7 @@ export default function Profile({ log, authUser }) {
     setTimeout(() => setGdprStatus(null), 3000)
   }
 
-  const _handleGdprDelete = () => {
+  const handleGdprDelete = () => {
     setConfirmGdprDeleteOpen(true)
   }
 
@@ -607,6 +607,36 @@ export default function Profile({ log, authUser }) {
                 <li>GPS/route data (if GPX imported)</li>
                 <li>Profile data (name, sport, age)</li>
               </ul>
+
+              {/* v9.493 (publish-readiness BLOCKER F1): these handlers existed
+                  since the GDPR work but were never wired to any button — the
+                  privacy policy promised "Profile → Privacy → Delete my
+                  account / Download my data" while neither was reachable. */}
+              <div style={{ ...S.mono, fontSize:'9px', color:'#555', letterSpacing:'0.08em', margin:'12px 0 6px' }}>YOUR DATA RIGHTS</div>
+              <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', marginBottom:'6px' }}>
+                <button
+                  onClick={handleGdprDownload}
+                  disabled={gdprStatus === 'exporting'}
+                  style={{ ...S.mono, fontSize:'10px', color:'var(--text)', background:'transparent', border:'1px solid var(--border)', borderRadius:'3px', padding:'4px 10px', cursor:'pointer' }}
+                >
+                  {isTR ? 'Verilerimi indir' : 'Download my data'}
+                </button>
+                <button
+                  onClick={handleGdprDelete}
+                  disabled={gdprStatus === 'deleting'}
+                  style={{ ...S.mono, fontSize:'10px', color:'#ff4444', background:'transparent', border:'1px solid #ff444440', borderRadius:'3px', padding:'4px 10px', cursor:'pointer' }}
+                >
+                  {isTR ? 'Hesabımı ve verilerimi sil' : 'Delete my account & data'}
+                </button>
+              </div>
+              {gdprStatus && (
+                <div style={{ ...S.mono, fontSize:'10px', color: gdprStatus === 'error' ? '#ff4444' : '#5bc25b', marginBottom:'6px' }}>
+                  {gdprStatus === 'exporting' ? (isTR ? 'Dışa aktarılıyor…' : 'Exporting…')
+                    : gdprStatus === 'deleting' ? (isTR ? 'Siliniyor…' : 'Deleting…')
+                    : gdprStatus === 'done' ? (isTR ? 'Tamamlandı ✓' : 'Done ✓')
+                    : (isTR ? 'Hata — tekrar deneyin' : 'Error — please retry')}
+                </div>
+              )}
             </div>
           )}
         </div>

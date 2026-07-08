@@ -133,7 +133,9 @@ export function eliteProgramToYearlyWeeks(program, programStart, opts = {}) {
     racePriority = 'C'
   }
 
-  const tss = program.weeklyTSS
+  // v9.493 (general-check F2): cycle-gate-annotated weeks are OBJECTS — the
+  // raw array fed Number(obj)=NaN into targetTSS and the deload heuristic.
+  const tss = (program.weeklyTSS || []).map(w => (typeof w === 'number' ? w : Number(w?.tss) || 0))
   const phases = program.phases
   const sampleWeeks = program.sampleWeeks || {}
 

@@ -53,12 +53,19 @@ function SeasonBestsCard({ log = [], dl = {} }) {
     let bestPace     = null
     let bestPaceDate = null
     season.forEach(e => {
-      const isRun = e.sessionType?.toLowerCase().includes('run') ||
+      // v9.493 (general-check F12): same phantom-key disease as the erg row —
+      // entries carry `type` and distanceM/distanceKm, so this row was dead
+      // for every real producer. Rowing excluded (own pace convention).
+      const isRun = /run|jog/i.test(e.type || '') && !/row|erg/i.test(e.type || '') ||
+                    e.sessionType?.toLowerCase().includes('run') ||
                     e.sport?.toLowerCase() === 'running' ||
                     e.discipline?.toLowerCase() === 'running'
       if (!isRun) return
-      if (!e.duration || !e.distance || e.distance <= 0) return
-      const pace = e.duration / e.distance   // min/km (duration in min, distance in km)
+      const runKm = Number(e.distanceKm) > 0 ? Number(e.distanceKm)
+        : Number(e.distanceM) > 0 ? Number(e.distanceM) / 1000
+        : Number(e.distance) > 0 ? Number(e.distance) : 0
+      if (!e.duration || runKm <= 0) return
+      const pace = e.duration / runKm   // min/km (duration in min)
       if (bestPace === null || pace < bestPace) {
         bestPace = pace
         bestPaceDate = e.date
@@ -80,7 +87,8 @@ function SeasonBestsCard({ log = [], dl = {} }) {
     let bestRide     = null
     let bestRideDate = null
     season.forEach(e => {
-      const isCycle = e.sessionType?.toLowerCase().includes('ride') ||
+      const isCycle = /bike|cycl|ride/i.test(e.type || '') ||   /* v9.493 F12 */
+                      e.sessionType?.toLowerCase().includes('ride') ||
                       e.sessionType?.toLowerCase().includes('cycling') ||
                       e.sport?.toLowerCase() === 'cycling' ||
                       e.discipline?.toLowerCase() === 'cycling'

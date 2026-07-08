@@ -852,7 +852,11 @@ function PhaseSplitBar({ phases, isTR }) {
   )
 }
 
-function WeeklyTSSChart({ weeklyTSS, phases, isTR }) {
+function WeeklyTSSChart({ weeklyTSS: weeklyTSSRaw, phases, isTR }) {
+  // v9.493 (general-check F2): gate-annotated weeks are objects — NaN in SVG.
+  const weeklyTSS = Array.isArray(weeklyTSSRaw)
+    ? weeklyTSSRaw.map(w => (typeof w === 'number' ? w : Number(w?.tss) || 0))
+    : weeklyTSSRaw
   if (!Array.isArray(weeklyTSS) || weeklyTSS.length === 0) return null
   const W = 320, H = 60, PAD = 4
   const max = Math.max(...weeklyTSS, 1)
