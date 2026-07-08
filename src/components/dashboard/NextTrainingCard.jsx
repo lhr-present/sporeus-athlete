@@ -66,11 +66,21 @@ function NextTrainingCard({ defaultProgram, defaultProgramStart }) {
     if (!persisted) return null
     if (!persisted.input) return persisted  // legacy built shape
     try {
-      const r = buildEliteProgram(persisted.input)
+      // v9.493 (general-check F3): live cycle-field re-injection, same as
+      // ProgramView/EliteProgramCard — the gate must fire for athletes who
+      // enter tracking data after the program was generated.
+      const cycleLive = {}
+      if (_profile?.gender)          cycleLive.gender = _profile.gender
+      if (_profile?.lastPeriodStart) cycleLive.lastPeriodStart = _profile.lastPeriodStart
+      if (_profile?.cycleLength)     cycleLive.cycleLength = _profile.cycleLength
+      const r = buildEliteProgram({
+        ...persisted.input,
+        profile: { ...(persisted.input.profile || {}), ...cycleLive },
+      })
       if (!r || r._rejected || !r.feasibility) return null
       return r
     } catch { return null }
-  }, [persisted])
+  }, [persisted, _profile?.gender, _profile?.lastPeriodStart, _profile?.cycleLength])
   const program = defaultProgram || fallbackProgram
   const programStart = defaultProgramStart || storedStart
 

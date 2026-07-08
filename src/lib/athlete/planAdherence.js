@@ -212,7 +212,9 @@ function adhKeyIntent(intentLabel) {
 // Detect a coarse intent key from a log entry's free-text fields.
 function adhLogIntent(entry) {
   if (!entry || typeof entry !== 'object') return null
-  const blob = `${entry.type || ''} ${entry.intent || ''} ${entry.notes || ''} ${entry.session || ''}`.toLowerCase()
+  // v9.493 (general-check F5): entry.session was a phantom; sessionTag is the
+  // real classifier output (mirror of the v9.491 make-up-nudge fix).
+  const blob = `${entry.type || ''} ${entry.intent || ''} ${entry.notes || ''} ${entry.sessionTag || ''}`.toLowerCase()
   if (!blob.trim()) return null
   if (/long/.test(blob)) return 'long'
   if (/threshold|tempo|cruise/.test(blob)) return 'threshold'
@@ -328,7 +330,9 @@ export function buildPlanAdherence(program, log, options = {}) {
     const wEnd   = adhAddDays(programStart, (wi + 1) * 7)
     const wStartMs = wStart.getTime()
     const wEndMs   = wEnd.getTime()
-    const plannedTSS = Number(weeklyTSS[wi]) || 0
+    // v9.493 (general-check F2): gate-annotated weeks are OBJECTS ({tss,...})
+    const wv = weeklyTSS[wi]
+    const plannedTSS = (typeof wv === 'number' ? wv : Number(wv?.tss)) || 0
     let actualTSS = 0
     for (const e of inWindow) {
       const d = adhParseUTC((e.date || '').slice(0, 10))

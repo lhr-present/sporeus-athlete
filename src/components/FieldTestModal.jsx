@@ -182,8 +182,11 @@ export default function FieldTestModal({ program, profile, onClose, lang = 'en' 
     // normalization first (program_content F1); until then the test is
     // recorded + shown without silently corrupting the program.
     try {
+      // v9.493 (general-check F1): built programs have NO .input key, so the
+      // old fallback wrote {input: undefined, ...} for legacy stores — wiping
+      // the program on Close. Spread whatever exists; never synthesize keys.
       setPersistedProgram({
-        ...(persistedProgram && persistedProgram.input ? persistedProgram : { input: program?.input, form: persistedProgram?.form }),
+        ...(persistedProgram || program || {}),
         reAnchored,
         reAnchoredAt: todayISO(),
       })

@@ -205,13 +205,15 @@ function TodayProgrammedSessionCard({ log = [] } = {}) {
         if (isNaN(d.getTime())) return false
         if (Math.abs(d.getTime() - targetMs) > tolMs) return false
         if (logIntentKey(e) === ki) return true
-        // v9.491 (F2): a SUBSTANTIAL session with unclassifiable intent (the
-        // shape of every Strava import) counts as matching — this nudge exists
-        // to catch skipped days, not to accuse athletes who demonstrably
-        // trained of missing the workout because the note wasn't in English.
+        // v9.491 (F2) + v9.493 (general-check F4): a SUBSTANTIAL session counts
+        // as matching REGARDLESS of what intent we inferred for it — v9.491's
+        // null-only fallback meant a 95-min import (inferred 'long') defeated
+        // the fallback while a 50-min one passed. The nudge exists to catch
+        // skipped days, not to police intent labels on days the athlete
+        // demonstrably trained.
         const dur = Number(e.duration) || 0
         const tss = Number(e.tss) || 0
-        return logIntentKey(e) == null && (dur >= 45 || tss >= 50)
+        return dur >= 45 || tss >= 50
       })
       if (!matched) {
         return {

@@ -134,3 +134,130 @@ cross-train days are accepted into matchedLogs (entryMatchesProgramSport → tru
 today (verified: zero references outside the lib/tests), so impact is nil — but the first
 consumer will re-introduce the "athlete follows the plan, gets penalized" polarity v9.491 F6
 fixed. Align or remove the field.
+
+## F11 — HIGH — EF Trend now pools incommensurable EF scales (cycling ~2.0 vs running ~1.0) in one series, and rowing/swim leak in
+**Files**: src/components/Dashboard.jsx:404-420 (v9.483 A3 + v9.488 HIGH-2),
+src/lib/science/efficiencyFactor.js (efTrend — single pooled series),
+src/components/science/EFTrendCard.jsx:62 (no per-sport split).
+**Verified chain**: efSessions derives avgPaceMPerMin from distanceM+duration for EVERY sport and
+maps sport only for bike/run (else undefined → computeEF autodetect). efTrend then computes ONE
+mean/CV/first-vs-second-half over all sessions. Consequences for the common multi-sport athlete:
+- cycling EF (NP/HR ≈ 1.5–2.5) and running EF (m·min⁻¹/HR ≈ 0.9–1.3) mixed in one trend — the
+  "adaptation %" is dominated by session-mix composition, not physiology. Pre-v9.483 only cycling
+  ever fired, so the series was accidentally single-scale; the two fixes revived the card into a
+  meaningless state for exactly the athletes it was fixed for.
+- a rowing erg with distance+HR autodetects as RUNNING EF; a C2 erg with avg_power (round-tripping
+  since v9.487 F3) autodetects as CYCLING EF — the founder's erg history pollutes both. This
+  contradicts the block's own "gate rowing at the source" convention (v9.491 F10).
+**Fix**: split the trend per sport (efTrend(sessions.filter(sport==='cycling')) etc., render the
+dominant or both), and classify rowing/swim in efSessions so they're excluded or own-labelled.
+
+## F12 — MED — SeasonBestsCard: v9.487 F11 fixed only 1 of 3 dead rows — "Fastest Run Pace" and "Longest Ride" still read phantom keys
+**File**: src/components/dashboard/SeasonBestsCard.jsx:56-58 (isRun), :83-86 (isCycle)
+**Verified**: both rows still gate on `sessionType`/`discipline` (no producer) and `sport`
+(sanitizeLogEntry has no `sport` whitelist — verified validate.js:85-173 — and logRowToEntry
+emits no sport key), while canonical entries carry the sport in `type` ('Easy Run', 'Long Ride').
+The erg row got the `/row/i.test(e.type)` + distKm chain in v9.487; its two siblings did not.
+"Fastest Run Pace" and "Longest Ride" render for almost nobody. (Also latent: run pace divides by
+`e.distance` assumed km — needs the same distKm chain when revived.)
+**Fix**: reuse logEntrySport(e) for both rows + the erg row's distance chain for run pace.
+
+## F13 — MED — planAdherence/calendarProgress consume weeklyTSS/program.sport correctly only for the non-cycle-gated, {input,form} path (see F2) — plus vocabulary drift cluster
+**Files**: recentBest.js:23 vs _logSport.js:21 vs RowingMetricsCard.jsx:35.
+Additional divergence verified for the v9.487/490/491 trio: RowingMetricsCard's filter is
+`/row/i` only — a session typed "60min erg" is rowing to _logSport and recentBest (`/row|erg/`)
+but invisible to the rowing metrics card. recentBest additionally accepts kayak/canoe (see F8).
+One exported ROW_RE would end the drift.
+
+## F14 — LOW — Version/branch state: tree is mid-v9.492 (branch v9.492-cycling-meds, unstaged)
+package.json 11.492.0 + CHANGELOG v9.492.0 (2026-07-09) present with unstaged working-tree
+changes (estimateFTP max(), fitCriticalPower 2-point, hasTriData→logEntrySport, triLoad profile
+FTP threading, UT2 tag ×1.22). This audit reflects that tree state. The v9.492 hasTriData change
+correctly reuses logEntrySport (checked). Reminder per repo protocol: run the full test suite and
+gate on exit codes before shipping v9.492.
+
+## F15 — LOW — Misc (verified, low impact)
+- _logSport.js:10-11 + recentBest.js:98 JSDoc still omit 'rowing' from the return/typedef unions.
+- rowingTemplates.js step_test: no distanceM on any interval → splitDen=0 → totalSec falls back
+  to 3600s → estimatedTSS=110 for a ~24-min test (pre-existing, not a v9.489 regression — the
+  F2 weighting is correct for all six distance-based templates).
+- RowingMetricsCard.jsx:107: `trained` only for athleteLevel competitive/elite — a 'club' rower
+  gets the UNtrained Hagerman branch (systematically different VO2max). Defensible; flag to
+  founder with the F9 profile-2k design decision.
+- todayProgrammedSession.js:242-244: `parseUTC(today || todayIso)` — the `|| todayIso` is
+  redundant but harmless. getNextProgrammedSession correctly date-anchors.
+
+---
+
+# CHECKED CLEAN (verified by reading the full call chains)
+
+- **applyCyclePhaseGate dual-shape (v9.489 F3)**: number weeks → `{tss}` objects with tss
+  preserved; no-op reference return when gate null. The gate math itself is right (see F2 for
+  the consumer gap).
+- **FieldTestModal sumTSS (v9.489 F6)**: indexes numbers directly, handles both week shapes.
+- **fieldTestGainRatio split2kSec normalizer (v9.491 content-F1)**: <200s → ×4; ranges verified
+  disjoint (2k time 330–600 vs split 70–180); applied to both start and actual sides.
+- **reAnchorEliteProgram rowing units**: modal passes sec/500m (70–180) → `×4` → currentPR
+  {2000m, timeSec} — coherent end-to-end with the SPORT_FIELD contract.
+- **FieldTestModal undo (happy path)**: previousProgram captured before overwrite; undo restores
+  blob + pops the results entry (F1 applies only to the legacy-store persist shape).
+- **rowingTemplates distance-weighted session time (v9.489 F2)**: all six main templates carry
+  per-interval distanceM; weighted mean uses prescribed zone-midpoint splits; race-pace fallback
+  only for the (distance-less) step test.
+- **eliteProgramStaleness (v9.490 F8)**: Number() coercion on profile.ftp/cssSec; caller
+  (EliteProgramCard PlanStalenessBanner:1047-1052) passes numeric vdot from vo2max and raw
+  ftp/cssSec — consistent with the lib's coercions. split2kSec branch intentionally dead until
+  the profile 2k field lands (queued F9).
+- **RowingMetricsCard effort gate (v9.487 F1)**: isMaximalish safe on undefined notes/type
+  (template-literal coercion); null rpe can't qualify; fastest qualifying split wins; pred2k
+  hoisted above the early return (Rules of Hooks respected); no prediction without a qualifying
+  effort.
+- **concept2VO2max new signature (v9.487 F2)**: exactly one production caller
+  (RowingMetricsCard:108) and it matches `(time2000Sec, kg, {gender, trained})`; options default
+  keeps old 2-arg calls valid.
+- **SeasonBestsCard erg row (v9.487 F11)**: type-based detection + distanceKm→distanceM→
+  metres-heuristic chain verified correct for C2 (meters in both `distance` and `distanceM`).
+- **sanitizeLogEntry (v9.487)**: avg_power→avgPower alias, avg_hr→avgHR alias, avg_spm/
+  drag_factor/strokes bounds, durationSec — all present with plausibility bounds.
+- **useSupabaseData mapper symmetry (v9.484/485/487)**: C2 fields (duration_sec/avg_spm/
+  drag_factor/strokes), flags jsonb (pack/unpack, truthy-only, plannedType 50-char), recovery
+  restingHR/bedtime/rmssd (casing matches the five card readers; bedtime HH:MM regex both ways)
+  — all round-trip symmetrically; hydrate select('*') includes the new columns.
+- **C2 CSV import chain**: parseConcept2CSV emits both distance (m) and distanceM → logDistanceM
+  persists distance_m → hydration restores distanceM → RowingMetricsCard's normalization reads
+  it. DPS/drag/split survive sign-in reload as v9.487 F3 claims.
+- **PowerCurve UUID fix (v9.488 HIGH-1)**: selectedId used raw for the `sporeus-power-` key;
+  remaining parseInt calls are on numeric duration keys/profile fields only.
+- **triLoad substring matching (v9.488 HIGH-3)**: swim→bike→run order; rowing entries match none
+  (correctly excluded from tri load).
+- **Calendar edit null-rpe (v9.483 B-HIGH-1)**: Calendar onEdit path (TrainingLog.jsx:846)
+  mirrors startEdit (:378) — `rpe == null ? ''`; save maps '' → null (:319); dirty-check
+  String(?? '') both sides.
+- **v9.491 F6 side effect**: run/bike/swim elite programs prescribe no cross-train days in their
+  sample weeks (only rowing does) — so excluding rows from a RUN program's compliance is safe as
+  shipped; the rowing program accepts all endurance work (correct polarity).
+- **planLifecycle raceMatch**: program sport vocabulary is 'rowing' (form + builder) and
+  logEntrySport returns 'rowing' — race-day matching coheres for rowers.
+- **_logSport rowing-before-run ordering**: consistent with recentBest and goalActivityMismatch
+  ("Tempo row" never buckets as running).
+- **TodayProgrammedSessionCard hooks**: all useMemo hoisted above conditional returns.
+
+# SUMMARY (severity-ordered)
+1. **F1 HIGH** — FieldTestModal legacy-store persist writes {input: undefined} → destroys the
+   program (built programs carry no .input); permanent after Close.
+2. **F2 HIGH (latent)** — cycle-gate object weeks still zero/NaN planAdherence, eliteProgramToYearly
+   (→ lifecycle stuck 'draft'), WeeklyTSSChart, recovery sleep targets for opted-in females.
+3. **F11 HIGH** — EF Trend pools cycling/running/rowing EF on incompatible scales; revived into
+   meaninglessness for multi-sport athletes; ergs pollute both branches.
+4. **F4 MED** — make-up fallback: ≥90-min sessions count less than 50-min ones (long-inference
+   defeats the null-intent fallback); ±1d window + low thresholds can mask real misses.
+5. **F5 MED** — planAdherence's twin intent matcher never got the F2 fix ("Behind 0%" accusations
+   for import-only athletes; phantom entry.session still read).
+6. **F6 MED** — same-tab localStorage staleness: generate/next-cycle/field-test don't propagate
+   to the sibling v9.490 surfaces until remount.
+7. **F3 MED** — NextTrainingCard fallback build omits live cycle re-injection (mount divergence).
+8. **F12 MED** — SeasonBests run-pace + longest-ride rows still dead (phantom keys).
+9. **F13 MED** — classifier vocabulary drift (erg/kayak/canoe) across the three files this block
+   touched.
+10. F7-F10, F14-F15 — LOW (labels, JSDoc, dead sportMatched field, tri-program rowing exclusion
+    flag, version-state note, step_test TSS, trained-gate).

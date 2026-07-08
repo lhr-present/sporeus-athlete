@@ -103,7 +103,9 @@ const TAPER = {
 // elite blocks at 400-500 → 9-10.5h. Floor at phase baseline; ceiling +1.5h.
 function computeRecoverySleepTarget(phase, weeklyTSS) {
   const base = phase === 'Base' ? [7, 9] : phase === 'Build' ? [8, 9] : phase === 'Peak' ? [8.5, 9.5] : [9, 10]
-  const peakTSS = Math.max(0, ...((weeklyTSS || []).filter(n => Number.isFinite(n))))
+  const peakTSS = Math.max(0, ...((weeklyTSS || [])
+    .map(w => (typeof w === 'number' ? w : Number(w?.tss) || 0))  // v9.493 F2
+    .filter(n => Number.isFinite(n))))
   if (!peakTSS || peakTSS <= 0) return base
   // Each 100 TSS over 250 adds 0.5h; capped at +1.5h.
   const extra = Math.min(1.5, Math.max(0, (peakTSS - 250) / 100) * 0.5)

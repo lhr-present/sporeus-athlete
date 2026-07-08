@@ -34,6 +34,7 @@ const SearchPalette = lazy(() => import('./components/SearchPalette.jsx'))
 const QuickAddModal = lazy(() => import('./components/QuickAddModal.jsx'))
 const MorningCheckIn = lazy(() => import('./components/MorningCheckIn.jsx'))
 const MigrationModal     = lazy(() => import('./components/MigrationModal.jsx'))
+const PasswordResetModal = lazy(() => import('./components/PasswordResetModal.jsx'))
 const OnboardingWizard   = lazy(() => import('./components/Onboarding.jsx'))
 const KeyboardShortcuts  = lazy(() => import('./components/KeyboardShortcuts.jsx'))
 const InviteModalLazy    = lazy(() => import('./components/MyCoach.jsx').then(m => ({ default: m.InviteModal })))
@@ -804,6 +805,9 @@ export default function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <ErrorBoundary name="PasswordReset">
+        <Suspense fallback={null}><PasswordResetModal /></Suspense>
+      </ErrorBoundary>
       <ErrorBoundary name="DataProvider">
         <DataProvider userId={userId}>
           <AppInner
