@@ -209,3 +209,13 @@ describe('sanitizeProfile', () => {
     expect(sanitizeProfile({ cssSec: null }).cssSec).toBe('')
   })
 })
+
+describe('v9.494 — profile split2k (2000m erg TIME, mm:ss)', () => {
+  it('accepts mm:ss and rejects junk / bare numbers', () => {
+    expect(sanitizeProfile({ split2k: '7:30' }).split2k).toBe('7:30')
+    expect(sanitizeProfile({ split2k: ' 6:45 ' }).split2k).toBe('6:45')
+    expect(sanitizeProfile({ split2k: '450' }).split2k).toBe('')
+    expect(sanitizeProfile({ split2k: '7:75' }).split2k).toBe('')
+    expect(sanitizeProfile({ split2k: 450 }).split2k).toBe('')
+  })
+})

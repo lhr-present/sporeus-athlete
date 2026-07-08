@@ -33,6 +33,10 @@ export default function ProgramView() {
   const builtProgram = useMemo(() => {
     if (!persistedProgram) return null
     if (!persistedProgram.input) return persistedProgram  // legacy built shape
+    // v9.494: consume a recorded field test's re-anchored build (see
+    // EliteProgramCard evaluation — same precedence).
+    const ra = persistedProgram.reAnchored
+    if (ra && ra.feasibility && !ra._rejected && Array.isArray(ra.weeklyTSS)) return ra
     try {
       const cycleLive = {}
       if (profile?.gender)          cycleLive.gender = profile.gender

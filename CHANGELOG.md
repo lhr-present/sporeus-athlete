@@ -2,6 +2,27 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.494.0 — 2026-07-09 — Design items: rowing targets un-frozen + field-test re-anchor consumed
+
+The two design items closing the program-adaptation arc:
+
+- **Profile 2000m erg time (`split2k`, mm:ss)** — rowing was the only sport with NO channel from
+  new fitness to program targets (data-flow F9: no profile field, staleness input explicitly
+  undefined). New profile field (mm:ss format makes the 2k-TIME semantics unambiguous at entry —
+  no sec/500m collision possible; range-guarded 5:00–15:00 at the parse), sanitize whitelist,
+  EN/TR labels, and the long-dormant rowing staleness branch (ROW2K_DRIFT ≥10 s) finally has a
+  producer: a faster tested 2k now fires "PLAN OUT OF DATE" for rowers, same as FTP does for
+  cyclists since v9.493.
+- **`.reAnchored` consumption** — a recorded field test's re-anchored program (stored inert since
+  v9.490's non-destructive persist; unit-normalized v9.491) is now CONSUMED by all three build
+  sites (EliteProgramCard evaluation, ProgramView, NextTrainingCard) with shape validation
+  (feasibility + weeklyTSS) and rebuild-from-input as the fallback. The field-test channel is now
+  end-to-end: reachable (v9.490) → safe (v9.491/493) → effective (v9.494). Undo restores the
+  pre-test blob wholesale, clearing the overlay by construction.
+
+DEPENDS ON: profile.split2k mm:ss contract (parse at consumers, 300–900 s guard); the reAnchored
+precedence order (overlay > rebuild > legacy passthrough).
+
 ## v9.493.0 — 2026-07-09 — 🚀 Publish blockers + general-check regressions
 
 Two agent reports applied (docs/audits/publish_readiness_2026_07_09.md + general_check_2026_07_09.md).

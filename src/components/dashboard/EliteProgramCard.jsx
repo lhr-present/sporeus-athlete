@@ -1048,11 +1048,19 @@ function PlanStalenessBanner({ result, profile, isTR }) {
   // threshold from vo2max via vdotToThresholdStr); rowing split derives from
   // the 2000m prediction stored via profile threshold — absent, run/row simply
   // don't gate (same as before), but the working keys now actually work.
+  // v9.494 (design item): profile.split2k ('7:30' mm:ss, sanitized v9.494) is
+  // the long-missing producer — rowing staleness detection finally has input.
+  const parse2k = (v) => {
+    if (typeof v !== 'string' || !/^\d{1,2}:[0-5]\d$/.test(v.trim())) return undefined
+    const [m, sec] = v.trim().split(':').map(Number)
+    const t = m * 60 + sec
+    return t >= 300 && t <= 900 ? t : undefined  // plausible 2k TIME range
+  }
   const profileLevel = {
     vdot:        Number(profile.vo2max) > 0 ? Number(profile.vo2max) : undefined,
     ftp:         profile.ftp,
     cssSec:      profile.cssSec,
-    split2kSec:  undefined,
+    split2kSec:  parse2k(profile.split2k),
   }
   const report = computePlanStaleness(result, profileLevel)
   if (!report) return null
@@ -1754,6 +1762,14 @@ function EliteProgramCard({ log: _log = [], profile: _profile = {}, setLog }) {
       const inputWithProfile = {
         ...persisted.input,
         profile: { ...(persisted.input.profile || {}), ...cycleLive },
+      }
+      // v9.494 (design item): a recorded field test re-anchors the program —
+      // consume the stashed build (v9.490 stored it inert until the split2kSec
+      // unit normalization landed in v9.491). Rebuild-from-input remains the
+      // base path; the re-anchor overlays it when present and shape-valid.
+      const ra = persisted.reAnchored
+      if (ra && ra.feasibility && !ra._rejected && Array.isArray(ra.weeklyTSS)) {
+        return { result: ra, rejection: null }
       }
       const r = buildEliteProgram(inputWithProfile)
       if (!r) return { result: null, rejection: null }
