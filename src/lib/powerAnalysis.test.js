@@ -167,9 +167,9 @@ describe('estimateFTP', () => {
     expect(estimateFTP([])).toBeNull()
   })
 
-  it('returns 60-min MMP directly when available', () => {
+  it('takes the max of window estimates (v9.492 — lower bounds)', () => {
     const mmps = [{ duration: 3600, power: 260 }, { duration: 1200, power: 290 }]
-    expect(estimateFTP(mmps)).toBe(260)
+    expect(estimateFTP(mmps)).toBe(276)  // max(260, 290×0.95=275.5→276)
   })
 
   it('returns 95% of 20-min MMP when 60-min not present', () => {

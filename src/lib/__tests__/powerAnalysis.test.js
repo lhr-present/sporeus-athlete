@@ -456,22 +456,21 @@ describe('estimateFTP', () => {
     expect(estimateFTP(mmps)).toBeNull()
   })
 
-  it('prefers 60-min MMP when available', () => {
+  it('takes the MAX of available window estimates (v9.492 — each is a lower bound)', () => {
     const mmps = [
       { duration: 3600, power: 240 },
-      { duration: 1200, power: 280 },
-      { duration: 480,  power: 310 },
+      { duration: 1200, power: 280 },  // ×0.95 = 266
+      { duration: 480,  power: 310 },  // ×0.90 = 279
     ]
-    expect(estimateFTP(mmps)).toBe(240) // direct 60-min value
+    expect(estimateFTP(mmps)).toBe(279)
   })
 
-  it('falls back to 20-min × 0.95 when no 60-min point', () => {
-    const p20 = 270
+  it('uses the best available window when no 60-min point', () => {
     const mmps = [
-      { duration: 1200, power: p20 },
-      { duration: 480,  power: 310 },
+      { duration: 1200, power: 270 },  // ×0.95 = 256.5
+      { duration: 480,  power: 310 },  // ×0.90 = 279
     ]
-    expect(estimateFTP(mmps)).toBe(Math.round(p20 * 0.95))
+    expect(estimateFTP(mmps)).toBe(279)
   })
 
   it('falls back to 8-min × 0.90 when no 60-min or 20-min point', () => {
@@ -508,15 +507,14 @@ describe('estimateFTP', () => {
     expect(Number.isInteger(ftp)).toBe(true)
   })
 
-  it('FTP from 60-min is lower than 20-min × 0.95 (physiological check)', () => {
-    const p60 = 230
-    const p20 = 260
+  it('a real 20-min test beats a non-maximal easy hour (v9.492 — the old bug)', () => {
+    const p60 = 230  // steady endurance ride, not maximal
+    const p20 = 260  // real 20-min test → 247 FTP
     const mmps = [
       { duration: 3600, power: p60 },
       { duration: 1200, power: p20 },
     ]
-    // Should use 60-min value
-    expect(estimateFTP(mmps)).toBe(230)
+    expect(estimateFTP(mmps)).toBe(247)
     expect(estimateFTP(mmps)).toBeLessThan(Math.round(p20 * 0.95) + 1)
   })
 

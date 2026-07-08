@@ -7,6 +7,7 @@ import ErrorBoundary from './ErrorBoundary.jsx'
 const HRVChart = lazy(() => import('./charts/HRVChart.jsx'))
 import { monotonyStrain, calcLoad } from '../lib/formulas.js'
 import { calculateACWR, calculateConsistency } from '../lib/trainingLoad.js'
+import { logEntrySport } from '../lib/athlete/_logSport.js'
 import ShareCard from './ShareCard.jsx'
 import { useCountUp } from '../hooks/useCountUp.js'
 import { getRecentAchievement } from './Achievements.jsx'
@@ -486,11 +487,18 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
     log.some(e => RE_SWIM.test(e.type || '') || RE_SWIM.test(e.sport || '')),
     [log])
 
-  const hasTriData      = useMemo(() =>
-    profile?.primarySport === 'triathlon' ||
-    new Set(log.map(e => (e.type || '').split(' ')[0].toLowerCase()))
-      .size >= 3,
-    [log, profile])
+  // v9.492 (cycling deep-dive MED): first-word counting saw 'Easy Ride'/'Easy
+  // Run'/'Easy Swim' as ONE word ('easy') and 'Tempo'/'Long'/'Easy' runs as
+  // THREE — inverted both ways. Count actual sports.
+  const hasTriData      = useMemo(() => {
+    if (profile?.primarySport === 'triathlon') return true
+    const sports = new Set()
+    for (const e of log) {
+      const sp = logEntrySport(e)
+      if (sp === 'run' || sp === 'bike' || sp === 'swim') sports.add(sp)
+    }
+    return sports.size >= 3
+  }, [log, profile])
 
   // v9.7.0 — rowing gate. profile.primarySport='rowing' OR any log entry typed
   // as a row/erg/2k test session OR sport='rowing' literal.
