@@ -65,6 +65,9 @@ function NextTrainingCard({ defaultProgram, defaultProgramStart }) {
   const fallbackProgram = useMemo(() => {
     if (!persisted) return null
     if (!persisted.input) return persisted  // legacy built shape
+    // v9.494: same re-anchor precedence as ProgramView/EliteProgramCard.
+    const ra = persisted.reAnchored
+    if (ra && ra.feasibility && !ra._rejected && Array.isArray(ra.weeklyTSS)) return ra
     try {
       // v9.493 (general-check F3): live cycle-field re-injection, same as
       // ProgramView/EliteProgramCard — the gate must fire for athletes who

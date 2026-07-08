@@ -359,6 +359,11 @@ export function sanitizeProfile(p) {
     height:        numStr(p.height, 50, 280),
     gender:        ['male','female'].includes(p.gender) ? p.gender : 'male',
     ftp:           numStr(p.ftp, 0, 3000),
+    // v9.494 (design item): 2000m erg TIME as mm:ss (e.g. '7:30'). This is the
+    // producer the rowing staleness branch waited for (its profile.split2kSec
+    // input is parsed from this at the call site). NOT sec/500m — the mm:ss
+    // format makes the 2k-time semantics unambiguous at entry.
+    split2k:       typeof p.split2k === 'string' && /^[1-9]?\d:[0-5]\d$/.test(p.split2k.trim()) ? p.split2k.trim() : '',
     vo2max:        numStr(p.vo2max, 0, 100),
     maxhr:         numStr(p.maxhr, 60, 280),
     threshold:     userThreshold,
