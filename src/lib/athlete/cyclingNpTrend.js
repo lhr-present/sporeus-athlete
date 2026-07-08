@@ -41,7 +41,8 @@ function getDurationMin(entry) {
 function isBike(entry) {
   const t = String(entry?.type || '')
   const s = String(entry?.sport || '')
-  return /bike|cycl|ride/i.test(t) || /bike|cycl|ride/i.test(s)
+  // v9.492: 'Power Intervals' / 'FTP Test' are bike sessions too
+  return /bike|cycl|ride|power|ftp/i.test(t) || /bike|cycl|ride/i.test(s)
 }
 
 /** Best NP across sessions whose duration ≥ bucketMin. Null if none qualify. */

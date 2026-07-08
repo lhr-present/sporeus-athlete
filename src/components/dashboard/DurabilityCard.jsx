@@ -42,7 +42,7 @@ function DurabilityCard({ log, lang }) {
     (log || [])
       .filter(s => ((Array.isArray(s.powerStream) && s.powerStream.length > 0) ||
                     Number(s.powerPeaks?.lh300) > 0) &&
-                   ((s.durationSec ?? (s.duration != null ? s.duration * 60 : 0)) >= 5400))
+                   ((Number(s.durationSec) > 0 ? Number(s.durationSec) : (s.duration != null ? s.duration * 60 : 0)) >= 5400))  /* v9.492: >0 gate, matches lib */
       .sort((a, b) => b.date.localeCompare(a.date))
       .slice(0, 8),
   [log])
@@ -146,7 +146,7 @@ function DurabilityCard({ log, lang }) {
           </div>
           <div style={{ display: 'flex', gap: '3px', alignItems: 'flex-end', height: '28px' }}>
             {scores.map((r, i) => {
-              const h    = Math.max(3, Math.round(r.durabilityPct / 100 * 28))
+              const h    = Math.max(3, Math.min(28, Math.round(r.durabilityPct / 100 * 28)))  /* v9.492: cap overflow */
               const isLast = i === scores.length - 1
               return (
                 <div key={i} style={{

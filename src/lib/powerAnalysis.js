@@ -59,10 +59,20 @@ export function calculateMMP(stream) {
 // OLS via Σ equations. Uses durations 2–30 minutes for fit range.
 // @returns {{cp:number, wPrime:number, r2:number}|null}
 export function fitCriticalPower(mmps) {
-  if (!mmps || mmps.length < 3) return null
+  if (!mmps || mmps.length < 2) return null
 
   const pts = mmps.filter(p => p.duration >= 120 && p.duration <= 1800)
-  if (pts.length < 3) return null
+  // v9.492 (cycling deep-dive MED): peaks-only athletes (v9.480 scalar
+  // envelopes) have exactly TWO points in the fit range (300 s + 1200 s) — the
+  // 3-point minimum locked out the exact athlete class the envelope work
+  // targeted. Two well-separated points are the classic 2-point CP protocol
+  // (Monod-Scherrer needs two); require ≥3× duration separation so a
+  // degenerate pair (e.g. 240+300 s) can't masquerade as a fit.
+  if (pts.length < 2) return null
+  if (pts.length === 2) {
+    const [a, b] = [...pts].sort((x, y) => x.duration - y.duration)
+    if (b.duration / a.duration < 3) return null
+  }
 
   const xs = pts.map(p => 1 / p.duration)
   const ys = pts.map(p => p.power)
@@ -152,8 +162,14 @@ export function detectIntervals(stream, cp, threshold = 0.85, minDuration = 20, 
 export function estimateFTP(mmps) {
   if (!mmps || mmps.length === 0) return null
   const get = d => mmps.find(p => p.duration === d)?.power
-  const p60 = get(3600); if (p60 > 0) return Math.round(p60)
-  const p20 = get(1200); if (p20 > 0) return Math.round(p20 * 0.95)
-  const p8  = get(480);  if (p8  > 0) return Math.round(p8  * 0.90)
-  return null
+  // v9.492 (cycling deep-dive MED): priority-first returned the 60-min MMP of
+  // whatever non-maximal ride happened to be longest — a steady 200 W hour
+  // beat a real 20-min test's 280×0.95. Each window is a LOWER BOUND on FTP;
+  // take the max of the available estimates.
+  const candidates = [
+    get(3600),
+    get(1200) > 0 ? get(1200) * 0.95 : null,
+    get(480)  > 0 ? get(480)  * 0.90 : null,
+  ].filter(v => Number.isFinite(v) && v > 0)
+  return candidates.length ? Math.round(Math.max(...candidates)) : null
 }

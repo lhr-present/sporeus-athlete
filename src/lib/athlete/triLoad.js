@@ -114,7 +114,7 @@ function mean(arr, key) {
  *   - Bike: mean duration (min) → converted to sec; NP/FTP skipped if no power data → null
  *   - Run:  mean duration (min) → converted to sec; hrThresh defaults to 180 × 0.85
  */
-function computeRepresentativeTSS({ swim, bike, run }) {
+function computeRepresentativeTSS({ swim, bike, run }, profile = {}) {
   // Swim
   let swimArg = null
   if (swim.length > 0) {
@@ -146,9 +146,12 @@ function computeRepresentativeTSS({ swim, bike, run }) {
     // Check if any sessions carry power data
     const pwrVals = bike.map(s => s.avgNormalizedPower || s.avgPower || 0).filter(v => v > 0)
     const avgPwr  = pwrVals.length > 0 ? pwrVals.reduce((a, b) => a + b, 0) / pwrVals.length : null
-    // FTP from session-level field or skip
+    // v9.492 (cycling deep-dive MED): sessions never carry .ftp (dead branch —
+    // bikeArg could never be built). Fall back to the profile's FTP.
     const ftpVals = bike.map(s => s.ftp || 0).filter(v => v > 0)
-    const avgFtp  = ftpVals.length > 0 ? ftpVals.reduce((a, b) => a + b, 0) / ftpVals.length : null
+    const profFtp = Number(profile?.ftp)
+    const avgFtp  = ftpVals.length > 0 ? ftpVals.reduce((a, b) => a + b, 0) / ftpVals.length
+      : (Number.isFinite(profFtp) && profFtp > 0 ? profFtp : null)
     if (avgDurMin && avgPwr && avgFtp) {
       bikeArg = {
         durationSec:          avgDurMin * 60,
@@ -248,7 +251,7 @@ export function computeTriLoad(log, profile = {}) {
   const totalTSS28 = swimTSS28 + bikeTSS28 + runTSS28
 
   const bricks     = detectBrickSessions(log, 28)
-  const repWeekTSS = computeRepresentativeTSS({ swim, bike, run })
+  const repWeekTSS = computeRepresentativeTSS({ swim, bike, run }, profile)  // v9.492
   const nearestRace = nearestRaceDistance(totalTSS28)
 
   return {

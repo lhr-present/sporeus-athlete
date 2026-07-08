@@ -92,9 +92,17 @@ export default function PowerCurve() {
         if (Number.isFinite(w) && w > 0 && (!best[dur] || w > best[dur])) best[dur] = w
       }
     }
-    return Object.entries(best)
+    const pts = Object.entries(best)
       .map(([d, p]) => ({ duration: parseInt(d), power: p }))
       .sort((a, b) => a.duration - b.duration)
+    // v9.492 (cycling deep-dive MED): a merged stream+peaks envelope can be
+    // NON-MONOTONIC (a sparse peaks point can exceed a shorter-duration stream
+    // point) — enforce the physical law (MMP never increases with duration)
+    // with a right-to-left running-max so the CP fit isn't biased.
+    for (let i = pts.length - 2; i >= 0; i--) {
+      if (pts[i].power < pts[i + 1].power) pts[i] = { ...pts[i], power: pts[i + 1].power }
+    }
+    return pts
   }, [powerEntries, log])
 
   // Selected activity MMP
@@ -111,7 +119,9 @@ export default function PowerCurve() {
   // CP model: from profile CP+W' if set, else fit from season best
   const modelFit = useMemo(() => {
     if (cp && wPrimeCap) return { cp, wPrime: wPrimeCap, r2: null, source: 'profile' }
-    if (seasonBest.length >= 3) {
+    // v9.492: fitCriticalPower now accepts 2 well-separated in-range points
+    // (300+1200 s — the peaks-only envelope) — mirror the lowered threshold.
+    if (seasonBest.length >= 2) {
       const fit = fitCriticalPower(seasonBest)
       return fit ? { ...fit, source: 'fitted' } : null
     }

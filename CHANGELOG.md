@@ -2,6 +2,36 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.492.0 — 2026-07-09 — Cycling MEDs + program-content tags (queue burn-down)
+
+From the cycling deep-dive (2026-07-07) + program-content F8:
+
+- **estimateFTP takes max(), not priority-first** — a non-maximal steady hour's 60-min MMP beat a
+  real 20-min test ×0.95 (~20% underestimates). Each window is a LOWER BOUND; max of candidates.
+  3 tests updated (they asserted the old bug).
+- **fitCriticalPower accepts 2 well-separated points** (≥3× duration ratio) — peaks-only athletes
+  (v9.480 envelopes) have exactly 300 s + 1200 s in the 120–1800 s fit range and were locked out
+  by the 3-point minimum; 5-min + 20-min IS the classic 2-point CP protocol. PowerCurve threshold
+  mirrored (≥2).
+- **Envelope monotonicity** — merged stream+peaks season-best could be non-monotonic (sparse peaks
+  point above a shorter stream point), biasing the CP fit; right-to-left running-max enforces
+  MMP's physical law.
+- **hasTriData counts sports, not first words** — 'Easy Ride'/'Easy Run'/'Easy Swim' read as ONE
+  word ('easy') while 'Tempo'/'Long'/'Easy' runs read as three: inverted both ways. logEntrySport.
+- **triLoad bike TSS revived** — sessions never carry .ftp (dead branch since E44); profile FTP
+  fallback threaded through computeRepresentativeTSS.
+- **DurabilityCard ≥90-min gate** uses >0 (a zero durationSec no longer voids a 120-min session);
+  durability bar capped at 100% (overflow drew outside the card).
+- **cyclingNpTrend isBike** includes 'Power Intervals'/'FTP Test'.
+- **F8 (content)** — rowing key-session UT2 tag was ×1.15 = the app's own UT1 band (UT2 is ≥1.20):
+  6 UT2 sessions prescribed a split a full zone too fast → band-correct ×1.22 tag; UT1 keeps ×1.15.
+
+DEFERRED (design): predictCyclingTime FTP/weight physics (fake power display), intensityFactor
+persistence, npTrend bucket-label copy, fitParser.js dupe (tested code, no prod imports).
+
+DEPENDS ON: fitCriticalPower 2-point contract (≥3× separation); estimateFTP max() semantics;
+computeRepresentativeTSS(disciplines, profile) signature.
+
 ## v9.491.0 — 2026-07-08 — Program data-flow MEDs: imports credited, rowing classified, units normalized
 
 - **F2 — make-up nudge no longer accuses athletes who trained**: `logIntentKey` matched only
