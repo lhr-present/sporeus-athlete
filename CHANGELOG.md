@@ -2,6 +2,30 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.495.0 — 2026-07-09 — Publish MEDs: honest privacy policy, terms, server-down visibility
+
+- **Privacy policy tells the truth (F7)** — it claimed "no analytics, no third-party scripts"
+  while shipping Sentry + funnel telemetry. New "Error reporting & product telemetry" disclosure
+  (Sentry EU ingest as GDPR Art. 28 processor, scrubbed+hashed; first-party events named), lead
+  summary softened, EN+TR.
+- **Terms of Use & Medical Disclaimer exist (F5)** — new policy section EN+TR: not medical advice
+  / consult a physician, prescriptions are estimates, as-is liability, fair use. The app was
+  prescribing training loads to strangers with zero disclaimer.
+- **Supabase-down is visible (F14 HIGH)** — the `sporeus-offline-mode` flag set on hydration
+  failure had NO consumer; an outage while online looked like an empty app. The producer now
+  dispatches a same-tab event and OfflineBanner shows a distinct red "CAN'T REACH THE SERVER —
+  showing device data" state (bilingual).
+- **F4** html lang="en" (was "tr" with all-EN meta); **F6** robots.txt + sitemap.xml (both 404'd);
+  **F13** rowing vocabulary harmonized across _logSport/recentBest/mapStravaType (kayak/canoe).
+
+STILL QUEUED (publish): F8 consent-before-sync ordering (wizard flow design), F9 Privacy
+Dashboard TR translation, F10 SW precache 6.3MB, F15 Recovery empty-state, F16 boundary i18n,
+F12 admin RLS verify. OPERATOR gates unchanged (Strava cap, SMTP, redirect allowlist, webhook
+secrets, purge cron).
+
+DEPENDS ON: the 'sporeus-server-status' CustomEvent contract (producer useSupabaseData, consumer
+OfflineBanner); policy section ids ('terms' inserted, changes/contact renumbered).
+
 ## v9.494.0 — 2026-07-09 — Design items: rowing targets un-frozen + field-test re-anchor consumed
 
 The two design items closing the program-adaptation arc:

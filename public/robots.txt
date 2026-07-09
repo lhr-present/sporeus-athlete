@@ -1,0 +1,5 @@
+# app.sporeus.com — Sporeus Athlete Console (v9.495, publish-readiness F6)
+User-agent: *
+Allow: /
+Disallow: /assets/
+Sitemap: https://app.sporeus.com/sitemap.xml
