@@ -46,16 +46,20 @@ export default class ErrorBoundary extends React.Component {
       const name  = this.props.name || this.props.tabName || 'component'
       const M = { fontFamily:"'IBM Plex Mono',monospace" }
       const retry = () => this.setState({ hasError: false, error: null, showDetails: false })
+      // v9.496 (publish-readiness F16): class component — no LangCtx hook;
+      // read the persisted language directly for the bilingual fallback.
+      let isTR = false
+      try { isTR = (localStorage.getItem('sporeus-lang') || '').includes('tr') } catch { /* private mode */ }
 
       // ── Inline / component-level fallback (compact) ──────────────────────
       if (this.props.inline) {
         return (
           <div style={{ ...M, background:'rgba(224,48,48,0.07)', border:'1px solid #e0303033', borderRadius:'5px', padding:'9px 13px', margin:'8px 0', display:'flex', alignItems:'center', gap:'10px', flexWrap:'wrap' }}>
             <span style={{ fontSize:'10px', color:'#e03030', letterSpacing:'0.06em' }}>◈ {name.toUpperCase()} ERROR</span>
-            <span style={{ fontSize:'10px', color:'#666' }}>{this.state.error?.message?.slice(0,80) || 'Unexpected error'}</span>
+            <span style={{ fontSize:'10px', color:'#666' }}>{this.state.error?.message?.slice(0,80) || (isTR ? 'Beklenmeyen hata' : 'Unexpected error')}</span>
             <button onClick={retry}
               style={{ ...M, fontSize:'9px', padding:'3px 9px', background:'#e03030', color:'#fff', border:'none', cursor:'pointer', borderRadius:'3px', marginLeft:'auto' }}>
-              ↻ Retry
+              {isTR ? '↻ Tekrar Dene' : '↻ Retry'}
             </button>
           </div>
         )
@@ -69,13 +73,13 @@ export default class ErrorBoundary extends React.Component {
             ◈ ERROR IN {tabName.toUpperCase()} — ISOLATED
           </div>
           <div style={{ fontSize:'11px', color:'#aaa', marginBottom:'16px', lineHeight:1.6 }}>
-            {this.state.error?.message || 'Unexpected error in this tab.'}
+            {this.state.error?.message || (isTR ? 'Bu sekmede beklenmeyen bir hata oluştu.' : 'Unexpected error in this tab.')}
           </div>
           <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', marginBottom:'12px' }}>
             <button
               onClick={retry}
               style={{ ...M, fontSize:'11px', padding:'6px 14px', background:'#e03030', color:'#fff', border:'none', cursor:'pointer', borderRadius:'3px' }}>
-              ↻ Retry
+              {isTR ? '↻ Tekrar Dene' : '↻ Retry'}
             </button>
             <button
               onClick={() => this.handleExport()}
@@ -91,7 +95,7 @@ export default class ErrorBoundary extends React.Component {
           <button
             onClick={() => this.setState(s => ({ showDetails: !s.showDetails }))}
             style={{ ...M, fontSize:'10px', padding:'4px 10px', background:'transparent', color:'#555', border:'1px solid #333', cursor:'pointer', borderRadius:'3px' }}>
-            {this.state.showDetails ? '▲ Hide Details' : '▼ Technical Details'}
+            {this.state.showDetails ? (isTR ? '▲ Detayları Gizle' : '▲ Hide Details') : (isTR ? '▼ Teknik Detaylar' : '▼ Technical Details')}
           </button>
           {this.state.showDetails && (
             <pre style={{ ...M, fontSize:'10px', color:'#666', background:'#0a0a0a', padding:'10px', borderRadius:'4px', marginTop:'8px', overflowX:'auto', whiteSpace:'pre-wrap', wordBreak:'break-all', maxHeight:'200px', overflow:'auto' }}>

@@ -560,7 +560,7 @@ export default function Profile({ log, authUser }) {
             <div style={{ marginTop:'8px' }}>
               {/* Consent status */}
               <div style={{ ...S.mono, fontSize:'10px', color:'#aaa', marginBottom:'10px' }}>
-                Data processing consent: {hasCurrentConsent() ? '✓ v1.1 — accepted' : '✗ Not given'}
+                {isTR ? 'Veri işleme rızası' : 'Data processing consent'}: {hasCurrentConsent() ? (isTR ? '✓ v1.1 — kabul edildi' : '✓ v1.1 — accepted') : (isTR ? '✗ Verilmedi' : '✗ Not given')}
               </div>
 
               {/* Withdraw consent */}
@@ -569,13 +569,15 @@ export default function Profile({ log, authUser }) {
                   onClick={() => setConfirmWithdrawOpen(true)}
                   style={{ ...S.mono, fontSize:'10px', color:'#ff4444', background:'transparent', border:'1px solid #ff444440', borderRadius:'3px', padding:'4px 10px', cursor:'pointer', marginBottom:'10px' }}
                 >
-                  Withdraw consent
+                  {isTR ? 'Rızayı geri çek' : 'Withdraw consent'}
                 </button>
               )}
 
               {/* Data retention */}
               <div style={{ ...S.mono, fontSize:'10px', color:'#555', marginBottom:'10px', lineHeight:1.6 }}>
-                Your training data is retained for 3 years from last activity per KVKK Art. 7.
+                {isTR
+                  ? 'Antrenman verileriniz, KVKK md. 7 uyarınca son etkinlikten itibaren 3 yıl saklanır.'
+                  : 'Your training data is retained for 3 years from last activity per KVKK Art. 7.'}
               </div>
 
               {/* Marketing consent toggle */}
@@ -595,18 +597,18 @@ export default function Profile({ log, authUser }) {
                     style={{ accentColor:'#ff6600' }}
                   />
                   <span style={{ ...S.mono, fontSize:'10px', color:'#aaa' }}>
-                    Marketing emails: {marketingConsent ? 'opted in' : 'not opted in'}
+                    {isTR ? 'Pazarlama e-postaları' : 'Marketing emails'}: {marketingConsent ? (isTR ? 'açık' : 'opted in') : (isTR ? 'kapalı' : 'not opted in')}
                   </span>
                 </label>
               </div>
 
               {/* Data categories */}
-              <div style={{ ...S.mono, fontSize:'9px', color:'#555', letterSpacing:'0.08em', marginBottom:'6px' }}>DATA CATEGORIES PROCESSED</div>
+              <div style={{ ...S.mono, fontSize:'9px', color:'#555', letterSpacing:'0.08em', marginBottom:'6px' }}>{isTR ? 'İŞLENEN VERİ KATEGORİLERİ' : 'DATA CATEGORIES PROCESSED'}</div>
               <ul style={{ ...S.mono, fontSize:'10px', color:'#666', margin:0, paddingLeft:'16px', lineHeight:1.8 }}>
-                <li>Training sessions (date, TSS, duration, RPE, notes)</li>
-                <li>Recovery scores (sleep, mood, soreness, stress)</li>
-                <li>GPS/route data (if GPX imported)</li>
-                <li>Profile data (name, sport, age)</li>
+                <li>{isTR ? 'Antrenman seansları (tarih, TSS, süre, RPE, notlar)' : 'Training sessions (date, TSS, duration, RPE, notes)'}</li>
+                <li>{isTR ? 'Toparlanma skorları (uyku, ruh hali, kas ağrısı, stres)' : 'Recovery scores (sleep, mood, soreness, stress)'}</li>
+                <li>{isTR ? 'GPS/rota verisi (GPX içe aktarıldıysa)' : 'GPS/route data (if GPX imported)'}</li>
+                <li>{isTR ? 'Profil verileri (isim, spor, yaş)' : 'Profile data (name, sport, age)'}</li>
               </ul>
 
               {/* v9.493 (publish-readiness BLOCKER F1): these handlers existed
