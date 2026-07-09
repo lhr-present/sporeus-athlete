@@ -18,7 +18,9 @@ export function logEntrySport(e) {
   // v9.491 (program-dataflow F6): rowing had no class — rows worked only via
   // the null-passthrough accident. Row before run so "Tempo row" classifies
   // as rowing (v9.487 F14 lesson).
-  if (/row|erg/.test(t)) return 'rowing'
+  // v9.495 (general-check F13): harmonized with recentBest + mapStravaType
+  // (Kayaking/Canoeing→'row' at import — classifiers must agree).
+  if (/row|erg|kayak|canoe/.test(t)) return 'rowing'
   if (/swim/.test(t)) return 'swim'
   if (/bike|cycl|ride/.test(t)) return 'bike'
   if (/tri/.test(t)) return 'triathlon'

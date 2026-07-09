@@ -111,7 +111,11 @@ The App uses:
 - **Session cookie (essential):** Set by Supabase Auth for your login session. This is strictly necessary for authentication — no consent required under ePrivacy Directive.
 - **localStorage (functional):** Training data, preferences, and settings are stored in your browser's localStorage. This data stays on your device; it is not a tracking cookie.
 
-We do **not** use advertising, analytics, or tracking cookies. We do not deploy third-party scripts (Google Analytics, Meta Pixel, etc.).
+We do **not** use advertising or tracking cookies, and we do not deploy marketing scripts (Google Analytics, Meta Pixel, etc.).
+
+**Error reporting (Sentry):** the app sends crash reports to Sentry (EU ingest, Frankfurt) so we can fix bugs. Reports are scrubbed before sending — no training data, no health fields; user identifiers are one-way hashed. Sentry GmbH acts as a data processor under GDPR Art. 28.
+
+**Product telemetry (first-party):** anonymous usage events (which feature was used, page views, error counts) are sent to our own Supabase backend with a hashed user identifier. No third party receives these events. They exist so we can see which features help athletes and which fail.
 `,
     },
     {
@@ -122,15 +126,26 @@ Data is transmitted over HTTPS. Supabase enforces row-level security (RLS) so us
 `,
     },
     {
+      id: 'terms',
+      title: '9. Terms of Use & Medical Disclaimer',
+      body: `
+**Not medical advice.** Sporeus provides sport-science analysis and training suggestions for informational purposes only. It is not a medical device and does not provide medical advice, diagnosis, or treatment. Consult a physician before starting or changing a training program, especially if you have a cardiovascular condition, are recovering from illness or injury, or experience symptoms (chest pain, dizziness, unusual fatigue) during exercise.
+
+**Use at your own judgment.** Training prescriptions (zones, loads, plans) are estimates derived from the data you provide; sensor data and formulas carry inherent error. You remain responsible for your own training decisions. The service is provided "as is" without warranties; to the maximum extent permitted by law, liability is limited to the amount you paid for the service.
+
+**Fair use.** Don't abuse the service (automated scraping, attempting to access other athletes' data, reselling access). Accounts violating these terms may be suspended.
+`,
+    },
+    {
       id: 'changes',
-      title: '9. Changes to This Policy',
+      title: '10. Changes to This Policy',
       body: `
 We will notify you of material changes via the in-app consent gate (which re-prompts for consent on version upgrade). The current version is **${VERSION}** (last updated ${UPDATED}).
 `,
     },
     {
       id: 'contact',
-      title: '10. Contact',
+      title: '11. Contact',
       body: `
 Hüseyin Akbulut · huseyinakbulut71@gmail.com · sporeus.com
 `,
@@ -245,15 +260,26 @@ Veriler HTTPS üzerinden iletilmektedir. Supabase, kullanıcıların yalnızca k
 `,
     },
     {
+      id: 'terms',
+      title: '9. Kullanım Koşulları ve Tıbbi Sorumluluk Reddi',
+      body: `
+**Tıbbi tavsiye değildir.** Sporeus, yalnızca bilgilendirme amaçlı spor bilimi analizi ve antrenman önerileri sunar. Tıbbi bir cihaz değildir; tıbbi tavsiye, teşhis veya tedavi sağlamaz. Bir antrenman programına başlamadan veya programı değiştirmeden önce — özellikle kardiyovasküler bir rahatsızlığınız varsa, hastalık ya da sakatlıktan dönüyorsanız veya egzersiz sırasında belirti (göğüs ağrısı, baş dönmesi, olağandışı yorgunluk) yaşıyorsanız — bir hekime danışın.
+
+**Kendi kararınızla kullanın.** Antrenman reçeteleri (bölgeler, yükler, planlar) sağladığınız verilerden türetilen tahminlerdir; sensör verileri ve formüller doğal hata payı taşır. Antrenman kararlarınızın sorumluluğu size aittir. Hizmet "olduğu gibi" sunulur; yasaların izin verdiği azami ölçüde sorumluluk, hizmet için ödediğiniz tutarla sınırlıdır.
+
+**Adil kullanım.** Hizmeti kötüye kullanmayın (otomatik veri kazıma, diğer sporcuların verilerine erişim girişimi, erişimin yeniden satışı). Bu koşulları ihlal eden hesaplar askıya alınabilir.
+`,
+    },
+    {
       id: 'changes',
-      title: '9. Politika Değişiklikleri',
+      title: '10. Politika Değişiklikleri',
       body: `
 Önemli değişiklikler uygulama içi rıza ekranı aracılığıyla size bildirilecektir (sürüm yükseltmelerinde yeniden rıza talep edilir). Mevcut sürüm: **${VERSION}** (son güncelleme: ${UPDATED}).
 `,
     },
     {
       id: 'contact',
-      title: '10. İletişim',
+      title: '11. İletişim',
       body: `
 Hüseyin Akbulut · huseyinakbulut71@gmail.com · sporeus.com
 `,
@@ -360,8 +386,8 @@ export default function PrivacyPolicy() {
       {/* Lead summary */}
       <div style={{ background:'#111', border:'1px solid #222', borderLeft:`3px solid ${ORANGE}`, borderRadius:'6px', padding:'14px 18px', marginBottom:'32px', fontFamily:MONO, fontSize:'11px', color:'#aaa', lineHeight:1.7 }}>
         {isTR
-          ? 'Sporeus, antrenman verilerinizi yalnızca sportif performansınızı değerlendirmek amacıyla işler. Veri satmıyor, reklam göstermiyor, analitik takip kullanmıyoruz.'
-          : 'Sporeus processes your training data solely to evaluate your athletic performance. We do not sell data, show ads, or deploy analytics tracking.'}
+          ? 'Sporeus, antrenman verilerinizi yalnızca sportif performansınızı değerlendirmek amacıyla işler. Veri satmıyor ve reklam göstermiyoruz. Hata raporları (Sentry, AB sunucuları) ve birinci-taraf kullanım telemetrisi aşağıda açıklanmıştır.'
+          : 'Sporeus processes your training data solely to evaluate your athletic performance. We do not sell data or show ads. Error reporting (Sentry, EU servers) and first-party usage telemetry are disclosed below.'}
       </div>
 
       {/* Sections */}

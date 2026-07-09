@@ -342,12 +342,17 @@ function useSyncedTable({ lsKey, lsDefault, table, toEntry, toRow, userId, order
         if (!error && rows) {
           setDataLS(rows.map(toEntry))
           try { localStorage.removeItem('sporeus-offline-mode') } catch (e) { logger.warn('localStorage:', e.message) }
+          try { window.dispatchEvent(new CustomEvent('sporeus-server-status', { detail: { unreachable: false } })) } catch { /* SSR/test */ }
         }
         hydrating.current = false
       })
       .catch(() => {
         if (cancelled) return
         try { localStorage.setItem('sporeus-offline-mode', '1') } catch (e) { logger.warn('localStorage:', e.message) }
+        // v9.495 (publish-readiness F14): the flag above had NO consumer — a
+        // Supabase outage while online was completely silent (empty app, no
+        // signal). Same-tab storage writes don't fire storage events; announce.
+        try { window.dispatchEvent(new CustomEvent('sporeus-server-status', { detail: { unreachable: true } })) } catch { /* SSR/test */ }
         hydrating.current = false
       })
     return () => { cancelled = true }
