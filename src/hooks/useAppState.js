@@ -651,6 +651,9 @@ export function useAppState({ lang, setLang, dark, setDark, authUser, authProfil
     grantConsent()
     setConsentGiven(true)
     if (authUser?.id) logConsent(authUser.id, 'data_processing', '1.1')
+    // v9.496 (publish-readiness F8): the outer App gates DataProvider's userId
+    // on consent — announce so cloud sync activates the moment consent lands.
+    try { window.dispatchEvent(new CustomEvent('sporeus-consent-granted')) } catch { /* test env */ }
   }
 
   return {

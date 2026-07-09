@@ -745,7 +745,20 @@ export default function App() {
     }
   }, [])
 
-  const userId = isSupabaseReady() ? (user?.id ?? null) : null
+  // v9.496 (publish-readiness F8): health data reached Supabase BEFORE the
+  // consent gate appeared — finishOnboarding persisted the profile and
+  // useSyncedTable pushed it immediately. Cloud sync now activates only after
+  // current consent; until then authenticated users write locally like guests
+  // (the consent overlay is the very next thing they see). Re-render on grant
+  // via the consent event.
+  const [consentTick, setConsentTick] = useState(0)
+  useEffect(() => {
+    const bump = () => setConsentTick(t => t + 1)
+    window.addEventListener('sporeus-consent-granted', bump)
+    return () => window.removeEventListener('sporeus-consent-granted', bump)
+  }, [])
+  void consentTick
+  const userId = isSupabaseReady() && hasCurrentConsent() ? (user?.id ?? null) : null
 
   // Book chapter landing — no auth required (QR codes from physical book)
   if (BOOK_MODE) {

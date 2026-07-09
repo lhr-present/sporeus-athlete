@@ -120,6 +120,20 @@ export default function Recovery() {
 
   return (
     <div className="sp-fade">
+      {/* v9.496 (publish-readiness F15): zero-data hero — every other main tab
+          has one; new users saw a bare pre-filled form with no why/what. */}
+      {entries.length === 0 && (
+        <div className="sp-card" style={{ ...S.card, borderLeft:'4px solid #ff6600', animationDelay:'0ms' }}>
+          <div style={{ ...S.mono, fontSize:'12px', fontWeight:700, marginBottom:'6px' }}>
+            {lang === 'tr' ? '◈ TOPARLANMA TAKİBİ' : '◈ RECOVERY TRACKING'}
+          </div>
+          <div style={{ ...S.mono, fontSize:'11px', color:'var(--sub)', lineHeight:1.7 }}>
+            {lang === 'tr'
+              ? 'Her sabah 30 saniyelik bir kontrol: uyku, kas ağrısı, enerji, ruh hali, stres. Skorlarınız hazırlık (readiness) puanınızı besler ve koç önerileri antrenman yükünü buna göre ayarlar. İlk kaydınızı aşağıdaki formla yapın — trendler 7 günden sonra görünmeye başlar.'
+              : 'A 30-second check-in each morning: sleep, soreness, energy, mood, stress. Your scores feed the readiness score, and coach suggestions adjust training load around it. Log your first entry with the form below — trends appear after 7 days.'}
+          </div>
+        </div>
+      )}
       {todayEntry && (
         <div className="sp-card" style={{ ...S.card, borderLeft:`4px solid ${readiness.color}`, animationDelay:'0ms', ...S.mono, fontSize:'12px', color:'#888' }}>
           {t('alreadyLoggedMsg')}

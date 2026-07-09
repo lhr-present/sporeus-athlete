@@ -2,6 +2,36 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.496.0 — 2026-07-09 — Publish polish complete: consent-first sync, TR privacy, admin RPC guards
+
+The final publish-readiness batch — every code finding from the report is now resolved or decided:
+
+- **Consent before cloud sync (F8)** — health data reached Supabase BEFORE the consent gate
+  (finishOnboarding persisted the profile; useSyncedTable pushed immediately). DataProvider's
+  userId is now gated on hasCurrentConsent(): authenticated users write locally like guests until
+  they consent (the overlay is the next thing they see); sync activates the moment consent lands
+  (via the 'sporeus-consent-granted' event).
+- **Privacy Dashboard speaks Turkish (F9)** — the most legally sensitive UI was EN-only for its
+  primary audience; all five blocks translated.
+- **F12 upgraded from LOW to real exposure and fixed (mig 20260645, applied):** inspection found
+  (a) `generate_api_key` had NO role check — any authenticated user could mint a club-tier API
+  key (entitlement bypass); (b) the two telemetry reads HAD admin guards written as
+  `if auth.uid() is not null and role<>'admin'` — ANON bypassed entirely while the founder
+  (role='athlete') was REJECTED. New `admin_users` allowlist (no risky role flip) + `is_admin()`
+  helper (rejects null uid) + corrected guards on all three fns. Verified: anon → not admin.
+- **Recovery tab zero-data hero (F15)** — bilingual why/what card, matching every other main tab.
+- **ErrorBoundary fallback bilingual (F16)** — reads the persisted language (class component).
+- **SW precache (F10) — DECIDED: keep.** 6.3 MB/381 files is the deliberate offline-first design;
+  the precache streams in the background after first paint and buys complete offline capability.
+  Revisit (runtime-cache vendor chunks) only if mobile-data complaints arrive.
+
+With this, the publish-readiness report is fully dispositioned. Remaining before strangers:
+OPERATOR gates only (Strava athlete cap, custom SMTP, auth redirect allowlist, DODO/STRIPE
+webhook secrets, deletion purge cron verify).
+
+DEPENDS ON: userId-gated-on-consent (DataProvider); admin_users table + is_admin() (20260645);
+'sporeus-consent-granted' event contract.
+
 ## v9.495.0 — 2026-07-09 — Publish MEDs: honest privacy policy, terms, server-down visibility
 
 - **Privacy policy tells the truth (F7)** — it claimed "no analytics, no third-party scripts"
