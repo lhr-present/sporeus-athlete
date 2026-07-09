@@ -2,6 +2,32 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.497.0 — 2026-07-09 — Ops incident: cron.job_run_details bloat (494 MB) — found + mitigated
+
+While closing the operator gates, the purge-cron verification pulled a thread: cron_failing alerts
+clustering at ~22:00 UTC on Jul 7+8, Mgmt-API queries against job_run_details timing out, and the
+table found at **494 MB for 42k rows** (F2-era failure debris — DELETEs never reclaim heap).
+Chain: get_failing_crons (v9.486) seq-scans that heap EVERY MINUTE → alert-monitor times itself
+out at load windows → alerts about its own cron. Self-inflicted, now bounded:
+
+- **alert-monitor cron scan throttled to every 5th minute** (deployed) — a 30-min failure window
+  loses nothing from 5-min granularity; scan load −80%.
+- **Retention 7d → 2d** (mig 20260646) — nothing reads job_run_details beyond 24 h (digest) /
+  30 min (alerting).
+- **One-time cleanups queued against the degraded Mgmt API** (retry loops running): 2-day DELETE
+  trim + `SET lock_timeout='3s'; VACUUM FULL cron.job_run_details` (documented in the migration
+  as a runbook — the vacuum needs a lock window between pg_cron's minutely writes; first attempt
+  524'd at the gateway).
+- CREATE INDEX on the table is NOT possible via the Mgmt API role (not table owner) — the
+  throttle+retention+vacuum combination makes it unnecessary.
+
+OPERATOR note (in OPERATOR_LAUNCH_CHECKLIST.md context): items 3+5 closed this session (redirect
+allowlist applied; purge cron verified — no purge alerts in 3 days); Strava/SMTP/webhooks
+prompted with copy-paste commands.
+
+DEPENDS ON: minute%5 throttle in alert-monitor check #0; 2-day retention floor for anything
+reading job_run_details.
+
 ## v9.496.0 — 2026-07-09 — Publish polish complete: consent-first sync, TR privacy, admin RPC guards
 
 The final publish-readiness batch — every code finding from the report is now resolved or decided:

@@ -69,7 +69,14 @@ serve(withTelemetry('alert-monitor', async (req: Request) => {
   // The squad-MV cron failed 10,080× in 7 days with ZERO alerts — this monitor
   // had no view into cron.job_run_details. get_failing_crons (DEFINER RPC,
   // service-role-only) surfaces jobs with ≥5 failures in the last 30 min.
+  // v9.497 (ops): cron.job_run_details was found bloated to 494 MB (F2-era
+  // debris) and this check's minutely unindexed scan was heavy enough to
+  // time out alert-monitor itself at load windows (self-inflicted
+  // cron_failing_alert-monitor alerts, 22:00 UTC cluster). Until the table
+  // is vacuumed + retention-trimmed, run the scan every 5th minute — a
+  // 30-min failure window loses nothing from 5-min granularity.
   try {
+    if (new Date().getUTCMinutes() % 5 !== 0) throw { skip: true }
     const { data: failingCrons } = await supa.rpc('get_failing_crons', {
       p_window_minutes: 30,
       p_min_failures: 5,
@@ -81,7 +88,9 @@ serve(withTelemetry('alert-monitor', async (req: Request) => {
       alerts.push(`cron_failing_${c.jobname}`)
     }
   } catch (e) {
-    console.error('alert-monitor: get_failing_crons check failed:', e instanceof Error ? e.message : String(e))
+    if (!(e && (e as { skip?: boolean }).skip)) {
+      console.error('alert-monitor: get_failing_crons check failed:', e instanceof Error ? e.message : String(e))
+    }
   }
 
   // ── 1. Queue depth SLOs ────────────────────────────────────────────────────
