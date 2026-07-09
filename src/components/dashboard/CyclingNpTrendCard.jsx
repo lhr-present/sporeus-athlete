@@ -128,7 +128,7 @@ function CyclingNpTrendCard({ log = [], profile = {} }) {
               }}
             >
               <span style={{ color: 'var(--muted, #888)', minWidth: 56 }}>
-                {b.duration}{isTR ? ' dk' : ' min'}
+                {isTR ? `≥${b.duration} dk` : `≥${b.duration} min`}{/* v9.498: session NP among rides ≥ bucket, not MMP-at-duration */}
               </span>
               <span style={{ color: 'var(--text)', fontWeight: 700, flex: 1, textAlign: 'right' }}>
                 {b.bestNp}<span style={{ fontWeight: 400, color: '#888', marginLeft: 2 }}>W</span>

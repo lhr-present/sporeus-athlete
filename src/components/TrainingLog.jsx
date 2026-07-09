@@ -626,7 +626,9 @@ export default function TrainingLog({ log, setLog, prefill, clearPrefill }) {
     setLog([...log, sanitizeLogEntry(raw)])
     // Store power stream keyed by entry ID for Power Curve analysis
     if (powers.length >= 30) {
-      try { localStorage.setItem('sporeus-power-' + entryId, JSON.stringify(powers.slice(0, 10800))) } catch (e) { logger.warn('localStorage:', e.message) }
+      // v9.498: keep the TAIL when capping (v9.488 lh300 lesson — the stored
+      // stream previously lost the final hour of >3h rides)
+      try { localStorage.setItem('sporeus-power-' + entryId, JSON.stringify(powers.slice(-10800))) } catch (e) { logger.warn('localStorage:', e.message) }
     }
     // Archive raw file to Supabase Storage (fire-and-forget — failures are non-fatal)
     if (importFileRef.current && isSupabaseReady()) {
