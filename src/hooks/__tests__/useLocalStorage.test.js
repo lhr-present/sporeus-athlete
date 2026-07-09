@@ -115,3 +115,19 @@ describe('useLocalStorage — cross-tab storage sync', () => {
     expect(result.current[0]).toEqual(['mine'])
   })
 })
+
+// v9.498 (general-check F6) — same-tab sibling-instance sync
+describe('same-tab sync (v9.498)', () => {
+  it('a write in one instance reaches a sibling instance on the same key', () => {
+    const { result: a } = renderHook(() => useLocalStorage('sporeus-f6-test', null))
+    const { result: b } = renderHook(() => useLocalStorage('sporeus-f6-test', null))
+    act(() => { a.current[1]({ built: true }) })
+    expect(b.current[0]).toEqual({ built: true })
+  })
+  it('does not loop: the writer adopts its own value as a no-op', () => {
+    const { result } = renderHook(() => useLocalStorage('sporeus-f6-loop', 0))
+    act(() => { result.current[1](42) })
+    expect(result.current[0]).toBe(42)
+    expect(JSON.parse(localStorage.getItem('sporeus-f6-loop'))).toBe(42)
+  })
+})

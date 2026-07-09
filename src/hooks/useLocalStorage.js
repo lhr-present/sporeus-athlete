@@ -10,7 +10,15 @@ export function useLocalStorage(key, def) {
   const set = useCallback(v => {
     setVal(v)
     try {
-      localStorage.setItem(key, JSON.stringify(v))
+      const json = JSON.stringify(v)
+      localStorage.setItem(key, json)
+      // v9.498 (general-check F6): the `storage` event never fires in the
+      // WRITING tab, so sibling hook instances on the same key (e.g.
+      // EliteProgramCard writing sporeus-eliteProgram while ProgramView +
+      // NextTrainingCard read it) stayed stale until remount. Broadcast a
+      // same-tab event; the listener's value-equality guard makes the writer's
+      // own instance a no-op, so no loop is possible (only `set` dispatches).
+      try { window.dispatchEvent(new CustomEvent('sporeus-ls-write', { detail: { key, json } })) } catch (_) { /* non-browser env */ }
     } catch (e) {
       if (e && (e.name==='QuotaExceededError' || e.code===22)) {
         try { localStorage.setItem(STORAGE_WARN_KEY,'1') } catch (e) { logger.warn('localStorage:', e.message) }
@@ -38,8 +46,23 @@ export function useLocalStorage(key, def) {
         return parsed
       })
     }
+    // v9.498 (F6): same-tab counterpart of the cross-tab sync above.
+    function onLocalWrite(e) {
+      const d = e?.detail
+      if (!d || d.key !== key || d.json == null) return
+      let parsed
+      try { parsed = JSON.parse(d.json) } catch { return }
+      setVal(prev => {
+        try { if (JSON.stringify(prev) === d.json) return prev } catch { /* fall through */ }
+        return parsed
+      })
+    }
     window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
+    window.addEventListener('sporeus-ls-write', onLocalWrite)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener('sporeus-ls-write', onLocalWrite)
+    }
   }, [key])
 
   return [val, set]

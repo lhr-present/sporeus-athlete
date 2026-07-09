@@ -7,6 +7,7 @@ import {
 import { useData } from '../contexts/DataContext.jsx'
 import { S } from '../styles.js'
 import { calculateMMP, fitCriticalPower, detectIntervals, estimateFTP } from '../lib/powerAnalysis.js'
+import { PEAK_WINDOWS } from '../lib/athlete/powerPeaks.js'
 import IntervalBreakdown from './IntervalBreakdown.jsx'
 import ScienceTooltip from './ScienceTooltip.jsx'
 
@@ -84,7 +85,7 @@ export default function PowerCurve() {
         if (!best[pt.duration] || pt.power > best[pt.duration]) best[pt.duration] = pt.power
       }
     }
-    const PEAK_DUR = { p5: 5, p60: 60, p300: 300, p1200: 1200, p3600: 3600 }
+    const PEAK_DUR = PEAK_WINDOWS  // v9.498: single source of truth (powerPeaks.js)
     for (const entry of log) {
       if (!entry?.powerPeaks || new Date(entry.date) < cutoff) continue
       for (const [key, dur] of Object.entries(PEAK_DUR)) {

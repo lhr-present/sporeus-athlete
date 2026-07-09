@@ -2,6 +2,28 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.498.0 — 2026-07-09 — Final polish: same-tab reactivity + honest labels
+
+- **useLocalStorage same-tab sync (general-check F6)** — the `storage` event never fires in the
+  writing tab, so sibling hook instances on the same key stayed stale until remount: generate a
+  program in EliteProgramCard and ProgramView/NextTrainingCard kept showing the old state. New
+  'sporeus-ls-write' same-tab broadcast with the existing value-equality guard (writer's own
+  instance is a no-op — loop-proof by construction). Benefits EVERY useLocalStorage key. +2 tests.
+- **FIT power-stream storage keeps the TAIL** — the localStorage blob still start-capped at 3 h
+  (same class as the v9.488 lh300 bug); >3 h rides lost their final hour from the power curve.
+- **noscript + white-flash** (publish F11) — dark body background + bilingual noscript notice.
+- **PEAK_DUR deduplicated** — PowerCurve imports PEAK_WINDOWS from powerPeaks.js (was a drift-prone
+  local copy). **NP trend labels honest** — "≥20 min" (best session NP among qualifying rides),
+  not implying MMP-at-duration. Power-blob delete cleanup verified already present (stale audit
+  item); sportMatched left as unconsumed data (no churn).
+
+Queue state after this: founder Qs (e-bike watts in FTP/CP, kayak→rowing) + design-scale items
+(predictCyclingTime physics, intensityFactor persistence, validator-vs-deload-rebound) are ALL
+that remain from every audit this week. Operator: Strava review submitted 2026-07-09 (awaiting
+Strava), Resend SMTP + webhook secrets pending, VACUUM FULL one-liner after tonight's trim.
+
+DEPENDS ON: 'sporeus-ls-write' event contract (only set() dispatches; listeners adopt-if-changed).
+
 ## v9.497.0 — 2026-07-09 — Ops incident: cron.job_run_details bloat (494 MB) — found + mitigated
 
 While closing the operator gates, the purge-cron verification pulled a thread: cron_failing alerts
