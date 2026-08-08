@@ -259,32 +259,35 @@ jobs:
           retention-days: 30
 
       # ── Cleanup DB branch ─────────────────────────────────────────────────────
-      # CLI delete silently failed for weeks on MIGRATIONS_FAILED branches
-      # (found 2026-08-08: 2 branches leaked 5-6 weeks of Branching Compute
-      # Hours because this step's `|| true` swallowed the failure) — fall back
-      # to a direct Management API delete by branch_ref, which doesn't depend
-      # on the branch being in a healthy/nameable state for the CLI to find it.
+      # CLI delete silently failed for weeks on every branch, not just
+      # MIGRATIONS_FAILED ones (found 2026-08-08: 2 branches leaked 5-6 weeks
+      # of Branching Compute Hours because this step's `|| true` swallowed the
+      # failure). Root cause: `supabase branches delete`/`branches get` throw a
+      # schema-validation error on the API's `created_at` timestamp format (CLI
+      # bug, confirmed via run logs) — so `branch_ref` from the create step is
+      # ALSO always empty, meaning a by-ref fallback silently no-ops too. Fixed
+      # by matching on branch NAME instead (set at job start, never empty, no
+      # CLI dependency at all).
       - name: Cleanup DB branch
         if: always()
         continue-on-error: true
         run: |
           BRANCH="${{ steps.db-branch.outputs.branch }}"
-          BRANCH_REF="${{ steps.db-branch.outputs.branch_ref }}"
 
           supabase branches delete "$BRANCH" --project-ref "$SUPABASE_PROJECT_ID" && exit 0 || true
 
-          echo "CLI delete failed or branch unhealthy — falling back to Management API by ref"
-          if [ -n "$BRANCH_REF" ]; then
-            BRANCH_ID=$(curl -sf --max-time 20 \
-              "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_ID}/branches" \
+          echo "CLI delete failed — falling back to Management API by branch name"
+          BRANCH_ID=$(curl -sf --max-time 20 \
+            "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_ID}/branches" \
+            -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+            | jq -r --arg name "$BRANCH" '.[] | select(.name==$name) | .id' | head -1)
+          if [ -n "$BRANCH_ID" ]; then
+            curl -sf --max-time 20 -X DELETE \
+              "https://api.supabase.com/v1/branches/${BRANCH_ID}" \
               -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
-              | jq -r --arg ref "$BRANCH_REF" '.[] | select(.project_ref==$ref) | .id' | head -1)
-            if [ -n "$BRANCH_ID" ]; then
-              curl -sf --max-time 20 -X DELETE \
-                "https://api.supabase.com/v1/branches/${BRANCH_ID}" \
-                -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
-                || echo "::warning::Management API delete also failed for $BRANCH ($BRANCH_ID) — branch-reaper.yml will catch it within 2h"
-            fi
+              || echo "::warning::Management API delete also failed for $BRANCH ($BRANCH_ID) — branch-reaper.yml will catch it within 2h"
+          else
+            echo "::warning::Could not find branch $BRANCH via Management API — branch-reaper.yml will catch it within 2h"
           fi
 
       # ── Hard fail ─────────────────────────────────────────────────────────────
