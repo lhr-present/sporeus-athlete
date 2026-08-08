@@ -82,8 +82,8 @@ const MAX_TSS_PER_SESSION = 300
 const λ_ACUTE   = 0.25
 const λ_CHRONIC = 0.067
 
-export function calculateACWR(log) {
-  const now = new Date()
+export function calculateACWR(log, asOf) {
+  const now = asOf ? new Date(asOf) : new Date()
   now.setUTCHours(0, 0, 0, 0)
 
   // Build daily TSS map (YYYY-MM-DD → capped sum)

@@ -55,7 +55,7 @@ export function projectCtlTrajectory({ log, plan, today, k = 42 } = {}) {
   if (!plan || !Array.isArray(plan.weeks) || plan.weeks.length === 0) return null
   if (!(k > 0)) return null
 
-  const { ctl: currentCtlRaw } = calcLoad(log)
+  const { ctl: currentCtlRaw } = calcLoad(log, today)
   const currentCtl = Number(currentCtlRaw) || 0
   if (currentCtl <= 0) return null
 

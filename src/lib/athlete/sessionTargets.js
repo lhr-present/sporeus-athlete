@@ -7,7 +7,7 @@
 //   - Run sessions  → pace window  "4:35–4:45 /km"   (Daniels 2014)
 //   - Bike sessions → power window "220–245 W"        (Coggan & Allen 2010)
 //   - Swim sessions → pace window  "1:38–1:45 /100m"  (Wakayoshi 1992)
-//   - HR window (secondary)        "145–155 BPM"      (Karvonen 1957 / Tanaka 2001)
+//   - HR window (secondary)        "145–155 BPM"      (%HRmax bands, Tanaka 2001 maxHR)
 //   - Target IF (single number)    0.85 (rpe-anchored, Coggan 2003)
 //
 // This module is a thin formatter over `derivedSessionTargets`, which already

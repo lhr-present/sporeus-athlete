@@ -38,7 +38,7 @@ export function avgDailyTSS(log = [], today = new Date().toISOString().slice(0, 
  * @returns {Array<{date, ctl, atl, tsb}>} length === days, sorted by date
  */
 export function projectLoad(log = [], dailyTSS, days = 28, today = new Date().toISOString().slice(0, 10)) {
-  const seed = calcLoad(log)
+  const seed = calcLoad(log, today)
   let ctl = seed.ctl
   let atl = seed.atl
 
@@ -79,7 +79,7 @@ export function computeLoadProjection(log = [], days = 28, today = new Date().to
   if (log.length < 7) return null
 
   const currentLoad = avgDailyTSS(log, today)
-  const { ctl: currentCTL, tsb: currentTSB } = calcLoad(log)
+  const { ctl: currentCTL, tsb: currentTSB } = calcLoad(log, today)
 
   const baseline = projectLoad(log, currentLoad, days, today)
   const elevated = projectLoad(log, currentLoad * 1.1, days, today)

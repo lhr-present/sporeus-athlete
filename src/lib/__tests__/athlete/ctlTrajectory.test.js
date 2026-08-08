@@ -1,17 +1,10 @@
 // src/lib/__tests__/athlete/ctlTrajectory.test.js
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { projectCtlTrajectory, CITATION } from '../../athlete/ctlTrajectory.js'
 
-// `calcLoad` (formulas.js) walks daily TSS from the log's first date up
-// to system-time `new Date()`. Freezing the clock lets us position
-// "real today" at the desired weekday so the projection has a known
-// remaining-days window.
-beforeEach(() => {
-  vi.setSystemTime(new Date('2026-05-04T12:00:00Z')) // Monday
-})
-afterEach(() => {
-  vi.setSystemTime(new Date())
-})
+// Every test below passes an explicit `today` — projectCtlTrajectory no longer
+// needs a frozen system clock to get a correct result (calcLoad(log, today)
+// now anchors to the passed date instead of wall-clock `new Date()`).
 
 // Build a saved plan with `weeks` where each week.sessions is a 7-day
 // Mon→Sun array of { tss } entries. `generatedAt` defaults to the

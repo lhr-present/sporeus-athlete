@@ -413,7 +413,7 @@ export default function ZoneCalc() {
             )
           })()}
           <div style={{ ...S.mono, fontSize:'10px', color:'#aaa', marginTop:'8px' }}>
-            Coggan (power) · Tanaka/Karvonen (HR) · McMillan (pace) · CSS/T-pace (swim) · 2K split model (row)
+            Coggan (power) · Tanaka max-HR / %HRmax bands (HR) · McMillan (pace) · CSS/T-pace (swim) · 2K split model (row)
           </div>
         </div>
       )}

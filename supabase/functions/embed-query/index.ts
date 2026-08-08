@@ -11,6 +11,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { fetchWithTimeout } from '../_shared/fetchWithTimeout.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -60,7 +61,7 @@ serve(async (req) => {
     }
 
     // ── Embed query ───────────────────────────────────────────────────────────
-    const embedRes = await fetch(OPENAI_EMBED_URL, {
+    const embedRes = await fetchWithTimeout(OPENAI_EMBED_URL, {
       method: 'POST',
       headers: {
         'Content-Type':  'application/json',

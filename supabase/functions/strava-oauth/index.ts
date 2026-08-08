@@ -9,6 +9,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 // v9.465: activity→row mapping is shared with strava-backfill-worker (was
 // duplicated + drifting). Enrichment (power/elevation/RPE/clock) lives there.
 import { buildTrainingLogRow, resolveProfilePhysiology, enqueueStreamEnrichment, fetchStreamEnrichedIds, stripStreamDerived } from '../_shared/stravaActivity.ts'
+import { fetchWithTimeout } from '../_shared/fetchWithTimeout.ts'
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -41,7 +42,7 @@ async function refreshIfExpired(
   const fiveMinFromNow = new Date(Date.now() + 5 * 60 * 1000)
   if (expiresAt > fiveMinFromNow) return null
 
-  const resp = await fetch("https://www.strava.com/oauth/token", {
+  const resp = await fetchWithTimeout("https://www.strava.com/oauth/token", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -81,7 +82,7 @@ async function fetchActivitiesPage(
   after: number,
   page: number,
 ): Promise<{ activities: unknown[]; rateLimitExceeded: boolean; retryAfter: number }> {
-  const resp = await fetch(
+  const resp = await fetchWithTimeout(
     `https://www.strava.com/api/v3/athlete/activities?after=${after}&per_page=100&page=${page}`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   )
@@ -130,7 +131,7 @@ serve(withTelemetry('strava-oauth', async (req: Request) => {
     if (!code) return fail(400, "Missing code")
     if (!stravaId || !stravaSecret) return fail(500, "Strava credentials not configured")
 
-    const resp = await fetch("https://www.strava.com/oauth/token", {
+    const resp = await fetchWithTimeout("https://www.strava.com/oauth/token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -339,11 +340,11 @@ serve(withTelemetry('strava-oauth', async (req: Request) => {
     if (tokenRow?.access_token) {
       // Best-effort revocation — don't fail the disconnect if Strava is unreachable
       try {
-        await fetch("https://www.strava.com/oauth/deauthorize", {
+        await fetchWithTimeout("https://www.strava.com/oauth/deauthorize", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ access_token: tokenRow.access_token }),
-        })
+        }, 10_000)
       } catch {
         // Network error during revocation — proceed with local deletion anyway
       }

@@ -40,8 +40,11 @@ const BIKE_ZONE_PCT_FTP = {
 }
 
 // ── Running zone → % max HR ─────────────────────────────────────────────────
-// Karvonen 1957 / Tanaka 2001 / Friel's standard zone breakdown. Bounds are
-// nominal — overlap at the edges is intentional so adjacent zones don't pop
+// %HRmax bands (Tanaka 2001 for maxHR estimation, Friel's standard zone
+// breakdown) — NOT Karvonen: Karvonen 1957 is the %HRR (heart rate reserve,
+// i.e. relative to resting HR) method, which this table doesn't compute (no
+// resting HR input). Bounds are nominal — overlap at the edges is intentional
+// so adjacent zones don't pop
 // a gap when an athlete drifts. v9.155.0 (Prompt 12): `hrTarget` had zero
 // producers across the codebase; HR delta in v9.153 was dead code until now.
 const RUN_ZONE_PCT_MAXHR = {

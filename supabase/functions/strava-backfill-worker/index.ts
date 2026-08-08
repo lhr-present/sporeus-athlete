@@ -14,6 +14,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { buildTrainingLogRow, resolveProfilePhysiology, enqueueStreamEnrichment, computePowerTSS, fetchStreamEnrichedIds, stripStreamDerived, classifySessionTag } from '../_shared/stravaActivity.ts'
 // v9.466 P1: per-activity streams + detail enrichment (FIT-parity scalars).
 import { normalizedPower, decouplingPct, zonesFromHR, wPrimeExhausted, computePowerPeaks } from '../_shared/streamScience.ts'
+import { fetchWithTimeout } from '../_shared/fetchWithTimeout.ts'
 
 const RATE_WINDOW_MS = 15 * 60 * 1000   // 15 minutes
 const MAX_REQUESTS   = 90               // < Strava's 100/15min app limit (was 600 → 429 risk)
@@ -29,7 +30,7 @@ async function refreshIfExpired(
   const fiveMinLater = new Date(Date.now() + 5 * 60 * 1000)
   if (expiresAt > fiveMinLater) return null
 
-  const resp = await fetch("https://www.strava.com/oauth/token", {
+  const resp = await fetchWithTimeout("https://www.strava.com/oauth/token", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -197,7 +198,7 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
         }
 
         const auth = { headers: { Authorization: `Bearer ${accessToken}` } }
-        const sResp = await fetch(
+        const sResp = await fetchWithTimeout(
           `https://www.strava.com/api/v3/activities/${externalId}/streams?keys=time,heartrate,watts,velocity_smooth,cadence,altitude&key_by_type=true`,
           auth,
         )
@@ -228,7 +229,7 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
 
         // Detail failure is NON-fatal (perceived_exertion/calories are bonus data;
         // retrying would re-spend the streams call too).
-        const dResp = await fetch(`https://www.strava.com/api/v3/activities/${externalId}`, auth)
+        const dResp = await fetchWithTimeout(`https://www.strava.com/api/v3/activities/${externalId}`, auth)
         apiCallsUsed++
         if (dResp.status === 429) { console.warn("strava-backfill-worker: 429 on detail"); break }
         const detail = dResp.ok ? await dResp.json().catch(() => null) : null
@@ -324,7 +325,7 @@ serve(withTelemetry('strava-backfill-worker', async (req) => {
         continue
       }
 
-      const resp = await fetch(
+      const resp = await fetchWithTimeout(
         `https://www.strava.com/api/v3/athlete/activities?after=${after}&per_page=100&page=${page}`,
         { headers: { Authorization: `Bearer ${accessToken}` } },
       )

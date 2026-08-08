@@ -7,6 +7,7 @@
 import { serve }        from "https://deno.land/std@0.177.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { isVerifiedServiceCall } from "../_shared/serviceAuth.ts"
+import { fetchWithTimeout } from "../_shared/fetchWithTimeout.ts"
 
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
 const MODEL_HAIKU       = "claude-haiku-4-5-20251001"
@@ -33,7 +34,7 @@ async function retryWithBackoff<T>(fn: () => Promise<T>, maxAttempts = 3): Promi
 async function callHaiku(system: string, user: string): Promise<string> {
   const key = Deno.env.get("ANTHROPIC_API_KEY") ?? ""
   if (!key) throw new Error("ANTHROPIC_API_KEY not set")
-  const res = await fetch(ANTHROPIC_API_URL, {
+  const res = await fetchWithTimeout(ANTHROPIC_API_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({ model: MODEL_HAIKU, max_tokens: 256, system, messages: [{ role: "user", content: user }] }),
@@ -52,7 +53,7 @@ async function embedText(text: string): Promise<number[] | null> {
   const key = Deno.env.get("EMBEDDING_API_KEY")
   if (!key) return null
   try {
-    const res = await fetch(OPENAI_EMBED_URL, {
+    const res = await fetchWithTimeout(OPENAI_EMBED_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
       body: JSON.stringify({ model: EMBED_MODEL, input: text.slice(0, 8192) }),

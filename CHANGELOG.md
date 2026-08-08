@@ -2,6 +2,50 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.500.0 — 2026-08-08 — Security fix + ACWR consolidation + sport-science citation fixes + timeouts
+
+3-agent discovery audit (client dead-features, backend security/reliability, sport-science
+accuracy). Findings verified against live schema/code before fixing; applied here.
+
+- **🔴 SECURITY: `encrypt_device_token` was an unauthenticated encryption oracle.** Flagged
+  and explicitly deferred back in `20260617_security_definer_rpc_lockdown.sql` ("held,
+  uncertain") — turned out to genuinely have no auth check, unlike `get_my_tier` which it
+  was grouped with (that one only ever operates on `auth.uid()` internally; this one takes
+  an arbitrary `plain text` arg with zero identity binding). Live-confirmed: `anon` had
+  EXECUTE and could get `pgp_sym_encrypt(plain, app.settings.jwt_secret)` back for any
+  input — a chosen-plaintext oracle against the app's JWT secret. Currently dormant only
+  because that GUC is unset. Migration 20260647: revoked PUBLIC+anon (authenticated keeps
+  EXECUTE — `deviceSync.js` calls this from a signed-in client), added an explicit
+  `auth.uid() IS NULL` guard in the function body for defense-in-depth. Live-verified:
+  anon now gets `42501 permission denied`.
+- **ACWRCard was reimplementing ACWR independently** from `calculateACWR()` (the one every
+  other consumer uses) — plain rolling-average, no per-session TSS cap, vs the canonical
+  Hulin-style EWMA. Same bug class as the already-fixed "3 divergent monotony
+  implementations." Card now calls `calculateACWR()` for both the headline number and the
+  8-week trend (added an `asOf` param to `calculateACWR` for the latter, mirroring today's
+  earlier `calculatePMC`/`calcLoad` fix). Also added a citation-backed caveat about coupled
+  ACWR (Lolli et al. 2019, Sports Med 49:1491-1497) to the HelpTip — it's a trend signal,
+  not a precise threshold.
+- **HR zones were mislabeled "Karvonen"** in `ZoneCalc.jsx` and two code comments
+  (`derivedSessionTargets.js`, `sessionTargets.js`) — the actual implementation is plain
+  %HRmax bands (Tanaka maxHR estimate), not Karvonen's %HRR (heart-rate-reserve) method,
+  which requires a resting-HR input this code never takes. Fixed the citations to describe
+  what's actually implemented.
+- **2 more instances of the wall-clock-vs-explicit-`today` bug** (found via the same audit
+  that just fixed `calculatePMC`/`computeCTLDelta` this morning): `loadProjector.js`
+  (`projectLoad`, `computeLoadProjection`) and `ctlTrajectory.js` — both accepted an
+  explicit `today` param but still seeded from `calcLoad(log)` (wall-clock default).
+  Currently harmless (no caller passes a non-default `today` yet) but same latent-bug
+  shape. Removed the now-vestigial `vi.setSystemTime` clock-freeze from
+  `ctlTrajectory.test.js` — every test case already passes `today` explicitly, so it was
+  purely working around the bug just fixed.
+- **Missing outbound-fetch timeouts** on `ai-batch-worker` (Anthropic + OpenAI), `embed-query`
+  (OpenAI), `strava-oauth` (4 call sites), `strava-backfill-worker` (4 call sites) — every
+  other AI call site in the repo already wraps `fetch` in `_shared/fetchWithTimeout.ts`;
+  these were the stragglers. A hung upstream request could otherwise tie up a queue worker
+  past its pgmq visibility timeout, causing reprocessing/duplicate work.
+- +2 tests (calculateACWR asOf regression). 16,159 tests green.
+
 ## v9.499.0 — 2026-08-08 — Fix false anthropic_api DEGRADED signal in health monitor
 
 - **check-dependencies: anthropic_api probe pointed at the wrong host** — `checkAnthropicApi()`

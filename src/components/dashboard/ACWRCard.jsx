@@ -3,6 +3,8 @@ import { LangCtx } from '../../contexts/LangCtx.jsx'
 import { S } from '../../styles.js'
 import { HelpTip } from '../ui.jsx'
 import { interpretACWR } from '../../lib/science/interpretations.js'
+import { calculateACWR } from '../../lib/trainingLoad.js'
+import { ACWR } from '../../lib/sport/constants.js'
 
 function ACWRCard({ log = [], lc, dl }) {
   const { t, lang } = useContext(LangCtx)
@@ -17,12 +19,13 @@ function ACWRCard({ log = [], lc, dl }) {
     </div>
   )
 
-  const now    = Date.now()
-  const ms7    = 7  * 864e5
-  const ms28   = 28 * 864e5
-  const acute   = log.filter(e => now - new Date(e.date).getTime() < ms7).reduce((s, e) => s + (e.tss || 0), 0)
-  const chronic28 = log.filter(e => now - new Date(e.date).getTime() < ms28).reduce((s, e) => s + (e.tss || 0), 0) / 4
-  if (!chronic28) return (
+  // Canonical Hulin-style EWMA ACWR (src/lib/trainingLoad.js) — this card used to
+  // reimplement its own plain rolling-average/no-cap estimator, diverging from every
+  // other ACWR consumer in the app (TodayView, Recovery, intelligence.js). Same bug
+  // class as the monotony-consolidation fix.
+  const now = Date.now()
+  const { ratio: acwrVal, acute, chronicWeekly: chronic28 } = calculateACWR(log)
+  if (acwrVal == null) return (
     <div style={{ fontFamily: MONO, fontSize: '10px', color: '#555', padding: '16px 0', textAlign: 'center' }}>
       {lang === 'tr'
         ? 'ACWR hesabı için en az 4 haftalık antrenman kaydet.'
@@ -30,21 +33,17 @@ function ACWRCard({ log = [], lc, dl }) {
     </div>
   )
 
-  const acwrVal = Math.round(acute / chronic28 * 100) / 100
-  const { color, label, rec } = acwrVal < 0.8
+  const { color, label, rec } = acwrVal < ACWR.OPTIMAL_MIN
     ? { color: '#0064ff', label: t('acwrUnder'),   rec: 'Consider adding a moderate session tomorrow' }
-    : acwrVal <= 1.3
+    : acwrVal <= ACWR.OPTIMAL_MAX
     ? { color: '#5bc25b', label: t('acwrSweet'),   rec: 'Maintain current load — great zone' }
-    : acwrVal <= 1.5
+    : acwrVal <= ACWR.CAUTION_MAX
     ? { color: '#f5c542', label: t('acwrCaution'), rec: 'Easy run or rest day tomorrow' }
     : { color: '#e03030', label: t('acwrDanger'),  rec: 'Rest day mandatory tomorrow' }
 
   const weeklyACWR = Array.from({ length: 8 }, (_, wi) => {
-    const wEnd   = now - wi * 7 * 864e5
-    const wStart = wEnd - 7 * 864e5
-    const wAcute = log.filter(e => { const t = new Date(e.date).getTime(); return t >= wStart && t < wEnd }).reduce((s, e) => s + (e.tss || 0), 0)
-    const wChron = log.filter(e => new Date(e.date).getTime() < wEnd && new Date(e.date).getTime() >= wEnd - 28 * 864e5).reduce((s, e) => s + (e.tss || 0), 0) / 4
-    return wChron ? Math.round(wAcute / wChron * 100) / 100 : 0
+    const asOf = now - wi * 7 * 864e5
+    return calculateACWR(log, asOf).ratio ?? 0
   }).reverse()
 
   const maxVal = Math.max(...weeklyACWR, 1.6)
@@ -56,7 +55,7 @@ function ACWRCard({ log = [], lc, dl }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', flexWrap: 'wrap' }}>
         <div>
           <div style={{ ...S.cardTitle, display: 'flex', alignItems: 'center' }}>
-            {t('acwrTitle')}<HelpTip text="Acute:Chronic Workload Ratio. Sweet spot: 0.8–1.3. Above 1.5 = injury risk (Hulin et al. 2016)."/>
+            {t('acwrTitle')}<HelpTip text="Acute:Chronic Workload Ratio. Sweet spot: 0.8–1.3. Above 1.5 = injury risk (Hulin et al. 2016). This is a coupled ratio (the chronic window includes the acute week) — treat it as a trend signal, not a precise threshold; coupling can produce spurious correlations independent of real injury risk (Lolli et al. 2019, Sports Med 49:1491-1497)."/>
           </div>
           <div style={{ display: 'flex', gap: '20px', marginTop: '8px' }}>
             <div>

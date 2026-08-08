@@ -111,6 +111,25 @@ describe('calculateACWR', () => {
     expect(r.ratio).toBeLessThan(0.8)
     expect(r.status).toBe('undertraining')
   })
+
+  it('asOf anchors the calculation to a fixed date instead of wall-clock (regression: ACWRCard used to reimplement this independently — GH found & consolidated 2026-08-08)', () => {
+    // Fixed-date log: 21 days of 200 TSS then 7 days of 0, ending 2026-05-04.
+    const fixedLog = Array.from({ length: 21 }, (_, i) => {
+      const d = new Date('2026-05-04T00:00:00Z'); d.setUTCDate(d.getUTCDate() - (27 - i))
+      return { date: d.toISOString().slice(0, 10), tss: 200 }
+    }).concat(Array.from({ length: 7 }, (_, i) => {
+      const d = new Date('2026-05-04T00:00:00Z'); d.setUTCDate(d.getUTCDate() - (6 - i))
+      return { date: d.toISOString().slice(0, 10), tss: 0 }
+    }))
+    // Same result regardless of when the test actually runs, because asOf pins "today".
+    const r = calculateACWR(fixedLog, '2026-05-04')
+    expect(r.ratio).toBeLessThan(0.8)
+    expect(r.status).toBe('undertraining')
+    // Without asOf, real "now" is far from 2026-05-04 so the 28-day EWMA window
+    // sees none of this log → insufficient, proving asOf is actually load-bearing.
+    const rNoAsOf = calculateACWR(fixedLog)
+    expect(rNoAsOf.status).toBe('insufficient')
+  })
 })
 
 // ─── fitBanister ──────────────────────────────────────────────────────────────
