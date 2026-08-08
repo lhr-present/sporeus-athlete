@@ -1,6 +1,54 @@
-# Billable Surface — what costs money (audited 2026-06-16)
+# Billable Surface — what costs money (audited 2026-06-16, re-audited 2026-08-08)
 
 Goal: stay on the base Supabase plan; avoid surprise external spend.
+
+## 2026-08-08 re-audit: the June fix didn't fully hold — branches leaked again
+
+The June cleanup (below) deleted 23 dead branches and switched `contract-smoke` /
+`db-branch-preview` / `perf-regression`'s nightly cron to `workflow_dispatch`-only, but
+deliberately **left `e2e-critical-paths` creating a branch per run** ("passes — real value,
+residual minor cost"). That assumption was wrong: its cleanup step
+(`supabase branches delete ... || true`) was **silently failing** — found 2 zombie branches
+still alive and billing: one from PR #64 (merged 2026-06-24, ~6 weeks) and one from PR #66
+(merged 2026-07-02, ~5 weeks), both `MIGRATIONS_FAILED` but `preview_project_status:
+ACTIVE_HEALTHY` (i.e. still provisioned and billing despite the failed migration). A third
+was created by *this session's own* push to `main` (the workflow triggers on direct pushes
+too, not just PRs) and would have leaked the same way. All 3 deleted via
+`DELETE /v1/branches/{id}`.
+
+**Confirmed (again) there is no Management API to disable branching at the project/org
+level** — `DELETE /v1/projects/{ref}/branches` (no id) returns 200 but only resets the
+branch list/tracking row; branch creation still succeeds immediately afterward (verified
+by probe-creating and immediately deleting a test branch). Branching itself, and the
+separate Supabase↔GitHub App auto-preview-per-PR integration, can only be disabled from the
+**Supabase Dashboard** (Project Settings → Integrations → GitHub, or Branching page) —
+still an operator-only action, unchanged since June.
+
+**Fix applied (code-only, no operator action needed):**
+1. `e2e-critical-paths.yml` cleanup step now falls back to a direct Management API delete
+   (by `branch_ref`) when the `supabase branches delete` CLI call fails or the branch is too
+   unhealthy for the CLI to resolve by name — this was the actual failure mode that let the
+   two zombies survive undetected for weeks.
+2. New `.github/workflows/branch-reaper.yml` — runs every 2 hours (+ manual dispatch),
+   lists all non-default branches via the Management API, force-deletes any older than 2
+   hours. This is a **universal backstop**: it catches leaks from `e2e-critical-paths`, from
+   `rls-pentest` (weekly, still active), and from the Supabase GitHub App's own
+   auto-preview-per-PR branches — none of which we can prevent from being *created*, but all
+   of which this now guarantees can never again bill for more than ~2 hours instead of weeks.
+3. Did NOT downgrade `e2e-critical-paths`/`rls-pentest` to dispatch-only (unlike the June
+   workflows) — the reaper makes the cost ceiling small enough (a handful of Micro-branch-
+   hours per run, auto-killed within 2h) that keeping real per-PR/weekly E2E+security
+   coverage seemed like the better tradeoff. Revisit if the reaper itself ever needs
+   disabling for some reason.
+
+**Still open (operator, dashboard-only, unchanged since June):** disable the
+Supabase↔GitHub App automatic preview-branch-per-PR integration entirely (would bring
+branch-related spend to functionally $0 beyond the reaper's 2h/run ceiling); confirm the
+Jun 14 `$36.33` invoice (GLQJDI-00005) is actually paid — Management API has no invoice/
+billing-subscription/usage endpoints (`/v1/organizations/{slug}/invoices` etc. all 404), so
+this can only be checked in the Dashboard → Billing; confirm the org-level **Spend Cap** is
+toggled ON (Dashboard → Billing → Cost Control) as the last-resort ceiling — no API to read
+or set this setting either.
 
 ## Branching Compute Hours — the one real overage (FIXED 2026-06-16)
 The Jun 14–Jul 13 invoice showed **$8.36 of "Branching Compute Hours"** beyond the $25 Pro

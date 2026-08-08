@@ -1,0 +1,66 @@
+name: Supabase Branch Reaper
+
+# Cost guardrail: force-deletes any non-default Supabase preview branch older
+# than 2 hours, regardless of what created it (our own CI, a stuck
+# MIGRATIONS_FAILED branch whose workflow cleanup step silently failed, or the
+# Supabase<->GitHub App's own auto-preview-per-PR integration — none of which
+# can be fully disabled from here). Found 2026-08-08: two branches from PRs
+# merged 2026-06-24 and 2026-07-02 had been silently billing Branching Compute
+# Hours for 5-6 weeks because their workflow's own cleanup step
+# (continue-on-error: true) failed silently on a MIGRATIONS_FAILED branch.
+# This is the backstop so that failure mode can never again cost more than
+# ~2 hours of compute. See docs/ops/cost-surface.md.
+
+on:
+  schedule:
+    - cron: "0 */2 * * *"
+  workflow_dispatch:
+    inputs:
+      max_age_minutes:
+        description: "Delete non-default branches older than this many minutes"
+        required: false
+        default: "120"
+
+env:
+  SUPABASE_PROJECT_ID: pvicqwapvvfempjdgwbm
+
+jobs:
+  reap:
+    name: Delete stale preview branches
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: List and delete stale branches
+        env:
+          TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          MAX_AGE_MINUTES: ${{ github.event.inputs.max_age_minutes || '120' }}
+        run: |
+          set -euo pipefail
+          BRANCHES=$(curl -sf --max-time 20 \
+            "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_ID}/branches" \
+            -H "Authorization: Bearer ${TOKEN}")
+
+          NOW_EPOCH=$(date -u +%s)
+          CUTOFF_SECONDS=$(( MAX_AGE_MINUTES * 60 ))
+
+          echo "$BRANCHES" | jq -c '.[]' | while read -r branch; do
+            IS_DEFAULT=$(echo "$branch" | jq -r '.is_default')
+            if [ "$IS_DEFAULT" = "true" ]; then
+              continue
+            fi
+            ID=$(echo "$branch" | jq -r '.id')
+            NAME=$(echo "$branch" | jq -r '.name')
+            CREATED=$(echo "$branch" | jq -r '.created_at')
+            CREATED_EPOCH=$(date -u -d "$CREATED" +%s 2>/dev/null || echo 0)
+            AGE=$(( NOW_EPOCH - CREATED_EPOCH ))
+
+            if [ "$AGE" -ge "$CUTOFF_SECONDS" ]; then
+              echo "REAPING: $NAME (id=$ID, age=${AGE}s, created=$CREATED)"
+              curl -sf --max-time 20 -X DELETE \
+                "https://api.supabase.com/v1/branches/${ID}" \
+                -H "Authorization: Bearer ${TOKEN}" \
+                || echo "::warning::Failed to delete branch $NAME ($ID) — will retry next run"
+            else
+              echo "KEEPING: $NAME (id=$ID, age=${AGE}s, under ${MAX_AGE_MINUTES}m cutoff)"
+            fi
+          done
