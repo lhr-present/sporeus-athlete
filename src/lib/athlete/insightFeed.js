@@ -16,17 +16,19 @@ import { computeMonotony } from '../trainingLoad.js'
 export function computeCTLDelta(log = [], today = new Date().toISOString().slice(0, 10)) {
   if (!log.length) return { ctlNow: 0, ctl4wAgo: 0 }
 
-  // CTL now — full log
-  const { ctl: ctlNow } = calcLoad(log)
+  // CTL now — full log, anchored to `today` (not the real wall-clock date —
+  // callers may pass a fixed reference date, e.g. tests or backfill reports)
+  const { ctl: ctlNow } = calcLoad(log, today)
 
-  // CTL 4 weeks ago — slice log to entries strictly before (today - 28 days)
+  // CTL 4 weeks ago — slice log to entries strictly before (today - 28 days),
+  // and anchor that calc's window to the same cutoff, not `today` or real-now
   const cutoff = new Date(today)
   cutoff.setUTCHours(0, 0, 0, 0)
   cutoff.setUTCDate(cutoff.getUTCDate() - 28)
   const cutoffStr = cutoff.toISOString().slice(0, 10)
 
   const logBefore28 = log.filter(e => e.date < cutoffStr)
-  const ctl4wAgo = logBefore28.length ? calcLoad(logBefore28).ctl : 0
+  const ctl4wAgo = logBefore28.length ? calcLoad(logBefore28, cutoffStr).ctl : 0
 
   return { ctlNow, ctl4wAgo }
 }

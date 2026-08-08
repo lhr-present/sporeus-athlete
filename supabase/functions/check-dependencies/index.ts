@@ -65,8 +65,11 @@ async function checkStravaApi(): Promise<CheckResult> {
 }
 
 async function checkAnthropicApi(): Promise<CheckResult> {
-  // Anthropic's status page
-  const { ok, latency_ms, statusCode } = await probe('https://anthropicstatus.com/', 6_000)
+  // Probe the real API host (not a third-party status page, which doesn't
+  // reflect this app's actual dependency and has been unreachable/stale —
+  // it drove a false "degraded" reading every check for weeks). 405 on HEAD
+  // is expected and counts as reachable via probe()'s `status < 500` rule.
+  const { ok, latency_ms, statusCode } = await probe('https://api.anthropic.com/v1/models', 6_000)
   return {
     service:    'anthropic_api',
     status:     ok ? 'ok' : 'degraded',

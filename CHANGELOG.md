@@ -2,6 +2,32 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.499.0 — 2026-08-08 — Fix false anthropic_api DEGRADED signal in health monitor
+
+- **check-dependencies: anthropic_api probe pointed at the wrong host** — `checkAnthropicApi()`
+  was pinging `anthropicstatus.com` (a third-party status page, not the app's actual dependency),
+  which does not reliably resolve and has been returning failures on every 5-min probe for weeks.
+  Every weekly operator digest since at least 2026-07-13 showed `anthropic_api DEGRADED`, a false
+  signal — the real API (`api.anthropic.com`, used by `ai-proxy`/`analyse-session`/`nightly-batch`)
+  was reachable the whole time (verified directly: HTTP 401 with no key, i.e. up). Swapped the probe
+  to `https://api.anthropic.com/v1/models`; HEAD returns 405 there, which `probe()`'s existing
+  `status < 500` rule already treats as reachable, so no other logic changed. DEPENDS ON:
+  `probe()`'s ok-if-<500 semantics in the same file (do not tighten without revisiting this check).
+- Also audited the other three status-page probes (`status.strava.com`, `dodopayments.com`,
+  `status.stripe.com`) — all resolve and respond 200 normally, left unchanged.
+- **Fixed a wall-clock time bomb in `classifyTrainingPhase`/`getInsightFeed`** (found via the full
+  suite run for the fix above — 6 tests were failing on `main` pre-existing, unrelated to it).
+  `calculatePMC()` always built its CTL window off `new Date()` regardless of the `today` argument
+  callers passed in; `classifyTrainingPhase` accepts an explicit `today` for the race-date math but
+  never threaded it into `calculatePMC`, so as real wall-clock time drifted away from a fixed test
+  date, the PMC window stopped overlapping the log entirely → `ctlNow` silently fell to 0 → every
+  phase permanently misclassified as `recovery`. Same bug, second instance: `computeCTLDelta` in
+  `insightFeed.js` called `calcLoad(log)` (and `calcLoad(logBefore28)`) without its own `today`
+  param even though `calcLoad` already supports an explicit `todayISO` anchor. Fixed by adding an
+  optional `asOf` param to `calculatePMC` (default `new Date()`, so all 12 existing call sites are
+  unaffected) and threading the reference date through in both call sites. 16,158/16,158 tests green
+  (was 16,153/16,158 on `main` before this commit — same root cause, two blast sites).
+
 ## v9.498.0 — 2026-07-09 — Final polish: same-tab reactivity + honest labels
 
 - **useLocalStorage same-tab sync (general-check F6)** — the `storage` event never fires in the

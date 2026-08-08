@@ -20,14 +20,15 @@ const DECAY_ATL = 1 - K_ATL             // ≈ 0.86693
 // @param {Array}  log        - training log entries [{ date, tss }]
 // @param {number} daysBack   - days of history to return (default 90)
 // @param {number} daysFuture - days of zeros to project forward (default 30)
+// @param {string|Date} [asOf] - reference "today" (defaults to the real current date)
 // @returns {Array<{date,tss,ctl,atl,tsb,isFuture}>}
-export function calculatePMC(log, daysBack = 90, daysFuture = 30) {
+export function calculatePMC(log, daysBack = 90, daysFuture = 30, asOf) {
   const byDate = {}
   for (const e of (log || [])) {
     if (e.date) byDate[e.date] = (byDate[e.date] || 0) + (e.tss || 0)
   }
 
-  const today = new Date()
+  const today = asOf ? new Date(asOf) : new Date()
   today.setUTCHours(0, 0, 0, 0)
 
   const primeStart  = new Date(today)

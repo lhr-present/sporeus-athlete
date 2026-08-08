@@ -23,7 +23,7 @@ export function classifyTrainingPhase(log, profile, today = new Date().toISOStri
     : null
 
   // CTL values at today, 7d ago, 21d ago via PMC
-  const pmc = calculatePMC(log || [], 90, 0)
+  const pmc = calculatePMC(log || [], 90, 0, today)
   const ctlAt = (daysAgo) => {
     const target = new Date(today + 'T12:00:00Z')
     target.setUTCDate(target.getUTCDate() - daysAgo)
