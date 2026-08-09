@@ -2,6 +2,25 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.502.0 — 2026-08-10 — Wired the dead Strava contextual nudge + fixed a drifted signal it exposed
+
+Item #2 of `docs/ops/ux_connections_prompts_2026-08-09.md`.
+
+- `StravaConnectInContext.jsx` (a fully-built, never-imported "connect Strava" prompt
+  for sparse logs, <14 sessions) is now wired into `Dashboard.jsx`, shown when
+  `log.length > 0 && log.length < 14 && !stravaConnected`, in both the simple- and
+  advanced-view render paths, right after `FirstRunInsightCard`.
+- **Found and fixed real drift while wiring it**: both `Dashboard.jsx` and
+  `TodayView.jsx` gated `GettingStartedCard`'s `stravaConnected` prop on
+  `!!localStorage.getItem('sporeus-strava-token')` — a key nothing has written since
+  v9.90.0 disabled the local-token sync fallback. Always `false` regardless of a real
+  connection, so the "Connect Strava" CTA nagged already-connected users too. Both now
+  read the real `strava_tokens` row via `getStravaConnection()`, matching
+  `StravaConnect.jsx`'s own pattern. Dashboard didn't previously fetch this at all —
+  added the fetch-on-mount + `authUser` prop plumbed down from App.jsx.
+- +5 tests (first coverage for `StravaConnectInContext.jsx`). 16,168 tests green, lint
+  clean, build clean.
+
 ## v9.501.0 — 2026-08-09 — Strava sync banner snooze now escalation-aware
 
 Item #1 of `docs/ops/ux_connections_prompts_2026-08-09.md`. Started from the premise

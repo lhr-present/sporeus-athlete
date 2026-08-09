@@ -1054,9 +1054,11 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
           // was undefined, so clicking did nothing. Now: one tap → Strava
           // OAuth redirect. Same flow Dashboard's GettingStartedCard uses,
           // but goes direct rather than via Profile-tab detour.
-          stravaConnected={(() => {
-            try { return !!localStorage.getItem('sporeus-strava-token') } catch { return false }
-          })()}
+          // v9.502 — was reading the `sporeus-strava-token` localStorage key,
+          // dead since v9.90.0 disabled the local-token sync fallback (nothing
+          // writes it anymore) — always false regardless of a real connection.
+          // `stravaConn` is already fetched above via getStravaConnection().
+          stravaConnected={!!stravaConn?.strava_athlete_id}
           onConnectStrava={() => {
             const res = initiateStravaOAuth()
             if (!res.ok) {

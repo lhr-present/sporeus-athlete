@@ -41,18 +41,29 @@ week (see [[project_sporeus_strava_golive]] / CHANGELOG v9.500.0 area).
 > syncing. **Task**: extend the `SetupBanner` pattern to a new App-shell-level banner.
 > </details>
 
-## 2. Wire up the dead contextual Strava nudge (`StravaConnectInContext.jsx`)
-> VERIFIED: `src/components/onboarding/StravaConnectInContext.jsx` is a fully-built
-> component (a context-aware "connect Strava" prompt meant for users with sparse
-> training data, <14 sessions) that is **not imported anywhere in the app** — dead
-> code, confirmed via grep. This is a real, already-paid-for feature sitting unused.
-> **Task**: find the right insertion points — likely `Dashboard.jsx` (when
-> `log.length < 14` and Strava isn't connected) and/or `TrainingLog.jsx` empty/sparse
-> states — and wire it in. Check first whether the component's props/expected data
-> shape still match current `DataContext`/`profile` shape (it may have drifted since
-> it was built) before wiring; fix drift if found, don't just import blindly. Add a
-> render test confirming it shows for a sparse, not-connected profile and hides once
-> either condition is no longer true.
+## 2. ✅ DONE (2026-08-10, v9.502) — wired in + fixed a related drift bug it surfaced
+> Re-verified before wiring (per item #1's lesson): `StravaConnectInContext.jsx` really
+> was dead code (only self-reference hits via grep). Wired into `Dashboard.jsx`'s
+> sparse-log zone (`log.length > 0 && log.length < 14 && !stravaConnected`, both the
+> simple- and advanced-view render paths), right after `FirstRunInsightCard`. Didn't
+> also add it to `TrainingLog.jsx` — Dashboard already owns this narrative moment
+> (`GettingStartedCard`/`FirstRunInsightCard` live there too) and a second copy on
+> another tab risked showing two different "connect Strava" prompts at once.
+>
+> **Found real drift exactly as this prompt warned to check for**: `Dashboard.jsx` and
+> `TodayView.jsx` both gated their existing `GettingStartedCard`'s `stravaConnected`
+> prop on `!!localStorage.getItem('sporeus-strava-token')` — a flag NOTHING has written
+> since v9.90.0 disabled the local-token sync fallback. It was always `false`
+> regardless of a real connection, meaning "Connect Strava" nagged even already-connected
+> users in the empty-log state. Fixed both to use the real server-side
+> `strava_tokens` row (`getStravaConnection()` / `stravaConn?.strava_athlete_id`,
+> matching `StravaConnect.jsx`'s own pattern) instead — same real signal now feeds
+> the new nudge's "already connected → don't show" gate too. Dashboard didn't
+> previously fetch this at all; added the same fetch-on-mount pattern TodayView
+> already used, plumbed `authUser` down from App.jsx as a new prop.
+>
+> +5 tests (first test file for `StravaConnectInContext.jsx`, which had zero coverage).
+> 16,168 green, lint clean, build clean.
 
 ## 3. Build one "Connections" screen — Strava, Garmin, FIT import currently live in 3 places
 > VERIFIED: there is no unified integrations/connections hub anywhere in the app

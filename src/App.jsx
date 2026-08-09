@@ -598,7 +598,7 @@ function AppInner({ lang, setLang, dark, setDark, authUser, authProfile, signOut
           {coachMode && authProfile?.role !== 'coach' && <AsyncBoundary name="Coach Mode"><CoachDashboard authUser={authUser}/></AsyncBoundary>}
           {!coachMode && tab === 'today'        && <AsyncBoundary name="Today"><TodayView log={log} setTab={handleTabClick} setLogPrefill={setLogPrefill} setShowQuickAdd={setShowQuickAdd} authUser={authUser}/></AsyncBoundary>}
           {!coachMode && tab === 'program'      && <AsyncBoundary name="Program"><ProgramView /></AsyncBoundary>}
-          {!coachMode && tab === 'dashboard'    && <AsyncBoundary name="Dashboard"><Dashboard log={log} onLogSession={handleDashLogSession} onGoToProfile={handleDashGoToProfile}/></AsyncBoundary>}
+          {!coachMode && tab === 'dashboard'    && <AsyncBoundary name="Dashboard"><Dashboard log={log} onLogSession={handleDashLogSession} onGoToProfile={handleDashGoToProfile} authUser={authUser}/></AsyncBoundary>}
           {tab === 'zones'        && <AsyncBoundary name="Zone Calc"><ZoneCalc/></AsyncBoundary>}
           {tab === 'tests'        && <AsyncBoundary name="Protocols"><TestProtocols/></AsyncBoundary>}
           {tab === 'log'          && <AsyncBoundary name="Training Log"><TrainingLog log={log} setLog={setLog} prefill={logPrefill} clearPrefill={() => setLogPrefill(null)}/></AsyncBoundary>}

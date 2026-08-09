@@ -1,5 +1,5 @@
 // ─── Dashboard.jsx — orchestrator, composes all dashboard cards ───────────────
-import { useContext, useState, useMemo, useCallback, lazy, Suspense, memo } from 'react'
+import { useContext, useState, useEffect, useMemo, useCallback, lazy, Suspense, memo } from 'react'
 import { LangCtx } from '../contexts/LangCtx.jsx'
 import { S } from '../styles.js'
 import { TSSChart, WeeklyVolChartMemo, ZoneDonutMemo, HelpTip } from './ui.jsx'
@@ -20,6 +20,8 @@ import { selectInsight } from '../lib/onboarding/day0Insight.js'
 import { computeMonotony } from '../lib/trainingLoad.js'
 import { useData } from '../contexts/DataContext.jsx'
 import { isGated as _isGated, LS_KEY as CONFIRM_LS_KEY } from '../lib/athlete/coachConfirmFlow.js'
+import { getStravaConnection } from '../lib/strava.js'
+import StravaConnectInContext from './onboarding/StravaConnectInContext.jsx'
 
 // ── Previously extracted sub-components ──────────────────────────────────────
 const EFTrendCard = lazy(() => import('./science/EFTrendCard.jsx'))
@@ -297,15 +299,30 @@ export const FirstRunInsightCard = memo(function FirstRunInsightCard({ insight, 
   )
 })
 
-function Dashboard({ log, onLogSession, onGoToProfile }) {
+function Dashboard({ log, onLogSession, onGoToProfile, authUser }) {
   const [lang]       = useLocalStorage('sporeus-lang', 'en')
   const [plan]       = useLocalStorage('sporeus-plan', null)
   const [planStatus] = useLocalStorage('sporeus-plan-status', {})
   const { recovery, injuries, testResults, raceResults, profile, setLog } = useData()
   const [myCoach]        = useLocalStorage('sporeus-my-coach', null)
-  const [stravaToken]    = useLocalStorage('sporeus-strava-token', '')
   const [_confirmRecord]  = useLocalStorage(CONFIRM_LS_KEY, null)
   const { t }        = useContext(LangCtx)
+
+  // Real Strava connection status (server-side strava_tokens row), NOT the
+  // `sporeus-strava-token` localStorage key — that flag has been dead since
+  // v9.90.0 disabled the local-token sync fallback; nothing writes it anymore,
+  // so `stravaConnected={!!stravaToken}` was always false regardless of a
+  // genuine connection. Same pattern StravaConnect.jsx / TodayView.jsx use.
+  const [stravaConn, setStravaConn] = useState(null)
+  useEffect(() => {
+    let cancelled = false
+    if (!authUser?.id) { setStravaConn(null); return }
+    getStravaConnection(authUser.id).then(({ data, error }) => {
+      if (!cancelled && !error) setStravaConn(data || null)
+    })
+    return () => { cancelled = true }
+  }, [authUser?.id])
+  const stravaConnected = !!stravaConn?.strava_athlete_id
 
   const sportLabel = SPORT_BRANCHES.find(b => b.id === profile.primarySport)?.label || profile.sport || ''
   const levelLabel = ATHLETE_LEVELS.find(l => l.id === profile.athleteLevel)?.label || ''
@@ -719,9 +736,12 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
           {metricsRow}
         </div>
         {log.length === 0 && (
-          <GettingStartedCard isTR={lang === 'tr'} onLogSession={onLogSession} stravaConnected={!!stravaToken} onConnectStrava={onGoToProfile}/>
+          <GettingStartedCard isTR={lang === 'tr'} onLogSession={onLogSession} stravaConnected={stravaConnected} onConnectStrava={onGoToProfile}/>
         )}
         {log.length > 0 && <FirstRunInsightCard insight={firstRunInsight} isTR={lang === 'tr'} />}
+        {log.length > 0 && log.length < 14 && !stravaConnected && (
+          <StravaConnectInContext sessionCount={log.length} lang={lang} userId={authUser?.id} />
+        )}
         <div className="sp-card" style={{ ...S.row, marginBottom: '16px', animationDelay: '0ms' }}>
           {[
             { val: countSess, lbl: t('sessions') },
@@ -881,9 +901,12 @@ function Dashboard({ log, onLogSession, onGoToProfile }) {
       </ErrorBoundary>
       )}
       {log.length === 0 && (
-        <GettingStartedCard isTR={lang === 'tr'} onLogSession={onLogSession} stravaConnected={!!stravaToken} onConnectStrava={onGoToProfile}/>
+        <GettingStartedCard isTR={lang === 'tr'} onLogSession={onLogSession} stravaConnected={stravaConnected} onConnectStrava={onGoToProfile}/>
       )}
       {log.length > 0 && <FirstRunInsightCard insight={firstRunInsight} isTR={lang === 'tr'} />}
+      {log.length > 0 && log.length < 14 && !stravaConnected && (
+        <StravaConnectInContext sessionCount={log.length} lang={lang} userId={authUser?.id} />
+      )}
       {dl['raceGoalAnalyzer'] !== false && (
       <ErrorBoundary>
         <Suspense fallback={null}>
