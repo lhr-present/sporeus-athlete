@@ -2,6 +2,29 @@
 
 All notable changes. Each entry notes what it DEPENDS ON (do not remove).
 
+## v9.501.0 — 2026-08-09 — Strava sync banner snooze now escalation-aware
+
+Item #1 of `docs/ops/ux_connections_prompts_2026-08-09.md`. Started from the premise
+that a broken Strava connection is invisible outside Profile — deeper investigation
+found that premise was wrong: `TodayView.jsx` already has a well-built Strava sync
+health banner on the landing tab (failing/stale/never-synced states, in-place sync
+button). Building a second App-shell banner would have been a redundant duplicate.
+
+The actual gap: `bannerSnooze.js`'s snooze was a flat 7-day TTL with no awareness of
+*what* was snoozed. Dismissing the banner while the connection was merely 'stale' kept
+it suppressed for the full week even if the connection then degraded to
+'failing — reconnect required' partway through — the escalation wouldn't re-surface
+until the old snooze expired on its own schedule.
+
+- `isBannerSnoozed`/`snoozeBanner` (`src/lib/athlete/bannerSnooze.js`) now accept an
+  optional condition fingerprint as a 3rd param. A snooze only suppresses the banner
+  while the fingerprint is unchanged; a different fingerprint (state or error text
+  changed) is treated as not-snoozed and the banner re-fires immediately. Fully
+  backward compatible — existing callers that don't pass a fingerprint (decoupling,
+  polarized banners) are unaffected.
+- `TodayView.jsx`'s Strava sync banner now fingerprints on `${state}|${lastError}`.
+- +5 tests (fingerprint match/mismatch/backward-compat). 16,163 tests green.
+
 ## v9.500.0 — 2026-08-08 — Security fix + ACWR consolidation + sport-science citation fixes + timeouts
 
 3-agent discovery audit (client dead-features, backend security/reliability, sport-science

@@ -33,16 +33,26 @@ function keyFor(slot) {
  *
  * @param {string} slot - banner identifier (e.g. 'decoupling', 'polarized', 'retro-2026-05-10')
  * @param {number} [now] - injected epoch ms for testing; defaults to Date.now()
+ * @param {string} [fingerprint] - optional condition fingerprint (e.g. health
+ *   state + error text). When provided, a snooze only suppresses the banner
+ *   while the fingerprint is UNCHANGED from what was snoozed — if the
+ *   underlying condition gets worse (e.g. a Strava sync goes from 'stale' to
+ *   'failing — reconnect required') the old snooze no longer applies and the
+ *   banner re-fires immediately instead of waiting out the full 7 days.
+ *   Callers that don't pass a fingerprint keep the original TTL-only behavior.
  */
-export function isBannerSnoozed(slot, now) {
+export function isBannerSnoozed(slot, now, fingerprint) {
   if (!slot) return false
   const tNow = Number.isFinite(now) ? now : Date.now()
   try {
     const raw = localStorage.getItem(keyFor(slot))
     if (!raw) return false
-    const ts = Number(JSON.parse(raw)?.ts)
+    const parsed = JSON.parse(raw)
+    const ts = Number(parsed?.ts)
     if (!Number.isFinite(ts)) return false
-    return (tNow - ts) < SNOOZE_TTL_MS
+    if ((tNow - ts) >= SNOOZE_TTL_MS) return false
+    if (fingerprint !== undefined && parsed?.fingerprint !== fingerprint) return false
+    return true
   } catch {
     return false
   }
@@ -50,14 +60,18 @@ export function isBannerSnoozed(slot, now) {
 
 /**
  * @description Mark a banner slot as snoozed for the next 7 days.
- *   Stores `{ ts: epochMs }`. Idempotent — re-snoozing within the
+ *   Stores `{ ts: epochMs, fingerprint }`. Idempotent — re-snoozing within the
  *   window resets the timer (acceptable: athlete explicit gesture).
+ *
+ * @param {string} slot
+ * @param {number} [now] - injected epoch ms for testing; defaults to Date.now()
+ * @param {string} [fingerprint] - see isBannerSnoozed
  */
-export function snoozeBanner(slot, now) {
+export function snoozeBanner(slot, now, fingerprint) {
   if (!slot) return
   const ts = Number.isFinite(now) ? now : Date.now()
   try {
-    localStorage.setItem(keyFor(slot), JSON.stringify({ ts }))
+    localStorage.setItem(keyFor(slot), JSON.stringify({ ts, fingerprint }))
   } catch {
     /* fail open — banner re-renders, no worse than pre-v9.126 */
   }

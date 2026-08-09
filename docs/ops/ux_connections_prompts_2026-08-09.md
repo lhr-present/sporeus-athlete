@@ -15,25 +15,31 @@ week (see [[project_sporeus_strava_golive]] / CHANGELOG v9.500.0 area).
 
 ---
 
-## 1. 🔴 Highest leverage: surface a broken Strava connection app-wide, not just in Profile
+## 1. ✅ DONE (2026-08-09, v9.501) — corrected after deeper investigation
+> **The original premise below was WRONG** — my first research pass missed that
+> `TodayView.jsx` (v9.132.0, pre-existing, NOT new) already has a well-built Strava
+> sync health banner: it fires on the landing tab (`today`), shows for
+> failing/stale/never-synced states, has an in-place sync button, and correctly reads
+> `classifyStravaSync()`. Building the App-shell banner as originally scoped would have
+> been a redundant duplicate system. Actual verified gap, found by asking "why didn't
+> the existing banner catch this for the founder": the snooze mechanism
+> (`bannerSnooze.js`) snoozed by a flat 7-day TTL with no awareness of the underlying
+> condition — if dismissed while merely 'stale', it stayed suppressed for the full 7
+> days even if the connection then degraded to 'failing — reconnect required'. Fixed by
+> adding an optional condition fingerprint to `isBannerSnoozed`/`snoozeBanner`
+> (backward-compatible — existing callers without a fingerprint are unaffected); the
+> Strava banner now fingerprints on `state|lastError`, so an escalation re-fires it
+> immediately instead of waiting out the old snooze. +5 tests, 16,163 green.
+>
+> <details><summary>Original (superseded) prompt text</summary>
+>
 > VERIFIED: `src/components/StravaConnect.jsx:174-210` already has a well-built error
 > banner + one-click "↻ RECONNECT" button (calls `initiateStravaOAuth({force:true})`,
 > no re-auth form needed) — but it only renders inside the Profile tab's "STRAVA SYNC"
 > card. Profile is 1 of 15 tabs with no badge/indicator that something's wrong. A user
 > who doesn't habitually open Profile has no way to know Strava silently stopped
-> syncing — this is exactly what happened to the founder's own account this week
-> (`strava_tokens.sync_status='error'`, unnoticed for ~11 days). Meanwhile
-> `src/components/SetupBanner.jsx` already establishes the right pattern: a persistent,
-> non-snoozable, top-of-app banner for critical unresolved state (currently only used
-> for "no sport picked yet").
-> **Task**: extend the `SetupBanner` pattern (or add a sibling banner component) to
-> also fire when `classifyStravaSync()` (`src/lib/athlete/stravaSyncHealth.js`) returns
-> an error/stale state for a connected user, rendered at the App shell level (visible
-> from every tab, not just Profile) with a direct one-tap path into the same
-> `initiateStravaOAuth({force:true})` reconnect action already in `StravaConnect.jsx` —
-> don't rebuild the reconnect logic, just make the existing one reachable from
-> anywhere. Add a test that a `sync_status='error'` profile renders the banner from a
-> non-Profile tab.
+> syncing. **Task**: extend the `SetupBanner` pattern to a new App-shell-level banner.
+> </details>
 
 ## 2. Wire up the dead contextual Strava nudge (`StravaConnectInContext.jsx`)
 > VERIFIED: `src/components/onboarding/StravaConnectInContext.jsx` is a fully-built

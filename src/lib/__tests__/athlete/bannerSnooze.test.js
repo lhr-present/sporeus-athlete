@@ -63,6 +63,29 @@ describe('snoozeBanner', () => {
   })
 })
 
+describe('fingerprint-aware snooze (v9.501 — escalation re-fires the banner)', () => {
+  it('snoozing without a fingerprint behaves exactly as before (backward compat)', () => {
+    snoozeBanner('strava-sync', NOW)
+    expect(isBannerSnoozed('strava-sync', NOW + 1000)).toBe(true)
+  })
+  it('same fingerprint stays snoozed within the window', () => {
+    snoozeBanner('strava-sync', NOW, 'stale|')
+    expect(isBannerSnoozed('strava-sync', NOW + 1000, 'stale|')).toBe(true)
+  })
+  it('a DIFFERENT fingerprint (condition escalated) is NOT considered snoozed, even mid-window', () => {
+    snoozeBanner('strava-sync', NOW, 'stale|')
+    // Same slot, well within the 7-day TTL, but the underlying condition
+    // got worse — this must re-fire, not wait out the original 7 days.
+    expect(isBannerSnoozed('strava-sync', NOW + 1000, 'failing|Strava authorization rejected — please reconnect Strava')).toBe(false)
+  })
+  it('checking WITHOUT a fingerprint after a fingerprinted snooze still honors the TTL', () => {
+    snoozeBanner('strava-sync', NOW, 'stale|')
+    // A caller that doesn't care about fingerprints (fingerprint arg omitted)
+    // just gets normal TTL behavior.
+    expect(isBannerSnoozed('strava-sync', NOW + 1000)).toBe(true)
+  })
+})
+
 describe('clearBannerSnooze', () => {
   it('removes the snooze', () => {
     snoozeBanner('decoupling', NOW)

@@ -1793,12 +1793,20 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
           Strava connections so an athlete with a silently-broken sync
           sees it without having to navigate to Profile. Silent when
           disconnected (athlete doesn't use Strava — no false alarm) or
-          healthy. Snoozable for 7 days like other banners. Defers to
-          critical Mission 1 diagnostics (v9.128 PPP). */}
+          healthy. Snoozable for 7 days like other banners — but the snooze
+          is fingerprinted by state+error (v9.501) so a snooze taken while
+          merely 'stale' doesn't also hide a later escalation to
+          'failing — reconnect required'. Defers to critical Mission 1
+          diagnostics (v9.128 PPP). */}
       {(() => {
         const health = classifyStravaSync(stravaConn)
         if (!health.actionable) return null
-        if (isBannerSnoozed('strava-sync')) return null
+        // Fingerprint the condition being snoozed (state + error text) so a
+        // snooze taken while merely 'stale' doesn't also suppress a later
+        // escalation to 'failing — reconnect required' for up to 7 days —
+        // the old plain-TTL snooze couldn't tell the two apart.
+        const stravaSnoozeFingerprint = `${health.state}|${health.lastError || ''}`
+        if (isBannerSnoozed('strava-sync', undefined, stravaSnoozeFingerprint)) return null
         if (criticalPrimaryActive) return null
         void snoozeBump
         // F3 — never_synced gets its own colour/icon vs failing (red) / stale (amber).
@@ -1844,7 +1852,7 @@ export default function TodayView({ log, setTab, setLogPrefill, setShowQuickAdd,
             fontFamily: MONO, position: 'relative',
           }}>
             <button
-              onClick={() => { snoozeBanner('strava-sync'); setSnoozeBump(b => b + 1) }}
+              onClick={() => { snoozeBanner('strava-sync', undefined, stravaSnoozeFingerprint); setSnoozeBump(b => b + 1) }}
               aria-label={lang === 'tr' ? 'Uyarıyı 7 gün ertele' : 'Snooze alert for 7 days'}
               title={lang === 'tr' ? '7 gün ertele' : 'Snooze 7 days'}
               style={{ position: 'absolute', top: '6px', right: '8px',
